@@ -170,21 +170,52 @@ RA8_INTERNAL static ra8_err_t internal_stat(void* ctx, const char* path, fw_fs_s
   return k_ra8_ok;
 }
 
+/**
+ * @brief Round a caller directory-state span up to the cursor's alignment
+ *
+ * @details
+ * `fw_if_fs.h` hands adapters an arbitrary caller-owned byte span for the
+ * directory cursor and promises no alignment, so the struct base must be
+ * derived, not assumed: storing through an unaligned `vfs_directory_state_t*`
+ * is undefined behavior the host UBSan build rejects.
+ *
+ * @param[in] directory_state Caller-owned span accepted by `dir_open`
+ *
+ * @return The first suitably aligned cursor address inside the span
+ * @retval non-null Always; the caller validates the remaining capacity
+ *
+ * @pre @p directory_state is non-null (checked by every caller's contract)
+ * @pre The span extends far enough for the padding the caller re-checks
+ * @post The returned pointer satisfies `alignof(vfs_directory_state_t)`
+ * @post No byte of the span has been written
+ *
+ * @note Pure address arithmetic; reentrant and thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static vfs_directory_state_t* internal_dir_state(void* directory_state)
+{
+  const uintptr_t raw     = (uintptr_t)directory_state;
+  const uintptr_t align   = (uintptr_t)alignof(vfs_directory_state_t);
+  const uintptr_t aligned = (raw + align - 1U) & ~(align - 1U);
+  return (vfs_directory_state_t*)aligned;
+}
+
 /* see header for full description */
 RA8_INTERNAL static ra8_err_t
 internal_dir_open(void* ctx, const char* path, void* directory_state, uint32_t state_bytes)
 {
-  fw_fs_ra8_vfs_state_t* state = (fw_fs_ra8_vfs_state_t*)ctx;
-  if (state_bytes < (uint32_t)sizeof(vfs_directory_state_t)) {
+  fw_fs_ra8_vfs_state_t* state      = (fw_fs_ra8_vfs_state_t*)ctx;
+  vfs_directory_state_t* directory  = internal_dir_state(directory_state);
+  const uintptr_t        struct_pad = (uintptr_t)directory - (uintptr_t)directory_state;
+  if ((uint64_t)state_bytes < ((uint64_t)struct_pad + sizeof(vfs_directory_state_t))) {
     return k_ra8_err_no_mem;
   }
-  vfs_directory_state_t* directory = (vfs_directory_state_t*)directory_state;
-  *directory                       = (vfs_directory_state_t){};
-  const ra8_err_t built            = internal_full_path(state, path, state->path_a);
+  *directory            = (vfs_directory_state_t){};
+  const ra8_err_t built = internal_full_path(state, path, state->path_a);
   if (built != k_ra8_ok) {
     return built;
   }
-  const uintptr_t first       = (uintptr_t)directory_state + (uintptr_t)sizeof(*directory);
+  const uintptr_t first       = (uintptr_t)directory + (uintptr_t)sizeof(*directory);
   const uintptr_t align       = (uintptr_t)state->directory_workspace_align;
   const uintptr_t native_base = (first + align - 1U) & ~(align - 1U);
   const uintptr_t consumed    = native_base - (uintptr_t)directory_state;
@@ -205,7 +236,7 @@ RA8_INTERNAL static ra8_err_t
 internal_dir_next(void* ctx, void* directory_state, fw_fs_dirent_value_t* out, bool* out_entry)
 {
   (void)ctx;
-  vfs_directory_state_t* directory = (vfs_directory_state_t*)directory_state;
+  vfs_directory_state_t* directory = internal_dir_state(directory_state);
   ra8_fs_dirent_t        native    = {};
   const ra8_err_t        err       = ra8_io_vfs_dir_next(&directory->native, &native, out_entry);
   if (err != k_ra8_ok) {
@@ -230,7 +261,7 @@ internal_dir_next(void* ctx, void* directory_state, fw_fs_dirent_value_t* out, b
 RA8_INTERNAL static ra8_err_t internal_dir_close(void* ctx, void* directory_state)
 {
   (void)ctx;
-  vfs_directory_state_t* directory = (vfs_directory_state_t*)directory_state;
+  vfs_directory_state_t* directory = internal_dir_state(directory_state);
   return ra8_io_vfs_dir_close(&directory->native);
 }
 
