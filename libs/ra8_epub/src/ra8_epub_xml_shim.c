@@ -18,6 +18,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_epub_xml_consumer_internal.h"
+#include "ra8_epub_xml_opf_internal.h"
 #include "ra8_epub_xml_shim_internal.h"
 #include "ra8_xml.h"
 
@@ -32,28 +33,28 @@ typedef enum : uint16_t {
 } priv_marker_t;
 
 /* see header for the documented contract. */
-RA8_INTERNAL static void internal_copy(const uint8_t* source,
-                                       size_t         source_len,
-                                       ra8_xml_span_t span,
-                                       char*          destination,
-                                       size_t         capacity)
+void priv_ra8_epub_xml_copy(const uint8_t* source,
+                            size_t         source_len,
+                            ra8_xml_span_t span,
+                            char*          destination,
+                            size_t         capacity)
 {
   size_t ignored = 0U;
   (void)ra8_xml_decode_prefix(source, source_len, span, destination, capacity, &ignored);
 }
 
 /* see header for the documented contract. */
-RA8_INTERNAL static priv_attr_t internal_attr(const uint8_t*         source,
-                                              size_t                 source_len,
-                                              const ra8_xml_event_t* event,
-                                              const char*            name)
+priv_attr_t priv_ra8_epub_xml_attr(const uint8_t*         source,
+                                   size_t                 source_len,
+                                   const ra8_xml_event_t* event,
+                                   const char*            name)
 {
   ra8_xml_attr_cursor_t cursor = {};
   ra8_xml_attr_begin(event, &cursor);
   for (uint16_t i = 0U; i < event->attribute_count; ++i) {
     ra8_xml_attribute_t attribute = {};
     bool                present   = false;
-    // mcdc-deactivated: internal_attr attribute re-walk gate; internal_attributes fixed event->attribute_count by successfully parsing exactly that many attributes over these immutable bytes, so the bounded re-parse cannot fail and ra8_xml_attr_next() only clears `present` once `emitted` reaches that same count, which this loop never exceeds -- both conditions are constant-false.
+    // mcdc-deactivated: priv_ra8_epub_xml_attr attribute re-walk gate; internal_attributes fixed event->attribute_count by successfully parsing exactly that many attributes over these immutable bytes, so the bounded re-parse cannot fail and ra8_xml_attr_next() only clears `present` once `emitted` reaches that same count, which this loop never exceeds -- both conditions are constant-false.
     if ((ra8_xml_attr_next(source, source_len, event, &cursor, &attribute, &present) != k_ra8_ok) ||
         !present) {
       break;
@@ -66,10 +67,10 @@ RA8_INTERNAL static priv_attr_t internal_attr(const uint8_t*         source,
 }
 
 /* see header for the documented contract. */
-RA8_INTERNAL static bool internal_attr_contains(const uint8_t* source,
-                                                size_t         source_len,
-                                                priv_attr_t    attribute,
-                                                const char*    needle)
+bool priv_ra8_epub_xml_attr_contains(const uint8_t* source,
+                                     size_t         source_len,
+                                     priv_attr_t    attribute,
+                                     const char*    needle)
 {
   if (!attribute.present) {
     return false;
@@ -84,15 +85,14 @@ RA8_INTERNAL static bool internal_attr_contains(const uint8_t* source,
 }
 
 /* see header for the documented contract. */
-RA8_INTERNAL static ra8_xml_span_t internal_frame_name(const ra8_xml_reader_t* reader,
-                                                       uint16_t                frame)
+ra8_xml_span_t priv_ra8_epub_xml_frame_name(const ra8_xml_reader_t* reader, uint16_t frame)
 {
   const ra8_xml_frame_t* value = &reader->workspace->frames[frame];
   return (ra8_xml_span_t){value->name_offset, value->name_length};
 }
 
 /* see header for the documented contract. */
-RA8_INTERNAL static bool internal_direct_child(uint16_t child, uint16_t parent)
+bool priv_ra8_epub_xml_direct_child(uint16_t child, uint16_t parent)
 {
   if (parent == UINT16_MAX) {
     return false;
@@ -102,8 +102,7 @@ RA8_INTERNAL static bool internal_direct_child(uint16_t child, uint16_t parent)
 }
 
 /* see header for the documented contract. */
-RA8_INTERNAL static bool
-internal_ancestor_frame(uint16_t depth, uint16_t levels, uint16_t* out_frame)
+bool priv_ra8_epub_xml_ancestor_frame(uint16_t depth, uint16_t levels, uint16_t* out_frame)
 {
   while (levels > 0U) {
     if (depth == 0U) {
@@ -117,44 +116,36 @@ internal_ancestor_frame(uint16_t depth, uint16_t levels, uint16_t* out_frame)
 }
 
 /* see header for the documented contract. */
-RA8_INTERNAL static ra8_xml_span_t
-internal_ancestor_name(const ra8_xml_reader_t* reader, uint16_t depth, uint16_t levels)
+uint16_t
+priv_ra8_epub_xml_ancestor_marker(const ra8_xml_reader_t* reader, uint16_t depth, uint16_t levels)
 {
   uint16_t frame = 0U;
-  return internal_ancestor_frame(depth, levels, &frame) ? internal_frame_name(reader, frame)
-                                                        : (ra8_xml_span_t){};
+  return priv_ra8_epub_xml_ancestor_frame(depth, levels, &frame)
+           ? reader->workspace->frames[frame].consumer
+           : 0U;
 }
 
 /* see header for the documented contract. */
-RA8_INTERNAL static uint16_t
-internal_ancestor_marker(const ra8_xml_reader_t* reader, uint16_t depth, uint16_t levels)
-{
-  uint16_t frame = 0U;
-  return internal_ancestor_frame(depth, levels, &frame) ? reader->workspace->frames[frame].consumer
-                                                        : 0U;
-}
-
-/* see header for the documented contract. */
-RA8_INTERNAL static ra8_err_t internal_reader(ra8_xml_reader_t*         reader,
-                                              const uint8_t*            source,
-                                              size_t                    length,
-                                              ra8_epub_xml_workspace_t* workspace)
+ra8_err_t priv_ra8_epub_xml_reader(ra8_xml_reader_t*         reader,
+                                   const uint8_t*            source,
+                                   size_t                    length,
+                                   ra8_epub_xml_workspace_t* workspace)
 {
   return ra8_xml_reader_init(reader, source, length, &workspace->reader);
 }
 
 /* see header for the documented contract. */
-RA8_INTERNAL static ra8_err_t internal_find(const uint8_t*            source,
-                                            size_t                    length,
-                                            ra8_epub_xml_workspace_t* workspace,
-                                            const char*               local,
-                                            bool                      use_parent,
-                                            uint32_t                  parent_offset,
-                                            uint16_t                  parent_depth,
-                                            ra8_xml_event_t*          out)
+ra8_err_t priv_ra8_epub_xml_find(const uint8_t*            source,
+                                 size_t                    length,
+                                 ra8_epub_xml_workspace_t* workspace,
+                                 const char*               local,
+                                 bool                      use_parent,
+                                 uint32_t                  parent_offset,
+                                 uint16_t                  parent_depth,
+                                 ra8_xml_event_t*          out)
 {
   ra8_xml_reader_t reader        = {};
-  ra8_err_t        err           = internal_reader(&reader, source, length, workspace);
+  ra8_err_t        err           = priv_ra8_epub_xml_reader(&reader, source, length, workspace);
   bool             parent_active = false;
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
@@ -169,7 +160,8 @@ RA8_INTERNAL static ra8_err_t internal_find(const uint8_t*            source,
     }
     if ((event.kind == (uint8_t)k_ra8_xml_event_start) &&
         ra8_xml_span_local_equal(source, length, event.name, local)) {
-      if (!use_parent || (parent_active && internal_direct_child(event.depth, parent_depth))) {
+      if (!use_parent ||
+          (parent_active && priv_ra8_epub_xml_direct_child(event.depth, parent_depth))) {
         *out = event;
         return k_ra8_ok;
       }
@@ -195,30 +187,32 @@ ra8_err_t priv_ra8_epub_xml_parse_container(const uint8_t*               xml_byt
   ra8_err_t       err       = ra8_xml_validate(xml_bytes, xml_len, &workspace->reader);
   ra8_xml_event_t rootfiles = {};
   if (err == k_ra8_ok) {
-    err = internal_find(xml_bytes, xml_len, workspace, "rootfiles", false, 0U, 0U, &rootfiles);
+    err =
+      priv_ra8_epub_xml_find(xml_bytes, xml_len, workspace, "rootfiles", false, 0U, 0U, &rootfiles);
   }
   ra8_xml_event_t rootfile = {};
   if (err == k_ra8_ok) {
-    err = internal_find(xml_bytes,
-                        xml_len,
-                        workspace,
-                        "rootfile",
-                        true,
-                        rootfiles.markup.offset,
-                        rootfiles.depth,
-                        &rootfile);
+    err = priv_ra8_epub_xml_find(xml_bytes,
+                                 xml_len,
+                                 workspace,
+                                 "rootfile",
+                                 true,
+                                 rootfiles.markup.offset,
+                                 rootfiles.depth,
+                                 &rootfile);
   } else if (err == k_ra8_err_validation_failed) {
-    err = internal_find(xml_bytes, xml_len, workspace, "rootfile", false, 0U, 0U, &rootfile);
+    err =
+      priv_ra8_epub_xml_find(xml_bytes, xml_len, workspace, "rootfile", false, 0U, 0U, &rootfile);
   }
   if (err != k_ra8_ok) {
     return err;
   }
-  const priv_attr_t path = internal_attr(xml_bytes, xml_len, &rootfile, "full-path");
+  const priv_attr_t path = priv_ra8_epub_xml_attr(xml_bytes, xml_len, &rootfile, "full-path");
   if (!path.present || (path.span.length == 0U)) {
     return k_ra8_err_validation_failed;
   }
   out->opf_path[0] = '\0';
-  internal_copy(xml_bytes, xml_len, path.span, out->opf_path, sizeof(out->opf_path));
+  priv_ra8_epub_xml_copy(xml_bytes, xml_len, path.span, out->opf_path, sizeof(out->opf_path));
   return k_ra8_ok;
 }
 
@@ -245,35 +239,44 @@ RA8_INTERNAL static void internal_manifest_item(const uint8_t*         source,
                                                 const ra8_xml_event_t* event,
                                                 ra8_epub_book_t*       book)
 {
-  const priv_attr_t id         = internal_attr(source, source_len, event, "id");
-  const priv_attr_t href       = internal_attr(source, source_len, event, "href");
-  const priv_attr_t media      = internal_attr(source, source_len, event, "media-type");
-  const priv_attr_t properties = internal_attr(source, source_len, event, "properties");
+  const priv_attr_t id         = priv_ra8_epub_xml_attr(source, source_len, event, "id");
+  const priv_attr_t href       = priv_ra8_epub_xml_attr(source, source_len, event, "href");
+  const priv_attr_t media      = priv_ra8_epub_xml_attr(source, source_len, event, "media-type");
+  const priv_attr_t properties = priv_ra8_epub_xml_attr(source, source_len, event, "properties");
   if (book->manifest_count < (uint16_t)k_ra8_epub_max_manifest) {
     ra8_epub_manifest_item_t* item = &book->manifest[book->manifest_count++];
     if (id.present) {
-      internal_copy(source, source_len, id.span, item->id, sizeof(item->id));
+      priv_ra8_epub_xml_copy(source, source_len, id.span, item->id, sizeof(item->id));
     }
     if (href.present) {
-      internal_copy(source, source_len, href.span, item->href, sizeof(item->href));
+      priv_ra8_epub_xml_copy(source, source_len, href.span, item->href, sizeof(item->href));
     }
     if (media.present) {
-      internal_copy(source, source_len, media.span, item->media_type, sizeof(item->media_type));
+      priv_ra8_epub_xml_copy(source,
+                             source_len,
+                             media.span,
+                             item->media_type,
+                             sizeof(item->media_type));
     }
   }
   if (href.present && internal_font_type(source, source_len, media) &&
       (book->embedded_font_count < (uint16_t)k_ra8_epub_max_fonts)) {
-    internal_copy(source,
-                  source_len,
-                  href.span,
-                  book->embedded_font_paths[book->embedded_font_count++],
-                  k_ra8_epub_max_path_len);
+    priv_ra8_epub_xml_copy(source,
+                           source_len,
+                           href.span,
+                           book->embedded_font_paths[book->embedded_font_count++],
+                           k_ra8_epub_max_path_len);
   }
-  if (href.present && internal_attr_contains(source, source_len, properties, "cover-image")) {
-    internal_copy(source, source_len, href.span, book->cover_path, sizeof(book->cover_path));
+  if (href.present &&
+      priv_ra8_epub_xml_attr_contains(source, source_len, properties, "cover-image")) {
+    priv_ra8_epub_xml_copy(source,
+                           source_len,
+                           href.span,
+                           book->cover_path,
+                           sizeof(book->cover_path));
   }
-  if (href.present && internal_attr_contains(source, source_len, properties, "nav")) {
-    internal_copy(source, source_len, href.span, book->toc_path, sizeof(book->toc_path));
+  if (href.present && priv_ra8_epub_xml_attr_contains(source, source_len, properties, "nav")) {
+    priv_ra8_epub_xml_copy(source, source_len, href.span, book->toc_path, sizeof(book->toc_path));
     book->toc_kind = (uint8_t)k_ra8_epub_toc_nav;
   }
 }
@@ -288,16 +291,24 @@ RA8_INTERNAL static void internal_metadata_text(const uint8_t*          source,
   if (event->depth == 0U) {
     return;
   }
-  const uint16_t marker = internal_ancestor_marker(reader, event->depth, 1U);
+  const uint16_t marker = priv_ra8_epub_xml_ancestor_marker(reader, event->depth, 1U);
   if (marker == (uint16_t)k_priv_mark_title) {
-    internal_copy(source, source_len, event->markup, book->title, sizeof(book->title));
+    priv_ra8_epub_xml_copy(source, source_len, event->markup, book->title, sizeof(book->title));
   } else if (marker == (uint16_t)k_priv_mark_creator) {
-    internal_copy(source, source_len, event->markup, book->author, sizeof(book->author));
+    priv_ra8_epub_xml_copy(source, source_len, event->markup, book->author, sizeof(book->author));
   } else if (marker == (uint16_t)k_priv_mark_language) {
-    internal_copy(source, source_len, event->markup, book->language, sizeof(book->language));
+    priv_ra8_epub_xml_copy(source,
+                           source_len,
+                           event->markup,
+                           book->language,
+                           sizeof(book->language));
   } else if ((marker == (uint16_t)k_priv_mark_identifier_match) ||
              ((marker == (uint16_t)k_priv_mark_identifier) && (book->identifier[0] == '\0'))) {
-    internal_copy(source, source_len, event->markup, book->identifier, sizeof(book->identifier));
+    priv_ra8_epub_xml_copy(source,
+                           source_len,
+                           event->markup,
+                           book->identifier,
+                           sizeof(book->identifier));
   }
 }
 
@@ -317,7 +328,7 @@ RA8_INTERNAL static void internal_mark_metadata(const uint8_t*         source,
     marker = (uint16_t)k_priv_mark_language;
   } else if (ra8_xml_span_local_equal(source, source_len, event->name, "identifier")) {
     marker               = (uint16_t)k_priv_mark_identifier;
-    const priv_attr_t id = internal_attr(source, source_len, event, "id");
+    const priv_attr_t id = priv_ra8_epub_xml_attr(source, source_len, event, "id");
     if (id.present && (unique_id.length > 0U) &&
         ra8_xml_decoded_equal(source, source_len, id.span, unique_id)) {
       marker = (uint16_t)k_priv_mark_identifier_match;
@@ -366,8 +377,8 @@ RA8_INTERNAL static void internal_opf_metadata_child(const uint8_t*         sour
   if (!ra8_xml_span_local_equal(source, length, event->name, "meta")) {
     return;
   }
-  const priv_attr_t name    = internal_attr(source, length, event, "name");
-  const priv_attr_t content = internal_attr(source, length, event, "content");
+  const priv_attr_t name    = priv_ra8_epub_xml_attr(source, length, event, "name");
+  const priv_attr_t content = priv_ra8_epub_xml_attr(source, length, event, "content");
   if (name.present && content.present && ra8_xml_span_equal(source, length, name.span, "cover")) {
     book->xml_workspace.legacy_cover_id = content.span;
   }
@@ -393,6 +404,8 @@ RA8_INTERNAL static void internal_opf_metadata_child(const uint8_t*         sour
  * @pre @p book owns a live XML workspace.
  * @post At most one tracked depth, the unique-id span, the spine toc
  * span, or a forwarded child handler's effects is updated.
+ * @post A start tag matching no arm leaves every tracked depth, the
+ * unique-id span, and @p book byte-for-byte as they were.
  * @note Extracted from ::internal_opf_first so both stay within the
  * 60-line function cap; the vectors that cover it are unchanged.
  * @since 0.1.0
@@ -409,7 +422,7 @@ RA8_INTERNAL static void internal_opf_first_event(const uint8_t*         source,
                                                   ra8_xml_span_t*        out_spine_toc)
 {
   if (event->depth == 0U) {
-    const priv_attr_t uid = internal_attr(source, length, event, "unique-identifier");
+    const priv_attr_t uid = priv_ra8_epub_xml_attr(source, length, event, "unique-identifier");
     *unique_id            = uid.present ? uid.span : (ra8_xml_span_t){};
   } else if ((event->depth == 1U) &&
              ra8_xml_span_local_equal(source, length, event->name, "metadata")) {
@@ -420,18 +433,18 @@ RA8_INTERNAL static void internal_opf_first_event(const uint8_t*         source,
   } else if ((event->depth == 1U) &&
              ra8_xml_span_local_equal(source, length, event->name, "spine")) {
     *spine_depth          = event->depth;
-    const priv_attr_t toc = internal_attr(source, length, event, "toc");
+    const priv_attr_t toc = priv_ra8_epub_xml_attr(source, length, event, "toc");
     *out_spine_toc        = toc.present ? toc.span : (ra8_xml_span_t){};
-  } else if (internal_direct_child(event->depth, *metadata_depth) &&
+  } else if (priv_ra8_epub_xml_direct_child(event->depth, *metadata_depth) &&
              ra8_xml_span_local_equal(source,
                                       length,
-                                      internal_frame_name(reader, *metadata_depth),
+                                      priv_ra8_epub_xml_frame_name(reader, *metadata_depth),
                                       "metadata")) {
     internal_opf_metadata_child(source, length, event, reader, *unique_id, book);
-  } else if (internal_direct_child(event->depth, *manifest_depth) &&
+  } else if (priv_ra8_epub_xml_direct_child(event->depth, *manifest_depth) &&
              ra8_xml_span_local_equal(source,
                                       length,
-                                      internal_frame_name(reader, *manifest_depth),
+                                      priv_ra8_epub_xml_frame_name(reader, *manifest_depth),
                                       "manifest") &&
              ra8_xml_span_local_equal(source, length, event->name, "item")) {
     internal_manifest_item(source, length, event, book);
@@ -444,8 +457,8 @@ RA8_INTERNAL static ra8_err_t internal_opf_first(const uint8_t*   source,
                                                  ra8_epub_book_t* book,
                                                  ra8_xml_span_t*  out_spine_toc)
 {
-  ra8_xml_reader_t reader         = {};
-  ra8_err_t        err            = internal_reader(&reader, source, length, &book->xml_workspace);
+  ra8_xml_reader_t reader = {};
+  ra8_err_t        err    = priv_ra8_epub_xml_reader(&reader, source, length, &book->xml_workspace);
   uint16_t         metadata_depth = UINT16_MAX;
   uint16_t         manifest_depth = UINT16_MAX;
   uint16_t         spine_depth    = UINT16_MAX;
@@ -483,9 +496,9 @@ RA8_INTERNAL static ra8_err_t internal_opf_first(const uint8_t*   source,
 RA8_INTERNAL static ra8_err_t
 internal_collect_spine(const uint8_t* source, size_t length, ra8_epub_book_t* book)
 {
-  ra8_xml_reader_t reader      = {};
-  ra8_err_t        err         = internal_reader(&reader, source, length, &book->xml_workspace);
-  uint16_t         spine_depth = UINT16_MAX;
+  ra8_xml_reader_t reader = {};
+  ra8_err_t        err    = priv_ra8_epub_xml_reader(&reader, source, length, &book->xml_workspace);
+  uint16_t         spine_depth        = UINT16_MAX;
   book->xml_workspace.reference_count = 0U;
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
@@ -499,13 +512,13 @@ internal_collect_spine(const uint8_t* source, size_t length, ra8_epub_book_t* bo
     }
     if ((event.depth == 1U) && ra8_xml_span_local_equal(source, length, event.name, "spine")) {
       spine_depth = event.depth;
-    } else if (internal_direct_child(event.depth, spine_depth) &&
+    } else if (priv_ra8_epub_xml_direct_child(event.depth, spine_depth) &&
                ra8_xml_span_local_equal(source,
                                         length,
-                                        internal_frame_name(&reader, spine_depth),
+                                        priv_ra8_epub_xml_frame_name(&reader, spine_depth),
                                         "spine") &&
                ra8_xml_span_equal(source, length, event.name, "itemref")) {
-      const priv_attr_t idref = internal_attr(source, length, &event, "idref");
+      const priv_attr_t idref = priv_ra8_epub_xml_attr(source, length, &event, "idref");
       if (!idref.present) {
         continue;
       }
@@ -526,7 +539,7 @@ RA8_INTERNAL static ra8_err_t internal_manifest_lookup(const uint8_t*           
                                                        ra8_xml_span_t*           out_href)
 {
   ra8_xml_reader_t reader         = {};
-  ra8_err_t        err            = internal_reader(&reader, source, length, workspace);
+  ra8_err_t        err            = priv_ra8_epub_xml_reader(&reader, source, length, workspace);
   uint16_t         manifest_depth = UINT16_MAX;
   while (err == k_ra8_ok) {
     ra8_xml_event_t event = {};
@@ -540,13 +553,13 @@ RA8_INTERNAL static ra8_err_t internal_manifest_lookup(const uint8_t*           
     }
     if ((event.depth == 1U) && ra8_xml_span_local_equal(source, length, event.name, "manifest")) {
       manifest_depth = event.depth;
-    } else if (internal_direct_child(event.depth, manifest_depth) &&
+    } else if (priv_ra8_epub_xml_direct_child(event.depth, manifest_depth) &&
                ra8_xml_span_local_equal(source,
                                         length,
-                                        internal_frame_name(&reader, manifest_depth),
+                                        priv_ra8_epub_xml_frame_name(&reader, manifest_depth),
                                         "manifest")) {
-      const priv_attr_t id   = internal_attr(source, length, &event, "id");
-      const priv_attr_t href = internal_attr(source, length, &event, "href");
+      const priv_attr_t id   = priv_ra8_epub_xml_attr(source, length, &event, "id");
+      const priv_attr_t href = priv_ra8_epub_xml_attr(source, length, &event, "href");
       if (id.present && href.present && ra8_xml_decoded_equal(source, length, id.span, wanted)) {
         *out_href = href.span;
         return k_ra8_ok;
@@ -561,7 +574,7 @@ RA8_INTERNAL static ra8_err_t
 internal_opf_shape(const uint8_t* source, size_t length, ra8_epub_xml_workspace_t* workspace)
 {
   ra8_xml_reader_t reader       = {};
-  ra8_err_t        err          = internal_reader(&reader, source, length, workspace);
+  ra8_err_t        err          = priv_ra8_epub_xml_reader(&reader, source, length, workspace);
   bool             saw_manifest = false;
   bool             saw_spine    = false;
   uint16_t         spine_depth  = UINT16_MAX;
@@ -582,9 +595,9 @@ internal_opf_shape(const uint8_t* source, size_t length, ra8_epub_xml_workspace_
                ra8_xml_span_local_equal(source, length, event.name, "spine")) {
       saw_spine   = true;
       spine_depth = event.depth;
-    } else if (internal_direct_child(event.depth, spine_depth) &&
+    } else if (priv_ra8_epub_xml_direct_child(event.depth, spine_depth) &&
                ra8_xml_span_equal(source, length, event.name, "itemref") &&
-               internal_attr(source, length, &event, "idref").present) {
+               priv_ra8_epub_xml_attr(source, length, &event, "idref").present) {
       if (references >= (uint16_t)k_ra8_epub_max_chapters) {
         return k_ra8_err_no_mem;
       }
@@ -629,6 +642,7 @@ RA8_INTERNAL static ra8_err_t internal_opf_resolve_refs(const uint8_t*   xml_byt
 {
   ra8_err_t err       = k_ra8_ok;
   book->chapter_count = 0U;
+  // mcdc-deactivated: internal_opf_resolve_refs spine-reference loop status gate; `err` enters at k_ra8_ok -- priv_ra8_epub_xml_parse_opf calls this helper only from its `if (err == k_ra8_ok)` arm and the helper re-initialises it -- and the spine-reference loop's `err = found` arm is its only writer, which needs internal_manifest_lookup to return something other than k_ra8_ok or k_ra8_err_no_data. Its only such returns are propagated ra8_xml_reader_init()/ra8_xml_reader_next() failures over the exact byte range priv_ra8_epub_xml_parse_opf already accepted with ra8_xml_validate(), which runs that same bounded pull reader as a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- and ra8_xml_reader_init() rejects only a null pointer or a zero/oversized length, none of which can hold here because that same ra8_xml_validate() call accepted this (xml_bytes, xml_len) pair through that identical init. The status condition is therefore constant-true and only the reference-count bound varies.
   for (uint16_t i = 0U; (err == k_ra8_ok) && (i < book->xml_workspace.reference_count); ++i) {
     ra8_xml_span_t  href  = {};
     const ra8_err_t found = internal_manifest_lookup(xml_bytes,
@@ -637,15 +651,16 @@ RA8_INTERNAL static ra8_err_t internal_opf_resolve_refs(const uint8_t*   xml_byt
                                                      book->xml_workspace.references[i],
                                                      &href);
     if (found == k_ra8_ok) {
-      internal_copy(xml_bytes,
-                    xml_len,
-                    href,
-                    book->chapter_paths[book->chapter_count++],
-                    k_ra8_epub_max_path_len);
+      priv_ra8_epub_xml_copy(xml_bytes,
+                             xml_len,
+                             href,
+                             book->chapter_paths[book->chapter_count++],
+                             k_ra8_epub_max_path_len);
     } else if (found != k_ra8_err_no_data) {
       err = found;
     }
   }
+  // mcdc-deactivated: internal_opf_resolve_refs legacy-cover resolution gate; `err` enters at k_ra8_ok -- priv_ra8_epub_xml_parse_opf calls this helper only from its `if (err == k_ra8_ok)` arm and the helper re-initialises it -- and the spine-reference loop's `err = found` arm is its only writer, which needs internal_manifest_lookup to return something other than k_ra8_ok or k_ra8_err_no_data. Its only such returns are propagated ra8_xml_reader_init()/ra8_xml_reader_next() failures over the exact byte range priv_ra8_epub_xml_parse_opf already accepted with ra8_xml_validate(), which runs that same bounded pull reader as a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- and ra8_xml_reader_init() rejects only a null pointer or a zero/oversized length, none of which can hold here because that same ra8_xml_validate() call accepted this (xml_bytes, xml_len) pair through that identical init. The status condition is therefore constant-true and only the empty-cover-path and legacy-cover-id-present conditions vary.
   if ((err == k_ra8_ok) && (book->cover_path[0] == '\0') &&
       (book->xml_workspace.legacy_cover_id.length > 0U)) {
     ra8_xml_span_t href = {};
@@ -654,15 +669,16 @@ RA8_INTERNAL static ra8_err_t internal_opf_resolve_refs(const uint8_t*   xml_byt
                                  &book->xml_workspace,
                                  book->xml_workspace.legacy_cover_id,
                                  &href) == k_ra8_ok) {
-      internal_copy(xml_bytes, xml_len, href, book->cover_path, sizeof(book->cover_path));
+      priv_ra8_epub_xml_copy(xml_bytes, xml_len, href, book->cover_path, sizeof(book->cover_path));
     }
   }
+  // mcdc-deactivated: internal_opf_resolve_refs spine `toc` fallback gate; `err` enters at k_ra8_ok -- priv_ra8_epub_xml_parse_opf calls this helper only from its `if (err == k_ra8_ok)` arm and the helper re-initialises it -- and the spine-reference loop's `err = found` arm is its only writer, which needs internal_manifest_lookup to return something other than k_ra8_ok or k_ra8_err_no_data. Its only such returns are propagated ra8_xml_reader_init()/ra8_xml_reader_next() failures over the exact byte range priv_ra8_epub_xml_parse_opf already accepted with ra8_xml_validate(), which runs that same bounded pull reader as a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- and ra8_xml_reader_init() rejects only a null pointer or a zero/oversized length, none of which can hold here because that same ra8_xml_validate() call accepted this (xml_bytes, xml_len) pair through that identical init. The status condition is therefore constant-true and only the non-nav TOC kind and the present spine `toc` attribute vary.
   if ((err == k_ra8_ok) && (book->toc_kind != (uint8_t)k_ra8_epub_toc_nav) &&
       (spine_toc.length > 0U)) {
     ra8_xml_span_t href = {};
     if (internal_manifest_lookup(xml_bytes, xml_len, &book->xml_workspace, spine_toc, &href) ==
         k_ra8_ok) {
-      internal_copy(xml_bytes, xml_len, href, book->toc_path, sizeof(book->toc_path));
+      priv_ra8_epub_xml_copy(xml_bytes, xml_len, href, book->toc_path, sizeof(book->toc_path));
       book->toc_kind = (uint8_t)k_ra8_epub_toc_ncx;
     }
   }
@@ -693,386 +709,4 @@ priv_ra8_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_b
     err = internal_opf_resolve_refs(xml_bytes, xml_len, spine_toc, book);
   }
   return err;
-}
-
-/* see header for the documented contract. */
-RA8_INTERNAL static uint8_t internal_ancestor_depth(const uint8_t*          source,
-                                                    size_t                  source_len,
-                                                    const ra8_xml_reader_t* reader,
-                                                    uint16_t                depth,
-                                                    const char*             local)
-{
-  uint8_t count = 0U;
-  for (uint16_t i = 0U; i < depth; ++i) {
-    if (ra8_xml_span_local_equal(source, source_len, internal_frame_name(reader, i), local)) {
-      ++count;
-    }
-  }
-  return count;
-}
-
-/* see header for the documented contract. */
-RA8_INTERNAL static uint16_t internal_toc_reserve(const uint8_t*         source,
-                                                  size_t                 source_len,
-                                                  const ra8_xml_event_t* event,
-                                                  ra8_xml_reader_t*      reader,
-                                                  ra8_epub_book_t*       book,
-                                                  const char*            local)
-{
-  uint16_t marker = 0U;
-  if (book->toc_count < (uint16_t)k_ra8_epub_max_toc) {
-    const uint16_t slot = book->toc_count++;
-    book->toc[slot]     = (ra8_epub_toc_entry_t){};
-    book->toc[slot].depth =
-      internal_ancestor_depth(source, source_len, reader, event->depth, local);
-    marker = (uint16_t)(slot + 1U);
-  }
-  if (event->self_closing == 0U) {
-    reader->workspace->frames[event->depth].consumer = marker;
-  }
-  return marker;
-}
-
-/* see header for the documented contract. */
-RA8_INTERNAL static uint16_t internal_toc_marker(const ra8_xml_reader_t* reader, uint16_t depth)
-{
-  while (depth > 0U) {
-    --depth;
-    const uint16_t marker = reader->workspace->frames[depth].consumer;
-    if (marker != 0U) {
-      return marker;
-    }
-  }
-  return 0U;
-}
-
-/* see header for the documented contract. */
-RA8_INTERNAL static ra8_err_t internal_toc_capacity(const uint8_t*            source,
-                                                    size_t                    length,
-                                                    ra8_epub_xml_workspace_t* workspace,
-                                                    const ra8_xml_event_t*    selected,
-                                                    const char*               entry_local,
-                                                    bool                      require_list)
-{
-  ra8_xml_reader_t reader  = {};
-  ra8_err_t        err     = internal_reader(&reader, source, length, workspace);
-  bool             active  = false;
-  bool             enabled = !require_list;
-  uint16_t         count   = 0U;
-  while (err == k_ra8_ok) {
-    ra8_xml_event_t event = {};
-    err                   = ra8_xml_reader_next(&reader, &event);
-    // mcdc-deactivated: internal_toc_capacity pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
-    if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
-      break;
-    }
-    if (!active && (event.kind == (uint8_t)k_ra8_xml_event_start) &&
-        (event.markup.offset == selected->markup.offset)) {
-      active = true;
-    } else if (active && (event.kind == (uint8_t)k_ra8_xml_event_start) && require_list &&
-               internal_direct_child(event.depth, selected->depth) &&
-               ra8_xml_span_local_equal(source, length, event.name, "ol")) {
-      enabled = true;
-    } else if (active && enabled && (event.kind == (uint8_t)k_ra8_xml_event_start) &&
-               ra8_xml_span_local_equal(source, length, event.name, entry_local)) {
-      if (count >= (uint16_t)k_ra8_epub_max_toc) {
-        return k_ra8_err_no_mem;
-      }
-      ++count;
-    } else if (active && (event.kind == (uint8_t)k_ra8_xml_event_end) &&
-               (event.depth == selected->depth)) {
-      return k_ra8_ok;
-    }
-  }
-  return err;
-}
-
-/* see header for the documented contract. */
-RA8_INTERNAL static void internal_ncx_event(priv_ncx_ctx_t* ctx, const ra8_xml_event_t* event)
-{
-  if (!ctx->active && (event->kind == (uint8_t)k_ra8_xml_event_start) &&
-      (event->markup.offset == ctx->selected.markup.offset)) {
-    ctx->active = true;
-  } else if (ctx->active && (event->kind == (uint8_t)k_ra8_xml_event_start) &&
-             ra8_xml_span_local_equal(ctx->source, ctx->source_len, event->name, "navPoint")) {
-    (void)
-      internal_toc_reserve(ctx->source, ctx->source_len, event, ctx->reader, ctx->book, "navPoint");
-  } else if (ctx->active && (event->kind == (uint8_t)k_ra8_xml_event_start) &&
-             ra8_xml_span_local_equal(ctx->source, ctx->source_len, event->name, "content")) {
-    const uint16_t    marker = internal_toc_marker(ctx->reader, event->depth);
-    const priv_attr_t src    = internal_attr(ctx->source, ctx->source_len, event, "src");
-    if ((marker != 0U) && src.present) {
-      internal_copy(ctx->source,
-                    ctx->source_len,
-                    src.span,
-                    ctx->book->toc[marker - 1U].href,
-                    k_ra8_epub_max_path_len);
-    }
-  } else if ((event->kind == (uint8_t)k_ra8_xml_event_text) && (event->depth >= 3U) &&
-             ra8_xml_span_local_equal(ctx->source,
-                                      ctx->source_len,
-                                      internal_ancestor_name(ctx->reader, event->depth, 1U),
-                                      "text") &&
-             ra8_xml_span_local_equal(ctx->source,
-                                      ctx->source_len,
-                                      internal_ancestor_name(ctx->reader, event->depth, 2U),
-                                      "navLabel")) {
-    uint16_t       nav_label = 0U;
-    const bool     found     = internal_ancestor_frame(event->depth, 2U, &nav_label);
-    const uint16_t marker    = found ? internal_toc_marker(ctx->reader, nav_label) : 0U;
-    if ((marker != 0U) && (ctx->book->toc[marker - 1U].title[0] == '\0')) {
-      internal_copy(ctx->source,
-                    ctx->source_len,
-                    event->markup,
-                    ctx->book->toc[marker - 1U].title,
-                    k_ra8_epub_meta_len);
-    }
-  } else if ((event->kind == (uint8_t)k_ra8_xml_event_end) && ctx->active &&
-             (event->depth == ctx->selected.depth)) {
-    ctx->active = false;
-  }
-}
-
-ra8_err_t
-priv_ra8_epub_xml_parse_ncx(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_book_t* book)
-{
-  if ((xml_bytes == nullptr) || (book == nullptr)) {
-    return k_ra8_err_null_ptr;
-  }
-  if (xml_len == 0U) {
-    return k_ra8_err_invalid_size;
-  }
-  ra8_err_t       err      = ra8_xml_validate(xml_bytes, xml_len, &book->xml_workspace.reader);
-  ra8_xml_event_t selected = {};
-  if (err == k_ra8_ok) {
-    err =
-      internal_find(xml_bytes, xml_len, &book->xml_workspace, "navMap", false, 0U, 0U, &selected);
-  }
-  if (err == k_ra8_ok) {
-    err =
-      internal_toc_capacity(xml_bytes, xml_len, &book->xml_workspace, &selected, "navPoint", false);
-  }
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  book->toc_count         = 0U;
-  ra8_xml_reader_t reader = {};
-  err                     = internal_reader(&reader, xml_bytes, xml_len, &book->xml_workspace);
-  priv_ncx_ctx_t ctx      = {.source     = xml_bytes,
-                             .source_len = xml_len,
-                             .book       = book,
-                             .reader     = &reader,
-                             .selected   = selected};
-  while (err == k_ra8_ok) {
-    ra8_xml_event_t event = {};
-    err                   = ra8_xml_reader_next(&reader, &event);
-    // mcdc-deactivated: priv_ra8_epub_xml_parse_ncx pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
-    if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
-      break;
-    }
-    internal_ncx_event(&ctx, &event);
-  }
-  return err;
-}
-
-/* see header for the documented contract. */
-RA8_INTERNAL static ra8_err_t internal_select_nav(const uint8_t*            source,
-                                                  size_t                    length,
-                                                  ra8_epub_xml_workspace_t* workspace,
-                                                  ra8_xml_event_t*          out)
-{
-  ra8_xml_reader_t reader   = {};
-  ra8_err_t        err      = internal_reader(&reader, source, length, workspace);
-  ra8_xml_event_t  fallback = {};
-  while (err == k_ra8_ok) {
-    ra8_xml_event_t event = {};
-    err                   = ra8_xml_reader_next(&reader, &event);
-    // mcdc-deactivated: internal_select_nav pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
-    if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
-      break;
-    }
-    if ((event.kind == (uint8_t)k_ra8_xml_event_start) && (event.depth > 0U) &&
-        ra8_xml_span_local_equal(source, length, event.name, "nav")) {
-      if (fallback.kind == (uint8_t)k_ra8_xml_event_none) {
-        fallback = event;
-      }
-      if (internal_attr_contains(source,
-                                 length,
-                                 internal_attr(source, length, &event, "epub:type"),
-                                 "toc")) {
-        *out = event;
-        return k_ra8_ok;
-      }
-    }
-  }
-  // mcdc-deactivated: internal_select_nav fallback gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here, so the loop can only exit at end-of-document with `err` equal to k_ra8_ok and the status condition is constant-true.
-  if ((err == k_ra8_ok) && (fallback.kind != (uint8_t)k_ra8_xml_event_none)) {
-    *out = fallback;
-    return k_ra8_ok;
-  }
-  return (err == k_ra8_ok) ? k_ra8_err_validation_failed : err;
-}
-
-/* see header for the documented contract. */
-RA8_INTERNAL static ra8_err_t internal_nav_has_list(const uint8_t*            source,
-                                                    size_t                    length,
-                                                    ra8_epub_xml_workspace_t* workspace,
-                                                    const ra8_xml_event_t*    selected)
-{
-  ra8_xml_reader_t reader = {};
-  ra8_err_t        err    = internal_reader(&reader, source, length, workspace);
-  bool             active = false;
-  while (err == k_ra8_ok) {
-    ra8_xml_event_t event = {};
-    err                   = ra8_xml_reader_next(&reader, &event);
-    // mcdc-deactivated: internal_nav_has_list pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
-    if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
-      break;
-    }
-    if (!active && (event.kind == (uint8_t)k_ra8_xml_event_start) &&
-        (event.markup.offset == selected->markup.offset)) {
-      active = true;
-    } else if (active && (event.kind == (uint8_t)k_ra8_xml_event_start) &&
-               internal_direct_child(event.depth, selected->depth) &&
-               ra8_xml_span_local_equal(source, length, event.name, "ol")) {
-      return k_ra8_ok;
-    } else if (active && (event.kind == (uint8_t)k_ra8_xml_event_end) &&
-               (event.depth == selected->depth)) {
-      return k_ra8_err_validation_failed;
-    }
-  }
-  return (err == k_ra8_ok) ? k_ra8_err_validation_failed : err;
-}
-
-/**
- * @brief Dispatch one start-tag event inside an active nav-list subtree.
- * @details Detects the `<ol>` that begins the selected list, reserves a
- * TOC slot for each `<li>`, and -- for the first `<a>` or `<span>` label
- * inside a reserved item -- records its marker, copies an `<a>` href, and
- * resets the title so the following text event can fill it in.
- * @param[in,out] ctx Active nav-walk context (source, reader, book, flags).
- * @param[in] event Start-tag event being classified.
- * @return Nothing.
- * @pre @p ctx->active is true; the caller only reaches this dispatch once
- * the selected nav's subtree has been entered.
- * @pre @p event->kind is `k_ra8_xml_event_start`.
- * @post At most one of `ctx->saw_ol`, a reserved TOC slot's consumer
- * marker, or a TOC entry's href/title is updated.
- * @note Extracted from ::internal_nav_event so both stay within the
- * 60-line function cap and the nesting-depth cap; the vectors that cover
- * it are unchanged.
- * @since 0.1.0
- */
-RA8_INTERNAL static void internal_nav_event_start(priv_nav_ctx_t* ctx, const ra8_xml_event_t* event)
-{
-  if (internal_direct_child(event->depth, ctx->selected.depth) &&
-      ra8_xml_span_local_equal(ctx->source, ctx->source_len, event->name, "ol")) {
-    ctx->saw_ol = true;
-    return;
-  }
-  if (ctx->saw_ol && ra8_xml_span_local_equal(ctx->source, ctx->source_len, event->name, "li")) {
-    (void)internal_toc_reserve(ctx->source, ctx->source_len, event, ctx->reader, ctx->book, "li");
-    return;
-  }
-  if (!(ctx->saw_ol &&
-        (ra8_xml_span_local_equal(ctx->source, ctx->source_len, event->name, "a") ||
-         ra8_xml_span_local_equal(ctx->source, ctx->source_len, event->name, "span")))) {
-    return;
-  }
-  const uint16_t marker = internal_toc_marker(ctx->reader, event->depth);
-  if ((marker == 0U) || (event->self_closing != 0U)) {
-    return;
-  }
-  ctx->reader->workspace->frames[event->depth].consumer = marker;
-  if (!ra8_xml_span_local_equal(ctx->source, ctx->source_len, event->name, "a")) {
-    return;
-  }
-  const priv_attr_t href = internal_attr(ctx->source, ctx->source_len, event, "href");
-  if (href.present) {
-    internal_copy(ctx->source,
-                  ctx->source_len,
-                  href.span,
-                  ctx->book->toc[marker - 1U].href,
-                  k_ra8_epub_max_path_len);
-  }
-  ctx->book->toc[marker - 1U].title[0] = '\0';
-}
-
-/* see header for the documented contract. */
-RA8_INTERNAL static void internal_nav_event(priv_nav_ctx_t* ctx, const ra8_xml_event_t* event)
-{
-  if (!ctx->active && (event->kind == (uint8_t)k_ra8_xml_event_start) &&
-      (event->markup.offset == ctx->selected.markup.offset)) {
-    ctx->active = true;
-    return;
-  }
-  if (!ctx->active) {
-    return;
-  }
-  if (event->kind == (uint8_t)k_ra8_xml_event_start) {
-    internal_nav_event_start(ctx, event);
-    // mcdc-deactivated: internal_nav_event text-depth gate; this arm is reached only while ctx->active, which spans the subtree of a <nav> that internal_select_nav selected at depth >= 1, so every event inside it sits at depth > 0 and the depth condition is constant-true.
-  } else if ((event->kind == (uint8_t)k_ra8_xml_event_text) && (event->depth > 0U)) {
-    const ra8_xml_span_t parent = internal_ancestor_name(ctx->reader, event->depth, 1U);
-    const uint16_t       marker = internal_ancestor_marker(ctx->reader, event->depth, 1U);
-    if ((ra8_xml_span_local_equal(ctx->source, ctx->source_len, parent, "a") ||
-         ra8_xml_span_local_equal(ctx->source, ctx->source_len, parent, "span")) &&
-        (marker != 0U) && (ctx->book->toc[marker - 1U].title[0] == '\0')) {
-      internal_copy(ctx->source,
-                    ctx->source_len,
-                    event->markup,
-                    ctx->book->toc[marker - 1U].title,
-                    k_ra8_epub_meta_len);
-    }
-  } else if ((event->kind == (uint8_t)k_ra8_xml_event_end) &&
-             (event->depth == ctx->selected.depth)) {
-    ctx->active = false;
-  }
-}
-
-ra8_err_t
-priv_ra8_epub_xml_parse_nav(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_book_t* book)
-{
-  if ((xml_bytes == nullptr) || (book == nullptr)) {
-    return k_ra8_err_null_ptr;
-  }
-  if (xml_len == 0U) {
-    return k_ra8_err_invalid_size;
-  }
-  ra8_err_t       err      = ra8_xml_validate(xml_bytes, xml_len, &book->xml_workspace.reader);
-  ra8_xml_event_t selected = {};
-  if (err == k_ra8_ok) {
-    err = internal_select_nav(xml_bytes, xml_len, &book->xml_workspace, &selected);
-  }
-  if (err == k_ra8_ok) {
-    err = internal_nav_has_list(xml_bytes, xml_len, &book->xml_workspace, &selected);
-  }
-  if (err == k_ra8_ok) {
-    err = internal_toc_capacity(xml_bytes, xml_len, &book->xml_workspace, &selected, "li", true);
-  }
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  book->toc_count         = 0U;
-  ra8_xml_reader_t reader = {};
-  err                     = internal_reader(&reader, xml_bytes, xml_len, &book->xml_workspace);
-  priv_nav_ctx_t ctx      = {.source     = xml_bytes,
-                             .source_len = xml_len,
-                             .book       = book,
-                             .reader     = &reader,
-                             .selected   = selected};
-  while (err == k_ra8_ok) {
-    ra8_xml_event_t event = {};
-    err                   = ra8_xml_reader_next(&reader, &event);
-    // mcdc-deactivated: priv_ra8_epub_xml_parse_nav pull-loop status gate; the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here and only the end-of-document condition varies.
-    if ((err != k_ra8_ok) || (event.kind == (uint8_t)k_ra8_xml_event_none)) {
-      break;
-    }
-    internal_nav_event(&ctx, &event);
-  }
-  // mcdc-deactivated: priv_ra8_epub_xml_parse_nav completion gate; this point is reached only after internal_nav_has_list accepted the same bytes with the identical direct-child <ol> predicate that sets ctx.saw_ol in internal_nav_event, so saw_ol is always true, and the public entry point validated this exact byte range with ra8_xml_validate() before this re-parse and the bounded pull reader is a pure function of (source, source_len, workspace) -- the shim only ever writes the frame `consumer` field, which ra8_xml never reads back -- so ra8_xml_reader_next() cannot fail here.
-  if ((err != k_ra8_ok) || !ctx.saw_ol) {
-    return (err == k_ra8_ok) ? k_ra8_err_validation_failed : err;
-  }
-  return k_ra8_ok;
 }

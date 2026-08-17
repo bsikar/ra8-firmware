@@ -357,6 +357,7 @@ if(TARGET test_fw_if_fs)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
             ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
             ${FW_ROOT}/tools/media_dl/src/mdl_pathfs.c
             ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
@@ -381,6 +382,7 @@ if(TARGET test_fw_if_fs_posix_raw)
     PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
   )
   target_include_directories(
     test_fw_if_fs_posix_raw PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/port/posix/inc
@@ -399,6 +401,7 @@ if(TARGET test_ra8_mdl_state)
     PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
             ${FW_ROOT}/tools/media_dl/src/mdl_state.c
             ${FW_ROOT}/tools/media_dl/src/mdl_state_codec.c
             ${FW_ROOT}/tools/media_dl/src/mdl_state_decimal.c
@@ -428,6 +431,7 @@ if(TARGET test_ra8_mdl_library)
     PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
             ${FW_ROOT}/tools/media_dl/src/mdl_library.c
             ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
             ${FW_ROOT}/tools/media_dl/src/mdl_state.c
@@ -459,10 +463,12 @@ if(TARGET test_ra8_mdl_readers)
     PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
             ${FW_ROOT}/tools/media_dl/src/mdl_config.c
             ${FW_ROOT}/tools/media_dl/src/mdl_urlname.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_workspace.c
             ${FW_ROOT}/tools/media_dl/src/mdl_verify.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_verify_tarball.c
             ${FW_ROOT}/tools/media_dl/src/mdl_verify_rabook.c
             ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
             ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
@@ -494,6 +500,7 @@ if(TARGET test_ra8_mdl_app_storage)
     PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
             ${FW_ROOT}/tools/media_dl/src/mdl_app_storage.c
             ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
             ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
@@ -521,6 +528,7 @@ if(TARGET test_ra8_mdl_export)
     PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+            ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_workspace.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_io.c
@@ -528,10 +536,12 @@ if(TARGET test_ra8_mdl_export)
             ${FW_ROOT}/tools/media_dl/src/mdl_export_zip.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_tar.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_epub.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_export_epub_meta.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_jof.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_rabook.c
             ${FW_ROOT}/tools/media_dl/src/mdl_export_rabook_io.c
             ${FW_ROOT}/tools/media_dl/src/mdl_verify.c
+            ${FW_ROOT}/tools/media_dl/src/mdl_verify_tarball.c
             ${FW_ROOT}/tools/media_dl/src/mdl_verify_rabook.c
             ${FW_ROOT}/tools/media_dl/src/mdl_urlname.c
             ${FW_ROOT}/tools/media_dl/src/mdl_url_guard.c

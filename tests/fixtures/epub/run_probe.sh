@@ -26,9 +26,11 @@ C_SRCS=(tests/fixtures/epub/epub_probe.c
   libs/ra8_epub/src/ra8_epub_chapter.c
   libs/ra8_epub/src/ra8_epub_miniz_alloc.c
   libs/ra8_epub/src/ra8_epub_xml_shim.c
+  libs/ra8_epub/src/ra8_epub_xml_toc.c
   libs/ra8_epub/src/ra8_epub_zip_guard.c
   libs/ra8_core/src/ra8_decomp_limits.c
   libs/ra8_xml/src/ra8_xml.c
+  libs/ra8_xml/src/ra8_xml_decode.c
   libs/ra8_xml/src/ra8_xml_doctype.c
   libs/ra8_reflow/src/ra8_img_arena.c
   libs/ra8_reflow/src/ra8_stbtt_guard.c

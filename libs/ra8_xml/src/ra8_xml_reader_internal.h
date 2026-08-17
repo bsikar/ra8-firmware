@@ -1,8 +1,10 @@
 /**
  * @file ra8_xml_reader_internal.h
  * @brief Private contracts for the bounded XML reader implementation.
- * @details Declares file-local lexical, decode, and event helpers so their
- * contracts remain authoritative without inflating the implementation unit.
+ * @details Declares the file-local lexical and event helpers of `ra8_xml.c` so
+ * their contracts remain authoritative without inflating the implementation
+ * unit. The entity/UTF-8 decoding half of the reader lives in
+ * `ra8_xml_decode.c` and documents its helpers at their definitions.
  * [Ring 3 / LIB] {World: NS}
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -14,53 +16,6 @@
 
 #include "ra8_attributes.h"
 #include "ra8_xml.h"
-
-/** @brief Incremental decoded-byte cursor used for allocation-free comparison. */
-typedef struct {
-  size_t  position;    /**< Next source byte.                    */
-  size_t  end;         /**< One-past-last source byte.           */
-  uint8_t pending[4];  /**< UTF-8 bytes from the current entity. */
-  uint8_t pending_at;  /**< Next pending byte.                   */
-  uint8_t pending_len; /**< Pending-byte count.                  */
-} priv_decode_cursor_t;
-
-/** @brief XML 1.0 scalar bounds and canonical UTF-8 bit geometry. */
-typedef enum : uint32_t {
-  k_priv_xml_tab                 = 0x09U,     /**< XML tab character.                  */
-  k_priv_xml_line_feed           = 0x0AU,     /**< XML line-feed character.            */
-  k_priv_xml_carriage_return     = 0x0DU,     /**< XML carriage-return character.      */
-  k_priv_xml_printable_min       = 0x20U,     /**< First ordinary XML character.       */
-  k_priv_xml_bmp_first_max       = 0xD7FFU,   /**< Last scalar before surrogates.      */
-  k_priv_xml_bmp_second_min      = 0xE000U,   /**< First scalar after surrogates.      */
-  k_priv_xml_bmp_second_max      = 0xFFFDU,   /**< Last permitted BMP scalar.          */
-  k_priv_xml_supplementary_min   = 0x10000U,  /**< First supplementary scalar.         */
-  k_priv_xml_scalar_max          = 0x10FFFFU, /**< Last Unicode scalar.                */
-  k_priv_utf8_two_lead_min       = 0xC2U,     /**< First canonical two-byte lead.      */
-  k_priv_utf8_two_lead_max       = 0xDFU,     /**< Last two-byte lead.                 */
-  k_priv_utf8_two_payload_mask   = 0x1FU,     /**< Payload bits in a two-byte lead.    */
-  k_priv_utf8_three_lead_min     = 0xE0U,     /**< First three-byte lead.              */
-  k_priv_utf8_three_lead_max     = 0xEFU,     /**< Last three-byte lead.               */
-  k_priv_utf8_three_payload_mask = 0x0FU,     /**< Payload bits in a three-byte lead.  */
-  k_priv_utf8_three_scalar_min   = 0x800U,    /**< First scalar needing three bytes.   */
-  k_priv_utf8_four_lead_min      = 0xF0U,     /**< First four-byte lead.               */
-  k_priv_utf8_four_lead_max      = 0xF4U,     /**< Last canonical four-byte lead.      */
-  k_priv_utf8_four_payload_mask  = 0x07U,     /**< Payload bits in a four-byte lead.   */
-  k_priv_utf8_continuation_mask  = 0xC0U,     /**< Continuation tag mask.              */
-  k_priv_utf8_continuation_tag   = 0x80U,     /**< Continuation tag and ASCII ceiling. */
-  k_priv_utf8_scalar_mask        = 0x3FU,     /**< Scalar bits per continuation byte.  */
-  k_priv_utf8_two_lead_tag       = 0xC0U,     /**< Encoded two-byte lead tag.          */
-  k_priv_utf8_three_lead_tag     = 0xE0U,     /**< Encoded three-byte lead tag.        */
-  k_priv_utf8_four_lead_tag      = 0xF0U,     /**< Encoded four-byte lead tag.         */
-  k_priv_utf8_shift_second       = 12U,       /**< Shift for the second payload group. */
-  k_priv_utf8_shift_third        = 18U,       /**< Shift for the third payload group.  */
-  k_priv_xml_decimal_base        = 10U,       /**< Numeric-entity decimal radix.       */
-  k_priv_xml_encoding_bytes      = 5U,        /**< Bytes in the UTF-8 encoding label.  */
-  k_priv_xml_cdata_open_bytes    = 9U,        /**< Bytes in the CDATA opener.          */
-  k_priv_xml_doctype_open_bytes  = 9U,        /**< Bytes in the DOCTYPE opener.        */
-  k_priv_utf8_bom_first          = 0xEFU,     /**< First UTF-8 BOM byte.               */
-  k_priv_utf8_bom_second         = 0xBBU,     /**< Second UTF-8 BOM byte.              */
-  k_priv_utf8_bom_third          = 0xBFU,     /**< Third UTF-8 BOM byte.               */
-} priv_xml_encoding_t;
 
 /**
  * @brief Test whether one byte is XML spacing.
@@ -125,168 +80,6 @@ RA8_INTERNAL static bool internal_name_start(uint8_t c);
  * @since 0.1.0
  */
 RA8_INTERNAL static bool internal_name_continue(uint8_t c);
-
-/**
- * @brief Test whether a scalar is an XML 1.0 character.
- * @details Rejects forbidden controls, surrogates, and out-of-range scalars.
- * @param[in] cp Unicode scalar candidate.
- * @return True exactly for an XML 1.0 character.
- * @retval true @p cp is permitted.
- * @retval false @p cp is forbidden.
- * @pre @p cp is represented without narrowing.
- * @pre No normalization or character replacement is requested.
- * @post No memory is modified.
- * @post The result depends only on @p cp.
- * @note Pure and thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static bool internal_xml_char(uint32_t cp);
-
-/**
- * @brief Decode one canonical UTF-8 scalar.
- * @details Enforces shortest form, valid continuation bytes, and XML characters.
- * @param[in] source Immutable byte source.
- * @param[in] end One-past-last readable byte.
- * @param[in] position Candidate scalar start.
- * @param[out] out_cp Decoded scalar.
- * @param[out] out_used Consumed byte count.
- * @return Repository error code.
- * @retval k_ra8_ok One valid scalar decoded.
- * @retval k_ra8_err_validation_failed Encoding or character was invalid.
- * @pre @p source spans at least @p end readable bytes.
- * @pre Outputs are writable and do not overlap source.
- * @post Success sets both outputs without changing source.
- * @post Failure leaves output values unspecified.
- * @note Allocation-free and thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_utf8_next(const uint8_t* source,
-                                                 size_t         end,
-                                                 size_t         position,
-                                                 uint32_t*      out_cp,
-                                                 size_t*        out_used);
-
-/**
- * @brief Check that a source-relative span is in range.
- * @details Uses subtraction after checking the offset to avoid overflow.
- * @param[in] source_len Exact source byte extent.
- * @param[in] span Candidate source-relative span.
- * @return True only when the complete span lies in the extent.
- * @retval true Offset and length are bounded.
- * @retval false The span is forged, stale, or out of range.
- * @pre @p source_len is the true readable extent.
- * @pre @p span uses the same source-relative coordinate system.
- * @post No memory is modified.
- * @post The result is overflow-safe.
- * @note Pure and thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static bool internal_span_valid(size_t source_len, ra8_xml_span_t span);
-
-/**
- * @brief Encode one valid Unicode scalar as UTF-8.
- * @details Writes the canonical one-to-four-byte representation.
- * @param[in] cp Valid Unicode scalar.
- * @param[out] out Four-byte destination.
- * @return Number of bytes written.
- * @retval 1 ASCII scalar encoded.
- * @retval 2 Two-byte scalar encoded.
- * @retval 3 Three-byte scalar encoded.
- * @retval 4 Four-byte scalar encoded.
- * @pre @p cp is a Unicode scalar accepted by ::internal_xml_char.
- * @pre @p out spans four writable bytes.
- * @post Exactly the returned prefix is initialized.
- * @post No memory outside @p out is modified.
- * @note Caller validates scalars before invoking this encoder.
- * @since 0.1.0
- */
-RA8_INTERNAL static size_t internal_utf8(uint32_t cp, uint8_t out[4]);
-
-/**
- * @brief Convert one numeric-reference digit.
- * @details Supports decimal and hexadecimal reference bodies.
- * @param[in] c Candidate ASCII digit.
- * @param[in] base Numeric base, ten or sixteen.
- * @return Digit value or UINT32_MAX when invalid.
- * @retval UINT32_MAX @p c is invalid for @p base.
- * @pre @p base is 10 or 16.
- * @pre @p c is an unsigned source byte.
- * @post No memory is modified.
- * @post The result depends only on the arguments.
- * @note Pure and thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static uint32_t internal_digit(uint8_t c, uint32_t base);
-
-/**
- * @brief Decode one entity beginning at a bounded position.
- * @details Accepts five predefined or decimal/hex numeric references only.
- * @param[in] source Immutable source bytes.
- * @param[in] end One-past-last readable entity byte.
- * @param[in] position Offset of the leading ampersand.
- * @param[out] out_cp Decoded XML character.
- * @param[out] out_used Encoded bytes consumed.
- * @return Repository error code.
- * @retval k_ra8_ok Entity decoded.
- * @retval k_ra8_err_validation_failed Entity or character was invalid.
- * @pre @p source spans at least @p end readable bytes.
- * @pre Outputs are writable and non-overlapping with source.
- * @post Success sets both outputs and leaves source unchanged.
- * @post Failure leaves outputs unspecified.
- * @note Named entity expansion beyond the five predefined names is unsupported.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_entity(const uint8_t* source,
-                                              size_t         end,
-                                              size_t         position,
-                                              uint32_t*      out_cp,
-                                              size_t*        out_used);
-
-/**
- * @brief Decode, prefix-decode, or measure one already-bounded span.
- * @details Validates the complete span even when prefix output clips.
- * @param[in] source Immutable source containing @p span.
- * @param[in] span Valid source-relative encoded span.
- * @param[out] destination Optional decoded destination.
- * @param[in] capacity Writable destination capacity including NUL.
- * @param[in] truncate Permit a maximal complete prefix when capacity is short.
- * @param[out] out_length Decoded or emitted byte count.
- * @return Repository error code.
- * @retval k_ra8_ok Complete validation/decode succeeded.
- * @retval k_ra8_err_no_mem Non-truncating destination capacity was insufficient.
- * @retval k_ra8_err_validation_failed UTF-8 or entity was invalid.
- * @pre Caller proved @p span lies in the source extent.
- * @pre Non-NULL destination spans @p capacity writable bytes.
- * @post Success reports an exact count and NUL-terminates non-NULL destination.
- * @post Failure leaves source unchanged; destination may contain a prefix.
- * @note Output and source must not overlap.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_decode(const uint8_t* source,
-                                              ra8_xml_span_t span,
-                                              char*          destination,
-                                              size_t         capacity,
-                                              bool           truncate,
-                                              size_t*        out_length);
-
-/**
- * @brief Return one entity-decoded byte from a comparison cursor.
- * @details Buffers remaining bytes when one entity decodes to multibyte UTF-8.
- * @param[in] source Immutable source bytes.
- * @param[in,out] cursor Valid decoded-span cursor.
- * @param[out] out Next decoded byte.
- * @return Repository error code.
- * @retval k_ra8_ok One byte returned and cursor advanced.
- * @retval k_ra8_err_validation_failed Cursor ended or entity was invalid.
- * @pre Cursor bounds lie within the readable source.
- * @pre @p out is writable and does not overlap cursor/source.
- * @post Success advances exactly one decoded byte.
- * @post Failure leaves source unchanged; cursor progress may be partial.
- * @note Used only after complete decoded-size validation.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t
-internal_decoded_byte(const uint8_t* source, priv_decode_cursor_t* cursor, uint8_t* out);
 
 /**
  * @brief Parse one attribute at a bounded tag cursor.

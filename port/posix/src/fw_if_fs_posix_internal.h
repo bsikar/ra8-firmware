@@ -172,3 +172,39 @@ RA8_PRIV [[nodiscard]] ra8_err_t priv_fs_posix_listdir(void*           ctx,
 /** @brief Bind the immutable POSIX operation tables to initialized state. */
 RA8_PRIV [[nodiscard]] ra8_err_t
 priv_fs_posix_bind_interfaces(fw_fs_t* out, fw_fs_posix_state_t* state, const fw_fs_caps_t* caps);
+
+/** @brief Resolve a confined path's parent directory without following a symlink. */
+RA8_PRIV [[nodiscard]] ra8_err_t priv_fs_posix_parent_open(fw_fs_posix_state_t* state,
+                                                           const char*          path,
+                                                           int*                 out_parent_fd,
+                                                           char*                out_leaf);
+
+/** @brief Open one confined regular file into caller stream workspace. */
+RA8_PRIV [[nodiscard]] ra8_err_t priv_fs_posix_open(void*             ctx,
+                                                    const char*       path,
+                                                    fw_fs_open_mode_t mode,
+                                                    void*             file_state,
+                                                    uint32_t          state_bytes);
+
+/** @brief Complete a hosted write while reporting any accepted prefix. */
+RA8_PRIV [[nodiscard]] ra8_err_t priv_fs_posix_write(void*          ctx,
+                                                     void*          file_state,
+                                                     const uint8_t* src,
+                                                     uint32_t       len,
+                                                     uint32_t*      out_written);
+
+/** @brief Seek one open hosted stream to an absolute offset. */
+RA8_PRIV [[nodiscard]] ra8_err_t priv_fs_posix_seek(void* ctx, void* file_state, uint64_t offset);
+
+/** @brief Report one open hosted stream's current length. */
+RA8_PRIV [[nodiscard]] ra8_err_t
+priv_fs_posix_size(void* ctx, void* file_state, uint64_t* out_size);
+
+/** @brief Flush one open hosted stream through `fsync`. */
+RA8_PRIV [[nodiscard]] ra8_err_t priv_fs_posix_sync(void* ctx, void* file_state);
+
+/** @brief Close and consume one caller-owned hosted stream state. */
+RA8_PRIV [[nodiscard]] ra8_err_t priv_fs_posix_close(void* ctx, void* file_state);
+
+/** @brief Borrow the immutable hosted stream operation table. */
+RA8_PRIV [[nodiscard]] const fw_fs_stream_iface_t* priv_fs_posix_stream_iface(void);

@@ -54,6 +54,7 @@ set(MDL_FS_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src/fw_if_fs_posix.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src/fw_if_fs_posix_bind.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src/fw_if_fs_posix_common.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src/fw_if_fs_posix_stream.c
 )
 set(MDL_FS_INC ${FW}/if/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/inc
                ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src
@@ -107,9 +108,10 @@ set(MDL_EXPORT_SRC
     src/mdl_export_zip.c
     src/mdl_export_tar.c
     src/mdl_export_epub.c
+    src/mdl_export_epub_meta.c
     src/mdl_export_jof.c
 )
-set(MDL_VERIFY_SRC src/mdl_verify.c)
+set(MDL_VERIFY_SRC src/mdl_verify.c src/mdl_verify_tarball.c)
 
 # The strict reader and bounded EPUB -> RABOOK compiler are shared by the CLI
 # and every focused downloader test. Build them once: duplicating the firmware
@@ -121,12 +123,14 @@ set(MDL_RABOOK_RUNTIME_SRC
     src/mdl_verify_rabook.c
     ${MDL_RABOOK_READER_SRC}
     ${FW}/ra8_xml/src/ra8_xml.c
+    ${FW}/ra8_xml/src/ra8_xml_decode.c
     ${FW}/ra8_xml/src/ra8_xml_doctype.c
     ${FW}/ra8_epub/src/ra8_epub_miniz_alloc.c
     ${FW}/ra8_epub/src/ra8_epub_open.c
     ${FW}/ra8_epub/src/ra8_epub_entry.c
     ${FW}/ra8_epub/src/ra8_epub_chapter.c
     ${FW}/ra8_epub/src/ra8_epub_xml_shim.c
+    ${FW}/ra8_epub/src/ra8_epub_xml_toc.c
     ${FW}/ra8_epub/src/ra8_epub_zip_guard.c
     ${FW}/ra8_rabook_compile/src/ra8_rabook_compile.c
     ${FW}/ra8_rabook_compile/src/ra8_rabook_finalize.c
