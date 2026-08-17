@@ -618,7 +618,7 @@ static void test_source_init_and_info(void)
   /* HUM Ch 49.4.1 "Start Flow": configure, start trigger, read enable. */
   TEST_ASSERT_EQ(0x00000040U, ra8_pdm_ch(k_test_ch)->PDMDSR); /* SFMD=4 << 4 */
   TEST_ASSERT_EQ((1U << k_test_ch), ra8_pdm()->PDCSTRTR);
-  TEST_ASSERT_EQ((uint32_t)k_ra8_pdm_pddrcr_datre, ra8_pdm_ch(k_test_ch)->PDDRCR);
+  TEST_ASSERT_EQ(k_ra8_pdm_pddrcr_datre, ra8_pdm_ch(k_test_ch)->PDDRCR);
 
   ra8_audio_source_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_audio_source_get_info(&source, &info));
