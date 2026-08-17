@@ -203,7 +203,7 @@ RA8_INTERNAL static void internal_capture_reset(void)
 RA8_INTERNAL static void internal_expect_capture(const char* expected)
 {
   TEST_ASSERT_EQ(0U, s_log_capture.dropped);
-  TEST_ASSERT_EQ((uint32_t)strlen(expected), s_log_capture.len);
+  TEST_ASSERT_EQ(strlen(expected), s_log_capture.len);
   TEST_ASSERT(strcmp(s_log_capture.text, expected) == 0);
 }
 
