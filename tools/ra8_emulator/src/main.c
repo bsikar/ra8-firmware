@@ -129,16 +129,16 @@ RA8_INTERNAL static bool internal_main_open_memory(emu_memmap_workspace_t* memor
 RA8_INTERNAL static const char*
 internal_main_apply_panel(const emu_args_t* args, uint16_t* view_w, uint16_t* view_h)
 {
-  static board_panel_t local_panel = {};
-  bool                 have_panel  = false;
+  static board_panel_t s_panel    = {};
+  bool                 have_panel = false;
   if (args->panel_path != nullptr) {
-    have_panel = load_panel(args->panel_path, &local_panel);
+    have_panel = load_panel(args->panel_path, &s_panel);
     if (have_panel && !args->size_set) {
-      *view_w = local_panel.width;
-      *view_h = local_panel.height;
+      *view_w = s_panel.width;
+      *view_h = s_panel.height;
     }
   }
-  return (have_panel && (local_panel.name[0] != '\0')) ? local_panel.name : "ra8_emulator";
+  return (have_panel && (s_panel.name[0] != '\0')) ? s_panel.name : "ra8_emulator";
 }
 
 /**
@@ -801,6 +801,51 @@ RA8_INTERNAL static int internal_main_run_loaded(const emu_args_t*             a
   return emu_run_and_report(&run_cfg);
 }
 
+/**
+ * @brief Load the primary and optional non-secure images into the engine.
+ * @details Loads the primary ELF, then the optional non-secure ELF, and unwinds
+ * the whole open session -- engine, memory map, presentation -- on either
+ * failure so the caller only has to propagate the status.
+ * @param[in,out] uc Active Unicorn engine receiving both images.
+ * @param[in] args Parsed command line naming the image paths.
+ * @param[in,out] memory Open emulated memory map, released on failure.
+ * @param[in,out] presentation Open presentation workspace, released on failure.
+ * @param[out] elf Receives the loaded primary ELF source.
+ * @param[out] ns_elf Receives the loaded non-secure ELF source, if any.
+ * @return int Process-style status.
+ * @retval 0 Both requested images loaded and the session stays open.
+ * @retval 1 A load failed; every session resource has been released.
+ * @pre @p uc, @p memory and @p presentation are open. @pre @p elf and @p ns_elf
+ * are initialised with @c fd set to -1.
+ * @post Success leaves the session open and both sources owned by the caller.
+ * @post Failure leaves no descriptor, engine or mapping open.
+ * @note Not thread-safe; single-threaded setup. @since 0.1.0
+ */
+RA8_INTERNAL static int internal_main_load_images(uc_engine*                    uc,
+                                                  const emu_args_t*             args,
+                                                  emu_memmap_workspace_t*       memory,
+                                                  emu_presentation_workspace_t* presentation,
+                                                  emu_elf_source_t*             elf,
+                                                  emu_elf_source_t*             ns_elf)
+{
+  if (internal_main_load_primary(uc, args->elf_path, elf) != 0) {
+    (void)emu_memmap_detach(memory, uc);
+    (void)uc_close(uc);
+    (void)emu_memmap_close(memory);
+    (void)emu_presentation_close(presentation);
+    return 1;
+  }
+  if (internal_main_load_ns(uc, args->ns_elf_path, elf, ns_elf) != 0) {
+    (void)priv_emu_elf_source_close(elf);
+    (void)emu_memmap_detach(memory, uc);
+    (void)uc_close(uc);
+    (void)emu_memmap_close(memory);
+    (void)emu_presentation_close(presentation);
+    return 1;
+  }
+  return 0;
+}
+
 int main(int argc, char** argv)
 {
   priv_emu_io_configure(STDOUT_FILENO, STDERR_FILENO, nullptr);
@@ -829,21 +874,9 @@ int main(int argc, char** argv)
   }
   internal_main_bringup_peripherals(&args);
 
-  emu_elf_source_t elf = {.fd = -1};
-  if (internal_main_load_primary(uc, args.elf_path, &elf) != 0) {
-    (void)emu_memmap_detach(&memory, uc);
-    (void)uc_close(uc);
-    (void)emu_memmap_close(&memory);
-    (void)emu_presentation_close(&presentation);
-    return 1;
-  }
+  emu_elf_source_t elf    = {.fd = -1};
   emu_elf_source_t ns_elf = {.fd = -1};
-  if (internal_main_load_ns(uc, args.ns_elf_path, &elf, &ns_elf) != 0) {
-    (void)priv_emu_elf_source_close(&elf);
-    (void)emu_memmap_detach(&memory, uc);
-    (void)uc_close(uc);
-    (void)emu_memmap_close(&memory);
-    (void)emu_presentation_close(&presentation);
+  if (internal_main_load_images(uc, &args, &memory, &presentation, &elf, &ns_elf) != 0) {
     return 1;
   }
 
