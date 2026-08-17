@@ -752,26 +752,31 @@ RA8_INTERNAL static bool internal_stream_book(ra8_fs_mount_t*             mount,
 }
 
 /**
- * @brief Re-read host and card bytes to prove the streamed copy and input stability.
- * @details Compares bounded chunks and repeats the input identity check afterward.
- * @param[in,out] mount    Mounted FAT32 image.
- * @param[in]     name     Card basename written by ::internal_stream_book.
- * @param[in]     path     Original host path.
- * @param[in]     identity Identity observed before the write pass.
- * @return true only when every byte and all identity fields still match.
- * @retval true  Host and card contents match exactly and remained stable.
- * @retval false Reopen, metadata, read, compare, or close failed.
+ * @brief Reopen host and card handles and confirm identity and size.
+ * @details Reopens the host input, confirms it is unchanged since the write
+ *          pass, then opens the card copy and confirms its size matches.
+ * @param[in,out] mount Mounted FAT32 image.
+ * @param[in] name Card basename written by ::internal_stream_book.
+ * @param[in] path Original host path.
+ * @param[in] identity Identity observed before the write pass.
+ * @param[out] out_input_fd Receives the reopened host descriptor, or -1.
+ * @param[out] out_card Receives the opened card file, or NULL.
+ * @return Whether both handles are open and identity/size checks pass.
+ * @retval true @p out_input_fd and @p out_card are open and consistent.
+ * @retval false Reopen, identity, open, or size check failed; every handle
+ *         this call itself opened has already been closed.
  * @pre All strings and @p identity are valid.
  * @pre @p mount remains mounted.
- * @post Every opened handle is closed.
- * @post The card filesystem is not modified.
+ * @post On false, no handle this call opened remains open.
  * @note Not thread-safe; `ra8_fs` owns shared static mount/file slots.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_verify_book(ra8_fs_mount_t*                   mount,
-                                              const char*                       name,
-                                              const char*                       path,
-                                              const mkbookimg_input_identity_t* identity)
+RA8_INTERNAL static bool internal_verify_book_reopen(ra8_fs_mount_t*                   mount,
+                                                     const char*                       name,
+                                                     const char*                       path,
+                                                     const mkbookimg_input_identity_t* identity,
+                                                     int*                              out_input_fd,
+                                                     ra8_fs_file_t**                   out_card)
 {
   int                        input_fd = -1;
   mkbookimg_input_identity_t again;
@@ -793,6 +798,38 @@ RA8_INTERNAL static bool internal_verify_book(ra8_fs_mount_t*                   
       (void)ra8_fs_close(card);
     }
     (void)close(input_fd);
+    return false;
+  }
+  *out_input_fd = input_fd;
+  *out_card     = card;
+  return true;
+}
+
+/**
+ * @brief Re-read host and card bytes to prove the streamed copy and input stability.
+ * @details Compares bounded chunks and repeats the input identity check afterward.
+ * @param[in,out] mount    Mounted FAT32 image.
+ * @param[in]     name     Card basename written by ::internal_stream_book.
+ * @param[in]     path     Original host path.
+ * @param[in]     identity Identity observed before the write pass.
+ * @return true only when every byte and all identity fields still match.
+ * @retval true  Host and card contents match exactly and remained stable.
+ * @retval false Reopen, metadata, read, compare, or close failed.
+ * @pre All strings and @p identity are valid.
+ * @pre @p mount remains mounted.
+ * @post Every opened handle is closed.
+ * @post The card filesystem is not modified.
+ * @note Not thread-safe; `ra8_fs` owns shared static mount/file slots.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_verify_book(ra8_fs_mount_t*                   mount,
+                                              const char*                       name,
+                                              const char*                       path,
+                                              const mkbookimg_input_identity_t* identity)
+{
+  int            input_fd = -1;
+  ra8_fs_file_t* card     = nullptr;
+  if (!internal_verify_book_reopen(mount, name, path, identity, &input_fd, &card)) {
     return false;
   }
   uint8_t  source[k_stream_chunk_bytes];
@@ -929,6 +966,60 @@ internal_write_books(ra8_fs_mount_t* mount, char** arguments, int book_count)
 }
 
 /**
+ * @brief Format, populate, and unmount the destination image.
+ * @details Formats a fresh FAT32 volume, writes every input book, and
+ *          unmounts before reporting the combined outcome.
+ * @param[in] backend Block-device backend bound to @p disk.
+ * @param[in] argv Output path followed by book paths.
+ * @param[in] book_count Number of book paths in @p argv.
+ * @param[in,out] disk Block-device state; inspected for a deferred I/O fault.
+ * @return Whether format, every book write, and unmount all succeeded.
+ * @retval true The destination image is complete and consistent.
+ * @retval false Formatting, a book write, unmount, or block I/O failed.
+ * @pre @p backend is bound to @p disk and @p disk names an open image file.
+ * @post On true the image volume is unmounted and internally consistent.
+ * @note Not thread-safe through global `ra8_fs` slots.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_build_image(const ra8_fs_backend_t* backend,
+                                              char**                  argv,
+                                              int                     book_count,
+                                              mkbookimg_disk_t*       disk)
+{
+  ra8_fs_mount_t* mount = nullptr;
+  bool            ok    = internal_format_mount(backend, &mount);
+  if (ok) {
+    ok = internal_write_books(mount, argv, book_count);
+    if (ra8_fs_unmount(mount) != k_ra8_ok) {
+      ok = false;
+    }
+  }
+  if (disk->io_failed) {
+    ok = false;
+  }
+  return ok;
+}
+
+/**
+ * @brief Print the final success diagnostic line.
+ * @param[in] out_path Published destination path.
+ * @param[in] book_count Number of books written.
+ * @return Nothing.
+ * @pre @p out_path is a NUL-terminated string.
+ * @post Exactly one diagnostic line has been written.
+ * @note Not thread-safe for a shared diagnostic sink.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_print_success(const char* out_path, int book_count)
+{
+  internal_diag("mkbookimg: wrote ");
+  internal_diag(out_path);
+  internal_diag(" (");
+  internal_diag_u64((uint64_t)book_count);
+  internal_diag(" book(s), 64 MiB FAT32)\n");
+}
+
+/**
  * @brief Validate CLI input, construct, verify, and atomically publish one image.
  * @param[in] argc Argument count.
  * @param[in] argv Output path followed by one or more book paths.
@@ -969,17 +1060,7 @@ int main(int argc, char** argv)
                                     .write_block  = internal_disk_write,
                                     .get_capacity = internal_disk_capacity,
                                     .ctx          = &disk};
-  ra8_fs_mount_t*        mount   = nullptr;
-  bool                   ok      = internal_format_mount(&backend, &mount);
-  if (ok) {
-    ok = internal_write_books(mount, argv, book_count);
-    if (ra8_fs_unmount(mount) != k_ra8_ok) {
-      ok = false;
-    }
-  }
-  if (disk.io_failed) {
-    ok = false;
-  }
+  bool                   ok      = internal_build_image(&backend, argv, book_count, &disk);
   if (ok) {
     ok = internal_output_commit(&output);
   } else {
@@ -989,10 +1070,6 @@ int main(int argc, char** argv)
     internal_diag("mkbookimg: image generation failed; destination preserved\n");
     return 1;
   }
-  internal_diag("mkbookimg: wrote ");
-  internal_diag(argv[1]);
-  internal_diag(" (");
-  internal_diag_u64((uint64_t)book_count);
-  internal_diag(" book(s), 64 MiB FAT32)\n");
+  internal_print_success(argv[1], book_count);
   return 0;
 }

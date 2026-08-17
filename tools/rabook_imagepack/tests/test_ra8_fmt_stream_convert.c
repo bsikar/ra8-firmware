@@ -93,7 +93,9 @@ static ra8_err_t internal_append(void* ctx, const uint8_t* bytes, size_t len)
       ((bytes == nullptr) && (len != 0U))) {
     return k_ra8_err_invalid_size;
   }
-  (void)memcpy(&transaction->stage[transaction->stage_len], bytes, len);
+  if (len != 0U) {
+    (void)memcpy(&transaction->stage[transaction->stage_len], bytes, len);
+  }
   transaction->stage_len += len;
   return k_ra8_ok;
 }
@@ -173,7 +175,9 @@ static ra8_err_t internal_report(void* ctx, const uint8_t* bytes, size_t len)
   if ((len > (sizeof(report->bytes) - report->len)) || ((bytes == nullptr) && (len != 0U))) {
     return k_ra8_err_invalid_size;
   }
-  (void)memcpy(&report->bytes[report->len], bytes, len);
+  if (len != 0U) {
+    (void)memcpy(&report->bytes[report->len], bytes, len);
+  }
   report->len += len;
   return k_ra8_ok;
 }
@@ -285,6 +289,34 @@ static ra8_err_t internal_convert(const ra8_fmt_source_t*                   sour
 }
 
 /**
+ * @brief Run the real producer twice into two independent workspaces.
+ * @details Binds each of the two static arenas to its own workspace and
+ * converts @p source into each, checking that both commit cleanly.
+ * @param[in] source Open PNG source.
+ * @param[in] requirements Exact requirements for @p source.
+ * @param[out] first Receives the first transaction's model state.
+ * @param[out] second Receives the second transaction's model state.
+ * @pre Both pointers are non-null and the source remains open.
+ * @pre Both static arenas are distinct and sufficiently aligned.
+ * @post Both model transactions are committed without abort.
+ * @note Test-only and sequential because the producer is documented non-reentrant.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void
+internal_test_success_convert_both(const ra8_fmt_source_t*                   source,
+                                   const ra8_fmt_jof_convert_requirements_t* requirements,
+                                   test_transaction_t*                       first,
+                                   test_transaction_t*                       second)
+{
+  ra8_fmt_jof_convert_workspace_t workspace_a = internal_workspace(s_work_a, k_test_work_cap);
+  ra8_fmt_jof_convert_workspace_t workspace_b = internal_workspace(s_work_b, k_test_work_cap);
+  CHECK(internal_convert(source, requirements, &workspace_a, first) == k_ra8_ok);
+  CHECK(internal_convert(source, requirements, &workspace_b, second) == k_ra8_ok);
+  CHECK(first->committed && second->committed && !first->aborted && !second->aborted);
+}
+
+/**
  * @brief Prove exact golden bytes and two independent workspace bindings.
  * @details Runs the real producer twice and checks legacy digest plus byte identity.
  * @param[in] source Open PNG source.
@@ -302,13 +334,9 @@ static void internal_test_success(const ra8_fmt_source_t*                   sour
 {
   CHECK(requirements->work_bytes <= k_test_work_cap);
   CHECK(&s_work_a[0] != &s_work_b[0]);
-  ra8_fmt_jof_convert_workspace_t workspace_a = internal_workspace(s_work_a, k_test_work_cap);
-  ra8_fmt_jof_convert_workspace_t workspace_b = internal_workspace(s_work_b, k_test_work_cap);
-  test_transaction_t              first;
-  test_transaction_t              second;
-  CHECK(internal_convert(source, requirements, &workspace_a, &first) == k_ra8_ok);
-  CHECK(internal_convert(source, requirements, &workspace_b, &second) == k_ra8_ok);
-  CHECK(first.committed && second.committed && !first.aborted && !second.aborted);
+  test_transaction_t first;
+  test_transaction_t second;
+  internal_test_success_convert_both(source, requirements, &first, &second);
   CHECK(first.published_len == k_test_golden_len);
   CHECK(internal_fnv(first.published, first.published_len) == k_test_golden_fnv);
   CHECK((first.published_len == second.published_len) &&
