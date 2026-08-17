@@ -190,15 +190,9 @@ RA8_INTERNAL static bool internal_write_layer(uc_engine*                    uc,
   if (!layer->active) {
     return true;
   }
-  /* The borrowed scratch is a byte buffer that holds a run of RGB565 pixels, and
-   * emu_presentation_open() rejects any scratch not aligned to alignof(uint16_t),
-   * so the two members name one storage. The union states that aliasing instead
-   * of casting a uint8_t* through void*. */
-  const union {
-    uint8_t*  bytes;  /**< Borrowed scratch as raw bytes.     */
-    uint16_t* pixels; /**< The same storage as RGB565 pixels. */
-  } scratch              = {.bytes = presentation->scratch};
-  uint16_t* const source = scratch.pixels;
+  /* The borrowed scratch holds a run of RGB565 pixels, and
+   * emu_presentation_open() rejects any scratch not aligned to alignof(uint16_t). */
+  uint16_t* const source = presentation->scratch;
   for (uint16_t y0 = 0U; y0 < layer->height;) {
     const uint16_t height = ((uint32_t)layer->height - y0 < k_emu_presentation_tile_px)
                               ? (uint16_t)(layer->height - y0)

@@ -288,7 +288,7 @@ emu_presentation_result_t emu_presentation_open(const emu_presentation_spec_t* s
     .composite_width  = (uint16_t)plan.composite_width,
     .composite_height = (uint16_t)plan.composite_height,
     .rotate_deg       = spec->rotate_deg,
-    .scratch          = (uint8_t*)scratch,
+    .scratch          = (uint16_t*)scratch,
     .scratch_bytes    = plan.scratch_bytes,
     .surface_bytes    = plan.surface_bytes,
   };
@@ -354,14 +354,8 @@ bool emu_presentation_fill(void*    context,
     return false;
   }
   /* One row of RGB565 pixels in the borrowed scratch. Alignment to
-   * alignof(uint16_t) is a checked precondition of emu_presentation_open(), so
-   * the union names one storage under two views instead of casting a uint8_t*
-   * through void*. */
-  const union {
-    uint8_t*  bytes;  /**< Borrowed scratch as raw bytes.     */
-    uint16_t* pixels; /**< The same storage as RGB565 pixels. */
-  } scratch           = {.bytes = workspace->scratch};
-  uint16_t* const row = scratch.pixels;
+   * alignof(uint16_t) is a checked precondition of emu_presentation_open(). */
+  uint16_t* const row = workspace->scratch;
   /* The borrowed scratch is documented "or nullptr"; this is the one place the
    * fill path needs it, so the check lives here rather than in the guard above. */
   if (row == nullptr) {
