@@ -312,7 +312,7 @@ static void internal_exfat_put32(uint8_t* buf, uint32_t idx, uint32_t val)
  *          folded into @p cs via priv_exfat_csum32() before being written via
  *          priv_exfat_wr_dual() to both the main and backup regions. Sector 11
  *          (checksum) is then filled with k_exfat_fmt_csum_copies copies of the
- *          final checksum word and written to both regions. The global priv_scratch
+ *          final checksum word and written to both regions. The global g_fs_scratch
  *          buffer is used as a scratch pad.
  *
  * @param[in] backend  Block-device backend with a non-NULL write_block hook.
@@ -339,46 +339,46 @@ internal_exfat_write_boot_tail(const ra8_fs_backend_t* backend, const exfat_geom
   /* Sectors 1-8: extended boot (ext-boot signature only). The extended boot
    * signature sits in the sector's LAST four bytes (exFAT spec sec 3.2). */
   for (uint32_t i = 0U; i < g->bps; i++) {
-    priv_scratch[i] = 0U;
+    g_fs_scratch[i] = 0U;
   }
   priv_wr32(
-    &priv_scratch[g->bps - ((uint32_t)k_ra8_fs_sector_min - (uint32_t)k_exfat_foff_ext_sig)],
+    &g_fs_scratch[g->bps - ((uint32_t)k_ra8_fs_sector_min - (uint32_t)k_exfat_foff_ext_sig)],
     (uint32_t)k_exfat_fmt_ext_sig);
   for (uint32_t s = (uint32_t)k_exfat_fmt_ext_first;
        s < (uint32_t)k_exfat_fmt_ext_first + (uint32_t)k_exfat_fmt_ext_count;
        s++) {
-    cs                = priv_exfat_csum32(cs, priv_scratch, g->bps);
-    const ra8_err_t e = internal_exfat_wr_dual(backend, g->part_lba, s, priv_scratch);
+    cs                = priv_exfat_csum32(cs, g_fs_scratch, g->bps);
+    const ra8_err_t e = internal_exfat_wr_dual(backend, g->part_lba, s, g_fs_scratch);
     if (e != k_ra8_ok) {
       return e;
     }
   }
   /* Sectors 9 (OEM) + 10 (reserved): all zero. */
   for (uint32_t i = 0U; i < g->bps; i++) {
-    priv_scratch[i] = 0U;
+    g_fs_scratch[i] = 0U;
   }
-  cs = priv_exfat_csum32(cs, priv_scratch, g->bps);
+  cs = priv_exfat_csum32(cs, g_fs_scratch, g->bps);
   ra8_err_t err =
-    internal_exfat_wr_dual(backend, g->part_lba, (uint32_t)k_exfat_fmt_oem_lba, priv_scratch);
+    internal_exfat_wr_dual(backend, g->part_lba, (uint32_t)k_exfat_fmt_oem_lba, g_fs_scratch);
   if (err != k_ra8_ok) {
     return err;
   }
-  cs  = priv_exfat_csum32(cs, priv_scratch, g->bps);
-  err = internal_exfat_wr_dual(backend, g->part_lba, (uint32_t)k_exfat_fmt_resv_lba, priv_scratch);
+  cs  = priv_exfat_csum32(cs, g_fs_scratch, g->bps);
+  err = internal_exfat_wr_dual(backend, g->part_lba, (uint32_t)k_exfat_fmt_resv_lba, g_fs_scratch);
   if (err != k_ra8_ok) {
     return err;
   }
   /* Checksum sector: every 32-bit word = the boot checksum. */
   for (uint32_t i = 0U; i < (g->bps / 4U); i++) {
-    internal_exfat_put32(priv_scratch, i, cs);
+    internal_exfat_put32(g_fs_scratch, i, cs);
   }
-  return internal_exfat_wr_dual(backend, g->part_lba, (uint32_t)k_exfat_fmt_csum_lba, priv_scratch);
+  return internal_exfat_wr_dual(backend, g->part_lba, (uint32_t)k_exfat_fmt_csum_lba, g_fs_scratch);
 }
 
 /**
  * @brief Write the complete exFAT main and backup boot regions (sectors 0-23).
  *
- * @details Builds the VBR in priv_scratch via priv_exfat_build_vbr(), then
+ * @details Builds the VBR in g_fs_scratch via priv_exfat_build_vbr(), then
  *          accumulates the boot checksum over sector 0, skipping the three bytes
  *          that the exFAT spec excludes from the checksum: VolumeFlags bytes
  *          (offsets 106-107) and PercentInUse (offset 112). The three ranges
@@ -406,17 +406,17 @@ internal_exfat_write_boot_tail(const ra8_fs_backend_t* backend, const exfat_geom
 RA8_INTERNAL
 static ra8_err_t internal_exfat_write_boot(const ra8_fs_backend_t* backend, const exfat_geom_t* g)
 {
-  internal_exfat_build_vbr(priv_scratch, g);
+  internal_exfat_build_vbr(g_fs_scratch, g);
   /* Boot checksum over sector 0 skips bytes 106,107 (VolumeFlags) and 112
    * (PercentInUse): fold [0,106), [108,112), [113,bps). */
-  uint32_t cs = priv_exfat_csum32(0U, &priv_scratch[0], (uint32_t)k_exfat_fmt_csum_skip0);
+  uint32_t cs = priv_exfat_csum32(0U, &g_fs_scratch[0], (uint32_t)k_exfat_fmt_csum_skip0);
   cs = priv_exfat_csum32(cs,
-                         &priv_scratch[k_exfat_off_bps_shift],
+                         &g_fs_scratch[k_exfat_off_bps_shift],
                          (uint32_t)k_exfat_fmt_csum_skip2 - (uint32_t)k_exfat_off_bps_shift);
   cs = priv_exfat_csum32(cs,
-                         &priv_scratch[(uint32_t)k_exfat_fmt_csum_skip2 + 1U],
+                         &g_fs_scratch[(uint32_t)k_exfat_fmt_csum_skip2 + 1U],
                          g->bps - ((uint32_t)k_exfat_fmt_csum_skip2 + 1U));
-  const ra8_err_t err = internal_exfat_wr_dual(backend, g->part_lba, 0U, priv_scratch);
+  const ra8_err_t err = internal_exfat_wr_dual(backend, g->part_lba, 0U, g_fs_scratch);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -427,7 +427,7 @@ static ra8_err_t internal_exfat_write_boot(const ra8_fs_backend_t* backend, cons
  * @brief Zero the exFAT FAT region, then seed the media, EOC, and chain entries.
  *
  * @details Clears all FAT sectors via priv_fmt_clear_region(), then builds the
- *          first FAT sector in priv_scratch. FAT[0] is set to the media byte
+ *          first FAT sector in g_fs_scratch. FAT[0] is set to the media byte
  *          (k_exfat_fmt_fat_media) and FAT[1] to the end-of-chain sentinel
  *          (k_exfat_fmt_fat_eoc). The bitmap and up-case cluster chains are each
  *          written as a linked run terminating with EOC (the up-case table may
@@ -460,29 +460,29 @@ static ra8_err_t internal_exfat_write_fat(const ra8_fs_backend_t* backend, const
     return err;
   }
   for (uint32_t i = 0U; i < g->bps; i++) {
-    priv_scratch[i] = 0U;
+    g_fs_scratch[i] = 0U;
   }
-  internal_exfat_put32(priv_scratch, 0U, (uint32_t)k_exfat_fmt_fat_media);
-  internal_exfat_put32(priv_scratch, 1U, (uint32_t)k_exfat_fmt_fat_eoc);
+  internal_exfat_put32(g_fs_scratch, 0U, (uint32_t)k_exfat_fmt_fat_media);
+  internal_exfat_put32(g_fs_scratch, 1U, (uint32_t)k_exfat_fmt_fat_eoc);
   const uint32_t bmp_last = (uint32_t)k_exfat_fmt_first_clus + g->bitmap_clusters - 1U;
   for (uint32_t c = (uint32_t)k_exfat_fmt_first_clus; c <= bmp_last; c++) {
     const uint32_t next = (c < bmp_last) ? (c + 1U) : (uint32_t)k_exfat_fmt_fat_eoc;
-    internal_exfat_put32(priv_scratch, c, next);
+    internal_exfat_put32(g_fs_scratch, c, next);
   }
   const uint32_t upc_last = g->upcase_cluster + g->upcase_clusters - 1U;
   for (uint32_t c = g->upcase_cluster; c <= upc_last; c++) {
     const uint32_t next = (c < upc_last) ? (c + 1U) : (uint32_t)k_exfat_fmt_fat_eoc;
-    internal_exfat_put32(priv_scratch, c, next);
+    internal_exfat_put32(g_fs_scratch, c, next);
   }
-  internal_exfat_put32(priv_scratch, g->root_cluster, (uint32_t)k_exfat_fmt_fat_eoc);
-  return backend->write_block(backend->ctx, g->part_lba + g->fat_offset, 1U, priv_scratch);
+  internal_exfat_put32(g_fs_scratch, g->root_cluster, (uint32_t)k_exfat_fmt_fat_eoc);
+  return backend->write_block(backend->ctx, g->part_lba + g->fat_offset, 1U, g_fs_scratch);
 }
 
 /**
  * @brief Zero the allocation bitmap region, then mark the pre-allocated clusters.
  *
  * @details Clears all bitmap sectors via priv_fmt_clear_region(), then builds
- *          the first bitmap sector in priv_scratch. The g->used_clusters count
+ *          the first bitmap sector in g_fs_scratch. The g->used_clusters count
  *          (bitmap + up-case + root) is marked allocated: full bytes are set to
  *          0xFF and the trailing partial byte gets a mask of the remaining bits.
  *          The populated sector is then written to the bitmap's heap LBA.
@@ -513,17 +513,17 @@ static ra8_err_t internal_exfat_write_bitmap(const ra8_fs_backend_t* backend, co
     return err;
   }
   for (uint32_t i = 0U; i < g->bps; i++) {
-    priv_scratch[i] = 0U;
+    g_fs_scratch[i] = 0U;
   }
   const uint32_t full = g->used_clusters / (uint32_t)k_exfat_fmt_byte_bits;
   for (uint32_t i = 0U; i < full; i++) {
-    priv_scratch[i] = (uint8_t)k_exfat_fmt_byte_full;
+    g_fs_scratch[i] = (uint8_t)k_exfat_fmt_byte_full;
   }
   const uint32_t rem = g->used_clusters % (uint32_t)k_exfat_fmt_byte_bits;
   if (rem != 0U) {
-    priv_scratch[full] = (uint8_t)((1U << rem) - 1U);
+    g_fs_scratch[full] = (uint8_t)((1U << rem) - 1U);
   }
-  return backend->write_block(backend->ctx, bmp_lba, 1U, priv_scratch);
+  return backend->write_block(backend->ctx, bmp_lba, 1U, g_fs_scratch);
 }
 
 /**
@@ -568,7 +568,7 @@ static uint32_t internal_exfat_label_utf16(uint8_t* dst, const char* label)
 /**
  * @brief Write the exFAT root directory entry set (bitmap, up-case, label).
  *
- * @details Builds the root directory sector in priv_scratch and writes it to the
+ * @details Builds the root directory sector in g_fs_scratch and writes it to the
  *          root cluster in the heap. The sector contains three directory entries:
  *          an Allocation Bitmap entry (0x81) pointing to the first cluster of
  *          the bitmap and recording bitmap_bytes as the DataLength; an Up-case
@@ -614,24 +614,24 @@ static ra8_err_t internal_exfat_write_root(const ra8_fs_backend_t* backend,
     return ze;
   }
   for (uint32_t i = 0U; i < g->bps; i++) {
-    priv_scratch[i] = 0U;
+    g_fs_scratch[i] = 0U;
   }
   /* Allocation Bitmap entry (0x81). */
-  priv_scratch[0] = (uint8_t)k_exfat_entry_bitmap;
-  priv_wr32(&priv_scratch[k_exfat_de_first_clus], (uint32_t)k_exfat_fmt_first_clus);
-  priv_wr32(&priv_scratch[k_exfat_de_data_len], g->bitmap_bytes);
+  g_fs_scratch[0] = (uint8_t)k_exfat_entry_bitmap;
+  priv_wr32(&g_fs_scratch[k_exfat_de_first_clus], (uint32_t)k_exfat_fmt_first_clus);
+  priv_wr32(&g_fs_scratch[k_exfat_de_data_len], g->bitmap_bytes);
   /* Up-case Table entry (0x82). */
-  uint8_t* upc = &priv_scratch[k_exfat_de_second];
+  uint8_t* upc = &g_fs_scratch[k_exfat_de_second];
   upc[0]       = (uint8_t)k_exfat_entry_upcase;
   priv_wr32(&upc[k_exfat_de_upc_csum], upcase_csum);
   priv_wr32(&upc[k_exfat_de_first_clus], g->upcase_cluster);
   priv_wr32(&upc[k_exfat_de_data_len], (uint32_t)k_exfat_fmt_upc_std_bytes);
   /* Volume Label entry (0x83). */
-  uint8_t*       lbl      = &priv_scratch[k_exfat_de_third];
+  uint8_t*       lbl      = &g_fs_scratch[k_exfat_de_third];
   const uint32_t n        = internal_exfat_label_utf16(&lbl[k_exfat_de_lbl_name], label);
   lbl[0]                  = (uint8_t)k_exfat_entry_label;
   lbl[k_exfat_de_lbl_cnt] = (uint8_t)n;
-  return backend->write_block(backend->ctx, g->part_lba + lba, 1U, priv_scratch);
+  return backend->write_block(backend->ctx, g->part_lba + lba, 1U, g_fs_scratch);
 }
 
 /**
@@ -715,19 +715,19 @@ static ra8_err_t internal_exfat_write_mbr(const ra8_fs_backend_t* backend,
                                           uint32_t                part_sectors)
 {
   for (uint32_t i = 0U; i < bps; i++) {
-    priv_scratch[i] = 0U;
+    g_fs_scratch[i] = 0U;
   }
-  priv_wr32(&priv_scratch[k_mbr_fmt_disk_sig_off],
+  priv_wr32(&g_fs_scratch[k_mbr_fmt_disk_sig_off],
             (uint32_t)k_mbr_fmt_disk_sig_base ^ part_sectors);
-  uint8_t* pe           = &priv_scratch[k_mbr_fmt_part0_off];
+  uint8_t* pe           = &g_fs_scratch[k_mbr_fmt_part0_off];
   pe[k_mbr_fmt_pe_boot] = (uint8_t)k_mbr_fmt_boot_none;
   internal_exfat_lba_to_chs(part_lba, &pe[k_mbr_fmt_pe_chs_start]);
   pe[k_mbr_fmt_pe_type] = (uint8_t)k_mbr_fmt_type_exfat;
   internal_exfat_lba_to_chs((part_lba + part_sectors) - 1U, &pe[k_mbr_fmt_pe_chs_end]);
   priv_wr32(&pe[k_mbr_fmt_pe_lba], part_lba);
   priv_wr32(&pe[k_mbr_fmt_pe_nsect], part_sectors);
-  priv_wr16(&priv_scratch[k_exfat_foff_boot_sig], (uint16_t)k_exfat_fmt_boot_sig);
-  return backend->write_block(backend->ctx, 0U, 1U, priv_scratch);
+  priv_wr16(&g_fs_scratch[k_exfat_foff_boot_sig], (uint16_t)k_exfat_fmt_boot_sig);
+  return backend->write_block(backend->ctx, 0U, 1U, g_fs_scratch);
 }
 
 /**

@@ -499,7 +499,7 @@ priv_fmt_clear_region(const ra8_fs_backend_t* backend, uint64_t lba, uint64_t co
  * @pre @p backend, @p g are non-NULL.
  * @pre @p g->fat_size_sectors and `reserved_sectors` are set.
  * @post FAT[0]/FAT[1] (and FAT[2] on FAT32) are valid in every copy.
- * @post `priv_scratch` holds the last FAT seed sector.
+ * @post `g_fs_scratch` holds the last FAT seed sector.
  *
  * @note Bounded loop (NASA Rule 2): `k_fmt_num_fats` iterations.
  *
@@ -509,25 +509,25 @@ RA8_INTERNAL
 static ra8_err_t internal_fmt_seed_fats(const ra8_fs_backend_t* backend, const ra8_fs_fmt_geom_t* g)
 {
   for (uint32_t i = 0U; i < g->bytes_per_sector; i++) {
-    priv_scratch[i] = 0U;
+    g_fs_scratch[i] = 0U;
   }
   if (g->type == k_ra8_fs_type_fat32) {
-    priv_wr32(&priv_scratch[0], (uint32_t)k_cluster_eoc_min_fat32 | (uint32_t)k_fmt_media_fixed);
-    priv_wr32(&priv_scratch[4], (uint32_t)k_cluster_eoc_write_fat32);
-    priv_wr32(&priv_scratch[8], (uint32_t)k_cluster_eoc_write_fat32);
+    priv_wr32(&g_fs_scratch[0], (uint32_t)k_cluster_eoc_min_fat32 | (uint32_t)k_fmt_media_fixed);
+    priv_wr32(&g_fs_scratch[4], (uint32_t)k_cluster_eoc_write_fat32);
+    priv_wr32(&g_fs_scratch[8], (uint32_t)k_cluster_eoc_write_fat32);
   } else if (g->type == k_ra8_fs_type_fat16) {
-    priv_wr16(&priv_scratch[0],
+    priv_wr16(&g_fs_scratch[0],
               (uint16_t)((uint32_t)k_cluster_eoc_min_fat16 | (uint32_t)k_fmt_media_fixed));
-    priv_wr16(&priv_scratch[2], (uint16_t)k_cluster_eoc_write_fat16);
+    priv_wr16(&g_fs_scratch[2], (uint16_t)k_cluster_eoc_write_fat16);
   } else {
     /* FAT12: 1.5-byte entries. FAT[0]=0xF<media>, FAT[1]=0xFFF, packed LE. */
-    priv_scratch[0] = (uint8_t)k_fmt_media_fixed;
-    priv_scratch[1] = (uint8_t)k_byte_mask;
-    priv_scratch[2] = (uint8_t)k_byte_mask;
+    g_fs_scratch[0] = (uint8_t)k_fmt_media_fixed;
+    g_fs_scratch[1] = (uint8_t)k_byte_mask;
+    g_fs_scratch[2] = (uint8_t)k_byte_mask;
   }
   for (uint32_t f = 0U; f < (uint32_t)k_fmt_num_fats; f++) {
     const uint64_t  fat_lba = (uint64_t)g->reserved_sectors + ((uint64_t)f * g->fat_size_sectors);
-    const ra8_err_t err     = backend->write_block(backend->ctx, fat_lba, 1U, priv_scratch);
+    const ra8_err_t err     = backend->write_block(backend->ctx, fat_lba, 1U, g_fs_scratch);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -553,7 +553,7 @@ static ra8_err_t internal_fmt_seed_fats(const ra8_fs_backend_t* backend, const r
  * @pre @p backend, @p g, @p boot_sec are non-NULL.
  * @pre @p g->type is FAT32 for any write to occur.
  * @post On FAT32, the FSInfo + backup-boot sectors are valid.
- * @post `priv_scratch` is clobbered.
+ * @post `g_fs_scratch` is clobbered.
  *
  * @note Not reentrant against the module scratch buffer.
  *
@@ -568,17 +568,17 @@ static ra8_err_t internal_fmt_write_fsinfo(const ra8_fs_backend_t*  backend,
     return k_ra8_ok;
   }
   for (uint32_t i = 0U; i < g->bytes_per_sector; i++) {
-    priv_scratch[i] = 0U;
+    g_fs_scratch[i] = 0U;
   }
-  priv_wr32(&priv_scratch[k_fmt_fsi_off_lead], (uint32_t)k_fmt_fsi_lead_sig);
-  priv_wr32(&priv_scratch[k_fmt_fsi_off_struct], (uint32_t)k_fmt_fsi_struct_sig);
+  priv_wr32(&g_fs_scratch[k_fmt_fsi_off_lead], (uint32_t)k_fmt_fsi_lead_sig);
+  priv_wr32(&g_fs_scratch[k_fmt_fsi_off_struct], (uint32_t)k_fmt_fsi_struct_sig);
   const uint32_t free_count =
     (g->count_of_clusters > 0U) ? (g->count_of_clusters - 1U) : (uint32_t)k_fmt_fsi_unknown;
-  priv_wr32(&priv_scratch[k_fmt_fsi_off_free], free_count);
-  priv_wr32(&priv_scratch[k_fmt_fsi_off_nxtfree], (uint32_t)k_fmt_fat32_nxt_free);
-  priv_wr32(&priv_scratch[k_fmt_fsi_off_trail], (uint32_t)k_fmt_fsi_trail_sig);
+  priv_wr32(&g_fs_scratch[k_fmt_fsi_off_free], free_count);
+  priv_wr32(&g_fs_scratch[k_fmt_fsi_off_nxtfree], (uint32_t)k_fmt_fat32_nxt_free);
+  priv_wr32(&g_fs_scratch[k_fmt_fsi_off_trail], (uint32_t)k_fmt_fsi_trail_sig);
   ra8_err_t err =
-    backend->write_block(backend->ctx, (uint64_t)k_fmt_fsinfo_sector, 1U, priv_scratch);
+    backend->write_block(backend->ctx, (uint64_t)k_fmt_fsinfo_sector, 1U, g_fs_scratch);
   if (err != k_ra8_ok) {
     return err;
   }

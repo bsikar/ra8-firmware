@@ -479,12 +479,12 @@ RA8_INTERNAL static void internal_test_gpt_header_read_fails(void)
  *
  * @details
  * LBA 0 is a protective MBR; LBA 1 is all zeros (calloc default).  The
- * signature loop in priv_gpt_locate_volume finds priv_scratch[0] == 0 != 0x45
+ * signature loop in priv_gpt_locate_volume finds g_fs_scratch[0] == 0 != 0x45
  * ('E') and returns k_ra8_err_validation_failed at line 423.
  * priv_read_boot_sector propagates it at line 524.
  *
  * @par MC/DC:
- * Decision: `if (priv_scratch[i] != k_gpt_signature[i])` (1 cond per iteration).
+ * Decision: `if (g_fs_scratch[i] != k_gpt_signature[i])` (1 cond per iteration).
  * V1: all signature bytes match -> false on every iteration (normal path).
  * V2: first byte differs -> true -> k_ra8_err_validation_failed (covered here).
  *

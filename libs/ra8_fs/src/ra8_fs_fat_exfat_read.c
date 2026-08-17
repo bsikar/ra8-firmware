@@ -161,8 +161,8 @@ void priv_exfat_upcase_verify(ra8_fs_mount_t* m)
 /* `priv_parse_volume()`: see header for the documented contract. */
 ra8_err_t priv_parse_volume(ra8_fs_mount_t* m)
 {
-  if (internal_exfat_is_volume(priv_scratch) != 0U) {
-    return internal_exfat_parse(m, priv_scratch);
+  if (internal_exfat_is_volume(g_fs_scratch) != 0U) {
+    return internal_exfat_parse(m, g_fs_scratch);
   }
   return priv_parse_bpb_into_mount(m);
 }
