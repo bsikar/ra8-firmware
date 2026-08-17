@@ -123,3 +123,7 @@ Each unsupported feature has one defined behavior. None is undefined.
 
 Changes to the accepted element set or a degradation behavior must update this
 document in the same change.
+
+The libraries this contract is implemented across, and how they couple:
+
+<img src="diagrams/book_pipeline.svg" alt="Book pipeline coupling map: import and compile above, EPUB and the container in the middle, JOF and the codecs below" width="100%">

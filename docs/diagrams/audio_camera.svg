@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 612" width="900" role="img" aria-label="Audio and camera -- sparse by construction. coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it down: ra8_jpeg - to  ra8_core (23), ra8_camera - to  ra8_core (17), ra8_ov5640 - to  ra8_core (4)       ra8_audio - to  ra8_core (3), ra8_camera - to  ra8_hal (3), ra8_camera_io - to  ra8_io (2), ra8_audio - to  ra8_hal (1) in:   ra8_jof - to  ra8_jpeg (1) Two internal edges across five libraries, and that is the design working rather than a gap. ra8_ov5640 never includes ra8_camera and ra8_audio includes nothing here: both take their transport as a vtable in the config struct passed to *_init(), which is the project's Dependency-Inversion seam. Coupling that would show up as an #include is absent on purpose. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are">
+  <defs>
+    <marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1b1f24"/></marker>
+    <marker id="aAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker>
+    <marker id="aGrn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a7f37"/></marker>
+    <marker id="aWrm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#bc4c00"/></marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="612" fill="#fdfdfb"/>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+    <text x="24" y="32" fill="#1b1f24" font-size="14" font-weight="bold">Audio and camera -- sparse by construction</text>
+    <text x="24" y="52" fill="#57606a" font-size="9">coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it</text>
+    <rect x="20" y="70" width="860" height="348" rx="8" fill="none" stroke="#aeb4bb" stroke-width="1.2"/>
+    <line x1="450" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="438" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <line x1="450" y1="226" x2="450" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="438" y="244" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <rect x="245" y="86" width="409" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="450" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_camera_io</text>
+    <text x="450" y="126" text-anchor="middle" fill="#57606a" font-size="9">frames to streams</text>
+    <rect x="245" y="172" width="409" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
+    <text x="450" y="196" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_camera</text>
+    <text x="450" y="212" text-anchor="middle" fill="#57606a" font-size="9">source + codec facade</text>
+    <rect x="245" y="258" width="409" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
+    <text x="450" y="282" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_jpeg</text>
+    <text x="450" y="298" text-anchor="middle" fill="#57606a" font-size="9">software JPEG</text>
+    <rect x="34" y="344" width="409" height="52" rx="5" fill="#fdfdfb" stroke="#57606a" stroke-width="1.4"/>
+    <text x="238" y="368" text-anchor="middle" fill="#57606a" font-size="10">ra8_audio</text>
+    <text x="238" y="384" text-anchor="middle" fill="#57606a" font-size="9">capture facade</text>
+    <rect x="457" y="344" width="409" height="52" rx="5" fill="#fdfdfb" stroke="#57606a" stroke-width="1.4"/>
+    <text x="662" y="368" text-anchor="middle" fill="#57606a" font-size="10">ra8_ov5640</text>
+    <text x="662" y="384" text-anchor="middle" fill="#57606a" font-size="9">OV5640 sensor</text>
+    <rect x="20" y="442" width="860" height="74" rx="6" fill="none" stroke="#aeb4bb" stroke-width="1" stroke-dasharray="5 3"/>
+    <text x="34" y="460" fill="#1b1f24" font-size="10" font-weight="bold">seams to the rest of the tree</text>
+    <text x="34" y="478" fill="#57606a" font-size="9">down: ra8_jpeg -&gt; ra8_core (23), ra8_camera -&gt; ra8_core (17), ra8_ov5640 -&gt; ra8_core (4)</text>
+    <text x="34" y="494" fill="#57606a" font-size="9">      ra8_audio -&gt; ra8_core (3), ra8_camera -&gt; ra8_hal (3), ra8_camera_io -&gt; ra8_io (2), ra8_audio -&gt; ra8_hal (1)</text>
+    <text x="34" y="510" fill="#57606a" font-size="9">in:   ra8_jof -&gt; ra8_jpeg (1)</text>
+    <text x="24" y="538" fill="#57606a" font-size="9">Two internal edges across five libraries, and that is the design working rather than a gap. ra8_ov5640 never includes</text>
+    <text x="24" y="554" fill="#57606a" font-size="9">ra8_camera and ra8_audio includes nothing here: both take their transport as a vtable in the config struct passed to</text>
+    <text x="24" y="570" fill="#57606a" font-size="9">*_init(), which is the project's Dependency-Inversion seam. Coupling that would show up as an #include is absent on purpose.</text>
+    <text x="24" y="586" fill="#57606a" font-size="9">Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are</text>
+  </g>
+</svg>
