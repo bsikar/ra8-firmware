@@ -603,6 +603,95 @@ static const uint32_t s_cb_sizes[] = {
 };
 
 /**
+ * @brief Write the per-trace table header: title line, column heads, rule row.
+ * @details Emits the "### name (...)" title, the "| policy |" column heading
+ *          with one column per swept size in ::s_cb_sizes, and the markdown
+ *          table rule row beneath it.
+ * @param[in] tr Trace being reported (name, access count, footprint).
+ * @param[in,out] sink Report destination.
+ * @param[in] nsz Number of entries in ::s_cb_sizes to head one column each.
+ * @pre @p tr is non-NULL.
+ * @pre @p sink is non-NULL and accepts further writes.
+ * @post The complete three-line markdown header is written to @p sink.
+ * @post @p sink is left ready for one row per policy.
+ * @return Zero after the complete header was accepted, otherwise one.
+ * @retval 0 Every header fragment was accepted by @p sink.
+ * @retval 1 A sink write failed.
+ * @note Not thread-safe: writes @p sink. Benchmark thread only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static int internal_report_trace_header(const cb_trace_t* tr, cb_sink_t* sink, uint32_t nsz)
+{
+  if (cb_sink_format(sink,
+                     "\n### %s  (%llu accesses, footprint %u pages)\n\n",
+                     tr->name,
+                     (unsigned long long)tr->n,
+                     tr->footprint) != k_cb_io_ok ||
+      cb_sink_format(sink, "| policy |") != k_cb_io_ok) {
+    return 1;
+  }
+  for (uint32_t s = 0U; s < nsz; ++s) {
+    if (cb_sink_format(sink, " %u |", s_cb_sizes[s]) != k_cb_io_ok) {
+      return 1;
+    }
+  }
+  if (cb_sink_format(sink, "\n|--------|") != k_cb_io_ok) {
+    return 1;
+  }
+  for (uint32_t s = 0U; s < nsz; ++s) {
+    if (cb_sink_format(sink, "------|") != k_cb_io_ok) {
+      return 1;
+    }
+  }
+  return cb_sink_format(sink, "\n") != k_cb_io_ok ? 1 : 0;
+}
+
+/**
+ * @brief Write one policy's hit-rate row across every swept cache size.
+ * @details Replays @p tr once per entry in ::s_cb_sizes under @p policy,
+ *          converting each result to a hit-rate percentage cell (0.0 when
+ *          no accesses ran), and terminates the row with a newline.
+ * @param[in] policy Policy under test for this row.
+ * @param[in] tr Trace to replay (name, key stream, footprint).
+ * @param[in,out] workspace Reusable exact replay workspace.
+ * @param[in,out] sink Report destination.
+ * @param[in] nsz Number of entries in ::s_cb_sizes to replay and print.
+ * @pre @p policy and @p tr are non-NULL with valid operations.
+ * @pre @p sink is non-NULL and accepts further writes.
+ * @post One complete markdown row for @p policy is written to @p sink.
+ * @post @p tr and @p policy are left unmodified (replays are self-contained).
+ * @return Zero after the complete row was accepted, otherwise one.
+ * @retval 0 Every cell was replayed and accepted by @p sink.
+ * @retval 1 A replay or sink write failed.
+ * @note Not thread-safe: writes @p sink and runs replays. Benchmark thread only.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static int internal_report_trace_row(const cache_policy_t* policy,
+                                     const cb_trace_t*     tr,
+                                     cb_workspace_t*       workspace,
+                                     cb_sink_t*            sink,
+                                     uint32_t              nsz)
+{
+  if (cb_sink_format(sink, "| %-14s |", policy->name) != k_cb_io_ok) {
+    return 1;
+  }
+  for (uint32_t s = 0U; s < nsz; ++s) {
+    cb_result_t r = {};
+    if (cb_replay(policy, tr, s_cb_sizes[s], workspace, &r) != 0) {
+      return 1;
+    }
+    const double hit =
+      (r.accesses == 0U) ? 0.0 : (s_cb_pct_scale_f * (double)r.hits / (double)r.accesses);
+    if (cb_sink_format(sink, " %5.1f |", hit) != k_cb_io_ok) {
+      return 1;
+    }
+  }
+  return cb_sink_format(sink, "\n") != k_cb_io_ok ? 1 : 0;
+}
+
+/**
  * @brief Print the per-trace hit-rate matrix (policies x cache sizes).
  * @details Emits a markdown section for @p tr: a header naming the workload,
  *          then one row per registered policy giving its hit-rate percentage at
@@ -625,46 +714,11 @@ RA8_INTERNAL
 static int internal_report_trace(const cb_trace_t* tr, cb_workspace_t* workspace, cb_sink_t* sink)
 {
   const uint32_t nsz = (uint32_t)(sizeof(s_cb_sizes) / sizeof(s_cb_sizes[0]));
-  if (cb_sink_format(sink,
-                     "\n### %s  (%llu accesses, footprint %u pages)\n\n",
-                     tr->name,
-                     (unsigned long long)tr->n,
-                     tr->footprint) != k_cb_io_ok ||
-      cb_sink_format(sink, "| policy |") != k_cb_io_ok) {
-    return 1;
-  }
-  for (uint32_t s = 0U; s < nsz; ++s) {
-    if (cb_sink_format(sink, " %u |", s_cb_sizes[s]) != k_cb_io_ok) {
-      return 1;
-    }
-  }
-  if (cb_sink_format(sink, "\n|--------|") != k_cb_io_ok) {
-    return 1;
-  }
-  for (uint32_t s = 0U; s < nsz; ++s) {
-    if (cb_sink_format(sink, "------|") != k_cb_io_ok) {
-      return 1;
-    }
-  }
-  if (cb_sink_format(sink, "\n") != k_cb_io_ok) {
+  if (internal_report_trace_header(tr, sink, nsz) != 0) {
     return 1;
   }
   for (uint32_t p = 0U; p < g_cb_policy_count; ++p) {
-    if (cb_sink_format(sink, "| %-14s |", g_cb_policies[p]->name) != k_cb_io_ok) {
-      return 1;
-    }
-    for (uint32_t s = 0U; s < nsz; ++s) {
-      cb_result_t r = {};
-      if (cb_replay(g_cb_policies[p], tr, s_cb_sizes[s], workspace, &r) != 0) {
-        return 1;
-      }
-      const double hit =
-        (r.accesses == 0U) ? 0.0 : (s_cb_pct_scale_f * (double)r.hits / (double)r.accesses);
-      if (cb_sink_format(sink, " %5.1f |", hit) != k_cb_io_ok) {
-        return 1;
-      }
-    }
-    if (cb_sink_format(sink, "\n") != k_cb_io_ok) {
+    if (internal_report_trace_row(g_cb_policies[p], tr, workspace, sink, nsz) != 0) {
       return 1;
     }
   }
