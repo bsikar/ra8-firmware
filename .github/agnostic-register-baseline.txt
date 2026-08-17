@@ -13,6 +13,9 @@
 # timer: 51 reference(s)
 #
 # path<TAB>family<TAB>count
+apps/stand_alone/ereader/system_init.c	clock	1
+apps/stand_alone/ereader/trustzone_init.c	clock	1
+apps/stand_alone/ereader/trustzone_init.c	gpio	2
 examples/_unsupported/audio_loopback/main.c	clock	2
 examples/_unsupported/motor_3phase/main.c	clock	2
 examples/_unsupported/motor_3phase/main.c	timer	7
@@ -302,6 +305,3 @@ port/esp-hosted/src/ra8_esp_hosted_gpio.c	gpio	6
 port/esp-hosted/src/ra8_esp_hosted_gpio_edge.c	gpio	3
 port/esp-hosted/src/ra8_esp_hosted_rtos.c	clock	1
 port/esp-hosted/src/ra8_esp_hosted_spi.c	gpio	4
-src/app/system_init.c	clock	1
-src/app/trustzone_init.c	clock	1
-src/app/trustzone_init.c	gpio	2

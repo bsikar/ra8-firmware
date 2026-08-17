@@ -81,14 +81,26 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lint_targets import is_build_output_path
+from lint_targets import firmware_app_dirs, is_build_output_path
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
 # Production directories that are subject to the MC/DC gate.
-PROD_PREFIXES: tuple[str, ...] = ("libs/", "src/", "port/")
+#
+# "Production" here means code that runs on the target: the platform libraries,
+# the secure-side substrate under src/, the RTOS ports -- and the FIRMWARE
+# products, which is why apps/ appears through a derivation rather than as a
+# fourth literal. apps/ is the products tier and most of it is host programs
+# (the media_dl CLI), which are no more in scope than tools/ is; the e-reader
+# image is. Deriving the firmware half from
+# ``lint_targets.firmware_app_dirs()`` keeps the scope's MEANING fixed while
+# the tree moves under it: when the e-reader composition left src/ for the
+# products tier, a literal tuple would have dropped six firmware translation
+# units out of this gate and reported the resulting smaller count as a
+# burn-down.
+PROD_PREFIXES: tuple[str, ...] = ("libs/", "src/", "port/", *(f"{d}/" for d in firmware_app_dirs()))
 
 # Test translation units allowed to carry executable MC/DC vector sets.
 TEST_SOURCE_SUFFIXES: tuple[str, ...] = (".c", ".cpp")
@@ -125,8 +137,14 @@ CHAR_LITERAL_RE = re.compile(r"'(?:\\.|[^'\\])*'")
 # accepted form is `path@function_name`: it pins the decision to its enclosing
 # function, so unrelated edits that shift lines never invalidate it, and --
 # having no `:line` -- it is not flagged by check_line_citations.py.
+# The path alternation is built from PROD_PREFIXES rather than spelled out: a
+# citation naming a file this gate scans must parse, and the two drifting apart
+# is silent -- the citation simply stops matching and its decision reads as
+# uncovered.
 SYMBOL_CITATION_RE = re.compile(
-    r"(?P<path>(?:libs|src|port)/[A-Za-z0-9_./-]+\.c)@(?P<sym>[A-Za-z_]\w*)"
+    r"(?P<path>(?:"
+    + "|".join(re.escape(prefix.rstrip("/")) for prefix in PROD_PREFIXES)
+    + r")/[A-Za-z0-9_./-]+\.c)@(?P<sym>[A-Za-z_]\w*)"
 )
 
 # Regex isolating each `@par MC/DC:` block in a test file. The block starts at

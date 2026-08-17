@@ -89,7 +89,7 @@ static const mem_region_t s_regions[] = {
                                              * TrustZone NS image run region. The Secure
                                              * boot copies the NS image here then BLXNS-es
                                              * to it; mapping it lets two-image TZ apps
-                                             * (src/app) run their NS world in ra8_emulator. */
+                                             * run their NS world in ra8_emulator. */
   /* No DATA_FLASH region. 0x27000000 was carried in every app linker script as a
    * 16 KiB "data flash (EEPROM emulation)" MEMORY declaration inherited from
    * other RA parts, and ra8_emulator used to map it as plain RAM -- so writes there

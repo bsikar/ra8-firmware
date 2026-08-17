@@ -30,7 +30,7 @@
 #include "ra8_pwr.h"
 
 #ifdef RA8_APP_UART_LOG
-/* The e-reader (src/app) defines RA8_APP_UART_LOG to mirror ra8_log onto the SCI8
+/* The e-reader product defines RA8_APP_UART_LOG to mirror ra8_log onto the SCI8
  * J-Link console, so the logs appear on the UART (ra8_emulator's on-screen console
  * + a real serial terminal) and not only on the ITM/SWO trace. Gated so other
  * ra8_nsc consumers do not pick up a ra8_board dependency. */

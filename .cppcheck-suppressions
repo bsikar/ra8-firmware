@@ -27,7 +27,7 @@
 # CMSIS-standard way to implement the Reset_Handler .data / .bss
 # initialisation and to scan the stack-canary sentinel region.
 # ---------------------------------------------------------------------------
-comparePointers:src/app/vector_table.c
+comparePointers:apps/stand_alone/ereader/vector_table.c
 comparePointers:libs/ra8_core/src/ra8_infrastructure.c
 comparePointers:libs/ra8_board_ek_ra8d2/boot/vector_table.c
 comparePointers:libs/ra8_board_ra8p1/boot/vector_table.c

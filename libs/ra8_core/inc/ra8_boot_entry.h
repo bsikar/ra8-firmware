@@ -16,7 +16,7 @@
  *
  * They used to be restated as bare ``void SystemInit(void);`` lines in
  * two dozen boot translation units -- the two board boot directories, the
- * shared ``src/app`` pair, and every application that keeps its own boot
+ * shared e-reader boot pair, and every application that keeps its own boot
  * files. Twenty-four copies of a prototype are twenty-four chances for a
  * signature to drift with nothing to catch it, so this header holds the
  * one copy.

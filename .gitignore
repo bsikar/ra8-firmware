@@ -179,7 +179,15 @@ venv/
 !.claude/agents/
 doxy_run.txt
 .pi-connection
+
+# cppcheck writes its per-TU dump and cross-TU index NEXT TO the source, under
+# every first-party root, and misra_check_inner.sh sweeps both away when it
+# finishes. Only *.dump was ignored, so for the length of a MISRA run several
+# hundred *.ctu-info files sat untracked-and-unignored in libs/ src/ apps/ --
+# and a `git add -A` in that window commits every one of them. Both halves of
+# the same artifact pair belong here.
 *.dump
+*.ctu-info
 
 # ra8_emulator profiler output (make profile-<app>)
 *.speedscope.json
