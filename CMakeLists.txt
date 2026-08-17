@@ -216,8 +216,12 @@ foreach(app_path ${RA8_APP_PATHS})
   add_subdirectory(${app_path})
 endforeach()
 
-# Include the main e-reader application target
-add_subdirectory(src/app)
+# Include the main e-reader application target. Explicit rather than globbed:
+# apps/ is the PRODUCTS tier and most products are hosted host programs (the
+# media_dl CLI), so a discovery glob over apps/ would silently cross-compile
+# the next product that happens to keep a main.c at its root. The e-reader is
+# the firmware composition in that tier and says so here, by name.
+add_subdirectory(apps/stand_alone/ereader)
 list(APPEND RA8_APPS "ra8d2-ereader")
 
 # Convenience alias `firmware` that maps to the default app's elf.

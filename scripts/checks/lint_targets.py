@@ -98,7 +98,7 @@ BUILD_TREE_ROOTS = frozenset(
         "examples",  # examples/**/<app>/build/ -- per-app CMake output
         "local-poc",  # local-poc/**/build/ -- git-excluded PoC tree
         "port",  # port/**/build/
-        "src",  # src/app/build/
+        "src",  # src/**/build/
         "tests",  # tests/build/, tests/build-cov/, tests/build-fuzz/
         "tools",  # tools/<tool>/build/ -- host tool output
         "apps",  # apps/<category>/<product>/build/ -- product build output
@@ -341,6 +341,67 @@ def first_party_paths(
                 continue
         out.append(rel)
     return sorted(out)
+
+
+# ---------------------------------------------------------------------------
+# FIRMWARE PRODUCTS -- the single definition, shared by every checker that has
+# to tell a cross-compiled image from a host program.
+#
+# Top-level roots used to classify build domain on their own: examples/, src/
+# and port/ were firmware, tests/ and tools/ were hosted. apps/ -- the products
+# tier -- breaks that, because it carries BOTH kinds. The media_dl CLI is a
+# host program the C runtime starts and whose exit status something reads; the
+# e-reader is a two-image TrustZone composition reached from Reset_Handler,
+# with no process and no exit status. "It lives under apps/" answers nothing.
+#
+# The discriminator is what the build actually does with the directory: an app
+# directory holding BOTH a linker script and a vector table is LINKED INTO AN
+# IMAGE. Neither half alone is enough -- a host program could carry a stray
+# .ld for some other purpose, and a vector_table.c with nothing placing it is
+# not an image -- and no host program has ever needed both.
+#
+# Derived from ``git ls-files`` rather than listed, so a firmware product that
+# lands tomorrow is classified the day it lands, with no allowlist to forget.
+# ---------------------------------------------------------------------------
+
+#: Products tier root. Only this root is ambiguous; the others classify by name.
+PRODUCTS_ROOT = "apps/"
+
+#: Proof that a directory is linked into an image rather than started by a C
+#: runtime. Any ``.ld`` counts -- the e-reader carries three.
+_IMAGE_MARKER_SUFFIX = ".ld"
+
+#: Proof that a directory owns a reset path.
+_IMAGE_MARKER_NAME = "vector_table.c"
+
+
+def firmware_app_dirs(paths: list[str] | None = None) -> tuple[str, ...]:
+    """Every directory under ``apps/`` that builds a cross-compiled image.
+
+    Args:
+        paths: Repo-relative paths to classify. Defaults to the tracked tree,
+            which is what every caller wants; the parameter exists so a
+            selftest can drive the rule with a fixture instead of the live
+            tree.
+
+    Returns:
+        The matching repo-relative directories, sorted, with no trailing slash.
+    """
+    if paths is None:
+        paths = [rel for rel in _tracked() if not is_build_output(rel)]
+    scripts: set[str] = set()
+    vectors: set[str] = set()
+    for rel in paths:
+        if not rel.startswith(PRODUCTS_ROOT):
+            continue
+        head, _, name = rel.rpartition("/")
+        if not head:
+            continue
+        if name.endswith(_IMAGE_MARKER_SUFFIX):
+            scripts.add(head)
+        elif name == _IMAGE_MARKER_NAME:
+            vectors.add(head)
+    return tuple(sorted(scripts & vectors))
 
 
 def main(argv: list[str]) -> int:

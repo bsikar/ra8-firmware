@@ -1,5 +1,5 @@
 /**
- * @file src/app/secure_exception.c
+ * @file apps/stand_alone/ereader/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

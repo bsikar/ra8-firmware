@@ -87,7 +87,7 @@ import re
 import sys
 
 from doxy_lex import blank_noncode
-from lint_targets import is_build_output_path
+from lint_targets import firmware_app_dirs, is_build_output_path
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 SOURCE_SUFFIXES = {
@@ -192,6 +192,15 @@ def _firmware_scan_dirs() -> list[pathlib.Path]:
 
     Deliberately narrower than the whole tree: host tools and tests may
     allocate freely, and Rule 3 is a statement about what runs on the target.
+
+    ``apps/`` is the exception that has to be named. It is the products tier
+    and ``_tool_scan_dirs()`` claims all of it, but a firmware PRODUCT is not a
+    host program: the e-reader image runs on the chip, where Rule 3 says zero
+    dynamic allocation after init, and letting the products root swallow it
+    would quietly downgrade it to the report-only tool scope. The firmware
+    products are derived, not listed -- see ``lint_targets.firmware_app_dirs``
+    -- and ``_scope()`` tests the firmware roots first, so the narrower claim
+    wins.
     """
     out: list[pathlib.Path] = []
     libs = REPO_ROOT / "libs"
@@ -207,6 +216,7 @@ def _firmware_scan_dirs() -> list[pathlib.Path]:
     c6_port = REPO_ROOT / "port" / "esp32_c6"
     if c6_port.is_dir():
         out.append(c6_port)
+    out.extend(REPO_ROOT / rel for rel in firmware_app_dirs())
     examples = REPO_ROOT / "examples"
     if examples.is_dir():
         for tier in sorted(examples.iterdir()):

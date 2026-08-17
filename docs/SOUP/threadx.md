@@ -36,7 +36,7 @@ firmware as Software Of Unknown Provenance (SOUP).
   `examples/ek_ra8d2/hw_validated/`** (measured at `e0ac93111`). They include
   all 26 applications that link USBX, all five ESP32-C6 Wi-Fi applications and
   the DFU bootloader family. Beyond the examples, the non-secure e-reader
-  product image enters the kernel directly (`src/app/ns_main.c`,
+  product image enters the kernel directly (`apps/stand_alone/ereader/ns_main.c`,
   `tx_kernel_enter()`), and the first-party `libs/ra8_wdt_supervisor/` creates
   a ThreadX thread.
 - The applications actually NAMED `threadx_*` are ten in the supported tiers:
@@ -78,7 +78,8 @@ DO-178C Section 12.1.4 (previously developed software):
 
 - Direct ThreadX API calls are **not** confined to the `threadx_*` examples.
   The first-party callers are `libs/ra8_wdt_supervisor/` (`tx_thread_create`),
-  `src/app/ns_main.c` (two `tx_thread_create` plus `tx_kernel_enter`, the
+  `apps/stand_alone/ereader/ns_main.c` (two `tx_thread_create` plus
+  `tx_kernel_enter`, the
   e-reader NS product image), `libs/ra8_core/src/ra8_time.c` (a weak-linked
   `_tx_timer_interrupt` tick hook that resolves to nothing when the kernel is
   absent), and the ports `port/threadx/`, `port/usbx/`, `port/netxduo/`,

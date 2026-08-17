@@ -1,5 +1,5 @@
 /**
- * @file src/app/system_init.c
+ * @file apps/stand_alone/ereader/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
  *
  * @par Tag

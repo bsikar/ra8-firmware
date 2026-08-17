@@ -20,8 +20,9 @@ $(RA8_EMU_GENERIC): emu-%: %
 	$(RA8_EMU_DIR)/build/ra8_emulator $(RA8_APP_DIR_$*)/build/$*.elf \
 		--panel $(RA8_EMU_DIR)/panels/$(PANEL).toml --view
 
-# The e-reader (src/app) is a two-image TrustZone Debug build; ra8_emulator loads
-# the Non-Secure .elf via --ns across a hand-emulated BLXNS seam.
+# The e-reader (apps/stand_alone/ereader) is a two-image TrustZone Debug build;
+# ra8_emulator loads the Non-Secure .elf via --ns across a hand-emulated BLXNS
+# seam.
 RA8_EREADER_EMU_DIR := $(RA8_APP_DIR_ra8d2-ereader)/build-emu
 emu-ra8d2-ereader:
 	$(CMAKE) -S $(RA8_APP_DIR_ra8d2-ereader) -B $(RA8_EREADER_EMU_DIR) \

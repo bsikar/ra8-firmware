@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# CMakeLists.txt for the main e-reader application (src/app).
+# CMakeLists.txt for the main e-reader application (apps/stand_alone/ereader).
 #
 # Configures a two-project TrustZone build:
 # 1. ra8d2-ereader.elf (Secure Boot + Key Vault + NSC Veneers)

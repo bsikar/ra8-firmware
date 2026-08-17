@@ -1,6 +1,7 @@
 # tz_threadx_demo -- TrustZone + ThreadX starter example
 
-A minimal, teaching-focused example showing how the main e-reader application (`src/app`) works. 
+A minimal, teaching-focused example showing how the main e-reader application
+(`apps/stand_alone/ereader`) works. 
 
 This example splits CPU0 (Cortex-M85) into a Secure and a Non-Secure project:
 1. **Secure Side (`tz_threadx_demo`)**: Handles secure boot, configures the SAU (Security Attribution Unit), hosts the Non-Secure Callable (NSC) veneers, and transitions to the Non-Secure world.

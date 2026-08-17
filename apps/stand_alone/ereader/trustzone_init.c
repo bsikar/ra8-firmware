@@ -1,5 +1,5 @@
 /**
- * @file src/app/trustzone_init.c
+ * @file apps/stand_alone/ereader/trustzone_init.c
  * @brief Single-core TrustZone bring-up for a RAM-resident NS image (#60)
  *
  * @par Tag

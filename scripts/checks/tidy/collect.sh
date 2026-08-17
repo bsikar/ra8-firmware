@@ -217,6 +217,14 @@ route_bucket_by_language() {
   return 1
 }
 
+# The FIRMWARE PRODUCT rule below deserves its own note, because it is the one
+# path pattern here that is narrower than the root it sits in. apps/ is the
+# products tier and its other inhabitants are host programs, routed to the
+# tools bucket at the end of route_bucket() -- so the e-reader cannot be
+# matched by `*/apps/*` and has to be named ahead of it. The set of firmware
+# products is derived in lint_targets.firmware_app_dirs(); keep the two in
+# step, exactly as HOST_PORT_ROOTS is kept in step with
+# build_cross_compile_db.py.
 route_bucket() {
   local f="$1"
   route_bucket_by_language "$f" && return 0
@@ -240,12 +248,11 @@ route_bucket() {
     # behind `__STDC_HOSTED__ == 0`: a hosted-flags parse cannot see the
     # declaration and reports `use of undeclared identifier 'main'` (#707).
     */libs/ra8_board_*/boot/*) echo firmware && return 0 ;;
-    # src/app is the ra8d2-ereader image -- a cross-compiled application built
-    # by ra8_add_app(), registered in RA8_APPS, and present in the cross
-    # database. It is firmware that happens not to live under examples/, and
-    # routing it to the host bucket analysed its `void main(void)` entry point
-    # as if it were a hosted program (#707).
-    */src/app/*) echo firmware && return 0 ;;
+    # The e-reader image: a cross-compiled application built by ra8_add_app(),
+    # registered in RA8_APPS and present in the cross database. Routing it to
+    # the host bucket analysed its `void main(void)` as a hosted program
+    # (#707). See the products-tier note above route_bucket().
+    */apps/stand_alone/ereader/*) echo firmware && return 0 ;;
   esac
   # A libs/ or src/ TU that includes a ThreadX / NetX / USBX vendor header is
   # firmware too: the host database carries no path to those headers, so it

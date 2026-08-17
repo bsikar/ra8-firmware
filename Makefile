@@ -71,9 +71,10 @@ _RA8_APP_MAINS := $(wildcard $(ROOT)/examples/*/*/main.c) \
 RA8_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA8_APP_MAINS))))
 $(foreach m,$(_RA8_APP_MAINS),$(eval RA8_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
 
-# Register the main e-reader application target manually (src/app, not examples/).
+# Register the main e-reader application target manually (the products tier, not
+# examples/). Deliberately not globbed -- see the matching note in CMakeLists.txt.
 RA8_APPS       += ra8d2-ereader
-RA8_APP_DIR_ra8d2-ereader := $(ROOT)/src/app
+RA8_APP_DIR_ra8d2-ereader := $(ROOT)/apps/stand_alone/ereader
 
 # Per-app shorthand target lists.
 RA8_FLASH := $(addprefix flash-,$(RA8_APPS))
