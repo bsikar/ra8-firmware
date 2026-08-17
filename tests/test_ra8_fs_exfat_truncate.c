@@ -121,6 +121,29 @@ RA8_INTERNAL static uint8_t internal_xt_is_contig(const ra8_fs_mount_t* h)
 }
 
 /**
+ * @brief Compare one byte against its expected generator value.
+ * @details Isolated to its own function so the failure macro's internal
+ * branching does not push the caller's loop past the nesting-depth cap.
+ * @param[in] actual  Byte read back from the driver.
+ * @param[in] pos     File offset @p actual corresponds to.
+ * @param[in] pat_end File offsets below this must match the generator; the rest zero.
+ * @param[in] seed    Generator seed.
+ * @return Nothing; a mismatch fails the test via ::TEST_FAIL_FMT.
+ * @pre None.
+ * @post No state is modified.
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_expect_byte(uint8_t actual, uint32_t pos, uint32_t pat_end, uint8_t seed)
+{
+  const uint8_t exp = (pos < pat_end) ? internal_stream_byte_at(pos, seed) : 0U;
+  if (actual != exp) {
+    TEST_FAIL_FMT("byte %u wrong", (unsigned)pos);
+  }
+}
+
+/**
  * @brief Assert @p got bytes at file offset @p pos are @p seed then zeros.
  * @param[in] buf     Bytes read back from the driver.
  * @param[in] got     Number of bytes in @p buf.
@@ -133,7 +156,7 @@ RA8_INTERNAL static uint8_t internal_xt_is_contig(const ra8_fs_mount_t* h)
  * @post No state changes.
  * @post The scan stops at the first mismatch.
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0 @details Implements the bounded expect span x fixture step using caller-owned state.
+ * @since 0.1.0
  */
 RA8_INTERNAL static void internal_expect_span_x(const uint8_t* buf,
                                                 uint32_t       got,
@@ -142,11 +165,7 @@ RA8_INTERNAL static void internal_expect_span_x(const uint8_t* buf,
                                                 uint8_t        seed)
 {
   for (uint32_t i = 0U; i < got; i++) {
-    const uint8_t exp = ((pos + i) < pat_end) ? internal_stream_byte_at(pos + i, seed) : 0U;
-    if (buf[i] != exp) {
-      TEST_FAIL_FMT("byte %u wrong", (unsigned)(pos + i));
-      return;
-    }
+    internal_expect_byte(buf[i], pos + i, pat_end, seed);
   }
 }
 
@@ -176,7 +195,7 @@ RA8_INTERNAL static void internal_expect_pat_then_zero(ra8_fs_mount_t* h,
   uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(total, size);
-  static uint8_t buf[k_xs_big_chunk];
+  static uint8_t s_buf[k_xs_big_chunk];
   uint32_t       pos = 0U;
   while (pos < total) {
     uint32_t want = total - pos;
@@ -184,9 +203,9 @@ RA8_INTERNAL static void internal_expect_pat_then_zero(ra8_fs_mount_t* h,
       want = (uint32_t)k_xs_big_chunk;
     }
     uint32_t got = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, buf, want, &got));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_buf, want, &got));
     TEST_ASSERT_EQ(want, got);
-    internal_expect_span_x(buf, got, pos, pat_end, seed);
+    internal_expect_span_x(s_buf, got, pos, pat_end, seed);
     pos += got;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -395,9 +414,9 @@ RA8_INTERNAL static void internal_test_exfat_grow_chain_transition(void)
 
   /* Park a blocker on A's tail + 1: the write above left the next-free hint one
    * past A's only cluster, so this file takes exactly that cluster. */
-  static uint8_t blk[k_xt_blk_len];
-  memset(blk, (int)k_xt_blk_fill, sizeof blk);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BLK.BIN", blk, (uint32_t)k_xt_blk_len));
+  static uint8_t s_blk[k_xt_blk_len];
+  memset(s_blk, (int)k_xt_blk_fill, sizeof s_blk);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BLK.BIN", s_blk, (uint32_t)k_xt_blk_len));
 
   /* Grow A: it cannot stay contiguous, so it becomes a real FAT chain. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(fa, (uint64_t)2U * cb));
@@ -411,11 +430,11 @@ RA8_INTERNAL static void internal_test_exfat_grow_chain_transition(void)
   /* The conversion touched only A. */
   ra8_fs_file_t* fb = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BLK.BIN", k_ra8_fs_mode_read, &fb));
-  static uint8_t got[k_xt_blk_len];
+  static uint8_t s_got[k_xt_blk_len];
   uint32_t       n = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(fb, got, (uint32_t)k_xt_blk_len, &n));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(fb, s_got, (uint32_t)k_xt_blk_len, &n));
   TEST_ASSERT_EQ(k_xt_blk_len, n);
-  TEST_ASSERT_EQ(0, memcmp(got, blk, sizeof blk));
+  TEST_ASSERT_EQ(0, memcmp(s_got, s_blk, sizeof s_blk));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fb));
 
   internal_stream_dump_image("exfat_grow_chain_transition", h);
@@ -458,9 +477,9 @@ RA8_INTERNAL static void internal_test_exfat_shrink_chained(void)
 
   /* Park a blocker on the tail's successor, then grow to three clusters: the
    * first growth converts to a chain, the second extends it. */
-  static uint8_t blk[k_xt_blk_len];
-  memset(blk, (int)k_xt_blk_fill, sizeof blk);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BLK.BIN", blk, (uint32_t)k_xt_blk_len));
+  static uint8_t s_blk[k_xt_blk_len];
+  memset(s_blk, (int)k_xt_blk_fill, sizeof s_blk);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BLK.BIN", s_blk, (uint32_t)k_xt_blk_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(fa, (uint64_t)3U * cb));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fa));
   TEST_ASSERT_EQ(0U, internal_xt_is_contig(h)); /* now a FAT chain */

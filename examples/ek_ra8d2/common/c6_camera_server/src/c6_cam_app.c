@@ -241,20 +241,21 @@ RA8_INTERNAL static bool internal_c6_cam_prepare_link(void)
 }
 
 /**
- * @brief Join configured Wi-Fi and acquire a DHCP lease.
- * @details Starts station mode, reads the MAC, associates, and binds NetX to the link.
- * @param[out] lease Destination for the bound network lease.
- * @return Join outcome.
- * @retval true Association and DHCP completed with a bound lease.
- * @retval false Credentials, control, association, or DHCP failed.
+ * @brief Start station mode and associate with the configured AP.
+ * @details Starts Wi-Fi, reads the station MAC, applies the compiled
+ * credentials, joins, and waits for the association result.
+ * @param[out] mac Destination for the bound station MAC address.
+ * @return Association outcome.
+ * @retval true Wi-Fi control and association completed.
+ * @retval false Credentials, control, or association failed.
  * @pre `s_link` is open and ready for Wi-Fi commands.
- * @pre `lease` points to writable storage.
- * @post On success, `lease->bound` is true and address fields are valid.
+ * @pre `mac` points to writable storage.
+ * @post On success, `*mac` holds the station MAC address.
  * @post Failure diagnostics identify the stage or association reason.
  * @note Credentials are compiled into a generated translation unit.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_c6_cam_join(c6_cam_lease_t* lease)
+RA8_INTERNAL static bool internal_c6_cam_associate(ra8_c6link_mac_t* mac)
 {
   if (g_c6_cam_wifi_ssid[0] == '\0') {
     c6_cam_puts("c6_cam: FAIL no Wi-Fi credentials compiled in\r\n");
@@ -266,8 +267,7 @@ RA8_INTERNAL static bool internal_c6_cam_join(c6_cam_lease_t* lease)
     internal_c6_cam_report_fault("wifi_start", err);
     return false;
   }
-  ra8_c6link_mac_t mac = {};
-  err                  = ra8_c6link_wifi_mac(&s_link, &mac);
+  err = ra8_c6link_wifi_mac(&s_link, mac);
   if (err != k_ra8_ok) {
     internal_c6_cam_report_fault("wifi_mac", err);
     return false;
@@ -297,14 +297,84 @@ RA8_INTERNAL static bool internal_c6_cam_join(c6_cam_lease_t* lease)
   c6_cam_puts("c6_cam: associated events=");
   c6_cam_put_u32((uint32_t)s_events);
   c6_cam_puts("\r\n");
+  return true;
+}
 
-  err = c6_cam_net_up(&s_link, &mac, lease);
+/**
+ * @brief Join configured Wi-Fi and acquire a DHCP lease.
+ * @details Associates with the configured AP, then binds NetX to the link.
+ * @param[out] lease Destination for the bound network lease.
+ * @return Join outcome.
+ * @retval true Association and DHCP completed with a bound lease.
+ * @retval false Credentials, control, association, or DHCP failed.
+ * @pre `s_link` is open and ready for Wi-Fi commands.
+ * @pre `lease` points to writable storage.
+ * @post On success, `lease->bound` is true and address fields are valid.
+ * @post Failure diagnostics identify the stage or association reason.
+ * @note Credentials are compiled into a generated translation unit.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_c6_cam_join(c6_cam_lease_t* lease)
+{
+  ra8_c6link_mac_t mac = {};
+  if (!internal_c6_cam_associate(&mac)) {
+    return false;
+  }
+
+  const ra8_err_t err = c6_cam_net_up(&s_link, &mac, lease);
   if ((err != k_ra8_ok) || !lease->bound) {
     c6_cam_puts("c6_cam: FAIL DHCP err=");
     c6_cam_puts(ra8_err_to_str(err));
     c6_cam_puts("\r\n");
     return false;
   }
+  return true;
+}
+
+/**
+ * @brief Initialize the camera backend and prove one startup JPEG capture.
+ * @details Runs after SDRAM and audio are already confirmed working, so a
+ * camera failure is never masked by an earlier media stage.
+ * @return Whether camera initialization and the startup capture passed.
+ * @retval true Camera initialization and one JPEG capture passed.
+ * @retval false A diagnostic was emitted for the failing stage.
+ * @pre SDRAM and audio initialization already passed.
+ * @pre No network server is using the camera backend.
+ * @post On success, the camera is capture-ready.
+ * @post On failure, the caller may halt without exposing an HTTP endpoint.
+ * @note The startup JPEG remains owned by the selected camera backend.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_c6_cam_prepare_camera(void)
+{
+  const ra8_err_t camera = c6_cam_camera_init();
+  if (camera != k_ra8_ok) {
+    c6_cam_puts("c6_cam: FAIL camera init err=");
+    c6_cam_puts(ra8_err_to_str(camera));
+    c6_cam_camera_report_last_error();
+    c6_cam_puts("\r\n");
+    return false;
+  }
+  const uint8_t*        startup_jpeg       = nullptr;
+  uint32_t              startup_jpeg_bytes = 0U;
+  c6_cam_frame_timing_t startup_timing     = {};
+  const ra8_err_t       startup_capture =
+    c6_cam_camera_capture_jpeg(&startup_jpeg, &startup_jpeg_bytes, &startup_timing);
+  if (startup_capture != k_ra8_ok) {
+    c6_cam_puts("c6_cam: FAIL camera selftest err=");
+    c6_cam_puts(ra8_err_to_str(startup_capture));
+    c6_cam_camera_report_last_error();
+    c6_cam_puts("\r\n");
+    return false;
+  }
+  c6_cam_puts("c6_cam: camera selftest=PASS jpeg_bytes=");
+  c6_cam_put_u32(startup_jpeg_bytes);
+  c6_cam_puts(" capture_ms=");
+  c6_cam_put_u32(startup_timing.capture_ms);
+  c6_cam_puts("\r\n");
+  c6_cam_puts("c6_cam: camera=PASS ");
+  c6_cam_puts(c6_cam_camera_description());
+  c6_cam_puts("\r\n");
   return true;
 }
 
@@ -337,35 +407,7 @@ RA8_INTERNAL static bool internal_c6_cam_prepare_media(void)
     return false;
   }
   c6_cam_puts("c6_cam: audio=PASS mic=MIC1 fs=16000Hz pcm=20bit\r\n");
-  const ra8_err_t camera = c6_cam_camera_init();
-  if (camera != k_ra8_ok) {
-    c6_cam_puts("c6_cam: FAIL camera init err=");
-    c6_cam_puts(ra8_err_to_str(camera));
-    c6_cam_camera_report_last_error();
-    c6_cam_puts("\r\n");
-    return false;
-  }
-  const uint8_t*        startup_jpeg       = nullptr;
-  uint32_t              startup_jpeg_bytes = 0U;
-  c6_cam_frame_timing_t startup_timing     = {};
-  const ra8_err_t       startup_capture =
-    c6_cam_camera_capture_jpeg(&startup_jpeg, &startup_jpeg_bytes, &startup_timing);
-  if (startup_capture != k_ra8_ok) {
-    c6_cam_puts("c6_cam: FAIL camera selftest err=");
-    c6_cam_puts(ra8_err_to_str(startup_capture));
-    c6_cam_camera_report_last_error();
-    c6_cam_puts("\r\n");
-    return false;
-  }
-  c6_cam_puts("c6_cam: camera selftest=PASS jpeg_bytes=");
-  c6_cam_put_u32(startup_jpeg_bytes);
-  c6_cam_puts(" capture_ms=");
-  c6_cam_put_u32(startup_timing.capture_ms);
-  c6_cam_puts("\r\n");
-  c6_cam_puts("c6_cam: camera=PASS ");
-  c6_cam_puts(c6_cam_camera_description());
-  c6_cam_puts("\r\n");
-  return true;
+  return internal_c6_cam_prepare_camera();
 }
 
 /**

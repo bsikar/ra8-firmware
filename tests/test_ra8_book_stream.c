@@ -132,6 +132,7 @@ RA8_INTERNAL static void internal_test_header_table_string_crc_corruption(void)
  * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_nonempty_string_ref
  * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_mark_forward_link
  * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_nodes
+ * Decisions: libs/ra8_book/src/ra8_book_stream.c@internal_validate_one_node
  */
 RA8_INTERNAL static void internal_test_dom_ownership_and_renderer_safety(void)
 {

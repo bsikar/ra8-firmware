@@ -94,14 +94,81 @@ RA8_INTERNAL static uint32_t internal_crc32_block(uint32_t crc, const uint8_t* d
   return crc;
 }
 
-RA8_PRIV ra8_err_t priv_ra8_rabook_import_crc_stream(ra8_rabook_import_read_fn read_fn,
-                                                     void*                     read_ctx,
-                                                     uint64_t                  expected_size,
-                                                     uint8_t*                  buf,
-                                                     uint32_t                  cap,
-                                                     uint32_t                  max_reads,
-                                                     uint32_t*                 out_size,
-                                                     uint32_t*                 out_crc)
+/**
+ * @brief Read and CRC-fold one bounded chunk of the expected stream.
+ * @details Requests up to @p cap bytes (less near the end of the expected
+ * size), rejects a zero-byte or over-large read, and folds the bytes read
+ * into the running CRC and total.
+ * @param[in] read_fn Caller-owned positioned reader.
+ * @param[in,out] read_ctx Reader-specific context.
+ * @param[in] expected_size Total expected stream size in bytes.
+ * @param[in,out] buf Caller-owned scratch buffer of at least @p cap bytes.
+ * @param[in] cap Capacity of @p buf in bytes.
+ * @param[in,out] crc Running CRC accumulator.
+ * @param[in,out] total Running byte count read so far.
+ * @return Read/validation status.
+ * @retval k_ra8_ok One chunk was read and folded.
+ * @retval k_ra8_err_invalid_size The reader returned zero or too many bytes.
+ * @retval other The injected reader failed.
+ * @pre @p total is strictly less than @p expected_size on entry.
+ * @post On success @p crc and @p total reflect the newly read chunk.
+ * @note Not thread-safe: mutates caller-owned scratch state.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_crc_stream_read_chunk(ra8_rabook_import_read_fn read_fn,
+                                                             void*                     read_ctx,
+                                                             uint64_t  expected_size,
+                                                             uint8_t*  buf,
+                                                             uint32_t  cap,
+                                                             uint32_t* crc,
+                                                             uint32_t* total)
+{
+  uint64_t remain  = expected_size - (uint64_t)*total;
+  uint32_t request = cap;
+  if (remain < (uint64_t)request) {
+    request = (uint32_t)remain;
+  }
+  uint32_t        got = 0U;
+  const ra8_err_t err = read_fn(read_ctx, buf, request, &got);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if ((got == 0U) || (got > request)) {
+    return k_ra8_err_invalid_size;
+  }
+  *crc = internal_crc32_block(*crc, buf, got);
+  *total += got;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Validate the crc-stream entry point's arguments.
+ * @details Rejects any null pointer argument, an empty read capacity, an
+ * expected size that cannot fit a uint32_t, and a read budget too small to
+ * cover the expected size.
+ * @param[in] read_fn Caller-owned positioned reader.
+ * @param[in] buf Caller-owned scratch buffer.
+ * @param[in] out_size Destination for the read byte count.
+ * @param[in] out_crc Destination for the folded CRC.
+ * @param[in] expected_size Total expected stream size in bytes.
+ * @param[in] cap Capacity of @p buf in bytes.
+ * @param[in] max_reads Bounded read-attempt budget.
+ * @return Argument validation status.
+ * @retval k_ra8_ok Every argument is present and within bounds.
+ * @retval k_ra8_err_null_ptr A required pointer argument is NULL.
+ * @retval k_ra8_err_invalid_size A capacity, size, or budget bound is violated.
+ * @pre None; every argument is treated as untrusted.
+ * @post No argument or output state is modified.
+ * @note Not thread-safe with respect to concurrent callers.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_crc_stream_validate_args(ra8_rabook_import_read_fn read_fn,
+                                                                const uint8_t*            buf,
+                                                                const uint32_t*           out_size,
+                                                                const uint32_t*           out_crc,
+                                                                uint64_t expected_size,
+                                                                uint32_t cap,
+                                                                uint32_t max_reads)
 {
   RA8_CHECK_NULL_PTR((const void*)read_fn, s_tag, "read_fn");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf");
@@ -115,25 +182,37 @@ RA8_PRIV ra8_err_t priv_ra8_rabook_import_crc_stream(ra8_rabook_import_read_fn r
   if (required_reads > (uint64_t)max_reads) {
     return k_ra8_err_invalid_size;
   }
+  return k_ra8_ok;
+}
+
+RA8_PRIV ra8_err_t priv_ra8_rabook_import_crc_stream(ra8_rabook_import_read_fn read_fn,
+                                                     void*                     read_ctx,
+                                                     uint64_t                  expected_size,
+                                                     uint8_t*                  buf,
+                                                     uint32_t                  cap,
+                                                     uint32_t                  max_reads,
+                                                     uint32_t*                 out_size,
+                                                     uint32_t*                 out_crc)
+{
+  const ra8_err_t arg_err = internal_crc_stream_validate_args(read_fn,
+                                                              buf,
+                                                              out_size,
+                                                              out_crc,
+                                                              expected_size,
+                                                              cap,
+                                                              max_reads);
+  if (arg_err != k_ra8_ok) {
+    return arg_err;
+  }
 
   uint32_t crc   = (uint32_t)k_crc32_seed;
   uint32_t total = 0U;
   for (uint32_t i = 0U; (i < max_reads) && ((uint64_t)total < expected_size); ++i) {
-    uint64_t remain  = expected_size - (uint64_t)total;
-    uint32_t request = cap;
-    if (remain < (uint64_t)request) {
-      request = (uint32_t)remain;
-    }
-    uint32_t        got = 0U;
-    const ra8_err_t err = read_fn(read_ctx, buf, request, &got);
+    const ra8_err_t err =
+      internal_crc_stream_read_chunk(read_fn, read_ctx, expected_size, buf, cap, &crc, &total);
     if (err != k_ra8_ok) {
       return err;
     }
-    if ((got == 0U) || (got > request)) {
-      return k_ra8_err_invalid_size;
-    }
-    crc = internal_crc32_block(crc, buf, got);
-    total += got;
   }
   if ((uint64_t)total != expected_size) {
     return k_ra8_err_invalid_size;

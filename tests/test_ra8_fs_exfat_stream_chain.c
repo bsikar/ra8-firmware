@@ -136,6 +136,25 @@ internal_chain_walk(const ra8_fs_mount_t* h, uint32_t first, uint32_t* out, uint
 }
 
 /**
+ * @brief Fail loudly if one walked cluster belongs to another file's chain.
+ * @details Isolated to its own function so the failure macro's internal
+ * branching does not push the caller's loop past the nesting-depth cap.
+ * @param[in] seen_cluster One cluster index from the walked chain.
+ * @param[in] taken Cluster index that must not reappear in the chain.
+ * @return Nothing; a match fails the test via ::TEST_FAIL_FMT.
+ * @pre None.
+ * @post No state is modified.
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_not_taken(uint32_t seen_cluster, uint32_t taken)
+{
+  if (seen_cluster == taken) {
+    TEST_FAIL_FMT("chain claims cluster %u, which belongs to another file", (unsigned)seen_cluster);
+  }
+}
+
+/**
  * @brief Assert the FAT chain from @p first covers @p total bytes and skips @p taken.
  *
  * @details The three things a materialised chain has to get right, checked
@@ -165,18 +184,15 @@ internal_expect_chain_over(const ra8_fs_mount_t* h, uint32_t first, uint32_t tot
 {
   const uint32_t  cbytes = h->sectors_per_cluster * (uint32_t)k_mut_block_size;
   const uint32_t  want   = (total + cbytes - 1U) / cbytes;
-  static uint32_t seen[k_xsc_chain_max];
-  const uint32_t  got = internal_chain_walk(h, first, seen, (uint32_t)k_xsc_chain_max);
+  static uint32_t s_seen[k_xsc_chain_max];
+  const uint32_t  got = internal_chain_walk(h, first, s_seen, (uint32_t)k_xsc_chain_max);
   TEST_ASSERT_EQ(want, got);
   TEST_ASSERT(got >= (uint32_t)k_xsc_min_chain);
-  TEST_ASSERT_EQ(first, seen[0]);
+  TEST_ASSERT_EQ(first, s_seen[0]);
   for (uint32_t i = 1U; i < got; i++) {
-    if (seen[i] == taken) {
-      TEST_FAIL_FMT("chain claims cluster %u, which belongs to another file", (unsigned)seen[i]);
-      break;
-    }
+    internal_expect_not_taken(s_seen[i], taken);
   }
-  TEST_ASSERT(internal_fat_entry(h, seen[got - 1U]) >= (uint32_t)k_xsc_eoc_min);
+  TEST_ASSERT(internal_fat_entry(h, s_seen[got - 1U]) >= (uint32_t)k_xsc_eoc_min);
 }
 
 /**
@@ -423,13 +439,13 @@ RA8_INTERNAL static void internal_expect_patched_head(ra8_fs_mount_t* h, uint32_
 {
   ra8_fs_file_t* r = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "SEEK.BIN", k_ra8_fs_mode_read, &r));
-  static uint8_t back[k_xs_sub_sector + k_xs_multi_cluster];
+  static uint8_t s_back[k_xs_sub_sector + k_xs_multi_cluster];
   uint32_t       got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(r, back, total, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(r, s_back, total, &got));
   TEST_ASSERT_EQ(total, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(r));
-  internal_stream_expect_span(back, (uint32_t)k_xs_chunk, 0U, (uint8_t)k_xs_seed_b);
-  internal_stream_expect_span(&back[k_xs_chunk],
+  internal_stream_expect_span(s_back, (uint32_t)k_xs_chunk, 0U, (uint8_t)k_xs_seed_b);
+  internal_stream_expect_span(&s_back[k_xs_chunk],
                               total - (uint32_t)k_xs_chunk,
                               (uint32_t)k_xs_chunk,
                               (uint8_t)k_xs_seed_a);
@@ -481,10 +497,10 @@ RA8_INTERNAL static void internal_test_stream_chained_backward_seek(void)
                                 (uint32_t)k_xs_sub_sector,
                                 (uint8_t)k_xs_seed_a);
   /* The waypoint now sits in the last cluster; write below it. */
-  static uint8_t patch[k_xs_chunk];
-  internal_stream_fill_at(patch, (uint32_t)k_xs_chunk, 0U, (uint8_t)k_xs_seed_b);
+  static uint8_t s_patch[k_xs_chunk];
+  internal_stream_fill_at(s_patch, (uint32_t)k_xs_chunk, 0U, (uint8_t)k_xs_seed_b);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, patch, (uint32_t)k_xs_chunk));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_patch, (uint32_t)k_xs_chunk));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   const uint32_t total = (uint32_t)k_xs_sub_sector + (uint32_t)k_xs_multi_cluster;
@@ -603,13 +619,13 @@ RA8_INTERNAL static void internal_test_stream_volume_full(void)
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "FILL.BIN", k_ra8_fs_mode_write, &f));
-  static uint8_t buf[k_xs_big_chunk];
+  static uint8_t s_buf[k_xs_big_chunk];
   ra8_err_t      last  = k_ra8_ok;
   uint32_t       wrote = 0U;
   const uint32_t cap   = h->count_of_clusters + 2U;
   for (uint32_t i = 0U; i < cap; i++) {
-    memset(buf, (int)(i & (uint32_t)k_xsc_fill_step), sizeof buf);
-    last = ra8_fs_write(f, buf, (uint32_t)k_xs_big_chunk);
+    memset(s_buf, (int)(i & (uint32_t)k_xsc_fill_step), sizeof s_buf);
+    last = ra8_fs_write(f, s_buf, (uint32_t)k_xs_big_chunk);
     if (last != k_ra8_ok) {
       break;
     }
@@ -630,7 +646,7 @@ RA8_INTERNAL static void internal_test_stream_volume_full(void)
   ra8_fs_file_t* r   = nullptr;
   uint32_t       got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "FILL.BIN", k_ra8_fs_mode_read, &r));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(r, buf, (uint32_t)k_xs_big_chunk, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(r, s_buf, (uint32_t)k_xs_big_chunk, &got));
   TEST_ASSERT_EQ(k_xs_big_chunk, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(r));
 

@@ -232,6 +232,73 @@ RA8_INTERNAL static ra8_err_t internal_fat_dir_advance_sector(ra8_fs_dir_private
 
 RA8_EXPECTS_LOCK("ra8_fs_lock")
 /**
+ * @brief Scan one already-read sector's remaining entries for one visible entry.
+ * @details Advances the entry cursor across free/used/LFN/dot entries,
+ *          assembling valid LFN fragments, until a visible entry is copied,
+ *          the directory's end marker is found, or the sector is exhausted.
+ * @param[in,out] state Open private cursor state.
+ * @param[in] sector Bytes of the already-read directory sector.
+ * @param[out] out Stable copied entry value.
+ * @param[out] out_entry True when one entry was copied into @p out.
+ * @return Name-conversion status.
+ * @retval k_ra8_ok The sector was scanned to a stopping point without error.
+ * @pre @p sector holds `priv_bps(state->mount)` valid bytes.
+ * @pre `state->fat_walk.entry_idx` indexes within @p sector.
+ * @post One of: an entry was copied (`*out_entry` true), the directory's end
+ *       marker was found (`state->finished` true), or the sector was
+ *       exhausted so the caller must advance to the next one.
+ * @note Not thread-safe; caller holds the filesystem lock.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_fat_dir_scan_sector(ra8_fs_dir_private_t* state,
+                                                           const uint8_t*        sector,
+                                                           ra8_fs_dirent_t*      out,
+                                                           bool*                 out_entry)
+{
+  while (state->fat_walk.entry_idx < priv_bps(state->mount)) {
+    const uint8_t* entry = &sector[state->fat_walk.entry_idx];
+    state->fat_walk.entry_idx += (uint32_t)k_ra8_fs_dir_entry_bytes;
+    if (entry[k_dir_off_name] == k_dir_marker_free_perm) {
+      state->finished = true;
+      return k_ra8_ok;
+    }
+    if (entry[k_dir_off_name] == k_dir_marker_free_used) {
+      priv_lfn_reset(&state->fat_lfn);
+      continue;
+    }
+    if (entry[k_dir_off_attr] == k_ra8_fs_attr_lfn) {
+      priv_lfn_add(&state->fat_lfn, entry);
+      continue;
+    }
+    if (entry[k_dir_off_name] == k_dir_marker_dot) {
+      priv_lfn_reset(&state->fat_lfn);
+      continue;
+    }
+    char short_name[(uint32_t)k_ra8_fs_short_name_len + 1U] = {};
+    char long_name[k_lfn_utf8_cap]                          = {};
+    priv_83_to_str(&entry[k_dir_off_name], entry[k_dir_off_ntres], short_name);
+    uint32_t        units = 0U;
+    const uint16_t* name_units =
+      priv_lfn_units_for(&state->fat_lfn, &entry[k_dir_off_name], &units);
+    const char* name = short_name;
+    if (name_units != nullptr) {
+      if (priv_utf16_to_utf8(name_units, units, long_name, (uint32_t)sizeof(long_name)) ==
+          k_ra8_ok) {
+        name = long_name;
+      }
+    }
+    (void)memcpy(out->name, name, strlen(name) + 1U);
+    out->attr       = entry[k_dir_off_attr];
+    out->size_bytes = (uint64_t)priv_rd32(&entry[k_dir_off_file_size]);
+    priv_lfn_reset(&state->fat_lfn);
+    *out_entry = true;
+    return k_ra8_ok;
+  }
+  return k_ra8_ok;
+}
+
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+/**
  * @brief Copy one visible FAT entry from an independent cursor.
  * @details Walks bounded directory sectors, assembles valid LFN fragments,
  *          and copies one stable name/attribute/size value per successful step.
@@ -267,44 +334,9 @@ internal_fat_dir_next(ra8_fs_dir_private_t* state, ra8_fs_dirent_t* out, bool* o
     if (err != k_ra8_ok) {
       return err;
     }
-    while (state->fat_walk.entry_idx < priv_bps(state->mount)) {
-      const uint8_t* entry = &sector[state->fat_walk.entry_idx];
-      state->fat_walk.entry_idx += (uint32_t)k_ra8_fs_dir_entry_bytes;
-      if (entry[k_dir_off_name] == k_dir_marker_free_perm) {
-        state->finished = true;
-        return k_ra8_ok;
-      }
-      if (entry[k_dir_off_name] == k_dir_marker_free_used) {
-        priv_lfn_reset(&state->fat_lfn);
-        continue;
-      }
-      if (entry[k_dir_off_attr] == k_ra8_fs_attr_lfn) {
-        priv_lfn_add(&state->fat_lfn, entry);
-        continue;
-      }
-      if (entry[k_dir_off_name] == k_dir_marker_dot) {
-        priv_lfn_reset(&state->fat_lfn);
-        continue;
-      }
-      char short_name[(uint32_t)k_ra8_fs_short_name_len + 1U] = {};
-      char long_name[k_lfn_utf8_cap]                          = {};
-      priv_83_to_str(&entry[k_dir_off_name], entry[k_dir_off_ntres], short_name);
-      uint32_t        units = 0U;
-      const uint16_t* name_units =
-        priv_lfn_units_for(&state->fat_lfn, &entry[k_dir_off_name], &units);
-      const char* name = short_name;
-      if (name_units != nullptr) {
-        if (priv_utf16_to_utf8(name_units, units, long_name, (uint32_t)sizeof(long_name)) ==
-            k_ra8_ok) {
-          name = long_name;
-        }
-      }
-      (void)memcpy(out->name, name, strlen(name) + 1U);
-      out->attr       = entry[k_dir_off_attr];
-      out->size_bytes = (uint64_t)priv_rd32(&entry[k_dir_off_file_size]);
-      priv_lfn_reset(&state->fat_lfn);
-      *out_entry = true;
-      return k_ra8_ok;
+    err = internal_fat_dir_scan_sector(state, sector, out, out_entry);
+    if ((err != k_ra8_ok) || *out_entry || state->finished) {
+      return err;
     }
   }
   return k_ra8_ok;

@@ -144,7 +144,12 @@ static void internal_test_preflight_rejection(void)
  * @test Zero-progress and exhausted-budget reads never publish a key.
  * @par MC/DC:
  * Decision identity:
- * `libs/ra8_rabook_import/src/ra8_rabook_import.c@priv_ra8_rabook_import_crc_stream`.
+ * `libs/ra8_rabook_import/src/ra8_rabook_import.c@internal_crc_stream_validate_args`
+ * (capacity/width OR, factored out of the entry point's argument checks),
+ * `libs/ra8_rabook_import/src/ra8_rabook_import.c@priv_ra8_rabook_import_crc_stream`
+ * (loop AND), and
+ * `libs/ra8_rabook_import/src/ra8_rabook_import.c@internal_crc_stream_read_chunk`
+ * (progress OR, factored out of the read loop body).
  * The capacity/width OR uses the exact-success all-false control plus the
  * zero-capacity and UINT32_MAX+1 vectors in the preflight test. The loop AND
  * uses non-empty entry, empty-stream T,F exit, and exhausted-budget F,T exit.

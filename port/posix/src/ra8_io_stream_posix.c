@@ -86,6 +86,57 @@ RA8_INTERNAL static ra8_err_t internal_map_errno(int error_number)
   return k_ra8_fail;
 }
 
+/**
+ * @brief Perform one write attempt within the bounded retry loop.
+ * @details Issues one write, retries in place on EINTR up to the bounded
+ * interrupt limit, and maps every other negative result through
+ * ::internal_map_errno. A zero or over-reported result is rejected as a
+ * protocol violation.
+ * @param[in] fd Open POSIX descriptor.
+ * @param[in] bytes Source buffer.
+ * @param[in] length Total requested byte count.
+ * @param[in,out] done Running written-byte count; unchanged on a retry.
+ * @param[in,out] interrupts Running EINTR retry count.
+ * @param[in] writer Injected native write primitive.
+ * @param[in,out] writer_context Writer-specific context.
+ * @return Write status.
+ * @retval k_ra8_ok The write advanced @p done, or an in-limit EINTR retry
+ * left it unchanged.
+ * @retval k_ra8_err_retry_limit The bounded EINTR retry count was exceeded.
+ * @retval k_ra8_err_protocol_error The writer reported zero or excess bytes.
+ * @retval other The mapped native write error.
+ * @pre @p done is strictly less than @p length on entry.
+ * @post On success without a retry, @p done advances by the bytes written.
+ * @note Not thread-safe: mutates caller-owned scratch state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_write_loop_step(int                            fd,
+                                                       const uint8_t*                 bytes,
+                                                       uint32_t                       length,
+                                                       uint32_t*                      done,
+                                                       uint32_t*                      interrupts,
+                                                       ra8_io_stream_posix_write_fn_t writer,
+                                                       void* writer_context)
+{
+  int           error_number = 0;
+  const int64_t result = writer(writer_context, fd, &bytes[*done], length - *done, &error_number);
+  if (result < 0) {
+    if (error_number == EINTR) {
+      ++*interrupts;
+      if (*interrupts > (uint32_t)k_posix_write_interrupt_limit) {
+        return k_ra8_err_retry_limit;
+      }
+      return k_ra8_ok;
+    }
+    return internal_map_errno(error_number);
+  }
+  if ((result == 0) || ((uint64_t)result > (uint64_t)(length - *done))) {
+    return k_ra8_err_protocol_error;
+  }
+  *done += (uint32_t)result;
+  return k_ra8_ok;
+}
+
 RA8_PRIV ra8_err_t priv_ra8_io_stream_posix_write_loop(int                            fd,
                                                        const uint8_t*                 bytes,
                                                        uint32_t                       length,
@@ -101,25 +152,12 @@ RA8_PRIV ra8_err_t priv_ra8_io_stream_posix_write_loop(int                      
   uint32_t interrupts = 0U;
   RA8_LOOP_BOUND(UINT32_MAX);
   while (done < length) {
-    int           error_number = 0;
-    const int64_t result = writer(writer_context, fd, &bytes[done], length - done, &error_number);
-    if (result < 0) {
-      if (error_number == EINTR) {
-        ++interrupts;
-        if (interrupts > (uint32_t)k_posix_write_interrupt_limit) {
-          *out_written = done;
-          return k_ra8_err_retry_limit;
-        }
-        continue;
-      }
+    const ra8_err_t err =
+      internal_write_loop_step(fd, bytes, length, &done, &interrupts, writer, writer_context);
+    if (err != k_ra8_ok) {
       *out_written = done;
-      return internal_map_errno(error_number);
+      return err;
     }
-    if ((result == 0) || ((uint64_t)result > (uint64_t)(length - done))) {
-      *out_written = done;
-      return k_ra8_err_protocol_error;
-    }
-    done += (uint32_t)result;
   }
   *out_written = done;
   return k_ra8_ok;

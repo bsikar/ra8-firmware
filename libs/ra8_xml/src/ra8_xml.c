@@ -82,20 +82,29 @@ RA8_INTERNAL static bool internal_xml_char(uint32_t cp)
          ((cp >= k_priv_xml_supplementary_min) && (cp <= k_priv_xml_scalar_max));
 }
 
-/* see header for the documented contract. */
-RA8_INTERNAL static ra8_err_t internal_utf8_next(const uint8_t* source,
-                                                 size_t         end,
-                                                 size_t         position,
-                                                 uint32_t*      out_cp,
-                                                 size_t*        out_used)
+/**
+ * @brief Classify one UTF-8 lead byte into its scalar width and payload.
+ * @details Distinguishes ASCII, 2/3/4-byte lead bytes, and rejects a bare
+ * continuation byte used as a lead.
+ * @param[in] lead One candidate lead byte.
+ * @param[out] out_cp Payload bits decoded so far (lead byte only).
+ * @param[out] out_used Total encoded byte width (1..4).
+ * @param[out] out_minimum Minimum scalar value the payload must reach.
+ * @return Classification status.
+ * @retval k_ra8_ok The lead byte is a valid ASCII or multi-byte lead.
+ * @retval k_ra8_err_validation_failed The byte is a bare continuation byte.
+ * @pre None; @p lead is treated as untrusted input.
+ * @post On success @p out_used is in [1, 4] and @p out_cp holds the decoded
+ * lead-byte payload bits.
+ * @note Thread-safe: pure function over its arguments.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_utf8_lead(uint8_t lead, uint32_t* out_cp, size_t* out_used, uint32_t* out_minimum)
 {
-  if (position >= end) {
-    return k_ra8_err_validation_failed;
-  }
-  const uint8_t lead    = source[position];
-  uint32_t      cp      = lead;
-  size_t        used    = 1U;
-  uint32_t      minimum = 0U;
+  uint32_t cp      = lead;
+  size_t   used    = 1U;
+  uint32_t minimum = 0U;
   if ((lead >= k_priv_utf8_two_lead_min) && (lead <= k_priv_utf8_two_lead_max)) {
     cp      = (uint32_t)(lead & k_priv_utf8_two_payload_mask);
     used    = 2U;
@@ -110,6 +119,29 @@ RA8_INTERNAL static ra8_err_t internal_utf8_next(const uint8_t* source,
     minimum = k_priv_xml_supplementary_min;
   } else if (lead >= k_priv_utf8_continuation_tag) {
     return k_ra8_err_validation_failed;
+  }
+  *out_cp      = cp;
+  *out_used    = used;
+  *out_minimum = minimum;
+  return k_ra8_ok;
+}
+
+/* see header for the documented contract. */
+RA8_INTERNAL static ra8_err_t internal_utf8_next(const uint8_t* source,
+                                                 size_t         end,
+                                                 size_t         position,
+                                                 uint32_t*      out_cp,
+                                                 size_t*        out_used)
+{
+  if (position >= end) {
+    return k_ra8_err_validation_failed;
+  }
+  uint32_t        cp       = 0U;
+  size_t          used     = 0U;
+  uint32_t        minimum  = 0U;
+  const ra8_err_t lead_err = internal_utf8_lead(source[position], &cp, &used, &minimum);
+  if (lead_err != k_ra8_ok) {
+    return lead_err;
   }
   if ((position + used) > end) {
     return k_ra8_err_validation_failed;
@@ -226,6 +258,76 @@ RA8_INTERNAL static ra8_err_t internal_entity(const uint8_t* source,
   return k_ra8_ok;
 }
 
+/**
+ * @brief Decode one character or entity and append it to the destination.
+ * @details Decodes one XML character reference/entity, or one raw UTF-8
+ * character, at @p cursor, then copies its UTF-8 bytes into @p destination,
+ * clipping (or rejecting, per @p truncate) once capacity is reached.
+ * @param[in] source Immutable validated XML source.
+ * @param[in] end Exclusive end offset of the decodable span.
+ * @param[in] cursor Current source offset to decode from.
+ * @param[in,out] destination Caller-owned destination buffer, or NULL to
+ * measure only.
+ * @param[in] capacity Writable capacity of @p destination in bytes.
+ * @param[in] truncate Whether to clip rather than reject on overflow.
+ * @param[in,out] output Running output byte count.
+ * @param[in,out] clipped Whether the destination has already been clipped.
+ * @param[out] out_used Source bytes consumed by this character or entity.
+ * @return Decode status.
+ * @retval k_ra8_ok One character or entity was decoded and appended.
+ * @retval k_ra8_err_no_mem Capacity was exhausted and @p truncate is false.
+ * @retval k_ra8_err_validation_failed The entity or UTF-8 sequence is malformed.
+ * @pre @p cursor is within the decodable span, strictly less than @p end.
+ * @post Success advances @p output (unless clipped) and reports @p out_used.
+ * @note Not thread-safe: mutates caller-owned scratch state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_decode_one(const uint8_t* source,
+                                                  size_t         end,
+                                                  size_t         cursor,
+                                                  char*          destination,
+                                                  size_t         capacity,
+                                                  bool           truncate,
+                                                  size_t*        output,
+                                                  bool*          clipped,
+                                                  size_t*        out_used)
+{
+  uint8_t bytes[4] = {};
+  size_t  count    = 0U;
+  size_t  used     = 0U;
+  if (source[cursor] == (uint8_t)'&') {
+    uint32_t  cp  = 0U;
+    ra8_err_t err = internal_entity(source, end, cursor, &cp, &used);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    count = internal_utf8(cp, bytes);
+  } else {
+    uint32_t        cp  = 0U;
+    const ra8_err_t err = internal_utf8_next(source, end, cursor, &cp, &used);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    count = used;
+    (void)memcpy(bytes, &source[cursor], count);
+  }
+  if ((destination != nullptr) && !*clipped && ((*output + count) >= capacity)) {
+    if (!truncate) {
+      return k_ra8_err_no_mem;
+    }
+    *clipped             = true;
+    destination[*output] = '\0';
+  }
+  if ((destination != nullptr) && !*clipped) {
+    (void)memcpy(&destination[*output], bytes, count);
+  }
+  if ((destination == nullptr) || !*clipped) {
+    *output += count;
+  }
+  *out_used = used;
+  return k_ra8_ok;
+}
+
 /* see header for the documented contract. */
 RA8_INTERNAL static ra8_err_t internal_decode(const uint8_t* source,
                                               ra8_xml_span_t span,
@@ -241,37 +343,18 @@ RA8_INTERNAL static ra8_err_t internal_decode(const uint8_t* source,
     return k_ra8_err_no_mem;
   }
   for (size_t cursor = span.offset; cursor < end;) {
-    uint8_t bytes[4] = {};
-    size_t  count    = 0U;
-    size_t  used     = 0U;
-    if (source[cursor] == (uint8_t)'&') {
-      uint32_t  cp  = 0U;
-      ra8_err_t err = internal_entity(source, end, cursor, &cp, &used);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      count = internal_utf8(cp, bytes);
-    } else {
-      uint32_t        cp  = 0U;
-      const ra8_err_t err = internal_utf8_next(source, end, cursor, &cp, &used);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      count = used;
-      (void)memcpy(bytes, &source[cursor], count);
-    }
-    if ((destination != nullptr) && !clipped && ((output + count) >= capacity)) {
-      if (!truncate) {
-        return k_ra8_err_no_mem;
-      }
-      clipped             = true;
-      destination[output] = '\0';
-    }
-    if ((destination != nullptr) && !clipped) {
-      (void)memcpy(&destination[output], bytes, count);
-    }
-    if ((destination == nullptr) || !clipped) {
-      output += count;
+    size_t          used = 0U;
+    const ra8_err_t err  = internal_decode_one(source,
+                                               end,
+                                               cursor,
+                                               destination,
+                                               capacity,
+                                               truncate,
+                                               &output,
+                                               &clipped,
+                                               &used);
+    if (err != k_ra8_ok) {
+      return err;
     }
     cursor += used;
   }

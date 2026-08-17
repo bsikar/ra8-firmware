@@ -174,6 +174,7 @@ RA8_INTERNAL static void internal_public_reader_guards(void)
  * - libs/ra8_xml/src/ra8_xml.c@internal_digit
  * - libs/ra8_xml/src/ra8_xml.c@internal_entity
  * - libs/ra8_xml/src/ra8_xml.c@internal_decode
+ * - libs/ra8_xml/src/ra8_xml.c@internal_decode_one
  * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decode
  * - libs/ra8_xml/src/ra8_xml.c@internal_attr_parse
  * - libs/ra8_xml/src/ra8_xml.c@internal_attr_duplicate
@@ -269,6 +270,7 @@ RA8_INTERNAL static void internal_reject(const uint8_t* source, size_t length)
  * - libs/ra8_xml/src/ra8_xml.c@priv_ra8_xml_qname
  * - libs/ra8_xml/src/ra8_xml.c@internal_xml_char
  * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_next
+ * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_lead
  * - libs/ra8_xml/src/ra8_xml.c@internal_end
  * - libs/ra8_xml/src/ra8_xml.c@internal_comment
  * - libs/ra8_xml/src/ra8_xml.c@internal_xml_target
@@ -329,6 +331,7 @@ RA8_INTERNAL static void internal_hostile_syntax(void)
  * - libs/ra8_xml/src/ra8_xml.c@priv_ra8_xml_qname
  * - libs/ra8_xml/src/ra8_xml.c@internal_xml_char
  * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_next
+ * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_lead
  * - libs/ra8_xml/src/ra8_xml.c@internal_entity
  */
 RA8_INTERNAL static void internal_character_classes(void)
@@ -457,6 +460,7 @@ RA8_INTERNAL static void internal_declaration_faults(void)
  * public span/decode predicate. Decisions:
  * - libs/ra8_xml/src/ra8_xml.c@internal_span_valid
  * - libs/ra8_xml/src/ra8_xml.c@internal_decode
+ * - libs/ra8_xml/src/ra8_xml.c@internal_decode_one
  * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decode_prefix
  * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decoded_size
  * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_span_equal
@@ -627,6 +631,7 @@ RA8_INTERNAL static void internal_doctype_direct_seam(void)
  * - libs/ra8_xml/src/ra8_xml.c@internal_ascii_letter
  * - libs/ra8_xml/src/ra8_xml.c@priv_ra8_xml_qname
  * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_next
+ * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_lead
  * - libs/ra8_xml/src/ra8_xml.c@internal_digit
  * - libs/ra8_xml/src/ra8_xml.c@internal_entity
  */
@@ -842,6 +847,7 @@ RA8_INTERNAL static void internal_expect_no_bom(const uint8_t* source, size_t le
  * Decisions:
  * - libs/ra8_xml/src/ra8_xml.c@internal_span_valid
  * - libs/ra8_xml/src/ra8_xml.c@internal_decode
+ * - libs/ra8_xml/src/ra8_xml.c@internal_decode_one
  * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decoded_equal
  * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_reader_init
  */
