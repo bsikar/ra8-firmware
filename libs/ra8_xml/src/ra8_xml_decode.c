@@ -97,6 +97,8 @@ internal_utf8_lead(uint8_t lead, uint32_t* out_cp, size_t* out_used, uint32_t* o
     minimum = k_priv_xml_supplementary_min;
   } else if (lead >= k_priv_utf8_continuation_tag) {
     return k_ra8_err_validation_failed;
+  } else {
+    /* ASCII lead: the seeded cp/used/minimum above already describe it. */
   }
   *out_cp      = cp;
   *out_used    = used;
@@ -221,16 +223,49 @@ RA8_INTERNAL static size_t internal_utf8(uint32_t cp, uint8_t out[4])
  */
 RA8_INTERNAL static uint32_t internal_digit(uint8_t c, uint32_t base)
 {
+  const uint32_t value = (uint32_t)c;
   if ((c >= (uint8_t)'0') && (c <= (uint8_t)'9')) {
-    return (uint32_t)(c - (uint8_t)'0');
+    return value - (uint32_t)(uint8_t)'0';
   }
   if ((base == 16U) && (c >= (uint8_t)'a') && (c <= (uint8_t)'f')) {
-    return (uint32_t)(c - (uint8_t)'a') + k_priv_xml_decimal_base;
+    return (value - (uint32_t)(uint8_t)'a') + k_priv_xml_decimal_base;
   }
   if ((base == 16U) && (c >= (uint8_t)'A') && (c <= (uint8_t)'F')) {
-    return (uint32_t)(c - (uint8_t)'A') + k_priv_xml_decimal_base;
+    return (value - (uint32_t)(uint8_t)'A') + k_priv_xml_decimal_base;
   }
   return UINT32_MAX;
+}
+
+/**
+ * @brief Compare bounded source bytes against a literal of known length.
+ * @details Walks both operands one byte at a time so the comparison never
+ * hands an essentially-character operand to `memcmp()`, whose ordering is
+ * implementation-defined for plain `char` (MISRA-C:2012 Rules 21.14, 21.16).
+ * Only equality is ever asked of this function, so the loop is the whole
+ * contract.
+ * @param[in] source Immutable source bytes.
+ * @param[in] offset First source byte to compare.
+ * @param[in] literal Literal whose first @p length bytes are compared.
+ * @param[in] length Byte count to compare.
+ * @return True exactly when the two byte runs are equal.
+ * @retval true Every compared byte matched.
+ * @retval false At least one byte differed.
+ * @pre @p source spans at least `offset + length` readable bytes.
+ * @pre @p literal spans at least @p length readable bytes.
+ * @post No memory is modified.
+ * @post The result depends only on the arguments.
+ * @note Pure and thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool
+internal_bytes_equal(const uint8_t* source, size_t offset, const char* literal, size_t length)
+{
+  for (size_t i = 0U; i < length; ++i) {
+    if (source[offset + i] != (uint8_t)literal[i]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -265,7 +300,7 @@ RA8_INTERNAL static ra8_err_t internal_entity(const uint8_t* source,
   for (size_t i = 0U; i < (sizeof(names) / sizeof(names[0])); ++i) {
     const size_t length = strlen(names[i]);
     if (((position + 1U + length) <= end) &&
-        (memcmp(&source[position + 1U], names[i], length) == 0)) {
+        internal_bytes_equal(source, position + 1U, names[i], length)) {
       *out_cp   = cps[i];
       *out_used = length + 1U;
       return k_ra8_ok;
@@ -449,14 +484,16 @@ RA8_INTERNAL static ra8_err_t
 internal_decoded_byte(const uint8_t* source, priv_decode_cursor_t* cursor, uint8_t* out)
 {
   if (cursor->pending_at < cursor->pending_len) {
-    *out = cursor->pending[cursor->pending_at++];
+    *out = cursor->pending[cursor->pending_at];
+    cursor->pending_at++;
     return k_ra8_ok;
   }
   if (cursor->position >= cursor->end) {
     return k_ra8_err_validation_failed;
   }
   if (source[cursor->position] != (uint8_t)'&') {
-    *out = source[cursor->position++];
+    *out = source[cursor->position];
+    cursor->position++;
     return k_ra8_ok;
   }
   uint32_t        cp   = 0U;
@@ -527,7 +564,8 @@ bool ra8_xml_span_equal(const uint8_t* source,
     return false;
   }
   const size_t length = strlen(literal);
-  return ((size_t)span.length == length) && (memcmp(&source[span.offset], literal, length) == 0);
+  return ((size_t)span.length == length) &&
+         internal_bytes_equal(source, (size_t)span.offset, literal, length);
 }
 
 bool ra8_xml_span_local_equal(const uint8_t* source,
