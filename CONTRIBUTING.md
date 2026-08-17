@@ -16,7 +16,7 @@ repository root. Read both before contributing non-trivial code.
 
 * Hand-written bare-metal firmware targeting the Renesas RA8D2
   (Cortex-M85 @ 1 GHz primary core, Cortex-M33 @ 250 MHz secondary, 1 MB
-  MRAM, 2 MB ECC SRAM).
+  MRAM, 1.6 MB ECC SRAM).
 * Build the entire HAL and PAL surface area without copying Renesas FSP
   code. FSP headers are reference material only; every line in `libs/`
   and `examples/` is hand-written under this project's style
@@ -102,7 +102,7 @@ The short version:
 
 1. Create `examples/<tier>/.../<newapp>/` -- pick the tier that matches
    the hardware-support category (`ek_ra8d2/hw_validated/hil/`,
-   `ek_ra8d2/hw_validated/hil/`, `ek_ra8d2/hw_validated/manual/`,
+   `ek_ra8d2/hw_validated/c6/`, `ek_ra8d2/hw_validated/manual/`,
    `ek_ra8d2/hw_pending/`, or `_unsupported/`). Every app is fully
    self-contained -- its own boot files, linker script, CMakeLists.
 2. Copy the five per-app boot files from a sibling app

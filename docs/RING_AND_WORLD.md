@@ -30,7 +30,7 @@ services.
 |---:|---|---|---|
 | **0** | BSP | `examples/<app>/{vector_table,system_init,secure_exception,trustzone_init}.c` + `examples/<app>/linker_script.ld` | Vector table, SystemInit, linker script. CPU-state setup before C runtime is live. Each app carries its own copy so two apps may diverge (different vector tables, different memory layouts). |
 | **1** | Core fundamentals | `libs/ra8_core/` | Pure-C utilities with no hardware dependencies (err codes, log, time, pin validator, register-protection helpers). Compiles identically on host and target. |
-| **2** | Register layer | `libs/ra8_hal/inc/ra8d2_*_regs.h` | Hand-written register layouts derived from the HUM. No code paths -- just typed enums + accessor inline functions. |
+| **2** | Register layer | `libs/ra8_hal/inc/ra8_*_regs.h` | Hand-written register layouts derived from the HUM. No code paths -- just typed enums + accessor inline functions. |
 | **3** | HAL drivers | `libs/ra8_hal/src/ra8_*.c` | Hardware Abstraction Layer. Programmes peripherals via Ring-2 register headers. The vast majority of driver code lives here. |
 | **4** | NSC veneers | `libs/ra8_nsc/` | TrustZone Non-Secure-Callable veneers. Bridges between `{World: S}` and `{World: NS}` -- the only place where `__attribute__((cmse_nonsecure_entry))` is allowed. |
 | **5** | Secure app | `libs/ra8_secure_app/` | Secure-side application code (key vault, secure-boot trust anchor). Sits above the HAL but below the NS-callable veneer surface. |

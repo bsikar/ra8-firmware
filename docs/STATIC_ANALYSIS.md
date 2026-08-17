@@ -137,7 +137,7 @@ zero. Fixed at both ends:
 ### `core.DivideZero` (eliminated 2026-05-02)
 
 Previously two findings sat inside `dec_decode_scan()` in
-`libs/ra8_jpeg/src/ra8_jpeg_sw.c`. The MCU width/height divisions
+`libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c`. The MCU width/height divisions
 (`(d->width + mcu_w_px - 1U) / mcu_w_px` and the height analogue)
 depend on `d->hmax` / `d->vmax`, which are validated cross-function in
 `dec_parse_sof0()`. Adding an explicit

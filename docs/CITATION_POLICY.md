@@ -14,8 +14,8 @@ anything useful.
 
 Use the function or symbol name instead:
 
-- `internal_rect_below_min`
-- `ra8_dmac::internal_mode_to_dmtmd`
+- `priv_ra8_drw_internal_rect_below_min`
+- `ra8_dmac::priv_ra8_dmac_internal_mode_disables_dts`
 - `see ra8_pid_step in libs/ra8_pid/src/ra8_pid.c`
 
 The pre-commit gate `scripts/checks/check_line_citations.py` enforces
