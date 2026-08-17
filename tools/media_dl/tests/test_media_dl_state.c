@@ -520,6 +520,57 @@ RA8_INTERNAL static void internal_seed_fixture(void)
 }
 
 /**
+ * @brief Assert both chapter records survived the round-trip intact.
+ * @details Checks completion, page count, title and the exact chapter number
+ *          of both seeded chapters in the reloaded state.
+ * @pre ::s_b holds the state reloaded from the fixture journal.
+ * @pre The fixture seeded chapter-1 and chapter-2.
+ * @post Normal return means every chapter field matched.
+ * @post No fixture resource ownership is transferred.
+ * @note Host-only; assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_roundtrip_chapters(void)
+{
+  const mdl_chapter_rec_t* r1 = mdl_state_find_chapter(&s_b, "chapter-1");
+  TEST_ASSERT_NOT_NULL(r1);
+  TEST_ASSERT(r1->complete);
+  TEST_ASSERT_EQ((uint16_t)k_ch_two, r1->page_count);
+  TEST_ASSERT(strcmp(r1->title, "Chapter 1.5") == 0);
+  TEST_ASSERT(r1->number_known);
+  TEST_ASSERT(r1->number == 1.5);
+  const mdl_chapter_rec_t* r2 = mdl_state_find_chapter(&s_b, "chapter-2");
+  TEST_ASSERT_NOT_NULL(r2);
+  TEST_ASSERT(strcmp(r2->title, "Chapter Zero") == 0);
+  TEST_ASSERT(r2->number_known);
+  TEST_ASSERT(r2->number == 0.0);
+  TEST_ASSERT(!mdl_state_chapter_complete(&s_b, "chapter-2"));
+}
+
+/**
+ * @brief Assert the page record survived the round-trip intact.
+ * @details Checks the URL-hash lookup, content hash, relative path, validators
+ *          and the recorded fetch metadata of the seeded page.
+ * @pre ::s_b holds the state reloaded from the fixture journal.
+ * @pre The fixture seeded the page keyed by ::k_uh_b.
+ * @post Normal return means every page field matched.
+ * @post No fixture resource ownership is transferred.
+ * @note Host-only; assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_roundtrip_page(void)
+{
+  const mdl_page_rec_t* pb = mdl_state_find_page(&s_b, (uint64_t)k_uh_b);
+  TEST_ASSERT_NOT_NULL(pb);
+  TEST_ASSERT_EQ((uint64_t)k_ch_b, pb->content_hash);
+  TEST_ASSERT(strcmp(pb->rel_path, "chapter-1/page_0002.jpg") == 0);
+  TEST_ASSERT(strcmp(pb->etag, "e2") == 0);
+  TEST_ASSERT(strcmp(pb->last_modified, "m2") == 0);
+  TEST_ASSERT_EQ((int64_t)1002, pb->fetched_at);
+  TEST_ASSERT_EQ((uint16_t)304, pb->response_status);
+}
+
+/**
  * @test internal_test_state_roundtrip_atomic
  *
  * @par MC/DC:
@@ -561,28 +612,9 @@ RA8_INTERNAL static void internal_test_state_roundtrip_atomic(void)
   TEST_ASSERT(strcmp(s_b.language, "en-US") == 0);
   TEST_ASSERT_EQ((int64_t)k_mdl_state_read_rtl, (int64_t)s_b.reading_direction);
   /* Chapter fields survive the round-trip. */
-  const mdl_chapter_rec_t* r1 = mdl_state_find_chapter(&s_b, "chapter-1");
-  TEST_ASSERT_NOT_NULL(r1);
-  TEST_ASSERT(r1->complete);
-  TEST_ASSERT_EQ((uint16_t)k_ch_two, r1->page_count);
-  TEST_ASSERT(strcmp(r1->title, "Chapter 1.5") == 0);
-  TEST_ASSERT(r1->number_known);
-  TEST_ASSERT(r1->number == 1.5);
-  const mdl_chapter_rec_t* r2 = mdl_state_find_chapter(&s_b, "chapter-2");
-  TEST_ASSERT_NOT_NULL(r2);
-  TEST_ASSERT(strcmp(r2->title, "Chapter Zero") == 0);
-  TEST_ASSERT(r2->number_known);
-  TEST_ASSERT(r2->number == 0.0);
-  TEST_ASSERT(!mdl_state_chapter_complete(&s_b, "chapter-2"));
+  internal_expect_roundtrip_chapters();
   /* Page records survive, keyed by URL hash, with their content hash. */
-  const mdl_page_rec_t* pb = mdl_state_find_page(&s_b, (uint64_t)k_uh_b);
-  TEST_ASSERT_NOT_NULL(pb);
-  TEST_ASSERT_EQ((uint64_t)k_ch_b, pb->content_hash);
-  TEST_ASSERT(strcmp(pb->rel_path, "chapter-1/page_0002.jpg") == 0);
-  TEST_ASSERT(strcmp(pb->etag, "e2") == 0);
-  TEST_ASSERT(strcmp(pb->last_modified, "m2") == 0);
-  TEST_ASSERT_EQ((int64_t)1002, pb->fetched_at);
-  TEST_ASSERT_EQ((uint16_t)304, pb->response_status);
+  internal_expect_roundtrip_page();
   internal_remove_state_fixture(path);
   TEST_END("state round-trip + atomic");
 }

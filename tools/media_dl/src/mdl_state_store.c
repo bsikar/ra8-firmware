@@ -927,6 +927,59 @@ ra8_err_t mdl_state_load_authenticated(mdl_storage_t* storage, const char* path,
   return internal_mdl_state_load_mode(storage, path, st, false);
 }
 
+/**
+ * @brief Decide which generation slot the next save occupies, and clear it.
+ * @details Derives both physical paths, scans both slots, asks the save plan
+ *          which one is next, and unlinks it when a previous generation is
+ *          still there -- so the caller only has to stage and commit.
+ * @param[in,out] storage Initialized portable storage binding.
+ * @param[in] path Logical base path.
+ * @param[out] base Base-path buffer, written by the path derivation.
+ * @param[out] alternate Alternate-path buffer, written by the same derivation.
+ * @param[out] out_target Receives the chosen path, which aliases one of the
+ *             two caller-owned buffers above.
+ * @param[out] out_sequence Receives the sequence number the save must carry.
+ * @return Canonical save-planning status.
+ * @retval k_ra8_ok The target slot is chosen, empty and named by @p out_target.
+ * @retval k_ra8_err_invalid_size The suffix would not fit the path capacity.
+ * @retval other The path derivation, the plan or the unlink failed.
+ * @pre @p base and @p alternate each span ::k_fw_fs_path_cap bytes.
+ * @pre @p out_target and @p out_sequence are non-null and distinct.
+ * @post Success leaves no file at the chosen path.
+ * @post Failure performs no filesystem mutation beyond the attempted unlink.
+ * @note Not reentrant; one storage binding serves one operation at a time.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mdl_state_prepare_target(mdl_storage_t* storage,
+                                                                const char*    path,
+                                                                char*          base,
+                                                                char*          alternate,
+                                                                const char**   out_target,
+                                                                uint64_t*      out_sequence)
+{
+  ra8_err_t err = internal_mdl_state_paths(storage, path, base, alternate);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  mdl_state_slot_t base_slot;
+  mdl_state_slot_t alternate_slot;
+  internal_mdl_state_scan_slot(storage, base, true, &base_slot);
+  internal_mdl_state_scan_slot(storage, alternate, false, &alternate_slot);
+  const mdl_state_slot_t* target = nullptr;
+  err = internal_mdl_state_save_plan(&base_slot, &alternate_slot, &target, out_sequence);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (target->exists) {
+    err = fw_fs_unlink(&storage->fs->names, target->path);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+  }
+  *out_target = target->path;
+  return k_ra8_ok;
+}
+
 ra8_err_t
 mdl_state_save(mdl_storage_t* storage, const char* path, const mdl_state_t* st, bool* out_published)
 {
@@ -937,32 +990,18 @@ mdl_state_save(mdl_storage_t* storage, const char* path, const mdl_state_t* st, 
   if ((st == nullptr) || !priv_mdl_state_valid(st)) {
     return (st == nullptr) ? k_ra8_err_invalid_arg : k_ra8_err_invalid_state;
   }
-  char      base_path[k_fw_fs_path_cap];
-  char      alternate_path[k_fw_fs_path_cap];
-  ra8_err_t err = internal_mdl_state_paths(storage, path, base_path, alternate_path);
+  char        base_path[k_fw_fs_path_cap];
+  char        alternate_path[k_fw_fs_path_cap];
+  const char* target   = nullptr;
+  uint64_t    sequence = 0U;
+  ra8_err_t   err =
+    internal_mdl_state_prepare_target(storage, path, base_path, alternate_path, &target, &sequence);
   if (err != k_ra8_ok) {
     return err;
-  }
-  mdl_state_slot_t base;
-  mdl_state_slot_t alternate;
-  internal_mdl_state_scan_slot(storage, base_path, true, &base);
-  internal_mdl_state_scan_slot(storage, alternate_path, false, &alternate);
-  const mdl_state_slot_t* target   = nullptr;
-  uint64_t                sequence = 0U;
-  err = internal_mdl_state_save_plan(&base, &alternate, &target, &sequence);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (target->exists) {
-    err = fw_fs_unlink(&storage->fs->names, target->path);
-    if (err != k_ra8_ok) {
-      return err;
-    }
   }
   fw_fs_transaction_t  transaction = {};
   mdl_state_envelope_t envelope    = {};
-  err =
-    internal_mdl_state_build_stage(storage, target->path, sequence, st, &transaction, &envelope);
+  err = internal_mdl_state_build_stage(storage, target, sequence, st, &transaction, &envelope);
   if (err != k_ra8_ok) {
     return internal_mdl_state_abort(&transaction, err);
   }
