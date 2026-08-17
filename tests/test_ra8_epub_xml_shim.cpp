@@ -39,7 +39,7 @@ extern "C" {
 
 namespace {
 
-static ra8_epub_xml_workspace_t s_xml_workspace = {};
+ra8_epub_xml_workspace_t s_xml_workspace = {};
 
 /* -----------------------------------------------------------------------
  * Static fixtures: minimal but well-formed container.xml / OPF documents.
@@ -129,7 +129,7 @@ constexpr const char* s_container_empty_full_path =
  * companion test independently select parent-scoped lookup, direct fallback,
  * and the parent-close rejection. The attribute reader error leg cannot occur
  * while replaying an event emitted from the already validated source. @brief Verify mcdc parse container null or zero behavior. @details Executes the mcdc parse container null or zero scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_mcdc_parse_container_null_or_zero(void)
+RA8_INTERNAL void internal_test_mcdc_parse_container_null_or_zero(void)
 {
 
   ra8_epub_container_result_t res = {};
@@ -191,7 +191,7 @@ RA8_INTERNAL static void internal_test_mcdc_parse_container_null_or_zero(void)
  *  - V5: no manifest   -> C1=T short. Decision T (validation_failed).
  *  - V6: no spine      -> C1=F,C2=T. Decision T (validation_failed).
  * V4+V5 isolate C1; V4+V6 isolate C2. @brief Verify mcdc parse opf null and manifest spine behavior. @details Executes the mcdc parse opf null and manifest spine scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_mcdc_parse_opf_null_and_manifest_spine(void)
+RA8_INTERNAL void internal_test_mcdc_parse_opf_null_and_manifest_spine(void)
 {
 
   ra8_epub_book_t book = {};
@@ -310,7 +310,7 @@ constexpr const char* s_opf_with_ncx =
 
 /* Assert the shared 3-entry expectation against a parsed book. */
 /** @brief Check the fixture's assert shared toc. @details Implements the assert shared toc fixture operation used only by this focused test executable. @param[in] book Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_assert_shared_toc(const ra8_epub_book_t& book)
+RA8_INTERNAL void internal_assert_shared_toc(const ra8_epub_book_t& book)
 {
   assert(book.toc_count == 3U);
   assert(std::strcmp(book.toc[0].title, "Chapter One") == 0);
@@ -338,7 +338,7 @@ RA8_INTERNAL static void internal_assert_shared_toc(const ra8_epub_book_t& book)
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_nav_event
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_nav
  * @brief Verify parse ncx and nav behavior. @details Executes the parse ncx and nav scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_parse_ncx_and_nav(void)
+RA8_INTERNAL void internal_test_parse_ncx_and_nav(void)
 {
 
   ra8_epub_book_t book = {};
@@ -391,7 +391,7 @@ RA8_INTERNAL static void internal_test_parse_ncx_and_nav(void)
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_item
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_lookup
  * @brief Verify parse opf toc source behavior. @details Executes the parse opf toc source scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_parse_opf_toc_source(void)
+RA8_INTERNAL void internal_test_parse_opf_toc_source(void)
 {
 
   ra8_epub_book_t book = {};
@@ -435,7 +435,7 @@ RA8_INTERNAL static void internal_test_parse_opf_toc_source(void)
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_ncx
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@priv_ra8_epub_xml_parse_nav
  * @brief Verify parse toc guards behavior. @details Executes the parse toc guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_parse_toc_guards(void)
+RA8_INTERNAL void internal_test_parse_toc_guards(void)
 {
 
   ra8_epub_book_t book = {};
@@ -458,7 +458,7 @@ RA8_INTERNAL static void internal_test_parse_toc_guards(void)
 }
 
 /** @brief Build a bounded synthetic NCX or EPUB navigation document. */
-RA8_INTERNAL static std::string internal_build_toc_document(bool nav, std::size_t entries)
+RA8_INTERNAL std::string internal_build_toc_document(bool nav, std::size_t entries)
 {
   std::string xml  = nav ? "<html><body><nav epub:type=\"toc\"><ol>" : "<ncx><navMap>";
   const char* item = nav ? "<li/>" : "<navPoint/>";
@@ -470,7 +470,7 @@ RA8_INTERNAL static std::string internal_build_toc_document(bool nav, std::size_
 }
 
 /** @test TOC capacity is exact and exhaustion is failure-atomic. @par MC/DC: NCX and nav at-cap/over-cap vectors independently vary list-required, enabled, entry, close, and exhaustion predicates in libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_toc_capacity. @brief Verify toc capacity atomicity behavior. @details Executes the toc capacity atomicity scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_toc_capacity_atomicity(void)
+RA8_INTERNAL void internal_test_toc_capacity_atomicity(void)
 {
   const std::string ncx_at = internal_build_toc_document(false, k_ra8_epub_max_toc);
   const std::string nav_at = internal_build_toc_document(true, k_ra8_epub_max_toc);
@@ -629,7 +629,7 @@ constexpr const char* s_nav_untyped_first = "<?xml version=\"1.0\" encoding=\"UT
  * V1+V2 isolate C1; the body iterations (both conditions true) plus V1
  * isolate C2. Result: the stored title is truncated to exactly
  * ``k_ra8_epub_meta_len - 1`` bytes. @brief Verify mcdc copy bounded truncation behavior. @details Executes the mcdc copy bounded truncation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_mcdc_copy_bounded_truncation(void)
+RA8_INTERNAL void internal_test_mcdc_copy_bounded_truncation(void)
 {
 
   ra8_epub_book_t book = {};
@@ -650,7 +650,7 @@ RA8_INTERNAL static void internal_test_mcdc_copy_bounded_truncation(void)
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_lookup
  * The attribute-less item is skipped and the spine still resolves to the
  * second item, so exactly one chapter is recorded. @brief Verify mcdc manifest item missing id behavior. @details Executes the mcdc manifest item missing id scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_mcdc_manifest_item_missing_id(void)
+RA8_INTERNAL void internal_test_mcdc_manifest_item_missing_id(void)
 {
 
   ra8_epub_book_t book = {};
@@ -677,7 +677,7 @@ RA8_INTERNAL static void internal_test_mcdc_manifest_item_missing_id(void)
  *  - V4: name="generator", content="cov"  -> C1=T,C2=T,C3=F. Decision F.
  *    cover_path stays empty. Isolates C3 (V1 vs V4).
  * N+1 = 4 vectors for N=3 conditions: minimal MC/DC. @brief Verify mcdc cover by meta behavior. @details Executes the mcdc cover by meta scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_mcdc_cover_by_meta(void)
+RA8_INTERNAL void internal_test_mcdc_cover_by_meta(void)
 {
 
   ra8_epub_book_t book = {};
@@ -721,7 +721,7 @@ RA8_INTERNAL static void internal_test_mcdc_cover_by_meta(void)
  *    Already covered by internal_test_parse_opf_toc_source.
  *  - V3 (here): properties="cover-image"          -> C1=T,C2=F. Decision F
  *    (no nav). toc_kind stays none. Isolates C2 (V1 vs V3). @brief Verify mcdc nav manifest props not nav behavior. @details Executes the mcdc nav manifest props not nav scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_mcdc_nav_manifest_props_not_nav(void)
+RA8_INTERNAL void internal_test_mcdc_nav_manifest_props_not_nav(void)
 {
 
   ra8_epub_book_t book = {};
@@ -743,7 +743,7 @@ RA8_INTERNAL static void internal_test_mcdc_nav_manifest_props_not_nav(void)
  * - libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_manifest_item
  * Exactly one font href is recorded from the fixed fixture; the generated
  * fixture records exactly the bounded maximum. @brief Verify mcdc collect fonts href and type behavior. @details Executes the mcdc collect fonts href and type scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_mcdc_collect_fonts_href_and_type(void)
+RA8_INTERNAL void internal_test_mcdc_collect_fonts_href_and_type(void)
 {
 
   ra8_epub_book_t book = {};
@@ -774,7 +774,7 @@ RA8_INTERNAL static void internal_test_mcdc_collect_fonts_href_and_type(void)
  * vary event kind, depth, local name, type presence/match, and fallback state
  * in libs/ra8_epub/src/ra8_epub_xml_shim.c@internal_select_nav. The typed toc
  * following the untyped entry is selected here. @brief Verify mcdc nav by type untyped first behavior. @details Executes the mcdc nav by type untyped first scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_mcdc_nav_by_type_untyped_first(void)
+RA8_INTERNAL void internal_test_mcdc_nav_by_type_untyped_first(void)
 {
 
   ra8_epub_book_t book = {};
@@ -806,7 +806,7 @@ RA8_INTERNAL static void internal_test_mcdc_nav_by_type_untyped_first(void)
  *  - V2 (existing guard test): xml=NULL      -> C1=T short. Covered.
  *  - V3 (here): xml=valid, book=NULL          -> C1=F,C2=T. Decision T
  *    (null_ptr). Isolates C2 (V1 vs V3). @brief Verify mcdc ncx nav book null behavior. @details Executes the mcdc ncx nav book null scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
-RA8_INTERNAL static void internal_test_mcdc_ncx_nav_book_null(void)
+RA8_INTERNAL void internal_test_mcdc_ncx_nav_book_null(void)
 {
 
   const auto* ncx = reinterpret_cast<const uint8_t*>(s_ncx_doc);
