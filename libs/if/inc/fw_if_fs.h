@@ -117,12 +117,12 @@ fw_fs_dir_next(fw_fs_dir_t* directory, fw_fs_dirent_value_t* out, bool* out_entr
                                    uint32_t                   workspace_size);
 
 /**
- * @brief Read up to `capacity` bytes; zero bytes is EOF.
- * @details A backend count above @p capacity is rejected as
+ * @brief Read up to `cap` bytes; zero bytes is EOF.
+ * @details A backend count above @p cap is rejected as
  *          ::k_ra8_err_invalid_state and reset to zero.
  */
 [[nodiscard]] ra8_err_t
-fw_fs_read(fw_fs_file_t* file, uint8_t* destination, uint32_t capacity, uint32_t* out_read);
+fw_fs_read(fw_fs_file_t* file, uint8_t* dst, uint32_t cap, uint32_t* out_read);
 
 /**
  * @brief Attempt to write all bytes, reporting any accepted prefix.
@@ -156,7 +156,7 @@ fw_fs_write(fw_fs_file_t* file, const uint8_t* source, uint32_t length, uint32_t
  * @details Returns ::k_ra8_err_not_supported when the bound port does not
  *          advertise ::k_fw_fs_cap_transactions.
  */
-[[nodiscard]] ra8_err_t fw_fs_transaction_begin(const fw_fs_transaction_port_t* transactions,
+[[nodiscard]] ra8_err_t fw_fs_transaction_begin(const fw_fs_transaction_port_t* port,
                                                 const char*                     destination,
                                                 fw_fs_transaction_policy_t      policy,
                                                 fw_fs_transaction_t*            transaction,
