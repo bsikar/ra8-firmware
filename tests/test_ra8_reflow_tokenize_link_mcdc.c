@@ -451,13 +451,13 @@ RA8_INTERNAL static void internal_test_intern_link_table_full(void)
 
   /* Build a document with exactly k_max_links_count <a> elements to fill the
    * table, then a (max+1)-th whose href should NOT be interned. */
-  static char doc[k_flood_doc_cap]; /* static: stays off the stack */
-  internal_build_link_flood_doc(doc, sizeof(doc));
+  static char s_doc[k_flood_doc_cap]; /* static: stays off the stack */
+  internal_build_link_flood_doc(s_doc, sizeof(s_doc));
 
   s_engine.token_count       = 0U;
   s_engine.text_pool_used    = 0U;
   s_engine.link_target_count = 0U;
-  const ra8_err_t err        = priv_reflow_xml_walk(&s_engine, (const uint8_t*)doc, strlen(doc));
+  const ra8_err_t err = priv_reflow_xml_walk(&s_engine, (const uint8_t*)s_doc, strlen(s_doc));
   /* The walk may succeed or hit a token-pool limit; either way, once the link
    * table is full the 256th href must not be interned (reserved==0 for it). */
   if (err == k_ra8_ok) {
