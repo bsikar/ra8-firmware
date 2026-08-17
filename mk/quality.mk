@@ -62,9 +62,13 @@ test-cov: mcdc
 ctest:
 	ctest --test-dir $(TESTS_BUILD) --output-on-failure
 
+# Use the SAME pin the `coverage-tree` CI gate uses (scripts/ci/gates/tests.sh):
+# line and branch counts are compiler-version specific, so measuring with the
+# ambient `cc` produces "regressions" against a gcc-14 baseline that are really
+# a different compiler. `make coverage` and the gate must not disagree.
 coverage:
-	bash scripts/report/coverage_report.sh
-	python3 scripts/checks/check_coverage.py
+	CC=gcc-14 CXX=g++-14 bash scripts/report/tree_coverage.sh
+	python3 scripts/checks/check_tree_coverage.py
 
 # Use the SAME mcdc_report.sh invocation the `mcdc` CI gate uses
 # (scripts/ci/gates/tests.sh), so "run the documented target" and "run what CI

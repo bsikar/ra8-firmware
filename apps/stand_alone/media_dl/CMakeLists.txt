@@ -30,7 +30,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # The repository root, stated ONCE. This listfile reaches out of its own tree
 # for the shared core, the firmware libraries, the POSIX port, the shared test
 # support and the vendored WebP recipe, and it is configured standalone (its
-# own CMAKE_SOURCE_DIR) by the tools-build and tools-coverage gates, so
+# own CMAKE_SOURCE_DIR) by the tools-build and coverage-tree gates, so
 # CMAKE_SOURCE_DIR cannot serve. Every such reference goes through this
 # variable: when the product moved from tools/media_dl to
 # apps/stand_alone/media_dl, 59 hand-written ../.. prefixes all became wrong
@@ -41,7 +41,7 @@ set(MDL_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
 # flags are added after project() so CMake's compiler probe is not instrumented
 # and gcovr never mistakes compiler-identification objects for project code.
 # Added here, at the top-level directory scope, so the shared core added below
-# inherits them: the tools-coverage ratchet measures core files, and a core
+# inherits them: the coverage-tree ratchet measures core files, and a core
 # built without --coverage would report zero instrumented lines for all of them.
 option(RA8_COVERAGE "Emit gcov coverage data for media_dl and its tests" OFF)
 if(RA8_COVERAGE)

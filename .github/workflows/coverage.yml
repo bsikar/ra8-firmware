@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 # SCHEDULING ONLY -- the gate body lives in scripts/ci.sh (gate:
-# coverage-report). See .github/workflows/firmware.yml for the design note.
+# coverage-tree). See .github/workflows/firmware.yml for the design note.
 #
 # This workflow is separate from firmware.yml and has been missed by a "local
 # green" run before, which is exactly why the ci-parity gate walks EVERY
@@ -33,43 +33,47 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Statement + branch coverage gate (gcc + gcovr).
+  # THE statement + branch coverage gate, for every first-party translation
+  # unit in libs/, src/, port/, tools/, apps/ and examples/.
   #
-  # The plain coverage flow described in docs/COVERAGE.md. Runs in parallel with
-  # the MC/DC pipeline (firmware.yml -> mcdc job) and produces an independent
-  # ratchetable baseline against .github/coverage-baseline.txt.
+  # One census, one baseline (.github/tree-coverage-baseline.txt), one bar. It
+  # is scheduled here and nowhere else: two more jobs used to apply their own
+  # per-file policy to overlapping slices of the same tree, which is how the
+  # same translation unit ended up built twice and judged twice.
   # ---------------------------------------------------------------------------
-  coverage:
-    name: Statement + branch coverage
+  coverage-tree:
+    name: Coverage (whole-tree per-file ratchet)
     runs-on: ra8-ci
     # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
       - name: Install build + coverage toolchain
         run: |
           # ci-parity: infra -- runner package provisioning only; runs no
-          # project check. The coverage-report gate hard-fails when gcovr is
-          # still absent afterwards, so a failed install can never look green.
+          # project check. The coverage-tree gate require_cmd's every tool
+          # below, so a failed install can never look green.
           #
           # Probe first, apt only for what is genuinely absent. ra8-ci is an
           # ephemeral pod booted from the devcontainer image: it already carries
           # this entire toolchain, and its runner user has NO passwordless sudo,
           # so an unconditional `sudo apt-get` dies on "sudo: a password is
           # required" before the gate ever runs. The probe makes this step a
-          # no-op on the pod and still self-heals a bare host runner. Same shape
-          # as the tidy job's dependency provisioning in firmware.yml.
+          # no-op on the pod and still self-heals a bare host runner.
           set -euo pipefail
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           missing=""
           command -v make >/dev/null 2>&1 || missing="$missing build-essential"
           command -v cmake >/dev/null 2>&1 || missing="$missing cmake"
-          command -v gcc >/dev/null 2>&1 || missing="$missing gcc"
-          command -v g++ >/dev/null 2>&1 || missing="$missing g++"
+          command -v gcc-14 >/dev/null 2>&1 || missing="$missing gcc-14"
+          command -v g++-14 >/dev/null 2>&1 || missing="$missing g++-14"
           command -v gcovr >/dev/null 2>&1 || missing="$missing gcovr"
+          command -v openssl >/dev/null 2>&1 || missing="$missing openssl"
           command -v python3 >/dev/null 2>&1 || missing="$missing python3"
           if [ -n "$missing" ]; then
             echo "installing:$missing"
@@ -80,22 +84,22 @@ jobs:
             echo "build + coverage toolchain already present -- nothing to install"
           fi
 
-      - run: bash scripts/ci.sh --gate coverage-report
+      - run: bash scripts/ci.sh --gate coverage-tree
 
       - name: Upload HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-html
-          path: build/coverage/
+          path: build/tree-coverage/html/
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload Cobertura XML
+      - name: Upload merged summary
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-xml
-          path: build/coverage/coverage.xml
+          name: coverage-summary
+          path: build/tree-coverage/summary.json
           if-no-files-found: error
           retention-days: 30

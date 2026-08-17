@@ -95,8 +95,7 @@ tests/fixtures/epub/real/*.epub
 
 # Coverage report outputs (already covered by build/ above; listed
 # explicitly so the directory is greppable)
-/build/host-cov/
-/build/coverage-html/
+/build/tree-coverage/
 
 # GCC RTL dump files
 *.expand

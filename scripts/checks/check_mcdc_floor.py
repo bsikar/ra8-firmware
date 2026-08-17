@@ -9,8 +9,8 @@ Condition/Decision Coverage. The historical MC/DC gate only looked at the
 project-wide TOTAL row (`mcdc_report.sh` + `.github/mcdc-baseline.txt`),
 which a well-covered majority can hold above a baseline while an individual
 file rots: an aggregate is an average, and averages hide per-file holes.
-This gate closes that hole the same way `check_coverage_floor.py` closes it
-for line coverage -- it fails CI if ANY first-party file drops below the
+This gate closes that hole the same way `check_tree_coverage.py` closes it
+for line and branch coverage -- it fails CI if ANY first-party file drops below the
 floor, and it deliberately has NO allowlist / no per-file exemption table.
 
 Unit of measure: the llvm-cov "MC/DC Decision Region" (one compound `&&` /

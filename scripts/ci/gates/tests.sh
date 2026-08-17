@@ -13,8 +13,8 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: unit-tests, ubsan, coverage, coverage-report, mcdc,
-# artefact-freshness, cache-bench, tools-coverage
+# Gates in this file: unit-tests, ubsan, coverage-tree, mcdc,
+# artefact-freshness, cache-bench
 
 # --- unit-tests -----------------------------------------------------------
 gate_unit_tests() (
@@ -45,7 +45,7 @@ gate_unit_tests() (
 # Dockerfile ARG pin (.devcontainer/Dockerfile), the dev box has it built from
 # source at /usr/local/bin/gcc-14 (docs/TOOLCHAIN.md, "CONVERGED"), and every
 # other host-compiler probe in this tree already prefers it first
-# (scripts/checks/coverage.sh, scripts/emu/eil_all.sh, scripts/emu/smoke.sh,
+# (scripts/report/tree_coverage.sh, scripts/emu/eil_all.sh, scripts/emu/smoke.sh,
 # scripts/emu/matrix.sh all run `ra8_select_host_compiler gcc-14 gcc-13 ...`).
 # Pinning ubsan to the one compiler every environment actually guarantees
 # turns "gate fails loudly on a missing tool" into "gate does not need the
@@ -56,27 +56,47 @@ gate_ubsan() (
   CC=gcc-14 CXX=g++-14 make ubsan
 )
 
-# --- coverage -------------------------------------------------------------
-gate_coverage() (
+# --- coverage-tree --------------------------------------------------------
+# THE per-file line/branch policy, for every first-party translation unit in
+# libs/, src/, port/, tools/, apps/ and examples/ -- one census, one baseline,
+# one bar. It replaces three overlapping gates (an aggregate 90/80 plus a
+# libs+src-only line floor, a SECOND coverage build ratcheted against a
+# two-number baseline, and a product-named media_dl ratchet), which between
+# them built the same translation units twice and still left most of the tree
+# unmentioned by any policy.
+#
+# tree_coverage.sh MEASURES and check_tree_coverage.py JUDGES; the split is why
+# there is one policy surface rather than a policy per build.
+#
+# CC is pinned rather than selected. Line and branch counts are
+# compiler-version specific, so a baseline frozen under gcc-14 and re-measured
+# under gcc-13 reports regressions that are really a different compiler -- the
+# gate would be reporting on the runner image, not on the tree.
+gate_coverage_tree() (
   set -e
+  require_cmd cmake
+  require_cmd ctest
+  require_cmd gcc-14 "the coverage gate pins gcc-14; counts are compiler-specific"
+  require_cmd gcov-14
+  require_tool_versions gcc-14
   require_cmd gcovr
   # gcovr version-sensitivity is documented history: the 5.2 line has a
   # merge_function assertion crash newer lines do not. Assert a floor so the
   # crashing ancient build fails loud instead of skewing coverage (#333).
   require_tool_versions gcovr
-  bash scripts/checks/coverage.sh --gate
-)
+  # media_dl's listfile find_program()s both as REQUIRED for its real-libcurl
+  # HTTPS integration test; without them cmake dies 700 lines before the gate
+  # says anything, and the openssl CLI reaches the runner image only as a
+  # transitive apt dependency of ca-certificates.
+  require_cmd openssl "media_dl's HTTPS integration test mints its server cert with openssl"
+  require_cmd python3 "media_dl's HTTPS integration test serves fixtures from python3 http.server"
 
-# --- coverage-report ------------------------------------------------------
-# The plain statement + branch flow from docs/COVERAGE.md, ratcheted against
-# .github/coverage-baseline.txt. Independent of the MC/DC pipeline.
-# --in-container is a no-op marker that skips the script's macOS branch.
-gate_coverage_report() (
-  set -e
-  require_cmd gcovr
-  require_tool_versions gcovr
-  bash scripts/report/coverage_report.sh --in-container
-  python3 scripts/checks/check_coverage.py
+  # Prove the policy still fires and stays quiet BEFORE spending the build on
+  # a verdict it might not be able to reach.
+  python3 scripts/checks/check_tree_coverage.py --selftest
+
+  CC=gcc-14 CXX=g++-14 bash scripts/report/tree_coverage.sh
+  python3 scripts/checks/check_tree_coverage.py
 )
 
 # --- mcdc -----------------------------------------------------------------
@@ -211,45 +231,4 @@ gate_cache_bench() (
     make -C tools/glyph_bench clean
     CC="$cc" make bench-cache
   done
-)
-
-# --- tools-coverage -------------------------------------------------------
-# media_dl carries production orchestration code that is not linked into the
-# firmware host suite, so the libs/src coverage build cannot measure it. Build
-# and run its seven CTest binaries under the same pinned gcc/gcov pipeline,
-# then apply a per-file ratchet: historical uncovered debt may only shrink and
-# every new production file must enter at the firmware's 90/80 line/branch bar.
-gate_tools_coverage() (
-  set -e
-  require_cmd cmake
-  require_cmd ctest
-  require_cmd gcc-14 "the tool coverage gate pins gcc-14 to match gcov-14"
-  require_cmd gcov-14
-  require_cmd gcovr
-  require_tool_versions gcc-14
-
-  local out="$PWD/build/tool-coverage/media_dl"
-  rm -rf "$out"
-  cmake -S "$PWD/apps/stand_alone/media_dl" -B "$out" \
-    -DCMAKE_BUILD_TYPE=Debug \
-    -DCMAKE_C_COMPILER=gcc-14 \
-    -DRA8_COVERAGE=ON
-  cmake --build "$out" --parallel "$(ra8_max_jobs)"
-  ctest --test-dir "$out" --output-on-failure --timeout 60
-
-  gcovr \
-    --gcov-executable gcov-14 \
-    --gcov-ignore-parse-errors=all \
-    --root "$PWD" \
-    --object-directory "$out" \
-    --filter "$PWD/apps/shared/media_dl/src/" \
-    --filter "$PWD/apps/stand_alone/media_dl/src/" \
-    --exclude-throw-branches \
-    --exclude-unreachable-branches \
-    --json-summary "$out/coverage.json" \
-    --json-summary-pretty \
-    --print-summary
-
-  python3 scripts/checks/check_tool_coverage.py --selftest
-  python3 scripts/checks/check_tool_coverage.py
 )

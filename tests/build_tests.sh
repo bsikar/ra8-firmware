@@ -66,7 +66,7 @@ else
   # single largest gate unable to use ccache at all.
   #
   # Nothing loses coverage by this: the coverage gate has its own build tree
-  # (scripts/checks/coverage.sh -> build/coverage) and passes -DRA8_COVERAGE=ON
+  # (scripts/report/tree_coverage.sh -> build/tree-coverage) and passes -DRA8_COVERAGE=ON
   # explicitly, and the MC/DC mode above is likewise explicit. scripts/
   # clang_tidy.sh already passes -DRA8_COVERAGE=OFF for the same reason; this
   # makes the fast host-test build agree with it.

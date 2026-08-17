@@ -193,7 +193,7 @@ fi
 # macOS shim: the host test harness uses MAP_FIXED below 4 GiB for the
 # fake MMIO region; macOS arm64 SIGKILLs the process. Re-exec
 # inside the project's Linux devcontainer just like
-# scripts/report/coverage_report_host.sh does. Pass --in-container to skip this.
+# scripts/report/tree_coverage.sh does. Pass --in-container to skip this.
 # ---------------------------------------------------------------------------
 if [[ "$(uname -s)" == "Darwin" && "${1:-}" != "--in-container" ]]; then
   if ! command -v docker >/dev/null 2>&1; then
@@ -367,7 +367,7 @@ fi
 # .profraw can ever be emitted. The gate then died four steps later at the
 # merge, blaming the tests for crashing when they had all passed.
 #
-# scripts/checks/coverage.sh has carried this exact guard for the same exact reason;
+# scripts/report/tree_coverage.sh carries this exact guard for the same reason;
 # this script simply never got it.
 # ---------------------------------------------------------------------------
 mcdc_purge_stale_build_dir "$BUILD_DIR" "$CC_BIN"
@@ -483,9 +483,9 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   # airborne firmware, so DO-178C MC/DC does not apply to it.
   #
   # ...and media_dl -- both its shared core (apps/shared/media_dl) and its host
-  # form (apps/stand_alone/media_dl) -- the one tool that carries its OWN
-  # ratcheted coverage gate (`tools-coverage`, per-file line/branch over its
-  # own 19-binary CTest suite, currently 83.4% line / 65.1% branch and green).
+  # form (apps/stand_alone/media_dl) -- whose per-file line/branch standing is
+  # held by the whole-tree `coverage-tree` gate over its own CTest suite, the
+  # same gate that holds every other first-party translation unit.
   # Its production sources appear here only as LINK dependencies of the
   # portable-contract tests under tests/ -- each of those drives one contract
   # through the same code the tool build compiles, so the sources cannot be
@@ -588,8 +588,8 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   # RA8_MCDC_THRESHOLD=0; this floor runs UNCONDITIONALLY and fails
   # the report if ANY first-party file drops below the per-file
   # reachable-MC/DC bar -- a single rotted file can no longer hide
-  # behind well-covered siblings. Mirrors scripts/checks/coverage.sh's
-  # check_coverage_floor.py wiring. Reads the mcdc_per_file.json the
+  # behind well-covered siblings. Mirrors the per-file wiring in
+  # scripts/checks/check_tree_coverage.py. Reads the mcdc_per_file.json the
   # regenerator just wrote.
   # ------------------------------------------------------------
   if command -v python3 >/dev/null 2>&1; then
@@ -641,5 +641,5 @@ echo "==> [5/5] Skipped: llvm-cov MC/DC report"
 echo ""
 echo "MC/DC report unavailable -- install clang >= 18 and re-run."
 echo "Tests still executed under fallback instrumentation; see"
-echo "scripts/report/coverage_report_host.sh for line/branch coverage instead."
+echo "scripts/report/tree_coverage.sh for line/branch coverage instead."
 exit 0

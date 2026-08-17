@@ -94,7 +94,7 @@ into a verification-activity register.
 | 3     | Test coverage of HLR achieved            | `make test`, `tests/test_*.c` requirements-based tests                                    | Trace matrix pending.                                            |
 | 4     | Test coverage of LLR achieved            | Same as 3 plus per-module decision tests                                                  | Same as 3.                                                       |
 | 5     | Test coverage of structure achieved -- MC/DC | `make mcdc` (clang-18 `-fcoverage-mcdc`), `docs/MCDC.md`, baseline at `.github/mcdc-baseline.txt` | Reachable = 100.00% (gate met); absolute = 92.29%; 58 conditions deactivated under DO-178C 6.4.4.3. |
-| 6     | Test coverage of structure achieved -- branch | gcovr branch coverage gated at 90/90 by `scripts/checks/coverage.sh --gate`                  | Pass today.                                                      |
+| 6     | Test coverage of structure achieved -- branch | gcovr branch coverage gated per file by `bash scripts/ci.sh --gate coverage-tree`                  | Pass today.                                                      |
 | 7     | Test coverage of structure achieved -- statement | Same as 6.                                                                         | Pass today.                                                      |
 | 8     | Test coverage of structure -- data coupling and control coupling | Manual review during PR; no tool automation yet               | Documented as residual risk.                                     |
 | 9     | Verification of additional code          | SOUP register under `docs/SOUP/` covers 14 third-party components                         | Per-component re-review cadence enforced (12 months).            |
@@ -149,7 +149,7 @@ repository is:
 | Host unit tests                   | `tests/build_tests.sh`, `tests/run_tests.sh`, ctest                            | Per commit + per PR |
 | Cross-compile sanity              | `firmware.yml::build-cross` matrix over every example app                      | Per PR             |
 | MC/DC measurement                 | `scripts/report/mcdc_report.sh` (`make mcdc`); clang-18 `-fcoverage-mcdc`       | Per PR             |
-| Branch / statement coverage       | `scripts/checks/coverage.sh --gate` (gcovr 90/90)                                     | Per PR             |
+| Branch / statement coverage       | `bash scripts/ci.sh --gate coverage-tree` (gcovr, per file)                           | Per PR             |
 | HW-in-the-loop smoke              | `make smoke` (docs/HARDWARE_BRINGUP.md)                                        | Manual today; CI in roadmap Phase 6 |
 
 ### 2.4 Simulation
@@ -257,9 +257,10 @@ runner is out of scope.
 
 ### 5.1 Statement and branch coverage
 
-- Tool: `gcovr` driven by `scripts/checks/coverage.sh --gate`.
-- Gate: 90% line + 90% branch (the script's `--gate` mode).
-- CI job: `firmware.yml::coverage`.
+- Tool: `gcovr` driven by `scripts/report/tree_coverage.sh`.
+- Gate: `scripts/checks/check_tree_coverage.py` -- one per-file row for every
+  first-party unit; frozen debt may not grow, a new unit enters at 90/80.
+- CI job: `coverage.yml::coverage-tree`.
 - Artifact: `build/coverage/coverage/` HTML report uploaded per CI run
   with 14-day retention.
 
