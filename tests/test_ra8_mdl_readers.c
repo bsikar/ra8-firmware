@@ -454,6 +454,16 @@ internal_reader_make_gzip(const uint8_t* tar, uint32_t tar_length, uint8_t* gzip
   return end + 8U;
 }
 /**
+ * @brief The two four-byte binary markers that open and close a raw JOF.
+ * @details Byte arrays rather than C strings: the byte after the opening
+ *          marker is the version field and the closing marker ends the
+ *          fixture exactly, so neither is followed by a terminator.
+ * @note Read-only fixture constants.
+ * @since 0.1.0
+ */
+static const uint8_t s_jof_magic[] = {'J', 'O', 'F', '1'};
+static const uint8_t s_jof_end[]   = {'J', 'O', 'F', 'E'};
+/**
  * @brief Generate the smallest structurally valid one-tile raw JOF.
  * @details Emits one page, one tile byte, its index records, and the terminal marker.
  * @param[out] jof Writable JOF fixture buffer.
@@ -466,7 +476,7 @@ internal_reader_make_gzip(const uint8_t* tar, uint32_t tar_length, uint8_t* gzip
 RA8_INTERNAL static uint32_t internal_reader_make_jof(uint8_t* jof)
 {
   memset(jof, 0, 57U);
-  memcpy(jof, "JOF1", 4U);
+  memcpy(jof, s_jof_magic, sizeof(s_jof_magic));
   jof[4]  = 1U;
   jof[6]  = 1U;
   jof[8]  = 1U;
@@ -479,7 +489,7 @@ RA8_INTERNAL static uint32_t internal_reader_make_jof(uint8_t* jof)
   internal_reader_put_u32le(jof + 41U, 33U);
   internal_reader_put_u32le(jof + 45U, 1U);
   internal_reader_put_u32le(jof + 49U, 57U);
-  memcpy(jof + 53U, "JOFE", 4U);
+  memcpy(jof + 53U, s_jof_end, sizeof(s_jof_end));
   return 57U;
 }
 /**
@@ -756,7 +766,9 @@ RA8_INTERNAL static void internal_reader_verify_archive_corrupt(mdl_storage_t* s
                                "/book.cbt",
                                k_ra8_err_validation_failed);
   tar_length = internal_reader_make_tar(s_archive);
-  memcpy(s_archive, "../x.jpg", 8U);
+  /* The TAR name is a fixed-width NUL-padded field, so the traversal name
+     is written with its terminator over the longer generated name. */
+  memcpy(s_archive, "../x.jpg", sizeof("../x.jpg"));
   internal_reader_write(storage, "/book.cbt", s_archive, tar_length);
   internal_reader_expect_error(storage,
                                k_ra8_mdl_format_cbt,

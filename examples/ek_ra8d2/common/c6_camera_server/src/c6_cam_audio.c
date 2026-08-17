@@ -78,6 +78,19 @@ static volatile uint8_t    s_audio_active_bank;
 static c6_cam_audio_bank_t s_audio_banks[k_c6_cam_audio_bank_count];
 
 /**
+ * @brief The three fixed-width chunk tags of a canonical PCM WAV header.
+ * @details Byte arrays rather than C strings, because that is what the file
+ *          format is: each tag is followed immediately by a binary length or
+ *          format field, so the header carries no terminator after any of
+ *          them and copying one would corrupt the field that follows.
+ * @note Read-only; only ::internal_c6_cam_audio_write_header copies them.
+ * @since 0.1.0
+ */
+static const uint8_t s_wav_tag_riff[]    = {'R', 'I', 'F', 'F'};
+static const uint8_t s_wav_tag_wavefmt[] = {'W', 'A', 'V', 'E', 'f', 'm', 't', ' '};
+static const uint8_t s_wav_tag_data[]    = {'d', 'a', 't', 'a'};
+
+/**
  * @brief Write one little-endian 16-bit scalar.
  * @details Splits the value into two wire-order WAV bytes.
  * @param[out] out Destination for two bytes.
@@ -197,9 +210,9 @@ RA8_INTERNAL static void internal_c6_cam_audio_on_frame(void* ctx, const ra8_aud
 RA8_INTERNAL static void internal_c6_cam_audio_write_header(uint32_t samples)
 {
   const uint32_t data_bytes = samples * (uint32_t)k_c6_cam_wav_sample_bytes;
-  (void)memcpy(&s_audio_wav[0], "RIFF", 4U);
+  (void)memcpy(&s_audio_wav[0], s_wav_tag_riff, sizeof(s_wav_tag_riff));
   internal_c6_cam_audio_put_u32(&s_audio_wav[4], (uint32_t)k_c6_cam_wav_riff_overhead + data_bytes);
-  (void)memcpy(&s_audio_wav[8], "WAVEfmt ", 8U);
+  (void)memcpy(&s_audio_wav[8], s_wav_tag_wavefmt, sizeof(s_wav_tag_wavefmt));
   internal_c6_cam_audio_put_u32(&s_audio_wav[16], 16U);
   internal_c6_cam_audio_put_u16(&s_audio_wav[k_c6_cam_wav_audio_format_off], 1U);
   internal_c6_cam_audio_put_u16(&s_audio_wav[k_c6_cam_wav_channels_off], 1U);
@@ -209,7 +222,7 @@ RA8_INTERNAL static void internal_c6_cam_audio_write_header(uint32_t samples)
                                   (uint32_t)k_c6_cam_wav_sample_bytes);
   internal_c6_cam_audio_put_u16(&s_audio_wav[32], (uint16_t)k_c6_cam_wav_sample_bytes);
   internal_c6_cam_audio_put_u16(&s_audio_wav[k_c6_cam_wav_bits_off], 16U);
-  (void)memcpy(&s_audio_wav[36], "data", 4U);
+  (void)memcpy(&s_audio_wav[36], s_wav_tag_data, sizeof(s_wav_tag_data));
   internal_c6_cam_audio_put_u32(&s_audio_wav[k_c6_cam_wav_data_size_off], data_bytes);
 }
 

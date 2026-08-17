@@ -17,6 +17,16 @@
 #include "ra8_xml.h"
 #include "ra8_xml_internal.h"
 
+/**
+ * @brief The open and close element bytes appended by the depth fixture.
+ * @details Byte arrays rather than C strings: they are concatenated into one
+ *          length-delimited document buffer, which carries no terminator.
+ * @note Read-only fixture constants.
+ * @since 0.1.0
+ */
+static const uint8_t s_xml_open[]  = {'<', 'x', '>'};
+static const uint8_t s_xml_close[] = {'<', '/', 'x', '>'};
+
 /** @brief Build a document with exactly @p levels element levels. */
 RA8_INTERNAL static size_t
 internal_deep_document(uint8_t* destination, size_t capacity, uint16_t levels)
@@ -24,12 +34,12 @@ internal_deep_document(uint8_t* destination, size_t capacity, uint16_t levels)
   size_t used = 0U;
   for (uint16_t i = 0U; i < levels; ++i) {
     assert((used + 3U) <= capacity);
-    (void)memcpy(&destination[used], "<x>", 3U);
+    (void)memcpy(&destination[used], s_xml_open, sizeof(s_xml_open));
     used += 3U;
   }
   for (uint16_t i = 0U; i < levels; ++i) {
     assert((used + 4U) <= capacity);
-    (void)memcpy(&destination[used], "</x>", 4U);
+    (void)memcpy(&destination[used], s_xml_close, sizeof(s_xml_close));
     used += 4U;
   }
   return used;

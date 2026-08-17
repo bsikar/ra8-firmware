@@ -8,6 +8,11 @@
  * @since 0.1.0
  */
 
+/** @brief Request the POSIX.1-2008 declarations this test calls. */
+/* glibc fixes the spelling of its feature-test macros, so the
+ * reserved-identifier rule cannot apply: openat() and friends are only
+ * declared when _POSIX_C_SOURCE precedes the first system header. */
+// NOLINTNEXTLINE(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
 #define _POSIX_C_SOURCE (200809L)
 
 #include <fcntl.h>
@@ -62,7 +67,7 @@ static bool internal_path(char out[k_test_path_cap], const char* root, const cha
   if ((root_len + suffix_len + 1U) > k_test_path_cap) {
     return false;
   }
-  (void)memcpy(out, root, root_len);
+  (void)memcpy(out, root, root_len + 1U);
   (void)memcpy(&out[root_len], suffix, suffix_len + 1U);
   return true;
 }

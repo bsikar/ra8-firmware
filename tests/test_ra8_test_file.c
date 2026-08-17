@@ -809,7 +809,7 @@ internal_test_join(char* output, size_t capacity, const char* directory, const c
   if ((directory_length + 1U + leaf_length + 1U) > capacity) {
     return false;
   }
-  memcpy(output, directory, directory_length);
+  memcpy(output, directory, directory_length + 1U);
   output[directory_length] = '/';
   memcpy(&output[directory_length + 1U], leaf, leaf_length + 1U);
   return true;
