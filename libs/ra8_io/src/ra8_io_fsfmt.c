@@ -646,6 +646,36 @@ static const ra8_io_fsfmt_t s_fmt_exfat = {
 };
 
 /**
+ * @brief Validate that a claimed directory-cursor capability is complete.
+ * @details The seven-way OR keeps every dir-cursor precondition -- the three
+ *          cursor operations, the workspace byte and open-directory
+ *          capacities, and the workspace alignment's non-zero,
+ *          power-of-two shape -- in one decision.
+ * @param[in] fmt Candidate format descriptor claiming dir-cursor support.
+ * @return ra8_err_t Consistency result.
+ * @retval k_ra8_ok Every dir-cursor precondition is satisfied.
+ * @retval k_ra8_err_invalid_arg An operation, capacity, or alignment field is invalid.
+ * @pre @p fmt->caps.supports_dir_cursor is true.
+ * @pre @p fmt and `fmt->ops` are non-NULL.
+ * @post No registry state is modified.
+ * @note Covered by `internal_cursor_capability_consistency` in
+ *       `tests/test_ra8_io_fsfmt_cov.c` (N+1 = 8 vectors for N = 7 conditions).
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_validate_dir_cursor_caps(const ra8_io_fsfmt_t* fmt)
+{
+  const uint8_t align = fmt->caps.directory_workspace_align;
+  if ((fmt->ops->dir_open == nullptr) || (fmt->ops->dir_next == nullptr) ||
+      (fmt->ops->dir_close == nullptr) || (fmt->caps.directory_workspace_bytes == 0U) ||
+      (fmt->caps.max_open_directories == 0U) || (align == 0U) ||
+      (((uint32_t)align & ((uint32_t)align - 1U)) != 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  return k_ra8_ok;
+}
+
+/**
  * @brief Validate that every claimed optional capability has an operation.
  * @details Rejects descriptors whose advertised behavior cannot be dispatched.
  * @param[in] fmt Candidate format descriptor.
@@ -660,17 +690,22 @@ static const ra8_io_fsfmt_t s_fmt_exfat = {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_validate_caps(const ra8_io_fsfmt_t* fmt)
+/**
+ * @brief Validate the six independent single-operation capability flags.
+ * @details Each claimed capability requires exactly its own paired operation
+ *          pointer; the checks are structurally identical and independent.
+ * @param[in] fmt Candidate format descriptor.
+ * @return ra8_err_t Consistency result.
+ * @retval k_ra8_ok Every claimed capability in this group is backed by an operation.
+ * @retval k_ra8_err_invalid_arg A claimed operation is absent.
+ * @pre @p fmt and `fmt->ops` are non-NULL.
+ * @post No registry state is modified.
+ * @note Each capability decision is independently MC/DC-testable.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_validate_single_op_caps(const ra8_io_fsfmt_t* fmt)
 {
-  if (fmt->caps.supports_dir_cursor) {
-    const uint8_t align = fmt->caps.directory_workspace_align;
-    if ((fmt->ops->dir_open == nullptr) || (fmt->ops->dir_next == nullptr) ||
-        (fmt->ops->dir_close == nullptr) || (fmt->caps.directory_workspace_bytes == 0U) ||
-        (fmt->caps.max_open_directories == 0U) || (align == 0U) ||
-        (((uint32_t)align & ((uint32_t)align - 1U)) != 0U)) {
-      return k_ra8_err_invalid_arg;
-    }
-  }
   if (fmt->caps.supports_streaming_write) {
     if (fmt->ops->write == nullptr) {
       return k_ra8_err_invalid_arg;
@@ -701,6 +736,17 @@ static ra8_err_t internal_validate_caps(const ra8_io_fsfmt_t* fmt)
       return k_ra8_err_invalid_arg;
     }
   }
+  return k_ra8_ok;
+}
+
+static ra8_err_t internal_validate_caps(const ra8_io_fsfmt_t* fmt)
+{
+  if (fmt->caps.supports_dir_cursor) {
+    RA8_RETURN_ON_ERROR(internal_validate_dir_cursor_caps(fmt),
+                        s_tag,
+                        "dir-cursor capability mismatch");
+  }
+  RA8_RETURN_ON_ERROR(internal_validate_single_op_caps(fmt), s_tag, "capability mismatch");
   if (fmt->caps.durable_sync) {
     if (!fmt->caps.supports_sync) {
       return k_ra8_err_invalid_arg;
@@ -717,22 +763,79 @@ ra8_err_t ra8_io_fsfmt_init(void)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_io_fsfmt_register(const ra8_io_fsfmt_t* fmt)
+/**
+ * @brief Validate that the first six mandatory format operations are present.
+ * @param[in] fmt Candidate format descriptor with a validated non-NULL `ops`.
+ * @return ra8_err_t Consistency result.
+ * @retval k_ra8_ok Every mandatory operation pointer in this group is present.
+ * @retval k_ra8_err_null_ptr A mandatory operation pointer is absent.
+ * @pre @p fmt and `fmt->ops` are non-NULL.
+ * @post No registry state is modified.
+ * @note Each operation check is independently MC/DC-testable.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_validate_required_ops_group1(const ra8_io_fsfmt_t* fmt)
 {
-  RA8_CHECK_NULL_PTR(fmt, s_tag, "fmt must not be nullptr");
-  RA8_CHECK_NULL_PTR(fmt->name, s_tag, "fmt->name must not be nullptr");
-  RA8_CHECK_NULL_PTR(fmt->ops, s_tag, "fmt->ops must not be nullptr");
   RA8_CHECK_NULL_PTR(fmt->ops->probe, s_tag, "probe must not be nullptr");
   RA8_CHECK_NULL_PTR(fmt->ops->mount, s_tag, "mount must not be nullptr");
   RA8_CHECK_NULL_PTR(fmt->ops->unmount, s_tag, "unmount must not be nullptr");
   RA8_CHECK_NULL_PTR(fmt->ops->open, s_tag, "open must not be nullptr");
   RA8_CHECK_NULL_PTR(fmt->ops->close, s_tag, "close must not be nullptr");
   RA8_CHECK_NULL_PTR(fmt->ops->read, s_tag, "read must not be nullptr");
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Validate that the remaining five mandatory format operations are present.
+ * @param[in] fmt Candidate format descriptor with a validated non-NULL `ops`.
+ * @return ra8_err_t Consistency result.
+ * @retval k_ra8_ok Every mandatory operation pointer in this group is present.
+ * @retval k_ra8_err_null_ptr A mandatory operation pointer is absent.
+ * @pre @p fmt and `fmt->ops` are non-NULL.
+ * @post No registry state is modified.
+ * @note Each operation check is independently MC/DC-testable.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_validate_required_ops_group2(const ra8_io_fsfmt_t* fmt)
+{
   RA8_CHECK_NULL_PTR(fmt->ops->seek, s_tag, "seek must not be nullptr");
   RA8_CHECK_NULL_PTR(fmt->ops->tell, s_tag, "tell must not be nullptr");
   RA8_CHECK_NULL_PTR(fmt->ops->size, s_tag, "size must not be nullptr");
   RA8_CHECK_NULL_PTR(fmt->ops->stat, s_tag, "stat must not be nullptr");
   RA8_CHECK_NULL_PTR(fmt->ops->listdir, s_tag, "listdir must not be nullptr");
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Validate that every mandatory format operation pointer is present.
+ * @details Rejects a descriptor missing any of the eleven operations every
+ *          format backend must implement, regardless of optional capability.
+ * @param[in] fmt Candidate format descriptor with a validated non-NULL `ops`.
+ * @return ra8_err_t Consistency result.
+ * @retval k_ra8_ok Every mandatory operation pointer is present.
+ * @retval k_ra8_err_null_ptr A mandatory operation pointer is absent.
+ * @pre @p fmt and `fmt->ops` are non-NULL.
+ * @post No registry state is modified.
+ * @note Each operation check is independently MC/DC-testable.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_validate_required_ops(const ra8_io_fsfmt_t* fmt)
+{
+  RA8_RETURN_ON_ERROR(internal_validate_required_ops_group1(fmt),
+                      s_tag,
+                      "missing mandatory operation");
+  return internal_validate_required_ops_group2(fmt);
+}
+
+ra8_err_t ra8_io_fsfmt_register(const ra8_io_fsfmt_t* fmt)
+{
+  RA8_CHECK_NULL_PTR(fmt, s_tag, "fmt must not be nullptr");
+  RA8_CHECK_NULL_PTR(fmt->name, s_tag, "fmt->name must not be nullptr");
+  RA8_CHECK_NULL_PTR(fmt->ops, s_tag, "fmt->ops must not be nullptr");
+  RA8_RETURN_ON_ERROR(internal_validate_required_ops(fmt), s_tag, "missing mandatory operation");
   RA8_RETURN_ON_ERROR(internal_validate_caps(fmt), s_tag, "capability mismatch");
   if (s_count >= (uint32_t)k_ra8_io_fsfmt_max) {
     return k_ra8_err_no_mem;
