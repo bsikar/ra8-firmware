@@ -29,6 +29,9 @@ extern "C" {
 #include "support/ra8_test_output.h"
 
 namespace {
+// NOLINTBEGIN(readability-static-definition-in-anonymous-namespace) -- the
+// RA8_INTERNAL contract requires literal static linkage so the annotations
+// gate can verify it; the anonymous namespace alone does not satisfy it.
 
 typedef enum : uint8_t {
   k_test_paragraph_count = 40U, /**< Paragraphs in the pagination fixture. */
@@ -59,7 +62,7 @@ ra8_reflow_t s_engine;
  * @note Destination failure does not change the assertion verdict.
  * @since 0.1.0
  */
-RA8_INTERNAL void internal_write_label(const char* label)
+RA8_INTERNAL static void internal_write_label(const char* label)
 {
   (void)internal_test_output_fd_text(STDOUT_FILENO, label);
 }
@@ -76,7 +79,7 @@ RA8_INTERNAL void internal_write_label(const char* label)
  * @note Destination failure does not change the assertion verdict.
  * @since 0.1.0
  */
-RA8_INTERNAL void internal_write_pages(uint32_t pages)
+RA8_INTERNAL static void internal_write_pages(uint32_t pages)
 {
   ra8_test_output_t    output = {};
   ra8_test_output_fd_t state  = {};
@@ -98,7 +101,7 @@ RA8_INTERNAL void internal_write_pages(uint32_t pages)
  * @note Destination failure does not change the assertion verdict.
  * @since 0.1.0
  */
-RA8_INTERNAL void internal_write_page_counts(const uint32_t* page_counts)
+RA8_INTERNAL static void internal_write_page_counts(const uint32_t* page_counts)
 {
   ra8_test_output_t    output = {};
   ra8_test_output_fd_t state  = {};
@@ -128,7 +131,7 @@ RA8_INTERNAL void internal_write_page_counts(const uint32_t* page_counts)
  * @retval k_ra8_ok The default fixture initialized the engine.
  * @retval nonzero The fixture or engine parameters were rejected.
  */
-RA8_INTERNAL ra8_err_t internal_init_default(uint16_t w, uint16_t h)
+RA8_INTERNAL static ra8_err_t internal_init_default(uint16_t w, uint16_t h)
 {
   return ra8_reflow_init(w,
                          h,
@@ -150,7 +153,7 @@ RA8_INTERNAL ra8_err_t internal_init_default(uint16_t w, uint16_t h)
  * @pre Bounded working storage remains available for the complete operation.
  * @post No state outside the documented outputs is modified by this helper.
  */
-RA8_INTERNAL void internal_test_empty_body(void)
+RA8_INTERNAL static void internal_test_empty_body(void)
 {
   internal_write_label("test_empty_body: ");
   std::memset(&s_engine, 0, sizeof(s_engine));
@@ -184,7 +187,7 @@ RA8_INTERNAL void internal_test_empty_body(void)
  * @pre Bounded working storage remains available for the complete operation.
  * @post No state outside the documented outputs is modified by this helper.
  */
-RA8_INTERNAL void internal_test_single_paragraph(void)
+RA8_INTERNAL static void internal_test_single_paragraph(void)
 {
   internal_write_label("test_single_paragraph: ");
   std::memset(&s_engine, 0, sizeof(s_engine));
@@ -219,7 +222,7 @@ RA8_INTERNAL void internal_test_single_paragraph(void)
  * @pre Bounded working storage remains available for the complete operation.
  * @post No state outside the documented outputs is modified by this helper.
  */
-RA8_INTERNAL void internal_test_paragraph_and_image(void)
+RA8_INTERNAL static void internal_test_paragraph_and_image(void)
 {
   internal_write_label("test_paragraph_and_image: ");
   std::memset(&s_engine, 0, sizeof(s_engine));
@@ -251,7 +254,7 @@ RA8_INTERNAL void internal_test_paragraph_and_image(void)
  * @pre Bounded working storage remains available for the complete operation.
  * @post No state outside the documented outputs is modified by this helper.
  */
-RA8_INTERNAL void internal_test_paginate_across_viewports(void)
+RA8_INTERNAL static void internal_test_paginate_across_viewports(void)
 {
   internal_write_label("test_paginate_across_viewports: ");
 
@@ -293,6 +296,7 @@ RA8_INTERNAL void internal_test_paginate_across_viewports(void)
   internal_write_page_counts(page_counts);
 }
 
+// NOLINTEND(readability-static-definition-in-anonymous-namespace)
 } // namespace
 
 /**
