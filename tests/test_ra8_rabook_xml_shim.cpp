@@ -443,7 +443,21 @@ RA8_INTERNAL void internal_test_nested_siblings_preorder()
                  "nested: node[5] text is 'B'");
 }
 
-/** @brief Verify html wrapper body fallback behavior. @details Executes the html wrapper body fallback scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+/**
+ * @brief Verify html wrapper body fallback behavior.
+ * @par MC/DC:
+ * Decision: `while ((err == k_ra8_ok) && !done)`
+ * (2 conditions, libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.c@internal_select)
+ * `err` is deactivated (see the `mcdc-deactivated` comment on the loop: every
+ * failing `err` breaks out before the condition is re-evaluated, so it reads
+ * true on every reachable check); only `!done` varies.
+ * - Vector 1: first evaluation -- done=false -> true -> loop enters and reads
+ *   the `<head/>` event, which matches neither body nor sets done.
+ * - Vector 2: second evaluation -- done=true (the `<body>` event just matched)
+ *   -> false -> loop exits.
+ * Vectors 1+2 flip the outcome varying done alone -- N+1 = 2 vectors for the
+ * one live condition.
+ * @details Executes the html wrapper body fallback scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL void internal_test_html_wrapper_body_fallback()
 {
   ra8_rabook_ctx_t ctx = internal_make_ctx();
