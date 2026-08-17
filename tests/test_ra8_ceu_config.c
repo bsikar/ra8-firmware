@@ -719,7 +719,7 @@ RA8_INTERNAL static void internal_board_cam_bus_up(void)
 }
 
 /**
- * @brief Reject unrepresentable XCLK divisors and forward a routing conflict. @details A zero request is refused before the clock is read; a request whose PCLKD divisor falls outside the GPT period range is refused after it; a CAM_XCLK pad already owned by another driver stops the sequence at the routing step; and with the pad free the GPT carries the computed saw-PWM period and half-period duty. @pre The module-stop model is initialized. @pre CGC reports a non-zero PCLKD frequency. @post A completed start leaves CAM_XCLK claimed by the board layer. @post GPT12 holds the exact period and duty the divisor implies. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+ * @brief Reject unrepresentable XCLK divisors and forward a routing conflict. @details A zero request is refused before the clock is read; a request whose PCLKD divisor falls outside the GPT period range is refused after it; a CAM_XCLK pad already owned by another driver stops the sequence at the routing step; and with the pad free the GPT carries the computed saw-PWM period and half-period duty. @pre The module-stop model is initialized. @pre CGC reports a non-zero PCLKD frequency. @post A completed start leaves CAM_XCLK claimed by the board layer. @post GPT12 holds the exact period and duty the divisor implies. @par MC/DC: Decision: the XCLK divisor range guard (2 conditions, below-GPT-minimum OR above-GPT-maximum). Vector 1: request = PCLKD (divisor 1) drives below-minimum true; Vector 2: request = 1 Hz drives above-maximum true; Vector 3: the board divisor drives both false and the start completes. Pairs 1+3 and 2+3 show each bound's independent influence. The zero-request and routing-conflict guards are single-condition; this test takes both directions of each. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 static void test_board_camera_xclk_bounds_and_routing(void)
 {
   TEST_BEGIN("board camera: XCLK divisor bounds and routing");
@@ -750,7 +750,7 @@ static void test_board_camera_xclk_bounds_and_routing(void)
 }
 
 /**
- * @brief Drive the U15 SW4-6 override that selects the parallel camera path. @details With RIIC1 un-armed the first expander register write never completes and the bounded wait expiry is forwarded unchanged; with the transmit flags staged the three-register sequence completes and the final write leaves the SW4-6 override mask in the transmit register. @pre The register window was reset for this case. @pre RIIC1 is reachable through the fake register window. @post The forwarded expander failure keeps its own error code. @post A completed override wrote exactly the SW4-6 mask as the direction byte. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+ * @brief Drive the U15 SW4-6 override that selects the parallel camera path. @details With RIIC1 un-armed the first expander register write never completes and the bounded wait expiry is forwarded unchanged; with the transmit flags staged the three-register sequence completes and the final write leaves the SW4-6 override mask in the transmit register. @pre The register window was reset for this case. @pre RIIC1 is reachable through the fake register window. @post The forwarded expander failure keeps its own error code. @post A completed override wrote exactly the SW4-6 mask as the direction byte. @par MC/DC: Single-condition decisions only: the bounded-wait expiry forward (taken with RIIC1 un-armed, not taken with the transmit flags staged) runs in both directions here. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 static void test_board_camera_select_parallel(void)
 {
   TEST_BEGIN("board camera: SW4-6 override selects the parallel path");
@@ -767,7 +767,7 @@ static void test_board_camera_select_parallel(void)
 }
 
 /**
- * @brief Route the eleven parallel DVP pads to the CEU. @details The first walk claims and muxes every pad in board order; the second stops at the first pad it can no longer claim, which is what leaves partial routing behind on a conflict. @pre No camera pad is claimed. @pre The register window was reset for this case. @post Every listed pad is claimed and carries the CEU peripheral function. @post A repeated walk is refused with a pin-ownership conflict. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+ * @brief Route the eleven parallel DVP pads to the CEU. @details The first walk claims and muxes every pad in board order; the second stops at the first pad it can no longer claim, which is what leaves partial routing behind on a conflict. @pre No camera pad is claimed. @pre The register window was reset for this case. @post Every listed pad is claimed and carries the CEU peripheral function. @post A repeated walk is refused with a pin-ownership conflict. @par MC/DC: Single-condition decisions only: the per-pad claim guard runs in both directions -- every pad free on the first walk, the first pad refused on the repeated walk. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 static void test_board_camera_routes_parallel_pins(void)
 {
   TEST_BEGIN("board camera: parallel pins route to the CEU");
@@ -789,7 +789,7 @@ static void test_board_camera_routes_parallel_pins(void)
 }
 
 /**
- * @brief Pulse CAM_RST and leave the sensor released. @details The pad is claimed as an output driven low, held, then released high, so the port set/reset register ends holding the CAM_RST set bit; a pad already owned by another driver stops the sequence at its output-init step. @pre No camera pad is claimed. @pre The register window was reset for this case. @post CAM_RST is claimed as a board-owned output and driven high. @post A conflicting claim is forwarded as a pin-ownership error. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+ * @brief Pulse CAM_RST and leave the sensor released. @details The pad is claimed as an output driven low, held, then released high, so the port set/reset register ends holding the CAM_RST set bit; a pad already owned by another driver stops the sequence at its output-init step. @pre No camera pad is claimed. @pre The register window was reset for this case. @post CAM_RST is claimed as a board-owned output and driven high. @post A conflicting claim is forwarded as a pin-ownership error. @par MC/DC: Single-condition decisions only: the CAM_RST output-claim guard runs in both directions -- free pad completes the pulse, the repeated call is refused with the ownership conflict. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 static void test_board_camera_reset_pulses_pin(void)
 {
   TEST_BEGIN("board camera: reset pulses CAM_RST and releases it");
@@ -807,7 +807,7 @@ static void test_board_camera_reset_pulses_pin(void)
 }
 
 /**
- * @brief Encode SCCB register transfers as big-endian address plus data. @details The write case must put the peripheral address byte, then the register high byte, then its low byte on the bus and leave the value as the final transmitted byte; the read case must repeat the same two address bytes and hand back the received byte; a null destination is refused before any bus traffic. The delay adapter is exercised alongside them because it shares the transport callback signature. @pre RIIC1 is up with its transmit and receive flags staged. @pre The SCCB byte trace is empty. @post Both transfers report success and the traced bytes match the encoding. @post The delay adapter leaves the millisecond tick source unchanged. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+ * @brief Encode SCCB register transfers as big-endian address plus data. @details The write case must put the peripheral address byte, then the register high byte, then its low byte on the bus and leave the value as the final transmitted byte; the read case must repeat the same two address bytes and hand back the received byte; a null destination is refused before any bus traffic. The delay adapter is exercised alongside them because it shares the transport callback signature. @pre RIIC1 is up with its transmit and receive flags staged. @pre The SCCB byte trace is empty. @post Both transfers report success and the traced bytes match the encoding. @post The delay adapter leaves the millisecond tick source unchanged. @par MC/DC: Single-condition decisions only: the null-destination guard (taken before any bus traffic, not taken on the completed read) runs in both directions; the write and read encodings are value checks, not branches. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 static void test_board_camera_sccb_transfers(void)
 {
   TEST_BEGIN("board camera: SCCB register transfers");
