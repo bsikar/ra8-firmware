@@ -1,86 +1,36 @@
 # epub_stress
 
-Headless HIL gate proving a **large-structure EPUB opens through the firmware's
-bounded ZIP and XML paths** (#144 bug 1 regression net).
+Opens a baked synthetic large-structure EPUB in memory and asserts that the
+firmware's bounded ZIP arena and XML workspaces handle it -- a regression net
+for #144. The fixture carries a full spine just under the
+`k_ra8_epub_max_chapters` cap, an NCX with a navPoint per chapter, a cover, and
+more archive entries than the real book that prompted the bug.
 
-## Status: demoted to hw_pending (#170 audit)
+## It does not pass on silicon
 
-This app **does not pass on silicon** and lives under `hw_pending/`, not
-`hw_validated/hil/`. On the EK-RA8D2 bench (UART reader attached before the
-reset, so the #390 print-once race cannot explain it) it prints
-`epub-stress-hil: boot` then `epub-stress-hil: FAIL toc`: the NCX navPoint
-extraction this gate exists to hold comes back short of 60 on the real part.
-The fixture is baked in memory -- no SD card, no external hardware, no
-provisioning -- so this is a firmware defect, not a rig gap, and it is tracked.
-ra8_emulator cannot arbitrate it either (it stops on an Armv8.1-M encoding the
-Unicorn M33 model has no seam for). See `hil.conf` for the full capture.
-Re-promote only from a bench capture showing the PASS banner.
+On the bench it prints its boot line and then fails on the TOC: the NCX navPoint
+extraction this gate exists to hold comes back short on the real part. The UART
+reader was attached before the reset, so the #390 print-once race cannot explain
+it, and the fixture is baked in memory -- no SD card, no external hardware, no
+provisioning -- so this is a firmware defect rather than a rig gap (#170).
+`ra8_emulator` cannot arbitrate it either: it stops on an Armv8.1-M encoding the
+Unicorn M33 model has no seam for. `hil.conf` holds the capture. Re-promote only
+from a bench capture showing the PASS banner.
 
 ## The bug it pins (#144)
 
-A ~7 MB real Boox novel was reported to fail `ra8_epub_open` with
-`k_ra8_err_no_mem`. The cause was diagnosed and resolved:
-
-- On the firmware target, miniz's ZIP **central directory** uses the 96 KiB
-  `ra8_epub_miniz_alloc` arena. The bounded XML reader uses separate,
-  caller-owned workspace and performs no allocation.
-- The actual `no_mem` was not the arena -- it was the 16 KiB shared OPF/NCX
-  scratch buffer (`k_ra8_epub_opf_xml_buf`) overflowing on a book with a large
-  OPF / NCX. That buffer is now 48 KiB (the #144 NCX fix).
-- Measured: the 96 KiB shared arena comfortably holds a 125-entry archive (the
-  real book has 108 files) -- so the arena itself was never the limit.
-
-## What it does
-
-Opens a baked **synthetic** large-structure EPUB in memory and asserts the
-bounded ZIP arena and XML workspaces handle it:
-
-- 60 chapters (spine, just under the `k_ra8_epub_max_chapters` = 64 cap),
-- 60 extra manifest resources + a cover + an NCX with 60 navPoints,
-- **125 archive entries / a ~10 KB OPF** -- more files than the 108-file,
-  41-chapter real book.
-
-On success it prints:
-
-```
-epub-stress-hil: files=125 chapters=60 toc=60 cover=ok PASS
-```
-
-asserting `ra8_epub_open` returned `k_ra8_ok` (all bounds sufficient), all 60 chapters
-parsed, all 60 NCX navPoints extracted (#144 bug 2), and the cover-image
-manifest item resolved. The fixture is synthetic (not the copyrighted novel),
-tens of KB, so it bakes into MRAM and opens in memory like `epub_parse` --
-committable and CI-able, unlike the git-ignored real books under
-`tests/fixtures/epub/real/`.
+A large real novel was reported to fail `ra8_epub_open` with
+`k_ra8_err_no_mem`. The cause was not the miniz ZIP central-directory arena, which
+comfortably holds more entries than that book has; it was the shared OPF/NCX
+scratch buffer (`k_ra8_epub_opf_xml_buf`) overflowing on a book with a large OPF
+and NCX. That buffer was enlarged. The bounded XML reader itself uses
+caller-owned workspace and performs no allocation at all.
 
 ## Why a synthetic fixture
 
-ZIP arena pressure comes from the file **count**. XML semantic and scratch
-bounds come from the OPF item and NCX entry counts, not total byte size. A
-synthetic book with many tiny files and many metadata entries exercises both
-without shipping copyrighted content. The on-target gate exercises the real
-static miniz arena and the same fixed XML workspaces used by firmware.
-
-## Validation
-
-Run on `tools/ra8_emulator` (the firmware boots, opens the 125-entry book through
-the 96 KiB ZIP arena and bounded XML reader, no fault):
-
-```
-[uart] SCI8: epub-stress-hil: boot
-[uart] SCI8: epub-stress-hil: files=125 chapters=60 toc=60 cover=ok PASS
-```
-
-## Regenerating the fixture
-
-```
-cd examples/ek_ra8d2/hw_pending/epub_stress
-python3 make_stress_fixture.py   # rewrites epub_stress_fixture.h
-```
-
-## Build
-
-```
-make epub_stress
-make -C examples/ek_ra8d2/hw_pending/epub_stress flash
-```
+ZIP arena pressure comes from the file **count**; XML semantic and scratch bounds
+come from the OPF item and NCX entry counts, not total byte size. A synthetic
+book of many tiny files and many metadata entries exercises both without shipping
+copyrighted content, and it is small enough to bake into MRAM -- committable and
+CI-able, unlike the git-ignored real books under `tests/fixtures/epub/real/`.
+Regenerate it with `make_stress_fixture.py` beside `main.c`.

@@ -1,47 +1,21 @@
 # reflow_content
 
-Headless **on-silicon HIL gate** for the `ra8_reflow` book-content render path
-(#115) -- multi-page pagination, per-page render correctness, and a font-size
-re-flow. No panel / SD / touch needed.
+Headless check of the `ra8_reflow` book-content render path (#115): lay out a
+baked multi-paragraph chapter into a small RGB565 framebuffer, render every page
+and fold a hash over the framebuffer output, then re-flow the cached chapter at
+a larger font size and render every page again. No panel, no card, no touch.
 
-1. Lay out a baked multi-paragraph chapter through `ra8_reflow` (bundled **Ahem**
-   face) into a 160x192 RGB565 framebuffer.
-2. Render **every page** and fold an **FNV-1a-32** over the framebuffer output.
-3. Call `ra8_reflow_set_font_size()` to re-flow the cached chapter at a larger
-   size (16 -> 24 px), then render every page again.
-4. Print a banner on the SCI8 J-Link OB console:
+The re-flow half is the interesting assertion: a larger size must paginate to
+more pages, so a broken re-flow shows up as a page count that did not move, and
+any drift in layout, pagination or glyph rendering changes a hash.
 
-   ```
-   reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5
-   ```
+It uses the bundled **Ahem** face, whose glyph metrics are fixed by design. That
+makes pagination and rendering fully deterministic, so the same hashes come out
+on the host, in an emulator and on silicon, and they are stable across fresh
+resets -- which turns this into an equivalence check between those three
+environments rather than a rendering demo.
 
-The gate (`hil.conf`, `uart_scrape`) asserts that line. The larger re-flow
-paginates to more pages (`rpages` > `pages`), exercising the re-flow path; any
-drift in the layout, pagination, or glyph render changes a hash.
-
-Ahem has fixed glyph metrics, so pagination + render are deterministic: the
-banner is identical on host, `ra8_emulator`, and silicon, and stable across fresh
-resets -- an emulator/silicon equivalence check.
-
-## Build + run
-
-```
-make reflow_content
-scripts/hil/run_local.sh reflow_content      # flash + scrape the banner
-```
-
-## Result (validated 2026-06-18, ra8_emulator + host)
-
-```
-reflow-content-hil: boot
-reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5
-```
-
-`scripts/emu/smoke.sh reflow_content` PASS; the identical host run
-produces the same hashes -- byte-for-byte agreement.
-
-## Updating the baseline
-
-After an **intentional** change to the baked chapter or the layout/render math,
-recompute the banner (run under `ra8_emulator` or on the bench) and update
-`HIL_EXPECT` in `hil.conf`. The on-device banner is the source of truth.
+After an *intentional* change to the baked chapter or to the layout and render
+math, the expectation in `hil.conf` has to be recomputed from a real run. The
+on-device output is the source of truth for that baseline, never a hand-edited
+value.
