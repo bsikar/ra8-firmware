@@ -410,6 +410,32 @@ gate_shebangs() (
   python3 scripts/checks/check_shebangs.py
 )
 
+# --- tier-imports ---------------------------------------------------------
+# The three-tier dependency arrow (#718), enforced instead of described.
+# libs/, port/, src/ and tools/ are the PLATFORM and must not reach into
+# apps/; within the products tier, apps/shared/ sits BELOW the form
+# categories (apps/stand_alone/, apps/threadx_modules/) and must not reach up
+# into them. Both directions have to be checked in two languages, because
+# there are two ways to couple: an #include, and a CMake source list or
+# include directory naming another layer's files.
+#
+# The scanner is calibrated for zero false positives on the current tree --
+# comments are stripped in both languages before matching, since the three
+# `apps/` mentions in the platform listfiles today are all prose. A bare
+# `#include "mdl_cache.h"` is judged against an EXCLUSIVE header-basename
+# census, so it fires only when the name can resolve nowhere else.
+#
+# --selftest FIRST, both directions plus separate PLATFORM and PRODUCTS
+# population floors: a scanner whose scope collapsed to zero files is also
+# perfectly quiet, and a collapsed census would make the bare-name rule
+# vacuous while still reporting a clean tree.
+gate_tier_imports() (
+  set -e
+  require_cmd python3 "the tier-imports gate is a Python source scanner"
+  python3 scripts/checks/check_tier_imports.py --selftest
+  python3 scripts/checks/check_tier_imports.py --all
+)
+
 # --- init-order-freshness -------------------------------------------------
 # docs/INIT_ORDER_AUDIT.md is COMMITTED yet GENERATED (mk/docs.mk writes it via
 # audit_init_order.py --report). Nothing regenerated it and byte-compared the
