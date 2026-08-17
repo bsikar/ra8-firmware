@@ -172,9 +172,9 @@ static const ra8_fs_backend_t s_backend = {
  * function-pointer interface (the DI seam under test), so its signature is
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /** @brief Perform the always fail read filesystem operation. @details Implements the bounded always fail read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
 RA8_INTERNAL static inline ra8_err_t
+// NOLINTNEXTLINE(readability-non-const-parameter)
 internal_always_fail_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
@@ -209,9 +209,9 @@ internal_dummy_capacity_ok(void* ctx, uint64_t* block_count, uint32_t* block_siz
  * function-pointer interface (the DI seam under test), so its signature is
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /** @brief Perform the fail capacity filesystem operation. @details Implements the bounded fail capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
 RA8_INTERNAL static inline ra8_err_t
+// NOLINTNEXTLINE(readability-non-const-parameter)
 internal_fail_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;

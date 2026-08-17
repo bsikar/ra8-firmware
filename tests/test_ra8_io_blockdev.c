@@ -221,8 +221,8 @@ RA8_INTERNAL static void internal_test_unbound_handle(void)
  * function-pointer interface (the DI seam under test), so its signature is
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /** @brief Fake block read that succeeds without touching memory. @details Exercises the fk read path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] c Backend callback context. @param[in] l Starting logical block address. @param[in] n Number of logical blocks, bytes, or entries requested. @param[in,out] b Block index or data-buffer argument exercised by the helper. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 RA8_INTERNAL static ra8_err_t internal_fk_read(void* c, uint32_t l, uint32_t n, uint8_t* b)
 {
   (void)c;
