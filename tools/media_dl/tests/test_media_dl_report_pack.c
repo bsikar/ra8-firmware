@@ -9,7 +9,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <dirent.h>
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -233,11 +232,12 @@ RA8_INTERNAL static void internal_bar(const mdl_fetch_progress_t* event, const c
 
 /**
  * @brief Recreate @p dir as an empty scratch directory.
- * @details Unlinks what an earlier run left, so an "empty chapter" really is empty.
+ * @details Unlinks the bounded set of leaf names this suite ever writes, so an
+ * "empty chapter" really is empty without enumerating the directory.
  * @param[in] dir Absolute scratch directory path.
  * @return Nothing; a creation failure terminates the test process.
  * @pre @p dir is NUL-terminated and shorter than ::k_path_bytes.
- * @pre @p dir contains no sub-directories.
+ * @pre Any file in @p dir was written by this suite under a known leaf name.
  * @post @p dir exists and holds no entries.
  * @post No path outside @p dir is touched.
  * @note Test-only POSIX fixture helper.
@@ -245,18 +245,13 @@ RA8_INTERNAL static void internal_bar(const mdl_fetch_progress_t* event, const c
  */
 RA8_INTERNAL static void internal_fresh_dir(const char* dir)
 {
-  DIR* handle = opendir(dir);
-  if (handle != nullptr) {
-    const struct dirent* entry = readdir(handle);
-    while (entry != nullptr) {
-      char      victim[k_path_bytes];
-      const int composed = snprintf(victim, sizeof(victim), "%s/%s", dir, entry->d_name);
-      if ((composed > 0) && ((size_t)composed < sizeof(victim))) {
-        (void)unlink(victim);
-      }
-      entry = readdir(handle);
+  static const char* const k_known_leaves[] = {"page_001.jpg", "page_002.jpg", "page_001.jof"};
+  for (size_t idx = 0U; idx < (sizeof(k_known_leaves) / sizeof(k_known_leaves[0])); ++idx) {
+    char      victim[k_path_bytes];
+    const int composed = snprintf(victim, sizeof(victim), "%s/%s", dir, k_known_leaves[idx]);
+    if ((composed > 0) && ((size_t)composed < sizeof(victim))) {
+      (void)unlink(victim);
     }
-    (void)closedir(handle);
   }
   (void)rmdir(dir);
   TEST_ASSERT_EQ(0, mkdir(dir, (mode_t)k_dir_mode));
