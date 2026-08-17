@@ -9,28 +9,9 @@ images so none of it needs a board. No Renesas FSP code lives here -- the FSP
 sources and the Hardware User's Manual are reference material, and every line
 under `libs/` and `src/` is written against the manual.
 
-## Shape of the tree
+## Shape of the system
 
-```mermaid
-graph TD
-    APPS["apps/ -- proving products<br/>stand_alone/ereader, stand_alone/media_dl"]
-    EX["examples/ -- per-library demos and HIL vehicles<br/>ek_ra8d2, ra8p1_foundation"]
-    LIBS["libs/ra8_* -- content, UI, memory, I/O fabric, crypto"]
-    PORT["port/ -- ThreadX, NetX Duo, USBX, LevelX, Mbed TLS, NimBLE"]
-    HAL["libs/ra8_hal -- HUM-derived registers and drivers<br/>the only layer that touches MMIO"]
-    CORE["libs/ra8_core -- pure C, no hardware, identical on the test host"]
-    SIL["EK-RA8D2 / RA8P1 silicon"]
-    EMU["tools/ra8_emulator -- the same .elf, no board"]
-
-    APPS --> LIBS
-    EX --> LIBS
-    LIBS --> PORT
-    LIBS --> HAL
-    PORT --> HAL
-    HAL --> CORE
-    HAL --> SIL
-    HAL --> EMU
-```
+<img src="docs/diagrams/system_map.svg" alt="RA8 system map: the RA8D2 package with its Cortex-M85 split into Secure and Non-Secure worlds, loadable modules above a resident base image that owns the media service, a Cortex-M33 with its own image, a mailbox between the cores, one SPI protobuf RPC to the ESP32-C6, and the three apps/ source categories" width="100%">
 
 The three tiers are deliberate. `libs/`, `port/`, the emulator and the CI
 machinery are the **platform** -- the reason the repo exists. `examples/` are

@@ -25,6 +25,14 @@ same flags. `ra8_hal` is the only layer that dereferences a peripheral address.
 A driver is a register header plus `ra8_core`'s utilities -- error codes, the
 pin validator, logging, IRQ-masked critical sections.
 
+## How it runs
+
+The layer diagram above is the dependency stack. This is the same firmware seen as a
+running system -- two cores, two TrustZone worlds, a companion radio, and the four
+boundary mechanisms that carry traffic between them.
+
+<img src="diagrams/system_map.svg" alt="RA8 system map: cores, TrustZone worlds, the mailbox, the ESP32-C6 over SPI, and the three apps/ source categories" width="100%">
+
 ## Where code lives
 
 ```

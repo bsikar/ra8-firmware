@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 880" width="1060" role="img" aria-label="RA8 system map. The RA8D2 package holds a Cortex-M85 split into a Secure world (key vault, secure boot, MRAM programming) and a Non-Secure world containing loadable modules above a resident base image that owns the media service, plus a Cortex-M33 with its own resident image and modules. Module-manager queues cross module boundaries, NSC veneers cross the world boundary, a mailbox in shared SRAM crosses the core boundary, and one SPI protobuf RPC reaches the ESP32-C6, which reaches the internet over HTTPS. Below, the apps source tier is shown in three categories: apps/shared product cores consumed by both apps/stand_alone host-form products and apps/threadx_modules module-form builds.">
+  <defs>
+    <marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b1f24"/>
+    </marker>
+    <marker id="aAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0969da"/>
+    </marker>
+    <marker id="aWarm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#bc4c00"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1060" height="880" fill="#fdfdfb"/>
+
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+    <text x="24" y="32" fill="#1b1f24" font-size="14" font-weight="bold">RA8 system map -- cores, worlds, and the one wire off-package</text>
+
+    <!-- ================= RA8D2 package ================= -->
+    <rect x="20" y="48" width="640" height="612" rx="8" fill="none" stroke="#1b1f24" stroke-width="1.4"/>
+    <text x="34" y="72" fill="#1b1f24" font-size="12" font-weight="bold">RA8D2 (one package, two cores)</text>
+
+    <!-- M85 -->
+    <rect x="36" y="88" width="608" height="300" rx="6" fill="none" stroke="#1b1f24" stroke-width="1.2"/>
+    <text x="50" y="110" fill="#1b1f24" font-size="11" font-weight="bold">Cortex-M85 @ 1 GHz</text>
+
+    <!-- Secure world -->
+    <rect x="50" y="124" width="150" height="248" rx="5" fill="none" stroke="#8250df" stroke-width="1.2" stroke-dasharray="6 3"/>
+    <text x="125" y="148" text-anchor="middle" fill="#8250df" font-size="11" font-weight="bold">Secure world</text>
+    <text x="125" y="170" text-anchor="middle" fill="#57606a" font-size="9">key vault, secure boot,</text>
+    <text x="125" y="184" text-anchor="middle" fill="#57606a" font-size="9">MRAM programming</text>
+    <text x="125" y="198" text-anchor="middle" fill="#57606a" font-size="9">(Ring 1/2)</text>
+
+    <text x="125" y="250" text-anchor="middle" fill="#8250df" font-size="10">NSC veneers</text>
+    <text x="125" y="266" text-anchor="middle" fill="#57606a" font-size="9">gateway calls only;</text>
+    <text x="125" y="280" text-anchor="middle" fill="#57606a" font-size="9">downloads never</text>
+    <text x="125" y="294" text-anchor="middle" fill="#57606a" font-size="9">enter Secure</text>
+
+    <!-- Non-Secure world -->
+    <rect x="214" y="124" width="416" height="248" rx="5" fill="none" stroke="#1b1f24" stroke-width="1.2"/>
+    <text x="422" y="146" text-anchor="middle" fill="#1b1f24" font-size="11" font-weight="bold">Non-Secure world</text>
+
+    <rect x="228" y="162" width="124" height="56" rx="5" fill="none" stroke="#1b1f24" stroke-width="1"/>
+    <text x="290" y="188" text-anchor="middle" fill="#1b1f24" font-size="10">e-reader</text>
+    <text x="290" y="204" text-anchor="middle" fill="#57606a" font-size="9">threadx_modules</text>
+
+    <rect x="364" y="162" width="124" height="56" rx="5" fill="none" stroke="#1b1f24" stroke-width="1"/>
+    <text x="426" y="188" text-anchor="middle" fill="#1b1f24" font-size="10">media_dl</text>
+    <text x="426" y="204" text-anchor="middle" fill="#57606a" font-size="9">threadx_modules</text>
+
+    <rect x="500" y="162" width="116" height="56" rx="5" fill="none" stroke="#1b1f24" stroke-width="1"/>
+    <text x="558" y="188" text-anchor="middle" fill="#1b1f24" font-size="10">other modules</text>
+    <text x="558" y="204" text-anchor="middle" fill="#57606a" font-size="9">MPU-isolated</text>
+
+    <line x1="290" y1="218" x2="290" y2="270" stroke="#1b1f24" stroke-width="1.1" marker-end="url(#aInk)"/>
+    <line x1="426" y1="218" x2="426" y2="270" stroke="#1b1f24" stroke-width="1.1" marker-end="url(#aInk)"/>
+    <line x1="558" y1="218" x2="558" y2="270" stroke="#1b1f24" stroke-width="1.1" marker-end="url(#aInk)"/>
+    <text x="358" y="240" text-anchor="middle" fill="#1b1f24" font-size="9">module-manager</text>
+    <text x="358" y="254" text-anchor="middle" fill="#57606a" font-size="9">queues (local RPC)</text>
+
+    <rect x="228" y="272" width="388" height="88" rx="5" fill="none" stroke="#1a7f37" stroke-width="1.4"/>
+    <text x="422" y="294" text-anchor="middle" fill="#1a7f37" font-size="11" font-weight="bold">resident base image</text>
+    <text x="422" y="312" text-anchor="middle" fill="#57606a" font-size="9">kernel + module manager + MEDIA SERVICE</text>
+    <text x="422" y="328" text-anchor="middle" fill="#57606a" font-size="9">sole owner of c6link, SPI bus, VFS mounts, display</text>
+    <text x="422" y="344" text-anchor="middle" fill="#57606a" font-size="9">(apps/stand_alone form)</text>
+
+    <!-- NS -> Secure veneer -->
+    <line x1="212" y1="300" x2="202" y2="300" stroke="#8250df" stroke-width="1.2" marker-end="url(#aInk)"/>
+
+    <!-- M33 -->
+    <rect x="36" y="408" width="608" height="228" rx="6" fill="none" stroke="#1b1f24" stroke-width="1.2"/>
+    <text x="50" y="430" fill="#1b1f24" font-size="11" font-weight="bold">Cortex-M33 @ 250 MHz -- own image, own kernel</text>
+
+    <rect x="228" y="444" width="124" height="56" rx="5" fill="none" stroke="#1b1f24" stroke-width="1"/>
+    <text x="290" y="470" text-anchor="middle" fill="#1b1f24" font-size="10">M33 module</text>
+    <text x="290" y="486" text-anchor="middle" fill="#57606a" font-size="9">e.g. EPUB compile</text>
+
+    <line x1="290" y1="500" x2="290" y2="546" stroke="#1b1f24" stroke-width="1.1" marker-end="url(#aInk)"/>
+    <text x="300" y="524" fill="#57606a" font-size="9">module-mgr queues</text>
+
+    <rect x="228" y="548" width="388" height="72" rx="5" fill="none" stroke="#1b1f24" stroke-width="1.2"/>
+    <text x="422" y="572" text-anchor="middle" fill="#1b1f24" font-size="11" font-weight="bold">M33 resident image</text>
+    <text x="422" y="590" text-anchor="middle" fill="#57606a" font-size="9">its own module manager; no radio, no c6link</text>
+    <text x="422" y="606" text-anchor="middle" fill="#57606a" font-size="9">(apps/stand_alone form, M33 build)</text>
+
+    <!-- mailbox across the core boundary -->
+    <line x1="422" y1="546" x2="422" y2="362" stroke="#0969da" stroke-width="1.4" marker-end="url(#aAcc)"/>
+    <text x="434" y="392" fill="#0969da" font-size="9">mailbox IPC (ra8_ipc,</text>
+    <text x="434" y="406" fill="#0969da" font-size="9">shared SRAM @ 0x22100000)</text>
+
+    <!-- ================= ESP32-C6 ================= -->
+    <rect x="780" y="250" width="260" height="150" rx="6" fill="none" stroke="#bc4c00" stroke-width="1.4"/>
+    <text x="910" y="276" text-anchor="middle" fill="#bc4c00" font-size="12" font-weight="bold">ESP32-C6</text>
+    <text x="910" y="298" text-anchor="middle" fill="#57606a" font-size="9">separate chip: esp-hosted +</text>
+    <text x="910" y="314" text-anchor="middle" fill="#57606a" font-size="9">mdl service, WiFi radio,</text>
+    <text x="910" y="330" text-anchor="middle" fill="#57606a" font-size="9">esp_http_client + mbedTLS</text>
+    <text x="910" y="352" text-anchor="middle" fill="#57606a" font-size="9">(coprocessor/esp32c6/)</text>
+
+    <line x1="630" y1="316" x2="778" y2="316" stroke="#bc4c00" stroke-width="1.4" marker-end="url(#aWarm)"/>
+    <text x="700" y="294" text-anchor="middle" fill="#bc4c00" font-size="10">SPI</text>
+    <text x="700" y="306" text-anchor="middle" fill="#bc4c00" font-size="9">protobuf RPC</text>
+
+    <rect x="837" y="460" width="146" height="44" rx="22" fill="none" stroke="#1b1f24" stroke-width="1.2"/>
+    <text x="910" y="488" text-anchor="middle" fill="#1b1f24" font-size="10">internet</text>
+    <line x1="910" y1="400" x2="910" y2="458" stroke="#1b1f24" stroke-width="1.1" marker-end="url(#aInk)"/>
+    <text x="922" y="434" fill="#57606a" font-size="9">HTTPS</text>
+
+    <!-- ================= numbered longest path ================= -->
+    <g fill="#0969da">
+      <circle cx="290" cy="523" r="10"/>
+      <circle cx="422" cy="454" r="10"/>
+      <circle cx="250" cy="316" r="10"/>
+      <circle cx="752" cy="316" r="10"/>
+      <circle cx="910" cy="429" r="10"/>
+    </g>
+    <g fill="#fdfdfb" font-size="10" font-weight="bold" text-anchor="middle">
+      <text x="290" y="527">1</text>
+      <text x="422" y="458">2</text>
+      <text x="250" y="320">3</text>
+      <text x="752" y="320">4</text>
+      <text x="910" y="433">5</text>
+    </g>
+    <text x="684" y="556" fill="#1b1f24" font-size="9" font-weight="bold">Longest path -- an M33 module wants a download:</text>
+    <text x="684" y="572" fill="#57606a" font-size="9">1 queue to its resident, 2 mailbox to the M85,</text>
+    <text x="684" y="588" fill="#57606a" font-size="9">3 into the media service, 4 the one SPI RPC,</text>
+    <text x="684" y="604" fill="#57606a" font-size="9">5 HTTPS. Same service, same wire, every time.</text>
+
+    <!-- ================= apps/ source tier ================= -->
+    <rect x="20" y="690" width="1020" height="140" rx="8" fill="none" stroke="#aeb4bb" stroke-width="1.2"/>
+    <text x="34" y="714" fill="#1b1f24" font-size="12" font-weight="bold">apps/ -- three categories (source tiers, not runtime boxes)</text>
+
+    <rect x="40" y="730" width="290" height="76" rx="5" fill="none" stroke="#1b1f24" stroke-width="1"/>
+    <text x="185" y="752" text-anchor="middle" fill="#1b1f24" font-size="11" font-weight="bold">apps/stand_alone/</text>
+    <text x="185" y="770" text-anchor="middle" fill="#57606a" font-size="9">host-form products -- own main(),</text>
+    <text x="185" y="786" text-anchor="middle" fill="#57606a" font-size="9">run as the resident image</text>
+
+    <rect x="385" y="730" width="290" height="76" rx="5" fill="none" stroke="#1a7f37" stroke-width="1.4"/>
+    <text x="530" y="752" text-anchor="middle" fill="#1a7f37" font-size="11" font-weight="bold">apps/shared/</text>
+    <text x="530" y="770" text-anchor="middle" fill="#57606a" font-size="9">product cores -- e.g. the media_dl</text>
+    <text x="530" y="786" text-anchor="middle" fill="#57606a" font-size="9">core both forms consume</text>
+
+    <rect x="730" y="730" width="290" height="76" rx="5" fill="none" stroke="#1b1f24" stroke-width="1"/>
+    <text x="875" y="752" text-anchor="middle" fill="#1b1f24" font-size="11" font-weight="bold">apps/threadx_modules/</text>
+    <text x="875" y="770" text-anchor="middle" fill="#57606a" font-size="9">module-form -- loadable .txm,</text>
+    <text x="875" y="786" text-anchor="middle" fill="#57606a" font-size="9">MPU-isolated, no main()</text>
+
+    <line x1="383" y1="768" x2="332" y2="768" stroke="#1a7f37" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <line x1="677" y1="768" x2="728" y2="768" stroke="#1a7f37" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="357" y="756" text-anchor="middle" fill="#1a7f37" font-size="9">used by</text>
+    <text x="702" y="756" text-anchor="middle" fill="#1a7f37" font-size="9">used by</text>
+
+    <!-- ================= footnotes ================= -->
+    <text x="24" y="852" fill="#57606a" font-size="9">Four boundary mechanisms, each used where its boundary actually is: module-manager queues inside a core, NSC veneers between worlds,</text>
+    <text x="24" y="868" fill="#57606a" font-size="9">the mailbox between cores, one SPI RPC off-package. The media service is the single funnel; downloads never enter the Secure world.</text>
+  </g>
+</svg>
