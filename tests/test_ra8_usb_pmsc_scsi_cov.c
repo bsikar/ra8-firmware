@@ -102,9 +102,9 @@ static const ra8_err_t s_test_error = k_ra8_err_hw_error;
  * function-pointer interface (the DI seam under test), so its signature is
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /** @brief Provide the file-local cb read ok test helper. @details Implements the cb read ok fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] block_count Fixture argument governed by the exercised interface contract. @param[out] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static ra8_err_t
+// NOLINTNEXTLINE(readability-non-const-parameter)
 internal_cb_read_ok(void* ctx, uint32_t lba, uint32_t block_count, uint8_t* buf)
 {
   (void)ctx;
@@ -118,9 +118,9 @@ internal_cb_read_ok(void* ctx, uint32_t lba, uint32_t block_count, uint8_t* buf)
  * function-pointer interface (the DI seam under test), so its signature is
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /** @brief Provide the file-local cb read err test helper. @details Implements the cb read err fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] block_count Fixture argument governed by the exercised interface contract. @param[out] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static ra8_err_t
+// NOLINTNEXTLINE(readability-non-const-parameter)
 internal_cb_read_err(void* ctx, uint32_t lba, uint32_t block_count, uint8_t* buf)
 {
   (void)ctx;
@@ -196,9 +196,9 @@ internal_cb_cap_count_zero(void* ctx, uint32_t* block_count, uint32_t* block_siz
  * function-pointer interface (the DI seam under test), so its signature is
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /** @brief Provide the file-local cb inq ok test helper. @details Implements the cb inq ok fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in,out] vendor8 Fixture argument governed by the exercised interface contract. @param[in,out] product16 Fixture argument governed by the exercised interface contract. @param[in,out] revision4 Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static ra8_err_t
+// NOLINTNEXTLINE(readability-non-const-parameter)
 internal_cb_inq_ok(void* ctx, uint8_t* vendor8, uint8_t* product16, uint8_t* revision4)
 {
   (void)ctx;
@@ -212,9 +212,9 @@ internal_cb_inq_ok(void* ctx, uint8_t* vendor8, uint8_t* product16, uint8_t* rev
  * function-pointer interface (the DI seam under test), so its signature is
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /** @brief Provide the file-local cb inq err test helper. @details Implements the cb inq err fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in,out] vendor8 Fixture argument governed by the exercised interface contract. @param[in,out] product16 Fixture argument governed by the exercised interface contract. @param[in,out] revision4 Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static ra8_err_t
+// NOLINTNEXTLINE(readability-non-const-parameter)
 internal_cb_inq_err(void* ctx, uint8_t* vendor8, uint8_t* product16, uint8_t* revision4)
 {
   (void)ctx;
