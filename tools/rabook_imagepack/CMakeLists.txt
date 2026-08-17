@@ -4,7 +4,7 @@
 # tools/rabook_imagepack -- single-file converter / inspector for the first-party
 # content container formats.
 #
-# The single-unit counterpart to the batch producers (tools/media_dl,
+# The single-unit counterpart to the batch producers (apps/stand_alone/media_dl,
 # tools/epub_compile): convert ONE file into ONE container, dump a container's
 # structure, or round-trip a source to prove the produced bytes are correct.
 #

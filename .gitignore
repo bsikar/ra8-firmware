@@ -45,11 +45,11 @@ CMakeCache.txt
 cmake_install.cmake
 compile_commands.json
 
-# Downloaded media (comics/manga/manhwa fetched by tools/media_dl). This is
+# Downloaded media (comics/manga/manhwa fetched by apps/stand_alone/media_dl). This is
 # third-party copyrighted content pulled for LOCAL testing only -- never commit
 # or publish it. Applies to the default `downloads/` root anywhere in the
 # tree, which is the one pattern here that genuinely cannot be anchored:
-# tools/media_dl writes `downloads/` relative to whatever directory it is run
+# apps/stand_alone/media_dl writes `downloads/` relative to whatever directory it is run
 # from, so there is no single root to anchor it to.
 # gitignore-scope-ok: media_dl writes it relative to its own cwd
 downloads/

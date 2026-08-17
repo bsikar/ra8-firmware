@@ -13,12 +13,12 @@
 # Exit status is the number of FAILED formats (0 = all good). Formats whose
 # optional external tool is absent (rar for cbr) are SKIPPED, not failed.
 #
-# Usage: tools/media_dl/tests/integration.sh [--no-build] [FORMAT ...]
+# Usage: apps/stand_alone/media_dl/tests/integration.sh [--no-build] [FORMAT ...]
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 MDL_DIR="$(cd "$HERE/.." && pwd)"
-ROOT="$(cd "$MDL_DIR/../.." && pwd)"
+ROOT="$(cd "$MDL_DIR/../../.." && pwd)"
 VIEWER_DIR="$ROOT/tools/rabook_viewer"
 
 MEDIA_DL="$MDL_DIR/build/media_dl"

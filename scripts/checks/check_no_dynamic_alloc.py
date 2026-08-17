@@ -221,9 +221,17 @@ def _firmware_scan_dirs() -> list[pathlib.Path]:
 
 
 def _tool_scan_dirs() -> list[pathlib.Path]:
-    """First-party production tool trees governed by explicit ownership."""
-    tools = REPO_ROOT / "tools"
-    return [tools] if tools.is_dir() else []
+    """First-party production host trees governed by explicit ownership.
+
+    Both roots, because both hold shipped host code: ``tools/`` the developer
+    utilities, ``apps/`` the products. They were one root until media_dl moved
+    out of ``tools/``, at which point the file floor below caught the loss --
+    199 files against a floor of 200 -- rather than letting a whole product
+    stop being checked for direct allocator calls.
+    """
+    return [
+        directory for directory in (REPO_ROOT / "tools", REPO_ROOT / "apps") if directory.is_dir()
+    ]
 
 
 FIRMWARE_SCAN_DIRS = _firmware_scan_dirs()

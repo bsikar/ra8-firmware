@@ -101,6 +101,7 @@ BUILD_TREE_ROOTS = frozenset(
         "src",  # src/app/build/
         "tests",  # tests/build/, tests/build-cov/, tests/build-fuzz/
         "tools",  # tools/<tool>/build/ -- host tool output
+        "apps",  # apps/<category>/<product>/build/ -- product build output
     }
 )
 

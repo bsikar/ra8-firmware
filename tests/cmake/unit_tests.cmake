@@ -358,10 +358,10 @@ if(TARGET test_fw_if_fs)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_pathfs.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_hash.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_pathfs.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_sanitize.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_storage.c
   )
   target_include_directories(
     test_fw_if_fs
@@ -369,7 +369,7 @@ if(TARGET test_fw_if_fs)
             ${FW_ROOT}/libs/if_ra8_vfs/inc
             ${FW_ROOT}/port/posix/inc
             ${FW_ROOT}/port/posix/src
-            ${FW_ROOT}/tools/media_dl/inc
+            ${FW_ROOT}/apps/stand_alone/media_dl/inc
   )
 endif()
 
@@ -402,12 +402,12 @@ if(TARGET test_ra8_mdl_state)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_state.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_state_codec.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_state_decimal.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_state_store.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_state.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_state_codec.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_state_decimal.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_state_store.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_storage.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_hash.c
             ${CMAKE_CURRENT_SOURCE_DIR}/support/mdl_state_fs_fault.c
   )
   target_include_directories(
@@ -416,8 +416,8 @@ if(TARGET test_ra8_mdl_state)
             ${FW_ROOT}/libs/if_ra8_vfs/inc
             ${FW_ROOT}/port/posix/inc
             ${FW_ROOT}/port/posix/src
-            ${FW_ROOT}/tools/media_dl/inc
-            ${FW_ROOT}/tools/media_dl/src
+            ${FW_ROOT}/apps/stand_alone/media_dl/inc
+            ${FW_ROOT}/apps/stand_alone/media_dl/src
             ${CMAKE_CURRENT_SOURCE_DIR}/support
   )
   target_compile_definitions(test_ra8_mdl_state PRIVATE _GNU_SOURCE)
@@ -432,14 +432,14 @@ if(TARGET test_ra8_mdl_library)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_library.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_state.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_state_codec.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_state_decimal.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_state_store.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_library.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_sanitize.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_state.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_state_codec.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_state_decimal.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_state_store.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_storage.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_hash.c
             ${CMAKE_CURRENT_SOURCE_DIR}/support/mdl_state_fs_fault.c
   )
   target_include_directories(
@@ -448,8 +448,8 @@ if(TARGET test_ra8_mdl_library)
             ${FW_ROOT}/libs/if_ra8_vfs/inc
             ${FW_ROOT}/port/posix/inc
             ${FW_ROOT}/port/posix/src
-            ${FW_ROOT}/tools/media_dl/inc
-            ${FW_ROOT}/tools/media_dl/src
+            ${FW_ROOT}/apps/stand_alone/media_dl/inc
+            ${FW_ROOT}/apps/stand_alone/media_dl/src
             ${CMAKE_CURRENT_SOURCE_DIR}/support
   )
   target_compile_definitions(test_ra8_mdl_library PRIVATE _GNU_SOURCE)
@@ -464,16 +464,16 @@ if(TARGET test_ra8_mdl_readers)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_config.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_urlname.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_export_workspace.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_verify.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_verify_tarball.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_verify_rabook.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_politeness.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_config.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_urlname.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_export_workspace.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_verify.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_verify_tarball.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_verify_rabook.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_sanitize.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_storage.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_hash.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_politeness.c
             ${CMAKE_CURRENT_SOURCE_DIR}/support/mdl_state_fs_fault.c
   )
   target_include_directories(
@@ -483,8 +483,8 @@ if(TARGET test_ra8_mdl_readers)
             ${FW_ROOT}/libs/ra8_mdl/inc
             ${FW_ROOT}/port/posix/inc
             ${FW_ROOT}/port/posix/src
-            ${FW_ROOT}/tools/media_dl/inc
-            ${FW_ROOT}/tools/media_dl/src
+            ${FW_ROOT}/apps/stand_alone/media_dl/inc
+            ${FW_ROOT}/apps/stand_alone/media_dl/src
             ${CMAKE_CURRENT_SOURCE_DIR}/support
   )
   target_compile_definitions(test_ra8_mdl_readers PRIVATE _GNU_SOURCE)
@@ -501,9 +501,9 @@ if(TARGET test_ra8_mdl_app_storage)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_app_storage.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_app_storage.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_storage.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_hash.c
             ${CMAKE_CURRENT_SOURCE_DIR}/support/mdl_state_fs_fault.c
   )
   target_include_directories(
@@ -512,8 +512,8 @@ if(TARGET test_ra8_mdl_app_storage)
             ${FW_ROOT}/libs/if_ra8_vfs/inc
             ${FW_ROOT}/port/posix/inc
             ${FW_ROOT}/port/posix/src
-            ${FW_ROOT}/tools/media_dl/inc
-            ${FW_ROOT}/tools/media_dl/src
+            ${FW_ROOT}/apps/stand_alone/media_dl/inc
+            ${FW_ROOT}/apps/stand_alone/media_dl/src
             ${CMAKE_CURRENT_SOURCE_DIR}/support
   )
   target_compile_definitions(test_ra8_mdl_app_storage PRIVATE _GNU_SOURCE)
@@ -529,25 +529,25 @@ if(TARGET test_ra8_mdl_export)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_export.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_export_workspace.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_export_io.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_export_meta.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_export_zip.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_export_tar.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_export_epub.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_export_epub_meta.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_export_jof.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_export_rabook.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_export_rabook_io.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_verify.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_verify_tarball.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_verify_rabook.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_urlname.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_url_guard.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_sanitize.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_storage.c
-            ${FW_ROOT}/tools/media_dl/src/mdl_hash.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_export.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_export_workspace.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_export_io.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_export_meta.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_export_zip.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_export_tar.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_export_epub.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_export_epub_meta.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_export_jof.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_export_rabook.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_export_rabook_io.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_verify.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_verify_tarball.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_verify_rabook.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_urlname.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_url_guard.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_sanitize.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_storage.c
+            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_hash.c
   )
   target_include_directories(
     test_ra8_mdl_export
@@ -556,9 +556,9 @@ if(TARGET test_ra8_mdl_export)
             ${FW_ROOT}/libs/ra8_mdl/inc
             ${FW_ROOT}/port/posix/inc
             ${FW_ROOT}/port/posix/src
-            ${FW_ROOT}/tools/media_dl/inc
-            ${FW_ROOT}/tools/media_dl/src
-            ${FW_ROOT}/tools/media_dl/tests
+            ${FW_ROOT}/apps/stand_alone/media_dl/inc
+            ${FW_ROOT}/apps/stand_alone/media_dl/src
+            ${FW_ROOT}/apps/stand_alone/media_dl/tests
   )
   target_compile_definitions(test_ra8_mdl_export PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 endif()

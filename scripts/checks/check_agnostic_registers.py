@@ -55,7 +55,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 BASELINE_FILE = REPO_ROOT / ".github" / "agnostic-register-baseline.txt"
 
 SOURCE_SUFFIXES = (".c", ".h", ".cpp", ".hpp", ".cc", ".cxx", ".hh", ".hxx")
-POLICY_ROOTS = frozenset({"libs", "src", "port", "examples", "tools"})
+POLICY_ROOTS = frozenset({"libs", "src", "port", "examples", "tools", "apps"})
 EXCLUDED_PREFIXES = ("libs/ra8_hal/", "libs/third_party/", "libs/ra8_fonts/")
 EXCLUDED_BACKEND_FILES = frozenset(
     {

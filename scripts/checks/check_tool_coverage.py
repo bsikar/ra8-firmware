@@ -4,7 +4,7 @@
 """Ratchet media_dl line/branch coverage without exempting existing files.
 
 The firmware host suite can enforce an absolute 90% line / 80% branch floor
-because it entered CI with that coverage. ``tools/media_dl`` did not. Its
+because it entered CI with that coverage. ``apps/stand_alone/media_dl`` did not. Its
 pre-existing debt is frozen per file as covered/total counts; a file may not
 gain uncovered lines or branches, and its coverage ratio may not fall. A new
 source file has no historical debt and must enter at the full 90/80 bar.
@@ -24,8 +24,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 COVERAGE_JSON = REPO_ROOT / "build" / "tool-coverage" / "media_dl" / "coverage.json"
 BASELINE_FILE = REPO_ROOT / ".github" / "tool-coverage-baseline.txt"
-SOURCE_DIR = REPO_ROOT / "tools" / "media_dl" / "src"
-TRACKED_INLINE_SOURCES = {"tools/media_dl/src/mdl_extract_internal.h"}
+SOURCE_DIR = REPO_ROOT / "apps" / "stand_alone" / "media_dl" / "src"
+TRACKED_INLINE_SOURCES = {"apps/stand_alone/media_dl/src/mdl_extract_internal.h"}
 
 LINE_FLOOR_PCT = 90
 BRANCH_FLOOR_PCT = 80
@@ -37,9 +37,9 @@ Coverage = tuple[int, int, int, int]
 def normalize(path: str) -> str:
     """Return a repo-relative POSIX path from a gcovr filename."""
     value = path.replace("\\", "/")
-    marker = "/tools/media_dl/"
+    marker = "/apps/stand_alone/media_dl/"
     if marker in value:
-        value = "tools/media_dl/" + value.split(marker, 1)[1]
+        value = "apps/stand_alone/media_dl/" + value.split(marker, 1)[1]
     return value.lstrip("./")
 
 
@@ -49,7 +49,7 @@ def load_report(path: Path) -> dict[str, Coverage]:
     rows: dict[str, Coverage] = {}
     for entry in data.get("files", []):
         rel = normalize(str(entry.get("filename", "")))
-        if not rel.startswith("tools/media_dl/src/"):
+        if not rel.startswith("apps/stand_alone/media_dl/src/"):
             continue
         rows[rel] = (
             int(entry["line_covered"]),
@@ -77,7 +77,7 @@ def load_baseline(path: Path) -> dict[str, Coverage]:
 
 def expected_sources(root: Path = SOURCE_DIR) -> set[str]:
     """Return every instrumented production unit the coverage report owes."""
-    sources = {f"tools/media_dl/src/{path.name}" for path in root.glob("*.c")}
+    sources = {f"apps/stand_alone/media_dl/src/{path.name}" for path in root.glob("*.c")}
     if root == SOURCE_DIR:
         sources.update(TRACKED_INLINE_SOURCES)
     return sources
@@ -156,38 +156,38 @@ def evaluate(
 
 def selftest() -> int:
     """Prove the ratchet fires and stays quiet in both directions."""
-    frozen = {"tools/media_dl/src/frozen.c": (90, 100, 80, 100)}
+    frozen = {"apps/stand_alone/media_dl/src/frozen.c": (90, 100, 80, 100)}
     expected = set(frozen)
     cases = [
         ("exact frozen coverage stays quiet", frozen, expected, False),
         (
             "uncovered line debt growth fires",
-            {"tools/media_dl/src/frozen.c": (90, 101, 80, 100)},
+            {"apps/stand_alone/media_dl/src/frozen.c": (90, 101, 80, 100)},
             expected,
             True,
         ),
         (
             "branch ratio regression fires",
-            {"tools/media_dl/src/frozen.c": (90, 100, 79, 100)},
+            {"apps/stand_alone/media_dl/src/frozen.c": (90, 100, 79, 100)},
             expected,
             True,
         ),
         (
             "well-covered new file stays quiet",
-            {**frozen, "tools/media_dl/src/new.c": (9, 10, 8, 10)},
-            expected | {"tools/media_dl/src/new.c"},
+            {**frozen, "apps/stand_alone/media_dl/src/new.c": (9, 10, 8, 10)},
+            expected | {"apps/stand_alone/media_dl/src/new.c"},
             False,
         ),
         (
             "poorly-covered new file fires",
-            {**frozen, "tools/media_dl/src/new.c": (8, 10, 7, 10)},
-            expected | {"tools/media_dl/src/new.c"},
+            {**frozen, "apps/stand_alone/media_dl/src/new.c": (8, 10, 7, 10)},
+            expected | {"apps/stand_alone/media_dl/src/new.c"},
             True,
         ),
         ("missing report source fires", {}, expected, True),
         (
             "zero-line report entry fires",
-            {"tools/media_dl/src/frozen.c": (0, 0, 0, 0)},
+            {"apps/stand_alone/media_dl/src/frozen.c": (0, 0, 0, 0)},
             expected,
             True,
         ),

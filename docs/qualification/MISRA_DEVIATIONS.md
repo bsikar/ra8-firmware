@@ -102,8 +102,8 @@ classes enumerated inside it, Code change for every hit outside them.
 | D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 13258 | 604 |
 | D-002 | misra-c2012-17.3 | Mandatory | Tooling gap       | Active   | 2026-11-02 | 531 | 159 |
 | D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 | 1073 | 301 |
-| D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 | 434 | 126 |
-| D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 | 2102 | 382 |
+| D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 | 428 | 124 |
+| D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 | 2090 | 380 |
 | D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 7 | 4 |
 | D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 | 91 | 41 |
 | D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 | 42 | 8 |
@@ -129,8 +129,8 @@ embeds them in the dumps handed to `misra.py`, so a suppressed finding
 never reaches the results (verified on the pinned binary, 2026-08-15) --
 then `misra_ratchet.py` freezes that population in the baseline below.
 
-Baseline: 20950 findings across 2997 file/rule rows (Cppcheck 2.13.0).
-Residual (no deviation record): 56 rules, 2848 findings, 1198 rows.
+Baseline: 20914 findings across 2985 file/rule rows (Cppcheck 2.13.0).
+Residual (no deviation record): 56 rules, 2830 findings, 1190 rows.
 The residual population is implementation debt dispositioned **Code
 change** in aggregate: ratchet-held, burned down per `docs/MISRA.md`,
 never accepted.
@@ -410,7 +410,7 @@ configured to leave redundant parentheses untouched.
 
 ### Population, review record, and reconciliation
 
-Current population: 434 findings across 126 files (machine-checked
+Current population: 428 findings across 124 files (machine-checked
 index above; per-file inventory in the committed baseline). It
 partitions into three parts; only the first is formally accepted:
 
@@ -475,7 +475,7 @@ and let the ratchet hold the count.
 - **Disposition**: Tooling gap (false positive).
 - **Scope**: the cppcheck audit baseline only (2.20 then; now the
   pinned version in the baseline header).
-- **Files affected**: 2102 findings across 382 files (machine-checked).
+- **Files affected**: 2090 findings across 380 files (machine-checked).
   The 2026-05-02 audit recorded 196; the population scaled with the
   tree -- the HAL build-out applies `[[nodiscard]]` to every fallible
   public prototype, `tools/` entered audit scope on 2026-08-13, and
@@ -846,7 +846,7 @@ formatting without removing the width-mismatch hazard.
   `libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2.c` (3),
   `libs/ra8_hal/src/ra8_lvd.c` (1), `libs/ra8_hal/src/ra8_ssie.c` (1)
   `libs/ra8_mpu/src/ra8_mpu.c` (1), and
-  `tools/media_dl/tests/test_media_dl_cli_matrix.c` (2).
+  `apps/stand_alone/media_dl/tests/test_media_dl_cli_matrix.c` (2).
 
 ### Root cause
 

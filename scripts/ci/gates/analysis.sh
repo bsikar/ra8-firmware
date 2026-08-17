@@ -170,8 +170,8 @@ gate_scan_build() (
 )
 
 # --- misra ----------------------------------------------------------------
-# misra_check_inner.sh (cppcheck misra.py addon) over libs/ src/ port/ tools/, then
-# misra_ratchet.py compares per-file-per-rule finding counts against
+# misra_check_inner.sh (cppcheck misra.py addon) over libs/ src/ port/ tools/ apps/,
+# then misra_ratchet.py compares per-file-per-rule finding counts against
 # .github/misra-baseline.txt. `make cppcheck` is NOT a substitute: different
 # rule set, no addon, no baseline, so a new MISRA finding sails through it.
 #

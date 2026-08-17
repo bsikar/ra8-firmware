@@ -203,7 +203,7 @@ jobs:
 
       # ci-parity: infra -- installs clang-tidy TU dependencies; runs no project check.
       # The tools/ pass needs the headers tools/ra8_emulator (Unicorn, Capstone) and
-      # tools/media_dl (libcurl) include. A MISSING header does not fail loudly --
+      # apps/stand_alone/media_dl (libcurl) include. A MISSING header does not fail loudly --
       # clang-tidy reports clang-diagnostic-error for that TU and never lints it,
       # which is the same silent hole #296 closed. Install them here rather than
       # assuming runner state. Idempotent: the probes skip apt once present.
@@ -290,10 +290,11 @@ jobs:
       - run: bash scripts/ci.sh --gate cache-bench
 
   # ---------------------------------------------------------------------------
-  # #335/#309 host-tool build gate -- every tools/* CMake project is compiled
-  # and linked here; media_dl's CTest suite and the viewer's headless render
-  # also execute. A scope guard fails when a new CMake tool is not represented,
-  # and every first-party TU is held to -Wall -Wextra -Werror.
+  # #335/#309 host-tool build gate -- every tools/* and apps/*/* CMake project
+  # is compiled and linked here; media_dl's CTest suite and the viewer's
+  # headless render also execute. A scope guard fails when a new CMake project
+  # is not represented, and every first-party TU is held to -Wall -Wextra
+  # -Werror.
   #
   # #356: the build runs under BOTH pinned compilers, clang-18 AND gcc-14, so
   # the warning families each catches but the other misses are both held --

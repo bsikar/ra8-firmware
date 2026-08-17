@@ -120,7 +120,8 @@ INPUT                  = README.md \
                          src \
                          examples \
                          scripts \
-                         tools
+                         tools \
+                         apps
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c *.h *.cpp *.hpp *.md *.dox *.py
 # Shell is deliberately NOT here, and there is no `sh=Python` mapping any more.

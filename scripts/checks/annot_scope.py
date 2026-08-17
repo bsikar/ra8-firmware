@@ -45,7 +45,7 @@ _repo_root = _REAL_REPO_ROOT
 #: ra8_emulator, media_dl, ra8_viewer and the rest were never annotation-checked
 #: at all. `scripts/` holds no C. Vendored SOUP under `libs/third_party/` is
 #: dropped by is_excluded(), not by omission from this tuple.
-SCAN_DIRS = ("libs", "src", "examples", "tests", "port", "tools")
+SCAN_DIRS = ("libs", "src", "examples", "tests", "port", "tools", "apps")
 
 EXCLUDED_PATH_PARTS = {
     "build",
@@ -77,7 +77,7 @@ GENERATED_SOURCE_CLASS = "generated-source"
 #: host-side tooling (ra8_emulator, media_dl, ra8_fmt, ...), which `scripts/ci.sh`
 #: builds with ``CC=clang-18`` and which no `cmake/toolchain-ra8d2.cmake` target
 #: ever references.
-HOST_ONLY_ROOTS = frozenset({"tests", "tools"})
+HOST_ONLY_ROOTS = frozenset({"tests", "tools", "apps"})
 
 #: Roots whose immediate child directory is one module for RA8_PRIV purposes.
 #: `libs/<module>` is the obvious one. `tools/<tool>` is the same shape: each
@@ -87,7 +87,7 @@ HOST_ONLY_ROOTS = frozenset({"tests", "tools"})
 #: calling another's. Without this, an RA8_PRIV tag under tools/ is decorative
 #: -- module_of() returned None, the rule hit `if callee_mod is None: continue`
 #: and never compared anything.
-MODULE_ROOTS = ("libs", "tools")
+MODULE_ROOTS = ("libs", "tools", "apps")
 
 
 def repo_root() -> pathlib.Path:

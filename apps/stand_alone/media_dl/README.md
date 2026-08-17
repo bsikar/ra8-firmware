@@ -204,7 +204,7 @@ raises delays further, `--ignore-robots` is a loud, explicit escape hatch, and
 ## Build
 
 ```sh
-cd tools/media_dl
+cd apps/stand_alone/media_dl
 cmake -B build -S .
 cmake --build build -j
 ```

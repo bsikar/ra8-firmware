@@ -117,7 +117,7 @@ typedef enum : uint16_t {
  *
  * @par MC/DC:
  * Decision: `(rc == k_ra8_err_busy) || (rc == k_ra8_err_timeout) || (rc ==
- * k_ra8_fail)` (3 conditions). Cited as tools/media_dl/src/mdl_fetch.c@priv_mdl_fetch_is_retryable.
+ * k_ra8_fail)` (3 conditions). Cited as apps/stand_alone/media_dl/src/mdl_fetch.c@priv_mdl_fetch_is_retryable.
  * - Vector 1: rc=k_ra8_err_not_found -> false (control: all three false)
  * - Vector 2: rc=k_ra8_err_busy      -> true  (varies condition 1)
  * - Vector 3: rc=k_ra8_err_timeout   -> true  (varies condition 2)
@@ -153,7 +153,7 @@ RA8_PRIV bool priv_mdl_fetch_is_retryable(ra8_err_t rc);
  *
  * @par MC/DC:
  * Decision: `(stats->chapters_failed > 0) || (stats->pages_failed > 0)` (2
- * conditions). Cited as tools/media_dl/src/mdl_fetch.c@priv_mdl_fetch_run_incomplete.
+ * conditions). Cited as apps/stand_alone/media_dl/src/mdl_fetch.c@priv_mdl_fetch_run_incomplete.
  * - Vector 1: chapters_failed=0, pages_failed=0 -> false (both false)
  * - Vector 2: chapters_failed=1, pages_failed=0 -> true  (varies chapters)
  * - Vector 3: chapters_failed=0, pages_failed=1 -> true  (varies pages)

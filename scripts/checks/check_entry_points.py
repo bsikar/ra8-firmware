@@ -77,7 +77,7 @@ BOOT_HEADER_REL = "libs/ra8_core/inc/ra8_boot_entry.h"
 # discovery in the top-level CMakeLists globs examples/, `src/app` is the
 # ereader image, and port/ is RTOS glue compiled into firmware images.
 FIRMWARE_ROOTS = ("examples/", "src/", "port/")
-HOSTED_ROOTS = ("tests/", "tools/")
+HOSTED_ROOTS = ("tests/", "tools/", "apps/")
 
 # Measured 2026-08-15 on dev @ ad515de20: 234 firmware entry points, 637
 # hosted ones. A tree this size cannot legitimately fall to a handful; an

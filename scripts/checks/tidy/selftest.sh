@@ -176,7 +176,7 @@ selftest_scope() {
   # Every first-party root must actually be claimed. This is the assertion
   # that would have caught #296 and #369 on the day they landed.
   local root count
-  for root in libs src tests tools examples port; do
+  for root in libs src tests tools apps examples port; do
     count="$(grep -c "^$FIRMWARE_DIR/$root/" <<<"$listing" || true)"
     if [[ "$count" -eq 0 ]]; then
       print_error "selftest: no files collected under $root/ -- scope regression"

@@ -230,7 +230,7 @@ gate_tools_coverage() (
 
   local out="$PWD/build/tool-coverage/media_dl"
   rm -rf "$out"
-  cmake -S "$PWD/tools/media_dl" -B "$out" \
+  cmake -S "$PWD/apps/stand_alone/media_dl" -B "$out" \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_C_COMPILER=gcc-14 \
     -DRA8_COVERAGE=ON
@@ -242,7 +242,7 @@ gate_tools_coverage() (
     --gcov-ignore-parse-errors=all \
     --root "$PWD" \
     --object-directory "$out" \
-    --filter "$PWD/tools/media_dl/src/" \
+    --filter "$PWD/apps/stand_alone/media_dl/src/" \
     --exclude-throw-branches \
     --exclude-unreachable-branches \
     --json-summary "$out/coverage.json" \

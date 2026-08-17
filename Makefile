@@ -49,7 +49,7 @@ ARM_SIZE     ?= arm-none-eabi-size
 
 # Host tool directories (referenced by mk/emu.mk, mk/tools.mk, and clean).
 RA8_EMU_DIR  := $(ROOT)/tools/ra8_emulator
-MEDIA_DL_DIR   := $(ROOT)/tools/media_dl
+MEDIA_DL_DIR   := $(ROOT)/apps/stand_alone/media_dl
 RA8_VIEWER_DIR := $(ROOT)/tools/rabook_viewer
 
 # --- git hooks: active for every clone, every make invocation ----------------
@@ -123,7 +123,7 @@ help:
 	@echo ""
 	@echo "READER TOOLS  (host-native, not firmware -- macOS)                      [make tools-help]"
 	@echo "  make tools             build every compiled host tool"
-	@echo "  make media_dl          build the comic/manga/manhwa downloader CLI (tools/media_dl)"
+	@echo "  make media_dl          build the comic/manga/manhwa downloader CLI (apps/stand_alone/media_dl)"
 	@echo "  make dl ARGS='...'     build + run the downloader with ARGS (e.g. --format cbz)"
 	@echo "  make test-media_dl     build + run the downloader unit tests (ctest)"
 	@echo "  make test-integration  pack synthetic pages in EVERY format + view each (end-to-end gate)"

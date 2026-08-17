@@ -59,7 +59,7 @@ def override_repo_root(root: Path) -> Iterator[None]:
         _repo_root = previous
 
 
-SCAN_DIRS = ["libs", "src", "port", "tools"]
+SCAN_DIRS = ["libs", "src", "port", "tools", "apps"]
 
 # ``generated`` joins the exclusions so machine-emitted tool code (e.g.
 # tools/vela/generated/) is exempt exactly as vendored SOUP is: it is not
@@ -74,7 +74,7 @@ EXCLUDE_PARTS = {"third_party", "generated", "build", ".git"}
 # the fallout report must cover examples/, tools/, and tests/ too. Vendored
 # SOUP (libs/third_party/) and generated tables (libs/ra8_fonts/) stay exempt, the
 # same as the function audit.
-MEMBER_SCAN_DIRS = ["libs", "src", "port", "examples", "tools", "tests"]
+MEMBER_SCAN_DIRS = ["libs", "src", "port", "examples", "tools", "apps", "tests"]
 MEMBER_EXCLUDE_PARTS = {"third_party", "ra8_fonts", "build", "build-cov", "_deps", ".git"}
 
 # Exact files emitted by protoc-c from the reviewed schema. Generated protocol

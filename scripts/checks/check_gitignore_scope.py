@@ -44,7 +44,7 @@ TWO WAYS TO BE UNANCHORED AND LEGAL
    and `ra/` had in fact already swallowed the vendored FSP blob trees.
 
 2. An explicit `gitignore-scope-ok: <reason>` marker in the comment block
-   directly above the pattern. `downloads/` is the real case: tools/media_dl
+   directly above the pattern. `downloads/` is the real case: apps/stand_alone/media_dl
    writes it relative to whatever directory it runs from, so there is no single
    root to anchor it to. The marker records that this was decided rather than
    overlooked, and an empty reason is not accepted.

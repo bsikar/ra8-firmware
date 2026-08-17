@@ -9,7 +9,7 @@ link and the program claim a capability it does not have.  The failure mode is
 worse than a missing feature: the tool links clean, advertises support, and
 fails at runtime (or, worse, silently succeeds having done nothing).
 
-``tools/rabook_imagepack/webp_stub.c`` and ``tools/media_dl/webp_stub.c`` were the
+``tools/rabook_imagepack/webp_stub.c`` and ``apps/stand_alone/media_dl/webp_stub.c`` were the
 motivating case.  Each defined the real symbol
 ``ra8_jof_priv_webp_transcode()``, discarded both arguments and returned
 ``k_ra8_err_not_supported`` -- purely so the JOF producer would link
@@ -91,7 +91,7 @@ from pathlib import Path
 
 # First-party roots. libs/third_party (SOUP) and libs/ra8_fonts (generated) are out
 # of scope, matching every other repo gate.
-ROOTS = ("libs", "src", "tools", "examples", "port")
+ROOTS = ("libs", "src", "tools", "apps", "examples", "port")
 EXCLUDED = ("libs/third_party", "libs/ra8_fonts")
 
 # Error constants that mean "this operation has no implementation". A function

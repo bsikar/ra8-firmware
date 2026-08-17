@@ -557,7 +557,7 @@ def gen_dirs() -> str:
 # .py modules are parsed by doxygen as "namespaces" whose classes then pollute
 # the C firmware's Data Structures list. We keep the files browsable under Files
 # but drop their module symbols from the API via a generated EXCLUDE_SYMBOLS.
-PY_TOOL_DIRS = ["scripts", "tools", "libs", "src", "examples"]
+PY_TOOL_DIRS = ["scripts", "tools", "apps", "libs", "src", "examples"]
 CONFIG_SKIP = {"third_party", "build", "__pycache__", "_deps", "doxygen"}
 
 
