@@ -30,7 +30,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 ## Development Approach
 
 - **Bare-metal** with a hand-written HAL layered on top of the chip's register map, the same way `star-rx72n-firmware` was built for the RX72N.
-- **No Renesas FSP code in this tree.** FSP headers and app notes may be used as **reference material** when writing the HAL, but every source file in `src/` and `libs/` is hand-written under the rules below.
+- **No Renesas FSP code in this tree.** FSP headers and app notes may be used as **reference material** when writing the HAL, but every source file in `libs/` is hand-written under the rules below.
 - **Zero vendor IDE artifacts.** This repo is built from the command line with CMake + arm-none-eabi-gcc. e2 studio, IAR, Keil project files are NOT checked in.
 - **Reference material lives in `docs/reference/`**: the RA8D2 datasheet, Hardware User's Manual, technical brief, and high-temperature-operation app note are committed so they are always at hand.
 
@@ -497,7 +497,7 @@ A pre-commit hook at `scripts/git/pre-commit` rejects any commit containing non-
 
 ## AI Attribution Policy
 
-**Zero AI attribution anywhere in the codebase.** No file in `libs/`, `src/`, `tests/`, `examples/`, `port/`, `scripts/`, or `docs/` may reference any AI-tool attribution as the author, reviewer, or contributor of code, tests, docs, or any artifact. <!-- AI-OK: policy description -->
+**Zero AI attribution anywhere in the codebase.** No file in `libs/`, `tests/`, `examples/`, `port/`, `scripts/`, or `docs/` may reference any AI-tool attribution as the author, reviewer, or contributor of code, tests, docs, or any artifact. <!-- AI-OK: policy description -->
 
 Forbidden patterns include:
 - Comments citing an assistant as a reviewer
@@ -652,7 +652,7 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
 ## Coding Rules & C23 Standards
 
 > **Scope: these standards apply to EVERY first-party file in the repository**
-> -- not just the firmware. `libs/`, `src/`, `examples/`, `port/`, `tools/`
+> -- not just the firmware. `libs/`, `examples/`, `port/`, `tools/`
 > (including the `tools/ra8_emulator` host emulator), `tests/`, and `scripts/`
 > are all held to the same bar. The **only** exemption is vendored
 > third-party code under `libs/third_party/` (SOUP). Generated data under
@@ -665,7 +665,7 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
 - **C23 Syntax**: Use `bool`, `true`, and `false` directly. Do NOT include `<stdbool.h>`. Use `static_assert` directly without `_Static_assert` or `<assert.h>`. Zero-initialize structs/arrays with `= {}` (never `= {0}`).
 - **C23 Typed Enums**: Every enum MUST specify an explicit underlying type (`typedef enum : uint8_t { ... } name_t;`). Select the smallest fitting type. Use `uintptr_t` for register base addresses. NO macros for integer constants.
 - **Header Guards**: Use `#pragma once` at the top of headers. DO NOT use traditional include guards.
-- **Program Entry Points**: firmware (`examples/`, `src/`, `port/`) uses `void main(void)` and MUST `#include "ra8_boot_entry.h"`, which holds the one declaration; it contains no `return <value>;`. Hosted code (`tests/`, `tools/`) uses ISO `int main(void)` / `int main(int, char**)`. `void` is legal only because the firmware lane compiles `-ffreestanding` -- the flag and the signature travel together. Enforced by `scripts/checks/check_entry_points.py`; see `docs/STYLE_GUIDE.md`.
+- **Program Entry Points**: firmware (`examples/`, `port/`) uses `void main(void)` and MUST `#include "ra8_boot_entry.h"`, which holds the one declaration; it contains no `return <value>;`. Hosted code (`tests/`, `tools/`) uses ISO `int main(void)` / `int main(int, char**)`. `void` is legal only because the firmware lane compiles `-ffreestanding` -- the flag and the signature travel together. Enforced by `scripts/checks/check_entry_points.py`; see `docs/STYLE_GUIDE.md`.
 - **Function Validation**: Minimum 2 validation checks (preconditions and postconditions) per function (NASA Power of 10 Rule 5). Use `RA8_CHECK_NULL_PTR` from `ra8_check.h` for null guards.
 
 ### Constants and Macros (all first-party C, repo-wide)
@@ -1162,13 +1162,13 @@ ra8-firmware/
       CMakeLists.txt           Per-app cmake target
       Makefile                 Per-app `make` (configure + build via cmake)
       README.md
-  src/                         Shared internals (no boot code, no main)
-    inc/                       Internal headers shared between TUs
-    secure_app/                Ring 5 secure-side substrate (key vault)
   libs/                        Hand-written libraries
     ra8_core/                   ra8_err, ra8_check, ra8_log, ra8_assert, ...
     ra8_hal/                    Peripheral drivers + register header files
     ra8_nsc/                    TrustZone NSC veneers
+    ra8_secure_app/             Ring 5 secure-side substrate (key vault, key
+                                 import, OTA commit, CMAC, TRNG) -- globbed
+                                 into every app's Secure image
     ra8_net_pal/, ra8_usb_pal/   Platform abstraction layers
   tests/                       Host-side unit tests (standard gcc/clang, not cross-compiled)
   scripts/                     Organised by the QUESTION a script answers, not by

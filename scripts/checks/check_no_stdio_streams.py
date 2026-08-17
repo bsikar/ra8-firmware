@@ -58,7 +58,6 @@ SCOPE_ROOTS = (
     "libs/",
     "port/",
     "examples/",
-    "src/",
     "coprocessor/",
     "tools/",
     "apps/",
@@ -73,10 +72,9 @@ GENERATED_SOURCE_PATHS = frozenset(
 # The floors are below current counts, but high enough that dropping a major
 # first-party source or test subtree cannot report a vacuous pass.
 ROOT_FILE_FLOORS = {
-    "libs/": 850,
+    "libs/": 860,
     "port/": 80,
     "examples/": 400,
-    "src/": 8,
     "tools/": 180,
     "apps/": 110,
     "tests/": 650,
@@ -394,10 +392,9 @@ def _selftest_scope(failures: list[str]) -> None:
 def _selftest_floors(failures: list[str]) -> None:
     """Prove both per-root and aggregate non-vacuity floors bite."""
     good = {
-        "libs/": 900,
+        "libs/": 910,
         "port/": 90,
         "examples/": 430,
-        "src/": 15,
         "coprocessor/": 0,
         "tools/": 200,
         "apps/": 120,
@@ -414,10 +411,9 @@ def _selftest_floors(failures: list[str]) -> None:
     # to be recomputed whenever a root is added, or the new root's floor lifts
     # the sum back over TOTAL_FILE_FLOOR and this case stops testing anything.
     total_short = {
-        "libs/": 850,
+        "libs/": 860,
         "port/": 80,
         "examples/": 400,
-        "src/": 8,
         "coprocessor/": 0,
         "tools/": 180,
         "apps/": 110,

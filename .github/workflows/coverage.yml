@@ -34,7 +34,7 @@ env:
 jobs:
   # ---------------------------------------------------------------------------
   # THE statement + branch coverage gate, for every first-party translation
-  # unit in libs/, src/, port/, tools/, apps/ and examples/.
+  # unit in libs/, port/, tools/, apps/ and examples/.
   #
   # One census, one baseline (.github/tree-coverage-baseline.txt), one bar. It
   # is scheduled here and nowhere else: two more jobs used to apply their own

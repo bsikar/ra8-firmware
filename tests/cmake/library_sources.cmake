@@ -131,7 +131,7 @@ set(RA8_EPUB_THIRD_PARTY
 include(${FW_ROOT}/cmake/ra8_webp_vendor.cmake)
 ra8_webp_vendor_sources(RA8_WEBP_THIRD_PARTY ${FW_ROOT})
 ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
-file(GLOB_RECURSE RA8_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/src/secure_app/*.c)
+file(GLOB_RECURSE RA8_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_secure_app/src/*.c)
 file(GLOB_RECURSE RA8_TOUCH_CAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_touch_cal/src/*.c)
 file(GLOB_RECURSE RA8_EPD_CAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_epd_cal/src/*.c)
 file(GLOB_RECURSE RA8_PSA_CRYPTO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_psa_crypto/src/*.c)

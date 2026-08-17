@@ -45,7 +45,7 @@ from lint_targets import is_build_output_path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 HEADER_SUFFIXES = (".h", ".hpp", ".hh", ".hxx")
-SCAN_ROOTS = ("libs", "src", "port", "examples", "tools", "apps")
+SCAN_ROOTS = ("libs", "port", "examples", "tools", "apps")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/ra8_fonts/",
@@ -68,7 +68,7 @@ def _governing_dir(path: Path) -> str | None:
     """Return the nearest ``inc``/``src`` ancestor component, or None.
 
     A module may nest an ``inc`` inside a ``src`` tree (e.g.
-    ``src/secure_app/inc/key_vault.h``): the *closest* such component to the
+    ``libs/ra8_secure_app/inc/key_vault.h``): the *closest* such component to the
     file decides whether it is public (``inc``) or private (``src``), so a
     higher ``src`` does not condemn a header that sits in a deeper ``inc``.
     """

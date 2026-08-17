@@ -65,7 +65,7 @@ into a verification-activity register.
 
 | Obj # | Subject                                  | Evidence                                                                                  | Gap                                                              |
 |------:|------------------------------------------|-------------------------------------------------------------------------------------------|------------------------------------------------------------------|
-| 1     | Source code complies with LLR            | Source under `libs/`, `src/`, `examples/`                                                 | Trace matrix pending.                                            |
+| 1     | Source code complies with LLR            | Source under `libs/`, `examples/`, `apps/`                                                | Trace matrix pending.                                            |
 | 2     | Source code complies with architecture   | `scripts/checks/check_world_tags.py`, `docs/RING_AND_WORLD.md`                             | Strict mode pending.                                             |
 | 3     | Source code is verifiable                | Host test corpus under `tests/` (190 `test_*.c` files; 190/190 PASS)                      | Test-to-source ratio sustained above 1:1.                        |
 | 4     | Source code conforms to standards        | clang-format, clang-tidy, cppcheck (with MISRA addon via `make misra`)                    | MISRA backlog under deviation register.                          |
@@ -367,7 +367,7 @@ configuration that enforces the partition is in each app's
 | Secure-side state is unreachable from NS without veneer | `libs/ra8_nsc/` veneers + SAU config review                            |
 | Veneer set is closed (no unintentional NSC exposure)    | Linker-script review; `arm-none-eabi-nm` of the secure ELF             |
 | Secure faults trap to the secure exception handler      | `examples/*/secure_exception.c` per-app handler + smoke fault-injection|
-| Key-vault operations occur in S only                    | `src/secure_app/key_vault.c` review + ring-tag audit                   |
+| Key-vault operations occur in S only                    | `libs/ra8_secure_app/src/key_vault.c` review + ring-tag audit                   |
 
 ### 8.3 Gaps
 

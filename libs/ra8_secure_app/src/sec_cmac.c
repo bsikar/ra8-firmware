@@ -17,7 +17,8 @@
  *   has never been compiled by any image, host test or gate. It is not the
  *   production path and must not be described as one. Turning it on is not a
  *   one-line change: this file is compiled into EVERY app through the
- *   ``src/secure_app`` source set, so defining the flag globally would drag
+ *   ``libs/ra8_secure_app`` source set, so defining the flag globally would
+ *   drag
  *   TF-PSA-Crypto into images that link no crypto library today, while
  *   defining it per-app would leave two CMAC implementations live at once
  *   with the KATs covering only one of them.

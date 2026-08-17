@@ -37,7 +37,7 @@ vendor-controlled implementation", not literally a binary file.
   `*_install_plain` and `key_wrap` / `key_unwrap` flows backed by
   Renesas-managed key infrastructure rather than a software MAC).
 - Signed key import as offered by the secure-side `key_import`
-  veneers (`src/secure_app/key_import.{c,h}`).
+  veneers (`libs/ra8_secure_app/src/key_import.c`).
 - Renesas-managed attestation flows.
 - Production-grade RSIP-E50D state machine (raw AES-GCM / SHA / TRNG
   calls do NOT need the blobs and are achievable from datasheet-only
@@ -100,7 +100,8 @@ Wrapper / consumer layers:
   `*_install_plain` functions for AES, RSA, ECDSA flows)
 - `libs/ra8_hal/src/ra8_rsip_key_injection.c` (wrapped-key blob
   pack / validate; the wrapping is explicitly not cryptographic)
-- `src/secure_app/key_import.c` and `src/secure_app/key_import.h`
+- `libs/ra8_secure_app/src/key_import.c` and its
+  `key_import_internal.h`
   (Ring-5 secure-side veneers that would call the RSIP wrap path
   in a production build)
 

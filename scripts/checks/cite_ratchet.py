@@ -107,8 +107,8 @@ BASELINE_COLUMNS = 2
 MIN_SCANNED_FILES = 1700
 """Refuse to ratchet a scan that saw implausibly few source files.
 
-`cite_check`'s derived first-party C scope is 2120 files today (libs 790,
-tests 618, examples 408, tools 210, port 78, src 16). A scan that finds a
+`cite_check`'s derived first-party C scope is 2638 files today (libs 947,
+tests 784, examples 458, tools 211, apps 143, port 94). A scan that finds a
 fraction of that is not looking at this repository -- a partial checkout, a
 `git ls-files` that came back short, an enumeration that stopped covering a
 top-level directory. It would report FEWER uncited accesses, which reads as a

@@ -102,7 +102,7 @@ missingInclude:libs/ra8_core/src/ra8_infrastructure.c
 # separators, so the pattern covers every header under any libs/<lib>/inc/
 # tree. The check STAYS LIVE everywhere a genuinely unused member is a real
 # defect signal: all .c files, module-private src-internal headers
-# (libs/*/src/*_internal.h), src/, examples/, tools/, and tests/.
+# (libs/*/src/*_internal.h), examples/, tools/, and tests/.
 # libs/third_party is excluded from the scan separately (-i
 # libs/third_party).
 # ---------------------------------------------------------------------------

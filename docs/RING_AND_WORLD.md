@@ -1,7 +1,7 @@
 # Ring and World tagging
 
 Every source file in `libs/ra8_hal/`, `libs/ra8_*_pal/`, `libs/ra8_nsc/`,
-and `src/` carries a two-part tag in its file-level Doxygen header:
+and `libs/ra8_secure_app/` carries a two-part tag in its file-level Doxygen header:
 
 ```c
 /**
@@ -33,7 +33,7 @@ services.
 | **2** | Register layer | `libs/ra8_hal/inc/ra8d2_*_regs.h` | Hand-written register layouts derived from the HUM. No code paths -- just typed enums + accessor inline functions. |
 | **3** | HAL drivers | `libs/ra8_hal/src/ra8_*.c` | Hardware Abstraction Layer. Programmes peripherals via Ring-2 register headers. The vast majority of driver code lives here. |
 | **4** | NSC veneers | `libs/ra8_nsc/` | TrustZone Non-Secure-Callable veneers. Bridges between `{World: S}` and `{World: NS}` -- the only place where `__attribute__((cmse_nonsecure_entry))` is allowed. |
-| **5** | Secure app | `src/secure_app/` | Secure-side application code (key vault, secure-boot trust anchor). Sits above the HAL but below the NS-callable veneer surface. |
+| **5** | Secure app | `libs/ra8_secure_app/` | Secure-side application code (key vault, secure-boot trust anchor). Sits above the HAL but below the NS-callable veneer surface. |
 | **6** | Application | `examples/<tier>/.../<app>/main.c` (e.g. `.../smoke/blink/`, `.../smoke/blink_hal/`), test mocks | The firmware "user code" -- whatever drives the HAL to do something useful. The blink demo, board-bringup smoke tests, and unit-test harnesses all live at Ring 6. |
 
 The numbering doesn't have to be contiguous; it's a coordinate system,
@@ -53,7 +53,7 @@ The tag declares the world a file *expects to run in*:
 
 | Tag | Meaning | Where allowed |
 |---|---|---|
-| `{World: S}` | Runs in the Secure world. Has full access to all peripherals and memory. Cannot be called directly from NS code -- only via NSC veneers. | `libs/ra8_hal/`, `libs/ra8_*_pal/` (when serving the secure side), `src/secure_app/`, per-app boot files (`examples/<app>/{vector_table,system_init,...}.c`), secure-side apps. |
+| `{World: S}` | Runs in the Secure world. Has full access to all peripherals and memory. Cannot be called directly from NS code -- only via NSC veneers. | `libs/ra8_hal/`, `libs/ra8_*_pal/` (when serving the secure side), `libs/ra8_secure_app/`, per-app boot files (`examples/<app>/{vector_table,system_init,...}.c`), secure-side apps. |
 | `{World: NS}` | Runs in the Non-Secure world. Reaches into Secure code only through `__cmse_nonsecure_entry` veneers in `libs/ra8_nsc/`. | `libs/ra8_hal/` driver TUs that the SAU partition keeps NS, NS-side apps. |
 | `{World: NSC}` | Non-Secure-Callable veneer code. The bridge between worlds. The `.gnu.sgstubs` section lands here at link time. | **Only** under `libs/ra8_nsc/`. |
 | `{World: MIXED}` | A file that legitimately straddles both worlds (rare -- typically a header consumed by both sides). | Header files only, sparingly. |
@@ -88,7 +88,7 @@ display layer is NS-attributed by default. The HAL TU itself is built
 to land in the NS image.
 
 ```c
-/* src/secure_app/key_vault.h */
+/* libs/ra8_secure_app/inc/key_vault.h */
 /**
  * @file key_vault.h
  * @brief Secure-only symmetric key store
@@ -147,7 +147,7 @@ before the diff has a chance to hide the mistake.
 ## Adding a new file
 
 When you add a `.c` or `.h` under `libs/ra8_hal/`, `libs/ra8_*_pal/`,
-`libs/ra8_nsc/`, `src/secure_app/`, or a per-app dir (`examples/<app>/`):
+`libs/ra8_nsc/`, `libs/ra8_secure_app/`, or a per-app dir (`examples/<app>/`):
 
 1. Pick the ring it belongs to using the table above.
 2. Pick the world it runs in (almost always `S` for Ring 3 drivers

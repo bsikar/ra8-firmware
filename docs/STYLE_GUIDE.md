@@ -118,8 +118,8 @@ ra8_err_t ra8_gpio_output_init(ra8_port_t port, uint8_t pin, ra8_level_t init_le
 ```
 
 Gated by `doxy_audit.py --check` (the `pre-commit-checks` gate and the
-pre-commit hook), over every function -- including statics -- in `libs/`,
-`src/` and `port/`:
+pre-commit hook), over every function -- including statics -- in `libs/`
+and `port/`:
 
 - `@brief`, `@details`, `@param` for every parameter, `@return`
 - At least 2 `@pre` and 2 `@post` (NASA Power of 10 Rule 5)
@@ -293,7 +293,7 @@ holds each to its own contract.
 | Domain | Where | Signature |
 |---|---|---|
 | Hosted | `tests/`, `tools/` | `int main(void)` or `int main(int argc, char** argv)` |
-| Freestanding | `examples/`, `src/`, `port/` | `void main(void)` |
+| Freestanding | `examples/`, `port/` | `void main(void)` |
 
 **Hosted code returns `int` because ISO C says so.** These programs run under
 an operating system that reads the exit status, and both host compilers

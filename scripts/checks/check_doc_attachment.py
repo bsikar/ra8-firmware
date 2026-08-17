@@ -36,7 +36,7 @@ Why a sibling script rather than a new ``doxy_audit.py`` mode:
   are separate concerns with separate failure modes and separate fix
   procedures.
 
-Scope: every first-party ``.c`` / ``.h`` under ``libs/``, ``src/``, ``port/``,
+Scope: every first-party ``.c`` / ``.h`` under ``libs/``, ``port/``,
 ``examples/``, ``tools/`` and ``tests/``.  Vendored SOUP (``libs/third_party``)
 and generated data (``libs/ra8_fonts``) are excluded, matching CLAUDE.md.
 

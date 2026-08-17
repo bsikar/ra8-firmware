@@ -89,18 +89,22 @@ from lint_targets import firmware_app_dirs, is_build_output_path
 
 # Production directories that are subject to the MC/DC gate.
 #
-# "Production" here means code that runs on the target: the platform libraries,
-# the secure-side substrate under src/, the RTOS ports -- and the FIRMWARE
-# products, which is why apps/ appears through a derivation rather than as a
-# fourth literal. apps/ is the products tier and most of it is host programs
-# (the media_dl CLI), which are no more in scope than tools/ is; the e-reader
-# image is. Deriving the firmware half from
+# "Production" here means code that runs on the target: the platform libraries
+# (the Ring 5 secure substrate among them, as libs/ra8_secure_app), the RTOS
+# ports -- and the FIRMWARE products, which is why apps/ appears through a
+# derivation rather than as a third literal. apps/ is the products tier and
+# most of it is host programs (the media_dl CLI), which are no more in scope
+# than tools/ is; the e-reader image is. Deriving the firmware half from
 # ``lint_targets.firmware_app_dirs()`` keeps the scope's MEANING fixed while
 # the tree moves under it: when the e-reader composition left src/ for the
 # products tier, a literal tuple would have dropped six firmware translation
 # units out of this gate and reported the resulting smaller count as a
 # burn-down.
-PROD_PREFIXES: tuple[str, ...] = ("libs/", "src/", "port/", *(f"{d}/" for d in firmware_app_dirs()))
+PROD_PREFIXES: tuple[str, ...] = (
+    "libs/",
+    "port/",
+    *(f"{d}/" for d in firmware_app_dirs()),
+)
 
 # Test translation units allowed to carry executable MC/DC vector sets.
 TEST_SOURCE_SUFFIXES: tuple[str, ...] = (".c", ".cpp")

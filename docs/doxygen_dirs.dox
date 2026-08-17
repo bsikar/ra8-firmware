@@ -17,12 +17,6 @@
  *        lives under libs/third_party and is excluded from these docs.
  */
 
-/*
- * NOTE: the repo-root @dir src lives in the generated docs/generated/nav_dirs.dox
- * (emitted by scripts/gen/gen_doxygen_nav.py with an absolute path). A plain
- * "@dir src" here is ambiguous because many example apps carry a nested src/.
- */
-
 /**
  * @dir docs
  * @brief Human-facing documentation: architecture, policy, the DO-178C /

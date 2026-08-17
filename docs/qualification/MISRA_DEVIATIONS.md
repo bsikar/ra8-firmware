@@ -123,7 +123,7 @@ and every in-section `N findings across M files` restatement. It does
 NOT check Category / Class / Status / MAR, free prose, or which rows sit
 behind an ownership bullet -- those stay review obligations. A count is
 a measurement; each deviation says what it actually accepts. Evidence:
-`misra_check_inner.sh` scans `libs/ src/ port/ tools/ apps/` (`examples/`
+`misra_check_inner.sh` scans `libs/ port/ tools/ apps/` (`examples/`
 and the repo-root `tests/` out of scope; a product's own `tests/` under
 `apps/` is in scope with the rest of that root) with
 `.cppcheck-suppressions` applied -- cppcheck
@@ -182,7 +182,7 @@ family or ghost bullet = gate failure); justifications live with the rows.
 - **Disposition**: Project deviation (formal).
 - **Scope**: project-wide; the early-return idiom is house style in
   every first-party translation unit. The audited population covers
-  the scan roots `libs/`, `src/`, `port/`, `tools/`.
+  the scan roots `libs/`, `port/`, `tools/`, `apps/`.
 - **Files affected**: 751 violations in the 2026-05-02 baseline,
   spread across substantially every `.c` file in the firmware tree;
   current population in the index above.

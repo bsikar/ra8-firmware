@@ -30,7 +30,7 @@ include("${RA8_REPO_ROOT}/cmake/ra8_add_app.cmake")
 # ---- Secure Target --------------------------------------------------------
 # Use the repository's standard macro to build the Secure side.
 # This automatically handles include paths for ra8_core, ra8_hal, ra8_net_pal, ra8_usb_pal,
-# ra8_board_ek_ra8d2, and compiles the Ring 5 src/secure_app/ sources.
+# ra8_board_ek_ra8d2, and compiles the Ring 5 libs/ra8_secure_app/ sources.
 ra8_add_app(
   NAME ra8d2-ereader
   STACK_BYTES 2200
@@ -62,7 +62,6 @@ target_compile_definitions(
                             $<$<BOOL:${RA8_EREADER_NS_XIP}>:RA8_EREADER_NS_XIP>
 )
 target_compile_options(ra8d2-ereader.elf PRIVATE -mcmse -fshort-enums -ffreestanding)
-target_include_directories(ra8d2-ereader.elf PRIVATE ${RA8_REPO_ROOT}/src/secure_app)
 
 target_link_options(
   ra8d2-ereader.elf

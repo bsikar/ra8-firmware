@@ -18,8 +18,8 @@ was invisible to the magic-number check (a bare ``ra8_delay_ms(500U)``
 sailed straight through both the pre-commit hook and CI).
 
 This checker is a backstop that walks the source text directly so the
-rule is enforced for **every** ``.c`` file under ``libs/``, ``src/``,
-``port/``, and ``examples/`` regardless of which compile database it
+rule is enforced for **every** ``.c`` file under ``libs/``, ``port/``,
+and ``examples/`` regardless of which compile database it
 ended up in.  It is the magic-number analogue of
 ``check_function_size.py``.
 

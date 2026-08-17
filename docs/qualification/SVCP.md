@@ -38,7 +38,7 @@ The catalogue is partitioned by module / category. Every `tests/test_*.c`
 file is the unit-test specification for the matching `libs/<module>` or
 `port/<module>` translation unit. The naming convention is mechanical:
 `tests/test_<module>.c` verifies `libs/<module>/src/<module>.c` (or the
-equivalent under `src/secure_app/` and `port/`).
+equivalent under `libs/ra8_secure_app/src/` and `port/`).
 
 ### 1.1 Hardware abstraction layer (`libs/ra8_hal`)
 
@@ -101,10 +101,10 @@ equivalent under `src/secure_app/` and `port/`).
 | UT-USBPAL-001      | `tests/test_ra8_usb_pal.c`       | `libs/ra8_usb_pal/src/ra8_usb_pal.c`         |
 | UT-NETPAL-001      | `tests/test_ra8_net_pal.c`       | `libs/ra8_net_pal/src/ra8_net_pal.c`         |
 | UT-WDTSUP-001      | `tests/test_ra8_wdt_supervisor.c`| `libs/ra8_wdt_supervisor/src/*.c`           |
-| UT-SECAPP-KV-001   | `tests/test_secure_app_key_vault.c` | `src/secure_app/key_vault.c`           |
-| UT-SECAPP-KI-001   | `tests/test_secure_app_key_import.c`| `src/secure_app/key_import.c`          |
-| UT-SECAPP-OTA-001  | `tests/test_secure_app_ota_commit.c`| `src/secure_app/ota_commit.c`          |
-| UT-SECAPP-TRNG-001 | `tests/test_secure_app_trng.c`  | `src/secure_app/secure_trng.c`             |
+| UT-SECAPP-KV-001   | `tests/test_secure_app_key_vault.c` | `libs/ra8_secure_app/src/key_vault.c`           |
+| UT-SECAPP-KI-001   | `tests/test_secure_app_key_import.c`| `libs/ra8_secure_app/src/key_import.c`          |
+| UT-SECAPP-OTA-001  | `tests/test_secure_app_ota_commit.c`| `libs/ra8_secure_app/src/ota_commit.c`          |
+| UT-SECAPP-TRNG-001 | `tests/test_secure_app_trng.c`  | `libs/ra8_secure_app/src/secure_trng.c`             |
 
 ### 1.3 Port and SOUP integration tests
 
@@ -158,7 +158,7 @@ the `blink_hal` shape harness).
 
 | Test ID              | Source                                | Purpose                                   |
 |----------------------|---------------------------------------|-------------------------------------------|
-| UT-COMPILE-ALL-001   | `tests/test_coverage_compile_all.c`   | Forces every `libs/` and `src/` TU into   |
+| UT-COMPILE-ALL-001   | `tests/test_coverage_compile_all.c`   | Forces every `libs/` TU into              |
 |                      |                                       | the link image so MC/DC instrumentation   |
 |                      |                                       | covers every first-party file.            |
 
@@ -176,7 +176,7 @@ the `blink_hal` shape harness).
    clean under `-Wall -Wextra -Werror -Wimplicit-function-declaration
    -Wmissing-prototypes -Wshadow -Wconversion`.
 
-**Inputs**: source under `libs/`, `src/`, `port/`, `tests/`.
+**Inputs**: source under `libs/`, `port/`, `tests/`.
 **Outputs**: `tests/build/` artefacts; ctest log captured by SVR.
 **Tools**: `cmake`, `gcc-14` or `clang-18`, `ctest` (see
 `docs/qualification/TOOL_QUALIFICATION.md`).
@@ -248,7 +248,7 @@ TQL classifications in `docs/qualification/TOOL_QUALIFICATION.md`.
 
 1. From the repository root, run `make misra`. This wraps
    `scripts/checks/misra_check_inner.sh`:
-   1. Walks `libs/`, `src/`, and `port/` (excluding
+   1. Walks `libs/`, `port/`, `tools/` and `apps/` (excluding
       `libs/third_party/`).
    2. Invokes `cppcheck --addon=misra` with project-wide includes
       and the `.cppcheck-suppressions` file.
@@ -270,8 +270,8 @@ TQL classifications in `docs/qualification/TOOL_QUALIFICATION.md`.
 **Procedure VP-DOXY-001.**
 
 1. From the repository root, run `python3 scripts/checks/doxy_audit.py`.
-2. The script audits every C / C++ function under `libs/`, `src/`,
-   and `port/` against the Doxygen Documentation Requirements in
+2. The script audits every C / C++ function under `libs/`, `port/`,
+   `tools/` and `apps/` against the Doxygen Documentation Requirements in
    `CLAUDE.md`. It writes:
    - `docs/DOXYGEN_GAPS.md` (Markdown summary).
    - `docs/DOXYGEN_GAPS.csv` (per-function gap rows).

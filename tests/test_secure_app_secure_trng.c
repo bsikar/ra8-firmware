@@ -1,11 +1,11 @@
 /**
  * @file test_secure_app_secure_trng.c
- * @brief Unit + MC/DC tests for src/secure_app/secure_trng.c
+ * @brief Unit + MC/DC tests for libs/ra8_secure_app/src/secure_trng.c
  *
  * @details
  * Exercises the host-PRNG-stub TRNG entropy reader. Includes targeted
  * MC/DC vector sets for the two compound boolean decisions identified
- * in docs/MCDC_GAPS.csv at src/secure_app/secure_trng.c and :89.
+ * in docs/MCDC_GAPS.csv at libs/ra8_secure_app/src/secure_trng.c and :89.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -102,7 +102,7 @@ static void test_read_arg_validation(void)
  *
  * @par MC/DC:
  * Decision: `if ((len == 0U) || (len > (uint32_t)k_ra8_secure_trng_max_bytes))`
- * (2 conditions, src/secure_app/secure_trng.c)
+ * (2 conditions, libs/ra8_secure_app/src/secure_trng.c)
  *  - C1 = (len == 0U)
  *  - C2 = (len > k_ra8_secure_trng_max_bytes)  (i.e. > 256)
  *
@@ -140,7 +140,7 @@ static void test_mcdc_read_length_validation(void)
  *
  * @par MC/DC:
  * Decision: `for (uint32_t b = 0U; (b < (uint32_t)k_bytes_per_u64) && (written < len); ++b)`
- * (2 conditions, src/secure_app/secure_trng.c)
+ * (2 conditions, libs/ra8_secure_app/src/secure_trng.c)
  *  - C1 = (b < 8U)             (per-word slice index)
  *  - C2 = (written < len)      (have we filled the request?)
  *

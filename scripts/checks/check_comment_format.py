@@ -82,10 +82,10 @@ SOURCE_SUFFIXES = (
 )
 # Mirror scripts/checks/format_code.sh's scope: this pass runs *after* clang-format and
 # only makes sense where clang-format already aligned the comment starts.
-# format_code.sh formats libs/ src/ tests/ examples/ tools/ (not port/), so the
+# format_code.sh formats libs/ tests/ examples/ tools/ (not port/), so the
 # no-argument scan here matches; format_code.sh also drives this tool with an
 # explicit file list, which is the authoritative gate path.
-SCAN_ROOTS = ("libs", "src", "port", "examples", "tools", "apps", "tests")
+SCAN_ROOTS = ("libs", "port", "examples", "tools", "apps", "tests")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/ra8_fonts/",

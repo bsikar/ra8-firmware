@@ -89,7 +89,7 @@ reason (i.e. "I just wanted to write Claude here" is not acceptable).
 ## How the gate works
 
 `scripts/checks/check_no_ai_attribution.py` walks every file under
-`libs/`, `src/`, `tests/`, `examples/`, `port/`, `scripts/`, `docs/`,
+`libs/`, `tests/`, `examples/`, `port/`, `scripts/`, `docs/`,
 plus the top-level `CLAUDE.md`, `CONTRIBUTING.md`, and `README.md`. For
 each text file with a recognised extension (`.c`, `.h`, `.md`, `.py`,
 `.sh`, `.cmake`, `.yml`, `.txt`, ...) it scans line by line for the

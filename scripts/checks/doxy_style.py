@@ -19,7 +19,7 @@ documented function-like MACROS and 2 documented a callback typedef, none of
 which the function gate looks at.  Scope is therefore the derived first-party C
 set from ``lint_targets.first_party_paths`` -- ``git ls-files`` minus the named
 SOUP / generated exemptions -- not ``doxy_scope.SCAN_DIRS``, which stops at
-``libs``/``src``/``port``.
+``libs``/``port``.
 
 WHAT IS HARD AND WHAT IS RATCHETED
 ----------------------------------

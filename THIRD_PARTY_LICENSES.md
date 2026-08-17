@@ -27,7 +27,7 @@ a component, update that registry and run `make sbom`.
 - **Covered here:** the vendored Software Of Unknown Provenance (SOUP) under
   `libs/third_party/` and the one bundled font data asset under `libs/ra8_fonts/`.
 - **NOT covered (first-party, MIT):** all hand-written code under `libs/`,
-  `src/`, `examples/`, `port/`, `tools/`, `tests/`, and `scripts/` is
+  `examples/`, `port/`, `tools/`, `tests/`, and `scripts/` is
   first-party and licensed under the root MIT `LICENSE.txt`. In particular
   `port/` is the project's own RA8D2 glue for the middleware (project Ring /
   World tags, project copyright) -- it is NOT vendored SOUP.

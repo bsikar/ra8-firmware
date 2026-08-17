@@ -239,7 +239,7 @@ fi
 # Prebuild the universal first-party library archive ONCE, then hand every
 # eligible per-app build a pointer to it so it links the archive instead of
 # recompiling ~180 identical library sources (ra8_core / ra8_hal / ra8_net_pal
-# / ra8_usb_pal / board / secure_app) into its own ELF. That redundant
+# / ra8_usb_pal / board / ra8_secure_app) into its own ELF. That redundant
 # recompile -- ~180 sources x ~200 apps -- was the dominant cost of this gate.
 # cmake/ra8_add_app.cmake reads RA8_SHARED_LIB_ARCHIVE at configure time and
 # links it with --whole-archive (+ the toolchain --gc-sections), producing a

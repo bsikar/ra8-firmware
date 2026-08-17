@@ -217,6 +217,6 @@ target_include_directories(
           ${FW_ROOT}/port/threadx/inc
           ${FW_ROOT}/libs/third_party/miniz
           ${FW_ROOT}/libs/third_party/stb
-          ${FW_ROOT}/src/secure_app/inc
+          ${FW_ROOT}/libs/ra8_secure_app/inc
 )
 add_test(NAME test_cache_store_demo COMMAND test_cache_store_demo)

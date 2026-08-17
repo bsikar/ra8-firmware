@@ -18,8 +18,8 @@ repository root. Read both before contributing non-trivial code.
   (Cortex-M85 @ 1 GHz primary core, Cortex-M33 @ 250 MHz secondary, 1 MB
   MRAM, 2 MB ECC SRAM).
 * Build the entire HAL and PAL surface area without copying Renesas FSP
-  code. FSP headers are reference material only; every line in `src/`,
-  `libs/`, and `examples/` is hand-written under this project's style
+  code. FSP headers are reference material only; every line in `libs/`
+  and `examples/` is hand-written under this project's style
   rules.
 * Every new feature ships with host-side unit tests and (for any
   compound boolean decision) MC/DC vectors. See
@@ -122,7 +122,7 @@ The short version:
 * Place new host tests under `tests/test_*.c` (compiled with the
   pinned Unity-minimal harness shipped in `tests/mocks/`).
 * **Every compound boolean decision** added to first-party code under
-  `libs/`, `src/`, or `port/` must have a paired test that demonstrates
+  `libs/` or `port/` must have a paired test that demonstrates
   MC/DC. Document the vector pattern in a `@par MC/DC:` block on the
   test function. Example:
 
@@ -157,7 +157,7 @@ finding:
 * ASCII character check -- non-ASCII bytes in source files are
   rejected (`scripts/fix/fix-encoding.py --check`).
 * Doxygen audit (`scripts/checks/doxy_audit.py`) -- every function in
-  `libs/`, `src/`, `port/` must carry the full required tag set
+  `libs/`, `port/` must carry the full required tag set
   documented in `CLAUDE.md`.
 * Citation check (`scripts/checks/cite_check.py`) -- register-level
   changes must cite the Hardware User's Manual section. See

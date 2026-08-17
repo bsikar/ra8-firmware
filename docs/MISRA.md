@@ -91,7 +91,8 @@ diagnostics; that file is intentionally not committed to this repo.
 
 ## Audit results
 
-The first audit was run on 2026-05-02 against `libs/`, `src/`, and
+The first audit was run on 2026-05-02 against `libs/`, `src/` (since
+dissolved into `libs/ra8_secure_app/`), and
 `port/` (excluding `libs/third_party/`). Run it yourself with:
 
 ```sh

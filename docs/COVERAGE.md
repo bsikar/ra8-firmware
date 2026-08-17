@@ -47,8 +47,8 @@ Statement  <  Branch  <  Decision  <  Condition  <  MC/DC  <  Multiple-Condition
 ## One census, one baseline, one bar
 
 There is **one** statement+branch policy for the whole first-party codebase.
-Every `.c` / `.cc` / `.cpp` under `libs/`, `src/`, `port/`, `tools/`, `apps/`
-and `examples/` is enrolled in it, and no tier gets a softer bar. It replaced
+Every `.c` / `.cc` / `.cpp` under `libs/`, `port/`, `tools/`, `apps/` and
+`examples/` is enrolled in it, and no tier gets a softer bar. It replaced
 three overlapping regimes -- an aggregate `gcovr --fail-under-line 90
 --fail-under-branch 80` plus a `libs/`+`src/`-only per-file line floor, a
 second full coverage build ratcheted against a two-number project-wide
@@ -96,7 +96,7 @@ cannot be hand-written into something friendlier:
 | Class | Meaning |
 |---|---|
 | `firmware-composition` | Only ever cross-compiled into an image (`examples/`, the firmware products under `apps/`). No host process, no exit status. |
-| `platform-cross-only`  | Platform code (`libs/`, `src/`, `port/`) no host coverage build compiles: board boot code, RTOS/USB stack ports, drivers with no host double. |
+| `platform-cross-only`  | Platform code (`libs/`, `port/`) no host coverage build compiles: board boot code, RTOS/USB stack ports, drivers with no host double. |
 | `hosted-no-coverage-build` | Host tool or product code whose CMake project is not wired into a measurement project. Pure debt -- the fix is to add the project. |
 | `compiled-not-executed` | A measurement build compiled it and no test executed it, so gcov wrote a `.gcno` and never a `.gcda`. Usually a static-archive member no test binary pulls in. |
 

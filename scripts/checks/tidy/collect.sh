@@ -17,7 +17,7 @@
 # Collect first-party source files (exclude vendor paths)
 #
 # Scope: EVERY first-party C-family file in the repository -- C, C++ and
-# Objective-C, translation units and headers alike, under libs/, src/,
+# Objective-C, translation units and headers alike, under libs/,
 # tests/, tools/, examples/ and port/. CLAUDE.md ("Scope: these
 # standards apply to EVERY first-party file in the repository") makes the
 # host tools, the host test suite and the firmware subject to exactly the
@@ -44,11 +44,11 @@
 # sources of those flags here, and `route_bucket` below picks between them:
 #
 #   host       the unit-test build's compile_commands.json -- describes the
-#              host-buildable C and C++ in libs/, src/, tests/ and tools/.
+#              host-buildable C and C++ in libs/, tests/ and tools/.
 #   firmware   a CROSS-COMPILE compile_commands.json built by
 #              scripts/builders/build_cross_compile_db.py, covering every
 #              cross-compiled TU in examples/ and port/ plus the
-#              handful of libs/ and src/ TUs that include ThreadX / NetX /
+#              handful of libs/ TUs that include ThreadX / NetX /
 #              USBX vendor headers.
 #   fixed      a hand-assembled command, for the host dev tools whose own
 #              per-tool build files never feed any compile database.
@@ -94,7 +94,7 @@ collect_source_files() {
   generated="$(generated_source_paths)"
   git ls-files --cached --others --exclude-standard |
     grep -E '\.(c|h|cpp|cc|cxx|hpp|hh|hxx|m)$' |
-    grep -E '^(libs|src|tests|tools|apps|examples|port)/' |
+    grep -E '^(libs|tests|tools|apps|examples|port)/' |
     # Vendored SOUP and generated tables -- the CLAUDE.md exemption list.
     grep -Ev '^(libs/third_party/|libs/ra8_fonts/|tools/vela/generated/)' |
     # Build trees and CMake-fetched deps are not source.
@@ -254,7 +254,7 @@ route_bucket() {
     # (#707). See the products-tier note above route_bucket().
     */apps/stand_alone/ereader/*) echo firmware && return 0 ;;
   esac
-  # A libs/ or src/ TU that includes a ThreadX / NetX / USBX vendor header is
+  # A libs/ TU that includes a ThreadX / NetX / USBX vendor header is
   # firmware too: the host database carries no path to those headers, so it
   # parsed as a clang-diagnostic-error and used to be skipped outright. The
   # cross database compiles it for real and therefore knows where they live.

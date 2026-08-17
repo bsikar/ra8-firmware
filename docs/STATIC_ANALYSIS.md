@@ -10,7 +10,7 @@ uninitialized-read and similar logic errors.
 ra8-firmware runs scan-build against the **host unit-test build and every
 CMake host tool** -- the cross-compile firmware build cannot be analyzed
 reliably because clang has no working sysroot for `arm-none-eabi`. Together
-these builds cover first-party `libs/`, `src/`, `port/`, and `tools/`
+these builds cover first-party `libs/`, `port/`, and `tools/`
 translation units. Tool projects are discovered from
 `tools/*/CMakeLists.txt`, and a scope floor makes a collapsed tools walk fail.
 

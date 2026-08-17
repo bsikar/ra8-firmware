@@ -76,7 +76,6 @@ mkdir -p "$OUT_DIR/traces" "$OUT_DIR/summaries" "$OUT_DIR/html"
 GCOVR_SCOPE=(
   --root "$REPO_ROOT"
   --filter "$REPO_ROOT/libs/"
-  --filter "$REPO_ROOT/src/"
   --filter "$REPO_ROOT/port/"
   --filter "$REPO_ROOT/tools/"
   --filter "$REPO_ROOT/apps/"
