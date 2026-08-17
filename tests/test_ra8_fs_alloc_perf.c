@@ -401,39 +401,6 @@ internal_write_clusters(ra8_fs_mount_t* h, const char* path, uint32_t clusters)
  */
 
 /**
- * @test test_sequential_alloc_is_amortised_constant
- * @brief Doubling the clusters written does not more than double the backend
- *        reads -- the property the old rescan-from-cluster-2 allocator broke.
- *
- * @details Two writes on one mount, the second twice the size of the first and
- *          starting where the first left off. Under the old allocator the
- *          second write was the expensive one twice over: every allocation
- *          rescanned from cluster 2, so it paid for the first file's clusters
- *          again on every step, and the cost of writing K clusters starting at
- *          offset N was O(K * N) block reads.
- *
- *          Measured on this fixture, driving the same two writes through the
- *          code as it stood at 45b9418ed and as it stands now:
- *
- *              64 clusters:  4419 reads -> 198   (22x)
- *             128 clusters: 25219 reads -> 389   (65x)
- *
- *          and the growth for a doubling went from 5.7x (super-linear) to
- *          1.96x (linear), which is the property asserted below.
- *
- *          The bound is deliberately loose (a factor of three for a doubling)
- *          because the exact figure depends on FAT-mirror writes and data
- *          read-modify-writes, both of which are honestly linear. What it
- *          rules out is the quadratic term, which on these sizes was worth
- *          thousands of reads.
- *
- * @par MC/DC:
- * (no compound decisions in this test -- it counts backend reads for two
- * writes and compares the totals)
- *
- * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
- */
-/**
  * @brief Print the small- and large-write read counts for this run.
  * @details Pure diagnostic output isolated in its own frame so its chain of
  *          ::internal_test_output_text / ::internal_test_output_u64 calls is
