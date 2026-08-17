@@ -508,6 +508,46 @@ static ra8_err_t internal_mdl_read_next(ra8_mdl_service_t*        service,
 }
 
 /**
+ * @brief Build one Chunk message from a completed backend pull.
+ * @details Copies protocol, correlation, sequencing, and body fields from
+ * @p service and @p result into @p out, adding terminal HTTP metadata only
+ * when the pull is complete. Performs no I/O and cannot fail.
+ * @param[in] service Active portable service context.
+ * @param[in] result Bounded backend pull already validated by the caller.
+ * @param[out] out Chunk message populated for packing.
+ * @pre @p service, @p result, and @p out are non-null.
+ * @pre @p result was produced by `internal_mdl_read_next` for this pull.
+ * @post @p out carries the pull's data and, when complete, its terminal
+ * metadata.
+ * @post No allocation or backend I/O occurs.
+ * @note Not thread-safe for a shared service.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_mdl_build_chunk(const ra8_mdl_service_t*  service,
+                                                  internal_mdl_next_read_t* result,
+                                                  Ra8__Mdl__Chunk*          out)
+{
+  *out                  = (Ra8__Mdl__Chunk)RA8__MDL__CHUNK__INIT;
+  out->protocol_version = k_ra8_mdl_protocol_version;
+  out->job_id           = service->active_job_id;
+  out->sequence         = service->next_sequence;
+  out->offset           = service->next_offset;
+  out->data             = (ProtobufCBinaryData){.len = result->got, .data = result->bytes};
+  out->total_bytes      = result->total;
+  out->state =
+    result->complete ? RA8__MDL__STATE__STATE_COMPLETE : RA8__MDL__STATE__STATE_DOWNLOADING;
+  out->status = 0;
+  if (result->complete) {
+    out->sha256      = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = result->digest};
+    out->http_status = result->response.status;
+    out->retry_after = result->response.retry_after;
+    out->etag        = result->response.etag;
+    out->last_modified = result->response.last_modified;
+    out->content_type  = result->response.content_type;
+  }
+}
+
+/**
  * @brief Validate one pull, read bounded bytes, and pack a correlated Chunk
  * @details Proves worst-case response capacity before consuming backend bytes.
  * @param[in,out] service Active portable service.
@@ -564,24 +604,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_next(ra8_mdl_service_t*  ser
     return read;
   }
 
-  Ra8__Mdl__Chunk out  = RA8__MDL__CHUNK__INIT;
-  out.protocol_version = k_ra8_mdl_protocol_version;
-  out.job_id           = service->active_job_id;
-  out.sequence         = service->next_sequence;
-  out.offset           = service->next_offset;
-  out.data             = (ProtobufCBinaryData){.len = result.got, .data = result.bytes};
-  out.total_bytes      = result.total;
-  out.state =
-    result.complete ? RA8__MDL__STATE__STATE_COMPLETE : RA8__MDL__STATE__STATE_DOWNLOADING;
-  out.status = 0;
-  if (result.complete) {
-    out.sha256        = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = result.digest};
-    out.http_status   = result.response.status;
-    out.retry_after   = result.response.retry_after;
-    out.etag          = result.response.etag;
-    out.last_modified = result.response.last_modified;
-    out.content_type  = result.response.content_type;
-  }
+  Ra8__Mdl__Chunk out = RA8__MDL__CHUNK__INIT;
+  internal_mdl_build_chunk(service, &result, &out);
   const ra8_err_t packed = internal_mdl_pack_chunk(&out, response, response_cap, response_len);
   if (packed != k_ra8_ok) {
     return internal_mdl_fail_job(service, packed);
