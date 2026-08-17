@@ -242,6 +242,7 @@ gate_tools_coverage() (
     --gcov-ignore-parse-errors=all \
     --root "$PWD" \
     --object-directory "$out" \
+    --filter "$PWD/apps/shared/media_dl/src/" \
     --filter "$PWD/apps/stand_alone/media_dl/src/" \
     --exclude-throw-branches \
     --exclude-unreachable-branches \

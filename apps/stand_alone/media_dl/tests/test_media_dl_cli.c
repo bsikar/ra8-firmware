@@ -13,6 +13,7 @@
 #include "ra8_attributes.h"
 #include "ra8_io_stream_ram.h"
 #include "test_media_dl_cli_internal.h"
+#include "test_media_dl_logic_cli_internal.h"
 #include "unity_minimal.h"
 
 /** @brief Bytes reserved for one expected CLI diagnostic. */
@@ -406,6 +407,7 @@ RA8_INTERNAL static void internal_test_diagnostic_failures_propagate(void)
 int main(void)
 {
   priv_test_mdl_cli_matrix_run();
+  priv_test_mdl_logic_cli_run();
   internal_test_all_modes();
   internal_test_allowlists();
   internal_test_usage_errors();

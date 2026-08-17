@@ -227,7 +227,7 @@ SELFTEST_CASES: list[tuple[str, str, list[str], bool]] = [
     ),
     (
         "first-party whose -Werror is cancelled later",
-        "apps/stand_alone/media_dl/src/mdl_export.c",
+        "apps/shared/media_dl/src/mdl_export.c",
         ["cc", "-Wall", "-Werror", "-Wno-error", "-c"],
         True,
     ),

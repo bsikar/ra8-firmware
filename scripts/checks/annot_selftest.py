@@ -272,6 +272,40 @@ void generated_unpublished(void) {}
     "libs/ra8_c6link/src/future_generated.pb-c.c": """
 void future_generated_unpublished(void) {}
 """,
+    # --- apps/: a module is the PRODUCT, across its build forms -----------
+    # mod_product's portable core, under the shared category.
+    "apps/shared/mod_product/src/product_core.c": """
+[[clang::annotate("ra8_priv")]] void product_priv_helper(void);
+
+void product_priv_helper(void) {}
+""",
+    # The SAME product's host composition root, in a different category. A
+    # build form driving its own core's promoted seam is what a composition
+    # root is for, so this must stay QUIET.
+    "apps/stand_alone/mod_product/src/product_form.c": """
+[[clang::annotate("ra8_priv")]] void product_form_caller(void);
+
+void product_priv_helper(void);
+
+void product_form_caller(void)
+{
+  product_priv_helper();
+}
+""",
+    # A DIFFERENT product in the same category reaching into mod_product's
+    # core. Same boundary violation as one library calling another's private
+    # helper, and it must still FIRE -- otherwise dropping the category from
+    # the key would have bought the quiet case by going blind.
+    "apps/stand_alone/mod_stranger/src/stranger_form.c": """
+[[clang::annotate("ra8_priv")]] void stranger_form_caller(void);
+
+void product_priv_helper(void);
+
+void stranger_form_caller(void)
+{
+  product_priv_helper();
+}
+""",
     # A second tool calling the first one's RA8_PRIV symbol. module_of() has
     # to resolve tools/<tool> as a module for this to be caught at all.
     "tools/mod_other_host/src/other_host.c": """
@@ -458,6 +492,20 @@ def _check_priv_namesakes(
             "RA8_PRIV 'host_priv_helper' across a module boundary and it was NOT "
             "reported -- module_of() is not resolving tools/<tool> as a module, so "
             "every RA8_PRIV tag under tools/ is decorative"
+        )
+    if "product_form.c" in offenders:
+        failures.append(
+            "build-form regression: apps/stand_alone/mod_product driving its own "
+            "core's RA8_PRIV 'product_priv_helper' was reported -- module_of() is "
+            "keying apps/ on the category, so a product split across build forms "
+            "reads as two libraries"
+        )
+    if "stranger_form.c" not in offenders:
+        failures.append(
+            "ra8_priv went toothless under apps/: mod_stranger reaches into "
+            "mod_product's core RA8_PRIV 'product_priv_helper' and it was NOT "
+            "reported -- dropping the category from the module key must not drop "
+            "the boundary between two products"
         )
 
     # The merged symbol table is the underlying defect, so assert its shape

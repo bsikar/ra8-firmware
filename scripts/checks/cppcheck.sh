@@ -64,6 +64,7 @@ INCLUDE_DIRS=(
   -Ilibs/ra8_nsc/inc
   -Isrc/inc
   -Itools/ra8_emulator/inc
+  -Iapps/shared/media_dl/inc
   -Iapps/stand_alone/media_dl/inc
   -Itools/rabook_viewer/inc
   -Itools/rabook_imagepack/inc

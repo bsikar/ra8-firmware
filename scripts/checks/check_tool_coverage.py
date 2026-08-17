@@ -4,14 +4,23 @@
 """Ratchet media_dl line/branch coverage without exempting existing files.
 
 The firmware host suite can enforce an absolute 90% line / 80% branch floor
-because it entered CI with that coverage. ``apps/stand_alone/media_dl`` did not. Its
-pre-existing debt is frozen per file as covered/total counts; a file may not
-gain uncovered lines or branches, and its coverage ratio may not fall. A new
-source file has no historical debt and must enter at the full 90/80 bar.
+because it entered CI with that coverage. media_dl did not. Its pre-existing
+debt is frozen per file as covered/total counts; a file may not gain uncovered
+lines or branches, and its coverage ratio may not fall. A new source file has
+no historical debt and must enter at the full 90/80 bar.
 
 This is stricter than an aggregate percentage: well-tested files cannot hide
 an untested file, and a zero-coverage file cannot grow while remaining at the
 same misleading 0%. Missing report files and stale baseline rows fail loudly.
+
+media_dl is ONE product in TWO directories: its portable core at
+``apps/shared/media_dl`` (which a second build form will also consume) and its
+host composition root at ``apps/stand_alone/media_dl``. Both are production
+media_dl code and both are ratcheted here. SOURCE_DIRS is the single list that
+says so -- the report filter, the "which sources does the report owe us" scan
+and the stale-row check all derive from it, so a root cannot be added to some
+of them and silently omitted from the others. A root left out would not fail:
+its files would simply stop being expected, which reads as a clean tree.
 """
 
 from __future__ import annotations
@@ -24,8 +33,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 COVERAGE_JSON = REPO_ROOT / "build" / "tool-coverage" / "media_dl" / "coverage.json"
 BASELINE_FILE = REPO_ROOT / ".github" / "tool-coverage-baseline.txt"
-SOURCE_DIR = REPO_ROOT / "apps" / "stand_alone" / "media_dl" / "src"
-TRACKED_INLINE_SOURCES = {"apps/stand_alone/media_dl/src/mdl_extract_internal.h"}
+PRODUCT_DIRS = ("apps/shared/media_dl", "apps/stand_alone/media_dl")
+SOURCE_DIRS = tuple(REPO_ROOT / rel / "src" for rel in PRODUCT_DIRS)
+SOURCE_PREFIXES = tuple(f"{rel}/src/" for rel in PRODUCT_DIRS)
+TRACKED_INLINE_SOURCES = {"apps/shared/media_dl/src/mdl_extract_internal.h"}
 
 LINE_FLOOR_PCT = 90
 BRANCH_FLOOR_PCT = 80
@@ -37,9 +48,10 @@ Coverage = tuple[int, int, int, int]
 def normalize(path: str) -> str:
     """Return a repo-relative POSIX path from a gcovr filename."""
     value = path.replace("\\", "/")
-    marker = "/apps/stand_alone/media_dl/"
-    if marker in value:
-        value = "apps/stand_alone/media_dl/" + value.split(marker, 1)[1]
+    for rel in PRODUCT_DIRS:
+        marker = f"/{rel}/"
+        if marker in value:
+            return rel + "/" + value.split(marker, 1)[1]
     return value.lstrip("./")
 
 
@@ -49,7 +61,7 @@ def load_report(path: Path) -> dict[str, Coverage]:
     rows: dict[str, Coverage] = {}
     for entry in data.get("files", []):
         rel = normalize(str(entry.get("filename", "")))
-        if not rel.startswith("apps/stand_alone/media_dl/src/"):
+        if not rel.startswith(SOURCE_PREFIXES):
             continue
         rows[rel] = (
             int(entry["line_covered"]),
@@ -75,10 +87,12 @@ def load_baseline(path: Path) -> dict[str, Coverage]:
     return rows
 
 
-def expected_sources(root: Path = SOURCE_DIR) -> set[str]:
+def expected_sources(roots: tuple[Path, ...] = SOURCE_DIRS) -> set[str]:
     """Return every instrumented production unit the coverage report owes."""
-    sources = {f"apps/stand_alone/media_dl/src/{path.name}" for path in root.glob("*.c")}
-    if root == SOURCE_DIR:
+    sources: set[str] = set()
+    for root, prefix in zip(roots, SOURCE_PREFIXES, strict=False):
+        sources.update(f"{prefix}{path.name}" for path in root.glob("*.c"))
+    if roots == SOURCE_DIRS:
         sources.update(TRACKED_INLINE_SOURCES)
     return sources
 
@@ -154,28 +168,37 @@ def evaluate(
     return sorted(failures)
 
 
-def selftest() -> int:
-    """Prove the ratchet fires and stays quiet in both directions."""
-    frozen = {"apps/stand_alone/media_dl/src/frozen.c": (90, 100, 80, 100)}
+#: Frozen debt the selftest cases are measured against: one file in the shared
+#: core and one in the host form, so a ratchet that stopped covering either
+#: product root is caught by a case rather than by nobody.
+SELFTEST_FROZEN: dict[str, Coverage] = {
+    "apps/shared/media_dl/src/frozen.c": (90, 100, 80, 100),
+    "apps/stand_alone/media_dl/src/frozen.c": (90, 100, 80, 100),
+}
+
+
+def _selftest_cases() -> list[tuple[str, dict[str, Coverage], set[str], bool]]:
+    """Return every both-direction case: (name, report, expected, should_fire)."""
+    frozen = SELFTEST_FROZEN
     expected = set(frozen)
-    cases = [
+    return [
         ("exact frozen coverage stays quiet", frozen, expected, False),
         (
-            "uncovered line debt growth fires",
-            {"apps/stand_alone/media_dl/src/frozen.c": (90, 101, 80, 100)},
+            "uncovered line debt growth fires in the shared core",
+            {**frozen, "apps/shared/media_dl/src/frozen.c": (90, 101, 80, 100)},
             expected,
             True,
         ),
         (
-            "branch ratio regression fires",
-            {"apps/stand_alone/media_dl/src/frozen.c": (90, 100, 79, 100)},
+            "branch ratio regression fires in the host form",
+            {**frozen, "apps/stand_alone/media_dl/src/frozen.c": (90, 100, 79, 100)},
             expected,
             True,
         ),
         (
             "well-covered new file stays quiet",
-            {**frozen, "apps/stand_alone/media_dl/src/new.c": (9, 10, 8, 10)},
-            expected | {"apps/stand_alone/media_dl/src/new.c"},
+            {**frozen, "apps/shared/media_dl/src/new.c": (9, 10, 8, 10)},
+            expected | {"apps/shared/media_dl/src/new.c"},
             False,
         ),
         (
@@ -187,7 +210,7 @@ def selftest() -> int:
         ("missing report source fires", {}, expected, True),
         (
             "zero-line report entry fires",
-            {"apps/stand_alone/media_dl/src/frozen.c": (0, 0, 0, 0)},
+            {**frozen, "apps/shared/media_dl/src/frozen.c": (0, 0, 0, 0)},
             expected,
             True,
         ),
@@ -197,12 +220,23 @@ def selftest() -> int:
             expected | TRACKED_INLINE_SOURCES,
             True,
         ),
+        (
+            "a report covering only one product root fires",
+            {"apps/stand_alone/media_dl/src/frozen.c": (90, 100, 80, 100)},
+            expected,
+            True,
+        ),
     ]
-    failures = []
-    for name, current, case_expected, should_fire in cases:
-        fired = bool(evaluate(current, frozen, case_expected))
-        if fired != should_fire:
-            failures.append(name)
+
+
+def selftest() -> int:
+    """Prove the ratchet fires and stays quiet in both directions."""
+    cases = _selftest_cases()
+    failures = [
+        name
+        for name, current, case_expected, should_fire in cases
+        if bool(evaluate(current, SELFTEST_FROZEN, case_expected)) != should_fire
+    ]
     if failures:
         for name in failures:
             print(f"check_tool_coverage.py --selftest: FAIL: {name}", file=sys.stderr)

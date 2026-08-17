@@ -14,7 +14,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "mdl_cli.h"
 #include "mdl_config.h"
 #include "mdl_export.h"
 #include "mdl_extract.h"
@@ -25,7 +24,6 @@
 #include "mdl_verify.h"
 #include "ra8_io_stream_ram.h"
 #include "support/ra8_test_output.h"
-#include "test_media_dl_logic_cli_internal.h"
 #include "unity_minimal.h"
 
 /** @brief Expected parser fixture counts. */
@@ -735,7 +733,6 @@ int main(void)
   internal_test_robots_wildcard_anchor();
   internal_test_robots_edge();
   internal_test_robots_cache();
-  priv_test_mdl_logic_cli_run();
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_deinit());
   (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl.c\n");
   return 0;

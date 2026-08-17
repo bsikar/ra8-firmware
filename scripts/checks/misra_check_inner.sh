@@ -111,12 +111,29 @@ JOBS="${JOBS:-$(ra8_max_jobs)}"
 # and a one-star glob missed them again. Finding every directory NAMED inc under
 # the scanned roots has no depth to get wrong: the audit's header path is a
 # consequence of the layout instead of a second description of it.
+#
+# ...and the same for `src` under apps/, where the PRIVATE header roots have to
+# be on the path too. Elsewhere they do not: a libs/ or tools/ module is one
+# directory pair, so a TU reaches its own `*_internal.h` by the same-directory
+# rule and needs no -I. A product under apps/ spans two directories -- its
+# portable core at apps/shared/<product> and each build form at
+# apps/<form>/<product> -- so a form's TU includes core `*_internal.h` headers
+# that same-directory resolution cannot see. Without this, cppcheck charged the
+# caller 17.3 for the resulting implicit declarations AND silently stopped
+# raising 9.2 on aggregates whose types it could no longer resolve. A net DROP
+# in findings is the dangerous direction of that failure: it reads as a
+# burn-down. Derived by the same find, so a product that grows a third
+# directory is covered the day it lands.
 INCLUDE_DIRS=()
 while IFS= read -r _inc_dir; do
   [[ -n "$_inc_dir" ]] && INCLUDE_DIRS+=("-I$_inc_dir")
 done < <(
-  find "${RA8_MISRA_ROOTS[@]}" -type d -name inc \
-    -not -path '*/third_party/*' -not -path '*/build/*' 2>/dev/null | sort
+  {
+    find "${RA8_MISRA_ROOTS[@]}" -type d -name inc \
+      -not -path '*/third_party/*' -not -path '*/build/*' 2>/dev/null
+    find apps -type d -name src \
+      -not -path '*/third_party/*' -not -path '*/build/*' 2>/dev/null
+  } | sort -u
 )
 if [[ ${#INCLUDE_DIRS[@]} -eq 0 ]]; then
   echo "[ERROR] no header roots found -- run from the repo root" >&2

@@ -89,6 +89,31 @@ HOST_ONLY_ROOTS = frozenset({"tests", "tools", "apps"})
 #: and never compared anything.
 MODULE_ROOTS = ("libs", "tools", "apps")
 
+#: How deep below its root a module's own directory sits. `libs/<module>`
+#: and `tools/<tool>` are one level down. `apps/` is TWO, and the level it
+#: skips is deliberately not part of the module identity: under `apps/` the
+#: first component is a BUILD FORM of a product, not a library.
+#: `apps/stand_alone/media_dl` is the host CLI form of media_dl,
+#: `apps/threadx_modules/media_dl` will be its loadable on-device form, and
+#: `apps/shared/media_dl` is the portable core BOTH forms link. Those are
+#: packagings of ONE module: they share the `mdl_` symbol namespace, and a
+#: form's composition root exists precisely to drive the core's promoted
+#: RA8_PRIV seams. So the key is `apps/<product>` and the category is
+#: dropped from it, which makes every form of one product the same module
+#: and any OTHER product a different one.
+#:
+#: Keying on the category instead -- which is what a flat depth of 1 did --
+#: was wrong in both directions at once: two unrelated products sharing a
+#: category could reach into each other's internals unreported, and the day
+#: media_dl's core moved to `apps/shared/` it reported 203 cross-module
+#: calls that are the composition root doing its job.
+#:
+#: The one-way rule this does NOT relax, because it is a different rule
+#: entirely: `apps/shared` must never include from a form. That is enforced
+#: by the core configuring, building and testing standalone -- it has no
+#: form on its include path at all -- not by this key.
+MODULE_DEPTH = {"apps": 2}
+
 
 def repo_root() -> pathlib.Path:
     """Return the root every scope predicate resolves against."""
@@ -198,13 +223,23 @@ def is_host_only_path(path: str) -> bool:
 
 
 def module_of(path: str) -> str | None:
-    """libs/<module>/... or tools/<tool>/... -> the module name; else None."""
+    """Return the owning module of a path, or None when it is outside one.
+
+    ``libs/<module>/...`` and ``tools/<tool>/...`` name their module one level
+    below the root; ``apps/<category>/<product>/...`` names it two, and drops
+    the category -- see MODULE_DEPTH for why a build form is not a module.
+    """
     parts = pathlib.Path(path).parts
     for root in MODULE_ROOTS:
         try:
             idx = parts.index(root)
         except ValueError:
             continue
+        depth = MODULE_DEPTH.get(root, 1)
+        # Require something below the module directory: a loose file sitting
+        # directly in a category is not a product and must not name one.
+        if idx + depth < len(parts) - 1:
+            return f"{root}/{parts[idx + depth]}"
         if idx + 1 < len(parts):
             return f"{root}/{parts[idx + 1]}"
     return None
