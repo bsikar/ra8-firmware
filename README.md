@@ -31,8 +31,9 @@ make emu-<app>     # boot it on the emulator, no board
 make test          # host unit tests
 ```
 
-`make help` is the grouped target reference; hooks install on the first `make`.
-Per app there is also `make flash-<app>`, `make debug-<app>`, `make ozone-<app>`.
+`make help` is the grouped target reference. It is derived from the Makefiles,
+so unlike a list written out here it cannot drift. Hooks install on the first
+`make`.
 
 ## The emulator
 
@@ -75,16 +76,14 @@ the same set without a container runtime, which is the supported path on Linux.
 
 ## Docs
 
-| | |
-|---|---|
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | how the firmware is put together |
-| [`docs/MODULES.md`](docs/MODULES.md) | a tour of every library under `libs/` |
-| [`docs/RING_AND_WORLD.md`](docs/RING_AND_WORLD.md) | architectural rings and TrustZone worlds |
-| [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) | the authoritative style rules |
-| [`docs/DEBUG.md`](docs/DEBUG.md) | debugging on the board |
-| [`docs/HARDWARE_BRINGUP.md`](docs/HARDWARE_BRINGUP.md) | bring-up notes from the bench |
-| [`docs/reference/`](docs/reference/) | the datasheet and Hardware User's Manual |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | how to land a change |
+[`docs/`](docs/) is the reference shelf. Start at
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the firmware is put
+together and [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) for the rules every
+file is held to; [`docs/RING_AND_WORLD.md`](docs/RING_AND_WORLD.md) explains the
+architectural rings and TrustZone worlds each file is tagged with.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) is how to land a change, and
+[`docs/reference/`](docs/reference/) holds the datasheet and the Hardware User's
+Manual that every register access in this tree cites.
 
 ## Tracker
 

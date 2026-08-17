@@ -7,7 +7,8 @@ SPDX-License-Identifier: MIT
 
 Host programs. Nothing here is linked into firmware; several of them link the
 *firmware's own* libraries so that what they produce is byte-identical to what
-the board would read back. Each tool has its own README or `--help`.
+the board would read back. `ls tools/` is the registry, and each tool has its
+own README or `--help`.
 
 ## Run the firmware without a board
 
@@ -15,51 +16,45 @@ the board would read back. Each tool has its own README or `--help`.
 `.elf` on an emulated Cortex-M over a modelled RA8D2 peripheral space, drives
 the GLCDC panel, and injects touch through the real GT911 path. Because it runs
 the real binary, an app renders at the resolution it was *built* for: pointing a
-fixed-panel app at a different `--panel` shows the genuine mismatch rather than
-a re-laid-out screen.
-
-```sh
-make emu-<app> [PANEL=<name>]
-```
+fixed-panel app at a different panel shows the genuine mismatch rather than a
+re-laid-out screen.
 
 `scripts/emu/smoke.sh` is the regression gate over it -- every display app must
 reach its main loop without faulting, and the chrome app must draw a frame with
 real content.
 
-## Build data the firmware reads
+## Build the data the firmware reads
 
-| Tool | Produces |
-|---|---|
-| [`mkfontimg`](mkfontimg/) | A FAT SD-card image carrying a font, written through the real `ra8_fs` -- so the on-card layout is what the firmware reads back. Feeds `ra8_emulator --sd`, or a physical card. |
-| [`mkbookimg`](mkbookimg/) | A FAT32 image of compiled books, streamed through `ra8_fs` and published atomically. |
-| [`exfat_mkimage`](exfat_mkimage/) | An exFAT volume built through `ra8_fs`, so a real OS can mount it and judge the on-disk names. `scripts/dev/exfat_macos_interop.sh` drives it end to end on macOS. |
-| [`epub_compile`](epub_compile/) | The EPUB / CBZ to `.rabook` compile pipeline. |
-| [`bake_library.py`](bake_library.py) | Bakes compiled `.rabook` blobs into an MRAM-resident C header, pre-decoding each cover to a gray8 thumbnail. |
-| [`rabook_imagepack`](rabook_imagepack/) | Converts one image to a `.jof` tile atlas; `inspect` dumps any first-party container's structure and `verify` round-trips it byte for byte. |
-| [`vela`](vela/README.md) | Pinned Arm Ethos-U Vela -- compiles a quantized `.tflite` into an NPU command stream at build time. Nothing from it is linked into firmware. |
+The image builders write FAT, FAT32 and exFAT volumes **through `ra8_fs`**, so
+the on-card layout is what the firmware reads back rather than whatever a host
+utility happened to produce. That is the whole point of building them here: the
+exFAT one exists so a real OS can mount the result and judge the on-disk names,
+and its output feeds either the emulator or a physical card.
+
+Beside them sit the content compilers -- EPUB and CBZ into the reader-native
+container, a single image into a JOF tile atlas, a whole library baked into an
+MRAM-resident header with pre-decoded cover thumbnails -- and the pinned Arm
+Ethos-U Vela compiler, which lowers a quantized model into an NPU command
+stream at build time. Nothing Vela emits is linked into firmware.
 
 ## Look at what the firmware produced
 
-| Tool | Shows |
-|---|---|
-| [`rabook_viewer`](rabook_viewer/) | Opens a compiled document natively: `make view FILE=<doc>` (`HEADLESS=1` dumps a PPM). |
-| [`mcp`](mcp/README.md) | A zero-dependency MCP server giving an assistant live repo context. `make mcp` self-tests it; a client auto-loads it from `.mcp.json`. |
+A native viewer opens a compiled document, or dumps a frame headlessly instead
+of drawing one. An inspector dumps any first-party container's structure and
+round-trips it byte for byte. An MCP server gives an assistant live repo
+context.
 
 ## Size a cache before shipping it
 
-Three host benchmarks back the memory hierarchy, each with a `run` target in its
-own Makefile. They drive the **real** firmware code, not a re-modelled policy,
-which is what makes them evidence rather than opinion.
-
-| Tool | Question it answered |
-|---|---|
-| [`cache_bench`](cache_bench/README.md) | Which Layer-2 eviction policy? (the decision record that picked SLRU) and, under `--sweep-block`, what block size the chunked `.rabook` container should use. |
-| [`reader_vmem`](reader_vmem/) | Does SLRU still win when the actual `ra8_vmem` drives a real reader session? Emits a trace `cache_bench` replays. |
-| [`glyph_bench`](glyph_bench/) | How many cells does the `ra8_glyph_atlas` need under a real text-render stream? |
+Three host benchmarks back the memory hierarchy. Each drives the **real**
+firmware code rather than a re-modelled policy, which is what makes them
+evidence rather than opinion. Between them they answered which Layer-2 eviction
+policy to use and what block size the chunked container should have, whether
+that choice still holds when an actual reader session drives the real
+virtual-memory layer, and how many cells the glyph atlas needs under a real
+text-render stream.
 
 ## Sign an image
 
-`rot_sign.py` runs the root-of-trust key ceremony and signs an image with the
-trailer `ra8_rot_verify_image` demands; `rot_patch_pubkey.py` provisions the
-matching public key into the verifier. Both are driven by
-`scripts/secrets/rot_provision.sh` -- do not hand-run half a ceremony.
+The root-of-trust key ceremony and the matching public-key provisioning are
+driven by `scripts/secrets/rot_provision.sh`. Do not hand-run half a ceremony.

@@ -1,4 +1,4 @@
-# scripts/emu -- EIL vs HIL, and the three entry points in here
+# scripts/emu
 
 EIL is emulator-in-the-loop; HIL is hardware-in-the-loop. They run the **same
 `.elf` against the same assertions**: there is no `eil.conf`, both suites source
@@ -13,7 +13,7 @@ legitimately runs a superset (the RA8P1 apps no bench can flash); HIL
 legitimately asserts modes EIL cannot (the USB host-enumeration ones need a real
 peer).
 
-Three scripts live here and answer different questions:
+The entry points here answer different questions:
 
 | Script | Asks |
 |---|---|
@@ -21,10 +21,9 @@ Three scripts live here and answer different questions:
 | `matrix.sh` | does **every** example still build and boot at all? (breadth, ratcheted) |
 | `smoke.sh` | do the curated display/UI apps still render correctly? (depth) |
 
-**Which do I use?** Adding an assertion about one app's behaviour -> its
-`hil.conf`, which `eil_all.sh` then enforces on both sides. Only reach for
-`matrix.sh` or `smoke.sh` when the question really is tree-wide breadth or
-curated render depth.
+An assertion about one app's behaviour belongs in that app's `hil.conf`, which
+`eil_all.sh` then enforces on both sides. Reach for `matrix.sh` or `smoke.sh`
+only when the question really is tree-wide breadth or curated render depth.
 
 <!-- disambig
 this: scripts/emu
