@@ -529,10 +529,13 @@ typedef struct ra8_c6link {
   ra8_c6link_wait_t      wait;        /**< The outstanding request, if any.   */
   ra8_c6link_fault_t     fault;       /**< The last failing request.          */
   ra8_c6link_stats_t*    stats;       /**< Counters for the running pump.     */
-  uint16_t               tx_len;      /**< Staged payload length, or zero.    */
-  uint8_t                tx_if;       /**< Interface the staged payload uses. */
-  bool                   open;        /**< The handle is initialised.         */
-  bool                   boot_seen;   /**< An `Event_ESPInit` has arrived.    */
+  /* tx_len/tx_if/open/boot_seen sit AFTER the two DMA-aligned frame buffers
+     and mdl_request, not beside the other bookkeeping fields above: the
+     bookkeeping ahead of `tx` already sums to an exact multiple of
+     k_ra8_c6link_dma_align, so `tx` needs no compiler-inserted padding to
+     reach its alignment boundary. Moving these four scalars back up
+     reintroduces 64 bytes of padding (verified via sizeof/offsetof) and
+     trips clang-analyzer-optin.performance.Padding. */
   alignas(k_ra8_c6link_dma_align) uint8_t tx[k_ra8_c6link_frame_bytes];
   /**< Transmit transaction. */
   alignas(k_ra8_c6link_dma_align) uint8_t rx[k_ra8_c6link_frame_bytes];
@@ -547,6 +550,10 @@ typedef struct ra8_c6link {
        and finish before the next may begin, and a second concurrent request
        is refused with `k_ra8_err_busy` -- so sharing one buffer between them
        is the same exclusivity `tx` already assumes. */
+  uint16_t tx_len;    /**< Staged payload length, or zero.    */
+  uint8_t  tx_if;     /**< Interface the staged payload uses. */
+  bool     open;      /**< The handle is initialised.         */
+  bool     boot_seen; /**< An `Event_ESPInit` has arrived.    */
 } ra8_c6link_t;
 
 /**
