@@ -76,9 +76,9 @@ ra8_add_app(
 
 `ra8_add_app()` links the app's `main.c`, the boot files and the linker script
 (the app-local copy if present, else the board's), the `ra8_*` libraries and
-`src/secure_app`. Its `BOARD` / `NO_NSC` / `USES` / `LIBS` / `EXTRA_SRCS`
-options are documented in that file's header. Adding an app is dropping the
-directory in; the next `make` finds it.
+`src/secure_app`. Its remaining options -- which board, which extra libraries,
+whether the app skips the NSC layer -- are documented in that file's header.
+Adding an app is dropping the directory in; the next `make` finds it.
 
 ## Boot
 
@@ -113,8 +113,9 @@ forwards to `ra8_exception_report()` for a full SCB dump.
 
 ## Dependency injection
 
-`ra8_core` defines three vtables -- `ra8_pin_interface_t`,
-`ra8_time_interface_t` and `ra8_error_interface_t`, with production instances
+`ra8_core` defines the vtables a driver injects through --
+`ra8_pin_interface_t`, `ra8_time_interface_t` and `ra8_error_interface_t`,
+with production instances
 `g_ra8_gpio_pin_interface`, `g_ra8_time_interface_systick` and
 `g_ra8_error_sink_log`. A driver that wants to be unit-testable takes them in
 its `init()` config and calls through the vtable rather than reaching for a
@@ -122,7 +123,7 @@ global; tests plug in mocks that record every call.
 
 ## Clock tree after `ra8_cgc_init()`
 
-The 24 MHz main crystal feeds PLL1 (integer multiply today; the PLLCCR2
+The 24 MHz main crystal feeds PLL1 (integer multiply only -- the PLLCCR2
 fractional path is unimplemented) to give CPUCLK0 at ~1 GHz for the Cortex-M85,
 and from there:
 

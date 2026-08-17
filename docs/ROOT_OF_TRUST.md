@@ -23,8 +23,9 @@ key. It picks a backend automatically (override with `--backend`):
 | `local` | A 0700 directory (`RA8_ROT_STORE_DIR`, default `~/.config/ra8/rot`) holding one PEM per version plus `history.json`. | Anyone who clones the repo -- **no OpenBao needed**, same spirit as the `.env` fallback. |
 
 `auto` uses OpenBao when it is configured **and** reachable, else falls back to
-the local store. Every stored version is tagged with: `fingerprint` (SHA-256 of
-the public SPKI), `algorithm`, `created_at` (UTC), `git_commit`, and a `note`.
+the local store. Every stored version is tagged with the public key's SHA-256
+fingerprint, its algorithm, when and at which commit it was created, and a
+free-text note.
 
 ## OpenBao configuration
 
@@ -39,39 +40,17 @@ The AppRole policy must allow `create`/`update`/`read` on
 
 ## Common operations
 
-```sh
-# First-time ceremony: generate a key, provision the pubkey, and store it.
-scripts/secrets/rot_provision.sh --patch --store
-
-# Store an existing working key as a new version.
-scripts/secrets/rot_keystore.py store --key ~/ra8d2-rot-signing-key.pem
-
-# See every version and its tags.
-scripts/secrets/rot_keystore.py history
-
-# Which backend is active + the latest version.
-scripts/secrets/rot_keystore.py status
-
-# Recover a specific version's private key.
-scripts/secrets/rot_keystore.py get --version 2 --out /tmp/rot-v2.pem
-
-# Re-key: back up the outgoing key, generate + tag a new one, provision it,
-# and install it as the working key. Then re-flash the device.
-scripts/secrets/rot_keystore.py rekey --patch --note "annual rotation"
-
-# Force the no-vault path (e.g. for a fresh clone with no OpenBao access).
-scripts/secrets/rot_keystore.py --backend local status
-```
+`scripts/secrets/rot_provision.sh` runs the first-time ceremony: generate a
+keypair, patch the public half into the firmware, store the private half.
+Everything afterwards goes through `scripts/secrets/rot_keystore.py` --
+storing a key as a new version, listing the history and its tags, reporting
+which backend is live, recovering an old version, and re-keying. Signing an
+image is `tools/rot_sign.py sign`. Both take `--help`, which is the authority
+on their arguments.
 
 `rekey` never loses a key: it stores the outgoing working key first, so the
-history always contains every key you have ever used.
-
-## Signing an image
-
-```sh
-python3 tools/rot_sign.py sign --key ~/ra8d2-rot-signing-key.pem \
-  --image app.bin --out app.signed.bin --img-version N
-```
+history always contains every key you have ever used. After a re-key the
+device must be re-flashed, because the provisioned public key changed.
 
 Where this sits in the security cluster, and what it couples to:
 

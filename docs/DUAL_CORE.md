@@ -99,8 +99,7 @@ To halt CPU1 again, `ra8_cpu1_halt()` re-asserts the inactive state.
 Earlier drafts named FSP-style `LPCSR` / `VTORC1` / `MSPC1` registers at
 `0x4001E000` -- those do NOT exist on the RA8D2, and writes there are silently
 dropped. The RA8D2 HUM Ch 2.9.1 names the CPU_CTRL registers above explicitly,
-and `ra8_dual_core.c` is JTAG-confirmed against them (cpu1_pingpong:
-`CPU1INITVTOR=0x020C0000`, `CPU1ACTCSR.ACT` set, rc=0). The shared-SRAM mailbox
+and `ra8_dual_core.c` is JTAG-confirmed against them. The shared-SRAM mailbox
 (rather than the IPC peripheral) is the validated cross-core path: IPC is
 blocked by `IPCSAR` secure-only attribution while the M33 boots Non-Secure.
 

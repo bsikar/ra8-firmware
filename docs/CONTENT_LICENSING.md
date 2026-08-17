@@ -1,17 +1,15 @@
 # E-Book Content Licensing
 
-> **Scope.** This is the clearance record for e-book content the reader is
-> allowed to **bundle and publicly redistribute**. It lists the titles, the
-> license basis, the sourcing policy, and the caveats to check before
-> publishing. The cleared `.epub` files are bundled in the tree under
-> [`content/library/`](../content/library) -- redistributing them is exactly
-> what the CC0 basis below permits. Only titles that appear in the cleared
-> catalog belong there; anything not yet cleared is kept off-repo.
+The clearance record for e-book content this project may **bundle and publicly
+redistribute**: the cleared titles, the license basis they rest on, and the
+caveats to check before publishing. The cleared `.epub` files are in
+[`content/library/`](../content/library) -- redistributing them is exactly what
+the CC0 basis below permits. A title that is not in the catalog below is not
+cleared, and is kept off-repo.
 
-The reader renders EPUB (see [`EPUB_CONFORMANCE.md`](EPUB_CONFORMANCE.md)).
-Any title shipped on-device or published as a bundle must be redistributable,
-which means either public domain or a license that explicitly permits
-redistribution. This document records what is cleared and why.
+The reader renders EPUB (see [`EPUB_CONFORMANCE.md`](EPUB_CONFORMANCE.md)). Any
+title shipped on-device or published as a bundle must be redistributable, which
+means either public domain or a license that explicitly permits redistribution.
 
 ---
 
@@ -24,13 +22,13 @@ redistribution. This document records what is cleared and why.
    republish. Download URL pattern (compatible EPUB):
    `https://standardebooks.org/ebooks/<author>/<title>/downloads/<author>_<title>.epub?source=download`
 2. **Public-domain basis of the underlying text: US copyright.** Works
-   published 1929 or earlier are public domain in the US; as of 2026 the line
-   has advanced through 1930. Standard Ebooks tracks US public domain.
+   published more than 95 years ago are public domain in the US, and the line
+   advances by one year each January. Standard Ebooks tracks US public domain.
 3. **Policy: Standard-Ebooks-only.** If Standard Ebooks does not carry a clean
    edition of a title, the title is **not bundled** rather than substituted
    with a lower-quality edition. Project Gutenberg is a valid public-domain
    fallback (strip the Project Gutenberg trademark/boilerplate before
-   redistribution), but is not used for the shipped set today.
+   redistribution), but is not used for the shipped set.
 
 ## Caveats to check before publishing
 
@@ -46,7 +44,7 @@ redistribution. This document records what is cleared and why.
 
 ---
 
-## Cleared catalog (64 titles, Standard Ebooks CC0)
+## Cleared catalog (Standard Ebooks, CC0 1.0)
 
 ### Fiction -- classics
 - Pride and Prejudice -- Jane Austen

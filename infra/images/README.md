@@ -45,8 +45,8 @@ Two rules the steps encode, both learned from #484:
    image.
 2. **Write the archive somewhere else and rename it in.** The watcher fires on
    WRITE, so exporting a multi-GB archive straight into the watched directory
-   makes k3s repeatedly import a half-written file (measured: nine consecutive
-   `unexpected EOF` imports over one four-minute export). A rename is atomic.
+   makes k3s repeatedly import the half-written file and fail on `unexpected
+   EOF` for as long as the export runs. A rename is atomic.
 
 ## Build and install by hand
 
@@ -91,7 +91,7 @@ lost the image; the pods cannot pull it back because that is what
 # 1. Is the image there at all, and is it pinned?
 sudo k3s ctr -n k8s.io images ls "name==localhost/ra8-ci-runner:v2"
 
-# 2. Is the durable archive there? (~3.6 GiB)
+# 2. Is the durable archive there? (it is multi-GB)
 ls -l /var/lib/rancher/k3s/agent/images/ra8-ci-runner.tar
 
 # 3. Re-import it. k3s does this itself on restart, but this needs no restart

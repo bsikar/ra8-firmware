@@ -106,9 +106,7 @@ The script exits non-zero on any violation. The pre-commit hook
 (`scripts/git/pre-commit`) runs it after the existing checks; CI runs it
 on every PR.
 
-Generated/build directories (`build/`, `tests/build-*/`,
-`docs/doxygen/html/`, `docs/doxygen/xml/`, `docs/doxygen/latex/`,
-`_deps/`, `third_party/`, `__pycache__/`) are skipped. The check is
+Generated, vendored and build-output trees are skipped. The check is
 strict from day one -- there are no warn-only / grace-period semantics.
 
 ## Why this matters

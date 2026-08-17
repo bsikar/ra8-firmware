@@ -70,7 +70,7 @@ esp-hosted aggregate hash.
 
 **Kept: the whole host driver and shared protocol, all four transports.**
 This follows the repository's dominant pattern for driver and stack SOUP
-(NimBLE 858 files, the ThreadX family wholesale): vendor the subtree as
+(NimBLE and the ThreadX family, both vendored wholesale): vendor the subtree as
 upstream ships it. Pruning the sibling transports would not be a file-level
 subset selection like libwebp's decode-only split -- transport choice is a
 compile-time switch (`H_TRANSPORT_IN_USE`) evaluated *inside shared files*
@@ -286,9 +286,10 @@ DO-178C Section 12.1.4 (previously developed software):
   codec) and parsing remote frames on silicon. No harness covers it -- an open
   gap tracked by #612, which is the one part of this component's audit that
   is not a documentation fix.
-- **Fully pinned and reproducible.** Commit pin plus aggregate SHA-256 for
-  both the esp-hosted tree and the nested protobuf-c tree; every vendored file
-  was verified byte-identical at vendor-in.
+- **Fully pinned and reproducible.** A commit pin plus a per-file upstream
+  manifest for both the esp-hosted tree and the nested protobuf-c tree -- see
+  "Integrity" above, which is also why no aggregate hash is transcribed into
+  the registry. Every vendored file was verified byte-identical at vendor-in.
 
 ## Deviations / patches
 

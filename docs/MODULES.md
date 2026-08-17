@@ -22,11 +22,12 @@ it is the project's freestanding-C runtime.
 
 ## ra8_hal
 
-The hand-written hardware abstraction layer for every RA8D2 on-chip
-peripheral the project drives: GPIO, SCI/UART, IIC, SPI, ADC, DAC,
-PWM/GPT, AGT, CANFD, ETHA + ESWM, USB FS/HS, GLCDC, RSIP TRNG, MSTP,
-clocks, ICU, watchdog, and a bank of `ra8_*_regs.h` register-map
-headers. Every driver returns `ra8_err_t` and is unit-tested against
+The hand-written hardware abstraction layer for the RA8D2 on-chip
+peripherals: the serial buses, the timers and PWM, analog in and out,
+the interrupt and event fabric, DMA, external memory, networking,
+display and camera, USB, crypto and the watchdogs -- one driver per
+peripheral, over a bank of `ra8_*_regs.h` register-map headers written
+from the HUM. Every driver returns `ra8_err_t` and is unit-tested against
 `tests/mocks/ra8_fake_mmap.c`, which presents the MCU peripheral
 address space as host-side RAM.
 
@@ -86,21 +87,20 @@ binds against this layer; TinyUSB or a hand-rolled stack could
 substitute without changing this header.
 
 * Header: `libs/ra8_usb_pal/inc/ra8_usb_pal.h`
-* Main entry points: `ra8_usb_pal_init()`, `ra8_usb_pal_attach()`,
-  `ra8_usb_pal_ep_open()`, `ra8_usb_pal_ep_send()`,
-  `ra8_usb_pal_ep_recv()`.
+* Main entry points: `ra8_usb_pal_init()` / `_attach()`, then the
+  per-endpoint `_ep_*` calls.
 
 ## ra8_tls
 
-Thin facade over the vendored Mbed TLS 4.x + TF-PSA-Crypto 1.x stack.
-Hands out TLS sessions from a fixed-size static pool (NASA Power-of-10
-Rule 3) and translates Mbed TLS error codes into `ra8_err_t`. Higher-
-level apps (HTTPS client, MQTT/TLS, OTA fetch) call into this facade
-instead of pulling Mbed TLS directly.
+Thin facade over the vendored Mbed TLS + TF-PSA-Crypto stack. Hands out
+TLS sessions from a fixed-size static pool (NASA Power-of-10 Rule 3) and
+translates Mbed TLS error codes into `ra8_err_t`. Higher-level apps
+(HTTPS client, MQTT/TLS, OTA fetch) call into this facade instead of
+pulling Mbed TLS directly.
 
 * Header: `libs/ra8_tls/inc/ra8_tls.h`
-* Main entry points: `ra8_tls_global_init()`, `ra8_tls_session_open()`,
-  `ra8_tls_handshake()`, `ra8_tls_send()`, `ra8_tls_recv()`.
+* Main entry points: `ra8_tls_global_init()`, then the per-session
+  open / handshake / send / recv calls.
 
 ## ra8_psa_crypto
 
@@ -111,11 +111,11 @@ through `ra8_nsc_key_vault`.
 
 * Header: `libs/ra8_psa_crypto/inc/ra8_psa_crypto.h`
 * Main entry points: `ra8_psa_crypto_init()`, `ra8_psa_key_import()`,
-  `ra8_psa_aead_encrypt()`, `ra8_psa_aead_decrypt()`.
+  and the `ra8_psa_aead_*` pair.
 
 ## ra8_ota
 
-Phase-5 over-the-air firmware update orchestrator: manifest fetch,
+Over-the-air firmware update orchestrator: manifest fetch,
 slot management against the dual-bank Octo-SPI flash layout, signed
 image verification (delegated to `ra8_psa_crypto`), and the secure-
 side commit veneer in `ra8_nsc_ota`.
@@ -154,10 +154,9 @@ plane inside NASA Power of 10 Rule 3.
 * Headers: `libs/ra8_c6link/inc/ra8_c6link.h`,
   `libs/ra8_c6link/inc/ra8_c6link_wifi.h`,
   `libs/ra8_c6link/inc/ra8_c6link_transport.h`
-* Main entry points: `ra8_c6link_open()`, `ra8_c6link_poll()`,
-  `ra8_c6link_fw_version()`, `ra8_c6link_eth_send()`,
-  `ra8_c6link_wifi_start()`, `ra8_c6link_wifi_join()`,
-  `ra8_c6link_wifi_mac()`.
+* Main entry points: `ra8_c6link_open()` and `ra8_c6link_poll()` for the
+  link itself, `ra8_c6link_eth_send()` for the data plane, and the
+  `ra8_c6link_wifi_*` calls for station control.
 
 ## ra8_fs
 
@@ -182,9 +181,11 @@ chapter XHTML to `ra8_reflow` for layout.
 
 ## ra8_reflow
 
-HTML/CSS reflow + paginate engine for the ra8d2 ereader. Wraps
-litehtml + gumbo and pages chapter content into the ereader's
-viewport so the GLCDC layer can blit one page at a time.
+HTML reflow + paginate engine for the ereader: it pages chapter content
+into the viewport so the GLCDC layer can blit one page at a time. The
+default engine is first-party, zero-allocation and MC/DC-testable; a
+litehtml-backed variant exists behind a build option that is off, and
+`docs/EPUB_CONFORMANCE.md` is the contract for what either one renders.
 
 * Header: `libs/ra8_reflow/inc/ra8_reflow.h`
 * Main entry points: `ra8_reflow_init()`,

@@ -66,9 +66,10 @@ This is *the* reason CI feels slow, and almost every "the runner timed out"
 investigation eventually lands back here. Two consequences follow, and both are
 already encoded in the roles rather than left as folklore:
 
-- **Adding ARC pods does not add throughput.** `ci_runner_max` is deliberately
-  6, not 10. The reasoning -- with the measured numbers -- is written at length
-  in `infra/ansible/roles/ci_runner/defaults/main.yml`. Read it before raising
+- **Adding ARC pods does not add throughput.** The pod ceiling is deliberately
+  lower than the thread count would suggest. The reasoning -- with the measured
+  numbers -- is written at length in
+  `infra/ansible/roles/ci_runner/defaults/main.yml`. Read it before raising
   that value; the answer is almost certainly "no".
 - **Real capacity comes from machines that are not pve1.** That is exactly what
   `truenas` and the gaming PC are for. Both answer the same `ra8-ci` label, so
@@ -84,7 +85,7 @@ total vCPU commitment on the physical host -- not any single guest's setting.
 
 ### `pve1` -- the hypervisor
 
-Proxmox 8.4.19. `ssh pve`, user `pve-admin`, passwordless sudo. Bridges:
+Proxmox. `ssh pve`, user `pve-admin`, passwordless sudo. Bridges:
 `vmbr0` 192.168.1.50/24 (LAN) and `vmbr1` 10.10.10.2/29 (a 2.5 Gb link to
 TrueNAS, MTU 9000). Storage is `local` (dir) plus `local-lvm` (lvmthin, ~1.8 TB).
 
@@ -100,10 +101,10 @@ alias from it.
 
 Runs:
 
-- **k3s** v1.34.5+k3s1, single node. `make infra-apply HOST=k3s-pve`
+- **k3s**, single node. `make infra-apply HOST=k3s-pve`
   (or `python3 scripts/dev/fleet.py apply k3s-pve k3s-node` for that play alone).
-- **ARC** (Actions Runner Controller) and the `ra8-ci` runner scale set, min 0 /
-  max 6, pods booting the pinned toolchain image.
+- **ARC** (Actions Runner Controller) and the `ra8-ci` runner scale set,
+  sized by the declaration, pods booting the pinned toolchain image.
   `python3 scripts/dev/fleet.py apply k3s-pve ci-runner`.
 - **OpenBao** -- the vault everything else reads credentials from.
 - The owner's unrelated homelab (section 6).
@@ -117,12 +118,12 @@ This is where every agent runs gates. Its whole toolchain is now codified
 (`make infra-apply HOST=dev`), including two tools built from source because no
 Debian suite carries them at the pinned version:
 
-- **cppcheck 2.13.0** -- the parity gate compares it *exactly*, because
+- **cppcheck** -- the parity gate compares its version *exactly*, because
   neighbouring releases emit version-specific false positives against this tree.
-- **gcc 14.2.0** -- the second host-tool compiler arm, alongside clang-18.
+- **gcc** -- the second host-tool compiler arm, alongside clang.
 
-Also: the Arm GNU Toolchain 13.3.rel1, Unicorn 2.1.4, the pinned lint set,
-`/etc/profile.d/ra8-ci.sh`, the shared 30 GB ccache at `/var/cache/ccache-ra8`,
+Also: the pinned Arm GNU Toolchain and Unicorn, the pinned lint set,
+`/etc/profile.d/ra8-ci.sh`, the shared ccache at `/var/cache/ccache-ra8`,
 `~/ra8-ws` agent workspaces, and two systemd user units -- the shared CI status
 poller and the workspace reaper.
 
@@ -131,7 +132,7 @@ NAME=...`; improvised checkouts have clobbered other agents' work.
 
 ### `truenas` -- NAS, and two CI runners
 
-Two plain (non-ARC) self-hosted runners in Docker containers, deployed by the
+Plain (non-ARC) self-hosted runners in Docker containers, deployed by the
 `ci_runner_docker` role. Measured roughly **2x faster per job** than a pve1 pod,
 which is the oversubscription in section 1 stated from the other direction.
 
@@ -147,8 +148,8 @@ make infra-remove HOST=truenas
 
 ### The gaming PC -- Ryzen 9 7900X, WSL2
 
-Windows desktop running three runner instances (`win-ci-1/2/3`) under WSL2,
-carrying the `ra8-ci` and `ra8-win` labels. Reachable only through the bench Pi,
+Windows desktop running the `win-ci-*` runner instances under WSL2, carrying
+the `ra8-ci` and `ra8-win` labels. Reachable only through the bench Pi,
 which `infra/fleet.yml` declares as its `jump:` -- so any control node reaches
 it, not just the Mac:
 
@@ -157,15 +158,14 @@ ssh win-ci                        # after `make infra-ssh-config`
 ssh -J star sikar@10.0.40.100     # the same hop, spelled out
 ```
 
-The most powerful CPU in the estate and the newest addition. Because it answers
+The most powerful CPU in the estate. Because it answers
 `ra8-ci`, it absorbs load that would otherwise land on pve1.
 
 ### `star` -- the HIL bench Pi
 
 Raspberry Pi 5, Ubuntu 24.04, `ssh star`. Everything physical hangs off it:
 
-- the **EK-RA8D2** board over J-Link (SEGGER V9.42) and `rfp-cli` for DLM
-  recovery
+- the **EK-RA8D2** board over J-Link, plus `rfp-cli` for DLM recovery
 - the **ESP32-C6** co-processor on PMOD1, with its own ESP-IDF toolchain
 - the **Analog Discovery 2** logic analyser that probes the RA8 <-> C6 SPI lines
 - the FortiGate console cable
@@ -275,7 +275,7 @@ Being honest about this is the point of the section.
   section 3.
 - **`k3s-runner-maintenance.sh`** on the k3s node (weekly image / journal /
   build-dir housekeeping, on a systemd timer) is hand-installed and in no repo.
-  One third of it is now dead: its build-dir step walks
+  Part of it is now dead: its build-dir step walks
   `/home/ubuntu/actions-runner*/_work`, and #502 removed those trees with the
   legacy runner pool. The loop is `nullglob`, so it reports "0 stale build/
   dir(s)" rather than failing, and the image-prune and journald steps are
@@ -287,24 +287,23 @@ Being honest about this is the point of the section.
 
 ### Known cruft, cleaned up (#502)
 
-`make infra-status` used to show seven `k3s-runner*` runners registered and
-online -- pre-ARC leftovers from before the repository was renamed
-(`ra8d2-firmware`), carrying the bare `self-hosted,Linux,X64` labels.
+`make infra-status` used to show a pool of `k3s-runner*` runners registered
+and online -- pre-ARC leftovers from before the repository was renamed,
+carrying the bare `self-hosted,Linux,X64` labels.
 
 They were **load-bearing, not dead**, which is why "confirm before removing"
 was the right instinct: `docs-publish`, `fuzz-nightly` and `osv-scan` were
 still scheduled against exactly those labels, so deregistering the pool would
-have left three workflows with no runner that could serve them. That was the
-unfinished half of the Jul-24 ARC migration, which moved the core workflows to
-`ra8-ci` but left those three behind "until their tools are confirmed in the
-image" and never revisited the condition.
+have left those workflows with no runner that could serve them. That was the
+unfinished half of the ARC migration, which moved the core workflows to
+`ra8-ci` but left the stragglers behind "until their tools are confirmed in
+the image" and never revisited the condition.
 
-The condition was checked against a live pod, all three moved to `ra8-ci`, and
-only then was the pool retired: seven registrations deleted, all 20
-`actions.runner.*` units stopped, disabled and removed with their drop-in
-directories, and 81 GB of runner installs reclaimed from `/home/ubuntu`. The
-per-workflow dependency evidence is in `infra/README.md` under "The legacy
-`k3s-runner-*` pool is retired".
+The condition was checked against a live pod, the stragglers were moved to
+`ra8-ci`, and only then was the pool retired -- registrations deleted, units
+stopped and removed with their drop-in directories, and the runner installs
+reclaimed from disk. The per-workflow dependency evidence is in
+`infra/README.md` under "The legacy `k3s-runner-*` pool is retired".
 
 ---
 

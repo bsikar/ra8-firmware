@@ -134,7 +134,7 @@ bespoke formats is real and is paid continuously:
   Diagnosing a real rendering bug meant building the inspector first, before a
   single byte could be read -- a cost a standard format charges at zero.
 - **A specification per format.** These pages exist only because the formats
-  are novel. Nobody writes a 900-line document explaining how to read a TIFF.
+  are novel. Nobody writes a specification explaining how to read a TIFF.
 - **No independent validation.** There is no `tiffinfo`, no fuzzing corpus
   accumulated over thirty years, and no second implementation to disagree with
   ours and expose a bug. `rabook_imagepack inspect` is the only checker, written by the
@@ -156,8 +156,8 @@ would misrepresent one of them.
   @ref md_docs_2formats_2JOF section 2.
 - **RABOOK's justification is the weakest of the three, and is partly
   historical.** The device parses EPUB directly today: `libs/ra8_epub` opens
-  the ZIP with miniz and parses the OPF with its bounded pure-C reader, and ten firmware
-  applications link it, several of them silicon-validated. "The device cannot
+  the ZIP with miniz and parses the OPF with its bounded pure-C reader, and
+  firmware applications link it, several of them silicon-validated. "The device cannot
   read an EPUB" is therefore not true, and has not been for some time. The
   defensible part is narrower -- pre-resolving the CSS cascade and
   pre-transcoding images to 4 bpp is real work genuinely moved off the device.
@@ -270,28 +270,14 @@ what makes the working set statically knowable.
 
 ## The `rabook_imagepack` tool
 
-Every worked example in this section was produced with `tools/rabook_imagepack`, the
-in-tree inspector. Build it:
-
-```
-cmake -S tools/rabook_imagepack -B build/rabook_imagepack
-cmake --build build/rabook_imagepack
-```
-
-It exposes three verbs over a format registry:
-
-```
-  rabook_imagepack convert --format <fmt> --in <file> --out <file>
-  rabook_imagepack inspect <container> [--verbose]
-  rabook_imagepack verify  --format <fmt> --in <file> [--out <dump.ppm>]
-```
-
-The three verbs answer three different questions, and the distinction matters:
+Every worked example in this section was produced with `tools/rabook_imagepack`,
+the in-tree inspector. It exposes three verbs over a format registry, and the
+distinction between them matters:
 
 | Verb | Input | Question it answers |
 |------|-------|---------------------|
 | `convert` | a **source** file (PNG/JPEG) | produce the first-party container |
-| `inspect` | a **container** | is this structurally sound, and what is in it? `--verbose` adds header/footer hexdumps and a per-record table |
+| `inspect` | a **container** | is this structurally sound, and what is in it? Verbose mode adds header/footer hexdumps and a per-record table |
 | `verify` | a **source** file | does the transcode round-trip losslessly, byte for byte? |
 
 `inspect` sniffs the magic itself, so `rabook_imagepack inspect foo.bin` identifies the

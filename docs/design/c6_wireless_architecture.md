@@ -15,10 +15,12 @@ split out:
 - The **SOUP qualification** for the esp-hosted-mcu firmware lives in
   [`../SOUP/esp-hosted.md`](../SOUP/esp-hosted.md), and for the vendored
   host-side driver in [`../SOUP/esp-hosted-host.md`](../SOUP/esp-hosted-host.md).
+  Those records own the commit pins, the protocol version and the compiled-TU
+  list; this page does not restate them.
 
-Both sides of the link are the same upstream project at the same pinned
-commit: the C6 runs the peripheral-side firmware, the RA8D2 links the host
-driver, and matching protocol version 2.12.11 is what makes them speak.
+Both sides of the link are the same upstream project at the same pinned commit:
+the C6 runs the peripheral-side firmware, the RA8D2 links the host driver, and
+a matching protocol version is what makes them speak.
 
 ## Roles and code ownership
 
@@ -59,8 +61,7 @@ easy to get wrong and was got wrong here (see the side-band section below):
 - **HANDSHAKE** -- idles **high** once the transport is armed. With this
   image's `CONFIG_ESP_SPI_DEASSERT_HS_ON_CS=y`, the C6 drops it from its
   chip-select edge interrupt and re-raises it when the next transaction is
-  queued, so it pulses low once per transaction. Bench-observed on every
-  transfer: `pre=1 mid=0 post=1`.
+  queued, so it pulses low once per transaction.
 
 The consequence for any bring-up tool: HANDSHAKE can be identified by watching
 it move, and DATA_READY cannot.
@@ -84,7 +85,7 @@ RESET is left disconnected (`-1`) in this bring-up: the C6 is reset by power
 cycling. A future revision may wire a host-driven reset line so the host can
 recover the C6 without a power cycle.
 
-### Pin map (RA8D2 side, Pmod1 / J26) -- bench-proven 2026-07-27
+### Pin map (RA8D2 side, Pmod1 / J26)
 
 The C6 is soldered to Pmod1 (J26). Which MCU pin carries each J26 signal is
 **not** fixed: EK-RA8D2 v1 UM Rev 1.01 Table 17 p 26 shows pins J26-1..J26-4
@@ -113,8 +114,8 @@ over its own USB. J26-9 is the hole reserved for the host-driven reset line
 that `C6_PIN_RESET=-1` records as absent.
 
 The controller is **SCI2 in Simple-SPI mode** (`k_ra8_board_pmod1_sci_channel`),
-with the chip-select owned as a GPIO so one assertion spans the whole
-1600-byte esp-hosted frame. Board symbols: `k_ra8_board_pmod1_spi_*` and
+with the chip-select owned as a GPIO so one assertion spans a whole esp-hosted
+frame. Board symbols: `k_ra8_board_pmod1_spi_*` and
 `k_ra8_board_pmod1_irq` / `_reset` / `_gpio_a` / `_gpio_b`.
 
 Note the trap in the UART position: J26-1 becomes `P800` and J26-4 becomes
@@ -134,7 +135,7 @@ the C6's *clock* pin, and the C6 never sees a chip-select at all.
 With SW4-4 ON and SW4-3 OFF the Octo-SPI flash owns the Pmod1 SPI pins and the
 U6 / U9 bus switches stay open, so J26-1..J26-4 are not electrically connected
 to the MCU -- while the MCU, the board and the C6 all appear perfectly
-healthy. That misreading, not a wiring fault, was the whole 2026-07-26 outage.
+healthy. That misreading, not a wiring fault, was the whole first-light outage.
 
 SW4-4 OFF also takes the Arduino and mikroBUS connectors offline, so the
 LSM6DSO IMU Click cannot be used at the same time as the C6 link. That is a
@@ -152,15 +153,14 @@ bench by `examples/ek_ra8d2/hw_validated/c6/c6_spi_probe` from the C6's own
 behaviour rather than from a wiring note. The two took different evidence,
 for the reason given in the transport section above:
 
-- **HANDSHAKE (`P006`)** was identified by *motion*, and abundantly: it tracks
-  the chip-select edge on every transaction (5 votes in the run), and the
-  probe's chip-select hunt provokes that edge without needing a clock or a
-  payload.
+- **HANDSHAKE (`P006`)** was identified by *motion*: it tracks the chip-select
+  edge on every transaction, and the probe's chip-select hunt provokes that
+  edge without needing a clock or a payload.
 - **DATA_READY (`P402`)** was identified from its *level history* plus the
   physical qualification of J26-8. It read high while the C6 still held its
-  queued boot event, then low from the first completed transaction onward and
-  for the rest of the run -- exactly the profile of a DATA_READY whose
-  transmit queue has drained, and the only side-band pin with it.
+  queued boot event, then low from the first completed transaction onward --
+  exactly the profile of a DATA_READY whose transmit queue has drained, and the
+  only side-band pin with it.
 
 That second identification was nearly missed, and the near-miss is the
 interesting part. DATA_READY transitions **once per boot** and then sits
@@ -176,7 +176,7 @@ RA8D2's internal pull-up engaged, and a pin still reading low is being sunk by
 a driver on the far end -- something no floating pin can imitate, requiring no
 cooperation from the C6 and no lucky timing. That mechanism has not yet been
 exercised on hardware; the map above does not rest on it. See the probe's
-README for the full record, including the superseded 2026-07-26 diagnosis.
+README for the full record, including the superseded first diagnosis.
 
 ## Boot and reset
 
@@ -194,12 +194,11 @@ update does not touch the C6, and vice versa.
 ## RA8-side host driver
 
 The upstream host driver source is vendored at `libs/third_party/esp-hosted/`
-(host driver + shared protocol at commit `949bb30`, with the upstream
-ESP-IDF/FreeRTOS port deliberately left out), and the first-party replacement
-for that port is at **`port/esp-hosted/`**. It supplies the ten
-`port_esp_hosted_host_*.h` header contracts, the ESP-IDF compatibility headers
-the core includes by name, and the implementations behind the 72-entry
-`hosted_osi_funcs_t` vtable -- all enumerated in
+(host driver + shared protocol, with the upstream ESP-IDF/FreeRTOS port
+deliberately left out), and the first-party replacement for that port is at
+**`port/esp-hosted/`**. It supplies the `port_esp_hosted_host_*.h` header
+contracts, the ESP-IDF compatibility headers the core includes by name, and the
+implementations behind the `hosted_osi_funcs_t` vtable -- all enumerated in
 [`../SOUP/esp-hosted-host.md`](../SOUP/esp-hosted-host.md), which also records
 exactly which vendored translation units compile today and what blocks the
 rest.
@@ -223,24 +222,27 @@ header from the same pinned upstream spec, but it is deliberately an app
 rather than a driver: its job was to prove the wire, resolve the Pmod1 mux
 position and identify the side-band pins, not to become the transport.
 
-### Bring-up status, 2026-07-28
+### What is proven on silicon
 
-Three rungs, all green on silicon and all re-runnable with `make hil-c6`:
+Three rungs, all green and all re-runnable with `make hil-c6`:
 
-| Rung | Proven | By |
-|---|---|---|
-| The wire | SPI mode 3, pin map scope-qualified per J26 hole, zero bad checksums at 1 MHz | `c6_spi_probe` (2026-07-27) |
-| The port | `ra8_esp_hosted_port_init` returns ok; `_h_do_bus_transfer` clocks 1600-byte transactions at **5 MHz** and the co-processor answers with a well-formed frame | `c6_hosted_init` |
-| The protocol | A full RPC round-trip: `Req_GetCoprocessorFwVersion` up, `Resp_GetCoprocessorFwVersion` back, decoded by the vendored protobuf codec, fields checked (fw 2.12.11, chip id 0x0D, echoed UID, result 0) | `c6_fw_version` |
+- **The wire.** SPI mode 3, the pin map above scope-qualified per J26 hole,
+  zero bad checksums at 1 MHz -- `c6_spi_probe`.
+- **The port.** `ra8_esp_hosted_port_init` returns ok and `_h_do_bus_transfer`
+  clocks full-size esp-hosted transactions at 5 MHz, with the co-processor
+  answering with a well-formed frame -- `c6_hosted_init`.
+- **The protocol.** A full RPC round-trip, request up and response back,
+  decoded by the vendored protobuf codec with its fields checked --
+  `c6_fw_version`.
 
-Two protocol facts from that run that the layers above should be built on:
+Two protocol facts from that bring-up that the layers above should be built on:
 
 - The co-processor's boot announcement that a host can actually use is
   **`RPC_ID__Event_ESPInit`**, an unsolicited RPC event on `ESP_SERIAL_IF`.
 - The `ESP_PRIV_IF` `ESP_PRIV_EVENT_INIT` event -- upstream's usual source for
-  co-processor capabilities, chip id and firmware version -- **fails its own checksum**
-  on this co-processor build and is dropped by any conformant host, upstream's
-  included (#529). Do not depend on `process_init_event()`'s TLVs.
+  co-processor capabilities, chip id and firmware version -- **fails its own
+  checksum** on this co-processor build and is dropped by any conformant host,
+  upstream's included (#529). Do not depend on `process_init_event()`'s TLVs.
 
 ### The one file to edit when the harness is rebuilt
 
@@ -252,7 +254,7 @@ else in the port, the build or the example app re-encodes a pin. When the
 rebuilt harness is characterised, those two files are the change.
 
 That routing table matters because the ICU inputs are concentrated on port 0:
-of the four Pmod1 side-band nets, only P006 has a channel (IRQ11). The port
+of the Pmod1 side-band nets, only P006 has a channel (IRQ11). The port
 therefore gives an ICU-routed pin a hardware edge and services a pin without a
 channel through a bounded software edge detector, and the vendored driver sees
 the same callback either way.

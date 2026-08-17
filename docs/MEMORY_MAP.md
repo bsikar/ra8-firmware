@@ -62,7 +62,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 | Peripheral      | Secure base   | Notes                                                | HAL driver                              |
 |-----------------|---------------|------------------------------------------------------|------------------------------------------|
 | MMPU            | `0x40000000`  | Bus-initiator MPU                                       | (no driver, used by HAL init)           |
-| SPMON           | `0x40000D00`  | Bus / stack monitor                                  | (no driver yet)                          |
+| SPMON           | `0x40000D00`  | Bus / stack monitor                                  | (no driver)                              |
 | SRAM control    | `0x40002000`  | SRAM register window                                  | `ra8_sram.c`                              |
 | SDRAMC          | `0x40003C00`  | Bus.SDRAM sub-block                                   | `ra8_sdramc.c`                            |
 | ICU             | `0x40006000`  | Interrupt Controller Unit                            | `ra8_icu.c`                               |

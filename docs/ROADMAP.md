@@ -31,18 +31,9 @@ self-contained.
 | 11 | `ba54974` | 20 missing peripherals, 3 demo apps, RSA/ECC/protected SCE |
 | 11.x | `f4fb1a6`, `7551634`, `f272dc7`, `ce76aa4`, `87b606f` | closure: coverage gate, doxygen, ADC_B/OSPI/ACMPHS layout fixes |
 
-Status snapshot at the close of sweep 11 (commit `ba54974`):
-
-- 115 driver source files in `libs/ra8_hal/src/` (was 96 at sweep 8).
-- 10 top-level libraries: ra8_core, ra8_hal, ra8_nsc, ra8_net_pal,
-  ra8_usb_pal, plus the four sweep-8/9/10 additions ra8_net, ra8_fs,
-  ra8_tls, ra8_gfx.
-- 65 drivers feature-complete vs FSP, 6 partial, 20 FSP-shaped
-  placeholders (carry `@warning`; bodies maintain software state),
-  24 scaffolds.
-- 139 ctest executables (`build/host-docker` ctest -N).
-- 15 hardware-flashable example apps (was 6 at start of sweep 7,
-  was 12 at end of sweep 8).
+The live counts are the Summary block below, which
+`scripts/report/roadmap_stats.py` rewrites from the checkboxes in this
+file; do not restate them in prose here.
 
 For the at-a-glance driver-vs-FSP-parity matrix see
 `docs/DRIVER_STATUS.md`. For the residual hardware-blob gap list see

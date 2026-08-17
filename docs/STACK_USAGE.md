@@ -87,64 +87,33 @@ the script -- the per-target `-Wstack-usage=N` warning is the
 build-time gate for those.
 
 `make stack-usage` builds every EVM-tier app (everything under
-`examples/ek_ra8d2/`) and then runs the aggregator with `--top 10`.
+`examples/ek_ra8d2/`) and then runs the aggregator over the result.
 
-## Current top-10 worst-offender functions
+## Where the big frames are
 
-Snapshot taken after a full EVM-tier `make stack-usage` sweep
-(2026-05-02). Refresh this section by running `make stack-usage` and
-pasting the script's "Top 10" output. The intent is that this list be
-reviewed at every release and never grow without justification.
+`make stack-usage` regenerates the report. This section describes the
+shape the report always has, rather than what it said on one day.
 
-```
-   bytes  qualifier         app/function  (tu)
-   -----  -----------       ------------  ----
-    9936  static            ereader/mz_zip_reader_extract_to_callback         (libs/third_party/miniz/miniz.c)
-    9880  static            ereader/mz_zip_reader_extract_to_mem_no_alloc1    (libs/third_party/miniz/miniz.c)
-    8448  static            ereader/tinfl_decompress_mem_to_heap              (libs/third_party/miniz/miniz.c)
-    8440  static            ereader/tinfl_decompress_mem_to_callback          (libs/third_party/miniz/miniz.c)
-    8416  static            ereader/tinfl_decompress_mem_to_mem               (libs/third_party/miniz/miniz.c)
-    4968  static            ereader/mz_zip_reader_read_central_dir            (libs/third_party/miniz/miniz.c)
-    4344  static            ereader/priv_parse_archive                        (libs/ra8_epub/src/ra8_epub_open.c)
-    4256  static            ereader/mz_zip_reader_locate_header_sig           (libs/third_party/miniz/miniz.c)
-    3144  static            ereader/tdefl_radix_sort_syms                     (libs/third_party/miniz/miniz.c)
-    2640  static            ereader/tdefl_optimize_huffman_table              (libs/third_party/miniz/miniz.c)
-```
+The largest frames in the tree belong to the vendored miniz
+deflate / zip helpers, which link only into the book-reading apps. They
+are SOUP: the project vendors third-party libraries unmodified and
+writes integration shims around them, so the answer to a large upstream
+frame is the per-app `STACK_USAGE_BYTES` override that sizes the
+consuming app's main stack -- not an edit to `libs/third_party/`.
 
-All entries above are `static` (no VLAs / `alloca`) and none belong
-to a critical-path module. The miniz frames are vendored third-party
-code in `libs/third_party/miniz/` and only link into the `ereader_*`
-demos; the project policy is "vendor 3rd-party libs directly and
-hand-write integration shims" (see CLAUDE.md), so we accept the
-upstream frames without modification and rely on the per-app
-`STACK_USAGE_BYTES` override in the consuming app's `CMakeLists.txt`
-to size its main stack accordingly.
+The largest first-party frames are the RSIP protected-mode routines in
+`libs/ra8_hal/src/ra8_rsip_protected.c`, and that is deliberate: each
+holds an unwrapped key or modulus scratch buffer plus a full
+`ra8_rsip_key_handle_t` on the stack, so the secret material is scrubbed
+via `p_scrub` when the frame unwinds. Moving those buffers into `.bss`
+would either persist the secret across calls or require an explicit
+clear-on-exit path that doubles the attack surface. Each carries an
+inline `RA8_STACK_BUDGET(N)` matching its `.su` value and a
+`@par Stack-budget deviation:` block that says why.
 
-Highest-frame project-owned (non-third-party) functions, all of
-which carry an inline `RA8_STACK_BUDGET(N)` annotation matching the
-.su value:
-
-```
-   bytes  qualifier         function                                       (tu)
-   -----  -----------       ------------------------------------------     ----
-    1720  static            ra8_rsip_protected_rsa_decrypt                  (libs/ra8_hal/src/ra8_rsip_protected.c)
-    1128  static            ra8_rsip_protected_aes_init                     (libs/ra8_hal/src/ra8_rsip_protected.c)
-    1104  static            ra8_rsip_protected_ecdsa_sign                   (libs/ra8_hal/src/ra8_rsip_protected.c)
-```
-
-Each of those three holds an unwrapped key/modulus scratch buffer
-plus a full `ra8_rsip_key_handle_t` on the stack so the secret
-material is scrubbed via `p_scrub` when the frame unwinds; moving
-the buffers into `.bss` would either persist the secret across calls
-or require an explicit clear-on-exit path that doubles the attack
-surface. See the `@par Stack-budget deviation:` block on each
-function and the per-app `STACK_USAGE_BYTES` override (e.g.
-`STACK_USAGE_BYTES 2200` in
-`examples/ek_ra8d2/hw_pending/tz_threadx_demo/CMakeLists.txt`).
-
-Across the entire 61k-function aggregated report there are zero
-functions with a `dynamic` qualifier (no VLAs, no `alloca`) and
-zero critical-path-module breaches.
+No function anywhere in the report carries a `dynamic` qualifier,
+because one is a hard failure of the gate below: NASA Power-of-10
+Rule 3 forbids VLAs and `alloca()` regardless of frame size.
 
 ## Pre-commit gate
 
@@ -159,14 +128,11 @@ Behaviour:
   must either reduce the frame (move scratch buffers to module-static
   storage) or enroll the function in `FIRST_PARTY_EXEMPTIONS` at the
   top of `scripts/checks/stack_usage_check.py` with a written
-  rationale. Strict-mode promotion happened on 2026-05-02 once every
-  first-party function was verified at <2048 bytes against HEAD.
+  rationale.
 * **Soft violations in third-party SOUP** (`libs/third_party/`) --
-  reported but ignored. The current 9 offenders all live in
-  `libs/third_party/miniz/miniz.c` (deflate / zip helpers, max
-  9936 B), invoked only from the ereader app's worker thread which
-  carries a generously-sized stack. SOUP is qualified per
-  `docs/SOUP/`.
+  reported but ignored. They are the miniz deflate / zip helpers,
+  invoked only from a worker thread that carries a generously-sized
+  stack. SOUP is qualified per `docs/SOUP/`.
 * **Critical-module breaches** (`ra8_isr` / `ra8_check` / `ra8_err` /
   `ra8_mpu` / `ra8_cgc` / `ra8_pfs` > 256 bytes) -- HARD FAIL via the
   existing critical-path gate inside the script.

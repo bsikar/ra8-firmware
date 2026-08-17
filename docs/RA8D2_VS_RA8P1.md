@@ -47,10 +47,10 @@ leaves it unmapped.
 
 | Area | RA8D2 | RA8P1 | Gate | Status / code |
 |------|-------|-------|------|---------------|
-| Ethos-U55 NPU | absent | present @ `0x40140000` | `RA8_HAS_NPU` | ra8_npu driver + `ra8_npu_regs.h`; emulator-modelled (#222). **Done.** |
+| Ethos-U55 NPU | absent | present @ `0x40140000` | `RA8_HAS_NPU` | ra8_npu driver + `ra8_npu_regs.h`; emulator-modelled (#222). |
 | NPUCLK domain | absent | present | `RA8_HAS_NPUCLK` | CGC NPUCLK; on-silicon wiring #229. |
-| M85 FPU width | single (`fpv5-sp-d16`) | **double** (`fpv5-d16`) | toolchain | `cmake/toolchain-ra8p1.cmake` appends `-mfpu=fpv5-d16`; witnessed by `ra8_fpu_probe` (#225). **Done.** |
-| ADC resolution | 12-bit default | **16-bit** (ADC16H) | `ADDOPCRC.ADPRC` | Same ADC16H block on both; `ra8_adc_resolution_t` carries 10/12/14/16-bit and `ra8_adc` programs the per-channel `ADDOPCRCn.ADPRC` data-format; emulator-modelled (#225). **Done.** |
+| M85 FPU width | single (`fpv5-sp-d16`) | **double** (`fpv5-d16`) | toolchain | `cmake/toolchain-ra8p1.cmake` appends `-mfpu=fpv5-d16`; witnessed by `ra8_fpu_probe` (#225). |
+| ADC resolution | 12-bit default | **16-bit** (ADC16H) | `ADDOPCRC.ADPRC` | Same ADC16H block on both; `ra8_adc_resolution_t` carries 10/12/14/16-bit and `ra8_adc` programs the per-channel `ADDOPCRCn.ADPRC` data-format; emulator-modelled (#225). |
 | HUM | `R01UH1065EJ` | `R01UH1064EJ` | -- | cite the matching manual per device. |
 
 Package, 1 MB code MRAM, 1.6 MB dual-core ECC SRAM, and every non-NPU
@@ -85,15 +85,14 @@ read-output`; it is gated behind `RA8_HAS_NPU` so the TU is empty on the RA8D2.
 The inference path is layered:
 
 1. **Driver** `ra8_npu` -- programs QBASE/QSIZE (command stream) + BASEPn (tensor
-   arena bases), kicks the job, waits for `STATUS.cmd_end`. **Done.**
+   arena bases), kicks the job, waits for `STATUS.cmd_end`.
 2. **Adapter** `ra8_ethosu_shim` -- provides the Arm ethos-u-core-driver C API
    (`ethosu_reserve_driver` / `ethosu_invoke_v3` / `ethosu_release_driver`) on
    top of `ra8_npu`, so TFLite-micro's Ethos-U op can drive the NPU (#228).
-   **Done** (host-tested).
 3. **Runtime** TFLite-micro (vendored SOUP, dormant behind `RA8_USE_TFLITE_MICRO`)
-   + the offline **Vela** `.tflite -> command-stream` compiler (#227). **Pending.**
-4. **On-silicon** NPUCLK enable + IRQ wiring + a real inference (#229).
-   **Hardware-blocked** (needs an RA8P1 part).
+   + the offline **Vela** `.tflite -> command-stream` compiler (#227).
+4. **On-silicon** NPUCLK enable + IRQ wiring + a real inference (#229). This one
+   cannot be closed without an RA8P1 part on the bench.
 
 `ra8_emulator` models the window (`board_periph_npu.c`, `--device ra8p1`) using the
 `ra8_npu_fake_cmd.h` SE55 command convention, so the whole driver + adapter path is
@@ -108,14 +107,13 @@ silicon (#229) step.
   Linux test host.
 - **EIL (headless ra8_emulator):** RA8P1 apps under `examples/ra8p1_foundation/`
   run with `--device ra8p1`; `npu_smoke` is the end-to-end NPU witness. Note
-  ra8_emulator requires **gcc-13+** (C23 typed enums).
+  ra8_emulator needs a C23-capable host compiler (it uses typed enums).
 - **On-silicon (#229):** blocked on obtaining an RA8P1 EK; needs NPUCLK bring-up,
   NPU IRQ wiring, and a Vela-compiled model. Tracked separately.
 
-## 6. Open RA8P1 issues
+## 6. RA8P1 issues
 
-`#220` (this analysis) - `#223` OFS/boot (done) - `#225` DP-FPU (done) + 16-bit
-ADC (done; `fpv5-d16` silicon benchmark remains, part-blocked) - `#226`
-`ra8_board_ra8p1` board layer + bring-up - `#227` Vela
-integration - `#228` inference adapter (done) - `#229` on-silicon Ethos-U55 -
-`#203` PCB / memory-hierarchy spike.
+`#220` this analysis - `#223` OFS / boot - `#225` DP-FPU and the 16-bit ADC -
+`#226` `ra8_board_ra8p1` board layer + bring-up - `#227` Vela integration -
+`#228` inference adapter - `#229` on-silicon Ethos-U55 - `#203` PCB /
+memory-hierarchy spike.

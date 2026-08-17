@@ -81,12 +81,10 @@ overwhelming majority of the register-level code.
 
 Third-party "software of unknown provenance" that was written elsewhere to be
 freestanding, vendored into the tree, and adapted to this hardware by a small
-piece of glue. ThreadX (the RTOS), LevelX (flash
-wear-levelling), NetX Duo and mbedTLS and tf-psa-crypto
-(networking and cryptography), miniz and xz-embedded (compression), stb and
-libwebp (image decoding), USBX and NimBLE (USB and Bluetooth stacks), esp-hosted
-(the Wi-Fi co-processor link), and the machine-learning runtimes for the
-NPU-bearing part. Each arrives as a large, chip-blind core plus a *tiny* shim.
+piece of glue: an RTOS, a flash wear-levelling layer, networking and
+cryptography stacks, compression and image codecs, USB and Bluetooth stacks, a
+Wi-Fi co-processor link, machine-learning runtimes for the NPU-bearing part.
+Each arrives as a large, chip-blind core plus a *tiny* shim.
 The ThreadX port is the cleanest illustration: a mere handful of glue files
 against a ThreadX core of many thousands, its heart a single hand-tuned assembly
 file that does nothing but reconcile ThreadX's boot assumptions with this
@@ -213,8 +211,8 @@ did the same job.
 This codebase is the Unix philosophy applied to firmware modules instead of
 command-line tools. The rule "one module equals one purpose, one function equals
 one action" is written into the project's design guidance and lived in the
-structure: a hard file-size ceiling forces any source file growing past a thousand
-lines to be split along a real responsibility boundary, not chopped arbitrarily.
+structure: a hard file-size ceiling forces any source file that outgrows it to be
+split along a real responsibility boundary, not chopped arbitrarily.
 The I/O layer is the composition principle made concrete--not one fat I/O
 god-object but a family of small, single-purpose interfaces: a stream interface, a
 block-device interface, an SPI-bus interface, an I2C-bus interface, each doing one
@@ -386,8 +384,7 @@ RTOS, a TLS stack, a cryptography library, image and compression codecs. What is
 owned is the layer where correctness is mine to prove: the HAL, the boot path, the
 interfaces, the logic. The vendored core is not trusted blindly--it is bounded,
 documented, and kept minimal, and components are retired when they stop earning
-their place (the originally-bundled filesystem is on its way out). This is NIH
-turned from a vice into a boundary-drawing discipline.
+their place. This is NIH turned from a vice into a boundary-drawing discipline.
 
 *What enforces it:* the per-component SOUP justification requirement, the
 certification-scope documents that must account for every vendored line, and the
@@ -659,14 +656,14 @@ demands of itself. Everything above is stated in terms of durable *layers*,
 --role names instead of file paths, "concentrated in a single hardware-facing
 library" instead of a line count that expires next week, "an invariant a gate keeps
 true" instead of a grep result true only today. That is a deliberate choice, and it
-is made precisely because this platform is about to restructure itself: an agnostic
-rename, and an architecture / chip / board reorganization, will falsify today's
-prefix, today's paths, and today's counts. A philosophy pinned to those specifics
-would read as false the morning after the rename, through no change in anything
-actually true. Pinned instead to principles and to the checks that guard them, it
-survives its own subject moving underneath it. That is the whole trick to a document
-outliving the code it describes: say the durable thing, and name the gate rather than
-the grep.
+is made precisely because the specifics move: a namespace rename, a
+reorganization along architecture / chip / board lines, or a change of part will
+each falsify today's prefix, today's paths, and today's counts. A philosophy
+pinned to those specifics would read as false the morning after a rename, through
+no change in anything actually true. Pinned instead to principles and to the
+checks that guard them, it survives its own subject moving underneath it.
+That is the whole trick to a document outliving the code it describes: say
+the durable thing, and name the gate rather than the grep.
 
 So this section ends not with a peroration but with a table, tying each principle to
 the role it plays and the thing that keeps it true.
@@ -681,16 +678,14 @@ the role it plays and the thing that keeps it true.
 | Own your core / vendor hermetically | A dedicated vendored tree with per-component justifications | SOUP justification docs; certification-scope accounting |
 | Ports and adapters (hexagonal) | The block-device and bus interfaces, filled by per-medium adapters | The invariant that logic libraries include no register header |
 
-The final row is the one still becoming what the others already are. That the logic
-libraries include no register header is, today, an *observed* fact--an audit that
-happens to come back clean. The natural next step, and the thing that would make the
-platform claim machine-true rather than merely true-for-now, is to promote the
-observation into a **gate**: a check that fails the build the instant any library on
-the agnostic side of the line grows a dependency on a register header or on the HAL.
-The moment that gate exists, the three-layer model stops being a description a reader
-must trust and becomes an *invariant the tree cannot violate*. That is the arc of
-every good idea in this codebase: it begins as taste, hardens into discipline under
-the pressure of the safety bar, and finally freezes into a check that makes the
-discipline impossible to forget. This document is the taste written down. The gate is
-what comes next--and when it lands, the last row will read like all the others, and
-this document will not have to change a word.
+The final row is weaker than the others, and the difference is worth naming. That
+the logic libraries include no register header is an *observed* fact--an audit that
+comes back clean--rather than a gated one. What would make the platform claim
+machine-true rather than merely true-for-now is promoting that observation into a
+**gate**: a check that fails the build the instant any library on the agnostic side
+of the line grows a dependency on a register header or on the HAL. The moment such a
+gate exists, the three-layer model stops being a description a reader must trust and
+becomes an *invariant the tree cannot violate*. That is the arc of every good idea in
+this codebase: it begins as taste, hardens into discipline under the pressure of the
+safety bar, and finally freezes into a check that makes the discipline impossible to
+forget. This document is the taste written down.
