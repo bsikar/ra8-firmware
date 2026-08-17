@@ -850,8 +850,6 @@ int main(void)
   internal_test_checkpoint_failure_fails_run();
   internal_test_progress_failure_stops_run();
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_deinit(&s_fs_posix));
-  (void)write(STDERR_FILENO,
-              "[OK  ] test_media_dl_fetch.c\n",
-              sizeof("[OK  ] test_media_dl_fetch.c\n") - 1U);
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_fetch.c\n");
   return 0;
 }

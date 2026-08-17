@@ -24,6 +24,7 @@
 #include "mdl_verify.h"
 #include "miniz.h"
 #include "ra8_jof.h"
+#include "support/ra8_test_output.h"
 #include "test_media_dl_export_workspace_internal.h"
 #include "test_media_dl_export_xml_internal.h"
 #include "tiny_jpeg_fixture.h"
@@ -926,8 +927,6 @@ int main(void)
   internal_test_epub_long_filenames();
   internal_test_export_page_cap();
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_deinit());
-  (void)write(STDERR_FILENO,
-              "[OK  ] test_media_dl_export.c\n",
-              sizeof("[OK  ] test_media_dl_export.c\n") - 1U);
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_export.c\n");
   return 0;
 }

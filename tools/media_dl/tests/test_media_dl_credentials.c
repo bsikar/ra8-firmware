@@ -14,6 +14,7 @@
 #include "mdl_net.h"
 #include "mdl_net_curl.h"
 #include "ra8_attributes.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 /** @brief Deterministic metadata values for the mutation fixture. */
@@ -177,8 +178,6 @@ int main(void)
   internal_test_cookie_rows_accepted();
   internal_test_credential_rejection();
   internal_test_subsecond_mutation_rejected();
-  (void)write(STDERR_FILENO,
-              "[OK  ] test_media_dl_credentials.c\n",
-              sizeof("[OK  ] test_media_dl_credentials.c\n") - 1U);
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_credentials.c\n");
   return 0;
 }

@@ -31,6 +31,7 @@
 #include "mdl_storage.h"
 #include "mdl_urlname.h"
 #include "ra8_attributes.h"
+#include "support/ra8_test_output.h"
 #include "test_media_dl_state_metadata_internal.h"
 #include "unity_minimal.h"
 
@@ -993,8 +994,6 @@ int main(void)
   internal_test_state_save_validates_invariants();
   internal_test_state_coverage();
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_deinit(&s_fs_posix));
-  (void)write(STDERR_FILENO,
-              "[OK  ] test_media_dl_state.c\n",
-              sizeof("[OK  ] test_media_dl_state.c\n") - 1U);
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_state.c\n");
   return 0;
 }

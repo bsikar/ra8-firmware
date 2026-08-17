@@ -21,6 +21,7 @@
 #include "mdl_extract.h"
 #include "mdl_search.h"
 #include "ra8_attributes.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 /** @brief Named fixture expectations (no bare literals). */
@@ -296,8 +297,6 @@ int main(void)
   internal_test_query_encode();
   internal_test_build_url();
   internal_test_filter_series_hits();
-  (void)write(STDERR_FILENO,
-              "[OK  ] test_media_dl_search.c\n",
-              sizeof("[OK  ] test_media_dl_search.c\n") - 1U);
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_search.c\n");
   return 0;
 }

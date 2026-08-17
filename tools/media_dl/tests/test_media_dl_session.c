@@ -33,6 +33,7 @@
 #include "mdl_stream_internal.h"
 #include "ra8_io_stream_posix.h"
 #include "ra8_io_stream_ram.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 /** @brief Named constants for the session tests (no bare literals). */
@@ -682,8 +683,6 @@ int main(void)
   internal_test_session_origin_cache_and_bounds();
   internal_test_stream_short_sink();
   internal_test_stream_broken_pipe();
-  (void)write(STDERR_FILENO,
-              "[OK  ] test_media_dl_session.c\n",
-              sizeof("[OK  ] test_media_dl_session.c\n") - 1U);
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_session.c\n");
   return 0;
 }
