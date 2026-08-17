@@ -700,13 +700,7 @@ RA8_INTERNAL static int internal_test_write_tile(emu_presentation_workspace_t* w
                                    0U));
   const uint16_t source[6] = {1U, 2U, 3U, 4U, 5U, 6U};
   (void)memcpy(workspace->scratch, source, sizeof(source));
-  /* The bound scratch really is a run of 16-bit pixels here; a union says so
-   * without casting one pointer type to another through `void*`. */
-  union {
-    uint8_t*        bytes;  /**< Scratch as the module hands it back.  */
-    const uint16_t* pixels; /**< The same storage as the pixel run.    */
-  } scratch_view = {.bytes = workspace->scratch};
-  TEST_CHECK(priv_emu_view_tile_write(workspace, scratch_view.pixels, 0U, 0U, 3U, 2U));
+  TEST_CHECK(priv_emu_view_tile_write(workspace, workspace->scratch, 0U, 0U, 3U, 2U));
   return 0;
 }
 
