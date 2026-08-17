@@ -145,15 +145,15 @@ typedef struct {
  * metadata is interned last.
  *
  *  -# Initialise the builder context via @ref ra8_rabook_compile_init.
- *  -# For each `text/css` manifest item (OPF order): load it into @p scr->css
+ *  -# For each `text/css` manifest item (OPF order): load it into @p scratch->css
  *     and add it via @ref ra8_rabook_add_stylesheet.
  *  -# If a cover image is present: extract raw bytes, decode to 8-bit grey
- *     with stb_image (using @p scr->img_arena), downscale to at most
+ *     with stb_image (using @p scratch->img_arena), downscale to at most
  *     the caller's opt-in `max_image_edge` clamp (source resolution when the
  *     field is 0, the default) on the longer edge, encode to 4-bpp,
  *     and add via @ref ra8_rabook_add_image.
  *  -# For each spine chapter (0..chapter_count): extract the raw XHTML into
- *     @p scr->xhtml, look up the matching TOC entry for a title, and call
+ *     @p scratch->xhtml, look up the matching TOC entry for a title, and call
  *     @ref ra8_rabook_xml_parse_chapter.
  *  -# Read Dublin Core metadata from @p epub and call
  *     @ref ra8_rabook_set_metadata (interned after the chapters).
@@ -162,8 +162,8 @@ typedef struct {
  *
  * @param[in,out] epub    Open book (in_use == 1); chapters are extracted
  *                        in-place from the ZIP.
- * @param[in]     bufs    Builder arenas (all non-NULL, sized for the book).
- * @param[in]     scr     Scratch buffers for XHTML load + image decode + gray.
+ * @param[in]     buffers Builder arenas (all non-NULL, sized for the book).
+ * @param[in]     scratch Scratch buffers for XHTML load + image decode + gray.
  * @param[in,out] mount   Mounted filesystem volume to write @p out_path onto.
  * @param[in]     out_path Filesystem path of the output .rabook file.
  *
@@ -189,8 +189,8 @@ typedef struct {
  * @since Version 0.1.0
  */
 ra8_err_t ra8_rabook_compile_from_epub(ra8_epub_book_t*                     epub,
-                                       const ra8_rabook_buffers_t*          bufs,
-                                       const ra8_rabook_pipeline_scratch_t* scr,
+                                       const ra8_rabook_buffers_t*          buffers,
+                                       const ra8_rabook_pipeline_scratch_t* scratch,
                                        ra8_fs_mount_t*                      mount,
                                        const char*                          out_path);
 

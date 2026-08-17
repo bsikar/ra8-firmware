@@ -161,7 +161,7 @@ ra8_err_t mdl_hash_file(mdl_storage_t* storage, const char* path, uint64_t* out)
  * the digest. Short input, trailing growth, zero progress, and call-bound
  * exhaustion all fail closed.
  * @param[in,out] file Readable generic file positioned at byte zero.
- * @param[in] expected_size Exact byte extent that must be followed by EOF.
+ * @param[in] file_size Exact byte extent that must be followed by EOF.
  * @param[out] buffer Caller-owned read scratch.
  * @param[in] buffer_bytes Nonzero extent of @p buffer.
  * @param[out] out Digest written only after the exact extent and EOF are read.
@@ -180,7 +180,7 @@ ra8_err_t mdl_hash_file(mdl_storage_t* storage, const char* path, uint64_t* out)
  * @since 0.1.0
  */
 ra8_err_t mdl_hash_stream(fw_fs_file_t* file,
-                          uint64_t      expected_size,
+                          uint64_t      file_size,
                           uint8_t*      buffer,
                           uint32_t      buffer_bytes,
                           uint64_t*     out);
