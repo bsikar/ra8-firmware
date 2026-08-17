@@ -170,65 +170,96 @@ RA8_INTERNAL static ra8_err_t internal_stat(void* ctx, const char* path, fw_fs_s
   return k_ra8_ok;
 }
 
+/** @brief Where the cursor and the native workspace sit inside a caller span. */
+typedef struct {
+  void*  cursor;     /**< First `alignof(vfs_directory_state_t)` base in the span. */
+  void*  workspace;  /**< First native-aligned base past the cursor.               */
+  size_t cursor_end; /**< Span bytes up to one past the cursor.                    */
+  size_t consumed;   /**< Span bytes ahead of @c workspace.                        */
+} vfs_dir_layout_t;
+
 /**
- * @brief Round a caller directory-state span up to the cursor's alignment
- *
- * @details
- * `fw_if_fs.h` hands adapters an arbitrary caller-owned byte span for the
- * directory cursor and promises no alignment, so the struct base must be
+ * @brief Derive both aligned bases inside a caller directory-state span
+ * @details `fw_if_fs.h` hands adapters an arbitrary caller-owned byte span for
+ * the directory cursor and promises no alignment, so both bases must be
  * derived, not assumed: storing through an unaligned `vfs_directory_state_t*`
- * is undefined behavior the host UBSan build rejects.
- *
+ * is undefined behavior the host UBSan build rejects. Deriving them together
+ * also keeps every address conversion in this one function -- callers receive
+ * `void*` bases and never convert a pointer to an integer at all.
  * @param[in] directory_state Caller-owned span accepted by `dir_open`
- *
- * @return The first suitably aligned cursor address inside the span
- * @retval non-null Always; the caller validates the remaining capacity
- *
+ * @param[in] native_align Alignment the mounted format requires of its own
+ *                         cursor workspace (a power of two, validated at mount)
+ * @return The two aligned bases and the span bytes each consumes
+ * @retval vfs_dir_layout_t Both bases are non-null; the caller validates the
+ *                          span capacity against the returned byte counts
  * @pre @p directory_state is non-null (checked by every caller's contract)
- * @pre The span extends far enough for the padding the caller re-checks
- * @post The returned pointer satisfies `alignof(vfs_directory_state_t)`
- * @post No byte of the span has been written
- *
+ * @pre @p native_align is a non-zero power of two
+ * @post @c cursor satisfies `alignof(vfs_directory_state_t)`
+ * @post @c workspace satisfies @p native_align; no span byte is written
  * @note Pure address arithmetic; reentrant and thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static vfs_directory_state_t* internal_dir_state(void* directory_state)
+RA8_INTERNAL static vfs_dir_layout_t internal_dir_layout(void*   directory_state,
+                                                         uint8_t native_align)
 {
-  const uintptr_t raw     = (uintptr_t)directory_state;
-  const uintptr_t align   = (uintptr_t)alignof(vfs_directory_state_t);
-  const uintptr_t aligned = (raw + align - 1U) & ~(align - 1U);
-  return (vfs_directory_state_t*)aligned;
+  const uintptr_t base         = (uintptr_t)directory_state;
+  const uintptr_t cursor_align = (uintptr_t)alignof(vfs_directory_state_t);
+  const uintptr_t cursor       = (base + cursor_align - 1U) & ~(cursor_align - 1U);
+  const uintptr_t cursor_end   = cursor + (uintptr_t)sizeof(vfs_directory_state_t);
+  const uintptr_t align        = (uintptr_t)native_align;
+  const uintptr_t native       = (cursor_end + align - 1U) & ~(align - 1U);
+  return (vfs_dir_layout_t){.cursor     = (void*)cursor,
+                            .workspace  = (void*)native,
+                            .cursor_end = (size_t)(cursor_end - base),
+                            .consumed   = (size_t)(native - base)};
+}
+
+/**
+ * @brief Round a caller directory-state span up to the cursor's alignment
+ * @details The cursor base does not depend on the mounted format's workspace
+ * alignment, so `dir_next` and `dir_close` -- which never touch that workspace
+ * -- take the layout under the cursor's own alignment and read its cursor half.
+ * @param[in] directory_state Caller-owned span accepted by `dir_open`
+ * @return The first suitably aligned cursor address inside the span
+ * @retval non-null Always; `dir_open` already validated the span capacity
+ * @pre @p directory_state is the span a matching `dir_open` succeeded on
+ * @pre That span still holds the cursor `dir_open` constructed in it
+ * @post The returned pointer satisfies `alignof(vfs_directory_state_t)`
+ * @post No byte of the span has been written
+ * @note Pure address arithmetic; reentrant and thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static vfs_directory_state_t* internal_dir_cursor(void* directory_state)
+{
+  return internal_dir_layout(directory_state, (uint8_t)alignof(vfs_directory_state_t)).cursor;
 }
 
 /* see header for full description */
 RA8_INTERNAL static ra8_err_t
 internal_dir_open(void* ctx, const char* path, void* directory_state, uint32_t state_bytes)
 {
-  fw_fs_ra8_vfs_state_t* state      = (fw_fs_ra8_vfs_state_t*)ctx;
-  vfs_directory_state_t* directory  = internal_dir_state(directory_state);
-  const uintptr_t        struct_pad = (uintptr_t)directory - (uintptr_t)directory_state;
-  if ((uint64_t)state_bytes < ((uint64_t)struct_pad + sizeof(vfs_directory_state_t))) {
+  fw_fs_ra8_vfs_state_t* state = (fw_fs_ra8_vfs_state_t*)ctx;
+  const vfs_dir_layout_t layout =
+    internal_dir_layout(directory_state, state->directory_workspace_align);
+  if ((uint64_t)state_bytes < (uint64_t)layout.cursor_end) {
     return k_ra8_err_no_mem;
   }
-  *directory            = (vfs_directory_state_t){};
-  const ra8_err_t built = internal_full_path(state, path, state->path_a);
+  vfs_directory_state_t* directory = layout.cursor;
+  *directory                       = (vfs_directory_state_t){};
+  const ra8_err_t built            = internal_full_path(state, path, state->path_a);
   if (built != k_ra8_ok) {
     return built;
   }
-  const uintptr_t first       = (uintptr_t)directory + (uintptr_t)sizeof(*directory);
-  const uintptr_t align       = (uintptr_t)state->directory_workspace_align;
-  const uintptr_t native_base = (first + align - 1U) & ~(align - 1U);
-  const uintptr_t consumed    = native_base - (uintptr_t)directory_state;
-  if (consumed > (uintptr_t)state_bytes) {
+  if (layout.consumed > (size_t)state_bytes) {
     return k_ra8_err_no_mem;
   }
-  if ((uint64_t)state->directory_workspace_bytes > ((uint64_t)state_bytes - consumed)) {
+  if ((uint64_t)state->directory_workspace_bytes > ((uint64_t)state_bytes - layout.consumed)) {
     return k_ra8_err_no_mem;
   }
   return ra8_io_vfs_dir_open(state->path_a,
                              &directory->native,
-                             (void*)native_base,
-                             state_bytes - (uint32_t)consumed);
+                             layout.workspace,
+                             state_bytes - (uint32_t)layout.consumed);
 }
 
 /* see header for full description */
@@ -236,7 +267,7 @@ RA8_INTERNAL static ra8_err_t
 internal_dir_next(void* ctx, void* directory_state, fw_fs_dirent_value_t* out, bool* out_entry)
 {
   (void)ctx;
-  vfs_directory_state_t* directory = internal_dir_state(directory_state);
+  vfs_directory_state_t* directory = internal_dir_cursor(directory_state);
   ra8_fs_dirent_t        native    = {};
   const ra8_err_t        err       = ra8_io_vfs_dir_next(&directory->native, &native, out_entry);
   if (err != k_ra8_ok) {
@@ -261,7 +292,7 @@ internal_dir_next(void* ctx, void* directory_state, fw_fs_dirent_value_t* out, b
 RA8_INTERNAL static ra8_err_t internal_dir_close(void* ctx, void* directory_state)
 {
   (void)ctx;
-  vfs_directory_state_t* directory = internal_dir_state(directory_state);
+  vfs_directory_state_t* directory = internal_dir_cursor(directory_state);
   return ra8_io_vfs_dir_close(&directory->native);
 }
 
