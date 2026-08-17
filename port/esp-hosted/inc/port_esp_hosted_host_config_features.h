@@ -225,7 +225,6 @@
 #define H_HOST_UDP_LOCAL_PORT_RANGE_END (61439)
 
 /**
- * @def H_SLAVE_TCP_REMOTE_PORT_RANGE_START LEGACY-OK: upstream macro name
  * @brief First TCP port the co-processor would own under network split.
  * @details 61440, one past the host's range, so the partition is a single
  * boundary rather than an interleaving.
@@ -236,7 +235,6 @@
 #define H_SLAVE_TCP_REMOTE_PORT_RANGE_START (61440) /* LEGACY-OK: upstream macro name */
 
 /**
- * @def H_SLAVE_TCP_REMOTE_PORT_RANGE_END LEGACY-OK: upstream macro name
  * @brief Last TCP port the co-processor would own under network split.
  * @details 65535, the top of the port space.
  * @note Read-only build configuration.
@@ -246,7 +244,6 @@
 #define H_SLAVE_TCP_REMOTE_PORT_RANGE_END (65535) /* LEGACY-OK: upstream macro name */
 
 /**
- * @def H_SLAVE_UDP_REMOTE_PORT_RANGE_START LEGACY-OK: upstream macro name
  * @brief First UDP port the co-processor would own under network split.
  * @details 61440; mirrors the TCP partition.
  * @note Read-only build configuration.
@@ -256,7 +253,6 @@
 #define H_SLAVE_UDP_REMOTE_PORT_RANGE_START (61440) /* LEGACY-OK: upstream macro name */
 
 /**
- * @def H_SLAVE_UDP_REMOTE_PORT_RANGE_END LEGACY-OK: upstream macro name
  * @brief Last UDP port the co-processor would own under network split.
  * @details 65535, the top of the port space.
  * @note Read-only build configuration.
@@ -308,7 +304,6 @@
 /* ----------------------------------------------------------------------- */
 
 /**
- * @def H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE LEGACY-OK: upstream macro name
  * @brief Whether a silent co-processor restarts the host.
  * @details Zero, for the same reason as ``H_TRANSPORT_RESTART_ON_FAILURE``:
  * the RA8 owns the display, the storage and the reader state, and a radio
@@ -328,7 +323,6 @@
 #define H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE (0) /* LEGACY-OK: upstream macro name */
 
 /**
- * @def H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS LEGACY-OK: upstream name
  * @brief Milliseconds of silence before that restart would fire.
  * @details Minus one, the vendored "disabled" spelling. The guard is
  * ``#if <flag> && <timeout> != -1``, so both halves have to agree that the

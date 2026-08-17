@@ -85,13 +85,13 @@
  * because this header replaces that vendor header on the host build and the
  * port sources use the upper-case names the vendor API mandates. */
 
-/** @typedef ULONG @brief ThreadX unsigned long, pinned to 32 bits. */
+/** @brief ThreadX unsigned long, pinned to 32 bits. */
 typedef uint32_t ULONG; /* NOLINT(readability-identifier-naming) -- ThreadX name. */
-/** @typedef UINT @brief ThreadX status and count type. */
+/** @brief ThreadX status and count type. */
 typedef unsigned int UINT; /* NOLINT(readability-identifier-naming) -- ThreadX name. */
-/** @typedef CHAR @brief ThreadX character type used for object names. */
+/** @brief ThreadX character type used for object names. */
 typedef char CHAR; /* NOLINT(readability-identifier-naming) -- ThreadX name. */
-/** @typedef UCHAR @brief ThreadX unsigned character type for pool storage. */
+/** @brief ThreadX unsigned character type for pool storage. */
 typedef unsigned char UCHAR; /* NOLINT(readability-identifier-naming) -- ThreadX name. */
 
 /** @def TX_SUCCESS Service completed (host model). */

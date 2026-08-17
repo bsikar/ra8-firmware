@@ -218,7 +218,6 @@
  */
 
 /**
- * @def H_SLAVE_TARGET_ESP32C6 LEGACY-OK: upstream esp-hosted macro name
  * @brief The co-processor on this board is an ESP32-C6.
  * @details One. ``coprocessor/esp32c6/pins.env`` pins the module, the
  * ESP-IDF version (v5.5.4) and the esp-hosted-mcu commit it is built from;
@@ -238,7 +237,6 @@
 #define H_SLAVE_TARGET_ESP32C6 (1) /* LEGACY-OK: upstream esp-hosted macro name */
 
 /**
- * @def H_SLAVE_TARGET_ESP32 LEGACY-OK: upstream esp-hosted macro name
  * @brief The co-processor is not an original ESP32.
  * @details Zero. Also read by ``sdio_reg.h`` to pick a register layout,
  * which is another reason it must be honest rather than merely unused.
@@ -256,7 +254,6 @@
 #define H_SLAVE_TARGET_ESP32 (0) /* LEGACY-OK: upstream esp-hosted macro name */
 
 /**
- * @def H_SLAVE_TARGET_ESP32C2 LEGACY-OK: upstream esp-hosted macro name
  * @brief The co-processor is not an ESP32-C2.
  * @details Zero; no C2 module exists on this bench.
  * @note Read-only build configuration.
@@ -266,7 +263,6 @@
 #define H_SLAVE_TARGET_ESP32C2 (0) /* LEGACY-OK: upstream esp-hosted macro name */
 
 /**
- * @def H_SLAVE_TARGET_ESP32C3 LEGACY-OK: upstream esp-hosted macro name
  * @brief The co-processor is not an ESP32-C3.
  * @details Zero; no C3 module exists on this bench.
  * @note Read-only build configuration.
@@ -276,7 +272,6 @@
 #define H_SLAVE_TARGET_ESP32C3 (0) /* LEGACY-OK: upstream esp-hosted macro name */
 
 /**
- * @def H_SLAVE_TARGET_ESP32C5 LEGACY-OK: upstream esp-hosted macro name
  * @brief The co-processor is not an ESP32-C5.
  * @details Zero. Also consulted by ``sdio_reg.h``.
  * @note Read-only build configuration.
@@ -286,7 +281,6 @@
 #define H_SLAVE_TARGET_ESP32C5 (0) /* LEGACY-OK: upstream esp-hosted macro name */
 
 /**
- * @def H_SLAVE_TARGET_ESP32C61 LEGACY-OK: upstream esp-hosted macro name
  * @brief The co-processor is not an ESP32-C61.
  * @details Zero. Also consulted by ``sdio_reg.h``.
  * @note Read-only build configuration.
@@ -296,7 +290,6 @@
 #define H_SLAVE_TARGET_ESP32C61 (0) /* LEGACY-OK: upstream esp-hosted macro name */
 
 /**
- * @def H_SLAVE_TARGET_ESP32H2 LEGACY-OK: upstream esp-hosted macro name
  * @brief The co-processor is not an ESP32-H2.
  * @details Zero; the H2 has no Wi-Fi radio, which is the point of this link.
  * @note Read-only build configuration.
@@ -306,7 +299,6 @@
 #define H_SLAVE_TARGET_ESP32H2 (0) /* LEGACY-OK: upstream esp-hosted macro name */
 
 /**
- * @def H_SLAVE_TARGET_ESP32H4 LEGACY-OK: upstream esp-hosted macro name
  * @brief The co-processor is not an ESP32-H4.
  * @details Zero; no H4 module exists on this bench.
  * @note Read-only build configuration.
@@ -316,7 +308,6 @@
 #define H_SLAVE_TARGET_ESP32H4 (0) /* LEGACY-OK: upstream esp-hosted macro name */
 
 /**
- * @def H_SLAVE_TARGET_ESP32S2 LEGACY-OK: upstream esp-hosted macro name
  * @brief The co-processor is not an ESP32-S2.
  * @details Zero; no S2 module exists on this bench.
  * @note Read-only build configuration.
@@ -326,7 +317,6 @@
 #define H_SLAVE_TARGET_ESP32S2 (0) /* LEGACY-OK: upstream esp-hosted macro name */
 
 /**
- * @def H_SLAVE_TARGET_ESP32S3 LEGACY-OK: upstream esp-hosted macro name
  * @brief The co-processor is not an ESP32-S3.
  * @details Zero; no S3 module exists on this bench.
  * @note Read-only build configuration.

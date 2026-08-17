@@ -117,6 +117,8 @@ WARN_LOGFILE           = build/docs/doxygen-warnings.log
 INPUT                  = README.md \
                          docs \
                          libs \
+                         port \
+                         coprocessor \
                          examples \
                          scripts \
                          tools \
@@ -157,11 +159,24 @@ LAYOUT_FILE            = docs/DoxygenLayout.xml
 # EXCLUDE: vendored libs, build trees, and the vendored doxygen-awesome theme
 # (its LICENSE/CSS/JS are not first-party docs). docs/doxygen is the legacy
 # Doxyfile.main output tree.
+# The three tf_psa_crypto_config_*.h files are Mbed TLS OPTION CATALOGUES, not
+# API: no functions, no types, just switches. They follow upstream's convention
+# of documenting every option and commenting out the disabled ones, so 64 \def
+# blocks have no macro to bind to and doxygen warns on every one. Declaring the
+# disabled names under a __DOXYGEN__ guard fixes that and immediately breaks
+# doxy_audit --members, which then sees 64 undocumented macros; satisfying both
+# means giving each option two doc blocks. They are configuration, so they leave
+# the doc build instead -- the same call this file already makes for shell.
+# port/esp-hosted's config headers are NOT here: their macros are really
+# defined, so their @def blocks bind once the redundant trailing text is gone.
 EXCLUDE                = libs/third_party \
                          build \
                          tests/build \
                          docs/doxygen \
-                         docs/doxygen_theme
+                         docs/doxygen_theme \
+                         port/mbedtls/inc/tf_psa_crypto_config_platform.h \
+                         port/mbedtls/inc/tf_psa_crypto_config_drivers.h \
+                         port/mbedtls/inc/tf_psa_crypto_config_mechanisms.h
 EXCLUDE_SYMLINKS       = YES
 EXCLUDE_PATTERNS       = */build/* \
                          */build-*/* \
