@@ -139,6 +139,12 @@ CheckOptions:
   # reserved identifier we invented ourselves is still caught.
   - key: bugprone-reserved-identifier.AllowedIdentifiers
     value: '_tx_timer_interrupt;_ux_dcd_ra8_usb_function;_ux_hcd_ra8_usb_function;_GNU_SOURCE;_POSIX_C_SOURCE'
+  # cert-dcl37-c and cert-dcl51-cpp are aliases of the check above; an alias
+  # reads its own option block, so the allowlist must be stated for each.
+  - key: cert-dcl37-c.AllowedIdentifiers
+    value: '_tx_timer_interrupt;_ux_dcd_ra8_usb_function;_ux_hcd_ra8_usb_function;_GNU_SOURCE;_POSIX_C_SOURCE'
+  - key: cert-dcl51-cpp.AllowedIdentifiers
+    value: '_tx_timer_interrupt;_ux_dcd_ra8_usb_function;_ux_hcd_ra8_usb_function;_GNU_SOURCE;_POSIX_C_SOURCE'
 
   # --- readability-identifier-naming (CLAUDE.md naming conventions) ---
 
