@@ -392,7 +392,8 @@ truncation even when the caller's idea of the file length is wrong.
 ### 4.1 Producing (`ra8_jof_produce()` -- host *or* device)
 
 The same function runs in both places. On the host it is driven by
-`rabook_imagepack convert` / `apps/stand_alone/media_dl`; on the device it is driven by
+`rabook_imagepack convert` / the media_dl core (`apps/shared/media_dl`); on
+the device it is driven by
 `ra8_epub_tile_binder_import()` when an EPUB turns out to contain ordinary
 JPEG/PNG. There is no separate device transcoder and no reduced device mode --
 the memory contract in [section 5.1](#51-memory-behaviour-of-the-writer) is

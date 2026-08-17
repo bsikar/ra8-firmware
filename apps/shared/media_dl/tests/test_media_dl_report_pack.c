@@ -640,7 +640,7 @@ RA8_INTERNAL static void internal_test_failure_summary(void)
  * @par MC/DC:
  * Decision: `!internal_pack_snprintf_fit(ln, sizeof(leaf)) ||
  * !mdl_path_join(series_dir, leaf, out, sizeof(out))` (2 conditions). Cited as
- * apps/stand_alone/media_dl/src/mdl_pack.c@mdl_pack_one_meta.
+ * apps/shared/media_dl/src/mdl_pack.c@mdl_pack_one_meta.
  * - Vector 1: leaf fits, join succeeds -> false (control; driven by
  *   ::internal_test_pack_one_container, which reaches the export call)
  * - Vector 2: a 300-character leaf does not fit -> true (varies condition 1;
@@ -923,7 +923,7 @@ RA8_INTERNAL static void internal_test_pack_combined_dir_output(void)
  * @par MC/DC:
  * The same two-condition `!fit || !join` decision documented on
  * ::internal_test_pack_one_path_guards, here in
- * apps/stand_alone/media_dl/src/mdl_pack.c@internal_pack_combined_dir: the control comes
+ * apps/shared/media_dl/src/mdl_pack.c@internal_pack_combined_dir: the control comes
  * from ::internal_test_pack_combined_container, the 300-character leaf varies
  * condition 1, and the 1010-character parent varies condition 2.
  * @since 0.1.0

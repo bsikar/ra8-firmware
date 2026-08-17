@@ -16,6 +16,34 @@ on-device drivers later.
 manhua, webtoons -- which the firmware reads via `ra8_comic` / CBZ, with room to
 grow into other downloadable media later.
 
+## Where the code lives
+
+The downloader and the CLI are two different things, and they sit in two
+different places:
+
+```
+apps/shared/media_dl/       the PORTABLE CORE (fetch, state, cache, export,
+  inc/  src/                verify, report, pack) over fw_if_fs and the
+  sites/                    injected mdl_net vtable -- plus the site
+  tests/                    descriptors, which are data of the core
+  CMakeLists.txt            builds and tests standalone, with no libcurl
+
+apps/stand_alone/media_dl/  the HOST COMPOSITION ROOT: main(), the argv
+  inc/  src/                grammar, the libcurl backend, host credential
+  tests/                    policy, the per-mode action wiring
+  CMakeLists.txt            builds the `media_dl` executable
+```
+
+The core is not inside this product because the same core is about to have a
+second build form -- a loadable on-device module under `apps/threadx_modules/`
+-- and a core owned by one form is a core the other form has to copy.
+
+The layering is one-way: **`apps/shared` never includes from `apps/stand_alone`
+or `apps/threadx_modules`.** That the core configures, builds and passes its own
+17-binary test suite with no `find_package(CURL)` anywhere in its listfile is
+the standing proof it holds.
+
+
 ## What it does
 
 **series mode** (the real one): read a per-site descriptor, list a series'

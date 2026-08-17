@@ -330,14 +330,14 @@ firmware_pass_args() {
 tools_fixture_definitions() {
   printf -- '--extra-arg=-DRA8_FMT_TEST_PNG="%s"\n' \
     "$FIRMWARE_DIR/tests/fixtures/rabook_fixed_layout/OEBPS/images/page1.png"
-  printf -- '--extra-arg=-DMDL_SITE_CONFIG_DIR="%s"\n' "$FIRMWARE_DIR/apps/stand_alone/media_dl/sites"
+  printf -- '--extra-arg=-DMDL_SITE_CONFIG_DIR="%s"\n' "$FIRMWARE_DIR/apps/shared/media_dl/sites"
   printf -- '--extra-arg=-DMDL_SITE_FIXTURE_DIR="%s"\n' \
-    "$FIRMWARE_DIR/apps/stand_alone/media_dl/tests/fixtures/sites"
+    "$FIRMWARE_DIR/apps/shared/media_dl/tests/fixtures/sites"
   # ...and the shipped-descriptor count, counted the same way the listfile
   # counts it (a CONFIGURE_DEPENDS glob over sites/*.conf) so the two cannot
   # disagree about how many descriptors ship.
   local site_count
-  site_count="$(git -C "$FIRMWARE_DIR" ls-files "apps/stand_alone/media_dl/sites/*.conf" | wc -l)"
+  site_count="$(git -C "$FIRMWARE_DIR" ls-files "apps/shared/media_dl/sites/*.conf" | wc -l)"
   printf -- '--extra-arg=-DMDL_SHIPPED_SITE_COUNT=%s\n' "$site_count"
 }
 

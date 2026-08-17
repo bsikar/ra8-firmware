@@ -172,7 +172,7 @@ def find_regressions(
 
 def selftest() -> int:
     """Prove the count ratchet fires on growth and stays quiet on burn-down."""
-    key = ("apps/stand_alone/media_dl/src/mdl_fetch.c", "misra-c2012-15.5")
+    key = ("apps/shared/media_dl/src/mdl_fetch.c", "misra-c2012-15.5")
     new_key = ("tools/new_tool.c", "misra-c2012-17.3")
     baseline = Counter({key: 2})
     cases = [

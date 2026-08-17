@@ -482,7 +482,8 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   # backend (ra8_display_pal_host_macos*) -- a desktop dev-preview tool, not
   # airborne firmware, so DO-178C MC/DC does not apply to it.
   #
-  # ...and apps/stand_alone/media_dl, which is the one tool that carries its OWN
+  # ...and media_dl -- both its shared core (apps/shared/media_dl) and its host
+  # form (apps/stand_alone/media_dl) -- the one tool that carries its OWN
   # ratcheted coverage gate (`tools-coverage`, per-file line/branch over its
   # own 19-binary CTest suite, currently 83.4% line / 65.1% branch and green).
   # Its production sources appear here only as LINK dependencies of the
@@ -497,7 +498,11 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   # where it is actually tested. Unifying the two regimes -- measuring MC/DC
   # from each tool's own suite -- is the real answer and is filed separately.
   mcdc_ignore_re='(third_party|/tests/|/usr/|c\+\+/v[0-9]+|ra8_display_pal_host_macos'
-  mcdc_ignore_re+='|apps/stand_alone/media_dl/)'
+  # Both category directories, matched by shape rather than named one by one:
+  # the product's core moved to apps/shared/ so a second build form could
+  # consume it, and a pattern naming only the form would have put the whole
+  # core back into this denominator with its coverage measured elsewhere.
+  mcdc_ignore_re+='|apps/[a-z_]+/media_dl/)'
 
   # Per-file MC/DC dump (verbose, for human inspection).
   "$LLVM_COV_BIN" show \

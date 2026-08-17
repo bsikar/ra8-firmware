@@ -77,7 +77,7 @@ static const char s_markup_html[] = "{\"error\":\"search temporarily unavailable
  *
  * @par MC/DC:
  * Decision `if ((html == nullptr) || (base_url == nullptr) || (out == nullptr))`
- * (3 conditions). Cited as apps/stand_alone/media_dl/src/mdl_extract.c@mdl_extract_hits.
+ * (3 conditions). Cited as apps/shared/media_dl/src/mdl_extract.c@mdl_extract_hits.
  * - Vector 1: all non-NULL              -> false (control: the scan runs)
  * - Vector 2: html=NULL                 -> true  (varies condition 1)
  * - Vector 3: base_url=NULL             -> true  (varies condition 2)
@@ -187,7 +187,7 @@ RA8_INTERNAL static void internal_test_zero_vs_markup(void)
  *
  * @par MC/DC:
  * Decision `is_unreserved()` returns `alpha || digit || mark` (3 conditions).
- * Cited as apps/stand_alone/media_dl/src/mdl_search.c@is_unreserved.
+ * Cited as apps/shared/media_dl/src/mdl_search.c@is_unreserved.
  * - Vector 1: c='/'  -> false (control: none hold, so '/' is encoded to %2F)
  * - Vector 2: c='a'  -> true  (varies alpha)
  * - Vector 3: c='7'  -> true  (varies digit)
@@ -229,7 +229,7 @@ RA8_INTERNAL static void internal_test_query_encode(void)
  * @par MC/DC:
  * Decision `if ((tmpl == nullptr) || (encoded_term == nullptr) || (out ==
  * nullptr) || (cap == 0U))` (4 conditions). Cited as
- * apps/stand_alone/media_dl/src/mdl_search.c@mdl_search_build_url.
+ * apps/shared/media_dl/src/mdl_search.c@mdl_search_build_url.
  * - Vector 1: all valid                     -> false (control: expansion runs)
  * - Vector 2: tmpl=NULL                      -> true  (varies condition 1)
  * - Vector 3: encoded_term=NULL              -> true  (varies condition 2)
