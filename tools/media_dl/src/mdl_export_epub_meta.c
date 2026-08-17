@@ -31,9 +31,9 @@ typedef enum : uint16_t {
 
 /** @brief FNV-1a values used to derive deterministic publication UUIDs. */
 typedef enum : uint64_t {
-  k_uuid_fnv_prime = UINT64_C(1099511628211),        /**< FNV-1a 64-bit prime.      */
-  k_uuid_seed_one  = UINT64_C(14695981039346656037), /**< Primary FNV offset basis. */
-  k_uuid_seed_two  = UINT64_C(7809847782465536322),  /**< Independent second seed.  */
+  k_uuid_fnv_prime = 1099511628211ULL,       /**< FNV-1a 64-bit prime.      */
+  k_uuid_seed_one  = 0xCBF29CE484222325ULL,  /**< Primary FNV offset basis. */
+  k_uuid_seed_two  = 7809847782465536322ULL, /**< Independent second seed.  */
 } mdl_uuid_hash_t;
 
 /** @brief RFC 4122 UUID byte layout, masks, and version/variant bits. */
@@ -69,12 +69,13 @@ typedef enum : uint8_t {
  */
 RA8_INTERNAL static uint64_t internal_uuid_hash_text(uint64_t hash, const char* text)
 {
-  while (*text != '\0') {
-    hash ^= (uint8_t)*text++;
-    hash *= (uint64_t)k_uuid_fnv_prime;
+  uint64_t state = hash;
+  for (size_t index = 0U; text[index] != '\0'; ++index) {
+    state ^= (uint64_t)(uint8_t)text[index];
+    state *= (uint64_t)k_uuid_fnv_prime;
   }
-  hash ^= (uint8_t)k_uuid_separator;
-  return hash * (uint64_t)k_uuid_fnv_prime;
+  state ^= (uint64_t)(uint8_t)k_uuid_separator;
+  return state * (uint64_t)k_uuid_fnv_prime;
 }
 
 /**
@@ -110,9 +111,9 @@ internal_generate_uuid(char* out, size_t cap, const mdl_export_meta_t* meta)
   }
   uint8_t b[k_uuid_byte_count];
   for (size_t i = 0U; i < (size_t)k_uuid_half_bytes; ++i) {
-    b[i] = (uint8_t)(h1 >> ((uint8_t)k_uuid_top_shift - (i * (size_t)k_epub_uuid_byte_bits)));
-    b[i + (size_t)k_uuid_half_bytes] =
-      (uint8_t)(h2 >> ((uint8_t)k_uuid_top_shift - (i * (size_t)k_epub_uuid_byte_bits)));
+    const size_t shift = (size_t)k_uuid_top_shift - (i * (size_t)k_epub_uuid_byte_bits);
+    b[i]               = (uint8_t)(h1 >> shift);
+    b[i + (size_t)k_uuid_half_bytes] = (uint8_t)(h2 >> shift);
   }
   b[k_uuid_version_byte] =
     (uint8_t)((b[k_uuid_version_byte] & k_uuid_version_mask) | k_uuid_version_five);

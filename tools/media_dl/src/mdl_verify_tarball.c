@@ -39,6 +39,7 @@ typedef enum : uint32_t {
   k_gzip_method_deflate = 8U,    /**< RFC 1952 DEFLATE method identifier. */
   k_gzip_header_bytes   = 10U,   /**< Fixed gzip header extent.           */
   k_gzip_trailer_bytes  = 8U,    /**< CRC32 plus ISIZE trailer extent.    */
+  k_gzip_isize_offset   = 4U,    /**< ISIZE offset inside that trailer.   */
   k_gzip_min_bytes      = 18U,   /**< Smallest fixed-frame gzip extent.   */
 } mdl_verify_gzip_frame_t;
 
@@ -99,17 +100,20 @@ internal_io_read_exact(mdl_verify_io_t* io, uint8_t* destination, size_t length)
 RA8_INTERNAL static bool internal_parse_octal(const uint8_t* field, size_t length, uint64_t* out)
 {
   size_t index = 0U;
-  while ((index < length) && ((field[index] == ' ') || (field[index] == '\0'))) {
+  while ((index < length) && ((field[index] == (uint8_t)' ') || (field[index] == (uint8_t)'\0'))) {
     ++index;
   }
   uint64_t value = 0U;
   bool     any   = false;
-  for (; (index < length) && (field[index] != '\0') && (field[index] != ' '); ++index) {
-    if ((field[index] < '0') || (field[index] > '7') || (value > (UINT64_MAX >> 3U))) {
+  for (; (index < length) && (field[index] != (uint8_t)'\0') && (field[index] != (uint8_t)' ');
+       ++index) {
+    if ((field[index] < (uint8_t)'0') || (field[index] > (uint8_t)'7') ||
+        (value > (UINT64_MAX >> 3U))) {
       return false;
     }
-    value = (value << 3U) + (uint64_t)(field[index] - '0');
-    any   = true;
+    const uint64_t digit = (uint64_t)field[index] - (uint64_t)(uint8_t)'0';
+    value                = (value << 3U) + digit;
+    any                  = true;
   }
   *out = value;
   return any;
@@ -130,16 +134,17 @@ RA8_INTERNAL static ra8_err_t internal_tar_member(mdl_tar_stream_t* state)
   }
   uint64_t expected = 0U;
   uint64_t size     = 0U;
-  if (!internal_parse_octal(state->block + k_tar_checksum_offset,
+  if (!internal_parse_octal(&state->block[k_tar_checksum_offset],
                             k_tar_checksum_end - k_tar_checksum_offset,
                             &expected) ||
       ((uint64_t)checksum != expected) ||
-      !internal_parse_octal(state->block + k_tar_size_offset, k_tar_size_bytes, &size) ||
-      (state->block[k_tar_type_offset] != '0') || (size > UINT64_MAX - k_tar_padding_mask)) {
+      !internal_parse_octal(&state->block[k_tar_size_offset], k_tar_size_bytes, &size) ||
+      (state->block[k_tar_type_offset] != (uint8_t)'0') ||
+      (size > UINT64_MAX - k_tar_padding_mask)) {
     return k_ra8_err_validation_failed;
   }
   char name[k_tar_name_bytes + 1U];
-  memcpy(name, state->block, k_tar_name_bytes);
+  (void)memcpy(name, state->block, k_tar_name_bytes);
   name[k_tar_name_bytes] = '\0';
   if (!priv_mdl_verify_safe_member_name(name)) {
     return k_ra8_err_validation_failed;
@@ -205,7 +210,7 @@ internal_tar_feed(mdl_tar_stream_t* state, const uint8_t* bytes, size_t length)
       continue;
     }
     if (state->skip_bytes != 0U) {
-      const uint64_t available = (uint64_t)(length - offset);
+      const uint64_t available = (uint64_t)length - (uint64_t)offset;
       const size_t   consumed =
         (state->skip_bytes < available) ? (size_t)state->skip_bytes : (length - offset);
       state->skip_bytes -= consumed;
@@ -214,7 +219,7 @@ internal_tar_feed(mdl_tar_stream_t* state, const uint8_t* bytes, size_t length)
     }
     const size_t missing = k_tar_block_bytes - state->block_used;
     const size_t copied  = ((length - offset) < missing) ? (length - offset) : missing;
-    memcpy(state->block + state->block_used, bytes + offset, copied);
+    (void)memcpy(&state->block[state->block_used], &bytes[offset], copied);
     state->block_used += copied;
     offset += copied;
     if (state->block_used == k_tar_block_bytes) {
@@ -252,19 +257,18 @@ RA8_PRIV ra8_err_t priv_mdl_verify_tar(mdl_verify_io_t* io, mdl_verify_report_t*
   mdl_storage_t*   storage = io->storage;
   ra8_err_t        error   = k_ra8_ok;
   mdl_tar_stream_t tar     = {};
-  for (;;) {
+  bool             done    = false;
+  while (!done) {
     size_t got = 0U;
     error = priv_mdl_verify_io_read_up_to(io, storage->io_buffer, storage->io_buffer_bytes, &got);
     if (error != k_ra8_ok) {
-      break;
-    }
-    if (got == 0U) {
+      done = true;
+    } else if (got == 0U) {
       error = internal_tar_finish(&tar, report);
-      break;
-    }
-    error = internal_tar_feed(&tar, storage->io_buffer, got);
-    if (error != k_ra8_ok) {
-      break;
+      done  = true;
+    } else {
+      error = internal_tar_feed(&tar, storage->io_buffer, got);
+      done  = (error != k_ra8_ok);
     }
   }
   return error;
@@ -366,7 +370,7 @@ RA8_INTERNAL static bool internal_gzip_trailer_valid(const uint8_t*           tr
                                                      const mdl_gzip_stream_t* gzip)
 {
   return (internal_get_u32le(trailer) == gzip->crc) &&
-         (internal_get_u32le(trailer + 4U) == (uint32_t)gzip->raw_bytes);
+         (internal_get_u32le(&trailer[k_gzip_isize_offset]) == (uint32_t)gzip->raw_bytes);
 }
 
 /**
@@ -389,7 +393,7 @@ RA8_INTERNAL static ra8_err_t internal_gzip_init_inflate(mdl_export_workspace_t*
                                                          mdl_gzip_stream_t*      gzip)
 {
   gzip->output =
-    (uint8_t*)priv_mdl_verify_workspace_take(workspace, gzip->output_cap, _Alignof(max_align_t));
+    (uint8_t*)priv_mdl_verify_workspace_take(workspace, gzip->output_cap, alignof(max_align_t));
   arena->exhausted    = gzip->output == nullptr;
   gzip->stream.zalloc = priv_mdl_verify_arena_alloc;
   gzip->stream.zfree  = priv_mdl_verify_arena_free;
@@ -424,16 +428,17 @@ RA8_INTERNAL static ra8_err_t internal_gzip_consume(mdl_verify_io_t*    io,
 {
   mdl_storage_t* storage = io->storage;
   ra8_err_t      error   = k_ra8_ok;
-  while ((error == k_ra8_ok) && (remaining != 0U) && !gzip->ended) {
+  uint64_t       left    = remaining;
+  while ((error == k_ra8_ok) && (left != 0U) && !gzip->ended) {
     const uint32_t chunk =
-      (remaining < storage->io_buffer_bytes) ? (uint32_t)remaining : storage->io_buffer_bytes;
+      (left < storage->io_buffer_bytes) ? (uint32_t)left : storage->io_buffer_bytes;
     error = internal_io_read_exact(io, storage->io_buffer, chunk);
     if (error == k_ra8_ok) {
-      remaining -= chunk;
+      left -= chunk;
       error = internal_gzip_feed(gzip, storage->io_buffer, chunk);
     }
   }
-  if ((error == k_ra8_ok) && gzip->ended && (remaining != 0U)) {
+  if ((error == k_ra8_ok) && gzip->ended && (left != 0U)) {
     error = k_ra8_err_validation_failed;
   }
   if ((error == k_ra8_ok) && !gzip->ended) {

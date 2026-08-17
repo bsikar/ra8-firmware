@@ -312,19 +312,20 @@ RA8_INTERNAL static ra8_err_t internal_close_compile_sources(ra8_err_t          
                                                              ra8_epub_book_t*          book,
                                                              mdl_rabook_epub_source_t* source)
 {
+  ra8_err_t result = error;
   if ((book != nullptr) && (book->in_use != 0U)) {
     const ra8_err_t closed = ra8_epub_close(book);
-    if ((error == k_ra8_ok) && (closed != k_ra8_ok)) {
-      error = closed;
+    if ((result == k_ra8_ok) && (closed != k_ra8_ok)) {
+      result = closed;
     }
   }
   if (source->file.is_open) {
     const ra8_err_t closed = priv_mdl_rabook_epub_close(source);
-    if ((error == k_ra8_ok) && (closed != k_ra8_ok)) {
-      error = closed;
+    if ((result == k_ra8_ok) && (closed != k_ra8_ok)) {
+      result = closed;
     }
   }
-  return error;
+  return result;
 }
 
 /**
