@@ -85,8 +85,8 @@
 
     <!-- mailbox across the core boundary -->
     <line x1="422" y1="546" x2="422" y2="362" stroke="#0969da" stroke-width="1.4" marker-end="url(#aAcc)"/>
-    <text x="434" y="392" fill="#0969da" font-size="9">mailbox IPC (ra8_ipc,</text>
-    <text x="434" y="406" fill="#0969da" font-size="9">shared SRAM @ 0x22100000)</text>
+    <text x="434" y="369" fill="#0969da" font-size="9">mailbox IPC (ra8_ipc,</text>
+    <text x="434" y="383" fill="#0969da" font-size="9">shared SRAM @ 0x22100000)</text>
 
     <!-- ================= ESP32-C6 ================= -->
     <rect x="780" y="250" width="260" height="150" rx="6" fill="none" stroke="#bc4c00" stroke-width="1.4"/>
