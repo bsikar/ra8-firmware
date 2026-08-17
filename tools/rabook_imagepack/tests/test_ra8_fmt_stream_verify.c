@@ -509,6 +509,43 @@ static ra8_err_t internal_invoke(test_source_t*                           ref_so
  * @note The final assertion proves the arena bindings do not alias.
  * @since 0.1.0
  */
+/**
+ * @brief Run one golden round-trip instance through one caller arena.
+ * @details Isolated in its own frame so the shared ::CHECK macro's internal
+ *          control flow does not compound with a caller loop's nesting.
+ * @param[in] len Encoded fixture length.
+ * @param[in] need Exact verifier requirements.
+ * @param[in] arena Caller-owned workspace of at least ::k_test_work_cap bytes.
+ * @param[in] expected Exact legacy report text this instance must produce.
+ * @return Nothing; every check is asserted inside.
+ * @pre The two source fixture arrays contain identical @p len bytes.
+ * @pre @p arena satisfies @p need.
+ * @post The instance commits the exact 781-byte P5 output.
+ * @post The report exactly matches @p expected.
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_golden_instance(size_t                                   len,
+                                          const ra8_fmt_jof_verify_requirements_t* need,
+                                          uint8_t*                                 arena,
+                                          const char*                              expected)
+{
+  test_source_t ref       = internal_source_model(s_image_a, len);
+  test_source_t got       = internal_source_model(s_image_b, len);
+  test_spool_t  ref_spool = {};
+  test_spool_t  got_spool = {};
+  test_dump_t   dump      = {};
+  test_report_t report    = {};
+  CHECK(internal_invoke(&ref, &got, need, arena, &ref_spool, &got_spool, &dump, &report) ==
+        k_ra8_ok);
+  CHECK(ref.max_chunk == k_test_short_read);
+  CHECK(got.max_chunk == k_test_short_read);
+  CHECK(dump.committed && !dump.aborted && (dump.published_len == 781U));
+  CHECK(memcmp(dump.published, "P5\n24 32\n255\n", 13U) == 0);
+  CHECK(strcmp((const char*)report.bytes, expected) == 0);
+}
+
 RA8_INTERNAL
 static void internal_test_golden(size_t len, const ra8_fmt_jof_verify_requirements_t* need)
 {
@@ -516,22 +553,8 @@ static void internal_test_golden(size_t len, const ra8_fmt_jof_verify_requiremen
     "verify: 24x32 bpp=1 | reference 1 tile | banded 1 tiles of 32 rows\n"
     "  wrote reassembled raster to golden.ppm (ok)\n"
     "verdict: ROUND-TRIP EXACT -- the produced file is correct (0 differing bytes)\n";
-  for (uint32_t instance = 0U; instance < 2U; ++instance) {
-    test_source_t  ref       = internal_source_model(s_image_a, len);
-    test_source_t  got       = internal_source_model(s_image_b, len);
-    test_spool_t   ref_spool = {};
-    test_spool_t   got_spool = {};
-    test_dump_t    dump      = {};
-    test_report_t  report    = {};
-    uint8_t* const arena     = (instance == 0U) ? s_work_a : s_work_b;
-    CHECK(internal_invoke(&ref, &got, need, arena, &ref_spool, &got_spool, &dump, &report) ==
-          k_ra8_ok);
-    CHECK(ref.max_chunk == k_test_short_read);
-    CHECK(got.max_chunk == k_test_short_read);
-    CHECK(dump.committed && !dump.aborted && (dump.published_len == 781U));
-    CHECK(memcmp(dump.published, "P5\n24 32\n255\n", 13U) == 0);
-    CHECK(strcmp((const char*)report.bytes, expected) == 0);
-  }
+  internal_test_golden_instance(len, need, s_work_a, expected);
+  internal_test_golden_instance(len, need, s_work_b, expected);
   CHECK(&s_work_a[0] != &s_work_b[0]);
 }
 
@@ -547,8 +570,20 @@ static void internal_test_golden(size_t len, const ra8_fmt_jof_verify_requiremen
  * @note Assertions accumulate without skipping cleanup evidence.
  * @since 0.1.0
  */
+/**
+ * @brief Prove a truncated reference source fails and never commits the dump.
+ * @param[in] len Encoded fixture length.
+ * @param[in] need Exact verifier requirements.
+ * @return Nothing; every check is asserted inside.
+ * @pre Golden source arrays contain @p len bytes.
+ * @pre Caller workspace satisfies @p need.
+ * @post The dump was aborted, never committed.
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
-static void internal_test_sources(size_t len, const ra8_fmt_jof_verify_requirements_t* need)
+static void internal_test_sources_truncated(size_t                                   len,
+                                            const ra8_fmt_jof_verify_requirements_t* need)
 {
   test_source_t ref       = internal_source_model(s_image_a, len);
   test_source_t got       = internal_source_model(s_image_b, len);
@@ -560,27 +595,69 @@ static void internal_test_sources(size_t len, const ra8_fmt_jof_verify_requireme
   CHECK(internal_invoke(&ref, &got, need, s_work_a, &ref_spool, &got_spool, &dump, &report) !=
         k_ra8_ok);
   CHECK(dump.aborted && !dump.committed);
-  ref            = internal_source_model(s_image_a, len);
-  got            = internal_source_model(s_image_b, len);
-  ref_spool      = (test_spool_t){};
-  got_spool      = (test_spool_t){};
-  dump           = (test_dump_t){};
-  report         = (test_report_t){};
-  got.xor_offset = 16U;
-  got.xor_mask   = 0x40U;
+}
+
+/**
+ * @brief Prove an XOR-corrupted candidate source fails and never commits.
+ * @param[in] len Encoded fixture length.
+ * @param[in] need Exact verifier requirements.
+ * @return Nothing; every check is asserted inside.
+ * @pre Golden source arrays contain @p len bytes.
+ * @pre Caller workspace satisfies @p need.
+ * @post The dump was aborted, never committed.
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_sources_corrupted(size_t                                   len,
+                                            const ra8_fmt_jof_verify_requirements_t* need)
+{
+  test_source_t ref       = internal_source_model(s_image_a, len);
+  test_source_t got       = internal_source_model(s_image_b, len);
+  test_spool_t  ref_spool = {};
+  test_spool_t  got_spool = {};
+  test_dump_t   dump      = {};
+  test_report_t report    = {};
+  got.xor_offset          = 16U;
+  got.xor_mask            = 0x40U;
   CHECK(internal_invoke(&ref, &got, need, s_work_a, &ref_spool, &got_spool, &dump, &report) !=
         k_ra8_ok);
   CHECK(dump.aborted && !dump.committed);
-  ref                    = internal_source_model(s_image_a, len);
-  got                    = internal_source_model(s_image_b, len);
-  ref.fail_validate_call = 2U;
-  ref_spool              = (test_spool_t){};
-  got_spool              = (test_spool_t){};
-  dump                   = (test_dump_t){};
-  report                 = (test_report_t){};
+}
+
+/**
+ * @brief Prove a reference mutated mid-verify fails validation, not silently.
+ * @param[in] len Encoded fixture length.
+ * @param[in] need Exact verifier requirements.
+ * @return Nothing; every check is asserted inside.
+ * @pre Golden source arrays contain @p len bytes.
+ * @pre Caller workspace satisfies @p need.
+ * @post The dump was aborted, never committed.
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_test_sources_concurrent_mutation(size_t                                   len,
+                                                      const ra8_fmt_jof_verify_requirements_t* need)
+{
+  test_source_t ref       = internal_source_model(s_image_a, len);
+  test_source_t got       = internal_source_model(s_image_b, len);
+  ref.fail_validate_call  = 2U;
+  test_spool_t  ref_spool = {};
+  test_spool_t  got_spool = {};
+  test_dump_t   dump      = {};
+  test_report_t report    = {};
   CHECK(internal_invoke(&ref, &got, need, s_work_a, &ref_spool, &got_spool, &dump, &report) ==
         k_ra8_err_validation_failed);
   CHECK(dump.aborted && !dump.committed);
+}
+
+RA8_INTERNAL
+static void internal_test_sources(size_t len, const ra8_fmt_jof_verify_requirements_t* need)
+{
+  internal_test_sources_truncated(len, need);
+  internal_test_sources_corrupted(len, need);
+  internal_test_sources_concurrent_mutation(len, need);
 }
 
 /**
