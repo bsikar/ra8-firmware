@@ -685,6 +685,7 @@ RA8_INTERNAL static void internal_board_cam_trace_hook(void)
   if (s_board_cam_trace_len >= (uint8_t)k_board_cam_trace_cap) {
     return;
   }
+  /* HUM Ch 39.2.17 "ICDRT : I2C Bus Transmit Data Register" p 2393 */
   const uint8_t byte = reg->ICDRT;
   if ((s_board_cam_trace_len != 0U) && (s_board_cam_trace[s_board_cam_trace_len - 1U] == byte)) {
     return;
@@ -714,6 +715,7 @@ RA8_INTERNAL static void internal_board_cam_bus_up(void)
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_ra8_board_camera_i2c_channel, &cfg));
   volatile r_i2c_regs_t* reg = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
+  /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
   reg->ICSR2 = (uint8_t)((uint8_t)k_ra8_i2c_msk_icsr2_tdre | (uint8_t)k_ra8_i2c_msk_icsr2_tend |
                          (uint8_t)k_ra8_i2c_msk_icsr2_rdrf);
 }
@@ -744,7 +746,9 @@ static void test_board_camera_xclk_bounds_and_routing(void)
   const uint32_t                       period = pclkd_hz / freq;
   volatile const r_gpt_channel_regs_t* gpt    = ra8_gpt((uint8_t)k_board_cam_gpt_channel);
   TEST_ASSERT_NOT_NULL(gpt);
+  /* HUM Ch 22.2.21 "GTPR : General PWM Timer Cycle Setting Register" p 938 */
   TEST_ASSERT_EQ(period - 1U, gpt->GTPR);
+  /* HUM Ch 22.2.20 "GTCCRk : General PWM Timer Compare Capture Register k (k = A to F)" p 938 */
   TEST_ASSERT_EQ(period / 2U, gpt->GTCCR[0]);
   TEST_END("board camera: XCLK divisor bounds and routing");
 }
@@ -759,9 +763,11 @@ static void test_board_camera_select_parallel(void)
 
   internal_board_cam_prep();
   volatile r_i2c_regs_t* reg = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
+  /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
   reg->ICSR2 = (uint8_t)((uint8_t)k_ra8_i2c_msk_icsr2_tdre | (uint8_t)k_ra8_i2c_msk_icsr2_tend);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_camera_select_parallel());
   /* IODIR is the last of the three expander writes and carries the mask. */
+  /* HUM Ch 39.2.17 "ICDRT : I2C Bus Transmit Data Register" p 2393 */
   TEST_ASSERT_EQ(k_board_cam_sw46_mask, reg->ICDRT);
   TEST_END("board camera: SW4-6 override selects the parallel path");
 }
@@ -800,6 +806,7 @@ static void test_board_camera_reset_pulses_pin(void)
   /* PCNTR3 low half is POSR: the release wrote the CAM_RST set bit last. */
   volatile const r_port_regs_t* port = ra8_port(RA8_PIN_PORT(rst));
   TEST_ASSERT_NOT_NULL(port);
+  /* HUM Ch 20.2 "PCNTR3/PORR/POSR : Port Control Register 3" p 842 */
   TEST_ASSERT_EQ((1UL << (uint32_t)RA8_PIN_PIN(rst)), port->PCNTR3);
 
   TEST_ASSERT_EQ(k_ra8_err_gpio_conflict, ra8_board_camera_reset());
@@ -832,12 +839,14 @@ static void test_board_camera_sccb_transfers(void)
   TEST_ASSERT_EQ(k_board_cam_addr << 1U, s_board_cam_trace[1]);
   TEST_ASSERT_EQ(k_board_cam_reg_hi, s_board_cam_trace[2]);
   TEST_ASSERT_EQ(k_board_cam_reg_lo, s_board_cam_trace[3]);
+  /* HUM Ch 39.2.17 "ICDRT : I2C Bus Transmit Data Register" p 2393 */
   TEST_ASSERT_EQ(k_board_cam_value, reg->ICDRT);
 
   internal_board_cam_prep();
   internal_board_cam_bus_up();
   volatile r_i2c_regs_t* rx = ra8_i2c_regs((uint8_t)k_ra8_board_camera_i2c_channel);
-  rx->ICDRR                 = (uint8_t)k_board_cam_rx_byte;
+  /* HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
+  rx->ICDRR = (uint8_t)k_board_cam_rx_byte;
   ra8_fake_mmio_set_poll_hook(internal_board_cam_trace_hook);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_board_camera_sccb_read_reg(nullptr,
