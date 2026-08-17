@@ -501,15 +501,14 @@ if(TARGET test_ra8_mdl_app_storage)
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
             ${FW_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
-            ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_app_storage.c
+            ${FW_ROOT}/apps/shared/media_dl/src/mdl_app_storage.c
             ${FW_ROOT}/apps/shared/media_dl/src/mdl_storage.c
             ${FW_ROOT}/apps/shared/media_dl/src/mdl_hash.c
             ${CMAKE_CURRENT_SOURCE_DIR}/support/mdl_state_fs_fault.c
   )
-  # The only target here that reaches a BUILD FORM rather than the shared
-  # downloader core: mdl_app_storage is the host CLI's own portable storage
-  # policy (its own header says "shared by CLI application modes", and no core
-  # unit calls it), so its private header lives with the form.
+  # mdl_app_storage is the application layer's own portable storage policy, and
+  # it followed its subject down into apps/shared/ with the rest of that layer
+  # (#725), so this target now names no build form at all.
   target_include_directories(
     test_ra8_mdl_app_storage
     PRIVATE ${FW_ROOT}/libs/if/inc
@@ -517,7 +516,7 @@ if(TARGET test_ra8_mdl_app_storage)
             ${FW_ROOT}/port/posix/inc
             ${FW_ROOT}/port/posix/src
             ${FW_ROOT}/apps/shared/media_dl/inc
-            ${FW_ROOT}/apps/stand_alone/media_dl/src
+            ${FW_ROOT}/apps/shared/media_dl/src
             ${CMAKE_CURRENT_SOURCE_DIR}/support
   )
   target_compile_definitions(test_ra8_mdl_app_storage PRIVATE _GNU_SOURCE)

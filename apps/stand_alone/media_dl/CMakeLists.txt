@@ -9,13 +9,20 @@
 # on-device module under apps/threadx_modules/) and a core owned by one form is
 # a core the other form has to copy. What IS here is the composition root:
 #
-#   src/main.c                 process entry, signals, POSIX stream binding
+#   src/main.c                 process entry, signals, POSIX stream binding,
+#                              host path canonicalisation and credential I/O
 #   src/mdl_cli*.c             the argv grammar and its diagnostics
 #   src/mdl_net_curl*.c        the libcurl backend, injected through the
 #                              core's ::mdl_net_iface_t vtable
 #   src/mdl_host_credentials.c host cookie-jar / CA-bundle policy
-#   src/mdl_app_*.c            the per-mode action wiring that binds a POSIX
-#                              filesystem and a libcurl transport into the core
+#   src/mdl_compose.c          the composition itself: libcurl bound into the
+#                              core's ::mdl_net_provider_t seam, and one
+#                              parsed invocation routed to one mdl_app.h entry
+#
+# The per-mode ACTIONS are deliberately not here. They were, and their shared
+# header reached for dirent.h, unistd.h and the libcurl factory, which pinned
+# every one of them to this form. Inverting those three dependencies (#725)
+# left nothing form-specific in them, so they live with the downloader.
 #
 # The layering is one-way and is a directory rule: apps/shared MUST NEVER
 # include from apps/stand_alone or apps/threadx_modules -- shared is BELOW the
@@ -93,13 +100,7 @@ set(MDL_FORM_TESTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 add_executable(
   media_dl
   ${MDL_FORM_SRC_DIR}/main.c
-  ${MDL_FORM_SRC_DIR}/mdl_app_admin.c
-  ${MDL_FORM_SRC_DIR}/mdl_app_cover.c
-  ${MDL_FORM_SRC_DIR}/mdl_app_direct.c
-  ${MDL_FORM_SRC_DIR}/mdl_app_library.c
-  ${MDL_FORM_SRC_DIR}/mdl_app_prepare.c
-  ${MDL_FORM_SRC_DIR}/mdl_app_series.c
-  ${MDL_FORM_SRC_DIR}/mdl_app_storage.c
+  ${MDL_FORM_SRC_DIR}/mdl_compose.c
   ${MDL_FORM_SRC_DIR}/mdl_cli.c
   ${MDL_FORM_SRC_DIR}/mdl_cli_nums.c
   ${MDL_FORM_SRC_DIR}/mdl_cli_stream.c
@@ -166,6 +167,10 @@ target_include_directories(
           ${MDL_REPO_ROOT}/libs/ra8_core/inc
           ${MDL_REPO_ROOT}/libs/ra8_io/inc
           ${MDL_REPO_ROOT}/tests
+          # mdl_cli.h folds argv into the portable ::mdl_run_opts_t, so the
+          # grammar now sees the application contract and the fw_if_fs types it
+          # names. Header reach only: this target links no filesystem unit.
+          ${MDL_FS_INC}
 )
 target_compile_definitions(test_media_dl_cli PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_cli PRIVATE -Wall -Wextra -Werror)
