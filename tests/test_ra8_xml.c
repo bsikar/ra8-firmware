@@ -74,7 +74,7 @@ RA8_INTERNAL static void internal_depth_bound(void)
  * Alternating valid start/self-closing/text events supplies the successful
  * controls for attribute and span guards before the hostile vectors vary them.
  * Decisions:
- * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_span_equal
+ * - libs/ra8_xml/src/ra8_xml_decode.c@ra8_xml_span_equal
  * - libs/ra8_xml/src/ra8_xml.c@internal_attributes
  */
 RA8_INTERNAL static void internal_independent_readers(void)
@@ -112,7 +112,7 @@ RA8_INTERNAL static void internal_independent_readers(void)
  * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_reader_next
  * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_attr_begin
  * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_attr_next
- * - libs/ra8_xml/src/ra8_xml.c@internal_span_valid
+ * - libs/ra8_xml/src/ra8_xml_decode.c@priv_ra8_xml_span_valid
  */
 RA8_INTERNAL static void internal_public_reader_guards(void)
 {
@@ -171,11 +171,11 @@ RA8_INTERNAL static void internal_public_reader_guards(void)
  * Named, decimal, and hexadecimal entities provide the success controls;
  * unknown/control entities, mismatched tags, and duplicate attributes vary
  * the respective rejection predicates. Decisions:
- * - libs/ra8_xml/src/ra8_xml.c@internal_digit
- * - libs/ra8_xml/src/ra8_xml.c@internal_entity
- * - libs/ra8_xml/src/ra8_xml.c@internal_decode
- * - libs/ra8_xml/src/ra8_xml.c@internal_decode_one
- * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decode
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_digit
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_entity
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_decode
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_decode_one
+ * - libs/ra8_xml/src/ra8_xml_decode.c@ra8_xml_decode
  * - libs/ra8_xml/src/ra8_xml.c@internal_attr_parse
  * - libs/ra8_xml/src/ra8_xml.c@internal_attr_duplicate
  * - libs/ra8_xml/src/ra8_xml.c@internal_attributes
@@ -227,7 +227,7 @@ RA8_INTERNAL static void internal_entities_and_faults(void)
  * @par MC/DC:
  * Equal raw/entity values are the all-false control for size and byte mismatch
  * predicates; the public span matrix separately varies invalid and unequal
- * operands. Decisions: libs/ra8_xml/src/ra8_xml.c@ra8_xml_decoded_equal
+ * operands. Decisions: libs/ra8_xml/src/ra8_xml_decode.c@ra8_xml_decoded_equal
  */
 RA8_INTERNAL static void internal_entity_comparison(void)
 {
@@ -268,9 +268,9 @@ RA8_INTERNAL static void internal_reject(const uint8_t* source, size_t length)
  * - libs/ra8_xml/src/ra8_xml.c@internal_name_start
  * - libs/ra8_xml/src/ra8_xml.c@internal_name_continue
  * - libs/ra8_xml/src/ra8_xml.c@priv_ra8_xml_qname
- * - libs/ra8_xml/src/ra8_xml.c@internal_xml_char
- * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_next
- * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_lead
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_xml_char
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_utf8_next
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_utf8_lead
  * - libs/ra8_xml/src/ra8_xml.c@internal_end
  * - libs/ra8_xml/src/ra8_xml.c@internal_comment
  * - libs/ra8_xml/src/ra8_xml.c@internal_xml_target
@@ -329,10 +329,10 @@ RA8_INTERNAL static void internal_hostile_syntax(void)
  * - libs/ra8_xml/src/ra8_xml.c@internal_name_start
  * - libs/ra8_xml/src/ra8_xml.c@internal_name_continue
  * - libs/ra8_xml/src/ra8_xml.c@priv_ra8_xml_qname
- * - libs/ra8_xml/src/ra8_xml.c@internal_xml_char
- * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_next
- * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_lead
- * - libs/ra8_xml/src/ra8_xml.c@internal_entity
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_xml_char
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_utf8_next
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_utf8_lead
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_entity
  */
 RA8_INTERNAL static void internal_character_classes(void)
 {
@@ -458,14 +458,14 @@ RA8_INTERNAL static void internal_declaration_faults(void)
  * Valid/raw/entity spans supply all-false controls; forged bounds, exact-fit,
  * clipped-prefix, unequal-size, unequal-byte, and null operands vary each
  * public span/decode predicate. Decisions:
- * - libs/ra8_xml/src/ra8_xml.c@internal_span_valid
- * - libs/ra8_xml/src/ra8_xml.c@internal_decode
- * - libs/ra8_xml/src/ra8_xml.c@internal_decode_one
- * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decode_prefix
- * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decoded_size
- * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_span_equal
- * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_span_local_equal
- * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decoded_equal
+ * - libs/ra8_xml/src/ra8_xml_decode.c@priv_ra8_xml_span_valid
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_decode
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_decode_one
+ * - libs/ra8_xml/src/ra8_xml_decode.c@ra8_xml_decode_prefix
+ * - libs/ra8_xml/src/ra8_xml_decode.c@ra8_xml_decoded_size
+ * - libs/ra8_xml/src/ra8_xml_decode.c@ra8_xml_span_equal
+ * - libs/ra8_xml/src/ra8_xml_decode.c@ra8_xml_span_local_equal
+ * - libs/ra8_xml/src/ra8_xml_decode.c@ra8_xml_decoded_equal
  */
 RA8_INTERNAL static void internal_span_bounds_and_prefix(void)
 {
@@ -630,10 +630,10 @@ RA8_INTERNAL static void internal_doctype_direct_seam(void)
  * Decisions:
  * - libs/ra8_xml/src/ra8_xml.c@internal_ascii_letter
  * - libs/ra8_xml/src/ra8_xml.c@priv_ra8_xml_qname
- * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_next
- * - libs/ra8_xml/src/ra8_xml.c@internal_utf8_lead
- * - libs/ra8_xml/src/ra8_xml.c@internal_digit
- * - libs/ra8_xml/src/ra8_xml.c@internal_entity
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_utf8_next
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_utf8_lead
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_digit
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_entity
  */
 RA8_INTERNAL static void internal_xml_lexer_vectors(void)
 {
@@ -845,10 +845,10 @@ RA8_INTERNAL static void internal_expect_no_bom(const uint8_t* source, size_t le
  * wrong-third-byte sources independently vary the three remaining operands of
  * the BOM probe.
  * Decisions:
- * - libs/ra8_xml/src/ra8_xml.c@internal_span_valid
- * - libs/ra8_xml/src/ra8_xml.c@internal_decode
- * - libs/ra8_xml/src/ra8_xml.c@internal_decode_one
- * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_decoded_equal
+ * - libs/ra8_xml/src/ra8_xml_decode.c@priv_ra8_xml_span_valid
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_decode
+ * - libs/ra8_xml/src/ra8_xml_decode.c@internal_decode_one
+ * - libs/ra8_xml/src/ra8_xml_decode.c@ra8_xml_decoded_equal
  * - libs/ra8_xml/src/ra8_xml.c@ra8_xml_reader_init
  */
 RA8_INTERNAL static void internal_xml_public_boundary_vectors(void)

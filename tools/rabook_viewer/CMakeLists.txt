@@ -149,6 +149,7 @@ ra8_viewer_read_path(
        ra8_epub_img_tiles.c
        ra8_epub_open.c
        ra8_epub_xml_shim.c
+       ra8_epub_xml_toc.c
        ra8_epub_zip_guard.c
 )
 
@@ -211,6 +212,7 @@ ra8_viewer_read_path(
        ra8_io_stream_usbcdc.c
        ra8_io_vfs.c
        ra8_io_vfs_compress.c
+       ra8_io_vfs_namespace.c
 )
 
 ra8_viewer_read_path(

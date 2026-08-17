@@ -70,6 +70,8 @@ set_source_files_properties(
 
 include(CTest)
 if(BUILD_TESTING)
+  # cache_bench_report.c is the command-line front end (it defines main); the
+  # contract test drives the replay engine through cache_bench.h instead.
   add_executable(
     test_cache_bench
     tests/test_cache_bench.c
@@ -98,9 +100,7 @@ if(BUILD_TESTING)
             ${RA8_ROOT}/libs/ra8_book/inc
             ${RA8_ROOT}/libs/third_party/miniz
   )
-  target_compile_definitions(
-    test_cache_bench PRIVATE CB_CACHE_BENCH_LIBRARY_ONLY MINIZ_NO_MALLOC MINIZ_NO_STDIO
-  )
+  target_compile_definitions(test_cache_bench PRIVATE MINIZ_NO_MALLOC MINIZ_NO_STDIO)
   target_compile_options(
     test_cache_bench
     PRIVATE -O1

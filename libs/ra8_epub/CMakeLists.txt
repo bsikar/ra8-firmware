@@ -12,6 +12,7 @@
 #   src/ra8_epub_open.c           open / close + miniz plumbing
 #   src/ra8_epub_chapter.c        chapter, metadata, cover, glyph
 #   src/ra8_epub_xml_shim.c       strict streamed XML consumers
+#   src/ra8_epub_xml_toc.c        NCX and nav table-of-contents consumers
 #
 # Vendored dependencies (already at libs/third_party/):
 #   stb_truetype.h, stb_image.h  -- glyph rasteriser + image decoder

@@ -99,6 +99,7 @@ if(TARGET compile_on_m33_cpu1.elf)
             ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.c
             ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c
             ${RA8_REPO_ROOT}/libs/ra8_xml/src/ra8_xml.c
+            ${RA8_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_decode.c
             ${RA8_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_doctype.c
             ${_c1_epub_c}
             ${RA8_REPO_ROOT}/libs/third_party/miniz/miniz.c

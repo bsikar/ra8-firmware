@@ -71,8 +71,6 @@ typedef enum : uint8_t {
   k_posix_directory_budget_overhead = 3U, /**< Dot entries plus EOF look-ahead. */
 } posix_directory_budget_t;
 
-static const fw_fs_stream_iface_t s_stream_iface;
-
 /* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_component_copy(const char* start, uint16_t length, char* out)
 {
@@ -127,23 +125,7 @@ internal_next_component(const char** cursor, char* out_name, uint16_t* out_lengt
   return k_ra8_ok;
 }
 
-/**
- * @brief Descend into one intermediate path component, retiring the old parent.
- * @details Validates the component is a real non-symlink directory, opens it
- *          no-follow, then closes the descriptor owned on entry -- on every
- *          path, including a failed validation, open, or close.
- * @param[in,out] current Owned parent descriptor on entry; replaced with the
- *        newly opened descriptor on success.
- * @param[in] name Terminated intermediate component name.
- * @return Descent status.
- * @retval k_ra8_ok @p current now owns the newly opened component directory.
- * @retval other Validation, open, or close failed; @p current is closed.
- * @pre @p current addresses an owned open directory descriptor.
- * @pre @p name is a terminated component distinct from the final leaf.
- * @post The descriptor owned on entry is closed on every return path.
- * @note Not thread-safe for a shared descriptor.
- * @since 0.1.0
- */
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_parent_open_step(int* current, const char* name)
 {
   const ra8_err_t checked = internal_intermediate_check(*current, name);
@@ -168,10 +150,10 @@ RA8_INTERNAL static ra8_err_t internal_parent_open_step(int* current, const char
 }
 
 /* see header for full description */
-RA8_INTERNAL static ra8_err_t internal_parent_open(fw_fs_posix_state_t* state,
-                                                   const char*          path,
-                                                   int*                 out_parent_fd,
-                                                   char*                out_leaf)
+RA8_PRIV ra8_err_t priv_fs_posix_parent_open(fw_fs_posix_state_t* state,
+                                             const char*          path,
+                                             int*                 out_parent_fd,
+                                             char*                out_leaf)
 {
   int current = dup(state->root_fd);
   if (current < 0) {
@@ -231,7 +213,7 @@ RA8_INTERNAL static ra8_err_t internal_native_stat(fw_fs_posix_state_t* state,
   }
   int             parent_fd = -1;
   char            leaf[k_posix_component_cap];
-  const ra8_err_t parent = internal_parent_open(state, path, &parent_fd, leaf);
+  const ra8_err_t parent = priv_fs_posix_parent_open(state, path, &parent_fd, leaf);
   if (parent != k_ra8_ok) {
     if (parent == k_ra8_err_not_found) {
       *out_exists = false;
@@ -298,7 +280,7 @@ internal_directory_open(fw_fs_posix_state_t* state, const char* path, int* out_f
   }
   int             parent_fd = -1;
   char            leaf[k_posix_component_cap];
-  const ra8_err_t parent = internal_parent_open(state, path, &parent_fd, leaf);
+  const ra8_err_t parent = priv_fs_posix_parent_open(state, path, &parent_fd, leaf);
   if (parent != k_ra8_ok) {
     return parent;
   }
@@ -391,7 +373,7 @@ RA8_INTERNAL static ra8_err_t internal_mkdir(void* ctx, const char* path)
   fw_fs_posix_state_t* state     = (fw_fs_posix_state_t*)ctx;
   int                  parent_fd = -1;
   char                 leaf[k_posix_component_cap];
-  const ra8_err_t      parent = internal_parent_open(state, path, &parent_fd, leaf);
+  const ra8_err_t      parent = priv_fs_posix_parent_open(state, path, &parent_fd, leaf);
   if (parent != k_ra8_ok) {
     return parent;
   }
@@ -425,7 +407,7 @@ RA8_INTERNAL static ra8_err_t internal_unlink(void* ctx, const char* path)
   }
   int             parent_fd = -1;
   char            leaf[k_posix_component_cap];
-  const ra8_err_t parent = internal_parent_open(state, path, &parent_fd, leaf);
+  const ra8_err_t parent = priv_fs_posix_parent_open(state, path, &parent_fd, leaf);
   if (parent != k_ra8_ok) {
     return parent;
   }
@@ -459,7 +441,7 @@ RA8_INTERNAL static ra8_err_t internal_rmdir(void* ctx, const char* path)
   }
   int             parent_fd = -1;
   char            leaf[k_posix_component_cap];
-  const ra8_err_t parent = internal_parent_open(state, path, &parent_fd, leaf);
+  const ra8_err_t parent = priv_fs_posix_parent_open(state, path, &parent_fd, leaf);
   if (parent != k_ra8_ok) {
     return parent;
   }
@@ -592,9 +574,9 @@ internal_rename(void* ctx, const char* old_path, const char* new_path, bool repl
   int       new_fd = -1;
   char      old_leaf[k_posix_component_cap];
   char      new_leaf[k_posix_component_cap];
-  ra8_err_t result = internal_parent_open(state, old_path, &old_fd, old_leaf);
+  ra8_err_t result = priv_fs_posix_parent_open(state, old_path, &old_fd, old_leaf);
   if (result == k_ra8_ok) {
-    result = internal_parent_open(state, new_path, &new_fd, new_leaf);
+    result = priv_fs_posix_parent_open(state, new_path, &new_fd, new_leaf);
   }
   if (result == k_ra8_ok) {
     result = internal_rename_opened(old_fd, old_leaf, new_fd, new_leaf, replace);
@@ -629,180 +611,6 @@ RA8_INTERNAL static ra8_err_t internal_space(void* ctx, fw_fs_space_t* out)
 }
 
 /* see header for full description */
-RA8_INTERNAL static ra8_err_t internal_open_flags(fw_fs_open_mode_t mode, int* out_flags)
-{
-  if (mode == k_fw_fs_open_read) {
-    *out_flags = O_RDONLY | O_CLOEXEC | O_NOFOLLOW;
-    return k_ra8_ok;
-  }
-  if (mode == k_fw_fs_open_write_truncate) {
-    *out_flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC | O_NOFOLLOW;
-    return k_ra8_ok;
-  }
-  if (mode == k_fw_fs_open_append) {
-    *out_flags = O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC | O_NOFOLLOW;
-    return k_ra8_ok;
-  }
-  if (mode == k_fw_fs_open_create_new) {
-    *out_flags = O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW;
-    return k_ra8_ok;
-  }
-  return k_ra8_err_invalid_arg;
-}
-
-/* see header for full description */
-RA8_INTERNAL static ra8_err_t internal_open(void*             ctx,
-                                            const char*       path,
-                                            fw_fs_open_mode_t mode,
-                                            void*             file_state,
-                                            uint32_t          state_bytes)
-{
-  if (state_bytes < sizeof(posix_file_state_t)) {
-    return k_ra8_err_no_mem;
-  }
-  int             flags  = 0;
-  const ra8_err_t mapped = internal_open_flags(mode, &flags);
-  if (mapped != k_ra8_ok) {
-    return mapped;
-  }
-  fw_fs_posix_state_t* state     = (fw_fs_posix_state_t*)ctx;
-  int                  parent_fd = -1;
-  char                 leaf[k_posix_component_cap];
-  const ra8_err_t      parent = internal_parent_open(state, path, &parent_fd, leaf);
-  if (parent != k_ra8_ok) {
-    return parent;
-  }
-  const int       opened      = openat(parent_fd, leaf, flags, (mode_t)k_posix_file_mode);
-  const int       saved_errno = errno;
-  const ra8_err_t closed      = priv_fs_posix_close_fd(&parent_fd);
-  if (opened < 0) {
-    return priv_fs_posix_errno(saved_errno);
-  }
-  if (closed != k_ra8_ok) {
-    int owned = opened;
-    (void)priv_fs_posix_close_fd(&owned);
-    return closed;
-  }
-  struct stat meta = {};
-  if (fstat(opened, &meta) != 0) {
-    int owned = opened;
-    (void)priv_fs_posix_close_fd(&owned);
-    return k_ra8_err_invalid_arg;
-  }
-  if (!S_ISREG(meta.st_mode)) {
-    int owned = opened;
-    (void)priv_fs_posix_close_fd(&owned);
-    return k_ra8_err_invalid_arg;
-  }
-  ((posix_file_state_t*)file_state)->fd = opened;
-  return k_ra8_ok;
-}
-
-/* see header for full description */
-RA8_INTERNAL static ra8_err_t
-internal_read(void* ctx, void* file_state, uint8_t* dst, uint32_t cap, uint32_t* out_read)
-{
-  (void)ctx;
-  const int fd  = ((posix_file_state_t*)file_state)->fd;
-  ssize_t   got = -1;
-  for (;;) {
-    got = read(fd, dst, (size_t)cap);
-    if (got >= 0) {
-      break;
-    }
-    if (errno != EINTR) {
-      break;
-    }
-  }
-  if (got < 0) {
-    return priv_fs_posix_errno(errno);
-  }
-  *out_read = (uint32_t)got;
-  return k_ra8_ok;
-}
-
-/* see header for full description */
-RA8_INTERNAL static ra8_err_t
-internal_write(void* ctx, void* file_state, const uint8_t* src, uint32_t len, uint32_t* out_written)
-{
-  (void)ctx;
-  const int fd = ((posix_file_state_t*)file_state)->fd;
-  while (*out_written < len) {
-    const uint32_t remaining = len - *out_written;
-    ssize_t        wrote     = write(fd, &src[*out_written], (size_t)remaining);
-    if (wrote < 0) {
-      if (errno == EINTR) {
-        continue;
-      }
-      return priv_fs_posix_errno(errno);
-    }
-    if (wrote == 0) {
-      return k_ra8_fail;
-    }
-    *out_written += (uint32_t)wrote;
-  }
-  return k_ra8_ok;
-}
-
-/* see header for full description */
-RA8_INTERNAL static ra8_err_t internal_seek(void* ctx, void* file_state, uint64_t offset)
-{
-  (void)ctx;
-  if (offset > (uint64_t)INT64_MAX) {
-    return k_ra8_err_invalid_size;
-  }
-  const int fd = ((posix_file_state_t*)file_state)->fd;
-  if (lseek(fd, (off_t)offset, SEEK_SET) < 0) {
-    return priv_fs_posix_errno(errno);
-  }
-  return k_ra8_ok;
-}
-
-/* see header for full description */
-RA8_INTERNAL static ra8_err_t internal_tell(void* ctx, void* file_state, uint64_t* out_offset)
-{
-  (void)ctx;
-  const int   fd     = ((posix_file_state_t*)file_state)->fd;
-  const off_t offset = lseek(fd, 0, SEEK_CUR);
-  if (offset < 0) {
-    return priv_fs_posix_errno(errno);
-  }
-  *out_offset = (uint64_t)offset;
-  return k_ra8_ok;
-}
-
-/* see header for full description */
-RA8_INTERNAL static ra8_err_t internal_size(void* ctx, void* file_state, uint64_t* out_size)
-{
-  (void)ctx;
-  const int   fd   = ((posix_file_state_t*)file_state)->fd;
-  struct stat meta = {};
-  if (fstat(fd, &meta) != 0) {
-    return priv_fs_posix_errno(errno);
-  }
-  *out_size = (uint64_t)meta.st_size;
-  return k_ra8_ok;
-}
-
-/* see header for full description */
-RA8_INTERNAL static ra8_err_t internal_sync(void* ctx, void* file_state)
-{
-  (void)ctx;
-  const int fd = ((posix_file_state_t*)file_state)->fd;
-  if (fsync(fd) != 0) {
-    return priv_fs_posix_errno(errno);
-  }
-  return k_ra8_ok;
-}
-
-/* see header for full description */
-RA8_INTERNAL static ra8_err_t internal_close(void* ctx, void* file_state)
-{
-  (void)ctx;
-  return priv_fs_posix_close_fd(&((posix_file_state_t*)file_state)->fd);
-}
-
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_stage_open(fw_fs_posix_state_t*       state,
                                                   posix_transaction_state_t* txn)
 {
@@ -813,11 +621,11 @@ RA8_INTERNAL static ra8_err_t internal_stage_open(fw_fs_posix_state_t*       sta
     if (named != k_ra8_ok) {
       return named;
     }
-    const ra8_err_t opened = internal_open(state,
-                                           txn->stage,
-                                           k_fw_fs_open_create_new,
-                                           &txn->file_state,
-                                           sizeof(txn->file_state));
+    const ra8_err_t opened = priv_fs_posix_open(state,
+                                                txn->stage,
+                                                k_fw_fs_open_create_new,
+                                                &txn->file_state,
+                                                sizeof(txn->file_state));
     if (opened == k_ra8_ok) {
       txn->writer_open  = true;
       txn->stage_exists = true;
@@ -884,7 +692,7 @@ RA8_INTERNAL static ra8_err_t internal_txn_write(void*          ctx,
   if (!txn->writer_open) {
     return k_ra8_err_invalid_state;
   }
-  return internal_write(ctx, &txn->file_state, src, len, out_written);
+  return priv_fs_posix_write(ctx, &txn->file_state, src, len, out_written);
 }
 
 /* see header for full description */
@@ -895,14 +703,14 @@ RA8_INTERNAL static ra8_err_t internal_txn_seek(void* ctx, void* transaction_sta
     return k_ra8_err_invalid_state;
   }
   uint64_t        size  = 0U;
-  const ra8_err_t sized = internal_size(ctx, &txn->file_state, &size);
+  const ra8_err_t sized = priv_fs_posix_size(ctx, &txn->file_state, &size);
   if (sized != k_ra8_ok) {
     return sized;
   }
   if (offset > size) {
     return k_ra8_err_invalid_size;
   }
-  return internal_seek(ctx, &txn->file_state, offset);
+  return priv_fs_posix_seek(ctx, &txn->file_state, offset);
 }
 
 /* see header for full description */
@@ -915,22 +723,25 @@ RA8_INTERNAL static ra8_err_t internal_txn_validate(void*               ctx,
   if (!txn->writer_open) {
     return k_ra8_err_invalid_state;
   }
-  const ra8_err_t synced = internal_sync(ctx, &txn->file_state);
+  const ra8_err_t synced = priv_fs_posix_sync(ctx, &txn->file_state);
   if (synced != k_ra8_ok) {
     return synced;
   }
-  const ra8_err_t closed = internal_close(ctx, &txn->file_state);
+  const ra8_err_t closed = priv_fs_posix_close(ctx, &txn->file_state);
   txn->writer_open       = false;
   if (closed != k_ra8_ok) {
     return closed;
   }
-  const ra8_err_t opened =
-    internal_open(ctx, txn->stage, k_fw_fs_open_read, &txn->file_state, sizeof(txn->file_state));
+  const ra8_err_t opened = priv_fs_posix_open(ctx,
+                                              txn->stage,
+                                              k_fw_fs_open_read,
+                                              &txn->file_state,
+                                              sizeof(txn->file_state));
   if (opened != k_ra8_ok) {
     return opened;
   }
   fw_fs_file_t staged = {
-    .iface       = &s_stream_iface,
+    .iface       = priv_fs_posix_stream_iface(),
     .ctx         = ctx,
     .state       = &txn->file_state,
     .state_bytes = sizeof(txn->file_state),
@@ -949,7 +760,7 @@ RA8_INTERNAL static ra8_err_t internal_parent_sync(fw_fs_posix_state_t* state, c
 {
   int             parent_fd = -1;
   char            leaf[k_posix_component_cap];
-  const ra8_err_t parent = internal_parent_open(state, path, &parent_fd, leaf);
+  const ra8_err_t parent = priv_fs_posix_parent_open(state, path, &parent_fd, leaf);
   if (parent != k_ra8_ok) {
     return parent;
   }
@@ -987,7 +798,7 @@ RA8_INTERNAL static ra8_err_t internal_txn_abort(void* ctx, void* transaction_st
   posix_transaction_state_t* txn   = (posix_transaction_state_t*)transaction_state;
   ra8_err_t                  first = k_ra8_ok;
   if (txn->writer_open) {
-    first            = internal_close(ctx, &txn->file_state);
+    first            = priv_fs_posix_close(ctx, &txn->file_state);
     txn->writer_open = false;
   }
   if (txn->stage_exists) {
@@ -1016,18 +827,6 @@ static const fw_fs_namespace_iface_t s_namespace_iface = {
   .space     = internal_space,
 };
 
-/** @brief Immutable POSIX stream vtable. */
-static const fw_fs_stream_iface_t s_stream_iface = {
-  .open  = internal_open,
-  .read  = internal_read,
-  .write = internal_write,
-  .seek  = internal_seek,
-  .tell  = internal_tell,
-  .size  = internal_size,
-  .sync  = internal_sync,
-  .close = internal_close,
-};
-
 /** @brief Immutable POSIX transaction vtable. */
 static const fw_fs_transaction_iface_t s_transaction_iface = {
   .begin    = internal_txn_begin,
@@ -1042,5 +841,10 @@ RA8_PRIV ra8_err_t priv_fs_posix_bind_interfaces(fw_fs_t*             out,
                                                  fw_fs_posix_state_t* state,
                                                  const fw_fs_caps_t*  caps)
 {
-  return fw_fs_bind(out, &s_namespace_iface, &s_stream_iface, &s_transaction_iface, state, caps);
+  return fw_fs_bind(out,
+                    &s_namespace_iface,
+                    priv_fs_posix_stream_iface(),
+                    &s_transaction_iface,
+                    state,
+                    caps);
 }
