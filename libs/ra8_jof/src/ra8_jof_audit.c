@@ -407,13 +407,16 @@ RA8_INTERNAL static uint32_t internal_duplicate_count(const ra8_jof_audit_record
   }
   uint32_t matches = 0U;
   for (uint32_t i = 0U; i < count; ++i) {
-    if (!records[i].uniform) {
-      if (records[i].payload == item->payload) {
-        if (records[i].content_hash == item->content_hash) {
-          matches++;
-        }
-      }
+    if (records[i].uniform) {
+      continue;
     }
+    if (records[i].payload != item->payload) {
+      continue;
+    }
+    if (records[i].content_hash != item->content_hash) {
+      continue;
+    }
+    matches++;
   }
   return matches;
 }

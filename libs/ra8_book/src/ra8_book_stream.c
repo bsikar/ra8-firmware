@@ -574,6 +574,48 @@ RA8_PRIV ra8_err_t priv_book_stream_validate_text(const stream_validate_t* ctx, 
 }
 
 /**
+ * @brief Validate one node record's fields and mark its forward links.
+ * @details Dispatches to the kind-specific validator (element or text), then
+ *          marks the node's child and sibling links so the caller's
+ *          ownership-coverage pass can prove every node was reached exactly
+ *          once.
+ * @param[in] ctx Validation state.
+ * @param[in] rec Decoded fixed-size node record.
+ * @param[in,out] attr_cursor Running attribute-ownership cursor.
+ * @param[in] index Node index within the table, for forward-link marking.
+ * @return Node validation status.
+ * @retval k_ra8_ok The node, its links, and its attribute span are canonical.
+ * @retval k_ra8_err_invalid_arg A kind, link, or attribute-span rule fails.
+ * @pre @p rec was read from a valid node-table offset.
+ * @pre @p attr_cursor reflects every prior node's attribute ownership.
+ * @post Success advances `*attr_cursor` past this node's owned attributes.
+ * @post Success marks this node's forward child/sibling links in scratch.
+ * @note Not thread-safe with respect to the source callback.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_validate_one_node(const stream_validate_t* ctx,
+                                                         const uint8_t*           rec,
+                                                         uint32_t*                attr_cursor,
+                                                         uint32_t                 index)
+{
+  ra8_err_t err;
+  if (rec[k_stream_node_kind] == (uint8_t)k_ra8_book_node_element) {
+    err = priv_book_stream_validate_element(ctx, rec, attr_cursor);
+  } else if (rec[k_stream_node_kind] == (uint8_t)k_ra8_book_node_text) {
+    err = priv_book_stream_validate_text(ctx, rec);
+  } else {
+    err = k_ra8_err_invalid_arg;
+  }
+  if (err == k_ra8_ok) {
+    err = internal_mark_forward_link(ctx, internal_le32(&rec[k_stream_node_first_child]), index);
+  }
+  if (err == k_ra8_ok) {
+    err = internal_mark_forward_link(ctx, internal_le32(&rec[k_stream_node_next_sibling]), index);
+  }
+  return err;
+}
+
+/**
  * @brief Validate every DOM node and exact attribute ownership.
  * @details Walks nodes once, validates kind-specific fields, marks unique
  *          forward edges, and finally requires every node and attribute owned.
@@ -603,19 +645,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_nodes(const stream_validate_t* c
     if (rec[k_stream_node_reserved] != 0U) {
       return k_ra8_err_invalid_arg;
     }
-    if (rec[k_stream_node_kind] == (uint8_t)k_ra8_book_node_element) {
-      err = priv_book_stream_validate_element(ctx, rec, &attr_cursor);
-    } else if (rec[k_stream_node_kind] == (uint8_t)k_ra8_book_node_text) {
-      err = priv_book_stream_validate_text(ctx, rec);
-    } else {
-      err = k_ra8_err_invalid_arg;
-    }
-    if (err == k_ra8_ok) {
-      err = internal_mark_forward_link(ctx, internal_le32(&rec[k_stream_node_first_child]), i);
-    }
-    if (err == k_ra8_ok) {
-      err = internal_mark_forward_link(ctx, internal_le32(&rec[k_stream_node_next_sibling]), i);
-    }
+    err = internal_validate_one_node(ctx, rec, &attr_cursor, i);
     if (err != k_ra8_ok) {
       return err;
     }

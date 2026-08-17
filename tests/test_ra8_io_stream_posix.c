@@ -335,7 +335,10 @@ RA8_INTERNAL static void internal_test_write_retry_limit(const uint8_t* bytes, u
  *
  * @par MC/DC:
  * `port/posix/src/ra8_io_stream_posix.c@priv_ra8_io_stream_posix_write_loop`
- * contains two compound guards. The pointer guard's three one-null calls plus
+ * (pointer guard) and
+ * `port/posix/src/ra8_io_stream_posix.c@internal_write_loop_step`
+ * (progress guard, factored out of the retry loop body) together contain the
+ * two compound guards. The pointer guard's three one-null calls plus
  * the valid zero-length call isolate C1, C2, C3, and all-false. The progress
  * guard's zero-result and over-report calls isolate its two true operands;
  * internal_test_write_progress() supplies a positive in-range result with both

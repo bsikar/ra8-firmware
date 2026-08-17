@@ -846,23 +846,23 @@ ra8_err_t ra8_ov5640_set_jpeg_quantization_scale(ra8_ov5640_t* dev, uint8_t quan
 }
 
 /**
- * @brief Read the register bytes comprising one JPEG status snapshot.
- * @details Reads length, FIFO, format, header, geometry, blanking, and enable
- *          registers in a fixed order into caller-owned raw storage.
+ * @brief Read the JPEG length, FIFO, and format status registers.
+ * @details First half of the fixed-order JPEG status snapshot: length,
+ *          overflow, input format, and header registers.
  * @param[in,out] dev Initialized sensor instance.
  * @param[out] raw Destination for raw register bytes.
  * @return Error code.
- * @retval k_ra8_ok Every status register was read.
+ * @retval k_ra8_ok Every register in this half was read.
  * @retval other First propagated register-read error.
  * @pre The sensor stream is stopped so the multi-register snapshot is stable.
  * @pre The bound SCCB transport is idle.
- * @post On success every field in @p raw is initialized.
+ * @post On success, the length/FIFO/format fields of @p raw are initialized.
  * @post Sensor register state is unchanged.
  * @note The helper stops at the first transport error.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_ov5640_read_jpeg_status(ra8_ov5640_t*                 dev,
-                                                               ra8_ov5640_jpeg_status_raw_t* raw)
+RA8_INTERNAL static ra8_err_t
+internal_ov5640_read_jpeg_status_format(ra8_ov5640_t* dev, ra8_ov5640_jpeg_status_raw_t* raw)
 {
   ra8_err_t err = ra8_ov5640_read_reg(dev, (uint16_t)k_ov5640_reg_jpeg_length_hi, &raw->length_hi);
   if (err == k_ra8_ok) {
@@ -883,6 +883,31 @@ RA8_INTERNAL static ra8_err_t internal_ov5640_read_jpeg_status(ra8_ov5640_t*    
   if (err == k_ra8_ok) {
     err = ra8_ov5640_read_reg(dev, (uint16_t)k_ov5640_reg_jpeg_ctrl04, &raw->jpeg_header);
   }
+  return err;
+}
+
+/**
+ * @brief Read the register bytes comprising one JPEG status snapshot.
+ * @details Reads the length/FIFO/format registers via
+ *          ::internal_ov5640_read_jpeg_status_format, then continues with the
+ *          geometry, blanking, and enable registers in a fixed order into
+ *          caller-owned raw storage.
+ * @param[in,out] dev Initialized sensor instance.
+ * @param[out] raw Destination for raw register bytes.
+ * @return Error code.
+ * @retval k_ra8_ok Every status register was read.
+ * @retval other First propagated register-read error.
+ * @pre The sensor stream is stopped so the multi-register snapshot is stable.
+ * @pre The bound SCCB transport is idle.
+ * @post On success every field in @p raw is initialized.
+ * @post Sensor register state is unchanged.
+ * @note The helper stops at the first transport error.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_ov5640_read_jpeg_status(ra8_ov5640_t*                 dev,
+                                                               ra8_ov5640_jpeg_status_raw_t* raw)
+{
+  ra8_err_t err = internal_ov5640_read_jpeg_status_format(dev, raw);
   if (err == k_ra8_ok) {
     err = ra8_ov5640_read_reg(dev, (uint16_t)k_ov5640_reg_vfifo_ctrl00, &raw->vfifo_ctrl00);
   }

@@ -289,6 +289,67 @@ RA8_PRIV ra8_err_t priv_mdl_fetch_with_retry(mdl_fetch_ctx_t*     ctx,
   return rc;
 }
 
+/**
+ * @brief Fetch one asset body and commit it to permanent storage.
+ * @details Runs the retry-governed GET, publishes the response header to the
+ * caller, then prepares and commits (or aborts) the streamed body.
+ * @param[in,out] ctx Active fetch session and site context.
+ * @param[in] host Resolved request host.
+ * @param[in] url Absolute or site-relative asset URL.
+ * @param[in] req Prepared network request (referer, user agent, timeout).
+ * @param[in] jmin Minimum inter-request jitter in milliseconds.
+ * @param[in] jmax Maximum inter-request jitter in milliseconds.
+ * @param[in] target_abs Canonical destination path.
+ * @param[out] out_resp Response header, published even on failure.
+ * @param[out] out_bytes Bytes committed on success.
+ * @return Fetch/commit status.
+ * @retval k_ra8_ok The body was fetched and committed.
+ * @retval other The fetch, prepare, or commit stage failed (already aborted
+ * and recorded).
+ * @pre @p host, @p url, and @p target_abs are validated by the caller.
+ * @post On failure the transaction is aborted and the failure is recorded.
+ * @note Not thread-safe with respect to concurrent callers sharing @p ctx.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_fetch_asset_execute(mdl_fetch_ctx_t*     ctx,
+                                                           const char*          host,
+                                                           const char*          url,
+                                                           const mdl_net_req_t* req,
+                                                           uint32_t             jmin,
+                                                           uint32_t             jmax,
+                                                           const char*          target_abs,
+                                                           mdl_net_resp_t*      out_resp,
+                                                           size_t*              out_bytes)
+{
+  size_t              got  = 0U;
+  mdl_net_resp_t      resp = {};
+  mdl_fetch_body_t    body = {};
+  ra8_err_t           rc   = priv_mdl_fetch_body_init_exact(&body, ctx->storage, target_abs);
+  mdl_net_body_sink_t sink = priv_mdl_fetch_body_sink(&body);
+  if (rc == k_ra8_ok) {
+    rc = priv_mdl_fetch_with_retry(ctx, host, url, req, &sink, jmin, jmax, &resp, &got);
+  }
+  if (out_resp != nullptr) {
+    *out_resp = resp;
+  }
+  if (rc == k_ra8_ok) {
+    rc = priv_mdl_fetch_body_prepare(&body);
+  }
+  if (rc == k_ra8_ok) {
+    rc = priv_mdl_fetch_body_commit(&body);
+  }
+  if (rc != k_ra8_ok) {
+    const ra8_err_t aborted = priv_mdl_fetch_body_abort(&body);
+    const ra8_err_t result  = (aborted == k_ra8_ok) ? rc : aborted;
+    priv_mdl_fetch_record_fail(ctx, url, resp.status, result);
+    return result;
+  }
+  if (out_bytes != nullptr) {
+    *out_bytes = got;
+  }
+  return k_ra8_ok;
+}
+
 ra8_err_t mdl_fetch_asset(mdl_fetch_ctx_t* ctx,
                           const char*      url,
                           const char*      target_abs,
@@ -326,33 +387,15 @@ ra8_err_t mdl_fetch_asset(mdl_fetch_ctx_t* ctx,
                               .if_none_match     = nullptr,
                               .if_modified_since = nullptr,
                               .timeout_ms        = ctx->timeout_ms};
-  size_t              got  = 0U;
-  mdl_net_resp_t      resp = {};
-  mdl_fetch_body_t    body = {};
-  ra8_err_t           rc   = priv_mdl_fetch_body_init_exact(&body, ctx->storage, target_abs);
-  mdl_net_body_sink_t sink = priv_mdl_fetch_body_sink(&body);
-  if (rc == k_ra8_ok) {
-    rc = priv_mdl_fetch_with_retry(ctx, host, url, &req, &sink, jmin, jmax, &resp, &got);
-  }
-  if (out_resp != nullptr) {
-    *out_resp = resp;
-  }
-  if (rc == k_ra8_ok) {
-    rc = priv_mdl_fetch_body_prepare(&body);
-  }
-  if (rc == k_ra8_ok) {
-    rc = priv_mdl_fetch_body_commit(&body);
-  }
-  if (rc != k_ra8_ok) {
-    const ra8_err_t aborted = priv_mdl_fetch_body_abort(&body);
-    const ra8_err_t result  = (aborted == k_ra8_ok) ? rc : aborted;
-    priv_mdl_fetch_record_fail(ctx, url, resp.status, result);
-    return result;
-  }
-  if (out_bytes != nullptr) {
-    *out_bytes = got;
-  }
-  return k_ra8_ok;
+  return internal_fetch_asset_execute(ctx,
+                                      host,
+                                      url,
+                                      &req,
+                                      jmin,
+                                      jmax,
+                                      target_abs,
+                                      out_resp,
+                                      out_bytes);
 }
 
 /**

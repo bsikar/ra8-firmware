@@ -161,10 +161,15 @@ RA8_INTERNAL static ra8_err_t internal_link(ra8_rabook_ctx_t*           ctx,
                                             uint16_t                    parent_level,
                                             uint32_t                    node)
 {
-  const uint32_t  prior = workspace->last_children[parent_level];
-  const ra8_err_t err = (prior == (uint32_t)k_ra8_book_nil)
-                          ? ra8_rabook_link_child(ctx, workspace->element_nodes[parent_level], node)
-                          : ra8_rabook_link_sibling(ctx, prior, node);
+  const uint32_t prior = workspace->last_children[parent_level];
+  // Not swapped: this chains the list forward (nodes[prior].next_sibling =
+  // node), matching ra8_rabook_link_sibling(ctx, node, sibling)'s contract;
+  // the collision is only that the callee's first parameter is also spelled
+  // "node".
+  const ra8_err_t err =
+    (prior == (uint32_t)k_ra8_book_nil)
+      ? ra8_rabook_link_child(ctx, workspace->element_nodes[parent_level], node)
+      : ra8_rabook_link_sibling(ctx, prior, node); // NOLINT(readability-suspicious-call-argument)
   if (err == k_ra8_ok) {
     workspace->last_children[parent_level] = node;
   }
@@ -267,8 +272,68 @@ RA8_INTERNAL static ra8_err_t internal_text(const uint8_t*              source,
 }
 
 /**
+ * @brief Apply one reader event to the direct-body selection search.
+ * @details Latches the document root on first sight, then watches direct
+ *          children of the root for a `body` element, enforcing the bounded
+ *          sibling-search limit.
+ * @param[in] source Immutable validated XML source.
+ * @param[in] length Exact readable source extent.
+ * @param[in] event One decoded reader event.
+ * @param[in,out] root_depth Root element depth; latched on first start event.
+ * @param[in,out] saw_root Whether the root has been latched yet.
+ * @param[in,out] direct_children Direct-child count seen since the root.
+ * @param[out] out Selected start offset and absolute depth.
+ * @param[out] out_done Set true once a `body` element has been selected.
+ * @return Selection status.
+ * @retval k_ra8_ok The event was applied; @p out_done reports finality.
+ * @retval k_ra8_err_validation_failed The bounded sibling-search limit was exceeded.
+ * @pre @p event came from the same reader driving this search.
+ * @pre @p out_done was initialized false by the caller before the first call.
+ * @post On a `body` match, @p out selects the body and `*out_done` is true.
+ * @post Otherwise @p out holds the root fallback selection.
+ * @note Not thread-safe; caller owns the reader state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_select_event(const uint8_t*         source,
+                                                    size_t                 length,
+                                                    const ra8_xml_event_t* event,
+                                                    uint16_t*              root_depth,
+                                                    bool*                  saw_root,
+                                                    uint16_t*              direct_children,
+                                                    priv_selection_t*      out,
+                                                    bool*                  out_done)
+{
+  if (!*saw_root) {
+    if (event->kind == (uint8_t)k_ra8_xml_event_start) {
+      *saw_root   = true;
+      *root_depth = event->depth;
+      *out        = (priv_selection_t){event->markup.offset, event->depth};
+    }
+    return k_ra8_ok;
+  }
+  if (event->kind != (uint8_t)k_ra8_xml_event_start) {
+    return k_ra8_ok;
+  }
+  if (event->depth != (uint16_t)(*root_depth + 1U)) {
+    return k_ra8_ok;
+  }
+  if (*direct_children >= (uint16_t)k_ra8_rabook_xml_body_siblings) {
+    return k_ra8_err_validation_failed;
+  }
+  if (ra8_xml_span_equal(source, length, event->name, "body")) {
+    *out      = (priv_selection_t){event->markup.offset, event->depth};
+    *out_done = true;
+    return k_ra8_ok;
+  }
+  ++*direct_children;
+  return k_ra8_ok;
+}
+
+/**
  * @brief Find a direct body or fall back to the document root.
- * @details Rejects a root with more than the bounded direct-child search limit.
+ * @details Rejects a root with more than the bounded direct-child search
+ *          limit; delegates the per-event decision to
+ *          ::internal_select_event.
  * @param[in] source Immutable validated XML source.
  * @param[in] length Exact readable source extent.
  * @param[in,out] xml Exclusive reader workspace.
@@ -293,7 +358,8 @@ RA8_INTERNAL static ra8_err_t internal_select(const uint8_t*       source,
   uint16_t         root_depth      = 0U;
   uint16_t         direct_children = 0U;
   bool             saw_root        = false;
-  while (err == k_ra8_ok) {
+  bool             done            = false;
+  while ((err == k_ra8_ok) && !done) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
     if (err != k_ra8_ok) {
@@ -302,33 +368,126 @@ RA8_INTERNAL static ra8_err_t internal_select(const uint8_t*       source,
     if (event.kind == (uint8_t)k_ra8_xml_event_none) {
       break;
     }
-    if (!saw_root) {
-      if (event.kind == (uint8_t)k_ra8_xml_event_start) {
-        saw_root   = true;
-        root_depth = event.depth;
-        *out       = (priv_selection_t){event.markup.offset, event.depth};
-        continue;
-      }
-    }
-    if (event.kind == (uint8_t)k_ra8_xml_event_start) {
-      if (event.depth == (uint16_t)(root_depth + 1U)) {
-        if (direct_children >= (uint16_t)k_ra8_rabook_xml_body_siblings) {
-          return k_ra8_err_validation_failed;
-        }
-        if (ra8_xml_span_equal(source, length, event.name, "body")) {
-          *out = (priv_selection_t){event.markup.offset, event.depth};
-          return k_ra8_ok;
-        }
-        ++direct_children;
-      }
-    }
+    err = internal_select_event(source,
+                                length,
+                                &event,
+                                &root_depth,
+                                &saw_root,
+                                &direct_children,
+                                out,
+                                &done);
   }
   return err;
 }
 
 /**
+ * @brief Handle one start event for the in-progress subtree emission.
+ * @details Emits the element, records the root node when the started
+ * element is the subtree root, and closes a self-closing root immediately.
+ * @param[in] source Immutable validated XML source.
+ * @param[in] length Exact readable source extent.
+ * @param[in] selection Selected subtree coordinates.
+ * @param[in] event One decoded start-kind reader event.
+ * @param[in,out] ctx Active bounded builder.
+ * @param[in,out] workspace Exclusive reader/emission scratch.
+ * @param[in,out] active Whether the selected subtree is currently open.
+ * @param[out] out_root Emitted subtree root node; set when the root starts.
+ * @return Repository error code.
+ * @retval k_ra8_ok The element was emitted.
+ * @retval k_ra8_err_no_mem Bounded builder capacity failed.
+ * @pre @p event->kind is ::k_ra8_xml_event_start.
+ * @post Success may advance @p out_root and close a self-closing root.
+ * @note Not thread-safe; caller owns the reader state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_emit_start(const uint8_t*              source,
+                                                  size_t                      length,
+                                                  const priv_selection_t*     selection,
+                                                  const ra8_xml_event_t*      event,
+                                                  ra8_rabook_ctx_t*           ctx,
+                                                  ra8_rabook_xml_workspace_t* workspace,
+                                                  bool*                       active,
+                                                  uint32_t*                   out_root)
+{
+  uint32_t        node = (uint32_t)k_ra8_book_nil;
+  const ra8_err_t err =
+    internal_element(source, length, event, selection->depth, ctx, workspace, &node);
+  if (event->markup.offset == selection->offset) {
+    *out_root = node;
+  }
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (event->self_closing == 0U) {
+    return err;
+  }
+  if (event->markup.offset != selection->offset) {
+    return err;
+  }
+  *active = false;
+  return err;
+}
+
+/**
+ * @brief Apply one reader event to the in-progress subtree emission.
+ * @details While inactive, skips events until the selected subtree's start
+ *          event arrives. While active, delegates a start event to
+ *          ::internal_emit_start, emits text events, and closes the active
+ *          span on the matching end event.
+ * @param[in] source Immutable validated XML source.
+ * @param[in] length Exact readable source extent.
+ * @param[in] selection Selected subtree coordinates.
+ * @param[in] event One decoded reader event.
+ * @param[in,out] ctx Active bounded builder.
+ * @param[in,out] workspace Exclusive reader/emission scratch.
+ * @param[in,out] active Whether the selected subtree is currently open.
+ * @param[out] out_root Emitted subtree root node; set when the root starts.
+ * @return Repository error code.
+ * @retval k_ra8_ok The event was applied.
+ * @retval k_ra8_err_no_mem Bounded builder capacity failed.
+ * @pre @p selection came from ::internal_select on this source.
+ * @pre @p event came from the same reader driving this emission.
+ * @post Success may advance @p out_root, mutate the builder, or update
+ *       @p active per the event's kind.
+ * @note Not thread-safe; caller owns the reader state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_emit_event(const uint8_t*              source,
+                                                  size_t                      length,
+                                                  const priv_selection_t*     selection,
+                                                  const ra8_xml_event_t*      event,
+                                                  ra8_rabook_ctx_t*           ctx,
+                                                  ra8_rabook_xml_workspace_t* workspace,
+                                                  bool*                       active,
+                                                  uint32_t*                   out_root)
+{
+  if (!*active) {
+    if (event->kind != (uint8_t)k_ra8_xml_event_start) {
+      return k_ra8_ok;
+    }
+    if (event->markup.offset != selection->offset) {
+      return k_ra8_ok;
+    }
+    *active = true;
+  }
+  if (event->kind == (uint8_t)k_ra8_xml_event_start) {
+    return internal_emit_start(source, length, selection, event, ctx, workspace, active, out_root);
+  }
+  if (event->kind == (uint8_t)k_ra8_xml_event_text) {
+    return internal_text(source, length, event, selection->depth, ctx, workspace);
+  }
+  if (event->kind == (uint8_t)k_ra8_xml_event_end) {
+    if (event->depth == selection->depth) {
+      *active = false;
+    }
+  }
+  return k_ra8_ok;
+}
+
+/**
  * @brief Stream the selected subtree into the builder.
- * @details Emits start and text events until the selected element closes.
+ * @details Emits start and text events until the selected element closes;
+ *          delegates the per-event decision to ::internal_emit_event.
  * @param[in] source Immutable validated XML source.
  * @param[in] length Exact readable source extent.
  * @param[in] selection Selected subtree coordinates.
@@ -365,45 +524,37 @@ RA8_INTERNAL static ra8_err_t internal_emit(const uint8_t*              source,
     if (event.kind == (uint8_t)k_ra8_xml_event_none) {
       break;
     }
-    if (!active) {
-      if (event.kind != (uint8_t)k_ra8_xml_event_start) {
-        continue;
-      }
-      if (event.markup.offset != selection->offset) {
-        continue;
-      }
-      active = true;
-    }
-    if (event.kind == (uint8_t)k_ra8_xml_event_start) {
-      uint32_t node = (uint32_t)k_ra8_book_nil;
-      err = internal_element(source, length, &event, selection->depth, ctx, workspace, &node);
-      if (event.markup.offset == selection->offset) {
-        *out_root = node;
-      }
-      if (err == k_ra8_ok) {
-        if (event.self_closing != 0U) {
-          if (event.markup.offset == selection->offset) {
-            active = false;
-          }
-        }
-      }
-    } else if (event.kind == (uint8_t)k_ra8_xml_event_text) {
-      err = internal_text(source, length, &event, selection->depth, ctx, workspace);
-    } else if (event.kind == (uint8_t)k_ra8_xml_event_end) {
-      if (event.depth == selection->depth) {
-        active = false;
-      }
-    }
+    err = internal_emit_event(source, length, selection, &event, ctx, workspace, &active, out_root);
   }
   return err;
 }
 
-ra8_err_t ra8_rabook_xml_parse_chapter(const uint8_t*              xhtml_bytes,
-                                       size_t                      xhtml_len,
-                                       ra8_rabook_ctx_t*           ctx,
-                                       const char*                 chapter_href,
-                                       const char*                 chapter_title,
-                                       ra8_rabook_xml_workspace_t* workspace)
+/**
+ * @brief Validate the public chapter-parse entry point's arguments.
+ * @details Rejects any null pointer argument and a zero-length source before
+ *          any parsing work begins.
+ * @param[in] xhtml_bytes Candidate XHTML source bytes.
+ * @param[in] xhtml_len Candidate source length in bytes.
+ * @param[in] ctx Candidate active builder.
+ * @param[in] chapter_href Candidate spine href string.
+ * @param[in] chapter_title Candidate TOC title string.
+ * @param[in] workspace Candidate reader/emission scratch.
+ * @return Argument validation status.
+ * @retval k_ra8_ok Every argument is present and @p xhtml_len is nonzero.
+ * @retval k_ra8_err_null_ptr A required pointer argument is NULL.
+ * @retval k_ra8_err_invalid_size @p xhtml_len is zero.
+ * @pre None; every argument is treated as untrusted.
+ * @post No argument or builder state is modified.
+ * @note Not thread-safe with respect to concurrent callers sharing @p ctx.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_parse_chapter_validate_args(const uint8_t*                    xhtml_bytes,
+                                     size_t                            xhtml_len,
+                                     const ra8_rabook_ctx_t*           ctx,
+                                     const char*                       chapter_href,
+                                     const char*                       chapter_title,
+                                     const ra8_rabook_xml_workspace_t* workspace)
 {
   if (xhtml_bytes == nullptr) {
     return k_ra8_err_null_ptr;
@@ -422,6 +573,25 @@ ra8_err_t ra8_rabook_xml_parse_chapter(const uint8_t*              xhtml_bytes,
   }
   if (xhtml_len == 0U) {
     return k_ra8_err_invalid_size;
+  }
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_rabook_xml_parse_chapter(const uint8_t*              xhtml_bytes,
+                                       size_t                      xhtml_len,
+                                       ra8_rabook_ctx_t*           ctx,
+                                       const char*                 chapter_href,
+                                       const char*                 chapter_title,
+                                       ra8_rabook_xml_workspace_t* workspace)
+{
+  const ra8_err_t arg_err = internal_parse_chapter_validate_args(xhtml_bytes,
+                                                                 xhtml_len,
+                                                                 ctx,
+                                                                 chapter_href,
+                                                                 chapter_title,
+                                                                 workspace);
+  if (arg_err != k_ra8_ok) {
+    return arg_err;
   }
   const ra8_rabook_ctx_t checkpoint = *ctx;
   ra8_err_t              err        = ra8_xml_validate(xhtml_bytes, xhtml_len, &workspace->xml);
