@@ -821,19 +821,19 @@ RA8_INTERNAL static void internal_test_state_rejects_malformed_records(void)
 
 /**
  * @brief Report whether two binary64 values have identical object bytes.
- * @details The persisted format round-trips the exact bit pattern, so this is a representation comparison and not a numeric one -- that is what keeps -0.0 distinct from +0.0. The bytes go into an unsigned integer first because `double` has no unique object representation. @param[in] left First value. @param[in] right Second value. @return Whether both have the same 64-bit representation. @retval true The representations are identical. @retval false At least one bit differs.
- * @pre `double` is IEEE-754 binary64 here. @pre Both arguments are ordinary readable values.
- * @post Neither argument is modified. @post The result depends only on the representations.
- * @note Test-only helper with no production ABI. @since 0.1.0
+ * @details The persisted format round-trips the exact bit pattern, so this is a representation comparison and not a numeric one -- that is what keeps -0.0 distinct from +0.0. The representation is read through a union because MISRA-C:2012 Rule 21.15 forbids `memcpy` between incompatible types. @param[in] left First value. @param[in] right Second value. @return Whether both have the same 64-bit representation. @retval true The representations are identical. @retval false At least one bit differs.
+ * @pre `double` is IEEE-754 binary64 here. @pre Both arguments are ordinary readable values. @post Neither argument is modified. @post The result depends only on the representations. @note Test-only helper with no production ABI. @since 0.1.0
  */
 RA8_INTERNAL static bool internal_same_binary64(double left, double right)
 {
   static_assert(sizeof(double) == sizeof(uint64_t), "binary64 host required");
-  uint64_t left_bits  = 0U;
-  uint64_t right_bits = 0U;
-  (void)memcpy(&left_bits, &left, sizeof(left_bits));
-  (void)memcpy(&right_bits, &right, sizeof(right_bits));
-  return left_bits == right_bits;
+  union binary64_view {
+    double   value; /**< The value exactly as supplied. */
+    uint64_t bits;  /**< Its object representation.     */
+  };
+  const union binary64_view left_view  = {.value = left};
+  const union binary64_view right_view = {.value = right};
+  return left_view.bits == right_view.bits;
 }
 
 /**
