@@ -557,22 +557,48 @@ RA8_INTERNAL static void internal_report_cover_failure(ra8_err_t error)
  * @note Not thread-safe because it owns the shared run composition state.
  * @since 0.1.0
  */
+/**
+ * @brief Resolve the chapter-selection window for one prepared run.
+ * @details Uses the complete prepared chapter list on an update run;
+ *          otherwise selects the requested present/from-number window into
+ *          the shared selection scratch and requires it be non-empty.
+ * @param[in] r Validated series-run parameters.
+ * @param[out] out_sel Selected chapter-URL list on success.
+ * @return Selection status.
+ * @retval k_ra8_ok @p out_sel names a non-empty selection.
+ * @retval k_ra8_err_invalid_arg The requested window selected zero chapters.
+ * @pre @p r and @p out_sel are non-NULL.
+ * @pre The prepared chapter list and app diagnostic sink are available.
+ * @post On failure a diagnostic explaining the empty selection was emitted.
+ * @note Not thread-safe; writes the shared selection-window scratch buffer.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_select_run_window(const series_run_t*    r,
+                                                         const mdl_url_list_t** out_sel)
+{
+  *out_sel = &priv_mdl_app_context()->chapters;
+  if (!r->update) {
+    internal_select_window(r->from_present, r->from_num, r->chapters, &s_selected);
+    *out_sel = &s_selected;
+    if ((*out_sel)->count == 0U) {
+      (void)priv_mdl_stream_text(k_ra8_ok,
+                                 priv_mdl_app_context()->diagnostic,
+                                 "media_dl: no chapters match the requested range\n");
+      return k_ra8_err_invalid_arg;
+    }
+  }
+  return k_ra8_ok;
+}
+
 RA8_INTERNAL static int internal_run_prepared(const series_run_t* r,
                                               const mdl_site_t*   site,
                                               const char*         abs_dir,
                                               const char*         state_path,
                                               mdl_cache_t*        cache)
 {
-  const mdl_url_list_t* sel = &priv_mdl_app_context()->chapters;
-  if (!r->update) {
-    internal_select_window(r->from_present, r->from_num, r->chapters, &s_selected);
-    sel = &s_selected;
-    if (sel->count == 0U) {
-      (void)priv_mdl_stream_text(k_ra8_ok,
-                                 priv_mdl_app_context()->diagnostic,
-                                 "media_dl: no chapters match the requested range\n");
-      return 1;
-    }
+  const mdl_url_list_t* sel = nullptr;
+  if (internal_select_run_window(r, &sel) != k_ra8_ok) {
+    return 1;
   }
   char display_slug[k_slug_bytes];
   (void)mdl_sanitize_segment(priv_mdl_app_context()->state.series_title,
