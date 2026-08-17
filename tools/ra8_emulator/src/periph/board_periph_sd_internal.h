@@ -118,7 +118,7 @@ typedef enum : uint32_t {
 } board_sd_const32_t;
 
 /** @brief The single modelled SD card (defined in board_periph_sd.c). */
-extern board_sd_state_t local_sd;
+extern board_sd_state_t g_board_sd;
 
 /** @brief FAT flavour selectors shared by the formatter and the card model. */
 typedef enum : uint32_t {

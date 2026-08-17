@@ -379,16 +379,16 @@ RA8_INTERNAL static bool internal_mve_exec_one(uc_engine* uc, const cs_insn* ins
 /** @brief Lazily open the shared Thumb/M-class Capstone handle; nullptr on failure. */
 RA8_INTERNAL static csh* internal_mve_capstone(void)
 {
-  static csh  local_cs;
-  static bool local_cs_ok = false;
-  if (!local_cs_ok) {
-    if (cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_THUMB | CS_MODE_MCLASS), &local_cs) != CS_ERR_OK) {
+  static csh  s_cs;
+  static bool s_cs_ok = false;
+  if (!s_cs_ok) {
+    if (cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_THUMB | CS_MODE_MCLASS), &s_cs) != CS_ERR_OK) {
       return nullptr;
     }
-    (void)cs_option(local_cs, CS_OPT_DETAIL, CS_OPT_ON);
-    local_cs_ok = true;
+    (void)cs_option(s_cs, CS_OPT_DETAIL, CS_OPT_ON);
+    s_cs_ok = true;
   }
-  return &local_cs;
+  return &s_cs;
 }
 
 /**

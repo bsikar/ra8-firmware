@@ -585,9 +585,8 @@ bool on_invalid_insn(uc_engine* uc, void* user)
 /** @brief Implementation of `emu_insn_seams_install()` -- arm the dispatcher. */
 void emu_insn_seams_install(uc_engine* uc)
 {
-  static uc_hook local_h_invalid;
-  (void)
-    uc_hook_add(uc, &local_h_invalid, UC_HOOK_INSN_INVALID, (void*)on_invalid_insn, nullptr, 1, 0);
+  static uc_hook s_h_invalid;
+  (void)uc_hook_add(uc, &s_h_invalid, UC_HOOK_INSN_INVALID, (void*)on_invalid_insn, nullptr, 1, 0);
 }
 
 /** @brief Implementation of `emu_lob_emulated_count()` -- plain counter read. */

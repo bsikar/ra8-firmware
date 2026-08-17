@@ -132,9 +132,9 @@ void fast_sd_seam_install(uc_engine* uc, const emu_elf_source_t* elf)
       "  [fast-sd] ra8_sdmmc_spi_read_block not found -- SD stays on the per-byte path\n");
     return;
   }
-  static uc_hook local_h;
+  static uc_hook s_h_fast_sd;
   (void)uc_hook_add(uc,
-                    &local_h,
+                    &s_h_fast_sd,
                     UC_HOOK_CODE,
                     (void*)internal_on_sdmmc_read_block,
                     nullptr,

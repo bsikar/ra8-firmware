@@ -77,7 +77,7 @@ typedef enum : uint8_t {
 } board_sd_cmd_idx_t;
 
 /** @brief The single modelled SD card (declared in board_periph_sd_internal.h). */
-board_sd_state_t local_sd = {.image_fd = -1};
+board_sd_state_t g_board_sd = {.image_fd = -1};
 
 /**
  * @brief CRC16-CCITT (poly 0x1021, init 0) over a buffer.
@@ -706,49 +706,49 @@ RA8_INTERNAL static void internal_board_sd_process_cmd(board_sd_state_t* c)
 
 uint8_t board_sd_exchange(uint8_t tx)
 {
-  if (local_sd.resp_pos < local_sd.resp_len) {
-    return local_sd.resp[local_sd.resp_pos++];
+  if (g_board_sd.resp_pos < g_board_sd.resp_len) {
+    return g_board_sd.resp[g_board_sd.resp_pos++];
   }
-  if (local_sd.wr_phase != k_sd_wr_idle) {
-    return internal_board_sd_write_byte(&local_sd, tx);
+  if (g_board_sd.wr_phase != k_sd_wr_idle) {
+    return internal_board_sd_write_byte(&g_board_sd, tx);
   }
-  if (local_sd.collecting) {
-    local_sd.cmd[local_sd.cmd_idx] = tx;
-    local_sd.cmd_idx++;
-    if (local_sd.cmd_idx >= (uint32_t)k_sd_cmd_len) {
-      local_sd.collecting = false;
-      internal_board_sd_process_cmd(&local_sd);
+  if (g_board_sd.collecting) {
+    g_board_sd.cmd[g_board_sd.cmd_idx] = tx;
+    g_board_sd.cmd_idx++;
+    if (g_board_sd.cmd_idx >= (uint32_t)k_sd_cmd_len) {
+      g_board_sd.collecting = false;
+      internal_board_sd_process_cmd(&g_board_sd);
     }
     return (uint8_t)k_sd_idle;
   }
   if ((tx & (uint8_t)k_sd_cmd_mask) == (uint8_t)k_sd_cmd_start) {
-    local_sd.collecting = true;
-    local_sd.cmd[0]     = tx;
-    local_sd.cmd_idx    = 1U;
+    g_board_sd.collecting = true;
+    g_board_sd.cmd[0]     = tx;
+    g_board_sd.cmd_idx    = 1U;
     return (uint8_t)k_sd_idle;
   }
-  if (local_sd.rd_multi) {
+  if (g_board_sd.rd_multi) {
     /* Open CMD18 stream: the host clocking idle is fetching the next block.
      * The command-start check above stays first so a CMD12 frame interrupts
      * the stream instead of being swallowed as read clocking. */
-    internal_board_sd_read_stream_next(&local_sd);
-    return local_sd.resp[local_sd.resp_pos++];
+    internal_board_sd_read_stream_next(&g_board_sd);
+    return g_board_sd.resp[g_board_sd.resp_pos++];
   }
   return (uint8_t)k_sd_idle;
 }
 
 bool board_sd_read_block(uint32_t lba, uint8_t* dst)
 {
-  if (!local_sd.attached || (local_sd.image_fd < 0) || (dst == nullptr)) {
+  if (!g_board_sd.attached || (g_board_sd.image_fd < 0) || (dst == nullptr)) {
     return false;
   }
   /* Same SDHC block-addressing as the CMD17 path: arg is a block index. */
   const uint64_t off = (uint64_t)lba * (uint64_t)k_sd_block;
-  if (off >= local_sd.image_len) {
+  if (off >= g_board_sd.image_len) {
     return false; /* past the end of the card -- let the real driver error out. */
   }
   uint8_t block[k_sd_block];
-  if (!internal_board_sd_fill_block(&local_sd, off, block)) {
+  if (!internal_board_sd_fill_block(&g_board_sd, off, block)) {
     return false;
   }
   (void)memcpy(dst, block, sizeof(block));
@@ -757,15 +757,15 @@ bool board_sd_read_block(uint32_t lba, uint8_t* dst)
 
 bool board_sd_write_block(uint32_t lba, const uint8_t* src)
 {
-  if (!local_sd.attached || (local_sd.image_fd < 0) || (src == nullptr)) {
+  if (!g_board_sd.attached || (g_board_sd.image_fd < 0) || (src == nullptr)) {
     return false;
   }
   /* Same SDHC block-addressing as the CMD24 path: arg is a block index. */
   const uint64_t off = (uint64_t)lba * (uint64_t)k_sd_block;
-  if (off >= local_sd.image_len) {
+  if (off >= g_board_sd.image_len) {
     return false; /* past the end of the card -- let the real driver error out. */
   }
-  if ((off + (uint64_t)k_sd_block) > local_sd.image_len) {
+  if ((off + (uint64_t)k_sd_block) > g_board_sd.image_len) {
     return false; /* a full block would run off the end of the image. */
   }
   return priv_board_sd_storage_write(off, src, (size_t)k_sd_block);
@@ -773,16 +773,16 @@ bool board_sd_write_block(uint32_t lba, const uint8_t* src)
 
 void board_sd_reset(void)
 {
-  local_sd.collecting = false;
-  local_sd.app_cmd    = false;
-  local_sd.ready      = false;
-  local_sd.cmd_idx    = 0U;
-  local_sd.resp_len   = 0U;
-  local_sd.resp_pos   = 0U;
-  local_sd.wr_phase   = k_sd_wr_idle;
-  local_sd.wr_multi   = false;
-  local_sd.wr_off     = 0U;
-  local_sd.wr_cnt     = 0U;
-  local_sd.rd_multi   = false;
-  local_sd.rd_off     = 0U;
+  g_board_sd.collecting = false;
+  g_board_sd.app_cmd    = false;
+  g_board_sd.ready      = false;
+  g_board_sd.cmd_idx    = 0U;
+  g_board_sd.resp_len   = 0U;
+  g_board_sd.resp_pos   = 0U;
+  g_board_sd.wr_phase   = k_sd_wr_idle;
+  g_board_sd.wr_multi   = false;
+  g_board_sd.wr_off     = 0U;
+  g_board_sd.wr_cnt     = 0U;
+  g_board_sd.rd_multi   = false;
+  g_board_sd.rd_off     = 0U;
 }

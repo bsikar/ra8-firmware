@@ -142,9 +142,9 @@ RA8_INTERNAL static void internal_itm_seed_ready(uc_engine* uc)
 void emu_console_install(uc_engine* uc)
 {
   internal_itm_seed_ready(uc);
-  static uc_hook local_h_itm;
+  static uc_hook s_h_itm;
   (void)uc_hook_add(uc,
-                    &local_h_itm,
+                    &s_h_itm,
                     UC_HOOK_MEM_WRITE,
                     (void*)internal_on_itm_stim_write,
                     nullptr,
