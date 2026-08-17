@@ -1,38 +1,19 @@
-# npu_smoke -- RA8P1 Ethos-U55 NPU foundation
+# npu_smoke
 
-Exercises the full `ra8_npu` command/queue driver surface on the Renesas
-**RA8P1** (`R7KA8P1KFLCAC`) -- the defining RA8P1 feature over the RA8D2. It
-proves the Arm Ethos-U55 NPU driver (`libs/ra8_hal/{inc,src}/ra8_npu.{h,c}`)
-compiles and links for the RA8P1 and documents the intended call sequence.
+Exercises the whole `ra8_npu` command/queue driver surface on the RA8P1: come
+out of module-stop and soft-reset, read the NPU identity probe, program the
+command-queue base and size plus a tensor-region base, kick the job, and read
+the status back into a debugger-visible global.
 
-## What it does
+It proves the Arm Ethos-U55 driver compiles and links for the RA8P1 and
+documents the call sequence the hardware expects. The RA8P1 toolchain is what
+makes `ra8_device.h` declare the NPU present and compile the otherwise
+device-gated driver; a `#error` guard in `main.c` fails the build loudly under
+the RA8D2 toolchain.
 
-1. `ra8_npu_init()` -- release the NPU module-stop (MSTPCRA bit 16) and soft-reset.
-2. `ra8_npu_read_id()` -- read the `NPU_ID` presence/revision probe.
-3. `ra8_npu_submit()` -- program `QBASE`/`QSIZE` at a placeholder command stream in
-   SRAM plus one tensor-region base (`BASEP0`).
-4. `ra8_npu_run()` -- kick the job (`CMD.transition_to_running_state`).
-5. `ra8_npu_read_status()` -- read back `STATUS` into a debugger-visible global.
-
-## Build
-
-```sh
-cd examples/ra8p1_foundation/npu_smoke
-make                 # -> build/npu_smoke.elf, built with cmake/toolchain-ra8p1.cmake
-make size
-```
-
-`cmake/toolchain-ra8p1.cmake` adds `-DRA8_DEVICE_RA8P1`, which makes
-`libs/ra8_core/inc/ra8_device.h` define `RA8_HAS_NPU` and compiles the otherwise
-device-gated `ra8_npu.c`. A `#error` guard in `main.c` fails the build loudly if
-it is ever configured with the RA8D2 toolchain.
-
-## Status
-
-**Build-foundation only -- NOT hardware-validated.** There is no RA8P1 board
-yet, and the "command stream" here is a zeroed placeholder, not a real
-Vela-compiled program, so a real inference would not complete on silicon. The
-host unit test `tests/test_ra8_npu.c` asserts the exact register submission
-sequence with mock MMIO. A Vela command-stream compiler, a TFLite-micro runtime,
-and on-silicon inference bring-up are tracked as follow-up issues on the RA8P1
-epic (#220).
+The command stream is a zeroed placeholder rather than a Vela-compiled
+program, so a real inference would not complete on silicon even if there were a
+board to try it on. The driver's behaviour is actually pinned by the host unit
+test, which asserts the exact register submission sequence against mock MMIO.
+Sibling apps in this tier take the next steps: loading a real container, and
+the runtime above the driver.

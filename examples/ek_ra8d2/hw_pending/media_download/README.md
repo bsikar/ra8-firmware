@@ -1,79 +1,55 @@
-# Media Download -- C6 HTTPS source to strict SD `.rabook`
+# media_download
 
-This hardware-pending app is the real RA8 composition root for the reusable
-media-transfer path. It uses Pmod1 for the ESP32-C6 and Pmod2 for a micro-SD
-card containing an existing FAT volume. One run:
+The RA8 composition root for the reusable media-transfer path: an HTTPS source
+reached over the ESP32-C6 on Pmod1, landing as a strictly-validated `.rabook` on
+a micro-SD card in Pmod2.
 
-1. opens the ESP-hosted C6 link and joins the configured Wi-Fi station;
-2. mounts the existing SD volume as `sd` without formatting it;
-3. creates `sd:/BOOKS` when absent and refuses a non-directory collision;
-4. streams the configured HTTPS response body in 1024-byte RPC pulls;
-5. either treats that body as a prebuilt `.rabook`, or retains one bounded
-   encoded image in caller-owned SDRAM and converts it to canonical RABOOK1
-   plus its RBKC random-access container on the RA8;
-6. independently hashes the final artifact, closes the private stage, and
-   strictly validates every RBKC zlib stream plus the inner RABOOK1 structure;
-7. publishes `sd:/BOOKS/C6BOOK.RBK` through the VFS no-replace rename; and
-8. reopens, strictly revalidates, reads metadata, and demand-loads the first
-   exact inflated chunk from the committed file.
+One run opens the ESP-hosted C6 link and joins the configured station, mounts the
+card's **existing** FAT volume without formatting it, creates `sd:/BOOKS` when
+absent (and refuses a non-directory collision), then streams the HTTPS response
+body in bounded RPC pulls. The body is either a prebuilt `.rabook` or -- in
+source-image mode -- one bounded encoded image which the RA8 decodes, normalizes,
+emits as a one-page RABOOK1 book and wraps as an RBKC random-access container.
+**That mode is conversion, not relabeling**, and its new bytes go through the same
+strict validator as everything else.
 
-The transfer is bounded to 32 MiB of compressed response data. The RBKC reader
-accepts 64 KiB inflated chunks and a table of up to 2048 chunks (128 MiB
-inflated). Its table, compressed staging, inflated chunk, and strict-validation
-scratch live in external SDRAM. First-party code uses no heap or stdio; miniz is
-built with `MINIZ_NO_MALLOC` and `MINIZ_NO_STDIO`.
+The artifact is hashed independently, its private stage is closed, and every RBKC
+zlib stream plus the inner RABOOK1 structure is strictly validated **before** the
+file is published through the VFS no-replace rename. The app then reopens the
+committed file, revalidates it, reads metadata, and demand-loads the first exact
+inflated chunk.
 
-## Build
+The transfer, the inflated chunk size and the chunk-table length are all bounded.
+The table, compressed staging, inflated chunk and strict-validation scratch live
+in external SDRAM. First-party code uses no heap and no stdio; miniz is built with
+`MINIZ_NO_MALLOC` and `MINIZ_NO_STDIO`.
 
-Credentials and URL are build inputs, never committed:
+Publication is deliberately create-new: a second successful run with the same
+destination **refuses** to replace the existing book, which must be removed
+through an authorized maintenance path first. Native FAT/exFAT does not claim a
+power-loss-atomic rename or a durable barrier, and this app does not invent those
+guarantees.
 
-```sh
-RA8_C6_WIFI_SSID=ra8-bench \
-RA8_C6_WIFI_PSK='...' \
-RA8_MEDIA_DOWNLOAD_URL='https://host/path/book.rabook' \
-make
-```
+## Configuration and the fail-closed image
 
-The Makefile also sources the gitignored `coprocessor/esp32c6/wifi.env` when it
-exists. An aggregate/no-secret build leaves all three values empty; that image
-builds but fails before mounting storage or issuing an RPC.
+Credentials and the URL are build inputs and are never committed; the Makefile
+also sources the gitignored `coprocessor/esp32c6/wifi.env` when it exists. An
+aggregate or no-secret build leaves them empty, and that image **builds but fails
+before mounting storage or issuing an RPC** -- it is fail-closed by design.
 
-To fetch a direct JPEG, PNG, GIF, BMP, or WebP source and save it as a real
-reader-native `.rabook`, enable source-image mode:
+That matters for evidence: an empty-config build proves nothing about whether the
+linker retained the feature. `make compile-proof` exists for exactly that gap. It
+builds with reserved, non-secret values in a separate directory, keeping the
+complete transfer path reachable under optimization, and then asserts that the
+final ELF contains the C6 transfer and strict RABOOK validation symbols plus a
+nonempty SDRAM workspace.
 
-```sh
-RA8_C6_WIFI_SSID=ra8-bench \
-RA8_C6_WIFI_PSK='...' \
-RA8_MEDIA_DOWNLOAD_URL='https://host/path/page.webp' \
-RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE=ON \
-make
-```
+## Blocked on
 
-This mode is conversion, not relabeling: the RA8 decodes and normalizes the
-image, emits a one-page RABOOK1 book, wraps it as RBKC, and passes those new
-bytes through the same strict pre-publication validator. The default remains
-direct transfer of an already-produced `.rabook` for compatibility.
-
-`make compile-proof` uses reserved, non-secret values in a separate
-`build-proof` directory. That keeps the complete transfer path reachable under
-optimization and then asserts that the final ELF contains the C6 transfer and
-strict RABOOK validation symbols plus nonempty SDRAM workspace. Use that target
-for composition evidence: an empty-config aggregate build is intentionally a
-fail-closed image and is not evidence that the linker retained the feature.
-
-Publication is deliberately create-new. A second successful run with the same
-destination refuses to replace `C6BOOK.RBK`; remove or rename the existing book
-through an authorized UI/maintenance path first. Native FAT/exFAT does not
-claim power-loss-atomic rename or a durable barrier, and this app does not
-invent those guarantees.
-
-## Verification boundary
-
-The configured RA8 cross-build proves the real board, C6, SD/FAT/VFS, strict
-reader, source formatter, and SHA types compose with fixed storage. The matching ESP32-C6 image
-also compiles and links from current sources under pinned ESP-IDF v5.5.4; its
-post-link checks require the strong media handler and component ABI marker in
-the final ELF. Host tests exercise success, transport corruption, coherent
-invalid RBKC, no-stage cleanup, and exact readback. This app remains under
-`hw_pending` until physical mixed-image HIL proves success plus failure cleanup
-on the EK-RA8D2. No flash is part of the normal build.
+Physical mixed-image HIL. The configured cross-build proves the board, C6, SD /
+FAT / VFS, strict reader, source formatter and SHA types compose with fixed
+storage, and the matching ESP32-C6 image compiles and links from current sources
+with post-link checks for the strong media handler and the component ABI marker.
+Host tests exercise success, transport corruption, coherent-but-invalid RBKC,
+no-stage cleanup and exact readback. What is missing is a run on the board proving
+success **and** failure cleanup.

@@ -1,18 +1,17 @@
 # rtc_alarm
 
-RTC + alarm + UART log demo for the bare EK-RA8D2 EVM.
+Sets the on-chip RTC to a known seed time, schedules an alarm a few seconds out
+through `ra8_rtc_set_alarm`, polls `RCR1.AIF` for the fire, logs over the
+console, then advances the seed and re-arms. No NVIC line is involved -- the
+polled form keeps the demo to the RTC itself.
 
-Sets the on-chip RTC to 2026-01-01 00:00:00, schedules an alarm five
-seconds in the future via the new `ra8_rtc_set_alarm` API, polls
-RCR1.AIF for the fire, then logs `rtc: alarm fired` over the J-Link OB
-CDC port (SCI8 @ 115200 8N1) and re-arms ten seconds later.
+The alarm line is the only success-only output: the boot line prints
+unconditionally, so it proves nothing about the alarm. That distinction is what
+an automated check has to key on.
 
-Build / flash:
+The fire depends on the sub-clock crystal (SOSC), which is intermittently
+populated on this EVM. On a board where SOSC is silent the seed is set and the
+alarm is armed but never matches, so the app is healthy and the alarm line still
+never appears -- rule that out before treating a miss as a driver defect.
 
-```
-make rtc_alarm
-make -C examples/ek_ra8d2/rtc_alarm flash
-```
-
-Open `picocom -b 115200 /dev/cu.usbmodem...` (macOS) or
-`minicom -D /dev/ttyACM0 -b 115200` (Linux) to see the log lines.
+No external hardware required.

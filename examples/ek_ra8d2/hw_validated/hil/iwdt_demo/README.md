@@ -1,19 +1,12 @@
 # iwdt_demo
 
-Demonstrates the IWDT in **window mode** (distinct from
-`watchdog_demo`, which simply refreshes-until-stop). Polls the live
-14-bit IWDTSR.CNTVAL counter via `ra8_iwdt_get_counter` and only writes
-the refresh sequence when the counter sits inside the legal window
-(`[k_iwdt_demo_window_low, k_iwdt_demo_window_high]`). LED1 toggles on
-each in-window refresh; SCI8 logs `iwdt: refresh in window`.
+IWDT in window mode, as distinct from `watchdog_demo`, which simply refreshes
+until it stops. Polls the live 14-bit IWDTSR.CNTVAL counter and writes the
+refresh sequence only while the counter sits inside the legal window, then
+clears the error status so a window violation stays visible.
 
-The actual window bounds are programmed by the OFS0 option-setting
-register at flash time -- the values in this demo are chosen to match
-the conventional EK-RA8D2 OFS0 layout used by the project's shared
-linker scripts.
-
-Build:
-
-```
-make iwdt_demo
-```
+The real window bounds come from the OFS0 option-setting register, programmed
+at flash time and not by this firmware. The demo's compiled window constants
+are chosen to match the conventional EK-RA8D2 OFS0 layout that the project's
+shared linker scripts use -- change one without the other and every refresh
+lands outside the window.

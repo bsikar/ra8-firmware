@@ -1,23 +1,12 @@
 # watchdog_demo
 
-IWDT watchdog + reset-cause demo for the bare EK-RA8D2 EVM.
+Round-trips the IWDT and the reset-cause machinery: log the latched cause on
+boot (power-on, IWDT, or other), refresh the IWDT for half a minute with LED1
+toggling per refresh, then deliberately stop feeding it. The counter underflows,
+the chip resets, and the next boot reads back `iwdt` -- so a pass depends on the
+reset actually firing *and* on the cause flag being read correctly afterwards.
 
-On boot, logs the reset cause over SCI8 (115200 8N1, J-Link OB CDC port):
-
-- `wdt: boot reason=power_on` -- first boot after a real power-on.
-- `wdt: boot reason=iwdt`     -- woke up from a watchdog reset
-  triggered by the previous run.
-- `wdt: boot reason=other`    -- any other latched reset cause.
-
-Then refreshes the IWDT for 30 seconds (LED1 toggles each refresh as
-a heartbeat), logs `wdt: stopping refresh, expect reset`, and stops
-feeding the watchdog. The IWDT counter underflows and the chip
-resets; the next boot logs `iwdt`, demonstrating end-to-end
-reset-cause introspection.
-
-Build / flash:
-
-```
-make watchdog_demo
-make -C examples/ek_ra8d2/watchdog_demo flash
-```
+The IWDT period is not configurable at runtime: it comes from the OFS0
+option-setting register written at flash time, which is why the app's shared
+linker script sets a multi-second window. That fixed period is the difference
+between this app and `wdt_window_demo`, which drives the separate WWDT.

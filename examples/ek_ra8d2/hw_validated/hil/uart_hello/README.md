@@ -5,11 +5,6 @@ while toggling LED1 as a heartbeat. The EK-RA8D2's on-board J-Link OB bridges
 SCI8 to a USB CDC port, so a terminal at **115200 8N1** sees the stream with no
 extra wiring.
 
-```sh
-make uart_hello
-make flash-uart_hello
-```
-
 > On macOS, open the CDC port **RDWR**. Some bridges gate forwarding on DTR,
 > which only asserts on a read-write open -- `cat /dev/cu.usbmodem*` is RDONLY
 > and shows zero bytes. `picocom`, `screen` and `cu` all work.
@@ -57,28 +52,6 @@ All verified live over SWD and cross-referenced against FSP `r_sci_b_uart`.
 | `CCR3.LSBF` | 1 | LSB-first. SCI_B resets to MSB-first, so without it every byte arrives bit-reversed. |
 | `CCR3.BPEN` | 1 | Synchronizer bypass, required when PCLK is the operation clock (HUM 38.2.8). Without it the shifter waits forever for an SCICLK edge that does not exist and CSR sits at `TDRE=0, TEND=0`. |
 
-## SWD probes
-
-```
-mem32 0x40358800 32   # SCI8 register window
-mem32 0x40358848 1    # CSR  -- TDRE=b29, TEND=b30, RDRF=b31, FER=b28
-mem32 0x40358804 1    # TDR  -- low byte is the next byte to shift
-mem32 0x40400B48 1    # PD02 PFS -- b16=PMR, b26..24=PSEL
-mem8  0x4001E054 1    # SCICKDIVCR
-mem8  0x4001E055 1    # SCICKCR  (SCICLK source select)
-mem32 0x4001E020 1    # SCKDIVCR (peripheral clock dividers)
-mem8  0x4001E026 1    # SCKSCR   (0=HOCO, 1=MOCO, 5=PLL1)
-mem32 0x4001E0AC 1    # PLLCCR   -- expect 0xFA02
-mem16 0x4001E04C 1    # PLLCCR2  -- expect 0x0451
-mem32 0x4013C000 1    # MRCPFB   -- expect 0x01 (PFB on)
-mem32 0x4013C004 1    # MRCFREQ  -- expect 0xFA (250 MHz, key stripped)
-mem32 0x4013C008 1    # MREFREQ  -- expect 0x7D (125 MHz, key stripped)
-mem32 0x4001E014 1    # VSCR     -- expect bit 0 set (VSCM=1)
-```
-
-`make debug-uart_hello` attaches gdb through JLinkGDBServer;
-`make ozone-uart_hello` opens the SEGGER Ozone GUI.
-
-Validated 2026-05-02 against the EK-RA8D2 v1 User's Manual (R20UT5523EG0101
-Rev 1.01) Table 13 "Debug Serial Port Assignment" p 24 and Table 24 "LED
-Functions" p 31, and HUM R01UH1065EJ0130 Ch 38 "SCI" and Ch 8 "CGC".
+Pin assignments follow EK-RA8D2 v1 User's Manual (R20UT5523EG0101 Rev 1.01)
+Table 13 "Debug Serial Port Assignment" p 24 and Table 24 "LED Functions" p 31;
+the peripherals are HUM R01UH1065EJ0130 Ch 38 "SCI" and Ch 8 "CGC".

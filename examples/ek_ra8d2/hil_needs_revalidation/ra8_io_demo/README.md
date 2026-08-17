@@ -1,42 +1,18 @@
-# ra8_io_demo -- ra8_io fabric end-to-end (epic #155)
+# ra8_io_demo
 
-A single self-contained app that drives the whole `ra8_io` I/O fabric with no
-external hardware, so it runs headlessly in `ra8_emulator`.
+The reference end-to-end run through the whole `ra8_io` I/O fabric (#155), with
+no external hardware:
 
-What it exercises:
+1. a RAM block device over an in-SRAM buffer (#156);
+2. that block device bridged to `ra8_fs` (#158), formatted and mounted as FAT12
+   and registered in the VFS under a name;
+3. a file written and then read back through its `"ram:/..."` VFS path and
+   byte-compared;
+4. progress printed over the SCI8 console through a `ra8_io_stream` UART sink,
+   with `ra8_log` routed into the same stream via `ra8_io_log_attach`.
 
-1. **Block device (Phase 1, #156):** a RAM block device over a 256 KiB in-SRAM
-   buffer (`ra8_io_blockdev_ram`).
-2. **Filesystem bridge + VFS (Phase 3, #158):** the block device is bridged to
-   `ra8_fs` (`ra8_io_blockdev_as_fs_backend`), formatted + mounted as FAT12, and
-   registered in the VFS under the name `ram`.
-3. **Named file I/O:** a file is written, then read back through the
-   `"ram:/HELLO.TXT"` path and byte-compared.
-4. **Targetable stdio (Phase 2, #157):** progress is printed over the SCI8
-   console through a `ra8_io_stream` UART sink, and `ra8_log` is routed into the
-   same stream (`ra8_io_log_attach`).
-
-## Build
-
-```
-make            # -> build/ra8_io_demo.elf
-```
-
-## Run in the emulator
-
-```
-RA8_EMU_WALL_S=12 tools/ra8_emulator/build/ra8_emulator build/ra8_io_demo.elf
-```
-
-Expected console output:
-
-```
-[uart] SCI8: ra8_io_demo: boot
-[uart] SCI8: ra8_io_demo: wrote/read 128 bytes ram:/HELLO.TXT PASS
-```
-
-## Status
-
-`hw_pending`: the logic is proven in `ra8_emulator` (RAM backend is pure memory, so
-no peripheral model is needed). The same code runs on silicon; promote to
-`hw_validated` after a bench run captures the PASS line over the J-Link UART.
+Because the backend is pure memory, this is the app that isolates fabric
+defects from media defects: everything it exercises is the fabric itself. Its
+siblings swap only step 1 -- `ra8_io_sd_demo` for a card, `ra8_io_sdram_demo`
+for external SDRAM, `ra8_io_xspi_demo` for OSPI NOR -- which is the whole point
+of the swappable-backend design.

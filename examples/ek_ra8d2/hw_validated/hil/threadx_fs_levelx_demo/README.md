@@ -1,36 +1,20 @@
 # threadx_fs_levelx_demo
 
-ThreadX + ra8_fs-on-LevelX-on-OSPI-flash format/mount/write/read demo.
+Formats and mounts a FAT volume on top of LevelX on the on-board ISSI
+IS25LX512M NOR flash (U16), writes a file and reads it back, all from one
+ThreadX worker. Same stack as `threadx_fs_demo`, but this app is the proof of
+the LevelX integration rather than of the file API.
 
-The worker thread formats + opens a LevelX partition on the on-board ISSI
-IS25LX512M (U16, xSPI controller **CS1**, driven by `ra8_xspi` through
-`port/levelx/src/lx_nor_driver_ra8_xspi.c`), binds the LevelX flash to the
-ra8_fs block-device backend (`port/levelx/src/lx_fs_backend.c`), installs the
-`ra8_fs_set_lock()` seam over a ThreadX mutex (#608), formats + mounts a FAT
-volume, writes `/levelx_test.txt`, and reads it back to SCI8.
+**The LevelX NOR driver owns the xSPI bus bring-up, and the app must not
+duplicate it.** The driver routes the pins and initialises the controller
+exactly once. An app that also calls the board pin-init or `ra8_xspi_init` has
+its second PFS route rejected, and the failure then surfaces far from its cause
+as `lx_nor_flash_format` returning `LX_NO_MEMORY` (#87).
 
-(This demo ran on the vendored FileX until #611 retired it -- ra8_fs covers
-the whole surface it used, so it was ported and FileX was deleted.)
+The part hangs off xSPI controller **CS1**, not CS0. The earlier
+"JTAG-confirmed dead chip" conclusion about this flash was wrong -- it was a
+chip-select bug (#44) -- which is worth remembering the next time a peripheral
+looks physically unresponsive.
 
-## History
-
-The OSPI flash bring-up that blocked this app is fixed (#44): the earlier
-"JTAG-confirmed dead chip / physically unresponsive" conclusion was wrong --
-it was a controller chip-select bug, see
-`examples/ek_ra8d2/hw_validated/hil/flash_journal/README.md`. The LevelX
-format failure (#87) is also fixed: the LevelX NOR driver owns the OCTA bus
-bring-up, so the app must not route the xSPI pins itself.
-
-## Run
-
-```
-make threadx_fs_levelx_demo
-bash scripts/hil/run_local.sh threadx_fs_levelx_demo
-```
-
-## HIL
-
-`uart_scrape` gate on the exact read-back line
-`[fslx] readback: Hello from wear-leveled FAT!` (negative regex catches the
-LevelX format/open, backend bind, and ra8_fs format/mount/write/read failure
-banners). Runs board-only.
+It also installs the `ra8_fs_set_lock()` seam over a ThreadX mutex (#608). Like
+its sibling it ran on the vendored FileX until #611 retired it.

@@ -1,55 +1,18 @@
-# ra8_io_cache_demo -- caching block device (Phase 5, #160)
+# ra8_io_cache_demo
 
-A single self-contained app that drives the `ra8_io` caching block device with no
-external hardware, so it runs headlessly in `ra8_emulator`.
+Drives the `ra8_io` caching block device (#160) with no external hardware.
 
-The caching block device is a decorator: it wraps any other `ra8_io_blockdev_t`
-and keeps a fixed set of recently-used 512-byte sectors in a caller-owned cache,
-so repeated reads of the same blocks (filesystem metadata, a re-read page) skip
-the slow medium. Reads are served from the cache on a hit and fill it on a miss;
-writes are write-through. Eviction is least-recently-used. It is the cache layer
-between the filesystem/VFS and the media.
+The cache is a decorator: it wraps any other `ra8_io_blockdev_t` and keeps a
+fixed set of recently-used 512-byte sectors in a **caller-owned** buffer, so
+repeated reads of the same blocks -- filesystem metadata, a re-read page -- skip
+the slow medium. Reads are served on a hit and fill on a miss, writes are
+write-through, eviction is least-recently-used, and it allocates nothing. It is
+the layer that sits between the filesystem and the media.
 
-What it exercises:
-
-1. **Slow backend (Phase 1, #156):** a RAM block device over a 256 KiB in-SRAM
-   buffer (`ra8_io_blockdev_ram`).
-2. **Cache decorator (#160):** the backend is wrapped with
-   `ra8_io_blockdev_cache_init` over 32 cached sectors (16 KiB), all in
-   caller-owned SRAM (zero allocation).
-3. **Filesystem over the cache (Phase 3, #158):** the *cached* device is bridged
-   to `ra8_fs` (`ra8_io_blockdev_as_fs_backend`), formatted + mounted as FAT12, and
-   registered in the VFS as `"ram"` -- so every FAT access flows through the
-   cache.
-4. **Re-read workload:** a file is written, then read back eight times through
-   `"ram:/HELLO.TXT"` and byte-compared each pass. The first pass fills the
-   cache; the re-reads touch the same metadata and data sectors and are served
-   as hits.
-5. **Hit/miss observability:** `ra8_io_blockdev_cache_stats` reports the counters,
-   and the run requires a non-zero hit count.
-
-## Build
-
-```
-make            # -> build/ra8_io_cache_demo.elf
-```
-
-## Run in the emulator
-
-```
-RA8_EMU_WALL_S=12 tools/ra8_emulator/build/ra8_emulator build/ra8_io_cache_demo.elf
-```
-
-Expected console output (exact hit/miss counts depend on FAT geometry):
-
-```
-[uart] SCI8: ra8_io_cache_demo: boot
-[uart] SCI8: ra8_io_cache_demo: re-read x8 hits=H misses=M ram:/HELLO.TXT PASS
-```
-
-## Status
-
-`hw_pending`: the logic is proven in `ra8_emulator` (the RAM backend is pure
-memory, so no peripheral model is needed). The same code runs on silicon;
-promote to `hw_validated` after a bench run captures the PASS line over the
-J-Link UART.
+Here it wraps an in-SRAM RAM block device (#156), the *cached* device is bridged
+to `ra8_fs` (#158) and formatted, mounted and registered in the VFS, so every FAT
+access flows through the cache. A file is written and then read back several
+times through its VFS path and byte-compared each pass: the first pass fills the
+cache and the re-reads touch the same metadata and data sectors, so the run
+requires a non-zero hit count from `ra8_io_blockdev_cache_stats`. The exact
+hit and miss numbers depend on FAT geometry and are not the assertion.
