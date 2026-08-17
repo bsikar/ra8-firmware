@@ -2,8 +2,9 @@
  * @file ra8_test_file_posix.h
  * @brief POSIX adapters and transactional replacement for test fixtures
  * @details Extends the injected fixture core with raw-descriptor adapters and
- * same-directory publication. Include `ra8_test_file.h`; this split header is
- * also self-contained for strict standalone header builds.
+ * same-directory publication. Self-contained: includes `ra8_test_file.h`
+ * itself, so a caller that only needs the raw POSIX adapters may include
+ * this header directly instead of the core header.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -69,7 +70,12 @@ internal_ra8_test_file_split(const char* path, char* parent, char* leaf)
   if ((strcmp(leaf, ".") == 0) || (strcmp(leaf, "..") == 0)) {
     return false;
   }
-  const size_t parent_length = (slash == 0U) ? 1U : ((slash == 1U) ? 1U : slash - 1U);
+  size_t parent_length;
+  if (slash <= 1U) {
+    parent_length = 1U;
+  } else {
+    parent_length = slash - 1U;
+  }
   if (slash == 0U) {
     parent[0] = '.';
   } else {

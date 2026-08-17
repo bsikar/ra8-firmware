@@ -33,6 +33,7 @@
 #include "ra8_reflow.h"
 #include "ra8_sdmmc_spi.h"
 #include "support/ra8_test_file.h"
+#include "support/ra8_test_file_posix.h"
 #include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
