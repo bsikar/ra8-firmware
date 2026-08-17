@@ -136,6 +136,7 @@ RA8_INTERNAL static ra8_err_t internal_contract_space(void* ctx, fw_fs_space_t* 
  * @note Test-only helper.
  * @since 0.1.0
  */
+/* NOLINTNEXTLINE(readability-non-const-parameter) -- assigned to the non-const fw_if_fs_backend_t stream vtable slot. */
 RA8_INTERNAL static ra8_err_t
 internal_contract_read(void* ctx, void* file_state, uint8_t* dst, uint32_t cap, uint32_t* out_read)
 {
@@ -184,6 +185,7 @@ RA8_INTERNAL static ra8_err_t internal_contract_write(void*          ctx,
  * The facade initialized @p out before dispatch. @post @p out is unchanged by
  * this callback. @post No backend state is changed. @note Test-only helper.
  * @since 0.1.0 */
+/* NOLINTNEXTLINE(readability-non-const-parameter) -- assigned to the non-const fw_if_fs_backend_t tell vtable slot. */
 RA8_INTERNAL static ra8_err_t internal_contract_u64_error(void* ctx, void* state, uint64_t* out)
 {
   (void)ctx;
