@@ -15,13 +15,13 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 - Source files with at least one decision: **300**
 - Total compound decisions in scope: **1996**
-- Decisions at 100% MC/DC (`yes`): **1403**
-- Decisions partially covered (`partial`): **141**
+- Decisions at 100% MC/DC (`yes`): **1404**
+- Decisions partially covered (`partial`): **140**
 - Decisions fully uncovered (`no`): **452**
-- Coverage rate (yes / total): **70.29%**
-- Deactivated gap conditions (DO-178C 6.4.4.3): **95**
-- Reachable-condition denominator (total - deactivated): **1901**
-- **Reachable MC/DC rate**: **73.80%** -- the enforced ratchet threshold is recorded in `.github/mcdc-baseline.txt`.
+- Coverage rate (yes / total): **70.34%**
+- Deactivated gap conditions (DO-178C 6.4.4.3): **96**
+- Reachable-condition denominator (total - deactivated): **1900**
+- **Reachable MC/DC rate**: **73.89%** -- the enforced ratchet threshold is recorded in `.github/mcdc-baseline.txt`.
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -56,8 +56,6 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c | 2 | wifi_hal_settle | `return (ra8_wifi_status(wifi, &st) == k_ra8_ok) && st.associated;` | no |
 | examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c | 4 | wifi_hal_join_run | `if ((cfg == nullptr) \|\| (cfg->wifi == nullptr) \|\| (cfg->wifi_cfg == nullp...` | partial |
 | examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c | 2 | wifi_hal_join_run | `if ((out->ip_err != k_ra8_ok) \|\| !out->lease.bound) {` | partial |
-| libs/ra8_c6link/src/ra8_c6link_mdl.c | 4 | internal_mdl_chunk_semantics_valid | `const bool valid = (msg->base.n_unknown_fields == 0U) &&` | partial |
-| libs/ra8_c6link/src/ra8_c6link_mdl.c | 2 | internal_mdl_take_response | `if ((body->data.data == nullptr) \|\| (body->data.len == 0U)) {` | partial |
 | port/esp-hosted/src/ra8_esp_hosted_fmt.c | 2 | internal_put | `if ((cur == nullptr) \|\| (cur->out == nullptr)) {` | no |
 | port/esp-hosted/src/ra8_esp_hosted_gpio.c | 2 | internal_isr_trampoline | `if ((row == nullptr) \|\| (row->handler == nullptr)) {` | no |
 | port/esp-hosted/src/ra8_esp_hosted_rtos.c | 2 | internal_copy_name | `if ((dst == nullptr) \|\| (cap == 0U)) {` | no |
@@ -89,7 +87,9 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_tx_byte_pool_delete | `if ((need > pool_ptr->size) \|\| (cursor > (pool_ptr->size - need))) {` | partial |
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_tx_byte_release | `if ((pool_ptr == nullptr) \|\| (pool_ptr->magic != (uint32_t)k_ra8_esp_hosted...` | no |
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_tx_byte_release | `if ((pool_ptr == nullptr) \|\| (pool_ptr->magic != (uint32_t)k_ra8_esp_hosted...` | no |
-| ... | | | | *(438 more rows in CSV)* | |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_tx_byte_release | `if ((queue_ptr == nullptr) \|\| (queue_start == nullptr)) {` | no |
+| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_tx_byte_release | `if ((queue_ptr == nullptr) \|\| (queue_start == nullptr)) {` | no |
+| ... | | | | *(436 more rows in CSV)* | |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
@@ -101,6 +101,7 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_book/src/ra8_book_chunked_validate.c | 2 | internal_chunk_flat_read | `if ((offset > ctx->rd->inflated_total) \|\| ((uint64_t)le...` | Annotated deactivation: internal_chunk_flat_read range gu... |
 | libs/ra8_book/src/ra8_book_stream.c | 3 | internal_validate_raster | `if ((expect > (uint64_t)UINT32_MAX) \|\|` | Annotated deactivation: internal_validate_raster overflow... |
 | libs/ra8_box/src/ra8_box.c | 2 | internal_iter_live | `return (link != (int32_t)k_ra8_box_none) && (guard < count);` | Annotated deactivation: guard<count is an acyclic-tree cy... |
+| libs/ra8_c6link/src/ra8_c6link_mdl.c | 2 | internal_mdl_take_response | `if ((body->data.data == nullptr) \|\| (body->data.len == ...` | Annotated deactivation: internal_mdl_take_response empty-... |
 | libs/ra8_c6link/src/ra8_c6link_mdl.c | 3 | ra8_c6link_mdl_chunk_semantics_valid_test | `if ((packed == 0U) \|\| (packed > sizeof(link->mdl_reques...` | Annotated deactivation: ra8_c6link_mdl_start_request code... |
 | libs/ra8_c6link/src/ra8_c6link_mdl.c | 3 | ra8_c6link_mdl_chunk_semantics_valid_test | `if ((packed == 0U) \|\| (packed > sizeof(link->mdl_reques...` | Annotated deactivation: ra8_c6link_mdl_next codec self-co... |
 | libs/ra8_c6link/src/ra8_c6link_mdl.c | 3 | ra8_c6link_mdl_cancel | `if ((packed == 0U) \|\| (packed > sizeof(link->mdl_reques...` | Annotated deactivation: ra8_c6link_mdl_cancel codec self-... |
@@ -229,9 +230,9 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_esp_hosted_rtos | 15 | 9 | 3 | 3 |
 | mdl_state_decimal | 6 | 0 | 0 | 6 |
 | mdl_verify_rabook | 6 | 0 | 0 | 6 |
-| ra8_c6link_mdl | 24 | 19 | 2 | 3 |
 | ra8_psa_crypto_fake | 6 | 1 | 5 | 0 |
 | mdl_net_c6link | 5 | 0 | 1 | 4 |
+| ra8_c6link_mdl | 24 | 20 | 1 | 3 |
 | ra8_jof_produce | 19 | 15 | 1 | 3 |
 | ra8_jpeg_sw_decode | 16 | 12 | 4 | 0 |
 | ez_scene | 7 | 3 | 4 | 0 |
