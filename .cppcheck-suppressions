@@ -541,3 +541,25 @@ redundantAssignment:tools/media_dl/tests/test_media_dl_net.c
 # whole point of the fallback and are genuinely variable in a configured build;
 # this is cppcheck checking one configuration, not a defect.
 knownConditionTrueFalse:examples/ek_ra8d2/hw_pending/media_download/main.c
+
+# ---------------------------------------------------------------------------
+# Rule 22.10 on the media_dl hosted-test EINTR retry loops.
+# Rule 22.10 permits testing errno only when the last called function is an
+# errno-setting function. The loops test errno immediately after POSIX
+# read()/write(), which DO set errno, but cppcheck models only the C standard
+# library errno-setters, so the POSIX calls read as non-errno-setting and the
+# test is reported. The same pattern is long-established in
+# tools/exfat_mkimage. False positive of the checker model, not a deviation.
+misra-c2012-22.10:tools/media_dl/tests/test_media_dl_export_xml.c
+misra-c2012-22.10:tools/media_dl/tests/test_media_dl_state_metadata.c
+
+# ---------------------------------------------------------------------------
+# Rule 8.9 counting artefacts in the media_dl hosted tests (see the
+# ra8_wdt.c precedent above: misra.py counts function mentions, not uses).
+# - test_media_dl_export_xml.c: s_xml_opaque_head is referenced by the
+#   file-scope s_xml_pages signature table AND one function; the file-scope
+#   table reference is invisible to the single-function heuristic.
+# - test_media_dl_report_pack.c: s_faillog is used by two test functions and
+#   s_arena by five plus a file-scope sizeof; neither can move to block scope.
+misra-c2012-8.9:tools/media_dl/tests/test_media_dl_export_xml.c
+misra-c2012-8.9:tools/media_dl/tests/test_media_dl_report_pack.c

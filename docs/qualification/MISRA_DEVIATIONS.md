@@ -99,16 +99,16 @@ classes enumerated inside it, Code change for every hit outside them.
 
 | ID    | Rule            | Category | Class             | Status   | MAR        | Findings | Files |
 |-------|-----------------|----------|-------------------|----------|------------|---------:|------:|
-| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 13255 | 603 |
+| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 13258 | 604 |
 | D-002 | misra-c2012-17.3 | Mandatory | Tooling gap       | Active   | 2026-11-02 | 531 | 159 |
-| D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 | 1064 | 297 |
+| D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 | 1073 | 301 |
 | D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 | 434 | 126 |
-| D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 | 2101 | 382 |
+| D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 | 2102 | 382 |
 | D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 7 | 4 |
 | D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 | 91 | 41 |
 | D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 | 42 | 8 |
 | D-009 | misra-c2012-9.5  | Required  | Tooling gap       | Active   | 2026-11-02 | 8 | 5 |
-| D-010 | misra-c2012-11.5 | Advisory  | Project deviation | Active   | 2027-08-03 | 554 | 168 |
+| D-010 | misra-c2012-11.5 | Advisory  | Project deviation | Active   | 2027-08-03 | 556 | 169 |
 
 `MAR` = mandatory annual review date (or earlier review trigger when
 the underlying tooling assumption changes). `Findings` / `Files` are
@@ -129,8 +129,8 @@ embeds them in the dumps handed to `misra.py`, so a suppressed finding
 never reaches the results (verified on the pinned binary, 2026-08-15) --
 then `misra_ratchet.py` freezes that population in the baseline below.
 
-Baseline: 20936 findings across 2992 file/rule rows (Cppcheck 2.13.0).
-Residual (no deviation record): 56 rules, 2849 findings, 1199 rows.
+Baseline: 20950 findings across 2997 file/rule rows (Cppcheck 2.13.0).
+Residual (no deviation record): 56 rules, 2848 findings, 1198 rows.
 The residual population is implementation debt dispositioned **Code
 change** in aggregate: ratchet-held, burned down per `docs/MISRA.md`,
 never accepted.
@@ -143,7 +143,9 @@ family or ghost bullet = gate failure); justifications live with the rows.
 
 - `misra-c2012-7.4` (4 rows, 4 paths): esp-hosted tooling gap, plus the
   same char-array-initialiser gap on two media_dl host tests.
-- `misra-c2012-8.9` (1 row, 1 path): `ra8_wdt.c` parse artefact.
+- `misra-c2012-8.9` (3 rows, 3 paths): `ra8_wdt.c` parse artefact, plus the
+  same function-mention counting artefact on two media_dl host tests whose
+  objects are shared by a file-scope table or several functions.
 - `misra-c2012-11.1` (1 row, 1 path): `tools/ra8_emulator` block.
 - `misra-c2012-11.2` (1 row, 1 path): `tools/ra8_emulator` block.
 - `misra-c2012-11.3` (1 row, 1 path): `tools/ra8_emulator` block.
@@ -161,6 +163,9 @@ family or ghost bullet = gate failure); justifications live with the rows.
 - `misra-c2012-21.6` (2 rows, 2 paths): `tools/ra8_emulator` block, plus the
   host-CLI `<stdio.h>` in `mdl_export_epub_meta.c`, the split half of a file
   whose own row is accepted in the baseline.
+- `misra-c2012-22.10` (2 rows, 2 paths): POSIX `read()`/`write()` set
+  `errno`, but cppcheck models only the C standard errno-setters, so the
+  media_dl host tests' EINTR retry loops read as testing stale `errno`.
 - `misra-c2012-21.16` (1 row, 1 path): `char`-typed `memcmp` operand forced
   by `mdl_net_get_buf()`'s `char*` contract, compared only against zero.
 
@@ -470,7 +475,7 @@ and let the ratchet hold the count.
 - **Disposition**: Tooling gap (false positive).
 - **Scope**: the cppcheck audit baseline only (2.20 then; now the
   pinned version in the baseline header).
-- **Files affected**: 2101 findings across 382 files (machine-checked).
+- **Files affected**: 2102 findings across 382 files (machine-checked).
   The 2026-05-02 audit recorded 196; the population scaled with the
   tree -- the HAL build-out applies `[[nodiscard]]` to every fallible
   public prototype, `tools/` entered audit scope on 2026-08-13, and
