@@ -14,7 +14,8 @@
 # files it should) AND the negative (a file that must NOT land in a bucket does
 # not), and fail loudly on either.
 #
-# Functions here: selftest_routing, selftest_scope, run_selftest
+# Functions here: selftest_routing, selftest_scope, selftest_arm_includes,
+# selftest_gcc_constant_macros, run_selftest
 
 # ---------------------------------------------------------------------------
 # Routing: each path shape must reach its own pass. The firmware roots are
@@ -259,6 +260,48 @@ selftest_arm_includes() {
 }
 
 # ---------------------------------------------------------------------------
+# gcc_integer_constant_macros must FAIL, never emit a partial success, when the
+# compiler cannot report its __INTn_C / __UINTn_C builders. Both directions:
+#
+#   * negative -- a compiler that exists but defines nothing (fake with
+#     `true`), and a compiler that is not on PATH, must both make it return
+#     non-zero rather than an empty list that reads as success;
+#   * positive -- a real cortex-m85-capable compiler must yield the full set,
+#     and it must include `__UINT64_C`, the width whose absence aborted the
+#     parse of every TU reaching ra8_c6link_mdl_transfer.h.
+#
+# The positive half is skipped (not failed) without the pinned toolchain, in
+# step with selftest_arm_includes above.
+#
+# Prints the number of failures.
+# ---------------------------------------------------------------------------
+selftest_gcc_constant_macros() {
+  local failures=0
+
+  if ARM_CC=true gcc_integer_constant_macros >/dev/null 2>&1; then
+    print_error "selftest: gcc_integer_constant_macros succeeded for a compiler defining none"
+    failures=$((failures + 1))
+  fi
+  if ARM_CC="ra8-no-such-cc-$$" gcc_integer_constant_macros >/dev/null 2>&1; then
+    print_error "selftest: gcc_integer_constant_macros succeeded for a missing compiler"
+    failures=$((failures + 1))
+  fi
+
+  if arm-none-eabi-gcc -mcpu=cortex-m85 -E - </dev/null >/dev/null 2>&1; then
+    local out=""
+    if ! out="$(gcc_integer_constant_macros)"; then
+      print_error "selftest: gcc_integer_constant_macros failed for a working cortex-m85 compiler"
+      failures=$((failures + 1))
+    elif ! grep -qF -- '-D__UINT64_C(c)=' <<<"$out"; then
+      print_error "selftest: gcc_integer_constant_macros dropped __UINT64_C"
+      failures=$((failures + 1))
+    fi
+  fi
+
+  printf '%s\n' "$failures"
+}
+
+# ---------------------------------------------------------------------------
 # --selftest: prove the scope and the routing still work, in BOTH directions.
 # ---------------------------------------------------------------------------
 run_selftest() {
@@ -266,6 +309,7 @@ run_selftest() {
   failures=$((failures + $(selftest_routing)))
   failures=$((failures + $(selftest_scope)))
   failures=$((failures + $(selftest_arm_includes)))
+  failures=$((failures + $(selftest_gcc_constant_macros)))
 
   if [[ "$failures" -ne 0 ]]; then
     print_error "clang_tidy.sh selftest FAILED with $failures problem(s)."

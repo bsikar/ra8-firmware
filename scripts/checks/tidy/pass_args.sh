@@ -14,7 +14,8 @@
 # WHICH pass a file lands in, these decide HOW that pass parses it.
 #
 # Functions here: db_pass_args, cxx_pass_args, objc_pass_args,
-# arm_system_includes, firmware_pass_args, tools_pass_args
+# arm_system_includes, gcc_integer_constant_macros, firmware_pass_args,
+# tools_pass_args
 
 # ---------------------------------------------------------------------------
 # Arguments shared by every pass that resolves its compile command from the
@@ -200,6 +201,62 @@ require_arm_system_includes() {
 }
 
 # ---------------------------------------------------------------------------
+# The ten `__INTn_C` / `__UINTn_C` constant builders GCC predefines and clang
+# does not.
+#
+# The firmware lane really is compiled `-ffreestanding`, so `__STDC_HOSTED__`
+# is 0 and the toolchain's <stdint.h> hands the job to GCC's own
+# `stdint-gcc.h`. That header spells every constant macro as
+# `#define UINT64_C(c) __UINT64_C(c)` and relies on a GCC predefine; clang
+# predefines only `__UINT64_C_SUFFIX__`. So the first `UINT64_C()` in a
+# firmware TU is `use of undeclared identifier '__UINT64_C'` -- a
+# clang-diagnostic-error that ABORTS THE PARSE, leaving that whole translation
+# unit unanalysed while the run still reports a finding count. That is the #369
+# shape, and `libs/ra8_c6link/inc/ra8_c6link_mdl_transfer.h`, reached from
+# three apps and two libraries, sat in exactly that state.
+#
+# ASKED FOR, not restated: the bodies come from the cross-compiler's own `-dM`
+# dump, so a toolchain bump moves them and no suffix is guessed here. Below the
+# floor this returns non-zero rather than emitting a partial set -- a
+# half-answered query would silently restore the parse abort for whichever
+# width it dropped, which is the failure this exists to remove.
+# ---------------------------------------------------------------------------
+gcc_integer_constant_macros() {
+  local cc="${ARM_CC:-arm-none-eabi-gcc}"
+  command -v "$cc" &>/dev/null || return 1
+  local -a defs=()
+  local def
+  while IFS= read -r def; do
+    defs+=("--extra-arg=-D$def")
+  done < <("$cc" -mcpu=cortex-m85 -mthumb -dM -E -x c /dev/null 2>/dev/null |
+    sed -nE 's/^#define (__U?INT(8|16|32|64|MAX)_C\(c\)) /\1=/p')
+  # Floor: signed and unsigned across 8, 16, 32, 64 and MAX -- ten rows.
+  [[ "${#defs[@]}" -eq 10 ]] || return 1
+  printf '%s\n' "${defs[@]}"
+}
+
+# ---------------------------------------------------------------------------
+# The loud guard for gcc_integer_constant_macros, called synchronously by the
+# firmware pass for the same reason require_arm_system_includes is: the list is
+# otherwise consumed through `mapfile < <(...)`, which discards the exit code,
+# so a compiler that answered nothing would hand back an empty set that reads
+# as success and every UINT64_C-bearing TU would go back to being unanalysed.
+# ---------------------------------------------------------------------------
+require_gcc_integer_constant_macros() {
+  gcc_integer_constant_macros >/dev/null && return 0
+  local cc="${ARM_CC:-arm-none-eabi-gcc}"
+  print_error "gcc_integer_constant_macros: the cross-compiler did not report its"
+  print_error "  __INTn_C / __UINTn_C constant builders."
+  print_error "  compiler: $cc"
+  print_error "  clang does not predefine them, and -ffreestanding selects GCC's"
+  print_error "  stdint-gcc.h, which needs them -- so without this every firmware TU"
+  print_error "  using UINT64_C() and friends fails to PARSE and is left unanalysed."
+  print_error "  Put the pinned 13.3 toolchain on PATH (use_pinned_arm_toolchain, or"
+  print_error "  point RA8_ARM_TOOLCHAIN_BIN / ARM_CC at it)."
+  exit "$RC_INFRA"
+}
+
+# ---------------------------------------------------------------------------
 # Arguments for the firmware (cross-compile) pass, on top of CROSS_DB_DIR.
 #
 # Beyond the toolchain's own system includes above, this adds
@@ -241,6 +298,7 @@ firmware_pass_args() {
     "--extra-arg=-Wno-unknown-warning-option" \
     "--extra-arg=-ffreestanding"
   arm_system_includes
+  gcc_integer_constant_macros
 }
 
 # ---------------------------------------------------------------------------

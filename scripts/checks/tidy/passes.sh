@@ -143,6 +143,9 @@ run_pass_firmware() {
   # empty include list would otherwise sail through and turn ~100 firmware TUs
   # into clang-diagnostic-error.
   require_arm_system_includes
+  # ...and the constant builders clang lacks, for the same reason: an empty
+  # set here silently un-analyses every TU that spells UINT64_C().
+  require_gcc_integer_constant_macros
   local firmware_arg=()
   mapfile -t firmware_arg < <(firmware_pass_args)
   invoke_clang_tidy "$1" "firmware (cross)" "$TIDY_LIST_DIR/firmware.files" \

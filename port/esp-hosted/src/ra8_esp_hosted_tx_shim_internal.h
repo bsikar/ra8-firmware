@@ -43,6 +43,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
+
 #ifdef RA8_ESP_HOSTED_TX_SHIM_IMPL
 /**
  * @def RA8_ESP_HOSTED_TX_SHIM_STORAGE
@@ -897,6 +899,7 @@ internal_tx_queue_receive(TX_QUEUE* queue_ptr, void* destination_ptr, ULONG wait
  * call sites retain their required ABI spellings.
  * @{
  */
+/* NOLINTBEGIN(readability-identifier-naming) -- vendor ThreadX-fixed spellings. */
 /** @def tx_byte_allocate @brief Route `tx_byte_allocate` to ::internal_tx_byte_allocate in host tests. */
 #define tx_byte_allocate internal_tx_byte_allocate
 /** @def tx_byte_pool_create @brief Route `tx_byte_pool_create` to ::internal_tx_byte_pool_create in host tests. */
@@ -917,4 +920,5 @@ internal_tx_queue_receive(TX_QUEUE* queue_ptr, void* destination_ptr, ULONG wait
 #define tx_queue_receive internal_tx_queue_receive
 /** @def tx_queue_send @brief Route `tx_queue_send` to ::internal_tx_queue_send in host tests. */
 #define tx_queue_send internal_tx_queue_send
+/* NOLINTEND(readability-identifier-naming) */
 /** @} */

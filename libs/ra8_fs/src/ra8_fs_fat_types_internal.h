@@ -24,6 +24,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_fs.h"
 
 /* ===========================================================================
@@ -823,7 +824,7 @@ typedef enum : uint8_t {
 } ra8_fs_sec_role_t;
 
 /**
- * @var priv_scratch
+ * @var g_fs_scratch
  * @brief Single max-sector scratch buffer reused across all I/O.
  * @details One module-wide bounce buffer for every BPB, FAT, directory, and
  *          data-sector access. Sized to ::k_ra8_fs_sector_max so a 4Kn medium
@@ -833,4 +834,4 @@ typedef enum : uint8_t {
  * @warning Do not access concurrently; callers serialise all FS operations.
  * @since 0.1.0
  */
-RA8_PRIV extern uint8_t priv_scratch[k_ra8_fs_sector_max];
+RA8_PRIV extern uint8_t g_fs_scratch[k_ra8_fs_sector_max];

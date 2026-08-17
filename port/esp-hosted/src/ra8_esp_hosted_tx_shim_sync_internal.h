@@ -565,6 +565,7 @@ RA8_INTERNAL static inline ULONG internal_tx_time_get(void)
  * call sites retain their required ABI spellings.
  * @{
  */
+/* NOLINTBEGIN(readability-identifier-naming) -- vendor ThreadX-fixed spellings. */
 /** @def tx_mutex_create @brief Route `tx_mutex_create` to ::internal_tx_mutex_create in host tests. */
 #define tx_mutex_create internal_tx_mutex_create
 /** @def tx_mutex_delete @brief Route `tx_mutex_delete` to ::internal_tx_mutex_delete in host tests. */
@@ -599,4 +600,5 @@ RA8_INTERNAL static inline ULONG internal_tx_time_get(void)
 #define tx_timer_deactivate internal_tx_timer_deactivate
 /** @def tx_timer_delete @brief Route `tx_timer_delete` to ::internal_tx_timer_delete in host tests. */
 #define tx_timer_delete internal_tx_timer_delete
+/* NOLINTEND(readability-identifier-naming) */
 /** @} */
