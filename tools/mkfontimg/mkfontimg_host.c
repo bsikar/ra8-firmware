@@ -654,6 +654,101 @@ internal_compare(int input_fd, const host_input_identity_t* identity, ra8_fs_fil
   return ok;
 }
 
+/**
+ * @brief Open the host input and stream it into a fresh card file.
+ * @details Opens and size-validates the host input, then streams every byte
+ *          into a newly created card file, closing both handles regardless
+ *          of outcome.
+ * @param[in,out] mount Mounted destination card filesystem.
+ * @param[in] input_path Host source path.
+ * @param[in] card_name Card basename to create.
+ * @param[in] minimum_bytes Smallest accepted host input size.
+ * @param[in] maximum_bytes Largest accepted host input size.
+ * @param[out] out_identity Receives the host input's observed identity.
+ * @return Whether the complete stream write succeeded.
+ * @retval true @p out_identity is populated and the card file is written.
+ * @retval false Open, size validation, streaming, or close failed.
+ * @pre All strings are valid and @p mount is mounted.
+ * @post Every handle this call opened is closed regardless of outcome.
+ * @note Not thread-safe through the shared `ra8_fs` card handle.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mkfontimg_write(ra8_fs_mount_t*        mount,
+                                                  const char*            input_path,
+                                                  const char*            card_name,
+                                                  uint64_t               minimum_bytes,
+                                                  uint64_t               maximum_bytes,
+                                                  host_input_identity_t* out_identity)
+{
+  int input_fd = -1;
+  if (!internal_input_open(input_path, minimum_bytes, maximum_bytes, &input_fd, out_identity)) {
+    return false;
+  }
+  ra8_fs_file_t* card = nullptr;
+  bool           ok   = ra8_fs_open(mount, card_name, k_ra8_fs_mode_write, &card) == k_ra8_ok;
+  if (ok) {
+    ok = internal_stream(input_fd, out_identity, card);
+    if (ra8_fs_close(card) != k_ra8_ok) {
+      ok = false;
+    }
+  }
+  if (close(input_fd) != 0) {
+    ok = false;
+  }
+  return ok;
+}
+
+/**
+ * @brief Reopen the host input and card file and verify byte-for-byte identity.
+ * @details Reopens the host input, confirms it is unchanged since the write
+ *          pass, then opens the card copy, confirms its size, and compares
+ *          every byte.
+ * @param[in,out] mount Mounted card filesystem holding the written copy.
+ * @param[in] input_path Host source path.
+ * @param[in] card_name Card basename written by ::internal_mkfontimg_write.
+ * @param[in] minimum_bytes Smallest accepted host input size.
+ * @param[in] maximum_bytes Largest accepted host input size.
+ * @param[in] identity Identity observed during the write pass.
+ * @return Whether the reopened input and card contents match exactly.
+ * @retval true Host and card contents match and the host input is unchanged.
+ * @retval false Reopen, identity, open, size, or byte comparison failed.
+ * @pre @p identity was populated by a prior ::internal_mkfontimg_write call.
+ * @post Every handle this call opened is closed regardless of outcome.
+ * @note Not thread-safe through the shared `ra8_fs` card handle.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mkfontimg_verify(ra8_fs_mount_t*              mount,
+                                                   const char*                  input_path,
+                                                   const char*                  card_name,
+                                                   uint64_t                     minimum_bytes,
+                                                   uint64_t                     maximum_bytes,
+                                                   const host_input_identity_t* identity)
+{
+  int                   input_fd = -1;
+  host_input_identity_t again;
+  if (!internal_input_open(input_path, minimum_bytes, maximum_bytes, &input_fd, &again) ||
+      !internal_identity_equal(identity, &again)) {
+    if (input_fd >= 0) {
+      (void)close(input_fd);
+    }
+    return false;
+  }
+  uint64_t       card_size = 0U;
+  ra8_fs_file_t* card      = nullptr;
+  bool           ok = ra8_fs_open(mount, card_name, k_ra8_fs_mode_read, &card) == k_ra8_ok &&
+                      ra8_fs_size(card, &card_size) == k_ra8_ok && card_size == identity->size;
+  if (ok) {
+    ok = internal_compare(input_fd, identity, card);
+  }
+  if (card != nullptr && ra8_fs_close(card) != k_ra8_ok) {
+    ok = false;
+  }
+  if (close(input_fd) != 0) {
+    ok = false;
+  }
+  return ok;
+}
+
 RA8_PRIV bool priv_mkfontimg_host_copy(mkfontimg_host_t* host,
                                        ra8_fs_mount_t*   mount,
                                        const char*       input_path,
@@ -662,47 +757,21 @@ RA8_PRIV bool priv_mkfontimg_host_copy(mkfontimg_host_t* host,
                                        uint64_t          maximum_bytes,
                                        uint64_t*         out_bytes)
 {
-  int                   input_fd = -1;
   host_input_identity_t identity;
-  if (!internal_input_open(input_path, minimum_bytes, maximum_bytes, &input_fd, &identity)) {
+  if (!internal_mkfontimg_write(mount,
+                                input_path,
+                                card_name,
+                                minimum_bytes,
+                                maximum_bytes,
+                                &identity)) {
     return false;
   }
-  ra8_fs_file_t* card = nullptr;
-  bool           ok   = ra8_fs_open(mount, card_name, k_ra8_fs_mode_write, &card) == k_ra8_ok;
-  if (ok) {
-    ok = internal_stream(input_fd, &identity, card);
-    if (ra8_fs_close(card) != k_ra8_ok) {
-      ok = false;
-    }
-  }
-  if (close(input_fd) != 0) {
-    ok = false;
-  }
-  if (!ok) {
-    return false;
-  }
-
-  host_input_identity_t again;
-  if (!internal_input_open(input_path, minimum_bytes, maximum_bytes, &input_fd, &again) ||
-      !internal_identity_equal(&identity, &again)) {
-    if (input_fd >= 0) {
-      (void)close(input_fd);
-    }
-    return false;
-  }
-  uint64_t card_size = 0U;
-  card               = nullptr;
-  ok                 = ra8_fs_open(mount, card_name, k_ra8_fs_mode_read, &card) == k_ra8_ok &&
-                       ra8_fs_size(card, &card_size) == k_ra8_ok && card_size == identity.size;
-  if (ok) {
-    ok = internal_compare(input_fd, &identity, card);
-  }
-  if (card != nullptr && ra8_fs_close(card) != k_ra8_ok) {
-    ok = false;
-  }
-  if (close(input_fd) != 0) {
-    ok = false;
-  }
+  bool ok = internal_mkfontimg_verify(mount,
+                                      input_path,
+                                      card_name,
+                                      minimum_bytes,
+                                      maximum_bytes,
+                                      &identity);
   if (host->disk.io_failed) {
     ok = false;
   }
