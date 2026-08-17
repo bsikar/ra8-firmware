@@ -460,9 +460,9 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_resolve_not_modified(mdl_fetch_
   if ((rc == k_ra8_ok) && (tx->resp.status != (long)k_http_not_modified)) {
     return k_ra8_ok;
   }
-  cleanup = priv_mdl_fetch_body_abort(&tx->body);
-  const ra8_err_t failure =
-    (cleanup != k_ra8_ok) ? cleanup : ((rc != k_ra8_ok) ? rc : k_ra8_err_validation_failed);
+  cleanup                          = priv_mdl_fetch_body_abort(&tx->body);
+  const ra8_err_t failure_fallback = (rc != k_ra8_ok) ? rc : k_ra8_err_validation_failed;
+  const ra8_err_t failure          = (cleanup != k_ra8_ok) ? cleanup : failure_fallback;
   priv_mdl_fetch_record_fail(ctx, url, tx->resp.status, failure);
   return failure;
 }
@@ -498,11 +498,11 @@ RA8_INTERNAL static ra8_err_t internal_mdl_fetch_publish_page(mdl_fetch_ctx_t*  
     priv_mdl_fetch_record_fail(ctx, url, tx->resp.status, error);
     return error;
   }
-  const char* etag =
-    (tx->resp.etag[0] != '\0') ? tx->resp.etag : ((tx->held != nullptr) ? tx->held->etag : "");
-  const char* modified = (tx->resp.last_modified[0] != '\0')
-                           ? tx->resp.last_modified
-                           : ((tx->held != nullptr) ? tx->held->last_modified : "");
+  const char* held_etag     = (tx->held != nullptr) ? tx->held->etag : "";
+  const char* etag          = (tx->resp.etag[0] != '\0') ? tx->resp.etag : held_etag;
+  const char* held_modified = (tx->held != nullptr) ? tx->held->last_modified : "";
+  const char* modified =
+    (tx->resp.last_modified[0] != '\0') ? tx->resp.last_modified : held_modified;
   if ((ctx->state->page_rec_count >= (uint32_t)k_mdl_max_page_recs) && (tx->recorded == nullptr)) {
     error = priv_mdl_fetch_body_abort(&tx->body);
     error = (error == k_ra8_ok) ? k_ra8_err_no_mem : error;
