@@ -498,6 +498,73 @@ internal_cam_bare_state(uint32_t frame_bytes_max, ra8_ceu_capture_format_t forma
   return state;
 }
 
+/** @brief Check the null-argument guards and every zero-valued bound. @details Binds the source once so the frame_bytes_max rejection has a live handle to tear down, then walks width/height/poll_interval_ms/poll_attempts. @param[in,out] source Source handle rebuilt by each call. @param[in,out] state Backend state rebuilt by each call. @param[in,out] cfg Configuration rebuilt from internal_cam_make_cfg before each vector. @pre The fake register window is available. @pre No CEU capture is in flight. @post No rejected configuration leaves the source handle bound. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+RA8_INTERNAL static void
+internal_test_cam_init_rejects_null_and_bounds(ra8_camera_source_t*           source,
+                                               ra8_camera_source_ceu_state_t* state,
+                                               ra8_camera_source_ceu_cfg_t*   cfg)
+{
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_camera_source_ceu_init_cov(nullptr, state, cfg));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_camera_source_ceu_init_cov(source, nullptr, cfg));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_camera_source_ceu_init_cov(source, state, nullptr));
+
+  /* Bind first, so the next rejection has a live handle to tear down. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_camera_source_ceu_init_cov(source, state, cfg));
+  TEST_ASSERT_NOT_NULL(source->iface);
+  *cfg                        = internal_cam_make_cfg();
+  cfg->output.frame_bytes_max = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(source, state, cfg));
+  TEST_ASSERT_NULL(source->iface);
+  TEST_ASSERT(!state->initialized);
+
+  *cfg              = internal_cam_make_cfg();
+  cfg->output.width = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(source, state, cfg));
+
+  *cfg               = internal_cam_make_cfg();
+  cfg->output.height = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(source, state, cfg));
+
+  *cfg                  = internal_cam_make_cfg();
+  cfg->poll_interval_ms = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(source, state, cfg));
+
+  *cfg               = internal_cam_make_cfg();
+  cfg->poll_attempts = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(source, state, cfg));
+}
+
+/** @brief Check both halves of the format-pairing rule and the JPEG-only rules. @details Supplies MC/DC vectors 2 and 3 of the format-pairing decision now enclosed by internal_ceu_cfg_valid, then the row-stride and image-area JPEG-only rejections. @param[in,out] source Source handle rebuilt by each call. @param[in,out] state Backend state rebuilt by each call. @param[in,out] cfg Configuration rebuilt from internal_cam_make_cfg before each vector. @pre The fake register window is available. @pre No CEU capture is in flight. @post No rejected configuration leaves the source handle bound. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+RA8_INTERNAL static void
+internal_test_cam_init_rejects_format_pairing(ra8_camera_source_t*           source,
+                                              ra8_camera_source_ceu_state_t* state,
+                                              ra8_camera_source_ceu_cfg_t*   cfg)
+{
+  /* MC/DC vector 2: data-enable capture paired with an uncompressed output. */
+  *cfg                     = internal_cam_make_cfg();
+  cfg->ceu.capture_format  = k_ra8_ceu_fmt_data_enable;
+  cfg->ceu.image_area_size = (uint32_t)k_cam_frame_bytes;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(source, state, cfg));
+
+  /* MC/DC vector 3: JPEG output paired with a fixed-frame capture format. */
+  *cfg               = internal_cam_make_cfg();
+  cfg->output.format = k_ra8_camera_format_jpeg;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(source, state, cfg));
+
+  /* JPEG is a byte stream: a non-zero row stride is a contradiction. */
+  *cfg                        = internal_cam_make_cfg();
+  cfg->output.format          = k_ra8_camera_format_jpeg;
+  cfg->output.frame_bytes_max = (uint32_t)k_cam_jpeg_bytes;
+  cfg->ceu.capture_format     = k_ra8_ceu_fmt_data_enable;
+  cfg->ceu.image_area_size    = (uint32_t)k_cam_jpeg_bytes;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(source, state, cfg));
+
+  /* The CEU firewall bound must equal the advertised capture bound. */
+  cfg->output.stride_bytes = 0U;
+  cfg->ceu.image_area_size = (uint32_t)k_cam_jpeg_bytes + 1U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(source, state, cfg));
+}
+
 /**
  * @brief Reject every configuration the CEU camera source refuses to bind.
  *
@@ -510,7 +577,7 @@ internal_cam_bare_state(uint32_t frame_bytes_max, ra8_ceu_capture_format_t forma
  * @par MC/DC:
  * Decision: `(cfg->ceu.capture_format == k_ra8_ceu_fmt_data_enable) !=
  *            (cfg->output.format == k_ra8_camera_format_jpeg)`
- * (2 conditions, libs/ra8_camera/src/ra8_camera_source_ceu.c@ra8_camera_source_ceu_init)
+ * (2 conditions, libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_cfg_valid)
  * - Vector 1: image_capture, uyvy422 -> C1=F, C2=F -> decision F -> accepted
  *   (test_cam_init_binds_and_reports_info supplies this vector).
  * - Vector 2: data_enable, uyvy422   -> C1=T, C2=F -> decision T -> invalid_arg.
@@ -533,58 +600,8 @@ static void test_cam_init_rejects_invalid_config(void)
   ra8_camera_source_ceu_state_t state  = {};
   ra8_camera_source_ceu_cfg_t   cfg    = internal_cam_make_cfg();
 
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_camera_source_ceu_init_cov(nullptr, &state, &cfg));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_camera_source_ceu_init_cov(&source, nullptr, &cfg));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_camera_source_ceu_init_cov(&source, &state, nullptr));
-
-  /* Bind first, so the next rejection has a live handle to tear down. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_camera_source_ceu_init_cov(&source, &state, &cfg));
-  TEST_ASSERT_NOT_NULL(source.iface);
-  cfg                        = internal_cam_make_cfg();
-  cfg.output.frame_bytes_max = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(&source, &state, &cfg));
-  TEST_ASSERT_NULL(source.iface);
-  TEST_ASSERT(!state.initialized);
-
-  cfg              = internal_cam_make_cfg();
-  cfg.output.width = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(&source, &state, &cfg));
-
-  cfg               = internal_cam_make_cfg();
-  cfg.output.height = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(&source, &state, &cfg));
-
-  cfg                  = internal_cam_make_cfg();
-  cfg.poll_interval_ms = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(&source, &state, &cfg));
-
-  cfg               = internal_cam_make_cfg();
-  cfg.poll_attempts = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(&source, &state, &cfg));
-
-  /* MC/DC vector 2: data-enable capture paired with an uncompressed output. */
-  cfg                     = internal_cam_make_cfg();
-  cfg.ceu.capture_format  = k_ra8_ceu_fmt_data_enable;
-  cfg.ceu.image_area_size = (uint32_t)k_cam_frame_bytes;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(&source, &state, &cfg));
-
-  /* MC/DC vector 3: JPEG output paired with a fixed-frame capture format. */
-  cfg               = internal_cam_make_cfg();
-  cfg.output.format = k_ra8_camera_format_jpeg;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(&source, &state, &cfg));
-
-  /* JPEG is a byte stream: a non-zero row stride is a contradiction. */
-  cfg                        = internal_cam_make_cfg();
-  cfg.output.format          = k_ra8_camera_format_jpeg;
-  cfg.output.frame_bytes_max = (uint32_t)k_cam_jpeg_bytes;
-  cfg.ceu.capture_format     = k_ra8_ceu_fmt_data_enable;
-  cfg.ceu.image_area_size    = (uint32_t)k_cam_jpeg_bytes;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(&source, &state, &cfg));
-
-  /* The CEU firewall bound must equal the advertised capture bound. */
-  cfg.output.stride_bytes = 0U;
-  cfg.ceu.image_area_size = (uint32_t)k_cam_jpeg_bytes + 1U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_ceu_init_cov(&source, &state, &cfg));
+  internal_test_cam_init_rejects_null_and_bounds(&source, &state, &cfg);
+  internal_test_cam_init_rejects_format_pairing(&source, &state, &cfg);
 
   /* A CEU that never reports itself idle is forwarded, not swallowed. */
   cfg = internal_cam_make_cfg();
@@ -729,7 +746,7 @@ static void test_cam_capture_busy_and_timeout(void)
  * @par MC/DC:
  * Decision: `if (state->capture_format == k_ra8_ceu_fmt_data_enable)` guarding
  * `if (status.data_size != 0U)`
- * (libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_wait_for_frame)
+ * (libs/ra8_camera/src/ra8_camera_source_ceu.c@internal_ceu_frame_bytes)
  * - Vector 1: image_capture, CDSSR=200 -> outer F -> bound reported (200 ignored).
  * - Vector 2: data_enable, CDSSR=200   -> outer T, inner T -> CDSSR reported.
  * - Vector 3: data_enable, CDSSR=0     -> outer T, inner F -> bound reported.
@@ -870,6 +887,46 @@ static void test_cam_capture_frame_and_byte_count_rules(void)
   TEST_END("camera ceu: completed frame and byte-count rules");
 }
 
+/** @brief Check the production source's capture, diagnostic, and unbound legs. @details Exercises every capture rejection, the diagnostic accessor's guards, and the not-initialized legs left over once the caller's handle is unbound or the backend state is cleared. @param[in,out] source Bound production source under test. @param[in,out] state Bound production backend state under test. @pre @p source and @p state were bound by a successful ra8_camera_source_ceu_init. @pre No CEU capture is in flight. @post No rejected capture publishes a frame view. @post Every not-initialized leg is exercised. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+RA8_INTERNAL static void
+internal_test_cam_source_production_capture(ra8_camera_source_t*           source,
+                                            ra8_camera_source_ceu_state_t* state)
+{
+  uint8_t* const            data  = (uint8_t*)(uintptr_t)k_test_cov_buf_a;
+  ra8_camera_frame_t        frame = {};
+  const ra8_camera_buffer_t small = {.data = data, .capacity = (uint32_t)k_cam_frame_bytes - 1U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_camera_source_capture(source, &small, &frame));
+  const ra8_camera_buffer_t skewed = {.data     = (uint8_t*)(uintptr_t)k_test_cov_unaligned,
+                                      .capacity = (uint32_t)k_cam_frame_bytes};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_capture(source, &skewed, &frame));
+  const ra8_camera_buffer_t empty = {.data = nullptr, .capacity = (uint32_t)k_cam_frame_bytes};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, source->iface->capture(source->ctx, &empty, &frame));
+
+  const ra8_camera_buffer_t buffer = {.data = data, .capacity = (uint32_t)k_cam_frame_bytes};
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_camera_source_capture(source, &buffer, &frame));
+  TEST_ASSERT_EQ(k_test_cov_buf_a, *ra8_ceu_reg32(k_ra8_ceu_off_cdayr));
+  TEST_ASSERT_NULL(frame.data);
+
+  uint32_t events = (uint32_t)k_cam_poison_events;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_camera_source_ceu_get_last_events(nullptr, &events));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_camera_source_ceu_get_last_events(state, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_camera_source_ceu_get_last_events(state, &events));
+  TEST_ASSERT_EQ(0U, events);
+
+  ra8_camera_source_t      unbound = *source;
+  ra8_camera_source_info_t info    = {};
+  unbound.ctx                      = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_camera_source_get_info(&unbound, &info));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_camera_source_capture(&unbound, &buffer, &frame));
+
+  state->initialized = false;
+  events             = (uint32_t)k_cam_poison_events;
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_camera_source_ceu_get_last_events(state, &events));
+  TEST_ASSERT_EQ(0U, events);
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_camera_source_get_info(source, &info));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_camera_source_capture(source, &buffer, &frame));
+}
+
 /**
  * @brief Drive the production copy of the CEU source linked through ra8_core_hal. @details Repeats the contract against the unrenamed symbols so the shipped translation unit -- not only the white-box copy above -- executes its guards, its metadata query, its storage rejections, the bounded poll it runs against the real CETCR, and its diagnostic accessor. @pre The fake register window is available. @pre No CEU capture is in flight. @post The production copy reports the same specific error codes as the copy. @post The bounded poll expiry leaves CDAYR holding the armed address. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 static void test_cam_source_production_instance(void)
@@ -893,38 +950,7 @@ static void test_cam_source_production_instance(void)
   TEST_ASSERT_EQ(k_cam_frame_bytes, info.frame_bytes_max);
   TEST_ASSERT_EQ(k_ra8_camera_format_uyvy422, info.format);
 
-  uint8_t* const            data  = (uint8_t*)(uintptr_t)k_test_cov_buf_a;
-  ra8_camera_frame_t        frame = {};
-  const ra8_camera_buffer_t small = {.data = data, .capacity = (uint32_t)k_cam_frame_bytes - 1U};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_camera_source_capture(&source, &small, &frame));
-  const ra8_camera_buffer_t skewed = {.data     = (uint8_t*)(uintptr_t)k_test_cov_unaligned,
-                                      .capacity = (uint32_t)k_cam_frame_bytes};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_camera_source_capture(&source, &skewed, &frame));
-  const ra8_camera_buffer_t empty = {.data = nullptr, .capacity = (uint32_t)k_cam_frame_bytes};
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, source.iface->capture(source.ctx, &empty, &frame));
-
-  const ra8_camera_buffer_t buffer = {.data = data, .capacity = (uint32_t)k_cam_frame_bytes};
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_camera_source_capture(&source, &buffer, &frame));
-  TEST_ASSERT_EQ(k_test_cov_buf_a, *ra8_ceu_reg32(k_ra8_ceu_off_cdayr));
-  TEST_ASSERT_NULL(frame.data);
-
-  uint32_t events = (uint32_t)k_cam_poison_events;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_camera_source_ceu_get_last_events(nullptr, &events));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_camera_source_ceu_get_last_events(&state, nullptr));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_camera_source_ceu_get_last_events(&state, &events));
-  TEST_ASSERT_EQ(0U, events);
-
-  ra8_camera_source_t unbound = source;
-  unbound.ctx                 = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_camera_source_get_info(&unbound, &info));
-  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_camera_source_capture(&unbound, &buffer, &frame));
-
-  state.initialized = false;
-  events            = (uint32_t)k_cam_poison_events;
-  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_camera_source_ceu_get_last_events(&state, &events));
-  TEST_ASSERT_EQ(0U, events);
-  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_camera_source_get_info(&source, &info));
-  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_camera_source_capture(&source, &buffer, &frame));
+  internal_test_cam_source_production_capture(&source, &state);
   TEST_END("camera ceu: production source instance");
 }
 
