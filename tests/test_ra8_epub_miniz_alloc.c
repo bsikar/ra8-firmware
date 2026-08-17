@@ -47,6 +47,37 @@ typedef struct {
   ra8_epub_miniz_workspace_t workspace; /**< Aligned backing bytes. */
 } priv_fixture_t;
 
+/**
+ * @brief Report whether an arena descriptor still holds its saved fields.
+ * @details Member-wise rather than byte-wise: ::ra8_epub_miniz_arena_t ends in
+ *          a `uint8_t` and therefore carries trailing padding, which the
+ *          struct assignment that snapshots it is not required to copy. A
+ *          byte-wise comparison would be asserting something about padding
+ *          instead of about the descriptor.
+ * @param[in] arena Descriptor observed after the call under test.
+ * @param[in] saved Descriptor snapshot taken before it.
+ * @return Whether every documented field is unchanged.
+ * @retval true The call left the descriptor alone.
+ * @retval false At least one field moved.
+ * @pre Both pointers address initialized descriptors.
+ * @pre Neither pointer is null.
+ * @post Neither descriptor is modified.
+ * @post The result depends only on the three descriptor fields.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_arena_unchanged(const ra8_epub_miniz_arena_t* arena,
+                                                  const ra8_epub_miniz_arena_t* saved)
+{
+  if (arena->base != saved->base) {
+    return false;
+  }
+  if (arena->capacity != saved->capacity) {
+    return false;
+  }
+  return arena->initialized == saved->initialized;
+}
+
 /** @brief Reset @p fixture to one empty, independent arena. @details Implements the fixture init fixture operation used only by this focused test executable. @param[in,out] fixture Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL
 static void internal_fixture_init(priv_fixture_t* fixture)
@@ -480,7 +511,7 @@ RA8_INTERNAL static void internal_test_arena_capacity_and_failure_preservation(v
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_size,
     ra8_epub_miniz_arena_init(&arena, &workspace.bytes[0], sizeof(workspace.bytes) - 1U));
-  TEST_ASSERT(memcmp(&arena, &before, sizeof(arena)) == 0);
+  TEST_ASSERT(internal_arena_unchanged(&arena, &before));
   TEST_ASSERT_EQ(k_miniz_fill_reuse, workspace.bytes[0]);
   TEST_ASSERT_EQ(k_miniz_fill_reuse, workspace.bytes[sizeof(workspace.bytes) - 1U]);
 
@@ -519,10 +550,10 @@ RA8_INTERNAL static void internal_test_arena_alignment_and_null_guards(void)
   const ra8_epub_miniz_arena_t before = arena;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_miniz_arena_init(nullptr, &raw[0], sizeof(raw)));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_miniz_arena_init(&arena, nullptr, sizeof(raw)));
-  TEST_ASSERT(memcmp(&arena, &before, sizeof(arena)) == 0);
+  TEST_ASSERT(internal_arena_unchanged(&arena, &before));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_epub_miniz_arena_init(&arena, &raw[1], (size_t)k_ra8_epub_miniz_pool_bytes));
-  TEST_ASSERT(memcmp(&arena, &before, sizeof(arena)) == 0);
+  TEST_ASSERT(internal_arena_unchanged(&arena, &before));
   TEST_ASSERT(ra8_epub_miniz_alloc(nullptr, 1U, k_small) == nullptr);
   ra8_epub_miniz_free(nullptr, &raw[0]);
   ra8_epub_miniz_arena_deinit(nullptr);
