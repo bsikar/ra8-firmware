@@ -11,14 +11,17 @@
     <text x="24" y="52" fill="#57606a" font-size="9">coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it</text>
     <rect x="20" y="70" width="860" height="348" rx="8" fill="none" stroke="#aeb4bb" stroke-width="1.2"/>
     <line x1="112" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="265" y="149" width="10" height="11" fill="#fdfdfb"/>
     <text x="270" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">4</text>
     <line x1="280" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="371" y="149" width="10" height="11" fill="#fdfdfb"/>
     <text x="376" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
     <line x1="280" y1="140" x2="450" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
     <text x="307" y="169" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
     <line x1="450" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
     <text x="438" y="164" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
     <line x1="618" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="518" y="149" width="10" height="11" fill="#fdfdfb"/>
     <text x="523" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
     <line x1="788" y1="140" x2="450" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
     <text x="724" y="169" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>

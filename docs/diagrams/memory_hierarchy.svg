@@ -13,6 +13,7 @@
     <line x1="238" y1="140" x2="450" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
     <text x="333" y="201" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
     <line x1="662" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="561" y="149" width="10" height="11" fill="#fdfdfb"/>
     <text x="566" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
     <line x1="450" y1="226" x2="450" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
     <text x="438" y="244" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
