@@ -106,6 +106,68 @@ RA8_INTERNAL static ra8_err_t internal_intermediate_check(int parent_fd, const c
 }
 
 /* see header for full description */
+RA8_INTERNAL static ra8_err_t
+internal_next_component(const char** cursor, char* out_name, uint16_t* out_length)
+{
+  uint16_t length = 0U;
+  while ((*cursor)[length] != '\0') {
+    if ((*cursor)[length] == '/') {
+      break;
+    }
+    ++length;
+    if (length >= (uint16_t)k_posix_component_cap) {
+      return k_ra8_err_invalid_size;
+    }
+  }
+  const ra8_err_t copied = internal_component_copy(*cursor, length, out_name);
+  if (copied != k_ra8_ok) {
+    return copied;
+  }
+  *out_length = length;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Descend into one intermediate path component, retiring the old parent.
+ * @details Validates the component is a real non-symlink directory, opens it
+ *          no-follow, then closes the descriptor owned on entry -- on every
+ *          path, including a failed validation, open, or close.
+ * @param[in,out] current Owned parent descriptor on entry; replaced with the
+ *        newly opened descriptor on success.
+ * @param[in] name Terminated intermediate component name.
+ * @return Descent status.
+ * @retval k_ra8_ok @p current now owns the newly opened component directory.
+ * @retval other Validation, open, or close failed; @p current is closed.
+ * @pre @p current addresses an owned open directory descriptor.
+ * @pre @p name is a terminated component distinct from the final leaf.
+ * @post The descriptor owned on entry is closed on every return path.
+ * @note Not thread-safe for a shared descriptor.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_parent_open_step(int* current, const char* name)
+{
+  const ra8_err_t checked = internal_intermediate_check(*current, name);
+  if (checked != k_ra8_ok) {
+    (void)priv_fs_posix_close_fd(current);
+    return checked;
+  }
+  const int next = openat(*current, name, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+  if (next < 0) {
+    const ra8_err_t failed = priv_fs_posix_errno(errno);
+    (void)priv_fs_posix_close_fd(current);
+    return failed;
+  }
+  const ra8_err_t closed = priv_fs_posix_close_fd(current);
+  if (closed != k_ra8_ok) {
+    int next_owned = next;
+    (void)priv_fs_posix_close_fd(&next_owned);
+    return closed;
+  }
+  *current = next;
+  return k_ra8_ok;
+}
+
+/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_parent_open(fw_fs_posix_state_t* state,
                                                    const char*          path,
                                                    int*                 out_parent_fd,
@@ -117,47 +179,23 @@ RA8_INTERNAL static ra8_err_t internal_parent_open(fw_fs_posix_state_t* state,
   }
   const char* cursor = &path[1];
   for (uint16_t component = 0U; component < (uint16_t)k_fw_fs_path_cap; ++component) {
-    uint16_t length = 0U;
-    while (cursor[length] != '\0') {
-      if (cursor[length] == '/') {
-        break;
-      }
-      ++length;
-      if (length >= (uint16_t)k_posix_component_cap) {
-        (void)priv_fs_posix_close_fd(&current);
-        return k_ra8_err_invalid_size;
-      }
-    }
     char            name[k_posix_component_cap];
-    const ra8_err_t copied = internal_component_copy(cursor, length, name);
-    if (copied != k_ra8_ok) {
+    uint16_t        length  = 0U;
+    const ra8_err_t scanned = internal_next_component(&cursor, name, &length);
+    if (scanned != k_ra8_ok) {
       (void)priv_fs_posix_close_fd(&current);
-      return copied;
+      return scanned;
     }
     if (cursor[length] == '\0') {
       (void)memcpy(out_leaf, name, (size_t)length + 1U);
       *out_parent_fd = current;
       return k_ra8_ok;
     }
-    const ra8_err_t checked = internal_intermediate_check(current, name);
-    if (checked != k_ra8_ok) {
-      (void)priv_fs_posix_close_fd(&current);
-      return checked;
+    const ra8_err_t stepped = internal_parent_open_step(&current, name);
+    if (stepped != k_ra8_ok) {
+      return stepped;
     }
-    const int next = openat(current, name, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
-    if (next < 0) {
-      const ra8_err_t failed = priv_fs_posix_errno(errno);
-      (void)priv_fs_posix_close_fd(&current);
-      return failed;
-    }
-    const ra8_err_t closed = priv_fs_posix_close_fd(&current);
-    if (closed != k_ra8_ok) {
-      int next_owned = next;
-      (void)priv_fs_posix_close_fd(&next_owned);
-      return closed;
-    }
-    current = next;
-    cursor  = &cursor[(uint16_t)(length + 1U)];
+    cursor = &cursor[(uint16_t)(length + 1U)];
   }
   (void)priv_fs_posix_close_fd(&current);
   return k_ra8_err_invalid_size;
@@ -510,13 +548,13 @@ RA8_INTERNAL static ra8_err_t internal_rename_opened(int         old_fd,
 }
 
 /* see header for full description */
-RA8_INTERNAL static ra8_err_t
-internal_rename(void* ctx, const char* old_path, const char* new_path, bool replace)
+RA8_INTERNAL static ra8_err_t internal_rename_validate_endpoints(fw_fs_posix_state_t* state,
+                                                                 const char*          old_path,
+                                                                 const char*          new_path)
 {
-  fw_fs_posix_state_t* state         = (fw_fs_posix_state_t*)ctx;
-  struct stat          source        = {};
-  bool                 source_exists = false;
-  const ra8_err_t      stated = internal_native_stat(state, old_path, &source, &source_exists);
+  struct stat     source        = {};
+  bool            source_exists = false;
+  const ra8_err_t stated        = internal_native_stat(state, old_path, &source, &source_exists);
   if (stated != k_ra8_ok) {
     return stated;
   }
@@ -537,6 +575,18 @@ internal_rename(void* ctx, const char* old_path, const char* new_path, bool repl
     if (S_ISLNK(destination.st_mode)) {
       return k_ra8_err_access_denied;
     }
+  }
+  return k_ra8_ok;
+}
+
+/* see header for full description */
+RA8_INTERNAL static ra8_err_t
+internal_rename(void* ctx, const char* old_path, const char* new_path, bool replace)
+{
+  fw_fs_posix_state_t* state     = (fw_fs_posix_state_t*)ctx;
+  const ra8_err_t      validated = internal_rename_validate_endpoints(state, old_path, new_path);
+  if (validated != k_ra8_ok) {
+    return validated;
   }
   int       old_fd = -1;
   int       new_fd = -1;

@@ -59,6 +59,46 @@ static ra8_err_t internal_component_copy(const char* start, uint16_t length, cha
 static ra8_err_t internal_intermediate_check(int parent_fd, const char* component);
 
 /**
+ * @brief Scan and copy the next slash-delimited component of a cursor.
+ * @details Bounds the scan to ::k_posix_component_cap, then copies the
+ *          scanned span through ::internal_component_copy; the cursor
+ *          itself is left unmoved so the caller can inspect the byte
+ *          immediately after the scanned span before advancing.
+ * @param[in] cursor Address of the current scan position in the path.
+ * @param[out] out_name Fixed ::k_posix_component_cap-byte destination.
+ * @param[out] out_length Receives the scanned component's byte length.
+ * @return Bounded scan-and-copy status.
+ * @retval k_ra8_ok The component was scanned and copied.
+ * @retval k_ra8_err_invalid_size The scan or the copy exceeded local capacity.
+ * @pre `*cursor` addresses a NUL- or slash-terminated path remainder.
+ * @pre @p out_name addresses ::k_posix_component_cap writable bytes.
+ * @post Success writes one terminated component and its length.
+ * @post `*cursor` is unchanged; the caller advances it explicitly.
+ * @note Thread-safe for disjoint caller-owned buffers.
+ * @since Version 0.1.0
+ */
+static ra8_err_t internal_next_component(const char** cursor, char* out_name, uint16_t* out_length);
+
+/**
+ * @brief Descend into one intermediate path component, retiring the old parent.
+ * @details Validates the component is a real non-symlink directory, opens it
+ *          no-follow, then closes the descriptor owned on entry -- on every
+ *          path, including a failed validation, open, or close.
+ * @param[in,out] current Owned parent descriptor on entry; replaced with the
+ *        newly opened descriptor on success.
+ * @param[in] name Terminated intermediate component name.
+ * @return Descent status.
+ * @retval k_ra8_ok @p current now owns the newly opened component directory.
+ * @retval other Validation, open, or close failed; @p current is closed.
+ * @pre @p current addresses an owned open directory descriptor.
+ * @pre @p name is a terminated component distinct from the final leaf.
+ * @post The descriptor owned on entry is closed on every return path.
+ * @note Not thread-safe for a shared descriptor.
+ * @since Version 0.1.0
+ */
+static ra8_err_t internal_parent_open_step(int* current, const char* name);
+
+/**
  * @brief Resolve a canonical path's parent without following any symlink.
  * @details Duplicates the bound root and walks each intermediate component with
  *          no-follow stat/open calls, closing each descriptor as ownership moves.
@@ -340,6 +380,29 @@ static ra8_err_t internal_rmdir(void* ctx, const char* path);
  */
 static ra8_err_t
 internal_rename_noreplace(int old_fd, const char* old_leaf, int new_fd, const char* new_leaf);
+
+/**
+ * @brief Validate that a rename's source exists and neither endpoint is a symlink.
+ * @details Stats both paths through the confined resolver and rejects an
+ *          absent source or a present-but-symlinked source or destination
+ *          before any parent descriptor is opened.
+ * @param[in] state Initialized confined-root adapter state.
+ * @param[in] old_path Validated existing source path.
+ * @param[in] new_path Validated destination path.
+ * @return Endpoint validation status.
+ * @retval k_ra8_ok The source exists and neither present endpoint is a symlink.
+ * @retval k_ra8_err_not_found The source is absent.
+ * @retval k_ra8_err_access_denied Either endpoint is a symbolic link.
+ * @retval k_ra8_err_* Mapped metadata failure.
+ * @pre Both paths passed public portable validation.
+ * @pre @p state owns a live confined root descriptor.
+ * @post No descriptor is opened or closed by this check.
+ * @note Thread-safe subject to host namespace race semantics.
+ * @since Version 0.1.0
+ */
+static ra8_err_t internal_rename_validate_endpoints(fw_fs_posix_state_t* state,
+                                                    const char*          old_path,
+                                                    const char*          new_path);
 
 /**
  * @brief Rename within the selected root without following either leaf.
