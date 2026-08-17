@@ -14,7 +14,7 @@
  * pulled in below:
  *
  * - `ra8_fs_fat_types_internal.h`    -- on-disk-layout enums, cross-TU typedefs,
- *                             and the shared `priv_scratch` extern.
+ *                             and the shared `g_fs_scratch` extern.
  * - `ra8_fs_fat_bytes_internal.h`    -- the little-endian byte codec and the
  *                             runtime sector-geometry accessors (#683).
  * - `ra8_fs_fat_gpt_internal.h`      -- the GPT partition locators (64-bit

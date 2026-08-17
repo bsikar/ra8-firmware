@@ -37,7 +37,7 @@ static ra8_fs_file_t s_files[k_ra8_fs_max_files] = {};
  *          `ra8_fs_fat_internal.h` and defined here exactly once. Sized to
  *          ::k_ra8_fs_sector_max so a 4Kn medium fits without allocation.
  */
-RA8_PRIV uint8_t priv_scratch[k_ra8_fs_sector_max] = {};
+RA8_PRIV uint8_t g_fs_scratch[k_ra8_fs_sector_max] = {};
 
 /**
  * @var s_sec_arena
@@ -170,15 +170,15 @@ static uint8_t internal_bps_valid(uint32_t bs)
 /* `priv_parse_bpb_into_mount()`: see header for the documented contract. */
 ra8_err_t priv_parse_bpb_into_mount(ra8_fs_mount_t* m)
 {
-  if (priv_scratch[k_bpb_off_signature_lo] != k_bpb_sig_lo ||
-      priv_scratch[k_bpb_off_signature_hi] != k_bpb_sig_hi) {
+  if (g_fs_scratch[k_bpb_off_signature_lo] != k_bpb_sig_lo ||
+      g_fs_scratch[k_bpb_off_signature_hi] != k_bpb_sig_hi) {
     return k_ra8_err_validation_failed;
   }
-  const uint32_t bpb_bps = priv_rd16(&priv_scratch[k_bpb_off_bytes_per_sec]);
-  m->sectors_per_cluster = (uint32_t)priv_scratch[k_bpb_off_sec_per_clus];
-  m->reserved_sectors    = priv_rd16(&priv_scratch[k_bpb_off_rsvd_sec_cnt]);
-  m->num_fats            = (uint32_t)priv_scratch[k_bpb_off_num_fats];
-  m->root_entries        = priv_rd16(&priv_scratch[k_bpb_off_root_ent_cnt]);
+  const uint32_t bpb_bps = priv_rd16(&g_fs_scratch[k_bpb_off_bytes_per_sec]);
+  m->sectors_per_cluster = (uint32_t)g_fs_scratch[k_bpb_off_sec_per_clus];
+  m->reserved_sectors    = priv_rd16(&g_fs_scratch[k_bpb_off_rsvd_sec_cnt]);
+  m->num_fats            = (uint32_t)g_fs_scratch[k_bpb_off_num_fats];
+  m->root_entries        = priv_rd16(&g_fs_scratch[k_bpb_off_root_ent_cnt]);
   /* The BPB must agree with the DEVICE: `m->bytes_per_sector` was seeded from
    * the backend's reported block size before this parse ran, and a volume
    * formatted for a different sector size than the medium presents (a 512e
@@ -191,16 +191,16 @@ ra8_err_t priv_parse_bpb_into_mount(ra8_fs_mount_t* m)
   if (bpb_bps != m->bytes_per_sector || m->sectors_per_cluster == 0U || m->num_fats == 0U) {
     return k_ra8_err_validation_failed;
   }
-  const uint32_t fat_sz_16  = priv_rd16(&priv_scratch[k_bpb_off_fat_sz_16]);
-  const uint32_t fat_sz_32  = priv_rd32(&priv_scratch[k_bpb_off_fat_sz_32]);
-  const uint32_t tot_sec_16 = priv_rd16(&priv_scratch[k_bpb_off_tot_sec_16]);
-  const uint32_t tot_sec_32 = priv_rd32(&priv_scratch[k_bpb_off_tot_sec_32]);
+  const uint32_t fat_sz_16  = priv_rd16(&g_fs_scratch[k_bpb_off_fat_sz_16]);
+  const uint32_t fat_sz_32  = priv_rd32(&g_fs_scratch[k_bpb_off_fat_sz_32]);
+  const uint32_t tot_sec_16 = priv_rd16(&g_fs_scratch[k_bpb_off_tot_sec_16]);
+  const uint32_t tot_sec_32 = priv_rd32(&g_fs_scratch[k_bpb_off_tot_sec_32]);
   m->fat_size_sectors       = (fat_sz_16 != 0U) ? fat_sz_16 : fat_sz_32;
   /* Chosen in 32 bits first: assigning the composite pick straight into the
    * 64-bit field would be a MISRA 10.6 composite-widening. */
   const uint32_t tot_sec = (tot_sec_16 != 0U) ? tot_sec_16 : tot_sec_32;
   m->total_sectors       = tot_sec;
-  m->root_cluster        = priv_rd32(&priv_scratch[k_bpb_off_root_clus]);
+  m->root_cluster        = priv_rd32(&g_fs_scratch[k_bpb_off_root_clus]);
   return k_ra8_ok;
 }
 
@@ -337,7 +337,7 @@ static ra8_err_t internal_mbr_select_entry(const uint8_t* buf, uint8_t index, ui
  * refused. The signature bytes are tested separately (not as one compound
  * decision) to mirror ::priv_mbr_part0_lba.
  *
- * @param[in,out] m        Mount with sector 0 already in ::priv_scratch.
+ * @param[in,out] m        Mount with sector 0 already in ::g_fs_scratch.
  * @param[in]     index    Zero-based partition index.
  * @param[out]    out_base Receives the selected partition's first LBA.
  * @return Error code.
@@ -347,27 +347,27 @@ static ra8_err_t internal_mbr_select_entry(const uint8_t* buf, uint8_t index, ui
  * @retval k_ra8_err_not_supported     Unaddressable GPT geometry.
  * @retval k_ra8_err_validation_failed Malformed entry or GPT header.
  * @retval k_ra8_err_*                 Backend read failure.
- * @pre ::priv_scratch holds the contents of LBA 0.
+ * @pre ::g_fs_scratch holds the contents of LBA 0.
  * @pre ``m->partition_base_lba`` is still 0 (reads are absolute).
  * @pre @p out_base is non-NULL.
  * @post On k_ra8_ok @p out_base holds a non-zero LBA.
- * @post ::priv_scratch may be overwritten (GPT path re-reads the entry array).
+ * @post ::g_fs_scratch may be overwritten (GPT path re-reads the entry array).
  * @note Not thread-safe -- uses module-level scratch.
  * @since 0.1.0
  */
 RA8_INTERNAL
 static ra8_err_t internal_locate_indexed(ra8_fs_mount_t* m, uint8_t index, uint64_t* out_base)
 {
-  if (priv_scratch[k_bpb_off_signature_lo] != (uint8_t)k_bpb_sig_lo) {
+  if (g_fs_scratch[k_bpb_off_signature_lo] != (uint8_t)k_bpb_sig_lo) {
     return k_ra8_err_not_found;
   }
-  if (priv_scratch[k_bpb_off_signature_hi] != (uint8_t)k_bpb_sig_hi) {
+  if (g_fs_scratch[k_bpb_off_signature_hi] != (uint8_t)k_bpb_sig_hi) {
     return k_ra8_err_not_found;
   }
-  if (priv_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
+  if (g_fs_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
     return priv_gpt_locate_partition(m, index, out_base);
   }
-  return internal_mbr_select_entry(priv_scratch, index, out_base);
+  return internal_mbr_select_entry(g_fs_scratch, index, out_base);
 }
 
 /**
@@ -469,7 +469,7 @@ static ra8_err_t internal_format_locked(const ra8_fs_backend_t*     backend,
 RA8_INTERNAL
 static ra8_err_t internal_read_boot_sector(ra8_fs_mount_t* m, uint8_t index)
 {
-  ra8_err_t err = priv_read_sector(m, 0, priv_scratch);
+  ra8_err_t err = priv_read_sector(m, 0, g_fs_scratch);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -484,11 +484,11 @@ static ra8_err_t internal_read_boot_sector(ra8_fs_mount_t* m, uint8_t index)
     if (err == k_ra8_ok) {
       return k_ra8_ok;
     }
-    base = internal_mbr_part0_lba(priv_scratch);
+    base = internal_mbr_part0_lba(g_fs_scratch);
     if (base == 0U) {
       return err;
     }
-    if (priv_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
+    if (g_fs_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
       const ra8_err_t gpt_err = priv_gpt_locate_volume(m, &base);
       if (gpt_err != k_ra8_ok) {
         return gpt_err;
@@ -496,7 +496,7 @@ static ra8_err_t internal_read_boot_sector(ra8_fs_mount_t* m, uint8_t index)
     }
   }
   m->partition_base_lba = base;
-  err                   = priv_read_sector(m, 0, priv_scratch);
+  err                   = priv_read_sector(m, 0, g_fs_scratch);
   if (err != k_ra8_ok) {
     return err;
   }
