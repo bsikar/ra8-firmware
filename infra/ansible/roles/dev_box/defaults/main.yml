@@ -84,7 +84,7 @@ dev_box_apt_base:
 #                      the way .devcontainer/Dockerfile does, and
 #                      toolchain-parity compares that version (#522).
 #   libcapstone-dev    -- the header tools/ra8_emulator includes
-#   libcurl4-openssl-dev -- the header tools/media_dl includes
+#   libcurl4-openssl-dev -- the header apps/stand_alone/media_dl includes
 #   gdb-multiarch, openocd -- the on-desk flash/debug inner loop
 dev_box_apt_gates:
   - doxygen

@@ -61,6 +61,7 @@ SCOPE_ROOTS = (
     "src/",
     "coprocessor/",
     "tools/",
+    "apps/",
     "tests/",
 )
 SOURCE_SUFFIXES = (".c", ".h", ".cc", ".cpp", ".cxx", ".hh", ".hpp", ".hxx", ".inc", ".m", ".mm")
@@ -76,7 +77,8 @@ ROOT_FILE_FLOORS = {
     "port/": 80,
     "examples/": 400,
     "src/": 10,
-    "tools/": 250,
+    "tools/": 180,
+    "apps/": 110,
     "tests/": 650,
 }
 TOTAL_FILE_FLOOR = 2300
@@ -368,9 +370,13 @@ def _selftest_scope(failures: list[str]) -> None:
     """Prove every requested first-party root and only exact exclusions apply."""
     for root in SCOPE_ROOTS:
         expect(_in_scope(f"{root}future_portable.c"), f"{root} is in scope", failures)
-    expect(_in_scope("tools/media_dl/src/main.c"), "production host tools are in scope", failures)
     expect(
-        _in_scope("tools/media_dl/tests/test_main.c"),
+        _in_scope("apps/stand_alone/media_dl/src/main.c"),
+        "production host tools are in scope",
+        failures,
+    )
+    expect(
+        _in_scope("apps/stand_alone/media_dl/tests/test_main.c"),
         "tool test fixtures are in scope",
         failures,
     )
@@ -393,7 +399,8 @@ def _selftest_floors(failures: list[str]) -> None:
         "examples/": 430,
         "src/": 15,
         "coprocessor/": 0,
-        "tools/": 300,
+        "tools/": 200,
+        "apps/": 120,
         "tests/": 700,
     }
     expect(not _scope_floor_errors(good), "current-shaped scope clears every floor", failures)
@@ -403,13 +410,17 @@ def _selftest_floors(failures: list[str]) -> None:
     tests_short = dict(good)
     tests_short["tests/"] = 649
     expect(bool(_scope_floor_errors(tests_short)), "a narrowed test root fails", failures)
+    # Every root exactly ON its floor, so only the aggregate can object. It has
+    # to be recomputed whenever a root is added, or the new root's floor lifts
+    # the sum back over TOTAL_FILE_FLOOR and this case stops testing anything.
     total_short = {
         "libs/": 850,
         "port/": 80,
         "examples/": 400,
         "src/": 10,
         "coprocessor/": 0,
-        "tools/": 250,
+        "tools/": 180,
+        "apps/": 110,
         "tests/": 650,
     }
     expect(bool(_scope_floor_errors(total_short)), "the aggregate floor fails", failures)

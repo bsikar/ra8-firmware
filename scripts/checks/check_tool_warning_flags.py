@@ -5,7 +5,7 @@
 
 Why this exists
 ---------------
-``tools/media_dl`` compiled ``libs/ra8_jof/*``, ``libs/ra8_hal/ra8_jpeg_sw*``,
+``apps/stand_alone/media_dl`` compiled ``libs/ra8_jof/*``, ``libs/ra8_hal/ra8_jpeg_sw*``,
 ``libs/ra8_io/ra8_io_compress.c`` and three ``libs/ra8_core`` files under a
 blanket ``-w``, with a comment claiming "the repo lints these via its own
 build".  It does not: ``-w`` turns off every diagnostic, so the one build in
@@ -40,7 +40,7 @@ Matching is therefore on exact argv arguments, in order, never on substrings.
 Second compiler arm (#356)
 --------------------------
 gcc-14 catches warning families clang-18 misses -- its ``-Wformat-truncation``
-found a silent PATH_MAX path-join truncation in ``tools/media_dl`` that clang
+found a silent PATH_MAX path-join truncation in ``apps/stand_alone/media_dl`` that clang
 did not flag. The tools-build gate therefore compiles the host tools under BOTH
 pinned compilers and passes both sets of databases here. ``--require-compilers
 clang,gcc`` makes a silently-dropped arm a hard failure rather than a vacuous
@@ -119,8 +119,25 @@ def missing_tool_projects(expected: set[str], database_paths: list[str]) -> list
 
 
 def cmake_tool_projects(repo_root: Path) -> set[str]:
-    """Discover every immediate tools/ CMake project from the repository."""
-    return {path.parent.name for path in (repo_root / "tools").glob("*/CMakeLists.txt")}
+    """Discover every host CMake project under ``tools/`` and ``apps/``.
+
+    The two roots nest differently and the glob has to say so. A tool is a
+    direct child of ``tools/``; a product sits one level deeper, beneath a
+    category (``apps/stand_alone/media_dl``) so that a future sibling
+    category such as ``apps/threadx_modules/`` can hold a different kind of
+    build. Globbing ``apps/*/CMakeLists.txt`` would look only at the category
+    directories, which carry none, and so discover nothing at all -- read
+    here as "no product needs its warning flags checked" rather than as the
+    scope collapse it is.
+    """
+    return {
+        path.parent.name
+        for root, pattern in (
+            (repo_root / "tools", "*/CMakeLists.txt"),
+            (repo_root / "apps", "*/*/CMakeLists.txt"),
+        )
+        for path in root.glob(pattern)
+    }
 
 
 def flag_problem(argv: list[str]) -> str | None:
@@ -204,13 +221,13 @@ SELFTEST_CASES: list[tuple[str, str, list[str], bool]] = [
     ),
     (
         "first-party with only a targeted -Werror=",
-        "tools/media_dl/src/main.c",
+        "apps/stand_alone/media_dl/src/main.c",
         ["cc", "-Wall", "-Wextra", "-Werror=return-type", "-c"],
         True,
     ),
     (
         "first-party whose -Werror is cancelled later",
-        "tools/media_dl/src/mdl_export.c",
+        "apps/stand_alone/media_dl/src/mdl_export.c",
         ["cc", "-Wall", "-Werror", "-Wno-error", "-c"],
         True,
     ),

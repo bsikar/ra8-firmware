@@ -13,7 +13,7 @@
  *
  * @par MC/DC:
  * Decision: `(rc == k_ra8_err_busy) || (rc == k_ra8_err_timeout) || (rc ==
- * k_ra8_fail)` cites tools/media_dl/src/mdl_fetch.c@priv_mdl_fetch_is_retryable.
+ * k_ra8_fail)` cites apps/stand_alone/media_dl/src/mdl_fetch.c@priv_mdl_fetch_is_retryable.
  * - Vector 1: rc=k_ra8_err_not_found -> false (all three conditions false)
  * - Vector 2: rc=k_ra8_err_busy      -> true  (varies condition 1)
  * - Vector 3: rc=k_ra8_err_timeout   -> true  (varies condition 2)
@@ -47,7 +47,7 @@ RA8_INTERNAL static void internal_test_mcdc_is_retryable(void)
  *
  * @par MC/DC:
  * Decision: `(stats->chapters_failed > 0) || (stats->pages_failed > 0)` cites
- * tools/media_dl/src/mdl_fetch.c@priv_mdl_fetch_run_incomplete.
+ * apps/stand_alone/media_dl/src/mdl_fetch.c@priv_mdl_fetch_run_incomplete.
  * - Vector 1: chapters_failed=0, pages_failed=0 -> false (both false)
  * - Vector 2: chapters_failed=1, pages_failed=0 -> true  (varies chapters)
  * - Vector 3: chapters_failed=0, pages_failed=1 -> true  (varies pages)

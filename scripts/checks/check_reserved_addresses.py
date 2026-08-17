@@ -75,7 +75,7 @@ RESERVED_WINDOWS: list[tuple[int, int, str]] = [
 
 # Directories holding hand-written first-party code. `libs/third_party` is SOUP
 # and exempt per CLAUDE.md; it is filtered below rather than listed here.
-SCAN_ROOTS = ("libs", "src", "examples", "port", "tools", "tests")
+SCAN_ROOTS = ("libs", "src", "examples", "port", "tools", "apps", "tests")
 
 # Below this many `uintptr_t` enumerators the scan has plainly stopped
 # matching -- a syntax change in how the tree spells address enums would

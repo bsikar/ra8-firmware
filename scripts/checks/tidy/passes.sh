@@ -44,7 +44,7 @@ TIDY_DB_ARG=()
 assert_scope_covered() {
   local files=("$@")
   local root matched f
-  for root in tests tools libs src examples port; do
+  for root in tests tools apps libs src examples port; do
     matched=0
     for f in "${files[@]}"; do
       case "$f" in "$FIRMWARE_DIR/$root"/*)

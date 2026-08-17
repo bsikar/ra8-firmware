@@ -116,8 +116,8 @@ add_test(NAME test_ra8_c6link_media COMMAND test_ra8_c6link_media)
 add_executable(
   test_ra8_mdl_net_c6link
   ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_mdl_net_c6link.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/../tools/media_dl/src/mdl_net.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/../tools/media_dl/src/mdl_net_c6link.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../apps/stand_alone/media_dl/src/mdl_net.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../apps/stand_alone/media_dl/src/mdl_net_c6link.c
   ${RA8_C6LINK_TEST_SUPPORT}
   ${RA8_C6LINK_TEST_MODEL}
   ${RA8_C6LINK_SOURCES}
@@ -127,8 +127,9 @@ add_executable(
 set_target_properties(test_ra8_mdl_net_c6link PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_options(test_ra8_mdl_net_c6link PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
 target_include_directories(
-  test_ra8_mdl_net_c6link PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/tools/media_dl/inc
-                                  ${FW_ROOT}/libs/ra8_hal/inc
+  test_ra8_mdl_net_c6link
+  PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/apps/stand_alone/media_dl/inc
+          ${FW_ROOT}/libs/ra8_hal/inc
 )
 add_test(NAME test_ra8_mdl_net_c6link COMMAND test_ra8_mdl_net_c6link)
 

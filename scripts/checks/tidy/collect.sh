@@ -94,7 +94,7 @@ collect_source_files() {
   generated="$(generated_source_paths)"
   git ls-files --cached --others --exclude-standard |
     grep -E '\.(c|h|cpp|cc|cxx|hpp|hh|hxx|m)$' |
-    grep -E '^(libs|src|tests|tools|examples|port)/' |
+    grep -E '^(libs|src|tests|tools|apps|examples|port)/' |
     # Vendored SOUP and generated tables -- the CLAUDE.md exemption list.
     grep -Ev '^(libs/third_party/|libs/ra8_fonts/|tools/vela/generated/)' |
     # Build trees and CMake-fetched deps are not source.
@@ -255,7 +255,12 @@ route_bucket() {
     echo firmware && return 0
   fi
   case "$f" in
-    */tools/*) echo tools && return 0 ;;
+    # apps/ rides the tools pass: a product is built by its own CMakeLists
+    # exactly as a tool is, so it is absent from the host database and needs
+    # the same hand-assembled compile command -- including the MDL_* fixture
+    # defines tools_fixture_definitions() supplies. Routing it to the host
+    # bucket would analyse every TU as clang-diagnostic-error instead.
+    */tools/* | */apps/*) echo tools && return 0 ;;
     */ra8_npu.c | */ra8_npu.h | */ra8_npu_regs.h | \
       */ra8_npu_loader.c | */ra8_npu_loader.h | \
       */ra8_npu_quant.c | */ra8_npu_quant.h | \

@@ -107,7 +107,8 @@ cxx_pass_args() {
 objc_pass_args() {
   magic_number_dedup_arg
   local dir
-  for dir in "$FIRMWARE_DIR"/tools/*/ "$FIRMWARE_DIR"/tools/*/inc "$FIRMWARE_DIR"/tools/*/src; do
+  for dir in "$FIRMWARE_DIR"/tools/*/ "$FIRMWARE_DIR"/tools/*/inc "$FIRMWARE_DIR"/tools/*/src \
+    "$FIRMWARE_DIR"/apps/*/*/ "$FIRMWARE_DIR"/apps/*/*/inc "$FIRMWARE_DIR"/apps/*/*/src; do
     [[ -d "$dir" ]] && printf -- '--extra-arg=-I%s\n' "${dir%/}"
   done
   printf '%s\n' \
@@ -329,21 +330,22 @@ firmware_pass_args() {
 tools_fixture_definitions() {
   printf -- '--extra-arg=-DRA8_FMT_TEST_PNG="%s"\n' \
     "$FIRMWARE_DIR/tests/fixtures/rabook_fixed_layout/OEBPS/images/page1.png"
-  printf -- '--extra-arg=-DMDL_SITE_CONFIG_DIR="%s"\n' "$FIRMWARE_DIR/tools/media_dl/sites"
+  printf -- '--extra-arg=-DMDL_SITE_CONFIG_DIR="%s"\n' "$FIRMWARE_DIR/apps/stand_alone/media_dl/sites"
   printf -- '--extra-arg=-DMDL_SITE_FIXTURE_DIR="%s"\n' \
-    "$FIRMWARE_DIR/tools/media_dl/tests/fixtures/sites"
+    "$FIRMWARE_DIR/apps/stand_alone/media_dl/tests/fixtures/sites"
   # ...and the shipped-descriptor count, counted the same way the listfile
   # counts it (a CONFIGURE_DEPENDS glob over sites/*.conf) so the two cannot
   # disagree about how many descriptors ship.
   local site_count
-  site_count="$(git -C "$FIRMWARE_DIR" ls-files "tools/media_dl/sites/*.conf" | wc -l)"
+  site_count="$(git -C "$FIRMWARE_DIR" ls-files "apps/stand_alone/media_dl/sites/*.conf" | wc -l)"
   printf -- '--extra-arg=-DMDL_SHIPPED_SITE_COUNT=%s\n' "$site_count"
 }
 
 tools_pass_args() {
   magic_number_dedup_arg
   local dir
-  for dir in "$FIRMWARE_DIR"/tools/*/ "$FIRMWARE_DIR"/tools/*/inc "$FIRMWARE_DIR"/tools/*/src; do
+  for dir in "$FIRMWARE_DIR"/tools/*/ "$FIRMWARE_DIR"/tools/*/inc "$FIRMWARE_DIR"/tools/*/src \
+    "$FIRMWARE_DIR"/apps/*/*/ "$FIRMWARE_DIR"/apps/*/*/inc "$FIRMWARE_DIR"/apps/*/*/src; do
     [[ -d "$dir" ]] && printf -- '--extra-arg=-I%s\n' "${dir%/}"
   done
   # ...and every OTHER directory under tools/ that really holds a header.
@@ -356,12 +358,13 @@ tools_pass_args() {
   # lands, and a gitignored build tree is never on the list.
   while IFS= read -r dir; do
     printf -- '--extra-arg=-I%s/%s\n' "$FIRMWARE_DIR" "$dir"
-  done < <(git -C "$FIRMWARE_DIR" ls-files "tools/*.h" "tools/*.hpp" |
+  done < <(git -C "$FIRMWARE_DIR" ls-files \
+    "tools/*.h" "tools/*.hpp" "apps/*.h" "apps/*.hpp" |
     sed -E "s#/[^/]+\$##" | sort -u)
   local cflag
   local pkg
   if command -v pkg-config &>/dev/null; then
-    # unicorn + capstone: tools/ra8_emulator. libcurl: tools/media_dl's network
+    # unicorn + capstone: tools/ra8_emulator. libcurl: apps/stand_alone/media_dl's network
     # backend. Without the include dir clang-tidy cannot find the header and
     # reports clang-diagnostic-error instead of linting the file at all -- a
     # silent hole exactly like the one #296 closed, so keep this in step with
@@ -379,7 +382,7 @@ tools_pass_args() {
   # Homebrew installs unicorn/capstone outside the default search path and
   # ships no .pc on some formulae versions; add its include root when present.
   [[ -d /opt/homebrew/include ]] && printf -- '--extra-arg=-I/opt/homebrew/include\n'
-  # _GNU_SOURCE mirrors tools/media_dl/CMakeLists.txt: mdl_export.c uses
+  # _GNU_SOURCE mirrors apps/stand_alone/media_dl/CMakeLists.txt: mdl_export.c uses
   # posix_spawn_file_actions_addchdir_np() and `environ`, which glibc gates
   # behind it. Without it here the TU degrades to clang-diagnostic-error and
   # is never actually linted.

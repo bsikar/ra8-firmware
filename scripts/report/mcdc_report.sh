@@ -482,7 +482,7 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   # backend (ra8_display_pal_host_macos*) -- a desktop dev-preview tool, not
   # airborne firmware, so DO-178C MC/DC does not apply to it.
   #
-  # ...and tools/media_dl, which is the one tool that carries its OWN
+  # ...and apps/stand_alone/media_dl, which is the one tool that carries its OWN
   # ratcheted coverage gate (`tools-coverage`, per-file line/branch over its
   # own 19-binary CTest suite, currently 83.4% line / 65.1% branch and green).
   # Its production sources appear here only as LINK dependencies of the
@@ -497,7 +497,7 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   # where it is actually tested. Unifying the two regimes -- measuring MC/DC
   # from each tool's own suite -- is the real answer and is filed separately.
   mcdc_ignore_re='(third_party|/tests/|/usr/|c\+\+/v[0-9]+|ra8_display_pal_host_macos'
-  mcdc_ignore_re+='|tools/media_dl/)'
+  mcdc_ignore_re+='|apps/stand_alone/media_dl/)'
 
   # Per-file MC/DC dump (verbose, for human inspection).
   "$LLVM_COV_BIN" show \

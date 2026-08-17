@@ -13,6 +13,15 @@ project(media_dl C)
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# The repository root, stated ONCE. This listfile reaches out of its own tree
+# for the firmware libraries, the POSIX port, the shared test support and the
+# vendored WebP recipe, and it is configured standalone (its own CMAKE_SOURCE_DIR)
+# by the tools-build and tools-coverage gates, so CMAKE_SOURCE_DIR cannot serve.
+# Every such reference goes through this variable: when the product moved from
+# tools/media_dl to apps/stand_alone/media_dl, 59 hand-written
+# ../.. prefixes all became wrong together and CMake reported only the first.
+set(MDL_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
+
 # Keep host-tool coverage opt-in, matching tests/cmake/host_config.cmake. The
 # flags are added after project() so CMake's compiler probe is not instrumented
 # and gcovr never mistakes compiler-identification objects for project code.
@@ -33,7 +42,7 @@ find_package(CURL REQUIRED)
 # Vendored miniz (the same third-party ZIP/DEFLATE the firmware comic reader
 # uses) provides CBZ writing and gzip DEFLATE -- so archive export needs no
 # system libraries. SOUP: compiled warning-free, exempt from our style bar.
-set(MDL_MINIZ ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz/miniz.c)
+set(MDL_MINIZ ${MDL_REPO_ROOT}/libs/third_party/miniz/miniz.c)
 set_source_files_properties(
   ${MDL_MINIZ} PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing"
                           COMPILE_DEFINITIONS "MINIZ_NO_STDIO;MINIZ_NO_MALLOC"
@@ -46,19 +55,17 @@ set_source_files_properties(
 # like every other build that compiles them -- NOT the `-w` that SOUP gets.
 # Compiling them quietly here hid host-only findings the ARM build never sees,
 # which is what a 64-bit host build is for (#309).
-set(FW ${CMAKE_CURRENT_SOURCE_DIR}/../../libs)
+set(FW ${MDL_REPO_ROOT}/libs)
 set(MDL_PUBLIC_INC ${CMAKE_CURRENT_SOURCE_DIR}/inc ${FW}/ra8_mdl/inc)
 set(MDL_FS_SRC
     ${FW}/if/src/fw_if_fs.c
     ${FW}/if/src/fw_if_fs_dir.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src/fw_if_fs_posix.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src/fw_if_fs_posix_bind.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src/fw_if_fs_posix_common.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src/fw_if_fs_posix_stream.c
+    ${MDL_REPO_ROOT}/port/posix/src/fw_if_fs_posix.c
+    ${MDL_REPO_ROOT}/port/posix/src/fw_if_fs_posix_bind.c
+    ${MDL_REPO_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+    ${MDL_REPO_ROOT}/port/posix/src/fw_if_fs_posix_stream.c
 )
-set(MDL_FS_INC ${FW}/if/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/inc
-               ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src
-)
+set(MDL_FS_INC ${FW}/if/inc ${MDL_REPO_ROOT}/port/posix/inc ${MDL_REPO_ROOT}/port/posix/src)
 set(MDL_JOF_SRC
     ${FW}/ra8_jof/src/ra8_jof.c
     ${FW}/ra8_jof/src/ra8_jof_produce.c
@@ -82,7 +89,7 @@ set(MDL_JOF_INC
 )
 set(MDL_STREAM_CORE_SRC ${FW}/ra8_io/src/ra8_io_stream.c)
 set(MDL_STREAM_RAM_SRC ${FW}/ra8_io/src/ra8_io_stream_ram.c)
-set(MDL_STREAM_POSIX_SRC ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/src/ra8_io_stream_posix.c)
+set(MDL_STREAM_POSIX_SRC ${MDL_REPO_ROOT}/port/posix/src/ra8_io_stream_posix.c)
 set(MDL_RABOOK_READER_SRC
     ${FW}/ra8_book/src/ra8_book.c ${FW}/ra8_book/src/ra8_book_stream.c
     ${FW}/ra8_book/src/ra8_book_chunked.c ${FW}/ra8_book/src/ra8_book_chunked_validate.c
@@ -93,7 +100,7 @@ set(MDL_RABOOK_READER_INC ${FW}/ra8_book/inc ${FW}/ra8_book/src ${FW}/ra8_mem/in
 # (mdl_export's page-extension table has always accepted them), so the
 # producer's WebP arm must be the real transcode. One call; the recipe is shared
 # with the firmware app build and the host test build.
-include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/ra8_webp_vendor.cmake)
+include(${MDL_REPO_ROOT}/cmake/ra8_webp_vendor.cmake)
 
 # One responsibility per exporter translation unit. Both the CLI and every
 # focused host-test binary compile the same complete writer set.
@@ -248,8 +255,8 @@ target_include_directories(
           # Reuse the firmware error contract host-side. RA8_OFF_TARGET is the
           # same switch the host unit-test build uses so register-reaching code
           # takes the host-safe path.
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
+          ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/third_party/miniz
           ${MDL_JOF_INC}
           ${MDL_RABOOK_READER_INC}
           ${MDL_FS_INC}
@@ -258,7 +265,7 @@ target_include_directories(
 target_compile_definitions(media_dl PRIVATE _GNU_SOURCE MINIZ_NO_TIME RA8_OFF_TARGET)
 target_compile_options(media_dl PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(media_dl PRIVATE CURL::libcurl mdl_rabook_runtime)
-ra8_webp_attach(media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+ra8_webp_attach(media_dl ${MDL_REPO_ROOT})
 
 # Host unit tests (unity_minimal harness, like the repo's tests/). The pure
 # logic under test here (extract/config/export/url_guard/sanitize/robots) needs
@@ -300,9 +307,9 @@ function(mdl_add_unit_test target source)
     ${target}
     PRIVATE ${MDL_PUBLIC_INC}
             ${CMAKE_CURRENT_SOURCE_DIR}/src
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+            ${MDL_REPO_ROOT}/libs/ra8_core/inc
+            ${MDL_REPO_ROOT}/libs/third_party/miniz
+            ${MDL_REPO_ROOT}/tests
             ${MDL_JOF_INC}
             ${MDL_RABOOK_READER_INC}
             ${MDL_FS_INC}
@@ -310,7 +317,7 @@ function(mdl_add_unit_test target source)
   target_compile_definitions(${target} PRIVATE _GNU_SOURCE MINIZ_NO_TIME RA8_OFF_TARGET)
   target_compile_options(${target} PRIVATE -Wall -Wextra -Werror)
   target_link_libraries(${target} PRIVATE mdl_rabook_runtime)
-  ra8_webp_attach(${target} ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+  ra8_webp_attach(${target} ${MDL_REPO_ROOT})
   add_test(NAME ${target} COMMAND ${target})
 endfunction()
 
@@ -322,18 +329,17 @@ target_sources(
                                tests/test_media_dl_export_xml.c
 )
 add_executable(
-  test_media_dl_rabook_verify
-  tests/test_media_dl_rabook_verify.c ${MDL_TEST_COMMON_SRC}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../tests/support/rabook_compile_test_fixture.c
+  test_media_dl_rabook_verify tests/test_media_dl_rabook_verify.c ${MDL_TEST_COMMON_SRC}
+                              ${MDL_REPO_ROOT}/tests/support/rabook_compile_test_fixture.c
 )
 target_include_directories(
   test_media_dl_rabook_verify
   PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
+          ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/third_party/miniz
           ${FW}/ra8_rabook_compile/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_REPO_ROOT}/tests
           ${MDL_JOF_INC}
           ${MDL_RABOOK_READER_INC}
           ${MDL_FS_INC}
@@ -343,7 +349,7 @@ target_compile_definitions(
 )
 target_compile_options(test_media_dl_rabook_verify PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(test_media_dl_rabook_verify PRIVATE mdl_rabook_runtime)
-ra8_webp_attach(test_media_dl_rabook_verify ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+ra8_webp_attach(test_media_dl_rabook_verify ${MDL_REPO_ROOT})
 add_test(NAME test_media_dl_rabook_verify COMMAND test_media_dl_rabook_verify)
 add_executable(
   test_media_dl_verify_stream tests/test_media_dl_verify_stream.c ${MDL_TEST_COMMON_SRC}
@@ -352,10 +358,10 @@ target_include_directories(
   test_media_dl_verify_stream
   PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
+          ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/third_party/miniz
           ${FW}/ra8_rabook_compile/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_REPO_ROOT}/tests
           ${MDL_JOF_INC}
           ${MDL_RABOOK_READER_INC}
           ${MDL_FS_INC}
@@ -365,12 +371,11 @@ target_compile_definitions(
 )
 target_compile_options(test_media_dl_verify_stream PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(test_media_dl_verify_stream PRIVATE mdl_rabook_runtime)
-ra8_webp_attach(test_media_dl_verify_stream ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+ra8_webp_attach(test_media_dl_verify_stream ${MDL_REPO_ROOT})
 add_test(NAME test_media_dl_verify_stream COMMAND test_media_dl_verify_stream)
 mdl_add_unit_test(test_media_dl_export_fault tests/test_media_dl_export_fault.c)
 target_sources(
-  test_media_dl_export_fault
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../tests/support/mdl_state_fs_fault.c
+  test_media_dl_export_fault PRIVATE ${MDL_REPO_ROOT}/tests/support/mdl_state_fs_fault.c
 )
 mdl_add_unit_test(test_media_dl_metadata tests/test_media_dl_metadata.c)
 
@@ -419,9 +424,9 @@ target_include_directories(
   test_media_dl_net
   PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/ra8_core/inc
           ${MDL_FS_INC}
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_REPO_ROOT}/tests
 )
 target_compile_definitions(test_media_dl_net PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_net PRIVATE -Wall -Wextra -Werror)
@@ -442,7 +447,7 @@ target_include_directories(
           ${FW}/ra8_core/inc
           ${FW}/ra8_mdl/inc
           ${FW}/ra8_c6link/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_REPO_ROOT}/tests
 )
 target_compile_definitions(test_media_dl_net_c6link PRIVATE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_net_c6link PRIVATE -Wall -Wextra -Werror)
@@ -460,10 +465,8 @@ add_executable(
   src/mdl_url_guard.c
 )
 target_include_directories(
-  test_media_dl_credentials
-  PRIVATE ${MDL_PUBLIC_INC} ${CMAKE_CURRENT_SOURCE_DIR}/src
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+  test_media_dl_credentials PRIVATE ${MDL_PUBLIC_INC} ${CMAKE_CURRENT_SOURCE_DIR}/src
+                                    ${MDL_REPO_ROOT}/libs/ra8_core/inc ${MDL_REPO_ROOT}/tests
 )
 target_compile_definitions(test_media_dl_credentials PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_credentials PRIVATE -Wall -Wextra -Werror)
@@ -496,10 +499,10 @@ target_include_directories(
   test_media_dl_session
   PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_io/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../port/posix/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/ra8_io/inc
+          ${MDL_REPO_ROOT}/port/posix/inc
+          ${MDL_REPO_ROOT}/tests
 )
 target_compile_definitions(test_media_dl_session PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_session PRIVATE -Wall -Wextra -Werror)
@@ -524,8 +527,8 @@ add_executable(
   ${MDL_FS_SRC}
 )
 target_include_directories(
-  test_media_dl_state PRIVATE ${MDL_PUBLIC_INC} ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-                              ${CMAKE_CURRENT_SOURCE_DIR}/../../tests ${MDL_FS_INC}
+  test_media_dl_state PRIVATE ${MDL_PUBLIC_INC} ${MDL_REPO_ROOT}/libs/ra8_core/inc
+                              ${MDL_REPO_ROOT}/tests ${MDL_FS_INC}
 )
 target_compile_definitions(test_media_dl_state PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_state PRIVATE -Wall -Wextra -Werror)
@@ -571,9 +574,9 @@ target_include_directories(
   test_media_dl_fetch
   PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_io/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/ra8_io/inc
+          ${MDL_REPO_ROOT}/tests
           ${MDL_FS_INC}
 )
 target_compile_definitions(test_media_dl_fetch PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
@@ -613,9 +616,9 @@ target_include_directories(
   test_media_dl_fetch_cache
   PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_io/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/ra8_io/inc
+          ${MDL_REPO_ROOT}/tests
           ${MDL_FS_INC}
 )
 target_compile_definitions(test_media_dl_fetch_cache PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
@@ -641,9 +644,9 @@ target_include_directories(
   PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${CMAKE_CURRENT_SOURCE_DIR}/tests
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_io/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/ra8_io/inc
+          ${MDL_REPO_ROOT}/tests
           ${MDL_FS_INC}
 )
 target_compile_definitions(test_media_dl_cache PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
@@ -662,16 +665,16 @@ add_executable(
   src/mdl_hash.c
   src/mdl_urlname.c
   src/mdl_sanitize.c
-  ../../tests/support/mdl_state_fs_fault.c
+  ${MDL_REPO_ROOT}/tests/support/mdl_state_fs_fault.c
   ${MDL_FS_SRC}
 )
 target_include_directories(
   test_media_dl_fetch_body
   PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests/support
+          ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/tests
+          ${MDL_REPO_ROOT}/tests/support
           ${MDL_FS_INC}
 )
 target_compile_definitions(test_media_dl_fetch_body PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
@@ -686,9 +689,8 @@ add_test(NAME test_media_dl_fetch_body COMMAND test_media_dl_fetch_body)
 # unit.
 add_executable(test_media_dl_governor tests/test_media_dl_governor.c src/mdl_politeness.c)
 target_include_directories(
-  test_media_dl_governor
-  PRIVATE ${MDL_PUBLIC_INC} ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+  test_media_dl_governor PRIVATE ${MDL_PUBLIC_INC} ${MDL_REPO_ROOT}/libs/ra8_core/inc
+                                 ${MDL_REPO_ROOT}/tests
 )
 target_compile_definitions(test_media_dl_governor PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_governor PRIVATE -Wall -Wextra -Werror)
@@ -703,9 +705,8 @@ add_executable(
   test_media_dl_search tests/test_media_dl_search.c src/mdl_search.c ${MDL_EXTRACT_SRC}
 )
 target_include_directories(
-  test_media_dl_search
-  PRIVATE ${MDL_PUBLIC_INC} ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+  test_media_dl_search PRIVATE ${MDL_PUBLIC_INC} ${MDL_REPO_ROOT}/libs/ra8_core/inc
+                               ${MDL_REPO_ROOT}/tests
 )
 target_compile_definitions(test_media_dl_search PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_search PRIVATE -Wall -Wextra -Werror)
@@ -730,9 +731,9 @@ target_include_directories(
   test_media_dl_cli
   PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/src
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_io/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/libs/ra8_io/inc
+          ${MDL_REPO_ROOT}/tests
 )
 target_compile_definitions(test_media_dl_cli PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_cli PRIVATE -Wall -Wextra -Werror)
@@ -761,8 +762,8 @@ target_include_directories(
   test_media_dl_sites
   PRIVATE ${MDL_PUBLIC_INC}
           ${CMAKE_CURRENT_SOURCE_DIR}/tests
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_REPO_ROOT}/libs/ra8_core/inc
+          ${MDL_REPO_ROOT}/tests
           ${MDL_FS_INC}
 )
 target_compile_definitions(

@@ -4,7 +4,7 @@
  *
  * @details
  * The probe is the seam that lets a caller size a source before the producer
- * decodes it, so both host tools (`tools/rabook_imagepack`, `tools/media_dl`) delegate
+ * decodes it, so both host tools (`tools/rabook_imagepack`, `apps/stand_alone/media_dl`) delegate
  * to it rather than carrying their own magic tables. That makes every arm of
  * its container dispatch reachable from a plain host test with no decoder
  * mock: a handful of crafted headers is enough, because the probe reads only

@@ -45,7 +45,7 @@ from lint_targets import is_build_output_path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 HEADER_SUFFIXES = (".h", ".hpp", ".hh", ".hxx")
-SCAN_ROOTS = ("libs", "src", "port", "examples", "tools")
+SCAN_ROOTS = ("libs", "src", "port", "examples", "tools", "apps")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/ra8_fonts/",
