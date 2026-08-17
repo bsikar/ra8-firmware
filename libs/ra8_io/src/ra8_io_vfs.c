@@ -394,6 +394,12 @@ RA8_INTERNAL static ra8_err_t internal_vfs_init_slot(vfs_slot_t* slot)
   return e;
 }
 
+/** @brief Implementation of `ra8_io_vfs_init_slot_test()`. */
+RA8_TEST_HELPER ra8_err_t ra8_io_vfs_init_slot_test(vfs_slot_t* slot)
+{
+  return internal_vfs_init_slot(slot);
+}
+
 ra8_err_t ra8_io_vfs_init(void)
 {
   ra8_err_t first_error = k_ra8_ok;
