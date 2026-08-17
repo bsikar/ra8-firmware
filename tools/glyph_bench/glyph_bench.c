@@ -418,6 +418,34 @@ RA8_INTERNAL static ra8_err_t internal_submit_access(ra8_glyph_atlas_t* atlas, u
 }
 
 /**
+ * @brief Replay one page's fixed glyph-access sequence against a running RNG.
+ * @details Submits ::k_gb_page_glyphs sequential accesses, stopping at the
+ *          first failure so the caller's reread loop can propagate it.
+ * @param[in,out] atlas Initialized measured atlas.
+ * @param[in,out] page_rng Running PRNG state advanced by each access.
+ * @return Canonical atlas status.
+ * @retval k_ra8_ok Every glyph access in the page completed.
+ * @retval other The first glyph access failure.
+ * @pre @p atlas is non-null and ready for ::ra8_glyph_atlas_get.
+ * @pre @p page_rng designates a valid PRNG state.
+ * @post Success advances @p page_rng through the full page sequence.
+ * @post Failure stops at the first rejected access.
+ * @note Deterministic and thread-safe across distinct atlases.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_replay_page_glyphs(ra8_glyph_atlas_t* atlas,
+                                                          uint64_t*          page_rng)
+{
+  for (uint32_t glyph = 0U; glyph < (uint32_t)k_gb_page_glyphs; ++glyph) {
+    const ra8_err_t error = internal_submit_access(atlas, page_rng);
+    if (error != k_ra8_ok) {
+      return error;
+    }
+  }
+  return k_ra8_ok;
+}
+
+/**
  * @brief Regenerate and replay the exact legacy session without a trace buffer.
  * @details Saves each page's PRNG start state, regenerates it for all rereads,
  *          then advances the session from the first pass's ending state.
@@ -439,12 +467,10 @@ RA8_INTERNAL static ra8_err_t internal_replay_workload(ra8_glyph_atlas_t* atlas)
     const uint64_t page_start = session_rng;
     uint64_t       next_page  = page_start;
     for (uint32_t repeat = 0U; repeat < (uint32_t)k_gb_reread_pages; ++repeat) {
-      uint64_t page_rng = page_start;
-      for (uint32_t glyph = 0U; glyph < (uint32_t)k_gb_page_glyphs; ++glyph) {
-        const ra8_err_t error = internal_submit_access(atlas, &page_rng);
-        if (error != k_ra8_ok) {
-          return error;
-        }
+      uint64_t        page_rng = page_start;
+      const ra8_err_t error    = internal_replay_page_glyphs(atlas, &page_rng);
+      if (error != k_ra8_ok) {
+        return error;
       }
       if (repeat == 0U) {
         next_page = page_rng;
