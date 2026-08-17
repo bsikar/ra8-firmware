@@ -161,8 +161,11 @@ RA8_INTERNAL static bool internal_mdl_state_parse_i64_field(const char* text, in
   if (magnitude > limit) {
     return false;
   }
-  *out = (negative && (magnitude == limit)) ? INT64_MIN
-                                            : (negative ? -(int64_t)magnitude : (int64_t)magnitude);
+  if (negative && (magnitude == limit)) {
+    *out = INT64_MIN;
+  } else {
+    *out = negative ? -(int64_t)magnitude : (int64_t)magnitude;
+  }
   return true;
 }
 
@@ -267,12 +270,9 @@ RA8_INTERNAL static bool internal_mdl_state_parse_double_field(const char* text,
     }
   }
   const int32_t scale = exponent - fractional;
-  if (!digit || (*p != '\0') || (scale < -(int32_t)k_state_decimal_exp_max) ||
-      (scale > (int32_t)k_state_decimal_exp_max) ||
-      !priv_mdl_state_decimal_to_binary64(mantissa, scale, negative, out)) {
-    return false;
-  }
-  return true;
+  return digit && (*p == '\0') && (scale >= -(int32_t)k_state_decimal_exp_max) &&
+         (scale <= (int32_t)k_state_decimal_exp_max) &&
+         priv_mdl_state_decimal_to_binary64(mantissa, scale, negative, out);
 }
 
 /**

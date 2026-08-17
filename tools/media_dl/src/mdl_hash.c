@@ -75,10 +75,10 @@ ra8_err_t mdl_hash_stream(fw_fs_file_t* file,
   uint64_t remaining = file_size;
   uint64_t hash      = (uint64_t)k_mdl_fnv_offset;
   for (uint64_t call = 0U; call < (uint64_t)k_hash_max_read_calls; ++call) {
-    const uint32_t want =
-      (remaining == 0U)
-        ? 1U
-        : ((remaining < (uint64_t)buffer_bytes) ? (uint32_t)remaining : buffer_bytes);
+    uint32_t want = 1U;
+    if (remaining != 0U) {
+      want = (remaining < (uint64_t)buffer_bytes) ? (uint32_t)remaining : buffer_bytes;
+    }
     uint32_t        got  = 0U;
     const ra8_err_t read = fw_fs_read(file, buffer, want, &got);
     if (read != k_ra8_ok) {
