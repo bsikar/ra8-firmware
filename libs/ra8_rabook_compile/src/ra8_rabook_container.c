@@ -112,6 +112,61 @@ RA8_INTERNAL static ra8_err_t internal_write_exact(ra8_rabook_write_at_fn write_
 }
 
 /**
+ * @brief Reject a missing callback, result, workspace, or workspace member.
+ * @details Isolates the pointer-only precondition chain so the caller's own
+ *          size and capacity checks stay readable as a short, flat sequence.
+ * @param[in] read Source callback.
+ * @param[in] write_at Destination callback.
+ * @param[in] ws Caller-owned workspace to validate.
+ * @param[in] out_len Required public result pointer.
+ * @param[in] out_count Required chunk-count result pointer.
+ * @return Pointer validation status.
+ * @retval k_ra8_ok Every required pointer is non-NULL.
+ * @retval k_ra8_err_null_ptr A callback, result, workspace, or member is NULL.
+ * @pre None of the supplied pointers have been dereferenced yet.
+ * @pre @p ws, when non-NULL, has not been mutated by this call.
+ * @post No pointer is dereferenced.
+ * @post The return value fully identifies whether validation may continue.
+ * @note Thread-safe for distinct argument objects.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_validate_pointers(ra8_rabook_flat_read_fn read,
+                                                         ra8_rabook_write_at_fn  write_at,
+                                                         const ra8_rabook_container_workspace_t* ws,
+                                                         const uint64_t* out_len,
+                                                         uint32_t*       out_count)
+{
+  if (read == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (write_at == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (ws == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (out_len == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (out_count == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (ws->input == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (ws->compressed == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (ws->compressor == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (ws->offsets == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  return k_ra8_ok;
+}
+
+/**
  * @brief Validate pointers and workspace capacities before output mutation.
  * @details Derives the bounded chunk count only after required callback and
  *          workspace members pass their preconditions.
@@ -142,32 +197,9 @@ RA8_INTERNAL static ra8_err_t internal_validate(ra8_rabook_flat_read_fn         
                                                 const uint64_t*                         out_len,
                                                 uint32_t*                               out_count)
 {
-  if (read == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (write_at == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (ws == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (out_len == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (out_count == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (ws->input == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (ws->compressed == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (ws->compressor == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (ws->offsets == nullptr) {
-    return k_ra8_err_null_ptr;
+  const ra8_err_t ptr_err = internal_validate_pointers(read, write_at, ws, out_len, out_count);
+  if (ptr_err != k_ra8_ok) {
+    return ptr_err;
   }
   if (flat_len == 0U) {
     return k_ra8_err_invalid_arg;
