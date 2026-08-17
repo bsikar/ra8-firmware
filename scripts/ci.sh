@@ -128,6 +128,7 @@ RA8_GATE_REGISTRY=(
   "pre-commit-checks|fast|the check_*.py gate suite"
   "shebangs|fast|first-party shell scripts carry an env-based shebang"
   "entry-points|fast|hosted vs freestanding main() contract per build domain"
+  "tier-imports|fast|the platform never imports apps/; apps/shared never imports a form"
   "bench-lock|fast|every bench-touching script takes the bench lock"
   "annotations|fast|RA8_* annotation attributes (libclang)"
   "doc-attachment|fast|a Doxygen block describes the symbol it is attached to"
