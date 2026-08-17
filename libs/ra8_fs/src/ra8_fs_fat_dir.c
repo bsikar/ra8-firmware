@@ -240,27 +240,27 @@ RA8_EXPECTS_LOCK("ra8_fs_lock")
  * @param[in] sector Bytes of the already-read directory sector.
  * @param[out] out Stable copied entry value.
  * @param[out] out_entry True when one entry was copied into @p out.
- * @return Name-conversion status.
- * @retval k_ra8_ok The sector was scanned to a stopping point without error.
+ * @return Nothing.
  * @pre @p sector holds `priv_bps(state->mount)` valid bytes.
  * @pre `state->fat_walk.entry_idx` indexes within @p sector.
  * @post One of: an entry was copied (`*out_entry` true), the directory's end
  *       marker was found (`state->finished` true), or the sector was
  *       exhausted so the caller must advance to the next one.
+ * @post `state->fat_walk.entry_idx` advanced past every entry inspected in @p sector.
  * @note Not thread-safe; caller holds the filesystem lock.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_fat_dir_scan_sector(ra8_fs_dir_private_t* state,
-                                                           const uint8_t*        sector,
-                                                           ra8_fs_dirent_t*      out,
-                                                           bool*                 out_entry)
+RA8_INTERNAL static void internal_fat_dir_scan_sector(ra8_fs_dir_private_t* state,
+                                                      const uint8_t*        sector,
+                                                      ra8_fs_dirent_t*      out,
+                                                      bool*                 out_entry)
 {
   while (state->fat_walk.entry_idx < priv_bps(state->mount)) {
     const uint8_t* entry = &sector[state->fat_walk.entry_idx];
     state->fat_walk.entry_idx += (uint32_t)k_ra8_fs_dir_entry_bytes;
     if (entry[k_dir_off_name] == k_dir_marker_free_perm) {
       state->finished = true;
-      return k_ra8_ok;
+      return;
     }
     if (entry[k_dir_off_name] == k_dir_marker_free_used) {
       priv_lfn_reset(&state->fat_lfn);
@@ -292,9 +292,8 @@ RA8_INTERNAL static ra8_err_t internal_fat_dir_scan_sector(ra8_fs_dir_private_t*
     out->size_bytes = (uint64_t)priv_rd32(&entry[k_dir_off_file_size]);
     priv_lfn_reset(&state->fat_lfn);
     *out_entry = true;
-    return k_ra8_ok;
+    return;
   }
-  return k_ra8_ok;
 }
 
 RA8_EXPECTS_LOCK("ra8_fs_lock")
@@ -305,9 +304,9 @@ RA8_EXPECTS_LOCK("ra8_fs_lock")
  * @param[in,out] state Open private cursor state.
  * @param[out] out Stable copied entry value.
  * @param[out] out_entry True for one copied entry; false at clean end.
- * @return Media, corruption, conversion, or clean-end status.
+ * @return Media, corruption, or clean-end status.
  * @retval k_ra8_ok One entry was copied or clean end was reached.
- * @retval k_ra8_err_* Sector-walk, media-read, or name-conversion failure.
+ * @retval k_ra8_err_* Sector-walk or media-read failure.
  * @pre Required pointers are non-NULL and the filesystem lock is held.
  * @pre @p state was initialized for a mounted FAT volume.
  * @post The cursor advances monotonically and @p out never borrows sector scratch.
@@ -329,14 +328,14 @@ internal_fat_dir_next(ra8_fs_dir_private_t* state, ra8_fs_dirent_t* out, bool* o
         return k_ra8_ok;
       }
     }
-    uint8_t* const sector = priv_sec_walk();
-    ra8_err_t      err    = priv_read_sector(state->mount, state->fat_walk.cur_lba, sector);
+    uint8_t* const  sector = priv_sec_walk();
+    const ra8_err_t err    = priv_read_sector(state->mount, state->fat_walk.cur_lba, sector);
     if (err != k_ra8_ok) {
       return err;
     }
-    err = internal_fat_dir_scan_sector(state, sector, out, out_entry);
-    if ((err != k_ra8_ok) || *out_entry || state->finished) {
-      return err;
+    internal_fat_dir_scan_sector(state, sector, out, out_entry);
+    if (*out_entry || state->finished) {
+      return k_ra8_ok;
     }
   }
   return k_ra8_ok;
