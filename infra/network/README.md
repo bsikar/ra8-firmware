@@ -13,8 +13,11 @@ segments** on the same silicon (sw0):
   denying it to the WAN. This is the local bench network with no internet --
   the RA8 boards, probes, and the ESP32-C6 bench live here.
 - an **even** segment (`lan-even`, ports 2,4,6,8,10,12 -- 10.0.41.0/24) that
-  **NATs out `wan1`** (a DHCP uplink to the house AT&T gateway), for devices
-  that need internet access. Nothing on the islanded bench uses it.
+  **NATs out `wan1`** (a DHCP uplink to the house gateway), for devices that
+  need internet access. Nothing on the islanded bench uses it.
+
+`fortigate-bench.conf` is the declaration of what the unit runs; this file is
+the reasoning around it and does not restate its contents.
 
 Everything here is reproducible from code plus OpenBao. No credential lives in
 this directory, any commit, or any kept log -- and that includes the chassis
@@ -29,9 +32,9 @@ serial, which FortiOS turns into the `maintainer` recovery password (see
    policy 2 DENIES odd -> wan1               .41.100-.199; internet devices
         (all bench kit lives here)                        |
    +-------------------------+                            |   wan1 (DHCP lease
-   |  FortiGate 81E-POE       | odd ports (1,3,5,7,9,11)  |   from AT&T gw)
+   |  FortiGate 81E-POE       | odd ports (1,3,5,7,9,11)  |   from house gw)
    |  ra8-bench-fw            |=========+                 |        |
-   |  FortiOS v6.4.6          | even ports (2,4,6,8,10,12)|        v
+   |                          | even ports (2,4,6,8,10,12)|        v
    |  serial: see OpenBao     |=========|=======+         |   +---------------+
    |  lan       10.0.40.1/24  |         |       |         +-->| internet      |
    |  lan-even  10.0.41.1/24  |         |       |             | device        |
@@ -55,7 +58,9 @@ serial, which FortiOS turns into the `maintainer` recovery password (see
   (`br-trusted`), untagged, into the FortiGate `lan` (odd) hard switch. **No
   VLAN tags.** The even segment is a separate hard switch, not a VLAN.
 - The AP is a **dumb AP**: its own dnsmasq/odhcpd DHCP is disabled, so the
-  FortiGate is the single DHCP server on each segment.
+  FortiGate is the single DHCP server on each segment. The AP's MAC is
+  DHCP-reserved to `.40.10` in `fortigate-bench.conf`, so it holds that address
+  whether it is static or DHCP.
 - The AP is powered by FortiGate PoE (an odd port). A FortiGate reboot cycles
   the AP -- expected and harmless.
 
@@ -81,9 +86,6 @@ internet on EVEN ports.
 | `10.0.40.100-.199` | FortiGate DHCP pool (C6, test hosts)            |
 | `10.0.40.200-.254` | Free                                            |
 
-The AP's MAC `00:18:0a:7b:dd:eb` is reserved to `10.0.40.10` in the FortiGate
-DHCP server, so the AP holds `.10` whether it is static or DHCP.
-
 ### Even / uplinked -- 10.0.41.0/24 (`lan-even`)
 
 | Range              | Use                                             |
@@ -93,9 +95,8 @@ DHCP server, so the AP holds `.10` whether it is static or DHCP.
 | `10.0.41.100-.199` | FortiGate DHCP pool (internet-facing devices)   |
 | `10.0.41.200-.254` | Free                                            |
 
-`wan1` itself takes a DHCP lease from the house AT&T gateway (observed
-`192.168.1.84`, default route via `192.168.1.254`, admin distance 5). That
-house subnet is upstream of the even segment and off-limits to the bench.
+`wan1` itself takes a DHCP lease from the house gateway. That house subnet is
+upstream of the even segment and off-limits to the bench.
 
 ## Isolation model (odd vs even)
 
@@ -107,8 +108,8 @@ Three firewall policies, in `fortigate-bench.conf`, do all the work:
 | 2 | `deny-odd-to-wan`| `lan` (odd) | `wan1`     | **deny**      |
 | 3 | `odd-to-even-mgmt`| `lan` (odd)| `lan-even` | accept        |
 
-- **Policy 1** is the even segment's only path out. Its `srcintf` is `lan-even`, and
-  it **must never** be `lan`: it pre-existed as `lan -> wan1 all/all accept
+- **Policy 1** is the even segment's only path out. Its `srcintf` is `lan-even`,
+  and it **must never** be `lan`: it pre-existed as `lan -> wan1 all/all accept
   NAT`, harmless only while `wan1` had no address. `wan1` now has a lease, so
   reverting `srcintf` to `lan` would silently give the whole islanded bench
   full internet. The tracked `fortigate-bench.conf` encodes `lan-even` and
@@ -123,44 +124,29 @@ Three firewall policies, in `fortigate-bench.conf`, do all the work:
 
 Mount `secret` (KV v2), path **`secret/ra8d2/bench-network`**. Read it with the
 existing read-only AppRole (`scripts/secrets/openbao_client.py`,
-`~/.config/hil/openbao.env`). Keys:
-
-| Key                          | Meaning                                       |
-|------------------------------|-----------------------------------------------|
-| `fortigate_admin_user`       | FortiGate admin account (`admin`)             |
-| `fortigate_admin_pass`       | FortiGate admin password                      |
-| `fortigate_hostname`         | `ra8-bench-fw`                                 |
-| `fortigate_lan_ip`           | `10.0.40.1`                                    |
-| `fortigate_serial`           | Chassis serial -- CREDENTIAL-EQUIVALENT, see below |
-| `fortigate_maintainer_pass`  | `bcpb<serial>` recovery password (secret)     |
-| `ap_ssh_user`                | AP OpenWrt ssh user (`root`)                   |
-| `ap_ssh_pass`                | AP OpenWrt ssh / LuCI password                |
-| `ap_ip`                      | `10.0.40.10`                                   |
-| `bench_ssid`                 | `ra8-bench`                                    |
-| `bench_psk`                  | WPA2-PSK for `ra8-bench` (generated in-vault) |
-| `legacy_psk_iot_network`     | Old `iot-network` PSK                          |
-| `legacy_psk_home_network`    | Old `home-network` PSK                         |
-| `legacy_psk_guest_network`   | Old `guest-network` PSK                         |
-| `subnet`                     | `10.0.40.0/24`                                 |
-| `console_tty`                | FortiGate console `by-id` device path          |
+`~/.config/hil/openbao.env`). It holds the FortiGate admin account and
+password, its hostname and LAN address, the chassis serial and the derived
+`maintainer` recovery password, the AP's ssh/LuCI credentials and address, the
+bench SSID and its generated PSK, the superseded PSKs of the SSIDs that
+predated it, the bench subnet, and the FortiGate console `by-id` device path.
 
 The admin re-provision writer lives on the OpenBao host as
 `~/.openbao/configure_bench_network.sh` (root-token path, mirrors
-`configure_openbao.sh`); it preserves an already-generated `bench_psk`.
+`configure_openbao.sh`); it preserves an already-generated bench PSK.
 
 ### Why the chassis serial is treated as a credential
 
 FortiOS derives the console recovery account's password **mechanically** from
 the chassis serial: the account is `maintainer` and the password is
 `bcpb<serial>`. The serial is therefore not an inert asset tag -- publishing it
-publishes the recovery password, which is why `fortigate_serial` lives in
-OpenBao with the rest and appears nowhere in this tree.
+publishes the recovery password, which is why it lives in OpenBao with the rest
+and appears nowhere in this tree.
 
-An earlier revision of this table called the serial "not secret" and printed
+An earlier revision of this file called the serial "not secret" and printed
 it. That reasoning was wrong in exactly one step: it treated the serial as an
 identifier rather than as the input to a password derivation that the very next
-row of the same table documents. Do not reintroduce it -- neither here, nor in
-the topology diagram, nor in a status note.
+entry of the same record documents. Do not reintroduce it -- neither here, nor
+in the topology diagram, nor in a status note.
 
 Two facts bound the blast radius, and neither is a reason to relax the rule:
 
@@ -175,40 +161,26 @@ Two facts bound the blast radius, and neither is a reason to relax the rule:
 A serial also cannot be rotated the way a password can -- it is stamped in the
 chassis. The durable mitigations are the two above, not re-keying.
 
-## Console access recipe
+## Console access
 
-The FortiGate console cable is on the bench Pi:
+The FortiGate console cable is on the bench Pi (`ssh star`), at 9600 8N1 on a
+`/dev/serial/by-id/usb-FTDI_*` device. `fg_bringup.py` resolves that glob at run
+time and fails loudly if it matches zero or more than one device, the same
+identity-not-enumeration rule `scripts/hil/lib/tty_resolve.sh` applies to the
+other bench consoles. The cable's own serial is maintainer-specific and stays
+out of the tree; set `FG_CONSOLE_TTY` (or the OpenBao console-tty entry) to pin
+a specific device.
 
-```
-host:  ssh star
-tty:   /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_*-if00-port0
-baud:  9600 8N1
-```
+Drive the console with `fg_bringup.py` (never an interactive `screen`). It
+reads every credential from OpenBao and masks them in the transcript. Login
+mechanics that matter on this unit: **lines end with a bare CR** (a trailing LF
+submits an empty password and desyncs the login), prompt matching is
+case-insensitive, and the installed FortiOS **forces a password change on the
+first post-wipe login** (handled automatically).
 
-`fg_bringup.py` resolves that glob at run time and fails loudly if it matches
-zero or more than one device, the same identity-not-enumeration rule
-`scripts/hil/lib/tty_resolve.sh` applies to the other bench consoles. The
-cable's own serial is maintainer-specific and stays out of the tree; set
-`FG_CONSOLE_TTY` (or OpenBao `console_tty`) to pin a specific device.
-
-Drive it with `fg_bringup.py` (never an interactive `screen`). It reads every
-credential from OpenBao and masks them in the transcript
-(`~/ra8-bench/fortigate_console.log`). Login mechanics that matter on this unit:
-**lines end with a bare CR** (a trailing LF submits an empty password and
-desyncs the login), prompt matching is case-insensitive, and v6.4.6 **forces a
-password change on the first post-wipe login** (handled automatically).
-
-```
-python3 infra/network/fg_bringup.py login        # login + capture config (read-only)
-python3 infra/network/fg_bringup.py verify        # status, DHCP, routing, ping the AP
-python3 infra/network/fg_bringup.py ap-inspect    # jump to the AP, dump wireless/network
-python3 infra/network/fg_bringup.py ap-status     # confirm ra8-bench hostapd is beaconing
-python3 infra/network/fg_bringup.py --selftest    # offline: check LAN-name detection logic
-```
-
-Admin `ssh`/`https` is also bound to both LAN interfaces (`10.0.40.1`,
-`10.0.41.1`), so read-only `show`/`get` captures can be taken over the network
-from a host on either segment instead of the console.
+Admin `ssh`/`https` is also bound to both LAN interfaces, so read-only
+`show`/`get` captures can be taken over the network from a host on either
+segment instead of the console.
 
 ## Re-provision from scratch
 
@@ -216,26 +188,28 @@ from a host on either segment instead of the console.
    `~/.openbao/configure_bench_network.sh` with the values on stdin.
 2. **Wipe + configure the FortiGate** (from `ssh star`):
    ```
-   python3 infra/network/fg_bringup.py bootstrap    # login, factoryreset, reconfigure
+   python3 infra/network/fg_bringup.py bootstrap
    ```
    `bootstrap` logs in, issues `execute factoryreset`, then after the wiped boot
    completes the forced password change from OpenBao and replays
    `fortigate-bench.conf` on the detected LAN interface (`lan`). detect_lan()
    rewrites the `internal` token to that real name; the second switch is the
    literal `lan-even`, which the rewrite leaves alone.
-   (`configure` alone re-runs just the post-wipe configuration.)
 3. **Configure the AP** over the FortiGate console jump (no direct IP path):
    ```
    python3 infra/network/fg_bringup.py ap-configure
    ```
    Stands up `ra8-bench` on radio1 (2.4 GHz, WPA2-PSK), disables the AP's DHCP
-   (dumb AP), disables the orphaned iot/guest SSIDs, keeps home-network.
+   (dumb AP), disables the orphaned SSIDs it shipped with, keeps home-network.
    `ap_openwrt.sh` is the equivalent for a host cabled directly onto the LAN.
-4. **Verify** (from `ssh star`):
-   ```
-   python3 infra/network/fg_bringup.py verify        # FortiGate + AP reachability
-   infra/network/verify_bench_wifi.sh                # wlan0 join test (needs RF range)
-   ```
+4. **Verify** (from `ssh star`): `fg_bringup.py verify` checks FortiGate and AP
+   reachability, and `infra/network/verify_bench_wifi.sh` is the wlan0 join test
+   (it needs RF range).
+
+**Do not `bootstrap` against a live unit casually (#561).** The even-segment
+devices depend on the running config, and `fortigate-bench.conf` IS that
+config: an out-of-date declaration replayed over a wipe reverts whatever it
+does not describe.
 
 ## What the ESP32-C6 WiFi-join test needs
 
@@ -244,43 +218,19 @@ from a host on either segment instead of the console.
 | SSID          | `ra8-bench`                                          |
 | Band / radio  | 2.4 GHz -- MR18 **radio1** (phy2); channel 6, HT20  |
 | Security      | WPA2-PSK (`psk2`, CCMP; PMF off for compatibility)  |
-| Passphrase    | OpenBao `secret/ra8d2/bench-network` key `bench_psk` |
+| Passphrase    | OpenBao `secret/ra8d2/bench-network`                 |
 | Gateway / DNS | `10.0.40.1` (FortiGate, odd segment)               |
 | Addressing    | DHCP from the FortiGate, pool `10.0.40.100-.199`    |
 
 The C6 joins the AP, which bridges into the **odd** (islanded) segment -- it
 does not touch the even/uplinked segment at all.
 
-## Current status (2026-08-02) -- NETWORK UP, odd/even split live
-
-The bench LAN is live and now carries the odd/even split, captured read-only
-from the running unit and folded verbatim into `fortigate-bench.conf`:
-
-- **FortiGate** (`ra8-bench-fw`, FortiOS v6.4.6 build1879): one physical switch
-  (sw0) split into `lan` (odd ports, 10.0.40.1/24) and `lan-even` (even ports,
-  10.0.41.1/24). DHCP server 1 serves `.40.100-.199` (`.10` reserved to the AP
-  MAC); DHCP server 3 serves `.41.100-.199`. `wan1` holds a DHCP lease
-  (default route, distance 5). Firewall: even NATs out `wan1`, odd is denied
-  out (islanded), odd may manage even. fortiguard / central-management /
-  autoupdate disabled.
-- **AP** (Meraki MR18, OpenWrt): reachable at 10.0.40.10 on the odd segment,
-  `ra8-bench` beaconing on radio1 (2.4 GHz, WPA-PSK/CCMP, channel 6), bridged
-  into `br-trusted`. Dumb AP (own DHCP disabled); orphaned iot/guest SSIDs
-  disabled; home-network kept.
-
-**Bootstrap is deferred (#561):** the even-segment devices depend on the
-current running config, so do not run `fg_bringup.py bootstrap` against the live
-unit until this declaration has landed and been reviewed. The declaration IS
-the running config; the earlier "islanded, no uplink" wording it replaced would
-have reverted the even-segment network.
-
-**One verification caveat carried over:** the end-to-end wlan0 join test from
-the bench Pi could not be run because the Pi's onboard wlan0 is out of RF range
-of the ceiling-mounted MR18. This is placement, not config -- the SSID is
-proven beaconing on the AP and bridged to the DHCP path. The ESP32-C6,
-co-located with the AP, is the live join test; a wired host on an **odd** port
-(as `star`'s RTL8153 already is at `10.0.40.101`) gives a direct end-to-end
-lease/ping proof on the islanded segment.
+**One verification caveat.** The end-to-end wlan0 join test from the bench Pi
+cannot be run from the Pi's onboard radio: it is out of RF range of the
+ceiling-mounted MR18. That is placement, not config. The ESP32-C6, co-located
+with the AP, is the live join test; a wired host on an **odd** port (as `star`'s
+USB Ethernet already is) gives a direct end-to-end lease/ping proof on the
+islanded segment.
 
 ## See also
 

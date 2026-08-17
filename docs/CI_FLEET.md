@@ -664,10 +664,10 @@ threads would divide fine at four instances, and `26/4 = 6.5` GB would land
 back under the OOM threshold. Do not go to four until clang-tidy is sharded and
 per-shard peak memory has been re-measured.
 
-`truenas` ran **one** instance for its whole life on the same reserved budget,
+`truenas` ran a single instance for a long time on the same reserved budget,
 which left half of a deliberately-sized reservation idle whenever one job was
-all it could hold. It is two now, from the formula, with the host's total CI
-footprint unchanged.
+all it could hold. The formula raised it, with the host's total CI footprint
+unchanged.
 
 ### The divisor is conservative, and revisable
 
@@ -687,7 +687,7 @@ meant to be revised, not treated as magic.
 
 `check_fleet_declaration.py` recomputes the formula for every host and **fails**
 when a declared count or per-instance cap departs from it with no written
-`sizing_note`. Three hosts have real reasons to depart from it -- what the gate
+`sizing_note`. Some hosts have real reasons to depart from it -- what the gate
 enforces is that a departure is deliberate and legible. A number nobody can
 re-derive is folklore.
 
@@ -705,8 +705,8 @@ real use. Adding ARC pods there adds contention, not throughput. The same
 | clang-tidy, full width | **96s** | ~330s | ~981s (contended) |
 
 Real capacity comes from machines that are not `pve1`. That is what `truenas`
-and the gaming PC are for, and why `ci_runner_max` stays at 6 as the fleet
-grows.
+and the gaming PC are for, and why the ARC pod ceiling does not rise as the
+fleet grows.
 
 ---
 
@@ -720,8 +720,6 @@ grows.
   it is needed and leaves the decision with the owner.
 - **The Proxmox guest topology.** VM 300 and CT 107 exist only as live guest
   config; recorded on issue #500.
-- **Quiet hours on TrueNAS SCALE.** Blocked by a read-only appliance root, not
-  by a missing feature -- see section 5.
 - **A registration or removal token.** Minted per operation and passed on the
   command line, never stored. That is the point: two hosts in this fleet must
   never hold a long-lived credential.

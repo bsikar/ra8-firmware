@@ -9,31 +9,14 @@ affected.
 
 ## Targets
 
-The first wave covers every parser that may be fed bytes from outside
-the device (network, modem, removable media):
-
-| Target              | Code under test                                         | Trust boundary               |
-|---------------------|---------------------------------------------------------|------------------------------|
-| `fuzz_ra8_jpeg_sw`   | `ra8_jpeg_sw_decode()` baseline JPEG decoder             | Camera frames, on-disk files |
-| `fuzz_ra8_epub`      | `ra8_epub_open()` (miniz ZIP + OPF/NCX parsing)          | Removable media              |
-| `fuzz_ra8_modem_at`  | AT response parser (`ra8_modem_at_send_cmd` + rx pump)   | Cellular modem byte stream   |
-| `fuzz_ra8_usb_pal`   | `ra8_usb_pal_ep_open` / `ep_send` / `ep_recv`            | USB host / compliance stand  |
-| `fuzz_ra8_tls`       | `ra8_tls_*` facade lifecycle + BIO recv stream           | Network transport (TLS)      |
-| `fuzz_ra8_canfd`     | `ra8_canfd_receive()` decode of a staged `CFDRF[0]` block | CAN-FD bus                   |
-| `fuzz_ra8_etha`      | Ethernet header parser via `eff_parse_eth_header()`      | Ethernet                     |
-| `fuzz_ra8_fs_fat`    | FAT BPB / directory entry walk via `ra8_fs_mount()`      | Removable media              |
-| `fuzz_ra8_jpeg_sw_block` | Focused JPEG Huffman block decoder (dec_block path) | Camera frames                |
-| `fuzz_ra8_stb_image` | `stbi_load_from_memory()` (PNG/JPEG/GIF/BMP, stb_image) | EPUB cover / figure images   |
-| `fuzz_ra8_reflow_xml`| Bounded pull-reader + EPUB OPF/NCX/nav consumers         | EPUB manifest / TOC (XML)    |
-| `fuzz_ra8_stbtt`     | `stbtt_InitFont()` + glyph raster (stb_truetype font)   | EPUB embedded fonts          |
-| `fuzz_ra8_rar`       | `ra8_rar_open/next/extract()` + `ra8_rar5_decompress()`  | `.cbr` comics                |
-| `fuzz_ra8_webp`      | `ra8_webp_get_info()` / `ra8_webp_decode_rgba()` (libwebp) | EPUB / longstrip images     |
-| `fuzz_ra8_jof`       | `ra8_jof_parse()` + `ra8_jof_read_tile()` atlas reader    | Pre-baked EPUB tile atlas    |
-| `fuzz_ra8_jof_produce` | `ra8_jof_produce()` import-time transcode producer      | EPUB cover / figure images   |
-| `fuzz_ra8_unarch_xz` | `ra8_unarch_xz_unwrap()` (bounded XZ/LZMA2 over SOUP)   | `.tar.xz` comics             |
-| `fuzz_ra8_unarch_tar`| `ra8_unarch_tar_open/next/read()` (ustar/pax/GNU walk)  | `.cbt` / unwrapped tar       |
-| `fuzz_ra8_unarch_gzip`| `ra8_unarch_gzip_unwrap()` (RFC 1952 over miniz DEFLATE)| `.tar.gz` comics             |
-| `fuzz_ra8_decomp_limits`| `ra8_decomp_*` policy seam (saturating 64-bit bounds) | All decoders' shared seam    |
+The harnesses cover the parsers that can be fed bytes from outside the
+device: the network and cellular-modem byte streams, USB, CAN-FD and
+Ethernet frames, the filesystem on removable media, and -- most
+CVE-dense of all -- the SOUP decoders that ingest a fully
+attacker-controlled book. That last group is the bulk of them: the ZIP
+container and the XML inside it, the image codecs, the font rasteriser,
+the comic-archive unwrappers, and the shared decompression-limits seam
+every decoder passes through.
 
 Add a new harness by dropping `tests/fuzz/fuzz_ra8_<x>.c` next to the
 existing files and listing it in `tests/fuzz/CMakeLists.txt`
@@ -45,54 +28,33 @@ through that script -- there is no second list to update.
 
 ## Running
 
-### Smoke run (default ~30 seconds per target)
+`make fuzz` is the smoke run. It delegates to
+`scripts/checks/run_fuzz.sh`, which configures and builds
+`tests/build-fuzz/` and then gives every harness a short budget; the
+build is skipped when no source changed, so a re-run only re-fuzzes.
+The same script takes a single target name and a longer budget for a
+real session, and it reuses that build tree. Its `--help` is the
+authority on the arguments and on the environment variables that move
+the wall-clock and iteration caps.
 
-    make fuzz
-
-This delegates to `scripts/checks/run_fuzz.sh --all`, which configures
-`tests/build-fuzz/` with `-DRA8_FUZZ=ON`, builds every harness, then
-runs each one with `-max_total_time=30 -runs=10000`. The target build
-is skipped when no source changed; subsequent invocations only re-run
-the harnesses.
-
-Override the budget per harness (and the run cap, which exists so
-trivial targets finish before the wall budget):
-
-    FUZZ_SECONDS=120 make fuzz
-    FUZZ_RUNS= make fuzz          # no -runs cap, wall budget only
-
-### Long-form session on one target
-
-    bash scripts/checks/run_fuzz.sh fuzz_ra8_jpeg_sw 600
-
-The script reuses the same `tests/build-fuzz/` tree and writes any
-crash inputs to `tests/build-fuzz/crashes/<target>/`.
-
-### Sweep every harness with one budget
-
-    bash scripts/checks/run_fuzz.sh --all 300
-
-Unlike a shell loop over single-target runs, `--all` keeps going after
-a crashing target (so one crash cannot mask another), then exits
-non-zero listing every failed harness.
-
-### Nightly CI sweep
+Sweeping with `--all` is not a shell loop over single-target runs: it
+keeps going after a crashing target, so one crash cannot mask another,
+then exits non-zero listing every harness that failed. Crash inputs
+land in `tests/build-fuzz/crashes/<target>/`.
 
 `.github/workflows/fuzz-nightly.yml` is a thin driver for the
 `fuzz-sweep` gate (`bash scripts/ci.sh --gate fuzz-sweep`), which runs
-`run_fuzz.sh --all` every night (and on manual `workflow_dispatch`,
-where the per-target budget is `RA8_FUZZ_SECONDS`; default 600 s).
-The job fails on any crash and uploads `tests/build-fuzz/crashes/`
-plus the full sweep log as artifacts.
+that same sweep nightly at a far larger per-target budget. The job
+fails on any crash and uploads the crash directory and the full sweep
+log as artifacts.
 
 ## Toolchain requirements
 
-- `clang` (any version with libFuzzer; the project is verified with
-  `clang-18` on Linux). gcc has no `-fsanitize=fuzzer` support and the
-  build will refuse to configure if the active C compiler is not
-  clang. `run_fuzz.sh` auto-selects the first clang on PATH that can
-  link `-fsanitize=fuzzer` (bare `clang` first, then versioned majors
-  newest-first); pin one explicitly with `CC=clang-18 CXX=clang++-18`.
+- `clang` with libFuzzer. gcc has no `-fsanitize=fuzzer` support, and
+  the build refuses to configure if the active C compiler is not clang.
+  `run_fuzz.sh` auto-selects the first clang on PATH that can link
+  `-fsanitize=fuzzer` (bare `clang` first, then versioned majors
+  newest-first); `CC` / `CXX` pin one explicitly.
 - AddressSanitizer + UndefinedBehaviorSanitizer runtimes (shipped with
   clang automatically; no separate install).
 
@@ -101,14 +63,10 @@ plus the full sweep log as artifacts.
 The host test fake (`tests/mocks/ra8_fake_mmap.c`) installs RAM at
 the same MCU peripheral addresses via `mmap(MAP_FIXED, 0x40000000)`.
 macOS arm64 refuses MAP_FIXED below 4 GiB, so all host tests --
-including these fuzz harnesses -- run inside the project's existing
-Ubuntu 24.04 devcontainer (`scripts/ci/test-docker.sh`). The fuzz CMake
-file drops AddressSanitizer when configured on macOS so the build
-still succeeds for development, but for a real fuzz session use the
-Linux container:
-
-    docker run --rm -v "$PWD:/work" -w /work ra8-firmware-test:latest \
-        make fuzz
+including these fuzz harnesses -- run inside the project's Linux
+devcontainer (`scripts/ci/test-docker.sh`). The fuzz CMake file drops
+AddressSanitizer when configured on macOS so the build still succeeds
+for development, but a real fuzz session belongs in the container.
 
 ## Build details
 
@@ -124,10 +82,11 @@ diagnose out-of-bounds reads and integer UB inside the linked-in
 production code; libFuzzer coverage feedback is limited to the harness
 file itself.
 
-Future work: spin up a second OBJECT library that recompiles the same
-sources with `-fsanitize=fuzzer-no-link,address,undefined` so coverage
-feedback reaches the parsers themselves. Not done yet because the
-current approach already finds bugs and keeps the cmake graph simple.
+Extending coverage feedback into the parsers themselves would take a
+second OBJECT library recompiled with
+`-fsanitize=fuzzer-no-link,address,undefined`. The single-library shape
+is a deliberate trade: the harness-only feedback already finds bugs, and
+the cmake graph stays simple.
 
 ## Seed corpora
 
@@ -135,7 +94,7 @@ Each harness ships with a small set of known-good inputs under
 `tests/fuzz/corpus/<target>/`. Starting from real coverage rather
 than random bytes lets libFuzzer reach interesting parser states in
 seconds rather than minutes, which is the difference between the
-30-second smoke run finding a regression and missing it.
+smoke run finding a regression and missing it.
 
 The seeds are (re-)materialised by `scripts/checks/init_fuzz_corpora.sh`,
 which is invoked automatically by `make fuzz` and by
@@ -143,28 +102,11 @@ which is invoked automatically by `make fuzz` and by
 idempotent: it overwrites the seed files in place but does not touch
 crash reproducers added by the fuzzer or by hand.
 
-| Target              | Seeds | Generation                                                          |
-|---------------------|-------|---------------------------------------------------------------------|
-| `fuzz_ra8_jpeg_sw`   | 5     | `scripts/gen/gen_jpeg_fixture.py` at five (W,H) sizes             |
-| `fuzz_ra8_epub`      | 2     | Hand-crafted minimal EPUB ZIPs via Python `zipfile`                 |
-| `fuzz_ra8_modem_at`  | 10    | Plain-text AT response strings (`OK`, `+CSQ:`, `+CME ERROR:`, ...)  |
-| `fuzz_ra8_usb_pal`   | 0     | Directory created empty -- `init_fuzz_corpora.sh` generates no seed |
-| `fuzz_ra8_tls`       | 0     | Directory created empty -- `init_fuzz_corpora.sh` generates no seed |
-| `fuzz_ra8_canfd`     | 5     | Raw `CFDRF[0]` frame blobs (classic, extended, FD, min, max DLC)    |
-| `fuzz_ra8_etha`      | 5     | Short Ethernet frames (ARP, IPv4, VLAN, runt, min header)           |
-| `fuzz_ra8_fs_fat`    | 4     | Sparse FAT BPB seeds (FAT16 basic / 4 KiB cluster / minimal / zero) |
-| `fuzz_ra8_jpeg_sw_block` | 4 | Scan-data fragments appended to a fixed JFIF header by the harness  |
-| `fuzz_ra8_stb_image` | 2     | A minimal 1x1 BMP (valid) plus a truncated/garbage header (malformed) |
-| `fuzz_ra8_reflow_xml`| 2     | A minimal valid OPF package plus a malformed XML fragment           |
-| `fuzz_ra8_stbtt`     | 2     | The bundled `libs/ra8_fonts/literata_latin1.ttf` plus a garbage blob    |
-| `fuzz_ra8_rar`       | 0     | Directory created empty -- `init_fuzz_corpora.sh` generates no seed |
-| `fuzz_ra8_webp`      | 5     | The four committed `tests/fixtures/webp/` fixtures plus a truncated RIFF |
-| `fuzz_ra8_jof`       | 2     | A hand-built valid 16x16 raw-codec atlas plus a truncated blob       |
-| `fuzz_ra8_jof_produce` | 3   | A small gray8 PNG, a small baseline JPEG, and a signature-only blob  |
-| `fuzz_ra8_unarch_tar`| 1     | A two-member ustar comic                                            |
-| `fuzz_ra8_unarch_xz` | 1     | The same tar as an XZ/LZMA2 stream at the wrapper's dictionary scale |
-| `fuzz_ra8_unarch_gzip`| 1    | The same tar as a gzip member                                       |
-| `fuzz_ra8_decomp_limits`| 1  | Eight LE64 policy words: a valid pair followed by a hostile one      |
+A few targets get no generated seed at all -- their input is a
+struct-shaped API sequence rather than a file format, so a seed file
+buys nothing. The rest get a handful each: a minimal valid input for
+every shape the parser branches on, plus a truncated or hostile one.
+`init_fuzz_corpora.sh` is the authority on which target gets what.
 
 The corpus directory is passed to libFuzzer as a positional argument.
 libFuzzer also writes any *new* coverage-expanding inputs back into
@@ -185,8 +127,8 @@ For each crash:
 2. Add a regression test under `tests/test_<module>.c` that loads the
    reproducer (or a hand-minimised version) and asserts the parser
    returns an error code instead of crashing.
-3. Fix the parser. The existing host suite (650+ test files) plus the
-   regression test must pass before the commit lands.
+3. Fix the parser. The host suite plus the new regression test must
+   pass before the commit lands.
 4. Keep the reproducer in version control under
    `tests/fuzz/corpus/<target>/` (create the directory on demand) so
    future fuzz runs replay it as part of the seed corpus.

@@ -169,9 +169,9 @@ for the self-hosted runner labels. Each records WHY any default was widened.
 `cmake/ccache.cmake` wires ccache in as `CMAKE_<LANG>_COMPILER_LAUNCHER` for the
 host builds, the arm-none-eabi cross builds and the containerised gate run
 alike, and the dev box points every one of them at one shared cache
-(`CCACHE_DIR=/var/cache/ccache-ra8`). Measured on that box: a cross build goes
-0% -> **100%** hits on a rebuild into a *different* build directory, and the
-host test build 1.25% -> **100%**.
+(`CCACHE_DIR=/var/cache/ccache-ra8`). Measured on that box, a rebuild into a
+*different* build directory goes from almost no hits to almost all of them,
+for the cross build and the host test build alike.
 
 Hits survive across build directories only because the cache sets `base_dir = /`
 and `hash_dir = false` (and `scripts/ci.sh` exports the `CCACHE_BASEDIR` /
@@ -331,26 +331,6 @@ Gotchas (each has bitten a push):
   your ssh calls, wiping untracked files. Sync + validate in ONE session.
 
 ---
-
-## 5. Convergence status
-
-- **Done:** arm-gcc **13.3.rel1 pinned + enforced everywhere** (section 3.1, #178)
-  -- Mac + dev box at `~/opt/arm-gnu-toolchain-13.3`, devcontainer by URL+sha256,
-  runner at `/opt`; `-dumpfullversion` `13.3` assertion FATAL by default. gcc-14
-  on the dev box (host coverage matches CI). gcovr 8.6, shfmt 3.13.1 aligned.
-- **Done:** libunicorn **2.1.4 pinned + FAIL-LOUD** (section 3.6, #354) -- runner
-  already at 2.1.4 (`/usr/local`), devcontainer builds it from source by
-  URL+sha256, `require_pinned_unicorn` fails every emulator gate on a skew.
-  Provision the dev box with `scripts/ci/install_unicorn.sh` so `make ci`'s
-  ra8_emulator gates match CI.
-- **Done:** both former manual runner steps are gone (#502). Re-provisioning
-  `/opt/arm-gnu-toolchain-13.3` (section 3.1) and re-running
-  `install_unicorn.sh` (section 3.6) were only ever needed on the bare-metal
-  `k3s-runner-*` pool; that pool is retired and the whole `ra8-ci` fleet now
-  boots the pinned runner image, so both tools are provisioned by the same
-  Dockerfile that declares their pins.
-- **Open (tracked):** Mac clang-format 22.1.8 (section 3.2); Mac ruff 0.15.19
-  (section 3.4).
 
 See also: `CLAUDE.md` (run the gates before every push; one gate definition, in
 `scripts/ci.sh`), the `dev-gcc14-coverage-parity` and `dev-box-ci-workflow`

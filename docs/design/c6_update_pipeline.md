@@ -4,7 +4,7 @@
 > each transport deposits the same signed bundle into RA8-side staging, and
 > verify/apply/confirm are transport-blind.
 
-## The owner requirements, restated
+## The requirements this is built to
 
 1. The C6 exists (in large part) to give the product **over-the-air updates**.
 2. The RA8 already has a **USB HS** update path (`ra8_dfu` + the production
@@ -58,7 +58,7 @@ never drift:
 
 ### Staging lives on the RA8
 
-The RA8 owns 64 MB OSPI flash (plus SD); the C6 has neither the storage nor
+The RA8 owns the Octo-SPI flash (plus SD); the C6 has neither the storage nor
 the authority. Every transport stages into the same RA8-side staging area:
 
 - **USB HS**: host pushes the bundle over the existing `ra8_dfu` ingest; bytes
@@ -66,8 +66,8 @@ the authority. Every transport stages into the same RA8-side staging area:
   the transfer completes; VERIFY/APPLY/CONFIRM run from staging (requirement 4).
 - **Wi-Fi OTA**: the C6 downloads the bundle (it is the only chip with a
   radio) and streams it over the companion link into the same RA8 staging
-  area. The C6 does not buffer the whole bundle -- it has 512 KB of SRAM and
-  no requirement to; it is a pipe with flow control.
+  area. The C6 does not buffer the whole bundle -- it has neither the SRAM nor
+  any requirement to; it is a pipe with flow control.
 - **Bench serial**: an esptool / J-Link flow remains the dev-only shortcut
   that bypasses the pipeline entirely (writing slots directly). Never a
   production path.
@@ -106,14 +106,14 @@ a C6-first apply that then fails the RA8 apply still rolls the C6 back.
 
 A C6 whose flash is fully bricked (both slots dead, loader dead) must be
 re-flashable in the field by the RA8 from a staged known-good image -- the
-same anti-brick discipline `hil_dlm_reset_local.sh` + `make hil-reflash`
-give the RA8 on the bench. Rather than write our own SLIP downloader, **Espressif already ships this
-as a portable C library** -- `esp-serial-flasher` (Apache-2.0, actively
-maintained, ESP32-C6 supported over UART, with existing host ports for
-STM32/Zephyr/RP2040/Linux; https://github.com/espressif/esp-serial-flasher).
-Vendor it as SOUP like ThreadX/NetX and write only the first-party RA8 port
-glue: the UART transport plus GPIO control of the C6's EN (reset) and BOOT
-strapping pins.
+same anti-brick discipline `scripts/hil/dlm_reset_local.sh` and
+`make hil-reflash` give the RA8 on the bench. Rather than write our own SLIP
+downloader, **Espressif already ships this as a portable C library** --
+`esp-serial-flasher` (Apache-2.0, actively maintained, ESP32-C6 supported over
+UART, with existing host ports for STM32/Zephyr/RP2040/Linux;
+https://github.com/espressif/esp-serial-flasher). Vendor it as SOUP like
+ThreadX/NetX and write only the first-party RA8 port glue: the UART transport
+plus GPIO control of the C6's EN (reset) and BOOT strapping pins.
 
 **PCB requirement this creates: the C6's EN and BOOT pins must be wired to
 RA8 GPIOs.** Without those two traces there is no field-recovery path and no
@@ -134,30 +134,23 @@ loop must exercise the **production roles**:
 - The looped bundle then drives STAGE -> VERIFY -> APPLY(C6 over the link once
   a C6 is wired, or a modelled link endpoint before then) -> CONFIRM.
 
-## What gets built, in order
+## The dependency order, and why it is the point
 
-1. **Bundle format + verify** (host tool to pack/sign; RA8-side verify against
-   RoT) -- pure logic, host-unit-testable, MC/DC-able, no new hardware.
-2. **Staging store on OSPI** behind the existing `ra8_io_blockdev_t` facade.
-3. **USB HS -> staging** rewire of the existing `ra8_dfu` ingest.
-4. **Companion-link framed protocol** (shared header, versioned) + the C6-side
-   receiver -> `ota_apply` (see `c6_wireless_architecture.md`).
-5. **C6 apply path.** Under the adopted co-processor architecture (see
-   `c6_wireless_architecture.md`) this is esp-hosted's first-class host-pushed
-   co-processor OTA
-   (`esp_hosted_slave_ota_begin/write/end/activate` RPCs over the existing
-   link) feeding the C6's stock ota_0/ota_1 A/B slots -- fed from the same
-   staged bundle. One known gap to own: the stock co-processor firmware never calls
-   `esp_ota_mark_app_valid_cancel_rollback()`, so enabling ESP-IDF's
-   boot-rollback config requires a one-line co-processor patch (rebuild once, pin
-   the binary). The bundle/manifest layer above the apply step is transport-
-   and strategy-independent.
-6. **ROM-loader recovery path**: vendor `esp-serial-flasher` (SOUP) + RA8
-   port glue (see "Field recovery" below).
-7. **Two-USB self-test app** under `examples/` + emulator models of the link so the
-   whole pipeline runs in `ra8_emulator` with zero hardware.
+The bundle format and its RoT verification come first: they are pure logic,
+host-unit-testable and MC/DC-able, and need no new hardware. The staging store
+sits behind the existing `ra8_io_blockdev_t` facade, the USB HS ingest is a
+rewire of `ra8_dfu` onto staging rather than onto a slot, and the companion
+link supplies a framed, versioned channel for the C6 receiver.
 
-Note how the C6-side apply implementation (see `c6_wireless_architecture.md`)
-only changes step 5. The pipeline, the bundle, the staging, the RA8-side code,
-and the self-test are invariant -- which is the point of making OTA-vs-USB a
-transport detail.
+The C6 apply step is the *last* thing to land and the only thing a change of
+strategy touches. Under the adopted co-processor architecture (see
+`c6_wireless_architecture.md`) it is esp-hosted's first-class host-pushed
+co-processor OTA -- `esp_hosted_slave_ota_begin/write/end/activate` RPCs over
+the existing link -- feeding the C6's stock A/B slots from the same staged
+bundle. One known gap to own: the stock co-processor firmware never calls
+`esp_ota_mark_app_valid_cancel_rollback()`, so enabling ESP-IDF's boot-rollback
+config requires a one-line co-processor patch (rebuild once, pin the binary).
+
+That is the whole argument for making OTA-vs-USB a transport detail: the
+bundle, the staging, the RA8-side code and the self-test are invariant under
+any change to how a C6 image is applied.

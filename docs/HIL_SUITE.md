@@ -4,17 +4,16 @@
 This document is the authoritative reference for the hardware-in-the-
 loop (HIL) test suite for the bench EK-RA8D2. It describes the
 **contract** every app under `examples/ek_ra8d2/hw_validated/hil/` must
-satisfy, the **modes** in which apps are verified, the **infrastructure
-required** (Pi setup, jumpers, cables), and a **per-app table** showing
-which mode each app uses + its success criterion.
+satisfy, the **modes** in which apps are verified, and the
+**infrastructure required** (Pi setup, jumpers, cables). It deliberately
+does not list the apps -- see the last section.
 
 The CI workflow `.github/workflows/hil.yml` is a thin driver for the
 `hil-all` gate (`bash scripts/ci.sh --gate hil-all`), which runs
 `scripts/hil/all.sh` on the self-hosted Raspberry Pi 5 runner that has
-the EK-RA8D2 wired up; one app fails -> the run fails. Its `push:` and
-`pull_request:` triggers are commented out until that runner is wired
-back up, so today the suite runs on `workflow_dispatch` only and does
-not block a merge.
+the EK-RA8D2 wired up; one app fails -> the run fails. A bench with one
+board is a serial resource, so how that workflow is triggered is a
+scheduling decision recorded in its own `on:` block rather than here.
 
 ## The honest-contract rule
 
@@ -99,11 +98,11 @@ The self-hosted Pi runner (`star@star.local`) must have:
     those instructions rather than skipping.
 
     WaveForms is installed by **extracting** the deb, never with apt.
-    The package declares `libc6 (>= 2.41)` while the bench runs Ubuntu
-    24.04 (glibc 2.39), so apt refuses it outright -- but that floor
-    belongs to the Qt GUI binaries a headless bench does not install.
-    `libdwf` itself tops out at `GLIBC_2.38` and runs correctly here,
-    so the role installs only the library, `dwf.h`, and the device
+    The package declares a newer glibc floor than the bench provides, so
+    apt refuses it outright -- but that floor belongs to the Qt GUI
+    binaries a headless bench does not install. `libdwf` itself needs
+    less and runs correctly here, so the role installs only the
+    library, `dwf.h`, and the device
     firmware/configuration resources under
     `/usr/share/digilent/waveforms`. Those resources are not optional:
     without them `FDwfDeviceOpen` fails with "Device not supported. No
@@ -135,12 +134,7 @@ The Pi runners (`scripts/hil/run_direct.sh`,
 the Linux bench and SSH to
 `star@star.local`. When the board is plugged straight into a developer's
 Mac, `scripts/hil/run_local.sh <app>` runs one app's gate entirely on
-that Mac:
-
-```
-scripts/hil/run_local.sh flash_journal
-scripts/hil/run_local.sh threadx_fs_levelx_demo --uart /dev/cu.usbmodemXXXX
-```
+that Mac.
 
 It reads the app's `hil.conf`, builds if needed, flashes via the local
 `JLinkExe`, and applies the same pass/fail logic as the Pi runners for
@@ -205,8 +199,7 @@ roster here to fall out of step with the tree --
 Two modes carry nearly all of it: `uart_scrape` for anything that can print a
 verdict, and `jlink_memprobe` for anything that cannot, where the probe instead
 watches a counter in SRAM advance. `alive` is reserved for the fault-recovery
-demo; `rtt_scrape`, `hil_eth_tcp` and `c6_camera_livestream` each cover a
-single app.
+demo; the remaining modes each serve one narrow lane.
 
 An app that fails a bench run is moved to
 `examples/ek_ra8d2/hil_needs_revalidation/` rather than being annotated as
