@@ -350,7 +350,10 @@ internal_io_read_exact(mdl_verify_io_t* io, uint8_t* destination, size_t length)
 {
   size_t          got = 0U;
   const ra8_err_t err = internal_io_read_up_to(io, destination, length, &got);
-  return (err != k_ra8_ok) ? err : ((got == length) ? k_ra8_ok : k_ra8_err_validation_failed);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  return (got == length) ? k_ra8_ok : k_ra8_err_validation_failed;
 }
 
 /**
@@ -576,6 +579,34 @@ RA8_INTERNAL static ra8_err_t internal_tar_member(mdl_tar_stream_t* state)
 }
 
 /**
+ * @brief Process one complete 512-byte TAR block once fully buffered.
+ * @details Classifies the block as all-zero (an end-of-archive marker) or a
+ * real header, updating end-of-archive and skip-byte state.
+ * @param[in,out] state Incremental TAR validation state with a full block.
+ * @return Status. @retval k_ra8_ok The block was a zero marker or a valid header.
+ * @pre state->block_used == k_tar_block_bytes on entry.
+ * @post state->block_used is reset to zero. @post A zero block advances the
+ * end-of-archive counter; a header block resets it and derives the next
+ * skip-byte count. @note Not thread-safe; shares the caller's incremental
+ * state. @since v0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_tar_process_block(mdl_tar_stream_t* state)
+{
+  bool zero = true;
+  for (size_t i = 0U; i < k_tar_block_bytes; ++i) {
+    zero = zero && (state->block[i] == 0U);
+  }
+  state->block_used = 0U;
+  if (zero) {
+    state->zero_blocks += 1U;
+    state->ended = state->zero_blocks >= 2U;
+    return k_ra8_ok;
+  }
+  state->zero_blocks = 0U;
+  return internal_tar_member(state);
+}
+
+/**
  * @brief Feed bytes into TAR validation. @details Assembles headers and skips bounded padded payloads incrementally.
  * @param[in,out] state Incremental state. @param[in] bytes Input bytes. @param[in] length Input extent. @return Status. @retval k_ra8_ok When the prefix remains valid.
  * @pre state and bytes are valid. @pre bytes spans length bytes.
@@ -610,20 +641,9 @@ internal_tar_feed(mdl_tar_stream_t* state, const uint8_t* bytes, size_t length)
     state->block_used += copied;
     offset += copied;
     if (state->block_used == k_tar_block_bytes) {
-      bool zero = true;
-      for (size_t i = 0U; i < k_tar_block_bytes; ++i) {
-        zero = zero && (state->block[i] == 0U);
-      }
-      state->block_used = 0U;
-      if (zero) {
-        state->zero_blocks += 1U;
-        state->ended = state->zero_blocks >= 2U;
-      } else {
-        state->zero_blocks    = 0U;
-        const ra8_err_t error = internal_tar_member(state);
-        if (error != k_ra8_ok) {
-          return error;
-        }
+      const ra8_err_t error = internal_tar_process_block(state);
+      if (error != k_ra8_ok) {
+        return error;
       }
     }
   }
@@ -779,6 +799,86 @@ RA8_INTERNAL static bool internal_gzip_trailer_valid(const uint8_t*           tr
 }
 
 /**
+ * @brief Initialize the gzip inflater bound to workspace-backed scratch.
+ * @details Reserves the output buffer from workspace, wires the miniz
+ * allocator to the arena, and opens the raw-deflate inflater.
+ * @param[in,out] workspace Scratch arena backing both the output buffer and
+ * miniz's internal allocations.
+ * @param[in,out] arena Miniz allocator state bound to @p workspace.
+ * @param[in,out] gzip Stream state to initialize.
+ * @return Status. @retval k_ra8_ok The output buffer and inflater are ready.
+ * @pre gzip->output_cap and gzip->crc are already set by the caller.
+ * @post On success gzip->output and gzip->stream are ready to feed.
+ * @note Not thread-safe for a shared workspace. @since v0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_gzip_init_inflate(mdl_export_workspace_t* workspace,
+                                                         mdl_verify_arena_t*     arena,
+                                                         mdl_gzip_stream_t*      gzip)
+{
+  gzip->output =
+    (uint8_t*)internal_workspace_take(workspace, gzip->output_cap, _Alignof(max_align_t));
+  arena->exhausted    = gzip->output == nullptr;
+  gzip->stream.zalloc = internal_arena_alloc;
+  gzip->stream.zfree  = internal_arena_free;
+  gzip->stream.opaque = arena;
+  if ((gzip->output == nullptr) ||
+      (mz_inflateInit2(&gzip->stream, -MZ_DEFAULT_WINDOW_BITS) != MZ_OK)) {
+    return arena->exhausted ? k_ra8_err_invalid_size : k_ra8_err_validation_failed;
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Feed the compressed remainder into the inflater and validate the trailer.
+ * @details Streams chunked reads until end-of-stream or @p remaining is
+ * exhausted, finishes any pending deflate output, then reads and checks the
+ * eight-byte gzip trailer against the streamed CRC/size.
+ * @param[in,out] io Borrowed input positioned after the gzip header.
+ * @param[in,out] arena Miniz allocator state; inspected for exhaustion.
+ * @param[in,out] gzip Stream state advanced by this call.
+ * @param[in] remaining Compressed bytes left to read, excluding the trailer.
+ * @return Status. @retval k_ra8_ok The stream ended cleanly and the trailer matches.
+ * @pre @p io is positioned at the first compressed byte.
+ * @pre @p gzip was successfully initialized by ::internal_gzip_init_inflate.
+ * @post On k_ra8_ok every compressed byte and the trailer have been consumed.
+ * @note Not thread-safe for a shared input or workspace. @since v0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_gzip_consume(mdl_verify_io_t*    io,
+                                                    mdl_verify_arena_t* arena,
+                                                    mdl_gzip_stream_t*  gzip,
+                                                    uint64_t            remaining)
+{
+  mdl_storage_t* storage = io->storage;
+  ra8_err_t      error   = k_ra8_ok;
+  while ((error == k_ra8_ok) && (remaining != 0U) && !gzip->ended) {
+    const uint32_t chunk =
+      (remaining < storage->io_buffer_bytes) ? (uint32_t)remaining : storage->io_buffer_bytes;
+    error = internal_io_read_exact(io, storage->io_buffer, chunk);
+    if (error == k_ra8_ok) {
+      remaining -= chunk;
+      error = internal_gzip_feed(gzip, storage->io_buffer, chunk);
+    }
+  }
+  if ((error == k_ra8_ok) && gzip->ended && (remaining != 0U)) {
+    error = k_ra8_err_validation_failed;
+  }
+  if ((error == k_ra8_ok) && !gzip->ended) {
+    error = internal_gzip_finish_deflate(gzip);
+  }
+  uint8_t trailer[k_gzip_trailer_bytes];
+  if (error == k_ra8_ok) {
+    error = internal_io_read_exact(io, trailer, sizeof(trailer));
+  }
+  if ((error == k_ra8_ok) && !internal_gzip_trailer_valid(trailer, gzip)) {
+    error = k_ra8_err_validation_failed;
+  }
+  if ((error == k_ra8_ok) && arena->exhausted) {
+    error = k_ra8_err_invalid_size;
+  }
+  return error;
+}
+
+/**
  * @brief Validate a gzip-compressed CBT. @details Streams raw inflate into TAR and checks framing, CRC, size, and trailing data.
  * @param[in,out] io Borrowed input. @param[in,out] workspace Scratch arena. @param[in,out] report Candidate report. @return Status. @retval k_ra8_ok For valid CBT.GZ.
  * @pre All pointers are valid. @pre workspace and storage buffers satisfy capacity.
@@ -788,9 +888,8 @@ RA8_INTERNAL static ra8_err_t internal_verify_gzip_tar(mdl_verify_io_t*        i
                                                        mdl_export_workspace_t* workspace,
                                                        mdl_verify_report_t*    report)
 {
-  mdl_storage_t* storage = io->storage;
-  ra8_err_t      error;
-  uint8_t        header[k_gzip_header_bytes];
+  ra8_err_t error;
+  uint8_t   header[k_gzip_header_bytes];
   error = (io->size_bytes < k_gzip_min_bytes) ? k_ra8_err_validation_failed
                                               : internal_io_read_exact(io, header, sizeof(header));
   if ((error == k_ra8_ok) && !internal_gzip_header_valid(header)) {
@@ -799,43 +898,12 @@ RA8_INTERNAL static ra8_err_t internal_verify_gzip_tar(mdl_verify_io_t*        i
   mdl_verify_arena_t arena = {.workspace = workspace};
   mdl_gzip_stream_t  gzip  = {.output_cap = k_mdl_storage_io_bytes, .crc = MZ_CRC32_INIT};
   if (error == k_ra8_ok) {
-    gzip.output =
-      (uint8_t*)internal_workspace_take(workspace, gzip.output_cap, _Alignof(max_align_t));
-    arena.exhausted    = gzip.output == nullptr;
-    gzip.stream.zalloc = internal_arena_alloc;
-    gzip.stream.zfree  = internal_arena_free;
-    gzip.stream.opaque = &arena;
-    if ((gzip.output == nullptr) ||
-        (mz_inflateInit2(&gzip.stream, -MZ_DEFAULT_WINDOW_BITS) != MZ_OK)) {
-      error = arena.exhausted ? k_ra8_err_invalid_size : k_ra8_err_validation_failed;
-    }
+    error = internal_gzip_init_inflate(workspace, &arena, &gzip);
   }
-  uint64_t remaining =
-    (io->size_bytes >= k_gzip_min_bytes) ? io->size_bytes - k_gzip_min_bytes : 0U;
-  while ((error == k_ra8_ok) && (remaining != 0U) && !gzip.ended) {
-    const uint32_t chunk =
-      (remaining < storage->io_buffer_bytes) ? (uint32_t)remaining : storage->io_buffer_bytes;
-    error = internal_io_read_exact(io, storage->io_buffer, chunk);
-    if (error == k_ra8_ok) {
-      remaining -= chunk;
-      error = internal_gzip_feed(&gzip, storage->io_buffer, chunk);
-    }
-  }
-  if ((error == k_ra8_ok) && gzip.ended && (remaining != 0U)) {
-    error = k_ra8_err_validation_failed;
-  }
-  if ((error == k_ra8_ok) && !gzip.ended) {
-    error = internal_gzip_finish_deflate(&gzip);
-  }
-  uint8_t trailer[k_gzip_trailer_bytes];
   if (error == k_ra8_ok) {
-    error = internal_io_read_exact(io, trailer, sizeof(trailer));
-  }
-  if ((error == k_ra8_ok) && !internal_gzip_trailer_valid(trailer, &gzip)) {
-    error = k_ra8_err_validation_failed;
-  }
-  if ((error == k_ra8_ok) && arena.exhausted) {
-    error = k_ra8_err_invalid_size;
+    const uint64_t remaining =
+      (io->size_bytes >= k_gzip_min_bytes) ? io->size_bytes - k_gzip_min_bytes : 0U;
+    error = internal_gzip_consume(io, &arena, &gzip, remaining);
   }
   if (gzip.stream.state != nullptr) {
     (void)mz_inflateEnd(&gzip.stream);

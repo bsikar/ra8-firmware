@@ -401,6 +401,60 @@ RA8_INTERNAL static void internal_verify_artifacts(const char* dir, verify_stats
 }
 
 /**
+ * @brief Verify one tracked page's presence and content hash.
+ * @details Resolves the page's canonical path beneath the series root,
+ *          confirms it exists as a regular file, then compares its
+ *          content hash against the recorded value.
+ * @param[in] series_dir Canonical tracked-series directory.
+ * @param[in] rec Recorded page whose file and hash are checked.
+ * @param[in,out] st Verification counters to update.
+ * @return Whether the caller's page loop should keep going.
+ * @retval true One of `pages_missing`, `pages_corrupt`, or `pages_valid`
+ *         increased; continue with the next page.
+ * @retval false A diagnostic write hit the shared I/O error latch; the
+ *         caller must abort the whole series verification.
+ * @pre All pointer arguments are non-NULL.
+ * @post Exactly one counter increases when this returns true.
+ * @note Not thread-safe; shares the application's I/O error latch.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool
+internal_verify_page_rec(const char* series_dir, const mdl_page_rec_t* rec, verify_stats_t* st)
+{
+  char         page_path[k_fw_fs_path_cap];
+  const int    pn   = snprintf(page_path, sizeof(page_path), "%s/%s", series_dir, rec->rel_path);
+  fw_fs_stat_t page = {};
+  if ((pn < 0) || ((size_t)pn >= sizeof(page_path)) ||
+      (fw_fs_stat(&priv_mdl_app_context()->storage.fs->names, page_path, &page) != k_ra8_ok) ||
+      !page.exists || (page.type != k_fw_fs_node_file)) {
+    internal_admin_text3(priv_mdl_app_context()->output,
+                         "  [MISSING/UNSAFE] ",
+                         rec->rel_path,
+                         "\n");
+    if (priv_mdl_app_context()->io_error != k_ra8_ok) {
+      return false;
+    }
+    st->pages_missing += 1U;
+    return true;
+  }
+  uint64_t hash = 0U;
+  if ((mdl_hash_file(&priv_mdl_app_context()->storage, page_path, &hash) != k_ra8_ok) ||
+      (hash != rec->content_hash)) {
+    internal_admin_text3(priv_mdl_app_context()->output,
+                         "  [CORRUPT] ",
+                         rec->rel_path,
+                         " (hash mismatch)\n");
+    if (priv_mdl_app_context()->io_error != k_ra8_ok) {
+      return false;
+    }
+    st->pages_corrupt += 1U;
+    return true;
+  }
+  st->pages_valid += 1U;
+  return true;
+}
+
+/**
  * @brief Verify persisted pages and artifacts for one tracked series.
  * @details Loads validated state, resolves every page beneath the canonical
  *          series root, compares content hashes, then checks local artifacts.
@@ -433,35 +487,8 @@ internal_verify_series_dir(const char* series_dir, const char* state_path, verif
   } else {
     for (uint32_t i = 0U; i < priv_mdl_app_context()->state.page_rec_count; ++i) {
       const mdl_page_rec_t* rec = &priv_mdl_app_context()->state.pages[i];
-      char                  page_path[k_fw_fs_path_cap];
-      const int    pn = snprintf(page_path, sizeof(page_path), "%s/%s", series_dir, rec->rel_path);
-      fw_fs_stat_t page = {};
-      if ((pn < 0) || ((size_t)pn >= sizeof(page_path)) ||
-          (fw_fs_stat(&priv_mdl_app_context()->storage.fs->names, page_path, &page) != k_ra8_ok) ||
-          !page.exists || (page.type != k_fw_fs_node_file)) {
-        internal_admin_text3(priv_mdl_app_context()->output,
-                             "  [MISSING/UNSAFE] ",
-                             rec->rel_path,
-                             "\n");
-        if (priv_mdl_app_context()->io_error != k_ra8_ok) {
-          return;
-        }
-        st->pages_missing += 1U;
-        continue;
-      }
-      uint64_t hash = 0U;
-      if ((mdl_hash_file(&priv_mdl_app_context()->storage, page_path, &hash) != k_ra8_ok) ||
-          (hash != rec->content_hash)) {
-        internal_admin_text3(priv_mdl_app_context()->output,
-                             "  [CORRUPT] ",
-                             rec->rel_path,
-                             " (hash mismatch)\n");
-        if (priv_mdl_app_context()->io_error != k_ra8_ok) {
-          return;
-        }
-        st->pages_corrupt += 1U;
-      } else {
-        st->pages_valid += 1U;
+      if (!internal_verify_page_rec(series_dir, rec, st)) {
+        return;
       }
     }
   }
@@ -535,6 +562,38 @@ RA8_INTERNAL static void internal_verify_library_root(const char* canonical, ver
 }
 
 /**
+ * @brief Stream the verification totals summary line.
+ * @details Composes the fixed "verify complete" line with series, page, and
+ *          artifact counters in one non-branching stream chain.
+ * @param[in,out] output Bound stream sink.
+ * @param[in] st Final verification counters.
+ * @return Stream status.
+ * @retval k_ra8_ok The complete summary line was written.
+ * @retval other The first stream write failure.
+ * @pre @p output and @p st are non-NULL.
+ * @post Success writes exactly one terminated summary line.
+ * @note Not thread-safe for a shared stream.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_verify_print_summary(ra8_io_stream_t*      output,
+                                                            const verify_stats_t* st)
+{
+  ra8_err_t error = priv_mdl_stream_text(k_ra8_ok, output, "verify complete: ");
+  error           = priv_mdl_stream_u64(error, output, st->series_checked);
+  error           = priv_mdl_stream_text(error, output, " series; pages ");
+  error           = priv_mdl_stream_u64(error, output, st->pages_valid);
+  error           = priv_mdl_stream_text(error, output, " valid, ");
+  error           = priv_mdl_stream_u64(error, output, st->pages_missing);
+  error           = priv_mdl_stream_text(error, output, " missing, ");
+  error           = priv_mdl_stream_u64(error, output, st->pages_corrupt);
+  error           = priv_mdl_stream_text(error, output, " corrupt; artifacts ");
+  error           = priv_mdl_stream_u64(error, output, st->archives_valid);
+  error           = priv_mdl_stream_text(error, output, " valid, ");
+  error           = priv_mdl_stream_u64(error, output, st->archives_corrupt);
+  return priv_mdl_stream_text(error, output, " failed\n");
+}
+
+/**
  * @brief Verify a tracked series, a library root, or recognized artifacts.
  * @details Canonicalizes the target, detects a direct tracked-series marker or
  *          enumerates child series, validates artifacts, and prints totals.
@@ -576,20 +635,7 @@ RA8_PRIV int priv_mdl_app_run_verify(const char* target_dir)
     return 1;
   }
   ra8_io_stream_t* output = priv_mdl_app_context()->output;
-  ra8_err_t        error  = priv_mdl_stream_text(k_ra8_ok, output, "verify complete: ");
-  error                   = priv_mdl_stream_u64(error, output, st.series_checked);
-  error                   = priv_mdl_stream_text(error, output, " series; pages ");
-  error                   = priv_mdl_stream_u64(error, output, st.pages_valid);
-  error                   = priv_mdl_stream_text(error, output, " valid, ");
-  error                   = priv_mdl_stream_u64(error, output, st.pages_missing);
-  error                   = priv_mdl_stream_text(error, output, " missing, ");
-  error                   = priv_mdl_stream_u64(error, output, st.pages_corrupt);
-  error                   = priv_mdl_stream_text(error, output, " corrupt; artifacts ");
-  error                   = priv_mdl_stream_u64(error, output, st.archives_valid);
-  error                   = priv_mdl_stream_text(error, output, " valid, ");
-  error                   = priv_mdl_stream_u64(error, output, st.archives_corrupt);
-  error                   = priv_mdl_stream_text(error, output, " failed\n");
-  if (error != k_ra8_ok) {
+  if (internal_verify_print_summary(output, &st) != k_ra8_ok) {
     return 1;
   }
 

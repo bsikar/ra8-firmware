@@ -138,6 +138,32 @@ ra8_err_t mdl_report_progress(void* ctx, const mdl_fetch_progress_t* ev)
   return priv_mdl_stream_text(error, output, "\n");
 }
 
+/**
+ * @brief Width of the space padding before a whole-percent value.
+ * @details Keeps the percent column right-aligned to three digits: two
+ *          spaces before a one-digit value, one before a two-digit value,
+ *          and none before the three-digit maximum.
+ * @param[in] pct Whole-percent value already clamped to `[0, 100]`.
+ * @return Number of leading padding spaces.
+ * @retval 2 @p pct is a single digit.
+ * @retval 1 @p pct is two digits.
+ * @retval 0 @p pct is three digits.
+ * @pre @p pct is at most ::k_percent_scale.
+ * @post No state is modified.
+ * @note Pure and thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_percent_pad_width(uint32_t pct)
+{
+  if (pct < k_percent_two_digits) {
+    return 2U;
+  }
+  if (pct < k_percent_scale) {
+    return 1U;
+  }
+  return 0U;
+}
+
 ra8_err_t mdl_report_progress_bar(void* ctx, const mdl_fetch_progress_t* ev)
 {
   if (ev == nullptr) {
@@ -160,14 +186,10 @@ ra8_err_t mdl_report_progress_bar(void* ctx, const mdl_fetch_progress_t* ev)
   error           = priv_mdl_stream_repeat(error, output, '=', filled);
   error           = priv_mdl_stream_repeat(error, output, ' ', bar_width - filled);
   error           = priv_mdl_stream_text(error, output, "] ");
-  error =
-    priv_mdl_stream_repeat(error,
-                           output,
-                           ' ',
-                           (pct < k_percent_two_digits) ? 2U : ((pct < k_percent_scale) ? 1U : 0U));
-  error = priv_mdl_stream_u64(error, output, pct);
-  error = priv_mdl_stream_text(error, output, "% ");
-  error = internal_report_position(error, output, ev);
+  error           = priv_mdl_stream_repeat(error, output, ' ', internal_percent_pad_width(pct));
+  error           = priv_mdl_stream_u64(error, output, pct);
+  error           = priv_mdl_stream_text(error, output, "% ");
+  error           = internal_report_position(error, output, ev);
   if (ev->reused) {
     error = priv_mdl_stream_text(error, output, " (reused)");
   } else {

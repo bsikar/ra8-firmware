@@ -871,6 +871,73 @@ internal_prepare_run_policy(const mdl_args_t* args, mdl_run_opts_t* opts, ra8_md
 }
 
 /**
+ * @brief Bootstrap process I/O and workspace state, then parse arguments.
+ * @details Initializes the output stream and composition-root context,
+ *          binds the fixed export arena, and parses @p argv into @p a.
+ * @param[in] argc Argument count.
+ * @param[in] argv Argument vector.
+ * @param[out] a Receives the parsed (not yet validated) command arguments.
+ * @return Process-style bootstrap status.
+ * @retval 0 Output, context, and argument parsing are ready.
+ * @retval 1 Output stream initialization failed.
+ * @pre @p argv is non-NULL and holds @p argc entries.
+ * @post On success @p a holds the raw parsed arguments.
+ * @note Not thread-safe; initializes process-lifetime shared state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static int internal_main_init(int argc, char** argv, mdl_args_t* a)
+{
+  if (internal_output_init() != k_ra8_ok) {
+    return 1;
+  }
+  s_app.output     = &s_output;
+  s_app.diagnostic = &s_diagnostic;
+  s_app.io_error   = k_ra8_ok;
+  mdl_export_workspace_init(&priv_mdl_app_context()->export_ws,
+                            s_export_arena.bytes,
+                            sizeof(s_export_arena.bytes));
+  mdl_cli_parse(argc, argv, a);
+  return 0;
+}
+
+/**
+ * @brief Build the series-run plan, then dispatch and shut down cleanly.
+ * @details Binds the portable filesystem, dispatches to the selected mode
+ *          handler, and always attempts filesystem shutdown before returning.
+ * @param[in] a Validated parsed command arguments.
+ * @param[in] mode Selected run mode.
+ * @param[in] format Validated output format.
+ * @param[in] opts Prepared run policy.
+ * @param[in] nums Parsed numeric options.
+ * @return Process-style run status.
+ * @retval 0 The dispatched mode completed successfully.
+ * @retval 1 Filesystem binding or shutdown failed.
+ * @retval other The dispatched mode's own failure status.
+ * @pre All pointers are non-NULL.
+ * @post Filesystem shutdown is attempted exactly once regardless of outcome.
+ * @note Not thread-safe; binds and releases process-lifetime storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static int internal_main_run(const mdl_args_t*     a,
+                                          mdl_cli_mode_t        mode,
+                                          ra8_mdl_format_t      format,
+                                          const mdl_run_opts_t* opts,
+                                          const mdl_nums_t*     nums)
+{
+  const series_run_t run = priv_mdl_app_build_run(a, format, opts, nums);
+  if (internal_storage_init() != k_ra8_ok) {
+    (void)internal_diagnostic("media_dl: could not initialize portable filesystem binding\n");
+    return 1;
+  }
+  const int result = internal_dispatch_run(a, mode, format, opts, nums, &run);
+  if (fw_fs_posix_deinit(&s_fs_posix) != k_ra8_ok) {
+    (void)internal_diagnostic("media_dl: filesystem shutdown failed\n");
+    return 1;
+  }
+  return result;
+}
+
+/**
  * @brief Program entry point: parse the command line and select a run mode.
  * @details Parses and validates the arguments, then hands off to
  * ::internal_dispatch_run, which selects a library command
@@ -884,17 +951,10 @@ internal_prepare_run_policy(const mdl_args_t* args, mdl_run_opts_t* opts, ra8_md
  */
 int main(int argc, char** argv)
 {
-  if (internal_output_init() != k_ra8_ok) {
+  mdl_args_t a = {};
+  if (internal_main_init(argc, argv, &a) != 0) {
     return 1;
   }
-  s_app.output     = &s_output;
-  s_app.diagnostic = &s_diagnostic;
-  s_app.io_error   = k_ra8_ok;
-  mdl_export_workspace_init(&priv_mdl_app_context()->export_ws,
-                            s_export_arena.bytes,
-                            sizeof(s_export_arena.bytes));
-  mdl_args_t a = {};
-  mdl_cli_parse(argc, argv, &a);
   mdl_cli_mode_t mode    = k_mdl_cli_mode_invalid;
   ra8_err_t      cli_err = mdl_cli_validate(&a, &s_diagnostic, &mode);
   if (cli_err != k_ra8_ok) {
@@ -925,15 +985,5 @@ int main(int argc, char** argv)
     return policy_status;
   }
 
-  const series_run_t run = priv_mdl_app_build_run(&a, format, &opts, &nums);
-  if (internal_storage_init() != k_ra8_ok) {
-    (void)internal_diagnostic("media_dl: could not initialize portable filesystem binding\n");
-    return 1;
-  }
-  const int result = internal_dispatch_run(&a, mode, format, &opts, &nums, &run);
-  if (fw_fs_posix_deinit(&s_fs_posix) != k_ra8_ok) {
-    (void)internal_diagnostic("media_dl: filesystem shutdown failed\n");
-    return 1;
-  }
-  return result;
+  return internal_main_run(&a, mode, format, &opts, &nums);
 }

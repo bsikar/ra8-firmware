@@ -221,19 +221,33 @@ internal_mdl_fetch_test_prepare_response(mock_net_t*          mock,
   return k_ra8_ok;
 }
 
-/** @brief Fake get_body: stream the URL's own bytes, unless this call is
- * scripted to fail. */
-[[maybe_unused]] RA8_INTERNAL static ra8_err_t
-internal_mdl_fetch_test_mock_get_body(void*                ctx,
-                                      const char*          url,
-                                      const mdl_net_req_t* req,
-                                      mdl_net_body_sink_t* sink,
-                                      size_t*              out_len,
-                                      mdl_net_resp_t*      resp)
+/**
+ * @brief Apply a scripted not-modified, busy, or failure response, if due.
+ * @details Checks the three call-indexed script triggers plus the scripted
+ * fail URL, in priority order, and fills only the response fields the
+ * firing script controls.
+ * @param[in,out] f Mock network fixture state.
+ * @param[in] url Requested URL, checked against the scripted fail URL.
+ * @param[out] resp Optional response record to update; may be NULL.
+ * @param[out] out_len Optional produced-length output; may be NULL.
+ * @param[out] handled Set true when a scripted response applies.
+ * @return The scripted status when @p handled is true; k_ra8_ok otherwise.
+ * @retval k_ra8_ok The not-modified script fired, or no script fired.
+ * @retval k_ra8_err_busy The busy script fired.
+ * @retval k_ra8_fail The failure-by-call-count or failure-by-URL script fired.
+ * @pre @p f and @p handled are non-NULL.
+ * @post @p resp and @p out_len are updated only when the corresponding
+ * script fires and the pointer is non-NULL.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mdl_fetch_test_scripted_response(mock_net_t*     f,
+                                                                        const char*     url,
+                                                                        mdl_net_resp_t* resp,
+                                                                        size_t*         out_len,
+                                                                        bool*           handled)
 {
-  mock_net_t* f = (mock_net_t*)ctx;
-  f->get_file_calls += 1U;
-  (void)internal_mdl_fetch_test_prepare_response(f, req, resp);
+  *handled = true;
   if ((f->not_mod_on_file_call != 0U) && (f->get_file_calls == f->not_mod_on_file_call)) {
     if (resp != nullptr) {
       resp->status = 304;
@@ -258,6 +272,29 @@ internal_mdl_fetch_test_mock_get_body(void*                ctx,
   }
   if ((f->fail_url != nullptr) && (strcmp(f->fail_url, url) == 0)) {
     return k_ra8_fail;
+  }
+  *handled = false;
+  return k_ra8_ok;
+}
+
+/** @brief Fake get_body: stream the URL's own bytes, unless this call is
+ * scripted to fail. */
+[[maybe_unused]] RA8_INTERNAL static ra8_err_t
+internal_mdl_fetch_test_mock_get_body(void*                ctx,
+                                      const char*          url,
+                                      const mdl_net_req_t* req,
+                                      mdl_net_body_sink_t* sink,
+                                      size_t*              out_len,
+                                      mdl_net_resp_t*      resp)
+{
+  mock_net_t* f = (mock_net_t*)ctx;
+  f->get_file_calls += 1U;
+  (void)internal_mdl_fetch_test_prepare_response(f, req, resp);
+  bool            handled = false;
+  const ra8_err_t scripted =
+    internal_mdl_fetch_test_scripted_response(f, url, resp, out_len, &handled);
+  if (handled) {
+    return scripted;
   }
   if (resp != nullptr) {
     resp->status = 200;
