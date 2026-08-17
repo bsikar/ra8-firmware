@@ -180,10 +180,10 @@ typedef struct {
 
 /** @brief Write arbitrary caller-owned RGB565 pixels as binary PPM. */
 [[nodiscard]] ra8_err_t
-ra8_viewer_write_ppm565(const uint16_t* pixels, uint32_t width, uint32_t height, const char* path);
+ra8_viewer_write_ppm565(const uint16_t* px, uint32_t w, uint32_t h, const char* path);
 
 /** @brief Pack 8-bit RGB channels into one RGB565 word. */
-[[nodiscard]] uint16_t ra8_viewer_pack565(uint8_t red, uint8_t green, uint8_t blue);
+[[nodiscard]] uint16_t ra8_viewer_pack565(uint8_t rr, uint8_t gg, uint8_t bb);
 
 /** @brief Reassemble one little-endian RGB565 word. */
 [[nodiscard]] uint16_t ra8_viewer_pack565_le_pair(uint8_t low, uint8_t high);
