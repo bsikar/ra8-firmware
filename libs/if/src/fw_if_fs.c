@@ -220,30 +220,32 @@ RA8_INTERNAL static ra8_err_t internal_component(const char* path, uint16_t star
   return k_ra8_ok;
 }
 
-ra8_err_t fw_fs_path_validate(const fw_fs_caps_t* caps, const char* path)
+/**
+ * @brief Walk a validated non-root path byte-by-byte, checking every component.
+ * @details Splits @p path on `/` boundaries, rejects control characters, DEL,
+ *          `:`, and `\`, enforces the per-component length cap, and delegates
+ *          traversal-token and empty-component rejection to ::internal_component
+ *          at each boundary and at the terminating NUL.
+ * @param[in] caps Bound capability limits (path and name length caps).
+ * @param[in] path NUL-terminated candidate path; `path[0] == '/'` and
+ *            `path[1] != '\0'` are already established by the caller.
+ * @return Path validation status.
+ * @retval k_ra8_ok Every component is well-formed and within its length cap.
+ * @retval k_ra8_err_access_denied A component is a traversal token, or the
+ *         path contains `:` or `\`.
+ * @retval k_ra8_err_invalid_arg A control character (below space) appears.
+ * @retval k_ra8_err_invalid_size A component exceeds `caps->name_max_bytes`,
+ *         or no terminating NUL was found within `caps->path_max_bytes`.
+ * @pre @p caps and @p path are non-NULL.
+ * @pre @p path is NUL-terminated within `caps->path_max_bytes` bytes, or this
+ *      returns k_ra8_err_invalid_size.
+ * @post The path buffer is unchanged.
+ * @note Pure and thread-safe.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_fw_fs_scan_components(const fw_fs_caps_t* caps,
+                                                             const char*         path)
 {
-  if (caps == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (path == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (caps->path_max_bytes < 2U) {
-    return k_ra8_err_invalid_state;
-  }
-  if (caps->path_max_bytes > (uint16_t)k_fw_fs_path_cap) {
-    return k_ra8_err_invalid_state;
-  }
-  if (caps->name_max_bytes == 0U) {
-    return k_ra8_err_invalid_state;
-  }
-  if (path[0] != '/') {
-    return k_ra8_err_invalid_arg;
-  }
-  if (path[1] == '\0') {
-    return k_ra8_ok;
-  }
-
   uint16_t component_start = 1U;
   uint16_t component_len   = 0U;
   for (uint16_t i = 1U; i < caps->path_max_bytes; ++i) {
@@ -278,6 +280,32 @@ ra8_err_t fw_fs_path_validate(const fw_fs_caps_t* caps, const char* path)
     }
   }
   return k_ra8_err_invalid_size;
+}
+
+ra8_err_t fw_fs_path_validate(const fw_fs_caps_t* caps, const char* path)
+{
+  if (caps == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (path == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (caps->path_max_bytes < 2U) {
+    return k_ra8_err_invalid_state;
+  }
+  if (caps->path_max_bytes > (uint16_t)k_fw_fs_path_cap) {
+    return k_ra8_err_invalid_state;
+  }
+  if (caps->name_max_bytes == 0U) {
+    return k_ra8_err_invalid_state;
+  }
+  if (path[0] != '/') {
+    return k_ra8_err_invalid_arg;
+  }
+  if (path[1] == '\0') {
+    return k_ra8_ok;
+  }
+  return internal_fw_fs_scan_components(caps, path);
 }
 
 /**
@@ -336,24 +364,32 @@ RA8_INTERNAL static ra8_err_t internal_interfaces(const fw_fs_namespace_iface_t*
                                                                              : k_ra8_ok;
 }
 
-ra8_err_t fw_fs_bind(fw_fs_t*                         out,
-                     const fw_fs_namespace_iface_t*   namespace_iface,
-                     const fw_fs_stream_iface_t*      stream_iface,
-                     const fw_fs_transaction_iface_t* transaction_iface,
-                     void*                            ctx,
-                     const fw_fs_caps_t*              caps)
+/**
+ * @brief Validate capability flags and workspace alignments before a bind.
+ * @details Requires the mandatory namespace and stream capability bits,
+ *          cross-checks every optional flag against the interface function
+ *          pointer or companion flag it depends on, and requires every
+ *          workspace alignment to be a power of two.
+ * @param[in] namespace_iface Candidate namespace-operation table.
+ * @param[in] stream_iface Candidate stream-operation table.
+ * @param[in] transaction_iface Optional candidate transaction-operation table.
+ * @param[in] caps Candidate capability and workspace-sizing descriptor.
+ * @return Capability validation status.
+ * @retval k_ra8_ok Every capability flag and alignment is internally consistent.
+ * @retval k_ra8_err_invalid_arg A required flag, interface pointer, companion
+ *         flag, or alignment is missing or not a power of two.
+ * @pre @p namespace_iface, @p stream_iface, and @p caps are non-NULL.
+ * @pre @p transaction_iface is NULL or addresses a readable interface object.
+ * @post No interface table or backend state is modified.
+ * @note Pure and thread-safe for immutable interface and capability tables.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_fw_fs_caps_validate(const fw_fs_namespace_iface_t*   namespace_iface,
+                             const fw_fs_stream_iface_t*      stream_iface,
+                             const fw_fs_transaction_iface_t* transaction_iface,
+                             const fw_fs_caps_t*              caps)
 {
-  if (out == nullptr || namespace_iface == nullptr || stream_iface == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (ctx == nullptr || caps == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  const ra8_err_t interfaces =
-    internal_interfaces(namespace_iface, stream_iface, transaction_iface);
-  if (interfaces != k_ra8_ok) {
-    return interfaces;
-  }
   const uint32_t required = (uint32_t)k_fw_fs_cap_namespace | (uint32_t)k_fw_fs_cap_stream;
   if ((caps->flags & required) != required) {
     return k_ra8_err_invalid_arg;
@@ -382,6 +418,32 @@ ra8_err_t fw_fs_bind(fw_fs_t*                         out,
   }
   if (!internal_power_of_two(caps->transaction_workspace_align)) {
     return k_ra8_err_invalid_arg;
+  }
+  return k_ra8_ok;
+}
+
+ra8_err_t fw_fs_bind(fw_fs_t*                         out,
+                     const fw_fs_namespace_iface_t*   namespace_iface,
+                     const fw_fs_stream_iface_t*      stream_iface,
+                     const fw_fs_transaction_iface_t* transaction_iface,
+                     void*                            ctx,
+                     const fw_fs_caps_t*              caps)
+{
+  if (out == nullptr || namespace_iface == nullptr || stream_iface == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (ctx == nullptr || caps == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  const ra8_err_t interfaces =
+    internal_interfaces(namespace_iface, stream_iface, transaction_iface);
+  if (interfaces != k_ra8_ok) {
+    return interfaces;
+  }
+  const ra8_err_t caps_status =
+    internal_fw_fs_caps_validate(namespace_iface, stream_iface, transaction_iface, caps);
+  if (caps_status != k_ra8_ok) {
+    return caps_status;
   }
   const ra8_err_t root_path = fw_fs_path_validate(caps, "/");
   if (root_path != k_ra8_ok) {
@@ -731,16 +793,32 @@ ra8_err_t fw_fs_close(fw_fs_file_t* file)
   return closed;
 }
 
-ra8_err_t fw_fs_transaction_begin(const fw_fs_transaction_port_t* port,
-                                  const char*                     destination,
-                                  fw_fs_transaction_policy_t      policy,
-                                  fw_fs_transaction_t*            transaction,
-                                  void*                           workspace,
-                                  uint32_t                        workspace_size)
+/**
+ * @brief Validate a transaction port, in-flight state, and policy before begin.
+ * @details Requires a bound transaction interface, the transactions capability
+ *          bit, an idle transaction slot, an in-range policy, and the specific
+ *          atomic-replace or atomic-noreplace capability bit the requested
+ *          policy needs.
+ * @param[in] port Candidate transaction port (interface, ctx, capabilities).
+ * @param[in] transaction Candidate transaction slot to begin into.
+ * @param[in] policy Requested commit policy.
+ * @return Preamble validation status.
+ * @retval k_ra8_ok The port, slot, and policy are ready for begin.
+ * @retval k_ra8_err_not_initialized Transactions are capable but not bound.
+ * @retval k_ra8_err_not_supported Transactions, or the requested policy's
+ *         atomic mode, are not offered by this port.
+ * @retval k_ra8_err_busy @p transaction already has an active transaction.
+ * @retval k_ra8_err_invalid_arg @p policy is out of range.
+ * @pre @p port and @p transaction are non-NULL.
+ * @post No transaction, workspace, or backend state is modified.
+ * @note Pure and thread-safe for immutable port and policy inputs.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_fw_fs_transaction_preamble(const fw_fs_transaction_port_t* port,
+                                    const fw_fs_transaction_t*      transaction,
+                                    fw_fs_transaction_policy_t      policy)
 {
-  if (port == nullptr || transaction == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
   if (port->iface == nullptr) {
     return ((port->caps.flags & (uint32_t)k_fw_fs_cap_transactions) == 0U)
              ? k_ra8_err_not_supported
@@ -761,6 +839,23 @@ ra8_err_t fw_fs_transaction_begin(const fw_fs_transaction_port_t* port,
     }
   } else if ((port->caps.flags & (uint32_t)k_fw_fs_cap_atomic_noreplace) == 0U) {
     return k_ra8_err_not_supported;
+  }
+  return k_ra8_ok;
+}
+
+ra8_err_t fw_fs_transaction_begin(const fw_fs_transaction_port_t* port,
+                                  const char*                     destination,
+                                  fw_fs_transaction_policy_t      policy,
+                                  fw_fs_transaction_t*            transaction,
+                                  void*                           workspace,
+                                  uint32_t                        workspace_size)
+{
+  if (port == nullptr || transaction == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  const ra8_err_t preamble = internal_fw_fs_transaction_preamble(port, transaction, policy);
+  if (preamble != k_ra8_ok) {
+    return preamble;
   }
   const ra8_err_t path_err = fw_fs_path_validate(&port->caps, destination);
   if (path_err != k_ra8_ok) {
