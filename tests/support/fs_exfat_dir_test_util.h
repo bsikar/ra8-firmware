@@ -61,6 +61,7 @@
 #include "support/fs_exfat_upcase_test_util.h"
 #include "support/fs_fat_exfat_mutate_test_util.h"
 #include "support/ra8_test_file.h"
+#include "support/ra8_test_file_posix.h"
 #include "unity_minimal.h"
 
 /**

@@ -667,7 +667,7 @@ RA8_INTERNAL static void internal_check_fat_legal_stamp(ra8_fs_mount_t* h)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- every packed-field bound in
- * `internal_stat_decode_fat()` is a single-condition `if`, and each vector
+ * `internal_stat_fat_time_valid()` is a single-condition `if`, and each vector
  * below trips exactly one of them while leaving the neighbouring fields legal)
  * @brief Exercise the FAT packed date/time range guards through ::ra8_fs_stat.
  * @details Formats one FAT16 volume, writes five files, plants one out-of-range
