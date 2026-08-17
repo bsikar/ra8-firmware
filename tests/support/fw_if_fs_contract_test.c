@@ -251,15 +251,19 @@ internal_expect_interface_rejection(const fw_fs_t*                   fs,
                  fw_fs_bind(&bound, names, streams, transactions, (void*)fs, &fs->caps));
 }
 
-/** @brief Toggle every required namespace callback independently. @details
- * Starts from a truthful table before removing one member at a time, including
- * every operand in the grouped namespace decisions. @param[in] fs Truthful
- * baseline binding. @pre The baseline namespace, stream, and transaction tables
- * are complete. @pre The baseline capability record remains immutable. @post
- * Every missing namespace member is rejected independently. @post The baseline
- * binding remains unchanged. @note Supplies the true vectors for the namespace
- * callback decisions. @since 0.1.0 */
-RA8_INTERNAL static void internal_check_required_namespace(const fw_fs_t* fs)
+/**
+ * @brief Toggle every required directory-walk namespace callback independently.
+ * @details Starts from a truthful table before removing one directory-walk
+ * member at a time (the first half of the grouped namespace decisions).
+ * @param[in] fs Truthful baseline binding.
+ * @pre The baseline namespace, stream, and transaction tables are complete.
+ * @pre The baseline capability record remains immutable.
+ * @post Every missing directory-walk namespace member is rejected independently.
+ * @post The baseline binding remains unchanged.
+ * @note Supplies half the true vectors for the namespace callback decisions.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_required_namespace_dir_ops(const fw_fs_t* fs)
 {
   fw_fs_namespace_iface_t names = *fs->names.iface;
   /** @brief Reject one namespace vtable with the selected member cleared. */
@@ -274,11 +278,55 @@ RA8_INTERNAL static void internal_check_required_namespace(const fw_fs_t* fs)
   EXPECT_MISSING_NAMESPACE(dir_open);
   EXPECT_MISSING_NAMESPACE(dir_next);
   EXPECT_MISSING_NAMESPACE(dir_close);
+#undef EXPECT_MISSING_NAMESPACE
+}
+
+/**
+ * @brief Toggle every required path-mutation namespace callback independently.
+ * @details Starts from a truthful table before removing one path-mutation
+ * member at a time (the second half of the grouped namespace decisions).
+ * @param[in] fs Truthful baseline binding.
+ * @pre The baseline namespace, stream, and transaction tables are complete.
+ * @pre The baseline capability record remains immutable.
+ * @post Every missing path-mutation namespace member is rejected independently.
+ * @post The baseline binding remains unchanged.
+ * @note Supplies the remaining true vectors for the namespace callback decisions.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_required_namespace_path_ops(const fw_fs_t* fs)
+{
+  fw_fs_namespace_iface_t names = *fs->names.iface;
+  /** @brief Reject one namespace vtable with the selected member cleared. */
+#define EXPECT_MISSING_NAMESPACE(member)                                                           \
+  do {                                                                                             \
+    names        = *fs->names.iface;                                                               \
+    names.member = nullptr;                                                                        \
+    internal_expect_interface_rejection(fs, &names, fs->streams.iface, fs->transactions.iface);    \
+  } while (0)
   EXPECT_MISSING_NAMESPACE(mkdir);
   EXPECT_MISSING_NAMESPACE(unlink);
   EXPECT_MISSING_NAMESPACE(rmdir);
   EXPECT_MISSING_NAMESPACE(rename);
 #undef EXPECT_MISSING_NAMESPACE
+}
+
+/**
+ * @brief Toggle every required namespace callback independently.
+ * @details Delegates to the directory-walk and path-mutation halves, in the
+ * same toggle order the unsplit routine used, so every operand in the
+ * grouped namespace decisions is still exercised from one call.
+ * @param[in] fs Truthful baseline binding.
+ * @pre The baseline namespace, stream, and transaction tables are complete.
+ * @pre The baseline capability record remains immutable.
+ * @post Every missing namespace member is rejected independently.
+ * @post The baseline binding remains unchanged.
+ * @note Supplies the true vectors for the namespace callback decisions.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_required_namespace(const fw_fs_t* fs)
+{
+  internal_check_required_namespace_dir_ops(fs);
+  internal_check_required_namespace_path_ops(fs);
 }
 
 /** @brief Toggle every required stream callback independently. @details Starts
@@ -663,14 +711,19 @@ RA8_INTERNAL static void internal_check_namespace_contracts(const fw_fs_t* fs)
   TEST_ASSERT((space.total_bytes == 0U) && (space.free_bytes == 0U) && (space.used_bytes == 0U));
 }
 
-/** @brief Reject impossible stream counts, scalars, and publication results.
- * @details Replaces stream and transaction callbacks in local vtable copies
- * with hostile results. @param[in] fs Truthful baseline binding. @pre @p fs is
- * fully bound. @pre Baseline stream and transaction tables remain live. @post
- * Impossible transfers, scalars, and publication are rejected. @post Failed
- * outputs are reset and transaction cleanup remains possible. @note Assertions
- * report contract failures. @since 0.1.0 */
-RA8_INTERNAL static void internal_check_stream_contracts(const fw_fs_t* fs)
+/**
+ * @brief Reject impossible stream read/write/tell/size results.
+ * @details Replaces stream callbacks in a local vtable copy with hostile
+ * successes and confirms the facade resets every failed output.
+ * @param[in] fs Truthful baseline binding.
+ * @pre @p fs is fully bound.
+ * @pre The baseline stream table remains live for the call.
+ * @post Impossible transfers and scalars are rejected.
+ * @post Failed outputs are reset to zero.
+ * @note Assertions report contract failures.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_stream_transfer_contracts(const fw_fs_t* fs)
 {
   fw_fs_stream_iface_t streams = *fs->streams.iface;
   streams.read                 = internal_contract_read;
@@ -691,11 +744,31 @@ RA8_INTERNAL static void internal_check_stream_contracts(const fw_fs_t* fs)
   scalar = UINT64_MAX;
   TEST_ASSERT_EQ(k_ra8_fail, fw_fs_file_size(&file, &scalar));
   TEST_ASSERT_EQ(0U, scalar);
+}
 
+/**
+ * @brief Reject impossible transaction write and publication results.
+ * @details Replaces transaction callbacks in a local vtable copy with hostile
+ * results across three transaction lifetimes: a rejected write/commit that
+ * still permits abort, a failed commit that leaves the transaction open, and
+ * a successful commit that closes it.
+ * @param[in] fs Truthful baseline binding.
+ * @pre @p fs is fully bound.
+ * @pre The baseline transaction table remains live for the call.
+ * @post Impossible writes and publications are rejected.
+ * @post Transaction `active`/`validated` state matches each outcome exactly.
+ * @note Assertions report contract failures.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_transaction_contracts(const fw_fs_t* fs)
+{
   fw_fs_transaction_iface_t transactions = *fs->transactions.iface;
   transactions.write                     = internal_contract_write;
   transactions.commit                    = internal_contract_commit;
   transactions.abort                     = internal_contract_abort;
+  fw_fs_t             bound              = {};
+  uint8_t             byte               = 0U;
+  uint32_t            transferred        = UINT32_MAX;
   contract_results_t  results            = {.commit_status = k_ra8_ok, .commit_published = false};
   fw_fs_transaction_t transaction        = {.iface     = &transactions,
                                             .ctx       = &results,
@@ -725,6 +798,25 @@ RA8_INTERNAL static void internal_check_stream_contracts(const fw_fs_t* fs)
   results.commit_published = true;
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_transaction_commit(&transaction, &published));
   TEST_ASSERT(!transaction.active && !transaction.validated && published);
+}
+
+/**
+ * @brief Reject impossible stream counts, scalars, and publication results.
+ * @details Delegates to the stream-transfer and transaction halves, in the
+ * same order the unsplit routine ran them, so both hostile vtable replacements
+ * are still exercised from one call.
+ * @param[in] fs Truthful baseline binding.
+ * @pre @p fs is fully bound.
+ * @pre Baseline stream and transaction tables remain live.
+ * @post Impossible transfers, scalars, and publication are rejected.
+ * @post Failed outputs are reset and transaction cleanup remains possible.
+ * @note Assertions report contract failures.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_check_stream_contracts(const fw_fs_t* fs)
+{
+  internal_check_stream_transfer_contracts(fs);
+  internal_check_transaction_contracts(fs);
 }
 
 /* see header for full description */
