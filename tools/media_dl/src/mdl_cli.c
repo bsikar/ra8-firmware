@@ -263,7 +263,7 @@ RA8_INTERNAL static bool internal_parse_value_opt(int argc, char** argv, int* i,
  * @note The pointer stored in @p a remains owned by the command vector.
  * @since 0.1.0
  */
-RA8_INTERNAL static void internal_parse_positional_or_bad(char* arg, mdl_args_t* a)
+RA8_INTERNAL static void internal_parse_positional_or_bad(const char* arg, mdl_args_t* a)
 {
   if ((arg != nullptr) && (arg[0] != '-')) {
     if (a->page_url != nullptr) {
