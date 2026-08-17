@@ -521,9 +521,9 @@ def gen_docs() -> str:
 # static docs/doxygen_dirs.dox. Here we emit an ABSOLUTE-path @dir for any such
 # colliding top-level directory, which matches exactly one directory.
 COLLIDING_TOP_DIRS: dict[str, str] = {
-    "src": "Shared application internals used by the drivers -- no boot code, "
-    "no main(). Includes the Ring 5 secure-side substrate (src/secure_app, "
-    "e.g. the key vault and secure-OTA commit).",
+    "src": "The Ring 5 secure-side platform substrate (src/secure_app: the "
+    "key vault, secure-OTA commit, CMAC and TRNG) -- no boot code, no main(). "
+    "Product compositions live under apps/.",
 }
 
 
