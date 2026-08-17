@@ -275,12 +275,18 @@ RA8_INTERNAL static void internal_workspace_assert_epub_carve(const char*       
 RA8_INTERNAL static void internal_workspace_assert_jof(const char*             directory,
                                                        mdl_export_workspace_t* workspace)
 {
-  char opaque_atlas[k_workspace_path_bytes];
-  char coded_page[k_workspace_path_bytes];
-  char coded_atlas[k_workspace_path_bytes];
-  (void)__builtin_snprintf(opaque_atlas, sizeof(opaque_atlas), "%s/page_001.jof", directory);
-  (void)__builtin_snprintf(coded_page, sizeof(coded_page), "%s/page_002.jpg", directory);
-  (void)__builtin_snprintf(coded_atlas, sizeof(coded_atlas), "%s/page_002.jof", directory);
+  char      opaque_atlas[k_workspace_path_bytes];
+  char      coded_page[k_workspace_path_bytes];
+  char      coded_atlas[k_workspace_path_bytes];
+  const int opaque_atlas_length =
+    __builtin_snprintf(opaque_atlas, sizeof(opaque_atlas), "%s/page_001.jof", directory);
+  const int coded_page_length =
+    __builtin_snprintf(coded_page, sizeof(coded_page), "%s/page_002.jpg", directory);
+  const int coded_atlas_length =
+    __builtin_snprintf(coded_atlas, sizeof(coded_atlas), "%s/page_002.jof", directory);
+  TEST_ASSERT((opaque_atlas_length > 0) && ((size_t)opaque_atlas_length < sizeof(opaque_atlas)));
+  TEST_ASSERT((coded_page_length > 0) && ((size_t)coded_page_length < sizeof(coded_page)));
+  TEST_ASSERT((coded_atlas_length > 0) && ((size_t)coded_atlas_length < sizeof(coded_atlas)));
 
   (void)__builtin_snprintf(s_workspace_names[k_workspace_row_first],
                            (size_t)k_name_max,
