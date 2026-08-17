@@ -68,12 +68,15 @@
 static_assert(sizeof(double) == 8U, "media_dl state v3 requires binary64 double");
 static_assert(FLT_RADIX == 2, "media_dl state v3 requires radix-2 floating-point");
 /* 53, 1024 and -1021 ARE the IEC 60559 binary64 parameters being asserted;
- * naming them would restate each assertion inside its own operand. */
-// NOLINTBEGIN(readability-magic-numbers)
+ * naming them would restate each assertion inside its own operand. The
+ * DBL_MIN_EXP comparison also trips misc-redundant-expression: glibc
+ * expands the macro to the same literal spelled on the right-hand side,
+ * which the checker cannot distinguish from a copy-paste tautology. */
+// NOLINTBEGIN(readability-magic-numbers, misc-redundant-expression)
 static_assert(DBL_MANT_DIG == 53, "media_dl state requires 53-bit binary64 precision");
 static_assert(DBL_MAX_EXP == 1024, "media_dl state requires binary64 exponent range");
 static_assert(DBL_MIN_EXP == -1021, "media_dl state requires binary64 exponent range");
-// NOLINTEND(readability-magic-numbers)
+// NOLINTEND(readability-magic-numbers, misc-redundant-expression)
 
 #include "mdl_config.h"
 #include "mdl_extract.h"
