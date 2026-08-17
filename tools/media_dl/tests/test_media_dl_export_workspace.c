@@ -16,6 +16,7 @@
 #include "mdl_export_internal.h"
 #include "mdl_test_storage.h"
 #include "support/ra8_test_file.h"
+#include "support/ra8_test_file_posix.h"
 #include "test_media_dl_export_workspace_internal.h"
 #include "unity_minimal.h"
 
