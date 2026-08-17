@@ -80,14 +80,66 @@ static bool internal_path_is_root(const char* path)
 }
 
 /**
+ * @brief Is a decoded FAT civil date/time within every legal calendar bound?
+ *
+ * @details Checks month, day, hour, minute, second, and the optional
+ *          creation-centisecond byte. There is deliberately no upper-bound
+ *          check on the day: FAT stores it in five bits, so
+ *          `date & k_stat_fat_day_mask` cannot exceed 31, which is already
+ *          the largest civil day. Only `day == 0` is representable and
+ *          illegal, and that is the guard below. Every check here is a
+ *          single-condition `if`.
+ *
+ * @param[in] v          Decoded (not yet validated) civil fields.
+ * @param[in] tenth      FAT 10-ms byte (creation only), or zero.
+ * @param[in] have_tenth true when @p tenth belongs to the stamp.
+ *
+ * @return bool Whether every checked field is within its legal civil range.
+ * @retval true  Every field is legal.
+ * @retval false At least one field is out of range.
+ *
+ * @pre @p v is non-NULL.
+ * @pre @p v was decoded from a raw packed FAT date/time pair.
+ * @post No state is modified.
+ *
+ * @note Pure predicate.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static bool internal_stat_fat_time_valid(const ra8_fs_datetime_t* v, uint8_t tenth, bool have_tenth)
+{
+  if (v->month == 0U) {
+    return false;
+  }
+  if (v->month > (uint8_t)k_stat_month_max) {
+    return false;
+  }
+  if (v->day == 0U) {
+    return false;
+  }
+  if (v->hour > (uint8_t)k_stat_hour_max) {
+    return false;
+  }
+  if (v->minute > (uint8_t)k_stat_minute_max) {
+    return false;
+  }
+  if (v->second > (uint8_t)k_stat_second_max) {
+    return false;
+  }
+  if (have_tenth) {
+    if (tenth > (uint8_t)k_stat_creation_tenth_max) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * @brief Decode one FAT-format packed date/time pair into a public timestamp.
  *
  * @details Reconstructs FAT's even-second field and optional creation
- *          centiseconds, then rejects every out-of-range calendar component.
- *          There is deliberately no upper-bound check on the day: FAT stores it
- *          in five bits, so `date & k_stat_fat_day_mask` cannot exceed 31, which
- *          is already the largest civil day. Only `day == 0` is representable
- *          and illegal, and that is the guard below.
+ *          centiseconds, then rejects every out-of-range calendar component
+ *          through ::internal_stat_fat_time_valid.
  *
  * @param[in]  date       Packed FAT date word.
  * @param[in]  time       Packed FAT time word (zero for date-only access time).
@@ -121,35 +173,9 @@ static void internal_stat_decode_fat(uint16_t            date,
     v.second      = (uint8_t)(v.second + ((tenth >= (uint8_t)k_stat_tenths_per_second) ? 1U : 0U));
     v.centisecond = (uint8_t)(tenth % (uint8_t)k_stat_tenths_per_second);
   }
-  if (v.month == 0U) {
+  if (!internal_stat_fat_time_valid(&v, tenth, have_tenth)) {
     *out = (ra8_fs_timestamp_t){};
     return;
-  }
-  if (v.month > (uint8_t)k_stat_month_max) {
-    *out = (ra8_fs_timestamp_t){};
-    return;
-  }
-  if (v.day == 0U) {
-    *out = (ra8_fs_timestamp_t){};
-    return;
-  }
-  if (v.hour > (uint8_t)k_stat_hour_max) {
-    *out = (ra8_fs_timestamp_t){};
-    return;
-  }
-  if (v.minute > (uint8_t)k_stat_minute_max) {
-    *out = (ra8_fs_timestamp_t){};
-    return;
-  }
-  if (v.second > (uint8_t)k_stat_second_max) {
-    *out = (ra8_fs_timestamp_t){};
-    return;
-  }
-  if (have_tenth) {
-    if (tenth > (uint8_t)k_stat_creation_tenth_max) {
-      *out = (ra8_fs_timestamp_t){};
-      return;
-    }
   }
   out->value            = v;
   out->valid            = true;
