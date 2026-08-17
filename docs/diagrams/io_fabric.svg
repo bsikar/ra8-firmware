@@ -10,27 +10,38 @@
     <text x="24" y="32" fill="#1b1f24" font-size="14" font-weight="bold">I/O fabric -- block devices, filesystems, adapters</text>
     <text x="24" y="52" fill="#57606a" font-size="9">coupling derived from #include edges between libs/, port/ and src/; the number on an arrow is how many files carry it</text>
     <rect x="20" y="70" width="860" height="348" rx="8" fill="none" stroke="#aeb4bb" stroke-width="1.2"/>
-    <line x1="112" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <rect x="265" y="149" width="10" height="11" fill="#fdfdfb"/>
-    <text x="270" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">4</text>
-    <line x1="280" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <rect x="371" y="149" width="10" height="11" fill="#fdfdfb"/>
-    <text x="376" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
-    <line x1="280" y1="140" x2="450" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="307" y="169" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
-    <line x1="450" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="438" y="164" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
-    <line x1="618" y1="140" x2="450" y2="170" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <rect x="518" y="149" width="10" height="11" fill="#fdfdfb"/>
-    <text x="523" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
-    <line x1="788" y1="140" x2="450" y2="256" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="724" y="169" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
-    <line x1="450" y1="226" x2="450" y2="256" stroke="#1a7f37" stroke-width="1.2" marker-end="url(#aGrn)"/>
-    <text x="438" y="244" text-anchor="middle" fill="#1a7f37" font-size="9">9</text>
-    <line x1="450" y1="226" x2="450" y2="342" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
-    <text x="438" y="329" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
-    <line x1="496" y1="342" x2="496" y2="312" stroke="#1b1f24" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#aInk)"/>
-    <text x="506" y="330" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <!-- ra8_mdl_storage_vfs -> ra8_io (4) : lands left edge y=190 -->
+    <line x1="112" y1="140" x2="371" y2="190" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="194" y="151" width="12" height="12" fill="#fdfdfb"/>
+    <text x="200" y="160" text-anchor="middle" fill="#1b1f24" font-size="9">4</text>
+    <!-- if_ra8_vfs -> ra8_io (2) : lands top edge x=410 -->
+    <line x1="280" y1="140" x2="410" y2="171" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="339" y="150" width="12" height="12" fill="#fdfdfb"/>
+    <text x="345" y="159" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <!-- if_ra8_vfs -> ra8_fs (3) : clears ra8_io, lands left edge y=280 -->
+    <line x1="300" y1="140" x2="371" y2="280" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="340" y="224" width="12" height="12" fill="#fdfdfb"/>
+    <text x="346" y="233" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
+    <!-- ra8_ftl -> ra8_io (3) : lands top edge x=450 -->
+    <line x1="450" y1="140" x2="450" y2="171" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="439" y="158" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
+    <!-- port/posix -> ra8_io (2) : lands top edge x=490 -->
+    <line x1="618" y1="140" x2="490" y2="171" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="548" y="150" width="12" height="12" fill="#fdfdfb"/>
+    <text x="554" y="159" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
+    <!-- port/levelx -> ra8_fs (1) : clears ra8_io, lands top edge x=500 -->
+    <line x1="788" y1="140" x2="500" y2="257" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <rect x="694" y="170" width="12" height="12" fill="#fdfdfb"/>
+    <text x="700" y="179" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <!-- ra8_io -> ra8_fs (9) : lands top edge x=450 -->
+    <line x1="450" y1="226" x2="450" y2="257" stroke="#1a7f37" stroke-width="1.2" marker-end="url(#aGrn)"/>
+    <text x="439" y="244" text-anchor="middle" fill="#1a7f37" font-size="9">9</text>
+    <!-- ra8_io -> ra8_sdmmc_spi (1) : routed right of ra8_fs, not through it -->
+    <polyline points="527,190 600,190 600,370 529,370" fill="none" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
+    <text x="611" y="303" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
+    <!-- ra8_sdmmc_spi -> ra8_fs (1) : the against-the-layering edge -->
+    <line x1="450" y1="342" x2="450" y2="312" stroke="#1b1f24" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#aInk)"/>
+    <text x="461" y="330" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
     <rect x="34" y="86" width="155" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
     <text x="112" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_mdl_storage_vfs</text>
     <text x="112" y="126" text-anchor="middle" fill="#57606a" font-size="9">RBKC over mounts</text>
