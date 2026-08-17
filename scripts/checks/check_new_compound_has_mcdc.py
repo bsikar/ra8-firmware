@@ -460,6 +460,15 @@ def enclosing_function(src_text: str, decision_line: int) -> str | None:
     end-of-line (``if (...) {``). So the nearest preceding line that is exactly
     ``{`` is the enclosing function's opening brace; the function name is the
     last identifier before the ``(`` in the signature above it.
+
+    A multi-line parameter list can carry a comment-only line -- typically a
+    ``// NOLINTNEXTLINE(rule)`` marker clang-tidy requires directly above the
+    parameter it waives -- between two real signature lines. Such a line is
+    skipped rather than collected: collecting it let the parenthesised rule
+    name (``NOLINTNEXTLINE(readability-non-const-parameter)``) satisfy the
+    ``"(" in lines[j]`` stop condition, so the walk quit before reaching the
+    real signature and the regex below matched ``NOLINTNEXTLINE`` as the
+    function name instead.
     """
     lines = src_text.splitlines()
     idx = decision_line - 1
@@ -473,6 +482,13 @@ def enclosing_function(src_text: str, decision_line: int) -> str | None:
     sig_parts: list[str] = []
     j = brace - 1
     while j >= 0 and lines[j].strip() not in ("", "}", "};", "*/", "/*"):
+        stripped = lines[j].strip()
+        if stripped.startswith("//") or (stripped.startswith("/*") and stripped.endswith("*/")):
+            # Comment-only line (NOLINTNEXTLINE marker or a one-line remark):
+            # carries no signature text, so skip past it without treating any
+            # parenthesised text inside it as the start of the signature.
+            j -= 1
+            continue
         sig_parts.insert(0, lines[j])
         if "(" in lines[j]:
             break
@@ -769,6 +785,53 @@ int soup_fn(int e, int f)
 }
 """
 
+# A NOLINTNEXTLINE marker mid-parameter-list, the exact shape that made
+# enclosing_function() return "NOLINTNEXTLINE" instead of the real function
+# name (its own parenthesised rule name satisfied the walk's "(" stop
+# condition before the walk reached the true signature). Uncovered and not
+# cited anywhere: must fire, attributed to the real function.
+_ST_NOLINT_SIG_C = """\
+ra8_err_t ra8_nolint_sig_fn(int g,
+                            // NOLINTNEXTLINE(readability-non-const-parameter)
+                            int h)
+{
+  if (g && h) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+# Same shape, but cited under the REAL function name. If enclosing_function()
+# regressed to reading "NOLINTNEXTLINE" as the name, this citation (which
+# names the true function) would not match and the decision would wrongly
+# fire despite being covered: must stay quiet.
+_ST_NOLINT_SIG_COVERED_C = """\
+ra8_err_t ra8_nolint_sig_covered_fn(int i,
+                                    // NOLINTNEXTLINE(readability-non-const-parameter)
+                                    int j)
+{
+  if (i && j) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_TEST_NOLINT_SIG_COVERED_C = """\
+/**
+ * @test ra8_nolint_sig_covered_fn_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (i && j)` cites
+ * libs/nolint_sig_covered.c@ra8_nolint_sig_covered_fn
+ * - Vector 1: i=1, j=1 -> true
+ * - Vector 2: i=0, j=1 -> false (varies i)
+ * - Vector 3: i=1, j=0 -> false (varies j)
+ */
+void test_mcdc_ra8_nolint_sig_covered_fn(void) {}
+"""
+
 
 def _st_git(repo: Path, *args: str) -> None:
     """Run a git command inside the self-test fixture repository."""
@@ -817,6 +880,9 @@ def _st_build_fixture(repo: Path) -> tuple[str, str]:
     _st_write(repo, "libs/covered.c", _ST_COVERED_C)
     _st_write(repo, "tests/test_covered.cpp", _ST_TEST_COVERED_C)
     _st_write(repo, "libs/third_party/soup.c", _ST_SOUP_C)
+    _st_write(repo, "libs/nolint_sig.c", _ST_NOLINT_SIG_C)
+    _st_write(repo, "libs/nolint_sig_covered.c", _ST_NOLINT_SIG_COVERED_C)
+    _st_write(repo, "tests/test_nolint_sig_covered.cpp", _ST_TEST_NOLINT_SIG_COVERED_C)
     _st_git(repo, "add", "-A")
     _st_git(repo, "commit", "--quiet", "--no-verify", "-m", "head")
     head = _git("-C", str(repo), "rev-parse", "HEAD").strip()
@@ -835,10 +901,21 @@ def _st_check(files: list[str], findings: list[tuple[str, int, str]]) -> list[st
         failures.append("  fired on libs/pre.c (a pre-existing, unchanged decision)")
     if any("third_party" in p for p in found_paths):
         failures.append("  fired inside libs/third_party/ (SOUP is exempt)")
+    if "libs/nolint_sig.c" not in found_paths:
+        failures.append(
+            "  did NOT fire on libs/nolint_sig.c (uncovered decision behind a "
+            "NOLINTNEXTLINE-commented multi-line signature)"
+        )
+    if "libs/nolint_sig_covered.c" in found_paths:
+        failures.append(
+            "  fired on libs/nolint_sig_covered.c (cited under its real function "
+            "name; enclosing_function() must skip the NOLINTNEXTLINE comment "
+            "line, not resolve it as the function name)"
+        )
     if "libs/third_party/soup.c" in files:
         failures.append("  selected a libs/third_party/ file (SOUP must be excluded)")
-    if len(findings) != 1:
-        failures.append(f"  expected exactly 1 finding, got {len(findings)}: {sorted(found_paths)}")
+    if len(findings) != 2:  # noqa: PLR2004 -- fixture plants exactly 2 uncovered decisions
+        failures.append(f"  expected exactly 2 finding(s), got {len(findings)}: {sorted(found_paths)}")
     return failures
 
 
