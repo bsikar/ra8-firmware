@@ -263,7 +263,7 @@ ra8_err_t ra8_c6link_mdl_transfer(ra8_c6link_t*                    link,
   *result = (ra8_mdl_transfer_result_t){
     .bytes_stored = sizeof(s_body),
     .format       = k_ra8_mdl_format_loose,
-    .response     = {.status        = s_script.status,
+    .response     = {.status        = (int32_t)s_script.status,
                      .retry_after   = "7",
                      .etag          = "\"fixture\"",
                      .last_modified = "Wed, 21 Oct 2015 07:28:00 GMT",
@@ -397,9 +397,9 @@ RA8_INTERNAL static void internal_test_stream_and_sink_faults(void)
       .write = internal_sink_write,
       .ctx   = &sink_state,
     };
-    size_t          length = 0U;
-    const ra8_err_t expected =
-      (vector == 0U) ? k_ra8_ok : ((vector == 1U) ? k_ra8_fail : k_ra8_err_invalid_size);
+    size_t          length            = 0U;
+    const ra8_err_t expected_fallback = (vector == 1U) ? k_ra8_fail : k_ra8_err_invalid_size;
+    const ra8_err_t expected          = (vector == 0U) ? k_ra8_ok : expected_fallback;
     TEST_ASSERT_EQ(
       expected,
       mdl_net_get_body(&net, "https://example.test/body", &request, &sink, &length, nullptr));

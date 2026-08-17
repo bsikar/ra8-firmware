@@ -245,7 +245,7 @@ RA8_INTERNAL static bool internal_xml_unescape(const char* raw, char* out, size_
       }
     }
     consumed = (entity == nullptr) ? 1U : strlen(entity);
-    out[w++] = (entity == nullptr) ? raw[r] : decoded;
+    out[w++] = (char)((entity == nullptr) ? raw[r] : decoded);
     r += consumed;
   }
   out[w] = '\0';
@@ -757,6 +757,61 @@ RA8_INTERNAL static ra8_err_t internal_meta_candidate_path(const char* directory
   return priv_mdl_export_path_join(out, capacity, parent_path, candidate);
 }
 
+/**
+ * @brief Load and parse one metadata candidate file, if present.
+ * @details Resolves the candidate path, stats it, and -- when it exists as a
+ * regular nonempty file -- slurps and parses it into @p meta.
+ * @param[in,out] storage Portable namespace binding.
+ * @param[in] dir Canonical chapter directory.
+ * @param[in] candidate Candidate file basename.
+ * @param[in] is_fallback Whether @p candidate is the final fallback name.
+ * @param[in,out] meta Accumulated metadata being filled in.
+ * @return Candidate status.
+ * @retval k_ra8_ok The candidate was absent, empty, or parsed successfully.
+ * @retval other Path resolution, stat, read, or parse failed.
+ * @pre @p dir and @p candidate resolve to a path under @p storage.
+ * @post On success @p meta reflects the parsed candidate, if any was found.
+ * @note Not thread-safe with respect to concurrent mutation of @p storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_meta_load_candidate(mdl_storage_t*     storage,
+                                                           const char*        dir,
+                                                           const char*        candidate,
+                                                           bool               is_fallback,
+                                                           mdl_export_meta_t* meta)
+{
+  char      path[k_fw_fs_path_cap];
+  ra8_err_t err = internal_meta_candidate_path(dir, candidate, is_fallback, path, sizeof(path));
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  fw_fs_stat_t stat = {};
+  err               = fw_fs_stat(&storage->fs->names, path, &stat);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (!stat.exists) {
+    return k_ra8_ok;
+  }
+  if (stat.type != k_fw_fs_node_file) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (stat.size_bytes == 0U) {
+    return k_ra8_ok;
+  }
+  char buf[4096];
+  if (stat.size_bytes >= sizeof(buf)) {
+    return k_ra8_err_invalid_size;
+  }
+  size_t got = 0U;
+  err        = priv_mdl_export_source_slurp(storage, path, (uint8_t*)buf, sizeof(buf) - 1U, &got);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  buf[got] = '\0';
+  return mdl_meta_parse(meta, buf);
+}
+
 ra8_err_t mdl_meta_load_dir(mdl_storage_t* storage, mdl_export_meta_t* meta, const char* dir)
 {
   if ((storage == nullptr) || (storage->fs == nullptr) || (meta == nullptr) || (dir == nullptr)) {
@@ -771,38 +826,10 @@ ra8_err_t mdl_meta_load_dir(mdl_storage_t* storage, mdl_export_meta_t* meta, con
                                                 "metadata.txt"};
 
   for (size_t i = 0U; i < (sizeof(candidate_files) / sizeof(candidate_files[0])); ++i) {
-    char      path[k_fw_fs_path_cap];
-    ra8_err_t err =
-      internal_meta_candidate_path(dir, candidate_files[i], i == 4U, path, sizeof(path));
+    const ra8_err_t err =
+      internal_meta_load_candidate(storage, dir, candidate_files[i], i == 4U, meta);
     if (err != k_ra8_ok) {
       return err;
-    }
-    fw_fs_stat_t stat = {};
-    err               = fw_fs_stat(&storage->fs->names, path, &stat);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    if (!stat.exists) {
-      continue;
-    }
-    if (stat.type != k_fw_fs_node_file) {
-      return k_ra8_err_invalid_arg;
-    }
-    if (stat.size_bytes > 0U) {
-      char buf[4096];
-      if (stat.size_bytes >= sizeof(buf)) {
-        return k_ra8_err_invalid_size;
-      }
-      size_t got = 0U;
-      err = priv_mdl_export_source_slurp(storage, path, (uint8_t*)buf, sizeof(buf) - 1U, &got);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      buf[got] = '\0';
-      err      = mdl_meta_parse(meta, buf);
-      if (err != k_ra8_ok) {
-        return err;
-      }
     }
   }
   return k_ra8_ok;
@@ -837,9 +864,8 @@ typedef struct {
 RA8_INTERNAL static ra8_err_t internal_escape_comicinfo(const mdl_export_meta_t* meta,
                                                         mdl_comicinfo_text_t*    escaped)
 {
-  const char* title  = (meta->chapter_title[0] != '\0')
-                         ? meta->chapter_title
-                         : ((meta->series_title[0] != '\0') ? meta->series_title : "Chapter");
+  const char* title_fallback = (meta->series_title[0] != '\0') ? meta->series_title : "Chapter";
+  const char* title  = (meta->chapter_title[0] != '\0') ? meta->chapter_title : title_fallback;
   const char* series = (meta->series_title[0] != '\0') ? meta->series_title : "Series";
   if (!mdl_xml_escape(title, escaped->title, sizeof(escaped->title))) {
     (void)snprintf(escaped->title, sizeof(escaped->title), "Chapter");
