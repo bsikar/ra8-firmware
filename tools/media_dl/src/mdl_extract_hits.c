@@ -85,6 +85,33 @@ internal_decode_entity(const char* s, size_t len, size_t* i, char* out_ch, bool*
 }
 
 /**
+ * @brief Append one character to bounded output, tracking overflow.
+ * @details Writes @p ch at `out[*n]` when capacity remains (reserving room
+ *          for the trailing NUL), advancing `*n`; otherwise leaves @p out
+ *          unchanged and marks @p fits false.
+ * @param[out] out Destination buffer.
+ * @param[in,out] n Current write offset, advanced on success.
+ * @param[in] cap Destination capacity including the trailing NUL.
+ * @param[in,out] fits Cleared when a character could not be appended.
+ * @param[in] ch Character to append.
+ * @return Nothing.
+ * @pre @p out addresses @p cap writable bytes.
+ * @post `*n` always leaves room for a trailing NUL at `out[*n]`.
+ * @note Pure bookkeeping; never itself writes the trailing NUL.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_append_out_char(char* out, size_t* n, size_t cap, bool* fits, char ch)
+{
+  if ((*n + 1U) < cap) {
+    out[*n] = ch;
+    ++(*n);
+  } else {
+    *fits = false;
+  }
+}
+
+/**
  * @brief Copy the anchor inner text from `text` into `out`, cleaned for
  * display.
  * @details Strips nested `<...>` tags, collapses runs of whitespace to one
@@ -129,19 +156,11 @@ internal_clean_inner_text(const char* text, size_t len, char* out, size_t cap)
       pending = (n > 0U); /* collapse; never a leading space */
       continue;
     }
-    if (pending && ((n + 1U) < cap)) {
-      out[n] = ' ';
-      ++n;
-    } else if (pending) {
-      fits = false;
+    if (pending) {
+      internal_append_out_char(out, &n, cap, &fits, ' ');
     }
     pending = false;
-    if ((n + 1U) < cap) {
-      out[n] = emit;
-      ++n;
-    } else {
-      fits = false;
-    }
+    internal_append_out_char(out, &n, cap, &fits, emit);
   }
   out[n] = '\0';
   return fits;

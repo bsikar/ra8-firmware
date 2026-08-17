@@ -175,6 +175,96 @@ static const char* const s_epub_container_xml =
   "media-type=\"application/oebps-package+xml\"/></rootfiles></container>";
 
 /**
+ * @brief Classify one page's image media type from sniffed portable bytes.
+ * @details Joins the canonical path and sniffs the file's magic through
+ *          injected storage. An unrecognized (but cleanly read) signature is
+ *          reported as ::k_ra8_err_not_found rather than an error, so the
+ *          caller can fall back to the suffix classifier.
+ * @param[in,out] storage Injected portable file reader.
+ * @param[in] dir Canonical chapter directory.
+ * @param[in] name Bounded page leaf name.
+ * @param[out] out Borrowed canonical MIME pointer, valid only on k_ra8_ok.
+ * @return Sniff classification or filesystem status.
+ * @retval k_ra8_ok A magic-derived MIME was selected; @p out is valid.
+ * @retval k_ra8_err_not_found The signature was read cleanly but unrecognized.
+ * @retval k_ra8_err_invalid_size The composed path exceeded its bound.
+ * @retval other A portable open, read, or close failure propagated.
+ * @pre All pointers are non-NULL and paths are canonical under @p storage.
+ * @post The page file is consumed only through ::fw_fs_file_t.
+ * @note Not thread-safe for a shared storage workspace.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_epub_media_type_from_sniff(mdl_storage_t* storage,
+                                                                  const char*    dir,
+                                                                  const char*    name,
+                                                                  const char**   out)
+{
+  char src[k_fw_fs_path_cap];
+  if (priv_mdl_export_path_join(src, sizeof(src), dir, name) != k_ra8_ok) {
+    return k_ra8_err_invalid_size;
+  }
+  char            mime[64];
+  const ra8_err_t sniff =
+    mdl_urlname_sniff_file(storage, src, nullptr, nullptr, 0U, mime, sizeof(mime));
+  if (sniff != k_ra8_ok) {
+    return (sniff == k_ra8_err_validation_failed) ? k_ra8_err_not_found : sniff;
+  }
+  if (strcmp(mime, "image/png") == 0) {
+    *out = "image/png";
+    return k_ra8_ok;
+  }
+  if (strcmp(mime, "image/gif") == 0) {
+    *out = "image/gif";
+    return k_ra8_ok;
+  }
+  if (strcmp(mime, "image/webp") == 0) {
+    *out = "image/webp";
+    return k_ra8_ok;
+  }
+  if (strcmp(mime, "image/jpeg") == 0) {
+    *out = "image/jpeg";
+    return k_ra8_ok;
+  }
+  return k_ra8_err_not_found;
+}
+
+/**
+ * @brief Classify one page's image media type from its filename suffix.
+ * @details Falls back to JPEG when no recognized suffix is present, since
+ *          the exporter must always publish some MIME for a manifest entry.
+ * @param[in] name Bounded page leaf name.
+ * @param[out] out Borrowed canonical MIME pointer.
+ * @return Nothing; a MIME is always selected.
+ * @pre @p name is NUL-terminated.
+ * @post @p out addresses process-lifetime constant storage.
+ * @note Pure and thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_epub_media_type_from_suffix(const char* name, const char** out)
+{
+  const char* dot = strrchr(name, '.');
+  if (dot != nullptr) {
+    if ((strcmp(dot, ".png") == 0) || (strcmp(dot, ".PNG") == 0)) {
+      *out = "image/png";
+      return;
+    }
+    if ((strcmp(dot, ".gif") == 0) || (strcmp(dot, ".GIF") == 0)) {
+      *out = "image/gif";
+      return;
+    }
+    if ((strcmp(dot, ".webp") == 0) || (strcmp(dot, ".WEBP") == 0)) {
+      *out = "image/webp";
+      return;
+    }
+    if ((strcmp(dot, ".bmp") == 0) || (strcmp(dot, ".BMP") == 0)) {
+      *out = "image/bmp";
+      return;
+    }
+  }
+  *out = "image/jpeg";
+}
+
+/**
  * @brief Resolve one page's image media type from portable bytes then suffix.
  * @details Prefers recognized image magic read through the injected storage;
  *          only a clean unsupported signature falls back to the page suffix.
@@ -199,54 +289,15 @@ RA8_INTERNAL static ra8_err_t internal_epub_media_type(mdl_storage_t* storage,
                                                        const char**   out)
 {
   if (dir != nullptr) {
-    char src[k_fw_fs_path_cap];
-    if (priv_mdl_export_path_join(src, sizeof(src), dir, name) != k_ra8_ok) {
-      return k_ra8_err_invalid_size;
+    const ra8_err_t sniffed = internal_epub_media_type_from_sniff(storage, dir, name, out);
+    if (sniffed == k_ra8_ok) {
+      return k_ra8_ok;
     }
-    char            mime[64];
-    const ra8_err_t sniff =
-      mdl_urlname_sniff_file(storage, src, nullptr, nullptr, 0U, mime, sizeof(mime));
-    if (sniff == k_ra8_ok) {
-      if (strcmp(mime, "image/png") == 0) {
-        *out = "image/png";
-        return k_ra8_ok;
-      }
-      if (strcmp(mime, "image/gif") == 0) {
-        *out = "image/gif";
-        return k_ra8_ok;
-      }
-      if (strcmp(mime, "image/webp") == 0) {
-        *out = "image/webp";
-        return k_ra8_ok;
-      }
-      if (strcmp(mime, "image/jpeg") == 0) {
-        *out = "image/jpeg";
-        return k_ra8_ok;
-      }
-    } else if (sniff != k_ra8_err_validation_failed) {
-      return sniff;
+    if (sniffed != k_ra8_err_not_found) {
+      return sniffed;
     }
   }
-  const char* dot = strrchr(name, '.');
-  if (dot != nullptr) {
-    if ((strcmp(dot, ".png") == 0) || (strcmp(dot, ".PNG") == 0)) {
-      *out = "image/png";
-      return k_ra8_ok;
-    }
-    if ((strcmp(dot, ".gif") == 0) || (strcmp(dot, ".GIF") == 0)) {
-      *out = "image/gif";
-      return k_ra8_ok;
-    }
-    if ((strcmp(dot, ".webp") == 0) || (strcmp(dot, ".WEBP") == 0)) {
-      *out = "image/webp";
-      return k_ra8_ok;
-    }
-    if ((strcmp(dot, ".bmp") == 0) || (strcmp(dot, ".BMP") == 0)) {
-      *out = "image/bmp";
-      return k_ra8_ok;
-    }
-  }
-  *out = "image/jpeg";
+  internal_epub_media_type_from_suffix(name, out);
   return k_ra8_ok;
 }
 
@@ -420,6 +471,82 @@ RA8_INTERNAL static ra8_err_t internal_epub_append_frags(char*       mani,
 }
 
 /**
+ * @brief Is one exported image the publication's declared cover?
+ * @details Matches by declared cover index first, then by declared cover
+ *          path name, so either identification method marks the same image.
+ * @param[in] meta Resolved metadata controlling cover selection, or NULL.
+ * @param[in] name Image file name being exported.
+ * @param[in] idx Zero-based export position of @p name.
+ * @return Whether this image is the declared cover.
+ * @retval true @p idx matches the declared cover index, or @p name matches
+ *         the declared cover path.
+ * @retval false @p meta is NULL, or neither identification method matches.
+ * @pre @p name is non-NULL.
+ * @post No state is modified.
+ * @note Pure and thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool
+internal_epub_page_is_cover(const mdl_export_meta_t* meta, const char* name, size_t idx)
+{
+  if (meta == nullptr) {
+    return false;
+  }
+  if ((meta->cover_index >= 0) && ((size_t)meta->cover_index == idx)) {
+    return true;
+  }
+  return (meta->cover_path[0] != '\0') && (strcmp(name, meta->cover_path) == 0);
+}
+
+/**
+ * @brief Escape a page name and write its XHTML wrapper into the ZIP.
+ * @details Escapes the source name for XML use, renders the fixed page
+ *          markup, and writes it under the page's OEBPS entry name.
+ * @param[in,out] zip Initialized EPUB ZIP writer.
+ * @param[in] name Page filename.
+ * @param[in] n One-based page number.
+ * @param[out] esc Receives the escaped @p name for later fragment use.
+ * @param[in] esc_cap Capacity of @p esc.
+ * @return Page-XHTML write status.
+ * @retval k_ra8_ok The escaped name and XHTML entry were written.
+ * @retval k_ra8_fail Escaping, formatting, or ZIP writing failed.
+ * @pre @p name is a NUL-terminated untrusted filename.
+ * @pre @p esc addresses @p esc_cap writable bytes.
+ * @post Success writes exactly one XHTML ZIP member.
+ * @note Not thread-safe for a shared ZIP writer.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_epub_write_page_xhtml(mz_zip_archive* zip,
+                                                             const char*     name,
+                                                             unsigned        n,
+                                                             char*           esc,
+                                                             size_t          esc_cap)
+{
+  if (!mdl_xml_escape(name, esc, esc_cap)) {
+    return k_ra8_fail; /* untrusted filename must not break the container XML */
+  }
+  char      xhtml[k_epub_xhtml_max];
+  const int xn = snprintf(xhtml,
+                          sizeof(xhtml),
+                          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                          "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>Page %u"
+                          "</title></head><body><img src=\"images/%s\" alt=\"Page %u\"/>"
+                          "</body></html>",
+                          n,
+                          esc,
+                          n);
+  if (!priv_mdl_export_snprintf_fit(xn, sizeof(xhtml))) {
+    return k_ra8_fail;
+  }
+  char entry[k_epub_entry_max];
+  (void)snprintf(entry, sizeof(entry), "OEBPS/page_%03u.xhtml", n);
+  if (!internal_epub_add_str(zip, entry, xhtml)) {
+    return k_ra8_fail;
+  }
+  return k_ra8_ok;
+}
+
+/**
  * @brief Add one fixed-layout EPUB page and its image
  * @details Escapes the source name, writes page XHTML and stored image members,
  *          derives the real MIME where possible, and appends package fragments.
@@ -454,33 +581,17 @@ RA8_INTERNAL static ra8_err_t internal_epub_add_page(mdl_storage_t*           st
                                                      size_t                   cap,
                                                      const mdl_export_meta_t* meta)
 {
-  const unsigned n = (unsigned)(idx + 1U);
-  char           esc[k_epub_name_esc_max];
-  if (!mdl_xml_escape(name, esc, sizeof(esc))) {
-    return k_ra8_fail; /* untrusted filename must not break the container XML */
-  }
-  char      xhtml[k_epub_xhtml_max];
-  const int xn = snprintf(xhtml,
-                          sizeof(xhtml),
-                          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                          "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>Page %u"
-                          "</title></head><body><img src=\"images/%s\" alt=\"Page %u\"/>"
-                          "</body></html>",
-                          n,
-                          esc,
-                          n);
-  if (!priv_mdl_export_snprintf_fit(xn, sizeof(xhtml))) {
-    return k_ra8_fail;
-  }
-  char entry[k_epub_entry_max];
-  (void)snprintf(entry, sizeof(entry), "OEBPS/page_%03u.xhtml", n);
-  if (!internal_epub_add_str(zip, entry, xhtml)) {
-    return k_ra8_fail;
+  const unsigned  n = (unsigned)(idx + 1U);
+  char            esc[k_epub_name_esc_max];
+  const ra8_err_t xhtml_err = internal_epub_write_page_xhtml(zip, name, n, esc, sizeof(esc));
+  if (xhtml_err != k_ra8_ok) {
+    return xhtml_err;
   }
   char src[k_fw_fs_path_cap];
   if (priv_mdl_export_path_join(src, sizeof(src), dir, name) != k_ra8_ok) {
     return k_ra8_err_invalid_size;
   }
+  char      entry[k_epub_entry_max];
   const int en = snprintf(entry, sizeof(entry), "OEBPS/images/%s", name);
   if (!priv_mdl_export_snprintf_fit(en, sizeof(entry))) {
     return k_ra8_fail;
@@ -490,14 +601,7 @@ RA8_INTERNAL static ra8_err_t internal_epub_add_page(mdl_storage_t*           st
   if (source_err != k_ra8_ok) {
     return source_err;
   }
-  bool is_cover = false;
-  if (meta != nullptr) {
-    if ((meta->cover_index >= 0) && ((size_t)meta->cover_index == idx)) {
-      is_cover = true;
-    } else if ((meta->cover_path[0] != '\0') && (strcmp(name, meta->cover_path) == 0)) {
-      is_cover = true;
-    }
-  }
+  const bool      is_cover   = internal_epub_page_is_cover(meta, name, idx);
   const char*     media_type = nullptr;
   const ra8_err_t media_err  = internal_epub_media_type(storage, dir, name, &media_type);
   if (media_err != k_ra8_ok) {
@@ -629,9 +733,14 @@ RA8_INTERNAL static ra8_err_t internal_epub_prepare_text(const mdl_export_meta_t
       !mdl_xml_escape(meta->modified, text->modified, sizeof(text->modified))) {
     return k_ra8_err_invalid_size;
   }
-  const char* raw_title = (meta->chapter_title[0] != '\0')
-                            ? meta->chapter_title
-                            : ((meta->series_title[0] != '\0') ? meta->series_title : "chapter");
+  const char* raw_title;
+  if (meta->chapter_title[0] != '\0') {
+    raw_title = meta->chapter_title;
+  } else if (meta->series_title[0] != '\0') {
+    raw_title = meta->series_title;
+  } else {
+    raw_title = "chapter";
+  }
   if (!mdl_xml_escape(raw_title, text->title, sizeof(text->title))) {
     (void)snprintf(text->title, sizeof(text->title), "chapter");
   }
@@ -818,6 +927,87 @@ internal_epub_page_meta(const mdl_external_cover_t* cover,
 }
 
 /**
+ * @brief Carve the five bounded XML/ZIP accumulators from workspace arena.
+ * @details Reserves one @p cap-byte block per accumulator and NUL-terminates
+ *          the three accumulators the caller builds incrementally.
+ * @param[in,out] ws Exclusive caller-owned workspace.
+ * @param[in] cap Byte capacity reserved for each accumulator.
+ * @param[out] mani Receives the manifest accumulator.
+ * @param[out] spine Receives the spine accumulator.
+ * @param[out] nav Receives the navigation accumulator.
+ * @param[out] opf Receives the OPF render buffer.
+ * @param[out] navdoc Receives the navigation-document render buffer.
+ * @return Workspace-carve status.
+ * @retval k_ra8_ok All five accumulators were reserved.
+ * @retval k_ra8_err_invalid_size The workspace arena is exhausted.
+ * @pre @p ws is exclusive and owns writable arena storage.
+ * @post On success every out-pointer is non-NULL and the three text
+ *       accumulators are empty NUL-terminated strings.
+ * @note Not thread-safe for a shared workspace.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_epub_carve_workspace(mdl_export_workspace_t* ws,
+                                                            size_t                  cap,
+                                                            char**                  mani,
+                                                            char**                  spine,
+                                                            char**                  nav,
+                                                            char**                  opf,
+                                                            char**                  navdoc)
+{
+  *mani   = (char*)mdl_export_workspace_take(ws, cap, 1U);
+  *spine  = (char*)mdl_export_workspace_take(ws, cap, 1U);
+  *nav    = (char*)mdl_export_workspace_take(ws, cap, 1U);
+  *opf    = (char*)mdl_export_workspace_take(ws, cap, 1U);
+  *navdoc = (char*)mdl_export_workspace_take(ws, cap, 1U);
+  if ((*mani == nullptr) || (*spine == nullptr) || (*nav == nullptr) || (*opf == nullptr) ||
+      (*navdoc == nullptr)) {
+    return k_ra8_err_invalid_size;
+  }
+  (*mani)[0]  = '\0';
+  (*spine)[0] = '\0';
+  (*nav)[0]   = '\0';
+  return k_ra8_ok;
+}
+
+/**
+ * @brief End the ZIP writer and translate exhaustion/output faults to status.
+ * @details Always ends an opened writer before releasing the workspace
+ *          allocator, then maps a generic write failure to the more specific
+ *          exhaustion or captured-output error when one is available.
+ * @param[in,out] zip ZIP writer to end when @p zip_open.
+ * @param[in] zip_open Whether @p zip was successfully initialized.
+ * @param[in,out] zip_alloc Workspace allocator bound to @p zip.
+ * @param[in] rc Status accumulated by the writer stages.
+ * @param[in] output Validated-publication output whose captured error may
+ *            refine a generic write failure.
+ * @return Refined writer status.
+ * @retval k_ra8_err_invalid_size @p rc was k_ra8_fail and the arena was exhausted.
+ * @retval other @p rc, or @p output->error when it refines a generic failure.
+ * @pre @p zip_alloc is bound to @p zip via ::priv_mdl_zip_workspace_bind.
+ * @post The ZIP writer is ended and the workspace allocator is released.
+ * @note Not thread-safe for a shared workspace or writer.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_epub_finish_writer(mz_zip_archive*            zip,
+                                                          bool                       zip_open,
+                                                          mdl_zip_allocator_t*       zip_alloc,
+                                                          ra8_err_t                  rc,
+                                                          const mdl_export_output_t* output)
+{
+  if (zip_open) {
+    (void)mz_zip_writer_end(zip); /* alloc-allow: releases caller-arena blocks */
+  }
+  if ((rc == k_ra8_fail) && zip_alloc->exhausted) {
+    rc = k_ra8_err_invalid_size;
+  }
+  if ((rc == k_ra8_fail) && (output->error != k_ra8_ok)) {
+    rc = output->error;
+  }
+  priv_mdl_zip_workspace_release(zip_alloc);
+  return rc;
+}
+
+/**
  * @brief Package chapter pages into a valid fixed-layout EPUB3
  * @details Carves all XML accumulators from caller storage, adds OCF roots,
  *          canonical cover, page members, metadata, and finalizes the staged archive.
@@ -853,19 +1043,16 @@ RA8_PRIV ra8_err_t priv_mdl_export_epub(mdl_storage_t*           storage,
   if (rc != k_ra8_ok) {
     return rc;
   }
-  const size_t cap    = (size_t)k_epub_base_bytes + (count * (size_t)k_epub_per_page_bytes);
-  char* const  mani   = (char*)mdl_export_workspace_take(ws, cap, 1U);
-  char* const  spine  = (char*)mdl_export_workspace_take(ws, cap, 1U);
-  char* const  nav    = (char*)mdl_export_workspace_take(ws, cap, 1U);
-  char* const  opf    = (char*)mdl_export_workspace_take(ws, cap, 1U);
-  char* const  navdoc = (char*)mdl_export_workspace_take(ws, cap, 1U);
-  if ((mani == nullptr) || (spine == nullptr) || (nav == nullptr) || (opf == nullptr) ||
-      (navdoc == nullptr)) {
-    return k_ra8_err_invalid_size;
+  const size_t cap = (size_t)k_epub_base_bytes + (count * (size_t)k_epub_per_page_bytes);
+  char*        mani;
+  char*        spine;
+  char*        nav;
+  char*        opf;
+  char*        navdoc;
+  rc = internal_epub_carve_workspace(ws, cap, &mani, &spine, &nav, &opf, &navdoc);
+  if (rc != k_ra8_ok) {
+    return rc;
   }
-  mani[0]  = '\0';
-  spine[0] = '\0';
-  nav[0]   = '\0';
   mz_zip_archive      zip;
   mdl_zip_allocator_t zip_alloc;
   priv_mdl_zip_workspace_bind(&zip, &zip_alloc, ws);
@@ -890,16 +1077,6 @@ RA8_PRIV ra8_err_t priv_mdl_export_epub(mdl_storage_t*           storage,
   if (rc == k_ra8_ok) {
     rc = internal_epub_add_meta(&zip, mani, spine, nav, count, meta, opf, cap, navdoc, cap);
   }
-  if (zip_open) {
-    (void)mz_zip_writer_end(&zip); /* alloc-allow: releases caller-arena blocks */
-  }
-  if ((rc == k_ra8_fail) && zip_alloc.exhausted) {
-    rc = k_ra8_err_invalid_size;
-  }
-  if ((rc == k_ra8_fail) && (output->error != k_ra8_ok)) {
-    rc = output->error;
-  }
-  priv_mdl_zip_workspace_release(&zip_alloc);
   /* The coordinator aborts this stage unless writer completion and verification pass. */
-  return rc;
+  return internal_epub_finish_writer(&zip, zip_open, &zip_alloc, rc, output);
 }
