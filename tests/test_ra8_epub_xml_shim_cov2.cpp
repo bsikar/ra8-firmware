@@ -30,8 +30,10 @@
 #include "ra8_epub.h"
 #include "ra8_epub_xml_shim_internal.h"
 
-namespace {
-
+// NOLINTBEGIN(misc-use-anonymous-namespace) -- the project's RA8_INTERNAL
+// contract (scripts/checks/annot_walk.py) requires the declaration to spell
+// literal `static`; an anonymous namespace's internal linkage is a distinct
+// mechanism and does not satisfy that contract.
 static ra8_epub_xml_workspace_t s_xml_workspace = {};
 
 /** @brief Reinterpret a C-string literal as the shim's byte-pointer input. */
@@ -438,8 +440,7 @@ RA8_INTERNAL static void internal_test_cov2_operand_matrix(void)
   assert(std::strcmp(s_book.toc[1].title, "Only") == 0);
   assert(std::strcmp(s_book.toc[2].href, "c3.xhtml") == 0);
 }
-
-} /* namespace */
+// NOLINTEND(misc-use-anonymous-namespace)
 
 /** @brief Run the focused test cases in this executable. @details Invokes each isolated case once and returns the accumulated assertion status. @return Process status from the accumulated assertions. @retval 0 Every focused assertion passed. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 int main(void)

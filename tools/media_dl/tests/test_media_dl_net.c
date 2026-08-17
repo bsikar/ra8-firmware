@@ -153,7 +153,11 @@ RA8_INTERNAL static ra8_err_t internal_net_test_body_write(void*          contex
   if (accepted > ((uint32_t)sizeof(body->bytes) - body->length)) {
     return k_ra8_err_no_mem;
   }
-  memcpy(body->bytes + body->length, bytes, accepted);
+  /* accepted == 0U can coincide with a null bytes (zero-length caller);
+   * skip the copy rather than pass a possibly-null source to memcpy(). */
+  if (accepted != 0U) {
+    memcpy(body->bytes + body->length, bytes, accepted);
+  }
   body->length += accepted;
   *out_written = accepted;
   return k_ra8_ok;
