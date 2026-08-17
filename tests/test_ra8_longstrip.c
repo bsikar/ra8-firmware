@@ -602,6 +602,24 @@ static void t_geometry(void)
 }
 
 /**
+ * @brief Assert one canvas row was rendered at least once.
+ * @details Reads ::s_canvas_covered at @p y and fails if the row is unset.
+ * @param[in] y Canvas row to check.
+ * @pre @p y is a valid index into ::s_canvas_covered.
+ * @pre A full top-to-bottom traversal already ran.
+ * @post No state changes on success.
+ * @post A miss is reported through TEST_FAIL_FMT.
+ * @note Not thread-safe; reads file-scope fixture state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_row_covered(uint32_t y)
+{
+  if (!s_canvas_covered[y]) {
+    TEST_FAIL_FMT("canvas row %u never rendered (a band was skipped)", y);
+  }
+}
+
+/**
  * @brief Assert every canvas row was rendered at least once.
  * @details Scans ::s_canvas_covered and fails at the first uncovered row.
  * @pre ::s_canvas_covered holds `k_t_wt_height` valid entries.
@@ -614,9 +632,7 @@ static void t_geometry(void)
 RA8_INTERNAL static void internal_expect_all_rows_covered(void)
 {
   for (uint32_t y = 0U; y < (uint32_t)k_t_wt_height; y++) {
-    if (!s_canvas_covered[y]) {
-      TEST_FAIL_FMT("canvas row %u never rendered (a band was skipped)", y);
-    }
+    internal_expect_row_covered(y);
   }
 }
 
