@@ -741,6 +741,35 @@ RA8_INTERNAL static uint64_t internal_prof_accumulate_incl_self(void)
 }
 
 /**
+ * @brief Print one boot-timeline row: start percent, width percent, and phase.
+ * @details Emits the two normalized percentages, then the phase name when the
+ * run belongs to a known function and a placeholder when it does not.
+ * @param[in] segfn Phase function index, or an out-of-range value when unknown.
+ * @param[in] cum Weight accumulated before this run.
+ * @param[in] segw Weight of this run.
+ * @param[in] total Total sample weight used to normalize both percentages.
+ * @pre @p total is non-zero. @pre The call executes on the emulator's single
+ * owning thread.
+ * @post One complete line is written to the error stream. @post The profile
+ * tables are unchanged.
+ * @note The operation is synchronous and does not transfer heap ownership.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_prof_print_phase(uint32_t segfn, uint64_t cum, uint64_t segw, uint64_t total)
+{
+  (void)priv_emu_io_errf("    %5.1f%%  +%4.1f%%  ",
+                         s_percent_scale * (double)cum / (double)total,
+                         s_percent_scale * (double)segw / (double)total);
+  if (segfn < s_prof_n) {
+    (void)internal_prof_name(segfn, -1, '\0', true);
+  } else {
+    (void)priv_emu_io_err_text("?");
+  }
+  (void)priv_emu_io_err_text("\n");
+}
+
+/**
  * @brief Print the boot timeline: each contiguous shallow-depth phase run.
  * @details Print the boot timeline: each contiguous shallow-depth phase run; this step is contained within the emu prof model and uses bounded caller or module-owned storage.
  * @param[in] total Total count used to normalize or report the operation.
@@ -775,15 +804,7 @@ RA8_INTERNAL static void internal_prof_print_boot_timeline(uint64_t total)
                         (((uint32_t)k_phase_pct_x1 * segw) >= total) &&
                         (lines < (uint32_t)k_phase_lines);
       if (show) {
-        (void)priv_emu_io_errf("    %5.1f%%  +%4.1f%%  ",
-                               s_percent_scale * (double)cum / (double)total,
-                               s_percent_scale * (double)segw / (double)total);
-        if (segfn < s_prof_n) {
-          (void)internal_prof_name(segfn, -1, '\0', true);
-        } else {
-          (void)priv_emu_io_err_text("?");
-        }
-        (void)priv_emu_io_err_text("\n");
+        internal_prof_print_phase(segfn, cum, segw, total);
         lines++;
       }
       cum += segw;
@@ -920,9 +941,8 @@ void prof_report(void)
 void emu_prof_install(uc_engine* uc)
 {
   if (s_prof_mode == k_prof_insn) {
-    static uc_hook local_h_prof;
-    (void)
-      uc_hook_add(uc, &local_h_prof, UC_HOOK_CODE, (void*)internal_prof_insn_hook, nullptr, 1, 0);
+    static uc_hook s_h_prof;
+    (void)uc_hook_add(uc, &s_h_prof, UC_HOOK_CODE, (void*)internal_prof_insn_hook, nullptr, 1, 0);
   }
 }
 
