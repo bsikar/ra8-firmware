@@ -4,7 +4,9 @@
  * @details Reads through caller-owned staging so failures preserve the
  * destination, and replaces optional dump files through a same-directory
  * transaction. The syscall table exists only for deterministic fault tests;
- * ordinary callers use the raw POSIX adapters at the bottom of this header.
+ * ordinary callers additionally include `ra8_test_file_posix.h` for the raw
+ * POSIX adapters (not pulled in automatically, so this header stays a
+ * one-directional dependency for the standalone-header build).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -730,5 +732,3 @@ internal_test_file_read_with_ops(const ra8_test_file_ops_t* ops,
   }
   return result;
 }
-
-#include "ra8_test_file_posix.h"

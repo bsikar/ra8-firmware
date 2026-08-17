@@ -53,6 +53,7 @@
 #include <string.h>
 
 #include "../support/ra8_test_file.h"
+#include "../support/ra8_test_file_posix.h"
 #include "../support/ra8_test_output.h"
 #include "ra8_fs.h"
 

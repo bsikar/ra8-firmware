@@ -35,6 +35,7 @@
 #include "ra8_fs_check.h"
 #include "ra8_fs_meta.h"
 #include "support/ra8_test_file.h"
+#include "support/ra8_test_file_posix.h"
 #include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
