@@ -397,7 +397,7 @@ internal_test_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t len, size_t
  * @note Test-local and allocation-free.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_run_audit(uint8_t                 atlas[k_test_atlas_size],
+RA8_INTERNAL static ra8_err_t internal_run_audit(const uint8_t           atlas[k_test_atlas_size],
                                                  ra8_jof_audit_record_t  records[k_test_tile_count],
                                                  uint32_t                record_cap,
                                                  uint8_t                 tile[k_test_tile_bytes],
@@ -418,6 +418,51 @@ RA8_INTERNAL static ra8_err_t internal_run_audit(uint8_t                 atlas[k
   return ra8_jof_audit(internal_test_pread, &store, store.len, &ws, result);
 }
 
+/**
+ * @brief Assert one audit call reports the expected status.
+ * @details Shared by every guard vector that only needs the top-level
+ * status checked; the caller poisons or arranges @p result beforehand
+ * and inspects it afterward.
+ * @param[in,out] store Backing description passed to the injected reader.
+ * @param[in,out] ws Workspace passed to the audit call.
+ * @param[in,out] result Result storage passed to the audit call.
+ * @param[in] expected Expected status from ::ra8_jof_audit.
+ * @return Nothing; failures are recorded through ::CHECK.
+ * @pre Every pointer is non-null.
+ * @pre @p store, @p ws, and @p result are consistent with the vector under test.
+ * @post @p result carries whatever ::ra8_jof_audit left in it.
+ * @note Test-local and allocation-free.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_audit_status(test_store_t*              store,
+                                                      ra8_jof_audit_workspace_t* ws,
+                                                      ra8_jof_audit_result_t*    result,
+                                                      ra8_err_t                  expected)
+{
+  CHECK(ra8_jof_audit(internal_test_pread, store, store->len, ws, result) == expected);
+  CHECK(result->decoded_tiles == k_test_record_poison);
+}
+
+/**
+ * @brief Assert the exact two-tile raw-atlas storage requirements.
+ * @details Derives the requirements record through the public entry point
+ * and checks every field against the fixture's known two-tile geometry.
+ * @param[in,out] store Backing description passed to the injected reader.
+ * @return Nothing; failures are recorded through ::CHECK.
+ * @pre @p store addresses a parseable raw two-tile atlas.
+ * @post No caller-visible state outside ::CHECK bookkeeping is modified.
+ * @note Test-local and allocation-free.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_raw_requirements(test_store_t* store)
+{
+  ra8_jof_audit_requirements_t need = {};
+  CHECK(ra8_jof_audit_requirements(internal_test_pread, store, store->len, &need) == k_ra8_ok);
+  CHECK(need.record_count == 2U);
+  CHECK(need.tile_bytes == 2U);
+  CHECK(need.scratch_bytes == 0U);
+}
+
 /** @brief Qualify exact raw-atlas requirements and decoded evidence. @details Executes the raw audit scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
 RA8_INTERNAL
 static void internal_test_raw_audit(void)
@@ -427,12 +472,7 @@ static void internal_test_raw_audit(void)
   uint8_t       atlas[k_test_atlas_size];
   internal_make_atlas(atlas, distinct_top, distinct_bottom);
   test_store_t store = {.bytes = atlas, .len = sizeof(atlas)};
-
-  ra8_jof_audit_requirements_t need = {};
-  CHECK(ra8_jof_audit_requirements(internal_test_pread, &store, store.len, &need) == k_ra8_ok);
-  CHECK(need.record_count == 2U);
-  CHECK(need.tile_bytes == 2U);
-  CHECK(need.scratch_bytes == 0U);
+  internal_expect_raw_requirements(&store);
 
   ra8_jof_audit_record_t records[k_test_tile_count] = {};
   uint8_t                tile[k_test_tile_bytes]    = {};
@@ -473,6 +513,35 @@ static void internal_test_deflate_audit(void)
   CHECK((records[0].payload == 2U) && !records[0].uniform);
 }
 
+/**
+ * @brief Assert both undersized-capacity workspace vectors are rejected.
+ * @details Requests one record when two are needed, then one decoded-tile
+ * byte when two are needed, and requires the poisoned record array to
+ * survive the first rejection untouched.
+ * @param[in] atlas Complete synthetic atlas.
+ * @param[in,out] records Two-entry record storage, pre-poisoned by the caller.
+ * @param[in,out] tile Two-byte decoded tile storage, pre-poisoned by the caller.
+ * @param[in,out] result Audit result storage.
+ * @return Nothing; failures are recorded through ::CHECK.
+ * @pre @p records and @p tile were poisoned before this call.
+ * @pre @p atlas parses far enough to reach capacity validation.
+ * @post Both vectors returned k_ra8_err_invalid_size.
+ * @post @p records[0] carries the poison byte pattern, not a decoded value.
+ * @note Test-local and allocation-free.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_expect_capacity_guards(const uint8_t           atlas[k_test_atlas_size],
+                                ra8_jof_audit_record_t  records[k_test_tile_count],
+                                uint8_t                 tile[k_test_tile_bytes],
+                                ra8_jof_audit_result_t* result)
+{
+  CHECK(internal_run_audit(atlas, records, 1U, tile, k_test_tile_bytes, result) ==
+        k_ra8_err_invalid_size);
+  CHECK(records[0].offset == k_test_record_poison);
+  CHECK(internal_run_audit(atlas, records, 2U, tile, 1U, result) == k_ra8_err_invalid_size);
+}
+
 /** @brief Reject undersized and overlapping audit workspaces transactionally. @details Executes the workspace guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
 RA8_INTERNAL
 static void internal_test_workspace_guards(void)
@@ -487,19 +556,14 @@ static void internal_test_workspace_guards(void)
   ra8_jof_audit_result_t result = {};
   (void)memset(records, k_test_record_poison_byte, sizeof(records));
   (void)memset(tile, k_test_tile_poison_byte, sizeof(tile));
-  CHECK(internal_run_audit(atlas, records, 1U, tile, sizeof(tile), &result) ==
-        k_ra8_err_invalid_size);
-  CHECK(records[0].offset == k_test_record_poison);
-  CHECK(internal_run_audit(atlas, records, 2U, tile, 1U, &result) == k_ra8_err_invalid_size);
+  internal_expect_capacity_guards(atlas, records, tile, &result);
 
   ra8_jof_audit_workspace_t alias = {.records    = records,
                                      .record_cap = k_test_tile_count,
                                      .tile       = (uint8_t*)records,
                                      .tile_cap   = k_test_tile_bytes};
   result                          = (ra8_jof_audit_result_t){.decoded_tiles = k_test_record_poison};
-  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &alias, &result) ==
-        k_ra8_err_invalid_arg);
-  CHECK(result.decoded_tiles == k_test_record_poison);
+  internal_expect_audit_status(&store, &alias, &result, k_ra8_err_invalid_arg);
 
   test_alias_t result_alias = {};
   alias                     = (ra8_jof_audit_workspace_t){.records    = result_alias.records,
@@ -508,6 +572,39 @@ static void internal_test_workspace_guards(void)
                                                           .tile_cap   = sizeof(tile)};
   CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &alias, &result_alias.result) ==
         k_ra8_err_invalid_arg);
+}
+
+/**
+ * @brief Rebuild the atlas from one tile pair and assert its duplicate count.
+ * @details Runs the raw audit and checks the reported duplicate-candidate
+ * count against the caller's expectation.
+ * @param[out] atlas Atlas buffer rebuilt from @p top and @p bottom.
+ * @param[in,out] records Two-entry record storage.
+ * @param[out] tile Two-byte decoded tile storage.
+ * @param[in,out] result Audit result storage.
+ * @param[in] top First tile's raw content.
+ * @param[in] bottom Second tile's raw content.
+ * @param[in] expected_candidates Expected reported duplicate-candidate count.
+ * @return Nothing; failures are recorded through ::CHECK.
+ * @pre @p atlas holds ::k_test_atlas_size writable bytes.
+ * @pre @p top and @p bottom each hold ::k_test_tile_bytes readable bytes.
+ * @post The rebuilt atlas parses successfully.
+ * @post @p result carries the freshly reported duplicate-candidate count.
+ * @note Test-local and allocation-free.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_expect_duplicate_candidates(uint8_t                 atlas[k_test_atlas_size],
+                                     ra8_jof_audit_record_t  records[k_test_tile_count],
+                                     uint8_t                 tile[k_test_tile_bytes],
+                                     ra8_jof_audit_result_t* result,
+                                     const uint8_t           top[k_test_tile_bytes],
+                                     const uint8_t           bottom[k_test_tile_bytes],
+                                     uint32_t                expected_candidates)
+{
+  internal_make_atlas(atlas, top, bottom);
+  CHECK(internal_run_audit(atlas, records, 2U, tile, k_test_tile_bytes, result) == k_ra8_ok);
+  CHECK(result->duplicate_candidates == expected_candidates);
 }
 
 /** @brief Distinguish duplicates, uniform tiles, and reversed payload coverage. @details Executes the duplicate and coverage scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
@@ -519,14 +616,10 @@ static void internal_test_duplicate_and_coverage(void)
   uint8_t                tile[k_test_tile_bytes]      = {};
   ra8_jof_audit_result_t result                       = {};
   const uint8_t          duplicate[k_test_tile_bytes] = {9U, 10U};
-  internal_make_atlas(atlas, duplicate, duplicate);
-  CHECK(internal_run_audit(atlas, records, 2U, tile, sizeof(tile), &result) == k_ra8_ok);
-  CHECK(result.duplicate_candidates == 1U);
+  internal_expect_duplicate_candidates(atlas, records, tile, &result, duplicate, duplicate, 1U);
 
   const uint8_t uniform[k_test_tile_bytes] = {7U, 7U};
-  internal_make_atlas(atlas, uniform, uniform);
-  CHECK(internal_run_audit(atlas, records, 2U, tile, sizeof(tile), &result) == k_ra8_ok);
-  CHECK(result.duplicate_candidates == 0U);
+  internal_expect_duplicate_candidates(atlas, records, tile, &result, uniform, uniform, 0U);
 
   const uint8_t top[k_test_tile_bytes]    = {1U, 2U};
   const uint8_t bottom[k_test_tile_bytes] = {3U, 4U};
@@ -602,6 +695,33 @@ RA8_INTERNAL static void internal_expect_overlap(test_store_t*              stor
   CHECK(out->decoded_tiles == k_test_record_poison);
 }
 
+/**
+ * @brief Reject each null top-level operand of both audit entry points.
+ * @details Supplies one absent pointer per call so each guard is the only
+ * reason the request can fail: the requirements' output, the reader, the
+ * result, and the workspace itself.
+ * @param[in,out] store Backing description passed to the injected reader.
+ * @param[in,out] workspace Workspace passed to the guarded calls.
+ * @param[in,out] result Result storage passed to the guarded calls.
+ * @return Nothing; failures are recorded through ::CHECK.
+ * @pre Every pointer is non-null except the one operand under test.
+ * @post Every call returned k_ra8_err_null_ptr.
+ * @note Test-local and allocation-free.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_expect_top_level_null_guards(test_store_t*              store,
+                                                               ra8_jof_audit_workspace_t* workspace,
+                                                               ra8_jof_audit_result_t*    result)
+{
+  CHECK(ra8_jof_audit_requirements(internal_test_pread, store, store->len, nullptr) ==
+        k_ra8_err_null_ptr);
+  CHECK(ra8_jof_audit(nullptr, store, store->len, workspace, result) == k_ra8_err_null_ptr);
+  CHECK(ra8_jof_audit(internal_test_pread, store, store->len, workspace, nullptr) ==
+        k_ra8_err_null_ptr);
+  CHECK(ra8_jof_audit(internal_test_pread, store, store->len, nullptr, result) ==
+        k_ra8_err_null_ptr);
+}
+
 /** @brief Reject every null public operand of both audit entry points @details Supplies one absent pointer per call so each guard is the only reason the request can fail, then proves a failed parse is propagated. @pre The synthetic raw atlas parses when no fault is injected. @pre The caller-owned workspace buffers are exclusively owned here. @post Every absent operand returned k_ra8_err_null_ptr. @post A failed requirement derivation propagated verbatim and preserved the caller's result object. @note Test-local and allocation-free. @since 0.1.0 */
 RA8_INTERNAL static void internal_test_public_argument_guards(void)
 {
@@ -618,13 +738,7 @@ RA8_INTERNAL static void internal_test_public_argument_guards(void)
                                                           .tile       = tile,
                                                           .tile_cap   = sizeof(tile)};
 
-  CHECK(ra8_jof_audit_requirements(internal_test_pread, &store, store.len, nullptr) ==
-        k_ra8_err_null_ptr);
-  CHECK(ra8_jof_audit(nullptr, &store, store.len, &workspace, &result) == k_ra8_err_null_ptr);
-  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, nullptr) ==
-        k_ra8_err_null_ptr);
-  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, nullptr, &result) ==
-        k_ra8_err_null_ptr);
+  internal_expect_top_level_null_guards(&store, &workspace, &result);
   workspace.records = nullptr;
   CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) ==
         k_ra8_err_null_ptr);
@@ -634,8 +748,7 @@ RA8_INTERNAL static void internal_test_public_argument_guards(void)
         k_ra8_err_null_ptr);
   workspace.tile = tile;
   store.fail     = true;
-  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) == k_ra8_fail);
-  CHECK(result.decoded_tiles == k_test_record_poison);
+  internal_expect_audit_status(&store, &workspace, &result, k_ra8_fail);
 }
 
 /** @brief Reject an absent or undersized compressed-stream workspace @details A deflate atlas requires an exact stored-stream bound, so a null scratch and a scratch smaller than that bound are independently refused. @pre The synthetic deflate atlas parses and requires non-zero scratch. @pre Record and tile capacities already satisfy the derived requirements. @post The absent scratch returned k_ra8_err_null_ptr. @post The undersized scratch returned k_ra8_err_invalid_size and left both the caller's result object and the record array untouched. @note Test-local and allocation-free. @since 0.1.0 */
@@ -684,11 +797,11 @@ RA8_INTERNAL static void internal_test_descriptor_overlap_guards(void)
                                                           .tile       = tile,
                                                           .tile_cap   = sizeof(tile)};
 
-  workspace.records = (ra8_jof_audit_record_t*)(void*)&workspace;
+  workspace.records = (ra8_jof_audit_record_t*)&workspace;
   internal_expect_overlap(&store, &workspace, &result);
   workspace.records = records;
 
-  workspace.tile = (uint8_t*)(void*)&workspace;
+  workspace.tile = (uint8_t*)&workspace;
   internal_expect_overlap(&store, &workspace, &result);
 
   workspace.tile = (uint8_t*)(UINTPTR_MAX - (uintptr_t)k_test_ceiling_gap);
@@ -747,10 +860,10 @@ RA8_INTERNAL static void internal_test_scratch_overlap_guards(void)
                                 .scratch     = s_deflate_bufs.scratch,
                                 .scratch_cap = sizeof(s_deflate_bufs.scratch)};
 
-  workspace.scratch = (uint8_t*)(void*)&workspace;
+  workspace.scratch = (uint8_t*)&workspace;
   internal_expect_overlap(&store, &workspace, &result);
 
-  workspace.scratch = (uint8_t*)(void*)s_deflate_bufs.records;
+  workspace.scratch = (uint8_t*)s_deflate_bufs.records;
   internal_expect_overlap(&store, &workspace, &result);
 
   workspace.scratch = s_deflate_bufs.tile;
@@ -776,19 +889,15 @@ RA8_INTERNAL static void internal_test_tile_fault_paths(void)
                         .len            = sizeof(atlas),
                         .fail_at_offset = true,
                         .fail_offset    = k_test_index_off};
-  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) == k_ra8_fail);
-  CHECK(result.decoded_tiles == k_test_record_poison);
+  internal_expect_audit_status(&store, &workspace, &result, k_ra8_fail);
 
   store =
     (test_store_t){.bytes = atlas, .len = sizeof(atlas), .fail_after = k_test_reads_per_parse};
-  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) == k_ra8_fail);
-  CHECK(result.decoded_tiles == k_test_record_poison);
+  internal_expect_audit_status(&store, &workspace, &result, k_ra8_fail);
 
   internal_write_u32(&atlas[k_test_index_off], k_test_offset_ceiling);
   store = (test_store_t){.bytes = atlas, .len = sizeof(atlas)};
-  CHECK(ra8_jof_audit(internal_test_pread, &store, store.len, &workspace, &result) ==
-        k_ra8_err_validation_failed);
-  CHECK(result.decoded_tiles == k_test_record_poison);
+  internal_expect_audit_status(&store, &workspace, &result, k_ra8_err_validation_failed);
 }
 
 /** @brief Refuse geometries whose derived byte counts leave the 32-bit budget @details One atlas declares a tile larger than 2^32 bytes; the other declares the exact tile size whose worst-case stored bound is 2^32 and therefore cannot be represented. @pre Both geometry-only atlases satisfy every structural cross-check. @pre The requirements record is poisoned before each vector. @post Both derivations returned k_ra8_err_invalid_size. @post Neither derivation published a usable requirements record. @note Test-local and allocation-free. @since 0.1.0 */
