@@ -13,13 +13,13 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **272**
-- Total compound decisions in scope: **1574**
+- Source files with at least one decision: **276**
+- Total compound decisions in scope: **1577**
 - Decisions at 100% MC/DC (`yes`): **1375**
-- Decisions partially covered (`partial`): **87**
+- Decisions partially covered (`partial`): **90**
 - Decisions fully uncovered (`no`): **112**
-- Coverage rate (yes / total): **87.36%**
-- Deactivated gap conditions (DO-178C 6.4.4.3): **96**
+- Coverage rate (yes / total): **87.19%**
+- Deactivated gap conditions (DO-178C 6.4.4.3): **99**
 - Reachable-condition denominator (total - deactivated): **1478**
 - **Reachable MC/DC rate**: **93.03%** -- the enforced ratchet threshold is recorded in `.github/mcdc-baseline.txt`.
 
@@ -97,10 +97,10 @@ These conditions are unreachable on any public-API path and are therefore exempt
 
 | File | Conds | Function | Excerpt | Rationale |
 |------|------:|----------|---------|-----------|
-| libs/ra8_app/src/ra8_app.c | 2 | (file scope) | `if ((next != nullptr) && (next->vt->on_enter != nullptr)) {` | Annotated deactivation: next=reg->apps[target] with targe... |
+| libs/ra8_app/src/ra8_app.c | 2 | (file scope) | `if ((next != nullptr) && (next->vt->on_enter != nullptr)) {` | Annotated deactivation: next=reg-&gt;apps[target] with targe... |
 | libs/ra8_book/src/ra8_book_chunked_validate.c | 2 | internal_chunk_flat_read | `if ((offset > ctx->rd->inflated_total) \|\| ((uint64_t)le...` | Annotated deactivation: internal_chunk_flat_read range gu... |
 | libs/ra8_book/src/ra8_book_stream.c | 3 | internal_validate_raster | `if ((expect > (uint64_t)UINT32_MAX) \|\|` | Annotated deactivation: internal_validate_raster overflow... |
-| libs/ra8_box/src/ra8_box.c | 2 | internal_iter_live | `return (link != (int32_t)k_ra8_box_none) && (guard < count);` | Annotated deactivation: guard<count is an acyclic-tree cy... |
+| libs/ra8_box/src/ra8_box.c | 2 | internal_iter_live | `return (link != (int32_t)k_ra8_box_none) && (guard < count);` | Annotated deactivation: guard&lt;count is an acyclic-tree cy... |
 | libs/ra8_c6link/src/ra8_c6link_mdl.c | 2 | internal_mdl_take_response | `if ((body->data.data == nullptr) \|\| (body->data.len == ...` | Annotated deactivation: internal_mdl_take_response empty-... |
 | libs/ra8_c6link/src/ra8_c6link_mdl.c | 3 | ra8_c6link_mdl_chunk_semantics_valid_test | `if ((packed == 0U) \|\| (packed > sizeof(link->mdl_reques...` | Annotated deactivation: ra8_c6link_mdl_start_request code... |
 | libs/ra8_c6link/src/ra8_c6link_mdl.c | 3 | ra8_c6link_mdl_chunk_semantics_valid_test | `if ((packed == 0U) \|\| (packed > sizeof(link->mdl_reques...` | Annotated deactivation: ra8_c6link_mdl_next codec self-co... |
@@ -113,21 +113,24 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_epub/src/ra8_epub_open.c | 2 | internal_dirname | `if (dst == nullptr \|\| cap == 0U) {` | TU-local static helper `internal_dirname` -- defensive NU... |
 | libs/ra8_epub/src/ra8_epub_open.c | 2 | internal_stream_read | `if (sm == nullptr \|\| sm->read == nullptr) {` | TU-local static helper `internal_stream_read` -- defensiv... |
 | libs/ra8_epub/src/ra8_epub_open.c | 2 | internal_finish_open | `if (zip == nullptr \|\| out_book == nullptr) {` | TU-local static helper `internal_finish_open` -- defensiv... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | (file scope) | `if ((ra8_xml_attr_next(source, source_len, event, &cursor...` | Annotated deactivation: internal_attr attribute re-walk g... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 3 | internal_direct_child | `return ((err == k_ra8_ok) && ((manifest_depth == UINT16_M...` | Annotated deactivation: internal_opf_status package-shape... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | internal_direct_child | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_opf_first pull-loop stat... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | internal_direct_child | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_collect_spine pull-loop ... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | internal_direct_child | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_manifest_lookup pull-loo... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | internal_direct_child | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_opf_shape pull-loop stat... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 3 | internal_direct_child | `if ((err == k_ra8_ok) && (!saw_manifest \|\| !saw_spine)) {` | Annotated deactivation: internal_opf_shape completeness g... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | internal_toc_marker | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_toc_capacity pull-loop s... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | internal_ncx_event | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: priv_ra8_epub_xml_parse_ncx pull-... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | internal_ncx_event | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_select_nav pull-loop sta... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | internal_ncx_event | `if ((err == k_ra8_ok) && (fallback.kind != (uint8_t)k_ra8...` | Annotated deactivation: internal_select_nav fallback gate... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | internal_ncx_event | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_nav_has_list pull-loop s... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | internal_nav_event | `} else if ((event->kind == (uint8_t)k_ra8_xml_event_text)...` | Annotated deactivation: internal_nav_event text-depth gat... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | internal_nav_event | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: priv_ra8_epub_xml_parse_nav pull-... |
-| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | internal_nav_event | `if ((err != k_ra8_ok) \|\| !ctx.saw_ol) {` | Annotated deactivation: priv_ra8_epub_xml_parse_nav compl... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | (file scope) | `if ((ra8_xml_attr_next(source, source_len, event, &cursor...` | Annotated deactivation: priv_ra8_epub_xml_attr attribute ... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.c | 3 | priv_ra8_epub_xml_ancestor_frame | `return ((err == k_ra8_ok) && ((manifest_depth == UINT16_M...` | Annotated deactivation: internal_opf_status package-shape... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | priv_ra8_epub_xml_ancestor_frame | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_opf_first pull-loop stat... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | priv_ra8_epub_xml_ancestor_frame | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_collect_spine pull-loop ... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | priv_ra8_epub_xml_ancestor_frame | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_manifest_lookup pull-loo... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | priv_ra8_epub_xml_ancestor_frame | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_opf_shape pull-loop stat... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.c | 3 | priv_ra8_epub_xml_ancestor_frame | `if ((err == k_ra8_ok) && (!saw_manifest \|\| !saw_spine)) {` | Annotated deactivation: internal_opf_shape completeness g... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.c | 2 | priv_ra8_epub_xml_ancestor_frame | `for (uint16_t i = 0U; (err == k_ra8_ok) && (i < book->xml...` | Annotated deactivation: internal_opf_resolve_refs spine-r... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.c | 3 | priv_ra8_epub_xml_ancestor_frame | `if ((err == k_ra8_ok) && (book->cover_path[0] == '\0') &&` | Annotated deactivation: internal_opf_resolve_refs legacy-... |
+| libs/ra8_epub/src/ra8_epub_xml_shim.c | 3 | priv_ra8_epub_xml_ancestor_frame | `if ((err == k_ra8_ok) && (book->toc_kind != (uint8_t)k_ra...` | Annotated deactivation: internal_opf_resolve_refs spine `...` |
+| libs/ra8_epub/src/ra8_epub_xml_toc.c | 2 | internal_toc_marker | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_toc_capacity pull-loop s... |
+| libs/ra8_epub/src/ra8_epub_xml_toc.c | 2 | internal_ncx_event | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: priv_ra8_epub_xml_parse_ncx pull-... |
+| libs/ra8_epub/src/ra8_epub_xml_toc.c | 2 | internal_ncx_event | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_select_nav pull-loop sta... |
+| libs/ra8_epub/src/ra8_epub_xml_toc.c | 2 | internal_ncx_event | `if ((err == k_ra8_ok) && (fallback.kind != (uint8_t)k_ra8...` | Annotated deactivation: internal_select_nav fallback gate... |
+| libs/ra8_epub/src/ra8_epub_xml_toc.c | 2 | internal_ncx_event | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: internal_nav_has_list pull-loop s... |
+| libs/ra8_epub/src/ra8_epub_xml_toc.c | 2 | internal_nav_event | `} else if ((event->kind == (uint8_t)k_ra8_xml_event_text)...` | Annotated deactivation: internal_nav_event text-depth gat... |
+| libs/ra8_epub/src/ra8_epub_xml_toc.c | 2 | internal_nav_event | `if ((err != k_ra8_ok) \|\| (event.kind == (uint8_t)k_ra8_...` | Annotated deactivation: priv_ra8_epub_xml_parse_nav pull-... |
+| libs/ra8_epub/src/ra8_epub_xml_toc.c | 2 | internal_nav_event | `if ((err != k_ra8_ok) \|\| !ctx.saw_ol) {` | Annotated deactivation: priv_ra8_epub_xml_parse_nav compl... |
 | libs/ra8_fs/src/ra8_fs_fat_name.c | 3 | priv_83_to_str | `if (j > 0 && (uint8_t)out13[0] == k_dir_marker_kanji_e5 &...` | Annotated deactivation: 3-condition AND on Shift-JIS kanj... |
 | libs/ra8_hal/src/ra8_ble.c | 2 | internal_dispatch_event | `if ((internal_rx_byte(&code) == 0U) \|\| (internal_rx_byt...` | Annotated deactivation: TU-local helper internal_dispatch... |
 | libs/ra8_hal/src/ra8_ble.c | 4 | internal_dispatch_acl | `if ((internal_rx_byte(&hdl_lo) == 0U) \|\| (internal_rx_b...` | Annotated deactivation: TU-local helper internal_dispatch... |
@@ -171,27 +174,27 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_reflow/src/ra8_reflow_css_rules.c | 2 | internal_intern_name | `if ((len == 0U) \|\| (len > (size_t)k_ra8_css_name_max)) {` | Annotated deactivation: every caller guards the length be... |
 | libs/ra8_reflow/src/ra8_reflow_css_rules.c | 2 | internal_parse_sel_type | `while ((i < len) && priv_ra8_reflow_css_is_ws(s[i])) {` | Annotated deactivation: internal_split_compounds is only ... |
 | libs/ra8_reflow/src/ra8_reflow_image.c | 2 | internal_decode_fail | `if ((reason != nullptr) && (strstr(reason, "outofmem") !=...` | Annotated deactivation: stbi sets a reason on every failu... |
-| libs/ra8_reflow/src/ra8_reflow_image.c | 3 | internal_arena_release | `if ((pixels == nullptr) \|\| (sx <= 0) \|\| (sy <= 0)) {` | Annotated deactivation: stbi guarantees sx,sy >= 1 when p... |
+| libs/ra8_reflow/src/ra8_reflow_image.c | 3 | internal_arena_release | `if ((pixels == nullptr) \|\| (sx <= 0) \|\| (sy <= 0)) {` | Annotated deactivation: stbi guarantees sx,sy &gt;= 1 when p... |
 | libs/ra8_reflow/src/ra8_reflow_layout_image.c | 3 | internal_page_has_content | `if ((ra8_img_probe_size(bytes, blen, &iw, &ih) != k_ra8_o...` | Annotated deactivation: ra8_img_probe_size returns k_ra8_... |
 | libs/ra8_reflow/src/ra8_reflow_layout_image.c | 2 | internal_page_has_content | `if (((cur->y + (int32_t)cur->line_height_px) > bottom_lim...` | Annotated deactivation: internal_image_record incremented... |
 | libs/ra8_reflow/src/ra8_reflow_layout_table.c | 2 | internal_table_columns | `if ((*cx > cell_x) && ((*cx + adv) <= cell_right)) {` | Annotated deactivation: priv_ra8_reflow_tok_stash_run col... |
 | libs/ra8_reflow/src/ra8_reflow_render.c | 2 | internal_init_font | `if ((w > 0) && (h > 0)) {` | Annotated deactivation: glyph bbox w,h co-dependent (inke... |
-| libs/ra8_reflow/src/ra8_reflow_svg_doc.c | 2 | internal_xform_with_group | `const bool self_close = (close > i) && (s[close - 1U] == ...` | Annotated deactivation: close>i is invariant for a named ... |
-| libs/ra8_reflow/src/ra8_reflow_svg_path.c | 2 | internal_next_cmd | `const bool    rel = (c >= 'a') && (c <= 'z');` | Annotated deactivation: c is a command letter or 0; (c<='... |
+| libs/ra8_reflow/src/ra8_reflow_svg_doc.c | 2 | internal_xform_with_group | `const bool self_close = (close > i) && (s[close - 1U] == ...` | Annotated deactivation: close&gt;i is invariant for a named ... |
+| libs/ra8_reflow/src/ra8_reflow_svg_path.c | 2 | internal_next_cmd | `const bool    rel = (c >= 'a') && (c <= 'z');` | Annotated deactivation: c is a command letter or 0; (c&lt;='... |
 | libs/ra8_reflow/src/ra8_reflow_svg_shape.c | 2 | internal_sort_i32 | `for (int32_t i = 0; (i < n) && (m < (int32_t)k_svg_poly_m...` | Annotated deactivation: the polygon point count n is itse... |
-| libs/ra8_reflow/src/ra8_reflow_svg_shape.c | 4 | internal_sort_i32 | `if (((y0 <= y) && (y < y1)) \|\| ((y1 <= y) && (y < y0))) {` | Annotated deactivation: the fourth condition (y < y0) is ... |
-| libs/ra8_reflow/src/ra8_reflow_svg_shape.c | 2 | internal_grad_eval | `if ((p >= o0) && (p <= o1)) {` | Annotated deactivation: the loop is entered only when p >... |
+| libs/ra8_reflow/src/ra8_reflow_svg_shape.c | 4 | internal_sort_i32 | `if (((y0 <= y) && (y < y1)) \|\| ((y1 <= y) && (y < y0))) {` | Annotated deactivation: the fourth condition (y &lt; y0) is ... |
+| libs/ra8_reflow/src/ra8_reflow_svg_shape.c | 2 | internal_grad_eval | `if ((p >= o0) && (p <= o1)) {` | Annotated deactivation: the loop is entered only when p &gt;... |
 | libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c | 3 | priv_ra8_reflow_tok_classify | `if ((i < avail) && ((src[i] == 'x') \|\| (src[i] == 'X'))) {` | Annotated deactivation: the sole caller priv_ra8_reflow_t... |
 | libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c | 3 | priv_ra8_reflow_tok_classify | `if ((digits == 0U) \|\| (i >= avail) \|\| (src[i] != ';')) {` | Annotated deactivation: the scan loop above exits with i ... |
 | libs/ra8_touch_cal/src/ra8_touch_cal.c | 2 | internal_clip32 | `if (!ok_u \|\| !ok_v) {` | Annotated deactivation: TU-local helper internal_clip32 s... |
 | libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c | 2 | ra8_wdt_supervisor_tick | `if (will_refresh && (s_state.refresh != nullptr)) {` | Annotated deactivation: ra8_wdt_supervisor_tick refresh d... |
-| libs/ra8_xml/src/ra8_xml.c | 3 | internal_digit | `if ((cursor < end) && ((source[cursor] == (uint8_t)'x') \...` | Annotated deactivation: internal_entity radix probe; the ... |
-| libs/ra8_xml/src/ra8_xml.c | 3 | internal_digit | `if ((internal_decoded_byte(source, &li, &lb) != k_ra8_ok)...` | Annotated deactivation: ra8_xml_decoded_equal byte-walk s... |
 | libs/ra8_xml/src/ra8_xml.c | 3 | ra8_xml_attr_begin | `if ((err != k_ra8_ok) \|\| (count == UINT16_MAX) \|\|` | Annotated deactivation: internal_attributes attribute-cou... |
 | libs/ra8_xml/src/ra8_xml.c | 2 | ra8_xml_attr_begin | `if ((cursor.position >= end) \|\| (source[cursor.position...` | Annotated deactivation: internal_attributes self-closing ... |
 | libs/ra8_xml/src/ra8_xml.c | 5 | internal_encoding | `if (!initial \|\| (reader->declaration_seen != 0U) \|\| (...` | Annotated deactivation: internal_declaration placement ga... |
 | libs/ra8_xml/src/ra8_xml.c | 2 | internal_cdata | `if (((pos + 2U) <= reader->source_len) && (reader->source...` | Annotated deactivation: internal_special processing-instr... |
 | libs/ra8_xml/src/ra8_xml.c | 3 | ra8_xml_reader_next | `if ((reader->stack_size != 0U) \|\| (reader->root_count !...` | Annotated deactivation: ra8_xml_reader_next end-of-docume... |
+| libs/ra8_xml/src/ra8_xml_decode.c | 3 | internal_digit | `if ((cursor < end) && ((source[cursor] == (uint8_t)'x') \...` | Annotated deactivation: internal_entity radix probe; the ... |
+| libs/ra8_xml/src/ra8_xml_decode.c | 3 | internal_digit | `if ((internal_decoded_byte(source, &li, &lb) != k_ra8_ok)...` | Annotated deactivation: ra8_xml_decoded_equal byte-walk s... |
 | libs/ra8_xml/src/ra8_xml_doctype.c | 2 | internal_pubid_byte | `if (((*position + length) > end) \|\| (memcmp(&source[*po...` | Annotated deactivation: internal_keyword prefix recheck; ... |
 
 ## Per-module gap counts (full table)
@@ -202,11 +205,12 @@ Sorted by (uncovered + partial) descending, then total descending.
 |--------|------:|--------:|--------:|----------:|
 | ra8_esp_hosted_tx_shim_internal | 36 | 0 | 4 | 32 |
 | ra8_esp_hosted_tx_shim_sync_internal | 28 | 0 | 0 | 28 |
-| ra8_epub_xml_shim | 70 | 55 | 10 | 5 |
+| ra8_epub_xml_shim | 38 | 28 | 8 | 2 |
 | mg_reader | 11 | 1 | 4 | 6 |
 | media_download_format | 9 | 0 | 0 | 9 |
-| ra8_xml | 80 | 73 | 6 | 1 |
+| ra8_epub_xml_toc | 32 | 24 | 5 | 3 |
 | ra8_esp_hosted_rtos | 15 | 9 | 3 | 3 |
+| ra8_xml | 55 | 50 | 4 | 1 |
 | ra8_psa_crypto_fake | 6 | 1 | 5 | 0 |
 | ra8_c6link_mdl | 24 | 20 | 1 | 3 |
 | ra8_jof_produce | 19 | 15 | 1 | 3 |
@@ -218,6 +222,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epub_open | 9 | 6 | 0 | 3 |
 | ra8_jof_png | 7 | 4 | 1 | 2 |
 | ra8_reflow_css | 26 | 24 | 1 | 1 |
+| ra8_xml_decode | 25 | 23 | 2 | 0 |
 | ra8_reflow_css_cascade | 23 | 21 | 2 | 0 |
 | ra8_reflow_css_rules | 21 | 19 | 2 | 0 |
 | ra8_reflow_tokenize_lex | 11 | 9 | 2 | 0 |
@@ -315,7 +320,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_fs_utf | 5 | 5 | 0 | 0 |
 | ra8_gpt | 5 | 5 | 0 | 0 |
 | ra8_i2c_peripheral | 5 | 5 | 0 | 0 |
-| ra8_io_vfs | 5 | 5 | 0 | 0 |
+| ra8_io_vfs_namespace | 5 | 5 | 0 | 0 |
 | ra8_jof_png_chunk | 5 | 5 | 0 | 0 |
 | ra8_rar5 | 5 | 5 | 0 | 0 |
 | ra8_rar5_tables | 5 | 5 | 0 | 0 |
@@ -353,6 +358,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_esp_hosted_port | 3 | 3 | 0 | 0 |
 | ra8_esp_hosted_spi | 3 | 3 | 0 | 0 |
 | ra8_eth_gwca_queue | 3 | 3 | 0 | 0 |
+| ra8_fs_fat_dir | 3 | 3 | 0 | 0 |
 | ra8_fs_fat_exfat_stream | 3 | 3 | 0 | 0 |
 | ra8_fs_fat_file | 3 | 3 | 0 | 0 |
 | ra8_jof | 3 | 3 | 0 | 0 |
@@ -381,7 +387,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_esp_hosted_gpio_edge | 2 | 2 | 0 | 0 |
 | ra8_esp_hosted_osi | 2 | 2 | 0 | 0 |
 | ra8_fs_fat_attr | 2 | 2 | 0 | 0 |
-| ra8_fs_fat_dir | 2 | 2 | 0 | 0 |
 | ra8_gfx_dither | 2 | 2 | 0 | 0 |
 | ra8_i3c_i2c_peripheral | 2 | 2 | 0 | 0 |
 | ra8_io_stream | 2 | 2 | 0 | 0 |
@@ -450,6 +455,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_glcdc_layer | 1 | 1 | 0 | 0 |
 | ra8_img_arena | 1 | 1 | 0 | 0 |
 | ra8_io_blockdev | 1 | 1 | 0 | 0 |
+| ra8_io_vfs | 1 | 1 | 0 | 0 |
 | ra8_isr | 1 | 1 | 0 | 0 |
 | ra8_lvd_runtime | 1 | 1 | 0 | 0 |
 | ra8_mipi_csi | 1 | 1 | 0 | 0 |
@@ -459,6 +465,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_ota | 1 | 1 | 0 | 0 |
 | ra8_pwr | 1 | 1 | 0 | 0 |
 | ra8_rabook_import_compiler | 1 | 1 | 0 | 0 |
+| ra8_rabook_xml_shim | 1 | 1 | 0 | 0 |
 | ra8_rar | 1 | 1 | 0 | 0 |
 | ra8_reflow_parse | 1 | 1 | 0 | 0 |
 | ra8_rtc | 1 | 1 | 0 | 0 |
@@ -481,14 +488,15 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_esp_hosted_tx_shim_sync_internal | 28 | 0 | 0 | 28 |
 | media_download_format | 9 | 0 | 0 | 9 |
 | mg_reader | 6 | 4 | 1 | 11 |
-| ra8_epub_xml_shim | 5 | 10 | 55 | 70 |
+| ra8_epub_xml_toc | 3 | 5 | 24 | 32 |
 | ra8_esp_hosted_rtos | 3 | 3 | 9 | 15 |
 | ra8_c6link_mdl | 3 | 1 | 20 | 24 |
 | ra8_jof_produce | 3 | 1 | 15 | 19 |
 | ra8_epub_open | 3 | 0 | 6 | 9 |
+| ra8_epub_xml_shim | 2 | 8 | 28 | 38 |
 | ra8_jof_png | 2 | 1 | 4 | 7 |
 | ra8_ble | 2 | 0 | 6 | 8 |
-| ra8_xml | 1 | 6 | 73 | 80 |
+| ra8_xml | 1 | 4 | 50 | 55 |
 | wifi_hal_core | 1 | 3 | 0 | 4 |
 | mdl_service | 1 | 2 | 9 | 12 |
 | ra8_reflow_css | 1 | 1 | 24 | 26 |

@@ -561,3 +561,39 @@ internal_create_empty_files(ra8_fs_mount_t* h, const char* dir_path, uint32_t co
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   }
 }
+
+/**
+ * @brief Delete the first count files create_empty_files() made under dir_path.
+ *
+ * @details The mirror of ::internal_create_empty_files: it rebuilds the same
+ *          "Fnn.TXT" / "Gnn.TXT" names in the same order and unlinks them, so
+ *          each slot keeps its position and becomes a 0xE5 deleted marker in
+ *          place. That is the only way to leave a directory sector consumed
+ *          entirely by slots a scan must skip, with no 0x00 end-of-directory
+ *          marker behind them.
+ *
+ * @param[in,out] h        Mounted volume.
+ * @param[in]     dir_path Parent directory (e.g. "/" or "/SUB").
+ * @param[in]     count    Number of files to delete, from index 0 upward.
+ *
+ * @pre h is non-NULL and mounted; dir_path is a valid directory.
+ * @pre create_empty_files() created at least count files under dir_path.
+ * @post The first count slots under dir_path carry the 0xE5 deleted marker.
+ * @post No cluster is freed: the files were created empty.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0 @post No access exceeds a caller-advertised capacity.
+ */
+RA8_INTERNAL static inline void
+internal_unlink_empty_files(ra8_fs_mount_t* h, const char* dir_path, uint32_t count)
+{
+  for (uint32_t i = 0; i < count; i++) {
+    char name[32] = {};
+    if (strcmp(dir_path, "/") == 0) {
+      (void)snprintf(name, sizeof(name), "/F%02u.TXT", i);
+    } else {
+      (void)snprintf(name, sizeof(name), "%s/G%02u.TXT", dir_path, i);
+    }
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, name));
+  }
+}
