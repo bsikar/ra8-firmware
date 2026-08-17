@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **300**
-- Total compound decisions in scope: **1996**
-- Decisions at 100% MC/DC (`yes`): **1404**
-- Decisions partially covered (`partial`): **140**
-- Decisions fully uncovered (`no`): **452**
-- Coverage rate (yes / total): **70.34%**
+- Source files with at least one decision: **272**
+- Total compound decisions in scope: **1574**
+- Decisions at 100% MC/DC (`yes`): **1375**
+- Decisions partially covered (`partial`): **87**
+- Decisions fully uncovered (`no`): **112**
+- Coverage rate (yes / total): **87.36%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **96**
-- Reachable-condition denominator (total - deactivated): **1900**
-- **Reachable MC/DC rate**: **73.89%** -- the enforced ratchet threshold is recorded in `.github/mcdc-baseline.txt`.
+- Reachable-condition denominator (total - deactivated): **1478**
+- **Reachable MC/DC rate**: **93.03%** -- the enforced ratchet threshold is recorded in `.github/mcdc-baseline.txt`.
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -89,7 +89,7 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_tx_byte_release | `if ((pool_ptr == nullptr) \|\| (pool_ptr->magic != (uint32_t)k_ra8_esp_hosted...` | no |
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_tx_byte_release | `if ((queue_ptr == nullptr) \|\| (queue_start == nullptr)) {` | no |
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | internal_tx_byte_release | `if ((queue_ptr == nullptr) \|\| (queue_start == nullptr)) {` | no |
-| ... | | | | *(436 more rows in CSV)* | |
+| ... | | | | *(43 more rows in CSV)* | |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
@@ -200,50 +200,23 @@ Sorted by (uncovered + partial) descending, then total descending.
 
 | Module | Total | Covered | Partial | Uncovered |
 |--------|------:|--------:|--------:|----------:|
-| mdl_state_codec | 40 | 3 | 7 | 30 |
 | ra8_esp_hosted_tx_shim_internal | 36 | 0 | 4 | 32 |
-| mdl_export_io | 35 | 0 | 3 | 32 |
-| mdl_verify | 42 | 10 | 13 | 19 |
-| mdl_urlname | 33 | 3 | 6 | 24 |
 | ra8_esp_hosted_tx_shim_sync_internal | 28 | 0 | 0 | 28 |
-| mdl_state_store | 29 | 6 | 6 | 17 |
-| mdl_state | 21 | 0 | 0 | 21 |
-| mdl_export_meta | 19 | 0 | 0 | 19 |
-| mdl_export_zip | 17 | 1 | 2 | 14 |
-| mdl_storage | 17 | 1 | 1 | 15 |
-| mdl_export_epub | 16 | 0 | 1 | 15 |
 | ra8_epub_xml_shim | 70 | 55 | 10 | 5 |
-| mdl_url_guard | 15 | 0 | 0 | 15 |
-| mdl_politeness | 13 | 0 | 0 | 13 |
-| mdl_sanitize | 13 | 0 | 2 | 11 |
-| mdl_export | 12 | 0 | 2 | 10 |
-| mdl_library | 19 | 8 | 2 | 9 |
-| mdl_export_rabook | 11 | 0 | 0 | 11 |
-| mdl_export_rabook_io | 11 | 0 | 0 | 11 |
 | mg_reader | 11 | 1 | 4 | 6 |
 | media_download_format | 9 | 0 | 0 | 9 |
-| mdl_service | 12 | 4 | 4 | 4 |
-| mdl_config | 9 | 1 | 2 | 6 |
-| mdl_export_tar | 8 | 0 | 1 | 7 |
 | ra8_xml | 80 | 73 | 6 | 1 |
-| mdl_export_jof | 7 | 0 | 1 | 6 |
 | ra8_esp_hosted_rtos | 15 | 9 | 3 | 3 |
-| mdl_state_decimal | 6 | 0 | 0 | 6 |
-| mdl_verify_rabook | 6 | 0 | 0 | 6 |
 | ra8_psa_crypto_fake | 6 | 1 | 5 | 0 |
-| mdl_net_c6link | 5 | 0 | 1 | 4 |
 | ra8_c6link_mdl | 24 | 20 | 1 | 3 |
 | ra8_jof_produce | 19 | 15 | 1 | 3 |
 | ra8_jpeg_sw_decode | 16 | 12 | 4 | 0 |
 | ez_scene | 7 | 3 | 4 | 0 |
-| mdl_app_storage | 5 | 1 | 0 | 4 |
-| mdl_hash | 4 | 0 | 0 | 4 |
-| mdl_pathfs | 4 | 0 | 0 | 4 |
 | wifi_hal_core | 4 | 0 | 3 | 1 |
 | ra8_reflow_svg_shape | 15 | 12 | 3 | 0 |
+| mdl_service | 12 | 9 | 2 | 1 |
 | ra8_epub_open | 9 | 6 | 0 | 3 |
 | ra8_jof_png | 7 | 4 | 1 | 2 |
-| mdl_net | 3 | 0 | 1 | 2 |
 | ra8_reflow_css | 26 | 24 | 1 | 1 |
 | ra8_reflow_css_cascade | 23 | 21 | 2 | 0 |
 | ra8_reflow_css_rules | 21 | 19 | 2 | 0 |
@@ -254,7 +227,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_eth | 4 | 2 | 2 | 0 |
 | ra8_canfd_timing | 3 | 1 | 2 | 0 |
 | ra8_reflow_image | 3 | 1 | 2 | 0 |
-| mdl_export_workspace | 2 | 0 | 0 | 2 |
 | ra8_book_stream | 22 | 21 | 1 | 0 |
 | ra8_reflow_svg_doc | 20 | 19 | 1 | 0 |
 | ra8_fs_fat_name | 14 | 13 | 1 | 0 |
@@ -506,35 +478,32 @@ Sorted by (uncovered + partial) descending, then total descending.
 | Module | Uncovered | Partial | Covered | Total |
 |--------|----------:|--------:|--------:|------:|
 | ra8_esp_hosted_tx_shim_internal | 32 | 4 | 0 | 36 |
-| mdl_export_io | 32 | 3 | 0 | 35 |
-| mdl_state_codec | 30 | 7 | 3 | 40 |
 | ra8_esp_hosted_tx_shim_sync_internal | 28 | 0 | 0 | 28 |
-| mdl_urlname | 24 | 6 | 3 | 33 |
-| mdl_state | 21 | 0 | 0 | 21 |
-| mdl_verify | 19 | 13 | 10 | 42 |
-| mdl_export_meta | 19 | 0 | 0 | 19 |
-| mdl_state_store | 17 | 6 | 6 | 29 |
-| mdl_export_epub | 15 | 1 | 0 | 16 |
-| mdl_storage | 15 | 1 | 1 | 17 |
-| mdl_url_guard | 15 | 0 | 0 | 15 |
-| mdl_export_zip | 14 | 2 | 1 | 17 |
-| mdl_politeness | 13 | 0 | 0 | 13 |
-| mdl_sanitize | 11 | 2 | 0 | 13 |
-| mdl_export_rabook | 11 | 0 | 0 | 11 |
-| mdl_export_rabook_io | 11 | 0 | 0 | 11 |
-| mdl_export | 10 | 2 | 0 | 12 |
-| mdl_library | 9 | 2 | 8 | 19 |
 | media_download_format | 9 | 0 | 0 | 9 |
-| mdl_export_tar | 7 | 1 | 0 | 8 |
 | mg_reader | 6 | 4 | 1 | 11 |
-| mdl_config | 6 | 2 | 1 | 9 |
-| mdl_export_jof | 6 | 1 | 0 | 7 |
-| mdl_state_decimal | 6 | 0 | 0 | 6 |
-| mdl_verify_rabook | 6 | 0 | 0 | 6 |
 | ra8_epub_xml_shim | 5 | 10 | 55 | 70 |
-| mdl_service | 4 | 4 | 4 | 12 |
-| mdl_net_c6link | 4 | 1 | 0 | 5 |
-| mdl_app_storage | 4 | 0 | 1 | 5 |
+| ra8_esp_hosted_rtos | 3 | 3 | 9 | 15 |
+| ra8_c6link_mdl | 3 | 1 | 20 | 24 |
+| ra8_jof_produce | 3 | 1 | 15 | 19 |
+| ra8_epub_open | 3 | 0 | 6 | 9 |
+| ra8_jof_png | 2 | 1 | 4 | 7 |
+| ra8_ble | 2 | 0 | 6 | 8 |
+| ra8_xml | 1 | 6 | 73 | 80 |
+| wifi_hal_core | 1 | 3 | 0 | 4 |
+| mdl_service | 1 | 2 | 9 | 12 |
+| ra8_reflow_css | 1 | 1 | 24 | 26 |
+| ra8_book_chunked_validate | 1 | 0 | 3 | 4 |
+| ra8_dotf | 1 | 0 | 5 | 6 |
+| ra8_epub_fs | 1 | 0 | 2 | 3 |
+| ra8_esp_hosted_fmt | 1 | 0 | 7 | 8 |
+| ra8_esp_hosted_gpio | 1 | 0 | 2 | 3 |
+| ra8_i3c_i2c | 1 | 0 | 6 | 7 |
+| ra8_net_pal | 1 | 0 | 1 | 2 |
+| ra8_rmac_mgmt | 1 | 0 | 1 | 2 |
+| ra8_rot | 1 | 0 | 5 | 6 |
+| ra8_spi_b | 1 | 0 | 6 | 7 |
+| ra8_usb_cdc | 1 | 0 | 3 | 4 |
+| ra8_xml_doctype | 1 | 0 | 12 | 13 |
 
 ---
 
