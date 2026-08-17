@@ -164,7 +164,7 @@ RA8_INTERNAL static void internal_jpeg_sw_prepare_rgb(const ra8_camera_codec_jpe
       internal_jpeg_sw_read_rgb(input,
                                 source_x,
                                 source_y,
-                                &state->cfg.rgb_workspace[(y * out_width + x) * 3U]);
+                                &state->cfg.rgb_workspace[(((size_t)y * out_width) + x) * 3U]);
     }
   }
 }
