@@ -418,24 +418,30 @@ static void pdm_demo_pdm_or_halt(void)
  * @brief Compute min/max/mean/peak/RMS for a captured window.
  *
  * @details Two bounded passes: pass 1 accumulates min/max/mean; pass 2
- *          accumulates the AC peak and mean-square about that mean.
+ *          accumulates the AC peak and mean-square about that mean. A
+ *          zero-sample window is rejected before either pass runs, so a
+ *          source that reports an empty capture cannot divide by zero.
  *
  * @param[in]  buf Sample buffer (non-NULL).
- * @param[in]  n   Sample count (>0).
+ * @param[in]  n   Sample count.
  * @param[out] m   Metrics output (non-NULL).
  *
  * @return Nothing.
  *
  * @pre ``buf`` holds ``n`` valid samples.
- * @pre ``n`` is greater than zero.
- * @post ``m`` holds the window statistics.
- * @post ``m->rms`` and ``m->peak`` are non-negative.
+ * @pre ``m`` is non-NULL.
+ * @post ``n == 0`` leaves ``*m`` entirely zeroed.
+ * @post ``n > 0`` leaves ``m->rms`` and ``m->peak`` non-negative.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
 static void pdm_demo_analyze(const int32_t* buf, uint32_t n, pdm_metrics_t* m)
 {
+  if (n == 0U) {
+    *m = (pdm_metrics_t){};
+    return;
+  }
   int64_t sum = 0;
   int32_t lo  = buf[0];
   int32_t hi  = buf[0];
