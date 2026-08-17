@@ -344,8 +344,8 @@ bool emu_presentation_fill(void*    context,
                            uint16_t color)
 {
   emu_presentation_workspace_t* const workspace = (emu_presentation_workspace_t*)context;
-  if ((workspace == nullptr) || (workspace->scratch == nullptr) || (width == 0U) ||
-      (height == 0U) || ((size_t)x + width > workspace->composite_width) ||
+  if ((workspace == nullptr) || (width == 0U) || (height == 0U) ||
+      ((size_t)x + width > workspace->composite_width) ||
       ((size_t)y + height > workspace->composite_height)) {
     return false;
   }
@@ -353,7 +353,20 @@ bool emu_presentation_fill(void*    context,
   if (row_bytes > workspace->scratch_bytes) {
     return false;
   }
-  uint16_t* const row = (uint16_t*)(void*)workspace->scratch;
+  /* One row of RGB565 pixels in the borrowed scratch. Alignment to
+   * alignof(uint16_t) is a checked precondition of emu_presentation_open(), so
+   * the union names one storage under two views instead of casting a uint8_t*
+   * through void*. */
+  const union {
+    uint8_t*  bytes;  /**< Borrowed scratch as raw bytes.     */
+    uint16_t* pixels; /**< The same storage as RGB565 pixels. */
+  } scratch           = {.bytes = workspace->scratch};
+  uint16_t* const row = scratch.pixels;
+  /* The borrowed scratch is documented "or nullptr"; this is the one place the
+   * fill path needs it, so the check lives here rather than in the guard above. */
+  if (row == nullptr) {
+    return false;
+  }
   for (uint16_t column = 0U; column < width; column++) {
     row[column] = color;
   }
