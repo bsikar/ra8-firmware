@@ -81,7 +81,7 @@ volatile uint16_t g_isr_intsts0_or = 0U;
  * @details
  * Incremented inside ::internal_usbhs_isr whenever the snapshot has
  * the device-state-transition bit set. Distinguishes "ISR fired with
- * DVST" from the bridge-side ::priv_dvst_irq_count which counts events
+ * DVST" from the bridge-side ::g_dvst_irq_count which counts events
  * after they have already been forwarded to the USBX stack.
  *
  * @note Written only by ::internal_usbhs_isr.

@@ -329,56 +329,48 @@ RA8_INTERNAL static void internal_test_decode_sof0_guards(void)
 RA8_INTERNAL static void internal_test_decode_sos_guards(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_parse_sos header/len/ns guards");
-  static uint8_t local_buf[k_jpeg_buf_small];
+  static uint8_t s_buf[k_jpeg_buf_small];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   /* SOS marker with no seglen bytes. */
   uint32_t n = 0U;
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_soi, (uint32_t)sizeof s_soi);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_soi, (uint32_t)sizeof s_soi);
+  internal_cov_append(s_buf,
+                      (uint32_t)sizeof s_buf,
                       &n,
                       s_sof0_8x8_gray,
                       (uint32_t)sizeof s_sof0_8x8_gray);
   static const uint8_t sos_marker[] = {0xFFU, 0xDAU};
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      sos_marker,
-                      (uint32_t)sizeof sos_marker);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, sos_marker, (uint32_t)sizeof sos_marker);
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(local_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
 
   /* SOS with seglen=5 (< 6). */
   n = 0U;
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_soi, (uint32_t)sizeof s_soi);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_soi, (uint32_t)sizeof s_soi);
+  internal_cov_append(s_buf,
+                      (uint32_t)sizeof s_buf,
                       &n,
                       s_sof0_8x8_gray,
                       (uint32_t)sizeof s_sof0_8x8_gray);
   static const uint8_t sos_short[] = {0xFFU, 0xDAU, 0x00U, 0x05U};
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      sos_short,
-                      (uint32_t)sizeof sos_short);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, sos_short, (uint32_t)sizeof sos_short);
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(local_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
 
   /* SOS with ns=2 against a 1-component frame. */
   n = 0U;
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_soi, (uint32_t)sizeof s_soi);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_soi, (uint32_t)sizeof s_soi);
+  internal_cov_append(s_buf,
+                      (uint32_t)sizeof s_buf,
                       &n,
                       s_sof0_8x8_gray,
                       (uint32_t)sizeof s_sof0_8x8_gray);
   static const uint8_t sos_ns2[] = {0xFFU, 0xDAU, 0x00U, 0x06U, 0x02U, 0x01U, 0x00U, 0x00U};
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, sos_ns2, (uint32_t)sizeof sos_ns2);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, sos_ns2, (uint32_t)sizeof sos_ns2);
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_jpeg_sw_decode(local_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
 
   TEST_END("jpeg_dec_cov: dec_parse_sos header/len/ns guards");
 }
@@ -405,29 +397,25 @@ RA8_INTERNAL static void internal_test_decode_sos_guards(void)
 RA8_INTERNAL static void internal_test_decode_scan_buffer_too_small(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_decode_scan output-size guard");
-  static uint8_t local_buf[k_jpeg_buf_small];
-  static uint8_t local_tiny[(uint32_t)k_cov_out_small];
+  static uint8_t s_buf[k_jpeg_buf_small];
+  static uint8_t s_tiny[(uint32_t)k_cov_out_small];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_soi, (uint32_t)sizeof s_soi);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_soi, (uint32_t)sizeof s_soi);
+  internal_cov_append(s_buf,
+                      (uint32_t)sizeof s_buf,
                       &n,
                       s_sof0_8x8_gray,
                       (uint32_t)sizeof s_sof0_8x8_gray);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_sos_gray,
-                      (uint32_t)sizeof s_sos_gray);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_sos_gray, (uint32_t)sizeof s_sos_gray);
   static const uint8_t entropy[] = {0x00U, 0x00U};
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, entropy, (uint32_t)sizeof entropy);
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_jpeg_sw_decode(local_buf, n, local_tiny, (uint32_t)k_cov_out_small, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_tiny, (uint32_t)k_cov_out_small, &w, &h));
   TEST_END("jpeg_dec_cov: dec_decode_scan output-size guard");
 }
 
@@ -453,28 +441,24 @@ RA8_INTERNAL static void internal_test_decode_scan_buffer_too_small(void)
 RA8_INTERNAL static void internal_test_decode_dc_huffman_failure(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block DC failure -> y-block + scan propagation");
-  static uint8_t local_buf[k_jpeg_buf_small];
+  static uint8_t s_buf[k_jpeg_buf_small];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_soi, (uint32_t)sizeof s_soi);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_soi, (uint32_t)sizeof s_soi);
+  internal_cov_append(s_buf,
+                      (uint32_t)sizeof s_buf,
                       &n,
                       s_sof0_8x8_gray,
                       (uint32_t)sizeof s_sof0_8x8_gray);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_sos_gray,
-                      (uint32_t)sizeof s_sos_gray);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_sos_gray, (uint32_t)sizeof s_sos_gray);
   static const uint8_t entropy[] = {0x00U, 0x00U};
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, entropy, (uint32_t)sizeof entropy);
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
 
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(local_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
   TEST_END("jpeg_dec_cov: dec_block DC failure -> y-block + scan propagation");
 }
 
@@ -500,33 +484,25 @@ RA8_INTERNAL static void internal_test_decode_dc_huffman_failure(void)
 RA8_INTERNAL static void internal_test_decode_dc_magnitude_underflow(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block DC magnitude underflow (r<0 && t!=0)");
-  static uint8_t local_buf[k_jpeg_buf_small];
+  static uint8_t s_buf[k_jpeg_buf_small];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_soi, (uint32_t)sizeof s_soi);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_soi, (uint32_t)sizeof s_soi);
+  internal_cov_append(s_buf,
+                      (uint32_t)sizeof s_buf,
                       &n,
                       s_sof0_8x8_gray,
                       (uint32_t)sizeof s_sof0_8x8_gray);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_dht_dc_t8,
-                      (uint32_t)sizeof s_dht_dc_t8);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_sos_gray,
-                      (uint32_t)sizeof s_sos_gray);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_dht_dc_t8, (uint32_t)sizeof s_dht_dc_t8);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_sos_gray, (uint32_t)sizeof s_sos_gray);
   static const uint8_t entropy[] = {0x00U};
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, entropy, (uint32_t)sizeof entropy);
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
 
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(local_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
   TEST_END("jpeg_dec_cov: dec_block DC magnitude underflow (r<0 && t!=0)");
 }
 
@@ -548,33 +524,25 @@ RA8_INTERNAL static void internal_test_decode_dc_magnitude_underflow(void)
 RA8_INTERNAL static void internal_test_decode_ac_huffman_failure(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block AC Huffman failure (rs<0)");
-  static uint8_t local_buf[k_jpeg_buf_small];
+  static uint8_t s_buf[k_jpeg_buf_small];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_soi, (uint32_t)sizeof s_soi);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_soi, (uint32_t)sizeof s_soi);
+  internal_cov_append(s_buf,
+                      (uint32_t)sizeof s_buf,
                       &n,
                       s_sof0_8x8_gray,
                       (uint32_t)sizeof s_sof0_8x8_gray);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_dht_dc,
-                      (uint32_t)sizeof s_dht_dc);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_sos_gray,
-                      (uint32_t)sizeof s_sos_gray);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_dht_dc, (uint32_t)sizeof s_dht_dc);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_sos_gray, (uint32_t)sizeof s_sos_gray);
   static const uint8_t entropy[] = {0x00U, 0x00U};
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, entropy, (uint32_t)sizeof entropy);
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
 
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(local_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
   TEST_END("jpeg_dec_cov: dec_block AC Huffman failure (rs<0)");
 }
 
@@ -597,38 +565,26 @@ RA8_INTERNAL static void internal_test_decode_ac_huffman_failure(void)
 RA8_INTERNAL static void internal_test_decode_ac_magnitude_underflow(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block AC magnitude underflow (v<0)");
-  static uint8_t local_buf[k_jpeg_buf_large];
+  static uint8_t s_buf[k_jpeg_buf_large];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_soi, (uint32_t)sizeof s_soi);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_soi, (uint32_t)sizeof s_soi);
+  internal_cov_append(s_buf,
+                      (uint32_t)sizeof s_buf,
                       &n,
                       s_sof0_8x8_gray,
                       (uint32_t)sizeof s_sof0_8x8_gray);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_dht_dc,
-                      (uint32_t)sizeof s_dht_dc);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_dht_ac_f0,
-                      (uint32_t)sizeof s_dht_ac_f0);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_sos_gray,
-                      (uint32_t)sizeof s_sos_gray);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_dht_dc, (uint32_t)sizeof s_dht_dc);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_dht_ac_f0, (uint32_t)sizeof s_dht_ac_f0);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_sos_gray, (uint32_t)sizeof s_sos_gray);
   static const uint8_t entropy[] = {0x00U};
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, entropy, (uint32_t)sizeof entropy);
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
 
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(local_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
   TEST_END("jpeg_dec_cov: dec_block AC magnitude underflow (v<0)");
 }
 
@@ -654,38 +610,30 @@ RA8_INTERNAL static void internal_test_decode_ac_magnitude_underflow(void)
 RA8_INTERNAL static void internal_test_decode_ac_zrl_index_overrun(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block ZRL run + AC index overrun (k>=64)");
-  static uint8_t local_buf[k_jpeg_buf_mid];
+  static uint8_t s_buf[k_jpeg_buf_mid];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_soi, (uint32_t)sizeof s_soi);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_soi, (uint32_t)sizeof s_soi);
+  internal_cov_append(s_buf,
+                      (uint32_t)sizeof s_buf,
                       &n,
                       s_sof0_8x8_gray,
                       (uint32_t)sizeof s_sof0_8x8_gray);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_dht_dc,
-                      (uint32_t)sizeof s_dht_dc);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_dht_dc, (uint32_t)sizeof s_dht_dc);
+  internal_cov_append(s_buf,
+                      (uint32_t)sizeof s_buf,
                       &n,
                       s_dht_ac_zrl,
                       (uint32_t)sizeof s_dht_ac_zrl);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_sos_gray,
-                      (uint32_t)sizeof s_sos_gray);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_sos_gray, (uint32_t)sizeof s_sos_gray);
   static const uint8_t entropy[] = {0x08U};
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, entropy, (uint32_t)sizeof entropy);
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
 
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(local_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
   TEST_END("jpeg_dec_cov: dec_block ZRL run + AC index overrun (k>=64)");
 }
 
@@ -704,33 +652,21 @@ RA8_INTERNAL static void internal_test_decode_ac_zrl_index_overrun(void)
  */
 RA8_INTERNAL static void internal_assert_chroma_failure(const uint8_t* sos, uint32_t sos_len)
 {
-  static uint8_t       local_buf[k_jpeg_buf_large];
+  static uint8_t       s_buf[k_jpeg_buf_large];
   static const uint8_t entropy[] = {0x00U, 0x00U};
   uint16_t             w         = 0U;
   uint16_t             h         = 0U;
   uint32_t             n         = 0U;
 
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_soi, (uint32_t)sizeof s_soi);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_sof0_444,
-                      (uint32_t)sizeof s_sof0_444);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_dht_dc,
-                      (uint32_t)sizeof s_dht_dc);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_dht_ac,
-                      (uint32_t)sizeof s_dht_ac);
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, sos, sos_len);
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, entropy, (uint32_t)sizeof entropy);
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_soi, (uint32_t)sizeof s_soi);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_sof0_444, (uint32_t)sizeof s_sof0_444);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_dht_dc, (uint32_t)sizeof s_dht_dc);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_dht_ac, (uint32_t)sizeof s_dht_ac);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, sos, sos_len);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(local_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
 }
 
 /**
@@ -784,37 +720,25 @@ RA8_INTERNAL static void internal_test_decode_chroma_block_failures(void)
 RA8_INTERNAL static void internal_test_decode_grayscale_edge_success(void)
 {
   TEST_BEGIN("jpeg_dec_cov: 5x5 grayscale decode -- edge crop + gray emit");
-  static uint8_t local_buf[k_jpeg_buf_mid];
+  static uint8_t s_buf[k_jpeg_buf_mid];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_soi, (uint32_t)sizeof s_soi);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_soi, (uint32_t)sizeof s_soi);
+  internal_cov_append(s_buf,
+                      (uint32_t)sizeof s_buf,
                       &n,
                       s_sof0_5x5_gray,
                       (uint32_t)sizeof s_sof0_5x5_gray);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_dht_dc,
-                      (uint32_t)sizeof s_dht_dc);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_dht_ac,
-                      (uint32_t)sizeof s_dht_ac);
-  internal_cov_append(local_buf,
-                      (uint32_t)sizeof local_buf,
-                      &n,
-                      s_sos_gray,
-                      (uint32_t)sizeof s_sos_gray);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_dht_dc, (uint32_t)sizeof s_dht_dc);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_dht_ac, (uint32_t)sizeof s_dht_ac);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_sos_gray, (uint32_t)sizeof s_sos_gray);
   static const uint8_t entropy[] = {0x00U, 0x00U};
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, entropy, (uint32_t)sizeof entropy);
-  internal_cov_append(local_buf, (uint32_t)sizeof local_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  internal_cov_append(s_buf, (uint32_t)sizeof s_buf, &n, s_eoi, (uint32_t)sizeof s_eoi);
 
-  ra8_err_t e = ra8_jpeg_sw_decode(local_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h);
+  ra8_err_t e = ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h);
   TEST_ASSERT_EQ(k_ra8_ok, e);
   TEST_ASSERT_EQ(5, w);
   TEST_ASSERT_EQ(5, h);

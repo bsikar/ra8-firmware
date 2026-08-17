@@ -154,11 +154,11 @@ internal_space_cycle(uint32_t blocks, ra8_fs_type_t type, const char* label)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_free_space(h, &again));
   TEST_ASSERT_EQ(before.free_clusters, again.free_clusters);
 
-  static uint8_t payload[k_sp_payload];
+  static uint8_t s_payload[k_sp_payload];
   for (uint32_t i = 0U; i < (uint32_t)k_sp_payload; i++) {
-    payload[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
+    s_payload[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "DATA.BIN", payload, (uint32_t)k_sp_payload));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "DATA.BIN", s_payload, (uint32_t)k_sp_payload));
 
   ra8_fs_space_t after = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_free_space(h, &after));
