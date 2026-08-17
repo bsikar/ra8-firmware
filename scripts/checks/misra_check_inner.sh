@@ -16,8 +16,12 @@
 # compliance. cppcheck-MISRA covers roughly two thirds of the
 # mandatory + required rules; see docs/MISRA.md for the gap plan.
 #
-# Out of scope: tests/, examples/, build/, mocks/. Host tools are first-party
-# production code and deliberately remain in scope.
+# Out of scope: tests/, examples/, mocks/, and any BUILD TREE beneath a root
+# that produces one (see the build-output section below -- the exclusion is
+# derived from lint_targets.is_build_output, never from a */build/* glob).
+# Host tools are first-party production code and deliberately remain in scope.
+#
+# Usage: misra_check_inner.sh [--selftest]
 #
 # Strategy: cppcheck's `--addon=misra` dispatcher silently drops
 # misra.py findings when no MISRA rule-texts file is supplied (the
@@ -60,6 +64,249 @@ RESULTS="$OUT_DIR/results.txt"
 # those headers are known. A net drop in findings is the dangerous direction
 # of that failure -- it reads as a burn-down.
 RA8_MISRA_ROOTS=(libs src port tools apps)
+
+# ---------------------------------------------------------------------------
+# BUILD OUTPUT IS NOT SOURCE -- and `build/` does not mean the same thing
+# everywhere in this tree.
+#
+# The scan used to hand cppcheck the bare root directories with no build
+# exclusion at all, so whatever an untracked build tree happened to leave under
+# a scanned root was audited as first-party source. Regenerating the baseline on
+# a dirty checkout therefore FROZE that junk into the ratchet: 12 rows of CMake
+# compiler-probe source (tools/*/build/CMakeFiles/.../CMakeCCompilerId.c) had to
+# be purged from .github/misra-baseline.txt by hand. Junk in the baseline is
+# worse than junk in a report -- the ratchet then measures the tree against a
+# population that never existed, and a real finding can hide behind a probe row.
+#
+# A blanket `*/build/*` exclusion is the WRONG fix, and lint_targets.py already
+# says why. `build` names build OUTPUT only beneath the roots that produce it
+# (tools/<t>/build, apps/<cat>/<p>/build, examples/**/<app>/build, tests/build,
+# docs/build, port/**, src/app/build). Under libs/ it is an ordinary directory
+# name a module is entitled to use for real source, and `builders/` is not a
+# build tree at all despite the prefix. A glob cannot tell those apart, and a
+# glob that swallows source is the dangerous direction: the audit goes quieter
+# and the burn-down looks like progress.
+#
+# So the verdict is not re-derived here. This asks lint_targets.is_build_output
+# -- the ONE definition of "this is build output" in the tree, shared with
+# .gitignore and thirteen other checkers -- and turns its answer into cppcheck
+# -i flags plus a filter for the header path and the dump discovery. A second
+# description of the same fact is exactly how `build/` came to mean two things.
+#
+# The alternative considered and rejected: scanning only `git ls-files`. It
+# would have fixed this case, since build trees are gitignored, but by a rule
+# that is blanket in a different disguise -- it would drop every ignored path,
+# not just build output -- and it costs real recall. A brand-new .c that has not
+# been `git add`ed yet would silently leave the audit, and a baseline
+# regenerated in that state would be missing a whole file. It would also mean
+# re-implementing cppcheck's own source-file selection in bash, so the scanned
+# POPULATION could drift from what cppcheck picks up walking a directory.
+# Excluding the OUTPUT keeps the population exactly as it was and changes only
+# what was never source.
+# ---------------------------------------------------------------------------
+
+# Print every build-output directory beneath the roots named as arguments.
+# Build trees are pruned rather than descended, so a nested one is reported once
+# by its outermost directory.
+ra8_misra_build_output_dirs() {
+  RA8_MISRA_CHECKS_DIR="$SCRIPT_DIR" python3 - "$@" <<'PYEOF'
+import os
+import sys
+
+sys.path.insert(0, os.environ["RA8_MISRA_CHECKS_DIR"])
+
+from lint_targets import is_build_output
+
+for root in sys.argv[1:]:
+    for dirpath, dirnames, _filenames in os.walk(root):
+        descend = []
+        for name in sorted(dirnames):
+            candidate = os.path.join(dirpath, name)
+            # is_build_output classifies a FILE path -- its last component is
+            # the file name and is never treated as a directory. Probe with a
+            # dummy leaf so the directory itself is what gets judged.
+            if is_build_output(candidate + "/probe"):
+                print(candidate)
+            else:
+                descend.append(name)
+        dirnames[:] = descend
+PYEOF
+}
+
+# True when a path lies inside one of the enumerated build trees. Used to filter
+# the header path and the dump discovery with the same verdict the scan uses.
+ra8_misra_is_build_output() {
+  local candidate="$1" excluded
+  for excluded in ${RA8_MISRA_BUILD_DIRS[@]+"${RA8_MISRA_BUILD_DIRS[@]}"}; do
+    if [[ "$candidate" == "$excluded" || "$candidate" == "$excluded"/* ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# --- selftest --------------------------------------------------------------
+# Both directions, against a throwaway tree, driving the SAME two functions the
+# scan drives. One direction alone proves nothing here: an exclusion that
+# matched everything would also produce a perfectly quiet, perfectly wrong
+# audit, and that failure reads as a burn-down.
+_ra8_misra_expect() {
+  if [[ "$1" == "yes" ]]; then
+    echo "  [ok] $2"
+  else
+    echo "  [FAIL] $2"
+    RA8_MISRA_SELFTEST_FAILS=$((RA8_MISRA_SELFTEST_FAILS + 1))
+  fi
+}
+
+_ra8_misra_expect_listed() {
+  local listing="$1" wanted="$2"
+  if grep -qxF "$wanted" "$listing"; then
+    _ra8_misra_expect yes "excluded (build output): $wanted"
+  else
+    _ra8_misra_expect no "excluded (build output): $wanted"
+  fi
+}
+
+_ra8_misra_expect_absent() {
+  local listing="$1" wanted="$2"
+  if grep -qxF "$wanted" "$listing"; then
+    _ra8_misra_expect no "still scanned (source root): $wanted"
+  else
+    _ra8_misra_expect yes "still scanned (source root): $wanted"
+  fi
+}
+
+# A dirty checkout: build output under every root that can produce one, plus
+# source under the two paths a blanket */build/* glob would wrongly swallow.
+_ra8_misra_selftest_fixture() {
+  local tree="$1"
+  mkdir -p \
+    "$tree/tools/foo/build/CMakeFiles/3.28.3/CompilerIdC" \
+    "$tree/apps/stand_alone/prod/build/CMakeFiles" \
+    "$tree/examples/ek_ra8d2/hw_validated/smoke/blink/build" \
+    "$tree/tests/build-cov" \
+    "$tree/libs/ra8_x/build" \
+    "$tree/libs/ra8_x/builders" \
+    "$tree/libs/ra8_x/src" \
+    "$tree/tools/foo/src"
+  : >"$tree/tools/foo/build/CMakeFiles/3.28.3/CompilerIdC/CMakeCCompilerId.c"
+  : >"$tree/libs/ra8_x/build/real.c"
+  : >"$tree/libs/ra8_x/builders/real.c"
+  : >"$tree/libs/ra8_x/src/real.c"
+  : >"$tree/tools/foo/src/real.c"
+}
+
+_ra8_misra_selftest_roots() {
+  (cd "$1" && ra8_misra_build_output_dirs libs src port tools apps examples tests)
+}
+
+# Both directions over the dirty fixture, plus the non-vacuity floor: an
+# enumerator that returned nothing would pass every must-stay-quiet assertion
+# here on its own.
+_ra8_misra_selftest_dirty() {
+  local listing="$1"
+
+  # MUST FIRE -- every root where build output can legitimately live.
+  _ra8_misra_expect_listed "$listing" "tools/foo/build"
+  _ra8_misra_expect_listed "$listing" "apps/stand_alone/prod/build"
+  _ra8_misra_expect_listed "$listing" "examples/ek_ra8d2/hw_validated/smoke/blink/build"
+  _ra8_misra_expect_listed "$listing" "tests/build-cov"
+
+  # MUST STAY QUIET -- libs/ is not a build-tree root, so `build` there is an
+  # ordinary directory that may hold real source; `builders/` is never one.
+  _ra8_misra_expect_absent "$listing" "libs/ra8_x/build"
+  _ra8_misra_expect_absent "$listing" "libs/ra8_x/builders"
+  _ra8_misra_expect_absent "$listing" "libs/ra8_x/src"
+  _ra8_misra_expect_absent "$listing" "tools/foo/src"
+
+  if [[ "$(wc -l <"$listing")" -ge 4 ]]; then
+    _ra8_misra_expect yes "the dirty fixture yields a non-empty exclusion set"
+  else
+    _ra8_misra_expect no "the dirty fixture yields a non-empty exclusion set"
+  fi
+}
+
+# The other end of the same property: a CLEAN tree must exclude NOTHING, so an
+# exclusion that had quietly become blanket cannot pass as a quiet audit.
+_ra8_misra_selftest_clean() {
+  local tree="$1" listing="$2"
+  mkdir -p "$tree/libs/ra8_x/src" "$tree/tools/foo/src"
+  : >"$tree/libs/ra8_x/src/real.c"
+  _ra8_misra_selftest_roots "$tree" >"$listing"
+  if [[ ! -s "$listing" ]]; then
+    _ra8_misra_expect yes "a clean tree excludes nothing"
+  else
+    _ra8_misra_expect no "a clean tree excludes nothing"
+  fi
+}
+
+# The membership predicate the header path and the dump discovery are filtered
+# with must agree with the enumeration, in both directions.
+_ra8_misra_selftest_predicate() {
+  local listing="$1" probe
+  probe="tools/foo/build/CMakeFiles/3.28.3/CompilerIdC/CMakeCCompilerId.c"
+  mapfile -t RA8_MISRA_BUILD_DIRS <"$listing"
+  if ra8_misra_is_build_output "$probe"; then
+    _ra8_misra_expect yes "the membership predicate rejects a file inside a build tree"
+  else
+    _ra8_misra_expect no "the membership predicate rejects a file inside a build tree"
+  fi
+  if ra8_misra_is_build_output "libs/ra8_x/build/real.c"; then
+    _ra8_misra_expect no "the membership predicate keeps source under a source root"
+  else
+    _ra8_misra_expect yes "the membership predicate keeps source under a source root"
+  fi
+  RA8_MISRA_BUILD_DIRS=()
+}
+
+ra8_misra_selftest() {
+  local tmp listing
+  RA8_MISRA_SELFTEST_FAILS=0
+  echo "misra_check_inner.sh --selftest"
+  tmp="$(mktemp -d)"
+  listing="$tmp/excluded.txt"
+
+  _ra8_misra_selftest_fixture "$tmp/tree"
+  _ra8_misra_selftest_roots "$tmp/tree" >"$listing"
+  _ra8_misra_selftest_dirty "$listing"
+  _ra8_misra_selftest_clean "$tmp/clean" "$tmp/clean.txt"
+  _ra8_misra_selftest_predicate "$listing"
+
+  rm -rf "$tmp"
+  if [[ "$RA8_MISRA_SELFTEST_FAILS" -ne 0 ]]; then
+    echo "SELFTEST FAILED: $RA8_MISRA_SELFTEST_FAILS assertion(s)" >&2
+    return 1
+  fi
+  echo "selftest: all assertions held (both directions)."
+  return 0
+}
+
+case "${1:-}" in
+  --selftest)
+    ra8_misra_selftest
+    exit $?
+    ;;
+  "") ;;
+  *)
+    echo "misra_check_inner.sh: unknown option: $1" >&2
+    echo "usage: misra_check_inner.sh [--selftest]" >&2
+    exit 2
+    ;;
+esac
+
+# The build trees to keep out of this run. Empty on a clean checkout, which is
+# why the selftest asserts that case too.
+RA8_MISRA_BUILD_DIRS=()
+mapfile -t RA8_MISRA_BUILD_DIRS < <(ra8_misra_build_output_dirs "${RA8_MISRA_ROOTS[@]}")
+RA8_MISRA_EXCLUDE_ARGS=()
+for _build_dir in ${RA8_MISRA_BUILD_DIRS[@]+"${RA8_MISRA_BUILD_DIRS[@]}"}; do
+  RA8_MISRA_EXCLUDE_ARGS+=("-i$_build_dir")
+done
+if [[ ${#RA8_MISRA_BUILD_DIRS[@]} -gt 0 ]]; then
+  echo "[INFO] excluding ${#RA8_MISRA_BUILD_DIRS[@]} build tree(s) from the scan:" >&2
+  printf '         %s\n' "${RA8_MISRA_BUILD_DIRS[@]}" >&2
+fi
 
 # Delete dump artefacts on EVERY exit path, not just success. A stale dump
 # left behind by an aborted run (disk-full, timeout, ^C) would be picked up
@@ -126,13 +373,18 @@ JOBS="${JOBS:-$(ra8_max_jobs)}"
 # directory is covered the day it lands.
 INCLUDE_DIRS=()
 while IFS= read -r _inc_dir; do
-  [[ -n "$_inc_dir" ]] && INCLUDE_DIRS+=("-I$_inc_dir")
+  [[ -n "$_inc_dir" ]] || continue
+  # An `inc` directory inside a build tree is a copy of somebody else's
+  # headers; filtered by the SAME verdict that keeps that tree out of the scan,
+  # not by a second glob that could disagree with it.
+  ra8_misra_is_build_output "$_inc_dir" && continue
+  INCLUDE_DIRS+=("-I$_inc_dir")
 done < <(
   {
     find "${RA8_MISRA_ROOTS[@]}" -type d -name inc \
-      -not -path '*/third_party/*' -not -path '*/build/*' 2>/dev/null
+      -not -path '*/third_party/*' 2>/dev/null
     find apps -type d -name src \
-      -not -path '*/third_party/*' -not -path '*/build/*' 2>/dev/null
+      -not -path '*/third_party/*' 2>/dev/null
   } | sort -u
 )
 if [[ ${#INCLUDE_DIRS[@]} -eq 0 ]]; then
@@ -211,6 +463,7 @@ set +e
   --suppress=*:libs/third_party/* \
   -ilibs/third_party \
   -itools/vela/generated \
+  ${RA8_MISRA_EXCLUDE_ARGS[@]+"${RA8_MISRA_EXCLUDE_ARGS[@]}"} \
   -U__clang__ \
   --std=c11 \
   --platform=unix32 \
@@ -229,7 +482,12 @@ if [[ "$RC" -eq 124 ]]; then
 fi
 
 # Run misra.py on every dump file produced under the first-party roots.
-mapfile -t DUMPS < <(
+DUMPS=()
+while IFS= read -r _dump; do
+  [[ -n "$_dump" ]] || continue
+  ra8_misra_is_build_output "$_dump" && continue
+  DUMPS+=("$_dump")
+done < <(
   find "${RA8_MISRA_ROOTS[@]}" -name '*.dump' \
     -not -path '*/third_party/*' -not -path '*/vela/generated/*' | sort
 )
