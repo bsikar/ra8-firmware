@@ -324,6 +324,7 @@ static void internal_test_undersized_workspace(const ra8_fmt_source_t*          
  * @pre @p workspace covers the complete fixture.
  * @post A missing failure or an over-length capture contributes exactly one
  * failure through CHECK.
+ * @post @p workspace keeps its full capacity; this vector never rebinds it.
  * @note Test-only and intentionally single-threaded.
  * @since 0.1.0
  */

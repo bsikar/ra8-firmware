@@ -257,6 +257,7 @@ RA8_INTERNAL static uint16_t internal_zip_u16(const uint8_t* bytes)
  * @pre @p chunk holds at least @p count plus the signature length bytes.
  * @pre @p out_status is non-NULL.
  * @post @p out_status is written if and only if this returns true.
+ * @post @p chunk is not modified; each candidate is re-read into a private buffer.
  * @note Not thread-safe if @p read mutates shared state; the reader owns that.
  * @since Version 0.1.0
  */

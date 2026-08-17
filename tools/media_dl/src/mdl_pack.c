@@ -112,8 +112,10 @@ internal_pack_metadata(mdl_storage_t* storage, const mdl_export_meta_t* meta, co
  * @param[in] rc The failure code being reported.
  * @return Nothing; the caller reports the packaging failure regardless.
  * @pre @p diagnostic, @p chap_id, and @p ext are non-NULL.
+ * @pre @p rc is the non-success value the failed chapter export returned.
  * @post One diagnostic line was appended to @p diagnostic, or the stream's
  *       existing error was preserved.
+ * @post No packaging state or failure counter is touched; the caller counts.
  * @note Thread safety follows ownership of the supplied stream.
  * @since Version 0.1.0
  */
@@ -232,30 +234,6 @@ size_t mdl_pack_one(mdl_storage_t*          storage,
 }
 
 /**
- * @brief Package a combined chapter folder into the selected format
- * @details Composes guarded input/output paths, auto-loads metadata when
- *          needed, marks incomplete filenames, and handles directory-output
- *          formats without claiming that a container file was created.
- * @param[in,out] storage Injected portable file reader.
- * @param[in] format Output format to write.
- * @param[in] series_dir Absolute series directory.
- * @param[in] combined_rel Sanitized combined-directory leaf.
- * @param[in] incomplete Whether the output filename must be marked incomplete.
- * @param[in] meta Metadata to embed, or NULL to auto-load it.
- * @param[in,out] ws Exclusive caller-owned exporter workspace.
- * @param[in,out] output Borrowed stream receiving the successful output path.
- * @param[in,out] diagnostic Borrowed stream receiving policy and failure diagnostics.
- * @return Count of failures from this operation.
- * @retval 0U Packaging succeeded.
- * @retval 1U A path was rejected or export failed.
- * @pre String arguments are non-NULL, NUL-terminated, and stable.
- * @pre @p ws owns writable arena storage for the call.
- * @post Success leaves output matching @p format and @p incomplete.
- * @post Failure is diagnosed and never counted more than once.
- * @note Not thread-safe for a shared workspace or output directory.
- * @since 0.1.0
- */
-/**
  * @brief Report a combine-export failure with its error code.
  * @details Builds `"  combine export FAILED (err 0x<rc>)\n"` on @p diagnostic,
  *          threading the running stream status through every fragment so a
@@ -264,8 +242,10 @@ size_t mdl_pack_one(mdl_storage_t*          storage,
  * @param[in] rc The failure code being reported.
  * @return Nothing; the caller reports the packaging failure regardless.
  * @pre @p diagnostic is non-NULL.
+ * @pre @p rc is the non-success value the failed combine export returned.
  * @post One diagnostic line was appended to @p diagnostic, or the stream's
  *       existing error was preserved.
+ * @post No packaging state or failure counter is touched; the caller counts.
  * @note Thread safety follows ownership of the supplied stream.
  * @since Version 0.1.0
  */
@@ -326,6 +306,30 @@ RA8_INTERNAL static size_t internal_pack_combined_dir_output(mdl_storage_t*     
   return (output_error == k_ra8_ok) ? 0U : 1U;
 }
 
+/**
+ * @brief Package a combined chapter folder into the selected format
+ * @details Composes guarded input/output paths, auto-loads metadata when
+ *          needed, marks incomplete filenames, and handles directory-output
+ *          formats without claiming that a container file was created.
+ * @param[in,out] storage Injected portable file reader.
+ * @param[in] format Output format to write.
+ * @param[in] series_dir Absolute series directory.
+ * @param[in] combined_rel Sanitized combined-directory leaf.
+ * @param[in] incomplete Whether the output filename must be marked incomplete.
+ * @param[in] meta Metadata to embed, or NULL to auto-load it.
+ * @param[in,out] ws Exclusive caller-owned exporter workspace.
+ * @param[in,out] output Borrowed stream receiving the successful output path.
+ * @param[in,out] diagnostic Borrowed stream receiving policy and failure diagnostics.
+ * @return Count of failures from this operation.
+ * @retval 0U Packaging succeeded.
+ * @retval 1U A path was rejected or export failed.
+ * @pre String arguments are non-NULL, NUL-terminated, and stable.
+ * @pre @p ws owns writable arena storage for the call.
+ * @post Success leaves output matching @p format and @p incomplete.
+ * @post Failure is diagnosed and never counted more than once.
+ * @note Not thread-safe for a shared workspace or output directory.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static size_t internal_pack_combined_dir(mdl_storage_t*           storage,
                                                       ra8_mdl_format_t         format,
                                                       const char*              series_dir,

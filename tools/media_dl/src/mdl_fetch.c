@@ -307,7 +307,10 @@ RA8_PRIV ra8_err_t priv_mdl_fetch_with_retry(mdl_fetch_ctx_t*     ctx,
  * @retval other The fetch, prepare, or commit stage failed (already aborted
  * and recorded).
  * @pre @p host, @p url, and @p target_abs are validated by the caller.
+ * @pre @p ctx holds an initialized storage binding and failure log.
  * @post On failure the transaction is aborted and the failure is recorded.
+ * @post On success the body transaction is committed exactly once and
+ * @p out_bytes, when non-NULL, holds its length.
  * @note Not thread-safe with respect to concurrent callers sharing @p ctx.
  * @since 0.1.0
  */

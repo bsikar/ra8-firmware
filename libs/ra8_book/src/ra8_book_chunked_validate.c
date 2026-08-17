@@ -81,22 +81,6 @@ internal_spans_overlap(const void* a, uint64_t a_len, const void* b, uint64_t b_
 }
 
 /**
- * @brief Revalidate the open-reader invariants needed by strict validation.
- * @details Recomputes chunk geometry, table bounds, monotonic compressed
- *          extents, and payload addition before any cache read is attempted.
- * @param[in] rd Candidate open reader.
- * @return Reader-state validation status.
- * @retval k_ra8_ok Geometry, callbacks, table, and staging are usable.
- * @retval k_ra8_err_invalid_state The reader is partial or internally
- * inconsistent.
- * @pre @p rd is non-NULL.
- * @pre The table remains readable for `chunk_count + 1` entries.
- * @post No reader or caller storage is modified.
- * @post Success proves every later table index and staging write is bounded.
- * @note Pure and thread-safe for an immutable reader.
- * @since Version 0.1.0
- */
-/**
  * @brief Require every reader callback and geometry field to be present.
  * @details Rejects a NULL file-read or inflate callback, a NULL table or
  *          staging buffer, and a zero chunk size, chunk count, inflated
@@ -108,7 +92,9 @@ internal_spans_overlap(const void* a, uint64_t a_len, const void* b, uint64_t b_
  * @retval k_ra8_err_invalid_state A required callback, buffer, or geometry
  *         field is NULL or zero.
  * @pre @p rd is non-NULL.
+ * @pre @p rd addresses a fully constructed reader, so each field read is initialized.
  * @post No reader or caller storage is modified.
+ * @post Success proves the table pointer, staging buffer, and chunk divisor are usable.
  * @note Pure and thread-safe for an immutable reader.
  * @since Version 0.1.0
  */
@@ -197,6 +183,22 @@ static ra8_err_t internal_validate_reader_table(const ra8_book_chunked_t* rd)
   return k_ra8_ok;
 }
 
+/**
+ * @brief Revalidate the open-reader invariants needed by strict validation.
+ * @details Recomputes chunk geometry, table bounds, monotonic compressed
+ *          extents, and payload addition before any cache read is attempted.
+ * @param[in] rd Candidate open reader.
+ * @return Reader-state validation status.
+ * @retval k_ra8_ok Geometry, callbacks, table, and staging are usable.
+ * @retval k_ra8_err_invalid_state The reader is partial or internally
+ * inconsistent.
+ * @pre @p rd is non-NULL.
+ * @pre The table remains readable for `chunk_count + 1` entries.
+ * @post No reader or caller storage is modified.
+ * @post Success proves every later table index and staging write is bounded.
+ * @note Pure and thread-safe for an immutable reader.
+ * @since Version 0.1.0
+ */
 RA8_INTERNAL
 static ra8_err_t internal_validate_reader(const ra8_book_chunked_t* rd)
 {

@@ -341,6 +341,7 @@ RA8_INTERNAL static ra8_err_t internal_close_compile_sources(ra8_err_t          
  * @pre @p blob has already passed ::ra8_book_validate.
  * @pre @p page_count is representable as a uint32_t.
  * @post No state is mutated; only @p blob's header is read.
+ * @post No diagnostic is emitted; the returned status is the only report.
  * @note Not thread-safe against a concurrent writer of @p blob.
  * @since 0.1.0
  */

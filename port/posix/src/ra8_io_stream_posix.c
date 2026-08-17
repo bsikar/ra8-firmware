@@ -106,7 +106,9 @@ RA8_INTERNAL static ra8_err_t internal_map_errno(int error_number)
  * @retval k_ra8_err_protocol_error The writer reported zero or excess bytes.
  * @retval other The mapped native write error.
  * @pre @p done is strictly less than @p length on entry.
+ * @pre @p bytes holds at least @p length readable bytes and @p writer is non-NULL.
  * @post On success without a retry, @p done advances by the bytes written.
+ * @post On any error return @p done is unchanged, so the caller cannot skip bytes.
  * @note Not thread-safe: mutates caller-owned scratch state.
  * @since 0.1.0
  */

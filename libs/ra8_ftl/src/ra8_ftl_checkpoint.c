@@ -384,6 +384,7 @@ RA8_INTERNAL static bool internal_bit_is_set(const uint8_t* bitmap, uint32_t bit
  * @pre @p phys was read from a live or canonical wire map entry.
  * @pre ftl->scratch addresses the same window as every other call this pass.
  * @post Scratch gains one marked bit when @p phys falls in the window.
+ * @post No FTL geometry, map, or media state outside the scratch bitmap is modified.
  * @note Not thread-safe; shares the caller's scratch workspace.
  * @since Version 0.1.0
  */

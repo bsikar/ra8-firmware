@@ -539,25 +539,6 @@ RA8_INTERNAL static void internal_report_cover_failure(ra8_err_t error)
 }
 
 /**
- * @brief Drive one prepared series through fetch, checkpoint, and export.
- * @details Selects the requested window, creates the fetch context, acquires a
- *          verified cover, saves state around the fetch, and packages results.
- * @param[in] r Validated series-run parameters.
- * @param[in] site Validated site descriptor.
- * @param[in] abs_dir Canonical series directory.
- * @param[in] state_path Complete state-file path.
- * @param[in,out] cache Bound persistent HTTP cache and index workspace.
- * @return Process-style status.
- * @retval 0 Fetch, state saves, and eligible exports all succeeded.
- * @retval 1 Selection, cover, fetch, state, or export work failed.
- * @pre All pointer arguments are non-NULL.
- * @pre Chapters and series state have been prepared.
- * @post A successful run durably checkpoints current state.
- * @post Failures are reported and never presented as successful export.
- * @note Not thread-safe because it owns the shared run composition state.
- * @since 0.1.0
- */
-/**
  * @brief Resolve the chapter-selection window for one prepared run.
  * @details Uses the complete prepared chapter list on an update run;
  *          otherwise selects the requested present/from-number window into
@@ -570,6 +551,7 @@ RA8_INTERNAL static void internal_report_cover_failure(ra8_err_t error)
  * @pre @p r and @p out_sel are non-NULL.
  * @pre The prepared chapter list and app diagnostic sink are available.
  * @post On failure a diagnostic explaining the empty selection was emitted.
+ * @post An update run selects the prepared chapter list itself, unmodified.
  * @note Not thread-safe; writes the shared selection-window scratch buffer.
  * @since Version 0.1.0
  */
@@ -590,6 +572,25 @@ RA8_INTERNAL static ra8_err_t internal_select_run_window(const series_run_t*    
   return k_ra8_ok;
 }
 
+/**
+ * @brief Drive one prepared series through fetch, checkpoint, and export.
+ * @details Selects the requested window, creates the fetch context, acquires a
+ *          verified cover, saves state around the fetch, and packages results.
+ * @param[in] r Validated series-run parameters.
+ * @param[in] site Validated site descriptor.
+ * @param[in] abs_dir Canonical series directory.
+ * @param[in] state_path Complete state-file path.
+ * @param[in,out] cache Bound persistent HTTP cache and index workspace.
+ * @return Process-style status.
+ * @retval 0 Fetch, state saves, and eligible exports all succeeded.
+ * @retval 1 Selection, cover, fetch, state, or export work failed.
+ * @pre All pointer arguments are non-NULL.
+ * @pre Chapters and series state have been prepared.
+ * @post A successful run durably checkpoints current state.
+ * @post Failures are reported and never presented as successful export.
+ * @note Not thread-safe because it owns the shared run composition state.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static int internal_run_prepared(const series_run_t* r,
                                               const mdl_site_t*   site,
                                               const char*         abs_dir,

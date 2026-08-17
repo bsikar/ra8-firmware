@@ -575,27 +575,6 @@ static ra8_err_t internal_exchk_set(ra8_fs_check_ctx_t* ctx,
 }
 
 /**
- * @brief Walk one exFAT directory, verifying and marking every live entry.
- *
- * @details Iterates a directory entry stream, dispatching system, file and
- *          directory sets. At the entry ceiling it performs one terminal probe:
- *          an exhausted allocation or immediate end marker is a valid exact-bound
- *          directory, while another live or deleted entry records scan truncation.
- *
- * @param[in,out] ctx   The scan context.
- * @param[in]     dir   The directory to walk.
- * @param[in,out] stack The directory worklist.
- * @return Error code.
- * @retval k_ra8_ok    The directory was walked.
- * @retval k_ra8_err_* Backend read failure.
- * @pre Every pointer is non-NULL; the mount is exFAT.
- * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
- * @post Every referenced cluster it names is marked; every set it holds verified.
- * @post No volume state is modified.
- * @note Bounded loop (NASA Rule 2): `k_exfat_scan_limit` entries.
- * @since 0.1.0
- */
-/**
  * @brief Dispatch one live File entry: truncation-checked, then set-verified.
  * @details A File entry's SecondaryCount declares how many more stream/name
  *          entries follow as one set. When that count would run past the
@@ -616,7 +595,9 @@ static ra8_err_t internal_exchk_set(ra8_fs_check_ctx_t* ctx,
  * @retval k_ra8_ok The set fit and verified, or a truncation was reported.
  * @retval k_ra8_err_* Backend read failure while assembling the set.
  * @pre @p ctx, @p cur, @p e, @p stack, and @p out_stop are non-NULL.
+ * @pre `cur->scanned` is at most `k_exfat_scan_limit`, so the remaining count cannot wrap.
  * @post @p out_stop is always written.
+ * @post No volume state is modified; only @p ctx counters, faults, and @p cur advance.
  * @note Bounded by the caller's scan ceiling (NASA Rule 2).
  * @since 0.1.0
  */
@@ -657,7 +638,9 @@ static ra8_err_t internal_exchk_scan_dir_file_entry(ra8_fs_check_ctx_t* ctx,
  *         was reported.
  * @retval k_ra8_err_* Backend read failure.
  * @pre @p ctx, @p cur, and @p dir are non-NULL.
+ * @pre @p cur has already reached the scan ceiling, so this is the classifying probe.
  * @post No volume state is modified.
+ * @post At most one further directory entry is consumed from @p cur.
  * @note Exactly one bounded read (NASA Rule 2).
  * @since 0.1.0
  */
@@ -681,6 +664,27 @@ static ra8_err_t internal_exchk_scan_dir_terminal(ra8_fs_check_ctx_t* ctx,
   return k_ra8_ok;
 }
 
+/**
+ * @brief Walk one exFAT directory, verifying and marking every live entry.
+ *
+ * @details Iterates a directory entry stream, dispatching system, file and
+ *          directory sets. At the entry ceiling it performs one terminal probe:
+ *          an exhausted allocation or immediate end marker is a valid exact-bound
+ *          directory, while another live or deleted entry records scan truncation.
+ *
+ * @param[in,out] ctx   The scan context.
+ * @param[in]     dir   The directory to walk.
+ * @param[in,out] stack The directory worklist.
+ * @return Error code.
+ * @retval k_ra8_ok    The directory was walked.
+ * @retval k_ra8_err_* Backend read failure.
+ * @pre Every pointer is non-NULL; the mount is exFAT.
+ * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
+ * @post Every referenced cluster it names is marked; every set it holds verified.
+ * @post No volume state is modified.
+ * @note Bounded loop (NASA Rule 2): `k_exfat_scan_limit` entries.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static ra8_err_t
 internal_exchk_scan_dir(ra8_fs_check_ctx_t* ctx, const exfat_dir_t* dir, exfat_dir_stack_t* stack)

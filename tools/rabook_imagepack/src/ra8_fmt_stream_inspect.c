@@ -234,25 +234,9 @@ internal_read_exact(const ra8_fmt_source_t* source, uint64_t offset, uint8_t* by
 }
 
 /**
- * @brief Emit one labelled hex/ASCII source window.
- * @details Reads through a fixed 16-byte row and renders stable offsets, hex, and ASCII.
- * @param[in] source Source object.
- * @param[in] report Report sink.
- * @param[in] label  Section label.
- * @param[in] offset Absolute source offset.
- * @param[in] len    Byte count.
- * @return Read or sink status.
- * @retval k_ra8_ok Complete labelled dump was emitted.
- * @retval other First exact-read or sink error.
- * @pre Source, report, label, and callbacks are non-null.
- * @pre Requested half-open source window is within `source->size`.
- * @post Success reads and reports exactly @p len source bytes.
- * @post No source or report binding is modified.
- * @note Uses bounded stack storage independent of dump length.
- * @since 0.1.0
- */
-/**
  * @brief Emit the label/length/offset header line for a hex/ASCII dump.
+ * @details Sequences the label, the decimal byte count, and the decimal source
+ * offset into one line, stopping at the first sink failure.
  * @param[in] report Report sink.
  * @param[in] label Section label.
  * @param[in] offset Absolute source offset.
@@ -261,7 +245,9 @@ internal_read_exact(const ra8_fmt_source_t* source, uint64_t offset, uint8_t* by
  * @retval k_ra8_ok The complete header line was emitted.
  * @retval other First injected sink failure.
  * @pre @p report and @p label are non-null.
+ * @pre @p label is NUL-terminated.
  * @post No source or report binding is modified.
+ * @post Failure prevents all later components from being offered.
  * @note Thread safety inherits the injected sink.
  * @since 0.1.0
  */
@@ -292,6 +278,9 @@ static ra8_err_t internal_hex_dump_header(const ra8_fmt_sink_t* report,
 
 /**
  * @brief Render one already-loaded hex/ASCII row: offset, hex bytes, ASCII.
+ * @details Emits the zero-padded offset, then ::k_fmt_text_hex_row hex columns
+ * in which every column past @p count is blanked, then the ASCII gutter where a
+ * byte outside the printable range renders as a period.
  * @param[in] report Report sink.
  * @param[in] offset Absolute source offset of @p row[0].
  * @param[in] row Loaded row bytes, exactly ::k_fmt_text_hex_row long.
@@ -301,7 +290,9 @@ static ra8_err_t internal_hex_dump_header(const ra8_fmt_sink_t* report,
  * @retval other First injected sink failure.
  * @pre @p report and @p row are non-null; @p count is at most
  *      ::k_fmt_text_hex_row.
+ * @pre @p row holds the @p count bytes already read from @p offset.
  * @post No source or report binding is modified.
+ * @post Failure prevents all later columns from being offered.
  * @note Thread safety inherits the injected sink.
  * @since 0.1.0
  */
@@ -342,6 +333,24 @@ static ra8_err_t internal_hex_dump_row(const ra8_fmt_sink_t* report,
   return rc;
 }
 
+/**
+ * @brief Emit one labelled hex/ASCII source window.
+ * @details Reads through a fixed 16-byte row and renders stable offsets, hex, and ASCII.
+ * @param[in] source Source object.
+ * @param[in] report Report sink.
+ * @param[in] label  Section label.
+ * @param[in] offset Absolute source offset.
+ * @param[in] len    Byte count.
+ * @return Read or sink status.
+ * @retval k_ra8_ok Complete labelled dump was emitted.
+ * @retval other First exact-read or sink error.
+ * @pre Source, report, label, and callbacks are non-null.
+ * @pre Requested half-open source window is within `source->size`.
+ * @post Success reads and reports exactly @p len source bytes.
+ * @post No source or report binding is modified.
+ * @note Uses bounded stack storage independent of dump length.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static ra8_err_t internal_hex_dump(const ra8_fmt_source_t* source,
                                    const ra8_fmt_sink_t*   report,
@@ -483,23 +492,9 @@ static ra8_err_t internal_geometry(const ra8_fmt_source_t* source,
 }
 
 /**
- * @brief Emit the verbose per-tile table.
- * @details Bounds output to the configured row ceiling and reports any elided count.
- * @param[in] records Completed audit records.
- * @param[in] count   Record count.
- * @param[in] report  Report sink.
- * @return Sink status.
- * @retval k_ra8_ok Header, bounded records, and elision notice were emitted.
- * @retval other First injected sink failure.
- * @pre @p records spans @p count completed audit records.
- * @pre @p report and its callback are non-null.
- * @post At most ::k_fmt_text_max_rows records are emitted.
- * @post Record storage is unchanged.
- * @note Output work is bounded even for the maximum legal atlas.
- * @since 0.1.0
- */
-/**
  * @brief Render one audit-record row of the verbose per-tile table.
+ * @details Emits the row index and the record's offset, length, payload, width,
+ * and height as fixed-width decimal columns, then the content hash in hex.
  * @param[in] report Report sink.
  * @param[in] index Zero-based row index, printed in the tile column.
  * @param[in] record Completed audit record for this row.
@@ -507,7 +502,9 @@ static ra8_err_t internal_geometry(const ra8_fmt_source_t* source,
  * @retval k_ra8_ok The complete row was emitted.
  * @retval other First injected sink failure.
  * @pre @p report and @p record are non-null.
+ * @pre @p record was completed by the JOF audit pass.
  * @post Record storage is unchanged.
+ * @post Failure prevents all later columns from being offered.
  * @note Thread safety inherits the injected sink.
  * @since 0.1.0
  */
@@ -544,6 +541,22 @@ static ra8_err_t internal_table_row(const ra8_fmt_sink_t*         report,
   return rc;
 }
 
+/**
+ * @brief Emit the verbose per-tile table.
+ * @details Bounds output to the configured row ceiling and reports any elided count.
+ * @param[in] records Completed audit records.
+ * @param[in] count   Record count.
+ * @param[in] report  Report sink.
+ * @return Sink status.
+ * @retval k_ra8_ok Header, bounded records, and elision notice were emitted.
+ * @retval other First injected sink failure.
+ * @pre @p records spans @p count completed audit records.
+ * @pre @p report and its callback are non-null.
+ * @post At most ::k_fmt_text_max_rows records are emitted.
+ * @post Record storage is unchanged.
+ * @note Output work is bounded even for the maximum legal atlas.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static ra8_err_t
 internal_table(const ra8_jof_audit_record_t* records, uint32_t count, const ra8_fmt_sink_t* report)

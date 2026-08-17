@@ -669,7 +669,9 @@ internal_compare(int input_fd, const host_input_identity_t* identity, ra8_fs_fil
  * @retval true @p out_identity is populated and the card file is written.
  * @retval false Open, size validation, streaming, or close failed.
  * @pre All strings are valid and @p mount is mounted.
+ * @pre @p minimum_bytes does not exceed @p maximum_bytes.
  * @post Every handle this call opened is closed regardless of outcome.
+ * @post The host input is opened read-only and is never modified.
  * @note Not thread-safe through the shared `ra8_fs` card handle.
  * @since 0.1.0
  */
@@ -713,7 +715,9 @@ RA8_INTERNAL static bool internal_mkfontimg_write(ra8_fs_mount_t*        mount,
  * @retval true Host and card contents match and the host input is unchanged.
  * @retval false Reopen, identity, open, size, or byte comparison failed.
  * @pre @p identity was populated by a prior ::internal_mkfontimg_write call.
+ * @pre All strings are valid and @p mount still holds @p card_name.
  * @post Every handle this call opened is closed regardless of outcome.
+ * @post Neither the host input nor the card file is modified; both open read-only.
  * @note Not thread-safe through the shared `ra8_fs` card handle.
  * @since 0.1.0
  */

@@ -236,8 +236,11 @@ internal_mdl_fetch_test_prepare_response(mock_net_t*          mock,
  * @retval k_ra8_err_busy The busy script fired.
  * @retval k_ra8_fail The failure-by-call-count or failure-by-URL script fired.
  * @pre @p f and @p handled are non-NULL.
+ * @pre @p url is NUL-terminated whenever @p f->fail_url is set.
  * @post @p resp and @p out_len are updated only when the corresponding
  * script fires and the pointer is non-NULL.
+ * @post `*handled` is false only when no script fired, and the returned
+ * status is then k_ra8_ok.
  * @note Test-only helper with no production ABI.
  * @since 0.1.0
  */

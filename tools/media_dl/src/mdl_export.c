@@ -192,7 +192,9 @@ RA8_INTERNAL static void internal_sort_pages(char names[][k_name_max], size_t co
  * @retval k_ra8_err_invalid_size The directory workspace reservation failed.
  * @retval other A capability query or directory open failure propagated.
  * @pre @p storage, @p dir, @p ws, and @p directory are non-NULL.
+ * @pre @p ws was initialized by ::mdl_export_workspace_init.
  * @post On success @p directory->is_open is true.
+ * @post On failure @p directory is not open and must not be closed.
  * @note Not thread-safe against concurrent directory mutation.
  * @since 0.1.0
  */

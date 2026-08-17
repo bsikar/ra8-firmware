@@ -96,7 +96,9 @@ internal_decode_entity(const char* s, size_t len, size_t* i, char* out_ch, bool*
  * @param[in] ch Character to append.
  * @return Nothing.
  * @pre @p out addresses @p cap writable bytes.
+ * @pre @p n and @p fits are non-NULL and already initialized.
  * @post `*n` always leaves room for a trailing NUL at `out[*n]`.
+ * @post @p fits is only ever cleared, never set back to true.
  * @note Pure bookkeeping; never itself writes the trailing NUL.
  * @since 0.1.0
  */

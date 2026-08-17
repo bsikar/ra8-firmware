@@ -414,7 +414,9 @@ RA8_INTERNAL static void internal_verify_artifacts(const char* dir, verify_stats
  * @retval false A diagnostic write hit the shared I/O error latch; the
  *         caller must abort the whole series verification.
  * @pre All pointer arguments are non-NULL.
+ * @pre @p rec->rel_path is relative to @p series_dir and NUL-terminated.
  * @post Exactly one counter increases when this returns true.
+ * @post Neither the page file nor the recorded page entry is modified.
  * @note Not thread-safe; shares the application's I/O error latch.
  * @since 0.1.0
  */
@@ -571,7 +573,10 @@ RA8_INTERNAL static void internal_verify_library_root(const char* canonical, ver
  * @retval k_ra8_ok The complete summary line was written.
  * @retval other The first stream write failure.
  * @pre @p output and @p st are non-NULL.
+ * @pre Every counter in @p st already holds its final value.
  * @post Success writes exactly one terminated summary line.
+ * @post A failure preserves the first failing fragment's status and writes
+ *       nothing after it.
  * @note Not thread-safe for a shared stream.
  * @since 0.1.0
  */
