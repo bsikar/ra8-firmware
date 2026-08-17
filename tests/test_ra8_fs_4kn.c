@@ -261,10 +261,10 @@ RA8_INTERNAL static void internal_fkn_pattern(uint8_t* buf, uint32_t len, uint8_
 */
 RA8_INTERNAL static void internal_fkn_file_roundtrip(ra8_fs_mount_t* m)
 {
-  static uint8_t out[k_fkn_payload];
-  static uint8_t in[k_fkn_payload];
-  internal_fkn_pattern(out, (uint32_t)k_fkn_payload, (uint8_t)k_fkn_seed);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(m, "DATA.BIN", out, (uint32_t)k_fkn_payload));
+  static uint8_t s_out[k_fkn_payload];
+  static uint8_t s_in[k_fkn_payload];
+  internal_fkn_pattern(s_out, (uint32_t)k_fkn_payload, (uint8_t)k_fkn_seed);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(m, "DATA.BIN", s_out, (uint32_t)k_fkn_payload));
 
   ra8_fs_file_t* f   = nullptr;
   uint32_t       got = 0U;
@@ -272,9 +272,9 @@ RA8_INTERNAL static void internal_fkn_file_roundtrip(ra8_fs_mount_t* m)
   uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(k_fkn_payload, size);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, in, (uint32_t)k_fkn_payload, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_in, (uint32_t)k_fkn_payload, &got));
   TEST_ASSERT_EQ(k_fkn_payload, got);
-  TEST_ASSERT_EQ(0, memcmp(in, out, (size_t)k_fkn_payload));
+  TEST_ASSERT_EQ(0, memcmp(s_in, s_out, (size_t)k_fkn_payload));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   /* Truncate both directions; the grown gap reads as zeros. */
@@ -285,9 +285,9 @@ RA8_INTERNAL static void internal_fkn_file_roundtrip(ra8_fs_mount_t* m)
   TEST_ASSERT_EQ(k_fkn_trunc_down, size);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(m, "DATA.BIN", k_ra8_fs_mode_read, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, in, (uint32_t)k_fkn_trunc_down, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_in, (uint32_t)k_fkn_trunc_down, &got));
   TEST_ASSERT_EQ(k_fkn_trunc_down, got);
-  TEST_ASSERT_EQ(0, memcmp(in, out, (size_t)k_fkn_trunc_down));
+  TEST_ASSERT_EQ(0, memcmp(s_in, s_out, (size_t)k_fkn_trunc_down));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(m, "DATA.BIN"));
@@ -412,18 +412,18 @@ RA8_INTERNAL static void internal_test_4kn_exfat_roundtrip(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(m, "/books"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(m, "/books/scifi"));
   internal_fkn_file_roundtrip(m);
-  static uint8_t nested[k_fkn_trunc_down];
-  internal_fkn_pattern(nested, (uint32_t)k_fkn_trunc_down, (uint8_t)k_fkn_seed);
+  static uint8_t s_nested[k_fkn_trunc_down];
+  internal_fkn_pattern(s_nested, (uint32_t)k_fkn_trunc_down, (uint8_t)k_fkn_seed);
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_fs_write_file(m, "/books/scifi/a.txt", nested, (uint32_t)k_fkn_trunc_down));
+                 ra8_fs_write_file(m, "/books/scifi/a.txt", s_nested, (uint32_t)k_fkn_trunc_down));
   ra8_fs_stat_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(m, "/books/scifi/a.txt", &st));
   TEST_ASSERT_EQ(k_fkn_trunc_down, st.size_bytes);
 
   /* The built-in volume check agrees the 4Kn volume is self-consistent. */
-  static uint8_t        chk_bitmap[k_fkn_blocks_exfat / 8U];
+  static uint8_t        s_chk_bitmap[k_fkn_blocks_exfat / 8U];
   ra8_fs_check_report_t rep = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_check(m, chk_bitmap, (uint32_t)sizeof(chk_bitmap), &rep));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_check(m, s_chk_bitmap, (uint32_t)sizeof(s_chk_bitmap), &rep));
   TEST_ASSERT_EQ(0U, rep.faults_total);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(m));
   internal_fkn_dump_image("fourkn_exfat");

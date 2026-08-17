@@ -324,16 +324,16 @@ static ra8_err_t internal_parse_archive(mz_zip_archive*  zip,
   /* Static rather than auto: 4 KiB on the stack would blow the
    * NASA-rule stack-usage budget. EPUB parser is single-threaded
    * init-context-only, so the static scratch buffer is safe. */
-  static uint8_t container_buf[k_ra8_epub_container_xml_buf];
+  static uint8_t s_container_buf[k_ra8_epub_container_xml_buf];
   size_t         got = 0U;
   ra8_err_t      err =
-    internal_extract(zip, s_container_path, container_buf, sizeof(container_buf), &got);
+    internal_extract(zip, s_container_path, s_container_buf, sizeof(s_container_buf), &got);
   if (err != k_ra8_ok) {
     return err;
   }
 
   ra8_epub_container_result_t cres = {};
-  err = priv_ra8_epub_xml_parse_container(container_buf, got, &cres, &out_book->xml_workspace);
+  err = priv_ra8_epub_xml_parse_container(s_container_buf, got, &cres, &out_book->xml_workspace);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -452,8 +452,8 @@ static ra8_err_t internal_finish_open(mz_zip_archive* zip, ra8_epub_book_t* out_
   /* Static (file-scope) OPF scratch keeps the firmware stack frame small --
    * the OPF blob can be tens of KiB and would otherwise blow the per-thread
    * stack budget. Single-threaded init-context use makes the static safe. */
-  static uint8_t opf_buf[k_ra8_epub_opf_xml_buf];
-  ra8_err_t      err = internal_parse_archive(zip, out_book, opf_buf, sizeof(opf_buf));
+  static uint8_t s_opf_buf[k_ra8_epub_opf_xml_buf];
+  ra8_err_t      err = internal_parse_archive(zip, out_book, s_opf_buf, sizeof(s_opf_buf));
   if (err != k_ra8_ok) {
     internal_zip_destroy(zip);
     return err;

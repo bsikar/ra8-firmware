@@ -47,7 +47,7 @@
  * ::g_setup_packet_count stays at 0, the re-arm is firing but the IP
  * is still failing to latch SETUP -- look at PIPECFG / DCPMAXP via
  * JLink. If the counter never grows, the DVST -> Default branch
- * isn't being taken (check ::priv_dvst_state_history).
+ * isn't being taken (check ::g_dvst_state_history).
  *
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
@@ -217,7 +217,7 @@ volatile uint16_t g_intsts0_at_sqmon_edge = 0U;
  *        Default-state tight-poll for VALID (HUM Ch 37.2.18 p 2081,
  *        VALID = bit 3, mask 0x0008).
  *
- * @details Distinct from ::priv_intsts0_observed_or (which OR-accumulates
+ * @details Distinct from ::g_intsts0_observed_or (which OR-accumulates
  * forever and saturates after the first VBSE storm). This probe is
  * over-written every Default-state DVST tick with the live INTSTS0
  * read just before the tight-poll loop, so a JLink reader can answer

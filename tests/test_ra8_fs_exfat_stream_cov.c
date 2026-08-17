@@ -255,10 +255,10 @@ RA8_INTERNAL static void internal_test_grow_bitmap_probe_read_fails(void)
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  static uint8_t buf[k_flt_payload];
-  memset(buf, (int)k_xsf_fill_a, sizeof buf);
+  static uint8_t s_buf[k_flt_payload];
+  memset(s_buf, (int)k_xsf_fill_a, sizeof s_buf);
   internal_flt_arm_read(k_flt_region_bitmap);
-  TEST_ASSERT(ra8_fs_write(f, buf, (uint32_t)k_xsf_cross_len) != k_ra8_ok);
+  TEST_ASSERT(ra8_fs_write(f, s_buf, (uint32_t)k_xsf_cross_len) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
@@ -293,10 +293,10 @@ RA8_INTERNAL static void internal_test_grow_bitmap_mark_write_fails(void)
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  static uint8_t buf[k_flt_payload];
-  memset(buf, (int)k_xsf_fill_a, sizeof buf);
+  static uint8_t s_buf[k_flt_payload];
+  memset(s_buf, (int)k_xsf_fill_a, sizeof s_buf);
   internal_flt_arm_write(k_flt_region_bitmap);
-  TEST_ASSERT(ra8_fs_write(f, buf, (uint32_t)k_xsf_cross_len) != k_ra8_ok);
+  TEST_ASSERT(ra8_fs_write(f, s_buf, (uint32_t)k_xsf_cross_len) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
@@ -332,10 +332,10 @@ RA8_INTERNAL static void internal_test_chain_materialize_fat_write_fails(void)
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  static uint8_t buf[k_flt_payload];
-  memset(buf, (int)k_xsf_fill_b, sizeof buf);
+  static uint8_t s_buf[k_flt_payload];
+  memset(s_buf, (int)k_xsf_fill_b, sizeof s_buf);
   internal_flt_arm_write(k_flt_region_fat);
-  TEST_ASSERT(ra8_fs_write(f, buf, (uint32_t)k_xsf_cross_len) != k_ra8_ok);
+  TEST_ASSERT(ra8_fs_write(f, s_buf, (uint32_t)k_xsf_cross_len) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
@@ -369,18 +369,18 @@ RA8_INTERNAL static void internal_test_data_sector_io_fails(void)
   internal_flt_mount(&h);
   internal_flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
 
-  static uint8_t buf[k_flt_payload];
-  memset(buf, (int)k_xsf_fill_c, sizeof buf);
+  static uint8_t s_buf[k_flt_payload];
+  memset(s_buf, (int)k_xsf_fill_c, sizeof s_buf);
   ra8_fs_file_t* f = nullptr;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
   internal_flt_arm_read(k_flt_region_data);
-  TEST_ASSERT(ra8_fs_write(f, buf, (uint32_t)k_flt_small) != k_ra8_ok);
+  TEST_ASSERT(ra8_fs_write(f, s_buf, (uint32_t)k_flt_small) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
   internal_flt_arm_write(k_flt_region_data);
-  TEST_ASSERT(ra8_fs_write(f, buf, (uint32_t)k_flt_small) != k_ra8_ok);
+  TEST_ASSERT(ra8_fs_write(f, s_buf, (uint32_t)k_flt_small) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
@@ -630,9 +630,9 @@ RA8_INTERNAL static void internal_test_survey_rejects_broken_chain(void)
   /* Force A.BIN to fragment, so it becomes FAT-chained and the survey walks. */
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  static uint8_t buf[k_flt_payload];
-  memset(buf, (int)k_xsf_fill_d, sizeof buf);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, buf, (uint32_t)k_xsf_cross_len));
+  static uint8_t s_buf[k_flt_payload];
+  memset(s_buf, (int)k_xsf_fill_d, sizeof s_buf);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_buf, (uint32_t)k_xsf_cross_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   /* Poke the FAT under an UNMOUNTED volume: the driver reads the FAT through a
@@ -820,9 +820,9 @@ RA8_INTERNAL static void internal_test_cluster_at_chain_ends_early(void)
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  static uint8_t buf[k_flt_payload];
-  memset(buf, (int)k_xsf_fill_e, sizeof buf);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, buf, (uint32_t)k_xsf_cross_len));
+  static uint8_t s_buf[k_flt_payload];
+  memset(s_buf, (int)k_xsf_fill_e, sizeof s_buf);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_buf, (uint32_t)k_xsf_cross_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   /* Both arms overwrite a byte in the SECOND cluster, so the walk really has a

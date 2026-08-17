@@ -170,8 +170,8 @@ RA8_INTERNAL static ra8_err_t internal_t_pull(void* ctx, uint8_t* buf, size_t ca
  * function-pointer interface (the DI seam under test), so its signature is
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /** @brief Provide the file-local t pull fail test helper. @details Exercises the t pull fail path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] ctx Injected callback context whose ownership remains with the test. @param[out] buf Byte buffer read or written by the exercised callback. @param[in] cap Capacity of the associated byte buffer in bytes. @param[out] got Receives the number of bytes transferred. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 RA8_INTERNAL static ra8_err_t internal_t_pull_fail(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   (void)ctx;
@@ -317,12 +317,12 @@ RA8_INTERNAL static ra8_err_t internal_produce(uint16_t        tile_w,
                                                size_t          chunk,
                                                ra8_jof_info_t* info)
 {
-  static t_pull_t local_pull;
-  local_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = chunk};
-  s_store    = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  static t_pull_t s_pull;
+  s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = chunk};
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull       = internal_t_pull,
-    .pull_ctx   = &local_pull,
+    .pull_ctx   = &s_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &s_store,
     .tile_w     = tile_w,
@@ -477,13 +477,13 @@ RA8_INTERNAL static void internal_produce_reject_budget(void)
   /* Work arena too small (fail-closed budget). */
   {
     internal_png_build(k_t_png_w, k_t_png_h, 0U, false);
-    static t_pull_t local_pull;
-    local_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-    s_store    = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+    static t_pull_t s_pull;
+    s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
+    s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
     ra8_jof_info_t              info = {};
     const ra8_jof_produce_cfg_t cfg  = {
       .pull     = internal_t_pull,
-      .pull_ctx = &local_pull,
+      .pull_ctx = &s_pull,
       .sink     = ra8_jof_memstore_sink,
       .sink_ctx = &s_store,
       .tile_w   = (uint16_t)k_t_tile,
@@ -497,13 +497,13 @@ RA8_INTERNAL static void internal_produce_reject_budget(void)
   /* Sink runs out of room (store cap tiny) -> no_mem propagates. */
   {
     internal_png_build(k_t_png_w, k_t_png_h, 0U, false);
-    static t_pull_t local_pull;
-    local_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-    s_store    = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = k_t_starved_store_cap, .len = 0U};
+    static t_pull_t s_pull;
+    s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
+    s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = k_t_starved_store_cap, .len = 0U};
     ra8_jof_info_t              info = {};
     const ra8_jof_produce_cfg_t cfg  = {
       .pull     = internal_t_pull,
-      .pull_ctx = &local_pull,
+      .pull_ctx = &s_pull,
       .sink     = ra8_jof_memstore_sink,
       .sink_ctx = &s_store,
       .tile_w   = (uint16_t)k_t_tile,

@@ -284,14 +284,14 @@ RA8_INTERNAL static void internal_expect_patched(ra8_fs_mount_t* h, uint32_t at,
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "PATCH.BIN", k_ra8_fs_mode_read, &f));
-  static uint8_t back[k_xs_multi_cluster];
+  static uint8_t s_back[k_xs_multi_cluster];
   uint32_t       got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, back, (uint32_t)k_xs_multi_cluster, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_back, (uint32_t)k_xs_multi_cluster, &got));
   TEST_ASSERT_EQ(k_xs_multi_cluster, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  internal_stream_expect_span(back, at, 0U, (uint8_t)k_xs_seed_a);
-  internal_stream_expect_span(&back[at], len, at, (uint8_t)k_xs_seed_b);
-  internal_stream_expect_span(&back[at + len],
+  internal_stream_expect_span(s_back, at, 0U, (uint8_t)k_xs_seed_a);
+  internal_stream_expect_span(&s_back[at], len, at, (uint8_t)k_xs_seed_b);
+  internal_stream_expect_span(&s_back[at + len],
                               (uint32_t)k_xs_multi_cluster - (at + len),
                               at + len,
                               (uint8_t)k_xs_seed_a);
@@ -338,9 +338,9 @@ RA8_INTERNAL static void internal_test_stream_seek_overwrite(void)
   const uint32_t patch_len = (uint32_t)k_xs_chunk;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "PATCH.BIN", k_ra8_fs_mode_append, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, patch_at));
-  static uint8_t patch[k_xs_chunk];
-  internal_stream_fill_at(patch, patch_len, patch_at, (uint8_t)k_xs_seed_b);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, patch, patch_len));
+  static uint8_t s_patch[k_xs_chunk];
+  internal_stream_fill_at(s_patch, patch_len, patch_at, (uint8_t)k_xs_seed_b);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_patch, patch_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   const uint32_t strm = internal_stream_strm0_off(h);
@@ -390,17 +390,17 @@ RA8_INTERNAL static void internal_test_stream_interleaved_handles(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_write, &fa));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "B.BIN", k_ra8_fs_mode_write, &fb));
 
-  static uint8_t buf[k_xs_chunk];
+  static uint8_t s_buf[k_xs_chunk];
   uint32_t       done = 0U;
   while (done < (uint32_t)k_xs_multi_cluster) {
     uint32_t n = (uint32_t)k_xs_multi_cluster - done;
     if (n > (uint32_t)k_xs_chunk) {
       n = (uint32_t)k_xs_chunk;
     }
-    internal_stream_fill_at(buf, n, done, (uint8_t)k_xs_seed_a);
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(fa, buf, n));
-    internal_stream_fill_at(buf, n, done, (uint8_t)k_xs_seed_b);
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(fb, buf, n));
+    internal_stream_fill_at(s_buf, n, done, (uint8_t)k_xs_seed_a);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(fa, s_buf, n));
+    internal_stream_fill_at(s_buf, n, done, (uint8_t)k_xs_seed_b);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(fb, s_buf, n));
     done += n;
   }
 

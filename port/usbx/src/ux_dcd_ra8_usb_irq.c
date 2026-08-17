@@ -38,7 +38,7 @@
 #include "ux_utility.h"
 
 /**
- * @var priv_ctrt_irq_count
+ * @var g_ctrt_irq_count
  * @brief Counter of INTSTS0.CTRT events seen by the dispatcher.
  *
  * @details Bisect probe. Non-zero after host SETUP means the chip is
@@ -48,10 +48,10 @@
  * @note Written only by ::ux_dcd_ra8_usb_irq.
  * @since 0.1.0
  */
-volatile uint32_t priv_ctrt_irq_count = 0U;
+volatile uint32_t g_ctrt_irq_count = 0U;
 
 /**
- * @var priv_intsts0_last_dispatch
+ * @var g_intsts0_last_dispatch
  * @brief Most-recent INTSTS0 snapshot fed to ::ux_dcd_ra8_usb_irq.
  *
  * @details Live-debug probe. Read this from JLink to see the current
@@ -61,35 +61,35 @@ volatile uint32_t priv_ctrt_irq_count = 0U;
  * @note Written only by ::ux_dcd_ra8_usb_irq.
  * @since 0.1.0
  */
-volatile uint16_t priv_intsts0_last_dispatch = 0U;
+volatile uint16_t g_intsts0_last_dispatch = 0U;
 
 /**
  * @enum ra8_usb_dcd_intsts0_hist_t
  * @brief Sizing for the INTSTS0 / CTSQ history rings.
  */
 typedef enum : uint8_t {
-  k_ra8_usb_dcd_intsts0_hist_n = 8U, /**< Slots in priv_intsts0_snapshot/priv_ctsq_history. */
+  k_ra8_usb_dcd_intsts0_hist_n = 8U, /**< Slots in g_intsts0_snapshot/g_ctsq_history. */
 } ra8_usb_dcd_intsts0_hist_t;
 
 /**
- * @var priv_intsts0_valid_count
+ * @var g_intsts0_valid_count
  * @brief Number of dispatch ticks where INTSTS0.VALID was observed.
  *
  * @details Bisect probe. Distinguishes "controller never latched a
  * SETUP" (count == 0) from "controller latched but our CTRT edge was
- * lost" (count > 0 while ::priv_ctrt_irq_count grows). HUM Ch 36.2.14
+ * lost" (count > 0 while ::g_ctrt_irq_count grows). HUM Ch 36.2.14
  * INTSTS0.VALID = bit 3, p 1985.
  *
  * @note Single-writer (::ux_dcd_ra8_usb_irq).
  * @since 0.1.0
  */
-volatile uint32_t priv_intsts0_valid_count = 0U;
+volatile uint32_t g_intsts0_valid_count = 0U;
 
 /**
- * @var priv_intsts0_ctrt_count
+ * @var g_intsts0_ctrt_count
  * @brief Number of dispatch ticks where INTSTS0.CTRT was observed.
  *
- * @details Bisect probe. Identical to ::priv_ctrt_irq_count but bumped on
+ * @details Bisect probe. Identical to ::g_ctrt_irq_count but bumped on
  * the snapshot value before the CTRT branch decides whether to handle
  * the SETUP -- useful for detecting CTRT latches that hit a snapshot
  * but failed the handler's CTSQ decode. HUM Ch 36.2.14 p 1985.
@@ -97,35 +97,35 @@ volatile uint32_t priv_intsts0_valid_count = 0U;
  * @note Single-writer (::ux_dcd_ra8_usb_irq).
  * @since 0.1.0
  */
-volatile uint32_t priv_intsts0_ctrt_count = 0U;
+volatile uint32_t g_intsts0_ctrt_count = 0U;
 
 /**
- * @var priv_intsts0_snapshot
+ * @var g_intsts0_snapshot
  * @brief Ring buffer of the last 8 INTSTS0 values seen by the worker
  *        on ticks where any of CTRT/VALID/DVST were set.
  *
  * @details JLink-readable trace. Index of next write slot is
- * ``priv_intsts0_snapshot_count % k_ra8_usb_dcd_intsts0_hist_n``. Only
+ * ``g_intsts0_snapshot_count % k_ra8_usb_dcd_intsts0_hist_n``. Only
  * "interesting" ticks are recorded so a noisy idle loop doesn't
  * scroll a real SETUP edge out of the ring. HUM Ch 36.2.14 p 1985.
  *
  * @note Single-writer (::ux_dcd_ra8_usb_irq).
  * @since 0.1.0
  */
-volatile uint16_t priv_intsts0_snapshot[(uint32_t)k_ra8_usb_dcd_intsts0_hist_n] = {};
+volatile uint16_t g_intsts0_snapshot[(uint32_t)k_ra8_usb_dcd_intsts0_hist_n] = {};
 
 /**
- * @var priv_intsts0_snapshot_count
+ * @var g_intsts0_snapshot_count
  * @brief Total interesting INTSTS0 snapshots seen; modulo
  *        ::k_ra8_usb_dcd_intsts0_hist_n is the next write slot.
  *
  * @note Single-writer (::ux_dcd_ra8_usb_irq).
  * @since 0.1.0
  */
-volatile uint32_t priv_intsts0_snapshot_count = 0U;
+volatile uint32_t g_intsts0_snapshot_count = 0U;
 
 /**
- * @var priv_ctsq_history
+ * @var g_ctsq_history
  * @brief Ring buffer of the last 8 INTSTS0.CTSQ[2:0] values observed
  *        with CTRT or VALID asserted.
  *
@@ -135,10 +135,10 @@ volatile uint32_t priv_intsts0_snapshot_count = 0U;
  * @note Single-writer (::ux_dcd_ra8_usb_irq).
  * @since 0.1.0
  */
-volatile uint8_t priv_ctsq_history[(uint32_t)k_ra8_usb_dcd_intsts0_hist_n] = {};
+volatile uint8_t g_ctsq_history[(uint32_t)k_ra8_usb_dcd_intsts0_hist_n] = {};
 
 /**
- * @var priv_intsts0_observed_or
+ * @var g_intsts0_observed_or
  * @brief Bitwise OR of every INTSTS0 value ever fed to ::ux_dcd_ra8_usb_irq.
  *
  * @details Definitive bisect probe. Read this once via JLink and check
@@ -151,13 +151,13 @@ volatile uint8_t priv_ctsq_history[(uint32_t)k_ra8_usb_dcd_intsts0_hist_n] = {};
  * @note Single-writer (::ux_dcd_ra8_usb_irq).
  * @since 0.1.0
  */
-volatile uint16_t priv_intsts0_observed_or = 0U;
+volatile uint16_t g_intsts0_observed_or = 0U;
 
 /**
- * @var priv_dvsq_history
+ * @var g_dvsq_history
  * @brief Per-snapshot DVSQ[2:0] field, pre-decoded for JLink readers.
  *
- * @details Companion to ::priv_intsts0_snapshot. Slot ``i`` holds
+ * @details Companion to ::g_intsts0_snapshot. Slot ``i`` holds
  * ``(intsts0[i] >> 4) & 0x07``, i.e. 0=Powered, 1=Default, 2=Address,
  * 3=Configured, 4..7=Suspend (per HUM Ch 36.2.16 p 1986).
  * Saves the human reader from mentally decoding the raw bits.
@@ -165,7 +165,7 @@ volatile uint16_t priv_intsts0_observed_or = 0U;
  * @note Single-writer (::ux_dcd_ra8_usb_irq).
  * @since 0.1.0
  */
-volatile uint8_t priv_dvsq_history[(uint32_t)k_ra8_usb_dcd_intsts0_hist_n] = {};
+volatile uint8_t g_dvsq_history[(uint32_t)k_ra8_usb_dcd_intsts0_hist_n] = {};
 
 /* Auto-echo support: lets the bridge mirror data from one OUT pipe to one
  * IN pipe directly inside the ISR, without involving USBX worker threads.
@@ -176,22 +176,22 @@ typedef enum : uint16_t {
   k_ux_dcd_ra8_usb_auto_echo_max = 512U, /**< Ux dcd RA8 USB auto echo maximum. */
 } ux_dcd_ra8_usb_auto_echo_cfg_t;
 
-volatile uint32_t priv_dcd_auto_echo_drain_ok = 0U;
+volatile uint32_t g_dcd_auto_echo_drain_ok = 0U;
 
-volatile uint32_t priv_dcd_auto_echo_drain_skip = 0U;
+volatile uint32_t g_dcd_auto_echo_drain_skip = 0U;
 
-volatile uint32_t priv_dcd_auto_echo_tx_ok = 0U;
+volatile uint32_t g_dcd_auto_echo_tx_ok = 0U;
 
-volatile uint32_t priv_dcd_auto_echo_tx_err = 0U;
+volatile uint32_t g_dcd_auto_echo_tx_err = 0U;
 
-volatile uint16_t priv_dcd_auto_echo_last_len = 0U;
+volatile uint16_t g_dcd_auto_echo_last_len = 0U;
 
 static uint8_t s_dcd_auto_echo_buf[k_ux_dcd_ra8_usb_auto_echo_max];
 
 /**
  * @brief Record per-bit IRQ counters and the JLink-visible event ring.
  *
- * @details Bumps ``priv_intsts0_valid_count`` / ``priv_intsts0_ctrt_count`` /
+ * @details Bumps ``g_intsts0_valid_count`` / ``g_intsts0_ctrt_count`` /
  * ``g_setup_token_observed`` then, when any event bit (CTRT / VALID /
  * DVST) is set, snapshots the wire-format INTSTS0 along with the
  * decoded CTSQ and DVSQ fields into the round-robin history ring (HUM
@@ -215,24 +215,24 @@ RA8_INTERNAL static void internal_irq_record_snapshot(uint16_t intsts0)
   const uint16_t valid_bit = (uint16_t)k_ra8_intsts0_mask_valid;
 
   if ((intsts0 & valid_bit) != 0U) {
-    priv_intsts0_valid_count++;
+    g_intsts0_valid_count++;
     /* VALID = "USB Request Reception Flag" (HUM Ch 37.2.18 p 2081);
      * fold into the canonical SETUP-arrival counter. */
     g_setup_token_observed++;
   }
   if ((intsts0 & ctrt_bit) != 0U) {
-    priv_intsts0_ctrt_count++;
+    g_intsts0_ctrt_count++;
   }
   const uint16_t interesting_mask = (uint16_t)(ctrt_bit | valid_bit | dvst_bit);
   if ((intsts0 & interesting_mask) != 0U) {
     const uint8_t slot =
-      (uint8_t)(priv_intsts0_snapshot_count % (uint32_t)k_ra8_usb_dcd_intsts0_hist_n);
-    priv_intsts0_snapshot[slot] = intsts0;
-    priv_ctsq_history[slot]     = (uint8_t)(intsts0 & (uint16_t)k_ra8_intsts0_mask_ctsq);
+      (uint8_t)(g_intsts0_snapshot_count % (uint32_t)k_ra8_usb_dcd_intsts0_hist_n);
+    g_intsts0_snapshot[slot] = intsts0;
+    g_ctsq_history[slot]     = (uint8_t)(intsts0 & (uint16_t)k_ra8_intsts0_mask_ctsq);
     /* DVSQ field is bits 6:4 (HUM Ch 36.2.16 p 1986). */
-    priv_dvsq_history[slot] =
+    g_dvsq_history[slot] =
       (uint8_t)((intsts0 & (uint16_t)k_ra8_intsts0_mask_dvsq) >> (uint8_t)k_ra8_int0_dvsq_shift);
-    priv_intsts0_snapshot_count++;
+    g_intsts0_snapshot_count++;
   }
 }
 
@@ -276,12 +276,12 @@ RA8_INTERNAL static void internal_irq_auto_echo(uint8_t i)
     const ra8_err_t qo =
       ra8_usb_queue_out(g_dcd.speed, i, s_dcd_auto_echo_buf, &len, /* rearm */ true);
     if (qo == k_ra8_ok && len > 0U) {
-      priv_dcd_auto_echo_drain_ok++;
-      priv_dcd_auto_echo_last_len = len;
-      const uint16_t out_mps      = g_dcd.pipes[i].max_pkt;
+      g_dcd_auto_echo_drain_ok++;
+      g_dcd_auto_echo_last_len = len;
+      const uint16_t out_mps   = g_dcd.pipes[i].max_pkt;
       if (ra8_usb_queue_in(g_dcd.speed, g_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, len) ==
           k_ra8_ok) {
-        priv_dcd_auto_echo_tx_ok++;
+        g_dcd_auto_echo_tx_ok++;
         /* If the data packet was exactly MPS, follow with a ZLP so the
          * host URB completes; otherwise the host waits for a short
          * packet that never arrives. */
@@ -289,10 +289,10 @@ RA8_INTERNAL static void internal_irq_auto_echo(uint8_t i)
           (void)ra8_usb_queue_in(g_dcd.speed, g_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, 0U);
         }
       } else {
-        priv_dcd_auto_echo_tx_err++;
+        g_dcd_auto_echo_tx_err++;
       }
     } else {
-      priv_dcd_auto_echo_drain_skip++;
+      g_dcd_auto_echo_drain_skip++;
       (void)ra8_usb_rearm_out_pipe(g_dcd.speed, i);
     }
   }
@@ -712,8 +712,8 @@ void ux_dcd_ra8_usb_irq(ra8_usb_speed_t speed, uint16_t intsts0)
     return;
   }
 
-  priv_intsts0_last_dispatch = intsts0;
-  priv_intsts0_observed_or   = (uint16_t)(priv_intsts0_observed_or | intsts0);
+  g_intsts0_last_dispatch = intsts0;
+  g_intsts0_observed_or   = (uint16_t)(g_intsts0_observed_or | intsts0);
 
   internal_irq_record_snapshot(intsts0);
 
@@ -742,7 +742,7 @@ void ux_dcd_ra8_usb_irq(ra8_usb_speed_t speed, uint16_t intsts0)
   /* SETUP / chapter-9 path runs AFTER DVST so the busreset_rearm
    * has already restored DCP defaults. */
   if (have_ctrt) {
-    priv_ctrt_irq_count++;
+    g_ctrt_irq_count++;
     priv_handle_ctrt(speed, intsts0);
   }
   /* VALID-without-CTRT fallback (HUM Ch 36.2.14 p 1985): the polled
