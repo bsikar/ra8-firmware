@@ -85,11 +85,15 @@ RA8_INTERNAL static void internal_put32(uint8_t* bytes, uint32_t offset, uint32_
  */
 RA8_INTERNAL static void internal_build_elf(uint8_t bytes[k_test_elf_bytes])
 {
+  /* Binary ELF content, not C strings: EI_MAG is immediately followed by
+   * EI_CLASS, the string table carries its own two terminators inside the
+   * bytes below, and the PT_LOAD payload is exactly p_filesz long. */
+  static const uint8_t elf_magic[] = {0x7FU, 'E', 'L', 'F'};
+  static const uint8_t str_table[] =
+    {0U, 't', 'e', 's', 't', '_', 's', 'y', 'm', 'b', 'o', 'l', 0U};
+  static const uint8_t load_payload[] = {'L', 'O', 'A', 'D', 'D', 'A', 'T', 'A'};
   (void)memset(bytes, 0, k_test_elf_bytes);
-  (void)memcpy(bytes,
-               "\x7F"
-               "ELF",
-               4U);
+  (void)memcpy(bytes, elf_magic, sizeof(elf_magic));
   bytes[4] = 1U;
   bytes[5] = 1U;
   internal_put16(bytes, k_elf_e_machine_off, k_elf_em_arm);
@@ -119,8 +123,8 @@ RA8_INTERNAL static void internal_build_elf(uint8_t bytes[k_test_elf_bytes])
   internal_put32(bytes, k_test_sym_offset + 20U, 0x1235U);
   internal_put32(bytes, k_test_sym_offset + 24U, 4U);
   bytes[k_test_sym_offset + 28U] = 2U;
-  (void)memcpy(&bytes[k_test_str_offset], "\0test_symbol\0", 13U);
-  (void)memcpy(&bytes[k_test_segment_offset], "LOADDATA", 8U);
+  (void)memcpy(&bytes[k_test_str_offset], str_table, sizeof(str_table));
+  (void)memcpy(&bytes[k_test_segment_offset], load_payload, sizeof(load_payload));
 }
 
 /**
