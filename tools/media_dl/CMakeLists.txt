@@ -352,6 +352,30 @@ target_sources(
 )
 mdl_add_unit_test(test_media_dl_metadata tests/test_media_dl_metadata.c)
 
+# Progress reporting and chapter packing. Both units were linked ONLY into the
+# media_dl executable, so their only coverage came from the end-to-end HTTP
+# integration script -- which is why they sat near a third of their lines. They
+# are pure over an injected ra8_io_stream_t sink and a storage facade, so they
+# unit-test cleanly; this target adds them plus the transitive closure that
+# mdl_fetch.c drags in (the same set test_media_dl_fetch links), on top of what
+# mdl_add_unit_test already supplies.
+mdl_add_unit_test(test_media_dl_report_pack tests/test_media_dl_report_pack.c)
+target_sources(
+  test_media_dl_report_pack
+  PRIVATE src/mdl_report.c
+          src/mdl_pack.c
+          src/mdl_fetch.c
+          src/mdl_fetch_body.c
+          src/mdl_fetch_page.c
+          ${MDL_CACHE_SRC}
+          src/mdl_state.c
+          src/mdl_state_codec.c
+          src/mdl_state_decimal.c
+          src/mdl_state_store.c
+          src/mdl_session.c
+          src/mdl_pathfs.c
+)
+
 # #310 network-seam tests: a scripted fake ::mdl_net_iface_t backend drives the
 # vtable dispatchers with no network, and the libcurl backend's pure transfer
 # classifier + bounded write callback are exercised directly. This binary links
