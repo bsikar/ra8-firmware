@@ -71,13 +71,13 @@ bool mdl_format_is_verifiable(ra8_mdl_format_t format);
  *          borrowed: this function never closes it, and its final offset is
  *          unspecified. The size is an immutable caller-supplied snapshot.
  * @param[in,out] storage Injected storage buffers used by streaming readers.
- * @param[in]     fmt Expected artifact format.
+ * @param[in]     format Expected artifact format.
  * @param[in,out] file Borrowed readable and seekable open handle.
  * @param[in]     size_bytes Stable artifact extent in bytes.
- * @param[in,out] ws Caller-owned bounded validation workspace.
+ * @param[in,out] workspace Caller-owned bounded validation workspace.
  * @param[out]    report Structural counts populated only on success.
  * @return Validation, argument, or stream status.
- * @retval k_ra8_ok The staged artifact is structurally valid for @p fmt.
+ * @retval k_ra8_ok The staged artifact is structurally valid for @p format.
  * @retval k_ra8_err_invalid_arg A pointer, workspace, or format is invalid.
  * @retval k_ra8_err_invalid_size The caller workspace is too small.
  * @retval k_ra8_err_validation_failed Container structure or metadata is bad.
@@ -87,15 +87,15 @@ bool mdl_format_is_verifiable(ra8_mdl_format_t format);
  * @pre @p size_bytes is the stable size of the staged artifact.
  * @post @p file remains open and owned by the caller.
  * @post On failure @p report retains its entry value.
- * @post `ws->high_water` describes this validation attempt.
+ * @post `workspace->high_water` describes this validation attempt.
  * @note Thread-safe across distinct handles, workspaces, buffers, and reports.
  * @since 0.1.0
  */
 ra8_err_t mdl_verify_open_file(mdl_storage_t*          storage,
-                               ra8_mdl_format_t        fmt,
+                               ra8_mdl_format_t        format,
                                fw_fs_file_t*           file,
                                uint64_t                size_bytes,
-                               mdl_export_workspace_t* ws,
+                               mdl_export_workspace_t* workspace,
                                mdl_verify_report_t*    report);
 
 /**
@@ -108,27 +108,27 @@ ra8_err_t mdl_verify_open_file(mdl_storage_t*          storage,
  *          bounded chunks, so no complete compressed or decoded archive is
  *          retained. Every opened stream is closed before return.
  * @param[in,out] storage Injected filesystem and exclusive file workspace.
- * @param[in]     fmt    Expected artifact format.
+ * @param[in]     format    Expected artifact format.
  * @param[in]     path   NUL-terminated path to the completed artifact.
- * @param[in,out] ws     Caller-owned bounded validation workspace.
+ * @param[in,out] workspace     Caller-owned bounded validation workspace.
  * @param[out]    report Structural counts populated only on success.
  * @return Validation or argument status.
- * @retval k_ra8_ok The artifact is structurally valid for @p fmt.
+ * @retval k_ra8_ok The artifact is structurally valid for @p format.
  * @retval k_ra8_err_invalid_arg A pointer, workspace, or format is invalid.
  * @retval k_ra8_err_invalid_size The caller workspace is too small.
  * @retval k_ra8_err_validation_failed Container structure or metadata is bad.
  * @retval k_ra8_err_not_supported The reserved format has no validator.
  * @retval other A filesystem open/read/seek/size/close failure was propagated.
  * @pre @p path is canonical, NUL-terminated, and names a stable completed file.
- * @pre @p storage, @p ws, and @p report are exclusive to this call.
- * @post `ws->used` and `ws->high_water` describe this validation attempt.
+ * @pre @p storage, @p workspace, and @p report are exclusive to this call.
+ * @post `workspace->used` and `workspace->high_water` describe this validation attempt.
  * @post On success @p report contains format, member, page, and metadata data.
  * @post On failure @p report retains its entry value.
  * @note Thread-safe across calls that use distinct workspaces and reports.
  * @since 0.1.0
  */
 ra8_err_t mdl_verify_file(mdl_storage_t*          storage,
-                          ra8_mdl_format_t        fmt,
+                          ra8_mdl_format_t        format,
                           const char*             path,
-                          mdl_export_workspace_t* ws,
+                          mdl_export_workspace_t* workspace,
                           mdl_verify_report_t*    report);
