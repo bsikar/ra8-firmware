@@ -1,14 +1,12 @@
 # Module tour (`libs/`)
 
-A one-paragraph guided tour of every first-party library under
-`libs/`. For the full API surface read the public header listed under
-"main entry points" -- every public function carries the project's
-mandatory Doxygen tag set (see `CLAUDE.md`).
+A paragraph each on the libraries a newcomer meets first. This is a reading
+order, not an index: [`libs/README.md`](../libs/README.md) lists every library
+in the tree, and the public header named under "main entry points" carries the
+full API with the project's mandatory Doxygen tag set.
 
-Vendored third-party libraries (mbedTLS, ThreadX, NetX Duo,
-USBX, NimBLE, miniz, stb, litehtml, gumbo) live under
-`libs/third_party/` and are documented as SOUP under
-[`docs/SOUP/`](SOUP/) -- they are not enumerated here.
+Vendored third-party libraries live under `libs/third_party/` and are
+documented as SOUP under [`docs/SOUP/`](SOUP/); they are not covered here.
 
 ## ra8_core
 
@@ -27,12 +25,12 @@ it is the project's freestanding-C runtime.
 The hand-written hardware abstraction layer for every RA8D2 on-chip
 peripheral the project drives: GPIO, SCI/UART, IIC, SPI, ADC, DAC,
 PWM/GPT, AGT, CANFD, ETHA + ESWM, USB FS/HS, GLCDC, RSIP TRNG, MSTP,
-clocks, ICU, watchdog, and a bank of `ra8d2_*_regs.h` register-map
+clocks, ICU, watchdog, and a bank of `ra8_*_regs.h` register-map
 headers. Every driver returns `ra8_err_t` and is unit-tested against
 `tests/mocks/ra8_fake_mmap.c`, which presents the MCU peripheral
 address space as host-side RAM.
 
-* Headers: `libs/ra8_hal/inc/ra8_*.h` and `libs/ra8_hal/inc/ra8d2_*_regs.h`
+* Headers: `libs/ra8_hal/inc/ra8_*.h` and `libs/ra8_hal/inc/ra8_*_regs.h`
 * Main entry points: per-peripheral `ra8_<periph>_init()` /
   `_open()` / `_deinit()`.
 
@@ -63,7 +61,8 @@ exposes a curated subset of secure-side services (key vault, OTA
 commit, register windows, etc.) to the non-secure firmware via the
 `__attribute__((cmse_nonsecure_entry))` ABI. There is no public
 header per se -- the veneer set is split across
-`ra8_nsc_{comms,io,key_vault,ota,eth,xspi,log,periph_init}.h`.
+`ra8_nsc.h`, `ra8_nsc_cgc.h`, `ra8_nsc_comms.h`, `ra8_nsc_io.h` and
+`ra8_nsc_veneer.h`.
 
 * Headers: `libs/ra8_nsc/inc/ra8_nsc_*.h`
 * Main entry points: NSC veneers prefixed `ra8_nsc_*`.
@@ -72,22 +71,11 @@ header per se -- the veneer set is split across
 
 Network platform-abstraction layer over the RA8D2 ESWM block. Owns
 the DMA descriptor rings, MAC bring-up, and the byte pump up to
-the IP-layer handlers in `ra8_net`. Stack-agnostic: it is what both
-the in-house `ra8_net` adapter and the NetX Duo port build on.
+whatever IP stack sits above it. Stack-agnostic by design: the NetX
+Duo port in `port/netxduo/` builds on it.
 
 * Header: `libs/ra8_net_pal/inc/ra8_net_pal.h`
 * Main entry points: `ra8_net_pal_init()`, `ra8_net_pal_set_mac_addr()`.
-
-## ra8_net
-
-Tiny in-house TCP/IP adapter on top of `ra8_net_pal`. Implements
-the ARP cache, IPv4 dispatch (ICMP/UDP/TCP), and a minimal DHCP
-client. Designed for the example apps that need basic networking
-without the full NetX Duo footprint.
-
-* Header: `libs/ra8_net/inc/ra8_net.h`
-* Main entry points: `ra8_net_open()`, `ra8_net_poll()`,
-  `ra8_net_test_inject_frame()` (UNIT_TEST only).
 
 ## ra8_usb_pal
 
@@ -210,7 +198,7 @@ fonts. Sits on top of the GLCDC driver in `ra8_hal`.
 
 * Headers: `libs/ra8_gfx/inc/ra8_gfx{,_font,_text}.h`
 * Main entry points: `ra8_gfx_clear()`, `ra8_gfx_line()`,
-  `ra8_gfx_text_draw()`.
+  `ra8_gfx_text_out()`.
 
 ## ra8_touch_cal
 
@@ -241,4 +229,4 @@ indefinitely. Falls back to a plain refresh path in non-RTOS apps.
 
 * Header: `libs/ra8_wdt_supervisor/inc/ra8_wdt_supervisor.h`
 * Main entry points: `ra8_wdt_supervisor_init()`,
-  `ra8_wdt_supervisor_register()`, `ra8_wdt_supervisor_checkin()`.
+  `ra8_wdt_supervisor_register_thread()`, `ra8_wdt_supervisor_checkin()`.

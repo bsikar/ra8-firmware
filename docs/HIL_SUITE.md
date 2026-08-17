@@ -2,15 +2,19 @@
 # HIL Suite
 
 This document is the authoritative reference for the hardware-in-the-
-loop (HIL) test suite that gates merges to `main`. It describes the
+loop (HIL) test suite for the bench EK-RA8D2. It describes the
 **contract** every app under `examples/ek_ra8d2/hw_validated/hil/` must
 satisfy, the **modes** in which apps are verified, the **infrastructure
 required** (Pi setup, jumpers, cables), and a **per-app table** showing
 which mode each app uses + its success criterion.
 
-The CI workflow `.github/workflows/hil.yml` runs `bash
-scripts/hil/all.sh` on a self-hosted Raspberry Pi 5 runner that has
-the EK-RA8D2 wired up; one app fails -> the merge fails.
+The CI workflow `.github/workflows/hil.yml` is a thin driver for the
+`hil-all` gate (`bash scripts/ci.sh --gate hil-all`), which runs
+`scripts/hil/all.sh` on the self-hosted Raspberry Pi 5 runner that has
+the EK-RA8D2 wired up; one app fails -> the run fails. Its `push:` and
+`pull_request:` triggers are commented out until that runner is wired
+back up, so today the suite runs on `workflow_dispatch` only and does
+not block a merge.
 
 ## The honest-contract rule
 
@@ -50,6 +54,7 @@ instrument it (preferred) or place it under
 | `jlink_memprobe` | `scripts/hil/jlink_memprobe.sh`  | Halts the chip, reads `HIL_PROBE_SYMBOL` (resolved from the matching `.elf` via `arm-none-eabi-nm`), runs the chip for `HIL_PROBE_SECONDS`, halts again, asserts the value advanced by `>= HIL_PROBE_MIN_ADVANCE`. If `HIL_PROBE_FAILURE_SYMBOL` is set, also asserts that counter advanced by `<= HIL_PROBE_MAX_FAILURE` (default 0). |
 | `hil_eth_tcp`    | `scripts/hil/eth_tcp.sh`         | The Pi opens a TCP/UDP socket to `HIL_BOARD_IP:HIL_PORT` (or `curl` for `HIL_PROTO=http`), sends a random `HIL_PAYLOAD_BYTES` payload, and asserts byte-exact echo (or HTTP 200 + the "Hello from RA8D2" marker). Uses a USB-Ethernet adapter on the Pi auto-detected via the `enxXX` / `usbX` interface naming. |
 | `c6_camera_livestream` | `scripts/hil/camera_livestream.sh` | On the C6 lane, cold-starts the co-processor, proves its SPI link, joins Wi-Fi, checks the camera server health endpoint, decodes two 320x240 JPEG frames and requires their bytes to differ. The verifier builds in a temporary tree because the firmware necessarily embeds the bench Wi-Fi credentials. |
+| `rtt_scrape`     | `scripts/hil/rtt_scrape.sh`      | Same contract as `uart_scrape`, but the capture is read out of the firmware's SEGGER RTT up-buffer (`HIL_RTT_BUF_SYMBOL`, default `s_rtt_up_buf`, `HIL_RTT_BUF_BYTES` wide) via J-Link `mem` reads rather than off the VCOM -- J-Link's own RTT logger resets the target on connect. |
 | `alive`          | `scripts/hil/check_alive.sh`     | **Reserved for the fault-recovery demo only** (`HIL_FAULT_EXPECTED=1`). Asserts: PC in MRAM/ITCM at both samples, PC not in a fault-spinner symbol (`panic_halt` / `halt_loop` / `exception_halt` / `*_Handler` / `_die`), CycleCnt advances, HFSR with DEBUGEVT masked is zero, CFSR != 0 (the fault DID fire), UART capture contains no negative banner. |
 
 ## Required Pi infrastructure
@@ -58,8 +63,9 @@ The self-hosted Pi runner (`star@star.local`) must have:
 
   - The EK-RA8D2 wired to the Pi via four USB cables (J7 USBHS, J11
     USBFS, J-Link OB CDC + SWD, plus the on-board Ethernet to a
-    USB-Ethernet adapter on the Pi). See `docs/HIL_WIRING.md` for the
-    wiring map.
+    USB-Ethernet adapter on the Pi). The port map is in the header
+    comment of `.github/workflows/hil.yml`; what else hangs off the Pi
+    is in [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md).
   - `JLinkExe` installed and reachable (invoked with the probe serial
     from `.env` `JLINK_SN`, device `R7KA8D2KF_CPU0`).
   - The `arm-none-eabi-` toolchain on PATH (for `nm` and `addr2line`
@@ -124,8 +130,9 @@ subnet plan, re-provision steps, and current bring-up status.
 
 ## Running a single app locally on a Mac (no Pi)
 
-The Pi runners (`hil_run_direct.sh`, `hil_jlink_memprobe.sh`,
-`hil_check_alive.sh`) target the Linux bench and SSH to
+The Pi runners (`scripts/hil/run_direct.sh`,
+`scripts/hil/jlink_memprobe.sh`, `scripts/hil/check_alive.sh`) target
+the Linux bench and SSH to
 `star@star.local`. When the board is plugged straight into a developer's
 Mac, `scripts/hil/run_local.sh <app>` runs one app's gate entirely on
 that Mac:
@@ -179,7 +186,7 @@ make hil-c6 APP=c6_spi_probe   # just one
 
 which is `scripts/hil/all.sh --dir examples/ek_ra8d2/hw_validated/c6` -- the
 same discovery, the same `hil.conf` manifests, the same bench hold and the
-same six verifiers as `make hil-all`. A second copy of the runner would be a
+same verifiers as `make hil-all`. A second copy of the runner would be a
 second place for all of that to drift.
 
 They sit outside `hw_validated/hil/` for a second, independent reason:
@@ -188,100 +195,28 @@ requires every app in that directory to be EIL-exercised with no skips. That
 gate is right; the C6 apps simply cannot satisfy it yet, and punching a hole in
 it to house them would cost more than the separate lane does.
 
-## Per-app table
+## Which apps run, and how each is asserted
 
-The table below is generated from the live `hil.conf` files and the
-firmware in each app's `main.c`. Apps that are RED today (the
-tightened gate correctly fails them) are flagged "RED" -- those need
-follow-up firmware fixes; the test config itself is correct.
+Each app's `hil.conf`, sitting beside its `main.c`, declares its mode and its
+assertion. `scripts/hil/all.sh` reads them directly, so there is no second
+roster here to fall out of step with the tree --
+`grep -rl HIL_MODE examples/ek_ra8d2/hw_validated/hil` is the current one.
 
-### `uart_scrape` mode
+Two modes carry nearly all of it: `uart_scrape` for anything that can print a
+verdict, and `jlink_memprobe` for anything that cannot, where the probe instead
+watches a counter in SRAM advance. `alive` is reserved for the fault-recovery
+demo; `rtt_scrape`, `hil_eth_tcp` and `c6_camera_livestream` each cover a
+single app.
 
-| App                          | Expect                          | Notes |
-|------------------------------|---------------------------------|-------|
-| `uart_hello`                 | `hello, ra8d2!`                 | basic UART up |
-| `camera_capture`             | `verdict=PASS`                  | OV5640 + full VGA CEU frame + four firmware RGB rotations |
-| `crypto_aes_demo`            | `aes: round-trip OK`            | |
-| `eth_loopback`               | `etha: loopback ok`             | |
-| `iwdt_demo`                  | `iwdt: poll counter`            | |
-| `lpm_idle_demo`              | `lpm: wake_count=`              | |
-| `watchdog_demo`              | `wdt: boot reason=`             | |
-| `timer_capture_demo`         | `gpt: period=`                  | |
-| `dma_memcopy_demo`           | `dma: copied 1024B match=Y`     | **RED**: DMA emits `match=N` |
-| `i2c_loopback`               | `iic_b: scan 0x77 ack=1`        | **RED**: emits `scan ERROR` |
-| `threadx_ipc_demo`           | `[ipc_demo] <- pong`            | **RED**: queue not passing |
-| `threadx_fs_levelx_demo`     | `[fslx] readback: Hello from wear-leveled FAT!` | `lx_nor_flash_format` failure (#87) fixed; full FAT-on-LevelX-on-xSPI round-trip verified live 2026-06-10 (as the FileX-based `threadx_filex_levelx_demo`; ported to `ra8_fs` by #611) |
-| `adc_b_demo`                 | `adc: raw=`                     | short OK |
-| `agt_periodic`               | `agt: tick`                     | short OK |
-| `crc_demo`                   | `crc: hw=`                      | short OK; **RED**: emits `match=N` |
-| `elc_event_demo`             | `elc: en=`                      | short OK |
-| `power_profiler`             | `pp: a=`                        | short OK |
-| `rng_demo`                   | `trng:`                         | short OK |
-| `rtc_alarm`                  | `rtc: boot`                     | short OK (SOSC may be dead on EVM) |
-| `sdram_benchmark`            | `sdram: w=`                     | short OK |
-| `ulpt_demo`                  | `ulpt: wake`                    | short OK |
-
-All `uart_scrape` apps also declare a `HIL_EXPECT_NEGATIVE` regex
-catching that app's failure banner + generic HAL failure strings.
-
-### `jlink_memprobe` mode
-
-| App                              | Match symbol                       | Mismatch symbol               | Notes |
-|----------------------------------|------------------------------------|-------------------------------|-------|
-| `blink`                          | `g_blink_tick`                     | --                            | LED-toggle loop @ MOCO |
-| `blink_hal`                      | `g_blink_hal_tick`                 | --                            | multi-LED via HAL |
-| `threadx_blink`                  | `g_threadx_blink_tick`             | --                            | scheduler liveness |
-| `can_classic_loopback`           | `g_can_match`                      | `g_can_mismatch`              | **RED**: 0 matches, 5 mismatches |
-| `canfd_loopback`                 | `g_canfd_match`                    | `g_canfd_mismatch`            | **RED**: same as above |
-| `canfd_filter_demo`              | `g_canfd_filter_match`             | `g_canfd_filter_mismatch`     | **RED**: filter leaks |
-| `threadx_canfd_demo`             | `g_threadx_canfd_match`            | --                            | stubbed CANFD (LED only) |
-| `clock_check`                    | `g_clock_check_match`              | `g_clock_check_mismatch`      | full CGC tree readback |
-| `cpu1_pingpong`                  | `g_cpu1_pingpong_match`            | `g_cpu1_pingpong_mismatch`    | **RED**: CPU1 not responding |
-| `gpt_pwm_demo`                   | `g_gpt_pwm_match`                  | `g_gpt_pwm_mismatch`          | **RED**: GTCNT frozen |
-| `flash_journal`                  | `g_fj_match`                       | `g_fj_mismatch`               | **RED**: round-trip miscompare |
-| `doc_demo`                       | `g_doc_match`                      | `g_doc_mismatch`              | **RED**: HW != SW |
-| `threadx_mpu_partition_demo`     | `g_threadx_mpu_partition_match`    | --                            | positive-path MPU |
-| `tz_nsc_cgc_usb`                 | `g_tz_nsc_cgc_usb_match`           | `g_tz_nsc_cgc_usb_mismatch`   | NSC veneer + USBX CDC |
-
-### `usb_cdc` mode
-
-| App                     | VID:PID    | Port (J7/J11)         |
-|-------------------------|-----------|------------------------|
-| `tz_secure_only_usb_fs`    | 1209:000a | J11 (USBFS)            |
-| `tz_secure_only_usb_hs` | 1209:000a | J7  (USBHS)            |
-
-### `hil_eth_tcp` mode
-
-| App                       | Board IP        | Proto | Port |
-|---------------------------|----------------|-------|------|
-| `threadx_netx_tcp_echo`   | 192.168.1.42   | tcp   | 7    |
-
-All ethernet apps are currently **RED** -- the chip's ARP/ICMP path
-does not return; same pre-existing root cause as the parked ethernet
-work. The test config is correct; the firmware fix is a separate
-work item.
-
-### `alive` (fault-recovery only)
-
-| App                       | Notes |
-|---------------------------|-------|
-| `mpu_partition_simple`    | Deliberate MemManage fault + recovery. Probe requires `CFSR != 0` AND PC NOT in a fault-spinner AND UART banner `mpu: fault handled, recovered`. **RED** today: SCB->SHCSR.MEMFAULTENA isn't set so the MemFault escalates to HardFault; recovery needs a SHCSR fix to actually run. |
-
-## Apps in `hw_pending/`
-
-These do not run in CI; they are either parked pending physical
-hardware (Wi-Fi card, IMU Click, MicroSD card seated, etc.) or
-pending a firmware fix that has not landed yet. Each `hil.conf` in
-`hw_pending/` carries a comment explaining its parked state and what
-moves it back to `hw_validated/hil/`.
+An app that fails a bench run is moved to
+`examples/ek_ra8d2/hil_needs_revalidation/` rather than being annotated as
+failing here, so the directory listing and the last suite result agree by
+construction. Apps under `examples/ek_ra8d2/hw_pending/` do not run in CI at
+all; each carries its own README saying what would move it into the suite.
 
 ## Updating this document
 
-If you add or rename a HIL app, update both:
-
-  - the per-app table above, and
-  - the `hil.conf` for the app (`HIL_MODE` + matching settings).
-
-The pre-commit gate enforces the `hil.conf` side. This document is
-human-maintained; consider regenerating from the `hil.conf`s if it
-drifts.
+Adding or renaming a HIL app needs only its `hil.conf` (`HIL_MODE` plus the
+matching settings), which the pre-commit gate enforces. Nothing in this file
+enumerates apps, so nothing here goes stale when the roster changes -- keep it
+that way.
