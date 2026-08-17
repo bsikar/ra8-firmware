@@ -57,6 +57,68 @@ RA8_PRIV ra8_err_t priv_test_mdl_backend_begin(void* ctx, const ra8_mdl_request_
 }
 
 /**
+ * @brief Serve remaining fixture bytes and terminal metadata with no fault.
+ * @details Copies up to @p cap bytes from the shared byte fixture starting at
+ * the backend's running offset, and on the exhausting (zero-byte) pull fills
+ * the terminal digest and HTTP metadata unless a fault override replaces it.
+ * @param[in,out] fake Backend fixture state; running offset is advanced.
+ * @param[out] out Caller-owned destination for copied bytes.
+ * @param[in] cap Destination capacity in bytes.
+ * @param[out] got Bytes copied by this call.
+ * @param[out] total_bytes Declared complete artifact size.
+ * @param[out] complete Set true exactly on the exhausting pull.
+ * @param[out] sha256 Terminal digest, filled only when @p complete is true.
+ * @param[in,out] response Terminal HTTP metadata, filled only when complete.
+ * @return Always `k_ra8_ok`; this fixture never fails the normal path.
+ * @retval k_ra8_ok Every byte and terminal field was served as configured.
+ * @pre @p fake, @p out, @p got, @p total_bytes, @p complete, @p sha256, and
+ *      @p response are non-null.
+ * @pre `fake->at` does not exceed `fake->len`.
+ * @post `fake->at` advances by the exact byte count copied.
+ * @post `*complete` matches whether this pull copied zero bytes.
+ * @note Test-only fixture helper; no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_policy_backend_read_normal(ra8_test_mdl_backend_t*  fake,
+                                    uint8_t*                 out,
+                                    uint16_t                 cap,
+                                    uint16_t*                got,
+                                    uint64_t*                total_bytes,
+                                    bool*                    complete,
+                                    uint8_t                  sha256[k_ra8_mdl_sha256_bytes],
+                                    ra8_mdl_http_response_t* response)
+{
+  const size_t left = fake->len - fake->at;
+  const size_t take = (left < cap) ? left : cap;
+  if (take != 0U) {
+    memcpy(out, &fake->bytes[fake->at], take);
+    fake->at += take;
+  }
+  *got         = (uint16_t)take;
+  *total_bytes = fake->len;
+  *complete    = (take == 0U);
+  if (*complete) {
+    if (fake->terminal_total_zero) {
+      *total_bytes = 0U;
+    }
+    memset(sha256, k_t_mdl_digest_fill, k_ra8_mdl_sha256_bytes);
+    if (fake->response_override) {
+      *response = fake->response;
+      return k_ra8_ok;
+    }
+    response->status = 200;
+    memcpy(response->retry_after, "3", sizeof("3"));
+    memcpy(response->etag, "\"fixture-etag\"", sizeof("\"fixture-etag\""));
+    memcpy(response->last_modified,
+           "Wed, 21 Oct 2015 07:28:00 GMT",
+           sizeof("Wed, 21 Oct 2015 07:28:00 GMT"));
+    memcpy(response->content_type, "application/x-rabook", sizeof("application/x-rabook"));
+  }
+  return k_ra8_ok;
+}
+
+/**
  * @brief Implementation of `priv_test_mdl_backend_read()`.
  */
 RA8_PRIV ra8_err_t priv_test_mdl_backend_read(void*     ctx,
@@ -91,33 +153,14 @@ RA8_PRIV ra8_err_t priv_test_mdl_backend_read(void*     ctx,
     response->status = 200;
     return k_ra8_ok;
   }
-  const size_t left = fake->len - fake->at;
-  const size_t take = (left < cap) ? left : cap;
-  if (take != 0U) {
-    memcpy(out, &fake->bytes[fake->at], take);
-    fake->at += take;
-  }
-  *got         = (uint16_t)take;
-  *total_bytes = fake->len;
-  *complete    = (take == 0U);
-  if (*complete) {
-    if (fake->terminal_total_zero) {
-      *total_bytes = 0U;
-    }
-    memset(sha256, k_t_mdl_digest_fill, k_ra8_mdl_sha256_bytes);
-    if (fake->response_override) {
-      *response = fake->response;
-      return k_ra8_ok;
-    }
-    response->status = 200;
-    memcpy(response->retry_after, "3", sizeof("3"));
-    memcpy(response->etag, "\"fixture-etag\"", sizeof("\"fixture-etag\""));
-    memcpy(response->last_modified,
-           "Wed, 21 Oct 2015 07:28:00 GMT",
-           sizeof("Wed, 21 Oct 2015 07:28:00 GMT"));
-    memcpy(response->content_type, "application/x-rabook", sizeof("application/x-rabook"));
-  }
-  return k_ra8_ok;
+  return internal_policy_backend_read_normal(fake,
+                                             out,
+                                             cap,
+                                             got,
+                                             total_bytes,
+                                             complete,
+                                             sha256,
+                                             response);
 }
 
 /**
