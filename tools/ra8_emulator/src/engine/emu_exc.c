@@ -897,11 +897,11 @@ RA8_INTERNAL static void internal_on_icsr_write(uc_engine*  uc,
 /** @brief Implementation of `emu_exc_install_core()` -- unmapped/INTR/ICSR hooks. */
 void emu_exc_install_core(uc_engine* uc)
 {
-  static uc_hook local_h_unmapped;
-  static uc_hook local_h_intr;
-  static uc_hook local_h_icsr;
+  static uc_hook s_h_unmapped;
+  static uc_hook s_h_intr;
+  static uc_hook s_h_icsr;
   (void)uc_hook_add(uc,
-                    &local_h_unmapped,
+                    &s_h_unmapped,
                     UC_HOOK_MEM_UNMAPPED,
                     (void*)internal_on_unmapped,
                     nullptr,
@@ -909,12 +909,12 @@ void emu_exc_install_core(uc_engine* uc)
                     0);
   /* SVCall / exception-return: Unicorn raises UC_HOOK_INTR on a Thumb `svc` and
    * on a branch to an EXC_RETURN magic; internal_on_intr vectors / unstacks accordingly. */
-  (void)uc_hook_add(uc, &local_h_intr, UC_HOOK_INTR, (void*)internal_on_intr, nullptr, 1, 0);
+  (void)uc_hook_add(uc, &s_h_intr, UC_HOOK_INTR, (void*)internal_on_intr, nullptr, 1, 0);
   /* Watch the ICSR word so a PENDSVSET store ends the chunk at once, giving
    * PendSV next-instruction activation (see internal_on_icsr_write). ICSR lives in PPB
    * RAM, so this memory-write hook is the only way to observe the request. */
   (void)uc_hook_add(uc,
-                    &local_h_icsr,
+                    &s_h_icsr,
                     UC_HOOK_MEM_WRITE,
                     (void*)internal_on_icsr_write,
                     nullptr,

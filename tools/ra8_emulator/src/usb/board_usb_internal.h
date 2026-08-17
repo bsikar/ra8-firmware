@@ -284,7 +284,7 @@ extern bool                   s_trace;                    /**< --trace verbose l
 extern board_usb_irq_raiser_t s_raise;                    /**< ICU pend callback (core).          */
 extern bool                   s_external_host;            /**< Bridge host owns the bus (core).   */
 extern bool                   s_roles_swapped;            /**< Self-loop role polarity (core).    */
-extern uint16_t               local_dev_irq_event;        /**< Device ICU event number (core).    */
+extern uint16_t               g_dev_irq_event;            /**< Device ICU event number (core).    */
 extern uint8_t                s_dcp_hold[k_usb_in_cap];   /**< Held control-OUT bytes (core).     */
 extern uint16_t               s_dcp_hold_len;             /**< Held byte count (core).            */
 extern bool                   s_dcp_hold_pending;         /**< Held bytes await the arm (core).   */

@@ -18,6 +18,7 @@
 #include <CoreGraphics/CoreGraphics.h>
 #else
 /** @brief Opaque provider handle for non-Apple parse and contract checking. */
+/* NOLINTNEXTLINE(readability-identifier-naming) -- Core Graphics-fixed spelling. */
 typedef void* CGDataProviderRef;
 #endif
 

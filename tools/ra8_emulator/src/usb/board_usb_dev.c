@@ -46,7 +46,7 @@ void priv_usb_intsts0_set(uint8_t bit)
 void priv_usb_raise_irq(uc_engine* uc)
 {
   if (s_raise != nullptr) {
-    s_raise(uc, local_dev_irq_event);
+    s_raise(uc, g_dev_irq_event);
     s_usb_irqs++;
   }
 }

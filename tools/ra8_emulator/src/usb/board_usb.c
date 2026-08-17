@@ -51,7 +51,7 @@ bool s_roles_swapped;
 /* ICU event the device model pends for its interrupts: USBFS_INT while the
  * device model sits behind the USBFS window (Config A), USBHS_USB_INT_RESUME
  * once the roles swap and the DCD drives the USBHS controller (Config B). */
-uint16_t local_dev_irq_event = (uint16_t)k_ra8_elc_event_usbfs_int;
+uint16_t g_dev_irq_event = (uint16_t)k_ra8_elc_event_usbfs_int;
 
 /* DCP control-OUT "wire" holding buffer (bridge path). The polled host delivers
  * a control-write data stage (e.g. a DFU_DNLOAD block) before the device -- off
@@ -164,23 +164,23 @@ void board_usb_tick(uc_engine* uc)
 
 void board_usb_init(bool trace)
 {
-  s_usb               = (usb_state_t){};
-  s_trace             = trace;
-  s_host_phase        = (uint8_t)k_phase_idle;
-  s_host_step         = 0U;
-  s_host_substate     = (uint8_t)k_sub_deliver;
-  s_host_wait         = 0U;
-  s_configured        = false;
-  s_usb_irqs          = 0U;
-  s_echo_out_len      = 0U;
-  s_echo_out_sent     = 0U;
-  s_echo_in_got       = 0U;
-  s_log_n             = 0U;
-  s_dcp_hold_len      = 0U;
-  s_dcp_hold_pending  = false;
-  s_roles_swapped     = false;
-  local_dev_irq_event = (uint16_t)k_ra8_elc_event_usbfs_int;
-  s_usb.dvsq          = (uint16_t)k_ra8_dvsq_powered;
+  s_usb              = (usb_state_t){};
+  s_trace            = trace;
+  s_host_phase       = (uint8_t)k_phase_idle;
+  s_host_step        = 0U;
+  s_host_substate    = (uint8_t)k_sub_deliver;
+  s_host_wait        = 0U;
+  s_configured       = false;
+  s_usb_irqs         = 0U;
+  s_echo_out_len     = 0U;
+  s_echo_out_sent    = 0U;
+  s_echo_in_got      = 0U;
+  s_log_n            = 0U;
+  s_dcp_hold_len     = 0U;
+  s_dcp_hold_pending = false;
+  s_roles_swapped    = false;
+  g_dev_irq_event    = (uint16_t)k_ra8_elc_event_usbfs_int;
+  s_usb.dvsq         = (uint16_t)k_ra8_dvsq_powered;
 }
 
 void board_usb_set_irq_raiser(board_usb_irq_raiser_t raise)
