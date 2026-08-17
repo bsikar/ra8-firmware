@@ -4,15 +4,15 @@
 #
 # Each row is a function holding N compound boolean decisions (`&&` / `||`)
 # with NO matching `@par MC/DC:` `path@function` citation in any
-# tests/test_*.c. These predate enforcement (issue #426). The gate fails
+# tests/test_*.{c,cpp}. These predate enforcement (issue #426). The gate fails
 # on any INCREASE, so the debt is frozen and can only be burned down; a
 # newly-added uncovered decision raises a count and fails.
 #
-# Total at this baseline: 912 uncovered compound decision(s)
-# across 182 file(s).
+# Total at this baseline: 889 uncovered compound decision(s)
+# across 180 file(s).
 #
 # Burn one down: add a `test_mcdc_<decision>` function with N+1 vectors
-# to the matching tests/test_<module>.c whose `@par MC/DC:` block cites
+# to the matching tests/test_<module>.{c,cpp} whose MC/DC block cites
 # `path@function`. See docs/MCDC.md for the worked example.
 #
 # Regenerate after burning findings down:
@@ -100,7 +100,7 @@ libs/ra8_epub/src/ra8_epub_img_tiles.c	ra8_epub_tile_binder_add	1
 libs/ra8_epub/src/ra8_epub_miniz_alloc.c	internal_coalesce	1
 libs/ra8_epub/src/ra8_epub_miniz_alloc.c	internal_in_pool	1
 libs/ra8_epub/src/ra8_epub_miniz_alloc.c	internal_request_bytes	1
-libs/ra8_epub/src/ra8_epub_miniz_alloc.c	ra8_epub_miniz_alloc	2
+libs/ra8_epub/src/ra8_epub_miniz_alloc.c	ra8_epub_miniz_alloc	1
 libs/ra8_epub/src/ra8_epub_miniz_alloc.c	ra8_epub_miniz_free	1
 libs/ra8_epub/src/ra8_epub_open.c	internal_dirname	1
 libs/ra8_epub/src/ra8_epub_open.c	internal_finish_open	1
@@ -225,11 +225,6 @@ libs/ra8_hal/src/ra8_i3c_i2c_peripheral.c	ra8_i3c_i2c_peripheral_receive	1
 libs/ra8_hal/src/ra8_ipc.c	ra8_ipc_can_access	1
 libs/ra8_hal/src/ra8_ipc.c	ra8_ipc_dispatch	1
 libs/ra8_hal/src/ra8_isr.c	internal_find_event	1
-libs/ra8_hal/src/ra8_jpeg_sw.c	dims_next_marker	1
-libs/ra8_hal/src/ra8_jpeg_sw.c	dims_parse_sof0	1
-libs/ra8_hal/src/ra8_jpeg_sw.c	dims_step	4
-libs/ra8_hal/src/ra8_jpeg_sw_decode.c	dec_dispatch_tail	1
-libs/ra8_hal/src/ra8_jpeg_sw_decode.c	ra8_jpeg_sw_priv_dispatch	3
 libs/ra8_hal/src/ra8_lvd.c	internal_lvd_program_cr0_chain	1
 libs/ra8_hal/src/ra8_lvd.c	internal_validate_cfg	1
 libs/ra8_hal/src/ra8_lvd.c	priv_ra8_lvd_internal_reject_hvd_after	1
@@ -274,7 +269,6 @@ libs/ra8_hal/src/ra8_rmac_phy.c	priv_ra8_rmac_phy_internal_speed_ok	1
 libs/ra8_hal/src/ra8_rmac_phy.c	ra8_rmac_phy_link_status_get	1
 libs/ra8_hal/src/ra8_rsip.c	ra8_rsip_hmac_sha256_init	1
 libs/ra8_hal/src/ra8_rsip.c	ra8_rsip_hmac_sha256_update	1
-libs/ra8_hal/src/ra8_rsip.c	ra8_rsip_sha256_update	1
 libs/ra8_hal/src/ra8_rsip_asym.c	internal_hash_validate	2
 libs/ra8_hal/src/ra8_rsip_asym.c	internal_kdf_validate	4
 libs/ra8_hal/src/ra8_rsip_asym.c	ra8_rsip_dotf_route	1
@@ -469,7 +463,6 @@ libs/ra8_rabook_compile/src/ra8_rabook_gray4.c	ra8_rabook_gray4_output_dims	2
 libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	internal_chapter_title	1
 libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	internal_downscale_if_needed	1
 libs/ra8_reflow/src/ra8_reflow_cache.c	internal_cache_precheck	1
-libs/ra8_reflow/src/ra8_reflow_css.c	internal_apply_emphasis	5
 libs/ra8_reflow/src/ra8_reflow_css.c	internal_ci_contains	1
 libs/ra8_reflow/src/ra8_reflow_css.c	internal_hex_val	2
 libs/ra8_reflow/src/ra8_reflow_css.c	internal_parse_color	2
@@ -497,7 +490,6 @@ libs/ra8_reflow/src/ra8_reflow_css_rules.c	internal_face_apply	2
 libs/ra8_reflow/src/ra8_reflow_css_rules.c	internal_family_cb	1
 libs/ra8_reflow/src/ra8_reflow_css_rules.c	internal_for_each_decl	3
 libs/ra8_reflow/src/ra8_reflow_css_rules.c	internal_intern_name	1
-libs/ra8_reflow/src/ra8_reflow_css_rules.c	internal_is_bold_kw	3
 libs/ra8_reflow/src/ra8_reflow_css_rules.c	internal_is_italic_kw	1
 libs/ra8_reflow/src/ra8_reflow_css_rules.c	internal_is_name_char	2
 libs/ra8_reflow/src/ra8_reflow_css_rules.c	internal_parse_fontface	1
@@ -583,7 +575,6 @@ libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c	priv_ra8_reflow_tok_decode_entity	
 libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c	priv_ra8_reflow_tok_is_xml_whitespace	1
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c	internal_build_frame	1
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c	internal_probe_card	1
-libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c	ra8_sdmmc_spi_validate_transport	1
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	internal_fs_get_capacity	1
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	ra8_sdmmc_spi_erase_blocks	1
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	ra8_sdmmc_spi_read_blocks	2
