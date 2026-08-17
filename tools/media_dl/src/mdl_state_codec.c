@@ -222,28 +222,39 @@ RA8_INTERNAL static bool internal_mdl_state_parse_decimal_exp(const char** curso
 }
 
 /**
- * @brief Parse one complete locale-free legacy decimal binary64 value.
- * @details @param[in] text Schema-v2 decimal. @param[out] out Correctly rounded value. @return Parse result. @retval false Noncanonical, overlong, overflowed, or underflowed input.
- * @pre @p text and @p out are non-NULL. @pre The target satisfies the binary64 assertions.
- * @post Success initializes the exact nearest-even result. @post Failure accepts no trailing bytes.
- * @note Conversion delegates to the fixed rational engine. @since 0.1.0
+ * @brief Scan a canonical decimal mantissa: digits with at most one point.
+ * @details Accumulates the unsigned magnitude and the fractional-digit
+ *          count while advancing the cursor past every consumed digit and
+ *          the optional decimal point, rejecting a mantissa that exceeds
+ *          the configured significant- or fractional-digit caps.
+ * @param[in,out] cursor Scan cursor; advanced past the last consumed byte.
+ * @param[out] out_mantissa Accumulated unsigned magnitude.
+ * @param[out] out_fractional Count of digits consumed after the point.
+ * @param[out] out_digit Whether at least one digit was consumed.
+ * @return Whether the mantissa stayed within the configured digit caps.
+ * @retval true The mantissa was consumed and every cap was respected.
+ * @retval false A significant- or fractional-digit cap was exceeded.
+ * @pre @p cursor addresses a non-NULL, NUL-terminated cursor.
+ * @pre @p out_mantissa, @p out_fractional, and @p out_digit are non-NULL.
+ * @post Success advances *cursor to the first byte after the mantissa and
+ *       writes all three out-parameters.
+ * @post Failure leaves *cursor at the offending digit; the out-parameters
+ *       are not written and must not be read.
+ * @note Not thread-safe; operates purely on caller-owned bytes.
+ * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_mdl_state_parse_double_field(const char* text, double* out)
+RA8_INTERNAL static bool internal_mdl_state_scan_mantissa(const char** cursor,
+                                                          uint64_t*    out_mantissa,
+                                                          int32_t*     out_fractional,
+                                                          bool*        out_digit)
 {
-  if ((text == nullptr) || (text[0] == '\0')) {
-    return false;
-  }
-  const char* p        = text;
-  const bool  negative = *p == '-';
-  if (*p == '-') {
-    ++p;
-  }
-  uint64_t mantissa    = 0U;
-  int32_t  fractional  = 0;
-  bool     digit       = false;
-  bool     nonzero     = false;
-  bool     decimal     = false;
-  uint8_t  significant = 0U;
+  const char* p           = *cursor;
+  uint64_t    mantissa    = 0U;
+  int32_t     fractional  = 0;
+  bool        digit       = false;
+  bool        nonzero     = false;
+  bool        decimal     = false;
+  uint8_t     significant = 0U;
   while (((*p >= '0') && (*p <= '9')) || ((*p == '.') && !decimal)) {
     if (*p == '.') {
       decimal = true;
@@ -261,6 +272,36 @@ RA8_INTERNAL static bool internal_mdl_state_parse_double_field(const char* text,
       }
     }
     ++p;
+  }
+  *cursor         = p;
+  *out_mantissa   = mantissa;
+  *out_fractional = fractional;
+  *out_digit      = digit;
+  return true;
+}
+
+/**
+ * @brief Parse one complete locale-free legacy decimal binary64 value.
+ * @details @param[in] text Schema-v2 decimal. @param[out] out Correctly rounded value. @return Parse result. @retval false Noncanonical, overlong, overflowed, or underflowed input.
+ * @pre @p text and @p out are non-NULL. @pre The target satisfies the binary64 assertions.
+ * @post Success initializes the exact nearest-even result. @post Failure accepts no trailing bytes.
+ * @note Conversion delegates to the fixed rational engine. @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_mdl_state_parse_double_field(const char* text, double* out)
+{
+  if ((text == nullptr) || (text[0] == '\0')) {
+    return false;
+  }
+  const char* p        = text;
+  const bool  negative = *p == '-';
+  if (*p == '-') {
+    ++p;
+  }
+  uint64_t mantissa   = 0U;
+  int32_t  fractional = 0;
+  bool     digit      = false;
+  if (!internal_mdl_state_scan_mantissa(&p, &mantissa, &fractional, &digit)) {
+    return false;
   }
   int32_t exponent = 0;
   if ((*p == 'e') || (*p == 'E')) {
