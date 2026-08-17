@@ -81,9 +81,78 @@ RA8_INTERNAL static void internal_test_required_values(ra8_c6link_t*            
 }
 
 /**
+ * @brief Exercise every required injected storage callback and context.
+ * @details Restores the complete base before clearing each storage member in
+ * turn, so every rejection differs from the control by one operand.
+ * @param[in,out] link Valid link that no rejected vector reaches.
+ * @param[in] base Complete configuration with the test begin seam installed.
+ * @pre @p link and @p base are non-null.
+ * @pre Every storage callback and context in @p base is initially non-null.
+ * @post Each isolated null returns `k_ra8_err_null_ptr`.
+ * @note No rejected vector reaches storage begin.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_test_required_callbacks_storage(ra8_c6link_t* link, const ra8_mdl_transfer_config_t* base)
+{
+  ra8_mdl_transfer_result_t result = {};
+  ra8_mdl_transfer_config_t config = *base;
+  /** @def EXPECT_NULL @brief Clear and reject one required config member. */
+#define EXPECT_NULL(member)                                                                        \
+  do {                                                                                             \
+    config        = *base;                                                                         \
+    config.member = nullptr;                                                                       \
+    TEST_ASSERT_EQ(                                                                                \
+      k_ra8_err_null_ptr,                                                                          \
+      ra8_c6link_mdl_transfer(link, "https://example.test/book", "/book", &config, &result));      \
+  } while (0)
+  EXPECT_NULL(storage.begin);
+  EXPECT_NULL(storage.write);
+  EXPECT_NULL(storage.validate);
+  EXPECT_NULL(storage.commit);
+  EXPECT_NULL(storage.abort);
+  EXPECT_NULL(storage.ctx);
+#undef EXPECT_NULL
+}
+
+/**
+ * @brief Exercise every required injected sha256 callback and context.
+ * @details Restores the complete base before clearing each sha256 member in
+ * turn, so every rejection differs from the control by one operand.
+ * @param[in,out] link Valid link that no rejected vector reaches.
+ * @param[in] base Complete configuration with the test begin seam installed.
+ * @pre @p link and @p base are non-null.
+ * @pre Every sha256 callback and context in @p base is initially non-null.
+ * @post Each isolated null returns `k_ra8_err_null_ptr`.
+ * @note No rejected vector reaches storage begin.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_test_required_callbacks_sha256(ra8_c6link_t* link, const ra8_mdl_transfer_config_t* base)
+{
+  ra8_mdl_transfer_result_t result = {};
+  ra8_mdl_transfer_config_t config = *base;
+  /** @def EXPECT_NULL @brief Clear and reject one required config member. */
+#define EXPECT_NULL(member)                                                                        \
+  do {                                                                                             \
+    config        = *base;                                                                         \
+    config.member = nullptr;                                                                       \
+    TEST_ASSERT_EQ(                                                                                \
+      k_ra8_err_null_ptr,                                                                          \
+      ra8_c6link_mdl_transfer(link, "https://example.test/book", "/book", &config, &result));      \
+  } while (0)
+  EXPECT_NULL(sha256.init);
+  EXPECT_NULL(sha256.update);
+  EXPECT_NULL(sha256.final);
+  EXPECT_NULL(sha256.ctx);
+#undef EXPECT_NULL
+}
+
+/**
  * @brief Exercise every required injected callback and context.
- * @details Restores the complete base before clearing each required mechanism,
- * so every rejection differs from the control by one operand.
+ * @details Delegates the storage and sha256 member sweeps to their own
+ * helpers, then proves a strict-format validation rejection still reaches
+ * storage begin exactly once.
  * @param[in,out] link Valid link that no rejected vector reaches.
  * @param[in] base Complete configuration with the test begin seam installed.
  * @pre @p link and @p base are non-null.
@@ -98,28 +167,10 @@ RA8_INTERNAL static void internal_test_required_callbacks(ra8_c6link_t*         
                                                           const ra8_mdl_transfer_config_t* base)
 {
   ra8_mdl_transfer_result_t result = {};
-  ra8_mdl_transfer_config_t config = *base;
-  /** @def EXPECT_NULL @brief Clear and reject one required config member. */
-#define EXPECT_NULL(member)                                                                        \
-  do {                                                                                             \
-    config        = *base;                                                                         \
-    config.member = nullptr;                                                                       \
-    TEST_ASSERT_EQ(                                                                                \
-      k_ra8_err_null_ptr,                                                                          \
-      ra8_c6link_mdl_transfer(link, "https://example.test/book", "/book", &config, &result));      \
-  } while (0)
+  ra8_mdl_transfer_config_t config;
   s_validation_begins = 0U;
-  EXPECT_NULL(storage.begin);
-  EXPECT_NULL(storage.write);
-  EXPECT_NULL(storage.validate);
-  EXPECT_NULL(storage.commit);
-  EXPECT_NULL(storage.abort);
-  EXPECT_NULL(storage.ctx);
-  EXPECT_NULL(sha256.init);
-  EXPECT_NULL(sha256.update);
-  EXPECT_NULL(sha256.final);
-  EXPECT_NULL(sha256.ctx);
-#undef EXPECT_NULL
+  internal_test_required_callbacks_storage(link, base);
+  internal_test_required_callbacks_sha256(link, base);
   config                  = *base;
   config.format           = k_ra8_mdl_format_loose;
   config.storage.validate = nullptr;

@@ -270,6 +270,41 @@ RA8_INTERNAL static void internal_bind_vfs(fw_fs_t* fs, fw_fs_ra8_vfs_state_t* s
  * @test Export bytes and reader semantics match across POSIX and RAM/FAT/VFS.
  * @since 0.1.0
  */
+/**
+ * @brief Prove an unsupported chapter export leaves a prior archive untouched.
+ * @details Requests a CBZ chapter-metadata export the RAM/FAT/VFS adapter
+ *          cannot service, requires the rejection, then rehashes the
+ *          existing archive and requires it still matches the hash taken
+ *          before the rejected attempt.
+ * @param[in,out] vfs_storage Bound RAM/FAT/VFS export storage under test.
+ * @param[in] preserved Archive hash captured before the rejected attempt.
+ * @return Nothing; every check is asserted inside.
+ * @pre @p vfs_storage is bound and `/book.cbz` already exists on it.
+ * @post The archive at `/book.cbz` is unchanged.
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_check_unsupported_preserves_archive(internal_export_storage_t* vfs_storage,
+                                             uint64_t                   preserved)
+{
+  mdl_export_meta_t metadata;
+  mdl_meta_init(&metadata);
+  (void)memcpy(metadata.modified, "2026-08-15T00:00:00Z", sizeof("2026-08-15T00:00:00Z"));
+  mdl_export_workspace_t workspace;
+  mdl_export_workspace_init(&workspace, s_export_arena, sizeof(s_export_arena));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 mdl_export_chapter_meta_ws(&vfs_storage->storage,
+                                            k_ra8_mdl_format_cbz,
+                                            "/chapter",
+                                            "/book.cbz",
+                                            &metadata,
+                                            &workspace));
+  uint64_t after = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, mdl_hash_file(&vfs_storage->storage, "/book.cbz", &after));
+  TEST_ASSERT_EQ(preserved, after);
+}
+
 RA8_INTERNAL static void internal_test_export_portability(void)
 {
   TEST_BEGIN("media exporter POSIX/RAM-FAT-VFS parity");
@@ -296,22 +331,8 @@ RA8_INTERNAL static void internal_test_export_portability(void)
     TEST_ASSERT_EQ(posix_hashes[i], vfs_hashes[i]);
   }
 
-  const uint64_t    preserved = vfs_hashes[0];
-  mdl_export_meta_t metadata;
-  mdl_meta_init(&metadata);
-  (void)memcpy(metadata.modified, "2026-08-15T00:00:00Z", sizeof("2026-08-15T00:00:00Z"));
-  mdl_export_workspace_t workspace;
-  mdl_export_workspace_init(&workspace, s_export_arena, sizeof(s_export_arena));
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 mdl_export_chapter_meta_ws(&vfs_storage.storage,
-                                            k_ra8_mdl_format_cbz,
-                                            "/chapter",
-                                            "/book.cbz",
-                                            &metadata,
-                                            &workspace));
-  uint64_t after = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, mdl_hash_file(&vfs_storage.storage, "/book.cbz", &after));
-  TEST_ASSERT_EQ(preserved, after);
+  const uint64_t preserved = vfs_hashes[0];
+  internal_check_unsupported_preserves_archive(&vfs_storage, preserved);
 
   internal_cleanup(&posix_storage.storage);
   internal_cleanup(&vfs_storage.storage);

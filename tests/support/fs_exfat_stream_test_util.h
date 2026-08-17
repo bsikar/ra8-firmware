@@ -174,15 +174,15 @@ RA8_INTERNAL static inline void internal_stream_write_pattern(ra8_fs_file_t* f,
                                                               uint32_t       base,
                                                               uint8_t        seed)
 {
-  static uint8_t buf[k_xs_big_chunk];
+  static uint8_t s_buf[k_xs_big_chunk];
   uint32_t       done = 0U;
   while (done < total) {
     uint32_t n = total - done;
     if (n > chunk) {
       n = chunk;
     }
-    internal_stream_fill_at(buf, n, base + done, seed);
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, buf, n));
+    internal_stream_fill_at(s_buf, n, base + done, seed);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_buf, n));
     done += n;
   }
 }
@@ -209,12 +209,29 @@ RA8_INTERNAL static inline void internal_stream_write_pattern(ra8_fs_file_t* f,
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
+/**
+ * @brief Report one content-mismatch offset and fail the enclosing test.
+ * @details Isolated in its own frame so the shared ::TEST_FAIL_FMT macro's
+ *          internal control flow does not compound with the caller's loop
+ *          nesting.
+ * @param[in] at Absolute file offset of the mismatching byte.
+ * @return Nothing; always fails the enclosing test.
+ * @pre The enclosing test is still running.
+ * @post The enclosing test is marked failed at this call site.
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static inline void internal_stream_expect_span_fail(uint32_t at)
+{
+  TEST_FAIL_FMT("content mismatch at offset %u", (unsigned)at);
+}
+
 RA8_INTERNAL static inline void
 internal_stream_expect_span(const uint8_t* got, uint32_t len, uint32_t pos, uint8_t seed)
 {
   for (uint32_t i = 0U; i < len; i++) {
     if (got[i] != internal_stream_byte_at(pos + i, seed)) {
-      TEST_FAIL_FMT("content mismatch at offset %u", (unsigned)(pos + i));
+      internal_stream_expect_span_fail(pos + i);
       return;
     }
   }
@@ -251,7 +268,7 @@ internal_stream_expect_contents(ra8_fs_mount_t* h, const char* name, uint32_t to
   uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(total, size);
-  static uint8_t buf[k_xs_big_chunk];
+  static uint8_t s_buf[k_xs_big_chunk];
   uint32_t       pos = 0U;
   while (pos < total) {
     uint32_t want = total - pos;
@@ -259,9 +276,9 @@ internal_stream_expect_contents(ra8_fs_mount_t* h, const char* name, uint32_t to
       want = (uint32_t)k_xs_big_chunk;
     }
     uint32_t got = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, buf, want, &got));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_buf, want, &got));
     TEST_ASSERT_EQ(want, got);
-    internal_stream_expect_span(buf, got, pos, seed);
+    internal_stream_expect_span(s_buf, got, pos, seed);
     pos += got;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
