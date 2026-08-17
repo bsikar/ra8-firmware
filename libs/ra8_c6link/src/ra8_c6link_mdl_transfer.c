@@ -227,32 +227,72 @@ ra8_c6link_mdl_transfer_commit_test(const ra8_mdl_transfer_config_t* config,
   return internal_mdl_transfer_commit(&state, chunk, bytes_stored, chunks_received, result);
 }
 
-ra8_err_t ra8_c6link_mdl_transfer(ra8_c6link_t*                    link,
-                                  const char*                      url,
-                                  const char*                      destination,
-                                  const ra8_mdl_transfer_config_t* config,
-                                  ra8_mdl_transfer_result_t*       result)
+/**
+ * @brief Validate configuration, then start local storage and the remote job
+ * @details Splits the transactional preamble from the per-chunk pull loop so
+ * ::ra8_c6link_mdl_transfer stays within its statement budget. Zeroes
+ * @p result once validation passes, and leaves `state->storage_active` false
+ * on any failure that precedes a successful `storage.begin` -- the caller
+ * uses that flag to decide whether cleanup is required.
+ * @param[in] link Open c6link handle to bind into @p state.
+ * @param[in] url Source URL for the remote StartRequest.
+ * @param[in] destination Local destination handed to storage.begin.
+ * @param[in] config Injected storage/hash/transport configuration.
+ * @param[out] result Zeroed once configuration validation passes.
+ * @param[out] state Prepared transfer state for the pull loop or cleanup.
+ * @return Status to return immediately, or k_ra8_ok to enter the pull loop.
+ * @retval k_ra8_ok The remote job is started; the pull loop may proceed.
+ * @retval other Validation, storage, hash, or transport start-up failed.
+ * @pre @p link, @p url, @p destination, @p config, and @p result are non-null.
+ * @pre @p state has not been used by an earlier transfer.
+ * @post `state->storage_active` is true if and only if `config->storage.begin`
+ * returned `k_ra8_ok`.
+ * @post On validation failure, neither storage nor the remote job is touched.
+ * @note Not thread-safe; it mutates injected storage/hash contexts.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mdl_transfer_begin(ra8_c6link_t* link,
+                                                          const char*   url,
+                                                          const char*   destination,
+                                                          const ra8_mdl_transfer_config_t* config,
+                                                          ra8_mdl_transfer_result_t*       result,
+                                                          mdl_transfer_state_t*            state)
 {
   const ra8_err_t validation =
     internal_mdl_transfer_validate(link, url, destination, config, result);
   if (validation != k_ra8_ok) {
     return validation;
   }
-  *result                    = (ra8_mdl_transfer_result_t){};
-  mdl_transfer_state_t state = {.link = link, .config = config};
-  ra8_err_t            err   = config->storage.begin(config->storage.ctx, destination);
+  *result       = (ra8_mdl_transfer_result_t){};
+  state->link   = link;
+  state->config = config;
+  ra8_err_t err = config->storage.begin(config->storage.ctx, destination);
   if (err != k_ra8_ok) {
     return err;
   }
-  state.storage_active = true;
-  err                  = config->sha256.init(config->sha256.ctx);
+  state->storage_active = true;
+  err                   = config->sha256.init(config->sha256.ctx);
   if (err == k_ra8_ok) {
     const ra8_mdl_request_t request = {
       .url    = url,
       .format = config->format,
       .http   = config->http,
     };
-    err = ra8_c6link_mdl_start_request(link, &request, &state.session);
+    err = ra8_c6link_mdl_start_request(link, &request, &state->session);
+  }
+  return err;
+}
+
+ra8_err_t ra8_c6link_mdl_transfer(ra8_c6link_t*                    link,
+                                  const char*                      url,
+                                  const char*                      destination,
+                                  const ra8_mdl_transfer_config_t* config,
+                                  ra8_mdl_transfer_result_t*       result)
+{
+  mdl_transfer_state_t state = {};
+  ra8_err_t err = internal_mdl_transfer_begin(link, url, destination, config, result, &state);
+  if (!state.storage_active) {
+    return err;
   }
   uint64_t bytes_stored = 0U;
   for (uint32_t pull = 0U; (pull < config->max_chunks) && (err == k_ra8_ok); pull++) {
