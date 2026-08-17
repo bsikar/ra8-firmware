@@ -298,7 +298,7 @@ static bool internal_reader_unchanged(const ra8_book_chunked_t* reader,
   return (reader->chunk_bytes == saved->chunk_bytes) && (reader->chunk_count == saved->chunk_count);
 }
 
-/** @brief Prove every known reader/workspace/output alias fails before I/O. */
+/** @brief Prove every reader/workspace alias fails before I/O. */
 RA8_INTERNAL
 static void internal_check_chunked_alias_guards(stream_guard_fixture_t* fixture)
 {
@@ -329,7 +329,12 @@ static void internal_check_chunked_alias_guards(stream_guard_fixture_t* fixture)
                                                   sizeof(g_validate_work),
                                                   &hdr));
   TEST_ASSERT_EQ(0U, hdr.total_size);
+}
 
+/** @brief Prove an output aliasing the reader itself fails before I/O. */
+RA8_INTERNAL
+static void internal_check_chunked_output_aliases(const stream_guard_fixture_t* fixture)
+{
   union {
     /** @brief Reader view used as the source object. */
     ra8_book_chunked_t reader;
@@ -346,13 +351,13 @@ static void internal_check_chunked_alias_guards(stream_guard_fixture_t* fixture)
                                                   &reader_header_alias.header));
   TEST_ASSERT(internal_reader_unchanged(&reader_header_alias.reader, &saved));
 
+  ra8_book_header_t hdr = {.total_size = UINT32_MAX};
   union {
     /** @brief Reader view used as the source object. */
     ra8_book_chunked_t reader;
     /** @brief Aliased transfer destination under test. */
     uint8_t chunk[k_stream_chunk];
   } reader_chunk_alias = {.reader = fixture->reader};
-  hdr.total_size       = UINT32_MAX;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_book_chunked_validate_strict(&reader_chunk_alias.reader,
                                                   reader_chunk_alias.chunk,
@@ -413,6 +418,7 @@ static void internal_test_chunked_workspace_and_reader_guards(void)
   stream_guard_fixture_t fixture = {};
   priv_book_fixture_open_packed(&fixture);
   internal_check_chunked_alias_guards(&fixture);
+  internal_check_chunked_output_aliases(&fixture);
   internal_check_chunked_reader_guards(&fixture);
   TEST_END("strict chunked workspace and reader guards");
 }
