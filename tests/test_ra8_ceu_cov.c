@@ -616,7 +616,7 @@ static void test_cam_init_rejects_invalid_config(void)
 }
 
 /**
- * @brief Bind the CEU source and report its metadata. @details Accepts the paired image-capture / UYVY configuration (MC/DC vector 1 of the format rule), checks the handle and state the bind produced, reads the metadata back through the facade, and confirms both not-initialized legs of the metadata query. @pre The fake register window is available. @pre No CEU capture is in flight. @post The bound source reports exactly the configured geometry. @post An unbound context or a cleared state flag is refused. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+ * @brief Bind the CEU source and report its metadata. @details Accepts the paired image-capture / UYVY configuration (MC/DC vector 1 of the format rule), checks the handle and state the bind produced, reads the metadata back through the facade, and confirms both not-initialized legs of the metadata query. @pre The fake register window is available. @pre No CEU capture is in flight. @post The bound source reports exactly the configured geometry. @post An unbound context or a cleared state flag is refused. @par MC/DC: Single-condition decisions only: the metadata query's unbound-context and cleared-initialized guards each run in both directions (bound success first, then each guard taken), as do the diagnostic accessor's two null guards. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 static void test_cam_init_binds_and_reports_info(void)
 {
   TEST_BEGIN("camera ceu: init binds source and reports info");
@@ -664,7 +664,7 @@ static void test_cam_init_binds_and_reports_info(void)
 }
 
 /**
- * @brief Refuse a capture whose storage the backend cannot use. @details Covers a buffer smaller than the advertised bound, a buffer that breaks the eight-byte CEU alignment rule, an unbound context, a cleared initialized flag, and the cache-maintenance rejection of a null range reached below the facade. @pre The CEU source is bound to caller-owned state. @pre The fake register window is available. @post No rejection arms the capture engine. @post Every rejection reports its own specific error code. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+ * @brief Refuse a capture whose storage the backend cannot use. @details Covers a buffer smaller than the advertised bound, a buffer that breaks the eight-byte CEU alignment rule, an unbound context, a cleared initialized flag, and the cache-maintenance rejection of a null range reached below the facade. @pre The CEU source is bound to caller-owned state. @pre The fake register window is available. @post No rejection arms the capture engine. @post Every rejection reports its own specific error code. @par MC/DC: Single-condition decisions only: capacity-too-small, alignment, unbound-context, cleared-initialized and null-buffer guards are each taken here; their not-taken directions run in the completed-frame case of this suite. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 static void test_cam_capture_rejects_bad_buffers(void)
 {
   TEST_BEGIN("camera ceu: capture rejects unusable storage");
@@ -704,7 +704,7 @@ static void test_cam_capture_rejects_bad_buffers(void)
 }
 
 /**
- * @brief Report a busy engine and a completion that never arrives. @details Drives the arm-time rejection produced by CSTSR.CPTON and then the bounded-poll expiry, checking that the expiry still programmed the destination address and issued the software reset the contract promises. @pre The CEU source is bound to caller-owned state. @pre No modelled capture-end is armed. @post The armed destination address is observable in CDAYR. @post The frame view is zeroed on both failures. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+ * @brief Report a busy engine and a completion that never arrives. @details Drives the arm-time rejection produced by CSTSR.CPTON and then the bounded-poll expiry, checking that the expiry still programmed the destination address and issued the software reset the contract promises. @pre The CEU source is bound to caller-owned state. @pre No modelled capture-end is armed. @post The armed destination address is observable in CDAYR. @post The frame view is zeroed on both failures. @par MC/DC: Single-condition decisions only: the CSTSR.CPTON busy-at-arm guard and the bounded-poll expiry each run in the taken direction here; their not-taken directions run in the completed-frame case of this suite. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 static void test_cam_capture_busy_and_timeout(void)
 {
   TEST_BEGIN("camera ceu: capture reports busy engine and poll expiry");
@@ -792,7 +792,7 @@ static void test_cam_wait_reports_capture_end_bytes(void)
 }
 
 /**
- * @brief Separate fatal CEU faults from harmless sync traffic. @details A failed status read is forwarded untouched, a CRAM overflow abandons the frame even when a capture-end flag arrives with it, HD and VD alone never terminate the bounded poll, and a software reset that never completes is reported in place of the fault it was clearing -- on the fault leg and on the expiry leg alike. @pre The fake register window and MMIO fault seam are available. @pre No modelled capture-end is armed. @post Every observed event bit is retained in caller-owned diagnostic state. @post The MMIO fault seam is disarmed on return. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+ * @brief Separate fatal CEU faults from harmless sync traffic. @details A failed status read is forwarded untouched, a CRAM overflow abandons the frame even when a capture-end flag arrives with it, HD and VD alone never terminate the bounded poll, and a software reset that never completes is reported in place of the fault it was clearing -- on the fault leg and on the expiry leg alike. @pre The fake register window and MMIO fault seam are available. @pre No modelled capture-end is armed. @post Every observed event bit is retained in caller-owned diagnostic state. @post The MMIO fault seam is disarmed on return. @par MC/DC: Drives the event classification both ways per condition: a fatal overflow (with capture-end present) abandons the frame, sync-only traffic does not terminate the poll, and the failed software reset substitutes its own status on the fault and expiry legs alike; the failed status read forwards before any event is recorded. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 static void test_cam_wait_faults_and_reset_failure(void)
 {
   TEST_BEGIN("camera ceu: fatal faults and reset failure");
@@ -840,7 +840,7 @@ static void test_cam_wait_faults_and_reset_failure(void)
 }
 
 /**
- * @brief Publish a completed frame and reject impossible byte counts. @details With the peripheral modelled as latching capture-end on the first poll, the backend must return a frame view aliasing the caller's buffer with exactly the configured geometry; a zero-byte capture and a capture larger than the supplied storage must both be refused as invalid sizes. @pre The CEU has been initialized. @pre The capture buffer is eight-byte aligned. @post A published frame aliases the caller's storage and validates. @post Neither byte-count rejection publishes a frame view. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+ * @brief Publish a completed frame and reject impossible byte counts. @details With the peripheral modelled as latching capture-end on the first poll, the backend must return a frame view aliasing the caller's buffer with exactly the configured geometry; a zero-byte capture and a capture larger than the supplied storage must both be refused as invalid sizes. @pre The CEU has been initialized. @pre The capture buffer is eight-byte aligned. @post A published frame aliases the caller's storage and validates. @post Neither byte-count rejection publishes a frame view. @par MC/DC: Decision: the published-byte-count validity guard (zero bytes OR larger than the supplied storage). Vector 1: zero-byte capture -> first condition true, refused; Vector 2: data-enable capture larger than the buffer -> second condition true, refused; Vector 3: the completed frame -> both false, published. Pairs 1+3 and 2+3 show each condition's independent influence. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 static void test_cam_capture_frame_and_byte_count_rules(void)
 {
   TEST_BEGIN("camera ceu: completed frame and byte-count rules");
@@ -928,7 +928,7 @@ internal_test_cam_source_production_capture(ra8_camera_source_t*           sourc
 }
 
 /**
- * @brief Drive the production copy of the CEU source linked through ra8_core_hal. @details Repeats the contract against the unrenamed symbols so the shipped translation unit -- not only the white-box copy above -- executes its guards, its metadata query, its storage rejections, the bounded poll it runs against the real CETCR, and its diagnostic accessor. @pre The fake register window is available. @pre No CEU capture is in flight. @post The production copy reports the same specific error codes as the copy. @post The bounded poll expiry leaves CDAYR holding the armed address. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
+ * @brief Drive the production copy of the CEU source linked through ra8_core_hal. @details Repeats the contract against the unrenamed symbols so the shipped translation unit -- not only the white-box copy above -- executes its guards, its metadata query, its storage rejections, the bounded poll it runs against the real CETCR, and its diagnostic accessor. @pre The fake register window is available. @pre No CEU capture is in flight. @post The production copy reports the same specific error codes as the copy. @post The bounded poll expiry leaves CDAYR holding the armed address. @par MC/DC: Single-condition decisions only, re-run against the production translation unit: the three init null guards and the zero-poll-attempts guard are each taken, then the bound success takes the not-taken directions; the shared capture/diagnostic legs run via the helper this test calls. @note Not thread-safe; single-threaded test binary only. @since Version 0.1.0 */
 static void test_cam_source_production_instance(void)
 {
   TEST_BEGIN("camera ceu: production source instance");
