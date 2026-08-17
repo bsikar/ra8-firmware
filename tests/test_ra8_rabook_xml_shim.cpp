@@ -120,6 +120,7 @@ RA8_INTERNAL ra8_err_t internal_parse_chapter_ws(const uint8_t*              byt
 }
 
 /** @brief Route legacy call sites through the test-owned XML workspace wrapper. */
+/* NOLINTNEXTLINE(readability-identifier-naming) -- mirrors the production `ra8_rabook_xml_parse_chapter()` entry point so later call sites resolve unchanged. */
 #define ra8_rabook_xml_parse_chapter internal_parse_chapter
 
 typedef enum : uint16_t {
