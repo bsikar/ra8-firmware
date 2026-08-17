@@ -121,3 +121,7 @@ Use **CPU1** (opt-in) for:
 
 CPU1 has neither MVE nor an FPU on the M85's scale; do not move
 signal-processing code there blindly.
+
+The two cores in their full context -- worlds, modules, mailbox and the radio:
+
+<img src="diagrams/system_map.svg" alt="RA8 system map: the M85 and M33 cores, the TrustZone split, the mailbox between them, and the ESP32-C6 over SPI" width="100%">
