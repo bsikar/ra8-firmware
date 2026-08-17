@@ -724,6 +724,16 @@ internal_test_file_read_with_ops(const ra8_test_file_ops_t* ops,
   }
   internal_test_file_validate_and_read(ops, descriptor, destination, staging, &result);
   internal_ra8_test_file_close(ops, descriptor, &result);
+  if ((result.status == k_ra8_test_file_ok) && (result.required != 0U) &&
+      (destination == nullptr)) {
+    /* internal_ra8_test_file_spans_valid() already rejects a null
+     * destination whenever required > 0, so this arm is unreachable in
+     * practice -- but the static analyzer cannot see that guarantee across
+     * the internal_test_file_validate_and_read() call boundary, and a
+     * belt-and-suspenders check costs nothing on a path that is exercised
+     * only by test fixtures. */
+    internal_ra8_test_file_fail(&result, k_ra8_test_file_invalid, 0);
+  }
   if (result.status == k_ra8_test_file_ok) {
     if (result.required != 0U) {
       memcpy(destination, staging, result.required);
