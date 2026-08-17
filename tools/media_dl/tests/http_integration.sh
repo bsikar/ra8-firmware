@@ -660,6 +660,46 @@ INIT_AFTER="$("${CMAKE}" -E sha256sum "${WORK}/init/reader.conf")"
 grep -q 'refusing to overwrite existing site descriptor' "${WORK}/init-repeat.log"
 [[ -z "$(find "${WORK}/init" -name '.mdl-tmp-*' -print -quit)" ]]
 
+# Composition-root path resolution runs BEFORE any mode does work, so a pack
+# target that cannot be canonicalized must be refused with the portable-path
+# diagnostic rather than a mode-specific one, and must create nothing. The
+# distinct exit codes matter: an unresolvable path is an execution failure (1),
+# whereas a URL with no extractable host is a usage error (2).
+set +e
+"${MEDIA_DL}" --pack "${WORK}/no-such-pack-dir" --format cbz \
+  >"${WORK}/pack-missing.log" 2>&1
+PACK_MISSING_RC=$?
+(cd "${WORK}/init" && "${MEDIA_DL}" --init-site 'not-a-url' >"${WORK}/init-nohost.log" 2>&1)
+INIT_NOHOST_RC=$?
+set -e
+[[ ${PACK_MISSING_RC} -eq 1 ]]
+[[ ${INIT_NOHOST_RC} -eq 2 ]]
+grep -q 'could not resolve portable command path' "${WORK}/pack-missing.log"
+grep -q "could not extract host from 'not-a-url'" "${WORK}/init-nohost.log"
+[[ ! -e "${WORK}/no-such-pack-dir" ]]
+[[ "$(find "${WORK}/init" -maxdepth 1 -type f -name '*.conf' | wc -l)" -eq 1 ]]
+
+# A combined multi-chapter container names itself from the chapter COUNT when
+# the selection holds a chapter with no parseable number. `--from 108.5` is what
+# pulls the fixture's deliberately numberless chapter into the window: without
+# it the selection is two numbered chapters and the archive is span-named, which
+# is the case the suite already covered. The numeric span is not computable over
+# a numberless member, and naming the archive with one anyway would mislabel its
+# contents -- so the ABSENCE of a span-named archive is the half that proves it.
+"${MEDIA_DL}" \
+  --config "${WORK}/site.conf" \
+  --series "${BASE}/series/" \
+  --from 108.5 \
+  --chapters 2 \
+  --out "${WORK}/combined" \
+  --format cbz \
+  --allow-private \
+  --contact https://github.com/bsikar/ra8-firmware
+COMBINED_CBZ="$(find "${WORK}/combined" -type f -name '*-2-chapters.cbz' -print -quit)"
+[[ -s "${COMBINED_CBZ}" ]]
+[[ -z "$(find "${WORK}/combined" -type f -name '*-108.5-*.cbz' -print -quit)" ]]
+[[ -z "$(find "${WORK}/combined" -name '.mdl-tmp-*' -print -quit)" ]]
+
 BEFORE="$("${CMAKE}" -E sha256sum "${PAGE}")"
 BEFORE="${BEFORE%% *}"
 
