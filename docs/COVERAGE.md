@@ -9,7 +9,7 @@ flow described in `docs/MCDC.md`.
 | Flow                     | Tool          | Goal                              | Speed |
 |--------------------------|---------------|-----------------------------------|-------|
 | Statement + branch (this)| gcc + gcovr   | Quick regression ratchet          | Fast  |
-| MC/DC (`make mcdc`)      | clang-18 + llvm-cov | DO-178C Level B / IEC 61508 SIL 3 audit gold standard | Slow  |
+| MC/DC (`make mcdc`)      | clang + llvm-cov | DO-178C Level B / IEC 61508 SIL 3 audit gold standard | Slow  |
 
 In theory MC/DC subsumes branch coverage, so once 100% MC/DC is
 achieved, statement and branch coverage are guaranteed to be 100%

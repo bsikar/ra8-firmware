@@ -11,7 +11,7 @@ describes:
 5. Which source files / functions are directly affected.
 
 "Not shipped" is not the same as "not obtainable", and the distinction
-matters: the one entry below is **publicly downloadable under
+matters: the entry below is **publicly downloadable under
 BSD-3-Clause**. It is absent because a partial copy is worse than none
 (see "Where it would go"), not because a licence forbids it.
 
@@ -23,10 +23,10 @@ BSD-3-Clause**. It is absent because a partial copy is worse than none
 
 The vendor-controlled implementation of the Renesas Secure IP block
 (RSIP-E50D) that ships inside the RA8D2 silicon (Hardware User's
-Manual Ch 52, "Renesas Secure IP (RSIP-E50D)", pp 3302-3307). In
-current FSP these are the obfuscated `r_rsip_*.c` procedure sources
-under `ra/fsp/src/r_rsip_protected/` (in older FSP releases, the
-`hw_sce_*.c` files); they implement the OEM-provisioned key-handling,
+Manual Ch 52, "Renesas Secure IP (RSIP-E50D)", pp 3302-3307). In FSP
+these are the obfuscated `r_rsip_*.c` procedure sources under
+`ra/fsp/src/r_rsip_protected/` (older FSP releases spell them
+`hw_sce_*.c`); they implement the OEM-provisioned key-handling,
 key-wrap and key-unwrap state machines that the bare RSIP register
 interface alone does not expose. "Blob" here means "opaque,
 vendor-controlled implementation", not literally a binary file.
@@ -48,11 +48,11 @@ vendor-controlled implementation", not literally a binary file.
 
 Nowhere yet, and that is deliberate. A snapshot of the FSP RSIP-E50D
 primitives *was* vendored under `libs/third_party/fsp_blobs/r_sce_AMC/`
-from 2026-05-02 until 2026-08, and it was deleted (#614) having never
-been built: no `cmake/` recipe referenced it, no first-party call site
-named a symbol in it, and 284 of its 287 translation units included
-`r_rsip_reg.h` / `r_rsip_util.h`, headers that were never copied into
-the tree. It could not have compiled if something had tried.
+and later deleted (#614) having never been built: no `cmake/` recipe
+referenced it, no first-party call site named a symbol in it, and
+nearly every one of its translation units included `r_rsip_reg.h` /
+`r_rsip_util.h`, headers that were never copied into the tree. It could
+not have compiled if something had tried.
 
 The lesson is that a *partial* vendoring of this component is dead
 weight, not a head start. Whoever brings hardware RSIP up should
@@ -83,19 +83,12 @@ genuine RSIP-E50D firmware blobs:
 
 ### Affected source files / functions
 
-Public RSIP key-install / wrap surface (declared via the umbrella
-`libs/ra8_hal/inc/ra8_rsip.h`, which pulls in `ra8_rsip_keys.h` and
-`ra8_rsip_mgmt.h`; the `*_install_plain` bodies live in
-`libs/ra8_hal/src/ra8_rsip_cipher.c` and the wrap / unwrap bodies in
-`libs/ra8_hal/src/ra8_rsip_asym.c`):
-
-- `ra8_rsip_aes128_install_plain`
-- `ra8_rsip_aes192_install_plain`
-- `ra8_rsip_aes256_install_plain`
-- `ra8_rsip_chacha20_install_plain`
-- `ra8_rsip_hmac_install_plain`
-- `ra8_rsip_key_wrap`
-- `ra8_rsip_key_unwrap`
+The public surface is the `ra8_rsip_*_install_plain` family (one per
+key type) plus `ra8_rsip_key_wrap` / `ra8_rsip_key_unwrap`, declared
+via the umbrella `libs/ra8_hal/inc/ra8_rsip.h`, which pulls in
+`ra8_rsip_keys.h` and `ra8_rsip_mgmt.h`. The `*_install_plain` bodies
+live in `libs/ra8_hal/src/ra8_rsip_cipher.c` and the wrap / unwrap
+bodies in `libs/ra8_hal/src/ra8_rsip_asym.c`.
 
 Wrapper / consumer layers:
 
@@ -108,8 +101,8 @@ Wrapper / consumer layers:
   (Ring-5 secure-side veneers that would call the RSIP wrap path
   in a production build)
 
-`libs/ra8_hal/src/ra8_rsip*.c` does return `k_ra8_err_not_supported`
-today, but only from the paths whose RSIP-E50D register interface is
+`libs/ra8_hal/src/ra8_rsip*.c` does return `k_ra8_err_not_supported`,
+but only from the paths whose RSIP-E50D register interface is
 undocumented (TRNG, hash, HMAC) and which therefore fail closed rather
 than hand back a plausible-looking wrong answer. There is still no
 return code anywhere at the RSIP layer that signals "blob missing":
@@ -142,8 +135,8 @@ thing that cannot move underneath the provenance record.
   redistributors.
 - Vendor it **whole or not at all**, at a release tag, with a build
   option that compiles it and an `sbom_registry.py` row that gates it.
-  A snapshot that nothing builds is accretion; the tree carried one for
-  three months and deleted it (#614).
+  A snapshot that nothing builds is accretion; the tree carried one and
+  deleted it (#614).
 - Every vendored file must appear verbatim. If a patch is required,
   write a separate integration shim and declare the deviation in the
   component's `docs/SOUP/*.md`.

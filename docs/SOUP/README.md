@@ -47,8 +47,8 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 
 ## One-line summaries
 
-- **ThreadX** -- Preemptive RTOS kernel under 45 example applications (39 of
-  them hw_validated), the vendored middleware, and the e-reader NS image.
+- **ThreadX** -- Preemptive RTOS kernel under most of the example
+  applications, the vendored middleware, and the e-reader NS image.
 - **NetX Duo** -- Dual IPv4/IPv6 TCP/IP stack over wired Ethernet and over the
   ESP32-C6 Wi-Fi link. TCP/IP core only: NetX Secure is compiled by nothing
   and TLS comes from Mbed TLS.
@@ -63,8 +63,8 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 - **Apache NimBLE** -- Bluetooth 5.4 host + controller stack staged for
   future BLE bring-up; not yet linked to an example.
 - **litehtml** -- HTML/CSS layout engine for the EPUB reader.
-- **miniz** -- Deflate / inflate / ZIP support behind five decode paths: EPUB,
-  CBZ, PNG, gzip, and the `ra8_io` compress-on-write fabric seam.
+- **miniz** -- Deflate / inflate / ZIP support behind the EPUB, CBZ, PNG and
+  gzip decode paths and the `ra8_io` compress-on-write fabric seam.
 - **XZ Embedded** (decode-only) -- XZ/LZMA2 decoding for wrapped archive
   content (`.tar.xz`) behind the bounded `libs/ra8_unarch` wrapper.
 - **stb** -- JPEG / PNG / GIF / BMP decoding (`stb_image`, via
@@ -86,9 +86,9 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 - **esp-hosted host driver** -- The RA8D2-side driver for the ESP32-C6
   wireless co-processor: transport framing, RPC codec and the serial channel.
   Vendored without the upstream ESP-IDF port; the first-party port at
-  `port/esp-hosted/` supplies that seam. Eight translation units compile
-  behind `RA8_USE_ESP_HOSTED` into five hw_validated applications, and the
-  protocol round-trip is proven on silicon.
+  `port/esp-hosted/` supplies that seam. A subset of its translation units
+  compiles behind `RA8_USE_ESP_HOSTED` into the hw_validated C6 applications,
+  and the protocol round-trip is proven on silicon.
 - **protobuf-c** -- Protocol Buffers C runtime backing the esp-hosted RPC
   codec; a git submodule upstream, so it is pinned and licensed separately
   (BSD-2-Clause) inside `libs/third_party/esp-hosted/common/protobuf-c/`.
@@ -153,16 +153,16 @@ Deliberate deviations are declared in the registry (`patched_files`,
 `local_files`) with a justification, and `--refresh` REFUSES to record a
 deviation the registry has not declared -- otherwise a corrupted file would be
 quietly re-recorded as "modified on purpose" and the gate would go green having
-absorbed it. As of 2026-08-10: 20 components, 9153 vendored files, 9135
-byte-identical to their pinned upstream revision, 18 declared deviations
-(the vendored FileX snapshot, retired by #611, left with its deviation).
+absorbed it. Each component's own "Deviations / patches" section is the
+authority on what is declared for it.
 
-Applying that check for the first time found five undeclared deviations that
-this catalog described as "unmodified": the `[attr]` edit to all five Eclipse
-ThreadX `.gitattributes` files, CRLF-converted USBX `.inf` templates, and a
-vendor-in formatter sweep over miniz, TinyXML-2 and `stb_image.h`. Everything
-that could be restored to upstream's bytes was; the rest is enumerated in the
-component's "Deviations / patches" section.
+Applying that check for the first time found deviations this catalog had
+described as "unmodified" -- `.gitattributes` edits, CRLF-converted Windows
+driver templates, and a vendor-in formatter sweep that had re-spaced several
+vendored amalgamations. Everything that could be restored to upstream's bytes
+was, and the rest was declared. That is the standing lesson: a prose claim of
+"unmodified" does not notice a tree-wide sweep reaching into
+`libs/third_party/`, so the claim has to be a gate.
 
 ## Review cadence
 

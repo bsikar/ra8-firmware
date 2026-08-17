@@ -72,8 +72,8 @@ surface is exactly:
 
 **litehtml stays benched.** A litehtml-backed `v2` exists behind
 `RA8_REFLOW_USE_LITEHTML` (default **OFF**). litehtml brings the full CSS box
-model but pulls C++/STL + `malloc` (violates NASA P10 Rule 3) and ~215 SOUP
-files onto the content path. It is the **content-only** escape hatch: if a real
+model but pulls C++/STL + `malloc` (violates NASA P10 Rule 3) and a large
+SOUP surface onto the content path. It is the **content-only** escape hatch: if a real
 EPUB 3 corpus visibly defeats v1's text-flow model (tables, floats, embedded
 fonts), the flag may be flipped for **book content rendering only -- never for
 chrome** (see `docs/SOUP/litehtml.md` and #76). The boundary is explicit: chrome

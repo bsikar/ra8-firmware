@@ -7,15 +7,14 @@ environment is recreated instead of hand-assembled.
 ## Quick start (clone -> deploy)
 
 ```
-git clone <this-repo> && cd ra8-firmware
 make infra-setup          # or: bash infra/bootstrap.sh
 ```
 
 The bootstrap checks prerequisites, writes your **git-ignored** inventory, names
 the fleet's machines in your `~/.ssh/config` (generated from `fleet.yml`, so
 this machine can drive the estate without anyone hand-copying aliases -- see
-`docs/CI_FLEET.md` section 2), stores your GitHub token, and offers to run the
-deploy. Nothing secret is ever committed -- your token lands in
+`docs/CI_FLEET.md`), stores your GitHub token, and offers to run the deploy.
+Nothing secret is ever committed -- your token lands in
 `infra/ansible/private/` (git-ignored) or, if you run one, in OpenBao. That's
 it: your machine joins as a CI runner pool.
 
@@ -27,8 +26,7 @@ it: your machine joins as a CI runner pool.
   it joins the runner pool: more hardware, more parallel CI. Two shapes are
   supported and can run side by side -- an autoscaling ARC pool on a k8s
   cluster, and long-lived containers on any plain Docker host (including a
-  Windows machine's WSL2 distro). See "The CI runner pool spans three hosts"
-  below.
+  Windows machine's WSL2 distro).
 - **HIL bench** -- configures the bench Pi's J-Link, `rfp-cli`, serial console,
   smart-plug control, the ESP32-C6 build toolchain, and the Digilent Analog
   Discovery 2 logic analyzer used to probe the RA8 <-> C6 SPI lines.
@@ -56,6 +54,11 @@ network/     the isolated ESP32-C6 bench LAN (FortiGate + OpenWrt AP)
 knob. `scripts/checks/check_fleet_declaration.py` fails a `host_vars` file that
 re-declares anything `fleet.yml` owns.
 
+**How many machines there are, how each is sized, and which labels it carries
+are questions only `fleet.yml` answers.** Nothing in this file restates them,
+deliberately: a prose copy of a capacity figure is wrong the first time anyone
+retunes a host and nothing notices.
+
 **Adding a machine, retuning one, quiet hours, removing one:
 [`docs/CI_FLEET.md`](../docs/CI_FLEET.md).** It also carries the sizing formula
 and the measurements behind it, so a new host is sized by plugging in two
@@ -64,21 +67,21 @@ numbers rather than re-deriving anything.
 ## What is codified, and what is not
 
 The rule this directory exists to serve is that **anything hand-installed is
-lost at the next re-provision**. That makes the honest status per host part of
+lost at the next re-provision**. That makes the honest status per role part of
 the documentation, not a footnote:
 
-| Host / service | Role | Status |
-|---|---|---|
-| dev / verification box | `dev_box` | codified |
-| k3s cluster + `helm` | `k3s_node` | codified |
-| OpenBao vault (deployment) | `openbao` | codified |
-| ARC runner pool | `ci_runner` | codified |
-| second build host (Docker) | `ci_runner_docker` | codified |
-| Windows/WSL2 build host | `wsl_ci_host` + `ci_runner_docker` | codified |
-| HIL bench Pi | `hil_bench`, `c6_toolchain`, `ad2_tools` | codified |
-| bench LAN (FortiGate + AP) | `network/` | codified |
-| vault init / unseal / secrets | `scripts/secrets/` | manual **by design** |
-| Proxmox guest topology | -- | **hand-built** (#500) |
+| Role / service | Status |
+|---|---|
+| `dev_box` (dev / verification box) | codified |
+| `k3s_node` (cluster + `helm`) | codified |
+| `openbao` (vault deployment) | codified |
+| `ci_runner` (ARC runner pool) | codified |
+| `ci_runner_docker` (Docker build host) | codified |
+| `wsl_ci_host` + `ci_runner_docker` (Windows/WSL2 build host) | codified |
+| `hil_bench`, `c6_toolchain`, `ad2_tools` (bench Pi) | codified |
+| `network/` (bench LAN: FortiGate + AP) | codified |
+| vault init / unseal / secrets (`scripts/secrets/`) | manual **by design** |
+| Proxmox guest topology | **hand-built** (#500) |
 
 Two rows deserve their exact wording. Vault initialisation and unsealing are
 manual *by design*, not by omission: both produce secrets, and a playbook that
@@ -89,14 +92,14 @@ VM and LXC definitions the whole rig sits on exist only as live guest config.
 
 `ci_runner` deploys ARC into "an existing k3s cluster" through helm, so it has
 always had two prerequisites that lived nowhere: the cluster, and a `helm` root
-could resolve. `k3s_node` is those prerequisites.
+could resolve. `k3s_node` is those prerequisites, and a host that declares both
+plays runs them in that order:
 
 ```
 make infra-apply HOST=k3s-pve
 ```
 
-That runs both plays in the order the host declares them (`k3s-node` then
-`ci-runner`); `PLAY=` on `scripts/dev/fleet.py` runs one on its own.
+`PLAY=` on `scripts/dev/fleet.py` runs one on its own.
 
 k3s is pinned by release version *and* by the sha256 of the release binary, and
 the upstream installer is fetched to disk and checksummed rather than piped
@@ -119,16 +122,14 @@ make infra-apply HOST=dev
 ```
 
 Two of its tools are built from source, and that is a property of the
-distribution rather than a preference. **cppcheck 2.13.0** is compared in
-`exact` mode by the parity gate because neighbouring releases emit
-version-specific false positives against this tree -- Debian ships 2.10,
-Homebrew ships 2.21, and no Debian suite carries the pin at any version string.
-**gcc 14.2.0** is the second host-tool compiler arm (#356) and is not packaged
-on Debian 12 at all. Both are pinned by URL + sha256 and asserted afterwards,
-the same discipline as every vendor download here.
-
-A first run therefore takes tens of minutes. Re-runs skip both builds once the
-pinned versions are present.
+distribution rather than a preference. **cppcheck** is compared in `exact` mode
+by the parity gate because neighbouring releases emit version-specific false
+positives against this tree, and no Debian suite carries the pin at any version
+string. The **second host-tool compiler arm** (#356) is a gcc major that Debian
+12 does not package at all. Both are pinned by URL + sha256 and asserted
+afterwards, the same discipline as every vendor download here. A first run
+therefore takes tens of minutes; re-runs skip both builds once the pinned
+versions are present.
 
 The role reads the *other* pins rather than restating them -- lint and format
 versions from `.devcontainer/Dockerfile`, the Unicorn pin from
@@ -137,128 +138,76 @@ generate them -- and finishes on `check_tool_versions.py --all`, the exact
 assertion the `toolchain-parity` gate makes. A box that cannot reach parity
 fails the play.
 
-## The CI runner pool spans three hosts
+## The CI runner pool spans several hosts
 
-Every role registers runners against the same repository and boots the same
-`localhost/ra8-ci-runner:v2` toolchain image, so a job behaves identically
-whichever host takes it. They differ only in shape and in where they run:
+Every runner role registers against the same repository and boots the same
+toolchain image, so a job behaves identically whichever host takes it. They
+differ only in shape and in where they run:
 
-| Role | Host | Shape | `runs-on:` it answers |
-|---|---|---|---|
-| `ci_runner` | k3s node | ARC scale set, pods, autoscaling 0..`ci_runner_max` | `ra8-ci` |
-| `ci_runner_docker` | any Docker host | N long-lived containers | `ra8-ci`, `ra8-nas` |
-| `wsl_ci_host` + `ci_runner_docker` | Windows machine, in WSL2 | N long-lived containers | `ra8-ci`, `ra8-win` |
+| Role | Host kind | Shape |
+|---|---|---|
+| `ci_runner` | k3s node | ARC scale set, pods, autoscaling from zero |
+| `ci_runner_docker` | any Docker host | N long-lived containers |
+| `wsl_ci_host` + `ci_runner_docker` | Windows machine, in WSL2 | N long-lived containers |
 
-The counts are not properties of the roles: every one of them comes from that
-host's block in `infra/fleet.yml`. See [`docs/CI_FLEET.md`](../docs/CI_FLEET.md).
+Instance counts, CPU and memory allocations, and the labels each host carries
+are **not** properties of the roles: every one of them comes from that host's
+block in `infra/fleet.yml`. See [`docs/CI_FLEET.md`](../docs/CI_FLEET.md).
 
 **Every workflow targets `ra8-ci`.** The one exception is `hil.yml`, which
 targets `[self-hosted, hil, ra8d2]` -- a physical-bench label naming the Pi with
 the EK-RA8D2 attached, not a capacity pool. Nothing schedules against a bare
-`[self-hosted, Linux, X64]` any more; see "The legacy `k3s-runner-*` pool is
-retired" below for what that replaced.
+`[self-hosted, Linux, X64]`; those labels are added by the runner itself and
+cannot be removed, and nothing targets them.
 
-The per-host labels (`ra8-nas`, `ra8-win`) are escape hatches, not scheduling
-targets: nothing uses them today, and they exist so a specific host can be
-pinned or drained without editing every workflow.
+Per-host labels are escape hatches, not scheduling targets: they exist so a
+specific host can be pinned or drained without editing every workflow.
 
-**Why more than one.** The build farm was one machine. The k3s node hosting the
-ARC pods and the dev container where every agent runs `make ci` are guests on a
-single 10-core i5-12600K with ~30 vCPU committed across them, and it sat at a
-load average near 20 with CI and local gate runs fighting for the same silicon.
-Contention, not runner count, was the throughput ceiling; the fix is more
-machines, not more pods on the first.
-
-**The third host is the fastest one, and it was measured rather than assumed.**
-`win-ci` is a Ryzen 9 7900X -- 12 physical Zen 4 cores against the 12600K's 6
-performance cores, and unlike the k3s node it is not sharing them with a dev
-container. Same gate, same commit, same toolchain image, same 8-CPU allocation
-the NAS runner uses:
-
-| gate | win-ci | truenas (NAS) | pve1 (ARC pod) |
-|---|---|---|---|
-| `build-cross`, all 218 apps, 8 CPUs | **258s** | 808s | 1689s |
-| `tidy` (clang-tidy), full width | **96s** | -- | ~981s (contended) |
-
-That is **3.1x the NAS and 6.5x a pve1 pod** on the heavy cross-build, on an
-otherwise idle host, with all 218 apps passing. The pve1 figure is not a slow
-CPU so much as a drowning one: that node runs at load average 77-100 on 16
-vCPU, so its pods are contending, which is the entire reason more hosts were
-added rather than more pods.
+**Why more than one host.** The build farm was one machine, and the k3s node
+hosting the ARC pods shared its silicon with the dev container where every
+agent runs `make ci`. Contention, not runner count, was the throughput ceiling;
+the fix is more machines, not more pods on the first. Measured against the same
+gate and the same commit, an otherwise-idle host runs the heavy cross-build
+several times faster than a pod on the saturated node -- and that gap is
+contention, not CPU.
 
 **`ra8-ci` as a plain label is verified, not assumed.** `ra8-ci` is the ARC
 runner *scale-set name*, and a scale-set name and a runner label are resolved
 from the same `runs-on:` string -- so whether a plain runner carrying that
 label joins the scale set's pool, shadows it, or is ignored is not something to
-guess at. The first runner deployed under this role was registered with the
-label and watched: it picked up `Unit tests (host)` (`runs-on: ra8-ci`, job
-`labels: ["ra8-ci"]`) one second after coming online and finished green, and
-has taken `ra8-ci` work continuously since. A plain runner carrying the label
+guess at. The first runner deployed under `ci_runner_docker` was registered
+with the label and watched: it picked up an `ra8-ci` job within seconds of
+coming online and has taken that work since. A plain runner carrying the label
 therefore joins the existing pool with **no workflow edit at all**. If a future
-GitHub change breaks that, the fallback is already in place -- the runner also
-carries `ra8-nas`, so the heavy jobs can be pinned with
-`runs-on: [self-hosted, ra8-nas]`.
+GitHub change breaks that, the fallback is already in place -- each host also
+carries a per-host label, so heavy jobs can be pinned to it.
 
-**What the second host bought.** Same job, same commit, truenas container
-against a pve1 ARC pod. The pve1 column is the status quo being fixed -- pods
-contending on a saturated host -- not an isolated benchmark, which is exactly
-the number that matters:
-
-| Job | truenas | pve1 |
-|---|---|---|
-| `Cross-build all apps` | 808s | 1689s / 1201s |
-| `ra8_emulator boot smoke` | 556s | 2500s / 2436s |
-| `Pre-commit gate suite` | 787s | 1331s / 1009s |
-| `clang-tidy` | 329s / 331s | 982s / 981s |
-| `MC/DC coverage gate` | 237s | 674s / 771s |
-| `Coverage (whole-tree per-file ratchet)` | 118s | 407s / 429s |
-| `Unit tests (host)` | 83s | 355s / 348s |
-
-The coverage row's numbers predate the whole-tree unification, when that job
-measured one build instead of every measurement project; the ratio between
-hosts is still the point, not the absolute.
-
-The `Cross-build all apps` row is the cleanest of these: both numbers are two
-attempts of the *same workflow run* on the same commit, so the only variable is
-which host picked the job up.
-
-The role's `self-hosted`/`Linux`/`X64` labels are added by the runner itself
-and cannot be removed. Nothing targets them: they are simply what GitHub
-attaches to every self-hosted Linux x86_64 runner.
-
-### The Windows host runs three runners inside WSL2
+### The Windows host runs several runners inside WSL2
 
 `wsl_ci_host` prepares the distro; `ci_runner_docker` then deploys into it
 **unmodified**. Keeping the platform-specific work in a separate role is what
 stops the shared role growing a second personality per host.
 
 The runner runs in WSL2 rather than on Windows because the toolchain image is
-the toolchain: every pinned tool lives in `localhost/ra8-ci-runner:v2`, and the
+the toolchain: every pinned tool lives in the runner image, and the
 `toolchain-parity` gate exists to fail a runner that drifts from those pins. A
 native Windows runner would need a separately assembled toolchain -- exactly
 the drift the gate is there to catch.
 
-**This host is sized to take the largest share of the fleet's work.** It is the
-fastest machine available and is barely used interactively, so the WSL VM is
-capped at 22 of 24 threads and 26 of 31 GiB -- enough for an idle Windows
-desktop and no more. Both are role variables, so the judgement is reversible in
-one place.
+**The instance count is a memory result, not a core count.** Queue depth is the
+fleet's bottleneck, not per-job latency, so a host with cores to spare runs
+several independent runners rather than one runner with a very wide `-j`. The
+bound is clang-tidy, which has been OOM-killed on a too-small share: cores
+would divide further, memory is what says stop. Each instance gets its own
+registration, home and `_work` tree, and is pinned to its own cpuset so `nproc`
+inside it reports its real share and `make -j$(nproc)` cannot oversubscribe the
+box. If clang-tidy is ever sharded, per-shard memory drops and another instance
+becomes viable; re-measure then rather than assuming.
 
-**Three runners, and three is a memory result.** Queue depth is the fleet's
-bottleneck, not per-job latency, so a host with cores to spare runs several
-independent runners rather than one runner with a very wide `-j`. The count is
-bounded by clang-tidy, which has been OOM-killed at 8 GiB: 26/3 = 8.7 GiB per
-instance clears that, 26/4 = 6.5 GiB does not. Cores would divide fine at four
--- memory is what says three. Each instance gets its own registration, home and
-`_work` tree, and is pinned to its own cpuset so `nproc` inside it reports its
-real share and `make -j$(nproc)` cannot oversubscribe the box. If clang-tidy is
-ever sharded, per-shard memory drops and a fourth becomes viable; re-measure
-then rather than assuming.
-
-Roughly 5 GiB of the VM is left uncommitted on purpose: this machine has an
-RTX 5070 and will later host the GPU side of the Ethos-U55 / NPU workstream
-(#228) in this same distro. GPU work and CI do not contend for an execution
-resource, but they do contend for system RAM.
+Some of the VM is left uncommitted on purpose: this machine has a discrete GPU
+and will later host the GPU side of the Ethos-U55 / NPU workstream (#228) in
+this same distro. GPU work and CI do not contend for an execution resource, but
+they do contend for system RAM.
 
 **Docker Engine in the distro, not Docker Desktop.** Docker Desktop is
 installed on this machine and is left completely alone, but it cannot host this
@@ -270,11 +219,11 @@ integration also puts a `docker` shim on `PATH` from `/mnt/c`, the role
 *asserts* that the binary in use is the distro's own -- a silent switch back
 would reintroduce the GUI dependency with no other symptom.
 
-**The build tree stays off `/mnt/c`.** `ci_runner_docker_root` is
-`/opt/ra8-ci-runner` on the distro's ext4 root. `/mnt/c` is drvfs, a
-translation layer onto NTFS, and roughly an order of magnitude slower for the
-many-small-files work a checkout and a build are; putting `_work` there would
-hand back most of the CPU advantage this host was added for.
+**The build tree stays off `/mnt/c`.** The runner root is on the distro's ext4
+root. `/mnt/c` is drvfs, a translation layer onto NTFS, and roughly an order of
+magnitude slower for the many-small-files work a checkout and a build are;
+putting `_work` there would hand back most of the CPU advantage this host was
+added for.
 
 **Mirrored networking needs a route fix here, and that is not optional.** The
 machine is multi-homed: an isolated bench LAN with **no uplink**, and the
@@ -291,10 +240,10 @@ both inside the distro, and neither touches the owner's network:
   Windows routing table on every host network change -- a boot-only fix would
   let a Wi-Fi roam break a job already in flight.
 - `generateResolvConf=false` plus a resolv.conf the role owns. WSL's DNS
-  tunnelling endpoint (`10.255.255.254`) does **not** answer on this host: a
-  raw UDP/53 query to it times out while `1.1.1.1` answers in milliseconds over
-  the same interface. Left generated, every name lookup in a job stalls for the
-  full resolver timeout.
+  tunnelling endpoint does **not** answer on this host: a raw UDP/53 query to
+  it times out while a public resolver answers in milliseconds over the same
+  interface. Left generated, every name lookup in a job stalls for the full
+  resolver timeout.
 
 **The VM must be told not to die.** WSL reaps an unattended VM regardless of
 what is running inside it, and this host was seen going `offline` with
@@ -305,26 +254,24 @@ VM and exits, and the VM is reaped moments later, which is an autostart that
 reliably leaves the runner offline while looking configured.
 
 **The clock may be wrong; it may not be non-monotonic.** A WSL2 VM does not
-boot with a trustworthy clock. Observed here: the VM came up ~4 minutes fast,
-the runner checked the tree out with those timestamps, `timesyncd` then stepped
-the clock back, and make spent the rest of the job reporting `Clock skew
-detected. Your build may be incomplete`. That is not cosmetic -- make's
-up-to-date decisions are timestamp comparisons. Docker is therefore ordered
-after the clock has synchronised, and since the containers are `restart:
-unless-stopped`, the daemon's start time is exactly when this host begins
-accepting jobs.
+boot with a trustworthy clock. Observed here: the VM came up minutes fast, the
+runner checked the tree out with those timestamps, `timesyncd` then stepped the
+clock back, and make spent the rest of the job reporting `Clock skew detected.
+Your build may be incomplete`. That is not cosmetic -- make's up-to-date
+decisions are timestamp comparisons. Docker is therefore ordered after the
+clock has synchronised, and since the containers are `restart: unless-stopped`,
+the daemon's start time is exactly when this host begins accepting jobs.
 
 Ordering was necessary and **not sufficient** (#509). It fixes the step that
-happens at boot and says nothing about one at 07:13 on a host that booted hours
-earlier -- which is what this host was measured doing. Scanning the 100 most
-recent completed workflow runs for a step whose recorded `completed_at`
-precedes its own `started_at` found 16, every one of them on this machine's
-three runners and none anywhere else in the fleet (`truenas-ci-1`: 0, every
-`ra8-ci` pod: 0). Every full-size event is a backward step of 242-248 s, and
-the size does *not* grow with the gap between events -- so it is not drift, it
-is two time sources disagreeing by a fixed ~4 minutes and taking turns: the
-Windows host, whose clock a WSL2 guest takes and which WSL re-asserts
-periodically, against NTP inside the distro.
+happens at boot and says nothing about one hours later -- which is what this
+host was measured doing. Scanning recent completed workflow runs for a step
+whose recorded `completed_at` precedes its own `started_at` found several, every
+one of them on this machine's runners and none anywhere else in the fleet.
+Every full-size event is a backward step of the same magnitude, and the size
+does *not* grow with the gap between events -- so it is not drift, it is two
+time sources disagreeing by a fixed offset and taking turns: the Windows host,
+whose clock a WSL2 guest takes and which WSL re-asserts periodically, against
+NTP inside the distro.
 
 So the role does two things. `chrony` replaces `timesyncd`, configured to step
 only while starting up and to **slew** every correction after that -- a build
@@ -338,34 +285,33 @@ re-reads the fleet from the Actions API and is what proves it converged.
 
 **What survives a reboot, stated precisely.** WSL does not start distros on
 boot, so a Windows Scheduled Task (`ra8-wsl-ci-runner-autostart`) starts it;
-that starts systemd, which starts docker, which starts the three runner
-containers.
+that starts systemd, which starts docker, which starts the runner containers.
 
 *Proven.* Running that task against a stopped distro brings the entire chain
-back -- distro, systemd, docker, all three containers -- in **under 5 seconds**.
-Verified by `wsl --shutdown` followed by `schtasks /Run` and nothing else
-touching the machine.
+back -- distro, systemd, docker, every container -- in seconds. Verified by
+`wsl --shutdown` followed by `schtasks /Run` and nothing else touching the
+machine.
 
 *Not proven, and cannot be as configured.* That the trigger fires after an
 actual power cycle. A WSL distro is registered under the owning account's HKCU,
 so a boot-time task running as SYSTEM cannot start this distro at all -- `wsl
--d Ubuntu` in SYSTEM's context does not find it. Running a boot-triggered task
-as the owning user instead requires "run whether user is logged on or not",
-which stores that user's Windows password, and this is a personal machine.
-This host also has `AutoAdminLogon` disabled, so after a reboot it sits at the
-login screen with all three runners offline until somebody logs in.
+-d <distro>` in SYSTEM's context does not find it. Running a boot-triggered
+task as the owning user instead requires "run whether user is logged on or
+not", which stores that user's Windows password, and this is a personal
+machine. This host also has `AutoAdminLogon` disabled, so after a reboot it
+sits at the login screen with its runners offline until somebody logs in.
 
 Closing that gap needs an **owner decision, not more code**: either enable
 automatic logon for the account, or supply a credential so the task can be
 recreated as `ONSTART` with `/RU` + `/RP`. Until then reboot recovery here is
-manual, and the pool degrades onto its other two hosts rather than breaking.
+manual, and the pool degrades onto its other hosts rather than breaking.
 
 ### Storage: CI I/O is kept off a named pool, by assertion
 
-The NAS this role was first deployed to has a **DEGRADED** 100T `raid-z2` pool:
-a known backplane fault flagging "too many slow I/Os" on 7 of 11 members, with
-zero read/write/checksum errors and no data errors. It is accepted and is not
-this role's to repair -- but no build traffic belongs on it.
+The NAS `ci_runner_docker` was first deployed to has a **DEGRADED** `raid-z2`
+pool: a known backplane fault flagging "too many slow I/Os" on most members,
+with zero read/write/checksum errors and no data errors. It is accepted and is
+not this role's to repair -- but no build traffic belongs on it.
 
 So the role does not *document* the carve-out, it *enforces* it. Before writing
 anything it resolves the filesystem actually backing each path CI touches --
@@ -376,12 +322,10 @@ than assumed -- and fails the play if either lands on a pool in
 root is a failed deploy, not a silent relocation onto degraded spindles.
 
 Everything the runner writes lands in exactly two places, both on the healthy
-pool:
-
-- `ci_runner_docker_root` (a dataset, default `/mnt/stripe/ci-runner`) -- the
-  image archive, the runner distribution, its registration credentials, and the
-  `_work` checkout where builds actually happen.
-- the Docker data root -- image layers and the container's writable layer.
+pool: `ci_runner_docker_root` (a dataset holding the image archive, the runner
+distribution, its registration credentials, and the `_work` checkout where
+builds actually happen) and the Docker data root (image layers and the
+container's writable layer).
 
 ### What survives a TrueNAS SCALE upgrade
 
@@ -410,13 +354,12 @@ initial deploy: re-run the playbook. It is idempotent -- it re-loads nothing it
 already has and re-registers nothing already registered.
 
 One dependency is worth stating because it is easy to get wrong: on SCALE
-`docker.service` is **not** systemd-enabled (`systemctl is-enabled docker`
-reports `disabled`). The middleware starts it as part of bringing the Apps
-subsystem up, which happens only while an apps pool is configured. The
-container's `restart: unless-stopped` then brings the runner back by itself.
-So "the runner returns after a reboot" is true *because* Apps is enabled on a
-pool -- unset the apps pool and Docker never starts, and the runner never comes
-back no matter what its restart policy says.
+`docker.service` is **not** systemd-enabled. The middleware starts it as part
+of bringing the Apps subsystem up, which happens only while an apps pool is
+configured. The container's `restart: unless-stopped` then brings the runner
+back by itself. So "the runner returns after a reboot" is true *because* Apps
+is enabled on a pool -- unset the apps pool and Docker never starts, and the
+runner never comes back no matter what its restart policy says.
 
 ### Deploy and remove
 
@@ -441,18 +384,18 @@ a later redeploy.
 
 ### Resource caps
 
-The runner is capped so the host stays useful for its actual job. The defaults
-are sized for a 6-core/12-thread NAS with 62 GiB of RAM:
+The runner is capped so the host stays useful for its actual job, and both caps
+come from the host's `fleet.yml` block rather than from this file. The
+reasoning behind them does not change when the numbers do:
 
-- **`ci_runner_docker_cpus: 8`** of 12 threads -- 4 physical cores plus their
-  SMT siblings. Heavy gates stay genuinely parallel while 4 threads remain for
-  the file services, ZFS transaction groups and the middleware. An uncapped
-  runner wins every scheduling contest against SMB during a build, which turns
-  a CI job into a NAS outage.
-- **`ci_runner_docker_memory: 16g`** -- the ARC scale-set pods cap at 12 GiB
-  and pass, so this is that with headroom for a whole job in one container. It
-  cannot starve the ZFS ARC (~34 GiB here): Linux ZFS shrinks the ARC under
-  memory pressure down to `arc_min` and grows it back afterwards.
+- **CPU** is capped below the host's thread count so heavy gates stay genuinely
+  parallel while enough threads remain for the file services, ZFS transaction
+  groups and the middleware. An uncapped runner wins every scheduling contest
+  against SMB during a build, which turns a CI job into a NAS outage.
+- **Memory** is sized to hold a whole job in one container, with headroom over
+  what the ARC scale-set pods pass on. It cannot starve the ZFS ARC: Linux ZFS
+  shrinks the ARC under memory pressure down to `arc_min` and grows it back
+  afterwards.
 
 The play reads the caps back out of the container's cgroup and **asserts** them
 rather than trusting the compose file, because a cap that was silently ignored
@@ -460,44 +403,39 @@ is worse than one that was never set.
 
 ## The legacy `k3s-runner-*` pool is retired (#502)
 
-Before ARC, CI ran on up to 20 hand-registered GitHub runners installed as bare
-systemd services on the k3s node itself (`actions.runner.*.k3s-runner-N`, work
-dirs `/home/ubuntu/actions-runner*`). They were never provisioned from this tree
--- no role ever created them -- which is precisely why they outlived their
-purpose: nothing in the repo described them, so nothing in the repo retired them
-either. This section exists so that cannot happen a second time.
+Before ARC, CI ran on hand-registered GitHub runners installed as bare systemd
+services on the k3s node itself. They were never provisioned from this tree --
+no role ever created them -- which is precisely why they outlived their
+purpose: nothing in the repo described them, so nothing in the repo retired
+them either. This section exists so that cannot happen a second time.
 
-The Jul-24 ARC migration moved the core workflows to `ra8-ci` but deliberately
-left `docs-publish`, `fuzz-nightly` and `osv-scan` on
-`[self-hosted, Linux, X64]` "until their tools are confirmed in the image".
-That condition was never revisited, so three low-frequency workflows kept seven
-bare runners alive on the node whose load average was already ~110 against 16
-vCPU -- and made "retire the legacy pool" a trap, since deregistering them would
-have left those three permanently unrunnable.
+The ARC migration moved the core workflows to `ra8-ci` but deliberately left
+`docs-publish`, `fuzz-nightly` and `osv-scan` on `[self-hosted, Linux, X64]`
+"until their tools are confirmed in the image". **That condition was never
+revisited**, so three low-frequency workflows kept the legacy runners alive on
+an already-saturated node -- and made "retire the legacy pool" a trap, since
+deregistering them would have left those three permanently unrunnable. A
+temporary label with an unexamined condition on it is how a retired pool stays
+alive indefinitely.
 
 The condition was then checked rather than assumed, against a live pod:
-
-| workflow | what it needs | where it comes from |
-|---|---|---|
-| `docs-publish` | `dot` | graphviz, already in the image |
-| `docs-publish` | doxygen pinned to 1.16.1 | the `/var/cache/ra8-tools` hostPath cache (#486); sha256-verified download on a cold cache |
-| `fuzz-nightly` | a clang that links `-fsanitize=fuzzer` | `clang-18` + `libclang-rt-18-dev`, already in the image |
-| `osv-scan` | `osv-scanner` 2.4.0 | fetched per job, version + sha256 pinned in the workflow |
-
-Nothing had to be added to the image. All three now target `ra8-ci`; the seven
-registrations are deleted, and all 20 `actions.runner.*` units (7 enabled, 13
-disabled leftovers from the phantoms deregistered earlier) are stopped,
-disabled and removed along with their drop-in directories and the 81 GB of
-runner installs under `/home/ubuntu/`.
+`docs-publish` needs `dot` (graphviz, already in the image) and the pinned
+doxygen (served from the hostPath tool cache, sha256-verified on a cold cache);
+`fuzz-nightly` needs a clang that links `-fsanitize=fuzzer`, already in the
+image; `osv-scan` fetches `osv-scanner` per job, version- and sha256-pinned in
+the workflow. Nothing had to be added to the image. All three now target
+`ra8-ci`, the registrations are deleted, and the `actions.runner.*` units are
+stopped, disabled and removed along with their drop-in directories and the
+runner installs under the node's home directory.
 
 One in-repo default depended on that pool and moved with it.
 `scripts/ci/monitor.sh runner-status` -- the zero-quota fallback that reads job
-outcomes straight off a runner's `_diag` logs -- pointed at
-`/home/ubuntu/actions-runner*/_diag/` on the k3s node. It needs a LONG-LIVED
-runner, which an ephemeral ARC pod can never be, so it now reads the truenas
-container runner's `_diag` (on a dataset outside the container). That is a fix
-rather than a relocation: by the end the legacy pool only ever ran these three
-workflows, so it could not show a `firmware` result at all.
+outcomes straight off a runner's `_diag` logs -- pointed at the legacy runner
+tree on the k3s node. It needs a LONG-LIVED runner, which an ephemeral ARC pod
+can never be, so it now reads a container runner's `_diag` (on a dataset
+outside the container). That is a fix rather than a relocation: by the end the
+legacy pool only ever ran those three workflows, so it could not show a
+firmware result at all.
 
 ## Vendor artifacts that cannot be fetched unattended
 
@@ -516,9 +454,9 @@ version against the pins, installs it, and smoke-tests the instrument. Nothing
 durable is ever left in `/tmp`.
 
 That deb is also the one package installed by **extraction** rather than apt:
-it declares `libc6 (>= 2.41)` for Qt GUI binaries a headless bench never
-installs, while the library the bench actually uses tops out at `GLIBC_2.38`
-and runs fine on the bench's glibc 2.39. The role's defaults carry the
+it declares a glibc dependency for Qt GUI binaries a headless bench never
+installs, while the library the bench actually uses needs an older symbol
+version and runs fine on the bench's glibc. The role's defaults carry the
 `objdump` that establishes this, so the workaround cannot be mistaken for a
 hack and "fixed" back into an install apt refuses.
 
@@ -533,14 +471,14 @@ and the `toolchain-parity` gate fails if any box drifts from them.
 
 `provision_runner.sh` is the one definition of "bring a bare-metal host to the
 pinned toolchain", so the `dev_box` role calls it rather than carrying a second
-copy of the same installs. It requests the `gcc-14`/`g++-14` pair from apt only
-where apt has a candidate for it -- Debian has none -- and leaves the verdict to
-the parity check either way, which still fails loudly when neither path produced
-a pinned compiler. It installs the pinned **doxygen** release the same way the
+copy of the same installs. It requests the newer gcc pair from apt only where
+apt has a candidate for it -- Debian has none -- and leaves the verdict to the
+parity check either way, which still fails loudly when neither path produced a
+pinned compiler. It installs the pinned **doxygen** release the same way the
 Dockerfile does (download, sha256, `/usr/local/bin`), because
 `toolchain-parity` now compares that version too: it did not, which is why a
-1.9.8-against-1.16.1 drift stayed invisible to the one gate whose job is
-catching exactly that (#522). The pin is asserted only on the architectures the
+major doxygen drift stayed invisible to the one gate whose job is catching
+exactly that (#522). The pin is asserted only on the architectures the
 Dockerfile pins it for -- doxygen publishes no official linux-arm64 binary, so
 an arm64 `make ci` container keeps apt's.
 
@@ -552,8 +490,8 @@ reused. `make ci` calls it on every run -- which is what covers the Mac, where
 no Ansible play ever lands -- and the `dev_box` role calls the same script so
 `make infra-apply HOST=dev` leaves the box warm and asserts, with
 `check_runner_image_deps.py`, that every tool the gates declare resolves inside
-it. Before that, the box booted a 2026-07-20 image under a 2026-07-28 tree and
-reported four gates red that passed natively on the same commit (#521).
+it. Before that, the box booted a stale image under a newer tree and reported
+gates red that passed natively on the same commit (#521).
 
 ## Secrets
 

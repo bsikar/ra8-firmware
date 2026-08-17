@@ -441,30 +441,13 @@ test fails on exactly that mutation.
 
 ### Running it
 
-```sh
-# Report violations (exits non-zero, same as --check)
-python3 scripts/checks/check_annotations.py
-
-# CI gate -- quiet, exits non-zero on any non-informational violation
-python3 scripts/checks/check_annotations.py --check
-
-# Or via the convenience target
-make check-annotations
-
-# Dump every annotated symbol in the project (no enforcement)
-python3 scripts/checks/check_annotations.py --list
-
-# Regression-test the checker itself against synthetic TUs
-python3 scripts/checks/check_annotations.py --selftest
-
-# Audit the complete prefix/storage contract. This is deliberately explicit
-# while the historical tree-wide inventory is being repaired; it is not a
-# suppressing baseline, and every finding remains visible and fatal here.
-python3 scripts/checks/check_annotations.py --naming-audit
-
-# Emit that same complete inventory for tooling or agent hand-off.
-python3 scripts/checks/check_annotations.py --naming-audit --json
-```
+`make check-annotations` is the convenience target;
+`python3 scripts/checks/check_annotations.py` runs the same rules and
+exits non-zero on any violation. Its `--help` lists the rest: a quiet
+CI mode, a dump of every annotated symbol, the checker's own selftest
+against synthetic TUs, and a full prefix/storage audit that can be
+emitted as JSON for tooling. None of the audit modes is a suppressing
+baseline -- every finding stays visible and fatal.
 
 ### Dependency
 
@@ -474,8 +457,6 @@ The script depends on the `libclang` Python wheel, which ships its own
 ```sh
 python3 -m pip install --user --break-system-packages libclang
 ```
-
-The wheel is `libclang-18.x` on macOS arm64 / Linux x86_64.
 
 ### Mode
 

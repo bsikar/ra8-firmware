@@ -10,8 +10,7 @@ file covers the developer-side workflow that surrounds that suite.
 
 The project runs a self-hosted **Raspberry Pi 5 runner** (labels
 `self-hosted, hil, ra8d2`, host alias `star@star.local`) that has
-the EK-RA8D2 wired to it. The runner exists -- this is not a
-deferred / planned workflow.
+the EK-RA8D2 wired to it.
 
 The authoritative driver is
 [`scripts/hil/all.sh`](../scripts/hil/all.sh), which
@@ -19,20 +18,11 @@ The authoritative driver is
 the `hil-all` gate (`bash scripts/ci.sh --gate hil-all`). It
 auto-discovers every app under
 `examples/ek_ra8d2/hw_validated/hil/` and verifies each app against
-its `hil.conf` manifest. The per-mode helper scripts are:
-
-- `scripts/hil/run_direct.sh` -- UART scrape (`HIL_MODE=uart_scrape`).
-- `scripts/hil/usb_test.sh` -- USB CDC echo (`HIL_MODE=usb_cdc`).
-- `scripts/hil/jlink_memprobe.sh` -- live counter probe
-  (`HIL_MODE=jlink_memprobe`).
-- `scripts/hil/eth_tcp.sh` -- ethernet socket echo
-  (`HIL_MODE=hil_eth_tcp`).
-- `scripts/hil/check_alive.sh` -- fault-recovery demo
-  (`HIL_MODE=alive`).
-- `scripts/hil/rtt_scrape.sh` -- SEGGER RTT scrape
-  (`HIL_MODE=rtt_scrape`).
-- `scripts/hil/camera_livestream.sh` -- the C6 camera lane
-  (`HIL_MODE=c6_camera_livestream`).
+its `hil.conf` manifest. Each manifest names a `HIL_MODE`, and
+`all.sh` dispatches to the matching per-mode helper alongside it in
+`scripts/hil/` -- a console scrape, a wire-side peer on the Pi, or a
+J-Link probe of a live counter. [`HIL_SUITE.md`](HIL_SUITE.md) is
+the authority on what each mode asserts.
 
 Flashing always goes through `scripts/hil/flash.sh`, which ships
 auto-recovery for the AHB-AP-gated / TrustZone-locked / LPM-stuck
@@ -56,19 +46,15 @@ runner), you can pre-check your changes before pushing:
    ```
    Subsets and per-mode runs are documented at the top of
    `scripts/hil/all.sh`.
-4. For HIL-suite-managed apps under
-   `examples/ek_ra8d2/hw_validated/hil/`, run the same per-app
-   helper the CI runs (`scripts/hil/run_direct.sh`,
-   `scripts/hil/usb_test.sh`, `scripts/hil/jlink_memprobe.sh`,
-   `scripts/hil/eth_tcp.sh`, `scripts/hil/check_alive.sh`) directly.
+4. Or run one app's per-mode helper from `scripts/hil/` directly --
+   the same script CI runs for that app's declared `HIL_MODE`.
 
-Contributors **without** an EK-RA8D2 may still open PRs; the host
+Contributors **without** an EK-RA8D2 may still open PRs: the host
 unit-test build (`make test`) and the cross-build CI
-(`firmware.yml`) gate those PRs. The Pi-attached `hil.yml` does NOT
-gate them today: its `push:` and `pull_request:` triggers are
-commented out until the Pi runner is wired back up, so the suite runs
-only on a manual `workflow_dispatch` (Actions tab -> Run workflow).
-Re-enabling it is uncommenting those two blocks.
+(`firmware.yml`) are what gate them. The Pi-attached `hil.yml` is
+scheduled separately from those (see its `on:` block for how it is
+triggered), because a bench with one board is a serial resource and
+cannot gate every push.
 
 ## Detecting the J-Link OB
 

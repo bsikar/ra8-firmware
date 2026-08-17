@@ -1,10 +1,9 @@
 # RA8D2 Acronym Glossary
 
-Alphabetical glossary of every chip-, board-, and Cortex-M85-specific
-acronym used in this codebase. Each entry gives a one-line expansion
-and the HAL driver under `libs/ra8_hal/src/` that implements the
-peripheral (when applicable). Entries grouped by category for browsing,
-then a flat alphabetical index at the bottom.
+Glossary of the chip-, board-, and Cortex-M85-specific acronyms used in
+this codebase. Each entry gives a one-line expansion and the HAL driver
+under `libs/ra8_hal/src/` that implements the peripheral (when
+applicable). Entries are grouped by category for browsing.
 
 Acronym scope: only acronyms that actually appear in
 `libs/ra8_hal/inc/`, `libs/ra8_hal/src/`, or `examples/` source. Where an
@@ -161,7 +160,6 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | DMAC  | Direct Memory Access Controller                           | `ra8_dmac.c` |
 | DTC   | Data Transfer Controller (lighter-weight than DMAC)       | `ra8_dtc.c` |
 | DOTF  | Decryption-On-The-Fly (covered under crypto above)        | `ra8_dotf.c` |
-| DPDM  | (not used in this tree)                                   | -- |
 
 ## 10. Debug, test, NVIC / core
 
@@ -198,17 +196,3 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | OB      | On-Board (J-Link OB on the EK) |
 | Pmod    | Digilent Peripheral Module connector |
 | TFT     | Thin-Film-Transistor LCD panel |
-
-## Flat alphabetical index
-
-ACMPHS, ADC_B, AGT, BBFSAR, BKUP, BLE, BSCAN, CAC, CANFD, CDC, CEU,
-CGC, CNECC, CPSCU, CRC, DAC_B, DAI, DMA, DMAC, DOC, DOTF, DRW, DTC,
-DTCM, ECC, EK, ELC, EPAPER, ESWM, ETHA, FLASH, FPU, FSP, GLCDC, GPIO,
-GPT, GPTP, GTIOC, GWCA, HAUD, Helium, HID, HUM, HW ERR, I3C, ICU, IIC_B,
-IPC, IRQ, ISR, ITCM, IWDT, JPEG_SW, LPM, LVD, MFWD, MIPI CSI, MIPI DSI,
-MIPI PHY, MMIO, MMPU, MPC, MPU, MRAM, MRMS, MSC, MSTP, MVE, NSC, NVIC,
-OFS, OSPI, PAUD, PDG, PDM, PFS, PHY, Pmod, PMISC, PMR, PODR, POEG,
-PORT, PPRN, PSEL, PVND, PWPR, PWPRS, PWR, RA, RA8D2, RESET, RMAC,
-RSIP, RTC, SAU, SCB, SCI, SDHI, SDRAM, SDRAMC, SMBUS, SPI, SRAM, SSIE,
-SYSC, TCM, TCON, TFT, TOUCH, TSN, UART, ULPT, USB FS, USB HS, VBATT,
-VIN, VREG, WDT, WUPEN, XIP, XSPI.

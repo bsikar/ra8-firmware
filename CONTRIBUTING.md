@@ -55,7 +55,7 @@ commit you author is gated locally with the same checks CI runs.
 You need two toolchains:
 
 * **Host clang/gcc** for the unit-test build. The supported path is the
-  project's Ubuntu 24.04 dev container, invoked through
+  project's Linux dev container, invoked through
   [`scripts/ci/test-docker.sh`](scripts/ci/test-docker.sh). On macOS you
   need [Colima](https://github.com/abiosoft/colima) (or Docker Desktop)
   running because the host test fake uses `mmap(MAP_FIXED, ...)`
@@ -79,7 +79,7 @@ edit -> bash scripts/checks/format_code.sh -> bash scripts/ci/test-docker.sh -> 
   project owns. Always run it before committing -- the pre-commit hook
   rejects the commit otherwise.
 * `scripts/ci/test-docker.sh` runs the full host-side test suite inside
-  the project's pinned Ubuntu 24.04 image. This is the only sanctioned
+  the project's pinned dev-container image. This is the only sanctioned
   way to run tests on macOS hosts.
 * `git commit` triggers `scripts/git/pre-commit` (formatting,
   clang-tidy, ASCII check, doxygen audit, citation check, world-tag
@@ -101,15 +101,15 @@ The full procedure lives in `CLAUDE.md` under "Adding a new application".
 The short version:
 
 1. Create `examples/<tier>/.../<newapp>/` -- pick the tier that matches
-   the hardware-support category (`ek_ra8d2/hw_validated/hil/`,
-   `ek_ra8d2/hw_validated/c6/`, `ek_ra8d2/hw_validated/manual/`,
-   `ek_ra8d2/hw_pending/`, or `_unsupported/`). Every app is fully
-   self-contained -- its own boot files, linker script, CMakeLists.
-2. Copy the five per-app boot files from a sibling app
-   (`vector_table.c`, `system_init.c`, `secure_exception.c`,
-   `trustzone_init.{c,h}`).
-3. Copy `linker_script.ld`, `CMakeLists.txt`, and `Makefile`. Update
-   `RA8_APP_NAME` / `APP` to the new app name.
+   the hardware-support category, from validated-on-silicon down to
+   needs-hardware-nobody-has.
+2. Give it a `main.c` and a `CMakeLists.txt` that calls
+   `ra8_add_app()`. That is usually the whole app: the board layer under
+   `libs/ra8_board_<board>/` supplies the vector table, `SystemInit`,
+   the exception handlers and the linker script.
+3. Only if the app must diverge from the board defaults, drop a
+   same-named copy of the file it needs to override into the app
+   directory. See `docs/ARCHITECTURE.md`.
 4. Add a host-side integration test under `tests/test_app_<newapp>.c`
    exercising any new logic (see `tests/test_app_blink_hal.c` for the
    minimal shape).
@@ -144,41 +144,32 @@ The short version:
 * Do not introduce dynamic allocation in test scaffolding -- the same
   NASA Power-of-10 Rule 3 budget applies.
 
-## 7. Pre-commit gate inventory
+## 7. What the pre-commit gate checks
 
-`scripts/git/pre-commit` runs the following gates on every commit. Each
-has its own policy document; click through before disagreeing with a
-finding:
+`scripts/git/pre-commit` is the authority -- it names each gate as it
+runs it. They fall into a few families, and each family has a policy
+document; click through before disagreeing with a finding.
 
-* clang-format (`scripts/checks/format_code.sh`).
-* clang-tidy (`scripts/checks/clang_tidy.sh`) -- enforces NASA Power-of-10
-  Rule 4 (function length), naming conventions, magic-number bans, and
-  the C23 typed-enum requirement. See [`docs/STATIC_ANALYSIS.md`](docs/STATIC_ANALYSIS.md).
-* ASCII character check -- non-ASCII bytes in source files are
-  rejected (`scripts/fix/fix-encoding.py --check`).
-* Doxygen audit (`scripts/checks/doxy_audit.py`) -- every function in
-  `libs/`, `port/` must carry the full required tag set
-  documented in `CLAUDE.md`.
-* Citation check (`scripts/checks/cite_check.py`) -- register-level
-  changes must cite the Hardware User's Manual section. See
+* **Shape** -- clang-format, and clang-tidy for NASA Power-of-10 Rule 4
+  (function length), naming, the magic-number ban and the C23
+  typed-enum requirement. See
+  [`docs/STATIC_ANALYSIS.md`](docs/STATIC_ANALYSIS.md).
+* **Encoding** -- non-ASCII bytes in source files are rejected outright.
+* **Documentation** -- every function in `libs/` and `port/` must carry
+  the full Doxygen tag set documented in `CLAUDE.md`, on a block that
+  actually describes the symbol it is attached to.
+* **Citations** -- a register-level change must cite the Hardware
+  User's Manual, and must not cite an in-tree file by line number. See
   [`docs/CITATION_POLICY.md`](docs/CITATION_POLICY.md).
-* Ring + World tag check (`scripts/checks/check_world_tags.py`) --
-  every public header must declare its architectural ring and
-  TrustZone world. See [`docs/RING_AND_WORLD.md`](docs/RING_AND_WORLD.md).
-* Roadmap stats refresh (`scripts/report/roadmap_stats.py`).
-* Obsolete-standards check
-  (`scripts/checks/check_obsolete_standards.py`) -- references to
-  superseded safety standards are rejected; use the current
-  DO-178C / IEC 61508 / ISO 26262 spelling instead.
-* MC/DC block check -- new compound decisions need the matching test
-  block.
-* Stack-usage soft warning -- any function over 2 KB or with dynamic
-  stack use is reported (currently warning-only for third-party SOUP).
-* AI-attribution ban (`scripts/checks/check_no_ai_attribution.py`) --
-  rejects `Co-Authored-By: Claude`, "Generated with Claude Code", and <!-- AI-OK: quoting the banned footer -->
-  similar footers anywhere in the tree. Re-run independently in CI by
-  `.github/workflows/no-ai-attribution.yml`. See
-  [`docs/AI_ATTRIBUTION_POLICY.md`](docs/AI_ATTRIBUTION_POLICY.md).
+* **Architecture tags** -- every public header declares its
+  architectural ring and TrustZone world. See
+  [`docs/RING_AND_WORLD.md`](docs/RING_AND_WORLD.md).
+* **Safety** -- a new compound boolean decision needs its MC/DC block
+  ([`docs/MCDC.md`](docs/MCDC.md)), and stack frames are bounded
+  ([`docs/STACK_USAGE.md`](docs/STACK_USAGE.md); soft findings in
+  third-party SOUP are reported, not fatal).
+* **Provenance** -- the AI-attribution ban, re-run independently in CI.
+  See [`docs/AI_ATTRIBUTION_POLICY.md`](docs/AI_ATTRIBUTION_POLICY.md).
 
 ## 8. PR conventions
 
@@ -301,6 +292,5 @@ discussions on the GitHub repository are welcome. For deeper context
 on the architectural ring + TrustZone world tagging system see
 [`docs/RING_AND_WORLD.md`](docs/RING_AND_WORLD.md); for the qualification
 roadmap see [`docs/QUALIFICATION_ROADMAP.md`](docs/QUALIFICATION_ROADMAP.md);
-for the running list of vendored third-party blobs (mbedTLS, ThreadX,
-NetX Duo, USBX, NimBLE) see
-[`docs/SOUP/`](docs/SOUP/).
+for the vendored third-party components and their qualification
+justifications see [`docs/SOUP/`](docs/SOUP/).

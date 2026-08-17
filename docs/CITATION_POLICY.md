@@ -1,8 +1,7 @@
 # Citation Policy
 
 This file is the authoritative reference for the project's source-code
-citation rules. The short form lives in `CLAUDE.md` under
-`Code Style / Comment citations`.
+citation rules. The short form lives in `CLAUDE.md`.
 
 ## Rule 1: in-tree line citations are FORBIDDEN
 
@@ -56,7 +55,7 @@ exempt automatically.
 ## Tooling
 
 - Gate: `scripts/checks/check_line_citations.py` -- pre-commit
-  enforcement. Pass `--all` to scan the whole tree.
+  enforcement, and a whole-tree scan on demand.
 - Extractor: `scripts/checks/extract_line_citations.py` -- emits CSV
   of every violation with the enclosing function and a suggested
   `<file>::<func>` replacement. Used by cleanup agents.

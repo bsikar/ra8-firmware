@@ -2,11 +2,10 @@
 
 This document is the authoritative statement of what `ra8-firmware`
 **does** and **does not** pursue with respect to third-party
-certification. It supersedes any earlier "future-assessor" wording in
-`docs/QUALIFICATION_ROADMAP.md`, `docs/qualification/PSAC.md`, or
-related artefacts.
+certification. Where another artefact still reads as though an assessor
+were expected, this file wins.
 
-## Decision (2026-05-02): no independent assessor, ever
+## Decision: no independent assessor, ever
 
 `ra8-firmware` will achieve **technical compliance** with the
 substantive software-engineering requirements of:
@@ -26,8 +25,7 @@ management / quality-assurance discipline enforced by the CI gates.
 The project will **NOT** pursue, fund, or schedule:
 
 - An **independent assessor** engagement under IEC 61508-1 cl. 8.2
-  (e.g. TUV SUD, exida, SGS-TUV Saar). Typical cost: **USD
-  $30,000-$150,000** per campaign, plus repeat fees per major version.
+  (e.g. TUV SUD, exida, SGS-TUV Saar).
 - A **DO-178C Stage of Involvement (SOI) review** by an FAA / EASA
   Designated Engineering Representative.
 - An **ISO 26262 Confirmation Review** by an external ASIL-qualified
@@ -79,10 +77,9 @@ to re-derive under their own oversight.
 - `docs/qualification/MISRA_DEVIATIONS.md` Section "Tooling policy"
   -- the consistent "no commercial MISRA tool, ever" decision.
 - `docs/HIL_DEVELOPER_WORKFLOW.md` -- the self-hosted Pi 5 HIL
-  runner that closed the CI-hardware question (see
-  `docs/QUALIFICATION_ROADMAP.md` Section 6 item 4).
+  runner that closed the CI-hardware question.
 - `docs/VENDOR_BLOBS.md` -- the consistent "obtain Renesas blobs from
   public FSP as SOUP, never NDA" decision.
 - `docs/QUALIFICATION_ROADMAP.md` Section 6 -- the open-questions
-  register, with all four 2026-05-02 decisions marked CLOSED.
+  register, where this decision is recorded as closed.
 - `LICENSE.txt` -- MIT licence text.

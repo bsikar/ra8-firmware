@@ -1,9 +1,9 @@
 # infra/network/PI_PROVISIONING.md -- provisioning a Raspberry Pi on the bench
 
 Reference notes for bringing up a fresh Raspberry Pi headless on the bench
-network. Each of the five gotchas below cost a real boot cycle to discover, and
-the next Pi on this bench will hit all five, so they are recorded here rather
-than relearned. For the bench network itself, see [README.md](README.md).
+network. Every gotcha below cost a real boot cycle to discover, and the next
+Pi on this bench will hit all of them, so they are recorded here rather than
+relearned. For the bench network itself, see [README.md](README.md).
 
 The reference image is **`2026-06-18-raspios-arm64-lite`** (Raspberry Pi OS,
 Debian GNU/Linux 13 "trixie", arm64, Lite). The details below were confirmed
@@ -72,4 +72,4 @@ Before first boot, the boot (FAT) partition should carry:
 
 With those in place the Pi comes up headless with a serial console, an enabled
 sshd, a real login account, and (on first boot) its network -- which is the
-outcome the five gotchas above are here to guarantee.
+outcome the gotchas above are here to guarantee.

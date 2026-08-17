@@ -58,12 +58,12 @@ individual lines. To update the theme:
    `LICENSE` with the same-named file from the chosen upstream
    release tag.
 2. Check the release's supported doxygen range; move the pin in
-   `scripts/builders/provision_doxygen.sh` if required (update the
-   version, tag, and all three artifact sha256 values).
+   `scripts/builders/provision_doxygen.sh` if required (the version,
+   the tag, and every artifact sha256 beside it).
 3. Regenerate `docs/doxygen_theme/header.html`: run
    `doxygen -w html header.html footer.html style.css Doxyfile`
-   with the pinned binary, then re-add the three theme
-   `<script>` includes and the `DoxygenAwesome*.init()` block at the
+   with the pinned binary, then re-add the theme's `<script>`
+   includes and the `DoxygenAwesome*.init()` block at the
    end of `<head>` (see the theme's "Extensions" documentation).
    Discard the generated footer.html/style.css -- the project uses
    the defaults.
@@ -79,20 +79,11 @@ bash scripts/builders/docs.sh --open
 
 ## What gets indexed
 
-The `INPUT` block in `Doxyfile` covers:
-
-- `README.md` (used as the rendered main page via
-  `USE_MDFILE_AS_MAINPAGE`)
-- `docs/` (architecture / policy / reference Markdown:
-  `RING_AND_WORLD.md`, `STYLE_GUIDE.md`, ADRs, qualification
-  artifacts, ...)
-- `libs/` (every first-party library: `ra8_core`, `ra8_hal`,
-  `ra8_net_pal`, `ra8_usb_pal`, `ra8_nsc`, `ra8_secure_app`,
-  `ra8_board_ek_ra8d2`,
-  `ra8_mpu`, etc.)
-- `examples/` (every per-app demo under `examples/<tier>/<app>/`)
-- `scripts/` and `tools/` (first-party tooling, including the
-  `ra8_emulator` host emulator)
+`Doxyfile`'s `INPUT` block is the authority. It covers the `README.md`
+(rendered as the main page via `USE_MDFILE_AS_MAINPAGE`), the Markdown
+under `docs/`, and all first-party source: the libraries, the adapters
+onto the vendored stacks, the co-processor firmware, the products and
+the examples, and the developer tooling, host emulator included.
 
 `libs/third_party/` is explicitly excluded -- vendored SOUP is
 documented under `docs/SOUP/` instead, not via Doxygen. So is
@@ -107,18 +98,12 @@ docs-build time; they remain in the files on github.com.
 ## How to read the generated HTML
 
 After `make docs`, navigate to `build/docs/html/index.html`. The
-left-hand sidebar is grouped as:
-
-- **Main Page** -- the rendered project README.
-- **Files** -- one entry per `.c` / `.h` / `.cpp` / `.hpp` /
-  `.md` file. Each file page surfaces its `@file` block, the list
-  of declared symbols, and (if Graphviz is on PATH) include /
-  caller graphs.
-- **Globals** -- alphabetical index of every documented symbol.
-- **Data Structures** -- every `struct`, `enum`, `union`, and
-  `typedef`. `EXTRACT_ALL = YES` means even file-static helpers are
-  surfaced; `EXTRACT_PRIVATE = NO` keeps NSC-private and
-  `priv_*` helpers hidden by default.
+left-hand sidebar carries the rendered README, a page per source file
+(its `@file` block, its declared symbols, and -- if Graphviz is on PATH
+-- include and caller graphs), an alphabetical symbol index, and a
+type index. Two settings shape what appears there: `EXTRACT_ALL = YES`
+surfaces even file-static helpers, while `EXTRACT_PRIVATE = NO` keeps
+NSC-private and `priv_*` helpers hidden by default.
 
 Each function page renders the Doxygen tags the block carries.
 `@brief`, `@details`, `@param[in/out]`, `@return` / `@retval`, two
@@ -133,22 +118,16 @@ pages automatically.
 
 When you add a new function, struct, enum, or file:
 
-1. Write the full Doxygen header per the `CLAUDE.md` rules. Four
-   separate gates hold that, and none of them is `make tidy` --
-   clang-tidy has no Doxygen tag checking of any kind, and this line
-   used to name it:
-   - `doxy_audit.py --check` -- every function carries the required
-     tag set;
-   - `doxy_audit.py --members --check` -- every enum value,
-     struct/union member and macro carries a doc comment;
-   - `doxy_audit.py --style` -- the file-header block (`@file`
-     naming this file, `@brief`, `@details`) and the `@param`
-     direction bracket;
-   - `check_doc_attachment.py` -- the block describes the symbol it
-     is attached to.
-
-   All four run in the `pre-commit-checks` / `doc-attachment` CI gates
-   and in `scripts/git/pre-commit`.
+1. Write the full Doxygen header per the `CLAUDE.md` rules. Several
+   gates hold that, and none of them is `make tidy` -- clang-tidy has
+   no Doxygen tag checking of any kind, and this line used to name it.
+   `scripts/checks/doxy_audit.py` covers the required tag set on every
+   function, a doc comment on every enum value / struct member / macro,
+   and the file-header and `@param`-direction style;
+   `scripts/checks/check_doc_attachment.py` covers the harder question
+   of whether a block actually describes the symbol it is attached to.
+   They run in the `pre-commit-checks` / `doc-attachment` CI gates and
+   in `scripts/git/pre-commit`.
 2. Run `make docs` locally and confirm the new symbol appears in
    the rendered HTML.
 3. Tail `build/docs/doxygen-warnings.log` for any new warnings
@@ -161,16 +140,12 @@ When you add a new function, struct, enum, or file:
 
 ## Configuration knobs
 
-Common tweaks (edit `Doxyfile`):
-
-- `EXTRACT_PRIVATE = NO` -- flip to `YES` to also document
-  `priv_*` helpers (rarely useful).
-- `HAVE_DOT = YES` -- requires Graphviz; the wrapper auto-disables
-  this when `dot` is missing.
-- `DOT_GRAPH_MAX_NODES = 75` -- bump to render larger call graphs;
-  costs build time.
-- `INPUT` -- add new top-level directories here when introducing
-  a brand-new library.
+Everything is in `Doxyfile`, and the three settings worth knowing about
+are `EXTRACT_PRIVATE` (off, so `priv_*` helpers stay hidden),
+`HAVE_DOT` (on, but the wrapper turns it off when Graphviz is absent
+rather than failing), and the call-graph node ceiling, which trades
+build time for larger graphs. A brand-new top-level library needs a
+line in `INPUT`; nothing else discovers it.
 
 ## Common issues
 
@@ -188,8 +163,8 @@ Common tweaks (edit `Doxyfile`):
 
 ## Continuous integration
 
-Two workflows build the docs, both through `scripts/builders/docs.sh`
-and the same pinned doxygen:
+The docs are built in CI through `scripts/builders/docs.sh` and the
+same pinned doxygen, twice, for different reasons:
 
 - `.github/workflows/docs-publish.yml` -- on every push to `main`
   (and manual dispatch), runs `make docs` and force-publishes
