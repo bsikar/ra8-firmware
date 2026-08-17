@@ -1,12 +1,17 @@
 /**
  * @file fw_if_fs_contract_test.c
- * @brief Fault vectors for portable filesystem facade output contracts.
+ * @brief Fault vectors for portable filesystem facade output contracts, plus
+ *        the firmware VFS adapter's init/lifecycle guard vector.
  *
  * @details
  * Supplies synthetic namespace, stream, and transaction callbacks that return
  * structurally impossible success values. The shared vector binds only local
  * vtable copies, proving facade validation independently of any filesystem
  * backend and without mutating the truthful binding used as its baseline.
+ * Also carries the firmware VFS adapter's argument and media-policy guard
+ * vector, moved here from tests/test_fw_if_fs.c to keep both files under the
+ * repository's per-file line cap; it takes its one native mount dependency as
+ * a parameter rather than reaching a file-static in the caller.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -18,6 +23,7 @@
 #include <stdint.h>
 
 #include "fw_if_fs_backend.h"
+#include "fw_if_fs_ra8_vfs.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "unity_minimal.h"
@@ -835,4 +841,40 @@ RA8_TEST_HELPER void ra8_test_fw_if_fs_check_contract_guards(const fw_fs_t* fs)
   internal_check_namespace_decisions(fs);
   internal_check_namespace_contracts(fs);
   internal_check_stream_contracts(fs);
+}
+
+/* see header for full description */
+RA8_TEST_HELPER void ra8_test_fw_if_fs_vfs_init_guards(ra8_fs_mount_t* mount)
+{
+  fw_fs_t               removable = {};
+  fw_fs_ra8_vfs_state_t state     = {};
+  ra8_fs_mount_t        idle      = {};
+  fw_fs_ra8_vfs_cfg_t   cfg       = {.mount_name = "ram", .mount = mount};
+  TEST_BEGIN("fw_if_fs VFS init guards");
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(nullptr, &state, &cfg));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(&removable, nullptr, &cfg));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(&removable, &state, nullptr));
+  cfg.mount_name = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount_name = "ram";
+  cfg.mount      = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount = &idle;
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount      = mount;
+  cfg.mount_name = "ra:m";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount_name = "ra/m";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount_name = "";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount_name = "0123456789abcdef";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount_name = "absent";
+  TEST_ASSERT_EQ(k_ra8_err_not_found, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  cfg.mount_name      = "ram";
+  cfg.removable_media = true;
+  TEST_ASSERT_EQ(k_ra8_ok, fw_fs_ra8_vfs_init(&removable, &state, &cfg));
+  TEST_ASSERT((removable.caps.flags & (uint32_t)k_fw_fs_cap_removable_media) != 0U);
+  TEST_END("fw_if_fs VFS init guards");
 }
