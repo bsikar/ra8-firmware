@@ -359,6 +359,11 @@ RA8_INTERNAL static ra8_err_t internal_select(const uint8_t*       source,
   uint16_t         direct_children = 0U;
   bool             saw_root        = false;
   bool             done            = false;
+  // mcdc-deactivated: internal_select loop-continuation guard; every
+  // iteration that sets `err` to a failing value takes the `if (err !=
+  // k_ra8_ok) { break; }` immediately below before control returns to this
+  // condition, so `err == k_ra8_ok` is true on every reachable evaluation
+  // (including the first, from ra8_xml_reader_init) and only `!done` varies.
   while ((err == k_ra8_ok) && !done) {
     ra8_xml_event_t event = {};
     err                   = ra8_xml_reader_next(&reader, &event);
