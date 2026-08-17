@@ -64,8 +64,9 @@ RA8_INTERNAL static uint16_t internal_toc_reserve(const uint8_t*         source,
 {
   uint16_t marker = 0U;
   if (book->toc_count < (uint16_t)k_ra8_epub_max_toc) {
-    const uint16_t slot = book->toc_count++;
-    book->toc[slot]     = (ra8_epub_toc_entry_t){};
+    const uint16_t slot = book->toc_count;
+    book->toc_count++;
+    book->toc[slot] = (ra8_epub_toc_entry_t){};
     book->toc[slot].depth =
       internal_ancestor_depth(source, source_len, reader, event->depth, local);
     marker = (uint16_t)(slot + 1U);
@@ -79,9 +80,10 @@ RA8_INTERNAL static uint16_t internal_toc_reserve(const uint8_t*         source,
 /* see header for the documented contract. */
 RA8_INTERNAL static uint16_t internal_toc_marker(const ra8_xml_reader_t* reader, uint16_t depth)
 {
-  while (depth > 0U) {
-    --depth;
-    const uint16_t marker = reader->workspace->frames[depth].consumer;
+  uint16_t level = depth;
+  while (level > 0U) {
+    --level;
+    const uint16_t marker = reader->workspace->frames[level].consumer;
     if (marker != 0U) {
       return marker;
     }
@@ -125,6 +127,8 @@ RA8_INTERNAL static ra8_err_t internal_toc_capacity(const uint8_t*            so
     } else if (active && (event.kind == (uint8_t)k_ra8_xml_event_end) &&
                (event.depth == selected->depth)) {
       return k_ra8_ok;
+    } else {
+      /* Any other event is outside the counted entries and changes nothing. */
     }
   }
   return err;
@@ -173,6 +177,8 @@ RA8_INTERNAL static void internal_ncx_event(priv_ncx_ctx_t* ctx, const ra8_xml_e
   } else if ((event->kind == (uint8_t)k_ra8_xml_event_end) && ctx->active &&
              (event->depth == ctx->selected.depth)) {
     ctx->active = false;
+  } else {
+    /* Any other event carries nothing the navMap walker consumes. */
   }
 }
 
@@ -289,6 +295,8 @@ RA8_INTERNAL static ra8_err_t internal_nav_has_list(const uint8_t*            so
     } else if (active && (event.kind == (uint8_t)k_ra8_xml_event_end) &&
                (event.depth == selected->depth)) {
       return k_ra8_err_validation_failed;
+    } else {
+      /* Any other event neither opens the list nor ends the selected nav. */
     }
   }
   return (err == k_ra8_ok) ? k_ra8_err_validation_failed : err;
@@ -379,6 +387,8 @@ RA8_INTERNAL static void internal_nav_event(priv_nav_ctx_t* ctx, const ra8_xml_e
   } else if ((event->kind == (uint8_t)k_ra8_xml_event_end) &&
              (event->depth == ctx->selected.depth)) {
     ctx->active = false;
+  } else {
+    /* Any other event carries nothing the nav walker consumes. */
   }
 }
 
