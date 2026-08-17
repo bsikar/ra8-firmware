@@ -177,16 +177,10 @@ bool priv_emu_view_tile_write(emu_presentation_workspace_t* presentation,
                                    ? presentation->panel_height
                                    : k_emu_presentation_tile_px;
   /* Same borrowed scratch, second half: the rotation destination. Alignment to
-   * alignof(uint16_t) is a checked precondition of emu_presentation_open(), so
-   * the union names one storage under two views instead of casting a uint8_t*
-   * through void*. */
-  const union {
-    uint8_t*  bytes;  /**< Borrowed scratch as raw bytes.     */
-    uint16_t* pixels; /**< The same storage as RGB565 pixels. */
-  } scratch = {.bytes = presentation->scratch};
-  /* Only the rotating path needs scratch; the workspace documents it as borrowed
+   * alignof(uint16_t) is a checked precondition of emu_presentation_open().
+   * Only the rotating path needs scratch; the workspace documents it as borrowed
    * "or nullptr", so refuse rather than rotate into nothing. */
-  uint16_t* const pixels = scratch.pixels;
+  uint16_t* const pixels = presentation->scratch;
   if (pixels == nullptr) {
     return false;
   }

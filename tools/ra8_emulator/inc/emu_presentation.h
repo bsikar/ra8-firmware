@@ -58,17 +58,17 @@ typedef struct {
 
 /** @brief One independent owned surface plus non-owning bounded scratch. */
 typedef struct {
-  int      fd;               /**< Owned unlinked descriptor, or -1.    */
-  uint16_t panel_width;      /**< Native panel width.                  */
-  uint16_t panel_height;     /**< Native panel height.                 */
-  uint16_t display_width;    /**< Rotation-adjusted panel width.       */
-  uint16_t display_height;   /**< Rotation-adjusted panel height.      */
-  uint16_t composite_width;  /**< Display plus sidebar width.          */
-  uint16_t composite_height; /**< Display/sidebar maximum height.      */
-  uint32_t rotate_deg;       /**< Bound display rotation.              */
-  uint8_t* scratch;          /**< Borrowed caller scratch, or nullptr. */
-  size_t   scratch_bytes;    /**< Exact bound scratch prefix.          */
-  size_t   surface_bytes;    /**< Exact raw-fd RGB565 length.          */
+  int       fd;               /**< Owned unlinked descriptor, or -1.    */
+  uint16_t  panel_width;      /**< Native panel width.                  */
+  uint16_t  panel_height;     /**< Native panel height.                 */
+  uint16_t  display_width;    /**< Rotation-adjusted panel width.       */
+  uint16_t  display_height;   /**< Rotation-adjusted panel height.      */
+  uint16_t  composite_width;  /**< Display plus sidebar width.          */
+  uint16_t  composite_height; /**< Display/sidebar maximum height.      */
+  uint32_t  rotate_deg;       /**< Bound display rotation.              */
+  uint16_t* scratch;          /**< Borrowed RGB565 scratch, or nullptr. */
+  size_t    scratch_bytes;    /**< Exact bound scratch prefix.          */
+  size_t    surface_bytes;    /**< Exact raw-fd RGB565 length.          */
 } emu_presentation_workspace_t;
 
 /**
