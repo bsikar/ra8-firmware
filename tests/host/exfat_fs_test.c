@@ -460,13 +460,13 @@ RA8_INTERNAL static void internal_check_write_path(ra8_fs_mount_t* mnt)
  */
 RA8_INTERNAL static void internal_check_multicluster_path(ra8_fs_mount_t* mnt)
 {
-  static uint8_t big[k_mc_payload_bytes];
-  static uint8_t back[k_mc_payload_bytes];
+  static uint8_t s_big[k_mc_payload_bytes];
+  static uint8_t s_back[k_mc_payload_bytes];
   for (uint32_t i = 0U; i < k_mc_payload_bytes; i++) {
-    big[i] = (uint8_t)(((i * k_exfat_pattern_stride) + k_exfat_pattern_bias) & k_byte_mask);
+    s_big[i] = (uint8_t)(((i * k_exfat_pattern_stride) + k_exfat_pattern_bias) & k_byte_mask);
   }
 
-  internal_check(ra8_fs_write_file(mnt, "/BIG.BIN", big, k_mc_payload_bytes) == k_ra8_ok,
+  internal_check(ra8_fs_write_file(mnt, "/BIG.BIN", s_big, k_mc_payload_bytes) == k_ra8_ok,
                  "write_file multi-cluster (> 3 clusters)");
   internal_check(internal_name_present(mnt, "BIG.BIN"), "multi-cluster file listed");
 
@@ -476,7 +476,7 @@ RA8_INTERNAL static void internal_check_multicluster_path(ra8_fs_mount_t* mnt)
     ra8_err_t e     = k_ra8_ok;
     while (total < k_mc_payload_bytes) {
       uint32_t got = 0U;
-      e            = ra8_fs_read(fp, back + total, k_mc_payload_bytes - total, &got);
+      e            = ra8_fs_read(fp, s_back + total, k_mc_payload_bytes - total, &got);
       if ((e != k_ra8_ok) || (got == 0U)) {
         break;
       }
@@ -484,7 +484,7 @@ RA8_INTERNAL static void internal_check_multicluster_path(ra8_fs_mount_t* mnt)
     }
     (void)ra8_fs_close(fp);
     internal_check((e == k_ra8_ok) && (total == k_mc_payload_bytes) &&
-                     (memcmp(back, big, k_mc_payload_bytes) == 0),
+                     (memcmp(s_back, s_big, k_mc_payload_bytes) == 0),
                    "multi-cluster file reads back byte-identical");
   } else {
     internal_check(0, "reopen multi-cluster file");

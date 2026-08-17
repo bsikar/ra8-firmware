@@ -170,7 +170,7 @@ volatile uint8_t priv_dvsq_history[(uint32_t)k_ra8_usb_dcd_intsts0_hist_n] = {};
 /* Auto-echo support: lets the bridge mirror data from one OUT pipe to one
  * IN pipe directly inside the ISR, without involving USBX worker threads.
  * Diagnostic counters expose what the path is doing; auto_echo_buf is
- * static and reused across BRDY events. Set ::priv_dcd_auto_echo_enable to 1
+ * static and reused across BRDY events. Set ::g_dcd_auto_echo_enable to 1
  * via ::ux_dcd_ra8_usb_auto_echo_enable() to opt in. */
 typedef enum : uint16_t {
   k_ux_dcd_ra8_usb_auto_echo_max = 512U, /**< Ux dcd RA8 USB auto echo maximum. */
@@ -192,7 +192,7 @@ static uint8_t s_dcd_auto_echo_buf[k_ux_dcd_ra8_usb_auto_echo_max];
  * @brief Record per-bit IRQ counters and the JLink-visible event ring.
  *
  * @details Bumps ``priv_intsts0_valid_count`` / ``priv_intsts0_ctrt_count`` /
- * ``priv_setup_token_observed`` then, when any event bit (CTRT / VALID /
+ * ``g_setup_token_observed`` then, when any event bit (CTRT / VALID /
  * DVST) is set, snapshots the wire-format INTSTS0 along with the
  * decoded CTSQ and DVSQ fields into the round-robin history ring (HUM
  * Ch 36.2.14 / Ch 36.2.16). Folded out of ``ux_dcd_ra8_usb_irq`` so the
@@ -218,7 +218,7 @@ RA8_INTERNAL static void internal_irq_record_snapshot(uint16_t intsts0)
     priv_intsts0_valid_count++;
     /* VALID = "USB Request Reception Flag" (HUM Ch 37.2.18 p 2081);
      * fold into the canonical SETUP-arrival counter. */
-    priv_setup_token_observed++;
+    g_setup_token_observed++;
   }
   if ((intsts0 & ctrt_bit) != 0U) {
     priv_intsts0_ctrt_count++;
@@ -260,7 +260,7 @@ RA8_INTERNAL static void internal_irq_record_snapshot(uint16_t intsts0)
  * @param[in] i Pipe index that just signalled BRDY/BEMP with no waiter.
  *
  * @pre Called from ISR context only.
- * @pre Caller already verified ``priv_dcd.pipes[i].xfer == nullptr``.
+ * @pre Caller already verified ``g_dcd.pipes[i].xfer == nullptr``.
  * @post On a successful drain, the IN pipe holds the echoed payload
  *       (with a trailing ZLP when ``len % MPS == 0``).
  * @post Counters under ``s_dcd_auto_echo_*`` are updated.
@@ -270,31 +270,30 @@ RA8_INTERNAL static void internal_irq_record_snapshot(uint16_t intsts0)
  */
 RA8_INTERNAL static void internal_irq_auto_echo(uint8_t i)
 {
-  if (priv_dcd_auto_echo_enable != 0U && i == priv_dcd_auto_echo_out_pipe &&
-      priv_dcd.pipes[i].dir_in == 0U) {
+  if (g_dcd_auto_echo_enable != 0U && i == g_dcd_auto_echo_out_pipe &&
+      g_dcd.pipes[i].dir_in == 0U) {
     uint16_t        len = (uint16_t)k_ux_dcd_ra8_usb_auto_echo_max;
     const ra8_err_t qo =
-      ra8_usb_queue_out(priv_dcd.speed, i, s_dcd_auto_echo_buf, &len, /* rearm */ true);
+      ra8_usb_queue_out(g_dcd.speed, i, s_dcd_auto_echo_buf, &len, /* rearm */ true);
     if (qo == k_ra8_ok && len > 0U) {
       priv_dcd_auto_echo_drain_ok++;
       priv_dcd_auto_echo_last_len = len;
-      const uint16_t out_mps      = priv_dcd.pipes[i].max_pkt;
-      if (ra8_usb_queue_in(priv_dcd.speed, priv_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, len) ==
+      const uint16_t out_mps      = g_dcd.pipes[i].max_pkt;
+      if (ra8_usb_queue_in(g_dcd.speed, g_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, len) ==
           k_ra8_ok) {
         priv_dcd_auto_echo_tx_ok++;
         /* If the data packet was exactly MPS, follow with a ZLP so the
          * host URB completes; otherwise the host waits for a short
          * packet that never arrives. */
         if (out_mps != 0U && (len % out_mps) == 0U) {
-          (void)
-            ra8_usb_queue_in(priv_dcd.speed, priv_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, 0U);
+          (void)ra8_usb_queue_in(g_dcd.speed, g_dcd_auto_echo_in_pipe, s_dcd_auto_echo_buf, 0U);
         }
       } else {
         priv_dcd_auto_echo_tx_err++;
       }
     } else {
       priv_dcd_auto_echo_drain_skip++;
-      (void)ra8_usb_rearm_out_pipe(priv_dcd.speed, i);
+      (void)ra8_usb_rearm_out_pipe(g_dcd.speed, i);
     }
   }
 }
@@ -305,7 +304,7 @@ RA8_INTERNAL static void internal_irq_auto_echo(uint8_t i)
  * @details Pushes the next MPS-bounded chunk at the running
  * ``actual_length`` offset via ::ra8_usb_queue_in and advances the
  * offset on success. A failure (typically an FRDY timeout while the
- * SIE holds the FIFO) is counted in ``priv_diag.in_stage_fail`` and
+ * SIE holds the FIFO) is counted in ``g_diag.in_stage_fail`` and
  * leaves ``actual_length`` unchanged so the caller can retry the same
  * chunk on a later walk.
  *
@@ -317,7 +316,7 @@ RA8_INTERNAL static void internal_irq_auto_echo(uint8_t i)
  * @pre Called from ISR context only.
  * @pre ``tr->ux_slave_transfer_request_actual_length`` is < requested.
  * @post On success ``actual_length`` advanced by the staged chunk.
- * @post On failure ``priv_diag.in_stage_fail`` is incremented.
+ * @post On failure ``g_diag.in_stage_fail`` is incremented.
  *
  * @note ISR-only; must not block.
  * @since 0.1.0
@@ -326,14 +325,12 @@ RA8_INTERNAL static bool internal_irq_stage_next_in(UX_SLAVE_TRANSFER* tr, uint8
 {
   const uint16_t total = (uint16_t)tr->ux_slave_transfer_request_requested_length;
   const uint16_t sent  = (uint16_t)tr->ux_slave_transfer_request_actual_length;
-  const uint16_t mps   = priv_dcd.pipes[i].max_pkt;
+  const uint16_t mps   = g_dcd.pipes[i].max_pkt;
   const uint16_t rem   = (uint16_t)(total - sent);
   const uint16_t chunk = (rem > mps) ? mps : rem;
-  if (ra8_usb_queue_in(priv_dcd.speed,
-                       i,
-                       &tr->ux_slave_transfer_request_data_pointer[sent],
-                       chunk) != k_ra8_ok) {
-    priv_diag.in_stage_fail++;
+  if (ra8_usb_queue_in(g_dcd.speed, i, &tr->ux_slave_transfer_request_data_pointer[sent], chunk) !=
+      k_ra8_ok) {
+    g_diag.in_stage_fail++;
     return false;
   }
   tr->ux_slave_transfer_request_actual_length = (ULONG)((uint32_t)sent + (uint32_t)chunk);
@@ -359,9 +356,9 @@ RA8_INTERNAL static bool internal_irq_stage_next_in(UX_SLAVE_TRANSFER* tr, uint8
  * @retval false The pipe is armed normally; continue the walk.
  *
  * @pre Called from ISR context only.
- * @pre ``priv_dcd.pipes[i].xfer == tr``.
+ * @pre ``g_dcd.pipes[i].xfer == tr``.
  * @post On recovery the pipe is re-armed or the chunk re-staged.
- * @post ``priv_diag`` counters record which recovery fired.
+ * @post ``g_diag`` counters record which recovery fired.
  *
  * @note ISR-only; must not block.
  * @since 0.1.0
@@ -377,13 +374,13 @@ internal_irq_recover_in_nak(UX_SLAVE_TRANSFER* tr, uint8_t i, volatile r_usb_reg
     return false;
   }
   if ((ctr & (uint16_t)k_ra8_pipectr_inbufm) != 0U) {
-    priv_diag.in_rearm_nak++;
-    (void)ra8_usb_rearm_out_pipe(priv_dcd.speed, i);
+    g_diag.in_rearm_nak++;
+    (void)ra8_usb_rearm_out_pipe(g_dcd.speed, i);
     return true; /* BEMP follows once the re-armed bank drains */
   }
   if ((reg->BEMPSTS & pipe_bit) == 0U) {
     if (sent < total) {
-      priv_diag.in_restage_nak++;
+      g_diag.in_restage_nak++;
       (void)internal_irq_stage_next_in(tr, i);
       return true;
     }
@@ -406,8 +403,8 @@ internal_irq_recover_in_nak(UX_SLAVE_TRANSFER* tr, uint8_t i, volatile r_usb_reg
  * @param[in]     i  Pipe index.
  *
  * @pre Called from ISR context only.
- * @pre ``priv_dcd.pipes[i].xfer == tr``.
- * @post ``priv_dcd.pipes[i].xfer == nullptr``.
+ * @pre ``g_dcd.pipes[i].xfer == tr``.
+ * @post ``g_dcd.pipes[i].xfer == nullptr``.
  * @post Per-pipe BEMPSTS bit is cleared and the waiter is woken (non-standalone).
  *
  * @note ISR-only; must not block.
@@ -415,7 +412,7 @@ internal_irq_recover_in_nak(UX_SLAVE_TRANSFER* tr, uint8_t i, volatile r_usb_reg
  */
 RA8_INTERNAL static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t i)
 {
-  volatile r_usb_regs_t* reg = (priv_dcd.speed == k_ra8_usb_speed_hs) ? ra8_usb_hs() : ra8_usb_fs();
+  volatile r_usb_regs_t* reg = (g_dcd.speed == k_ra8_usb_speed_hs) ? ra8_usb_hs() : ra8_usb_fs();
   if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- speed always maps */
     return;             /* GCOVR_EXCL_LINE                         */
   }
@@ -460,12 +457,12 @@ RA8_INTERNAL static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t
    * host-requested length), so the CSW always follows the data. */
   if (tr->ux_slave_transfer_request_force_zlp == (ULONG)UX_TRUE) {
     tr->ux_slave_transfer_request_force_zlp = (ULONG)UX_FALSE;
-    (void)ra8_usb_queue_in(priv_dcd.speed, i, tr->ux_slave_transfer_request_data_pointer, 0U);
+    (void)ra8_usb_queue_in(g_dcd.speed, i, tr->ux_slave_transfer_request_data_pointer, 0U);
     return;
   }
   priv_trace_event((uint8_t)k_dcd_trace_kind_in, (uint8_t)k_dcd_trace_no_code, total);
   tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
-  priv_dcd.pipes[i].xfer                        = nullptr;
+  g_dcd.pipes[i].xfer                           = nullptr;
 #ifndef UX_DEVICE_STANDALONE
   (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
 #endif
@@ -486,8 +483,8 @@ RA8_INTERNAL static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t
  * @param[in]     now Total bytes received for this transfer.
  *
  * @pre Called from ISR context only.
- * @pre ``priv_dcd.pipes[i].xfer == tr``.
- * @post ``priv_dcd.pipes[i].xfer == nullptr`` and the waiter is woken.
+ * @pre ``g_dcd.pipes[i].xfer == tr``.
+ * @post ``g_dcd.pipes[i].xfer == nullptr`` and the waiter is woken.
  * @post The pipe is parked at PID=NAK.
  *
  * @note ISR-only; must not block.
@@ -495,7 +492,7 @@ RA8_INTERNAL static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t
  */
 RA8_INTERNAL static void internal_irq_finish_out(UX_SLAVE_TRANSFER* tr, uint8_t i, uint16_t now)
 {
-  (void)ra8_usb_park_out_pipe(priv_dcd.speed, i);
+  (void)ra8_usb_park_out_pipe(g_dcd.speed, i);
   uint8_t  trace_op  = (uint8_t)k_dcd_trace_no_code;
   uint16_t trace_len = now;
   if (now == (uint16_t)k_dcd_trace_cbw_len) {
@@ -518,7 +515,7 @@ RA8_INTERNAL static void internal_irq_finish_out(UX_SLAVE_TRANSFER* tr, uint8_t 
   }
   priv_trace_event((uint8_t)k_dcd_trace_kind_out, trace_op, trace_len);
   tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
-  priv_dcd.pipes[i].xfer                        = nullptr;
+  g_dcd.pipes[i].xfer                           = nullptr;
 #ifndef UX_DEVICE_STANDALONE
   (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
 #endif
@@ -536,8 +533,8 @@ RA8_INTERNAL static void internal_irq_finish_out(UX_SLAVE_TRANSFER* tr, uint8_t 
  * @param[in]     i  Pipe index.
  *
  * @pre Called from ISR context only.
- * @pre ``priv_dcd.pipes[i].xfer == tr``.
- * @post On success ``priv_dcd.pipes[i].xfer == nullptr`` and the waiter is woken.
+ * @pre ``g_dcd.pipes[i].xfer == tr``.
+ * @post On success ``g_dcd.pipes[i].xfer == nullptr`` and the waiter is woken.
  * @post On no-data the OUT pipe is rearmed; no semaphore wake.
  *
  * @note ISR-only; must not block.
@@ -554,7 +551,7 @@ RA8_INTERNAL static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_
    * (< MPS) packet, which terminates the OUT data phase (this is also
    * how a 31-byte CBW into a 64-byte request completes). */
   const uint16_t total = (uint16_t)tr->ux_slave_transfer_request_requested_length;
-  const uint16_t mps   = priv_dcd.pipes[i].max_pkt;
+  const uint16_t mps   = g_dcd.pipes[i].max_pkt;
   /* Drain every OUT bank the controller currently holds (DBLB presents
    * up to two back-to-back) before re-arming, so a single BRDY services
    * as many banks as are ready. One MPS bank per ra8_usb_queue_out call;
@@ -566,19 +563,19 @@ RA8_INTERNAL static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_
       want = mps;
     }
     uint16_t        len    = want;
-    const ra8_err_t qo_err = ra8_usb_queue_out(priv_dcd.speed,
+    const ra8_err_t qo_err = ra8_usb_queue_out(g_dcd.speed,
                                                i,
                                                &tr->ux_slave_transfer_request_data_pointer[got],
                                                &len,
                                                /* rearm */ false);
     if (qo_err != k_ra8_ok) {
       if (i == 2U) {
-        priv_diag.irq_walk_pipe2_no_data++;
+        g_diag.irq_walk_pipe2_no_data++;
       }
       break;
     }
     if (i == 2U) {
-      priv_diag.irq_walk_pipe2_complete++;
+      g_diag.irq_walk_pipe2_complete++;
     }
     const uint16_t now                          = (uint16_t)(got + len);
     tr->ux_slave_transfer_request_actual_length = (ULONG)now;
@@ -592,7 +589,7 @@ RA8_INTERNAL static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_
     }
   }
   /* More packets expected -- re-arm for the next host OUT token(s). */
-  (void)ra8_usb_rearm_out_pipe(priv_dcd.speed, i);
+  (void)ra8_usb_rearm_out_pipe(g_dcd.speed, i);
 }
 
 /**
@@ -603,16 +600,16 @@ RA8_INTERNAL static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_
  * (BRDYSTS set), draining it via ::ra8_usb_queue_out both W0C-clears
  * BRDYSTS -- so the no-receiver BRDY interrupt cannot storm the CPU and
  * starve thread mode (GitHub issue #6) -- and preserves the packet in
- * ::priv_orphan_buf for ::internal_submit_pipe to hand to the next
+ * ::g_orphan_buf for ::internal_submit_pipe to hand to the next
  * bulk-OUT transfer. The pipe is then parked at PID=NAK so no second
  * packet can land. Skipped for IN pipes, unconfigured pipes, the CDC
  * auto-echo pipe, and while the one-deep buffer is already occupied.
  *
  * @param[in] i Pipe index (1..max_pipes-1).
  *
- * @pre Caller is on the ISR callback path; ``priv_dcd.pipes[i].xfer`` is NULL.
+ * @pre Caller is on the ISR callback path; ``g_dcd.pipes[i].xfer`` is NULL.
  * @pre Bridge is past ``ux_dcd_ra8_usb_initialize``.
- * @post On a captured packet ::priv_orphan_len / ::priv_orphan_pipe hold it,
+ * @post On a captured packet ::g_orphan_len / ::g_orphan_pipe hold it,
  *       BRDYSTS for pipe ``i`` is cleared, and the pipe is parked at NAK.
  * @post Otherwise no state changes (fast BRDYSTS-clear early return).
  *
@@ -621,32 +618,32 @@ RA8_INTERNAL static void internal_irq_complete_out(UX_SLAVE_TRANSFER* tr, uint8_
  */
 RA8_INTERNAL static void internal_irq_drain_orphan_out(uint8_t i)
 {
-  if (priv_dcd.pipes[i].dir_in != 0U) {
+  if (g_dcd.pipes[i].dir_in != 0U) {
     return; /* IN pipe -- the host does not write to it */
   }
-  if (priv_dcd.pipes[i].ep_addr == 0U) {
+  if (g_dcd.pipes[i].ep_addr == 0U) {
     return; /* pipe not configured by the class layer */
   }
-  if (priv_dcd_auto_echo_enable != 0U) {
-    if (i == priv_dcd_auto_echo_out_pipe) {
+  if (g_dcd_auto_echo_enable != 0U) {
+    if (i == g_dcd_auto_echo_out_pipe) {
       return; /* CDC auto-echo drains this pipe itself */
     }
   }
-  if (priv_orphan_len != 0U) {
+  if (g_orphan_len != 0U) {
     return; /* one-deep holding buffer already occupied */
   }
   uint16_t len = (uint16_t)k_ra8_usb_orphan_bytes;
-  if (ra8_usb_queue_out(priv_dcd.speed, i, priv_orphan_buf, &len, /* rearm */ false) == k_ra8_ok) {
+  if (ra8_usb_queue_out(g_dcd.speed, i, g_orphan_buf, &len, /* rearm */ false) == k_ra8_ok) {
     if (len != 0U) {
-      priv_orphan_pipe = i;
-      priv_orphan_len  = len;
-      priv_trace_event((uint8_t)k_dcd_trace_kind_ocap, priv_orphan_buf[0], len);
+      g_orphan_pipe = i;
+      g_orphan_len  = len;
+      priv_trace_event((uint8_t)k_dcd_trace_kind_ocap, g_orphan_buf[0], len);
       /* queue_out W0C-cleared BRDYSTS and re-armed PID=BUF; pull it
        * back to NAK so a second packet cannot land before the next
        * transfer is submitted. A full-speed bulk packet takes ~45 us
        * on the wire -- far longer than this queue_out -> park gap --
        * so the controller cannot accept one in between. */
-      (void)ra8_usb_park_out_pipe(priv_dcd.speed, i);
+      (void)ra8_usb_park_out_pipe(g_dcd.speed, i);
     }
   }
 }
@@ -668,24 +665,24 @@ RA8_INTERNAL static void internal_irq_drain_orphan_out(uint8_t i)
  * @post One of: a transfer was completed and the semaphore was put;
  *       the OUT pipe was rearmed on no-data; or the auto-echo loop
  *       drained the OUT pipe and re-queued on the IN pipe.
- * @post ``priv_diag.irq_walk_total`` is incremented.
+ * @post ``g_diag.irq_walk_total`` is incremented.
  *
  * @note ISR-only; must not block.
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_irq_walk_pipe(uint8_t i)
 {
-  priv_diag.irq_walk_total++;
-  UX_SLAVE_TRANSFER* tr = priv_dcd.pipes[i].xfer;
+  g_diag.irq_walk_total++;
+  UX_SLAVE_TRANSFER* tr = g_dcd.pipes[i].xfer;
   if (tr == nullptr) {
     internal_irq_auto_echo(i);
     internal_irq_drain_orphan_out(i);
     return;
   }
   if (i == 2U) {
-    priv_diag.irq_walk_pipe2_seen++;
+    g_diag.irq_walk_pipe2_seen++;
   }
-  if (priv_dcd.pipes[i].dir_in != 0U) {
+  if (g_dcd.pipes[i].dir_in != 0U) {
     internal_irq_complete_in(tr, i);
     return;
   }
@@ -711,7 +708,7 @@ RA8_INTERNAL static void internal_irq_walk_pipe(uint8_t i)
  */
 void ux_dcd_ra8_usb_irq(ra8_usb_speed_t speed, uint16_t intsts0)
 {
-  if (priv_dcd.state == k_ux_dcd_ra8_usb_state_uninit) {
+  if (g_dcd.state == k_ux_dcd_ra8_usb_state_uninit) {
     return;
   }
 

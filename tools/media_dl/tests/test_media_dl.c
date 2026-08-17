@@ -650,13 +650,13 @@ RA8_INTERNAL static void internal_test_robots_edge(void)
 RA8_INTERNAL static void internal_test_robots_cache(void)
 {
   TEST_BEGIN("robots cache");
-  static mdl_robots_cache_t cache;
-  memset(&cache, 0, sizeof(cache));
+  static mdl_robots_cache_t s_cache;
+  memset(&s_cache, 0, sizeof(s_cache));
   char                scratch[k_buf_4k];
   fake_fetch_ctx_t    ok = {.count  = 0,
                             .body   = "User-agent: *\nDisallow: /x\n",
                             .result = k_mdl_robots_fetch_ok};
-  const mdl_robots_t* r  = mdl_robots_cache_consult(&cache,
+  const mdl_robots_t* r  = mdl_robots_cache_consult(&s_cache,
                                                     "https",
                                                     "site.net",
                                                     "media_dl",
@@ -667,7 +667,7 @@ RA8_INTERNAL static void internal_test_robots_cache(void)
   TEST_ASSERT_NOT_NULL(r);
   TEST_ASSERT(!mdl_robots_allows(r, "/x/y"));
   TEST_ASSERT(mdl_robots_allows(r, "/z"));
-  const mdl_robots_t* r2 = mdl_robots_cache_consult(&cache,
+  const mdl_robots_t* r2 = mdl_robots_cache_consult(&s_cache,
                                                     "https",
                                                     "site.net",
                                                     "media_dl",
@@ -675,11 +675,11 @@ RA8_INTERNAL static void internal_test_robots_cache(void)
                                                     &ok,
                                                     scratch,
                                                     sizeof(scratch));
-  TEST_ASSERT(r2 == r);                            /* cache hit: same entry */
+  TEST_ASSERT(r2 == r);                            /* s_cache hit: same entry */
   TEST_ASSERT_EQ((uint16_t)1, (uint16_t)ok.count); /* fetched exactly once  */
 
   fake_fetch_ctx_t    deny = {.count = 0, .body = nullptr, .result = k_mdl_robots_fetch_denied};
-  const mdl_robots_t* rd   = mdl_robots_cache_consult(&cache,
+  const mdl_robots_t* rd   = mdl_robots_cache_consult(&s_cache,
                                                       "https",
                                                       "deny.net",
                                                       "media_dl",
@@ -690,7 +690,7 @@ RA8_INTERNAL static void internal_test_robots_cache(void)
   TEST_ASSERT(rd == nullptr); /* 5xx -> disallow all */
 
   fake_fetch_ctx_t    gone = {.count = 0, .body = nullptr, .result = k_mdl_robots_fetch_absent};
-  const mdl_robots_t* rg   = mdl_robots_cache_consult(&cache,
+  const mdl_robots_t* rg   = mdl_robots_cache_consult(&s_cache,
                                                       "https",
                                                       "gone.net",
                                                       "media_dl",

@@ -12,7 +12,7 @@
  * project's ``ra8_usb_*`` register-level driver instead of touching
  * USB controller registers directly.
  *
- * This translation unit owns the bridge singleton (``priv_dcd`` / ``priv_diag``),
+ * This translation unit owns the bridge singleton (``g_dcd`` / ``g_diag``),
  * the lifecycle entry points (``ux_dcd_ra8_usb_initialize`` /
  * ``_uninitialize`` / ``_state``), and the USBFS interrupt-storm guard.
  * The per-aspect siblings (``ux_dcd_ra8_usb_{ep,xfer,isr,setup,dvst,dvst_default,irq}.c``)
@@ -92,7 +92,7 @@ volatile uint16_t priv_syscfg_after_dcd_init = 0U;
 volatile uint16_t priv_lpsts_after_dcd_init = 0U;
 
 /**
- * @var priv_dcd
+ * @var g_dcd
  * @brief The single bridge instance. RA8 has two USB controllers
  * but the device stack only ever drives one at a time, so a single
  * static is sufficient.
@@ -100,18 +100,18 @@ volatile uint16_t priv_lpsts_after_dcd_init = 0U;
  * @note Not thread-safe -- updated from the ISR and the dispatch
  * trampoline; concurrency must be arbitrated at the call-site.
  */
-ra8_usb_dcd_t priv_dcd = {
+ra8_usb_dcd_t g_dcd = {
   .state = k_ux_dcd_ra8_usb_state_uninit,
   .speed = k_ra8_usb_speed_fs,
   .owner = nullptr,
   .pipes = {},
 };
 
-volatile uint32_t priv_dcd_auto_echo_enable = 0U;
+volatile uint32_t g_dcd_auto_echo_enable = 0U;
 
-uint8_t priv_dcd_auto_echo_out_pipe = 0U;
+uint8_t g_dcd_auto_echo_out_pipe = 0U;
 
-uint8_t priv_dcd_auto_echo_in_pipe = 0U;
+uint8_t g_dcd_auto_echo_in_pipe = 0U;
 
 /**
  * @brief Enable bridge-side auto-echo on the configured pipe pair.
@@ -131,18 +131,18 @@ uint8_t priv_dcd_auto_echo_in_pipe = 0U;
  *
  * @pre Both pipes are configured via ::ra8_usb_configure_endpoint.
  * @pre Called from task / startup context (not from inside an ISR).
- * @post ``priv_dcd_auto_echo_enable == 1``.
- * @post ``priv_dcd_auto_echo_out_pipe == out_pipe`` and
- *       ``priv_dcd_auto_echo_in_pipe == in_pipe``.
+ * @post ``g_dcd_auto_echo_enable == 1``.
+ * @post ``g_dcd_auto_echo_out_pipe == out_pipe`` and
+ *       ``g_dcd_auto_echo_in_pipe == in_pipe``.
  *
  * @note Not thread-safe; intended for one-shot configuration at startup.
  * @since 0.1.0
  */
 void ux_dcd_ra8_usb_auto_echo_enable(uint8_t out_pipe, uint8_t in_pipe)
 {
-  priv_dcd_auto_echo_out_pipe = out_pipe;
-  priv_dcd_auto_echo_in_pipe  = in_pipe;
-  priv_dcd_auto_echo_enable   = 1U;
+  g_dcd_auto_echo_out_pipe = out_pipe;
+  g_dcd_auto_echo_in_pipe  = in_pipe;
+  g_dcd_auto_echo_enable   = 1U;
 }
 
 /**
@@ -175,14 +175,14 @@ typedef enum : uint32_t {
 static uint16_t s_usb_irq_slot = 0U;
 
 /**
- * @var priv_isr_spurious_run
+ * @var g_isr_spurious_run
  * @brief Consecutive event-less FS ISR entries since the last SysTick re-enable.
  * @details Incremented by ::internal_usbfs_isr on an entry with no real
  *          event bit, reset by it on a real event, and zeroed every 1 ms by
  *          ::ux_dcd_ra8_usb_irq_reenable. JLink-readable storm probe.
  * @since 0.1.0
  */
-volatile uint32_t priv_isr_spurious_run = 0U;
+volatile uint32_t g_isr_spurious_run = 0U;
 
 /**
  * @brief Set or clear the USB controller's NVIC enable bit.
@@ -238,7 +238,7 @@ void priv_usbfs_irq_mask(void)
  *
  * @details The recovery half of the USBFS interrupt-storm guard. Each USB-FS
  * app's ``SysTick_Handler`` calls this every 1 ms. Zeroing
- * ::priv_isr_spurious_run makes that counter a per-millisecond rate gauge -- so
+ * ::g_isr_spurious_run makes that counter a per-millisecond rate gauge -- so
  * normal idle SOFR can never accumulate to the mask threshold -- and
  * re-enabling the NVIC line undoes any mask ::internal_usbfs_isr applied.
  * Re-enabling an already-enabled line is a no-op, so calling this outside a
@@ -247,11 +247,11 @@ void priv_usbfs_irq_mask(void)
  * has thread mode -- and the ThreadX timer subsystem -- starved.
  *
  * @return No value; the helper is unconditional.
- * @note ``priv_isr_spurious_run == 0`` and the USB IRQ line is enabled.
+ * @note ``g_isr_spurious_run == 0`` and the USB IRQ line is enabled.
  *
  * @pre ::s_usb_irq_slot resolved (``ux_dcd_ra8_usb_initialize`` has run).
  * @pre Called from the per-app 1 ms SysTick handler (exception context).
- * @post ``priv_isr_spurious_run == 0``.
+ * @post ``g_isr_spurious_run == 0``.
  * @post NVIC re-routes the next USB event to the registered trampoline.
  *
  * @note Idempotent; intended to be called from the 1 ms SysTick handler.
@@ -259,7 +259,7 @@ void priv_usbfs_irq_mask(void)
  */
 void ux_dcd_ra8_usb_irq_reenable(void)
 {
-  priv_isr_spurious_run = 0U;
+  g_isr_spurious_run = 0U;
   internal_usbfs_irq_set_enabled(true);
   /* Watchdog kick for stalled transfers: a stashed pipe transfer with
    * no pending controller event generates no IRQ, so the walk -- and
@@ -268,7 +268,7 @@ void ux_dcd_ra8_usb_irq_reenable(void)
    * idempotent for pipes with nothing to do. */
   bool stashed = false;
   for (uint8_t i = 1U; i < (uint8_t)k_ux_dcd_ra8_usb_max_pipes; i++) {
-    if (priv_dcd.pipes[i].xfer != UX_NULL) {
+    if (g_dcd.pipes[i].xfer != UX_NULL) {
       stashed = true;
     }
   }
@@ -282,13 +282,13 @@ void ux_dcd_ra8_usb_irq_reenable(void)
 }
 
 /**
- * @var priv_diag
+ * @var g_diag
  * @brief Bridge diagnostic counter block. Read via JLink memory.
  * @note Single-writer per counter; safe under the bridge's single-
  *       worker-thread + single-class-thread model.
  * @since 0.1.0
  */
-ra8_usb_dcd_diag_t priv_diag = {};
+ra8_usb_dcd_diag_t g_diag = {};
 
 /**
  * @enum ra8_usb_dcd_ctrl_id_t
@@ -360,14 +360,14 @@ RA8_INTERNAL static ra8_err_t internal_init_bind_owner(ra8_usb_speed_t speed)
   owner->ux_slave_dcd_status          = UX_DCD_STATUS_OPERATIONAL;
   owner->ux_slave_dcd_controller_type = (UINT)k_ra8_usb_dcd_controller_id; /* RA-USB private id. */
   owner->ux_slave_dcd_function        = _ux_dcd_ra8_usb_function;
-  owner->ux_slave_dcd_controller_hardware = (void*)&priv_dcd;
+  owner->ux_slave_dcd_controller_hardware = (void*)&g_dcd;
 
-  priv_dcd.speed = speed;
-  priv_dcd.owner = owner;
-  priv_dcd.state = k_ux_dcd_ra8_usb_state_ready;
+  g_dcd.speed = speed;
+  g_dcd.owner = owner;
+  g_dcd.state = k_ux_dcd_ra8_usb_state_ready;
 
   for (uint8_t i = 0U; i < (uint8_t)k_ux_dcd_ra8_usb_max_pipes; i++) {
-    priv_dcd.pipes[i].xfer = nullptr;
+    g_dcd.pipes[i].xfer = nullptr;
   }
 
 #ifndef RA8_USB_POLLED_ONLY
@@ -497,7 +497,7 @@ RA8_INTERNAL static void internal_init_setup_ep0(UX_SLAVE_DEVICE* device, UX_SLA
  * event into the NVIC, parses the active device descriptor framework,
  * and stamps EP0 so the chapter-9 dispatcher accepts the host's first
  * SETUP token. Idempotent across calls: re-running with the same speed
- * is a no-op once ``priv_dcd.state`` has reached ``ready``.
+ * is a no-op once ``g_dcd.state`` has reached ``ready``.
  *
  * @param[in] speed Which controller to bring up
  *                  (``k_ra8_usb_speed_fs`` or ``k_ra8_usb_speed_hs``).
@@ -511,7 +511,7 @@ RA8_INTERNAL static void internal_init_setup_ep0(UX_SLAVE_DEVICE* device, UX_SLA
  *
  * @pre ``_ux_system_slave`` is bound by ``_ux_device_stack_initialize``.
  * @pre Caller is on the USBX device task / init context (not in IRQ).
- * @post ``priv_dcd.state`` is ``k_ux_dcd_ra8_usb_state_ready`` on success.
+ * @post ``g_dcd.state`` is ``k_ux_dcd_ra8_usb_state_ready`` on success.
  * @post EP0 transfer request is populated and the device is in ATTACHED state.
  *
  * @note Not thread-safe; intended to run once during USBX init.
@@ -536,7 +536,7 @@ ra8_err_t ux_dcd_ra8_usb_initialize(ra8_usb_speed_t speed)
 
   UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
   internal_init_parse_framework(device);
-  internal_init_setup_ep0(device, priv_dcd.owner);
+  internal_init_setup_ep0(device, g_dcd.owner);
 
   /* Bisect probes: SYSCFG/LPSTS state at end of DCD init, BEFORE the
    * application calls ra8_usb_device_attach(true). HUM Ch 37.2.1 SYSCFG
@@ -569,18 +569,18 @@ ra8_err_t ux_dcd_ra8_usb_initialize(ra8_usb_speed_t speed)
  */
 ra8_err_t ux_dcd_ra8_usb_uninitialize(void)
 {
-  if (priv_dcd.state == k_ux_dcd_ra8_usb_state_uninit) {
+  if (g_dcd.state == k_ux_dcd_ra8_usb_state_uninit) {
     return k_ra8_err_invalid_state;
   }
   /* Matching pair to the disabled ra8_isr_register in the init path. */
-  (void)ra8_usb_attach_handler(priv_dcd.speed, nullptr, nullptr);
-  (void)ra8_usb_device_deinit(priv_dcd.speed);
-  if (priv_dcd.owner != nullptr) {
-    priv_dcd.owner->ux_slave_dcd_status   = UX_DCD_STATUS_HALTED;
-    priv_dcd.owner->ux_slave_dcd_function = nullptr;
+  (void)ra8_usb_attach_handler(g_dcd.speed, nullptr, nullptr);
+  (void)ra8_usb_device_deinit(g_dcd.speed);
+  if (g_dcd.owner != nullptr) {
+    g_dcd.owner->ux_slave_dcd_status   = UX_DCD_STATUS_HALTED;
+    g_dcd.owner->ux_slave_dcd_function = nullptr;
   }
-  priv_dcd.state = k_ux_dcd_ra8_usb_state_uninit;
-  priv_dcd.owner = nullptr;
+  g_dcd.state = k_ux_dcd_ra8_usb_state_uninit;
+  g_dcd.owner = nullptr;
   return k_ra8_ok;
 }
 
@@ -603,5 +603,5 @@ ra8_err_t ux_dcd_ra8_usb_uninitialize(void)
  */
 ra8_usb_dcd_state_t ux_dcd_ra8_usb_state(void)
 {
-  return priv_dcd.state;
+  return g_dcd.state;
 }

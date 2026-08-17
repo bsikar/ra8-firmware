@@ -210,10 +210,10 @@ RA8_INTERNAL static void internal_test_vmem_integration(void)
 {
   TEST_BEGIN("vsource + vmem page-in integration");
   internal_t_fill_backing();
-  static uint8_t          frames[(size_t)k_t_frames * (size_t)k_t_frame_bytes];
-  static ra8_vmem_frame_t meta[(size_t)k_t_frames];
-  static ra8_vmem_key_t   keys[(size_t)k_t_frames];
-  static int32_t          buckets[(size_t)k_t_buckets];
+  static uint8_t          s_frames[(size_t)k_t_frames * (size_t)k_t_frame_bytes];
+  static ra8_vmem_frame_t s_meta[(size_t)k_t_frames];
+  static ra8_vmem_key_t   s_keys[(size_t)k_t_frames];
+  static int32_t          s_buckets[(size_t)k_t_buckets];
 
   ra8_vsource_t vs = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, s_objs, k_t_objs));
@@ -222,12 +222,12 @@ RA8_INTERNAL static void internal_test_vmem_integration(void)
                  ra8_vsource_add_paged(&vs, internal_t_read, nullptr, 0U, k_t_store_bytes, &oid));
 
   ra8_vmem_cfg_t cfg = {};
-  cfg.frame_mem      = frames;
+  cfg.frame_mem      = s_frames;
   cfg.frame_bytes    = k_t_frame_bytes;
   cfg.frame_count    = k_t_frames;
-  cfg.meta           = meta;
-  cfg.keys           = keys;
-  cfg.buckets        = buckets;
+  cfg.meta           = s_meta;
+  cfg.keys           = s_keys;
+  cfg.buckets        = s_buckets;
   cfg.bucket_count   = k_t_buckets;
   cfg.loader         = ra8_vsource_loader;
   cfg.loader_ctx     = &vs;
