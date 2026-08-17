@@ -170,14 +170,27 @@ bool priv_emu_view_tile_write(emu_presentation_workspace_t* presentation,
                                             .height = height};
     return internal_write_rows(presentation, source, &destination);
   }
-  const size_t    max_tile_width  = (presentation->panel_width < k_emu_presentation_tile_px)
-                                      ? presentation->panel_width
-                                      : k_emu_presentation_tile_px;
-  const size_t    max_tile_height = (presentation->panel_height < k_emu_presentation_tile_px)
-                                      ? presentation->panel_height
-                                      : k_emu_presentation_tile_px;
-  uint16_t* const rotated =
-    &((uint16_t*)(void*)presentation->scratch)[max_tile_width * max_tile_height];
+  const size_t max_tile_width  = (presentation->panel_width < k_emu_presentation_tile_px)
+                                   ? presentation->panel_width
+                                   : k_emu_presentation_tile_px;
+  const size_t max_tile_height = (presentation->panel_height < k_emu_presentation_tile_px)
+                                   ? presentation->panel_height
+                                   : k_emu_presentation_tile_px;
+  /* Same borrowed scratch, second half: the rotation destination. Alignment to
+   * alignof(uint16_t) is a checked precondition of emu_presentation_open(), so
+   * the union names one storage under two views instead of casting a uint8_t*
+   * through void*. */
+  const union {
+    uint8_t*  bytes;  /**< Borrowed scratch as raw bytes.     */
+    uint16_t* pixels; /**< The same storage as RGB565 pixels. */
+  } scratch = {.bytes = presentation->scratch};
+  /* Only the rotating path needs scratch; the workspace documents it as borrowed
+   * "or nullptr", so refuse rather than rotate into nothing. */
+  uint16_t* const pixels = scratch.pixels;
+  if (pixels == nullptr) {
+    return false;
+  }
+  uint16_t* const          rotated = &pixels[max_tile_width * max_tile_height];
   const tile_destination_t destination =
     internal_tile_destination(presentation, source_x, source_y, width, height);
   internal_rotate_tile(presentation, source, rotated, width, height, destination.width);
