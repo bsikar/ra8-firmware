@@ -216,27 +216,10 @@ static const ra8_io_fsfmt_t s_valid_format = {
   .ops  = &s_valid_ops,
 };
 
-/**
- * @brief Every mandatory descriptor member is rejected independently.
- *
- * @par MC/DC:
- * `ra8_io_fsfmt_register` has no compound decision: every required-pointer
- * guard is a separate N=1 decision. Builtin registration supplies each
- * `member == nullptr -> false` vector; this test nulls the descriptor, name,
- * ops table, and each required operation in turn to supply the corresponding
- * `true` vectors. @details Executes the required ops scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
-RA8_INTERNAL static void internal_test_required_ops(void)
+/** @brief Reject a descriptor missing `probe`, `mount`, or `unmount`. @details Exercises the required-null group one path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_required_null_group1(void)
 {
-  TEST_BEGIN("fsfmt required ops validation");
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_fsfmt_init());
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_fsfmt_register(nullptr));
-  ra8_io_fsfmt_t fmt = s_valid_format;
-  fmt.name           = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_fsfmt_register(&fmt));
-  fmt     = s_valid_format;
-  fmt.ops = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_fsfmt_register(&fmt));
-
+  ra8_io_fsfmt_t     fmt = {};
   ra8_io_fsfmt_ops_t ops = s_valid_ops;
   /** @brief Assert that clearing one mandatory operation rejects the descriptor. */
 #define EXPECT_REQUIRED_NULL(member_)                                                              \
@@ -250,16 +233,116 @@ RA8_INTERNAL static void internal_test_required_ops(void)
   EXPECT_REQUIRED_NULL(probe);
   EXPECT_REQUIRED_NULL(mount);
   EXPECT_REQUIRED_NULL(unmount);
+#undef EXPECT_REQUIRED_NULL
+}
+
+/** @brief Reject a descriptor missing `open`, `close`, or `read`. @details Exercises the required-null group two path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_required_null_group2(void)
+{
+  ra8_io_fsfmt_t     fmt = {};
+  ra8_io_fsfmt_ops_t ops = s_valid_ops;
+  /** @brief Assert that clearing one mandatory operation rejects the descriptor. */
+#define EXPECT_REQUIRED_NULL(member_)                                                              \
+  do {                                                                                             \
+    ops         = s_valid_ops;                                                                     \
+    ops.member_ = nullptr;                                                                         \
+    fmt         = s_valid_format;                                                                  \
+    fmt.ops     = &ops;                                                                            \
+    TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_fsfmt_register(&fmt));                               \
+  } while (false)
   EXPECT_REQUIRED_NULL(open);
   EXPECT_REQUIRED_NULL(close);
   EXPECT_REQUIRED_NULL(read);
+#undef EXPECT_REQUIRED_NULL
+}
+
+/** @brief Reject a descriptor missing `seek`, `tell`, or `size`. @details Exercises the required-null group three path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_required_null_group3(void)
+{
+  ra8_io_fsfmt_t     fmt = {};
+  ra8_io_fsfmt_ops_t ops = s_valid_ops;
+  /** @brief Assert that clearing one mandatory operation rejects the descriptor. */
+#define EXPECT_REQUIRED_NULL(member_)                                                              \
+  do {                                                                                             \
+    ops         = s_valid_ops;                                                                     \
+    ops.member_ = nullptr;                                                                         \
+    fmt         = s_valid_format;                                                                  \
+    fmt.ops     = &ops;                                                                            \
+    TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_fsfmt_register(&fmt));                               \
+  } while (false)
   EXPECT_REQUIRED_NULL(seek);
   EXPECT_REQUIRED_NULL(tell);
   EXPECT_REQUIRED_NULL(size);
+#undef EXPECT_REQUIRED_NULL
+}
+
+/** @brief Reject a descriptor missing `stat` or `listdir`. @details Exercises the required-null group four path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_required_null_group4(void)
+{
+  ra8_io_fsfmt_t     fmt = {};
+  ra8_io_fsfmt_ops_t ops = s_valid_ops;
+  /** @brief Assert that clearing one mandatory operation rejects the descriptor. */
+#define EXPECT_REQUIRED_NULL(member_)                                                              \
+  do {                                                                                             \
+    ops         = s_valid_ops;                                                                     \
+    ops.member_ = nullptr;                                                                         \
+    fmt         = s_valid_format;                                                                  \
+    fmt.ops     = &ops;                                                                            \
+    TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_fsfmt_register(&fmt));                               \
+  } while (false)
   EXPECT_REQUIRED_NULL(stat);
   EXPECT_REQUIRED_NULL(listdir);
 #undef EXPECT_REQUIRED_NULL
+}
+
+/**
+ * @brief Every mandatory descriptor member is rejected independently.
+ *
+ * @par MC/DC:
+ * `ra8_io_fsfmt_register` and the `internal_validate_required_ops`,
+ * `internal_validate_required_ops_group1`, and
+ * `internal_validate_required_ops_group2` helpers it calls contain no
+ * compound decisions: every required-pointer guard, whether for the
+ * descriptor itself or one mandatory operation, is a separate N=1 decision.
+ * Builtin registration supplies each `member == nullptr -> false` vector;
+ * this test nulls the descriptor, name, ops table, and each required
+ * operation in turn to supply the corresponding `true` vectors. @details Executes the required ops scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_required_ops(void)
+{
+  TEST_BEGIN("fsfmt required ops validation");
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_fsfmt_init());
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_fsfmt_register(nullptr));
+  ra8_io_fsfmt_t fmt = s_valid_format;
+  fmt.name           = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_fsfmt_register(&fmt));
+  fmt     = s_valid_format;
+  fmt.ops = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_fsfmt_register(&fmt));
+
+  internal_expect_required_null_group1();
+  internal_expect_required_null_group2();
+  internal_expect_required_null_group3();
+  internal_expect_required_null_group4();
   TEST_END("fsfmt required ops validation");
+}
+
+/** @brief Reject each dir-cursor capacity or alignment fault independently. @details Exercises the dir-cursor capacity guards path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] fmt Coherent dir-cursor descriptor mutated in place per vector. @param[in,out] ops Valid operation table bound to @p fmt. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_dir_cursor_capacity_guards(ra8_io_fsfmt_t*     fmt,
+                                                                    ra8_io_fsfmt_ops_t* ops)
+{
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_fsfmt_init());
+  *ops                                = s_valid_ops;
+  fmt->ops                            = ops;
+  fmt->caps.directory_workspace_bytes = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_fsfmt_register(fmt));
+  fmt->caps.directory_workspace_bytes = 1U;
+  fmt->caps.max_open_directories      = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_fsfmt_register(fmt));
+  fmt->caps.max_open_directories      = 1U;
+  fmt->caps.directory_workspace_align = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_fsfmt_register(fmt));
+  fmt->caps.directory_workspace_align = 3U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_fsfmt_register(fmt));
 }
 
 /** @brief Prove every incremental-cursor capability invariant independently. @details Exercises the cursor capability consistency path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
@@ -286,35 +369,12 @@ RA8_INTERNAL static void internal_cursor_capability_consistency(void)
   EXPECT_CURSOR_OP_MISMATCH(dir_next);
   EXPECT_CURSOR_OP_MISMATCH(dir_close);
 #undef EXPECT_CURSOR_OP_MISMATCH
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_fsfmt_init());
-  ops                                = s_valid_ops;
-  fmt.ops                            = &ops;
-  fmt.caps.directory_workspace_bytes = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_fsfmt_register(&fmt));
-  fmt.caps.directory_workspace_bytes = 1U;
-  fmt.caps.max_open_directories      = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_fsfmt_register(&fmt));
-  fmt.caps.max_open_directories      = 1U;
-  fmt.caps.directory_workspace_align = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_fsfmt_register(&fmt));
-  fmt.caps.directory_workspace_align = 3U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_fsfmt_register(&fmt));
+  internal_expect_dir_cursor_capacity_guards(&fmt, &ops);
 }
 
-/**
- * @brief Every capability-to-operation invariant is checked independently.
- *
- * @par MC/DC:
- * Covers `libs/ra8_io/src/ra8_io_fsfmt.c@internal_validate_caps`.
- * Capability validation uses nested single-condition decisions, not `&&` or
- * `||`. The valid descriptor supplies `capability=false`; each mismatch sets
- * only that capability true and its operation null, exercising the advertised
- * and missing-operation branches. Builtins provide the true/non-null vectors
- * for their supported operations; durable-sync true with sync false exercises
- * its incoherent branch. @details Executes the capability consistency scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
-RA8_INTERNAL static void internal_test_capability_consistency(void)
+/** @brief Reject a missing `write` or `mkdir` when its capability is advertised. @details Exercises the single-op capability mismatch path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_single_op_cap_mismatches1(void)
 {
-  TEST_BEGIN("fsfmt capability consistency");
   ra8_io_fsfmt_t     fmt = s_valid_format;
   ra8_io_fsfmt_ops_t ops = s_valid_ops;
   /** @brief Assert that an advertised capability requires its operation. */
@@ -330,16 +390,80 @@ RA8_INTERNAL static void internal_test_capability_consistency(void)
   } while (false)
   EXPECT_CAP_MISMATCH(supports_streaming_write, write);
   EXPECT_CAP_MISMATCH(supports_mkdir, mkdir);
+#undef EXPECT_CAP_MISMATCH
+}
+
+/** @brief Reject a missing `rmdir` or `free_space` when its capability is advertised. @details Exercises the single-op capability mismatch path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_single_op_cap_mismatches2(void)
+{
+  ra8_io_fsfmt_t     fmt = s_valid_format;
+  ra8_io_fsfmt_ops_t ops = s_valid_ops;
+  /** @brief Assert that an advertised capability requires its operation. */
+#define EXPECT_CAP_MISMATCH(cap_, member_)                                                         \
+  do {                                                                                             \
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_io_fsfmt_init());                                                 \
+    ops           = s_valid_ops;                                                                   \
+    ops.member_   = nullptr;                                                                       \
+    fmt           = s_valid_format;                                                                \
+    fmt.caps.cap_ = true;                                                                          \
+    fmt.ops       = &ops;                                                                          \
+    TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_fsfmt_register(&fmt));                            \
+  } while (false)
   EXPECT_CAP_MISMATCH(supports_rmdir, rmdir);
   EXPECT_CAP_MISMATCH(supports_free_space, free_space);
+#undef EXPECT_CAP_MISMATCH
+}
+
+/** @brief Reject a missing `sync` or `rename` when its capability is advertised. @details Exercises the single-op capability mismatch path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_single_op_cap_mismatches3(void)
+{
+  ra8_io_fsfmt_t     fmt = s_valid_format;
+  ra8_io_fsfmt_ops_t ops = s_valid_ops;
+  /** @brief Assert that an advertised capability requires its operation. */
+#define EXPECT_CAP_MISMATCH(cap_, member_)                                                         \
+  do {                                                                                             \
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_io_fsfmt_init());                                                 \
+    ops           = s_valid_ops;                                                                   \
+    ops.member_   = nullptr;                                                                       \
+    fmt           = s_valid_format;                                                                \
+    fmt.caps.cap_ = true;                                                                          \
+    fmt.ops       = &ops;                                                                          \
+    TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_fsfmt_register(&fmt));                            \
+  } while (false)
   EXPECT_CAP_MISMATCH(supports_sync, sync);
   EXPECT_CAP_MISMATCH(atomic_rename, rename);
 #undef EXPECT_CAP_MISMATCH
+}
 
+/**
+ * @brief Every capability-to-operation invariant is checked independently.
+ *
+ * @par MC/DC:
+ * Covers `libs/ra8_io/src/ra8_io_fsfmt.c@internal_validate_caps`,
+ * `libs/ra8_io/src/ra8_io_fsfmt.c@internal_validate_single_op_caps`, and
+ * `libs/ra8_io/src/ra8_io_fsfmt.c@internal_validate_dir_cursor_caps`.
+ * `internal_validate_caps` and `internal_validate_single_op_caps` use nested
+ * single-condition decisions, not `&&` or `||`, for every capability except
+ * dir-cursor support: each mismatch below sets only that capability true and
+ * its operation null, exercising the advertised and missing-operation
+ * branches; durable-sync true with sync false exercises its incoherent
+ * branch. `internal_validate_dir_cursor_caps` is one seven-condition `||`
+ * decision; `internal_cursor_capability_consistency` supplies the minimal
+ * N+1 = 8 vectors -- the all-valid pass plus one vector per condition (each
+ * missing cursor operation, a zero workspace-byte capacity, a zero
+ * open-directory capacity, a zero alignment, and a non-power-of-two
+ * alignment) -- so each condition is proven to independently flip the
+ * outcome. @details Executes the capability consistency scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_capability_consistency(void)
+{
+  TEST_BEGIN("fsfmt capability consistency");
+  internal_expect_single_op_cap_mismatches1();
+  internal_expect_single_op_cap_mismatches2();
+  internal_expect_single_op_cap_mismatches3();
   internal_cursor_capability_consistency();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_fsfmt_init());
-  fmt                   = s_valid_format;
+  ra8_io_fsfmt_t fmt    = s_valid_format;
   fmt.caps.durable_sync = true;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_fsfmt_register(&fmt));
   TEST_END("fsfmt capability consistency");
