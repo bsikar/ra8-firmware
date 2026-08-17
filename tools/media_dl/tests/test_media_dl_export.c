@@ -504,7 +504,7 @@ RA8_INTERNAL static void internal_test_export_cbt_structure(void)
   TEST_ASSERT(tar[k_tar_data_offset] == (uint8_t)'a');
   TEST_ASSERT(strcmp((const char*)&tar[k_tar_member_stride], "page_002.jpg") == 0);
   TEST_ASSERT(tar[k_tar_member_stride + k_tar_data_offset] == (uint8_t)'b');
-  TEST_ASSERT(strcmp((const char*)&tar[2U * k_tar_member_stride], "ComicInfo.xml") == 0);
+  TEST_ASSERT(strcmp((const char*)&tar[(size_t)2U * k_tar_member_stride], "ComicInfo.xml") == 0);
   const char* xml = (const char*)&tar[(2U * k_tar_member_stride) + k_tar_data_offset];
   TEST_ASSERT(strstr(xml, "<PageCount>2</PageCount>") != nullptr);
   TEST_ASSERT(strstr(xml, "<LanguageISO>fr</LanguageISO>") != nullptr);
