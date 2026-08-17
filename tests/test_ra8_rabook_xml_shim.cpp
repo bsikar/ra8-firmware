@@ -711,11 +711,11 @@ RA8_INTERNAL static void internal_test_walk_builder_overflow()
 /* -------------------------------------------------------------------------- */
 
 typedef enum : uint16_t {
-  k_attr_string_cap   = 2U, /**< Pool holding the empty sentinel plus one byte.  */
-  k_text_node_cap     = 2U, /**< Root and one element; no room for a text node.  */
-  k_no_chapter_cap    = 0U, /**< Chapter table that cannot hold one entry.       */
-  k_zero_length       = 0U, /**< Zero-length source for the length guard.        */
-  k_self_closed_nodes = 1U, /**< Nodes emitted by a self-closing selected root.  */
+  k_attr_string_cap   = 2U, /**< Pool holding the empty sentinel plus one byte. */
+  k_text_node_cap     = 2U, /**< Root and one element; no room for a text node. */
+  k_no_chapter_cap    = 0U, /**< Chapter table that cannot hold one entry.      */
+  k_zero_length       = 0U, /**< Zero-length source for the length guard.       */
+  k_self_closed_nodes = 1U, /**< Nodes emitted by a self-closing selected root. */
 } edge_limit_t;
 
 /** @brief Build a builder context with chosen node, string, and chapter caps. @details Initialises against the shared arenas and then narrows only the three capacities under test, so a starved vector can fail in exactly one table; the empty-string sentinel interned by init still fits every narrowed pool. @param[in] node_cap DOM node-table capacity. @param[in] string_cap String-pool byte capacity. @param[in] chapter_cap Chapter-table capacity. @return The initialised builder context. @retval value A context bound to the shared fixture arenas. @pre Fixed-capacity fixture storage required by this operation is available. @pre Each requested capacity still admits the already-interned sentinel. @post The context carries the requested capacities and zero live rows. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
