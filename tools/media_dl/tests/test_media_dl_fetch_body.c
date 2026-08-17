@@ -19,6 +19,7 @@
 #include "mdl_fetch_body_internal.h"
 #include "mdl_hash.h"
 #include "mdl_state_fs_fault.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 /** @brief Fixed capacities and fixture byte counts. */
@@ -465,8 +466,6 @@ int main(void)
   internal_test_body_zero_and_magic_fail_closed();
   internal_test_body_transaction_faults_preserve_destination();
   internal_test_body_postcommit_truth_and_nonregular_rejection();
-  (void)write(STDERR_FILENO,
-              "[OK  ] test_media_dl_fetch_body.c\n",
-              sizeof("[OK  ] test_media_dl_fetch_body.c\n") - 1U);
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_fetch_body.c\n");
   return 0;
 }

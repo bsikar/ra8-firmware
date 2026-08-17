@@ -20,6 +20,7 @@
 #include "mdl_sanitize.h"
 #include "mdl_test_storage.h"
 #include "ra8_attributes.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 /** @brief Fixed capacities for the cache contract fixture. */
@@ -744,8 +745,6 @@ int main(void)
   internal_test_unexpected_304_retry();
   internal_test_repeated_304_rejected();
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_deinit());
-  (void)write(STDERR_FILENO,
-              "[OK  ] test_media_dl_cache.c\n",
-              sizeof("[OK  ] test_media_dl_cache.c\n") - 1U);
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_cache.c\n");
   return 0;
 }

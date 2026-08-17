@@ -26,6 +26,7 @@
 #include "mdl_net_curl.h"
 #include "mdl_net_curl_internal.h"
 #include "mdl_politeness.h"
+#include "support/ra8_test_output.h"
 #include "test_media_dl_net_curl_internal.h"
 #include "unity_minimal.h"
 
@@ -899,8 +900,6 @@ int main(void)
   internal_test_politeness_bounds();
   internal_test_politeness_null();
   priv_test_mdl_net_curl_run();
-  (void)write(STDERR_FILENO,
-              "[OK  ] test_media_dl_net.c\n",
-              sizeof("[OK  ] test_media_dl_net.c\n") - 1U);
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_net.c\n");
   return 0;
 }

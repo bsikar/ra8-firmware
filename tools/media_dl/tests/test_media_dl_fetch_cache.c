@@ -597,8 +597,6 @@ int main(void)
   internal_test_304_without_cached_entity_refetches_unconditionally();
   internal_test_fetch_asset_policy_atomic_and_nonempty();
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_deinit(&s_fs_posix));
-  (void)write(STDERR_FILENO,
-              "[OK  ] test_media_dl_fetch_cache.c\n",
-              sizeof("[OK  ] test_media_dl_fetch_cache.c\n") - 1U);
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_fetch_cache.c\n");
   return 0;
 }

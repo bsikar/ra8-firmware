@@ -23,6 +23,7 @@
 #include "mdl_urlname.h"
 #include "miniz.h"
 #include "ra8_attributes.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 /** @brief Permission bits for metadata test scratch directories. */
 typedef enum : uint16_t {
@@ -915,8 +916,6 @@ int main(void)
   internal_test_external_cover_embedding();
   internal_test_image_magic_bytes();
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_deinit());
-  (void)write(STDERR_FILENO,
-              "[OK  ] test_media_dl_metadata.c\n",
-              sizeof("[OK  ] test_media_dl_metadata.c\n") - 1U);
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_metadata.c\n");
   return 0;
 }
