@@ -11,7 +11,9 @@
  * @since 0.1.0
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <errno.h>
 #include <fcntl.h>
@@ -64,9 +66,9 @@ RA8_INTERNAL static void internal_close_fd(int* fd)
  */
 RA8_INTERNAL static void internal_release_image(void)
 {
-  internal_close_fd(&local_sd.image_fd);
-  local_sd.image_len = 0U;
-  local_sd.attached  = false;
+  internal_close_fd(&g_board_sd.image_fd);
+  g_board_sd.image_len = 0U;
+  g_board_sd.attached  = false;
 }
 
 /**
@@ -158,9 +160,9 @@ RA8_INTERNAL static bool internal_copy_bytes(int source_fd, int target_fd, uint6
 RA8_INTERNAL static void internal_adopt_image(int image_fd, uint64_t bytes)
 {
   internal_release_image();
-  local_sd           = (board_sd_state_t){.image_fd = image_fd};
-  local_sd.image_len = bytes;
-  local_sd.attached  = true;
+  g_board_sd           = (board_sd_state_t){.image_fd = image_fd};
+  g_board_sd.image_len = bytes;
+  g_board_sd.attached  = true;
 }
 
 /**
@@ -180,11 +182,11 @@ RA8_INTERNAL static void internal_adopt_image(int image_fd, uint64_t bytes)
  */
 RA8_INTERNAL static bool internal_range_valid(uint64_t offset, size_t count)
 {
-  if (!local_sd.attached || (local_sd.image_fd < 0) || (offset > local_sd.image_len) ||
+  if (!g_board_sd.attached || (g_board_sd.image_fd < 0) || (offset > g_board_sd.image_len) ||
       (offset > (uint64_t)INT64_MAX)) {
     return false;
   }
-  return (uint64_t)count <= (local_sd.image_len - offset);
+  return (uint64_t)count <= (g_board_sd.image_len - offset);
 }
 
 bool priv_board_sd_storage_read(uint64_t offset, void* dst, size_t count)
@@ -193,7 +195,7 @@ bool priv_board_sd_storage_read(uint64_t offset, void* dst, size_t count)
     return false;
   }
   const emu_io_result_t result =
-    priv_emu_io_pread_exact(local_sd.image_fd, dst, count, (off_t)offset);
+    priv_emu_io_pread_exact(g_board_sd.image_fd, dst, count, (off_t)offset);
   return result.status == k_emu_io_ok;
 }
 
@@ -203,7 +205,7 @@ bool priv_board_sd_storage_write(uint64_t offset, const void* src, size_t count)
     return false;
   }
   const emu_io_result_t result =
-    priv_emu_io_pwrite_exact(local_sd.image_fd, src, count, (off_t)offset);
+    priv_emu_io_pwrite_exact(g_board_sd.image_fd, src, count, (off_t)offset);
   return result.status == k_emu_io_ok;
 }
 
@@ -239,8 +241,8 @@ RA8_INTERNAL static bool internal_write_zeros(uint64_t offset, uint64_t count)
 
 bool priv_board_sd_storage_zero(uint64_t offset, uint64_t count)
 {
-  if (!local_sd.attached || (local_sd.image_fd < 0) || (offset > local_sd.image_len) ||
-      (count > (local_sd.image_len - offset)) || (offset > (uint64_t)INT64_MAX) ||
+  if (!g_board_sd.attached || (g_board_sd.image_fd < 0) || (offset > g_board_sd.image_len) ||
+      (count > (g_board_sd.image_len - offset)) || (offset > (uint64_t)INT64_MAX) ||
       (count > (uint64_t)INT64_MAX)) {
     return false;
   }
@@ -248,7 +250,7 @@ bool priv_board_sd_storage_zero(uint64_t offset, uint64_t count)
     return true;
   }
 #if defined(__linux__)
-  if (fallocate(local_sd.image_fd,
+  if (fallocate(g_board_sd.image_fd,
                 FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
                 (off_t)offset,
                 (off_t)count) == 0) {
@@ -288,14 +290,14 @@ bool board_sd_attach(const char* path)
   }
   internal_adopt_image(working_fd, bytes);
   (void)priv_emu_io_errf("ra8_emulator: SD card attached (%llu bytes) from %s\n",
-                         (unsigned long long)local_sd.image_len,
+                         (unsigned long long)g_board_sd.image_len,
                          path);
   return true;
 }
 
 bool board_sd_attached(void)
 {
-  return local_sd.attached;
+  return g_board_sd.attached;
 }
 
 /**
@@ -352,23 +354,23 @@ bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char*
     return false;
   }
   internal_adopt_image(image_fd, bytes);
-  local_sd.fat_bits =
+  g_board_sd.fat_bits =
     (fat_bits == (uint8_t)k_fat32_bits) ? (uint8_t)k_fat32_bits : (uint8_t)k_fat16_bits;
-  priv_board_sd_label_field((uint8_t*)local_sd.label, label);
-  local_sd.label[k_fmt_label_len] = '\0';
-  internal_report_created(bytes, local_sd.fat_bits, spc);
+  priv_board_sd_label_field((uint8_t*)g_board_sd.label, label);
+  g_board_sd.label[k_fmt_label_len] = '\0';
+  internal_report_created(bytes, g_board_sd.fat_bits, spc);
   return true;
 }
 
 bool board_sd_save(const char* path)
 {
-  if ((path == nullptr) || !local_sd.attached || (local_sd.image_fd < 0)) {
+  if ((path == nullptr) || !g_board_sd.attached || (g_board_sd.image_fd < 0)) {
     return false;
   }
-  if (local_sd.image_len > (uint64_t)k_sd_save_max_bytes) {
+  if (g_board_sd.image_len > (uint64_t)k_sd_save_max_bytes) {
     (void)priv_emu_io_errf(
       "ra8_emulator: --save-sd: card is %llu MiB (> %u MiB cap) -- skipped\n",
-      (unsigned long long)(local_sd.image_len / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib)),
+      (unsigned long long)(g_board_sd.image_len / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib)),
       (unsigned)((uint64_t)k_sd_save_max_bytes / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib)));
     return false;
   }
@@ -377,13 +379,13 @@ bool board_sd_save(const char* path)
     (void)priv_emu_io_errf("ra8_emulator: --save-sd: cannot write '%s'\n", path);
     return false;
   }
-  if (!internal_copy_bytes(local_sd.image_fd, txn.fd, local_sd.image_len) ||
+  if (!internal_copy_bytes(g_board_sd.image_fd, txn.fd, g_board_sd.image_len) ||
       (priv_emu_io_txn_commit(&txn).status != k_emu_io_ok)) {
     priv_emu_io_txn_abort(&txn);
     return false;
   }
   (void)priv_emu_io_errf("ra8_emulator: SD card image saved (%llu bytes) to %s\n",
-                         (unsigned long long)local_sd.image_len,
+                         (unsigned long long)g_board_sd.image_len,
                          path);
   return true;
 }
@@ -391,15 +393,15 @@ bool board_sd_save(const char* path)
 void board_sd_info(bool* attached, uint64_t* bytes, uint8_t* fat_bits, const char** label)
 {
   if (attached != nullptr) {
-    *attached = local_sd.attached;
+    *attached = g_board_sd.attached;
   }
   if (bytes != nullptr) {
-    *bytes = local_sd.image_len;
+    *bytes = g_board_sd.image_len;
   }
   if (fat_bits != nullptr) {
-    *fat_bits = local_sd.fat_bits;
+    *fat_bits = g_board_sd.fat_bits;
   }
   if (label != nullptr) {
-    *label = local_sd.label;
+    *label = g_board_sd.label;
   }
 }
