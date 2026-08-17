@@ -343,7 +343,7 @@ RA8_INTERNAL static void internal_test_mbr_index_errors(void)
  *          "G1.TXT".
  *
  * @par MC/DC:
- * Decision: `if (priv_scratch[k_mbr_off_part0_type] == k_gpt_part_type_protective)`
+ * Decision: `if (g_fs_scratch[k_mbr_off_part0_type] == k_gpt_part_type_protective)`
  * in priv_locate_indexed.
  * - V-true : type 0xEE -> GPT path (covered here).
  * - V-false: FAT16 type -> MBR path (test_mbr_mount_partition_one).
@@ -489,8 +489,8 @@ RA8_INTERNAL static void internal_test_gpt_header_and_read_faults(void)
  *
  * @par MC/DC:
  * The two single-condition guards in priv_locate_indexed:
- * - `priv_scratch[510] != 0x55` : V-true = zeroed sector (case 1).
- * - `priv_scratch[511] != 0xAA` : V-true = 0x55 present, 0xAA wrong (case 2).
+ * - `g_fs_scratch[510] != 0x55` : V-true = zeroed sector (case 1).
+ * - `g_fs_scratch[511] != 0xAA` : V-true = 0x55 present, 0xAA wrong (case 2).
  *
  * @pre s_disk is nullptr.
  * @post s_disk freed.

@@ -578,7 +578,7 @@ ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
                            ra8_fs_file_t** out_file);
 
 /**
- * @brief Parse the BPB layout fields out of `priv_scratch` into `m`.
+ * @brief Parse the BPB layout fields out of `g_fs_scratch` into `m`.
  *
  * @details Validates the boot signature (0x55AA) and reads the BPB
  *          fields out of the boot sector scratch buffer.
@@ -590,7 +590,7 @@ ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
  * @retval k_ra8_err_validation_failed  Bad signature or sanity-check fail.
  *
  * @pre `m` is non-NULL.
- * @pre `priv_scratch` holds the boot sector (LBA 0).
+ * @pre `g_fs_scratch` holds the boot sector (LBA 0).
  * @post On success, the relevant `m->*` fields are populated.
  * @post On failure, `m` may be partially updated.
  *
@@ -607,11 +607,11 @@ ra8_err_t priv_parse_bpb_into_mount(ra8_fs_mount_t* m);
  * @details Dispatches to the exFAT parser when the VBR carries the exFAT
  * signature, else to the FAT BPB parser.
  *
- * @param[in,out] m Mount with sector 0 already read into ::priv_scratch.
+ * @param[in,out] m Mount with sector 0 already read into ::g_fs_scratch.
  * @return Error code from the chosen parser.
  * @retval k_ra8_ok    Volume parsed (FAT or exFAT).
  * @retval k_ra8_err_* No recognizable volume at this base.
- * @pre @p m is non-NULL and ::priv_scratch holds the base sector 0.
+ * @pre @p m is non-NULL and ::g_fs_scratch holds the base sector 0.
  * @pre ``m->backend`` is bound.
  * @post On success ``m`` holds the volume geometry + type.
  * @post On failure ``m`` is left unmounted.

@@ -9,7 +9,7 @@
  *
  *   - `priv_parse_bpb_into_mount` (ra8_fs_fat_mount.c) -- the boot-signature
  *     guard and the bytes-per-sector / SPC / num-FATs sanity guard, driven by
- *     seeding the shared `priv_scratch` boot-sector buffer.
+ *     seeding the shared `g_fs_scratch` boot-sector buffer.
  *   - `priv_fmt_choose_geometry` (ra8_fs_fat_fmt.c) -- the auto-sweep exhaustion
  *     guard, driven with a device too small to land any cluster band.
  *   - `priv_fmt_clear_region` (ra8_fs_fat_fmt.c) -- the erase-hook fast path,
@@ -46,7 +46,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra8_fs_fmt_bpb_t
- * @brief The valid boot-sector fields seeded into `priv_scratch` before mutation.
+ * @brief The valid boot-sector fields seeded into `g_fs_scratch` before mutation.
  */
 typedef enum : uint16_t {
   k_bad_bytes_per_sector = 1024U, /**< Any legal-looking but non-512 sector size. */
@@ -58,26 +58,26 @@ typedef enum : uint16_t {
 /** @brief Perform the scratch put16 filesystem operation. @details Implements the bounded scratch put16 fixture step using caller-owned state. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
 RA8_INTERNAL static void internal_scratch_put16(uint32_t off, uint16_t v)
 {
-  priv_scratch[off]     = (uint8_t)(v & (uint16_t)k_fmt_byte_mask);
-  priv_scratch[off + 1] = (uint8_t)((v >> 8) & (uint16_t)k_fmt_byte_mask);
+  g_fs_scratch[off]     = (uint8_t)(v & (uint16_t)k_fmt_byte_mask);
+  g_fs_scratch[off + 1] = (uint8_t)((v >> 8) & (uint16_t)k_fmt_byte_mask);
 }
 
-/** @brief Seed `priv_scratch` with a boot sector that passes both guards. @details Implements the bounded seed valid bpb fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+/** @brief Seed `g_fs_scratch` with a boot sector that passes both guards. @details Implements the bounded seed valid bpb fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
 RA8_INTERNAL static void internal_seed_valid_bpb(void)
 {
-  memset(priv_scratch, 0, sizeof priv_scratch);
-  priv_scratch[(uint32_t)k_bpb_off_signature_lo] = (uint8_t)k_bpb_sig_lo;
-  priv_scratch[(uint32_t)k_bpb_off_signature_hi] = (uint8_t)k_bpb_sig_hi;
+  memset(g_fs_scratch, 0, sizeof g_fs_scratch);
+  g_fs_scratch[(uint32_t)k_bpb_off_signature_lo] = (uint8_t)k_bpb_sig_lo;
+  g_fs_scratch[(uint32_t)k_bpb_off_signature_hi] = (uint8_t)k_bpb_sig_hi;
   internal_scratch_put16((uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_ra8_fs_sector_min);
-  priv_scratch[(uint32_t)k_bpb_off_sec_per_clus] = 1U;
-  priv_scratch[(uint32_t)k_bpb_off_num_fats]     = 2U;
+  g_fs_scratch[(uint32_t)k_bpb_off_sec_per_clus] = 1U;
+  g_fs_scratch[(uint32_t)k_bpb_off_num_fats]     = 2U;
 }
 
 /**
  * @test test_mcdc_parse_bpb_guards
  * @par MC/DC:
  * Two decisions in `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_parse_bpb_into_mount`,
- * driven by seeding the shared `priv_scratch` boot sector.
+ * driven by seeding the shared `g_fs_scratch` boot sector.
  *
  * Signature guard `if (sig_lo != 0x55 || sig_hi != 0xAA)` (2 conditions):
  * - V1: sig_lo=0x55, sig_hi=0xAA -> F,F -> dec F (proceeds).
@@ -104,10 +104,10 @@ RA8_INTERNAL static void internal_test_mcdc_parse_bpb_guards(void)
   internal_seed_valid_bpb();
   TEST_ASSERT_EQ(k_ra8_ok, priv_parse_bpb_into_mount(&m)); /* V1 (and V4). */
   internal_seed_valid_bpb();
-  priv_scratch[(uint32_t)k_bpb_off_signature_lo] = 0x00U;
+  g_fs_scratch[(uint32_t)k_bpb_off_signature_lo] = 0x00U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, priv_parse_bpb_into_mount(&m)); /* V2 */
   internal_seed_valid_bpb();
-  priv_scratch[(uint32_t)k_bpb_off_signature_hi] = 0x00U;
+  g_fs_scratch[(uint32_t)k_bpb_off_signature_hi] = 0x00U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, priv_parse_bpb_into_mount(&m)); /* V3 */
 
   /* Field guard (signature kept valid). */
@@ -115,10 +115,10 @@ RA8_INTERNAL static void internal_test_mcdc_parse_bpb_guards(void)
   internal_scratch_put16((uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_bad_bytes_per_sector);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, priv_parse_bpb_into_mount(&m)); /* V5 */
   internal_seed_valid_bpb();
-  priv_scratch[(uint32_t)k_bpb_off_sec_per_clus] = 0U;
+  g_fs_scratch[(uint32_t)k_bpb_off_sec_per_clus] = 0U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, priv_parse_bpb_into_mount(&m)); /* V6 */
   internal_seed_valid_bpb();
-  priv_scratch[(uint32_t)k_bpb_off_num_fats] = 0U;
+  g_fs_scratch[(uint32_t)k_bpb_off_num_fats] = 0U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, priv_parse_bpb_into_mount(&m)); /* V7 */
 
   TEST_END("ra8_fs MC/DC: priv_parse_bpb_into_mount signature + field guards");
