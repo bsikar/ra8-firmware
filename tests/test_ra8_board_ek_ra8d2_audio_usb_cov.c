@@ -259,8 +259,8 @@ RA8_INTERNAL static void internal_test_audio_play_full_write(void)
   internal_reset_state();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_audio_init(k_test_audio_rate_hz, 16U, 2U));
 
-  static uint32_t k_pcm_words[k_test_pcm_word_cnt] = {};
-  const int16_t*  buf                              = (const int16_t*)k_pcm_words;
+  static uint32_t s_pcm_words[k_test_pcm_word_cnt] = {};
+  const int16_t*  buf                              = (const int16_t*)s_pcm_words;
   const ra8_err_t err = ra8_board_audio_play_sample_block(buf, (uint32_t)k_test_pcm_len);
   TEST_ASSERT_EQ(k_ra8_ok, err);
   TEST_END("audio_play_sample_block writes a full block and returns ok");
@@ -303,8 +303,8 @@ RA8_INTERNAL static void internal_test_audio_play_short_write(void)
   volatile r_ssie_regs_t* ssie = ra8_ssie((uint8_t)k_ra8_board_audio_ssie_channel);
   ssie->SSIFSR = (uint32_t)((uint32_t)k_ra8_ssie_fifo_depth << (uint32_t)k_ra8_ssie_shift_tdc);
 
-  static uint32_t k_pcm_words[k_test_pcm_word_cnt] = {};
-  const int16_t*  buf                              = (const int16_t*)k_pcm_words;
+  static uint32_t s_pcm_words[k_test_pcm_word_cnt] = {};
+  const int16_t*  buf                              = (const int16_t*)s_pcm_words;
   const ra8_err_t err = ra8_board_audio_play_sample_block(buf, (uint32_t)k_test_pcm_len);
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, err);
   TEST_END("audio_play_sample_block short write returns hw_timeout");
