@@ -402,8 +402,8 @@ RA8_INTERNAL static bool internal_walk_to_xhtml(const void* base,
   /* Explicit DFS stack (~4 KiB) kept in module-static storage so this frame
    * stays within the stack-usage budget; the walk is iterative (no recursion)
    * and single-threaded, so the shared buffer never overlaps. */
-  static ra8_book_walk_entry_t k_xhtml_stack[k_ra8_book_xhtml_stack];
-  ra8_book_walk_entry_t*       stack = k_xhtml_stack;
+  static ra8_book_walk_entry_t s_xhtml_stack[k_ra8_book_xhtml_stack];
+  ra8_book_walk_entry_t*       stack = s_xhtml_stack;
   uint32_t                     sp    = 0U;
   bool                         ok    = true;
   stack[sp++]                        = (ra8_book_walk_entry_t){false, root};
@@ -639,8 +639,8 @@ RA8_INTERNAL static bool internal_walk_text(const void* base,
   /* Explicit DFS stack (2 KiB) kept in module-static storage so this frame
    * stays within the stack-usage budget; iterative (no recursion) and
    * single-threaded, so the shared buffer never overlaps. */
-  static uint32_t k_text_stack[k_ra8_book_xhtml_stack];
-  uint32_t*       stack    = k_text_stack;
+  static uint32_t s_text_stack[k_ra8_book_xhtml_stack];
+  uint32_t*       stack    = s_text_stack;
   uint32_t        sp       = 0U;
   bool            ok       = true;
   bool            at_break = true;

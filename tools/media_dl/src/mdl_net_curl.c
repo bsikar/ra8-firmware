@@ -826,14 +826,14 @@ ra8_err_t mdl_net_curl_init(mdl_net_iface_t*        net,
   if ((net == nullptr) || (storage == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
-  *net                     = (mdl_net_iface_t){};
-  *storage                 = (mdl_net_curl_storage_t){};
-  static bool global_ready = false;
-  if (!global_ready) {
+  *net                       = (mdl_net_iface_t){};
+  *storage                   = (mdl_net_curl_storage_t){};
+  static bool s_global_ready = false;
+  if (!s_global_ready) {
     if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
       return k_ra8_fail;
     }
-    global_ready = true;
+    s_global_ready = true;
   }
 
   mdl_curl_ctx_t* ctx = (mdl_curl_ctx_t*)storage->bytes;

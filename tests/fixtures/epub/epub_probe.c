@@ -114,12 +114,12 @@ internal_probe_book(const char* path, int descriptor, uint64_t size, ra8_test_ou
   ra8_err_t       error = ra8_epub_open_streamed(&media, path, &book);
   internal_probe_report(output, path, size, error, &book);
   if ((error == k_ra8_ok) && (book.chapter_count > 0U)) {
-    static uint8_t  local_chapter[k_probe_chapter_buf_bytes];
+    static uint8_t  s_chapter[k_probe_chapter_buf_bytes];
     size_t          chapter_length = 0U;
     const ra8_err_t chapter_error  = ra8_epub_load_chapter(&book,
                                                            (uint16_t)k_probe_first_chapter,
-                                                           local_chapter,
-                                                           sizeof(local_chapter),
+                                                           s_chapter,
+                                                           sizeof(s_chapter),
                                                            &chapter_length);
     (void)internal_test_output_text(output, "chapter_error=");
     (void)internal_test_output_i64(output, (int64_t)chapter_error);

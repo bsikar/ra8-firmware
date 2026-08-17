@@ -247,20 +247,20 @@ RA8_INTERNAL static void internal_test_format_exfat_partition_roundtrip(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_exfat, h->type);
 
-  static uint8_t wr[k_fmt_payload_bytes];
-  static uint8_t rd[k_fmt_payload_bytes];
+  static uint8_t s_wr[k_fmt_payload_bytes];
+  static uint8_t s_rd[k_fmt_payload_bytes];
   for (uint32_t i = 0U; i < (uint32_t)k_fmt_payload_bytes; i++) {
-    wr[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
-    rd[i] = 0U;
+    s_wr[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
+    s_rd[i] = 0U;
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BOOK.BIN", wr, (uint32_t)k_fmt_payload_bytes));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BOOK.BIN", s_wr, (uint32_t)k_fmt_payload_bytes));
 
   ra8_fs_file_t* f   = nullptr;
   uint32_t       got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BOOK.BIN", k_ra8_fs_mode_read, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, rd, (uint32_t)k_fmt_payload_bytes, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_rd, (uint32_t)k_fmt_payload_bytes, &got));
   TEST_ASSERT_EQ(k_fmt_payload_bytes, got);
-  TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_fmt_payload_bytes));
+  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, (size_t)k_fmt_payload_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "BOOK.BIN"));
