@@ -23,16 +23,16 @@
 
 /** @enum internal_decode_const_t @brief Bounded operands used by the vectors. */
 typedef enum : uint32_t {
-  k_internal_status_ok    = 200U,   /**< In-range HTTP status operand.            */
-  k_internal_status_low   = 99U,    /**< Below the protocol's HTTP status floor.  */
-  k_internal_status_high  = 600U,   /**< Above the protocol's HTTP status roof.   */
-  k_internal_body_len     = 10U,    /**< Body length used by the size vectors.    */
-  k_internal_total_over   = 100U,   /**< Declared total larger than the body end. */
-  k_internal_total_short  = 5U,     /**< Declared total shorter than the body end.*/
-  k_internal_fail_status  = 7U,     /**< Nonzero canonical failure status.        */
-  k_internal_over_uint16  = 65536U, /**< One above the FAILED status ceiling.     */
-  k_internal_timeout_over = 60001U, /**< One above the caller timeout ceiling.    */
-  k_internal_packed_bytes = 64U,    /**< Packed acknowledgement scratch capacity. */
+  k_internal_status_ok    = 200U,   /**< In-range HTTP status operand.             */
+  k_internal_status_low   = 99U,    /**< Below the protocol's HTTP status floor.   */
+  k_internal_status_high  = 600U,   /**< Above the protocol's HTTP status roof.    */
+  k_internal_body_len     = 10U,    /**< Body length used by the size vectors.     */
+  k_internal_total_over   = 100U,   /**< Declared total larger than the body end.  */
+  k_internal_total_short  = 5U,     /**< Declared total shorter than the body end. */
+  k_internal_fail_status  = 7U,     /**< Nonzero canonical failure status.         */
+  k_internal_over_uint16  = 65536U, /**< One above the FAILED status ceiling.      */
+  k_internal_timeout_over = 60001U, /**< One above the caller timeout ceiling.     */
+  k_internal_packed_bytes = 64U,    /**< Packed acknowledgement scratch capacity.  */
   k_internal_ack_job      = 1U,     /**< Job identity the acknowledgement echoes.  */
   k_internal_bad_version  = 999U,   /**< Protocol version no endpoint speaks.      */
   k_internal_bad_job      = 4242U,  /**< Job identity no service ever issued.      */
@@ -215,6 +215,47 @@ static void internal_test_total_covers_data(void)
   TEST_END("mdl client total-covers-data MC/DC");
 }
 
+/** @brief Drive the CANCELLED and FAILED state arms. @details Implements the
+ * terminal state semantics fixture operation used only by this focused test
+ * executable. @pre Fixed-capacity fixture storage required by this operation is
+ * available. @pre Arguments follow the interface contract exercised by this
+ * helper. @post Documented outputs contain the exercised result when the
+ * operation succeeds. @post Mutations remain confined to documented outputs and
+ * file-local fixture state. @note File-local helper; no ownership escapes this
+ * focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL
+static void internal_terminal_state_semantics(void)
+{
+  Ra8__Mdl__Chunk control = {};
+  Ra8__Mdl__Chunk vector  = {};
+  internal_base_chunk(&control, RA8__MDL__STATE__STATE_CANCELLED);
+  TEST_ASSERT(ra8_c6link_mdl_chunk_semantics_valid_test(&control));
+  vector        = control;
+  vector.status = (int32_t)k_internal_fail_status;
+  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
+  vector      = control;
+  vector.data = (ProtobufCBinaryData){.len = k_internal_body_len, .data = s_body};
+  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
+  vector        = control;
+  vector.sha256 = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = s_digest};
+  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
+
+  internal_base_chunk(&control, RA8__MDL__STATE__STATE_FAILED);
+  TEST_ASSERT(ra8_c6link_mdl_chunk_semantics_valid_test(&control));
+  vector        = control;
+  vector.status = 0;
+  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
+  vector        = control;
+  vector.status = (int32_t)k_internal_over_uint16;
+  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
+  vector      = control;
+  vector.data = (ProtobufCBinaryData){.len = k_internal_body_len, .data = s_body};
+  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
+  vector        = control;
+  vector.sha256 = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = s_digest};
+  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
+}
+
 /**
  * @test priv_test_c6link_mdl_decode_run
  * @brief Prove each state's field rule independently decides rejection.
@@ -285,32 +326,7 @@ static void internal_test_state_semantics(void)
   vector.total_bytes = k_internal_total_over;
   TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
 
-  internal_base_chunk(&control, RA8__MDL__STATE__STATE_CANCELLED);
-  TEST_ASSERT(ra8_c6link_mdl_chunk_semantics_valid_test(&control));
-  vector        = control;
-  vector.status = (int32_t)k_internal_fail_status;
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector      = control;
-  vector.data = (ProtobufCBinaryData){.len = k_internal_body_len, .data = s_body};
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector        = control;
-  vector.sha256 = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = s_digest};
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-
-  internal_base_chunk(&control, RA8__MDL__STATE__STATE_FAILED);
-  TEST_ASSERT(ra8_c6link_mdl_chunk_semantics_valid_test(&control));
-  vector        = control;
-  vector.status = 0;
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector        = control;
-  vector.status = (int32_t)k_internal_over_uint16;
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector      = control;
-  vector.data = (ProtobufCBinaryData){.len = k_internal_body_len, .data = s_body};
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
-  vector        = control;
-  vector.sha256 = (ProtobufCBinaryData){.len = k_ra8_mdl_sha256_bytes, .data = s_digest};
-  TEST_ASSERT(!ra8_c6link_mdl_chunk_semantics_valid_test(&vector));
+  internal_terminal_state_semantics();
   TEST_END("mdl client state semantics MC/DC");
 }
 
