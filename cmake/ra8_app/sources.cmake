@@ -413,40 +413,50 @@ macro(_ra8_app_collect_sources)
   # The board glob above compiles EVERY BSP translation unit into EVERY app,
   # which works because the rest of the BSP depends only on libraries whose
   # include paths are unconditional (ra8_core, ra8_hal, ra8_net_pal,
-  # ra8_usb_pal). The console-stream binding does not: it hands back an
-  # ra8_io_stream_t, so it needs libs/ra8_io/inc AND the ra8_io_stream TUs at
-  # link time. Drop it unless the app declared the full "ra8_io", exactly as
-  # the ra8_io_compress / ra8_io_blockdev_vsource gates above drop an ra8_io TU
-  # whose companion library is absent. "ra8_io_bus" is NOT enough here -- it
-  # compiles only the SPI/I2C bus facades, not ra8_io_stream.c. The header
-  # (ra8_board_ek_ra8d2_console_stream.h) is likewise kept out of the
-  # ra8_board_ek_ra8d2.h umbrella, so an app that never asks for a console
-  # stream pays nothing.
+  # ra8_usb_pal). Two BSP units do not, so each is dropped unless the app
+  # declared the library it needs:
+  #
+  #   ..._console_stream.c  hands back an ra8_io_stream_t, so it needs
+  #                         libs/ra8_io/inc AND the ra8_io_stream TUs at link
+  #                         time -> the full "ra8_io". A bare "ra8_io_bus" is
+  #                         NOT enough: it compiles the bus facades only.
+  #   ..._touch.c           binds the GT911 bus through the ra8_io I2C facade
+  #                         -> "ra8_io" OR "ra8_io_bus", either of which
+  #                         compiles ra8_io_i2c_bus*.c.
+  #
+  # Both headers are kept out of the ra8_board_ek_ra8d2.h umbrella too, so an
+  # app that never asks pays neither an include path nor an object. Mirrors the
+  # ra8_io_compress / ra8_io_blockdev_vsource gates above, which drop an ra8_io
+  # TU whose companion library is absent.
+  #
+  # BOTH lists, and that is not belt-and-braces. An app may also name
+  # "ra8_board_ek_ra8d2" in LIBS -- glcdc_render and widget_kit_demo do -- and
+  # the LIBS loop then globs libs/<name>/src/*.c into _ra8_lib_extra, a SECOND
+  # copy of every BSP unit that a filter over _ra8_lib_board alone does not
+  # reach. Filtering one list left those apps compiling an opt-in TU they had
+  # not opted into, and the failure was a missing header rather than anything
+  # that named the gate.
   if(NOT "ra8_io" IN_LIST _RA8_APP_LIBS)
-    list(
-      FILTER
-      _ra8_lib_board
-      EXCLUDE
-      REGEX
-      "_console_stream\\.c$"
-    )
+    foreach(_ra8_board_list _ra8_lib_board _ra8_lib_extra)
+      list(
+        FILTER
+        ${_ra8_board_list}
+        EXCLUDE
+        REGEX
+        "ra8_board_[a-z0-9_]+_console_stream\\.c$"
+      )
+    endforeach()
   endif()
-
-  # Same shape for the board GT911 bring-up (issue #775): it binds the touch
-  # bus through the ra8_io I2C facade, so it needs libs/ra8_io/inc and the
-  # ra8_io_i2c_bus TUs at link time. Here a bare "ra8_io_bus" IS enough --
-  # that pseudo-lib compiles exactly those bus facades -- which is what all
-  # eight touch consumers already declare. Its header
-  # (ra8_board_ek_ra8d2_touch.h) is kept out of the ra8_board_ek_ra8d2.h
-  # umbrella for the same reason as the console stream's.
   if(NOT (("ra8_io" IN_LIST _RA8_APP_LIBS) OR ("ra8_io_bus" IN_LIST _RA8_APP_LIBS)))
-    list(
-      FILTER
-      _ra8_lib_board
-      EXCLUDE
-      REGEX
-      "ra8_board_ek_ra8d2_touch\\.c$"
-    )
+    foreach(_ra8_board_list _ra8_lib_board _ra8_lib_extra)
+      list(
+        FILTER
+        ${_ra8_board_list}
+        EXCLUDE
+        REGEX
+        "ra8_board_[a-z0-9_]+_touch\\.c$"
+      )
+    endforeach()
   endif()
 
   # The vendored SOUP decoders (miniz DEFLATE, stb image/truetype) type-pun

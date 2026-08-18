@@ -66,6 +66,7 @@
 #include "ra8_glcdc.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_time.h"
 #include "ra8_ui.h"
@@ -77,14 +78,13 @@
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_wc_fb_w     = 512U, /**< Framebuffer width, pixels.             */
-  k_wc_fb_h     = 512U, /**< Framebuffer height, pixels.            */
-  k_wc_fb_align = 64U,  /**< AXI-burst alignment for clean fetches. */
-  k_wc_status_h = 44U,  /**< Status-bar band height, pixels.        */
-  k_wc_footer_h = 28U,  /**< Footer band height, pixels.            */
-  k_wc_pad      = 8U,   /**< Inner text padding, pixels.            */
-  k_wc_line_h   = 18U,  /**< Text line pitch (16px glyph + 2).      */
-  k_wc_tile_gap = 6U,   /**< Gap between the two body tiles.        */
+  k_wc_fb_w     = 512U, /**< Framebuffer width, pixels.        */
+  k_wc_fb_h     = 512U, /**< Framebuffer height, pixels.       */
+  k_wc_status_h = 44U,  /**< Status-bar band height, pixels.   */
+  k_wc_footer_h = 28U,  /**< Footer band height, pixels.       */
+  k_wc_pad      = 8U,   /**< Inner text padding, pixels.       */
+  k_wc_line_h   = 18U,  /**< Text line pitch (16px glyph + 2). */
+  k_wc_tile_gap = 6U,   /**< Gap between the two body tiles.   */
 } wc_geom_t;
 
 /**
@@ -140,8 +140,8 @@ typedef enum : uint32_t {
  * @brief GLCDC-scanned render target in SRAM, AXI-burst aligned.
  * @since 0.1.0
  */
-[[gnu::aligned(
-  k_wc_fb_align)]] static uint16_t s_framebuffer[(uint32_t)k_wc_fb_w * (uint32_t)k_wc_fb_h];
+[[gnu::aligned(k_ra8_board_fb_align_bytes)]] static uint16_t
+  s_framebuffer[(uint32_t)k_wc_fb_w * (uint32_t)k_wc_fb_h];
 
 /**
  * @struct wc_status_ctx_t

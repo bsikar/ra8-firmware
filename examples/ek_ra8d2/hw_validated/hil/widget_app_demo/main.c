@@ -59,6 +59,7 @@
 #include "ra8_glcdc.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
@@ -78,14 +79,13 @@
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_wd_fb_w      = 512U, /**< Framebuffer width, pixels.             */
-  k_wd_fb_h      = 512U, /**< Framebuffer height, pixels.            */
-  k_wd_fb_align  = 64U,  /**< AXI-burst alignment for clean fetches. */
-  k_wd_status_h  = 44U,  /**< Status-bar band height, pixels.        */
-  k_wd_tabbar_h  = 56U,  /**< Tab-bar band height, pixels.           */
-  k_wd_pad       = 8U,   /**< Inner text padding, pixels.            */
-  k_wd_line_h    = 18U,  /**< Text line pitch (16px glyph + 2).      */
-  k_wd_tab_inset = 3U,   /**< Tab cell inset from the band, pixels.  */
+  k_wd_fb_w      = 512U, /**< Framebuffer width, pixels.            */
+  k_wd_fb_h      = 512U, /**< Framebuffer height, pixels.           */
+  k_wd_status_h  = 44U,  /**< Status-bar band height, pixels.       */
+  k_wd_tabbar_h  = 56U,  /**< Tab-bar band height, pixels.          */
+  k_wd_pad       = 8U,   /**< Inner text padding, pixels.           */
+  k_wd_line_h    = 18U,  /**< Text line pitch (16px glyph + 2).     */
+  k_wd_tab_inset = 3U,   /**< Tab cell inset from the band, pixels. */
 } wd_geom_t;
 
 /**
@@ -165,8 +165,8 @@ static ra8_port_pin_t s_wd_sw2_pin = k_ra8_pin_none;
  * @brief GLCDC-scanned render target in SRAM, AXI-burst aligned.
  * @since 0.1.0
  */
-[[gnu::aligned(
-  k_wd_fb_align)]] static uint16_t s_framebuffer[(uint32_t)k_wd_fb_w * (uint32_t)k_wd_fb_h];
+[[gnu::aligned(k_ra8_board_fb_align_bytes)]] static uint16_t
+  s_framebuffer[(uint32_t)k_wd_fb_w * (uint32_t)k_wd_fb_h];
 
 /**
  * @struct wa_content_t

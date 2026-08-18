@@ -191,9 +191,7 @@ static const ra8_port_pin_t k_er_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_sp
  * @var s_framebuffer
  * @brief RGB565 framebuffer in external SDRAM, AXI-burst aligned.
  */
-[[gnu::section(".sdram_data"),
-  gnu::aligned(
-    k_er_fb_align)]] static uint16_t s_framebuffer[(size_t)k_er_fb_h * (size_t)k_er_fb_w];
+RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
 
 /** @brief Display PAL config -- LCD/GLCDC backend over the SDRAM buffer. */
 static const display_cfg_t k_er_display_cfg = {

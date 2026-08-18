@@ -64,9 +64,7 @@ typedef enum : uint32_t {
 sh_state_t g_sh;
 
 /** @brief 1024x600 RGB565 framebuffer in external SDRAM (GLCDC scans this). */
-[[gnu::section(".sdram_data"),
-  gnu::aligned(
-    k_sh_fb_align)]] static uint16_t s_framebuffer[(size_t)k_sh_fb_h * (size_t)k_sh_fb_w];
+RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
 
 static const display_cfg_t k_sh_display_cfg = {
   .iface             = &k_display_backend_lcd_ra8_glcdc,

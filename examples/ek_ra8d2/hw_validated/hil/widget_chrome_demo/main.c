@@ -63,6 +63,7 @@
 #include "ra8_glcdc.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_time.h"
 #include "ra8_ui.h"
@@ -79,18 +80,17 @@
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_wd_fb_w      = 512U, /**< Framebuffer width, pixels.             */
-  k_wd_fb_h      = 512U, /**< Framebuffer height, pixels.            */
-  k_wd_fb_align  = 64U,  /**< AXI-burst alignment for clean fetches. */
-  k_wd_status_h  = 44U,  /**< Status-bar band height, pixels.        */
-  k_wd_toolbar_h = 40U,  /**< Toolbar band height, pixels.           */
-  k_wd_prog_h    = 12U,  /**< Overall progress band height, pixels.  */
-  k_wd_nav_h     = 40U,  /**< Nav-strip band height, pixels.         */
-  k_wd_pad       = 8U,   /**< Inner padding, pixels.                 */
-  k_wd_gap       = 8U,   /**< Grid gap, pixels.                      */
-  k_wd_label_h   = 18U,  /**< Card title / author row height.        */
-  k_wd_bar_h     = 6U,   /**< Card progress-bar height.              */
-  k_wd_count_w   = 96U,  /**< Toolbar count-chip width.              */
+  k_wd_fb_w      = 512U, /**< Framebuffer width, pixels.            */
+  k_wd_fb_h      = 512U, /**< Framebuffer height, pixels.           */
+  k_wd_status_h  = 44U,  /**< Status-bar band height, pixels.       */
+  k_wd_toolbar_h = 40U,  /**< Toolbar band height, pixels.          */
+  k_wd_prog_h    = 12U,  /**< Overall progress band height, pixels. */
+  k_wd_nav_h     = 40U,  /**< Nav-strip band height, pixels.        */
+  k_wd_pad       = 8U,   /**< Inner padding, pixels.                */
+  k_wd_gap       = 8U,   /**< Grid gap, pixels.                     */
+  k_wd_label_h   = 18U,  /**< Card title / author row height.       */
+  k_wd_bar_h     = 6U,   /**< Card progress-bar height.             */
+  k_wd_count_w   = 96U,  /**< Toolbar count-chip width.             */
 } wd_geom_t;
 
 /**
@@ -157,8 +157,8 @@ typedef enum : uint32_t {
  * @brief GLCDC-scanned render target in SRAM, AXI-burst aligned.
  * @since 0.1.0
  */
-[[gnu::aligned(
-  k_wd_fb_align)]] static uint16_t s_framebuffer[(uint32_t)k_wd_fb_w * (uint32_t)k_wd_fb_h];
+[[gnu::aligned(k_ra8_board_fb_align_bytes)]] static uint16_t
+  s_framebuffer[(uint32_t)k_wd_fb_w * (uint32_t)k_wd_fb_h];
 
 /** @brief Live display handle once the GLCDC panel is up. */
 static display_handle_t* s_display = nullptr;

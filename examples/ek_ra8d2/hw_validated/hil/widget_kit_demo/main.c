@@ -67,6 +67,7 @@
 #include "ra8_glcdc.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_time.h"
 #include "ra8_ui.h"
@@ -80,7 +81,6 @@
 typedef enum : uint16_t {
   k_wk_fb_w       = 512U, /**< Framebuffer width, pixels.                */
   k_wk_fb_h       = 512U, /**< Framebuffer height, pixels.               */
-  k_wk_fb_align   = 64U,  /**< AXI-burst alignment for clean fetches.    */
   k_wk_title_h    = 44U,  /**< Title-label band height, pixels.          */
   k_wk_footer_h   = 28U,  /**< Footer-label band height, pixels.         */
   k_wk_body_h     = 440U, /**< Body band height (fb_h - title - footer). */
@@ -157,8 +157,8 @@ typedef enum : uint32_t {
  * @brief GLCDC-scanned render target in SRAM, AXI-burst aligned.
  * @since 0.1.0
  */
-[[gnu::aligned(
-  k_wk_fb_align)]] static uint16_t s_framebuffer[(uint32_t)k_wk_fb_w * (uint32_t)k_wk_fb_h];
+[[gnu::aligned(k_ra8_board_fb_align_bytes)]] static uint16_t
+  s_framebuffer[(uint32_t)k_wk_fb_w * (uint32_t)k_wk_fb_h];
 
 /* ===========================================================================
  * Paint backend: ra8_widget_paint_t -> ra8_gfx (the only ra8_gfx call sites)

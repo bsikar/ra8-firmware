@@ -72,6 +72,7 @@
 #include "ra8_glcdc.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_time.h"
 #include "ra8_touch.h"
@@ -88,12 +89,11 @@
  * targets sit this far in from each edge; the fifth is the panel centre).
  */
 typedef enum : uint16_t {
-  k_tc_fb_w       = 512U, /**< Framebuffer / screen width, pixels.        */
-  k_tc_fb_h       = 512U, /**< Framebuffer / screen height, pixels.       */
-  k_tc_inset_px   = 40U,  /**< Corner-target inset from each panel edge.  */
-  k_tc_cross_half = 12U,  /**< Cross-hair arm half-length, pixels.        */
-  k_tc_verify_tol = 2U,   /**< Max allowed fit residual, pixels.          */
-  k_tc_fb_align   = 64U,  /**< AXI-burst alignment for clean GLCDC fetch. */
+  k_tc_fb_w       = 512U, /**< Framebuffer / screen width, pixels.       */
+  k_tc_fb_h       = 512U, /**< Framebuffer / screen height, pixels.      */
+  k_tc_inset_px   = 40U,  /**< Corner-target inset from each panel edge. */
+  k_tc_cross_half = 12U,  /**< Cross-hair arm half-length, pixels.       */
+  k_tc_verify_tol = 2U,   /**< Max allowed fit residual, pixels.         */
 } tc_geom_t;
 
 /**
@@ -147,8 +147,8 @@ typedef struct {
  * @warning Not thread-safe; single-shot calibration owns it.
  * @since 0.1.0
  */
-[[gnu::aligned(
-  k_tc_fb_align)]] static uint16_t s_framebuffer[(uint32_t)k_tc_fb_w * (uint32_t)k_tc_fb_h];
+[[gnu::aligned(k_ra8_board_fb_align_bytes)]] static uint16_t
+  s_framebuffer[(uint32_t)k_tc_fb_w * (uint32_t)k_tc_fb_h];
 
 /**
  * @var s_capture

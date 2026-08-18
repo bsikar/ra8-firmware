@@ -175,9 +175,8 @@ static_assert((uint64_t)k_mg_work_bytes >=
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_mg_fb_w     = k_panel_width_px,  /**< Framebuffer width, pixels.   */
-  k_mg_fb_h     = k_panel_height_px, /**< Framebuffer height, pixels.  */
-  k_mg_fb_align = 64U,               /**< 64-byte AXI-burst alignment. */
+  k_mg_fb_w = k_panel_width_px,  /**< Framebuffer width, pixels.  */
+  k_mg_fb_h = k_panel_height_px, /**< Framebuffer height, pixels. */
 } mg_fb_t;
 
 /**
@@ -187,9 +186,7 @@ typedef enum : uint16_t {
  * @warning Written by the reader render; do not alias.
  * @since 0.1.0
  */
-[[gnu::section(".sdram_data"),
-  gnu::aligned(
-    k_mg_fb_align)]] static uint16_t s_framebuffer[(size_t)k_mg_fb_h * (size_t)k_mg_fb_w];
+RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
 
 /** @brief Producer work arena (SDRAM: the transcode working set). */
 [[gnu::section(".sdram_data")]] static uint8_t s_work[k_mg_work_bytes];

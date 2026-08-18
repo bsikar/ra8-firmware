@@ -99,11 +99,11 @@ classes enumerated inside it, Code change for every hit outside them.
 
 | ID    | Rule            | Category | Class             | Status   | MAR        | Findings | Files |
 |-------|-----------------|----------|-------------------|----------|------------|---------:|------:|
-| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 13271 | 606 |
-| D-002 | misra-c2012-17.3 | Mandatory | Tooling gap       | Active   | 2026-11-02 | 530 | 159 |
-| D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 | 1087 | 304 |
+| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 13280 | 609 |
+| D-002 | misra-c2012-17.3 | Mandatory | Tooling gap       | Active   | 2026-11-02 | 531 | 160 |
+| D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 | 1090 | 306 |
 | D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 | 427 | 124 |
-| D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 | 2092 | 382 |
+| D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 | 2096 | 385 |
 | D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 7 | 4 |
 | D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 | 91 | 41 |
 | D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 | 42 | 8 |
@@ -131,8 +131,8 @@ embeds them in the dumps handed to `misra.py`, so a suppressed finding
 never reaches the results (verified on the pinned binary, 2026-08-15) --
 then `misra_ratchet.py` freezes that population in the baseline below.
 
-Baseline: 20952 findings across 2999 file/rule rows (Cppcheck 2.13.0).
-Residual (no deviation record): 56 rules, 2836 findings, 1194 rows.
+Baseline: 20976 findings across 3011 file/rule rows (Cppcheck 2.13.0).
+Residual (no deviation record): 56 rules, 2843 findings, 1197 rows.
 The residual population is implementation debt dispositioned **Code
 change** in aggregate: ratchet-held, burned down per `docs/MISRA.md`,
 never accepted.
@@ -477,7 +477,7 @@ and let the ratchet hold the count.
 - **Disposition**: Tooling gap (false positive).
 - **Scope**: the cppcheck audit baseline only (2.20 then; now the
   pinned version in the baseline header).
-- **Files affected**: 2092 findings across 382 files (machine-checked).
+- **Files affected**: 2096 findings across 385 files (machine-checked).
   The 2026-05-02 audit recorded 196; the population scaled with the
   tree -- the HAL build-out applies `[[nodiscard]]` to every fallible
   public prototype, `tools/` entered audit scope on 2026-08-13, and

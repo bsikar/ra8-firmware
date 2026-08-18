@@ -57,6 +57,7 @@
 #include "ra8_glcdc.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_time.h"
 
@@ -73,10 +74,9 @@
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_gh_fb_w           = 512U, /**< Framebuffer width, pixels.             */
-  k_gh_fb_h           = 512U, /**< Framebuffer height, pixels.            */
-  k_gh_fb_align_bytes = 64U,  /**< AXI-burst alignment for clean fetches. */
-  k_gh_x_thickness    = 4U,   /**< Diagonal-X half thickness, pixels.     */
+  k_gh_fb_w        = 512U, /**< Framebuffer width, pixels.         */
+  k_gh_fb_h        = 512U, /**< Framebuffer height, pixels.        */
+  k_gh_x_thickness = 4U,   /**< Diagonal-X half thickness, pixels. */
 } glcdc_hil_geom_t;
 
 /**
@@ -112,8 +112,8 @@ typedef enum : uint32_t {
  *        GLCDC's AXI fetches are clean.
  * @since 0.1.0
  */
-[[gnu::aligned(
-  k_gh_fb_align_bytes)]] static uint16_t s_framebuffer[(uint32_t)k_gh_fb_w * (uint32_t)k_gh_fb_h];
+[[gnu::aligned(k_ra8_board_fb_align_bytes)]] static uint16_t
+  s_framebuffer[(uint32_t)k_gh_fb_w * (uint32_t)k_gh_fb_h];
 
 /**
  * @brief Display PAL config selecting the GLCDC LCD backend.

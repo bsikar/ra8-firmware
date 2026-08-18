@@ -72,7 +72,6 @@ typedef enum : uint16_t {
 
 /** @brief Framebuffer + pacing byte-math constants. */
 typedef enum : uint16_t {
-  k_sfr_fb_align  = 64U,  /**< 64-byte AXI-burst alignment.    */
   k_sfr_settle_ms = 500U, /**< PLL / SDRAM / panel-POR settle. */
   k_sfr_frame_ms  = 100U, /**< Idle heartbeat pacing (ms).     */
 } sfr_fb_misc_t;
@@ -134,9 +133,7 @@ static const char k_sfr_body[] = "<html><body><h1>SD font OK</h1>"
  * =========================================================================== */
 
 /** @brief RGB565 framebuffer in external SDRAM, AXI-burst aligned. */
-[[gnu::section(".sdram_data"),
-  gnu::aligned(
-    k_sfr_fb_align)]] static uint16_t s_framebuffer[(size_t)k_sfr_fb_h * (size_t)k_sfr_fb_w];
+RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
 
 /** @brief Font blob read off the card -- lives in SDRAM (hundreds of KiB). */
 [[gnu::section(".sdram_data")]] static uint8_t s_font_buf[k_sfr_font_cap];

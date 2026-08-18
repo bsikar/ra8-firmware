@@ -38,6 +38,7 @@
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_policy.h"
 #include "ra8_keyboard.h"
+#include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_port_constants.h"
 #include "ra8_reflow.h"
@@ -62,7 +63,6 @@ typedef enum : uint16_t {
  * @brief Framebuffer byte-math and pacing constants.
  */
 typedef enum : uint16_t {
-  k_er_fb_align  = 64U,  /**< 64-byte AXI-burst alignment.                    */
   k_er_settle_ms = 500U, /**< PLL / SDRAM / panel-POR settle.                 */
   k_er_frame_ms  = 25U,  /**< Input poll period (ms): touch / button cadence. */
   k_er_led_every = 16U,  /**< Toggle the heartbeat LED every Nth frame.       */
