@@ -63,6 +63,8 @@
 
 #include <stdint.h>
 
+#include "ra8_board_ek_ra8d2_dualcore.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -71,27 +73,32 @@ extern "C" {
  * @enum com33_addr_t
  * @brief Fixed shared-SRAM addresses for the mailbox and the output blob.
  *
- * @details Both addresses sit in the upper on-chip SRAM region that NEITHER
- * linker script claims: the M85 image owns the lower 1 MiB (0x22000000 ..
- * 0x22100000) and the M33 image owns the top 64 KiB of SRAM3 (0x22190000 ..
- * 0x221A0000), so the 576 KiB window starting at 0x22100000 (the start of data
- * bank SRAM2) is free for cross-core sharing. The mailbox occupies the first 32
- * bytes; the output blob starts 256 bytes in, leaving the mailbox its own cache
- * line and growth room. Declared `uintptr_t` so the same constant casts to a
- * pointer correctly on the 32-bit target and the 64-bit unit-test host.
+ * @details All three slices are carved from the CPU0 <-> CPU1 window at fixed
+ * offsets: the mailbox occupies the first 32 bytes, the staged input starts 256
+ * bytes in so the mailbox keeps its own cache line and some growth room, and
+ * the output blob follows 32 KiB after that.
+ * The window itself is a board fact, declared once in
+ * ``ra8_board_ek_ra8d2_dualcore.h`` along with why both linker scripts leave
+ * it free; this app only names its own slice of it.
  *
- * @invariant ::k_com33_blob_addr + ::k_com33_blob_cap stays below 0x22190000.
+ * @invariant ::k_com33_blob_addr + ::k_com33_blob_cap stays below
+ *            ::k_ra8_board_cpu1_sram_base -- the top of the shared window.
+ * @see ra8_board_dualcore_addr_t
  * @see com33_mailbox()
  * @see com33_blob()
  * @since 0.1.0
  */
-/* HUM Ch 5.1 "Address Space (Table 5.1)" p 239 */
-/* HUM Ch 58.1 "SRAM" Table 58.1 p 3527 -- dual-core on-chip SRAM spans
-   0x22000000..0x221A0000; SRAM2 (the shared upper window) begins at 0x22100000. */
 typedef enum : uintptr_t {
-  k_com33_mailbox_addr = 0x22100000U, /**< Shared mailbox base (SRAM2 start).        */
-  k_com33_epub_addr    = 0x22100100U, /**< Staged input .epub base (mailbox + 256B). */
-  k_com33_blob_addr    = 0x22108100U, /**< Shared output blob base (epub + 32 KiB).  */
+  /** @brief Staged input offset: past the mailbox's own cache line. */
+  k_com33_epub_offset = 0x100U,
+  /** @brief Output blob offset: past the 32 KiB staged input. */
+  k_com33_blob_offset = 0x8100U,
+  /** @brief Mailbox base -- the start of the board's shared window. */
+  k_com33_mailbox_addr = (uintptr_t)k_ra8_board_shared_ram_base,
+  /** @brief Staged input base, carved from the shared window. */
+  k_com33_epub_addr = (uintptr_t)k_ra8_board_shared_ram_base + (uintptr_t)k_com33_epub_offset,
+  /** @brief Output blob base, carved from the shared window. */
+  k_com33_blob_addr = (uintptr_t)k_ra8_board_shared_ram_base + (uintptr_t)k_com33_blob_offset,
 } com33_addr_t;
 
 /**

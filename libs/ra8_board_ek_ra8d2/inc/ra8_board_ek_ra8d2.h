@@ -25,6 +25,9 @@
  *   - ``ra8_board_ek_ra8d2_peripherals.h`` -- the U15 I/O-expander SW4
  *     override functions, USB-HS/FS, parallel camera J35, Octo-SPI flash
  *     + SDRAM, MIPI-DSI J32, the J-Link OB VCOM console, and Ethernet.
+ *   - ``ra8_board_ek_ra8d2_dualcore.h`` -- where the Cortex-M85 and the
+ *     Cortex-M33 meet: the shared SRAM window, CPU1's private bank, and
+ *     the MRAM window its image is pinned in.
  *
  * Authoritative source: ``docs/reference/ek-ra8d2-v1-users-manual.pdf``
  * (Rev 1.01, R20UT5523EG0101, October 2025).
@@ -42,5 +45,6 @@
 #pragma once
 
 #include "ra8_board_ek_ra8d2_connectors.h"
+#include "ra8_board_ek_ra8d2_dualcore.h"
 #include "ra8_board_ek_ra8d2_pdm.h"
 #include "ra8_board_ek_ra8d2_peripherals.h"

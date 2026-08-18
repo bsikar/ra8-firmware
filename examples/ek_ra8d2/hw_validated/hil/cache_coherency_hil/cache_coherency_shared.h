@@ -53,24 +53,36 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_board_ek_ra8d2_dualcore.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
+ * @enum cache_coherency_addr_t
+ * @brief Where this app puts its shared block inside the board's window.
+ *
+ * @details The block sits at the base of the CPU0 <-> CPU1 window, which the
+ * boot MPU marks Normal non-cacheable -- the property this test exercises.
+ * The window itself is a board fact, declared once in
+ * ``ra8_board_ek_ra8d2_dualcore.h`` along with why both linker scripts leave
+ * it free; this app only names its own slice of it.
+ *
+ * @invariant The address is 32-byte (cache-line) aligned; asserted below.
+ * @see ra8_board_dualcore_addr_t
+ * @since 0.1.0
+ */
+typedef enum : uintptr_t {
+  k_cache_coherency_shared_addr =
+    (uintptr_t)k_ra8_board_shared_ram_base, /**< Shared block = window base. */
+} cache_coherency_addr_t;
+
+/**
  * @enum cache_coherency_shared_const_t
- * @brief Compile-time addresses + magics for the shared block.
+ * @brief Compile-time magics + budgets for the shared block.
  *
- * @details The shared address sits at the start of SRAM2 (HUM
- * Ch 58.1 Table 58.1, p 3527 -- system SRAM bank 2 starts at
- * ``0x22100000``) and inside the boot's non-cacheable MPU region 4.
- * Both CPU0's linker (which claims SRAM0+SRAM1 = 1 MiB ending at
- * ``0x22100000``) and CPU1's linker (which claims a separate 64 KiB
- * bank at ``0x22190000..0x221A0000``) leave ``0x22100000`` unallocated,
- * so the same physical bytes back the shared struct on both sides with
- * no overlap.
- *
+ * @details
  * The payload check is data-carrying, not a constant magic: CPU0 sends
  * ``ping_base + r`` for round ``r`` and expects ``pong_base + r`` back,
  * where ``pong_base - ping_base`` == ::k_cache_coherency_delta. CPU1
@@ -78,13 +90,12 @@ extern "C" {
  * stale/garbage read on either side surfaces as a payload mismatch.
  */
 typedef enum : uint32_t {
-  k_cache_coherency_shared_addr = 0x22100000UL, /**< Start of SRAM2 (non-cacheable).   */
-  k_cache_coherency_ping_base   = 0x1234U,      /**< CPU0 round-0 ping payload.        */
-  k_cache_coherency_pong_base   = 0x4321U,      /**< Expected round-0 pong payload.    */
-  k_cache_coherency_delta       = 0x30EDU,      /**< pong_base - ping_base (CPU1 add). */
-  k_cache_coherency_rounds      = 8UL,          /**< Verified rounds before PASS.      */
-  k_cache_coherency_poll_budget = 2000000UL,    /**< Max spin iters per direction.     */
-  k_cache_coherency_align_bytes = 32UL,         /**< Cache-line / region quantum.      */
+  k_cache_coherency_ping_base   = 0x1234U,   /**< CPU0 round-0 ping payload.        */
+  k_cache_coherency_pong_base   = 0x4321U,   /**< Expected round-0 pong payload.    */
+  k_cache_coherency_delta       = 0x30EDU,   /**< pong_base - ping_base (CPU1 add). */
+  k_cache_coherency_rounds      = 8UL,       /**< Verified rounds before PASS.      */
+  k_cache_coherency_poll_budget = 2000000UL, /**< Max spin iters per direction.     */
+  k_cache_coherency_align_bytes = 32UL,      /**< Cache-line / region quantum.      */
 } cache_coherency_shared_const_t;
 
 /* The data-carry invariant the two cores rely on: CPU1 adds the fixed
@@ -97,7 +108,7 @@ static_assert((uint32_t)k_cache_coherency_ping_base + (uint32_t)k_cache_coherenc
 /* The shared struct must start on a 32-byte (cache-line) boundary so an
  * enabled D-cache never straddles it with adjacent cacheable data. The
  * fixed SRAM2 base is 1 MiB aligned, so this holds by construction. */
-static_assert((uint32_t)k_cache_coherency_shared_addr % (uint32_t)k_cache_coherency_align_bytes ==
+static_assert((uintptr_t)k_cache_coherency_shared_addr % (uintptr_t)k_cache_coherency_align_bytes ==
                 0U,
               "shared block must be 32-byte (cache-line) aligned");
 

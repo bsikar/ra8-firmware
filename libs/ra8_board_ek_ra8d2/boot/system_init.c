@@ -44,6 +44,7 @@
 
 #include <stdint.h>
 
+#include "ra8_board_ek_ra8d2_dualcore.h"
 #include "ra8_boot_entry.h"
 #include "ra8_boot_intrinsics.h"
 #include "ra8_cache.h"
@@ -340,8 +341,11 @@ static void internal_set_priority_grouping(void)
  * - Region 1: M85 private SRAM0+1 (0x22000000, 1 MiB) -- RW/NX, cacheable.
  * - Region 2: SDRAM (0x68000000, 64 MiB) -- RW/NX, cacheable.
  * - Region 3: Peripherals (0x40000000, 128 MiB) -- RW/NX, Device-nGnRE.
- * - Region 4: M85<->M33 shared SRAM2+3 (0x22100000, 576 KiB) -- RW/NX,
- *   Normal NON-cacheable (mailbox + CPU1 RAM stay coherent across cores).
+ * - Region 4: M85<->M33 shared SRAM2+3 -- RW/NX, Normal NON-cacheable
+ *   (mailbox + CPU1 RAM stay coherent across cores). Its base and extent
+ *   come from ``ra8_board_ek_ra8d2_dualcore.h``, which is the one place
+ *   this board states the dual-core memory map: the shared window plus
+ *   CPU1's private bank above it, 640 KiB in total.
  *
  * Attribute indirection table:
  * - MAIR0[0] = 0xFF (Normal inner + outer write-back / write-alloc).
@@ -373,21 +377,25 @@ enum : uint32_t {
  * AttrIndx 0 = MAIR0[0] = Normal cacheable -- so peripheral MMIO was mapped
  * cacheable. The type must be selected here instead. */
 enum : uint32_t {
-  k_ra8_mpu_rlar_attridx_shift   = 1U, /**< RA8 MPU rlar attridx shift.              */
-  k_ra8_mpu_attridx_normal_wbwa  = 0U, /**< MAIR0[0] 0xFF: Normal inner/outer WB/WA. */
-  k_ra8_mpu_attridx_noncacheable = 1U, /**< MAIR0[1] 0x44: Normal non-cacheable.     */
-  k_ra8_mpu_attridx_device       = 2U, /**< MAIR0[2] 0x04: Device-nGnRE (MMIO).      */
+  k_ra8_mpu_region_quantum       = 32U, /**< ARMv8-M PMSAv8 region granule, bytes.    */
+  k_ra8_mpu_rlar_attridx_shift   = 1U,  /**< RA8 MPU rlar attridx shift.              */
+  k_ra8_mpu_attridx_normal_wbwa  = 0U,  /**< MAIR0[0] 0xFF: Normal inner/outer WB/WA. */
+  k_ra8_mpu_attridx_noncacheable = 1U,  /**< MAIR0[1] 0x44: Normal non-cacheable.     */
+  k_ra8_mpu_attridx_device       = 2U,  /**< MAIR0[2] 0x04: Device-nGnRE (MMIO).      */
 };
 
 /* Region base and limit addresses. RLAR limits are <region-end> minus
  * the ARMv8-M 32-byte region quantum, OR-ed with the enable bit at write time. */
 enum : uint32_t {
-  k_ra8_mpu_mram_base   = 0x02000000UL, /**< 1 MiB MRAM code region.                    */
-  k_ra8_mpu_mram_limit  = 0x020FFFE0UL, /**< RA8 MPU MRAM limit.                        */
-  k_ra8_mpu_sram_base   = 0x22000000UL, /**< M85 private SRAM0+1, 1 MiB, cacheable.     */
-  k_ra8_mpu_sram_limit  = 0x220FFFE0UL, /**< RA8 MPU SRAM limit.                        */
-  k_ra8_mpu_shram_base  = 0x22100000UL, /**< Shared SRAM2+3: M33 mailbox + CPU1 RAM.    */
-  k_ra8_mpu_shram_limit = 0x2219FFE0UL, /**< Non-cacheable -> M85<->M33 stays coherent. */
+  k_ra8_mpu_mram_base  = 0x02000000UL, /**< 1 MiB MRAM code region.                */
+  k_ra8_mpu_mram_limit = 0x020FFFE0UL, /**< RA8 MPU MRAM limit.                    */
+  k_ra8_mpu_sram_base  = 0x22000000UL, /**< M85 private SRAM0+1, 1 MiB, cacheable. */
+  k_ra8_mpu_sram_limit = 0x220FFFE0UL, /**< RA8 MPU SRAM limit.                    */
+  k_ra8_mpu_shram_base =
+    (uint32_t)k_ra8_board_shared_ram_base, /**< Shared SRAM2+3: M33 mailbox + CPU1 RAM. */
+  k_ra8_mpu_shram_limit =
+    (uint32_t)k_ra8_board_cpu1_sram_base + (uint32_t)k_ra8_board_cpu1_sram_size_bytes -
+    k_ra8_mpu_region_quantum,           /**< Non-cacheable -> M85<->M33 stays coherent. */
   k_ra8_mpu_sdram_base  = 0x68000000UL, /**< 64 MiB external SDRAM.                     */
   k_ra8_mpu_sdram_limit = 0x6BFFFFE0UL, /**< RA8 MPU SDRAM limit.                       */
   k_ra8_mpu_peri_base   = 0x40000000UL, /**< Peripheral bus window base.                */
