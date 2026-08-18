@@ -32,6 +32,7 @@
 #include "library.h"
 #include "ra8_book.h"
 #include "ra8_book_paged.h"
+#include "ra8_panel.h"
 #include "ra8_ui.h"
 #include "ra8_vsource.h"
 #include "sh_classify.h"
@@ -44,7 +45,6 @@
 typedef enum : uint32_t {
   k_sh_fb_w        = 1024U,       /**< Panel width in pixels.                 */
   k_sh_fb_h        = 600U,        /**< Panel height in pixels.                */
-  k_sh_fb_align    = 64U,         /**< AXI framebuffer alignment.             */
   k_sh_glyph_w     = 8U,          /**< Bitmap font cell width.                */
   k_sh_glyph_h     = 16U,         /**< Bitmap font cell height.               */
   k_sh_line_h      = 22U,         /**< Reader text line height.               */

@@ -59,6 +59,7 @@
 #include "ra8_io_spi_bus_spi_b.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_panel.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
 #include "ra8_spi.h"
@@ -137,16 +138,6 @@ typedef enum : uint8_t {
 } ep_fmt_t;
 
 /**
- * @enum ep_fb_align_t
- * @brief Framebuffer alignment for clean AXI bursts.
- *
- * @since 0.1.0
- */
-typedef enum : uint16_t {
-  k_ep_fb_align_bytes = 64U, /**< 64-byte AXI-burst alignment. */
-} ep_fb_align_t;
-
-/**
  * @enum ep_pin_t
  * @brief IT8951 control GPIOs on the (hypothetical) e-paper carrier.
  *
@@ -177,7 +168,7 @@ typedef enum : uint16_t {
  * @note App-owned; only this file writes it.
  * @since 0.1.0
  */
-[[gnu::aligned(k_ep_fb_align_bytes)]] static uint16_t
+[[gnu::aligned(k_ra8_board_fb_align_bytes)]] static uint16_t
   s_framebuffer[(uint32_t)k_ep_panel_w * (uint32_t)k_ep_panel_h];
 
 /**

@@ -45,6 +45,7 @@
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_time.h"
 
@@ -98,10 +99,6 @@ typedef enum : uint16_t {
   k_app_powerup_ms      = 500U, /**< PLL / panel power-on settle. */
 } app_pace_t;
 
-typedef enum : uint16_t {
-  k_app_fb_align_bytes = 64U, /**< AXI-burst alignment for clean GLCDC fetches. */
-} app_fb_align_t;
-
 /* ===========================================================================
  * Static storage
  * =========================================================================== */
@@ -115,7 +112,7 @@ typedef enum : uint16_t {
  *          same RGB565 buffer -- the backend converts to greyscale
  *          on flush.
  */
-[[gnu::aligned(k_app_fb_align_bytes)]] static uint16_t
+[[gnu::aligned(k_ra8_board_fb_align_bytes)]] static uint16_t
   s_framebuffer[(uint32_t)k_app_fb_w * (uint32_t)k_app_fb_h];
 
 /**

@@ -60,6 +60,7 @@
 #include "ra8_jof.h"
 #include "ra8_longstrip.h"
 #include "ra8_mstp.h"
+#include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_sdramc.h"
 #include "ra8_tile_cache.h"
@@ -90,7 +91,6 @@ typedef enum : uint16_t {
   k_ls_text_pad  = 16U,               /**< Status-bar left text inset.           */
   k_ls_glyph_w   = 8U,                /**< Bundled font cell width.              */
   k_ls_glyph_h   = 16U,               /**< Bundled font cell height.             */
-  k_ls_fb_align  = 64U,               /**< 64-byte AXI-burst FB alignment.       */
   k_ls_settle_ms = 500U,              /**< PLL / SDRAM / panel-POR settle.       */
   k_ls_frame_ms  = 20U,               /**< Input-poll period (ms).               */
   k_ls_led_every = 16U,               /**< Toggle heartbeat LED every Nth frame. */
@@ -251,9 +251,8 @@ static const uint32_t k_ls_palette[k_ls_palette_size] = {
  * @warning Scanned out continuously by the GLCDC; write only through ra8_gfx.
  * @since 0.1.0
  */
-[[gnu::section(".sdram_data"),
-  gnu::aligned(
-    k_ls_fb_align)]] static uint16_t s_framebuffer[(size_t)k_ls_view_h * (size_t)k_ls_view_w];
+[[gnu::section(".sdram_data"), gnu::aligned(k_ra8_board_fb_align_bytes)]] static uint16_t
+  s_framebuffer[(size_t)k_ls_view_h * (size_t)k_ls_view_w];
 
 /** @brief Tile-cache cell storage in SDRAM (one decoded band per cell). */
 [[gnu::section(

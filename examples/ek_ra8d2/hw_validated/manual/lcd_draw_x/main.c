@@ -37,13 +37,13 @@
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_time.h"
 
 typedef enum : uint16_t {
-  k_fb_w           = 512U, /**< Fb w.                                        */
-  k_fb_h           = 512U, /**< Fb h.                                        */
-  k_fb_align_bytes = 64U,  /**< AXI-burst alignment for clean GLCDC fetches. */
+  k_fb_w = 512U, /**< Fb w. */
+  k_fb_h = 512U, /**< Fb h. */
 } lcd_fb_dim_t;
 
 typedef enum : uint16_t {
@@ -64,7 +64,7 @@ typedef enum : uint32_t {
  * fetches are clean.  The display PAL takes a pointer to this and
  * forwards it to the GLCDC HAL via ``display_init``. */
 [[gnu::aligned(
-  k_fb_align_bytes)]] static uint16_t s_framebuffer[(uint32_t)k_fb_w * (uint32_t)k_fb_h];
+  k_ra8_board_fb_align_bytes)]] static uint16_t s_framebuffer[(uint32_t)k_fb_w * (uint32_t)k_fb_h];
 
 /**
  * @brief Display PAL config selecting the LCD backend.

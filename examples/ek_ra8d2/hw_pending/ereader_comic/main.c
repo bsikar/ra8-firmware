@@ -55,6 +55,7 @@
 #include "ra8_gfx_font.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_reflow_image.h"
 #include "ra8_sdramc.h"
@@ -75,7 +76,6 @@ typedef enum : uint16_t {
  * @brief Chrome-band and pacing metrics (pixels / milliseconds).
  */
 typedef enum : uint16_t {
-  k_cm_fb_align    = 64U,  /**< 64-byte AXI-burst framebuffer alignment. */
   k_cm_settle_ms   = 500U, /**< PLL / SDRAM / panel power-on settle.     */
   k_cm_frame_ms    = 25U,  /**< Input-poll period (ms).                  */
   k_cm_led_every   = 16U,  /**< Heartbeat-LED toggle sub-cadence.        */
@@ -167,9 +167,7 @@ typedef enum : uint32_t {
  * @warning Do not alias; the GLCDC reads it continuously.
  * @since 0.1.0
  */
-[[gnu::section(".sdram_data"),
-  gnu::aligned(
-    k_cm_fb_align)]] static uint16_t s_framebuffer[(size_t)k_cm_fb_h * (size_t)k_cm_fb_w];
+RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
 
 /**
  * @var s_img_arena

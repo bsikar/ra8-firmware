@@ -83,7 +83,7 @@ typedef enum : uint32_t {
  * @brief Framebuffer geometry (mirrors the EK-RA8D2 panel).
  * @details Held separately from the panel constants so the scene's layout
  *          asserts have compile-time numbers to check against.
- * @invariant k_ez_fb_align is a multiple of the AXI burst length.
+ * @invariant k_ra8_board_fb_align_bytes is a multiple of the AXI burst length.
  * @par Example:
  * @code
  * static uint16_t s_framebuffer[(size_t)k_ez_fb_h * (size_t)k_ez_fb_w];
@@ -92,9 +92,8 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_ez_fb_w     = k_panel_width_px,  /**< Framebuffer width, pixels.   */
-  k_ez_fb_h     = k_panel_height_px, /**< Framebuffer height, pixels.  */
-  k_ez_fb_align = 64U,               /**< 64-byte AXI-burst alignment. */
+  k_ez_fb_w = k_panel_width_px,  /**< Framebuffer width, pixels.  */
+  k_ez_fb_h = k_panel_height_px, /**< Framebuffer height, pixels. */
 } ez_fb_t;
 
 /**
@@ -125,9 +124,7 @@ typedef enum : uint8_t {
  * @warning Written by the scene render; do not alias.
  * @since 0.1.0
  */
-[[gnu::section(".sdram_data"),
-  gnu::aligned(
-    k_ez_fb_align)]] static uint16_t s_framebuffer[(size_t)k_ez_fb_h * (size_t)k_ez_fb_w];
+RA8_BOARD_PANEL_FRAMEBUFFER(s_framebuffer);
 
 /**
  * @var s_cell_mem
