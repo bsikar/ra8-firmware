@@ -85,7 +85,7 @@ $(RA8_PROFILE): profile-%: %
 # `make ereader-gui` -- the full hybrid e-reader GUI: baked + SD books on a live
 # window, --fast-sd by default (FAST_SD=0 to opt out).
 EREADER_SD_IMG   := $(ROOT)/build/ereader_sd.img
-EREADER_SD_DIR   ?= $(ROOT)/content/compiled
+EREADER_SD_DIR   ?= $(ROOT)/apps/stand_alone/ereader/content/compiled
 EREADER_SD_COUNT ?= 5
 FAST_SD          ?= 1
 _EREADER_FAST    := $(if $(filter-out 0,$(FAST_SD)),--fast-sd,)

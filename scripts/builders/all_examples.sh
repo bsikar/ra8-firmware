@@ -33,7 +33,7 @@ fi
 
 # ereader_shelf includes a generated baked-book-library header (library.h): the
 # full version (real .rabook blobs + cover thumbnails) is produced from the
-# Git-LFS content/library/*.epub sources by tools/bake_library.py via
+# Git-LFS e-reader content library .epub sources by tools/bake_library.py via
 # `make books`, and is gitignored as a build artifact. A fresh checkout has
 # none, so the app fails to compile with "library.h: No such file or directory".
 # For the cross-build we only need ereader_shelf to COMPILE, not to embed real

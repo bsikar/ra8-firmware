@@ -445,7 +445,7 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
         ".github/workflows/firmware.yml",
         "README.md",
         "libs/third_party/miniz/miniz.c",
-        "content/library/book.epub",
+        "apps/stand_alone/ereader/content/library/book.epub",
         "docs/reference/ra8d2-datasheet.pdf",
     ]
     claimed = {
