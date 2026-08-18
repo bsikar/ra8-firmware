@@ -72,9 +72,14 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
     -T${CPU1_LINKER_SCRIPT}
     -Wl,--Map=${CPU1_NAME}.map
   )
+  # This app hand-rolls its CPU1 target instead of calling
+  # ra8_add_cpu1_image(), so it repeats that helper's narrow include path --
+  # now including the board directory, which carries the dual-core memory map
+  # (ra8_board_ek_ra8d2_dualcore.h) that shared_pingpong.h names. Only
+  # freestanding-clean headers may be reached from a Cortex-M33 TU.
   target_include_directories(
     ${CPU1_NAME}.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${RA8_REPO_ROOT}/libs/ra8_core/inc
-                             ${RA8_REPO_ROOT}/libs/ra8_hal/inc
+                             ${RA8_REPO_ROOT}/libs/ra8_hal/inc ${_ra8_board_dir}/inc
   )
   set_target_properties(${CPU1_NAME}.elf PROPERTIES LINK_DEPENDS ${CPU1_LINKER_SCRIPT})
   add_custom_command(

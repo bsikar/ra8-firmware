@@ -48,29 +48,44 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_board_ek_ra8d2_dualcore.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * @enum cpu1_pingpong_shared_const_t
- * @brief Compile-time addresses + magics for the shared block.
+ * @enum cpu1_pingpong_addr_t
+ * @brief Where this app puts its shared block inside the board's window.
  *
- * @details The shared address sits at the start of SRAM2 (HUM
- * Ch 58.1 Table 58.1, p 3527 -- system SRAM bank 2 starts at
- * ``0x22100000``). Both CPU0's linker (which claims SRAM0+SRAM1 =
- * 1 MiB ending at 0x22100000) and CPU1's linker (which claims a
- * separate 64 KiB bank at the top of on-chip SRAM,
- * 0x22190000-0x221A0000) leave the 0x22100000 word unallocated, so
- * the same physical bytes back the shared struct on both sides
- * with no overlap.
+ * @details The block sits at the base of the CPU0 <-> CPU1 window.
+ * The window itself is a board fact, declared once in
+ * ``ra8_board_ek_ra8d2_dualcore.h`` along with why both linker scripts leave
+ * it free; this app only names its own slice of it.
+ *
+ * @invariant The address is the base of the board's shared window.
+ * @see ra8_board_dualcore_addr_t
+ * @since 0.1.0
+ */
+typedef enum : uintptr_t {
+  k_cpu1_pingpong_shared_addr =
+    (uintptr_t)k_ra8_board_shared_ram_base, /**< Shared block = window base. */
+} cpu1_pingpong_addr_t;
+
+/**
+ * @enum cpu1_pingpong_shared_const_t
+ * @brief Compile-time magics + spin budget for the shared block.
+ *
+ * @details Both images agree on these so a stale or garbage read on either
+ * side surfaces as a payload mismatch rather than as a hang.
+ *
+ * @invariant ::k_cpu1_pingpong_poll_budget bounds every spin (NASA Rule 2).
+ * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_cpu1_pingpong_shared_addr = 0x22100000UL, /**< Start of SRAM2 (shared).      */
-  k_cpu1_pingpong_magic_ping  = 0x1234U,      /**< CPU0 ping payload.            */
-  k_cpu1_pingpong_magic_pong  = 0x4321U,      /**< CPU1 pong payload.            */
-  k_cpu1_pingpong_poll_budget = 2000000UL,    /**< Max spin iters per direction. */
+  k_cpu1_pingpong_magic_ping  = 0x1234U,   /**< CPU0 ping payload.            */
+  k_cpu1_pingpong_magic_pong  = 0x4321U,   /**< CPU1 pong payload.            */
+  k_cpu1_pingpong_poll_budget = 2000000UL, /**< Max spin iters per direction. */
 } cpu1_pingpong_shared_const_t;
 
 /**

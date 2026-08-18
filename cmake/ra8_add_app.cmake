@@ -559,9 +559,21 @@ function(ra8_add_cpu1_image)
   # (ra8_pcntr.h / ra8_port_regs.h + the ra8_core/inc enums they pull). A HAL
   # header that includes ra8_log.h / ra8_check.h / the pin-validator is NOT
   # freestanding and must never be reached from a CPU1 TU.
+  #
+  # The board directory is on this path for one header:
+  # ra8_board_ek_ra8d2_dualcore.h, which states where the two cores meet
+  # (issue #778). An app's shared header names those constants and is
+  # included by BOTH images, so the M33 side has to be able to resolve it.
+  # It pulls in nothing but <stdint.h> and ra8_err.h, which is the bar. The
+  # rest of the board headers are merely REACHABLE, not included: adding an
+  # include of one that is not freestanding is the same mistake as above.
   target_include_directories(
-    ${C1_NAME}.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${RA8_REPO_ROOT}/libs/ra8_core/inc
-                           ${RA8_REPO_ROOT}/libs/ra8_hal/inc ${C1_INCLUDES}
+    ${C1_NAME}.elf
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+            ${RA8_REPO_ROOT}/libs/ra8_core/inc
+            ${RA8_REPO_ROOT}/libs/ra8_hal/inc
+            ${_ra8_board_dir}/inc
+            ${C1_INCLUDES}
   )
   set_target_properties(${C1_NAME}.elf PROPERTIES LINK_DEPENDS ${_c1_ld})
   add_custom_command(

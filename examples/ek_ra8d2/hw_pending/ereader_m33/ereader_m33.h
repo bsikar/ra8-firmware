@@ -81,6 +81,8 @@
 
 #include <stdint.h>
 
+#include "ra8_board_ek_ra8d2_dualcore.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -89,19 +91,18 @@ extern "C" {
  * @enum erm33_mailbox_addr_t
  * @brief Fixed shared-SRAM base address of the progress mailbox.
  *
- * @details The start of data-SRAM bank SRAM2 (0x22100000), the first word above
- * the M85 image's 1 MiB SRAM0+SRAM1 allocation and well below the M33 image's
- * SRAM3 block at 0x22190000, so both linker scripts leave it free. Declared
- * `uintptr_t` so the same constant casts to a pointer correctly on the 32-bit
- * target and the 64-bit unit-test host.
+ * @details The mailbox sits at the base of the CPU0 <-> CPU1 window.
+ * The window itself is a board fact, declared once in
+ * ``ra8_board_ek_ra8d2_dualcore.h`` along with why both linker scripts leave
+ * it free; this app only names its own slice of it.
  *
  * @invariant The address is 16-byte aligned (cache-line safe).
+ * @see ra8_board_dualcore_addr_t
  * @see erm33_mailbox()
  * @since 0.1.0
  */
-/* HUM Ch 58.1 "SRAM" Table 58.1 p 3527 -- SRAM2 (data bank 2) begins at 0x22100000 */
 typedef enum : uintptr_t {
-  k_erm33_mailbox_addr = 0x22100000U, /**< Shared mailbox base (SRAM2 start). */
+  k_erm33_mailbox_addr = (uintptr_t)k_ra8_board_shared_ram_base, /**< Mailbox base = window base. */
 } erm33_mailbox_addr_t;
 
 /**

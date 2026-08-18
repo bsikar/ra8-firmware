@@ -49,30 +49,48 @@
 
 #include <stdint.h>
 
+#include "ra8_board_ek_ra8d2_dualcore.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * @enum dualcore_mailbox_const_t
- * @brief Compile-time address, signature, and transform constants.
+ * @enum dualcore_mailbox_addr_t
+ * @brief Where this app puts its mailbox inside the board's shared window.
  *
- * @details Shared by both core images so the M85 and M33 agree on where the
- * mailbox lives and what a valid reply looks like. The shared address is the
- * start of system SRAM bank 2 (HUM Ch 58.1 Table 58.1 "SRAM address space"
- * p 3527 -- SRAM2 begins at 0x22100000), which both linker scripts leave
- * free.
+ * @details The mailbox sits at the base of the CPU0 <-> CPU1 window.
+ * The window itself is a board fact, declared once in
+ * ``ra8_board_ek_ra8d2_dualcore.h`` along with why both linker scripts leave
+ * it free; this app only names its own slice of it.
  *
  * @invariant ::k_dualcore_mailbox_addr is 16-byte aligned (cache-line safe).
+ * @see ra8_board_dualcore_addr_t
+ * @see dualcore_mailbox_t
+ * @since 0.1.0
+ */
+typedef enum : uintptr_t {
+  k_dualcore_mailbox_addr =
+    (uintptr_t)k_ra8_board_shared_ram_base, /**< Mailbox base = window base. */
+} dualcore_mailbox_addr_t;
+
+/**
+ * @enum dualcore_mailbox_const_t
+ * @brief Compile-time signature and transform constants.
+ *
+ * @details Shared by both core images so the M85 and M33 agree on what a valid
+ * reply looks like.
+ *
+ * @invariant ::k_dualcore_m33_mul and ::k_dualcore_m33_add define the reply
+ *            transform both images implement.
  * @see dualcore_mailbox_t
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_dualcore_mailbox_addr  = 0x22100000UL, /**< Shared mailbox base (SRAM2 start).    */
-  k_dualcore_m33_signature = 33U,          /**< M33 stamps this once it boots ("33"). */
-  k_dualcore_m33_mul       = 3U,           /**< Reply = request * mul + add.          */
-  k_dualcore_m33_add       = 1U,           /**< Reply = request * mul + add.          */
-  k_dualcore_poll_budget   = 20000000UL,   /**< Bounded spin iters per wait (Rule 2). */
+  k_dualcore_m33_signature = 33U,        /**< M33 stamps this once it boots ("33"). */
+  k_dualcore_m33_mul       = 3U,         /**< Reply = request * mul + add.          */
+  k_dualcore_m33_add       = 1U,         /**< Reply = request * mul + add.          */
+  k_dualcore_poll_budget   = 20000000UL, /**< Bounded spin iters per wait (Rule 2). */
 } dualcore_mailbox_const_t;
 
 /**

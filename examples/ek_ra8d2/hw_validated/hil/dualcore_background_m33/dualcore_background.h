@@ -45,6 +45,8 @@
 
 #include <stdint.h>
 
+#include "ra8_board_ek_ra8d2_dualcore.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -62,11 +64,8 @@ extern "C" {
  * @see dualcore_bg()
  * @since 0.1.0
  */
-/* HUM Ch 5.1 "Address Space (Table 5.1)" p 239 */
-/* Dual-core on-chip SRAM spans 0x22000000..0x221A0000 (1.6 MB ECC); the M85
-   uses the lower 1 MiB and 0x22100000 is the start of the shared upper region. */
 typedef enum : uintptr_t {
-  k_bg_sram_base = 0x22100000UL, /**< Start of the shared upper SRAM region; both cores reach it. */
+  k_bg_sram_base = (uintptr_t)k_ra8_board_shared_ram_base, /**< Shared block = window base. */
 } bg_addr_t;
 
 /**
