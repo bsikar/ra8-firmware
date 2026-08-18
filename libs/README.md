@@ -63,8 +63,8 @@ first time.
 
 ## Coupling maps
 
-Who actually includes whom, derived from the `#include` edges between `libs/`,
-`port/` and `src/` -- not from the CMake graph, which cannot answer it (every
+Who actually includes whom, derived from the `#include` edges between `libs/`
+and `port/` -- not from the CMake graph, which cannot answer it (every
 `libs/*/CMakeLists.txt` is a no-op and consumers glob the sources into one
 object library). The number on each arrow is how many files carry that edge.
 

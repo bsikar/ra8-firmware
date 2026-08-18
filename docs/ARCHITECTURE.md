@@ -75,9 +75,10 @@ ra8_add_app(
 ```
 
 `ra8_add_app()` links the app's `main.c`, the boot files and the linker script
-(the app-local copy if present, else the board's), the `ra8_*` libraries and
-`src/secure_app`. Its remaining options -- which board, which extra libraries,
-whether the app skips the NSC layer -- are documented in that file's header.
+(the app-local copy if present, else the board's) and the `ra8_*` libraries,
+`ra8_secure_app` among them. Its remaining options -- which board, which extra
+libraries, whether the app skips the NSC layer -- are documented in that
+file's header.
 Adding an app is dropping the directory in; the next `make` finds it.
 
 ## Boot

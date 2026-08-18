@@ -7,7 +7,7 @@ a hand-written HAL over the chip's register map, ports of the RTOS / USB /
 networking / TLS stacks, and a host emulator that boots the real firmware
 images so none of it needs a board. No Renesas FSP code lives here -- the FSP
 sources and the Hardware User's Manual are reference material, and every line
-under `libs/` and `src/` is written against the manual.
+under `libs/` and `port/` is written against the manual.
 
 ## Shape of the system
 
