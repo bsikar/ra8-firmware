@@ -55,7 +55,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_cache` | 1 | 1 | 11 | 3 | 6 |
 | `ra8_canfd` | 5 | 1 | 18 | 11 | 4 |
 | `ra8_ceu` | 2 | 3 | 27 | 4 | 0 |
-| `ra8_cgc` | 3 | 1 | 12 | 18 | 221 |
+| `ra8_cgc` | 3 | 1 | 12 | 18 | 222 |
 | `ra8_cnecc` | 1 | 1 | 25 | 4 | 0 |
 | `ra8_crc` | 1 | 1 | 8 | 3 | 1 |
 | `ra8_dac_b` | 1 | 1 | 12 | 3 | 2 |
@@ -83,7 +83,7 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_i3c` | 4 | 3 | 50 | 14 | 16 |
 | `ra8_icu` | 1 | 1 | 7 | 7 | 4 |
 | `ra8_ipc` | 2 | 4 | 43 | 6 | 2 |
-| `ra8_isr` | 1 | 1 | 9 | 9 | 202 |
+| `ra8_isr` | 1 | 1 | 9 | 9 | 203 |
 | `ra8_iwdt` | 1 | 1 | 7 | 3 | 2 |
 | `ra8_layer3_switch` | 1 | 1 | 5 | 1 | 1 |
 | `ra8_lpm` | 2 | 2 | 27 | 9 | 11 |
@@ -120,6 +120,6 @@ with no tests and no apps is exactly the gap this page exists to make visible.
 | `ra8_usb` | 22 | 16 | 149 | 38 | 23 |
 | `ra8_vin` | 1 | 3 | 37 | 3 | 0 |
 | `ra8_vreg` | 1 | 1 | 17 | 1 | 0 |
-| `ra8_wdt` | 1 | 1 | 22 | 8 | 4 |
-| `ra8_xspi` | 2 | 1 | 22 | 11 | 6 |
+| `ra8_wdt` | 1 | 1 | 22 | 8 | 5 |
+| `ra8_xspi` | 2 | 1 | 22 | 11 | 7 |
 | `timer` | 1 | 0 | 0 | 0 | 10 |

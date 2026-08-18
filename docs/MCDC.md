@@ -233,8 +233,8 @@ under DO-178C, and each carries its own justification under
 `docs/SOUP/`.
 
 First-party HAL, PAL, application, and security code under
-`libs/ra8_*/` (excluding `libs/third_party/`) and `src/` is **in scope**
-for MC/DC and the gate.
+`libs/ra8_*/` (excluding `libs/third_party/`) is **in scope** for MC/DC
+and the gate.
 
 ## Known gaps
 
