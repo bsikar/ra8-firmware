@@ -10,8 +10,9 @@
  * A block device exposes fixed-size logical blocks (sectors) addressed by a
  * Logical Block Address (LBA). This header defines the single block-device
  * interface every storage backend implements -- SD-over-SPI, native SDHI,
- * OSPI NOR flash, MRAM, an SDRAM ramdisk, and a pure-RAM scratch device --
- * so the layers above (filesystem, cache, VFS) never name a peripheral.
+ * OSPI NOR flash, MRAM, an SDRAM ramdisk, a hosted USB mass-storage device,
+ * and a pure-RAM scratch device -- so the layers above (filesystem, cache,
+ * VFS) never name a peripheral.
  *
  * The interface generalises the `ra8_fs_backend_t` seam the FAT filesystem
  * already runs on: it keeps the same 512-byte logical block but adds an

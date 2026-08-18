@@ -24,7 +24,8 @@
  *     ----------------------------------------------------------------
  *          block-device vtable  (one interface, many media)
  *     ----------------------------------------------------------------
- *     SD-SPI | SDHI | OSPI-NOR | MRAM | SDRAM-ramdisk | UART | USB-CDC | RAM
+ *     SD-SPI | SDHI | OSPI-NOR | MRAM | SDRAM-ramdisk | USB-MSC | UART |
+ *     USB-CDC | RAM
  *
  * This milestone ships the block-device fabric (`ra8_io_blockdev.h`): a single
  * 512-byte LBA block-device vtable with one backend per storage medium, plus a
@@ -53,6 +54,7 @@ extern "C" {
 #include "ra8_io_blockdev_sdhi.h"
 #include "ra8_io_blockdev_sdram.h"
 #include "ra8_io_blockdev_sdspi.h"
+#include "ra8_io_blockdev_usbmsc.h"
 #include "ra8_io_blockdev_xspi.h"
 #include "ra8_io_fsfmt.h"
 #include "ra8_io_log.h"

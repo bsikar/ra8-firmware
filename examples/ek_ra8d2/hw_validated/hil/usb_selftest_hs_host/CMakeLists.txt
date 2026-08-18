@@ -34,5 +34,5 @@ ra8_add_app(
   STACK_BYTES 4000
   DESCRIPTION "USB self-loop config A: HS host reads the FS device MSC"
   USES threadx usbx
-  LIBS ra8_fs ra8_board_ek_ra8d2
+  LIBS ra8_io ra8_fs ra8_sdmmc_spi ra8_board_ek_ra8d2
 )

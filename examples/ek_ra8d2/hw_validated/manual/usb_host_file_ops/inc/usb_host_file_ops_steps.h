@@ -43,7 +43,6 @@ typedef enum : uint32_t {
   k_fileops_idle_ms    = 50U,     /**< Idle tick in the parked main loop. */
   k_fileops_retry_ms   = 5000U,   /**< Pause between ladder retries.      */
   k_fileops_target_lun = 0U,      /**< Exercise LUN 0 (typical stick).    */
-  k_fileops_max_blocks = 0xFFFFU, /**< READ(10)/WRITE(10) 16-bit count.   */
   k_fileops_print_cap  = 160U,    /**< Bound for console-string scans.    */
 } usb_fileops_config_t;
 
@@ -165,7 +164,8 @@ typedef enum : uint32_t {
  * @brief Mount the attached drive through the USB-MSC backend.
  *
  * @param[out] out_mount Receives the mount handle on success.
- * @return ra8_err_t from ::ra8_fs_mount.
+ * @return ra8_err_t from the block-device bind, the ra8_fs bridge, or
+ *         ::ra8_fs_mount.
  * @retval k_ra8_ok Volume mounted; the type line was printed.
  * @pre ::ra8_usb_hmsc_enumerate completed on the attached drive.
  * @pre @p out_mount is non-NULL.

@@ -16,8 +16,9 @@
  *    read-only FAT16 volume over the 1 MiB MRAM window, the USBX storage
  *    media callbacks, the device-stack bring-up, and the device worker.
  *  - `usb_selftest_fs_host_host.c` -- the HOST role: the SCI8 console
- *    formatters, the `ra8_fs` backend over the polled host-MSC class, the
- *    enumerate / mount / verify / write-protect ladder, and the host worker.
+ *    formatters, the ra8_io USB-MSC block device the `ra8_fs` mount runs
+ *    on, the enumerate / mount / verify / write-protect ladder, and the
+ *    host worker.
  *
  * This header owns every compile-time constant the three units share, plus
  * the prototypes of the five functions that cross a translation-unit
