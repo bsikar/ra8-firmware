@@ -13,8 +13,16 @@
 #            every run; gaining measurement is one-way.
 #
 # Columns are TAB-separated. Rows are sorted by path.
-# rows: 1043  measured: 507  unmeasured: 536
+# rows: 1045  measured: 509  unmeasured: 536
 
+apps/shared/media_dl/src/mdl_app.c	MEASURED	5	5	0	0
+apps/shared/media_dl/src/mdl_app_admin.c	MEASURED	208	261	113	188
+apps/shared/media_dl/src/mdl_app_cover.c	MEASURED	69	106	36	72
+apps/shared/media_dl/src/mdl_app_direct.c	MEASURED	218	309	92	166
+apps/shared/media_dl/src/mdl_app_library.c	MEASURED	93	126	38	62
+apps/shared/media_dl/src/mdl_app_prepare.c	MEASURED	127	208	48	118
+apps/shared/media_dl/src/mdl_app_series.c	MEASURED	229	289	84	158
+apps/shared/media_dl/src/mdl_app_storage.c	MEASURED	51	59	50	76
 apps/shared/media_dl/src/mdl_cache.c	MEASURED	121	138	76	116
 apps/shared/media_dl/src/mdl_cache_io.c	MEASURED	283	322	153	270
 apps/shared/media_dl/src/mdl_config.c	MEASURED	218	242	110	150
@@ -37,7 +45,7 @@ apps/shared/media_dl/src/mdl_fetch_body.c	MEASURED	97	110	59	94
 apps/shared/media_dl/src/mdl_fetch_page.c	MEASURED	196	234	104	162
 apps/shared/media_dl/src/mdl_hash.c	MEASURED	58	65	40	56
 apps/shared/media_dl/src/mdl_library.c	MEASURED	189	210	126	180
-apps/shared/media_dl/src/mdl_net.c	MEASURED	36	37	42	48
+apps/shared/media_dl/src/mdl_net.c	MEASURED	43	44	51	56
 apps/shared/media_dl/src/mdl_net_c6link.c	MEASURED	85	85	51	54
 apps/shared/media_dl/src/mdl_pack.c	MEASURED	109	109	39	40
 apps/shared/media_dl/src/mdl_pathfs.c	MEASURED	12	15	14	22
@@ -64,18 +72,12 @@ apps/stand_alone/ereader/secure_exception.c	UNMEASURED	firmware-composition
 apps/stand_alone/ereader/system_init.c	UNMEASURED	firmware-composition
 apps/stand_alone/ereader/trustzone_init.c	UNMEASURED	firmware-composition
 apps/stand_alone/ereader/vector_table.c	UNMEASURED	firmware-composition
-apps/stand_alone/media_dl/src/main.c	MEASURED	247	294	154	221
-apps/stand_alone/media_dl/src/mdl_app_admin.c	MEASURED	210	266	114	190
-apps/stand_alone/media_dl/src/mdl_app_cover.c	MEASURED	69	106	36	72
-apps/stand_alone/media_dl/src/mdl_app_direct.c	MEASURED	232	323	92	166
-apps/stand_alone/media_dl/src/mdl_app_library.c	MEASURED	100	136	43	70
-apps/stand_alone/media_dl/src/mdl_app_prepare.c	MEASURED	127	208	48	118
-apps/stand_alone/media_dl/src/mdl_app_series.c	MEASURED	230	290	84	158
-apps/stand_alone/media_dl/src/mdl_app_storage.c	MEASURED	51	59	50	76
+apps/stand_alone/media_dl/src/main.c	MEASURED	224	269	145	210
 apps/stand_alone/media_dl/src/mdl_cli.c	MEASURED	294	305	197	220
 apps/stand_alone/media_dl/src/mdl_cli_nums.c	MEASURED	105	123	59	86
 apps/stand_alone/media_dl/src/mdl_cli_stream.c	MEASURED	12	15	10	14
 apps/stand_alone/media_dl/src/mdl_cli_usage.c	MEASURED	19	20	8	10
+apps/stand_alone/media_dl/src/mdl_compose.c	MEASURED	49	51	11	13
 apps/stand_alone/media_dl/src/mdl_host_credentials.c	MEASURED	9	10	14	22
 apps/stand_alone/media_dl/src/mdl_net_curl.c	MEASURED	259	294	163	272
 apps/stand_alone/media_dl/src/mdl_net_curl_credentials.c	MEASURED	133	154	148	204
