@@ -256,6 +256,38 @@ typedef enum : uint16_t {
 } ra8_board_i3c0_pin_t;
 
 /**
+ * @enum ra8_board_touch_wiring_t
+ * @brief Where the on-board GoodIX GT911 capacitive-touch controller sits.
+ *
+ * @details
+ * The Parallel Graphics Expansion Board's ER-TFT070-6 carries one GT911, on
+ * one bus, at one address. These three values are that wiring, stated once:
+ * the I3C block's I2C-compatibility channel it hangs off, its 7-bit target
+ * address, and the fast-mode rate the panel's touch bus is specified for.
+ * Eight applications used to declare their own copy of each under their own
+ * prefix, and all eight also hardcoded a source clock instead of asking CGC --
+ * see ::ra8_board_touch_open, which is the supported way to consume these.
+ *
+ * The SOURCE CLOCK is deliberately absent. It is not a board fact: PCLKA is
+ * whatever the application's CGC tree settled on, so the bit-rate divider must
+ * be solved against ``ra8_cgc_get_clock_hz`` at run time, never against a
+ * constant.
+ *
+ * @invariant ::k_ra8_board_touch_i3c_channel indexes an I3C I2C-compat channel
+ *            the chip implements.
+ *
+ * @see ra8_board_touch_open  Brings this bus up and opens the driver.
+ * @see ra8_board_i3c0_pin_t  The SCL0 / SDA0 pads this channel drives.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra8_board_touch_i3c_channel = 0U,      /**< IIC_B / I3C channel 0 carries the GT911. */
+  k_ra8_board_touch_target_7b   = 0x5DU,   /**< GT911 default 7-bit target address.      */
+  k_ra8_board_touch_bus_hz      = 400000U, /**< Fast-mode I2C rate for the touch bus.    */
+} ra8_board_touch_wiring_t;
+
+/**
  * @brief Drive the U15 PI4IOE5V6408 I/O expander to select USB-HS device mode.
  *
  * @details

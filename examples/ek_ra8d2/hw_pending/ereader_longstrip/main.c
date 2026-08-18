@@ -46,6 +46,7 @@
 #include <stdint.h>
 
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_touch.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -54,10 +55,7 @@
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_gfx_font.h"
-#include "ra8_i2c_bus_ops.h"
-#include "ra8_i3c.h"
 #include "ra8_io_i2c_bus.h"
-#include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_isr.h"
 #include "ra8_jof.h"
 #include "ra8_longstrip.h"
@@ -212,20 +210,8 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ls_touch_channel    = 0U,    /**< IIC_B channel 0.          */
-  k_ls_touch_addr_7b    = 0x5DU, /**< GT911 default 7-bit addr. */
-  k_ls_touch_max_points = 1U,    /**< One contact = one tap.    */
+  k_ls_touch_max_points = 1U, /**< One contact = one tap. */
 } ls_touch_cfg_t;
-
-/**
- * @enum ls_touch_bus_t
- * @brief Clocking for the app-owned touch I2C bus.
- * @since 0.1.0
- */
-typedef enum : uint32_t {
-  k_ls_touch_bus_hz   = 400000U,   /**< Fast-mode I2C clock.     */
-  k_ls_touch_pclka_hz = 60000000U, /**< IIC_B clock-source rate. */
-} ls_touch_bus_t;
 
 /* ===========================================================================
  * Static storage
@@ -315,9 +301,6 @@ static const display_cfg_t k_ls_display_cfg = {
 static display_handle_t* s_display = nullptr;
 /** @brief Mutable copy of the FB descriptor populated at boot. */
 static display_fb_t s_fb;
-/** @brief Bound I2C bus handle the touch driver's injected seam references. */
-static ra8_io_i2c_bus_t s_touch_bus;
-
 /** @brief True while the status bar + scroll rail chrome is shown. */
 static bool s_chrome = true;
 /** @brief Skipped-band count from the last render (must stay 0: #289 contract). */
@@ -478,28 +461,11 @@ static void app_bringup_gfx(void)
 /** @brief Open the GT911 touch controller (best-effort, polled; non-fatal). */
 static void app_bringup_touch(void)
 {
-  const ra8_i3c_cfg_t iic_cfg = {
-    .mode     = k_ra8_i3c_mode_i2c,
-    .bus_hz   = (uint32_t)k_ls_touch_bus_hz,
-    .pclka_hz = (uint32_t)k_ls_touch_pclka_hz,
-  };
-  if (ra8_i3c_init((uint8_t)k_ls_touch_channel, &iic_cfg) != k_ra8_ok) {
-    return;
-  }
-  ra8_i2c_bus_ops_t bus_ops = {};
-  if (ra8_io_i2c_bus_bind_i3c_compat(&s_touch_bus, (uint8_t)k_ls_touch_channel) != k_ra8_ok) {
-    return;
-  }
-  if (ra8_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) != k_ra8_ok) {
-    return;
-  }
-  const ra8_touch_cfg_t cfg = {
-    .bus        = bus_ops,
-    .target_7b  = (uint8_t)k_ls_touch_addr_7b,
-    .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset,
+  const ra8_board_touch_cfg_t cfg = {
     .max_points = (uint8_t)k_ls_touch_max_points,
+    .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset,
   };
-  (void)ra8_touch_open(&cfg);
+  (void)ra8_board_touch_open(&cfg);
 }
 
 /* ===========================================================================
@@ -633,6 +599,7 @@ static void ls_row_color(uint32_t base, uint32_t r, uint32_t th, uint8_t* rgb)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/* cppcheck-suppress constParameterCallback -- bound to ra8_tile_source_t::decode; constifying ctx would break the binding. */
 static ra8_err_t ls_band_decode(void*                 ctx,
                                 const ra8_tile_key_t* key,
                                 uint8_t*              cell,

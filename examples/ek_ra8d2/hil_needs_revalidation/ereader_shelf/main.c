@@ -31,16 +31,13 @@
 
 #include "miniz.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_touch.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_gfx.h"
 #include "ra8_gfx_font.h"
-#include "ra8_i2c_bus_ops.h"
-#include "ra8_i3c.h"
-#include "ra8_io_i2c_bus.h"
-#include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
 #include "ra8_panel_timing.h"
@@ -52,17 +49,15 @@
 
 /** @enum sh_main_const_t @brief Boot + banner formatting constants. */
 typedef enum : uint32_t {
-  k_sh_touch_bus_hz   = 400000U,     /**< Fast-mode I2C clock (touch bus).    */
-  k_sh_touch_pclka_hz = 60000000U,   /**< IIC_B clock-source rate.            */
-  k_sh_thirds         = 3U,          /**< Reader edge-tap split.              */
-  k_sh_demo_steps     = 8U,          /**< Idle-demo sequence length.          */
-  k_sh_demo_period    = 30U,         /**< Input polls between demo steps.     */
-  k_sh_idle_dim_ms    = 30000U,      /**< No-input time before backlight off. */
-  k_sh_fnv_offset     = 2166136261U, /**< FNV-1a 32-bit offset basis.         */
-  k_sh_fnv_prime      = 16777619U,   /**< FNV-1a 32-bit prime.                */
-  k_sh_hex_digits     = 8U,          /**< Hex digits in the framebuffer hash. */
-  k_sh_nib_bits       = 4U,          /**< Bits per hex digit.                 */
-  k_sh_nib_mask       = 0xFU,        /**< Low-nibble mask.                    */
+  k_sh_thirds      = 3U,          /**< Reader edge-tap split.              */
+  k_sh_demo_steps  = 8U,          /**< Idle-demo sequence length.          */
+  k_sh_demo_period = 30U,         /**< Input polls between demo steps.     */
+  k_sh_idle_dim_ms = 30000U,      /**< No-input time before backlight off. */
+  k_sh_fnv_offset  = 2166136261U, /**< FNV-1a 32-bit offset basis.         */
+  k_sh_fnv_prime   = 16777619U,   /**< FNV-1a 32-bit prime.                */
+  k_sh_hex_digits  = 8U,          /**< Hex digits in the framebuffer hash. */
+  k_sh_nib_bits    = 4U,          /**< Bits per hex digit.                 */
+  k_sh_nib_mask    = 0xFU,        /**< Low-nibble mask.                    */
 } sh_main_const_t;
 
 /** @brief The single whole-app state instance. */
@@ -580,37 +575,12 @@ static void sh_wdt_arm_or_halt(void)
   }
 }
 
-/**
- * @var s_touch_bus
- * @brief Bound I2C bus handle the touch driver's injected seam points at.
- *
- * @details
- * File-scope because the seam's `ctx` references it for the whole run.
- *
- * @note Written once during bring-up, then read-only.
- * @warning Do not rebind while the touch driver is open.
- * @since 0.1.0
- */
-static ra8_io_i2c_bus_t s_touch_bus;
-
 /** @brief Open touch + the two user buttons (best-effort; input is optional). */
 static void sh_input_init(void)
 {
-  const ra8_i3c_cfg_t iic_cfg = {
-    .mode     = k_ra8_i3c_mode_i2c,
-    .bus_hz   = (uint32_t)k_sh_touch_bus_hz,
-    .pclka_hz = (uint32_t)k_sh_touch_pclka_hz,
-  };
-  ra8_i2c_bus_ops_t bus_ops = {};
-  if ((ra8_i3c_init(0U, &iic_cfg) == k_ra8_ok) &&
-      (ra8_io_i2c_bus_bind_i3c_compat(&s_touch_bus, 0U) == k_ra8_ok) &&
-      (ra8_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) == k_ra8_ok)) {
-    const ra8_touch_cfg_t cfg = {.bus        = bus_ops,
-                                 .target_7b  = (uint8_t)k_sh_gt911_addr,
-                                 .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset,
-                                 .max_points = (uint8_t)k_sh_poll_pts};
-    (void)ra8_touch_open(&cfg);
-  }
+  const ra8_board_touch_cfg_t cfg = {.max_points = (uint8_t)k_sh_poll_pts,
+                                     .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset};
+  (void)ra8_board_touch_open(&cfg);
   (void)ra8_board_sw_init(k_ra8_board_sw1);
   (void)ra8_board_sw_init(k_ra8_board_sw2);
 }

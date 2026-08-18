@@ -63,16 +63,13 @@
 
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_touch.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_err.h"
 #include "ra8_glcdc.h"
-#include "ra8_i2c_bus_ops.h"
-#include "ra8_i3c.h"
-#include "ra8_io_i2c_bus.h"
-#include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
 #include "ra8_panel_timing.h"
@@ -114,15 +111,11 @@ typedef enum : uint16_t {
  * @brief Console / GT911 / poll knobs (no magic numbers).
  */
 typedef enum : uint32_t {
-  k_tc_uart_baud  = 115200U,   /**< Console baud.                       */
-  k_tc_i2c_chan   = 0U,        /**< IIC_B channel 0 (GT911 bus).        */
-  k_tc_i2c_bus_hz = 400000U,   /**< Fast-mode I2C clock.                */
-  k_tc_pclka_hz   = 60000000U, /**< IIC_B clock-source rate.            */
-  k_tc_gt911_addr = 0x5DU,     /**< GT911 default 7-bit address.        */
-  k_tc_max_points = 5U,        /**< Read up to the GT911 capacity.      */
-  k_tc_poll_max   = 20000U,    /**< Bounded per-target poll (NASA R2).  */
-  k_tc_dec_ten    = 10U,       /**< Decimal radix / small-buf cap.      */
-  k_tc_blob_cap   = 36U,       /**< ::k_ra8_touch_cal_blob_size mirror. */
+  k_tc_uart_baud  = 115200U, /**< Console baud.                       */
+  k_tc_max_points = 5U,      /**< Read up to the GT911 capacity.      */
+  k_tc_poll_max   = 20000U,  /**< Bounded per-target poll (NASA R2).  */
+  k_tc_dec_ten    = 10U,     /**< Decimal radix / small-buf cap.      */
+  k_tc_blob_cap   = 36U,     /**< ::k_ra8_touch_cal_blob_size mirror. */
 } tc_consts_t;
 
 /**
@@ -156,15 +149,6 @@ typedef struct {
  */
 [[gnu::aligned(
   k_tc_fb_align)]] static uint16_t s_framebuffer[(uint32_t)k_tc_fb_w * (uint32_t)k_tc_fb_h];
-
-/**
- * @var s_touch_bus
- * @brief Bound I2C bus handle the touch driver's injected seam points at.
- * @note Written once during bring-up, then read-only.
- * @warning Do not rebind while the touch driver is open.
- * @since 0.1.0
- */
-static ra8_io_i2c_bus_t s_touch_bus;
 
 /**
  * @var s_capture
@@ -540,26 +524,9 @@ RA8_INTERNAL static bool internal_tc_glcdc_bringup(display_handle_t** out_disp)
  */
 RA8_INTERNAL static bool internal_tc_touch_bringup(void)
 {
-  const ra8_i3c_cfg_t iic_cfg = {
-    .mode     = k_ra8_i3c_mode_i2c,
-    .bus_hz   = (uint32_t)k_tc_i2c_bus_hz,
-    .pclka_hz = (uint32_t)k_tc_pclka_hz,
-  };
-  ra8_i2c_bus_ops_t bus_ops = {};
-  if (ra8_i3c_init((uint8_t)k_tc_i2c_chan, &iic_cfg) != k_ra8_ok) {
-    return false;
-  }
-  if (ra8_io_i2c_bus_bind_i3c_compat(&s_touch_bus, (uint8_t)k_tc_i2c_chan) != k_ra8_ok) {
-    return false;
-  }
-  if (ra8_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) != k_ra8_ok) {
-    return false;
-  }
-  const ra8_touch_cfg_t cfg = {.bus        = bus_ops,
-                               .target_7b  = (uint8_t)k_tc_gt911_addr,
-                               .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset,
-                               .max_points = (uint8_t)k_tc_max_points};
-  return ra8_touch_open(&cfg) == k_ra8_ok;
+  const ra8_board_touch_cfg_t cfg = {.max_points = (uint8_t)k_tc_max_points,
+                                     .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset};
+  return ra8_board_touch_open(&cfg) == k_ra8_ok;
 }
 
 /* ===========================================================================

@@ -33,6 +33,7 @@
 
 #include "ra8_app.h"
 #include "ra8_batt.h"
+#include "ra8_board_ek_ra8d2.h"
 #include "ra8_box.h"
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_policy.h"
@@ -163,29 +164,16 @@ typedef enum : uint16_t {
  * @brief GT911 touch-controller wiring on the EK-RA8D2 carrier.
  *
  * @details
- * The GoodIX GT911 sits on IIC_B channel 0 at its default 7-bit address;
- * polled from the loop (IRQ pin left unset). ra8_emulator feeds --click /
- * window taps through this same ra8_touch -> I2C -> GT911 path.
+ * ``ra8_board_touch_open`` brings the GT911 up on the board's own channel, at
+ * the board's address and rate, against the live PCLKA -- so only the contact
+ * cap is an app choice. The channel is still named here because the fuel gauge
+ * shares that bus and is read with raw ``ra8_i3c`` calls; its value is the
+ * board's, not a second declaration of it.
  */
 typedef enum : uint8_t {
-  k_er_touch_channel    = 0U,    /**< IIC_B channel 0.          */
-  k_er_touch_addr_7b    = 0x5DU, /**< GT911 default 7-bit addr. */
-  k_er_touch_max_points = 1U,    /**< One contact = one tap.    */
+  k_er_touch_channel    = (uint8_t)k_ra8_board_touch_i3c_channel, /**< The board's GT911 bus. */
+  k_er_touch_max_points = 1U,                                     /**< One contact = one tap. */
 } er_touch_cfg_t;
-
-/**
- * @enum er_touch_bus_cfg_t
- * @brief Clocking for the app-owned touch/fuel-gauge I2C bus.
- *
- * @details
- * The app brings the IIC_B peripheral up itself (fast-mode, PCLKA
- * source) and hands the bound bus to the touch driver through its
- * injected seam; the fuel-gauge reads share the same bring-up.
- */
-typedef enum : uint32_t {
-  k_er_touch_bus_hz   = 400000U,   /**< Fast-mode I2C clock.     */
-  k_er_touch_pclka_hz = 60000000U, /**< IIC_B clock-source rate. */
-} er_touch_bus_cfg_t;
 
 /**
  * @enum er_fg_cfg_t

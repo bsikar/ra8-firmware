@@ -13,7 +13,7 @@
 #            every run; gaining measurement is one-way.
 #
 # Columns are TAB-separated. Rows are sorted by path.
-# rows: 1046  measured: 510  unmeasured: 536
+# rows: 1047  measured: 511  unmeasured: 536
 
 apps/shared/media_dl/src/mdl_app.c	MEASURED	5	5	0	0
 apps/shared/media_dl/src/mdl_app_admin.c	MEASURED	208	261	113	188
@@ -471,6 +471,7 @@ libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_comms.c	MEASURED	66	66	37	40
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_console_stream.c	MEASURED	5	5	4	4
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_ethernet.c	MEASURED	100	111	47	68
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_pdm.c	MEASURED	14	14	6	6
+libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_touch.c	MEASURED	20	20	8	8
 libs/ra8_board_ra8p1/boot/nmi_exception.c	UNMEASURED	platform-cross-only
 libs/ra8_board_ra8p1/boot/secure_exception.c	UNMEASURED	platform-cross-only
 libs/ra8_board_ra8p1/boot/system_init.c	UNMEASURED	platform-cross-only

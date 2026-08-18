@@ -66,7 +66,6 @@ typedef enum : uint32_t {
   k_sh_author_cap  = 56U,         /**< Entry author buffer bytes.             */
   k_sh_uart_chan   = 8U,          /**< SCI8 J-Link OB console channel.        */
   k_sh_uart_baud   = 115200U,     /**< Console baud.                          */
-  k_sh_gt911_addr  = 0x5DU,       /**< GT911 touch 7-bit I2C address.         */
   k_sh_poll_pts    = 5U,          /**< Touch points polled per read.          */
   k_sh_poll_ms     = 30U,         /**< Input poll period in ms.               */
   k_sh_dec_base    = 10U,         /**< Decimal formatting base.               */
