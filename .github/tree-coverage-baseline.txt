@@ -27,7 +27,7 @@ apps/shared/media_dl/src/mdl_cache.c	MEASURED	121	138	76	116
 apps/shared/media_dl/src/mdl_cache_io.c	MEASURED	283	322	153	270
 apps/shared/media_dl/src/mdl_config.c	MEASURED	218	242	110	150
 apps/shared/media_dl/src/mdl_discover.c	MEASURED	149	211	66	132
-apps/shared/media_dl/src/mdl_export.c	MEASURED	178	209	120	153
+apps/shared/media_dl/src/mdl_export.c	MEASURED	179	209	121	153
 apps/shared/media_dl/src/mdl_export_epub.c	MEASURED	155	171	96	128
 apps/shared/media_dl/src/mdl_export_epub_meta.c	MEASURED	115	120	50	60
 apps/shared/media_dl/src/mdl_export_io.c	MEASURED	217	266	156	282

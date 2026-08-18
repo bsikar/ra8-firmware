@@ -25,6 +25,7 @@
 #include "miniz.h"
 #include "ra8_jof.h"
 #include "support/ra8_test_output.h"
+#include "test_media_dl_export_mtime_internal.h"
 #include "test_media_dl_export_workspace_internal.h"
 #include "test_media_dl_export_xml_internal.h"
 #include "tiny_jpeg_fixture.h"
@@ -445,7 +446,7 @@ RA8_INTERNAL static void internal_test_export_cbz_roundtrip(void)
 
   mdl_test_zip_reader_t reader;
   TEST_ASSERT(internal_test_zip_open(&reader, out));
-  TEST_ASSERT_EQ(k_expect_pages + 1U, (uint16_t)mz_zip_reader_get_num_files(&reader.zip));
+  TEST_ASSERT_EQ(k_expect_pages + 1U, mz_zip_reader_get_num_files(&reader.zip));
   char name[k_name_probe];
   (void)mz_zip_reader_get_filename(&reader.zip, 0, name, sizeof(name));
   TEST_ASSERT(strcmp(name, "page_001.jpg") == 0);
@@ -551,7 +552,7 @@ RA8_INTERNAL static void internal_test_export_skips_non_images(void)
   TEST_ASSERT(internal_export_chapter(k_ra8_mdl_format_cbz, dir, out) == k_ra8_ok);
   mdl_test_zip_reader_t reader;
   TEST_ASSERT(internal_test_zip_open(&reader, out));
-  TEST_ASSERT_EQ(k_expect_pages + 1U, (uint16_t)mz_zip_reader_get_num_files(&reader.zip));
+  TEST_ASSERT_EQ(k_expect_pages + 1U, mz_zip_reader_get_num_files(&reader.zip));
   char name[k_name_probe];
   (void)mz_zip_reader_get_filename(&reader.zip, 0, name, sizeof(name));
   TEST_ASSERT(strcmp(name, "page_001.jpg") == 0);
@@ -926,6 +927,7 @@ int main(void)
   internal_test_epub_escapes_name();
   internal_test_epub_long_filenames();
   internal_test_export_page_cap();
+  priv_test_mdl_export_mtime_run();
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_deinit());
   (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_media_dl_export.c\n");
   return 0;
