@@ -368,8 +368,10 @@ endfunction()
 mdl_add_core_test(test_media_dl ${MDL_CORE_TESTS_DIR}/test_media_dl.c)
 mdl_add_core_test(test_media_dl_export ${MDL_CORE_TESTS_DIR}/test_media_dl_export.c)
 target_sources(
-  test_media_dl_export PRIVATE ${MDL_CORE_TESTS_DIR}/test_media_dl_export_workspace.c
-                               ${MDL_CORE_TESTS_DIR}/test_media_dl_export_xml.c
+  test_media_dl_export
+  PRIVATE ${MDL_CORE_TESTS_DIR}/test_media_dl_export_mtime.c
+          ${MDL_CORE_TESTS_DIR}/test_media_dl_export_workspace.c
+          ${MDL_CORE_TESTS_DIR}/test_media_dl_export_xml.c
 )
 add_executable(
   test_media_dl_rabook_verify
