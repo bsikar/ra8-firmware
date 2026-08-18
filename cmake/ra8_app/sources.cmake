@@ -432,6 +432,23 @@ macro(_ra8_app_collect_sources)
     )
   endif()
 
+  # Same shape for the board GT911 bring-up (issue #775): it binds the touch
+  # bus through the ra8_io I2C facade, so it needs libs/ra8_io/inc and the
+  # ra8_io_i2c_bus TUs at link time. Here a bare "ra8_io_bus" IS enough --
+  # that pseudo-lib compiles exactly those bus facades -- which is what all
+  # eight touch consumers already declare. Its header
+  # (ra8_board_ek_ra8d2_touch.h) is kept out of the ra8_board_ek_ra8d2.h
+  # umbrella for the same reason as the console stream's.
+  if(NOT (("ra8_io" IN_LIST _RA8_APP_LIBS) OR ("ra8_io_bus" IN_LIST _RA8_APP_LIBS)))
+    list(
+      FILTER
+      _ra8_lib_board
+      EXCLUDE
+      REGEX
+      "ra8_board_ek_ra8d2_touch\\.c$"
+    )
+  endif()
+
   # The vendored SOUP decoders (miniz DEFLATE, stb image/truetype) type-pun
   # through byte buffers, which violates C strict-aliasing. GCC's aliasing
   # optimizations at -Og/-O2 then miscompile them: arm-none-eabi-gcc 13.3

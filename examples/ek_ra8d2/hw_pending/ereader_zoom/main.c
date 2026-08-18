@@ -42,16 +42,13 @@
 
 #include "ez_scene.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_touch.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
-#include "ra8_i2c_bus_ops.h"
-#include "ra8_i3c.h"
-#include "ra8_io_i2c_bus.h"
-#include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
 #include "ra8_panel.h"
@@ -74,13 +71,11 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ez_uart_baud      = 115200U,   /**< Console baud.                     */
-  k_ez_settle_ms      = 500U,      /**< PLL / SDRAM / panel-POR settle.   */
-  k_ez_frame_ms       = 25U,       /**< Input poll period, ms.            */
-  k_ez_led_every      = 16U,       /**< Heartbeat LED toggle sub-cadence. */
-  k_ez_touch_bus_hz   = 400000U,   /**< GT911 fast-mode I2C clock.        */
-  k_ez_touch_pclka_hz = 60000000U, /**< IIC_B clock-source rate.          */
-  k_ez_touch_addr_7b  = 0x5DU,     /**< GT911 default 7-bit address.      */
+  k_ez_uart_baud        = 115200U, /**< Console baud.                     */
+  k_ez_settle_ms        = 500U,    /**< PLL / SDRAM / panel-POR settle.   */
+  k_ez_frame_ms         = 25U,     /**< Input poll period, ms.            */
+  k_ez_led_every        = 16U,     /**< Heartbeat LED toggle sub-cadence. */
+  k_ez_touch_max_points = 1U,      /**< One contact = one tap.            */
 } ez_boot_t;
 
 /**
@@ -266,16 +261,6 @@ static display_fb_t s_fb;
  */
 static ez_scene_t s_scene;
 
-/**
- * @var s_touch_bus
- * @brief Bound I2C bus handle the GT911 driver's injected seam points at.
- * @details The I3C peripheral in I2C-compatibility mode.
- * @note Populated by ::ez_bringup_touch; unused if touch is absent.
- * @warning Must outlive the touch driver.
- * @since 0.1.0
- */
-static ra8_io_i2c_bus_t s_touch_bus;
-
 /** @brief Console banner fragment: boot line. */
 static const uint8_t k_msg_boot[] = "ereader-zoom: boot\r\n";
 /** @brief Console banner fragment: bring-up failure. */
@@ -404,24 +389,9 @@ static void ez_bringup_panel(void)
 /** @brief Open the GT911 touch controller (best-effort, polled). */
 static void ez_bringup_touch(void)
 {
-  const ra8_i3c_cfg_t iic_cfg = {.mode     = k_ra8_i3c_mode_i2c,
-                                 .bus_hz   = (uint32_t)k_ez_touch_bus_hz,
-                                 .pclka_hz = (uint32_t)k_ez_touch_pclka_hz};
-  if (ra8_i3c_init(0U, &iic_cfg) != k_ra8_ok) {
-    return;
-  }
-  ra8_i2c_bus_ops_t bus_ops = {};
-  if (ra8_io_i2c_bus_bind_i3c_compat(&s_touch_bus, 0U) != k_ra8_ok) {
-    return;
-  }
-  if (ra8_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) != k_ra8_ok) {
-    return;
-  }
-  const ra8_touch_cfg_t cfg = {.bus        = bus_ops,
-                               .target_7b  = (uint8_t)k_ez_touch_addr_7b,
-                               .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset,
-                               .max_points = 1U};
-  (void)ra8_touch_open(&cfg);
+  const ra8_board_touch_cfg_t cfg = {.max_points = (uint8_t)k_ez_touch_max_points,
+                                     .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset};
+  (void)ra8_board_touch_open(&cfg);
 }
 
 /** @brief Flush a scene plan through the PAL with the waveform it asked for. */

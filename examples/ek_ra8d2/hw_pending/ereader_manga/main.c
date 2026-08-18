@@ -43,16 +43,13 @@
 #include "mg_page_fixture.h"
 #include "mg_reader.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_touch.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_lcd.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
-#include "ra8_i2c_bus_ops.h"
-#include "ra8_i3c.h"
-#include "ra8_io_i2c_bus.h"
-#include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_isr.h"
 #include "ra8_jof.h"
 #include "ra8_jof_produce.h"
@@ -70,13 +67,11 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_mg_uart_baud      = 115200U,   /**< Console baud.                     */
-  k_mg_settle_ms      = 500U,      /**< PLL / SDRAM / panel-POR settle.   */
-  k_mg_frame_ms       = 25U,       /**< Input poll period, ms.            */
-  k_mg_led_every      = 16U,       /**< Heartbeat LED toggle sub-cadence. */
-  k_mg_touch_bus_hz   = 400000U,   /**< GT911 fast-mode I2C clock.        */
-  k_mg_touch_pclka_hz = 60000000U, /**< IIC_B clock-source rate.          */
-  k_mg_touch_addr_7b  = 0x5DU,     /**< GT911 default 7-bit address.      */
+  k_mg_uart_baud        = 115200U, /**< Console baud.                     */
+  k_mg_settle_ms        = 500U,    /**< PLL / SDRAM / panel-POR settle.   */
+  k_mg_frame_ms         = 25U,     /**< Input poll period, ms.            */
+  k_mg_led_every        = 16U,     /**< Heartbeat LED toggle sub-cadence. */
+  k_mg_touch_max_points = 1U,      /**< One contact = one tap.            */
 } mg_boot_t;
 
 /**
@@ -257,8 +252,6 @@ typedef struct {
 static mg_png_cursor_t s_png_cursor;
 
 /** @brief Bound I2C bus handle the touch driver's injected seam points at. */
-static ra8_io_i2c_bus_t s_touch_bus;
-
 /* Console banner fragments. */
 static const uint8_t k_msg_boot[]  = "ereader-manga: boot\r\n";
 static const uint8_t k_msg_fail[]  = "ereader-manga: FAIL init\r\n";
@@ -368,24 +361,9 @@ static void mg_bringup_panel(void)
 /** @brief Open the GT911 touch controller (best-effort, polled). */
 static void mg_bringup_touch(void)
 {
-  const ra8_i3c_cfg_t iic_cfg = {.mode     = k_ra8_i3c_mode_i2c,
-                                 .bus_hz   = (uint32_t)k_mg_touch_bus_hz,
-                                 .pclka_hz = (uint32_t)k_mg_touch_pclka_hz};
-  if (ra8_i3c_init(0U, &iic_cfg) != k_ra8_ok) {
-    return;
-  }
-  ra8_i2c_bus_ops_t bus_ops = {};
-  if (ra8_io_i2c_bus_bind_i3c_compat(&s_touch_bus, 0U) != k_ra8_ok) {
-    return;
-  }
-  if (ra8_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) != k_ra8_ok) {
-    return;
-  }
-  const ra8_touch_cfg_t cfg = {.bus        = bus_ops,
-                               .target_7b  = (uint8_t)k_mg_touch_addr_7b,
-                               .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset,
-                               .max_points = 1U};
-  (void)ra8_touch_open(&cfg);
+  const ra8_board_touch_cfg_t cfg = {.max_points = (uint8_t)k_mg_touch_max_points,
+                                     .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset};
+  (void)ra8_board_touch_open(&cfg);
 }
 
 /* ===========================================================================

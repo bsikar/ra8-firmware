@@ -44,6 +44,7 @@
 #include "cm_tiled_check.h"
 #include "comic_pages_fixture.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_touch.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_comic.h"
@@ -52,10 +53,6 @@
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_gfx_font.h"
-#include "ra8_i2c_bus_ops.h"
-#include "ra8_i3c.h"
-#include "ra8_io_i2c_bus.h"
-#include "ra8_io_i2c_bus_i3c_compat.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
 #include "ra8_panel_timing.h"
@@ -150,9 +147,7 @@ typedef enum : uint8_t {
  * @brief GT911 touch-controller wiring on the EK-RA8D2 carrier.
  */
 typedef enum : uint8_t {
-  k_cm_touch_channel    = 0U,    /**< IIC_B channel 0.          */
-  k_cm_touch_addr_7b    = 0x5DU, /**< GT911 default 7-bit addr. */
-  k_cm_touch_max_points = 1U,    /**< One contact = one tap.    */
+  k_cm_touch_max_points = 1U, /**< One contact = one tap. */
 } cm_touch_cfg_t;
 
 /**
@@ -225,16 +220,6 @@ static ra8_comic_page_t s_pages[k_cm_page_cap];
  * @since 0.1.0
  */
 static char s_names[k_cm_name_cap];
-
-/**
- * @var s_touch_bus
- * @brief Bound I2C bus the GT911 driver's injected seam points at.
- * @details Written once during bring-up, then read-only.
- * @note File-scope so the seam context out-lives bring-up.
- * @warning Do not rebind while the touch driver is open.
- * @since 0.1.0
- */
-static ra8_io_i2c_bus_t s_touch_bus;
 
 /**
  * @var s_display
@@ -588,28 +573,11 @@ static void cm_bringup_panel(void)
  */
 static void cm_bringup_touch(void)
 {
-  const ra8_i3c_cfg_t iic_cfg = {
-    .mode     = k_ra8_i3c_mode_i2c,
-    .bus_hz   = (uint32_t)k_cm_touch_bus_hz,
-    .pclka_hz = (uint32_t)k_cm_touch_pclka_hz,
-  };
-  if (ra8_i3c_init((uint8_t)k_cm_touch_channel, &iic_cfg) != k_ra8_ok) {
-    return;
-  }
-  ra8_i2c_bus_ops_t bus_ops = {};
-  if (ra8_io_i2c_bus_bind_i3c_compat(&s_touch_bus, (uint8_t)k_cm_touch_channel) != k_ra8_ok) {
-    return;
-  }
-  if (ra8_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) != k_ra8_ok) {
-    return;
-  }
-  const ra8_touch_cfg_t cfg = {
-    .bus        = bus_ops,
-    .target_7b  = (uint8_t)k_cm_touch_addr_7b,
-    .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset,
+  const ra8_board_touch_cfg_t cfg = {
     .max_points = (uint8_t)k_cm_touch_max_points,
+    .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset,
   };
-  (void)ra8_touch_open(&cfg);
+  (void)ra8_board_touch_open(&cfg);
 }
 
 /* ===========================================================================
