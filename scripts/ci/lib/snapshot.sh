@@ -58,7 +58,7 @@
 #
 # `read-tree` + `checkout-index` writes HEAD's tree and nothing else, with no
 # attribute filtering and no dependence on the working tree being clean.
-# GIT_LFS_SKIP_SMUDGE=1 still emits the content/library epub LFS pointers as-is
+# GIT_LFS_SKIP_SMUDGE=1 still emits the e-reader content-library epub LFS pointers as-is
 # (no gate reads them, so no LFS object or network fetch is needed).
 materialise_head_snapshot() {
   local work="$1"

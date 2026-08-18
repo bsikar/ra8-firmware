@@ -34,4 +34,4 @@ libs/third_party/** -text
 # parsers under test see a different input than the seed generator
 # emitted. Treat the entire corpus subtree as binary.
 tests/fuzz/corpus/** binary
-content/library/*.epub filter=lfs diff=lfs merge=lfs -text
+apps/stand_alone/ereader/content/library/*.epub filter=lfs diff=lfs merge=lfs -text

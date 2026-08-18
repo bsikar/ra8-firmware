@@ -36,7 +36,7 @@ tools-help:
 	@echo "OTHER HOST TOOLS"
 	@echo "  make mcp                             self-test the MCP dev server (tools/mcp)"
 	@echo "  make bench-cache                     build + run the L1/L2/L3 cache benches"
-	@echo "  make books                           compile content/library/*.epub -> *.rabook"
+	@echo "  make books                           compile the e-reader content library *.epub -> *.rabook"
 	@echo ""
 	@echo "ra8_emulator is built on demand by 'make emu-<app>'  [make emu-help]"
 
@@ -94,7 +94,7 @@ view:
 mcp:
 	@python3 $(ROOT)/tools/mcp/ra8_mcp.py --selftest
 
-# `make books` -- regenerate content/compiled/*.rabook from content/library/*.epub
+# `make books` -- regenerate the e-reader content library .rabook set from its .epub sources
 # (Git LFS) plus the manifest header. See tools/epub_compile/.
 books:
 	bash scripts/builders/books.sh

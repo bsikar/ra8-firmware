@@ -4,8 +4,8 @@
 #
 # build_books.sh -- regenerate the compiled e-book library.
 #
-# Compiles every content/library/*.epub source (the Git-LFS source of truth)
-# into content/compiled/*.rabook and regenerates the manifest header
+# Compiles every e-reader content-library .epub source (the Git-LFS source of truth)
+# into the e-reader content tree as *.rabook and regenerates the manifest header
 # libs/ra8_book/inc/ra8_book_library.h. The .rabook blobs and the manifest are
 # build artifacts (gitignored): they are 100% derived from the epubs plus
 # tools/epub_compile, so they are regenerated rather than committed.
@@ -40,8 +40,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-SRC_DIR="$ROOT/content/library"
-OUT_DIR="$ROOT/content/compiled"
+SRC_DIR="$ROOT/apps/stand_alone/ereader/content/library"
+OUT_DIR="$ROOT/apps/stand_alone/ereader/content/compiled"
 COMPILER="$ROOT/tools/epub_compile/epub_compile.py"
 MANIFEST_GEN="$ROOT/tools/epub_compile/gen_manifest.py"
 MANIFEST_HDR="$ROOT/libs/ra8_book/inc/ra8_book_library.h"
