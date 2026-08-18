@@ -13,7 +13,7 @@
 #            every run; gaining measurement is one-way.
 #
 # Columns are TAB-separated. Rows are sorted by path.
-# rows: 1045  measured: 509  unmeasured: 536
+# rows: 1046  measured: 510  unmeasured: 536
 
 apps/shared/media_dl/src/mdl_app.c	MEASURED	5	5	0	0
 apps/shared/media_dl/src/mdl_app_admin.c	MEASURED	208	261	113	188
@@ -750,6 +750,7 @@ libs/ra8_io/src/ra8_io_blockdev_ram.c	MEASURED	65	66	28	36
 libs/ra8_io/src/ra8_io_blockdev_sdhi.c	MEASURED	25	25	7	10
 libs/ra8_io/src/ra8_io_blockdev_sdram.c	MEASURED	11	11	9	10
 libs/ra8_io/src/ra8_io_blockdev_sdspi.c	MEASURED	25	25	7	10
+libs/ra8_io/src/ra8_io_blockdev_usbmsc.c	MEASURED	32	32	23	24
 libs/ra8_io/src/ra8_io_blockdev_vsource.c	MEASURED	56	60	24	28
 libs/ra8_io/src/ra8_io_blockdev_xspi.c	MEASURED	130	130	63	74
 libs/ra8_io/src/ra8_io_compress.c	MEASURED	48	51	27	30

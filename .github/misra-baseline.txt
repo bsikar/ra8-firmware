@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 20929
+# total findings: 20952
 # columns: file<TAB>rule<TAB>count
 apps/shared/media_dl/inc/mdl_app.h	misra-c2012-19.2	2
 apps/shared/media_dl/inc/mdl_state.h	misra-c2012-20.1	5
@@ -378,6 +378,9 @@ apps/shared/media_dl/tests/test_media_dl_export_fault.c	misra-c2012-22.10	2
 apps/shared/media_dl/tests/test_media_dl_export_fault.c	misra-c2012-7.1	6
 apps/shared/media_dl/tests/test_media_dl_export_fault.c	misra-c2012-8.9	5
 apps/shared/media_dl/tests/test_media_dl_export_fault.c	misra-c2012-9.2	12
+apps/shared/media_dl/tests/test_media_dl_export_mtime.c	misra-c2012-21.10	1
+apps/shared/media_dl/tests/test_media_dl_export_mtime.c	misra-c2012-8.9	3
+apps/shared/media_dl/tests/test_media_dl_export_mtime.c	misra-c2012-9.2	1
 apps/shared/media_dl/tests/test_media_dl_export_workspace.c	misra-c2012-12.1	2
 apps/shared/media_dl/tests/test_media_dl_export_workspace.c	misra-c2012-9.2	1
 apps/shared/media_dl/tests/test_media_dl_export_xml.c	misra-c2012-11.5	2
@@ -1634,6 +1637,10 @@ libs/ra8_io/src/ra8_io_blockdev_sdram.c	misra-c2012-8.9	1
 libs/ra8_io/src/ra8_io_blockdev_sdspi.c	misra-c2012-15.5	5
 libs/ra8_io/src/ra8_io_blockdev_sdspi.c	misra-c2012-8.4	1
 libs/ra8_io/src/ra8_io_blockdev_sdspi.c	misra-c2012-8.9	1
+libs/ra8_io/src/ra8_io_blockdev_usbmsc.c	misra-c2012-11.5	3
+libs/ra8_io/src/ra8_io_blockdev_usbmsc.c	misra-c2012-15.5	13
+libs/ra8_io/src/ra8_io_blockdev_usbmsc.c	misra-c2012-8.4	1
+libs/ra8_io/src/ra8_io_blockdev_usbmsc.c	misra-c2012-8.9	1
 libs/ra8_io/src/ra8_io_blockdev_vsource.c	misra-c2012-11.5	1
 libs/ra8_io/src/ra8_io_blockdev_vsource.c	misra-c2012-15.5	13
 libs/ra8_io/src/ra8_io_blockdev_vsource.c	misra-c2012-18.4	2

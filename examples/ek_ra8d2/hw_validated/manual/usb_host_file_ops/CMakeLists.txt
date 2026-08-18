@@ -33,5 +33,5 @@ ra8_add_app(
   NAME usb_host_file_ops
   STACK_BYTES 4000
   DESCRIPTION "usb_host_file_ops firmware for RA8D2"
-  LIBS ra8_fs ra8_board_ek_ra8d2
+  LIBS ra8_io ra8_fs ra8_sdmmc_spi ra8_board_ek_ra8d2
 )

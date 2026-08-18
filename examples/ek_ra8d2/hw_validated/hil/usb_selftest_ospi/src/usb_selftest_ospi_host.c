@@ -31,6 +31,8 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
+#include "ra8_io_blockdev.h"
+#include "ra8_io_blockdev_usbmsc.h"
 #include "ra8_time.h"
 #include "ra8_usb_hmsc.h"
 #include "usb_selftest_ospi_steps.h"
@@ -53,111 +55,38 @@ static volatile uint32_t s_dbg_verify_ms;
 static volatile uint32_t s_dbg_pass_count;
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra8_fs backend over the polled host-MSC class */
+/* Host side: ra8_fs mount over the ra8_io USB-MSC block device */
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief ra8_fs backend: read blocks via SCSI READ(10) over the loop.
+ * @var s_selftest_usb_dev
+ * @brief Block device fronting the hosted MSC volume for this ladder.
  *
- * @details Single-LUN device; the 16-bit READ(10) count bound is upheld
- * by the small chunk sizes the suite issues.
+ * @details
+ * Bound once in selftest_mount_volume by ::ra8_io_blockdev_usbmsc_init, which
+ * wires the ra8_io USB-MSC backend over the polled host-MSC class. File scope
+ * because ::ra8_io_blockdev_as_fs_backend keeps a pointer to this handle for
+ * the whole life of the mount.
  *
- * @param[in]  ctx   Unused backend cookie.
- * @param[in]  lba   First logical block address.
- * @param[in]  count Number of 512-byte blocks.
- * @param[out] buf   Destination buffer (count * 512 bytes).
- *
- * @return ra8_err_t from the host-MSC class layer.
- * @retval k_ra8_ok Blocks transferred.
- *
- * @pre ::ra8_usb_hmsc_enumerate completed on the loop device.
- * @pre @p buf is non-NULL and large enough for the transfer.
- * @post On k_ra8_ok the buffer holds the device data.
- * @post No other state changes.
- *
- * @note Blocking; bounded by the class-layer timeouts.
+ * @note Single-threaded ladder; no locking.
+ * @warning Do not rebind while a mount is live.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t
-selftest_backend_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
-{
-  (void)ctx;
-  if (lba > (uint64_t)UINT32_MAX) {
-    /* SCSI READ(10)/WRITE(10) carry 32-bit LBAs; past-2-TiB addressing is a
-     * 64-bit-native-backend capability this transport cannot reach (#683). */
-    return k_ra8_err_out_of_range;
-  }
-  return ra8_usb_hmsc_read10((uint8_t)k_selftest_target_lun, (uint32_t)lba, (uint16_t)count, buf);
-}
+static ra8_io_blockdev_t s_selftest_usb_dev;
 
 /**
- * @brief ra8_fs backend: write blocks via SCSI WRITE(10) over the loop.
+ * @var s_selftest_usb_state
+ * @brief Caller-owned backend state for ::s_selftest_usb_dev.
  *
- * @details The device LUN is write-protected; this path only exists so
- * the backend struct is total. ra8_fs never writes during the read-only
- * suite.
+ * @details
+ * Records the logical unit the backend addresses. Private to the ra8_io
+ * USB-MSC backend and must out-live every call made through the device.
  *
- * @param[in] ctx   Unused backend cookie.
- * @param[in] lba   First logical block address.
- * @param[in] count Number of 512-byte blocks.
- * @param[in] buf   Source buffer (count * 512 bytes).
- *
- * @return ra8_err_t from the host-MSC class layer.
- * @retval k_ra8_ok Blocks transferred (never for this device).
- *
- * @pre ::ra8_usb_hmsc_enumerate completed on the loop device.
- * @pre @p buf is non-NULL and holds the full transfer.
- * @post On success the device sectors hold the buffer data.
- * @post No other state changes.
- *
- * @note Blocking; bounded by the class-layer timeouts.
+ * @note Single-threaded ladder; no locking.
+ * @warning Treat the contents as private to ra8_io.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t
-selftest_backend_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
-{
-  (void)ctx;
-  if (lba > (uint64_t)UINT32_MAX) {
-    /* SCSI READ(10)/WRITE(10) carry 32-bit LBAs; past-2-TiB addressing is a
-     * 64-bit-native-backend capability this transport cannot reach (#683). */
-    return k_ra8_err_out_of_range;
-  }
-  return ra8_usb_hmsc_write10((uint8_t)k_selftest_target_lun, (uint32_t)lba, (uint16_t)count, buf);
-}
-
-/**
- * @brief ra8_fs backend: report capacity via SCSI READ_CAPACITY(10).
- *
- * @details Pass-through to the class layer for LUN 0.
- *
- * @param[in]  ctx         Unused backend cookie.
- * @param[out] block_count Total number of blocks.
- * @param[out] block_size  Block size in bytes (512 for this volume).
- *
- * @return ra8_err_t from the host-MSC class layer.
- * @retval k_ra8_ok Outputs are valid.
- *
- * @pre ::ra8_usb_hmsc_enumerate completed on the loop device.
- * @pre Both output pointers are non-NULL.
- * @post On k_ra8_ok both outputs are filled from the device.
- * @post No other state changes.
- *
- * @note Blocking; bounded by the class-layer timeouts.
- * @since 0.1.0
- */
-[[nodiscard]] static ra8_err_t
-selftest_backend_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
-{
-  (void)ctx;
-  uint32_t        blocks32 = 0U;
-  const ra8_err_t err =
-    ra8_usb_hmsc_read_capacity((uint8_t)k_selftest_target_lun, &blocks32, block_size);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  *block_count = blocks32;
-  return k_ra8_ok;
-}
+static ra8_io_blockdev_usbmsc_state_t s_selftest_usb_state;
 
 /**
  * @brief Map a detected filesystem type to a printable name.
@@ -197,12 +126,14 @@ static const char* selftest_fs_type_name(ra8_fs_type_t type)
 /**
  * @brief Mount the loop device's volume through the USB-MSC backend.
  *
- * @details Builds the backend vtable over the polled host class and
- * prints the detected filesystem type (must be fat16 for this device).
+ * @details Binds the ra8_io USB-MSC block device over the polled host
+ * class, bridges it to an ra8_fs backend, and prints the detected
+ * filesystem type (must be fat16 for this device).
  *
  * @param[out] out_mount Receives the mount handle on success.
  *
- * @return ra8_err_t from ::ra8_fs_mount.
+ * @return ra8_err_t from the block-device bind, the ra8_fs bridge, or
+ *         ::ra8_fs_mount.
  * @retval k_ra8_ok Volume mounted; the type line was printed.
  *
  * @pre ::ra8_usb_hmsc_enumerate completed on the loop device.
@@ -215,13 +146,20 @@ static const char* selftest_fs_type_name(ra8_fs_type_t type)
  */
 [[nodiscard]] static ra8_err_t selftest_mount_volume(ra8_fs_mount_t** out_mount)
 {
-  const ra8_fs_backend_t backend = {
-    .read_block   = selftest_backend_read,
-    .write_block  = selftest_backend_write,
-    .get_capacity = selftest_backend_capacity,
-    .ctx          = nullptr,
-  };
-  ra8_err_t err = ra8_fs_mount(&backend, out_mount);
+  ra8_err_t err = ra8_io_blockdev_usbmsc_init(&s_selftest_usb_dev,
+                                              &s_selftest_usb_state,
+                                              (uint8_t)k_selftest_target_lun);
+  if (err != k_ra8_ok) {
+    (void)selftest_print_fail("blockdev", err);
+    return err;
+  }
+  ra8_fs_backend_t backend = {};
+  err                      = ra8_io_blockdev_as_fs_backend(&s_selftest_usb_dev, &backend);
+  if (err != k_ra8_ok) {
+    (void)selftest_print_fail("backend", err);
+    return err;
+  }
+  err = ra8_fs_mount(&backend, out_mount);
   if (err != k_ra8_ok) {
     (void)selftest_print_fail("mount", err);
     return err;

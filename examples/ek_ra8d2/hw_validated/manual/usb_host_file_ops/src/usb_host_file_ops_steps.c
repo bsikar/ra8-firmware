@@ -7,12 +7,12 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Implements the polled-console print helpers, the ra8_fs block-device backend
- * bridged onto the USB host-MSC class layer, the root-directory listing, the
- * nine file-operation steps, and the on-mount-failure disk-layout probe. These
- * routines were split out of `main.c` so every translation unit stays under the
- * repository file-size cap; the boot/bring-up code and the retry ladder remain
- * in `main.c`.
+ * Implements the polled-console print helpers, the ra8_io USB-MSC block device
+ * the ra8_fs mount runs on, the root-directory listing, the nine file-operation
+ * steps, and the on-mount-failure disk-layout probe. These routines were split
+ * out of `main.c` so every translation unit stays under the repository
+ * file-size cap; the boot/bring-up code and the retry ladder remain in
+ * `main.c`.
  *
  * @author Brighton Sikarskie
  * @date 2026-06-12
@@ -28,8 +28,8 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
-#include "ra8_usb.h"
-#include "ra8_usb_hmsc.h"
+#include "ra8_io_blockdev.h"
+#include "ra8_io_blockdev_usbmsc.h"
 
 /* =============================================================================
  * Test fixtures
@@ -205,100 +205,39 @@ static bool fileops_name_eq(const char* a, const char* b)
 }
 
 /* =============================================================================
- * ra8_fs block-device backend over USB host MSC
+ * ra8_io USB-MSC block device behind the ra8_fs mount
  * =============================================================================
  */
 
 /**
- * @brief ra8_fs backend: read blocks via SCSI READ(10).
+ * @var s_fileops_usb_dev
+ * @brief Block device fronting the hosted MSC volume for this ladder.
  *
- * @param[in]  ctx   Unused backend cookie.
- * @param[in]  lba   First logical block address.
- * @param[in]  count Number of 512-byte blocks.
- * @param[out] buf   Destination buffer (count * 512 bytes).
- * @return ra8_err_t from the host-MSC class layer.
- * @retval k_ra8_err_invalid_arg @p count exceeds the READ(10) 16-bit field.
- * @pre ::ra8_usb_hmsc_enumerate completed on the attached drive.
- * @pre @p buf is non-NULL and large enough for the transfer.
- * @post On k_ra8_ok the buffer holds the device data.
- * @post No other state changes.
- * @note Blocking; bounded by the class-layer timeouts.
+ * @details
+ * Bound once in fileops_mount_volume by ::ra8_io_blockdev_usbmsc_init, which
+ * wires the ra8_io USB-MSC backend over the polled host-MSC class. File scope
+ * because ::ra8_io_blockdev_as_fs_backend keeps a pointer to this handle for
+ * the whole life of the mount.
+ *
+ * @note Single-threaded ladder; no locking.
+ * @warning Do not rebind while a mount is live.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t
-fileops_backend_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
-{
-  (void)ctx;
-  if (count > (uint32_t)k_fileops_max_blocks) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (lba > (uint64_t)UINT32_MAX) {
-    /* SCSI READ(10)/WRITE(10) carry 32-bit LBAs; past-2-TiB addressing is a
-     * 64-bit-native-backend capability this transport cannot reach (#683). */
-    return k_ra8_err_out_of_range;
-  }
-  return ra8_usb_hmsc_read10((uint8_t)k_fileops_target_lun, (uint32_t)lba, (uint16_t)count, buf);
-}
+static ra8_io_blockdev_t s_fileops_usb_dev;
 
 /**
- * @brief ra8_fs backend: write blocks via SCSI WRITE(10).
+ * @var s_fileops_usb_state
+ * @brief Caller-owned backend state for ::s_fileops_usb_dev.
  *
- * @param[in] ctx   Unused backend cookie.
- * @param[in] lba   First logical block address.
- * @param[in] count Number of 512-byte blocks.
- * @param[in] buf   Source buffer (count * 512 bytes).
- * @return ra8_err_t from the host-MSC class layer.
- * @retval k_ra8_err_invalid_arg @p count exceeds the WRITE(10) 16-bit field.
- * @pre ::ra8_usb_hmsc_enumerate completed on the attached drive.
- * @pre @p buf is non-NULL and holds the full transfer.
- * @post On k_ra8_ok the device sectors hold the buffer data.
- * @post No other state changes.
- * @note Blocking; bounded by the class-layer timeouts.
+ * @details
+ * Records the logical unit the backend addresses. Private to the ra8_io
+ * USB-MSC backend and must out-live every call made through the device.
+ *
+ * @note Single-threaded ladder; no locking.
+ * @warning Treat the contents as private to ra8_io.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t
-fileops_backend_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
-{
-  (void)ctx;
-  if (count > (uint32_t)k_fileops_max_blocks) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (lba > (uint64_t)UINT32_MAX) {
-    /* SCSI READ(10)/WRITE(10) carry 32-bit LBAs; past-2-TiB addressing is a
-     * 64-bit-native-backend capability this transport cannot reach (#683). */
-    return k_ra8_err_out_of_range;
-  }
-  return ra8_usb_hmsc_write10((uint8_t)k_fileops_target_lun, (uint32_t)lba, (uint16_t)count, buf);
-}
-
-/**
- * @brief ra8_fs backend: report capacity via SCSI READ_CAPACITY(10).
- *
- * @param[in]  ctx         Unused backend cookie.
- * @param[out] block_count Total number of blocks.
- * @param[out] block_size  Block size in bytes (512 for the suite).
- * @return ra8_err_t from the host-MSC class layer.
- * @retval k_ra8_ok Outputs are valid.
- * @pre ::ra8_usb_hmsc_enumerate completed on the attached drive.
- * @pre Both output pointers are non-NULL.
- * @post On k_ra8_ok both outputs are filled from the device.
- * @post No other state changes.
- * @note Blocking; bounded by the class-layer timeouts.
- * @since 0.1.0
- */
-[[nodiscard]] static ra8_err_t
-fileops_backend_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
-{
-  (void)ctx;
-  uint32_t        blocks32 = 0U;
-  const ra8_err_t err =
-    ra8_usb_hmsc_read_capacity((uint8_t)k_fileops_target_lun, &blocks32, block_size);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  *block_count = blocks32;
-  return k_ra8_ok;
-}
+static ra8_io_blockdev_usbmsc_state_t s_fileops_usb_state;
 
 /**
  * @brief Map a detected filesystem type to a printable name.
@@ -332,13 +271,20 @@ static const char* fileops_fs_type_name(ra8_fs_type_t type)
 
 [[nodiscard]] ra8_err_t fileops_mount_volume(ra8_fs_mount_t** out_mount)
 {
-  const ra8_fs_backend_t backend = {
-    .read_block   = fileops_backend_read,
-    .write_block  = fileops_backend_write,
-    .get_capacity = fileops_backend_capacity,
-    .ctx          = nullptr,
-  };
-  ra8_err_t err = ra8_fs_mount(&backend, out_mount);
+  ra8_err_t err = ra8_io_blockdev_usbmsc_init(&s_fileops_usb_dev,
+                                              &s_fileops_usb_state,
+                                              (uint8_t)k_fileops_target_lun);
+  if (err != k_ra8_ok) {
+    (void)fileops_print_fail("blockdev", err);
+    return err;
+  }
+  ra8_fs_backend_t backend = {};
+  err                      = ra8_io_blockdev_as_fs_backend(&s_fileops_usb_dev, &backend);
+  if (err != k_ra8_ok) {
+    (void)fileops_print_fail("backend", err);
+    return err;
+  }
+  err = ra8_fs_mount(&backend, out_mount);
   if (err != k_ra8_ok) {
     (void)fileops_print_fail("mount", err);
     return err;
@@ -744,7 +690,7 @@ void fileops_probe_layout(void)
   static uint8_t s_probe_buf[k_fileops_sector_bytes] = {};
 
   for (uint32_t lba = 0U; lba < (uint32_t)k_fileops_probe_lba_max; lba++) {
-    if (fileops_backend_read(nullptr, lba, 1U, s_probe_buf) != k_ra8_ok) {
+    if (ra8_io_blockdev_read(&s_fileops_usb_dev, lba, 1U, s_probe_buf) != k_ra8_ok) {
       (void)fileops_print("ra8d2 fileops: probe read failed\r\n");
       return;
     }
