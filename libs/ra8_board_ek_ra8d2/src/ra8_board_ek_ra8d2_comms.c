@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_board_ek_ra8d2_internal.h"
 #include "ra8_cgc.h"
@@ -339,6 +340,13 @@ ra8_err_t ra8_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len)
     *out_len += 1U;
   }
   return k_ra8_ok;
+}
+
+/** @brief Implementation of `priv_ra8_board_uart_console_is_up()` -- reads the
+ *         same flag the write / read / flush entry points below consult. */
+RA8_PRIV bool priv_ra8_board_uart_console_is_up(void)
+{
+  return s_uart_console_initialized;
 }
 
 ra8_err_t ra8_board_uart_console_flush(void)

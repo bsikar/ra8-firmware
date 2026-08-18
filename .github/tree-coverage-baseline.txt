@@ -467,7 +467,8 @@ libs/ra8_board_ek_ra8d2/boot/vector_table.c	UNMEASURED	platform-cross-only
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2.c	MEASURED	181	181	81	88
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_audio_usb.c	MEASURED	195	208	70	82
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_camera.c	MEASURED	54	58	20	24
-libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_comms.c	MEASURED	64	64	37	40
+libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_comms.c	MEASURED	66	66	37	40
+libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_console_stream.c	MEASURED	5	5	4	4
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_ethernet.c	MEASURED	100	111	47	68
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_pdm.c	MEASURED	14	14	6	6
 libs/ra8_board_ra8p1/boot/nmi_exception.c	UNMEASURED	platform-cross-only

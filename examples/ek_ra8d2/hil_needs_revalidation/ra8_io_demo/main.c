@@ -27,6 +27,8 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_console_stream.h"
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -34,39 +36,15 @@
 #include "ra8_io.h"
 #include "ra8_io_roundtrip.h"
 #include "ra8_log.h"
-#include "ra8_port_constants.h"
-#include "ra8_port_utils.h"
-#include "ra8_sci.h"
 #include "ra8_time.h"
 
 /** @enum demo_const_t @brief Console + volume knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_demo_uart_chan   = 8U,      /**< SCI8 J-Link OB console.               */
-  k_demo_uart_baud   = 115200U, /**< Console baud.                         */
-  k_demo_disk_blocks = 512U,    /**< 256 KiB RAM-disk (FAT12).             */
-  k_demo_payload     = 128U,    /**< Bytes written + read back at root.    */
-  k_demo_pin_shift   = 8U,      /**< Port byte position in ra8_port_pin_t. */
-  k_demo_note_len    = 64U,     /**< Bytes round-tripped in the subdir.    */
+  k_demo_uart_baud   = 115200U, /**< Console baud.                      */
+  k_demo_disk_blocks = 512U,    /**< 256 KiB RAM-disk (FAT12).          */
+  k_demo_payload     = 128U,    /**< Bytes written + read back at root. */
+  k_demo_note_len    = 64U,     /**< Bytes round-tripped in the subdir. */
 } demo_const_t;
-
-/**
- * @var s_demo_txd
- * @brief SCI8 console transmit pin, PD02.
- * @details Encodes the board port and pin in the HAL's packed pin identifier.
- * @note Immutable routing input used once during boot.
- * @since 0.1.0
- */
-static const ra8_port_pin_t s_demo_txd =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << (uint16_t)k_demo_pin_shift) | (uint16_t)k_ra8_pin_2);
-/**
- * @var s_demo_rxd
- * @brief SCI8 console receive pin, PD03.
- * @details Encodes the board port and pin in the HAL's packed pin identifier.
- * @note Immutable routing input used once during boot.
- * @since 0.1.0
- */
-static const ra8_port_pin_t s_demo_rxd =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << (uint16_t)k_demo_pin_shift) | (uint16_t)k_ra8_pin_3);
 
 /** @brief 256 KiB RAM-disk backing buffer (in SRAM .bss). */
 static uint8_t s_disk[(size_t)k_demo_disk_blocks * (size_t)k_ra8_io_block_size_bytes];
@@ -75,9 +53,8 @@ static ra8_io_blockdev_t           s_bd;
 static ra8_io_blockdev_ram_state_t s_bstate;
 /** @brief ra8_fs backend bridged onto the block device. */
 static ra8_fs_backend_t s_be;
-/** @brief UART output stream + its sink state. */
-static ra8_io_stream_t            s_uart;
-static ra8_io_stream_uart_state_t s_ust;
+/** @brief Console output stream; the board owns the sink behind it. */
+static ra8_io_stream_t s_uart;
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_io_demo";
@@ -106,7 +83,7 @@ static const ra8_io_roundtrip_params_t s_params = {
  *
  * @return None.
  *
- * @pre ::s_uart was initialised by ::ra8_io_stream_uart_init.
+ * @pre ::s_uart was bound by ::ra8_board_console_stream.
  * @pre @p msg is non-NULL and NUL-terminated.
  * @post The bytes of @p msg are queued on the UART stream.
  * @post No other state changes.
@@ -120,17 +97,19 @@ RA8_INTERNAL static void internal_demo_print(const char* msg)
 }
 
 /**
- * @brief Bring up CGC + SysTick + the SCI8 console; halt forever on any failure.
+ * @brief Bring up CGC + SysTick + the board console; halt forever on failure.
  *
- * @details Initialises clocks, reads CPU/PCLKA rates, starts the millisecond
- *          time base, routes the SCI8 console pins, and opens the SCI8 UART. Any
- *          failure spins forever so a debugger can inspect the halt.
+ * @details Initialises clocks, reads the CPU rate, starts the millisecond time
+ *          base, and hands the console over to the BSP -- which owns the
+ *          channel, the PD02 / PD03 routing and the live-PCLKA bit-rate solve.
+ *          Any failure spins forever so a debugger can inspect the halt.
  *
  * @return None.
  *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
  * @pre Runs single-threaded during early boot.
- * @post On success SCI8 is open at ::k_demo_uart_baud and the time base runs.
+ * @post On success the console is open at ::k_demo_uart_baud and the time base
+ *       runs.
  * @post On any failure the function never returns (infinite halt loop).
  *
  * @note Not thread-safe; boot-context only.
@@ -139,22 +118,11 @@ RA8_INTERNAL static void internal_demo_print(const char* msg)
 RA8_INTERNAL static void internal_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if ((ra8_cgc_init() != k_ra8_ok) ||
       (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) ||
-      (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) ||
       (ra8_time_init(cpuclk0_hz) != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(s_demo_txd, k_ra8_psel_sci_async, "demo.txd") != k_ra8_ok) ||
-      (ra8_pfs_route_peripheral(s_demo_rxd, k_ra8_psel_sci_async, "demo.rxd") != k_ra8_ok)) {
-    while (true) {
-    }
-  }
-  const ra8_sci_cfg_t sci_cfg = {.baud      = (uint32_t)k_demo_uart_baud,
-                                 .data_bits = k_ra8_sci_data_8,
-                                 .parity    = k_ra8_sci_parity_none,
-                                 .stop_bits = k_ra8_sci_stop_1,
-                                 .pclk_hz   = pclka_hz};
-  if (ra8_sci_init((uint8_t)k_demo_uart_chan, &sci_cfg) != k_ra8_ok) {
+      (ra8_board_uart_console_init((uint32_t)k_demo_uart_baud) != k_ra8_ok) ||
+      (ra8_board_console_stream(&s_uart) != k_ra8_ok)) {
     while (true) {
     }
   }
@@ -201,8 +169,7 @@ void main(void)
 {
   ra8_log_init();
   internal_demo_setup_or_halt();
-  (void)ra8_io_stream_uart_init(&s_uart, &s_ust, (uint8_t)k_demo_uart_chan);
-  (void)ra8_io_log_attach(&s_uart); /* route ra8_log into the UART stream too */
+  (void)ra8_io_log_attach(&s_uart); /* route ra8_log into the console stream too */
   internal_demo_print("ra8_io_demo: boot\r\n");
 
   ra8_fs_mount_t* mnt = nullptr;
@@ -217,7 +184,7 @@ void main(void)
   } else {
     internal_demo_print("ra8_io_demo: FAIL\r\n");
   }
-  (void)ra8_sci_flush((uint8_t)k_demo_uart_chan);
+  (void)ra8_board_uart_console_flush();
   while (true) {
   }
 }

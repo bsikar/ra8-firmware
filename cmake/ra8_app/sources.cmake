@@ -410,6 +410,28 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_io/inc)
   endif()
 
+  # The board glob above compiles EVERY BSP translation unit into EVERY app,
+  # which works because the rest of the BSP depends only on libraries whose
+  # include paths are unconditional (ra8_core, ra8_hal, ra8_net_pal,
+  # ra8_usb_pal). The console-stream binding does not: it hands back an
+  # ra8_io_stream_t, so it needs libs/ra8_io/inc AND the ra8_io_stream TUs at
+  # link time. Drop it unless the app declared the full "ra8_io", exactly as
+  # the ra8_io_compress / ra8_io_blockdev_vsource gates above drop an ra8_io TU
+  # whose companion library is absent. "ra8_io_bus" is NOT enough here -- it
+  # compiles only the SPI/I2C bus facades, not ra8_io_stream.c. The header
+  # (ra8_board_ek_ra8d2_console_stream.h) is likewise kept out of the
+  # ra8_board_ek_ra8d2.h umbrella, so an app that never asks for a console
+  # stream pays nothing.
+  if(NOT "ra8_io" IN_LIST _RA8_APP_LIBS)
+    list(
+      FILTER
+      _ra8_lib_board
+      EXCLUDE
+      REGEX
+      "_console_stream\\.c$"
+    )
+  endif()
+
   # The vendored SOUP decoders (miniz DEFLATE, stb image/truetype) type-pun
   # through byte buffers, which violates C strict-aliasing. GCC's aliasing
   # optimizations at -Og/-O2 then miscompile them: arm-none-eabi-gcc 13.3
