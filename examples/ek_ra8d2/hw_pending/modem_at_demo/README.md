@@ -16,9 +16,9 @@ failure latches LED2 and parks.
 The app uses the central `ra8_board_*` console and MikroBUS pin helpers rather
 than hand-encoded pins, and it carries no per-app boot files or linker script:
 `cmake/ra8_add_app.cmake` supplies the shared startup and the canonical
-single-core linker script, so only `main.c` is app-specific. The compound
+single-core linker script, so only `src/main.c` is app-specific. The compound
 decisions -- registration OK, signal valid, per-step expected outcome, overall
-verdict -- are host-tested with MC/DC in `tests/test_app_modem_at_demo.c`.
+verdict -- are host-tested with MC/DC in `tests/mocks/src/test_app_modem_at_demo.c`.
 
 ## Blocked on
 

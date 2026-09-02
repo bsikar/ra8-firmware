@@ -15,7 +15,9 @@
 # not), and fail loudly on either.
 #
 # Functions here: selftest_routing, selftest_scope, selftest_arm_includes,
-# selftest_gcc_constant_macros, run_selftest
+# selftest_gcc_constant_macros, selftest_firmware_c23_mode,
+# selftest_included_header_diagnostics, selftest_tidy_tool_resolution,
+# run_selftest
 
 # ---------------------------------------------------------------------------
 # Routing: each path shape must reach its own pass. The firmware roots are
@@ -36,49 +38,215 @@
 # Prints the number of failures.
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
-# The exact-path fragment registry must name only files that still exist and
-# must route every one of them to `included`. A stale row is how a registry
-# rots into an allowlist nobody re-reads, and it would go on silently
-# exempting a path that had moved.
-#
-# Prints the number of failures.
+# The exact-path fragment registry is the ownership source for the shipped
+# HeaderFilterRegex. Prove existence/routing, its content-derived half, and the
+# regex mirror in both directions: stale, missing, new, ordinary, generated,
+# or vendored paths must all make the selftest fail.
 # ---------------------------------------------------------------------------
-selftest_fragment_registry() {
-  local failures=0 registered
-  if [[ "${#TIDY_HEADER_FRAGMENTS[@]}" -eq 0 ]]; then
-    print_error "selftest: the fragment registry is empty"
+fragment_registry_paths() {
+  local record
+  for record in ${TIDY_HEADER_FRAGMENT_RECORDS[@]+"${TIDY_HEADER_FRAGMENT_RECORDS[@]}"}; do
+    printf '%s\n' "${record#*|}"
+  done
+}
+
+selftest_fragment_records() {
+  local failures=0 record mode rel
+  if [[ "${#TIDY_HEADER_FRAGMENT_RECORDS[@]}" -ne 28 ]]; then
+    print_error "selftest: expected 28 owned include fragments, got ${#TIDY_HEADER_FRAGMENT_RECORDS[@]}"
     failures=$((failures + 1))
   fi
-  for registered in "${TIDY_HEADER_FRAGMENTS[@]}"; do
-    if [[ ! -f "$FIRMWARE_DIR/$registered" ]]; then
-      print_error "selftest: registered fragment $registered no longer exists"
+  if [[ -n "$(fragment_registry_paths | sort | uniq -d)" ]]; then
+    print_error "selftest: duplicate include-fragment registry path"
+    failures=$((failures + 1))
+  fi
+  for record in ${TIDY_HEADER_FRAGMENT_RECORDS[@]+"${TIDY_HEADER_FRAGMENT_RECORDS[@]}"}; do
+    mode="${record%%|*}"
+    rel="${record#*|}"
+    if [[ "$mode" != "static-decl" && "$mode" != "includer-context" ]]; then
+      print_error "selftest: invalid fragment ownership mode $mode for $rel"
       failures=$((failures + 1))
-    elif [[ "$(route_bucket "$FIRMWARE_DIR/$registered")" != "included" ]]; then
-      print_error "selftest: registered fragment $registered did not route to included"
+    elif [[ ! -f "$FIRMWARE_DIR/$rel" ]]; then
+      print_error "selftest: registered fragment $rel no longer exists"
+      failures=$((failures + 1))
+    elif [[ "$(route_bucket "$FIRMWARE_DIR/$rel")" != "included" ]]; then
+      print_error "selftest: registered fragment $rel did not route to included"
       failures=$((failures + 1))
     fi
   done
-  printf "%s\n" "$failures"
+  printf '%s\n' "$failures"
+}
+
+selftest_fragment_content_census() {
+  local failures=0 record mode rel abs state
+  for record in ${TIDY_HEADER_FRAGMENT_RECORDS[@]+"${TIDY_HEADER_FRAGMENT_RECORDS[@]}"}; do
+    mode="${record%%|*}"
+    rel="${record#*|}"
+    if ! state="$(header_static_decl_state "$FIRMWARE_DIR/$rel")"; then
+      failures=$((failures + 1))
+      continue
+    fi
+    if [[ "$mode" == "static-decl" && "$state" != yes ]]; then
+      print_error "selftest: static-decl fragment $rel no longer has that shape"
+      failures=$((failures + 1))
+    elif [[ "$mode" == "includer-context" && "$state" != no ]]; then
+      print_error "selftest: $rel now belongs in the derived static-decl class"
+      failures=$((failures + 1))
+    fi
+  done
+  while IFS= read -r abs; do
+    case "$abs" in *.h | *.hh | *.hpp | *.hxx) ;; *) continue ;; esac
+    rel="${abs#"$FIRMWARE_DIR"/}"
+    if ! state="$(header_static_decl_state "$abs")"; then
+      failures=$((failures + 1))
+      continue
+    fi
+    if [[ "$state" == yes ]] && ! header_fragment_mode "$rel" >/dev/null; then
+      print_error "selftest: new unregistered include fragment $rel"
+      failures=$((failures + 1))
+    fi
+  done < <(collect_source_files)
+  printf '%s\n' "$failures"
+}
+
+configured_header_filter_regex() {
+  sed -n "s/^HeaderFilterRegex: '\\(.*\\)'$/\\1/p" "$FIRMWARE_DIR/.clang-tidy"
+}
+
+selftest_fragment_header_filter() {
+  local failures=0 regex rel record matched=0 direct=0 abs
+  regex="$(configured_header_filter_regex)"
+  if [[ -z "$regex" ]]; then
+    print_error "selftest: .clang-tidy has no readable HeaderFilterRegex"
+    printf '%s\n' 1
+    return 0
+  fi
+  while IFS= read -r rel; do
+    case "$rel" in *.h | *.hh | *.hpp | *.hxx) ;; *) continue ;; esac
+    [[ -f "$FIRMWARE_DIR/$rel" ]] || continue
+    if grep -Eq "$regex" <<<"$FIRMWARE_DIR/$rel"; then
+      matched=$((matched + 1))
+      if ! header_fragment_mode "$rel" >/dev/null; then
+        print_error "selftest: HeaderFilterRegex admits non-fragment $rel"
+        failures=$((failures + 1))
+      fi
+    fi
+  done < <(git -C "$FIRMWARE_DIR" ls-files)
+  for record in ${TIDY_HEADER_FRAGMENT_RECORDS[@]+"${TIDY_HEADER_FRAGMENT_RECORDS[@]}"}; do
+    rel="${record#*|}"
+    if ! grep -Eq "$regex" <<<"$FIRMWARE_DIR/$rel"; then
+      print_error "selftest: HeaderFilterRegex omits owned fragment $rel"
+      failures=$((failures + 1))
+    fi
+  done
+  [[ "$matched" -eq 28 ]] || {
+    print_error "selftest: HeaderFilterRegex matched $matched headers, expected 28"
+    failures=$((failures + 1))
+  }
+  while IFS= read -r abs; do
+    case "$abs" in *.h | *.hh | *.hpp | *.hxx) ;; *) continue ;; esac
+    rel="${abs#"$FIRMWARE_DIR"/}"
+    header_fragment_mode "$rel" >/dev/null || direct=$((direct + 1))
+  done < <(collect_source_files)
+  [[ "$direct" -ge 800 ]] || {
+    print_error "selftest: only $direct ordinary headers remain direct lint inputs"
+    failures=$((failures + 1))
+  }
+  print_status "selftest: header ownership direct=$direct included=$matched"
+  printf '%s\n' "$failures"
+}
+
+selftest_reviewer_header_ownership() {
+  local failures=0 threadx xml
+  threadx="port/esp-hosted/tests/inc/ra8_esp_hosted_tx_shim_internal.h"
+  xml="apps/shared_libs/xml/tests/inc/ra8_rabook_xml_shim_test_fixture_internal.h"
+  if [[ "$(route_bucket "$FIRMWARE_DIR/$threadx")" == "included" ]]; then
+    print_error "selftest: ThreadX shim header lost direct-lint ownership"
+    failures=$((failures + 1))
+  fi
+  if [[ "$(route_bucket "$FIRMWARE_DIR/$xml")" == "included" ]]; then
+    print_error "selftest: XML fixture header lost direct-lint ownership"
+    failures=$((failures + 1))
+  fi
+  printf '%s\n' "$failures"
+}
+
+selftest_malformed_fragment() {
+  local path="$1" scan_rc=0
+  route_bucket "$path" >/dev/null 2>&1 || scan_rc=$?
+  if [[ "$scan_rc" -ne "$RC_INFRA" ]]; then
+    print_error "selftest: malformed header classifier did not fail closed"
+    return 1
+  fi
+  return 0
+}
+
+selftest_fragment_registry() {
+  local failures=0
+  failures=$((failures + $(selftest_fragment_records)))
+  failures=$((failures + $(selftest_fragment_content_census)))
+  failures=$((failures + $(selftest_fragment_header_filter)))
+  failures=$((failures + $(selftest_reviewer_header_ownership)))
+  printf '%s\n' "$failures"
+}
+
+create_fragment_routing_fixtures() {
+  local tmp="$1"
+  printf "%s\n" "RA8_INTERNAL static int internal_helper(void);" >"$tmp/fragment.h"
+  printf "%s\n" "RA8_INTERNAL static int" "internal_helper(void);" >"$tmp/multiline_return.h"
+  printf "%s\n" "RA8_INTERNAL" "static" "int internal_helper(void);" >"$tmp/multiline_specifiers.h"
+  printf "%s\n" "static inline int accessor(void) { return 0; }" >"$tmp/inline.h"
+  printf "%s\n" "static inline int accessor(void) { return 0; }" \
+    "RA8_INTERNAL static int internal_helper(void);" >"$tmp/mixed.h"
+  printf "%s\n" "int public_api(void);" >"$tmp/plain.h"
+  printf "%s\n" "static int value = internal_helper();" >"$tmp/static_data.h"
+  printf "%s\n" "static int (*handler)(void);" >"$tmp/static_function_pointer.h"
+  printf "%s\n" "void live_source(void);" >"$tmp/live.c"
+  printf "%s\n" '#include "tx_api.h"' >"$tmp/vendor_api.c"
+  printf "%s\n" "static int broken(" >"$tmp/malformed.h"
 }
 
 selftest_include_fragments() {
   local failures=0 tmp
   tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-tidy-frag.XXXXXXXX")"
-  printf "%s\n" "RA8_INTERNAL static int internal_helper(void);" >"$tmp/fragment.h"
-  printf "%s\n" "static inline int accessor(void) { return 0; }" >"$tmp/inline.h"
-  printf "%s\n" "int public_api(void);" >"$tmp/plain.h"
+  create_fragment_routing_fixtures "$tmp"
   local got
-  got="$(route_bucket "$tmp/fragment.h")"
-  if [[ "$got" != "included" ]]; then
-    print_error "selftest: a static-declaring header routed to '$got', expected 'included'"
-    failures=$((failures + 1))
-  fi
+  for got in fragment mixed multiline_return multiline_specifiers; do
+    if [[ "$(route_bucket "$tmp/$got.h")" != "included" ]]; then
+      print_error "selftest: $got.h did not route to included"
+      failures=$((failures + 1))
+    fi
+  done
   for got in inline plain; do
     if [[ "$(route_bucket "$tmp/$got.h")" == "included" ]]; then
       print_error "selftest: $got.h was treated as an include fragment"
       failures=$((failures + 1))
     fi
   done
+  for got in static_data static_function_pointer; do
+    if [[ "$(route_bucket "$tmp/$got.h")" == "included" ]]; then
+      print_error "selftest: $got.h data object was treated as an include fragment"
+      failures=$((failures + 1))
+    fi
+  done
+  if ! python3 "$FIRMWARE_DIR/scripts/checks/tidy/static_decl_scan.py" --selftest >&2; then
+    failures=$((failures + 1))
+  fi
+  if ! source_path_is_live "$tmp/live.c"; then
+    print_error "selftest: a live source path was rejected"
+    failures=$((failures + 1))
+  fi
+  if source_path_is_live "$tmp/missing.c"; then
+    print_error "selftest: an absent cached source path was accepted"
+    failures=$((failures + 1))
+  fi
+  if [[ "$(route_bucket "$tmp/vendor_api.c")" != "firmware" ]]; then
+    print_error "selftest: a vendor-API source did not route to firmware"
+    failures=$((failures + 1))
+  fi
+  if ! selftest_malformed_fragment "$tmp/malformed.h"; then
+    failures=$((failures + 1))
+  fi
   rm -rf -- "$tmp"
 
   failures=$((failures + $(selftest_fragment_registry)))
@@ -88,7 +256,8 @@ selftest_include_fragments() {
   local live=0 f
   while IFS= read -r f; do
     [[ "$(route_bucket "$f")" == "included" ]] && live=$((live + 1))
-  done < <(git -C "$FIRMWARE_DIR" ls-files "tests/support/*.h")
+  done < <(git -C "$FIRMWARE_DIR" ls-files --cached --others --exclude-standard \
+    "tests/support/inc/*.h")
   if [[ "$live" -eq 0 ]]; then
     print_error "selftest: no tests/support header is recognised as an include fragment"
     failures=$((failures + 1))
@@ -99,10 +268,13 @@ selftest_include_fragments() {
 selftest_routing() {
   local failures=0
   local -a cases=(
-    "$FIRMWARE_DIR/examples/x/y/main.c:firmware"
+    "$FIRMWARE_DIR/examples/x/y/src/main.c:firmware"
     "$FIRMWARE_DIR/port/usbx/src/a.c:firmware"
     "$FIRMWARE_DIR/port/posix/src/fw_if_fs_posix.c:host"
-    "$FIRMWARE_DIR/libs/ra8_epub/src/shim.cpp:cxx"
+    "$FIRMWARE_DIR/examples/x/y/tests/src/test_y.c:host"
+    "$FIRMWARE_DIR/apps/board/stand_alone/ereader/tests/src/test_y.c:host"
+    "$FIRMWARE_DIR/apps/host/mdl/tests/src/test_y.c:tools"
+    "$FIRMWARE_DIR/apps/shared_libs/epub/src/shim.cpp:cxx"
     "$FIRMWARE_DIR/libs/ra8_hal/src/k.cc:cxx"
     "$FIRMWARE_DIR/tools/ra8_emulator/src/display/board_view.m:objc"
     "$FIRMWARE_DIR/tools/ra8_emulator/src/x.c:tools"
@@ -110,7 +282,7 @@ selftest_routing() {
     "$FIRMWARE_DIR/libs/ra8_board_ra8p1/src/b.c:ra8p1"
   )
   local entry path want got
-  for entry in "${cases[@]}"; do
+  for entry in ${cases[@]+"${cases[@]}"}; do
     path="${entry%:*}"
     want="${entry##*:}"
     got="$(route_bucket "$path")"
@@ -302,6 +474,310 @@ selftest_gcc_constant_macros() {
 }
 
 # ---------------------------------------------------------------------------
+# Bare firmware headers borrow a nearby compile-database command. Prove that
+# the firmware pass always supplies the C23 language floor and that the exact
+# argument makes a header using the standard `bool` / `true` keywords parse
+# with clang-tidy. The C17 negative direction keeps the fixture sensitive: if
+# the C23 argument is dropped, the original ra8_err.h parse regression returns.
+#
+# Prints the number of failures.
+# ---------------------------------------------------------------------------
+selftest_firmware_c23_mode() {
+  local failures=0 language_arg mode clang_tidy tmp
+  language_arg="$(firmware_language_args)"
+  if [[ "$language_arg" != '--extra-arg-before=-std=c2x' ]]; then
+    print_error "selftest: firmware language argument is '$language_arg', expected C23"
+    failures=$((failures + 1))
+    printf '%s\n' "$failures"
+    return 0
+  fi
+
+  mode="${language_arg#--extra-arg-before=}"
+  if ! clang_tidy="$(find_clang_tidy)"; then
+    print_error "selftest: clang-tidy is required for the firmware C23 parse probe"
+    failures=$((failures + 1))
+    printf '%s\n' "$failures"
+    return 0
+  fi
+
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-tidy-c23.XXXXXXXX")"
+  printf '%s\n' 'static inline bool firmware_header_ok(void) { return true; }' >"$tmp/bare_bool.h"
+  if ! "$clang_tidy" '--checks=-*,clang-analyzer-core.DivideZero' "$tmp/bare_bool.h" -- \
+    -x c "$mode" >/dev/null 2>&1; then
+    print_error "selftest: bare bool firmware header did not parse with $mode"
+    failures=$((failures + 1))
+  fi
+  if "$clang_tidy" '--checks=-*,clang-analyzer-core.DivideZero' "$tmp/bare_bool.h" -- \
+    -x c -std=c17 >/dev/null 2>&1; then
+    print_error "selftest: bare bool fixture unexpectedly parsed as C17"
+    failures=$((failures + 1))
+  fi
+  rm -rf -- "$tmp"
+  printf '%s\n' "$failures"
+}
+
+# ---------------------------------------------------------------------------
+# Prove clang-tidy's included-header reporting itself in both directions with
+# actual static-declaration fragments: the bad authored declaration must fire,
+# its conforming neighbour must not, and a bad vendor declaration outside the
+# probe filter must stay hidden. The registry census above separately proves
+# that the shipped HeaderFilterRegex owns exactly the 24 live fragments.
+#
+# Prints the number of failures.
+# ---------------------------------------------------------------------------
+selftest_included_header_diagnostics() {
+  local failures=0 clang_tidy tmp vendor_tmp log probe_filter
+  if ! clang_tidy="$(find_clang_tidy)"; then
+    print_error "selftest: clang-tidy is required for the included-header probe"
+    printf '%s\n' 1
+    return 0
+  fi
+
+  mkdir -p "$FIRMWARE_DIR/tests/fixtures/inc"
+  tmp="$(mktemp -d "$FIRMWARE_DIR/tests/fixtures/inc/tidy-header.XXXXXXXX")"
+  vendor_tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-tidy-vendor.XXXXXXXX")"
+  log="$tmp/tidy.log"
+  probe_filter='(^|.*/)tidy-header\.[^/]*/(bad|good)\.h$'
+  printf '%s\n' 'static void badlyNamedHeaderFunction(void) {}' >"$tmp/bad.h"
+  printf '%s\n' 'static void well_named_header_function(void) {}' >"$tmp/good.h"
+  printf '%s\n' 'static void badlyNamedVendorFunction(void) {}' >"$vendor_tmp/vendor_bad.h"
+  printf '%s\n' '#include "bad.h"' '#include "good.h"' '#include "vendor_bad.h"' \
+    'int main(void) { badlyNamedHeaderFunction(); well_named_header_function(); badlyNamedVendorFunction(); return 0; }' >"$tmp/main.c"
+
+  "$clang_tidy" '--checks=-*,readability-identifier-naming' \
+    --config-file="$FIRMWARE_DIR/.clang-tidy" --header-filter="$probe_filter" \
+    "$tmp/main.c" -- -std=c2x -I"$vendor_tmp" >"$log" 2>&1 || true
+  if ! grep -qF "$tmp/bad.h:1:" "$log"; then
+    print_error "selftest: clang-tidy hid a bad included-fragment diagnostic"
+    failures=$((failures + 1))
+  fi
+  if grep -qF "$tmp/good.h:" "$log"; then
+    print_error "selftest: clang-tidy reported the conforming included fragment"
+    failures=$((failures + 1))
+  fi
+  if grep -qF "$vendor_tmp/vendor_bad.h:" "$log"; then
+    print_error "selftest: included-header probe admitted a vendor diagnostic"
+    failures=$((failures + 1))
+  fi
+  rm -rf -- "$tmp" "$vendor_tmp"
+  printf '%s\n' "$failures"
+}
+
+# ---------------------------------------------------------------------------
+# Prove the pinned tidy major outranks a hostile bare link, explicit selection
+# remains available, and every C/C++ driver reports the same major. The
+# configure_fuzz_db probes bind those checks to the production caller so a
+# selftest of a now-unused helper cannot stay green.
+#
+# Prints the number of failures.
+# ---------------------------------------------------------------------------
+write_fake_clang_driver() {
+  local path="$1" family="$2" major="$3"
+  printf '#!/bin/sh\nprintf "%s version %s.1.0\\n"\n' "$family" "$major" >"$path"
+  chmod +x "$path"
+}
+
+write_fixed_major_probe() {
+  local path="$1"
+  printf '%s\n' \
+    '#!/bin/sh' \
+    'test "$#" -eq 1 || exit 2' \
+    'printf "18\n"' >"$path"
+  chmod +x "$path"
+}
+
+selftest_tidy_selection() {
+  local tmp="$1" failures=0 found drivers
+  if ! found="$(PATH="$tmp:/usr/bin:/bin" CLANG_TIDY="" find_clang_tidy)"; then
+    print_error "selftest: pinned clang-tidy was not found"
+    failures=$((failures + 1))
+  elif [[ "$found" != "$RA8_PINNED_CLANG_TIDY" ]]; then
+    print_error "selftest: default clang-tidy did not use the repository pin"
+    failures=$((failures + 1))
+  fi
+  if ! found="$(PATH="$tmp:/usr/bin:/bin" CLANG_TIDY=clang-tidy-custom find_clang_tidy)"; then
+    print_error "selftest: explicit major-18 clang-tidy override was rejected"
+    failures=$((failures + 1))
+  elif [[ "$found" != clang-tidy-custom ]]; then
+    print_error "selftest: explicit clang-tidy override was not preserved"
+    failures=$((failures + 1))
+  elif ! drivers="$(PATH="$tmp:/usr/bin:/bin" matching_clang_drivers "$found")"; then
+    print_error "selftest: explicit clang-tidy override rejected its exact compiler pair"
+    failures=$((failures + 1))
+  elif [[ "$drivers" != $'clang-18\nclang++-18' ]]; then
+    print_error "selftest: explicit clang-tidy override selected the wrong compiler pair"
+    failures=$((failures + 1))
+  fi
+  if PATH="$tmp:/usr/bin:/bin" CLANG_TIDY=clang-tidy \
+    find_clang_tidy >/dev/null 2>&1; then
+    print_error "selftest: explicit clang-tidy major 22 bypassed the repository pin"
+    failures=$((failures + 1))
+  fi
+  if PATH="$tmp/hostile:$tmp:/usr/bin:/bin" CLANG_TIDY="" \
+    find_clang_tidy >/dev/null 2>&1; then
+    print_error "selftest: same-name hostile clang-tidy major 22 bypassed the repository pin"
+    failures=$((failures + 1))
+  fi
+  if PATH="$tmp:/usr/bin:/bin" CLANG_TIDY=missing-tidy \
+    find_clang_tidy >/dev/null; then
+    print_error "selftest: an explicit missing clang-tidy was accepted"
+    failures=$((failures + 1))
+  fi
+  printf '%s\n' "$failures"
+}
+
+selftest_tidy_driver_pairs() {
+  local tmp="$1" failures=0 drivers
+
+  # MC/DC for `(cc_major != major || cxx_major != major)`:
+  #   F,F -> accept; T,F -> reject C mismatch; F,T -> reject C++ mismatch.
+  # The three vectors independently prove both conditions affect the decision.
+  if ! drivers="$(PATH="$tmp:/usr/bin:/bin" matching_clang_drivers clang-tidy-18)"; then
+    print_error "selftest: matching clang-18 compiler pair was rejected"
+    failures=$((failures + 1))
+  elif [[ "$drivers" != $'clang-18\nclang++-18' ]]; then
+    print_error "selftest: clang-tidy-18 selected a mismatched compiler pair"
+    failures=$((failures + 1))
+  fi
+  if PATH="$tmp/pair-cc-wrong:/usr/bin:/bin" \
+    matching_clang_drivers clang-tidy-18 >/dev/null 2>&1; then
+    print_error "selftest: tidy accepted a C driver reporting the wrong major"
+    failures=$((failures + 1))
+  fi
+  if PATH="$tmp/pair-cxx-wrong:/usr/bin:/bin" \
+    matching_clang_drivers clang-tidy-18 >/dev/null 2>&1; then
+    print_error "selftest: tidy accepted a C++ driver reporting the wrong major"
+    failures=$((failures + 1))
+  fi
+  if PATH="$tmp/pair-missing-cxx" \
+    matching_clang_drivers clang-tidy-18 >/dev/null 2>&1; then
+    print_error "selftest: tidy accepted a major with no matching C++ driver"
+    failures=$((failures + 1))
+  fi
+  if PATH="$tmp:/usr/bin:/bin" matching_clang_drivers clang-tidy-66 >/dev/null 2>&1; then
+    print_error "selftest: tidy accepted a compiler whose reported major mismatched"
+    failures=$((failures + 1))
+  fi
+  if PATH="$tmp:/usr/bin:/bin" matching_clang_drivers clang-tidy >/dev/null 2>&1; then
+    print_error "selftest: tidy major 22 accepted a matching but unpinned compiler pair"
+    failures=$((failures + 1))
+  fi
+  printf '%s\n' "$failures"
+}
+
+selftest_tidy_driver_availability() {
+  local tmp="$1" failures=0 major_probe
+  major_probe="$tmp/fixed-major-probe"
+
+  # MC/DC for `(! command -v cc || ! command -v cxx)`:
+  #   F,F continues; T,F rejects missing C; F,T rejects missing C++.
+  # Inject the exercised fixed-major command into the production resolver so
+  # each vector is load-bearing on this availability decision rather than
+  # merely failing at a redundant later version probe.
+  if PATH="$tmp/pair-missing-cc" \
+    matching_clang_drivers clang-tidy-18 "$major_probe" >/dev/null 2>&1; then
+    print_error "selftest: tidy accepted a missing C driver"
+    failures=$((failures + 1))
+  fi
+  if PATH="$tmp/pair-missing-cxx" \
+    matching_clang_drivers clang-tidy-18 "$major_probe" >/dev/null 2>&1; then
+    print_error "selftest: tidy accepted a missing C++ driver"
+    failures=$((failures + 1))
+  fi
+  printf '%s\n' "$failures"
+}
+
+selftest_tidy_production_binding() {
+  local tmp="$1" failures=0 selected
+  if ! selected="$({
+    configure_fuzz_tree() {
+      printf '%s\n%s\n' "${4:?}" "${5:?}"
+    }
+    fuzz_db_is_usable() {
+      : "${1:?}"
+      return 0
+    }
+    merge_compile_db() {
+      : "${1:?}" "${2:?}"
+    }
+    configure_fuzz_tree unused unused unused clang-18 clang++-18
+    fuzz_db_is_usable unused
+    merge_compile_db unused unused
+    FIRMWARE_DIR="$tmp/firmware" BUILD_DIR="$tmp/build" \
+      PATH="$tmp:/usr/bin:/bin" configure_fuzz_db "$tmp/tests" /dev/null clang-tidy-18
+  })"; then
+    print_error "selftest: production fuzz configure rejected the exact compiler pair"
+    failures=$((failures + 1))
+  elif [[ "$selected" != $'clang-18\nclang++-18\nclang-18\nclang++-18' ]]; then
+    print_error "selftest: production fuzz configure did not forward the resolved pair"
+    failures=$((failures + 1))
+  fi
+  if (
+    configure_fuzz_tree() {
+      return 0
+    }
+    fuzz_db_is_usable() {
+      return 0
+    }
+    merge_compile_db() {
+      return 0
+    }
+    configure_fuzz_tree unused unused unused clang-18 clang++-18
+    fuzz_db_is_usable unused
+    merge_compile_db unused unused
+    FIRMWARE_DIR="$tmp/firmware" BUILD_DIR="$tmp/build" \
+      PATH="$tmp/pair-cxx-wrong:/usr/bin:/bin" \
+      configure_fuzz_db "$tmp/tests" /dev/null clang-tidy-18
+  ) >/dev/null 2>&1; then
+    print_error "selftest: production fuzz configure bypassed the compiler-pair check"
+    failures=$((failures + 1))
+  fi
+  printf '%s\n' "$failures"
+}
+
+selftest_tidy_tool_resolution() {
+  local failures=0 tmp
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-tidy-tools.XXXXXXXX")"
+  write_fake_clang_driver "$tmp/clang-tidy-18" "Debian LLVM" 18
+  write_fake_clang_driver "$tmp/clang-tidy" "Debian LLVM" 22
+  write_fake_clang_driver "$tmp/clang-tidy-custom" "Debian LLVM" 18
+  write_fake_clang_driver "$tmp/clang-18" "Debian clang" 18
+  cp "$tmp/clang-18" "$tmp/clang++-18"
+  write_fake_clang_driver "$tmp/clang-22" "Debian clang" 22
+  cp "$tmp/clang-22" "$tmp/clang++-22"
+  write_fake_clang_driver "$tmp/clang-tidy-77" "Debian LLVM" 77
+  write_fake_clang_driver "$tmp/clang-77" "Debian clang" 77
+  write_fake_clang_driver "$tmp/clang-tidy-66" "Debian LLVM" 66
+  write_fake_clang_driver "$tmp/clang-66" "Debian clang" 65
+  write_fake_clang_driver "$tmp/clang++-66" "Debian clang" 66
+  write_fixed_major_probe "$tmp/fixed-major-probe"
+  mkdir "$tmp/hostile"
+  write_fake_clang_driver "$tmp/hostile/clang-tidy-18" "Debian LLVM" 22
+  mkdir \
+    "$tmp/pair-cc-wrong" \
+    "$tmp/pair-cxx-wrong" \
+    "$tmp/pair-missing-cc" \
+    "$tmp/pair-missing-cxx"
+  write_fake_clang_driver "$tmp/pair-cc-wrong/clang-tidy-18" "Debian LLVM" 18
+  write_fake_clang_driver "$tmp/pair-cc-wrong/clang-18" "Debian clang" 17
+  write_fake_clang_driver "$tmp/pair-cc-wrong/clang++-18" "Debian clang" 18
+  write_fake_clang_driver "$tmp/pair-cxx-wrong/clang-tidy-18" "Debian LLVM" 18
+  write_fake_clang_driver "$tmp/pair-cxx-wrong/clang-18" "Debian clang" 18
+  write_fake_clang_driver "$tmp/pair-cxx-wrong/clang++-18" "Debian clang" 17
+  write_fake_clang_driver "$tmp/pair-missing-cc/clang-tidy-18" "Debian LLVM" 18
+  write_fake_clang_driver "$tmp/pair-missing-cc/clang++-18" "Debian clang" 18
+  write_fake_clang_driver "$tmp/pair-missing-cxx/clang-tidy-18" "Debian LLVM" 18
+  write_fake_clang_driver "$tmp/pair-missing-cxx/clang-18" "Debian clang" 18
+
+  failures=$((failures + $(selftest_tidy_selection "$tmp")))
+  failures=$((failures + $(selftest_tidy_driver_pairs "$tmp")))
+  failures=$((failures + $(selftest_tidy_driver_availability "$tmp")))
+  failures=$((failures + $(selftest_tidy_production_binding "$tmp")))
+  rm -rf -- "$tmp"
+  printf '%s\n' "$failures"
+}
+
+# ---------------------------------------------------------------------------
 # --selftest: prove the scope and the routing still work, in BOTH directions.
 # ---------------------------------------------------------------------------
 run_selftest() {
@@ -310,6 +786,9 @@ run_selftest() {
   failures=$((failures + $(selftest_scope)))
   failures=$((failures + $(selftest_arm_includes)))
   failures=$((failures + $(selftest_gcc_constant_macros)))
+  failures=$((failures + $(selftest_firmware_c23_mode)))
+  failures=$((failures + $(selftest_included_header_diagnostics)))
+  failures=$((failures + $(selftest_tidy_tool_resolution)))
 
   if [[ "$failures" -ne 0 ]]; then
     print_error "clang_tidy.sh selftest FAILED with $failures problem(s)."

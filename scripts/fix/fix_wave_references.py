@@ -88,7 +88,7 @@ SCAN_EXTS = frozenset(
         ".txt",
     }
 )
-SCAN_BASENAMES = frozenset({"Makefile", "Dockerfile", "CMakeLists.txt"})
+SCAN_BASENAMES = frozenset({"justfile", "Dockerfile", "CMakeLists.txt"})
 
 SELF_EXEMPT = frozenset(
     {
@@ -159,7 +159,7 @@ def should_scan(p: Path) -> bool:
     """Whether this file's name or suffix puts it in scope.
 
     Basename is checked as well as suffix so extensionless files the tree
-    cares about (CMakeLists.txt, Makefile) are not missed.
+    cares about (CMakeLists.txt, justfile) are not missed.
     """
     return p.name in SCAN_BASENAMES or p.suffix in SCAN_EXTS
 
@@ -177,7 +177,7 @@ def iter_files(root: Path) -> list[Path]:
                 p = Path(dp) / f
                 if should_scan(p):
                     out.append(p)
-    for top in ("Makefile", "CMakeLists.txt", "README.md"):
+    for top in ("justfile", "CMakeLists.txt", "README.md"):
         p = root / top
         if p.exists():
             out.append(p)
@@ -241,7 +241,7 @@ def main() -> int:
         if new != old:
             old_lines = old.splitlines()
             new_lines = new.splitlines()
-            n_changed = sum(1 for a, b in zip(old_lines, new_lines) if a != b)
+            n_changed = sum(1 for a, b in zip(old_lines, new_lines, strict=False) if a != b)
             n_changed += abs(len(old_lines) - len(new_lines))
             fixed_files += 1
             fixed_lines += n_changed

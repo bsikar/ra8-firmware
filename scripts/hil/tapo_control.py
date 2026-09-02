@@ -170,7 +170,7 @@ async def main() -> None:
         else:
             state = "ON" if dev.is_on else "OFF"
             print(f"{target} ({dev.alias}, {dev.model}): {state}")
-    except (KasaException, OSError, asyncio.TimeoutError) as exc:
+    except (TimeoutError, KasaException, OSError) as exc:
         # Almost always reachability or wrong credentials rather than a logic
         # bug -- surface a clean one-liner instead of a raw traceback.
         print(

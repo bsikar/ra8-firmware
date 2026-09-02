@@ -35,7 +35,7 @@
  * ``examples/ek_ra8d2/hw_validated/c6/c6_hosted_init`` established the
  * transaction, and ``c6_fw_version`` then completed a full esp-hosted RPC
  * round-trip through this vtable and checked the co-processor's answer.
- * ``make hil-c6`` re-runs all of it.
+ * ``just hil::c6`` re-runs all of it.
  *
  * The physical map came from ``c6_spi_probe``, which scope-qualified every J26
  * hole on 2026-07-27 at SPI mode 3 / 1 MHz; that probe drives the SCI directly

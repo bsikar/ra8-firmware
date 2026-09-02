@@ -155,14 +155,12 @@ static void internal_hash_pull_digest(uint8_t* digest, uint32_t to_read)
   while ((i + (uint32_t)k_ra8_rsip_trng_word_bytes) <= to_read) {
     /* Computed digest-word offset is a modelled register location (off-target-only
      * fiction), not a literal enumerator -- the analyzer can't see that. */
-    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed digest-word offset, not an enumerator.
     const uint32_t word = *ra8_rsip_reg32((ra8_rsip_off_t)off);
     priv_unpack_le(word, &digest[i]);
     i += (uint32_t)k_ra8_rsip_trng_word_bytes;
     off += (uint32_t)k_ra8_rsip_trng_word_bytes;
   }
   if (i < to_read) {
-    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed digest-word offset, not an enumerator.
     const uint32_t word = *ra8_rsip_reg32((ra8_rsip_off_t)off);
     for (uint32_t b = 0U; (i + b) < to_read; ++b) {
       digest[i + b] = (uint8_t)((word >> (b * k_ra8_rsip_byte_bits)) & k_ra8_rsip_byte_mask);
@@ -180,7 +178,7 @@ ra8_err_t ra8_rsip_hash(ra8_rsip_hash_alg_t alg,
   RA8_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
   uint32_t        needed = 0U;
   const ra8_err_t v_err  = internal_hash_validate(alg, msg, msg_len, digest_len, &needed);
-  RA8_RETURN_ON_ERROR(v_err, s_tag, "rsip_hash: validate"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, s_tag, "rsip_hash: validate");
 
   *ra8_rsip_reg32(k_ra8_rsip_off_hash_ctrl) = (uint32_t)alg;
 
@@ -585,7 +583,7 @@ ra8_err_t ra8_rsip_kdf(ra8_rsip_kdf_op_t            op,
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   const ra8_err_t v_err = internal_kdf_validate(op, ikm, label, label_len, salt, salt_len, out_len);
-  RA8_RETURN_ON_ERROR(v_err, s_tag, "rsip_kdf: validate"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, s_tag, "rsip_kdf: validate");
 
   internal_kdf_stage(op, ikm, label, label_len, salt, salt_len, out_len);
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op) = (uint32_t)op;

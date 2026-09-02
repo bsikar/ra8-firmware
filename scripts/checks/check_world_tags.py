@@ -63,20 +63,19 @@ SOURCE_SUFFIXES = (".c", ".h", ".cpp", ".hpp")
 
 EXCLUDED_PATH_PARTS = {"build", "_deps", "third_party"}
 
-# File names inside an app dir that carry boot-file (Ring 1) semantics.
-# main.c is Ring 6 / Application; everything else next to it (the
-# per-app boot files) is treated as Ring 1.
+# Paths inside an app dir that carry boot-file (Ring 1) semantics.
+# src/main.c is Ring 6 / Application; the per-app boot files are Ring 1.
 APP_BOOT_FILES = {
-    "vector_table.c",
-    "system_init.c",
-    "secure_exception.c",
-    "trustzone_init.c",
-    "trustzone_init.h",
+    "src/vector_table.c",
+    "src/system_init.c",
+    "src/secure_exception.c",
+    "src/trustzone_init.c",
+    "inc/trustzone_init.h",
 }
 
 
 def discover_app_dirs() -> tuple[str, ...]:
-    """Every examples/**/ dir at ANY depth holding both main.c and CMakeLists.txt.
+    """Every examples/**/ dir holding both src/main.c and CMakeLists.txt.
 
     Requiring BOTH is what distinguishes a real app directory from a shared
     subdirectory that merely contains sources. Discovery recurses on that pair
@@ -93,11 +92,9 @@ def discover_app_dirs() -> tuple[str, ...]:
     app_dirs: set[str] = set()
     for cmake in examples_root.rglob("CMakeLists.txt"):
         app_dir = cmake.parent
-        if any(
-            part in ("third_party", "_deps") or part.startswith("build") for part in app_dir.parts
-        ):
+        if any(part in EXCLUDED_PATH_PARTS or part.startswith("build") for part in app_dir.parts):
             continue
-        if (app_dir / "main.c").is_file():
+        if (app_dir / "src" / "main.c").is_file():
             app_dirs.add(app_dir.relative_to(REPO_ROOT).as_posix())
     return tuple(sorted(app_dirs))
 
@@ -150,7 +147,7 @@ def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
         return True
     # Per-app boot files (vector_table.c, system_init.c,
     # secure_exception.c, trustzone_init.c/h) are Ring 1 by virtue of
-    # the role they play, even though they live next to main.c.
+    # the role they play inside the app's src/ and inc/ directories.
     for app_dir in APP_DIRS:
         prefix = app_dir + "/"
         if rel_path.startswith(prefix):
@@ -164,7 +161,7 @@ def file_is_in_ring3_plus(rel_path: str) -> bool:
     """Whether a file is project-owned Ring 3+ code, where the World tag is required.
 
     Covers libs/ra8_hal/, libs/ra8_*_pal/, libs/ra8_nsc/, libs/ra8_secure_app/,
-    tests/, and per-app main.c (Ring 6 application code). These are the rings
+    tests/, and per-app src/main.c (Ring 6 application code). These are the rings
     that can run in either TrustZone world, which is precisely why each file
     must declare which one it is written for.
     """
@@ -178,8 +175,8 @@ def file_is_in_ring3_plus(rel_path: str) -> bool:
         return True
     if rel_path.startswith("tests/"):
         return True
-    # Per-app main.c is Ring 6.
-    return any(rel_path == f"{app_dir}/main.c" for app_dir in APP_DIRS)
+    # Per-app src/main.c is Ring 6.
+    return any(rel_path == f"{app_dir}/src/main.c" for app_dir in APP_DIRS)
 
 
 def iter_source_files(targets: Iterable[pathlib.Path]) -> Iterable[pathlib.Path]:

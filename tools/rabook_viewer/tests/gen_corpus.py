@@ -72,7 +72,7 @@ def build_jof(geom: JofGeom, codec: int = 0) -> bytes:
 
     The header carries the DECLARED tile_w/tile_h, but each tile stream holds
     only its edge-clamped payload (min(tile_w, width - x*tile_w) etc.), exactly
-    as ra8_jof_produce writes it. That split is the point of the giant-tiles
+    as jof_produce writes it. That split is the point of the giant-tiles
     fixture: a 16x16 image can declare 65535x65535 tiles, so the file stays tiny
     while the viewer's band_bytes = tile_w*tile_h*bpp balloons to ~17 GiB.
 

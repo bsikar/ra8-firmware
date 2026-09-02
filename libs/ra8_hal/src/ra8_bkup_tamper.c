@@ -141,9 +141,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_tamper_channels(const ra8_bkup_t
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_bkup_chan_count; ++i) {
     const ra8_err_t err = internal_validate_chan(&cfg->channels[i]);
-    RA8_RETURN_ON_ERROR(err,
-                        g_bkup_tag,
-                        "tamper_init: channel cfg out of range"); /* GCOVR_EXCL_BR_LINE */
+    RA8_RETURN_ON_ERROR(err, g_bkup_tag, "tamper_init: channel cfg out of range");
   }
   return k_ra8_ok;
 }
@@ -328,9 +326,7 @@ RA8_INTERNAL static uint8_t internal_compose_vbtadcr3(const ra8_bkup_tamper_conf
     return k_ra8_err_invalid_arg;
   }
   const ra8_err_t v_err = internal_validate_tamper_channels(cfg);
-  RA8_RETURN_ON_ERROR(v_err,
-                      g_bkup_tag,
-                      "tamper_init: channel cfg out of range"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, g_bkup_tag, "tamper_init: channel cfg out of range");
 
   /* The whole tamper register file is PRC1 (HUM Ch 13.1 Table 13.1 p 521). */
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_lpm)

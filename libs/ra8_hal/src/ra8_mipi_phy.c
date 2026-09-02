@@ -194,8 +194,8 @@ static void internal_mipi_phy_mstp_unstop(void)
 RA8_INTERNAL
 static ra8_err_t internal_mipi_phy_wait_set(volatile const uint32_t* reg, uint32_t mask)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_mipi_phy_spin_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((*reg & mask) == mask) {                                         /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_mipi_phy_spin_budget; ++i) {
+    if ((*reg & mask) == mask) {
       return k_ra8_ok;
     }
   }
@@ -432,16 +432,16 @@ static void internal_mipi_phy_cache_state(const ra8_mipi_phy_config_t* cfg)
 ra8_err_t ra8_mipi_phy_init(const ra8_mipi_phy_config_t* cfg)
 {
   const ra8_err_t v_err = internal_mipi_phy_validate_init_cfg(cfg);
-  RA8_RETURN_ON_ERROR(v_err, s_tag, "init: bad cfg"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, s_tag, "init: bad cfg");
 
   /* Steps 1-5 -- HUM Ch 64.4.2 / 64.2.14 / 64.2.1 / 64.2.5 / 64.2.6 */
   const ra8_err_t pwr_err = internal_mipi_phy_init_power_up(cfg);
-  RA8_RETURN_ON_ERROR(pwr_err, s_tag, "init: LDO did not stabilise"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(pwr_err, s_tag, "init: LDO did not stabilise");
 
   if (cfg->mode == k_ra8_mipi_phy_mode_dsi_host) {
     /* Steps 6-9 -- HUM Ch 64.2.2/64.2.4/64.2.3/64.2.6 p 3823-3826 */
     const ra8_err_t m_err = internal_mipi_phy_init_host(cfg);
-    RA8_RETURN_ON_ERROR(m_err, s_tag, "init: PLL did not lock"); /* GCOVR_EXCL_BR_LINE */
+    RA8_RETURN_ON_ERROR(m_err, s_tag, "init: PLL did not lock");
   } else {
     /* CSI device mode: the PHY is a receiver, so the host-side PLL
      * controls (PLFCR / ESCCR / PLOCR) are unused by this block. Make
@@ -515,7 +515,9 @@ ra8_err_t ra8_mipi_phy_recover_from_error(const ra8_mipi_phy_config_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "recover: cfg must not be nullptr");
   const ra8_err_t r_err = ra8_mipi_phy_reset();
-  RA8_RETURN_ON_ERROR(r_err, s_tag, "recover: reset failed"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- HW PHY/PLL ready */
+  RA8_RETURN_ON_ERROR(r_err, s_tag, "recover: reset failed");
+  /* GCOVR_EXCL_BR_STOP */
   return ra8_mipi_phy_init(cfg);
 }
 
@@ -638,7 +640,7 @@ ra8_err_t ra8_mipi_phy_set_lane_speed(const ra8_mipi_phy_pll_t* pll)
 {
   RA8_CHECK_NULL_PTR(pll, s_tag, "pll must not be nullptr");
   const ra8_err_t v_err = internal_mipi_phy_validate_pll(pll);
-  RA8_RETURN_ON_ERROR(v_err, s_tag, "set_lane_speed: pll out of range"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, s_tag, "set_lane_speed: pll out of range");
 
   /* HUM Ch 64.2.2 "DPHYPLFCR : D-PHY PLL Frequency Control Register", p 3824 */
   /* ("DPHYPLFCR must be set while D-PHY PLL operation is stopped".) */
@@ -811,9 +813,7 @@ ra8_err_t ra8_mipi_phy_validate_pll_band(const ra8_mipi_phy_pll_t* pll, uint8_t 
     return k_ra8_err_invalid_arg;
   }
   const ra8_err_t n_err = internal_mipi_phy_validate_pll(pll);
-  RA8_RETURN_ON_ERROR(n_err,
-                      s_tag,
-                      "validate_pll_band: NMUL out of range"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(n_err, s_tag, "validate_pll_band: NMUL out of range");
 
   /* HUM Ch 64.2.2 "DPHYPLFCR : D-PHY PLL Frequency Control Register" p 3824 */
   const uint32_t f_mhz = priv_mipi_phy_compute_freq(pll, mosc_mhz);

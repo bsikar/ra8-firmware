@@ -178,6 +178,56 @@ typedef enum : uint16_t {
 } ra8_cnecc_isr_const_t;
 
 /**
+ * @brief Compute the EC710CTL value one instance's configuration asks for.
+ *
+ * @details
+ * Extracted from ``internal_apply_instance`` so the apply procedure reads as
+ * the HUM 42.3.1 figure-42.1 sequence. The register citations travel with
+ * the bits they describe, as the citation policy requires.
+ *
+ * @param[in] cfg Per-instance settings; already validated by the caller.
+ *
+ * @return The value to store in ``EC710CTL``, unlock pattern included.
+ * @retval k_ra8_cnecc_mask_emca_unlock Always set, so the write is honoured.
+ *
+ * @pre ``cfg`` is non-NULL; the caller has validated all pointer parameters.
+ * @pre The parent module is ungated, so a later store to EC710CTL lands.
+ * @post No global state is modified; the function is a pure computation.
+ * @post The returned value always carries the EMCA unlock pattern.
+ *
+ * @note Thread safety: pure function, safe from any context.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static uint32_t internal_cnecc_ctl_value(const ra8_cnecc_instance_cfg_t* cfg)
+{
+  /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2868
+   * Step 2: program IRQ enables + correction permission. The
+   * ``EC1ECP`` bit is "correction NOT executed" when SET, so the
+   * caller's "correct_1bit = true" maps to bit cleared. */
+  uint32_t ctl = 0U;
+  if (cfg->irq_1bit) {
+    ctl |= k_ra8_cnecc_mask_ec1edic;
+  }
+  if (cfg->irq_2bit) {
+    ctl |= k_ra8_cnecc_mask_ec2edic;
+  }
+  if (!cfg->correct_1bit) {
+    ctl |= k_ra8_cnecc_mask_ec1ecp;
+  }
+
+  /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register" EMCA notes,
+   * p 2870: writes to ``ECERVF`` are ignored unless ``EMCA[1:0]``
+   * is ``01b`` in the same write. Combine the unlock pattern with
+   * the ECERVF bit (or omit it for "configured but not running"). */
+  ctl |= k_ra8_cnecc_mask_emca_unlock;
+  if (cfg->enable) {
+    ctl |= k_ra8_cnecc_mask_ecervf;
+  }
+  return ctl;
+}
+
+/**
  * @brief Apply one instance's configuration.
  *
  * @details
@@ -206,11 +256,11 @@ static ra8_err_t internal_apply_instance(uint8_t instance, const ra8_cnecc_insta
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 447 */
   const ra8_err_t mst_err = ra8_mstp_enable(s_cnecc_mstp_table[instance]);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "cnecc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "cnecc_init: mstp enable");
 
   volatile r_cnecc_regs_t* reg = ra8_cnecc(instance);
   if (reg == nullptr) {              /* GCOVR_EXCL_BR_LINE -- bounded by caller. */
-    return k_ra8_err_hw_init_failed; /* GCOVR_EXCL_LINE                          */
+    return k_ra8_err_hw_init_failed; /* GCOVR_EXCL_LINE -- MSTP HW readback      */
   }
 
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2868
@@ -219,29 +269,7 @@ static ra8_err_t internal_apply_instance(uint8_t instance, const ra8_cnecc_insta
    * slate (HUM 42.2.1 p 2870 ECER1C/ECER2C clearing notes). */
   reg->EC710CTL = k_ra8_cnecc_mask_clear_all;
 
-  /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2868
-   * Step 2: program IRQ enables + correction permission. The
-   * ``EC1ECP`` bit is "correction NOT executed" when SET, so the
-   * caller's "correct_1bit = true" maps to bit cleared. */
-  uint32_t ctl = 0U;
-  if (cfg->irq_1bit) {
-    ctl |= k_ra8_cnecc_mask_ec1edic;
-  }
-  if (cfg->irq_2bit) {
-    ctl |= k_ra8_cnecc_mask_ec2edic;
-  }
-  if (!cfg->correct_1bit) {
-    ctl |= k_ra8_cnecc_mask_ec1ecp;
-  }
-
-  /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register" EMCA notes,
-   * p 2870: writes to ``ECERVF`` are ignored unless ``EMCA[1:0]``
-   * is ``01b`` in the same write. Combine the unlock pattern with
-   * the ECERVF bit (or omit it for "configured but not running"). */
-  ctl |= k_ra8_cnecc_mask_emca_unlock;
-  if (cfg->enable) {
-    ctl |= k_ra8_cnecc_mask_ecervf;
-  }
+  const uint32_t ctl = internal_cnecc_ctl_value(cfg);
 
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2868 */
   reg->EC710CTL = ctl;
@@ -315,7 +343,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_cnecc_instance_count; ++i) {
     const ra8_err_t err = internal_apply_instance(i, &cfg->instances[i]);
-    RA8_RETURN_ON_ERROR(err, s_tag, "cnecc_init apply"); /* GCOVR_EXCL_BR_LINE */
+    RA8_RETURN_ON_ERROR(err, s_tag, "cnecc_init apply");
   }
   s_cnecc_cached_cfg  = *cfg;
   s_cnecc_initialized = true;
@@ -401,7 +429,9 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
     /* HUM Ch 42.5.2 "Return from Software Standby Mode", p 2876
      * Step 1 + 2: replay cached cfg and re-enable judgment. */
     const ra8_err_t err = internal_apply_instance(i, &s_cnecc_cached_cfg.instances[i]);
-    RA8_RETURN_ON_ERROR(err, s_tag, "cnecc_exit_standby apply"); /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_BR_START -- internal_apply_instance() error edge on the standby replay path */
+    RA8_RETURN_ON_ERROR(err, s_tag, "cnecc_exit_standby apply");
+    /* GCOVR_EXCL_BR_STOP */
   }
   return k_ra8_ok;
 }
@@ -659,8 +689,8 @@ void ra8_cnecc_isr_handler(void* ctx)
     return; /* GCOVR_EXCL_LINE -- attach packs a valid index. */
   }
   volatile r_cnecc_regs_t* reg = ra8_cnecc(instance);
-  if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE */
-    return;             /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- ISR unit reg fixed non-null */
+    return;             /* GCOVR_EXCL_LINE -- ISR unit reg fixed non-null    */
   }
 
   /* HUM Ch 42.3.1 figure 42.1 p 2874:
@@ -835,7 +865,7 @@ static uint32_t internal_crc32(const uint8_t* data, uint32_t bytes)
 {
   uint32_t        got = 0U;
   const ra8_err_t err = ra8_cnecc_compute(addr, len, &got);
-  RA8_RETURN_ON_ERROR(err, s_tag, "verify: compute failed"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "verify: compute failed");
   if (got != expected_ecc) {
     ra8_log_error_val(s_tag, "verify mismatch", got);
     return k_ra8_err_crc_mismatch;

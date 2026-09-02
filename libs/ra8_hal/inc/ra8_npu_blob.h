@@ -5,7 +5,7 @@
  *
  * @details
  * Defines the small, first-party, little-endian container the OFFLINE Vela build
- * step (`tools/vela/vela_gen.py`) emits and the ON-TARGET loader
+ * step (`tools/vela/src/vela_gen.py`) emits and the ON-TARGET loader
  * (`ra8_npu_loader.c`) consumes. A bare-metal target does NOT parse a TFLite
  * flatbuffer at run time; instead the host build step distills a Vela
  * `_vela.tflite` (the `ethos-u` custom operator's command stream plus the tensor

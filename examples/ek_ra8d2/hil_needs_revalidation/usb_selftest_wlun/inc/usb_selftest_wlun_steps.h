@@ -1,6 +1,6 @@
 /**
  * @file
- * examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/usb_selftest_wlun_steps.h
+ * examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/inc/usb_selftest_wlun_steps.h
  * @brief Shared seam for the USB writable-LUN self-loop: constants + helpers
  *
  * @par Tag

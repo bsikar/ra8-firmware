@@ -2,7 +2,7 @@
 
 **Magic:** `NSR1` (`0x3152534E`) &nbsp;|&nbsp;
 **Library:** `libs/ra8_tz_secure_boot` &nbsp;|&nbsp;
-**Producer:** `apps/stand_alone/ereader/ns_image.ld` (the NS linker script) &nbsp;|&nbsp;
+**Producer:** `apps/board/stand_alone/ereader/ns_image.ld` (the NS linker script) &nbsp;|&nbsp;
 **Size:** 8 bytes, fixed, at NS base + `0x40`
 
 ---
@@ -178,13 +178,13 @@ hexdump of a flashed NS image. See @ref md_docs_2formats_2BINARY__FORMATS.
 
 ### 4.1 Producing (the NS linker script)
 
-`apps/stand_alone/ereader/ns_image.ld` places a `.ns_rot_header` section at `ALIGN(4)`
+`apps/board/stand_alone/ereader/ns_image.ld` places a `.ns_rot_header` section at `ALIGN(4)`
 immediately after the vector table, emits the magic word and a `body_len`
 computed from the linker's own symbols (`signed_body_end - ns_run_start`), and
 then asserts the placement. No post-processing step is involved: the header is a
 product of linking, so it cannot drift from the image it describes.
 
-`tools/rot_sign.py` later appends the ROT1 trailer after exactly `body_len`
+`tools/rot/src/rot_sign.py` later appends the ROT1 trailer after exactly `body_len`
 bytes, which is what makes `[ body ][ trailer ]` line up with what the header
 claims.
 
@@ -310,7 +310,7 @@ build instead of the boot.
 
 - `ra8_tz_secure_boot.h` -- `ra8_ns_rot_header_t`, the offset constant, and
   `ra8_tz_ns_signed_body_len()`
-- `apps/stand_alone/ereader/ns_image.ld` -- the producing linker script and its
+- `apps/board/stand_alone/ereader/ns_image.ld` -- the producing linker script and its
   placement assertion
 - @ref md_docs_2formats_2ROT1 -- the trailer this header locates, and the
   verification flow that consumes both

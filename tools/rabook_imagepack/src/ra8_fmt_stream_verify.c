@@ -14,9 +14,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "jof_produce.h"
 #include "ra8_attributes.h"
 #include "ra8_fmt_stream.h"
-#include "ra8_jof_produce.h"
 
 /** @brief Verification geometry, report, and probe constants. */
 typedef enum : uint32_t {
@@ -36,17 +36,28 @@ typedef struct {
 
 /** @brief Comparison state shared by bounded tile/row helpers. */
 typedef struct {
-  const ra8_fmt_jof_verify_requirements_t* need;    /**< Exact geometry and capacities.  */
-  ra8_fmt_jof_verify_workspace_t*          work;    /**< Phase-reused caller buffers.    */
-  const ra8_fmt_spool_t*                   ref;     /**< Sealed reference atlas.         */
-  const ra8_fmt_spool_t*                   got;     /**< Sealed banded atlas.            */
-  const ra8_jof_info_t*                    rinfo;   /**< Parsed reference geometry.      */
-  const ra8_jof_info_t*                    ginfo;   /**< Parsed subject geometry.        */
-  ra8_fmt_transaction_t*                   dump;    /**< Optional unpublished PPM stage. */
-  const ra8_fmt_sink_t*                    report;  /**< Human-readable report sink.     */
-  uint64_t                                 diffs;   /**< Differing byte count.           */
-  uint32_t                                 shown;   /**< Detailed differences emitted.   */
-  bool                                     dump_ok; /**< PPM stage remains complete.     */
+  /** Exact geometry and capacities. */
+  const ra8_fmt_jof_verify_requirements_t* need;
+  /** Phase-reused caller buffers. */
+  ra8_fmt_jof_verify_workspace_t* work;
+  /** Sealed reference atlas. */
+  const ra8_fmt_spool_t* ref;
+  /** Sealed banded atlas. */
+  const ra8_fmt_spool_t* got;
+  /** Parsed reference geometry. */
+  const jof_info_t* rinfo;
+  /** Parsed subject geometry. */
+  const jof_info_t* ginfo;
+  /** Optional unpublished PPM stage. */
+  ra8_fmt_transaction_t* dump;
+  /** Human-readable report sink. */
+  const ra8_fmt_sink_t* report;
+  /** Differing byte count. */
+  uint64_t diffs;
+  /** Detailed differences emitted. */
+  uint32_t shown;
+  /** PPM stage remains complete. */
+  bool dump_ok;
 } verify_compare_t;
 
 /**
@@ -162,17 +173,17 @@ static ra8_err_t internal_produce(const ra8_fmt_source_t*                  sourc
                                   uint16_t                                 tile_h,
                                   ra8_fmt_jof_verify_workspace_t*          work,
                                   ra8_fmt_spool_t*                         spool,
-                                  ra8_jof_info_t*                          info)
+                                  jof_info_t*                              info)
 {
-  verify_pull_t               pull = {.source = source, .offset = 0U};
-  const ra8_jof_produce_cfg_t cfg  = {
+  verify_pull_t           pull = {.source = source, .offset = 0U};
+  const jof_produce_cfg_t cfg  = {
     .pull          = internal_pull,
     .pull_ctx      = &pull,
     .sink          = internal_spool_append,
     .sink_ctx      = spool,
     .tile_w        = need->width,
     .tile_h        = tile_h,
-    .codec         = (uint8_t)k_ra8_jof_codec_deflate,
+    .codec         = (uint8_t)k_jof_codec_deflate,
     .max_width     = need->width,
     .max_height    = need->height,
     .work          = work->work,
@@ -182,7 +193,7 @@ static ra8_err_t internal_produce(const ra8_fmt_source_t*                  sourc
   };
   ra8_err_t rc = internal_stable(source);
   if (rc == k_ra8_ok) {
-    rc = ra8_jof_produce(&cfg, info);
+    rc = jof_produce(&cfg, info);
   }
   if (rc == k_ra8_ok) {
     rc = internal_stable(source);
@@ -311,9 +322,8 @@ internal_field(const ra8_fmt_sink_t* sink, uint64_t value, const char* suffix, r
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void internal_geometry(const ra8_fmt_sink_t* report,
-                              const ra8_jof_info_t* info,
-                              const ra8_jof_info_t* subject)
+static void
+internal_geometry(const ra8_fmt_sink_t* report, const jof_info_t* info, const jof_info_t* subject)
 {
   ra8_err_t rc = internal_text(report, "verify: ");
   internal_field(report, info->width, "x", &rc);
@@ -507,7 +517,7 @@ static void internal_dump_row(verify_compare_t* state, const uint8_t* row)
  */
 RA8_INTERNAL
 static ra8_err_t internal_preflight(const ra8_fmt_spool_t*          spool,
-                                    const ra8_jof_info_t*           info,
+                                    const jof_info_t*               info,
                                     ra8_fmt_jof_verify_workspace_t* work,
                                     bool                            reference)
 {
@@ -516,17 +526,17 @@ static ra8_err_t internal_preflight(const ra8_fmt_spool_t*          spool,
   for (uint16_t y = 0U; y < info->tile_rows; ++y) {
     uint16_t        out_w = 0U;
     uint16_t        out_h = 0U;
-    const ra8_err_t rc    = ra8_jof_read_tile(spool->read_at,
-                                              spool->ctx,
-                                              info,
-                                              0U,
-                                              y,
-                                              work->scratch,
-                                              work->scratch_cap,
-                                              buffer,
-                                              cap,
-                                              &out_w,
-                                              &out_h);
+    const ra8_err_t rc    = jof_read_tile(spool->read_at,
+                                          spool->ctx,
+                                          info,
+                                          0U,
+                                          y,
+                                          work->scratch,
+                                          work->scratch_cap,
+                                          buffer,
+                                          cap,
+                                          &out_w,
+                                          &out_h);
     if ((rc != k_ra8_ok) || (out_w != info->width) || (reference && (out_h != 1U))) {
       return (rc == k_ra8_ok) ? k_ra8_err_validation_failed : rc;
     }
@@ -589,34 +599,34 @@ static ra8_err_t internal_compare(verify_compare_t* state)
   for (uint16_t band_y = 0U; band_y < state->ginfo->tile_rows; ++band_y) {
     uint16_t  band_w = 0U;
     uint16_t  band_h = 0U;
-    ra8_err_t rc     = ra8_jof_read_tile(state->got->read_at,
-                                         state->got->ctx,
-                                         state->ginfo,
-                                         0U,
-                                         band_y,
-                                         state->work->scratch,
-                                         state->work->scratch_cap,
-                                         state->work->band_tile,
-                                         state->work->band_tile_cap,
-                                         &band_w,
-                                         &band_h);
+    ra8_err_t rc     = jof_read_tile(state->got->read_at,
+                                     state->got->ctx,
+                                     state->ginfo,
+                                     0U,
+                                     band_y,
+                                     state->work->scratch,
+                                     state->work->scratch_cap,
+                                     state->work->band_tile,
+                                     state->work->band_tile_cap,
+                                     &band_w,
+                                     &band_h);
     if ((rc != k_ra8_ok) || (band_w != state->need->width)) {
       return (rc == k_ra8_ok) ? k_ra8_err_validation_failed : rc;
     }
     for (uint16_t row = 0U; row < band_h; ++row) {
       uint16_t ref_w = 0U;
       uint16_t ref_h = 0U;
-      rc             = ra8_jof_read_tile(state->ref->read_at,
-                                         state->ref->ctx,
-                                         state->rinfo,
-                                         0U,
-                                         global_y,
-                                         state->work->scratch,
-                                         state->work->scratch_cap,
-                                         state->work->row,
-                                         state->work->row_cap,
-                                         &ref_w,
-                                         &ref_h);
+      rc             = jof_read_tile(state->ref->read_at,
+                                     state->ref->ctx,
+                                     state->rinfo,
+                                     0U,
+                                     global_y,
+                                     state->work->scratch,
+                                     state->work->scratch_cap,
+                                     state->work->row,
+                                     state->work->row_cap,
+                                     &ref_w,
+                                     &ref_h);
       if ((rc != k_ra8_ok) || (ref_w != state->need->width) || (ref_h != 1U)) {
         return (rc == k_ra8_ok) ? k_ra8_err_validation_failed : rc;
       }
@@ -644,7 +654,7 @@ static ra8_err_t internal_compare(verify_compare_t* state)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool internal_info(const ra8_jof_info_t*                    info,
+static bool internal_info(const jof_info_t*                        info,
                           const ra8_fmt_jof_verify_requirements_t* need,
                           uint16_t                                 tile_h)
 {
@@ -652,7 +662,7 @@ static bool internal_info(const ra8_jof_info_t*                    info,
   return (info->width == need->width) && (info->height == need->height) &&
          (info->tile_w == need->width) && (info->tile_h == tile_h) && (info->tile_cols == 1U) &&
          (info->tile_rows == rows) && (info->tile_count == rows) && (info->bpp == need->bpp) &&
-         (info->codec == (uint8_t)k_ra8_jof_codec_deflate);
+         (info->codec == (uint8_t)k_jof_codec_deflate);
 }
 
 /**
@@ -789,8 +799,8 @@ static ra8_err_t internal_check(const ra8_fmt_source_t*                  referen
 
 /** @brief Parsed and fully preflighted reference and subject atlases. */
 typedef struct {
-  ra8_jof_info_t reference; /**< One-row reference geometry. */
-  ra8_jof_info_t banded;    /**< Production-band geometry.   */
+  jof_info_t reference; /**< One-row reference geometry. */
+  jof_info_t banded;    /**< Production-band geometry.   */
 } verify_atlases_t;
 
 /**
@@ -836,10 +846,10 @@ static ra8_err_t internal_accept(const ra8_fmt_spool_t*                   spool,
                                  const ra8_fmt_jof_verify_requirements_t* need,
                                  ra8_fmt_jof_verify_workspace_t*          work,
                                  bool                                     reference,
-                                 ra8_jof_info_t*                          info)
+                                 jof_info_t*                              info)
 {
   const uint16_t tile_h = reference ? 1U : need->band_height;
-  ra8_err_t      rc     = ra8_jof_parse(spool->read_at, spool->ctx, info->total_size, info);
+  ra8_err_t      rc     = jof_parse(spool->read_at, spool->ctx, info->total_size, info);
   if ((rc == k_ra8_ok) && !internal_info(info, need, tile_h)) {
     rc = k_ra8_err_validation_failed;
   }

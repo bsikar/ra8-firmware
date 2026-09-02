@@ -43,13 +43,10 @@ endif()
 ra8_add_app(
   NAME cpu1_pingpong_ipc
   STACK_BYTES 2200
-  DESCRIPTION "Bare-metal cpu1_pingpong_ipc firmware for RA8D2"
+  DESCRIPTION "Bare-metal cpu1_pingpong_ipc firmware for RA8D2" AUX_SRCS src/cpu1_main.c
   NO_NSC
   LIBS ra8_tz_secure_boot
 )
-
-# Non-secure entry translation unit for the TrustZone ping-pong.
-target_sources(cpu1_pingpong_ipc.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c)
 
 #############################################################################
 # Second (Cortex-M33 / CPU1) image, embedded into the M85 ELF
@@ -59,7 +56,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
   set(CPU1_NAME cpu1_pingpong_ipc_cpu1)
   add_executable(
     ${CPU1_NAME}.elf
-    ${CMAKE_CURRENT_SOURCE_DIR}/cpu1_main.c ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cpu1_main.c ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
     ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_log.c ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_scb.c
   )
   target_compile_definitions(${CPU1_NAME}.elf PRIVATE RA8_BUILD_FOR_CPU1)
@@ -87,8 +84,8 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
     -Wl,--Map=${CPU1_NAME}.map
   )
   target_include_directories(
-    ${CPU1_NAME}.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${RA8_REPO_ROOT}/libs/ra8_core/inc
-                             ${RA8_REPO_ROOT}/libs/ra8_hal/inc
+    ${CPU1_NAME}.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src
+                             ${RA8_REPO_ROOT}/libs/ra8_core/inc ${RA8_REPO_ROOT}/libs/ra8_hal/inc
   )
   set_target_properties(${CPU1_NAME}.elf PROPERTIES LINK_DEPENDS ${CPU1_LINKER_SCRIPT})
   add_custom_command(

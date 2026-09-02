@@ -1,6 +1,6 @@
 # reflow_content
 
-Headless check of the `ra8_reflow` book-content render path (#115): lay out a
+Headless check of the `reflow` book-content render path (#115): lay out a
 baked multi-paragraph chapter into a small RGB565 framebuffer, render every page
 and fold a hash over the framebuffer output, then re-flow the cached chapter at
 a larger font size and render every page again. No panel, no card, no touch.

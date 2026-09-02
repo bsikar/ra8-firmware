@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # bench_human.sh -- the verbs a PERSON standing at the bench uses: hold, free,
 # extend, take.
@@ -119,7 +120,7 @@ cmd_free() {
   me="$(bench_default_name human)"
   if [ "$holder" != "$me" ] && [ "$holder" != "${RA8_BENCH_ACTOR:-}" ]; then
     bench_say "refusing: the bench is held by $holder ($cls), not by you ($me)."
-    bench_say "To preempt it:  make bench-take WHY=\"...\""
+    bench_say "To preempt it:  just hil::take \"reason\""
     return "$RA8_BENCH_EXIT_HELD"
   fi
   bench_host release "$lock_id"
@@ -180,7 +181,7 @@ cmd_take() {
   local reason="$BENCH_OPT_INTENT" confirm="$BENCH_OPT_CONFIRM"
   local budget_s="${BENCH_OPT_BUDGET_S:-1800}" wait_s="$BENCH_OPT_WAIT_S"
   [ -n "$reason" ] || {
-    bench_say "usage: make bench-take WHY=\"why you are taking it from them\""
+    bench_say "usage: just hil::take \"why you are taking it from them\""
     bench_say "The reason is journaled. Preempting somebody silently is how a"
     bench_say "half-flashed board becomes a mystery."
     return "$RA8_BENCH_EXIT_UNKNOWN"
@@ -227,5 +228,5 @@ _cmd_take_refuse() {
   fi
   bench_say "  A human holder can only be preempted by another human with an"
   bench_say "  explicit acknowledgement that someone may physically be at the bench:"
-  bench_say "      make bench-take WHY=\"...\" CONFIRM=$RA8_BENCH_CONFIRM_PHRASE"
+  bench_say "      just hil::take \"reason\" 30m $RA8_BENCH_CONFIRM_PHRASE"
 }

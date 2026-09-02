@@ -105,7 +105,7 @@ def tracked_files() -> list[str]:
     new top-level directory is covered the day it lands and cannot quietly
     fall out of scope the way a hardcoded tuple does.
     """
-    named = ["Makefile", "CMakeLists.txt"]
+    named = ["justfile", "Justfile", "CMakeLists.txt"]
     paths = list(first_party_paths(SCAN_SUFFIXES))
     paths.extend(path for path in first_party_paths(tuple(named)) if Path(path).name in set(named))
     return sorted(set(paths))
@@ -138,12 +138,13 @@ def scannable(path: Path) -> bool:
         ".py",
         ".sh",
         ".cmake",
+        ".just",
         ".yml",
         ".yaml",
         ".txt",
     }:
         return True
-    return path.name in {"Makefile", "CMakeLists.txt"}
+    return path.name in {"justfile", "Justfile", "CMakeLists.txt"}
 
 
 def scan_text(text: str) -> list[tuple[int, str]]:

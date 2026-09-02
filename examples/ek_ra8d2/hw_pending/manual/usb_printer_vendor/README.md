@@ -15,11 +15,11 @@ sec 4.2) from the class layer's port-status shadow. The vendor interface is a
 bulk OUT to bulk IN loopback for a host libusb or WinUSB script.
 
 Unlike the ThreadX + USBX device demos, this app has **no RTOS and no USBX**: the
-native `ra8_usb` driver carries no chapter-9 responder, so `main.c` runs a small
+native `ra8_usb` driver carries no chapter-9 responder, so `src/main.c` runs a small
 polled chapter-9 loop answering the standard `GET_DESCRIPTOR` / `SET_ADDRESS` /
 `SET_CONFIGURATION` requests and handing class and vendor SETUPs to the two class
 layers. The pure SETUP router and descriptor tables live in
-`src/usb_printer_vendor_ch9.c`, host-tested with MC/DC.
+`inc/usb_printer_vendor_ch9.h`, host-tested with MC/DC.
 
 ## Pinout (USB-FS)
 

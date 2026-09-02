@@ -104,7 +104,7 @@ typedef enum : uint64_t {
  * @details
  * The GPTP counter advances by `PTPTIVCt.TIV` on every `clk` edge, and `clk`
  * for the GPTP block is ESWCLK, the ESWM operating clock (HUM 9.10.23
- * "EtherSW Clock (ESWCLK)" p 398). Pass the live frequency -- callers get it
+ * "EtherSW Clock (ESWCLK)" p 405). Pass the live frequency -- callers get it
  * from ``ra8_cgc_eswclk_hz()`` -- and ::ra8_eth_gptp_init derives TIV from
  * it, so the counter is right on any clock tree rather than only on the one
  * the driver was written against.

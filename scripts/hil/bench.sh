@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # bench.sh -- who is allowed to touch the EK-RA8D2 right now.
 #
@@ -64,390 +65,460 @@
 # Like monitor.sh this runs `set -uo pipefail` and deliberately NOT `set -e`:
 # with 1 meaning "denied", an unrelated abort exiting 1 would silently become a
 # verdict.
-set -uo pipefail
-
-readonly RA8_BENCH_EXIT_FREE=0
-readonly RA8_BENCH_EXIT_HELD=1
-readonly RA8_BENCH_EXIT_UNKNOWN=3
-
-_bench_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly RA8_BENCH_HOST_SRC="$_bench_dir/lib/bench_host.sh"
-
-# PI_HOST and rig_is_local_pi come from the gitignored .env via rig_env.sh, so
-# no maintainer-specific host lands in the tree.
-# shellcheck source=scripts/hil/lib/rig_env.sh
-source "$_bench_dir/lib/rig_env.sh"
-
-# Overridable ONLY so the selftest can exercise the machinery against a
-# throwaway directory. Production always uses the canonical path, because two
-# actors flocking two different inodes is the one silent-corruption path here.
-RA8_BENCH_DIR="${RA8_BENCH_DIR:-/var/lib/ra8-bench}"
-
-# Budgets. Advisory, never load-bearing: they decide when a hold is REPORTED as
-# overrun and when the reaper acts, and nothing else.
-#   900s  -- worst single app is a 240 s verify plus flash plus the rfp-cli
-#            retry path, with headroom.
-#   7200s -- the 90-minute CI cap for the whole 151-app suite, plus slack.
-#   8h    -- the hard cap on any detached hold, human or otherwise.
-readonly RA8_BENCH_DEFAULT_HOLD_S=900
-readonly RA8_BENCH_MAX_DETACHED_S=28800
-
-# ---------------------------------------------------------------------------
-# The client-side machinery: transport to the bench host, identity, and the
-# holder lifecycle. Shared with the sourced guard HIL scripts call, so there is
-# exactly one implementation of "how a hold is taken".
-# ---------------------------------------------------------------------------
-# shellcheck source=scripts/hil/lib/bench_client.sh
-source "$_bench_dir/lib/bench_client.sh"
-
-# ---------------------------------------------------------------------------
-# status
-# ---------------------------------------------------------------------------
-
-cmd_status() {
-  local probe rc
-  probe="$(bench_host probe 2>&1)"
-  rc=$?
-  # rc 0 = free, 1 = held, 3 = anything we could not establish. An ssh failure
-  # lands here too, and lands as UNKNOWN, which is the point.
-  if [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; then
-    printf 'bench:    UNKNOWN\n'
-    printf 'reason:   could not reach the bench host or read its state\n'
-    printf '%s\n' "$probe" | sed 's/^/          /'
-    return "$RA8_BENCH_EXIT_UNKNOWN"
-  fi
-  local state
-  state="$(bench_field "$probe" state UNKNOWN)"
-
-  if [ "$state" = "UNKNOWN" ]; then
-    printf 'bench:    UNKNOWN\n'
-    printf 'reason:   %s\n' "$(bench_field "$probe" reason 'no verdict could be established')"
-    return "$RA8_BENCH_EXIT_UNKNOWN"
-  fi
-
-  if [ "$state" = "HELD" ]; then
-    bench_print_held "$probe"
-    bench_print_health "$probe"
-    return "$RA8_BENCH_EXIT_HELD"
-  fi
-
-  printf 'bench:    FREE\n'
-  local last_who
-  last_who="$(bench_field "$probe" last_release_who)"
-  if [ -n "$last_who" ]; then
-    printf 'last:     %s released %s ("%s")\n' "$last_who" \
-      "$(bench_field "$probe" last_release_at '?')" \
-      "$(bench_field "$probe" last_release_note)"
-  fi
-  if [ "$(bench_field "$probe" rec_stale_boot 0)" = "1" ]; then
-    printf 'note:     a record from before the last reboot was ignored (boot_id changed)\n'
-  fi
-  bench_print_health "$probe"
-  return "$RA8_BENCH_EXIT_FREE"
-}
-
-# The whole record, in the order somebody standing at the bench wants it: who,
-# why, for how much longer. `activity` is when a guarded operation last STARTED
-# under this hold -- evidence for "is it busy or is it wedged?", never a verdict
-# and never something that extends a budget.
-bench_print_held() {
-  local probe="$1" age left budget
-  budget="$(bench_field "$probe" f_max_hold_s 0)"
-  age=$(($(bench_field "$probe" now_epoch 0) - $(bench_field "$probe" f_acquired_epoch 0)))
-  left=$((budget - age))
-  printf 'bench:    HELD\n'
-  printf 'holder:   %s (%s)\n' "$(bench_field "$probe" f_holder_name '?')" \
-    "$(bench_field "$probe" f_holder_class '?')"
-  printf 'intent:   %s\n' "$(bench_field "$probe" f_intent '<none stated>')"
-  printf 'kind:     %s\n' \
-    "$(bench_hold_kind_text "$(bench_field "$probe" f_hold_kind wrapped)")"
-  printf 'since:    %s (%s ago)\n' "$(bench_field "$probe" f_acquired_at '?')" \
-    "$(bench_human_age "$age")"
-  if [ "$left" -ge 0 ]; then
-    printf 'budget:   %s (%s left)\n' "$(bench_human_age "$budget")" \
-      "$(bench_human_age "$left")"
-  else
-    printf 'budget:   %s (OVERRUN by %s)\n' "$(bench_human_age "$budget")" \
-      "$(bench_human_age $((-left)))"
-  fi
-  printf 'origin:   %s\n' "$(bench_field "$probe" f_origin '?')"
-  printf 'activity: %s\n' "$(bench_field "$probe" f_last_activity '?')"
-  if [ "$(bench_field "$probe" f_break_glass false)" = "true" ]; then
-    printf 'note:     taken with --break-glass\n'
-  fi
-}
-
-# A hold that dies with its command is a different promise from one that
-# survives the laptop closing, and the difference is the whole reason detached
-# holds are capped. Say which is in force rather than making people infer it.
-bench_hold_kind_text() {
-  case "$1" in
-    wrapped) printf 'wrapped -- bound to the holding process; dies with it' ;;
-    detached) printf 'DETACHED -- survives its command; bounded only by the budget' ;;
-    *) printf '%s' "$1" ;;
-  esac
-}
-
-# Evidence channel, never a verdict: it changes no exit code, exactly like
-# monitor.sh's stalled-queue `warning:` line.
-bench_print_health() {
-  local probe="$1" evidence
-  evidence="$(bench_field "$probe" activity_evidence)"
-  if [ "$(bench_field "$probe" health OK)" = "UNLOCKED-ACTIVITY" ]; then
-    printf 'health:   UNLOCKED-ACTIVITY -- hardware is being touched with no lock held.\n'
-    printf '          %s\n' "$evidence"
-    printf '          Someone is touching the board without taking the bench first.\n'
-    return "$RA8_BENCH_EXIT_FREE"
-  fi
-  printf 'health:   OK\n'
-  if [ -n "$evidence" ]; then
-    printf 'evidence: %s\n' "$evidence"
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# run
-# ---------------------------------------------------------------------------
-
-# Reject the two things a hold cannot be taken without: a payload, and a reason
-# somebody can read at a glance. An unreadable lock is a lock people force-take
-# blindly, which is why --intent has no default anywhere in this interface.
-_cmd_run_validate() {
-  if [ "${#BENCH_OPT_ARGV[@]}" -eq 0 ]; then
-    bench_say "usage: bench.sh run --intent \"...\" -- <command> [args]"
-    return 1
-  fi
-  if [ -z "$BENCH_OPT_INTENT" ]; then
-    bench_say "--intent is required. A lock you cannot read at a glance is a lock"
-    bench_say "people force-take blindly."
-    return 1
-  fi
-  return 0
-}
-
-cmd_run() {
-  bench_parse_opts "$@" || return "$RA8_BENCH_EXIT_UNKNOWN"
-  _cmd_run_validate || return "$RA8_BENCH_EXIT_UNKNOWN"
-  [ -n "$BENCH_OPT_BUDGET_S" ] || BENCH_OPT_BUDGET_S="$RA8_BENCH_DEFAULT_HOLD_S"
-
-  local tmp lock_id holder rc
-  tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-bench.XXXXXX")" || return "$RA8_BENCH_EXIT_UNKNOWN"
-  mkfifo "$tmp/hold.in" || {
-    rm -rf "$tmp"
-    return "$RA8_BENCH_EXIT_UNKNOWN"
+if [[ "$-" == *p* ]]; then
+  unset -v BASH_ENV ENV
+  declare -a ra8_startup_env_unset=()
+  _ra8_startup_refuse() {
+    printf 'error: privileged startup %s\n' "$1" >&2
+    exit 1
   }
-  : >"$tmp/hold.out"
-  lock_id="$(bench_new_lock_id)"
-
-  bench_start_holder "$lock_id" "$BENCH_OPT_CLASS" "$BENCH_OPT_NAME" \
-    "$BENCH_OPT_INTENT" "$BENCH_OPT_BUDGET_S" "$BENCH_OPT_WAIT_S" \
-    "$BENCH_OPT_GLASS" "$tmp/hold.in" "$tmp/hold.out" "$BENCH_OPT_CONFIRM"
-  holder="$RA8_BENCH_HOLDER_PID"
-  if [ -z "$holder" ]; then
-    bench_say "could not start a holder (PI_HOST unset, or the host half is unreadable)"
-    rm -rf "$tmp"
-    return "$RA8_BENCH_EXIT_UNKNOWN"
+  ra8_startup_env_done_count=0
+  while IFS= read -r -d '' ra8_startup_env_row; do
+    ra8_startup_env_name="${ra8_startup_env_row%%=*}"
+    case "$ra8_startup_env_name" in
+      RA8_STARTUP_ENV_DONE)
+        ra8_startup_env_done_count=$((ra8_startup_env_done_count + 1))
+        ;;
+      BASH_FUNC_*%% | BASH_FUNC_*'()') ra8_startup_env_unset+=(-u "$ra8_startup_env_name") ;;
+    esac
+  done < <(
+    /usr/bin/env -u RA8_STARTUP_ENV_DONE -0 &&
+      /usr/bin/printf 'RA8_STARTUP_ENV_DONE=1\0'
+  )
+  ((ra8_startup_env_done_count == 1)) && [[ "$ra8_startup_env_name" == RA8_STARTUP_ENV_DONE ]] || _ra8_startup_refuse 'environment enumeration was incomplete'
+  if ((${#ra8_startup_env_unset[@]})); then
+    [[ -z "${RA8_STARTUP_ENV_SCRUBBED-}" ]] || _ra8_startup_refuse 'scrub did not converge'
+    ra8_startup_reentry="$0"
+    [[ "$ra8_startup_reentry" == */* ]] || _ra8_startup_refuse 'requires a script path'
+    if [[ "$ra8_startup_reentry" != /* ]]; then
+      ra8_startup_reentry="$PWD/$ra8_startup_reentry"
+    fi
+    ra8_startup_check="$ra8_startup_reentry"
+    while [[ "$ra8_startup_check" != "/" ]]; do
+      [[ ! -L "$ra8_startup_check" ]] || _ra8_startup_refuse 'refuses a symlinked path'
+      ra8_startup_parent="${ra8_startup_check%/*}"
+      [[ -n "$ra8_startup_parent" ]] || ra8_startup_parent="/"
+      [[ "$ra8_startup_parent" != "$ra8_startup_check" ]] ||
+        _ra8_startup_refuse 'cannot validate its script path'
+      ra8_startup_check="$ra8_startup_parent"
+    done
+    [[ -f "$ra8_startup_reentry" ]] || _ra8_startup_refuse 'refuses a non-regular path'
+    if ! exec /usr/bin/env "${ra8_startup_env_unset[@]}" -u BASH_ENV -u ENV \
+      -u RA8_STARTUP_ENV_DONE RA8_STARTUP_ENV_SCRUBBED=1 \
+      /bin/bash -p -- "$ra8_startup_reentry" "$@"; then
+      _ra8_startup_refuse 'could not enter sanitized process'
+    fi
   fi
-  # Opening the write end rendezvouses with the holder's read end. From here
-  # on, this shell dying closes the pipe, which is the release.
-  exec 8>"$tmp/hold.in"
+  unset -v ra8_startup_check ra8_startup_env_done_count
+  unset -v ra8_startup_env_name ra8_startup_env_row
+  unset -v ra8_startup_env_unset ra8_startup_parent ra8_startup_reentry
+  unset -v RA8_STARTUP_ENV_DONE
+  unset -v RA8_STARTUP_ENV_SCRUBBED
+  unset -f _ra8_startup_refuse
 
-  # The deadline has to cover BOTH waits the bench host may sit through: the
-  # flock queue (--wait) and the quiesce interlock that follows it. Counting
-  # only the first makes the client abandon a hold the host was about to grant.
-  bench_await_ack "$lock_id" "$tmp/hold.out" "$holder" \
-    $((BENCH_OPT_WAIT_S + RA8_BENCH_QUIESCE_S + 30))
-  rc=$?
-  if [ "$rc" -ne 0 ]; then
-    _cmd_run_report_failure "$rc" "$tmp/hold.out"
+  set -uo pipefail
+
+  readonly RA8_BENCH_EXIT_FREE=0
+  readonly RA8_BENCH_EXIT_HELD=1
+  readonly RA8_BENCH_EXIT_UNKNOWN=3
+
+  _bench_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  readonly RA8_BENCH_HOST_SRC="$_bench_dir/lib/bench_host.sh"
+
+  # PI_HOST and rig_is_local_pi come from the gitignored .env via rig_env.sh, so
+  # no maintainer-specific host lands in the tree.
+  # shellcheck source=scripts/hil/lib/rig_env.sh
+  source "$_bench_dir/lib/rig_env.sh"
+
+  # Overridable ONLY so the selftest can exercise the machinery against a
+  # throwaway directory. Production always uses the canonical path, because two
+  # actors flocking two different inodes is the one silent-corruption path here.
+  RA8_BENCH_DIR="${RA8_BENCH_DIR:-/var/lib/ra8-bench}"
+
+  # Budgets. Advisory, never load-bearing: they decide when a hold is REPORTED as
+  # overrun and when the reaper acts, and nothing else.
+  #   900s  -- worst single app is a 240 s verify plus flash plus the rfp-cli
+  #            retry path, with headroom.
+  #   7200s -- the 90-minute CI cap for the full discovered-app suite, plus slack.
+  #   8h    -- the hard cap on any detached hold, human or otherwise.
+  readonly RA8_BENCH_DEFAULT_HOLD_S=900
+  readonly RA8_BENCH_MAX_DETACHED_S=28800
+
+  # ---------------------------------------------------------------------------
+  # The client-side machinery: transport to the bench host, identity, and the
+  # holder lifecycle. Shared with the sourced guard HIL scripts call, so there is
+  # exactly one implementation of "how a hold is taken".
+  # ---------------------------------------------------------------------------
+  # shellcheck source=scripts/hil/lib/bench_client.sh
+  source "$_bench_dir/lib/bench_client.sh"
+
+  # ---------------------------------------------------------------------------
+  # status
+  # ---------------------------------------------------------------------------
+
+  cmd_status() {
+    local probe rc
+    probe="$(bench_host probe 2>&1)"
+    rc=$?
+    # rc 0 = free, 1 = held, 3 = anything we could not establish. An ssh failure
+    # lands here too, and lands as UNKNOWN, which is the point.
+    if [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; then
+      printf 'bench:    UNKNOWN\n'
+      printf 'reason:   could not reach the bench host or read its state\n'
+      printf '%s\n' "$probe" | sed 's/^/          /'
+      return "$RA8_BENCH_EXIT_UNKNOWN"
+    fi
+    local state
+    state="$(bench_field "$probe" state UNKNOWN)"
+
+    if [ "$state" = "UNKNOWN" ]; then
+      printf 'bench:    UNKNOWN\n'
+      printf 'reason:   %s\n' "$(bench_field "$probe" reason 'no verdict could be established')"
+      return "$RA8_BENCH_EXIT_UNKNOWN"
+    fi
+
+    if [ "$state" = "HELD" ]; then
+      bench_print_held "$probe"
+      bench_print_health "$probe"
+      return "$RA8_BENCH_EXIT_HELD"
+    fi
+
+    printf 'bench:    FREE\n'
+    local last_who
+    last_who="$(bench_field "$probe" last_release_who)"
+    if [ -n "$last_who" ]; then
+      printf 'last:     %s released %s ("%s")\n' "$last_who" \
+        "$(bench_field "$probe" last_release_at '?')" \
+        "$(bench_field "$probe" last_release_note)"
+    fi
+    if [ "$(bench_field "$probe" rec_stale_boot 0)" = "1" ]; then
+      printf 'note:     a record from before the last reboot was ignored (boot_id changed)\n'
+    fi
+    bench_print_health "$probe"
+    return "$RA8_BENCH_EXIT_FREE"
+  }
+
+  # The whole record, in the order somebody standing at the bench wants it: who,
+  # why, for how much longer. `activity` is when a guarded operation last STARTED
+  # under this hold -- evidence for "is it busy or is it wedged?", never a verdict
+  # and never something that extends a budget.
+  bench_print_held() {
+    local probe="$1" age left budget
+    budget="$(bench_field "$probe" f_max_hold_s 0)"
+    age=$(($(bench_field "$probe" now_epoch 0) - $(bench_field "$probe" f_acquired_epoch 0)))
+    left=$((budget - age))
+    printf 'bench:    HELD\n'
+    printf 'holder:   %s (%s)\n' "$(bench_field "$probe" f_holder_name '?')" \
+      "$(bench_field "$probe" f_holder_class '?')"
+    printf 'intent:   %s\n' "$(bench_field "$probe" f_intent '<none stated>')"
+    printf 'kind:     %s\n' \
+      "$(bench_hold_kind_text "$(bench_field "$probe" f_hold_kind wrapped)")"
+    printf 'since:    %s (%s ago)\n' "$(bench_field "$probe" f_acquired_at '?')" \
+      "$(bench_human_age "$age")"
+    if [ "$left" -ge 0 ]; then
+      printf 'budget:   %s (%s left)\n' "$(bench_human_age "$budget")" \
+        "$(bench_human_age "$left")"
+    else
+      printf 'budget:   %s (OVERRUN by %s)\n' "$(bench_human_age "$budget")" \
+        "$(bench_human_age $((-left)))"
+    fi
+    printf 'origin:   %s\n' "$(bench_field "$probe" f_origin '?')"
+    printf 'activity: %s\n' "$(bench_field "$probe" f_last_activity '?')"
+    if [ "$(bench_field "$probe" f_break_glass false)" = "true" ]; then
+      printf 'note:     taken with --break-glass\n'
+    fi
+  }
+
+  # A hold that dies with its command is a different promise from one that
+  # survives the laptop closing, and the difference is the whole reason detached
+  # holds are capped. Say which is in force rather than making people infer it.
+  bench_hold_kind_text() {
+    case "$1" in
+      wrapped) printf 'wrapped -- bound to the holding process; dies with it' ;;
+      detached) printf 'DETACHED -- survives its command; bounded only by the budget' ;;
+      *) printf '%s' "$1" ;;
+    esac
+  }
+
+  # Evidence channel, never a verdict: it changes no exit code, exactly like
+  # monitor.sh's stalled-queue `warning:` line.
+  bench_print_health() {
+    local probe="$1" evidence
+    evidence="$(bench_field "$probe" activity_evidence)"
+    if [ "$(bench_field "$probe" health OK)" = "UNLOCKED-ACTIVITY" ]; then
+      printf 'health:   UNLOCKED-ACTIVITY -- hardware is being touched with no lock held.\n'
+      printf '          %s\n' "$evidence"
+      printf '          Someone is touching the board without taking the bench first.\n'
+      return "$RA8_BENCH_EXIT_FREE"
+    fi
+    printf 'health:   OK\n'
+    if [ -n "$evidence" ]; then
+      printf 'evidence: %s\n' "$evidence"
+    fi
+  }
+
+  # ---------------------------------------------------------------------------
+  # run
+  # ---------------------------------------------------------------------------
+
+  # Reject the two things a hold cannot be taken without: a payload, and a reason
+  # somebody can read at a glance. An unreadable lock is a lock people force-take
+  # blindly, which is why --intent has no default anywhere in this interface.
+  _cmd_run_validate() {
+    if [ "${#BENCH_OPT_ARGV[@]}" -eq 0 ]; then
+      bench_say "usage: bench.sh run --intent \"...\" -- <command> [args]"
+      return 1
+    fi
+    if [ -z "$BENCH_OPT_INTENT" ]; then
+      bench_say "--intent is required. A lock you cannot read at a glance is a lock"
+      bench_say "people force-take blindly."
+      return 1
+    fi
+    return 0
+  }
+
+  cmd_run() {
+    bench_parse_opts "$@" || return "$RA8_BENCH_EXIT_UNKNOWN"
+    _cmd_run_validate || return "$RA8_BENCH_EXIT_UNKNOWN"
+    [ -n "$BENCH_OPT_BUDGET_S" ] || BENCH_OPT_BUDGET_S="$RA8_BENCH_DEFAULT_HOLD_S"
+
+    local tmp lock_id holder rc
+    tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-bench.XXXXXX")" || return "$RA8_BENCH_EXIT_UNKNOWN"
+    mkfifo "$tmp/hold.in" || {
+      rm -rf "$tmp"
+      return "$RA8_BENCH_EXIT_UNKNOWN"
+    }
+    : >"$tmp/hold.out"
+    lock_id="$(bench_new_lock_id)"
+
+    bench_start_holder "$lock_id" "$BENCH_OPT_CLASS" "$BENCH_OPT_NAME" \
+      "$BENCH_OPT_INTENT" "$BENCH_OPT_BUDGET_S" "$BENCH_OPT_WAIT_S" \
+      "$BENCH_OPT_GLASS" "$tmp/hold.in" "$tmp/hold.out" "$BENCH_OPT_CONFIRM"
+    holder="$RA8_BENCH_HOLDER_PID"
+    if [ -z "$holder" ]; then
+      bench_say "could not start a holder (PI_HOST unset, or the host half is unreadable)"
+      rm -rf "$tmp"
+      return "$RA8_BENCH_EXIT_UNKNOWN"
+    fi
+    # Opening the write end rendezvouses with the holder's read end. From here
+    # on, this shell dying closes the pipe, which is the release.
+    exec 8>"$tmp/hold.in"
+
+    # The deadline has to cover BOTH waits the bench host may sit through: the
+    # flock queue (--wait) and the quiesce interlock that follows it. Counting
+    # only the first makes the client abandon a hold the host was about to grant.
+    bench_await_ack "$lock_id" "$tmp/hold.out" "$holder" \
+      $((BENCH_OPT_WAIT_S + RA8_BENCH_QUIESCE_S + 30))
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+      _cmd_run_report_failure "$rc" "$tmp/hold.out"
+      exec 8>&-
+      wait "$holder" 2>/dev/null
+      rm -rf "$tmp"
+      return "$rc"
+    fi
+
+    _cmd_run_execute "$tmp" "$lock_id" "$holder"
+  }
+
+  _cmd_run_execute() {
+    local tmp="$1" lock_id="$2" holder="$3" holder_start target rc
+    bench_say "holding ($lock_id, $BENCH_OPT_NAME [$BENCH_OPT_CLASS]) -- $BENCH_OPT_INTENT"
+    holder_start="$(sed -n 's/^[^)]*) //p' "/proc/$holder/stat" 2>/dev/null | awk '{print $20}')"
+    case "$holder_start" in
+      '' | *[!0-9]*)
+        bench_say "cannot authenticate the local holder process start time"
+        exec 8>&-
+        wait "$holder" 2>/dev/null
+        rm -rf "$tmp"
+        return "$RA8_BENCH_EXIT_UNKNOWN"
+        ;;
+      *) ;;
+    esac
+    target="${PI_HOST:-local}"
+    RA8_BENCH_LOCK_ID="$lock_id" RA8_BENCH_HOLDER_PID="$holder" \
+      RA8_BENCH_HOLDER_START_TICKS="$holder_start" RA8_BENCH_HOLDER_TARGET="$target" \
+      RA8_BENCH_INTENT="$BENCH_OPT_INTENT" \
+      bench_supervise "$holder" "${BENCH_OPT_ARGV[@]}"
+    rc=$?
+
     exec 8>&-
     wait "$holder" 2>/dev/null
     rm -rf "$tmp"
     return "$rc"
-  fi
+  }
 
-  bench_say "holding ($lock_id, $BENCH_OPT_NAME [$BENCH_OPT_CLASS]) -- $BENCH_OPT_INTENT"
-  RA8_BENCH_LOCK_ID="$lock_id" RA8_BENCH_HOLDER_PID="$holder" \
-    RA8_BENCH_INTENT="$BENCH_OPT_INTENT" \
-    bench_supervise "$holder" "${BENCH_OPT_ARGV[@]}"
-  rc=$?
+  # Denied and could-not-tell are different answers and get different words.
+  # Collapsing them would be the exact mistake this interface's third exit code
+  # exists to prevent.
+  _cmd_run_report_failure() {
+    local rc="$1" out="$2"
+    if [ "$rc" -eq "$RA8_BENCH_EXIT_HELD" ]; then
+      bench_report_denial "$out"
+      return 0
+    fi
+    bench_say "UNKNOWN -- could not establish a hold. Refusing to touch the bench."
+    sed 's/^/          /' "$out" >&2 2>/dev/null
+  }
 
-  exec 8>&-
-  wait "$holder" 2>/dev/null
-  rm -rf "$tmp"
-  return "$rc"
-}
+  # Run the payload, and FENCE it: if the holder dies while the payload is still
+  # going, the bench is no longer ours and the payload must stop touching it.
+  # stdin is passed through on fd 3 so the payload is not silently detached from
+  # the terminal the way a plain background job would be.
+  bench_supervise() {
+    local holder="$1"
+    shift
+    local pay rc
+    exec 3<&0
+    "$@" <&3 &
+    pay=$!
+    while :; do
+      if ! kill -0 "$pay" 2>/dev/null; then
+        wait "$pay"
+        rc=$?
+        break
+      fi
+      if ! kill -0 "$holder" 2>/dev/null; then
+        bench_say "the bench hold died while the payload was running -- stopping it."
+        pkill -TERM -P "$pay" 2>/dev/null || true
+        kill -TERM "$pay" 2>/dev/null || true
+        sleep 5
+        pkill -KILL -P "$pay" 2>/dev/null || true
+        kill -KILL "$pay" 2>/dev/null || true
+        wait "$pay" 2>/dev/null
+        rc="$RA8_BENCH_EXIT_UNKNOWN"
+        break
+      fi
+      sleep 1
+    done
+    return "$rc"
+  }
 
-# Denied and could-not-tell are different answers and get different words.
-# Collapsing them would be the exact mistake this interface's third exit code
-# exists to prevent.
-_cmd_run_report_failure() {
-  local rc="$1" out="$2"
-  if [ "$rc" -eq "$RA8_BENCH_EXIT_HELD" ]; then
-    bench_report_denial "$out"
+  # ---------------------------------------------------------------------------
+  # acquire / release -- the detached pair
+  # ---------------------------------------------------------------------------
+
+  # A detached hold is the ONE shape that outlives the process that took it, so it
+  # is the one shape a TTL is unavoidable for -- and therefore the one shape that
+  # may not have a default budget. A default is what gets forgotten.
+  _cmd_acquire_validate() {
+    if [ -z "$BENCH_OPT_INTENT" ]; then
+      bench_say "--intent is required."
+      return 1
+    fi
+    if [ -z "$BENCH_OPT_BUDGET_S" ]; then
+      bench_say "--for is MANDATORY for a detached hold: it survives the command"
+      bench_say "that took it, so nothing but the budget bounds it. Cap is 8h."
+      bench_say "If you want a hold that dies with your command, use: bench.sh run"
+      return 1
+    fi
+    if [ "$BENCH_OPT_BUDGET_S" -gt "$RA8_BENCH_MAX_DETACHED_S" ]; then
+      bench_say "--for ${BENCH_OPT_BUDGET_S}s exceeds the 8h cap on a detached hold."
+      return 1
+    fi
     return 0
-  fi
-  bench_say "UNKNOWN -- could not establish a hold. Refusing to touch the bench."
-  sed 's/^/          /' "$out" >&2 2>/dev/null
-}
+  }
 
-# Run the payload, and FENCE it: if the holder dies while the payload is still
-# going, the bench is no longer ours and the payload must stop touching it.
-# stdin is passed through on fd 3 so the payload is not silently detached from
-# the terminal the way a plain background job would be.
-bench_supervise() {
-  local holder="$1"
-  shift
-  local pay rc
-  exec 3<&0
-  "$@" <&3 &
-  pay=$!
-  while :; do
-    if ! kill -0 "$pay" 2>/dev/null; then
-      wait "$pay"
-      rc=$?
-      break
+  # Launch the detached holder and return immediately. It is deliberately NOT
+  # confirmed here: see cmd_acquire, which confirms by observing the lock.
+  _cmd_acquire_launch() {
+    local fields="$1" cmd
+    if rig_is_local_pi; then
+      local t
+      t="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-host.XXXXXX")" || return 1
+      cp "$RA8_BENCH_HOST_SRC" "$t" || return 1
+      RA8_BENCH_DIR="$RA8_BENCH_DIR" RA8_BENCH_BROKER_SRC="$RA8_BENCH_BROKER_SRC" \
+        setsid /bin/bash "$t" hold detached "$BENCH_OPT_WAIT_S" "$fields" \
+        </dev/null >/dev/null 2>&1 &
+      return 0
     fi
-    if ! kill -0 "$holder" 2>/dev/null; then
-      bench_say "the bench hold died while the payload was running -- stopping it."
-      pkill -TERM -P "$pay" 2>/dev/null || true
-      kill -TERM "$pay" 2>/dev/null || true
-      sleep 5
-      pkill -KILL -P "$pay" 2>/dev/null || true
-      kill -KILL "$pay" 2>/dev/null || true
-      wait "$pay" 2>/dev/null
-      rc="$RA8_BENCH_EXIT_UNKNOWN"
-      break
-    fi
-    sleep 1
-  done
-  return "$rc"
-}
+    cmd="$(bench_host_cmd hold detached "$BENCH_OPT_WAIT_S" "$fields")" || return 1
+    # shellcheck disable=SC2029  # $cmd is composed here on purpose (see bench_host_cmd) and quoted for the remote shell by bench_q.
+    ssh "${RA8_BENCH_SSH_OPTS[@]}" "$PI_HOST" \
+      "setsid nohup /bin/bash -p -c $(bench_q "$cmd") </dev/null >/dev/null 2>&1 &" \
+      </dev/null >/dev/null 2>&1
+  }
 
-# ---------------------------------------------------------------------------
-# acquire / release -- the detached pair
-# ---------------------------------------------------------------------------
+  cmd_acquire() {
+    bench_parse_opts "$@" || return "$RA8_BENCH_EXIT_UNKNOWN"
+    _cmd_acquire_validate || return "$RA8_BENCH_EXIT_UNKNOWN"
 
-# A detached hold is the ONE shape that outlives the process that took it, so it
-# is the one shape a TTL is unavoidable for -- and therefore the one shape that
-# may not have a default budget. A default is what gets forgotten.
-_cmd_acquire_validate() {
-  if [ -z "$BENCH_OPT_INTENT" ]; then
-    bench_say "--intent is required."
-    return 1
-  fi
-  if [ -z "$BENCH_OPT_BUDGET_S" ]; then
-    bench_say "--for is MANDATORY for a detached hold: it survives the command"
-    bench_say "that took it, so nothing but the budget bounds it. Cap is 8h."
-    bench_say "If you want a hold that dies with your command, use: bench.sh run"
-    return 1
-  fi
-  if [ "$BENCH_OPT_BUDGET_S" -gt "$RA8_BENCH_MAX_DETACHED_S" ]; then
-    bench_say "--for ${BENCH_OPT_BUDGET_S}s exceeds the 8h cap on a detached hold."
-    return 1
-  fi
-  return 0
-}
+    local lock_id fields
+    lock_id="$(bench_new_lock_id)"
+    fields="$(bench_fields_b64 "$lock_id" "$BENCH_OPT_CLASS" "$BENCH_OPT_NAME" \
+      "$BENCH_OPT_INTENT" "$BENCH_OPT_BUDGET_S" detached "$BENCH_OPT_GLASS" \
+      "$BENCH_OPT_CONFIRM")"
+    _cmd_acquire_launch "$fields" || return "$RA8_BENCH_EXIT_UNKNOWN"
 
-# Launch the detached holder and return immediately. It is deliberately NOT
-# confirmed here: see cmd_acquire, which confirms by observing the lock.
-_cmd_acquire_launch() {
-  local fields="$1" cmd
-  if rig_is_local_pi; then
-    local t
-    t="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-host.XXXXXX")" || return 1
-    cp "$RA8_BENCH_HOST_SRC" "$t" || return 1
-    RA8_BENCH_DIR="$RA8_BENCH_DIR" setsid bash "$t" hold detached \
-      "$BENCH_OPT_WAIT_S" "$fields" </dev/null >/dev/null 2>&1 &
-    return 0
-  fi
-  cmd="$(bench_host_cmd hold detached "$BENCH_OPT_WAIT_S" "$fields")" || return 1
-  # shellcheck disable=SC2029  # $cmd is composed here on purpose (see bench_host_cmd) and quoted for the remote shell by bench_q.
-  ssh "${RA8_BENCH_SSH_OPTS[@]}" "$PI_HOST" \
-    "setsid nohup bash -c $(bench_q "$cmd") </dev/null >/dev/null 2>&1 &" \
-    </dev/null >/dev/null 2>&1
-}
-
-cmd_acquire() {
-  bench_parse_opts "$@" || return "$RA8_BENCH_EXIT_UNKNOWN"
-  _cmd_acquire_validate || return "$RA8_BENCH_EXIT_UNKNOWN"
-
-  local lock_id fields
-  lock_id="$(bench_new_lock_id)"
-  fields="$(bench_fields_b64 "$lock_id" "$BENCH_OPT_CLASS" "$BENCH_OPT_NAME" \
-    "$BENCH_OPT_INTENT" "$BENCH_OPT_BUDGET_S" detached "$BENCH_OPT_GLASS" \
-    "$BENCH_OPT_CONFIRM")"
-  _cmd_acquire_launch "$fields" || return "$RA8_BENCH_EXIT_UNKNOWN"
-
-  # Confirm by OBSERVING the lock, not by trusting that we launched something.
-  local waited=0 limit=$((BENCH_OPT_WAIT_S + 20)) seen rc=0
-  while [ "$waited" -lt "$limit" ]; do
-    seen="$(bench_lock_id_now)"
-    if [ "$seen" = "$lock_id" ]; then
-      printf '%s\n' "$lock_id"
-      bench_say "acquired ($BENCH_OPT_NAME [$BENCH_OPT_CLASS], detached, budget $(bench_human_age "$BENCH_OPT_BUDGET_S")) -- $BENCH_OPT_INTENT"
-      bench_say "release it with: make bench-free"
-      return "$RA8_BENCH_EXIT_FREE"
-    fi
-    sleep 1
-    waited=$((waited + 1))
-  done
-  cmd_status >/dev/null 2>&1 || rc=$?
-  if [ "$rc" -eq "$RA8_BENCH_EXIT_HELD" ]; then
-    bench_say "DENIED -- somebody else holds the bench."
-    cmd_status >&2
-    return "$RA8_BENCH_EXIT_HELD"
-  fi
-  bench_say "UNKNOWN -- the hold did not appear within ${limit}s."
-  return "$RA8_BENCH_EXIT_UNKNOWN"
-}
-
-cmd_release() {
-  local want="${RA8_BENCH_LOCK_ID:-}" force=""
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      --lock-id)
-        want="${2:-}"
-        shift 2
-        ;;
-      --force)
-        force=force
-        shift
-        ;;
-      *)
-        bench_say "unknown option '$1'"
-        return "$RA8_BENCH_EXIT_UNKNOWN"
-        ;;
-    esac
-  done
-  if [ -z "$want" ]; then
-    want="$(bench_lock_id_now)"
-    [ -n "$want" ] || {
-      bench_say "the bench is not held (nothing to release)."
-      return "$RA8_BENCH_EXIT_FREE"
-    }
-    # Releasing a hold this actor did not take is a preempt, not a release.
-    # Phase 1's `bench take` is the verb for that; it demands a reason and,
-    # against a human, an explicit acknowledgement.
-    if [ -z "$force" ]; then
-      local mine
-      local probe
-      probe="$(bench_host probe 2>/dev/null)"
-      mine="$(bench_field "$probe" f_holder_name)"
-      bench_say "the bench is held by ${mine:-someone else} and RA8_BENCH_LOCK_ID is unset."
-      bench_say "If it is yours, pass --lock-id. To preempt, use --force (journaled)."
+    # Confirm by OBSERVING the lock, not by trusting that we launched something.
+    local waited=0 limit=$((BENCH_OPT_WAIT_S + 20)) seen rc=0
+    while [ "$waited" -lt "$limit" ]; do
+      seen="$(bench_lock_id_now)"
+      if [ "$seen" = "$lock_id" ]; then
+        printf '%s\n' "$lock_id"
+        bench_say "acquired ($BENCH_OPT_NAME [$BENCH_OPT_CLASS], detached, budget $(bench_human_age "$BENCH_OPT_BUDGET_S")) -- $BENCH_OPT_INTENT"
+        bench_say "release it with: just hil::free"
+        return "$RA8_BENCH_EXIT_FREE"
+      fi
+      sleep 1
+      waited=$((waited + 1))
+    done
+    cmd_status >/dev/null 2>&1 || rc=$?
+    if [ "$rc" -eq "$RA8_BENCH_EXIT_HELD" ]; then
+      bench_say "DENIED -- somebody else holds the bench."
+      cmd_status >&2
       return "$RA8_BENCH_EXIT_HELD"
     fi
-  fi
-  bench_host release "$want" "$force"
-}
+    bench_say "UNKNOWN -- the hold did not appear within ${limit}s."
+    return "$RA8_BENCH_EXIT_UNKNOWN"
+  }
 
-# ---------------------------------------------------------------------------
-# help / dispatch
-# ---------------------------------------------------------------------------
+  cmd_release() {
+    local want="${RA8_BENCH_LOCK_ID:-}" force=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --lock-id)
+          want="${2:-}"
+          shift 2
+          ;;
+        --force)
+          force=force
+          shift
+          ;;
+        *)
+          bench_say "unknown option '$1'"
+          return "$RA8_BENCH_EXIT_UNKNOWN"
+          ;;
+      esac
+    done
+    if [ -z "$want" ]; then
+      want="$(bench_lock_id_now)"
+      [ -n "$want" ] || {
+        bench_say "the bench is not held (nothing to release)."
+        return "$RA8_BENCH_EXIT_FREE"
+      }
+      # Releasing a hold this actor did not take is a preempt, not a release.
+      # Phase 1's `bench take` is the verb for that; it demands a reason and,
+      # against a human, an explicit acknowledgement.
+      if [ -z "$force" ]; then
+        local mine
+        local probe
+        probe="$(bench_host probe 2>/dev/null)"
+        mine="$(bench_field "$probe" f_holder_name)"
+        bench_say "the bench is held by ${mine:-someone else} and RA8_BENCH_LOCK_ID is unset."
+        bench_say "If it is yours, pass --lock-id. To preempt, use --force (journaled)."
+        return "$RA8_BENCH_EXIT_HELD"
+      fi
+    fi
+    bench_host release "$want" "$force"
+  }
 
-cmd_help() {
-  cat <<'USAGE'
+  # ---------------------------------------------------------------------------
+  # help / dispatch
+  # ---------------------------------------------------------------------------
+
+  cmd_help() {
+    cat <<'USAGE'
 bench.sh -- exclusive access to the EK-RA8D2 bench.
 
   bench.sh status
@@ -490,74 +561,77 @@ Environment:
   RA8_BENCH_ACTOR    default holder name
   RA8_BENCH_LOCK_ID  set by `run` for its payload; `release` uses it
 USAGE
-  return "$RA8_BENCH_EXIT_FREE"
-}
+    return "$RA8_BENCH_EXIT_FREE"
+  }
 
-# ---------------------------------------------------------------------------
-# journal / doctor / reap -- thin pass-throughs to the bench host
-# ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
+  # journal / doctor / reap -- thin pass-throughs to the bench host
+  # ---------------------------------------------------------------------------
 
-cmd_log() { bench_host journal "${1:-25}"; }
+  cmd_log() { bench_host journal "${1:-25}"; }
 
-# The failure this exists for is two actors flocking two DIFFERENT inodes,
-# which looks exactly like a working lock right up to the moment it is not.
-# So doctor reports the inode, the mode and the owner rather than asserting
-# they are fine, and it also reports the one sshd setting that bounds a
-# vanished client's release (see the header).
-cmd_doctor() {
-  local out rc sshd
-  out="$(bench_host doctor 2>&1)"
-  rc=$?
-  printf '%s\n' "$out"
-  if ! rig_is_local_pi && [ -n "${PI_HOST:-}" ]; then
-    sshd="$(ssh "${RA8_BENCH_SSH_OPTS[@]}" "$PI_HOST" \
-      'sudo -n sshd -T 2>/dev/null | sed -n "s/^clientaliveinterval //p"' </dev/null 2>/dev/null)"
-    printf 'sshd_clientaliveinterval=%s\n' "${sshd:-unknown}"
-    if [ "${sshd:-0}" = "0" ]; then
-      printf 'FINDING: sshd ClientAliveInterval is 0 on the bench host. A client that\n'
-      printf '         vanishes WITHOUT closing its socket (power cut, not a kill) then\n'
-      printf '         leaves the hold in place until TCP keepalive gives up -- hours.\n'
-      printf '         Fix: the hil_bench ansible role sets ClientAliveInterval.\n'
-      rc=3
+  # The failure this exists for is two actors flocking two DIFFERENT inodes,
+  # which looks exactly like a working lock right up to the moment it is not.
+  # So doctor reports the inode, the mode and the owner rather than asserting
+  # they are fine, and it also reports the one sshd setting that bounds a
+  # vanished client's release (see the header).
+  cmd_doctor() {
+    local out rc sshd
+    out="$(bench_host doctor 2>&1)"
+    rc=$?
+    printf '%s\n' "$out"
+    if ! rig_is_local_pi && [ -n "${PI_HOST:-}" ]; then
+      sshd="$(ssh "${RA8_BENCH_SSH_OPTS[@]}" "$PI_HOST" \
+        'sudo -n sshd -T 2>/dev/null | sed -n "s/^clientaliveinterval //p"' </dev/null 2>/dev/null)"
+      printf 'sshd_clientaliveinterval=%s\n' "${sshd:-unknown}"
+      if [ "${sshd:-0}" = "0" ]; then
+        printf 'FINDING: sshd ClientAliveInterval is 0 on the bench host. A client that\n'
+        printf '         vanishes WITHOUT closing its socket (power cut, not a kill) then\n'
+        printf '         leaves the hold in place until TCP keepalive gives up -- hours.\n'
+        printf '         Fix: the hil_bench ansible role sets ClientAliveInterval.\n'
+        rc=3
+      fi
     fi
-  fi
-  return "$rc"
-}
+    return "$rc"
+  }
 
-cmd_reap() { bench_host reap; }
+  cmd_reap() { bench_host reap; }
 
-bench_main() {
-  local verb="${1:-status}"
-  shift 2>/dev/null || true
-  case "$verb" in
-    status) cmd_status "$@" ;;
-    run) cmd_run "$@" ;;
-    acquire) cmd_acquire "$@" ;;
-    release) cmd_release "$@" ;;
-    log) cmd_log "$@" ;;
-    doctor) cmd_doctor "$@" ;;
-    reap) cmd_reap "$@" ;;
-    hold | free | extend | take)
-      # The human verbs, sourced on demand: `status` and `run` are what runs a
-      # thousand times a day and neither needs them.
-      # shellcheck source=scripts/hil/lib/bench_human.sh
-      source "$_bench_dir/lib/bench_human.sh"
-      "cmd_$verb" "$@"
-      ;;
-    selftest)
-      # Sourced on demand: the common path is `status` and `run`, and neither
-      # of those should pay to parse 200 lines of proof.
-      # shellcheck source=scripts/hil/lib/bench_selftest.sh
-      source "$_bench_dir/lib/bench_selftest.sh"
-      cmd_selftest "$@"
-      ;;
-    help | --help | -h) cmd_help ;;
-    *)
-      bench_say "unknown verb '$verb'"
-      cmd_help
-      return "$RA8_BENCH_EXIT_UNKNOWN"
-      ;;
-  esac
-}
+  bench_main() {
+    local verb="${1:-status}"
+    (($# == 0)) || shift
+    case "$verb" in
+      status) cmd_status "$@" ;;
+      run) cmd_run "$@" ;;
+      acquire) cmd_acquire "$@" ;;
+      release) cmd_release "$@" ;;
+      log) cmd_log "$@" ;;
+      doctor) cmd_doctor "$@" ;;
+      reap) cmd_reap "$@" ;;
+      hold | free | extend | take)
+        # The human verbs, sourced on demand: `status` and `run` are what runs a
+        # thousand times a day and neither needs them.
+        # shellcheck source=scripts/hil/lib/bench_human.sh
+        source "$_bench_dir/lib/bench_human.sh"
+        "cmd_$verb" "$@"
+        ;;
+      selftest)
+        # Sourced on demand: the common path is `status` and `run`, and neither
+        # of those should pay to parse 200 lines of proof.
+        # shellcheck source=scripts/hil/lib/bench_selftest.sh
+        source "$_bench_dir/lib/bench_selftest.sh"
+        cmd_selftest "$@"
+        ;;
+      help | --help | -h) cmd_help ;;
+      *)
+        bench_say "unknown verb '$verb'"
+        cmd_help
+        return "$RA8_BENCH_EXIT_UNKNOWN"
+        ;;
+    esac
+  }
 
-bench_main "$@"
+  bench_main "$@"
+else
+  [[ "$-" == *p* ]]
+fi

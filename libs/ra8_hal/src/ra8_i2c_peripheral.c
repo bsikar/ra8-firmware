@@ -185,10 +185,9 @@ RA8_INTERNAL static ra8_i2c_peripheral_event_t internal_i2c_target_classify(uint
 RA8_INTERNAL static ra8_err_t internal_i2c_target_wait(volatile const r_i2c_regs_t* reg,
                                                        uint8_t                      mask)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_peripheral_poll_limit;
-       i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_peripheral_poll_limit; i++) {
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-    if ((reg->ICSR2 & mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->ICSR2 & mask) != 0U) {
       return k_ra8_ok;
     }
   }
@@ -462,13 +461,12 @@ ra8_err_t ra8_i2c_peripheral_poll(uint8_t channel, ra8_i2c_peripheral_event_t* o
     return k_ra8_err_not_initialized;
   }
 
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_peripheral_poll_limit;
-       i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_peripheral_poll_limit; i++) {
     /* HUM Ch 39.2.9 "ICSR1 : I2C Bus Status Register 1" p 2382 */
     const uint8_t icsr1 = reg->ICSR1;
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
     const uint8_t icsr2 = reg->ICSR2;
-    if (priv_ra8_i2c_internal_peripheral_poll_done(icsr1, icsr2)) { /* GCOVR_EXCL_BR_LINE */
+    if (priv_ra8_i2c_internal_peripheral_poll_done(icsr1, icsr2)) {
       break;
     }
   }

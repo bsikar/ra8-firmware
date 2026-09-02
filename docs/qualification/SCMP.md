@@ -1,6 +1,6 @@
 # Software Configuration Management Plan (SCMP)
 
-**Last refreshed**: 2026-05-03 (numbers re-synced to live counts).
+**Last refreshed**: 2026-08-22 (test inventory and execution evidence refresh).
 
 **Status**: First draft, 2026-05-02. Populated during Phase 7 of
 `docs/QUALIFICATION_ROADMAP.md`. Subject to revision after the first
@@ -35,30 +35,50 @@ truth.
 | `libs/ra8_modem_at/`               | AT-command modem stack.                                      |
 | `libs/ra8_power_profile/`          | Power-profile management.                                    |
 | `libs/ra8_ota/`                    | OTA orchestration (Phase 5).                                 |
-| `examples/ek_ra8d2/<app>/`        | Self-contained EVM applications (26 today).                  |
-| `examples/_unsupported/<app>/`    | Shelved applications (10 today).                             |
+| `apps/shared_libs/`                | Reusable application-domain libraries shared by product forms. |
+| `apps/host/`, `apps/board/`        | Hosted and firmware product compositions.                    |
+| `examples/ek_ra8d2/**/<app>/`     | Classified RA8D2 applications selected by `scripts/dev/ra8_apps.py`. |
+| `examples/ra8p1_foundation/<app>/`| RA8P1 foundation applications selected by `scripts/dev/ra8_apps.py`. |
+| `examples/_unsupported/`          | Shelved applications excluded from the selected inventory.  |
+| `port/`                            | First-party target, middleware, and host adaptation layers.  |
+| `tools/`                           | First-party build, inspection, packaging, and emulation tools. |
+| `tests/`                           | Repository-level host test harness and test support.         |
+| `scripts/`                         | First-party build, verification, CI, HIL, and developer automation. |
 
 ### 1.2 Per-application boot code
 
-Each application directory under `examples/<tier>/<app>/` contains
-its own boot artifacts so that future divergence between apps is an
-explicit design goal:
+Each application directory owns
+`examples/ek_ra8d2/<tier>/.../<app>/src/main.c` and a root
+`CMakeLists.txt`. The selected
+board layer supplies canonical boot and linker artifacts; an application keeps
+a local file only when it intentionally overrides that default:
 
-- `main.c`
-- `vector_table.c`
-- `system_init.c`
-- `secure_exception.c`
-- `trustzone_init.{c,h}`
-- `linker_script.ld`
+- `examples/ek_ra8d2/<tier>/.../<app>/src/main.c`
+- `examples/ek_ra8d2/<tier>/.../<app>/inc/` for app-local interfaces
 - `CMakeLists.txt`
-- `Makefile`
+- `hil.conf` where the app participates in HIL
+- optional app-local overrides under
+  `examples/ek_ra8d2/<tier>/.../<app>/src/`: `vector_table.c`,
+  `system_init.c`, `secure_exception.c`, `nmi_exception.c`, and
+  `trustzone_init.c` -- the exact set `ra8_add_app()` honours
+- optional
+  `examples/ek_ra8d2/<tier>/.../<app>/inc/trustzone_init.h` and
+  root-level `examples/ek_ra8d2/<tier>/.../<app>/linker_script.ld`
+
+Product forms follow the same ownership rule; for example, the e-reader's
+exception override is
+`apps/board/stand_alone/ereader/src/secure_exception.c`.
+
+The canonical EK-RA8D2 defaults are under
+`libs/ra8_board_ek_ra8d2/{src/boot,ld}/`; RA8P1 uses the corresponding
+`libs/ra8_board_ra8p1/` layer.
 
 ### 1.3 Build configuration
 
 | Path                              | Description                                                  |
 |-----------------------------------|--------------------------------------------------------------|
 | `CMakeLists.txt` (root)           | Top-level orchestrator; auto-discovers example apps.         |
-| `Makefile` (root)                 | Shorthand wrapper invoking CMake per app.                    |
+| `justfile` (root)                 | Authoritative task interface; includes the namespaced modules under `just/`. |
 | `cmake/toolchain-ra8d2.cmake`     | arm-none-eabi cross-compile settings.                        |
 | `cmake/ra8_warnings.cmake`         | Warning + stack-usage gate (`-Wstack-usage=2048` default).   |
 | `Doxyfile`                        | Doxygen configuration (docs site + warning gate).            |
@@ -70,7 +90,7 @@ explicit design goal:
 | `tests/CMakeLists.txt`            | Host test build configuration; gates MC/DC instrumentation.  |
 | `tests/build_tests.sh`            | Host-test build entry point.                                 |
 | `tests/run_tests.sh`              | Host-test execution entry point (ctest).                     |
-| `tests/test_*.c` (190 files)      | Per-module host unit tests (190/190 PASS).                   |
+| Distributed test sources         | Dated 2026-08-22 snapshot: 693 files (689 C, 4 C++), 689 registrations on clean standalone macOS and Linux, and 689/689 passing in the Linux/devcontainer gate in 8.66 s. This is retained historical evidence, not the current-tree census; macOS execution was not claimed. |
 
 ### 1.5 Verification + audit scripts
 
@@ -86,7 +106,7 @@ explicit design goal:
 | `scripts/checks/check_mcdc_block.py`        | `@par MC/DC:` block enforcement on tests.            |
 | `scripts/checks/check-since-version.py`     | Doxygen `@since` enforcement.                        |
 | `scripts/checks/check-copyright.py`         | Copyright + SPDX header enforcement.                 |
-| `scripts/report/roadmap_stats.py`           | ROADMAP.md summary block freshness gate.             |
+| `scripts/report/roadmap_stats.py`           | `../ROADMAP.md` summary block freshness gate.        |
 | `scripts/report/tree_coverage.sh`                 | gcovr whole-tree coverage measurement.               |
 | `scripts/checks/format_code.sh`                   | clang-format wrapper.                                |
 | `scripts/checks/clang_tidy.sh`                    | clang-tidy wrapper.                                  |
@@ -102,7 +122,7 @@ explicit design goal:
 | `docs/RING_AND_WORLD.md`          | Architectural-ring and TrustZone-world tagging system.       |
 | `docs/MEMORY_MAP.md`              | Linker memory map.                                           |
 | `docs/MCDC.md`, `docs/MCDC_GAPS.md` | MC/DC infrastructure and gap list.                         |
-| `docs/MISRA.md`, `docs/MISRA_GAPS.csv` | MISRA-C 2012 audit baseline.                            |
+| `docs/MISRA.md`, `.github/misra-baseline.txt` | MISRA-C 2012 audit policy and baseline.              |
 | `docs/STACK_USAGE.md`             | Stack-bound analysis.                                        |
 | `docs/HARDWARE_BRINGUP.md`        | EVM bring-up + smoke procedure.                              |
 | `docs/QUALIFICATION_ROADMAP.md`   | Phase plan to SIL 3 / DAL B.                                 |
@@ -112,12 +132,15 @@ explicit design goal:
 
 ### 1.7 Vendor SOUP (frozen in tree)
 
-`libs/third_party/` holds the pinned source of every SOUP component
-listed in `docs/SOUP/README.md`. Each component is vendored at the
-exact version recorded in its `docs/SOUP/<name>.md` file. Updates
-require:
+The two canonical vendor roots hold the pinned source of every SOUP component
+listed in `docs/SOUP/README.md`: platform-wide dependencies live under
+`libs/third_party/`, while dependencies used only by application products and
+their companion host tools live under `apps/shared_libs/third_party/`. Each
+component is vendored at the exact version recorded in its
+`docs/SOUP/<name>.md` file. Updates require:
 
-1. A bump of `libs/third_party/<name>/` to the new upstream tag.
+1. A bump of the component directory under its existing canonical vendor root
+   to the new upstream tag.
 2. A diff review against the previous vendored version.
 3. An update of `docs/SOUP/<name>.md` (version, last-review date,
    any new advisories considered).
@@ -143,13 +166,17 @@ require:
 - Tool: **Git**.
 - Authoritative remote: GitHub repository `ra8-firmware` under user
   account `bsikar` (origin).
-- Working directory: `/Users/bsikar/Documents/github/ra8-firmware`.
+- Working copy: a Git linked worktree created through
+  `just workspace::new`; no host-specific absolute path is configuration
+  authority.
 
 ### 2.2 Branching model
 
-- **Single long-lived branch**: `main`.
-- All feature work occurs on short-lived topic branches that merge
-  back into `main` via pull request.
+- **Long-lived branches**: `dev` is the working integration branch and `main`
+  is the release branch.
+- Feature work occurs on short-lived issue branches and worktrees, then lands
+  on `dev` after its required gates pass. Release promotion from `dev` to
+  `main` uses a pull request.
 - No release branches today; tags will be added when the first
   release lands (see Section 5).
 
@@ -164,7 +191,7 @@ require:
   - `10b9eedfc ota: Phase-5 OTA orchestration + secure-side commit veneers`
 - **Commit messages contain no AI attribution.** This is a hard
   project rule per `CLAUDE.md`.
-- Force-push to `main` is **forbidden**.
+- Force-push to `dev` or `main` is **forbidden**.
 - Force-push to topic branches before merge is permitted.
 
 ### 2.4 Pre-commit gate (authoritative configuration of "what cannot land")
@@ -182,16 +209,16 @@ every commit. Failure of any gate refuses the commit:
    files only).
 7. Doxygen `@since` tag enforcement on public headers.
 8. Copyright + SPDX header enforcement.
-9. HUM citation validator (`cite_check.py --warn`).
-10. World-tag validator (`check_world_tags.py --warn`).
+9. HUM citation validator (`cite_check.py --strict`).
+10. World-tag validator (`check_world_tags.py --strict`).
 11. ROADMAP summary freshness (`roadmap_stats.py --check`, strict).
 12. Obsolete-standards reference scan (rejects superseded
     safety-standard references, strict).
 13. `@par MC/DC:` block on staged tests
     (`check_mcdc_block.py`).
 
-The hook is not bypassable via `--no-verify` in CI; it is the
-developer's responsibility not to bypass locally either.
+The hook is mirrored by CI; it is the developer's responsibility not to
+bypass the local installation.
 
 ### 2.5 CI gate (authoritative configuration of "what cannot merge")
 
@@ -201,7 +228,7 @@ adds the heavier gates that are too slow for per-commit:
 1. ASCII, copyright, `@since` tag scanners (mirrors of pre-commit).
 2. clang-format, clang-tidy.
 3. Host unit tests (`unit-tests` job).
-4. Coverage gate (gcovr 90/90, `coverage` job).
+4. Coverage gate (`just quality::gate::run coverage-tree`).
 5. MC/DC coverage gate against `.github/mcdc-baseline.txt`
    (`mcdc` job).
 6. `pre-commit-checks` job (full mirror of the pre-commit hook).
@@ -239,8 +266,8 @@ uses the following severity tiers:
 - Every PR that closes an issue uses `Fixes #N` in the PR body.
 - Every commit that addresses an issue references it as `(#N)` in
   the subject line.
-- A defect that surfaces a missing test must be paired with a new
-  `tests/test_*.c` entry in the same PR.
+- A defect that surfaces a missing test must be paired with a new category-
+  or module-local test entry in the same PR.
 
 ### 3.4 Audit trail
 
@@ -254,7 +281,8 @@ required for the qualification claim.
 
 ### 4.1 Inbound change procedure
 
-- Every change to `main` arrives via a pull request.
+- Working changes land on `dev`; release promotion to `main` arrives via a
+  pull request.
 - The pre-commit hook enforces the per-commit gates; CI enforces the
   per-PR gates (Section 2.5).
 - A PR may not be merged with any CI gate red.
@@ -265,10 +293,11 @@ required for the qualification claim.
 
 ### 4.2 Baselining
 
-A "baseline" in this project is a git commit hash on `main`.
+A "baseline" in this project is a git commit hash. A CI-green `dev` commit is
+the working baseline; release baselines live on `main`.
 External references (the SVR, the SAS, the SOUP review records) cite
-commits by their abbreviated SHA. Until the first signed tag lands
-(Section 5), the latest commit on `main` is the working baseline.
+commits by their abbreviated SHA. Signed tags will identify released
+baselines after the first release lands (Section 5).
 
 ### 4.3 Configuration of build environment
 
@@ -279,13 +308,15 @@ commits by their abbreviated SHA. Until the first signed tag lands
   (`clang-18`/`llvm-18`, `cppcheck`, `clang-format-22`, `clang-tidy`,
   `doxygen`, `graphviz`) run from the pinned devcontainer image.
 - The devcontainer image (`.devcontainer/Dockerfile`) is checked in
-  and pins the base image by digest plus exact tool versions, so a
-  developer-local `make ci` reproduces CI. CI remains the
+  and pins the base image by digest, exact versions where supported, and
+  versioned major-package contracts for the LLVM/GCC families, so a
+  developer-local `just ci` reproduces CI. CI remains the
   authoritative environment. See `docs/TOOLCHAIN.md`.
 
 ### 4.4 SOUP change control
 
-Any update to a vendored library under `libs/third_party/` requires:
+Any update to a vendored library under `libs/third_party/` or
+`apps/shared_libs/third_party/` requires:
 
 1. An updated `docs/SOUP/<name>.md` (version, last-review date,
    reviewed advisories).
@@ -309,9 +340,9 @@ Any update to a vendored library under `libs/third_party/` requires:
 
 When a release is cut, the procedure is:
 
-1. Update `CHANGELOG.md` (when introduced) with the release scope.
-2. Run `make mcdc`, `make misra`, `make stack-usage`,
-   `make test`, `make smoke` and archive the reports under
+1. Update `CHANGELOG.md` with the release scope.
+2. Run `just quality::local::mcdc`, `just quality::local::misra`, `just quality::local::stack_usage`,
+   `just quality::local::test`, `just hil::run` and archive the reports under
    `docs/qualification/release/<tag>/`.
 3. Tag the release: `git tag -s vX.Y.Z -m "Release X.Y.Z"`.
 4. Push the tag: `git push origin vX.Y.Z`.
@@ -323,9 +354,9 @@ documented at the time of the first signed release.
 ### 5.3 Reporting cadence
 
 - Per-PR: CI logs (automatic, persisted by GitHub).
-- Per quarter: re-run `make misra`, refresh `docs/MISRA_GAPS.csv`,
-  re-stamp `docs/MISRA.md` audit table.
-- Per quarter: re-run `make mcdc`, refresh `docs/MCDC_GAPS.md`,
+- Per quarter: re-run `just quality::local::gate misra`, review the ratcheted
+  `.github/misra-baseline.txt`, and re-stamp `docs/MISRA.md` audit table.
+- Per quarter: re-run `just quality::local::mcdc`, refresh `docs/MCDC_GAPS.md`,
   re-stamp `docs/MCDC.md` measurement-history table.
 - Per release: full audit-pack regeneration (Section 5.2).
 
@@ -337,12 +368,12 @@ documented at the time of the first signed release.
 
 - Primary record: this git repository (the GitHub remote is the
   authoritative copy).
-- Vendored SOUP source: `libs/third_party/` is checked into the same
-  repository so that a single `git clone` retrieves the full build
-  configuration. There is no external dependency fetch at build
-  time.
+- Vendored SOUP source: both `libs/third_party/` and
+  `apps/shared_libs/third_party/` are checked into the same repository so that
+  a single `git clone` retrieves the full build configuration. There is no
+  external dependency fetch at build time.
 - CI artifacts: `coverage-html` and `mcdc-report` archives uploaded
-  per CI run with **14-day retention** (per `firmware.yml`). For
+  per CI run with **14-day retention** (per `.github/workflows/firmware.yml`). For
   qualification claims, CI artifacts will be re-archived under
   `docs/qualification/release/<tag>/` at release time.
 - Reference manuals: Renesas datasheets and HUM committed under
@@ -355,9 +386,10 @@ A bit-exact rebuild of any historical state is achieved by:
 
 1. `git clone <remote>` the repository.
 2. `git checkout <commit-or-tag>`.
-3. Reproduce the CI environment via the apt package versions pinned
-   in `firmware.yml`.
-4. `make <app>` to cross-build, or `make test` to host-test.
+3. Reproduce the CI environment through the Ansible-provisioned runner or the
+   digest-pinned `.devcontainer/Dockerfile`; Python dependencies resolve from
+   `pyproject.toml` and `uv.lock`.
+4. `just apps::build <app>` to cross-build, or `just quality::local::test` to host-test.
 
 ### 6.3 Retention
 
@@ -409,8 +441,9 @@ foundation).
 
 ### 8.1 Toolchain pinning
 
-The CI workflow `.github/workflows/firmware.yml` pins the toolchain
-by apt-package name on Ubuntu 24.04. The pinned set is:
+The CI workflow `.github/workflows/firmware.yml`, the checked-in
+`.devcontainer/Dockerfile`, and the canonical helpers under `scripts/ci/`
+control the toolchain. The managed set includes:
 
 - `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi` (cross compiler).
 - `clang-18`, `llvm-18`, `libclang-rt-18-dev` (host MC/DC chain).
@@ -418,25 +451,30 @@ by apt-package name on Ubuntu 24.04. The pinned set is:
 - `cppcheck` (static + MISRA).
 - `cmake`, `ninja-build`, `gcc` (build orchestration).
 - `doxygen`, `graphviz` (docs gate).
-- `gcovr` (coverage gate, installed via pip).
+- `gcovr` (coverage gate, synchronized from `pyproject.toml` and `uv.lock`).
 
-Any toolchain bump is a `firmware.yml` edit and follows the same
-PR + CI gating as a code change.
+Any toolchain bump updates its authoritative pin and follows the same PR + CI
+gating as a code change.
 
-### 8.2 Devcontainer (planned)
+### 8.2 Devcontainer
 
-A devcontainer that pins the same toolchain set is on the roadmap;
-it is not yet checked in. Until then, developer-local builds may
-drift; CI is authoritative.
+The checked-in `.devcontainer/` definition supplies the pinned development
+environment. Image construction and writable-worktree execution go through the
+canonical helpers in `scripts/ci/`, which also enforce the image identity used
+by the Just devcontainer recipes.
 
 ### 8.3 Operating-system + runner control
 
-- CI runner: `ubuntu-latest` (currently 24.04). Bumps are reviewed
-  on the GitHub Actions release notes and accepted by ratcheting
-  `firmware.yml`.
-- HW-in-the-loop runner: developer-laptop pre-push only
-  (`docs/HIL_DEVELOPER_WORKFLOW.md`); a self-hosted runner is **out
-  of scope** per `docs/CERTIFICATION_SCOPE.md`.
+- Normal CI runners: Ansible-managed, self-hosted `ra8-ci` listeners declared
+  by `infra/fleet.yml`. The isolated fork-PR feedback lane is the only
+  `ubuntu-latest` path and cannot reach self-hosted infrastructure. Runner
+  changes are reviewed through the workflow schedules, Ansible roles, and the
+  runner-image dependency gate.
+- HW-in-the-loop runner: dedicated native dev-box listener with an isolated
+  SSH identity to the Raspberry Pi 5 rig. HIL-relevant pushes and trusted
+  same-repository PRs schedule through `.github/workflows/hil.yml`; fork PRs are excluded and
+  local selected-app runs remain available to HIL-equipped developers
+  (`docs/HIL_DEVELOPER_WORKFLOW.md`).
 
 ---
 

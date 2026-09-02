@@ -12,22 +12,29 @@ test vectors are tracked separately.
 
 ## Coverage target
 
-**100% MC/DC of reachable conditions.** Deactivated conditions (DO-178C
-6.4.4.3) are exempted from the gate provided each one carries a
-documented rationale in
+**Complete MC/DC for 100% of reachable decision regions.** A decision region
+is complete only when llvm-cov reports 100% MC/DC for every condition in that
+decision. Deactivated decision regions (DO-178C 6.4.4.3) are exempted from the
+gate provided each one carries a documented rationale in
 [`docs/MCDC_DEACTIVATIONS.md`](MCDC_DEACTIVATIONS.md). The gate is
 
 ```
-reachable_conditions_covered / reachable_conditions_total >= 100%
+fully_covered_reachable_decisions / reachable_decisions_total >= 100%
 ```
 
-where `reachable_conditions_total = total_decisions - deactivated_decisions`.
+where
+`reachable_decisions_total = total_decisions - deactivated_decisions`.
+
+This decision-complete percentage is deliberately separate from the
+condition-level percentage in llvm-cov's `TOTAL` row. The latter counts
+individual MC/DC condition obligations and is reported as an informational
+absolute percentage; it is not used as the reachable-decision gate.
 
 `scripts/fix/regen_mcdc_gaps.py` auto-classifies each MC/DC gap as
 `deactivated` (defensive guard already enforced upstream) or
 `reachable` (still needs a test vector). The gate, the per-decision
 catalog, and the deactivation rationale list all derive from the same
-live `make mcdc` report -- there is no hand-curated allow-list.
+live `just quality::local::mcdc` report -- there is no hand-curated allow-list.
 
 Industry mappings: this policy is the IEC 61508-3:2010 7.4.7
 "defensive code" exemption and the ISO 26262-6:2018 9.4.5 "deactivated
@@ -75,16 +82,15 @@ piggy-backs on. See LLVM's
 "[Source-based Code Coverage](https://clang.llvm.org/docs/SourceBasedCodeCoverage.html#mc-dc-instrumentation)"
 documentation.
 
-If clang >= 18 is not on `$PATH`, the build falls back to gcc 14's
-`-fcondition-coverage` (condition coverage, **NOT** MC/DC) and prints
-a loud warning. This fallback exists so the script still runs
-end-to-end on machines without modern clang; **it is not
-DO-178C-compliant** and the report gate is skipped.
+The report driver fails closed unless clang >= 18 and matching LLVM profile
+tools are available. Plain gcc 14 `-fcondition-coverage` can be explored only
+through an explicit manual CMake configuration; it is **not** MC/DC, is not
+DO-178C-compliant, and cannot satisfy this gate.
 
 ## How to run
 
 ```sh
-make mcdc
+just quality::local::mcdc
 ```
 
 This wraps `scripts/report/mcdc_report.sh`, which:
@@ -97,10 +103,12 @@ This wraps `scripts/report/mcdc_report.sh`, which:
 5. Renders both a verbose per-file dump
    (`build/mcdc-report/mcdc.txt`) and a numeric summary
    (`build/mcdc-report/summary.txt`).
-6. Exits non-zero if first-party MC/DC < 100% (override via
-   `RA8_MCDC_THRESHOLD=NN`).
+6. Applies a 100% reachable-decision floor to every represented first-party
+   production root: `libs/`, `apps/shared_libs/`, `examples/`, `port/`, and
+   `tools/` (override via `RA8_MCDC_THRESHOLD=NN`). Each root also has a
+   non-vacuity check.
 
-The existing `make test` and `make coverage` flows are untouched --
+The existing `just quality::local::test` and `just quality::local::mcdc` flows are untouched --
 MC/DC instrumentation is opt-in.
 
 ## How to read the report
@@ -161,7 +169,7 @@ Three tests cover MC/DC for the loop guard:
   normally and exits when `value` reaches zero before the index cap.
 
 To add the vectors, drop new assertions into
-`tests/test_ra8_log.c` and re-run `make mcdc`. The MC/DC column for
+`tests/core/src/test_ra8_log.c` and re-run `just quality::local::mcdc`. The MC/DC column for
 `ra8_log.c` should advance as soon as the new tests execute the
 required truth-table rows.
 
@@ -193,6 +201,19 @@ uses -- and compares those counts against
 `.github/mcdc-compound-baseline.txt`. **Any increase fails.** So a
 newly-added compound decision that arrives without vectors fails the
 push, while the pre-existing backlog is tolerated and can only shrink.
+
+The structural citation ratchet covers `libs/`, `port/`,
+`apps/shared_libs/`, and the firmware product directories derived by
+`lint_targets.firmware_app_dirs()` (currently the e-reader under `apps/`). It
+excludes both canonical `third_party` roots, generated code, nested tests,
+standalone examples, and host tools. Examples and tools are still subject to
+the executed 100% per-file floor described above; they are simply outside this
+separate citation-ratchet census.
+
+Adding the previously omitted app-shared scope exposed 1,195 pre-existing
+decisions in 586 buckets and zero growth outside `apps/shared_libs/`. That
+measurement corrected gate visibility; it was not a coverage regression or a
+waiver, and the newly visible rows are frozen by the same no-growth rule.
 
 A ratchet rather than a straight whole-tree check because a delta scan
 keys on new source *lines*: with a backlog this size it would fail on a
@@ -226,15 +247,16 @@ DO-178C Section 12.1.4 ("Software of Unknown Pedigree") allows
 unmodified third-party libraries to be used without source-level MC/DC
 provided their behaviour is verified at the integration boundary.
 
-Everything under `libs/third_party/` is excluded from MC/DC
-instrumentation and from the `llvm-cov` report; `tests/CMakeLists.txt`
-is the authority for that exclusion list. Those components are SOUP
-under DO-178C, and each carries its own justification under
-`docs/SOUP/`.
+Everything under `libs/third_party/` or
+`apps/shared_libs/third_party/` is excluded from MC/DC instrumentation and
+from the `llvm-cov` report; `tests/CMakeLists.txt` is the authority for that
+exclusion list. Those components are SOUP under DO-178C, and each carries its
+own justification under `docs/SOUP/`.
 
-First-party HAL, PAL, application, and security code under
-`libs/ra8_*/` (excluding `libs/third_party/`) is **in scope** for MC/DC
-and the gate.
+First-party production files represented in the live report under `libs/`,
+`apps/shared_libs/`, `examples/`, `port/`, and `tools/` are **in scope** for
+the executed MC/DC floor. Nested tests, generated font tables, build output,
+and both canonical third-party roots are excluded.
 
 ## Known gaps
 

@@ -14,7 +14,7 @@ debugs, but read the MRAM limitation below before relying on it to flash.
 
 Wrapper scripts for both paths live in `scripts/dev/` (`flash.sh`, `debug.sh`
 and `ozone.sh` for SEGGER; `openocd_flash.sh` and `openocd_debug.sh` for the
-other), and each app's own Makefile wraps those in turn. The OpenOCD board
+other), and the root justfile wraps those in turn. The OpenOCD board
 config is `scripts/dev/openocd/ek-ra8d2.cfg`, which documents its own limits
 inline.
 

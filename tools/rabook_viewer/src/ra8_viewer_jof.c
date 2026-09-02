@@ -11,11 +11,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "jof.h"
+#include "longstrip.h"
 #include "ra8_attributes.h"
 #include "ra8_decomp_limits.h"
 #include "ra8_err.h"
-#include "ra8_jof.h"
-#include "ra8_longstrip.h"
 #include "ra8_tile_cache.h"
 #include "ra8_viewer_reader.h"
 #include "ra8_viewer_reader_internal.h"
@@ -131,16 +131,16 @@ RA8_INTERNAL static ra8_err_t internal_wire(ra8_viewer_reader_t* reader, size_t 
     .dims         = jof->dims,
     .buckets      = jof->buckets,
     .bucket_count = (uint32_t)k_viewer_jof_buckets,
-    .decode       = ra8_longstrip_tile_decode,
+    .decode       = longstrip_tile_decode,
     .decode_ctx   = &jof->dctx,
   };
   ra8_err_t error = ra8_tile_cache_init(&jof->cache, &cache_config);
   if (error != k_ra8_ok) {
     return error;
   }
-  jof->viewport_h                        = (uint32_t)k_ra8_viewer_fb_height;
-  jof->x_off                             = 0;
-  const ra8_longstrip_cfg_t strip_config = {
+  jof->viewport_h                    = (uint32_t)k_ra8_viewer_fb_height;
+  jof->x_off                         = 0;
+  const longstrip_cfg_t strip_config = {
     .pread      = priv_viewer_pread,
     .pread_ctx  = &reader->file,
     .atlas_size = reader->file.size,
@@ -151,7 +151,7 @@ RA8_INTERNAL static ra8_err_t internal_wire(ra8_viewer_reader_t* reader, size_t 
     .blit       = internal_jof_blit,
     .blit_ctx   = reader,
   };
-  return ra8_longstrip_open(&jof->strip, &strip_config);
+  return longstrip_open(&jof->strip, &strip_config);
 }
 
 /**
@@ -179,11 +179,11 @@ RA8_INTERNAL static ra8_err_t internal_seek(viewer_jof_t* jof, uint32_t page)
     return k_ra8_err_out_of_range;
   }
   const ra8_err_t error =
-    ra8_longstrip_set_viewport(&jof->strip, jof->dctx.info.width, (uint16_t)content);
+    longstrip_set_viewport(&jof->strip, jof->dctx.info.width, (uint16_t)content);
   if (error != k_ra8_ok) {
     return error;
   }
-  return ra8_longstrip_scroll_by(&jof->strip, (int32_t)top - jof->strip.scroll_y);
+  return longstrip_scroll_by(&jof->strip, (int32_t)top - jof->strip.scroll_y);
 }
 
 ra8_err_t priv_viewer_open_jof(ra8_viewer_reader_t* reader)
@@ -191,8 +191,7 @@ ra8_err_t priv_viewer_open_jof(ra8_viewer_reader_t* reader)
   viewer_jof_t* jof   = &reader->jof;
   jof->dctx.pread     = priv_viewer_pread;
   jof->dctx.pread_ctx = &reader->file;
-  ra8_err_t error =
-    ra8_jof_parse(priv_viewer_pread, &reader->file, reader->file.size, &jof->dctx.info);
+  ra8_err_t error = jof_parse(priv_viewer_pread, &reader->file, reader->file.size, &jof->dctx.info);
   const uint64_t band = (uint64_t)jof->dctx.info.tile_w * (uint64_t)jof->dctx.info.tile_h *
                         (uint64_t)jof->dctx.info.bpp;
   if ((error == k_ra8_ok) && (band == 0U)) {
@@ -202,9 +201,9 @@ ra8_err_t priv_viewer_open_jof(ra8_viewer_reader_t* reader)
   if (error == k_ra8_ok) {
     error = ra8_decomp_check_declared(&limits, reader->file.size, band);
   }
-  const size_t scratch_required = (jof->dctx.info.codec == (uint8_t)k_ra8_jof_codec_raw)
+  const size_t scratch_required = (jof->dctx.info.codec == (uint8_t)k_jof_codec_raw)
                                     ? 1U
-                                    : (size_t)ra8_jof_stored_bound((uint32_t)band);
+                                    : (size_t)jof_stored_bound((uint32_t)band);
   if ((error == k_ra8_ok) &&
       (((size_t)band > jof->cell_cap) || (scratch_required > jof->scratch_cap))) {
     error = k_ra8_err_invalid_size;
@@ -229,8 +228,8 @@ ra8_err_t priv_viewer_render_jof(ra8_viewer_reader_t* reader, uint32_t page)
          (size_t)reader->rt_w * (size_t)reader->rt_h * sizeof(*reader->fb));
   ra8_err_t error = internal_seek(jof, page);
   if (error == k_ra8_ok) {
-    ra8_longstrip_render_stats_t stats = {};
-    error                              = ra8_longstrip_render(&jof->strip, &stats);
+    longstrip_render_stats_t stats = {};
+    error                          = longstrip_render(&jof->strip, &stats);
   }
   return error;
 }
@@ -256,8 +255,8 @@ ra8_err_t priv_viewer_tile_jof(ra8_viewer_reader_t* reader,
   memset(pixels, (int)k_viewer_white_byte, required);
   ra8_err_t error = internal_seek(jof, index);
   if (error == k_ra8_ok) {
-    ra8_longstrip_render_stats_t stats = {};
-    error                              = ra8_longstrip_render(&jof->strip, &stats);
+    longstrip_render_stats_t stats = {};
+    error                          = longstrip_render(&jof->strip, &stats);
   }
   reader->rt565 = reader->fb;
   reader->rt_w  = (uint32_t)k_ra8_viewer_fb_width;

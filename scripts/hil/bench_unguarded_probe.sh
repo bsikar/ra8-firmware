@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # bench_unguarded_probe.sh -- the NEGATIVE CONTROL for the bench-lock
 # contention experiment. It touches the bench WITHOUT taking the lock, on
@@ -40,10 +41,61 @@
 # Exit codes:
 #   0  the unguarded probe ran
 #   2  refused (opt-in not set) or the rig is not configured
-set -euo pipefail
+if [[ "$-" == *p* ]]; then
+  unset -v BASH_ENV ENV
+  declare -a ra8_startup_env_unset=()
+  _ra8_startup_refuse() {
+    printf 'error: privileged startup %s\n' "$1" >&2
+    exit 1
+  }
+  ra8_startup_env_done_count=0
+  while IFS= read -r -d '' ra8_startup_env_row; do
+    ra8_startup_env_name="${ra8_startup_env_row%%=*}"
+    case "$ra8_startup_env_name" in
+      RA8_STARTUP_ENV_DONE)
+        ra8_startup_env_done_count=$((ra8_startup_env_done_count + 1))
+        ;;
+      BASH_FUNC_*%% | BASH_FUNC_*'()') ra8_startup_env_unset+=(-u "$ra8_startup_env_name") ;;
+    esac
+  done < <(
+    /usr/bin/env -u RA8_STARTUP_ENV_DONE -0 &&
+      /usr/bin/printf 'RA8_STARTUP_ENV_DONE=1\0'
+  )
+  ((ra8_startup_env_done_count == 1)) && [[ "$ra8_startup_env_name" == RA8_STARTUP_ENV_DONE ]] || _ra8_startup_refuse 'environment enumeration was incomplete'
+  if ((${#ra8_startup_env_unset[@]})); then
+    [[ -z "${RA8_STARTUP_ENV_SCRUBBED-}" ]] || _ra8_startup_refuse 'scrub did not converge'
+    ra8_startup_reentry="$0"
+    [[ "$ra8_startup_reentry" == */* ]] || _ra8_startup_refuse 'requires a script path'
+    if [[ "$ra8_startup_reentry" != /* ]]; then
+      ra8_startup_reentry="$PWD/$ra8_startup_reentry"
+    fi
+    ra8_startup_check="$ra8_startup_reentry"
+    while [[ "$ra8_startup_check" != "/" ]]; do
+      [[ ! -L "$ra8_startup_check" ]] || _ra8_startup_refuse 'refuses a symlinked path'
+      ra8_startup_parent="${ra8_startup_check%/*}"
+      [[ -n "$ra8_startup_parent" ]] || ra8_startup_parent="/"
+      [[ "$ra8_startup_parent" != "$ra8_startup_check" ]] ||
+        _ra8_startup_refuse 'cannot validate its script path'
+      ra8_startup_check="$ra8_startup_parent"
+    done
+    [[ -f "$ra8_startup_reentry" ]] || _ra8_startup_refuse 'refuses a non-regular path'
+    if ! exec /usr/bin/env "${ra8_startup_env_unset[@]}" -u BASH_ENV -u ENV \
+      -u RA8_STARTUP_ENV_DONE RA8_STARTUP_ENV_SCRUBBED=1 \
+      /bin/bash -p -- "$ra8_startup_reentry" "$@"; then
+      _ra8_startup_refuse 'could not enter sanitized process'
+    fi
+  fi
+  unset -v ra8_startup_check ra8_startup_env_done_count
+  unset -v ra8_startup_env_name ra8_startup_env_row
+  unset -v ra8_startup_env_unset ra8_startup_parent ra8_startup_reentry
+  unset -v RA8_STARTUP_ENV_DONE
+  unset -v RA8_STARTUP_ENV_SCRUBBED
+  unset -f _ra8_startup_refuse
 
-if [ "${RA8_BENCH_NEGATIVE_CONTROL:-0}" != "1" ]; then
-  cat >&2 <<'REFUSE'
+  set -euo pipefail
+
+  if [ "${RA8_BENCH_NEGATIVE_CONTROL:-0}" != "1" ]; then
+    cat >&2 <<'REFUSE'
 bench_unguarded_probe.sh: REFUSED.
 
 This script touches the bench WITHOUT taking the bench lock. It exists only as
@@ -52,60 +104,60 @@ witness can actually see two machines on the board at once, so that "no overlap
 observed" is a finding rather than an artefact.
 
 If you want to use the bench, use a guarded entry point:
-    make hil-probe / make hil-flash APP=<app> / make bench-hold WHY="..."
+    just hil::probe / just hil::flash <app> / just hil::hold "why"
 
 To run the negative control deliberately:
-    RA8_BENCH_NEGATIVE_CONTROL=1 bash scripts/hil/bench_unguarded_probe.sh
+    RA8_BENCH_NEGATIVE_CONTROL=1 /bin/bash -p scripts/hil/bench_unguarded_probe.sh
 REFUSE
-  exit 2
-fi
-
-_hil_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# shellcheck source=scripts/hil/lib/rig_env.sh
-source "$_hil_dir/lib/rig_env.sh"
-rig_require PI_HOST JLINK_SN
-
-HOLD_S="${1:-12}"
-
-# ---- the one interlock this script does keep ---------------------------------
-#
-# It must collide with the OTHER unguarded actors of the same negative control
-# -- that is its entire purpose -- and it must never collide with somebody who
-# took the bench properly. Those are compatible, because during the negative
-# control nobody holds the lock: a lock in force therefore means a REAL actor
-# is on the board, quite possibly mid-flash, and an unguarded read landing in
-# the middle of that is how you prove the lock works by corrupting a flash.
-#
-# So: refuse when the bench is held, and refuse when the answer cannot be
-# established. Fail closed, the same way ra8_bench_require does.
-bash "$_hil_dir/bench.sh" status >/dev/null 2>&1
-case $? in
-  0) ;;
-  1)
-    printf '[negative-control] REFUSED -- the bench is HELD right now.\n' >&2
-    printf '[negative-control] The negative control may collide only with the other\n' >&2
-    printf '[negative-control] unguarded actors of its own run, never with somebody who\n' >&2
-    printf '[negative-control] took the lock properly and may be programming MRAM.\n' >&2
-    bash "$_hil_dir/bench.sh" status >&2 2>/dev/null
     exit 2
-    ;;
-  *)
-    printf '[negative-control] REFUSED -- could not establish whether the bench is free.\n' >&2
-    printf '[negative-control] A lock you cannot read is not a free bench.\n' >&2
-    exit 2
-    ;;
-esac
+  fi
 
-printf '[negative-control] UNGUARDED bench touch starting at %s -- no lock is held\n' \
-  "$(date +%s.%N)" >&2
+  _hil_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Read-only J-Link occupancy plus a console read, both for the same span, so
-# the witness has two independent kinds of collision to notice: two JLinkExe
-# processes with different ssh peers, and two readers on one /dev/ttyACM.
-# shellcheck disable=SC2087  # client-side substitution of JLINK_DEVICE/JLINK_SN and the
-# hold duration is intentional: the bench host has no .env and no checkout.
-ssh -o BatchMode=yes -o ConnectTimeout=8 "$PI_HOST" bash <<REMOTE
+  # shellcheck source=scripts/hil/lib/rig_env.sh
+  source "$_hil_dir/lib/rig_env.sh"
+  rig_require PI_HOST JLINK_SN
+
+  HOLD_S="${1:-12}"
+
+  # ---- the one interlock this script does keep ---------------------------------
+  #
+  # It must collide with the OTHER unguarded actors of the same negative control
+  # -- that is its entire purpose -- and it must never collide with somebody who
+  # took the bench properly. Those are compatible, because during the negative
+  # control nobody holds the lock: a lock in force therefore means a REAL actor
+  # is on the board, quite possibly mid-flash, and an unguarded read landing in
+  # the middle of that is how you prove the lock works by corrupting a flash.
+  #
+  # So: refuse when the bench is held, and refuse when the answer cannot be
+  # established. Fail closed, the same way ra8_bench_require does.
+  /bin/bash -p "$_hil_dir/bench.sh" status >/dev/null 2>&1
+  case $? in
+    0) ;;
+    1)
+      printf '[negative-control] REFUSED -- the bench is HELD right now.\n' >&2
+      printf '[negative-control] The negative control may collide only with the other\n' >&2
+      printf '[negative-control] unguarded actors of its own run, never with somebody who\n' >&2
+      printf '[negative-control] took the lock properly and may be programming MRAM.\n' >&2
+      /bin/bash -p "$_hil_dir/bench.sh" status >&2 2>/dev/null
+      exit 2
+      ;;
+    *)
+      printf '[negative-control] REFUSED -- could not establish whether the bench is free.\n' >&2
+      printf '[negative-control] A lock you cannot read is not a free bench.\n' >&2
+      exit 2
+      ;;
+  esac
+
+  printf '[negative-control] UNGUARDED bench touch starting at %s -- no lock is held\n' \
+    "$(date +%s.%N)" >&2
+
+  # Read-only J-Link occupancy plus a console read, both for the same span, so
+  # the witness has two independent kinds of collision to notice: two JLinkExe
+  # processes with different ssh peers, and two readers on one /dev/ttyACM.
+  # shellcheck disable=SC2087  # client-side substitution of JLINK_DEVICE/JLINK_SN and the
+  # hold duration is intentional: the bench host has no .env and no checkout.
+  ssh -o BatchMode=yes -o ConnectTimeout=8 "$PI_HOST" /bin/bash -p <<REMOTE
 set -uo pipefail
 $RA8_TTY_RESOLVER_SRC
 S=\$(mktemp /tmp/ra8-negctl.XXXXXX.jlink)
@@ -142,4 +194,7 @@ grep -q 'Connecting to J-Link via USB\.\.\.O\.K\.' "\$L" &&
   echo "[negative-control] J-Link did NOT connect -- see \$L"
 REMOTE
 
-printf '[negative-control] UNGUARDED bench touch finished at %s\n' "$(date +%s.%N)" >&2
+  printf '[negative-control] UNGUARDED bench touch finished at %s\n' "$(date +%s.%N)" >&2
+else
+  [[ "$-" == *p* ]]
+fi

@@ -38,6 +38,7 @@
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_err.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 #include "ra8_vin_regs.h"
@@ -272,7 +273,9 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   /* HUM Ch 11.2.8 "MSTPCRC: Module Stop Control Register C", p 446
  * VIN shares its module-stop bit with MIPI CSI on the RA8D2. */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_mipi_csi);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "vin_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "vin_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   const uint32_t mc_clean = internal_compose_mc(cfg);
 
@@ -394,13 +397,9 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   *mtc_reg                   = k_ra8_vin_mtcstop_req;
 
   /* Bounded poll for OUTSTAND -> 0 (NASA Rule 2). */
-  ra8_err_t err = k_ra8_err_hw_timeout;
-  for (uint16_t i = 0U; i < k_ra8_vin_stop_drain_max; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((*mtc_reg & k_ra8_vin_mtcstop_outstand) == 0UL) {    /* GCOVR_EXCL_BR_LINE */
-      err = k_ra8_ok;
-      break;
-    }
-  }
+  const ra8_err_t err = ra8_hw_wait_flag_clear32(mtc_reg,
+                                                 k_ra8_vin_mtcstop_outstand,
+                                                 (uint32_t)k_ra8_vin_stop_drain_max);
   ra8_log_info(s_tag, "vin_capture_stop");
   return err;
 }

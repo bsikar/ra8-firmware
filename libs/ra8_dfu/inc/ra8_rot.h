@@ -141,7 +141,7 @@ typedef enum : uint32_t {
  *       the bare body digest (see ``ra8_rot_verify_image``), so an attacker
  *       holding an older validly-signed image cannot raise this field to
  *       defeat anti-rollback -- the forged version invalidates the signature.
- *       The signing tool ``tools/rot_sign.py`` binds the identical material.
+ *       The signing tool ``tools/rot/src/rot_sign.py`` binds the identical material.
  *       ``digest`` itself still covers only the body. See
  *       ``ra8_dfu_antirollback.h`` for the monotonic-counter check.
  *

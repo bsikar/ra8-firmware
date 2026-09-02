@@ -285,9 +285,6 @@ UINT selftest_msc_read(VOID*  storage,
   return UX_SUCCESS;
 }
 
-/* cppcheck-suppress-begin [constParameterCallback] -- USBX's
- * ux_slave_class_storage_media_write function-pointer signature takes
- * non-const UCHAR*; we cannot const-qualify the parameter. */
 UINT selftest_msc_write(VOID*  storage,
                         ULONG  lun,
                         UCHAR* data_pointer,
@@ -305,7 +302,6 @@ UINT selftest_msc_write(VOID*  storage,
                                                        k_scsi_ascq_none);
   return UX_ERROR;
 }
-/* cppcheck-suppress-end [constParameterCallback] */
 
 UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_status)
 {

@@ -159,7 +159,7 @@ static void internal_gpt_note_entry(const uint8_t* entry, uint64_t* basic_lba, u
  * ::priv_gpt_note_entry; the Basic Data candidate wins over the first
  * allocated entry of any other type.
  *
- * @param[in,out] m         Mount whose backend supplies the sectors.
+ * @param[in] m         Mount whose backend supplies the sectors.
  * @param[in]     entry_lba First LBA of the partition entry array.
  * @param[in]     count     Number of entries to scan (already clamped).
  * @param[out]    out_base  Receives the chosen partition's first LBA.
@@ -175,8 +175,10 @@ static void internal_gpt_note_entry(const uint8_t* entry, uint64_t* basic_lba, u
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-internal_gpt_scan_entries(ra8_fs_mount_t* m, uint64_t entry_lba, uint32_t count, uint64_t* out_base)
+static ra8_err_t internal_gpt_scan_entries(const ra8_fs_mount_t* m,
+                                           uint64_t              entry_lba,
+                                           uint32_t              count,
+                                           uint64_t*             out_base)
 {
   const uint32_t eps       = priv_bps(m) / (uint32_t)k_gpt_entry_bytes;
   uint64_t       basic_lba = 0U;
@@ -212,7 +214,7 @@ internal_gpt_scan_entries(ra8_fs_mount_t* m, uint64_t entry_lba, uint32_t count,
  * (::priv_gpt_locate_volume) and the indexed one (::priv_gpt_locate_partition)
  * so the two agree byte-for-byte on what a usable GPT is.
  *
- * @param[in,out] m             Mount whose backend supplies the sectors.
+ * @param[in] m             Mount whose backend supplies the sectors.
  * @param[out]    out_entry_lba First LBA of the partition entry array.
  * @param[out]    out_count     Entry count, clamped to ::k_gpt_entry_scan_max.
  * @return Error code.
@@ -229,7 +231,7 @@ internal_gpt_scan_entries(ra8_fs_mount_t* m, uint64_t entry_lba, uint32_t count,
  */
 RA8_INTERNAL
 static ra8_err_t
-internal_gpt_read_geom(ra8_fs_mount_t* m, uint64_t* out_entry_lba, uint32_t* out_count)
+internal_gpt_read_geom(const ra8_fs_mount_t* m, uint64_t* out_entry_lba, uint32_t* out_count)
 {
   const ra8_err_t err = priv_read_sector(m, (uint64_t)k_gpt_header_lba, g_fs_scratch);
   if (err != k_ra8_ok) {
@@ -258,7 +260,7 @@ internal_gpt_read_geom(ra8_fs_mount_t* m, uint64_t* out_entry_lba, uint32_t* out
 }
 
 /* `priv_gpt_locate_volume()`: see header for the documented contract. */
-ra8_err_t priv_gpt_locate_volume(ra8_fs_mount_t* m, uint64_t* out_base)
+ra8_err_t priv_gpt_locate_volume(const ra8_fs_mount_t* m, uint64_t* out_base)
 {
   uint64_t        entry_lba = 0U;
   uint32_t        count     = 0U;
@@ -312,7 +314,7 @@ static ra8_err_t internal_gpt_entry_select(const uint8_t* entry, uint64_t* out_b
 }
 
 /* `priv_gpt_locate_partition()`: see header for the documented contract. */
-ra8_err_t priv_gpt_locate_partition(ra8_fs_mount_t* m, uint8_t index, uint64_t* out_base)
+ra8_err_t priv_gpt_locate_partition(const ra8_fs_mount_t* m, uint8_t index, uint64_t* out_base)
 {
   uint64_t        entry_lba = 0U;
   uint32_t        count     = 0U;

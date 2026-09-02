@@ -25,6 +25,7 @@ Exit status: 0 if every declared veneer has a definition, 1 otherwise.
 
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 # Repo root: this file is scripts/checks/check_nsc_veneer_defs.py .
@@ -64,6 +65,39 @@ def is_defined(name: str, sources: list[Path]) -> bool:
     return any(def_re.search(src.read_text(encoding="utf-8")) for src in sources)
 
 
+def selftest() -> int:
+    """Prove a phantom veneer fires and a matching definition stays quiet."""
+    with tempfile.TemporaryDirectory(prefix="nsc-veneer-selftest-") as raw:
+        root = Path(raw)
+        header = root / "ra8_nsc.h"
+        source = root / "ra8_nsc.c"
+        header.write_text(
+            "RA8_NSC_VENEER ra8_err_t ra8_nsc_defined(void);\n"
+            "RA8_NSC_VENEER void ra8_nsc_phantom(void);\n",
+            encoding="ascii",
+        )
+        source.write_text(
+            "RA8_NSC_VENEER ra8_err_t ra8_nsc_defined(void) { return 0; }\n"
+            "void caller(void) { ra8_nsc_phantom(); }\n",
+            encoding="ascii",
+        )
+        declared = declared_veneers(header)
+        defined = [name for name in declared if is_defined(name, [source])]
+        missing = [name for name in declared if not is_defined(name, [source])]
+    cases = (
+        (defined == ["ra8_nsc_defined"], "matching veneer definition stays quiet"),
+        (missing == ["ra8_nsc_phantom"], "call-only phantom veneer fires"),
+    )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"check_nsc_veneer_defs.py --selftest: {len(failed)} failure(s)", file=sys.stderr)
+        return 1
+    print("check_nsc_veneer_defs.py --selftest: all cases pass (both directions).")
+    return 0
+
+
 def main() -> int:
     """Fail when a declared RA8_NSC_VENEER has no definition in the NSC sources.
 
@@ -79,6 +113,12 @@ def main() -> int:
     Returns 0 when every declaration has a definition, 1 on a phantom veneer
     or a missing header.
     """
+    args = sys.argv[1:]
+    if args == ["--selftest"]:
+        return selftest()
+    if args:
+        print("usage: check_nsc_veneer_defs.py [--selftest]", file=sys.stderr)
+        return 2
     if not HEADER.is_file():
         print(f"check_nsc_veneer_defs.py: header not found: {HEADER}", file=sys.stderr)
         return 1

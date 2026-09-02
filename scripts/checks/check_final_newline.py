@@ -11,11 +11,11 @@ reaches the formatter.  Neither is a gate, and neither touches Python, shell,
 CMake, or YAML.
 
 This repo-wide backstop covers every first-party source file (C/C++, Python,
-shell, CMake, Make, YAML, linker scripts) and fails if any is non-empty and
+shell, CMake, just, YAML, linker scripts) and fails if any is non-empty and
 does not end in a newline byte.  The whole-tree set is DERIVED from
 ``git ls-files`` via ``lint_targets.first_party_paths`` rather than a hardcoded
 root list, so a new top-level directory is covered the day it lands; a hardcoded
-list -- which this used to carry, omitting ``docs/``, ``mk/``, ``infra/`` and
+list -- which this used to carry, omitting ``docs/``, ``just/``, ``infra/`` and
 ``coprocessor/`` (#549) -- does not fail when it goes stale, it just reports
 success over a shrinking slice.  Vendor trees and generated font tables are
 excluded.  There is no grandfathering.
@@ -60,13 +60,15 @@ SOURCE_SUFFIXES = (
     ".sh",
     ".cmake",
     ".mk",
+    ".just",
     ".yml",
     ".yaml",
     ".ld",
 )
-SOURCE_NAMES = ("CMakeLists.txt", "Makefile", "GNUmakefile")
+SOURCE_NAMES = ("CMakeLists.txt", "justfile", "Justfile")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
+    "apps/shared_libs/third_party/",
     "libs/ra8_fonts/",
     "port/threadx/",
     "_unsupported/",
@@ -109,10 +111,10 @@ def _derived_sources() -> list[Path]:
 
     Enumeration goes through ``lint_targets.first_party_paths`` -- the shared
     derived-scope primitive -- so a newly added top-level directory (``docs/``,
-    ``mk/``, ``infra/`` and ``coprocessor/`` were the ones a hardcoded root
+    ``just/``, ``infra/`` and ``coprocessor/`` were the ones a hardcoded root
     list had silently omitted, #549) is in scope the day it lands. The suffix
     set is the sole language filter; ``SOURCE_NAMES`` catches the
-    extensionless-by-convention listfiles (``Makefile``, ``CMakeLists.txt``).
+    extensionless-by-convention listfiles (``justfile``, ``CMakeLists.txt``).
     """
     rels = set(first_party_paths(SOURCE_SUFFIXES))
     for name in SOURCE_NAMES:
@@ -143,7 +145,7 @@ def selftest() -> int:
     Both directions plus a scope probe: a non-empty file with no trailing
     newline must FIRE, a newline-terminated file and an empty file must stay
     QUIET, the derived whole-tree scope must clear ``FILE_FLOOR``, and it must
-    actually reach the roots a hardcoded list had dropped (``mk/``, ``infra/``)
+    actually reach the roots a hardcoded list had dropped (``just/``, ``infra/``)
     -- a clean run over a scope that never sees those roots proves nothing.
 
     Returns:
@@ -169,7 +171,7 @@ def selftest() -> int:
         f"derived scope sees {len(scope)} file(s) (floor {FILE_FLOOR})",
         failures,
     )
-    for root_name in ("mk", "infra"):
+    for root_name in ("just", "infra"):
         expect(
             any(rel.startswith(root_name + "/") for rel in rels),
             f"the derived scope reaches {root_name}/ (previously omitted)",

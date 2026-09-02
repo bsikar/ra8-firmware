@@ -228,58 +228,6 @@ static const char* selftest_fs_type_name(ra8_fs_type_t type)
 }
 
 /**
- * @brief Print the verify verdict line (bytes + duration + rate).
- *
- * @details "verified 1048576 bytes in N ms (M KiB/s)".
- *
- * @return ra8_err_t propagated from the SCI helpers.
- * @retval k_ra8_ok The verdict line is queued.
- *
- * @pre ::selftest_verify_mram_file returned k_ra8_ok this pass.
- * @pre SCI8 init already ran.
- * @post One verdict line is in the SCI8 TX FIFO.
- * @post No other state changes.
- *
- * @note Rate math guards the divide against a zero duration.
- * @since 0.1.0
- */
-[[nodiscard]] static ra8_err_t selftest_print_verify_verdict(void)
-{
-  ra8_err_t err = selftest_print("ra8d2 selftest: verified ");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = selftest_print_dec(s_dbg_verified_bytes);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = selftest_print(" bytes vs MRAM in ");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = selftest_print_dec(s_dbg_verify_ms);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = selftest_print(" ms (");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  uint32_t ms = s_dbg_verify_ms;
-  if (ms == 0U) {
-    ms = 1U;
-  }
-  const uint32_t kib_per_s =
-    (uint32_t)(((uint64_t)s_dbg_verified_bytes * (uint64_t)k_selftest_ms_per_sec) /
-               ((uint64_t)ms * (uint64_t)k_selftest_bytes_per_kib));
-  err = selftest_print_dec(kib_per_s);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return selftest_print(" KiB/s)\r\n");
-}
-
-/**
  * @brief WRITE(10) into the read-only LUN must be rejected.
  *
  * @details Issues a 1-block WRITE(10) into the data region. The device

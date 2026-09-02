@@ -186,7 +186,7 @@ ra8_err_t ra8_board_sw_read(ra8_board_sw_id_t sw, ra8_board_sw_state_t* out_pres
   err             = ra8_gpio_read(pin, &lvl);
   if (err != k_ra8_ok) {
     /* ra8_gpio_read returns k_ra8_ok for valid port-0 SW pins off-target. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err; /* GCOVR_EXCL_LINE -- static board pin table cannot fail validation */
   }
   /* Buttons are active-low: low level == pressed. */
   *out_pressed = (lvl == k_ra8_level_low) ? k_ra8_board_sw_pressed : k_ra8_board_sw_released;
@@ -213,7 +213,7 @@ ra8_err_t ra8_board_sw_attach_irq(ra8_board_sw_id_t sw, ra8_board_sw_irq_cb_t cb
   ra8_err_t err = ra8_icu_configure_irq_pin(s_sw_irq_nums[sw], &cfg);
   if (err != k_ra8_ok) {
     /* ra8_icu_configure_irq_pin succeeds for IRQ12/13 (well within 32-channel limit). */
-    return err; /* GCOVR_EXCL_LINE */
+    return err; /* GCOVR_EXCL_LINE -- static board pin table cannot fail validation */
   }
 
   /* Step 2: route the ELC event for IRQ12-DS / IRQ13-DS through an
@@ -468,7 +468,7 @@ RA8_INTERNAL static bool internal_glcdc_signal_is_color_data(const char* signal)
   const char c1 = signal[1];
   if (c1 < '0') {
     /* No EK-RA8D2 GLCDC pin table entry starts with R/G/B followed by ASCII < '0'. */
-    return false; /* GCOVR_EXCL_LINE */
+    return false; /* GCOVR_EXCL_LINE -- static board pin table cannot fail validation */
   }
   if (c1 > '9') {
     return false;
@@ -540,7 +540,7 @@ RA8_INTERNAL static void internal_glcdc_force_pin_output(ra8_port_pin_t pin)
   volatile uint32_t* const pfs  = ra8_pfs_pmn(port, bit);
   if (pfs == nullptr) {
     /* ra8_pfs_pmn is non-null for every hardcoded board pin in the GLCDC table. */
-    return; /* GCOVR_EXCL_LINE */
+    return; /* GCOVR_EXCL_LINE -- static board pin table cannot fail validation */
   }
   ra8_pfs_pwpr_unlock();
   *pfs = ((uint32_t)k_ra8_psel_glcdc << k_pfs_psel_shift) | k_pfs_pmr_bit | k_pfs_pdr_bit;
@@ -618,7 +618,7 @@ ra8_err_t ra8_board_lcd_panel_power_on(void)
   err = ra8_gpio_write(k_ra8_pin_lcd_reset_l, k_ra8_level_high);
   if (err != k_ra8_ok) {
     /* ra8_gpio_write returns k_ra8_ok for valid port/pin pairs off-target. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err; /* GCOVR_EXCL_LINE -- static board pin table cannot fail validation */
   }
   ra8_delay_ms(k_reset_pulse_ms);
   return ra8_gpio_output_init(k_ra8_pin_lcd_blen, k_ra8_level_high);
@@ -651,10 +651,9 @@ ra8_err_t ra8_board_backlight_set(bool on)
  * The ``ra8_port_pin_t`` enum only enumerates the convenience
  * ``k_ra8_pin_led*`` aliases; raw RA8_PIN()-derived values are valid
  * data-space members but trigger the EnumCastOutOfRange checker, so
- * the cast cluster is wrapped in a NOLINT region matching the
+ * the cast cluster is wrapped in a lint-suppression region matching the
  * board-pin convention used throughout this BSP.
  */
-/* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
 static const ra8_port_pin_t s_xspi_octa_pins[] = {
   (ra8_port_pin_t)k_ra8_board_xspi_cs,  /**< OSPI_FLASH_S_L,   P104. */
   (ra8_port_pin_t)k_ra8_board_xspi_clk, /**< OSPI_FLASH_C,     P808. */
@@ -668,7 +667,6 @@ static const ra8_port_pin_t s_xspi_octa_pins[] = {
   (ra8_port_pin_t)k_ra8_board_xspi_dq6, /**< OSPI_FLASH_DQ6,   P802. */
   (ra8_port_pin_t)k_ra8_board_xspi_dq7, /**< OSPI_FLASH_DQ7,   P804. */
 };
-/* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
 
 /**
  * @brief Hardware reset pulse + post-reset settle times for IS25LX512M-JHLE.
@@ -701,10 +699,8 @@ ra8_err_t ra8_board_xspi_pins_init(void)
    * + PDR=output is the IS25LX512M strap that holds the chip in
    * reset (datasheet Ch 9.2). EK-RA8D2 UM Table 29 maps RESET_L to
    * P106. */
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t reset_pin = (ra8_port_pin_t)k_ra8_board_xspi_reset;
-  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
-  ra8_err_t err = ra8_gpio_output_init(reset_pin, k_ra8_level_low);
+  ra8_err_t            err       = ra8_gpio_output_init(reset_pin, k_ra8_level_low);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -714,7 +710,7 @@ ra8_err_t ra8_board_xspi_pins_init(void)
   err = ra8_gpio_write(reset_pin, k_ra8_level_high);
   if (err != k_ra8_ok) {
     /* ra8_gpio_write returns k_ra8_ok for valid port/pin pairs off-target. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err; /* GCOVR_EXCL_LINE -- static board pin table cannot fail validation */
   }
   ra8_delay_ms((uint32_t)k_ra8_board_xspi_reset_high_ms);
 
@@ -750,10 +746,9 @@ ra8_err_t ra8_board_xspi_pins_init(void)
  * The ``ra8_port_pin_t`` enum only enumerates the convenience
  * ``k_ra8_pin_led*`` aliases; raw RA8_PIN()-derived values are valid
  * data-space members but trigger the EnumCastOutOfRange checker, so the
- * cast cluster is wrapped in a NOLINT region matching the board-pin
+ * cast cluster is wrapped in a lint-suppression region matching the board-pin
  * convention used throughout this BSP.
  */
-/* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
 static const ra8_port_pin_t s_sdhi_bus_pins[] = {
   (ra8_port_pin_t)k_ra8_board_sdhi_cmd,  /**< SDHI0 CMD,  P400. */
   (ra8_port_pin_t)k_ra8_board_sdhi_clk,  /**< SDHI0 CLK,  P401. */
@@ -764,7 +759,6 @@ static const ra8_port_pin_t s_sdhi_bus_pins[] = {
   (ra8_port_pin_t)k_ra8_board_sdhi_wp,   /**< SDHI0 WP,   P406. */
   (ra8_port_pin_t)k_ra8_board_sdhi_cd,   /**< SDHI0 CD,   P407. */
 };
-/* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
 
 ra8_err_t ra8_board_sdhi_pins_init(void)
 {

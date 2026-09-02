@@ -65,10 +65,10 @@ static const char* s_tag = "LPM";
  */
 RA8_INTERNAL static ra8_err_t internal_pdctrgd_wait(uint8_t mask, bool want_set, uint32_t limit)
 {
-  for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < limit; ++i) {
     /* HUM Ch 11.2.14 "PDCTRGD : Graphics Power Domain Control Register", p 452 */
     const bool is_set = ((*ra8_lpm_sysc_reg8(k_ra8_lpm_pdctrgd_off) & mask) != 0U);
-    if (is_set == want_set) { /* GCOVR_EXCL_BR_LINE */
+    if (is_set == want_set) {
       return k_ra8_ok;
     }
   }
@@ -116,7 +116,7 @@ RA8_INTERNAL static void internal_graphics_enable_moco(void)
 RA8_INTERNAL static ra8_err_t internal_graphics_confirm_ready(uint32_t limit)
 {
   ra8_err_t err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdcsf_mask, false, limit);
-  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: PDCSF busy"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: PDCSF busy");
   err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdpgsf_mask, true, limit);
   return err;
 }
@@ -140,7 +140,9 @@ RA8_INTERNAL static ra8_err_t internal_graphics_confirm_ready(uint32_t limit)
 RA8_INTERNAL static ra8_err_t internal_graphics_confirm_powered(uint32_t limit)
 {
   ra8_err_t err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdcsf_mask, false, limit);
-  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: PDCSF stuck"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- internal_pdctrgd_wait() error edge; PDCSF always clears off-target */
+  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: PDCSF stuck");
+  /* GCOVR_EXCL_BR_STOP */
   err = internal_pdctrgd_wait((uint8_t)k_ra8_lpm_pdctr_pdpgsf_mask, false, limit);
   return err;
 }
@@ -182,12 +184,14 @@ RA8_INTERNAL static void internal_graphics_clear_pdde(void)
   internal_graphics_enable_moco();
 
   ra8_err_t err = internal_graphics_confirm_ready(timeout_iters);
-  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: not ready"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: not ready");
 
   internal_graphics_clear_pdde();
 
   err = internal_graphics_confirm_powered(timeout_iters);
-  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: still gated"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- internal_graphics_confirm_powered() error edge after clearing PDDE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "graphics_power_on: still gated");
+  /* GCOVR_EXCL_BR_STOP */
 
   ra8_log_info(s_tag, "graphics power domain on");
   return k_ra8_ok;

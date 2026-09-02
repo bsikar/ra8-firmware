@@ -8,7 +8,7 @@
  *
  * @details
  * Sibling translation unit for
- * ``examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/main.c``.
+ * ``examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/main.c``.
  * Holds the CDC-ACM activate/deactivate callbacks, the USBX bring-up step
  * routines, the INTENB0 re-arm watchdog and the ThreadX
  * ``tx_application_define`` kernel hook. These were moved here verbatim
@@ -430,13 +430,15 @@ static bool demo_worker_usbx_init(void)
  */
 static bool demo_worker_register_cdc(void)
 {
+  static UCHAR s_class_name[] = "ux_slave_class_cdc_acm";
+
   UX_SLAVE_CLASS_CDC_ACM_PARAMETER cdc_params = {
     .ux_slave_class_cdc_acm_instance_activate   = demo_cdc_activate,
     .ux_slave_class_cdc_acm_instance_deactivate = demo_cdc_deactivate,
     .ux_slave_class_cdc_acm_parameter_change    = UX_NULL,
   };
   s_boot_probe = (uint32_t)k_boot_probe_pre_class_register;
-  return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_cdc_acm",
+  return _ux_device_stack_class_register(s_class_name,
                                          _ux_device_class_cdc_acm_entry,
                                          1, /* configuration # */
                                          0, /* interface #     */
@@ -511,8 +513,10 @@ static bool demo_worker_start_dcd(void)
  */
 static void demo_worker_spawn_intenb0_watchdog(void)
 {
+  static CHAR s_thread_name[] = "usbhs_intenb0_wdog";
+
   (void)tx_thread_create(&s_intenb0_watchdog_thread,
-                         "usbhs_intenb0_wdog",
+                         s_thread_name,
                          intenb0_watchdog_entry,
                          0UL,
                          s_intenb0_watchdog_stack,
@@ -678,10 +682,13 @@ static VOID intenb0_watchdog_entry(ULONG arg)
 
 VOID tx_application_define(VOID* first_unused_memory)
 {
+  static CHAR s_semaphore_name[] = "cdc_active";
+  static CHAR s_thread_name[]    = "usb_cdc_echo_hs";
+
   (void)first_unused_memory;
-  (void)tx_semaphore_create(&s_cdc_active_sem, "cdc_active", 0U);
+  (void)tx_semaphore_create(&s_cdc_active_sem, s_semaphore_name, 0U);
   (void)tx_thread_create(&s_demo_thread,
-                         "usb_cdc_echo_hs",
+                         s_thread_name,
                          demo_worker,
                          0UL,
                          s_demo_stack,

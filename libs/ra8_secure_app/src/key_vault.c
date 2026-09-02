@@ -206,7 +206,7 @@ RA8_INTERNAL static uint32_t internal_rotr(uint32_t x, uint32_t n)
   return (x >> n) | (x << (32U - n));
 }
 
-/* CITES-OK: constant-time decomposition. internal_sha256_32 is split into
+/* internal_sha256_32 is split into
  * three helpers (build_block, schedule, compress). Each helper iterates a
  * fixed loop count with no data-dependent branches; the only inputs whose
  * values steer control flow are loop indices, which are compile-time

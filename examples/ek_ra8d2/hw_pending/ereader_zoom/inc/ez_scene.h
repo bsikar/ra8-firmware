@@ -7,8 +7,9 @@
  *
  * @details
  * The presentation model of the `ereader_zoom` app, kept out of `main.c` so the
- * host twin (`tests/test_app_ereader_zoom.c`) compiles and drives the *same*
- * code the board runs. Nothing here touches MMIO: it is `ra8_zoom` over
+ * host twin (`apps/board/stand_alone/ereader/tests/src/test_app_ereader_zoom.c`) compiles and
+ * drives the *same*
+ * code the board runs. Nothing here touches MMIO: it is `zoom` over
  * `ra8_tile_cache` over a procedural page, painting through `ra8_gfx`.
  *
  * @par What the demo proves
@@ -35,7 +36,7 @@
  * from integer arithmetic, so the hash means the same thing everywhere.
  *
  * @note Not thread-safe; single-threaded reader loop only.
- * @see ra8_zoom.h
+ * @see zoom.h
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -49,8 +50,8 @@
 #include "ra8_err.h"
 #include "ra8_tile_cache.h"
 #include "ra8_ui.h"
-#include "ra8_zoom.h"
-#include "ra8_zoom_tiles.h"
+#include "zoom.h"
+#include "zoom_tiles.h"
 
 /**
  * @enum ez_page_t
@@ -109,9 +110,9 @@ typedef enum : uint16_t {
  * @invariant k_ez_lens_scale_min >= k_ez_page_scale_max.
  * @par Example:
  * @code
- * const uint8_t next = ra8_zoom_scale_cycle(v->scale, k_ra8_zoom_scale_min, k_ez_page_scale_max);
+ * const uint8_t next = zoom_scale_cycle(v->scale, k_zoom_scale_min, k_ez_page_scale_max);
  * @endcode
- * @see ra8_zoom_scale_cycle
+ * @see zoom_scale_cycle
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -180,7 +181,7 @@ typedef enum : uint32_t {
  * @details Sized for the *widest* viewport (the content area), and shared by both
  *          views because only one renders at a time. The strip height falls out
  *          of the division: 16384 / 1024 = 16 rows for the page view, capped at
- *          ::k_ra8_zoom_strip_rows_max = 32 for the narrower loupe. This is the
+ *          ::k_zoom_strip_rows_max = 32 for the narrower loupe. This is the
  *          whole cost of the viewer -- 25 KiB of SRAM -- because the composite
  *          never holds the visible window.
  * @invariant k_ez_packed_bytes >= (k_ez_row_bytes * 16) / 2.
@@ -188,7 +189,7 @@ typedef enum : uint32_t {
  * @code
  * static uint8_t s_strip[k_ez_strip_bytes];
  * @endcode
- * @see ra8_zoom_scratch_t
+ * @see zoom_scratch_t
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -219,17 +220,17 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_tile_cache_t    cache;    /**< Page cache (decode-on-miss = the sampler). */
-  ra8_zoom_tile_src_t tiles;    /**< Tiled-source binding over that cache.      */
-  ra8_zoom_source_t   src;      /**< The page as a zoom source.                 */
-  ra8_zoom_view_t     page;     /**< Full-content zoom viewport.                */
-  ra8_zoom_view_t     lens;     /**< Loupe over the same page, magnified more.  */
-  ra8_ui_rect_t       content;  /**< The content rectangle (page.dst).          */
-  const void*         fb;       /**< Framebuffer base, for the golden hash.     */
-  uint32_t            fb_bytes; /**< Framebuffer size, bytes.                   */
-  int32_t             fb_w;     /**< Framebuffer width, pixels.                 */
-  int32_t             fb_h;     /**< Framebuffer height, pixels.                */
-  bool                lens_on;  /**< The loupe is open.                         */
+  ra8_tile_cache_t cache;    /**< Page cache (decode-on-miss = the sampler). */
+  zoom_tile_src_t  tiles;    /**< Tiled-source binding over that cache.      */
+  zoom_source_t    src;      /**< The page as a zoom source.                 */
+  zoom_view_t      page;     /**< Full-content zoom viewport.                */
+  zoom_view_t      lens;     /**< Loupe over the same page, magnified more.  */
+  ra8_ui_rect_t    content;  /**< The content rectangle (page.dst).          */
+  const void*      fb;       /**< Framebuffer base, for the golden hash.     */
+  uint32_t         fb_bytes; /**< Framebuffer size, bytes.                   */
+  int32_t          fb_w;     /**< Framebuffer width, pixels.                 */
+  int32_t          fb_h;     /**< Framebuffer height, pixels.                */
+  bool             lens_on;  /**< The loupe is open.                         */
 } ez_scene_t;
 
 /**
@@ -473,7 +474,7 @@ typedef struct {
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok           The framebuffer holds the current scene.
  * @retval k_ra8_err_null_ptr @p s is NULL.
- * @retval k_ra8_err_*        Propagated from ::ra8_zoom_view_render or ra8_gfx.
+ * @retval k_ra8_err_*        Propagated from ::zoom_view_render or ra8_gfx.
  *
  * @pre  ::ra8_gfx_init has bound the framebuffer.
  * @pre  @p s was initialised by ::ez_scene_init.
@@ -500,7 +501,7 @@ typedef struct {
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok           @p out holds the plan.
  * @retval k_ra8_err_null_ptr @p s or @p out is NULL.
- * @retval k_ra8_err_*        Propagated from ::ra8_zoom_view_present.
+ * @retval k_ra8_err_*        Propagated from ::zoom_view_present.
  *
  * @pre  The framebuffer already holds the pixels this plan describes.
  * @pre  @p s was initialised by ::ez_scene_init.
@@ -529,7 +530,7 @@ typedef struct {
  * @post A false return leaves the scene unmodified.
  *
  * @note Not thread-safe.
- * @see ra8_zoom_view_tick
+ * @see zoom_view_tick
  * @since 0.1.0
  */
 bool ez_scene_tick(ez_scene_t* s, uint32_t now_ms);
@@ -544,7 +545,7 @@ bool ez_scene_tick(ez_scene_t* s, uint32_t now_ms);
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok           The read-ahead sweep ran.
  * @retval k_ra8_err_null_ptr @p s is NULL.
- * @retval k_ra8_err_*        Propagated from ::ra8_zoom_tiles_prefetch.
+ * @retval k_ra8_err_*        Propagated from ::zoom_tiles_prefetch.
  *
  * @pre  @p s was initialised by ::ez_scene_init.
  * @pre  The caller is in an idle window (read-ahead is not free).
@@ -552,17 +553,18 @@ bool ez_scene_tick(ez_scene_t* s, uint32_t now_ms);
  * @post `*out_warmed` (when given) is at most ::k_ez_prefetch_max.
  *
  * @note Not thread-safe.
- * @see ra8_zoom_tiles_prefetch
+ * @see zoom_tiles_prefetch
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ez_scene_prefetch(ez_scene_t* s, ra8_zoom_pan_t dir, uint16_t* out_warmed);
+[[nodiscard]] ra8_err_t ez_scene_prefetch(ez_scene_t* s, zoom_pan_t dir, uint16_t* out_warmed);
 
 /**
  * @brief Drive the scene through the scripted boot self-check.
  *
  * @details Four states -- opening 1:1, one right-pan step, 2x about a fixed
  *          panel point, and the 4x loupe -- each rendered and hashed. This is
- *          the app's golden: `tests/test_app_ereader_zoom.c` calls this same
+ *          the app's golden: `apps/board/stand_alone/ereader/tests/src/test_app_ereader_zoom.c`
+ *          calls this same
  *          function over a host framebuffer and asserts the identical numbers,
  *          and `hil.conf` pins them for the headless emulator gate.
  *

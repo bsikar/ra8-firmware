@@ -19,7 +19,7 @@ cmake_minimum_required(VERSION 3.20)
 #
 # The page this demo magnifies is procedural, so unlike its sibling reader
 # demos there is no container, no decoder and no vendored codec in the link:
-# ra8_zoom (the viewport engine), ra8_gfx (the blue-noise dither + blit),
+# zoom (the viewport engine), ra8_gfx (the blue-noise dither + blit),
 # ra8_mem (the tile cache that bounds residency), ra8_ui (the rect type) and
 # ra8_display_pal (the panel) are the whole dependency set.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
@@ -38,7 +38,7 @@ ra8_add_app(
   NAME ereader_zoom
   STACK_BYTES 32768
   DESCRIPTION "Tap-to-zoom viewer: full-screen zoom + panel loupe over a tiled 12 MP page"
-  LIBS ra8_zoom
+  LIBS zoom
        ra8_gfx
        ra8_ui
        ra8_mem

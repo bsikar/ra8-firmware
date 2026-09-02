@@ -219,7 +219,7 @@ typedef enum : uint16_t {
  * @details
  * On the embedded target this returns a pointer to the actual SYSC
  * memory window; on the host unit-test build the fake mmap
- * (`tests/mocks/ra8_fake_mmap.c`) maps anonymous RAM at the same
+ * (`tests/mocks/src/ra8_fake_mmap.c`) maps anonymous RAM at the same
  * virtual address so reads / writes through this pointer behave
  * sensibly in test mode.
  *

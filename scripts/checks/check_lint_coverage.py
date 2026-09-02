@@ -54,6 +54,7 @@ import argparse
 import shutil
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -128,7 +129,7 @@ PROVIDERS: tuple[Provider, ...] = (
     Provider("shellcheck+shfmt", (LINT, FORMAT), ("shell",), "check_shell.py", ("--list-files",)),
     Provider("cmake-lint+format", (LINT, FORMAT), ("cmake",), "lint_targets.py", ("cmake",)),
     Provider("yamllint+actionlint", (LINT, FORMAT), ("yaml",), "lint_targets.py", ("yaml",)),
-    Provider("check_makefiles", (LINT, FORMAT), ("make",), "check_makefiles.py", ("--list-files",)),
+    Provider("check_justfiles", (LINT, FORMAT), ("just",), "check_justfiles.py", ("--list-files",)),
     Provider(
         "check_linker_scripts",
         (LINT, FORMAT),
@@ -142,6 +143,13 @@ PROVIDERS: tuple[Provider, ...] = (
         (LINT, FORMAT),
         ("dockerfile", "zsh"),
         "check_devcontainer.py",
+        ("--list-files",),
+    ),
+    Provider(
+        "fleet-ansible-template",
+        (LINT, FORMAT),
+        ("ansible-systemd-template",),
+        "check_fleet_declaration.py",
         ("--list-files",),
     ),
 )
@@ -170,7 +178,12 @@ def git_files() -> list[str]:
         sys.stderr.write(proc.stderr)
         sys.stderr.write("check_lint_coverage.py: FATAL -- `git ls-files` failed\n")
         sys.exit(2)
-    return sorted(p for p in proc.stdout.split("\0") if p)
+    return sorted(_present_worktree_files(proc.stdout.split("\0")))
+
+
+def _present_worktree_files(paths: list[str], root: Path = REPO_ROOT) -> list[str]:
+    """Retain live candidate files and drop deleted paths left in the index."""
+    return [path for path in paths if path and (root / path).is_file()]
 
 
 def read_shebang(rel: str) -> str:
@@ -241,7 +254,20 @@ def provider_files(prov: Provider, tracked: list[str]) -> tuple[set[str], str | 
         detail = proc.stderr.strip().splitlines()
         tail = detail[-1] if detail else f"exit {proc.returncode}"
         return set(), f"{prov.script} --list-files failed: {tail}"
-    return {ln.strip() for ln in proc.stdout.splitlines() if ln.strip()}, None
+    files = {ln.strip() for ln in proc.stdout.splitlines() if ln.strip()}
+    foreign_code = sorted(
+        rel
+        for rel in files
+        if (cls := classify(rel)) is not None
+        and CLASSES[cls].kind == "code"
+        and cls not in prov.classes
+    )
+    if foreign_code:
+        return set(), (
+            f"{prov.script} --list-files claimed {foreign_code[0]!r} outside "
+            f"its declared classes {prov.classes!r}"
+        )
+    return files, None
 
 
 # ---------------------------------------------------------------------------
@@ -316,6 +342,12 @@ def _bucket_gaps(raw: list[tuple[str, str, str]], report: Report) -> list[tuple[
     return violations
 
 
+def _provider_claims_class(prov: Provider, rel: str) -> bool:
+    """Whether a provider may satisfy coverage for this path's code class."""
+    cls = classify(rel)
+    return cls is not None and cls in prov.classes
+
+
 def evaluate(files: list[str], claimed: dict[str, set[str]]) -> Report:
     """Decide coverage for `files` given each provider's claimed set.
 
@@ -328,7 +360,9 @@ def evaluate(files: list[str], claimed: dict[str, set[str]]) -> Report:
     lint_by: dict[str, set[str]] = {}
     fmt_by: dict[str, set[str]] = {}
     for prov in PROVIDERS:
-        got = claimed.get(prov.name, set())
+        # A semantic checker cannot accidentally become a universal linter by
+        # returning dependency/ownership files outside its declared class.
+        got = {rel for rel in claimed.get(prov.name, set()) if _provider_claims_class(prov, rel)}
         if LINT in prov.roles:
             lint_by[prov.name] = got
         if FORMAT in prov.roles:
@@ -437,15 +471,15 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
         "scripts/checks/check_thing.py",  # PATHREF-OK: synthetic fixture
         "scripts/git/pre-commit",
         "CMakeLists.txt",
-        "Makefile",
         "examples/app/linker_script.ld",
         "examples/app/boot.S",
         ".devcontainer/Dockerfile",
         ".devcontainer/zshrc",
         ".github/workflows/firmware.yml",
+        "infra/ansible/roles/dev_box/templates/ra8-hil-runner.service.j2",
         "README.md",
-        "libs/third_party/miniz/miniz.c",
-        "apps/stand_alone/ereader/content/library/book.epub",
+        "apps/shared_libs/third_party/miniz/miniz.c",
+        "apps/board/stand_alone/ereader/content/library/book.epub",
         "docs/reference/ra8d2-datasheet.pdf",
     ]
     claimed = {
@@ -455,10 +489,12 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
         "shellcheck+shfmt": {"scripts/git/pre-commit"},
         "cmake-lint+format": {"CMakeLists.txt"},
         "yamllint+actionlint": {".github/workflows/firmware.yml"},
-        "check_makefiles": {"Makefile"},
         "check_linker_scripts": {"examples/app/linker_script.ld"},
         "check_asm": {"examples/app/boot.S"},
         "hadolint+zsh": {".devcontainer/Dockerfile", ".devcontainer/zshrc"},
+        "fleet-ansible-template": {
+            "infra/ansible/roles/dev_box/templates/ra8-hil-runner.service.j2"
+        },
     }
     return files, claimed
 
@@ -522,6 +558,23 @@ def _assert_fires(files: list[str], claimed: dict[str, set[str]], failures: list
         "a provider that returns nothing fires for both its roles",
         failures,
     )
+    missing_template = {k: set(v) for k, v in claimed.items()}
+    missing_template["fleet-ansible-template"] = set()
+    expect(
+        len(evaluate(files, missing_template).uncovered) == BOTH_ROLES,
+        "the HIL systemd template needs both semantic lint and format ownership",
+        failures,
+    )
+    leaked_census = {k: set(v) for k, v in claimed.items()}
+    leaked_census["ruff"] = set()
+    leaked_census["fleet-ansible-template"].add(
+        "scripts/checks/check_thing.py"  # PATHREF-OK: synthetic lint-coverage fixture
+    )
+    expect(
+        len(evaluate(files, leaked_census).uncovered) == BOTH_ROLES,
+        "ownership-census files cannot inflate another class's lint/format coverage",
+        failures,
+    )
 
 
 def _assert_exact_classifications(failures: list[str]) -> None:
@@ -530,6 +583,18 @@ def _assert_exact_classifications(failures: list[str]) -> None:
         classify("coprocessor/esp32c6/patches/0001-custom-rpc-sync-response-hook.patch")
         == "validated-input",
         "the pinned ESP32-C6 patch is an exact validated input",
+        failures,
+    )
+    expect(
+        classify("scripts/checks/patches/cppcheck-2.13/misra_9-c23-empty-initializer.patch")
+        == "validated-input",
+        "the pinned cppcheck MISRA patch is an exact selftested input",
+        failures,
+    )
+    expect(
+        classify("docs/sbom/patches/stb/0001-harden-font-parser-bounds.patch") == "validated-input"
+        and classify("docs/sbom/patches/stb/series") == "validated-input",
+        "the reviewed SOUP patch and series are exact replay-gated inputs",
         failures,
     )
     expect(
@@ -543,8 +608,45 @@ def _assert_exact_classifications(failures: list[str]) -> None:
         failures,
     )
     expect(
+        classify("infra/ansible/roles/dev_box/templates/ra8-hil-runner.service.j2")
+        == "ansible-systemd-template",
+        "the exact managed HIL systemd template has semantic ownership",
+        failures,
+    )
+    expect(
+        classify("infra/ansible/roles/dev_box/templates/ra8-hil-privileged-policy.json.j2")
+        == "validated-input"
+        and classify("scripts/hil/lib/ra8-hil-privileged.sha256") == "validated-input",
+        "the privilege checker owns its exact policy template and identity manifest",
+        failures,
+    )
+    _assert_future_classifications(failures)
+
+
+def _assert_future_classifications(failures: list[str]) -> None:
+    """Prove lookalike paths cannot inherit an exact reviewed classification."""
+    expect(
         classify("coprocessor/esp32c6/patches/another.patch") is None,
         "a future upstream patch remains unclassified",
+        failures,
+    )
+    expect(
+        classify(
+            "scripts/checks/patches/cppcheck-2.13/future.patch"  # PATHREF-OK: synthetic fixture
+        )
+        is None,
+        "a future cppcheck patch remains unclassified",
+        failures,
+    )
+    expect(
+        # PATHREF-OK: synthetic lint-coverage fixture
+        classify("infra/ansible/roles/other/templates/sudoers.j2") is None,
+        "a future Jinja template remains unclassified",
+        failures,
+    )
+    expect(
+        classify("docs/sbom/patches/future/series") is None,
+        "a future patch series remains unclassified",
         failures,
     )
     expect(
@@ -555,6 +657,20 @@ def _assert_exact_classifications(failures: list[str]) -> None:
     expect(
         classify("libs/new/src/another.pb-c.c") == "c-family",
         "a future generated-looking C file remains first-party C",
+        failures,
+    )
+    expect(
+        classify("infra/ansible/roles/dev_box/templates/future.service.j2") is None,
+        "a future Jinja template remains unclassified until it has a validator",
+        failures,
+    )
+    expect(
+        classify("infra/ansible/roles/dev_box/templates/future-policy.json.j2") is None
+        and classify(
+            "scripts/hil/lib/future.sha256"  # PATHREF-OK: absent-manifest fixture
+        )
+        is None,
+        "future policy and digest inputs remain unclassified without an exact checker",
         failures,
     )
 
@@ -613,6 +729,15 @@ def selftest() -> int:
 
     problems = validate_tables()
     expect(not problems, f"classification tables self-consistent ({problems})", failures)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "present.py").touch()
+        expect(
+            _present_worktree_files(["present.py", "deleted.py"], root) == ["present.py"],
+            "candidate inventory keeps live files and drops deleted index paths",
+            failures,
+        )
 
     files, claimed = _fixture()
     _assert_exact_classifications(failures)

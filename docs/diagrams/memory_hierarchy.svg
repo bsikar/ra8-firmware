@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 644" width="900" role="img" aria-label="Memory hierarchy -- who consumes the arenas and caches. an arrow from A to B means files in A #include a header owned by B; the number is how many of A's files do so (counted across libs/ and port/) in (the real story): ra8_rabook_compile - to  ra8_book (6), ra8_epub - to  ra8_jof (5), ra8_comic - to  ra8_jof (4)       ra8_rabook_import - to  ra8_mem (4), ra8_zoom - to  ra8_book (4), ra8_mdl_storage_vfs - to  ra8_io (4)       ra8_ftl - to  ra8_io (3), port/esp-hosted - to  ra8_io (3), ra8_reflow - to  ra8_mem (3), ra8_comic - to  ra8_mem (2) down: ra8_io - to  ra8_core (111), ra8_mem - to  ra8_core (30), ra8_io - to  ra8_hal (24), ra8_io - to  ra8_fs (9) Only three edges inside the layer stack, and that is the point: ra8_mem is a leaf that many unrelated libraries reach for. The interesting traffic is inbound, so the seam panel above is longer than the diagram. ra8_cache_store is grey because nothing in this set includes it and it includes none of them -- it reaches ra8_core only. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are no-ops and consumers glob libs/ lib to /src/*.c into one object library, so there are no target_link_libraries edges to read.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 644" width="900" role="img" aria-label="Memory hierarchy -- who consumes the arenas and caches. an arrow from A to B means files in A #include a header owned by B; the number is how many of A's files do so (counted across libs/ and port/) in (the real story): rabook_compile - to  book (6), epub - to  jof (5), comic - to  jof (4)       rabook_import - to  ra8_mem (4), zoom - to  book (4), mdl_storage_vfs - to  ra8_io (4)       ra8_ftl - to  ra8_io (3), port/esp-hosted - to  ra8_io (3), reflow - to  ra8_mem (3), comic - to  ra8_mem (2) down: ra8_io - to  ra8_core (111), ra8_mem - to  ra8_core (30), ra8_io - to  ra8_hal (24), ra8_io - to  ra8_fs (9) Only three edges inside the layer stack, and that is the point: ra8_mem is a leaf that many unrelated libraries reach for. The interesting traffic is inbound, so the seam panel above is longer than the diagram. ra8_cache_store is grey because nothing in this set includes it and it includes none of them -- it reaches ra8_core only. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are no-ops and consumers glob libs/ lib to /src/*.c into one object library, so there are no target_link_libraries edges to read.">
   <defs>
     <marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1b1f24"/></marker>
     <marker id="aAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker>
@@ -10,10 +10,10 @@
     <text x="24" y="32" fill="#1b1f24" font-size="14" font-weight="bold">Memory hierarchy -- who consumes the arenas and caches</text>
     <text x="24" y="52" fill="#57606a" font-size="9">an arrow A -&gt; B means files in A #include a header owned by B; the number is how many of A's files do so (counted across libs/ and port/)</text>
     <rect x="20" y="70" width="860" height="348" rx="8" fill="none" stroke="#aeb4bb" stroke-width="1.2"/>
-    <!-- ra8_book -> ra8_mem (3) : routed left of ra8_io, not through it; lands top edge x=320 -->
+    <!-- book -> ra8_mem (3) : routed left of ra8_io, not through it; lands top edge x=320 -->
     <polyline points="150,138 150,240 320,240 320,257" fill="none" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
     <text x="161" y="193" text-anchor="middle" fill="#1b1f24" font-size="9">3</text>
-    <!-- ra8_jof -> ra8_io (2) : lands top edge x=450 -->
+    <!-- jof -> ra8_io (2) : lands top edge x=450 -->
     <line x1="662" y1="138" x2="450" y2="171" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
     <rect x="560" y="147" width="12" height="12" fill="#fdfdfb"/>
     <text x="566" y="156" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
@@ -21,10 +21,10 @@
     <line x1="450" y1="224" x2="450" y2="257" stroke="#1b1f24" stroke-width="1.2" marker-end="url(#aInk)"/>
     <text x="438" y="244" text-anchor="middle" fill="#1b1f24" font-size="9">2</text>
     <rect x="34" y="86" width="409" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="238" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_book</text>
+    <text x="238" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">book</text>
     <text x="238" y="126" text-anchor="middle" fill="#57606a" font-size="9">XIP container</text>
     <rect x="457" y="86" width="409" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="662" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_jof</text>
+    <text x="662" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">jof</text>
     <text x="662" y="126" text-anchor="middle" fill="#57606a" font-size="9">band-tile atlas</text>
     <rect x="245" y="172" width="409" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
     <text x="450" y="196" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_io</text>
@@ -37,9 +37,9 @@
     <text x="450" y="384" text-anchor="middle" fill="#57606a" font-size="9">persistent blob cache</text>
     <rect x="20" y="442" width="860" height="90" rx="6" fill="none" stroke="#aeb4bb" stroke-width="1" stroke-dasharray="5 3"/>
     <text x="34" y="460" fill="#1b1f24" font-size="10" font-weight="bold">seams to the rest of the tree</text>
-    <text x="34" y="478" fill="#57606a" font-size="9">in (the real story): ra8_rabook_compile -&gt; ra8_book (6), ra8_epub -&gt; ra8_jof (5), ra8_comic -&gt; ra8_jof (4)</text>
-    <text x="34" y="494" fill="#57606a" font-size="9">      ra8_rabook_import -&gt; ra8_mem (4), ra8_zoom -&gt; ra8_book (4), ra8_mdl_storage_vfs -&gt; ra8_io (4)</text>
-    <text x="34" y="510" fill="#57606a" font-size="9">      ra8_ftl -&gt; ra8_io (3), port/esp-hosted -&gt; ra8_io (3), ra8_reflow -&gt; ra8_mem (3), ra8_comic -&gt; ra8_mem (2)</text>
+    <text x="34" y="478" fill="#57606a" font-size="9">in (the real story): rabook_compile -&gt; book (6), epub -&gt; jof (5), comic -&gt; jof (4)</text>
+    <text x="34" y="494" fill="#57606a" font-size="9">      rabook_import -&gt; ra8_mem (4), zoom -&gt; book (4), mdl_storage_vfs -&gt; ra8_io (4)</text>
+    <text x="34" y="510" fill="#57606a" font-size="9">      ra8_ftl -&gt; ra8_io (3), port/esp-hosted -&gt; ra8_io (3), reflow -&gt; ra8_mem (3), comic -&gt; ra8_mem (2)</text>
     <text x="34" y="526" fill="#57606a" font-size="9">down: ra8_io -&gt; ra8_core (111), ra8_mem -&gt; ra8_core (30), ra8_io -&gt; ra8_hal (24), ra8_io -&gt; ra8_fs (9)</text>
     <text x="24" y="554" fill="#57606a" font-size="9">Only three edges inside the layer stack, and that is the point: ra8_mem is a leaf that many unrelated libraries reach for.</text>
     <text x="24" y="570" fill="#57606a" font-size="9">The interesting traffic is inbound, so the seam panel above is longer than the diagram. ra8_cache_store is grey because</text>

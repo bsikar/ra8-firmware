@@ -27,6 +27,7 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_err.h"
 
 /**
  * @enum panel_pll_const_t
@@ -82,3 +83,57 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 [[nodiscard]] RA8_PRIV bool priv_ra8_board_uart_console_is_up(void);
+
+/**
+ * @brief Bring up the Ethernet clock, power, MSTP, and COMA boundary.
+ *
+ * @details
+ * Initializes ESWCLK and ESWPHYCLK, powers the ESWM domain, and publishes the
+ * live ESWCLK frequency. It then acquires the ESWM module-stop reference and
+ * runs the COMA reset, buffer-pool readiness poll, and agent clock fan-out.
+ * These steps implement the prerequisites described by HUM Ch 9.10.23
+ * "EtherSW Clock (ESWCLK)" p 405 and Ch 31 "Ethernet Common Agent (COMA)"
+ * p 1590.
+ *
+ * @param[out] out_eswclk_hz Published ESWCLK frequency on success.
+ *
+ * @return The first CGC, MSTP, or COMA result.
+ * @retval k_ra8_ok Clock, power, module-stop, and COMA bring-up completed.
+ * @retval k_ra8_err_null_ptr @p out_eswclk_hz is nullptr.
+ * @retval k_ra8_err_invalid_state An Ethernet module-stop reference count is saturated.
+ * @retval k_ra8_err_hw_timeout A clock, module-stop, or COMA readiness poll timed out.
+ *
+ * @pre Fake MMIO and module-stop state are initialized.
+ * @pre @p out_eswclk_hz points to writable storage.
+ * @post Success publishes the configured ESWCLK frequency.
+ * @post Failure stops before later Ethernet stages.
+ * @note Library-private; host tests call this production boundary directly to
+ *       exercise sequential error propagation.
+ * @since 0.1.0
+ */
+RA8_PRIV RA8_NODISCARD ra8_err_t priv_ra8_board_eth_eswm_bring_up(uint32_t* out_eswclk_hz);
+
+/**
+ * @brief Walk the board Ethernet ETHA from RESET to CONFIG.
+ *
+ * @details
+ * Initializes ETHA1 in RESET with all error interrupts masked, then requests
+ * the ordered RESET-to-DISABLE-to-CONFIG transitions. Each transition polls
+ * EAMS until it reflects the EAMC request, as specified by HUM Ch 32.3.1.1
+ * "EAMC : Mode Configuration Register" p 1630 and Ch 32.3.1.2 "EAMS : Mode
+ * Status Register" p 1631.
+ *
+ * @return The first ETHA initialization or mode-transition result.
+ * @retval k_ra8_ok ETHA1 reached CONFIG mode.
+ * @retval k_ra8_err_invalid_state The ESWM module-stop reference count is saturated.
+ * @retval k_ra8_err_hw_timeout The ESWM release or an ETHA mode transition timed out.
+ *
+ * @pre Fake MMIO and module-stop state are initialized.
+ * @pre The ESWM module-stop reference may be acquired by this call.
+ * @post Success leaves ETHA1 in CONFIG.
+ * @post Failure is propagated before later board initialization.
+ * @note Library-private; host tests call this production boundary directly to
+ *       exercise sequential error propagation.
+ * @since 0.1.0
+ */
+RA8_PRIV RA8_NODISCARD ra8_err_t priv_ra8_board_eth_etha_to_config(void);

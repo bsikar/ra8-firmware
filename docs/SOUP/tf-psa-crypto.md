@@ -35,8 +35,9 @@ firmware as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
-- **Primary consumer: the Root-of-Trust secure-boot chain.** `libs/ra8_rot`
-  ECDSA-P256 signature verification in `dfu_bootloader`, `secure_boot_hil`,
+- **Primary consumer: the Root-of-Trust secure-boot chain.** The
+  `libs/ra8_dfu/src/ra8_rot.c` ECDSA-P256 signature verification used by
+  `dfu_bootloader`, `secure_boot_hil`,
   `secure_boot_ns_hil` and `rot_verify_hil`. This is the silicon-validated
   path: a fresh board refuses an unsigned image because of it.
 - PSA Crypto API implementation (key store, hashes, AEAD, asymmetric

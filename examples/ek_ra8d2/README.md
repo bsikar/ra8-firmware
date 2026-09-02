@@ -10,10 +10,10 @@ They are filed by hardware sign-off status:
 
 | | |
 |---|---|
-| [`hw_validated/`](hw_validated/README.md) | Flashed and confirmed working on the EVM. |
+| [`hw_validated/`](hw_validated/README.md) | Carries recorded EVM validation evidence; rerun the named harness before claiming the current commit passes. |
 | [`hw_pending/`](hw_pending/README.md) | Compiles and passes CI; not yet confirmed on hardware. |
-| [`hil_needs_revalidation/`](hil_needs_revalidation/README.md) | Was validated, did not pass the most recent bench run. |
+| [`hil_needs_revalidation/`](hil_needs_revalidation/README.md) | Was validated, then failed a recorded bench run and needs another. |
 
-`make <appname>` from the repo root builds any of them -- the bare name works
+`just apps::build <appname>` from the repo root builds any of them -- the name works
 whichever subtier the app lives in. Apps needing hardware this project does not
 own are in [`../_unsupported/`](../_unsupported/README.md).

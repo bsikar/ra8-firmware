@@ -24,7 +24,7 @@ fixed IPv4 and TCP header overhead to yield an MSS that keeps every TCP segment
 also enabled, so any oversized datagram is split into frames the MAC transmits
 cleanly.
 
-The per-app Makefile pins the ThreadX, NetX Duo and Mbed TLS options on, and the
+The per-app CMakeLists.txt pins the ThreadX, NetX Duo and Mbed TLS options on, and the
 top-level configure **skips this app** unless all three are enabled -- which is
 what keeps the bare-metal default configuration building cleanly.
 
@@ -41,8 +41,10 @@ emulator run the way `threadx_netx_tcp_echo` is:
   routed to software crypto on silicon.
 
 Closing that needs a TLS-server role in the emulated network peer plus a modelled
-or deterministic entropy source, tracked in #261. Meanwhile the transport and
-facade glue are proven by `tests/test_ra8_tls_net.c`, which drives the same API
+or deterministic entropy source under the open board-emulator fidelity epic
+#67; closed issue #261 delivered this application rather than those emulator
+models. Meanwhile the transport and
+facade glue are proven by `tests/wireless/src/test_ra8_tls_net.c`, which drives the same API
 over the `ra8_net_pal` loopback frame ring with MC/DC vectors for every compound
 decision, and on the bench the app runs end to end against a real
 `openssl s_server`.

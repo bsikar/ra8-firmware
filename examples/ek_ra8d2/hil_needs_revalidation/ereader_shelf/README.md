@@ -8,8 +8,8 @@ header steps back up through reader -> TOC -> cover -> shelf.
 
 Books come from two sources side by side in one app: a few compiled into MRAM,
 and the rest discovered on a FAT card at boot. A card book may be a
-pre-compiled `.rabook`, a plain `.epub` parsed on-device by `ra8_epub`, or a
-comic archive (`.cbz` / `.cbr` / `.cbt`) opened by `ra8_comic` (#236).
+pre-compiled `.rabook`, a plain `.epub` parsed on-device by `epub`, or a
+comic archive (`.cbz` / `.cbr` / `.cbt`) opened by `comic` (#236).
 `sh_book.c` hides the difference behind a uniform chapter-text / TOC-label /
 cover API, so every screen is identical across all three sources; EPUB chapters
 arrive as XHTML and are stripped to the same plain text the reader word-wraps.
@@ -39,7 +39,7 @@ never a whole-book inflate.
 A raw CBZ or CBR is just a container of page images in reading order, with no
 metadata saying which way to read them. Right-to-left (manga) is therefore an
 app-level toggle on the comic screen's header, and flipping it mirrors the
-edge-tap zones so the left edge advances. `ra8_comic` streams one page's encoded
+edge-tap zones so the left edge advances. `comic` streams one page's encoded
 image at a time and the page is re-decoded on each turn through the same integer
 decode pipeline the cover uses, so a page has to fit the bounded decode buffer;
 tile-cache streaming for large manga pages is #231/#232.

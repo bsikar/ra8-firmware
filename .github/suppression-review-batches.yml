@@ -1,0 +1,437 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# Review batches for the suppression ledger.
+---
+schema: suppression-review-batches-1
+batches:
+  - id: batch-a-cross-20260824
+    authority: repository-suppression-review
+    date: 2026-08-24
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 8
+    rows_sha256: ccc3ff3dfbc2449c3d2f3447879d334136f0c758c2d6c98291367a8ae7f82a35
+    partition: "coverage/compiler concern rows: independent cross-review"
+    evidence:
+      - "issue-790 batch-a cross-review record"
+      - "sha256:ed40bb94eeb2d94ff98eb86177b4f7a760bcfb0dcc5177ff24e7c45dcd9523ee"
+  - id: batch-a-impl-20260824
+    authority: repository-suppression-review
+    date: 2026-08-24
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 90
+    rows_sha256: cc3e52c43ee94d7a22bfc4c5510a68fb2cc2e6655caaec63b2de2f14ac093962
+    partition: "measured vendor warning-class replacements for blanket -w masks"
+    evidence:
+      - "issue-790 measured-diagnostics logs (host suite and tools builds)"
+      - "per-app cross build logs"
+  - id: batch-b-cross-20260824
+    authority: repository-suppression-review
+    date: 2026-08-24
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 70
+    rows_sha256: 02cdbba307e3cce29795a8919be7fe04975710dca21fbc930d6e2d2d069ae459
+    partition: "remaining concern rows: ansible/clang-tidy/python/cmake cross-review"
+    evidence:
+      - "issue-790 batch-b cross-review record"
+      - "sha256:eaf1805d2bc6449fe0184eafed5b186be10ab9695a68b4999d284aee46ba1b30"
+  - id: batch-census-20260824
+    authority: repository-suppression-review
+    date: 2026-08-24
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 2668
+    rows_sha256: a74bcad4ef99b07acac8706e7b357a88241e25d451c5d7ffc7915d0ceb74cca0
+    partition: "checker scope/control authorities, encoding exemptions, generated artifacts"
+    evidence:
+      - "constant-classification review record"
+      - "suppression_scope_registry.py digests"
+  - id: closing-20260824
+    authority: repository-suppression-review
+    date: 2026-08-24
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 181
+    rows_sha256: 16569142699008aa0dd383a2e150fa1723d65f413b569d2e8e57d45ea7baab3f
+    partition: "closing pass: every occurrence left unreviewed after remediation"
+    evidence:
+      - "issue-790 closing review record"
+  - id: coverage-regions-20260825
+    authority: repository-suppression-review
+    date: 2026-08-24
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 69
+    rows_sha256: de30e4b529123ac5bb3b4ed7593c9db255ecbbf61e35df6cf84d708104a3a88a
+    partition: "branch/line exclusion regions and measured single occurrences"
+    evidence:
+      - "fresh cppcheck 2.13 audit of the candidate tree"
+      - "gcovr 7.0 marker-grammar verification"
+  - id: wave-b-20260824
+    authority: repository-suppression-review
+    date: 2026-08-24
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 4416
+    rows_sha256: 83d908ba57142f0fa95ed859c911ce9de2895540b8a41b73bdcb7f5d75109e69
+    partition: "wave B: every baseline-ratchet occurrence reviewed against its consumer"
+    evidence:
+      - "issue-790 wave-B baseline review record"
+  - id: wave-b-misra-apps-20260825
+    authority: repository-suppression-review
+    date: 2026-08-24
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 834
+    rows_sha256: 52b871675ffba17283f3e48b2c90cafbab6a20bb461c3ffd86d5980d73b32807
+    partition: "wave B split: apps/ MISRA baseline rows, recounted on cppcheck 2.13"
+    evidence:
+      - "issue-790 wave-B misra-apps split review record"
+  - id: wave-d-20260824
+    authority: repository-suppression-review
+    date: 2026-08-24
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 786
+    rows_sha256: fa6f3bc1800b8d70575195b8d448f99ff443e373a400058ac3ebeeb0c3ac5237
+    partition: "wave D: every remaining non-baseline occurrence reviewed by family"
+    evidence:
+      - "issue-790 wave-D family review record"
+  - id: wave-d-cross-20260824
+    authority: repository-suppression-review
+    date: 2026-08-24
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 71
+    rows_sha256: e0d9ff4ae31bb8bb6dcfdbefd3894d01f4e90649acbab764175a5283b564da43
+    partition: "independent cross-review of a deterministic sample of wave-D retains"
+    evidence:
+      - "issue-790 wave-D cross-review record"
+  - id: coverage-reattach-20260825
+    authority: repository-suppression-review
+    date: 2026-08-24
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 5
+    rows_sha256: 05b86c45496eae6d0d184ffcdcf741aa1f861f89683817afdc9bf053a9d0185a
+    partition: "coverage marker reattachment: identity rebinding after stranded-marker repair"
+    evidence:
+      - "issue-790 coverage reattachment ledger delta"
+  - id: remediation-reconcile-20260825
+    authority: repository-suppression-review
+    date: 2026-08-24
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 13
+    rows_sha256: 23dcd5fbb45fd67a2e5c21efe6cb7e818efb7fee6c9610e0088f64c4d629adb2
+    partition: "remediation reconcile: rows reborn or created by the fix-required remediation"
+    evidence:
+      - "issue-790 remediation reconciliation ledger delta"
+  - id: fresh-reconcile-20260826
+    authority: repository-suppression-review
+    date: 2026-08-26
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 4188
+    rows_sha256: c90f8078113501f2b08928d15f5e99662e4bf6cccd4ce97e31db13d7313f2797
+    partition: "fresh source reconciliation: all integrated lanes and retained history"
+    evidence:
+      - "Codex final adversarial reconciliation and negative controls"
+      - "all live identities and bindings re-inventoried after source freeze"
+  - id: gate-closure-20260826
+    authority: repository-suppression-review
+    date: 2026-08-26
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 160
+    rows_sha256: 2cc5de57580c7b418f01599e0d326be686f829a30f14448fb3f8165187e05180
+    partition: "gate closure: re-audited contracts, identity rebindings, retired lineages"
+    evidence:
+      - "counterfactual checker-scope digest proof over the 925-authority domain"
+      - "whole-tree GCOVR_EXCL census showing every retired region absent"
+  - id: misra-burn-down-20260827
+    authority: repository-suppression-review
+    date: 2026-08-27
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 492
+    rows_sha256: 547c2589b72cc234e523148bd5418db59c2104b6e0e011a5e962b575c29b3fd9
+    partition: "MISRA baseline burn-down: retired and rebound exact authorities"
+    evidence:
+      - "pinned Cppcheck 2.13.0 full scan: 19,938 findings, zero growth"
+      - "2,159 findings removed with derived qualification counts reconciled"
+  - id: landing-reconcile-20260827
+    authority: repository-suppression-review
+    date: 2026-08-27
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 59
+    rows_sha256: cdb3c7cbe2a160982ecb8455cfba7591e107e9b325f59345b6a2a8d030e15bcc
+    partition: >-
+      issue-789 removal and final non-security authority reconciliation,
+      including retired stale suppressions
+    evidence:
+      - "issue-789 core-removal manifest"
+      - "sha256 71523ce39f2b65a559df90b9d2cc75293f6841ddcec5dc537b5ccccd107f7ff6"
+      - "exact predecessor and successor inventories with zero unexplained identities"
+  - id: final-nonsecurity-reconcile-20260827
+    authority: repository-suppression-review
+    date: 2026-08-27
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 2
+    rows_sha256: 7725c1b3c57545fa4c7d5f0f13bf4256bf1a2afe339f119c584a23153996fadb
+    partition: >-
+      final non-security reconciliation: reviewed S603 selftest subprocesses
+      and exact checker-classification rebinding
+    evidence:
+      - "fixed absolute Bash argv with shell disabled at both reviewed S603 sites"
+      - >-
+        one numeric-format parser cardinality classification; 924 authorities
+        and 3611 values unchanged
+      - "all predecessor rows preserved through explicit successor lineages"
+  - id: final-add456-reconcile-20260827
+    authority: repository-suppression-review
+    date: 2026-08-27
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 10
+    rows_sha256: 456b523d18f1b53e51f739f6e0d7ee0efd9e8d6e57a1d72bef2baf9586f5ca24
+    partition: >-
+      accepted HIL check-mode boundary: binding reconciliation and exact
+      checker census expansion
+    evidence:
+      - >-
+        twelve changed_when controls reviewed as reporting-only status masks
+        with immediate consumers
+      - "five checker constants classified as detector patterns or numeric parser values"
+      - "all prior authority identities preserved through explicit successor lineages"
+  - id: final-landing-governance-20260827
+    authority: repository-suppression-review
+    date: 2026-08-27
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 222
+    rows_sha256: c79e54bb3b32ba7e970893d5d1a9a716c7df92cd9e2a43bbbca53d1e017874c9
+    partition: >-
+      final landing governance: exact source-authority reconciliation and
+      one owner-authorized fully covered structural population expansion
+    evidence:
+      - >-
+        complete predecessor and final inventories with no deleted
+        ledger identity
+      - >-
+        expression-digest authentication for conditional and derived security
+        authority graphs, covered in both directions
+      - >-
+        fixed-argv subprocess review and exact UV/bootstrap digest rebinding
+      - >-
+        coverage-tree adapter row is 7/7 lines and 6/6 branches; an uncovered
+        or second unreviewed new unit remains rejected
+  - id: hil-convergence-split-20260828
+    authority: repository-suppression-review
+    date: 2026-08-28
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 0
+    rows_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    partition: >-
+      HIL convergence checker splits: two positive workflow-trigger scopes,
+      four authenticated fixed-point authorities, and their direct lineages
+    evidence:
+      - >-
+        both push and pull_request trigger-removal selftests pass for both
+        extracted HIL checker modules
+      - >-
+        live convergence validation passes with both extracted modules in the
+        workflow dependency closure
+      - >-
+        value and reason digests were remeasured after both 3694-to-3696
+        contracts changed
+      - >-
+        four retained predecessors and sixteen historical lineage rows were
+        rebound to four live fixed-point successors without deleting history
+  - id: final-image-lock-governance-20260828
+    authority: repository-suppression-review
+    date: 2026-08-28
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 6
+    rows_sha256: 91f97e9f48e60925776d766fb8788b01fa5ea7c43c08d82ab799b51f4985cc62
+    partition: >-
+      Final image-lock governance reconciliation reviewed all 32 live additions
+      or rebindings, preserved and superseded 12 historical predecessor rows,
+      and retargeted 42 earlier lineage rows without deletion.
+    evidence:
+      - >-
+        Four target-path and SHA-256 constants were independently recomputed
+        and retained as explicit SECURITY control-plane authorities.
+      - >-
+        Every Ansible status control, shell cleanup mask, helper/path authority,
+        and fixed-point count, value, reason, and classification contract was
+        reviewed against its immediate consumer or fail-closed assertion.
+      - >-
+        The complete 11669-site census is 954 authorities and 3708 values with
+        classification
+        60255fcbddc9f6667d9b1d1c581d76a3ca4ca899008bc260fa42010456e45f04,
+        authority values
+        da423e761daaf9abb296b310f077a783b41aa1dd1f398601201c74c64552560a,
+        and authority reasons
+        708855e22a1c6241d10ef72482a02bedb40925c09cf16b0c964d1ed2bb4987ba.
+  - id: final-runtime-suppression-governance-20260831
+    authority: repository-suppression-review
+    date: 2026-08-31
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 162
+    rows_sha256: 7e2231ba1397fdd64a84047cc569ce14fbe3552d50098e866ff465c33b290922
+    partition: >-
+      Final runtime suppression governance: authenticated checker census expansion,
+      extracted HIL and devcontainer selftest controls, and complete lineage closure.
+    evidence:
+      - "exact predecessor and successor inventories with zero ambiguous identities"
+      - >-
+        54 departed authorities or controls mapped to 44 live successors;
+        seven retired Bash kill masks preserve their history as resolved
+      - >-
+        60 earlier lineage rows retargeted to final live successors and no
+        ledger row deleted
+      - >-
+        996 authorities and 3762 values independently remeasured with exact
+        classification, value, and reason digests
+      - >-
+        every new Ruff, ShellCheck, and shell-status control reviewed against
+        its fixed argv, descriptor, dispatcher, or immediate outcome assertion
+  - id: pathref-and-policy-authorities-20260831
+    authority: repository-suppression-review
+    date: 2026-08-31
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 18
+    rows_sha256: 6e8ed55b5f2171e01b52544be756e99860a0ded3b98fd867bc4bfbc0de832825
+    partition: >-
+      Seven intentional negative-test path controls, six audited Python policy
+      authorities with eleven concrete values, and twelve exact aggregate
+      fixed-point successor identities.
+    evidence:
+      - >-
+        Every PATHREF-OK site names a synthetic, traversal, wrong-authority, or
+        non-publisher path required by a fail-closed negative selftest.
+      - >-
+        The Just invocation constants define a closed scripts/ci.sh grammar;
+        the Python lock constant admits only the exact __main__ interpreter root.
+      - >-
+        The 1002-authority and 3773-value census, classification digest, value
+        digest, and reason digest were independently recomputed to a fixed point.
+      - >-
+        Twelve predecessor rows were superseded by exact live successors,
+        earlier lineage was retargeted, and no ledger row was deleted.
+  - id: hil-final-current-byte-reconcile-20260831
+    authority: repository-suppression-review
+    date: 2026-08-31
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 0
+    rows_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    partition: >-
+      Final current-byte HIL convergence reconciliation: six independently
+      recomputed authority values, six preserved predecessor rows, and every
+      historical direct lineage retargeted to the live successor.
+    evidence:
+      - >-
+        Four devcontainer image and selftest SHA-256 values were recomputed
+        from the exact formatted helper bytes and verified by the live HIL
+        convergence checker.
+      - >-
+        The authority value and reason fixed-point digests were recomputed
+        after the pin changes; the census remains exactly 1002 authorities,
+        3773 values, and 11769 suppression sites.
+      - >-
+        Six predecessor rows were superseded, twenty-two historical lineage
+        rows were retargeted directly, and no ledger row was deleted.
+  - id: root-mode-portability-reconcile-20260831
+    authority: repository-suppression-review
+    date: 2026-08-31
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 4
+    rows_sha256: f0216a7d3f083ddd8082efe48e93b0b723c4467f65caa77db7c3cb06d15f52b6
+    partition: >-
+      Root-mode portability reconciliation: two security-control authorities,
+      thirteen exact census or digest successors, and complete lineage closure.
+    evidence:
+      - >-
+        Base and current inventories differ by exactly thirteen retired and
+        fifteen live identities with zero binding drift among shared sites.
+      - >-
+        The two new root-mode authorities require owner read and search while
+        rejecting group or other write and every special mode bit.
+      - >-
+        The authenticated census is exactly 1004 authorities and 3775 values
+        with independently recomputed classification, value, and reason digests.
+      - >-
+        Thirteen predecessors were superseded, eighty-five historical lineages
+        were retargeted directly, and no ledger row was deleted.
+  - id: runner-credential-convergence-20260831
+    authority: repository-suppression-review
+    date: 2026-08-31
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 5
+    rows_sha256: bbdacf1a32de78f5384fd5e20ece8015dfeb24284f41762c513443e6f7c8d465
+    partition: >-
+      ARC credential convergence: target-side Secret presence probing,
+      value-free controller validation, and exact lineage preservation.
+    evidence:
+      - >-
+        A root k3s kubectl template evaluates only the named Secret key on the
+        node and returns the fixed word present; no credential bytes are
+        returned to or registered on the controller.
+      - >-
+        Missing-Secret status is consumed by the following visible assertion,
+        which accepts it only when an explicit credential was supplied.
+      - >-
+        The only redacted live task is the explicit Secret mutation carrying
+        the plaintext PAT; predecessor decisions are resolved or rebound
+        without deleting their audit history.
+  - id: devbox-selftest-idempotence-20260901
+    authority: repository-suppression-review
+    date: 2026-09-01
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 28
+    rows_sha256: 00c7c5df2c55d143e9399003cb404adc4c94baa2c9224bb0c986373934e35c21
+    partition: >-
+      Dev-box selftest and check-mode idempotence reconciliation: seven exact
+      reporting-only Ansible controls, eighteen exact scope-authority successors,
+      and complete predecessor-lineage closure against current frozen bytes.
+    evidence:
+      - >-
+        Both controller-side protected-tempfile tasks report no managed-host
+        change; creation has an immediate typed consumer and paired always
+        cleanup, while module and cleanup failures remain fatal.
+      - >-
+        Five existing HIL probe decisions were rebound to their exact current
+        task identities and two newly visible probes have explicit hard
+        consumers or assertions; no result or failure is broadly ignored.
+      - >-
+        PROCESS_MODULE_SEMANTIC_TOKENS is reviewed as detector-pattern and
+        ENTRY_EXEC_DESCRIPTOR_MINIMUM as numeric-format; neither controls
+        scanner selection, exclusion, or exemption.
+      - >-
+        The authenticated census is exactly 1004 authorities and 3775 values;
+        classification, value, reason, and raw-byte digests were independently
+        recomputed from current bytes, all predecessor lineage was retargeted
+        directly, and no ledger row was deleted.
+  - id: hil-size-cap-split-reconcile-20260901
+    authority: repository-suppression-review
+    date: 2026-09-01
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 169
+    rows_sha256: ca83a8c81991511ddbcfbdb67d242c7ea23a24197199596dbb9594778cec960d
+    partition: >-
+      HIL size-cap split reconciliation: three new bound-exit raw-byte
+      authorities, two changed raw-byte pins, one moved negative-fixture
+      status control, eleven reviewed split-module non-authorities, and exact
+      scope-census successor identities, one typed shell authority, and
+      four final count and digest successors.
+    evidence:
+      - >-
+        The bound-exit Bash function block is byte-identical to its pre-split
+        source after trailing-newline normalization; the new source-only helper
+        is descriptor-opened, identity-checked, SHA-256 checked, and fixed-path
+        allowlisted before sourcing.
+      - >-
+        The bound-exit path, raw SHA-256, fixed pin-to-path entry, main entry
+        digest, and lifecycle digest were independently recomputed from the
+        frozen bytes; the runtime and checker pins agree.
+      - >-
+        Ten harness and analysis aliases are detector-patterns and the mutation
+        ownership label set is a detector-pattern; none selects, excludes, or
+        exempts repository scanner inputs.
+      - >-
+        The bound-exit helper is classified privileged, sourced-only, Bash,
+        non-executable, and privileged-parent-required; omission and each
+        weakened typed field are covered by live or selftest must-fire cases.
+      - >-
+        The authenticated census is exactly 1006 authorities and 3779 values,
+        with classification
+        f7f8294b528fa36894ca76d55dc984f48382a5761f75a85614e3ab6f1358503d,
+        value 6971b6e7aac6006052ca8e14785ac095261a0c3422616cc585a24d402d505bdc,
+        and reason a80044f930143e9b426600aeaf0420e77f928592c32e572c666fb7e5c95ad7ca;
+        every predecessor lineage was retargeted and no ledger row was deleted.

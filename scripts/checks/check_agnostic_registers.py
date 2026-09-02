@@ -56,7 +56,12 @@ BASELINE_FILE = REPO_ROOT / ".github" / "agnostic-register-baseline.txt"
 
 SOURCE_SUFFIXES = (".c", ".h", ".cpp", ".hpp", ".cc", ".cxx", ".hh", ".hxx")
 POLICY_ROOTS = frozenset({"libs", "port", "examples", "tools", "apps"})
-EXCLUDED_PREFIXES = ("libs/ra8_hal/", "libs/third_party/", "libs/ra8_fonts/")
+EXCLUDED_PREFIXES = (
+    "libs/ra8_hal/",
+    "libs/third_party/",
+    "apps/shared_libs/third_party/",
+    "libs/ra8_fonts/",
+)
 EXCLUDED_BACKEND_FILES = frozenset(
     {
         "libs/ra8_display_pal/src/ra8_display_pal_lcd.c",

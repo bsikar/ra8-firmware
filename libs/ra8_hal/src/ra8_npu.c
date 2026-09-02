@@ -221,10 +221,10 @@ static ra8_err_t internal_npu_apply_reset(void)
   /* Ethos-U55 NPU TRM "NPU_RESET" reg @ 0x0C -- request reset, privileged +
    * secure pending level (both pending-level bits written 0). */
   *ra8_npu_reg(k_ra8_npu_off_reset) = 0U;
-  for (uint32_t i = 0U; i < k_ra8_npu_reset_poll_iters; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_npu_reset_poll_iters; i++) {
     /* Ethos-U55 NPU TRM "NPU_STATUS" reg @ 0x04 -- reset bit clears when done. */
     const uint32_t status = *ra8_npu_reg(k_ra8_npu_off_status);
-    if ((status & ((uint32_t)1U << k_ra8_npu_status_reset_bit)) == 0U) { /* GCOVR_EXCL_BR_LINE */
+    if ((status & ((uint32_t)1U << k_ra8_npu_status_reset_bit)) == 0U) {
       return k_ra8_ok;
     }
   }
@@ -265,9 +265,9 @@ static void internal_npu_write_region(ra8_npu_region_idx_t idx, uint64_t base)
 ra8_err_t ra8_npu_init(void)
 {
   const ra8_err_t mst = ra8_mstp_enable(s_npu_mstp_id);
-  RA8_RETURN_ON_ERROR(mst, s_tag, "npu_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst, s_tag, "npu_init: mstp enable");
   const ra8_err_t rst = internal_npu_apply_reset();
-  RA8_RETURN_ON_ERROR(rst, s_tag, "npu_init: reset"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(rst, s_tag, "npu_init: reset");
   s_npu_initialized   = true;
   s_npu_job_submitted = false;
   s_npu_irq_state     = k_ra8_npu_irq_idle;
@@ -279,7 +279,7 @@ ra8_err_t ra8_npu_deinit(void)
 {
   RA8_VALIDATE_INIT(s_npu_initialized, s_tag, "npu_deinit: not initialized");
   const ra8_err_t dis = ra8_mstp_disable(s_npu_mstp_id);
-  RA8_RETURN_ON_ERROR(dis, s_tag, "npu_deinit: mstp disable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(dis, s_tag, "npu_deinit: mstp disable");
   s_npu_initialized   = false;
   s_npu_job_submitted = false;
   s_npu_irq_state     = k_ra8_npu_irq_idle;
@@ -290,7 +290,7 @@ ra8_err_t ra8_npu_reset(void)
 {
   RA8_VALIDATE_INIT(s_npu_initialized, s_tag, "npu_reset: not initialized");
   const ra8_err_t rst = internal_npu_apply_reset();
-  RA8_RETURN_ON_ERROR(rst, s_tag, "npu_reset"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(rst, s_tag, "npu_reset");
   s_npu_job_submitted = false;
   s_npu_irq_state     = k_ra8_npu_irq_idle;
   return k_ra8_ok;
@@ -374,10 +374,10 @@ ra8_err_t ra8_npu_poll(bool* out_done)
 ra8_err_t ra8_npu_wait(void)
 {
   RA8_VALIDATE_INIT(s_npu_initialized, s_tag, "npu_wait: not initialized");
-  for (uint32_t i = 0U; i < k_ra8_npu_job_poll_iters; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_npu_job_poll_iters; i++) {
     bool            done = false;
     const ra8_err_t err  = ra8_npu_poll(&done);
-    RA8_RETURN_ON_ERROR(err, s_tag, "npu_wait: poll"); /* GCOVR_EXCL_BR_LINE */
+    RA8_RETURN_ON_ERROR(err, s_tag, "npu_wait: poll");
     if (done) {
       return k_ra8_ok;
     }
@@ -431,12 +431,12 @@ ra8_err_t ra8_npu_wait_irq(void)
     ra8_log_error(s_tag, "npu_wait_irq: not armed");
     return k_ra8_err_invalid_state;
   }
-  for (uint32_t i = 0U; i < k_ra8_npu_job_poll_iters; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_npu_job_poll_iters; i++) {
     const ra8_npu_irq_state_t state = s_npu_irq_state;
-    if (state == k_ra8_npu_irq_done) { /* GCOVR_EXCL_BR_LINE */
+    if (state == k_ra8_npu_irq_done) {
       return k_ra8_ok;
     }
-    if (state == k_ra8_npu_irq_fault) { /* GCOVR_EXCL_BR_LINE */
+    if (state == k_ra8_npu_irq_fault) {
       ra8_log_error(s_tag, "npu_wait_irq: fault latched");
       return k_ra8_err_hw_error;
     }

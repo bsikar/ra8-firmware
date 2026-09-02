@@ -69,7 +69,7 @@ extern "C" {
 #include "ra8_err.h"
 
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
-/* Host unit-test MMIO fault seam (tests/mocks/ra8_fake_mmio.c). Consulted once per
+/* Host unit-test MMIO fault seam (tests/mocks/src/ra8_fake_mmio.c). Consulted once per
  * poll below so a test can drive a bounded wait to timeout or succeed-after-N,
  * exercising the real poll/timeout legs on host with the driver short-circuits
  * deleted (T1-01). Forward-declared here -- rather than including the test-only

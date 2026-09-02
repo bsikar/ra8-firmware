@@ -58,7 +58,7 @@ ra8_err_t ra8_eth_gwca_init(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_eswm);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "gwca_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "gwca_init: mstp enable");
 
   volatile r_gwca_regs_t* reg = ra8_gwca();
   /* HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
@@ -239,7 +239,7 @@ ra8_err_t ra8_eth_gwca_set_operation_mode(ra8_gwmc_opc_t mode)
   *gwmc              = cur | opc;
 
   /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1792 */
-  volatile uint32_t* const gwms =
+  volatile const uint32_t* const gwms =
     (volatile uint32_t*)(k_ra8_gwca0_base_addr + (uintptr_t)k_ra8_gwca_off_gwms);
   /* GWMS.OPS converges to a specific 2-bit value (opc), not a single-mask
    * set/clear, so the ra8_hw_wait_flag_* helpers do not fit -- run the real

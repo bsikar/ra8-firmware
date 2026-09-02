@@ -27,4 +27,4 @@ text, so any change to chrome-widget geometry *or* to the strings re-mints the
 goldens in `hil.conf`.
 
 This does not replace the `ereader_ui` chrome; that swap is a later phase and
-stays byte-identical under `make ereader-golden` until then.
+stays byte-identical under `just apps::emulator::golden` until then.

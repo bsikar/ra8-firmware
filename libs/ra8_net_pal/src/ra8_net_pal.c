@@ -101,12 +101,10 @@ typedef enum : uint16_t {
  * @struct ra8_net_pal_slot_t
  * @brief One ring slot holding a single frame plus its byte length.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t len;                           /**< 0 == slot empty.  */
   uint8_t  data[k_ra8_net_pal_frame_max]; /**< Up to 1518 bytes. */
 } ra8_net_pal_slot_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_net_pal_state_t
@@ -218,7 +216,7 @@ static void internal_eth_event(void* ctx, uint32_t status_mask)
     return;
   }
   const uint32_t pal_mask = internal_translate_event(status_mask);
-  // mcdc-deactivated: TU-local helper internal_eth_event dispatch gate; tests/test_ra8_net_pal_event_dispatch covers each branch outcome but the MC/DC vector that flips event_fn while holding pal_mask non-empty (or vice-versa) is not reachable through the public-API surface -- callbacks are registered/unregistered before any event mask can become non-zero.
+  // mcdc-deactivated: TU-local helper internal_eth_event dispatch gate; tests/net/src/test_ra8_net_pal.c covers each branch outcome but the MC/DC vector that flips event_fn while holding pal_mask non-empty (or vice-versa) is not reachable through the public-API surface -- callbacks are registered/unregistered before any event mask can become non-zero.
   if ((s_state.event_fn != nullptr) && (pal_mask != k_ra8_net_pal_event_none)) {
     s_state.event_fn(s_state.event_ctx, pal_mask);
   }
@@ -242,8 +240,7 @@ static void internal_eth_event(void* ctx, uint32_t status_mask)
  *
  * @return ``ra8_err_t`` error code.
  * @retval k_ra8_ok                   PAL ready, link state = down.
- * @retval k_ra8_err_hw_init_failed   ``ra8_eth_init`` or the handler
- *                                   attach failed.
+ * @retval k_ra8_err_hw_init_failed   ``ra8_eth_init`` failed.
  *
  * @pre ``ra8_mstp_init`` and ``ra8_pwr_init`` have been called.
  * @pre IRQs masked or single-threaded init context.
@@ -275,15 +272,7 @@ ra8_err_t ra8_net_pal_init(const ra8_net_pal_mac_t* mac)
     internal_copy_bytes(s_state.mac.bytes, mac->bytes, k_ra8_net_pal_mac_addr_len);
   }
 
-  const ra8_err_t att_err = ra8_eth_attach_handler(internal_eth_event, nullptr);
-  if (att_err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
-    /* GCOVR_EXCL_START */
-    ra8_log_error_val(s_tag, "ra8_eth_attach_handler failed", (uint32_t)att_err);
-    s_state.initialized = false;
-    (void)ra8_eth_deinit();
-    return k_ra8_err_hw_init_failed;
-    /* GCOVR_EXCL_STOP */
-  }
+  ra8_eth_attach_handler(internal_eth_event, nullptr);
 
   ra8_log_info(s_tag, "PAL ready");
   return k_ra8_ok;
@@ -315,7 +304,7 @@ ra8_err_t ra8_net_pal_deinit(void)
   if (!s_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  (void)ra8_eth_attach_handler(nullptr, nullptr);
+  ra8_eth_attach_handler(nullptr, nullptr);
   const ra8_err_t err = ra8_eth_deinit();
   s_state.initialized = false;
   s_state.event_fn    = nullptr;

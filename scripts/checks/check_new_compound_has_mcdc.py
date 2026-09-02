@@ -6,22 +6,28 @@
 A new compound boolean decision (``&&`` / ``||``) in production code must
 arrive with an accompanying MC/DC test vector set. Per CLAUDE.md
 "IEC 61508 SIL 3 / DO-178C Level B Qualification" and docs/MCDC.md, every
-compound boolean decision in production code under ``libs/``, ``src/``,
-``port/`` must have a matching MC/DC test vector set in
-``tests/test_<module>.c`` or ``.cpp``. The MC/DC test function (named
-``test_mcdc_*``)
-declares its vector pattern in a Doxygen ``@par MC/DC:`` block that cites
-the decision as ``path@function`` -- the source path and the *enclosing
-function* of the decision. Citing by function (not line number) means
-unrelated edits that shift lines never invalidate a citation.
+compound boolean decision in production code under ``libs/``,
+``apps/shared_libs/``, ``port/``, and firmware applications must have a
+matching MC/DC test vector set in an indexed test translation unit. The test
+declares its vector pattern in a Doxygen ``@par MC/DC:`` block that cites the
+decision as ``path@function`` -- the source path and the *enclosing function*
+of the decision. Citing by function (not line number) means unrelated edits
+that shift lines never invalidate a citation.
 
-This is a *static* check: it never builds or runs the test suite. It works
-by diffing two revisions of each changed production file and flagging
-compound boolean decisions present in the newer revision but NOT in the
-older one on the same normalized line. For each such NEW decision it
-resolves the decision's enclosing function and searches every
-``tests/test_*.{c,cpp}`` for a ``@par MC/DC:`` block citing
-``path@that_function``.
+This is a *static* check: it never builds or runs the test suite. It compares
+structural fingerprints of logical ``&&`` / ``||`` expressions in each
+changed production component. Formatting, file splits, and stable-symbol
+function moves therefore do not turn existing decisions into "new" ones;
+renamed decision owners need a citation at their new anchor. Adding an operator
+or changing predicate structure also creates a new fingerprint. For each new
+fingerprint, it searches supported indexed test sources under ``tests/`` and
+``apps/`` for a ``@par MC/DC:`` block citing ``path@that_function``.
+
+Identifiers are alpha-normalized so a systematic local rename is cosmetic.
+Consequently this is not a predicate-equivalence proof: a replacement with
+the same operator/comparison topology can compare equal. The whole-tree debt
+ratchet and executed MC/DC gate remain responsible for detecting coverage loss
+after such substitutions. That boundary is explicit and self-tested.
 
 Two selection modes, and NO third silent one:
 
@@ -57,9 +63,10 @@ shared, so there is exactly one definition of "this decision lacks MC/DC
 vectors".
 
 The check intentionally does NOT cover:
-  * ``libs/third_party/``  -- SOUP exempted per docs/MCDC.md.
-  * ``tests/``             -- only production code.
-  * ``examples/``          -- application code, not yet under the MC/DC gate.
+  * Either canonical ``third_party`` root -- SOUP exempted per docs/MCDC.md.
+  * ``tests/`` -- only production code.
+  * ``examples/`` and host tools -- outside this structural citation ratchet;
+    the executed per-file MC/DC floor covers represented files from both.
   * Single-condition ``if (x)`` -- MC/DC only applies to compound decisions.
 
 Exit codes:
@@ -76,12 +83,18 @@ import argparse
 import re
 import subprocess
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lint_targets import firmware_app_dirs, is_build_output_path
+from mcdc_compound_delta import (
+    COMPOUND_OP_RE,
+    NO_ENCLOSING_FUNCTION,
+    enclosing_function,
+    lexical_code_view,
+    new_decision_occurrences,
+)
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -91,18 +104,20 @@ from lint_targets import firmware_app_dirs, is_build_output_path
 #
 # "Production" here means code that runs on the target: the platform libraries
 # (the Ring 5 secure substrate among them, as libs/ra8_secure_app), the RTOS
-# ports -- and the FIRMWARE products, which is why apps/ appears through a
-# derivation rather than as a third literal. apps/ is the products tier and
-# most of it is host programs (the media_dl CLI), which are no more in scope
-# than tools/ is; the e-reader image is. Deriving the firmware half from
+# ports, reusable application-domain production modules, and the FIRMWARE
+# products. Shared modules are explicit because they compile into product
+# images without owning a linker script. The remaining apps/ product tier
+# mixes host programs (the mdl CLI) and firmware, so that half appears through
+# a derivation. Deriving the firmware products from
 # ``lint_targets.firmware_app_dirs()`` keeps the scope's MEANING fixed while
-# the tree moves under it: when the e-reader composition left src/ for the
+# the tree moves under it: when the e-reader composition moved into the
 # products tier, a literal tuple would have dropped six firmware translation
 # units out of this gate and reported the resulting smaller count as a
 # burn-down.
 PROD_PREFIXES: tuple[str, ...] = (
     "libs/",
     "port/",
+    "apps/shared_libs/",
     *(f"{d}/" for d in firmware_app_dirs()),
 )
 
@@ -116,26 +131,15 @@ SNIPPET_TRUNCATE_LEN = 77  # Length of truncated snippet body (leaves room for "
 
 # Number of tab-separated fields in a `git diff --name-status -M` rename row.
 RENAME_ROW_FIELD_COUNT = 3  # <status>\t<old>\t<new>
+CHANGE_ROW_FIELD_COUNT = 2  # <status>\t<path>
 
 # The canonical empty-tree object. Used as the "base" when a range names a
 # root/new-branch head with no parent, so every decision in every changed file
 # is treated as new. `git` always resolves it, in every repository.
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
-# Excluded subtrees (SOUP, generated, etc.).
-EXCLUDED_SUBSTRINGS: tuple[str, ...] = ("/third_party/",)
-
-# Regex matching a compound boolean decision on a non-comment line. The
-# operator boundary avoids colliding with `&` / `|` (bitwise); string and
-# comment contents are scrubbed separately below.
-COMPOUND_OP_RE = re.compile(r"(?:\|\||&&)")
-
-# Regexes stripping comment / literal contents so a `&&` inside prose or a
-# string is not mistaken for a decision.
-LINE_COMMENT_RE = re.compile(r"//.*$")
-BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/")
-STRING_LITERAL_RE = re.compile(r'"(?:\\.|[^"\\])*"')
-CHAR_LITERAL_RE = re.compile(r"'(?:\\.|[^'\\])*'")
+# Excluded subtrees (SOUP, tests, generated, etc.).
+EXCLUDED_SUBSTRINGS: tuple[str, ...] = ("/third_party/", "/tests/", "/test/")
 
 # Regex matching one citation token inside a `@par MC/DC:` block. The only
 # accepted form is `path@function_name`: it pins the decision to its enclosing
@@ -230,15 +234,27 @@ def _is_test_source_name(name: str) -> bool:
 _TEST_NAME_SUFFIXES = tuple(f"_test{suffix}" for suffix in TEST_SOURCE_SUFFIXES)
 
 
-def _working_test_sources(tests_dir: Path) -> list[Path]:
-    """Return every supported test translation unit under ``tests_dir``.
-
-    Recursive: ``tests/support/`` holds contract and model units that carry
-    citations of their own, and a top-level-only scan dropped them.
-    """
-    return sorted(
-        path for path in tests_dir.rglob("*") if path.is_file() and _is_test_source_name(path.name)
-    )
+def _working_test_sources(root_or_dir: Path) -> list[Path]:
+    """Return every supported test translation unit under ``root_or_dir``."""
+    sources: list[Path] = []
+    if root_or_dir.name in ("tests", "test"):
+        dirs_to_check = [root_or_dir]
+    else:
+        dirs_to_check = [
+            d for dir_name in ("tests", "apps") if (d := root_or_dir / dir_name).is_dir()
+        ]
+        if not dirs_to_check and root_or_dir.is_dir():
+            dirs_to_check = [root_or_dir]
+    for d in dirs_to_check:
+        for path in d.rglob("*"):
+            if path.is_file() and _is_test_source_name(path.name):
+                try:
+                    rel = path.relative_to(root_or_dir).as_posix()
+                    if not is_build_output_path(rel):
+                        sources.append(path)
+                except ValueError:
+                    sources.append(path)
+    return sorted(sources)
 
 
 # ---------------------------------------------------------------------------
@@ -253,6 +269,42 @@ def staged_files() -> list[str]:
     """
     out = _git("diff", "--cached", "--name-only", "--diff-filter=ACMR")
     return [p for p in out.splitlines() if _path_included(p, prefixes=PROD_PREFIXES)]
+
+
+def _parse_change_rows(out: str) -> list[tuple[str | None, str | None]]:
+    """Parse name-status rows into ``(old_path, new_path)`` pairs."""
+    pairs: list[tuple[str | None, str | None]] = []
+    for row in out.splitlines():
+        parts = row.split("\t")
+        status = parts[0][:1] if parts else ""
+        if status == "R" and len(parts) == RENAME_ROW_FIELD_COUNT:
+            pairs.append((parts[1], parts[2]))
+        elif status == "C" and len(parts) == RENAME_ROW_FIELD_COUNT:
+            pairs.append((None, parts[2]))
+        elif len(parts) == CHANGE_ROW_FIELD_COUNT and status == "A":
+            pairs.append((None, parts[1]))
+        elif len(parts) == CHANGE_ROW_FIELD_COUNT and status == "D":
+            pairs.append((parts[1], None))
+        elif len(parts) == CHANGE_ROW_FIELD_COUNT and status == "M":
+            pairs.append((parts[1], parts[1]))
+    return pairs
+
+
+def _production_change_pairs(out: str) -> list[tuple[str | None, str | None]]:
+    """Changed path pairs with at least one production endpoint."""
+    pairs: list[tuple[str | None, str | None]] = []
+    for old_path, new_path in _parse_change_rows(out):
+        old_prod = old_path is not None and _path_included(old_path, prefixes=PROD_PREFIXES)
+        new_prod = new_path is not None and _path_included(new_path, prefixes=PROD_PREFIXES)
+        if old_prod or new_prod:
+            pairs.append((old_path if old_prod else None, new_path if new_prod else None))
+    return pairs
+
+
+def staged_change_pairs() -> list[tuple[str | None, str | None]]:
+    """All staged production changes, including deletions used as move ancestry."""
+    out = _git("diff", "--cached", "--name-status", "-M40%", "--diff-filter=ACMRD")
+    return _production_change_pairs(out)
 
 
 def staged_blob(path: str) -> str:
@@ -288,23 +340,19 @@ def staged_rename_map() -> dict[str, str]:
     return _parse_rename_rows(out)
 
 
-def collect_working_tree_citations() -> list[tuple[str, str]]:
-    """Every citation in working-tree ``tests/test_*.{c,cpp}`` sources.
+def collect_staged_citations() -> list[tuple[str, str]]:
+    """Every citation in test sources present in the git index.
 
-    Walks the working tree, not the index, so a test staged in this same
-    commit counts -- the normal case, since the decision and its vectors land
-    together.
+    Staged mode judges exactly the prospective commit. Untracked tests and
+    unstaged citation edits must not change its verdict, while a staged test
+    added with the decision must count immediately.
     """
     cites: list[tuple[str, str]] = []
-    tests_dir = Path("tests")
-    if not tests_dir.is_dir():
-        return cites
-    for tf in _working_test_sources(tests_dir):
-        try:
-            text = tf.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
-            continue
-        cites.extend(_extract_citations(text))
+    listing = _git("ls-files", "--cached", "--", "tests", "apps")
+    for path in listing.splitlines():
+        name = path.rsplit("/", 1)[-1]
+        if _is_test_source_name(name) and not is_build_output_path(path):
+            cites.extend(_extract_citations(staged_blob(path)))
     return cites
 
 
@@ -371,6 +419,12 @@ def changed_prod_files(repo: str, base: str, head: str) -> list[str]:
     return [p for p in out.splitlines() if _path_included(p, prefixes=PROD_PREFIXES)]
 
 
+def range_change_pairs(repo: str, base: str, head: str) -> list[tuple[str | None, str | None]]:
+    """All production changes in a range, including move-source deletions."""
+    out = _git("-C", repo, "diff", "--name-status", "-M40%", "--diff-filter=ACMRD", base, head)
+    return _production_change_pairs(out)
+
+
 def range_rename_map(repo: str, base: str, head: str) -> dict[str, str]:
     """Map each rename between ``base`` and ``head`` to its pre-rename path."""
     out = _git("-C", repo, "diff", "--name-status", "-M40%", "--diff-filter=R", base, head)
@@ -378,7 +432,7 @@ def range_rename_map(repo: str, base: str, head: str) -> dict[str, str]:
 
 
 def collect_range_citations(repo: str, head: str) -> list[tuple[str, str]]:
-    """Every citation in ``tests/test_*.{c,cpp}`` at ``head``.
+    """Every citation in a supported indexed test source at ``head``.
 
     Reads the tests as committed at the audited revision (not the working
     tree), so the citation set matches the code under audit even when ``repo``
@@ -388,7 +442,7 @@ def collect_range_citations(repo: str, head: str) -> list[tuple[str, str]]:
     """
     cites: list[tuple[str, str]] = []
     try:
-        listing = _git("-C", repo, "ls-tree", "-r", "--name-only", head, "--", "tests")
+        listing = _git("-C", repo, "ls-tree", "-r", "--name-only", head, "--", "tests", "apps")
     except subprocess.CalledProcessError:
         return cites
     for path in listing.splitlines():
@@ -403,19 +457,6 @@ def collect_range_citations(repo: str, head: str) -> list[tuple[str, str]]:
 # ---------------------------------------------------------------------------
 
 
-def _scrub(line: str) -> str:
-    """Blank comment, string and char-literal contents in one line.
-
-    Without this a ``&&`` inside a string literal or an explanatory comment
-    would register as a compound decision, so the gate would demand MC/DC
-    vectors for prose.
-    """
-    line = STRING_LITERAL_RE.sub('""', line)
-    line = CHAR_LITERAL_RE.sub("''", line)
-    line = BLOCK_COMMENT_RE.sub("", line)
-    return LINE_COMMENT_RE.sub("", line)
-
-
 def compound_decision_lines(text: str) -> set[tuple[int, str]]:
     """Every line holding a compound operator outside comments and strings.
 
@@ -423,21 +464,19 @@ def compound_decision_lines(text: str) -> set[tuple[int, str]]:
     The normalized text -- whitespace-collapsed with ``NULL`` folded to
     ``nullptr`` -- is carried so the same decision compares equal across a
     cosmetic reformat or the C23 ``nullptr`` migration.
+
+    Comment, literal, and preprocessor text is removed by
+    ``lexical_code_view()`` -- the same whole-source view the delta modes
+    read, so the ratchet measurement and the delta gate cannot disagree about
+    what a decision is. The line-local scrub this replaced could not see that
+    an operator sat on an interior line of a multi-line Doxygen block, nor
+    that a `#define` continued onto the next line, so it counted prose and
+    conditional-compilation logic as MC/DC debt (issue #790).
     """
     found: set[tuple[int, str]] = set()
-    for idx, raw in enumerate(text.splitlines(), start=1):
-        # Preprocessor directives (`#if` / `#elif` / `#define` ...) are
-        # compile-time conditional compilation, not runtime decisions, so
-        # MC/DC -- a runtime coverage criterion -- does not apply. The
-        # canonical case is the fail-closed stub-crypto guard
-        # `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)`
-        # whose `||` selects a translation unit and is never evaluated at run
-        # time. Skip any preprocessor line.
-        if raw.lstrip().startswith("#"):
-            continue
-        scrubbed = _scrub(raw)
-        if COMPOUND_OP_RE.search(scrubbed):
-            normalized = re.sub(r"\s+", " ", scrubbed.strip())
+    for idx, raw in enumerate(lexical_code_view(text).splitlines(), start=1):
+        if COMPOUND_OP_RE.search(raw):
+            normalized = re.sub(r"\s+", " ", raw.strip())
             normalized = re.sub(r"\bNULL\b", "nullptr", normalized)
             found.add((idx, normalized))
     return found
@@ -471,52 +510,6 @@ def _extract_citations(text: str) -> list[tuple[str, str]]:
     return cites
 
 
-def enclosing_function(src_text: str, decision_line: int) -> str | None:
-    """Name of the function enclosing a 1-based source line, or None.
-
-    Relies on the repo's clang-format style: a function-definition body opens
-    with ``{`` alone at column 0, whereas control blocks keep their brace at
-    end-of-line (``if (...) {``). So the nearest preceding line that is exactly
-    ``{`` is the enclosing function's opening brace; the function name is the
-    last identifier before the ``(`` in the signature above it.
-
-    A multi-line parameter list can carry a comment-only line -- typically a
-    ``// NOLINTNEXTLINE(rule)`` marker clang-tidy requires directly above the
-    parameter it waives -- between two real signature lines. Such a line is
-    skipped rather than collected: collecting it let the parenthesised rule
-    name (``NOLINTNEXTLINE(readability-non-const-parameter)``) satisfy the
-    ``"(" in lines[j]`` stop condition, so the walk quit before reaching the
-    real signature and the regex below matched ``NOLINTNEXTLINE`` as the
-    function name instead.
-    """
-    lines = src_text.splitlines()
-    idx = decision_line - 1
-    if idx < 0 or idx >= len(lines):
-        return None
-    brace = idx
-    while brace >= 0 and lines[brace] != "{":
-        brace -= 1
-    if brace < 0:
-        return None
-    sig_parts: list[str] = []
-    j = brace - 1
-    while j >= 0 and lines[j].strip() not in ("", "}", "};", "*/", "/*"):
-        stripped = lines[j].strip()
-        if stripped.startswith("//") or (stripped.startswith("/*") and stripped.endswith("*/")):
-            # Comment-only line (NOLINTNEXTLINE marker or a one-line remark):
-            # carries no signature text, so skip past it without treating any
-            # parenthesised text inside it as the start of the signature.
-            j -= 1
-            continue
-        sig_parts.insert(0, lines[j])
-        if "(" in lines[j]:
-            break
-        j -= 1
-    sig = " ".join(part.strip() for part in sig_parts)
-    m = re.search(r"([A-Za-z_]\w*)\s*\(", sig)
-    return m.group(1) if m else None
-
-
 def has_matching_citation(
     src_path: str,
     src_line: int,
@@ -544,26 +537,21 @@ def has_matching_citation(
 
 def audit_files(
     files: list[str],
-    new_text_of: Callable[[str], str],
-    base_text_of: Callable[[str], str],
+    new_occurrences: list[tuple[str, int, str, str]],
     symbol_cites: list[tuple[str, str]],
 ) -> list[tuple[str, int, str]]:
-    """Findings for every new, uncited compound decision in ``files``.
-
-    ``new_text_of`` yields the audited (newer) revision of a path and
-    ``base_text_of`` its older revision; splitting them out is what lets the
-    staged and range modes share one auditing core. Returns ``(path, line,
-    snippet)`` per offending decision.
-    """
+    """One finding per function that owns a new uncited structural decision."""
     findings: list[tuple[str, int, str]] = []
-    for path in files:
-        new_text = new_text_of(path)
-        if not new_text:
+    file_set = set(files)
+    cite_set = set(symbol_cites)
+    reported: set[tuple[str, str]] = set()
+    for path, line_no, snippet, symbol in new_occurrences:
+        owner = (path, symbol)
+        if path not in file_set or owner in reported:
             continue
-        base_text = base_text_of(path)
-        for line_no, normalized in new_decisions(new_text, base_text):
-            if not has_matching_citation(path, line_no, new_text, symbol_cites):
-                findings.append((path, line_no, normalized))
+        reported.add(owner)
+        if owner not in cite_set:
+            findings.append((path, line_no, snippet))
     return findings
 
 
@@ -574,40 +562,28 @@ def audit_range(repo: str, base: str, head: str) -> tuple[list[str], list[tuple[
     count (a scan of zero files must never be silent) and act on the findings.
     """
     files = changed_prod_files(repo, base, head)
-    renamed = range_rename_map(repo, base, head)
     symbol_cites = collect_range_citations(repo, head)
-    findings = audit_files(
-        files,
+    new_occurrences = new_decision_occurrences(
+        range_change_pairs(repo, base, head),
         lambda p: _blob_at(repo, head, p),
-        lambda p: _blob_at(repo, base, renamed.get(p, p)),
-        symbol_cites,
+        lambda p: _blob_at(repo, base, p),
     )
+    findings = audit_files(files, new_occurrences, symbol_cites)
     return files, findings
 
 
 def audit_staged() -> tuple[list[str], list[tuple[str, int, str]]]:
     """Audit the staged index against HEAD (the local pre-commit-hook mode)."""
     files = staged_files()
-    renamed = staged_rename_map()
-    symbol_cites = collect_working_tree_citations()
-    findings = audit_files(
-        files,
-        staged_blob,
-        lambda p: head_blob(renamed.get(p, p)),
-        symbol_cites,
-    )
+    symbol_cites = collect_staged_citations()
+    new_occurrences = new_decision_occurrences(staged_change_pairs(), staged_blob, head_blob)
+    findings = audit_files(files, new_occurrences, symbol_cites)
     return files, findings
 
 
 # ---------------------------------------------------------------------------
 # Whole-tree scan (the ratchet's measurement)
 # ---------------------------------------------------------------------------
-
-# Bucket name for a decision whose enclosing function could not be resolved --
-# a file-scope construct such as a static initializer. Named rather than left
-# empty so a baseline row for it is self-explaining, and so two such decisions
-# in one file aggregate into one stable, diffable bucket.
-NO_ENCLOSING_FUNCTION = "(file-scope)"
 
 
 def production_files(root: Path) -> list[str]:
@@ -644,18 +620,60 @@ def _read_text(path: Path) -> str:
 
 
 def collect_tree_citations(root: Path) -> list[tuple[str, str]]:
-    """Every citation in ``root``'s ``tests/test_*.{c,cpp}`` sources.
-
-    Deliberately the same scope the range mode reads, so the whole-tree count
-    and the delta modes cannot disagree about which decisions are covered.
-    """
+    """Every citation in ``root``'s test sources."""
     cites: list[tuple[str, str]] = []
-    tests_dir = root / "tests"
-    if not tests_dir.is_dir():
-        return cites
-    for tf in _working_test_sources(tests_dir):
+    for tf in _working_test_sources(root):
         cites.extend(_extract_citations(_read_text(tf)))
     return cites
+
+
+def collect_tree_citation_occurrences(root: Path) -> list[tuple[str, int, str, str]]:
+    """Return ``(test path, line, source path, function)`` for every citation."""
+    occurrences: list[tuple[str, int, str, str]] = []
+    for test_file in _working_test_sources(root):
+        text = _read_text(test_file)
+        try:
+            test_rel = test_file.relative_to(root).as_posix()
+        except ValueError:
+            test_rel = test_file.as_posix()
+        for block_match in MCDC_BLOCK_RE.finditer(text):
+            block = block_match.group(0)
+            for cite_match in SYMBOL_CITATION_RE.finditer(block):
+                offset = block_match.start() + cite_match.start()
+                line = text.count("\n", 0, offset) + 1
+                occurrences.append(
+                    (
+                        test_rel,
+                        line,
+                        cite_match.group("path"),
+                        cite_match.group("sym"),
+                    )
+                )
+    return occurrences
+
+
+def _defined_functions(text: str) -> set[str]:
+    """Return function definitions in one clang-formatted C translation unit."""
+    functions: set[str] = set()
+    for line, source_line in enumerate(text.splitlines(), start=1):
+        if source_line != "{":
+            continue
+        function = enclosing_function(text, line)
+        if function is not None:
+            functions.add(function)
+    return functions
+
+
+def stale_tree_citations(root: Path) -> list[tuple[str, int, str, str]]:
+    """Return citations whose ``path@function`` resolves to no live definition."""
+    symbol_index: dict[str, set[str]] = {}
+    for source_path in production_files(root):
+        symbol_index[source_path] = _defined_functions(_read_text(root / source_path))
+    return [
+        occurrence
+        for occurrence in collect_tree_citation_occurrences(root)
+        if occurrence[3] not in symbol_index.get(occurrence[2], set())
+    ]
 
 
 def audit_tree(root: Path) -> tuple[list[str], list[tuple[str, str, int, str]]]:
@@ -707,11 +725,12 @@ def _report(files: list[str], findings: list[tuple[str, int, str]], scope: str) 
     print()
     print("[FAIL] check_new_compound_has_mcdc.py: new compound boolean")
     print("       decisions landed without an accompanying MC/DC test")
-    print("       vector set in tests/test_*.{c,cpp}.")
+    print("       vector set in an indexed test translation unit.")
     print()
     print("       Per docs/MCDC.md, every `&&` / `||` decision under")
-    print("       libs/, src/, port/ must have a `test_mcdc_*` function")
-    print("       in the matching tests/test_<module>.{c,cpp} whose")
+    print("       libs/, apps/shared_libs/, port/, and the discovered")
+    print("       firmware product directories must")
+    print("       have a co-located or repository test function whose")
     print("       `@par MC/DC:` block cites the decision as")
     print("       `path@function` (the enclosing function of the")
     print("       decision -- a drift-proof anchor, no line numbers).")
@@ -728,7 +747,7 @@ def _report(files: list[str], findings: list[tuple[str, int, str]], scope: str) 
         print(f"         ... and {len(findings) - MAX_DISPLAYED_FINDINGS} more")
     print()
     print("       Fix: add a `test_mcdc_<decision>` function in the")
-    print("       matching tests/test_<module>.{c,cpp} with N+1 vectors and")
+    print("       matching indexed test translation unit with N+1 vectors and")
     print("       a `@par MC/DC:` block citing `path@function`, then")
     print("       re-run. See docs/MCDC.md for the worked example.")
     return 1
@@ -794,7 +813,7 @@ def main(argv: list[str]) -> int:
     if args.selftest:
         # Deferred import: check_new_compound_has_mcdc_selftest imports FROM
         # this module, so importing it at module load time would cycle.
-        from check_new_compound_has_mcdc_selftest import (  # noqa: PLC0415
+        from check_new_compound_has_mcdc_selftest import (  # noqa: PLC0415 -- avoids import cycle
             run_selftest,
         )
 

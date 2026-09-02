@@ -59,7 +59,7 @@ static const char* s_tag = "ROT";
  * @warning Do not modify at runtime; the key is the trust anchor.
  * @note    Provisioned NIST P-256 root public key from the signing-key ceremony
  *          (scripts/secrets/rot_provision.sh). The matching private key is held out of
- *          tree and signs every launched image via tools/rot_sign.py. Public-key
+ *          tree and signs every launched image via tools/rot/src/rot_sign.py. Public-key
  *          SHA-256 fingerprint:
  *          e7080738d869454f203979242990e7982209dfc40485fd870b859478cecf4ac0.
  *          Re-key by re-running the ceremony and replacing these bytes.
@@ -69,7 +69,7 @@ static const char* s_tag = "ROT";
  *          is proven end-to-end on silicon by hw_validated/hil/secure_boot_hil
  *          (tampered image rejected, genuine launched).
  * @warning Enabling RA8_ENABLE_ROOT_OF_TRUST on a production boot path requires
- *          every shipped image to be signed with tools/rot_sign.py; an unsigned
+ *          every shipped image to be signed with tools/rot/src/rot_sign.py; an unsigned
  *          or tampered image is rejected at boot.
  * @since   0.1.0
  */

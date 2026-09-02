@@ -1,184 +1,234 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # Build, flash and probe the RA8D2 + OV5640 + ESP32-C6 browser livestream.
 
-set -euo pipefail
-
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# shellcheck source=scripts/hil/lib/rig_env.sh
-# shellcheck disable=SC1091
-source "$ROOT/scripts/hil/lib/rig_env.sh"
-LOCAL_PI=0
-if rig_is_local_pi; then
-  LOCAL_PI=1
-else
-  rig_require PI_HOST
-  : "${PI_HOST:?}"
-fi
-# shellcheck source=scripts/hil/lib/bench_lock.sh
-# shellcheck disable=SC1091
-source "$ROOT/scripts/hil/lib/bench_lock.sh"
-
-APP="$ROOT/examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream"
-HEX_PATH=""
-EXPECTED_WIDTH=320
-EXPECTED_HEIGHT=240
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --app-dir)
-      APP="$2"
-      shift 2
-      ;;
-    --width)
-      EXPECTED_WIDTH="$2"
-      shift 2
-      ;;
-    --height)
-      EXPECTED_HEIGHT="$2"
-      shift 2
-      ;;
-    --hex)
-      HEX_PATH="$2"
-      shift 2
-      ;;
-    -h | --help)
-      echo "usage: $0 [--app-dir <path>] [--width <pixels>] [--height <pixels>] [--hex <prebuilt.hex>]"
-      exit 0
-      ;;
-    *)
-      echo "camera_livestream: unknown argument '$1'" >&2
-      exit 2
-      ;;
-  esac
-done
-[[ -d "$APP" ]] || {
-  echo "camera_livestream: app directory does not exist: $APP" >&2
-  exit 2
-}
-if [[ -n "$HEX_PATH" && ! -f "$HEX_PATH" ]]; then
-  echo "camera_livestream: prebuilt image does not exist: $HEX_PATH" >&2
-  exit 2
-fi
-[[ "$EXPECTED_WIDTH" =~ ^[1-9][0-9]*$ && "$EXPECTED_HEIGHT" =~ ^[1-9][0-9]*$ ]] || {
-  echo "camera_livestream: width and height must be positive integers" >&2
-  exit 2
-}
-APP_NAME="$(basename "$APP")"
-BUILD_DIR_OWNED=0
-if [[ -n "${C6_CAMERA_BUILD_DIR:-}" ]]; then
-  BUILD_DIR="$C6_CAMERA_BUILD_DIR"
-else
-  BUILD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ra8-c6-camera-build.XXXXXX")"
-  BUILD_DIR_OWNED=1
-fi
-WIFI_ENV="$ROOT/coprocessor/esp32c6/wifi.env"
-LOG="$(mktemp "${TMPDIR:-/tmp}/c6-camera-uart.XXXXXX")"
-ARTIFACT_DIR="${C6_CAMERA_ARTIFACT_DIR:-/tmp/ra8-camera-livestream}"
-REMOTE_PREFIX="/tmp/c6-camera-frame-$$"
-REMOTE_FILES_CREATED=0
-DECODE_DIR=""
-CURRENT_STAGE="argument validation"
-RUN_SUCCEEDED=0
-mkdir -p "$ARTIFACT_DIR"
-rm -f "$ARTIFACT_DIR/board-ip" "$ARTIFACT_DIR/uart.log" \
-  "$ARTIFACT_DIR/frame-1.jpg" "$ARTIFACT_DIR/frame-2.jpg" \
-  "$ARTIFACT_DIR/audio.wav" "$ARTIFACT_DIR/stream.bin" \
-  "$ARTIFACT_DIR/stream.headers" "$ARTIFACT_DIR/stream-frame-1.jpg" \
-  "$ARTIFACT_DIR/stream-frame-2.jpg"
-run_on_pi() {
-  if [[ "$LOCAL_PI" == 1 ]]; then
-    bash -lc "$1"
-  else
-    # shellcheck disable=SC2029  # forwarding this caller-composed command verbatim is the helper's purpose.
-    ssh "$PI_HOST" "$1"
-  fi
-}
-copy_from_pi() {
-  local source="$1"
-  local destination="$2"
-  if [[ "$LOCAL_PI" == 1 ]]; then
-    cp "$source" "$destination"
-  else
-    scp -q "${PI_HOST}:${source}" "$destination"
-  fi
-}
-cleanup_local() {
-  if [[ "$RUN_SUCCEEDED" != 1 ]]; then
-    echo "camera_livestream: FAIL stage=$CURRENT_STAGE" >&2
-    if [[ -s "$LOG" ]]; then
-      cp "$LOG" "$ARTIFACT_DIR/uart.log"
-      echo "camera_livestream: UART tail follows (full log: $ARTIFACT_DIR/uart.log)" >&2
-      tail -40 "$LOG" >&2
+if [[ "$-" == *p* ]]; then
+  unset -v BASH_ENV ENV
+  declare -a ra8_startup_env_unset=()
+  _ra8_startup_refuse() {
+    printf 'error: privileged startup %s\n' "$1" >&2
+    exit 1
+  }
+  ra8_startup_env_done_count=0
+  while IFS= read -r -d '' ra8_startup_env_row; do
+    ra8_startup_env_name="${ra8_startup_env_row%%=*}"
+    case "$ra8_startup_env_name" in
+      RA8_STARTUP_ENV_DONE)
+        ra8_startup_env_done_count=$((ra8_startup_env_done_count + 1))
+        ;;
+      BASH_FUNC_*%% | BASH_FUNC_*'()') ra8_startup_env_unset+=(-u "$ra8_startup_env_name") ;;
+    esac
+  done < <(
+    /usr/bin/env -u RA8_STARTUP_ENV_DONE -0 &&
+      /usr/bin/printf 'RA8_STARTUP_ENV_DONE=1\0'
+  )
+  ((ra8_startup_env_done_count == 1)) && [[ "$ra8_startup_env_name" == RA8_STARTUP_ENV_DONE ]] || _ra8_startup_refuse 'environment enumeration was incomplete'
+  if ((${#ra8_startup_env_unset[@]})); then
+    [[ -z "${RA8_STARTUP_ENV_SCRUBBED-}" ]] || _ra8_startup_refuse 'scrub did not converge'
+    ra8_startup_reentry="$0"
+    [[ "$ra8_startup_reentry" == */* ]] || _ra8_startup_refuse 'requires a script path'
+    if [[ "$ra8_startup_reentry" != /* ]]; then
+      ra8_startup_reentry="$PWD/$ra8_startup_reentry"
     fi
-    if [[ "$REMOTE_FILES_CREATED" == 1 ]]; then
-      echo "camera_livestream: remote failure artifacts retained at ${PI_HOST:-localhost}:${REMOTE_PREFIX}-*" >&2
+    ra8_startup_check="$ra8_startup_reentry"
+    while [[ "$ra8_startup_check" != "/" ]]; do
+      [[ ! -L "$ra8_startup_check" ]] || _ra8_startup_refuse 'refuses a symlinked path'
+      ra8_startup_parent="${ra8_startup_check%/*}"
+      [[ -n "$ra8_startup_parent" ]] || ra8_startup_parent="/"
+      [[ "$ra8_startup_parent" != "$ra8_startup_check" ]] ||
+        _ra8_startup_refuse 'cannot validate its script path'
+      ra8_startup_check="$ra8_startup_parent"
+    done
+    [[ -f "$ra8_startup_reentry" ]] || _ra8_startup_refuse 'refuses a non-regular path'
+    if ! exec /usr/bin/env "${ra8_startup_env_unset[@]}" -u BASH_ENV -u ENV \
+      -u RA8_STARTUP_ENV_DONE RA8_STARTUP_ENV_SCRUBBED=1 \
+      /bin/bash -p -- "$ra8_startup_reentry" "$@"; then
+      _ra8_startup_refuse 'could not enter sanitized process'
     fi
   fi
-  rm -f "$LOG"
-  if [[ -n "$DECODE_DIR" ]]; then
-    rm -rf "$DECODE_DIR"
+  unset -v ra8_startup_check ra8_startup_env_done_count
+  unset -v ra8_startup_env_name ra8_startup_env_row
+  unset -v ra8_startup_env_unset ra8_startup_parent ra8_startup_reentry
+  unset -v RA8_STARTUP_ENV_DONE
+  unset -v RA8_STARTUP_ENV_SCRUBBED
+  unset -f _ra8_startup_refuse
+
+  set -euo pipefail
+
+  ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+  # shellcheck source=scripts/hil/lib/rig_env.sh
+  source "$ROOT/scripts/hil/lib/rig_env.sh"
+  # shellcheck source=scripts/hil/lib/python_env.sh
+  source "$ROOT/scripts/hil/lib/python_env.sh"
+  LOCAL_PI=0
+  if rig_is_local_pi; then
+    LOCAL_PI=1
+  else
+    rig_require PI_HOST
+    : "${PI_HOST:?}"
   fi
-  if [[ "$BUILD_DIR_OWNED" == 1 ]]; then
-    rm -rf "$BUILD_DIR"
+  # shellcheck source=scripts/hil/lib/bench_lock.sh
+  source "$ROOT/scripts/hil/lib/bench_lock.sh"
+
+  APP="$ROOT/examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream"
+  HEX_PATH=""
+  EXPECTED_WIDTH=320
+  EXPECTED_HEIGHT=240
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --app-dir)
+        APP="$2"
+        shift 2
+        ;;
+      --width)
+        EXPECTED_WIDTH="$2"
+        shift 2
+        ;;
+      --height)
+        EXPECTED_HEIGHT="$2"
+        shift 2
+        ;;
+      --hex)
+        HEX_PATH="$2"
+        shift 2
+        ;;
+      -h | --help)
+        echo "usage: $0 [--app-dir <path>] [--width <pixels>] [--height <pixels>] [--hex <prebuilt.hex>]"
+        exit 0
+        ;;
+      *)
+        echo "camera_livestream: unknown argument '$1'" >&2
+        exit 2
+        ;;
+    esac
+  done
+  [[ -d "$APP" ]] || {
+    echo "camera_livestream: app directory does not exist: $APP" >&2
+    exit 2
+  }
+  if [[ -n "$HEX_PATH" && ! -f "$HEX_PATH" ]]; then
+    echo "camera_livestream: prebuilt image does not exist: $HEX_PATH" >&2
+    exit 2
   fi
-  return 0
-}
-cleanup_remote() {
-  if [[ "$REMOTE_FILES_CREATED" != 1 ]]; then
+  [[ "$EXPECTED_WIDTH" =~ ^[1-9][0-9]*$ && "$EXPECTED_HEIGHT" =~ ^[1-9][0-9]*$ ]] || {
+    echo "camera_livestream: width and height must be positive integers" >&2
+    exit 2
+  }
+  APP_NAME="$(basename "$APP")"
+  BUILD_DIR_OWNED=0
+  if [[ -n "${C6_CAMERA_BUILD_DIR:-}" ]]; then
+    BUILD_DIR="$C6_CAMERA_BUILD_DIR"
+  else
+    BUILD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ra8-c6-camera-build.XXXXXX")"
+    BUILD_DIR_OWNED=1
+  fi
+  LOG="$(mktemp "${TMPDIR:-/tmp}/c6-camera-uart.XXXXXX")"
+  ARTIFACT_DIR="${C6_CAMERA_ARTIFACT_DIR:-/tmp/ra8-camera-livestream}"
+  REMOTE_PREFIX="/tmp/c6-camera-frame-$$"
+  REMOTE_FILES_CREATED=0
+  DECODE_DIR=""
+  CURRENT_STAGE="argument validation"
+  RUN_SUCCEEDED=0
+  mkdir -p "$ARTIFACT_DIR"
+  rm -f "$ARTIFACT_DIR/board-ip" "$ARTIFACT_DIR/uart.log" \
+    "$ARTIFACT_DIR/frame-1.jpg" "$ARTIFACT_DIR/frame-2.jpg" \
+    "$ARTIFACT_DIR/audio.wav" "$ARTIFACT_DIR/stream.bin" \
+    "$ARTIFACT_DIR/stream.headers" "$ARTIFACT_DIR/stream-frame-1.jpg" \
+    "$ARTIFACT_DIR/stream-frame-2.jpg"
+  run_on_pi() {
+    if [[ "$LOCAL_PI" == 1 ]]; then
+      /bin/bash -p -lc "$1"
+    else
+      # shellcheck disable=SC2029  # forwarding this caller-composed command verbatim is the helper's purpose.
+      ssh "$PI_HOST" "$1"
+    fi
+  }
+  copy_from_pi() {
+    local source="$1"
+    local destination="$2"
+    if [[ "$LOCAL_PI" == 1 ]]; then
+      cp "$source" "$destination"
+    else
+      scp -q "${PI_HOST}:${source}" "$destination"
+    fi
+  }
+  valid_ipv4() {
+    local address="$1" octet
+    local -a octets=()
+    IFS=. read -r -a octets <<<"$address"
+    ((${#octets[@]} == 4)) || return 1
+    for octet in "${octets[@]}"; do
+      [[ "$octet" =~ ^[0-9]+$ ]] || return 1
+      ((${#octet} <= 3)) || return 1
+      ((10#$octet <= 255)) || return 1
+    done
+  }
+  cleanup_local() {
+    if [[ "$RUN_SUCCEEDED" != 1 ]]; then
+      echo "camera_livestream: FAIL stage=$CURRENT_STAGE" >&2
+      if [[ -s "$LOG" ]]; then
+        cp "$LOG" "$ARTIFACT_DIR/uart.log"
+        echo "camera_livestream: UART tail follows (full log: $ARTIFACT_DIR/uart.log)" >&2
+        tail -40 "$LOG" >&2
+      fi
+      if [[ "$REMOTE_FILES_CREATED" == 1 ]]; then
+        echo "camera_livestream: remote failure artifacts retained at ${PI_HOST:-localhost}:${REMOTE_PREFIX}-*" >&2
+      fi
+    fi
+    rm -f "$LOG"
+    if [[ -n "$DECODE_DIR" ]]; then
+      rm -rf "$DECODE_DIR"
+    fi
+    if [[ "$BUILD_DIR_OWNED" == 1 ]]; then
+      rm -rf "$BUILD_DIR"
+    fi
     return 0
-  fi
-  if [[ "$RUN_SUCCEEDED" != 1 ]]; then
-    return 0
-  fi
-  if run_on_pi "rm -f '${REMOTE_PREFIX}-1.jpg' '${REMOTE_PREFIX}-2.jpg' \
+  }
+  cleanup_remote() {
+    if [[ "$REMOTE_FILES_CREATED" != 1 ]]; then
+      return 0
+    fi
+    if [[ "$RUN_SUCCEEDED" != 1 ]]; then
+      return 0
+    fi
+    if run_on_pi "rm -f '${REMOTE_PREFIX}-1.jpg' '${REMOTE_PREFIX}-2.jpg' \
     '${REMOTE_PREFIX}-audio.wav' '${REMOTE_PREFIX}-stream.bin' \
     '${REMOTE_PREFIX}-stream.headers' '${REMOTE_PREFIX}-health.txt' \
     '${REMOTE_PREFIX}-stream-1.jpg' '${REMOTE_PREFIX}-stream-2.jpg'"; then
-    REMOTE_FILES_CREATED=0
-  fi
-  return 0
-}
-trap cleanup_local EXIT
+      REMOTE_FILES_CREATED=0
+    fi
+    return 0
+  }
+  trap cleanup_local EXIT
 
-if [[ -z "$HEX_PATH" ]]; then
-  CURRENT_STAGE="firmware build"
-  if [[ -f "$WIFI_ENV" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "$WIFI_ENV"
-    set +a
+  if [[ -z "$HEX_PATH" ]]; then
+    CURRENT_STAGE="firmware build"
+    (
+      unset RA8_C6_WIFI_SSID RA8_C6_WIFI_PSK RA8_MEDIA_DOWNLOAD_URL
+      cmake -S "$APP" -B "$BUILD_DIR" \
+        -DCMAKE_TOOLCHAIN_FILE="$ROOT/cmake/toolchain-ra8d2.cmake" \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -U 'RA8_C6_WIFI_*' -U RA8_MEDIA_DOWNLOAD_URL \
+        -DRA8_USE_THREADX=ON -DRA8_USE_NETXDUO=ON -DRA8_USE_ESP_HOSTED=ON
+      cmake --build "$BUILD_DIR" --parallel 4
+    )
+    HEX_PATH="$BUILD_DIR/${APP_NAME}.hex"
   fi
-  if [[ -z "${RA8_C6_WIFI_PSK:-}" ]]; then
-    RA8_C6_WIFI_PSK="$(python3 "$ROOT/scripts/secrets/openbao_client.py" \
-      get secret/ra8d2/bench-network bench_psk)"
-    RA8_C6_WIFI_SSID="${RA8_C6_WIFI_SSID:-ra8-bench}"
-  fi
-  : "${RA8_C6_WIFI_SSID:?missing RA8_C6_WIFI_SSID}"
-  : "${RA8_C6_WIFI_PSK:?missing RA8_C6_WIFI_PSK}"
+  CURRENT_STAGE="bench acquisition"
+  ra8_bench_require "validate C6 camera livestream" 30m || exit $?
+  # Run remote cleanup before the guard's EXIT handler releases the bench.
+  _ra8_bench_add_exit_trap cleanup_remote
 
-  RA8_C6_WIFI_SSID="$RA8_C6_WIFI_SSID" RA8_C6_WIFI_PSK="$RA8_C6_WIFI_PSK" \
-    cmake -S "$APP" -B "$BUILD_DIR" \
-    -DCMAKE_TOOLCHAIN_FILE="$ROOT/cmake/toolchain-ra8d2.cmake" \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-    -DRA8_USE_THREADX=ON -DRA8_USE_NETXDUO=ON -DRA8_USE_ESP_HOSTED=ON
-  unset RA8_C6_WIFI_SSID RA8_C6_WIFI_PSK
-  cmake --build "$BUILD_DIR" --parallel 4
-  HEX_PATH="$BUILD_DIR/${APP_NAME}.hex"
-fi
-CURRENT_STAGE="bench acquisition"
-ra8_bench_require "validate C6 camera livestream" 30m || exit $?
-# Run remote cleanup before the guard's EXIT handler releases the bench.
-_ra8_bench_add_exit_trap cleanup_remote
-
-echo "camera_livestream: physical precondition: SW4 1=OFF 2=OFF 3=ON 4=OFF; C6 on J26" >&2
-c6_ready=false
-CURRENT_STAGE="C6 readiness probe"
-for attempt in 1 2 3; do
-  echo "camera_livestream: C6 cold-start attempt $attempt/3" >&2
-  bash "$ROOT/scripts/hil/tapo.sh" board cycle
-  run_on_pi "bash -lc 'i=0
+  echo "camera_livestream: physical precondition: SW4 1=OFF 2=OFF 3=ON 4=OFF; C6 on J26" >&2
+  c6_ready=false
+  CURRENT_STAGE="C6 readiness probe"
+  for attempt in 1 2 3; do
+    echo "camera_livestream: C6 cold-start attempt $attempt/3" >&2
+    /bin/bash -p "$ROOT/scripts/hil/tapo.sh" board cycle
+    run_on_pi "/bin/bash -p -lc 'i=0
     while [ \"\$i\" -lt 60 ]; do
       if compgen -G \"/dev/serial/by-id/usb-SEGGER_J-Link_*-if00\" >/dev/null &&
          compgen -G \"/dev/serial/by-id/usb-1a86_USB_Single_Serial_*-if00\" >/dev/null &&
@@ -189,39 +239,40 @@ for attempt in 1 2 3; do
       sleep 1
     done
     exit 1'"
-  sleep 2
-  if make -C "$ROOT" hil-c6 APP=c6_spi_probe; then
-    c6_ready=true
-    break
+    sleep 2
+    if /bin/bash -p "$ROOT/scripts/dev/run_just.sh" --justfile "$ROOT/justfile" hil::c6 c6_spi_probe; then
+      c6_ready=true
+      break
+    fi
+  done
+  if [[ "$c6_ready" != true ]]; then
+    echo "camera_livestream: C6 failed its SPI readiness probe after 3 cold starts" >&2
+    exit 1
   fi
-done
-if [[ "$c6_ready" != true ]]; then
-  echo "camera_livestream: C6 failed its SPI readiness probe after 3 cold starts" >&2
-  exit 1
-fi
-CURRENT_STAGE="firmware startup selftest"
-bash "$ROOT/scripts/hil/run_direct.sh" \
-  --hex "$HEX_PATH" \
-  --expect 'c6_cam: PASS HTTP camera server listening' \
-  --expect-negative 'c6_cam: FAIL|HardFault' --timeout 90 | tee "$LOG"
+  CURRENT_STAGE="firmware startup selftest"
+  /bin/bash -p "$ROOT/scripts/hil/run_direct.sh" \
+    --hex "$HEX_PATH" \
+    --provision-wifi \
+    --expect 'c6_cam: PASS HTTP camera server listening' \
+    --expect-negative 'c6_cam: FAIL|HardFault' --timeout 90 | tee "$LOG"
 
-STARTUP_BANNER='c6_cam: camera=PASS '
-if ! grep -qF "$STARTUP_BANNER" "$LOG"; then
-  echo "camera_livestream: missing startup proof: $STARTUP_BANNER" >&2
-  exit 1
-fi
+  STARTUP_BANNER='c6_cam: camera=PASS '
+  if ! grep -qF "$STARTUP_BANNER" "$LOG"; then
+    echo "camera_livestream: missing startup proof: $STARTUP_BANNER" >&2
+    exit 1
+  fi
 
-CURRENT_STAGE="UART address discovery"
-BOARD_IP="$(sed -n 's/.*c6_cam: PASS Wi-Fi and DHCP ip=\([0-9.]*\).*/\1/p' "$LOG" | tail -1)"
-[[ "$BOARD_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
-  echo "camera_livestream: could not parse board IP from UART" >&2
-  exit 1
-}
-printf '%s\n' "$BOARD_IP" >"$ARTIFACT_DIR/board-ip"
+  CURRENT_STAGE="UART address discovery"
+  BOARD_IP="$(sed -n 's/.*c6_cam: PASS Wi-Fi and DHCP ip=\([0-9.]*\).*/\1/p' "$LOG" | tail -1)"
+  valid_ipv4 "$BOARD_IP" || {
+    echo "camera_livestream: could not parse board IP from UART" >&2
+    exit 1
+  }
+  printf '%s\n' "$BOARD_IP" >"$ARTIFACT_DIR/board-ip"
 
-REMOTE_FILES_CREATED=1
-CURRENT_STAGE="HTTP health, still, audio, and multipart fetch"
-run_on_pi "set -euo pipefail
+  REMOTE_FILES_CREATED=1
+  CURRENT_STAGE="HTTP health, still, audio, and multipart fetch"
+  run_on_pi "set -euo pipefail
   fail() { echo \"camera_livestream: remote FAIL stage=\$1\" >&2; exit 1; }
   health=${REMOTE_PREFIX}-health.txt
   curl -fsS --max-time 10 'http://${BOARD_IP}/health' -o \"\$health\" || fail health-fetch
@@ -309,34 +360,34 @@ pathlib.Path(sys.argv[3]).write_bytes(frames[1])
 print(f'camera_livestream: multipart_frames=2 bytes={len(payload)}')
 PY"
 
-CURRENT_STAGE="artifact collection"
-for n in 1 2; do
-  copy_from_pi "${REMOTE_PREFIX}-${n}.jpg" "$ARTIFACT_DIR/frame-${n}.jpg"
-  copy_from_pi "${REMOTE_PREFIX}-stream-${n}.jpg" "$ARTIFACT_DIR/stream-frame-${n}.jpg"
-done
-copy_from_pi "${REMOTE_PREFIX}-audio.wav" "$ARTIFACT_DIR/audio.wav"
-copy_from_pi "${REMOTE_PREFIX}-stream.bin" "$ARTIFACT_DIR/stream.bin"
-copy_from_pi "${REMOTE_PREFIX}-stream.headers" "$ARTIFACT_DIR/stream.headers"
+  CURRENT_STAGE="artifact collection"
+  for n in 1 2; do
+    copy_from_pi "${REMOTE_PREFIX}-${n}.jpg" "$ARTIFACT_DIR/frame-${n}.jpg"
+    copy_from_pi "${REMOTE_PREFIX}-stream-${n}.jpg" "$ARTIFACT_DIR/stream-frame-${n}.jpg"
+  done
+  copy_from_pi "${REMOTE_PREFIX}-audio.wav" "$ARTIFACT_DIR/audio.wav"
+  copy_from_pi "${REMOTE_PREFIX}-stream.bin" "$ARTIFACT_DIR/stream.bin"
+  copy_from_pi "${REMOTE_PREFIX}-stream.headers" "$ARTIFACT_DIR/stream.headers"
 
-validate_jpeg() {
-  local frame="$1" dimensions width height
-  if command -v sips >/dev/null 2>&1; then
-    width="$(sips -g pixelWidth "$frame" 2>/dev/null | awk '/pixelWidth/ {print $2}')"
-    height="$(sips -g pixelHeight "$frame" 2>/dev/null | awk '/pixelHeight/ {print $2}')"
-    DECODE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/c6-camera-decoded.XXXXXX")"
-    sips -s format png "$frame" --out "$DECODE_DIR/frame.png" >/dev/null
-    rm -rf "$DECODE_DIR"
-    DECODE_DIR=""
-    dimensions="$width $height"
-  elif command -v magick >/dev/null 2>&1; then
-    dimensions="$(magick identify -format '%w %h' "$frame")"
-    magick "$frame" null:
-  elif command -v identify >/dev/null 2>&1 && command -v convert >/dev/null 2>&1; then
-    dimensions="$(identify -format '%w %h' "$frame")"
-    convert "$frame" null:
-  elif command -v python3 >/dev/null 2>&1; then
-    dimensions="$(
-      python3 - "$frame" <<'PY'
+  validate_jpeg() {
+    local frame="$1" dimensions width height hil_python
+    if command -v sips >/dev/null 2>&1; then
+      width="$(sips -g pixelWidth "$frame" 2>/dev/null | awk '/pixelWidth/ {print $2}')"
+      height="$(sips -g pixelHeight "$frame" 2>/dev/null | awk '/pixelHeight/ {print $2}')"
+      DECODE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/c6-camera-decoded.XXXXXX")"
+      sips -s format png "$frame" --out "$DECODE_DIR/frame.png" >/dev/null
+      rm -rf "$DECODE_DIR"
+      DECODE_DIR=""
+      dimensions="$width $height"
+    elif command -v magick >/dev/null 2>&1; then
+      dimensions="$(magick identify -format '%w %h' "$frame")"
+      magick "$frame" null:
+    elif command -v identify >/dev/null 2>&1 && command -v convert >/dev/null 2>&1; then
+      dimensions="$(identify -format '%w %h' "$frame")"
+      convert "$frame" null:
+    elif hil_python="$(ra8_hil_python "$ROOT" 2>/dev/null)"; then
+      dimensions="$(
+        "$hil_python" - "$frame" <<'PY'
 import sys
 
 try:
@@ -349,33 +400,36 @@ with Image.open(sys.argv[1]) as image:
         raise SystemExit(f'expected JPEG, got {image.format}')
     print(*image.size)
 PY
-    )"
-  else
-    echo "camera_livestream: need macOS sips, ImageMagick, or Python 3 with Pillow to decode JPEGs" >&2
-    return 1
-  fi
-  [[ "$dimensions" == "$EXPECTED_WIDTH $EXPECTED_HEIGHT" ]] || {
-    echo "camera_livestream: expected ${EXPECTED_WIDTH}x${EXPECTED_HEIGHT} JPEG, got $dimensions for $frame" >&2
-    return 1
+      )"
+    else
+      echo "camera_livestream: need sips, ImageMagick, or locked HIL Python with Pillow" >&2
+      return 1
+    fi
+    [[ "$dimensions" == "$EXPECTED_WIDTH $EXPECTED_HEIGHT" ]] || {
+      echo "camera_livestream: expected ${EXPECTED_WIDTH}x${EXPECTED_HEIGHT} JPEG, got $dimensions for $frame" >&2
+      return 1
+    }
   }
-}
 
-CURRENT_STAGE="local JPEG decode and dimension validation"
-validate_jpeg "$ARTIFACT_DIR/frame-1.jpg"
-validate_jpeg "$ARTIFACT_DIR/frame-2.jpg"
-validate_jpeg "$ARTIFACT_DIR/stream-frame-1.jpg"
-validate_jpeg "$ARTIFACT_DIR/stream-frame-2.jpg"
-if cmp -s "$ARTIFACT_DIR/frame-1.jpg" "$ARTIFACT_DIR/frame-2.jpg"; then
-  echo "camera_livestream: independently captured frames are byte-identical" >&2
-  exit 1
-fi
-if cmp -s "$ARTIFACT_DIR/stream-frame-1.jpg" "$ARTIFACT_DIR/stream-frame-2.jpg"; then
-  echo "camera_livestream: multipart frames are byte-identical" >&2
-  exit 1
-fi
+  CURRENT_STAGE="local JPEG decode and dimension validation"
+  validate_jpeg "$ARTIFACT_DIR/frame-1.jpg"
+  validate_jpeg "$ARTIFACT_DIR/frame-2.jpg"
+  validate_jpeg "$ARTIFACT_DIR/stream-frame-1.jpg"
+  validate_jpeg "$ARTIFACT_DIR/stream-frame-2.jpg"
+  if cmp -s "$ARTIFACT_DIR/frame-1.jpg" "$ARTIFACT_DIR/frame-2.jpg"; then
+    echo "camera_livestream: independently captured frames are byte-identical" >&2
+    exit 1
+  fi
+  if cmp -s "$ARTIFACT_DIR/stream-frame-1.jpg" "$ARTIFACT_DIR/stream-frame-2.jpg"; then
+    echo "camera_livestream: multipart frames are byte-identical" >&2
+    exit 1
+  fi
 
-RUN_SUCCEEDED=1
-cleanup_remote
-echo "camera_livestream: PASS startup selftest + health + two changing decodable ${EXPECTED_WIDTH}x${EXPECTED_HEIGHT} stills + audio WAV + multipart frames"
-echo "camera_livestream: URL http://${BOARD_IP}/"
-echo "camera_livestream: artifacts $ARTIFACT_DIR"
+  RUN_SUCCEEDED=1
+  cleanup_remote
+  echo "camera_livestream: PASS startup selftest + health + two changing decodable ${EXPECTED_WIDTH}x${EXPECTED_HEIGHT} stills + audio WAV + multipart frames"
+  echo "camera_livestream: URL http://${BOARD_IP}/"
+  echo "camera_livestream: artifacts $ARTIFACT_DIR"
+else
+  [[ "$-" == *p* ]]
+fi

@@ -2,7 +2,7 @@
 
 This section specifies every **first-party binary format** this firmware
 produces or consumes. It exists because the code alone is a poor teacher: you
-can read `ra8_jof_parse()` and learn *what* the bytes are without ever
+can read `jof_parse()` and learn *what* the bytes are without ever
 learning *why* they are arranged that way, and the "why" is where all the
 device constraints live.
 
@@ -35,11 +35,11 @@ artifact, and only earns an entry here).
 
 | Magic | Format | Home | Producer | Specification |
 |-------|--------|------|----------|---------------|
-| `JOF1` / `JOFE` | Jump-Offset band-tile atlas | `libs/ra8_jof` | `ra8_jof_produce()`, `rabook_imagepack convert` | @ref md_docs_2formats_2JOF |
-| `RBKC` | Chunked `.rabook` container | `libs/ra8_book` | `tools/epub_compile` | @ref md_docs_2formats_2RBKC |
-| `NPU1` | `.npub` Ethos-U55 model container | `libs/ra8_hal` | `tools/vela/vela_gen.py` | @ref md_docs_2formats_2NPU1 |
-| `ROT1` | Root-of-trust signed-image trailer | `libs/ra8_dfu` | `tools/rot_sign.py` | @ref md_docs_2formats_2ROT1 |
-| `NSR1` | Non-Secure image RoT header | `libs/ra8_tz_secure_boot` | `sign_and_merge.py`, `ns_image.ld` | @ref md_docs_2formats_2NSR1 |
+| `JOF1` / `JOFE` | Jump-Offset band-tile atlas | `apps/shared_libs/jof` | `jof_produce()`, `rabook_imagepack convert` | @ref md_docs_2formats_2JOF |
+| `RBKC` | Chunked `.rabook` container | `apps/shared_libs/book` | `tools/epub_compile/src/epub_compile.py` | @ref md_docs_2formats_2RBKC |
+| `NPU1` | `.npub` Ethos-U55 model container | `libs/ra8_hal` | `tools/vela/src/vela_gen.py` | @ref md_docs_2formats_2NPU1 |
+| `ROT1` | Root-of-trust signed-image trailer | `libs/ra8_dfu` | `tools/rot/src/rot_sign.py` | @ref md_docs_2formats_2ROT1 |
+| `NSR1` | Non-Secure image RoT header | `libs/ra8_tz_secure_boot` | `examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/scripts/sign_and_merge.py`, `examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/ns_image.ld` | @ref md_docs_2formats_2NSR1 |
 
 Each has its own page in this section; they are also listed in the navigation
 sidebar under "Binary format specifications".
@@ -70,7 +70,7 @@ them as "formats" would imply a stability guarantee none of them has.
 
 | Magic | What it actually is | Why no spec |
 |-------|--------------------|-------------|
-| `RBK1` | A four-byte stamp (`k_ra8_rabook_import_stamp_magic`, `0x52424B31`) the importer writes to mark a blob as having passed import | Not a container. It is one word inside a structure the same library owns end to end -- there is no independent reader, so there is no wire contract. Covered where it is used, in `ra8_rabook_import.h`. |
+| `RBK1` | A four-byte stamp (`k_rabook_import_stamp_magic`, `0x52424B31`) the importer writes to mark a blob as having passed import | Not a container. It is one word inside a structure the same library owns end to end -- there is no independent reader, so there is no wire contract. Covered where it is used, in `rabook_import.h`. |
 | `NPUQ` | A four-character tag on the NPU quantisation helper (`s_tag` in `ra8_npu_quant.c`) | A logging/identification string in one translation unit. It is never serialised to a file. |
 | `SE55` | "Emu-Ethos-U55" marker in the high bits of a emulated NPU command word (`ra8_npu_fake_cmd.h`) | A *register-level convention* between the firmware and `ra8_emulator`, not an on-disk format. It exists so a host test can distinguish a emulated command from noise. Specified where it belongs, in `ra8_npu_fake_cmd.h`. |
 
@@ -155,16 +155,16 @@ would misrepresent one of them.
   attack surface is the deciding factor. It gets the detailed treatment, in
   @ref md_docs_2formats_2JOF section 2.
 - **RABOOK's justification is the weakest of the three, and is partly
-  historical.** The device parses EPUB directly today: `libs/ra8_epub` opens
+  historical.** The device parses EPUB directly today: `apps/shared_libs/epub` opens
   the ZIP with miniz and parses the OPF with its bounded pure-C reader, and
   firmware applications link it, several of them silicon-validated. "The device cannot
   read an EPUB" is therefore not true, and has not been for some time. The
   defensible part is narrower -- pre-resolving the CSS cascade and
   pre-transcoding images to 4 bpp is real work genuinely moved off the device.
   But the compiled path does **not** eliminate runtime parsing the way its own
-  documentation implies: `ra8_book_chapter_to_xhtml()` serialises the
-  pre-parsed DOM *back into XHTML* so `ra8_reflow_layout_chapter()` can parse
-  it again. Anyone extending `ra8_book` should know that before relying on
+  documentation implies: `book_chapter_to_xhtml()` serialises the
+  pre-parsed DOM *back into XHTML* so `reflow_layout_chapter()` can parse
+  it again. Anyone extending `book` should know that before relying on
   "never parses XHTML at runtime" as a property.
 
 ---

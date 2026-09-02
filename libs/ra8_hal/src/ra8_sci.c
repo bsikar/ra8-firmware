@@ -417,11 +417,9 @@ ra8_err_t ra8_sci_init(uint8_t channel, const ra8_sci_cfg_t* cfg)
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 445 */
   const ra8_err_t mst_err = ra8_mstp_enable(s_mstp_table[channel]);
-  if (mst_err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
-    /* GCOVR_EXCL_START */
+  if (mst_err != k_ra8_ok) {
     ra8_log_error_val(s_tag, "sci_init: mstp enable failed", (uint32_t)mst_err);
     return k_ra8_err_hw_init_failed;
-    /* GCOVR_EXCL_STOP */
   }
 
   internal_program_ccr_bank(reg, cfg);
@@ -729,23 +727,19 @@ ra8_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8
    * Mirrors the FSP `R_SCI_B_UART_BaudCalculate` outer loop
    * (r_sci_b_uart.c) but without the bit-rate-modulation pass
    * since the project always programs BRME=0. */
-  uint32_t divisor = (uint32_t)k_ra8_sci_baud_n0_divisor;
+  uint64_t divisor = (uint64_t)k_ra8_sci_baud_n0_divisor;
   for (uint8_t n = 0U; n <= (uint8_t)k_ra8_sci_baud_cks_max; ++n) {
-    const uint32_t denom = divisor * baud;
-    if (denom == 0U) {              /* GCOVR_EXCL_BR_LINE -- baud * divisor cannot
-                          overflow to zero for legal inputs. */
-      return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE */
-    }
-    const uint32_t quotient = pclk_hz / denom;
+    const uint64_t denom    = divisor * (uint64_t)baud;
+    const uint64_t quotient = (uint64_t)pclk_hz / denom;
     if (quotient > 0U) {
-      const uint32_t candidate = quotient - 1U;
-      if (candidate <= (uint32_t)k_ra8_sci_baud_brr_max) {
+      const uint64_t candidate = quotient - 1U;
+      if (candidate <= (uint64_t)k_ra8_sci_baud_brr_max) {
         *brr_out     = (uint16_t)candidate;
         *clk_div_out = n;
         return k_ra8_ok;
       }
     }
-    divisor *= (uint32_t)k_ra8_sci_baud_div_step;
+    divisor *= (uint64_t)k_ra8_sci_baud_div_step;
   }
   return k_ra8_err_invalid_arg;
 }

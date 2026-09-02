@@ -205,16 +205,21 @@ if [ "${1:-}" = "--selftest" ]; then
   # the argv smoke_capture_run hands the emulator.
   args_out="$(
     set +e
-    # shellcheck disable=SC2317,SC2329  # shadows the real make; invoked indirectly by smoke_build_app
-    make() { return 0; }
-    # shellcheck disable=SC2317,SC2329  # shadows the real find; invoked indirectly by smoke_build_app
-    find() { echo "examples/probe/build/probe.elf"; }
+    probe_dir="$(mktemp -d)"
+    fake_just="$probe_dir/just"
+    printf '%s\n' '#!/bin/sh' 'exit 0' >"$fake_just"
+    chmod +x "$fake_just"
+    export RA8_JUST="$fake_just"
+    mkdir -p "$probe_dir/build"
+    : >"$probe_dir/build/probe_app.elf"
+    smoke_app_dir() { echo "$probe_dir"; }
     emu_extra_args() { printf -- '--ra8-selftest-sentinel 7'; }
     uart_expect() { echo ""; }
     periodic_tick_apps=""
     emu=/bin/echo
     smoke_build_app "probe_app" >/dev/null 2>&1
     smoke_capture_run "probe_app" >/dev/null 2>&1
+    rm -rf "$probe_dir"
     printf '%s' "$out"
   )"
   case "$args_out" in
@@ -338,15 +343,26 @@ if [ "${#apps[@]}" -eq 0 ]; then
     clock_check crypto_aes_demo
     compile_on_m33 dualcore_background_m33 dualcore_mailbox
     import_reader i3c_i2c_peripheral_demo epaper_refresh modem_at_demo)
+else
+  # Resolve namespaced selectors and the board `ereader` alias through the
+  # authoritative catalogue before the emulator's basename-keyed expectation
+  # tables and artifact paths consume them.
+  resolved_apps=()
+  for app_selector in "${apps[@]}"; do
+    app_name="$(python3 scripts/dev/ra8_apps.py name "$app_selector")" || {
+      echo "FATAL: unknown or ambiguous app '$app_selector'" >&2
+      exit 2
+    }
+    resolved_apps+=("$app_name")
+  done
+  apps=("${resolved_apps[@]}")
 fi
 
 echo "ra8_emulator smoke: building the emulator ..."
-# Pin a C23-capable host compiler (gcc-first to match CI's toolchain; falls
-# back to clang where the host gcc is too old). Honours a pre-set CC/CXX and,
-# under `set -e`, aborts loudly if no candidate is C23-capable -- never a silent
-# fall-through to a too-old cc.
-ra8_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc
-ra8_cmake_reset_if_compiler_changed "$emu_dir/build"
+# Pin a C23-capable host pair. Linux stays gcc-first to match CI; macOS uses
+# Clang because the Cocoa/CoreGraphics backend includes block-enabled headers.
+ra8_select_emulator_compiler
+ra8_cmake_reset_if_incompatible "$emu_dir/build" "$emu_dir"
 cmake -B "$emu_dir/build" -S "$emu_dir" \
   -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" >/dev/null
 cmake --build "$emu_dir/build" -j "$(ra8_max_jobs)" >/dev/null
@@ -405,7 +421,7 @@ done
 case " ${apps[*]} " in
   *" gpio_input_demo "*)
     printf '  %-24s ' "on-screen SW1 click"
-    gelf="$(find examples -path '*/gpio_input_demo/build/gpio_input_demo.elf' 2>/dev/null | head -1)"
+    gelf="$(smoke_app_dir gpio_input_demo)/build/gpio_input_demo.elf"
     bout="$("$emu" "$gelf" --click 1117 442 2>&1 || true)"
     if grep -qE "LED1[^]]*ON" <<<"$bout" && grep -qE "touch clicks  : 0 " <<<"$bout"; then
       echo "OK (sidebar SW1 -> P009 -> LED1 ON, 0 touches)"
@@ -421,8 +437,8 @@ case " ${apps[*]} " in
     # keyboard input with no window and no OS key events (gates board_input +
     # the run-loop key drain).
     printf '  %-24s ' "--keys -> UART echo"
-    if make uart_irq_echo >/tmp/smoke_build_uart_irq_echo.log 2>&1; then
-      kelf="$(find examples -path '*/uart_irq_echo/build/uart_irq_echo.elf' 2>/dev/null | head -1)"
+    if /bin/bash -p "$ROOT/scripts/dev/run_just.sh" apps::build uart_irq_echo >/tmp/smoke_build_uart_irq_echo.log 2>&1; then
+      kelf="$(smoke_app_dir uart_irq_echo)/build/uart_irq_echo.elf"
       kout="$(RA8_EMU_IDLE_STOP=6000 "$emu" "$kelf" --keys 'KBDSMOKE\r\n' 2>&1 || true)"
       if grep -qE "\[uart\] SCI8: KBDSMOKE" <<<"$kout"; then
         echo "OK (--keys -> board_input -> SCI8 RX -> echo)"
@@ -443,7 +459,7 @@ esac
 # above already proves no nag fires when healthy. Only when the app is built.
 case " ${apps[*]} " in
   *" battery_monitor_demo "*)
-    belf="$(find examples -path '*/battery_monitor_demo/build/battery_monitor_demo.elf' 2>/dev/null | head -1)"
+    belf="$(smoke_app_dir battery_monitor_demo)/build/battery_monitor_demo.elf"
     printf '  %-24s ' "battery nag LOW"
     lout="$(RA8_EMU_STOP_ON='NAG' RA8_EMU_WALL_S=20 RA8_EMU_MAX_CHUNKS=6000 \
       "$emu" "$belf" --battery 15 2>&1 || true)"

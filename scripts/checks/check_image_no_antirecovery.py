@@ -131,8 +131,9 @@ def _objcopy() -> str:
         "arm-none-eabi-objcopy",
         "objcopy",
     ):
-        if cand and shutil.which(cand):
-            return shutil.which(cand)  # type: ignore[return-value]
+        resolved = shutil.which(cand) if cand else None
+        if resolved is not None:
+            return resolved
     sys.exit(
         "check_image_no_antirecovery.py: FATAL -- no objcopy found to read an ELF.\n"
         "  Install arm-none-eabi-objcopy or set RA8_OBJCOPY=/path/to/objcopy.\n"

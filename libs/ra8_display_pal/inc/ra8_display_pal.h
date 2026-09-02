@@ -349,7 +349,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t display_get_framebuffer(display_handle_t* d, display_fb_t* out);
+[[nodiscard]] ra8_err_t display_get_framebuffer(const display_handle_t* d, display_fb_t* out);
 
 /**
  * @brief Commit pending framebuffer changes to the panel.
@@ -385,7 +385,7 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
-display_flush(display_handle_t* d, display_rect_t rect, display_refresh_hint_t hint);
+display_flush(const display_handle_t* d, display_rect_t rect, display_refresh_hint_t hint);
 
 /**
  * @brief Clear the entire framebuffer to ``color``.
@@ -413,7 +413,7 @@ display_flush(display_handle_t* d, display_rect_t rect, display_refresh_hint_t h
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t display_clear(display_handle_t* d, uint32_t color);
+[[nodiscard]] ra8_err_t display_clear(const display_handle_t* d, uint32_t color);
 
 /**
  * @brief Release the backend and invalidate the PAL handle.
@@ -438,7 +438,7 @@ display_flush(display_handle_t* d, display_rect_t rect, display_refresh_hint_t h
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t display_deinit(display_handle_t* d);
+[[nodiscard]] ra8_err_t display_deinit(const display_handle_t* d);
 
 /**
  * @brief Convenience helper returning the rect covering the whole

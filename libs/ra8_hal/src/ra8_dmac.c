@@ -412,7 +412,7 @@ ra8_err_t ra8_dmac_start(uint8_t channel, const ra8_dmac_config_t* cfg)
    * channels (or the DTC) currently need the bit cleared.
    * HUM Ch 11.2.6 "MSTPCRA : Module Stop Control Register A", p 443. */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_dmac0_dtc0);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "dmac_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "dmac_start: mstp enable");
 
   internal_program_channel(reg, cfg);
 
@@ -576,7 +576,7 @@ ra8_err_t ra8_dmac_software_trigger(uint8_t channel)
 ra8_err_t ra8_dmac_is_active(uint8_t channel, bool* out_active)
 {
   RA8_CHECK_NULL_PTR(out_active, s_tag, "out_active must not be nullptr");
-  volatile r_dmac_channel_regs_t* reg = ra8_dmac(channel);
+  volatile const r_dmac_channel_regs_t* reg = ra8_dmac(channel);
   if (reg == nullptr) {
     return k_ra8_err_out_of_range;
   }
@@ -587,7 +587,7 @@ ra8_err_t ra8_dmac_is_active(uint8_t channel, bool* out_active)
 
 ra8_err_t ra8_dmac_wait_idle(uint8_t channel, uint32_t poll_limit)
 {
-  volatile r_dmac_channel_regs_t* reg = ra8_dmac(channel);
+  volatile const r_dmac_channel_regs_t* reg = ra8_dmac(channel);
   if (reg == nullptr) {
     return k_ra8_err_out_of_range;
   }

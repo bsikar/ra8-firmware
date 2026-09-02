@@ -24,9 +24,10 @@ over `ra8_sdmmc_spi` (SCI0 Simple-SPI).
 
 ## Notes
 
-- The cache uses the library's current **root-level 8.3** name layout. The
-  dedicated `/RABOOK/` subdirectory layout the issue describes is blocked on FAT
-  subdirectory write (`ra8_fs_mkdir`, #151/#165).
+- The cache uses the library's current **root-level 8.3** name layout.
+  `ra8_fs_mkdir` has since landed, so a dedicated `/RABOOK/` subdirectory is no
+  longer blocked on FAT subdirectory writes; adopting that optional layout is
+  simply outside this example's current scope.
 - The compile working arenas live in external SDRAM -- the conversion-arena
   tenant of #147 -- and are sized here for a small text book. An image-heavy book
   needs the much larger budget the issue specifies.

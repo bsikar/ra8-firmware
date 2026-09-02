@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Gate: committed generated gap artefacts must match a fresh regenerate.
+"""Gate: versioned generated gap artefacts must match a fresh regenerate.
 
 The MC/DC and Doxygen gap reports under ``docs/`` are GENERATED, yet they are
 also COMMITTED, and nothing compared the committed copy against what the
@@ -11,10 +11,13 @@ documentation gaps are; a committed copy that has silently drifted describes a
 tree that no longer exists (issue #380).
 
 This is the "regenerate and gate" resolution -- the same shape
-``check_ci_parity.py`` uses on the gate registry. For every committed generated
+``check_ci_parity.py`` uses on the gate registry. For every versioned generated
 artefact this gate re-runs its generator and byte-compares the result against
-the version committed at ``HEAD``; any difference fails the gate and names the
-command that refreshes it. Deleting the committed copies (produce-in-CI-only)
+the tracked worktree candidate; any difference fails the gate and names the
+command that refreshes it. Reading the candidate rather than ``HEAD`` makes the
+gate useful before a refresh is committed, while the tracked-file check still
+rejects untracked or deleted evidence. Deleting the versioned copies
+(produce-in-CI-only)
 was the rejected alternative: the DO-178C qualification set
 (``docs/qualification/PSAC.md``, ``SVR.md``, ``SAS.md``, ``SQAP.md`` ...) cites
 these files by path as versioned, retained evidence, so the in-tree history is
@@ -55,6 +58,11 @@ import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
+
+from git_environment import isolated_git_environment, trusted_git_executable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_CHECKS = REPO_ROOT / "scripts" / "checks"
@@ -65,17 +73,17 @@ MCDC_TXT = REPO_ROOT / "build" / "mcdc-report" / "mcdc.txt"
 
 @dataclass(frozen=True)
 class ArtefactGroup:
-    """One generator and the committed artefacts it owns.
+    """One generator and the versioned artefacts it owns.
 
     Attributes:
         name: Short identifier printed in gate output.
         artefacts: Repo-relative POSIX paths the generator writes and that are
-            committed to the tree.
+            versioned in the tree.
         regenerate: Runs the generator in place and returns its exit code (0 on
             success); it writes exactly ``artefacts``.
         requires: Input files that must exist before ``regenerate`` can run. An
             absent input fails the gate loudly instead of skipping the family.
-        remediation: The command a human runs to refresh the committed copies.
+        remediation: The command a human runs to refresh the versioned copies.
     """
 
     name: str
@@ -85,33 +93,43 @@ class ArtefactGroup:
     remediation: str
 
 
-def _git_show_head(root: Path, rel: str) -> bytes | None:
-    """Return the bytes of ``rel`` committed at ``HEAD`` in ``root``, else None."""
-    result = subprocess.run(  # noqa: S603 -- fixed argv, no shell
-        ["git", "-C", str(root), "show", f"HEAD:{rel}"],  # noqa: S607 -- git from PATH is intended
+def _read_candidate(root: Path, rel: str) -> bytes | None:
+    """Return tracked worktree bytes for ``rel``; reject untracked/deleted copies."""
+    argv = [
+        "git",
+        "-C",
+        str(root),
+        "ls-files",
+        "--error-unmatch",
+        "--",
+        rel,
+    ]
+    result = subprocess.run(  # noqa: S603 -- fixed git argv, no shell
+        argv,
         capture_output=True,
         check=False,
     )
     if result.returncode != 0:
         return None
-    return result.stdout
+    path = root / rel
+    return path.read_bytes() if path.is_file() else None
 
 
-def _diff_artefact(committed: bytes | None, fresh: bytes) -> str | None:
-    """Describe how a committed copy differs from a fresh regenerate.
+def _diff_artefact(candidate: bytes | None, fresh: bytes) -> str | None:
+    """Describe how a tracked candidate differs from a fresh regenerate.
 
     Args:
-        committed: Bytes committed at HEAD, or None when the file is untracked.
+        candidate: Tracked worktree bytes, or None when absent or untracked.
         fresh: Bytes the generator just produced.
 
     Returns:
         A one-line drift description, or None when the two are byte-identical.
     """
-    if committed is None:
-        return "committed copy is not tracked at HEAD; cannot verify freshness"
-    if committed == fresh:
+    if candidate is None:
+        return "candidate copy is absent or untracked; cannot verify retained evidence"
+    if candidate == fresh:
         return None
-    return f"stale: committed {len(committed)} bytes differ from the {len(fresh)}-byte regenerate"
+    return f"stale: candidate {len(candidate)} bytes differ from the {len(fresh)}-byte regenerate"
 
 
 def _restore(root: Path, saved: dict[str, bytes | None]) -> None:
@@ -127,7 +145,7 @@ def _restore(root: Path, saved: dict[str, bytes | None]) -> None:
 def _check_group(
     group: ArtefactGroup,
     root: Path,
-    read_committed: Callable[[Path, str], bytes | None],
+    read_candidate: Callable[[Path, str], bytes | None],
 ) -> list[str]:
     """Regenerate one group and return a drift message per stale artefact.
 
@@ -143,7 +161,7 @@ def _check_group(
             f"and must run after the gate that produces them. {group.remediation}"
         ]
 
-    committed = {rel: read_committed(root, rel) for rel in group.artefacts}
+    candidate = {rel: read_candidate(root, rel) for rel in group.artefacts}
     saved: dict[str, bytes | None] = {}
     for rel in group.artefacts:
         path = root / rel
@@ -156,7 +174,7 @@ def _check_group(
             errors.append(f"{group.name}: regenerator exited {rc} (see its output above)")
         else:
             for rel in group.artefacts:
-                drift = _diff_artefact(committed[rel], (root / rel).read_bytes())
+                drift = _diff_artefact(candidate[rel], (root / rel).read_bytes())
                 if drift is not None:
                     errors.append(f"{rel}: {drift}. {group.remediation}")
     finally:
@@ -184,7 +202,7 @@ def _regenerate_doxygen() -> int:
         return doxy_report.run_report()
 
 
-def _load_driver_status():  # noqa: ANN202 -- a module object; typing it adds nothing
+def _load_driver_status() -> ModuleType:
     """Import gen_driver_status, putting scripts/gen on the path first."""
     if str(SCRIPTS_GEN) not in sys.path:
         sys.path.insert(0, str(SCRIPTS_GEN))
@@ -201,7 +219,7 @@ def _regenerate_driver_status() -> int:
 
 
 def _production_groups() -> list[ArtefactGroup]:
-    """The committed generated gap artefacts this gate enforces freshness on."""
+    """The versioned generated gap artefacts this gate enforces freshness on."""
     return [
         ArtefactGroup(
             name="mcdc-gaps",
@@ -213,8 +231,8 @@ def _production_groups() -> list[ArtefactGroup]:
             regenerate=_regenerate_mcdc,
             requires=(MCDC_TXT,),
             remediation=(
-                "Run `make mcdc` (or `bash scripts/ci.sh --gate mcdc`) and commit the "
-                "regenerated docs/MCDC_GAPS.csv, docs/MCDC_GAPS.md and "
+                "Run `just quality::local::mcdc` (or `just quality::gate::run mcdc`) and "
+                "commit the regenerated docs/MCDC_GAPS.csv, docs/MCDC_GAPS.md and "
                 "docs/MCDC_DEACTIVATIONS.md."
             ),
         ),
@@ -242,18 +260,18 @@ def _production_groups() -> list[ArtefactGroup]:
 
 
 def check() -> int:
-    """Fail when any committed generated artefact differs from a fresh regenerate."""
+    """Fail when any tracked candidate artefact differs from a fresh regenerate."""
     errors: list[str] = []
     for group in _production_groups():
-        errors.extend(_check_group(group, REPO_ROOT, _git_show_head))
+        errors.extend(_check_group(group, REPO_ROOT, _read_candidate))
     if errors:
-        sys.stderr.write("check_generated_artefacts.py: committed gap artefacts are stale.\n\n")
+        sys.stderr.write("check_generated_artefacts.py: candidate gap artefacts are stale.\n\n")
         for error in errors:
             sys.stderr.write(f"  {error}\n\n")
         sys.stderr.write(f"{len(errors)} stale artefact(s).\n")
         return 1
     print(
-        "check_generated_artefacts.py: clean -- every committed gap artefact "
+        "check_generated_artefacts.py: clean -- every tracked candidate gap artefact "
         "matches a fresh regenerate."
     )
     return 0
@@ -283,7 +301,7 @@ def _counting_generator(sink: list[int], path: Path) -> Callable[[], int]:
 def _run_git(root: Path, *args: str) -> None:
     """Run a git subcommand in ``root``, raising on non-zero exit."""
     subprocess.run(  # noqa: S603 -- fixed argv, no shell
-        ["git", "-C", str(root), *args],  # noqa: S607 -- git from PATH is intended
+        [trusted_git_executable(), "-C", str(root), *args],
         check=True,
         capture_output=True,
     )
@@ -307,7 +325,7 @@ def _driver_status_cases(root: Path) -> list[tuple[str, bool]]:
     The synthetic groups prove the comparator; they say nothing about whether a
     real generator is wired to it. A freshness check whose selftest only ever
     exercised a stand-in would keep passing after the real one stopped producing
-    what it used to. So this regenerates against the throwaway HAL committed at
+    what it used to. So this regenerates against the throwaway versioned HAL at
     seed time and asserts clean, then adds a driver and asserts drift.
 
     Args:
@@ -325,29 +343,23 @@ def _driver_status_cases(root: Path) -> list[tuple[str, bool]]:
         return 0
 
     group = ArtefactGroup("driver-real-match", (driver_rel,), _regen_driver, (), "n/a")
-    clean = _check_group(group, root, _git_show_head) == []
+    clean = _check_group(group, root, _read_candidate) == []
 
     (hal / "libs" / "ra8_hal" / "inc" / "ra8_extra.h").write_text(
         "#pragma once\nra8_err_t ra8_extra_init(void);\n", encoding="ascii"
     )
     with contextlib.redirect_stdout(io.StringIO()):
         real.write(hal)
-    drift = bool(_check_group(group, root, _git_show_head))
+    drift = bool(_check_group(group, root, _read_candidate))
 
     return [
-        ("driver-status: fresh regenerate matches committed -> clean", clean),
+        ("driver-status: fresh regenerate matches candidate -> clean", clean),
         ("driver-status: a new driver changes the page -> drift", drift),
     ]
 
 
-def _selftest_cases(root: Path) -> list[tuple[str, bool]]:
-    """Exercise every detector direction against a throwaway git repo in ``root``.
-
-    Returns one ``(label, passed)`` tuple per direction: a fresh regenerate that
-    matches the committed copy is clean, one that differs is drift, a missing
-    required input fails without running the generator, and an untracked
-    committed copy is drift.
-    """
+def _seed_selftest_repo(root: Path) -> str:
+    """Create and commit the synthetic freshness candidate."""
     tracked = "docs/SYNTH_GAPS.md"
     (root / "docs").mkdir(parents=True, exist_ok=True)
     (root / tracked).write_bytes(b"committed-AAA\n")
@@ -357,53 +369,84 @@ def _selftest_cases(root: Path) -> list[tuple[str, bool]]:
     _run_git(
         root, "-c", "user.email=ci@localhost", "-c", "user.name=ci", "commit", "-q", "-m", "seed"
     )
+    return tracked
 
-    match_group = ArtefactGroup(
-        "synth-match",
-        (tracked,),
-        _synthetic_generator(root / tracked, b"committed-AAA\n"),
-        (),
-        "n/a",
-    )
-    drift_group = ArtefactGroup(
-        "synth-drift",
-        (tracked,),
-        _synthetic_generator(root / tracked, b"regenerated-BBB\n"),
-        (),
-        "n/a",
-    )
+
+def _synthetic_selftest_groups(
+    root: Path, tracked: str
+) -> tuple[dict[str, ArtefactGroup], list[int]]:
+    """Build the synthetic group variants and the missing-input run probe."""
     ran: list[int] = []
-    missing_group = ArtefactGroup(
-        "synth-missing",
-        (tracked,),
-        _counting_generator(ran, root / tracked),
-        (root / "absent-input.txt",),
-        "n/a",
-    )
     untracked = "docs/NOT_COMMITTED.md"
-    untracked_group = ArtefactGroup(
-        "synth-untracked",
-        (untracked,),
-        _synthetic_generator(root / untracked, b"y\n"),
-        (),
-        "n/a",
-    )
+    groups = {
+        "match": ArtefactGroup(
+            "synth-match",
+            (tracked,),
+            _synthetic_generator(root / tracked, b"committed-AAA\n"),
+            (),
+            "n/a",
+        ),
+        "drift": ArtefactGroup(
+            "synth-drift",
+            (tracked,),
+            _synthetic_generator(root / tracked, b"regenerated-BBB\n"),
+            (),
+            "n/a",
+        ),
+        "candidate": ArtefactGroup(
+            "synth-candidate",
+            (tracked,),
+            _synthetic_generator(root / tracked, b"candidate-CCC\n"),
+            (),
+            "n/a",
+        ),
+        "missing": ArtefactGroup(
+            "synth-missing",
+            (tracked,),
+            _counting_generator(ran, root / tracked),
+            (root / "absent-input.txt",),
+            "n/a",
+        ),
+        "untracked": ArtefactGroup(
+            "synth-untracked",
+            (untracked,),
+            _synthetic_generator(root / untracked, b"y\n"),
+            (),
+            "n/a",
+        ),
+    }
+    return groups, ran
 
-    match_clean = _check_group(match_group, root, _git_show_head) == []
-    drift_seen = bool(_check_group(drift_group, root, _git_show_head))
-    missing_errors = _check_group(missing_group, root, _git_show_head)
-    untracked_drift = bool(_check_group(untracked_group, root, _git_show_head))
+
+def _selftest_cases(root: Path) -> list[tuple[str, bool]]:
+    """Exercise every freshness direction against a throwaway git repo."""
+    tracked = _seed_selftest_repo(root)
+    groups, ran = _synthetic_selftest_groups(root, tracked)
+
+    match_clean = _check_group(groups["match"], root, _read_candidate) == []
+    drift_seen = bool(_check_group(groups["drift"], root, _read_candidate))
+
+    (root / tracked).write_bytes(b"candidate-CCC\n")
+    candidate_clean = _check_group(groups["candidate"], root, _read_candidate) == []
+    (root / tracked).unlink()
+    deleted_drift = bool(_check_group(groups["match"], root, _read_candidate))
+    (root / tracked).write_bytes(b"committed-AAA\n")
+
+    missing_errors = _check_group(groups["missing"], root, _read_candidate)
+    untracked_drift = bool(_check_group(groups["untracked"], root, _read_candidate))
 
     return [
-        ("fresh matches committed -> clean", match_clean),
-        ("fresh differs from committed -> drift", drift_seen),
+        ("fresh matches tracked candidate -> clean", match_clean),
+        ("fresh differs from tracked candidate -> drift", drift_seen),
+        ("unstaged generated refresh matching fresh output -> clean", candidate_clean),
+        ("deleted tracked candidate -> drift", deleted_drift),
         ("missing required input -> fail, generator not run", bool(missing_errors) and not ran),
-        ("untracked committed copy -> drift", untracked_drift),
+        ("untracked candidate copy -> drift", untracked_drift),
         *_driver_status_cases(root),
     ]
 
 
-def selftest() -> int:
+def _selftest_body() -> int:
     """Prove the detector fires in both directions and never silently skips."""
     with tempfile.TemporaryDirectory() as tmp:
         cases = _selftest_cases(Path(tmp))
@@ -420,10 +463,16 @@ def selftest() -> int:
     return 0
 
 
+def selftest() -> int:
+    """Run generated-artifact fixtures without inheriting the caller's repo."""
+    with isolated_git_environment():
+        return _selftest_body()
+
+
 def main() -> int:
     """Parse arguments and dispatch to the freshness check or its selftest."""
     parser = argparse.ArgumentParser(
-        description="Verify committed generated gap artefacts match a fresh regenerate."
+        description="Verify tracked candidate gap artefacts match a fresh regenerate."
     )
     parser.add_argument(
         "--selftest",

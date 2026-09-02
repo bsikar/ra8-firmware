@@ -26,13 +26,11 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # so those libs are listed to satisfy their includes even though this demo only
 # drives the SDRAM backend + UART stream. The SDRAM backend's ra8_sdramc_init
 # lives in ra8_hal (always linked), so no extra lib is needed.
-# EXTRA_SRCS pulls in the backend-agnostic round-trip (self-contained local copy); this
-# app differs from the RAM / OSPI / SD demos only by its one backend bind line +
-# its own PASS banner (#155).
+# The app-local src/ glob pulls in the backend-agnostic round-trip from this
+# app's self-contained local copy.
 ra8_add_app(
   NAME ra8_io_sdram_demo
   STACK_BYTES 4096
   DESCRIPTION "ra8_io over external SDRAM: block dev to FAT to VFS to UART (#155/#156)"
   LIBS ra8_io ra8_fs ra8_sdmmc_spi ra8_usb_pal
-  EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/ra8_io_roundtrip.c
 )

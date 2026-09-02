@@ -353,7 +353,6 @@ void nx_ether_driver_c6_rx(void* ctx, const uint8_t* frame, uint16_t len)
   /* Non-const copy of the received frame for NetX's non-const append; a
    * block-scope static (MISRA 8.9) whose static storage duration keeps this
    * 1514-octet buffer off the RX worker's bounded stack. */
-  /* cppcheck-suppress misra-c2012-18.8 -- a static array is never a VLA; its size is the C23 enum k_nx_c6_max_frame, which cppcheck 2.13 cannot parse and so misreads as a variable length. */
   static uint8_t s_rx_staging[k_nx_c6_max_frame];
   (void)ctx;
   if (!internal_rx_acceptable(frame, len)) {

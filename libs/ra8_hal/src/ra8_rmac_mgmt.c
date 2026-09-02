@@ -97,7 +97,7 @@ ra8_err_t ra8_rmac_get_status(ra8_rmac_port_t port, ra8_rmac_status_t* out)
     return k_ra8_err_invalid_arg;
   }
 
-  volatile r_rmac_regs_t* reg = ra8_rmac(port);
+  volatile const r_rmac_regs_t* reg = ra8_rmac(port);
   /* HUM Ch 33.4 "MEIS : MAC Error Interrupt Status Register" p 1745 */
   out->err_status = reg->MEIS;
   /* HUM Ch 33.4 "MMIS0 : MAC Monitoring Interrupt Status Register 0" p 1756 */
@@ -199,7 +199,7 @@ static void internal_snapshot_pause_pfc(volatile r_rmac_regs_t* reg, ra8_rmac_st
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void internal_snapshot_rx(volatile r_rmac_regs_t* reg, ra8_rmac_stats_t* out)
+static void internal_snapshot_rx(volatile const r_rmac_regs_t* reg, ra8_rmac_stats_t* out)
 {
   out->rx_overflow        = reg->MROVFC;
   out->rx_hdr_crc_err     = reg->MRHCRCEC;
@@ -242,7 +242,7 @@ static void internal_snapshot_rx(volatile r_rmac_regs_t* reg, ra8_rmac_stats_t* 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void internal_snapshot_tx(volatile r_rmac_regs_t* reg, ra8_rmac_stats_t* out)
+static void internal_snapshot_tx(volatile const r_rmac_regs_t* reg, ra8_rmac_stats_t* out)
 {
   out->tx_good_e        = reg->MTGFCE;
   out->tx_good_p        = reg->MTGFCP;
@@ -360,18 +360,9 @@ ra8_err_t ra8_rmac_phy_reset(ra8_rmac_port_t port, uint8_t phy_addr)
     if ((bmcr & (uint16_t)k_ra8_rmac_phy_bmcr_reset) == 0U) {
       return k_ra8_ok;
     }
-    /* GCOVR_EXCL_START
-     * Off-target MDIO returns BMCR = 0 on every read (ra8_rmac.c
-     * internal_mpsm_issue writes PRD = 0 for reads and the pure-RAM
-     * MPSM readback returns that word), so BMCR.RESET always reads
-     * clear and the loop returns above on the first iteration. The
-     * natural loop exit and this timeout leg require a PHY that holds
-     * BMCR.RESET asserted -- read DATA the ra8_fake_mmio wait seam
-     * cannot synthesize. */
   }
   ra8_log_error(s_tag, "phy_reset: bmcr.reset never cleared");
   return k_ra8_err_hw_timeout;
-  /* GCOVR_EXCL_STOP */
 }
 
 ra8_err_t ra8_rmac_phy_set_advertise(ra8_rmac_port_t port, uint8_t phy_addr, uint16_t capabilities)
@@ -433,13 +424,6 @@ ra8_err_t ra8_rmac_phy_auto_neg_wait(ra8_rmac_port_t      port,
     const uint16_t need =
       (uint16_t)((uint16_t)k_ra8_rmac_phy_bmsr_an_done | (uint16_t)k_ra8_rmac_phy_bmsr_link_up);
     if ((bmsr & need) == need) {
-      /* GCOVR_EXCL_START
-       * Off-target MDIO delivers BMSR = 0 on every read (ra8_rmac.c
-       * internal_mpsm_issue writes PRD = 0 for reads -- read DATA the
-       * ra8_fake_mmio wait seam cannot synthesize), so (bmsr & need)
-       * is never equal to need and this link-up read-back body -- the
-       * ANLPAR fetch, its MDIO-error return, and the resolved-speed
-       * decode -- is unreachable from the host. */
       uint16_t anlpar = 0U;
       /* IEEE 802.3 Clause 28.2.4.4 "ANLPAR" -- resolved capability. */
       const ra8_err_t lp =
@@ -450,7 +434,6 @@ ra8_err_t ra8_rmac_phy_auto_neg_wait(ra8_rmac_port_t      port,
       out_link->up    = true;
       out_link->speed = internal_decode_anlpar(anlpar);
       return k_ra8_ok;
-      /* GCOVR_EXCL_STOP */
     }
   }
   ra8_log_error(s_tag, "phy_auto_neg_wait: timeout");
@@ -477,13 +460,8 @@ ra8_rmac_phy_link_status(ra8_rmac_port_t port, uint8_t phy_addr, ra8_rmac_phy_li
     return r;
   }
   out_link->up = (bmsr & (uint16_t)k_ra8_rmac_phy_bmsr_link_up) != 0U;
-  // mcdc-deactivated: ra8_rmac_phy_auto_neg_start link-up + an-done gate; both bits come from the same BMSR read; PHY hardware sets BMSR.AN_DONE only after BMSR.LINK_STATUS asserts (IEEE 802.3 Clause 22 22.2.4.2 ordering) -- the second condition cannot be true while the first is false on any conformant PHY.
+  // mcdc-deactivated: ra8_rmac_phy_link_status link-up + an-done gate; both bits come from the same BMSR read; PHY hardware sets BMSR.AN_DONE only after BMSR.LINK_STATUS asserts (IEEE 802.3 Clause 22 22.2.4.2 ordering) -- the second condition cannot be true while the first is false on any conformant PHY.
   if (out_link->up && ((bmsr & (uint16_t)k_ra8_rmac_phy_bmsr_an_done) != 0U)) {
-    /* GCOVR_EXCL_START
-     * Same off-target MDIO limitation: BMSR reads 0, so out_link->up is
-     * always false and this AN-resolved-speed read-back body (ANLPAR
-     * fetch, MDIO-error return, and decode) is unreachable from the
-     * host. */
     uint16_t        anlpar = 0U;
     const ra8_err_t lp =
       ra8_rmac_mdio_c22_read(port, phy_addr, (uint8_t)k_ra8_rmac_phy_reg_anlpar, &anlpar);
@@ -492,6 +470,5 @@ ra8_rmac_phy_link_status(ra8_rmac_port_t port, uint8_t phy_addr, ra8_rmac_phy_li
     }
     out_link->speed = internal_decode_anlpar(anlpar);
   }
-  /* GCOVR_EXCL_STOP */
   return k_ra8_ok;
 }

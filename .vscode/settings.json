@@ -1,0 +1,11 @@
+{
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "cmake.buildBeforeRun": false,
+  "cmake.configureOnOpen": false,
+  "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
+  "cmake.useCMakePresets": "always",
+  "editor.formatOnSave": true,
+  "editor.rulers": [100],
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true
+}

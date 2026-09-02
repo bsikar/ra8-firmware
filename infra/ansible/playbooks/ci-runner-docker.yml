@@ -5,9 +5,9 @@
 # the k3s node -- a second build host, so CI and the dev container stop
 # contending for one CPU.
 #
-#   Deploy:  ansible-playbook -i inventory/hosts.ini playbooks/ci-runner-docker.yml
-#   Remove:  ansible-playbook -i inventory/hosts.ini playbooks/ci-runner-docker.yml \
-#              -e ci_runner_docker_state=absent
+# Operator entry points: `just infra::apply truenas` and
+# `just infra::remove truenas`. The fleet dispatcher supplies canonical image
+# metadata, inventory, capacity, and lifecycle state.
 #
 # The ARC-on-k3s pool is playbooks/ci-runner.yml; the two are independent and
 # both register against the same repository. See infra/README.md.

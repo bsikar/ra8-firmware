@@ -37,16 +37,25 @@
 
 #pragma once
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
-/* ESP-IDF hosts reach these two through their own build; on this host the
+/* ESP-IDF hosts reach these through their own build; on this host the
    port supplies them, and this header is where the vendored core expects
    its environment to arrive from. ``esp_heap_caps.h`` carries the
-   allocation capability flags the transport passes through, and
+   allocation capability flags the transport passes through,
    ``<inttypes.h>`` carries the PRIu32 family the serial driver formats
-   with. */
+   with, ``<stdlib.h>`` declares the ``calloc`` that
+   ``transport_util_calloc`` reaches for on the non-DMA arm, and
+   ``<assert.h>`` carries the ``assert`` macro ``spi_drv.c`` guards every
+   handle creation in ``bus_init_internal`` with. Without the latter two
+   the vendored translation units compiled with C89 implicit declarations:
+   ``calloc`` came back as ``int`` (``-Wbuiltin-declaration-mismatch``) and
+   ``assert`` became a CALL to a function nothing defines, so the check was
+   not a check. */
 #include "esp_heap_caps.h"
 
 /* The allocation macros below expand to calls through ``g_h``, so the
@@ -270,6 +279,106 @@ typedef uint8_t gpio_pin_state_t;
  * @since 0.1.0
  */
 #define HOSTED_MEM_ALIGNMENT_64 (64)
+
+/**
+ * @def HOSTED_UNLIKELY
+ * @brief Branch hint: the controlling expression is expected to be false.
+ * @details ESP-IDF supplies the vendor-facing ``unlikely`` spelling from
+ * ``esp_compiler.h``. The ``esp_hosted_objs`` target maps that token to this
+ * first-party macro without modifying the pinned vendor tree. A macro, not a
+ * function: ``__builtin_expect`` has to see the expression at the call site
+ * to steer code layout.
+ * @param[in] x Expression to test; evaluated exactly once.
+ * @note Read-only build configuration.
+ * @warning A wrong hint costs a mispredict, never correctness.
+ * @par Example:
+ * @code
+ * if (HOSTED_UNLIKELY(ret)) { HOSTED_FREE(copy_payload); }
+ * @endcode
+ * @since 0.1.0
+ */
+#define HOSTED_UNLIKELY(x) (__builtin_expect(!!(x), 0))
+
+/**
+ * @def HOSTED_LIKELY
+ * @brief Branch hint: the controlling expression is expected to be true.
+ * @details The companion of ::HOSTED_UNLIKELY. The vendored ``likely`` token
+ * is mapped to this macro only while compiling ``esp_hosted_objs``.
+ * @param[in] x Expression to test; evaluated exactly once.
+ * @note Read-only build configuration.
+ * @warning A wrong hint costs a mispredict, never correctness.
+ * @par Example:
+ * @code
+ * if (HOSTED_LIKELY(len > 0)) { transmit(buf, len); }
+ * @endcode
+ * @since 0.1.0
+ */
+#define HOSTED_LIKELY(x) (__builtin_expect(!!(x), 1))
+
+/**
+ * @brief ESP-IDF capability-aware allocation, served from the port pool.
+ *
+ * @details
+ * ``host/drivers/transport/transport_util.c`` calls this on the
+ * capability-carrying arm of ``transport_util_calloc``. ESP-IDF implements
+ * it in its heap component; this host has no such component, and until this
+ * definition existed the call compiled under the C89 implicit-declaration
+ * rule as ``int heap_caps_malloc()`` -- an ``int`` return assigned straight
+ * into a ``void *`` -- and left an undefined ``heap_caps_malloc`` reference
+ * in the object that only linker garbage collection kept out of the image.
+ *
+ * The RA8D2 has one transport pool and it is internal, byte-addressable
+ * SRAM reachable by both the DMAC and the SCI, so every capability the
+ * vendored tree asks for is satisfiable from it. The one bit that changes
+ * the ANSWER rather than the question is ::MALLOC_CAP_DMA, which is routed
+ * through the aligned allocator so the block starts on a
+ * ::HOSTED_MEM_ALIGNMENT_64 boundary and cache maintenance around a
+ * DMA-driven transfer cannot touch a neighbouring allocation. That is the
+ * identical treatment ``transport_util_malloc`` gives ``HOSTED_MEM_CAP_DMA``
+ * two functions above the call site.
+ *
+ * @param[in] size Payload bytes required; must be non-zero.
+ * @param[in] caps Bitwise or of ::ra8_esp_hosted_malloc_cap_t values.
+ *
+ * @return Pointer to the payload, or null on failure.
+ * @retval nullptr The vtable is not bound, ``size`` is zero, or the pool
+ *         could not serve the request.
+ * @retval non-null A block of at least ``size`` bytes, aligned to
+ *         ::HOSTED_MEM_ALIGNMENT_64 when ::MALLOC_CAP_DMA was requested.
+ *
+ * @pre ``ra8_esp_hosted_port_init`` has bound the OS-abstraction vtable.
+ * @pre ``size`` is non-zero.
+ * @post On success the pool reports fewer bytes available.
+ * @post On failure the pool is unchanged.
+ *
+ * @note Thread-safe; ThreadX serialises the underlying byte pool.
+ * @warning Release the block with ``g_h.funcs->_h_free_align`` when
+ *          ::MALLOC_CAP_DMA was requested and ``_h_free`` otherwise; the
+ *          port uses one header for both, so either spelling is correct,
+ *          but ``free()`` is not.
+ *
+ * @par Example:
+ * @code
+ * void *dma = heap_caps_malloc(len, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+ * @endcode
+ *
+ * @see ra8_esp_hosted_malloc_cap_t The capability bits.
+ * @since 0.1.0
+ */
+static inline void* heap_caps_malloc(size_t size, uint32_t caps)
+{
+  void* result = nullptr;
+  if (g_h.funcs != nullptr) {
+    if (size != 0U) {
+      if ((caps & (uint32_t)MALLOC_CAP_DMA) != 0U) {
+        result = g_h.funcs->_h_malloc_align(size, (size_t)HOSTED_MEM_ALIGNMENT_64);
+      } else {
+        result = g_h.funcs->_h_malloc(size);
+      }
+    }
+  }
+  return result;
+}
 
 /**
  * @def HOSTED_FREE

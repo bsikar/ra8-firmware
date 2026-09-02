@@ -49,7 +49,13 @@ EXTENSIONS = (".c", ".h", ".cpp", ".hpp")
 # Vendored SOUP the nullptr rule never governs. first_party_paths already drops
 # these for the --all sweep; needs_check re-checks them so an explicitly named
 # vendored file (a pre-commit staging edge case) is skipped as well.
-SOUP_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/", "tools/vela/generated/", "port/threadx/")
+SOUP_PREFIXES = (
+    "libs/third_party/",
+    "apps/shared_libs/third_party/",
+    "libs/ra8_fonts/",
+    "tools/vela/generated/",
+    "port/threadx/",
+)
 
 # Scope recorded here, NOT as a directory allowlist (#358). Enumeration is
 # derived from git ls-files, so tools/ -- host tooling held to the same C23 bar
@@ -78,7 +84,7 @@ NULL_RE = re.compile(r"\bNULL\b")
 
 # Strip C/C++ inline comments and string/char literals so we don't
 # match NULL inside them. Naive but adequate for this use case.
-def _strip_noncode(line: str) -> str:  # noqa: PLR0912 PLR0915  # char-by-char state machine, splitting hurts readability
+def _strip_noncode(line: str) -> str:  # noqa: PLR0912, PLR0915  # char-by-char state machine, splitting hurts readability
     out = []
     i = 0
     in_str = False
@@ -194,6 +200,7 @@ def _in_scope(rel: str) -> bool:
         return False
     if (
         rel.startswith(EXEMPT_PREFIXES)
+        or "/tests/" in rel
         or rel.startswith(SOUP_PREFIXES)
         or rel in GENERATED_SOURCE_PATHS
     ):
@@ -256,7 +263,7 @@ def selftest() -> int:
             failures,
         )
     expect(
-        _in_scope("tools/mkbookimg/mkbookimg.c"),
+        _in_scope("tools/mkbookimg/src/mkbookimg.c"),
         "tools/ is in scope (ROOT_DIRS omitted it before #358)",
         failures,
     )
@@ -272,7 +279,17 @@ def selftest() -> int:
         "generated-looking future source is not automatically exempt",
         failures,
     )
-    expect(not _in_scope("libs/third_party/miniz/miniz.c"), "vendored SOUP exempt", failures)
+    expect(not _in_scope("libs/third_party/threadx/src/tx.c"), "platform SOUP exempt", failures)
+    expect(
+        not _in_scope("apps/shared_libs/third_party/miniz/miniz.c"),
+        "app SOUP exempt",
+        failures,
+    )
+    expect(
+        _in_scope("apps/shared_libs/compress/src/compress.c"),
+        "adjacent app first-party code remains in scope",
+        failures,
+    )
     return report(failures)
 
 

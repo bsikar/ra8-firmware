@@ -35,13 +35,13 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME cache_coherency_hil
-  STACK_BYTES 2200
+  STACK_BYTES 2200 AUX_SRCS src/cpu1_main.c
   DESCRIPTION
     "M85<->M33 cache-coherency HIL validator (D-cache ON, non-cacheable shared SRAM) for RA8D2"
 )
 
 # Turn ON the Cortex-M85 D-cache / I-cache + MPU boot path for THIS app only.
-# The shared boot (libs/ra8_board_ek_ra8d2/boot/system_init.c) is compiled
+# The shared boot (libs/ra8_board_ek_ra8d2/src/boot/system_init.c) is compiled
 # per-app, so this define reaches only cache_coherency_hil.elf. With the D-cache
 # enabled, the M85<->M33 hand-off through SRAM is coherent ONLY because the boot
 # maps the shared bank (0x22100000) as a non-cacheable MPU region -- which is the
@@ -63,5 +63,5 @@ target_compile_definitions(cache_coherency_hil.elf PRIVATE RA8_LOG_LEVEL=RA8_LOG
 ra8_add_cpu1_image(
   PARENT cache_coherency_hil
   NAME cache_coherency_hil_cpu1
-  SOURCES cpu1_main.c
+  SOURCES src/cpu1_main.c
 )

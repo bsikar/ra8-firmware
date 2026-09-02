@@ -161,7 +161,7 @@ RA8_INTERNAL static void internal_pdm_stream_data(void* ctx, const int32_t* samp
 RA8_INTERNAL static ra8_err_t
 internal_pdm_capture(void* ctx, const ra8_audio_buffer_t* buffer, ra8_audio_frame_t* out_frame)
 {
-  ra8_audio_source_pdm_state_t* state = (ra8_audio_source_pdm_state_t*)ctx;
+  const ra8_audio_source_pdm_state_t* state = (const ra8_audio_source_pdm_state_t*)ctx;
   if (state == nullptr) {
     return k_ra8_err_not_initialized;
   }

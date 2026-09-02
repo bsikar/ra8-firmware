@@ -46,7 +46,6 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 struct ra8_io_i2c_bus_iface {
   /** @brief Controller write; `send_stop` false holds the bus. */
   ra8_err_t (*write)(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, bool send_stop);
@@ -62,7 +61,6 @@ struct ra8_io_i2c_bus_iface {
                         uint8_t*       rd,
                         uint32_t       rd_len);
 };
-/* cppcheck-suppress-end [unusedStructMember] */
 
 #ifdef __cplusplus
 }

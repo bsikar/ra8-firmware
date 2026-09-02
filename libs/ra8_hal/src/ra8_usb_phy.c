@@ -213,8 +213,7 @@ static volatile uint16_t s_clksel_attempt_pllsta[4] = {0U, 0U, 0U, 0U};
 RA8_INTERNAL
 static void internal_usb_delay_1us(void)
 {
-  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_usbhs_delay_1us_iters;
-       ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_usbhs_delay_1us_iters; ++i) {
     __asm__ volatile("nop");
   }
 }
@@ -275,8 +274,8 @@ static void internal_usbhs_enable_syscfg(volatile r_usb_regs_t* reg)
 RA8_INTERNAL
 static ra8_err_t internal_usbhs_wait_pll_lock_short(void)
 {
-  volatile uint16_t* const pllsta = ra8_usbhs_pllsta();
-  ra8_err_t                lock   = k_ra8_err_hw_timeout;
+  volatile const uint16_t* const pllsta = ra8_usbhs_pllsta();
+  ra8_err_t                      lock   = k_ra8_err_hw_timeout;
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_usbhs_pll_lock_attempt_limit; ++i) {
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     if (ra8_fake_mmio_wait_eval(pllsta, i, ((*pllsta & (uint16_t)k_ra8_pllsta_plllock) != 0U))) {
@@ -451,29 +450,30 @@ ra8_err_t priv_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
    * "USB60CLK / 5 = 12 MHz" and bisected over {12,48,24,20}; the host
    * never enumerated because the PHY PLL was locking at the wrong
    * frequency, producing malformed HS chirp K signaling. */
-  s_phy_step_probe   = (uint8_t)k_ra8_usbhs_phy_step_clksel_12;
-  ra8_err_t lock_err = internal_usbhs_try_clksel(physet, lpsts, (uint16_t)k_ra8_physet_clksel_24);
+  s_phy_step_probe = (uint8_t)k_ra8_usbhs_phy_step_clksel_12;
+  const ra8_err_t lock_err =
+    internal_usbhs_try_clksel(physet, lpsts, (uint16_t)k_ra8_physet_clksel_24);
   s_clksel_attempt_pllsta[0] = s_usbhs_pllsta_probe;
   s_usbhs_init_probe         = (uint32_t)*physet;
 
   if (lock_err != k_ra8_ok) {
     s_clksel_winner = (uint8_t)k_ra8_usbhs_clksel_no_winner;
     ra8_log_error(s_tag, "usbhs: PHY PLL lock timeout (CLKSEL=24)");
-    return lock_err;
+  } else {
+    s_clksel_winner  = (uint8_t)k_ra8_physet_clksel_24;
+    s_phy_step_probe = (uint8_t)k_ra8_usbhs_phy_step_pll_locked;
+
+    /* HUM Figure 37.2 p 2121: USBE/DRPD are programmed AFTER PLLLOCK
+     * is observed. Internally splits into a separate helper to keep
+     * each function under the NASA Rule 4 budget. */
+    internal_usbhs_enable_syscfg(reg);
+    s_phy_step_probe = (uint8_t)k_ra8_usbhs_phy_step_usbe_set;
+
+    /* HUM Ch 37.2.2 "BUSWAIT : CPU Bus Wait Register", p 2063 */
+    reg->BUSWAIT = (uint16_t)k_ra8_buswait_default;
+    *physet      = (uint16_t)(*physet | (uint16_t)k_ra8_physet_repsel_16);
   }
-  s_clksel_winner  = (uint8_t)k_ra8_physet_clksel_24;
-  s_phy_step_probe = (uint8_t)k_ra8_usbhs_phy_step_pll_locked;
-
-  /* HUM Figure 37.2 p 2121: USBE/DRPD are programmed AFTER PLLLOCK
-   * is observed. Internally splits into a separate helper to keep
-   * each function under the NASA Rule 4 budget. */
-  internal_usbhs_enable_syscfg(reg);
-  s_phy_step_probe = (uint8_t)k_ra8_usbhs_phy_step_usbe_set;
-
-  /* HUM Ch 37.2.2 "BUSWAIT : CPU Bus Wait Register", p 2063 */
-  reg->BUSWAIT = (uint16_t)k_ra8_buswait_default;
-  *physet      = (uint16_t)(*physet | (uint16_t)k_ra8_physet_repsel_16);
-  return k_ra8_ok;
+  return lock_err;
 }
 
 /**
@@ -566,13 +566,27 @@ void priv_usb_init_common(volatile r_usb_regs_t* reg)
 ra8_err_t priv_usbfs_module_bringup(volatile r_usb_regs_t* reg)
 {
   /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1967 */
-  reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra8_syscfg_bit_scke));
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_usbhs_scke_poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->SYSCFG & (uint16_t)(1U << k_ra8_syscfg_bit_scke)) != 0U) {  /* GCOVR_EXCL_BR_LINE */
+  reg->SYSCFG          = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra8_syscfg_bit_scke));
+  ra8_err_t status     = k_ra8_err_hw_timeout;
+  bool      scke_ready = false;
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_usbhs_scke_poll_limit; ++i) {
+    /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register" p 1967 */
+    const bool scke_set = (reg->SYSCFG & (uint16_t)(1U << k_ra8_syscfg_bit_scke)) != 0U;
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register" p 1967 */
+    const bool observed = ra8_fake_mmio_poll(&reg->SYSCFG, i, scke_set);
+#else
+    const bool observed = scke_set;
+#endif
+    if (observed) {
+      scke_ready = true;
       break;
     }
   }
-  reg->SYSCFG = (uint16_t)(reg->SYSCFG & (uint16_t)~(uint16_t)(1U << k_ra8_syscfg_bit_drpd));
-  reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra8_syscfg_bit_usbe));
-  return k_ra8_ok;
+  if (scke_ready) {
+    reg->SYSCFG = (uint16_t)(reg->SYSCFG & (uint16_t)~(uint16_t)(1U << k_ra8_syscfg_bit_drpd));
+    reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra8_syscfg_bit_usbe));
+    status      = k_ra8_ok;
+  }
+  return status;
 }

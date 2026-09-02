@@ -8,21 +8,13 @@
 // the directory tree with no per-file bookkeeping). Adding a driver, example,
 // or script needs no edit here; only a NEW top-level directory does.
 
-/**
- * @dir libs
- * @brief Hand-written first-party libraries -- the drivers and substrates the
- *        rest of the firmware builds on (HAL peripheral drivers + register
- *        maps, the ra8_core substrate, I/O fabric, security/TrustZone, the
- *        e-reader stack, storage, networking, board support). Vendored SOUP
- *        lives under libs/third_party and is excluded from these docs.
- */
-
 /*
- * NOTE: the repo-root @dir port lives in the generated
- * docs/generated/nav_dirs.dox (emitted by scripts/gen/gen_doxygen_nav.py with
- * a path-qualified name). A plain "@dir port" here is ambiguous: doxygen
- * resolves a directory reference by raw string suffix rather than by path
- * component, so it also matches libs/ra8_rabook_import.
+ * NOTE: the repo-root @dir libs, @dir port, and @dir scripts descriptions live
+ * in the generated docs/generated/nav_dirs.dox (emitted by
+ * scripts/gen/gen_doxygen_nav.py with path-qualified names). Plain top-level
+ * names are ambiguous when Doxygen can also suffix-match a nested directory
+ * (for example apps/shared_libs, apps/shared_libs/rabook_import, or an
+ * app-local scripts directory).
  */
 
 /**
@@ -81,17 +73,8 @@
  */
 
 /**
- * @dir scripts
- * @brief Developer and CI tooling: build/flash/debug wrappers, the HIL bench
- *        rig control (Tapo power, J-Link, RTT), the OpenBao secret client and
- *        root-of-trust key store, and the check_*.py quality gates under
- *        scripts/checks that CI and the git hooks enforce.
- */
-
-/**
  * @dir tools
  * @brief Host-side tools: the ra8_emulator RA8D2 emulator, cache/glyph benchmarks,
  *        the EPUB/book image builders, the root-of-trust signer, and the MCP
  *        server.
  */
-

@@ -9,6 +9,7 @@ arena -- no `malloc`, NASA P10 Rule 3. Headless -- no panel, SDRAM, touch or SD.
 
 The two fixtures are deliberately different patterns, a four-quadrant BMP and a
 horizontal-band GIF, so the two decode paths pin two distinct hashes and neither
-can pass on the other's output. `make_imgfmt_fixtures.py` in this directory
+can pass on the other's output.
+`examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/scripts/make_imgfmt_fixtures.py`
 regenerates them (it needs Pillow); after changing an image the pinned hashes
 have to be re-read off the board.

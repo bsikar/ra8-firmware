@@ -47,7 +47,7 @@ look up, so treat the layout dependence as an observation, never a
 specification.
 
 **The authoritative regression guard is the host unit test**
-`test_init_programs_sram_wait_state` in `tests/test_ra8_cgc.c`, which asserts
+`test_init_programs_sram_wait_state` in `tests/hal/src/test_ra8_cgc.c`, which asserts
 that `ra8_cgc_init` programs `SRAMWTSC.WTEN` at all. This app is the on-silicon
 corroboration, and it keeps that role only for as long as `.bss` does not shift
 the GWCA block out of the marginal page.

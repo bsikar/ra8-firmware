@@ -6,7 +6,7 @@
 Emits a pure 7-bit-ASCII C header (comic_large_fixture.h) holding one CBZ with a
 single deliberately-large grayscale PNG page. Decoded at full resolution the page
 far exceeds the app's whole-decode arena, so the reader cannot open it that way;
-it exercises the tile path (ra8_comic_tiles -> JOF atlas -> ra8_tile_cache)
+it exercises the tile path (comic_tiles -> JOF atlas -> ra8_tile_cache)
 instead. The art is flat-shaded horizontal bands plus a frame and a left gutter,
 so it DEFLATEs to a few hundred bytes and the baked array stays tiny on disk
 while the decoded image is multiple megabytes.
@@ -16,7 +16,7 @@ app prints is identical on host, ra8_emulator, and silicon.
 
 Usage:
   python3 scripts/gen/gen_comic_large_fixture.py \
-      examples/ek_ra8d2/hw_pending/ereader_comic/comic_large_fixture.h
+      examples/ek_ra8d2/hw_pending/ereader_comic/inc/comic_large_fixture.h
 """
 
 from __future__ import annotations
@@ -33,6 +33,15 @@ PAGE_H = 1400
 
 PNG_BIT_DEPTH_8 = 8
 PNG_COLOR_GRAY = 0
+DEFAULT_OUTPUT = (
+    Path(__file__).resolve().parents[2]
+    / "examples"
+    / "ek_ra8d2"
+    / "hw_pending"
+    / "ereader_comic"
+    / "inc"
+    / "comic_large_fixture.h"
+)
 ZIP_LOCAL_MAGIC = 0x04034B50
 ZIP_CENTRAL_MAGIC = 0x02014B50
 ZIP_EOCD_MAGIC = 0x06054B50
@@ -160,7 +169,7 @@ def emit_header(path: str | Path, cbz: bytes) -> None:
         " *\n"
         f" * @details A miniz-decodable ZIP of one {PAGE_W}x{PAGE_H} grayscale PNG page whose\n"
         " *          decoded size far exceeds the reader's whole-decode arena, so it can only\n"
-        " *          be opened through the JOF tile path (ra8_comic_tiles). Flat-shaded art\n"
+        " *          be opened through the JOF tile path (comic_tiles). Flat-shaded art\n"
         " *          keeps the baked array tiny while the decoded image is multiple MiB.\n"
         " *\n"
         " * @copyright Copyright (c) 2026 Brighton Sikarskie\n"
@@ -197,7 +206,7 @@ def emit_header(path: str | Path, cbz: bytes) -> None:
 
 def main() -> None:
     """Render the oversized page, pack it into a CBZ, write the C header."""
-    out = sys.argv[1] if len(sys.argv) > 1 else "comic_large_fixture.h"
+    out = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_OUTPUT
     cbz = build_cbz(encode_png(render_page()))
     emit_header(out, cbz)
     sys.stderr.write(f"wrote {out} ({len(cbz)} bytes CBZ, {PAGE_W}x{PAGE_H})\n")

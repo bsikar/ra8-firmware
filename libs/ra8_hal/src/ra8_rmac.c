@@ -496,7 +496,9 @@ ra8_err_t ra8_rmac_init(ra8_rmac_port_t port, const ra8_rmac_config_t* cfg)
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_eswm);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "rmac_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "rmac_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   volatile r_rmac_regs_t* reg = ra8_rmac(port);
   internal_program_mac_config(reg, cfg);
@@ -821,13 +823,13 @@ ra8_err_t ra8_rmac_mdio_c22_read(ra8_rmac_port_t port,
   /* Pre-wait: a write to MPSM while PSME=1 has no effect (HUM Note 2). */
   const ra8_err_t drain_err = internal_mdio_drain(reg);
   if (drain_err != k_ra8_ok) {
-    ra8_log_error(s_tag, "mdio_c22_read: pre-drain timeout"); /* GCOVR_EXCL_BR_LINE */
+    ra8_log_error(s_tag, "mdio_c22_read: pre-drain timeout");
     return drain_err;
   }
   internal_mpsm_issue(reg, phy_addr, reg_addr, k_ra8_rmac_mdio_op_c22_read, 0U, false);
   const ra8_err_t wait_err = internal_mdio_wait(reg, k_ra8_rmac_mmis1_pracs);
   if (wait_err != k_ra8_ok) {
-    ra8_log_error(s_tag, "mdio_c22_read: timeout"); /* GCOVR_EXCL_BR_LINE */
+    ra8_log_error(s_tag, "mdio_c22_read: timeout"); /* GCOVR_EXCL_BR_LINE -- MDIO status no stuck */
     return wait_err;
   }
   /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
@@ -847,7 +849,7 @@ ra8_rmac_mdio_c22_write(ra8_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr
   /* Pre-wait: a write to MPSM while PSME=1 has no effect (HUM Note 2). */
   const ra8_err_t drain_err = internal_mdio_drain(reg);
   if (drain_err != k_ra8_ok) {
-    ra8_log_error(s_tag, "mdio_c22_write: pre-drain timeout"); /* GCOVR_EXCL_BR_LINE */
+    ra8_log_error(s_tag, "mdio_c22_write: pre-drain timeout");
     return drain_err;
   }
   internal_mpsm_issue(reg, phy_addr, reg_addr, k_ra8_rmac_mdio_op_c22_write, value, false);
@@ -870,25 +872,25 @@ ra8_err_t ra8_rmac_mdio_c45_read(ra8_rmac_port_t port,
   /* C45 step 1: address frame loads the 16-bit MMD register address. */
   ra8_err_t err = internal_mdio_drain(reg);
   if (err != k_ra8_ok) {
-    ra8_log_error(s_tag, "mdio_c45_read: addr pre-drain timeout"); /* GCOVR_EXCL_BR_LINE */
+    ra8_log_error(s_tag, "mdio_c45_read: addr pre-drain timeout"); /* GCOVR_EXCL_BR_LINE -- stuck */
     return err;
   }
   internal_mpsm_issue(reg, phy_addr, dev_addr, k_ra8_rmac_mdio_op_c45_address, reg_addr, true);
   err = internal_mdio_wait(reg, k_ra8_rmac_mmis1_paacs);
   if (err != k_ra8_ok) {
-    ra8_log_error(s_tag, "mdio_c45_read: address timeout"); /* GCOVR_EXCL_BR_LINE */
+    ra8_log_error(s_tag, "mdio_c45_read: address timeout"); /* GCOVR_EXCL_BR_LINE -- MDIO timeout */
     return err;
   }
   /* C45 step 2: read frame fetches the 16-bit data. */
   err = internal_mdio_drain(reg);
   if (err != k_ra8_ok) {
-    ra8_log_error(s_tag, "mdio_c45_read: read pre-drain timeout"); /* GCOVR_EXCL_BR_LINE */
+    ra8_log_error(s_tag, "mdio_c45_read: read pre-drain timeout");
     return err;
   }
   internal_mpsm_issue(reg, phy_addr, dev_addr, k_ra8_rmac_mdio_op_c45_read, 0U, true);
   err = internal_mdio_wait(reg, k_ra8_rmac_mmis1_pracs);
   if (err != k_ra8_ok) {
-    ra8_log_error(s_tag, "mdio_c45_read: read timeout"); /* GCOVR_EXCL_BR_LINE */
+    ra8_log_error(s_tag, "mdio_c45_read: read timeout"); /* GCOVR_EXCL_BR_LINE -- no stuck-status */
     return err;
   }
   /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
@@ -911,18 +913,18 @@ ra8_err_t ra8_rmac_mdio_c45_write(ra8_rmac_port_t port,
   /* Address frame followed by write frame -- both must complete. */
   ra8_err_t err = internal_mdio_drain(reg);
   if (err != k_ra8_ok) {
-    ra8_log_error(s_tag, "mdio_c45_write: addr pre-drain timeout"); /* GCOVR_EXCL_BR_LINE */
+    ra8_log_error(s_tag, "mdio_c45_write: addr pre-drain timeout"); /* GCOVR_EXCL_BR_LINE -- MDIO */
     return err;
   }
   internal_mpsm_issue(reg, phy_addr, dev_addr, k_ra8_rmac_mdio_op_c45_address, reg_addr, true);
   err = internal_mdio_wait(reg, k_ra8_rmac_mmis1_paacs);
   if (err != k_ra8_ok) {
-    ra8_log_error(s_tag, "mdio_c45_write: address timeout"); /* GCOVR_EXCL_BR_LINE */
+    ra8_log_error(s_tag, "mdio_c45_write: address timeout"); /* GCOVR_EXCL_BR_LINE -- timeout */
     return err;
   }
   err = internal_mdio_drain(reg);
   if (err != k_ra8_ok) {
-    ra8_log_error(s_tag, "mdio_c45_write: write pre-drain timeout"); /* GCOVR_EXCL_BR_LINE */
+    ra8_log_error(s_tag, "write pre-drain timeout"); /* GCOVR_EXCL_BR_LINE -- MDIO never stalls */
     return err;
   }
   internal_mpsm_issue(reg, phy_addr, dev_addr, k_ra8_rmac_mdio_op_c45_write, value, true);

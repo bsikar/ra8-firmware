@@ -39,13 +39,16 @@ jobs:
       # version AND sha256 in the env block above, so fetching it here keeps
       # the pin and the check that enforces it in the same file. Baking it in
       # would put the pin two rebuilds away from the workflow that asserts it.
-      - run: bash scripts/ci.sh --gate osv-scan
+      - run: just quality::local::gate osv-scan
       - name: Upload JSON reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: osv-scan-report
           path: osv-report/
+          # A preflight/download failure occurs before osv_scan.sh creates the
+          # report directory; keep the gate's original diagnosis as the job
+          # failure instead of replacing it with an upload-action failure.
           if-no-files-found: ignore
 
   soup-upstream-refresh:
@@ -57,5 +60,7 @@ jobs:
       # manifests are a snapshot of what twenty-odd projects published on the
       # day they were fetched, and a moved tag or a rewritten history changes
       # that without touching this repository. The per-push soup-upstream gate
-      # cannot see any of it. Writes nothing -- it reports, it does not adopt.
-      - run: bash scripts/ci.sh --gate soup-upstream-refresh
+      # cannot see any of it. This also applies and reverses the C6 patch
+      # against its exact fetched pin without building or contacting hardware.
+      # Writes nothing -- it reports, it does not adopt.
+      - run: just quality::local::gate soup-upstream-refresh

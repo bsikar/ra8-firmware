@@ -3,7 +3,7 @@
 **Magic:** `NPU1` (`0x3155504E`) &nbsp;|&nbsp;
 **Library:** `libs/ra8_hal` &nbsp;|&nbsp;
 **Extension:** `.npub` &nbsp;|&nbsp;
-**Producer:** `tools/vela/vela_gen.py` &nbsp;|&nbsp;
+**Producer:** `tools/vela/src/vela_gen.py` &nbsp;|&nbsp;
 **Applies to:** RA8P1 (RA8D2 + Ethos-U55 NPU)
 
 ---
@@ -216,7 +216,7 @@ allow for per-region padding, not merely the sum of the `size` fields.
 
 ## 4. Algorithms
 
-### 4.1 Producing (`tools/vela/vela_gen.py`)
+### 4.1 Producing (`tools/vela/src/vela_gen.py`)
 
 ```
   1. Run Vela on the quantised .tflite for the target accelerator config
@@ -423,7 +423,7 @@ and delete the old path. There is no dual-version loader.
 
 - `ra8_npu_blob.h` -- the format constants and word indices specified here
 - `ra8_npu_loader.h` -- turns a validated blob into an `ra8_npu_job_t`
-- `tools/vela/vela_gen.py` -- the producing tool
+- `tools/vela/src/vela_gen.py` -- the producing tool
 - @ref md_docs_2formats_2ROT1 -- the signed wrapper to use when a model must be
   authentic and not merely uncorrupted
 - @ref md_docs_2formats_2BINARY__FORMATS -- why this magic reads forwards

@@ -177,7 +177,9 @@ def selftest() -> int:
         failures,
     )
     expect(
-        not any(s.startswith("libs/third_party/") for s in scope),
+        not any(
+            s.startswith(("libs/third_party/", "apps/shared_libs/third_party/")) for s in scope
+        ),
         "vendored SOUP stays out of scope",
         failures,
     )
@@ -198,10 +200,11 @@ def main() -> int:
 
     project_version = read_project_version()
 
-    if len(sys.argv) >= 2 and sys.argv[1] == "--all":  # noqa: PLR2004  # argv[1] presence check
+    arguments = sys.argv[1:]
+    if arguments and arguments[0] == "--all":
         paths = collect_repo_paths()
-    elif len(sys.argv) >= 2:  # noqa: PLR2004  # argv[1] presence check
-        paths = [pathlib.Path(p).resolve() for p in sys.argv[1:]]
+    elif arguments:
+        paths = [pathlib.Path(p).resolve() for p in arguments]
     else:
         print("usage: check-since-version.py FILE [FILE ...] | --all", file=sys.stderr)
         return 2

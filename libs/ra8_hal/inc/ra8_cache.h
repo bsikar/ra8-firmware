@@ -132,7 +132,7 @@ ra8_err_t ra8_cache_dcache_clean_by_addr(const void* addr, uint32_t size);
  * @note Not interrupt-safe against concurrent maintenance on the same range.
  * @since 0.1.0
  */
-ra8_err_t ra8_cache_dcache_invalidate_by_addr(void* addr, uint32_t size);
+ra8_err_t ra8_cache_dcache_invalidate_by_addr(const void* addr, uint32_t size);
 
 /**
  * @brief Clean and invalidate the D-cache lines covering a byte range.

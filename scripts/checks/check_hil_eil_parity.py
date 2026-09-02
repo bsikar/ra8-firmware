@@ -75,6 +75,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -303,6 +304,56 @@ def check_unsupported_mode(model: Model) -> list[str]:
     return offenders
 
 
+def selftest() -> int:
+    """Prove parity stays quiet and missing config, drift, and bad mode all fire."""
+    with tempfile.TemporaryDirectory(prefix="hil-eil-parity-selftest-") as raw:
+        root = Path(raw)
+        hil = root / "hil"
+        ra8p1 = root / "ra8p1"
+        (hil / "good").mkdir(parents=True)
+        (hil / "good/hil.conf").write_text("HIL_MODE=uart_scrape\n", encoding="ascii")
+        ra8p1.mkdir()
+        good = Model(hil, hil, ra8p1, ["uart_scrape"], ["good"], [], ["good"])
+        good_findings = (
+            check_missing_conf(good) + check_set_drift(good) + check_unsupported_mode(good)
+        )
+
+        (hil / "missing").mkdir()
+        (hil / "unsupported").mkdir()
+        (hil / "unsupported/hil.conf").write_text("HIL_MODE=usb_only\n", encoding="ascii")
+        bad = Model(
+            hil,
+            root / "different-hil",
+            ra8p1,
+            ["uart_scrape"],
+            ["good", "missing", "unsupported"],
+            [],
+            ["good"],
+        )
+        bad_groups = (
+            check_missing_conf(bad),
+            check_set_drift(bad),
+            check_unsupported_mode(bad),
+        )
+        parsed_modes = _parse_eil_modes(
+            'case "${HIL_MODE:-}" in\n  uart_scrape | alive) : ;;\nesac\n'
+        )
+    cases = (
+        (not good_findings, "matching app set and supported mode stay quiet"),
+        (all(bad_groups), "missing config, root/set drift, and unsupported mode fire"),
+        (parsed_modes == ["uart_scrape", "alive"], "authoritative mode case is parsed"),
+        (_parse_eil_modes("case unrelated in") is None, "missing dispatch fails parsing"),
+    )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"check_hil_eil_parity.py --selftest: {len(failed)} failure(s)", file=sys.stderr)
+        return 1
+    print("check_hil_eil_parity.py --selftest: all cases pass (both directions).")
+    return 0
+
+
 def _print_list(model: Model) -> None:
     print("check_hil_eil_parity.py --list")
     print("-------------------------------------------------------------------")
@@ -359,7 +410,13 @@ def main(argv: list[str]) -> int:
         action="store_true",
         help="enumerate the derived hil/eil sets + modes, then exit 0 (no gating).",
     )
+    parser.add_argument("--selftest", action="store_true", help="run isolated both-direction tests")
     args = parser.parse_args(argv[1:])
+
+    if args.selftest:
+        if args.list:
+            parser.error("--selftest and --list are mutually exclusive")
+        return selftest()
 
     model, errors = build_model()
     if model is None:

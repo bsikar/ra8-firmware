@@ -2,7 +2,8 @@
 # Copyright (c) 2026 Brighton Sikarskie
 ---
 # Deploy the ARC-based CI runner pool onto a k3s node.
-#   ansible-playbook -i inventory/hosts.ini playbooks/ci-runner.yml
+# Operator entry point: `just infra::apply k3s-pve`. The fleet dispatcher runs
+# this after the declared k3s-node prerequisite.
 - name: Deploy the CI runner pool (ARC on k3s)
   hosts: ci_runners
   gather_facts: true

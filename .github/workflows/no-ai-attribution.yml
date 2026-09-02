@@ -40,10 +40,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: bash scripts/ci.sh --gate no-ai-attribution
+      - run: just quality::local::gate no-ai-attribution
 
   commit-messages:
     name: Attribution policy (commit messages)
@@ -62,4 +59,4 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - run: bash scripts/ci.sh --gate no-ai-attribution-commits
+      - run: just quality::local::gate no-ai-attribution-commits

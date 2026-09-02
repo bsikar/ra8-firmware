@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """misra_ratchet.py -- MISRA-C 2012 ratchet gate (compare vs committed baseline).
 
-`scripts/checks/misra_check_inner.sh` (make misra) runs cppcheck + the bundled
+`scripts/checks/misra_check_inner.sh` runs cppcheck + the bundled
 misra.py addon and writes one finding per line to `build/misra/results.txt`.
 Until now that audit was advisory-only: no CI job consumed it, so the
 finding count could only grow (issue #240). This script turns the audit
@@ -12,8 +12,8 @@ into a one-way ratchet against a committed baseline:
 * NEW findings (any per-file-per-rule count above the baseline, or any
   file/rule pair absent from the baseline) FAIL the gate.
 * Shrinkage (findings burned down) PASSES with a notice to re-baseline via
-  `make misra-baseline`, which locks the progress in so the debt can never
-  quietly grow back.
+  `just quality::local::misra_baseline`, which locks the progress in so the
+  debt can never quietly grow back.
 
 Baseline normalization -- per-file-per-rule COUNTS, not raw finding lines:
 raw misra.py findings carry line numbers, which churn on every unrelated
@@ -49,6 +49,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import tempfile
 from collections import Counter
 from pathlib import Path
 
@@ -64,6 +65,21 @@ RESULTS_COLUMNS = 5
 
 BASELINE_COLUMNS = 3
 """Column count of one baseline row: file, rule, count."""
+
+
+MIGRATION_PROVENANCE_HEADER = (
+    "# 2026-08-23 migration-scope audit (#786/#790):",
+    "# The prior baseline was last refreshed at 6917906371. Exact Cppcheck 2.13.0",
+    "# producer proof: 6fec41c7142 had 23,912 findings; 6bb5779471b had 22,097.",
+    "# Normalizing 1,978 renames back to 6917906371 attributes the +1,121 net change:",
+    "# +1,500 pre-existing findings in 115 repo-root tests moved under apps/; +36",
+    "# findings in new alphabet_soup code already reviewed under active deviations",
+    "# D-001 (Rule 15.5: 35) and D-010 (Rule 11.5: 1); and -415 findings burned down",
+    "# in comparable pre-existing (file, rule) buckets. Zero comparable old",
+    "# (file, rule) buckets grew. Full ownership and compensating controls:",
+    "# docs/qualification/MISRA_DEVIATIONS.md.",
+)
+"""Audited migration provenance that every regenerated baseline must retain."""
 
 
 def cppcheck_version() -> str:
@@ -127,10 +143,11 @@ def write_baseline(path: Path, counts: Counter[tuple[str, str]]) -> None:
         "# MISRA-C 2012 ratchet baseline -- per-file-per-rule finding counts.",
         "# Consumed by scripts/checks/misra_ratchet.py --check (CI job: misra).",
         "# Regenerate ON THE CI-PINNED CPPCHECK (self-hosted runner / dev box):",
-        "#   make misra-baseline",
+        "#   just quality::local::misra_baseline",
         "# and commit the result. Never regenerate to absorb NEW findings --",
         "# fix those at the root or record a deviation in",
         "# docs/qualification/MISRA_DEVIATIONS.md first.",
+        *MIGRATION_PROVENANCE_HEADER,
         f"# cppcheck: {cppcheck_version()}",
         f"# total findings: {total}",
         "# columns: file<TAB>rule<TAB>count",
@@ -155,7 +172,7 @@ def report_regressions(
         "justification comment; if it is a formally accepted deviation,\n"
         "record it in docs/qualification/MISRA_DEVIATIONS.md. Only after\n"
         "one of those dispositions may the baseline be regenerated\n"
-        "(make misra-baseline, on the CI-pinned cppcheck)."
+        "(`just quality::local::misra_baseline`, on the CI-pinned cppcheck)."
     )
 
 
@@ -170,9 +187,22 @@ def find_regressions(
     ]
 
 
+def find_missing_baseline_files(
+    baseline: Counter[tuple[str, str]], existing_files: set[str]
+) -> list[str]:
+    """Return baseline paths that no longer name a real repository file.
+
+    A deleted or moved bucket is otherwise indistinguishable from burn-down:
+    no current finding can exceed it, so stale debt silently stays available
+    forever. Requiring an exact live path makes moves update their provenance
+    without changing the frozen per-rule counts.
+    """
+    return sorted({fname for fname, _rule in baseline if fname not in existing_files})
+
+
 def selftest() -> int:
     """Prove the count ratchet fires on growth and stays quiet on burn-down."""
-    key = ("apps/shared/media_dl/src/mdl_fetch.c", "misra-c2012-15.5")
+    key = ("apps/shared_libs/mdl/src/mdl_fetch.c", "misra-c2012-15.5")
     new_key = ("tools/new_tool.c", "misra-c2012-17.3")
     baseline = Counter({key: 2})
     cases = [
@@ -186,11 +216,25 @@ def selftest() -> int:
         for name, current, should_fire in cases
         if bool(find_regressions(current, baseline)) != should_fire
     ]
+    stale = Counter({("moved.c", "misra-c2012-1.1"): 1})
+    if find_missing_baseline_files(stale, {"live.c"}) != ["moved.c"]:
+        failures.append("a stale baseline path fires")
+    if find_missing_baseline_files(stale, {"moved.c"}):
+        failures.append("a live baseline path stays quiet")
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        generated = Path(tmp_dir) / "misra-baseline.txt"
+        write_baseline(generated, baseline)
+        expected = "\n".join(MIGRATION_PROVENANCE_HEADER) + "\n"
+        if expected not in generated.read_text(encoding="utf-8"):
+            failures.append("baseline regeneration preserves migration provenance")
     if failures:
         for name in failures:
             print(f"misra_ratchet.py --selftest: FAIL: {name}", file=sys.stderr)
         return 1
-    print(f"misra_ratchet.py --selftest: PASS ({len(cases)} both-direction cases)")
+    print(
+        f"misra_ratchet.py --selftest: PASS ({len(cases) + 2} both-direction cases; "
+        "1 provenance assertion)"
+    )
     return 0
 
 
@@ -199,10 +243,22 @@ def check(counts: Counter[tuple[str, str]], details: dict[tuple[str, str], list[
     if not BASELINE_FILE.is_file():
         print(
             f"misra_ratchet.py: ERROR -- baseline {BASELINE_FILE} missing; "
-            f"generate it with `make misra-baseline` and commit it."
+            f"generate it with `just quality::local::misra_baseline` and commit it."
         )
         return 1
     baseline, base_version = load_baseline(BASELINE_FILE)
+
+    baseline_files = {fname for fname, _rule in baseline}
+    existing_files = {fname for fname in baseline_files if (REPO_ROOT / fname).is_file()}
+    missing_files = find_missing_baseline_files(baseline, existing_files)
+    if missing_files:
+        print(
+            f"misra_ratchet.py: FAIL -- {len(missing_files)} baseline file(s) "
+            "no longer exist; migrate or remove their frozen buckets:"
+        )
+        for fname in missing_files:
+            print(f"  {fname}")
+        return 1
 
     current_version = cppcheck_version()
     if current_version != base_version:
@@ -227,7 +283,8 @@ def check(counts: Counter[tuple[str, str]], details: dict[tuple[str, str], list[
         print(
             f"misra_ratchet.py: PASS -- no new findings, and {shrunk} baseline "
             f"finding(s) were burned down ({base_total} -> {cur_total}). Lock the "
-            f"progress in: run `make misra-baseline` on the CI-pinned cppcheck "
+            f"progress in: run `just quality::local::misra_baseline` on the "
+            f"CI-pinned cppcheck "
             f"and commit the shrunken .github/misra-baseline.txt."
         )
     else:

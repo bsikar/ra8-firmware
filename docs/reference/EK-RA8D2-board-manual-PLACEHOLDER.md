@@ -38,31 +38,33 @@ explicitly marked "UNCONFIRMED".
 
 ## Index of pending pin-mux confirmations
 
-Re-generate via:
+This table is a manually curated closure record, not generated output: most
+rows are resolved and their markers are gone, so no grep reproduces it. The
+markers still outstanding in the tree are found with:
 
 ```
-grep -rn "TODO: confirm" examples/ libs/
+grep -rnE "TODO: confirm|TODO\\(board-rev\\)" examples/ libs/
 ```
 
 | File:line | Subsystem | Firmware-guessed pin | Manual-confirmed pin | Status |
 |-----------|-----------|----------------------|----------------------|--------|
-| `examples/_unsupported/audio_loopback/main.c:109`      | SSI / I2S audio CODEC (DA7212 U14) | P5_00..P5_04        | See "Audio CODEC" below; actual pins are P403/P404/P405/P406/PD06/P511/P512 (Table 32 of UM)        | RESOLVED -- firmware guess WRONG, fix needed |
-| `examples/_unsupported/audio_loopback/README.md:38-42` | SSI / I2S audio CODEC              | AUDIO_MCK on P5_00 etc. | MCLK = PD06, BCLK = P403, WCLK = P404, DATIN = P405, DATOUT = P406, I2C SDA = P511, SCL = P512 (UM Table 32) | RESOLVED |
-| `examples/ek_ra8d2/hw_pending/lcd_demo/main.c:71`             | GLCDC parallel TFT pin table       | unspecified J57     | Connector is **J1** (Parallel Graphics Expansion Port), pins per UM Table 33 -- see "GLCDC" below   | RESOLVED at connector level; per-pin PSEL still UNCONFIRMED for some entries |
-| `examples/ek_ra8d2/hw_pending/lcd_demo/main.c:253`            | GLCDC connector reference          | J57                 | Correct connector is **J1**, not J57                                                                | RESOLVED -- firmware label WRONG |
-| `examples/ek_ra8d2/hw_pending/lcd_demo/README.md:53`          | GLCDC pin table                    | every entry         | Use UM Table 33 directly                                                                            | RESOLVED |
-| `examples/ek_ra8d2/hw_pending/ereader/main.c:273`             | GLCDC parallel TFT (shared)        | J57                 | Same as `lcd_demo` -- J1 + Table 33                                                                 | RESOLVED |
-| `examples/ek_ra8d2/hw_pending/ereader/main.c:328`             | SDHI SD-card pin table             | unspecified         | **EK-RA8D2 v1 has NO microSD socket.** SDHI is not exposed on this board.                           | RESOLVED -- example code targets a non-existent peripheral; needs design decision |
-| `examples/ek_ra8d2/hw_pending/ereader/main.c:77`              | GLCDC bring-up call sites          | n/a                 | Same as above                                                                                       | RESOLVED |
-| `examples/ek_ra8d2/hw_pending/ereader/power.h`                | ICU buttons SW1/SW2                | SW1 -> IRQ11, SW2 -> IRQ12 | **SW1 -> P009 / IRQ13-DS, SW2 -> P008 / IRQ12-DS** (UM Table 25, Section 5.5.2)              | RESOLVED -- SW1 mapping in firmware is WRONG (IRQ11 -> IRQ13) |
-| `examples/_unsupported/motor_3phase/main.c:146`        | GPT0/GPT1/GPT2 GTIOCxA outputs     | P4_08 / P4_09 / P4_10 | **WRONG pins.** P408/P409/P410 are routed to the on-board J-Link debug MCU as UART pins (UM Section 5.4 / Pmod table). The EK-RA8D2 publicly exposes GTIOC1A on P105 and GTIOC2A on P103 via the Arduino Uno header (UM Table 20). GTIOC0A is not brought out on any documented header. | UNCONFIRMED -- needs design decision: either use P103/P105 (and drop GTIOC0A), or run motor_3phase off Pmod GTIOC pins (P810/P811 = GTIOC10A/B per UM Table 21) |
-| `examples/_unsupported/motor_3phase/README.md:46-48`   | Same as above                      | P4_08 / P4_09 / P4_10 | Same as above                                                                                       | UNCONFIRMED |
+| `examples/_unsupported/audio_loopback/src/main.c` (`internal_audio_pins`) | SSI / I2S audio CODEC (DA7212 U14) | P5_00..P5_04 | See "Audio CODEC" below; actual pins are P403/P404/P405/P406/PD06/P511/P512 (Table 32 of UM) | RESOLVED -- the firmware now uses the confirmed pins |
+| `examples/_unsupported/audio_loopback/README.md` ("Pin assignments") | SSI / I2S audio CODEC | AUDIO_MCK on P5_00 etc. | MCLK = PD06, BCLK = P403, WCLK = P404, DATIN = P405, DATOUT = P406, I2C SDA = P511, SCL = P512 (UM Table 32) | RESOLVED |
+| `examples/ek_ra8d2/hw_validated/manual/lcd_color_cycle/`      | GLCDC parallel TFT pin table       | unspecified J57     | Connector is **J1** (Parallel Graphics Expansion Port), pins per UM Table 33 -- see "GLCDC" below   | RESOLVED in the renamed validated app; per-pin PSEL still UNCONFIRMED for some entries |
+| `examples/ek_ra8d2/hw_validated/manual/lcd_color_cycle/`      | GLCDC connector reference          | J57                 | Correct connector is **J1**, not J57                                                                | RESOLVED -- stale label removed during the validated-app rewrite |
+| `examples/ek_ra8d2/hw_validated/manual/lcd_color_cycle/README.md` | GLCDC pin table                 | every entry         | Use UM Table 33 directly                                                                            | RESOLVED |
+| Retired pre-migration e-reader demo; replacement: `apps/board/stand_alone/ereader/` | GLCDC parallel TFT (shared) | J57 | Same board correction -- J1 + Table 33 | Historical finding; old demo removed |
+| Retired pre-migration e-reader demo; replacement: `apps/board/stand_alone/ereader/` | SDHI SD-card pin table | unspecified | **EK-RA8D2 v1 has NO microSD socket.** SDHI is not exposed on this board. | Historical finding; old demo removed |
+| Retired pre-migration e-reader demo; replacement: `apps/board/stand_alone/ereader/` | GLCDC bring-up call sites | n/a | Same as above | Historical finding; old demo removed |
+| Retired pre-migration e-reader demo; replacement: `apps/board/stand_alone/ereader/` | ICU buttons SW1/SW2 | SW1 -> IRQ11, SW2 -> IRQ12 | **SW1 -> P009 / IRQ13-DS, SW2 -> P008 / IRQ12-DS** (UM Table 25, Section 5.5.2) | Historical finding; old demo removed |
+| `examples/_unsupported/motor_3phase/src/main.c` (`s_motor_3phase_pin_u/v/w`) | GPT0/GPT1/GPT2 GTIOCxA outputs     | P4_08 / P4_09 / P4_10 | **WRONG pins.** P408/P409/P410 are routed to the on-board J-Link debug MCU as UART pins (UM Section 5.4 / Pmod table). The EK-RA8D2 publicly exposes GTIOC1A on P105 and GTIOC2A on P103 via the Arduino Uno header (UM Table 20). GTIOC0A is not brought out on any documented header. | UNCONFIRMED -- needs design decision: either use P103/P105 (and drop GTIOC0A), or run motor_3phase off Pmod GTIOC pins (P810/P811 = GTIOC10A/B per UM Table 21) |
+| `examples/_unsupported/motor_3phase/README.md` ("Pin assignments") | Same as above                      | P4_08 / P4_09 / P4_10 | Same as above                                                                                       | UNCONFIRMED |
 
 ## Audio CODEC pins (UM Table 32, Page 38) -- AUTHORITATIVE
 
 The audio CODEC is a DA7212 (U14) wired to the RA8D2 via SSIE / I2S
-plus an I2C control link. Firmware currently guesses `P5_00..P5_04`;
-the actual wiring is:
+plus an I2C control link. The firmware previously guessed `P5_00..P5_04`;
+the actual wiring, now implemented, is:
 
 | CODEC pin | Function       | RA8D2 signal |
 |-----------|---------------|--------------|
@@ -80,7 +82,7 @@ not be in use simultaneously.
 
 PSEL values (PFS PSEL bitfield) for these pins are NOT in the board
 manual -- they are in the chip Hardware User's Manual
-(`r01uh1065ej0130-ra8d2.pdf`) under "I/O Ports". Look up each pin's
+(`ra8d2-hardware-user-manual.pdf`) under "I/O Ports". Look up each pin's
 SSIE/I2C alternate function and write the PSEL accordingly. Until
 that walk is done, mark the PSEL value itself as
 "UNCONFIRMED -- needs HW UM cross-check".
@@ -113,11 +115,11 @@ values per pin are in the chip HW UM, not the board UM.
 ## SD-card / SDHI -- NOT POPULATED on EK-RA8D2 v1
 
 `grep -i 'SDHI\|microSD\|SD card'` over the EK-RA8D2 v1 User's Manual
-returns zero hits. The board does not expose SDHI. `examples/ek_ra8d2/hw_pending/ereader`
-SDHI bring-up is therefore for an external add-on board not described
-by the EK-RA8D2 v1 manual; it cannot be confirmed against this manual
-and should be deferred or moved to an example that targets the Pmod /
-Arduino interface plus an external SD breakout.
+returns zero hits. The board does not expose SDHI. The retired pre-migration
+e-reader demo's SDHI bring-up therefore required an external add-on board not
+described by the EK-RA8D2 v1 manual. The current
+`apps/board/stand_alone/ereader/` app must keep any removable-storage path
+explicitly bound to documented external hardware.
 
 ## User switches (UM Table 25, Page 31) -- AUTHORITATIVE
 

@@ -32,5 +32,5 @@ ra8_add_app(
   NAME ereader_link
   STACK_BYTES 16384
   DESCRIPTION "Headless <a href> hit-test + resolve + anchor nav -> banner over UART (#110 HIL)"
-  LIBS ra8_gfx ra8_reflow ra8_board_ek_ra8d2
+  LIBS ra8_gfx reflow ra8_board_ek_ra8d2
 )

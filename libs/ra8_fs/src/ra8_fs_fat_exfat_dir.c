@@ -576,8 +576,8 @@ internal_exfat_dir_is_empty(const ra8_fs_mount_t* m, const exfat_dir_t* dir, uin
     *out_empty = 0U;
     return k_ra8_ok;
   }
-  *out_empty = 1U; /* GCOVR_EXCL_LINE -- k_exfat_scan_limit (65536) entries required */
-  return k_ra8_ok; /* GCOVR_EXCL_LINE                                                */
+  *out_empty = 1U;
+  return k_ra8_ok;
 }
 
 /**

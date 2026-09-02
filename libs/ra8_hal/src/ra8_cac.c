@@ -25,6 +25,7 @@
 #include "ra8_cac_regs.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_err.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 
@@ -81,8 +82,15 @@ typedef enum : uint8_t {
  */
 RA8_INTERNAL static inline void internal_cac_wait_cfme(volatile r_cac_regs_t* reg, uint8_t expect)
 {
-  for (uint32_t i = 0U; i < k_ra8_cac_cfme_settle_iters; i++) { /* GCOVR_EXCL_BR_LINE */
-    if (reg->CACR0 == expect) {                                 /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_cac_cfme_settle_iters; i++) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    /* HUM Ch 10.2.1 "CACR0 : CAC Control Register 0" p 421 */
+    const bool settled = ra8_fake_mmio_poll(&reg->CACR0, i, reg->CACR0 == expect);
+#else
+    /* HUM Ch 10.2.1 "CACR0 : CAC Control Register 0" p 421 */
+    const bool settled = reg->CACR0 == expect;
+#endif
+    if (settled) {
       return;
     }
   }
@@ -92,7 +100,7 @@ ra8_err_t ra8_cac_init(uint16_t upper, uint16_t lower)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_cac);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "cac_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "cac_init: mstp enable");
 
   volatile r_cac_regs_t* reg = ra8_cac();
   /* HUM Ch 10.2.1 "CACR0 : CAC Control Register 0" p 421 -- CFME must be
@@ -127,9 +135,9 @@ ra8_err_t ra8_cac_measure(uint16_t* out_count)
   reg->CACR0             = cfme_set;
   internal_cac_wait_cfme(reg, cfme_set);
 
-  for (uint32_t i = 0U; i < k_ra8_cac_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_cac_poll_limit; i++) {
     /* HUM Ch 10.2.5 "CASTR : CAC Status Register" p 425 */
-    if ((reg->CASTR & (uint8_t)(1U << k_ra8_castr_mendf)) != 0U) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->CASTR & (uint8_t)(1U << k_ra8_castr_mendf)) != 0U) {
       /* HUM Ch 10.2.8 "CACNTBR : CAC Counter Buffer Register" p 426 */
       *out_count = reg->CACNTBR;
       reg->CACR0 = 0U;

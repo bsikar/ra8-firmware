@@ -1,9 +1,9 @@
 # sd_font_render
 
 Loads a TTF/OTF font off an SD card and renders a paragraph of XHTML with
-`ra8_reflow` into the GLCDC framebuffer -- the firmware promotion of the host
-test `tests/test_ra8_sdmmc_card_reflow.c`, running the same
-SD -> `ra8_fs` -> `ra8_reflow` -> `ra8_gfx` -> GLCDC pipeline as a real RA8D2
+`reflow` into the GLCDC framebuffer -- the firmware promotion of the host
+test `apps/shared_libs/reflow/tests/src/test_ra8_sdmmc_card_reflow.c`, running the same
+SD -> `ra8_fs` -> `reflow` -> `ra8_gfx` -> GLCDC pipeline as a real RA8D2
 binary.
 
 The e-reader needs its fonts in storage rather than baked into flash, and #44

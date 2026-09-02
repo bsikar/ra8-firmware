@@ -82,7 +82,7 @@ function(ra8_target_enable_project_warnings target)
   # STACK_USAGE_BYTES 0 disables the compile-time stack gate. The host
   # unit-test build uses this: the host (x86_64 / arm64) ABI inflates
   # frames well past the Cortex-M85 budget, so -Wstack-usage=N there is a
-  # false-positive generator (e.g. ra8_book / ra8_reflow XML walkers). The
+  # false-positive generator (e.g. book / reflow XML walkers). The
   # real target stack budget is enforced by the firmware build, which
   # passes its per-app STACK_USAGE_BYTES, plus the .su aggregation in
   # scripts/checks/stack_usage_check.py over the ARM `.su` files.
@@ -92,4 +92,25 @@ function(ra8_target_enable_project_warnings target)
                         $<$<COMPILE_LANG_AND_ID:C,GNU>:-fstack-usage>
     )
   endif()
+endfunction()
+
+# Reject warning demotions applied to an entire first-party target.
+#
+# A vendored translation unit may need a measured -Wno-<class> exception,
+# but that exception belongs on the SOURCE COMPILE_OPTIONS property. Applying
+# -Wno-error globally to a mixed app target also demotes the same diagnostic
+# in every first-party source compiled into that ELF.
+function(ra8_target_reject_warning_demotions target)
+  get_target_property(_ra8_target_options ${target} COMPILE_OPTIONS)
+  if(NOT _ra8_target_options)
+    return()
+  endif()
+
+  foreach(_ra8_option IN LISTS _ra8_target_options)
+    if(_ra8_option MATCHES "(^|:)-Wno-error($|[=>])")
+      message(FATAL_ERROR "${target}: target-wide warning demotion '${_ra8_option}' is forbidden; "
+                          "put a measured exception on the vendored SOURCE instead"
+      )
+    endif()
+  endforeach()
 endfunction()

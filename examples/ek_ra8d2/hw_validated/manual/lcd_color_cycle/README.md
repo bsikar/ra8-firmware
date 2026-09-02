@@ -22,7 +22,7 @@ Every later LCD app inherits these through the HAL.
    internally so callers do not have to.
 
 The GLCDC pin set, plus the panel reset and backlight lines, is listed in
-`main.c`. The authority for it is EK-RA8D2 v1 UM Table 33 "Parallel Graphics
+`src/main.c`. The authority for it is EK-RA8D2 v1 UM Table 33 "Parallel Graphics
 Expansion Port Pin Assignments" p 42, and the controller is HUM Ch 63 "Graphics
 LCD Controller (GLCDC)". The PLL1R/4 + DCDR /2 pixel clock that finally brought
 the controller out of reset came from the LVGL EK-RA8D2 reference project.

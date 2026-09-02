@@ -25,7 +25,7 @@ that literally encodes the wording).
 
 Scope is DERIVED from ``git ls-files`` via ``lint_targets.first_party_paths``
 rather than a hardcoded root list, so a new top-level directory (``tools/``,
-``coprocessor/``, ``infra/`` and ``mk/`` were the ones the old list silently
+``coprocessor/``, ``infra/`` and ``just/`` were the ones the old list silently
 omitted, #549) is covered the day it lands. ``--selftest`` proves the detector
 fires and stays quiet, and that the derived scope clears its floor.
 
@@ -64,11 +64,12 @@ SCAN_EXTS: frozenset[str] = frozenset(
         ".py",
         ".txt",
         ".mk",
+        ".just",
     }
 )
 
 SCAN_BASENAMES: frozenset[str] = frozenset(
-    {"Makefile", "Dockerfile", "CMakeLists.txt", "GNUmakefile"}
+    {"justfile", "Dockerfile", "CMakeLists.txt", "GNUmakefile", "Justfile"}
 )
 
 # Vendored / generated docs content that is not ours to police: committed
@@ -114,7 +115,7 @@ def iter_source_files(root: Path) -> list[Path]:
 
     Enumeration goes through ``lint_targets.first_party_paths`` -- the shared
     derived-scope primitive -- so ``tools/``, ``coprocessor/``, ``infra/`` and
-    ``mk/`` (the roots a hardcoded list silently dropped, #549) are covered. The
+    ``just/`` (the roots a hardcoded list silently dropped, #549) are covered. The
     only subtractions on top of what that primitive already exempts are the
     docs-side vendored/generated directories in ``DOCS_VENDOR_DIRS``.
     """
@@ -158,7 +159,7 @@ def selftest() -> int:
     Both directions plus a scope probe: the numbered-session pattern must FIRE,
     the legitimate domain uses (``waveform``, ``sine wave``, ``wave_table``)
     must stay QUIET, the derived scope must clear ``FILE_FLOOR``, and it must
-    reach the roots a hardcoded list had dropped (``infra/``, ``mk/``) -- a
+    reach the roots a hardcoded list had dropped (``infra/``, ``just/``) -- a
     clean run over a scope that never sees those roots proves nothing.
 
     Returns:
@@ -183,7 +184,7 @@ def selftest() -> int:
         f"derived scope sees {len(files)} file(s) (floor {FILE_FLOOR})",
         failures,
     )
-    for root_name in ("infra", "mk"):
+    for root_name in ("infra", "just"):
         expect(
             any(rel.startswith(root_name + "/") for rel in rels),
             f"the derived scope reaches {root_name}/ (previously omitted)",

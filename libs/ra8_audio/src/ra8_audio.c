@@ -158,7 +158,7 @@ RA8_INTERNAL static ra8_err_t internal_audio_frame_matches_info(const ra8_audio_
  * @note Not thread-safe; caller serializes access to @p source.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_audio_capture_args_valid(ra8_audio_source_t*       source,
+RA8_INTERNAL static ra8_err_t internal_audio_capture_args_valid(const ra8_audio_source_t* source,
                                                                 const ra8_audio_buffer_t* buffer,
                                                                 ra8_audio_frame_t*        out_frame)
 {

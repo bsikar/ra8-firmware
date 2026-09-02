@@ -3,12 +3,12 @@
  * @brief File-local contracts for the confined POSIX filesystem adapter.
  *
  * @details
- * Declares the adapter's resolver, namespace, and transaction helpers so their
- * complete contracts remain readable without forcing the implementation
- * translation unit beyond the repository size ceiling. This header is private
- * to fw_if_fs_posix.c; the byte-stream operation contracts live beside their
- * own unit in fw_if_fs_posix_stream_contracts_internal.h. Only the shared
- * parent resolver is widened, and only to ::RA8_PRIV within this port.
+ * Declares the adapter's file-local resolver, namespace, and transaction
+ * helpers so their complete contracts remain readable without forcing the
+ * implementation translation unit beyond the repository size ceiling. The
+ * cross-unit ::RA8_PRIV contracts live in fw_if_fs_posix_internal.h; this
+ * header remains private to fw_if_fs_posix.c, beside the byte-stream unit's
+ * corresponding file-local contracts.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -41,24 +41,29 @@
 static ra8_err_t internal_component_copy(const char* start, uint16_t length, char* out);
 
 /**
- * @brief Reject an intermediate symlink before attempting directory open.
- * @details Uses no-follow metadata relative to an owned parent descriptor and
- *          permits only a real directory as the next confinement component.
+ * @brief Validate one directory component without following a symbolic link.
+ * @details Uses no-follow metadata relative to an owned parent descriptor.
+ *          Real directories are accepted without alias traversal. Linux denies
+ *          every symbolic link. Darwin alone may publish a selection for an
+ *          exact, verified filesystem-root `tmp` or `var` alias; every nested,
+ *          absolute-target, or otherwise mismatched link remains denied.
  * @param[in] parent_fd Open descriptor for the confined parent directory.
  * @param[in] component Terminated child component.
+ * @param[out] out_alias Receives a verified alias selection or `none`.
  * @return Intermediate-component validation status.
- * @retval k_ra8_ok The component is a real directory.
- * @retval k_ra8_err_access_denied The component is a symbolic link.
+ * @retval k_ra8_ok The component is a real directory or approved Darwin root alias.
+ * @retval k_ra8_err_access_denied The component is an unapproved symbolic link.
  * @retval k_ra8_err_not_found The component is not a directory.
- * @retval k_ra8_err_* Mapped `fstatat` failure.
+ * @retval k_ra8_err_* Mapped metadata or `readlinkat` failure.
  * @pre @p parent_fd is open and owned by the resolver.
- * @pre @p component is a validated portable path component.
+ * @pre @p component and @p out_alias are non-NULL and @p component is validated.
  * @post No descriptor ownership or filesystem contents change.
- * @post Success permits a subsequent `openat` with `O_NOFOLLOW`.
+ * @post Linux always publishes `none`; Darwin success publishes only a verified strategy.
  * @note Thread-safe subject to host namespace race semantics.
  * @since Version 0.1.0
  */
-static ra8_err_t internal_intermediate_check(int parent_fd, const char* component);
+static ra8_err_t
+internal_intermediate_check(int parent_fd, const char* component, posix_root_alias_t* out_alias);
 
 /**
  * @brief Scan and copy the next slash-delimited component of a cursor.
@@ -83,9 +88,10 @@ static ra8_err_t internal_next_component(const char** cursor, char* out_name, ui
 
 /**
  * @brief Descend into one intermediate path component, retiring the old parent.
- * @details Validates the component is a real non-symlink directory, opens it
- *          no-follow, then closes the descriptor owned on entry -- on every
- *          path, including a failed validation, open, or close.
+ * @details Opens a normal component no-follow, or on Darwin resolves an approved
+ *          filesystem-root alias through its canonical no-follow path, then
+ *          closes the descriptor owned on entry on every return path. Linux
+ *          rejects every symbolic-link component before this descent.
  * @param[in,out] current Owned parent descriptor on entry; replaced with the
  *        newly opened descriptor on success.
  * @param[in] name Terminated intermediate component name.
@@ -100,32 +106,6 @@ static ra8_err_t internal_next_component(const char** cursor, char* out_name, ui
  * @since Version 0.1.0
  */
 static ra8_err_t internal_parent_open_step(int* current, const char* name);
-
-/**
- * @brief Resolve a canonical path's parent without following any symlink.
- * @details Duplicates the bound root and walks each intermediate component with
- *          no-follow stat/open calls, closing each descriptor as ownership moves.
- * @param[in] state Initialized confined-root adapter state.
- * @param[in] path Validated portable path below the bound root.
- * @param[out] out_parent_fd Receives the owned parent directory descriptor.
- * @param[out] out_leaf Receives the terminated final component.
- * @return Resolution status.
- * @retval k_ra8_ok Both parent descriptor and leaf were published.
- * @retval k_ra8_err_access_denied An intermediate component is a symlink.
- * @retval k_ra8_err_not_found An intermediate component is absent or not a directory.
- * @retval k_ra8_err_invalid_size A component or iteration bound is invalid.
- * @retval k_ra8_err_* Mapped descriptor operation failure.
- * @pre Pointer arguments are non-NULL and outputs have advertised capacity.
- * @pre @p path passed portable lexical validation and is not root-only.
- * @post On success caller owns `*out_parent_fd` and `out_leaf` is populated.
- * @post On failure every descriptor opened by this resolver is closed.
- * @note Thread-safe for independent state; host namespace changes can race resolution.
- * @since Version 0.1.0
- */
-RA8_PRIV ra8_err_t priv_fs_posix_parent_open(fw_fs_posix_state_t* state,
-                                             const char*          path,
-                                             int*                 out_parent_fd,
-                                             char*                out_leaf);
 
 /**
  * @brief Convert a POSIX mode into a portable node kind.
@@ -208,99 +188,6 @@ static ra8_err_t internal_stat(void* ctx, const char* path, fw_fs_stat_t* out);
  * @since Version 0.1.0
  */
 static ra8_err_t internal_directory_open(fw_fs_posix_state_t* state, const char* path, int* out_fd);
-
-/**
- * @brief Open a confined raw-directory cursor in caller storage.
- * @details Opens beneath the bound root without following the final leaf and
- *          initializes the fixed raw-record buffer in caller storage.
- * @param[in,out] ctx Bound POSIX adapter context.
- * @param[in] path Validated canonical directory path.
- * @param[out] directory_state Caller-owned cursor workspace.
- * @param[in] state_bytes Accessible workspace extent.
- * @return Confined open or workspace status.
- * @retval k_ra8_ok The workspace owns one directory descriptor.
- * @retval k_ra8_err_* Capacity, confinement, open, or platform failure.
- * @pre Required pointers are non-NULL and @p path passed facade validation.
- * @pre @p state_bytes describes the writable extent at @p directory_state.
- * @post Success owns one directory descriptor in @p directory_state.
- * @post Failure closes every descriptor acquired by this operation.
- * @note No allocator-backed C runtime directory object is used.
- * @since Version 0.1.0
- */
-RA8_PRIV ra8_err_t priv_fs_posix_dir_open(void*       ctx,
-                                          const char* path,
-                                          void*       directory_state,
-                                          uint32_t    state_bytes);
-
-/**
- * @brief Copy the next visible raw-directory entry.
- * @details Decodes bounded native records, skips dot entries, and performs a
- *          no-follow metadata lookup before publishing a stable copied value.
- * @param[in,out] ctx Bound POSIX adapter context.
- * @param[in,out] directory_state Open caller-owned cursor workspace.
- * @param[out] out Stable copied portable entry value.
- * @param[out] out_entry True when @p out contains an entry; false at EOF.
- * @return Raw read, metadata, or validation status.
- * @retval k_ra8_ok One entry was copied or native end was observed.
- * @retval k_ra8_err_* Raw-read, record, metadata, or retry-bound failure.
- * @pre Output and cursor pointers are non-NULL and the cursor owns its descriptor.
- * @pre @p ctx names the same bound root that opened the cursor.
- * @post No lock is retained and borrowed kernel-record bytes never escape.
- * @post Success with @p out_entry true fully initializes @p out.
- * @note Namespace mutation may surface as the exact `fstatat` lookup error.
- * @since Version 0.1.0
- */
-RA8_PRIV ra8_err_t priv_fs_posix_dir_next(void*                 ctx,
-                                          void*                 directory_state,
-                                          fw_fs_dirent_value_t* out,
-                                          bool*                 out_entry);
-
-/**
- * @brief Close one owned raw-directory descriptor.
- * @details Invalidates the stored descriptor before mapping the host close
- *          result, preventing a retry from closing a reused descriptor number.
- * @param[in,out] ctx Bound POSIX adapter context.
- * @param[in,out] directory_state Open caller-owned cursor workspace.
- * @return Mapped descriptor-close status.
- * @retval k_ra8_ok The descriptor closed successfully.
- * @retval k_ra8_err_* Mapped host close failure.
- * @pre @p directory_state is non-NULL and owns a directory descriptor.
- * @pre @p ctx is the bound adapter context associated with the cursor.
- * @post The descriptor field is invalidated even when close reports an error.
- * @post Caller workspace ownership remains with the caller.
- * @note The generic facade consumes its handle on every return.
- * @since Version 0.1.0
- */
-RA8_PRIV ra8_err_t priv_fs_posix_dir_close(void* ctx, void* directory_state);
-
-/**
- * @brief Enumerate a POSIX directory through bounded raw records.
- * @details Opens without symlink traversal, skips dot entries, bounds native
- *          records plus look-ahead, stats each leaf no-follow, and closes always.
- * @param[in,out] ctx Initialized confined-root adapter context.
- * @param[in] path Validated portable directory path.
- * @param[in] max_entries Maximum portable callback deliveries.
- * @param[in] callback Portable directory-entry callback.
- * @param[in,out] callback_ctx Opaque callback state.
- * @param[in,out] out_count Running count initialized by public dispatch.
- * @param[out] out_complete Whether native EOF was observed.
- * @return Enumeration, callback, metadata, or close status.
- * @retval k_ra8_ok Enumeration ended without an error.
- * @retval k_ra8_err_* First confined directory, callback, stat, or close failure.
- * @pre Pointer arguments are non-NULL and public bounds were validated.
- * @pre @p out_count initially contains zero.
- * @post Callback delivery never exceeds @p max_entries.
- * @post The directory descriptor is closed on every return path.
- * @note Not thread-safe with concurrent mutation of the enumerated directory.
- * @since Version 0.1.0
- */
-RA8_PRIV ra8_err_t priv_fs_posix_listdir(void*           ctx,
-                                         const char*     path,
-                                         uint32_t        max_entries,
-                                         fw_fs_list_fn_t callback,
-                                         void*           callback_ctx,
-                                         uint32_t*       out_count,
-                                         bool*           out_complete);
 
 /**
  * @brief Create one confined directory with no implicit parent creation.

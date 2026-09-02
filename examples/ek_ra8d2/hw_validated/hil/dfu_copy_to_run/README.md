@@ -17,6 +17,7 @@ panic halt, which the gate flags as a fault spinner. The bootloader's own gate
 is weaker because it can also pass via the DFU-device fallback; this app always
 copies to run.
 
-`build_payload.sh` regenerates `payload_image.h` from `payload.c`; commit the
-refreshed header whenever the payload changes. The DFU *programming* path that
+`examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/scripts/build_payload.sh`
+regenerates `inc/payload_image.h` from `src/payload.c`; commit the refreshed header
+whenever the payload changes. The DFU *programming* path that
 fills a slot is covered separately by the `dfu_selftest_*` self-loop twins.

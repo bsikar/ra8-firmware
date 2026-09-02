@@ -40,14 +40,19 @@ typedef struct {
 
 /** @brief Caller-owned POSIX adapter state. */
 typedef struct {
-  int      root_fd;          /**< Open descriptor for the confined root. */
+  int      root_fd;          /**< Open descriptor, or -1 while inactive. */
   uint32_t transaction_id;   /**< Per-binding stage-name counter.        */
   bool     removable_media;  /**< Capability input.                      */
   bool     atomic_noreplace; /**< Runtime-probed rename guarantee.       */
   bool     initialized;      /**< Lifecycle guard.                       */
 } fw_fs_posix_state_t;
 
-/** @brief Open/configure a root-confined POSIX binding. */
+/**
+ * @brief Open/configure a root-confined POSIX binding.
+ * @details A failed attempt leaves an inactive state with root descriptor -1
+ *          and cleared cached inputs. A duplicate attempt against an already
+ *          initialized state returns `k_ra8_err_exists` without changing it.
+ */
 [[nodiscard]] ra8_err_t
 fw_fs_posix_init(fw_fs_t* out, fw_fs_posix_state_t* state, const fw_fs_posix_cfg_t* cfg);
 

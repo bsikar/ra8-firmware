@@ -99,7 +99,7 @@ typedef enum : uint8_t {
  * A DSB retires every prior register write before the core sleeps, per the
  * HUM Ch 11 "Low Power Mode" entry sequence, then WFI parks the core. Both
  * primitives route through the ``ra8_hw_intrinsics`` seam, so the host build
- * substitutes no-ops (defined in ``tests/mocks/ra8_host_asm_stub.c``) and a
+ * substitutes no-ops (defined in ``tests/mocks/src/ra8_host_asm_stub.c``) and a
  * unit test can drive ``ra8_lpm_enter_sleep`` without blocking.
  *
  * @pre Module state is consistent.
@@ -716,10 +716,10 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs)
   if (poll_limit == 0U) {
     return k_ra8_err_invalid_arg;
   }
-  for (uint32_t i = 0U; i < poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < poll_limit; ++i) {
     /* HUM Ch 11.2.11 "OPCCR : Operating Power Control Register", p 451 */
     const uint8_t v = *ra8_lpm_sysc_reg8(k_ra8_lpm_opccr_off);
-    if (((uint8_t)(v & k_ra8_lpm_opccr_opcmtsf_msk)) == 0U) { /* GCOVR_EXCL_BR_LINE */
+    if (((uint8_t)(v & k_ra8_lpm_opccr_opcmtsf_msk)) == 0U) {
       return k_ra8_ok;
     }
   }
@@ -735,7 +735,7 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs)
 [[nodiscard]] ra8_err_t ra8_lpm_enter_sleep(ra8_sleep_mode_t mode)
 {
   const ra8_err_t mode_err = internal_validate_mode(mode);
-  RA8_RETURN_ON_ERROR(mode_err, s_tag, "lpm_enter_sleep: bad mode"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mode_err, s_tag, "lpm_enter_sleep: bad mode");
 
   /* For Sleep / Deep-Sleep, LPMD stays at 0 (System Active); only WFI +
    * SCR.SLEEPDEEP toggle differs. For Software Standby and Deep Standby,

@@ -104,17 +104,21 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
   static inline volatile ra8_sci_regs_t* ra8_sci0_regs(void);
   ```
 
-### 7. `RA8_NASA_RULE_3_OK`
+### 7. `RA8_NASA_RULE_3_OK(reason)`
 
 - **Purpose:** documented exception to NASA P10 Rule 3 (no dynamic alloc).
+- **Reason:** a narrow string literal naming the unavoidable allocation
+  boundary is mandatory.
 - **Enforcement:** `scripts/checks/check_no_dynamic_alloc.py` plus
-  libclang call-graph walk. Untagged callers of tagged functions must
-  themselves be tagged or carry a deviation entry.
+  libclang call-graph walk over firmware-linkable translation units. Host
+  products and files in any `tests/` directory are outside the firmware rule;
+  untagged firmware callers of tagged functions must themselves be tagged or
+  carry a deviation entry.
 - **Example:**
 
   ```c
-  RA8_NASA_RULE_3_OK
-  ra8_err_t ra8_test_harness_alloc_scratch(uint32_t bytes, void** out);
+  RA8_NASA_RULE_3_OK("vendor TLS session owns opaque handshake storage")
+  ra8_err_t priv_target_tls_open(void);
   ```
 
 ### 8. `RA8_MCDC_DEACTIVATED(reason)`
@@ -420,7 +424,7 @@ declaration), so the rule cannot be defanged without the test noticing.
 
 ### The checker's own regression test
 
-`--selftest` runs the rules over a synthetic `libs/mod_*` tree held in the
+`--selftest` runs the rules over a synthetic multi-module tree held in the
 script, and CI runs it before it trusts the gate's verdict on the real
 tree. It guards the two defects this gate has actually shipped:
 
@@ -441,7 +445,7 @@ test fails on exactly that mutation.
 
 ### Running it
 
-`make check-annotations` is the convenience target;
+`just quality::local::gate annotations` is the convenience recipe;
 `python3 scripts/checks/check_annotations.py` runs the same rules and
 exits non-zero on any violation. Its `--help` lists the rest: a quiet
 CI mode, a dump of every annotated symbol, the checker's own selftest
@@ -455,8 +459,11 @@ The script depends on the `libclang` Python wheel, which ships its own
 `libclang.{so,dylib}` so no system-wide LLVM install is required:
 
 ```sh
-python3 -m pip install --user --break-system-packages libclang
+just setup-python
 ```
+
+That recipe creates the repository `.venv` and installs the project-pinned
+Python tools without modifying the operating system interpreter.
 
 ### Mode
 
@@ -484,7 +491,7 @@ invokes the script after the existing static gates (`cite_check`,
 | 6  | `ra8_hw_register_access`        | inline + return-type volatile check     |
 | 7  | `ra8_nasa_rule_3_ok`            | global malloc/free sweep                |
 | 8  | `ra8_mcdc_deactivated:<reason>` | reason-string regex                     |
-| 9  | `ra8_max_stack:<bytes>`         | reads `examples/*/build*/*.su`          |
+| 9  | `ra8_max_stack:<bytes>`         | reads `examples/**/build*/**/*.su`      |
 | 10 | `ra8_isr_safe`                  | marker; no static check yet (see below) |
 | 11 | `ra8_expects_lock:<name>`       | caller owns or propagates the lock      |
 | 12 | `ra8_host_friendly`             | rejects calls into MMIO accessors       |

@@ -94,7 +94,9 @@ ra8_err_t ra8_elc_init(void)
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 447 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_elc);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "elc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "elc_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* Clear every ELSR slot before flipping ELCON so stale routes
    * don't fire spuriously.

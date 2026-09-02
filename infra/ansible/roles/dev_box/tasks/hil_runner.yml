@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+- name: Enter the authenticated HIL-listener transaction
+  ansible.builtin.include_tasks:
+    file: hil_runner_transaction.yml
+  tags: [always]

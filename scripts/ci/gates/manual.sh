@@ -9,7 +9,7 @@
 # and is the only entry point; RA8_GATE_REGISTRY -- the single list of what
 # gates exist -- stays there too. These files hold gate BODIES only, so there
 # is still exactly one home for a gate's definition and exactly one command
-# for a workflow to call (bash scripts/ci.sh --gate <name>). Adding a second
+# for a workflow to call (`just quality::local::gate <name>`). Adding a second
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
@@ -24,10 +24,21 @@
 gate_mcdc_delta_base() (
   set -e
   local base_ref="${RA8_MCDC_BASE_REF:-main}"
-  local tree
+  local history_repo tree
+  history_repo="$(ci_history_repo)"
   tree="$(mktemp -d "${TMPDIR:-/tmp}/ra8-mcdc-base.XXXXXXXX")"
   rm -rf "$tree"
-  git worktree add "$tree" "origin/${base_ref}"
+  python3 scripts/dev/git_environment.py \
+    --check-attributes "$history_repo" --commit "origin/${base_ref}"
+  install_sanitized_git_environment
+  GIT_LFS_SKIP_SMUDGE=1 run_sanitized_git -C "$history_repo" \
+    -c core.attributesFile=/dev/null \
+    -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null \
+    -c filter.lfs.process= \
+    -c filter.lfs.required=false \
+    -c filter.lfs.smudge=/bin/cat \
+    worktree add "$tree" "origin/${base_ref}"
   (
     cd "$tree"
     CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 \
@@ -46,7 +57,9 @@ gate_mcdc_delta_base() (
     : >base-summary.txt
     echo "unavailable" >base-summary.status
   fi
-  git worktree remove --force "$tree" || rm -rf "$tree"
+  run_sanitized_git -c core.attributesFile=/dev/null -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null -C "$history_repo" \
+    worktree remove --force "$tree" || rm -rf "$tree"
 )
 
 # --- mcdc-delta-render (manual) -------------------------------------------
@@ -83,6 +96,7 @@ gate_osv_scan() (
     "https://github.com/google/osv-scanner/releases/download/v${version}/osv-scanner_linux_amd64"
   echo "${sha256}  osv-scanner" | sha256sum -c -
   chmod +x osv-scanner
+  bash scripts/checks/osv_scan.sh --selftest
   bash scripts/checks/osv_scan.sh --scanner ./osv-scanner --output-dir osv-report
 )
 
@@ -104,13 +118,19 @@ gate_soup_upstream_refresh() (
   require_cmd git
   python3 scripts/checks/check_soup_upstream.py --selftest
   python3 scripts/checks/check_soup_upstream.py --verify-upstream
+  # Fetched C6 SOUP cannot use the vendored offline replay proof. Fetch only
+  # its exact 40-hex pin into a disposable checkout, apply-check the numbered
+  # series, then reverse it to the clean pin. This never builds, flashes, or
+  # contacts a bench.
+  python3 scripts/checks/check_c6_patch_upstream.py --selftest
+  python3 scripts/checks/check_c6_patch_upstream.py --verify-upstream
 )
 
 # --- fuzz-sweep (manual) --------------------------------------------------
 # Deep-runs every registered harness (the RA8_FUZZ_TARGETS registry in
 # tests/fuzz/CMakeLists.txt, consumed through run_fuzz.sh --all) with a real
 # per-target budget. --list parses the registry and cross-checks it against
-# the tests/fuzz/fuzz_ra8_*.c sources, so registry drift fails before the
+# the tests/fuzz/src/fuzz_ra8_*.c sources, so registry drift fails before the
 # budget is spent.
 gate_fuzz_sweep() (
   set -e
@@ -180,7 +200,7 @@ gate_fuzz_sweep() (
 # Scheduled rather than per-push: it is a statement about the FLEET, not about
 # the commit, and it costs one API call per run scanned. In CI that spends the
 # workflow's own GITHUB_TOKEN budget, which is per-repository and separate from
-# the shared user quota `make ci-status` exists to protect.
+# the shared user quota `just quality::local::gate ci-status-contract` exists to protect.
 gate_runner_clock() (
   set -e
   # No require_cmd gh: the checker speaks the API over urllib, because the
@@ -203,7 +223,7 @@ gate_runner_clock() (
 # opting out of the local suite: the subject is the DEPLOYED runner image, and
 # neither the dev box nor the macOS devcontainer is one. The checker refuses to
 # answer about anything else -- so scheduling it locally would make every
-# `make ci-native` red with a question the box cannot be asked. Its workflow
+# `just quality::native` red with a question the box cannot be asked. Its workflow
 # step runs on `ra8-ci`, where the step is already executing inside the image.
 #
 # The selftest runs first, as everywhere else here: an extractor that has
@@ -219,11 +239,29 @@ gate_runner_image_deps() (
 # --- hil-all (manual) -----------------------------------------------------
 # Drives scripts/hil/all.sh, which auto-discovers every app under
 # examples/ek_ra8d2/hw_validated/hil/ and verifies each via its hil.conf
-# manifest. Needs the bench EK-RA8D2 attached to the Pi 5 runner.
+# manifest. The dev-box listener builds natively and reaches the EK-RA8D2
+# through the dedicated Pi 5 instrument-host login.
+RA8_HIL_APP_FLOOR=100
+
+_hil_require_census() {
+  local count="$1"
+  if [[ ! "$count" =~ ^[0-9]+$ || "$count" -lt "$RA8_HIL_APP_FLOOR" ]]; then
+    echo "hil-all: app census collapsed to $count (floor $RA8_HIL_APP_FLOOR)" >&2
+    return 1
+  fi
+}
+
 gate_hil_all() (
   set -e
-  require_cmd arm-none-eabi-gcc
-  bash scripts/hil/all.sh --list
+  # Prove both resolver directions before trusting the live version probe.
+  # The probe binds GCC and every HIL-relevant binutil to one 13.3 directory.
+  arm_toolchain_selftest
+  use_pinned_arm_toolchain
+  require_pinned_arm_toolchain
+  require_cmd just
+  require_cmd xargs
+  /bin/bash -p scripts/builders/all_examples.sh --selftest
+  /bin/bash -p scripts/hil/all.sh --list
   # hil_all.sh builds them itself, but doing it explicitly first gives clearer
   # logs when a build (not a flash) fails.
   local apps=() line
@@ -231,8 +269,16 @@ gate_hil_all() (
     find examples/ek_ra8d2/hw_validated/hil -mindepth 1 -maxdepth 1 -type d \
       -exec basename {} \;
   )
-  make -j"$(ra8_max_jobs)" "${apps[@]}"
-  bash scripts/hil/all.sh --skip-build
+  _hil_require_census "${#apps[@]}"
+  local targets=() app
+  for app in "${apps[@]}"; do
+    targets+=("ek_ra8d2/hw_validated/hil/$app")
+  done
+  echo "hil-all: building ${#apps[@]} apps with at most $(ra8_max_jobs) concurrent jobs"
+  printf '%s\0' "${targets[@]}" |
+    MAX_JOBS="$(ra8_max_jobs)" RA8_SELECTED_APP_FLOOR="$RA8_HIL_APP_FLOOR" \
+    BUILD_TYPE=RelWithDebInfo /bin/bash -p scripts/builders/all_examples.sh --selected0
+  /bin/bash -p scripts/hil/all.sh --skip-build
 )
 
 # --- bench-lock-selftest (manual) -----------------------------------------
@@ -253,7 +299,7 @@ gate_hil_all() (
 gate_bench_lock_selftest() (
   set -e
   require_cmd ssh
-  bash scripts/hil/bench.sh selftest --ssh-death
+  /bin/bash -p scripts/hil/bench.sh selftest --ssh-death
 )
 
 # --- docs-publish (manual) ------------------------------------------------
@@ -262,18 +308,19 @@ gate_bench_lock_selftest() (
 # workflow's step and no unreviewed `run:` body hides inside it.
 gate_docs_publish() (
   set -e
+  require_cmd just "the publish gate builds through the authoritative docs recipe"
   # Same hard dependency as the docs gate, and it matters more here: without
   # `dot`, build_docs.sh degrades to text-only output and this gate would
   # force-push a diagram-free site over the live one, succeeding the whole way.
   # The publish path is exactly where a silent degradation does the damage.
   require_cmd dot
-  make docs
+  /bin/bash -p scripts/dev/run_just.sh docs::build
   # Verify the site about to be published actually contains its diagrams,
-  # against the real output tree `make docs` just wrote. --selftest first, so
+  # against the real output tree `just docs::build` just wrote. --selftest first, so
   # the publish path never trusts an unproven detector (#531).
   python3 scripts/checks/check_doc_diagrams.py --selftest
   python3 scripts/checks/check_doc_diagrams.py --html build/docs/html
-  bash scripts/builders/publish_docs.sh
+  /bin/bash -p scripts/builders/publish_docs.sh
 )
 
 # ===========================================================================

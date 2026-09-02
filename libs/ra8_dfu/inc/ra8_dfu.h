@@ -237,7 +237,7 @@ uint32_t ra8_dfu_crc32(const uint8_t* data, uint32_t len);
  * @post The caller's `hdr` pointer and `computed_crc` value are not modified.
  *
  * @note Thread-safe (pure). Carries compound boolean decisions -- see the
- *       `@par MC/DC:` block in `tests/test_ra8_dfu_boot.c`.
+ *       `@par MC/DC:` block in `tests/misc/src/test_ra8_dfu_boot.c`.
  * @see ra8_dfu_select_slot
  * @since 0.1.0
  */

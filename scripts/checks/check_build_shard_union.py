@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Gate: the cross-build shards together covered every app, exactly once.
+"""Gate: cross-build shards covered every firmware configuration exactly once.
 
-``scripts/builders/all_examples.sh`` builds a stride slice of the discovered
-app list when ``RA8_BUILD_SHARDS``/``RA8_BUILD_SHARD`` are set, so the
+``scripts/builders/all_examples.sh`` builds a stride slice of the canonical
+configuration matrix when ``RA8_BUILD_SHARDS``/``RA8_BUILD_SHARD`` are set, so the
 ``build-cross`` gate can fan out across parallel CI jobs. That fan-out is only
 sound if the shards, taken together, build the same set the unsharded gate
 would have built. Nothing about a parallel matrix guarantees that: a shard
@@ -17,16 +17,16 @@ check rather than an assumption.
 
 The proof is a set comparison against an INDEPENDENTLY re-derived truth:
 
-* This checker re-runs app discovery itself (:func:`discover_apps`) rather
-  than trusting the ``all-apps.txt`` a shard wrote. A shard vouching for its
+* This checker re-runs structural discovery itself (:func:`discover_apps`)
+  rather than trusting the ``all-configs.txt`` a shard wrote. A shard vouching for its
   own idea of what the tree contains proves nothing -- if its discovery broke,
   its manifest and its self-report break together and agree.
 * Every shard ``1..N`` must have left a manifest. A missing one is a shard
   that did not run.
 * The union of the manifests must equal the discovered set exactly: a missing
-  app FAILS (it was never built), and an app claimed by two shards FAILS (the
-  stride is broken, so some other app is missing too).
-* ``all-apps.txt`` must agree with the re-derived set, which catches the shards
+  configuration FAILS (it was never built), and one claimed by two shards
+  FAILS (the stride is broken, so some other configuration is missing too).
+* ``all-configs.txt`` must agree with the re-derived set, which catches the shards
   having discovered a *different* tree than this checker sees.
 
 Run::
@@ -50,38 +50,55 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: Where all_examples.sh writes its per-shard manifests.
 SHARD_SUBDIR = Path("build") / "build_all_examples" / ".shard"
 
-#: The full discovered set, written identically by every shard.
-ALL_APPS_NAME = "all-apps.txt"
+#: The full execution matrix, written identically by every shard.
+ALL_CONFIGS_NAME = "all-configs.txt"
 
 RC_OK = 0
 RC_VIOLATION = 1
+MIN_EXAMPLE_PATH_PARTS = 2
 
 
 def discover_apps(repo_root: Path) -> list[str]:
-    """Re-derive the buildable app list exactly as all_examples.sh does.
+    """Independently derive every required firmware build configuration.
 
-    Mirrors the shell discovery: every ``examples/**/main.c`` whose directory
-    also holds a ``Makefile``, excluding ``examples/host/`` (macOS-only dev
-    tools, never cross-compiled), keyed by the bare directory name and sorted
-    byte-wise. ``sorted()`` on ``str`` is a C-collation sort, matching the
-    ``LC_ALL=C sort`` the shell pins for exactly this reason.
+    This structural walk deliberately does not import ``ra8_apps.py``, the
+    execution authority. It scans both examples and standalone board products,
+    then independently requires the e-reader's normal and Non-Secure XIP
+    configurations. A defect in the execution enumerator therefore cannot make
+    this proof agree with the same omission.
 
     :param repo_root: Repository root to discover under.
     :returns: Sorted app names.
     """
+    configs: set[str] = set()
     examples = repo_root / "examples"
-    if not examples.is_dir():
-        return []
-    apps = set()
-    for main_c in examples.rglob("main.c"):
-        app_dir = main_c.parent
-        rel = app_dir.relative_to(repo_root).as_posix()
-        if rel.startswith("examples/host/"):
-            continue
-        if not (app_dir / "Makefile").is_file():
-            continue
-        apps.add(app_dir.name)
-    return sorted(apps)
+    if examples.is_dir():
+        for main_c in examples.rglob("main.c"):
+            if main_c.parent.name != "src":
+                continue
+            app_dir = main_c.parent.parent
+            if not (app_dir / "CMakeLists.txt").is_file():
+                continue
+            rel = app_dir.relative_to(examples)
+            if len(rel.parts) < MIN_EXAMPLE_PATH_PARTS or rel.parts[0] == "shared":
+                continue
+            configs.add("::".join(rel.parts))
+
+    board_root = repo_root / "apps" / "board" / "stand_alone"
+    if board_root.is_dir():
+        for main_c in board_root.rglob("main.c"):
+            if main_c.parent.name != "src":
+                continue
+            app_dir = main_c.parent.parent
+            if not (app_dir / "CMakeLists.txt").is_file():
+                continue
+            rel = app_dir.relative_to(board_root)
+            name = "ra8d2-ereader" if rel.as_posix() == "ereader" else rel.name
+            identifier = f"board::stand_alone::{name}"
+            configs.add(identifier)
+            if rel.as_posix() == "ereader":
+                configs.add(f"{identifier}@ns-xip")
+    return sorted(configs)
 
 
 def read_manifest(path: Path) -> list[str]:
@@ -93,6 +110,28 @@ def read_manifest(path: Path) -> list[str]:
     if not path.is_file():
         return []
     return [ln.strip() for ln in path.read_text(encoding="ascii").splitlines() if ln.strip()]
+
+
+def _audit_shard_contents(shard_files: list[Path], expected: list[str]) -> list[str]:
+    problems: list[str] = []
+    seen: dict[str, int] = {}
+    for k, path in enumerate(shard_files, start=1):
+        for app in read_manifest(path):
+            if app in seen:
+                problems.append(f"app '{app}' claimed by both shard {seen[app]} and shard {k}")
+            else:
+                seen[app] = k
+
+    if sorted(seen.keys()) != expected:
+        missing = set(expected) - set(seen.keys())
+        extra = set(seen.keys()) - set(expected)
+        if missing:
+            problems.append(f"{len(missing)} firmware configuration(s) never built by any shard")
+        if extra:
+            problems.append(
+                f"{len(extra)} configuration(s) claimed in manifests are not structural"
+            )
+    return problems
 
 
 def check_union(repo_root: Path, shards: int) -> tuple[int, list[str]]:
@@ -107,56 +146,39 @@ def check_union(repo_root: Path, shards: int) -> tuple[int, list[str]]:
     expected = discover_apps(repo_root)
     if not expected:
         return RC_VIOLATION, [
-            f"no apps discovered under {repo_root / 'examples'} -- this checker "
+            "no firmware configurations discovered under examples/ or "
+            "apps/board/stand_alone/ -- this checker "
             "cannot vouch for a union it has no truth to compare against.",
         ]
     if not shard_dir.is_dir():
         return RC_VIOLATION, [f"shard manifest directory {shard_dir} does not exist."]
 
-    seen: dict[str, list[int]] = {}
-    for k in range(1, shards + 1):
-        manifest = shard_dir / f"shard-{k}-of-{shards}.txt"
-        names = read_manifest(manifest)
-        if not names:
-            problems.append(
-                f"shard {k}/{shards}: manifest {manifest.name} is missing or empty "
-                "-- that shard never built anything.",
-            )
-            continue
-        for name in names:
-            seen.setdefault(name, []).append(k)
+    all_configs_file = shard_dir / ALL_CONFIGS_NAME
+    if not all_configs_file.is_file():
+        problems.append(f"missing {all_configs_file}")
+    elif read_manifest(all_configs_file) != expected:
+        problems.append(f"{ALL_CONFIGS_NAME} disagrees with fresh discovery")
 
-    missing = sorted(set(expected) - set(seen))
-    extra = sorted(set(seen) - set(expected))
-    duplicated = sorted(n for n, ks in seen.items() if len(ks) > 1)
-
-    problems.extend(f"app '{name}' was discovered but no shard built it." for name in missing)
-    problems.extend(f"app '{name}' was built but is not in the discovered set." for name in extra)
+    shard_files = [shard_dir / f"shard-{k}-of-{shards}.txt" for k in range(1, shards + 1)]
     problems.extend(
-        f"app '{name}' was built by shards {seen[name]} -- the stride is broken."
-        for name in duplicated
+        f"missing shard manifest {path.name}" for path in shard_files if not path.is_file()
     )
-
-    all_apps = read_manifest(shard_dir / ALL_APPS_NAME)
-    if all_apps and sorted(all_apps) != expected:
-        shard_only = sorted(set(all_apps) - set(expected))
-        here_only = sorted(set(expected) - set(all_apps))
-        problems.append(
-            f"the shards discovered a different tree than this checker: "
-            f"{len(shard_only)} app(s) only they saw {shard_only[:5]}, "
-            f"{len(here_only)} only this checker saw {here_only[:5]}.",
-        )
 
     if problems:
         return RC_VIOLATION, problems
+
+    problems.extend(_audit_shard_contents(shard_files, expected))
+    if problems:
+        return RC_VIOLATION, problems
+
     print(
         f"check_build_shard_union.py: {shards} shard(s) covered all "
-        f"{len(expected)} discovered app(s) exactly once.",
+        f"{len(expected)} firmware configuration(s) exactly once."
     )
     return RC_OK, []
 
 
-def _write_tree(root: Path, apps: list[str]) -> None:
+def _write_tree(root: Path, apps: list[str], *, ereader: bool = False) -> None:
     """Materialise a throwaway examples/ tree of buildable apps.
 
     :param root: Fake repo root.
@@ -164,22 +186,31 @@ def _write_tree(root: Path, apps: list[str]) -> None:
     """
     for app in apps:
         d = root / "examples" / "tier" / app
-        d.mkdir(parents=True, exist_ok=True)
-        (d / "main.c").write_text("int main(void){return 0;}\n", encoding="ascii")
-        (d / "Makefile").write_text("all:\n", encoding="ascii")
+        src = d / "src"
+        src.mkdir(parents=True, exist_ok=True)
+        (src / "main.c").write_text("int main(void){return 0;}\n", encoding="ascii")
+        (d / "CMakeLists.txt").write_text("add_executable(test src/main.c)\n", encoding="ascii")
+    if ereader:
+        d = root / "apps" / "board" / "stand_alone" / "ereader"
+        (d / "src").mkdir(parents=True, exist_ok=True)
+        (d / "src" / "main.c").write_text("void main(void) {}\n", encoding="ascii")
+        (d / "CMakeLists.txt").write_text(
+            "add_executable(ereader src/main.c)\n",
+            encoding="ascii",
+        )
 
 
 def _shard_manifests(root: Path, shards: int, slices: list[list[str]]) -> None:
-    """Write per-shard manifests plus all-apps.txt into a fake tree.
+    """Write per-shard manifests plus all-configs.txt into a fake tree.
 
     :param root: Fake repo root.
     :param shards: Declared shard count.
-    :param slices: Per-shard app-name lists, index 0 == shard 1.
+    :param slices: Per-shard configuration lists, index 0 == shard 1.
     """
     d = root / SHARD_SUBDIR
     d.mkdir(parents=True, exist_ok=True)
     every = sorted({a for s in slices for a in s})
-    (d / ALL_APPS_NAME).write_text("".join(f"{a}\n" for a in every), encoding="ascii")
+    (d / ALL_CONFIGS_NAME).write_text("".join(f"{a}\n" for a in every), encoding="ascii")
     for i, names in enumerate(slices, start=1):
         (d / f"shard-{i}-of-{shards}.txt").write_text(
             "".join(f"{a}\n" for a in names),
@@ -187,29 +218,47 @@ def _shard_manifests(root: Path, shards: int, slices: list[list[str]]) -> None:
         )
 
 
-def selftest() -> int:
-    """Assert the union check fires on every break and stays quiet when whole.
-
-    A completeness checker that stopped detecting an incomplete union would
-    report success forever, so both directions are asserted here and CI runs
-    this before trusting a clean verdict.
-
-    :returns: 0 when every case behaves, 1 otherwise.
-    """
-    cases: list[tuple[str, list[str], int, list[list[str]], bool]] = [
-        # (label, tree apps, shards, slices, expect_pass)
-        ("complete 2-way stride", ["a", "b", "c", "d"], 2, [["a", "c"], ["b", "d"]], True),
-        ("complete 1-way", ["a", "b"], 1, [["a", "b"]], True),
-        ("a shard built nothing", ["a", "b", "c", "d"], 2, [["a", "c"], []], False),
-        ("an app fell through", ["a", "b", "c", "d"], 2, [["a", "c"], ["b"]], False),
-        ("an app built twice", ["a", "b", "c"], 2, [["a", "c"], ["b", "c"]], False),
-        ("an unknown app appeared", ["a", "b"], 2, [["a"], ["b", "ghost"]], False),
-    ]
+def _selftest_cases() -> int:
+    """Run the complete and malformed shard-manifest fixtures."""
+    cases: tuple[tuple[str, list[str], bool, int, list[list[str]], bool], ...] = (
+        # (label, example names, ereader, shards, slices, expect_pass)
+        (
+            "complete examples plus board variants",
+            ["a", "b"],
+            True,
+            2,
+            [
+                ["board::stand_alone::ra8d2-ereader", "tier::a"],
+                ["board::stand_alone::ra8d2-ereader@ns-xip", "tier::b"],
+            ],
+            True,
+        ),
+        ("complete 1-way", ["a", "b"], False, 1, [["tier::a", "tier::b"]], True),
+        ("a shard built nothing", ["a", "b"], False, 2, [["tier::a"], []], False),
+        ("an app fell through", ["a", "b"], False, 2, [["tier::a"], []], False),
+        ("an app built twice", ["a", "b"], False, 2, [["tier::a"], ["tier::a"]], False),
+        (
+            "an unknown app appeared",
+            ["a", "b"],
+            False,
+            2,
+            [["tier::a"], ["tier::b", "ghost"]],
+            False,
+        ),
+        (
+            "e-reader XIP configuration omitted",
+            [],
+            True,
+            1,
+            [["board::stand_alone::ra8d2-ereader"]],
+            False,
+        ),
+    )
     failures = 0
-    for label, tree, shards, slices, expect_pass in cases:
+    for label, tree, ereader, shards, slices, expect_pass in cases:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            _write_tree(root, tree)
+            _write_tree(root, tree, ereader=ereader)
             _shard_manifests(root, shards, slices)
             rc, problems = check_union(root, shards)
             ok = (rc == RC_OK) if expect_pass else (rc == RC_VIOLATION)
@@ -221,7 +270,12 @@ def selftest() -> int:
                 for p in problems:
                     print(f"          {p}")
 
-    # A missing shard directory must fail rather than vacuously pass.
+    return failures
+
+
+def _selftest_boundaries() -> int:
+    """Prove missing manifests and an empty discovery cannot pass vacuously."""
+    failures = 0
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         _write_tree(root, ["a"])
@@ -230,7 +284,6 @@ def selftest() -> int:
         print(f"  [{'ok' if ok else 'FAIL'}] absent manifest dir: expected to fire, rc={rc}")
         failures += 0 if ok else 1
 
-    # An empty tree must fail rather than report "0 of 0 covered".
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         (root / SHARD_SUBDIR).mkdir(parents=True)
@@ -238,6 +291,15 @@ def selftest() -> int:
         ok = rc == RC_VIOLATION
         print(f"  [{'ok' if ok else 'FAIL'}] empty tree: expected to fire, rc={rc}")
         failures += 0 if ok else 1
+    return failures
+
+
+def selftest() -> int:
+    """Assert the union checker fires on breaks and stays quiet when complete.
+
+    :returns: 0 when every case behaves, 1 otherwise.
+    """
+    failures = _selftest_cases() + _selftest_boundaries()
 
     if failures:
         print(f"check_build_shard_union.py --selftest: {failures} case(s) FAILED", file=sys.stderr)

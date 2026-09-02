@@ -1,9 +1,9 @@
 # RBKC -- The Chunked `.rabook` Container
 
 **Magic:** `RBKC` &nbsp;|&nbsp;
-**Library:** `libs/ra8_book` &nbsp;|&nbsp;
+**Library:** `apps/shared_libs/book` &nbsp;|&nbsp;
 **Extension:** `.rabook` &nbsp;|&nbsp;
-**Producer:** `tools/epub_compile/epub_compile.py`
+**Producer:** `tools/epub_compile/src/epub_compile.py`
 
 ---
 
@@ -69,7 +69,7 @@ there are **two formats stacked**, and they have different jobs:
 ```
 
 The inner blob starts with the ASCII magic `RABOOK1` and is described by
-`ra8_book_header_t`. The outer container knows *nothing* about books -- it sees
+`book_header_t`. The outer container knows *nothing* about books -- it sees
 an opaque byte range it must be able to serve any window of. That separation is
 what lets the outer container serve any opaque inner payload, and it is why this
 page specifies only the outer layer. It is also why a `.rabook` needs this outer
@@ -210,9 +210,9 @@ with
 | 16 | 4 | `chunk_count` | Must equal `ceil(inflated_total / chunk_bytes)`. |
 | 20 | 4 | `reserved` | Must be `0`. |
 
-The record sizes are pinned by `ra8_book_container_t`:
-`k_ra8_book_container_header_len = 24`, `k_ra8_book_container_entry_len = 8`,
-`k_ra8_book_container_magic_len = 4`.
+The record sizes are pinned by `book_container_t`:
+`k_book_container_header_len = 24`, `k_book_container_entry_len = 8`,
+`k_book_container_magic_len = 4`.
 
 ### 3.2 Chunk table
 
@@ -252,19 +252,19 @@ exists to provide.
 ### 3.4 The inner blob
 
 The concatenation of every inflated chunk is the `RABOOK1` flat blob described
-by `ra8_book_header_t` -- an 8-byte magic `"RABOOK1"` (7 chars plus NUL), a
-`format_version` (currently `k_ra8_book_format_version` = 1), a `flags` word of
-`ra8_book_flag_t` bits, and then the tables and pools. The container neither
-inspects nor validates any of it; `ra8_book_validate()` does that after the
+by `book_header_t` -- an 8-byte magic `"RABOOK1"` (7 chars plus NUL), a
+`format_version` (currently `k_book_format_version` = 1), a `flags` word of
+`book_flag_t` bits, and then the tables and pools. The container neither
+inspects nor validates any of it; `book_validate()` does that after the
 bytes are available.
 
 ### 3.5 Image pool: gray4, or full-resolution gray8 for zoomable content
 
-The image pool holds one payload per `ra8_book_image_t`. An SVG entry keeps its
-verbatim vector source. A raster entry (`format = k_ra8_book_image_gray4`) stores
+The image pool holds one payload per `book_image_t`. An SVG entry keeps its
+verbatim vector source. A raster entry (`format = k_book_image_gray4`) stores
 grayscale pixels at **source resolution** -- no downscale by default; the long-edge
 clamp is an opt-in compile knob -- at a depth chosen by the descriptor's
-`pixel_format` (`ra8_book_image_pixfmt_t`):
+`pixel_format` (`book_image_pixfmt_t`):
 
 - **`gray4`** (2 pixels/byte): panel-native for the 16-level e-ink target, half the
   storage. Correct for content that is *never* zoomed, but the 256 -> 16 quantise
@@ -275,13 +275,13 @@ clamp is an opt-in compile knob -- at a depth chosen by the descriptor's
   blue-noise e-ink dither (#477) need the 256-level source that `gray4` throws away.
 
 **Why full-resolution gray8 and not an embedded tiled JOF atlas.** The live-EPUB
-image path (`ra8_jof`) tiles each image into a jump-offset atlas because it reads
+image path (`jof`) tiles each image into a jump-offset atlas because it reads
 from a ZIP entry with no random access, and a page can exceed the SDRAM working
 set. The compiled path does not have that problem: the RBKC container is *already*
 a random-access tiling -- any chunk inflates independently into one `ra8_vmem`
-frame -- and `ra8_book_src_image_rect()` reads an arbitrary sub-rectangle of a pool
+frame -- and `book_src_image_rect()` reads an arbitrary sub-rectangle of a pool
 image through it with a bounded working set (one packed span, or one gray8 row, per
-`ra8_book_src_read`). Embedding a second JOF atlas inside the pool would be
+`book_src_read`). Embedding a second JOF atlas inside the pool would be
 tiling-on-tiling: it re-solves a problem the chunk layer already solved, and it
 would fight the one-luma / one-quantiser parity the on-device (`stb_image`) and
 desktop (Pillow + `gray4_kernel`) compilers share (the JOF PNG decoder keeps RGB888
@@ -324,7 +324,7 @@ Because step 3 resolves the table size before any compression happens, the
 producer never has to seek backwards -- unlike JOF, it can emit the file strictly
 in order once it holds the blob.
 
-### 4.2 Opening (`ra8_book_chunked_open()`)
+### 4.2 Opening (`book_chunked_open()`)
 
 1. Read the 24-byte header through the caller's `file_read` seam.
 2. Check the magic, `chunk_bytes != 0`, and that `chunk_count` agrees with
@@ -342,7 +342,7 @@ index can be 512 KiB, too large to hold; an RBKC table for a 4 MB book at 64 KiB
 chunks is 64 entries -- 512 bytes. It is cheap to validate the whole table once
 at open and never think about it again.
 
-### 4.3 Reading (`ra8_book_chunked_read()`)
+### 4.3 Reading (`book_chunked_read()`)
 
 This function has exactly the `ra8_vsource_read_fn` signature, so it plugs
 straight into the paging stack. Reads are **chunk-aligned by contract**:
@@ -377,7 +377,7 @@ The resident cost of an open chunked book is:
 | chunk table | `(chunk_count + 1) * 8` bytes | caller |
 | staging (one compressed chunk) | `staging_cap`, >= largest compressed chunk | caller |
 | one cache frame | `chunk_bytes` | `ra8_vmem` |
-| `ra8_book_chunked_t` | ~64 bytes | caller |
+| `book_chunked_t` | ~64 bytes | caller |
 
 For a 4 MB book at 64 KiB chunks: 64 chunks, table = 520 B, staging ~64 KiB, frame 64 KiB
 -- about **130 KB resident to read a 4 MB book**, and the only term that grows
@@ -401,14 +401,14 @@ digraph rbkc_residency {
 }
 @enddot
 
-There is a second, simpler entry point worth knowing about: `ra8_book_open()`
+There is a second, simpler entry point worth knowing about: `book_open()`
 inflates **every** chunk into one resident SDRAM buffer. That is the right
 choice for a small book on a device with 64 MB of SDRAM, and the wrong choice
 for a large one. The chunked reader exists for the second case; both consume the
 identical container.
 
 Zero allocation throughout (NASA P10 Rule 3) -- the caller supplies the table
-and staging storage at open, which is why `ra8_book_chunked_open()` takes so
+and staging storage at open, which is why `book_chunked_open()` takes so
 many buffer arguments.
 
 ---
@@ -420,7 +420,7 @@ book (Thoreau's *Walden*) in unpacked EPUB form:
 
 ```
 $ cd tests/fixtures/rabook_realbook && zip -q -X -r /tmp/real.epub . && cd -
-$ python3 tools/epub_compile/epub_compile.py /tmp/real.epub /tmp/real.rabook --stats
+$ python3 tools/epub_compile/src/epub_compile.py /tmp/real.epub /tmp/real.rabook --stats
 Walden -- Henry David Thoreau
   chapters=2 nodes=338 attrs=47 css=2 images=0
   epub=27 KB -> rabook=25 KB (95%); inflated=66 KB
@@ -521,7 +521,7 @@ application to crash, hang or read out of bounds -- not remote code execution.
 | **Decompression bomb** | Tiny stream inflating to gigabytes | Two limits, below |
 | Chunk inflating to the wrong size | Frame holds foreign or stale bytes | Inflated count must equal the expected span exactly |
 | Bit rot inside a chunk | Silently corrupt text rendered as if valid | zlib Adler-32 fails the inflate |
-| Inner blob corrupt but container valid | Renderer indexes garbage tables | Container passes; `ra8_book_validate()` independently checks the `RABOOK1` magic, version and flag mask |
+| Inner blob corrupt but container valid | Renderer indexes garbage tables | Container passes; `book_validate()` independently checks the `RABOOK1` magic, version and flag mask |
 
 ### The decompression-bomb caps
 
@@ -533,7 +533,7 @@ As with JOF, two mechanisms stack:
    cannot exceed the frame because the frame was sized from validated header
    geometry, never from the compressed stream.
 2. **`ra8_decomp_limits_t`** -- the shared **64 MiB** output ceiling and
-   **1024:1** expansion-ratio ceiling enforced inside `ra8_io_decompress()`.
+   **1024:1** expansion-ratio ceiling enforced inside `ra8_decompress()`.
    This is the backstop: even if a caller's size arithmetic were wrong, the
    inflate still cannot run away.
 
@@ -576,14 +576,14 @@ the two layers version **independently**:
   three. An incompatible container change spends a new fourth byte; every
   existing reader `memcmp`s and rejects it cleanly.
 - The **inner** blob carries an explicit `format_version` field
-  (`k_ra8_book_format_version`, currently 1) alongside its `RABOOK1` magic.
+  (`k_book_format_version`, currently 1) alongside its `RABOOK1` magic.
   Because the content layout is expected to evolve far more often than the
   transport, a numeric field is the better tool there -- and
-  `ra8_book_validate()` checks it independently of anything the container did.
-- **Feature flags extend without a version bump.** `ra8_book_header_t.flags`
-  carries `ra8_book_flag_t` bits, and `ra8_book_validate()` rejects any blob
-  setting a bit outside `k_ra8_book_flag_mask_known`. The rule is that a flag
-  may only change how content is *presented* (for example `k_ra8_book_flag_rtl`
+  `book_validate()` checks it independently of anything the container did.
+- **Feature flags extend without a version bump.** `book_header_t.flags`
+  carries `book_flag_t` bits, and `book_validate()` rejects any blob
+  setting a bit outside `k_book_flag_mask_known`. The rule is that a flag
+  may only change how content is *presented* (for example `k_book_flag_rtl`
   for right-to-left reading order), never where a table or pool lives. So old
   firmware refuses a book depending on a semantic it does not implement, rather
   than silently mis-rendering it.
@@ -597,9 +597,9 @@ the old handling. There is no dual-version reader.
 
 ## See also
 
-- `ra8_book.h` -- container constants, the inner `RABOOK1` blob, flags
-- `ra8_book_chunked.h` -- the demand-paged chunk reader specified here
-- `ra8_book_paged.h` -- binds the paged object as a book source
+- `book.h` -- container constants, the inner `RABOOK1` blob, flags
+- `book_chunked.h` -- the demand-paged chunk reader specified here
+- `book_paged.h` -- binds the paged object as a book source
 - `ra8_vsource.h` -- the paging registry the reader plugs into
 - @ref md_docs_2formats_2JOF -- the same seekability problem solved for an
   *image grid*, with the index at the end instead of the front

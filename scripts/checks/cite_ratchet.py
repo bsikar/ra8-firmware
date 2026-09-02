@@ -224,7 +224,7 @@ def write_baseline(counts: Counter[str]) -> None:
         "# burned down; a newly-added uncited access raises a count and fails.",
         "#",
         "# Burn one down: read the register in the Hardware User's Manual",
-        "# (docs/reference/r01uh1065ej0130-ra8d2.pdf), then put the real chapter,",
+        "# (docs/reference/ra8d2-hardware-user-manual.pdf), then put the real chapter,",
         "# subsection and page above the access:",
         "#",
         '#   /* HUM Ch 25.2.3 "AGT Control Register" p 1194 */',

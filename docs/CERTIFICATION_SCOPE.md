@@ -76,8 +76,8 @@ to re-derive under their own oversight.
   short-form restatement of this decision inside the PSAC.
 - `docs/qualification/MISRA_DEVIATIONS.md` Section "Tooling policy"
   -- the consistent "no commercial MISRA tool, ever" decision.
-- `docs/HIL_DEVELOPER_WORKFLOW.md` -- the self-hosted Pi 5 HIL
-  runner that closed the CI-hardware question.
+- `docs/HIL_DEVELOPER_WORKFLOW.md` -- the managed dev-box HIL listener
+  and remote Pi 5 instrument host that close the CI-hardware question.
 - `docs/VENDOR_BLOBS.md` -- the consistent "obtain Renesas blobs from
   public FSP as SOUP, never NDA" decision.
 - `docs/QUALIFICATION_ROADMAP.md` Section 6 -- the open-questions

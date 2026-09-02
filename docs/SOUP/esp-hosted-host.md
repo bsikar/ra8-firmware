@@ -100,7 +100,7 @@ size, not correctness, and the linker drops what is never referenced.
 - This project uses "co-processor" / "peripheral-side" for the C6 role to match
   its inclusive terminology standard, in place of the upstream role name. Paths
   and symbols inside the vendored tree keep their upstream spelling and are not
-  renamed. <!-- LEGACY-OK: explains the upstream esp-hosted slave role naming retained in vendored paths -->
+  renamed.
 - Integrity-claim category: connectivity convenience. No safety signal in this
   project depends on the C6 link.
 
@@ -108,13 +108,15 @@ size, not correctness, and the linker drops what is never referenced.
 
 The first-party port landed at `port/esp-hosted/`, and `cmake/esp_hosted.cmake`
 compiles **eight** of the vendored translation units into the
-`esp_hosted_objs` object library behind the `RA8_USE_ESP_HOSTED` option. Five
-applications consume it, all of them under
+`esp_hosted_objs` object library behind the `RA8_USE_ESP_HOSTED` option. Seven
+applications consume it. Five validated consumers live under
 `examples/ek_ra8d2/hw_validated/c6/`: `c6_fw_version`, `c6_hosted_init`,
-`c6_wifi_join`, `c6_wifi_link` and `wifi_hal_join`. The cross-build gate
-therefore covers it on every push.
+`c6_wifi_join`, `c6_wifi_link` and `wifi_hal_join`. The pending consumers are
+`examples/ek_ra8d2/hw_pending/c6/c6_mdl_test` and
+`examples/ek_ra8d2/hw_pending/media_download`. The cross-build gate covers all
+seven on every push.
 
-**Compiled today** -- the SPI transport, the serial (control-plane) lower
+**Compiled in-tree** -- the SPI transport, the serial (control-plane) lower
 layer, the RPC wire codec and the shared utilities:
 
 `host/drivers/transport/spi/spi_drv.c`, `host/drivers/transport/transport_util.c`,
@@ -165,16 +167,14 @@ layer, the RPC wire codec and the shared utilities:
   C6 is reached over full-duplex SPI only, and the Bluetooth pair needs the
   NimBLE transport headers and belongs with the NimBLE integration.
 
-This port **runs on silicon**. The wire beneath it was qualified first -- the
-probe `examples/ek_ra8d2/hw_validated/c6/c6_spi_probe` walked every J26 hole on
-2026-07-27 and brought the raw link up at SPI mode 3 / 1 MHz with zero bad
-checksums, driving the SCI directly -- and the first protocol round-trip
-through the code described here landed in `6d7ddb532`. Every application that
-links this port consequently sits under
-`examples/ek_ra8d2/hw_validated/c6/`; none is in `hw_pending/`. They form
-their own HIL lane (`make hil-c6`) rather than joining `hw_validated/hil/`,
-because `ra8_emulator` models no ESP32-C6 (#494) and the EIL-parity gate over
-that directory rightly admits no skips.
+The port's retained silicon evidence is dated 2026-07-27. The probe
+`examples/ek_ra8d2/hw_validated/c6/c6_spi_probe` walked every J26 hole and
+brought the raw link up at SPI mode 3 / 1 MHz with zero bad checksums, driving
+the SCI directly; the first protocol round-trip through the code described
+here landed in `6d7ddb532`. The five validated consumers form their own HIL
+lane (`just hil::c6`) rather than joining `hw_validated/hil/`, because
+`ra8_emulator` models no ESP32-C6 (#494). The two pending consumers do not
+inherit that historical validation and still require target evidence.
 
 ## The port contract
 

@@ -1,6 +1,6 @@
 /**
  * @file
- * examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/src/usb_host_file_ops_steps.h
+ * examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/inc/usb_host_file_ops_steps.h
  * @brief Console helpers + ra8_fs file-op suite for the USB host file-ops app.
  *
  * @par Tag

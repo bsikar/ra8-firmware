@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# The native HIL listener deliberately has no restart handler. A handler runs
+# after configuration bytes have already changed and cannot prove that an
+# Actions Runner.Worker is idle. fleet.py checks exact planned drift, freezes
+# and verifies the service cgroup, stops it, then applies those bytes.

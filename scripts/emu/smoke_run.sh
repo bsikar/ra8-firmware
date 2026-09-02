@@ -255,7 +255,7 @@ smoke_verdict_xspi_io() {
   local app="$1"
   want="$(uart_expect "$app")"
   xsclean="$({ RA8_EMU_MAX_CHUNKS=8000000 RA8_EMU_STOP_ON="$want" RA8_EMU_WALL_S=300 \
-    "$emu" "$elf" 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
+    "$emu" "$elf" 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')" # STOP_ON cuts the run short so even a PASS exits nonzero; smoke.sh sets -euo pipefail and the verdict is $xsclean's text
   if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$xsclean"; then
     echo "FAULT (during ra8_io on-chip-NV round-trip)"
     fail=1
@@ -281,7 +281,7 @@ smoke_verdict_eink() {
   local app="$1"
   want="$(uart_expect "$app")"
   epclean="$({ RA8_EMU_MAX_CHUNKS=8000000 RA8_EMU_STOP_ON="$want" RA8_EMU_WALL_S=300 \
-    "$emu" "$elf" --eink 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
+    "$emu" "$elf" --eink 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')" # STOP_ON cuts the run short so even a PASS exits nonzero; smoke.sh sets -euo pipefail and the verdict is $epclean's text
   if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$epclean"; then
     echo "FAULT (during e-paper refresh)"
     fail=1
@@ -395,33 +395,43 @@ smoke_verdict_render_assert() {
   return 0
 }
 
+# Resolve one application through the same canonical index the Just build
+# recipe uses.  Never scan examples/: populated per-app build trees make that
+# walk both slow and racy while this suite is creating files beneath it.
+smoke_app_dir() {
+  python3 scripts/dev/ra8_apps.py dir "$1"
+}
+
 # Build one app and locate its ELF. Sets the global $elf and $extra; assigns
 # $fail and returns 1 when the app cannot be run at all.
 smoke_build_app() {
   local app="$1"
+  local app_dir=""
   printf '  %-24s ' "$app"
+  if ! app_dir="$(smoke_app_dir "$app")" || [ -z "$app_dir" ]; then
+    echo "APP NOT FOUND"
+    fail=1
+    return 1
+  fi
   # The dual-core ITM-verdict apps must be built Debug so their INFO-level
   # ra8_log/[itm] verdict lines are compiled in (RelWithDebInfo strips them).
-  # Force a clean reconfigure first: the per-app `build` target re-runs cmake
-  # only when a source is newer than the ELF, so an up-to-date RelWithDebInfo
-  # tree from an earlier `make <app>` would otherwise silently win and the
-  # verdict would never print. BUILD_TYPE is a command-line variable, so make
-  # forwards it to the per-app sub-make.
-  app_make=(make "$app")
+  # Force a clean reconfigure first: an up-to-date RelWithDebInfo tree would
+  # otherwise silently win and the verdict would never print. The shared app
+  # recipe accepts the build type as its second parameter.
+  app_build=(/bin/bash -p "$ROOT/scripts/dev/run_just.sh" apps::build "$app")
   case " $dualcore_itm_apps " in
     *" $app "*)
-      app_dir="$(find examples -type d -name "$app" 2>/dev/null | head -1)"
-      [ -n "$app_dir" ] && rm -rf "$app_dir/build"
-      app_make=(make "$app" BUILD_TYPE=Debug)
+      rm -rf "$app_dir/build"
+      app_build=(/bin/bash -p "$ROOT/scripts/dev/run_just.sh" apps::build "$app" Debug)
       ;;
   esac
-  if ! "${app_make[@]}" >"/tmp/smoke_build_$app.log" 2>&1; then
+  if ! "${app_build[@]}" >"/tmp/smoke_build_$app.log" 2>&1; then
     echo "BUILD FAIL (see /tmp/smoke_build_$app.log)"
     fail=1
     return 1
   fi
-  elf="$(find examples -path "*/$app/build/$app.elf" 2>/dev/null | head -1)"
-  if [ -z "$elf" ]; then
+  elf="$app_dir/build/$app.elf"
+  if [ ! -f "$elf" ]; then
     echo "NO ELF"
     fail=1
     return 1

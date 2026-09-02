@@ -27,7 +27,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # extra and the OSPI NOR backend rides on ra8_xspi_init, which is in ra8_hal (always
 # linked). This app writes its own two-backend swap engine inline (no shared
 # round-trip helper), so no EXTRA_SRCS are needed. Boot files come from the shared
-# libs/ra8_board_ek_ra8d2/boot copy (no local vector_table.c). (#155/#264)
+# libs/ra8_board_ek_ra8d2/src/boot copy (no local vector_table.c). (#155/#264)
 ra8_add_app(
   NAME ra8_io_swap_demo
   STACK_BYTES 4096

@@ -122,7 +122,7 @@ typedef enum : uint8_t {
  *
  * @details
  * cppcheck cannot see tests/ so it flags every member as unused; each
- * field is read by the test suite in ``tests/test_ra8_reset.c`` and by
+ * field is read by the test suite in ``tests/hal/src/test_ra8_reset.c`` and by
  * any caller that wants to see every latched flag at once.
  *
  * @invariant ``rstsr0`` and ``rstsr2`` are 8-bit reads; the upper bits

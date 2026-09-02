@@ -42,7 +42,6 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 struct ra8_io_stream_iface {
   /**
    * @brief Write `len` bytes from `buf`, reporting the accepted count.
@@ -53,7 +52,6 @@ struct ra8_io_stream_iface {
   /** @brief Commit any buffering. May be NULL (nothing buffered). */
   ra8_err_t (*flush)(void* ctx);
 };
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Bind a backend vtable and caller-owned state into a stream handle.

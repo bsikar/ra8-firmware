@@ -601,7 +601,7 @@ ra8_err_t ra8_usb_dcp_out_arm(ra8_usb_speed_t speed)
      * BRDYENB before this re-read of the same word, so under RA8_OFF_TARGET
      * (plain-RAM registers) the bit is always present; this timeout is only
      * reachable on silicon where the SIE refuses the enable. */
-    return k_ra8_err_hw_timeout; /* GCOVR_EXCL_LINE */
+    return k_ra8_err_hw_timeout; /* GCOVR_EXCL_LINE -- SIE enable refusal seen only on silicon */
   }
   return k_ra8_ok;
 }

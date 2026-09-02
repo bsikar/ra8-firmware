@@ -4,13 +4,13 @@
  *
  * @details
  * The shelf's fourth reader surface. A comic archive is a container of page
- * images (JPEG / PNG / ...) in reading order; ::ra8_comic opens either a `.cbz`
+ * images (JPEG / PNG / ...) in reading order; ::comic opens either a `.cbz`
  * (ZIP of images) or a `.cbr` (RAR of images) behind one interface and streams
  * one page's *encoded* bytes on demand (bounded RAM, no whole-archive residency
- * -- see ra8_comic.h). This module pages through those images:
+ * -- see comic.h). This module pages through those images:
  *
  *   - Opens the archive over a baked MRAM blob or the held-open SD file
- *     (::sh_sd_book_open + ::sh_sd_comic_read), building ::ra8_comic's sorted
+ *     (::sh_sd_book_open + ::sh_sd_comic_read), building ::comic's sorted
  *     page index into caller-owned arenas (no heap; NASA P10 Rule 3).
  *   - Renders the current page full-screen: extract the page's encoded image,
  *     then aspect-fit decode + blit it into the content box below the header via
@@ -41,10 +41,10 @@
  */
 #include <string.h>
 
-#include "ra8_comic.h"
+#include "comic.h"
 #include "ra8_gfx.h"
 #include "ra8_gfx_font.h"
-#include "ra8_reflow_image.h"
+#include "reflow_image.h"
 #include "sh_app.h"
 #include "sh_comic_fixture.h"
 
@@ -79,9 +79,9 @@ typedef struct {
 } sh_comic_blob_t;
 
 /** @brief The open comic (large: page-index storage + backend scratch). */
-[[gnu::section(".sdram_data"), gnu::aligned(8)]] static ra8_comic_t s_comic;
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static comic_t s_comic;
 /** @brief Caller-owned sorted page index. */
-[[gnu::section(".sdram_data"), gnu::aligned(8)]] static ra8_comic_page_t s_pages[k_shc_page_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static comic_page_t s_pages[k_shc_page_cap];
 /** @brief Caller-owned page-name arena. */
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static char s_names[k_shc_names_cap];
 /** @brief One page's extracted encoded image (the decoder input). */
@@ -97,8 +97,8 @@ static sh_comic_blob_t s_blob;
 /** @brief true when the open comic's backing is a held SD file (close it too). */
 static bool s_from_sd;
 
-/** @brief ::ra8_comic_read_fn over a resident archive buffer (bounds-clamped). */
-// cppcheck-suppress constParameterCallback -- ctx is pinned by the ra8_comic_read_fn vtable signature (void* ctx forwarded verbatim into ra8_rar_open); const cannot cascade the shared read seam
+/** @brief ::comic_read_fn over a resident archive buffer (bounds-clamped). */
+// cppcheck-suppress constParameterCallback -- ctx is pinned by the comic_read_fn vtable signature (void* ctx forwarded verbatim into ra8_rar_open); const cannot cascade the shared read seam
 static size_t sh_comic_blob_read(void* ctx, uint64_t off, void* buf, size_t len)
 {
   const sh_comic_blob_t* s = (const sh_comic_blob_t*)ctx;
@@ -122,21 +122,21 @@ static uint32_t sh_comic_fnv(const void* p, size_t n)
   return h;
 }
 
-/** @brief Bind ::ra8_comic over @p rd + set g_sh.comic_count / page; ok on success. */
-static bool sh_comic_bind(ra8_comic_read_fn rd, void* ctx, uint64_t size)
+/** @brief Bind ::comic over @p rd + set g_sh.comic_count / page; ok on success. */
+static bool sh_comic_bind(comic_read_fn rd, void* ctx, uint64_t size)
 {
-  const ra8_err_t err = ra8_comic_open(&s_comic,
-                                       rd,
-                                       ctx,
-                                       size,
-                                       s_pages,
-                                       (uint32_t)k_shc_page_cap,
-                                       s_names,
-                                       (uint32_t)k_shc_names_cap);
+  const ra8_err_t err = comic_open(&s_comic,
+                                   rd,
+                                   ctx,
+                                   size,
+                                   s_pages,
+                                   (uint32_t)k_shc_page_cap,
+                                   s_names,
+                                   (uint32_t)k_shc_names_cap);
   if (err != k_ra8_ok) {
     return false;
   }
-  g_sh.comic_count = ra8_comic_page_count(&s_comic);
+  g_sh.comic_count = comic_page_count(&s_comic);
   g_sh.comic_page  = 0U;
   return g_sh.comic_count > 0U;
 }
@@ -154,7 +154,7 @@ static ra8_err_t sh_comic_blit_page(uint32_t page,
     return k_ra8_err_out_of_range;
   }
   size_t          got  = 0U;
-  const ra8_err_t rerr = ra8_comic_page_read(&s_comic, page, s_pagebuf, sizeof s_pagebuf, &got);
+  const ra8_err_t rerr = comic_page_read(&s_comic, page, s_pagebuf, sizeof s_pagebuf, &got);
   if (rerr != k_ra8_ok) {
     return rerr;
   }
@@ -204,7 +204,7 @@ bool sh_comic_open(uint16_t idx)
 
 void sh_comic_close(void)
 {
-  (void)ra8_comic_close(&s_comic); /* idempotent after a failed / no open */
+  (void)comic_close(&s_comic); /* idempotent after a failed / no open */
   if (s_from_sd) {
     sh_sd_book_close();
     s_from_sd = false;

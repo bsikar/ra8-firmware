@@ -14,8 +14,9 @@ half-second sleep stretches to about a minute and the LED looks frozen in any
 reasonable observation window. A wrong clock here reads as a dead board, not as
 a slow one.
 
-`main.c` overrides `SysTick_Handler` to tail-call `_tx_timer_interrupt`;
+`src/main.c` overrides `SysTick_Handler` to tail-call `_tx_timer_interrupt`;
 `PendSV_Handler` and `SVC_Handler` arrive from the upstream port as strong
-symbols and displace the weak aliases in `vector_table.c` automatically.
+symbols and displace the weak aliases in the board layer's
+`libs/ra8_board_ek_ra8d2/src/boot/vector_table.c` automatically.
 
 LED1 / LED2 are P600 / P303 per EK-RA8D2 v1 UM Table 24 p 31.

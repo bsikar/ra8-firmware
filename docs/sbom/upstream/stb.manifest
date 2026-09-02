@@ -10,6 +10,6 @@
 # patched: 1
 # local: 2
 ok 100644 9eedabedc45b3e6fd88fae6f14a160b4d53272ec stb_image.h
-local 100644 7e10e9652e351abdb4ec47cbac3615781366b4fb stb_image_impl.c
-patch 100644 90a5c2e2b3fe563c98585294ca7a949876aec94c aa1f935ceadeed1c9817d5ad8ddb249b8acbacb8 stb_truetype.h
-local 100644 078c33d6b14e724836b9e2dd8db07dab0f3a0f36 stb_truetype_impl.c
+local 100644 c53129c42942a6b49cfcf104681ce6ccfd46d595 stb_image_impl.c
+patch 100644 90a5c2e2b3fe563c98585294ca7a949876aec94c a90c5b33e4db2748816bcd314de681251cf01c27 stb_truetype.h
+local 100644 9cd8eafe1b240f424bf2387b1feeaa32e2675454 stb_truetype_impl.c

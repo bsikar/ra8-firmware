@@ -14,11 +14,11 @@
 #     ra8_add_app(NAME blink STACK_BYTES 2200 DESCRIPTION "Bare-metal blink firmware")
 #
 # ra8_add_app() builds <NAME>.elf/.hex/.bin from:
-#   - main.c                         : always taken from the app dir
-#   - vector_table.c / system_init.c / secure_exception.c / nmi_exception.c /
-#     trustzone_init.c :
+#   - src/main.c                     : always taken from the app dir
+#   - src/vector_table.c / src/system_init.c / src/secure_exception.c /
+#     src/nmi_exception.c / src/trustzone_init.c :
 #       the app's local copy if it exists (per-app override), else the
-#       selected board's libs/ra8_board_<BOARD>/boot/ copy (BOARD defaults to
+#       selected board's libs/ra8_board_<BOARD>/src/boot/ copy (BOARD defaults to
 #       ek_ra8d2 -- see the option below). The shared vector_table.c is
 #       the plurality variant (weak-alias handlers + ra8_lpm_safe_boot() early
 #       hook); apps with a divergent table (ra8_isr_dispatch dispatcher, no LPM
@@ -59,8 +59,11 @@
 #                       relative to the app dir or absolute). Each file's parent
 #                       directory is added to the include path so a co-located
 #                       header is found. Use this to share a helper TU across
-#                       sibling apps (e.g. examples/.../common/foo.c) without a
+#                       sibling apps (e.g. examples/.../common/src/foo.c) without a
 #                       full library.
+#   AUX_SRCS <f>...     sources under src/ that belong to a separately defined
+#                       executable rather than the primary app image. Paths are
+#                       relative to the app dir or absolute.
 #
 # Implemented as a macro so project()/set()/return() land in the caller's
 # directory scope (project() may not be called from a function, and the
@@ -91,8 +94,10 @@ include(${_RA8_ADD_APP_DIR}/ra8_app/vendored.cmake)
 #   DESCRIPTION <text>         project() description
 #   BOARD       <lib>          board support library
 #   NO_NSC                     skip the TrustZone NSC veneer objects
-#   USES/LIBS/OFF_TARGET_LIBS         extra link libraries (firmware / ra8_emulator)
+#   USES/LIBS/OFF_TARGET_LIBS  extra link libraries (firmware / ra8_emulator)
 #   NSC_SRCS/EXTRA_SRCS        extra sources
+#   AUX_SRCS                   src/ files owned by auxiliary image targets
+# Suppression rationale: this macro is the app feature matrix; splitting it would scatter it.
 # cmake-lint: disable=R0912,R0915
 #
 # The branch and statement ceilings are waived for this macro alone. Its 51
@@ -107,7 +112,7 @@ macro(ra8_add_app)
     _RA8_APP
     "NO_NSC"
     "NAME;STACK_BYTES;DESCRIPTION;BOARD"
-    "USES;LIBS;OFF_TARGET_LIBS;NSC_SRCS;EXTRA_SRCS"
+    "USES;LIBS;OFF_TARGET_LIBS;NSC_SRCS;EXTRA_SRCS;AUX_SRCS"
     ${ARGN}
   )
 
@@ -333,23 +338,6 @@ macro(ra8_add_app)
   # firmware main.c stops compiling.
   target_compile_options(${_ra8_elf} PRIVATE -ffreestanding -fshort-enums)
 
-  # Vendored RTOS / middleware headers trip several strict-warning gates we
-  # apply to first-party code (CHAR* params, redundant decls, casts,
-  # redefined macros). Relax the gate for apps that pull them in; the rest
-  # of the codebase still gets the full -Werror set.
-  if(_RA8_APP_USES)
-    target_compile_options(
-      ${_ra8_elf}
-      PRIVATE -Wno-error=discarded-qualifiers
-              -Wno-error=cast-qual
-              -Wno-error=cast-align
-              -Wno-error=redundant-decls
-              -Wno-error=missing-prototypes
-              -Wno-error=builtin-macro-redefined
-              -Wno-error
-    )
-  endif()
-
   if(RA8_TRUSTZONE_ENABLE)
     target_compile_definitions(${_ra8_elf} PRIVATE RA8_TRUSTZONE_ENABLE)
     target_compile_options(${_ra8_elf} PRIVATE -mcmse)
@@ -362,10 +350,14 @@ macro(ra8_add_app)
     target_compile_definitions(${_ra8_elf} PRIVATE RA8_INSECURE_STUB_CRYPTO)
   endif()
 
+  # A mixed app target contains both first-party and vendored translation
+  # units. Measured vendor exceptions are attached per source above; reject a
+  # target-wide -Wno-error so one dependency cannot weaken every app source.
+  ra8_target_reject_warning_demotions(${_ra8_elf})
+
   target_include_directories(
     ${_ra8_elf}
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-            ${CMAKE_CURRENT_SOURCE_DIR}/inc
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${CMAKE_CURRENT_SOURCE_DIR}/src
             ${RA8_REPO_ROOT}/libs/ra8_core/inc
             ${RA8_REPO_ROOT}/libs/ra8_hal/inc
@@ -430,13 +422,13 @@ endmacro()
 # Generalises the copy-pasted second-executable + objcopy recipe so any app opts
 # in an M33 image with one call. Cross-build only: on the host
 # (RA8_OFF_TARGET / __APPLE__) there is no arm-none-eabi toolchain, so this is
-# a no-op and `make test` keeps building the M85 side alone.
+# a no-op and `just quality::local::test` keeps building the M85 side alone.
 #
 # Usage:
 #   ra8_add_cpu1_image(
 #     PARENT   blink_m33            # M85 app target base name (-> <PARENT>.elf)
 #     NAME     blink_m33_cpu1       # CPU1 target base name (-> <NAME>.elf/.bin)
-#     SOURCES  cpu1_main.c          # M33 sources (relative to the app dir)
+#     SOURCES  src/cpu1_main.c      # M33 sources (relative to the app dir)
 #     LINKER   linker_script_cpu1.ld  # optional; defaults to this name
 #     INCLUDES ${EXTRA_INC} ...     # optional extra include dirs
 #   )
@@ -499,7 +491,7 @@ function(ra8_add_cpu1_image)
   # Applied PER-SOURCE to the helper SOURCES -- NOT target-level -- on purpose:
   # an app may bolt extra translation units onto the CPU1 elf with its own
   # target_sources() (e.g. compile_on_m33 adds the rabook XHTML pipeline plus
-  # vendored miniz.c / tinyxml2.cpp with their own -w). A target-level -Werror
+  # vendored dependency sources with their own -w). A target-level -Werror
   # would force those onto the first-party bar (and -Wstack-usage onto the
   # multi-KiB XHTML walker frames), reddening the build. Per-source scoping
   # holds the lines this helper owns to the bar without touching the app's
@@ -569,7 +561,8 @@ function(ra8_add_cpu1_image)
   # include of one that is not freestanding is the same mistake as above.
   target_include_directories(
     ${C1_NAME}.elf
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
             ${RA8_REPO_ROOT}/libs/ra8_core/inc
             ${RA8_REPO_ROOT}/libs/ra8_hal/inc
             ${_ra8_board_dir}/inc

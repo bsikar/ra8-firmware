@@ -16,16 +16,16 @@
 #include "ra8_c6link_mdl_service_internal.h"
 #include "ra8_media_download.pb-c.h"
 
-static_assert((uint32_t)k_ra8_mdl_format_loose == RA8__MDL__FORMAT__FORMAT_LOOSE);
-static_assert((uint32_t)k_ra8_mdl_format_cbz == RA8__MDL__FORMAT__FORMAT_CBZ);
-static_assert((uint32_t)k_ra8_mdl_format_cbt == RA8__MDL__FORMAT__FORMAT_CBT);
-static_assert((uint32_t)k_ra8_mdl_format_cbr == RA8__MDL__FORMAT__FORMAT_CBR);
-static_assert((uint32_t)k_ra8_mdl_format_cbt_xz == RA8__MDL__FORMAT__FORMAT_CBT_XZ);
-static_assert((uint32_t)k_ra8_mdl_format_cbt_gz == RA8__MDL__FORMAT__FORMAT_CBT_GZ);
-static_assert((uint32_t)k_ra8_mdl_format_epub == RA8__MDL__FORMAT__FORMAT_EPUB);
-static_assert((uint32_t)k_ra8_mdl_format_jof == RA8__MDL__FORMAT__FORMAT_JOF);
-static_assert((uint32_t)k_ra8_mdl_format_rabook == RA8__MDL__FORMAT__FORMAT_RABOOK);
-static_assert((uint32_t)k_ra8_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INVALID);
+static_assert((uint32_t)k_mdl_format_loose == RA8__MDL__FORMAT__FORMAT_LOOSE);
+static_assert((uint32_t)k_mdl_format_cbz == RA8__MDL__FORMAT__FORMAT_CBZ);
+static_assert((uint32_t)k_mdl_format_cbt == RA8__MDL__FORMAT__FORMAT_CBT);
+static_assert((uint32_t)k_mdl_format_cbr == RA8__MDL__FORMAT__FORMAT_CBR);
+static_assert((uint32_t)k_mdl_format_cbt_xz == RA8__MDL__FORMAT__FORMAT_CBT_XZ);
+static_assert((uint32_t)k_mdl_format_cbt_gz == RA8__MDL__FORMAT__FORMAT_CBT_GZ);
+static_assert((uint32_t)k_mdl_format_epub == RA8__MDL__FORMAT__FORMAT_EPUB);
+static_assert((uint32_t)k_mdl_format_jof == RA8__MDL__FORMAT__FORMAT_JOF);
+static_assert((uint32_t)k_mdl_format_rabook == RA8__MDL__FORMAT__FORMAT_RABOOK);
+static_assert((uint32_t)k_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INVALID);
 
 /** @brief Rounding mask derived from the arena's published alignment. */
 typedef enum : uint16_t {
@@ -338,7 +338,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_start(ra8_mdl_service_t*  se
   }
   const ra8_mdl_request_t backend_request = {
     .url    = req->url,
-    .format = (ra8_mdl_format_t)req->format,
+    .format = (mdl_format_t)req->format,
     .http   = {.user_agent        = req->user_agent,
                .referer           = req->referer,
                .if_none_match     = req->if_none_match,
@@ -354,7 +354,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_start(ra8_mdl_service_t*  se
   service->active_job_id = service->next_job_id;
   service->next_sequence = 0U;
   service->next_offset   = 0U;
-  service->active_format = (ra8_mdl_format_t)req->format;
+  service->active_format = (mdl_format_t)req->format;
   service->active        = true;
   return k_ra8_ok;
 }
@@ -422,21 +422,23 @@ static ra8_err_t internal_mdl_next_capacity(uint32_t max_data, size_t response_c
   char filler[k_ra8_mdl_etag_max];
   memset(filler, 'x', sizeof(filler) - 1U);
   filler[sizeof(filler) - 1U] = '\0';
-  Ra8__Mdl__Chunk data        = RA8__MDL__CHUNK__INIT;
-  data.protocol_version       = UINT32_MAX;
-  data.job_id                 = UINT32_MAX;
-  data.sequence               = UINT32_MAX;
-  data.offset                 = UINT64_MAX;
-  data.data                   = (ProtobufCBinaryData){.len = max_data, .data = (uint8_t*)filler};
-  data.total_bytes            = UINT64_MAX;
-  data.state                  = RA8__MDL__STATE__STATE_DOWNLOADING;
+  Ra8__Mdl__Chunk data;
+  ra8__mdl__chunk__init(&data);
+  data.protocol_version = UINT32_MAX;
+  data.job_id           = UINT32_MAX;
+  data.sequence         = UINT32_MAX;
+  data.offset           = UINT64_MAX;
+  data.data             = (ProtobufCBinaryData){.len = max_data, .data = (uint8_t*)filler};
+  data.total_bytes      = UINT64_MAX;
+  data.state            = RA8__MDL__STATE__STATE_DOWNLOADING;
   const ra8_err_t data_fit =
     internal_mdl_check_response_size(ra8__mdl__chunk__get_packed_size(&data), response_cap);
   if (data_fit != k_ra8_ok) {
     return data_fit;
   }
 
-  Ra8__Mdl__Chunk terminal  = RA8__MDL__CHUNK__INIT;
+  Ra8__Mdl__Chunk terminal;
+  ra8__mdl__chunk__init(&terminal);
   terminal.protocol_version = UINT32_MAX;
   terminal.job_id           = UINT32_MAX;
   terminal.sequence         = UINT32_MAX;
@@ -527,7 +529,7 @@ RA8_INTERNAL static void internal_mdl_build_chunk(const ra8_mdl_service_t*  serv
                                                   internal_mdl_next_read_t* result,
                                                   Ra8__Mdl__Chunk*          out)
 {
-  *out                  = (Ra8__Mdl__Chunk)RA8__MDL__CHUNK__INIT;
+  ra8__mdl__chunk__init(out);
   out->protocol_version = k_ra8_mdl_protocol_version;
   out->job_id           = service->active_job_id;
   out->sequence         = service->next_sequence;
@@ -579,7 +581,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_next(ra8_mdl_service_t*  ser
                                                          size_t              response_cap,
                                                          size_t*             response_len)
 {
-  Ra8__Mdl__NextRequest* req = ra8__mdl__next_request__unpack(alloc, request_len, request);
+  const Ra8__Mdl__NextRequest* req = ra8__mdl__next_request__unpack(alloc, request_len, request);
   if (req == nullptr) {
     return k_ra8_err_protocol_error;
   }
@@ -604,7 +606,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_next(ra8_mdl_service_t*  ser
     return read;
   }
 
-  Ra8__Mdl__Chunk out = RA8__MDL__CHUNK__INIT;
+  Ra8__Mdl__Chunk out;
+  ra8__mdl__chunk__init(&out);
   internal_mdl_build_chunk(service, &result, &out);
   const ra8_err_t packed = internal_mdl_pack_chunk(&out, response, response_cap, response_len);
   if (packed != k_ra8_ok) {
@@ -651,7 +654,8 @@ RA8_INTERNAL static ra8_err_t internal_mdl_dispatch_cancel(ra8_mdl_service_t*  s
                                                            size_t              response_cap,
                                                            size_t*             response_len)
 {
-  Ra8__Mdl__CancelRequest* req = ra8__mdl__cancel_request__unpack(alloc, request_len, request);
+  const Ra8__Mdl__CancelRequest* req =
+    ra8__mdl__cancel_request__unpack(alloc, request_len, request);
   if (req == nullptr) {
     return k_ra8_err_protocol_error;
   }

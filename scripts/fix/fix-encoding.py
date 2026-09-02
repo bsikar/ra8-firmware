@@ -5,14 +5,14 @@
 
 Replaces common non-ASCII Unicode characters with their ASCII equivalents
 (em-dash -> --, smart quotes -> plain quotes, Greek mu -> u, etc.), and is the
-detector behind the ``ascii`` CI gate and ``make ascii``.
+detector behind the ``ascii`` CI gate and ``just quality::local::ascii``.
 
 ``--all`` is the gate mode and DERIVES its scope from ``git ls-files`` via
 ``lint_targets.first_party_paths()``.  It used to be driven by a hardcoded root
-list in two places -- ``gate_ascii`` and ``mk/quality.mk`` both looped over
+list in two places -- ``gate_ascii`` and the legacy quality task both looped over
 ``src libs tests examples port scripts tools docs`` -- so the encoding policy
 never saw the repo root, ``.github/``, ``cmake/``, ``coprocessor/``, ``infra/``
-or ``mk/``.  106 files, including ``CLAUDE.md``, the file that *states* the
+or the task-runner configuration. 106 files, including ``CLAUDE.md``, the file that *states* the
 policy (#533).  A derived scope puts a new top-level directory in the gate the
 day it lands, with no list to remember.
 
@@ -40,7 +40,7 @@ import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "checks"))
 
-from lint_targets import first_party_paths
+from lint_targets import files_for, first_party_paths
 
 # U+NNNN -> ASCII replacement. Keep this list in sync with the
 # rx72n project's equivalent script so both trees use the same
@@ -112,6 +112,10 @@ EXIT_FINDINGS = 1
 EXIT_VACUOUS = 2
 
 
+class EncodingScanError(RuntimeError):
+    """One in-scope text file could not be read as trusted UTF-8."""
+
+
 def rewrite(text: str) -> tuple[str, int]:
     """Return replaced text and the number of substitutions."""
     count = 0
@@ -133,17 +137,18 @@ def rewrite(text: str) -> tuple[str, int]:
 def process(path: pathlib.Path, *, check_only: bool) -> int:
     """Transliterate one file's non-ASCII characters, or just count them.
 
-    A file that cannot be decoded as UTF-8 is SKIPPED with a message rather
-    than failed: it is almost certainly binary, and rewriting it would corrupt
-    it.
-
     Returns the number of offending characters found (0 when clean).
+
+    Raises:
+        EncodingScanError: The in-scope first-party text could not be read as
+            UTF-8. Such a failure cannot be reported as a clean ASCII scan.
     """
     try:
         original = path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError) as exc:
-        print(f"[SKIP] {path}: {exc}", file=sys.stderr)
-        return 0
+        message = f"[ERROR] {path}: {exc}"
+        print(message, file=sys.stderr)
+        raise EncodingScanError(message) from exc
 
     replaced, changed = rewrite(original)
     if changed == 0:
@@ -176,16 +181,40 @@ def walk(target: pathlib.Path, *, check_only: bool) -> int:
     return total
 
 
+def extensionless_entry_targets() -> list[pathlib.Path]:
+    """Return tracked first-party shebang entry points with no suffix.
+
+    The hook files are executable source even though names such as
+    ``commit-msg`` and ``pre-commit`` carry no extension. Language discovery
+    already classifies them from their shebang, so reuse that authority rather
+    than inventing a second basename list.
+
+    Returns:
+        Sorted repo-relative extensionless shell/Python entry points.
+    """
+    language_paths = files_for(("shell", "python"))
+    return sorted(
+        {
+            pathlib.Path(relative)
+            for paths in language_paths.values()
+            for relative in paths
+            if not pathlib.Path(relative).suffix
+        }
+    )
+
+
 def derived_targets() -> list[pathlib.Path]:
     """Every first-party file the encoding policy covers, derived from git.
 
     Returns:
-        Repo-relative paths with a text suffix this script understands.
+        Repo-relative paths with a text suffix this script understands, plus
+        extensionless first-party shebang entry points.
 
     Raises:
         SystemExit: Via `first_party_paths` when ``git ls-files`` collapses.
     """
-    return [pathlib.Path(rel) for rel in first_party_paths(tuple(sorted(EXTENSIONS)))]
+    suffixed = {pathlib.Path(relative) for relative in first_party_paths(tuple(sorted(EXTENSIONS)))}
+    return sorted(suffixed | set(extensionless_entry_targets()))
 
 
 def _run_all(*, check_only: bool) -> int:
@@ -205,9 +234,71 @@ def _run_all(*, check_only: bool) -> int:
             file=sys.stderr,
         )
         return EXIT_VACUOUS
-    changed = sum(process(path, check_only=check_only) for path in targets)
+    try:
+        changed = sum(process(path, check_only=check_only) for path in targets)
+    except EncodingScanError:
+        return EXIT_VACUOUS
     print(f"fix-encoding.py: {changed} non-ASCII character(s) across {len(targets)} file(s)")
     return EXIT_FINDINGS if (check_only and changed) else EXIT_OK
+
+
+def _selftest_file_cases(root: pathlib.Path) -> list[tuple[str, bool]]:
+    """Exercise direct, extensionless, recursive, rewrite, and missing targets."""
+    clean = root / "clean.md"
+    clean.write_text("plain ASCII -- nothing exotic\n", encoding="utf-8")
+    dirty = root / "dirty.md"
+    # Escapes keep this policy implementation inside its own ASCII scope.
+    dirty.write_text("an em\u2014dash and a \u00b5\n", encoding="utf-8")
+    dirty_entry = root / "extensionless-hook"
+    dirty_entry.write_text("#!/bin/sh\n# em\u2014dash\n", encoding="utf-8")
+    cases = [
+        ("MUST NOT FIRE: a pure-ASCII file", process(clean, check_only=True) == 0),
+        ("MUST FIRE: an em-dash and a micro sign", process(dirty, check_only=True) > 0),
+        (
+            "MUST FIRE: an extensionless shebang entry contains non-ASCII",
+            process(dirty_entry, check_only=True) > 0,
+        ),
+        (
+            "MUST FIRE: a directory walk reaches the offending file",
+            walk(root, check_only=True) > 0,
+        ),
+    ]
+    process(dirty, check_only=False)
+    invalid = root / "invalid.md"
+    invalid.write_bytes(b"\xff")
+    unreadable = root / "unreadable.md"
+    unreadable.mkdir()
+    cases.extend(
+        [
+            ("MUST NOT FIRE: the rewritten file is clean", process(dirty, check_only=True) == 0),
+            (
+                "rewrite transliterated rather than deleted",
+                dirty.read_text(encoding="utf-8") == "an em--dash and a u\n",
+            ),
+            (
+                "MUST FIRE: invalid UTF-8 refuses a trusted scan",
+                _process_refuses(invalid),
+            ),
+            (
+                "MUST FIRE: a read error refuses a trusted scan",
+                _process_refuses(unreadable),
+            ),
+            (
+                "MUST FIRE: a target that does not exist is an error, not a silent 0",
+                walk_or_fail(root / "no-such-dir", check_only=True) is None,
+            ),
+        ]
+    )
+    return cases
+
+
+def _process_refuses(path: pathlib.Path) -> bool:
+    """Return whether one unreadable fixture fails closed."""
+    try:
+        process(path, check_only=True)
+    except EncodingScanError:
+        return True
+    return False
 
 
 def selftest() -> int:
@@ -220,47 +311,19 @@ def selftest() -> int:
     Returns:
         ``EXIT_OK`` when every case holds, ``EXIT_VACUOUS`` otherwise.
     """
-    cases: list[tuple[str, bool]] = []
     with tempfile.TemporaryDirectory() as tmp:
-        root = pathlib.Path(tmp)
-        clean = root / "clean.md"
-        clean.write_text("plain ASCII -- nothing exotic\n", encoding="utf-8")
-        dirty = root / "dirty.md"
-        # Written as escapes on purpose: this file is itself inside the scope
-        # of the policy it enforces, so a literal em-dash here would make the
-        # detector fail on its own source.
-        dirty.write_text("an em\u2014dash and a \u00b5\n", encoding="utf-8")
+        cases = _selftest_file_cases(pathlib.Path(tmp))
 
-        cases.append(("MUST NOT FIRE: a pure-ASCII file", process(clean, check_only=True) == 0))
-        cases.append(
-            ("MUST FIRE: an em-dash and a micro sign", process(dirty, check_only=True) > 0)
-        )
-        cases.append(
-            (
-                "MUST FIRE: a directory walk reaches the offending file",
-                walk(root, check_only=True) > 0,
-            )
-        )
-        process(dirty, check_only=False)
-        cases.append(
-            ("MUST NOT FIRE: the rewritten file is clean", process(dirty, check_only=True) == 0)
-        )
-        cases.append(
-            (
-                "rewrite transliterated rather than deleted",
-                dirty.read_text(encoding="utf-8") == "an em--dash and a u\n",
-            )
-        )
-
-        missing = root / "no-such-dir"
-        cases.append(
-            (
-                "MUST FIRE: a target that does not exist is an error, not a silent 0",
-                not missing.exists() and walk_or_fail(missing, check_only=True) is None,
-            )
-        )
-
+    minimum_entry_count = 7
+    live_entries = extensionless_entry_targets()
     cases.append(("the live derived scope clears the floor", len(derived_targets()) >= FILE_FLOOR))
+    cases.append(
+        (
+            "the live extensionless scope is non-vacuous",
+            len(live_entries) >= minimum_entry_count
+            and pathlib.Path("scripts/git/commit-msg") in live_entries,
+        )
+    )
     for label, ok in cases:
         print(f"  {'ok  ' if ok else 'FAIL'} {label}")
     if not all(ok for _, ok in cases):
@@ -319,7 +382,10 @@ def main() -> int:
     if args.all:
         return _run_all(check_only=args.check)
 
-    changed = walk_or_fail(args.target, check_only=args.check)
+    try:
+        changed = walk_or_fail(args.target, check_only=args.check)
+    except EncodingScanError:
+        return EXIT_VACUOUS
     if changed is None:
         print(f"fix-encoding.py: FATAL -- '{args.target}' does not exist.", file=sys.stderr)
         return EXIT_VACUOUS

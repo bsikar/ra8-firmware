@@ -7,7 +7,7 @@ no other example referenced (recon gap #134): the time-aware shaper (TAS,
 ## `ra8_tsn` is the temperature sensor, not TSN networking
 
 Recon #134 named `ra8_tsn` as the time-sensitive-networking driver, but
-`libs/ra8_hal/ra8_tsn` is the on-die **temperature sensor** (demonstrated by
+`libs/ra8_hal/inc/ra8_tsn.h` is the on-die **temperature sensor** (demonstrated by
 `adc_diag_tsn_demo`). The real TSN networking surface on this part is the ETHA
 shaper block, which is what this example drives.
 

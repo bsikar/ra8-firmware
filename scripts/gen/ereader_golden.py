@@ -6,8 +6,8 @@
 The ``ereader_ui`` example (issue #80) paints its Library and Reading screens
 into the GLCDC framebuffer. ``tools/ra8_emulator`` renders that firmware
 framebuffer deterministically, so we can pin the chrome with checked-in golden
-images and fail CI (or a local ``make`` target) when an unrelated change shifts
-a pixel.
+images and fail CI (or the local ``just apps::emulator::golden`` recipe) when an unrelated
+change shifts a pixel.
 
 ra8_emulator's ``--ppm`` snapshot is the panel framebuffer PLUS a fixed-width debug
 sidebar on the right (LED / USB / IRQ state). The chrome golden must test the

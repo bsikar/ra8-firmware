@@ -52,7 +52,6 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 struct display_backend_iface {
   /**
    * @brief Bring the backend up against ``cfg`` and return its
@@ -98,7 +97,6 @@ struct display_handle {
   const display_backend_iface_t* iface; /**< Bound backend vtable.        */
   void*                          ctx;   /**< Backend-private context ptr. */
 };
-/* cppcheck-suppress-end [unusedStructMember] */
 
 #ifdef __cplusplus
 }

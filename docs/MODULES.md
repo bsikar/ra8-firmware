@@ -28,7 +28,7 @@ the interrupt and event fabric, DMA, external memory, networking,
 display and camera, USB, crypto and the watchdogs -- one driver per
 peripheral, over a bank of `ra8_*_regs.h` register-map headers written
 from the HUM. Every driver returns `ra8_err_t` and is unit-tested against
-`tests/mocks/ra8_fake_mmap.c`, which presents the MCU peripheral
+`tests/mocks/src/ra8_fake_mmap.c`, which presents the MCU peripheral
 address space as host-side RAM.
 
 * Headers: `libs/ra8_hal/inc/ra8_*.h` and `libs/ra8_hal/inc/ra8_*_regs.h`
@@ -82,9 +82,9 @@ Duo port in `port/netxduo/` builds on it.
 
 USB device-mode platform-abstraction layer. Hides the FS-vs-HS
 controller choice, the MSTP / clock-gate dance, and per-endpoint
-software ring buffers behind a small stack-agnostic API. CherryUSB
-binds against this layer; TinyUSB or a hand-rolled stack could
-substitute without changing this header.
+software ring buffers behind a small stack-agnostic API. No USB stack is
+currently compiled against this seam; a future CherryUSB, TinyUSB, or
+hand-rolled adapter can bind without changing the header.
 
 * Header: `libs/ra8_usb_pal/inc/ra8_usb_pal.h`
 * Main entry points: `ra8_usb_pal_init()` / `_attach()`, then the
@@ -126,10 +126,10 @@ side commit veneer in `ra8_nsc_ota`.
 
 ## ra8_modem_at
 
-Cellular modem AT command/response driver layered on top of an
-`ra8_uart` instance. Owns the line buffer, the response parser, and
-the URC dispatcher. Used by the ereader and the OTA-over-cellular
-example paths.
+Cellular modem AT command/response driver layered on caller-supplied byte-I/O
+and monotonic-time callbacks. The production modem demo binds those callbacks
+to RA8 SCI transport; tests use in-memory fakes. The module owns the line
+buffer, response parser, and URC dispatcher.
 
 * Header: `libs/ra8_modem_at/inc/ra8_modem_at.h`
 * Main entry points: `ra8_modem_at_init()`, `ra8_modem_at_send_cmd()`,
@@ -144,7 +144,7 @@ the serial endpoint's TLV envelope, the protobuf `Rpc` control plane
 pump, the 802.3 data plane, and Wi-Fi station control. Everything
 hardware-shaped sits behind a three-function transport seam, which
 `port/esp-hosted/` binds to the OS-abstraction vtable on the board and
-`tests/mocks/ra8_c6_model.c` binds to a co-processor model on the host.
+`tests/mocks/src/ra8_c6_model.c` binds to a co-processor model on the host.
 
 The generated protobuf codec allocates, and this firmware has no heap,
 so the codec is handed a bump allocator over a caller-supplied array
@@ -162,24 +162,25 @@ plane inside NASA Power of 10 Rule 3.
 
 First-party FAT12/FAT16/FAT32 + exFAT filesystem (read + write) backed
 by a swappable block-device interface. The platform's only filesystem
-since the vendored FileX was retired (#611); used by the ereader app to
-walk EPUBs off an SD card, and by the ThreadX demos over LevelX.
+since the vendored FileX was retired (#611). Current consumers include the
+ereader storage paths, filesystem format/mount app, page cache, and RA8 I/O
+demos; the ThreadX LevelX demo uses LevelX directly.
 
 * Header: `libs/ra8_fs/inc/ra8_fs.h`
 * Main entry points: `ra8_fs_mount()`, `ra8_fs_open()`,
   `ra8_fs_read()`, `ra8_fs_write()`.
 
-## ra8_epub
+## epub
 
 EPUB (.epub) reader and chapter iterator. Walks the ZIP container
 through miniz, parses the OPF manifest + NCX spine, and hands
-chapter XHTML to `ra8_reflow` for layout.
+chapter XHTML to `reflow` for layout.
 
-* Header: `libs/ra8_epub/inc/ra8_epub.h`
-* Main entry points: `ra8_epub_open()`, `ra8_epub_get_chapter_count()`,
-  `ra8_epub_load_chapter()`.
+* Header: `apps/shared_libs/epub/inc/epub.h`
+* Main entry points: `epub_open()`, `epub_get_chapter_count()`,
+  `epub_load_chapter()`.
 
-## ra8_reflow
+## reflow
 
 HTML reflow + paginate engine for the ereader: it pages chapter content
 into the viewport so the GLCDC layer can blit one page at a time. The
@@ -187,9 +188,9 @@ default engine is first-party, zero-allocation and MC/DC-testable; a
 litehtml-backed variant exists behind a build option that is off, and
 `docs/EPUB_CONFORMANCE.md` is the contract for what either one renders.
 
-* Header: `libs/ra8_reflow/inc/ra8_reflow.h`
-* Main entry points: `ra8_reflow_init()`,
-  `ra8_reflow_layout_chapter()`.
+* Header: `apps/shared_libs/reflow/inc/reflow.h`
+* Main entry points: `reflow_init()`,
+  `reflow_layout_chapter()`.
 
 ## ra8_gfx
 

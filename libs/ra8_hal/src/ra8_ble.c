@@ -36,6 +36,7 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_ble_internal.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -135,16 +136,6 @@ typedef struct {
 } ra8_ble_state_t;
 
 static ra8_ble_state_t s_state = {};
-
-/* =============================================================================
- * Test hooks. Declared with external linkage so that test TUs can
- * synthesize incoming events. Production firmware never calls these.
- * =============================================================================
- */
-
-RA8_TEST_HELPER void           ra8_ble_test_reset_capture(void);
-RA8_TEST_HELPER void           ra8_ble_test_inject_rx(const uint8_t* bytes, uint16_t len);
-RA8_TEST_HELPER const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len);
 
 /* =============================================================================
  * Internal helpers
@@ -373,10 +364,9 @@ ra8_err_t ra8_ble_dispatch(void)
   if (s_state.open == 0U) {
     return k_ra8_err_not_initialized;
   }
-  for (uint32_t budget = 0U; budget < k_ra8_ble_dispatch_budget;
-       ++budget) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t budget = 0U; budget < k_ra8_ble_dispatch_budget; ++budget) {
     uint8_t pkt_type = 0U;
-    if (internal_rx_byte(&pkt_type) == 0U) { /* GCOVR_EXCL_BR_LINE */
+    if (internal_rx_byte(&pkt_type) == 0U) {
       return k_ra8_ok;
     }
     if (pkt_type == k_ra8_ble_pkt_event) {
@@ -475,7 +465,7 @@ ra8_err_t ra8_ble_scan_start(uint8_t active, uint16_t interval, uint16_t window)
 }
 
 /* =============================================================================
- * Test hooks (visible to tests, no-op for production callers).
+ * Test-only external hooks; production code has no callers.
  * =============================================================================
  */
 

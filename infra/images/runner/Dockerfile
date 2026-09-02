@@ -1,6 +1,6 @@
 # CI runner image = the pinned devcontainer toolchain + the GitHub Actions
 # runner. ARC runner pods boot from this, so every gate executes in the exact
-# environment `make ci` uses -- the toolchain drift that made gates pass
+# environment `just ci` uses -- the toolchain drift that made gates pass
 # locally yet fail in CI cannot recur.
 #
 # Two stages keep the toolchain defined in exactly one place:
@@ -10,12 +10,14 @@
 #     the ARC k8s / k8s-novolume hooks verbatim, so the ARC contract is met
 #     without hand-reimplementing it.
 #
-# Build (see ../README.md):
-#   buildah bud -t localhost/ra8-ci-runner:latest -f Dockerfile .
+# Built only by the Ansible ci_runner role through the producer declared in
+# infra/fleet.yml; see ../README.md. Keep build and publication logic there.
 
-# hadolint global ignore=DL3002
 ARG BASE_IMAGE=localhost/ra8-devcontainer:latest
-ARG RUNNER_IMAGE=ghcr.io/actions/actions-runner:latest
+# Official linux/amd64 manifest for actions/runner v2.336.0. Pin both the
+# reviewed release and its registry digest: `latest` made an Ansible converge
+# capable of changing the runner binary without any repository change.
+ARG RUNNER_IMAGE=ghcr.io/actions/actions-runner:2.336.0@sha256:a1919047b038c38871d667c58cfdc7a878452711ab1212fb6036188f27a7ab16
 
 FROM ${RUNNER_IMAGE} AS runner
 
@@ -25,10 +27,9 @@ FROM ${BASE_IMAGE}
 # vscode user is uid 1000, so the two never clash. Every pinned tool lives in
 # /usr/local, /usr/bin and /opt, so the runner user resolves them all.
 #
-# No sudoers entry (#487): every workflow step that used to provision packages
-# on a bare-metal runner (e.g. the coverage gate's apt-get) was made
-# unconditionally sudo-free in 5f4e8fd10, because the pod's toolchain is
-# already complete and there is nothing left for such a step to install. A
+# No sudoers entry (#487): every workflow step that used to provision host
+# packages (e.g. the coverage gate's apt-get) was removed because this
+# Ansible-deployed image already carries the complete toolchain. A
 # 'runner ALL=(ALL) NOPASSWD:ALL' line used to live here to match the official
 # actions-runner image, but the deployed localhost/ra8-ci-runner:v2 image was
 # built and imported without it (confirmed by exec into a live pod) and no job
@@ -58,8 +59,14 @@ RUN /home/runner/bin/installdependencies.sh \
 # it landed on. Deliberately content-free beyond the identity -- a build stamp
 # here would make the layer uncacheable, and a copy of the tool pins would be a
 # second place for them to drift from .devcontainer/Dockerfile.
+# Authenticate the inherited managed environment after every runner-specific
+# layer. Keeping this as the final RUN makes the ARC image build itself prove
+# that its devcontainer receipt and locked inputs survived unchanged.
 RUN printf '%s\n' 'localhost/ra8-ci-runner (infra/images/runner/Dockerfile)' \
-    > /etc/ra8-ci-runner
+      > /etc/ra8-ci-runner \
+    && /usr/bin/python3 -I /opt/ra8-uv-bootstrap/managed_python_env.py verify \
+      --env "${RA8_TOOL_VENV}" --pyproject /opt/ra8-python-project/pyproject.toml \
+      --lock /opt/ra8-python-project/uv.lock --group ci
 
 # Match the official image's runtime contract (no entrypoint, bash command, and
 # the two env vars ARC relies on for signal handling and log streaming).

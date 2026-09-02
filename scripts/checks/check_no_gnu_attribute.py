@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -152,6 +153,36 @@ def check_file(path: str) -> list[tuple[int, str]]:
     return findings
 
 
+def selftest() -> int:
+    """Prove migratable GNU attributes fire and exact exceptions stay quiet."""
+    with tempfile.TemporaryDirectory(prefix="gnu-attribute-selftest-") as raw:
+        root = Path(raw)
+        bad = root / "bad.c"
+        good = root / "good.c"
+        bad.write_text("void f(void) __attribute__((weak));\n", encoding="ascii")
+        good.write_text(
+            "[[gnu::weak]] void f(void);\n"
+            "void irq(void) __attribute__((interrupt));\n"
+            "void g(void) __attribute__((packed)); /* ATTR-OK: wire ABI */\n"
+            "// void prose(void) __attribute__((weak));\n",
+            encoding="ascii",
+        )
+        bad_findings = check_file(str(bad))
+        good_findings = check_file(str(good))
+    cases = (
+        (len(bad_findings) == 1, "migratable GNU attribute fires"),
+        (not good_findings, "C23, exact exception, waiver, and prose stay quiet"),
+    )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"check_no_gnu_attribute.py --selftest: {len(failed)} failure(s)", file=sys.stderr)
+        return 1
+    print("check_no_gnu_attribute.py --selftest: all cases pass (both directions).")
+    return 0
+
+
 def main() -> int:
     """Fail on GNU ``__attribute__`` syntax where the C23 form is available.
 
@@ -168,7 +199,13 @@ def main() -> int:
     Returns 1 listing each occurrence, 0 when clean, 2 when the whole-tree
     sweep enumerated too few files to trust.
     """
-    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    raw_args = sys.argv[1:]
+    if raw_args == ["--selftest"]:
+        return selftest()
+    if any(arg.startswith("-") for arg in raw_args):
+        print("usage: check_no_gnu_attribute.py [--selftest] [file ...]", file=sys.stderr)
+        return 2
+    args = raw_args
     whole_tree = not args
     files = args or discover()
     if whole_tree and len(files) < FILE_FLOOR:

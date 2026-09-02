@@ -147,7 +147,7 @@ typedef enum : uint8_t {
  * Emitted by the NS linker script at ::k_ra8_tz_ns_rot_header_offset from the NS
  * base, this fixed 8-byte record lets the Secure verifier learn the signed body
  * length without a hand-encoded absolute trailer address. The signing tool
- * (``tools/rot_sign.py``) appends the ::ra8_rot_trailer_t immediately after the
+ * (``tools/rot/src/rot_sign.py``) appends the ::ra8_rot_trailer_t immediately after the
  * ``body_len``-byte body, so the trailer begins at ``ns_base + body_len`` --
  * the exact ``[ body ][ trailer ]`` layout the copy-to-run boundary uses. The
  * header word itself lies inside the signed body, so ``body_len`` is covered by
@@ -293,7 +293,7 @@ typedef struct {
  * progress counter, sets ``s_ra8_tz_secure_boot_blxns_target`` to the
  * supplied reset vector, and returns ``k_ra8_ok`` so unit tests can
  * assert the documented transition state; the gate's decision logic is
- * covered directly in ``tests/test_ra8_root_of_trust.c``.
+ * covered directly in ``tests/security/src/test_ra8_root_of_trust.c``.
  *
  * @param[in] ns_vector_table Pointer to the NS image's vector table.
  *

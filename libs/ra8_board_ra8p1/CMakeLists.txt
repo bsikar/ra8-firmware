@@ -6,7 +6,7 @@
 # This file documents the library's source / include layout. The per-app
 # cross-compile build selects this layer via ra8_add_app(... BOARD ra8p1)
 # (cmake/ra8_add_app.cmake), which globs src/*.c, adds inc/ to the include
-# path, and falls back to boot/ + ld/ for any boot file / linker script the
+# path, and falls back to src/boot/ + ld/ for any boot file / linker script the
 # app does not override. Adding the directory here is sufficient for a
 # standalone consumer to pick it up the same way the ek_ra8d2 layer is wired.
 #

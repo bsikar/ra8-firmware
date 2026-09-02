@@ -81,6 +81,54 @@ def read_symbols(elf: str, nm: str) -> dict[str, int]:
     return syms
 
 
+def offset_drift(syms: dict[str, int]) -> list[str]:
+    """Return every missing or displaced required veneer from a symbol table."""
+    base = syms[BASE_SYMBOL]
+    drift: list[str] = []
+    for sym, want in EXPECTED_OFFSETS.items():
+        if sym not in syms:
+            drift.append(f"  {sym}: MISSING from the link")
+            continue
+        got = (syms[sym] & THUMB_MASK) - base
+        if got != want:
+            drift.append(f"  {sym}: at sgstubs+{got} (expected sgstubs+{want})")
+    return drift
+
+
+def selftest() -> int:
+    """Prove exact Thumb offsets pass while one drift and one absence fire."""
+    base = 0x1000
+    good = {
+        BASE_SYMBOL: base,
+        **{name: base + offset + 1 for name, offset in EXPECTED_OFFSETS.items()},
+    }
+    bad = dict(good)
+    missing = next(iter(EXPECTED_OFFSETS))
+    bad.pop(missing)
+    shifted = next(name for name in EXPECTED_OFFSETS if name != missing)
+    bad[shifted] += 8
+    good_findings = offset_drift(good)
+    bad_findings = offset_drift(bad)
+    expected_bad_findings = 2
+    cases = (
+        (not good_findings, "exact Thumb-normalized veneer offsets stay quiet"),
+        (
+            len(bad_findings) == expected_bad_findings
+            and any("MISSING" in item for item in bad_findings)
+            and any("expected" in item for item in bad_findings),
+            "a missing veneer and a displaced veneer both fire",
+        ),
+    )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"check_sg_offsets.py --selftest: {len(failed)} failure(s)", file=sys.stderr)
+        return 1
+    print("check_sg_offsets.py --selftest: all cases pass (both directions).")
+    return 0
+
+
 def main() -> int:
     """Verify the secure-gateway veneers sit at their pinned offsets in an ELF.
 
@@ -111,9 +159,17 @@ def main() -> int:
     output fell below SYMBOL_FLOOR.
     """
     ap = argparse.ArgumentParser()
-    ap.add_argument("elf")
+    ap.add_argument("elf", nargs="?")
     ap.add_argument("--nm", default="arm-none-eabi-nm")
+    ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
+
+    if args.selftest:
+        if args.elf is not None or args.nm != "arm-none-eabi-nm":
+            ap.error("--selftest does not accept an ELF or --nm")
+        return selftest()
+    if args.elf is None:
+        ap.error("the following arguments are required: elf")
 
     nm = shutil.which(args.nm) or args.nm
     try:
@@ -138,15 +194,7 @@ def main() -> int:
         print("check_sg_offsets: no NSC region in this ELF -- skipped.")
         return 0
 
-    base = syms[BASE_SYMBOL]
-    drift = []
-    for sym, want in EXPECTED_OFFSETS.items():
-        if sym not in syms:
-            drift.append(f"  {sym}: MISSING from the link")
-            continue
-        got = (syms[sym] & THUMB_MASK) - base
-        if got != want:
-            drift.append(f"  {sym}: at sgstubs+{got} (expected sgstubs+{want})")
+    drift = offset_drift(syms)
 
     if drift:
         print("check_sg_offsets: FATAL -- NSC SG-veneer slot drift detected.", file=sys.stderr)

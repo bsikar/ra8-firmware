@@ -94,7 +94,7 @@ static ra8_err_t internal_exfat_locate_label(const ra8_fs_mount_t* m,
       return k_ra8_ok;
     }
   }
-  return k_ra8_err_not_found; /* GCOVR_EXCL_LINE */
+  return k_ra8_err_not_found;
 }
 
 /**

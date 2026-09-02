@@ -182,7 +182,7 @@ ra8_err_t ra8_cache_dcache_clean_by_addr(const void* addr, uint32_t size)
   return internal_ra8_cache_maintain_range(addr, size, k_ra8_cache_dccmvac);
 }
 
-ra8_err_t ra8_cache_dcache_invalidate_by_addr(void* addr, uint32_t size)
+ra8_err_t ra8_cache_dcache_invalidate_by_addr(const void* addr, uint32_t size)
 {
   return internal_ra8_cache_maintain_range(addr, size, k_ra8_cache_dcimvac);
 }

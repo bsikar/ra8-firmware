@@ -1,6 +1,6 @@
 # epub_toc
 
-Runs the `ra8_epub` table-of-contents path on silicon (#116) against real
+Runs the `epub` table-of-contents path on silicon (#116) against real
 `.epub` files staged on a microSD card. #74 added titled TOC parsing -- EPUB2
 NCX `<navMap>` and EPUB3 `nav.xhtml` `<nav epub:type="toc">` -- but it had only
 ever run on the x86 host. Building on `epub_open`, this exercises both forms

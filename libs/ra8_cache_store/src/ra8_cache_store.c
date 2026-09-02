@@ -296,11 +296,11 @@ RA8_INTERNAL static ra8_err_t internal_checkpoint(ra8_cache_store_t* store)
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_put_check(ra8_cache_store_t* store,
-                                                 uint32_t           key,
-                                                 const uint8_t*     data,
-                                                 uint32_t           len,
-                                                 uint32_t*          out_count)
+RA8_INTERNAL static ra8_err_t internal_put_check(const ra8_cache_store_t* store,
+                                                 uint32_t                 key,
+                                                 const uint8_t*           data,
+                                                 uint32_t                 len,
+                                                 uint32_t*                out_count)
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(data, s_tag, "data");

@@ -155,12 +155,14 @@ ra8_i2c_state_t s_i2c_state[k_ra8_i2c_channel_count];
 RA8_INTERNAL static ra8_err_t internal_i2c_wait_icsr2(volatile const r_i2c_regs_t* reg,
                                                       uint8_t                      mask)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_poll_limit; i++) {
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
-    if (ra8_fake_mmio_poll(&reg->ICSR2, i, (reg->ICSR2 & mask) != 0U)) { /* GCOVR_EXCL_BR_LINE */
+    /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
+    if (ra8_fake_mmio_poll(&reg->ICSR2, i, (reg->ICSR2 & mask) != 0U)) {
 #else
-    if ((reg->ICSR2 & mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+    /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
+    if ((reg->ICSR2 & mask) != 0U) {
 #endif
       return k_ra8_ok;
     }
@@ -277,8 +279,16 @@ RA8_INTERNAL static void internal_i2c_restart(volatile r_i2c_regs_t* reg)
    * Condition" Note, p 2434). After a send_stop=false write TDRE is
    * already 1, so without this wait send_address would write the address
    * before the restart completed and the transmit would never happen. */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->ICCR2 & (uint8_t)k_ra8_i2c_msk_iccr2_rs) == 0U) {    /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_poll_limit; i++) {
+    /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
+    const bool restart_complete = (reg->ICCR2 & (uint8_t)k_ra8_i2c_msk_iccr2_rs) == 0U;
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
+    const bool observed = ra8_fake_mmio_poll(&reg->ICCR2, i, restart_complete);
+#else
+    const bool observed = restart_complete;
+#endif
+    if (observed) {
       break;
     }
   }
@@ -304,8 +314,9 @@ RA8_INTERNAL static void internal_i2c_restart(volatile r_i2c_regs_t* reg)
 RA8_INTERNAL static void internal_i2c_wait_bus_free(volatile const r_i2c_regs_t* reg)
 {
   /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2 -- BBSY" p 2371 */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->ICCR2 & (uint8_t)k_ra8_i2c_msk_iccr2_bbsy) == 0U) {  /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_poll_limit; i++) {
+    /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
+    if ((reg->ICCR2 & (uint8_t)k_ra8_i2c_msk_iccr2_bbsy) == 0U) {
       break;
     }
   }

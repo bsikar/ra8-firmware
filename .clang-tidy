@@ -47,12 +47,22 @@
 #      SystemInit, _sbrk, IRQ handlers) as if they should be `static`,
 #      breaking the linker's external resolution. v18 doesn't fire on
 #      these; v22 does. Disable globally.
-#  -readability-identifier-length             (21 violations after
-#                                              relaxing thresholds)
-#      The remaining short names are comparator `(a, b)` parameters and
-#      obvious-context `p` (pointer) / `v` (value) / `t` (timing) in
-#      static helpers. Renaming them to 3+ chars would make the code
-#      harder to read, not easier.
+#  -readability-identifier-length             (style check, not a
+#                                              defect check)
+#      Enforces fixed minimum identifier lengths (3 for variables and
+#      parameters, 2 for loop counters). docs/STYLE_GUIDE.md's Naming
+#      section governs prefixes and case and is silent on length, so
+#      the short names it permits are pervasive here: measured over
+#      the first-party C surface enumerated by lint_targets.py c,
+#      1575 single-character parameters of builtin type across 428
+#      files, led by y/x/s/n/w/h/v/p -- geometry, counts, byte
+#      cursors and comparator pairs -- plus every loop counter and
+#      short local the check also governs. Adopting the rule is a
+#      whole-tree renaming decision, not a per-site waiver, and no
+#      CheckOptions setting expresses the exception without becoming
+#      an allowlist as broad as the exclusion itself. The check
+#      reports no defect it would otherwise find: it is purely a
+#      length rule.
 #  -readability-implicit-bool-conversion      (~120 spurious
 #                                              auto-fixes in v18)
 #      C/C++ semantic mismatch in clang-tidy 18: relational operators
@@ -83,7 +93,8 @@
 #      The clang-18 valist family is path-non-deterministic in this tree: it
 #      reports phantom "va_list is leaked / uninitialized" findings against
 #      functions that contain no va_list at all -- observed .Unterminated on
-#      ra8_reflow_render.c and .Uninitialized as 0->15 on tests/test_ra8_rtc.c
+#      reflow_render.c and .Uninitialized as 0->15 on
+#      tests/hal/src/test_ra8_rtc.c
 #      -- failing one CI run and passing the next on byte-identical code (each
 #      cost a full-suite FAIL and a bisect to attribute). The only real va_list
 #      code in the tree, port/esp-hosted/src/ra8_esp_hosted_{osi,fmt}.c, draws
@@ -92,6 +103,17 @@
 #      not signal. Disable all three -- CopyToSelf pre-emptively, so it cannot
 #      flake later the way its siblings already have.
 #
+#  -readability-redundant-casting             (tool-version inconsistent)
+#      Flags explicit casts that document register widths and signedness in
+#      some clang-tidy majors but not others. Those casts are required by the
+#      project MISRA conversion rules; removing them would trade a safety
+#      contract for a cosmetic diagnostic whose result changes by tool major.
+#  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
+#      Flags every memcpy/memset call and prescribes the optional C11 Annex K
+#      *_s interfaces. Newlib does not provide Annex K, and each first-party
+#      call supplies an explicit bounded length already checked by the normal
+#      buffer and size rules. There is no portable replacement API on the
+#      target, so this diagnostic is not actionable.
 Checks: >
   cert-*,
   bugprone-*,
@@ -118,11 +140,12 @@ Checks: >
 # ALL warnings are errors -- zero tolerance for any clang-tidy violation.
 WarningsAsErrors: '*'
 
-# Only report diagnostics for project-authored headers; suppress noise from
-# CMake-fetched deps and generated build trees. Our register headers
-# (ra8d2_*_regs.h) and host-test mocks (tests/mocks/) are in-house code
-# and ARE linted.
-HeaderFilterRegex: '^(?!.*(_deps|build/)).*\.(h|hpp)$'
+# Ordinary authored headers are direct lint inputs. Only the exact textual
+# fragments that cannot parse as standalone translation units are reported
+# through their owning includers. scripts/checks/tidy/collect.sh owns this
+# 27-path manifest; the tidy selftest proves this POSIX ERE is its exact mirror
+# and admits no ordinary, generated, system, or vendored header.
+HeaderFilterRegex: '(^|.*/)(apps/board/stand_alone/ereader/tests/inc/test_ra8_manga_stream\.h|apps/shared_libs/epub/src/epub_xml_opf_internal\.h|apps/shared_libs/epub/src/epub_xml_toc_internal\.h|apps/shared_libs/mdl/tests/inc/test_mdl_fetch_fixture\.h|apps/shared_libs/reflow/tests/inc/reflow_v1_test_util\.h|apps/shared_libs/unarch/tests/inc/unarch_tar_fixture\.h|apps/shared_libs/xml/src/xml_reader_internal\.h|libs/if_ra8_vfs/src/fw_if_fs_ra8_vfs_contracts_internal\.h|libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_core_contracts_internal\.h|libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io_contracts_internal\.h|port/mbedtls/inc/tf_psa_crypto_config\.h|port/mbedtls/inc/tf_psa_crypto_config_platform\.h|port/nimble/inc/nimble/nimble_npl_os\.h|port/posix/src/fw_if_fs_posix_contracts_internal\.h|port/posix/src/fw_if_fs_posix_stream_contracts_internal\.h|tests/storage/inc/test_ra8_fs_check_util\.h|tests/storage/inc/test_ra8_fs_format_fixture\.h|tests/support/inc/fs_sparse_backend_test_util\.h|tests/support/inc/ra8_cache_store_fixture\.h|tests/support/inc/ra8_gpio_test_contracts\.h|tests/support/inc/ra8_jpeg_sw_decode_cov_fixture\.h|tests/support/inc/ra8_keyboard_test_contracts\.h|tests/support/inc/ra8_mpu_test_internal\.h|tests/support/inc/ra8_power_profile_test_contracts\.h|tests/support/inc/ra8_tls_net_test_contracts\.h|tests/support/inc/ra8_tls_test_contracts\.h|tests/support/inc/ra8_touch_cal_test_contracts\.h|tests/usb/inc/test_ra8_usb_hmsc_enum_fixture\.h)$'
 
 CheckOptions:
   # --- vendor RTOS ABI symbol names ---

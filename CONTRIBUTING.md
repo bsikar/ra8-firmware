@@ -8,9 +8,11 @@ shipping safety-critical embedded code is held to: **IEC 61508 SIL 3**
 licence (see `LICENSE.txt`) and is developed entirely from the command
 line -- no vendor IDE artifacts, no e2 studio.
 
-The authoritative style guide is [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md)
-and the AI-assistant-facing rule restatement is `CLAUDE.md` at the
-repository root. Read both before contributing non-trivial code.
+The authoritative style guide is [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md),
+and the repository-wide working rules live in `CLAUDE.md` at the repository
+root. `AGENTS.md` is the compatibility entry point to those same rules. Read
+the style guide and `CLAUDE.md` before contributing non-trivial code. Editor
+setup is documented in [`docs/IDE.md`](docs/IDE.md).
 
 ## 1. Project goal
 
@@ -18,8 +20,9 @@ repository root. Read both before contributing non-trivial code.
   (Cortex-M85 @ 1 GHz primary core, Cortex-M33 @ 250 MHz secondary, 1 MB
   MRAM, 1.6 MB ECC SRAM).
 * Build the entire HAL and PAL surface area without copying Renesas FSP
-  code. FSP headers are reference material only; every line in `libs/`
-  and `examples/` is hand-written under this project's style
+  code. FSP headers are reference material only; every first-party line in
+  `libs/` and `examples/`, excluding declared `third_party/` SOUP roots, is
+  hand-written under this project's style
   rules.
 * Every new feature ships with host-side unit tests and (for any
   compound boolean decision) MC/DC vectors. See
@@ -38,7 +41,7 @@ repository root. Read both before contributing non-trivial code.
   1024x600 parallel TFT, OV5640 5 MP camera, 64 MB Octo-SPI flash,
   64 MB SDRAM.
 * The committed reference manuals live under `docs/reference/`. The
-  Hardware User's Manual (`r01uh1065ej0130-ra8d2.pdf`) is the primary
+  [Hardware User's Manual](docs/reference/ra8d2-hardware-user-manual.pdf) is the primary
   citation for any register-level change.
 
 ## 3. First-time setup
@@ -46,41 +49,46 @@ repository root. Read both before contributing non-trivial code.
 ```bash
 git clone https://github.com/<your-fork>/ra8-firmware.git
 cd ra8-firmware
-git config core.hooksPath scripts/git
+just setup
 ```
 
-The hook configuration above wires `scripts/git/pre-commit` so every
-commit you author is gated locally with the same checks CI runs.
+The only bootstrap prerequisites are Git, `just`, a stdlib Python 3.11 through
+3.14, trusted CA certificates/network access for the first fetch, and a
+working container runtime (`podman`, `docker`, or `nerdctl`; macOS Docker uses
+Colima). `just setup` creates the ignored repository-local `.venv`, installs
+the exact Python lock and Galaxy collections, configures the tracked hooks,
+and refreshes the pinned `ra8-ci` image. It never installs into the system
+Python. Re-run `just setup-python` when only Python or hooks need refreshing.
+Windows development uses WSL2. See `docs/PYTHON_ENVIRONMENTS.md` for lock
+maintenance and managed environment ownership.
 
 You need two toolchains:
 
-* **Host clang/gcc** for the unit-test build. The supported path is the
-  project's Linux dev container, invoked through
-  [`scripts/ci/test-docker.sh`](scripts/ci/test-docker.sh). On macOS you
-  need [Colima](https://github.com/abiosoft/colima) (or Docker Desktop)
-  running because the host test fake uses `mmap(MAP_FIXED, ...)`
+* **Host clang/gcc** for the unit-test build. The supported macOS path is the
+  project's Linux dev container, invoked through `just ci` or the focused
+  `just quality::devcontainer::*` recipes. On macOS you need Colima, Docker
+  Desktop, or another compatible container runtime running because the host
+  test fake uses `mmap(MAP_FIXED, ...)`
   at MCU peripheral addresses, which macOS arm64 refuses below 4 GiB.
 * **arm-none-eabi-gcc** (ARM GNU Toolchain) for the cross-compiled
-  firmware build. Any reasonably recent version that knows about
-  `cortex-m85` works; the project is verified with the toolchain
-  shipped in the dev container.
+  firmware build. Use the repository-pinned 13.3.rel1 toolchain shipped in
+  the dev container; compiler output is version-sensitive and other releases
+  are not supported verification environments.
 
-CMake and clang-tidy/clang-format are pulled into the dev container
-automatically, so the easiest workflow is "make changes, then
-`bash scripts/ci/test-docker.sh`".
+CMake, the C/C++ compilers, the Arm cross-compiler, and non-Python analysis
+tools are provided by the dev container. Run
+`just quality::devcontainer` to see the focused commands.
 
 ## 4. Daily workflow
 
 ```text
-edit -> bash scripts/checks/format_code.sh -> bash scripts/ci/test-docker.sh -> git commit
+edit -> just quality::devcontainer::format -> just checks::devcontainer -> git commit
 ```
 
-* `scripts/checks/format_code.sh` runs clang-format over every C/H file the
-  project owns. Always run it before committing -- the pre-commit hook
-  rejects the commit otherwise.
-* `scripts/ci/test-docker.sh` runs the full host-side test suite inside
-  the project's pinned dev-container image. This is the only sanctioned
-  way to run tests on macOS hosts.
+* `just quality::devcontainer::format` applies the pinned formatter to every
+  first-party C/H file. The pre-commit hook rejects formatting drift.
+* `just checks::devcontainer` runs the focused format, tidy, and unit-test
+  checks inside the pinned image. Before pushing, run the full `just ci` suite.
 * `git commit` triggers `scripts/git/pre-commit` (formatting,
   clang-tidy, ASCII check, doxygen audit, citation check, world-tag
   check, MC/DC block check, ...). Do **not** bypass with `--no-verify`
@@ -89,10 +97,10 @@ edit -> bash scripts/checks/format_code.sh -> bash scripts/ci/test-docker.sh -> 
 For cross-compiled firmware iteration:
 
 ```bash
-make blink                       # build one example app for the target
-make apps                        # list every discovered example app
-make -C <app-dir> flash          # flash via the on-board J-Link OB
-make -C <app-dir> debug          # launch GDB attached to the running target
+just apps::build blink                 # build one firmware example
+just apps::example::list               # list every discovered firmware example
+just apps::hardware::flash blink       # flash a board attached to this host
+just apps::hardware::debug blink       # launch GDB on a locally attached board
 ```
 
 ## 5. Adding an application
@@ -100,26 +108,27 @@ make -C <app-dir> debug          # launch GDB attached to the running target
 The full procedure lives in `CLAUDE.md` under "Adding a new application".
 The short version:
 
-1. Create `examples/<tier>/.../<newapp>/` -- pick the tier that matches
+1. Create `examples/ek_ra8d2/<tier>/.../<newapp>/` -- pick the tier that matches
    the hardware-support category, from validated-on-silicon down to
    needs-hardware-nobody-has.
-2. Give it a `main.c` and a `CMakeLists.txt` that calls
+2. Give it an
+   `examples/ek_ra8d2/<tier>/.../<newapp>/src/main.c` and a root
+   `CMakeLists.txt` that calls
    `ra8_add_app()`. That is usually the whole app: the board layer under
    `libs/ra8_board_<board>/` supplies the vector table, `SystemInit`,
    the exception handlers and the linker script.
 3. Only if the app must diverge from the board defaults, drop a
-   same-named copy of the file it needs to override into the app
-   directory. See `docs/ARCHITECTURE.md`.
-4. Add a host-side integration test under `tests/test_app_<newapp>.c`
-   exercising any new logic (see `tests/test_app_blink_hal.c` for the
+   same-named implementation under the app's `src/` directory. Put any
+   app-local header under `inc/`. See `docs/ARCHITECTURE.md`.
+4. Add a host-side integration test under the appropriate `tests/<unit>/src/`
+   directory, exercising any new logic (see `test_app_blink_hal.c` for the
    minimal shape).
-5. Re-run `make` from the repo root -- the top-level CMake
-   auto-discovers the new directory; no edit to the root `CMakeLists.txt`
-   is required.
+5. Run `just apps::build <newapp>` from the repository root. Discovery is
+   automatic; no edit to the root `CMakeLists.txt` is required.
 
 ## 6. Adding a test
 
-* Place new host tests under `tests/test_*.c` (compiled with the
+* Place new host tests under the relevant `tests/<unit>/src/` directory (compiled with the
   pinned Unity-minimal harness shipped in `tests/mocks/`).
 * **Every compound boolean decision** added to first-party code under
   `libs/` or `port/` must have a paired test that demonstrates
@@ -131,15 +140,15 @@ The short version:
    * @test ra8_isr_register_validates_inputs
    *
    * @par MC/DC:
-   * Decision: if (handler == NULL || priority > k_ra8_isr_prio_max)
+   * Decision: if (handler == nullptr || priority > k_ra8_isr_prio_max)
    *  - V1: handler=valid, priority=0   -> false
-   *  - V2: handler=NULL,  priority=0   -> true (varies handler)
+   *  - V2: handler=nullptr, priority=0  -> true (varies handler)
    *  - V3: handler=valid, priority=255 -> true (varies priority)
    */
   ```
 
 * See [`docs/MCDC.md`](docs/MCDC.md) for the coverage measurement workflow
-  (`make mcdc`) and the running gap list at
+  (`just quality::local::mcdc`) and the running gap list at
   [`docs/MCDC_GAPS.md`](docs/MCDC_GAPS.md).
 * Do not introduce dynamic allocation in test scaffolding -- the same
   NASA Power-of-10 Rule 3 budget applies.
@@ -187,9 +196,8 @@ document; click through before disagreeing with a finding.
 * **One logical change per commit.** Fuzz harnesses, documentation
   updates, and HAL refactors should land as separate commits even when
   authored in the same session.
-* **Run the full test suite locally** (`bash scripts/ci/test-docker.sh`)
-  before opening a PR. CI runs the same image, so a green local run is
-  a strong signal.
+* **Run the full gate suite locally** (`just ci`) before opening a PR. CI uses
+  the same gate registry and pinned environment.
 * **No backward-compatibility shims.** Update every call site in the
   same commit; do not leave deprecated aliases or wrappers.
 
@@ -237,15 +245,11 @@ build, and -- for a hardware bug -- the bench are themselves sound.
 Otherwise the "bug" may be your setup. **Before filing, run the full
 verification baseline and paste its results into the issue:**
 
-* **Local unit-test suite** -- `make test`. Expect `100% tests passed`.
-* **CI gate suite** -- the jobs in `.github/workflows/firmware.yml`,
-  runnable locally: cross-build every app
-  (`bash scripts/builders/all_examples.sh`), clang-tidy
-  (`bash scripts/checks/clang_tidy.sh --check`), clang-format
-  (`bash scripts/checks/format_code.sh --check`), and the citation / ASCII
-  checks under `scripts/checks/`.
-* **HIL suite** (hardware bugs) -- `bash scripts/hil/all.sh`, which
-  flashes and verifies every app under
+* **Local unit-test suite** -- `just quality::local::test`. Expect `100% tests passed`.
+* **CI gate suite** -- `just ci`, the same complete gate registry that the
+  workflows invoke. Do not reproduce the registry with a hand-written list.
+* **HIL suite** (hardware bugs) -- `just hil::run`, which builds locally,
+  stages the artifacts, and verifies every app under
   `examples/ek_ra8d2/hw_validated/hil/` on the board. A green HIL run
   proves the J-Link, the flash path, the UART/USB plumbing, and the
   bench wiring all work -- so a remaining failure is the firmware, not

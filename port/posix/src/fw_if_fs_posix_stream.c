@@ -95,19 +95,16 @@ RA8_PRIV ra8_err_t priv_fs_posix_open(void*             ctx,
   }
   if (closed != k_ra8_ok) {
     int owned = opened;
-    (void)priv_fs_posix_close_fd(&owned);
-    return closed;
+    return priv_fs_posix_close_fd_preserve(&owned, closed);
   }
   struct stat meta = {};
   if (fstat(opened, &meta) != 0) {
     int owned = opened;
-    (void)priv_fs_posix_close_fd(&owned);
-    return k_ra8_err_invalid_arg;
+    return priv_fs_posix_close_fd_preserve(&owned, k_ra8_err_invalid_arg);
   }
   if (!S_ISREG(meta.st_mode)) {
     int owned = opened;
-    (void)priv_fs_posix_close_fd(&owned);
-    return k_ra8_err_invalid_arg;
+    return priv_fs_posix_close_fd_preserve(&owned, k_ra8_err_invalid_arg);
   }
   ((posix_file_state_t*)file_state)->fd = opened;
   return k_ra8_ok;

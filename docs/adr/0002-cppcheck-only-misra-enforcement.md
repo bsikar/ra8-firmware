@@ -59,7 +59,7 @@ commercial tool.
                <files>
 
   The standard is pinned to **`--std=c11`**, not `--std=c23`. The
-  bundled cppcheck (2.20) predates C23 support: the codebase's C23
+  pinned cppcheck (2.13) predates C23 support: the codebase's C23
   typed enums (`enum : uint8_t`) and `[[...]]` attributes raise
   `syntaxError` under a C23 parse, and cppcheck has no `c23` value for
   `--std`. All three invocations use `--std=c11` accordingly:
@@ -79,9 +79,10 @@ commercial tool.
   certification authority ever requires audit-grade evidence, a
   one-shot run of a commercial checker will be commissioned then.
 * **Documented deviations** live in
-  `.cppcheck-suppressions` (mechanical) and `docs/MISRA.md`
-  (justified). New deviations require a written rationale; see
-  `docs/MISRA_GAPS.csv` for the open list.
+  `.cppcheck-suppressions` (mechanical) and
+  `docs/qualification/MISRA_DEVIATIONS.md` (formal rationale). The current
+  per-file-per-rule population is `.github/misra-baseline.txt`; new deviations
+  require a written rationale and machine-checked ownership.
 * **Rules cppcheck cannot check** (e.g. MISRA-C:2012 Rule 11.1 on
   function pointers, 21.x on standard-library use) are documented
   as "out of automated scope" in `docs/MISRA.md` and reviewed by
@@ -120,8 +121,9 @@ commercial tool.
 
 * `CLAUDE.md` -- "Code Style" section.
 * `docs/MISRA.md` -- per-rule status and the cppcheck-vs-MISRA gap.
-* `docs/MISRA_GAPS.csv` -- machine-readable list of open
-  deviations.
+* `.github/misra-baseline.txt` -- machine-readable current
+  per-file-per-rule population.
+* `docs/qualification/MISRA_DEVIATIONS.md` -- formal deviation register.
 * `.cppcheck-suppressions` -- the mechanical suppression list.
 * MISRA C:2012 (Guidelines for the use of the C language in
   critical systems, Third Edition, March 2013, including

@@ -13,7 +13,7 @@ which CI uses to fail on a missing tool.
 ``style`` is the tightest severity ShellCheck offers, so nothing is filtered by
 level.  The opt-in checks are the ones that are both *fixable in place* and map
 to a defect class this tree has actually shipped -- unquoted expansions, values
-that are read but never assigned, ``which`` instead of ``command -v``.  Two
+that are read but never assigned, ``which`` instead of ``command -v``.  Five
 opt-in checks are deliberately NOT enabled; see ``docs/STYLE_GUIDE.md`` and the
 comment on :data:`SHELLCHECK_DISABLED_OPTIONAL` for the measurements behind
 that call.
@@ -111,6 +111,7 @@ SHELLCHECK_DISABLED_OPTIONAL = (
 
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
+    "apps/shared_libs/third_party/",
     "libs/ra8_fonts/",
     "port/threadx/",
 )
@@ -166,7 +167,12 @@ def _git_ls(*pathspec: str) -> list[str]:
         sys.stderr.write(proc.stderr)
         sys.stderr.write(f"git ls-files failed (exit {proc.returncode})\n")
         sys.exit(2)
-    return [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
+    return _existing_worktree_paths(proc.stdout.splitlines())
+
+
+def _existing_worktree_paths(paths: list[str], root: Path = REPO_ROOT) -> list[str]:
+    """Keep live worktree files, dropping deleted entries still present in the index."""
+    return [rel.strip() for rel in paths if rel.strip() and (root / rel.strip()).is_file()]
 
 
 def _has_shell_shebang(rel: str) -> bool:
@@ -350,6 +356,11 @@ def selftest(tmp: Path) -> int:
         return 2
 
     failures: list[str] = []
+    live = tmp / "live.sh"
+    live.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+    resolved = _existing_worktree_paths(["live.sh", "deleted.sh"], tmp)
+    if resolved != ["live.sh"]:
+        failures.append("  worktree scope did not retain a live file and drop a deleted index path")
 
     for label, fname, body, must_fire in SELFTEST_CASES:
         path = tmp / fname
@@ -401,7 +412,7 @@ def _report(checks: Findings, fmt: list[str]) -> None:
 
 
 def main(argv: list[str]) -> int:
-    """Run shellcheck and shfmt over every tracked shell script.
+    """Run shellcheck and shfmt over every first-party worktree shell script.
 
     Both tools are REQUIRED, not optional: a missing one fails the gate rather
     than reducing its scope, because a checker that quietly stops checking is

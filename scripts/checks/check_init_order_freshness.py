@@ -3,8 +3,9 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """check_init_order_freshness.py -- gate docs/INIT_ORDER_AUDIT.md against a regenerate.
 
-``docs/INIT_ORDER_AUDIT.md`` is a COMMITTED, GENERATED artefact: ``mk/docs.mk``
-writes it with ``audit_init_order.py --report docs/INIT_ORDER_AUDIT.md``.
+``docs/INIT_ORDER_AUDIT.md`` is a COMMITTED, GENERATED artefact:
+``just docs::audit_init`` writes it with
+``audit_init_order.py --report docs/INIT_ORDER_AUDIT.md``.
 Nothing re-ran that generator and byte-compared the committed copy, so it
 silently drifted -- it claimed 11 apps audited while the tree held 217, for as
 long as the discovery glob was depth-capped (#190). A generated doc that
@@ -17,11 +18,12 @@ MC/DC half consumes the ``mcdc`` build output; this generator is hardware-free
 and reads a sorted glob, so it is byte-stable across runs and lives in its own
 ``fast`` gate rather than that group.
 
-The comparison is against the copy committed at ``HEAD`` (via ``git show``), so
-a dirty working tree cannot mask drift. ``--selftest`` drives the verdict logic
-in both directions and floors the real regenerate at ``audit_init_order``'s
-app-discovery floor, so a collapsed generator fails instead of reporting a
-clean, empty tree.
+The comparison is against the tracked candidate bytes. In CI that is the clean
+checkout; the pre-commit policy runs this checker inside its staged snapshot.
+Comparing to ``HEAD`` would make the remediation unverifiable until after the
+commit it is meant to guard. ``--selftest`` drives the verdict logic in both
+directions and floors the real regenerate at ``audit_init_order``'s app-discovery
+floor, so a collapsed generator fails instead of reporting a clean, empty tree.
 """
 
 from __future__ import annotations
@@ -34,14 +36,16 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 
 import audit_init_order
+from git_environment import isolated_git_environment, trusted_git_executable
 from selftest_assert import expect, report
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ARTEFACT = "docs/INIT_ORDER_AUDIT.md"
 REMEDIATION = (
-    "Run `make audit-init` (or `python3 scripts/checks/audit_init_order.py "
+    "Run `just docs::audit_init` (or `python3 scripts/checks/audit_init_order.py "
     "--report docs/INIT_ORDER_AUDIT.md`) and commit docs/INIT_ORDER_AUDIT.md."
 )
 GENERATOR = "scripts/checks/audit_init_order.py"
@@ -68,24 +72,25 @@ def regenerate(repo_root: Path) -> bytes:
     return audit_init_order.render_markdown(audits, repo_root).encode("ascii")
 
 
-def committed_at_head(repo_root: Path, rel: str) -> bytes | None:
-    """Return the bytes of ``rel`` committed at ``HEAD``, or None when untracked.
+def tracked_candidate(repo_root: Path, rel: str) -> bytes | None:
+    """Return tracked candidate bytes for ``rel``, or None when unavailable.
 
     Args:
-        repo_root: Repository whose ``HEAD`` is read.
-        rel: Repo-relative POSIX path of the committed artefact.
+        repo_root: Repository whose candidate is read.
+        rel: Repo-relative POSIX path of the tracked artefact.
 
     Returns:
-        The committed bytes, or None when the path is not tracked at ``HEAD``.
+        Candidate bytes, or None when the path is untracked or absent.
     """
     result = subprocess.run(  # noqa: S603 -- fixed argv, no shell
-        ["git", "-C", str(repo_root), "show", f"HEAD:{rel}"],  # noqa: S607 -- git from PATH
+        [trusted_git_executable(), "-C", str(repo_root), "ls-files", "--error-unmatch", "--", rel],
         capture_output=True,
         check=False,
     )
-    if result.returncode != 0:
+    path = repo_root / rel
+    if result.returncode != 0 or not path.is_file():
         return None
-    return result.stdout
+    return path.read_bytes()
 
 
 def diff_excerpt(committed: bytes, fresh: bytes) -> str:
@@ -103,7 +108,7 @@ def diff_excerpt(committed: bytes, fresh: bytes) -> str:
         difflib.unified_diff(
             committed.decode("ascii", errors="replace").splitlines(),
             fresh.decode("ascii", errors="replace").splitlines(),
-            fromfile=f"{ARTEFACT} (committed at HEAD)",
+            fromfile=f"{ARTEFACT} (tracked candidate)",
             tofile=f"{ARTEFACT} (fresh regenerate)",
             lineterm="",
         )
@@ -137,11 +142,11 @@ def drift(committed: bytes | None, fresh: bytes) -> str | None:
         A drift description, or None when the two are byte-identical.
     """
     if committed is None:
-        return f"committed copy is not tracked at HEAD; cannot verify freshness. {REMEDIATION}"
+        return f"candidate copy is not tracked or readable; cannot verify freshness. {REMEDIATION}"
     if committed == fresh:
         return None
     return (
-        f"stale: committed {len(committed)} bytes differ from the "
+        f"stale: candidate {len(committed)} bytes differ from the "
         f"{len(fresh)}-byte regenerate. {REMEDIATION}\n"
         f"{diff_excerpt(committed, fresh)}"
     )
@@ -165,7 +170,7 @@ def generate_via_cli(repo_root: Path, env_overrides: dict[str, str]) -> bytes:
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "INIT_ORDER_AUDIT.md"
         subprocess.run(  # noqa: S603 -- fixed argv, no shell
-            [sys.executable, str(repo_root / GENERATOR), "--report", str(out)],
+            ["/usr/bin/python3", "-I", str(repo_root / GENERATOR), "--report", str(out)],
             cwd=str(repo_root),
             env=env,
             capture_output=True,
@@ -178,17 +183,17 @@ def generate_via_cli(repo_root: Path, env_overrides: dict[str, str]) -> bytes:
 
 
 def check(repo_root: Path = REPO_ROOT) -> int:
-    """Fail when the committed report differs from a fresh regenerate.
+    """Fail when the tracked candidate report differs from a fresh regenerate.
 
     Args:
-        repo_root: Repository to audit and whose ``HEAD`` copy is compared.
+        repo_root: Repository to audit and whose candidate copy is compared.
 
     Returns:
         0 when the committed copy is byte-identical to the regenerate, 1
         otherwise.
     """
     fresh = regenerate(repo_root)
-    verdict = drift(committed_at_head(repo_root, ARTEFACT), fresh)
+    verdict = drift(tracked_candidate(repo_root, ARTEFACT), fresh)
     if verdict is None:
         print(f"check_init_order_freshness.py: clean -- {ARTEFACT} matches a fresh regenerate.")
         return 0
@@ -220,7 +225,7 @@ def selftest_generator_stability(fresh: bytes, failures: list[str]) -> None:
     # else the environment fixes once at start-up, so on its own it licenses a
     # "cross-machine nondeterminism" theory it can never refute. Two CLI runs
     # under deliberately different settings can. The CLI is also what
-    # `make audit-init` and mk/docs.mk invoke, so this pins the second half of
+    # `just docs::audit_init` invokes, so this pins the second half of
     # the contract too: the bytes the gate DEMANDS are the bytes the documented
     # remediation PRODUCES. Nothing proved that before -- regenerate() builds
     # the report from the generator's helpers, and a divergence there would
@@ -237,6 +242,37 @@ def selftest_generator_stability(fresh: bytes, failures: list[str]) -> None:
         "the CLI's report is byte-identical to the bytes this gate demands",
         failures,
     )
+
+
+def selftest_candidate_bytes(failures: list[str]) -> None:
+    """Prove tracked worktree bytes win while untracked paths stay absent."""
+    with isolated_git_environment(), tempfile.TemporaryDirectory() as raw_tmp:
+        root = Path(raw_tmp)
+        (root / "docs").mkdir()
+        candidate = root / ARTEFACT
+        candidate.write_bytes(b"before\n")
+        subprocess.run(  # noqa: S603 -- fixed Git authority and fixture-only argv
+            [trusted_git_executable(), "init", "-q"], cwd=root, check=True
+        )
+        subprocess.run(  # noqa: S603 -- fixed tracked artefact from this module
+            [trusted_git_executable(), "add", ARTEFACT], cwd=root, check=True
+        )
+        expect(
+            tracked_candidate(root, ARTEFACT) == b"before\n",
+            "a tracked candidate is readable before commit",
+            failures,
+        )
+        candidate.write_bytes(b"after\n")
+        expect(
+            tracked_candidate(root, ARTEFACT) == b"after\n",
+            "the checker reads candidate bytes instead of stale HEAD bytes",
+            failures,
+        )
+        expect(
+            tracked_candidate(root, "docs/untracked.md") is None,
+            "an untracked candidate is rejected",
+            failures,
+        )
 
 
 def selftest_verdict_directions(fresh: bytes, failures: list[str]) -> None:
@@ -289,6 +325,7 @@ def selftest() -> int:
     fresh = regenerate(REPO_ROOT)
     selftest_generator_stability(fresh, failures)
     selftest_verdict_directions(fresh, failures)
+    selftest_candidate_bytes(failures)
     return report(failures)
 
 

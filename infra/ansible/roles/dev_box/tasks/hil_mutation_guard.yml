@@ -1,0 +1,142 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# This file is included both by the complete dev_box role and by the directly
+# includable HIL-listener task file. Keep every operation read-only: it is the
+# boundary that must run before package, cache, account, context, SSH, unit, or
+# delegated bench mutation.
+- name: Read native HIL listener load state before any dev-box mutation
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/systemctl
+      - show
+      - --property=LoadState
+      - --value
+      - "{{ dev_box_hil_runner_service }}"
+  register: dev_box_hil_runner_initial_load
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Read native HIL listener activity before any dev-box mutation
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/systemctl
+      - show
+      - --property=ActiveState
+      - --value
+      - "{{ dev_box_hil_runner_service }}"
+  register: dev_box_hil_runner_initial_activity
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Refuse every dev-box mutation without an exact safe listener state
+  ansible.builtin.assert:
+    that:
+      - >-
+        ansible_check_mode or
+        (dev_box_hil_runner_initial_load.rc == 0 and
+         dev_box_hil_runner_initial_activity.rc == 0 and
+         ((dev_box_hil_runner_initial_load.stdout | trim == 'not-found' and
+           dev_box_hil_runner_initial_activity.stdout | trim == 'inactive') or
+          (dev_box_hil_runner_initial_load.stdout | trim == 'loaded' and
+           dev_box_hil_runner_initial_activity.stdout | trim in ['inactive', 'failed'])))
+    fail_msg: >-
+      The native HIL listener is active, transitional, or could not be
+      authenticated. Run this role through the fleet dispatcher: it previews
+      the complete play, freezes the service cgroup, refuses Runner.Worker,
+      and stops an idle listener before any Bash, package, cache, account, SSH,
+      environment, context, toolchain, or unit mutation.
+
+- name: Require a live wrapped bench hold before every dev-box mutation
+  ansible.builtin.assert:
+    that:
+      - >-
+        ansible_check_mode or
+        ((hil_bench_maintenance_lock_id | default(''))
+         is match('^[0-9a-f]{16}$') and
+         dev_box_hil_runner_bench_alias | length > 0)
+    fail_msg: >-
+      An actual dev-box apply can mutate its delegated physical bench. Enter
+      through `just infra::apply dev`, which holds the canonical bench lock and
+      supplies its live transaction identity. Direct playbook execution is
+      supported only with --check.
+
+- name: Bind this dev-box apply to the exact live wrapped bench holder
+  when: not ansible_check_mode
+  block:
+    - name: Authenticate the controller and immutable fleet dev-box payload
+      delegate_to: localhost
+      become: false
+      ansible.builtin.command:
+        argv:
+          - "{{ playbook_dir }}/../../../.venv/bin/python3"
+          - -I
+          - "{{ playbook_dir }}/../../../scripts/dev/fleet_transaction_auth.py"
+          - "{{ inventory_hostname }}"
+          - dev_box
+          - >-
+            {{ {
+              'dev_box_hil_runner_bench_address': dev_box_hil_runner_bench_address,
+              'dev_box_hil_runner_bench_alias': dev_box_hil_runner_bench_alias,
+              'dev_box_hil_runner_bench_home': dev_box_hil_runner_bench_home,
+              'dev_box_hil_runner_bench_iface': dev_box_hil_runner_bench_iface,
+              'dev_box_hil_runner_bench_mac': dev_box_hil_runner_bench_mac,
+              'dev_box_hil_runner_bench_names': dev_box_hil_runner_bench_names,
+              'dev_box_hil_runner_bench_phc_index': dev_box_hil_runner_bench_phc_index,
+              'dev_box_hil_runner_bench_policy_sha256': dev_box_hil_runner_bench_policy_sha256,
+              'dev_box_hil_runner_bench_sysfs_device': dev_box_hil_runner_bench_sysfs_device,
+              'dev_box_hil_runner_bench_user': dev_box_hil_runner_bench_user,
+              'dev_box_hil_runner_env_file': dev_box_hil_runner_env_file,
+              'dev_box_hil_runner_group': dev_box_hil_runner_group,
+              'dev_box_hil_runner_home': dev_box_hil_runner_home,
+              'dev_box_hil_runner_install_stamp': dev_box_hil_runner_install_stamp,
+              'dev_box_hil_runner_labels': dev_box_hil_runner_labels,
+              'dev_box_hil_runner_name': dev_box_hil_runner_name,
+              'dev_box_hil_runner_repo_url': dev_box_hil_runner_repo_url,
+              'dev_box_hil_runner_root': dev_box_hil_runner_root,
+              'dev_box_hil_runner_service': dev_box_hil_runner_service,
+              'dev_box_hil_runner_sha256': dev_box_hil_runner_sha256,
+              'dev_box_hil_runner_url': dev_box_hil_runner_url,
+              'dev_box_hil_runner_user': dev_box_hil_runner_user,
+              'dev_box_hil_runner_version': dev_box_hil_runner_version,
+              'dev_box_hil_runner_work_dir': dev_box_hil_runner_work_dir
+            } | to_json }}
+          - "{{ hil_bench_maintenance_lock_id }}"
+          - "{{ hil_bench_maintenance_holder_pid | string }}"
+          - "{{ hil_bench_maintenance_holder_start_ticks | string }}"
+          - "{{ hil_bench_maintenance_holder_target }}"
+      changed_when: false
+
+    - name: Authenticate the canonical delegated kernel-held bench lock
+      delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/python3
+          - -I
+          - -S
+          - -c
+          - >-
+            {{ lookup('ansible.builtin.file',
+                      playbook_dir ~ '/../../../scripts/hil/lib/bench_lock_verify.py',
+                      rstrip=false) }}
+          - "{{ hil_bench_maintenance_lock_id }}"
+          - wrapped
+          - >-
+            {{ lookup('ansible.builtin.file',
+                      playbook_dir ~ '/../../../scripts/hil/lib/bench_host.sh',
+                      rstrip=false)
+               | hash('sha256') }}
+          - >-
+            {{ lookup('ansible.builtin.file',
+                      playbook_dir ~ '/../../../scripts/hil/lib/bench_lock_broker.py',
+                      rstrip=false)
+               | hash('sha256') }}
+      changed_when: false
+
+- name: Record completion of the authenticated dev-box mutation boundary
+  ansible.builtin.set_fact:
+    dev_box_hil_mutation_authenticated: true

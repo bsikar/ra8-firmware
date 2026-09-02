@@ -75,7 +75,7 @@
 # Aborting on the first non-zero (whether via -e or an aborting ERR trap) would
 # stop mid-sweep and defeat the whole point of a coverage matrix, so failures
 # are handled explicitly and counted instead. An informational ERR trap is also
-# omitted: this gate runs many intentionally-failing probes (grep misses, `make`
+# omitted: this gate runs many intentionally-failing probes (grep misses, app builds
 # under `if !`, `[ ... ]` tests) and a trap would fire on every one of them and
 # tell us nothing. With pipefail, `cmd | grep -q` would misreport when grep
 # closes the pipe early (SIGPIPE on the producer); every text test below uses a
@@ -259,7 +259,7 @@ is_dualcore_embedded() { # elf src-dir -> 0 (true) if dual-core embedded image
 #
 # That separation is not tidiness, it is the same determinism rule applied to
 # the build. In the interleaved form the compilers competed with the emulators
-# for the box, so `make`'s wall-clock BUILD_TIMEOUT became load-sensitive: on
+# for the box, so the build's wall-clock BUILD_TIMEOUT became load-sensitive: on
 # CI, widening the run backstop let the slow apps run longer, and eight heavy
 # USB / ThreadX / TLS apps that had built fine minutes earlier were reported
 # BUILD_FAIL at the same commit. A verdict that changes because a NEIGHBOURING
@@ -283,13 +283,13 @@ is_dualcore_embedded() { # elf src-dir -> 0 (true) if dual-core embedded image
 build_and_resolve() { # app src-dir result-file -> "elf<TAB>note<TAB>ns args"
   local app="$1" src_dir="$2" rf="$3"
   local elf note="" ns=""
-  # The xargs pool owns this phase's parallelism.  Per-app Makefiles delegate
-  # to `cmake --build` without an explicit -j, which otherwise inherits the
+  # The xargs pool owns this phase's parallelism. The app recipe delegates to
+  # `cmake --build` without an explicit -j, which otherwise inherits the
   # workflow's CMAKE_BUILD_PARALLEL_LEVEL and multiplies the worker width
   # (four matrix workers by four inner builds). Keep the total at $jobs: one
   # compiler scheduler per app, one app per pool slot.
   if [ -z "$src_dir" ] || ! CMAKE_BUILD_PARALLEL_LEVEL=1 \
-    timeout "$build_timeout" make -C "$src_dir" build \
+    timeout "$build_timeout" just apps::build "$app" \
     >"$run_dir/$app.build.log" 2>&1; then
     printf 'BUILD_FAIL\tBUILD FAIL (see %s)\n' "$run_dir/$app.build.log" >"$rf"
     return 1
@@ -456,11 +456,11 @@ log "building the emulator ..."
 # Pin a C23-capable host compiler (gcc-first to match CI). This file runs
 # without `set -e`, so the selection is checked explicitly: a box with no
 # C23-capable compiler is a FATAL, never a silent fall-through to a too-old cc.
-if ! ra8_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc; then
+if ! ra8_select_emulator_compiler; then
   echo "FATAL: no C23-capable host compiler for ra8_emulator (need gcc >= 13 or clang >= 17)" >&2
   exit 2
 fi
-ra8_cmake_reset_if_compiler_changed "$emu_dir/build"
+ra8_cmake_reset_if_incompatible "$emu_dir/build" "$emu_dir"
 if ! cmake -B "$emu_dir/build" -S "$emu_dir" \
   -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" >"$emu_cmake_log" 2>&1; then
   echo "FATAL: ra8_emulator cmake configure failed (see $emu_cmake_log)" >&2
@@ -479,7 +479,7 @@ fi
 log "emulator OK -> $emu"
 
 # -- Discover apps. -----------------------------------------------------------
-# Default: every main.c under the supported (ek_ra8d2) tier. The _unsupported/
+# Default: every src/main.c under the supported (ek_ra8d2) tier. The _unsupported/
 # tier needs external hardware -- it is listed as SKIPPED below, never run.
 #
 # De-dupe by FULL directory path (not by basename) so two examples that happen
@@ -490,12 +490,12 @@ skipped_apps=()
 if [ "$#" -gt 0 ]; then
   mapfile -t apps < <(printf '%s\n' "$@")
 else
-  # Portable discovery (BSD/macOS find has no -printf): list each main.c, strip
-  # the trailing /main.c to get the app dir, keep full dirs unique, then map to
+  # Portable discovery (BSD/macOS find has no -printf): list each src/main.c,
+  # strip the source suffix to get the app dir, keep full dirs unique, then map to
   # leaf names; a duplicate leaf name is reported, never silently merged.
   mapfile -t app_dirs < <(
-    find examples/ek_ra8d2 -mindepth 2 -name main.c -not -path '*/build/*' \
-      -not -path '*/build-emu/*' 2>/dev/null | sed 's#/main.c$##' | sort -u
+    find examples/ek_ra8d2 -mindepth 3 -path '*/src/main.c' -not -path '*/build/*' \
+      -not -path '*/build-emu/*' 2>/dev/null | sed 's#/src/main.c$##' | sort -u
   )
   apps=()
   declare -A seen_name=()
@@ -512,8 +512,8 @@ else
   # The _unsupported tier: needs external hardware, listed as SKIPPED (matching
   # the header). Discovered the same way so the report is complete.
   mapfile -t skipped_apps < <(
-    find examples/_unsupported -mindepth 1 -name main.c -not -path '*/build/*' \
-      -not -path '*/build-emu/*' 2>/dev/null | sed 's#/main.c$##; s#.*/##' | sort -u
+    find examples/_unsupported -mindepth 2 -path '*/src/main.c' -not -path '*/build/*' \
+      -not -path '*/build-emu/*' 2>/dev/null | sed 's#/src/main.c$##; s#.*/##' | sort -u
   )
 fi
 
@@ -599,11 +599,10 @@ for app in "${skipped_apps[@]}"; do
 done
 
 # -- Honest summary. ----------------------------------------------------------
-# The arithmetic is printed so it RECONCILES on its face. A reader previously
-# had to work out why the report holds 214 rows while the total says 204 (the
-# ek_ra8d2 tier is 204; the 10 _unsupported rows are additional), and an
-# unexplained gap between two counts is exactly where an unnoticed exclusion
-# lives -- clang_tidy.sh matched 14 of 218 apps and reported clean for months
+# The arithmetic is printed so it RECONCILES on its face. Every tier count is
+# derived from current discovery rather than a stale hard-coded app total. An
+# unexplained gap between counts is exactly where an unnoticed exclusion lives
+# -- clang_tidy.sh matched 14 of 218 apps and reported clean for months
 # on that principle. Every discovered example is now accounted for in a line
 # that adds up, and the buckets that are NOT boot-verified are named.
 runnable=$((n_total - n_special))

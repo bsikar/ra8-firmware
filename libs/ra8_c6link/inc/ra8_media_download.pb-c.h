@@ -40,7 +40,7 @@ typedef struct Ra8__Mdl__Cancelled Ra8__Mdl__Cancelled;
 /* --- enums --- */
 
 /*
- * Values intentionally match ra8_mdl_format_t. Keep the generated and shared
+ * Values intentionally match mdl_format_t. Keep the generated and shared
  * enums synchronized; production TUs assert the mapping at compile time.
  */
 typedef enum _Ra8__Mdl__Format { /* C23HDR-OK: protoc-c 1.5.2 owns this enum ABI. */

@@ -6,9 +6,10 @@ One manifest per vendored component lives under ``docs/sbom/upstream/`` and
 records, for every file we vendor, the **git blob SHA-1 that the upstream
 project publishes for it**.  A git blob id is a content hash
 (``sha1("blob <len>\0" + bytes)``), so recording it pins the bytes exactly --
-and because our own index already stores the same hash for every tracked file,
+and because the same digest can be derived directly from every worktree file,
 verifying the claim offline is a comparison of two hashes computed by two
-different projects, never a value compared against itself (#548).
+different projects, never a value compared against itself (#548). Worktree
+enumeration also makes the gate accurate before a vendor move is staged.
 
 Why the hashes come from upstream and not from us
 -------------------------------------------------
@@ -53,7 +54,9 @@ space, and ``parse_manifest`` rejects one that does)::
 
 from __future__ import annotations
 
+import hashlib
 import re
+import stat
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -263,9 +266,10 @@ def git_ls_files(
 ) -> dict[str, tuple[str, str]]:
     """Return ``{component-relative path: (mode, blob)}`` for a vendored tree.
 
-    The blob id comes straight out of our index, so nothing is re-hashed here
-    and no file content is read: git already computed the same content hash
-    upstream did.
+    Git supplies the tracked plus untracked/non-ignored worktree census. Blob
+    ids and modes are derived from the current bytes so an unstaged vendor move,
+    mutation, addition, or deletion is audited exactly as it stands. Ignored
+    build artefacts cannot enter the census.
 
     Args:
         rel_path: Repo-relative path of the component (a directory or one file).
@@ -280,9 +284,19 @@ def git_ls_files(
     Raises:
         ManifestError: When ``git ls-files`` fails or a path contains a space.
     """
+    repo = root or REPO_ROOT
     proc = subprocess.run(  # noqa: S603  # trusted: fixed git argv, no shell
-        ["git", "ls-files", "-sz", "--", rel_path],  # noqa: S607 -- trusted: fixed git argv
-        cwd=root or REPO_ROOT,
+        [  # noqa: S607 -- trusted: fixed git argv
+            "git",
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "-z",
+            "--",
+            rel_path,
+        ],
+        cwd=repo,
         capture_output=True,
         text=True,
         check=False,
@@ -295,12 +309,21 @@ def git_ls_files(
     for record in proc.stdout.split("\0"):
         if not record:
             continue
-        meta, path = record.split("\t", 1)
+        path = record
         if " " in path:
             message = f"vendored path '{path}' contains a space; format cannot encode it"
             raise ManifestError(message)
         if any(path == drop or path.startswith(drop.rstrip("/") + "/") for drop in exclude):
             continue
-        mode, blob, _stage = meta.split()
+        source = repo / path
+        if not source.exists() and not source.is_symlink():
+            continue
+        if source.is_symlink():
+            mode = "120000"
+            data = str(source.readlink()).encode()
+        else:
+            mode = "100755" if source.stat().st_mode & stat.S_IXUSR else "100644"
+            data = source.read_bytes()
+        blob = hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()  # noqa: S324 -- Git object IDs require SHA-1
         out[path[len(prefix) :] if path.startswith(prefix) else Path(path).name] = (mode, blob)
     return out

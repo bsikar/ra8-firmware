@@ -14,7 +14,7 @@
  * helper. Split out of the umbrella ra8_etha.h to keep that header under
  * the per-file line budget; this is a pure move of the original
  * declarations (the tests-side Ethernet header parser that once lived
- * here moved to tests/eth_frame_fixture.h under issue #238). The data
+ * here moved to tests/fixtures/inc/eth_frame_fixture.h under issue #238). The data
  * types these functions take live in ra8_etha_types.h, the register enums
  * in ra8_etha_regs.h, and the PHY link type in ra8_rmac.h.
  *

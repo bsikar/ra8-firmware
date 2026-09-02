@@ -32,5 +32,5 @@ ra8_add_app(
   NAME ereader_table
   STACK_BYTES 16384
   DESCRIPTION "Headless <table> grid layout -> glyph-geometry hash over UART (#107 HIL)"
-  LIBS ra8_gfx ra8_reflow ra8_board_ek_ra8d2
+  LIBS ra8_gfx reflow ra8_board_ek_ra8d2
 )

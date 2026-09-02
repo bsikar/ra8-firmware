@@ -195,7 +195,7 @@ static ra8_err_t internal_utime_exfat(const ra8_fs_mount_t*    m,
  *          nothing. The public ::ra8_fs_utime brackets this with the library
  *          lock; the full contract is documented there.
  *
- * @param[in,out] handle Mount handle.
+ * @param[in] handle Mount handle.
  * @param[in]     path   Path to the entry.
  * @param[in]     create Create stamp, or NULL.
  * @param[in]     modify Modify stamp, or NULL.
@@ -221,7 +221,7 @@ static ra8_err_t internal_utime_exfat(const ra8_fs_mount_t*    m,
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t internal_utime_locked(ra8_fs_mount_t*          handle,
+static ra8_err_t internal_utime_locked(const ra8_fs_mount_t*    handle,
                                        const char*              path,
                                        const ra8_fs_datetime_t* create,
                                        const ra8_fs_datetime_t* modify,
@@ -252,7 +252,7 @@ static ra8_err_t internal_utime_locked(ra8_fs_mount_t*          handle,
  */
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t ra8_fs_utime(ra8_fs_mount_t*          handle,
+ra8_err_t ra8_fs_utime(const ra8_fs_mount_t*    handle,
                        const char*              path,
                        const ra8_fs_datetime_t* create,
                        const ra8_fs_datetime_t* modify,

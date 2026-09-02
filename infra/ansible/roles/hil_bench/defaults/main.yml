@@ -10,7 +10,15 @@
 # The repo the bench checks out and runs HIL against.
 hil_bench_repo_url: "git@github.com:bsikar/ra8-firmware.git"
 hil_bench_repo_dir: "/home/{{ ansible_user | default('star') }}/ra8-firmware"
-hil_bench_ref: "origin/dev"
+# ansible.builtin.git passes this value to the remote fetch operation; use the
+# branch name, not the local remote-tracking spelling (`origin/dev`).
+hil_bench_ref: "dev"
+
+# uv-authenticated, lock-derived Python environment for bench-side helpers.
+hil_bench_python_context: /opt/ra8-hil-python-context
+hil_bench_python_venv: /opt/ra8-hil-python
+hil_bench_python_marker: /opt/ra8-hil-python/.ra8-lock-sha256
+hil_bench_uv_cache: /opt/ra8-uv-cache
 
 # apt packages the bench needs to build + flash + probe the firmware.
 # NOTE: gcc-arm-none-eabi is deliberately NOT here -- apt ships 13.2, but the
@@ -24,9 +32,8 @@ hil_bench_apt_packages:
   - ninja-build
   - build-essential
   - python3
-  - python3-pip
-  - python3-venv
   - usbutils
+  - libusb-1.0-0
   # ethtool reads the NIC timestamping capabilities the gPTP assertions below
   # stand on. Without it the PHC check cannot run, so it is a hard dependency
   # of this role, not a convenience.
@@ -41,10 +48,10 @@ hil_bench_arm_gcc_sha256_aarch64: "c8824bffd057afce2259f7618254e840715f33523a3d4
 # What `arm-none-eabi-gcc -dumpfullversion` prints for the release above -- used
 # to skip the install idempotently when it is already present.
 hil_bench_arm_gcc_dumpversion: "13.3.1"
-# Download URL (arm-developer.com), aarch64 host. URLs are the standard
-# line-length exception.
-# yamllint disable-line rule:line-length
-hil_bench_arm_gcc_url: "https://developer.arm.com/-/media/Files/downloads/gnu/{{ hil_bench_arm_gcc_release }}/binrel/arm-gnu-toolchain-{{ hil_bench_arm_gcc_release }}-aarch64-arm-none-eabi.tar.xz"
+# Download URL (arm-developer.com), aarch64 host.
+hil_bench_arm_gcc_url: "https://developer.arm.com/-/media/Files/downloads/gnu/\
+  {{ hil_bench_arm_gcc_release }}/binrel/\
+  arm-gnu-toolchain-{{ hil_bench_arm_gcc_release }}-aarch64-arm-none-eabi.tar.xz"
 
 # Vendor tools that are NOT apt-installable (manual SEGGER / Renesas downloads).
 # The role FAILS LOUD if they are missing rather than silently degrading -- a
@@ -67,7 +74,7 @@ hil_bench_linuxptp_version: "4.0-1ubuntu1.1"
 # Binaries the bench scripts invoke. Asserted individually after the install so
 # a partially-unpacked package cannot pass as a provisioned bench.
 hil_bench_linuxptp_binaries:
-  - ptp4l    # PTP port state machine  # LEGACY-OK: IEEE 1588 / linuxptp port-state names, verbatim
+  - ptp4l    # PTP port state machine
   - phc2sys  # moves time between the NIC's PHC and CLOCK_REALTIME
   - pmc      # management client: queries a running ptp4l over its UDS socket
 # The distro ships system-wide units for all three. They are NOT enabled by
@@ -93,13 +100,18 @@ hil_bench_linuxptp_masked_units:
 # than a software-timestamped peer. The Pi's built-in port has PHC 0 with
 # hardware transmit and receive timestamping, so the cable lives there (#292)
 # and the role asserts the property rather than trusting the label.
-hil_bench_eth_iface: "eth0"
+# Fleet-owned physical identity. Empty defaults make direct playbook execution
+# fail rather than selecting a plausible but undeclared interface.
+hil_bench_eth_iface: ""
+hil_bench_eth_mac: ""
+hil_bench_eth_sysfs_device: ""
+hil_bench_eth_phc_index: -1
 
 # Serial group the bench user must be in for /dev/ttyACM* access.
 hil_bench_serial_group: dialout
 
-# J-Link target for the board-reachable health check.
-hil_bench_jlink_device: "R7KA8D2KF_CPU0"
+# J-Link speed for the board-reachable health check. The device value comes
+# directly from scripts/hil/lib/rig_contract.sh; this role owns no duplicate.
 hil_bench_jlink_speed: 1000
 
 # Whether to pull LFS content (book fixtures some HIL apps bake in).
@@ -110,3 +122,11 @@ hil_bench_lfs_pull: true
 # silent-corruption path the design has. Overriding this is for a test rig, not
 # for the bench.
 hil_bench_lock_dir: /var/lib/ra8-bench
+
+# Set only by scripts/dev/fleet.py after it has wrapped a mutating converge in
+# the canonical bench lock. Direct applies fail closed; check mode remains
+# available without touching the physical rig.
+hil_bench_maintenance_lock_id: ""
+hil_bench_maintenance_holder_pid: 0
+hil_bench_maintenance_holder_start_ticks: 0
+hil_bench_maintenance_holder_target: ""

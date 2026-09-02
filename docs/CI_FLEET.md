@@ -12,14 +12,14 @@ agents as a verification host (section 9). Section 7 explains how the numbers
 were arrived at, so a new machine can be sized without re-deriving anything.
 
 ```sh
-make infra-ssh-config              make THIS machine a control node
-make infra-list                    what is declared, and how it is sized
-make infra-show HOST=win-ci        one machine in full, with its derived vars
-make infra-status                  what every host is running, right now
-make infra-check HOST=truenas      DRY RUN -- report, change nothing
-make infra-apply HOST=truenas      converge that machine to the declaration
-make infra-scale HOST=win-ci N=1   live capacity change; shrinking DRAINS
-make infra-remove HOST=truenas     tear it down
+just infra::ssh_config              turn THIS machine into a control node
+just infra::list                    what is declared, and how it is sized
+just infra::show win-ci             one machine in full, with its derived vars
+just infra::status                  what every host is running, right now
+just infra::check truenas           DRY RUN -- report, change nothing
+just infra::apply truenas           converge that machine to the declaration
+just infra::scale win-ci 1          live capacity change; shrinking DRAINS
+just infra::remove truenas          tear it down
 ```
 
 ---
@@ -114,7 +114,7 @@ hosts:
       jump: star                 # optional ProxyJump through ANOTHER FLEET HOST
       distro: Ubuntu             # docker_wsl only
       windows_user: sikar        # docker_wsl only
-    provisions: [play, play]     # from `make infra-list`
+    provisions: [play, play]     # from `just infra::list`
     runners:                     # runner classes only
       name: <base>               # optional; defaults to the host name
       instances: 2
@@ -187,7 +187,7 @@ where that alias existed.
 #### Make this machine a control node
 
 ```sh
-make infra-ssh-config       # or: python3 scripts/dev/fleet.py ssh-config --install
+just infra::ssh_config
 ```
 
 That writes `~/.ssh/ra8-fleet.config` from the declaration and puts one
@@ -195,11 +195,11 @@ That writes `~/.ssh/ra8-fleet.config` from the declaration and puts one
 **first** value it obtains for each keyword: the declaration wins over a stale
 hand-written alias of the same name, while anything the fragment does not set
 (your `IdentityFile`, a `Port`) still comes from your own block below it.
-`make infra-setup` runs it as part of onboarding.
+`just infra::setup` runs it as part of onboarding.
 
 **Do not hand-write the aliases into a control node's `~/.ssh/config`.** That
 is the same per-machine prerequisite one level down, and it rots the same way.
-Print what would be installed with `python3 scripts/dev/fleet.py ssh-config`.
+Print what would be installed with `just infra::ssh_config_preview`.
 
 The fragment is a **convenience, not a dependency**: it exists so `ssh truenas`
 works for a person and for the scripts and docs that already spell hosts that
@@ -208,9 +208,11 @@ way. Nothing in `fleet.py` reads it, which is why a machine with an empty
 
 Two things a fresh control node does still need, and neither is a name:
 
-1. **ansible** -- `pipx install ansible-core`, or `brew install ansible`.
-2. **a key each host accepts** for its declared `connect.user`. `make
-   infra-doctor` reports a host your key is not authorised on as `MISS`; that
+1. **ansible** -- run `just setup-ansible`; uv installs locked
+   `ansible-core` and the recipe installs exact repository-local Galaxy
+   collections.
+2. **a key each host accepts** for its declared `connect.user`. `just
+   infra::doctor` reports a host your key is not authorised on as `MISS`; that
    is an authorisation gap, not a resolution one.
 
 Host keys are not a third prerequisite: every fleet ssh command carries
@@ -225,8 +227,38 @@ Ansible transport, which sets `host_key_checking = False`.
 | `arc_k8s` | an ARC scale set on a k8s cluster | patching `maxRunners` |
 | `docker_linux` | long-lived runner containers on any Docker host | draining containers |
 | `docker_wsl` | the same, inside a Windows machine's WSL2 distro | draining containers |
-| `dev_box` | the shared verification box (not a runner) | n/a |
+| `dev_box` | shared verification box + dedicated HIL listener | n/a (not general capacity) |
 | `hil_bench` | the hardware-in-the-loop bench Pi (not a runner) | n/a |
+
+### A native HIL listener is declared, but is not scalable capacity
+
+A `dev_box` may carry one `hil_runner:` block. It owns the repo-scoped
+registration identity, custom labels, Actions workflow, and relationship to a
+declared `hil_bench` host:
+
+```yaml
+hil_runner:
+  name: <repository runner name>
+  repository: https://github.com/<owner>/<repository>
+  labels: [<custom-label>, <board-label>]
+  workflow: .github/workflows/<workflow>.yml
+  bench:
+    host: <hil-bench fleet host>
+    aliases: [<other accepted spelling>]
+```
+
+`fleet_model.role_vars()` resolves the bench's declared address and derives
+the `dev_box_hil_runner_*` inputs consumed by the Ansible role. The role's
+identity/topology defaults are intentionally empty so a direct playbook run
+cannot recreate a second declaration by accident.
+
+The fleet checker validates the relationship in both directions: every job in
+the owned workflow must request exactly `self-hosted` plus the declared custom
+labels, and no unowned workflow may use those labels. The listener remains
+outside `runners:`/`budget:` because it has no instance count or scale
+operation. First registration is the sole converge that needs an ephemeral
+GitHub registration token; follow the mode-0600 procedure in
+[`infra/README.md`](../infra/README.md#the-dev-box).
 
 ### `budget.mode` picks which numbers must fit
 
@@ -300,7 +332,9 @@ touching the others.
 
 ### Step 3 -- state the machine's structural facts
 
-Only if it has any. `infra/ansible/inventory/host_vars/bench-tower.yml`:
+Only if it has any. Put host-specific facts in
+`infra/ansible/inventory/host_vars/<host>.yml`; for example, the bench tower's
+file would contain:
 
 ```yaml
 ---
@@ -318,60 +352,73 @@ half-deploying:
 - Docker Engine with the **Compose v2 plugin** (the standalone v1
   `docker-compose` silently ignores the resource caps, producing an uncapped
   runner the play would then report as capped),
-- **cgroup v2** (what actually enforces the caps),
-- the toolchain image archive `ra8-ci-runner.tar` under
-  `<runner root>/images/`, copied from the k3s node. The image is never rebuilt
-  per host: `.devcontainer/Dockerfile` is the single source of truth for every
-  pinned tool, and the `toolchain-parity` gate exists to fail a runner that
-  drifts from those pins, so a second independently-built image is a drift
-  source with no upside.
+- **cgroup v2** (what actually enforces the caps).
+
+The image archive is **not** a prerequisite and must not be copied by hand.
+`runner_image` in `infra/fleet.yml` declares the Ansible-managed producer,
+image ref and canonical archive once. On each apply, the Docker role validates
+the producer archive's tag and image ID, compares SHA-256 with the consumer,
+transfers and atomically publishes it when stale, then reloads the tag and
+recreates only containers whose image ID differs. The image is never rebuilt
+per host: `.devcontainer/Dockerfile` remains the single source of truth, and a
+second independently-built image would be a drift source with no upside.
+
+For WSL the play itself runs with `connection=local` inside the distro, so it
+cannot delegate back to the producer. `fleet.py` bridges that transport
+boundary automatically: it streams the same declared archive into
+`/opt/ra8-infra-cache`, verifies SHA-256 before publishing it, and passes that
+cache to the same Docker role. No archive or host address is maintained twice.
 
 ### Step 5 -- converge it
 
 ```sh
-make infra-check HOST=bench-tower                   # dry run first
+just infra::check bench-tower   # dry run first
+runner_registration_vars="$(mktemp /tmp/ra8-runner-registration.XXXXXX)"
+trap 'rm -f -- "${runner_registration_vars}"' EXIT
 gh api -X POST repos/bsikar/ra8-firmware/actions/runners/registration-token \
-  --jq .token                                       # one hour, one use
-make infra-apply HOST=bench-tower
+  --jq '{ci_runner_docker_registration_token: .token}' \
+  >"${runner_registration_vars}"
+just infra::register_runner bench-tower "${runner_registration_vars}"
 ```
 
-Pass the token through if the host must not hold a long-lived PAT:
+This path is for a host that must not hold a long-lived PAT. The token expires
+after one hour and exists only in the mode-0600 temporary vars file.
 
 ```sh
-python3 scripts/dev/fleet.py apply bench-tower \
-  -e ci_runner_docker_registration_token=<token>
+just infra::apply bench-tower   # established host: credential comes from OpenBao
 ```
 
 Registration produces long-lived runner credentials **on the host**, and only
 those are used to run jobs, so the token is needed once and never again -- not
 even across a reboot.
 
-> **`-e KEY=VALUE` is visible in `ps` on the control node.** That is tolerable
-> for a registration or removal token -- one hour, one use, minted on demand --
-> and it is not tolerable for a PAT. Ansible also reads `-e @file`, so a
-> long-lived credential goes in a mode-0600 file outside the checkout:
+Never pass credentials as `-e KEY=VALUE`: they are visible in `ps` on the
+control node. The typed recipe accepts only a mode-0600 vars file and forwards
+it as `-e @file`. A persistent external vars file can use the same recipe:
 >
 > ```sh
-> python3 scripts/dev/fleet.py apply bench-tower -e @~/.config/ra8/ci.yml
+> just infra::register_runner bench-tower ~/.config/ra8/ci.yml
 > ```
 >
-> The normal path is neither: the PAT lives in OpenBao and
-> `infra/ansible/group_vars/all.yml` looks it up at run time.
+The normal established-host path needs neither: the PAT lives in OpenBao and
+`infra/ansible/group_vars/all.yml` looks it up at run time.
 
 ### Step 6 -- verify
 
 ```sh
-make infra-status
+just infra::status
 ```
 
 `tower-ci-1` and `tower-ci-2` should be `online`, and the per-host section
 should show both containers `running`.
 
-> **A dry run cannot tell you everything.** Ansible's `--check` mode skips the
-> probe tasks the role's asserts read (Docker's version, the cgroup version,
-> the pool backing each path), so those asserts see empty strings and fail. A
-> clean `infra-check` is evidence of reachability and syntax; it is not a
-> complete change list, and a failing one on a fresh host is usually this.
+> **A dry run cannot tell you everything.** The role deliberately executes its
+> read-only preflight probes in `--check` mode, including Docker and Compose
+> versions, cgroup mode, storage backing, archive identity, and existing
+> container state. Mutation-dependent postconditions remain apply-only: a dry
+> run cannot prove that a new image was loaded, containers were recreated with
+> that image and their declared caps, or runners returned online. Treat a clean
+> `infra-check` as a real preflight, then require those apply-time readbacks.
 
 ---
 
@@ -390,7 +437,7 @@ Edit one number:
 then:
 
 ```sh
-make infra-apply HOST=win-ci
+just infra::apply win-ci
 ```
 
 The apply **drains the host first**, because a converge recreates containers
@@ -398,15 +445,21 @@ and that would cancel their jobs. It then re-provisions and brings the new
 count back up. Expect it to take as long as the longest job currently running
 there.
 
+An apply also reconciles the runner image. Converge the declared producer
+(`k3s-pve`) after changing the toolchain, then apply each Docker/WSL consumer;
+the current canonical archive is transferred automatically. A direct role run
+still checks `Runner.Worker` and refuses to replace a stale busy container, so
+bypassing the fleet drain cannot silently cancel a job.
+
 **If you only want the change for now**, do not re-provision at all:
 
 ```sh
-make infra-scale HOST=win-ci N=1
+just infra::scale win-ci 1
 ```
 
 That parks the surplus instances as they go idle and leaves the rest running
-untouched. Nothing is deregistered and nothing is rebuilt -- `make infra-scale
-HOST=win-ci N=3` brings them straight back. This is the right tool for "I want
+untouched. Nothing is deregistered and nothing is rebuilt --
+`just infra::scale win-ci 3` brings them straight back. This is the right tool for "I want
 to play a game for an hour".
 
 | | `infra-apply` | `infra-scale` |
@@ -426,15 +479,16 @@ to play a game for an hour".
 ```
 
 Container caps are compose-file keys, so they need the container to be
-recreated: `make infra-apply HOST=<host>`. Nothing takes effect live.
+recreated: `just infra::apply <host>`. Nothing takes effect live.
 
 `pin_cpus: true` gives each instance its own cpuset rather than only a CFS
 quota, and that is load-bearing rather than tuning: `cpus:` is a quota and
 **`nproc` does not see it**, so every instance would report the host's full
 thread count, every build would fan out `-j<all of them>`, and N instances
 would oversubscribe the machine N-fold. A cpuset changes the affinity mask, so
-`nproc` returns the instance's real share and `make -j$(nproc)` is right by
-construction. Instance *i* gets threads `[(i-1)*cpus, i*cpus-1]`, so the host
+`nproc` returns the instance's real share; Just exports that bound through
+`CMAKE_BUILD_PARALLEL_LEVEL`, so nested CMake builds inherit it. Instance *i*
+gets threads `[(i-1)*cpus, i*cpus-1]`, so the host
 needs at least `instances * cpus` threads.
 
 ### Change the WSL VM caps (`docker_wsl` only)
@@ -462,7 +516,7 @@ These are written into the Windows user's `.wslconfig`, and they are the
 
 | change | effect |
 |---|---|
-| `make infra-scale HOST=x N=n` | live, drains first, no restart |
+| `just infra::scale x n` | live, drains first, no restart |
 | `instances` | needs `infra-apply` (drains, re-registers) |
 | `cpus`, `memory_gb`, `pin_cpus` | needs `infra-apply` (recreates containers) |
 | `labels` | needs `infra-apply` (re-registration) |
@@ -491,10 +545,10 @@ Installing or changing a window does **not** need a full re-provision. The
 capacity role is tagged, and that path touches no container:
 
 ```sh
-python3 scripts/dev/fleet.py apply win-ci --tags capacity
+just infra::apply win-ci "" capacity
 ```
 
-`make infra-apply HOST=win-ci` installs it too, along with everything else. The
+`just infra::apply win-ci` installs it too, along with everything else. The
 window is evaluated in the **host's own local time**, not UTC.
 
 > That makes the host's clock load-bearing, and a WSL2 VM's clock is not
@@ -518,7 +572,7 @@ host already at its target does nothing at all. It also removes the only
 genuinely fiddly case, a window that crosses midnight, from the timer and puts
 it in one place that can be reasoned about once.
 
-Entering the window runs the same drain as `make infra-scale`: instances are
+Entering the window runs the same drain as `just infra::scale`: instances are
 stopped as they go idle, never while they hold a job. Leaving it starts them
 again.
 
@@ -526,7 +580,7 @@ A host that also lends a **dev slice** (section 9) has that frozen by the same
 run, because parking three idle containers while an agent's gate suite goes on
 using the machine would defeat the whole window. The rule is one line: *the dev
 slice is frozen exactly while the host's runner target is zero* -- so both the
-timer and a manual `make infra-scale HOST=win-ci N=0` stand down all of it, and
+timer and a manual `just infra::scale win-ci 0` stand down all of it, and
 both thaw it again the moment the target is non-zero. Note the consequence of
 the timer converging capacity generally: a manual `N=0` is undone within ten
 minutes, and the dev slice thaws with it. A durable stand-down is a
@@ -543,7 +597,7 @@ ssh win-ci 'wsl -d Ubuntu -u root -e systemctl list-timers ra8-fleet-capacity.ti
 ssh win-ci 'wsl -d Ubuntu -u root -e journalctl -u ra8-fleet-capacity.service -n 40'
 
 # and what the host is actually running
-make infra-status
+just infra::status
 ```
 
 The role asserts the timer is `active` after installing it: a schedule that is
@@ -574,18 +628,18 @@ one input to it.
 ### The timer is not only for quiet hours
 
 **Every runner host carries it**, window or not, and that is a fix rather than a
-generalisation. `make infra-scale HOST=truenas N=1` drained `ra8-ci-runner-2`
+generalisation. `just infra::scale truenas 1` drained `ra8-ci-runner-2`
 during a bench session; `restart: unless-stopped` deliberately does not undo an
 explicit stop; truenas declares no window, so under the old shape it had no
 timer; so nothing ever re-asked what the host should be. The NAS served CI at
 half its declared capacity for hours, and the only thing in the tree that knew
-was `make infra-status`, which prints the drift and exits 0. win-ci, which does
+was `just infra::status`, which prints the drift and exits 0. win-ci, which does
 declare a window, healed the identical fault every ten minutes without anyone
 noticing there had been one.
 
 So `fleet_capacity.sh window` answers *"what should this host be right now"* on
 a host with no window too: its declared capacity. The consequence is
-deliberate -- **a live `make infra-scale` is temporary**. To stand a host down
+deliberate -- **a live `just infra::scale` is temporary**. To stand a host down
 durably, change `instances:` in `infra/fleet.yml` (or give it a `quiet_hours`
 block) and re-converge. That is a capacity decision the next person can find;
 a parked container on a machine nobody is looking at is not.
@@ -598,7 +652,7 @@ The case it was written for is an appliance with a read-only root: TrueNAS SCALE
 mounts `/` `ro`. On the SCALE release the NAS runs, `/etc/systemd/system` is
 writable and it does hold the timer -- which is why the role measures the
 directory instead of inferring it from the distribution. Manual
-`make infra-scale HOST=truenas N=<n>` works either way: it pipes the capacity
+`just infra::scale truenas <n>` works either way: it pipes the capacity
 script over ssh and needs nothing installed.
 
 ---
@@ -606,7 +660,7 @@ script over ssh and needs nothing installed.
 ## 6. Remove a host
 
 ```sh
-make infra-remove HOST=truenas
+just infra::remove truenas
 ```
 
 One command, and it is a real teardown: it drains the instances, stops the
@@ -618,11 +672,18 @@ Removal needs a credential, because deregistering is an API call. Either the
 PAT, or a short-lived removal token for a host that must not hold one:
 
 ```sh
-gh api -X POST repos/bsikar/ra8-firmware/actions/runners/remove-token --jq .token
-python3 scripts/dev/fleet.py remove <host> -e ci_runner_docker_removal_token=<token>
+runner_removal_vars="$(mktemp /tmp/ra8-runner-removal.XXXXXX)"
+trap 'rm -f -- "${runner_removal_vars}"' EXIT
+gh api -X POST repos/bsikar/ra8-firmware/actions/runners/remove-token \
+  --jq '{ci_runner_docker_removal_token: .token}' \
+  >"${runner_removal_vars}"
+just infra::remove <host> "${runner_removal_vars}"
 ```
 
-`make infra-remove` refuses on a host whose roles do not all implement a
+The recipe passes only the vars-file path to Ansible; the token never appears
+in the Just, fleet, or `ansible-playbook` process arguments.
+
+`just infra::remove` refuses on a host whose roles do not all implement a
 teardown path (the dev box, the k3s node, the bench). Only their roles own both
 halves of the lifecycle; removing the others means undoing them by hand, which
 is the drift the roles exist to prevent. Add a removal path to the role instead.
@@ -726,8 +787,8 @@ fleet grows.
 - **Which keys a host authorises.** The declaration says where a machine is and
   which account you enter it as; it deliberately does not carry key material or
   an `authorized_keys` list. So a fresh control node can *resolve and reach*
-  every host the moment it runs `make infra-ssh-config`, and still be refused
-  by one whose `authorized_keys` it is not in -- `make infra-doctor` reports
+  every host the moment it runs `just infra::ssh_config`, and still be refused
+  by one whose `authorized_keys` it is not in -- `just infra::doctor` reports
   that as `MISS`. Adding a key is a one-line `ssh-copy-id` from a machine that
   already has access, not a fleet change.
 
@@ -750,7 +811,7 @@ same box the runners are on, without CI ever losing a scheduling contest.
 ```
 
 ```sh
-python3 scripts/dev/fleet.py apply win-ci --tags dev-slice   # no drain
+just infra::apply win-ci "" dev-slice   # no drain
 ```
 
 Delete the block and re-apply, and the slice, its entry point, its shell
@@ -800,16 +861,16 @@ token, and the model and the role are cross-checked against each other by the
 ### Using it (this is the part a person needs)
 
 ```sh
-ssh win-ci                                    # into Windows (make infra-ssh-config)
+ssh win-ci                                    # into Windows (just infra::ssh_config)
 wsl -d Ubuntu                                 # into the distro (root)
 
-make ws-new NAME=my-task                      # /opt/ra8-dev/ws/my-task
+just workspace::new my-task                   # /opt/ra8-dev/ws/my-task
 cd /opt/ra8-dev/ws/my-task
 
-ra8-dev make ci                               # every gate, in the slice
-ra8-dev make ci-fast                          # ...minus the slow ones
-ra8-dev make ci-gate-container GATE=tidy      # exactly one gate
-make ws-free NAME=my-task
+ra8-dev just ci                               # every gate, in the slice
+ra8-dev just quality::fast                    # ...minus the slow ones
+ra8-dev just quality::devcontainer::gate tidy # exactly one gate
+just workspace::free my-task
 ```
 
 `ra8-dev` is the whole interface. Everything else -- the workspace root, the
@@ -817,21 +878,22 @@ shared ccache, the bounded `-j`, and the `--cgroup-parent` that puts the gate
 container in the slice -- is exported from `/etc/profile.d/ra8-dev-slice.sh`
 and needs no thought.
 
-> **`ra8-dev`, not bare `make ci`.** Two kinds of work have to land in the
-> slice and they get there differently. Host-side work (`make`, `git`, a cross
+> **`ra8-dev`, not bare `just ci`.** Two kinds of work have to land in the
+> slice and they get there differently. Host-side work (`just`, `git`, a cross
 > build) is *moved* there by `ra8-dev`, which starts it in a transient scope in
 > the slice -- a login shell is otherwise in `user.slice`, beside CI rather
 > than under it. The gate *container* cannot be moved that way at all: the
 > docker daemon creates its cgroup, not your shell, so it inherits nothing.
 > That half is done by `RA8_CI_CONTAINER_ARGS=--cgroup-parent=ra8dev.slice`,
-> which `scripts/ci.sh` appends to its `run` command. A bare `make ci` from a
-> login shell therefore still caps the container correctly, but its `make` and
+> which `scripts/ci.sh` appends to its `run` command. A bare `just ci` from a
+> login shell therefore still caps the container correctly, but its `just` and
 > `git` run outside the slice. Use `ra8-dev`.
 
 ### Why the gates run in a container here and natively on the dev box
 
-The dev box carries the pinned toolchain natively, because it is not a runner
-and nothing else on it defines one. `win-ci` already holds the exact image its
+The dev box carries the pinned toolchain natively. Its one Actions listener is
+dedicated to HIL and deliberately uses that native toolchain; it is not part of
+the scalable general runner pool. `win-ci` already holds the exact image its
 own runners boot -- `.devcontainer/Dockerfile` plus the actions-runner layer --
 so a second, apt-installed toolchain beside it would be a drift source with no
 upside, and the `ci_runner_docker` role refuses to build a second image for
@@ -840,16 +902,16 @@ role tags it `ra8-ci:latest` (the name `scripts/ci.sh` boots) and **asserts
 both names resolve to one image id**, so "a gate run in the dev slice proves
 something about the runners beside it" is a checked fact.
 
-The consequence is that `make ci-gate GATE=x` -- which runs a gate *natively*,
+The consequence is that `just quality::local::gate x` -- which runs a gate *natively*,
 because that is what a CI runner does -- does not work in this distro. Use
-`make ci-gate-container GATE=x`, which runs the same gate on the same clean
+`just quality::devcontainer::gate x`, which runs the same gate on the same clean
 snapshot of committed `HEAD` inside that image. (It works on macOS too, where
-`make ci-gate` has never been able to.)
+`just quality::local::gate` has never been able to.)
 
 ### Quiet hours freeze it, they do not kill it
 
 The capacity script freezes the slice whenever the host's runner target is 0 --
-inside a declared window, or after a manual `make infra-scale HOST=x N=0`.
+inside a declared window, or after a manual `just infra::scale x 0`.
 `systemctl freeze` suspends every process in it -- including the gate
 container, whose scope is a child of the slice -- and thawing resumes them
 exactly where they stood. An agent's suite pauses for the evening instead of
@@ -867,7 +929,7 @@ out. That is why `ra8-dev` **refuses to start new work while the slice is
 frozen** and says how to check. A paused run is the caller's informed choice; a
 run that silently began five minutes before a window is not.
 
-`make infra-status` reports the slice beside the runners:
+`just infra::status` reports the slice beside the runners:
 
 ```
 win-ci (docker_wsl, declared 3 instance(s)):
@@ -888,7 +950,7 @@ than assumed.
 parent, i.e. indistinguishable from `ra8-ci-runner-3` -- runs three real gates
 on a clean snapshot of committed `HEAD`. Identical work, identical caps,
 identical cores; the *only* difference between the phases is whether a full
-`ra8-dev make ci` is running in the slice at the same time.
+`ra8-dev just ci` is running in the slice at the same time.
 
 Nothing was parked to make room. Two earlier attempts drained runner 3 so the
 probe owned its cpuset, and the fleet's own capacity timer put it straight back
@@ -952,4 +1014,4 @@ The harness is in issue #519.
 - [`docs/INFRASTRUCTURE.md`](INFRASTRUCTURE.md) -- the whole estate, machine by machine
 - [`infra/README.md`](../infra/README.md) -- per-role index and the runner-pool topology
 - [`scripts/ci/fleet_capacity.sh`](../scripts/ci/fleet_capacity.sh) -- the drain, in full
-- `make infra-help` -- the command surface
+- `just infra` -- the command surface

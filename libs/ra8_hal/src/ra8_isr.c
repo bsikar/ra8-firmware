@@ -290,7 +290,7 @@ RA8_INTERNAL static uint16_t internal_find_free(void)
       return slot;
     }
   }
-  return k_ra8_isr_slot_none; /* GCOVR_EXCL_LINE -- only hit if 96 slots allocated */
+  return k_ra8_isr_slot_none;
 }
 
 ra8_err_t ra8_isr_register(ra8_elc_event_t   event,
@@ -310,11 +310,9 @@ ra8_err_t ra8_isr_register(ra8_elc_event_t   event,
   }
 
   const uint16_t slot = internal_find_free();
-  if (slot == k_ra8_isr_slot_none) { /* GCOVR_EXCL_BR_LINE -- 96-slot ceiling */
-    /* GCOVR_EXCL_START */
+  if (slot == k_ra8_isr_slot_none) {
     ra8_log_error(s_tag, "no free slot");
     return k_ra8_err_no_mem;
-    /* GCOVR_EXCL_STOP */
   }
 
   s_slots[slot].handler  = handler;
@@ -343,9 +341,10 @@ ra8_err_t ra8_isr_unregister(ra8_elc_event_t event)
   /* internal_find_event returns a slot < k_ra8_isr_slot_count or slot_none, so
    * the write below is in bounds; the explicit guard makes that provable to the
    * static analyzer (matches the bound in ra8_isr_dispatch). */
-  if (slot >=
-      k_ra8_isr_slot_count) {   /* GCOVR_EXCL_BR_LINE -- unreachable given the contract above */
-    return k_ra8_err_not_found; /* GCOVR_EXCL_LINE                                            */
+  /* GCOVR_EXCL_BR_START -- unreachable given the contract above */
+  if (slot >= k_ra8_isr_slot_count) {
+    /* GCOVR_EXCL_BR_STOP */
+    return k_ra8_err_not_found; /* GCOVR_EXCL_LINE -- slot bound proven */
   }
 
   internal_nvic_disable(slot);
@@ -423,7 +422,7 @@ ra8_err_t ra8_isr_set_dtc(uint16_t slot, bool enable)
   }
   volatile uint32_t* ielsr = ra8_icu_ielsr(slot);
   if (ielsr == nullptr) {      /* GCOVR_EXCL_BR_LINE -- slot bounds already validated */
-    return k_ra8_err_hw_error; /* GCOVR_EXCL_LINE                                     */
+    return k_ra8_err_hw_error; /* GCOVR_EXCL_LINE -- slot bound proves reg            */
   }
   /* HUM Ch 14.2.17 "IELSRn : ICU Event Link Setting Register n", p 547: DTCE[24]
    * enables DTC activation. The read-modify-write touches only DTCE -- the IELS

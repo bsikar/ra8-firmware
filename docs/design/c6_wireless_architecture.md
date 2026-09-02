@@ -27,12 +27,12 @@ a matching protocol version is what makes them speak.
 | Side | Device | Software |
 |------|--------|----------|
 | Host | RA8D2 (Cortex-M85) | Upstream esp-hosted host driver (vendored SOUP) + the first-party RA8 + ThreadX port at `port/esp-hosted/` |
-| Co-processor | ESP32-C6 | Pinned esp-hosted-mcu `network_adapter` SOUP + first-party `ra8_mdl_service` component |
+| Co-processor | ESP32-C6 | Pinned esp-hosted-mcu `network_adapter` SOUP + first-party `mdl_service` component |
 
 The C6 is a mixed image. The pinned upstream application supplies the radio,
 network stack, SPI transport, and outer RPC envelope. One checked patch exposes
 a bounded synchronous CustomRpc response hook, and the first-party
-`ra8_mdl_service` component supplies a pull-based HTTPS artifact transfer. The
+`mdl_service` component supplies a pull-based HTTPS artifact transfer. The
 build refuses patch drift and asserts the strong service symbol exists in the
 final ELF. The C6 image is never linked into the RA8D2 firmware binary -- the
 two remain separate images that meet only on the wire.
@@ -56,7 +56,7 @@ easy to get wrong and was got wrong here (see the side-band section below):
 - **DATA_READY** -- idles **low**. The C6 raises it only while its transmit
   queue holds a frame, so on a healthy but quiet link this pin sits low
   indefinitely. A freshly-booted C6 is the exception: it holds DATA_READY high
-  for its queued `ESPInit` event <!-- LEGACY-OK: upstream log tag --> until the
+  for its queued `ESPInit` event until the
   first transaction drains it, and then it stays low.
 - **HANDSHAKE** -- idles **high** once the transport is armed. With this
   image's `CONFIG_ESP_SPI_DEASSERT_HS_ON_CS=y`, the C6 drops it from its
@@ -205,7 +205,7 @@ rest.
 
 `cmake/esp_hosted.cmake` wires it up behind `RA8_USE_ESP_HOSTED`; its consumers
 are the apps under `examples/ek_ra8d2/hw_validated/c6/`, so the cross-build gate
-covers it on every push and `make hil-c6` re-runs it on the bench. The port:
+covers it on every push and `just hil::c6` re-runs it on the bench. The port:
 
 - Presents a single integration boundary for all C6 access, so the
   co-processor is never reached from application code directly.
@@ -222,9 +222,11 @@ header from the same pinned upstream spec, but it is deliberately an app
 rather than a driver: its job was to prove the wire, resolve the Pmod1 mux
 position and identify the side-band pins, not to become the transport.
 
-### What is proven on silicon
+### Recorded silicon evidence
 
-Three rungs, all green and all re-runnable with `make hil-c6`:
+The validating bench run established three rungs. They remain re-runnable with
+`just hil::c6`, but this record does not claim that the current commit has been
+rerun:
 
 - **The wire.** SPI mode 3, the pin map above scope-qualified per J26 hole,
   zero bad checksums at 1 MHz -- `c6_spi_probe`.

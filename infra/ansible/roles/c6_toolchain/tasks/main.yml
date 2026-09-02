@@ -1,65 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 ---
-# Provision the ESP-IDF build environment for the ESP32-C6 co-processor.
-# Idempotent: safe to re-run; converges apt prereqs + a pinned IDF checkout +
-# the per-version toolchain venv.
-
-- name: Install the ESP-IDF build prerequisites
-  become: true
-  ansible.builtin.apt:
-    name: "{{ c6_toolchain_apt_packages }}"
-    state: present
-    update_cache: true
-    cache_valid_time: 3600
-
-- name: Check out ESP-IDF at the pinned release
-  ansible.builtin.git:
-    repo: "{{ c6_toolchain_idf_repo }}"
-    dest: "{{ c6_toolchain_idf_dir }}"
-    version: "{{ c6_toolchain_idf_version }}"
-    depth: 1
-    recursive: true
-    accept_hostkey: true
-  register: c6_toolchain_idf_checkout
-
-- name: Detect whether the pinned toolchain venv is already installed
-  ansible.builtin.find:
-    paths: "{{ c6_toolchain_env_glob | dirname }}"
-    patterns: "{{ c6_toolchain_env_glob | basename }}"
-    file_type: directory
-  register: c6_toolchain_env_probe
-
-- name: Install the ESP-IDF toolchains (idempotent -- skipped once the venv exists)
-  # install.sh downloads riscv32-esp-elf-gcc + creates the python venv; it is the
-  # slow step, so gate it on the venv marker unless the checkout just changed.
-  ansible.builtin.command:
-    cmd: "./install.sh {{ c6_toolchain_targets }}"
-    chdir: "{{ c6_toolchain_idf_dir }}"
-  when: c6_toolchain_env_probe.matched == 0 or c6_toolchain_idf_checkout.changed
-  register: c6_toolchain_install
-  changed_when: c6_toolchain_install.rc == 0
-
-- name: Drop the interactive get_idf helper for bench users
-  become: true
-  ansible.builtin.copy:
-    dest: "{{ c6_toolchain_helper_path }}"
-    content: |
-      # RA8 ESP32-C6 build environment. Run `get_idf` to source ESP-IDF into the
-      # current shell (needed to run idf.py / esptool by hand on the bench).
-      alias get_idf='. {{ c6_toolchain_idf_dir }}/export.sh'
-    mode: "0644"
-
-- name: Health check -- IDF must report the pinned version
-  ansible.builtin.shell:
-    cmd: ". {{ c6_toolchain_idf_dir }}/export.sh >/dev/null 2>&1 && idf.py --version"
-    executable: /bin/bash
-  register: c6_toolchain_idf_ver
-  changed_when: false
-  failed_when: c6_toolchain_idf_version not in c6_toolchain_idf_ver.stdout
-
-- name: Report C6 toolchain state
-  ansible.builtin.debug:
-    msg: >-
-      ESP-IDF ready: {{ c6_toolchain_idf_ver.stdout | trim }} in
-      {{ c6_toolchain_idf_dir }}, targets {{ c6_toolchain_targets }}.
+- name: Enter the authenticated C6 transaction
+  ansible.builtin.include_tasks:
+    file: transaction.yml
+  tags: [always]

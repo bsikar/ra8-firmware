@@ -13,7 +13,7 @@ unreachable* under any execution that satisfies the rest of the
 firmware's invariants:
 
 * **Defensive guards on already-validated invariants.** A peripheral
-  driver receives a port/pin pair from a higher layer that has
+  driver receives a port-and-pin pair from a higher layer that has
   already validated the pin against the package map. The driver
   re-validates anyway as a defence-in-depth measure, but the second
   validation cannot fail in practice because the first validation

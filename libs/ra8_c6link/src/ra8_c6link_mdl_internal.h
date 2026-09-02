@@ -90,10 +90,11 @@ RA8_TEST_HELPER bool ra8_c6link_mdl_http_response_valid_test(const Ra8__Mdl__Chu
 RA8_TEST_HELPER bool ra8_c6link_mdl_chunk_semantics_valid_test(const Ra8__Mdl__Chunk* msg);
 
 /**
- * @brief Judge one cancellation acknowledgement exactly as the client does
- * @details Builds the private extraction context the transport would have
- * built and forwards to the module-private acknowledgement decoder, so a
- * focused test drives the shipped correlation logic rather than a copy.
+ * @brief Judge one cancellation acknowledgement exactly as the client does.
+ * @details Builds the fields of the take context the cancelled path reads
+ *          and runs the identical decode-and-correlate path, so a
+ *          test observes the client's real acceptance rule rather than a
+ *          reimplementation of it.
  * @param[in,out] link Open link whose bounded arena decodes the message.
  * @param[in,out] session Caller session the acknowledgement must correlate to.
  * @param[in] packed Packed generated Cancelled bytes.
@@ -102,15 +103,11 @@ RA8_TEST_HELPER bool ra8_c6link_mdl_chunk_semantics_valid_test(const Ra8__Mdl__C
  * @retval k_ra8_ok A matching acknowledgement deactivated @p session.
  * @retval k_ra8_err_protocol_error Decode or correlation validation failed.
  * @pre @p link is open and @p session carries the expected job identity.
- * @pre @p packed holds @p len bytes of a generated Cancelled message.
- * @post Success makes @p session inactive.
- * @post Failure preserves session activity for caller recovery.
+ * @pre @p packed is readable for @p len bytes.
+ * @post Success makes @p session inactive; failure preserves its state.
+ * @post The decoded message is released before return; no decoded pointer
+ *       escapes into @p session or to the caller.
  * @note Test helper; not thread-safe for a shared link or session.
- * @par MC/DC:
- * The four-condition correlation conjunction needs one malformed
- * acknowledgement per condition. The C6 model answers a Cancel with a message
- * it derives from live session state, so it cannot vary protocol version, job
- * identity, and status one at a time.
  * @since 0.1.0
  */
 RA8_TEST_HELPER ra8_err_t ra8_c6link_mdl_take_cancelled_test(ra8_c6link_t*      link,

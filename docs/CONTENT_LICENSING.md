@@ -3,7 +3,7 @@
 The clearance record for e-book content this project may **bundle and publicly
 redistribute**: the cleared titles, the license basis they rest on, and the
 caveats to check before publishing. The cleared `.epub` files are in
-[`apps/stand_alone/ereader/content/library/`](../apps/stand_alone/ereader/content/library) -- redistributing them is exactly what
+[`apps/board/stand_alone/ereader/content/library/`](../apps/board/stand_alone/ereader/content/library) -- redistributing them is exactly what
 the CC0 basis below permits. A title that is not in the catalog below is not
 cleared, and is kept off-repo.
 

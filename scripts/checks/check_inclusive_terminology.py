@@ -5,7 +5,7 @@
 
 Bans the legacy master/slave/MOSI/MISO/SS vocabulary from FIRST-PARTY source
 under libs/, src/, examples/, tests/, port/, scripts/, docs/, and the top-
-level CMake / Makefile / workflow files. CLAUDE.md "Terminology Standard"
+level CMake / justfile / workflow files. CLAUDE.md "Terminology Standard"
 mandates Controller/Peripheral, COPI/CIPO, CS/Chip Select, Primary/Main.
 
 Per-line opt-out: append a `LEGACY-OK: <reason>` annotation on the offending
@@ -66,6 +66,7 @@ SCAN_EXTS: frozenset[str] = frozenset(
         ".cc",
         ".cmake",
         ".mk",
+        ".just",
         ".md",
         ".yml",
         ".yaml",
@@ -77,9 +78,7 @@ SCAN_EXTS: frozenset[str] = frozenset(
 )
 
 # Filenames (no extension) we still want to scan.
-SCAN_BASENAMES: frozenset[str] = frozenset(
-    {"Makefile", "GNUmakefile", "Dockerfile", "CMakeLists.txt"}
-)
+SCAN_BASENAMES: frozenset[str] = frozenset({"justfile", "Justfile", "Dockerfile", "CMakeLists.txt"})
 
 # A tree this size cannot legitimately collapse to a handful of files. A scan
 # that enumerates almost nothing reports a clean tree because it read almost
@@ -131,6 +130,70 @@ HW_TOKENS: frozenset[str] = frozenset({"MASTEREN"})
 
 # Per-line opt-out marker.
 LEGACY_OK_RE: re.Pattern[str] = re.compile(r"LEGACY-OK\s*:")
+
+# Languages in which a trailing backslash joins physical lines into ONE
+# logical line. The opt-out is documented as per-line, and an author annotates
+# the line they see -- but a formatter is free to wrap a long `#define` after
+# the macro name, stranding the annotation on the continuation while the
+# offending identifier stays on the head. The marker then silences nothing and
+# the gate fails on a line its author believed was annotated. That is exactly
+# what happened to `H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS`,
+# whose LEGACY-OK went inert the moment its reason grew past the column limit
+# and clang-format wrapped the definition. Honouring the marker anywhere in
+# the continued run keeps the annotation attached to the construct instead of
+# to the formatter's line breaks. It cannot reach any other logical line, so
+# nothing else becomes exemptible. Restricted to the suffixes where a trailing
+# backslash genuinely continues a line: in YAML, Markdown and CSV it is
+# ordinary text, and joining there would let an unrelated neighbouring line
+# exempt a real violation.
+CONTINUATION_EXTS: frozenset[str] = frozenset(
+    {".c", ".h", ".cpp", ".hpp", ".cc", ".sh", ".mk", ".py"}
+)
+CONTINUATION_BASENAMES: frozenset[str] = frozenset({"Dockerfile", "Makefile"})
+
+
+def joins_lines(path: Path) -> bool:
+    """Whether a trailing backslash continues a line in this file's language.
+
+    Args:
+        path: The scanned file, classified by suffix then by bare filename.
+
+    Returns:
+        True when a trailing backslash is a line continuation there.
+    """
+    return path.suffix in CONTINUATION_EXTS or path.name in CONTINUATION_BASENAMES
+
+
+def exempt_lines(lines: list[str], *, join: bool) -> frozenset[int]:
+    """One-based line numbers whose LOGICAL line carries a LEGACY-OK opt-out.
+
+    With ``join`` false this is exactly the set of physical lines carrying the
+    marker, which is the historical behaviour. With ``join`` true a run of
+    backslash-continued physical lines shares one verdict, so an annotation on
+    any line of the run exempts that run -- and only that run.
+
+    Args:
+        lines: The file's physical lines, in order, without line endings.
+        join: Whether a trailing backslash continues a line in this language.
+
+    Returns:
+        The exempt one-based line numbers.
+    """
+    exempt: set[int] = set()
+    run: list[int] = []
+    annotated = False
+    for lineno, line in enumerate(lines, start=1):
+        run.append(lineno)
+        annotated = annotated or bool(LEGACY_OK_RE.search(line))
+        if join and line.endswith("\\"):
+            continue
+        if annotated:
+            exempt.update(run)
+        run = []
+        annotated = False
+    if annotated:
+        exempt.update(run)
+    return frozenset(exempt)
 
 
 def identifier_violation(line: str) -> str | None:
@@ -195,7 +258,7 @@ def iter_source_files(root: Path) -> list[Path]:
     """Every in-scope first-party file, derived from git rather than a root list.
 
     Enumeration goes through ``lint_targets.first_party_paths`` -- the shared
-    derived-scope primitive -- so ``infra/`` and ``mk/`` (the roots a hardcoded
+    derived-scope primitive -- so ``infra/`` and ``just/`` (the roots a hardcoded
     list silently dropped, #549) are covered, and any future top-level
     directory is in scope the day it lands. The only subtractions on top of what
     that primitive already exempts (third_party/, generated fonts, build output)
@@ -227,8 +290,10 @@ def scan_file(path: Path, root: Path) -> list[tuple[Path, int, str, str]]:
     except (OSError, UnicodeDecodeError):
         return []
     out: list[tuple[Path, int, str, str]] = []
-    for lineno, line in enumerate(text.splitlines(), start=1):
-        if LEGACY_OK_RE.search(line):
+    lines = text.splitlines()
+    exempt = exempt_lines(lines, join=joins_lines(path))
+    for lineno, line in enumerate(lines, start=1):
+        if lineno in exempt:
             continue
         matched = False
         for term, regex in PATTERNS:
@@ -245,20 +310,16 @@ def scan_file(path: Path, root: Path) -> list[tuple[Path, int, str, str]]:
     return out
 
 
-def selftest() -> int:
-    """Prove the detector fires on legacy terms, spares the legitimate ones, and scans real files.
+def _assert_term_detection(failures: list[str]) -> None:
+    """Assert legacy terms fire and their legitimate look-alikes stay quiet.
 
-    Both directions plus a scope probe: a legacy identifier and the bare prose
-    tokens must FIRE, while an inclusive rewrite, a vendored-namespace symbol
-    and a hardware register-bit name must stay QUIET; the derived scope must
-    clear ``FILE_FLOOR`` and reach the roots a hardcoded list had dropped
-    (``infra/``, ``mk/``). A clean run over a scope that never sees those roots,
-    or one whose detector had stopped matching, proves nothing.
+    The quiet direction is the load-bearing one: a vendored ``ux_`` symbol
+    and a silicon register-bit name both contain a legacy token and must
+    NOT be reported, or the gate becomes noise the tree learns to ignore.
 
-    Returns:
-        0 when every assertion held in both directions, 1 otherwise.
+    Args:
+        failures: Accumulator every ``expect`` appends its message to.
     """
-    failures: list[str] = []
     # Prose / identifier detection, driven through scan_line-equivalent logic.
     fire_lines = (
         ("a legacy identifier", "ra8_err_t ra8_spi_master_init(void);"),
@@ -280,6 +341,75 @@ def selftest() -> int:
         ident = identifier_violation(line) is not None
         expect(not (prose or ident), f"MUST NOT FIRE: {label}", failures)
 
+
+def _assert_continuation_exemption(failures: list[str]) -> None:
+    """Assert a LEGACY-OK marker attaches to its construct and no further.
+
+    Args:
+        failures: Accumulator every ``expect`` appends its message to.
+    """
+    # Continued logical lines. A backslash-wrapped `#define` puts the offending
+    # identifier on the head and lets the formatter strand the annotation on the
+    # continuation; the opt-out must still attach to the construct. Asserted in
+    # both directions, and the over-exemption direction is asserted twice: a
+    # marker must not leak across a completed logical line, nor into a language
+    # where a trailing backslash is ordinary text rather than a continuation.
+    wrapped = [
+        "#define SPI_MASTER_TIMEOUT_MS                                          \\",
+        "  (-1)",
+    ]
+    annotated_wrapped = [
+        "#define SPI_MASTER_TIMEOUT_MS                                          \\",
+        "  (-1) /* LEGACY-OK: upstream vendor macro name */",
+    ]
+    unwrapped = [
+        "#define SPI_MASTER_TIMEOUT_MS (-1)",
+        "/* LEGACY-OK: annotates the next construct, not the previous one */",
+    ]
+    expect(
+        exempt_lines(wrapped, join=True) == frozenset(),
+        "MUST FIRE: a continued macro with no LEGACY-OK anywhere in the run",
+        failures,
+    )
+    expect(
+        exempt_lines(annotated_wrapped, join=True) == frozenset({1, 2}),
+        "MUST NOT FIRE: LEGACY-OK on the continuation exempts the macro head",
+        failures,
+    )
+    expect(
+        exempt_lines(unwrapped, join=True) == frozenset({2}),
+        "MUST FIRE: LEGACY-OK does not reach back over a completed logical line",
+        failures,
+    )
+    expect(
+        exempt_lines(annotated_wrapped, join=False) == frozenset({2}),
+        "MUST FIRE: a trailing backslash joins nothing where it is ordinary text",
+        failures,
+    )
+    expect(
+        joins_lines(Path("a.h")) and not joins_lines(Path("a.yml")),
+        "continuation languages are classified by suffix",
+        failures,
+    )
+
+
+def selftest() -> int:
+    """Prove the detector fires on legacy terms, spares the legitimate ones, and scans real files.
+
+    Both directions plus a scope probe: a legacy identifier and the bare prose
+    tokens must FIRE, while an inclusive rewrite, a vendored-namespace symbol
+    and a hardware register-bit name must stay QUIET; the derived scope must
+    clear ``FILE_FLOOR`` and reach the roots a hardcoded list had dropped
+    (``infra/``, ``just/``). A clean run over a scope that never sees those roots,
+    or one whose detector had stopped matching, proves nothing.
+
+    Returns:
+        0 when every assertion held in both directions, 1 otherwise.
+    """
+    failures: list[str] = []
+    _assert_term_detection(failures)
+    _assert_continuation_exemption(failures)
+
     root = Path(__file__).resolve().parents[2]
     files = iter_source_files(root)
     rels = {str(p.relative_to(root)) for p in files if p.is_relative_to(root)}
@@ -288,7 +418,7 @@ def selftest() -> int:
         f"derived scope sees {len(files)} file(s) (floor {FILE_FLOOR})",
         failures,
     )
-    for root_name in ("infra", "mk"):
+    for root_name in ("infra", "just"):
         expect(
             any(rel.startswith(root_name + "/") for rel in rels),
             f"the derived scope reaches {root_name}/ (previously omitted)",

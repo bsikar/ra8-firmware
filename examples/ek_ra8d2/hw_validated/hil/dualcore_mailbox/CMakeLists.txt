@@ -33,7 +33,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME dualcore_mailbox
-  STACK_BYTES 2200
+  STACK_BYTES 2200 AUX_SRCS src/cpu1_main.c
   DESCRIPTION "Dual-core (M85 + M33) shared-SRAM mailbox demo for RA8D2"
 )
 
@@ -46,5 +46,5 @@ ra8_add_app(
 ra8_add_cpu1_image(
   PARENT dualcore_mailbox
   NAME dualcore_mailbox_cpu1
-  SOURCES cpu1_main.c
+  SOURCES src/cpu1_main.c
 )

@@ -25,7 +25,7 @@ alignment.)
 
 ## Boot decision
 
-Pure, and MC/DC-tested in `tests/test_ra8_dfu_boot.c`. Read and clear the
+Pure, and MC/DC-tested in `tests/misc/src/test_ra8_dfu_boot.c`. Read and clear the
 one-shot no-init SRAM trigger word; validate each slot (magic ok, length in
 range, and a software CRC32 over the body equal to the stored CRC); then stay in
 DFU if the trigger was set or neither slot is valid, otherwise copy-to-run the
@@ -59,7 +59,8 @@ The header records the run base as its entry, but the bootloader copies to the
 fails the `ra8_dfu_run_target_valid` cross-check and drops the boot to DFU; it
 can never redirect the copy.
 
-`stage_slot_image.py` builds a flashable slot image -- body plus header at the
-right offset -- from a payload binary, for staging over J-Link with no USB host
+`examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/scripts/stage_slot_image.py`
+builds a flashable slot image -- body plus header at the right offset -- from a
+payload binary, for staging over J-Link with no USB host
 involved. `dfu_copy_to_run` is the unattended proof that the copy-to-run
 hand-off actually executes on silicon.

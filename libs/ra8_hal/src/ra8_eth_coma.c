@@ -54,7 +54,9 @@ ra8_err_t ra8_eth_coma_init(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_eswm);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "coma_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "coma_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   volatile r_coma_regs_t* reg = ra8_coma();
   /* HUM Ch 31 "Ethernet Common Agent (COMA)" p 1590 */

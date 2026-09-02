@@ -36,6 +36,7 @@
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_err.h"
 #include "ra8_i3c_i2c.h"
 #include "ra8_i3c_i2c_internal.h"
 #include "ra8_i3c_i2c_regs.h"
@@ -138,10 +139,17 @@ ra8_err_t ra8_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
 
   /* Wait for either TENDF (peripheral ACKed the address) or NACKDF. */
   err = k_ra8_err_hw_timeout;
-  for (uint32_t i = 0U; i < k_ra8_i3c_i2c_ctrl_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_i3c_i2c_ctrl_poll_limit; i++) {
     const uint32_t bst = reg->BST;
-    if ((bst & (k_ra8_i3c_i2c_msk_bst_tendf | k_ra8_i3c_i2c_msk_bst_nackdf)) !=
-        0U) { /* GCOVR_EXCL_BR_LINE */
+    const bool     transfer_done =
+      (bst & (k_ra8_i3c_i2c_msk_bst_tendf | k_ra8_i3c_i2c_msk_bst_nackdf)) != 0U;
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
+    const bool observed = ra8_fake_mmio_poll(&reg->BST, i, transfer_done);
+#else
+    const bool observed = transfer_done;
+#endif
+    if (observed) {
       *out_acked = (bst & k_ra8_i3c_i2c_msk_bst_nackdf) == 0U;
       err        = k_ra8_ok;
       break;

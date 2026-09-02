@@ -23,7 +23,7 @@
  * in its ``LIBS``. The rest of the BSP depends solely on libraries every app
  * already compiles; the stream binding is the one part that does not, so an
  * application that never asks for a stream pays neither the include path nor
- * the object code. Mirrors how ``ra8_io_compress.h`` is kept out of the
+ * the object code. Mirrors how ``ra8_compress.h`` is kept out of the
  * ``ra8_io.h`` umbrella for the same reason.
  *
  * @code

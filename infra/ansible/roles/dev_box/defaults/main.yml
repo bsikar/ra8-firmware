@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 ---
 # dev_box role defaults -- provisions the shared verification box (the Debian
-# LXC every agent runs `make ci` / `make ci-native` on) from nothing.
+# LXC every agent runs `just ci` / `just quality::native` on) from nothing.
 #
 # WHY THIS ROLE EXISTS
 # --------------------
@@ -16,9 +16,9 @@
 # --------------------------------------
 # The pinned VERSIONS of the lint/format/coverage tools are not in this file.
 # They live in `.devcontainer/Dockerfile`, which the toolchain-parity gate and
-# `scripts/ci/provision_runner.sh` already read, and this role reads the same
-# ARGs at run time. A second version list here would be a second thing to bump
-# and the first to go stale -- exactly the drift the gate exists to catch.
+# `scripts/dev/provision_dev_box_toolchain.sh` already read, and this role reads
+# the same ARGs at run time. A second version list here would be a second thing
+# to bump and the first to go stale -- exactly the drift the gate exists to catch.
 #
 # Only pins the Dockerfile does NOT carry are declared below, and each says why
 # the version is load-bearing rather than incidental.
@@ -34,7 +34,7 @@ dev_box_home: "/home/{{ dev_box_user }}"
 # gates pin, and no Debian release ships them. apt.llvm.org is the only source.
 # The 18 line is separate and equally load-bearing: clang-tidy-18 is what the
 # tidy gate pins (the tree's .clang-tidy is written to that major) and
-# libclang-rt-18-dev carries the profile runtime `make mcdc` links against.
+# libclang-rt-18-dev carries the profile runtime `just quality::local::mcdc` links against.
 dev_box_llvm_keyring: /etc/apt/keyrings/llvm-snapshot.gpg
 dev_box_llvm_key_url: "https://apt.llvm.org/llvm-snapshot.gpg.key"
 dev_box_llvm_suites:
@@ -50,14 +50,9 @@ dev_box_llvm_suites:
 
 # The build/test substrate every gate needs.
 dev_box_apt_base:
-  # The dev box is the fleet's CONTROL NODE: `scripts/dev/fleet.py apply <host>`
-  # runs ansible-playbook from here against the machines in infra/fleet.yml.
-  # It was missing, so the declarative fleet could not be applied from either
-  # machine a person works on -- which is how truenas sat at 1 of its declared 2
-  # runners with nothing able to converge it back (#518), and why the runner
-  # image had to be rebuilt and redeployed entirely by hand (#513). A control
-  # node that cannot run the tool it exists to run is not a control node.
-  - ansible
+  # The dev box is the fleet control node. The uv-locked infra group,
+  # plus the exact repo-local Galaxy manifest, owns Ansible; the distribution
+  # package is absent so it cannot shadow that authority.
   - build-essential
   - ca-certificates
   - ccache
@@ -70,8 +65,6 @@ dev_box_apt_base:
   - ninja-build
   - pkg-config
   - python3
-  - python3-pip
-  - python3-venv
   - unzip
   - wget
   - xz-utils
@@ -79,12 +72,12 @@ dev_box_apt_base:
 # Gate-specific dependencies. Each one is a gate that FAILS (never skips)
 # without it, so an absent package is an unrunnable gate, not a degraded one.
 #   doxygen + graphviz -- the `docs` gate, and @dot state diagrams. apt's
-#                      doxygen is the floor, not the pin: provision_runner.sh
-#                      installs the pinned release over it in /usr/local/bin,
-#                      the way .devcontainer/Dockerfile does, and
-#                      toolchain-parity compares that version (#522).
+#                      doxygen is the floor, not the pin: the dev-box toolchain
+#                      provisioner installs the pinned release over it in
+#                      /usr/local/bin, the way .devcontainer/Dockerfile does,
+#                      and toolchain-parity compares that version (#522).
 #   libcapstone-dev    -- the header tools/ra8_emulator includes
-#   libcurl4-openssl-dev -- the header apps/stand_alone/media_dl includes
+#   libcurl4-openssl-dev -- the header apps/host/mdl includes
 #   gdb-multiarch, openocd -- the on-desk flash/debug inner loop
 dev_box_apt_gates:
   - doxygen
@@ -116,13 +109,13 @@ dev_box_apt_source_build:
   - libmpfr-dev
   - texinfo
 
-# The container runtime `make ci` shells out to. See the profile.d fragment
+# The container runtime `just ci` shells out to. See the profile.d fragment
 # below for why it runs as root inside this unprivileged LXC.
 dev_box_apt_runtime:
   - podman
   - uidmap
 
-# --- The image `make ci` boots ----------------------------------------------
+# --- The image `just ci` boots ----------------------------------------------
 #
 # Until #521 nothing in this tree owned it. scripts/ci.sh built it the first
 # time a machine had none and reused it forever after, so this box booted a
@@ -130,7 +123,7 @@ dev_box_apt_runtime:
 # actionlint, hadolint, gcc-14 and g++-14 were all absent from it, and
 # toolchain-parity, lint-cmake, lint-yaml and lint-devcontainer therefore FAILED
 # inside the container while PASSING natively on the same box, on the same
-# commit. `make ci` is what every agent runs before a push, so that is four
+# commit. `just ci` is what every agent runs before a push, so that is four
 # reds per run that are indistinguishable from real ones until each is re-run by
 # hand.
 #
@@ -138,39 +131,67 @@ dev_box_apt_runtime:
 # scripts/ci/devcontainer_image.sh, which stamps the build context's sha256 onto
 # the image as a label and compares it back:
 #
-#   * every `make ci`, on any machine, rebuilds when the label disagrees with
+#   * every `just ci`, on any machine, rebuilds when the label disagrees with
 #     the tree it is about to test. That is the load-bearing half: it needs no
 #     converge, and it covers the Mac, which no Ansible run reaches.
-#   * this role, so `make infra-apply HOST=dev` leaves the box warm and asserts
+#   * this role, so `just infra::apply HOST=dev` leaves the box warm and asserts
 #     what the image carries, instead of the first agent after a Dockerfile
 #     change paying for the rebuild inside their gate run.
 dev_box_ci_image: "ra8-ci:latest"
+# The image build is entered both by the root Ansible warm-up and by the
+# interactive dev_box_user. Keep its lock out of sticky shared caches: Linux
+# fs.protected_regular deliberately rejects root opening another user's file
+# with O_CREAT there. The role pre-creates one stable inode in a root-owned,
+# group-searchable directory so both callers lock the same trusted object while
+# only root can replace its pathname. The helper carries this canonical path for
+# every non-explicit caller; a root-owned marker binds its numeric primary gid,
+# and the convergence checker binds both authorities and their task ordering.
+dev_box_image_lock_dir: /var/cache/ra8-devcontainer-image-lock
 
 # --- Where this role's recipes come from ------------------------------------
 #
 # EVERY script and pin this role consumes is staged here, out of the checkout
-# the operator ran `make infra-apply` in, and read from here -- the Dockerfile
-# ARGs, install_unicorn.sh, provision_runner.sh, devcontainer_image.sh,
-# check_tool_versions.py, check_runner_image_deps.py, and the .devcontainer
-# build context itself.
+# the operator ran `just infra::apply` in, and read from here -- the Dockerfile
+# ARGs, install_unicorn.sh, provision_dev_box_toolchain.sh,
+# devcontainer_image.sh, check_tool_versions.py, check_runner_image_deps.py,
+# and the .devcontainer build context itself.
 #
 # Not from dev_box_base_checkout. That tree is `update: false` on purpose --
 # agents' linked worktrees hang off it and a force checkout would discard
 # commits that live only in one of them -- so nothing keeps it current, and it
 # was measured sitting at 116e45f07 while the control node's tree carried a new
-# pin. The role therefore ran the OLD provision_runner.sh, installed nothing new,
-# and reported a converged box (#521, #522). That is ci_runner_repo_dir's bug
-# with a different name (#513): a build input the tooling does not control is
-# not a build input, it is a rumour.
+# pin. The role therefore ran an old provision_dev_box_toolchain.sh, installed
+# nothing new, and reported a converged box (#521, #522). That is
+# ci_runner_repo_dir's bug with a different name (#513): a build input the
+# tooling does not control is not a build input, it is a rumour.
 #
-# It is emptied and re-copied on every converge, so a file deleted upstream
-# cannot survive here -- which is also why nothing durable may point INTO it.
-# The two systemd installers run from here but write their units against a copy
-# in ~/.local/bin, so they are safe; anything new that leaves a lasting
-# reference behind must not be.
+# A deterministic archive contains exactly the present cached and non-ignored
+# untracked files below the reviewed roots. The role verifies the extracted
+# tree exactly before reuse, so a deleted file, ignored cache, local residue,
+# or mode drift forces replacement. Nothing durable may point INTO that
+# replaceable directory. The two systemd installers run from there but write
+# their units against a copy in ~/.local/bin, so they are safe; anything new
+# that leaves a lasting reference behind must not be.
 dev_box_context_src: "{{ playbook_dir }}/../../.."
 dev_box_context_dir: /var/lib/ra8-ci/build-context
-
+dev_box_context_archive: /var/lib/ra8-ci/build-context.tar
+# The verifier is a two-file Python bundle, not a standalone script. Each
+# update is assembled in a new private directory below this root, checked
+# against the controller source digests, smoke-loaded, made read-only to
+# unprivileged users, and only then published by atomically replacing the
+# command symlink. A partial or misowned directory is never repaired or run.
+dev_box_context_helper_release_parent: /usr/local/libexec
+dev_box_context_helper_release_prefix: ra8-stage-worktree-context-
+dev_box_context_helper_entrypoint_name: stage_worktree_context.py
+dev_box_context_helper_support_name: git_environment.py
+dev_box_context_helper_legacy_package_dir: /usr/local/libexec/ra8-stage-worktree-context
+dev_box_context_helper_command: /usr/local/bin/ra8-stage-worktree-context
+dev_box_context_paths:
+  - .devcontainer
+  - .dockerignore
+  - pyproject.toml
+  - scripts
+  - uv.lock
 # --- cppcheck: built from source, and the version is load-bearing -----------
 #
 # The `misra` / `cppcheck` gates are calibrated against 2.13.0 EXACTLY, which is
@@ -190,8 +211,8 @@ dev_box_context_dir: /var/lib/ra8-ci/build-context
 # findings. The tasks assert both.
 dev_box_cppcheck_version: "2.13.0"
 dev_box_cppcheck_sha256: "8229afe1dddc3ed893248b8a723b428dc221ea014fbc76e6289840857c03d450"
-# yamllint disable-line rule:line-length
-dev_box_cppcheck_url: "https://github.com/danmar/cppcheck/archive/refs/tags/{{ dev_box_cppcheck_version }}.tar.gz"
+dev_box_cppcheck_url: "https://github.com/danmar/cppcheck/archive/refs/tags/\
+  {{ dev_box_cppcheck_version }}.tar.gz"
 dev_box_cppcheck_prefix: /usr/local
 dev_box_cppcheck_filesdir: /usr/local/share/Cppcheck
 
@@ -213,8 +234,8 @@ dev_box_cppcheck_filesdir: /usr/local/share/Cppcheck
 # version probe.
 dev_box_gcc_version: "14.2.0"
 dev_box_gcc_sha256: "a7b39bc69cbf9e25826c5a60ab26477001f7c08d85cec04bc0e29cabed6f3cc9"
-# yamllint disable-line rule:line-length
-dev_box_gcc_url: "https://ftp.gnu.org/gnu/gcc/gcc-{{ dev_box_gcc_version }}/gcc-{{ dev_box_gcc_version }}.tar.xz"
+dev_box_gcc_url: "https://ftp.gnu.org/gnu/gcc/\
+  gcc-{{ dev_box_gcc_version }}/gcc-{{ dev_box_gcc_version }}.tar.xz"
 dev_box_gcc_prefix: /usr/local
 dev_box_gcc_suffix: "-14"
 # Build knobs matching how the live box was configured. --disable-bootstrap
@@ -223,17 +244,6 @@ dev_box_gcc_suffix: "-14"
 # compiler any shipped artifact is built with.
 dev_box_gcc_languages: "c,c++"
 dev_box_gcc_configure_extra: "--disable-multilib --disable-bootstrap --disable-werror"
-
-# --- gcovr ------------------------------------------------------------------
-#
-# The one pinned tool whose version is NOT read from the Dockerfile. The
-# Dockerfile pins an Ubuntu apt version string (`GCOVR_VERSION=7.0-1`) that pip
-# cannot resolve, and check_tool_versions.py deliberately compares gcovr as a
-# FLOOR rather than an exact match: the container carries 7.0 and the native
-# boxes carry 8.x, both work, and the crash the floor guards against is the
-# ancient 5.2 line (apt's gcovr on this distribution is 5.2 and has a
-# merge_function bug). This is the release the box was proven on.
-dev_box_gcovr_version: "8.6"
 
 # --- Arm GNU Toolchain ------------------------------------------------------
 #
@@ -248,6 +258,93 @@ dev_box_gcovr_version: "8.6"
 # keeps working either way.
 dev_box_arm_gcc_prefix: /opt/arm-gnu-toolchain-13.3
 
+# --- Dedicated HIL Actions runner ------------------------------------------
+#
+# HIL builds belong on this machine, where the pinned native toolchain and CPU
+# budget already live.  The bench Pi remains an instrument host: the existing
+# scripts/hil drivers reach it over SSH and own the board lock, flash and
+# observation protocols.  This listener is repo-scoped and carries labels no
+# general workflow requests, so it does not turn the dev box into general CI
+# capacity.
+#
+# Unlike the gate tool pins above, actions/runner has no existing source of
+# truth in the repository.  Keep both the upstream release and its official
+# release-asset digest here.  Auto-update is disabled at registration so the
+# running binary cannot silently depart from this reviewed pin.
+dev_box_hil_runner_version: "2.336.0"
+dev_box_hil_runner_install_stamp: "{{ dev_box_hil_runner_version }}-isolated-v1"
+dev_box_hil_runner_sha256: "04cf0be1aff4c3ec3554466c39124ca250e3effd8873bb7e8d68535aa9505d5d"
+dev_box_hil_runner_url: "https://github.com/actions/runner/releases/download/\
+  v{{ dev_box_hil_runner_version }}/\
+  actions-runner-linux-x64-{{ dev_box_hil_runner_version }}.tar.gz"
+dev_box_hil_runner_root: /opt/ra8-hil-runner
+dev_box_hil_runner_service: ra8-hil-runner.service
+dev_box_hil_runner_env_file: /etc/ra8/hil-runner.env
+# The interactive account uses the same allowlisted rig coordinates from every
+# linked worktree. Keeping this outside a checkout avoids copying a private
+# `.env` into each workspace while leaving the isolated Actions service file
+# root-only.
+dev_box_hil_interactive_env_file: "{{ dev_box_home }}/.config/ra8/hil.env"
+dev_box_hil_runner_user: ra8-hil
+dev_box_hil_runner_group: ra8-hil
+dev_box_hil_runner_home: /var/lib/ra8-hil-runner
+# Fleet-owned identity. scripts/dev/fleet_model.py derives these from the
+# dev host's hil_runner block; empty defaults make a direct playbook invocation
+# fail instead of silently recreating a second, drifting declaration.
+dev_box_hil_runner_name: ""
+dev_box_hil_runner_repo_url: ""
+dev_box_hil_runner_labels: ""
+dev_box_hil_runner_work_dir: _work
+
+# Empty is correct after first registration.  The role asserts this is
+# non-empty only when the runner's local `.runner` registration is absent.
+# Supply the one-hour repo registration token through a mode-0600 Ansible vars
+# file; it is injected into config.sh through ACTIONS_RUNNER_INPUT_TOKEN and is
+# never written to this repository, the service unit, or the rig env file.
+dev_box_hil_runner_registration_token: ""
+
+# The controller's protected .env is the source, but the role parses only the
+# four declared rig coordinates. The interactive file receives all four; the
+# service receives the three coordinates it consumes. TAPO_* and every other
+# .env entry are deliberately unreachable from the runner. The parser obtains
+# device/repository defaults from rig_contract.sh, so an older protected .env
+# still converges without a second Ansible default authority.
+dev_box_hil_runner_rig_env_src: "{{ dev_box_context_src }}/.env"
+# Fleet-owned bench relation. The declaration resolves the referenced
+# hil_bench host's address and aliases into these role inputs.
+dev_box_hil_runner_bench_alias: ""
+dev_box_hil_runner_bench_address: ""
+dev_box_hil_runner_bench_names: []
+dev_box_hil_runner_bench_iface: ""
+dev_box_hil_runner_bench_mac: ""
+dev_box_hil_runner_bench_sysfs_device: ""
+dev_box_hil_runner_bench_phc_index: -1
+dev_box_hil_runner_bench_policy_sha256: ""
+# The dedicated account and pinned host key are security policy rather than
+# machine topology, so they remain role-owned.
+dev_box_hil_runner_bench_user: ra8-hil
+dev_box_hil_runner_bench_home: /var/lib/ra8-hil-client
+dev_box_hil_runner_bench_host_key: "ssh-ed25519 \
+  AAAAC3NzaC1lZDI1NTE5AAAAIE1+0oA11C2rWmew5suMyh3/DkN3T7qS+/DlwdSZw9eA"
+dev_box_hil_runner_packages:
+  # Ansible connects as the human control account and becomes the isolated
+  # unprivileged runner user for config/version probes; POSIX ACLs are its
+  # safe temporary-module handoff mechanism between those two accounts.
+  - acl
+  - libicu72
+  - libkrb5-3
+  - liblttng-ust1
+  - libssl3
+  - zlib1g
+
+# Controller-only process capability. The fleet wrapper supplies these after
+# it has acquired the canonical bench hold; direct mutating role execution has
+# no valid process ancestry and fails before the first mutation.
+hil_bench_maintenance_lock_id: ""
+hil_bench_maintenance_holder_pid: 0
+hil_bench_maintenance_holder_start_ticks: 0
+hil_bench_maintenance_holder_target: ""
+
 # --- Shared compiler cache --------------------------------------------------
 #
 # ONE cache for every agent and every containerised run on this box. The
@@ -257,6 +354,11 @@ dev_box_arm_gcc_prefix: /opt/arm-gnu-toolchain-13.3
 # directory exists to prevent.
 dev_box_ccache_dir: /var/cache/ccache-ra8
 dev_box_ccache_max_size: "30G"
+# Native HIL runs checkout-controlled compiler inputs under an isolated service
+# account. Keep its cache private so it cannot rewrite objects later consumed
+# by interactive users or general CI, and vice versa.
+dev_box_hil_ccache_dir: /var/cache/ccache-ra8-hil
+dev_box_hil_ccache_max_size: "10G"
 
 # --- Shell environment ------------------------------------------------------
 #
@@ -266,7 +368,7 @@ dev_box_ccache_max_size: "30G"
 dev_box_profile_d: /etc/profile.d/ra8-ci.sh
 dev_box_container_runtime: "sudo podman"
 
-# The base checkout `make ws-new` links its worktrees off, and the workspace
+# The base checkout `just workspace::new` links its worktrees off, and the workspace
 # root itself.
 #
 # This is an OBJECT STORE for agent worktrees and nothing else. Nothing in this

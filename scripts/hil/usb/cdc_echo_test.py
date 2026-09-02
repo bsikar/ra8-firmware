@@ -157,7 +157,7 @@ def _write_all(fd: int, payload: bytes) -> None:
             if n <= 0:
                 return
             written += n
-        except OSError as exc:  # noqa: PERF203 -- retrying a would-block IS the loop; the write must be attempted per iteration
+        except OSError as exc:
             if exc.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
                 time.sleep(0.01)
                 continue

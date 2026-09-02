@@ -114,8 +114,7 @@ static ra8_err_t internal_solve_timing(uint32_t            clock_hz,
       continue;
     }
     const uint32_t prescaler = clock_hz / denom;
-    // mcdc-deactivated: ra8_canfd_deinit (bit-timing solver) prescaler-range guard; the search-loop tq bounds (k_ra8_canfd_tq_search_lo..hi) and clock_hz/bitrate_bps caller validation upstream make either the lower or upper bound condition the dominant branch for any valid input -- the opposing condition cannot independently flip without violating the documented clock/bitrate range.
-    if ((prescaler < k_ra8_canfd_prescaler_min) || (prescaler > prescaler_max)) {
+    if (prescaler > prescaler_max) {
       continue;
     }
     /* 75% sample point: TSEG1 = 3*(tq-1)/4, TSEG2 = tq - 1 - TSEG1. */

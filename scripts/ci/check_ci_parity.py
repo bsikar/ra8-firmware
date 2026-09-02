@@ -5,7 +5,7 @@
 
 ``scripts/ci.sh`` owns the *definition* of every gate; the workflows own only
 the *scheduling*. Each gate-bearing workflow step is therefore a thin
-``bash scripts/ci.sh --gate <name>`` driver, and this checker enforces that the
+``just quality::local::gate <name>`` driver, and this checker enforces that the
 two sides stay welded together in both directions:
 
 1. **Every ``run:`` step in every workflow** must either invoke a registered
@@ -19,7 +19,8 @@ two sides stay welded together in both directions:
    An untagged raw ``run:`` step is exactly how check logic grows a second
    home, so it is rejected. An infra-tagged step may not reference anything
    under ``scripts/`` (other than ``ci.sh`` itself), ``tests/*.sh``, or a
-   gate-ish ``make`` target -- otherwise "infra" becomes a smuggling route for
+   gate-ish legacy ``make`` or current ``just`` target -- otherwise "infra"
+   becomes a smuggling route for
    the very checks this gate exists to centralise.
 
 2. **Every registered gate** has to be scheduled somewhere. A gate added to
@@ -33,13 +34,25 @@ two sides stay welded together in both directions:
    workflow whose triggers are all commented out, a step wrapped in
    ``continue-on-error: true``, and a job behind ``if: false`` were all
    indistinguishable from a gate running on every push. ``hil-all`` sat in
-   exactly that state -- registered, listed by ``make ci-list``, parity-clean,
+   exactly that state -- registered, listed by ``just quality::gate::list``, parity-clean,
    and unable to fire on any automatic trigger since its ``push:`` and
    ``pull_request:`` keys were commented out. So a ``fast``/``slow`` gate now
    has to reach at least one binding that is genuinely reachable, and a
    ``manual`` gate -- which is exempt from the automatic-trigger rule by
    definition -- still has to live in a workflow that can be dispatched or
    scheduled, so "manual" names a real invocation route rather than a dead one.
+
+4. **Only disposable runners bootstrap Just.** Ansible-managed `ra8-ci` and
+   `self-hosted` jobs consume the Just binary pinned into their runner image;
+   installing it again in each workflow is redundant and can hide image drift.
+   A non-managed job may use `setup-just`, but its exact `just-version` must
+   match `.devcontainer/Dockerfile` because the action default floats.
+
+5. **Managed runners never provision their own toolchain.** Jobs targeting
+   `ra8-ci` or a `self-hosted` runner consume the environment built by Ansible.
+   Package-manager commands and runtime setup actions in those jobs are
+   rejected. The GitHub-hosted fork-PR workflow may still provision its clean
+   `ubuntu-latest` VM.
 
 None of the halves can be done alone: registering a gate without scheduling it
 fails here, scheduling an unregistered gate fails here too, and scheduling one
@@ -69,7 +82,6 @@ from __future__ import annotations
 
 import argparse
 import re
-import shutil
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -81,17 +93,42 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
 CI_SH = REPO_ROOT / "scripts" / "ci.sh"
+DOCKERFILE = REPO_ROOT / ".devcontainer" / "Dockerfile"
+SETUP_JUST_PREFIX = "extractions/setup-just@"
+MANAGED_RUNNER_LABELS = frozenset({"ra8-ci", "self-hosted"})
+
+# The runner image and native HIL listener are Ansible-owned. A workflow that
+# heals either one with a package manager hides infrastructure drift and is not
+# portable to the next managed runner. Keep the GitHub-hosted fork path free to
+# provision its disposable ubuntu-latest VM.
+FORBIDDEN_MANAGED_PROVISIONING = (
+    re.compile(r"\b(?:sudo\s+)?(?:apt(?:-get)?|dnf|yum|zypper|pacman)\s+[^\n]*\binstall\b"),
+    re.compile(r"\b(?:sudo\s+)?apk\s+add\b"),
+    re.compile(r"\b(?:(?:python|python3)\s+-m\s+)?pip(?:3)?\s+install\b"),
+    re.compile(r"\buv\s+pip\s+install\b"),
+    re.compile(r"\bcargo\s+install\b"),
+    re.compile(r"\bnpm\s+install\s+(?:--global|-g)\b"),
+    re.compile(r"\bgo\s+install\b"),
+)
+FORBIDDEN_MANAGED_SETUP_ACTIONS = (
+    "actions/setup-python@",
+    "actions/setup-node@",
+    "actions/setup-java@",
+    "actions/setup-go@",
+    "ruby/setup-ruby@",
+)
 
 # A step body that calls a gate. Tolerates the line continuations and leading
 # whitespace a block scalar carries.
-GATE_CALL_RE = re.compile(r"^\s*bash\s+scripts/ci\.sh\s+--gate[= ]\s*([A-Za-z0-9._-]+)\s*$")
+GATE_CALL_RE = re.compile(r"^\s*just\s+quality::local::gate\s+\s*([A-Za-z0-9._-]+)\s*$")
 
 # The infra escape hatch. The trailing reason is mandatory: an unexplained
 # exemption is how an exemption list rots into a dumping ground.
 INFRA_MARKER_RE = re.compile(r"^\s*#\s*ci-parity:\s*infra\s*--\s*(\S.*)$")
 
 # An infra step may not run a project check. These are the shapes a smuggled
-# check takes: an in-repo script, a host-test driver, or a `make` gate target.
+# check takes: an in-repo script, a host-test driver, or a legacy/current task
+# runner target that can execute project checks.
 FORBIDDEN_IN_INFRA = (
     (re.compile(r"(?<!ci\.sh)\bscripts/(?!ci\.sh)\S+"), "invokes an in-repo script under scripts/"),
     (re.compile(r"\btests/\S+\.sh\b"), "invokes a host-test driver under tests/"),
@@ -101,7 +138,14 @@ FORBIDDEN_IN_INFRA = (
             r"(test|tidy|cppcheck|coverage|mcdc|ubsan|docs|misra|check|ascii"
             r"|version|format|bench-cache|fuzz|ci|ci-fast)\b"
         ),
-        "invokes a gate-ish `make` target",
+        "invokes a gate-ish legacy task-runner target",
+    ),
+    (
+        re.compile(
+            r"\bjust\s+(?!(?:quality::local::gate)\b)"
+            r"(?:quality|checks|tests|apps|docs|tools|hil)(?:::[A-Za-z0-9_.-]+)*\b"
+        ),
+        "invokes a project-checking `just` recipe",
     ),
 )
 
@@ -142,16 +186,8 @@ def load_registry() -> dict[str, str]:
     will actually execute, including ci.sh's own self-check that every listed
     name has a function behind it.
     """
-    bash = shutil.which("bash")
-    if bash is None:
-        sys.stderr.write(
-            "check_ci_parity.py: no `bash` on PATH -- the gate registry lives in "
-            "scripts/ci.sh and cannot be read without it.\n"
-        )
-        raise SystemExit(1)
-
-    proc = subprocess.run(  # noqa: S603  # fixed argv, no shell; bash resolved via shutil.which
-        [bash, str(CI_SH), "--list-gates"],
+    proc = subprocess.run(  # noqa: S603  # fixed absolute protected-Bash argv, no shell
+        ["/bin/bash", "-p", str(CI_SH), "--list-gates"],
         capture_output=True,
         text=True,
         cwd=REPO_ROOT,
@@ -208,6 +244,103 @@ def workflow_triggers(doc: dict) -> set[str]:
     if isinstance(raw, dict):
         return {str(key) for key in raw}
     return set()
+
+
+def dockerfile_just_version() -> str:
+    """Return the canonical Just release pinned by the devcontainer."""
+    text = DOCKERFILE.read_text(encoding="utf-8")
+    match = re.search(r"^ARG JUST_VERSION=(\S+)$", text, re.MULTILINE)
+    if match is None:
+        msg = f"{DOCKERFILE} does not declare ARG JUST_VERSION"
+        raise ValueError(msg)
+    return match.group(1)
+
+
+def check_setup_just_policy(workflow_dir: Path, expected: str) -> list[str]:
+    """Allow pinned setup-just steps only on non-managed runners."""
+    errors: list[str] = []
+    hosted_action_count = 0
+    workflows = sorted(list(workflow_dir.glob("*.yml")) + list(workflow_dir.glob("*.yaml")))
+    for workflow in workflows:
+        with workflow.open(encoding="utf-8") as handle:
+            doc = yaml.safe_load(handle) or {}
+        jobs = doc.get("jobs", {}) if isinstance(doc, dict) else {}
+        if not isinstance(jobs, dict):
+            continue
+        for job_name, job in jobs.items():
+            if not isinstance(job, dict):
+                continue
+            managed = bool(_runner_labels(job.get("runs-on")) & MANAGED_RUNNER_LABELS)
+            steps = job.get("steps", [])
+            if not isinstance(steps, list):
+                continue
+            for index, step in enumerate(steps, 1):
+                if not isinstance(step, dict):
+                    continue
+                uses = str(step.get("uses", ""))
+                if not uses.startswith(SETUP_JUST_PREFIX):
+                    continue
+                if managed:
+                    errors.append(
+                        f"{workflow.name}:{job_name}:step {index} uses {uses} on an "
+                        "Ansible-managed runner; use the Just binary pinned into the "
+                        "runner image."
+                    )
+                    continue
+                hosted_action_count += 1
+                inputs = step.get("with", {})
+                actual = inputs.get("just-version") if isinstance(inputs, dict) else None
+                if str(actual) != expected:
+                    errors.append(
+                        f"{workflow.name}:{job_name}:step {index} uses {uses} with "
+                        f"just-version={actual!r}; expected Dockerfile pin {expected!r}."
+                    )
+    if hosted_action_count == 0:
+        errors.append(f"no non-managed {SETUP_JUST_PREFIX} action found under {workflow_dir}")
+    return errors
+
+
+def _runner_labels(runs_on: object) -> set[str]:
+    """Normalise a job's ``runs-on`` value to a set of literal labels."""
+    if isinstance(runs_on, str):
+        return {runs_on}
+    if isinstance(runs_on, list):
+        return {str(label) for label in runs_on}
+    return set()
+
+
+def _check_managed_runner_dependencies(where: str, job: dict) -> list[str]:
+    """Reject dependency provisioning in an Ansible-managed runner job."""
+    if not (_runner_labels(job.get("runs-on")) & MANAGED_RUNNER_LABELS):
+        return []
+
+    errors: list[str] = []
+    steps = job.get("steps", [])
+    if not isinstance(steps, list):
+        return errors
+    for index, step in enumerate(steps, 1):
+        if not isinstance(step, dict):
+            continue
+        label = str(step.get("name") or f"step #{index}")
+        uses = str(step.get("uses", ""))
+        if uses.startswith(FORBIDDEN_MANAGED_SETUP_ACTIONS):
+            errors.append(
+                f"{where}, step '{label}' uses {uses}.\n"
+                f"    Managed runners consume the Ansible-provisioned toolchain; they\n"
+                f"    must not install a runtime inside the workflow. Put the dependency\n"
+                f"    in the runner image/role and let its verification gate fail loudly."
+            )
+        body = str(step.get("run", ""))
+        for pattern in FORBIDDEN_MANAGED_PROVISIONING:
+            hit = pattern.search(body)
+            if hit:
+                errors.append(
+                    f"{where}, step '{label}' provisions dependencies with\n"
+                    f"    {hit.group(0)!r}. Managed runners are Ansible-owned; move the\n"
+                    f"    dependency into the runner image/role and verify it there."
+                )
+                break
+    return errors
 
 
 @dataclass(frozen=True)
@@ -453,8 +586,61 @@ def _check_infra_step(where: str, body: str, reason: str | None) -> list[str]:
                 f"    is tagged `# ci-parity: infra` but {why}: {hit.group(0)!r}.\n"
                 f"    A check does not become infrastructure by being labelled one.\n"
                 f"    Move it into a gate function in scripts/ci.sh and call it\n"
-                f"    with `bash scripts/ci.sh --gate <name>`."
+                f"    with `just quality::local::gate <name>`."
             )
+    return errors
+
+
+def _check_workflow(workflow: Path, registry: dict[str, str], bindings: Bindings) -> list[str]:
+    """Check one workflow's triggers, managed dependencies, and run steps."""
+    errors: list[str] = []
+    try:
+        rel: object = workflow.relative_to(REPO_ROOT)
+    except ValueError:
+        rel = workflow.name
+    with workflow.open(encoding="utf-8") as handle:
+        doc = yaml.safe_load(handle)
+    if isinstance(doc, dict) and not workflow_triggers(doc):
+        errors.append(
+            f"{rel}\n"
+            f"    declares no `on:` triggers at all, so nothing in it can ever run.\n"
+            f"    A workflow whose triggers were commented out looks identical to\n"
+            f"    one that runs on every push -- which is exactly how a registered\n"
+            f"    gate goes dormant unnoticed. Give it a trigger or delete it."
+        )
+    jobs = doc.get("jobs", {}) if isinstance(doc, dict) else {}
+    if isinstance(jobs, dict):
+        for job_name, job in jobs.items():
+            if isinstance(job, dict):
+                errors.extend(
+                    _check_managed_runner_dependencies(
+                        f"{rel}: job '{job_name}'",
+                        job,
+                    )
+                )
+    for step in iter_run_steps(workflow):
+        where = f"{rel}: job '{step.job_name}', step '{step.label}'"
+        kind, gates, reason = classify_step(step.body)
+
+        if kind == "gate":
+            errors.extend(_check_gate_step(where, gates, registry, step, bindings))
+            continue
+
+        if kind == "infra":
+            errors.extend(_check_infra_step(where, step.body, reason))
+            continue
+
+        errors.append(
+            f"{where}\n"
+            f"    is a raw `run:` step. Every workflow step must either invoke a\n"
+            f"    registered gate:\n"
+            f"        run: just quality::local::gate <name>\n"
+            f"    or declare itself infrastructure with a reason:\n"
+            f"        run: |\n"
+            f"          # ci-parity: infra -- <why this runs no project check>\n"
+            f"          ...\n"
+            f"    Inline check bodies in YAML are the drift this gate exists to stop."
+        )
     return errors
 
 
@@ -463,22 +649,11 @@ def check_workflows(
 ) -> tuple[list[str], Bindings]:
     """Scan every workflow and return ``(errors, bindings)``.
 
-    ``workflow_dir`` is a parameter rather than a module constant so the
-    selftest can drive this function -- the mode CI actually depends on --
-    against synthetic workflows. Asserting only the classifier, as the
-    selftest once did, leaves the scan itself unproven.
-
-    Args:
-        registry: ``{gate_name: speed}`` as ci.sh reports it.
-        workflow_dir: directory of workflow YAML to scan.
-
-    Returns:
-        ``(errors, bindings)``; ``bindings`` records how each gate is bound so
-        the caller can report both the unscheduled and the unreachable cases.
+    ``workflow_dir`` remains injectable so selftests exercise the exact scan
+    path that CI uses against synthetic workflow trees.
     """
     errors: list[str] = []
     bindings = Bindings()
-
     workflows = sorted(list(workflow_dir.glob("*.yml")) + list(workflow_dir.glob("*.yaml")))
     if not workflows:
         errors.append(
@@ -488,43 +663,7 @@ def check_workflows(
         return errors, bindings
 
     for workflow in workflows:
-        try:
-            rel: object = workflow.relative_to(REPO_ROOT)
-        except ValueError:
-            rel = workflow.name
-        with workflow.open(encoding="utf-8") as handle:
-            doc = yaml.safe_load(handle)
-        if isinstance(doc, dict) and not workflow_triggers(doc):
-            errors.append(
-                f"{rel}\n"
-                f"    declares no `on:` triggers at all, so nothing in it can ever run.\n"
-                f"    A workflow whose triggers were commented out looks identical to\n"
-                f"    one that runs on every push -- which is exactly how a registered\n"
-                f"    gate goes dormant unnoticed. Give it a trigger or delete it."
-            )
-        for step in iter_run_steps(workflow):
-            where = f"{rel}: job '{step.job_name}', step '{step.label}'"
-            kind, gates, reason = classify_step(step.body)
-
-            if kind == "gate":
-                errors.extend(_check_gate_step(where, gates, registry, step, bindings))
-                continue
-
-            if kind == "infra":
-                errors.extend(_check_infra_step(where, step.body, reason))
-                continue
-
-            errors.append(
-                f"{where}\n"
-                f"    is a raw `run:` step. Every workflow step must either invoke a\n"
-                f"    registered gate:\n"
-                f"        run: bash scripts/ci.sh --gate <name>\n"
-                f"    or declare itself infrastructure with a reason:\n"
-                f"        run: |\n"
-                f"          # ci-parity: infra -- <why this runs no project check>\n"
-                f"          ...\n"
-                f"    Inline check bodies in YAML are the drift this gate exists to stop."
-            )
+        errors.extend(_check_workflow(workflow, registry, bindings))
 
     return errors, bindings
 
@@ -556,13 +695,17 @@ def main() -> int:
 
     registry = load_registry()
     errors, bindings = check_workflows(registry)
+    try:
+        errors.extend(check_setup_just_policy(WORKFLOW_DIR, dockerfile_just_version()))
+    except (OSError, ValueError) as exc:
+        errors.append(f"cannot verify setup-just pins: {exc}")
 
     unscheduled = sorted(set(registry) - bindings.named)
     for gate in unscheduled:
         errors.append(
             f"gate '{gate}' is registered in scripts/ci.sh but no workflow step\n"
             f"    ever runs it. It would pass locally and never run in CI.\n"
-            f"    Add `run: bash scripts/ci.sh --gate {gate}` to a workflow job,\n"
+            f"    Add `run: just quality::local::gate {gate}` to a workflow job,\n"
             f"    or delete the gate."
         )
     errors.extend(reachability_errors(registry, bindings))
@@ -604,12 +747,12 @@ def selftest() -> int:
         ),
         (
             "gate call",
-            "bash scripts/ci.sh --gate ascii",
+            "just quality::local::gate ascii",
             "gate",
         ),
         (
             "gate call with trailing smuggled command",
-            "bash scripts/ci.sh --gate ascii\npython3 scripts/checks/cite_check.py --strict",
+            "just quality::local::gate ascii\npython3 scripts/checks/cite_check.py --strict",
             "raw",
         ),
         (
@@ -627,18 +770,15 @@ def selftest() -> int:
             failures += 1
         print(f"  [{status}] {label}: classified '{kind}', expected '{expected}'")
 
-    # An infra-tagged step that smuggles a checker must be caught by the
-    # forbidden-pattern sweep, not merely classified as infra.
-    smuggled = (
-        "# ci-parity: infra -- pretends to be provisioning\n"
-        "python3 scripts/checks/check_file_size.py"
-    )
-    caught = any(pattern.search(smuggled) for pattern, _ in FORBIDDEN_IN_INFRA)
-    print(f"  [{'ok' if caught else 'FAIL'}] infra step smuggling a checker is rejected")
-    if not caught:
-        failures += 1
+    failures += _infra_smuggling_selftest()
+    failures += _setup_just_pin_selftest()
+    failures += _managed_runner_dependencies_selftest()
+    # Imported only in the proof mode so production parity scans do not load
+    # temporary-fixture machinery.  Keeping the end-to-end scan fixture in a
+    # companion module also keeps this checker focused on policy enforcement.
+    from ci_parity_scan_selftest import scan_selftest  # noqa: PLC0415 -- selftest-only import
 
-    failures += _scan_selftest()
+    failures += scan_selftest()
 
     if failures:
         sys.stderr.write(f"check_ci_parity.py --selftest: {failures} case(s) failed.\n")
@@ -647,90 +787,144 @@ def selftest() -> int:
     return 0
 
 
-def _workflow_yaml(trigger_block: str, *, soft: str = "", job_if: str = "") -> str:
-    """Render a minimal one-gate workflow for the scan selftest."""
-    return (
-        "name: probe\n"
-        f"{trigger_block}"
-        "jobs:\n"
-        "  probe:\n"
-        f"{job_if}"
-        "    runs-on: ubuntu-latest\n"
-        "    steps:\n"
-        "      - name: probe gate\n"
-        f"{soft}"
-        "        run: bash scripts/ci.sh --gate probe-gate\n"
+def _infra_smuggling_selftest() -> int:
+    """Prove an infra marker cannot hide either legacy or current checks."""
+    prefix = "# ci-parity: infra -- pretends to be provisioning\n"
+    cases = (
+        ("a checker", prefix + "python3 scripts/checks/check_file_size.py"),
+        ("a Just check", prefix + "just checks::local"),
     )
-
-
-def _scan_selftest() -> int:
-    """Prove ``check_workflows`` itself -- the mode CI runs -- in both directions.
-
-    The classifier assertions above only cover ``classify_step``. That left
-    the scan, the binding bookkeeping and every reachability rule untested,
-    which is the same "the selftest covered the mode nobody ran" shape this
-    checker exists to catch. Each case below writes a real workflow file to a
-    temporary directory and drives the real scan over it.
-
-    Returns:
-        The number of failed assertions.
-    """
-    import tempfile  # noqa: PLC0415  # selftest-only; keep it off the gate's import path
-
-    push = "on:\n  push:\n    branches: [dev]\n"
-    dispatch = "on:\n  workflow_dispatch:\n"
-    no_trigger = "# on:\n#   push:\n"
-
-    cases: list[tuple[str, str, str, bool]] = [
-        # (label, registry speed, workflow text, must_fire)
-        ("push-triggered gate", "fast", _workflow_yaml(push), False),
-        ("triggers all commented out (hil-all's shape)", "fast", _workflow_yaml(no_trigger), True),
-        ("dispatch-only workflow for a fast gate", "fast", _workflow_yaml(dispatch), True),
-        ("dispatch-only workflow for a manual gate", "manual", _workflow_yaml(dispatch), False),
-        (
-            "continue-on-error step for a fast gate",
-            "fast",
-            _workflow_yaml(push, soft="        continue-on-error: true\n"),
-            True,
-        ),
-        (
-            "job disabled by `if: false`",
-            "fast",
-            _workflow_yaml(push, job_if="    if: false\n"),
-            True,
-        ),
-    ]
-
     failures = 0
-    registry_name = "probe-gate"
-    for label, speed, text, must_fire in cases:
+    for label, body in cases:
+        caught = any(pattern.search(body) for pattern, _ in FORBIDDEN_IN_INFRA)
+        print(f"  [{'ok' if caught else 'FAIL'}] infra step smuggling {label} is rejected")
+        if not caught:
+            failures += 1
+    return failures
+
+
+def _setup_just_pin_selftest() -> int:
+    """Prove setup-just is hosted-only, exactly pinned, and non-vacuous."""
+    import tempfile  # noqa: PLC0415  # selftest-only temporary fixtures
+
+    expected = "1.40.0"
+    fixtures = (
+        ("hosted exact pin", "ubuntu-latest", "with:\n          just-version: 1.40.0\n", False),
+        ("hosted missing pin", "ubuntu-latest", "", True),
+        (
+            "hosted mismatched pin",
+            "ubuntu-latest",
+            "with:\n          just-version: 1.58.0\n",
+            True,
+        ),
+    )
+    failures = 0
+    for label, runs_on, with_block, must_fire in fixtures:
+        text = (
+            "name: probe\n"
+            "on: push\n"
+            "jobs:\n"
+            "  probe:\n"
+            f"    runs-on: {runs_on}\n"
+            "    steps:\n"
+            "      - uses: extractions/setup-just@v3\n"
+            f"        {with_block}"
+        )
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
             (directory / "probe.yml").write_text(text, encoding="utf-8")
-            registry = {registry_name: speed}
-            errors, bindings = check_workflows(registry, directory)
-            errors.extend(reachability_errors(registry, bindings))
-            fired = bool(errors)
+            fired = bool(check_setup_just_policy(directory, expected))
         ok = fired == must_fire
         failures += 0 if ok else 1
-        expectation = "must fire" if must_fire else "must stay quiet"
-        print(f"  [{'ok' if ok else 'FAIL'}] scan: {label} ({expectation})")
+        print(f"  [{'ok' if ok else 'FAIL'}] setup-just: {label}")
 
-    # An unscheduled gate must still be caught by the scan-plus-main logic,
-    # and an empty workflow directory must never read as parity.
+    failures += _setup_just_managed_selftest(expected)
+
     with tempfile.TemporaryDirectory() as tmp:
-        errors, _ = check_workflows({registry_name: "fast"}, Path(tmp))
-    ok = bool(errors)
+        fired = bool(check_setup_just_policy(Path(tmp), expected))
+    ok = fired
     failures += 0 if ok else 1
-    print(f"  [{'ok' if ok else 'FAIL'}] scan: an empty workflow directory is refused")
+    print(f"  [{'ok' if ok else 'FAIL'}] setup-just: empty action census is rejected")
+    return failures
 
-    # The YAML 1.1 `on:` -> True quirk: if this regressed, every workflow would
-    # look trigger-less and the reachability rules would fire on everything.
-    parsed = yaml.safe_load("on:\n  push:\n    branches: [dev]\njobs: {}\n")
-    ok = workflow_triggers(parsed) == {"push"}
-    failures += 0 if ok else 1
-    print(f"  [{'ok' if ok else 'FAIL'}] scan: bare `on:` parses as a trigger map, not a bool key")
 
+def _setup_just_managed_selftest(expected: str) -> int:
+    """Prove Ansible-managed runners reject the hosted setup action."""
+    import tempfile  # noqa: PLC0415  # selftest-only temporary fixtures
+
+    failures = 0
+    for label, runs_on in (
+        ("managed ra8-ci action", "ra8-ci"),
+        ("managed self-hosted action", "[self-hosted, hil, ra8d2]"),
+    ):
+        text = (
+            "name: probe\n"
+            "on: push\n"
+            "jobs:\n"
+            "  hosted:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - uses: extractions/setup-just@v3\n"
+            "        with:\n"
+            "          just-version: 1.40.0\n"
+            "  managed:\n"
+            f"    runs-on: {runs_on}\n"
+            "    steps:\n"
+            "      - uses: extractions/setup-just@v3\n"
+            "        with:\n"
+            "          just-version: 1.40.0\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            (directory / "probe.yml").write_text(text, encoding="utf-8")
+            errors = check_setup_just_policy(directory, expected)
+        fired = any("Ansible-managed runner" in error for error in errors)
+        ok = fired and not any("no non-managed" in error for error in errors)
+        failures += 0 if ok else 1
+        print(f"  [{'ok' if ok else 'FAIL'}] setup-just: {label} is rejected")
+
+    return failures
+
+
+def _managed_runner_dependencies_selftest() -> int:
+    """Prove only Ansible-managed jobs reject workflow-time provisioning."""
+    cases = (
+        (
+            "ra8-ci apt install",
+            {"runs-on": "ra8-ci", "steps": [{"run": "sudo apt-get install -y graphviz"}]},
+            True,
+        ),
+        (
+            "self-hosted setup-python",
+            {
+                "runs-on": ["self-hosted", "hil", "ra8d2"],
+                "steps": [{"uses": "actions/setup-python@v5"}],
+            },
+            True,
+        ),
+        (
+            "managed gate invocation",
+            {
+                "runs-on": "ra8-ci",
+                "steps": [{"run": "just quality::local::gate lint-yaml"}],
+            },
+            False,
+        ),
+        (
+            "hosted fork provisioning",
+            {
+                "runs-on": "ubuntu-latest",
+                "steps": [{"run": "sudo apt-get install -y clang-format-22"}],
+            },
+            False,
+        ),
+    )
+    failures = 0
+    for label, job, must_fire in cases:
+        fired = bool(_check_managed_runner_dependencies("probe", job))
+        ok = fired == must_fire
+        failures += 0 if ok else 1
+        print(f"  [{'ok' if ok else 'FAIL'}] managed runner: {label}")
     return failures
 
 

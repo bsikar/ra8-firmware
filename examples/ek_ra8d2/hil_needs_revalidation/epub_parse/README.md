@@ -1,6 +1,6 @@
 # epub_parse
 
-The first firmware app to run the `ra8_epub` parse stack on the target (#139).
+The first firmware app to run the `epub` parse stack on the target (#139).
 It bakes a known-good two-chapter `.epub` into a C array and parses it entirely
 in memory -- no card, no USB, no display -- driving the ZIP central-directory
 read, the bounded XML reader over `META-INF/container.xml` and the OPF, the
@@ -13,7 +13,7 @@ than that nothing crashed.
 ## Zero-heap is the point
 
 This firmware traps `_sbrk` (NASA Rule 3), so every allocation has to be
-accounted for: miniz allocates through the `ra8_epub_miniz_alloc` static
+accounted for: miniz allocates through the `epub_miniz_alloc` static
 first-fit arena, and XML parsing uses caller-owned workspace and allocates
 nothing. A stray `malloc` anywhere in the parse path reaches the trap and the
 board hangs before the banner -- which is the most useful failure this app

@@ -405,13 +405,9 @@ RA8_PRIV ra8_err_t priv_jpeg_sw_block(ra8_jpeg_dec_ctx_t*   d,
     return k_ra8_err_protocol_error;
   }
   int32_t r = priv_jpeg_sw_br_get_bits(br, (uint8_t)t);
-  /* mcdc-deactivated: priv_jpeg_sw_br_get_bits returns -1 only when the bitstream
-   * is exhausted; reaching this branch with t != 0 requires a
-   * truncated entropy-coded segment after every parser stage has
-   * succeeded -- the public-API contract (well-formed JFIF stream
-   * with EOI) makes this branch unreachable. Defensive guard for
-   * fault injection. */
-  // mcdc-deactivated: priv_jpeg_sw_block priv_jpeg_sw_br_get_bits exhaustion guard; well-formed JFIF streams (public-API contract) cannot exhaust the bitstream mid-coefficient with t != 0 because every parser stage upstream has validated the segment-length budget.
+  /* A zero-width Huffman value requests no bits, so the bit reader cannot
+   * return its exhausted sentinel when t == 0. */
+  // mcdc-deactivated: t == 0 requests no bits, so r < 0 requires t != 0; the operands cannot independently vary.
   if (r < 0 && t != 0) {
     return k_ra8_err_protocol_error;
   }
@@ -838,7 +834,6 @@ RA8_PRIV ra8_err_t priv_jpeg_sw_dispatch(ra8_jpeg_dec_ctx_t*           d,
     }
     *got_sof = true;
     return k_ra8_ok;
-    // mcdc-deactivated: priv_jpeg_sw_dispatch unsupported-SOFn detector (SOF1..SOFF excluding DHT/SOF8); identical co-dependence rationale as the SOF0 detector decision in ra8_jpeg_sw_get_dimensions -- markers >= 0xFFC1 in the JPEG spec are always <= 0xFFCF.
   }
   if (mk >= k_jpeg_marker_sof1 && mk <= k_jpeg_marker_sof_hi &&
       mk != (uint16_t)k_ra8_jpeg_marker_dht && mk != k_jpeg_marker_jpg) {

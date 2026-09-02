@@ -9,26 +9,27 @@
 # and is the only entry point; RA8_GATE_REGISTRY -- the single list of what
 # gates exist -- stays there too. These files hold gate BODIES only, so there
 # is still exactly one home for a gate's definition and exactly one command
-# for a workflow to call (bash scripts/ci.sh --gate <name>). Adding a second
+# for a workflow to call (`just quality::local::gate <name>`). Adding a second
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
 # Gates in this file: tools-build, build-cross, docs, sbom, roadmap-stats
 
 # --- tools-build ----------------------------------------------------------
-# #335/#309: COMPILES AND LINKS every first-party CMake host tool -- media_dl,
+# #335/#309: COMPILES AND LINKS every first-party CMake host tool -- mdl,
 # rabook_viewer, rabook_imagepack, mkbookimg, mkfontimg, exfat_mkimage,
 # cache_bench and ra8_emulator. They were
 # linted (#296 widened
 # clang-tidy to tools/) and NONE was ever built by a job, so a change that
 # parsed and linted cleanly could break the build or the link with nothing
-# going red -- and media_dl could not build on Linux at all, which is the only
+# going red -- and mdl could not build on Linux at all, which is the only
 # kind of runner this project has. tools/glyph_bench and tools/reader_vmem are
-# Make-only and are built under both compilers by the cache-bench gate;
+# discovery-managed CMake tools and are built under both compiler arms by the
+# cache-bench gate;
 # tools/epub_compile, tools/mcp and tools/vela are Python and are covered by
 # lint-py-shell.
 #
-# The gate also holds them to NASA Power of 10 Rule 10. media_dl used to
+# The gate also holds them to NASA Power of 10 Rule 10. mdl used to
 # compile ten hand-written first-party firmware sources under a blanket `-w`,
 # so the single build in the tree that compiles them for a 64-bit host could
 # report nothing; check_tool_warning_flags.py reads the compile database and
@@ -42,7 +43,7 @@
 # gcc-14 is the SECOND arm (#356). clang-18 and gcc-14 catch different warning
 # families, and a gate that holds the bar with one compiler holds only that
 # compiler's bar: gcc-14's -Wformat-truncation caught a silent PATH_MAX
-# path-join truncation in apps/stand_alone/media_dl that clang-18 did not flag. Both arms
+# path-join truncation in apps/host/mdl that clang-18 did not flag. Both arms
 # build, link and test under -Wall -Wextra -Werror; neither may degrade to a
 # warning-only run, and check_tool_warning_flags.py --require-compilers makes a
 # silently-dropped arm a hard failure rather than a vacuous pass.
@@ -67,21 +68,21 @@
 #     private pkgRedirects directory`. That is what took win-ci -- the fleet's
 #     second verification host, where `ci-gate-container` is the normal path --
 #     out of ever reporting a full green, and it reproduces identically on the
-#     dev box through `make ci-gate-container GATE=tools-build`.
+#     dev box through `just quality::devcontainer::gate tools-build`.
 #
 # check_gate_bodies.py now rejects $REPO_ROOT in any gate body, so a gate
 # cannot silently start measuring a different tree again.
-# media_dl: build, link, and run its own CTest suite under compiler $1.
-_tb_media_dl() (
+# mdl: build, link, and run its own CTest suite under compiler $1.
+_tb_mdl() (
   set -e
   local cc="$1" root="$2" jobs="$3"
   shift 3
-  echo "tools-build[$cc]: media_dl"
-  CC="$cc" cmake -S "$PWD/apps/stand_alone/media_dl" -B "$root/media_dl" \
+  echo "tools-build[$cc]: mdl"
+  CC="$cc" cmake -S "$PWD/apps/host/mdl" -B "$root/mdl" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON "$@"
-  cmake --build "$root/media_dl" -j "$jobs"
-  test -x "$root/media_dl/media_dl"
-  ctest --test-dir "$root/media_dl" --output-on-failure
+  cmake --build "$root/mdl" -j "$jobs"
+  test -x "$root/mdl/mdl"
+  ctest --test-dir "$root/mdl" --output-on-failure
 )
 
 # rabook_viewer: build, link, and exercise the supported headless read paths.
@@ -109,7 +110,7 @@ _tb_rabook_viewer() (
 )
 
 # The remaining first-party CMake tools no job built. #335 asked for these to
-# be enumerated rather than fixing media_dl alone. Build and link each distinct
+# be enumerated rather than fixing mdl alone. Build and link each distinct
 # firmware slice, then run every CTest it registers; a configured detector that
 # never executes is not evidence (rabook_imagepack alone has ten tests).
 _tb_other_tools() (
@@ -126,39 +127,82 @@ _tb_other_tools() (
   done
 )
 
+# Build any real host CMake project not already composed into the primary
+# products above. Discovery lives in check_tool_warning_flags.py, the same
+# non-vacuity authority that delivers the final verdict; this loop therefore
+# cannot drift into a second project registry. Source-only libraries carry no
+# standalone CMakeLists.txt and reach this gate through a consumer instead.
+_tb_generic_project() (
+  set -e
+  local cc="$1" root="$2" jobs="$3" project="$4" slot
+  shift 4
+  slot="${project//\//__}"
+  echo "tools-build[$cc]: $project"
+  CC="$cc" cmake -S "$PWD/$project" -B "$root/$slot" \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON "$@"
+  cmake --build "$root/$slot" -j "$jobs"
+  test -s "$root/$slot/compile_commands.json"
+  ctest --test-dir "$root/$slot" --output-on-failure
+)
+
 _tb_build_compiler() (
   set -e
-  local cc="$1" root="$2" jobs="$3"
+  local cc="$1" root="$2" jobs="$3" cxx family missing_output project
   local cmake_args=()
   if [[ "$cc" == gcc-14 ]]; then
+    cxx=g++-14
+    family=gcc
     # The gcc arm is also the tool-wide UBSan arm, matching gate_ubsan's
     # halt-on-first-undefined-behaviour contract for the library host suite.
     cmake_args+=(
       -DCMAKE_C_FLAGS=-fsanitize=undefined\ -fno-sanitize-recover=undefined
       -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=undefined
     )
+  else
+    cxx=clang++-18
+    family=clang
   fi
-  _tb_media_dl "$cc" "$root" "$jobs" "${cmake_args[@]}"
+  export CC="$cc" CXX="$cxx"
+  _tb_mdl "$cc" "$root" "$jobs" "${cmake_args[@]}"
   _tb_rabook_viewer "$cc" "$root" "$jobs" "${cmake_args[@]}"
   _tb_other_tools "$cc" "$root" "$jobs" "${cmake_args[@]}"
+
+  local dbs=("$root"/*/compile_commands.json)
+  missing_output="$(python3 scripts/checks/check_tool_warning_flags.py \
+    --list-missing-cmake-tools "${dbs[@]}")"
+  while IFS= read -r project; do
+    [[ -n "$project" ]] || continue
+    _tb_generic_project "$cc" "$root" "$jobs" "$project" "${cmake_args[@]}"
+  done <<<"$missing_output"
+
+  # Prove every discovered project reached THIS compiler arm, not merely the
+  # union of both arms. CXX is paired above so C++ TUs cannot fall back to the
+  # host default compiler while C sources use the pinned driver.
+  dbs=("$root"/*/compile_commands.json)
+  python3 scripts/checks/check_tool_warning_flags.py \
+    --require-compilers "$family" \
+    --require-all-cmake-tools \
+    "${dbs[@]}"
 )
 
 gate_tools_build() (
   set -e
   require_cmd clang-18 "the tools-build gate pins clang-18 to match CI"
+  require_cmd clang++-18 "the tools-build gate pairs clang C and C++ drivers"
   require_cmd gcc-14 "the tools-build gate's second warning arm pins gcc-14 (#356)"
+  require_cmd g++-14 "the tools-build gate pairs gcc C and C++ drivers"
   require_cmd cmake
   require_cmd ctest
-  # media_dl's CMakeLists find_program()s these two as REQUIRED for its
+  # mdl's CMakeLists find_program()s these two as REQUIRED for its
   # real-libcurl HTTPS integration test (it mints a throwaway server cert with
   # the openssl CLI and serves it from python3's http.server). A runner without
-  # them fails at `cmake -S apps/stand_alone/media_dl` with a CMake "could not find
+  # them fails at `cmake -S apps/host/mdl` with a CMake "could not find
   # MDL_OPENSSL_EXECUTABLE" error 700 lines before the gate says anything, and
   # the openssl CLI reaches the runner image only as a transitive apt
   # dependency of ca-certificates -- it is named nowhere. Name the dependency
   # where every other dependency of this gate is named, and fail on it here.
-  require_cmd openssl "media_dl's HTTPS integration test mints its server cert with the openssl CLI"
-  require_cmd python3 "media_dl's HTTPS integration test serves its fixtures from python3 http.server"
+  require_cmd openssl "mdl's HTTPS integration test mints its server cert with the openssl CLI"
+  require_cmd python3 "mdl's HTTPS integration test serves its fixtures from python3 http.server"
   # gcc-14 is enforced to its pin the same way the other gates enforce theirs
   # (#333/#447): the wrong gcc silently changes which warnings the arm holds.
   require_tool_versions gcc-14
@@ -182,14 +226,7 @@ gate_tools_build() (
     _tb_build_compiler "$cc" "$base/$cc" "$jobs"
   done
 
-  local dbs=()
-  local tool
-  for cc in clang-18 gcc-14; do
-    for tool in media_dl rabook_viewer rabook_imagepack mkbookimg mkfontimg \
-      exfat_mkimage cache_bench ra8_emulator; do
-      dbs+=("$base/$cc/$tool/compile_commands.json")
-    done
-  done
+  local dbs=("$base"/*/*/compile_commands.json)
 
   # --- the warning bar actually reached every first-party TU, under BOTH arms.
   # --require-compilers makes a silently-dropped gcc (or clang) arm a hard
@@ -309,12 +346,12 @@ gate_docs() (
 
 # --- sbom -----------------------------------------------------------------
 # Supply-chain provenance gate. Fails when the committed CycloneDX SBOM
-# (docs/sbom/ra8-firmware.cdx.json) is stale or the vendored libs/third_party/
-# tree drifted from the registry -- an uncatalogued SOUP directory, or a
+# (docs/sbom/ra8-firmware.cdx.json) is stale or either canonical third-party
+# root drifted from the registry -- an uncatalogued SOUP directory, or a
 # version macro that disagrees with the recorded version.
 # The --check pass is only worth its status because the SHA-256 digests it
-# compares are RE-DERIVED from libs/third_party/ on every run. They used to be
-# hand-transcribed literals in sbom_registry.py -- present on 4 of 23
+# compares are RE-DERIVED from both third-party roots on every run. They used
+# to be hand-transcribed literals in sbom_registry.py -- present on 4 of 23
 # components, absent from the one that had actually drifted -- so --check
 # compared a constant with itself and appending a line to a vendored source
 # still printed "SBOM matches the tree" with status 0 (#538). --selftest runs
@@ -344,17 +381,23 @@ gate_sbom() (
 # repository: a mutated blob, a lost file, an undeclared patch, a collapsed
 # scan. This claim was asserted in three places and checked by nothing, so
 # every tree passed it -- including one that had drifted.
+# The patch-series checker completes the offline proof for intentional
+# deviations: reverse to the recorded upstream blobs, then replay to exactly
+# the ready-to-build vendored bytes (or verify fetched pin/series linkage).
 gate_soup_upstream() (
   set -e
   python3 scripts/checks/check_soup_upstream.py --selftest
   python3 scripts/checks/check_soup_upstream.py
+  python3 scripts/checks/check_third_party_patches.py --selftest
+  python3 scripts/checks/check_third_party_patches.py
 )
 
 # --- roadmap-stats --------------------------------------------------------
 gate_roadmap_stats() (
   set -e
-  # A MISSING ROADMAP.md is a failure, not a skip. This gate used to `echo
-  # "no docs/ROADMAP.md -- skipping"` and return 0, so a `git mv` of that one
+  # The closed HAL completion record remains certification evidence, so a
+  # missing ROADMAP.md is a failure, not a skip. This gate used to `echo "no
+  # docs/ROADMAP.md -- skipping"` and return 0, so a `git mv` of that one
   # file would have turned the gate green forever while checking nothing --
   # the same shape as every other finding under the gate-honesty epic (#190).
   if [[ ! -f docs/ROADMAP.md ]]; then

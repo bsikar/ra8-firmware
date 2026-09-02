@@ -24,7 +24,7 @@
 # runs in SRAM (identical on hardware and in ra8_emulator -- no MMIO to model).
 #
 # Apps opt in with `ra8_add_app(... USES levelx_standalone ...)`, whose per-app
-# Makefile forces `-DRA8_USE_LEVELX_STANDALONE=ON`. The two LevelX build modes
+# justfile forces `-DRA8_USE_LEVELX_STANDALONE=ON`. The two LevelX build modes
 # (ThreadX-coupled `levelx` vs standalone `levelx_standalone`) are mutually
 # exclusive within one build; an app selects exactly one.
 #
@@ -93,7 +93,6 @@ target_compile_definitions(levelx_standalone_objs PRIVATE LX_STANDALONE_ENABLE)
 # Vendor sources predate the project's -Wpedantic / -Werror cleanliness. Drop
 # the warning surface to a permissive baseline (matches cmake/levelx.cmake) so
 # the rest of the tree keeps -Werror without forking upstream code.
-target_compile_options(levelx_standalone_objs PRIVATE -w)
 
 add_library(levelx_standalone INTERFACE)
 target_sources(levelx_standalone INTERFACE $<TARGET_OBJECTS:levelx_standalone_objs>)

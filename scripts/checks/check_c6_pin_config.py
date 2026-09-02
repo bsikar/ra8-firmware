@@ -106,9 +106,7 @@ EXIT_CONFIG = 2
 # repository; our own signal names are COPI/CIPO, which is what the labels use.
 PIN_PAIRS: tuple[tuple[str, str, str], ...] = (
     ("CONFIG_ESP_SPI_HSPI_GPIO_CS", "C6_PIN_CS", "CS (Chip Select)"),
-    # LEGACY-OK: CONFIG_ESP_SPI_HSPI_GPIO_MOSI is an upstream Kconfig symbol; our signal is COPI
     ("CONFIG_ESP_SPI_HSPI_GPIO_MOSI", "C6_PIN_COPI", "COPI (Controller Out)"),
-    # LEGACY-OK: CONFIG_ESP_SPI_HSPI_GPIO_MISO is an upstream Kconfig symbol; our signal is CIPO
     ("CONFIG_ESP_SPI_HSPI_GPIO_MISO", "C6_PIN_CIPO", "CIPO (Controller In)"),
     ("CONFIG_ESP_SPI_HSPI_GPIO_CLK", "C6_PIN_SCK", "SCK (clock)"),
     ("CONFIG_ESP_SPI_GPIO_DATA_READY", "C6_PIN_DATA_READY", "DATA_READY"),

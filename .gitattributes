@@ -10,7 +10,7 @@
 # Build files
 CMakeLists.txt text eol=lf
 *.cmake        text eol=lf
-Makefile       text eol=lf
+justfile       text eol=lf
 # Config
 *.yml  text eol=lf
 *.yaml text eol=lf
@@ -20,6 +20,10 @@ Makefile       text eol=lf
 # Scripts
 *.sh text eol=lf
 *.py text eol=lf
+# Unified-diff payloads carry literal leading context markers, including a
+# single-space line for blank context. Their exact replay is validated offline.
+docs/sbom/patches/**/*.patch -whitespace
+coprocessor/**/patches/*.patch -whitespace
 # Binary files
 *.pdf binary
 *.png binary
@@ -29,9 +33,10 @@ Makefile       text eol=lf
 *.bin binary
 *.hex binary
 libs/third_party/** -text
+apps/shared_libs/third_party/** -text
 # Fuzz corpus seeds: every byte (including CRLF in AT responses and
 # the raw frame bytes for ARP/IPv4) must be preserved verbatim or the
 # parsers under test see a different input than the seed generator
 # emitted. Treat the entire corpus subtree as binary.
 tests/fuzz/corpus/** binary
-apps/stand_alone/ereader/content/library/*.epub filter=lfs diff=lfs merge=lfs -text
+apps/board/stand_alone/ereader/content/library/*.epub filter=lfs diff=lfs merge=lfs -text

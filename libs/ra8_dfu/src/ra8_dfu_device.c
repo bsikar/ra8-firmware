@@ -357,6 +357,8 @@ RA8_INTERNAL static UINT internal_dfu_notify(VOID* dfu, ULONG notification)
  */
 RA8_INTERNAL static UINT internal_class_register(unsigned char* framework, uint32_t framework_len)
 {
+  static UCHAR s_class_name[] = "ux_slave_class_dfu";
+
   UX_SLAVE_CLASS_DFU_PARAMETER p = {
     .ux_slave_class_dfu_parameter_will_detach = 0UL,
     .ux_slave_class_dfu_parameter_capabilities =
@@ -371,7 +373,7 @@ RA8_INTERNAL static UINT internal_class_register(unsigned char* framework, uint3
     .ux_slave_class_dfu_parameter_framework           = (UCHAR*)framework,
     .ux_slave_class_dfu_parameter_framework_length    = (ULONG)framework_len,
   };
-  return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_dfu",
+  return _ux_device_stack_class_register(s_class_name,
                                          _ux_device_class_dfu_entry,
                                          (ULONG)k_ra8_dfu_dev_reg_interface,
                                          (ULONG)k_ra8_dfu_dev_reg_config,
@@ -432,9 +434,6 @@ ra8_err_t ra8_dfu_device_worker_step(void)
    * end-of-download (zero-length DFU_DNLOAD). The self-test twins use DFU_ABORT
    * instead of a manifest, so they never reach this branch -- only the
    * bootloader's real download path does. */
-  // mcdc-deactivated: this whole TU is #ifndef RA8_OFF_TARGET (USBX is not in
-  // the host build), so the 4-condition manifest/commit guard is outside the
-  // host MC/DC scope; it is exercised by the dfu_bootloader DFU-program path.
   if (s_dev.manifest && !s_dev.committed && s_dev.prepared && (s_dev.prog_err == k_ra8_ok)) {
     uint32_t other_seq = 0U;
     (void)ra8_dfu_slot_seq(ra8_dfu_other_slot(s_dev.target), &other_seq);

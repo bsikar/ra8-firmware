@@ -428,7 +428,7 @@ ra8_err_t ra8_touch_cal_compute(const ra8_touch_cal_point_t* raw,
   bool  ok_v     = false;
   internal_solve3(norm_mat, rhs_u, sol_u, &ok_u);
   internal_solve3(norm_mat, rhs_v, sol_v, &ok_v);
-  // mcdc-deactivated: TU-local helper internal_clip32 solver-success gate; A is the same 3x3 calibration matrix for both Bu and Bv solves, so internal_solve3 either succeeds for both right-hand sides (det(A) != 0) or fails for both (det(A) == 0) -- ok_u and ok_v are co-determined by the matrix conditioning.
+  // mcdc-deactivated: ra8_touch_cal_compute internal_solve3 success gate; A is the same 3x3 calibration matrix for both Bu and Bv solves, so internal_solve3 either succeeds for both right-hand sides (det(A) != 0) or fails for both (det(A) == 0) -- ok_u and ok_v are co-determined by the matrix conditioning.
   if (!ok_u || !ok_v) {
     return k_ra8_err_invalid_arg;
   }

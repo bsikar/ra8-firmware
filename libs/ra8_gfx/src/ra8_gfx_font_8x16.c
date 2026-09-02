@@ -147,7 +147,6 @@ static const uint8_t s_font_8x16_glyphs[(k_font_8x16_last - k_font_8x16_first + 
  * @var ra8_gfx_font_8x16
  * @brief Public descriptor pointing at s_font_8x16_glyphs.
  */
-/* NOLINTNEXTLINE(readability-identifier-naming) -- API symbol kept un-prefixed by design. */
 const ra8_gfx_font_t ra8_gfx_font_8x16 = {
   .glyph_data      = s_font_8x16_glyphs,
   .glyph_width     = k_font_8x16_width,

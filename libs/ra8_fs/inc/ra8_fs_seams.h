@@ -147,7 +147,7 @@ typedef struct {
  *
  * @par MC/DC:
  * Decision: `if (lock->acquire == nullptr || lock->release == nullptr)`
- * -- vectors live in `tests/test_ra8_fs_lock.c`.
+ * -- vectors live in `tests/storage/src/test_ra8_fs_lock.c`.
  *
  * @see ra8_fs_lock_t  The binding this installs.
  * @since 0.1.0

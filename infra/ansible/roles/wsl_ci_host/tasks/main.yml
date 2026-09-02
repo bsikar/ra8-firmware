@@ -72,6 +72,20 @@
       changed_when: wsl_ci_host_task_del.rc == 0
       failed_when: false
 
+    - name: Verify the Windows autostart task is gone
+      # schtasks output is localized, so the delete above stays masked and
+      # this locale-independent rc probe is the contract: rc 0 means the task
+      # still exists and the removal must fail loudly.
+      ansible.builtin.command:
+        argv:
+          - schtasks.exe
+          - /Query
+          - /TN
+          - "{{ wsl_ci_host_task_name }}"
+      register: wsl_ci_host_task_query
+      changed_when: false
+      failed_when: wsl_ci_host_task_query.rc == 0
+
     - name: Stop and disable the route-pin units
       ansible.builtin.systemd_service:
         name: "{{ item }}"
@@ -80,7 +94,14 @@
       loop:
         - ra8-wsl-route-pin.timer
         - ra8-wsl-route-pin.service
-      failed_when: false
+      register: wsl_ci_host_route_stop
+      # Only units that were never installed are benign during rollback; a
+      # genuine stop failure would orphan a running service whose unit files
+      # the next task deletes.
+      failed_when: >-
+        wsl_ci_host_route_stop is failed
+        and 'could not find' not in ((wsl_ci_host_route_stop.msg | default('')) | lower)
+        and 'not found' not in ((wsl_ci_host_route_stop.msg | default('')) | lower)
 
     - name: Remove the route-pin helper and its units
       ansible.builtin.file:
@@ -105,7 +126,16 @@
       ansible.builtin.systemd_service:
         name: chronyd
         state: restarted
-      failed_when: false
+      register: wsl_ci_host_chronyd_restart
+      # chrony may have been uninstalled by the owner since deploy; any other
+      # restart failure hands the machine back with its time daemon down and
+      # must fail.
+      failed_when: >-
+        wsl_ci_host_chronyd_restart is failed
+        and 'could not find' not in
+            ((wsl_ci_host_chronyd_restart.msg | default('')) | lower)
+        and 'not found' not in
+            ((wsl_ci_host_chronyd_restart.msg | default('')) | lower)
 
     - name: Unmask systemd-timesyncd so the distro has a time daemon again
       # The removal path leaves chrony installed (see above) but must not leave
@@ -117,7 +147,14 @@
       loop:
         - systemd-timesyncd
         - systemd-time-wait-sync
-      failed_when: false
+      register: wsl_ci_host_unmask
+      # A distro without timesyncd is benign; a genuine unmask failure would
+      # hand the machine back with both time daemons masked, and this removal
+      # path has no outcome assert to catch it later.
+      failed_when: >-
+        wsl_ci_host_unmask is failed
+        and 'could not find' not in ((wsl_ci_host_unmask.msg | default('')) | lower)
+        and 'not found' not in ((wsl_ci_host_unmask.msg | default('')) | lower)
 
     - name: Check for the .wslconfig backup taken on first run
       ansible.builtin.stat:
@@ -289,7 +326,7 @@
     # A WSL2 VM does not boot with a trustworthy clock, and that lands squarely
     # on the build. Observed on this host: the VM came up ~4 minutes fast, the
     # runner checked out the tree with those timestamps, timesyncd then stepped
-    # the clock back, and make spent the rest of the job reporting
+    # the clock back, and the build system spent the rest of the job reporting
     #
     #   Warning: File '...o' has modification time 236 s in the future
     #   warning: Clock skew detected. Your build may be incomplete.
@@ -347,7 +384,7 @@
     #     with the exact commands rather than converging on a host that will
     #     resume stepping.
     #
-    # The gate is what proves convergence: scripts/ci.sh --gate runner-clock,
+    # The gate is what proves convergence: just quality::local::gate runner-clock,
     # scheduled nightly, re-reads the fleet from the API and fails while any
     # runner is still moving its clock under a job.
 
@@ -590,16 +627,22 @@
         success_msg: >-
           docker is {{ wsl_ci_host_which_docker.stdout | trim }} (native)
 
+    - name: Inspect the owner's .wslconfig before taking it over
+      ansible.builtin.stat:
+        path: "{{ wsl_ci_host_profile }}/.wslconfig"
+        follow: false
+      register: wsl_ci_host_config_before
+
     - name: Back up the owner's .wslconfig before taking it over
       # Once only: `creates`-style guard via a stat, so a re-run does not
       # overwrite the pristine backup with our own managed copy.
+      when: wsl_ci_host_config_before.stat.exists
       ansible.builtin.copy:
         src: "{{ wsl_ci_host_profile }}/.wslconfig"
         dest: "{{ wsl_ci_host_profile }}/.wslconfig.ra8-backup"
         remote_src: true
         force: false
         mode: "0644"
-      failed_when: false
 
     - name: Write the .wslconfig VM caps
       ansible.builtin.copy:
@@ -729,7 +772,7 @@
       # The underlying fault this guards is real and was measured here: the
       # VM's RTC runs ~4 minutes ahead of true time, so the distro's clock is
       # dragged BACKWARD to the truth. A build straddling that step sees file
-      # modification times hundreds of seconds in the future, make reports
+      # modification times hundreds of seconds in the future, the build reports
       # "Clock skew detected. Your build may be incomplete", and its up-to-date
       # decisions -- which are timestamp comparisons -- stop being sound. That
       # presents as a flaky gate, not as a host fault, which is why it is worth
@@ -815,7 +858,7 @@
           `net start w32time`;
           `w32tm /config /manualpeerlist:"{{ wsl_ci_host_ntp_servers | join(' ') }}"
           /syncfromflags:manual /update`; `w32tm /resync /force`. Then re-run
-          this play, and confirm with `make ci-gate GATE=runner-clock`.
+          this play, and confirm with `just quality::local::gate GATE=runner-clock`.
         success_msg: >-
           Windows and the distro agree to within
           {{ ((wsl_ci_host_windows_epoch.stdout | trim | int)

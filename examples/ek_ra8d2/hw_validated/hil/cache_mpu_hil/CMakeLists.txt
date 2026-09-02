@@ -38,7 +38,7 @@ ra8_add_app(
 )
 
 # Turn on the shared boot's cache + MPU bring-up for THIS app only. The shared
-# boot (libs/ra8_board_ek_ra8d2/boot/system_init.c) is compiled into each app's
+# boot (libs/ra8_board_ek_ra8d2/src/boot/system_init.c) is compiled into each app's
 # own executable, so this PRIVATE define reaches that translation unit here and
 # nowhere else: SystemInit() programmes the 5-region MPU and enables the
 # I-cache / D-cache / branch predictor before main() runs.

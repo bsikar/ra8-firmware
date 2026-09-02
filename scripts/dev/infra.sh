@@ -6,14 +6,14 @@
 #
 # WHY THIS EXISTS
 # ---------------
-# Every other real capability in this tree is one `make` verb: `make ci`,
-# `make hil`, `make ws-new`, `make ci-status`. Infrastructure was the exception
+# Every other real capability in this tree is one Just recipe: `just ci`,
+# `just hil`, `just workspace::new`, `just quality::local::gate ci-status-contract`. Infrastructure was the exception
 # -- bare `ansible-playbook -i inventory/hosts.ini playbooks/<something>.yml`
 # invocations known only to whoever wrote the role. That is the same tribal
 # knowledge the roles themselves were written to abolish, one level up.
 #
-# So this holds the logic and mk/infra.mk is a thin wrapper, exactly as
-# mk/workspace.mk wraps agent_workspace.sh.
+# This script holds the orchestration logic, while the namespaced Just recipes
+# provide the operator-facing entry points.
 #
 # THE ONE REGISTRY
 # ----------------
@@ -32,16 +32,20 @@
 # Not even in a probe. Every ssh command this script runs is asked for with
 # `fleet.py ssh-target <host>`, which builds it from the declaration's address,
 # user and jump. Spelling `ssh truenas` would have quietly re-introduced #526:
-# those aliases lived in one laptop's ~/.ssh/config, so `make infra-status` from
+# those aliases lived in one laptop's ~/.ssh/config, so `just infra::status` from
 # the dev box reported the entire estate unreachable when in fact every machine
 # answered on its address.
 #
 # Commands:
 #   list                 what machines are declared, and how they are sized
+#   show <host>          inspect one host declaration and its derived values
 #   doctor               can THIS machine drive infra at all?
 #   ssh-config           name every declared machine in your ~/.ssh/config
+#   ssh-config-preview   print the fragment without installing it
 #   check <host>         dry run: what would change, changing nothing
 #   apply <host>         converge that host to the declaration
+#   register-runner      first-register a declared Docker runner host
+#   register-hil         first-register the declared native HIL listener
 #   remove <host>        tear down (classes whose roles implement it)
 #   scale <host> <n>     live capacity change; shrinking DRAINS, never kills
 #   status               what is deployed across the estate, right now
@@ -49,10 +53,57 @@
 # `list`, `status` and `doctor` are strictly READ-ONLY and safe to run at any
 # time, including while CI jobs and agents are working. The rest are not.
 
-set -uo pipefail
+set -euo pipefail
+
+[[ "${RA8_INFRA_SANITIZED:-}" == v1 ]] || {
+  echo "error: enter infrastructure only through a just infra:: recipe" >&2
+  exit 1
+}
+[[ -z "${BASH_ENV:-}" && -z "${ENV:-}" && -z "${PYTHONPATH:-}" && -z "${PYTHONHOME:-}" ]] || {
+  echo "error: infrastructure startup environment was not sanitized" >&2
+  exit 1
+}
+
+if [[ "${1:-}" == --selftest-boundary ]]; then
+  if (($# != 1)); then
+    echo "error: infrastructure boundary selftest takes no arguments" >&2
+    exit 1
+  fi
+  exit 0
+fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export ANSIBLE_COLLECTIONS_PATH="$ROOT/.ansible/collections"
 FLEET="${ROOT}/scripts/dev/fleet.py"
+MANAGED_VENV="$ROOT/.venv"
+MANAGED_BIN="$MANAGED_VENV/bin"
+MANAGED_PATH="$MANAGED_BIN:/usr/local/bin:/usr/bin:/bin"
+[[ -x "$MANAGED_BIN/python3" && -x "$MANAGED_BIN/ansible-playbook" ]] || {
+  echo "error: locked Python/Ansible environment is absent; run 'just setup'" >&2
+  exit 1
+}
+[[ ! -L "$MANAGED_VENV" && "$(readlink -f "$MANAGED_BIN/python3")" == "$(readlink -f /usr/bin/python3)" ]] || {
+  echo "error: repository Python authority does not use the fixed system interpreter" >&2
+  exit 1
+}
+
+verify_managed_python_environment() {
+  (
+    cd "$ROOT"
+    UV_PROJECT_ENVIRONMENT="$MANAGED_VENV" UV_PYTHON_DOWNLOADS=never \
+      UV_CACHE_DIR="$ROOT/.tools/uv" \
+      /usr/bin/python3 -I -S "$ROOT/scripts/dev/bootstrap_uv.py" \
+      --run --no-config sync --locked --all-groups --no-install-project \
+      --python /usr/bin/python3 --check
+  ) >/dev/null
+}
+
+if ! verify_managed_python_environment; then
+  echo "error: repository .venv does not exactly match pyproject.toml and uv.lock" >&2
+  exit 1
+fi
+export PATH="$MANAGED_PATH"
+PYTHON="$MANAGED_BIN/python3"
 
 # Filled in by ssh_argv(); an array because an ssh command with a ProxyJump is
 # several words and `eval`-ing a string here would be a shell injection seam
@@ -65,19 +116,28 @@ die() {
 }
 
 fleet() {
-  python3 "${FLEET}" "$@"
+  "$PYTHON" -I "${FLEET}" "$@"
 }
 
 host_names() {
-  fleet list | awk 'NR > 1 && NF > 1 && $1 !~ /^(make|docs)/ {print $1}'
+  fleet list | awk 'NR > 1 && NF > 1 && $1 !~ /^(just|docs)/ {print $1}'
 }
 
 cmd_list() {
   fleet list
 }
 
+cmd_show() {
+  [ $# -eq 1 ] || die "show needs exactly one host: $(host_names | tr '\n' ' ')"
+  fleet show "$1"
+}
+
 cmd_ssh_config() {
   fleet ssh-config --install
+}
+
+cmd_ssh_config_preview() {
+  fleet ssh-config
 }
 
 # ssh_argv <host>
@@ -88,9 +148,8 @@ cmd_ssh_config() {
 ssh_argv() {
   local out
   out="$(fleet ssh-target "$1" 2>/dev/null)" || return 1
-  # Deliberate word splitting; see the note above for why it is safe here.
-  # shellcheck disable=SC2206
-  RA8_SSH_ARGV=(${out})
+  # The fleet-declaration gate rejects whitespace inside every argv field.
+  read -r -a RA8_SSH_ARGV <<<"$out"
 }
 
 # --- doctor -----------------------------------------------------------------
@@ -129,7 +188,7 @@ probe_ssh() {
 doctor_tools() {
   local missing=0 tool
   echo "control-node tooling:"
-  for tool in ansible ansible-playbook ssh; do
+  for tool in "$MANAGED_BIN/ansible" "$MANAGED_BIN/ansible-playbook" ssh; do
     if command -v "${tool}" >/dev/null 2>&1; then
       printf '  ok    %-18s %s\n' "${tool}" "$(command -v "${tool}")"
     else
@@ -169,11 +228,11 @@ A control node needs two things, and neither is a hand-copied ~/.ssh/config any
 more -- every address is declared in infra/fleet.yml and every command here is
 built from it (#526):
 
-  1. ansible        pipx install ansible-core   (macOS: brew install ansible)
+  1. ansible        `just setup-ansible` (uv-locked Python plus exact Galaxy collections)
   2. a key each declared host accepts for its declared login user
 
-Then `make infra-setup` writes the git-ignored inventory, and
-`make infra-ssh-config` names the machines in your ~/.ssh/config so `ssh
+Then `just infra::setup` writes the git-ignored inventory, and
+`just infra::ssh_config` names the machines in your ~/.ssh/config so `ssh
 truenas` works too. A host still reported MISS above is one your key is not
 authorised on, or one that is genuinely down -- not one you cannot resolve.
 EOF
@@ -191,8 +250,8 @@ EOF
 # assemble.
 
 require_playbook_env() {
-  command -v ansible-playbook >/dev/null 2>&1 ||
-    die "ansible-playbook is not on PATH. Run 'make infra-doctor' for the fix."
+  [[ -x "$MANAGED_BIN/ansible-playbook" ]] ||
+    die "locked ansible-playbook is absent. Run 'just setup' for the fix."
 }
 
 cmd_check() {
@@ -208,6 +267,18 @@ cmd_check() {
 cmd_apply() {
   require_playbook_env
   fleet apply "$@"
+}
+
+cmd_register_runner() {
+  [[ $# -eq 2 ]] || die "register-runner needs a host and typed vars file"
+  require_playbook_env
+  fleet register-runner "$@"
+}
+
+cmd_register_hil() {
+  [[ $# -eq 1 ]] || die "register-hil needs one typed vars file"
+  require_playbook_env
+  fleet register-hil "$@"
 }
 
 cmd_remove() {
@@ -252,7 +323,7 @@ status_runners() {
     2>/dev/null || echo "  could not read the runner list (quota, or no token scope)"
 }
 
-# shellcheck disable=SC2016
+# shellcheck disable=SC2016  # remote command literals must expand on their target hosts.
 # The single quotes below are deliberate and load-bearing: every one of these
 # strings is a command sent to ANOTHER machine over ssh, so `$2`, `$HOME` and
 # `$(...)` must survive this shell untouched and expand on the remote host.
@@ -287,8 +358,19 @@ cmd_status() {
   fleet status || true
   echo
   echo "toolchain parity on the dev box:"
+  # Probe the context Ansible last staged and the venv it owns. The base
+  # ~/ra8-firmware checkout is intentionally not updated because linked agent
+  # worktrees depend on it; reading pins there compared a stale tree against
+  # user-local tools and reported a convincing but unrelated result.
+  # infra.sh runs without `set -e`, so this mask has exactly one effect: it is
+  # the last command in cmd_status, and it keeps `infra.sh status` -- a report,
+  # not a verdict -- exiting 0 when the dev box is unreachable or the parity
+  # probe itself fails. The earlier probes are masked the same way for
+  # symmetry, but only this one changes the command's exit status.
   status_host dev "parity" \
-    'cd ~/ra8-firmware && PATH=$HOME/.local/bin:$PATH python3 scripts/checks/check_tool_versions.py --all 2>&1 | tail -1' || true
+    'cd /var/lib/ra8-ci/build-context &&
+      PATH=/opt/ra8-python-tools/bin:/usr/local/bin:/usr/bin:/bin \
+        python3 scripts/checks/check_tool_versions.py --all 2>&1 | tail -1' || true # last command in cmd_status: a report must exit 0 even when the probe cannot run
 }
 
 usage() {
@@ -296,10 +378,14 @@ usage() {
 usage: infra.sh <command> [args]
 
   list                what machines are declared, and how they are sized
+  show <host>         inspect one host declaration and its derived values
   doctor              can THIS machine drive infra at all?
   ssh-config          name every declared machine in your ~/.ssh/config
+  ssh-config-preview  print the generated fragment without installing it
   check <host>        dry run -- report what would change, change nothing
   apply <host>        converge that machine to infra/fleet.yml
+  register-runner     first-register a declared Docker runner host
+  register-hil        first-register the declared native HIL listener
   remove <host>       tear down (classes whose roles implement it)
   scale <host> <n>    live capacity change; shrinking DRAINS, never kills
   status              what is deployed across the estate, right now
@@ -310,11 +396,13 @@ EOF
 
 main() {
   local cmd="${1:-}"
-  shift || true
+  (($# == 0)) || shift
   case "${cmd}" in
     list) cmd_list ;;
+    show) cmd_show "$@" ;;
     doctor) cmd_doctor ;;
     ssh-config) cmd_ssh_config ;;
+    ssh-config-preview) cmd_ssh_config_preview ;;
     status) cmd_status ;;
     check)
       [ $# -ge 1 ] || die "check needs a host: $(host_names | tr '\n' ' ')"
@@ -324,6 +412,8 @@ main() {
       [ $# -ge 1 ] || die "apply needs a host: $(host_names | tr '\n' ' ')"
       cmd_apply "$@"
       ;;
+    register-runner) cmd_register_runner "$@" ;;
+    register-hil) cmd_register_hil "$@" ;;
     remove)
       [ $# -ge 1 ] || die "remove needs a host: $(host_names | tr '\n' ' ')"
       cmd_remove "$@"

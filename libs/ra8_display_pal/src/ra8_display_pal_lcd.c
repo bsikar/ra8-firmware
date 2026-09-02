@@ -409,6 +409,7 @@ static ra8_err_t internal_lcd_get_caps(const void* ctx, display_caps_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
+/* cppcheck-suppress constParameterCallback -- display_pal_ops_t fixes this callback's context type as void*. */
 static ra8_err_t internal_lcd_get_framebuffer(void* ctx, display_fb_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");

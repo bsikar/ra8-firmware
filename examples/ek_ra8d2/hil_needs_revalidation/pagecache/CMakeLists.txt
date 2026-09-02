@@ -32,8 +32,8 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME pagecache
   STACK_BYTES 4400
-  DESCRIPTION "ra8_reflow pagination-cache round-trip from SD via ra8_fs (#117)"
-  LIBS ra8_reflow
+  DESCRIPTION "reflow pagination-cache round-trip from SD via ra8_fs (#117)"
+  LIBS reflow
        ra8_gfx
        ra8_fs
        ra8_sdmmc_spi

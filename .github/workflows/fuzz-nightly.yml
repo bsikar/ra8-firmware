@@ -3,7 +3,7 @@
 # SCHEDULING ONLY -- the gate body lives in scripts/ci.sh (gate: fuzz-sweep).
 # See .github/workflows/firmware.yml for the design note.
 #
-# Nightly libFuzzer sweep (#239). The `make fuzz` smoke run gives each
+# Nightly libFuzzer sweep (#239). The `just quality::local::fuzz` smoke run gives each
 # harness ~30 seconds -- enough to catch a build break, not enough to find
 # parser bugs. This workflow deep-runs every registered harness (the
 # RA8_FUZZ_TARGETS registry in tests/fuzz/CMakeLists.txt, consumed through
@@ -66,7 +66,7 @@ jobs:
       # rather than being handed to libFuzzer as "no limit".
       - env:
           RA8_FUZZ_SECONDS: ${{ inputs.seconds_per_target }}
-        run: bash scripts/ci.sh --gate fuzz-sweep
+        run: just quality::local::gate fuzz-sweep
 
       - name: Upload crash artefacts
         if: always()
@@ -74,6 +74,8 @@ jobs:
         with:
           name: fuzz-crashes
           path: tests/build-fuzz/crashes/
+          # A clean sweep has no crash reproducer; absence is the success case
+          # for this artefact, while the fuzz gate itself owns the verdict.
           if-no-files-found: ignore
           retention-days: 30
 
@@ -83,5 +85,8 @@ jobs:
         with:
           name: fuzz-nightly-log
           path: fuzz-nightly.log
+          # Compiler/budget preflight can fail before tee creates the log;
+          # preserve that gate diagnosis instead of replacing it with a
+          # secondary upload-action failure.
           if-no-files-found: ignore
           retention-days: 30

@@ -107,7 +107,7 @@ a C6-first apply that then fails the RA8 apply still rolls the C6 back.
 A C6 whose flash is fully bricked (both slots dead, loader dead) must be
 re-flashable in the field by the RA8 from a staged known-good image -- the
 same anti-brick discipline `scripts/hil/dlm_reset_local.sh` and
-`make hil-reflash` give the RA8 on the bench. Rather than write our own SLIP
+`just hil::reflash <app>` give the RA8 on the bench. Rather than write our own SLIP
 downloader, **Espressif already ships this as a portable C library** --
 `esp-serial-flasher` (Apache-2.0, actively maintained, ESP32-C6 supported over
 UART, with existing host ports for STM32/Zephyr/RP2040/Linux;

@@ -46,8 +46,8 @@ firmware ships into first.
 | Architecture / design       | 7.4.3 software architecture   | Section 5.2 low-level design           | Part 6 cl. 7, sw architectural design| `docs/RING_AND_WORLD.md`, `docs/MEMORY_MAP.md`         |
 | Coding standard             | Annex A.4 language subset     | Section 11.8 / 6.3 coding standard     | Part 6 cl. 5.4.7 language subset     | `docs/MISRA.md`, `docs/STYLE_GUIDE.md`                 |
 | Code verification (review)  | 7.9.2.7 module review         | Section 6.3.4 code reviews             | Part 6 cl. 9 verification            | PR review history + `clang-tidy` / `cppcheck` gates    |
-| Structural coverage         | Annex C statement+branch; MC/DC strongly recommended at SIL 3 | Section 6.4.4.2 MC/DC at Level B | Part 6 cl. 9.4.5 MC/DC at ASIL C/D | `docs/MCDC.md`, `make mcdc`                            |
-| Test cases (req-based)      | 7.4.7 / 7.7 testing           | Section 6.4.2 requirements-based test  | Part 6 cl. 9 test specification      | `tests/test_*.c` (requirements-traced)                 |
+| Structural coverage         | Annex C statement+branch; MC/DC strongly recommended at SIL 3 | Section 6.4.4.2 MC/DC at Level B | Part 6 cl. 9.4.5 MC/DC at ASIL C/D | `docs/MCDC.md`, `just quality::local::mcdc`                            |
+| Test cases (req-based)      | 7.4.7 / 7.7 testing           | Section 6.4.2 requirements-based test  | Part 6 cl. 9 test specification      | Distributed `tests/`, `apps/**/tests/`, and `examples/**/tests/` corpus |
 | Integration / HW-SW         | 7.5 integration               | Section 6.4.3 integration test         | Part 6 cl. 10 sw integration         | `docs/HARDWARE_BRINGUP.md`, `docs/HIL_SUITE.md`        |
 | Configuration management    | 6.2.3 / Annex B.2             | Section 7 SCM process                  | Part 8 cl. 7 sw CM                   | git + signed tags + `docs/qualification/SCMP.md`       |
 | Quality assurance           | 6.2.5                         | Section 8 SQA process                  | Part 2 cl. 5 / Part 8 cl. 5          | CI gates + `docs/qualification/SQAP.md`                |
@@ -96,23 +96,28 @@ DO-178C 12.2 and DO-330 classify a development tool by Tool Qualification Level.
 tool whose output is not independently verified and whose failure could inject
 an undetected error into the certified software.
 
-| Tool                         | Role                                | TQL   | Compensating verification |
-|------------------------------|-------------------------------------|-------|---------------------------|
-| `arm-none-eabi-gcc`          | Cross-compiler -> production object | TQL-5 | Object code re-verified against requirements by the hardware-in-the-loop suite (`scripts/hil/all.sh`). |
-| host `clang`                 | MC/DC instrumentation + host tests  | TQL-5 | Output is test-only; no production code path. Instrumentation re-verified by the host tests passing. |
+The table records the proposed classifications. It is not a claim that the
+qualification evidence pack is complete.
+
+| Tool                         | Role                                | Proposed TQL | Compensating verification |
+|------------------------------|-------------------------------------|--------------|---------------------------|
+| `arm-none-eabi-gcc`          | Cross-compiler -> production object | TQL-5 | The retained 118/118 RA8D2 build is historical evidence; the current matrix is derived by `scripts/dev/ra8_apps.py` and awaits a release-candidate build log. Current-candidate hardware execution is pending. |
+| host `clang`                 | MC/DC instrumentation + host tests  | TQL-5 | Output is test-only; no production code path. Clean standalone macOS and Linux configurations each register 689 CTest cases; the authoritative Linux/devcontainer unit gate passed 689/689 in 8.66 s on 2026-08-22. macOS execution is neither required nor claimed because low-address tests require Linux/container execution. |
 | `cppcheck` (misra addon)     | MISRA-C 2012 checker                | TQL-5 | Findings reviewed manually and dispositioned in the deviation register. Sole MISRA tool by policy. |
 | `clang-tidy`                 | Naming + complexity gate            | TQL-5 | Advisory; no autofix in CI. The line-threshold gate is cross-checked against NASA P10 Rule 4. |
 | `clang-format`               | Style enforcement                   | TQL-5 | Idempotent, and reviewed by a human on every PR. |
 | `llvm-profdata` / `llvm-cov` | MC/DC measurement                   | TQL-5 | Coverage results spot-checked against hand-traced decisions during review. |
-| `cmake` + `make`             | Build orchestration                 | TQL-5 | Produces the same object as a manual invocation; the build log is archived per CI run. |
-| `JLinkExe`                   | Flash + register dump for smoke     | TQL-5 | Read-only with respect to certified bits; any write step is verified by post-flash readback. |
+| CMake + Ninja + Just         | Build orchestration                 | TQL-5 | `scripts/dev/ra8_apps.py` supplies the live matrix; the retained 118/118 build is historical non-vacuity evidence, and release logs remain evidence-pack inputs. |
+| `JLinkExe`                   | Flash + register dump for smoke     | TQL-5 | A selected-app HIL run and remote GDB lifecycle passed historically; current-candidate restamping and full-fleet execution remain pending. |
 | `arm-none-eabi-addr2line`    | Smoke-test PC resolution            | TQL-5 | Cross-checked against the ELF symbol table when a classification is ambiguous. |
 | `python3` audit scripts      | Coverage / MISRA / doc gap reports  | TQL-5 | Output reviewed; the scripts under `scripts/checks/` carry their own host tests and selftests. |
 
-No tool in the chain requires TQL-1, because none emits certified production
-code without a downstream verification step. The compiler is the closest call;
-the mitigation is the hardware-in-the-loop smoke plus the host integration
-tests.
+The proposed classifications remain subject to the completed evidence pack.
+The compiler is the closest call: retained downstream evidence includes the
+historical 118/118 physical build and the Linux/devcontainer unit gate's
+689/689 pass in 8.66 s on 2026-08-22. The selected-app HIL result is historical;
+current-candidate HIL, release-specific log retention, and full-fleet hardware
+execution remain pending.
 
 ---
 
@@ -148,10 +153,12 @@ snapshot together with the `r_rsip_protected` driver layer *and* a build option
 that actually compiles it. Procurement guidance is in
 [`VENDOR_BLOBS.md`](VENDOR_BLOBS.md).
 
-**Hardware-in-the-loop is a gate, not an aspiration.** A self-hosted runner with
-an EK-RA8D2 wired to it runs the HIL suite on every change that touches
-HIL-relevant paths. The contract is documented in
-[`HIL_SUITE.md`](HIL_SUITE.md); the developer-side workflow in
+**Hardware-in-the-loop is a guarded gate.** A dedicated native dev-box runner
+builds with the provisioned toolchain, then an isolated SSH account drives the
+Raspberry Pi 5 and its attached EK-RA8D2. Pushes and trusted same-repository PRs
+to `main` or `dev` trigger on HIL-relevant paths; fork PRs cannot execute on the
+persistent runner. The contract is documented in [`HIL_SUITE.md`](HIL_SUITE.md);
+the developer-side workflow in
 [`HIL_DEVELOPER_WORKFLOW.md`](HIL_DEVELOPER_WORKFLOW.md).
 
 ---

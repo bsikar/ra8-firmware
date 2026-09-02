@@ -150,11 +150,13 @@ ra8_err_t ra8_tsn_init(const ra8_tsn_config_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   const ra8_err_t cfg_err = internal_validate_cfg(cfg);
-  RA8_RETURN_ON_ERROR(cfg_err, s_tag, "tsn_init: cfg invalid"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(cfg_err, s_tag, "tsn_init: cfg invalid");
 
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 449 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_tsn);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "tsn_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "tsn_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* HUM Ch 55.2.1 "TSCR : Temperature Sensor Control Register", p 3498 */
   volatile r_tsn_ctrl_regs_t* reg = ra8_tsn();
@@ -256,11 +258,15 @@ ra8_err_t ra8_tsn_read_die_temp_milli_c(int32_t* out_milli_c)
    * p 3391). The ADC side lives entirely in adc.c. */
   uint16_t        adc_raw = 0U;
   const ra8_err_t adc_err = ra8_adc_read_internal_channel(k_ra8_adc_chan_temperature, &adc_raw);
-  RA8_RETURN_ON_ERROR(adc_err, s_tag, "die_temp: adc read"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- HW ADC read path */
+  RA8_RETURN_ON_ERROR(adc_err, s_tag, "die_temp: adc read");
+  /* GCOVR_EXCL_BR_STOP */
 
   uint16_t        code     = 0U;
   const ra8_err_t mask_err = ra8_tsn_read_raw(adc_raw, &code);
-  RA8_RETURN_ON_ERROR(mask_err, s_tag, "die_temp: read_raw"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- HW ADC raw path */
+  RA8_RETURN_ON_ERROR(mask_err, s_tag, "die_temp: read_raw");
+  /* GCOVR_EXCL_BR_STOP */
 
   return ra8_tsn_convert_to_milli_c(code, out_milli_c);
 }
@@ -269,8 +275,8 @@ ra8_err_t ra8_tsn_get_status(uint8_t* out_tscr)
 {
   RA8_CHECK_NULL_PTR(out_tscr, s_tag, "out_tscr must not be nullptr");
   /* HUM Ch 55.2.1 "TSCR : Temperature Sensor Control Register", p 3498 */
-  volatile r_tsn_ctrl_regs_t* reg = ra8_tsn();
-  *out_tscr                       = (uint8_t)(reg->TSCR & k_ra8_tscr_mask_all);
+  volatile const r_tsn_ctrl_regs_t* reg = ra8_tsn();
+  *out_tscr                             = (uint8_t)(reg->TSCR & k_ra8_tscr_mask_all);
   return k_ra8_ok;
 }
 

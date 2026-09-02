@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # tty_resolve.sh -- resolve a bench serial console to a STABLE device path.
 # `source` this (do not execute it), then call `ra8_tty_resolve <kind>`.

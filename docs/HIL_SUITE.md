@@ -1,4 +1,3 @@
-<!-- AI-OK: this is the canonical doc for the HIL suite; whole-file ownership is the point. -->
 # HIL Suite
 
 This document is the authoritative reference for the hardware-in-the-
@@ -9,11 +8,13 @@ satisfy, the **modes** in which apps are verified, and the
 does not list the apps -- see the last section.
 
 The CI workflow `.github/workflows/hil.yml` is a thin driver for the
-`hil-all` gate (`bash scripts/ci.sh --gate hil-all`), which runs
-`scripts/hil/all.sh` on the self-hosted Raspberry Pi 5 runner that has
-the EK-RA8D2 wired up; one app fails -> the run fails. A bench with one
-board is a serial resource, so how that workflow is triggered is a
-scheduling decision recorded in its own `on:` block rather than here.
+`hil-all` gate (`just quality::local::gate hil-all`). A dedicated native
+listener builds on the dev box, then `scripts/hil/all.sh` operates the
+Raspberry Pi 5 bench over SSH; one app fails -> the run fails. The workflow
+installs no compiler or Just binary: the `dev_box` Ansible role owns and
+asserts that pinned toolchain. A bench with one board is a serial resource, so
+how that workflow is triggered is a scheduling decision recorded in its own
+`on:` block rather than here.
 
 ## The honest-contract rule
 
@@ -51,28 +52,29 @@ instrument it (preferred) or place it under
 | `uart_scrape`    | `scripts/hil/run_direct.sh`      | `HIL_EXPECT` appears on the board console (the J-Link OB VCOM, resolved by device identity via `scripts/hil/lib/tty_resolve.sh` -- never by ttyACM number, which changes on a power cycle) within `HIL_TIMEOUT_S` seconds AND `HIL_EXPECT_NEGATIVE` does NOT match in the same capture. Min `HIL_EXPECT` length is 12 chars (override per-app with `HIL_EXPECT_SHORT_OK=1` + comment) and the script rejects expects that overlap a failure banner string in the `.elf` `.rodata`. |
 | `usb_cdc`        | `scripts/hil/usb_test.sh`        | The Pi enumerates the chip as a USB CDC ACM device at the given `HIL_VIDPID`, opens the CDC port, runs a correctness chunk + throughput stream, and asserts byte-exact echo + a throughput floor. PPPS re-enumerates the device mid-test. |
 | `jlink_memprobe` | `scripts/hil/jlink_memprobe.sh`  | Halts the chip, reads `HIL_PROBE_SYMBOL` (resolved from the matching `.elf` via `arm-none-eabi-nm`), runs the chip for `HIL_PROBE_SECONDS`, halts again, asserts the value advanced by `>= HIL_PROBE_MIN_ADVANCE`. If `HIL_PROBE_FAILURE_SYMBOL` is set, also asserts that counter advanced by `<= HIL_PROBE_MAX_FAILURE` (default 0). |
-| `hil_eth_tcp`    | `scripts/hil/eth_tcp.sh`         | The Pi opens a TCP/UDP socket to `HIL_BOARD_IP:HIL_PORT` (or `curl` for `HIL_PROTO=http`), sends a random `HIL_PAYLOAD_BYTES` payload, and asserts byte-exact echo (or HTTP 200 + the "Hello from RA8D2" marker). Uses a USB-Ethernet adapter on the Pi auto-detected via the `enxXX` / `usbX` interface naming. |
-| `c6_camera_livestream` | `scripts/hil/camera_livestream.sh` | On the C6 lane, cold-starts the co-processor, proves its SPI link, joins Wi-Fi, checks the camera server health endpoint, decodes two 320x240 JPEG frames and requires their bytes to differ. The verifier builds in a temporary tree because the firmware necessarily embeds the bench Wi-Fi credentials. |
+| `hil_eth_tcp`    | `scripts/hil/eth_tcp.sh`         | The Pi opens a TCP/UDP socket to `HIL_BOARD_IP:HIL_PORT` (or `curl` for `HIL_PROTO=http`), sends a random `HIL_PAYLOAD_BYTES` payload, and asserts byte-exact echo (or HTTP 200 + the "Hello from RA8D2" marker). Uses the fleet-declared built-in board-facing interface after the installed policy verifies its MAC, sysfs device, PHC, and non-uplink state. |
+| `c6_camera_livestream` | `scripts/hil/camera_livestream.sh` | On the C6 lane, cold-starts the co-processor, proves its SPI link, joins Wi-Fi, checks the camera server health endpoint, decodes two 320x240 JPEG frames and requires their bytes to differ. The verifier builds in a temporary credential-free tree, waits for the firmware's `READY v1` prompt, then provisions Wi-Fi at runtime over UART; credentials never enter compiler arguments, generated sources, build metadata, or logs. |
 | `rtt_scrape`     | `scripts/hil/rtt_scrape.sh`      | Same contract as `uart_scrape`, but the capture is read out of the firmware's SEGGER RTT up-buffer (`HIL_RTT_BUF_SYMBOL`, default `s_rtt_up_buf`, `HIL_RTT_BUF_BYTES` wide) via J-Link `mem` reads rather than off the VCOM -- J-Link's own RTT logger resets the target on connect. |
 | `alive`          | `scripts/hil/check_alive.sh`     | **Reserved for the fault-recovery demo only** (`HIL_FAULT_EXPECTED=1`). Asserts: PC in MRAM/ITCM at both samples, PC not in a fault-spinner symbol (`panic_halt` / `halt_loop` / `exception_halt` / `*_Handler` / `_die`), CycleCnt advances, HFSR with DEBUGEVT masked is zero, CFSR != 0 (the fault DID fire), UART capture contains no negative banner. |
 
-## Required Pi infrastructure
+## Required remote Pi infrastructure
 
-The self-hosted Pi runner (`star@star.local`) must have:
+The bench host selected by `.env` `PI_HOST` must have:
 
-  - The EK-RA8D2 wired to the Pi via four USB cables (J7 USBHS, J11
-    USBFS, J-Link OB CDC + SWD, plus the on-board Ethernet to a
-    USB-Ethernet adapter on the Pi). The port map is in the header
+  - The EK-RA8D2 wired to the Pi via three USB cables (J7 USBHS, J11
+    USBFS, and J-Link OB CDC + SWD), plus its on-board Ethernet wired to
+    the fleet-declared built-in board-facing interface. The port map is in the header
     comment of `.github/workflows/hil.yml`; what else hangs off the Pi
     is in [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md).
-  - `JLinkExe` installed and reachable (invoked with the probe serial
-    from `.env` `JLINK_SN`, device `R7KA8D2KF_CPU0`).
+  - `JLinkExe` installed and reachable (invoked with validated `JLINK_SN` and
+    `JLINK_DEVICE`; the default device comes only from `rig_contract.sh`).
   - The `arm-none-eabi-` toolchain on PATH (for `nm` and `addr2line`
     against the `.elf`s that ship alongside each `.hex`).
   - A VIA Labs USB hub on bus path `2-1.3` with PPPS support, so
     `uhubctl` can power-cycle individual ports.
-  - A USB-Ethernet adapter that auto-IPs to `192.168.1.1/24` for the
-    `hil_eth_tcp` mode (the helper script handles bring-up).
+  - The Ansible-authenticated built-in Ethernet interface for `hil_eth_tcp`.
+    The root-owned helper verifies its permanent identity and PHC before it
+    temporarily assigns `192.168.1.1/24`; USB adapters are rejected.
   - A Digilent Analog Discovery 2 (serial `210321A36AAE`, presenting as
     an FTDI FT232H at `0403:6014`) for signal capture: primarily the
     RA8 <-> ESP32-C6 SPI + side-band lines when the C6 harness needs
@@ -81,9 +83,10 @@ The self-hosted Pi runner (`star@star.local`) must have:
     in the table above depends on it -- it is an instrument a human
     reaches for, not a gate.
 
-    Re-provision it with the `ad2_tools` Ansible role
-    (`infra/ansible/playbooks/hil-bench.yml`), which pins and installs
-    the Digilent Adept runtime, installs the WaveForms SDK (`libdwf`,
+    Re-provision the declared bench with `just infra::apply star`. The fleet
+    dispatcher invokes the `ad2_tools` role through
+    `infra/ansible/playbooks/hil-bench.yml`; it pins and installs the Digilent
+    Adept runtime, installs the WaveForms SDK (`libdwf`,
     what a headless capture links against), and smoke-tests the
     instrument end to end with `scripts/hil/ad2_smoke.py` -- run that
     by hand any time to answer "can this bench capture?".
@@ -129,23 +132,23 @@ subnet plan, re-provision steps, and current bring-up status.
 
 ## Running a single app locally on a Mac (no Pi)
 
-The Pi runners (`scripts/hil/run_direct.sh`,
+The bench-side helpers (`scripts/hil/run_direct.sh`,
 `scripts/hil/jlink_memprobe.sh`, `scripts/hil/check_alive.sh`) target
-the Linux bench and SSH to
-`star@star.local`. When the board is plugged straight into a developer's
-Mac, `scripts/hil/run_local.sh <app>` runs one app's gate entirely on
+the Linux bench selected by `PI_HOST`. When the board is plugged straight into
+a developer's Mac, `just hil::run_local <app>` runs one app's gate entirely on
 that Mac.
 
 It reads the app's `hil.conf`, builds if needed, flashes via the local
-`JLinkExe`, and applies the same pass/fail logic as the Pi runners for
+`JLinkExe`, and applies the same pass/fail logic as the bench-side helpers for
 all three offline modes (`uart_scrape`, `jlink_memprobe`, `alive`). It
 reads the J-Link OB VCOM at `/dev/cu.usbmodem*` (auto-detected; override
 with `--uart`) using only macOS-available tools (`stty -f`, a small
 unbuffered python3 reader that sets 115200/8N1 on the live fd, since
 macOS resets the line discipline on each `open()`). The wire-side Pi
 peer modes (TCP/UDP/HTTP/USB-host) are NOT covered -- those still need
-the Pi rig. This is for spot-checking board-only apps before promoting
-them out of `hw_pending/`; CI still gates on the Pi.
+the Pi instrument host. This is for spot-checking board-only apps before
+promoting them out of `hw_pending/`; the dev-box CI listener still gates
+through that instrument host.
 
 ## Required board switches / jumpers
 
@@ -174,13 +177,13 @@ Because that setting cannot coexist with this suite's, the C6 apps are a
 SEPARATE LANE rather than a separate runner:
 
 ```sh
-make hil-c6                    # every app under hw_validated/c6/
-make hil-c6 APP=c6_spi_probe   # just one
+just hil::c6                    # every app under hw_validated/c6/
+just hil::c6 c6_spi_probe       # just one
 ```
 
 which is `scripts/hil/all.sh --dir examples/ek_ra8d2/hw_validated/c6` -- the
 same discovery, the same `hil.conf` manifests, the same bench hold and the
-same verifiers as `make hil-all`. A second copy of the runner would be a
+same verifiers as `just hil::suite`. A second copy of the runner would be a
 second place for all of that to drift.
 
 They sit outside `hw_validated/hil/` for a second, independent reason:
@@ -191,9 +194,11 @@ it to house them would cost more than the separate lane does.
 
 ## Which apps run, and how each is asserted
 
-Each app's `hil.conf`, sitting beside its `main.c`, declares its mode and its
-assertion. `scripts/hil/all.sh` reads them directly, so there is no second
-roster here to fall out of step with the tree --
+Each app's root-level `hil.conf` declares the mode and assertion for the
+firmware entry under
+`examples/ek_ra8d2/hw_validated/hil/<app>/src/main.c`.
+`scripts/hil/all.sh` reads manifests directly,
+so there is no second roster here to fall out of step with the tree --
 `grep -rl HIL_MODE examples/ek_ra8d2/hw_validated/hil` is the current one.
 
 Two modes carry nearly all of it: `uart_scrape` for anything that can print a

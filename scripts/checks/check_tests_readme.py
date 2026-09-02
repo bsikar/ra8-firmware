@@ -37,12 +37,15 @@ from __future__ import annotations
 
 import argparse
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
+
+from git_environment import isolated_git_environment, trusted_git_executable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TESTS_DIR = REPO_ROOT / "tests"
@@ -86,7 +89,7 @@ def _ignored_names(tests_dir: Path, names: set[str]) -> set[str]:
         return set()
     probe = subprocess.run(  # noqa: S603 -- fixed argv, paths built from tests_dir
         [
-            shutil.which("git") or "git",
+            trusted_git_executable(),
             "-C",
             str(tests_dir),
             "check-ignore",
@@ -278,7 +281,7 @@ def _selftest_ignored() -> list[str]:
         One message per way the carve-out misbehaved; empty when it is correct.
     """
     failures: list[str] = []
-    git = shutil.which("git") or "git"
+    git = trusted_git_executable()
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         subprocess.run(  # noqa: S603 -- fixed argv, temp path
@@ -306,7 +309,7 @@ def _selftest_ignored() -> list[str]:
     return failures
 
 
-def _selftest() -> int:
+def _selftest_body() -> int:
     """Prove both drift directions fire, a clean tree stays quiet, the floor holds.
 
     Returns:
@@ -327,6 +330,12 @@ def _selftest() -> int:
         "(both drift directions + non-vacuity floor)"
     )
     return 0
+
+
+def _selftest() -> int:
+    """Run README inventory fixtures without inheriting the caller's repo."""
+    with isolated_git_environment():
+        return _selftest_body()
 
 
 def main(argv: list[str] | None = None) -> int:

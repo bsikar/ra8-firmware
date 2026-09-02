@@ -298,7 +298,6 @@ RA8_INTERNAL static void internal_prof_stack_update(uint32_t f)
   }
 }
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 /**
  * @brief Perform prof insn hook for the emu prof model.
  * @details Perform prof insn hook for the emu prof model; this step is contained within the emu prof model and uses bounded caller or module-owned storage.

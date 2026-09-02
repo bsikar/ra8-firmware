@@ -25,9 +25,10 @@ as Software Of Unknown Provenance (SOUP).
 - **Origin**: Google.
 - **License**: Apache-2.0 (`LICENSE`).
 - **How it entered our tree**: vendored header set from the upstream `v25.9.23`
-  release. This version is not arbitrary -- it is the exact FlatBuffers pin
-  TFLite-micro declares in `tools/make/flatbuffers_download.sh`, so the model
-  schema the runtime was generated against matches the headers here.
+  release. The exact tag and resolved commit are recorded by
+  `scripts/gen/sbom_registry.py` and
+  `docs/sbom/upstream/flatbuffers.manifest`, so the checked-in header subset and
+  generated SBOM share one provenance authority.
 
 ## Use case in this firmware
 

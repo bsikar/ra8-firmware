@@ -179,7 +179,7 @@ EOF
 #
 # THE RULE, in one line: the slice is frozen exactly while this host's runner
 # target is ZERO -- by the quiet-hours timer, or by a deliberate
-# `make infra-scale HOST=x N=0` ("I want to play a game for an hour"). Any
+# `just infra::scale HOST=x N=0` ("I want to play a game for an hour"). Any
 # non-zero target means the machine is working and dev work may share it at its
 # weight. One rule covers both paths, in one place.
 #
@@ -263,7 +263,6 @@ dev_slice_status() {
 # Deliberately unquoted: RA8_FLEET_DOCKER may be "sudo docker" (the NAS, where
 # the deploy user is not in the docker group), which has to word-split.
 dk() {
-  # shellcheck disable=SC2086  # see above: intentional word splitting.
   command $RA8_FLEET_DOCKER "$@"
 }
 
@@ -359,7 +358,7 @@ unpark_instance() {
   state="$(container_state "${name}")"
   case "${state}" in
     running) log "active    ${name}: already running" ;;
-    absent) die "${name} does not exist on this host. Deploy it first: make infra-apply HOST=<host>" ;;
+    absent) die "${name} does not exist on this host. Deploy it first: just infra::apply <host>" ;;
     *)
       log "resuming  ${name}: was ${state}"
       dk start "${name}" >/dev/null
@@ -441,7 +440,9 @@ docker_drain_all() {
   # every container, and dev work has no business competing with the jobs the
   # drain is waiting to finish. Freezing here also makes them finish sooner.
   dev_slice_follow 0
-  mapfile -t found < <(discover_containers)
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && found+=("$line")
+  done < <(discover_containers)
   if [ "${#found[@]}" -eq 0 ]; then
     log "nothing    no ${RA8_FLEET_PREFIX}* container on this host"
     return 0
@@ -455,7 +456,7 @@ docker_scale() {
   local want="$1" i
   [ "${want}" -ge 0 ] 2>/dev/null || die "scale needs a non-negative integer, got '${want}'"
   [ "${want}" -le "${#CONTAINERS[@]}" ] ||
-    die "this host declares ${#CONTAINERS[@]} instance(s); cannot scale to ${want} without re-deploying it (make infra-apply)"
+    die "this host declares ${#CONTAINERS[@]} instance(s); cannot scale to ${want} without re-deploying it (just infra::apply <host>)"
   # Before the runners move, either way. Standing down: the owner asked for the
   # machine, so give it to them now rather than after a drain that may take
   # several job cycles -- and a frozen dev slice makes those cycles shorter.
@@ -470,7 +471,6 @@ docker_scale() {
 # --- k8s kind ---------------------------------------------------------------
 
 kc() {
-  # shellcheck disable=SC2086  # RA8_FLEET_KUBECTL is "k3s kubectl": word-split on purpose.
   command $RA8_FLEET_KUBECTL "$@"
 }
 
@@ -484,7 +484,7 @@ k8s_status() {
 # only deletes runners that hold no job, so lowering the ceiling never
 # interrupts work. The drain here is the controller's, and this moves the
 # number it drains toward. Note the helm release still holds the DECLARED
-# maximum, so `make infra-apply HOST=k3s-pve` restores it; that is intentional
+# maximum, so `just infra::apply HOST=k3s-pve` restores it; that is intentional
 # for a quiet-hours window, which is temporary by definition.
 k8s_scale() {
   local want="$1"
@@ -544,7 +544,7 @@ in_quiet_window() {
 # A host with no quiet-hours window still has an answer, and it is its declared
 # instance count. This used to return "nothing to do" there, which made the
 # level-triggered timer level-triggered only on hosts that declared a window.
-# The consequence was measured: `make infra-scale HOST=truenas N=1` drained
+# The consequence was measured: `just infra::scale HOST=truenas N=1` drained
 # ra8-ci-runner-2 during a bench session, `restart: unless-stopped` deliberately
 # does not undo an explicit stop, truenas declares no window and therefore had
 # no timer -- so the NAS served CI at half its declared capacity for hours with

@@ -20,10 +20,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "jof.h"
 #include "ra8_attributes.h"
 #include "ra8_decomp_limits.h"
 #include "ra8_err.h"
-#include "ra8_jof.h"
 #include "ra8_viewer_reader_internal.h"
 
 #ifndef O_CLOEXEC
@@ -161,9 +161,8 @@ RA8_INTERNAL static viewer_comic_t
 internal_take_comic(viewer_layout_t* layout, const ra8_viewer_reader_requirements_t* requirements)
 {
   viewer_comic_t comic = {};
-  comic.pages          = (ra8_comic_page_t*)internal_take(layout,
-                                                          requirements->comic_pages_bytes,
-                                                          alignof(ra8_comic_page_t));
+  comic.pages =
+    (comic_page_t*)internal_take(layout, requirements->comic_pages_bytes, alignof(comic_page_t));
   comic.names = (char*)internal_take(layout, requirements->comic_names_bytes, alignof(char));
   comic.page =
     (uint8_t*)internal_take(layout, requirements->comic_page_bytes, alignof(max_align_t));
@@ -433,8 +432,7 @@ internal_engine_requirements_valid(const ra8_viewer_reader_requirements_t* need)
   if (need->engine == (uint32_t)k_ra8_viewer_engine_comic) {
     return (need->cell_bytes == 0U) && (need->scratch_bytes == 0U) &&
            (need->tile_count == (uint32_t)k_viewer_comic_page_cap) &&
-           (need->comic_pages_bytes ==
-            ((size_t)k_viewer_comic_page_cap * sizeof(ra8_comic_page_t))) &&
+           (need->comic_pages_bytes == ((size_t)k_viewer_comic_page_cap * sizeof(comic_page_t))) &&
            (need->comic_names_bytes == (size_t)k_viewer_comic_name_bytes) &&
            (need->comic_page_bytes == (size_t)k_viewer_comic_page_bytes) &&
            (need->comic_arena_bytes == (size_t)k_viewer_comic_arena_bytes);
@@ -489,8 +487,8 @@ RA8_INTERNAL static bool internal_requirements_valid(const ra8_viewer_reader_req
 RA8_INTERNAL static ra8_err_t internal_require_jof(viewer_file_ctx_t*                file,
                                                    ra8_viewer_reader_requirements_t* out)
 {
-  ra8_jof_info_t info  = {};
-  ra8_err_t      error = ra8_jof_parse(priv_viewer_pread, file, file->size, &info);
+  jof_info_t     info  = {};
+  ra8_err_t      error = jof_parse(priv_viewer_pread, file, file->size, &info);
   const uint64_t band  = (uint64_t)info.tile_w * (uint64_t)info.tile_h * (uint64_t)info.bpp;
   if ((error == k_ra8_ok) && (band == 0U)) {
     error = k_ra8_err_invalid_size;
@@ -506,11 +504,10 @@ RA8_INTERNAL static ra8_err_t internal_require_jof(viewer_file_ctx_t*           
                           (uint32_t)k_ra8_viewer_fb_height;
   out->dimensions_bytes = (size_t)tiles * 2U * sizeof(uint32_t);
   out->cell_bytes       = (size_t)band;
-  out->scratch_bytes    = (info.codec == (uint8_t)k_ra8_jof_codec_raw)
-                            ? 1U
-                            : (size_t)ra8_jof_stored_bound((uint32_t)band);
-  out->tile_count       = tiles;
-  out->engine           = (uint32_t)k_ra8_viewer_engine_jof;
+  out->scratch_bytes =
+    (info.codec == (uint8_t)k_jof_codec_raw) ? 1U : (size_t)jof_stored_bound((uint32_t)band);
+  out->tile_count = tiles;
+  out->engine     = (uint32_t)k_ra8_viewer_engine_jof;
   return k_ra8_ok;
 }
 
@@ -530,7 +527,7 @@ RA8_INTERNAL static void internal_require_comic(ra8_viewer_reader_requirements_t
 {
   out->tile_count        = (uint32_t)k_viewer_comic_page_cap;
   out->dimensions_bytes  = (size_t)out->tile_count * 2U * sizeof(uint32_t);
-  out->comic_pages_bytes = (size_t)out->tile_count * sizeof(ra8_comic_page_t);
+  out->comic_pages_bytes = (size_t)out->tile_count * sizeof(comic_page_t);
   out->comic_names_bytes = (size_t)k_viewer_comic_name_bytes;
   out->comic_page_bytes  = (size_t)k_viewer_comic_page_bytes;
   out->comic_arena_bytes = (size_t)k_viewer_comic_arena_bytes;
@@ -665,7 +662,7 @@ RA8_INTERNAL static ra8_err_t internal_open_selected(ra8_viewer_reader_t* reader
   } else if (reader->engine == (uint32_t)k_ra8_viewer_engine_comic) {
     error = priv_viewer_open_comic(reader);
     if (error == k_ra8_ok) {
-      reader->tile_n = ra8_comic_page_count(&reader->comic.archive);
+      reader->tile_n = comic_page_count(&reader->comic.archive);
     }
     if ((error == k_ra8_ok) && ((reader->tile_n == 0U) || (reader->tile_n > reader->tile_cap))) {
       error = k_ra8_err_invalid_size;
@@ -722,7 +719,7 @@ ra8_err_t ra8_viewer_open(ra8_viewer_reader_t* reader, const char* path)
     return k_ra8_ok;
   }
   if (reader->engine == (uint32_t)k_ra8_viewer_engine_comic) {
-    (void)ra8_comic_close(&reader->comic.archive);
+    (void)comic_close(&reader->comic.archive);
   }
   if (reader->file.is_open) {
     (void)close(reader->file.fd);
@@ -839,7 +836,7 @@ void ra8_viewer_close(ra8_viewer_reader_t* reader)
   }
   if (reader->file.is_open) {
     if (reader->engine == (uint32_t)k_ra8_viewer_engine_comic) {
-      (void)ra8_comic_close(&reader->comic.archive);
+      (void)comic_close(&reader->comic.archive);
     }
     (void)close(reader->file.fd);
   }

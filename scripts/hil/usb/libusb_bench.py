@@ -21,8 +21,8 @@ strand the port until replug.
 
 Requires root, since detaching a kernel driver does.
 
-Usage:
-  sudo python3 libusb_bench.py --vidpid 1209:000c [--bytes 1048576]
+Usage on the managed bench:
+  sudo /opt/ra8-hil-python/bin/python3 libusb_bench.py --vidpid 1209:000c [--bytes 1048576]
 """
 
 from __future__ import annotations
@@ -100,7 +100,10 @@ def _detach_kernel_driver(dev: usb.core.Device, intf_num: int) -> None:
             if dev.is_kernel_driver_active(i):
                 print(f"Detaching kernel driver from interface {i}")
                 dev.detach_kernel_driver(i)
-        except (NotImplementedError, usb.core.USBError) as e:  # noqa: PERF203  # short 2-iter loop; inline try is clearest
+        except (
+            NotImplementedError,
+            usb.core.USBError,
+        ) as e:  # short 2-iter loop; inline try is clearest
             print(f"Kernel-driver detach on intf {i} ignored: {e}")
 
 
@@ -147,13 +150,7 @@ def _report(sent: int, recv: bytes | bytearray, payload: bytes, elapsed: float) 
     return ok
 
 
-def bench(
-    vidpid: str,
-    total_bytes: int,
-    urb_size: int,
-    parallel_out: int,  # noqa: ARG001  # accepted, unused: reserved for async batching
-    parallel_in: int,  # noqa: ARG001  # accepted, unused: reserved for async batching
-) -> NoReturn:
+def bench(vidpid: str, total_bytes: int, urb_size: int) -> NoReturn:
     """Run one synchronous bulk echo benchmark over raw libusb, then exit.
 
     Never returns -- exits 0 when the echo matched, 1 when it did not.
@@ -161,10 +158,6 @@ def bench(
     The kernel driver is re-attached in a finally block, so an exception or a
     failed run still leaves the device usable as /dev/ttyACMx; without that a
     crash here would strand the port until it was physically replugged.
-
-    ``parallel_out`` / ``parallel_in`` are accepted and deliberately unused:
-    the transfer loop is single-buffered today, and the parameters exist so
-    the async variant can land without a CLI change.
     """
     dev, intf_num, ep_out, ep_in = _open_device(vidpid)
     _detach_kernel_driver(dev, intf_num)
@@ -187,19 +180,13 @@ def main() -> NoReturn:
 
     Never returns: ``bench`` exits with the verdict (0 clean, 1 integrity
     failure, 2 device not found or no bulk endpoints).
-
-    ``--parallel-out`` / ``--parallel-in`` are accepted and currently unused;
-    the transfer loop is synchronous. They are kept so the async batching
-    variant can land without changing this tool's command line.
     """
     ap = argparse.ArgumentParser()
     ap.add_argument("--vidpid", required=True, help="VID:PID, e.g. 1209:000c")
     ap.add_argument("--bytes", type=int, default=1048576)
     ap.add_argument("--urb", type=int, default=4096)
-    ap.add_argument("--parallel-out", type=int, default=4)
-    ap.add_argument("--parallel-in", type=int, default=4)
     args = ap.parse_args()
-    bench(args.vidpid, args.bytes, args.urb, args.parallel_out, args.parallel_in)
+    bench(args.vidpid, args.bytes, args.urb)
 
 
 if __name__ == "__main__":

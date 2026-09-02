@@ -233,7 +233,7 @@ typedef enum : uint8_t {
 ra8_err_t priv_ra8_cgc_wait_oscsf_set(uint8_t bit)
 {
   /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
-  volatile uint8_t* const oscsf = ra8_sys_oscsf();
+  volatile const uint8_t* const oscsf = ra8_sys_oscsf();
   /* On host tests the bounded wait consults the ra8_fake_mmio seam: it
    * succeeds on the first poll unless a test arms a fault, so the real
    * poll/timeout legs run everywhere (T1-01, no off-target short-circuit). */
@@ -243,7 +243,7 @@ ra8_err_t priv_ra8_cgc_wait_oscsf_set(uint8_t bit)
 ra8_err_t priv_ra8_cgc_wait_oscsf_clear(uint8_t bit)
 {
   /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
-  volatile uint8_t* const oscsf = ra8_sys_oscsf();
+  volatile const uint8_t* const oscsf = ra8_sys_oscsf();
   return ra8_hw_wait_flag_clear8(oscsf, (uint8_t)(1U << bit), (uint32_t)k_ra8_cgc_pll_spin_limit);
 }
 

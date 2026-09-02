@@ -28,23 +28,23 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# ra8_rabook_import is the on-import compile-and-cache manager (#151) plus its
-# production compile adapter (ra8_rabook_import_compile_adapter). The adapter
-# streams the source into ra8_rabook_compile (the EPUB -> RABOOK1 pipeline), so
-# both libraries are listed. ra8_book reads the resulting flat .rabook back. The
+# rabook_import is the on-import compile-and-cache manager (#151) plus its
+# production compile adapter (rabook_import_compile_adapter). The adapter
+# streams the source into rabook_compile (the EPUB -> RABOOK1 pipeline), so
+# both libraries are listed. book reads the resulting flat .rabook back. The
 # compile pipeline decodes cover art via the vendored stb_image and an
-# ra8_img_arena bump arena, both wired in by ra8_reflow (ra8_gfx is ra8_reflow's
+# ra8_img_arena bump arena, both wired in by reflow (ra8_gfx is reflow's
 # rasteriser dependency); ra8_fs over ra8_sdmmc_spi is the SD-card storage.
 #
 ra8_add_app(
   NAME import_reader
   STACK_BYTES 16384
   DESCRIPTION "On-import EPUB->.rabook compile+cache on SD, then read the cached book (#151)"
-  LIBS ra8_rabook_import
-       ra8_rabook_compile
-       ra8_epub
-       ra8_book
-       ra8_reflow
+  LIBS rabook_import
+       rabook_compile
+       epub
+       book
+       reflow
        ra8_gfx
        ra8_fs
        ra8_sdmmc_spi

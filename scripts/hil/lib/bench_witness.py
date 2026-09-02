@@ -479,7 +479,7 @@ def _selftest_fake_procfs(tmp: Path) -> list[str]:
         f"{PARENT_PID} (bash) S 1 " + " ".join("0" for _ in range(17)) + " 240\n"
     )
     (root / str(PARENT_PID) / "environ").write_bytes(
-        b"HOME=/home/star\0SSH_CONNECTION=10.0.40.100 5 10.0.40.101 22\0"
+        b"HOME=/home/star\0SSH_CONNECTION=10.0.40.103 5 10.0.40.101 22\0"
     )
 
     btime = boot_time_epoch(root)
@@ -490,7 +490,7 @@ def _selftest_fake_procfs(tmp: Path) -> list[str]:
         failures.append(f"scan_tools should find exactly pid {TOOL_PID}, found {sorted(tools)}")
     if TOOL_PID in tools:
         sighting = tools[TOOL_PID]
-        if sighting.peer != "10.0.40.100":
+        if sighting.peer != "10.0.40.103":
             failures.append(f"peer must come from the ancestor environ, got '{sighting.peer}'")
         want = FAKE_BTIME + TOOL_TICKS / FAKE_CLK_TCK
         if abs(sighting.start - want) > EPSILON_S:

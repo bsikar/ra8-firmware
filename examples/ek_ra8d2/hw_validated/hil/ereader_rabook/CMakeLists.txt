@@ -30,12 +30,12 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# ra8_book provides the compiled-book loader + the DOM->XHTML render bridge;
-# ra8_reflow lays it out and ra8_gfx rasterizes. No ra8_epub / miniz: the fixture
+# book provides the compiled-book loader + the DOM->XHTML render bridge;
+# reflow lays it out and ra8_gfx rasterizes. No epub / miniz: the fixture
 # is baked inflated, so the app validates the flat blob directly.
 ra8_add_app(
   NAME ereader_rabook
   STACK_BYTES 16384
   DESCRIPTION "Headless load + render of a compiled .rabook, small to large (HIL gate)"
-  LIBS ra8_gfx ra8_reflow ra8_book ra8_board_ek_ra8d2
+  LIBS ra8_gfx reflow book ra8_board_ek_ra8d2
 )

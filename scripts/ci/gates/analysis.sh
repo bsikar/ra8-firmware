@@ -9,7 +9,7 @@
 # and is the only entry point; RA8_GATE_REGISTRY -- the single list of what
 # gates exist -- stays there too. These files hold gate BODIES only, so there
 # is still exactly one home for a gate's definition and exactly one command
-# for a workflow to call (bash scripts/ci.sh --gate <name>). Adding a second
+# for a workflow to call (`just quality::local::gate <name>`). Adding a second
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
@@ -18,7 +18,7 @@
 # --- cppcheck -------------------------------------------------------------
 # cppcheck 2.13 (Ubuntu 24.04) is finicky about the --suppressions-list
 # parser; convert each non-comment, non-blank line into an explicit
-# --suppress= flag, the syntax every version accepts. examples/host/* are
+# --suppress= flag, the syntax every version accepts. apps/host/* are
 # macOS-only dev tools (C23 nullptr + AppKit), not cross-compiled firmware.
 gate_cppcheck() (
   set -e
@@ -26,14 +26,38 @@ gate_cppcheck() (
   # cppcheck findings drift by version (2.10 / 2.13 / 2.21 each differ); the
   # tree is clean only on the pinned 2.13, so a wrong build must fail loud (#333).
   require_tool_versions cppcheck
-  local apps=() dir line
-  if [[ -d examples ]]; then
-    for dir in examples/*/*/ examples/*/*/*/ examples/*/*/*/*/; do
-      dir="${dir%/}"
-      case "$dir" in examples/host/*) continue ;; esac
-      [[ -f "$dir/main.c" ]] && apps+=("$dir")
-    done
+  # Directory operands make cppcheck recursively ingest ignored CMake output,
+  # so a local build used to change the registered gate's answer. Enumerate
+  # the candidate tree through Git and the shared first-party classifier. The
+  # producer owns the non-vacuity floor and proves tracked inclusion, ignored
+  # and generated exclusion, and missing/empty census failure in both
+  # directions before its live result is accepted.
+  local line raw_manifest source_manifest
+  local source_files=()
+  if [[ "${RA8_TRUSTED_PYTHON:-}" != /usr/bin/python3 ||
+    ! -x "$RA8_TRUSTED_PYTHON" ]]; then
+    echo "cppcheck: shared trusted Python authority is unavailable" >&2
+    return 1
   fi
+  raw_manifest="$(mktemp "${TMPDIR:-/tmp}/ra8-cppcheck-raw.XXXXXXXX")"
+  source_manifest="$(mktemp "${TMPDIR:-/tmp}/ra8-cppcheck-sources.XXXXXXXX")"
+  trap 'rm -f -- "$raw_manifest" "$source_manifest"' EXIT
+  /usr/bin/env -u BASH_ENV -u ENV -u PYTHONHOME -u PYTHONPATH \
+    -u PYTHONSTARTUP -u PYTHONINSPECT \
+    "$RA8_TRUSTED_PYTHON" -I -S scripts/checks/cppcheck_sources.py --selftest
+  /usr/bin/env -u BASH_ENV -u ENV -u PYTHONHOME -u PYTHONPATH \
+    -u PYTHONSTARTUP -u PYTHONINSPECT \
+    "$RA8_TRUSTED_PYTHON" -I -S scripts/checks/cppcheck_sources.py --null >"$raw_manifest"
+  /usr/bin/env -u BASH_ENV -u ENV -u PYTHONHOME -u PYTHONPATH \
+    -u PYTHONSTARTUP -u PYTHONINSPECT \
+    "$RA8_TRUSTED_PYTHON" -I -S scripts/checks/cppcheck_sources.py \
+    --validate-manifest "$raw_manifest" --null >"$source_manifest"
+  mapfile -d '' -t source_files <"$source_manifest"
+  if ((${#source_files[@]} == 0)); then
+    echo "cppcheck: validated source manifest transport produced zero units" >&2
+    return 1
+  fi
+  echo "cppcheck: scanning ${#source_files[@]} Git-censused translation units"
   local suppress_args=()
   while IFS= read -r line; do
     line="${line%$'\r'}"
@@ -97,7 +121,7 @@ gate_cppcheck() (
     --include="$compat_header" \
     -i libs/third_party \
     --std=c23 \
-    libs tools "${apps[@]}"
+    "${source_files[@]}"
 )
 
 # --- scan-build -----------------------------------------------------------
@@ -172,7 +196,7 @@ gate_scan_build() (
 # --- misra ----------------------------------------------------------------
 # misra_check_inner.sh (cppcheck misra.py addon) over libs/ src/ port/ tools/ apps/,
 # then misra_ratchet.py compares per-file-per-rule finding counts against
-# .github/misra-baseline.txt. `make cppcheck` is NOT a substitute: different
+# .github/misra-baseline.txt. `just quality::local::cppcheck` is NOT a substitute: different
 # rule set, no addon, no baseline, so a new MISRA finding sails through it.
 #
 # check_misra_deviations.py holds the deviation register's derived numbers
@@ -222,20 +246,22 @@ gate_misra() (
 # produced no findings would otherwise read as a clean run.
 gate_tidy() (
   set -e
+  local pinned_tidy
+  pinned_tidy="$(python3 scripts/checks/check_tool_versions.py --print-binary clang-tidy)"
   use_pinned_arm_toolchain
   require_arm_gcc_m85
   require_cmd cmake
-  # clang_tidy.sh prefers clang-tidy-18 (the pinned clang-tools-18 major); assert
-  # it resolves and is really major 18, so a box with only a newer bare
-  # clang-tidy cannot lint under a different major and drift the ratchet (#333).
-  require_tool_versions clang-tidy-18
-  bash scripts/checks/clang_tidy.sh --selftest
+  # The Dockerfile-derived registry selects the exact binary and major. Assert
+  # that selection resolves and reports its registered major, so a newer bare
+  # clang-tidy cannot silently drift the ratchet (#333).
+  require_tool_versions "$pinned_tidy"
+  CLANG_TIDY="$pinned_tidy" bash scripts/checks/clang_tidy.sh --selftest
   python3 scripts/checks/tidy_ratchet.py --selftest
 
   local log rc
   log="$(mktemp)"
   rc=0
-  bash scripts/checks/clang_tidy.sh --check --verbose >"$log" 2>&1 || rc=$?
+  CLANG_TIDY="$pinned_tidy" bash scripts/checks/clang_tidy.sh --check --verbose >"$log" 2>&1 || rc=$?
   cat "$log"
   if [ "$rc" -ge 2 ]; then
     echo "ERROR: clang_tidy.sh could not run (exit $rc); not ratcheting." >&2
@@ -257,6 +283,7 @@ gate_nsc_cmse() (
   set -e
   use_pinned_arm_toolchain
   require_arm_gcc_m85
+  bash scripts/checks/check_nsc_cmse.sh --selftest
   bash scripts/checks/check_nsc_cmse.sh
 )
 
@@ -270,6 +297,7 @@ gate_nsc_cmse() (
 gate_sg_offsets() (
   set -e
   local elf
+  python3 scripts/checks/check_sg_offsets.py --selftest
   elf="$(find examples -type f -name 'tz_nsc_cgc_usb.elf' | head -n 1)"
   if [[ -z "$elf" ]]; then
     echo "check_sg_offsets: tz_nsc_cgc_usb secure ELF not found -- run the" >&2

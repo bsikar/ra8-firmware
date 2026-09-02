@@ -77,14 +77,16 @@ def emitted_annotation_keys() -> set[str]:
 
     Read straight out of the header rather than restated here, because a
     restatement is what goes stale. Each macro expands through
-    ``RA8_INTERNAL_ANNOTATE("ra8_<rule>...")``; the rule key is the text
-    up to the first colon.
+    ``RA8_INTERNAL_ANNOTATE("ra8_<rule>...")``, or through the shared
+    ``RA8_INTERNAL_ANNOTATE_ARG("ra8_<rule>:", arg)`` helper the macros
+    that carry a value use; the rule key is the text up to the first colon.
     """
     try:
         text = ATTRIBUTES_HEADER.read_text(errors="ignore")
     except OSError:
         return set()
-    return {m.group(1) for m in re.finditer(r'RA8_INTERNAL_ANNOTATE\(\s*"(ra8_[a-z0-9_]+)', text)}
+    pattern = r'RA8_INTERNAL_ANNOTATE(?:_ARG)?\(\s*"(ra8_[a-z0-9_]+)'
+    return {m.group(1) for m in re.finditer(pattern, text)}
 
 
 def check_rule_keys() -> list[Violation]:

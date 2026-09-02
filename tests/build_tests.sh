@@ -7,12 +7,14 @@
 # Two build modes are supported, each rooted in its own out-of-tree
 # directory so toggling between them does not invalidate the other:
 #
-#   default     ->  tests/build/        (RA8_MCDC=OFF, fast iteration)
-#   --coverage  ->  tests/build-cov/    (RA8_MCDC=ON,  llvm-cov MC/DC)
+#   default     ->  tests/build-<os>/        (RA8_MCDC=OFF, fast iteration)
+#   --coverage  ->  tests/build-cov-<os>/    (RA8_MCDC=ON, llvm-cov MC/DC)
 #
 # Coverage rebuilds are expensive (every TU is recompiled with
 # -fcoverage-mcdc / -fprofile-instr-generate). Keeping the two trees
-# separate means a `make test` after `make mcdc` is still incremental.
+# separate means a `just quality::local::test` after
+# `just quality::local::mcdc` is still incremental. `<os>` is `darwin` or
+# `linux`, preventing incompatible host outputs from sharing a cache.
 #
 # Usage:
 #
@@ -47,16 +49,23 @@ elif [[ "${1:-}" == "--ubsan" ]]; then
   shift
 fi
 
+OS_SUFFIX=""
+if [ "$(uname -s)" = "Linux" ]; then
+  OS_SUFFIX="-linux"
+elif [ "$(uname -s)" = "Darwin" ]; then
+  OS_SUFFIX="-darwin"
+fi
+
 if [[ "$MODE" == "coverage" ]]; then
-  BUILD_DIR="$SCRIPT_DIR/build-cov"
+  BUILD_DIR="$SCRIPT_DIR/build-cov${OS_SUFFIX}"
   CMAKE_ARGS=(-DRA8_MCDC=ON -DRA8_COVERAGE=OFF)
   LABEL="coverage (RA8_MCDC=ON)"
 elif [[ "$MODE" == "ubsan" ]]; then
-  BUILD_DIR="$SCRIPT_DIR/build-ubsan"
+  BUILD_DIR="$SCRIPT_DIR/build-ubsan${OS_SUFFIX}"
   CMAKE_ARGS=(-DRA8_COVERAGE=OFF -DRA8_SANITIZE=undefined)
   LABEL="ubsan (RA8_SANITIZE=undefined)"
 else
-  BUILD_DIR="$SCRIPT_DIR/build"
+  BUILD_DIR="$SCRIPT_DIR/build${OS_SUFFIX}"
   # RA8_COVERAGE must be turned OFF explicitly here. The CMake option defaults
   # to ON, so the "fast" mode -- the one every host-test gate and every local
   # iteration uses -- was silently gcov-instrumented. It paid the
@@ -98,7 +107,6 @@ mkdir -p "$BUILD_DIR"
 
 "$CMAKE" -B "$BUILD_DIR" -S "$SCRIPT_DIR" \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-  -Wno-dev \
   "${CMAKE_ARGS[@]}"
 
 # Keep going on compile errors: a red gate then reports EVERY failing TU in

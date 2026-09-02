@@ -16,12 +16,214 @@
     update_cache: true
     cache_valid_time: 3600
 
-- name: Install the Python k8s client kubernetes.core modules import
+- name: Stage the uv-locked Kubernetes client export
+  become: true
+  ansible.builtin.copy:
+    src: requirements.lock
+    dest: "{{ k3s_node_requirements_lock }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Stage the exact-environment verifier
+  become: true
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../../scripts/dev/verify_locked_environment.py"
+    dest: "{{ k3s_node_requirements_verifier }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Compute the candidate Kubernetes client lock digest
+  ansible.builtin.set_fact:
+    k3s_node_requirements_digest: >-
+      {{ lookup('file', role_path + '/files/requirements.lock', rstrip=false) | hash('sha256') }}
+
+- name: Read back the staged Kubernetes client lock bytes
+  become: true
+  ansible.builtin.slurp:
+    src: "{{ k3s_node_requirements_lock }}"
+  register: k3s_node_staged_requirements
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Prove the staged lock is byte-identical to the role authority
+  when: not ansible_check_mode
+  ansible.builtin.assert:
+    that:
+      - (k3s_node_staged_requirements.content | b64decode | hash('sha256')) ==
+        k3s_node_requirements_digest
+    fail_msg: >-
+      The staged Kubernetes client lock differs byte-for-byte from the
+      controller role file; refusing to manage an environment from split inputs.
+
+- name: Inspect the Kubernetes client environment lock marker
+  become: true
+  ansible.builtin.stat:
+    path: "{{ k3s_node_requirements_marker }}"
+    follow: false
+  register: k3s_node_lock_marker_stat
+
+- name: Read the Kubernetes client environment lock marker
+  when: k3s_node_lock_marker_stat.stat.exists
+  become: true
+  ansible.builtin.slurp:
+    src: "{{ k3s_node_requirements_marker }}"
+  register: k3s_node_lock_marker
+  changed_when: false
+  check_mode: false
+
+- name: Check whether the managed Kubernetes client interpreter exists
+  become: true
+  ansible.builtin.stat:
+    path: "{{ k3s_node_python_venv }}/bin/python3"
+  register: k3s_node_python_stat
+
+- name: Decide whether the applied lock marker is current
+  ansible.builtin.set_fact:
+    k3s_node_lock_current: >-
+      {{ k3s_node_lock_marker_stat.stat.exists and
+         k3s_node_lock_marker.content is defined and
+         (k3s_node_lock_marker.content | b64decode | trim) ==
+         k3s_node_requirements_digest }}
+
+- name: Preflight the current Kubernetes client package set
+  when:
+    - k3s_node_lock_current
+    - k3s_node_python_stat.stat.exists
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_node_python_venv }}/bin/python3"
+      - "{{ k3s_node_requirements_verifier }}"
+      - "{{ k3s_node_requirements_lock }}"
+  register: k3s_node_exact_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Preflight the current Kubernetes client imports
+  when:
+    - k3s_node_lock_current
+    - k3s_node_python_stat.stat.exists
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_node_python_venv }}/bin/python3"
+      - -c
+      - "import kubernetes, yaml"
+  register: k3s_node_import_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Preflight the current Kubernetes client dependency graph
+  when:
+    - k3s_node_lock_current
+    - k3s_node_python_stat.stat.exists
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_node_python_venv }}/bin/python3"
+      - -m
+      - pip
+      - check
+  register: k3s_node_pip_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Rebuild a missing, stale, or drifted managed client environment
+  ansible.builtin.set_fact:
+    k3s_node_python_rebuild: >-
+      {{ not k3s_node_lock_current or
+         not k3s_node_python_stat.stat.exists or
+         (k3s_node_exact_probe.rc | default(1)) != 0 or
+         (k3s_node_import_probe.rc | default(1)) != 0 or
+         (k3s_node_pip_probe.rc | default(1)) != 0 }}
+
+- name: Report a lock-driven client environment rebuild in check mode
+  when:
+    - ansible_check_mode
+    - k3s_node_python_rebuild
+  ansible.builtin.debug:
+    msg: >-
+      The uv-export digest changed; apply will replace
+      {{ k3s_node_python_venv }} exactly at the managed-environment
+      boundary so packages removed from the lock cannot remain installed.
+
+- name: Remove the stale Kubernetes client environment
+  when:
+    - not ansible_check_mode
+    - k3s_node_python_rebuild
+  become: true
+  ansible.builtin.file:
+    path: "{{ k3s_node_python_venv }}"
+    state: absent
+
+- name: Create the isolated Python k8s client environment
+  when: not ansible_check_mode or not k3s_node_python_rebuild
+  become: true
+  ansible.builtin.command:
+    cmd: "python3 -m venv {{ k3s_node_python_venv }}"
+    creates: "{{ k3s_node_python_venv }}/bin/python3"
+
+- name: Install the exact hash-locked Python k8s client environment
+  when:
+    - not ansible_check_mode
+    - k3s_node_python_rebuild
   become: true
   ansible.builtin.pip:
-    name: "{{ k3s_node_pip_packages }}"
-    extra_args: --break-system-packages
+    requirements: "{{ k3s_node_requirements_lock }}"
+    virtualenv: "{{ k3s_node_python_venv }}"
+    virtualenv_command: python3 -m venv
     state: present
+
+- name: Prove the managed environment has no missing or extra packages
+  when: not ansible_check_mode or not k3s_node_python_rebuild
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_node_python_venv }}/bin/python3"
+      - "{{ k3s_node_requirements_verifier }}"
+      - "{{ k3s_node_requirements_lock }}"
+  changed_when: false
+  check_mode: false
+
+- name: Assert the isolated Kubernetes client imports and dependency health
+  when: not ansible_check_mode or not k3s_node_python_rebuild
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_node_python_venv }}/bin/python3"
+      - -c
+      - "import kubernetes, yaml"
+  changed_when: false
+  check_mode: false
+
+- name: Check the isolated Kubernetes client dependency graph
+  when: not ansible_check_mode or not k3s_node_python_rebuild
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ k3s_node_python_venv }}/bin/python3"
+      - -m
+      - pip
+      - check
+  changed_when: false
+  check_mode: false
+
+- name: Record the verified Kubernetes client lock digest
+  when:
+    - not ansible_check_mode
+    - k3s_node_python_rebuild
+  become: true
+  ansible.builtin.copy:
+    content: "{{ k3s_node_requirements_digest }}\n"
+    dest: "{{ k3s_node_requirements_marker }}"
+    owner: root
+    group: root
+    mode: "0644"
 
 # --- k3s --------------------------------------------------------------------
 
@@ -31,6 +233,7 @@
   register: k3s_node_probe
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Install k3s at the pinned version
   when: k3s_node_version not in (k3s_node_probe.stdout | default(''))
@@ -86,6 +289,7 @@
     cmd: "{{ k3s_node_bin }} --version"
   register: k3s_node_installed
   changed_when: false
+  check_mode: false
 
 - name: Ask the API server whether the node is actually Ready
   # `systemctl is-active k3s` proves a process is up, not that the control
@@ -99,6 +303,7 @@
   delay: 5
   until: "' Ready ' in (' ' ~ k3s_node_ready.stdout ~ ' ')"
   changed_when: false
+  check_mode: false
 
 - name: Assert k3s is the pinned version and serving a Ready node
   ansible.builtin.assert:
@@ -122,6 +327,7 @@
   register: k3s_node_helm_probe
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Install helm at the pinned version
   when: k3s_node_helm_version not in (k3s_node_helm_probe.stdout | default(''))
@@ -170,6 +376,7 @@
   register: k3s_node_helm_installed
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Assert helm is the pinned version AND resolvable by root
   ansible.builtin.assert:

@@ -209,8 +209,7 @@ void priv_ra8_bkup_internal_rmw8(volatile uint8_t* reg,
  */
 RA8_INTERNAL static void internal_vbae_access_settle(void)
 {
-  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_bkup_vbae_settle_iters;
-       ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_bkup_vbae_settle_iters; ++i) {
     __asm__ volatile("nop");
   }
 }
@@ -224,7 +223,7 @@ RA8_INTERNAL static void internal_vbae_access_settle(void)
 {
   RA8_CHECK_NULL_PTR(cfg, g_bkup_tag, "cfg must not be nullptr");
   const ra8_err_t v_err = internal_validate_cfg(cfg);
-  RA8_RETURN_ON_ERROR(v_err, g_bkup_tag, "bkup_init: cfg out of range"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, g_bkup_tag, "bkup_init: cfg out of range");
 
   /* All of VBTBPCR1 / VBTBPCR2 / VBTBER / VBTBPSR / VBTADSR sit behind PRC1
    * (HUM Ch 13.1 Table 13.1 p 521); one window covers the whole bring-up. */
@@ -302,8 +301,8 @@ RA8_INTERNAL static void internal_vbae_access_settle(void)
   /* Cold-start step 1 (12.3.7.1 p 517): wait for VBPORM == 1. */
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   bool vbporm_ok = false;
-  for (uint32_t i = 0U; i < timeout_iters; ++i) {                       /* GCOVR_EXCL_BR_LINE */
-    if ((*ra8_bkup_vbtbpsr() & k_ra8_bkup_vbtbpsr_mask_vbporm) != 0U) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < timeout_iters; ++i) {
+    if ((*ra8_bkup_vbtbpsr() & k_ra8_bkup_vbtbpsr_mask_vbporm) != 0U) {
       vbporm_ok = true;
       break;
     }
@@ -349,8 +348,8 @@ RA8_INTERNAL static void internal_vbae_access_settle(void)
   /* Warm-start step 1 (12.3.7.2 p 517): wait for VBPORM == 1. */
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   bool vbporm_ok = false;
-  for (uint32_t i = 0U; i < timeout_iters; ++i) {                       /* GCOVR_EXCL_BR_LINE */
-    if ((*ra8_bkup_vbtbpsr() & k_ra8_bkup_vbtbpsr_mask_vbporm) != 0U) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < timeout_iters; ++i) {
+    if ((*ra8_bkup_vbtbpsr() & k_ra8_bkup_vbtbpsr_mask_vbporm) != 0U) {
       vbporm_ok = true;
       break;
     }
@@ -381,8 +380,8 @@ RA8_INTERNAL static void internal_vbae_access_settle(void)
   /* No-switch step 2 (12.3.7.3 p 518): wait for VBPORM == 0 (rail tied to VCC). */
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   bool vbporm_low = false;
-  for (uint32_t i = 0U; i < timeout_iters; ++i) {                       /* GCOVR_EXCL_BR_LINE */
-    if ((*ra8_bkup_vbtbpsr() & k_ra8_bkup_vbtbpsr_mask_vbporm) == 0U) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < timeout_iters; ++i) {
+    if ((*ra8_bkup_vbtbpsr() & k_ra8_bkup_vbtbpsr_mask_vbporm) == 0U) {
       vbporm_low = true;
       break;
     }

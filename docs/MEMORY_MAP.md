@@ -7,7 +7,8 @@ population is from the EK-RA8D2 v1 User's Manual (R20UT5523EG0101 Rev
 `docs/reference/ek-ra8d2-v1-users-manual.pdf`.
 
 This document only lists addresses that are actually referenced by code
-in this tree (linker scripts under `examples/<tier>/.../<app>/linker_script.ld`
+in this tree (RA8D2 linker overrides under
+`examples/ek_ra8d2/<tier>/.../<app>/linker_script.ld`
 and the typed `_base_addr` enums under `libs/ra8_hal/inc/ra8_*_regs.h`).
 Anything not grounded in the codebase is intentionally omitted.
 
@@ -29,7 +30,7 @@ Notes on the core memory layout:
 
 - The MRAM secure alias is at `0x02000000` and the non-secure alias is
   at `0x02080000` (offset `+512K`). Linker scripts in
-  `examples/<tier>/.../<app>/linker_script.ld` define both `MRAM` and `NS_MRAM`
+  `examples/ek_ra8d2/<tier>/.../<app>/linker_script.ld` define both `MRAM` and `NS_MRAM`
   regions for the single-image TrustZone build.
 - SRAM is mapped at the secure alias `0x22000000` (also exposed via the
   data alias enum `k_ra8_sram_data_base_addr = 0x22000000` in

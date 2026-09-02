@@ -15,9 +15,9 @@ cmake_minimum_required(VERSION 3.20)
 # call. The aggregate repo-root build instead pulls this app in via
 # add_subdirectory() (project() is already called at the root), so guard on
 # PARENT_DIRECTORY to avoid a redundant nested sub-project. ra8_add_app()
-# below re-runs project() in the standalone case. ra8_comic's CBZ backend needs
-# miniz built WITH its ZIP reader + the ra8_epub_miniz_alloc static pool, both of
-# which the `ra8_epub` LIBS path supplies -- and CXX remains enabled for linked C++ components;
+# below re-runs project() in the standalone case. comic's CBZ backend needs
+# miniz built WITH its ZIP reader + the epub_miniz_alloc static pool, both of
+# which the `epub` LIBS path supplies -- and CXX remains enabled for linked C++ components;
 # the project therefore keeps CXX enabled.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
@@ -32,18 +32,17 @@ endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
 # cm_tiled_check.c (#344) opens an oversized baked CBZ page through the JOF tile
-# path (ra8_comic_tiles -> ra8_jof produce/read + ra8_tile_cache), so the app
-# also pulls ra8_jof + ra8_mem (the tile cache). miniz comes in via ra8_epub.
+# path (comic_tiles -> jof produce/read + ra8_tile_cache), so the app
+# also pulls jof + ra8_mem (the tile cache). miniz comes in via epub.
 ra8_add_app(
   NAME ereader_comic
   STACK_BYTES 32768
   DESCRIPTION "Page-turn comic reader: baked CBZ to the GLCDC panel, tap-zone nav"
-  EXTRA_SRCS cm_tiled_check.c
   LIBS ra8_gfx
-       ra8_reflow
-       ra8_comic
-       ra8_epub
-       ra8_jof
+       reflow
+       comic
+       epub
+       jof
        ra8_mem
        ra8_display_pal
        ra8_io_bus

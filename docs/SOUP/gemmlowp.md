@@ -21,8 +21,9 @@ into this firmware as Software Of Unknown Provenance (SOUP).
 - **Origin**: Google (gemmlowp -- low-precision GEMM library).
 - **License**: Apache-2.0 (`LICENSE`).
 - **How it entered our tree**: vendored header subset from the upstream commit
-  above -- the exact gemmlowp pin TFLite-micro declares in
-  `tools/make/third_party_downloads.inc`.
+  above. The exact commit is recorded by `scripts/gen/sbom_registry.py` and
+  `docs/sbom/upstream/gemmlowp.manifest`, keeping the checked-in subset and
+  generated SBOM under one provenance authority.
 
 ## Use case in this firmware
 

@@ -11,12 +11,13 @@ command streams it emits are a build input to the shipped firmware.
 
 - **Name**: Arm Ethos-U Vela
 - **Version**: pinned `ethos-u-vela==5.1.0`
-  (`tools/vela/requirements.txt`).
+  (the `vela` dependency group in `pyproject.toml`, resolved by `uv.lock`).
 - **Upstream URL**:
   https://gitlab.arm.com/artificial-intelligence/ethos-u/ethos-u-vela
   (PyPI: https://pypi.org/project/ethos-u-vela/)
 - **Local path**: not vendored as source. Pinned as a documented build
-  dependency at `tools/vela/requirements.txt`; usage notes in
+  dependency in the `vela` group in `pyproject.toml`, resolved by
+  `uv.lock`; usage notes in
   `tools/vela/README.md`.
 
 ## Provenance
@@ -24,7 +25,8 @@ command streams it emits are a build input to the shipped firmware.
 - **Origin**: Arm Limited (Ethos-U project).
 - **License**: Apache-2.0.
 - **How it is consumed**: installed on the developer / CI host into a throwaway
-  virtualenv from the pinned requirements file; run offline at build time. It is
+  uv-managed environment from committed `pyproject.toml` and `uv.lock`;
+  run offline at build time. It is
   never cross-compiled or linked into the RA8P1 image.
 
 ## Use case in this firmware

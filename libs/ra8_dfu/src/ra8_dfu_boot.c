@@ -9,7 +9,7 @@
  * Implements the host-testable half of `ra8_dfu`: software CRC32, image
  * header validation, A/B slot selection, and the reset-time boot
  * decision. No MMIO and no USB -- every function is a pure transform of
- * its arguments, exercised directly by `tests/test_ra8_dfu_boot.c` with
+ * its arguments, exercised directly by `tests/misc/src/test_ra8_dfu_boot.c` with
  * MC/DC vectors for each compound decision.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

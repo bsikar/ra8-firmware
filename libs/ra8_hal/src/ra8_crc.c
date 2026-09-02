@@ -159,7 +159,9 @@ ra8_err_t ra8_crc_init(ra8_crc_poly_t poly)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_crc);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "crc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "crc_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   volatile r_crc_regs_t* reg    = ra8_crc();
   const uint8_t          crccr0 = (uint8_t)((uint8_t)poly | k_ra8_crccr0_dorclr);

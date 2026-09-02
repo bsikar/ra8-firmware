@@ -8,15 +8,15 @@
 # a block here -- not writing a role, not editing an inventory, not touching a
 # playbook. Retuning one means changing a number here and re-converging.
 #
-#   make infra-list                 what is declared, and how it is sized
-#   make infra-check HOST=<name>    dry run: what would change
-#   make infra-apply HOST=<name>    converge that host to this file
-#   make infra-scale HOST=<name> N=<n>   live capacity change, drains first
+#   just infra::list                  what is declared, and how it is sized
+#   just infra::check <name>          dry run: what would change
+#   just infra::apply <name>          converge that host to this file
+#   just infra::scale <name> <n>      live capacity change, drains first
 #
 # Everything downstream reads this file:
 #   - scripts/dev/fleet.py           loader, validator, renderer, dispatcher
 #   - infra/ansible/inventory/hosts.ini   GENERATED (git-ignored)
-#   - ~/.ssh/ra8-fleet.config             GENERATED (`make infra-ssh-config`)
+#   - ~/.ssh/ra8-fleet.config             GENERATED (`just infra::ssh_config`)
 #   - the role variables each play runs with (see CLASSES in fleet.py)
 #
 # The full narrative -- add a host, retune a host, quiet hours, remove a host,
@@ -63,6 +63,19 @@ sizing:
   build_parallelism: 4
   memory_per_instance_gb: 8
 
+# --- The canonical runner image --------------------------------------------
+#
+# The ARC role builds this image once on the k3s node and atomically publishes
+# its docker archive there. Plain-Docker and WSL runner hosts consume that
+# exact archive; they never build an independent toolchain and never require a
+# hand-copied tarball. `fleet.py apply` derives both the producer and artifact
+# path from this block, and ci_runner_docker refreshes a target whenever its
+# archive checksum or loaded image ID differs.
+runner_image:
+  source_host: k3s-pve
+  image: "localhost/ra8-ci-runner:v2"
+  archive: "/var/lib/rancher/k3s/agent/images/ra8-ci-runner.tar"
+
 # --- The machines -----------------------------------------------------------
 #
 # `connect` is HOW TO REACH THE MACHINE, and it holds facts rather than names
@@ -79,7 +92,7 @@ sizing:
 #            its fleet name -- so a bastion's address is also declared once.
 #
 # fleet.py builds every ssh and ansible invocation from these three, so all of
-# it works on a machine with an empty ~/.ssh/config. `make infra-ssh-config`
+# it works on a machine with an empty ~/.ssh/config. `just infra::ssh_config`
 # then GENERATES the friendly aliases from the same fields, which is what makes
 # any machine a control node in one command instead of by hand-copying somebody
 # else's private config.
@@ -90,8 +103,13 @@ sizing:
 #   arc_k8s       an ARC (Actions Runner Controller) scale set on a k8s cluster
 #   docker_linux  long-lived runner containers on any plain Docker host
 #   docker_wsl    the same, inside a Windows machine's WSL2 distro
-#   dev_box       the shared verification box (NOT a runner: no Actions pool)
+#   dev_box       the shared verification box + dedicated HIL listener
 #   hil_bench     the hardware-in-the-loop bench Pi (NOT a runner)
+#
+# A `dev_box` carrying `hil_runner:` declares its one repo-scoped native
+# listener separately from scalable `runners:` capacity. The listener names
+# its workflow and its `hil_bench` host so its registration labels, repository
+# and remote instrument endpoint are derived rather than repeated in a role.
 #
 # `budget` is what CI may use of the machine, not what the machine has. Its
 # `mode` picks which arithmetic applies:
@@ -122,7 +140,7 @@ hosts:
       address: 100.64.0.1
       user: ubuntu
     # Two plays, in order: the cluster and vault first, the runner pool into
-    # it. `make infra-apply HOST=k3s-pve` runs both; PLAY=<name> runs one.
+    # it. `just infra::apply HOST=k3s-pve` runs both; PLAY=<name> runs one.
     provisions: [k3s-node, ci-runner]
     runners:
       instances: 6
@@ -173,7 +191,7 @@ hosts:
       instances: 2
       cpus: 4
       memory_gb: 8
-      # Each instance sees only its own 4 threads, so `make -j$(nproc)` inside
+      # Each instance sees only its own 4 threads, so Just's exported CMake job limit
       # it is right by construction instead of fanning out over the host.
       pin_cpus: true
       labels: [ra8-ci, ra8-nas]
@@ -198,10 +216,10 @@ hosts:
       # ask. fleet.py copies the play in over this path and runs it inside the
       # distro with --connection=local. See docs/CI_FLEET.md.
       #
-      # 10.0.40.100 is on the isolated bench LAN, so the hop is the bench Pi --
+      # 10.0.40.103 is on the isolated bench LAN, so the hop is the bench Pi --
       # named as the fleet host `star`, whose own address is declared once,
       # below, rather than repeated here.
-      address: 10.0.40.100
+      address: 10.0.40.103
       user: sikar
       jump: star
       distro: Ubuntu
@@ -244,7 +262,7 @@ hosts:
     # THESE HOURS ARE A PLACEHOLDER, and deliberately a live one: weekend
     # evenings are a guess at when this machine is wanted for something other
     # than CI. Change the two lines below and re-run
-    # `python3 scripts/dev/fleet.py apply win-ci --tags capacity` -- that path
+    # `just infra::apply win-ci "" capacity` -- that path
     # touches no container and costs the host no runner time. Delete the block
     # entirely and the same command removes the timer.
     quiet_hours:
@@ -269,7 +287,7 @@ hosts:
     # block if the two ever stop summing to the budget.
     #
     # swap_gb is deliberately non-zero where the runners' is zero, and it earns
-    # its place: a full `make ci` in this slice REACHES the 5 GiB wall and
+    # its place: a full `just ci` in this slice REACHES the 5 GiB wall and
     # stays there (98405 memory.max events in one 20-minute run) with
     # oom_kill 0 -- swap is what turned that into a slow run instead of a dead
     # one. A runner that swaps is a job that has silently become an order of
@@ -306,19 +324,35 @@ hosts:
       do not let a job OOM, which presents as a flaky gate rather than as the
       capacity fault it is.
 
-  # --- CT 107 on pve1: the shared verification box (not a runner) ------------
+  # --- CT 107 on pve1: verification box + dedicated HIL listener -------------
   dev:
     class: dev_box
-    summary: "the shared box every agent runs `make ci` on"
+    summary: "shared verification box and dedicated native HIL listener"
     connect:
       address: 100.64.0.9
       user: bsikar
     provisions: [dev-box]
+    hil_runner:
+      name: dev-hil
+      repository: "https://github.com/bsikar/ra8-firmware"
+      labels: [hil, ra8d2]
+      workflow: .github/workflows/hil.yml
+      bench:
+        host: star
+        aliases: [star.local]
 
   # --- The bench Pi: hardware-in-the-loop (not a runner) ---------------------
   star:
     class: hil_bench
     summary: "Raspberry Pi 5: EK-RA8D2, J-Link, ESP32-C6, AD2, smart plugs"
+    # One authority for the physical board-facing port. Both the hil_bench
+    # role and the dev-box-installed root-helper policy derive from this exact
+    # identity; a replacement or recabled NIC requires a reviewed fleet edit.
+    board_interface:
+      name: eth0
+      mac: "2c:cf:67:4d:04:87"
+      sysfs_device: "/sys/devices/platform/axi/1000120000.pcie/1f00100000.ethernet"
+      phc_index: 0
     connect:
       # Tailnet, not the wlan0 DHCP lease: the LAN address moves, and this is
       # also win-ci's jump host, so a stale one breaks two machines.

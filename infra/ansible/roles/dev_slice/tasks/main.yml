@@ -46,14 +46,30 @@
         argv: [systemctl, thaw, "{{ dev_slice_unit }}"]
       register: dev_slice_thaw_rm
       changed_when: dev_slice_thaw_rm.rc == 0
-      failed_when: false
+      # Tolerate only a slice that is not loaded (slice-less host) or a
+      # kernel without the cgroup-v2 freezer. systemd also returns rc=1 when
+      # the slice is already inactive; that state has no processes to thaw.
+      # A real thaw failure would leave processes suspended while the block
+      # deletes their cgroup.
+      failed_when: >-
+        dev_slice_thaw_rm.rc != 0
+        and 'not loaded' not in (dev_slice_thaw_rm.stderr | lower)
+        and 'not found' not in (dev_slice_thaw_rm.stderr | lower)
+        and 'not supported' not in (dev_slice_thaw_rm.stderr | lower)
+        and 'unit is inactive' not in (dev_slice_thaw_rm.stderr | lower)
 
     - name: Stop the slice
       become: true
       ansible.builtin.systemd_service:
         name: "{{ dev_slice_unit }}"
         state: stopped
-      failed_when: false
+      register: dev_slice_stop_rm
+      # The block promises nothing is deleted while processes are inside the
+      # slice, so only a never-installed unit is tolerated here.
+      failed_when: >-
+        dev_slice_stop_rm is failed
+        and 'could not find' not in ((dev_slice_stop_rm.msg | default('')) | lower)
+        and 'not found' not in ((dev_slice_stop_rm.msg | default('')) | lower)
 
     - name: Remove the slice unit, the entry point and the shell environment
       become: true
@@ -72,7 +88,13 @@
         name: ra8-workspace-reap.timer
         state: stopped
         enabled: false
-      failed_when: false
+      register: dev_slice_reap_stop
+      # Only a reaper that was never installed is benign; a stop failure of a
+      # live timer must fail before its unit files are deleted below.
+      failed_when: >-
+        dev_slice_reap_stop is failed
+        and 'could not find' not in ((dev_slice_reap_stop.msg | default('')) | lower)
+        and 'not found' not in ((dev_slice_reap_stop.msg | default('')) | lower)
 
     - name: Remove the reaper units
       become: true
@@ -93,7 +115,12 @@
         argv: [docker, rmi, "{{ dev_slice_ci_image_alias }}"]
       register: dev_slice_untag
       changed_when: dev_slice_untag.rc == 0
-      failed_when: false
+      # The alias already being gone is the only benign answer; a refusal
+      # (attached containers, docker missing) must abort instead of reporting
+      # the alias dropped.
+      failed_when: >-
+        dev_slice_untag.rc != 0
+        and 'no such image' not in (dev_slice_untag.stderr | lower)
 
     - name: Remove the dev tree, workspaces and caches
       when: dev_slice_destroy_data | bool
@@ -295,7 +322,7 @@
     - name: Configure the shared compiler cache from inside the cache
       # $CCACHE_DIR/ccache.conf, so every shell that points here picks up
       # identical settings without needing its own ~/.config/ccache. base_dir +
-      # hash_dir are load-bearing rather than tuning: every `make ci` run builds
+      # hash_dir are load-bearing rather than tuning: every `just ci` run builds
       # in a fresh mktemp snapshot, so without path normalisation every
       # compilation hashes differently and the hit rate is flat zero.
       become: true
@@ -311,7 +338,7 @@
           sloppiness = include_file_mtime,include_file_ctime,locale,time_macros
           umask = 000
 
-    - name: Check out the base tree that `make ws-new` links worktrees off
+    - name: Check out the base tree that `just workspace::new` links worktrees off
       # Deliberately NOT force/update: this is the object store every agent
       # workspace on this host shares, and a force checkout here would discard
       # commits that live only in a linked worktree.
@@ -326,7 +353,7 @@
         GIT_LFS_SKIP_SMUDGE: "1"
 
     - name: Mark the base checkout and its worktrees safe for every account
-      # `make ci` bind-mounts the tree into a container that runs as root
+      # `just ci` bind-mounts the tree into a container that runs as root
       # against files owned by whoever cloned them, and git refuses to operate
       # on a repository it thinks belongs to someone else. Without this the
       # suite dies before its first gate with "not a git repository".
@@ -370,7 +397,7 @@
           build or pull one on purpose: .devcontainer/Dockerfile is the single
           source of truth for every pinned tool and the `toolchain-parity` gate
           fails a host that drifts from it. Deploy the runners first
-          (`make infra-apply HOST=<host>`), which loads the image.
+          (`just infra::apply HOST=<host>`), which loads the image.
 
     - name: Tag the runner image as the name scripts/ci.sh boots
       # scripts/ci.sh builds `ra8-ci:latest` from .devcontainer/Dockerfile when
@@ -419,17 +446,23 @@
       # WSL writes {"credsStore": "desktop.exe"} into the profile, and on a
       # headless distro it fails: `docker pull` dies with "A specified logon
       # session does not exist". The runners never notice (side-loaded images,
-      # pull_policy: never) but a dev `make ci --rebuild` would, with an error
+      # pull_policy: never) but a dev `just ci --rebuild` would, with an error
       # about Windows logon sessions rather than about the toolchain. The
       # original is kept beside it, so this is reversible by hand.
       when: dev_slice_fix_docker_creds | bool
       become: true
       block:
+        - name: Inspect the Docker client configuration without following links
+          ansible.builtin.stat:
+            path: "{{ ansible_env.HOME }}/.docker/config.json"
+            follow: false
+          register: dev_slice_docker_cfg_stat
+
         - name: Read the docker client configuration
+          when: dev_slice_docker_cfg_stat.stat.exists
           ansible.builtin.slurp:
             src: "{{ ansible_env.HOME }}/.docker/config.json"
           register: dev_slice_docker_cfg
-          failed_when: false
 
         - name: Back up and rewrite it without the Desktop helper
           when:
@@ -471,19 +504,19 @@
           #
           # Run a command in this host's low-priority dev slice.
           #
-          #   ra8-dev make ci                 the whole gate suite
-          #   ra8-dev make ci-gate GATE=tidy  one gate
-          #   ra8-dev make ws-new NAME=x      an isolated workspace
+          #   ra8-dev just ci                         the whole gate suite
+          #   ra8-dev just quality::local::gate tidy  one gate
+          #   ra8-dev just workspace::new x           an isolated workspace
           #
           # WHY A WRAPPER AND NOT JUST AN ENVIRONMENT VARIABLE. Two kinds of
           # work have to land in the slice and they get there differently:
           #
-          #   - work run DIRECTLY on the host (make, git, a cross build) is
+          #   - work run DIRECTLY on the host (just, git, a cross build) is
           #     moved here, by starting it inside a transient scope in the
           #     slice. A login shell is in user.slice or the ssh session's
           #     scope, both of which sit beside system.slice at the DEFAULT
           #     weight -- i.e. competing with CI, not yielding to it.
-          #   - the CONTAINER `make ci` launches cannot be moved this way at
+          #   - the CONTAINER `just ci` launches cannot be moved this way at
           #     all: the docker DAEMON creates that cgroup, not this shell, so
           #     it does not inherit anything. It is placed by
           #     RA8_CI_CONTAINER_ARGS=--cgroup-parent, exported alongside this
@@ -497,7 +530,7 @@
 
           if [ $# -eq 0 ]; then
             echo "usage: ra8-dev <command> [args...]" >&2
-            echo "       e.g. ra8-dev make ci-gate GATE=format" >&2
+            echo "       e.g. ra8-dev just quality::local::gate format" >&2
             exit 2
           fi
 
@@ -505,16 +538,25 @@
           # a run started now would suspend mid-gate and resume hours later
           # with its wall-clock budgets already blown. Refuse instead of
           # producing a result nobody can trust.
-          state="$(systemctl show -p FreezerState --value "$SLICE" 2>/dev/null || true)"
+          if ! state="$(systemctl show -p FreezerState --value "$SLICE" 2>/dev/null)" ||
+            [[ -z "$state" ]]; then
+            echo "ra8-dev: cannot read the FreezerState for $SLICE" >&2
+            exit 4
+          fi
           case "$state" in
             frozen | freezing)
               echo "ra8-dev: $SLICE is FROZEN, so this host is standing CI down" >&2
-              echo "  (quiet hours, or someone ran 'make infra-scale HOST=<host> N=0')." >&2
+              echo "  (quiet hours, or someone ran 'just infra::scale <host> 0')." >&2
               echo "  Work started now would suspend mid-run. The capacity timer" >&2
               echo "  converges this host every 10 minutes and thaws the slice as soon" >&2
               echo "  as the runner target is non-zero again, so waiting is usually the" >&2
               echo "  answer; thaw it deliberately with: systemctl thaw $SLICE" >&2
               exit 3
+              ;;
+            running) ;;
+            *)
+              echo "ra8-dev: refusing unknown FreezerState '$state' for $SLICE" >&2
+              exit 4
               ;;
           esac
 
@@ -543,21 +585,21 @@
           # THE half that ra8-dev cannot do for itself. scripts/ci.sh runs the
           # gates in a container, and the docker DAEMON creates that container's
           # cgroup -- so it does not inherit the shell's slice and has to be
-          # placed explicitly. Without this line a `make ci` here would run at
+          # placed explicitly. Without this line a `just ci` here would run at
           # system.slice's default weight, beside the runners rather than under
           # them, with no memory cap at all.
           export RA8_CI_CONTAINER_ARGS="--cgroup-parent={{ dev_slice_unit }}"
 
           # Bounded parallel width for every gate (scripts/ci/lib/parallelism.sh
           # resolves RA8_MAX_JOBS first, then CMAKE_BUILD_PARALLEL_LEVEL). Both
-          # are set to one number so make/ctest/xargs/cppcheck and
+          # are set to one number so CMake/ctest/xargs/cppcheck and
           # `cmake --build` cannot disagree. This is a MEMORY bound: the slice's
           # MemoryMax is {{ dev_slice_memory }}, and a 22-wide compile does not
           # fit in it.
           export RA8_MAX_JOBS={{ dev_slice_max_jobs }}
           export CMAKE_BUILD_PARALLEL_LEVEL={{ dev_slice_max_jobs }}
 
-          # Isolated workspaces, exactly as on the dev box: `make ws-new NAME=x`
+          # Isolated workspaces, exactly as on the dev box: `just workspace::new x`
           # adds a linked worktree here off the shared base checkout.
           export RA8_WS_ROOT={{ dev_slice_workspace_root }}
           export RA8_WS_UPSTREAM={{ dev_slice_base_checkout }}
@@ -582,7 +624,7 @@
       # the version agents are running.
       become: true
       ansible.builtin.command:
-        cmd: bash scripts/dev/agent_workspace.sh install-timer
+        cmd: /bin/bash -p scripts/dev/agent_workspace.sh install-timer
         chdir: "{{ dev_slice_base_checkout }}"
       environment:
         RA8_WS_ROOT: "{{ dev_slice_workspace_root }}"

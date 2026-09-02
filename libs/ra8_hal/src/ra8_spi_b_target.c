@@ -305,12 +305,14 @@ ra8_err_t ra8_spi_b_target_init(uint8_t channel, const ra8_spi_cfg_t* cfg)
     return k_ra8_err_invalid_arg;
   }
   volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
   }
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 */
   const ra8_err_t mst_err = ra8_mstp_enable(s_spi_mstp_table[channel]);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "target_init: mstp"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "target_init: mstp");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* Disable (SPE=0) before reprogramming. */
   /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */

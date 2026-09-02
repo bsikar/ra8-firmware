@@ -6,7 +6,7 @@
 #
 # Runs ONE plain (non-ARC) self-hosted GitHub Actions runner as a Docker
 # container, booting the same devcontainer-toolchain image the ARC scale set
-# uses, so a job lands in the identical environment `make ci` runs in no matter
+# uses, so a job lands in the identical environment `just ci` runs in no matter
 # which host picks it up.
 #
 # Why a second, differently-shaped runner host at all: the k3s node that hosts
@@ -133,10 +133,25 @@ ci_runner_docker_compose_file: "{{ ci_runner_docker_compose_dir }}/docker-compos
 # for every pinned tool (.devcontainer/Dockerfile), and the `toolchain-parity`
 # gate fails when a runner drifts from those pins -- so a second, independently
 # built image is a drift source with no upside. The archive is produced by the
-# `ci_runner` role on the k3s node and copied over; this role loads it and
-# refuses to invent one.
+# `ci_runner` role on the fleet-declared source host. This role validates and
+# synchronizes that artifact automatically, then reloads it whenever its image
+# ID changes; it refuses to invent a second image.
 ci_runner_docker_image: "localhost/ra8-ci-runner:v2"
 ci_runner_docker_image_archive: "{{ ci_runner_docker_root }}/images/ra8-ci-runner.tar"
+
+# Canonical archive location, derived from infra/fleet.yml. On an SSH-managed
+# Docker host Ansible fetches from this inventory host through the controller,
+# so the target needs no credential for the producer. A WSL play runs locally
+# inside the distro and cannot delegate back out; fleet.py therefore streams
+# the same declared artifact into a durable WSL cache and supplies its path in
+# ci_runner_docker_image_source_local_archive instead.
+ci_runner_docker_image_source_host: ""
+ci_runner_docker_image_source_archive: ""
+ci_runner_docker_image_source_local_archive: ""
+# Exact argv used by the controller to stream a root-owned producer archive.
+# Derived through fleet_reach, so ProxyJump and literal-address policy remain
+# identical to every other fleet operation; never hand-write an SSH alias here.
+ci_runner_docker_image_source_ssh: []
 
 # --- Container --------------------------------------------------------------
 
@@ -166,7 +181,7 @@ ci_runner_docker_instances: 1
 # the host's full thread count, every build would fan out `-j<all of them>`,
 # and N instances would oversubscribe the machine N-fold. That is precisely
 # what makes a fast machine feel slow. A cpuset changes the affinity mask, so
-# nproc returns the instance's real share and `make -j$(nproc)` is correct by
+# nproc returns the instance's real share and Just exports it to CMake, correct by
 # construction; it also stops instances migrating across each other's L3.
 #
 # Instance i gets cpus [(i-1)*cpus, i*cpus-1], so the host must have at least
@@ -199,7 +214,7 @@ ci_runner_docker_memory: "16g"
 ci_runner_docker_memswap: "16g"
 
 # A runaway fork bomb in a build should hit a limit before the host does. The
-# cross-build fans out over ~100 app targets with make -j, so the ceiling has
+# cross-build fans out over the app catalogue through Just/CMake, so the ceiling has
 # to be generous; it is a blast-radius limit, not a tuning knob.
 ci_runner_docker_pids_limit: 8192
 

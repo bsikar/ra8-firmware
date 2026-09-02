@@ -57,7 +57,6 @@ void eth_seam_hook(uc_engine* uc, const emu_elf_source_t* elf, const char* name,
   }
 }
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 /**
  * @brief Perform on sym trace for the emu trace model.
  * @details Perform on sym trace for the emu trace model; this step is contained within the emu trace model and uses bounded caller or module-owned storage.

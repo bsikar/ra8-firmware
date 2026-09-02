@@ -30,12 +30,12 @@ endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
 # ra8_webp pulls in the vendored libwebp decoder (the ra8_add_app recipe
-# special-cases "ra8_webp" in LIBS to also compile libs/third_party/libwebp with
+# special-cases "webp" in LIBS to also compile the app-owned libwebp with
 # -DRA8_WEBP_USE_ARENA). The larger stack budget covers libwebp's VP8L decode
 # call chain.
 ra8_add_app(
   NAME webp_decode_demo
   STACK_BYTES 4096
   DESCRIPTION "On-target WebP (libwebp) decode smoke test over the ra8_webp facade (#290)"
-  LIBS ra8_webp ra8_board_ek_ra8d2
+  LIBS webp ra8_board_ek_ra8d2
 )

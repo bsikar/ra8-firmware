@@ -3,7 +3,7 @@
 The other half of a decision already made. `.rabook` import deliberately does
 **not** downscale images (#210-213, #476): the pixels are kept so the reader can
 magnify into them. This app makes that magnifier viewable, and is the demo for
-`libs/ra8_zoom` (#478).
+`apps/shared_libs/zoom` (#478).
 
 It brings up the 1024x600 GLCDC panel, binds a 4096x3072 gray8 page -- an order
 of magnitude past what this part can hold -- through an `ra8_tile_cache`, and
@@ -32,7 +32,8 @@ is generated, not stored.
 ## What the banner proves
 
 The boot banner is not a printout, it is the golden -- `hil.conf` pins it and
-`tests/test_app_ereader_zoom.c` derives the identical numbers from the identical
+`apps/board/stand_alone/ereader/tests/src/test_app_ereader_zoom.c` derives the identical numbers
+from the identical
 `ez_scene_selftest()` on the host. It carries a framebuffer hash for each of four
 scripted viewport states, plus the tile-cache counters, and each is an assertion:
 
@@ -78,8 +79,8 @@ anchor lives in the magnified image plane rather than in source pixels.
 A pan moves every pixel in the viewport, so there is no smaller true dirty
 region -- the viewport is flushed whole. What *is* exploited is the waveform: an
 interactive burst flushes with the panel's bi-level A2 (far faster than GC16) and
-`ra8_zoom_view_tick` promotes the view to a full 16-level GC16 repaint once the
-gesture has been still. `k_ra8_zoom_policy_quality` opts out and pays full GC16
+`zoom_view_tick` promotes the view to a full 16-level GC16 repaint once the
+gesture has been still. `k_zoom_policy_quality` opts out and pays full GC16
 per step for photographic content.
 
 The loupe is where partial update genuinely pays: cycling its magnification

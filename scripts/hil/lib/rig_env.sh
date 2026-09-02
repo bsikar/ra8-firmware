@@ -1,9 +1,10 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
-# rig_env.sh -- load HIL rig configuration from the gitignored repo-root .env
-# so no maintainer-specific host or probe serial is committed to the tree.
+# rig_env.sh -- load protected HIL rig configuration without committing a
+# maintainer-specific host or probe serial to the tree.
 # `source` this (do not execute it) near the top of a HIL script, then call
 # `rig_require` for the variables that script actually uses.
 #
@@ -24,41 +25,120 @@
 #
 # Portability: pure bash 3.2 (the macOS system bash) -- no name-refs, no mapfile.
 
-# Load .env if present, exported so child processes (JLinkExe, rfp-cli, ssh
-# remotes) inherit the values.
+# Load the explicit config, checkout-local .env, or Ansible-provisioned user
+# config (in that order). The selected file is data, never Bash code: the
+# adjacent parser opens it without following the final symlink, authenticates
+# current ownership and mode 0600 on that descriptor, and emits only the four
+# declared rig values plus documented non-secret workstation controls through
+# protected NUL-delimited pairs. The fixed case statement below, rather than
+# `source` or `eval`, imports those values without losing embedded newlines.
 _rig_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-if [ -f "$_rig_root/.env" ]; then
-  set -a
-  # shellcheck disable=SC1091  # path is the repo-root .env, resolved above.
-  . "$_rig_root/.env"
-  set +a
+_rig_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Establish the value/default authority before any selected input is parsed.
+# shellcheck source=scripts/hil/lib/rig_contract.sh
+if ! source "$_rig_lib_dir/rig_contract.sh"; then
+  printf 'error: rig contract requires a privileged Bash caller\n' >&2
+  return 2
 fi
-unset _rig_root
+
+_rig_env_file="${RA8_RIG_ENV:-}"
+if [[ -n "${_rig_env_file}" && ! -e "${_rig_env_file}" && ! -L "${_rig_env_file}" ]]; then
+  printf 'error: RA8_RIG_ENV does not exist: %s\n' "${_rig_env_file}" >&2
+  return 2
+fi
+if [[ -z "${_rig_env_file}" &&
+  (-e "${_rig_root}/.env" || -L "${_rig_root}/.env") ]]; then
+  _rig_env_file="${_rig_root}/.env"
+fi
+_rig_config_home="${XDG_CONFIG_HOME:-}"
+if [[ -z "${_rig_config_home}" && -n "${HOME:-}" ]]; then
+  _rig_config_home="${HOME}/.config"
+fi
+if [[ -z "${_rig_env_file}" && -n "${_rig_config_home}" &&
+  (-e "${_rig_config_home}/ra8/hil.env" || -L "${_rig_config_home}/ra8/hil.env") ]]; then
+  _rig_env_file="${_rig_config_home}/ra8/hil.env"
+fi
+
+PI_HOST="${PI_HOST:-}"
+JLINK_SN="${JLINK_SN:-}"
+JLINK_DEVICE="${JLINK_DEVICE:-$(ra8_rig_contract_default JLINK_DEVICE)}"
+PI_REPO="${PI_REPO:-$(ra8_rig_contract_default PI_REPO)}"
+RA8_BENCH_WAIT="${RA8_BENCH_WAIT:-}"
+RA8_BENCH_WAIT_S="${RA8_BENCH_WAIT_S:-}"
+RA8_BENCH_ACTORS="${RA8_BENCH_ACTORS:-}"
+RA8_CONSOLE_TTY="${RA8_CONSOLE_TTY:-}"
+C6_CONSOLE_TTY="${C6_CONSOLE_TTY:-}"
+
+if [[ -n "${_rig_env_file}" ]]; then
+  _rig_parser="$_rig_root/scripts/hil/rig_env_parse.py"
+  _rig_python="$(type -P python3 || true)"
+  [[ -n "$_rig_python" && -x "$_rig_python" && -f "$_rig_parser" ]] || {
+    printf 'error: protected rig environment parser is unavailable\n' >&2
+    return 2
+  }
+  _rig_result_dir="$(mktemp -d "${TMPDIR:-/tmp}/ra8-rig-env.XXXXXX")" || return 2
+  chmod 0700 "$_rig_result_dir" || {
+    rmdir "$_rig_result_dir" 2>/dev/null || true
+    return 2
+  }
+  _rig_result="$_rig_result_dir/values.tsv"
+  (umask 077 && : >"$_rig_result") || {
+    rmdir "$_rig_result_dir" 2>/dev/null || true
+    return 2
+  }
+  if ! "$_rig_python" -I "$_rig_parser" --input "$_rig_env_file" \
+    --output "$_rig_result" --format nul --include-interactive >/dev/null; then
+    rm -f "$_rig_result"
+    rmdir "$_rig_result_dir" 2>/dev/null || true
+    return 2
+  fi
+  _rig_import_ok=true
+  while IFS= read -r -d '' _rig_name && IFS= read -r -d '' _rig_value; do
+    case "$_rig_name" in
+      C6_CONSOLE_TTY) C6_CONSOLE_TTY="$_rig_value" ;;
+      PI_HOST) PI_HOST="$_rig_value" ;;
+      JLINK_SN) JLINK_SN="$_rig_value" ;;
+      JLINK_DEVICE) JLINK_DEVICE="$_rig_value" ;;
+      PI_REPO) PI_REPO="$_rig_value" ;;
+      RA8_BENCH_ACTORS) RA8_BENCH_ACTORS="$_rig_value" ;;
+      RA8_BENCH_WAIT) RA8_BENCH_WAIT="$_rig_value" ;;
+      RA8_BENCH_WAIT_S) RA8_BENCH_WAIT_S="$_rig_value" ;;
+      RA8_CONSOLE_TTY) RA8_CONSOLE_TTY="$_rig_value" ;;
+      *)
+        printf 'error: protected rig parser returned an unknown field\n' >&2
+        _rig_import_ok=false
+        break
+        ;;
+    esac
+  done <"$_rig_result"
+  rm -f "$_rig_result"
+  rmdir "$_rig_result_dir" || return 2
+  [[ "$_rig_import_ok" == true ]] || return 2
+fi
+export C6_CONSOLE_TTY PI_HOST JLINK_SN JLINK_DEVICE PI_REPO
+export RA8_BENCH_ACTORS RA8_BENCH_WAIT RA8_BENCH_WAIT_S RA8_CONSOLE_TTY
+unset _rig_config_home _rig_env_file _rig_import_ok _rig_name _rig_parser _rig_python
+unset _rig_result _rig_result_dir _rig_root _rig_value
 
 # Serial-console resolution by device identity, never by ttyACM number.
 # shellcheck source=scripts/hil/lib/tty_resolve.sh
-. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tty_resolve.sh"
+. "$_rig_lib_dir/tty_resolve.sh"
 
 # RA8_TTY_RESOLVER_SRC -- the resolver's own text, for the scripts whose UART
 # work happens on the far side of an ssh. They paste this into the remote
 # heredoc so the Pi resolves the console with the identical function this
 # machine would use, without needing a checkout there.
 # shellcheck disable=SC2034  # consumed by the scripts that source this file (run.sh, check_alive.sh, recover.sh), never here.
-RA8_TTY_RESOLVER_SRC="$(cat "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tty_resolve.sh")"
+RA8_TTY_RESOLVER_SRC="$(cat "$_rig_lib_dir/tty_resolve.sh")"
 
-# Declare the .env-provided contract explicitly. These are set by the `. .env`
-# above when it exists; defaulting them to empty here keeps every consumer safe
-# under `set -u` (an absent .env must reach rig_require's helpful message, not
-# an unbound-variable abort) and states the interface in one place.
-PI_HOST="${PI_HOST:-}"
-JLINK_SN="${JLINK_SN:-}"
-
-# The device name is not maintainer-specific; default it here, allow override.
-JLINK_DEVICE="${JLINK_DEVICE:-R7KA8D2KF_CPU0}"
-
-# Where the bench Pi keeps its own checkout. Not maintainer-specific enough to
-# demand a .env entry, but overridable there when it is not the default.
-PI_REPO="${PI_REPO:-ra8-firmware}"
+# Validate every non-empty/defaulted value immediately, including PI_HOST in
+# scripts where it is optional and therefore never reaches rig_require. Empty
+# required coordinates remain allowed until a consumer explicitly requires
+# them, preserving local-only find/probe workflows.
+if ! ra8_rig_validate_loaded true; then
+  return 2
+fi
 
 # Bare Pi hostname (strip "user@" and ".local") for the run-on-the-Pi check.
 PI_BAREHOST="${PI_HOST##*@}"
@@ -85,14 +165,9 @@ rig_is_local_pi() {
   return 1
 }
 
-# rig_require VAR...  -- exit 2 with a helpful message if any named var is empty.
+# rig_require VAR... -- validate and require declared typed coordinates.
 rig_require() {
-  local _n _missing=0
-  for _n in "$@"; do
-    if [ -z "${!_n:-}" ]; then
-      printf 'error: %s is not set. Copy .env.example to .env and fill it in.\n' "$_n" >&2
-      _missing=1
-    fi
-  done
-  [ "$_missing" -eq 0 ] || exit 2
+  ra8_rig_require "$@" || exit 2
 }
+
+unset _rig_lib_dir

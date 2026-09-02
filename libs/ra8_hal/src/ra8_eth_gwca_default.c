@@ -268,12 +268,12 @@ RA8_INTERNAL
 static ra8_err_t internal_default_open_rings(ra8_eth_gwca_default_state_t* state)
 {
   ra8_err_t err = ra8_eth_gwca_init_ring(state->rx_chain, state->rx_depth, state->rx_slot_bytes);
-  RA8_RETURN_ON_ERROR(err, s_tag, "default_open: rx init_ring"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "default_open: rx init_ring");
   err = ra8_eth_gwca_attach_buffers(state->rx_chain,
                                     state->rx_depth,
                                     state->rx_slot_bytes,
                                     state->rx_pool);
-  RA8_RETURN_ON_ERROR(err, s_tag, "default_open: rx attach"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "default_open: rx attach");
   return internal_tx_ext_init(state->tx_chain,
                               state->tx_depth,
                               state->tx_slot_bytes,
@@ -311,7 +311,7 @@ static ra8_err_t internal_default_open_queues(ra8_eth_gwca_default_state_t* stat
                                            .chain_head   = state->rx_chain};
   ra8_err_t                      err =
     ra8_eth_gwca_configure_queue(state->linkfix_table, state->rx_queue_index, &rx_cfg);
-  RA8_RETURN_ON_ERROR(err, s_tag, "default_open: rx config"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "default_open: rx config");
   const ra8_eth_gwca_queue_cfg_t tx_cfg = {.priority     = 0U,
                                            .is_tx        = true,
                                            .stop_on_last = false,

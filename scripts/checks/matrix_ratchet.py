@@ -7,7 +7,7 @@
 board emulator and writes one `app<pad>VERDICT` row per app to
 `build/ra8_emulator_matrix.txt`. That sweep measures #67's own headline success
 criterion -- "every example runs in the emulator" -- and until #394 it was
-invoked by nothing: not ci.sh, not a workflow, not the Makefile. The repo's
+invoked by nothing: not ci.sh, not a workflow, not the justfile. The repo's
 dominant defect class (a gate wired to nothing) applied to the epic's own
 definition of done.
 

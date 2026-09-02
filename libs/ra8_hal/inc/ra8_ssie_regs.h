@@ -286,7 +286,7 @@ typedef enum : uint8_t {
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is accessed via ``ra8_ssie()`` in
  * ``libs/ra8_hal/src/ra8_ssie.c`` or by the unit test in
- * ``tests/test_ra8_ssie.c``.
+ * ``tests/misc/src/test_ra8_ssie.c``.
  */
 typedef struct {
   volatile uint32_t SSICR;   /**< +0x00 Control register.        */

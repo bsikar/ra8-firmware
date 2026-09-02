@@ -27,9 +27,14 @@ cannot turn a real success into a failure.
 
 ## Credentials
 
-The SSID and passphrase are not in this tree. They are compiled in at build time
-from the environment or the gitignored `coprocessor/esp32c6/wifi.env`, and the
-bench passphrase lives in OpenBao. Built with neither set the image still links
-and says so at runtime rather than baking a blank credential, so no secret is
-ever committed -- but the passphrase does end up in the ELF, as it must for any
-supplicant, so treat a credentialed image as a secret.
+The firmware image and build graph contain no SSID or passphrase. After boot it
+prints `ra8_net_provision: READY v1` and waits for one bounded runtime packet:
+
+```text
+RA8NET1:<ssid_hex>:<psk_hex>:<url_hex>
+```
+
+This application ignores the optional URL field. The bench runner obtains the
+private values only at execution time and writes the packet over the debug UART.
+Firmware never echoes the packet and explicitly erases its receive, credential,
+station-configuration, and RPC staging buffers after the synchronous join.

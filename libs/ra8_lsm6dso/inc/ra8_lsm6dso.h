@@ -23,7 +23,7 @@
  *     production firmware wires these to ``ra8_iic_b_transfer`` /
  *     ``ra8_iic_b_write`` (I2C) or ``ra8_spi_xfer8`` (SPI); unit tests
  *     wire them to a software-mock transport in
- *     ``tests/test_ra8_lsm6dso.c``.
+ *     ``tests/misc/src/test_ra8_lsm6dso.c``.
  *
  * Surface (mirrors the deliverables list in the task brief):
  *

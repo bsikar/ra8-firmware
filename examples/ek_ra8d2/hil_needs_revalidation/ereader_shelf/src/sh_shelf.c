@@ -34,7 +34,7 @@ typedef enum : uint32_t {
   k_sh_card_h     = 272U, /**< Card height (cover box + 2 text lines + insets). */
 } sh_shelf_const_t;
 
-void sh_decode_cover(uint16_t idx, const ra8_book_src_t* src)
+void sh_decode_cover(uint16_t idx, const book_src_t* src)
 {
   g_sh.thumb_w[idx] = 0U;
   g_sh.thumb_h[idx] = 0U;
@@ -42,7 +42,7 @@ void sh_decode_cover(uint16_t idx, const ra8_book_src_t* src)
     return;
   }
   const uint32_t cover = src->hdr.cover_image_index;
-  if (cover == k_ra8_book_nil) {
+  if (cover == k_book_nil) {
     return;
   }
   int32_t w = 0;

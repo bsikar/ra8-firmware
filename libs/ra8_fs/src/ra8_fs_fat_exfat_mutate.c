@@ -36,7 +36,7 @@ priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus
     const uint32_t bit  = idx & k_exfat_bit_mask;
     ra8_err_t      e    = priv_exfat_bmp_switch(m, lba, &loaded, sec);
     if (e != k_ra8_ok) {
-      return e; /* GCOVR_EXCL_LINE */
+      return e;
     }
     sec[byte] = (uint8_t)(sec[byte] & (uint8_t)~(uint8_t)(1U << bit));
     /* Pull the scan hint back to the space just released, or the next create
@@ -89,7 +89,7 @@ static ra8_err_t internal_exfat_take_set(const ra8_fs_mount_t* m,
     uint8_t         se[k_exfat_entry_bytes] = {};
     const ra8_err_t r                       = priv_exfat_next_entry(m, cur, se);
     if (r != k_ra8_ok) {
-      return r; /* GCOVR_EXCL_LINE */
+      return r;
     }
     /* AFTER the read: ::priv_exfat_next_entry may cross a cluster boundary before
      * reading, so the entry lives at the cursor's CURRENT cluster, one slot back
@@ -181,7 +181,7 @@ static ra8_err_t internal_exfat_try_set(const ra8_fs_mount_t* m,
   uint8_t         matched = 0U;
   const ra8_err_t r = internal_exfat_take_set(m, cur, need, nlen, sc, pos, strm_copy, &matched);
   if (r != k_ra8_ok) {
-    return r; /* GCOVR_EXCL_LINE */
+    return r;
   }
   if (matched == 1U) {
     *out_count = total;
@@ -216,7 +216,7 @@ ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
     uint8_t   e[k_exfat_entry_bytes] = {};
     ra8_err_t r                      = priv_exfat_next_entry(m, &cur, e);
     if (r != k_ra8_ok) {
-      return r; /* GCOVR_EXCL_LINE */
+      return r;
     }
     /* AFTER the read (see ::priv_exfat_take_set): the File entry lives at the
      * cursor's current cluster, one slot back, so a set whose File entry is the
@@ -243,7 +243,7 @@ ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
       return r;
     }
   }
-  return k_ra8_err_not_found; /* GCOVR_EXCL_LINE */
+  return k_ra8_err_protocol_error;
 }
 
 /**
@@ -291,7 +291,7 @@ ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
   uint64_t  bmp_lba = 0U;
   ra8_err_t e       = priv_exfat_bitmap_lba(m, &bmp_lba);
   if (e != k_ra8_ok) {
-    return e; /* GCOVR_EXCL_LINE */
+    return e;
   }
   const uint32_t cluster_bytes = priv_cluster_bytes(m);
   const uint8_t  nofat =
@@ -304,19 +304,19 @@ ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
   for (uint32_t guard = 0U; guard < m->count_of_clusters; guard++) {
     e = priv_exfat_bitmap_clear(m, bmp_lba, clus, 1U);
     if (e != k_ra8_ok) {
-      return e; /* GCOVR_EXCL_LINE */
+      return e;
     }
     uint32_t next = 0U;
     e             = priv_fat_get(m, clus, &next);
     if (e != k_ra8_ok) {
-      return e; /* GCOVR_EXCL_LINE */
+      return e;
     }
     if (priv_is_eoc(m, next) != 0U) {
       return k_ra8_ok;
     }
     clus = next;
   }
-  return k_ra8_ok; /* GCOVR_EXCL_LINE */
+  return k_ra8_err_protocol_error;
 }
 
 /* `priv_exfat_drop_set()`: see header for the documented contract. */
@@ -332,12 +332,12 @@ ra8_err_t priv_exfat_drop_set(const ra8_fs_mount_t* m, const exfat_setpos_t* pos
     uint8_t        entry[k_exfat_entry_bytes] = {};
     ra8_err_t      e                          = priv_exfat_next_entry(m, &one, entry);
     if (e != k_ra8_ok) {
-      return e; /* GCOVR_EXCL_LINE */
+      return e;
     }
     entry[0] = (uint8_t)(entry[0] & (uint8_t)~(uint8_t)k_exfat_inuse_bit);
     e        = internal_exfat_put_entry(m, &pos[k], entry);
     if (e != k_ra8_ok) {
-      return e; /* GCOVR_EXCL_LINE */
+      return e;
     }
   }
   return k_ra8_ok;
@@ -374,7 +374,7 @@ ra8_err_t priv_exfat_unlink_at(const ra8_fs_mount_t* m, const exfat_dir_t* dir, 
   }
   const ra8_err_t de = priv_exfat_drop_set(m, pos, count);
   if (de != k_ra8_ok) {
-    return de; /* GCOVR_EXCL_LINE */
+    return de;
   }
   return priv_exfat_free_clusters(m, strm_e);
 }
@@ -571,7 +571,7 @@ static ra8_err_t internal_exfat_place_rename(const ra8_fs_mount_t* m,
       const ra8_err_t e =
         internal_exfat_put_entry(m, &pos[k], &set[(size_t)k * (size_t)k_exfat_entry_bytes]);
       if (e != k_ra8_ok) {
-        return e; /* GCOVR_EXCL_LINE */
+        return e;
       }
     }
     return k_ra8_ok;
@@ -584,7 +584,7 @@ static ra8_err_t internal_exfat_place_rename(const ra8_fs_mount_t* m,
   }
   const ra8_err_t we = priv_exfat_write_dir_set(m, nclus, nidx, set, bytes);
   if (we != k_ra8_ok) {
-    return we; /* GCOVR_EXCL_LINE */
+    return we;
   }
   return priv_exfat_drop_set(m, pos, old_count);
 }
@@ -696,7 +696,7 @@ static ra8_err_t internal_exfat_gather_name(const ra8_fs_mount_t* m,
     uint8_t         ne[k_exfat_entry_bytes] = {};
     const ra8_err_t r                       = priv_exfat_next_entry(m, cur, ne);
     if (r != k_ra8_ok) {
-      return r; /* GCOVR_EXCL_LINE */
+      return r;
     }
     if (ne[0] != (uint8_t)k_exfat_entry_name) {
       continue;
@@ -754,7 +754,7 @@ static ra8_err_t internal_exfat_list_emit(const ra8_fs_mount_t* m,
   uint8_t        strm[k_exfat_entry_bytes] = {};
   ra8_err_t      r                         = priv_exfat_next_entry(m, cur, strm);
   if (r != k_ra8_ok) {
-    return r; /* GCOVR_EXCL_LINE */
+    return r;
   }
   if (strm[0] != (uint8_t)k_exfat_entry_stream) {
     return k_ra8_ok;
@@ -771,7 +771,7 @@ static ra8_err_t internal_exfat_list_emit(const ra8_fs_mount_t* m,
   char           name[k_exfat_name_u8_cap] = {};
   r = internal_exfat_gather_name(m, cur, sc, nlen, name, (uint32_t)k_exfat_name_u8_cap);
   if (r != k_ra8_ok) {
-    return r; /* GCOVR_EXCL_LINE */
+    return r;
   }
   if (name[0] == '\0') {
     return k_ra8_ok; /* units no UTF-8 string encodes: report nothing, not a lie */

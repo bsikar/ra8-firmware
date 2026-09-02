@@ -7,6 +7,20 @@ and this project adheres to a personal-project versioning scheme (no public API,
 breaking changes encouraged -- see `CLAUDE.md`). All entries are written in
 pure 7-bit ASCII per the project character-encoding policy.
 
+## [Unreleased]
+
+### Changed
+
+- **Task runner and source-layout migration** -- developer and CI task entry
+  points now use Just, and first-party applications, examples, tests, and
+  compiled tools use `src/` and `inc/` ownership conventions. The repository
+  has no authored Make-family build metadata; all 13 files named `Makefile`
+  and the sole `.mk` input live under `libs/third_party/` as part of pinned
+  upstream sources.
+- **Hardware-evidence wording** -- hardware-validation tiers record evidence
+  from a named bench run; directory placement alone is not a claim that the
+  current commit has been rerun on hardware.
+
 ## [0.2.0] - 2026-05-03
 
 Qualification-baseline release. The host-mock half of the codebase now
@@ -15,16 +29,17 @@ self-assesses against.
 
 ### Added
 
-- **100% reachable MC/DC milestone** -- `make mcdc` reports
+- **100% reachable MC/DC milestone** -- `just quality::local::mcdc` reports
   473 / 473 reachable decisions covered (58 deactivated, fully
-  rationalised in `docs/MCDC_DEACTIVATIONS.md`). Absolute MC/DC
-  89.08%; the gap to absolute is entirely deactivated/defensive code.
+  rationalised in `docs/MCDC_DEACTIVATIONS.md`). The decision-complete
+  rate, including those deactivated decision regions in the denominator, was
+  89.08%.
 - **Eight new pre-commit gates (all STRICT)**:
   `doxy_audit --check`, `check_obsolete_standards.py`,
   `check_mcdc_block.py`, `check_new_compound_has_mcdc.py`,
   `cite_check.py`, `check_world_tags.py`,
   `check_line_citations.py`, `stack_usage_check.py` (warn-only on
-  third-party + ra8_epub).
+  third-party + epub).
 - **Vendor blob policy enacted** -- RSIP vendored under
   `libs/third_party/` with provenance + license documentation; the
   BLE controller blob is blocked-license and is left out of the
@@ -36,7 +51,7 @@ self-assesses against.
 ### Fixed
 
 - **33 -> 0 host-test failures** -- closed every flake and TODO in
-  the host-mock test suite; current run is 190/190 green.
+  the host-mock test suite; the release's recorded run was 190/190 green.
 - **USB clock handshake fix** -- `ra8_cgc` PLL2 path now produces the
   48 MHz USBFS reference correctly; `ra8_usb_fs` enumeration in the
   host-mock world matches the HUM 35.2 sequence.
@@ -98,7 +113,7 @@ three weeks.
   + Mesh + SMP/bonding + GATT client + patch loader stub, mbedTLS / TF-PSA
   -Crypto 4.x, FAT-FS adapter, LiteHTML for the e-reader.
 - **Higher-level libraries**: `ra8_modem_at`, `ra8_power_profile`,
-  `ra8_psa_crypto`, `ra8_wdt_supervisor`, `ra8_dotf`, `ra8_epub`, `ra8_reflow` v2
+  `ra8_psa_crypto`, `ra8_wdt_supervisor`, `ra8_dotf`, `epub`, `reflow` v2
   (LiteHTML port + paginate-by-viewport-height), `ra8_ble_host`, OTA
   orchestration (Phase 5) with secure-side commit veneers, and the
   IT8951 e-paper driver with sleep/wake.
@@ -115,7 +130,7 @@ three weeks.
 - **Tooling**: `tools/ra8_qe` JSON-driven configurator (Renesas QE-style),
   `scripts/dev/openocd` GPL alternative to the SEGGER flash/debug path,
   `scripts/builders/all_examples.sh`, Doxygen build target, roadmap dashboard,
-  cppcheck/MISRA helpers, `make example-<name>` targets, `make test-docker`
+  cppcheck/MISRA helpers, `just apps::example::build <name>` targets, `just quality::run`
   for macOS host-test runtime, and `VERSION`-driven `@since` consistency
   checking.
 
@@ -129,7 +144,7 @@ three weeks.
   audio_loopback + usb_audio_device).
 - **Per-app boot refactor**: each `examples/<app>/` is now self-contained
   with its own `vector_table.c`, `system_init.c`, `secure_exception.c`,
-  `trustzone_init.{c,h}`, `linker_script.ld`, `CMakeLists.txt`, `Makefile`.
+  `trustzone_init.{c,h}`, `linker_script.ld`, `CMakeLists.txt`, `justfile`.
 - **CGC + SCI** rebuilt as a full FSP-aligned RA8 Gen2 PLL bring-up with
   proper clock switching and SCI clear/drain; SCI_B, IIC_B, and SPI_B
   retrofits for native register layouts.
@@ -141,7 +156,7 @@ three weeks.
   meets the NASA Rule 4 size threshold.
 - **`ra8_wdt_supervisor`** shim canary swapped from magic numbers to a
   typed enum and wired into the host build.
-- **`ra8_epub`** rewritten to remove `malloc`/`free` (NASA Rule 3).
+- **`epub`** rewritten to remove `malloc`/`free` (NASA Rule 3).
 - **HUM citations normalized** across HAL drivers; `cite_check --strict`
   gate adopted; `--strict` cite_check + Doxygen-clean status marked DONE in
   the roadmap.
@@ -231,7 +246,7 @@ three weeks.
 - **Defensive-macro policy** finalized in HAL with refined pre-commit
   regexes; unified warning management and defensive-macro checks added to
   the build infrastructure.
-- **CI / dev infrastructure**: `make test-docker` for macOS host-test
+- **CI / dev infrastructure**: `just quality::run` for macOS host-test
   runtime via colima; per-app boot refactor; pre-commit hook covers ASCII,
   format, tidy, and C23 patterns; `cite_check`, `check_world_tags`, and
   `check-since-version` utilities under `scripts/checks/`.
@@ -241,3 +256,4 @@ three weeks.
   preparation for tagging.
 
 [0.1.0]: https://github.com/bsikar/ra8-firmware/releases/tag/v0.1.0
+[Unreleased]: https://github.com/bsikar/ra8-firmware/compare/v0.2.0...HEAD

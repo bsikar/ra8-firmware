@@ -19,13 +19,12 @@
 # directory scope, so FW_ROOT (from library_sources.cmake) is visible here.
 
 add_executable(
-  test_ra8_emulator_mstp_gate ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_emulator_mstp_gate.c
+  test_ra8_emulator_mstp_gate ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_emulator_mstp_gate.c
                               ${FW_ROOT}/tools/ra8_emulator/src/periph/board_periph_mstp_model.c
 )
 target_compile_options(test_ra8_emulator_mstp_gate PRIVATE -Wall -Wextra -Werror)
 target_include_directories(
-  test_ra8_emulator_mstp_gate
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${FW_ROOT}/libs/ra8_core/inc ${FW_ROOT}/libs/ra8_hal/inc
-          ${FW_ROOT}/tools/ra8_emulator/src/periph
+  test_ra8_emulator_mstp_gate PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_core/inc
+                                      ${FW_ROOT}/libs/ra8_hal/inc ${FW_ROOT}/tools/ra8_emulator/inc
 )
 add_test(NAME test_ra8_emulator_mstp_gate COMMAND test_ra8_emulator_mstp_gate)

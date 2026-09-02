@@ -13,13 +13,15 @@
 # assembles the two databases that supply them: the host unit-test build
 # (BUILD_DIR) and the cross-compile database (CROSS_DB_DIR).
 #
-# Functions here: configure_build, configure_reflow_v2_db, merge_compile_db,
+# Functions here: configure_build, configure_reflow_v2_db, configure_fuzz_db,
+# configure_fuzz_tree, fuzz_db_is_usable, merge_compile_db,
 # collect_include_args, build_cross_db
 
 # ---------------------------------------------------------------------------
 # Configure test build to generate compile_commands.json
 # ---------------------------------------------------------------------------
 configure_build() {
+  local clang_tidy="$1"
   local tests_dir="$FIRMWARE_DIR/tests"
   BUILD_DIR="$FIRMWARE_DIR/build/tidy"
 
@@ -43,7 +45,6 @@ configure_build() {
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DCMAKE_C_FLAGS="-DUNIT_TEST -DRA8_OFF_TARGET" \
     -DRA8_COVERAGE=OFF \
-    -Wno-dev \
     >"$cmake_stdout"
 
   if [[ ! -f "$BUILD_DIR/compile_commands.json" ]]; then
@@ -52,6 +53,7 @@ configure_build() {
   fi
 
   configure_reflow_v2_db "$tests_dir" "$cmake_stdout"
+  configure_fuzz_db "$tests_dir" "$cmake_stdout" "$clang_tidy"
 
   print_status "compile_commands.json ready."
 }
@@ -59,10 +61,10 @@ configure_build() {
 # ---------------------------------------------------------------------------
 # Merge the alternate reflow engine's commands into the primary database.
 #
-# ra8_reflow ships TWO mutually exclusive engines: the hand-rolled v1 (the
-# default) and the LiteHTML-backed v2 behind RA8_REFLOW_USE_LITEHTML. Only
+# reflow ships TWO mutually exclusive engines: the hand-rolled v1 (the
+# default) and the LiteHTML-backed v2 behind REFLOW_USE_LITEHTML. Only
 # one set of sources is compiled, so the default configure in configure_build
-# has no command for libs/ra8_reflow/v2/ra8_reflow_v2.cpp or its test -- and
+# has no command for apps/shared_libs/reflow/v2/src/reflow_v2.cpp or its test -- and
 # clang-tidy then infers one, drops the litehtml include path and reports
 # "'litehtml.h' file not found" instead of analysing either file.
 #
@@ -85,16 +87,60 @@ configure_reflow_v2_db() {
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DCMAKE_C_FLAGS="-DUNIT_TEST -DRA8_OFF_TARGET" \
     -DRA8_COVERAGE=OFF \
-    -DRA8_REFLOW_USE_LITEHTML=ON \
-    -Wno-dev \
+    -DREFLOW_USE_LITEHTML=ON \
     >"$cmake_stdout" 2>&1; then
     merge_compile_db "$alt_dir/compile_commands.json" "$BUILD_DIR/compile_commands.json"
   else
-    print_error "The RA8_REFLOW_USE_LITEHTML configure failed."
+    print_error "The REFLOW_USE_LITEHTML configure failed."
     print_error "Without it the v2 engine and its test cannot be parsed, so"
     print_error "this gate would report them clean having never analysed them."
     exit "$RC_INFRA"
   fi
+}
+
+# ---------------------------------------------------------------------------
+# Merge the opt-in libFuzzer harness commands into the primary database.
+#
+# The ordinary test configure deliberately leaves RA8_FUZZ off. clang-tidy
+# still covers those first-party TUs, and after the src/inc migration their
+# public harness header lives in tests/fuzz/inc rather than beside each source.
+# An inferred command therefore cannot parse them. Configure the real fuzz
+# targets with the clang matching clang-tidy, then merge only commands absent
+# from the primary database, just as the alternate reflow engine does above.
+# ---------------------------------------------------------------------------
+configure_fuzz_db() {
+  local tests_dir="$1" cmake_stdout="$2" clang_tidy="$3"
+  local drivers cc cxx fuzz_dir
+  if ! drivers="$(matching_clang_drivers "$clang_tidy")"; then
+    exit "$RC_INFRA"
+  fi
+  cc="${drivers%%$'\n'*}"
+  cxx="${drivers#*$'\n'}"
+
+  fuzz_dir="$FIRMWARE_DIR/build/tidy-fuzz"
+  print_status "Configuring the libFuzzer harnesses in $fuzz_dir ..."
+  # CMake invalidates the cache when a stale tree names another compiler.
+  # That internal reconfigure may either fail or discard -DRA8_FUZZ=ON while
+  # exiting zero. In both cases, retry once with the now-stable compiler cache.
+  if ! configure_fuzz_tree "$fuzz_dir" "$tests_dir" "$cmake_stdout" "$cc" "$cxx"; then
+    print_warning "The first fuzz configure failed after changing compiler; retrying once."
+  fi
+  if ! fuzz_db_is_usable "$fuzz_dir"; then
+    print_warning "The first fuzz configure produced an incomplete database; retrying once."
+    if ! configure_fuzz_tree "$fuzz_dir" "$tests_dir" "$cmake_stdout" "$cc" "$cxx"; then
+      print_error "The RA8_FUZZ retry failed."
+      print_error "Without it the fuzz harnesses cannot be parsed with their real include graph."
+      exit "$RC_INFRA"
+    fi
+  fi
+  # Do not trust CMake's status alone: prove the database contains both a fuzz
+  # TU and the shared include root required by app-local harnesses.
+  if ! fuzz_db_is_usable "$fuzz_dir"; then
+    print_error "The RA8_FUZZ configure did not produce a usable compile database."
+    print_error "Refusing to lint fuzz sources with inferred, incomplete include paths."
+    exit "$RC_INFRA"
+  fi
+  merge_compile_db "$fuzz_dir/compile_commands.json" "$BUILD_DIR/compile_commands.json"
 }
 
 # ---------------------------------------------------------------------------
@@ -146,7 +192,8 @@ PY
 # so it needs no maintenance as targets gain include directories.
 # ---------------------------------------------------------------------------
 collect_include_args() {
-  python3 - "$BUILD_DIR/compile_commands.json" <<'PY'
+  local database="${1:-$BUILD_DIR/compile_commands.json}"
+  python3 - "$database" <<'PY'
 import json
 import shlex
 import sys
@@ -156,8 +203,17 @@ with open(sys.argv[1], encoding="utf-8") as handle:
     entries = json.load(handle)
 for entry in entries:
     args = entry.get("arguments") or shlex.split(entry.get("command", ""))
+    pending = None
     for arg in args:
-        if arg.startswith("-I") and len(arg) > 2 and arg not in seen:
+        if pending is not None:
+            arg = pending + arg
+            pending = None
+        elif arg in {"-I", "-iquote", "-isystem"}:
+            pending = arg
+            continue
+        elif not arg.startswith(("-I", "-iquote", "-isystem")):
+            continue
+        if arg not in seen:
             seen.add(arg)
             print(arg)
 PY
@@ -190,4 +246,42 @@ build_cross_db() {
     exit "$RC_INFRA"
   fi
   printf '%s\n' "$out" | tail -2 >&2
+}
+configure_fuzz_tree() {
+  local fuzz_dir="$1" tests_dir="$2" cmake_stdout="$3" cc="$4" cxx="$5"
+  cmake -B "$fuzz_dir" -S "$tests_dir" \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DCMAKE_C_COMPILER="$cc" \
+    -DCMAKE_CXX_COMPILER="$cxx" \
+    -DCMAKE_C_FLAGS="-DUNIT_TEST -DRA8_OFF_TARGET" \
+    -DRA8_COVERAGE=OFF \
+    -DRA8_FUZZ=ON \
+    >"$cmake_stdout" 2>&1
+}
+
+fuzz_db_is_usable() {
+  local fuzz_dir="$1"
+  grep -qx 'RA8_FUZZ:BOOL=ON' "$fuzz_dir/CMakeCache.txt" 2>/dev/null &&
+    python3 - "$fuzz_dir/compile_commands.json" "$FIRMWARE_DIR/tests/fuzz" <<'PY'
+import json
+import os
+import shlex
+import sys
+
+database, fuzz_root = sys.argv[1:]
+with open(database, encoding="utf-8") as handle:
+    entries = json.load(handle)
+fuzz_root = os.path.realpath(fuzz_root) + os.sep
+has_fuzz_tu = False
+has_fuzz_include = False
+for entry in entries:
+    source = os.path.realpath(os.path.join(entry["directory"], entry["file"]))
+    has_fuzz_tu = has_fuzz_tu or source.startswith(fuzz_root)
+    args = entry.get("arguments") or shlex.split(entry.get("command", ""))
+    has_fuzz_include = has_fuzz_include or any(
+        "tests/fuzz/inc" in arg for arg in args
+    )
+sys.exit(0 if has_fuzz_tu and has_fuzz_include else 1)
+PY
 }

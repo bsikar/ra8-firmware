@@ -9,7 +9,7 @@ flow described in `docs/MCDC.md`.
 | Flow                     | Tool          | Goal                              | Speed |
 |--------------------------|---------------|-----------------------------------|-------|
 | Statement + branch (this)| gcc + gcovr   | Quick regression ratchet          | Fast  |
-| MC/DC (`make mcdc`)      | clang + llvm-cov | DO-178C Level B / IEC 61508 SIL 3 audit gold standard | Slow  |
+| MC/DC (`just quality::local::mcdc`)      | clang + llvm-cov | DO-178C Level B / IEC 61508 SIL 3 audit gold standard | Slow  |
 
 In theory MC/DC subsumes branch coverage, so once 100% MC/DC is
 achieved, statement and branch coverage are guaranteed to be 100%
@@ -50,10 +50,10 @@ There is **one** statement+branch policy for the whole first-party codebase.
 Every `.c` / `.cc` / `.cpp` under `libs/`, `port/`, `tools/`, `apps/` and
 `examples/` is enrolled in it, and no tier gets a softer bar. It replaced
 three overlapping regimes -- an aggregate `gcovr --fail-under-line 90
---fail-under-branch 80` plus a `libs/`+`src/`-only per-file line floor, a
+--fail-under-branch 80` plus a narrow reusable-code per-file line floor, a
 second full coverage build ratcheted against a two-number project-wide
-baseline, and a media_dl-specific per-file ratchet -- which between them built
-the same translation units twice and still left most of the tree unmentioned by
+baseline, and an mdl-specific per-file ratchet -- which between them built the
+same translation units twice and still left most of the tree unmentioned by
 any policy.
 
 The census is derived from `git ls-files` via
@@ -61,8 +61,9 @@ The census is derived from `git ls-files` via
 day it lands. Only three things are subtracted, and each is subtracted
 elsewhere first:
 
-- vendored SOUP and generated tables (`libs/third_party/`, `libs/ra8_fonts/`,
-  `tools/vela/generated/`, `port/threadx/`);
+- vendored SOUP and generated tables (`libs/third_party/`,
+  `apps/shared_libs/third_party/`, `port/threadx/`, `libs/ra8_fonts/`, and
+  `tools/vela/generated/`);
 - the individually registered generated sources in
   `scripts/checks/lint_coverage_rules.py`;
 - test sources -- a file under a `tests/` directory at any depth is the
@@ -106,7 +107,7 @@ must move to MEASURED and can never move back.
 ## Running locally
 
 ```sh
-make coverage
+just quality::local::coverage
 ```
 
 That runs `scripts/report/tree_coverage.sh` (which MEASURES) and then
@@ -114,9 +115,9 @@ That runs `scripts/report/tree_coverage.sh` (which MEASURES) and then
 is what keeps the tree at one policy surface.
 
 The producer builds every project in `tree_coverage_model.PROJECTS`
-separately -- the host test suite and the media_dl form today -- runs each
+separately -- the host test suite and mdl form today -- runs each
 under ctest, reports each into its own gcovr trace, and then **merges the
-traces**. The merge is the point, not an optimisation: the media_dl core is
+traces**. The merge is the point, not an optimisation: the mdl core is
 compiled by both builds, so a single sweep over one build tree reports
 whichever half it happened to see (`mdl_config.c` measures 77.3% from the host
 suite alone and 90.1% from the union). One row per unit means one number per
@@ -158,13 +159,13 @@ python3 scripts/checks/check_tree_coverage.py --update
 
 The host test fake uses `MAP_FIXED` below 4 GiB, which arm64 macOS rejects with
 SIGKILL, and the counts are gcc-14-specific. Run the gate through the
-containerised suite (`make ci-gate GATE=coverage-tree`) rather than natively.
+containerised suite (`just quality::devcontainer::gate coverage-tree`) rather than natively.
 
 ## Targets
 
-| Goal | Today | Target |
+| Goal | Current authority | Target |
 |---|---|---|
-| Census units measured | 507 of 1043 | every host-reachable unit |
+| Census units measured | `scripts/checks/check_tree_coverage.py` classifies every row in `.github/tree-coverage-baseline.txt` | every host-reachable unit |
 | MC/DC | tracked separately in `docs/MCDC_GAPS.md` | 100% |
 
 The two largest unmeasured populations are `examples/` (firmware compositions,
@@ -174,7 +175,7 @@ no coverage instrumentation wired up yet).
 
 ## CI
 
-`.github/workflows/coverage.yml` runs `bash scripts/ci.sh --gate coverage-tree`
+`.github/workflows/coverage.yml` runs `just quality::local::gate coverage-tree`
 on every push to `main`/`dev` and every PR to either, and uploads the merged
 HTML report and summary as workflow artifacts.
 

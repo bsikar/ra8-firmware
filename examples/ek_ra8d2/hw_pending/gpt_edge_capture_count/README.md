@@ -22,7 +22,7 @@ encoder for the up/down variant.
 The stock EK-RA8D2 additionally has **no cleanly-broken-out GTIOCnA pad** -- the
 candidate pins collide with the debug UART per HUM Ch 20.6 pin tables, the same
 limitation that keeps `motor_3phase` in `_unsupported/`. The pin assignments in
-`main.c` (`k_gpt_ecc_pin_capture` / `k_gpt_ecc_pin_count`) are illustrative
+`src/main.c` (`k_gpt_ecc_pin_capture` / `k_gpt_ecc_pin_count`) are illustrative
 placeholders carrying a `TODO(board-rev)`; update them for a carrier board or
 jumper wiring before a bench run.
 

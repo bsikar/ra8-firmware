@@ -103,8 +103,7 @@ typedef enum : uint8_t {
  * @warning Do not redefine; this is the single shared object for all ra8_gfx TUs.
  * @since 0.1.0
  */
-// NOLINTNEXTLINE(bugprone-invalid-enum-default-initialization) -- format unused until ra8_gfx_init().
-ra8_gfx_state_t g_gfx_text_state = {};
+ra8_gfx_state_t g_gfx_text_state = {.format = k_ra8_gfx_format_rgb565};
 
 /* ------------------------------------------------------------------ */
 /* Helpers */

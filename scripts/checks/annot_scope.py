@@ -42,9 +42,10 @@ _repo_root = _REAL_REPO_ROOT
 #: Every first-party source root. CLAUDE.md ("Scope") holds `tools/` to the
 #: same bar as the firmware -- "a file being a host tool or just an emulator
 #: is NOT a reason to relax the rules" -- but `tools/` was absent here, so
-#: ra8_emulator, media_dl, ra8_viewer and the rest were never annotation-checked
-#: at all. `scripts/` holds no C. Vendored SOUP under `libs/third_party/` is
-#: dropped by is_excluded(), not by omission from this tuple.
+#: ra8_emulator, mdl, ra8_viewer and the rest were never annotation-checked
+#: at all. `scripts/` holds no C. Vendored SOUP under either canonical
+#: third-party root is dropped by is_excluded(), not by omission from this
+#: tuple.
 SCAN_DIRS = ("libs", "examples", "tests", "port", "tools", "apps")
 
 EXCLUDED_PATH_PARTS = {
@@ -72,12 +73,10 @@ BUILD_OUTPUT_PARTS = frozenset(
 #: receives its own reviewed generator and reproducibility contract.
 GENERATED_SOURCE_CLASS = "generated-source"
 
-#: Source roots that are compiled by the host toolchain and never cross-compiled
-#: into a firmware image. `tests/` is the host unit-test suite; `tools/` is the
-#: host-side tooling (ra8_emulator, media_dl, ra8_fmt, ...), which `scripts/ci.sh`
-#: builds with ``CC=clang-18`` and which no `cmake/toolchain-ra8d2.cmake` target
-#: ever references.
-HOST_ONLY_ROOTS = frozenset({"tests", "tools", "apps"})
+#: Source regions compiled only by the host toolchain. ``apps/`` cannot be
+#: exempted as a root: ``apps/board/`` is firmware and ``apps/shared_libs/`` is
+#: linked into firmware. Only the hosted product form is host-only.
+HOST_ONLY_PREFIXES = ("tests/", "tools/", "apps/host/")
 
 #: Roots whose immediate child directory is one module for RA8_PRIV purposes.
 #: `libs/<module>` is the obvious one. `tools/<tool>` is the same shape: each
@@ -93,9 +92,9 @@ MODULE_ROOTS = ("libs", "tools", "apps")
 #: and `tools/<tool>` are one level down. `apps/` is TWO, and the level it
 #: skips is deliberately not part of the module identity: under `apps/` the
 #: first component is a BUILD FORM of a product, not a library.
-#: `apps/stand_alone/media_dl` is the host CLI form of media_dl,
-#: `apps/threadx_modules/media_dl` will be its loadable on-device form, and
-#: `apps/shared/media_dl` is the portable core BOTH forms link. Those are
+#: `apps/host/mdl` is the host CLI form,
+#: `apps/board/threadx_modules/mdl` can be its loadable on-device form, and
+#: `apps/shared_libs/mdl` is the portable core BOTH forms link. Those are
 #: packagings of ONE module: they share the `mdl_` symbol namespace, and a
 #: form's composition root exists precisely to drive the core's promoted
 #: RA8_PRIV seams. So the key is `apps/<product>` and the category is
@@ -105,14 +104,14 @@ MODULE_ROOTS = ("libs", "tools", "apps")
 #: Keying on the category instead -- which is what a flat depth of 1 did --
 #: was wrong in both directions at once: two unrelated products sharing a
 #: category could reach into each other's internals unreported, and the day
-#: media_dl's core moved to `apps/shared/` it reported 203 cross-module
+#: the portable core moved to `apps/shared_libs/` it reported cross-module
 #: calls that are the composition root doing its job.
 #:
 #: The one-way rule this does NOT relax, because it is a different rule
-#: entirely: `apps/shared` must never include from a form. That is enforced
+#: entirely: `apps/shared_libs` must never include from a form. That is enforced
 #: by the core configuring, building and testing standalone -- it has no
 #: form on its include path at all -- not by this key.
-MODULE_DEPTH = {"apps": 2}
+APP_BOARD_FORM = "board"
 
 
 def repo_root() -> pathlib.Path:
@@ -183,8 +182,9 @@ def is_first_party(path: str) -> bool:
     Definitions reached through the include path are not automatically in
     scope. Parsing the ``.cpp`` translation units as C++ pulls in
     libstdc++, whose headers define hundreds of non-static inline
-    functions; vendored trees under ``libs/third_party/`` are SOUP. Only
-    files under the scan roots are ours to hold to the linkage rule.
+    functions; vendored trees under either canonical third-party root are
+    SOUP. Only files under the scan roots are ours to hold to the linkage
+    rule.
     """
     return _root_part(path) in SCAN_DIRS
 
@@ -214,20 +214,25 @@ def is_host_only_path(path: str) -> bool:
     matched on the repo-relative root rather than by substring, so a directory
     named ``tests`` nested anywhere else cannot silently claim the exemption.
 
-    This narrows nothing for firmware: `libs/`, `src/`, `port/` and
-    `examples/` are all still held to Rule 3, and in fact carry zero
-    ``RA8_NASA_RULE_3_OK`` waivers tree-wide because the firmware genuinely
-    does not allocate.
+    This narrows nothing for firmware: `libs/`, `port/`, `examples/`,
+    `apps/shared_libs/`, and `apps/board/` remain held to Rule 3. They carry
+    zero ``RA8_NASA_RULE_3_OK`` waivers tree-wide because the firmware
+    genuinely does not allocate.
     """
-    return _root_part(path) in HOST_ONLY_ROOTS
+    try:
+        rel = pathlib.Path(path).resolve().relative_to(repo_root()).as_posix()
+    except (ValueError, OSError):
+        return False
+    return rel.startswith(HOST_ONLY_PREFIXES)
 
 
 def module_of(path: str) -> str | None:
     """Return the owning module of a path, or None when it is outside one.
 
     ``libs/<module>/...`` and ``tools/<tool>/...`` name their module one level
-    below the root; ``apps/<category>/<product>/...`` names it two, and drops
-    the category -- see MODULE_DEPTH for why a build form is not a module.
+    below the root. Apps drop their build-form components: host and shared
+    products are ``apps/<form>/<product>``, while board products are
+    ``apps/board/<form>/<product>``.
     """
     parts = pathlib.Path(path).parts
     for root in MODULE_ROOTS:
@@ -235,7 +240,10 @@ def module_of(path: str) -> str | None:
             idx = parts.index(root)
         except ValueError:
             continue
-        depth = MODULE_DEPTH.get(root, 1)
+        depth = 1
+        if root == "apps":
+            tail = parts[idx + 1 :]
+            depth = 3 if tail and tail[0] == APP_BOARD_FORM else 2
         # Require something below the module directory: a loose file sitting
         # directly in a category is not a product and must not name one.
         if idx + depth < len(parts) - 1:

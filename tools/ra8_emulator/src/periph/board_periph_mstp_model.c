@@ -12,7 +12,7 @@
  *
  * This translation unit deliberately takes NO Unicorn dependency: it is pure
  * state + arithmetic, so the gate table is unit-tested directly on the host
- * (tests/test_ra8_emulator_mstp_gate.c) rather than only through a full emulation
+ * (tests/misc/src/test_ra8_emulator_mstp_gate.c) rather than only through a full emulation
  * run. The board_periph block glue that needs the engine (register window
  * ownership, reset hook, end-of-run report) is the separate
  * @c board_periph_mstp.c.

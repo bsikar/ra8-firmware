@@ -162,16 +162,14 @@ RA8_HW_REGISTER_ACCESS RA8_INTERNAL static inline volatile uint32_t* internal_it
 RA8_INTERNAL static inline bool internal_itm_ready(void)
 {
   /* A redirected byte sink needs no ITM/debugger -- it is always ready.
-   * Collapsing this to `return s_byte_sink != nullptr;` is only equivalent
-   * under RA8_OFF_TARGET, where the #else arm below does not exist; on
-   * target that arm must still run when the condition is false. */
+   * Off target that is the complete readiness condition. On target the
+   * architectural checks still run when no sink is installed. */
+#ifdef RA8_OFF_TARGET
+  return s_byte_sink != nullptr;
+#else
   if (s_byte_sink != nullptr) {
-    // NOLINTNEXTLINE(readability-simplify-boolean-expr)
     return true;
   }
-#ifdef RA8_OFF_TARGET
-  return false;
-#else
   /* Hardening: if DEMCR.TRCENA is clear the ITM block is powered down
    * and any read of its registers (TCR, TENR, STIM) will bus-fault.
    * Pre-check TRCENA via the shared ra8_scb primitive (DEMCR is always
@@ -188,10 +186,6 @@ RA8_INTERNAL static inline bool internal_itm_ready(void)
    * IPSR != 0 means we are inside an exception handler. Even if
    * TRCENA happens to be on, dropping log lines is preferable to a
    * second fault that masks the original PC. */
-  /* cppcheck-suppress unreadVariable -- the inline asm mrs writes IPSR into the
-   * variable; cppcheck cannot see through the asm. */
-  /* cppcheck-suppress knownConditionTrueFalse -- cppcheck assumes the
-   * asm-written IPSR value stays 0. */
   volatile uint32_t ipsr = 0U;
   __asm__ volatile("mrs %0, ipsr" : "=r"(ipsr));
   if (ipsr != 0U) {
@@ -646,7 +640,7 @@ typedef struct {
  *
  * @warning When a new code is added to `ra8_err_t`, this table MUST be
  *          extended in the same commit. The unit test
- *          `tests/test_ra8_log.c` walks every code so a missing entry
+ *          `tests/core/src/test_ra8_log.c` walks every code so a missing entry
  *          fails CI.
  *
  * @since 0.1.0

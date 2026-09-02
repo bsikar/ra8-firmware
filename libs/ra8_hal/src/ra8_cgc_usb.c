@@ -163,8 +163,8 @@ typedef enum : uint16_t {
  */
 RA8_INTERNAL static ra8_err_t internal_wait_usbcksrdy(uint8_t expected)
 {
-  volatile uint8_t* const usbckcr = ra8_sys_usbckcr();
-  const uint8_t           mask    = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
+  volatile const uint8_t* const usbckcr = ra8_sys_usbckcr();
+  const uint8_t                 mask    = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
   /* Bounded wait through ra8_hw_err.h: on host tests the ra8_fake_mmio
    * seam decides the poll (first-poll success unless a test arms a
    * fault), so the real timeout leg is reachable everywhere. */
@@ -361,8 +361,7 @@ RA8_INTERNAL static ra8_err_t internal_usbckcr_switch_to_pll2p_div5(void)
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
-ra8_err_t ra8_cgc_usbfs_clock_enable(
-  void) // NOLINT(readability-function-size,readability-function-cognitive-complexity)
+ra8_err_t ra8_cgc_usbfs_clock_enable(void)
 {
   ra8_log_info(s_tag, "usbfs clock enable");
 
@@ -486,8 +485,8 @@ typedef enum : uint32_t {
  */
 RA8_INTERNAL static ra8_err_t internal_wait_usb60cksrdy(uint8_t expected)
 {
-  volatile uint8_t* const usb60ckcr = ra8_sys_usb60ckcr();
-  const uint8_t           mask      = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
+  volatile const uint8_t* const usb60ckcr = ra8_sys_usb60ckcr();
+  const uint8_t                 mask      = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
   /* Bounded wait through ra8_hw_err.h: on host tests the ra8_fake_mmio
    * seam decides the poll (first-poll success unless a test arms a
    * fault), so the real timeout leg is reachable everywhere. */
@@ -622,8 +621,7 @@ ra8_err_t priv_ra8_cgc_ensure_hoco_running_for_usb_ck(void)
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_cgc_usbhs_pll_enable(
-  void) // NOLINT(readability-function-size,readability-function-cognitive-complexity)
+ra8_err_t ra8_cgc_usbhs_pll_enable(void)
 {
   ra8_log_info(s_tag, "usbhs phy clock enable");
 

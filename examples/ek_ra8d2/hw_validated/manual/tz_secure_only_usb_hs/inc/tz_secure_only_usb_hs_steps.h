@@ -1,6 +1,6 @@
 /**
  * @file
- * examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/tz_secure_only_usb_hs_steps.h
+ * examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/inc/tz_secure_only_usb_hs_steps.h
  * @brief ThreadX + USBX worker machinery for the secure-only USB-HS echo app.
  *
  * @par Tag
@@ -8,7 +8,7 @@
  *
  * @details
  * Companion sibling header for
- * ``examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/main.c``.
+ * ``examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/main.c``.
  * The CDC-ACM activate/deactivate callbacks, the USBX bring-up step
  * routines, the INTENB0 re-arm watchdog and the ThreadX
  * ``tx_application_define`` kernel hook were factored out of ``main.c``
@@ -17,9 +17,9 @@
  * keep every translation unit under the 1000-line ``check_file_size.py``
  * cap. ``main.c`` retains ``main()``, ``demo_pins_init`` and
  * ``demo_panic_halt``; it reaches the worker side only through ThreadX's
- * ``tx_kernel_enter`` -> ``tx_application_define`` linkage, so this header
- * exposes that single externally-linked hook plus the descriptor arrays
- * shared between the two siblings.
+ * ``tx_kernel_enter`` -> ``tx_application_define`` linkage. ThreadX's
+ * ``tx_api.h`` declares that kernel hook, so this header exposes only the
+ * descriptor arrays shared between the two sibling implementation units.
  *
  * This split is a pure, behaviour-preserving code move: no logic was
  * altered.
@@ -99,23 +99,4 @@ extern UCHAR s_tz_secure_only_usb_hs_string_framework[k_tz_secure_only_usb_hs_st
 extern UCHAR
   s_tz_secure_only_usb_hs_language_id_framework[k_tz_secure_only_usb_hs_language_id_framework_len];
 
-/**
- * @brief ThreadX application-define hook. Spawns the demo worker.
- *
- * @details
- * Called once by ``tx_kernel_enter`` (from ``main()`` in ``main.c``)
- * after the ThreadX scheduler is initialised. Creates the CDC-active
- * semaphore and the auto-start USBX echo worker thread. The full
- * contract is documented at the definition in
- * ``tz_secure_only_usb_hs_steps.c``.
- *
- * @param[in] first_unused_memory Sentinel (unused; static stacks).
- *
- * @pre Called from ``tx_kernel_enter`` after scheduler init.
- * @post One auto-start worker thread is queued.
- *
- * @note Called once at boot; not thread-safe.
- * @since 0.1.0
- */
-VOID tx_application_define(VOID* first_unused_memory);
 #endif /* !RA8_OFF_TARGET */

@@ -28,4 +28,4 @@ common ground, and roughly 2.2-4.7 kOhm pull-ups to 3V3 on both lines. A
 Raspberry Pi on `/dev/i2c-1` works. The on-wire target role is unverified on
 silicon, and nothing off-target can arbitrate it: the emulator models RIIC only
 as a controller. The driver logic is covered by host MC/DC tests in
-`tests/test_ra8_riic_peripheral.c` instead.
+`tests/misc/src/test_ra8_riic_peripheral.c` instead.

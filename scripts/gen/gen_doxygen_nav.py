@@ -120,7 +120,7 @@ TIER_TITLES: dict[str, str] = {
     "ek_ra8d2": "EK-RA8D2 (stock evaluation kit)",
     "ek_ra8d2/hw_validated": "Hardware-validated",
     "ek_ra8d2/hw_validated/hil": "Hardware-in-the-loop (HIL)",
-    "ek_ra8d2/hw_validated/c6": "ESP32-C6 companion radio (make hil-c6)",
+    "ek_ra8d2/hw_validated/c6": "ESP32-C6 companion radio (just hil::c6)",
     "ek_ra8d2/hil_needs_revalidation": "HIL -- needs re-validation",
     "ek_ra8d2/hw_validated/manual": "Manual (jumper / button steps)",
     "ek_ra8d2/hw_pending": "Hardware-pending",
@@ -136,7 +136,7 @@ TIER_BRIEFS: dict[str, str] = {
     "ek_ra8d2/hw_validated/c6": "Apps that talk to the ESP32-C6 companion radio "
     "over esp-hosted. Hardware-validated, but on a DIP-switch configuration "
     "(SW4-4 OFF) that excludes the default HIL pass -- run them with "
-    "`make hil-c6`.",
+    "`just hil::c6`.",
     "_unsupported": "Apps that need hardware not on the stock board "
     "(motor driver, audio CODEC, external radios, ...).",
     "ra8p1_foundation": "Foundation apps for the RA8P1 variant (RA8D2 + Ethos-U55 NPU).",
@@ -263,7 +263,8 @@ class TierNode:
 def build_example_tree() -> tuple[TierNode, int]:
     """Discover every example app and assemble the tier tree it implies.
 
-    An app is defined as "a directory containing main.c", which is what makes
+    An app is defined as a directory containing ``src/main.c`` and a root
+    ``CMakeLists.txt``, which is what makes
     the navigation self-maintaining: moving an app between tiers on disk moves
     it in the sidebar with no edit here, and a deleted app simply stops being
     found. Intermediate tier nodes are created on demand as each path is
@@ -275,9 +276,11 @@ def build_example_tree() -> tuple[TierNode, int]:
     """
     root = TierNode("")
     count = 0
-    mains = sorted(EXAMPLES_DIR.rglob("main.c"))
+    mains = sorted(EXAMPLES_DIR.glob("**/src/main.c"))
     for main_c in mains:
-        app_dir = main_c.parent
+        app_dir = main_c.parent.parent
+        if not (app_dir / "CMakeLists.txt").is_file():
+            continue
         tier_rel = app_dir.parent.relative_to(EXAMPLES_DIR).as_posix()
         if tier_rel == ".":
             tier_rel = ""
@@ -366,9 +369,10 @@ def gen_examples() -> str:
         " *        hardware-validation tiers the repository uses on disk.",
         " *",
         " * Each app is a self-contained directory under `examples/` with its",
-        " * own `main.c`, boot files, and linker script. Pick a tier below;",
-        " * every app links to its README. Build any of them with `make <app>`",
-        " * or run it on the emulator with `make emu-<app>`.",
+        " * implementation and boot overrides under `src/`, public interfaces",
+        " * under `inc/`, and build/link configuration at its root. Pick a tier below;",
+        " * every app links to its README. Build any of them with",
+        " * `just apps::build <app>` or run it with `just apps::emulator::run <app>`.",
         " *",
     ]
     child_nodes = [root.children[k] for k in sorted(root.children)]
@@ -517,18 +521,28 @@ def gen_docs() -> str:
 # Doxygen resolves a directory reference by RAW STRING SUFFIX rather than by
 # path component, so a top-level name that is also the tail of some other
 # directory's path binds its description to whichever doxygen indexed first.
-# "port" is the live case: it is a suffix of libs/ra8_rabook_import, so a plain
-# "@dir port" in the static docs/doxygen_dirs.dox silently describes that
-# library instead. The other top-level directories have no such twin and keep
-# their static blocks there. Here we emit a path-qualified @dir for each
-# colliding top-level directory, which matches exactly one directory.
+# ``libs``, ``port``, and ``scripts`` are live cases: the bare names
+# suffix-match apps/shared_libs, apps/shared_libs/rabook_import, and app-local
+# scripts directories, so a plain ``@dir`` block silently describes
+# whichever directory Doxygen indexed first. The other top-level directories
+# have no such twin and keep their static blocks in docs/doxygen_dirs.dox. Here
+# we emit one path-qualified block per collision.
 COLLIDING_TOP_DIRS: dict[str, str] = {
+    "libs": "Hand-written first-party libraries -- the drivers and substrates "
+    "the rest of the firmware builds on (HAL peripherals and register maps, "
+    "the ra8_core substrate, I/O fabric, security and TrustZone, the e-reader "
+    "stack, storage, networking, and board support). Vendored SOUP lives under "
+    "libs/third_party and is excluded from these docs.",
     "port": "Adapters between the vendored stacks under libs/third_party and "
     "this firmware: ThreadX to the RA8 clock tree, NetX Duo to a link layer, "
     "USBX to ra8_usb, LevelX to an ra8_fs block device, the Mbed TLS feature "
     "set, NimBLE's HCI transport, esp-hosted, and a hosted POSIX filesystem "
     "adapter. First-party code held to the full rule set; the stacks it "
     "adapts are not.",
+    "scripts": "Developer and CI tooling: build, flash, and debug wrappers; "
+    "the HIL bench rig control (Tapo power, J-Link, and RTT); the OpenBao "
+    "secret client and root-of-trust key store; and the check_*.py quality "
+    "gates under scripts/checks that CI and the git hooks enforce.",
 }
 
 
@@ -536,15 +550,14 @@ def gen_dirs() -> str:
     """Emit ``@dir`` blocks for top-level directories a bare name cannot reach.
 
     Doxygen matches a directory reference by raw string suffix rather than by
-    path component, so ``@dir port`` also matches ``libs/ra8_rabook_import``
-    and the description lands on whichever one doxygen indexed first. Only the
-    colliding names need this treatment; the rest keep their static blocks in
-    docs/doxygen_dirs.dox.
+    path component, so top-level names such as ``libs``, ``port``, and
+    ``scripts`` can also match nested directories. Only colliding names need
+    this treatment; the rest keep their static blocks in docs/doxygen_dirs.dox.
 
     Returns the file text, newline-terminated.
     """
     out = ["// GENERATED by scripts/gen/gen_doxygen_nav.py -- do not edit.", ""]
-    # Disambiguate with the "<repo-dir>/port" prefix rather than an absolute
+    # Disambiguate with the "<repo-dir>/<name>" prefix rather than an absolute
     # path: it is unique (nothing nested repeats the repo directory name), and
     # it avoids a doxygen bug that truncates a directory path at the first
     # dot-prefixed component (e.g. a ".../.claude/worktrees/.../port" checkout).

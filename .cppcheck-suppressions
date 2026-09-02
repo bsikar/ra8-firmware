@@ -27,32 +27,11 @@
 # CMSIS-standard way to implement the Reset_Handler .data / .bss
 # initialisation and to scan the stack-canary sentinel region.
 # ---------------------------------------------------------------------------
-comparePointers:apps/stand_alone/ereader/vector_table.c
+comparePointers:apps/board/stand_alone/ereader/src/vector_table.c
 comparePointers:libs/ra8_core/src/ra8_infrastructure.c
-comparePointers:libs/ra8_board_ek_ra8d2/boot/vector_table.c
-comparePointers:libs/ra8_board_ra8p1/boot/vector_table.c
+comparePointers:libs/ra8_board_ek_ra8d2/src/boot/vector_table.c
+comparePointers:libs/ra8_board_ra8p1/src/boot/vector_table.c
 comparePointers:examples/*/*/vector_table.c
-comparePointers:examples/*/*/*/vector_table.c
-comparePointers:examples/*/*/*/*/vector_table.c
-
-# ---------------------------------------------------------------------------
-# Pre-existing cppcheck warnings in two app/main.c files, surfaced when the
-# examples/ tree was reorganised into examples/<tier>/<app>/. The file
-# moves staged every per-app main.c as ADDED (rename detection happens
-# AFTER the pre-commit cppcheck pass), so the pre-commit hook re-scanned
-# files it previously left alone and found these latent issues.
-
-# These are app demos only; fixing them is out of scope for the directory-
-# layout change. Suppressing per-line, with a TODO to revisit during the
-# next cleanup wave on those apps.
-
-# threadx_https_client demo_verify_cert_pin() is a placeholder that always
-# returns 0 (cert-pin verification not yet wired through to mbedTLS).
-# threadx_netx_tcp_echo `di` could be tightened to a smaller scope but is
-# correct as written.
-# ---------------------------------------------------------------------------
-knownConditionTrueFalse:examples/_unsupported/threadx_https_client/main.c
-variableScope:libs/ra8_hal/src/ra8_touch.c
 
 # ---------------------------------------------------------------------------
 # duplicateExpression on ra8_time.c tick rollover math
@@ -121,24 +100,96 @@ unusedStructMember:libs/*/inc/*.h
 constParameterCallback:libs/ra8_sdfont/src/ra8_sdfont.c
 
 # ---------------------------------------------------------------------------
-# constParameterPointer / constVariablePointer suggestions are informational
-# only. The firmware already uses `volatile` on every MMIO pointer -- adding
-# `const` on top is valid but generates no code-quality improvement and
-# cppcheck's suggestion conflicts with the habit of treating register access
-# as always-mutable at the language level. Suppressed project-wide.
+# constParameterPointer is retained only at exact, reviewed declarations whose
+# non-const type is part of the interface or test seam. Keep these line-bound:
+# a new suggestion elsewhere in any of these files must remain visible.
+
+# ra8_cache_store_read and ra8_vsource_loader implement callback typedefs with
+# mutable `void *ctx`; const-qualifying their definitions would make the
+# function-pointer assignments incompatible even though these implementations
+# only read the pointed-to state.
+constParameterPointer:libs/ra8_cache_store/src/ra8_cache_store.c:489
+constParameterPointer:libs/ra8_mem/src/ra8_vsource.c:84
+
+# These bounded-poll helpers pass the register/state pointer to the host
+# fake-MMIO seam, which mutates the emulated register to exercise success and
+# timeout outcomes. The target build only reads it, but qualifying the shared
+# parameter const would make the test configuration ill-typed.
+constParameterPointer:libs/ra8_hal/src/ra8_cac.c:83
+constParameterPointer:libs/ra8_hal/src/ra8_canfd_frame.c:216
+constParameterPointer:libs/ra8_hal/src/ra8_eth_gwca_default.c:545
+constParameterPointer:libs/ra8_hal/src/ra8_etha.c:456
+constParameterPointer:libs/ra8_hal/src/ra8_i2c_peripheral.c:274
+constParameterPointer:libs/ra8_hal/src/ra8_i3c_i2c.c:201
+constParameterPointer:libs/ra8_hal/src/ra8_sdhi.c:551
+constParameterPointer:libs/ra8_hal/src/ra8_usb.c:251
+
+# ethosu_invoke_v3 implements Arm's mutable-driver ABI. The IPC semaphore
+# pointer is also semantically mutable: reading that hardware register sets
+# its lock latch, and the host seam models the same read-to-set side effect.
+constParameterPointer:libs/ra8_hal/src/ra8_ethosu_shim.c:179
+constParameterPointer:libs/ra8_hal/src/ra8_ipc_sem_ring.c:85
+
+# RSIP and secure-service output parameters are mutable public API contracts.
+# cppcheck sees the fail-closed production configuration, where unsupported
+# operations validate but deliberately do not fill those outputs; the
+# off-target/insecure implementations do fill them. Const-qualifying only the
+# production definition would conflict with the public declaration and the
+# alternate implementation. Each suppression is bound to the exact output
+# declaration instead of hiding either subtree.
+constParameterPointer:libs/ra8_hal/src/ra8_rsip.c:338
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_asym.c:636
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_asym.c:650
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_asym.c:661
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_asym.c:677
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_asym.c:697
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_asym.c:706
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_asym.c:718
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_asym.c:734
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_cipher.c:762
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_cipher.c:769
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_cipher.c:776
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_cipher.c:783
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_cipher.c:793
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_cipher.c:806
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_cipher.c:821
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_cipher.c:842
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_cipher.c:864
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_cipher.c:883
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_cipher.c:904
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_cipher.c:919
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_devsec.c:187
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_devsec.c:199
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_devsec.c:217
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_ecc.c:344
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_ecc.c:371
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_ecc.c:396
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_key_injection.c:555
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_key_injection.c:565
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_key_injection.c:577
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_rsa.c:368
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_rsa.c:397
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_rsa.c:412
+constParameterPointer:libs/ra8_hal/src/ra8_rsip_rsa.c:414
+constParameterPointer:libs/ra8_secure_app/src/key_vault.c:574
+constParameterPointer:libs/ra8_secure_app/src/key_vault.c:589
+constParameterPointer:libs/ra8_secure_app/src/secure_trng.c:179
 # ---------------------------------------------------------------------------
-# constParameterPointer / constVariablePointer suppression project-wide.
-# Bare-id suppression form is accepted by cppcheck 2.13 (Ubuntu 24.04)
-# and 2.20 (local) alike.
-constParameterPointer
-constVariablePointer
+# The headless view stub shares ra8_viewer_view_open's signature with the Cocoa
+# implementation (ra8_viewer_view.m), which does mutate the reader; the stub
+# ignores it, so only this file sees the suggestion and cannot take it.
+# emu_memmap_detach hands its uc_engine* straight to the vendored Unicorn API
+# (uc_mem_unmap and friends), whose parameters are non-const, and its workspace
+# argument is written back in the same function; neither suggestion is takeable.
+constParameterPointer:tools/ra8_emulator/src/engine/emu_memmap.c:486
+constParameterPointer:tools/rabook_viewer/src/ra8_viewer_view_stub.c:24
 
 
 # unusedStructMember on the ereader_shelf app-state header: sh_entry_t /
 # sh_line_t / sh_* members are populated and read across the app's eight
 # TUs (sh_book.c, sh_cover.c, sh_reader.c, ...); cppcheck analyzes the
 # header per-TU and cannot see the cross-TU reads.
-unusedStructMember:examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/sh_app.h
+unusedStructMember:examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/inc/sh_app.h
 
 # unusedStructMember on the ra8_emulator board-view status struct. Its fields are
 # read in tools/ra8_emulator/src/display/board_overlay.c via a pointer to the struct declared
@@ -164,8 +215,19 @@ missingInclude:tools/ra8_emulator/*
 # the host-tool role and the Unicorn callback ABI it is built on, not defects:
 #   21.6  -- it is a CLI tool; <stdio.h> IS its interface (printf/fopen/...).
 #   21.3  -- host tool; malloc/free for framebuffers is appropriate (no P10).
-#   11.x  -- Unicorn's hook/MMIO ABI passes user data as void* and installs
-#            handlers via function-pointer casts; both are unavoidable.
+#   11.1/11.2/11.3/11.5/11.8 -- Unicorn's hook/MMIO ABI passes user data as
+#            void* and installs handlers via function-pointer casts; both are
+#            unavoidable.
+#   11.6  -- NOT the Unicorn ABI. Two mechanisms, both host-only: the
+#            caller-workspace alignment predicate in emu_presentation_open,
+#            `((uintptr_t)scratch % alignof(uint16_t)) != 0U`, which has no
+#            conforming alternative and is the same class D-011 already
+#            accepts in ra8_io_vfs_namespace.c; and the CoreGraphics direct
+#            provider built by board_view_provider.c, whose `info` word is an
+#            integer descriptor by CGDataProviderCreateDirect's own contract,
+#            encoded in internal_provider_open and decoded in
+#            internal_provider_fd through intptr_t. Both are host-tool
+#            boundaries with no target-firmware counterpart.
 #   15.5  -- guard-clause early returns are the house style (advisory).
 #   17.7  -- some libc / Unicorn return values are intentionally ignored.
 # The rationale for each rule is given above; docs/qualification/MISRA_DEVIATIONS.md
@@ -196,16 +258,16 @@ constParameterCallback:libs/ra8_hal/src/ra8_cnecc.c
 # list (not inline) so the Doxygen block stays adjacent to the function for the
 # doc-coverage audit (same pattern as ra8_sdfont above).
 constParameterCallback:libs/ra8_ftl/src/ra8_ftl.c
-# constParameterCallback on the ra8_comic streamed-ZIP miniz read callback
+# constParameterCallback on the comic streamed-ZIP miniz read callback
 # (s_stream_read): its signature is dictated by mz_zip's read-func pointer type,
 # so opaque cannot be const without a function-pointer cast.
-constParameterCallback:libs/ra8_comic/src/ra8_comic_cbz.c
-# constParameterCallback on the ra8_epub streamed-ZIP miniz read callback
+constParameterCallback:apps/shared_libs/comic/src/comic_cbz.c
+# constParameterCallback on the epub streamed-ZIP miniz read callback
 # (priv_stream_read): its signature is dictated by miniz's mz_file_read_func
 # (m_pRead) pointer type, so opaque cannot be const without a function-pointer
 # cast. Suppressed via the list (not inline) so the Doxygen block stays adjacent
-# to the function for the doc-coverage audit (same pattern as ra8_comic above).
-constParameterCallback:libs/ra8_epub/src/ra8_epub_open.c
+# to the function for the doc-coverage audit (same pattern as comic above).
+constParameterCallback:apps/shared_libs/epub/src/epub_open.c
 # constParameterCallback on the ra8_c6link decode-arena allocator
 # (ra8_c6link_priv_arena_free): its signature is dictated by protobuf-c's
 # ProtobufCAllocator, whose free member is `void (*)(void*, void*)`. The pointer
@@ -213,19 +275,15 @@ constParameterCallback:libs/ra8_epub/src/ra8_epub_open.c
 # released is the newest one -- so const would be wrong as well as uncompilable
 # without a function-pointer cast. Suppressed via the list (not inline) so the
 # Doxygen block stays adjacent to the function for the doc-coverage audit (same
-# pattern as ra8_epub above).
+# pattern as epub above).
 constParameterCallback:libs/ra8_c6link/src/ra8_c6link_arena.c
 # constParameterCallback on the ereader_comic reader read callback (cm_read):
-# its signature is dictated by the ra8_comic read-callback pointer type, so ctx
+# its signature is dictated by the comic read-callback pointer type, so ctx
 # cannot be const without a function-pointer cast. Listed (not inline) to keep
 # the Doxygen block adjacent for the doc-coverage audit.
-constParameterCallback:examples/ek_ra8d2/hw_pending/ereader_comic/main.c
+constParameterCallback:examples/ek_ra8d2/hw_pending/ereader_comic/src/main.c
 
 
-# unusedStructMember in NimBLE NPL-ThreadX bridge headers. Fields are
-# consumed by NimBLE host code at link time, not visible to the per-TU
-# cppcheck pass.
-unusedStructMember:port/nimble/inc/nimble_npl_threadx.h
 
 # knownConditionTrueFalse in ra8_dual_core: internal_is_cpu0() returns
 # a compile-time constant that depends on RA8_BUILD_FOR_CPU1. cppcheck
@@ -241,36 +299,36 @@ knownConditionTrueFalse:libs/ra8_hal/src/ra8_dual_core.c
 # D-004 disagree, D-004 wins. Each row anchored a reviewed 12.1 hit at its
 # then-current file:line coordinate.
 
-# STATUS (2026-08-15): the anchors have decayed. Every anchored file has
-# been refactored or restyled since the review, 17 rows point past their
-# file's current end, and 9 of the 10 files carry 12.1 rows in
-# .github/misra-baseline.txt again -- so this block filters little or
-# nothing from today's scan and the reviewed instances are held by the
-# ratchet baseline instead. The rows are KEPT as review evidence. Do not
+# STATUS (2026-08-25): this block contains only validated, in-range anchors.
+# The 16 rows that pointed past EOF were removed at this refresh; their
+# review decisions remain available in repository history and the review
+# ledger. A suppression-governance validator now rejects literal cppcheck
+# anchors whose source is missing or whose line is past EOF. The remaining
+# 50 rows across 8 paths are retained as the live reviewed subset. Do not
 # add new rows: per D-004, a new 12.1 hit is either parenthesized or
 # recorded in the register and ratchet-held. Row and path COUNTS here
 # are pinned by the register's "Suppression ownership" list, so growing
 # or shrinking this block without updating the register fails the misra
-# gate (check_misra_deviations.py); the row identities themselves are
-# review evidence, held by this file's history.
+# gate (check_misra_deviations.py); the identities remain review evidence
+# held by the ledger and repository history.
 # ---------------------------------------------------------------------------
 misra-c2012-12.1:libs/ra8_core/src/ra8_log.c:251
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:64
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:70
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:77
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:168
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:192
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:208
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:212
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:232
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:247
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:251
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:271
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:293
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:298
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_open.c:96
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_open.c:213
-misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_open.c:217
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:64
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:70
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:77
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:168
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:192
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:208
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:212
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:232
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:247
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:251
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:271
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:293
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_chapter.c:298
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_open.c:96
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_open.c:213
+misra-c2012-12.1:apps/shared_libs/epub/src/epub_open.c:217
 misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:275
 misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:319
 misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:414
@@ -279,57 +337,32 @@ misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:419
 misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:478
 misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:491
 misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:526
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:564
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:734
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:756
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:816
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:825
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:867
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:870
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1042
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1140
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1147
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1278
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1281
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1319
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1331
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1374
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1380
-misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1405
 misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:62
 misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:65
-misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:68
 misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:71
 misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:98
 misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:195
 misra-c2012-12.1:libs/ra8_ota/src/ra8_ota.c:190
 misra-c2012-12.1:libs/ra8_ota/src/ra8_ota.c:235
 misra-c2012-12.1:libs/ra8_ota/src/ra8_ota.c:255
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:266
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:311
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:316
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:345
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:366
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:403
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:510
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:535
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:538
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:541
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:584
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:615
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:633
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:636
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_parse.c:62
-misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_render.c:122
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:266
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:311
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:316
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:345
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:366
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:403
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:510
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:535
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:538
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:541
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:584
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:615
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:633
+misra-c2012-12.1:apps/shared_libs/reflow/src/reflow_layout.c:636
 misra-c2012-12.1:port/nimble/src/nimble_npl_threadx.c:354
 misra-c2012-12.1:port/nimble/src/nimble_npl_threadx.c:398
 misra-c2012-12.1:port/nimble/src/nimble_npl_threadx.c:417
 
-# unusedStructMember on the USBX device-controller port TU. Its private
-# controller-state struct is filled by the DCD entry points and read by the
-# vendored USBX host stack at link time, which cppcheck's per-TU pass does
-# not see.
-unusedStructMember:port/usbx/src/ux_dcd_ra8_usb.c
 
 # ---------------------------------------------------------------------------
 # Weak-extern address compare in the shared SysTick handler. The
@@ -362,18 +395,18 @@ misra-c2012-7.4:port/esp-hosted/src/ra8_esp_hosted_gpio_edge.c
 misra-c2012-7.4:port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c
 
 # ---------------------------------------------------------------------------
-# Rule 7.4 on the media_dl host tests, same tooling gap as the two rows above.
+# Rule 7.4 on the mdl host tests, same tooling gap as the two rows above.
 # `char body[k_internal_sink_bytes] = "old";` and the mkstemp template
 # `char root[] = "/tmp/mdl_ws.XXXXXX";` both INITIALISE a char array from a
 # literal, which Rule 7.4 explicitly permits and which both objects require:
 # mdl_net_get_buf() writes through a `char*` output buffer, and mkstemp()
 # rewrites its template in place. Neither object aliases the literal.
 # ---------------------------------------------------------------------------
-misra-c2012-7.4:apps/shared/media_dl/tests/test_media_dl_net_c6link.c
-misra-c2012-7.4:apps/shared/media_dl/tests/test_media_dl_export_workspace.c
+misra-c2012-7.4:apps/shared_libs/mdl/tests/src/test_mdl_net_c6link.c
+misra-c2012-7.4:apps/shared_libs/mdl/tests/src/test_mdl_export_workspace.c
 
 # ---------------------------------------------------------------------------
-# Rule 21.16 on the media_dl C6-backend buffer test.
+# Rule 21.16 on the mdl C6-backend buffer test.
 # Rule 21.16 requires memcmp's operands to be essentially signed, unsigned,
 # enum or pointer -- never essentially char. The buffer here is `char` because
 # that is mdl_net_get_buf()'s output type (`char* buf`), so the test cannot
@@ -384,21 +417,21 @@ misra-c2012-7.4:apps/shared/media_dl/tests/test_media_dl_export_workspace.c
 # outcome. Suppressed rather than deviated because it is one call site in a
 # host test, not a firmware idiom.
 # ---------------------------------------------------------------------------
-misra-c2012-21.16:apps/shared/media_dl/tests/test_media_dl_net_c6link.c
+misra-c2012-21.16:apps/shared_libs/mdl/tests/src/test_mdl_net_c6link.c
 
 # ---------------------------------------------------------------------------
 # Rule 21.6 on mdl_export_epub_meta.c -- the package-document half that the
-# eight-file split (25d37e53d) carved out of mdl_export_epub.c. media_dl is a
+# eight-file split (25d37e53d) carved out of mdl_export_epub.c. mdl is a
 # host CLI tool whose entire bounded-text strategy is snprintf(), so <stdio.h>
 # is its interface rather than an incidental include, and every one of the
-# other media_dl translation units carries the identical accepted row in
+# other mdl translation units carries the identical accepted row in
 # .github/misra-baseline.txt -- including mdl_export_epub.c, the file this one
 # was split from. Suppressed rather than baselined only because the split
 # created the file after the baseline was frozen; the disposition is the one
 # already accepted for its sibling, mirroring the nx_ether_driver_c6.c
 # precedent below.
 # ---------------------------------------------------------------------------
-misra-c2012-21.6:apps/shared/media_dl/src/mdl_export_epub_meta.c
+misra-c2012-21.6:apps/shared_libs/mdl/src/mdl_export_epub_meta.c
 
 # ---------------------------------------------------------------------------
 # Rule 11.6 on ra8_io_vfs_namespace.c -- the single line that validates a
@@ -423,14 +456,13 @@ misra-c2012-11.6:libs/ra8_io/src/ra8_io_vfs_namespace.c
 # vendored header is SOUP that must stay byte-identical to its upstream pin.
 # Suppressed via the list rather than inline so each row's Doxygen block stays
 # adjacent to its function for the doc-coverage audit -- the same reasoning and
-# the same mechanism as the ra8_ftl / ra8_comic / ra8_epub entries above.
+# the same mechanism as the ra8_ftl / comic / epub entries above.
 constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_gpio.c
 constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_osi.c
 constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_osi_absent.c
 constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_rtos.c
 constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c
 constParameterCallback:port/esp-hosted/src/ra8_esp_hosted_spi.c
-constParameterPointer:port/esp-hosted/src/ra8_esp_hosted_spi.c
 
 # ---------------------------------------------------------------------------
 # misra-c2012-8.9 ("define at block scope if used in only one function") on
@@ -490,8 +522,9 @@ misra-c2012-18.4:port/netxduo/src/nx_ether_driver_c6.c
 # storage, archive and CLI-tool source families. Every row named here has its
 # address stored in a function-pointer table -- ra8_audio_source_iface_t,
 # ra8_camera_source_iface_t, ra8_io_blockdev_iface_t, ra8_io_fs_iface_t,
-# ra8_fmt_stream_t, mdl_storage's validate-stage hook, protobuf-c's
-# ProtobufCAllocator, or a test's injected hash vtable -- and each of those
+# ra8_io_fsfmt_ops_t, ra8_fmt_stream_t, mdl_storage's validate-stage hook,
+# protobuf-c's ProtobufCAllocator, or a test's injected hash vtable -- and
+# each of those
 # typedefs declares the context parameter as plain `void*`. Const-qualifying
 # one row makes the assignment that binds it a type error, and the parameter
 # cannot be const in the general case because sibling implementations behind
@@ -500,36 +533,36 @@ misra-c2012-18.4:port/netxduo/src/nx_ether_driver_c6.c
 # these with "You might need to cast the function pointer here", which is the
 # limitation, not a finding. Listed rather than inline so each row's Doxygen
 # block stays adjacent to its function for the doc-coverage audit -- the same
-# reasoning and mechanism as the ra8_ftl / ra8_comic / ra8_epub entries above.
+# reasoning and mechanism as the ra8_ftl / comic / epub entries above.
 constParameterCallback:libs/ra8_audio/src/ra8_audio_source_memory.c
 constParameterCallback:libs/ra8_audio/src/ra8_audio_source_pdm.c
 constParameterCallback:libs/ra8_camera/src/ra8_camera_source_ceu.c
 constParameterCallback:libs/ra8_camera/src/ra8_camera_source_memory.c
-constParameterCallback:examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/main.c
-constParameterCallback:tools/cache_bench/cache_bench_host.c
-constParameterCallback:tools/exfat_mkimage/exfat_mkimage.c
-constParameterCallback:apps/shared/media_dl/src/mdl_export_zip.c
-constParameterCallback:apps/shared/media_dl/src/mdl_storage.c
-constParameterCallback:apps/shared/media_dl/tests/test_media_dl_net_c6link.c
-constParameterCallback:tools/mkbookimg/mkbookimg.c
-constParameterCallback:tools/mkfontimg/mkfontimg_host.c
-constParameterCallback:tools/rabook_imagepack/tests/test_ra8_fmt_stream_inspect.c
-constParameterCallback:tools/rabook_imagepack/tests/test_ra8_fmt_stream_rabook.c
-constParameterCallback:tools/reader_vmem/reader_vmem.c
+constParameterCallback:examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/src/main.c
+constParameterCallback:tools/cache_bench/src/cache_bench_host.c
+constParameterCallback:tools/exfat_mkimage/src/exfat_mkimage.c
+constParameterCallback:apps/shared_libs/mdl/src/mdl_export_zip.c
+constParameterCallback:apps/shared_libs/mdl/src/mdl_storage.c
+constParameterCallback:apps/shared_libs/mdl/tests/src/test_mdl_net_c6link.c
+constParameterCallback:tools/mkbookimg/src/mkbookimg.c
+constParameterCallback:tools/mkfontimg/src/mkfontimg_host.c
+constParameterCallback:tools/rabook_imagepack/tests/src/test_ra8_fmt_stream_inspect.c
+constParameterCallback:tools/rabook_imagepack/tests/src/test_ra8_fmt_stream_rabook.c
+constParameterCallback:tools/reader_vmem/src/reader_vmem.c
 
 # redundantAssignment on host-test fixture state that the code under test reads
 # back through an injected pointer. In each of these the test sets a field, then
 # calls a production entry point that reaches that same field through a bound
 # context -- test_cache_bench's `bytes` array via cb_source_t::ctx and its read
-# callback, test_media_dl_fetch_body's `fixture.fault.flags` via the storage
-# fault hook, test_media_dl_net's `body.failure` via the bound sink view -- and
+# callback, test_mdl_fetch_body's `fixture.fault.flags` via the storage
+# fault hook, test_mdl_net's `body.failure` via the bound sink view -- and
 # only afterwards restores it. cppcheck's value flow does not follow the write
 # through the callback, so it sees the restore overwriting an unread value. The
 # writes are read; the analyser cannot see where. Root-fixing this would mean
 # deleting the fault injection the tests exist to perform.
-redundantAssignment:tools/cache_bench/tests/test_cache_bench.c
-redundantAssignment:apps/shared/media_dl/tests/test_media_dl_fetch_body.c
-redundantAssignment:apps/stand_alone/media_dl/tests/test_media_dl_net.c
+redundantAssignment:tools/cache_bench/tests/src/test_cache_bench.c
+redundantAssignment:apps/shared_libs/mdl/tests/src/test_mdl_fetch_body.c
+redundantAssignment:apps/host/mdl/tests/src/test_mdl_net.c
 
 # knownConditionTrueFalse on the media_download app's build-configuration
 # guards. `s_ssid` and `s_url` are initialised from RA8_C6_WIFI_SSID and
@@ -540,26 +573,82 @@ redundantAssignment:apps/stand_alone/media_dl/tests/test_media_dl_net.c
 # fallback and constant-folds `s_ssid[0] == '\0'` to true. The guards are the
 # whole point of the fallback and are genuinely variable in a configured build;
 # this is cppcheck checking one configuration, not a defect.
-knownConditionTrueFalse:examples/ek_ra8d2/hw_pending/media_download/main.c
 
 # ---------------------------------------------------------------------------
-# Rule 22.10 on the media_dl hosted-test EINTR retry loops.
+# Rule 22.10 on the mdl hosted-test EINTR retry loops.
 # Rule 22.10 permits testing errno only when the last called function is an
 # errno-setting function. The loops test errno immediately after POSIX
 # read()/write(), which DO set errno, but cppcheck models only the C standard
 # library errno-setters, so the POSIX calls read as non-errno-setting and the
 # test is reported. The same pattern is long-established in
 # tools/exfat_mkimage. False positive of the checker model, not a deviation.
-misra-c2012-22.10:apps/shared/media_dl/tests/test_media_dl_export_xml.c
-misra-c2012-22.10:apps/shared/media_dl/tests/test_media_dl_state_metadata.c
+misra-c2012-22.10:apps/shared_libs/mdl/tests/src/test_mdl_export_xml.c
+misra-c2012-22.10:apps/shared_libs/mdl/tests/src/test_mdl_state_metadata.c
 
 # ---------------------------------------------------------------------------
-# Rule 8.9 counting artefacts in the media_dl hosted tests (see the
+# Rule 8.9 counting artefacts in the mdl hosted tests (see the
 # ra8_wdt.c precedent above: misra.py counts function mentions, not uses).
-# - test_media_dl_export_xml.c: s_xml_opaque_head is referenced by the
-#   file-scope s_xml_pages signature table AND one function; the file-scope
-#   table reference is invisible to the single-function heuristic.
-# - test_media_dl_report_pack.c: s_faillog is used by two test functions and
+# - test_mdl_export_xml.c: s_xml_opaque_head is referenced by the
+#   file-scope s_xml_media_cases table (nine rows) AND by one function;
+#   the file-scope table reference is invisible to the single-function
+#   heuristic, which counts function mentions rather than uses.
+# - test_mdl_report_pack.c: s_faillog is used by two test functions and
 #   s_arena by five plus a file-scope sizeof; neither can move to block scope.
-misra-c2012-8.9:apps/shared/media_dl/tests/test_media_dl_export_xml.c
-misra-c2012-8.9:apps/shared/media_dl/tests/test_media_dl_report_pack.c
+misra-c2012-8.9:apps/shared_libs/mdl/tests/src/test_mdl_export_xml.c
+misra-c2012-8.9:apps/shared_libs/mdl/tests/src/test_mdl_report_pack.c
+
+# ---------------------------------------------------------------------------
+# Pinned cppcheck 2.13.0 C23 parser false positives exposed while closing the
+# src/inc migration. These rows suppress only findings that the source does not
+# contain; the compiler and host-test builds remain the independent checks.
+
+# Rule 8.4: the alphabet-soup test-contract headers declare every externally
+# linked function before its implementation defines it. Cppcheck discards the
+# [[nodiscard]] declarations while parsing the C23 headers (D-005). The RABOOK
+# XML shim needs no row: its test-contract header now spells the attribute
+# RA8_NODISCARD, which cppcheck 2.13 parses, so its declarations stay visible.
+misra-c2012-8.4:apps/host/alphabet_soup/src/alphabet_soup.c
+misra-c2012-8.4:apps/host/alphabet_soup/src/alphabet_soup_cli.c
+
+# The POSIX port's directly included internal header likewise declares these
+# cross-TU helpers before their definitions. Cppcheck's C11-mode recovery loses
+# those declarations after the header's C23 typed enums. These exact definition
+# rows suppress only that parser artefact; every other Rule 8.4 finding in both
+# translation units remains visible.
+misra-c2012-8.4:port/posix/src/fw_if_fs_posix.c:114
+misra-c2012-8.4:port/posix/src/fw_if_fs_posix_common.c:140
+misra-c2012-8.4:port/posix/src/fw_if_fs_posix_common.c:172
+misra-c2012-8.4:port/posix/src/fw_if_fs_posix_common.c:202
+
+# Rule 9.2: every reported site below is the repository-mandated C23 `= {}`
+# empty initializer, not a missing aggregate brace (D-003).
+misra-c2012-9.2:apps/host/alphabet_soup/src/main.c
+misra-c2012-9.2:apps/host/alphabet_soup/src/alphabet_soup_cli.c
+misra-c2012-9.2:apps/host/alphabet_soup/tests/src/test_alphabet_soup.c
+misra-c2012-9.2:apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
+misra-c2012-9.2:apps/shared_libs/rabook_compile/tests/src/test_rabook_compile_stream.c
+misra-c2012-9.2:apps/shared_libs/rabook_import/tests/src/test_rabook_import.c
+misra-c2012-9.2:apps/shared_libs/mdl/tests/src/test_mdl_rabook_verify.c
+misra-c2012-9.2:apps/shared_libs/xml/tests/src/test_xml.c
+misra-c2012-9.2:tools/cache_bench/tests/src/test_cache_bench.c
+misra-c2012-9.2:tools/rabook_imagepack/tests/src/test_ra8_fmt_stream_rabook.c
+misra-c2012-9.2:tools/reader_vmem/tests/src/reader_vmem_workspace_test.c
+
+# Rule 9.5: s_search_directions has an explicit enum-named extent and uses
+# structure-member designators, not array designators. The addon mistakes the
+# nested member designators for array designators (D-009).
+misra-c2012-9.5:apps/host/alphabet_soup/src/alphabet_soup.c
+
+# Rule 17.3: the called POSIX filesystem, stream, and test-output functions all
+# have visible prototypes in the included first-party headers. Cppcheck loses
+# those declarations after its C23 parse failure (D-002).
+misra-c2012-17.3:apps/host/alphabet_soup/src/main.c
+misra-c2012-17.3:apps/host/alphabet_soup/src/alphabet_soup_cli.c
+misra-c2012-17.3:apps/host/alphabet_soup/tests/src/test_alphabet_soup.c
+
+# The Darwin-only root-alias verifier includes <sys/stat.h>, which declares
+# fstat() and stat(). Cppcheck 2.13 nevertheless drops those POSIX declarations
+# in the same C11 recovery configurations. Keep the disposition on the two
+# exact calls so every other implicit-declaration diagnostic remains live.
+misra-c2012-17.3:port/posix/src/fw_if_fs_posix_common.c:180
+misra-c2012-17.3:port/posix/src/fw_if_fs_posix_common.c:182

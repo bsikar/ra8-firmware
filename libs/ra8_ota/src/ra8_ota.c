@@ -488,8 +488,8 @@ static ra8_err_t internal_download_loop(const ra8_ota_manifest_t* manifest)
     /* Validation ensures image_size <= k_ra8_ota_max_image_bytes == 128 *
      * k_ra8_ota_chunk_bytes, so chunk count never exceeds 128 < max_chunks. */
     if (chunks >= max_chunks) {
-      e = k_ra8_err_hw_error; /* GCOVR_EXCL_LINE */
-      break;                  /* GCOVR_EXCL_LINE */
+      e = k_ra8_err_hw_error; /* GCOVR_EXCL_LINE -- chunk-budget exhaustion never reached */
+      break;                  /* GCOVR_EXCL_LINE -- chunk-budget exhaustion never reached */
     }
     e = internal_download_chunk(g_ra8_ota_cfg.flash.inactive_bank_addr,
                                 &s_bytes_done,
@@ -663,10 +663,10 @@ static ra8_err_t internal_step_dispatch(void)
      * holds one of these transient states in the host build. */
     case k_ra8_ota_state_checking:
     case k_ra8_ota_state_downloading:
-      if (s_manifest_valid) {                                  /* GCOVR_EXCL_LINE */
-        return ra8_ota_download_to_inactive_bank(&s_manifest); /* GCOVR_EXCL_LINE */
+      if (s_manifest_valid) {
+        return ra8_ota_download_to_inactive_bank(&s_manifest);
       }
-      return k_ra8_err_invalid_state; /* GCOVR_EXCL_LINE */
+      return k_ra8_err_invalid_state;
     case k_ra8_ota_state_verifying:
       return ra8_ota_verify_signature(&s_manifest);
     case k_ra8_ota_state_committing:

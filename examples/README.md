@@ -1,11 +1,12 @@
 # examples/
 
-Per-library demos that double as the hardware-in-the-loop vehicles. An app is
-usually one directory holding `main.c`, a `CMakeLists.txt` stub and a README --
-the vector table, boot code and linker script come from the board layer unless
-the app overrides them. Each builds by bare name from the repo root:
-`make <appname>`, `make apps` to list them, `make emu-<appname>` to boot one in
-the emulator without a board.
+Per-library demos that double as the hardware-in-the-loop vehicles. Every app
+keeps implementation files under `src/`, headers under `inc/`, and build,
+manifest, linker, documentation, and asset files at the app root. The vector
+table, boot code and linker script come from the board layer unless the app
+overrides them. From the repository root, use
+`just apps::build <appname>` to build one, `just apps::example::list` to list
+them, and `just apps::emulator::run <appname>` to boot one without a board.
 
 Directories sort apps by **what it takes to verify them**, not by subject:
 

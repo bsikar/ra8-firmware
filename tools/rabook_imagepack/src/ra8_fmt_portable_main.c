@@ -190,9 +190,9 @@ internal_format(const ra8_fmt_source_t* source, const char* explicit_name, cli_f
   if (rc != k_ra8_ok) {
     return rc;
   }
-  if ((got == sizeof(magic)) && (memcmp(magic, "JOF1", sizeof(magic)) == 0)) { /* MAGIC-OK */
+  if ((got == sizeof(magic)) && (memcmp(magic, "JOF1", sizeof(magic)) == 0)) {
     *format = k_cli_format_jof;
-  } else if ((got == sizeof(magic)) && (memcmp(magic, "RBKC", sizeof(magic)) == 0)) { /* MAGIC-OK */
+  } else if ((got == sizeof(magic)) && (memcmp(magic, "RBKC", sizeof(magic)) == 0)) {
     *format = k_cli_format_rabook;
   }
   return k_ra8_ok;
@@ -212,8 +212,8 @@ internal_format(const ra8_fmt_source_t* source, const char* explicit_name, cli_f
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void internal_workspace_error(const ra8_fmt_sink_t*               sink,
-                                     const ra8_jof_audit_requirements_t* need)
+static void internal_workspace_error(const ra8_fmt_sink_t*           sink,
+                                     const jof_audit_requirements_t* need)
 {
   ra8_err_t rc = internal_text(sink, "ra8_fmt: JOF inspect workspace too small: records ");
   if (rc == k_ra8_ok) {
@@ -262,8 +262,8 @@ static int internal_run_jof(const ra8_fmt_source_t*  source,
                             const ra8_fmt_sink_t*    output,
                             const ra8_fmt_sink_t*    errors)
 {
-  ra8_jof_audit_requirements_t need = {};
-  ra8_err_t rc = ra8_jof_audit_requirements(source->read_at, source->ctx, source->size, &need);
+  jof_audit_requirements_t need = {};
+  ra8_err_t rc = jof_audit_requirements(source->read_at, source->ctx, source->size, &need);
   if (rc != k_ra8_ok) {
     internal_error_status(errors, "JOF parse FAILED (rc=", rc);
     return (int)k_cli_exit_fail;
@@ -274,9 +274,9 @@ static int internal_run_jof(const ra8_fmt_source_t*  source,
     internal_workspace_error(errors, &need);
     return (int)k_cli_exit_fail;
   }
-  const size_t records_bytes = sizeof(ra8_jof_audit_record_t) * (size_t)k_ra8_fmt_cli_record_cap;
+  const size_t records_bytes = sizeof(jof_audit_record_t) * (size_t)k_ra8_fmt_cli_record_cap;
   ra8_fmt_jof_inspect_workspace_t inspect_workspace = {
-    .records     = (ra8_jof_audit_record_t*)workspace->bytes,
+    .records     = (jof_audit_record_t*)workspace->bytes,
     .record_cap  = k_ra8_fmt_cli_record_cap,
     .tile        = &workspace->bytes[records_bytes],
     .tile_cap    = k_ra8_fmt_cli_tile_cap,

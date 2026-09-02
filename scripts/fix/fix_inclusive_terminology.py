@@ -99,7 +99,7 @@ SCAN_EXTS = frozenset(
         ".txt",
     }
 )
-SCAN_BASENAMES = frozenset({"Makefile", "Dockerfile", "CMakeLists.txt"})
+SCAN_BASENAMES = frozenset({"justfile", "Dockerfile", "CMakeLists.txt"})
 
 # Mirror the gate's exemption / skip list so we do not rewrite vendor
 # files that the gate ignores.
@@ -134,8 +134,8 @@ SKIP_PATTERNS = frozenset(
         "libs/ra8_hal/src/ra8_i2c.c",
         "libs/ra8_hal/inc/ra8_mipi_phy.h",
         "libs/ra8_hal/src/ra8_mipi_phy.c",
-        "tests/test_ra8_mipi_phy_init.c",
-        "tests/test_ra8_mipi_phy_lanes.c",
+        "tests/hal/src/test_ra8_mipi_phy_init.c",
+        "tests/hal/src/test_ra8_mipi_phy_lanes.c",
         "docs/SOUP/nimble.md",
     }
 )
@@ -186,7 +186,7 @@ def should_scan(p: Path) -> bool:
     """Whether this file's name or suffix puts it in scope.
 
     Basename is checked as well as suffix so extensionless files the tree
-    cares about (CMakeLists.txt, Makefile) are not missed.
+    cares about (CMakeLists.txt, justfile) are not missed.
     """
     return p.name in SCAN_BASENAMES or p.suffix in SCAN_EXTS
 
@@ -204,7 +204,7 @@ def iter_files(root: Path) -> list[Path]:
                 p = Path(dp) / f
                 if should_scan(p):
                     out.append(p)
-    for top in ("Makefile", "CMakeLists.txt", "README.md"):
+    for top in ("justfile", "CMakeLists.txt", "README.md"):
         p = root / top
         if p.exists():
             out.append(p)
@@ -271,7 +271,7 @@ def main() -> int:
             continue
         new = rewrite(old)
         if new != old:
-            n = sum(1 for a, b in zip(old.splitlines(), new.splitlines()) if a != b)
+            n = sum(1 for a, b in zip(old.splitlines(), new.splitlines(), strict=False) if a != b)
             n += abs(len(old.splitlines()) - len(new.splitlines()))
             fixed_files += 1
             fixed_lines += n

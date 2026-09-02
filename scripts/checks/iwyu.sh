@@ -18,14 +18,14 @@
 # between modules, and helps SOLID-S (Single Responsibility) by making
 # the public surface of each header explicit.
 #
-# We run IWYU against the host test build (tests/build-iwyu/) for the
-# same reason as scan-build: clang has no working sysroot for
-# arm-none-eabi, but the host build covers the same first-party TUs.
+# We run IWYU against the host test build (tests/build-iwyu/) for the same
+# reason as scan-build: clang has no working sysroot for arm-none-eabi. This
+# covers the host-buildable first-party TUs enrolled by tests/CMakeLists.txt;
+# it does not claim the cross-only firmware compositions.
 #
-# Findings under libs/third_party/ are filtered out (SOUP -- see
-# CLAUDE.md, docs/SOUP/). The script always exits 0 today (warn-only);
-# CI may flip it to strict in a follow-up commit once the project-wide
-# baseline is groomed.
+# Findings under libs/third_party/ or apps/shared_libs/third_party/ are
+# filtered out (SOUP -- see CLAUDE.md and docs/SOUP/). The default invocation
+# is report-only; --check exits non-zero when a first-party TU has findings.
 #
 # Usage:
 #     scripts/checks/iwyu.sh                # full pass + summary
@@ -77,19 +77,19 @@ echo "==> iwyu: configuring host test build at $BUILD_DIR"
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   -DCMAKE_C_INCLUDE_WHAT_YOU_USE="$IWYU" \
   -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE="$IWYU" \
-  -Wno-dev >/dev/null
+  >/dev/null
 
 echo "==> iwyu: analyzing (this may take several minutes)..."
 LOG="$REPORT_DIR/iwyu.log"
-"$CMAKE" --build "$BUILD_DIR" --parallel "$JOBS" >"$LOG" 2>&1 || true
+if ! "$CMAKE" --build "$BUILD_DIR" --parallel "$JOBS" >"$LOG" 2>&1; then
+  echo "iwyu.sh: analysis build FAILED; tail of $LOG:" >&2
+  tail -n 80 "$LOG" >&2
+  exit 1
+fi
 
 # IWYU writes "should add"/"should remove" lines to stderr, prefixed
 # by the source path. Bin findings into first-party vs suppressed.
-FIRST_PARTY=$(grep -cE '^/.+\.(c|h|cpp|hpp).* should (add|remove) these lines' "$LOG" 2>/dev/null |
-  head -1 || true)
-FIRST_PARTY=${FIRST_PARTY:-0}
-
-# Strip third_party / tests entries, then recount per-TU findings.
+# Separate both third-party roots and tests, then recount per-TU findings.
 FP=0
 TP=0
 TS=0
@@ -98,11 +98,11 @@ while IFS= read -r line; do
   #   /abs/path/foo.c should add these lines:
   src="$(echo "$line" | sed -E 's# should (add|remove) these lines.*##')"
   case "$src" in
-    */libs/third_party/*) TP=$((TP + 1)) ;;
+    */libs/third_party/* | */apps/shared_libs/third_party/*) TP=$((TP + 1)) ;;
     */tests/*) TS=$((TS + 1)) ;;
     /*) FP=$((FP + 1)) ;;
   esac
-done < <(grep -E ' should (add|remove) these lines' "$LOG" 2>/dev/null || true)
+done < <(grep -E ' should (add|remove) these lines' "$LOG" 2>/dev/null)
 
 echo ""
 echo "==> iwyu summary"

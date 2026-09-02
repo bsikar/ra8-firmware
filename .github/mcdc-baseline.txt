@@ -1,1 +1,5 @@
+# Aggregate reachable decision-complete MC/DC percentage ratchet floor.
+# This is distinct from llvm-cov's condition-level MC/DC percentage.
+# Consumed by scripts/ci/gates/tests.sh (CI gate: mcdc).
+# This floor may only rise; lowering it is a coverage regression.
 89.72

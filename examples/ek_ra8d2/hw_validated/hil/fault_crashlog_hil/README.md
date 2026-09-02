@@ -36,7 +36,7 @@ scope -- VBATT-backed or MRAM persistence via `ra8_bkup` is the named follow-up
 and is silicon-blocked (#131).
 
 Two legs are proven outside this app. The fill / validate / claim / loop-counter
-/ threshold / corrupted-magic lifecycle lives in `tests/test_ra8_crashlog.c`.
+/ threshold / corrupted-magic lifecycle lives in `tests/misc/src/test_ra8_crashlog.c`.
 Real cross-reset survival, with the boot-loop count climbing toward safe mode,
 is bench-only and needs a reset that keeps power on -- a J-Link reset or a
 watchdog underflow -- because the emulator cold-loads the image every run and a

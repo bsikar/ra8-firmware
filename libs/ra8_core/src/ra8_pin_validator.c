@@ -139,8 +139,8 @@ ra8_err_t ra8_pin_validator_release(ra8_port_pin_t pin)
 {
   uint16_t        flat = 0;
   const ra8_err_t err  = internal_flat_index(pin, &flat);
-  if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE -- tests release validated pins */
-    return err;          /* GCOVR_EXCL_LINE                                    */
+  if (err != k_ra8_ok) {
+    return err;
   }
 
   const uint16_t byte     = (uint16_t)(flat / k_ra8_bits_per_byte);
@@ -175,8 +175,8 @@ bool ra8_pin_validator_is_claimed(ra8_port_pin_t pin)
 {
   uint16_t        flat = 0;
   const ra8_err_t err  = internal_flat_index(pin, &flat);
-  if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE -- tests pass valid pins */
-    return false;        /* GCOVR_EXCL_LINE                             */
+  if (err != k_ra8_ok) {
+    return false;
   }
 
   const uint16_t byte     = (uint16_t)(flat / k_ra8_bits_per_byte);

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""roadmap_stats.py -- rewrite the Summary block in docs/ROADMAP.md.
+"""Refresh the summary of the closed historical HAL completion record.
 
-The Summary block sits between two HTML-comment markers that this
+This script keeps archived evidence internally consistent; it does not track
+current work. The Summary block sits between two HTML-comment markers that this
 script owns:
 
     <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
@@ -12,9 +13,9 @@ script owns:
 
 This script:
 
-    1. Parses every "###" driver section in ROADMAP.md.
-    2. Detects each driver's status from its `Status: ...` line.
-    3. Counts the 14 checkboxes inside the section's fenced code
+    1. Parses every archived "###" driver section in ROADMAP.md.
+    2. Detects each driver's historical status from its `Status: ...` line.
+    3. Counts the checkboxes inside the section's fenced code
        block (`[ ]` / `[~]` / `[x]` / `[!]`).
     4. Rewrites the summary block with deterministic counts.
 
@@ -201,7 +202,7 @@ def main(argv: list[str]) -> int:
     if args.check:
         print(
             "roadmap_stats.py: ROADMAP.md summary is stale "
-            "(run `python3 scripts/report/roadmap_stats.py` to refresh)",
+            "(run `just docs::record_stats` to refresh)",
             file=sys.stderr,
         )
         return 1

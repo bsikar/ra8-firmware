@@ -19,8 +19,8 @@ Two different things enforce layout in this tree, and both count:
 
   * rewriters -- clang-format, shfmt, cmake-format, ruff format. Given a file
     they emit the canonical form, and the gate runs them in --check mode.
-  * canonical-form checkers -- yamllint's style rules, check_makefiles.py,
-    check_linker_scripts.py. Nothing rewrites a GNU ld script or a Makefile in
+  * canonical-form checkers -- yamllint's style rules,
+    check_linker_scripts.py. Nothing rewrites a GNU ld script or a justfile in
     this ecosystem, so these enforce the layout rules by rejecting deviations
     instead of by producing the fixed text.
 
@@ -32,8 +32,8 @@ is a gap, and gaps are enumerated in KNOWN_GAPS rather than quietly dropped.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 # ---------------------------------------------------------------------------
 # Roles
@@ -90,6 +90,7 @@ CLASSES: dict[str, ClassSpec] = {
     "shell": _spec("shell", CODE, "gate drivers, HIL scripts, git hooks"),
     "cmake": _spec("cmake", CODE, "decides what compiles with which flags"),
     "make": _spec("make", CODE, "per-app and top-level build entry points"),
+    "just": _spec("just", CODE, "just task runner recipes"),
     "linker-script": _spec("linker-script", CODE, "the memory map is code"),
     "yaml": _spec("yaml", CODE, "workflows decide which gates run at all"),
     "markdown": _spec("markdown", DOC, "prose; swept by ascii/terminology gates"),
@@ -117,21 +118,45 @@ CLASSES: dict[str, ClassSpec] = {
         DATA,
         "exact reproducible source outputs whose generator owns the canonical bytes",
     ),
+    "ansible-systemd-template": _spec(
+        "ansible-systemd-template",
+        CODE,
+        "privileged Jinja/systemd input checked against the fleet role contract",
+    ),
 }
 
 # ---------------------------------------------------------------------------
 # Exact path -> class, checked BEFORE basename and extension tables.
 #
-# These four files deliberately do not create a blanket exemption for every
-# future .patch, .proto, or *pb-c.c file. The patch is syntax-checked by
-# `git apply --check` in the pinned ESP32-C6 build, the schema is parsed by the
-# pinned protobuf-c generator, and the two codec files are that generator's
-# reproducible outputs. A second file of any of these types remains
-# unclassified/C-family and makes lint-coverage fail until it receives an
-# equally specific validation story.
+# These exact files deliberately do not create a blanket exemption for every
+# future .patch, `series`, .proto, or *pb-c.c file. The coprocessor patch is
+# checked by its pinned build; the SOUP patch series are replayed byte-exact by
+# check_third_party_patches.py; the schema is parsed by the pinned protobuf-c
+# generator; and the two codec files are that generator's reproducible outputs.
+# A second file of any of these types remains unclassified/C-family and makes
+# lint-coverage fail until it receives an equally specific validation story.
 # ---------------------------------------------------------------------------
 PATH_CLASS: dict[str, str] = {
+    "infra/ansible/roles/dev_box/templates/ra8-hil-runner.service.j2": "ansible-systemd-template",
+    "infra/ansible/roles/dev_box/templates/ra8-hil-privileged-policy.json.j2": "validated-input",
+    "scripts/hil/lib/ra8-hil-privileged.sha256": "validated-input",
+    "scripts/checks/patches/cppcheck-2.13/misra_9-c23-empty-initializer.patch": "validated-input",
     "coprocessor/esp32c6/patches/0001-custom-rpc-sync-response-hook.patch": "validated-input",
+    "coprocessor/esp32c6/patches/series": "validated-input",
+    "docs/sbom/patches/levelx/0001-remove-nested-attribute-macros.patch": "validated-input",
+    "docs/sbom/patches/levelx/series": "validated-input",
+    "docs/sbom/patches/libwebp/0001-use-ra8-arena-allocator.patch": "validated-input",
+    "docs/sbom/patches/libwebp/series": "validated-input",
+    "docs/sbom/patches/mbedtls/0001-track-generated-config-headers.patch": "validated-input",
+    "docs/sbom/patches/mbedtls/series": "validated-input",
+    "docs/sbom/patches/netxduo/0001-remove-nested-attribute-macros.patch": "validated-input",
+    "docs/sbom/patches/netxduo/series": "validated-input",
+    "docs/sbom/patches/stb/0001-harden-font-parser-bounds.patch": "validated-input",
+    "docs/sbom/patches/stb/series": "validated-input",
+    "docs/sbom/patches/threadx/0001-remove-nested-attribute-macros.patch": "validated-input",
+    "docs/sbom/patches/threadx/series": "validated-input",
+    "docs/sbom/patches/usbx/0001-remove-nested-attribute-macros.patch": "validated-input",
+    "docs/sbom/patches/usbx/series": "validated-input",
     "libs/ra8_c6link/proto/ra8_media_download.proto": "validated-input",
     "libs/ra8_c6link/inc/ra8_media_download.pb-c.h": "generated-source",
     "libs/ra8_c6link/src/ra8_media_download.pb-c.c": "generated-source",
@@ -165,6 +190,7 @@ EXT_CLASS: dict[str, str] = {
     ".cmake": "cmake",
     ".mk": "make",
     ".make": "make",
+    ".just": "just",
     ".ld": "linker-script",
     # Structured config
     ".yml": "yaml",
@@ -176,6 +202,7 @@ EXT_CLASS: dict[str, str] = {
     ".properties": "ini",
     ".xml": "xml",
     ".csv": "csv",
+    ".tsv": "csv",
     ".opf": "xml",
     ".user": "tool-config",
     # Documents and assets
@@ -186,6 +213,7 @@ EXT_CLASS: dict[str, str] = {
     ".css": "css",
     ".js": "javascript",
     ".txt": "text",
+    ".lock": "text",
     ".conf": "text",
     ".dox": "markdown",
     ".in": "text",
@@ -234,9 +262,8 @@ NAME_CLASS: dict[str, str] = {
     "CMakeLists.txt": "cmake",
     "Dockerfile": "dockerfile",
     "zshrc": "zsh",
-    "Makefile": "make",
-    "makefile": "make",
-    "GNUmakefile": "make",
+    "justfile": "just",
+    "Justfile": "just",
     "Doxyfile": "tool-config",
     "VERSION": "text",
     "LICENSE": "text",
@@ -246,6 +273,7 @@ NAME_CLASS: dict[str, str] = {
     ".clang-tidy": "tool-config",
     ".clangd": "tool-config",
     ".editorconfig": "tool-config",
+    ".dockerignore": "tool-config",
     ".shellcheckrc": "tool-config",
     ".pylintrc": "tool-config",
     ".globalrc": "tool-config",
@@ -285,15 +313,21 @@ SHEBANG_CLASS: tuple[tuple[str, str], ...] = (
 # unanswerable in the first place.
 # ---------------------------------------------------------------------------
 EXEMPT_PREFIXES: tuple[tuple[str, str], ...] = (
-    ("libs/third_party/", "vendored SOUP; CLAUDE.md exempts it from first-party standards"),
+    ("libs/third_party/", "vendored platform SOUP; CLAUDE.md exempts it"),
+    ("apps/shared_libs/third_party/", "vendored app SOUP; CLAUDE.md exempts it"),
     ("libs/ra8_fonts/", "generated glyph tables, not hand-authored"),
     ("tools/vela/generated/", "emitted by the Vela NPU compiler on every regen"),
     ("docs/reference/", "committed Renesas datasheet and HUM PDFs"),
     ("docs/doxygen_theme/", "vendored doxygen-awesome theme"),
     ("docs/build/", "generated Doxygen HTML output"),
     ("content/", "EPUB/CBZ book fixtures used as reader test content"),
+    (
+        "apps/board/stand_alone/ereader/content/",
+        "EPUB/CBZ book fixtures used as reader test content",
+    ),
     # NOT tests/fixtures/ as a whole. A blanket exemption there hid
-    # tests/fixtures/epub/epub_probe.c and run_probe.sh -- real first-party
+    # apps/shared_libs/epub/tests/src/epub_probe.c and tests/fixtures/epub/run_probe.sh -- real
+    # first-party
     # code that clang-format and shellcheck were in fact already covering. An
     # exemption that conceals covered code makes the matrix understate reality,
     # which is the same class of wrongness as one that conceals uncovered code.

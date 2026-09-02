@@ -104,7 +104,7 @@ ok 100644 a0581a14b1a832cb9075e04b976ca72b984f67d5 src/utils/rescaler_utils.c
 ok 100644 ef201ef86c19966439e9e5982f58c33c0eec7fee src/utils/rescaler_utils.h
 ok 100644 4e470e17ac18d39070043512809cc6b41f934aef src/utils/thread_utils.c
 ok 100644 29ad49f74b5aa6741a6b66a191fe409c368092a6 src/utils/thread_utils.h
-patch 100644 408ce88f67f689da446d7bae2f0af845be8bea46 ef9b3b36aa27a7dd3bfa3b2a728e7c93cd3be81a src/utils/utils.c
+patch 100644 408ce88f67f689da446d7bae2f0af845be8bea46 6ba6f3392bc627773294da6ab36d261b78ecd4fa src/utils/utils.c
 ok 100644 b2241fbf9bf76114c3550db76ebbf9b24985e282 src/utils/utils.h
 ok 100644 d6895f5c55503d95cd8f429baa6e9bfbb13d8430 src/webp/decode.h
 ok 100644 8b59351e400ea57ee2985f2b08459090220365e5 src/webp/encode.h

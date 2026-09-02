@@ -2,14 +2,16 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# scripts/builders/all_examples.sh -- build every examples/<app> target.
+# scripts/builders/all_examples.sh -- build every firmware configuration.
 #
-# Iterates each top-level examples/<app>/ directory containing a main.c,
-# invokes `make <app>` from the repo root, captures pass/fail per app,
-# prints a summary table at the end, and exits non-zero on any failure.
+# Reads the canonical application/configuration matrix from ra8_apps.py,
+# invokes `just apps::build <configuration>` from the repo root, captures
+# pass/fail per configuration, prints a summary, and fails on any error.
 #
 # Usage:
 #   bash scripts/builders/all_examples.sh
+#   printf '%s\0' app1 app2 | bash scripts/builders/all_examples.sh --selected0
+#   bash scripts/builders/all_examples.sh --selftest
 #
 #
 
@@ -19,30 +21,63 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # ra8_max_jobs -- the ONE canonical bounded-parallelism width (#328). The
-# across-app worker pool below defaults to it so this cross-build (205 apps)
+# across-app worker pool below defaults to it so this canonical cross-build
 # does not grab every core when it shares the box with other gate jobs.
 # shellcheck source=scripts/ci/lib/parallelism.sh
 . "$REPO_ROOT/scripts/ci/lib/parallelism.sh"
+# shellcheck source=scripts/builders/lib/app_batch.sh
+. "$REPO_ROOT/scripts/builders/lib/app_batch.sh"
 
 cd "$REPO_ROOT" || exit 1
 
-if [ ! -d examples ]; then
-  echo "error: examples/ directory not found at $REPO_ROOT" >&2
-  exit 1
-fi
+selected_mode=0
+case "${1:-}" in
+  --selftest)
+    [[ $# -eq 1 ]] || {
+      echo "usage: all_examples.sh [--selected0|--selftest]" >&2
+      exit 2
+    }
+    ra8_app_batch_selftest "$REPO_ROOT/scripts/dev/ra8_apps.py"
+    exit $?
+    ;;
+  --selected0)
+    [[ $# -eq 1 ]] || {
+      echo "usage: all_examples.sh [--selected0|--selftest]" >&2
+      exit 2
+    }
+    selected_mode=1
+    ra8_app_batch_read_nul || exit $?
+    ra8_app_batch_resolve "$REPO_ROOT/scripts/dev/ra8_apps.py" || exit $?
+    ra8_app_batch_require_census \
+      "${#RA8_APP_BATCH_ITEMS[@]}" "${RA8_SELECTED_APP_FLOOR:-1}" || exit $?
+    ;;
+  '') ;;
+  *)
+    echo "usage: all_examples.sh [--selected0|--selftest]" >&2
+    exit 2
+    ;;
+esac
 
 # ereader_shelf includes a generated baked-book-library header (library.h): the
 # full version (real .rabook blobs + cover thumbnails) is produced from the
-# Git-LFS e-reader content library .epub sources by tools/bake_library.py via
-# `make books`, and is gitignored as a build artifact. A fresh checkout has
+# Git-LFS e-reader content library .epub sources by
+# tools/epub_compile/src/bake_library.py via
+# `just tools::books`, and is gitignored as a build artifact. A fresh checkout has
 # none, so the app fails to compile with "library.h: No such file or directory".
 # For the cross-build we only need ereader_shelf to COMPILE, not to embed real
 # books, and regenerating from LFS sources needs git-lfs + Pillow that CI lacks.
 # So emit a 0-book stub (with the same struct/symbols) when the real header is
-# absent; `make books` still produces the full library for HIL / deployment.
-shelf_lib="examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/library.h"
-if [ ! -f "$shelf_lib" ]; then
-  echo "build_all: emitting a 0-book stub $shelf_lib (run 'make books' for the full library)"
+# absent; `just tools::books` still produces the full library for HIL / deployment.
+need_shelf=1
+if ((selected_mode)); then
+  need_shelf=0
+  for selected_app in "${RA8_APP_BATCH_ITEMS[@]}"; do
+    [[ "$selected_app" == *"::ereader_shelf" ]] && need_shelf=1
+  done
+fi
+shelf_lib="examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/inc/library.h"
+if ((need_shelf)) && [ ! -f "$shelf_lib" ]; then
+  echo "build_all: emitting a 0-book stub $shelf_lib (run 'just tools::books' for the full library)"
   cat >"$shelf_lib" <<'STUB'
 /**
  * @file library.h
@@ -50,7 +85,8 @@ if [ ! -f "$shelf_lib" ]; then
  * @brief Stub baked book library (0 books) emitted by build_all_examples.sh.
  * @details ereader_shelf includes this generated header. The real version
  *          (full .rabook blobs + pre-decoded cover thumbnails) is produced by
- *          tools/bake_library.py via `make books`. This 0-book stub lets the
+ *          tools/epub_compile/src/bake_library.py via `just tools::books`. This
+ *          0-book stub lets the
  *          app compile for the cross-build when the Git-LFS .epub sources and
  *          the book-compile tooling are unavailable; it loads books from the SD
  *          card at runtime instead.
@@ -73,7 +109,7 @@ typedef struct {
 
 /** @brief Number of baked books: one empty placeholder in this compile stub. */
 typedef enum : uint16_t {
-  k_library_count = 1U,
+  k_library_count = 1U, /**< Number of entries in k_library. */
 } library_count_t;
 
 /** @brief Baked book table; a single empty placeholder (cross-build is
@@ -84,44 +120,46 @@ static const library_book_t k_library[k_library_count] = {
 STUB
 fi
 
-# Auto-discover apps: every examples/<tier>/<name>/ dir with a main.c.
-# Apps live at arbitrary depth under examples/. Discover them via find.
-# The build-target name is the bare directory name -- `make blink` works
-# regardless of how deep the app lives.
 apps=()
-while IFS= read -r main_c; do
-  d="$(dirname "$main_c")"
-  # examples/host/* are macOS-only dev tools, not cross-compiled firmware.
-  case "$d" in
-    examples/host/* | ./examples/host/*) continue ;;
-  esac
-  name="$(basename "$d")"
-  if [ -f "$d/Makefile" ]; then
-    apps+=("$name")
-  fi
-done < <(find examples -name "main.c" | sort)
+if ((selected_mode)); then
+  apps=("${RA8_APP_BATCH_ITEMS[@]}")
+else
+  # One authority defines what the execution matrix builds. The independent
+  # structural union checker intentionally does not import this helper.
+  while IFS= read -r -d '' config; do
+    apps+=("$config")
+  done < <(python3 "$REPO_ROOT/scripts/dev/ra8_apps.py" matrix --nul)
+fi
 
 if [ "${#apps[@]}" -eq 0 ]; then
-  echo "error: no buildable apps discovered under examples/" >&2
+  echo "error: the canonical firmware build matrix is empty" >&2
   exit 1
 fi
 
-# Sort the discovered apps alphabetically for stable output.
+# Sort the configurations alphabetically for stable output.
 #
 # LC_ALL=C is load-bearing, not cosmetic. Sharding (below) slices this list by
 # index, so every shard must agree byte-for-byte on the ORDER or an app is
 # built twice while another is never built at all -- and the union check would
 # be the only thing standing between that and a green run. Locale-dependent
 # collation across heterogeneous runners is exactly how that drift happens.
-mapfile -t apps < <(printf '%s\n' "${apps[@]}" | LC_ALL=C sort)
+sorted_apps=()
+while IFS= read -r line; do
+  sorted_apps+=("$line")
+done < <(printf '%s\n' "${apps[@]}" | LC_ALL=C sort)
+apps=("${sorted_apps[@]}")
 
-LOG_DIR="$REPO_ROOT/build/build_all_examples"
+if ((selected_mode)); then
+  LOG_DIR="$REPO_ROOT/build/build_selected_apps"
+else
+  LOG_DIR="$REPO_ROOT/build/build_all_examples"
+fi
 mkdir -p "$LOG_DIR"
 
 # --- sharding -------------------------------------------------------------
 # RA8_BUILD_SHARDS=N + RA8_BUILD_SHARD=K (1-based) build only this shard's
 # slice. Both unset is the default and builds everything, so the local suite
-# (`make ci-native`, `make build-all`) is bit-for-bit unchanged.
+# (`just quality::native`, `just build_all`) is bit-for-bit unchanged.
 #
 # The slice is a STRIDE (i % N == K-1), never a contiguous block. Per-app cost
 # is wildly uneven -- the ~8 shared-archive-ineligible apps (TrustZone, RA8P1)
@@ -134,8 +172,6 @@ mkdir -p "$LOG_DIR"
 # reads to PROVE the shards covered every app exactly once. A shard that
 # silently built nothing leaves an empty manifest and fails that check rather
 # than passing quietly.
-SHARD_DIR="$LOG_DIR/.shard"
-mkdir -p "$SHARD_DIR"
 shard_n="${RA8_BUILD_SHARDS:-1}"
 shard_k="${RA8_BUILD_SHARD:-1}"
 case "$shard_n" in
@@ -154,11 +190,19 @@ if [ "$shard_n" -lt 1 ] || [ "$shard_k" -lt 1 ] || [ "$shard_k" -gt "$shard_n" ]
   echo "error: need 1 <= RA8_BUILD_SHARD ($shard_k) <= RA8_BUILD_SHARDS ($shard_n)" >&2
   exit 1
 fi
+if ((selected_mode)) && { [[ "$shard_n" -ne 1 ]] || [[ "$shard_k" -ne 1 ]]; }; then
+  echo "error: selected-app builds cannot also be sharded" >&2
+  exit 2
+fi
 # The full discovered set, written identically by every shard. The union
-# checker re-derives this independently and cross-checks, so a shard cannot
-# vouch for its own idea of what the tree contains.
-printf '%s\n' "${apps[@]}" >"$SHARD_DIR/all-apps.txt"
-if [ "$shard_n" -gt 1 ]; then
+# checker re-derives the structure independently and cross-checks, so a shard
+# cannot vouch for its own idea of what the tree contains.
+if ((!selected_mode)); then
+  SHARD_DIR="$LOG_DIR/.shard"
+  mkdir -p "$SHARD_DIR"
+  printf '%s\n' "${apps[@]}" >"$SHARD_DIR/all-configs.txt"
+fi
+if ((!selected_mode)) && [ "$shard_n" -gt 1 ]; then
   sharded=()
   for i in "${!apps[@]}"; do
     if [ "$((i % shard_n))" -eq "$((shard_k - 1))" ]; then
@@ -171,19 +215,22 @@ if [ "$shard_n" -gt 1 ]; then
     exit 1
   fi
   apps=("${sharded[@]}")
-  echo "==> shard $shard_k/$shard_n: ${#apps[@]} of $(wc -l <"$SHARD_DIR/all-apps.txt" | tr -d ' ') apps"
+  echo "==> shard $shard_k/$shard_n: ${#apps[@]} of $(wc -l <"$SHARD_DIR/all-configs.txt" | tr -d ' ') configurations"
 fi
-printf '%s\n' "${apps[@]}" >"$SHARD_DIR/shard-${shard_k}-of-${shard_n}.txt"
+if ((!selected_mode)); then
+  printf '%s\n' "${apps[@]}" >"$SHARD_DIR/shard-${shard_k}-of-${shard_n}.txt"
+fi
 
 # Per-app exit codes are collected in a status directory: each worker writes
-# $STATUS_DIR/<app> containing the app's `make` return code. Completion order
+# $STATUS_DIR/<app> containing the app build's return code. Completion order
 # under the parallel pool is nondeterministic, so the summary is reconstructed
 # from these files and re-sorted alphabetically (same order as the serial run).
 STATUS_DIR="$LOG_DIR/.status"
 rm -rf "$STATUS_DIR"
 mkdir -p "$STATUS_DIR"
 
-# Worker pool size: one `make <app>` per worker, each build SINGLE-THREADED.
+# Worker pool size: one `just apps::build <app>` per worker, each build
+# SINGLE-THREADED.
 # The across-app pool is the only parallelism -- we deliberately do NOT also
 # pass a per-app --parallel, which would oversubscribe (jobs x jobs). The pool
 # width is the canonical bounded value (RA8_MAX_JOBS / CMAKE_BUILD_PARALLEL_LEVEL
@@ -197,21 +244,27 @@ if [ "$MAX_JOBS" -lt 1 ]; then
   MAX_JOBS=1
 fi
 
-echo "==> Building ${#apps[@]} apps from examples/ (pool: $MAX_JOBS parallel jobs)"
+echo "==> Building ${#apps[@]} firmware configurations (pool: $MAX_JOBS parallel jobs)"
 echo
 
-# Build one app: run `make <app>` single-threaded, tee the per-app log exactly
+# Build one app through the repository's authoritative Just recipe, tee the per-app log exactly
 # as the serial version did, and record the exit code in the status directory.
 # Runs in a subshell spawned by xargs, so it must re-derive its environment.
+# shellcheck disable=SC2329  # exported and invoked by the bounded worker pool
 build_one_app() {
-  app="$1"
-  log_file="$LOG_DIR/${app}.log"
-  if make "$app" >"$log_file" 2>&1; then
+  local record="$1" separator=$'\034' index app app_name log_file status_file rc
+  index="${record%%"$separator"*}"
+  app="${record#*"$separator"}"
+  app_name="$(python3 "$REPO_ROOT/scripts/dev/ra8_apps.py" name "$app")" || return 2
+  printf -v index '%04d' "$index"
+  log_file="$LOG_DIR/${index}-${app_name}.log"
+  status_file="$STATUS_DIR/$index"
+  if /bin/bash -p "$REPO_ROOT/scripts/dev/run_just.sh" apps::build "$app" "$BUILD_TYPE" >"$log_file" 2>&1; then
     rc=0
   else
     rc=$?
   fi
-  printf '%s\n' "$rc" >"$STATUS_DIR/${app}"
+  printf '%s\n' "$rc" >"$status_file"
   if [ "$rc" -eq 0 ]; then
     printf "  [build] %-40s ... PASS\n" "$app"
   else
@@ -219,19 +272,12 @@ build_one_app() {
   fi
 }
 export -f build_one_app
-export LOG_DIR STATUS_DIR REPO_ROOT
+BUILD_TYPE="${BUILD_TYPE:-RelWithDebInfo}"
+export LOG_DIR STATUS_DIR REPO_ROOT BUILD_TYPE
 
-# Warm the one shared prerequisite BEFORE the pool starts. Every top-level
-# `make <app>` lists build/compile_commands.json as a normal prerequisite,
-# regenerated by a single cmake configure into the shared build/ tree. On a
-# cold checkout that file is absent, so a pool launched straight away has its
-# whole first wave of workers racing that one configure at once -- their cmake
-# TryCompile scratch dirs collide and a handful of apps die with "file failed
-# to open for writing" / "No rule to make target .../TryCompile-*". Generating
-# it once here, serially, leaves it up to date for every worker (no per-app
-# build touches a CMake input), so the shared configure never runs concurrently.
+# Warm the one shared prerequisite BEFORE the pool starts.
 echo "==> Warming shared build/compile_commands.json (serial, pre-pool)"
-if ! make compile_commands >"$LOG_DIR/compile_commands.log" 2>&1; then
+if ! cmake -DCMAKE_TOOLCHAIN_FILE="$REPO_ROOT/cmake/toolchain-ra8d2.cmake" -B "$REPO_ROOT/build" "$REPO_ROOT" >"$LOG_DIR/compile_commands.log" 2>&1; then
   echo "error: failed to generate build/compile_commands.json (log: $LOG_DIR/compile_commands.log)" >&2
   exit 1
 fi
@@ -271,24 +317,23 @@ else
   echo "==> RA8_NO_SHARED_LIBS=1: every app compiles the libraries from source"
 fi
 
-# Bounded worker pool across apps. Prefer xargs -P for portability; app names
-# are bare directory names (no spaces / newlines), so newline-delimited xargs
-# input is safe. Fall back to a strict serial loop if xargs -P is unavailable.
-if printf '' | xargs -P 2 -I '{}' true >/dev/null 2>&1; then
-  printf '%s\n' "${apps[@]}" |
-    xargs -P "$MAX_JOBS" -I '{}' bash -c 'build_one_app "$@"' _ '{}'
-else
-  echo "build_all: xargs -P unavailable, falling back to serial build" >&2
-  for app in "${apps[@]}"; do
-    build_one_app "$app"
-  done
-fi
+# Bounded worker pool across apps. Records are NUL-delimited so selected IDs are
+# each one argv even if a future valid identifier contains whitespace. The
+# shared dispatcher falls back to a strict serial loop if xargs -P is absent.
+records=()
+for i in "${!apps[@]}"; do
+  records+=("$i"$'\034'"${apps[$i]}")
+done
+printf '%s\0' "${records[@]}" |
+  ra8_app_batch_dispatch_nul "$MAX_JOBS" bash -c 'build_one_app "$@"' _
 
 # Reconstruct results in the original alphabetical app order from status files.
 results=()
 fail_count=0
-for app in "${apps[@]}"; do
-  status_file="$STATUS_DIR/${app}"
+for i in "${!apps[@]}"; do
+  app="${apps[$i]}"
+  printf -v status_slot '%04d' "$i"
+  status_file="$STATUS_DIR/$status_slot"
   if [ -f "$status_file" ] && [ "$(cat "$status_file")" = "0" ]; then
     results+=("PASS")
   else
@@ -301,10 +346,10 @@ echo
 echo "============================================================"
 echo " Build summary"
 echo "============================================================"
-printf " %-40s  %-8s\n" "App" "Status"
-printf " %-40s  %-8s\n" "----------------------------------------" "--------"
+printf " %-56s  %-8s\n" "Configuration" "Status"
+printf " %-56s  %-8s\n" "--------------------------------------------------------" "--------"
 for i in "${!apps[@]}"; do
-  printf " %-40s  %-8s\n" "${apps[$i]}" "${results[$i]}"
+  printf " %-56s  %-8s\n" "${apps[$i]}" "${results[$i]}"
 done
 echo "============================================================"
 total="${#apps[@]}"

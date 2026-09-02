@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# Per-app CMake stub for `epub_stress`. ra8_epub pulls in the vendored miniz
-# (ZIP) + the bounded pure-C XML reader via the ra8_epub special-case in ra8_add_app.cmake;
-# ra8_reflow supplies the stb_truetype glyph glue ra8_epub links against, and
-# ra8_gfx backs ra8_reflow's render path.
+# Per-app CMake stub for `epub_stress`. epub pulls in the vendored miniz
+# (ZIP) + the bounded pure-C XML reader via the epub special-case in ra8_add_app.cmake;
+# reflow supplies the stb_truetype glyph glue epub links against, and
+# ra8_gfx backs reflow's render path.
 #
 #
 cmake_minimum_required(VERSION 3.20)
@@ -33,5 +33,5 @@ ra8_add_app(
   NAME epub_stress
   STACK_BYTES 16384
   DESCRIPTION "epub_stress firmware for RA8D2"
-  LIBS ra8_epub ra8_reflow ra8_gfx ra8_board_ek_ra8d2
+  LIBS epub reflow ra8_gfx ra8_board_ek_ra8d2
 )

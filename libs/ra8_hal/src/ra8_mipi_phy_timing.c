@@ -65,14 +65,12 @@ typedef enum : uint16_t {
  * field as unused; each member is read in
  * ``ra8_mipi_phy_select_timing``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t               mode;     /**< 0 = CSI device, 1 = DSI host. */
   uint8_t               pclka;    /**< PCLKA in MHz.                 */
   uint16_t              rate_max; /**< Ceiling of the rate column.   */
   ra8_mipi_phy_timing_t t;        /**< Timing values for the row.    */
 } mipi_phy_table_row_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_mipi_phy_table_szlim_t
@@ -871,7 +869,7 @@ static const ra8_mipi_phy_timing_t* internal_mipi_phy_lookup_timing(const mipi_p
                                                                     uint8_t  mode_flag)
 {
   for (uint32_t i = 0U; i < n; ++i) {
-    // mcdc-deactivated: TU-local helper internal_mipi_phy_lookup_timing 3-condition table-row matcher; the timing table contains exactly one row per (mode, pclka) tuple covering the rate-bucket range, so on a hit all three conditions are true and on a miss at least one is false; no MC/DC vector can isolate any single condition flip independently of the static table layout.
+    // mcdc-deactivated: internal_mipi_phy_lookup_timing 3-condition row matcher; the static table carries one mode value per table, so tbl[i].mode == mode_flag is invariant across every row a given call scans -- that condition cannot be flipped independently while pclka and rate_max remain matchable.
     if ((tbl[i].mode == mode_flag) && (tbl[i].pclka == pclka) && (tbl[i].rate_max >= rate_mbps)) {
       return &tbl[i].t;
     }

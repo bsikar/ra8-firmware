@@ -207,7 +207,7 @@ static ra8_err_t internal_configure_pipes(void)
                                              k_ra8_usb_ep_dir_in,
                                              k_ra8_usb_ep_type_bulk,
                                              bulk_mp);
-  RA8_RETURN_ON_ERROR(err, s_tag, "hcdc: bulk-in cfg"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "hcdc: bulk-in cfg");
 
   err = ra8_usb_configure_endpoint(s_state.speed,
                                    k_ra8_hcdc_pipe_bulk_out,
@@ -215,7 +215,7 @@ static ra8_err_t internal_configure_pipes(void)
                                    k_ra8_usb_ep_dir_out,
                                    k_ra8_usb_ep_type_bulk,
                                    bulk_mp);
-  RA8_RETURN_ON_ERROR(err, s_tag, "hcdc: bulk-out cfg"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "hcdc: bulk-out cfg");
 
   err = ra8_usb_configure_endpoint(s_state.speed,
                                    k_ra8_hcdc_pipe_intr_in,
@@ -406,7 +406,9 @@ RA8_INTERNAL
 static ra8_err_t internal_do_bus_reset(void)
 {
   const ra8_err_t rel = ra8_usb_host_bus_reset(s_state.speed, false);
-  RA8_RETURN_ON_ERROR(rel, s_tag, "hcdc: release bus reset"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(rel, /* GCOVR_EXCL_BR_LINE -- stored speed valid; reset rejects only speed */
+                      s_tag,
+                      "hcdc: release bus reset");
   s_state.step = k_ra8_hcdc_step_set_address;
   return internal_setup_set_address(k_ra8_hcdc_assigned_address);
 }
@@ -429,7 +431,9 @@ RA8_INTERNAL
 static ra8_err_t internal_do_set_address(void)
 {
   const ra8_err_t addr_err = ra8_usb_set_address(s_state.speed, k_ra8_hcdc_assigned_address);
-  RA8_RETURN_ON_ERROR(addr_err, s_tag, "hcdc: set USBADDR"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(addr_err, /* GCOVR_EXCL_BR_LINE -- valid speed + static in-range address */
+                      s_tag,
+                      "hcdc: set USBADDR");
   s_state.step = k_ra8_hcdc_step_get_dev_desc;
   return internal_setup_get_descriptor(k_ra8_hcdc_desc_device, k_ra8_hcdc_dev_desc_len);
 }
@@ -532,7 +536,7 @@ RA8_INTERNAL
 static ra8_err_t internal_do_walk_desc(void)
 {
   const ra8_err_t pipes_err = internal_configure_pipes();
-  RA8_RETURN_ON_ERROR(pipes_err, s_tag, "hcdc: configure pipes"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(pipes_err, s_tag, "hcdc: configure pipes");
   s_state.attached = true;
   s_state.step     = k_ra8_hcdc_step_done;
   if (s_state.attach_cb != nullptr) {

@@ -82,7 +82,7 @@ def drain(fd: int, flags: int, quiet_for: float = 0.30) -> None:
                     last_data = time.monotonic()
                 else:
                     time.sleep(0.01)
-            except BlockingIOError:  # noqa: PERF203  # non-blocking drain inside timed loop
+            except BlockingIOError:  # non-blocking drain inside timed loop
                 time.sleep(0.01)
     finally:
         fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
@@ -113,7 +113,7 @@ def echo_one(fd: int, flags: int, msg: bytes, settle: float = 0.25, timeout: flo
                     total += d
                 else:
                     time.sleep(0.05)
-            except BlockingIOError:  # noqa: PERF203  # non-blocking read-back inside timed loop
+            except BlockingIOError:  # non-blocking read-back inside timed loop
                 time.sleep(0.05)
     finally:
         fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
@@ -306,7 +306,7 @@ def test_throughput_chunked(
                         recv += d
                     else:
                         time.sleep(0.001)
-                except BlockingIOError:  # noqa: PERF203  # non-blocking read inside timed loop
+                except BlockingIOError:  # non-blocking read inside timed loop
                     time.sleep(0.001)
         finally:
             fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)

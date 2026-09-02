@@ -1,7 +1,6 @@
 # Software Development Plan (SDP)
 
-**Last refreshed**: 2026-05-03 (numbers re-synced to live audit
-artefacts after closure).
+**Last refreshed**: 2026-08-22 (test inventory and execution evidence refresh).
 
 **Status**: First draft, 2026-05-02. Authored against the Phase 7 schedule
 in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) Section 3.
@@ -49,7 +48,7 @@ by `arm-none-eabi-gcc`. The standard headers (`<stdbool.h>`,
 Architecture is governed by [`../RING_AND_WORLD.md`](../RING_AND_WORLD.md)
 (ring 0..6 layering, TrustZone S/NS/NSC world tagging) and by the
 memory layout in [`../MEMORY_MAP.md`](../MEMORY_MAP.md). Per-feature
-design intent is captured in the corresponding `docs/<FEATURE>.md`
+design intent is captured in the corresponding `docs/<feature>.md`
 files (e.g. [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md),
 [`../MCDC.md`](../MCDC.md)) and in the per-module `@brief`/`@details`
 doxygen corpus.
@@ -73,16 +72,15 @@ declarations in headers.
 Doxygen rules are stated in
 [`../../CLAUDE.md`](../../CLAUDE.md) "Doxygen Documentation
 Requirements" -- every applicable tag is mandatory. The current gap
-list is [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) (**0 functions
-with gaps** out of 2747 audited at the time of refresh -- Phase 3
-acceptance gate met).
+list is [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md). Its archived measurement
+must be regenerated for the release evidence pack.
 
 ### 1.5 Hardware citation standard
 
 Every register-level write must cite the Renesas Hardware User's
 Manual R01UH1065EJ section that authorises the bit pattern. Citations
-use the `@cite` doxygen tag and are audited by
-`scripts/checks/cite_check.py` (currently in WARN mode).
+use the `@cite` doxygen tag and are audited in strict mode by
+`scripts/checks/cite_check.py`.
 
 ---
 
@@ -98,14 +96,14 @@ use the `@cite` doxygen tag and are audited by
 | `arm-none-eabi-addr2line`  | Smoke-test PC resolution                   | bundled with gcc     |
 | `arm-none-eabi-nm`         | Symbol-table extraction (diag global addrs)| bundled with gcc     |
 | `cmake` >= 3.20            | Build system                               | top-level + per-app  |
-| GNU `make`                 | Build orchestrator (`make <app>`)          | host                 |
+| `just`                     | Build orchestrator (`just apps::build <app>`) | host                 |
 | `clang-format`             | Style enforcement                          | matches `.clang-format` |
 | `clang-tidy`               | Naming + complexity gate                   | matches `.clang-tidy`   |
-| `clang` >= 18              | Host MC/DC instrumentation (`-fcoverage-mcdc`) | clang-22 in dev container |
+| `clang` >= 18              | Host MC/DC instrumentation (`-fcoverage-mcdc`) | clang-18 profile in pinned devcontainer |
 | `llvm-profdata`/`llvm-cov` | MC/DC measurement                          | matches clang        |
-| `cppcheck` 2.20+           | MISRA-C 2012 audit + general static check  | host                 |
+| `cppcheck` 2.13.0          | MISRA-C 2012 audit + general static check  | pinned devcontainer  |
 | `python3`                  | Audit scripts under `scripts/checks/`      | 3.11+                |
-| `JLinkExe`                 | Flash + halt + register dump               | SEGGER v9.38a        |
+| `JLinkExe`                 | Flash + halt + register dump               | installed rig version recorded with evidence |
 | `gdb-multiarch`            | Interactive debug                          | host                 |
 
 The cross-compile settings are pinned in
@@ -115,21 +113,22 @@ Host (test) builds use the platform-default `gcc`/`clang`.
 ### 2.2 Host environment
 
 Development is performed on macOS (Apple Silicon) and Linux. A
-devcontainer is planned for Phase 6 to pin the toolchain versions for
-CI; until that lands, the developer is responsible for running an
-`arm-none-eabi-gcc` and `clang` matching the versions cited in
-[`../MCDC.md`](../MCDC.md) and [`../MISRA.md`](../MISRA.md).
+devcontainer is checked in under [`.devcontainer/`](../../.devcontainer/) and
+uses the canonical image preparation/execution helpers under `scripts/ci/`.
+Native development remains supported, but qualification commands should use
+the pinned environment when host tool versions differ.
 
 ### 2.3 Continuous integration
 
 CI runs in GitHub Actions via
 [`../../.github/workflows/firmware.yml`](../../.github/workflows/firmware.yml).
 The pre-commit hook ([`../../scripts/git/pre-commit`](../../scripts/git/pre-commit))
-enforces the same gates locally. Hardware-in-the-loop is run from the
-developer laptop via the pre-push workflow documented in
-[`../HIL_DEVELOPER_WORKFLOW.md`](../HIL_DEVELOPER_WORKFLOW.md); a
-self-hosted CI runner is **not** in scope (the project's permanent
-HIL posture is developer-laptop pre-push, not a leased runner farm).
+enforces the same gates locally. Hardware-in-the-loop uses the dedicated native
+listener on the dev box to build, then drives the guarded Raspberry Pi 5
+instrument host documented in
+[`../HIL_DEVELOPER_WORKFLOW.md`](../HIL_DEVELOPER_WORKFLOW.md). HIL-relevant
+pushes and trusted same-repository pull requests schedule `.github/workflows/hil.yml`
+automatically; manual dispatch and selected local-app runs remain available.
 
 ### 2.4 Probe and target
 
@@ -159,7 +158,7 @@ translation units carry HUM citations.
 Third-party libraries are admitted to the build under the SOUP
 register at [`../SOUP/`](../SOUP/). Each library is wrapped behind a
 first-party platform abstraction layer (`libs/ra8_*_pal/`,
-`libs/ra8_tls/`, `libs/ra8_ota/`, `port/lwip/`, `port/usbx/`,
+`libs/ra8_tls/`, `libs/ra8_ota/`, `port/netxduo/`, `port/usbx/`,
 `port/levelx/`, `port/nimble/`) so that:
 
 - The first-party code remains the **only** code in scope for MC/DC
@@ -181,13 +180,14 @@ fix"). Failures of this rule are recorded by `ra8_sbrk_trap` as
 
 ### 3.4 Per-app boot files
 
-Each application under `examples/<tier>/<app>/` carries its own
-`vector_table.c`, `system_init.c`, `secure_exception.c`,
-`trustzone_init.{c,h}`, `linker_script.ld`,
-`CMakeLists.txt`, and `Makefile`. This is intentional under
-[`../../CLAUDE.md`](../../CLAUDE.md) "Repository Layout" so that
-future divergence (different vector tables, different memory layouts)
-remains an explicit design option.
+Each selected application carries
+`examples/ek_ra8d2/<tier>/.../<app>/src/main.c` (or the RA8P1 equivalent)
+and a thin root-level
+`CMakeLists.txt`. Application implementations live under `src/`, interfaces
+under `inc/`, and linker or manifest files at the app root. The selected
+`libs/ra8_board_<board>/` layer supplies the default boot files and linker
+script. An application carries a local boot or linker file only when it
+intentionally overrides that default.
 
 ### 3.5 Inclusive terminology
 
@@ -223,16 +223,16 @@ must pass:
 - Defensive macro paren check (pre-commit hook).
 - `clang-format --check` (pre-commit hook).
 - `clang-tidy --check` (pre-commit hook).
-- `cppcheck` general checks (pre-commit hook; MISRA addon is `make
-  misra` only -- see Section 6).
+- `cppcheck` general checks (pre-commit hook; MISRA addon is `just quality::local::misra`
+  only -- see Section 6).
 - `check-since-version.py` (every public symbol carries a `@since`
   tag; pre-commit hook).
 - `check-copyright.py` (every source file carries the project header;
   pre-commit hook).
-- `cite_check.py --warn` (HUM citations on register code; pre-commit
-  hook in WARN mode).
-- `check_world_tags.py --warn` (ring/world tag discipline; pre-commit
-  hook in WARN mode).
+- `cite_check.py --strict` (HUM citations on register code; fail-closed
+  pre-commit policy).
+- `check_world_tags.py --strict` (ring/world tag discipline; fail-closed
+  pre-commit policy).
 - `check_obsolete_standards.py` (rejects references to superseded
   safety standards; pre-commit hook).
 - `check_mcdc_block.py` (MC/DC-blocking patterns; pre-commit hook).
@@ -243,19 +243,27 @@ the source of truth for the gate set.
 
 ### 4.4 Test
 
-Host-side unit tests live under [`../../tests/`](../../tests/) (190
-files matching `test_*.c` at the time of refresh; 190/190 PASS) and run on the
-developer host with the platform `gcc`/`clang`. `make test` runs the
-suite; `make mcdc` re-runs it under clang's MC/DC instrumentation.
+Host-side tests are distributed across `tests/`, `apps/**/tests/`, and the
+small `examples/**/tests/` population. The retained 2026-08-22 snapshot
+contains 693 source files (689 C, 4 C++) and 689 CTest registrations on clean
+standalone macOS and Linux configurations. Its authoritative
+Linux/devcontainer unit gate passed 689/689 in 8.66 s. This is historical
+evidence rather than a current-tree census. macOS execution was not claimed:
+the low-address
+peripheral-mock tests require Linux/container execution, as documented in
+[`../TOOLCHAIN.md`](../TOOLCHAIN.md).
+`just quality::local::test` runs the native suite, and
+`just quality::local::mcdc` re-runs it under clang's MC/DC instrumentation.
 
 ### 4.5 Integration
 
-Integration test layer is the `examples/<tier>/<app>/` matrix.
-EVM-tier apps under [`../../examples/ek_ra8d2/`](../../examples/ek_ra8d2/)
-must boot on a stock board with no extra hardware (or only a USB device
-for host-port demos). Hardware bring-up is documented in
-[`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md). Per-app host
-integration tests are scheduled for Phase 5 of the roadmap.
+Integration uses the live `scripts/dev/ra8_apps.py` inventory, distributed
+app-local and mock tests, and guarded target execution. The retained 118/118
+RA8D2 build is historical evidence. The
+selected-app HIL and remote-GDB lifecycle results are historical;
+current-candidate target execution, the complete per-app trace, and full-fleet
+execution remain pending. Hardware bring-up is documented in
+[`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md).
 
 ### 4.6 Verification
 
@@ -268,8 +276,10 @@ See Section 6.
 ### 5.1 Version control
 
 All source, scripts, plans, and reference PDFs are tracked in this
-git repository. The single permanently-blessed branch is `main`.
-Feature work is done in topic branches and merged via pull request.
+git repository. The long-lived `dev` branch is the working integration branch
+and `main` is the release branch. Feature work is done in issue worktrees,
+lands on `dev` after validation, and is promoted to `main` through a pull
+request.
 There is no separate release branch and no semantic-version tag
 discipline yet (this is a personal-project codebase per
 [`../../CLAUDE.md`](../../CLAUDE.md) "Backward Compatibility
@@ -299,8 +309,7 @@ permitted.
 ([`../../.github/workflows/firmware.yml`](../../.github/workflows/firmware.yml))
 and by the local pre-commit hook. The hook is committed under
 [`../../scripts/git/`](../../scripts/git/) and must be installed by
-each contributor (a `make install-hooks` target is reserved for a
-future SDP revision).
+each contributor with `just hooks`.
 
 ---
 
@@ -308,39 +317,43 @@ future SDP revision).
 
 ### 6.1 Unit tests
 
-`make test` runs the host-side suite. Coverage targets are tracked in
+`just quality::local::test` runs the host-side suite. Coverage targets are tracked in
 [`../MCDC.md`](../MCDC.md) (MC/DC) and the broader gap list is in
-[`../MCDC_GAPS.md`](../MCDC_GAPS.md). Test files follow `test_*.c`
-naming and are auto-discovered by
-[`../../tests/CMakeLists.txt`](../../tests/CMakeLists.txt).
+[`../MCDC_GAPS.md`](../MCDC_GAPS.md). Test files follow `test_*.c` or
+`test_*.cpp` naming and are discovered across the root test categories and
+module-local test directories by [`../../tests/CMakeLists.txt`](../../tests/CMakeLists.txt).
+The retained 2026-08-22 Linux/devcontainer unit-gate result passed all 689
+registered tests in 8.66 s. A release evidence pack must retain its own log; this
+result does not restamp MC/DC or other coverage evidence.
 
 ### 6.2 Integration tests
 
-EVM apps under [`../../examples/ek_ra8d2/`](../../examples/ek_ra8d2/)
-exercise the full software stack (HAL + PAL + middleware + app). Per
-the latest sweep in [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md)
-"2026-05-02 night sweep": 26 apps swept, 20 PASS, 4 WIP, 2 UNKNOWN,
-0 FAIL, 0 NOBUILD. Phase 5 of the roadmap adds host-side integration
-tests for every EVM app.
+Applications under [`../../examples/ek_ra8d2/`](../../examples/ek_ra8d2/)
+exercise the full software stack (HAL + PAL + middleware + app). The live EIL
+inventory comes from `scripts/dev/ra8_apps.py`; the 118/118 RA8D2 build and
+selected-app run are retained historical evidence;
+current-candidate real target execution and full-fleet execution remain
+pending.
 
 ### 6.3 MC/DC measurement
 
-`make mcdc` invokes
+`just quality::local::mcdc` invokes
 [`../../scripts/report/mcdc_report.sh`](../../scripts/report/mcdc_report.sh)
 which builds tests with `clang -fcoverage-mcdc`, runs each test
 binary with `LLVM_PROFILE_FILE` set, merges via `llvm-profdata
 merge -sparse`, and renders the report under `build/mcdc-report/`.
 Default threshold is 100 % (per DO-178C Section 6.4.4.2 for Level B);
 the threshold is overridable via `RA8_MCDC_THRESHOLD=NN` for
-intermediate phase gates. The current measurement is **100.00 %
-reachable / 92.29 % absolute** (2026-05-03 , see
-[`../MCDC.md`](../MCDC.md) measurement history). 58 conditions are
-catalogued as deactivated under DO-178C 6.4.4.3 in
+intermediate phase gates. The **100.00 % reachable / 92.29 % absolute**
+measurement from 2026-05 is historical; use the current gate output for the
+candidate under review (see [`../MCDC.md`](../MCDC.md) measurement history).
+The archived 2026-05 result classified 58 conditions as deactivated under
+DO-178C 6.4.4.3. The current decision set is derived in
 [`../MCDC_DEACTIVATIONS.md`](../MCDC_DEACTIVATIONS.md).
 
 ### 6.4 Hardware smoke
 
-`make hil-all` invokes
+`just hil::run` invokes
 [`../../scripts/hil/all.sh`](../../scripts/hil/all.sh)
 which auto-discovers every app under
 `examples/ek_ra8d2/hw_validated/hil/` carrying a `hil.conf`, flashes
@@ -348,18 +361,20 @@ each to the bench board, and verifies it by the mode that `hil.conf`
 declares (`uart_scrape`, `jlink_memprobe`, `usb_cdc`, `usb_hid`,
 `usb_msc`, ...). An app under `hil/` with no `hil.conf` fails the run
 rather than being skipped.
-Hardware-in-the-loop is a developer-laptop pre-push step (see
-[`../HIL_DEVELOPER_WORKFLOW.md`](../HIL_DEVELOPER_WORKFLOW.md)); a
-self-hosted runner is **not** in scope.
+Hardware-in-the-loop is guarded by the shared bench lock. HIL-relevant pushes
+and trusted same-repository pull requests schedule the managed dev-box listener
+automatically; a developer checkout and manual workflow dispatch remain
+available for targeted operation. GitHub Actions retains the current run logs
+and results as the execution evidence; this plan does not freeze a historical
+pass count.
 
 ### 6.5 MISRA-C 2012
 
-`make misra` invokes
+`just quality::local::misra` invokes
 [`../../scripts/checks/misra_check_inner.sh`](../../scripts/checks/misra_check_inner.sh)
 which runs cppcheck with the MISRA addon and writes
-`build/misra/results.txt`. Current advisory baseline: **1271 unique
-findings** (down from 1371 after D-004 closure; see
-[`../MISRA.md`](../MISRA.md)). The deviation register at
+`build/misra/results.txt`. The current result and ratchet are produced by the
+gate and must not be copied from the archived 2026-05 audit. The deviation register at
 [`./MISRA_DEVIATIONS.md`](./MISRA_DEVIATIONS.md) tracks the formal
 disposition (D-001 .. D-005 today). The project's permanent MISRA
 posture is **cppcheck-only** (no commercial checker -- LDRA / Helix
@@ -379,8 +394,8 @@ overflow).
 
 `scripts/checks/doxy_audit.py` walks `libs/`, `port/`, `tools/`, `apps/` (third
 party excluded) and reports per-function missing-tag counts to
-[`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md). Current gap: **0 functions
-with gaps** out of 2747 audited (Phase 3 acceptance gate met).
+[`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md). The release evidence pack must
+regenerate and restamp the result.
 
 ### 6.8 Coverage caveats
 
@@ -410,8 +425,8 @@ Source: [`../../scripts/git/pre-commit`](../../scripts/git/pre-commit).
 | `@since` tag presence                            | `scripts/checks/check-since-version.py`                     |
 | Copyright header presence                        | `scripts/checks/check-copyright.py`                         |
 | cppcheck (general)                               | `cppcheck --enable=warning,style,performance,portability`  |
-| HUM citations (WARN)                             | `scripts/checks/cite_check.py --warn`                       |
-| Ring/world tags (WARN)                           | `scripts/checks/check_world_tags.py --warn`                 |
+| HUM citations                                    | `scripts/checks/cite_check.py --strict`                     |
+| Ring/world tags                                  | `scripts/checks/check_world_tags.py --strict`               |
 | Roadmap stats freshness                          | `scripts/report/roadmap_stats.py --check`                   |
 | Obsolete-standard references                     | `scripts/checks/check_obsolete_standards.py`                |
 | MC/DC-blocking pattern check                     | `scripts/checks/check_mcdc_block.py`                        |
@@ -421,16 +436,18 @@ Source: [`../../scripts/git/pre-commit`](../../scripts/git/pre-commit).
 Source:
 [`../../.github/workflows/firmware.yml`](../../.github/workflows/firmware.yml).
 
-CI re-runs the pre-commit gate set on every PR plus the cross-build
-of every EVM app. Hardware-in-the-loop is added in Phase 6.
+CI re-runs the pre-commit gate set on every PR plus the configured cross-build
+matrix. The separate `hil.yml` workflow automatically schedules HIL-relevant
+pushes and trusted same-repository pull requests on the dedicated dev-box
+listener, while the shared lock serialises access to the remote bench.
 
 ### 7.3 Periodic verification (manual + roadmap-scheduled)
 
 | Activity                                    | Cadence                | Owner    |
 |---------------------------------------------|------------------------|----------|
-| `make mcdc` end-to-end                      | per Phase-1/2 sprint   | dev      |
-| `make misra`                                | quarterly              | dev      |
-| `make smoke` full sweep                     | per hardware session   | dev      |
+| `just quality::local::mcdc` end-to-end                      | per Phase-1/2 sprint   | dev      |
+| `just quality::local::misra`                                | quarterly              | dev      |
+| `just hil::run` full sweep                     | per hardware session   | dev      |
 | `scripts/checks/doxy_audit.py` regen         | per Phase-3 sprint     | dev      |
 | SOUP re-review                              | <= 12 months per entry | dev      |
 | Stack-usage report regen                    | per HAL change         | dev      |

@@ -205,7 +205,9 @@ static ra8_err_t internal_attach_dma_dirs(volatile r_ssie_regs_t*   reg,
 {
   if (want_tx) {
     const ra8_err_t tx_err = internal_start_tx_dma(reg, channel, dma);
-    RA8_RETURN_ON_ERROR(tx_err, s_tag, "ssie_attach_dma: tx start"); /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_BR_START -- internal_start_tx_dma() error edge; the fake DMA seam always starts */
+    RA8_RETURN_ON_ERROR(tx_err, s_tag, "ssie_attach_dma: tx start");
+    /* GCOVR_EXCL_BR_STOP */
   }
   if (want_rx) {
     const ra8_err_t rx_err = internal_start_rx_dma(reg, channel, dma);
@@ -230,10 +232,12 @@ ra8_err_t ra8_ssie_attach_dma(uint8_t channel, const ra8_ssie_dma_cfg_t* dma)
   bool            want_tx = false;
   bool            want_rx = false;
   const ra8_err_t v_err   = internal_validate_dma_cfg(dma, &want_tx, &want_rx);
-  RA8_RETURN_ON_ERROR(v_err, s_tag, "ssie_attach_dma: bad cfg"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, s_tag, "ssie_attach_dma: bad cfg");
 
   const ra8_err_t d_err = internal_attach_dma_dirs(reg, channel, dma, want_tx, want_rx);
-  RA8_RETURN_ON_ERROR(d_err, s_tag, "ssie_attach_dma: dir start"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- internal_attach_dma_dirs() error edge; both directions always attach */
+  RA8_RETURN_ON_ERROR(d_err, s_tag, "ssie_attach_dma: dir start");
+  /* GCOVR_EXCL_BR_STOP */
 
   g_ssie_runtime[channel].dma_attached = true;
   return k_ra8_ok;

@@ -88,6 +88,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # reference trees and the recovery scripts, which are pro-recovery by design.
 EXCLUDED_PREFIXES: tuple[str, ...] = (
     "libs/third_party/",
+    "apps/shared_libs/third_party/",
     "libs/ra8_fonts/",
     "docs/reference/",
 )
@@ -115,14 +116,27 @@ EXCLUDED_FILES: frozenset[str] = RECOVERY_SCRIPTS | {SELF_PATH}
 # "xml": <!-- --> blocks. "prose": no comment stripping, and every match is
 # treated as SOFT (docs are described, not executed). "none": no comment style.
 HASH_EXTS: frozenset[str] = frozenset(
-    {".sh", ".bash", ".py", ".yml", ".yaml", ".cmake", ".toml", ".cfg", ".conf", ".ini", ".mk"}
+    {
+        ".sh",
+        ".bash",
+        ".py",
+        ".yml",
+        ".yaml",
+        ".cmake",
+        ".toml",
+        ".cfg",
+        ".conf",
+        ".ini",
+        ".mk",
+        ".just",
+    }
 )
 C_EXTS: frozenset[str] = frozenset({".c", ".h", ".cpp", ".hpp", ".cc", ".hh", ".cxx", ".ld"})
 XML_EXTS: frozenset[str] = frozenset({".xml", ".html", ".svg", ".rpj"})
 PROSE_EXTS: frozenset[str] = frozenset({".md", ".markdown", ".txt", ".rst"})
 NONE_EXTS: frozenset[str] = frozenset({".json"})
 
-HASH_BASENAMES: frozenset[str] = frozenset({"Makefile", "CMakeLists.txt", "Dockerfile"})
+HASH_BASENAMES: frozenset[str] = frozenset({"justfile", "Justfile", "CMakeLists.txt", "Dockerfile"})
 
 # Extensionless basenames that are still shell/text worth scanning (the git
 # hooks: scripts/git/pre-commit, pre-push).

@@ -3,9 +3,9 @@
 #
 # Per-app CMake stub for `epub_open`. It joins the SD storage stack
 # (ra8_fs FAT layer over the ra8_sdmmc_spi SPI-mode driver) to the EPUB parse
-# stack: ra8_epub pulls in the vendored miniz (ZIP) + the bounded pure-C XML reader via the
-# ra8_epub special-case in ra8_add_app.cmake, ra8_reflow supplies the stb_truetype
-# glyph glue ra8_epub links against, and ra8_gfx backs ra8_reflow's render path.
+# stack: epub pulls in the vendored miniz (ZIP) + the bounded pure-C XML reader via the
+# epub special-case in ra8_add_app.cmake, reflow supplies the stb_truetype
+# glyph glue epub links against, and ra8_gfx backs reflow's render path.
 #
 #
 cmake_minimum_required(VERSION 3.20)
@@ -35,8 +35,8 @@ ra8_add_app(
   NAME epub_open
   STACK_BYTES 16384
   DESCRIPTION "Open + parse a real .epub from SD via ra8_fs (#114)"
-  LIBS ra8_epub
-       ra8_reflow
+  LIBS epub
+       reflow
        ra8_gfx
        ra8_fs
        ra8_sdmmc_spi

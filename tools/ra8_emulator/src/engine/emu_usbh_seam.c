@@ -145,8 +145,6 @@ RA8_INTERNAL static uint32_t internal_usbh_arg5(uc_engine* uc)
   return p;
 }
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is
- * void*. */
 /**
  * @brief Perform on USB host ok for the emu USB host seam model.
  * @details Perform on usb host ok for the emu usb host seam model; this step is contained within the emu USB host seam model and uses bounded caller or module-owned storage.
@@ -168,8 +166,6 @@ internal_on_usbh_ok(uc_engine* uc, uint64_t address, uint32_t size, void* user)
   eth_hook_return(uc, 0U); /* k_ra8_ok */
 }
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is
- * void*. */
 /**
  * @brief Perform on USB host line state for the emu USB host seam model.
  * @details Perform on usb host line state for the emu usb host seam model; this step is contained within the emu USB host seam model and uses bounded caller or module-owned storage.
@@ -191,8 +187,6 @@ internal_on_usbh_line_state(uc_engine* uc, uint64_t address, uint32_t size, void
   eth_hook_return(uc, (uint32_t)k_vkbd_lnst_attached);
 }
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is
- * void*. */
 /**
  * @brief Perform on USB host control xfer for the emu USB host seam model.
  * @details Perform on usb host control xfer for the emu usb host seam model; this step is contained within the emu USB host seam model and uses bounded caller or module-owned storage.
@@ -252,8 +246,6 @@ internal_on_usbh_control_xfer(uc_engine* uc, uint64_t address, uint32_t size, vo
   eth_hook_return(uc, 0U); /* k_ra8_ok */
 }
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is
- * void*. */
 /**
  * @brief Perform on USB host bulk in for the emu USB host seam model.
  * @details Perform on usb host bulk in for the emu usb host seam model; this step is contained within the emu USB host seam model and uses bounded caller or module-owned storage.
@@ -612,8 +604,6 @@ RA8_INTERNAL static void internal_vmsc_fill_sector(uc_engine* uc, uint32_t lba, 
   }
 }
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is
- * void*. */
 /**
  * @brief Perform on hmsc ok for the emu USB host seam model.
  * @details Perform on hmsc ok for the emu usb host seam model; this step is contained within the emu USB host seam model and uses bounded caller or module-owned storage.
@@ -646,8 +636,6 @@ typedef enum : uint32_t {
   k_hmsc_product_id = 0x4288U, /**< Reported USB product_id.                */
 } hmsc_dev_t;
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is
- * void*. */
 /**
  * @brief Perform on hmsc enumerate for the emu USB host seam model.
  * @details Perform on hmsc enumerate for the emu usb host seam model; this step is contained within the emu USB host seam model and uses bounded caller or module-owned storage.
@@ -684,8 +672,6 @@ internal_on_hmsc_enumerate(uc_engine* uc, uint64_t address, uint32_t size, void*
   eth_hook_return(uc, 0U); /* k_ra8_ok */
 }
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is
- * void*. */
 /**
  * @brief Perform on hmsc read capacity for the emu USB host seam model.
  * @details Perform on hmsc read capacity for the emu usb host seam model; this step is contained within the emu USB host seam model and uses bounded caller or module-owned storage.
@@ -719,8 +705,6 @@ internal_on_hmsc_read_capacity(uc_engine* uc, uint64_t address, uint32_t size, v
   eth_hook_return(uc, 0U); /* k_ra8_ok */
 }
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is
- * void*. */
 /**
  * @brief Perform on hmsc read10 for the emu USB host seam model.
  * @details Perform on hmsc read10 for the emu usb host seam model; this step is contained within the emu USB host seam model and uses bounded caller or module-owned storage.
@@ -759,8 +743,6 @@ internal_on_hmsc_read10(uc_engine* uc, uint64_t address, uint32_t size, void* us
   eth_hook_return(uc, 0U); /* k_ra8_ok */
 }
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is
- * void*. */
 /**
  * @brief Perform on hmsc write10 for the emu USB host seam model.
  * @details Perform on hmsc write10 for the emu usb host seam model; this step is contained within the emu USB host seam model and uses bounded caller or module-owned storage.

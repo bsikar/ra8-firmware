@@ -194,8 +194,8 @@ def parse_pin_list(text: str, group: Group, kind: str) -> list[dict]:
             if ball is not None and not BALL_RE.match(ball):
                 msg = f"not a ball coordinate: {ball!r}"
                 raise ParseError(msg)
-        entry = {"balls": dict(zip(ball_cols, balls))}
-        for name, cell in zip(FIELDS, cells[len(ball_cols) :]):
+        entry = {"balls": dict(zip(ball_cols, balls, strict=False))}
+        for name, cell in zip(FIELDS, cells[len(ball_cols) :], strict=False):
             entry[name] = "" if cell == DASH else cell
         out.append(entry)
     return out

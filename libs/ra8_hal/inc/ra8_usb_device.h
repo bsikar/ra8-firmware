@@ -755,18 +755,20 @@ ra8_usb_dcp_out_read(ra8_usb_speed_t speed, uint8_t* buf, uint16_t cap, uint16_t
  * @param[in] fn Callback. NULL detaches.
  * @param[in] ctx Context passed to `fn`.
  *
- * @return `ra8_err_t` error code.
- * @retval k_ra8_ok Handler installed.
+ * Slot replacement performs no fallible work; callers observe completion
+ * when this function returns.
  *
- * @pre None.
+ * @pre @p speed is `k_ra8_usb_speed_fs` or `k_ra8_usb_speed_hs`.
+ * @pre Caller serializes this update with `ra8_usb_dispatch(speed)`.
  *
- * @post Subsequent `ra8_usb_dispatch(speed)` calls route through `fn`.
+ * @post Subsequent `ra8_usb_dispatch(speed)` calls route through @p fn.
+ * @post Passing NULL for @p fn prevents subsequent callback invocation for
+ *       the selected controller.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t
-ra8_usb_attach_handler(ra8_usb_speed_t speed, ra8_usb_event_fn_t fn, void* ctx);
+void ra8_usb_attach_handler(ra8_usb_speed_t speed, ra8_usb_event_fn_t fn, void* ctx);
 
 /**
  * @brief Snapshot `INTSTS0` and fire the installed event handler.

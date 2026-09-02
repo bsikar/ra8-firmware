@@ -1,6 +1,6 @@
 # pagecache
 
-On-silicon exercise of the `ra8_reflow` import-time pagination cache (#117, the
+On-silicon exercise of the `reflow` import-time pagination cache (#117, the
 #79 cache) against a real microSD volume through `ra8_fs` -- the exact storage
 path the e-reader uses -- so the serialise / persist / load / invalidate logic
 meets real SD timing and the FAT read and write paths rather than only a host

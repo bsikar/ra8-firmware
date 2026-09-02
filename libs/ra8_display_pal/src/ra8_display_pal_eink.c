@@ -27,7 +27,7 @@
  * buffer is needed regardless of panel size (NASA P10 Rule 3: no
  * unbounded allocation). On-panel HIL validation needs an IT8951 panel on
  * the bench; the vtable + conversion are host-verified against the
- * fake-backed ``ra8_epaper`` (see tests/test_ra8_display_pal.c).
+ * fake-backed ``ra8_epaper`` (see tests/graphics/src/test_ra8_display_pal.c).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -511,6 +511,7 @@ static ra8_err_t internal_eink_get_caps(const void* ctx, display_caps_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
+/* cppcheck-suppress constParameterCallback -- display_pal_ops_t fixes this callback's context type as void*. */
 static ra8_err_t internal_eink_get_framebuffer(void* ctx, display_fb_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");

@@ -43,7 +43,7 @@
  *
  * Every build emits the identical register sequence; host unit tests
  * round-trip data through the register-level NOR-flash model in
- * ``tests/mocks/ra8_fake_xspi_flash.c``, which services each TRREQ kick
+ * ``tests/mocks/src/ra8_fake_xspi_flash.c``, which services each TRREQ kick
  * from the CMDCMP poll's ``ra8_fake_mmio`` seam consult (#238). Every
  * register write carries a
  * ``HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986``
@@ -159,8 +159,8 @@ static ra8_err_t internal_wait_octacksrdy(uint8_t expected)
 {
   /* SRDY (clock-source ready) is bit 7 of OCTACKCR. */
   /* HUM Ch 9.2.45 "OCTACKCR.OCTACKSRDY" p 360 */
-  volatile uint8_t* const ckcr = ra8_sys_octackcr();
-  const uint8_t           mask = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
+  volatile const uint8_t* const ckcr = ra8_sys_octackcr();
+  const uint8_t                 mask = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
   /* Bounded wait through ra8_hw_err.h: on host tests the ra8_fake_mmio
    * seam decides the poll (first-poll success unless a test arms a
    * fault), so the real timeout leg is reachable everywhere. */
@@ -388,7 +388,9 @@ ra8_err_t ra8_xspi_init(uint8_t instance, ra8_xspi_lio_mode_t mode)
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
   const ra8_err_t mst_err = ra8_mstp_enable(s_xspi_mstp_table[instance]);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "xspi_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "xspi_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   internal_xspi_apply_config(reg, mode);
   internal_xspi_reset_device(reg);
@@ -462,7 +464,7 @@ ra8_err_t ra8_xspi_deinit(uint8_t instance)
 ra8_err_t ra8_xspi_get_status(uint8_t instance, uint32_t* out_mask)
 {
   RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  volatile r_xspi_regs_t* reg = ra8_xspi(instance);
+  volatile const r_xspi_regs_t* reg = ra8_xspi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   *out_mask = reg->COMSTT;
@@ -496,7 +498,7 @@ void ra8_xspi_dispatch(uint8_t instance)
   }
   volatile r_xspi_regs_t* reg = ra8_xspi(instance);
   if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- instance bounded above */
-    return;             /* GCOVR_EXCL_LINE                              */
+    return;             /* GCOVR_EXCL_LINE -- MSTP fail is HW-only      */
   }
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   /* Snapshot INTS + COMSTT, clear every pending interrupt flag,

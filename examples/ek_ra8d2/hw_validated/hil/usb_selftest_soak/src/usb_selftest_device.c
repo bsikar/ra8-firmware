@@ -493,9 +493,6 @@ static UINT selftest_msc_read(VOID*  storage,
  * @note Hosts honouring the MODE SENSE WP bit never call this.
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [constParameterCallback] -- USBX's
- * ux_slave_class_storage_media_write function-pointer signature takes
- * non-const UCHAR*; we cannot const-qualify the parameter. */
 static UINT selftest_msc_write(VOID*  storage,
                                ULONG  lun,
                                UCHAR* data_pointer,
@@ -513,7 +510,6 @@ static UINT selftest_msc_write(VOID*  storage,
                                                        k_scsi_ascq_none);
   return UX_ERROR;
 }
-/* cppcheck-suppress-end [constParameterCallback] */
 
 /**
  * @brief Storage media-status callback. Always reports media-present.
@@ -625,7 +621,9 @@ static UINT selftest_msc_class_register(void)
   msc_params.ux_slave_class_storage_parameter_lun[0].ux_slave_class_storage_media_status =
     selftest_msc_status;
 
-  return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_storage",
+  static UCHAR s_class_name[] = "ux_slave_class_storage";
+
+  return _ux_device_stack_class_register(s_class_name,
                                          _ux_device_class_storage_entry,
                                          1,
                                          0,

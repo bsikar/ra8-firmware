@@ -34,6 +34,7 @@
 #include "ra8_c6link_wifi.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_secure.h"
 #include "ra8_wifi.h"
 #include "ra8_wifi_backend.h"
 
@@ -225,9 +226,12 @@ RA8_INTERNAL static ra8_err_t internal_c6link_op_join(void* ctx, const char* ssi
   ra8_c6link_sta_cfg_t sta = {};
   const ra8_err_t      set = ra8_c6link_sta_cfg_set(&sta, ssid, psk);
   if (set != k_ra8_ok) {
+    ra8_secure_memzero(&sta, sizeof(sta));
     return set;
   }
-  return ra8_c6link_wifi_join(self->link, &sta);
+  const ra8_err_t joined = ra8_c6link_wifi_join(self->link, &sta);
+  ra8_secure_memzero(&sta, sizeof(sta));
+  return joined;
 }
 
 /**

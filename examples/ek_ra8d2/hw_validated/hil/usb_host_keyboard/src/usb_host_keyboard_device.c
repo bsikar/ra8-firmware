@@ -463,7 +463,9 @@ static UINT hid_class_register(void)
     .ux_device_class_hid_parameter_callback       = UX_NULL,
     .ux_device_class_hid_parameter_get_callback   = hid_get_callback,
   };
-  return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_hid",
+  static UCHAR s_class_name[] = "ux_slave_class_hid";
+
+  return _ux_device_stack_class_register(s_class_name,
                                          _ux_device_class_hid_entry,
                                          1,
                                          0,
@@ -552,8 +554,10 @@ VOID hid_device_worker(ULONG arg)
 
 void usb_host_keyboard_device_thread_create(void)
 {
+  static CHAR s_device_thread_name[] = "hid_device";
+
   (void)tx_thread_create(&s_device_thread,
-                         "hid_device",
+                         s_device_thread_name,
                          hid_device_worker,
                          0UL,
                          s_device_stack,

@@ -137,7 +137,7 @@ typedef struct ra8_mdl_service {
   uint32_t                  active_job_id; /**< Correlation id of the current job.         */
   uint32_t                  next_sequence; /**< Sequence required from the next pull.      */
   uint64_t                  next_offset;   /**< Byte offset required from the next pull.   */
-  ra8_mdl_format_t          active_format; /**< Artifact identity of the active job.       */
+  mdl_format_t              active_format; /**< Artifact identity of the active job.       */
   bool                      active;        /**< Whether Next or Cancel is currently valid. */
   ra8_mdl_decode_arena_t    arena;         /**< Decode storage for the running dispatch.   */
 } ra8_mdl_service_t;

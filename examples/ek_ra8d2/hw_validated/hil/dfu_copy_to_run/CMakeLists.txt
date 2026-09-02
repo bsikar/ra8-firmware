@@ -4,7 +4,8 @@
 # Per-app CMakeLists for dfu_copy_to_run (copy-to-run HIL proof).
 #
 # Embeds the copy-to-run demo payload (payload_image.h, generated from payload.c
-# by build_payload.sh) and hands it to the shared libs/ra8_dfu ra8_dfu_launch --
+# by examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/scripts/build_payload.sh)
+# and hands it to the shared libs/ra8_dfu ra8_dfu_launch --
 # the same launcher the dfu_bootloader uses -- which copies it to the SRAM run
 # base (k_ra8_dfu_run_base) and branches there. The HIL alive gate then sees the
 # PC in the SRAM run window, proving copy-to-run executed (issue #97).
@@ -33,5 +34,6 @@ ra8_add_app(
   STACK_BYTES 2200
   DESCRIPTION
     "Copy-to-run HIL proof: launch one embedded image at the SRAM run base via ra8_dfu_launch"
+    AUX_SRCS src/payload.c
   LIBS ra8_dfu
 )

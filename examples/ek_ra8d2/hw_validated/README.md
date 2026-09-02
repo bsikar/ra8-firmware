@@ -5,14 +5,15 @@ them**, not by how mature they are.
 
 | | Verified by |
 |---|---|
-| [`hil/`](hil/) | The app's own `hil.conf`: UART scrape, J-Link memprobe, RTT, USB class binding or a wire-side TCP probe. `make hil-all` on the bench, and the same manifests again in the emulator via `make eil-all`. |
-| [`c6/`](c6/README.md) | The same, on the ESP32-C6 bench configuration. `make hil-c6`. |
+| [`hil/`](hil/) | The app's own `hil.conf`: UART scrape, J-Link memprobe, RTT, USB class binding or a wire-side TCP probe. `just hil::suite` on the bench, and the same manifests again in the emulator via `just apps::emulator::eil`. |
+| [`c6/`](c6/README.md) | The same, on the ESP32-C6 bench configuration. `just hil::c6`. |
 | [`manual/`](manual/) | Build only -- acceptance is a human observation, a picture on the LCD or a file copied from a PC. |
 
-`make <appname>` from the repo root builds any of them; the bare name works
+`just apps::build <appname>` from the repo root builds any of them; the name works
 whichever subdir the app lives in.
 
-Promoting an app is a `git mv` here plus a `hil.conf` beside its `main.c`.
+Promoting an app is a `git mv` here plus a root-level `hil.conf` for its
+`examples/ek_ra8d2/hw_validated/<lane>/<app>/src/main.c`.
 `hil/` is the default and carries an obligation: `check_hil_eil_parity.py`
 requires every app in it to be exercised by `ra8_emulator` too, in a mode the
 EIL suite can assert, with no skips -- which is what stops a new HIL app from

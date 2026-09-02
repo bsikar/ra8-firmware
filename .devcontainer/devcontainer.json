@@ -1,7 +1,8 @@
 {
   "name": "ra8-firmware",
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "context": ".."
   },
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
@@ -9,10 +10,10 @@
     "vscode": {
       "settings": {
         "C_Cpp.intelliSenseEngine": "disabled",
-        "clangd.path": "/usr/bin/clang-tidy",
+        "clangd.path": "/usr/bin/clangd-18",
+        "cmake.copyCompileCommands": "/workspace/compile_commands.json",
+        "cmake.useCMakePresets": "always",
         "cmake.configureOnOpen": false,
-        "makefile.makefilePath": "Makefile",
-        "makefile.configureOnOpen": true,
         "files.trimTrailingWhitespace": true,
         "files.insertFinalNewline": true,
         "editor.formatOnSave": true,
@@ -23,14 +24,16 @@
       "extensions": [
         "llvm-vs-code-extensions.vscode-clangd",
         "marus25.cortex-debug",
-        "ms-vscode.makefile-tools",
         "ms-vscode.cmake-tools",
         "twxs.cmake",
+        "skellock.just",
+        "vadimcn.vscode-lldb",
         "eamodio.gitlens",
         "github.copilot" // AI-OK: editor extension id (tooling install), not code attribution
       ]
     }
   },
+  "postCreateCommand": "just hooks",
   "remoteUser": "vscode",
   "features": {}
 }

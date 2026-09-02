@@ -3,7 +3,7 @@
  * @brief Table-of-contents screen: scrollable chapter list for the open book.
  *
  * @details
- * Lists the open book's spine chapters using their `ra8_book` TOC labels (falling
+ * Lists the open book's spine chapters using their `book` TOC labels (falling
  * back to "Chapter N" for unlabelled spine items). The list scrolls a page at a
  * time via SW1/SW2; tapping a visible row opens the reader at that chapter. The
  * window of visible rows is derived from the panel height and ::k_sh_toc_row_h.

@@ -124,7 +124,7 @@ internal_dir_cluster_init(const ra8_fs_mount_t* m, uint32_t new_cluster, uint32_
  *          then writes the parent's directory entry. On any post-allocation
  *          failure the new cluster is freed so the volume is not leaked.
  *
- * @param[in,out] handle Mounted FAT12/16/32 volume.
+ * @param[in] handle Mounted FAT12/16/32 volume.
  * @param[in]     path   NUL-terminated directory path to create.
  *
  * @return Error code.
@@ -145,7 +145,7 @@ internal_dir_cluster_init(const ra8_fs_mount_t* m, uint32_t new_cluster, uint32_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
+static ra8_err_t internal_fat_mkdir(const ra8_fs_mount_t* handle, const char* path)
 {
   dir_loc_t       parent = {};
   const char*     leaf   = nullptr;
@@ -199,7 +199,7 @@ static ra8_err_t internal_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
  * @details Validates arguments and the mount, then dispatches to the FAT or
  *          the exFAT directory creator (#605).
  *
- * @param[in,out] handle Mount handle.
+ * @param[in] handle Mount handle.
  * @param[in]     path   NUL-terminated directory path to create.
  *
  * @return Error code.
@@ -220,7 +220,7 @@ static ra8_err_t internal_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t internal_mkdir_locked(ra8_fs_mount_t* handle, const char* path)
+static ra8_err_t internal_mkdir_locked(const ra8_fs_mount_t* handle, const char* path)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -489,7 +489,7 @@ static ra8_err_t internal_fat_rmdir(const ra8_fs_mount_t* handle, const char* pa
  *          reachable subject and could only have been exercised against a
  *          hand-crafted fixture.
  *
- * @param[in,out] handle Mount handle.
+ * @param[in] handle Mount handle.
  * @param[in]     path   NUL-terminated directory path to remove.
  *
  * @return Error code.
@@ -510,7 +510,7 @@ static ra8_err_t internal_fat_rmdir(const ra8_fs_mount_t* handle, const char* pa
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t internal_rmdir_locked(ra8_fs_mount_t* handle, const char* path)
+static ra8_err_t internal_rmdir_locked(const ra8_fs_mount_t* handle, const char* path)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -533,7 +533,7 @@ static ra8_err_t internal_rmdir_locked(ra8_fs_mount_t* handle, const char* path)
  */
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t ra8_fs_mkdir(ra8_fs_mount_t* handle, const char* path)
+ra8_err_t ra8_fs_mkdir(const ra8_fs_mount_t* handle, const char* path)
 {
   priv_lock_acquire();
   const ra8_err_t err = internal_mkdir_locked(handle, path);
@@ -542,7 +542,7 @@ ra8_err_t ra8_fs_mkdir(ra8_fs_mount_t* handle, const char* path)
 }
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t ra8_fs_rmdir(ra8_fs_mount_t* handle, const char* path)
+ra8_err_t ra8_fs_rmdir(const ra8_fs_mount_t* handle, const char* path)
 {
   priv_lock_acquire();
   const ra8_err_t err = internal_rmdir_locked(handle, path);

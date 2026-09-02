@@ -131,7 +131,7 @@ def _api(path: str, token: str) -> object:
         },
     )
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310 -- HTTPS URL pinned above
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         _fail(f"GET {url} failed: HTTP {exc.code} {exc.reason}")
@@ -145,7 +145,7 @@ def _parse_ts(value: str | None) -> dt.datetime | None:
     if not value:
         return None
     try:
-        return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return dt.datetime.fromisoformat(value)
     except ValueError:
         return None
 
@@ -207,7 +207,7 @@ def _runs(repo: str, token: str, limit: int, hours: int | None) -> list[dict]:
     runs = payload.get("workflow_runs", []) if isinstance(payload, dict) else []
     if hours is None:
         return runs[:limit]
-    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
+    cutoff = dt.datetime.now(dt.UTC) - dt.timedelta(hours=hours)
     kept = []
     for run in runs:
         started = _parse_ts(run.get("run_started_at") or run.get("created_at"))

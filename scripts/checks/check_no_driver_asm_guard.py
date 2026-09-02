@@ -7,7 +7,7 @@ Issue #293 (following #238) migrated every host-compatibility CPU primitive out
 of the HAL peripheral drivers and onto ONE shared seam:
 
   - ``libs/ra8_hal/inc/ra8_hw_intrinsics.h``  (target inline asm / host decls)
-  - ``tests/mocks/ra8_host_asm_stub.c``       (the host-safe definitions)
+  - ``tests/mocks/src/ra8_host_asm_stub.c``       (the host-safe definitions)
 
 A driver that needs ``wfi`` / ``dsb`` / ``isb`` / ``nop`` / the ``cpsie i`` /
 ``cpsid i`` gate / the post-reset spin now calls ``ra8_hw_wfi()`` and friends;
@@ -41,6 +41,7 @@ Exit status: 0 if every driver is clean, 1 otherwise.
 
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 # Repo root: this file is scripts/checks/check_no_driver_asm_guard.py .
@@ -90,9 +91,9 @@ def strip_comments(text: str) -> list[str]:
     return out
 
 
-def check_file(path: Path) -> list[str]:
+def check_file(path: Path, repo_root: Path = REPO_ROOT) -> list[str]:
     """Return violation strings for one driver TU (empty when clean)."""
-    rel = path.relative_to(REPO_ROOT).as_posix()
+    rel = path.relative_to(repo_root).as_posix()
     lines = strip_comments(path.read_text(encoding="utf-8"))
 
     # Stack of booleans: does this open conditional's region reference the
@@ -126,6 +127,39 @@ def check_file(path: Path) -> list[str]:
     return problems
 
 
+def selftest() -> int:
+    """Prove guarded asm fires while seam calls and comment lookalikes stay quiet."""
+    with tempfile.TemporaryDirectory(prefix="driver-asm-selftest-") as raw:
+        root = Path(raw)
+        bad = root / "libs/ra8_hal/src/bad.c"
+        good = root / "libs/ra8_hal/src/good.c"
+        bad.parent.mkdir(parents=True)
+        bad.write_text(
+            '#ifdef RA8_OFF_TARGET\nvoid f(void) { __asm("nop"); }\n#else\n'
+            'void g(void) { __asm__("wfi"); }\n#endif\n',
+            encoding="ascii",
+        )
+        good.write_text(
+            '// __asm__("nop") under RA8_OFF_TARGET is prose\nvoid f(void) { ra8_hw_wfi(); }\n',
+            encoding="ascii",
+        )
+        bad_findings = check_file(bad, root)
+        good_findings = check_file(good, root)
+    expected_bad_findings = 2
+    cases = (
+        (len(bad_findings) == expected_bad_findings, "asm in both off-target branches fires"),
+        (not good_findings, "shared seam calls and comment lookalikes stay quiet"),
+    )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"check_no_driver_asm_guard.py --selftest: {len(failed)} failure(s)")
+        return 1
+    print("check_no_driver_asm_guard.py --selftest: all cases pass (both directions).")
+    return 0
+
+
 def main() -> int:
     """Fail any HAL driver that guards bare CPU asm on RA8_OFF_TARGET.
 
@@ -137,6 +171,12 @@ def main() -> int:
     Returns 0 when every driver routes its CPU primitives through
     ra8_hw_intrinsics.h, 1 on a violation or a missing driver directory.
     """
+    args = sys.argv[1:]
+    if args == ["--selftest"]:
+        return selftest()
+    if args:
+        print("usage: check_no_driver_asm_guard.py [--selftest]", file=sys.stderr)
+        return 2
     if not DRIVER_DIR.is_dir():
         print(f"check_no_driver_asm_guard.py: driver dir not found: {DRIVER_DIR}")
         return 1
@@ -153,7 +193,7 @@ def main() -> int:
         print("Fix at the root -- call the ra8_hw_* primitive from")
         print("  libs/ra8_hal/inc/ra8_hw_intrinsics.h")
         print("(add a new one there plus its host body in")
-        print(" tests/mocks/ra8_host_asm_stub.c if it does not exist yet).")
+        print(" tests/mocks/src/ra8_host_asm_stub.c if it does not exist yet).")
         return 1
 
     print(

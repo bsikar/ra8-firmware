@@ -91,7 +91,7 @@ REPO_ROOT = Path(
     ).stdout.strip()
 )
 
-EXCLUDED_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/")
+EXCLUDED_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/", "libs/ra8_fonts/")
 
 # A tree that has assembly cannot legitimately have none. Same trip-wire as
 # every other gate here: an empty scan must fail, never pass.

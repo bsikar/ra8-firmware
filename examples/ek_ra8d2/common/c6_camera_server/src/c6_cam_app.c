@@ -18,7 +18,6 @@
 #include <stdint.h>
 
 #include "c6_camera_server.h"
-#include "c6_camera_server_credentials.h"
 #include "nx_ether_driver_c6.h"
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -29,7 +28,9 @@
 #include "ra8_esp_hosted_port.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_net_provision.h"
 #include "ra8_sdramc.h"
+#include "ra8_secure.h"
 #include "ra8_time.h"
 #include "tx_api.h"
 
@@ -45,6 +46,12 @@ static volatile uint32_t s_events;
 static volatile uint8_t  s_connected;
 static volatile uint8_t  s_disconnected;
 static volatile uint16_t s_disconnect_reason;
+/** @brief Board-console binding for the shared runtime provisioner. @since 0.1.0 */
+static const ra8_net_provision_uart_t s_provision_uart = {
+  .write   = ra8_board_uart_console_write,
+  .read    = ra8_board_uart_console_read,
+  .wait_ms = ra8_delay_ms,
+};
 
 /**
  * @brief Park the application after a terminal failure.
@@ -242,9 +249,10 @@ RA8_INTERNAL static bool internal_c6_cam_prepare_link(void)
 
 /**
  * @brief Start station mode and associate with the configured AP.
- * @details Starts Wi-Fi, reads the station MAC, applies the compiled
+ * @details Starts Wi-Fi, reads the station MAC, applies the supplied runtime
  * credentials, joins, and waits for the association result.
  * @param[out] mac Destination for the bound station MAC address.
+ * @param[in] credentials Validated runtime credential record.
  * @return Association outcome.
  * @retval true Wi-Fi control and association completed.
  * @retval false Credentials, control, or association failed.
@@ -252,16 +260,12 @@ RA8_INTERNAL static bool internal_c6_cam_prepare_link(void)
  * @pre `mac` points to writable storage.
  * @post On success, `*mac` holds the station MAC address.
  * @post Failure diagnostics identify the stage or association reason.
- * @note Credentials are compiled into a generated translation unit.
+ * @note The caller erases credentials immediately after this synchronous use.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_c6_cam_associate(ra8_c6link_mac_t* mac)
+RA8_INTERNAL static bool internal_c6_cam_associate(ra8_c6link_mac_t*            mac,
+                                                   const ra8_net_credentials_t* credentials)
 {
-  if (g_c6_cam_wifi_ssid[0] == '\0') {
-    c6_cam_puts("c6_cam: FAIL no Wi-Fi credentials compiled in\r\n");
-    return false;
-  }
-
   ra8_err_t err = ra8_c6link_wifi_start(&s_link);
   if (err != k_ra8_ok) {
     internal_c6_cam_report_fault("wifi_start", err);
@@ -273,8 +277,9 @@ RA8_INTERNAL static bool internal_c6_cam_associate(ra8_c6link_mac_t* mac)
     return false;
   }
   ra8_c6link_sta_cfg_t station = {};
-  err = ra8_c6link_sta_cfg_set(&station, g_c6_cam_wifi_ssid, g_c6_cam_wifi_psk);
+  err = ra8_c6link_sta_cfg_set(&station, credentials->ssid, credentials->psk);
   if (err != k_ra8_ok) {
+    ra8_secure_memzero(&station, sizeof(station));
     internal_c6_cam_report_fault("sta_cfg_set", err);
     return false;
   }
@@ -282,6 +287,7 @@ RA8_INTERNAL static bool internal_c6_cam_associate(ra8_c6link_mac_t* mac)
   s_disconnected      = 0U;
   s_disconnect_reason = 0U;
   err                 = ra8_c6link_wifi_join(&s_link, &station);
+  ra8_secure_memzero(&station, sizeof(station));
   if (err != k_ra8_ok) {
     internal_c6_cam_report_fault("wifi_join", err);
     return false;
@@ -304,6 +310,7 @@ RA8_INTERNAL static bool internal_c6_cam_associate(ra8_c6link_mac_t* mac)
  * @brief Join configured Wi-Fi and acquire a DHCP lease.
  * @details Associates with the configured AP, then binds NetX to the link.
  * @param[out] lease Destination for the bound network lease.
+ * @param[in] credentials Validated runtime credential record.
  * @return Join outcome.
  * @retval true Association and DHCP completed with a bound lease.
  * @retval false Credentials, control, association, or DHCP failed.
@@ -311,13 +318,14 @@ RA8_INTERNAL static bool internal_c6_cam_associate(ra8_c6link_mac_t* mac)
  * @pre `lease` points to writable storage.
  * @post On success, `lease->bound` is true and address fields are valid.
  * @post Failure diagnostics identify the stage or association reason.
- * @note Credentials are compiled into a generated translation unit.
+ * @note The caller retains and erases the record after this function returns.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool internal_c6_cam_join(c6_cam_lease_t* lease)
+RA8_INTERNAL static bool internal_c6_cam_join(c6_cam_lease_t*              lease,
+                                              const ra8_net_credentials_t* credentials)
 {
   ra8_c6link_mac_t mac = {};
-  if (!internal_c6_cam_associate(&mac)) {
+  if (!internal_c6_cam_associate(&mac, credentials)) {
     return false;
   }
 
@@ -431,16 +439,29 @@ RA8_INTERNAL static void internal_c6_cam_worker_entry(ULONG input)
     internal_c6_cam_halt();
   }
   ra8_delay_ms((uint32_t)k_c6_cam_boot_wait_ms);
+  ra8_net_credentials_t credentials = {};
+  const ra8_err_t provisioned = ra8_net_provision_receive(&s_provision_uart,
+                                                          (uint32_t)k_ra8_net_provision_timeout_ms,
+                                                          &credentials);
+  if (provisioned != k_ra8_ok) {
+    internal_c6_cam_report_fault("runtime provisioning", provisioned);
+    ra8_net_provision_clear(&credentials);
+    internal_c6_cam_halt();
+  }
   if (!internal_c6_cam_prepare_media()) {
+    ra8_net_provision_clear(&credentials);
     internal_c6_cam_halt();
   }
   if (!internal_c6_cam_prepare_link()) {
+    ra8_net_provision_clear(&credentials);
     internal_c6_cam_halt();
   }
   c6_cam_lease_t lease = {};
-  if (!internal_c6_cam_join(&lease)) {
+  if (!internal_c6_cam_join(&lease, &credentials)) {
+    ra8_net_provision_clear(&credentials);
     internal_c6_cam_halt();
   }
+  ra8_net_provision_clear(&credentials);
   c6_cam_puts("c6_cam: PASS Wi-Fi and DHCP ip=");
   c6_cam_put_ip(lease.ip);
   c6_cam_puts("\r\n");

@@ -675,7 +675,6 @@ static inline ra8_mipi_csi_off_t ra8_mipi_csi_vc_off(ra8_mipi_csi_off_t base, ui
 {
   /* Computed stride offset is a valid HUM-defined VC register location, not a
    * literal enumerator -- the analyzer can't see that. */
-  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed VC-stride offset is a HUM-defined register location, not an enumerator.
   return (ra8_mipi_csi_off_t)((uint16_t)base + ((uint16_t)vc * k_ra8_mipi_csi_vc_stride));
 }
 

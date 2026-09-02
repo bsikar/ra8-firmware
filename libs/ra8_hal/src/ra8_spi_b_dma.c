@@ -44,6 +44,42 @@
 
 static const char* s_tag = "SPI_B";
 
+/**
+ * @brief Report whether a DMA entry point's channel index and length are usable.
+ *
+ * @details
+ * Both DMA entry points ask the same two questions of their arguments: is the
+ * channel index within ::k_ra8_spi_b_channel_count, and is the transfer length
+ * non-zero. Answering them here keeps each entry point to one early return for
+ * argument validation and gives the check a single exit of its own.
+ *
+ * @param[in] channel Caller-supplied SPI_B channel index.
+ * @param[in] len Requested transfer length in bytes.
+ *
+ * @return ra8_err_t Argument-validation verdict.
+ * @retval k_ra8_ok Both the channel index and the length are usable.
+ * @retval k_ra8_err_invalid_arg @p channel is out of range, or @p len is zero.
+ *
+ * @pre The caller has already null-checked its own pointer arguments.
+ * @pre ::k_ra8_spi_b_channel_count describes the live channel table.
+ * @post No hardware register is read or written.
+ * @post The caller's arguments are unchanged.
+ *
+ * @note Thread-safe; the function is pure.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_dma_args_ok(uint8_t channel, uint16_t len)
+{
+  ra8_err_t err = k_ra8_ok;
+  if (channel >= k_ra8_spi_b_channel_count) {
+    err = k_ra8_err_invalid_arg;
+  }
+  if (len == 0U) {
+    err = k_ra8_err_invalid_arg;
+  }
+  return err;
+}
+
 /* =============================================================================
  * DMA TX / RX
  * =============================================================================
@@ -116,8 +152,8 @@ RA8_INTERNAL static uint32_t internal_round_up_to_cache_line(uint32_t bytes)
     return 0U;
   }
   const uint32_t line = ra8_cache_dcache_line_bytes();
-  if (line == 0U) { /* GCOVR_EXCL_BR_LINE */
-    return bytes;   /* GCOVR_EXCL_LINE    */
+  if (line == 0U) { /* GCOVR_EXCL_BR_LINE -- cache line size fixed nonzero by architecture */
+    return bytes;   /* GCOVR_EXCL_LINE -- cache line size fixed nonzero by architecture    */
   }
   return (bytes + (line - 1U)) & ~(line - 1U);
 }
@@ -149,8 +185,8 @@ RA8_INTERNAL static uint32_t internal_round_up_to_cache_line(uint32_t bytes)
 RA8_INTERNAL static void internal_spi_dma_rx_complete(void* ctx)
 {
   ra8_spi_dma_rx_ctx_t* rxc = (ra8_spi_dma_rx_ctx_t*)ctx;
-  if (rxc == nullptr) { /* GCOVR_EXCL_BR_LINE */
-    return;             /* GCOVR_EXCL_LINE    */
+  if (rxc == nullptr) { /* GCOVR_EXCL_BR_LINE -- callback set by internal caller, never null */
+    return;             /* GCOVR_EXCL_LINE -- callback set by internal caller, never null    */
   }
   ra8_cache_dcache_invalidate_by_addr(rxc->rx_buf, internal_round_up_to_cache_line(rxc->rx_len));
   if (rxc->user_on_complete != nullptr) {
@@ -167,12 +203,13 @@ ra8_err_t ra8_spi_write_dma(uint8_t               channel,
 {
   RA8_CHECK_NULL_PTR(data, s_tag, "spi_write_dma: data");
   RA8_CHECK_NULL_PTR(out_dma_channel, s_tag, "spi_write_dma: out_dma_channel");
-  if ((channel >= k_ra8_spi_b_channel_count) || (len == 0U)) {
-    return k_ra8_err_invalid_arg;
+  const ra8_err_t args_ok = internal_dma_args_ok(channel, len);
+  if (args_ok != k_ra8_ok) {
+    return args_ok;
   }
   volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- internal caller proves reg non-null */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- internal caller proves reg non-null    */
   }
   /* Cache coherency: the SPI DMA reads CPU-written 'data' straight from
    * memory, so flush any dirty lines covering it before the engine starts.
@@ -194,23 +231,22 @@ ra8_err_t ra8_spi_write_dma(uint8_t               channel,
   return ra8_dma_request(&req, out_dma_channel);
 }
 
-ra8_err_t ra8_spi_read_dma(
-  uint8_t channel,
-  uint8_t*
-    out_buf, // NOLINT(readability-non-const-parameter) -- written by the DMAC engine via dst_addr, never through the pointer.
-  uint16_t              len,
-  ra8_dma_complete_fn_t on_complete,
-  void*                 ctx,
-  uint8_t*              out_dma_channel)
+ra8_err_t ra8_spi_read_dma(uint8_t               channel,
+                           uint8_t*              out_buf,
+                           uint16_t              len,
+                           ra8_dma_complete_fn_t on_complete,
+                           void*                 ctx,
+                           uint8_t*              out_dma_channel)
 {
   RA8_CHECK_NULL_PTR(out_buf, s_tag, "spi_read_dma: out_buf");
   RA8_CHECK_NULL_PTR(out_dma_channel, s_tag, "spi_read_dma: out_dma_channel");
-  if ((channel >= k_ra8_spi_b_channel_count) || (len == 0U)) {
-    return k_ra8_err_invalid_arg;
+  const ra8_err_t args_ok = internal_dma_args_ok(channel, len);
+  if (args_ok != k_ra8_ok) {
+    return args_ok;
   }
   volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- internal caller proves reg non-null */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- internal caller proves reg non-null    */
   }
   /* Cache coherency: the RX DMA writes out_buf straight to memory. Wrap the
    * caller's completion so the CPU invalidates those lines once the transfer

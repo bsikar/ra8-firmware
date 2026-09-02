@@ -1,9 +1,12 @@
 # examples/ek_ra8d2/hil_needs_revalidation/
 
-Apps that were in [`../hw_validated/hil/`](../hw_validated/hil/) and did not
-pass the most recent full bench run. They sit here so that `hw_validated/hil/`
-keeps meaning what it says: currently green. Each app's own README carries its
-suspected blocker.
+Apps that were in [`../hw_validated/hil/`](../hw_validated/hil/) and failed a
+recorded full bench run. They sit here to preserve that negative evidence until
+a later run supersedes it. Each app's own README carries its suspected blocker.
+
+Neither this directory nor `hw_validated/hil/` is a live dashboard. Tier
+placement records the outcome that caused the last move; only a dated run of
+the current commit can support a current green/red claim.
 
 **A blocker written down is a hypothesis, not a verdict.** One app here was
 labelled "needs an Ethernet peer"; it got one, and failed anyway -- on a
@@ -32,9 +35,9 @@ tier. Re-validating one is a `git mv` back into `hw_validated/hil/`; its
 
 ## The coverage this tier gives up
 
-Every app here was passing in `tools/ra8_emulator` when it moved: they pass in
-the emulator and fail on the bench, which under the EIL == HIL rule is a
-divergence worth keeping visible.
+For every app here, the recorded run that caused its move passed in
+`tools/ra8_emulator` and failed on the bench. Under the EIL == HIL rule, that
+historical divergence is worth keeping visible; it is not a current-pass claim.
 
 But the EIL run set and the parity gate discover apps only under
 `hw_validated/hil/`, so moving an app here **drops it from the enforcing EIL

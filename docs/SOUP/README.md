@@ -3,7 +3,8 @@
 Per IEC 61508-3 Section 7.4.2.12 and DO-178C Section 12.1.4, every
 third-party library shipped in this firmware must have a written
 qualification basis. This directory holds one Markdown justification per
-direct subdirectory of `libs/third_party/`.
+vendored component under `libs/third_party/` or
+`apps/shared_libs/third_party/`.
 
 The exemption that admits these libraries to the build (no source-level
 MC/DC re-test required in this repository) is recorded in the
@@ -27,7 +28,6 @@ basis.
 | XZ Embedded (decode) | tag `v2024-12-30` git `ae63ae3a` | Lasse Collin / Tukaani | [xz_embedded.md](xz_embedded.md) |
 | stb             | image v2.30 / truetype v1.26, base git `31c1ad37` | Sean Barrett | [stb.md](stb.md)     |
 | libwebp (decode) | 1.5.0   | Google / WebM Project       | [libwebp.md](libwebp.md)           |
-| TinyXML-2       | 11.0.0 tag `11.0.0` | Lee Thomason / community  | [tinyxml2.md](tinyxml2.md)         |
 | TFLite-micro    | git `fddd3707` | Google / TensorFlow   | [tflite-micro.md](tflite-micro.md) |
 | FlatBuffers     | 25.9.23 git `18724097` | Google                  | [flatbuffers.md](flatbuffers.md)   |
 | gemmlowp        | git `719139ce` | Google                | [gemmlowp.md](gemmlowp.md)         |
@@ -36,7 +36,8 @@ basis.
 | protobuf-c (nested in esp-hosted) | 1.4.1 git `abc67a11` | protobuf-c authors | [esp-hosted-host.md](esp-hosted-host.md) |
 
 Host build tool (not vendored source, not linked into firmware): **Arm Ethos-U
-Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
+Vela** -- [vela.md](vela.md) (pinned by the `vela` dependency group in
+`pyproject.toml` and resolved by `uv.lock`).
 
 Co-processor firmware (not vendored source, not linked into firmware; built
 from a pinned upstream and flashed onto the companion ESP32-C6):
@@ -64,17 +65,16 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
   future BLE bring-up; not yet linked to an example.
 - **litehtml** -- HTML/CSS layout engine for the EPUB reader.
 - **miniz** -- Deflate / inflate / ZIP support behind the EPUB, CBZ, PNG and
-  gzip decode paths and the `ra8_io` compress-on-write fabric seam.
+  gzip decode paths and the app-owned `compress` VFS composition seam.
 - **XZ Embedded** (decode-only) -- XZ/LZMA2 decoding for wrapped archive
-  content (`.tar.xz`) behind the bounded `libs/ra8_unarch` wrapper.
+  content (`.tar.xz`) behind the bounded `apps/shared_libs/unarch` wrapper.
 - **stb** -- JPEG / PNG / GIF / BMP decoding (`stb_image`, via
-  `libs/ra8_reflow/` and `libs/ra8_rabook_compile/`) and TTF rasterization
+  `apps/shared_libs/reflow/` and `apps/shared_libs/rabook_compile/`) and TTF rasterization
   (`stb_truetype`) for the EPUB reader.
 - **libwebp** (decode-only) -- WebP (VP8 / VP8L) decoding for longstrip / manga
-  raster content, reached through the `libs/ra8_webp/` facade. Wired for band
-  tiles via the JOF producer; the `ra8_reflow` inline small-image path is
+  raster content, reached through the `apps/shared_libs/webp/` facade. Wired for band
+  tiles via the JOF producer; the `reflow` inline small-image path is
   still `stb_image`-only (#637).
-- **TinyXML-2** -- XML parser for EPUB container metadata.
 - **TFLite-micro** -- On-device neural-network inference runtime
   (MicroInterpreter + a lean reference-kernel set) for the RA8P1 Ethos-U55 NPU.
 - **FlatBuffers** -- Zero-copy serialization headers for the `.tflite` model
@@ -102,8 +102,13 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 ## Aggregated license inventory and SBOM
 
 This catalog is the per-component *qualification* record. Two aggregated
-artifacts are derived from the same `libs/third_party/` tree and must be kept
-in sync with it:
+artifacts are derived from every supported vendored root and must be kept in
+sync with them. The current roots are `libs/third_party/` and
+`apps/shared_libs/third_party/`. A future dependency used by only one host tool
+may live at `tools/<tool>/third_party/<component>`, but only when it is truly
+tool-exclusive and has a registry entry, upstream manifest, qualification,
+license inventory entry, and raw-byte checkout rule. A tool that merely helps
+an application/content vertical continues to consume that app-owned vendor.
 
 - [`../../THIRD_PARTY_LICENSES.md`](../../THIRD_PARTY_LICENSES.md) -- the
   repo-root aggregated license inventory (attribution, the Apache-2.0
@@ -113,13 +118,13 @@ in sync with it:
 
 Both are generated and validated by
 [`../../scripts/gen/gen_sbom.py`](../../scripts/gen/gen_sbom.py)
-(`make sbom` / `make sbom-check`); the component registry it renders lives in
+(`just quality::local::sbom` / `just quality::local::sbom_check`); the component registry it renders lives in
 the sibling module
 [`../../scripts/gen/sbom_registry.py`](../../scripts/gen/sbom_registry.py)
 and is the single
 source of truth for the version / license / purl / provenance fields. When
 you bump or re-vendor a component here, update that registry and run
-`make sbom` so the SBOM and inventory do not drift (enforced in CI and the
+`just quality::local::sbom` so the SBOM and inventory do not drift (enforced in CI and the
 pre-commit hook).
 
 Commit-pinned components are additionally scanned for published CVEs every
@@ -132,8 +137,8 @@ upstream commit (the form OSV actually resolves for git-vendored C/C++).
 
 Every document in this directory makes the same load-bearing claim -- this
 tree is what upstream published -- and until #548 nothing verified it. The
-SBOM's integrity digest (#538) is re-derived from `libs/third_party/` on every
-run, which proves the tree has not changed since the SBOM was regenerated; it
+SBOM's integrity digest (#538) is re-derived from both canonical vendored roots
+on every run, which proves the tree has not changed since the SBOM was regenerated; it
 cannot prove the tree was right when it was vendored, because a bad copy is
 hashed just as faithfully as a good one.
 
@@ -153,8 +158,12 @@ Deliberate deviations are declared in the registry (`patched_files`,
 `local_files`) with a justification, and `--refresh` REFUSES to record a
 deviation the registry has not declared -- otherwise a corrupted file would be
 quietly re-recorded as "modified on purpose" and the gate would go green having
-absorbed it. Each component's own "Deviations / patches" section is the
-authority on what is declared for it.
+absorbed it. Every `patched_files` deviation also has a numbered series under
+[`../sbom/patches/`](../sbom/patches/). The offline patch gate reverses each
+vendored series to its recorded upstream blob and reapplies it to reproduce the
+checked-in bytes exactly; fetched SOUP applies its registered series after
+checking out the full pin. Each component's own "Deviations / patches" section
+is the authority on why the change exists.
 
 Applying that check for the first time found deviations this catalog had
 described as "unmodified" -- `.gitattributes` edits, CRLF-converted Windows
@@ -162,7 +171,7 @@ driver templates, and a vendor-in formatter sweep that had re-spaced several
 vendored amalgamations. Everything that could be restored to upstream's bytes
 was, and the rest was declared. That is the standing lesson: a prose claim of
 "unmodified" does not notice a tree-wide sweep reaching into
-`libs/third_party/`, so the claim has to be a gate.
+either canonical vendored root, so the claim has to be a gate.
 
 ## Review cadence
 

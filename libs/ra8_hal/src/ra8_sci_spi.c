@@ -192,11 +192,13 @@ ra8_err_t ra8_sci_spi_init(uint8_t channel, const ra8_sci_spi_cfg_t* cfg)
     return k_ra8_err_invalid_arg;
   }
   volatile r_sci_regs_t* reg = ra8_sci(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
   }
   const ra8_err_t mst_err = ra8_mstp_enable(s_mstp_table[channel]);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "spi_init: mstp"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "spi_init: mstp");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0" p 2182 */
   reg->CCR0 = 0U;
@@ -217,8 +219,8 @@ ra8_err_t ra8_sci_spi_deinit(uint8_t channel)
     return k_ra8_err_invalid_arg;
   }
   volatile r_sci_regs_t* reg = ra8_sci(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
   }
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0" p 2182 */
   reg->CCR0 = 0U;
@@ -234,8 +236,8 @@ ra8_err_t ra8_sci_spi_set_clock(uint8_t channel, uint32_t baud_hz, uint32_t pclk
     return k_ra8_err_invalid_arg;
   }
   volatile r_sci_regs_t* reg = ra8_sci(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
   }
   /* CCR2 (CKS/BRR) is writable while enabled; TE/RE stay set. */
   const uint32_t saved_ccr0 = reg->CCR0;

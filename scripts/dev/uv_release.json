@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "repository": "astral-sh/uv",
+  "version": "0.12.5",
+  "assets": {
+    "Darwin|aarch64": {
+      "name": "uv-aarch64-apple-darwin.tar.gz",
+      "sha256": "5bb0e5fe008a773c3dbcb97ff79cd89e1241464fe9d2f986d52ad8f1b037bd62"
+    },
+    "Darwin|x86_64": {
+      "name": "uv-x86_64-apple-darwin.tar.gz",
+      "sha256": "b3b2137477cf96c9686ebfb71524614cec780c673fd73e59bce099aef02e70e8"
+    },
+    "Windows|aarch64": {
+      "name": "uv-aarch64-pc-windows-msvc.zip",
+      "sha256": "724279317fee6e5fa8ad1908e4eba2bbe764ef1ece5b3f4597927b62b1fe562a"
+    },
+    "Windows|x86_64": {
+      "name": "uv-x86_64-pc-windows-msvc.zip",
+      "sha256": "4c4d49d8738847d9b71ba319e49a5688c93eac0fe6204b1df24e98528dddf39a"
+    },
+    "Linux|aarch64|gnu": {
+      "name": "uv-aarch64-unknown-linux-gnu.tar.gz",
+      "sha256": "9bf43b4d1a07665bf64d4c4e710930b382321a785e0eb10aac07f46471f86a31"
+    },
+    "Linux|aarch64|musl": {
+      "name": "uv-aarch64-unknown-linux-musl.tar.gz",
+      "sha256": "8767a0e77f2cd45436401b1b42bf7e9ed5a4a91a74a5305d6fe93249d0f6dbc5"
+    },
+    "Linux|x86_64|gnu": {
+      "name": "uv-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "68a509da24b06b4223a1c0175fb5eb5bc79342b76cbeff0cfe51ac3f5b17b6b2"
+    },
+    "Linux|x86_64|musl": {
+      "name": "uv-x86_64-unknown-linux-musl.tar.gz",
+      "sha256": "a4742988791c9aeae68c78150d6cba762062ad2a47e53738c2779d2b596bfcdb"
+    }
+  }
+}

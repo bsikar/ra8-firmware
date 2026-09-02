@@ -4,19 +4,19 @@ This document explains how to generate, browse, and maintain the
 project's API reference, which is produced by Doxygen from the
 in-tree source comments. The configuration file is the top-level
 `Doxyfile`; the wrapper script is `scripts/builders/docs.sh`; the
-canonical entry point is `make docs`.
+canonical entry point is `just docs::build`.
 
 ## Generating the HTML
 
 From the repository root:
 
 ```sh
-make docs               # build into build/docs/html/
-make docs && open build/docs/html/index.html   # macOS
-make docs && xdg-open build/docs/html/index.html  # Linux
+just docs::build                              # build into build/docs/html/
+just docs::build && open build/docs/html/index.html      # macOS
+just docs::build && xdg-open build/docs/html/index.html  # Linux
 ```
 
-`make docs` is a thin wrapper around `bash scripts/builders/docs.sh`,
+`just docs::build` is a thin wrapper around `bash scripts/builders/docs.sh`,
 which in turn:
 
 1. Resolves the **project-pinned doxygen release** via
@@ -42,7 +42,7 @@ version leaves the unknown ones (e.g. `$mermaidjs`) as literal text
 on every published page and mangles the `<head>`. The vendored
 doxygen-awesome theme likewise supports a bounded range of doxygen
 releases. Building with the distro or Homebrew doxygen of the day is
-therefore not supported -- always go through `make docs` /
+therefore not supported -- always go through `just docs::build` /
 `scripts/builders/docs.sh`, which enforce the pin.
 
 ## Theme (doxygen-awesome)
@@ -67,7 +67,7 @@ individual lines. To update the theme:
    end of `<head>` (see the theme's "Extensions" documentation).
    Discard the generated footer.html/style.css -- the project uses
    the defaults.
-4. Rebuild with `make docs` and confirm no literal `$placeholders`
+4. Rebuild with `just docs::build` and confirm no literal `$placeholders`
    appear in `build/docs/html/index.html`.
 
 To open the freshly-built HTML in a browser without a separate
@@ -85,9 +85,9 @@ under `docs/`, and all first-party source: the libraries, the adapters
 onto the vendored stacks, the co-processor firmware, the products and
 the examples, and the developer tooling, host emulator included.
 
-`libs/third_party/` is explicitly excluded -- vendored SOUP is
-documented under `docs/SOUP/` instead, not via Doxygen. So is
-`docs/doxygen_theme/` (the vendored HTML theme itself).
+`libs/third_party/` and `apps/shared_libs/third_party/` are explicitly
+excluded -- vendored SOUP is documented under `docs/SOUP/` instead, not via
+Doxygen. So is `docs/doxygen_theme/` (the vendored HTML theme itself).
 
 The repository is private while the docs site is public, so GitHub
 Actions status badges in Markdown would render as broken images for
@@ -97,7 +97,7 @@ docs-build time; they remain in the files on github.com.
 
 ## How to read the generated HTML
 
-After `make docs`, navigate to `build/docs/html/index.html`. The
+After `just docs::build`, navigate to `build/docs/html/index.html`. The
 left-hand sidebar carries the rendered README, a page per source file
 (its `@file` block, its declared symbols, and -- if Graphviz is on PATH
 -- include and caller graphs), an alphabetical symbol index, and a
@@ -119,7 +119,7 @@ pages automatically.
 When you add a new function, struct, enum, or file:
 
 1. Write the full Doxygen header per the `CLAUDE.md` rules. Several
-   gates hold that, and none of them is `make tidy` -- clang-tidy has
+   gates hold that, and none of them is the clang-tidy recipe -- clang-tidy has
    no Doxygen tag checking of any kind, and this line used to name it.
    `scripts/checks/doxy_audit.py` covers the required tag set on every
    function, a doc comment on every enum value / struct member / macro,
@@ -128,7 +128,7 @@ When you add a new function, struct, enum, or file:
    of whether a block actually describes the symbol it is attached to.
    They run in the `pre-commit-checks` / `doc-attachment` CI gates and
    in `scripts/git/pre-commit`.
-2. Run `make docs` locally and confirm the new symbol appears in
+2. Run `just docs::build` locally and confirm the new symbol appears in
    the rendered HTML.
 3. Tail `build/docs/doxygen-warnings.log` for any new warnings
    triggered by your change. The repository goal is **zero new
@@ -153,8 +153,9 @@ line in `INPUT`; nothing else discovers it.
   Markdown code fence in a Doxygen comment was opened with `` ` ``
   but never closed before the comment terminator. Audit the
   offending file and balance the backticks.
-- **"the name 'examples/<old>/foo.c' supplied as the argument in
-  the \\file statement is not an input file"** -- the
+- **"the name
+  'examples/ek_ra8d2/hw_validated/hil/blink/src/main.c' supplied as the
+  argument in the \\file statement is not an input file"** -- the
   `@file <path>` in the file header does not match the file's
   on-disk location. Update the `@file` line.
 - **"unable to resolve reference to ..."** -- you cited a symbol
@@ -167,7 +168,7 @@ The docs are built in CI through `scripts/builders/docs.sh` and the
 same pinned doxygen, twice, for different reasons:
 
 - `.github/workflows/docs-publish.yml` -- on every push to `main`
-  (and manual dispatch), runs `make docs` and force-publishes
+  (and manual dispatch), runs `just docs::build` and force-publishes
   `build/docs/html/` to the orphan `gh-pages` branch via
   `scripts/builders/publish_docs.sh`.
 - The `Doxygen warnings` job in `.github/workflows/firmware.yml` --
@@ -175,5 +176,5 @@ same pinned doxygen, twice, for different reasons:
   `build/docs-gate/` output tree, private members extracted, no
   graphs) and fails on non-benign warnings.
 
-The recommended local workflow is still to run `make docs` before
+The recommended local workflow is still to run `just docs::build` before
 pushing any change that touches public API surface.

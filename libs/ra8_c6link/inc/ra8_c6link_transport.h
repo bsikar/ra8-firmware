@@ -17,7 +17,7 @@
  *
  *   - `port/esp-hosted/` binds the seam to the ported esp-hosted OS-abstraction
  *     vtable, which is what drives the SCI Simple-SPI channel on the board;
- *   - `tests/test_ra8_c6link.c` binds it to a co-processor model that speaks
+ *   - `tests/wireless/src/test_ra8_c6link.c` binds it to a co-processor model that speaks
  *     the real wire protocol back at the facade, which is how every layer above
  *     this file is proven with no board attached.
  *

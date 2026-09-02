@@ -67,7 +67,15 @@ target_compile_definitions(
   PUBLIC MBEDTLS_CONFIG_FILE="mbedtls_config.h" TF_PSA_CRYPTO_CONFIG_FILE="tf_psa_crypto_config.h"
          MBEDTLS_PLATFORM_MEMORY MBEDTLS_MEMORY_BUFFER_ALLOC_C
 )
-target_compile_options(tfpsa_rot PRIVATE -w -Wno-error -fno-strict-aliasing)
+# No warning suppression: this OBJECT library has no warning profile to suppress.
+# ra8_add_app() applies the project profile to the app target, not to this
+# separately-declared tf-psa-crypto object library, so its compile line is the
+# toolchain flags plus this one. Compiling all 77 tf-psa-crypto TUs with
+# -Wno-attributes and -Wno-redundant-decls removed, under arm-none-eabi-gcc
+# 13.3.1 at -O0, emits nothing at all: neither -Wattributes nor
+# -Wredundant-decls is ever enabled here. Both are deleted; -fno-strict-aliasing
+# stays because it changes code generation, not diagnostics.
+target_compile_options(tfpsa_rot PRIVATE -fno-strict-aliasing)
 
 target_link_libraries(rot_verify_hil.elf PRIVATE tfpsa_rot)
 
@@ -79,10 +87,5 @@ target_include_directories(
   rot_verify_hil.elf PRIVATE ${_d}/libs/ra8_psa_crypto/inc ${_d}/libs/ra8_dfu/inc
 )
 
-# main.c + the RNG shim include the vendored psa/crypto.h (not -Werror-clean via
-# a non-SYSTEM path in a couple of spots); compile the psa-touching glue TUs
-# -w -Wno-error while the rest of the app keeps -Werror.
-set_source_files_properties(
-  ${CMAKE_CURRENT_SOURCE_DIR}/main.c ${CMAKE_CURRENT_SOURCE_DIR}/src/psa_kat_shim.c
-  PROPERTIES COMPILE_OPTIONS "-w;-Wno-error"
-)
+# The tf-psa include directories are SYSTEM, so its header diagnostics do not
+# weaken the full project warning profile on the first-party app and RNG shim.

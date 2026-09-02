@@ -1,7 +1,7 @@
 /**
  * @file ra8_viewer_comic.c
  * @brief Caller-workspace CBZ, CBR, and CBT reader engine.
- * @details Extracts one bounded encoded page through `ra8_comic`, probes and
+ * @details Extracts one bounded encoded page through `comic`, probes and
  * decodes it through the caller-bound stb arena, and renders into either the
  * fixed framebuffer or a caller-owned scroll tile. The archive, page index,
  * names, encoded bytes, decode arena, and output pixels never use the heap.
@@ -13,14 +13,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "comic.h"
 #include "ra8_attributes.h"
-#include "ra8_comic.h"
 #include "ra8_decomp_limits.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_img_arena.h"
-#include "ra8_reflow_image.h"
 #include "ra8_viewer_reader_internal.h"
+#include "reflow_image.h"
 
 /** @brief Destination rectangle for aspect-preserving page placement. */
 typedef struct {
@@ -128,7 +128,7 @@ internal_read_page(ra8_viewer_reader_t* reader, uint32_t page, size_t* out_bytes
 {
   uint64_t  declared = 0U;
   ra8_err_t error =
-    ra8_comic_page_info(&reader->comic.archive, page, nullptr, 0U, nullptr, &declared, nullptr);
+    comic_page_info(&reader->comic.archive, page, nullptr, 0U, nullptr, &declared, nullptr);
   if (error == k_ra8_ok) {
     error = ra8_decomp_check_declared(&reader->limits, reader->file.size, declared);
   }
@@ -139,11 +139,11 @@ internal_read_page(ra8_viewer_reader_t* reader, uint32_t page, size_t* out_bytes
     return error;
   }
   *out_bytes = 0U;
-  error      = ra8_comic_page_read(&reader->comic.archive,
-                                   page,
-                                   reader->comic.page,
-                                   reader->comic.page_cap,
-                                   out_bytes);
+  error      = comic_page_read(&reader->comic.archive,
+                               page,
+                               reader->comic.page,
+                               reader->comic.page_cap,
+                               out_bytes);
   if ((error == k_ra8_ok) && ((uint64_t)*out_bytes != declared)) {
     return k_ra8_err_invalid_size;
   }
@@ -238,14 +238,14 @@ size_t priv_viewer_comic_read(void* ctx, uint64_t offset, void* buffer, size_t l
 
 ra8_err_t priv_viewer_open_comic(ra8_viewer_reader_t* reader)
 {
-  return ra8_comic_open(&reader->comic.archive,
-                        priv_viewer_comic_read,
-                        &reader->file,
-                        reader->file.size,
-                        reader->comic.pages,
-                        (uint32_t)k_viewer_comic_page_cap,
-                        reader->comic.names,
-                        (uint32_t)k_viewer_comic_name_bytes);
+  return comic_open(&reader->comic.archive,
+                    priv_viewer_comic_read,
+                    &reader->file,
+                    reader->file.size,
+                    reader->comic.pages,
+                    (uint32_t)k_viewer_comic_page_cap,
+                    reader->comic.names,
+                    (uint32_t)k_viewer_comic_name_bytes);
 }
 
 ra8_err_t priv_viewer_size_comic_tiles(ra8_viewer_reader_t* reader)

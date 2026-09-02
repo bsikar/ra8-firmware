@@ -88,6 +88,7 @@ SOURCE_SUFFIXES = (
 SCAN_ROOTS = ("libs", "port", "examples", "tools", "apps", "tests")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
+    "apps/shared_libs/third_party/",
     "libs/ra8_fonts/",
     "port/threadx/",
 )
@@ -511,7 +512,7 @@ def fix_text(text: str) -> str:
     # Never cement a block this pass is REPORTING as torn (rule 4). End-padding
     # is a grouping hint clang-format honours, so a block padded to its two
     # sub-widths stays in two groups even after the comment that split it has
-    # been shortened -- the author does as the finding asks, runs `make format`,
+    # been shortened -- the author does as the finding asks, runs `just quality::local::format`,
     # and nothing moves. Rendering a reported block at one space instead lets
     # the next clang-format round see the minimal form and re-merge it.
     cemented = {k for run in find_split_runs(text) for k in range(run.first - 1, run.last)}
@@ -676,7 +677,7 @@ def _report_rewrites(bad: list[Path]) -> None:
             sys.stderr.write(
                 f"  {rel}:{lineno}\n      have: {old.rstrip()}\n      want: {new.rstrip()}\n"
             )
-    sys.stderr.write("\nRun: make format  (or check_comment_format.py --fix)\n")
+    sys.stderr.write("\nRun: just quality::local::format  (or check_comment_format.py --fix)\n")
 
 
 def _report_split_runs(split: list[tuple[Path, _SplitRun]]) -> None:

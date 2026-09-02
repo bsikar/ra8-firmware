@@ -6,7 +6,7 @@
 #
 # Compiles every e-reader content-library .epub source (the Git-LFS source of truth)
 # into the e-reader content tree as *.rabook and regenerates the manifest header
-# libs/ra8_book/inc/ra8_book_library.h. The .rabook blobs and the manifest are
+# apps/shared_libs/book/inc/book_library.h. The .rabook blobs and the manifest are
 # build artifacts (gitignored): they are 100% derived from the epubs plus
 # tools/epub_compile, so they are regenerated rather than committed.
 #
@@ -27,9 +27,9 @@
 #
 # Modes:
 #   build_books.sh                regenerate the WHOLE library + manifest, then
-#                                 bake the ereader_shelf subset (`make books`).
+#                                 bake the ereader_shelf subset (`just tools::books`).
 #   build_books.sh --shelf-only   compile ONLY the three ereader_shelf books and
-#                                 bake examples/.../ereader_shelf/library.h, with
+#                                 bake examples/.../ereader_shelf/inc/library.h, with
 #                                 no full-library compile or manifest. This is the
 #                                 fast path the EIL suite / CI use to make
 #                                 ereader_shelf build on a clean checkout (its
@@ -40,17 +40,18 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-SRC_DIR="$ROOT/apps/stand_alone/ereader/content/library"
-OUT_DIR="$ROOT/apps/stand_alone/ereader/content/compiled"
-COMPILER="$ROOT/tools/epub_compile/epub_compile.py"
-MANIFEST_GEN="$ROOT/tools/epub_compile/gen_manifest.py"
-MANIFEST_HDR="$ROOT/libs/ra8_book/inc/ra8_book_library.h"
-SHELF_HDR="$ROOT/examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/library.h"
+SRC_DIR="$ROOT/apps/board/stand_alone/ereader/content/library"
+OUT_DIR="$ROOT/apps/board/stand_alone/ereader/content/compiled"
+COMPILER="$ROOT/tools/epub_compile/src/epub_compile.py"
+MANIFEST_GEN="$ROOT/tools/epub_compile/src/gen_manifest.py"
+MANIFEST_HDR="$ROOT/apps/shared_libs/book/inc/book_library.h"
+SHELF_HDR="$ROOT/examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/inc/library.h"
 MAX_EDGE="${RA8_BOOK_MAX_EDGE:-1024}"
 
 # Single source of truth for the ereader_shelf demo subset: one entry per baked
 # book as "<epub/rabook basename>|<display title>|<author>" (the epub and its
-# compiled .rabook share a basename). Consumed by BOTH modes -- full `make books`
+# compiled .rabook share a basename). Consumed by BOTH modes -- full
+# `just tools::books`
 # and `--shelf-only` bake the same subset from this list, so the shelf contents
 # live in exactly one place.
 SHELF_BOOKS=(
@@ -125,7 +126,7 @@ for spec in "${SHELF_BOOKS[@]}"; do
   meta="${spec#*|}"
   shelf_args+=("$OUT_DIR/$base.rabook|$meta")
 done
-python3 "$ROOT/tools/bake_library.py" "$SHELF_HDR" "${shelf_args[@]}"
+python3 "$ROOT/tools/epub_compile/src/bake_library.py" "$SHELF_HDR" "${shelf_args[@]}"
 format_generated "$SHELF_HDR"
 
 if [ "$SHELF_ONLY" -eq 1 ]; then

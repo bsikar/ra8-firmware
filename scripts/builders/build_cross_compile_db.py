@@ -26,12 +26,12 @@ WHAT IT COVERS AND HOW IT FINDS IT
    majority of firmware TUs.
 2. Whatever the unified configure still leaves out, discovered by DIFFING the
    result against ``git ls-files`` -- never from a hardcoded app list. For each
-   app directory still missing, the app's OWN ``Makefile`` is asked for its
-   configure line (``make -n``), which is then re-run into a scratch build
-   directory. That is how the RA8P1 tier (a different chip, a different
-   toolchain file) and ``ra8_cache_store_demo`` (LevelX standalone mode, which
-   is mutually exclusive with the LevelX the unified build selects) are picked
-   up without this file knowing either fact.
+   app directory still missing, the shared ``scripts/dev/ra8_apps.py`` registry
+   supplies the source directory and toolchain used by ``just apps::build``.
+   The app's own CMake ``ra8_add_app(USES ...)`` declaration supplies its
+   middleware switches in a standalone configure. That is how the RA8P1 tier
+   and ``ra8_cache_store_demo`` are picked up without duplicating their build
+   choices here.
 3. A last-resort derivation for TUs that NO configure compiles, described
    below.
 
@@ -46,8 +46,10 @@ TUs THAT NOTHING BUILDS
 One first-party TU is compiled by no configure at all, for a reason that is a
 fact about the tree rather than a defect in the enumeration above:
 
-  * ``examples/.../dfu_copy_to_run/payload.c`` -- a freestanding image linked at
-    a fixed SRAM base by its own ``build_payload.sh``, never by CMake.
+  * ``examples/.../dfu_copy_to_run/src/payload.c`` -- a freestanding image linked at
+    a fixed SRAM base by its own
+    ``examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/scripts/build_payload.sh``,
+    never by CMake.
 
 Being unbuilt is not a licence to go unlinted: it is first-party firmware and
 CLAUDE.md holds it to the same bar. So a command is DERIVED from the nearest
@@ -63,17 +65,16 @@ command that provably works or this script fails.
 
 THE COVERAGE ASSERTION IS THE POINT
 -----------------------------------
-``--check`` fails when any first-party cross-compiled ``.c`` is absent from the
-merged database. Without it this script would degrade exactly the way the thing
-it replaces did: quietly emitting a smaller database, over which clang-tidy
-would report a clean run. A database that covers less must be an error, not a
-faster pass.
+Any first-party cross-compiled ``.c`` absent from the merged database fails the
+run. This script must not quietly emit a smaller database over which clang-tidy
+would report a clean result. ``--check`` remains as a compatibility spelling
+for CI, but completeness is mandatory for every caller.
 
 USAGE
 -----
     build_cross_compile_db.py --selftest      # assert the merge + gap logic fires
-    build_cross_compile_db.py -o DIR          # write DIR/compile_commands.json
-    build_cross_compile_db.py -o DIR --check  # ... and fail on any uncovered TU
+    build_cross_compile_db.py -o DIR          # write a complete compile_commands.json
+    build_cross_compile_db.py -o DIR --check  # compatibility spelling; same strict verdict
 """
 
 from __future__ import annotations
@@ -88,16 +89,23 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass, field
+from functools import cache
 from pathlib import Path
 
-REPO_ROOT = Path(
-    subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],  # noqa: S607 -- trusted: fixed git argv
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.strip()
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "scripts" / "dev"))
+from git_environment import (  # noqa: E402 -- repository path added above
+    isolated_git_environment,
+    trusted_git_executable,
 )
+from ra8_apps import get_apps  # noqa: E402 -- path is repository-derived above
+
+
+@cache
+def firmware_apps() -> tuple[dict, ...]:
+    """Return the Just app registry once for this generator invocation."""
+    return tuple(get_apps())
+
 
 # Middleware switches the unified configure forces ON so that apps declaring
 # `USES <m>` are configured rather than skipped. Derived from the option()
@@ -123,6 +131,12 @@ FIRMWARE_ROOTS = ("examples/", "port/")
 # TUs "passed" while the other three failed on an unreachable `fw_if_fs.h`.
 # Keep the two lists in step with route_bucket() in scripts/checks/tidy/collect.sh.
 HOST_PORT_ROOTS = ("port/posix/",)
+
+# Tests nested below a firmware example are host test translation units. The
+# host CMake database owns them; treating their conventional tests/src path as
+# firmware asks an Arm donor command to resolve host-only support such as
+# unity_minimal.h and fails without analysing either domain correctly.
+HOST_TEST_PATH_PART = "/tests/"
 
 # Vendored SOUP under a firmware root -- CLAUDE.md exempts it from first-party
 # standards, so it is not part of what this database must cover. None exists
@@ -170,34 +184,37 @@ def run(argv: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess
         return subprocess.CompletedProcess(argv, returncode=127, stdout="", stderr=str(exc))
 
 
-def tracked_files() -> list[str]:
-    """Every tracked path, repo-relative."""
-    out = run(["git", "ls-files"], cwd=REPO_ROOT)
+def live_files(paths: list[str], root: Path) -> list[str]:
+    """Keep only paths whose regular file exists below ``root``."""
+    return [rel for rel in paths if (root / rel).is_file()]
+
+
+def working_tree_files(root: Path = REPO_ROOT) -> list[str]:
+    """Every cached or untracked, non-ignored live file, repo-relative."""
+    out = run(
+        [trusted_git_executable(), "ls-files", "--cached", "--others", "--exclude-standard"],
+        cwd=root,
+    )
     if out.returncode != 0:
         sys.stderr.write(f"git ls-files failed: {out.stderr.strip()}\n")
         sys.exit(1)
-    return out.stdout.splitlines()
+    return live_files(out.stdout.splitlines(), root)
+
+
+def is_firmware_source(rel: str) -> bool:
+    """Report whether `rel` is a first-party cross-compiled C source."""
+    return (
+        rel.endswith(".c")
+        and rel.startswith(FIRMWARE_ROOTS)
+        and not rel.startswith(FIRMWARE_EXEMPT)
+        and not rel.startswith(HOST_PORT_ROOTS)
+        and HOST_TEST_PATH_PART not in rel
+    )
 
 
 def firmware_sources() -> set[str]:
     """Repo-relative first-party ``.c`` under the cross-compiled roots."""
-    return {
-        rel
-        for rel in tracked_files()
-        if rel.endswith(".c")
-        and rel.startswith(FIRMWARE_ROOTS)
-        and not rel.startswith(FIRMWARE_EXEMPT)
-        and not rel.startswith(HOST_PORT_ROOTS)
-    }
-
-
-def join_continuations(text: str) -> list[str]:
-    """Fold backslash-newline continuations so one shell command is one string.
-
-    ``make -n`` prints a recipe line exactly as written, continuations and all,
-    so the cmake configure invocation arrives split across several output lines.
-    """
-    return [line.strip() for line in text.replace("\\\n", " ").splitlines() if line.strip()]
+    return {rel for rel in working_tree_files() if is_firmware_source(rel)}
 
 
 # ---------------------------------------------------------------------------
@@ -305,48 +322,39 @@ def configure_unified(build_dir: Path, verbose: bool) -> None:
 # Pass 2 -- per-app configures for whatever the unified build left out
 # ---------------------------------------------------------------------------
 def app_dir_for(rel: str) -> Path | None:
-    """Nearest ancestor directory of `rel` that is a standalone app.
+    """Nearest ancestor directory of `rel` that is a discovered firmware app.
 
-    An app directory is one holding BOTH a CMakeLists.txt and a Makefile: that
-    pair is what makes it configurable on its own terms.
+    Discovery is shared with ``just apps::build`` through ``ra8_apps.py`` so
+    this pass cannot grow a second, subtly different definition of an app.
     """
-    current = (REPO_ROOT / rel).parent
-    while current != REPO_ROOT and REPO_ROOT in current.parents:
-        if (current / "CMakeLists.txt").is_file() and (current / "Makefile").is_file():
-            return current
-        current = current.parent
-    return None
+    source = (REPO_ROOT / rel).resolve()
+    candidates = [
+        Path(app["dir"]).resolve()
+        for app in firmware_apps()
+        if Path(app["dir"]).resolve() in source.parents
+    ]
+    return max(candidates, key=lambda path: len(path.parts), default=None)
 
 
-def configure_line_from_makefile(app_dir: Path) -> list[str] | None:
-    """The app's own cmake configure invocation, read out of its Makefile.
-
-    Asking ``make -n`` means the toolchain file and every extra ``-D`` come
-    from the app's Makefile rather than being restated here -- an app that
-    switches chip or flips a middleware switch needs no edit to this script.
-    """
-    # -B (--always-make) is load-bearing. Without it `make -n build` prints
-    # "Nothing to be done" whenever the app's ELF is already up to date -- which
-    # it is in any tree where the apps have been built, e.g. straight after the
-    # build-cross gate. The configure line then goes missing, the residual pass
-    # silently configures nothing, and the database comes back smaller. The
-    # coverage assertion catches that, but a checker whose answer depends on
-    # whether someone happened to build first is wrong regardless of whether
-    # something downstream notices.
-    dry = run(["make", "-n", "-B", "build"], cwd=app_dir)
-    if dry.returncode != 0:
+def configure_argv_for_app(app_dir: Path) -> list[str] | None:
+    """Return the standalone configure consumed by ``just apps::build``."""
+    app = next(
+        (entry for entry in firmware_apps() if Path(entry["dir"]).resolve() == app_dir.resolve()),
+        None,
+    )
+    if app is None:
         return None
-    for line in join_continuations(dry.stdout):
-        if not line.startswith("cmake ") or " -B" not in line:
-            continue
-        try:
-            argv = shlex.split(line)
-        except ValueError:
-            return None
-        if "--build" in argv:
-            continue
-        return argv
-    return None
+    toolchain = REPO_ROOT / app["toolchain"]
+    return [
+        "cmake",
+        "-S",
+        str(Path(app["dir"]).resolve()),
+        "-B",
+        str(app_dir / "build"),
+        f"-DCMAKE_TOOLCHAIN_FILE={toolchain}",
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+    ]
 
 
 def rewrite_build_dir(argv: list[str], build_dir: Path) -> list[str]:
@@ -378,7 +386,7 @@ def configure_residual_apps(db: Database, scratch: Path, verbose: bool) -> list[
         if app_dir is None or app_dir in seen:
             continue
         seen.add(app_dir)
-        argv = configure_line_from_makefile(app_dir)
+        argv = configure_argv_for_app(app_dir)
         if argv is None:
             continue
         build_dir = scratch / f"app-{app_dir.name}"
@@ -449,7 +457,7 @@ def shared_prefix_len(a: str, b: str) -> int:
     """How many leading path components `a` and `b` have in common."""
     left, right = a.split("/"), b.split("/")
     count = 0
-    for one, other in zip(left, right):
+    for one, other in zip(left, right, strict=False):
         if one != other:
             break
         count += 1
@@ -533,9 +541,9 @@ def report_uncovered(uncovered: list[str], total: int) -> int:
         print(f"  ... and {len(uncovered) - MAX_SHOWN} more", file=sys.stderr)
     print(file=sys.stderr)
     print(
-        "Each needs a configure that reaches it. An app is picked up\n"
-        "automatically when its directory holds BOTH a CMakeLists.txt and a\n"
-        "Makefile whose `build` target configures it -- check that pair first.",
+        "Each needs a configure that reaches it. Firmware apps are discovered\n"
+        "through scripts/dev/ra8_apps.py, and each app's CMakeLists.txt must\n"
+        "declare its complete ra8_add_app() dependency surface.",
         file=sys.stderr,
     )
     return 1
@@ -601,13 +609,18 @@ def _selftest_command_building() -> list[str]:
     if "RA8_USE_LEVELX_STANDALONE" in options:
         failures.append("known_middleware_options() included the mutually-exclusive LevelX mode")
 
-    # 4. Continuation folding: a `make -n` recipe split over lines is ONE command.
-    #    Asserted through shlex.split rather than on the raw string, because the
-    #    exact run of intervening whitespace is not what callers depend on.
-    folded = join_continuations("cmake -S . \\\n  -B build \\\n  -DX=1\nnext\n")
-    expected = [["cmake", "-S", ".", "-B", "build", "-DX=1"], ["next"]]
-    if [shlex.split(line) for line in folded] != expected:
-        failures.append(f"join_continuations() produced {folded!r}")
+    # 4. The residual-app configure must use the same discovered toolchain as
+    # `just apps::build`, rather than guessing from a path fragment here.
+    apps = firmware_apps()
+    if not apps:
+        failures.append("ra8_apps.py discovered no firmware apps")
+    for app in apps:
+        app_dir = Path(app["dir"]).resolve()
+        argv = configure_argv_for_app(app_dir)
+        expected_toolchain = f"-DCMAKE_TOOLCHAIN_FILE={REPO_ROOT / app['toolchain']}"
+        if argv is None or str(app_dir) not in argv or expected_toolchain not in argv:
+            failures.append(f"configure argv drifted from ra8_apps.py for {app_dir}")
+            break
 
     # 5. rewrite_build_dir must repoint -B in both spellings and force the export.
     rewritten = rewrite_build_dir(["cmake", "-S", ".", "-B", "/orig", "-DA=1"], Path("/new"))
@@ -638,11 +651,40 @@ def _selftest_command_building() -> list[str]:
     return failures
 
 
-def selftest() -> int:
-    """Assert the merge and the gap detection both work, and that they fail."""
-    failures = _selftest_database() + _selftest_reporting() + _selftest_command_building()
+def _selftest_source_classification() -> list[str]:
+    """Assert app-local host tests and absent index paths stay out of the database."""
+    failures: list[str] = []
+    if is_firmware_source("examples/demo/tests/src/test_demo.c"):
+        failures.append("is_firmware_source() claimed an app-local host test")
+    if not is_firmware_source("examples/demo/src/main.c"):
+        failures.append("is_firmware_source() dropped an example implementation")
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "present.c").write_text("void present(void) {}\n", encoding="ascii")
+        if live_files(["present.c", "missing.c"], root) != ["present.c"]:
+            failures.append("live_files() did not keep the real file and drop the absent path")
+        run([trusted_git_executable(), "init", "--quiet"], cwd=root)
+        (root / ".gitignore").write_text("._*\n", encoding="ascii")
+        (root / "ordinary.cc").write_text("void ordinary() {}\n", encoding="ascii")
+        (root / "._artifact.c").write_bytes(b"\x00AppleDouble")
+        enumerated = working_tree_files(root)
+        if "present.c" not in enumerated or "ordinary.cc" not in enumerated:
+            failures.append("working_tree_files() dropped an ordinary untracked C/C++ file")
+        if "._artifact.c" in enumerated:
+            failures.append("working_tree_files() included an ignored AppleDouble artifact")
+    return failures
 
-    # 8. The floor must reject a database that collapsed to almost nothing.
+
+def _selftest_body() -> int:
+    """Assert the merge and the gap detection both work, and that they fail."""
+    failures = (
+        _selftest_database()
+        + _selftest_reporting()
+        + _selftest_command_building()
+        + _selftest_source_classification()
+    )
+
+    # 9. The floor must reject a database that collapsed to almost nothing.
     sources = firmware_sources()
     if len(sources) < TU_FLOOR:
         failures.append(
@@ -650,7 +692,7 @@ def selftest() -> int:
             f"below the floor of {TU_FLOOR} -- enumeration is broken"
         )
 
-    # 9. The hosted-port carve-out, both directions. A carve-out that widened
+    # 10. The hosted-port carve-out, both directions. A carve-out that widened
     #    to swallow the cross-compiled ports would drop real firmware out of
     #    the database and read as a smaller, cleaner run; one that stopped
     #    matching would put the host port back in and demand a cross command
@@ -669,22 +711,28 @@ def selftest() -> int:
     return 0
 
 
+def selftest() -> int:
+    """Run compile-database fixtures without inheriting the caller's repo."""
+    with isolated_git_environment():
+        return _selftest_body()
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 def main() -> int:
-    """Build a cross-compilation database, or verify the committed one is current.
+    """Build a complete cross-compilation database.
 
-    ``--check`` regenerates in memory and compares instead of writing, which
-    is what CI runs: it fails when the checked-in database has drifted from
-    the build system rather than silently rewriting it under the runner.
-
-    Returns 0 on success or a matching ``--check``, non-zero when the database
-    is stale.
+    Completeness is mandatory for every caller. ``--check`` remains accepted
+    for the CI call site, but cannot weaken or strengthen the verdict.
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("-o", "--out", help="directory to write compile_commands.json into")
-    parser.add_argument("--check", action="store_true", help="fail on any uncovered firmware TU")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="compatibility flag; completeness is always enforced",
+    )
     parser.add_argument("--selftest", action="store_true", help="assert this script still fires")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
@@ -705,7 +753,7 @@ def main() -> int:
         print(
             f"ERROR: only {total} firmware TUs enumerated (floor {TU_FLOOR}). "
             "The enumeration is broken; refusing to emit a database that would "
-            "make clang-tidy report a clean run over almost nothing.",
+            "let clang-tidy report a clean run over almost nothing.",
             file=sys.stderr,
         )
         return 1
@@ -719,7 +767,7 @@ def main() -> int:
     # so a relative object path would be written relative to that instead --
     # which -fstack-usage turns into "cannot open ....su for writing".
     out_dir = Path(args.out).resolve()
-    scratch = out_dir / "cmake"
+    scratch = out_dir / ".compile_commands_scratch"
     scratch.mkdir(parents=True, exist_ok=True)
 
     db = Database()
@@ -730,11 +778,12 @@ def main() -> int:
         print(f"[db] unified -> {len(db.entries)} entries")
     configure_residual_apps(db, scratch, args.verbose)
     uncovered = derive_unbuilt(db, scratch, args.verbose)
-    out_path = db.write(out_dir)
-
-    print(f"wrote {out_path} ({len(db.entries)} entries)")
     code = report_uncovered(uncovered, total)
-    return code if args.check else 0
+    if code != 0:
+        return code
+    out_path = db.write(out_dir)
+    print(f"wrote {out_path} ({len(db.entries)} entries)")
+    return 0
 
 
 if __name__ == "__main__":

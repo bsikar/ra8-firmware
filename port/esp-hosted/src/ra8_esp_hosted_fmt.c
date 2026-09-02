@@ -16,7 +16,9 @@
  *
  * Emission goes through a small cursor structure rather than a running
  * pointer so the "one byte reserved for the terminator" rule is expressed
- * once, in ::internal_put, instead of at every call site.
+ * once, in ::internal_put, instead of at every call site. The formatter's
+ * validated entry point constructs the cursor, so the emitter does not carry
+ * unreachable duplicate pointer guards.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -89,16 +91,16 @@ typedef enum : uint8_t {
 
 /**
  * @struct ra8_esp_hosted_fmt_args
- * @brief Wrapper that lets a ``va_list`` be passed to a helper by address.
+ * @brief Single-member holder that names this unit's argument list once.
  *
  * @details
- * ``va_list`` is an array type on some ABIs and a structure on others, so
- * ``&ap`` does not have a portable type. Wrapping it in a structure gives
- * the helpers one spelling that advances the caller's list correctly on
- * both the ARM cross build and the x86-64 host test build.
+ * `&ap` is well-formed on both ABIs this unit builds for, so the holder is not
+ * needed for portability -- it is needed so `<stdarg.h>` is named in exactly
+ * one declaration. The conversion helpers take the holder by address and read
+ * through ::ra8_esp_hosted_fmt_args::ap, which keeps the standard type out of
+ * their signatures.
  *
- * @invariant The wrapped list is started by the owner and ended exactly
- *            once.
+ * @invariant The held list is started by its owner and ended exactly once.
  *
  * @par Example:
  * @code
@@ -110,7 +112,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct ra8_esp_hosted_fmt_args {
-  va_list ap; /**< The wrapped variable-argument list. */
+  va_list ap; /**< The held variable-argument list. */
 } ra8_esp_hosted_fmt_args_t;
 
 /**
@@ -184,9 +186,6 @@ static const char s_ra8_esp_hosted_fmt_digits_upper[] = "0123456789ABCDEF";
 RA8_INTERNAL
 static void internal_put(ra8_esp_hosted_fmt_cursor_t* cur, char ch)
 {
-  if ((cur == nullptr) || (cur->out == nullptr)) {
-    return;
-  }
   if ((cur->len + 1U) >= cur->cap) {
     return;
   }
@@ -456,7 +455,7 @@ bool priv_ra8_esp_hosted_fmt_parse(const char* after_percent, ra8_esp_hosted_fmt
  * cannot read correctly -- its statement profiler ignores the type operand of
  * ``va_arg``, so four reads of four different types profile as one.
  *
- * @param[in,out] args Wrapped argument list to advance.
+ * @param[in,out] args Copied argument list to advance.
  * @param[in] len Argument width to read.
  *
  * @return The argument, widened to 64 bits.
@@ -475,18 +474,16 @@ static uint64_t internal_next_unsigned(ra8_esp_hosted_fmt_args_t* args,
                                        ra8_esp_hosted_fmt_len_t   len)
 {
   if (len == k_ra8_esp_hosted_fmt_len_llong) {
-    /* NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized) -- analyser cannot follow the va_copy. */
+    // NOLINTNEXTLINE(clang-analyzer-security.VAList) -- Clang 22 loses caller va_copy state.
     return (uint64_t)va_arg(args->ap, unsigned long long);
   }
   if (len == k_ra8_esp_hosted_fmt_len_long) {
-    /* NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized) -- analyser cannot follow the va_copy. */
+    // NOLINTNEXTLINE(clang-analyzer-security.VAList) -- Clang 22 loses caller va_copy state.
     return (uint64_t)va_arg(args->ap, unsigned long);
   }
   if (len == k_ra8_esp_hosted_fmt_len_size) {
-    /* NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized) -- analyser cannot follow the va_copy. */
     return (uint64_t)va_arg(args->ap, size_t);
   }
-  /* NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized) -- analyser cannot follow the va_copy. */
   return (uint64_t)va_arg(args->ap, unsigned int);
 }
 
@@ -498,7 +495,7 @@ static uint64_t internal_next_unsigned(ra8_esp_hosted_fmt_args_t* args,
  * including its reason for dispatching with guarded early returns instead of
  * a ``switch``.
  *
- * @param[in,out] args Wrapped argument list to advance.
+ * @param[in,out] args Copied argument list to advance.
  * @param[in] len Argument width to read.
  *
  * @return The argument, sign-extended to 64 bits.
@@ -516,18 +513,16 @@ RA8_INTERNAL
 static int64_t internal_next_signed(ra8_esp_hosted_fmt_args_t* args, ra8_esp_hosted_fmt_len_t len)
 {
   if (len == k_ra8_esp_hosted_fmt_len_llong) {
-    /* NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized) -- analyser cannot follow the va_copy. */
+    // NOLINTNEXTLINE(clang-analyzer-security.VAList) -- Clang 22 loses caller va_copy state.
     return (int64_t)va_arg(args->ap, long long);
   }
   if (len == k_ra8_esp_hosted_fmt_len_long) {
-    /* NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized) -- analyser cannot follow the va_copy. */
+    // NOLINTNEXTLINE(clang-analyzer-security.VAList) -- Clang 22 loses caller va_copy state.
     return (int64_t)va_arg(args->ap, long);
   }
   if (len == k_ra8_esp_hosted_fmt_len_size) {
-    /* NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized) -- analyser cannot follow the va_copy. */
     return (int64_t)va_arg(args->ap, ptrdiff_t);
   }
-  /* NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized) -- analyser cannot follow the va_copy. */
   return (int64_t)va_arg(args->ap, int);
 }
 
@@ -623,7 +618,7 @@ static uint16_t internal_bounded_len(const char* text)
  *
  * @param[in,out] cur Cursor to append through.
  * @param[in] spec Parsed conversion specification.
- * @param[in,out] args Wrapped argument list to advance.
+ * @param[in,out] args Copied argument list to advance.
  *
  * @return Nothing.
  *
@@ -648,13 +643,13 @@ static void internal_emit_conv(ra8_esp_hosted_fmt_cursor_t*     cur,
     return;
   }
   if (spec->conv == 'c') {
-    /* NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized) -- analyser cannot follow the va_copy. */
+    // NOLINTNEXTLINE(clang-analyzer-security.VAList) -- Clang 22 loses caller va_copy state.
     digits[0] = (char)va_arg(args->ap, int);
     internal_emit_token(cur, spec, digits, 1U);
     return;
   }
   if (spec->conv == 's') {
-    /* NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized) -- analyser cannot follow the va_copy. */
+    // NOLINTNEXTLINE(clang-analyzer-security.VAList) -- Clang 22 loses caller va_copy state.
     const char* text = va_arg(args->ap, const char*);
     const char* safe = (text == nullptr) ? "(null)" : text;
     internal_emit_token(cur, spec, safe, internal_bounded_len(safe));
@@ -681,7 +676,7 @@ static void internal_emit_conv(ra8_esp_hosted_fmt_cursor_t*     cur,
   const bool    upper      = (spec->conv == 'X');
   const uint8_t base       = ((spec->conv == 'u') ? (uint8_t)k_ra8_esp_hosted_fmt_radix_dec
                                                   : (uint8_t)k_ra8_esp_hosted_fmt_radix_hex);
-  /* NOLINTNEXTLINE(clang-analyzer-valist.Uninitialized) -- analyser cannot follow the va_copy. */
+  // NOLINTNEXTLINE(clang-analyzer-security.VAList) -- Clang 22 loses caller va_copy state.
   const uint64_t value = is_pointer ? (uint64_t)(uintptr_t)va_arg(args->ap, void*)
                                     : internal_next_unsigned(args, spec->len);
   const uint8_t  n     = priv_ra8_esp_hosted_fmt_utoa(digits, value, base, upper);
@@ -726,6 +721,7 @@ uint32_t priv_ra8_esp_hosted_fmt_vformat(char* out, uint32_t cap, const char* fm
     pos += spec.consumed;
   }
 
+  // NOLINTNEXTLINE(clang-analyzer-security.VAList) -- Clang 22 loses local va_copy state.
   va_end(args.ap);
   cur.out[cur.len] = (char)k_ra8_esp_hosted_fmt_ch_nul;
   return cur.len;

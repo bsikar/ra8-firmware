@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 762" width="980" role="img" aria-label="Book pipeline -- EPUB and comics into a paged container. an arrow from A to B means files in A #include a header owned by B; the number is how many of A's files do so (counted across libs/ and port/) down: ra8_epub -to ra8_core (31), ra8_comic -to ra8_core (28), ra8_rabook_compile -to ra8_core (25), ra8_jof -to ra8_core (23)       ra8_rabook_compile -to ra8_reflow (5), ra8_rabook_import -to ra8_fs (4), ra8_rabook_import -to ra8_mem (4) in:   ra8_mdl_storage_vfs -to ra8_book (2), ra8_camera -to ra8_jpeg (1), ra8_c6link -to ra8_mdl (1) The densest cluster in the tree: 16 internal edges, and every one points downward -- producers above, containers in the middle, codecs at the bottom. ra8_mdl and ra8_cache_store sit in this subject area but have no include edge to any of it. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are no-ops and consumers glob libs/libto/src/*.c into one object library, so there are no target_link_libraries edges to read.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 762" width="980" role="img" aria-label="Book pipeline -- EPUB and comics into a paged container. an arrow from A to B means files in A #include a header owned by B; the number is how many of A's files do so (counted across libs/ and port/) down: epub -to ra8_core (31), comic -to ra8_core (28), rabook_compile -to ra8_core (25), jof -to ra8_core (23)       rabook_compile -to reflow (5), rabook_import -to ra8_fs (4), rabook_import -to ra8_mem (4) in:   mdl_storage_vfs -to book (2), ra8_camera -to ra8_jpeg (1), ra8_c6link -to ra8_mdl (1) The densest cluster in the tree: 16 internal edges, and every one points downward -- producers above, containers in the middle, codecs at the bottom. ra8_mdl and ra8_cache_store sit in this subject area but have no include edge to any of it. Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are no-ops and consumers glob libs/libto/src/*.c into one object library, so there are no target_link_libraries edges to read.">
   <defs>
     <marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1b1f24"/></marker>
     <marker id="aAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0969da"/></marker>
@@ -69,34 +69,34 @@
     <rect x="474" y="480" width="12" height="12" fill="#fdfdfb"/>
     <text x="480" y="489" text-anchor="middle" fill="#1b1f24" font-size="9">1</text>
     <rect x="381" y="86" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="489" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_rabook_import</text>
+    <text x="489" y="110" text-anchor="middle" fill="#1b1f24" font-size="10">rabook_import</text>
     <text x="489" y="126" text-anchor="middle" fill="#57606a" font-size="9">on-device import seam</text>
     <rect x="35" y="192" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
-    <text x="143" y="216" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_rabook_compile</text>
+    <text x="143" y="216" text-anchor="middle" fill="#1a7f37" font-size="10">rabook_compile</text>
     <text x="143" y="232" text-anchor="middle" fill="#57606a" font-size="9">EPUB -&gt; RABOOK1</text>
     <rect x="266" y="192" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="374" y="216" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_comic</text>
+    <text x="374" y="216" text-anchor="middle" fill="#1b1f24" font-size="10">comic</text>
     <text x="374" y="232" text-anchor="middle" fill="#57606a" font-size="9">CBZ / CBR</text>
     <rect x="497" y="192" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="605" y="216" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_zoom</text>
+    <text x="605" y="216" text-anchor="middle" fill="#1b1f24" font-size="10">zoom</text>
     <text x="605" y="232" text-anchor="middle" fill="#57606a" font-size="9">tap-to-zoom</text>
     <rect x="728" y="192" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="836" y="216" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_longstrip</text>
+    <text x="836" y="216" text-anchor="middle" fill="#1b1f24" font-size="10">longstrip</text>
     <text x="836" y="232" text-anchor="middle" fill="#57606a" font-size="9">manhwa scroll</text>
     <rect x="266" y="298" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="374" y="322" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_epub</text>
+    <text x="374" y="322" text-anchor="middle" fill="#1b1f24" font-size="10">epub</text>
     <text x="374" y="338" text-anchor="middle" fill="#57606a" font-size="9">reader + chapters</text>
     <rect x="497" y="298" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
-    <text x="605" y="322" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_book</text>
+    <text x="605" y="322" text-anchor="middle" fill="#1a7f37" font-size="10">book</text>
     <text x="605" y="338" text-anchor="middle" fill="#57606a" font-size="9">XIP container</text>
     <rect x="150" y="404" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1a7f37" stroke-width="1.4"/>
-    <text x="258" y="428" text-anchor="middle" fill="#1a7f37" font-size="10">ra8_jof</text>
+    <text x="258" y="428" text-anchor="middle" fill="#1a7f37" font-size="10">jof</text>
     <text x="258" y="444" text-anchor="middle" fill="#57606a" font-size="9">band-tile atlas</text>
     <rect x="381" y="404" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="489" y="428" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_xml</text>
+    <text x="489" y="428" text-anchor="middle" fill="#1b1f24" font-size="10">xml</text>
     <text x="489" y="444" text-anchor="middle" fill="#57606a" font-size="9">no-heap pull reader</text>
     <rect x="612" y="404" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
-    <text x="720" y="428" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_unarch</text>
+    <text x="720" y="428" text-anchor="middle" fill="#1b1f24" font-size="10">unarch</text>
     <text x="720" y="444" text-anchor="middle" fill="#57606a" font-size="9">xz / gzip / tar</text>
     <rect x="266" y="510" width="217" height="52" rx="5" fill="#fdfdfb" stroke="#1b1f24" stroke-width="1"/>
     <text x="374" y="534" text-anchor="middle" fill="#1b1f24" font-size="10">ra8_webp</text>
@@ -106,9 +106,9 @@
     <text x="605" y="550" text-anchor="middle" fill="#57606a" font-size="9">software JPEG</text>
     <rect x="20" y="608" width="940" height="74" rx="6" fill="none" stroke="#aeb4bb" stroke-width="1" stroke-dasharray="5 3"/>
     <text x="34" y="626" fill="#1b1f24" font-size="10" font-weight="bold">seams to the rest of the tree</text>
-    <text x="34" y="644" fill="#57606a" font-size="9">down: ra8_epub -&gt; ra8_core (31), ra8_comic -&gt; ra8_core (28), ra8_rabook_compile -&gt; ra8_core (25), ra8_jof -&gt; ra8_core (23)</text>
-    <text x="34" y="660" fill="#57606a" font-size="9">      ra8_rabook_compile -&gt; ra8_reflow (5), ra8_rabook_import -&gt; ra8_fs (4), ra8_rabook_import -&gt; ra8_mem (4)</text>
-    <text x="34" y="676" fill="#57606a" font-size="9">in:   ra8_mdl_storage_vfs -&gt; ra8_book (2), ra8_camera -&gt; ra8_jpeg (1), ra8_c6link -&gt; ra8_mdl (1)</text>
+    <text x="34" y="644" fill="#57606a" font-size="9">down: epub -&gt; ra8_core (31), comic -&gt; ra8_core (28), rabook_compile -&gt; ra8_core (25), jof -&gt; ra8_core (23)</text>
+    <text x="34" y="660" fill="#57606a" font-size="9">      rabook_compile -&gt; reflow (5), rabook_import -&gt; ra8_fs (4), rabook_import -&gt; ra8_mem (4)</text>
+    <text x="34" y="676" fill="#57606a" font-size="9">in:   mdl_storage_vfs -&gt; book (2), ra8_camera -&gt; ra8_jpeg (1), ra8_c6link -&gt; ra8_mdl (1)</text>
     <text x="24" y="704" fill="#57606a" font-size="9">The densest cluster in the tree: 16 internal edges, and every one points downward -- producers above, containers in the</text>
     <text x="24" y="720" fill="#57606a" font-size="9">middle, codecs at the bottom. ra8_mdl and ra8_cache_store sit in this subject area but have no include edge to any of it.</text>
     <text x="24" y="736" fill="#57606a" font-size="9">Derivation: every arrow is an #include of a header owned by the target unit. CMake cannot answer this -- libs/*/CMakeLists.txt are</text>

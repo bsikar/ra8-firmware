@@ -14,7 +14,7 @@ Software Of Unknown Provenance (SOUP).
   "Provenance"). The two numbering schemes are unrelated, which has already
   misled one audit.
 - **Upstream URL**: https://github.com/richgel999/miniz
-- **Local path**: `libs/third_party/miniz/`
+- **Local path**: `apps/shared_libs/third_party/miniz/`
 
 ## Provenance
 
@@ -34,20 +34,22 @@ Software Of Unknown Provenance (SOUP).
 Deflate / inflate / ZIP container support. Five first-party libraries decode
 through it, not one:
 
-- `libs/ra8_epub/` -- the EPUB unpacker (EPUB files are ZIP archives), via the
+- `apps/shared_libs/epub/` -- the EPUB unpacker (EPUB files are ZIP archives), via the
   `mz_zip` reader.
-- `libs/ra8_comic/src/ra8_comic_cbz.c` -- CBZ comic archives, via the same
+- `apps/shared_libs/comic/src/comic_cbz.c` -- CBZ comic archives, via the same
   `mz_zip` reader.
-- `libs/ra8_jof/src/ra8_jof_png.c` -- PNG image data, via `tinfl`.
-- `libs/ra8_unarch/src/ra8_unarch_gzip.c` -- gzip streams, via `tinfl` plus
+- `apps/shared_libs/jof/src/jof_png.c` -- PNG image data, via `tinfl`.
+- `apps/shared_libs/unarch/src/unarch_gzip.c` -- gzip streams, via `tinfl` plus
   `mz_crc32`.
-- `libs/ra8_io/src/ra8_io_compress.c` and `ra8_io_vfs_compress.c` -- the
+- `apps/shared_libs/compress/src/ra8_compress.c` and
+  `ra8_vfs_compress.c` -- the
   compress-on-write / decompress-on-read fabric seam that RBKC chunks ride.
 
-The media_dl downloader core `apps/shared/media_dl` (`mz_zip_writer` +
-`tdefl`, the one COMPRESSION consumer, run on downloaded media) and
-`tools/cache_bench` also compile it. media_dl's core is built by every form of
-that product, today only the host CLI at `apps/stand_alone/media_dl`.
+The mdl downloader core `apps/shared_libs/mdl` (`mz_zip_writer` +
+`tdefl`, the one COMPRESSION consumer, run on downloaded media),
+`tools/cache_bench`, and `tools/rabook_imagepack` also compile it. mdl's core
+is built by every form of that product, today only the host CLI at
+`apps/host/mdl`.
 
 - Integrity claim category: data-handling (decompression of locally staged,
   attacker-authored book and archive payloads -- a book is authored by whoever
@@ -71,21 +73,22 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 - Every firmware consumer decodes locally staged content (SD card, MRAM,
   Octo-SPI); no network payload feeds a decoder on the target. The one
-  network-fed consumer, the media_dl downloader core `apps/shared/media_dl`,
+  network-fed consumer, the mdl downloader core `apps/shared_libs/mdl`,
   is built today only into a host tool and is not part of the firmware image.
 - Decompression limits are charged across the whole surface rather than in the
-  EPUB wrapper alone: `libs/ra8_epub/src/ra8_epub_zip_guard.c` is the
+  EPUB wrapper alone: `apps/shared_libs/epub/src/epub_zip_guard.c` is the
   decompression-limits retrofit for every miniz ZIP consumer, and it plus
-  `ra8_comic_cbz.c` and `ra8_unarch_gzip.c` charge the unified policy in
+  `comic_cbz.c` and `unarch_gzip.c` charge the unified policy in
   `libs/ra8_core/inc/ra8_decomp_limits.h` -- per-unit output cap,
   compression-ratio bound (decompression bombs), and a decode-loop iteration
   budget.
 - Allocation is bounded and heap-free: miniz allocates from the 160 KiB static
-  pool declared in `libs/ra8_epub/inc/ra8_epub_miniz_alloc.h`
-  (`k_ra8_epub_miniz_pool_bytes`), because this firmware traps `_sbrk` (NASA
+  pool declared in `apps/shared_libs/epub/inc/epub_miniz_alloc.h`
+  (`k_epub_miniz_pool_bytes`), because this firmware traps `_sbrk` (NASA
   P10 Rule 3).
-- Fuzzed: `tests/fuzz/fuzz_ra8_epub.c` and `tests/fuzz/fuzz_ra8_unarch_gzip.c`
-  drive hostile archives through the first-party wrappers under ASan/UBSan.
+- Fuzzed: `apps/shared_libs/epub/tests/src/fuzz_epub.c` and
+  `apps/shared_libs/unarch/tests/src/fuzz_unarch_gzip.c` drive hostile archives
+  through the first-party wrappers under ASan/UBSan.
 
 ## Deviations / patches
 

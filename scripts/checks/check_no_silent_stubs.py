@@ -9,9 +9,10 @@ link and the program claim a capability it does not have.  The failure mode is
 worse than a missing feature: the tool links clean, advertises support, and
 fails at runtime (or, worse, silently succeeds having done nothing).
 
-``tools/rabook_imagepack/webp_stub.c`` and ``apps/stand_alone/media_dl/webp_stub.c`` were the
+The former ``tools/rabook_imagepack/src/webp_stub.c`` and
+``apps/host/mdl/src/webp_stub.c`` were the
 motivating case.  Each defined the real symbol
-``ra8_jof_priv_webp_transcode()``, discarded both arguments and returned
+``jof_priv_webp_transcode()``, discarded both arguments and returned
 ``k_ra8_err_not_supported`` -- purely so the JOF producer would link
 without compiling the vendored libwebp decoder.  A complete WebP decoder was
 already vendored, wrapped, tested and fuzzed in this very repository; the tools
@@ -89,10 +90,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-# First-party roots. libs/third_party (SOUP) and libs/ra8_fonts (generated) are out
-# of scope, matching every other repo gate.
+# First-party roots. Both registered third-party trees (SOUP) and the generated
+# font tree are out of scope, matching every other repository gate.
 ROOTS = ("libs", "tools", "apps", "examples", "port")
-EXCLUDED = ("libs/third_party", "libs/ra8_fonts")
+EXCLUDED = ("libs/third_party/", "apps/shared_libs/third_party/", "libs/ra8_fonts/")
 
 # Error constants that mean "this operation has no implementation". A function
 # whose entire body hands one of these back, having discarded its arguments,
@@ -328,23 +329,35 @@ def real_definitions(files: list[Path]) -> dict[str, list[dict[str, str | bool]]
 
 
 def first_party_sources(explicit: list[str]) -> list[Path]:
-    """Enumerate the tracked first-party .c files under ROOTS.
+    """Enumerate worktree first-party .c files under ROOTS.
 
-    Tracked, not globbed. A bare rglob also sweeps in build output -- every
+    Tracked or untracked-but-not-ignored, not globbed. A bare rglob also sweeps
+    in build output -- every
     configured app leaves a CMake compiler-probe TU at
     ``<app>/build/CMakeFiles/*/CompilerIdC/CMakeCCompilerId.c`` -- so the set
     scanned depended on whether the caller had built, and generated code got
     held to a first-party rule. CI never saw it (it runs against a clean
     snapshot of committed ``HEAD``) but the pre-commit hook runs in the working
     tree, which is exactly where a spurious finding costs the most trust.
-    ``git ls-files`` is also what the copyright and @since gates enumerate with.
+    Including untracked files and dropping deleted tracked paths makes the gate
+    accurate during an unstaged move: it scans the destination, not a vanished
+    index-only source. Ignored build output remains excluded.
     """
     if explicit:
         return [Path(p) for p in explicit]
     try:
         pathspec = [f"{root}/**/*.c" for root in ROOTS]
-        listed = subprocess.run(  # noqa: S603  # fixed argv, no shell
-            ["git", "ls-files", "-z", "--", *pathspec],  # noqa: S607  # trusted: fixed git argv
+        listed = subprocess.run(  # noqa: S603  # fixed git argv, no shell
+            [  # noqa: S607  # trusted: fixed git executable
+                "git",
+                "ls-files",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "-z",
+                "--",
+                *pathspec,
+            ],
             capture_output=True,
             text=True,
             check=True,
@@ -356,10 +369,35 @@ def first_party_sources(explicit: list[str]) -> list[Path]:
             "  a glob silently scans build output and changes the verdict."
         )
     return [
-        Path(name)
+        path
         for name in listed.split("\0")
-        if name and not any(name.startswith(x) for x in EXCLUDED)
+        if name
+        if (path := Path(name)).is_file()
+        if not any(name.startswith(x) for x in EXCLUDED)
     ]
+
+
+def _selftest_source_scope(tmp: Path) -> list[str]:
+    """Assert moved first-party sources stay in scope while both SOUP roots do not."""
+    failures: list[str] = []
+    app_source = tmp / "apps/shared_libs/compress/src/codec.c"
+    app_vendor = tmp / "apps/shared_libs/third_party/miniz/miniz.c"
+    platform_vendor = tmp / "libs/third_party/stack/source.c"
+    for path in (app_source, app_vendor, platform_vendor):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("int source;\n", encoding="ascii")
+
+    names = [
+        "apps/shared_libs/compress/src/codec.c",
+        "apps/shared_libs/third_party/miniz/miniz.c",
+        "libs/third_party/stack/source.c",
+    ]
+    included = [name for name in names if not any(name.startswith(x) for x in EXCLUDED)]
+    if names[0] not in included:
+        failures.append("  moved app-owned first-party source fell out of scan scope")
+    if names[1] in included or names[2] in included:
+        failures.append("  a registered SOUP-root source entered first-party scan scope")
+    return failures
 
 
 def analyse(files: list[Path]) -> list[tuple[str, dict]]:
@@ -570,6 +608,7 @@ SELFTEST_CASES: list[tuple[str, str, bool, str]] = [
 def selftest(tmp: Path) -> int:
     """Assert the detector fires on stubs and stays silent on legitimate code."""
     failures: list[str] = []
+    failures.extend(_selftest_source_scope(tmp))
     groups: dict[str, list[tuple[str, str, bool]]] = {}
     for label, body, should_fire, fname in SELFTEST_CASES:
         groups.setdefault(label, []).append((body, fname, should_fire))

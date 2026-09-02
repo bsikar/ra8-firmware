@@ -16,8 +16,8 @@ port; the bare full-word store it replaces would clear the siblings. At a
 single-pin call site the observable LED behaviour is identical, so it is a
 drop-in substitute that is additionally safe on a shared port.
 
-The primitive is host-unit-tested (`tests/test_ra8_pcntr.c`), and the example's
+The primitive is host-unit-tested (`tests/hal/src/test_ra8_pcntr.c`), and the example's
 own blink step -- the exact function the CPU1 loop runs -- is driven against
-fake MMIO in `tests/test_app_blink_m33_hal.c`. Under the emulator only the
+fake MMIO in `tests/mocks/src/test_app_blink_m33_hal.c`. Under the emulator only the
 primary core's ITM is echoed, so the M33 stays silent by design and LED1 is its
 output.

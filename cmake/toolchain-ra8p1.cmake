@@ -27,7 +27,7 @@
 # memory-map sizes, and feature flags to the RA8P1. The RA8D2 build passes NO
 # device define and no -mfpu override, so ra8_device.h defaults to RA8D2 and the
 # RA8D2 firmware is byte-for-behaviour unchanged by this addition (378 per-app
-# Makefiles hardcode cmake/toolchain-ra8d2.cmake by name -- it must keep working
+# justfiles hardcode cmake/toolchain-ra8d2.cmake by name -- it must keep working
 # unchanged, so it is deliberately left untouched).
 #
 # -----------------------------------------------------------------------------

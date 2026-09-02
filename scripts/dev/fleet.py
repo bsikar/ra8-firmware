@@ -1,63 +1,45 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Drive the CI fleet from its declaration.
+"""Drive the CI fleet from ``infra/fleet.yml``.
 
-``infra/fleet.yml`` says what machines exist and how much of each one CI may
-use. This is the tool that acts on it -- listing, validating, generating the
-inventory, converging a host, and changing a host's live capacity without
-killing the jobs it is running.
-
-Every command names a HOST from the declaration, never a class or a hostname,
-so adding a machine really is adding a block:
-
-    fleet.py list                    what is declared, and how it is sized
-    fleet.py show <host>             one host in full, with its derived vars
-    fleet.py validate                the fleet-declaration gate's check
-    fleet.py inventory               write infra/ansible/inventory/hosts.ini
-    fleet.py ssh-config [--install]  the fleet's host aliases, for ~/.ssh
-    fleet.py ssh-target <host>       the ssh command that reaches one host
-    fleet.py check <host> [play]     dry run -- report, change nothing
-    fleet.py apply <host> [play]     converge, draining first where needed
-    fleet.py remove <host>           tear down (classes that implement it)
-    fleet.py status [host]           what each host is running, right now
-    fleet.py scale <host> <n>        live capacity change; shrinking DRAINS
-
-``list``, ``show``, ``validate``, ``inventory``, ``ssh-config``,
-``ssh-target`` and ``status`` are read-only and safe at any time (bar
-``ssh-config --install``, which writes under ``~/.ssh``). ``apply``, ``remove``
-and ``scale`` are not.
-
-Reachability is DERIVED, not assumed. Every host declares a literal address, a
-login user and an optional jump through another fleet host, so every command
-here works from a machine whose ``~/.ssh/config`` is empty. ``ssh-config``
-generates the friendly aliases FROM that declaration, which is what makes any
-machine a control node in one command instead of by hand-copying somebody's
-private config (#526).
-
-Why capacity is a first-class verb here rather than only an Ansible run: a
-converge on a container host recreates containers, which cancels whatever they
-are running. ``apply`` therefore drains the host first through the same
-mechanism ``scale`` uses, so re-provisioning is not a way to lose a job.
+Commands name a declared host, derive its reachability, and expose read-only
+inspection, inventory generation, guarded convergence, registration, removal,
+and capacity control. Mutating convergence drains runner capacity and binds
+bench-affecting work to the repository's authenticated whole-bench hold.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
-import shlex
-import shutil
+import os
 import subprocess
 import sys
+from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import fleet_bench as fb
 import fleet_model as fm
 import fleet_reach as fr
+import fleet_runner_maintenance as frm
+import fleet_ssh_config as fsc
+import fleet_typed_vars as ftv
+import fleet_wsl as fw
 
 CAPACITY_SCRIPT = fm.REPO_ROOT / "scripts" / "ci" / "fleet_capacity.sh"
+IDLE_STOP_HELPER = fm.REPO_ROOT / "infra/ansible/roles/dev_box/files/ra8-hil-runner-idle-stop.py"
+
+
+class _SubparserGroup(Protocol):
+    """Expose the parser-factory operation used to build fleet subcommands."""
+
+    def add_parser(self, name: str, **kwargs: object) -> argparse.ArgumentParser:
+        """Create and return one named subparser."""
+        ...
 
 
 def _fail(message: str) -> int:
@@ -92,7 +74,12 @@ def _host(data: dict[str, Any], name: str) -> dict[str, Any]:
     return data["hosts"][name]
 
 
-def _run(argv: list[str], stdin: str | bytes | None = None, cwd: Path | None = None) -> int:
+def _run(
+    argv: list[str],
+    stdin: str | bytes | None = None,
+    cwd: Path | None = None,
+    env: Mapping[str, str] | None = None,
+) -> int:
     """Run a command, streaming its output, and return its status.
 
     Args:
@@ -103,6 +90,7 @@ def _run(argv: list[str], stdin: str | bytes | None = None, cwd: Path | None = N
             shell's.
         cwd: Directory to run in. Ansible needs ``infra/ansible``: both the
             playbook paths and ``ansible.cfg`` are resolved relative to it.
+        env: Exact child environment, or the caller's environment when absent.
 
     Returns:
         The command's exit status.
@@ -112,65 +100,10 @@ def _run(argv: list[str], stdin: str | bytes | None = None, cwd: Path | None = N
         input=stdin,
         text=not isinstance(stdin, bytes),
         cwd=cwd,
+        env=env,
         check=False,
     )
     return proc.returncode
-
-
-# Where the play is unpacked inside a WSL distro. Under the distro's own ext4
-# root, never /mnt/c: that is drvfs, a 9P translation to NTFS, and roughly an
-# order of magnitude slower for the many-small-files work an unpack is.
-WSL_STAGE = "/opt/ra8-infra"
-
-
-def _push_to_wsl(data: dict[str, Any], name: str) -> int:
-    """Copy the playbooks and the capacity script into a WSL host's distro.
-
-    WSL has no SSH daemon of its own, and giving a personal daily-driver
-    machine one -- plus the inbound firewall hole to reach it -- is not a
-    reasonable ask, so the play is shipped in and run with
-    ``--connection=local``. This is the codified form of what was previously a
-    hand-run pipeline in the playbook's header comment.
-
-    Args:
-        data: The parsed declaration.
-        name: The ``docker_wsl`` host's fleet name.
-
-    Returns:
-        0 on success, the first failing step's status otherwise.
-    """
-    host = data["hosts"][name]
-    ssh = fr.ssh_target(data, name)
-    shell = fm.remote_shell(host)
-    prepare = f"set -eu\nrm -rf {WSL_STAGE}\nmkdir -p {WSL_STAGE}\n"
-    rc = _run([*ssh, shell], stdin=prepare)
-    if rc:
-        return rc
-    tar_tool = shutil.which("tar") or "tar"
-    tar = subprocess.run(  # noqa: S603 -- fixed argv, paths from the checkout
-        [
-            tar_tool,
-            # macOS bsdtar attaches com.apple.provenance to every member, and
-            # GNU tar in the distro then warns once per file -- 37 lines of
-            # noise around the one line that matters. The archive is identical
-            # without them.
-            "--no-xattrs",
-            "-czf",
-            "-",
-            "-C",
-            str(fm.REPO_ROOT),
-            "infra/ansible",
-            "scripts/ci/fleet_capacity.sh",
-        ],
-        capture_output=True,
-        check=False,
-    )
-    if tar.returncode:
-        sys.stderr.write(tar.stderr.decode("utf-8", "replace"))
-        return tar.returncode
-    distro = host["connect"]["distro"]
-    unpack = f"wsl -d {distro} -u root -e tar -xzf - -C {WSL_STAGE}"
-    return _run([*ssh, unpack], stdin=tar.stdout)
 
 
 def _capacity(data: dict[str, Any], name: str, args: list[str]) -> int:
@@ -200,7 +133,7 @@ def _capacity(data: dict[str, Any], name: str, args: list[str]) -> int:
         for container in fm.container_names(host):
             flags += ["--container", container]
         # An operator scale-down must reach the dev slice for the same reason
-        # the timer's does: `make infra-scale HOST=win-ci N=0` is the "I want
+        # the timer's does: `just infra::scale HOST=win-ci N=0` is the "I want
         # to play a game for an hour" command, and it buys the owner nothing
         # while a gate suite in the slice still has the machine.
         if host.get("dev_slice"):
@@ -228,8 +161,8 @@ def cmd_list(data: dict[str, Any], _args: argparse.Namespace) -> int:
         0.
     """
     print(
-        f"{'HOST':<10} {'CLASS':<13} {'INSTANCES':<10} "
-        f"{'PER INSTANCE':<16} {'QUIET HOURS':<22} PLAYS"
+        f"{'HOST':<10} {'CLASS':<14} {'INSTANCES':<10} "
+        f"{'PER INSTANCE':<18} {'QUIET HOURS':<32} PLAYS"
     )
     for name, host in data["hosts"].items():
         run = host.get("runners") or {}
@@ -238,14 +171,14 @@ def cmd_list(data: dict[str, Any], _args: argparse.Namespace) -> int:
         per = f"{run['cpus']} cpu / {run['memory_gb']} GB" if run else "-"
         window = f"{quiet['window']} {quiet['days']} -> {quiet['instances']}" if quiet else "-"
         print(
-            f"{name:<10} {host['class']:<13} {count:<10} {per:<16} {window:<22} "
+            f"{name:<10} {host['class']:<14} {count:<10} {per:<18} {window:<32} "
             f"{','.join(host['provisions'])}"
         )
     print()
-    print("make infra-check HOST=<host>       dry run (changes nothing)")
-    print("make infra-apply HOST=<host>       converge to the declaration")
-    print("make infra-scale HOST=<host> N=<n> live capacity change; shrinking DRAINS")
-    print("make infra-ssh-config              name these machines in your ~/.ssh/config")
+    print("just infra::check <host>           dry run (changes nothing)")
+    print("just infra::apply <host>           converge to the declaration")
+    print("just infra::scale <host> <count>   live capacity change; shrinking DRAINS")
+    print("just infra::ssh_config             name these machines in your ~/.ssh/config")
     print("docs/CI_FLEET.md                   add a host, retune one, quiet hours")
     return 0
 
@@ -270,12 +203,17 @@ def cmd_show(data: dict[str, Any], args: argparse.Namespace) -> int:
     if hops:
         print(f"  via            {' -> '.join(hops)}")
     print(f"  provisions     {', '.join(host['provisions'])}")
-    if cls.runner:
+    if cls.capacity_runner:
         want = fm.recommended_instances(data["sizing"], host["budget"])
         print(f"  instances      {host['runners']['instances']} (formula gives {want})")
         if fm.container_names(host):
             print(f"  registrations  {', '.join(fm.instance_names(args.host, host))}")
             print(f"  containers     {', '.join(fm.container_names(host))}")
+    hil = host.get("hil_runner")
+    if hil:
+        print(f"  HIL listener   {hil['name']} ({','.join(hil['labels'])})")
+        print(f"  HIL workflow   {hil['workflow']}")
+        print(f"  HIL bench      {hil['bench']['host']}")
     lent = host.get("dev_slice")
     if lent:
         print(
@@ -285,7 +223,7 @@ def cmd_show(data: dict[str, Any], args: argparse.Namespace) -> int:
             f"-j{lent['max_jobs']}"
         )
     print("  derived ansible variables:")
-    for key, value in sorted(fm.role_vars(args.host, host).items()):
+    for key, value in sorted(fm.role_vars(data, args.host, host).items()):
         print(f"    {key}: {value}")
     return 0
 
@@ -308,7 +246,11 @@ def cmd_validate(data: dict[str, Any], _args: argparse.Namespace) -> int:
         return 1
     hosts = data["hosts"]
     runners = sum(int((h.get("runners") or {}).get("instances", 0)) for h in hosts.values())
-    print(f"infra/fleet.yml OK: {len(hosts)} host(s), {runners} declared runner instance(s)")
+    native_hil = sum(1 for host in hosts.values() if host.get("hil_runner"))
+    print(
+        f"infra/fleet.yml OK: {len(hosts)} host(s), {runners} capacity-managed "
+        f"runner instance(s), {native_hil} native HIL listener(s)"
+    )
     return 0
 
 
@@ -333,60 +275,8 @@ def cmd_inventory(data: dict[str, Any], args: argparse.Namespace) -> int:
 
 
 def cmd_ssh_config(data: dict[str, Any], args: argparse.Namespace) -> int:
-    """Print, or install, the fleet's generated SSH config fragment.
-
-    ``--install`` is the whole of making a machine a control node: it writes
-    ``~/.ssh/ra8-fleet.config`` and puts one ``Include`` line at the TOP of
-    ``~/.ssh/config``. Top, because ssh takes the FIRST value it obtains for
-    each keyword -- so the declaration wins over a stale hand-written alias of
-    the same name, while any keyword the fragment does not set (an
-    ``IdentityFile``, a ``Port``) still comes from the operator's own block
-    below it.
-
-    Args:
-        data: The parsed declaration.
-        args: Parsed command line; uses ``args.install``.
-
-    Returns:
-        0 on success, non-zero when the fragment could not be written.
-    """
-    body = fr.render_ssh_config(data)
-    if not args.install:
-        print(body, end="")
-        return 0
-    ssh_dir = Path.home() / ".ssh"
-    ssh_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-    fragment = ssh_dir / fr.SSH_FRAGMENT_NAME
-    fragment.write_text(body, encoding="utf-8")
-    fragment.chmod(0o600)
-    print(f"wrote {fragment} ({len(data['hosts'])} host(s))")
-    print(_ensure_include(ssh_dir / "config"))
-    return 0
-
-
-def _ensure_include(config: Path) -> str:
-    """Put the fragment's ``Include`` line at the top of an ssh config.
-
-    Args:
-        config: The operator's ``~/.ssh/config``.
-
-    Returns:
-        One line saying what was done, for the caller to print.
-    """
-    header = (
-        "# ra8-firmware: the CI fleet's machines, GENERATED from infra/fleet.yml.\n"
-        "# Refresh with `python3 scripts/dev/fleet.py ssh-config --install`.\n"
-        f"{fr.SSH_INCLUDE_LINE}\n"
-    )
-    if not config.exists():
-        config.write_text(header, encoding="utf-8")
-        config.chmod(0o600)
-        return f"created {config} with the include line"
-    existing = config.read_text(encoding="utf-8")
-    if any(line.strip() == fr.SSH_INCLUDE_LINE for line in existing.splitlines()):
-        return f"{config} already includes it"
-    config.write_text(f"{header}\n{existing}", encoding="utf-8")
-    return f"prepended the include line to {config}"
+    """Print or install the declaration-derived SSH config fragment."""
+    return fsc.command(data, install=args.install)
 
 
 def cmd_ssh_target(data: dict[str, Any], args: argparse.Namespace) -> int:
@@ -409,69 +299,6 @@ def cmd_ssh_target(data: dict[str, Any], args: argparse.Namespace) -> int:
     _host(data, args.host)
     print(" ".join(fr.ssh_target(data, args.host)))
     return 0
-
-
-def _playbook_argv(name: str, host: dict[str, Any], play: str, extra: list[str]) -> list[str]:
-    """Build the ``ansible-playbook`` command for one host and play.
-
-    Args:
-        name: Fleet host name.
-        host: That host's declaration.
-        play: Play key from :data:`fleet_model.PLAYS`.
-        extra: Extra flags, e.g. ``--check --diff``.
-
-    Returns:
-        The argument vector to run from ``infra/ansible``.
-    """
-    variables = fm.role_vars(name, host)
-    argv = [
-        "ansible-playbook",
-        "-i",
-        str(fm.INVENTORY),
-        f"playbooks/{fm.PLAYS[play].playbook}",
-        "--limit",
-        name,
-        "-e",
-        json.dumps(variables),
-    ]
-    if fm.CLASSES[host["class"]].transport == "wsl":
-        argv += ["-e", f"wsl_ci_host_id={name}"]
-    return argv + extra
-
-
-def _converge_wsl(data: dict[str, Any], name: str, plays: list[str], extra: list[str]) -> int:
-    """Run a WSL host's plays inside its distro.
-
-    Args:
-        data: The parsed declaration.
-        name: Fleet host name.
-        plays: Plays to run, in order.
-        extra: Extra ansible flags (dry-run, teardown state).
-
-    Returns:
-        0 on success, the first failing play's status otherwise.
-    """
-    host = data["hosts"][name]
-    rc = _push_to_wsl(data, name)
-    if rc:
-        return rc
-    variables = shlex.quote(json.dumps(fm.role_vars(name, host)))
-    # The stage keeps the checkout's own layout, so the play's relative paths
-    # (roles/, and fleet_capacity_src reaching back into scripts/) resolve
-    # exactly as they do on the control node.
-    lines = [
-        "set -eu",
-        f"cd {WSL_STAGE}/infra/ansible",
-        *(
-            "ansible-playbook --connection=local -i localhost, "
-            f"playbooks/{fm.PLAYS[play].playbook} -e {variables} "
-            f"-e wsl_ci_host_id={shlex.quote(name)} "
-            f"-e fleet_capacity_src={WSL_STAGE}/scripts/ci/fleet_capacity.sh "
-            f"{' '.join(extra)}"
-            for play in plays
-        ),
-    ]
-    return _run([*fr.ssh_target(data, name), fm.remote_shell(host)], stdin="\n".join(lines) + "\n")
 
 
 def _plays_for(host: dict[str, Any], only: str | None) -> list[str]:
@@ -509,29 +336,253 @@ def _converge_refusal(args: argparse.Namespace, host: dict[str, Any], plays: lis
             "hand, which is the drift the roles exist to prevent -- add a teardown path "
             "to the role instead of tearing it down manually."
         )
+    boundary = fb.control_flow_refusal(
+        fb.FlowRequest(
+            str(host["class"]),
+            plays,
+            args.mode,
+            args.tags,
+            args.extra_var,
+            bool(getattr(args, "trusted_tags", False)),
+        )
+    )
+    if boundary:
+        return boundary
     return ""
 
 
+def _restore_after_converge(
+    data: dict[str, Any], args: argparse.Namespace, host: dict[str, Any], rc: int
+) -> int:
+    """Restore declared capacity after a drained converge, preserving failure."""
+    restore = _capacity(data, args.host, ["scale", str(host["runners"]["instances"])])
+    if restore and rc:
+        print(
+            f"fleet: warning: converge failed with rc={rc} and capacity "
+            f"restoration also failed with rc={restore}",
+            file=sys.stderr,
+        )
+    return rc or restore
+
+
+def _converge_extra(host: dict[str, Any], args: argparse.Namespace) -> list[str]:
+    """Build Ansible flags without weakening credential handling."""
+    extra = (["--check", "--diff"] if args.mode == "check" else []) + _remove_flags(host, args)
+    # SHORT-LIVED credentials only, and preferably by file reference.
+    #
+    # Anything given as KEY=VALUE lands in this process's argv and in
+    # ansible-playbook's, where `ps` on the control node can read it. That is
+    # tolerable only for non-secret compatibility variables. Credentials use
+    # the typed commands below, which validate and snapshot mode-0600 files
+    # before any inventory write, drain, staging, or remote command.
+    for pair in args.extra_var:
+        extra += ["-e", pair]
+    if args.tags:
+        extra += ["--tags", args.tags]
+    return extra
+
+
+def _registration_args(
+    host: str,
+    play: str | None,
+    tags: str,
+    typed_vars: ftv.TypedVars,
+    original_argv: list[str],
+) -> argparse.Namespace:
+    """Build the internal apply request shared by typed registration commands."""
+    return argparse.Namespace(
+        command="apply",
+        mode="apply",
+        host=host,
+        play=play,
+        no_drain=False,
+        extra_var=[],
+        tags=tags,
+        vars_file="",
+        typed_vars=typed_vars,
+        trusted_tags=True,
+        original_argv=original_argv,
+    )
+
+
+def cmd_register_runner(data: dict[str, Any], args: argparse.Namespace) -> int:
+    """Register a declared Docker runner host from one schema-limited vars file."""
+    host = _host(data, args.host)
+    if host["class"] not in ftv.CONTAINER_RUNNER_CLASSES:
+        return _fail(
+            f"{args.host} is class {host['class']}; runner registration is limited to "
+            f"{', '.join(sorted(ftv.CONTAINER_RUNNER_CLASSES))}"
+        )
+    provisions = list(host["provisions"])
+    if len(provisions) != 1 or provisions[0] not in ftv.CONTAINER_RUNNER_PLAYS:
+        return _fail(
+            f"{args.host} does not have one typed container-runner play: {', '.join(provisions)}"
+        )
+    typed_vars = ftv.read_typed_vars_file(args.vars_file, ftv.RUNNER_REGISTRATION)
+    request = _registration_args(args.host, provisions[0], "", typed_vars, args.original_argv)
+    return cmd_converge(data, request)
+
+
+def cmd_register_hil(data: dict[str, Any], args: argparse.Namespace) -> int:
+    """Register the one declared native HIL listener from a typed vars file."""
+    candidates = [name for name, host in data["hosts"].items() if "hil_runner" in host]
+    if len(candidates) != 1:
+        return _fail(f"expected exactly one declared HIL listener, found {len(candidates)}")
+    name = candidates[0]
+    host = _host(data, name)
+    if host["class"] != "dev_box" or "dev-box" not in host["provisions"]:
+        return _fail(f"declared HIL listener {name} is not provisioned by the dev-box role")
+    typed_vars = ftv.read_typed_vars_file(args.vars_file, ftv.HIL_REGISTRATION)
+    request = _registration_args(name, "dev-box", "hil-runner", typed_vars, args.original_argv)
+    return cmd_converge(data, request)
+
+
+def _typed_vars_for_converge(
+    args: argparse.Namespace, host: dict[str, Any]
+) -> ftv.TypedVars | None:
+    """Validate typed vars before inventory writes, draining, or remote work."""
+    typed_vars = getattr(args, "typed_vars", None)
+    vars_file = getattr(args, "vars_file", "")
+    if vars_file:
+        if args.mode != "remove":
+            message = "--vars-file is accepted only by the typed remove operation"
+            raise fm.FleetError(message)
+        if host["class"] not in ftv.CONTAINER_RUNNER_CLASSES:
+            message = "runner removal vars are accepted only for container-runner hosts"
+            raise fm.FleetError(message)
+        typed_vars = ftv.read_typed_vars_file(vars_file, ftv.RUNNER_REMOVAL)
+    if any(value.startswith("@") for value in args.extra_var):
+        message = (
+            "raw -e @file is not accepted; use register-runner, register-hil, or "
+            "remove --vars-file so the file is validated before side effects"
+        )
+        raise fm.FleetError(message)
+    return typed_vars
+
+
+@dataclass(frozen=True)
+class _ConvergeTransport:
+    """Carry one validated converge transaction across its transport boundary."""
+
+    data: dict[str, Any]
+    args: argparse.Namespace
+    host: dict[str, Any]
+    plays: list[str]
+    extra: list[str]
+    typed_vars: ftv.TypedVars | None
+    no_drain_tags: bool
+
+
+def _bench_guard_argv(
+    host: dict[str, Any], plays: list[str], args: argparse.Namespace
+) -> list[str]:
+    """Build the outer whole-bench transaction before any side effect."""
+    try:
+        return fb.guarded_argv(
+            fb.GuardRequest(
+                fm.REPO_ROOT,
+                Path(__file__).resolve(),
+                args.original_argv,
+                host["class"],
+                plays,
+                args.mode,
+                os.environ,
+            )
+        )
+    except ValueError as exc:
+        raise fm.FleetError(str(exc)) from exc
+
+
+def _bench_ansible_extra(
+    host: dict[str, Any], plays: list[str], args: argparse.Namespace
+) -> list[str]:
+    """Carry the authenticated outer hold into the remote role."""
+    try:
+        return fb.ansible_extra(host["class"], plays, args.mode, os.environ)
+    except ValueError as exc:
+        raise fm.FleetError(str(exc)) from exc
+
+
+def _runner_maintenance_request(
+    data: dict[str, Any],
+    host: dict[str, Any],
+    args: argparse.Namespace,
+    extra: list[str],
+) -> frm.MaintenanceRequest:
+    """Build the read-only preview and declared idle-stop transport."""
+    preview = frm.playbook_argv(
+        data,
+        args.host,
+        host,
+        "dev-box",
+        ["--check", "--diff", *extra],
+    )
+    remote = "/usr/bin/sudo -n /usr/bin/python3 - ra8-hil-runner.service"
+    return frm.MaintenanceRequest(
+        preview,
+        fm.ANSIBLE_DIR,
+        os.environ,
+        args.host,
+        [*fr.ssh_target(data, args.host), remote],
+        IDLE_STOP_HELPER.read_text(encoding="utf-8"),
+    )
+
+
+def _prepare_native_runner(request: _ConvergeTransport) -> frm.MaintenanceDecision:
+    """Preview exact drift and stop only an idle listener when needed."""
+    if not frm.applies(request.host["class"], request.plays, request.args.mode):
+        return frm.MaintenanceDecision(proceed=True, status=0)
+    if request.typed_vars is None:
+        maintenance = _runner_maintenance_request(
+            request.data, request.host, request.args, request.extra
+        )
+        return frm.prepare(maintenance)
+    with ftv.local_vars_snapshot(request.typed_vars) as snapshot:
+        guarded_extra = [*request.extra, "-e", f"@{snapshot}"]
+        maintenance = _runner_maintenance_request(
+            request.data, request.host, request.args, guarded_extra
+        )
+        return frm.prepare(maintenance)
+
+
+def _run_converge_transport(request: _ConvergeTransport) -> int:
+    """Run one already-validated converge over its declared transport."""
+    if fm.CLASSES[request.host["class"]].transport == "wsl":
+        spec = fw.ConvergeSpec(
+            request.data,
+            request.args.host,
+            request.plays,
+            request.extra,
+            request.typed_vars,
+            request.args.mode,
+        )
+        return fw.converge(
+            spec,
+            sync_image=request.args.mode != "remove" and not request.no_drain_tags,
+            run=_run,
+        )
+    if request.typed_vars is None:
+        return _converge_ssh(request.data, request.args.host, request.plays, request.extra)
+    with ftv.local_vars_snapshot(request.typed_vars) as snapshot:
+        extra = [*request.extra, "-e", f"@{snapshot}"]
+        return _converge_ssh(request.data, request.args.host, request.plays, extra)
+
+
 def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
-    """Run a host's plays, either as a dry run or for real.
+    """Run a dry check or a guarded real converge of one host's plays.
 
-    On a container host a converge recreates containers, which cancels running
-    jobs, so a real apply drains the host to zero instances first and restores
-    the declared count afterwards. ``--no-drain`` skips that when the caller
-    knows the host is idle; a dry run never drains, because it changes nothing.
-
-    Args:
-        data: The parsed declaration.
-        args: Parsed command line.
-
-    Returns:
-        0 on success, non-zero from the first step that fails.
+    Container-host applies drain first. Bench-host applies re-enter under the
+    physical bench lock before inventory generation or remote work.
     """
     host = _host(data, args.host)
     plays = _plays_for(host, args.play)
     refusal = _converge_refusal(args, host, plays)
     if refusal:
         return _fail(refusal)
+    guard = _bench_guard_argv(host, plays, args)
+    if guard:
+        return _run(guard, cwd=fm.REPO_ROOT)
+    typed_vars = _typed_vars_for_converge(args, host)
     rc = cmd_inventory(data, argparse.Namespace(stdout=False))
     if rc:
         return rc
@@ -542,6 +593,12 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
     # cannot touch them. The whitelist lives in fleet_model.NO_DRAIN_TAGS so
     # adding a tag is a deliberate act with the rule in front of you.
     no_drain_tags = args.tags in fm.NO_DRAIN_TAGS
+    extra = _converge_extra(host, args)
+    extra += _bench_ansible_extra(host, plays, args)
+    request = _ConvergeTransport(data, args, host, plays, extra, typed_vars, no_drain_tags)
+    maintenance = _prepare_native_runner(request)
+    if not maintenance.proceed:
+        return maintenance.status
     drain = (
         args.mode == "apply"
         and not args.no_drain
@@ -557,28 +614,16 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
         rc = _capacity(data, args.host, ["drain-all"])
         if rc:
             return _fail("could not drain the host; refusing to converge over running jobs")
-    extra = (["--check", "--diff"] if args.mode == "check" else []) + _remove_flags(host, args)
-    # SHORT-LIVED credentials only, and preferably by file reference.
-    #
-    # Anything given as KEY=VALUE lands in this process's argv and in
-    # ansible-playbook's, where `ps` on the control node can read it. That is
-    # tolerable for a registration or removal token -- one hour, one use,
-    # minted on demand -- and it is NOT tolerable for a PAT. Ansible reads
-    # `-e @file` as well, so a long-lived credential goes in a mode-0600 file
-    # outside the checkout and is passed as `-e @/path/to/secrets.yml`.
-    for pair in args.extra_var:
-        extra += ["-e", pair]
-    if args.tags:
-        extra += ["--tags", args.tags]
-    if fm.CLASSES[host["class"]].transport == "wsl":
-        rc = _converge_wsl(data, args.host, plays, extra)
-    else:
-        rc = _converge_ssh(data, args.host, plays, extra)
-    if rc or args.mode == "remove":
-        return rc
+    rc = _run_converge_transport(request)
     if drain:
-        return _capacity(data, args.host, ["scale", str(host["runners"]["instances"])])
-    return 0
+        # Draining is a safety transaction, not a one-way state change. A
+        # failed play must not strand every previously healthy runner parked --
+        # that happened when a preflight rejected a missing, unused PAT before
+        # the role had touched the host. Best-effort restoration is safe even
+        # after a partial converge: it starts only containers that still exist,
+        # while the original Ansible status remains the command's verdict.
+        rc = _restore_after_converge(data, args, host, rc)
+    return rc
 
 
 def _converge_ssh(data: dict[str, Any], name: str, plays: list[str], extra: list[str]) -> int:
@@ -595,9 +640,13 @@ def _converge_ssh(data: dict[str, Any], name: str, plays: list[str], extra: list
     """
     host = data["hosts"][name]
     for play in plays:
-        argv = _playbook_argv(name, host, play, extra)
+        argv = frm.playbook_argv(data, name, host, play, extra)
         print(f"==> ansible-playbook {fm.PLAYS[play].playbook} --limit {name}")
-        rc = _run(argv, cwd=fm.ANSIBLE_DIR)
+        rc = _run(
+            argv,
+            cwd=fm.ANSIBLE_DIR,
+            env=frm.ansible_environment(os.environ, fm.ANSIBLE_DIR),
+        )
         if rc:
             return rc
     return 0
@@ -615,7 +664,12 @@ def _remove_flags(host: dict[str, Any], args: argparse.Namespace) -> list[str]:
     """
     if args.mode != "remove":
         return []
-    flags = ["-e", "ci_runner_docker_state=absent", "-e", "fleet_capacity_enabled=false"]
+    flags = [
+        "-e",
+        "ci_runner_docker_state=absent",
+        "-e",
+        "fleet_capacity_enabled=false",
+    ]
     if fm.CLASSES[host["class"]].transport == "wsl":
         flags += ["-e", "wsl_ci_host_state=absent"]
     return flags
@@ -706,6 +760,60 @@ def cmd_scale(data: dict[str, Any], args: argparse.Namespace) -> int:
     return _capacity(data, args.host, ["scale", str(args.count)])
 
 
+def cmd_selftest(data: dict[str, Any], _args: argparse.Namespace) -> int:
+    """Run transport and typed-operation tests without contacting any host."""
+    failures = (
+        ftv.run_selftest()
+        + fw.run_selftest(data)
+        + fb.run_selftest()
+        + frm.run_selftest()
+        + fb.parser_selftest(_parser)
+    )
+    if data["hosts"]["win-ci"]["class"] not in ftv.CONTAINER_RUNNER_CLASSES:
+        failures.append("declared WSL runner class was refused")
+    if data["hosts"]["dev"]["class"] in ftv.CONTAINER_RUNNER_CLASSES:
+        failures.append("non-container dev host was accepted as a container runner")
+    for failure in failures:
+        print(f"fleet.py --selftest: FAIL: {failure}", file=sys.stderr)
+    if failures:
+        return 1
+    print("fleet.py --selftest: PASS (typed schema, ownership/mode, quoting, redaction, cleanup)")
+    return 0
+
+
+def _add_converge_parsers(subs: _SubparserGroup) -> None:
+    """Add apply/check/remove parsers and their shared guarded arguments."""
+    for mode in ("check", "apply", "remove"):
+        sub = subs.add_parser(mode, help=f"{mode} a host against the declaration")
+        sub.add_argument("host")
+        sub.add_argument("play", nargs="?", help="one play instead of all of them")
+        sub.add_argument("--no-drain", action="store_true", help="do not drain before converging")
+        sub.add_argument(
+            "-e",
+            "--extra-var",
+            action="append",
+            default=[],
+            metavar="KEY=VALUE",
+            help=(
+                "pass a non-secret compatibility variable through to ansible; "
+                "credentials require register-runner, register-hil, or remove --vars-file"
+            ),
+        )
+        if mode == "remove":
+            sub.add_argument(
+                "--vars-file",
+                default="",
+                help="typed mode-0600 removal/dataset vars file",
+            )
+        sub.add_argument(
+            "--tags",
+            default="",
+            help="ansible tags; "
+            + "/".join(sorted(fm.NO_DRAIN_TAGS))
+            + " touch no container and so need no drain",
+        )
+
+
 def _parser() -> argparse.ArgumentParser:
     """Build the command-line parser.
 
@@ -714,6 +822,7 @@ def _parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(prog="fleet.py", description=__doc__.splitlines()[0])
     subs = parser.add_subparsers(dest="command", required=True)
+    subs.add_parser("selftest", help="exercise typed vars and WSL rendering offline")
     subs.add_parser("list", help="what is declared, and how it is sized")
     subs.add_parser("show", help="one host in full").add_argument("host")
     subs.add_parser("validate", help="the fleet-declaration gate's check")
@@ -734,30 +843,15 @@ def _parser() -> argparse.ArgumentParser:
     subs.add_parser(
         "ssh-target", help="the ssh command that reaches one host from here"
     ).add_argument("host")
-    for mode in ("check", "apply", "remove"):
-        sub = subs.add_parser(mode, help=f"{mode} a host against the declaration")
-        sub.add_argument("host")
-        sub.add_argument("play", nargs="?", help="one play instead of all of them")
-        sub.add_argument("--no-drain", action="store_true", help="do not drain before converging")
-        sub.add_argument(
-            "-e",
-            "--extra-var",
-            action="append",
-            default=[],
-            metavar="KEY=VALUE",
-            help=(
-                "pass through to ansible. KEY=VALUE is visible in ps, so use it only "
-                "for a short-lived registration or removal token; pass anything "
-                "long-lived as @/path/to/secrets.yml (mode 0600, outside the checkout)"
-            ),
-        )
-        sub.add_argument(
-            "--tags",
-            default="",
-            help="ansible tags; "
-            + "/".join(sorted(fm.NO_DRAIN_TAGS))
-            + " touch no container and so need no drain",
-        )
+    register_runner = subs.add_parser(
+        "register-runner", help="first-register one declared Docker runner host"
+    )
+    register_runner.add_argument("host")
+    register_runner.add_argument("vars_file")
+    subs.add_parser(
+        "register-hil", help="first-register the one declared native HIL listener"
+    ).add_argument("vars_file")
+    _add_converge_parsers(subs)
     status = subs.add_parser("status", help="what each host is running, right now")
     status.add_argument("host", nargs="?")
     scale = subs.add_parser("scale", help="live capacity change; shrinking drains")
@@ -775,8 +869,11 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         The chosen subcommand's exit status.
     """
-    args = _parser().parse_args(argv)
+    original_argv = list(argv if argv is not None else sys.argv[1:])
+    args = _parser().parse_args(original_argv)
+    args.original_argv = original_argv
     handlers = {
+        "selftest": cmd_selftest,
         "list": cmd_list,
         "show": cmd_show,
         "validate": cmd_validate,
@@ -784,6 +881,8 @@ def main(argv: list[str] | None = None) -> int:
         "inventory": cmd_inventory,
         "ssh-config": cmd_ssh_config,
         "ssh-target": cmd_ssh_target,
+        "register-runner": cmd_register_runner,
+        "register-hil": cmd_register_hil,
         "check": cmd_converge,
         "apply": cmd_converge,
         "remove": cmd_converge,

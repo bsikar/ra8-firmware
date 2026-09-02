@@ -39,6 +39,16 @@ estate. This checks three things a green Ansible run would not:
    input rule and still only work on a machine that happened to define that
    name -- which is the whole of #526, one layer down.
 
+6. **Native HIL labels cannot drift.** A declared native listener names its
+   workflow, and every job in that workflow must request exactly
+   ``self-hosted`` plus the listener's declared custom labels. A workflow
+   cannot acquire a HIL label without being owned by one declaration.
+
+7. **The cache-only HIL repair stays cache-only.** Its standalone playbook,
+   private inventory driver and isolated Justfile must match one exact
+   execution document. The path and identity are literals, and inventory
+   variables may not override the corresponding full-role safety defaults.
+
 ``--selftest`` runs first in the gate and asserts each rule fires on a
 deliberately broken declaration and stays quiet on a legal one. Without it,
 "0 problems" is indistinguishable from "checked nothing".
@@ -47,6 +57,7 @@ deliberately broken declaration and stays quiet on a legal one. Without it,
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import tempfile
 from copy import deepcopy
@@ -56,15 +67,53 @@ from typing import Any
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "scripts" / "dev"))
 
 import fleet_model as fm  # noqa: E402 -- sibling tool, path set immediately above
 import fleet_reach as fr  # noqa: E402 -- ditto; the reachability half of the model
+import hil_cache_repair_rules as hctr  # noqa: E402 -- checker helper beside this script
 
 # Roles whose variables the mapping derives, keyed by the prefix it emits them
 # under. Every emitted name must exist in the role's defaults, or the role
 # would never read it and whatever it configures would silently not happen.
-DERIVED_ROLES = {"fleet_capacity_": "fleet_capacity", "dev_slice_": "dev_slice"}
+DERIVED_ROLES = {
+    "fleet_capacity_": "fleet_capacity",
+    "dev_slice_": "dev_slice",
+    "dev_box_hil_runner_": "dev_box",
+    "hil_bench_": "hil_bench",
+}
+
+HIL_SERVICE_TEMPLATE = "infra/ansible/roles/dev_box/templates/ra8-hil-runner.service.j2"
+HIL_SERVICE_REQUIRED = frozenset(
+    {
+        "[Service]",
+        "User={{ dev_box_hil_runner_user }}",
+        "Group={{ dev_box_hil_runner_group }}",
+        "WorkingDirectory={{ dev_box_hil_runner_root }}",
+        "EnvironmentFile={{ dev_box_hil_runner_env_file }}",
+        'Environment="HOME={{ dev_box_hil_runner_home }}"',
+        "ExecStart={{ dev_box_hil_runner_root }}/runsvc.sh",
+        "NoNewPrivileges=true",
+        "PrivateDevices=true",
+        "PrivateTmp=true",
+        "ProtectHome=true",
+        "ProtectSystem=full",
+        "ProtectControlGroups=true",
+        "ProtectKernelModules=true",
+        "ProtectKernelTunables=true",
+        "RestrictSUIDSGID=true",
+    }
+)
+HIL_SERVICE_SINGLETONS = (
+    "User=",
+    "Group=",
+    "WorkingDirectory=",
+    "EnvironmentFile=",
+    "ExecStart=",
+)
+JINJA_VARIABLE = re.compile(r"{{\s*([A-Za-z_][A-Za-z0-9_]*)\s*}}")
+LINT_PROVIDER_INPUTS = (HIL_SERVICE_TEMPLATE,)
 
 
 def _role_defaults(role: str) -> dict[str, Any]:
@@ -89,7 +138,7 @@ def _check_derived_vars() -> list[str]:
     data = fm.load()
     emitted: set[str] = set()
     for name, host in data["hosts"].items():
-        emitted |= set(fm.role_vars(name, host))
+        emitted |= set(fm.role_vars(data, name, host))
     problems = []
     for prefix, role in DERIVED_ROLES.items():
         declared = set(_role_defaults(role))
@@ -121,6 +170,175 @@ def _check_shared_constants() -> list[str]:
         "the role creates the second, so quiet hours would freeze a slice that does "
         "not exist and dev work would keep the machine through the owner's window."
     ]
+
+
+def _check_hil_service_template(
+    repo_root: Path = REPO_ROOT, declared_vars: set[str] | None = None
+) -> list[str]:
+    """Validate the exact privileged systemd/Jinja input owned by this gate."""
+    path = repo_root / HIL_SERVICE_TEMPLATE
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        return [f"{HIL_SERVICE_TEMPLATE}: cannot read template: {exc}"]
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    problems = [
+        f"{HIL_SERVICE_TEMPLATE}: missing required service contract {line!r}"
+        for line in sorted(HIL_SERVICE_REQUIRED - set(lines))
+    ]
+    problems.extend(
+        f"{HIL_SERVICE_TEMPLATE}: {prefix} must occur exactly once"
+        for prefix in HIL_SERVICE_SINGLETONS
+        if sum(line.startswith(prefix) for line in lines) != 1
+    )
+    declared = declared_vars if declared_vars is not None else set(_role_defaults("dev_box"))
+    unknown = sorted(set(JINJA_VARIABLE.findall(text)) - declared)
+    if unknown:
+        problems.append(f"{HIL_SERVICE_TEMPLATE}: undeclared Jinja variable(s): {unknown!r}")
+    if "TAPO" in text.upper():
+        problems.append(f"{HIL_SERVICE_TEMPLATE}: unrelated TAPO credentials must never be exposed")
+    return problems
+
+
+def _workflow_jobs(path: Path) -> tuple[dict[str, Any], str | None]:
+    """Load the job mapping from one GitHub Actions workflow.
+
+    Args:
+        path: Workflow YAML path.
+
+    Returns:
+        ``(jobs, error)`` with exactly one side populated.
+    """
+    try:
+        loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, yaml.YAMLError) as exc:
+        return {}, str(exc)
+    if not isinstance(loaded, dict) or not isinstance(loaded.get("jobs"), dict):
+        return {}, "workflow has no jobs mapping"
+    return loaded["jobs"], None
+
+
+def _runs_on_labels(job: object) -> list[str] | None:
+    """Return literal labels from one job's ``runs-on`` field.
+
+    Args:
+        job: Parsed job mapping.
+
+    Returns:
+        Literal label list, or None for a missing/dynamic/non-list field.
+    """
+    if not isinstance(job, dict):
+        return None
+    value = job.get("runs-on")
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list) and all(isinstance(label, str) for label in value):
+        return value
+    return None
+
+
+def _check_claimed_hil_workflow(
+    host_name: str, workflow: str, expected: set[str], repo_root: Path
+) -> list[str]:
+    """Check every job in one fleet-owned HIL workflow.
+
+    Args:
+        host_name: Fleet host owning the listener.
+        workflow: Repository-relative workflow path.
+        expected: Exact literal label set every job must request.
+        repo_root: Repository root or selftest fixture.
+
+    Returns:
+        One message per missing, unreadable, dynamic or drifted workflow job.
+    """
+    path = repo_root / workflow
+    if not path.is_file():
+        return [f"{host_name}: declared HIL workflow '{workflow}' does not exist"]
+    jobs, error = _workflow_jobs(path)
+    if error is not None:
+        return [f"{workflow}: {error}"]
+    problems = []
+    for job_name, job in jobs.items():
+        actual = _runs_on_labels(job)
+        if actual is None:
+            problems.append(
+                f"{workflow}:{job_name}: runs-on is not a literal string/list, so its "
+                "HIL labels cannot be checked against infra/fleet.yml"
+            )
+        elif len(actual) != len(set(actual)) or set(actual) != expected:
+            problems.append(
+                f"{workflow}:{job_name}: runs-on {actual!r} does not exactly match "
+                f"declared labels {sorted(expected)!r}"
+            )
+    return problems
+
+
+def _check_unclaimed_hil_workflows(
+    repo_root: Path, claims: set[str], custom_labels: set[str]
+) -> list[str]:
+    """Reject a workflow using native HIL labels without fleet ownership.
+
+    Args:
+        repo_root: Repository root or selftest fixture.
+        claims: Workflow paths owned by native listener declarations.
+        custom_labels: Every custom native HIL label in the fleet.
+
+    Returns:
+        One message per unclaimed job using a native HIL label.
+    """
+    problems = []
+    workflows_dir = repo_root / ".github" / "workflows"
+    paths = sorted([*workflows_dir.glob("*.yml"), *workflows_dir.glob("*.yaml")])
+    for path in paths:
+        rel = path.relative_to(repo_root).as_posix()
+        if rel in claims:
+            continue
+        jobs, error = _workflow_jobs(path)
+        if error is not None:
+            continue
+        for job_name, job in jobs.items():
+            actual = _runs_on_labels(job)
+            overlap = set(actual or []) & custom_labels
+            if overlap:
+                problems.append(
+                    f"{rel}:{job_name}: uses native HIL label(s) {sorted(overlap)!r} "
+                    "but no hil_runner declaration owns this workflow"
+                )
+    return problems
+
+
+def _check_hil_workflows(data: dict[str, Any], repo_root: Path = REPO_ROOT) -> list[str]:
+    """Cross-check native HIL declarations against literal workflow labels.
+
+    Args:
+        data: Parsed fleet declaration.
+        repo_root: Repository root, overridden by the selftest fixture.
+
+    Returns:
+        One message per missing workflow, dynamic label set, label mismatch,
+        or undeclared workflow using a native HIL label.
+    """
+    problems = []
+    claims: set[str] = set()
+    all_custom_labels: set[str] = set()
+    for host_name, host in data["hosts"].items():
+        declared = host.get("hil_runner")
+        if not isinstance(declared, dict):
+            continue
+        workflow = declared.get("workflow")
+        labels = declared.get("labels")
+        if (
+            not isinstance(workflow, str)
+            or not isinstance(labels, list)
+            or any(not isinstance(label, str) for label in labels)
+        ):
+            continue
+        expected = {"self-hosted", *labels}
+        claims.add(workflow)
+        all_custom_labels.update(labels)
+        problems += _check_claimed_hil_workflow(host_name, workflow, expected, repo_root)
+    problems += _check_unclaimed_hil_workflows(repo_root, claims, all_custom_labels)
+    return problems
 
 
 def _is_literal(destination: str) -> bool:
@@ -174,7 +392,10 @@ def _check_derived_reach(data: dict[str, Any]) -> list[str]:
     for name in data["hosts"]:
         argv = fr.ssh_target(data, name)
         derived = {
-            "the ssh command this tooling builds": [argv[-1], *fr.jump_chain(data, name)],
+            "the ssh command this tooling builds": [
+                argv[-1],
+                *fr.jump_chain(data, name),
+            ],
             "the generated Ansible inventory": _inventory_destinations(
                 fm.inventory_entry(data, name)
             ),
@@ -190,6 +411,61 @@ def _check_derived_reach(data: dict[str, Any]) -> list[str]:
     return problems
 
 
+def _good_hosts() -> dict[str, Any]:
+    """Return the minimal legal host mapping used by the selftest."""
+    return {
+        "builder": {
+            "class": "arc_k8s",
+            "connect": {"address": "10.0.0.3", "user": "builder"},
+            "provisions": ["ci-runner"],
+            "runners": {
+                "instances": 1,
+                "cpus": 4,
+                "memory_gb": 8,
+                "cpu_request": 1,
+                "memory_request_gb": 2,
+                "labels": ["ra8-ci"],
+            },
+            "budget": {"mode": "burst", "threads": 4, "memory_gb": 8},
+        },
+        "nas": {
+            "class": "docker_linux",
+            "connect": {"address": "10.0.0.2", "user": "deploy"},
+            "provisions": ["ci-runner-docker"],
+            "runners": {
+                "instances": 2,
+                "cpus": 4,
+                "memory_gb": 8,
+                "labels": ["ra8-ci"],
+            },
+            "budget": {"mode": "reserved", "threads": 8, "memory_gb": 16},
+        },
+        "dev": {
+            "class": "dev_box",
+            "connect": {"address": "10.0.0.4", "user": "developer"},
+            "provisions": ["dev-box"],
+            "hil_runner": {
+                "name": "dev-hil",
+                "repository": "https://github.com/example/firmware",
+                "labels": ["hil", "ra8d2"],
+                "workflow": ".github/workflows/hil.yml",
+                "bench": {"host": "bench", "aliases": ["bench.local"]},
+            },
+        },
+        "bench": {
+            "class": "hil_bench",
+            "connect": {"address": "10.0.0.9", "user": "pi"},
+            "provisions": ["hil-bench"],
+            "board_interface": {
+                "name": "eth0",
+                "mac": "02:00:00:00:00:09",
+                "sysfs_device": "/sys/devices/platform/bench-ethernet",
+                "phc_index": 0,
+            },
+        },
+    }
+
+
 def _good_declaration() -> dict[str, Any]:
     """A minimal legal declaration for the selftest to mutate.
 
@@ -198,20 +474,12 @@ def _good_declaration() -> dict[str, Any]:
     """
     return {
         "sizing": {"build_parallelism": 4, "memory_per_instance_gb": 8},
-        "hosts": {
-            "nas": {
-                "class": "docker_linux",
-                "connect": {"address": "10.0.0.2", "user": "deploy"},
-                "provisions": ["ci-runner-docker"],
-                "runners": {
-                    "instances": 2,
-                    "cpus": 4,
-                    "memory_gb": 8,
-                    "labels": ["ra8-ci"],
-                },
-                "budget": {"mode": "reserved", "threads": 8, "memory_gb": 16},
-            }
+        "runner_image": {
+            "source_host": "builder",
+            "image": "localhost/ra8-ci-runner:v2",
+            "archive": "/var/lib/runner/ra8-ci-runner.tar",
         },
+        "hosts": _good_hosts(),
     }
 
 
@@ -225,7 +493,108 @@ def _mutations() -> dict[str, Any]:
     Returns:
         Rule name to a function that damages a good declaration.
     """
-    return {**_reach_mutations(), **_capacity_mutations(), **_dev_slice_mutations()}
+    return {
+        **_reach_mutations(),
+        **_capacity_mutations(),
+        **_runner_image_mutations(),
+        **_dev_slice_mutations(),
+        **_hil_listener_mutations(),
+        **_hil_interface_mutations(),
+    }
+
+
+def _runner_image_mutations() -> dict[str, Any]:
+    """Breakages in the canonical image producer declaration.
+
+    Returns:
+        Rule name to a function that damages a good declaration.
+    """
+    return {
+        "runner image source is not declared": lambda d: d["runner_image"].update(
+            source_host="missing"
+        ),
+        "runner image source does not build it": lambda d: d["runner_image"].update(
+            source_host="nas"
+        ),
+        "runner image ref is empty": lambda d: d["runner_image"].update(image=""),
+        "runner image archive is empty": lambda d: d["runner_image"].update(archive=""),
+    }
+
+
+def _hil_listener_mutations() -> dict[str, Any]:
+    """Return mutations of the listener-to-bench relationship."""
+    return {
+        "HIL listener on wrong class": lambda d: d["hosts"]["dev"].update(**{"class": "hil_bench"}),
+        "HIL listener with no name": lambda d: d["hosts"]["dev"]["hil_runner"].update(name=""),
+        "HIL listener with no labels": lambda d: d["hosts"]["dev"]["hil_runner"].update(labels=[]),
+        "HIL listener with a non-string label": lambda d: d["hosts"]["dev"]["hil_runner"].update(
+            labels=["hil", 8]
+        ),
+        "HIL listener with implicit label repeated": lambda d: d["hosts"]["dev"][
+            "hil_runner"
+        ].update(labels=["self-hosted", "hil"]),
+        "HIL listener with no workflow": lambda d: d["hosts"]["dev"]["hil_runner"].update(
+            workflow=""
+        ),
+        "HIL listener with unsafe workflow path": lambda d: d["hosts"]["dev"]["hil_runner"].update(
+            workflow="../hil.yml"
+        ),
+        "HIL listener with malformed repository": lambda d: d["hosts"]["dev"]["hil_runner"].update(
+            repository="owner/repo"
+        ),
+        "HIL listener with unknown bench": lambda d: d["hosts"]["dev"]["hil_runner"][
+            "bench"
+        ].update(host="missing"),
+        "HIL listener targeting non-bench host": lambda d: d["hosts"]["dev"]["hil_runner"][
+            "bench"
+        ].update(host="nas"),
+        "HIL listener with malformed bench aliases": lambda d: d["hosts"]["dev"]["hil_runner"][
+            "bench"
+        ].update(aliases="bench.local"),
+        "duplicate HIL registration name": lambda d: _duplicate_hil(
+            d, workflow=".github/workflows/hil-second.yml"
+        ),
+        "duplicate HIL workflow owner": lambda d: _duplicate_hil(d, name="dev-hil-second"),
+    }
+
+
+def _hil_interface_mutations() -> dict[str, Any]:
+    """Return mutations of the permanent board-interface identity."""
+    return {
+        "HIL bench with missing board interface": lambda d: d["hosts"]["bench"].pop(
+            "board_interface"
+        ),
+        "HIL bench with virtual board interface": lambda d: d["hosts"]["bench"].update(
+            board_interface={
+                "name": "eth0.42",
+                "mac": "02:00:00:00:00:09",
+                "sysfs_device": "/sys/devices/platform/bench-ethernet",
+                "phc_index": 0,
+            }
+        ),
+        "HIL bench with malformed permanent MAC": lambda d: d["hosts"]["bench"][
+            "board_interface"
+        ].update(mac="not-a-mac"),
+        "HIL bench with unsafe sysfs identity": lambda d: d["hosts"]["bench"][
+            "board_interface"
+        ].update(sysfs_device="/sys/devices/../escape"),
+        "HIL bench with invalid PHC identity": lambda d: d["hosts"]["bench"][
+            "board_interface"
+        ].update(phc_index=-1),
+    }
+
+
+def _duplicate_hil(data: dict[str, Any], **override: str) -> None:
+    """Add a second legal dev-box shape sharing one listener identity field.
+
+    Args:
+        data: Declaration being damaged.
+        override: Unique field used to leave exactly one duplicate behind.
+    """
+    duplicate = deepcopy(data["hosts"]["dev"])
+    duplicate["connect"]["address"] = "10.0.0.5"
+    duplicate["hil_runner"].update(override)
+    data["hosts"]["dev-second"] = duplicate
 
 
 def _reach_mutations() -> dict[str, Any]:
@@ -337,7 +706,12 @@ def _lend(data: dict[str, Any], **override: int) -> None:
     data["hosts"]["nas"]["budget"]["memory_gb"] = 20
     data["hosts"]["nas"]["budget"]["swap_gb"] = 2
     data["hosts"]["nas"]["sizing_note"] = "fixture: budget raised to leave room to lend"
-    slice_: dict[str, int] = {"cpu_weight": 10, "memory_gb": 4, "swap_gb": 2, "max_jobs": 4}
+    slice_: dict[str, int] = {
+        "cpu_weight": 10,
+        "memory_gb": 4,
+        "swap_gb": 2,
+        "max_jobs": 4,
+    }
     slice_.update(override)
     data["hosts"]["nas"]["dev_slice"] = slice_
 
@@ -361,11 +735,6 @@ def _jumped_declaration() -> dict[str, Any]:
         The good declaration plus a bench the NAS is reached through.
     """
     data = _good_declaration()
-    data["hosts"]["bench"] = {
-        "class": "hil_bench",
-        "connect": {"address": "10.0.0.9", "user": "pi"},
-        "provisions": ["hil-bench"],
-    }
     data["hosts"]["nas"]["connect"]["jump"] = "bench"
     return data
 
@@ -399,6 +768,62 @@ def _check_jump_resolves(host_vars_dir: Path) -> list[str]:
     return problems
 
 
+def _check_hil_selftest(root: Path) -> list[str]:
+    """Prove HIL workflow labels and declarations reject drift both ways."""
+    failures: list[str] = []
+    good_declaration = _good_declaration()
+    workflow = root / ".github" / "workflows" / "hil.yml"
+    workflow.parent.mkdir(parents=True)
+    workflow.write_text(
+        "---\nname: hil\non: workflow_dispatch\njobs:\n"
+        "  hil-all:\n    runs-on: [self-hosted, hil, ra8d2]\n    steps: []\n",
+        encoding="utf-8",
+    )
+    if _check_hil_workflows(good_declaration, root):
+        failures.append("  a workflow matching its declared HIL labels was rejected")
+    workflow.write_text(
+        "---\nname: hil\non: workflow_dispatch\njobs:\n"
+        "  hil-all:\n    runs-on: [self-hosted, hil, wrong-board]\n    steps: []\n",
+        encoding="utf-8",
+    )
+    if not _check_hil_workflows(good_declaration, root):
+        failures.append("  drift in a HIL workflow label was not reported")
+    workflow.write_text(
+        "---\nname: hil\non: workflow_dispatch\njobs:\n"
+        "  hil-all:\n    runs-on: [self-hosted, hil, ra8d2]\n    steps: []\n",
+        encoding="utf-8",
+    )
+    declaration_drift = deepcopy(good_declaration)
+    declaration_drift["hosts"]["dev"]["hil_runner"]["labels"] = ["hil", "ra8p1"]
+    if not _check_hil_workflows(declaration_drift, root):
+        failures.append("  drift in a declared HIL label was not reported")
+    undeclared = workflow.with_name("undeclared.yml")
+    undeclared.write_text(workflow.read_text(encoding="utf-8"), encoding="utf-8")
+    if not _check_hil_workflows(good_declaration, root):
+        failures.append("  an undeclared workflow using HIL labels was not reported")
+    undeclared.unlink()
+    return failures
+
+
+def _check_hil_service_selftest(root: Path) -> list[str]:
+    """Prove the managed systemd template contract accepts and rejects."""
+    failures: list[str] = []
+    template = root / HIL_SERVICE_TEMPLATE
+    template.parent.mkdir(parents=True, exist_ok=True)
+    good = "\n".join(sorted(HIL_SERVICE_REQUIRED)) + "\n"
+    template.write_text(good, encoding="utf-8")
+    declared = set(JINJA_VARIABLE.findall(good))
+    if _check_hil_service_template(root, declared):
+        failures.append("  the hardened HIL systemd template was rejected")
+    template.write_text(good.replace("NoNewPrivileges=true\n", ""), encoding="utf-8")
+    if not _check_hil_service_template(root, declared):
+        failures.append("  a HIL systemd template missing its sandbox was accepted")
+    template.write_text(good + "Environment={{ undeclared_secret }}\n", encoding="utf-8")
+    if not _check_hil_service_template(root, declared):
+        failures.append("  an undeclared HIL service variable was accepted")
+    return failures
+
+
 def _selftest() -> int:
     """Assert every rule fires on a broken fleet and none fires on a legal one.
 
@@ -408,8 +833,12 @@ def _selftest() -> int:
     failures = []
     with tempfile.TemporaryDirectory() as tmp:
         empty = Path(tmp)
-        if fm.validate(_good_declaration(), host_vars_dir=empty):
+        good_declaration = _good_declaration()
+        if fm.validate(good_declaration, host_vars_dir=empty):
             failures.append("  a legal declaration was rejected")
+        failures += _check_hil_selftest(empty)
+        failures += _check_hil_service_selftest(empty)
+        failures += hctr.selftest(REPO_ROOT)
         # A validator that rejected EVERY dev slice would pass every mutation
         # below while making the feature unusable, so the legal shape is
         # asserted too -- the same reason the legal declaration above is.
@@ -436,12 +865,28 @@ def _selftest() -> int:
         (empty / "nas.yml").write_text("ci_runner_docker_cpus: '9'\n", encoding="utf-8")
         if not fm.validate(good, host_vars_dir=empty):
             failures.append("  a host_vars file re-declaring a fleet-owned knob was accepted")
+    failures.extend(_selftest_authority_errors())
     if failures:
         print("check_fleet_declaration selftest FAILED:", file=sys.stderr)
         print("\n".join(failures), file=sys.stderr)
         return 1
-    print(f"selftest OK: {len(_mutations())} rules fire, a legal declaration passes")
+    print(
+        f"selftest OK: {len(_mutations())} rules fire, a legal declaration and "
+        "the standalone cache-only HIL execution contract passes"
+    )
     return 0
+
+
+def _selftest_authority_errors() -> list[str]:
+    """Return failures in lint-provider versus policy-ownership boundaries."""
+    failures = []
+    if LINT_PROVIDER_INPUTS != (HIL_SERVICE_TEMPLATE,):
+        failures.append("  --list-files no longer reports only its semantic template input")
+    if len(LINT_PROVIDER_INPUTS) != len(set(LINT_PROVIDER_INPUTS)):
+        failures.append("  --list-files reports duplicate semantic template inputs")
+    if len(hctr.policy_input_files(REPO_ROOT)) <= len(LINT_PROVIDER_INPUTS):
+        failures.append("  authored-file ownership census collapsed into lint provider inputs")
+    return failures
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -455,7 +900,11 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--selftest", action="store_true", help="prove the rules still fire")
+    parser.add_argument("--list-files", action="store_true", help="list exact template inputs")
     args = parser.parse_args(argv)
+    if args.list_files:
+        print(*LINT_PROVIDER_INPUTS, sep="\n")
+        return 0
     if args.selftest:
         return _selftest()
     try:
@@ -467,7 +916,10 @@ def main(argv: list[str] | None = None) -> int:
         fm.validate(data)
         + _check_derived_vars()
         + _check_shared_constants()
+        + _check_hil_service_template()
+        + hctr.check(REPO_ROOT, data)
         + _check_derived_reach(data)
+        + _check_hil_workflows(data)
     )
     if problems:
         print(f"infra/fleet.yml: {len(problems)} problem(s):", file=sys.stderr)
@@ -475,7 +927,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {problem}", file=sys.stderr)
         return 1
     runners = sum(int((h.get("runners") or {}).get("instances", 0)) for h in data["hosts"].values())
-    print(f"infra/fleet.yml OK: {len(data['hosts'])} host(s), {runners} runner instance(s)")
+    native_hil = sum(1 for host in data["hosts"].values() if host.get("hil_runner"))
+    print(
+        f"infra/fleet.yml OK: {len(data['hosts'])} host(s), {runners} capacity-managed "
+        f"runner instance(s), {native_hil} native HIL listener(s)"
+    )
     return 0
 
 

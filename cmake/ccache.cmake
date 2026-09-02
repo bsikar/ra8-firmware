@@ -21,7 +21,7 @@
 #   - CMakeLists.txt              the root project (ra8_emulator, host tools)
 #   - tests/CMakeLists.txt        the host unit tests, included AFTER the
 #                                 coverage options it must inspect
-#   - cmake/toolchain-ra8d2.cmake for every cross build -- `make <app>`
+#   - cmake/toolchain-ra8d2.cmake for every cross build -- `just apps::build <app>`
 #     configures examples/<app>/ standalone and never processes the root
 #     listfile at all, which is exactly how build_all_examples.sh and the CI
 #     build-cross job build all ~200 apps
@@ -32,7 +32,7 @@
 # that belong with the cache rather than here (see the box's ccache.conf):
 #   base_dir = /      -- rewrite absolute paths in the command line to relative
 #   hash_dir = false  -- do not hash the working directory into the result
-# Without them, every ephemeral snapshot directory (a fresh mktemp per `make ci`
+# Without them, every ephemeral snapshot directory (a fresh mktemp per `just ci`
 # run) would look like a different compilation and never hit.
 #
 #

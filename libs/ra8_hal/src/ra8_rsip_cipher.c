@@ -131,11 +131,8 @@ uint32_t priv_handle_words_for(ra8_rsip_oem_cmd_t cmd)
 ra8_err_t priv_complete(uint32_t done_mask)
 {
   /* HUM Ch 52.1 "Overview" p 3302 */
-  /* Pre-assert the DONE bit so the host fake spin terminates. */
-  *ra8_rsip_reg32(k_ra8_rsip_off_isr) |= done_mask;
-
   const ra8_err_t wait_err = priv_wait_bit(k_ra8_rsip_off_isr, done_mask);
-  if (wait_err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
+  if (wait_err != k_ra8_ok) {
     return wait_err;
   }
   /* HUM Ch 52.1 "Overview" p 3302 */
@@ -181,8 +178,7 @@ void priv_push_iv_lanes(ra8_rsip_off_t base, const uint8_t* iv, uint32_t iv_len)
     }
     /* Computed lane offset is a HUM-defined register, not an enumerator. */
     const ra8_rsip_off_t off =
-      (ra8_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed register offset is a HUM-defined location, not an enumerator.
-        (uint32_t)base + (uint16_t)(w << k_ra8_rsip_word_shift));
+      (ra8_rsip_off_t)((uint32_t)base + (uint16_t)(w << k_ra8_rsip_word_shift));
     *ra8_rsip_reg32(off) = lane;
   }
 }

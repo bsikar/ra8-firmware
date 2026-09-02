@@ -201,11 +201,13 @@ RA8_INTERNAL static uint8_t internal_i3c_i2c_half_period(uint32_t bus_hz, uint32
 RA8_INTERNAL static ra8_err_t internal_i3c_i2c_wait_ntst(volatile r_i3c_i2c_regs_t* reg,
                                                          uint32_t                   mask)
 {
-  for (uint32_t i = 0U; i < k_ra8_i3c_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_i3c_i2c_poll_limit; i++) {
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
-    if (ra8_fake_mmio_poll(&reg->NTST, i, (reg->NTST & mask) != 0U)) { /* GCOVR_EXCL_BR_LINE */
+    /* HUM Ch 40.2.50 "NTST : Normal Transfer Status Register" p 2498 */
+    if (ra8_fake_mmio_poll(&reg->NTST, i, (reg->NTST & mask) != 0U)) {
 #else
-    if ((reg->NTST & mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+    /* HUM Ch 40.2.50 "NTST : Normal Transfer Status Register" p 2498 */
+    if ((reg->NTST & mask) != 0U) {
 #endif
       return k_ra8_ok;
     }
@@ -242,8 +244,16 @@ RA8_INTERNAL static ra8_err_t internal_i3c_i2c_reset(volatile r_i3c_i2c_regs_t* 
   /* HUM Ch 40.2.4 "RSTCTL : Reset Control Register" p 2451 */
   reg->RSTCTL = k_ra8_i3c_i2c_msk_rstctl_ri3crst;
   reg->RSTCTL = 0U;
-  for (uint32_t i = 0U; i < k_ra8_i3c_i2c_poll_limit; i++) {      /* GCOVR_EXCL_BR_LINE */
-    if ((reg->RSTCTL & k_ra8_i3c_i2c_msk_rstctl_ri3crst) == 0U) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_i3c_i2c_poll_limit; i++) {
+    /* HUM Ch 40.2.4 "RSTCTL : Reset Control Register" p 2451 */
+    const bool reset_clear = (reg->RSTCTL & k_ra8_i3c_i2c_msk_rstctl_ri3crst) == 0U;
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    /* HUM Ch 40.2.4 "RSTCTL : Reset Control Register" p 2451 */
+    const bool observed = ra8_fake_mmio_poll(&reg->RSTCTL, i, reset_clear);
+#else
+    const bool observed = reset_clear;
+#endif
+    if (observed) {
       return k_ra8_ok;
     }
   }
@@ -526,9 +536,9 @@ RA8_INTERNAL static ra8_err_t internal_i3c_i2c_block_bringup(volatile r_i3c_i2c_
   /* ra8_board_ek_ra8d2.c::internal_io_expander_apply. */
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_i3c);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "iic_b_init: mstp i3c"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "iic_b_init: mstp i3c");
   const ra8_err_t iic0_err = ra8_mstp_enable(k_ra8_mstp_iic0);
-  RA8_RETURN_ON_ERROR(iic0_err, s_tag, "iic_b_init: mstp iic0"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(iic0_err, s_tag, "iic_b_init: mstp iic0");
 
   /* HUM Ch 40.2.92 "CECTL : Clock Enable Control Register" p 2543 */
   reg->CECTL = k_ra8_i3c_i2c_msk_cectl_clke;
@@ -537,7 +547,7 @@ RA8_INTERNAL static ra8_err_t internal_i3c_i2c_block_bringup(volatile r_i3c_i2c_
   reg->BCTL = 0U;
 
   const ra8_err_t reset_err = internal_i3c_i2c_reset(reg);
-  RA8_RETURN_ON_ERROR(reset_err, s_tag, "iic_b_init: reset"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(reset_err, s_tag, "iic_b_init: reset");
 
   /* HUM Ch 40.2.1 "PRTS : Protocol Selection" p 2449 -- the I3C IP
    * defaults to PRTMD=0 (I3C FIFO buffer transfer, command-queue
@@ -562,7 +572,7 @@ ra8_err_t ra8_i3c_i2c_init(uint8_t channel, const ra8_i3c_i2c_cfg_t* cfg)
   }
 
   const ra8_err_t br_err = internal_i3c_i2c_block_bringup(reg);
-  RA8_RETURN_ON_ERROR(br_err, s_tag, "iic_b_init: block bringup"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(br_err, s_tag, "iic_b_init: block bringup");
 
   internal_i3c_i2c_apply_init_regs(reg, cfg);
 

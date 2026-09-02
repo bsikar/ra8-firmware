@@ -47,8 +47,9 @@ vendor-controlled implementation", not literally a binary file.
 ### Where it would go
 
 Nowhere yet, and that is deliberate. A snapshot of the FSP RSIP-E50D
-primitives *was* vendored under `libs/third_party/fsp_blobs/r_sce_AMC/`
-and later deleted (#614) having never been built: no `cmake/` recipe
+primitives *was* vendored under `libs/third_party/` in a now-deleted
+`fsp_blobs/r_sce_AMC/` subtree and later removed (#614) having never been built:
+no `cmake/` recipe
 referenced it, no first-party call site named a symbol in it, and
 nearly every one of its translation units included `r_rsip_reg.h` /
 `r_rsip_util.h`, headers that were never copied into the tree. It could
@@ -57,8 +58,9 @@ not have compiled if something had tried.
 The lesson is that a *partial* vendoring of this component is dead
 weight, not a head start. Whoever brings hardware RSIP up should
 vendor a complete, **tag-pinned** snapshot -- the `ra_rsip_e50d`
-primitives *plus* the `r_rsip_protected` driver and the util/reg layer
-they include -- add a `cmake/rsip_blob.cmake` behind an option that is
+  primitives *plus* the `r_rsip_protected` driver and the util/reg layer
+  they include -- add a first-party CMake integration module under `cmake/`,
+named for the component and guarded by an option that is
 OFF by default, and register the component in
 `scripts/gen/sbom_registry.py` so the sbom / soup-upstream / osv gates
 cover it. Anything less will not compile, and an in-tree copy that

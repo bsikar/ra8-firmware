@@ -87,7 +87,7 @@ class RuleCtx:
 
 
 def find_su_file(symbol: AnnotatedSymbol) -> int | None:
-    """Look for a matching .su entry under any examples/*/build*/ tree."""
+    """Look for a matching .su entry under any examples/**/build*/ tree."""
     examples = repo_root() / "examples"
     if not examples.is_dir():
         return None
@@ -180,7 +180,7 @@ def _rule_di_slot(sym: AnnotatedSymbol, _arg: str, ctx: RuleCtx) -> list[Violati
             cs.caller_line,
             f"function '{sym.name}' tagged RA8_DI_SLOT called directly; "
             f"must be invoked via function pointer (DIP)",
-            warn_only=True,  # heuristic; warn until pattern stable
+            warn_only=False,
         )
     ]
 
@@ -557,9 +557,10 @@ def sweep_dynamic_allocation(
         )
         for cs in calls
         # Host-only code is outside NASA P10 Rule 3 by construction: the
-        # firmware image never contains these TUs. See is_host_only_path().
+        # firmware image never contains these TUs. See the path predicates below.
         if not cs.in_address_of
         and not is_host_only_path(cs.caller_file)
+        and not is_test_path(cs.caller_file)
         and cs.callee_name in _ALLOCATORS
         and cs.caller_usr not in exempt
     ]

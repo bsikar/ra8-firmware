@@ -28,7 +28,7 @@ PY="${PYTHON:-python3}"
 LATEST_APP=""
 LATEST_MTIME=0
 shopt -s nullglob
-for build_dir in "${REPO_ROOT}"/examples/*/*/build*; do
+while IFS= read -r -d '' build_dir; do
   [ -d "${build_dir}" ] || continue
   if mt=$(stat -f %m "${build_dir}" 2>/dev/null) ||
     mt=$(stat -c %Y "${build_dir}" 2>/dev/null); then
@@ -37,7 +37,7 @@ for build_dir in "${REPO_ROOT}"/examples/*/*/build*; do
       LATEST_APP="$(basename "$(dirname "${build_dir}")")"
     fi
   fi
-done
+done < <(find "${REPO_ROOT}/examples" -type d -name 'build*' -print0)
 shopt -u nullglob
 
 if [ -n "${LATEST_APP}" ]; then

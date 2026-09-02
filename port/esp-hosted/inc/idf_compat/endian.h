@@ -69,7 +69,6 @@ static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__,
    cannot take this project's ra8_ prefix. clang-tidy's naming rule is
    suppressed across the block, following the ThreadX shim precedent in
    libs/ra8_wdt_supervisor and the sibling esp_log.h. */
-/* NOLINTBEGIN(readability-identifier-naming) -- <endian.h>-fixed spellings. */
 
 /**
  * @brief Convert a 16-bit value from host order to little-endian wire order.
@@ -235,5 +234,3 @@ static inline uint32_t le32toh(uint32_t wire_value)
 {
   return wire_value;
 }
-
-/* NOLINTEND(readability-identifier-naming) */

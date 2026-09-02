@@ -46,7 +46,6 @@ typedef enum : uint32_t {
 
 static uint32_t s_state = (uint32_t)k_ra8_rand_default_seed;
 
-/* NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) -- newlib rand()/srand() override names are fixed by libc. */
 /**
  * @brief Strong override for newlib `srand()` -- xorshift32 seed.
  *
@@ -103,4 +102,3 @@ int rand(void)
   s_state = x;
   return (int)(x & k_mask);
 }
-/* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) */

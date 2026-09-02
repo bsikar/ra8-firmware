@@ -141,22 +141,30 @@ add_library(
 )
 
 target_include_directories(
-  usbx_objs PUBLIC ${_RA8_USBX_COMMON_INC} ${_RA8_USBX_DEV_CLS_INC} ${_RA8_USBX_PORT_INC}
+  usbx_objs SYSTEM PUBLIC ${_RA8_USBX_COMMON_INC} ${_RA8_USBX_DEV_CLS_INC} ${_RA8_USBX_PORT_INC}
 )
 
 # tx_api.h is referenced from ux_port.h, so USBX's TUs need ThreadX
 # include dirs; inherit them transitively from the threadx target.
 target_link_libraries(usbx_objs PRIVATE threadx)
 
-# Vendor sources predate -Wpedantic / -Werror cleanliness. Keep them
-# permissive so the rest of the firmware can keep -Werror on without
-# forking the upstream code.
-target_compile_options(usbx_objs PRIVATE -w -Wno-error)
+# No warning suppression here, deliberately. This object library DOES carry the
+# full project profile (-Wall -Wextra -Werror plus -Wredundant-decls,
+# -Wcast-align, -Wcast-qual, -Wstack-usage=2200 and the rest), and it is clean
+# under it: compiling all 247 vendored USBX core and device-class TUs with
+# -Wno-redundant-decls, -Wno-discarded-qualifiers and -Wno-cast-align removed,
+# under arm-none-eabi-gcc 13.3.1 at -O0, emits not one diagnostic. The note
+# these flags carried -- "vendor sources predate -Wpedantic / -Werror
+# cleanliness" -- stopped being true of this pin, so the flags are deleted
+# rather than left standing as a claim about the code that measurement
+# contradicts. The per-app usbx suppressions (examples/.../tz_nsc_cgc_usb) are
+# NOT redundant with this: that app compiles a different USBX subset with a
+# different include posture and its remaining two flags are separately measured.
 
 add_library(usbx INTERFACE)
 target_sources(usbx INTERFACE $<TARGET_OBJECTS:usbx_objs>)
 target_include_directories(
-  usbx INTERFACE ${_RA8_USBX_COMMON_INC} ${_RA8_USBX_DEV_CLS_INC} ${_RA8_USBX_PORT_INC}
+  usbx SYSTEM INTERFACE ${_RA8_USBX_COMMON_INC} ${_RA8_USBX_DEV_CLS_INC} ${_RA8_USBX_PORT_INC}
 )
 target_link_libraries(usbx INTERFACE threadx)
 

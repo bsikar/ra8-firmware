@@ -23,7 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#if defined(__linux__)
+#ifdef __linux__
 #include <linux/falloc.h>
 #endif
 
@@ -250,7 +250,7 @@ bool priv_board_sd_storage_zero(uint64_t offset, uint64_t count)
   if (count == 0U) {
     return true;
   }
-#if defined(__linux__)
+#ifdef __linux__
   if (fallocate(g_board_sd.image_fd,
                 FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
                 (off_t)offset,

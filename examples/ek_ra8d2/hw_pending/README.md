@@ -9,9 +9,10 @@ usually the thing an emulator cannot model -- an analog comparator, an ECC bit
 flip, a rasterizer, a scope on a PWM edge, a reset-retained power domain -- which
 is why they are pending rather than validated.
 
-`make <appname>` builds any of them from the repo root. Promotion is a `git mv`
+`just apps::build <appname>` builds any of them from the repo root. Promotion is a `git mv`
 into [`../hw_validated/hil/`](../hw_validated/hil/) with a `hil.conf` beside
-`main.c` once a hardware probe passes; discovery is the filesystem, so nothing
+`examples/ek_ra8d2/hw_validated/hil/<app>/src/main.c` once a hardware probe
+passes; discovery is the filesystem, so nothing
 else needs editing.
 
 Two subdirectories group by lane rather than by subject: `c6/` needs the ESP32-C6

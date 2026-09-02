@@ -45,6 +45,11 @@
 #                               host-testable while still clocking its
 #                               transactions through this port's own code.
 #
+# tests/inc/ holds the recording ThreadX model used only when host unit tests
+# compile these production sources with RA8_OFF_TARGET. It is absent from this
+# target's include directories by design; firmware always consumes the real
+# ThreadX API.
+#
 # Pulled in by cmake/esp_hosted.cmake when RA8_USE_ESP_HOSTED=ON. Apps
 # link `esp_hosted_port_ra8_spi`; it brings its own globbed ra8_hal
 # sources, so this shim surfaces the include dirs plus the source list as
@@ -55,7 +60,7 @@
 # transaction through this port's vtable and c6_fw_version completed a
 # full esp-hosted RPC round-trip through it at 5 MHz with zero bad
 # checksums; both live under examples/ek_ra8d2/hw_validated/c6/ and
-# `make hil-c6` re-runs them. The physical map came from c6_spi_probe,
+# `just hil::c6` re-runs them. The physical map came from c6_spi_probe,
 # which scope-qualified every J26 hole on 2026-07-27 but drives the SCI
 # directly and reaches none of this code -- which is why the port needed
 # its own proof.

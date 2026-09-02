@@ -65,7 +65,9 @@ ra8_err_t ra8_dtc_init(void* vector_base)
    * a follow-up ra8_dmac_start does not flip the bit again.
    * HUM Ch 11.2.6 "MSTPCRA : Module Stop Control Register A" p 443 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_dmac0_dtc0);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "dtc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "dtc_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   volatile r_dtc_regs_t* reg = ra8_dtc();
   /* HUM 18.2.1 DTCCR p 786 / 18.2.2 DTCVBR p 787 / 18.2.3 DTCST p 787. On a

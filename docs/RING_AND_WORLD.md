@@ -28,13 +28,13 @@ services.
 
 | Ring | Layer | Where it lives | What it does |
 |---:|---|---|---|
-| **0** | BSP | `examples/<app>/{vector_table,system_init,secure_exception,trustzone_init}.c` + `examples/<app>/linker_script.ld` | Vector table, SystemInit, linker script. CPU-state setup before C runtime is live. Each app carries its own copy so two apps may diverge (different vector tables, different memory layouts). |
+| **0** | BSP | `libs/ra8_board_<board>/src/boot/*.c` + `ld/linker_script.ld`, with optional `examples/ek_ra8d2/<tier>/.../<app>/src/{vector_table,system_init,secure_exception,nmi_exception,trustzone_init}.c` and app-root linker-script overrides | Vector table, SystemInit, linker script. CPU-state setup before C runtime is live. Apps inherit board defaults unless they explicitly diverge. |
 | **1** | Core fundamentals | `libs/ra8_core/` | Pure-C utilities with no hardware dependencies (err codes, log, time, pin validator, register-protection helpers). Compiles identically on host and target. |
 | **2** | Register layer | `libs/ra8_hal/inc/ra8_*_regs.h` | Hand-written register layouts derived from the HUM. No code paths -- just typed enums + accessor inline functions. |
 | **3** | HAL drivers | `libs/ra8_hal/src/ra8_*.c` | Hardware Abstraction Layer. Programmes peripherals via Ring-2 register headers. The vast majority of driver code lives here. |
 | **4** | NSC veneers | `libs/ra8_nsc/` | TrustZone Non-Secure-Callable veneers. Bridges between `{World: S}` and `{World: NS}` -- the only place where `__attribute__((cmse_nonsecure_entry))` is allowed. |
 | **5** | Secure app | `libs/ra8_secure_app/` | Secure-side application code (key vault, secure-boot trust anchor). Sits above the HAL but below the NS-callable veneer surface. |
-| **6** | Application | `examples/<tier>/.../<app>/main.c` (e.g. `.../smoke/blink/`, `.../smoke/blink_hal/`), test mocks | The firmware "user code" -- whatever drives the HAL to do something useful. The blink demo, board-bringup smoke tests, and unit-test harnesses all live at Ring 6. |
+| **6** | Application | Canonical inventory from `scripts/dev/ra8_apps.py` (for example, `examples/ek_ra8d2/hw_validated/hil/blink/src/main.c`), plus test mocks | The firmware "user code" -- whatever drives the HAL to do something useful. The blink demo, board-bringup smoke tests, and unit-test harnesses all live at Ring 6. |
 
 The numbering doesn't have to be contiguous; it's a coordinate system,
 not a rule book. A Ring 3 driver can include Ring 1 / Ring 2 headers
@@ -53,7 +53,7 @@ The tag declares the world a file *expects to run in*:
 
 | Tag | Meaning | Where allowed |
 |---|---|---|
-| `{World: S}` | Runs in the Secure world. Has full access to all peripherals and memory. Cannot be called directly from NS code -- only via NSC veneers. | `libs/ra8_hal/`, `libs/ra8_*_pal/` (when serving the secure side), `libs/ra8_secure_app/`, per-app boot files (`examples/<app>/{vector_table,system_init,...}.c`), secure-side apps. |
+| `{World: S}` | Runs in the Secure world. Has full access to all peripherals and memory. Cannot be called directly from NS code -- only via NSC veneers. | `libs/ra8_hal/`, `libs/ra8_*_pal/` (when serving the secure side), `libs/ra8_secure_app/`, per-app boot overrides (`examples/ek_ra8d2/<tier>/.../<app>/src/{vector_table,system_init,...}.c`), secure-side apps. |
 | `{World: NS}` | Runs in the Non-Secure world. Reaches into Secure code only through `__cmse_nonsecure_entry` veneers in `libs/ra8_nsc/`. | `libs/ra8_hal/` driver TUs that the SAU partition keeps NS, NS-side apps. |
 | `{World: NSC}` | Non-Secure-Callable veneer code. The bridge between worlds. The `.gnu.sgstubs` section lands here at link time. | **Only** under `libs/ra8_nsc/`. |
 | `{World: MIXED}` | A file that legitimately straddles both worlds (rare -- typically a header consumed by both sides). | Header files only, sparingly. |
@@ -116,7 +116,7 @@ Carries `cmse_nonsecure_entry` attributes; lives under `libs/ra8_nsc/`
 so the linker can place it in `.gnu.sgstubs`.
 
 ```c
-/* examples/ek_ra8d2/hw_validated/hil/blink/main.c */
+/* examples/ek_ra8d2/hw_validated/hil/blink/src/main.c */
 /**
  * @file main.c
  * @brief Blink-LED smoke test

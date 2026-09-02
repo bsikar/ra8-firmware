@@ -21,7 +21,7 @@
 
 #pragma once
 
-#if defined(ESP_PLATFORM)
+#ifdef ESP_PLATFORM
 
 #include "esp_crt_bundle.h"
 #include "esp_err.h"
@@ -41,7 +41,7 @@
  * without the SDK installed, which only works if the mirror declares exactly
  * the vendor identifiers the adapter calls -- renaming them to the project
  * conventions would make the mirror wrong rather than compliant.            */
-// NOLINTBEGIN(readability-identifier-naming)
+// NOLINTBEGIN(readability-identifier-naming) -- ESP-IDF compatibility symbols retain upstream spellings.
 /** @brief Opaque host-parser stand-in for an ESP-IDF HTTP client. */
 typedef struct esp_http_client* esp_http_client_handle_t;
 
@@ -165,9 +165,7 @@ RA8_PRIV esp_err_t esp_crt_bundle_attach(void* conf);
  * @note Implemented by ESP-IDF and may allocate internally.
  * @since 0.1.0
  */
-RA8_PRIV esp_http_client_handle_t
-esp_http_client_init( // alloc-allow: parser mirror of ESP-IDF SOUP
-  const esp_http_client_config_t* config);
+RA8_PRIV esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t* config);
 
 /**
  * @brief Close the active response while retaining the HTTP client object
@@ -183,8 +181,7 @@ esp_http_client_init( // alloc-allow: parser mirror of ESP-IDF SOUP
  * @note Implemented by ESP-IDF and may release internal resources.
  * @since 0.1.0
  */
-RA8_PRIV esp_err_t esp_http_client_close( // alloc-allow: parser mirror of ESP-IDF SOUP
-  esp_http_client_handle_t client);
+RA8_PRIV esp_err_t esp_http_client_close(esp_http_client_handle_t client);
 
 /**
  * @brief Replace the retained client's request URL
@@ -201,9 +198,7 @@ RA8_PRIV esp_err_t esp_http_client_close( // alloc-allow: parser mirror of ESP-I
  * @note Implemented by ESP-IDF and may allocate internally.
  * @since 0.1.0
  */
-RA8_PRIV esp_err_t esp_http_client_set_url( // alloc-allow: parser mirror of ESP-IDF SOUP
-  esp_http_client_handle_t client,
-  const char*              url);
+RA8_PRIV esp_err_t esp_http_client_set_url(esp_http_client_handle_t client, const char* url);
 
 /**
  * @brief Set one request header on the retained HTTP client
@@ -222,10 +217,9 @@ RA8_PRIV esp_err_t esp_http_client_set_url( // alloc-allow: parser mirror of ESP
  * @note Implemented by ESP-IDF and may allocate internally.
  * @since 0.1.0
  */
-RA8_PRIV esp_err_t esp_http_client_set_header( // alloc-allow: parser mirror of ESP-IDF SOUP
-  esp_http_client_handle_t client,
-  const char*              key,
-  const char*              value);
+RA8_PRIV esp_err_t esp_http_client_set_header(esp_http_client_handle_t client,
+                                              const char*              key,
+                                              const char*              value);
 
 /**
  * @brief Remove one retained request header
@@ -278,9 +272,7 @@ RA8_PRIV esp_err_t esp_http_client_set_timeout_ms(esp_http_client_handle_t clien
  * @note Implemented by ESP-IDF and may allocate during TLS setup.
  * @since 0.1.0
  */
-RA8_PRIV esp_err_t esp_http_client_open( // alloc-allow: parser mirror of ESP-IDF SOUP
-  esp_http_client_handle_t client,
-  int64_t                  write_len);
+RA8_PRIV esp_err_t esp_http_client_open(esp_http_client_handle_t client, int64_t write_len);
 
 /**
  * @brief Fetch response headers and the advertised body length

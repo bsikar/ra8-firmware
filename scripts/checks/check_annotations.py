@@ -58,14 +58,16 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
+import os
 import pathlib
 import sys
 from dataclasses import dataclass
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from annot_clang import check_parse_integrity, parse_tu
+from annot_clang import check_parse_integrity, parse_tu, tu_args
 from annot_loopbound import discover_loopbound_files, enforce_loop_bounds
 from annot_model import AnnotatedSymbol, Violation, WalkState
 from annot_rulekeys import check_rule_keys
@@ -128,19 +130,79 @@ class Sweep(WalkState):
         )
 
 
+def _parse_and_walk_one_tu(tu_path: pathlib.Path) -> WalkState:
+    state = WalkState()
+    tu = parse_tu(tu_path, state.stats)
+    if tu is not None:
+        try:
+            walk_tu(tu, state)
+        except Exception as exc:  # noqa: BLE001 -- TU boundary reports parser/library failures
+            sys.stderr.write(f"  WARN: walk failed for {tu_path}: {exc}\n")
+    return state
+
+
+def _merge_walk_state(dst: Sweep, src: WalkState) -> None:
+    for k, sym in src.symbols.items():
+        if k not in dst.symbols:
+            dst.symbols[k] = sym
+        else:
+            existing = dst.symbols[k]
+            for a in sym.annotations:
+                if a not in existing.annotations:
+                    existing.annotations.append(a)
+            existing.is_static = existing.is_static or sym.is_static
+            existing.has_internal_linkage = (
+                existing.has_internal_linkage or sym.has_internal_linkage
+            )
+            if sym.return_type:
+                existing.return_type = sym.return_type
+            existing.has_pointer_param = existing.has_pointer_param or sym.has_pointer_param
+            if sym.is_defined:
+                existing.is_defined = True
+                existing.file = sym.file
+                existing.line = sym.line
+                existing.end_line = sym.end_line
+            existing.decl_files.update(sym.decl_files)
+            existing.has_inline = existing.has_inline or sym.has_inline
+            if sym.section:
+                existing.section = sym.section
+    dst.data_symbols.update(src.data_symbols)
+    dst.calls.extend(src.calls)
+    dst.vector_entries.update(src.vector_entries)
+    dst.stats.calls_seen += src.stats.calls_seen
+    dst.stats.calls_resolved += src.stats.calls_resolved
+    dst.stats.missing_includes.update(src.stats.missing_includes)
+    dst.stats.unparsed.extend(src.stats.unparsed)
+
+
 def _sweep(tus: list[pathlib.Path], *, progress: bool) -> Sweep:
     """Parse and walk every TU, returning the symbol table and the evidence."""
     out = Sweep(tu_count=len(tus))
-    for tu_path in tus:
-        if progress:
-            print(f"  parsing {tu_path.relative_to(repo_root())}", file=sys.stderr)
-        tu = parse_tu(tu_path, out.stats)
-        if tu is None:
-            continue
-        try:
-            walk_tu(tu, out)
-        except Exception as exc:  # noqa: BLE001 -- one TU must not abort the sweep; the parse floor catches wholesale failure
-            sys.stderr.write(f"  WARN: walk failed for {tu_path}: {exc}\n")
+    if not tus:
+        return out
+
+    max_workers = os.cpu_count() or 4
+    env_jobs = os.environ.get("RA8_MAX_JOBS") or os.environ.get("CMAKE_BUILD_PARALLEL_LEVEL")
+    if env_jobs and env_jobs.isdigit():
+        max_workers = max(1, int(env_jobs))
+
+    if len(tus) <= 1 or max_workers <= 1:
+        for tu_path in tus:
+            if progress:
+                print(f"  parsing {tu_path.relative_to(repo_root())}", file=sys.stderr)
+            state = _parse_and_walk_one_tu(tu_path)
+            _merge_walk_state(out, state)
+    # Pre-initialize compiler args and resource directory once in parent process
+    tu_args(tus[0])
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as pool:
+        futures = {pool.submit(_parse_and_walk_one_tu, tu_path): tu_path for tu_path in tus}
+        for future in concurrent.futures.as_completed(futures):
+            tu_path = futures[future]
+            if progress:
+                print(f"  parsed {tu_path.relative_to(repo_root())}", file=sys.stderr)
+            state = future.result()
+            _merge_walk_state(out, state)
     return out
 
 

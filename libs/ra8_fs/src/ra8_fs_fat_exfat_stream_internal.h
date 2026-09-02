@@ -196,6 +196,7 @@ ra8_err_t priv_exfat_grow_dir(const ra8_fs_mount_t* m, exfat_dir_t* dir);
  * @retval k_ra8_ok            Set found; outputs populated.
  * @retval k_ra8_err_not_found No matching set in @p dir.
  * @retval k_ra8_err_no_mem    The set has more entries than @p max_pos.
+ * @retval k_ra8_err_protocol_error No EOD marker appeared before the scan bound.
  * @retval k_ra8_err_*         Backend read failure.
  *
  * @pre All pointers are non-NULL; `m->type` is exFAT.
@@ -230,8 +231,9 @@ ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
  * @param[in] strm The file's 32-byte Stream-extension entry.
  *
  * @return Error code.
- * @retval k_ra8_ok    Clusters freed (or the file had none).
- * @retval k_ra8_err_* Bitmap or backend failure.
+ * @retval k_ra8_ok                 Clusters freed (or the file had none).
+ * @retval k_ra8_err_protocol_error FAT chain exhausted the volume bound without EOC.
+ * @retval k_ra8_err_*              Bitmap or backend failure.
  *
  * @pre @p m and @p strm are non-NULL.
  * @pre The caller owns the file: either its entries are already deleted, or it
@@ -278,12 +280,12 @@ ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_exfat_link(ra8_fs_mount_t*    m,
-                          const exfat_dir_t* dir,
-                          const uint16_t*    name,
-                          uint32_t           nlen,
-                          exfat_setpos_t*    out_head,
-                          uint32_t*          out_count);
+ra8_err_t priv_exfat_link(const ra8_fs_mount_t* m,
+                          const exfat_dir_t*    dir,
+                          const uint16_t*       name,
+                          uint32_t              nlen,
+                          exfat_setpos_t*       out_head,
+                          uint32_t*             out_count);
 
 /**
  * @brief Open an exFAT file for writing: create, truncate, or position to append.

@@ -144,25 +144,23 @@ typedef struct {
 } ra8_usb_hhid_state_t;
 
 static ra8_usb_hhid_state_t s_state = {};
-
 /* =============================================================================
  * Internal helpers
  * =============================================================================
  */
 
 /**
- * @brief Pick the interrupt-max-packet ceiling matching the negotiated
- *        speed.
- *
- * @details See implementation.
- * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @brief Pick the interrupt-max-packet ceiling for the negotiated speed.
+ * @details Selects the USBHS ceiling for HS and the USBFS ceiling otherwise.
+ * @param[in] speed Negotiated controller speed.
+ * @return Interrupt endpoint maximum packet size in bytes.
+ * @retval k_ra8_hhid_intr_max_packet_hs HS controller ceiling.
+ * @retval k_ra8_hhid_intr_max_packet_default FS controller ceiling.
+ * @pre `speed` is a validated FS or HS controller selection.
+ * @pre The packet-size constants match their controller endpoint limits.
+ * @post The result matches the ceiling for `speed`.
+ * @post No state is modified.
+ * @note Pure and thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL
@@ -198,7 +196,7 @@ static ra8_err_t internal_configure_pipes(void)
                                              k_ra8_usb_ep_dir_in,
                                              k_ra8_usb_ep_type_intr,
                                              s_state.device.intr_in_max_packet);
-  RA8_RETURN_ON_ERROR(err, s_tag, "hhid: intr-in cfg"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "hhid: intr-in cfg");
 
   if (s_state.device.intr_out_ep != 0U) {
     err = ra8_usb_configure_endpoint(s_state.speed,
@@ -426,7 +424,9 @@ RA8_INTERNAL
 static ra8_err_t internal_do_bus_reset(void)
 {
   const ra8_err_t rel = ra8_usb_host_bus_reset(s_state.speed, false);
-  RA8_RETURN_ON_ERROR(rel, s_tag, "hhid: release bus reset"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(rel, /* GCOVR_EXCL_BR_LINE -- stored speed valid; reset rejects only speed */
+                      s_tag,
+                      "hhid: release bus reset");
   s_state.step = k_ra8_hhid_step_set_address;
   return internal_setup_set_address(k_ra8_hhid_assigned_address);
 }
@@ -449,7 +449,9 @@ RA8_INTERNAL
 static ra8_err_t internal_do_set_address(void)
 {
   const ra8_err_t addr_err = ra8_usb_set_address(s_state.speed, k_ra8_hhid_assigned_address);
-  RA8_RETURN_ON_ERROR(addr_err, s_tag, "hhid: set USBADDR"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(addr_err, /* GCOVR_EXCL_BR_LINE -- valid speed + static in-range address */
+                      s_tag,
+                      "hhid: set USBADDR");
   s_state.step = k_ra8_hhid_step_get_dev_desc;
   return internal_setup_get_descriptor(k_ra8_hhid_desc_device, k_ra8_hhid_dev_desc_len);
 }
@@ -552,7 +554,7 @@ RA8_INTERNAL
 static ra8_err_t internal_do_walk_desc(void)
 {
   const ra8_err_t pipes_err = internal_configure_pipes();
-  RA8_RETURN_ON_ERROR(pipes_err, s_tag, "hhid: configure pipes"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(pipes_err, s_tag, "hhid: configure pipes");
   s_state.step = k_ra8_hhid_step_get_report_desc;
   return internal_setup_get_report_descriptor(k_ra8_hhid_report_desc_max);
 }
@@ -776,8 +778,8 @@ static uint16_t internal_dcp_in_drain(volatile r_usb_regs_t* reg, uint8_t* out, 
 
   /* HUM Ch 36.2.8 "CFIFOCTR" p 1979 */ /* bounded FRDY spin. */
   uint16_t ready = 0U;
-  for (uint16_t i = 0U; i < k_ra8_hhid_fifo_poll_lim; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->CFIFOCTR & k_ra8_fifoctr_frdy) != 0U) {        /* GCOVR_EXCL_BR_LINE */
+  for (uint16_t i = 0U; i < k_ra8_hhid_fifo_poll_lim; ++i) {
+    if ((reg->CFIFOCTR & k_ra8_fifoctr_frdy) != 0U) {
       ready = 1U;
       break;
     }

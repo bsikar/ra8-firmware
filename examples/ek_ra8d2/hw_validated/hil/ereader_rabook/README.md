@@ -1,9 +1,9 @@
 # ereader_rabook
 
 Loads a compiled `.rabook` and renders it -- the on-silicon proof of the
-`ra8_book` pipeline. It validates the flat blob (magic, table bounds, CRC-32),
+`book` pipeline. It validates the flat blob (magic, table bounds, CRC-32),
 walks each chapter's pre-parsed DOM back out as XHTML so the existing
-`ra8_reflow` engine can consume it unchanged, paginates, renders every page into
+`reflow` engine can consume it unchanged, paginates, renders every page into
 an RGB565 framebuffer and hashes the output. The demo book's first chapter is
 short and its second much longer, so one run covers small-to-large pagination.
 Headless -- no panel, SD or touch.
@@ -15,6 +15,6 @@ on a quantised copy.
 
 The fixture is baked already-inflated, so the gate needs no decompressor. A real
 device instead reads the compressed `.rabook` off SD and inflates it through
-`ra8_book_open()` with a miniz-backed inflate adapter, sizes the scratch buffer
-to `k_ra8_book_library_max_inflated` from the generated `ra8_book_library.h`,
+`book_open()` with a miniz-backed inflate adapter, sizes the scratch buffer
+to `k_book_library_max_inflated` from the generated `book_library.h`,
 and places both the scratch and the framebuffer in SDRAM rather than SRAM.

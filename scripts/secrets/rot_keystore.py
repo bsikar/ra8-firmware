@@ -41,7 +41,7 @@ import os
 import subprocess
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -49,20 +49,20 @@ from openbao_client import OpenBaoClient, OpenBaoError
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _ROT_C = _REPO_ROOT / "libs" / "ra8_dfu" / "src" / "ra8_rot.c"
-_ROT_SIGN = _REPO_ROOT / "tools" / "rot_sign.py"
-_ROT_PATCH = _REPO_ROOT / "tools" / "rot_patch_pubkey.py"
+_ROT_SIGN = _REPO_ROOT / "tools" / "rot" / "src" / "rot_sign.py"
+_ROT_PATCH = _REPO_ROOT / "tools" / "rot" / "src" / "rot_patch_pubkey.py"
 _WORKING_KEY = Path.home() / "ra8d2-rot-signing-key.pem"
 _ALGORITHM = "ecdsa-p256"
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def _git_commit() -> str:
     try:
-        out = subprocess.run(  # noqa: S603
-            ["git", "-C", str(_REPO_ROOT), "rev-parse", "--short", "HEAD"],  # noqa: S607
+        out = subprocess.run(  # noqa: S603 -- fixed Git argv, no shell
+            ["git", "-C", str(_REPO_ROOT), "rev-parse", "--short", "HEAD"],  # noqa: S607 -- Git is an operator prerequisite
             capture_output=True,
             text=True,
             check=True,
@@ -74,13 +74,13 @@ def _git_commit() -> str:
 
 def fingerprint(pem_path: Path) -> str:
     """SHA-256 of the public SPKI, matching rot_provision.sh's fingerprint."""
-    spki = subprocess.run(  # noqa: S603
-        ["openssl", "ec", "-in", str(pem_path), "-pubout"],  # noqa: S607
+    spki = subprocess.run(  # noqa: S603 -- explicit argv is never a shell
+        ["openssl", "ec", "-in", str(pem_path), "-pubout"],  # noqa: S607 -- OpenSSL is an operator prerequisite
         capture_output=True,
         check=True,
     ).stdout
     dgst = subprocess.run(
-        ["openssl", "dgst", "-sha256"],  # noqa: S607
+        ["openssl", "dgst", "-sha256"],  # noqa: S607 -- OpenSSL is an operator prerequisite
         input=spki,
         capture_output=True,
         check=True,
@@ -310,7 +310,7 @@ def _print_history(rows: list[dict]) -> None:
 
 
 def _keygen(key_path: Path, pubkey_c: Path) -> None:
-    subprocess.run(  # noqa: S603
+    subprocess.run(  # noqa: S603 -- current interpreter runs the repository-owned signer
         [
             sys.executable,
             str(_ROT_SIGN),
@@ -430,7 +430,7 @@ def cmd_rekey(args: argparse.Namespace) -> int:
         print(f"stored NEW key as version {version} ({tags['fingerprint']}) in {backend.name}")
         # 3. Optionally provision the new public key into ra8_rot.c.
         if args.patch:
-            subprocess.run(  # noqa: S603
+            subprocess.run(  # noqa: S603 -- current interpreter runs the repository-owned patcher
                 [sys.executable, str(_ROT_PATCH), str(_ROT_C), str(pubkey_c)],
                 check=True,
             )

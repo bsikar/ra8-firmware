@@ -7,7 +7,7 @@ see, and how the remaining debt is stopped from growing.
 The findings themselves are not in this document. `.github/misra-baseline.txt`
 owns the per-file, per-rule counts, and
 [`docs/qualification/MISRA_DEVIATIONS.md`](qualification/MISRA_DEVIATIONS.md)
-owns the formal disposition of each rule.
+owns the formal deviation and tooling-gap records.
 
 ## Why MISRA-C 2012
 
@@ -64,17 +64,99 @@ Two further limitations shape how the numbers read:
   licensee of the standard can supply `--rule-texts=<file>` to upgrade the
   diagnostics; that file is deliberately not committed here.
 
+### Pinned C23 empty-initializer compatibility correction
+
+cppcheck 2.13's bundled Rule 9 MISRA add-on predates C23 6.7.10. Its empty-brace
+branch marks every `= {}` aggregate as under-braced, even though an empty
+initializer contains no initializer clause that could omit a nested brace.
+The audit therefore verifies the exact cppcheck 2.13.0 bytes for the MISRA
+driver, its Rule 9 helper, their Python data dependency, and the POSIX library
+model. It copies those four upstream assets into a disposable build directory,
+verifies the repository-owned patch, applies its one-predicate correction, and
+verifies the patched bytes before running them. The installed add-on and library
+model are never changed. Any tool-version, dependency, source-addon, library-model,
+patch, or patched-output drift fails closed.
+
+The correction was measured across all 390 translation-unit dumps represented
+by a Rule 9.2 baseline row. The stock addon reported 2,107 unique file-and-line
+findings; the corrected addon reported five. A mechanical whole-initializer
+classifier traced all 2,102 removed sites to an actual empty `{}` construct,
+with zero additions and zero unexplained removals. The five non-empty,
+under-braced findings remained. The selftest independently exercises
+top-level, nested, designated-member, and array empty initializers. Each must
+remain quiet for Rules 9.2 and 9.4, while under-braced and excess-brace
+aggregates still raise Rule 9.2 and a duplicate designated member still raises
+Rule 9.4. It also proves that addon, dependency, and patch drift are rejected.
+
+The same staged authority supplies cppcheck's POSIX declaration model to
+`port/posix/src/fw_if_fs_posix_common.c` only. Cppcheck 2.13 does not retain
+the hosted system-header declarations in its ordinary C11 dump, which creates
+four false Rule 17.3 findings. A global POSIX model also changes unrelated
+type inference, so the audit replaces only that translation unit's ordinary
+dump with a fresh dump using the digest-pinned, absolute staged `posix.cfg`
+path. The selftest proves the common exclusions, suppressions, include roots,
+and parser options are identical in both passes; exactly four Rule 17.3
+findings disappear, the existing Rule 21.1 finding remains, and no other
+focused diagnostic changes.
+
+The final pinned audit and its derived qualification records freeze the measured
+result. Relative to the 22,097-finding baseline, the C23 compatibility correction
+removes 2,102 modeled false positives, the targeted POSIX model removes four
+false Rule 17.3 findings, and reviewed source fixes remove 53 genuine findings.
+The committed 19,938-finding baseline records the complete 2,159-finding
+reduction with zero bucket growth.
+
 ## Running the audit
 
 ```sh
-make misra           # the audit
-make misra-check     # the audit, then the ratchet comparison
-make misra-baseline  # the audit, then regenerate the committed baseline
+just quality::local::misra                 # the audit
+just quality::local::misra 1               # the audit, then ratchet comparison
+just quality::local::misra_baseline        # audit, then regenerate baseline
 ```
 
-The audit covers first-party translation units and excludes
-`libs/third_party/`. Per-violation output and the raw checker logs land under
-`build/misra/`, regenerated on every run; none of it is committed.
+The audit covers first-party translation units under `libs/`, `port/`,
+`tools/`, and `apps/`, and excludes `libs/third_party/`. The repository-root
+`tests/` and `examples/` trees are outside this scan, while app-local tests
+under `apps/` are in scope with their product code. Per-violation output and
+the raw checker logs land under `build/misra/`, regenerated on every run; none
+of it is committed.
+
+### 2026-08-22 source-layout reconciliation
+
+The `src/`/`inc/` migration moved 116 test translation units from the
+repository-root `tests/` tree into their owning `apps/**/tests/` trees. That is
+a deliberate audit-scope expansion: app-local tests are product code for this
+policy and remain in scope. They were not excluded to make the gate pass.
+
+The migration audit first rewrote only the old baseline paths and verified that
+the mapped baseline still contained exactly 20,976 findings in 3,011
+file/rule rows. Comparing the pinned 2.13.0 scan against that count-preserving
+map separated the growth into two populations:
+
+* 251 file/rule rows and 1,580 findings came solely from those 116 translation
+  units crossing from the excluded root-test scope into `apps/`. This is the
+  only population accepted as source-layout migration debt. Before the final
+  baseline was generated, ordinary source fixes removed one Rule 15.5 finding
+  from each of three reflow tests. Exact C23-parser suppressions then removed 77
+  spurious findings in three migrated test rows, leaving 1,500 findings in 248
+  rows in the final pinned baseline.
+* 23 file/rule rows and 103 findings were new or had genuinely grown. They were
+  dispositioned independently: source changes removed 10 findings in 9 rows,
+  evidence-backed C23-parser suppressions removed 57 false-positive findings in
+  10 rows, and the remaining 36 findings in 4 rows are genuine early-return /
+  dependency-injection idioms already accepted by D-001 and D-010.
+
+Final frozen refactors exposed seven additional file/rule buckets containing 16
+findings of those same documented C23-parser false-positive classes. Their exact
+file/rule suppressions also burned down 84 already-baselined Rule 9.2 findings.
+Two real Rule 15.4 findings introduced by coverage seams were fixed in source;
+the Alphabet CLI split transferred nine D-001 findings from `main.c` to its
+private helper without changing the Rule 15.5 population.
+
+The final pinned baseline therefore includes those 1,500 scope-expansion
+findings and the separately dispositioned D-001/D-010 additions; it does not
+label the latter as migration debt. Any simultaneous finding reductions remain
+ordinary ratchet burn-down and are retained when the baseline is regenerated.
 
 ## The ratchet -- the load-bearing mechanism
 
@@ -114,8 +196,10 @@ Per MISRA-C:2012 sec. 5.2 a finding has exactly three possible outcomes:
    Legitimate only when the violation is provably absent from the code, never
    when MISRA is genuinely violated.
 
-The deviation register holds the current disposition of every rule. The
-substantive ones:
+The deviation register owns the formal deviations and tooling-gap records.
+Rules outside those records remain ratchet-held **Code change** debt; an index
+row's population is not blanket acceptance of every finding under that rule.
+The substantive records include:
 
 | Rule                            | Disposition                      | Rationale |
 |---------------------------------|----------------------------------|-----------|
@@ -124,6 +208,8 @@ substantive ones:
 | 9.2 initializer braces          | Tooling gap (D-003)              | The C23 `= {}` empty initializer is read as an under-braced aggregate initializer. |
 | 12.1 operator precedence        | Partial deviation + code change (D-004) | Implicit precedence accepted for `* /` over `+ -`, unary over binary, member access over any, and postfix call over any. Redundant parentheses added everywhere else; clang-format will not re-flatten them. |
 | 8.4 compatible declaration visible | Tooling gap (D-005)           | Every hit traces to `syntaxError` on the `[[nodiscard]]` attribute of the matching public-header prototype, or to a third-party header deliberately excluded from the audit. The cross compiler rejects any real Rule 8.4 violation as a build error, so the source obeys the rule. |
+| 11.6 pointer/integer conversion | Narrow project deviation (D-011) | The XZ caller-workspace installer converts one `void*` value to `uintptr_t` solely to reject an address that cannot satisfy the decoder arena's alignment contract. No integer is converted back to a pointer. |
+| 21.1 reserved identifiers       | Narrow project deviation (D-012) | A guarded first-party XZ porting macro preserves the exact `__always_inline` spelling consumed by byte-identical upstream SOUP. Other Rule 21.1 findings are not accepted by this record. |
 
 A tooling-gap disposition is not a permanent excuse. Each carries an
 early-review trigger that fires when the pinned checker gains the capability it
@@ -141,10 +227,10 @@ an adopter who does is responsible for their own qualified-tool re-audit.
 
 | Asset | Purpose |
 |---|---|
+| `just quality::local::gate misra` | Registered CI entry point; runs the pinned audit, deviation-integrity checks, and ratchet comparison. |
 | `scripts/checks/misra_check.sh` | Developer front end for the pinned audit; `--check` also runs the committed ratchet. |
-| `scripts/checks/misra_check_inner.sh` | The audit itself. Writes `build/misra/` and prints a per-rule tally. Invoked by `make misra`. |
+| `scripts/checks/misra_check_inner.sh` | The audit itself. Writes `build/misra/` and prints a per-rule tally. Invoked by `just quality::local::misra`. |
 | `scripts/checks/misra_ratchet.py` | Ratchet comparator; `--update` regenerates the baseline. |
 | `scripts/checks/check_misra_deviations.py` | Re-derives the deviation register's machine-checked claims from the baseline and the suppression list. |
 | `.github/misra-baseline.txt` | Committed per-file-per-rule counts plus the generating cppcheck version. |
 | `.cppcheck-suppressions` | Project-wide suppressions with justification comments. Every `misra-c2012-*` family here must be owned by the deviation register's suppression-ownership list, and that ownership is gated. |
-| [`MISRA_GAPS.csv`](MISRA_GAPS.csv) | A capped, hand-trimmed excerpt of an early audit. Kept for shape, not for currency. |

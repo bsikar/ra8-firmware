@@ -49,9 +49,45 @@ SBOM_PATH="${REPO_ROOT}/docs/sbom/ra8-firmware.cdx.json"
 SCANNER=""
 OUTPUT_DIR="${REPO_ROOT}/build/osv-scan"
 
-usage() {
-  echo "usage: $0 --scanner <osv-scanner-binary> [--output-dir <dir>]" >&2
+osv_result_class() {
+  case "$1" in
+    0) echo clean ;;
+    1) echo advisories ;;
+    128) echo no-packages ;;
+    *) echo infrastructure-error ;;
+  esac
 }
+
+selftest() {
+  local failed=0 rc expected actual
+  while read -r rc expected; do
+    actual="$(osv_result_class "$rc")"
+    if [[ "$actual" != "$expected" ]]; then
+      echo "osv_scan --selftest: rc $rc classified '$actual', expected '$expected'" >&2
+      failed=1
+    fi
+  done <<'EOF'
+0 clean
+1 advisories
+128 no-packages
+7 infrastructure-error
+EOF
+  [[ "$failed" -eq 0 ]] || return 1
+  echo "osv_scan.sh --selftest: PASS (clean, advisory, empty, infrastructure)"
+}
+
+usage() {
+  echo "usage: $0 --selftest | --scanner <osv-scanner-binary> [--output-dir <dir>]" >&2
+}
+
+if [[ "${1:-}" == "--selftest" ]]; then
+  [[ "$#" -eq 1 ]] || {
+    usage
+    exit 2
+  }
+  selftest
+  exit $?
+fi
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -79,7 +115,7 @@ if ! "${SCANNER}" --version >/dev/null 2>&1; then
   exit 2
 fi
 if [ ! -f "${SBOM_PATH}" ]; then
-  echo "osv_scan: SBOM missing at ${SBOM_PATH}; run 'make sbom'" >&2
+  echo "osv_scan: SBOM missing at ${SBOM_PATH}; run 'just quality::local::sbom'" >&2
   exit 2
 fi
 
@@ -117,24 +153,24 @@ run_leg() {
   echo "=== osv_scan leg: ${leg} ==="
   rc=0
   "${SCANNER}" scan source --format json --output-file "${report}" "$@" || rc=$?
-  case "${rc}" in
-    0)
+  case "$(osv_result_class "$rc")" in
+    clean)
       echo "osv_scan: ${leg}: clean"
       return 0
       ;;
-    1)
+    advisories)
       echo "osv_scan: ${leg}: ADVISORIES FOUND"
       summarize "${report}"
       return 1
       ;;
-    128)
+    no-packages)
       # "No package sources found" -- tolerated so that a future
       # SBOM shape change cannot silently pass as a clean scan of
       # zero packages: the leg still prints what happened.
       echo "osv_scan: ${leg}: no scannable packages (osv-scanner exit 128)"
       return 0
       ;;
-    *)
+    infrastructure-error)
       echo "osv_scan: ${leg}: osv-scanner failed with exit ${rc}" >&2
       exit "${rc}"
       ;;

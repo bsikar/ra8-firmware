@@ -61,7 +61,7 @@
  *
  * The CPU-side contract (IDCODE constant cross-check, opcode validation,
  * lifecycle, NULL guards) is exercised by the host unit tests in
- * ``tests/test_ra8_bscan.c`` and by the on-silicon self-test example
+ * ``tests/misc/src/test_ra8_bscan.c`` and by the on-silicon self-test example
  * ``examples/.../hil/bscan_selftest`` (prints
  * ``bscan: idcode=085DA447 checks=17 PASS``). The actual boundary-scan
  * vectors are validated externally by an IEEE-1149.1 JTAG fixture using the

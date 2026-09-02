@@ -34,6 +34,7 @@ from pathlib import Path
 
 _DEFAULT_CREDS = Path.home() / ".config" / "hil" / "openbao.env"
 _HTTP_TIMEOUT_S = 6.0
+_GET_ARG_COUNT = 4
 
 
 class OpenBaoError(RuntimeError):
@@ -82,9 +83,13 @@ def _http_json(
     hdrs.update(headers)
     # Scheme guarded above; BAO_ADDR comes from a local 0600 operator-controlled
     # creds file, never untrusted input.
-    req = urllib.request.Request(url, data=body, headers=hdrs, method=verb)  # noqa: S310
+    req = urllib.request.Request(  # noqa: S310 -- HTTPS scheme validated above
+        url, data=body, headers=hdrs, method=verb
+    )
     try:
-        with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT_S) as resp:  # noqa: S310
+        with urllib.request.urlopen(  # noqa: S310 -- request URL validated above
+            req, timeout=_HTTP_TIMEOUT_S
+        ) as resp:
             raw = resp.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
         msg = f"OpenBao HTTP {exc.code} for {verb} {url}"
@@ -186,7 +191,7 @@ class OpenBaoClient:
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) >= 4 and sys.argv[1] == "get":  # noqa: PLR2004
+    if len(sys.argv) >= _GET_ARG_COUNT and sys.argv[1] == "get":
         req_path = sys.argv[2].removeprefix("secret/")
         req_key = sys.argv[3]
         try:

@@ -176,7 +176,7 @@ void priv_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t clr_mask)
  * @note Pure function.
  * @since 0.1.0
  */
-bool priv_is_hs(volatile r_usb_regs_t* reg)
+bool priv_is_hs(volatile const r_usb_regs_t* reg)
 {
   return reg == ra8_usb_hs();
 }
@@ -486,7 +486,8 @@ typedef enum : uint8_t {
  * @note Used only for the 32-bit CFIFO fills/drains in this file.
  * @since 0.1.0
  */
-typedef uint32_t __attribute__((may_alias)) ra8_usb_cfifo32_t; /* ATTR-OK: no clang [[]] form */
+typedef uint32_t __attribute__((may_alias)) /* ATTR-OK: cppcheck 2.13 rejects the C23 spelling */
+ra8_usb_cfifo32_t;
 
 /**
  * @brief HS-only: write the residual 0-3 bytes after 32-bit chunks.
@@ -637,8 +638,9 @@ void priv_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t l
 RA8_INTERNAL
 static void internal_fifo_read_hs_head(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
 {
-  volatile ra8_usb_cfifo32_t* const cfifo32 = (volatile ra8_usb_cfifo32_t*)(uintptr_t)&reg->CFIFO;
-  const uint16_t                    quads   = (uint16_t)(len >> 2U);
+  volatile const ra8_usb_cfifo32_t* const cfifo32 =
+    (volatile ra8_usb_cfifo32_t*)(uintptr_t)&reg->CFIFO;
+  const uint16_t quads = (uint16_t)(len >> 2U);
   for (uint16_t i = 0U; i < quads; ++i) {
     const uint32_t word = *cfifo32;
     data[(4U * i) + 0U] = (uint8_t)(word & k_ra8_usb_byte_mask);
@@ -728,10 +730,10 @@ void priv_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
     const uint16_t sel_save = reg->CFIFOSEL;
     const uint16_t sel_8 =
       (uint16_t)((sel_save & (uint16_t)~(uint16_t)k_ra8_fifosel_mbw_msk) | k_ra8_fifosel_mbw_8);
-    volatile uint8_t* const cfifo8 = (volatile uint8_t*)(uintptr_t)&reg->CFIFO;
-    reg->CFIFOSEL                  = sel_8;
-    data[len - 1U]                 = *cfifo8;
-    reg->CFIFOSEL                  = sel_save;
+    volatile const uint8_t* const cfifo8 = (volatile uint8_t*)(uintptr_t)&reg->CFIFO;
+    reg->CFIFOSEL                        = sel_8;
+    data[len - 1U]                       = *cfifo8;
+    reg->CFIFOSEL                        = sel_save;
   }
 }
 

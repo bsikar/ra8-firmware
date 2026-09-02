@@ -26,6 +26,8 @@ DHCP client and hands it to `ra8_wifi` as the address-bind hook. Keeping that
 out of the facade is what lets `ra8_wifi` stay free of NetX Duo and stay
 host-testable.
 
-Credentials are compiled in from the environment or the gitignored
-`coprocessor/esp32c6/wifi.env`, exactly as for `c6_wifi_join`. Built without
-them the image still links and says so rather than baking a blank credential.
+Like `c6_wifi_join`, this is always a credential-free image. At runtime it
+prints `ra8_net_provision: READY v1`, accepts one bounded ASCII-hex provisioning
+line over the debug UART, and erases the decoded record after the synchronous
+network journey. The URL field is accepted for protocol parity and ignored by
+this application. Received bytes are never echoed.

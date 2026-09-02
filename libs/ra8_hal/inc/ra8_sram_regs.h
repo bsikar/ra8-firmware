@@ -560,7 +560,7 @@ typedef struct {
  * @details
  * On the bare-metal target this is real MMIO. Under
  * ``RA8_OFF_TARGET`` the same address is backed by host RAM via
- * ``tests/mocks/ra8_fake_mmap.c``, so the same accessor works on host
+ * ``tests/mocks/src/ra8_fake_mmap.c``, so the same accessor works on host
  * tests without a separate mock header.
  */
 static inline volatile r_sram_regs_t* ra8_sram_regs(void)

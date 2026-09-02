@@ -227,7 +227,7 @@ ra8_err_t ra8_smbus_receive_byte(uint8_t target_7b, uint8_t* out_data)
       ra8_log_error(s_tag, "receive_byte: PEC mismatch");
       return k_ra8_err_crc_mismatch;
     }
-  } /* GCOVR_EXCL_LINE -- reached only when PEC matches; host fake returns constant NTDTBP0 */
+  }
   *out_data = buf[0];
   return k_ra8_ok;
 }

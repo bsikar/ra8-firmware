@@ -31,11 +31,13 @@ catalogued rationale that the whole tree can audit. A file whose only gaps
 are deactivated therefore stays at 100% reachable and passes.
 
 Input: `build/mcdc-report/mcdc_per_file.json`, written by
-`regen_mcdc_gaps.py` from the live `make mcdc` report
+`regen_mcdc_gaps.py` from the live `just quality::local::mcdc` report
 (`build/mcdc-report/mcdc.txt`). Run the MC/DC build first (which runs the
-regenerator), then this. Scope mirrors the line-coverage floor: files under
-`libs/` or `src/`, excluding vendored SOUP (`libs/third_party/`) and
-generated font tables (`libs/ra8_fonts/`).
+regenerator), then this. Scope covers every first-party production root the
+report contains: `libs/`, `apps/shared_libs/`, `examples/`, `port/`, and
+`tools/`. Vendored SOUP, generated font tables, nested test suites, and build
+outputs are excluded. Each production root must contribute at least one
+reachable decision so a missing report subtree cannot pass vacuously.
 
 Exit 0 if every in-scope file with at least one reachable decision is
 >= FLOOR_PCT, else exit 1 with the offenders.
@@ -61,12 +63,20 @@ a catalogued `// mcdc-deactivated:` rationale), never grandfathered."""
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MCDC_JSON = REPO_ROOT / "build" / "mcdc-report" / "mcdc_per_file.json"
 
-IN_SCOPE_PREFIXES = ("libs/", "src/")
-"""First-party source roots held to the floor (mirrors the line-coverage floor)."""
+IN_SCOPE_PREFIXES = ("libs/", "apps/shared_libs/", "examples/", "port/", "tools/")
+"""First-party production roots represented in the live MC/DC report."""
 
-OUT_OF_SCOPE_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/")
+OUT_OF_SCOPE_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/", "libs/ra8_fonts/")
 """Vendored SOUP and generated font tables -- exempt from first-party rules
 per the CLAUDE.md coding-standards scope, so exempt from the floor too."""
+
+OUT_OF_SCOPE_PARTS = frozenset({"tests", "test", "_deps"})
+"""Nested test suites and dependency-fetch output directory names."""
+
+
+def is_generated_part(part: str) -> bool:
+    """True for a CMake/build output directory component."""
+    return part == "build" or part.startswith("build-")
 
 
 def normalize(path: str) -> str:
@@ -90,7 +100,19 @@ def in_scope(rel: str) -> bool:
     """True if `rel` is a first-party file subject to the MC/DC floor."""
     if not rel.startswith(IN_SCOPE_PREFIXES):
         return False
-    return not rel.startswith(OUT_OF_SCOPE_PREFIXES)
+    if rel.startswith(OUT_OF_SCOPE_PREFIXES):
+        return False
+    parts = Path(rel).parts
+    if OUT_OF_SCOPE_PARTS.intersection(parts):
+        return False
+    return not any(is_generated_part(part) for part in parts)
+
+
+def scope_prefix(rel: str) -> str | None:
+    """Return the first-party scope root for ``rel``, or ``None`` if exempt."""
+    if not in_scope(rel):
+        return None
+    return next(prefix for prefix in IN_SCOPE_PREFIXES if rel.startswith(prefix))
 
 
 def file_reachable(entry: dict) -> tuple[int, int]:
@@ -109,26 +131,100 @@ def file_reachable(entry: dict) -> tuple[int, int]:
 
 def _collect_offenders(
     files: list[dict],
-) -> tuple[list[tuple[float, str, int, int]], int]:
-    """Return ``(offenders, checked)`` for every in-scope file with a decision.
+) -> tuple[list[tuple[float, str, int, int]], dict[str, int]]:
+    """Return offenders and per-root counts for in-scope decision-bearing files.
 
     A file with no reachable decision is skipped rather than counted as a pass:
     it has nothing to measure, and scoring it 100% would dilute the floor.
     """
     offenders: list[tuple[float, str, int, int]] = []
-    checked = 0
+    checked_by_scope = dict.fromkeys(IN_SCOPE_PREFIXES, 0)
     for entry in files:
         rel = normalize(entry.get("file", ""))
-        if not in_scope(rel):
+        prefix = scope_prefix(rel)
+        if prefix is None:
             continue
         covered, reachable_total = file_reachable(entry)
         if reachable_total <= 0:
             continue
-        checked += 1
+        checked_by_scope[prefix] += 1
         pct = 100.0 * covered / reachable_total
         if pct < FLOOR_PCT:
             offenders.append((pct, rel, covered, reachable_total))
-    return offenders, checked
+    return offenders, checked_by_scope
+
+
+def _missing_scopes(checked_by_scope: dict[str, int]) -> list[str]:
+    """Return required first-party roots absent from a coverage report."""
+    return [prefix for prefix in IN_SCOPE_PREFIXES if checked_by_scope.get(prefix, 0) == 0]
+
+
+def _entry(path: str, covered: int = 1, total: int = 1) -> dict:
+    """Build a minimal per-file fixture for the embedded scope self-test."""
+    return {"file": path, "covered_decisions": covered, "total_decisions": total}
+
+
+def selftest() -> int:
+    """Prove every production root is required and every exemption stays out."""
+    failures: list[str] = []
+    scope_cases = {
+        "libs/ra8_core/src/core.c": True,
+        "apps/shared_libs/book/src/book.c": True,
+        "examples/ek_ra8d2/demo/src/main.c": True,
+        "port/posix/src/io.c": True,
+        "tools/ra8_emulator/src/main.c": True,
+        "libs/third_party/soup.c": False,
+        "apps/shared_libs/third_party/soup/source.c": False,
+        "libs/ra8_fonts/src/generated.c": False,
+        "apps/shared_libs/book/tests/src/test_book.c": False,
+        "examples/ek_ra8d2/demo/build/generated.c": False,
+        "examples/ek_ra8d2/demo/build-reflow-v2/generated.c": False,
+        "port/esp-hosted/build-mcdc/shim.c": False,
+        "tools/demo/_deps/vendor.c": False,
+        "src/legacy.c": False,
+    }
+    for path, expected in scope_cases.items():
+        if in_scope(path) is not expected:
+            failures.append(f"scope mismatch for {path}: expected {expected}")
+
+    covered = [
+        _entry("libs/ra8_core/src/core.c"),
+        _entry("apps/shared_libs/book/src/book.c"),
+        _entry("examples/ek_ra8d2/demo/src/main.c"),
+        _entry("port/posix/src/io.c"),
+        _entry("tools/ra8_emulator/src/main.c"),
+    ]
+    offenders, counts = _collect_offenders(covered)
+    if offenders or counts != dict.fromkeys(IN_SCOPE_PREFIXES, 1):
+        failures.append("covered fixtures did not populate every required production root")
+
+    below_floor = [
+        _entry(entry["file"], 0, 1) if entry["file"].startswith("port/") else entry
+        for entry in covered
+    ]
+    offenders, _counts = _collect_offenders(below_floor)
+    if len(offenders) != 1 or offenders[0][1] != "port/posix/src/io.c":
+        failures.append("below-floor production fixture did not become an offender")
+
+    missing_tools = [entry for entry in covered if not entry["file"].startswith("tools/")]
+    offenders, counts = _collect_offenders(missing_tools)
+    if offenders or _missing_scopes(counts) != ["tools/"]:
+        failures.append("a missing production root did not fail its non-vacuity check")
+
+    vendor_only = [
+        _entry("libs/third_party/soup.c", 0),
+        _entry("apps/shared_libs/third_party/soup.c", 0),
+    ]
+    offenders, counts = _collect_offenders(vendor_only)
+    if offenders or _missing_scopes(counts) != list(IN_SCOPE_PREFIXES):
+        failures.append("exempt-only input did not fail every production non-vacuity check")
+
+    if failures:
+        for failure in failures:
+            print(f"check_mcdc_floor.py selftest: FAIL -- {failure}")
+        return 1
+    print("check_mcdc_floor.py selftest: PASS -- scope and non-vacuity checks hold.")
+    return 0
 
 
 def _report_offenders(offenders: list[tuple[float, str, int, int]]) -> None:
@@ -177,11 +273,13 @@ def main() -> int:
         print("check_mcdc_floor.py: ERROR -- MC/DC JSON has no files.")
         return 1
 
-    offenders, checked = _collect_offenders(files)
+    offenders, checked_by_scope = _collect_offenders(files)
 
-    if checked == 0:
+    missing_scopes = _missing_scopes(checked_by_scope)
+    if missing_scopes:
         print(
-            "check_mcdc_floor.py: ERROR -- no in-scope files matched; check the JSON path / scope."
+            "check_mcdc_floor.py: ERROR -- no reachable decisions matched required "
+            f"scope(s): {', '.join(missing_scopes)}; check the JSON path / scope."
         )
         return 1
 
@@ -189,6 +287,7 @@ def main() -> int:
         _report_offenders(offenders)
         return 1
 
+    checked = sum(checked_by_scope.values())
     print(
         f"check_mcdc_floor.py: PASS -- all {checked} first-party file(s) "
         f"with a reachable decision are >= {FLOOR_PCT:.0f}% MC/DC."
@@ -197,4 +296,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(selftest() if sys.argv[1:] == ["--selftest"] else main())

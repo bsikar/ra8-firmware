@@ -194,7 +194,7 @@ ra8_err_t ra8_board_sw_read(ra8_board_sw_id_t sw, ra8_board_sw_state_t* out_pres
   err             = ra8_gpio_read(pin, &lvl);
   if (err != k_ra8_ok) {
     /* ra8_gpio_read returns k_ra8_ok for valid port-0 SW pins off-target. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err; /* GCOVR_EXCL_LINE -- static board pins/channels cannot fail validation */
   }
   /* Buttons are active-low: low level == pressed. */
   *out_pressed = (lvl == k_ra8_level_low) ? k_ra8_board_sw_pressed : k_ra8_board_sw_released;
@@ -221,7 +221,7 @@ ra8_err_t ra8_board_sw_attach_irq(ra8_board_sw_id_t sw, ra8_board_sw_irq_cb_t cb
   ra8_err_t err = ra8_icu_configure_irq_pin(s_sw_irq_nums[sw], &cfg);
   if (err != k_ra8_ok) {
     /* ra8_icu_configure_irq_pin succeeds for IRQ12/13 (well within 32-channel limit). */
-    return err; /* GCOVR_EXCL_LINE */
+    return err; /* GCOVR_EXCL_LINE -- static board pins/channels cannot fail validation */
   }
 
   /* Step 2: route the ELC event for the IRQ channel through an IELSR slot and
@@ -281,14 +281,13 @@ ra8_err_t ra8_board_uart_console_init(uint32_t baud)
   ra8_err_t err      = ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz);
   if (err != k_ra8_ok) {
     /* ra8_cgc_get_clock_hz with a valid clock-id and non-null out always returns k_ra8_ok. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err; /* GCOVR_EXCL_LINE -- static board pins/channels cannot fail validation */
   }
   if (pclka_hz < (uint32_t)k_ra8_board_uart_console_min_pclka_hz) {
     return k_ra8_err_not_initialized;
   }
 
   /* Route PD02 -> TXD8, PD03 -> RXD8 (PSEL = SCI async). */
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   err = ra8_pfs_route_peripheral((ra8_port_pin_t)k_ra8_board_uart_console_pin_txd,
                                  k_ra8_psel_sci_async,
                                  "ra8_board.uart.console.txd");
@@ -298,7 +297,6 @@ ra8_err_t ra8_board_uart_console_init(uint32_t baud)
   err = ra8_pfs_route_peripheral((ra8_port_pin_t)k_ra8_board_uart_console_pin_rxd,
                                  k_ra8_psel_sci_async,
                                  "ra8_board.uart.console.rxd");
-  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   if (err != k_ra8_ok) {
     return err;
   }
@@ -312,8 +310,7 @@ ra8_err_t ra8_board_uart_console_init(uint32_t baud)
   };
   err = ra8_sci_init((uint8_t)k_ra8_board_uart_console_sci_channel, &cfg);
   if (err != k_ra8_ok) {
-    /* ra8_sci_init on a valid channel with a non-null cfg always returns k_ra8_ok in RA8_OFF_TARGET. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   s_uart_console_initialized = true;
   return k_ra8_ok;

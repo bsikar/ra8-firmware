@@ -126,7 +126,7 @@ typedef struct {
  * @see ra8_fs_space_t
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fs_free_space(ra8_fs_mount_t* handle, ra8_fs_space_t* out);
+[[nodiscard]] ra8_err_t ra8_fs_free_space(const ra8_fs_mount_t* handle, ra8_fs_space_t* out);
 
 /* =============================================================================
  * Volume label
@@ -166,7 +166,7 @@ typedef struct {
  * @see ra8_fs_set_label()
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fs_get_label(ra8_fs_mount_t* handle, char* out, uint32_t out_len);
+[[nodiscard]] ra8_err_t ra8_fs_get_label(const ra8_fs_mount_t* handle, char* out, uint32_t out_len);
 
 /**
  * @brief Set (or clear) the volume label of a mounted volume.
@@ -180,7 +180,7 @@ typedef struct {
  *          UTF-16LE label and character count. Data and every other entry are
  *          untouched.
  *
- * @param[in,out] handle Mount handle.
+ * @param[in] handle Mount handle.
  * @param[in]     label  New label (<= 11 characters), or NULL / "" to clear it.
  *
  * @return ra8_err_t Error code.
@@ -203,7 +203,7 @@ typedef struct {
  * @see ra8_fs_get_label()
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fs_set_label(ra8_fs_mount_t* handle, const char* label);
+[[nodiscard]] ra8_err_t ra8_fs_set_label(const ra8_fs_mount_t* handle, const char* label);
 
 /* =============================================================================
  * Per-entry timestamps (utime)
@@ -230,7 +230,7 @@ typedef struct {
  *          failing the call. The entry may be a file or a directory; the volume
  *          root has no entry to stamp and is rejected.
  *
- * @param[in,out] handle Mount handle.
+ * @param[in] handle Mount handle.
  * @param[in]     path   Path to the entry (resolved as ::ra8_fs_stat() resolves).
  * @param[in]     create Create stamp to write, or NULL to leave it unchanged.
  * @param[in]     modify Modify stamp to write, or NULL to leave it unchanged.
@@ -255,7 +255,7 @@ typedef struct {
  * @see ra8_fs_set_clock()  Installs the clock the automatic stamps use.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fs_utime(ra8_fs_mount_t*          handle,
+[[nodiscard]] ra8_err_t ra8_fs_utime(const ra8_fs_mount_t*    handle,
                                      const char*              path,
                                      const ra8_fs_datetime_t* create,
                                      const ra8_fs_datetime_t* modify,
@@ -348,7 +348,7 @@ typedef enum : uint8_t {
  *          set's SetChecksum is recomputed after the patch. The volume root has
  *          no entry of its own and is rejected.
  *
- * @param[in,out] handle     Mount handle.
+ * @param[in]     handle     Mount handle.
  * @param[in]     path       Path to the entry (resolved as ::ra8_fs_stat() does).
  * @param[in]     set_mask   Attribute bits to set (subset of
  *                           ::k_ra8_fs_attr_settable).
@@ -377,8 +377,10 @@ typedef enum : uint8_t {
  * @see ra8_fs_stat()  Reports the attribute byte this patches.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t
-ra8_fs_set_attr(ra8_fs_mount_t* handle, const char* path, uint8_t set_mask, uint8_t clear_mask);
+[[nodiscard]] ra8_err_t ra8_fs_set_attr(const ra8_fs_mount_t* handle,
+                                        const char*           path,
+                                        uint8_t               set_mask,
+                                        uint8_t               clear_mask);
 
 #ifdef __cplusplus
 }

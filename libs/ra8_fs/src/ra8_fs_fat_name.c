@@ -226,8 +226,7 @@ void priv_83_to_str(const uint8_t* in11, uint8_t ntres, char* out13)
     out13[j++] = internal_case_apply((char)in11[i], base_lower);
   }
   /* Restore kanji escape. */
-  /* mcdc-deactivated: 3-condition AND on Shift-JIS kanji-escape directory entry; only reachable from a kanji-named FAT image, none of which exist in the test corpus. */
-  if (j > 0 && (uint8_t)out13[0] == k_dir_marker_kanji_e5 && in11[0] == k_dir_marker_kanji_e5) {
+  if (in11[0] == (uint8_t)k_dir_marker_kanji_e5) {
     out13[0] = (char)k_dir_marker_free_used;
   }
   uint8_t has_ext = 0;
@@ -291,7 +290,7 @@ static uint8_t internal_unit_in_set(uint16_t u, const char* set)
   }
   /* Unreachable: both sets are single-digit literals, so the NUL above always
    * ends the scan first. This is the Rule 2 bound's exit, not a second answer. */
-  return 0U; /* GCOVR_EXCL_LINE */
+  return 0U; /* GCOVR_EXCL_LINE -- arith/string invariants make fallback unreachable */
 }
 
 /**
@@ -607,7 +606,7 @@ ra8_fs_name_kind_t priv_name_classify(const char* leaf,
      * lengths priv_path_to_83() checks. Kept because the two functions are
      * separately maintained and a silent disagreement would create an
      * unpacked name. */
-    return k_name_kind_long; /* GCOVR_EXCL_LINE */
+    return k_name_kind_long; /* GCOVR_EXCL_LINE -- string invariants make fallback unreachable */
   }
   return internal_name_case_kind(out_units, n, out_ntres);
 }
@@ -926,7 +925,7 @@ ra8_err_t priv_dir_find(const ra8_fs_mount_t* m,
       return err;
     }
     for (uint32_t e = 0; e < priv_dir_eps(m); e++) {
-      uint8_t* ent = &buf[(size_t)e * (size_t)k_ra8_fs_dir_entry_bytes];
+      const uint8_t* ent = &buf[(size_t)e * (size_t)k_ra8_fs_dir_entry_bytes];
       if (ent[k_dir_off_name] == k_dir_marker_free_perm) {
         return k_ra8_err_not_found;
       }

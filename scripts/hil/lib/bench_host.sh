@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # bench_host.sh -- the BENCH-HOST half of the bench mutual-exclusion lock.
 #
@@ -66,11 +67,14 @@ BH_DIR="${RA8_BENCH_DIR:-/var/lib/ra8-bench}"
 BH_LOCK="$BH_DIR/board.lock"
 BH_REC="$BH_DIR/holder.json"
 BH_JNL="$BH_DIR/journal.ndjson"
+BH_BROKER_PID=""
+BH_BROKER_INPUT=""
+BH_BROKER_OUTPUT=""
 
 # The record's field order. The reader below is paired with the writer above
 # it -- one field per line, in this order -- so neither jq nor python is a
 # dependency of taking the bench.
-BH_FIELDS="resource lock_id holder_class holder_name pid boot_id origin
+BH_FIELDS="resource lock_id holder_class holder_name pid pid_start_ticks boot_id origin
   intent git_ref acquired_at acquired_epoch max_hold_s hold_kind
   last_activity break_glass"
 
@@ -91,8 +95,8 @@ bh_esc() {
 bh_unesc() { sed -e 's/\\"/"/g' -e 's/\\\\/\\/g'; }
 
 # bh_json_get <file> <key> -- read one field out of a record this script wrote.
-# Deliberately not a general JSON parser: it is the read half of bh_write_rec,
-# and the two are only ever used as a pair.
+# Deliberately not a general JSON parser: it reads the broker's fixed one-field-
+# per-line holder record and never evaluates its contents.
 bh_json_get() {
   local f="$1" k="$2" v
   [ -f "$f" ] || return 0
@@ -107,31 +111,40 @@ bh_json_get() {
 # State directory
 # ---------------------------------------------------------------------------
 
-# Create the shared state directory at exactly ONE canonical path, escalating
-# once via `sudo -n` because /var/lib is root-owned. Two actors flocking two
-# different inodes is the one silent-corruption path this design has, so this
-# never invents an alternative location when the canonical one is unavailable:
-# it fails, and the caller fails closed.
+# Create or validate state at exactly ONE canonical path. Production ownership
+# comes from the hil_bench Ansible role; a writable sandbox can still be made by
+# the selftest. Two actors flocking different inodes is the silent-corruption
+# path, so an unavailable canonical directory fails closed instead of falling
+# back elsewhere.
 bh_provision() {
   if [ ! -d "$BH_DIR" ]; then
-    mkdir -p "$BH_DIR" 2>/dev/null ||
-      sudo -n mkdir -p "$BH_DIR" 2>/dev/null ||
-      {
-        bh_log "FATAL -- cannot create $BH_DIR (and sudo -n is unavailable)"
-        return "$BH_EXIT_UNKNOWN"
-      }
+    mkdir -p "$BH_DIR" 2>/dev/null || {
+      bh_log "FATAL -- cannot create $BH_DIR; reapply the hil_bench Ansible role"
+      return "$BH_EXIT_UNKNOWN"
+    }
     # 1777: several accounts (star, a CI runner, a human) share this box and
     # any of them may be the next acquirer. The sticky bit keeps one actor
     # from unlinking another's files.
-    chmod 1777 "$BH_DIR" 2>/dev/null || sudo -n chmod 1777 "$BH_DIR" 2>/dev/null || true
+    if ! chmod 1777 "$BH_DIR" 2>/dev/null; then
+      bh_log "FATAL -- cannot set shared sticky permissions on $BH_DIR"
+      return "$BH_EXIT_UNKNOWN"
+    fi
   fi
   local f
   for f in "$BH_LOCK" "$BH_JNL"; do
-    [ -e "$f" ] || : >"$f" 2>/dev/null || sudo -n touch "$f" 2>/dev/null || true
-    chmod 666 "$f" 2>/dev/null || sudo -n chmod 666 "$f" 2>/dev/null || true
+    if [ ! -e "$f" ]; then
+      if ! : >"$f" 2>/dev/null || ! chmod 666 "$f" 2>/dev/null; then
+        bh_log "FATAL -- cannot create shared bench state file $f"
+        return "$BH_EXIT_UNKNOWN"
+      fi
+    fi
   done
   [ -w "$BH_LOCK" ] || {
     bh_log "FATAL -- $BH_LOCK is not writable by $(id -un)"
+    return "$BH_EXIT_UNKNOWN"
+  }
+  [ -w "$BH_JNL" ] || {
+    bh_log "FATAL -- $BH_JNL is not writable by $(id -un)"
     return "$BH_EXIT_UNKNOWN"
   }
   return "$BH_EXIT_OK"
@@ -145,9 +158,11 @@ bh_provision() {
 # Append-only, one JSON object per line. Never rewritten, never truncated:
 # a force-take is exactly the event nobody will admit to afterwards.
 bh_journal_add() {
-  printf '{"at":"%s","event":"%s","lock_id":"%s","holder_class":"%s","holder_name":"%s","note":"%s"}\n' \
+  if ! printf '{"at":"%s","event":"%s","lock_id":"%s","holder_class":"%s","holder_name":"%s","note":"%s"}\n' \
     "$(date -Iseconds)" "$(bh_esc "$1")" "$(bh_esc "$2")" "$(bh_esc "$3")" \
-    "$(bh_esc "$4")" "$(bh_esc "$5")" >>"$BH_JNL" 2>/dev/null || true
+    "$(bh_esc "$4")" "$(bh_esc "$5")" >>"$BH_JNL" 2>/dev/null; then
+    bh_log "WARNING -- could not append the $1 event to $BH_JNL"
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -226,42 +241,13 @@ bh_probe() {
 # hold -- the only path that takes the lock
 # ---------------------------------------------------------------------------
 
-# The record is written by the process that holds the lock, after it holds it,
-# so it can never advertise a hold that does not exist. temp+rename keeps a
-# reader from seeing a half-written record; chmod 666 keeps the next actor
-# (possibly a different account) able to replace it.
-bh_write_rec() {
-  local tmp="$BH_REC.tmp.$$"
-  {
-    printf '{\n'
-    printf '  "resource": "%s",\n' "$(bh_esc "$BH_RESOURCE")"
-    printf '  "lock_id": "%s",\n' "$(bh_esc "$BH_LOCK_ID")"
-    printf '  "holder_class": "%s",\n' "$(bh_esc "$BH_CLASS")"
-    printf '  "holder_name": "%s",\n' "$(bh_esc "$BH_NAME")"
-    printf '  "pid": %s,\n' "$$"
-    printf '  "boot_id": "%s",\n' "$(bh_esc "$BH_BOOT")"
-    printf '  "origin": "%s",\n' "$(bh_esc "$BH_ORIGIN")"
-    printf '  "intent": "%s",\n' "$(bh_esc "$BH_INTENT")"
-    printf '  "git_ref": "%s",\n' "$(bh_esc "$BH_GIT_REF")"
-    printf '  "acquired_at": "%s",\n' "$(bh_esc "$BH_AT")"
-    printf '  "acquired_epoch": %s,\n' "$BH_AT_EPOCH"
-    printf '  "max_hold_s": %s,\n' "$BH_MAX_HOLD_S"
-    printf '  "hold_kind": "%s",\n' "$(bh_esc "$BH_KIND")"
-    printf '  "last_activity": "%s",\n' "$(bh_esc "$BH_ACTIVITY")"
-    printf '  "break_glass": %s\n' "$BH_BREAK_GLASS"
-    printf '}\n'
-  } >"$tmp" 2>/dev/null || return 1
-  chmod 666 "$tmp" 2>/dev/null || true
-  mv -f "$tmp" "$BH_REC" 2>/dev/null || return 1
-  return 0
-}
-
 # Release runs from an EXIT trap, so it runs on a normal return, on SIGTERM,
 # and on the ssh channel closing -- but it is NOT what makes the release safe.
 # The kernel already dropped the flock when this process died; this only tidies
 # the record and writes the audit line.
 bh_release_self() {
   local rec_id
+  bh_broker_close
   rec_id="$(bh_json_get "$BH_REC" lock_id)"
   if [ "$rec_id" = "$BH_LOCK_ID" ]; then
     rm -f "$BH_REC" 2>/dev/null || true
@@ -269,21 +255,34 @@ bh_release_self() {
   bh_journal_add release "$BH_LOCK_ID" "$BH_CLASS" "$BH_NAME" "$BH_INTENT"
 }
 
+bh_close_fd() {
+  local descriptor="$1"
+  case "$descriptor" in '' | *[!0-9]*) return 0 ;; *) ;; esac
+  eval "exec ${descriptor}>&-" 2>/dev/null || true
+}
+
+bh_broker_close() {
+  bh_close_fd "$BH_BROKER_INPUT"
+  bh_close_fd "$BH_BROKER_OUTPUT"
+  if [ -n "$BH_BROKER_PID" ]; then
+    wait "$BH_BROKER_PID" 2>/dev/null || true
+  fi
+  BH_BROKER_PID=""
+  BH_BROKER_INPUT=""
+  BH_BROKER_OUTPUT=""
+}
+
 # bh_decode_fields <base64> -- the client-supplied half of the record.
 # Shipped base64-encoded so an intent string can contain anything at all
 # without a quoting accident becoming a shell injection over ssh.
 bh_decode_fields() {
   local line k v
-  BH_RESOURCE="bench"
   BH_LOCK_ID=""
   BH_CLASS="agent"
   BH_NAME="unknown"
-  BH_ORIGIN=""
   BH_INTENT=""
-  BH_GIT_REF=""
   BH_MAX_HOLD_S="900"
   BH_QUIESCE_S="120"
-  BH_KIND="wrapped"
   BH_BREAK_GLASS="false"
   BH_CONFIRM=""
   while IFS= read -r line; do
@@ -291,16 +290,16 @@ bh_decode_fields() {
     k="${line%%=*}"
     v="${line#*=}"
     case "$k" in
-      resource) BH_RESOURCE="$v" ;;
+      resource) ;;
       lock_id) BH_LOCK_ID="$v" ;;
       holder_class) BH_CLASS="$v" ;;
       holder_name) BH_NAME="$v" ;;
-      origin) BH_ORIGIN="$v" ;;
+      origin) ;;
       intent) BH_INTENT="$v" ;;
-      git_ref) BH_GIT_REF="$v" ;;
+      git_ref) ;;
       max_hold_s) BH_MAX_HOLD_S="$v" ;;
       quiesce_s) BH_QUIESCE_S="$v" ;;
-      hold_kind) BH_KIND="$v" ;;
+      hold_kind) ;;
       break_glass) BH_BREAK_GLASS="$v" ;;
       confirm) BH_CONFIRM="$v" ;;
       *) ;;
@@ -360,34 +359,52 @@ bh_preempt() {
   return $?
 }
 
-# bh_take_flock <wait_s>  -- 0 when fd 9 now holds the lock, 1 when denied.
+# bh_take_flock <wait_s> <fields_b64> -- 0 when the broker owns the lock.
 #
 # fd 9 stays open for the life of this process on purpose: THAT open fd, with a
 # kernel lock on it, IS the hold. Nothing below ever writes "held" anywhere as
 # a claim.
 bh_take_flock() {
-  local wait_s="$1"
-  exec 9>>"$BH_LOCK" || {
-    bh_log "FATAL -- cannot open $BH_LOCK"
-    return 1
+  local wait_s="$1" fields="$2" retry="${3:-yes}" host_ticks code ack rc
+  local broker_pid_name=RA8_LOCK_BROKER_PID
+  [ -f "${RA8_BENCH_BROKER_SRC:-}" ] && [ ! -L "$RA8_BENCH_BROKER_SRC" ] || return 1
+  host_ticks="$(sed -n 's/^[^)]*) //p' "/proc/$$/stat" 2>/dev/null | awk '{print $20}')"
+  case "$host_ticks" in '' | *[!0-9]*) return 1 ;; *) ;; esac
+  # A non-newline sentinel prevents command substitution from stripping the
+  # reviewed source's trailing newlines before Python receives it as argv[4].
+  code="$(cat -- "$RA8_BENCH_BROKER_SRC" && printf '\001')" || return 1
+  code="${code%?}"
+  coproc RA8_LOCK_BROKER {
+    exec /usr/bin/python3 -I -S -c "$code" "$BH_LOCK" "$BH_REC" \
+      "$wait_s" "$fields" "$$" "$host_ticks"
   }
-  if [ "$wait_s" -gt 0 ] 2>/dev/null; then
-    flock -w "$wait_s" 9 && return 0
-  else
-    flock -n 9 && return 0
+  BH_BROKER_PID="${!broker_pid_name}"
+  BH_BROKER_OUTPUT="${RA8_LOCK_BROKER[0]}"
+  BH_BROKER_INPUT="${RA8_LOCK_BROKER[1]}"
+  if IFS= read -r ack <&"$BH_BROKER_OUTPUT"; then
+    case "$ack" in
+      "ACQUIRED $BH_BROKER_PID "*) return 0 ;;
+      *)
+        bh_broker_close
+        return 1
+        ;;
+    esac
   fi
-  [ "$BH_BREAK_GLASS" = "true" ] || return 1
+  wait "$BH_BROKER_PID" 2>/dev/null
+  rc=$?
+  BH_BROKER_PID=""
+  bh_close_fd "$BH_BROKER_INPUT"
+  bh_close_fd "$BH_BROKER_OUTPUT"
+  BH_BROKER_INPUT=""
+  BH_BROKER_OUTPUT=""
+  [ "$rc" -eq 11 ] || return 1
+  [ "$BH_BREAK_GLASS" = "true" ] && [ "$retry" = "yes" ] || return 1
   # Break-glass: preempt the incumbent and try again, IN ONE OPERATION. Doing
   # it as a separate `release` then `hold` would leave a window in which a
   # third actor could take the bench between them -- and the whole reason
   # somebody is breaking glass is that the board is already wedged.
   bh_preempt || return 1
-  if [ "$wait_s" -gt 0 ] 2>/dev/null; then
-    flock -w "$wait_s" 9 && return 0
-  else
-    flock -w 15 9 && return 0
-  fi
-  return 1
+  bh_take_flock 15 "$fields" no
 }
 
 # bh_hold <mode> <wait_s> <fields_b64>
@@ -399,7 +416,7 @@ bh_hold() {
     return "$BH_EXIT_UNKNOWN"
   }
 
-  bh_take_flock "$wait_s" || {
+  bh_take_flock "$wait_s" "$fields" || {
     # Denied. Print the incumbent so the caller can name who to go and ask.
     printf 'bench: DENIED\n'
     # Its exit status is the incumbent's state, which the caller already knows;
@@ -414,20 +431,12 @@ bh_hold() {
   # acknowledging, so no acquirer is ever told the board is theirs while
   # somebody else's JLinkExe has the core halted.
   bh_await_quiescent || {
-    # Drop the flock as we go: exiting closes fd 9, but say so explicitly since
+    # Drop the broker as we go: its private descriptor is the kernel hold.
     # this is the one path that takes the lock and then declines to use it.
-    exec 9>&-
+    bh_broker_close
     return "$BH_EXIT_UNKNOWN"
   }
 
-  BH_BOOT="$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)"
-  BH_AT="$(date -Iseconds)"
-  BH_AT_EPOCH="$(date +%s)"
-  BH_ACTIVITY="$BH_AT"
-  bh_write_rec || {
-    bh_log "FATAL -- cannot write $BH_REC"
-    return "$BH_EXIT_UNKNOWN"
-  }
   bh_journal_add acquire "$BH_LOCK_ID" "$BH_CLASS" "$BH_NAME" "$BH_INTENT"
   [ "$BH_BREAK_GLASS" = "true" ] &&
     bh_journal_add break-glass "$BH_LOCK_ID" "$BH_CLASS" "$BH_NAME" "$BH_INTENT"
@@ -845,7 +854,7 @@ bh_health() {
 
 bh_main() {
   local verb="${1:-probe}"
-  shift || true
+  (($# == 0)) || shift
   case "$verb" in
     provision)
       bh_provision

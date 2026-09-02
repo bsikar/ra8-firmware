@@ -1,0 +1,88 @@
+schema_version = 1
+
+[[component]]
+key = "threadx"
+delivery = "vendored"
+series = "docs/sbom/patches/threadx/series"
+
+[[component.patches]]
+file = "0001-remove-nested-attribute-macros.patch"
+classification = "metadata"
+
+[[component]]
+key = "netxduo"
+delivery = "vendored"
+series = "docs/sbom/patches/netxduo/series"
+
+[[component.patches]]
+file = "0001-remove-nested-attribute-macros.patch"
+classification = "metadata"
+
+[[component]]
+key = "usbx"
+delivery = "vendored"
+series = "docs/sbom/patches/usbx/series"
+
+[[component.patches]]
+file = "0001-remove-nested-attribute-macros.patch"
+classification = "metadata"
+
+[[component]]
+key = "levelx"
+delivery = "vendored"
+series = "docs/sbom/patches/levelx/series"
+
+[[component.patches]]
+file = "0001-remove-nested-attribute-macros.patch"
+classification = "metadata"
+
+[[component]]
+key = "mbedtls"
+delivery = "vendored"
+series = "docs/sbom/patches/mbedtls/series"
+
+[[component.patches]]
+file = "0001-track-generated-config-headers.patch"
+classification = "metadata"
+
+[[component]]
+key = "stb"
+delivery = "vendored"
+series = "docs/sbom/patches/stb/series"
+
+[[component.patches]]
+file = "0001-harden-font-parser-bounds.patch"
+classification = "functional"
+
+[[component]]
+key = "libwebp"
+delivery = "vendored"
+series = "docs/sbom/patches/libwebp/series"
+
+[[component.patches]]
+file = "0001-use-ra8-arena-allocator.patch"
+classification = "functional"
+
+[[component]]
+key = "esp-hosted-mcu"
+delivery = "fetched"
+series = "coprocessor/esp32c6/patches/series"
+apply_script = "coprocessor/esp32c6/build.sh"
+series_token = "patches/series"
+pin_file = "coprocessor/esp32c6/pins.env"
+pin_key = "ESP_HOSTED_MCU_COMMIT"
+upstream_pin = "949bb30612747a3bd9e402eda8d01fbfa1f8503e"
+
+# Pre-image Git blob ids of every file the series touches, read from the exact
+# pinned upstream commit. `git apply --check` alone cannot bind the series to
+# the pin: the patches carry zero context, so they still apply to an upstream
+# whose target files have drifted outside the hunks. Measured against
+# https://github.com/espressif/esp-hosted-mcu at ESP_HOSTED_MCU_COMMIT.
+[component.upstream_blobs]
+"slave/CMakeLists.txt" = "fff63ee15cf7030493e8162065fec918524c11d0"
+"slave/main/idf_component.yml" = "9e8358bd080e22ab708c60b5121b40c3073da1e7"
+"slave/main/slave_control.c" = "7c51888e7c6d7784a94a365a3d965a247f07bfcc"
+
+[[component.patches]]
+file = "0001-custom-rpc-sync-response-hook.patch"
+classification = "functional"

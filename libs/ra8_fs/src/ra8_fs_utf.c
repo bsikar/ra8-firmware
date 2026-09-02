@@ -307,7 +307,7 @@ ra8_err_t priv_utf8_to_utf16(const char* in, uint16_t* out, uint32_t cap, uint32
   }
   /* Unreachable: the loop's only exits are the three returns above. This is the
    * Rule 2 bound's exit, not a fourth answer. */
-  return k_ra8_err_no_mem; /* GCOVR_EXCL_LINE */
+  return k_ra8_err_no_mem; /* GCOVR_EXCL_LINE -- bounded-loop fallback after exhaustive returns */
 }
 
 /* =============================================================================

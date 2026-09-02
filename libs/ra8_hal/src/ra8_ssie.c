@@ -32,6 +32,7 @@
 #include "ra8_dmac.h"
 #include "ra8_err.h"
 #include "ra8_hal_internal.h"
+#include "ra8_hw_err.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
@@ -309,13 +310,10 @@ internal_build_ssicr(const ra8_ssie_cfg_t* cfg, uint8_t frm, uint8_t pdta, uint8
 RA8_INTERNAL
 static ra8_err_t internal_wait_ssirst_clear(volatile r_ssie_regs_t* reg)
 {
-  for (uint8_t i = 0U; i < (uint8_t)k_ra8_ssie_reset_poll_max; i++) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-    if ((reg->SSIFCR & k_ra8_ssie_mask_ssirst) == 0U) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra8_ok;
-    }
-  }
-  return k_ra8_err_hw_timeout;
+  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+  return ra8_hw_wait_flag_clear32(&reg->SSIFCR,
+                                  k_ra8_ssie_mask_ssirst,
+                                  (uint32_t)k_ra8_ssie_reset_poll_max);
 }
 
 /**
@@ -335,13 +333,10 @@ static ra8_err_t internal_wait_ssirst_clear(volatile r_ssie_regs_t* reg)
 RA8_INTERNAL
 static ra8_err_t internal_wait_fifo_reset_clear(volatile r_ssie_regs_t* reg)
 {
-  for (uint8_t i = 0U; i < (uint8_t)k_ra8_ssie_reset_poll_max; i++) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-    if ((reg->SSIFCR & k_ra8_ssie_mask_rfrst_tfrst) == 0U) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra8_ok;
-    }
-  }
-  return k_ra8_err_hw_timeout;
+  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+  return ra8_hw_wait_flag_clear32(&reg->SSIFCR,
+                                  k_ra8_ssie_mask_rfrst_tfrst,
+                                  (uint32_t)k_ra8_ssie_reset_poll_max);
 }
 
 /**
@@ -575,9 +570,9 @@ RA8_INTERNAL
 static ra8_err_t internal_ssie_power_up(uint8_t channel, volatile r_ssie_regs_t* reg)
 {
   const ra8_err_t mst_err = ra8_mstp_enable(s_ssie_mstp_table[channel]);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "ssie_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "ssie_init: mstp enable");
   const ra8_err_t rst_err = internal_pulse_ssi_reset(reg);
-  RA8_RETURN_ON_ERROR(rst_err, s_tag, "ssie_init: SSIRST stuck"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(rst_err, s_tag, "ssie_init: SSIRST stuck");
   return k_ra8_ok;
 }
 
@@ -625,12 +620,12 @@ ra8_err_t ra8_ssie_init(uint8_t channel, const ra8_ssie_cfg_t* cfg)
   uint8_t         pdta  = 0U;
   uint8_t         sdta  = 0U;
   const ra8_err_t v_err = internal_validate_init_cfg(cfg, &omod, &frm, &pdta, &sdta);
-  RA8_RETURN_ON_ERROR(v_err, s_tag, "ssie_init: bad cfg"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, s_tag, "ssie_init: bad cfg");
 
   /* HUM Ch 11.2.8 "MSTPCRC" p 446 */
   /* HUM Ch 46.2.3 "SSIRST" p 3077 */
   const ra8_err_t pwr_err = internal_ssie_power_up(channel, reg);
-  RA8_RETURN_ON_ERROR(pwr_err, s_tag, "ssie_init: power up"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(pwr_err, s_tag, "ssie_init: power up");
 
   internal_apply_init_regs(reg, cfg, frm, pdta, sdta, omod);
 
@@ -688,7 +683,7 @@ ra8_err_t ra8_ssie_start(uint8_t channel, ra8_ssie_dir_t dir)
   /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
   uint32_t        ssifcr  = reg->SSIFCR;
   const ra8_err_t rst_err = internal_pulse_fifo_reset(reg, ssifcr);
-  RA8_RETURN_ON_ERROR(rst_err, s_tag, "ssie_start: FIFO reset stuck"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(rst_err, s_tag, "ssie_start: FIFO reset stuck");
 
   /* HUM Ch 46.2.1 "SSICR" p 3057 */ /* / HUM Ch 46.2.3 "SSIFCR" p 3077 */
   internal_apply_dir_irq_bits(desired_ren_ten, &ssicr, &ssifcr);
@@ -734,7 +729,7 @@ ra8_err_t ra8_ssie_start_recovery(uint8_t channel)
   reg->SSIFCR                = ssifcr_save;
   /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
   const ra8_err_t rst_err = internal_wait_ssirst_clear(reg);
-  RA8_RETURN_ON_ERROR(rst_err, s_tag, "ssie_recover: SSIRST stuck"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(rst_err, s_tag, "ssie_recover: SSIRST stuck");
 
   /* HUM Ch 46.2.2 "SSISR : Status Register" p 3066-3072 */
   const uint32_t ssisr = reg->SSISR;
@@ -787,7 +782,7 @@ ra8_err_t ra8_ssie_write_sample(uint8_t channel, uint32_t sample)
 ra8_err_t ra8_ssie_read_sample(uint8_t channel, uint32_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
+  volatile const r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -865,7 +860,7 @@ ra8_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16
 ra8_err_t ra8_ssie_get_status(uint8_t channel, ra8_ssie_status_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
+  volatile const r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -927,7 +922,7 @@ ra8_err_t ra8_ssie_attach_handler(ra8_ssie_event_fn_t fn, void* ctx)
 RA8_ISR_SAFE
 void ra8_ssie_dispatch(uint8_t channel)
 {
-  volatile r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
+  volatile const r_ssie_regs_t* reg = priv_ra8_ssie_internal_regs(channel);
   if (reg == nullptr) {
     return;
   }

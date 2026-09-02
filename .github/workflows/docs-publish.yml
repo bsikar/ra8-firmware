@@ -8,7 +8,7 @@
 # source branch: the orphan gh-pages branch is force-updated with a single
 # fresh commit each run, so it never accumulates generated-HTML history.
 #
-# `make docs` builds with the project-pinned doxygen release, never the distro
+# `just docs::build` builds with the project-pinned doxygen release, never the distro
 # one -- the in-tree HTML templates and theme are only valid for that exact
 # version. scripts/builders/provision_doxygen.sh resolves it from the pod's
 # persistent pinned-tool cache (the /var/cache/ra8-tools hostPath mount, #486),
@@ -16,10 +16,9 @@
 # one pod per job -- so that mount, not the workspace, is what makes the
 # second run offline. graphviz is REQUIRED, not optional: build_docs.sh falls
 # back to text-only output when `dot` is absent, which would publish a
-# diagram-free site over the live one. It is already in the runner image
-# (.devcontainer/Dockerfile), so the provisioning step below probes and
-# no-ops; the docs-publish gate then hard-requires `dot` and verifies the
-# built tree actually contains its diagrams before pushing.
+# diagram-free site over the live one. It is part of the Ansible-built runner
+# image (`.devcontainer/Dockerfile`); the docs-publish gate hard-requires `dot`
+# and verifies the built tree actually contains its diagrams before pushing.
 #
 # One-time repo setup (owner): Settings -> Pages -> Build and deployment ->
 # Source = "Deploy from a branch", Branch = gh-pages / (root).
@@ -46,22 +45,6 @@ jobs:
     runs-on: ra8-ci
     steps:
       - uses: actions/checkout@v4
-      - name: Install graphviz
-        run: |
-          # ci-parity: infra -- runner package provisioning only; runs no
-          # project check. Without graphviz the published site silently loses
-          # every authored diagram.
-          #
-          # Probe first, apt only if genuinely absent. ra8-ci is an ephemeral
-          # pod booted from the devcontainer image, which already carries
-          # graphviz, and the pod's runner user has NO passwordless sudo -- so
-          # an unconditional `sudo apt-get` would die on "sudo: a password is
-          # required". The probe no-ops on the pod and still provisions a bare
-          # host runner.
-          if ! command -v dot >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y graphviz
-          fi
       - env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash scripts/ci.sh --gate docs-publish
+        run: just quality::local::gate docs-publish

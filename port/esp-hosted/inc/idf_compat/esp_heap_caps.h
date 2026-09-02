@@ -25,6 +25,14 @@
  * ESP-IDF reader would expect, and the port's allocator documents that it
  * ignores them.
  *
+ * ESP-IDF also declares ``heap_caps_malloc`` here. On this host that
+ * function is a ``static inline`` in ``port_esp_hosted_host_os.h`` instead,
+ * because it has to be defined after the ``g_h`` vtable declaration and
+ * after ``HOSTED_MEM_ALIGNMENT_64``, both of which live there; defining it
+ * here would mean a second spelling of the sixty-four-byte cache-line
+ * alignment. Every vendored translation unit that calls it reaches that
+ * header, so the resolution is the same one an ESP-IDF host gets.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0

@@ -20,26 +20,27 @@ and a proof-of-concept or reproduction if you have one. This is a personal
 research project maintained on a best-effort basis; there is no formal SLA,
 but reports are taken seriously and acknowledged as time permits.
 
-## Why fork pull requests get no CI
+## Why fork pull requests never reach self-hosted CI
 
 CI runs on self-hosted runners -- the maintainer's own hardware, some of it
 wired to a board it can flash. Untrusted code must therefore never execute on
-them, and three controls enforce that:
+them. Fork PRs instead receive a bounded, read-only check set on GitHub-hosted
+ephemeral runners through `.github/workflows/fork-pr-checks.yml`. Three
+controls keep that feedback path separate from the trusted suite:
 
 - **Self-hosted jobs are gated to this repository.** Each runs only for pushes
   and for pull requests whose head repo is this repo
   (`github.event.pull_request.head.repo.full_name == github.repository`), never
-  from a fork. An outside contributor's workflow additionally requires manual
-  approval before it can run at all, so a fork PR gets no CI on the
-  maintainer's infrastructure unless the maintainer reviews the diff first.
+  from a fork. The hosted fork workflow uses the inverse condition, a read-only
+  token, no repository secrets, and no self-hosted labels.
 - **No `pull_request_target`.** No workflow combines elevated permissions with
   a checkout of pull-request head code.
 - **Minimal token scope.** `GITHUB_TOKEN` defaults to read-only; a workflow
   that needs write access requests it explicitly and narrowly.
 
-Contributions are not expected. Viewing and forking the code is harmless; only
-a *running* workflow could touch the maintainer's machines, and that path is
-closed.
+Contributions are not expected. Viewing and forking the code is harmless; the
+hosted feedback lane cannot touch the maintainer's machines, and fork code has
+no path onto a self-hosted runner.
 
 ## Supply chain
 

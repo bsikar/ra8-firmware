@@ -502,11 +502,15 @@ static void internal_drw_program_cache_options(const ra8_drw_config_t* cfg)
    * Bench evidence: HWREVISION reads 0x00000000 before this call and
    * 0x0FBE0107 after it. */
   const ra8_err_t pd_err = ra8_lpm_graphics_power_on((uint32_t)k_ra8_lpm_pd_timeout_default);
-  RA8_RETURN_ON_ERROR(pd_err, s_tag, "drw_init: graphics power"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- HW power-up ack */
+  RA8_RETURN_ON_ERROR(pd_err, s_tag, "drw_init: graphics power");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* HUM Ch 11.2.8 "MSTPCRC: Module Stop Control Register C", p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_drw);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "drw_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "drw_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* HUM Ch 62.2.3 "IRQCTL: Interrupt Control Register", p 3693 */
   /* Clear all pending IRQs and leave them masked. */
@@ -630,10 +634,10 @@ void ra8_drw_dispatch(void)
     return k_ra8_err_invalid_arg;
   }
   /* NASA Rule 2: bounded loop. */
-  for (uint32_t i = 0UL; i < poll_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0UL; i < poll_budget; ++i) {
     /* HUM Ch 62.2.5 "STATUS: Status Control Register", p 3695 */
     const uint32_t s = *ra8_drw_reg32(k_ra8_drw_off_status);
-    if ((s & k_ra8_drw_status_busy_mask) == 0UL) { /* GCOVR_EXCL_BR_LINE */
+    if ((s & k_ra8_drw_status_busy_mask) == 0UL) {
       return k_ra8_ok;
     }
   }

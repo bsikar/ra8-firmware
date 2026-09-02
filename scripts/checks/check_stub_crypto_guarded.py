@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 # Repo root: this file is scripts/checks/check_stub_crypto_guarded.py .
@@ -109,9 +110,9 @@ def find_guard_region(lines: list[str]) -> tuple[int, int, int] | None:
     return None
 
 
-def check_file(rel: str, token: str) -> list[str]:
+def check_file(rel: str, token: str, repo_root: Path = REPO_ROOT) -> list[str]:
     """Return a list of violation strings for one stub TU (empty when clean)."""
-    path = REPO_ROOT / rel
+    path = repo_root / rel
     if not path.is_file():
         return [f"{rel}: file not found (expected an insecure stub TU here)"]
     lines = path.read_text(encoding="utf-8").splitlines()
@@ -158,6 +159,48 @@ def check_file(rel: str, token: str) -> list[str]:
     return problems
 
 
+def selftest() -> int:
+    """Prove a complete fail-closed guard passes and an escaped stub fires."""
+    rel = "libs/fixture/stub.c"
+    signature = "insecure_fixture_signature"
+    with tempfile.TemporaryDirectory(prefix="stub-crypto-selftest-") as raw:
+        root = Path(raw)
+        path = root / rel
+        path.parent.mkdir(parents=True)
+        path.write_text(
+            "#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)\n"
+            f"static int {signature};\n"
+            "#else\nreturn k_ra8_err_unsupported;\n#endif\n",
+            encoding="ascii",
+        )
+        good_findings = check_file(rel, signature, root)
+        path.write_text(
+            "#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)\n"
+            "static int placeholder;\n#else\nreturn k_ra8_ok;\n#endif\n"
+            f"static int {signature};\n",
+            encoding="ascii",
+        )
+        bad_findings = check_file(rel, signature, root)
+    minimum_bad_findings = 2
+    cases = (
+        (not good_findings, "guarded token plus hard-error branch stays quiet"),
+        (
+            len(bad_findings) >= minimum_bad_findings
+            and any("not fail-closed" in item for item in bad_findings)
+            and any("OUTSIDE" in item for item in bad_findings),
+            "non-failing else and escaped insecure token both fire",
+        ),
+    )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"check_stub_crypto_guarded.py --selftest: {len(failed)} failure(s)", file=sys.stderr)
+        return 1
+    print("check_stub_crypto_guarded.py --selftest: all cases pass (both directions).")
+    return 0
+
+
 def main() -> int:
     """Verify every placeholder-crypto TU is guarded fail-closed.
 
@@ -169,6 +212,12 @@ def main() -> int:
 
     Returns 1 listing each unguarded TU, 0 when all are fail-closed.
     """
+    args = sys.argv[1:]
+    if args == ["--selftest"]:
+        return selftest()
+    if args:
+        print("usage: check_stub_crypto_guarded.py [--selftest]", file=sys.stderr)
+        return 2
     all_problems: list[str] = []
     for rel, token in STUB_TUS.items():
         all_problems.extend(check_file(rel, token))

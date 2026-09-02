@@ -46,15 +46,18 @@ jobs:
       github.event_name == 'pull_request'
       && github.event.pull_request.head.repo.full_name != github.repository
     steps:
+      - uses: extractions/setup-just@v3
+        with:
+          just-version: 1.40.0
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - run: bash scripts/ci.sh --gate ascii
-      - run: bash scripts/ci.sh --gate no-ai-attribution
-      - run: bash scripts/ci.sh --gate inclusive-terminology
+      - run: just quality::local::gate ascii
+      - run: just quality::local::gate no-ai-attribution
+      - run: just quality::local::gate inclusive-terminology
 
       - name: Install clang-format-22 (matches the trusted-path pin)
         run: |
@@ -67,11 +70,31 @@ jobs:
           # gate hard-fails when clang-format-22 is still absent afterwards.
           set -euo pipefail
           codename="$(lsb_release -cs)"
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-            | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc >/dev/null
-          echo "deb http://apt.llvm.org/${codename}/ llvm-toolchain-${codename}-22 main" \
+          # signed-by, NOT /etc/apt/trusted.gpg.d: a key dropped in that
+          # directory is trusted for EVERY repository on the runner, so one
+          # mirror's key would authenticate packages from all of them. Both
+          # trusted-path installers of this same key (.devcontainer/Dockerfile
+          # and the dev_box role) already scope it to the LLVM suite; this
+          # hosted path is the only one that did not.
+          #
+          # This scopes the key's authority; it does NOT authenticate the key
+          # itself. No path in this tree pins the LLVM signing key by checksum
+          # or fingerprint, so trust here rests on TLS to apt.llvm.org alone --
+          # unlike every binary download in .devcontainer/Dockerfile, which is
+          # sha256sum -c verified. llvm-toolchain-<codename>-22 is also a
+          # rolling snapshot, so the clang-format patch version can drift --
+          # and nothing checks that: format_code.sh and check_tool_versions.py
+          # both compare the clang-format MAJOR only, so drift inside 22.x
+          # would surface as formatting diffs, not as a version failure.
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL \
+            https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo gpg --batch --yes --dearmor \
+                -o /usr/share/keyrings/llvm-snapshot.gpg
+          echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg]" \
+            "https://apt.llvm.org/${codename}/" \
+            "llvm-toolchain-${codename}-22 main" \
             | sudo tee /etc/apt/sources.list.d/llvm-22.list >/dev/null
           sudo apt-get update
           sudo apt-get install -y clang-format-22
 
-      - run: bash scripts/ci.sh --gate format
+      - run: just quality::local::gate format

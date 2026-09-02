@@ -49,7 +49,6 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 struct ra8_io_blockdev_iface {
   /** @brief Read `count` blocks at `lba` into `buf`. */
   ra8_err_t (*read)(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf);
@@ -66,7 +65,6 @@ struct ra8_io_blockdev_iface {
   /** @brief Commit any write buffering. May be NULL (nothing buffered). */
   ra8_err_t (*sync)(void* ctx);
 };
-/* cppcheck-suppress-end [unusedStructMember] */
 
 #ifdef __cplusplus
 }

@@ -10,9 +10,9 @@ document themselves, and `infra/README.md` is the per-role index.
 **One command orients you:**
 
 ```sh
-make infra-status     # what is deployed across the estate, right now (read-only)
-make infra-list       # what machines are declared, and how they are sized
-make infra-doctor     # can THIS machine drive any of it?
+just infra::status     # what is deployed across the estate, right now (read-only)
+just infra::list       # what machines are declared, and how they are sized
+just infra::doctor     # can THIS machine drive any of it?
 ```
 
 **The machines themselves are declared in `infra/fleet.yml`** -- one block per
@@ -36,7 +36,7 @@ how instance counts are derived rather than guessed.
    |   |  16 vCPU / 64 GB / 500 GB |   |  12 vCPU / 24 GB / 360 GB     |   |   |
    |   |  Ubuntu 24.04             |   |  Debian 12 (unprivileged LXC) |   |   |
    |   |                           |   |                               |   |   |
-   |   |  - k3s (single node)      |   |  - every agent's `make ci`    |   |   |
+   |   |  - k3s (single node)      |   |  - every agent's `just ci`    |   |   |
    |   |  - ARC runner pool        |   |  - the pinned host toolchain  |   |   |
    |   |  - OpenBao vault          |   |  - ~/ra8-ws agent workspaces  |   |   |
    |   |  - the homelab (see 6)    |   |  - shared ccache              |   |   |
@@ -49,7 +49,7 @@ how instance counts are derived rather than guessed.
    truenas ....... NAS + two CI runners in Docker                              |
    gaming PC ..... Ryzen 9 7900X, Windows + WSL2, three CI runners             |
    star .......... Raspberry Pi -- the HIL bench (board, J-Link, C6, AD2)      |
-   FortiGate+AP .. the isolated 10.0.40.0/24 bench LAN (no uplink, by design)  |
+   FortiGate+AP .. odd 10.0.40.0/24 islanded; even 10.0.41.0/24 uplinked      |
 ```
 
 ### The single most load-bearing fact
@@ -96,26 +96,26 @@ one remaining hole in the rebuild story -- see section 5.
 
 16 vCPU, 64 GB, 500 GB, Ubuntu 24.04, two PCIe devices passed through. Reachable
 as `ssh k3s-pve` from any control node: `infra/fleet.yml` declares its tailnet
-address (`100.64.0.1`, user `ubuntu`) and `make infra-ssh-config` generates the
+address (`100.64.0.1`, user `ubuntu`) and `just infra::ssh_config` generates the
 alias from it.
 
 Runs:
 
-- **k3s**, single node. `make infra-apply HOST=k3s-pve`
-  (or `python3 scripts/dev/fleet.py apply k3s-pve k3s-node` for that play alone).
+- **k3s**, single node. `just infra::apply k3s-pve`
+  (or `just infra::apply k3s-pve k3s-node` for that play alone).
 - **ARC** (Actions Runner Controller) and the `ra8-ci` runner scale set,
   sized by the declaration, pods booting the pinned toolchain image.
-  `python3 scripts/dev/fleet.py apply k3s-pve ci-runner`.
+  `just infra::apply k3s-pve ci-runner`.
 - **OpenBao** -- the vault everything else reads credentials from.
 - The owner's unrelated homelab (section 6).
 
 ### CT 107 `dev` -- the shared verification box
 
 12 vCPU, 24 GB, 360 GB, Debian 12, unprivileged LXC with `nesting=1` (needed so
-`make ci` can run podman inside it). `ssh dev`.
+`just ci` can run podman inside it). `ssh dev`.
 
 This is where every agent runs gates. Its whole toolchain is now codified
-(`make infra-apply HOST=dev`), including two tools built from source because no
+(`just infra::apply dev`), including two tools built from source because no
 Debian suite carries them at the pinned version:
 
 - **cppcheck** -- the parity gate compares its version *exactly*, because
@@ -127,8 +127,8 @@ Also: the pinned Arm GNU Toolchain and Unicorn, the pinned lint set,
 `~/ra8-ws` agent workspaces, and two systemd user units -- the shared CI status
 poller and the workspace reaper.
 
-**Never work directly in `~/ra8-firmware` on this box.** Use `make ws-new
-NAME=...`; improvised checkouts have clobbered other agents' work.
+**Never work directly in `~/ra8-firmware` on this box.** Use
+`just workspace::new <name>`; improvised checkouts have clobbered other work.
 
 ### `truenas` -- NAS, and two CI runners
 
@@ -143,7 +143,7 @@ put CI I/O on the appliance's known-degraded 100T pool.
 It is the one host class with a real one-command teardown:
 
 ```sh
-make infra-remove HOST=truenas
+just infra::remove truenas
 ```
 
 ### The gaming PC -- Ryzen 9 7900X, WSL2
@@ -154,8 +154,8 @@ which `infra/fleet.yml` declares as its `jump:` -- so any control node reaches
 it, not just the Mac:
 
 ```sh
-ssh win-ci                        # after `make infra-ssh-config`
-ssh -J star sikar@10.0.40.100     # the same hop, spelled out
+ssh win-ci                        # after `just infra::ssh_config`
+ssh -J star sikar@10.0.40.103     # the same hop, spelled out
 ```
 
 The most powerful CPU in the estate. Because it answers
@@ -171,16 +171,39 @@ Raspberry Pi 5, Ubuntu 24.04, `ssh star`. Everything physical hangs off it:
 - the FortiGate console cable
 - Tapo smart plugs for power-cycling the board and the Pi
 
-`make infra-apply HOST=star` provisions all of it. One package cannot be
+`just infra::apply star` provisions all of it. One package cannot be
 fetched unattended -- Digilent WaveForms sits behind a click-through licence
 gate -- so the role **fails with download instructions** rather than skipping,
 because a bench reporting success without `libdwf` would be a lie.
 
+The GitHub workflow does not run on this Pi. Its dedicated dev-box listener
+connects as the role-owned `ra8-hil` account with a single pinned SSH identity.
+That account has no access to `star`'s mode-0600 TAPO/OpenBao configuration and
+receives only the narrow privileged `ip`, `uhubctl`, and USB-authorisation
+operations required by the existing HIL scripts.
+
+The bench lock is also provisioned by that role. Its SSH liveness bound is
+`ClientAliveInterval 15` with `ClientAliveCountMax 4` (about 60 seconds after a
+client disappears without closing its socket), and the advisory overrun reaper
+runs every five minutes. Verify the live deployment without touching firmware:
+
+```sh
+just hil::doctor
+just hil::selftest
+just hil::status
+```
+
+Provisioning must preserve the same lock contract as every HIL recipe: run
+`just infra::check star` first, confirm `just hil::status` reports `FREE`, then
+apply the role. The health-check path resets and halts the board; do not run a
+full apply while another actor holds the rig.
+
 ### The bench LAN -- FortiGate 81E-POE + Meraki MR18
 
-An islanded 10.0.40.0/24 network with **no uplink at all**: no WAN, no default
-route. The FortiGate is router/DHCP/switch and PoE source; the MR18 (running
-OpenWrt) is a dumb AP beaconing `ra8-bench` on 2.4 GHz for the ESP32-C6 to join.
+Two hard-switch segments share the FortiGate. The odd `lan` segment
+(`10.0.40.0/24`) is denied WAN access by policy 2; the even `lan-even` segment
+(`10.0.41.0/24`) NATs through `wan1`. The FortiGate supplies routing, DHCP,
+switching, and PoE; the MR18 bridges `ra8-bench` only into the odd segment.
 
 Not Ansible -- it is driven over the console cable from the bench Pi by
 `infra/network/fg_bringup.py`, which reads every credential from OpenBao. See
@@ -199,7 +222,7 @@ The vault runs on the k3s node, reachable at the LAN NodePort `:32200`
 | Path | What reads it |
 |---|---|
 | `ra8/ci-runner-pat` | both CI runner roles, to register runners with GitHub |
-| `secret/hil/tapo` | HIL smart-plug power control (`make hil-tapo`) |
+| `secret/hil/tapo` | HIL smart-plug power control (`just hil::tapo`) |
 | `secret/ra8d2/bench-network` | the FortiGate/AP bring-up -- admin creds, PSKs, and the chassis serial |
 
 The FortiGate **chassis serial is treated as a credential**, not an asset tag:
@@ -221,7 +244,8 @@ steps are `scripts/secrets/README.md`.
 
 A Shamir-sealed OpenBao comes up **sealed after every restart, by design**. If
 something that reads a credential suddenly cannot, check
-`make infra-status` first -- then `scripts/secrets/openbao_unseal.sh`.
+`just infra::status` first -- then
+`/bin/bash -p scripts/secrets/openbao_unseal.sh`.
 
 ---
 
@@ -230,35 +254,37 @@ something that reads a credential suddenly cannot, check
 Order matters, because each step is the next one's prerequisite.
 
 ```sh
-make infra-doctor                      # can this machine drive any of it?
-make infra-ssh-config                  # the fleet's host aliases, from the declaration
-make infra-setup                       # inventory + credentials (git-ignored)
-make infra-check HOST=<host>           # ALWAYS dry-run first (`make infra-list`)
-make infra-apply HOST=<host>
+just infra::doctor                      # can this machine drive any of it?
+just infra::ssh_config                  # fleet host aliases from the declaration
+just infra::setup                       # inventory + credentials (git-ignored)
+just infra::check <host>                # ALWAYS dry-run first (`just infra::list`)
+just infra::apply <host>
 ```
 
 | # | Rebuild | Command | Notes |
 |---|---|---|---|
 | 1 | the Proxmox host | -- | **manual, not codified** (section 5) |
 | 2 | VM 300 + CT 107 | -- | **manual, not codified** (section 5) |
-| 3 | k3s + helm + vault | `python3 scripts/dev/fleet.py apply k3s-pve k3s-node` | then init + unseal by hand |
-| 4 | the ARC runner pool | `python3 scripts/dev/fleet.py apply k3s-pve ci-runner` | needs 3 |
-| 5 | the dev box | `make infra-apply HOST=dev` | slow: two source builds |
-| 6 | extra runner hosts | `make infra-apply HOST=truenas` / `HOST=win-ci` | NAS, gaming PC |
-| 7 | the HIL bench | `make infra-apply HOST=star` | needs the board attached |
-| 8 | the bench LAN | `python3 infra/network/fg_bringup.py bootstrap` | from `ssh star` |
+| 3 | k3s + helm + vault | `just infra::apply k3s-pve k3s-node` | then init + unseal by hand |
+| 4 | the ARC runner pool | `just infra::apply k3s-pve ci-runner` | needs 3 |
+| 5 | the dev box | `just infra::apply dev` | slow: two source builds |
+| 6 | extra runner hosts | `just infra::apply truenas` / `just infra::apply win-ci` | NAS, gaming PC |
+| 7 | the HIL bench | `just infra::apply star` | needs the board attached |
+| 8 | the bench LAN | `just infra::fortigate_bootstrap` | from `ssh star`; guarded confirmation |
 
 **Where do you run these from?** Any machine with ansible and a key the hosts
 accept. It used to be *nowhere*: every host was addressed by an `~/.ssh/config`
 alias that existed on the Mac, which had no ansible, while the dev box had
 ansible and could resolve none of them (#526). `infra/fleet.yml` now carries
 each machine's real address, `fleet.py` builds every command from it, and
-`make infra-ssh-config` generates the friendly aliases -- so becoming a control
-node is `pipx install ansible-core` plus one command. `make infra-doctor` says
+`just infra::ssh_config` generates the friendly aliases -- so becoming a control
+node is `just setup-ansible`; Ansible core comes from `uv.lock` and
+Galaxy collections come from `infra/ansible/requirements.yml`.
+`just infra::doctor` says
 which half you are missing.
 
-The first run against a host takes far longer than later ones. `make infra-apply
-HOST=dev` compiles gcc and cppcheck from source; re-runs skip both once the
+The first run against a host takes far longer than later ones. `just infra::apply
+dev` compiles gcc and cppcheck from source; re-runs skip both once the
 pinned versions are present and cost a handful of version probes.
 
 ---
@@ -281,13 +307,15 @@ Being honest about this is the point of the section.
   dir(s)" rather than failing, and the image-prune and journald steps are
   unaffected -- but a hand-installed script that silently lost a third of its
   job is the argument for codifying it, not against.
-- **FortiGate port assignments** are not recorded in `infra/network/`. The unit
-  is on an islanded LAN reachable only through the bench Pi console, so this was
-  left rather than written down unverified.
+- **Physical cable placement at the FortiGate.** `fortigate-bench.conf`
+  declares the odd/even port memberships, reservations, and policies, while
+  `infra/network/README.md` records the Win11 client observed on port3. The repo
+  cannot enforce where a cable is physically plugged in, so an operator must
+  confirm placement before a replay or bench run.
 
 ### Known cruft, cleaned up (#502)
 
-`make infra-status` used to show a pool of `k3s-runner*` runners registered
+`just infra::status` used to show a pool of `k3s-runner*` runners registered
 and online -- pre-ARC leftovers from before the repository was renamed,
 carrying the bare `self-hosted,Linux,X64` labels.
 
@@ -324,7 +352,7 @@ the arithmetic in `ci_runner`'s defaults.
 ## See also
 
 - `infra/README.md` -- per-role index, and the runner-pool topology in detail
-- `infra/network/README.md` -- the isolated bench LAN, in full
+- `infra/network/README.md` -- the split odd-islanded/even-uplinked bench LAN
 - `scripts/secrets/README.md` -- vault init, unseal, and secret configuration
 - `docs/TOOLCHAIN.md` -- what the pinned versions are and why
-- `make infra-help` -- the command surface
+- `just infra` -- the command surface

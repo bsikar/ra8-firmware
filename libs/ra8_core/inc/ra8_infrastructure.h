@@ -11,7 +11,7 @@
  *
  * Call order for a typical main:
  * @code{.c}
- * int main(void)
+ * void main(void)
  * {
  *     // 1. Arch / infra bring-up (no peripheral access).
  *     ra8_infrastructure_init();

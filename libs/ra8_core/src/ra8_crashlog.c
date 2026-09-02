@@ -183,7 +183,7 @@ RA8_INTERNAL static uint32_t internal_crashlog_payload_crc(void)
  *
  * @note Not thread-safe. This two-condition record-validity check (the
  *       magic sentinel plus the payload CRC) is the module's MC/DC-covered
- *       compound; the vectors live in tests/test_ra8_crashlog.c.
+ *       compound; the vectors live in tests/misc/src/test_ra8_crashlog.c.
  * @since 0.1.0
  */
 RA8_INTERNAL static bool internal_crashlog_is_valid(void)

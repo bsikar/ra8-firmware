@@ -1,6 +1,6 @@
 /**
  * @file
- * examples/ek_ra8d2/hw_validated/hil/usb_selftest_microsd/src/usb_selftest_microsd_steps.h
+ * examples/ek_ra8d2/hw_validated/hil/usb_selftest_microsd/inc/usb_selftest_microsd_steps.h
  * @brief Shared contract for the USB-microSD self-test console + worker steps
  *
  * @par Tag

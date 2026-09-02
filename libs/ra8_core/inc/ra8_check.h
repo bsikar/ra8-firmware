@@ -35,6 +35,7 @@
  * | `RA8_RETURN_VOID_ON_ERROR`   | no     | `void`         | Error handling in void helpers  |
  * | `RA8_RETURN_NULL_ON_ERROR`   | no     | `void*`        | Pointer-returning factories     |
  * | `RA8_CHECK_NULL_PTR`         | no     | `ra8_err_t`     | Precondition: non-NULL pointer  |
+ * | `RA8_CHECK_NULL_PTR_RETURN`  | no     | caller-supplied | Foreign callback precondition   |
  * | `RA8_CHECK_RANGE`            | no     | `ra8_err_t`     | Precondition: numeric range     |
  * | `RA8_VALIDATE_INIT`          | no     | `ra8_err_t`     | Precondition: module initialized |
  *
@@ -244,6 +245,39 @@ extern "C" {
     if ((ptr) == nullptr) {                                                                        \
       ra8_log_error((tag), (message));                                                             \
       return k_ra8_err_null_ptr;                                                                   \
+    }                                                                                              \
+  } while (0)
+
+/**
+ * @brief Reject `nullptr` while preserving an externally specified return ABI.
+ *
+ * @details
+ * Use only at adaptation boundaries whose callback signature returns a status
+ * type other than ::ra8_err_t. Native firmware APIs use
+ * ::RA8_CHECK_NULL_PTR. The caller-provided failure value is evaluated once
+ * and only when @p ptr is `nullptr`.
+ *
+ * @param[in] ptr          Pointer expression to test.
+ * @param[in] return_value Callback-specific status returned on failure.
+ * @param[in] tag          Component tag for logging.
+ * @param[in] message      String literal identifying the invalid argument.
+ *
+ * @return Returns from the enclosing callback only when @p ptr is `nullptr`.
+ *
+ * @pre @p tag and @p message are non-null NUL-terminated strings.
+ * @post A null pointer emits one error line and returns @p return_value.
+ * @post A non-null pointer performs no logging and permits execution to continue.
+ *
+ * @note @p ptr is evaluated exactly once. @p return_value is evaluated exactly
+ * once on rejection and is not evaluated on acceptance.
+ *
+ * @see RA8_CHECK_NULL_PTR
+ */
+#define RA8_CHECK_NULL_PTR_RETURN(ptr, return_value, tag, message)                                 \
+  do {                                                                                             \
+    if ((ptr) == nullptr) {                                                                        \
+      ra8_log_error((tag), (message));                                                             \
+      return (return_value);                                                                       \
     }                                                                                              \
   } while (0)
 

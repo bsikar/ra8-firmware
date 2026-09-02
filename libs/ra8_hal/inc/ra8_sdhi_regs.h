@@ -276,15 +276,14 @@ typedef struct {
   volatile uint32_t SDIO_MODE;       /**< +0x68 SDIO Mode Control.     */
   volatile uint32_t SDIO_INFO1;      /**< +0x6C SDIO Interrupt Flag.   */
   volatile uint32_t SDIO_INFO1_MASK; /**< +0x70 SDIO Interrupt Mask.   */
-  /* NOLINTNEXTLINE(readability-magic-numbers) -- 79 = (0x1B0 - 0x74) / 4, structural padding. */
-  volatile uint32_t _r3[79];   /**< +0x74..+0x1AC Reserved.     */
-  volatile uint32_t SD_DMAEN;  /**< +0x1B0 DMA Mode Enable.     */
-  volatile uint32_t _r4[3];    /**< +0x1B4..+0x1BC Reserved.    */
-  volatile uint32_t SOFT_RST;  /**< +0x1C0 Software Reset.      */
-  volatile uint32_t _r5[2];    /**< +0x1C4..+0x1C8 Reserved.    */
-  volatile uint32_t SDIF_MODE; /**< +0x1CC SD Interface Mode.   */
-  volatile uint32_t _r6[4];    /**< +0x1D0..+0x1DC Reserved.    */
-  volatile uint32_t EXT_SWAP;  /**< +0x1E0 Endian Swap Control. */
+  volatile uint32_t _r3[79];         /**< +0x74..+0x1AC Reserved.      */
+  volatile uint32_t SD_DMAEN;        /**< +0x1B0 DMA Mode Enable.      */
+  volatile uint32_t _r4[3];          /**< +0x1B4..+0x1BC Reserved.     */
+  volatile uint32_t SOFT_RST;        /**< +0x1C0 Software Reset.       */
+  volatile uint32_t _r5[2];          /**< +0x1C4..+0x1C8 Reserved.     */
+  volatile uint32_t SDIF_MODE;       /**< +0x1CC SD Interface Mode.    */
+  volatile uint32_t _r6[4];          /**< +0x1D0..+0x1DC Reserved.     */
+  volatile uint32_t EXT_SWAP;        /**< +0x1E0 Endian Swap Control.  */
 } r_sdhi_regs_t;
 
 /** @brief Get pointer to SDHI instance N (0 or 1). */

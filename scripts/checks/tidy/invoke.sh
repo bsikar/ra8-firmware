@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 # shellcheck shell=bash
-# shellcheck disable=SC2154  # FIRMWARE_DIR / BUILD_DIR / RC_INFRA and the print_* helpers come from scripts/checks/clang_tidy.sh, the only thing that sources this file
-# shellcheck disable=SC2034  # TIDY_ARG_LEAD/TRAIL/SEEN_SEP are filled by split_tidy_args and READ by run_tidy_chunks below and by callers in passes.sh
 #
 # scripts/checks/tidy/invoke.sh -- Running clang-tidy over one pass's file list.
 #
@@ -130,12 +128,14 @@ run_tidy_chunks() {
     local chunk="$workdir/chunk$idx"
     if [[ -s "$chunk" ]]; then
       local chunk_files=()
-      mapfile -t chunk_files <"$chunk"
+      while IFS= read -r line || [[ -n "$line" ]]; do
+        chunk_files+=("$line")
+      done <"$chunk"
       if [[ "$TIDY_ARG_SEEN_SEP" == "true" ]]; then
-        "$clang_tidy" "${TIDY_ARG_LEAD[@]}" "${chunk_files[@]}" -- "${TIDY_ARG_TRAIL[@]}" \
+        "$clang_tidy" ${TIDY_ARG_LEAD[@]+"${TIDY_ARG_LEAD[@]}"} ${chunk_files[@]+"${chunk_files[@]}"} -- ${TIDY_ARG_TRAIL[@]+"${TIDY_ARG_TRAIL[@]}"} \
           >"$workdir/out$idx" 2>&1 &
       else
-        "$clang_tidy" "${TIDY_ARG_LEAD[@]}" "${chunk_files[@]}" >"$workdir/out$idx" 2>&1 &
+        "$clang_tidy" ${TIDY_ARG_LEAD[@]+"${TIDY_ARG_LEAD[@]}"} ${chunk_files[@]+"${chunk_files[@]}"} >"$workdir/out$idx" 2>&1 &
       fi
       pids+=("$!")
     fi
@@ -144,7 +144,7 @@ run_tidy_chunks() {
 
   local ec=0
   local pid
-  for pid in "${pids[@]}"; do
+  for pid in ${pids[@]+"${pids[@]}"}; do
     wait "$pid" || ec=1
   done
 

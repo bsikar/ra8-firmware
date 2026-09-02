@@ -3,21 +3,30 @@
 `runner/Dockerfile` builds the image ARC runner pods boot from: the pinned
 devcontainer toolchain (`FROM` the `.devcontainer` image) plus the GitHub
 Actions runner and its ARC k8s hooks. Every CI job therefore runs the exact
-`make ci` toolchain.
+`just ci` toolchain.
 
-**The Ansible `ci_runner` role is authoritative** for how that image reaches a
-node (`infra/ansible/roles/ci_runner/tasks/main.yml`). Everything below mirrors
-it step for step so it can be run by hand; if the two ever disagree, the role
-is right and this file is stale. Deploy with the role rather than by hand
-whenever you have the choice -- it carries the asserts.
+**The declared Ansible path is authoritative** for how that image reaches every
+runner. `infra/fleet.yml` names the producer, image reference and durable
+archive; `scripts/dev/fleet.py` derives the play order and variables; and the
+`ci_runner` role builds, validates, publishes and imports the artifact. There
+is intentionally no second hand-build recipe here for those steps to drift
+against.
 
 The role **stages the build context onto the node from the control node's
 checkout** (`/var/lib/ra8-ci/build-context`) and builds from there, so the image
 comes from the same tree whose gates then assert what it contains. It used to
 build from a path on the node that nothing created or synced, which is how the
 deployed image came to be two pinned-tool changes behind this Dockerfile
-(#513). Running the steps below by hand does the same thing by being run inside
-a checkout.
+(#513). Converge the declared producer through the fleet front door:
+
+```sh
+just infra::check k3s-pve
+just infra::apply k3s-pve
+```
+
+The apply also converges the prerequisite k3s play because both provisions are
+declared on that host. Do not invoke the role playbook or reproduce its image
+commands by hand.
 
 ## Where the image lives on the node
 
@@ -34,10 +43,9 @@ containerd. Two things keep it there:
 - **`io.cri-containerd.pinned=pinned`** on the image -- containerd's CRI
   garbage collector skips pinned images, so eviction should not happen in the
   first place. k3s applies this label itself to everything it imports from that
-  directory; the hand steps below apply it explicitly because a manual
-  `ctr images import` does not go through that code path.
+  directory, and the role asserts the label after its explicit import.
 
-Two rules the steps encode, both learned from #484:
+Two rules the role encodes, both learned from #484:
 
 1. **The archive's embedded tag must equal the tag the scale set boots.** A
    hand-built archive tagged `:latest` imported cleanly while the deployment
@@ -48,44 +56,15 @@ Two rules the steps encode, both learned from #484:
    makes k3s repeatedly import the half-written file and fail on `unexpected
    EOF` for as long as the export runs. A rename is atomic.
 
-## Build and install by hand
-
-```
-IMAGE=localhost/ra8-ci-runner:v2
-STAGE=/var/lib/rancher/k3s/agent/ra8-image-staging/ra8-ci-runner.tar
-ARCHIVE=/var/lib/rancher/k3s/agent/images/ra8-ci-runner.tar
-
-sudo install -d -o root -g root -m 0755 "$(dirname "$STAGE")" "$(dirname "$ARCHIVE")"
-
-buildah bud -t localhost/ra8-devcontainer:latest \
-  -f ../../../.devcontainer/Dockerfile ../../../.devcontainer
-buildah bud --build-arg BASE_IMAGE=localhost/ra8-devcontainer:latest \
-  -t "$IMAGE" -f runner/Dockerfile runner
-sudo buildah push "$IMAGE" "docker-archive:$STAGE:$IMAGE"
-
-# Assert the archive claims the tag the deployment boots, BEFORE publishing it.
-sudo tar -xOf "$STAGE" manifest.json \
-  | python3 -c 'import json,sys; print("\n".join(t for e in json.load(sys.stdin) for t in (e.get("RepoTags") or [])))' \
-  | grep -qx "$IMAGE" || { echo "archive tag != $IMAGE -- do not import"; exit 1; }
-
-sudo mv -f "$STAGE" "$ARCHIVE"                       # atomic; one watcher event
-sudo k3s ctr -n k8s.io images import "$ARCHIVE"      # converge now, no restart
-sudo k3s ctr -n k8s.io images label "$IMAGE" io.cri-containerd.pinned=pinned
-
-# Assert the exact ref is present and pinned.
-sudo k3s ctr -n k8s.io images ls "name==$IMAGE"
-```
-
-The last command must print one row for `$IMAGE` whose LABELS column contains
-`io.cri-containerd.pinned=pinned`. Anything else means the pods will not start.
-
 ## Emergency recovery -- pods stuck in ErrImageNeverPull
 
 Symptom: `kubectl -n arc-runners get pods` shows `ErrImageNeverPull` (or
 `ImagePullBackOff` on an image named `localhost/...`), every workflow run sits
-`queued` indefinitely, and `make ci-status` reports the queue stalled. The node
+`queued` indefinitely, and `just quality::local::gate ci-status-contract` reports the queue stalled. The node
 lost the image; the pods cannot pull it back because that is what
-`imagePullPolicy: Never` means.
+`imagePullPolicy: Never` means. Diagnose with read-only probes, then converge
+the producer through Ansible; the role rebuilds or republishes the archive,
+imports it, pins it and verifies the exact reference in one operation.
 
 ```
 # 1. Is the image there at all, and is it pinned?
@@ -94,11 +73,9 @@ sudo k3s ctr -n k8s.io images ls "name==localhost/ra8-ci-runner:v2"
 # 2. Is the durable archive there? (it is multi-GB)
 ls -l /var/lib/rancher/k3s/agent/images/ra8-ci-runner.tar
 
-# 3. Re-import it. k3s does this itself on restart, but this needs no restart
-#    and does not disturb jobs already running.
-sudo k3s ctr -n k8s.io images import /var/lib/rancher/k3s/agent/images/ra8-ci-runner.tar
-sudo k3s ctr -n k8s.io images label localhost/ra8-ci-runner:v2 \
-  io.cri-containerd.pinned=pinned
+# 3. From a control node, restore the declared state. Do not reconstruct the
+#    role's build/import sequence at the console.
+just infra::apply k3s-pve
 
 # 4. Confirm, then let ARC create fresh pods (it retries on its own).
 sudo k3s ctr -n k8s.io images ls "name==localhost/ra8-ci-runner:v2"
@@ -107,17 +84,12 @@ sudo k3s kubectl -n arc-runners get pods
 
 Gotchas, all of them observed during the #484 outage:
 
-- **Check the tag on whatever you import.** If step 3 was run against an
-  archive from somewhere else, verify what it actually contains
-  (`tar -xOf <tar> manifest.json`) before trusting it. An archive tagged
-  `:latest` imports fine and leaves the pods exactly as broken as before; the
-  stopgap is `sudo k3s ctr -n k8s.io images tag localhost/ra8-ci-runner:latest
-  localhost/ra8-ci-runner:v2`, and the fix is to rebuild the archive correctly.
+- **Do not import an archive from somewhere else.** The fleet declaration names
+  the one canonical archive and the role rejects it before publication unless
+  its embedded tag matches the image the scale set boots.
 - **Check the pin label, not just the ref.** An unpinned image is one GC sweep
   from the same outage.
-- **Do not run the export into the watched directory** while recovering -- see
-  the staging rule above.
-- If the archive itself is gone, rebuild it from the image still in containerd:
-  `sudo k3s ctr -n k8s.io images export <stage-path> localhost/ra8-ci-runner:v2`
-  (this preserves the ref), then `mv` it into place. If containerd has nothing
-  either, run the full build above -- or just re-run the `ci_runner` role.
+- **Do not run an export into the watched directory.** The Ansible role writes
+  elsewhere and atomically renames the verified archive into place.
+- If the archive and containerd image are both gone, the same fleet apply is
+  still the recovery path; it rebuilds them from the checked-out source.

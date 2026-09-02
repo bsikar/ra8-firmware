@@ -66,7 +66,7 @@ typedef struct {
  * Exposes `internal_vfs_init_slot()`'s `slot->in_use && slot->owned` decision
  * (`libs/ra8_io/src/ra8_io_vfs.c@internal_vfs_init_slot`) for direct N+1
  * vectors; see `internal_test_vfs_init_slot_mcdc` in
- * `tests/test_ra8_io_vfs.c`.
+ * `tests/storage/src/test_ra8_io_vfs.c`.
  * @since Version 0.1.0
  */
 RA8_TEST_HELPER ra8_err_t ra8_io_vfs_init_slot_test(vfs_slot_t* slot);

@@ -4,8 +4,8 @@
  *
  * @details
  * The #204/#205 open path. Every `.rabook` book -- baked MRAM blob or SD file --
- * is opened through the chunked "RBKC" reader (ra8_book_chunked) and bound as an
- * ::ra8_book_src_paged source over an ::ra8_vmem page cache. There is deliberately
+ * is opened through the chunked "RBKC" reader (book_chunked) and bound as an
+ * ::book_src_paged source over an ::ra8_vmem page cache. There is deliberately
  * NO resident/paged size threshold: a small book simply never evicts anything
  * from the generously-sized frame pool (so it behaves like the old resident
  * fast path), while a book far larger than the pool evicts normally through the
@@ -19,7 +19,7 @@
  *
  * The container's `chunk_bytes` is validated at open to equal the cache's
  * `frame_bytes` (one chunk == one frame == one inflate; the contract
- * ra8_book_chunked_read relies on).
+ * book_chunked_read relies on).
  *
  *
  * [Ring 6 / App] {World: NS}
@@ -30,7 +30,7 @@
  */
 #include <string.h>
 
-#include "ra8_book_chunked.h"
+#include "book_chunked.h"
 #include "ra8_check.h"
 #include "ra8_vmem.h"
 #include "ra8_vsource.h"
@@ -46,7 +46,7 @@
  *          whole-book inflate scratch (`s_scratch` in main.c) used to hold:
  *          384 frames x 64 KiB = 24 MiB. The chunk-table budget caps the
  *          largest openable book at 1024 chunks = 64 MiB inflated (1025
- *          entries; a bigger book fails ra8_book_chunked_open honestly).
+ *          entries; a bigger book fails book_chunked_open honestly).
  *          The staging buffer must cover the largest compressed chunk; 72 KiB
  *          exceeds both zlib's compressBound(64 KiB) (~65.6 KiB) and miniz's
  *          more conservative mz_compressBound(64 KiB) (~70.6 KiB).
@@ -80,7 +80,7 @@ static ra8_vmem_key_t s_shp_keys[k_shp_frame_count];
 static int32_t s_shp_buckets[k_shp_bucket_count];
 
 /** @brief The open book's chunk reader (unbound when no rabook is open). */
-static ra8_book_chunked_t s_shp_rd;
+static book_chunked_t s_shp_rd;
 
 /** @brief Single-slot object registry: object 0 is the open book. */
 static ra8_vsource_obj_t s_shp_obj;
@@ -88,7 +88,7 @@ static ra8_vsource_obj_t s_shp_obj;
 /** @brief Source registry fronting ::s_shp_obj. */
 static ra8_vsource_t s_shp_vs;
 
-/** @brief The page cache the bound ::ra8_book_src_t reads through. */
+/** @brief The page cache the bound ::book_src_t reads through. */
 static ra8_vmem_t s_shp_vm;
 
 /**
@@ -107,6 +107,7 @@ static sh_paged_mram_t s_shp_mram;
 static const char* const s_shp_tag = "sh_paged";
 
 /** @brief ra8_vsource_read_fn over a memory-mapped (MRAM) container blob. */
+/* cppcheck-suppress constParameterCallback -- ra8_vsource_read_fn fixes this callback's context type as void*. */
 static ra8_err_t sh_paged_mram_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
 {
   RA8_CHECK_NULL_PTR(ctx, s_shp_tag, "mram: null ctx");
@@ -134,27 +135,27 @@ static bool sh_paged_extent_ok(uint32_t off, uint32_t count, uint32_t elem, uint
  * @details Checks the magic, format version, that the header's `total_size`
  *          equals the container's inflated total, and that every table/pool
  *          extent lies inside the blob -- the same shape checks
- *          ra8_book_validate() runs, minus its body CRC-32. Verifying that CRC
+ *          book_validate() runs, minus its body CRC-32. Verifying that CRC
  *          here would fault every chunk in (a full-book read), which is exactly
  *          what always-paging avoids, so it is honestly NOT checked in this
  *          mode: integrity is instead carried by the RBKC geometry checks at
  *          open, the zlib Adler-32 that sh_inflate/tinfl verifies on EVERY
  *          chunk as it faults in, and the exact inflated-span check in
- *          ra8_book_chunked_read.
+ *          book_chunked_read.
  */
-static bool sh_paged_hdr_ok(const ra8_book_header_t* hdr, uint64_t inflated_total)
+static bool sh_paged_hdr_ok(const book_header_t* hdr, uint64_t inflated_total)
 {
   const char k_magic[8] = {'R', 'A', 'B', 'O', 'O', 'K', '1', '\0'};
   if (memcmp(hdr->magic, k_magic, sizeof k_magic) != 0) {
     return false;
   }
-  if (hdr->format_version != (uint32_t)k_ra8_book_format_version) {
+  if (hdr->format_version != (uint32_t)k_book_format_version) {
     return false;
   }
   if ((uint64_t)hdr->total_size != inflated_total) {
     return false;
   }
-  if (hdr->total_size < (uint32_t)sizeof(ra8_book_header_t)) {
+  if (hdr->total_size < (uint32_t)sizeof(book_header_t)) {
     return false;
   }
   const struct {
@@ -162,11 +163,11 @@ static bool sh_paged_hdr_ok(const ra8_book_header_t* hdr, uint64_t inflated_tota
     uint32_t count; /**< Element count (or bytes).   */
     uint32_t elem;  /**< Element size (1 for pools). */
   } k_ext[] = {
-    {hdr->chapter_off, hdr->chapter_count, (uint32_t)sizeof(ra8_book_chapter_t)},
-    {hdr->node_off, hdr->node_count, (uint32_t)sizeof(ra8_book_node_t)},
-    {hdr->attr_off, hdr->attr_count, (uint32_t)sizeof(ra8_book_attr_t)},
-    {hdr->stylesheet_off, hdr->stylesheet_count, (uint32_t)sizeof(ra8_book_stylesheet_t)},
-    {hdr->image_off, hdr->image_count, (uint32_t)sizeof(ra8_book_image_t)},
+    {hdr->chapter_off, hdr->chapter_count, (uint32_t)sizeof(book_chapter_t)},
+    {hdr->node_off, hdr->node_count, (uint32_t)sizeof(book_node_t)},
+    {hdr->attr_off, hdr->attr_count, (uint32_t)sizeof(book_attr_t)},
+    {hdr->stylesheet_off, hdr->stylesheet_count, (uint32_t)sizeof(book_stylesheet_t)},
+    {hdr->image_off, hdr->image_count, (uint32_t)sizeof(book_image_t)},
     {hdr->string_off, hdr->string_size, 1U},
     {hdr->image_pool_off, hdr->image_pool_size, 1U},
   };
@@ -186,7 +187,7 @@ static bool sh_paged_bind(void)
   }
   uint32_t oid = 0U;
   if (ra8_vsource_add_paged(&s_shp_vs,
-                            ra8_book_chunked_read,
+                            book_chunked_read,
                             &s_shp_rd,
                             0U,
                             s_shp_rd.inflated_total,
@@ -209,11 +210,11 @@ static bool sh_paged_bind(void)
     return false;
   }
   /* Binding reads the 100-byte header through the cache (faults chunk 0 in). */
-  if (ra8_book_src_paged(&g_sh.book_src,
-                         &s_shp_vm,
-                         oid,
-                         (uint32_t)k_shp_frame_bytes,
-                         (uint32_t)s_shp_rd.inflated_total) != k_ra8_ok) {
+  if (book_src_paged(&g_sh.book_src,
+                     &s_shp_vm,
+                     oid,
+                     (uint32_t)k_shp_frame_bytes,
+                     (uint32_t)s_shp_rd.inflated_total) != k_ra8_ok) {
     return false;
   }
   return sh_paged_hdr_ok(&g_sh.book_src.hdr, s_shp_rd.inflated_total);
@@ -225,21 +226,21 @@ bool sh_paged_open(ra8_vsource_read_fn file_read, void* file_ctx, uint64_t file_
    * has already torn the old book down (sh_book_open), and a full close would
    * wipe the MRAM context / close the SD file that @p file_read is about to
    * read from. The failure paths below do close, releasing the SD backing. */
-  g_sh.book_src = (ra8_book_src_t){};
-  s_shp_rd      = (ra8_book_chunked_t){};
+  g_sh.book_src = (book_src_t){};
+  s_shp_rd      = (book_chunked_t){};
   if ((file_read == nullptr) || (file_len == 0U)) {
     sh_paged_close();
     return false;
   }
-  if (ra8_book_chunked_open(&s_shp_rd,
-                            file_read,
-                            file_ctx,
-                            file_len,
-                            sh_inflate,
-                            s_shp_table,
-                            (uint32_t)k_shp_table_entries,
-                            s_shp_staging,
-                            (uint32_t)k_shp_staging_bytes) != k_ra8_ok) {
+  if (book_chunked_open(&s_shp_rd,
+                        file_read,
+                        file_ctx,
+                        file_len,
+                        sh_inflate,
+                        s_shp_table,
+                        (uint32_t)k_shp_table_entries,
+                        s_shp_staging,
+                        (uint32_t)k_shp_staging_bytes) != k_ra8_ok) {
     sh_paged_close();
     return false;
   }
@@ -250,7 +251,7 @@ bool sh_paged_open(ra8_vsource_read_fn file_read, void* file_ctx, uint64_t file_
     sh_paged_close();
     return false;
   }
-  /* ra8_book_src_t carries a uint32 size; the table budget already caps books
+  /* book_src_t carries a uint32 size; the table budget already caps books
    * at 64 MiB, so this guard is belt-and-braces against a lying header. */
   if (s_shp_rd.inflated_total > (uint64_t)UINT32_MAX) {
     sh_paged_close();
@@ -277,8 +278,8 @@ bool sh_paged_open_mram(const uint8_t* blob, uint32_t blob_len)
 
 void sh_paged_close(void)
 {
-  g_sh.book_src = (ra8_book_src_t){};
-  s_shp_rd      = (ra8_book_chunked_t){};
+  g_sh.book_src = (book_src_t){};
+  s_shp_rd      = (book_chunked_t){};
   s_shp_mram    = (sh_paged_mram_t){};
   sh_sd_book_close(); /* release the held SD file handle, if any */
 }

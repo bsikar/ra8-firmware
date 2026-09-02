@@ -43,9 +43,19 @@ typedef enum : uint32_t {
   k_priv_zip_comment_offset = 20U,    /**< Comment-length field offset in EOCD.  */
 } priv_zip_preflight_t;
 
+/** @brief Classic ZIP EOCD signature bytes. */
+typedef enum : uint8_t {
+  k_priv_zip_sig_p     = 0x50U, /**< ASCII P.                */
+  k_priv_zip_sig_k     = 0x4BU, /**< ASCII K.                */
+  k_priv_zip_sig_eocd  = 0x05U, /**< EOCD record identifier. */
+  k_priv_zip_sig_fixed = 0x06U, /**< EOCD fixed suffix.      */
+} priv_zip_signature_t;
+
 /** @brief Classic ZIP end-of-central-directory signature bytes. */
-static const uint8_t s_zip_eocd_signature[k_priv_zip_sig_bytes] =
-  {0x50U, 0x4BU, 0x05U, 0x06U}; /* MAGIC-OK: fixed ZIP EOCD signature bytes. */
+static const uint8_t s_zip_eocd_signature[k_priv_zip_sig_bytes] = {k_priv_zip_sig_p,
+                                                                   k_priv_zip_sig_k,
+                                                                   k_priv_zip_sig_eocd,
+                                                                   k_priv_zip_sig_fixed};
 
 ra8_decomp_limits_t ra8_decomp_limits_default(void)
 {

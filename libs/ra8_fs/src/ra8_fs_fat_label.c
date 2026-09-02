@@ -186,7 +186,7 @@ static ra8_err_t internal_fat_find_vol_id(const ra8_fs_mount_t* m,
     }
     err = priv_dir_walk_next_sector(m, &w, &eod);
     if (err != k_ra8_ok) {
-      return err; /* GCOVR_EXCL_LINE -- FAT12/16 fixed-root walk_next cannot error */
+      return err;
     }
   }
   return k_ra8_err_not_found;
@@ -243,10 +243,10 @@ internal_fat_find_free_root(const ra8_fs_mount_t* m, uint64_t* out_lba, uint32_t
     }
     err = priv_dir_walk_next_sector(m, &w, &eod);
     if (err != k_ra8_ok) {
-      return err; /* GCOVR_EXCL_LINE -- FAT12/16 fixed-root walk_next cannot error */
+      return err;
     }
   }
-  return k_ra8_err_no_mem; /* GCOVR_EXCL_LINE -- needs a full 512-entry root */
+  return k_ra8_err_no_mem;
 }
 
 /**
@@ -508,7 +508,8 @@ static ra8_err_t internal_set_label_fat(const ra8_fs_mount_t* m, const char* lab
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t internal_get_label_locked(ra8_fs_mount_t* handle, char* out, uint32_t out_len)
+static ra8_err_t
+internal_get_label_locked(const ra8_fs_mount_t* handle, char* out, uint32_t out_len)
 {
   if (handle == nullptr || out == nullptr) {
     return k_ra8_err_null_ptr;
@@ -534,7 +535,7 @@ static ra8_err_t internal_get_label_locked(ra8_fs_mount_t* handle, char* out, ui
  *          ::ra8_fs_set_label brackets this with the library lock; the full
  *          contract is documented there.
  *
- * @param[in,out] handle Mount handle.
+ * @param[in] handle Mount handle.
  * @param[in]     label  New label (<= 11 characters), or NULL / "" to clear it.
  *
  * @return Error code.
@@ -558,7 +559,7 @@ static ra8_err_t internal_get_label_locked(ra8_fs_mount_t* handle, char* out, ui
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t internal_set_label_locked(ra8_fs_mount_t* handle, const char* label)
+static ra8_err_t internal_set_label_locked(const ra8_fs_mount_t* handle, const char* label)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -581,7 +582,7 @@ static ra8_err_t internal_set_label_locked(ra8_fs_mount_t* handle, const char* l
  */
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t ra8_fs_get_label(ra8_fs_mount_t* handle, char* out, uint32_t out_len)
+ra8_err_t ra8_fs_get_label(const ra8_fs_mount_t* handle, char* out, uint32_t out_len)
 {
   priv_lock_acquire();
   const ra8_err_t err = internal_get_label_locked(handle, out, out_len);
@@ -590,7 +591,7 @@ ra8_err_t ra8_fs_get_label(ra8_fs_mount_t* handle, char* out, uint32_t out_len)
 }
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t ra8_fs_set_label(ra8_fs_mount_t* handle, const char* label)
+ra8_err_t ra8_fs_set_label(const ra8_fs_mount_t* handle, const char* label)
 {
   priv_lock_acquire();
   const ra8_err_t err = internal_set_label_locked(handle, label);

@@ -3,14 +3,15 @@
 # Copyright (c) 2026 Brighton Sikarskie
 # shellcheck shell=bash
 #
-# scripts/ci/lib/snapshot.sh -- materialise the tree a suite run is gating, and
-# run the suite inside it.
+# scripts/ci/lib/snapshot.sh -- materialise committed HEAD for ordinary suites
+# and run the suite inside it. The pre-commit candidate transport is deliberately
+# self-contained in scripts/git/pre-commit and never sources this live file.
 #
 # SOURCED, NEVER EXECUTED. Split out of scripts/ci.sh because that file is THE
 # gate registry: what a gate checks belongs there, and HOW the tree under test
 # comes into existence is mechanism, the same way scripts/ci/lib/container.sh
-# holds the transport. Splitting it is also what keeps ci.sh under the tree's
-# 1000-line cap with room to grow.
+# holds the transport. This file only owns clean committed-HEAD snapshots;
+# splitting it also keeps ci.sh under the tree's 1000-line cap.
 #
 # It pairs with scripts/ci/lib/abort.sh, which owns that snapshot's LIFECYCLE:
 # who may delete it, what happens when the run is signalled, and the guard that
@@ -22,7 +23,6 @@
 # through four call sites would buy an explicit contract that only restates
 # where the runner already runs. The one shellcheck directive below records it.
 # shellcheck disable=SC2154  # REPO_ROOT / RA8_CI_* come from scripts/ci.sh, the only thing that sources this file.
-
 # Run the suite against a CLEAN snapshot of committed HEAD -- exactly what CI
 # checks out. A working tree carries gitignored in-source build dirs whose
 # CMake-generated junk makes clang-format / cppcheck / check_magic_numbers
@@ -56,26 +56,74 @@
 # Surfaced by the SBOM integrity digest (#538) -- the first gate whose verdict
 # depends on the file set being COMPLETE rather than merely large.
 #
-# `read-tree` + `checkout-index` writes HEAD's tree and nothing else, with no
-# attribute filtering and no dependence on the working tree being clean.
-# GIT_LFS_SKIP_SMUDGE=1 still emits the e-reader content-library epub LFS pointers as-is
-# (no gate reads them, so no LFS object or network fetch is needed).
-materialise_head_snapshot() {
-  local work="$1"
-  GIT_LFS_SKIP_SMUDGE=1 GIT_INDEX_FILE="$work.index" \
-    git -C "$REPO_ROOT" read-tree HEAD
-  GIT_LFS_SKIP_SMUDGE=1 GIT_INDEX_FILE="$work.index" \
-    git -C "$REPO_ROOT" checkout-index --all --prefix="$work/"
-  rm -f "$work.index"
+# A fresh private repository reads HEAD's objects through a read-only alternate.
+# Its empty local config means committed built-in attributes (including eol)
+# retain normal checkout semantics while source/global filter drivers, hooks,
+# templates, and fsmonitor helpers do not exist in the materialising repository.
+# GIT_LFS_SKIP_SMUDGE=1 leaves the e-reader content-library epub LFS pointers
+# as-is (no gate reads them, so no LFS object or network fetch is needed).
+install_snapshot_git_environment() {
+  local next
+  install_sanitized_git_environment
+
+  # The sanitized contract intentionally ignores every host Git config.  When
+  # host mode runs as root, explicitly trust only the two read-only repository
+  # mounts selected by the container boundary; otherwise Git refuses them on
+  # ownership before the snapshot can prove its fidelity.
+  next="$GIT_CONFIG_COUNT"
+  export "GIT_CONFIG_KEY_${next}=safe.directory"
+  export "GIT_CONFIG_VALUE_${next}=$REPO_ROOT"
+  next=$((next + 1))
+  if [[ -n "${RA8_CI_GIT_COMMON_DIR:-}" ]]; then
+    export "GIT_CONFIG_KEY_${next}=safe.directory"
+    export "GIT_CONFIG_VALUE_${next}=$RA8_CI_GIT_COMMON_DIR"
+    next=$((next + 1))
+  fi
+  export GIT_CONFIG_COUNT="$next"
+}
+
+materialise_head_snapshot() (
+  local work="$1" source_head source_objects template expected_tree actual_tree
+  install_snapshot_git_environment
+  source_head="$("$RA8_TRUSTED_GIT" -C "$REPO_ROOT" -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null rev-parse --verify HEAD)"
+  source_objects="$("$RA8_TRUSTED_GIT" -C "$REPO_ROOT" -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null rev-parse --path-format=absolute --git-path objects)"
+  expected_tree="$("$RA8_TRUSTED_GIT" -C "$REPO_ROOT" -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null rev-parse "$source_head^{tree}")"
+
+  template="${work}.empty-template"
+  mkdir -p "$work" "$template"
+  "$RA8_TRUSTED_GIT" -C "$work" -c init.templateDir="$template" init --quiet
+  rm -rf -- "$template"
+  mkdir -p "$work/.git/objects/info"
+  printf '%s\n' "$source_objects" >"$work/.git/objects/info/alternates"
+  "$RA8_TRUSTED_GIT" -C "$work" -c core.fsmonitor=false -c core.hooksPath=/dev/null \
+    update-ref HEAD "$source_head"
+  "$RA8_TRUSTED_GIT" -C "$work" -c core.fsmonitor=false -c core.hooksPath=/dev/null \
+    read-tree "$source_head"
+  GIT_LFS_SKIP_SMUDGE=1 "$RA8_TRUSTED_GIT" -C "$work" -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
+    checkout-index --all
   # Several gates shell out to git (ls-files, rev-list), so the snapshot needs
-  # to be a repository. One synthetic commit of the extracted tree is enough
-  # and keeps the snapshot independent of the host object store.
-  git -C "$work" init --quiet
+  # a self-contained object store. Force-add tracked ignored paths, then prove
+  # the built-in checkout/clean round trip recreates the exact source tree.
   # -f, because HEAD legitimately tracks files that .gitignore matches. Without
   # it those 404 vendored files are dropped from the snapshot's index and the
   # snapshot stops being HEAD -- the second mechanism above.
-  git -C "$work" add -A -f
-}
+  "$RA8_TRUSTED_GIT" -C "$work" -c core.fsmonitor=false -c core.hooksPath=/dev/null \
+    -c core.attributesFile=/dev/null add -A -f
+  actual_tree="$("$RA8_TRUSTED_GIT" -C "$work" -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null write-tree)"
+  [[ "$actual_tree" == "$expected_tree" ]] || {
+    echo "ERROR: strict snapshot materialisation changed HEAD tree bytes." >&2
+    return 1
+  }
+  # Leave HEAD unborn so prepare_head_snapshot can create one independent root
+  # commit instead of reporting that the source commit's tree has no changes.
+  "$RA8_TRUSTED_GIT" -C "$work" -c core.fsmonitor=false -c core.hooksPath=/dev/null \
+    update-ref -d HEAD
+)
 
 # Assert the snapshot's tracked file set is EXACTLY HEAD's.
 #
@@ -94,30 +142,31 @@ materialise_head_snapshot() {
 # snapshot side stays `ls-files` because that index was just built from HEAD by
 # materialise_head_snapshot and is what the gates enumerate.
 _snapshot_head_paths() {
-  git -C "$REPO_ROOT" ls-tree -r --name-only HEAD
+  "$RA8_TRUSTED_GIT" -C "$REPO_ROOT" ls-tree -r --name-only HEAD
 }
 
-snapshot_fidelity_check() {
+snapshot_fidelity_check() (
+  install_snapshot_git_environment
   local work="$1" head_n snap_n missing extra
   head_n="$(_snapshot_head_paths | wc -l | tr -d ' ')"
-  snap_n="$(git -C "$work" ls-files | wc -l | tr -d ' ')"
+  snap_n="$("$RA8_TRUSTED_GIT" -C "$work" ls-files | wc -l | tr -d ' ')"
   if [[ "$head_n" == "$snap_n" ]]; then
     echo "==> snapshot: $snap_n tracked path(s), identical to HEAD" >&2
     return 0
   fi
   missing="$(comm -23 \
     <(_snapshot_head_paths | sort) \
-    <(git -C "$work" ls-files | sort) | head -5)"
+    <("$RA8_TRUSTED_GIT" -C "$work" ls-files | sort) | head -5)"
   extra="$(comm -13 \
     <(_snapshot_head_paths | sort) \
-    <(git -C "$work" ls-files | sort) | head -5)"
+    <("$RA8_TRUSTED_GIT" -C "$work" ls-files | sort) | head -5)"
   echo "ERROR: the snapshot is not HEAD -- $snap_n path(s) vs $head_n." >&2
   echo "       Every gate that enumerates with \`git ls-files\` would scan a" >&2
   echo "       different tree than CI does, and report success over it." >&2
   _snapshot_report_paths "missing" "$missing"
   _snapshot_report_paths "extra" "$extra"
   return 1
-}
+)
 
 # Print an indented sample of paths under a heading, or nothing when empty.
 _snapshot_report_paths() {
@@ -154,8 +203,11 @@ prepare_head_snapshot() {
   # The snapshot exists and is HEAD. Seal it: from here every gate dispatch is
   # preconditioned on it still being there.
   ci_snapshot_seal
-  git -C "$work" -c user.email=ci@localhost -c user.name=ci \
-    commit --quiet --no-verify -m "ci.sh snapshot of HEAD" >/dev/null 2>&1 || true
+  (
+    install_snapshot_git_environment
+    "$RA8_TRUSTED_GIT" -C "$work" -c user.email=ci@localhost -c user.name=ci \
+      commit --quiet --no-verify -m "ci.sh snapshot of HEAD" >/dev/null
+  )
   # That snapshot has ONE synthetic commit and none of the host's objects, so
   # commit messages simply are not in it -- a tree copy carries no history.
   # Point the message-scanning gates back at the real repository; everything
@@ -175,7 +227,7 @@ prepare_head_snapshot() {
 # built MC/DC, even though each gate passed alone.
 #
 # This is deliberately restricted to the owned, disposable HEAD snapshot.
-# `bash scripts/ci.sh --gate <name>` and direct make targets run in place and
+# `just quality::local::gate <name>` and direct Just recipes run in place and
 # retain developers' incremental trees. Exact relative paths plus the owner
 # and cwd checks keep this from ever becoming a broad checkout cleanup.
 RA8_CI_RECLAIM_BOUNDARIES=(
@@ -207,7 +259,9 @@ suite_reclaim_completed_builds() {
   local next_gate="$1" here rel
   local completed_builds=()
 
-  mapfile -t completed_builds < <(suite_reclaim_targets "$next_gate")
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && completed_builds+=("$line")
+  done < <(suite_reclaim_targets "$next_gate")
   [[ "${#completed_builds[@]}" -gt 0 ]] || return 0
   [[ -n "$RA8_CI_SNAPSHOT_DIR" ]] || return 0
   if [[ "$BASHPID" != "$RA8_CI_SNAPSHOT_OWNER" ]]; then
@@ -234,7 +288,9 @@ suite_reclaim_completed_builds() {
 suite_build_lifecycle_boundary_selftest() {
   local probe="$1" boundary="$2" rel rc=0 failures=0
   local targets=()
-  mapfile -t targets < <(suite_reclaim_targets "$boundary")
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && targets+=("$line")
+  done < <(suite_reclaim_targets "$boundary")
   if [[ "${#targets[@]}" -eq 0 ]]; then
     echo "ERROR: lifecycle boundary $boundary has no cleanup targets." >&2
     return 1
@@ -273,6 +329,10 @@ suite_build_lifecycle_boundary_selftest() {
 suite_build_lifecycle_selftest() {
   local probe boundary failures=0
   probe="$(mktemp -d "${TMPDIR:-/tmp}/ra8-storage-probe.XXXXXXXX")"
+  # macOS exposes /var as a symlink to /private/var. The cleanup guard compares
+  # against `pwd -P`, so retain that same physical spelling here rather than
+  # rejecting the self-test's own, correctly-owned temporary directory.
+  probe="$(cd "$probe" && pwd -P)"
   if [[ "${#RA8_CI_RECLAIM_BOUNDARIES[@]}" -lt 5 ]]; then
     echo "ERROR: suite build lifecycle boundary set collapsed below its floor." >&2
     failures=1
@@ -315,13 +375,20 @@ suite_build_lifecycle_selftest() {
 # regression test for it.
 run_suite_on_snapshot() {
   local fast="$1" only="${2:-}" work rc=0
-  if [[ -n "$(git -C "$REPO_ROOT" status --porcelain 2>/dev/null)" ]]; then
+  if [[ -n "$("$RA8_TRUSTED_GIT" -C "$REPO_ROOT" status --porcelain 2>/dev/null)" ]]; then
     echo "NOTE: working tree is dirty -- ci.sh gates committed HEAD only (like" >&2
     echo "      CI). Commit your changes to have them gated." >&2
   fi
   work="$(mktemp -d "${TMPDIR:-/tmp}/ra8-ci-snapshot.XXXXXXXX")"
+  # Keep ownership and the later `pwd -P` safety check in one path namespace.
+  # This matters on hosts such as macOS where /var is a symlink.
+  work="$(cd "$work" && pwd -P)"
   prepare_head_snapshot "$work"
   cd "$work"
+  # From this point until the suite returns, every Git query belongs to the
+  # synthetic snapshot. Hook-exported routing would override both this cwd and
+  # every `git -C` the gates use, putting the caller's index back in scope.
+  install_snapshot_git_environment
   set +e
   # ONE gate, or the suite -- same snapshot, and deliberately inside the same
   # errexit discipline rather than in a second function: a `||` or an `if`

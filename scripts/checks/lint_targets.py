@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -49,6 +50,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # the sibling gates' EXCLUDE_FRAGMENTS.
 EXCLUDED_PREFIXES = (
     "libs/third_party/",
+    "apps/shared_libs/third_party/",
     "libs/ra8_fonts/",
     "tools/vela/generated/",
 )
@@ -155,14 +157,15 @@ SUFFIX_LANG = {
     ".yml": "yaml",
     ".yaml": "yaml",
     ".mk": "make",
+    ".just": "just",
     ".ld": "ld",
 }
 
 # Exact basenames that carry no suffix but are unambiguously one language.
 BASENAME_LANG = {
     "CMakeLists.txt": "cmake",
-    "Makefile": "make",
-    "GNUmakefile": "make",
+    "justfile": "just",
+    "Justfile": "just",
 }
 
 # Directories whose extensionless executables are shell by construction. The
@@ -177,7 +180,7 @@ SHEBANG_LANG = {
     "python3": "python",
 }
 
-LANGUAGES = ("c", "python", "shell", "cmake", "yaml", "make", "ld")
+LANGUAGES = ("c", "python", "shell", "cmake", "yaml", "just", "ld")
 
 
 def is_build_output_path(path: object) -> bool:
@@ -197,7 +200,15 @@ def is_build_output_path(path: object) -> bool:
 
 
 def _tracked() -> list[str]:
-    """Tracked plus untracked-but-not-ignored paths, from git itself."""
+    """Existing tracked plus untracked-but-not-ignored paths, from git itself.
+
+    ``git ls-files --cached`` also prints tracked paths deleted in the working
+    tree.  Those are part of the index until the next commit, but they are not
+    lint targets: passing them to a formatter makes every local check fail with
+    ``ENOENT`` during an ordinary deletion.  Filter on filesystem existence so
+    working-tree checks describe the tree that is actually present; committed
+    CI snapshots are unchanged by this distinction.
+    """
     proc = subprocess.run(
         [  # noqa: S607 -- trusted: fixed git argv
             "git",
@@ -216,7 +227,7 @@ def _tracked() -> list[str]:
         sys.stderr.write(proc.stderr)
         sys.stderr.write("lint_targets.py: FATAL -- `git ls-files` failed\n")
         sys.exit(2)
-    return [rel for rel in proc.stdout.split("\0") if rel]
+    return [rel for rel in proc.stdout.split("\0") if rel and (REPO_ROOT / rel).is_file()]
 
 
 def _excluded(rel: str, lang: str | None = None) -> bool:
@@ -348,7 +359,7 @@ def first_party_paths(
 #
 # Top-level roots used to classify build domain on their own: examples/ and
 # port/ were firmware, tests/ and tools/ were hosted. apps/ -- the products
-# tier -- breaks that, because it carries BOTH kinds. The media_dl CLI is a
+# tier -- breaks that, because it carries BOTH kinds. The mdl CLI is a
 # host program the C runtime starts and whose exit status something reads; the
 # e-reader is a two-image TrustZone composition reached from Reset_Handler,
 # with no process and no exit status. "It lives under apps/" answers nothing.
@@ -399,8 +410,54 @@ def firmware_app_dirs(paths: list[str] | None = None) -> tuple[str, ...]:
         if name.endswith(_IMAGE_MARKER_SUFFIX):
             scripts.add(head)
         elif name == _IMAGE_MARKER_NAME:
-            vectors.add(head)
+            app_dir, separator, leaf = head.rpartition("/")
+            if separator and leaf == "src":
+                vectors.add(app_dir)
     return tuple(sorted(scripts & vectors))
+
+
+def selftest() -> int:
+    """Prove source classification includes tricky code and excludes real outputs/SOUP."""
+    with tempfile.TemporaryDirectory(prefix="lint-targets-selftest-") as raw:
+        root = Path(raw)
+        hook = root / "scripts/git/pre-commit"
+        hook.parent.mkdir(parents=True)
+        hook.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="ascii")
+        cases = (
+            (language_of("scripts/git/pre-commit", root) == "shell", "shebang-only hook is shell"),
+            (
+                language_of("internal/build/helper.sh", root) == "shell",
+                "source build dir is visible",
+            ),
+            (is_build_output("tools/demo/build/object.o"), "tool build output is excluded"),
+            (
+                not is_build_output("internal/build/helper.sh"),
+                "non-product build directory is not output",
+            ),
+            (
+                language_of("port/threadx/src/vendor.c", root) is None,
+                "language-specific vendored C is excluded",
+            ),
+            (
+                firmware_app_dirs(
+                    [
+                        "apps/board/reader/linker.ld",
+                        "apps/board/reader/src/vector_table.c",
+                        "apps/host/tool/linker.ld",
+                    ]
+                )
+                == ("apps/board/reader",),
+                "firmware product needs linker and vector markers",
+            ),
+        )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"lint_targets.py --selftest: {len(failed)} failure(s)", file=sys.stderr)
+        return 1
+    print("lint_targets.py --selftest: all cases pass (both directions).")
+    return 0
 
 
 def main(argv: list[str]) -> int:
@@ -414,10 +471,15 @@ def main(argv: list[str]) -> int:
     Returns 0 with the paths on stdout, 1 on an unknown or empty language.
     """
     args = argv[1:]
-    if "--list" in args:
+    if args == ["--selftest"]:
+        return selftest()
+    if args == ["--list"]:
         print("\n".join(LANGUAGES))
         return 0
-    requested = tuple(a for a in args if not a.startswith("-")) or LANGUAGES
+    if any(arg.startswith("-") for arg in args):
+        sys.stderr.write("usage: lint_targets.py [--list|--selftest|LANGUAGE ...]\n")
+        return 2
+    requested = tuple(args) or LANGUAGES
     unknown = [lang for lang in requested if lang not in LANGUAGES]
     if unknown:
         sys.stderr.write(f"lint_targets.py: unknown language(s): {unknown}\n")

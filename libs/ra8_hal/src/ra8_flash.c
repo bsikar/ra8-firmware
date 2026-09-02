@@ -44,6 +44,7 @@
 #include "ra8_err.h"
 #include "ra8_flash_internal.h"
 #include "ra8_flash_regs.h"
+#include "ra8_hw_err.h"
 #include "ra8_log.h"
 
 const char* g_flash_tag = "FLASH";
@@ -91,11 +92,10 @@ ra8_flash_runtime_t g_flash_rt = {};
  */
 RA8_INTERNAL static ra8_err_t internal_wait_buffer_ready(uint32_t limit)
 {
-  for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < limit; ++i) {
     /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
     const uint8_t s = *ra8_mram_reg8(k_ra8_mram_off_mrcps);
-    if (((s & k_ra8_mrcps_mask_prgbsyc) == 0U) &&
-        ((s & k_ra8_mrcps_mask_abuffull) == 0U)) { /* GCOVR_EXCL_BR_LINE */
+    if (((s & k_ra8_mrcps_mask_prgbsyc) == 0U) && ((s & k_ra8_mrcps_mask_abuffull) == 0U)) {
       return k_ra8_ok;
     }
   }
@@ -147,11 +147,10 @@ ra8_err_t priv_ra8_flash_internal_wait_buffer_ready_call(uint32_t limit)
  */
 RA8_INTERNAL static ra8_err_t internal_wait_commit_done(uint32_t limit)
 {
-  for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < limit; ++i) {
     /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
     const uint8_t s = *ra8_mram_reg8(k_ra8_mram_off_mrcps);
-    if (((s & k_ra8_mrcps_mask_abufemp) != 0U) &&
-        ((s & k_ra8_mrcps_mask_prgbsyc) == 0U)) { /* GCOVR_EXCL_BR_LINE */
+    if (((s & k_ra8_mrcps_mask_abufemp) != 0U) && ((s & k_ra8_mrcps_mask_prgbsyc) == 0U)) {
       return k_ra8_ok;
     }
   }
@@ -203,10 +202,10 @@ ra8_err_t priv_ra8_flash_internal_wait_commit_done_call(uint32_t limit)
  */
 ra8_err_t priv_ra8_flash_internal_wait_mrdy(uint32_t limit)
 {
-  for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < limit; ++i) {
     /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3568 */
     const uint32_t s = *ra8_mram_reg32(k_ra8_mram_off_mstatr);
-    if ((s & k_ra8_mstatr_mask_mrdy) != 0U) { /* GCOVR_EXCL_BR_LINE */
+    if ((s & k_ra8_mstatr_mask_mrdy) != 0U) {
       return k_ra8_ok;
     }
   }
@@ -711,15 +710,15 @@ ra8_flash_write_block(uint32_t mram_addr, const uint8_t* src, uint32_t len, ra8_
 {
   RA8_CHECK_NULL_PTR(src, g_flash_tag, "src must not be nullptr");
   const ra8_err_t v_err = internal_validate_write_block(mram_addr, len);
-  RA8_RETURN_ON_ERROR(v_err, g_flash_tag, "flash_write: validate"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, g_flash_tag, "flash_write: validate");
 
   /* Step 1: wait for the controller to be idle. */
   ra8_err_t err = internal_wait_buffer_ready(k_ra8_flash_busy_spin_limit);
-  RA8_RETURN_ON_ERROR(err, g_flash_tag, "flash_write: busy wait"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, g_flash_tag, "flash_write: busy wait");
 
   /* Steps 2-6: gate, write, flush, commit, teardown. */
   err = internal_flash_program_window(mram_addr, src, len, world);
-  RA8_RETURN_ON_ERROR(err, g_flash_tag, "flash_write: commit wait"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, g_flash_tag, "flash_write: commit wait");
 
   /* Step 7: error check.
    * HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
@@ -795,12 +794,17 @@ ra8_err_t ra8_flash_enter_pe_mode(void)
 {
   priv_ra8_flash_internal_set_prefetch(false);
   /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3571 */
-  *ra8_mram_reg16(k_ra8_mram_off_mentryr) = k_ra8_mentryr_pe_enter;
+  volatile uint16_t* const entry_reg = ra8_mram_reg16(k_ra8_mram_off_mentryr);
+  *entry_reg                         = k_ra8_mentryr_pe_enter;
 
-  for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) {
     /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3571 */
-    const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_mentryr);
-    if ((v & k_ra8_mentryr_mask_pe_mode) != 0U) { /* GCOVR_EXCL_BR_LINE */
+    const uint16_t v     = *entry_reg;
+    bool           ready = (v & k_ra8_mentryr_mask_pe_mode) != 0U;
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    ready = ra8_fake_mmio_poll(entry_reg, i, ready);
+#endif
+    if (ready) {
       return k_ra8_ok;
     }
   }
@@ -810,12 +814,17 @@ ra8_err_t ra8_flash_enter_pe_mode(void)
 ra8_err_t ra8_flash_exit_pe_mode(void)
 {
   /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3571 */
-  *ra8_mram_reg16(k_ra8_mram_off_mentryr) = k_ra8_mentryr_read_mode;
+  volatile uint16_t* const entry_reg = ra8_mram_reg16(k_ra8_mram_off_mentryr);
+  *entry_reg                         = k_ra8_mentryr_read_mode;
 
-  for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) {
     /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3571 */
-    const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_mentryr);
-    if ((v & k_ra8_mentryr_mask_pe_mode) == 0U) { /* GCOVR_EXCL_BR_LINE */
+    const uint16_t v     = *entry_reg;
+    bool           ready = (v & k_ra8_mentryr_mask_pe_mode) == 0U;
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    ready = ra8_fake_mmio_poll(entry_reg, i, ready);
+#endif
+    if (ready) {
       priv_ra8_flash_internal_set_prefetch(g_flash_rt.prefetch_on);
       return k_ra8_ok;
     }
@@ -829,12 +838,17 @@ ra8_err_t ra8_flash_suspend(void)
    * driving MENTRYR with the keyed pause pattern (KEY=0xAA, MENTRY=1,
    * PCKA=1) halts an in-flight MACI command at the next page
    * boundary.  Poll for PCKA=1 to confirm the pause. */
-  *ra8_mram_reg16(k_ra8_mram_off_mentryr) = k_ra8_mentryr_pe_pause;
+  volatile uint16_t* const entry_reg = ra8_mram_reg16(k_ra8_mram_off_mentryr);
+  *entry_reg                         = k_ra8_mentryr_pe_pause;
 
-  for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 59 "MENTRYR" p 3571 */                          /* +                  */
-    const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_mentryr);
-    if ((v & k_ra8_mentryr_mask_pcka) != 0U) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) {
+    /* HUM Ch 59 "MENTRYR" p 3571 */
+    const uint16_t v     = *entry_reg;
+    bool           ready = (v & k_ra8_mentryr_mask_pcka) != 0U;
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    ready = ra8_fake_mmio_poll(entry_reg, i, ready);
+#endif
+    if (ready) {
       return k_ra8_ok;
     }
   }
@@ -846,12 +860,17 @@ ra8_err_t ra8_flash_resume(void)
   /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" pp 3582+ --
    * resume key clears PCKA, leaving MENTRY=1 so programming continues.
    * Poll for PCKA=0 before returning. */
-  *ra8_mram_reg16(k_ra8_mram_off_mentryr) = k_ra8_mentryr_pe_resume;
+  volatile uint16_t* const entry_reg = ra8_mram_reg16(k_ra8_mram_off_mentryr);
+  *entry_reg                         = k_ra8_mentryr_pe_resume;
 
-  for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 59 "MENTRYR" p 3571 */                          /* +                  */
-    const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_mentryr);
-    if ((v & k_ra8_mentryr_mask_pcka) == 0U) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_flash_pe_spin_limit; ++i) {
+    /* HUM Ch 59 "MENTRYR" p 3571 */
+    const uint16_t v     = *entry_reg;
+    bool           ready = (v & k_ra8_mentryr_mask_pcka) == 0U;
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    ready = ra8_fake_mmio_poll(entry_reg, i, ready);
+#endif
+    if (ready) {
       return k_ra8_ok;
     }
   }

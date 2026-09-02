@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""gen_unarch_xz_fixture.py -- regenerate tests/unarch_xz_fixture.h.
+"""gen_unarch_xz_fixture.py -- regenerate the unarch XZ test fixture.
 
-The XZ decoder tests (tests/test_ra8_unarch_xz.c) need real .xz streams
+The XZ decoder tests (apps/shared_libs/unarch/tests/src/test_unarch_xz.c) need real .xz streams
 with controlled properties: integrity-check type (CRC32 / CRC64 / SHA-256),
 LZMA2 dictionary size, and compression ratio. Those bytes cannot be built
 portably at test runtime (the C tree has no XZ *encoder*), so this script
@@ -26,7 +26,7 @@ Fixture inventory (all payloads reproducible in C, see the header):
                    (1024:1 + 64 KiB grace) and must be rejected mid-decode.
   fx_xz_cbt        an XZ-wrapped ustar comic (two .png page members with
                    the payloads "PAGE-ONE" / "PAGE-TWO") for the
-                   ra8_comic_open_wrapped .tar.xz path.
+                   comic_open_wrapped .tar.xz path.
 
 Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
@@ -40,10 +40,10 @@ import tarfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-OUT_PATH = REPO_ROOT / "tests" / "unarch_xz_fixture.h"
+OUT_PATH = REPO_ROOT / "apps" / "shared_libs" / "unarch" / "tests" / "inc" / "unarch_xz_fixture.h"
 
 LCG_SEED = 0x12345678
-"""Seed of the payload LCG; tests/test_ra8_unarch_xz.c re-derives the
+"""Seed of the payload LCG; the unarch XZ test re-derives the
 payload with the same constants to verify decoded bytes."""
 
 LCG_MUL = 1103515245

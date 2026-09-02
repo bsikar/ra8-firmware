@@ -1,6 +1,6 @@
 # Software Quality Assurance Plan (SQAP)
 
-**Last refreshed**: 2026-05-03 (independence + HIL posture re-stated).
+**Last refreshed**: 2026-08-22 (test inventory and execution evidence refresh).
 
 **Status**: First draft, 2026-05-02. Populated during Phase 7 of
 `docs/QUALIFICATION_ROADMAP.md`. Subject to revision after the first
@@ -80,7 +80,7 @@ tools, all of which run on every commit and every PR:
 | Roadmap progress audit               | `scripts/report/roadmap_stats.py --check` (refuses stale ROADMAP summaries)       |
 | Pre-commit gate audit                | `scripts/git/pre-commit` exit status; CI mirror in `pre-commit-checks` job       |
 | Coding-standard audit                | `clang-format`, `clang-tidy`, `cppcheck`                                         |
-| MISRA-C 2012 process audit           | `make misra` quarterly + `docs/MISRA.md` baseline table                          |
+| MISRA-C 2012 process audit           | `just quality::local::misra` quarterly + `docs/MISRA.md` baseline table          |
 | World-tag (architecture) audit       | `scripts/checks/check_world_tags.py`                                              |
 | Obsolete-standards audit             | `scripts/checks/check_obsolete_standards.py` (rejects superseded safety-standard references) |
 | MC/DC vector pattern audit on tests  | `scripts/checks/check_mcdc_block.py`                                              |
@@ -100,11 +100,11 @@ Product audits are the periodic refresh of the gap registers:
 | Audit                  | Refresh tool / artifact                                                  | Cadence              |
 |------------------------|--------------------------------------------------------------------------|----------------------|
 | Doxygen completeness   | `scripts/checks/doxy_audit.py` -> `docs/DOXYGEN_GAPS.csv` + `docs/DOXYGEN_GAPS.md` | Per release    |
-| MC/DC coverage         | `make mcdc` -> `build/mcdc-report/summary.txt` + `docs/MCDC_GAPS.md`     | Per PR (CI) + per release |
-| MISRA conformance      | `make misra` -> `build/misra/results.txt` + `docs/MISRA_GAPS.csv`        | Quarterly            |
-| Stack usage            | `make stack-usage` -> `build/stack_usage.csv`                            | Per release          |
+| MC/DC coverage         | `just quality::local::mcdc` -> `build/mcdc-report/summary.txt` + `docs/MCDC_GAPS.md`     | Per PR (CI) + per release |
+| MISRA conformance      | `just quality::local::gate misra` -> `build/misra/results.txt` + `.github/misra-baseline.txt` ratchet | Quarterly |
+| Stack usage            | `just quality::local::stack_usage` -> `build/stack_usage.csv`                     | Per release          |
 | SOUP register          | Per-component review under `docs/SOUP/<name>.md`                         | At most 12 months per file |
-| Hardware-smoke results | `make smoke` -> `build/smoke/results.md`                                 | Developer-laptop pre-push (`docs/HIL_DEVELOPER_WORKFLOW.md`) |
+| Hardware-smoke results | `just hil::run` console/CI log + `/tmp/hil_all_*` diagnostics             | Pre-push or manual HIL workflow (`docs/HIL_DEVELOPER_WORKFLOW.md`) |
 
 The refresh cadence is the project's product-audit cadence. A stale
 gap register is itself a finding.
@@ -134,15 +134,21 @@ DO-178C 8.2.b "transition criteria audits" are interpreted in this
 project as the per-phase acceptance gates defined in
 `docs/QUALIFICATION_ROADMAP.md` Section 3:
 
-- Phase 1 -> 2: critical-path MC/DC at 100% (met).
-- Phase 2 -> 3: first-party reachable MC/DC at 100% (met.
-- Phase 3 -> 4: Doxygen audit clean (met -- 0 functions with gaps).
+- Phase 1 -> 2 and Phase 2 -> 3: MC/DC evidence must be restamped for the
+  release; the archived 2026-05 measurements do not qualify the migrated tree.
+- Phase 3 -> 4: Doxygen evidence must likewise be regenerated for release.
 - Phase 4 -> 5: MISRA audit stable modulo cppcheck-only policy
-  (`docs/CERTIFICATION_SCOPE.md`); D-001..D-010 cover the long tail.
-- Phase 5 -> 6: every EVM app has at least one host integration test
-  (25/26 today).
-- Phase 6 -> 7: HIL is developer-laptop pre-push, not a CI gate
-  (`docs/HIL_DEVELOPER_WORKFLOW.md`).
+  (`docs/CERTIFICATION_SCOPE.md`); D-001..D-012 are the active records, with
+  findings outside their exact scopes retained as ratchet-held code-change debt.
+- Phase 5 -> 6: bidirectional app/test trace remains pending. The retained
+  2026-08-22 snapshot measured 693 test sources and 689 registrations per clean
+  host OS, with 689/689 passing in the Linux/devcontainer gate in 8.66 s;
+  macOS was registration-only because low-address tests require
+  Linux/container execution. This dated evidence is not a current-tree census.
+- Phase 6 -> 7: the retained 118/118 RA8D2 build, selected 2/2 HIL run, and
+  remote-GDB lifecycle result are historical. The matrix is derived by
+  `scripts/dev/ra8_apps.py`; a current full-matrix build and full-fleet
+  execution remain pending.
 - Phase 7 -> close: planning + verification + accomplishment
   document set complete and refresh-stamped.
 
@@ -171,8 +177,8 @@ sequence and refuses the commit on any failure:
 6. `cppcheck` warning/style/performance/portability.
 7. `@since` Doxygen tag enforcement on public headers.
 8. Copyright + SPDX header enforcement.
-9. HUM citation validator (`cite_check.py --warn`).
-10. World-tag validator (`check_world_tags.py --warn`).
+9. HUM citation validator (`cite_check.py --strict`).
+10. World-tag validator (`check_world_tags.py --strict`).
 11. ROADMAP summary freshness (`roadmap_stats.py --check`, strict).
 12. Obsolete-standards reference scan (rejects superseded
     safety-standard references, strict).
@@ -192,7 +198,7 @@ merge on any failure:
 | `format`             | `clang-format --check`.                                                         |
 | `tidy`               | `clang-tidy --check`.                                                           |
 | `unit-tests`         | Host unit tests via ctest.                                                      |
-| `coverage`           | `gcovr` 90/90 line+branch gate.                                                 |
+| `coverage`           | Whole-tree gcovr gate (`just quality::gate::run coverage-tree`).                |
 | `mcdc`               | clang-18 `-fcoverage-mcdc` gate against `.github/mcdc-baseline.txt`.            |
 | `pre-commit-checks`  | Repository-wide mirror of the per-commit hook.                                  |
 | `build-discover`     | Enumerates example apps for matrix build.                                       |
@@ -242,7 +248,7 @@ before the SAS is signed. For this project:
 | CI run logs                     | GitHub Actions run history                                          | 90 days (GitHub default)             |
 | Coverage HTML report            | Uploaded by `coverage` job                                          | 14 days (configured retention)       |
 | MC/DC report                    | Uploaded by `mcdc` job                                              | 14 days (configured retention)       |
-| MISRA audit baseline            | `docs/MISRA.md` table + `docs/MISRA_GAPS.csv`                       | Versioned in git, indefinite         |
+| MISRA audit baseline            | `.github/misra-baseline.txt` + `docs/MISRA.md`                      | Versioned in git, indefinite         |
 | MC/DC measurement history       | `docs/MCDC.md` measurement-history table                            | Versioned in git, indefinite         |
 | Doxygen completeness gap list   | `docs/DOXYGEN_GAPS.csv` and `docs/DOXYGEN_GAPS.md`                  | Versioned in git, indefinite         |
 | Stack-usage report              | `build/stack_usage.csv` (regenerated) + `docs/STACK_USAGE.md` table | Tables versioned, raw rebuilt        |

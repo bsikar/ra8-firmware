@@ -187,8 +187,7 @@ ra8_err_t ra8_board_mipi_dsi_init(void)
    * k_ra8_board_mipi_dsi_backlight (P514) between init and clock start. */
   err = ra8_mipi_dsi_init(&s_mipi_panel_cfg);
   if (err != k_ra8_ok) {
-    /* ra8_mipi_dsi_init with a valid static cfg always returns k_ra8_ok in RA8_OFF_TARGET. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
 
   /* Step 3: kick the differential HS clock. After this returns the link
@@ -255,7 +254,7 @@ ra8_err_t ra8_board_uart_console_init(uint32_t baud)
   ra8_err_t err      = ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz);
   if (err != k_ra8_ok) {
     /* ra8_cgc_get_clock_hz with a valid clock-id and non-null out always returns k_ra8_ok. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err; /* GCOVR_EXCL_LINE -- fixed PCLKA id and nonnull local satisfy get_clock_hz's only guards */
   }
   if (pclka_hz < (uint32_t)k_ra8_board_uart_console_min_pclka_hz) {
     return k_ra8_err_not_initialized;
@@ -264,7 +263,6 @@ ra8_err_t ra8_board_uart_console_init(uint32_t baud)
   /* Route PD02 -> TXD8, PD03 -> RXD8 (UM Table 13 p 24). PSEL value
    * k_ra8_psel_sci_async = 0x04 covers SCI async TXD/RXD per the chip
    * HUM Multiplexed Pin Function Selector. */
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   err = ra8_pfs_route_peripheral((ra8_port_pin_t)k_ra8_board_uart_console_pin_txd,
                                  k_ra8_psel_sci_async,
                                  "ra8_board.uart.console.txd");
@@ -274,7 +272,6 @@ ra8_err_t ra8_board_uart_console_init(uint32_t baud)
   err = ra8_pfs_route_peripheral((ra8_port_pin_t)k_ra8_board_uart_console_pin_rxd,
                                  k_ra8_psel_sci_async,
                                  "ra8_board.uart.console.rxd");
-  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   if (err != k_ra8_ok) {
     return err;
   }
@@ -288,8 +285,7 @@ ra8_err_t ra8_board_uart_console_init(uint32_t baud)
   };
   err = ra8_sci_init((uint8_t)k_ra8_board_uart_console_sci_channel, &cfg);
   if (err != k_ra8_ok) {
-    /* ra8_sci_init on a valid channel with a non-null cfg always returns k_ra8_ok in RA8_OFF_TARGET. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   s_uart_console_initialized = true;
   return k_ra8_ok;

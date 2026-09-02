@@ -364,17 +364,28 @@ RA8_INTERNAL
 static void internal_fat_push(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, uint32_t clus)
 {
   if (stack->top >= (uint32_t)k_ra8_fs_check_max_dirs) {
-    /* GCOVR_EXCL_START -- a directory tree more than k_ra8_fs_check_max_dirs deep */
     if (stack->truncated == 0U) {
       stack->truncated = 1U;
       priv_check_fault(ctx, k_ra8_fs_check_fault_scan_truncated, clus, 0U, 0U);
     }
     return;
-    /* GCOVR_EXCL_STOP */
   }
   stack->items[stack->top].is_root = 0U;
   stack->items[stack->top].cluster = clus;
   stack->top++;
+}
+
+/* ra8_fs_check_test_fat_push_overflow(): see header for the test-only contract. */
+RA8_TEST_HELPER
+void ra8_fs_check_test_fat_push_overflow(ra8_fs_check_ctx_t* ctx,
+                                         uint32_t            cluster,
+                                         bool                already_truncated)
+{
+  fat_dir_stack_t stack = {
+    .top       = (uint32_t)k_ra8_fs_check_max_dirs,
+    .truncated = already_truncated ? 1U : 0U,
+  };
+  internal_fat_push(ctx, &stack, cluster);
 }
 
 /**
@@ -722,7 +733,7 @@ static ra8_err_t internal_fat_fsinfo(ra8_fs_check_ctx_t* ctx)
   uint8_t* const  boot = priv_sec_walk();
   const ra8_err_t be   = priv_read_sector(ctx->m, 0U, boot);
   if (be != k_ra8_ok) {
-    return be; /* GCOVR_EXCL_LINE -- boot-sector read failure */
+    return be;
   }
   const uint32_t lba = (uint32_t)priv_rd16(&boot[k_fmt_off_f32_fsinfo]);
   if ((lba == 0U) || (lba >= ctx->m->reserved_sectors)) {
@@ -731,7 +742,7 @@ static ra8_err_t internal_fat_fsinfo(ra8_fs_check_ctx_t* ctx)
   uint8_t* const  sec = priv_sec_walk();
   const ra8_err_t se  = priv_read_sector(ctx->m, lba, sec);
   if (se != k_ra8_ok) {
-    return se; /* GCOVR_EXCL_LINE -- FSInfo-sector read failure */
+    return se;
   }
   if (priv_rd32(&sec[k_fmt_fsi_off_lead]) != (uint32_t)k_fmt_fsi_lead_sig) {
     return k_ra8_ok;

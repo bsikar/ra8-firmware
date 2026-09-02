@@ -30,7 +30,9 @@ file(GLOB _ra8_fs_fat_tu_sources CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/ra8_
 # glob above misses it; the ra8_fs_fat*.c TUs call into it. Name it explicitly.
 list(APPEND _ra8_fs_fat_tu_sources ${_repo}/libs/ra8_fs/src/ra8_fs_utf.c)
 
-add_executable(exfat_mkimage ${CMAKE_CURRENT_SOURCE_DIR}/exfat_mkimage.c ${_ra8_fs_fat_tu_sources})
+add_executable(
+  exfat_mkimage ${CMAKE_CURRENT_SOURCE_DIR}/src/exfat_mkimage.c ${_ra8_fs_fat_tu_sources}
+)
 
 target_include_directories(
   exfat_mkimage PRIVATE ${_repo}/libs/ra8_fs/inc ${_repo}/libs/ra8_core/inc

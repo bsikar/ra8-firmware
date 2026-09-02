@@ -481,7 +481,6 @@ RA8_INTERNAL static void internal_long_shift_commit(uc_engine* uc, long_shift_pe
   slot->active = false;
 }
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 /**
  * @brief Perform on long shift for the emu seam longshift model.
  * @details Perform on long shift for the emu seam longshift model; this step is contained within the emu seam longshift model and uses bounded caller or module-owned storage.

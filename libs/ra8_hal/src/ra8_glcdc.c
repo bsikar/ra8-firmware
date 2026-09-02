@@ -205,10 +205,8 @@ static void internal_graphics_domain_power_on(void)
   for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     /* Host MMIO fault seam: tests drive the retry / exhaustion legs. */
-    if (ra8_fake_mmio_wait_eval(
-          pdctrgd,
-          i,
-          ((*pdctrgd & (uint8_t)k_pdctrgd_status) == (uint8_t)k_pdctrgd_pdpgsf))) {
+    const bool pdpgsf_now = (*pdctrgd & (uint8_t)k_pdctrgd_status) == (uint8_t)k_pdctrgd_pdpgsf;
+    if (ra8_fake_mmio_wait_eval(pdctrgd, i, pdpgsf_now)) {
       break;
     }
 #else
@@ -672,7 +670,10 @@ ra8_err_t ra8_glcdc_init(const ra8_glcdc_config_t* cfg)
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_glcdc);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "glcdc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback: ra8_mstp_enable only fails when
+   * the MSTPCR readback disagrees, which the host register file cannot stage. */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "glcdc_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* HUM Ch 63 "BG_EN.SWRST" p 3759 + FSP r_glcdc_open step 2.  Single
    * write of SWRST=1.  FSP uses a bit-field write (read-modify-write

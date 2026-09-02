@@ -131,7 +131,9 @@ ra8_err_t ra8_poeg_init(uint8_t group, const ra8_poeg_cfg_t* cfg)
 
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 448 */
   const ra8_err_t mst_err = ra8_mstp_enable(s_poeg_mstp_table[group]);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "poeg_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "poeg_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* HUM Ch 21.2.1 "POEGG : POEG Group n Setting Register", p 872 */
   reg->POEGG = internal_cfg_to_poegg(cfg);
@@ -234,7 +236,7 @@ ra8_err_t ra8_poeg_trigger_stop(uint8_t group)
 ra8_err_t ra8_poeg_get_status(uint8_t group, uint32_t* out_mask)
 {
   RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  volatile r_poeg_regs_t* reg = ra8_poeg(group);
+  volatile const r_poeg_regs_t* reg = ra8_poeg(group);
   RA8_CHECK_NULL_PTR(reg, s_tag, "group out of range");
 
   *out_mask = reg->POEGG & k_ra8_poeg_status_all;
@@ -400,8 +402,8 @@ void ra8_poeg_dispatch(uint8_t group)
   if (group >= (uint8_t)k_ra8_poeg_group_count) {
     return;
   }
-  volatile r_poeg_regs_t* reg  = ra8_poeg(group);
-  uint32_t                mask = 0U;
+  volatile const r_poeg_regs_t* reg  = ra8_poeg(group);
+  uint32_t                      mask = 0U;
   if (reg != nullptr) {
     mask = reg->POEGG & k_ra8_poeg_status_all;
   }

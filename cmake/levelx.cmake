@@ -94,7 +94,6 @@ target_link_libraries(levelx_objs PRIVATE threadx)
 # Vendor sources predate `-Wpedantic` / `-Werror` cleanliness. Drop
 # the warning surface to a permissive baseline so the rest of the
 # tree can keep `-Werror` without forking the upstream code.
-target_compile_options(levelx_objs PRIVATE -w)
 
 add_library(levelx INTERFACE)
 target_sources(levelx INTERFACE $<TARGET_OBJECTS:levelx_objs>)
