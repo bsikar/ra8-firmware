@@ -529,7 +529,19 @@
  * If the implementation here is empty, this will effectively disable the
  * checking of functions' return values.
  */
-[[nodiscard]] //#define MBEDTLS_CHECK_RETURN
+/* Left at the upstream default (disabled). The bare [[nodiscard]] that used to
+ * sit in front of this comment was the residue of a mechanical
+ * __attribute__((warn_unused_result)) -> [[nodiscard]] rewrite that landed the
+ * attribute OUTSIDE the comment: a live file-scope attribute with no declaration
+ * to attach to. It bound to the first declaration the parser reached instead --
+ * the empty-translation-unit typedef in tf-psa-crypto/build_info.h -- so every TU
+ * that reaches Mbed TLS through build_info.h got the -Wattributes diagnostic
+ * nodiscard attribute can only be applied to functions or to structure, union or
+ * enumeration types, which is fatal under -Werror in a first-party TU
+ * (tls_client, threadx_https_client). Enabling the option for real would be
+ * #define MBEDTLS_CHECK_RETURN [[nodiscard]], which changes the warning surface of
+ * every mbedtls_* call site and is a separate decision. */
+//#define MBEDTLS_CHECK_RETURN
 
 /** \def MBEDTLS_IGNORE_RETURN
  *

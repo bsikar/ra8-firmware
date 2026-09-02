@@ -52,7 +52,7 @@
  *       concatenated with the body digest, rather than the bare body digest (see
  *       ``ra8_rot_verify_image`` /
  *       ``internal_bind_version`` in ``ra8_rot.c``, matched by the signer
- *       ``tools/rot_sign.py``). An attacker holding an older validly-signed image
+ *       ``tools/rot/src/rot_sign.py``). An attacker holding an older validly-signed image
  *       therefore cannot raise the trailer version to defeat this check -- the
  *       forged version invalidates the signature (T5-05).
  * @warning The downgrade check is only as strong as the durable counter store,

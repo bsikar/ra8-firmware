@@ -45,6 +45,21 @@ FUNC_RE = re.compile(
     re.MULTILINE,
 )
 
+# Contracts and same-file definitions may place a C23 attribute before the
+# return type. Keep that broader spelling local to exact association: widening
+# the historical repository audit parser would turn unrelated pre-existing
+# header debt into a migration regression.
+_HEADER_FUNC_RE = re.compile(
+    r"^[ \t]*"
+    r"(?P<ret>(?:(?:\[\[[^\]\n]*\]\]|static|inline|extern|const|volatile|register|signed|unsigned|"
+    r"struct|union|enum|__attribute__\s*\(\([^)]*\)\)|[A-Za-z_][A-Za-z_0-9]*)\s+|\*\s*)+)"
+    r"(?P<name>[A-Za-z_][A-Za-z_0-9]*)\s*"
+    r"\((?P<args>[^;{]*)\)\s*"
+    r"(?:__attribute__\s*\(\([^)]*\)\)\s*)?"
+    r"(?P<term>[{;])",
+    re.MULTILINE,
+)
+
 # Things that look like function decls but aren't
 NON_FUNC_NAMES = {
     "if",
@@ -82,6 +97,28 @@ _HEADER_STUB_MARKERS = (
 #: literally substitutes the source block at render time, so restating the
 #: tags here would duplicate every @param / @retval in the generated HTML.
 _COPY_RE = re.compile(r"@copy(doc|details|brief)\b")
+
+# Contract association is deliberately narrower than C's full include model.
+# Only an unconditional, directly included header beside the definition may
+# own a private definition's contract. Inventing compiler search paths or
+# following inactive/transitive includes can silently waive a real gap.
+_PREPROCESSOR_RE = re.compile(r"^\s*#\s*(?P<name>[A-Za-z_][A-Za-z_0-9]*)(?P<body>.*)$")
+_QUOTED_INCLUDE_VALUE_RE = re.compile(r'^\s*"(?P<path>[^"\n]+)"')
+
+# Storage and repository visibility decorators are not part of the C function
+# type. Linkage is compared separately, so removing ``static`` here does not
+# allow a public declaration to satisfy a private definition.
+_RETURN_DECORATOR_RE = re.compile(
+    r"\b(?:static|inline|extern|register|RA8_INTERNAL|RA8_PRIV|RA8_WEAK)\b|"
+    r"__attribute__\s*\(\([^)]*\)\)|\[\[[^\]\n]*\]\]"
+)
+
+# A suppression for the declaration itself is metadata, not a documentation
+# attachment boundary. This spelling appears between the SysTick contract and
+# its attributed definition.
+_NOLINT_NEXT_RE = re.compile(
+    r"(?:/\*[^\n]*\bNOLINTNEXTLINE\b[^\n]*\*/|//[^\n]*\bNOLINTNEXTLINE\b[^\n]*)\s*\Z"
+)
 
 
 #: Bare type keywords. A parameter whose only identifier is one of these is
@@ -136,21 +173,27 @@ def _split_params(args_text: str) -> list[str]:
     return params
 
 
-def _param_name(param: str, position: int) -> str | None:
-    """Return the documented name of one parameter, or None when it has none."""
+def _param_name_info(param: str, position: int) -> tuple[str | None, bool]:
+    """Return a parameter name and whether it is a generated stand-in."""
     if not param or param in {"void", "..."}:
-        return None
+        return None, False
     stripped = re.sub(r"\[[^\]]*\]", "", param).strip()
     # Function pointer: the name sits inside the (*name) group.
     fp = re.search(r"\(\s*\*\s*([A-Za-z_][A-Za-z_0-9]*)\s*\)", stripped)
     if fp:
-        return fp.group(1)
+        return fp.group(1), False
     toks = re.findall(r"[A-Za-z_][A-Za-z_0-9]*", stripped)
     if not toks:
-        return None
+        return None, False
     if len(toks) == 1 and toks[0] in _BARE_TYPE_KEYWORDS:
-        return f"arg{position}"
-    return toks[-1]
+        return f"arg{position}", True
+    return toks[-1], False
+
+
+def _param_name(param: str, position: int) -> str | None:
+    """Return the documented name of one parameter, or None when it has none."""
+    name, _synthetic = _param_name_info(param, position)
+    return name
 
 
 def parse_args(args_text: str) -> list[str]:
@@ -188,27 +231,6 @@ def is_returning_void(ret: str) -> bool:
         return False
     # exact "void"
     return r == "void" or r.endswith(" void")
-
-
-def definition_carries_block(raw: str, src_no_comments: str, name: str) -> bool:
-    """True when a *definition* of ``name`` in this same file carries a block.
-
-    Used to tell a file-local forward prototype apart from a genuinely
-    undocumented function.  See the call site for why that distinction has to
-    exist.
-    """
-    raw_lines = raw.splitlines(keepends=True)
-    for dm in FUNC_RE.finditer(src_no_comments):
-        if dm.group("name") != name or dm.group("term") != "{":
-            continue
-        line_no = src_no_comments.count("\n", 0, dm.start()) + 1
-        if line_no - 1 >= len(raw_lines):
-            continue
-        offset = sum(len(ln) for ln in raw_lines[: line_no - 1])
-        _, has_block = find_preceding_doxy(raw, offset)
-        if has_block:
-            return True
-    return False
 
 
 def _is_declaration(m: re.Match) -> bool:
@@ -249,34 +271,244 @@ class _SourceViews:
     stripped: str
 
 
-def _is_waived(views: _SourceViews, m: re.Match, block: str, *, has_block: bool) -> bool:
+@dataclass(frozen=True)
+class _FunctionSignature:
+    """Function identity needed to associate a definition with a contract."""
+
+    name: str
+    return_type: str
+    parameter_types: tuple[str, ...]
+    is_static: bool
+
+
+def _normalise_parameter_type(param: str, position: int) -> str:
+    """Canonicalise one parameter type without depending on its local name."""
+    text = re.sub(r"__attribute__\s*\(\([^)]*\)\)", "", param).strip()
+    if text == "...":
+        return text
+
+    name, synthetic = _param_name_info(text, position)
+    if name is not None and not synthetic:
+        # A function-pointer name is nested in ``(*name)``. The ordinary
+        # substitution below also works, but spelling this form explicitly
+        # keeps the pointer declarator intact when whitespace differs.
+        text = re.sub(
+            rf"\(\s*\*\s*{re.escape(name)}\s*\)",
+            "(*)",
+            text,
+            count=1,
+        )
+        text = re.sub(rf"\b{re.escape(name)}\b", "", text, count=1)
+
+    # An array parameter is adjusted to a pointer by C. Treat ``T a[]`` and
+    # ``T *a`` as the same signature while retaining every non-array token.
+    text = re.sub(r"\[[^\]]*\]", "*", text)
+    return re.sub(r"\s+", "", text)
+
+
+def _function_signature(m: re.Match) -> _FunctionSignature:
+    """Return a name-, type-, and linkage-aware signature for ``m``."""
+    ret = m.group("ret")
+    return _FunctionSignature(
+        name=m.group("name"),
+        return_type=re.sub(r"\s+", "", _RETURN_DECORATOR_RE.sub("", ret)),
+        parameter_types=tuple(
+            _normalise_parameter_type(param, position)
+            for position, param in enumerate(_split_params(m.group("args")))
+        ),
+        is_static=bool(re.search(r"\bstatic\b", ret)),
+    )
+
+
+def _has_matching_peer(
+    src_no_comments: str,
+    m: re.Match,
+    *,
+    term: str,
+    after: bool,
+) -> bool:
+    """Whether ``m`` has an exact declaration/definition peer in this file."""
+    signature = _function_signature(m)
+    for peer in _HEADER_FUNC_RE.finditer(src_no_comments):
+        if not _is_declaration(peer) or peer.group("term") != term:
+            continue
+        if after and peer.start() <= m.start():
+            continue
+        if not after and peer.start() >= m.start():
+            continue
+        if _function_signature(peer) == signature:
+            return True
+    return False
+
+
+def _has_bare_matching_prototype(raw: str, src_no_comments: str, m: re.Match) -> bool:
+    """Whether ``m`` has an exact earlier prototype without its own block."""
+    signature = _function_signature(m)
+    for prototype in _HEADER_FUNC_RE.finditer(src_no_comments):
+        if prototype.start() >= m.start() or prototype.group("term") != ";":
+            continue
+        if not _is_declaration(prototype) or _function_signature(prototype) != signature:
+            continue
+        _block, has_block = _preceding_block(raw, src_no_comments, prototype)
+        if not has_block:
+            return True
+    return False
+
+
+def _audit_matches(raw: str, src_no_comments: str) -> list[re.Match]:
+    """Return historical matches plus attributed definitions with a local prototype."""
+    matches = list(FUNC_RE.finditer(src_no_comments))
+    starts = {match.start() for match in matches}
+    for candidate in _HEADER_FUNC_RE.finditer(src_no_comments):
+        if candidate.start() in starts or candidate.group("term") != "{":
+            continue
+        if not candidate.group(0).lstrip().startswith("[["):
+            continue
+        if _has_bare_matching_prototype(raw, src_no_comments, candidate):
+            matches.append(candidate)
+    return sorted(matches, key=lambda match: match.start())
+
+
+def _matching_definition_has_contract(views: _SourceViews, m: re.Match) -> bool:
+    """Whether any exact same-file definition owns the complete contract."""
+    signature = _function_signature(m)
+    for definition in _HEADER_FUNC_RE.finditer(views.stripped):
+        if not _is_declaration(definition) or definition.group("term") != "{":
+            continue
+        if _function_signature(definition) != signature:
+            continue
+        block, has_block = _preceding_block(views.raw, views.stripped, definition)
+        if not has_block:
+            continue
+        args = parse_args(definition.group("args"))
+        if not _missing_from_block(block, args, definition.group("ret")) or _COPY_RE.search(block):
+            return True
+    return False
+
+
+def _resolve_adjacent_include(including: Path, include: str) -> Path | None:
+    """Resolve an include only when it names a header beside ``including``."""
+    root = repo_root().resolve()
+    source_dir = including.parent.resolve()
+    resolved = (source_dir / include).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        return None
+    if resolved.parent != source_dir or not resolved.is_file() or resolved.suffix != ".h":
+        return None
+    return resolved
+
+
+def _included_project_headers(path: Path, raw: str) -> list[Path]:
+    """Return direct adjacent headers included outside preprocessor branches."""
+    headers: list[Path] = []
+    seen: set[Path] = set()
+    conditional_depth = 0
+    for line in strip_comments(raw).splitlines():
+        directive = _PREPROCESSOR_RE.match(line)
+        if directive is None:
+            continue
+        name = directive.group("name")
+        if name in {"if", "ifdef", "ifndef"}:
+            conditional_depth += 1
+            continue
+        if name == "endif":
+            conditional_depth = max(0, conditional_depth - 1)
+            continue
+        if name != "include" or conditional_depth != 0:
+            continue
+        include = _QUOTED_INCLUDE_VALUE_RE.match(directive.group("body"))
+        if include is None:
+            continue
+        header = _resolve_adjacent_include(path, include.group("path"))
+        if header is not None and header not in seen:
+            seen.add(header)
+            headers.append(header)
+    return headers
+
+
+def _preceding_block(raw: str, stripped: str, m: re.Match) -> tuple[str, bool]:
+    """Find the block attached to ``m`` across offset-changing comment stripping."""
+    line_no = stripped.count("\n", 0, m.start()) + 1
+    raw_lines = raw.splitlines(keepends=True)
+    if line_no - 1 >= len(raw_lines):
+        return "", False
+    offset = sum(len(line) for line in raw_lines[: line_no - 1])
+    block, has_block = find_preceding_doxy(raw, offset)
+    if has_block:
+        return block, True
+    suppression = _NOLINT_NEXT_RE.search(raw[:offset])
+    if suppression is None:
+        return "", False
+    return find_preceding_doxy(raw, suppression.start())
+
+
+def _documented_header_signatures(path: Path, raw: str) -> set[_FunctionSignature]:
+    """Collect complete contracts in direct, unconditional adjacent headers."""
+    contracts: set[_FunctionSignature] = set()
+    for header in _included_project_headers(path, raw):
+        try:
+            header_raw = header.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        header_stripped = strip_comments(header_raw)
+        for declaration in _HEADER_FUNC_RE.finditer(header_stripped):
+            if not _is_declaration(declaration) or declaration.group("term") != ";":
+                continue
+            block, has_block = _preceding_block(header_raw, header_stripped, declaration)
+            if not has_block:
+                continue
+            args = parse_args(declaration.group("args"))
+            if not _missing_from_block(block, args, declaration.group("ret")) or _COPY_RE.search(
+                block
+            ):
+                contracts.add(_function_signature(declaration))
+    return contracts
+
+
+def _is_waived(
+    views: _SourceViews,
+    m: re.Match,
+    block: str,
+    documented_headers: set[_FunctionSignature],
+    *,
+    has_block: bool,
+) -> bool:
     """True when this declaration legitimately needs no block of its own.
 
     Three waivers, each closing a contradiction rather than lowering the bar:
 
-    * A non-static definition in a ``.c``. CLAUDE.md ("Definition-site
-      comments") puts the authoritative block on the *declaration* in the
-      header, which this tool audits when it scans that ``.h``. A restating
-      block at the definition only rots. A ``static`` function has no header
-      to carry the contract, so it still needs a full block.
-    * A file-local forward prototype whose definition below carries the block.
-      The prototype is an ordering device, not a second contract, and
-      demanding a block on both is precisely the duplication
-      ``check_doc_attachment.py`` rejects as DOC004/DOC006 -- without this the
-      two gates contradict each other and no file can satisfy both
-      (``ra8_rsip.c``'s ``internal_sw_sha256`` is the live example). A
-      prototype whose definition is ALSO bare is still reported, at the
-      definition.
+    * A non-static definition in a ``.c``. CLAUDE.md puts its authoritative
+      block on the header declaration, which the ordinary header audit checks
+      independently. Repeating the block on its definition would rot.
+    * A static definition whose exact declaration and complete contract are in
+      a directly and unconditionally included adjacent header. This supports
+      explicit private contract headers without inventing compiler search
+      paths or following inactive/transitive includes.
+    * A file-local forward prototype with an exact definition below. The
+      prototype is an ordering device, not a second contract. The definition
+      remains audited, including when it has public linkage, so a bare pair is
+      still reported once at the definition.
     * A block that defers to the header, or substitutes one with ``@copydoc``.
     """
     ret = m.group("ret")
-    if str(views.path).endswith(".c") and not re.search(r"\bstatic\b", ret):
-        return True
+    if views.path.suffix == ".c" and m.group("term") == "{":
+        if _function_signature(m) in documented_headers:
+            return True
+        has_bare_local_prototype = _has_bare_matching_prototype(
+            views.raw,
+            views.stripped,
+            m,
+        )
+        if has_bare_local_prototype and _matching_definition_has_contract(views, m):
+            return True
+        if not re.search(r"\bstatic\b", ret) and not has_bare_local_prototype:
+            return True
     if (
         m.group("term") == ";"
         and not has_block
-        and re.search(r"\bstatic\b", ret)
-        and definition_carries_block(views.raw, views.stripped, m.group("name"))
+        and _has_matching_peer(views.stripped, m, term="{", after=True)
     ):
         return True
     if not has_block:
@@ -347,24 +579,30 @@ def audit_file(path: Path) -> list[tuple[str, int, str, str, str]]:
         return []
     src_no_comments = strip_comments(raw)
     views = _SourceViews(path, raw, src_no_comments)
+    documented_headers = _documented_header_signatures(path, raw) if path.suffix == ".c" else set()
     # strip_comments preserves newlines, so line numbers agree between the
     # stripped and raw views and one offset conversion serves both.
     raw_lines = raw.splitlines(keepends=True)
     rel = str(path.relative_to(repo_root()))
 
     rows = []
-    for m in FUNC_RE.finditer(src_no_comments):
+    for m in _audit_matches(raw, src_no_comments):
         if not _is_declaration(m):
             continue
         line_no = src_no_comments.count("\n", 0, m.start()) + 1
         if line_no - 1 >= len(raw_lines):
             continue
         # Read the block from the ORIGINAL source, where comments still exist.
-        offset_in_raw = sum(len(ln) for ln in raw_lines[: line_no - 1])
-        block, has_block = find_preceding_doxy(raw, offset_in_raw)
+        block, has_block = _preceding_block(raw, src_no_comments, m)
 
         name, ret = m.group("name"), m.group("ret")
-        if _is_waived(views, m, block, has_block=has_block):
+        if _is_waived(
+            views,
+            m,
+            block,
+            documented_headers,
+            has_block=has_block,
+        ):
             rows.append((rel, line_no, name, [], "ok"))
             continue
 

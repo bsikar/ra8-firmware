@@ -9,7 +9,7 @@
 #   cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8p1.cmake
 #   cmake --build build
 #
-# or simply `make` in this directory (its Makefile points at toolchain-ra8p1).
+# or simply `just` in this directory (its justfile points at toolchain-ra8p1).
 #
 # `USES tflite_micro` pulls in cmake/tflite_micro.cmake, which builds the vendored
 # TensorFlow Lite for Microcontrollers runtime (plus the first-party Ethos-U

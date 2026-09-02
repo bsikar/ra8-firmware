@@ -22,9 +22,9 @@
 #
 # The harness registry is RA8_FUZZ_TARGETS in tests/fuzz/CMakeLists.txt --
 # the single source of truth. --list parses it and cross-checks it against
-# the tests/fuzz/fuzz_ra8_*.c sources, so an unregistered harness (or a
+# all tests/fuzz/src and app-local tests/src fuzz sources, so an unregistered harness (or a
 # registry entry whose source was deleted) fails loudly instead of being
-# silently skipped. `make fuzz` and .github/workflows/fuzz-nightly.yml both
+# silently skipped. `just quality::local::fuzz` and .github/workflows/fuzz-nightly.yml both
 # consume the registry through this script.
 #
 # Environment:
@@ -34,7 +34,7 @@
 #                 versioned majors newest-first). gcc cannot be used:
 #                 it has no libFuzzer.
 #   FUZZ_RUNS  -- optional libFuzzer -runs=<N> cap, forwarded verbatim.
-#                 The `make fuzz` smoke sets this so trivial targets finish
+#                 The `just quality::local::fuzz` smoke sets this so trivial targets finish
 #                 before the wall budget instead of idling. Setting it is also
 #                 what makes that early finish legitimate rather than a starved
 #                 run -- see fuzz_run_verdict(). It does NOT switch off the
@@ -209,7 +209,7 @@ fuzz_run_verdict() {
 
   # The one documented legitimate early exit: FUZZ_RUNS caps the iteration
   # count, so a trivial target finishes before the wall budget instead of
-  # idling. That is what `make fuzz` sets it for, and it is not a shortfall.
+  # idling. That is what `just quality::local::fuzz` sets it for, and it is not a shortfall.
   if [[ -n "${runs_cap}" ]]; then
     echo "runs-capped"
     return 0
@@ -258,7 +258,7 @@ fuzz_verdict_explain() {
 }
 
 # Print the RA8_FUZZ_TARGETS registry, one target per line, after
-# cross-checking it against the tests/fuzz/fuzz_ra8_*.c sources. Both
+# cross-checking it against the category and app-local tests/src fuzz sources. Both
 # directions of drift are hard errors: a source file missing from the
 # registry would never be fuzzed; a registry entry without a source
 # cannot build.
@@ -274,7 +274,7 @@ list_targets() {
     return 1
   fi
   globbed=""
-  for src in "${ROOT}"/tests/fuzz/fuzz_ra8_*.c; do
+  while IFS= read -r src; do
     base="$(basename "${src}" .c)"
     globbed="${globbed}${base}"$'\n'
     if ! grep -qx "${base}" <<<"${registered}"; then
@@ -282,10 +282,15 @@ list_targets() {
       echo "       Register the harness so the sweep runs it." >&2
       return 1
     fi
-  done
+  done < <(
+    {
+      find "${ROOT}/tests/fuzz/src" -maxdepth 1 -type f -name 'fuzz_*.c' ! -name 'fuzz_log_sink.c'
+      find "${ROOT}/apps" -type f -path '*/tests/src/fuzz_*.c'
+    } | sort
+  )
   while IFS= read -r t; do
     if ! grep -qx "${t}" <<<"${globbed}"; then
-      echo "ERROR: RA8_FUZZ_TARGETS lists ${t} but tests/fuzz/${t}.c does not exist." >&2
+      echo "ERROR: RA8_FUZZ_TARGETS lists ${t} but no category or app-local source exists." >&2
       return 1
     fi
   done <<<"${registered}"
@@ -413,7 +418,7 @@ run_one() {
     -max_total_time="${seconds}" \
     -print_final_stats=1 \
     -artifact_prefix="${crash_dir}/" \
-    "${extra_args[@]+"${extra_args[@]}"}" 2>&1 | tee "${log}"; then
+    "${extra_args[@]+${extra_args[@]+"${extra_args[@]}"}}" 2>&1 | tee "${log}"; then
     status="${PIPESTATUS[0]}"
     if [[ "${status}" -eq 0 ]]; then
       # tee failed rather than the harness; still a failed run.
@@ -497,7 +502,7 @@ if [[ "$1" == "--all" ]]; then
   # Seed the corpus directories -- the init script is idempotent and only
   # refreshes the known-good seeds, so any crash reproducers added later
   # are left in place.
-  bash "${ROOT}/scripts/checks/init_fuzz_corpora.sh" >/dev/null
+  bash "${ROOT}/scripts/builders/init_fuzz_corpora.sh" >/dev/null
   failed=""
   while IFS= read -r target; do
     echo ""
@@ -533,5 +538,5 @@ fi
 
 select_fuzz_compiler
 build_fuzz_target "${target}"
-bash "${ROOT}/scripts/checks/init_fuzz_corpora.sh" >/dev/null
+bash "${ROOT}/scripts/builders/init_fuzz_corpora.sh" >/dev/null
 run_one "${target}" "${seconds}"

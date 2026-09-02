@@ -106,11 +106,13 @@ import sys
 import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "dev"))
 
+from git_environment import isolated_git_environment, trusted_git_executable
 from linker_script_fixtures import MALFORMED, OFS_BAD, OFS_GOOD, TRICKY
 
 SYMBOL_PREFIX = "g_ra8_ls_"
-EXCLUDED_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/")
+EXCLUDED_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/", "libs/ra8_fonts/")
 
 # A comment in an ld script is /* ... */ only -- there is no line-comment form.
 _COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
@@ -126,19 +128,31 @@ def strip_comments(text: str) -> str:
 
 
 def repo_files(root: pathlib.Path, pattern: str) -> list[pathlib.Path]:
-    """Tracked files matching a git pathspec, minus the vendored prefixes.
+    """Live candidate files matching a git pathspec, minus vendored prefixes.
 
-    Uses ``git ls-files`` rather than glob so untracked build artefacts and
-    ignored copies are never scanned -- a stale generated .ld in a build tree
-    would otherwise be held to the same rules as an authored one.
+    The candidate is the worktree, not merely the index: an unstaged move must
+    drop the deleted source and include its untracked destination. Ignored build
+    artefacts stay excluded, so a stale generated .ld in a build tree is never
+    held to the same rules as an authored one.
     """
-    out = subprocess.run(  # noqa: S603  # fixed argv, no shell
-        ["git", "-C", str(root), "ls-files", pattern],  # noqa: S607  # git from PATH is intended
+    argv = [
+        "git",
+        "-C",
+        str(root),
+        "ls-files",
+        "--cached",
+        "--others",
+        "--exclude-standard",
+        "--",
+        pattern,
+    ]
+    out = subprocess.run(  # noqa: S603  # fixed git argv, no shell
+        argv,
         capture_output=True,
         text=True,
         check=True,
-    ).stdout.split()
-    return [root / p for p in out if not p.startswith(EXCLUDED_PREFIXES)]
+    ).stdout.splitlines()
+    return [root / p for p in out if not p.startswith(EXCLUDED_PREFIXES) and (root / p).is_file()]
 
 
 class Finding:
@@ -776,6 +790,32 @@ def _selftest_closure(got_def: set[str], got_ref: set[str]) -> int:
     return rc
 
 
+def _selftest_worktree_inventory() -> int:
+    """Candidate scope includes an unstaged move target and drops its source."""
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        subprocess.run(  # noqa: S603 -- fixed Git argv and private fixture path
+            [trusted_git_executable(), "init", "-q", str(root)],
+            check=True,
+        )
+        old = root / "old.c"
+        old.write_text("int old_symbol;\n", encoding="utf-8")
+        subprocess.run(  # noqa: S603 -- fixed Git argv and private fixture path
+            [trusted_git_executable(), "-C", str(root), "add", "old.c"],
+            check=True,
+        )
+        old.unlink()
+        new = root / "new.c"
+        new.write_text("int new_symbol;\n", encoding="utf-8")
+
+        got = [path.relative_to(root).as_posix() for path in repo_files(root, "*.c")]
+        if got != ["new.c"]:
+            print(f"SELFTEST FAIL: worktree move inventory -> {got}")
+            return 1
+        print("selftest: worktree move drops deleted source and includes destination OK")
+    return 0
+
+
 def _sram_fixture(ns_sram_len: str) -> str:
     """A board-shaped script whose NS_SRAM placeholder is sized `ns_sram_len`.
 
@@ -826,14 +866,20 @@ def _selftest_sram_fit() -> int:
     return rc
 
 
-def selftest() -> int:
+def _selftest_body() -> int:
     """Assert every finding code fires, and that none of them over-fires."""
     rc = _selftest_fixtures()
     rc |= _selftest_option_setting()
     rc |= _selftest_option_completeness()
     rc |= _selftest_sram_fit()
     scan_rc, got_def, got_ref = _selftest_symbol_scan()
-    return rc | scan_rc | _selftest_closure(got_def, got_ref)
+    return rc | scan_rc | _selftest_closure(got_def, got_ref) | _selftest_worktree_inventory()
+
+
+def selftest() -> int:
+    """Run linker-script fixtures without inheriting the caller's repository."""
+    with isolated_git_environment():
+        return _selftest_body()
 
 
 def scan(paths: list[pathlib.Path]) -> tuple[list[Finding], int]:
@@ -898,8 +944,8 @@ def main() -> int:
         return selftest()
 
     root = pathlib.Path(
-        subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],  # noqa: S607  # git from PATH is intended
+        subprocess.run(  # noqa: S603 -- fixed Git authority and constant read-only query
+            [trusted_git_executable(), "rev-parse", "--show-toplevel"],
             capture_output=True,
             text=True,
             check=True,

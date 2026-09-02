@@ -16,7 +16,7 @@
 #include "board_view.h"
 #include "board_view_provider_internal.h"
 
-#if defined(__APPLE__)
+#ifdef __APPLE__
 
 /**
  * @brief Decode the descriptor encoded in one provider info value.

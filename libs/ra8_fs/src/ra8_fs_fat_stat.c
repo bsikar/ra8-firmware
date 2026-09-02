@@ -530,7 +530,8 @@ internal_stat_fat(const ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t*
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t internal_stat_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out)
+static ra8_err_t
+internal_stat_locked(const ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -561,7 +562,7 @@ static ra8_err_t internal_stat_locked(ra8_fs_mount_t* handle, const char* path, 
  */
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t ra8_fs_stat(ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out)
+ra8_err_t ra8_fs_stat(const ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out)
 {
   priv_lock_acquire();
   const ra8_err_t err = internal_stat_locked(handle, path, out);

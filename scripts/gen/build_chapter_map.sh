@@ -5,8 +5,8 @@
 # build_chapter_map.sh -- Build docs/reference/CHAPTER_MAP.md from the
 # Renesas RA8D2 Hardware User's Manual table of contents.
 #
-# Strategy: run pdftotext -layout over the per-page PDFs that hold the
-# TOC (pages 10..67 in r01uh1065ej0130-ra8d2.pdf, rev 1.30, Feb 2026),
+# Strategy: run pdftotext -layout over the TOC page range in the tracked full
+# manual (PDF pages 10..67, rev 1.30, Feb 2026),
 # then extract top-level chapter headings (lines that start with
 # "<digit>+. <heading>"). The result is a deterministic, page-cited
 # chapter map that cite_check.py validates HUM annotations against.
@@ -19,14 +19,22 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-PAGES_DIR="$REPO_ROOT/docs/reference/ra8d2-hardware-user-manual"
+PDF_FILE="$REPO_ROOT/docs/reference/ra8d2-hardware-user-manual.pdf"
 OUT_FILE="$REPO_ROOT/docs/reference/CHAPTER_MAP.md"
+
+if [[ $# -gt 0 ]]; then
+  if [[ $# -ne 2 || $1 != "--output" || -z $2 ]]; then
+    echo "usage: $0 [--output PATH]" >&2
+    exit 2
+  fi
+  OUT_FILE=$2
+fi
 
 TOC_FIRST_PAGE=10
 TOC_LAST_PAGE=67
 
-if [[ ! -d "$PAGES_DIR" ]]; then
-  echo "ERROR: per-page HUM directory not found: $PAGES_DIR" >&2
+if [[ ! -f "$PDF_FILE" ]]; then
+  echo "ERROR: tracked full HUM PDF not found: $PDF_FILE" >&2
   exit 1
 fi
 
@@ -39,14 +47,8 @@ tmp_raw=$(mktemp)
 tmp_chapters=$(mktemp)
 trap 'rm -f "$tmp_raw" "$tmp_chapters"' EXIT
 
-for p in $(seq -f '%04g' "$TOC_FIRST_PAGE" "$TOC_LAST_PAGE"); do
-  src="$PAGES_DIR/page-$p.pdf"
-  if [[ ! -f "$src" ]]; then
-    echo "ERROR: missing TOC page: $src" >&2
-    exit 1
-  fi
-  pdftotext -layout "$src" - 2>/dev/null
-done >"$tmp_raw"
+pdftotext -f "$TOC_FIRST_PAGE" -l "$TOC_LAST_PAGE" -layout "$PDF_FILE" - \
+  2>/dev/null >"$tmp_raw"
 
 python3 - "$tmp_raw" "$tmp_chapters" <<'PYEOF'
 import re
@@ -74,7 +76,7 @@ with open(raw_path, "r", encoding="utf-8", errors="replace") as fh:
         if m is None:
             continue
         num = int(m.group(1))
-        title = m.group(2).strip().rstrip(".")
+        title = " ".join(m.group(2).strip().rstrip(".").split())
         page = int(m.group(3))
         # First occurrence wins -- the TOC lists each chapter once.
         if num not in chapters and 1 <= num <= 99:
@@ -108,7 +110,7 @@ rows.sort(key=lambda r: r[0])
 md = []
 md.append("# RA8D2 Hardware User's Manual -- Chapter Map")
 md.append("")
-md.append("Source document: r01uh1065ej0130-ra8d2.pdf (Rev. 1.30, Feb 2026)")
+md.append("Source document: docs/reference/ra8d2-hardware-user-manual.pdf (Rev. 1.30, Feb 2026)")
 md.append("")
 md.append("Total PDF pages: 4291")
 md.append("")

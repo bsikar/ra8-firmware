@@ -16,10 +16,10 @@ same exemptions as the gate", which is a duplication admitting to being one.
 Two copies of a rule is two places for it to drift, and drift here is silent:
 both tools keep running and simply describe different trees.
 
-The one thing deliberately NOT shared is ``EXCLUDE_PREFIXES``. The gate also
-scans documentation and excludes ``docs/reference/`` wholesale; the extractor
-scans sources only. That is a real difference in what each tool is for, not
-an accident, so each keeps its own.
+The one thing deliberately NOT shared is ``EXCLUDE_PREFIXES``. The gate scans
+documentation as well as sources, while the extractor scans sources only.
+That is a real difference in what each tool is for, not an accident, so each
+keeps its own source-population policy.
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ MOVED_FROM_RE = re.compile(r"moved from\s+\S+:\d+\s+to\b", re.IGNORECASE)
 DOCS_REFERENCE_RE = re.compile(r"\bdocs/reference/")
 
 #: Vendored code is not ours to re-cite.
-THIRD_PARTY_RE = re.compile(r"\blibs/third_party/")
+THIRD_PARTY_RE = re.compile(r"\b(?:libs|apps/shared_libs)/third_party/")
 
 #: The annotation macro whose reason string is DO-178C 6.4.4.3 deactivation
 #: evidence. Its argument is a string LITERAL, so find_comment_spans -- which
@@ -253,7 +253,7 @@ def line_of_offset(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
 
 
-def is_exempt(matched: str, line: str) -> bool:
+def is_exempt(matched: str, line: str, column: int) -> bool:
     """Whether a citation on ``line`` is excused from the ban.
 
     THE single definition of the exemption cascade, shared by the gate and the
@@ -270,11 +270,15 @@ def is_exempt(matched: str, line: str) -> bool:
         return True
     if line.lstrip().startswith("#include"):
         return True
-    if DOCS_REFERENCE_RE.search(matched) or DOCS_REFERENCE_RE.search(line):
+    if DOCS_REFERENCE_RE.search(matched):
         return True
-    if THIRD_PARTY_RE.search(matched) or THIRD_PARTY_RE.search(line):
+    if THIRD_PARTY_RE.search(matched):
         return True
     cok = CITES_OK_RE.search(line)
     if cok and cok.group(1).strip():
         return True
-    return bool(MOVED_FROM_RE.search(line))
+    citation_end = column + len(matched)
+    return any(
+        moved.start() <= column and citation_end <= moved.end()
+        for moved in MOVED_FROM_RE.finditer(line)
+    )

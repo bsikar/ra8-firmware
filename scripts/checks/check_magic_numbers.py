@@ -12,8 +12,8 @@ The project's `.clang-tidy` already configures
 ``readability-magic-numbers``, but clang-tidy only checks files that are
 present in the build's ``compile_commands.json``.  ``clang_tidy.sh`` runs
 against the host unit-test build, which drops every ARM-cross-compiled
-translation unit and -- crucially -- contains **no** example ``main.c``
-at all.  The result was that every ``examples/<tier>/.../<app>/main.c``
+translation unit and -- crucially -- contains **no** example ``src/main.c``
+at all.  The result was that every ``examples/<tier>/.../<app>/src/main.c``
 was invisible to the magic-number check (a bare ``ra8_delay_ms(500U)``
 sailed straight through both the pre-commit hook and CI).
 
@@ -68,6 +68,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -77,7 +78,7 @@ from lint_targets import is_build_output_path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# Under ``examples/`` only the application ``main.c`` is scanned -- this
+# Under ``examples/`` only the application ``src/main.c`` was once scanned -- this
 # matches the scope ``clang_tidy.sh`` already uses for examples.  The
 # per-app boot boilerplate (``vector_table.c``, ``system_init.c``,
 # ``secure_exception.c``, ``trustzone_init.c``) is copied verbatim into
@@ -87,7 +88,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # Per-app boot boilerplate -- copied verbatim into every app under examples/
 # AND into the firmware products under apps/, and full of sequential IRQ-slot
 # indices and fixed vector addresses. Exempt by filename anywhere (not just
-# examples/), matching the examples/<app> main.c-only scope above. Pass such a
+# examples/), matching the former examples/<app>/src/main.c-only scope. Pass such a
 # file explicitly to scan it.
 BOOT_BOILERPLATE = frozenset(
     {"vector_table.c", "system_init.c", "secure_exception.c", "trustzone_init.c"}
@@ -101,6 +102,7 @@ BOOT_BOILERPLATE = frozenset(
 # typed enum would obscure the vectors, not clarify them.
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
+    "apps/shared_libs/third_party/",
     "libs/ra8_fonts/",
     "port/threadx/",
     "tests/",
@@ -127,6 +129,7 @@ SOURCE_SUFFIXES = (".c", ".h")
 
 # Per-line opt-out marker.
 OPT_OUT = "MAGIC-OK"
+_OPT_OUT_COMMENT_RE = re.compile(r"(?P<comment>//|/\*+<?)\s*MAGIC-OK\s*:\s*(?P<reason>.*)$")
 
 # clang-tidy check names whose NOLINT suppressions this gate honours.  The
 # project uses NOLINTBEGIN/END(readability-magic-numbers, ...) extensively
@@ -284,7 +287,7 @@ def _literal_value(match: re.Match) -> tuple[bool, float]:
     for base in (0, 8, 10):
         try:
             return False, float(int(body, base))
-        except ValueError:  # noqa: PERF203  # per-base fallback; loop is only 3 iterations
+        except ValueError:  # per-base fallback; loop is only 3 iterations
             continue
     return False, float("nan")
 
@@ -395,6 +398,48 @@ def _line_literals(code_line: str) -> list[tuple[int, str]]:
     return out
 
 
+def _trailing_c_comment(orig_line: str) -> str:
+    """Return the real trailing C comment, ignoring comment-like strings."""
+    quote = ""
+    escaped = False
+    index = 0
+    while index < len(orig_line):
+        char = orig_line[index]
+        if escaped:
+            escaped = False
+        elif quote and char == "\\":
+            escaped = True
+        elif quote and char == quote:
+            quote = ""
+        elif not quote and char in {'"', "'"}:
+            quote = char
+        elif not quote and orig_line.startswith("//", index):
+            return orig_line[index:]
+        elif not quote and orig_line.startswith("/*", index):
+            end = orig_line.find("*/", index + 2)
+            if end < 0:
+                return ""
+            end += 2
+            if not orig_line[end:].strip():
+                return orig_line[index:end]
+            index = end - 1
+        index += 1
+    return ""
+
+
+def _has_reasoned_opt_out(orig_line: str) -> bool:
+    """Accept only a trailing C comment carrying ``MAGIC-OK: <reason>``."""
+    match = _OPT_OUT_COMMENT_RE.fullmatch(_trailing_c_comment(orig_line))
+    if match is None:
+        return False
+    reason = match.group("reason").strip()
+    if match.group("comment").startswith("/*"):
+        if not reason.endswith("*/"):
+            return False
+        reason = reason[:-2].strip()
+    return bool(reason)
+
+
 def _skip_line(code_line: str, orig_line: str, enums: _EnumState) -> bool:
     """True when this line cannot hold a reportable literal."""
     if enums.inside(code_line):
@@ -407,7 +452,7 @@ def _skip_line(code_line: str, orig_line: str, enums: _EnumState) -> bool:
     if stripped and _DATA_ROW_RE.match(code_line):
         return True
     # Per-line opt-out (checked against the original source line).
-    return OPT_OUT in orig_line
+    return _has_reasoned_opt_out(orig_line)
 
 
 def _scan_file(path: Path) -> list[tuple[int, int, str]]:
@@ -500,6 +545,40 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
     return [p for p in out if not _is_excluded(p)]
 
 
+def _run_selftest() -> int:
+    """Prove both halves of the reasoned ``MAGIC-OK`` contract."""
+    source = """\
+int bare = 50; /* MAGIC-OK */
+int blank = 51; /* MAGIC-OK: */
+int reasoned = 52; /* MAGIC-OK: fixed fixture protocol value */
+const char *text = "MAGIC-OK: string text"; int string_only = 53;
+int lookalike = 54; /* MAGIC-OKAY: not the marker */
+int line_reason = 55; // MAGIC-OK: documented line-comment exception
+int fake_line_comment = 56; const char *line = "// MAGIC-OK: string bypass";
+int fake_block_comment = 57; const char *block = "/* MAGIC-OK: string bypass */";
+"""
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory(prefix="ra8-magic-selftest-") as temp:
+        fixture = Path(temp) / "fixture.c"
+        fixture.write_text(source, encoding="ascii")
+        findings = {literal for _, _, literal in _scan_file(fixture)}
+    expected = {"50", "51", "53", "54", "56", "57"}
+    if findings != expected:
+        failures.append(
+            "reason contract mismatch: "
+            f"expected findings {sorted(expected)}, got {sorted(findings)}"
+        )
+    if _has_reasoned_opt_out("int x = 56; /* MAGIC-OK: missing terminator"):
+        failures.append("unterminated block comment accepted as a reasoned opt-out")
+    if failures:
+        print("check_magic_numbers.py selftest: FAILED", file=sys.stderr)
+        for failure in failures:
+            print(f"  - {failure}", file=sys.stderr)
+        return 1
+    print("check_magic_numbers.py selftest: PASS (reason required; false markers rejected)")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     """Fail on integer literals that should be named typed enums.
 
@@ -509,6 +588,12 @@ def main(argv: list[str]) -> int:
     Returns 1 listing each literal, 0 when clean or when argv filtered to
     nothing.
     """
+    if argv[1:] == ["--selftest"]:
+        return _run_selftest()
+    if "--selftest" in argv[1:]:
+        print("--selftest cannot be combined with scan paths", file=sys.stderr)
+        return 2
+
     targets = _enumerate_targets(argv[1:])
     if not targets:
         print("check_magic_numbers.py: no files to scan", file=sys.stderr)

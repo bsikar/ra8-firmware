@@ -13,7 +13,7 @@ as Software Of Unknown Provenance (SOUP).
   sets `PROJECT_MAJOR=0`, `PROJECT_MINOR=0` because upstream only stamps
   a version at release time; the tree is a development-branch snapshot.
 - **Upstream URL**: https://github.com/litehtml/litehtml
-- **Local path**: `libs/third_party/litehtml/`
+- **Local path**: `apps/shared_libs/third_party/litehtml/`
 
 ## Provenance
 
@@ -31,7 +31,7 @@ as Software Of Unknown Provenance (SOUP).
 ## Use case in this firmware
 
 - HTML/CSS layout engine for rendering EPUB content inside
-  `libs/ra8_epub/`, used by the `examples/ek_ra8d2/ereader` demo.
+  `apps/shared_libs/epub/`, used by the `apps/board/stand_alone/ereader` app.
 - Integrity claim category: none (display-only EPUB rendering).
 
 ## Qualification basis
@@ -50,9 +50,9 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Risk mitigation
 
-- litehtml only renders local EPUB files staged on the file system; no
+- litehtml only renders untrusted local EPUB files staged on the file system; no
   network input feeds it.
-- All access is through `libs/ra8_epub/`, which sandboxes the renderer
+- All access is through `apps/shared_libs/epub/`, which sandboxes the renderer
   to a fixed framebuffer in `libs/ra8_gfx/`.
 
 ## Deviations / patches

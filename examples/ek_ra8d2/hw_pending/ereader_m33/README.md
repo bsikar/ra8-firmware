@@ -11,7 +11,7 @@ the heavy next-page work before it re-parks.
 
 - **The render runs on the secondary core, through the production gfx stack.**
   The M33 validates a baked `RABOOK1` blob, walks the chapter DOM iteratively
-  (no recursion) through the header-only `ra8_book.h` accessors, and renders the
+  (no recursion) through the header-only `book.h` accessors, and renders the
   page into an RGB565 framebuffer in external SDRAM with the real `ra8_gfx` text
   path. `ra8_gfx` is dependency-clean, zero-heap and scalar (no Helium), so it
   links into the freestanding M33 image with no logging backend, no panel driver

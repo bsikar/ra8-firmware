@@ -283,8 +283,8 @@ def _selftest_violations(owners: dict[str, set[str]], failures: list[str]) -> No
         "DOMAIN_DEVICE",
         _SelftestCase(
             '[Ring 4 / Domain]\n#include "ra8_gpio.h"\n',
-            "libs/ra8_book/x.c",
-            "ra8_book",
+            "apps/shared_libs/book/x.c",
+            "book",
             "Domain dependency on a device contract fires",
         ),
         owners,
@@ -294,8 +294,8 @@ def _selftest_violations(owners: dict[str, set[str]], failures: list[str]) -> No
         "HOSTED_LIB",
         _SelftestCase(
             "#include <dirent.h>\n",
-            "libs/ra8_book/x.c",
-            "ra8_book",
+            "apps/shared_libs/book/x.c",
+            "book",
             "hosted filesystem header in a library fires",
         ),
         owners,
@@ -308,8 +308,8 @@ def _selftest_portable(owners: dict[str, set[str]], failures: list[str]) -> None
     _expect_portable(
         _SelftestCase(
             '#include <string.h>\n#include "ra8_err.h"\n',
-            "libs/ra8_book/x.c",
-            "ra8_book",
+            "apps/shared_libs/book/x.c",
+            "book",
             "portable ISO C and public lower-layer includes stay quiet",
         ),
         owners,
@@ -328,8 +328,8 @@ def _selftest_portable(owners: dict[str, set[str]], failures: list[str]) -> None
     _expect_portable(
         _SelftestCase(
             '[Ring 4 / Domain]\n#include "ra8_err.h"\n',
-            "libs/ra8_book/x.c",
-            "ra8_book",
+            "apps/shared_libs/book/x.c",
+            "book",
             "Domain dependency on a portable lower contract stays quiet",
         ),
         owners,

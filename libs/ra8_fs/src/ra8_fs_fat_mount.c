@@ -337,7 +337,7 @@ static ra8_err_t internal_mbr_select_entry(const uint8_t* buf, uint8_t index, ui
  * refused. The signature bytes are tested separately (not as one compound
  * decision) to mirror ::priv_mbr_part0_lba.
  *
- * @param[in,out] m        Mount with sector 0 already in ::g_fs_scratch.
+ * @param[in]     m        Mount with sector 0 already in ::g_fs_scratch.
  * @param[in]     index    Zero-based partition index.
  * @param[out]    out_base Receives the selected partition's first LBA.
  * @return Error code.
@@ -356,7 +356,7 @@ static ra8_err_t internal_mbr_select_entry(const uint8_t* buf, uint8_t index, ui
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_locate_indexed(ra8_fs_mount_t* m, uint8_t index, uint64_t* out_base)
+static ra8_err_t internal_locate_indexed(const ra8_fs_mount_t* m, uint8_t index, uint64_t* out_base)
 {
   if (g_fs_scratch[k_bpb_off_signature_lo] != (uint8_t)k_bpb_sig_lo) {
     return k_ra8_err_not_found;

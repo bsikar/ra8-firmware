@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # hil_run.sh -- Flash a firmware image (.elf or .hex) to the EK-RA8D2 via
 # the Pi and verify expected output appears on the J-Link OB UART within a
@@ -23,164 +24,213 @@
 #   1  FAIL  -- timeout elapsed without match, or flash failed
 #   2  ERROR -- missing arguments / unreachable Pi
 
-set -euo pipefail
+if [[ "$-" == *p* ]]; then
+  unset -v BASH_ENV ENV
+  declare -a ra8_startup_env_unset=()
+  _ra8_startup_refuse() {
+    printf 'error: privileged startup %s\n' "$1" >&2
+    exit 1
+  }
+  ra8_startup_env_done_count=0
+  while IFS= read -r -d '' ra8_startup_env_row; do
+    ra8_startup_env_name="${ra8_startup_env_row%%=*}"
+    case "$ra8_startup_env_name" in
+      RA8_STARTUP_ENV_DONE)
+        ra8_startup_env_done_count=$((ra8_startup_env_done_count + 1))
+        ;;
+      BASH_FUNC_*%% | BASH_FUNC_*'()') ra8_startup_env_unset+=(-u "$ra8_startup_env_name") ;;
+    esac
+  done < <(
+    /usr/bin/env -u RA8_STARTUP_ENV_DONE -0 &&
+      /usr/bin/printf 'RA8_STARTUP_ENV_DONE=1\0'
+  )
+  ((ra8_startup_env_done_count == 1)) && [[ "$ra8_startup_env_name" == RA8_STARTUP_ENV_DONE ]] || _ra8_startup_refuse 'environment enumeration was incomplete'
+  if ((${#ra8_startup_env_unset[@]})); then
+    [[ -z "${RA8_STARTUP_ENV_SCRUBBED-}" ]] || _ra8_startup_refuse 'scrub did not converge'
+    ra8_startup_reentry="$0"
+    [[ "$ra8_startup_reentry" == */* ]] || _ra8_startup_refuse 'requires a script path'
+    if [[ "$ra8_startup_reentry" != /* ]]; then
+      ra8_startup_reentry="$PWD/$ra8_startup_reentry"
+    fi
+    ra8_startup_check="$ra8_startup_reentry"
+    while [[ "$ra8_startup_check" != "/" ]]; do
+      [[ ! -L "$ra8_startup_check" ]] || _ra8_startup_refuse 'refuses a symlinked path'
+      ra8_startup_parent="${ra8_startup_check%/*}"
+      [[ -n "$ra8_startup_parent" ]] || ra8_startup_parent="/"
+      [[ "$ra8_startup_parent" != "$ra8_startup_check" ]] ||
+        _ra8_startup_refuse 'cannot validate its script path'
+      ra8_startup_check="$ra8_startup_parent"
+    done
+    [[ -f "$ra8_startup_reentry" ]] || _ra8_startup_refuse 'refuses a non-regular path'
+    if ! exec /usr/bin/env "${ra8_startup_env_unset[@]}" -u BASH_ENV -u ENV \
+      -u RA8_STARTUP_ENV_DONE RA8_STARTUP_ENV_SCRUBBED=1 \
+      /bin/bash -p -- "$ra8_startup_reentry" "$@"; then
+      _ra8_startup_refuse 'could not enter sanitized process'
+    fi
+  fi
+  unset -v ra8_startup_check ra8_startup_env_done_count
+  unset -v ra8_startup_env_name ra8_startup_env_row
+  unset -v ra8_startup_env_unset ra8_startup_parent ra8_startup_reentry
+  unset -v RA8_STARTUP_ENV_DONE
+  unset -v RA8_STARTUP_ENV_SCRUBBED
+  unset -f _ra8_startup_refuse
 
-# Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
-_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
-_hil_dir="$(cd "$_hil_dir" && pwd)"
-# shellcheck source=scripts/hil/lib/rig_env.sh
-source "$_hil_dir/lib/rig_env.sh"
-rig_require PI_HOST JLINK_SN
+  set -euo pipefail
 
-# ---- bench mutual exclusion --------------------------------------------------
-# One actor at a time on the physical bench. The hold lives exactly as long as
-# this script does -- it is a live process on a kernel flock, not a lease -- so
-# nothing here can leave the bench stale. See scripts/hil/bench.sh.
-# shellcheck source=scripts/hil/lib/bench_lock.sh
-source "$_hil_dir/lib/bench_lock.sh"
-ra8_bench_require "hil flash+verify $*" || exit $?
-JLINK_DEVICE="R7KA8D2KF_CPU0"
+  # Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
+  _hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+  _hil_dir="$(cd "$_hil_dir" && pwd)"
+  # shellcheck source=scripts/hil/lib/rig_env.sh
+  source "$_hil_dir/lib/rig_env.sh"
+  rig_require PI_HOST JLINK_SN JLINK_DEVICE
 
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+  # ---- bench mutual exclusion --------------------------------------------------
+  # One actor at a time on the physical bench. The hold lives exactly as long as
+  # this script does -- it is a live process on a kernel flock, not a lease -- so
+  # nothing here can leave the bench stale. See scripts/hil/bench.sh.
+  # shellcheck source=scripts/hil/lib/bench_lock.sh
+  source "$_hil_dir/lib/bench_lock.sh"
+  ra8_bench_require "hil flash+verify $*" || exit $?
+  GREEN='\033[0;32m'
+  RED='\033[0;31m'
+  YELLOW='\033[1;33m'
+  NC='\033[0m'
 
-usage() {
-  echo "Usage: $0 --hex <file.elf|file.hex> --expect <string> [--baud 115200] [--timeout 10] [--uart <device>]"
-  exit 2
-}
+  usage() {
+    echo "Usage: $0 --hex <file.elf|file.hex> --expect <string> [--baud 115200] [--timeout 10] [--uart <device>]"
+    exit 2
+  }
 
-HEX=""
-EXPECT=""
-BAUD="115200"
-TIMEOUT_S="10"
-UART=""
+  HEX=""
+  EXPECT=""
+  BAUD="115200"
+  TIMEOUT_S="10"
+  UART=""
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --hex)
-      HEX="$2"
-      shift 2
-      ;;
-    --expect)
-      EXPECT="$2"
-      shift 2
-      ;;
-    --baud)
-      BAUD="$2"
-      shift 2
-      ;;
-    --timeout)
-      TIMEOUT_S="$2"
-      shift 2
-      ;;
-    --uart)
-      UART="$2"
-      shift 2
-      ;;
-    *)
-      echo "Unknown arg: $1"
-      usage
-      ;;
-  esac
-done
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --hex)
+        HEX="$2"
+        shift 2
+        ;;
+      --expect)
+        EXPECT="$2"
+        shift 2
+        ;;
+      --baud)
+        BAUD="$2"
+        shift 2
+        ;;
+      --timeout)
+        TIMEOUT_S="$2"
+        shift 2
+        ;;
+      --uart)
+        UART="$2"
+        shift 2
+        ;;
+      *)
+        echo "Unknown arg: $1"
+        usage
+        ;;
+    esac
+  done
 
-[[ -z "$HEX" || -z "$EXPECT" ]] && usage
-[[ -f "$HEX" ]] || {
-  echo -e "${RED}[HIL]${NC} firmware file not found: $HEX"
-  exit 2
-}
+  [[ -z "$HEX" || -z "$EXPECT" ]] && usage
+  [[ -f "$HEX" ]] || {
+    echo -e "${RED}[HIL]${NC} firmware file not found: $HEX"
+    exit 2
+  }
 
-# Resolve the board console on the Pi when --uart was not given. Identity, not
-# number: the chip's own USBHS CDC and the ESP32-C6's UART bridge both
-# enumerate as /dev/ttyACM<n> too, and which number each gets depends on the
-# order they were plugged in. See scripts/hil/lib/tty_resolve.sh.
-if [[ -z "$UART" ]]; then
-  UART=$(
-    # shellcheck disable=SC2087  # RA8_TTY_RESOLVER_SRC/JLINK_SN are substituted client-side on purpose: the Pi has no checkout.
-    ssh "$PI_HOST" bash -s <<REMOTE
+  # Resolve the board console on the Pi when --uart was not given. Identity, not
+  # number: the chip's own USBHS CDC and the ESP32-C6's UART bridge both
+  # enumerate as /dev/ttyACM<n> too, and which number each gets depends on the
+  # order they were plugged in. See scripts/hil/lib/tty_resolve.sh.
+  if [[ -z "$UART" ]]; then
+    UART=$(
+      # shellcheck disable=SC2087  # RA8_TTY_RESOLVER_SRC/JLINK_SN are substituted client-side on purpose: the Pi has no checkout.
+      ssh "$PI_HOST" /bin/bash -p -s <<REMOTE
 ${RA8_TTY_RESOLVER_SRC}
 JLINK_SN="${JLINK_SN}"
 ra8_tty_resolve console
 REMOTE
-  ) || {
-    echo -e "${RED}[HIL]${NC} could not resolve the board console on ${PI_HOST}" >&2
-    exit 2
-  }
-fi
+    ) || {
+      echo -e "${RED}[HIL]${NC} could not resolve the board console on ${PI_HOST}" >&2
+      exit 2
+    }
+  fi
 
-APP_NAME="$(basename "${HEX%.*}")"
-FIRMWARE_EXT="${HEX##*.}"
-REMOTE_FW="/tmp/hil_${APP_NAME}.${FIRMWARE_EXT}"
+  APP_NAME="$(basename "${HEX%.*}")"
+  FIRMWARE_EXT="${HEX##*.}"
+  REMOTE_FW="/tmp/hil_${APP_NAME}.${FIRMWARE_EXT}"
 
-echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIMEOUT_S}s"
+  echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIMEOUT_S}s"
 
-# ---- 0. Anti-recovery pre-flash guard ----------------------------------------
-# Inspect the full image + source tree before any programming. See
-# scripts/hil/lib/preflash_guard.sh.
-# shellcheck source=scripts/hil/lib/preflash_guard.sh
-source "$_hil_dir/lib/preflash_guard.sh"
-ra8_preflash_guard "$HEX" || exit $?
+  # ---- 0. Anti-recovery pre-flash guard ----------------------------------------
+  # Inspect the full image + source tree before any programming. See
+  # scripts/hil/lib/preflash_guard.sh.
+  # shellcheck source=scripts/hil/lib/preflash_guard.sh
+  source "$_hil_dir/lib/preflash_guard.sh"
+  ra8_preflash_guard "$HEX" || exit $?
 
-# ---- 1. Option-setting (OFS/OTP) sections: strip by default (brick-safety) ---
-# The .option_setting_* sections carry the RA8D2 option bytes: OFS0..3, SAS, BPS
-# and the OTP structures (FSBL, PBPS, POFSPS, REVOKE, HUK-zeroize enable,
-# anti-rollback) at their real HUM Ch 7 addresses (0x02C9_F0xx / 0x02E0_7600..).
-# SEVERAL ARE ONE-TIME-PROGRAMMABLE: a wrong value can permanently lock or brick
-# the part, and a bad OFS also stalls J-Link's RAMCode during Prepare(). The
-# default flashing policy is therefore DELIBERATE, not incidental -- strip every
-# .option_setting section and program only the code-MRAM bank at 0x02000000.
-#
-# There is a separate, explicit path for provisioning the option bytes on
-# purpose: set RA8_HIL_PROGRAM_OPTION_BYTES=1 and the sections are flashed as-is.
-# Only do that with values you have vetted against HUM Ch 7 -- an erased
-# (all-ones) word is the permissive default and safe; anything else is on you.
-#
-# SWD speed: RA8D2 boots from the internal ~4 MHz oscillator after SYSRESETREQ.
-# J-Link's RAMCode runs at this low clock and requires speed <= 1000 kHz to
-# communicate reliably.  Using 4000 kHz causes RAMCode timeout.
-ELF="${HEX%.hex}.elf"
-STRIPPED_FW="/tmp/hil_${APP_NAME}_mram.${FIRMWARE_EXT}"
-if [[ "${RA8_HIL_PROGRAM_OPTION_BYTES:-0}" == "1" ]]; then
-  OFS_ARGS=()
-  echo -e "${YELLOW}[HIL]${NC} RA8_HIL_PROGRAM_OPTION_BYTES=1 -- flashing option bytes (NOT stripped)"
-else
-  OFS_ARGS=('--remove-section=.option_setting*')
-fi
-if [[ "$FIRMWARE_EXT" == "elf" ]]; then
-  arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$HEX" "/tmp/hil_${APP_NAME}_mram.hex" 2>/dev/null ||
-    arm-none-eabi-objcopy -O ihex "$HEX" "/tmp/hil_${APP_NAME}_mram.hex"
-  STRIPPED_FW="/tmp/hil_${APP_NAME}_mram.hex"
-elif [[ -f "$ELF" ]]; then
-  arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_FW" 2>/dev/null ||
-    cp "$HEX" "$STRIPPED_FW"
-else
-  arm-none-eabi-objcopy -I ihex "${OFS_ARGS[@]}" -O ihex "$HEX" "$STRIPPED_FW" 2>/dev/null ||
-    cp "$HEX" "$STRIPPED_FW"
-fi
+  # ---- 1. Option-setting (OFS/OTP) sections: strip by default (brick-safety) ---
+  # The .option_setting_* sections carry the RA8D2 option bytes: OFS0..3, SAS, BPS
+  # and the OTP structures (FSBL, PBPS, POFSPS, REVOKE, HUK-zeroize enable,
+  # anti-rollback) at their real HUM Ch 7 addresses (0x02C9_F0xx / 0x02E0_7600..).
+  # SEVERAL ARE ONE-TIME-PROGRAMMABLE: a wrong value can permanently lock or brick
+  # the part, and a bad OFS also stalls J-Link's RAMCode during Prepare(). The
+  # default flashing policy is therefore DELIBERATE, not incidental -- strip every
+  # .option_setting section and program only the code-MRAM bank at 0x02000000.
+  #
+  # There is a separate, explicit path for provisioning the option bytes on
+  # purpose: set RA8_HIL_PROGRAM_OPTION_BYTES=1 and the sections are flashed as-is.
+  # Only do that with values you have vetted against HUM Ch 7 -- an erased
+  # (all-ones) word is the permissive default and safe; anything else is on you.
+  #
+  # SWD speed: RA8D2 boots from the internal ~4 MHz oscillator after SYSRESETREQ.
+  # J-Link's RAMCode runs at this low clock and requires speed <= 1000 kHz to
+  # communicate reliably.  Using 4000 kHz causes RAMCode timeout.
+  ELF="${HEX%.hex}.elf"
+  STRIPPED_FW="/tmp/hil_${APP_NAME}_mram.${FIRMWARE_EXT}"
+  if [[ "${RA8_HIL_PROGRAM_OPTION_BYTES:-0}" == "1" ]]; then
+    OFS_ARGS=()
+    echo -e "${YELLOW}[HIL]${NC} RA8_HIL_PROGRAM_OPTION_BYTES=1 -- flashing option bytes (NOT stripped)"
+  else
+    OFS_ARGS=('--remove-section=.option_setting*')
+  fi
+  if [[ "$FIRMWARE_EXT" == "elf" ]]; then
+    arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$HEX" "/tmp/hil_${APP_NAME}_mram.hex" 2>/dev/null ||
+      arm-none-eabi-objcopy -O ihex "$HEX" "/tmp/hil_${APP_NAME}_mram.hex"
+    STRIPPED_FW="/tmp/hil_${APP_NAME}_mram.hex"
+  elif [[ -f "$ELF" ]]; then
+    arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_FW" 2>/dev/null ||
+      cp "$HEX" "$STRIPPED_FW"
+  else
+    arm-none-eabi-objcopy -I ihex "${OFS_ARGS[@]}" -O ihex "$HEX" "$STRIPPED_FW" 2>/dev/null ||
+      cp "$HEX" "$STRIPPED_FW"
+  fi
 
-# ---- 2. Copy firmware to Pi --------------------------------------------------
-REMOTE_FW="/tmp/hil_${APP_NAME}_mram.hex"
-echo -e "${YELLOW}[HIL]${NC} uploading hex..."
-scp -q "$STRIPPED_FW" "${PI_HOST}:${REMOTE_FW}"
+  # ---- 2. Copy firmware to Pi --------------------------------------------------
+  REMOTE_FW="/tmp/hil_${APP_NAME}_mram.hex"
+  echo -e "${YELLOW}[HIL]${NC} uploading hex..."
+  scp -q "$STRIPPED_FW" "${PI_HOST}:${REMOTE_FW}"
 
-# ---- 3. Flash, then read UART for the expected string ------------------------
-# ORDERING (issue #390): the UART reader MUST be live BEFORE the core is
-# released from reset. A "print-once" app emits its banner within a few
-# milliseconds of "g" (go) and then parks; if the tty is opened only AFTER
-# JLinkExe returns, those bytes are already gone and the app reads as a silent
-# hang -- indistinguishable from a genuine lock-up. So, on the Pi, we (1) start
-# a background reader capturing the tty into a log, (2) let it settle so the
-# port is open, (3) run JLinkExe (which loadfiles, resets, and goes), and only
-# then (4) poll the log for EXPECT within the timeout. The reader is therefore
-# already draining the port at the instant "g" runs, so the first post-reset
-# bytes are caught. This mirrors the silicon-proven order in
-# scripts/hil/run_direct.sh (reader-before-reset), which the suite already uses.
-echo -e "${YELLOW}[HIL]${NC} flashing + capturing '${EXPECT}' on ${UART} (${TIMEOUT_S}s)..."
-RESULT=$(
-  # shellcheck disable=SC2087  # client-side substitution of JLINK_DEVICE/JLINK_SN/REMOTE_FW/APP_NAME/UART/BAUD/EXPECT/TIMEOUT_S is intentional
-  ssh "$PI_HOST" bash <<REMOTE
+  # ---- 3. Flash, then read UART for the expected string ------------------------
+  # ORDERING (issue #390): the UART reader MUST be live BEFORE the core is
+  # released from reset. A "print-once" app emits its banner within a few
+  # milliseconds of "g" (go) and then parks; if the tty is opened only AFTER
+  # JLinkExe returns, those bytes are already gone and the app reads as a silent
+  # hang -- indistinguishable from a genuine lock-up. So, on the Pi, we (1) start
+  # a background reader capturing the tty into a log, (2) let it settle so the
+  # port is open, (3) run JLinkExe (which loadfiles, resets, and goes), and only
+  # then (4) poll the log for EXPECT within the timeout. The reader is therefore
+  # already draining the port at the instant "g" runs, so the first post-reset
+  # bytes are caught. This mirrors the silicon-proven order in
+  # scripts/hil/run_direct.sh (reader-before-reset), which the suite already uses.
+  echo -e "${YELLOW}[HIL]${NC} flashing + capturing '${EXPECT}' on ${UART} (${TIMEOUT_S}s)..."
+  RESULT=$(
+    # shellcheck disable=SC2087  # client-side substitution of JLINK_DEVICE/JLINK_SN/REMOTE_FW/APP_NAME/UART/BAUD/EXPECT/TIMEOUT_S is intentional
+    ssh "$PI_HOST" /bin/bash -p <<REMOTE
 set -euo pipefail
 LOG=/tmp/hil_jlink_${APP_NAME}.log
 UART_LOG=/tmp/hil_uart_${APP_NAME}.log
@@ -247,18 +297,21 @@ pkill -f "cat ${UART}" 2>/dev/null || true
 head -n 20 "\$UART_LOG" | sed 's/^/[uart] /' || true
 echo "RESULT=\$FOUND"
 REMOTE
-)
+  )
 
-echo -e "${YELLOW}[HIL]${NC} captured output:"
-printf '%s\n' "$RESULT"
+  echo -e "${YELLOW}[HIL]${NC} captured output:"
+  printf '%s\n' "$RESULT"
 
-if echo "$RESULT" | grep -q "RESULT=FLASHFAIL"; then
-  echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: flash failed"
-  exit 1
-elif echo "$RESULT" | grep -q "RESULT=MATCH"; then
-  echo -e "${GREEN}[HIL PASS]${NC} ${APP_NAME}: saw '${EXPECT}'"
-  exit 0
+  if echo "$RESULT" | grep -q "RESULT=FLASHFAIL"; then
+    echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: flash failed"
+    exit 1
+  elif echo "$RESULT" | grep -q "RESULT=MATCH"; then
+    echo -e "${GREEN}[HIL PASS]${NC} ${APP_NAME}: saw '${EXPECT}'"
+    exit 0
+  else
+    echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: '${EXPECT}' not seen within ${TIMEOUT_S}s"
+    exit 1
+  fi
 else
-  echo -e "${RED}[HIL FAIL]${NC} ${APP_NAME}: '${EXPECT}' not seen within ${TIMEOUT_S}s"
-  exit 1
+  [[ "$-" == *p* ]]
 fi

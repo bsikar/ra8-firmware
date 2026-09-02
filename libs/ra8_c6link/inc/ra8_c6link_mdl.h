@@ -35,18 +35,18 @@
  * @code
  * ra8_mdl_session_t session = {};
  * (void)ra8_c6link_mdl_start(
- *   &link, "https://host/book.rabook", k_ra8_mdl_format_rabook, &session);
+ *   &link, "https://host/book.rabook", k_mdl_format_rabook, &session);
  * @endcode
  * @see ra8_c6link_mdl_start
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t         job_id;          /**< Remote-generated non-zero identifier.              */
-  uint32_t         next_sequence;   /**< Exact sequence required from the next response.    */
-  uint64_t         next_offset;     /**< Exact byte offset required from the next response. */
-  uint32_t         max_chunk_bytes; /**< Maximum accepted pull size negotiated at start.    */
-  ra8_mdl_format_t format;          /**< Requested format echoed by the C6.                 */
-  bool             active;          /**< Whether next/cancel is currently valid.            */
+  uint32_t     job_id;          /**< Remote-generated non-zero identifier.              */
+  uint32_t     next_sequence;   /**< Exact sequence required from the next response.    */
+  uint64_t     next_offset;     /**< Exact byte offset required from the next response. */
+  uint32_t     max_chunk_bytes; /**< Maximum accepted pull size negotiated at start.    */
+  mdl_format_t format;          /**< Requested format echoed by the C6.                 */
+  bool         active;          /**< Whether next/cancel is currently valid.            */
 } ra8_mdl_session_t;
 
 /**
@@ -107,7 +107,7 @@ extern "C" {
  */
 [[nodiscard]] ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t*      link,
                                              const char*        url,
-                                             ra8_mdl_format_t   format,
+                                             mdl_format_t       format,
                                              ra8_mdl_session_t* session);
 
 /**

@@ -197,7 +197,9 @@ ra8_err_t ra8_lvd_enable_elc_event(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
   const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
-  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_elc_event: bad channel"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- channel_to_idx() error edge; enable_elc_event pre-validates it */
+  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_elc_event: bad channel");
+  /* GCOVR_EXCL_BR_STOP */
 
   const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {
@@ -240,9 +242,7 @@ ra8_err_t ra8_lvd_disable_elc_event(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
   const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
-  RA8_RETURN_ON_ERROR(map_err,
-                      s_tag,
-                      "lvd_disable_elc_event: bad channel"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_elc_event: bad channel");
 
   const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {
@@ -279,9 +279,7 @@ ra8_err_t ra8_lvd_configure_for_standby(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
   const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
-  RA8_RETURN_ON_ERROR(map_err,
-                      s_tag,
-                      "lvd_configure_for_standby: bad channel"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_configure_for_standby: bad channel");
 
   const ra8_lvd_channel_map_t map = g_lvd_map[idx];
 
@@ -431,9 +429,7 @@ ra8_lvd_attach_channel_handler(ra8_lvd_channel_t channel, ra8_lvd_event_fn_t fn,
 {
   uint8_t         idx     = 0U;
   const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
-  RA8_RETURN_ON_ERROR(map_err,
-                      s_tag,
-                      "lvd_attach_channel_handler: bad channel"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_attach_channel_handler: bad channel");
 
   const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {

@@ -459,10 +459,6 @@ typedef enum : uint32_t {
 RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_gwca_gwdcc(uint32_t queue_index)
 {
-  /* cppcheck-suppress unusedScopedObject ; `enum : uint32_t` is a C23 type
-     declaration, not an object. cppcheck reads the underlying type as a
-     temporary and calls it destroyed immediately; the constant is read on
-     the next line. Only bites when this header is checked standalone. */
   enum : uint32_t { k_ra8_gwca_max_queues = 32U /**< RA8 gwca maximum queues. */ };
   if (queue_index >= k_ra8_gwca_max_queues) {
     return nullptr;

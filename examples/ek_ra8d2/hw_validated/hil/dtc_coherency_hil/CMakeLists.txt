@@ -38,7 +38,7 @@ ra8_add_app(
 )
 
 # Turn ON the Cortex-M85 D-cache / I-cache + MPU boot path for THIS app only.
-# The shared boot (libs/ra8_board_ek_ra8d2/boot/system_init.c) is compiled
+# The shared boot (libs/ra8_board_ek_ra8d2/src/boot/system_init.c) is compiled
 # per-app, so this define reaches only dtc_coherency_hil.elf. With the D-cache
 # enabled the DTC is no longer automatically coherent with the M85: the CPU's
 # writes to the vector table and the Transfer Information block sit dirty in

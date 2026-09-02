@@ -64,7 +64,7 @@
  * register I/O path is NON-FUNCTIONAL on silicon: verified on the EK-RA8D2, the
  * RSIP registers read all-zero, writes do not stick, and ra8_rsip_sha256 returns
  * k_ra8_err_hw_timeout with a zero digest (see
- * examples/ek_ra8d2/hw_pending/rsip_sha256_kat). Renesas drives the RSIP through
+ * examples/ek_ra8d2/hil_needs_revalidation/rsip_sha256_kat). Renesas drives the RSIP through
  * FSP's opaque procedural "primitive" sequences, not registers. Until that FSP
  * driver is ported, the software SHA-256 is the ONLY working backend, so it is
  * enabled unconditionally. The register-sequence model is retained (never
@@ -119,10 +119,10 @@ static void* s_rsip_ctx;
 /** @brief Implementation of `priv_wait_bit()` -- bounded MMIO mask spin. */
 ra8_err_t priv_wait_bit(ra8_rsip_off_t offset, uint32_t mask)
 {
-  volatile uint32_t* reg = ra8_rsip_reg32(offset);
+  volatile const uint32_t* reg = ra8_rsip_reg32(offset);
   for (uint32_t i = 0U; i < k_ra8_rsip_poll_budget; ++i) {
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
-    /* Host unit-test MMIO wait seam (tests/mocks/ra8_fake_mmio.c): an unarmed
+    /* Host unit-test MMIO wait seam (tests/mocks/src/ra8_fake_mmio.c): an unarmed
      * register satisfies the wait on its first poll; a test arms fail_wait /
      * satisfy_after to drive the timeout / continuation legs of this loop. */
     if (ra8_fake_mmio_wait_eval(reg, i, ((*reg & mask) == mask))) {
@@ -221,8 +221,7 @@ static void internal_sha256_pull_digest(uint8_t* digest)
     /* Computed digest-word offset is a valid HUM-defined register location,
      * not a literal enumerator -- the analyzer can't see that. */
     const ra8_rsip_off_t off =
-      (ra8_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed register offset is a HUM-defined location, not an enumerator.
-        k_ra8_rsip_off_hash_digest + (uint16_t)(w << k_ra8_rsip_word_shift));
+      (ra8_rsip_off_t)(k_ra8_rsip_off_hash_digest + (uint16_t)(w << k_ra8_rsip_word_shift));
     const uint32_t word = *ra8_rsip_reg32(off);
     priv_unpack_le(word, &digest[w << k_ra8_rsip_word_shift]);
   }
@@ -239,7 +238,9 @@ ra8_err_t ra8_rsip_init(const ra8_rsip_config_t* cfg)
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   /* HUM Ch 52.3.2 "Module-Stop Function Setting" p 3307 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_rsip);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "rsip_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "rsip_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Engine reset + enable mailbox. */
@@ -345,8 +346,8 @@ ra8_err_t ra8_rsip_trng_read(uint8_t* buf, uint32_t len)
   }
 
 #ifdef RA8_RSIP_TRNG_HARDWARE
-  volatile uint32_t* status = ra8_rsip_reg32(k_ra8_rsip_off_rnd_status);
-  volatile uint32_t* data   = ra8_rsip_reg32(k_ra8_rsip_off_rnd_data);
+  volatile uint32_t*       status = ra8_rsip_reg32(k_ra8_rsip_off_rnd_status);
+  volatile const uint32_t* data   = ra8_rsip_reg32(k_ra8_rsip_off_rnd_data);
 
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Arm TRNG control word. */
@@ -955,7 +956,9 @@ ra8_err_t ra8_rsip_exit_stop(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_rsip);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "rsip_exit_stop: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "rsip_exit_stop: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Engine re-enable then BIST. */

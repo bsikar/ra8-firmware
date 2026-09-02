@@ -2,7 +2,7 @@
 
 **Magic:** `ROT1` (`0x524F5431`) &nbsp;|&nbsp;
 **Library:** `libs/ra8_dfu` &nbsp;|&nbsp;
-**Producer:** `tools/rot_sign.py` &nbsp;|&nbsp;
+**Producer:** `tools/rot/src/rot_sign.py` &nbsp;|&nbsp;
 **Size:** 116 bytes, fixed
 
 ---
@@ -205,7 +205,7 @@ part of the device, not part of the update.
 
 ## 4. Algorithms
 
-### 4.1 Signing (`tools/rot_sign.py`)
+### 4.1 Signing (`tools/rot/src/rot_sign.py`)
 
 ```
   1. Read body.bin  -> body, body_len
@@ -306,9 +306,9 @@ Reproducible with a throwaway key. **Never commit a private key**; this one is
 generated into a temporary directory and discarded.
 
 ```
-$ python3 tools/rot_sign.py keygen --key /tmp/demo.pem
+$ python3 tools/rot/src/rot_sign.py keygen --key /tmp/demo.pem
 $ python3 -c "open('/tmp/body.bin','wb').write(bytes((i*7+3)&0xFF for i in range(1024)))"
-$ python3 tools/rot_sign.py sign --key /tmp/demo.pem --image /tmp/body.bin \
+$ python3 tools/rot/src/rot_sign.py sign --key /tmp/demo.pem --image /tmp/body.bin \
       --out /tmp/signed.bin --img-version 7
 signed 1024 body bytes -> signed.bin (1140 bytes)
 ```
@@ -361,7 +361,7 @@ section 2, visible in a hexdump.
 ### 6.3 Proving the whole scheme end to end
 
 ```
-$ python3 tools/rot_sign.py selftest
+$ python3 tools/rot/src/rot_sign.py selftest
 rot_sign.py selftest: PASS -- sign/verify round-trip + trailer layout OK.
 ```
 
@@ -453,7 +453,7 @@ Bump, update both halves, re-sign, delete the old path.
 
 - `ra8_rot.h` -- trailer struct, constants, `ra8_rot_verify_image()`
 - `ra8_dfu_antirollback.h` -- the monotonic counter check
-- `tools/rot_sign.py` -- the signing tool and its `selftest`
+- `tools/rot/src/rot_sign.py` -- the signing tool and its `selftest`
 - @ref md_docs_2formats_2NSR1 -- the 8-byte NS header that locates this trailer
   at the TrustZone boundary
 - @ref md_docs_2formats_2BINARY__FORMATS -- why the magic reads `1TOR` on disk

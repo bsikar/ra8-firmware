@@ -18,7 +18,7 @@
  * report; the model half is engine-free so it can be unit-tested on the host.
  *
  * Splitting the model out of this file is what lets the gate table be tested
- * without Unicorn (tests/test_ra8_emulator_mstp_gate.c); this glue is the thin
+ * without Unicorn (tests/misc/src/test_ra8_emulator_mstp_gate.c); this glue is the thin
  * part that the core registry needs and that pulls in board_periph_block.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

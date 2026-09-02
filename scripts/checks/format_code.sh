@@ -18,14 +18,17 @@ NC='\033[0m' # No Color
 CHECK_ONLY=false
 VERBOSE=false
 LIST_ONLY=false
+SELFTEST=false
 
-# Pin the clang-format binary via env var so CI can lock to a specific
-# major version (Ubuntu 24.04 ships v18 by default; Homebrew on macOS
-# ships v22). Both produce slightly different formatting on edge cases
-# so the check side and the auto-format side must agree on which
-# version they invoke. Default to plain `clang-format` for backward
-# compatibility on developer machines.
-CLANG_FORMAT="${CLANG_FORMAT:-clang-format}"
+# One formatter owns both the mutating and check paths. Ubuntu 24.04's
+# unversioned clang-format is v18, whose output differs from the v22 tree on
+# edge cases, so falling back to it makes a check disagree with the formatter.
+# An explicit override remains supported for Homebrew's unversioned v22
+# binary, but every resolved binary is validated below before it touches a
+# source file.
+PINNED_CLANG_FORMAT="clang-format-22"
+PINNED_CLANG_FORMAT_MAJOR="${PINNED_CLANG_FORMAT##*-}"
+CLANG_FORMAT="${CLANG_FORMAT:-$PINNED_CLANG_FORMAT}"
 
 # Print usage information
 usage() {
@@ -36,6 +39,7 @@ usage() {
   echo "Options:"
   echo "  -c, --check    Check formatting without making changes"
   echo "  -v, --verbose  Enable verbose output"
+  echo "      --selftest Prove pinned-version detection in both directions"
   echo "  -h, --help     Show this help message"
   echo ""
   echo "Examples:"
@@ -50,23 +54,72 @@ print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1" >&2; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1" >&2; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
-# Check if clang-format is installed
+# Extract the first dotted version's major from a clang-format banner.
+clang_format_version_major() {
+  local banner="$1"
+  if [[ "$banner" =~ version[[:space:]]+([0-9]+)\.[0-9]+ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+  return 1
+}
+
+# Return success only for the project-pinned clang-format major.
+clang_format_version_is_pinned() {
+  local banner="$1" major
+  major="$(clang_format_version_major "$banner")" || return 1
+  [[ "$major" == "$PINNED_CLANG_FORMAT_MAJOR" ]]
+}
+
+# Check that clang-format exists and is the pinned major before either mode.
 check_clang_format() {
-  if ! command -v "$CLANG_FORMAT" &>/dev/null; then
-    print_error "$CLANG_FORMAT not found!"
-    echo ""
-    echo "Please install clang-format:"
-    echo "  macOS: brew install clang-format"
-    echo "  Ubuntu/Debian: sudo apt-get install clang-format"
-    echo "  Fedora: sudo dnf install clang"
-    exit 1
+  local resolved version
+  resolved="$(command -v "$CLANG_FORMAT" 2>/dev/null || true)"
+  if [[ -z "$resolved" ]]; then
+    print_error "$CLANG_FORMAT not found; clang-format-$PINNED_CLANG_FORMAT_MAJOR is required."
+    return 1
   fi
 
-  local version
-  version=$("$CLANG_FORMAT" --version | head -n1)
-  if [ "$VERBOSE" = true ]; then
-    print_status "Found $version"
+  if ! version="$("$resolved" --version 2>&1)"; then
+    print_error "$resolved --version failed; refusing to run an unverified formatter."
+    return 1
   fi
+  version="${version%%$'\n'*}"
+  if ! clang_format_version_is_pinned "$version"; then
+    print_error "Wrong clang-format version: $version"
+    print_error "Required major: $PINNED_CLANG_FORMAT_MAJOR ($PINNED_CLANG_FORMAT)."
+    return 1
+  fi
+
+  CLANG_FORMAT="$resolved"
+  if [ "$VERBOSE" = true ]; then
+    print_status "Found $version at $CLANG_FORMAT"
+  fi
+}
+
+# Prove that the version guard accepts the pin and rejects skew/malformed input.
+run_selftest() {
+  local failures=0 total=5
+
+  clang_format_version_is_pinned "Ubuntu clang-format version 22.1.8" ||
+    failures=$((failures + 1))
+  clang_format_version_is_pinned "Ubuntu 24.04 clang-format version 22.1.8" ||
+    failures=$((failures + 1))
+  if clang_format_version_is_pinned "Ubuntu clang-format version 18.1.3"; then
+    failures=$((failures + 1))
+  fi
+  if clang_format_version_is_pinned "clang-format version unavailable"; then
+    failures=$((failures + 1))
+  fi
+  if (CLANG_FORMAT=ra8-intentionally-missing-clang-format check_clang_format >/dev/null 2>&1); then
+    failures=$((failures + 1))
+  fi
+
+  if [[ "$failures" -ne 0 ]]; then
+    print_error "format_code.sh selftest failed ($failures/$total cases)."
+    return 1
+  fi
+  echo "format_code.sh: selftest passed ($total cases)."
 }
 
 # Check if .clang-format file exists
@@ -101,6 +154,10 @@ parse_args() {
         LIST_ONLY=true
         shift
         ;;
+      --selftest)
+        SELFTEST=true
+        shift
+        ;;
       -h | --help)
         usage
         exit 0
@@ -129,8 +186,14 @@ parse_args() {
 # path prefix below, matching the CLAUDE.md exemption list.
 find_source_files() {
   git ls-files --cached --others --exclude-standard |
+    while IFS= read -r file; do
+      # `--cached` includes tracked paths deleted in this working tree. They
+      # remain index entries until commit, but a formatter cannot read them.
+      # A local format/check during a deletion must inspect the present tree.
+      [[ -f "$file" ]] && printf '%s\n' "$file"
+    done |
     grep -E '\.(c|h|cpp|hpp|cc|cxx|hh|hxx|m)$' |
-    grep -Ev '^(libs/third_party/|libs/ra8_fonts/|tools/vela/generated/)' |
+    grep -Ev '^(libs/third_party/|apps/shared_libs/third_party/|libs/ra8_fonts/|tools/vela/generated/)' |
     grep -Ev '^libs/ra8_c6link/(inc|src)/ra8_media_download\.pb-c\.(c|h)$' |
     grep -Ev '(^|/)(build|build-[^/]*|_deps)/' |
     sort
@@ -143,7 +206,7 @@ check_formatting() {
 
   print_status "Checking code formatting..."
 
-  for file in "${files[@]}"; do
+  for file in ${files[@]+"${files[@]}"}; do
     if [ "$VERBOSE" = true ]; then
       echo "  Checking: $file" >&2
     fi
@@ -172,7 +235,7 @@ check_formatting() {
     print_error "python3 not found -- the comment-format check cannot run."
     return 1
   fi
-  if ! python3 scripts/checks/check_comment_format.py "${files[@]}"; then
+  if ! python3 scripts/checks/check_comment_format.py ${files[@]+"${files[@]}"}; then
     comment_ok=false
   fi
 
@@ -192,7 +255,7 @@ check_formatting() {
 run_clang_round() {
   local files=("$@")
   local changed=0 file temp_file
-  for file in "${files[@]}"; do
+  for file in ${files[@]+"${files[@]}"}; do
     temp_file=$(mktemp)
     "$CLANG_FORMAT" "$file" >"$temp_file" 2>&1 || {
       echo "ERROR: clang-format failed on $file" >&2
@@ -201,7 +264,7 @@ run_clang_round() {
     }
     if ! cmp -s "$file" "$temp_file" 2>/dev/null; then
       cp "$temp_file" "$file"
-      ((changed++)) || true
+      changed=$((changed + 1))
     fi
     rm "$temp_file"
   done
@@ -225,11 +288,11 @@ format_files() {
   fi
 
   for ((round = 1; round <= max_rounds; round++)); do
-    clang_changed=$(run_clang_round "${files[@]}")
+    clang_changed=$(run_clang_round ${files[@]+"${files[@]}"})
 
     comment_changed=0
     if command -v python3 &>/dev/null; then
-      comment_out=$(python3 scripts/checks/check_comment_format.py --fix "${files[@]}" 2>&1) ||
+      comment_out=$(python3 scripts/checks/check_comment_format.py --fix ${files[@]+"${files[@]}"} 2>&1) ||
         print_warning "comment-format pass reported a problem."
       echo "$comment_out" >&2
       comment_changed=$(echo "$comment_out" | sed -n 's/.*reformatted \([0-9][0-9]*\) file.*/\1/p')
@@ -256,6 +319,11 @@ main() {
 
   parse_args "$@"
 
+  if [ "$SELFTEST" = true ]; then
+    run_selftest
+    exit 0
+  fi
+
   # --list-files answers "what do you cover?" and must not need a formatter
   # installed: a missing clang-format would otherwise shrink the reported
   # scope to nothing, which is the failure mode this whole gate family exists
@@ -280,9 +348,9 @@ main() {
   fi
 
   if [ "$CHECK_ONLY" = true ]; then
-    check_formatting "${source_files[@]}"
+    check_formatting ${source_files[@]+"${source_files[@]}"}
   else
-    format_files "${source_files[@]}"
+    format_files ${source_files[@]+"${source_files[@]}"}
   fi
 }
 

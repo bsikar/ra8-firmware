@@ -14,8 +14,8 @@
 # WHICH pass a file lands in, these decide HOW that pass parses it.
 #
 # Functions here: db_pass_args, cxx_pass_args, objc_pass_args,
-# arm_system_includes, gcc_integer_constant_macros, firmware_pass_args,
-# tools_pass_args
+# arm_system_includes, gcc_integer_constant_macros, firmware_language_args,
+# firmware_pass_args, tools_pass_args
 
 # ---------------------------------------------------------------------------
 # Arguments shared by every pass that resolves its compile command from the
@@ -69,20 +69,20 @@ db_pass_args() {
     "--extra-arg-before=-std=c2x" \
     "--extra-arg=-DUNIT_TEST" \
     "--extra-arg=-DRA8_OFF_TARGET" \
-    "--extra-arg=-Wno-unknown-warning-option"
+    "--extra-arg=-Wno-unknown-warning-option" # clang-tidy parses GCC host flags.
 }
 
 # ---------------------------------------------------------------------------
 # Arguments for the C++ pass.
 #
-# The .cpp / .cc shims (tinyxml2 EPUB + RaBook, the C++ allocator shim, the
-# litehtml reflow v2 backend, the Ethos-U55 kernel wrapper) and their tests are
+# The .cpp / .cc shims (the C++ allocator shim, hosted tools, the litehtml
+# reflow v2 backend, and the Ethos-U55 kernel wrapper) and their tests are
 # host-buildable and sit in the SAME host compile database as the C -- so this
 # reuses it, and only fixes up the language. `-std=c2x` from db_pass_args is a
 # C standard and makes clang reject every C++ TU outright, which is why the
 # C++ files needed their own pass rather than simply being added to the glob
 # (#370). The C++ standard is taken from the database entry itself when the TU
-# is in it; -std=c++17 is the floor the vendored tinyxml2 and litehtml need.
+# is in it; -std=c++17 is the floor the vendored litehtml sources need.
 # ---------------------------------------------------------------------------
 cxx_pass_args() {
   magic_number_dedup_arg
@@ -92,7 +92,7 @@ cxx_pass_args() {
     "--extra-arg-before=-std=c++17" \
     "--extra-arg=-DUNIT_TEST" \
     "--extra-arg=-DRA8_OFF_TARGET" \
-    "--extra-arg=-Wno-unknown-warning-option"
+    "--extra-arg=-Wno-unknown-warning-option" # clang-tidy parses GCC C++ flags.
 }
 
 # ---------------------------------------------------------------------------
@@ -115,7 +115,7 @@ objc_pass_args() {
     "--extra-arg-before=-xobjective-c" \
     "--extra-arg-before=-std=gnu2x" \
     "--extra-arg=-fobjc-arc" \
-    "--extra-arg=-Wno-unknown-warning-option"
+    "--extra-arg=-Wno-unknown-warning-option" # clang-tidy parses SDK flags.
 }
 
 # ---------------------------------------------------------------------------
@@ -145,9 +145,10 @@ objc_pass_args() {
 # ---------------------------------------------------------------------------
 arm_system_includes() {
   local cc="${ARM_CC:-arm-none-eabi-gcc}"
+  local language="${1:-c}"
   command -v "$cc" &>/dev/null || return 1
   local raw
-  raw="$("$cc" -mcpu=cortex-m85 -mthumb -E -v -x c /dev/null 2>&1)" || true
+  raw="$("$cc" -mcpu=cortex-m85 -mthumb -E -v -x "$language" /dev/null 2>&1)" || true
   local -a dirs=()
   local dir
   while IFS= read -r dir; do
@@ -161,7 +162,7 @@ arm_system_includes() {
   # an empty set that reads as success.
   [[ ${#dirs[@]} -gt 0 ]] || return 1
   local have_marker=0
-  for dir in "${dirs[@]}"; do
+  for dir in ${dirs[@]+"${dirs[@]}"}; do
     case "$dir" in *arm-none-eabi*)
       have_marker=1
       break
@@ -169,7 +170,7 @@ arm_system_includes() {
     esac
   done
   [[ "$have_marker" -eq 1 ]] || return 1
-  printf -- '--extra-arg=-isystem%s\n' "${dirs[@]}"
+  printf -- '--extra-arg=-isystem%s\n' ${dirs[@]+"${dirs[@]}"}
 }
 
 # ---------------------------------------------------------------------------
@@ -185,7 +186,9 @@ arm_system_includes() {
 # set (#387).
 # ---------------------------------------------------------------------------
 require_arm_system_includes() {
-  arm_system_includes >/dev/null && return 0
+  if arm_system_includes c >/dev/null && arm_system_includes c++ >/dev/null; then
+    return 0
+  fi
   local cc="${ARM_CC:-arm-none-eabi-gcc}"
   local version
   version="$("$cc" --version 2>&1 | head -1)" || version="<not found on PATH>"
@@ -233,7 +236,7 @@ gcc_integer_constant_macros() {
     sed -nE 's/^#define (__U?INT(8|16|32|64|MAX)_C\(c\)) /\1=/p')
   # Floor: signed and unsigned across 8, 16, 32, 64 and MAX -- ten rows.
   [[ "${#defs[@]}" -eq 10 ]] || return 1
-  printf '%s\n' "${defs[@]}"
+  printf '%s\n' ${defs[@]+"${defs[@]}"}
 }
 
 # ---------------------------------------------------------------------------
@@ -264,6 +267,17 @@ require_gcc_integer_constant_macros() {
 # -Wno-unknown-warning-option for the same GCC-only warning flags the host
 # pass has to neutralise.
 # ---------------------------------------------------------------------------
+firmware_language_args() {
+  # A bare header has no database entry, so clang-tidy borrows a nearby donor
+  # command. Some valid donors (notably the ThreadX glue beside assembly
+  # sources) carry no explicit C standard. Clang then falls back to pre-C23 C
+  # and rejects the project's standard `bool` keyword before analysing the
+  # header. Establish the project language before the donor command; a real
+  # compile-command standard may follow and override it, while a bare header
+  # is guaranteed to parse under the C23 contract.
+  printf '%s\n' '--extra-arg-before=-std=c2x'
+}
+
 firmware_pass_args() {
   # readability-magic-numbers is OFF for this pass, and this is a
   # de-duplication rather than an exemption: check_magic_numbers.py owns the
@@ -283,22 +297,37 @@ firmware_pass_args() {
   # So the rule is still enforced here, by the checker that gets it right; what
   # is switched off is a second, coarser implementation of the same rule that
   # would only ever report the 822 it gets wrong.
-  # -ffreestanding: the firmware lane really is compiled that way
-  # (cmake/ra8_add_app.cmake), so analysing it any other way analyses a
-  # program the build never produces. For a TU the cross database describes,
-  # this merely restates the flag already in its command line; it is
-  # load-bearing for the TUs the database does NOT describe -- e.g.
-  # libs/ra8_board_ra8p1/boot/vector_table.c appears in no compile database at
-  # all, so clang-tidy falls back to defaults, and a hosted default cannot see
-  # the freestanding `void main(void)` declaration that
-  # libs/ra8_core/inc/ra8_boot_entry.h guards behind `__STDC_HOSTED__ == 0`
-  # (#707).
+  # Firmware C commands carry -ffreestanding from ra8_add_app. Do not append it
+  # globally here: the same complete database contains the TFLite C++ kernel,
+  # whose real target is hosted C++17 and whose libstdc++ headers deliberately
+  # reject a freestanding parse. build_cross_compile_db.py now fails unless
+  # every firmware TU has a real or derived command, including board boot TUs,
+  # so no uncovered source needs a blanket language-mode override.
   magic_number_dedup_arg
+  firmware_language_args
+  # clang-tidy parses the firmware commands with clang, but the cross compile
+  # database records what the GCC driver was given: cmake/ra8_add_app.cmake and
+  # cmake/ra8_warnings.cmake add -Wduplicated-branches, -Wduplicated-cond,
+  # -Wlogical-op, -Wformat-overflow=2 and -Wformat-truncation=2, none of which
+  # clang recognises. WarningsAsErrors is '*', so without the flag below every
+  # firmware TU fails on -Wunknown-warning-option before a single check runs.
+  # It silences exactly that parse-time complaint and no project check.
   printf '%s\n' \
     "-p=$CROSS_DB_DIR" \
-    "--extra-arg=-Wno-unknown-warning-option" \
-    "--extra-arg=-ffreestanding"
-  arm_system_includes
+    "--extra-arg=-Wno-unknown-warning-option" # clang-tidy parses GCC cross flags.
+  # Bare headers have no database entry, so clang-tidy selects a nearby donor
+  # command. Supply the union from the real cross database, just as the common
+  # host arguments do, so a donor from another app cannot omit transitive
+  # middleware paths such as ThreadX.
+  local inc
+  while IFS= read -r inc; do
+    printf -- '--extra-arg=%s\n' "$inc"
+  done < <(collect_include_args "$CROSS_DB_DIR/compile_commands.json")
+  # Keep the C++ driver's search order first. Its wrapper headers use
+  # #include_next to reach the C library; placing the C-only list first makes
+  # those directories unavailable after <cstdlib> and aborts the parse.
+  arm_system_includes c++
+  arm_system_includes c
   gcc_integer_constant_macros
 }
 
@@ -306,7 +335,7 @@ firmware_pass_args() {
 # Arguments for the tools/ pass.
 #
 # The host dev tools are built by their own per-tool build files -- two CMake
-# projects (ra8_emulator, mkbookimg/mkfontimg) and three Makefiles (cache_bench,
+# projects (ra8_emulator, mkbookimg/mkfontimg) and three justfiles (cache_bench,
 # glyph_bench, reader_vmem) -- and none of them feed the host test compile
 # database. Rather than configure five separate build trees just to obtain a
 # compile command, hand clang-tidy a fixed one: the caller's include union
@@ -330,14 +359,14 @@ firmware_pass_args() {
 tools_fixture_definitions() {
   printf -- '--extra-arg=-DRA8_FMT_TEST_PNG="%s"\n' \
     "$FIRMWARE_DIR/tests/fixtures/rabook_fixed_layout/OEBPS/images/page1.png"
-  printf -- '--extra-arg=-DMDL_SITE_CONFIG_DIR="%s"\n' "$FIRMWARE_DIR/apps/shared/media_dl/sites"
+  printf -- '--extra-arg=-DMDL_SITE_CONFIG_DIR="%s"\n' "$FIRMWARE_DIR/apps/shared_libs/mdl/sites"
   printf -- '--extra-arg=-DMDL_SITE_FIXTURE_DIR="%s"\n' \
-    "$FIRMWARE_DIR/apps/shared/media_dl/tests/fixtures/sites"
+    "$FIRMWARE_DIR/apps/shared_libs/mdl/tests/fixtures/sites"
   # ...and the shipped-descriptor count, counted the same way the listfile
   # counts it (a CONFIGURE_DEPENDS glob over sites/*.conf) so the two cannot
   # disagree about how many descriptors ship.
   local site_count
-  site_count="$(git -C "$FIRMWARE_DIR" ls-files "apps/shared/media_dl/sites/*.conf" | wc -l)"
+  site_count="$(git -C "$FIRMWARE_DIR" ls-files "apps/shared_libs/mdl/sites/*.conf" | wc -l)"
   printf -- '--extra-arg=-DMDL_SHIPPED_SITE_COUNT=%s\n' "$site_count"
 }
 
@@ -345,17 +374,14 @@ tools_pass_args() {
   magic_number_dedup_arg
   local dir
   for dir in "$FIRMWARE_DIR"/tools/*/ "$FIRMWARE_DIR"/tools/*/inc "$FIRMWARE_DIR"/tools/*/src \
-    "$FIRMWARE_DIR"/apps/*/*/ "$FIRMWARE_DIR"/apps/*/*/inc "$FIRMWARE_DIR"/apps/*/*/src; do
+    "$FIRMWARE_DIR"/apps/*/*/ "$FIRMWARE_DIR"/apps/*/*/inc "$FIRMWARE_DIR"/apps/*/*/src \
+    "$FIRMWARE_DIR"/apps/*/*/tests/inc; do
     [[ -d "$dir" ]] && printf -- '--extra-arg=-I%s\n' "${dir%/}"
   done
-  # ...and every OTHER directory under tools/ that really holds a header.
-  # The three globs above stop at tools/<tool>/src, but ra8_emulator keeps its
-  # private headers a level deeper (src/host/emu_host_io_internal.h,
-  # src/engine/emu_elf_source_internal.h), so 78 of its TUs came back as
-  # clang-diagnostic-error "file not found" -- not linted at all, just
-  # unparsed. Derived from git rather than from a fixed depth, for the same
-  # reason the collection is: a new nested directory is picked up the day it
-  # lands, and a gitignored build tree is never on the list.
+  # ...and every OTHER directory under tools/ or apps/ that really holds a
+  # header. Derived from git rather than from a fixed depth so structured inc/
+  # trees are picked up when they land and gitignored build trees never enter
+  # the list.
   while IFS= read -r dir; do
     printf -- '--extra-arg=-I%s/%s\n' "$FIRMWARE_DIR" "$dir"
   done < <(git -C "$FIRMWARE_DIR" ls-files \
@@ -364,7 +390,7 @@ tools_pass_args() {
   local cflag
   local pkg
   if command -v pkg-config &>/dev/null; then
-    # unicorn + capstone: tools/ra8_emulator. libcurl: apps/stand_alone/media_dl's network
+    # unicorn + capstone: tools/ra8_emulator. libcurl: apps/host/mdl's network
     # backend. Without the include dir clang-tidy cannot find the header and
     # reports clang-diagnostic-error instead of linting the file at all -- a
     # silent hole exactly like the one #296 closed, so keep this in step with
@@ -382,13 +408,13 @@ tools_pass_args() {
   # Homebrew installs unicorn/capstone outside the default search path and
   # ships no .pc on some formulae versions; add its include root when present.
   [[ -d /opt/homebrew/include ]] && printf -- '--extra-arg=-I/opt/homebrew/include\n'
-  # _GNU_SOURCE mirrors apps/stand_alone/media_dl/CMakeLists.txt: mdl_export.c uses
+  # _GNU_SOURCE mirrors apps/host/mdl/CMakeLists.txt: mdl_export.c uses
   # posix_spawn_file_actions_addchdir_np() and `environ`, which glibc gates
   # behind it. Without it here the TU degrades to clang-diagnostic-error and
   # is never actually linted.
   #
   tools_fixture_definitions
   # CMAKE_C_EXTENSIONS is ON for every tool (ra8_emulator) or -std=gnu23 is set
-  # explicitly (the Makefile tools), so lint them as GNU C23 too.
+  # explicitly (the justfile tools), so lint them as GNU C23 too.
   printf '%s\n' '--' 'cc' '-std=gnu2x' '-D_GNU_SOURCE'
 }

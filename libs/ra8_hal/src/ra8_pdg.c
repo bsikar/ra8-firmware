@@ -439,17 +439,21 @@ ra8_err_t ra8_pdg_init(const ra8_pdg_config_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   const ra8_err_t cfg_err = internal_validate_cfg(cfg);
-  RA8_RETURN_ON_ERROR(cfg_err, s_tag, "pdg_init: cfg invalid"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(cfg_err, s_tag, "pdg_init: cfg invalid");
 
   ra8_pdg_frange_t frange_use = cfg->frange;
   if (cfg->auto_tune != 0U) {
     const ra8_err_t band_err = ra8_pdg_pick_frange(cfg->gptclk_hz, &frange_use);
-    RA8_RETURN_ON_ERROR(band_err, s_tag, "pdg_init: auto-tune failed"); /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_BR_START -- ra8_pdg_pick_frange() error edge; the auto-tune inputs are in range */
+    RA8_RETURN_ON_ERROR(band_err, s_tag, "pdg_init: auto-tune failed");
+    /* GCOVR_EXCL_BR_STOP */
   }
 
   /* HUM Ch 11.2.9 "MSTPCRD: Module Stop Control Register D" p 449 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_pdg);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "pdg_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "pdg_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   internal_program_dll(cfg, frange_use);
 
@@ -493,7 +497,7 @@ ra8_err_t ra8_pdg_set_delay(uint8_t channel, ra8_pdg_pin_t pin, ra8_pdg_edge_t e
     return k_ra8_err_not_initialized;
   }
   const ra8_err_t v = internal_validate_slot(channel, pin, edge, code);
-  RA8_RETURN_ON_ERROR(v, s_tag, "set_delay: bad input"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v, s_tag, "set_delay: bad input");
 
   /* HUM Ch 23.2.3 "GTDLYRnA: GTIOCnA Rising Output Delay Register" p 1156 */
   /* HUM Ch 23.2.4 "GTDLYFnA: GTIOCnA Falling Output Delay Register" p 1156 */
@@ -509,12 +513,12 @@ ra8_pdg_get_delay(uint8_t channel, ra8_pdg_pin_t pin, ra8_pdg_edge_t edge, uint8
 {
   RA8_CHECK_NULL_PTR(out_code, s_tag, "out_code must not be nullptr");
   const ra8_err_t v = internal_validate_slot(channel, pin, edge, 0U);
-  RA8_RETURN_ON_ERROR(v, s_tag, "get_delay: bad input"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v, s_tag, "get_delay: bad input");
 
   /* HUM Ch 23.2.3 "GTDLYRnA" p 1156 */
   /* HUM Ch 23.2.5 "GTDLYRnB" p 1157 */
-  volatile uint16_t* cell = internal_dly_cell(channel, pin, edge);
-  *out_code               = (uint8_t)(*cell & k_ra8_pdg_dly_mask);
+  volatile const uint16_t* cell = internal_dly_cell(channel, pin, edge);
+  *out_code                     = (uint8_t)(*cell & k_ra8_pdg_dly_mask);
   return k_ra8_ok;
 }
 
@@ -660,8 +664,8 @@ ra8_err_t ra8_pdg_get_status(uint16_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
-  volatile r_pdg_regs_t* reg = ra8_pdg();
-  *out                       = reg->GTDLYCR;
+  volatile const r_pdg_regs_t* reg = ra8_pdg();
+  *out                             = reg->GTDLYCR;
   return k_ra8_ok;
 }
 
@@ -669,8 +673,8 @@ ra8_err_t ra8_pdg_get_status_full(ra8_pdg_status_full_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
-  volatile r_pdg_regs_t* reg = ra8_pdg();
-  const uint16_t         cr  = reg->GTDLYCR;
+  volatile const r_pdg_regs_t* reg = ra8_pdg();
+  const uint16_t               cr  = reg->GTDLYCR;
   /* HUM Ch 23.2.2 "GTDLYCR2" p 1155 */
   const uint16_t cr2 = reg->GTDLYCR2;
   out->raw_gtdlycr   = cr;

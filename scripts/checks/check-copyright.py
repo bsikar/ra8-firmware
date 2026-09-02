@@ -37,7 +37,7 @@ attribution split across two comments.
 Linker scripts use a plain (non-Doxygen) leading block, so they carry the bare
 ``Copyright`` line followed by the SPDX line at the end of that block.
 
-Hash-comment files (shell, python, cmake, make, yaml)
+Hash-comment files (shell, python, cmake, just, yaml)
 -----------------------------------------------------
 No doc-comment convention to live inside, so the attribution leads the file,
 immediately after the shebang when there is one::
@@ -45,6 +45,10 @@ immediately after the shebang when there is one::
     #!/usr/bin/env bash
     # SPDX-License-Identifier: MIT
     # Copyright (c) 2026 Brighton Sikarskie
+
+Security-pinned shell and Python entry points put their exact
+``SHEBANG-SECURITY`` rationale immediately after this pair. The licence pair
+does not move: the combined preamble is shebang, SPDX, copyright, rationale.
 
 Scope is derived from ``lint_targets`` (``git ls-files``), so a new top-level
 directory is covered the day it lands. Vendored SOUP, generated tables and
@@ -89,7 +93,7 @@ LANG_STYLE = {
     "shell": STYLE_HASH,
     "python": STYLE_HASH,
     "cmake": STYLE_HASH,
-    "make": STYLE_HASH,
+    "just": STYLE_HASH,
     "yaml": STYLE_HASH,
 }
 ENFORCED_LANGS = tuple(LANG_STYLE)
@@ -109,13 +113,14 @@ _SUFFIX_STYLE = {
     ".bash": STYLE_HASH,
     ".cmake": STYLE_HASH,
     ".mk": STYLE_HASH,
+    ".just": STYLE_HASH,
     ".yml": STYLE_HASH,
     ".yaml": STYLE_HASH,
 }
 _BASENAME_STYLE = {
     "CMakeLists.txt": STYLE_HASH,
-    "Makefile": STYLE_HASH,
-    "GNUmakefile": STYLE_HASH,
+    "justfile": STYLE_HASH,
+    "Justfile": STYLE_HASH,
 }
 
 _GENERATED = ("font_fixture.h", "fixture_ahem.h", "epub_fixture.h")
@@ -486,6 +491,16 @@ MUST_STAY_QUIET: tuple[tuple[str, str, list[str]], ...] = (
     ("doxy minimal pair", STYLE_DOXY, _GOOD_DOXY_MINIMAL),
     ("plain linker block", STYLE_PLAIN, _GOOD_PLAIN),
     ("hash with shebang", STYLE_HASH, _GOOD_HASH),
+    (
+        "hash with privileged rationale",
+        STYLE_HASH,
+        [
+            "#!/bin/bash -p",
+            f"# {SPDX_TEXT}",
+            f"# {COPY_TEXT}",
+            "# SHEBANG-SECURITY: exact reviewed startup boundary.",
+        ],
+    ),
     ("hash without shebang", STYLE_HASH, _GOOD_HASH_NOSB),
 )
 
@@ -561,6 +576,16 @@ MUST_FIRE: tuple[tuple[str, str, list[str]], ...] = (
         "hash buried",
         STYLE_HASH,
         ["#!/usr/bin/env bash", "# prose", f"# {SPDX_TEXT}", f"# {COPY_TEXT}"],
+    ),
+    (
+        "security rationale before hash attribution",
+        STYLE_HASH,
+        [
+            "#!/bin/bash -p",
+            "# SHEBANG-SECURITY: exact reviewed startup boundary.",
+            f"# {SPDX_TEXT}",
+            f"# {COPY_TEXT}",
+        ],
     ),
     ("hash missing both", STYLE_HASH, ["#!/usr/bin/env bash", "# just prose", "echo hi"]),
 )

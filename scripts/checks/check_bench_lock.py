@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Gate: everything that touches the bench takes the bench lock first.
+"""Gate: bench users take the lock, and programmers inspect their image first.
 
 Why this is a gate and not a convention
 ---------------------------------------
@@ -17,7 +17,7 @@ invokes ``JLinkExe``, ``JLinkGDBServer``, ``rfp-cli``, ``openocd``,
 console, or shells into the bench host over ``ssh $PI_HOST``, is a bench
 operation by construction. A hand-maintained list would go stale the first time
 somebody added a script -- exactly the way the deleted HIL suite runner held a
-stale table of 18 apps against 151 real ones.
+small static table against a much larger derived catalogue.
 
 What counts as guarded
 ----------------------
@@ -35,6 +35,11 @@ in COMMAND position (start of a line, or after a pipe, ``&&``, ``;``, ``sudo``,
 prose -- and most of them do, because the comments are good -- would otherwise
 be flagged, and a gate that cries wolf gets a blanket carve-out list within a
 week.
+
+Every script that actually programs an image has a second obligation:
+``ra8_preflash_guard`` must inspect the full image before ``loadfile``, GDB
+``load``, OpenOCD ``program`` or Ozone ``File.Open`` can write it. That call-site
+set is derived from the programming commands rather than hand-maintained.
 
 Non-vacuity
 -----------
@@ -63,6 +68,7 @@ be read.
 from __future__ import annotations
 
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -77,12 +83,13 @@ EXIT_CONFIG = 2
 # Files whose CONTENT is scanned. Everything else in the tree either cannot
 # invoke a tool (headers, C sources, fixtures) or reaches the hardware only by
 # calling one of these -- and the delegate is what carries the guard.
-SCANNED_SUFFIXES = (".sh", ".py", ".mk", ".yml", ".yaml")
-SCANNED_BASENAMES = ("Makefile",)
+SCANNED_SUFFIXES = (".sh", ".py", ".mk", ".just", ".yml", ".yaml")
+SCANNED_BASENAMES = ("justfile", "Justfile")
 
 # Directories that are somebody else's code, or generated, or not first-party.
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
+    "apps/shared_libs/third_party/",
     "port/threadx/",
     "coprocessor/esp32c6/esp-hosted-mcu/",
     "recon/",
@@ -98,6 +105,7 @@ BENCH_TOOLS = (
     "esptool",
     "esptool.py",
     "tapo_control.py",
+    "ra8-hil-privileged",
 )
 
 # Words that may legitimately precede a command without changing the fact that
@@ -148,6 +156,17 @@ GUARD_RE = re.compile(
     r"|\bbench_host\.sh\s+hold\b"
 )
 
+# Programming actions, as distinct from read-only probe/debug operations. Pure
+# comments are removed before these expressions run.
+PROGRAM_RES: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("J-Link loadfile", re.compile(r"^\s*loadfile\b", re.MULTILINE)),
+    ("GDB load", re.compile(r"(?:^|\s)-ex\s+[\"']load[\"']")),
+    ("OpenOCD program", re.compile(r"(?:^|\s)-c\s+[\"']program\b")),
+    ("Ozone File.Open", re.compile(r"^\s*File\.Open\s*\(", re.MULTILINE)),
+    ("Renesas programmer write", re.compile(r"\brfp-cli\b[^\n]*(?:-write|-program)\b")),
+)
+PREFLASH_GUARD_RE = re.compile(r"\bra8_preflash_guard\b")
+
 # --------------------------------------------------------------------------
 # Carve-outs. Every entry states WHY, because the reason is the thing a
 # reviewer argues with; a bare path is an exemption nobody can evaluate.
@@ -175,6 +194,43 @@ CARVE_OUTS: dict[str, str] = {
     ),
     "scripts/checks/check_no_antirecovery.py": (
         "a checker whose PATTERNS name the tools; it invokes nothing"
+    ),
+    "scripts/checks/check_hil_privilege_boundary.py": (
+        "an AST/static policy proof whose exact expected argv and negative fixtures "
+        "name uhubctl; it executes no hardware command"
+    ),
+    "scripts/checks/check_python_lock_policy.py": (
+        "the dependency consumer catalogue names tapo_control.py as data; it invokes nothing"
+    ),
+    "scripts/checks/hil_convergence_safety_roles.py": (
+        "the role checker compares the exact J-Link health-check command as data; "
+        "it invokes nothing"
+    ),
+    "scripts/checks/lint_coverage_rules.py": (
+        "the lint ownership registry names privileged helper artefacts as data; it invokes nothing"
+    ),
+    "scripts/checks/check_shell_just_invocations.py": (
+        "the sensitive-boundary registry records the OBSOLETE direct-ssh supervisor line as a "
+        "must-be-absent literal, so the only bench command in the file is the one it forbids; "
+        "it invokes nothing but git ls-files"
+    ),
+    "scripts/checks/check_hil_rig_contract.py": (
+        "its hermetic selftest harness shadows ssh and scp with shell functions that assert "
+        "argument shape and print a marker, so the fixture proves PI_HOST survives sourcing "
+        "without a bench in the path; it must run in CI where no bench exists, so it cannot "
+        "take a lock"
+    ),
+    "infra/ansible/roles/dev_box/files/ra8-hil-privileged.py": (
+        "the fixed root delegate is reached only by guarded HIL callers; guarding the "
+        "delegate again would deadlock the caller's already-held bench lease"
+    ),
+    "infra/ansible/roles/hil_bench/tasks/transaction.yml": (
+        "the fleet dispatcher holds the authenticated whole-play bench lease, and the "
+        "convergence safety gate rejects direct playbook/task-selector bypasses"
+    ),
+    "scripts/hil/lib/privileged_helper.sh": (
+        "the library performs only read-only helper identity probes itself; mutating "
+        "helper calls remain in derived, guarded HIL entrypoints"
     ),
     # The contention harness. It must NOT hold the lock: it drives several
     # independent machines that compete for it, and a driver holding the thing
@@ -221,11 +277,34 @@ MUST_DISCOVER = (
     "coprocessor/esp32c6/flash.sh",
 )
 
+PREFLASH_DISCOVERY_FLOOR = 10
+PREFLASH_MUST_DISCOVER = (
+    "scripts/dev/flash.sh",
+    "scripts/dev/debug.sh",
+    "scripts/dev/openocd_flash.sh",
+    "scripts/dev/openocd_debug.sh",
+    "scripts/dev/ozone.sh",
+    "scripts/hil/run_direct.sh",
+    "scripts/hil/eth_tcp.sh",
+    "scripts/hil/rtt_scrape.sh",
+    "scripts/hil/exit_low_power.sh",
+)
+
 
 def _tracked_files() -> list[str]:
-    """Every tracked path, so a file that is not committed is not in scope."""
-    out = subprocess.run(
-        ["git", "ls-files"],  # noqa: S607 -- git from PATH is intended
+    """Every authored path, including new non-ignored worktree files."""
+    git = shutil.which("git")
+    if git is None:
+        sys.stderr.write("check_bench_lock.py: git is not installed\n")
+        raise SystemExit(EXIT_CONFIG)
+    out = subprocess.run(  # noqa: S603 -- fixed git argv, executable resolved above
+        [
+            git,
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -283,6 +362,22 @@ def is_guarded(text: str) -> bool:
     return any(GUARD_RE.search(line) for _, line in _strip_comments(text))
 
 
+def programming_touches(text: str) -> list[tuple[int, str]]:
+    """Return programming actions found outside pure-comment lines."""
+    hits: list[tuple[int, str]] = []
+    for line_no, line in _strip_comments(text):
+        for label, pattern in PROGRAM_RES:
+            if pattern.search(line):
+                hits.append((line_no, label))
+                break
+    return hits
+
+
+def has_preflash_guard(text: str) -> bool:
+    """True when a caller invokes the anti-recovery image guard."""
+    return any(PREFLASH_GUARD_RE.search(line) for _, line in _strip_comments(text))
+
+
 def scan(files: list[str]) -> tuple[dict[str, list[tuple[int, str]]], list[str]]:
     """Return {rel: hits} for every bench-touching file, and the unguarded ones."""
     touching: dict[str, list[tuple[int, str]]] = {}
@@ -304,6 +399,30 @@ def scan(files: list[str]) -> tuple[dict[str, list[tuple[int, str]]], list[str]]
         if not is_guarded(text):
             unguarded.append(rel)
     return touching, unguarded
+
+
+def scan_preflash(files: list[str]) -> tuple[dict[str, list[tuple[int, str]]], list[str]]:
+    """Return every physical programmer and those missing the image guard."""
+    programming: dict[str, list[tuple[int, str]]] = {}
+    unsafe: list[str] = []
+    for rel in files:
+        if rel == "scripts/checks/check_bench_lock.py":
+            continue  # detector fixtures deliberately contain both directions
+        if not rel.endswith((".sh", ".just", ".yml", ".yaml")):
+            continue  # command snippets in Python docstrings are not entry points
+        if not _in_scope(rel):
+            continue
+        try:
+            text = (REPO_ROOT / rel).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        hits = programming_touches(text)
+        if not hits:
+            continue
+        programming[rel] = hits
+        if not has_preflash_guard(text):
+            unsafe.append(rel)
+    return programming, unsafe
 
 
 # --------------------------------------------------------------------------
@@ -358,6 +477,33 @@ _FIRE_SUDO_PREFIX = """#!/usr/bin/env bash
 sudo -n uhubctl -l 2-1.3 -p 2 -a off
 """
 
+_FIRE_PRIVILEGED_HELPER = """#!/usr/bin/env bash
+sudo -n -- /usr/local/libexec/ra8-hil-privileged usb-root-cycle
+"""
+
+_QUIET_PRIVILEGED_HELPER = """#!/usr/bin/env bash
+source "$ROOT/scripts/hil/lib/bench_lock.sh"
+ra8_bench_require_recovery "cycle" || exit $?
+sudo -n -- /usr/local/libexec/ra8-hil-privileged usb-root-cycle
+"""
+
+_FIRE_PROGRAM_UNGUARDED = """#!/usr/bin/env bash
+cat >/tmp/flash.jlink <<EOF
+loadfile $HEX
+EOF
+JLinkExe -commanderscript /tmp/flash.jlink
+"""
+
+_QUIET_PROGRAM_GUARDED = """#!/usr/bin/env bash
+source "$ROOT/scripts/hil/lib/preflash_guard.sh"
+ra8_preflash_guard "$HEX" || exit $?
+openocd -f board.cfg -c "program $HEX verify reset exit"
+"""
+
+_QUIET_READ_ONLY_DEBUG = """#!/usr/bin/env bash
+JLinkGDBServer -device R7KA8D2KF_CPU0 -port 2331
+"""
+
 SELFTEST_CASES: tuple[tuple[str, str, bool, bool, str], ...] = (
     # (name, body, must_be_detected, must_be_guarded, label)
     ("fire_unguarded.sh", _FIRE_UNGUARDED, True, False, "a bare JLinkExe call is caught"),
@@ -386,6 +532,20 @@ SELFTEST_CASES: tuple[tuple[str, str, bool, bool, str], ...] = (
         True,
         False,
         "a sudo-prefixed uhubctl is caught",
+    ),
+    (
+        "fire_privileged_helper.sh",
+        _FIRE_PRIVILEGED_HELPER,
+        True,
+        False,
+        "an unguarded privileged helper mutation is caught",
+    ),
+    (
+        "quiet_privileged_helper.sh",
+        _QUIET_PRIVILEGED_HELPER,
+        True,
+        True,
+        "the recovery guard covers a privileged helper mutation",
     ),
 )
 
@@ -425,10 +585,62 @@ def _selftest_floor(touching: dict[str, list[tuple[int, str]]]) -> list[str]:
     return failures
 
 
+def _selftest_preflash_detector() -> list[str]:
+    failures: list[str] = []
+    cases = (
+        (
+            "unguarded programmer is caught",
+            _FIRE_PROGRAM_UNGUARDED,
+            True,
+            False,
+        ),
+        (
+            "guarded programmer passes",
+            _QUIET_PROGRAM_GUARDED,
+            True,
+            True,
+        ),
+        (
+            "read-only debugger needs no image guard",
+            _QUIET_READ_ONLY_DEBUG,
+            False,
+            False,
+        ),
+    )
+    for label, body, want_programmer, want_guard in cases:
+        if bool(programming_touches(body)) != want_programmer:
+            failures.append(f"  preflash detector mismatch: {label}")
+        if has_preflash_guard(body) != want_guard:
+            failures.append(f"  preflash guard mismatch: {label}")
+    return failures
+
+
+def _selftest_preflash_floor(
+    programming: dict[str, list[tuple[int, str]]],
+) -> list[str]:
+    failures: list[str] = []
+    if len(programming) < PREFLASH_DISCOVERY_FLOOR:
+        failures.append(
+            f"  PREFLASH DISCOVERY FLOOR: found {len(programming)} programmer(s), "
+            f"floor is {PREFLASH_DISCOVERY_FLOOR}"
+        )
+    missing = [rel for rel in PREFLASH_MUST_DISCOVER if rel not in programming]
+    if missing:
+        failures.append("  PREFLASH MUST_DISCOVER missed physical programmer(s):")
+        failures.extend(f"    {rel}" for rel in missing)
+    return failures
+
+
 def run_selftest() -> int:
     """Prove the detector fires, stays quiet, and still discovers the tree."""
     touching, _ = scan(_tracked_files())
-    failures = _selftest_detector() + _selftest_floor(touching)
+    programming, _ = scan_preflash(_tracked_files())
+    failures = (
+        _selftest_detector()
+        + _selftest_floor(touching)
+        + _selftest_preflash_detector()
+        + _selftest_preflash_floor(programming)
+    )
     if failures:
         sys.stderr.write("check_bench_lock.py: --selftest FAILED:\n")
         sys.stderr.write("\n".join(failures) + "\n")
@@ -437,9 +649,79 @@ def run_selftest() -> int:
         f"check_bench_lock.py: --selftest OK "
         f"({len(SELFTEST_CASES)} detector cases both directions; live scan finds "
         f"{len(touching)} bench-touching file(s), floor {DISCOVERY_FLOOR}, "
-        f"{len(MUST_DISCOVER)} named files all present)."
+        f"{len(MUST_DISCOVER)} named files all present; {len(programming)} physical "
+        f"programmer(s), floor {PREFLASH_DISCOVERY_FLOOR})."
     )
     return EXIT_OK
+
+
+def _print_listing(
+    touching: dict[str, list[tuple[int, str]]],
+    unguarded: list[str],
+    programming: dict[str, list[tuple[int, str]]],
+    unsafe_programmers: list[str],
+) -> None:
+    """Print the derived bench and programming call-site inventory."""
+    for rel in sorted(touching):
+        mark = "CARVE-OUT" if rel in CARVE_OUTS else "guarded  "
+        if rel in unguarded:
+            mark = "UNGUARDED"
+        print(f"{mark}  {rel}")
+        for line_no, why in touching[rel][:3]:
+            print(f"             line {line_no}: {why}")
+        if rel in CARVE_OUTS:
+            print(f"             reason: {CARVE_OUTS[rel]}")
+    print("\nphysical programmers:")
+    for rel in sorted(programming):
+        mark = "guarded" if rel not in unsafe_programmers else "UNGUARDED"
+        print(f"{mark:9}  {rel}")
+        for line_no, why in programming[rel][:3]:
+            print(f"             line {line_no}: {why}")
+
+
+def _report_bench_failures(
+    touching: dict[str, list[tuple[int, str]]], unguarded: list[str]
+) -> None:
+    """Explain unguarded physical-bench entry points."""
+    if not unguarded:
+        return
+    sys.stderr.write("check_bench_lock.py: file(s) drive the bench without taking the lock:\n")
+    for rel in sorted(unguarded):
+        sys.stderr.write(f"\n  {rel}\n")
+        for line_no, why in touching[rel][:4]:
+            sys.stderr.write(f"    line {line_no}: {why}\n")
+    sys.stderr.write(
+        "\nAdd the guard immediately before the first hardware operation:\n"
+        "    # shellcheck source=scripts/hil/lib/bench_lock.sh\n"
+        '    source "$_hil_dir/lib/bench_lock.sh"\n'
+        '    ra8_bench_require "<what you are doing>" || exit $?\n'
+        "\nRecovery paths (erase, DLM reset, power cycle) use\n"
+        "ra8_bench_require_recovery instead -- recovery is MORE\n"
+        "destructive than a normal flash, not less, so it is not exempt.\n"
+        "\nIf it genuinely cannot take the lock, add it to CARVE_OUTS in\n"
+        "this file WITH A REASON. A reason a reviewer would reject is not\n"
+        "a reason.\n"
+    )
+
+
+def _report_programmer_failures(
+    programming: dict[str, list[tuple[int, str]]], unsafe_programmers: list[str]
+) -> None:
+    """Explain programming entry points missing the image guard."""
+    if not unsafe_programmers:
+        return
+    sys.stderr.write(
+        "\ncheck_bench_lock.py: physical programmer(s) do not invoke "
+        "ra8_preflash_guard on the full image:\n"
+    )
+    for rel in sorted(unsafe_programmers):
+        sys.stderr.write(f"\n  {rel}\n")
+        for line_no, why in programming[rel][:4]:
+            sys.stderr.write(f"    line {line_no}: {why}\n")
+    sys.stderr.write(
+        "\nSource scripts/hil/lib/preflash_guard.sh and call "
+        "ra8_preflash_guard on the original image before stripping or programming it.\n"
+    )
 
 
 def main(argv: list[str]) -> int:
@@ -447,58 +729,28 @@ def main(argv: list[str]) -> int:
     if "--selftest" in argv:
         return run_selftest()
 
-    touching, unguarded = scan(_tracked_files())
-
+    tracked = _tracked_files()
+    touching, unguarded = scan(tracked)
+    programming, unsafe_programmers = scan_preflash(tracked)
     if "--list" in argv:
-        for rel in sorted(touching):
-            mark = "CARVE-OUT" if rel in CARVE_OUTS else "guarded  "
-            if rel in unguarded:
-                mark = "UNGUARDED"
-            print(f"{mark}  {rel}")
-            for line_no, why in touching[rel][:3]:
-                print(f"             line {line_no}: {why}")
-            if rel in CARVE_OUTS:
-                print(f"             reason: {CARVE_OUTS[rel]}")
+        _print_listing(touching, unguarded, programming, unsafe_programmers)
         return EXIT_OK
 
-    # A carve-out for a file that no longer drives the bench is dead weight
-    # that hides the next real one, so it is an error in its own right.
-    stale = [rel for rel in CARVE_OUTS if rel not in touching]
-    stale = [rel for rel in stale if (REPO_ROOT / rel).exists()]
-
-    if unguarded or stale:
-        if unguarded:
-            sys.stderr.write(
-                "check_bench_lock.py: file(s) drive the bench without taking the lock:\n"
-            )
-            for rel in sorted(unguarded):
-                sys.stderr.write(f"\n  {rel}\n")
-                for line_no, why in touching[rel][:4]:
-                    sys.stderr.write(f"    line {line_no}: {why}\n")
-            sys.stderr.write(
-                "\nAdd the guard immediately before the first hardware operation:\n"
-                "    # shellcheck source=scripts/hil/lib/bench_lock.sh\n"
-                '    source "$_hil_dir/lib/bench_lock.sh"\n'
-                '    ra8_bench_require "<what you are doing>" || exit $?\n'
-                "\nRecovery paths (erase, DLM reset, power cycle) use\n"
-                "ra8_bench_require_recovery instead -- recovery is MORE\n"
-                "destructive than a normal flash, not less, so it is not exempt.\n"
-                "\nIf it genuinely cannot take the lock, add it to CARVE_OUTS in\n"
-                "this file WITH A REASON. A reason a reviewer would reject is not\n"
-                "a reason.\n"
-            )
+    # A stale carve-out hides nothing but itself and is an error in its own right.
+    stale = [rel for rel in CARVE_OUTS if rel not in touching and (REPO_ROOT / rel).exists()]
+    if unguarded or stale or unsafe_programmers:
+        _report_bench_failures(touching, unguarded)
         if stale:
-            sys.stderr.write(
-                "\ncheck_bench_lock.py: stale carve-out(s) -- these no longer drive\n"
-                "the bench, so the exemption is hiding nothing but itself:\n"
-            )
+            sys.stderr.write("\ncheck_bench_lock.py: stale carve-out(s):\n")
             for rel in sorted(stale):
                 sys.stderr.write(f"  {rel}\n")
+        _report_programmer_failures(programming, unsafe_programmers)
         return EXIT_FAIL
 
     print(
         f"check_bench_lock.py: {len(touching)} bench-touching file(s), all guarded "
-        f"or carved out with a reason ({len(CARVE_OUTS)} carve-out(s))."
+        f"or carved out with a reason ({len(CARVE_OUTS)} carve-out(s)); "
+        f"{len(programming)} physical programmer(s) all image-guarded."
     )
     return EXIT_OK
 

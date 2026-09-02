@@ -47,7 +47,6 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 struct ra8_io_spi_bus_iface {
   /** @brief Full-duplex single-byte exchange (`rx` may be NULL). */
   ra8_err_t (*xfer8)(void* ctx, uint8_t tx, uint8_t* rx);
@@ -59,7 +58,6 @@ struct ra8_io_spi_bus_iface {
   /** @brief Re-program the bit-rate divider from `baud_hz` / `pclk_hz`. */
   ra8_err_t (*set_clock)(void* ctx, uint32_t baud_hz, uint32_t pclk_hz);
 };
-/* cppcheck-suppress-end [unusedStructMember] */
 
 #ifdef __cplusplus
 }

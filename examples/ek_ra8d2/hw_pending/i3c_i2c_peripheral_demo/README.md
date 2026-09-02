@@ -11,4 +11,4 @@ An external I2C controller on the bus. The chip is in target mode and waits for 
 controller to initiate transactions; the bench Pi has I2C controller capability
 on its own header, but there is no jumper wiring to the EVM's IIC_B pins today.
 Closing the gap needs both that wiring and a probe-able transfer counter in
-`main.c`, since the LED alone gives an automated rig nothing to read.
+`src/main.c`, since the LED alone gives an automated rig nothing to read.

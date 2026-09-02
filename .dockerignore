@@ -1,0 +1,15 @@
+# The devcontainer builds from the repository root so its Python lock and uv
+# bootstrap are real Docker inputs. Keep the sent context narrowly allowlisted.
+*
+!.dockerignore
+!pyproject.toml
+!uv.lock
+!.devcontainer/
+!.devcontainer/**
+!scripts/
+!scripts/dev/
+!scripts/dev/bootstrap_uv.py
+!scripts/dev/bootstrap_uv_exec.py
+!scripts/dev/managed_python_env.py
+!scripts/dev/managed_python_env_checks.py
+!scripts/dev/uv_release.json

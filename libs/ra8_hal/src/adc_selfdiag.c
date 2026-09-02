@@ -289,8 +289,8 @@ RA8_INTERNAL static ra8_err_t internal_start_and_wait(uint8_t group)
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
   *adstr = k_ra8_adstr_mask_adst;
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
-  for (uint32_t i = 0U; i < k_ra8_adc_busy_wait_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((*ra8_adc_b_adsr() & k_ra8_adsr_mask_adact0) == 0U) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_adc_busy_wait_limit; ++i) {
+    if ((*ra8_adc_b_adsr() & k_ra8_adsr_mask_adact0) == 0U) {
       return k_ra8_ok;
     }
   }
@@ -361,7 +361,7 @@ ra8_err_t ra8_adc_self_diagnose(ra8_adc_selfdiag_mode_t mode, uint16_t* out_code
   }
 
   const ra8_err_t run_err = internal_selfdiag_run(diagval);
-  RA8_RETURN_ON_ERROR(run_err, s_tag, "self_diagnose: conversion"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(run_err, s_tag, "self_diagnose: conversion");
 
   /* HUM Ch 53.2.13.2 "ADEXDRn : A/D Extended Analog Data Register n" p 3391 */
   const uint32_t exd =
@@ -400,10 +400,12 @@ ra8_err_t ra8_adc_read_internal_channel(ra8_adc_internal_chan_t chan, uint16_t* 
   *ra8_adc_b_adsger() |= (uint32_t)(1UL << (uint32_t)k_ra8_adc_diag_group);
 
   const ra8_err_t run_err = internal_start_and_wait((uint8_t)k_ra8_adc_diag_group);
-  RA8_RETURN_ON_ERROR(run_err, s_tag, "read_internal: conversion"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- HW convert timing */
+  RA8_RETURN_ON_ERROR(run_err, s_tag, "read_internal: conversion");
+  /* GCOVR_EXCL_BR_STOP */
 
-  const uint8_t      idx = ra8_adc_b_adexdr_index_for_chan((uint8_t)chan);
-  volatile uint32_t* exd = ra8_adc_b_adexdr(idx);
+  const uint8_t            idx = ra8_adc_b_adexdr_index_for_chan((uint8_t)chan);
+  volatile const uint32_t* exd = ra8_adc_b_adexdr(idx);
   if (exd == nullptr) {
     return k_ra8_err_out_of_range;
   }

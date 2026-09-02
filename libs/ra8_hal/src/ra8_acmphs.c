@@ -82,12 +82,14 @@ static ra8_err_t internal_reset_channel(uint8_t ch)
 {
   volatile r_acmphs_regs_t* reg = ra8_acmphs(ch);
   if (reg == nullptr) {              /* GCOVR_EXCL_BR_LINE -- ch already bounded */
-    return k_ra8_err_hw_init_failed; /* GCOVR_EXCL_LINE                          */
+    return k_ra8_err_hw_init_failed; /* GCOVR_EXCL_LINE -- MSTP/reset HW-only    */
   }
   if (ch < k_ra8_acmphs_mstp_id_count) {
     /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 449 */
     const ra8_err_t mst_err = ra8_mstp_enable(s_acmphs_mstp_table[ch]);
-    RA8_RETURN_ON_ERROR(mst_err, s_tag, "acmphs_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+    RA8_RETURN_ON_ERROR(mst_err, s_tag, "acmphs_init: mstp enable");
+    /* GCOVR_EXCL_BR_STOP */
   }
   reg->CMPCTL  = 0U;
   reg->CMPSEL0 = 0U;
@@ -100,7 +102,9 @@ static ra8_err_t internal_reset_channel(uint8_t ch)
 {
   for (uint8_t ch = 0U; ch < (uint8_t)k_ra8_acmphs_channel_count; ++ch) {
     const ra8_err_t err = internal_reset_channel(ch);
-    RA8_RETURN_ON_ERROR(err, s_tag, "acmphs_init channel reset"); /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_BR_START -- HW reset readback */
+    RA8_RETURN_ON_ERROR(err, s_tag, "acmphs_init channel reset");
+    /* GCOVR_EXCL_BR_STOP */
   }
   ra8_log_info(s_tag, "acmphs_init");
   return k_ra8_ok;
@@ -170,7 +174,9 @@ ra8_err_t ra8_acmphs_channel_init(uint8_t channel, const ra8_acmphs_cfg_t* cfg)
 
   if (channel < k_ra8_acmphs_mstp_id_count) {
     const ra8_err_t mst_err = ra8_mstp_enable(s_acmphs_mstp_table[channel]);
-    RA8_RETURN_ON_ERROR(mst_err, s_tag, "acmphs_init: mstp"); /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+    RA8_RETURN_ON_ERROR(mst_err, s_tag, "acmphs_init: mstp");
+    /* GCOVR_EXCL_BR_STOP */
   }
 
   reg->CMPSEL0 = cfg->ivpsel;
@@ -227,7 +233,7 @@ ra8_err_t ra8_acmphs_get_status(uint8_t channel, uint8_t* out_mask)
   if ((uint16_t)channel >= k_ra8_acmphs_channel_count) {
     return k_ra8_err_invalid_arg;
   }
-  volatile r_acmphs_regs_t* reg = ra8_acmphs(channel);
+  volatile const r_acmphs_regs_t* reg = ra8_acmphs(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   *out_mask = (uint8_t)(reg->CMPCTL & k_ra8_acmphs_ctl_mask);

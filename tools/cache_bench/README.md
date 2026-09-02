@@ -52,8 +52,8 @@ decompress-cost-per-miss against chunk size -- the number that actually picks
 the chunk size -- and not raw byte moves.
 
 SD-over-SPI numbers are a bench follow-up; the seam exists so a backend issuing
-real card reads (and later `ra8_cache_store` on OSPI / NAND, #201) plugs in
-without touching the sweep core.
+real card reads, or one binding the landed `ra8_cache_store` from closed issue
+#201 to OSPI / NAND, plugs in without touching the sweep core.
 
 ## Reading the result
 
@@ -69,7 +69,8 @@ human summary tables and the measured crossover. The durable findings so far:
   page turn.
 - **Small chunks compress markedly worse**, because each zlib stream restarts
   its history; the container itself grows on disk as well.
-- **The host knee is a lower bound.** On real storage the per-command cost
-  (single-block read loops, #202) dwarfs the host's per-stream setup and pushes
-  the knee toward larger blocks, so a hardware run has to confirm before any
-  chunk-size *reduction*.
+- **The host knee is a lower bound.** On real storage the command and bus costs
+  dwarf the host's per-stream setup and push the knee toward larger blocks.
+  Closed issue #202 landed streamed CMD18 multi-block reads, but only a hardware
+  run can measure that path, so it still has to confirm before any chunk-size
+  *reduction*.

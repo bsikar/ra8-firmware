@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # preflash_guard.sh -- the anti-recovery pre-flash safety gate.
 #

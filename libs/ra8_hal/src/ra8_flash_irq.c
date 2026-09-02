@@ -171,9 +171,9 @@ ra8_err_t ra8_flash_set_irq_enable(ra8_flash_irq_src_t src, bool enable)
      * every value that could reach this arm, including k_ra8_flash_irq_count
      * itself. */
     /* fallthrough -- unreachable, validated above. */
-    case k_ra8_flash_irq_count:     /* GCOVR_EXCL_LINE */
-    default:                        /* GCOVR_EXCL_LINE */
-      return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE */
+    case k_ra8_flash_irq_count:     /* GCOVR_EXCL_LINE -- validated enum, default unreachable */
+    default:                        /* GCOVR_EXCL_LINE -- validated enum, default unreachable */
+      return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- validated enum, default unreachable */
   }
   return k_ra8_ok;
 }
@@ -405,7 +405,7 @@ ra8_err_t ra8_flash_erase(uintptr_t address, uint32_t num_blocks)
   }
   const uint64_t  total_bytes = (uint64_t)num_blocks * (uint64_t)k_ra8_mram_block_size_bytes;
   const ra8_err_t v_err       = internal_validate_range(address, total_bytes);
-  RA8_RETURN_ON_ERROR(v_err, g_flash_tag, "flash_erase: validate"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, g_flash_tag, "flash_erase: validate");
   /* internal_validate_range above rejects any address outside
    * [k_ra8_flash_code_start, +k_ra8_flash_code_size), which is the default
    * (non-secure) 0x02000000 code-MRAM view -- HUM Ch 59.1 "Address Map" p 3543.
@@ -435,7 +435,7 @@ ra8_err_t ra8_flash_write(uintptr_t address, const uint8_t* src, uint32_t len)
     return k_ra8_err_invalid_arg;
   }
   const ra8_err_t v_err = internal_validate_range(address, (uint64_t)len);
-  RA8_RETURN_ON_ERROR(v_err, g_flash_tag, "flash_write: validate"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, g_flash_tag, "flash_write: validate");
   /* Same reasoning as ra8_flash_erase: the validated range lies inside the
    * default non-secure code-MRAM view, so MRCPC0 is provably correct. */
   const ra8_flash_world_t world = k_ra8_flash_world_ns;
@@ -474,11 +474,9 @@ ra8_err_t ra8_flash_blank_check(uintptr_t address, uint32_t len, bool* out_blank
    * erased state (HUM Ch 59.4.2 p 3548). */
   const uint64_t end_excl = (uint64_t)address + (uint64_t)len;
   const bool     in_code =
-    // mcdc-deactivated: ra8_flash_blank_check window-membership AND; start address and end_excl are derived from the same caller-supplied (address, len) pair, so the two inequalities are co-dependent -- any address within the window satisfies both, any address outside violates the first; the MC/DC vector that would flip the upper bound while keeping the lower bound true requires a window-spanning length that the public-API len-cap upstream rejects.
     (address >= k_ra8_flash_code_start) &&
     (end_excl <= (uint64_t)k_ra8_flash_code_start + (uint64_t)k_ra8_flash_code_size);
   const bool in_extra =
-    // mcdc-deactivated: ra8_flash_blank_check extra-window membership AND; identical co-dependence rationale as the code-window decision above.
     (address >= k_ra8_flash_extra_start) &&
     (end_excl <= (uint64_t)k_ra8_flash_extra_start + (uint64_t)k_ra8_flash_extra_size);
   /* HUM Ch 7 "Option-Setting Memory" p 278 also benefits from a blank-check
@@ -486,7 +484,6 @@ ra8_err_t ra8_flash_blank_check(uintptr_t address, uint32_t len, bool* out_blank
   const bool in_ofs =
     (address >= k_ra8_flash_ofs_start) &&
     (end_excl <= (uint64_t)k_ra8_flash_ofs_start + (uint64_t)k_ra8_flash_ofs_size);
-  // mcdc-deactivated: ra8_flash_blank_check 3-way OR over disjoint flash windows; tests cover the four addressable outcomes (in-code, in-extra, in-ofs, out-of-range), but llvm-cov MC/DC requires a vector where exactly one of the three booleans flips while the others stay false -- the windows are mutually exclusive by construction so no such vector exists.
   if (!in_code && !in_extra && !in_ofs) {
     return k_ra8_err_invalid_arg;
   }

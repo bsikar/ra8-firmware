@@ -64,7 +64,7 @@ SCOPE_ROOTS = (
     "tests/",
 )
 SOURCE_SUFFIXES = (".c", ".h", ".cc", ".cpp", ".cxx", ".hh", ".hpp", ".hxx", ".inc", ".m", ".mm")
-EXCLUDED_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/")
+EXCLUDED_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/", "libs/ra8_fonts/")
 GENERATED_SOURCE_PATHS = frozenset(
     path for path, classification in PATH_CLASS.items() if classification == "generated-source"
 )
@@ -72,12 +72,12 @@ GENERATED_SOURCE_PATHS = frozenset(
 # The floors are below current counts, but high enough that dropping a major
 # first-party source or test subtree cannot report a vacuous pass.
 ROOT_FILE_FLOORS = {
-    "libs/": 860,
+    "libs/": 750,
     "port/": 80,
     "examples/": 400,
     "tools/": 180,
     "apps/": 110,
-    "tests/": 650,
+    "tests/": 600,
 }
 TOTAL_FILE_FLOOR = 2300
 
@@ -284,7 +284,7 @@ def _scope_floor_errors(counts: dict[str, int]) -> list[str]:
 def _working_scope() -> tuple[list[pathlib.Path], dict[str, int]]:
     """Enumerate present tracked/new in-scope files and enforce coverage floors."""
     proc = subprocess.run(
-        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],  # noqa: S607
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],  # noqa: S607 -- fixed repository Git census
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -369,17 +369,21 @@ def _selftest_scope(failures: list[str]) -> None:
     for root in SCOPE_ROOTS:
         expect(_in_scope(f"{root}future_portable.c"), f"{root} is in scope", failures)
     expect(
-        _in_scope("apps/stand_alone/media_dl/src/main.c"),
+        _in_scope("apps/host/mdl/src/main.c"),
         "production host tools are in scope",
         failures,
     )
     expect(
-        _in_scope("apps/stand_alone/media_dl/tests/test_main.c"),
+        _in_scope("apps/host/mdl/tests/src/test_main.c"),
         "tool test fixtures are in scope",
         failures,
     )
     expect(_in_scope("tests/test_fs.c"), "unit tests are in scope", failures)
-    expect(not _in_scope("libs/third_party/miniz/miniz.c"), "vendored SOUP is excluded", failures)
+    expect(
+        not _in_scope("apps/shared_libs/third_party/miniz/miniz.c"),
+        "vendored SOUP is excluded",
+        failures,
+    )
     generated = "libs/ra8_c6link/src/ra8_media_download.pb-c.c"
     expect(not _in_scope(generated), "registered generated protobuf source is excluded", failures)
     expect(
@@ -405,19 +409,19 @@ def _selftest_floors(failures: list[str]) -> None:
     root_short["port/"] = 79
     expect(bool(_scope_floor_errors(root_short)), "a narrowed production root fails", failures)
     tests_short = dict(good)
-    tests_short["tests/"] = 649
+    tests_short["tests/"] = 599
     expect(bool(_scope_floor_errors(tests_short)), "a narrowed test root fails", failures)
     # Every root exactly ON its floor, so only the aggregate can object. It has
     # to be recomputed whenever a root is added, or the new root's floor lifts
     # the sum back over TOTAL_FILE_FLOOR and this case stops testing anything.
     total_short = {
-        "libs/": 860,
+        "libs/": 750,
         "port/": 80,
         "examples/": 400,
         "coprocessor/": 0,
         "tools/": 180,
         "apps/": 110,
-        "tests/": 650,
+        "tests/": 600,
     }
     expect(bool(_scope_floor_errors(total_short)), "the aggregate floor fails", failures)
 

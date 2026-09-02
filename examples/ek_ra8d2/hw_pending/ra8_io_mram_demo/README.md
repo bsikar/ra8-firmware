@@ -22,9 +22,12 @@ free overwrite is available.
 
 ## Blocked on
 
-More than a bench run. As `main.c` warns, this window is **one-time-programmable
+More than a bench run. As `src/main.c` warns, this window is **one-time-programmable
 option-setting / OTP memory, not a rewritable data flash** -- there is no erase,
 so the erase-and-reprogram cycle this demo exercises does not work on real
 silicon. The emulator maps the window and the round-trip passes there, which is
-optimistic rather than faithful. A rewritable-medium home for this demo (OSPI or
-SD) is tracked by #315.
+optimistic rather than faithful. Closed issue #315 established that a virgin
+GPOTP page can be programmed and read back on silicon, but it also confirmed
+that the region has no erase operation. That result does not make this demo's
+erase-and-reprogram cycle valid; the demo still needs a rewritable backend such
+as OSPI or SD before hardware promotion.

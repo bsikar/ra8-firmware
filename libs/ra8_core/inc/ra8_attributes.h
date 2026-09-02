@@ -95,6 +95,48 @@ extern "C" {
 #define RA8_INTERNAL_ANNOTATE(tag) /* annotation: tag */
 #endif
 
+/**
+ * @def RA8_INTERNAL_ANNOTATE_ARG
+ * @brief Emit a tagged annotation whose payload is the caller's argument.
+ *
+ * @details
+ * Every annotation that carries a value expands to the tag prefix concatenated
+ * with that value. Spelling the concatenation once here keeps the eight such
+ * macros identical in shape, and keeps each one's parameter a plain macro
+ * argument rather than an operand of a string-literal concatenation that
+ * cannot be parenthesised.
+ *
+ * @param[in] tag Tag prefix string literal, ending in a colon.
+ * @param[in] arg String literal payload supplied by the annotating macro.
+ *
+ * @note Use through the named annotation macros; never directly on a symbol.
+ * @see RA8_INTERNAL_ANNOTATE
+ * @since Version 0.1.0
+ */
+#define RA8_INTERNAL_ANNOTATE_ARG(tag, arg) RA8_INTERNAL_ANNOTATE(tag arg)
+
+/**
+ * @def RA8_NODISCARD
+ * @brief Warn at any call site that discards the function's return value.
+ *
+ * @details
+ * Spelled with the GNU attribute rather than C23 `[[nodiscard]]` because the
+ * repository-pinned cppcheck 2.13 has no C23 attribute parse in C mode: a
+ * declaration carrying the standard spelling is invisible to it, so the MISRA
+ * audit charges Rule 8.4 against every definition of such a function for a
+ * declaration that is in fact visible and compatible. GCC and clang treat the
+ * two spellings identically for functions, so the contract is unchanged.
+ *
+ * @par Example:
+ * @code
+ * RA8_PRIV RA8_NODISCARD ra8_err_t priv_fs_posix_sync(void* ctx, void* file_state);
+ * @endcode
+ *
+ * @note Put it on the DECLARATION in the header; the definition needs nothing.
+ * @since Version 0.1.0
+ */
+#define RA8_NODISCARD __attribute__((warn_unused_result)) /* ATTR-OK: cppcheck 2.13, C23 gap */
+
 /* =============================================================================
  * 1. RA8_TEST_HELPER
  * =============================================================================
@@ -206,7 +248,7 @@ extern "C" {
  * ra8_err_t ra8_touch_init(const ra8_touch_cfg_t* cfg); // cfg carries ra8_i2c_bus_ops_t
  * @endcode
  */
-#define RA8_DI_SLOT(role) RA8_INTERNAL_ANNOTATE("ra8_di_slot:" role)
+#define RA8_DI_SLOT(role) RA8_INTERNAL_ANNOTATE_ARG("ra8_di_slot:", role)
 
 /* =============================================================================
  * 5. RA8_NSC_VENEER
@@ -284,7 +326,7 @@ extern "C" {
 #define RA8_HW_REGISTER_ACCESS RA8_INTERNAL_ANNOTATE("ra8_hw_register_access")
 
 /* =============================================================================
- * 7. RA8_NASA_RULE_3_OK
+ * 7. RA8_NASA_RULE_3_OK(reason)
  * =============================================================================
  */
 
@@ -303,16 +345,19 @@ extern "C" {
  * `check_no_dynamic_alloc.py` plus libclang call-graph walk. Untagged
  * functions calling tagged ones must be covered by a deviation entry.
  *
+ * @param[in] reason Narrow string literal explaining why this function must
+ *                   use dynamic allocation.
+ *
  * @par Example:
  * @code
- * RA8_NASA_RULE_3_OK
+ * RA8_NASA_RULE_3_OK("host-only qualification allocator")
  * ra8_err_t ra8_test_harness_alloc_scratch(uint32_t bytes, void** out);
  * @endcode
  *
  * Only `ra8_test_harness_alloc_scratch` and similarly tagged scaffolding
  * may invoke `malloc`.
  */
-#define RA8_NASA_RULE_3_OK RA8_INTERNAL_ANNOTATE("ra8_nasa_rule_3_ok")
+#define RA8_NASA_RULE_3_OK(reason) RA8_INTERNAL_ANNOTATE_ARG("ra8_nasa_rule_3_ok:", reason)
 
 /* =============================================================================
  * 8. RA8_MCDC_DEACTIVATED(reason)
@@ -346,7 +391,7 @@ extern "C" {
  * static inline bool internal_validate_handle(const ra8_pin_t* h);
  * @endcode
  */
-#define RA8_MCDC_DEACTIVATED(reason) RA8_INTERNAL_ANNOTATE("ra8_mcdc_deactivated:" reason)
+#define RA8_MCDC_DEACTIVATED(reason) RA8_INTERNAL_ANNOTATE_ARG("ra8_mcdc_deactivated:", reason)
 
 /* =============================================================================
  * 9. RA8_MAX_STACK(bytes)
@@ -451,7 +496,7 @@ extern "C" {
  *
  * Callers of `ra8_i2c0_write_locked` must hold the `"i2c0_bus"` lock.
  */
-#define RA8_EXPECTS_LOCK(name) RA8_INTERNAL_ANNOTATE("ra8_expects_lock:" name)
+#define RA8_EXPECTS_LOCK(name) RA8_INTERNAL_ANNOTATE_ARG("ra8_expects_lock:", name)
 
 /* =============================================================================
  * 12. RA8_HOST_FRIENDLY
@@ -737,7 +782,7 @@ extern "C" {
  * Every caller of `ra8_dma_acquire_channel` must, on success, call
  * `ra8_dma_release_channel` before any `return`.
  */
-#define RA8_OWNS_RESOURCE(kind) RA8_INTERNAL_ANNOTATE("ra8_owns_resource:" kind)
+#define RA8_OWNS_RESOURCE(kind) RA8_INTERNAL_ANNOTATE_ARG("ra8_owns_resource:", kind)
 
 /**
  * @brief Release side of the `RA8_OWNS_RESOURCE(kind)` pair.
@@ -768,7 +813,7 @@ extern "C" {
  * `ra8_dma_release_channel` discharges the ownership that
  * `ra8_dma_acquire_channel` took.
  */
-#define RA8_RELEASES_RESOURCE(kind) RA8_INTERNAL_ANNOTATE("ra8_releases_resource:" kind)
+#define RA8_RELEASES_RESOURCE(kind) RA8_INTERNAL_ANNOTATE_ARG("ra8_releases_resource:", kind)
 
 /* =============================================================================
  * 18. RA8_REVIEWED_BY(name)
@@ -798,7 +843,7 @@ extern "C" {
  * `ra8_secure_storage_commit` has been reviewed by `bsikar` for the
  * safety-critical key-commit path.
  */
-#define RA8_REVIEWED_BY(name) RA8_INTERNAL_ANNOTATE("ra8_reviewed_by:" name)
+#define RA8_REVIEWED_BY(name) RA8_INTERNAL_ANNOTATE_ARG("ra8_reviewed_by:", name)
 
 /* =============================================================================
  * 19. RA8_REGISTER_BANK(peripheral)
@@ -830,7 +875,7 @@ extern "C" {
  * `ra8_sci0_regs` is grouped under the `sci0` register bank in the
  * generated peripheral documentation.
  */
-#define RA8_REGISTER_BANK(peripheral) RA8_INTERNAL_ANNOTATE("ra8_register_bank:" peripheral)
+#define RA8_REGISTER_BANK(peripheral) RA8_INTERNAL_ANNOTATE_ARG("ra8_register_bank:", peripheral)
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,6 @@
 # Host-side Performance Benchmarks
 
-`tests/bench/` is a host microbenchmark suite. `make bench` builds every bench
+`tests/bench/` is a host microbenchmark suite. `just quality::local::bench` builds every bench
 binary and runs it; each binary prints CSV to stdout.
 
 It has no third-party benchmark dependency on purpose -- no Google Benchmark, no
@@ -43,7 +43,7 @@ to vendor a real benchmark library for it -- not before.
 
 ## How the suite is wired
 
-The harness is `tests/bench/ra8_bench.h`: single-header, no allocation, no init.
+The harness is `tests/bench/inc/ra8_bench.h`: single-header, no allocation, no init.
 Include it and call `RA8_BENCH_TIME(...)` from `main()`.
 
 Bench binaries link the same object library as the host unit tests, so they pick

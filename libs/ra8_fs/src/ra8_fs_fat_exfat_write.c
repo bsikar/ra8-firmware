@@ -541,12 +541,12 @@ ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
 }
 
 /** @brief Implementation of `priv_exfat_link()` -- one directory-slot scan, one set write. */
-ra8_err_t priv_exfat_link(ra8_fs_mount_t*    m,
-                          const exfat_dir_t* dir,
-                          const uint16_t*    name,
-                          uint32_t           nlen,
-                          exfat_setpos_t*    out_head,
-                          uint32_t*          out_count)
+ra8_err_t priv_exfat_link(const ra8_fs_mount_t* m,
+                          const exfat_dir_t*    dir,
+                          const uint16_t*       name,
+                          uint32_t              nlen,
+                          exfat_setpos_t*       out_head,
+                          uint32_t*             out_count)
 {
   const uint32_t name_entries =
     (nlen + (uint32_t)k_exfat_name_per_entry - 1U) / (uint32_t)k_exfat_name_per_entry;

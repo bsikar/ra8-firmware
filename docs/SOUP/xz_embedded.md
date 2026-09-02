@@ -13,7 +13,7 @@ as Software Of Unknown Provenance (SOUP).
   all 11 vendored files are byte-identical to that commit, the single exact
   match among the 169 commits reachable from the upstream default branch).
 - **Upstream URL**: https://github.com/tukaani-project/xz-embedded
-- **Local path**: `libs/third_party/xz_embedded/`
+- **Local path**: `apps/shared_libs/third_party/xz_embedded/`
 - **Integrity**: two derived checks, neither of them a constant transcribed
   into prose. `docs/sbom/upstream/xz_embedded.manifest` carries the git blob
   SHA-1 upstream publishes for every one of the 11 vendored files, written by
@@ -45,7 +45,7 @@ as Software Of Unknown Provenance (SOUP).
 
 - XZ/LZMA2 decoding for wrapped archive content on the SD card
   (`.tar.xz` comics, XZ-wrapped single files) behind the bounded
-  first-party wrapper `libs/ra8_unarch/` (`ra8_unarch_xz.h`).
+  first-party wrapper `apps/shared_libs/unarch/` (`unarch_xz.h`).
 - Integrity claim category: data-handling (decompression of untrusted
   local SD-card payloads). The threat model is app crash / resource
   exhaustion, not RCE; the wrapper's job is reject-and-continue.
@@ -53,11 +53,11 @@ as Software Of Unknown Provenance (SOUP).
 ## Configuration (compile-time, decode-only)
 
 The vendored sources are built against the first-party porting header
-`libs/ra8_unarch/inc/xz_config.h` (upstream stays byte-identical):
+`apps/shared_libs/unarch/inc/xz_config.h` (upstream stays byte-identical):
 
 - `XZ_DEC_PREALLOC` only: decoder state and LZMA2 dictionary are allocated
   once at `xz_dec_init` from a caller-provided scratch buffer through the
-  zero-heap bump arena (`ra8_unarch_xz_pool.h`, NASA P10 Rule 3 -- this
+  zero-heap bump arena (`unarch_xz_pool.h`, NASA P10 Rule 3 -- this
   firmware traps `_sbrk`). `XZ_DEC_DYNALLOC` is deliberately NOT enabled:
   it would size allocations from hostile header values. `XZ_DEC_SINGLE`
   is not enabled: no consumer decodes from a fully-resident input buffer.
@@ -88,17 +88,17 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 - Exercised only on locally staged SD-card content; no network payload
   feeds it.
-- Every decode runs behind `libs/ra8_unarch/src/ra8_unarch_xz.c`, which
+- Every decode runs behind `apps/shared_libs/unarch/src/unarch_xz.c`, which
   charges the unified decompression-limits policy
   (`libs/ra8_core/inc/ra8_decomp_limits.h`): per-unit output cap,
   compression-ratio bound (decompression bombs), and a decode-loop
   iteration budget. Dictionary memory is bounded by the caller scratch;
   a stream declaring a larger dictionary is rejected before allocation.
-- Fuzzed continuously: the `fuzz_ra8_unarch_xz` libFuzzer harness (ASan +
+- Fuzzed continuously: the `fuzz_unarch_xz` libFuzzer harness (ASan +
   UBSan) drives hostile streams through the wrapper in the nightly fuzz
-  sweep, and the committed hostile corpus in `tests/test_ra8_unarch_xz.c`
+  sweep, and the committed hostile corpus in `apps/shared_libs/unarch/tests/src/test_unarch_xz.c`
   asserts each rejection class.
-- MC/DC exemption: per `CLAUDE.md`, `libs/third_party/` SOUP is exempt
+- MC/DC exemption: per `CLAUDE.md`, both canonical third-party roots are exempt
   from in-repo MC/DC re-test; the first-party wrapper and policy code
   around it are held to the full 100 percent reachable MC/DC bar.
 

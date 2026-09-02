@@ -402,7 +402,7 @@ internal_phy_read_link(ra8_rmac_port_t port, ra8_eth_link_t* out_status, uint16_
                                                     (uint8_t)k_ra8_eth_phy_addr_default,
                                                     (uint8_t)k_ra8_eth_phy_reg_bmsr,
                                                     &bmsr);
-  RA8_RETURN_ON_ERROR(bmsr_err, s_tag, "link_status: bmsr read"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(bmsr_err, s_tag, "link_status: bmsr read");
 
   uint16_t bmcr = 0U;
   /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
@@ -410,7 +410,7 @@ internal_phy_read_link(ra8_rmac_port_t port, ra8_eth_link_t* out_status, uint16_
                                                     (uint8_t)k_ra8_eth_phy_addr_default,
                                                     (uint8_t)k_ra8_eth_phy_reg_bmcr,
                                                     &bmcr);
-  RA8_RETURN_ON_ERROR(bmcr_err, s_tag, "link_status: bmcr read"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(bmcr_err, s_tag, "link_status: bmcr read");
 
   out_status->bmsr        = bmsr;
   out_status->link_up     = ((bmsr & k_ra8_eth_phy_bmsr_link_up) != 0U) ? 1U : 0U;

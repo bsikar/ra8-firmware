@@ -39,7 +39,8 @@ other bit.
 - The bench network is not routable from the developer LAN; reaching the page
   from a workstation needs a forwarded port.
 
-Wi-Fi credentials come from the environment or the gitignored
-`coprocessor/esp32c6/wifi.env`, never from the tree. They are compiled in, so
-any image built with them is a secret -- do not leave one lying in a build
-directory.
+The camera firmware and build artifacts contain no Wi-Fi credential. A freshly
+flashed image prints `ra8_net_provision: READY v1` and accepts one bounded
+ASCII-hex provisioning line over the debug UART. The camera app ignores the
+optional URL field, never echoes received bytes, and explicitly erases the
+decoded credential and C6 request staging after association.

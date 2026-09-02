@@ -208,8 +208,8 @@ RA8_INTERNAL static void internal_apply_resolution_code(uint32_t adprc)
 RA8_INTERNAL static void internal_wait_clksr(uint32_t desired)
 {
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
-  for (uint32_t i = 0U; i < k_ra8_adc_clk_wait_limit; ++i) {            /* GCOVR_EXCL_BR_LINE */
-    if ((*ra8_adc_b_adclksr() & k_ra8_adclksr_mask_clksr) == desired) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_adc_clk_wait_limit; ++i) {
+    if ((*ra8_adc_b_adclksr() & k_ra8_adclksr_mask_clksr) == desired) {
       return;
     }
   }
@@ -324,7 +324,9 @@ ra8_err_t ra8_adc_init(void)
 {
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 449 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_adc16h);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "adc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "adc_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   internal_clock_bring_up(0U);
 
@@ -350,8 +352,8 @@ ra8_err_t ra8_adc_read_channel(uint8_t channel, uint16_t* out_raw)
 {
   RA8_CHECK_NULL_PTR(out_raw, s_tag, "out_raw must not be nullptr");
 
-  volatile uint32_t* chcr = ra8_adc_b_adchcr(channel);
-  volatile uint32_t* addr = ra8_adc_b_addr(channel);
+  volatile const uint32_t* chcr = ra8_adc_b_adchcr(channel);
+  volatile const uint32_t* addr = ra8_adc_b_addr(channel);
   if ((chcr == nullptr) || (addr == nullptr)) {
     return k_ra8_err_out_of_range;
   }
@@ -370,8 +372,8 @@ ra8_err_t ra8_adc_read_channel(uint8_t channel, uint16_t* out_raw)
 
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
   /* Poll ADSR.ADACT0 -- hardware clears it when the unit becomes idle. */
-  for (uint32_t i = 0U; i < k_ra8_adc_busy_wait_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((*ra8_adc_b_adsr() & k_ra8_adsr_mask_adact0) == 0U) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_adc_busy_wait_limit; ++i) {
+    if ((*ra8_adc_b_adsr() & k_ra8_adsr_mask_adact0) == 0U) {
       *out_raw = (uint16_t)(*addr & k_ra8_addr_mask_data);
       return k_ra8_ok;
     }
@@ -394,7 +396,9 @@ ra8_err_t ra8_adc_init_configured(const ra8_adc_cfg_t* cfg)
   }
 
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_adc16h);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "adc_init_cfg: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "adc_init_cfg: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   internal_clock_bring_up(0U);
 
@@ -500,7 +504,7 @@ ra8_err_t ra8_adc_exit_stop(void)
 RA8_ISR_SAFE
 void ra8_adc_dispatch_cnv_end(uint8_t channel)
 {
-  volatile uint32_t* addr = ra8_adc_b_addr(channel);
+  volatile const uint32_t* addr = ra8_adc_b_addr(channel);
   if (addr == nullptr) {
     return;
   }
@@ -689,12 +693,10 @@ ra8_err_t ra8_adc_configure_scan_group(uint8_t group, const ra8_adc_scan_group_c
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   const ra8_err_t v_err = internal_validate_group_cfg(group, cfg);
-  RA8_RETURN_ON_ERROR(v_err, s_tag, "configure_scan_group: validation"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, s_tag, "configure_scan_group: validation");
 
   const ra8_err_t prog_err = internal_program_group_channels(group, cfg);
-  RA8_RETURN_ON_ERROR(prog_err,
-                      s_tag,
-                      "configure_scan_group: program channels"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(prog_err, s_tag, "configure_scan_group: program channels");
 
   internal_cache_group_channels(group, cfg);
   internal_apply_group_enable(group, cfg->trigger);
@@ -742,7 +744,7 @@ ra8_err_t ra8_adc_read_group_results(uint8_t group, uint16_t* out_buf, uint8_t* 
 
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
   for (uint8_t i = 0U; i < cache->num_channels; ++i) {
-    volatile uint32_t* addr = ra8_adc_b_addr(cache->channels[i]);
+    volatile const uint32_t* addr = ra8_adc_b_addr(cache->channels[i]);
     if (addr == nullptr) {
       return k_ra8_err_out_of_range;
     }
@@ -819,7 +821,7 @@ ra8_err_t ra8_adc_set_oversampling(uint8_t channel, ra8_adc_oversample_t mode)
   uint32_t        avemd   = 0U;
   uint32_t        adc     = 0U;
   const ra8_err_t enc_err = internal_oversample_encode(mode, &avemd, &adc);
-  RA8_RETURN_ON_ERROR(enc_err, s_tag, "set_oversampling: invalid mode"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(enc_err, s_tag, "set_oversampling: invalid mode");
 
   volatile uint32_t* opcrb = ra8_adc_b_addopcrb(channel);
   if (opcrb == nullptr) {

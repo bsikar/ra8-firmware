@@ -12,9 +12,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "jof_produce.h"
 #include "ra8_attributes.h"
 #include "ra8_fmt_stream.h"
-#include "ra8_jof_produce.h"
 
 /** @brief Bounded encoded-header probe constants. */
 typedef enum : uint32_t {
@@ -33,7 +33,17 @@ typedef enum : uint32_t {
   k_verify_jpeg_components  = 7U,          /**< Component-count offset after len. */
   k_verify_png_chunk_record = 12U,         /**< PNG chunk framing bytes.          */
   k_verify_png_color_type   = 25U,         /**< PNG IHDR colour-type offset.      */
+  k_verify_fourcc_bytes     = 4U,          /**< RIFF/WebP fourCC width.           */
+  k_verify_webp_form_offset = 8U,          /**< RIFF form-type field offset.      */
 } verify_plan_const_t;
+
+/** @brief Fixed non-ASCII bytes in the PNG signature. */
+typedef enum : uint8_t {
+  k_verify_png_sig_high = 0x89U, /**< High-bit signature byte. */
+  k_verify_png_sig_cr   = 0x0DU, /**< Carriage return byte.    */
+  k_verify_png_sig_lf   = 0x0AU, /**< Line feed byte.          */
+  k_verify_png_sig_sub  = 0x1AU, /**< DOS EOF byte.            */
+} verify_png_signature_t;
 
 /**
  * @brief Read one exact positioned span.
@@ -284,11 +294,24 @@ static ra8_err_t internal_bpp(const ra8_fmt_source_t* source, uint8_t* bpp)
   if ((head[0] == (uint8_t)k_verify_jpeg_marker) && (head[1] == (uint8_t)k_verify_jpeg_soi)) {
     return internal_jpeg_bpp(source, bpp);
   }
-  static const uint8_t png[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU}; /* MAGIC-OK */
+  static const uint8_t png[8] = {k_verify_png_sig_high,
+                                 'P',
+                                 'N',
+                                 'G',
+                                 k_verify_png_sig_cr,
+                                 k_verify_png_sig_lf,
+                                 k_verify_png_sig_sub,
+                                 k_verify_png_sig_lf};
   if (memcmp(head, png, sizeof(png)) == 0) {
     return internal_png_bpp(source, head[k_verify_png_color_type], bpp);
   }
-  if ((memcmp(head, "RIFF", 4U) == 0) && (memcmp(&head[8], "WEBP", 4U) == 0)) { /* MAGIC-OK */
+  /* Compared as unsigned octet runs rather than as null-terminated strings:
+   * a fourCC is a fixed four-byte field with no terminator, and `head` is a
+   * uint8_t buffer, so both memcmp operands stay essentially unsigned. */
+  static const uint8_t riff[k_verify_fourcc_bytes] = {'R', 'I', 'F', 'F'};
+  static const uint8_t webp[k_verify_fourcc_bytes] = {'W', 'E', 'B', 'P'};
+  if ((memcmp(head, riff, sizeof(riff)) == 0) &&
+      (memcmp(&head[k_verify_webp_form_offset], webp, sizeof(webp)) == 0)) {
     *bpp = 4U;
     return k_ra8_ok;
   }
@@ -334,7 +357,7 @@ ra8_err_t ra8_fmt_jof_verify_requirements(const ra8_fmt_source_t*            sou
   out->width                = convert.width;
   out->height               = convert.height;
   out->band_height          = convert.tile_height;
-  out->reference_work_bytes = ra8_jof_work_bytes(out->width, out->height, out->width, 1U);
+  out->reference_work_bytes = jof_work_bytes(out->width, out->height, out->width, 1U);
   out->banded_work_bytes    = convert.work_bytes;
   out->webp_work_bytes      = convert.webp_work_bytes;
   const uint64_t row        = (uint64_t)out->width * out->bpp;
@@ -344,6 +367,6 @@ ra8_err_t ra8_fmt_jof_verify_requirements(const ra8_fmt_source_t*            sou
   }
   out->row_bytes       = (uint32_t)row;
   out->band_tile_bytes = (uint32_t)band;
-  out->scratch_bytes   = ra8_jof_stored_bound(out->band_tile_bytes);
+  out->scratch_bytes   = jof_stored_bound(out->band_tile_bytes);
   return internal_stable(source);
 }

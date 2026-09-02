@@ -106,7 +106,7 @@ bool sh_cover_loupe_map(int32_t px, int32_t py, int32_t* out_cx, int32_t* out_cy
     return false; /* EPUB covers are decoded rasters, not the gray4 image pool */
   }
   const uint32_t cover = g_sh.book_src.hdr.cover_image_index;
-  if ((g_sh.book_src.vm == nullptr) || (cover == k_ra8_book_nil)) {
+  if ((g_sh.book_src.vm == nullptr) || (cover == k_book_nil)) {
     return false;
   }
   return sh_image_loupe_map(&g_sh.book_src,
@@ -127,7 +127,7 @@ void sh_cover_loupe_render(void)
     return;
   }
   const uint32_t cover = g_sh.book_src.hdr.cover_image_index;
-  if (cover == k_ra8_book_nil) {
+  if (cover == k_book_nil) {
     return;
   }
   const int32_t dx = ((int32_t)k_sh_fb_w - (int32_t)k_sh_loupe_w) / 2;

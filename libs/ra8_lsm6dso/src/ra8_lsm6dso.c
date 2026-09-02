@@ -571,10 +571,10 @@ static ra8_err_t internal_lsm6dso_burst_fifo(ra8_lsm6dso_t* dev, uint8_t* out_bu
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_lsm6dso_fifo_check_args(ra8_lsm6dso_t*  dev,
-                                                  const uint8_t*  out_buf,
-                                                  uint32_t        max_words,
-                                                  const uint32_t* out_words)
+static ra8_err_t internal_lsm6dso_fifo_check_args(const ra8_lsm6dso_t* dev,
+                                                  const uint8_t*       out_buf,
+                                                  uint32_t             max_words,
+                                                  const uint32_t*      out_words)
 {
   RA8_CHECK_NULL_PTR(dev, s_lsm6dso_tag, "read_fifo: dev");
   RA8_CHECK_NULL_PTR(out_buf, s_lsm6dso_tag, "read_fifo: out_buf");

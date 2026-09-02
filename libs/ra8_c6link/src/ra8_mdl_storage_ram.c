@@ -161,11 +161,12 @@ RA8_INTERNAL static ra8_err_t internal_ram_abort(void* context)
 
 /* data cannot be const: it seeds the struct's non-const uint8_t* data
  * field, which internal_ram_write() later writes through. */
-ra8_err_t ra8_mdl_storage_ram_init(ra8_mdl_storage_ram_t*   storage,
-                                   ra8_mdl_storage_iface_t* output,
-                                   // NOLINTNEXTLINE(readability-non-const-parameter)
-                                   uint8_t* data,
-                                   size_t   capacity)
+ra8_err_t ra8_mdl_storage_ram_init(
+  ra8_mdl_storage_ram_t*   storage,
+  ra8_mdl_storage_iface_t* output,
+  // NOLINTNEXTLINE(readability-non-const-parameter) -- interface contract fixes this writable pointer type.
+  uint8_t* data,
+  size_t   capacity)
 {
   if ((storage == nullptr) || (output == nullptr) || (data == nullptr)) {
     return k_ra8_err_null_ptr;

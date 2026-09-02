@@ -1,4 +1,0 @@
-# Frozen function-documentation debt after tools/ entered the strict scope.
-# Consumed by scripts/checks/doxy_audit.py --check.
-# New rows fail; stale rows fail until this file is shrunk.
-# Rows: 0

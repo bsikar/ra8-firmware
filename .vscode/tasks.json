@@ -1,0 +1,107 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "cmake",
+      "label": "RA8: build selected CMake target",
+      "command": "build",
+      "preset": "${command:cmake.activeBuildPresetName}",
+      "targets": ["${command:cmake.launchTargetName}"],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "RA8: check selected firmware image",
+      "type": "shell",
+      "command": "/bin/bash",
+      "args": [
+        "-p",
+        "${workspaceFolder}/scripts/dev/run_just.sh",
+        "hil::preflash_check",
+        "${command:cmake.launchTargetPath}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "RA8: prepare selected firmware",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "RA8: build selected CMake target",
+        "RA8: check selected firmware image"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "RA8: remote rig GDB server",
+      "type": "shell",
+      "command": "/bin/bash",
+      "args": [
+        "-p",
+        "${workspaceFolder}/scripts/dev/run_just.sh",
+        "hil::remote_gdb",
+        "run",
+        "2331"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "dependsOrder": "sequence",
+      "dependsOn": ["RA8: prepare selected firmware"],
+      "problemMatcher": {
+        "owner": "ra8-remote-gdb",
+        "pattern": {
+          "regexp": "^(?!)$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "remote_gdb_server: opening guarded tunnel",
+          "endsPattern": "RA8_REMOTE_GDB_READY"
+        }
+      }
+    },
+    {
+      "label": "RA8: stop remote rig GDB server",
+      "type": "shell",
+      "command": "/bin/bash",
+      "args": [
+        "-p",
+        "${workspaceFolder}/scripts/dev/run_just.sh",
+        "hil::remote_gdb",
+        "stop",
+        "2331"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "RA8: build emulator",
+      "type": "shell",
+      "command": "/bin/bash",
+      "args": [
+        "-p",
+        "${workspaceFolder}/scripts/dev/run_just.sh",
+        "tools::build_one",
+        "ra8_emulator"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "RA8: prepare emulator session",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "RA8: build selected CMake target",
+        "RA8: build emulator"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

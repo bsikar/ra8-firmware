@@ -9,12 +9,32 @@
 # and is the only entry point; RA8_GATE_REGISTRY -- the single list of what
 # gates exist -- stays there too. These files hold gate BODIES only, so there
 # is still exactly one home for a gate's definition and exactly one command
-# for a workflow to call (bash scripts/ci.sh --gate <name>). Adding a second
+# for a workflow to call (`just quality::local::gate <name>`). Adding a second
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: unit-tests, ubsan, coverage-tree, mcdc,
+# Gates in this file: work-harness, unit-tests, ubsan, coverage-tree, mcdc,
 # artefact-freshness, cache-bench
+
+# --- work-harness ---------------------------------------------------------
+gate_work_harness() (
+  set -e
+  require_cmd python3 "the workflow harness is a Python command"
+  require_cmd bash "the canonical workspace lifecycle is a Bash script"
+  require_cmd sh "the emitted operator script is executed by POSIX sh"
+  require_cmd git "workspace binding tests use isolated local git repositories"
+  require_cmd jq "the emitted GitHub script discovers board metadata with jq"
+  require_cmd shellcheck "the generated operator script must be valid POSIX shell"
+  RA8_WORK_HARNESS_REGISTERED_GATE=1 python3 -I tools/work/src/work.py --selftest
+  /bin/bash -p -n scripts/dev/agent_workspace.sh
+  bash scripts/dev/agent_workspace_selftest.sh
+  local generated
+  generated="$(mktemp)"
+  trap 'rm -f "$generated"' EXIT
+  python3 -I tools/work/src/work.py plan tools/work/tests/fixtures/injection_notes.md \
+    --emit-commands >"$generated"
+  shellcheck -s sh "$generated"
+)
 
 # --- unit-tests -----------------------------------------------------------
 gate_unit_tests() (
@@ -42,7 +62,7 @@ gate_unit_tests() (
 # 12 (bookworm), which defaults to gcc-12 and has no gcc-13 package at all
 # (backports included). gcc-14 is what this tree actually provisions
 # everywhere that runs this gate: the runner image installs it by an explicit
-# Dockerfile ARG pin (.devcontainer/Dockerfile), the dev box has it built from
+# native toolchain pin in the Dockerfile and dev-box Ansible role, the dev box has it built from
 # source at /usr/local/bin/gcc-14 (docs/TOOLCHAIN.md, "CONVERGED"), and every
 # other host-compiler probe in this tree already prefers it first
 # (scripts/report/tree_coverage.sh, scripts/emu/eil_all.sh, scripts/emu/smoke.sh,
@@ -53,7 +73,7 @@ gate_unit_tests() (
 gate_ubsan() (
   set -e
   require_cmd gcc-14 "the UBSan gate pins gcc-14 to match the provisioned toolchain"
-  CC=gcc-14 CXX=g++-14 make ubsan
+  CC=gcc-14 CXX=g++-14 /bin/bash -p scripts/dev/run_just.sh quality::local::test 1
 )
 
 # --- coverage-tree --------------------------------------------------------
@@ -61,7 +81,7 @@ gate_ubsan() (
 # libs/, src/, port/, tools/, apps/ and examples/ -- one census, one baseline,
 # one bar. It replaces three overlapping gates (an aggregate 90/80 plus a
 # libs+src-only line floor, a SECOND coverage build ratcheted against a
-# two-number baseline, and a product-named media_dl ratchet), which between
+# two-number baseline, and a legacy product-named ratchet), which between
 # them built the same translation units twice and still left most of the tree
 # unmentioned by any policy.
 #
@@ -80,16 +100,17 @@ gate_coverage_tree() (
   require_cmd gcov-14
   require_tool_versions gcc-14
   require_cmd gcovr
-  # gcovr version-sensitivity is documented history: the 5.2 line has a
-  # merge_function assertion crash newer lines do not. Assert a floor so the
-  # crashing ancient build fails loud instead of skewing coverage (#333).
+  # gcovr's report model is version-sensitive. Version 8.4 began retaining
+  # multiple coverage records per source line, which changes counts for the
+  # white-box test variants that include production C files under renamed
+  # symbols. Assert the exact 7.0 pin used to freeze the baseline (#333).
   require_tool_versions gcovr
-  # media_dl's listfile find_program()s both as REQUIRED for its real-libcurl
+  # mdl's listfile find_program()s both as REQUIRED for its real-libcurl
   # HTTPS integration test; without them cmake dies 700 lines before the gate
   # says anything, and the openssl CLI reaches the runner image only as a
   # transitive apt dependency of ca-certificates.
-  require_cmd openssl "media_dl's HTTPS integration test mints its server cert with openssl"
-  require_cmd python3 "media_dl's HTTPS integration test serves fixtures from python3 http.server"
+  require_cmd openssl "mdl's HTTPS integration test mints its server cert with openssl"
+  require_cmd python3 "mdl's HTTPS integration test serves fixtures from python3 http.server"
 
   # Prove the policy still fires and stays quiet BEFORE spending the build on
   # a verdict it might not be able to reach.
@@ -115,17 +136,54 @@ gate_coverage_tree() (
 # carries that stale probe, and a leftover build/mcdc-report holds a stale
 # mcdc_per_file.json / gate.json the per-file MC/DC floor would read and
 # FALSE-PASS on numbers this run never produced. This exact reuse hid a real red
-# this week. `make mcdc` for a developer stays incremental (mcdc_report.sh keeps
+# this week. `just quality::local::mcdc` for a developer stays incremental (mcdc_report.sh keeps
 # a matching-compiler cache) -- only the CI gate wipes. artefact-freshness runs
 # AFTER this gate and re-reads the report mcdc_report.sh regenerates, so the wipe
 # is safe.
+read_mcdc_baseline() {
+  local baseline_file="$1" baseline
+  local -a baseline_rows=()
+  mapfile -t baseline_rows < <(
+    sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$baseline_file"
+  )
+  if [[ "${#baseline_rows[@]}" -ne 1 ]]; then
+    echo "FAIL: $baseline_file must contain exactly one non-comment percentage row" >&2
+    return 1
+  fi
+  baseline="$(tr -d '[:space:]' <<<"${baseline_rows[0]}")"
+  if [[ ! "$baseline" =~ ^(100([.]0+)?|[0-9]{1,2}([.][0-9]+)?)$ ]]; then
+    echo "FAIL: invalid MC/DC baseline percentage: $baseline" >&2
+    return 1
+  fi
+  printf '%s\n' "$baseline"
+}
+
+assert_mcdc_baseline_parser() {
+  local scratch valid
+  scratch="$(mktemp -d "${TMPDIR:-/tmp}/ra8-mcdc-baseline.XXXXXXXX")"
+  printf '# provenance\n89.72\n' >"$scratch/valid.txt"
+  valid="$(read_mcdc_baseline "$scratch/valid.txt")"
+  [[ "$valid" == "89.72" ]] || return 1
+  printf '89.72\n90.00\n' >"$scratch/multiple.txt"
+  ! read_mcdc_baseline "$scratch/multiple.txt" >/dev/null 2>&1 || return 1
+  printf 'not-a-percentage\n' >"$scratch/invalid.txt"
+  ! read_mcdc_baseline "$scratch/invalid.txt" >/dev/null 2>&1 || return 1
+  rm -rf -- "$scratch"
+}
+
+assert_mcdc_transports() {
+  assert_mcdc_baseline_parser
+  bash scripts/ci/devcontainer_run.sh --selftest
+  CC=clang-18 CXX=clang++-18 bash scripts/report/mcdc_report.sh --selftest
+}
+
 gate_mcdc() (
   set -e
   set -o pipefail
   require_cmd clang-18 "the MC/DC gate pins clang-18 to match CI"
 
-  # Prove the build-dir freshness guard fires before measuring (see header).
-  CC=clang-18 CXX=clang++-18 bash scripts/report/mcdc_report.sh --selftest
+  # Prove both transport and build-dir freshness before measuring (see header).
+  assert_mcdc_transports
 
   # Wipe build AND report dir for a guaranteed-fresh MC/DC build (see header).
   rm -rf "${RA8_MCDC_BUILD_DIR:-tests/build-cov}" \
@@ -149,7 +207,7 @@ gate_mcdc() (
     return 1
   fi
   local baseline total_line measured drop
-  baseline="$(tr -d '[:space:]' <"$baseline_file")"
+  baseline="$(read_mcdc_baseline "$baseline_file")" || return
   total_line="$(grep -E '^TOTAL' "$summary" | tail -1 || true)"
   if [[ -z "$total_line" ]]; then
     echo "FAIL: no TOTAL row in $summary" >&2
@@ -208,7 +266,7 @@ gate_artefact_freshness() (
 # re-confirming SLRU on the captured reader trace on every push. Both pinned
 # host compilers are required: the rest of tools-build already proves clang-18
 # and gcc-14 independently, and a benchmark is not a reason to accept a weaker
-# warning/compiler bar. Each arm starts from clean outputs so make cannot reuse
+# warning/compiler bar. Each arm starts from clean outputs so Just cannot reuse
 # the first compiler's binaries for the second arm.
 #
 # Despite the name this is NOT a wall-clock gate, so it belongs in the local
@@ -221,14 +279,13 @@ gate_artefact_freshness() (
 # changes the numbers on screen but never the PASS/FAIL verdict.
 gate_cache_bench() (
   set -e
+  require_cmd just "the cache benchmark builds through authoritative tool recipes"
   require_cmd clang-18 "the cache-bench gate pins clang-18 to match CI"
   require_cmd gcc-14 "the cache-bench gate pins gcc-14 as its second warning arm"
   require_tool_versions gcc-14
   local cc
   for cc in clang-18 gcc-14; do
-    make -C tools/cache_bench clean
-    make -C tools/reader_vmem clean
-    make -C tools/glyph_bench clean
-    CC="$cc" make bench-cache
+    /bin/bash -p scripts/dev/run_just.sh tools::clean
+    CC="$cc" /bin/bash -p scripts/dev/run_just.sh tools::bench_cache
   done
 )

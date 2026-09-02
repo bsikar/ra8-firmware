@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # hil_dlm_reset.sh -- Recover an EK-RA8D2 from OEM_PL0 (or PL1) back
 # to OEM_PL2 by invoking the boot-firmware Initialize command via
@@ -45,7 +46,7 @@
 # the initialization command."
 #
 # Usage:
-#   bash scripts/hil/dlm_reset.sh
+#   /bin/bash -p scripts/hil/dlm_reset.sh
 #
 # Exit codes:
 #   0  -- chip recovered, DLM == OEM_PL2, Security Flags == none
@@ -53,123 +54,177 @@
 #         a different brick mode); see stderr for the rfp-cli output
 #   2  -- usage / Pi unreachable
 
-set -uo pipefail
+if [[ "$-" == *p* ]]; then
+  unset -v BASH_ENV ENV
+  declare -a ra8_startup_env_unset=()
+  _ra8_startup_refuse() {
+    printf 'error: privileged startup %s\n' "$1" >&2
+    exit 1
+  }
+  ra8_startup_env_done_count=0
+  while IFS= read -r -d '' ra8_startup_env_row; do
+    ra8_startup_env_name="${ra8_startup_env_row%%=*}"
+    case "$ra8_startup_env_name" in
+      RA8_STARTUP_ENV_DONE)
+        ra8_startup_env_done_count=$((ra8_startup_env_done_count + 1))
+        ;;
+      BASH_FUNC_*%% | BASH_FUNC_*'()') ra8_startup_env_unset+=(-u "$ra8_startup_env_name") ;;
+    esac
+  done < <(
+    /usr/bin/env -u RA8_STARTUP_ENV_DONE -0 &&
+      /usr/bin/printf 'RA8_STARTUP_ENV_DONE=1\0'
+  )
+  ((ra8_startup_env_done_count == 1)) && [[ "$ra8_startup_env_name" == RA8_STARTUP_ENV_DONE ]] || _ra8_startup_refuse 'environment enumeration was incomplete'
+  if ((${#ra8_startup_env_unset[@]})); then
+    [[ -z "${RA8_STARTUP_ENV_SCRUBBED-}" ]] || _ra8_startup_refuse 'scrub did not converge'
+    ra8_startup_reentry="$0"
+    [[ "$ra8_startup_reentry" == */* ]] || _ra8_startup_refuse 'requires a script path'
+    if [[ "$ra8_startup_reentry" != /* ]]; then
+      ra8_startup_reentry="$PWD/$ra8_startup_reentry"
+    fi
+    ra8_startup_check="$ra8_startup_reentry"
+    while [[ "$ra8_startup_check" != "/" ]]; do
+      [[ ! -L "$ra8_startup_check" ]] || _ra8_startup_refuse 'refuses a symlinked path'
+      ra8_startup_parent="${ra8_startup_check%/*}"
+      [[ -n "$ra8_startup_parent" ]] || ra8_startup_parent="/"
+      [[ "$ra8_startup_parent" != "$ra8_startup_check" ]] ||
+        _ra8_startup_refuse 'cannot validate its script path'
+      ra8_startup_check="$ra8_startup_parent"
+    done
+    [[ -f "$ra8_startup_reentry" ]] || _ra8_startup_refuse 'refuses a non-regular path'
+    if ! exec /usr/bin/env "${ra8_startup_env_unset[@]}" -u BASH_ENV -u ENV \
+      -u RA8_STARTUP_ENV_DONE RA8_STARTUP_ENV_SCRUBBED=1 \
+      /bin/bash -p -- "$ra8_startup_reentry" "$@"; then
+      _ra8_startup_refuse 'could not enter sanitized process'
+    fi
+  fi
+  unset -v ra8_startup_check ra8_startup_env_done_count
+  unset -v ra8_startup_env_name ra8_startup_env_row
+  unset -v ra8_startup_env_unset ra8_startup_parent ra8_startup_reentry
+  unset -v RA8_STARTUP_ENV_DONE
+  unset -v RA8_STARTUP_ENV_SCRUBBED
+  unset -f _ra8_startup_refuse
 
-# Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
-_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
-_hil_dir="$(cd "$_hil_dir" && pwd)"
-# shellcheck source=scripts/hil/lib/rig_env.sh
-source "$_hil_dir/lib/rig_env.sh"
-rig_require PI_HOST JLINK_SN
-DEVICE="ra"
+  set -uo pipefail
 
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+  # Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
+  _hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+  _hil_dir="$(cd "$_hil_dir" && pwd)"
+  # shellcheck source=scripts/hil/lib/rig_env.sh
+  source "$_hil_dir/lib/rig_env.sh"
+  rig_require PI_HOST JLINK_SN
+  DEVICE="ra"
 
-tag() { printf "${CYAN}[dlm_reset]${NC} %s\n" "$*"; }
-ok() { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
-err() { printf "${RED}[FAIL]${NC} %s\n" "$*" >&2; }
-warn() { printf "${YELLOW}[WARN]${NC} %s\n" "$*"; }
+  GREEN='\033[0;32m'
+  RED='\033[0;31m'
+  YELLOW='\033[1;33m'
+  CYAN='\033[0;36m'
+  NC='\033[0m'
 
-# ---- 0a. Bench mutual exclusion ----------------------------------------------
-# Recovery is not exempt: this erases every code and data block on the chip, so
-# doing it inside somebody else's suite is worse than an ordinary collision, not
-# better. Break-glass (RA8_BENCH_BREAK_GLASS="...") is the path for a wedged
-# board whose holder is dead or is the one that wedged it.
-# shellcheck source=scripts/hil/lib/bench_lock.sh
-source "$_hil_dir/lib/bench_lock.sh"
-ra8_bench_require_recovery "DLM reset (rfp-cli Initialize) back to OEM_PL2" || exit $?
+  tag() { printf "${CYAN}[dlm_reset]${NC} %s\n" "$*"; }
+  ok() { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
+  err() { printf "${RED}[FAIL]${NC} %s\n" "$*" >&2; }
+  warn() { printf "${YELLOW}[WARN]${NC} %s\n" "$*"; }
 
-# ---- 0b. Sanity-check the Pi reachable ---------------------------------------
-if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" "true" 2>/dev/null; then
-  err "Cannot reach Pi at ${PI_HOST} -- check network / SSH key."
-  exit 2
-fi
-tag "Pi reachable: ${PI_HOST}"
+  # ---- 0a. Bench mutual exclusion ----------------------------------------------
+  # Recovery is not exempt: this erases every code and data block on the chip, so
+  # doing it inside somebody else's suite is worse than an ordinary collision, not
+  # better. Break-glass (RA8_BENCH_BREAK_GLASS="...") is the path for a wedged
+  # board whose holder is dead or is the one that wedged it.
+  # shellcheck source=scripts/hil/lib/bench_lock.sh
+  source "$_hil_dir/lib/bench_lock.sh"
+  ra8_bench_require_recovery "DLM reset (rfp-cli Initialize) back to OEM_PL2" || exit $?
 
-# ---- 1. Read DLM state BEFORE Initialize ------------------------------------
-BEFORE_LOG="/tmp/hil_dlm_reset_before.log"
-tag "Reading DLM state BEFORE Initialize..."
-# shellcheck disable=SC2029  # ${DEVICE}/${JLINK_SN} are local rig config the Pi does not have.
-ssh "$PI_HOST" \
-  "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -rfo 2>&1" \
-  >"$BEFORE_LOG" 2>&1 || true
+  # ---- 0b. Sanity-check the Pi reachable ---------------------------------------
+  if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" "true" 2>/dev/null; then
+    err "Cannot reach Pi at ${PI_HOST} -- check network / SSH key."
+    exit 2
+  fi
+  tag "Pi reachable: ${PI_HOST}"
 
-if grep -q "DLM State:" "$BEFORE_LOG"; then
-  BEFORE_STATE="$(grep -E '^DLM State:' "$BEFORE_LOG" | head -1 | sed 's/^DLM State: //')"
-  BEFORE_FLAGS="$(grep -E '^Security Flags:' "$BEFORE_LOG" | head -1 | sed 's/^Security Flags: //')"
-  tag "BEFORE: DLM State = ${BEFORE_STATE}, Security Flags = ${BEFORE_FLAGS}"
-elif grep -q "E100000E" "$BEFORE_LOG"; then
-  warn "BEFORE: rfo returned E100000E protection error -- chip is in PL0/PL1 with debug gated."
-  warn "        This is the expected starting condition for recovery."
-  BEFORE_STATE="<protected>"
-  BEFORE_FLAGS="<unreadable>"
+  # ---- 1. Read DLM state BEFORE Initialize ------------------------------------
+  BEFORE_LOG="/tmp/hil_dlm_reset_before.log"
+  tag "Reading DLM state BEFORE Initialize..."
+  # shellcheck disable=SC2029  # ${DEVICE}/${JLINK_SN} are local rig config the Pi does not have.
+  ssh "$PI_HOST" \
+    "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -rfo 2>&1" \
+    >"$BEFORE_LOG" 2>&1 || true
+
+  if grep -q "DLM State:" "$BEFORE_LOG"; then
+    BEFORE_STATE="$(grep -E '^DLM State:' "$BEFORE_LOG" | head -1 | sed 's/^DLM State: //')"
+    BEFORE_FLAGS="$(grep -E '^Security Flags:' "$BEFORE_LOG" | head -1 | sed 's/^Security Flags: //')"
+    tag "BEFORE: DLM State = ${BEFORE_STATE}, Security Flags = ${BEFORE_FLAGS}"
+  elif grep -q "E100000E" "$BEFORE_LOG"; then
+    warn "BEFORE: rfo returned E100000E protection error -- chip is in PL0/PL1 with debug gated."
+    warn "        This is the expected starting condition for recovery."
+    BEFORE_STATE="<protected>"
+    BEFORE_FLAGS="<unreadable>"
+  else
+    err "Unexpected rfo output BEFORE Initialize:"
+    tail -10 "$BEFORE_LOG" | sed 's/^/    /' >&2
+    exit 1
+  fi
+
+  # ---- 2. Run the Initialize via -erase-chip ----------------------------------
+  INIT_LOG="/tmp/hil_dlm_reset_init.log"
+  tag "Invoking Initialize command via rfp-cli -erase-chip..."
+  tag "(This erases user flash AND runs the boot-firmware Initialize,"
+  tag " which transitions DLM from OEM_PL0/PL1 back to OEM_PL2.)"
+  # shellcheck disable=SC2029  # ${DEVICE}/${JLINK_SN} are local rig config the Pi does not have.
+  if ! ssh "$PI_HOST" \
+    "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -erase-chip 2>&1" \
+    >"$INIT_LOG" 2>&1; then
+    err "rfp-cli -erase-chip returned non-zero. Output:"
+    tail -15 "$INIT_LOG" | sed 's/^/    /' >&2
+    exit 1
+  fi
+
+  if ! grep -q "Operation successful" "$INIT_LOG"; then
+    err "rfp-cli -erase-chip did NOT report Operation successful. Output:"
+    tail -15 "$INIT_LOG" | sed 's/^/    /' >&2
+    exit 1
+  fi
+  ok "Initialize command reported success."
+
+  # ---- 3. Read DLM state AFTER Initialize -------------------------------------
+  AFTER_LOG="/tmp/hil_dlm_reset_after.log"
+  tag "Reading DLM state AFTER Initialize..."
+  # shellcheck disable=SC2029  # ${DEVICE}/${JLINK_SN} are local rig config the Pi does not have.
+  ssh "$PI_HOST" \
+    "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -rfo 2>&1" \
+    >"$AFTER_LOG" 2>&1 || true
+
+  if ! grep -q "DLM State:" "$AFTER_LOG"; then
+    err "AFTER: rfo did not return a DLM state. Output:"
+    tail -15 "$AFTER_LOG" | sed 's/^/    /' >&2
+    err "Recovery FAILED -- chip may be in LCK_BOOT, ce flag may have"
+    err "been set, or a different brick mode is at play."
+    exit 1
+  fi
+
+  AFTER_STATE="$(grep -E '^DLM State:' "$AFTER_LOG" | head -1 | sed 's/^DLM State: //')"
+  AFTER_FLAGS="$(grep -E '^Security Flags:' "$AFTER_LOG" | head -1 | sed 's/^Security Flags: //')"
+  tag "AFTER:  DLM State = ${AFTER_STATE}, Security Flags = ${AFTER_FLAGS}"
+
+  if [[ "$AFTER_STATE" == "OEM_PL2" ]]; then
+    ok "Chip recovered. DLM is at OEM_PL2 (Initialize regressed PL0 -> PL2)."
+    ok "Do NOT run 'rfp-cli -dlm <state>' after this -- chaining a DLM"
+    ok "transition will re-lock the chip into OEM_PL0."
+    echo
+    tag "Logs:"
+    tag "  BEFORE rfo: ${BEFORE_LOG}"
+    tag "  Initialize: ${INIT_LOG}"
+    tag "  AFTER  rfo: ${AFTER_LOG}"
+    echo
+    tag "Next steps:"
+    tag "  - Flash a sanity-check app:   /bin/bash -p scripts/hil/flash.sh blink"
+    tag "  - Resume normal HIL pipeline: /bin/bash -p scripts/hil/all.sh"
+    exit 0
+  fi
+
+  err "Initialize ran but DLM state is now '${AFTER_STATE}' (expected OEM_PL2)."
+  err "Something unexpected happened. Check ${AFTER_LOG} for details."
+  exit 1
 else
-  err "Unexpected rfo output BEFORE Initialize:"
-  tail -10 "$BEFORE_LOG" | sed 's/^/    /' >&2
-  exit 1
+  [[ "$-" == *p* ]]
 fi
-
-# ---- 2. Run the Initialize via -erase-chip ----------------------------------
-INIT_LOG="/tmp/hil_dlm_reset_init.log"
-tag "Invoking Initialize command via rfp-cli -erase-chip..."
-tag "(This erases user flash AND runs the boot-firmware Initialize,"
-tag " which transitions DLM from OEM_PL0/PL1 back to OEM_PL2.)"
-# shellcheck disable=SC2029  # ${DEVICE}/${JLINK_SN} are local rig config the Pi does not have.
-if ! ssh "$PI_HOST" \
-  "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -erase-chip 2>&1" \
-  >"$INIT_LOG" 2>&1; then
-  err "rfp-cli -erase-chip returned non-zero. Output:"
-  tail -15 "$INIT_LOG" | sed 's/^/    /' >&2
-  exit 1
-fi
-
-if ! grep -q "Operation successful" "$INIT_LOG"; then
-  err "rfp-cli -erase-chip did NOT report Operation successful. Output:"
-  tail -15 "$INIT_LOG" | sed 's/^/    /' >&2
-  exit 1
-fi
-ok "Initialize command reported success."
-
-# ---- 3. Read DLM state AFTER Initialize -------------------------------------
-AFTER_LOG="/tmp/hil_dlm_reset_after.log"
-tag "Reading DLM state AFTER Initialize..."
-# shellcheck disable=SC2029  # ${DEVICE}/${JLINK_SN} are local rig config the Pi does not have.
-ssh "$PI_HOST" \
-  "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -rfo 2>&1" \
-  >"$AFTER_LOG" 2>&1 || true
-
-if ! grep -q "DLM State:" "$AFTER_LOG"; then
-  err "AFTER: rfo did not return a DLM state. Output:"
-  tail -15 "$AFTER_LOG" | sed 's/^/    /' >&2
-  err "Recovery FAILED -- chip may be in LCK_BOOT, ce flag may have"
-  err "been set, or a different brick mode is at play."
-  exit 1
-fi
-
-AFTER_STATE="$(grep -E '^DLM State:' "$AFTER_LOG" | head -1 | sed 's/^DLM State: //')"
-AFTER_FLAGS="$(grep -E '^Security Flags:' "$AFTER_LOG" | head -1 | sed 's/^Security Flags: //')"
-tag "AFTER:  DLM State = ${AFTER_STATE}, Security Flags = ${AFTER_FLAGS}"
-
-if [[ "$AFTER_STATE" == "OEM_PL2" ]]; then
-  ok "Chip recovered. DLM is at OEM_PL2 (Initialize regressed PL0 -> PL2)."
-  ok "Do NOT run 'rfp-cli -dlm <state>' after this -- chaining a DLM"
-  ok "transition will re-lock the chip into OEM_PL0."
-  echo
-  tag "Logs:"
-  tag "  BEFORE rfo: ${BEFORE_LOG}"
-  tag "  Initialize: ${INIT_LOG}"
-  tag "  AFTER  rfo: ${AFTER_LOG}"
-  echo
-  tag "Next steps:"
-  tag "  - Flash a sanity-check app:   bash scripts/hil/flash.sh blink"
-  tag "  - Resume normal HIL pipeline: bash scripts/hil/all.sh"
-  exit 0
-fi
-
-err "Initialize ran but DLM state is now '${AFTER_STATE}' (expected OEM_PL2)."
-err "Something unexpected happened. Check ${AFTER_LOG} for details."
-exit 1

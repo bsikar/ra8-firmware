@@ -38,22 +38,21 @@ typedef enum : uint16_t {
  * @invariant `received` counts exactly the bytes supplied to the SHA context.
  */
 typedef struct mdl_http_state {
-  esp_http_client_handle_t http;                   /**< Retained ESP HTTP client handle.         */
-  mbedtls_sha256_context   sha;                    /**< Retained streaming SHA context.          */
-  char                     url[k_ra8_mdl_url_max]; /**< Bounded active HTTPS URL.                */
-  char user_agent[k_ra8_mdl_user_agent_max];       /**< Active User-Agent request value.         */
-  char referer[k_ra8_mdl_referer_max];             /**< Active Referer request value.            */
-  char if_none_match[k_ra8_mdl_etag_max];          /**< Active If-None-Match request value.      */
-  char if_modified_since[k_ra8_mdl_http_date_max]; /**< Active If-Modified-Since request value.  */
-  ra8_mdl_http_response_t response;                /**< Selected terminal response metadata.     */
-  ra8_err_t               header_error;            /**< First response-header capture failure.   */
-  uint64_t                total;                   /**< Advertised body length, or zero.         */
-  uint64_t                received;                /**< Independently counted body bytes.        */
-  ra8_mdl_format_t        format;                  /**< Requested artifact identity.             */
-  bool                    total_known;             /**< Whether Content-Length was present.      */
-  bool                    opened;                  /**< Whether response headers were accepted.  */
-  bool                    hashing;                 /**< Whether a SHA operation is active.       */
-  bool                    client_ready;            /**< Whether one-time client setup succeeded. */
+  esp_http_client_handle_t http;                   /**< Retained ESP HTTP client handle.        */
+  mbedtls_sha256_context   sha;                    /**< Retained streaming SHA context.         */
+  char                     url[k_ra8_mdl_url_max]; /**< Bounded active HTTPS URL.               */
+  char user_agent[k_ra8_mdl_user_agent_max];       /**< Active User-Agent request value.        */
+  char referer[k_ra8_mdl_referer_max];             /**< Active Referer request value.           */
+  char if_none_match[k_ra8_mdl_etag_max];          /**< Active If-None-Match request value.     */
+  char if_modified_since[k_ra8_mdl_http_date_max]; /**< Active If-Modified-Since request value. */
+  ra8_mdl_http_response_t response;                /**< Selected terminal response metadata.    */
+  ra8_err_t               header_error;            /**< First response-header capture failure.  */
+  uint64_t                total;                   /**< Advertised body length, or zero.        */
+  uint64_t                received;                /**< Independently counted body bytes.       */
+  mdl_format_t            format;                  /**< Requested artifact identity.            */
+  bool                    total_known;             /**< Whether Content-Length was present.     */
+  bool                    opened;                  /**< Whether response headers were accepted. */
+  bool                    hashing;                 /**< Whether a SHA operation is active.      */
 } mdl_http_state_t;
 
 static mdl_http_state_t  s_http;
@@ -99,7 +98,8 @@ static mdl_component_abi_fn_t volatile s_component_abi = ra8_mdl_service_compone
 RA8_INTERNAL static void internal_mdl_http_reset_job(mdl_http_state_t* state)
 {
   if (state->http != nullptr) {
-    (void)esp_http_client_close(state->http); /* alloc-allow: ESP-IDF teardown */
+    (void)esp_http_client_close( // alloc-allow: ESP-IDF SOUP releases transport state
+      state->http);
   }
   state->url[0]               = '\0';
   state->user_agent[0]        = '\0';
@@ -110,7 +110,7 @@ RA8_INTERNAL static void internal_mdl_http_reset_job(mdl_http_state_t* state)
   state->header_error         = k_ra8_ok;
   state->total                = 0U;
   state->received             = 0U;
-  state->format               = k_ra8_mdl_format_invalid;
+  state->format               = k_mdl_format_invalid;
   state->total_known          = false;
   state->opened               = false;
   state->hashing              = false;
@@ -124,8 +124,9 @@ RA8_INTERNAL static void internal_mdl_http_reset_job(mdl_http_state_t* state)
  * @param[in] rhs Canonical response-header name.
  * @return Whether both NUL-terminated names are equal ignoring ASCII case.
  * @retval true The names are equal.
- * @retval false The names differ or either pointer is null.
- * @pre Non-null inputs are NUL-terminated.
+ * @retval false The names differ or @p lhs is null.
+ * @pre @p rhs is non-null and NUL-terminated.
+ * @pre Non-null @p lhs is NUL-terminated.
  * @pre Header names contain only ASCII octets.
  * @post No input or service state is modified.
  * @post The result is independent of the process locale.
@@ -134,7 +135,7 @@ RA8_INTERNAL static void internal_mdl_http_reset_job(mdl_http_state_t* state)
  */
 RA8_INTERNAL static bool internal_mdl_header_equal(const char* lhs, const char* rhs)
 {
-  if ((lhs == nullptr) || (rhs == nullptr)) {
+  if (lhs == nullptr) {
     return false;
   }
   size_t index = 0U;
@@ -280,8 +281,8 @@ RA8_INTERNAL static esp_err_t internal_mdl_http_event(esp_http_client_event_t* e
  * @retval k_ra8_err_no_mem ESP-IDF could not create the client handle.
  * @pre @p state is non-null and not yet initialised.
  * @pre The serialized RPC task exclusively owns @p state.
- * @post Success sets `client_ready` and retains the HTTP/SHA objects.
- * @post Failure leaves `client_ready` false.
+ * @post Success retains the HTTP/SHA objects for later dispatch.
+ * @post Failure leaves the portable backend unregistered.
  * @note Not thread-safe; called once before portable service initialisation.
  * @warning This concrete adapter remains an ESP-IDF heap exception.
  * @since 0.1.0
@@ -297,12 +298,12 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_init(mdl_http_state_t* state)
     .event_handler         = internal_mdl_http_event,
     .user_data             = state,
   };
-  state->http = esp_http_client_init(&cfg); /* alloc-allow: retained client init */
+  state->http =
+    esp_http_client_init(&cfg); /* alloc-allow: ESP-IDF SOUP creates one retained HTTP client */
   if (state->http == nullptr) {
     return k_ra8_err_no_mem;
   }
   mbedtls_sha256_init(&state->sha);
-  state->client_ready = true;
   return k_ra8_ok;
 }
 
@@ -373,10 +374,12 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_apply_request(mdl_http_state_t* 
                                      sizeof(state->if_modified_since),
                                      request->http.if_modified_since);
   }
+  if (result != k_ra8_ok) {
+    return result;
+  }
   const uint32_t timeout =
     (request->http.timeout_ms == 0U) ? k_mdl_http_timeout_ms : request->http.timeout_ms;
-  if ((result == k_ra8_ok) &&
-      (esp_http_client_set_timeout_ms(state->http, (int)timeout) != ESP_OK)) {
+  if (esp_http_client_set_timeout_ms(state->http, (int)timeout) != ESP_OK) {
     result = k_ra8_fail;
   }
   if (result == k_ra8_ok) {
@@ -416,11 +419,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_begin(void* ctx, const ra8_mdl_r
 {
   mdl_http_state_t* state            = (mdl_http_state_t*)ctx;
   const size_t      https_prefix_len = sizeof("https://") - 1U;
-  if ((state == nullptr) || (request == nullptr) || (request->url == nullptr) ||
-      !state->client_ready) {
-    return k_ra8_err_invalid_arg;
-  }
-  if ((uint32_t)request->format > (uint32_t)k_ra8_mdl_format_rabook) {
+  if ((uint32_t)request->format > (uint32_t)k_mdl_format_rabook) {
     return k_ra8_err_invalid_arg;
   }
   if (strncmp(request->url, "https://", https_prefix_len) != 0) {
@@ -436,7 +435,11 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_begin(void* ctx, const ra8_mdl_r
     return applied;
   }
   state->format = request->format;
-  if (esp_http_client_set_url(state->http, state->url) != ESP_OK) { /* alloc-allow: URL state */
+  const esp_err_t url_status =
+    esp_http_client_set_url( // alloc-allow: ESP-IDF SOUP copies URL state
+      state->http,
+      state->url);
+  if (url_status != ESP_OK) {
     internal_mdl_http_reset_job(state);
     return k_ra8_fail;
   }
@@ -471,7 +474,10 @@ RA8_INTERNAL static ra8_err_t internal_mdl_http_open(mdl_http_state_t* state)
   if (state->opened) {
     return k_ra8_ok;
   }
-  if (esp_http_client_open(state->http, 0) != ESP_OK) { /* alloc-allow: TLS state */
+  const esp_err_t open_status = esp_http_client_open( // alloc-allow: ESP-IDF SOUP creates TLS state
+    state->http,
+    0);
+  if (open_status != ESP_OK) {
     return k_ra8_fail;
   }
   const int64_t content_length = esp_http_client_fetch_headers(state->http);

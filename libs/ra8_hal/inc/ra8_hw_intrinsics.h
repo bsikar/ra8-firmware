@@ -21,7 +21,7 @@
  * (``RA8_OFF_TARGET`` defined) this header declares the primitives
  * ``extern`` and their host-safe bodies (wfi -> return, dsb/isb -> compiler
  * barrier, nop -> no-op, irq gate -> no-op, reset spin -> return) live in ONE
- * translation unit, ``tests/mocks/ra8_host_asm_stub.c``. The test harness
+ * translation unit, ``tests/mocks/src/ra8_host_asm_stub.c``. The test harness
  * therefore owns the whole host model and the driver ``.c`` files carry no
  * ``#ifdef RA8_OFF_TARGET`` of their own; the gate
  * ``scripts/checks/check_no_driver_asm_guard.py`` keeps it that way.
@@ -184,32 +184,31 @@ static inline void ra8_hw_irq_disable(void)
 static inline void ra8_hw_wait_for_reset(void)
 {
   __asm__ volatile("dsb 0xF" ::: "memory");
-  for (;;) {
-    /* GCOVR_EXCL_LINE -- never reached on target; host uses the stub. */
+  for (;;) { /* GCOVR_EXCL_LINE -- never reached on target; host uses the stub. */
   }
 }
 
 #else /* RA8_OFF_TARGET -- host bodies live in the stub TU */
 
-/* Host build: ra8_hw_wfi is defined in tests/mocks/ra8_host_asm_stub.c;
+/* Host build: ra8_hw_wfi is defined in tests/mocks/src/ra8_host_asm_stub.c;
    see implementation for details. */
 void ra8_hw_wfi(void);
-/* Host build: ra8_hw_dsb is defined in tests/mocks/ra8_host_asm_stub.c;
+/* Host build: ra8_hw_dsb is defined in tests/mocks/src/ra8_host_asm_stub.c;
    see implementation for details. */
 void ra8_hw_dsb(void);
-/* Host build: ra8_hw_isb is defined in tests/mocks/ra8_host_asm_stub.c;
+/* Host build: ra8_hw_isb is defined in tests/mocks/src/ra8_host_asm_stub.c;
    see implementation for details. */
 void ra8_hw_isb(void);
-/* Host build: ra8_hw_nop is defined in tests/mocks/ra8_host_asm_stub.c;
+/* Host build: ra8_hw_nop is defined in tests/mocks/src/ra8_host_asm_stub.c;
    see implementation for details. */
 void ra8_hw_nop(void);
-/* Host build: ra8_hw_irq_enable is defined in tests/mocks/ra8_host_asm_stub.c;
+/* Host build: ra8_hw_irq_enable is defined in tests/mocks/src/ra8_host_asm_stub.c;
    see implementation for details. */
 void ra8_hw_irq_enable(void);
-/* Host build: ra8_hw_irq_disable is defined in tests/mocks/ra8_host_asm_stub.c;
+/* Host build: ra8_hw_irq_disable is defined in tests/mocks/src/ra8_host_asm_stub.c;
    see implementation for details. */
 void ra8_hw_irq_disable(void);
-/* Host build: ra8_hw_wait_for_reset is defined in tests/mocks/ra8_host_asm_stub.c;
+/* Host build: ra8_hw_wait_for_reset is defined in tests/mocks/src/ra8_host_asm_stub.c;
    see implementation for details. */
 void ra8_hw_wait_for_reset(void);
 

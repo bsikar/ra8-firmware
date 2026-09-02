@@ -244,7 +244,7 @@ RA8_INTERNAL static ra8_err_t internal_sdramc_route_pins(void)
  */
 RA8_INTERNAL static ra8_err_t internal_sdramc_wait(uint8_t mask)
 {
-  volatile r_sdramc_regs_t* const reg = ra8_sdramc();
+  volatile const r_sdramc_regs_t* const reg = ra8_sdramc();
   for (uint32_t spin = 0U; spin < (uint32_t)k_ra8_sdramc_spin_max; ++spin) {
     if ((uint8_t)(reg->SDSR & mask) == 0U) {
       return k_ra8_ok;

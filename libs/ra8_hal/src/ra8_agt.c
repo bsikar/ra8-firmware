@@ -105,8 +105,8 @@ RA8_INTERNAL static ra8_err_t internal_agt_mstp_acquire(uint8_t channel)
   }
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 448 */
   const ra8_err_t err = ra8_mstp_enable(s_agt_mstp_table[channel]);
-  if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE -- target-only read-back path */
-    return err;          /* GCOVR_EXCL_LINE                                  */
+  if (err != k_ra8_ok) {
+    return err;
   }
   s_agt_mstp_held[channel] = true;
   return k_ra8_ok;
@@ -155,7 +155,7 @@ RA8_INTERNAL static ra8_err_t internal_agt_mstp_release(uint8_t channel)
 
   /* Acquire the per-channel MSTP reference once (issue #68). */
   const ra8_err_t mst_err = internal_agt_mstp_acquire(channel);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "agt_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "agt_start: mstp enable");
 
   /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
@@ -289,7 +289,7 @@ ra8_err_t ra8_agt_set_reload(uint8_t channel, uint16_t reload)
 ra8_err_t ra8_agt_get_status(uint8_t channel, uint8_t* out_mask)
 {
   RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  volatile r_agt_regs_t* reg = ra8_agt(channel);
+  volatile const r_agt_regs_t* reg = ra8_agt(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
   /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
   *out_mask = reg->AGTCR;
@@ -657,7 +657,9 @@ ra8_err_t ra8_agt_start_pulse_output(uint8_t channel, const ra8_agt_pulse_cfg_t*
 
   /* Acquire the per-channel MSTP reference once (issue #68). */
   const ra8_err_t mst_err = internal_agt_mstp_acquire(channel);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "agt_pulse: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "agt_pulse: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   internal_agt_pulse_program_registers(reg, cfg);
 
@@ -797,9 +799,9 @@ RA8_INTERNAL static ra8_err_t internal_agt_cascade_mstp_enable_both(void)
   /* One MSTP reference per channel (issue #68): re-arming the cascade every
    * AGT1 underflow must not leak a fresh AGT0/AGT1 reference per period. */
   const ra8_err_t m0 = internal_agt_mstp_acquire((uint8_t)k_ra8_agt_cascade_lo_channel);
-  RA8_RETURN_ON_ERROR(m0, s_tag, "cascade: mstp AGT0"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(m0, s_tag, "cascade: mstp AGT0");
   const ra8_err_t m1 = internal_agt_mstp_acquire((uint8_t)k_ra8_agt_cascade_hi_channel);
-  RA8_RETURN_ON_ERROR(m1, s_tag, "cascade: mstp AGT1"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(m1, s_tag, "cascade: mstp AGT1");
   return k_ra8_ok;
 }
 

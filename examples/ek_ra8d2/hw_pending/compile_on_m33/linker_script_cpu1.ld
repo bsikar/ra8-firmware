@@ -3,10 +3,10 @@
  *
  * MRAM_CPU1 0x020C0000 256 KiB  Code + rodata + vectors
  * SRAM_CPU1 0x22190000  64 KiB  .data, small .bss, M33 main stack
- * SDRAM     0x68000000  64 MiB  Working-set arenas (the 96 KiB ra8_epub pool)
+ * SDRAM     0x68000000  64 MiB  Working-set arenas (the 96 KiB epub pool)
  *
- * For the full EPUB->RABOOK1 compile the M33 links miniz + ra8_xml + ra8_epub.
- * The 96 KiB miniz first-fit arena (ra8_epub_miniz_alloc) does not fit
+ * For the full EPUB->RABOOK1 compile the M33 links miniz + xml + epub.
+ * The 96 KiB miniz first-fit arena (epub_miniz_alloc) does not fit
  * the 64 KiB SRAM_CPU1; it is parked in external SDRAM via .sdram_bss below. The
  * M85 brings up the SDRAM controller before ra8_cpu1_release.
  *
@@ -52,22 +52,22 @@ SECTIONS
     .bss : ALIGN(4)
     {
         g_ra8_ls_cpu1_bss_start = .;
-        *(EXCLUDE_FILE(*ra8_epub*) .bss*)
+        *(EXCLUDE_FILE(*epub*) .bss*)
         *(COMMON)
         g_ra8_ls_cpu1_bss_end   = .;
     } > SRAM_CPU1
 
-    /* newlib _sbrk references `end` as the heap base and must link. The ra8_epub
+    /* newlib _sbrk references `end` as the heap base and must link. The epub
      * allocators are static pools, so malloc/sbrk are never actually called on
      * this image; `end` only resolves the symbol (heap grows toward the stack
      * if a stray malloc ever runs, which the static-pool design prevents). */
     PROVIDE(end  = .);
     PROVIDE(_end = .);
 
-    /* The ra8_epub working-set arenas live in external SDRAM, kept OUT of the
-     * .bss zero range above: the 96 KiB first-fit pool (ra8_epub_miniz_alloc
+    /* The epub working-set arenas live in external SDRAM, kept OUT of the
+     * .bss zero range above: the 96 KiB first-fit pool (epub_miniz_alloc
      * s_pool, owned by miniz) and the 48 KiB OPF/NCX scratch
-     * (ra8_epub_open s_opf_buf) overflow the 64 KiB SRAM_CPU1. NOLOAD -- neither
+     * (epub_open s_opf_buf) overflow the 64 KiB SRAM_CPU1. NOLOAD -- neither
      * needs startup zeroing (the pool installs its free-list head on first use;
      * the scratch is filled before each read), and both are unused until the M33
      * actually compiles (stage a1). The small first-party .bss stays in
@@ -76,7 +76,7 @@ SECTIONS
     {
         g_ra8_ls_cpu1_sdram_start = .;
         *(.sdram_bss .sdram_bss.*)
-        *ra8_epub*(.bss .bss.* COMMON)
+        *epub*(.bss .bss.* COMMON)
         g_ra8_ls_cpu1_sdram_end = .;
     } > SDRAM
 

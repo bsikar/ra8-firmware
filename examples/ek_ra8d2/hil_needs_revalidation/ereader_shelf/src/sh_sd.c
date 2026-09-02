@@ -11,7 +11,7 @@
  * stays held (::sh_sd_book_open) and ::sh_sd_book_read seeks + reads single
  * compressed chunks on demand -- the whole container is never resident. `.epub`
  * books use the same discipline (#230): ::sh_sd_open_epub holds the source file
- * open and `ra8_epub` seeks + reads each ZIP entry on demand, so no whole-file
+ * open and `epub` seeks + reads each ZIP entry on demand, so no whole-file
  * buffer exists for EPUBs either. Mounting is best-effort: with no card (ra8_emulator
  * run without `--sd`) ra8_sdmmc_spi_init() times out and the shelf stays
  * baked-only.
@@ -25,11 +25,11 @@
  */
 #include <string.h>
 
+#include "epub.h"
+#include "epub_fs.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
-#include "ra8_epub.h"
-#include "ra8_epub_fs.h"
 #include "ra8_fs.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
@@ -55,7 +55,7 @@ static ra8_fs_file_t*   s_book;             /**< Held-open .RBK backing paged re
 static const char*      s_sd_tag = "sh_sd"; /**< Log tag for SD-read diagnostics.       */
 
 /** @brief Held-open streamed `.epub` source (#230); valid while an EPUB is open. */
-static ra8_epub_stream_fs_ctx_t s_epub_io;
+static epub_stream_fs_ctx_t s_epub_io;
 
 /* cppcheck-suppress constParameterCallback -- bound to ra8_sdmmc_spi_transport_t::set_clock; the void* ctx signature is fixed by the seam. */
 static ra8_err_t sh_sd_set_clock(void* ctx, uint32_t hz)
@@ -238,8 +238,7 @@ bool sh_sd_open_epub(const char* name, void* out_book)
   if (name == nullptr) {
     return false;
   }
-  return ra8_epub_open_streamed_fs(s_mount, name, &s_epub_io, (ra8_epub_book_t*)out_book) ==
-         k_ra8_ok;
+  return epub_open_streamed_fs(s_mount, name, &s_epub_io, (epub_book_t*)out_book) == k_ra8_ok;
 }
 
 void sh_sd_close_epub(void* book)
@@ -249,5 +248,5 @@ void sh_sd_close_epub(void* book)
   }
   /* Releases the held source file too; a double close is a harmless no-op
    * (the ctx's file is already NULL and the book already reset). */
-  (void)ra8_epub_close_streamed_fs(&s_epub_io, (ra8_epub_book_t*)book);
+  (void)epub_close_streamed_fs(&s_epub_io, (epub_book_t*)book);
 }

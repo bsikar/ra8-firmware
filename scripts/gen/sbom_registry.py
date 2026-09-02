@@ -2,9 +2,11 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """The curated third-party component registry behind the ra8-firmware SBOM.
 
-This module holds the *data*: what each vendored SOUP component under
-``libs/third_party/`` (plus the bundled font asset and the one not-vendored
-co-processor firmware) is, where it came from, and under what license.
+This module holds the *data*: what each vendored SOUP component under the
+platform-owned ``libs/third_party/`` and app-owned
+``apps/shared_libs/third_party/`` roots (plus the bundled font asset and the
+one not-vendored co-processor firmware) is, where it came from, and under what
+license.
 ``gen_sbom.py`` holds the *logic* that renders and cross-checks it.
 
 They are separate modules so the registry can grow with the tree without
@@ -85,7 +87,7 @@ class Component:
     distinguishable by a machine rather than by reading prose.
     """
 
-    key: str  # registry key; direct child dir name under libs/third_party
+    key: str  # registry key; unique vendored component name
     name: str  # human-facing component name
     version: str  # recorded version string ("unpinned ..." when indeterminate)
     ctype: str  # CycloneDX component type: library / firmware / data
@@ -356,12 +358,12 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="litehtml",
         url="https://github.com/litehtml/litehtml",
-        path="libs/third_party/litehtml",
+        path="apps/shared_libs/third_party/litehtml",
         provenance=PROV_COMMIT_PINNED,
-        description="HTML/CSS layout engine; linked by libs/ra8_reflow (EPUB).",
+        description="HTML/CSS layout engine; linked by apps/shared_libs/reflow (EPUB).",
         purl="pkg:github/litehtml/litehtml@8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e",
         spdx="BSD-3-Clause",
-        license_file="libs/third_party/litehtml/LICENSE",
+        license_file="apps/shared_libs/third_party/litehtml/LICENSE",
         upstream_commit="8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e",
         upstream_ref="8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e",
         extra_notes=(
@@ -382,9 +384,11 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="richgel999",
         url="https://github.com/richgel999/miniz",
-        path="libs/third_party/miniz",
+        path="apps/shared_libs/third_party/miniz",
         provenance=PROV_ARCHIVE_PINNED,
-        description="Deflate / inflate / ZIP behind EPUB, CBZ, PNG, gzip and the ra8_io seam.",
+        description=(
+            "Deflate / inflate / ZIP behind EPUB, CBZ, PNG, gzip and the app compression seam."
+        ),
         purl="pkg:github/richgel999/miniz@11.0.2",
         upstream_transport=UPSTREAM_ARCHIVE,
         upstream_ref="3.0.2",
@@ -396,7 +400,7 @@ REGISTRY: tuple[Component, ...] = (
         ),
         spdx="MIT",
         license_note="MIT text (upstream describes it as zlib-style).",
-        license_file="libs/third_party/miniz/LICENSE",
+        license_file="apps/shared_libs/third_party/miniz/LICENSE",
         probe_file="miniz.h",
         probe_re=r'MZ_VERSION\s+"([0-9.]+)"',
         expected_version="11.0.2",
@@ -413,13 +417,13 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="tukaani-project",
         url="https://github.com/tukaani-project/xz-embedded",
-        path="libs/third_party/xz_embedded",
+        path="apps/shared_libs/third_party/xz_embedded",
         provenance=PROV_COMMIT_PINNED,
-        description="XZ/LZMA2 decoder behind libs/ra8_unarch (.tar.xz content).",
+        description="XZ/LZMA2 decoder behind apps/shared_libs/unarch (.tar.xz content).",
         purl="pkg:github/tukaani-project/xz-embedded@ae63ae3a36ed01724674e8f3d750dc47bf125410",
         spdx="0BSD",
         license_note="0BSD (upstream COPYING; SPDX headers per file).",
-        license_file="libs/third_party/xz_embedded/COPYING",
+        license_file="apps/shared_libs/third_party/xz_embedded/COPYING",
         upstream_commit="ae63ae3a36ed01724674e8f3d750dc47bf125410",
         upstream_ref="v2024-12-30",
         extra_notes=(
@@ -432,7 +436,7 @@ REGISTRY: tuple[Component, ...] = (
             "MicroLZMA callers.",
             "Aggregate SHA-256 is over the sorted per-file hashes of the whole vendored directory.",
             "Built decode-only via the first-party porting header "
-            "libs/ra8_unarch/inc/xz_config.h: XZ_PREALLOC mode only "
+            "apps/shared_libs/unarch/inc/xz_config.h: XZ_PREALLOC mode only "
             "(dictionary allocated once from a caller scratch through the "
             "zero-heap pool), CRC32 + CRC64 verification, no XZ_DEC_DYNALLOC "
             "(hostile headers must not size allocations). See "
@@ -446,7 +450,7 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="nothings",
         url="https://github.com/nothings/stb",
-        path="libs/third_party/stb",
+        path="apps/shared_libs/third_party/stb",
         provenance=PROV_COMMIT_PINNED,
         description="JPEG/PNG/GIF/BMP decode (stb_image) + TTF/OTF raster (stb_truetype).",
         purl="pkg:github/nothings/stb",
@@ -493,7 +497,7 @@ REGISTRY: tuple[Component, ...] = (
         ctype="library",
         group="webmproject",
         url="https://chromium.googlesource.com/webm/libwebp",
-        path="libs/third_party/libwebp",
+        path="apps/shared_libs/third_party/libwebp",
         provenance=PROV_COMMIT_PINNED,
         description=(
             "WebP (VP8 / VP8L) decode-only codec for longstrip/manga raster (via ra8_webp)."
@@ -510,7 +514,7 @@ REGISTRY: tuple[Component, ...] = (
         ),
         spdx="BSD-3-Clause",
         license_note="BSD-3-Clause plus an additional PATENTS grant (both mirrored in-tree).",
-        license_file="libs/third_party/libwebp/COPYING",
+        license_file="apps/shared_libs/third_party/libwebp/COPYING",
         upstream_commit="a4d7a715337ded4451fec90ff8ce79728e04126c",
         modified=True,
         extra_notes=(
@@ -522,42 +526,9 @@ REGISTRY: tuple[Component, ...] = (
             "under -DRA8_WEBP_USE_ARENA, routes WebPSafe{Malloc,Calloc,Free} "
             "through the heap-free ra8_webp bump arena (NASA P10 Rule 3). See "
             "docs/SOUP/libwebp.md.",
-            "Additional attribution files: libs/third_party/libwebp/PATENTS "
-            "(IP-rights grant) and libs/third_party/libwebp/AUTHORS.",
+            "Additional attribution files: apps/shared_libs/third_party/libwebp/PATENTS "
+            "(IP-rights grant) and apps/shared_libs/third_party/libwebp/AUTHORS.",
             "Ships v1.5.0 which carries the CVE-2023-4863 VP8L fix.",
-        ),
-    ),
-    Component(
-        key="tinyxml2",
-        name="TinyXML-2",
-        version="11.0.0",
-        ctype="library",
-        group="leethomason",
-        url="https://github.com/leethomason/tinyxml2",
-        path="libs/third_party/tinyxml2",
-        provenance=PROV_COMMIT_PINNED,
-        description="XML parser for EPUB container metadata + chapter DOM.",
-        purl="pkg:github/leethomason/tinyxml2@11.0.0",
-        upstream_commit="9148bdf719e997d1f474be6bcc7943881046dba1",
-        upstream_ref="11.0.0",
-        patched_files=(
-            (
-                "tinyxml2.cpp",
-                "RA8 LOCAL PATCH (#151): XMLDocument::Identify emits a text node "
-                "for whitespace skipped before ANY element in PEDANTIC mode; see "
-                "docs/SOUP/tinyxml2.md.",
-            ),
-        ),
-        spdx="Zlib",
-        license_file="libs/third_party/tinyxml2/LICENSE.txt",
-        modified=True,
-        probe_file="tinyxml2.h",
-        probe_prefix="TIXML2",
-        expected_version="11.0.0",
-        extra_notes=(
-            "MODIFIED SOUP: in-TU patch #151 generalizes the "
-            "XMLDocument::Identify PEDANTIC_WHITESPACE branch for the "
-            "on-device .rabook compiler (see docs/SOUP/tinyxml2.md).",
         ),
     ),
     Component(
@@ -609,8 +580,7 @@ REGISTRY: tuple[Component, ...] = (
         extra_notes=(
             "Headers only (include/flatbuffers/*.h) -- the read/verify path "
             "TFLite-micro needs; no flatc compiler or codegen vendored.",
-            "Version matches the flatbuffers pin in TFLite-micro's "
-            "tools/make/flatbuffers_download.sh (v25.9.23).",
+            "The exact tag and commit are shared with docs/sbom/upstream/flatbuffers.manifest.",
         ),
     ),
     Component(
@@ -633,8 +603,7 @@ REGISTRY: tuple[Component, ...] = (
         extra_notes=(
             "Header-only subset: fixedpoint/*.h + internal/detect_platform.h "
             "(the files the reference kernels include).",
-            "Commit matches the gemmlowp pin in TFLite-micro's "
-            "tools/make/third_party_downloads.inc.",
+            "The exact commit is shared with docs/sbom/upstream/gemmlowp.manifest.",
         ),
     ),
     Component(
@@ -657,7 +626,7 @@ REGISTRY: tuple[Component, ...] = (
         extra_notes=(
             "Single header vendored: ruy/profiler/instrumentation.h (a no-op "
             "profiler stub); no ruy GEMM backend.",
-            "Commit matches the ruy pin in TFLite-micro's tools/make/third_party_downloads.inc.",
+            "The exact commit is shared with docs/sbom/upstream/ruy.manifest.",
         ),
     ),
     Component(
@@ -776,7 +745,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/googlefonts/literata",
         path="libs/ra8_fonts/Literata-Regular.ttf",
         provenance=PROV_OPEN_ASSET,
-        description="Reading-body serif font, rasterized at runtime by ra8_reflow.",
+        description="Reading-body serif font, rasterized at runtime by reflow.",
         purl="pkg:github/googlefonts/literata",
         upstream_commit="0c2761b727a1b3a7cffd313c37f0f5163dfc7a63",
         upstream_ref="3.103",

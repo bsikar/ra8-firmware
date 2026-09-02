@@ -36,6 +36,7 @@ from __future__ import annotations
 import pathlib
 import re
 import sys
+import tempfile
 from collections.abc import Iterable
 
 # A hw_validated HIL suite this size cannot legitimately collapse to a handful
@@ -82,6 +83,74 @@ def _parse_kv(conf: pathlib.Path) -> dict[str, str]:
     return out
 
 
+def _policy_violations(repo_root: pathlib.Path, confs: Iterable[pathlib.Path]) -> list[str]:
+    """Return one honest-contract violation for each non-asserting config."""
+    violations: list[str] = []
+    for conf in confs:
+        kv = _parse_kv(conf)
+        mode = kv.get("HIL_MODE", "")
+        fault_expected = kv.get("HIL_FAULT_EXPECTED", "0")
+        app = conf.parent.name
+
+        if mode in ALLOWED_MODES or (mode == "alive" and fault_expected == "1"):
+            continue
+        if mode == "alive":
+            violations.append(
+                f"{conf.relative_to(repo_root)}: HIL_MODE=alive without "
+                f"HIL_FAULT_EXPECTED=1 is forbidden under "
+                f"hw_validated/hil/. Either:\n"
+                f"    - instrument the app (g_<x>_match symbol + "
+                f"HIL_MODE=jlink_memprobe), OR\n"
+                f"    - add a UART success banner + HIL_MODE=uart_scrape, OR\n"
+                f"    - move the app to examples/ek_ra8d2/hw_pending/{app}/."
+            )
+        elif mode == "":
+            violations.append(f"{conf.relative_to(repo_root)}: missing HIL_MODE")
+        else:
+            violations.append(
+                f"{conf.relative_to(repo_root)}: HIL_MODE={mode!r} is not "
+                f"in the allowed set "
+                f"({[*sorted(ALLOWED_MODES), 'alive (with HIL_FAULT_EXPECTED=1)']})"
+            )
+    return violations
+
+
+def selftest() -> int:
+    """Prove asserting modes pass and every loose/unknown form is rejected."""
+    with tempfile.TemporaryDirectory(prefix="hil-alive-policy-selftest-") as raw:
+        root = pathlib.Path(raw)
+
+        def conf(name: str, text: str) -> pathlib.Path:
+            path = root / name / "hil.conf"
+            path.parent.mkdir()
+            path.write_text(text, encoding="ascii")
+            return path
+
+        good = [
+            conf("uart", "HIL_MODE=uart_scrape\n"),
+            conf("fault", "HIL_MODE=alive\nHIL_FAULT_EXPECTED=1\n"),
+        ]
+        bad = [
+            conf("loose", "HIL_MODE=alive\n"),
+            conf("missing", "HIL_FAULT_EXPECTED=1\n"),
+            conf("unknown", "HIL_MODE=not_a_probe\n"),
+        ]
+        good_findings = _policy_violations(root, good)
+        bad_findings = _policy_violations(root, bad)
+    cases = (
+        (not good_findings, "asserting and fault-expected modes stay quiet"),
+        (len(bad_findings) == len(bad), "loose, missing, and unknown modes fire"),
+    )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"check_hil_alive_policy.py --selftest: {len(failed)} failure(s)", file=sys.stderr)
+        return 1
+    print("check_hil_alive_policy.py --selftest: all cases pass (both directions).")
+    return 0
+
+
 def main() -> int:
     """Fail any hw_validated HIL app whose hil.conf does not assert a real outcome.
 
@@ -103,8 +172,13 @@ def main() -> int:
     when every conf under hw_validated/hil/ declares an asserting mode, 2 when
     the enumeration is too small to trust.
     """
+    args = sys.argv[1:]
+    if args == ["--selftest"]:
+        return selftest()
+    if args:
+        print("usage: check_hil_alive_policy.py [--selftest]", file=sys.stderr)
+        return 2
     repo_root = pathlib.Path(__file__).resolve().parents[2]
-    violations: list[str] = []
 
     confs = sorted(_iter_hil_confs(repo_root))
     if len(confs) < HIL_CONF_FLOOR:
@@ -115,35 +189,7 @@ def main() -> int:
         )
         return 2
 
-    for conf in confs:
-        kv = _parse_kv(conf)
-        mode = kv.get("HIL_MODE", "")
-        fault_expected = kv.get("HIL_FAULT_EXPECTED", "0")
-        app = conf.parent.name
-
-        if mode in ALLOWED_MODES:
-            continue
-        if mode == "alive" and fault_expected == "1":
-            continue
-
-        if mode == "alive":
-            violations.append(
-                f"{conf.relative_to(repo_root)}: HIL_MODE=alive without "
-                f"HIL_FAULT_EXPECTED=1 is forbidden under "
-                f"hw_validated/hil/. Either:\n"
-                f"    - instrument the app (g_<x>_match symbol + "
-                f"HIL_MODE=jlink_memprobe), OR\n"
-                f"    - add a UART success banner + HIL_MODE=uart_scrape, OR\n"
-                f"    - move the app to examples/ek_ra8d2/hw_pending/{app}/."
-            )
-        elif mode == "":
-            violations.append(f"{conf.relative_to(repo_root)}: missing HIL_MODE")
-        else:
-            violations.append(
-                f"{conf.relative_to(repo_root)}: HIL_MODE={mode!r} is not "
-                f"in the allowed set "
-                f"({[*sorted(ALLOWED_MODES), 'alive (with HIL_FAULT_EXPECTED=1)']})"
-            )
+    violations = _policy_violations(repo_root, confs)
 
     if violations:
         sys.stderr.write(

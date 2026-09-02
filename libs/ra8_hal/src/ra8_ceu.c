@@ -310,7 +310,9 @@ ra8_err_t ra8_ceu_init(const ra8_ceu_config_t* cfg)
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_ceu);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "ceu_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "ceu_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* HUM Ch 60.2.23 "CSTSR" p 3673 */ /* + HUM Ch 60.2.1 "CAPSR" p 3630 */
   const ra8_err_t idle_err = internal_wait_idle();

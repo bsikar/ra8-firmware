@@ -1,133 +1,73 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-# pre-push hook for ra8-firmware
-#
-# Scans every commit message in the push range for AI attribution
-# before letting the push proceed. Defense-in-depth alongside
-# scripts/git/commit-msg, which only fires on local commits; this
-# also catches commits authored elsewhere (rebase, cherry-pick,
-# branch import) before they leave the laptop.
-#
-# Hardware-in-the-loop coverage runs on the Pi 5 self-hosted runner
-# from .github/workflows/hil.yml; there is no developer-local HIL
-# gate in this hook. See docs/HIL_DEVELOPER_WORKFLOW.md.
-
-set -uo pipefail
-
-ROOT_DIR="$(git rev-parse --show-toplevel)"
-
-# Capture the ref list git feeds the hook on stdin ONCE -- both the git-lfs
-# upload and the AI-attribution scan below consume it.
-PUSH_REFS="$(cat)"
-
-# ----------------------------------------------------------------------
-# Mandatory FIRST, never skipped: git-lfs object upload. This repo sets
-# core.hooksPath=scripts/git, which REPLACES git-lfs's own pre-push hook;
-# without chaining it here no push ever uploads LFS objects, and a fresh
-# CI checkout's `git lfs pull` 404s on every epub/font blob (exactly how
-# the eil-integration job broke after the repo rename). Runs before the
-# SKIP_CI_PUSH-gated sections so a gate bypass can never skip the upload.
-# NOTE: `git push --no-verify` skips this whole hook INCLUDING the LFS
-# upload -- after such a push run `git lfs push origin <branch>` by hand.
-# ----------------------------------------------------------------------
-if command -v git-lfs >/dev/null 2>&1; then
-  if ! printf '%s\n' "$PUSH_REFS" | git lfs pre-push "$@"; then
-    echo "[FAIL] pre-push: git lfs pre-push failed -- LFS objects were NOT uploaded." >&2
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
+if [[ "$-" == *p* ]]; then
+  unset -v BASH_ENV ENV
+  declare -a ra8_startup_env_unset=()
+  _ra8_startup_refuse() {
+    printf 'error: privileged startup %s\n' "$1" >&2
     exit 1
-  fi
-fi
-
-# ----------------------------------------------------------------------
-# Mandatory: scan every commit message in the push range for AI
-# attribution. Defense-in-depth alongside scripts/git/commit-msg, which
-# only fires on local commits. This catches commits authored elsewhere
-# (rebase, cherry-pick, branch import) before they leave the laptop.
-# ----------------------------------------------------------------------
-ai_attr_violation=0
-# local_ref / remote_ref are unused here -- `_` discards them so the
-# positional read still lines up with git's four-field pre-push stdin.
-while read -r _ local_oid _ remote_oid; do
-  [[ -z "$local_oid" || "$local_oid" == "0000000000000000000000000000000000000000" ]] && continue
-  if [[ "$remote_oid" == "0000000000000000000000000000000000000000" ]]; then
-    # New branch -- check the last 100 commits as a budget cap.
-    range="${local_oid}~100..${local_oid}"
-  else
-    range="${remote_oid}..${local_oid}"
-  fi
-  while read -r sha; do
-    [[ -z "$sha" ]] && continue
-    msg="$(git log -1 --format=%B "$sha")"
-    # Per-commit opt-out.
-    if echo "$msg" | grep -qiE '^[[:space:]]*AI-OK:'; then
-      continue
+  }
+  ra8_startup_env_done_count=0
+  while IFS= read -r -d '' ra8_startup_env_row; do
+    ra8_startup_env_name="${ra8_startup_env_row%%=*}"
+    case "$ra8_startup_env_name" in
+      RA8_STARTUP_ENV_DONE)
+        ra8_startup_env_done_count=$((ra8_startup_env_done_count + 1))
+        ;;
+      BASH_FUNC_*%% | BASH_FUNC_*'()') ra8_startup_env_unset+=(-u "$ra8_startup_env_name") ;;
+    esac
+  done < <(
+    /usr/bin/env -u RA8_STARTUP_ENV_DONE -0 &&
+      /usr/bin/printf 'RA8_STARTUP_ENV_DONE=1\0'
+  )
+  ((ra8_startup_env_done_count == 1)) && [[ "$ra8_startup_env_name" == RA8_STARTUP_ENV_DONE ]] || _ra8_startup_refuse 'environment enumeration was incomplete'
+  if ((${#ra8_startup_env_unset[@]})); then
+    [[ -z "${RA8_STARTUP_ENV_SCRUBBED-}" ]] || _ra8_startup_refuse 'scrub did not converge'
+    ra8_startup_reentry="$0"
+    [[ "$ra8_startup_reentry" == */* ]] || _ra8_startup_refuse 'requires a script path'
+    if [[ "$ra8_startup_reentry" != /* ]]; then
+      ra8_startup_reentry="$PWD/$ra8_startup_reentry"
     fi
-    # Canonical AI-tool brand list -- mirror of scripts/git/commit-msg.
-    AI_BRANDS='(Claude|Anthropic|OpenAI|GPT|ChatGPT|Codex|Copilot|GitHub Copilot|Cursor|Cursor Composer|Aider|Continue|Cody|Sourcegraph Cody|Tabnine|Codeium|Windsurf|Devin|Cognition|Replit|Ghostwriter|CodeWhisperer|Q Developer|Cline|Roo Code|Roo Cline|JetBrains AI|Gemini|Bard|Llama|Mistral|Mixtral|DeepSeek|Qwen|Phind|Perplexity|Pieces|Sweep|Smol|SmolAgents|Phi|Grok|xAI|Inflection|Pi|Character\.AI|Hugging ?Face|Ollama|LM ?Studio|llama\.cpp|Stability AI|Midjourney|DALL-?E|Sora|Runway|Suno)'
-    if echo "$msg" | grep -qiE "^[[:space:]]*Co-Authored-By:[[:space:]]*${AI_BRANDS}" ||
-      echo "$msg" | grep -qiE "(Generated|Authored|Created|Written|Refactored|Reviewed|Coded|Implemented) (by|with|using) ${AI_BRANDS}" ||
-      echo "$msg" | grep -qE '🤖[[:space:]]+(Generated|Created|Authored)[[:space:]]+(with|by)' ||
-      echo "$msg" | grep -qiE '\bclaude\.ai\b|\bclaude code\b|\bchatgpt\b|\bcopilot\b|\bcursor\.(sh|com)\b|\bcodeium\b|\bwindsurf\b|\baider\b|\btabnine\b|\bcontinue\.dev\b|\bcody\.dev\b|\bdevin\.ai\b|\breplit ghostwriter\b|\bcodewhisperer\b|\bq developer\b|\bperplexity\.ai\b|\bcline\b' ||
-      echo "$msg" | grep -qiE "@(anthropic\.com|openai\.com|cursor\.(sh|com|so)|codeium\.com|tabnine\.com|aider\.chat|continue\.dev|sourcegraph\.com|perplexity\.ai|mistral\.ai|huggingface\.co|deepseek\.com|x\.ai|character\.ai|stability\.ai|midjourney\.com|runwayml\.com|suno\.ai|jetbrains-ai\.com)\b" ||
-      echo "$msg" | grep -qiE '\[bot\]\b' ||
-      git log -1 --format='%an %ae %cn %ce' "$sha" | grep -qiE "@(anthropic\.com|openai\.com|cursor\.(sh|com|so)|codeium\.com|tabnine\.com|aider\.chat|continue\.dev|perplexity\.ai|mistral\.ai|huggingface\.co|deepseek\.com|x\.ai|character\.ai|stability\.ai|midjourney\.com|runwayml\.com|suno\.ai|jetbrains-ai\.com)\b" ||
-      git log -1 --format='%an %cn' "$sha" | grep -qiE '\[bot\]\b'; then
-      echo "[FAIL] pre-push: commit ${sha} carries AI attribution. Rewrite message before pushing." >&2
-      echo "       (per-commit opt-out: include 'AI-OK: <reason>' line)" >&2
-      ai_attr_violation=1
+    ra8_startup_check="$ra8_startup_reentry"
+    while [[ "$ra8_startup_check" != "/" ]]; do
+      [[ ! -L "$ra8_startup_check" ]] || _ra8_startup_refuse 'refuses a symlinked path'
+      ra8_startup_parent="${ra8_startup_check%/*}"
+      [[ -n "$ra8_startup_parent" ]] || ra8_startup_parent="/"
+      [[ "$ra8_startup_parent" != "$ra8_startup_check" ]] ||
+        _ra8_startup_refuse 'cannot validate its script path'
+      ra8_startup_check="$ra8_startup_parent"
+    done
+    [[ -f "$ra8_startup_reentry" ]] || _ra8_startup_refuse 'refuses a non-regular path'
+    if ! exec /usr/bin/env "${ra8_startup_env_unset[@]}" -u BASH_ENV -u ENV \
+      -u RA8_STARTUP_ENV_DONE RA8_STARTUP_ENV_SCRUBBED=1 \
+      /bin/bash -p -- "$ra8_startup_reentry" "$@"; then
+      _ra8_startup_refuse 'could not enter sanitized process'
     fi
-  done < <(git rev-list "$range" 2>/dev/null || true)
-done <<<"$PUSH_REFS"
-if [[ "$ai_attr_violation" -ne 0 ]]; then
-  exit 1
-fi
+  fi
+  unset -v ra8_startup_check ra8_startup_env_done_count
+  unset -v ra8_startup_env_name ra8_startup_env_row
+  unset -v ra8_startup_env_unset ra8_startup_parent ra8_startup_reentry
+  unset -v RA8_STARTUP_ENV_DONE
+  unset -v RA8_STARTUP_ENV_SCRUBBED
+  unset -f _ra8_startup_refuse
 
-# ----------------------------------------------------------------------
-# Reproduce the CI gates in the Linux devcontainer before the push
-# leaves the laptop. CI (.github/workflows/firmware.yml) runs on a
-# self-hosted Linux runner and diverges from this macOS host: clang-
-# format is pinned to clang-format-22, and the host unit tests SIGKILL
-# under macOS arm64 (ra8_fake_mmap's MAP_FIXED below 4 GiB is refused).
-# `make ci` runs those gates inside the Ubuntu 24.04 devcontainer, so a
-# red gate is caught here rather than after the push. On Linux, where no
-# container runtime is installed, it falls back to running them natively --
-# Linux native IS the CI environment, so that path is equally faithful.
-#
-# Either way the bodies come from scripts/ci.sh, the same functions each
-# workflow step invokes via `bash scripts/ci.sh --gate <name>`. Never
-# hand-copy gate commands into a throwaway script to "check quickly": that
-# copy stops mirroring CI the moment a gate is added. Use `make ci-gate
-# GATE=<name>` for a single gate, `make ci-list` to see them all.
-#
-# Escape hatches:
-#   SKIP_CI_PUSH=1 git push    skip just this gate (emergency)
-#   git push --no-verify       skip every push hook (this whole file)
-# ----------------------------------------------------------------------
-if [[ "${SKIP_CI_PUSH:-0}" == "1" ]]; then
-  echo "[skip] pre-push: SKIP_CI_PUSH=1 -- NOT running 'make ci'." >&2
+  set -euo pipefail
+
+  unset BASH_ENV ENV PYTHONHOME PYTHONPATH
+  unalias git python3 bash 2>/dev/null || true
+  unset -f git python3 bash 2>/dev/null || true
+  hash -r
+  TRUSTED_GIT=/usr/bin/git
+  [[ "${RA8_TRUSTED_GIT:-$TRUSTED_GIT}" == "$TRUSTED_GIT" ]] || exit 1
+  [[ -f "$TRUSTED_GIT" && ! -L "$TRUSTED_GIT" && -x "$TRUSTED_GIT" ]] || exit 1
+  root="$("$TRUSTED_GIT" rev-parse --show-toplevel)"
+  if [[ -x "$root/.venv/bin/python3" ]]; then
+    export PATH="$root/.venv/bin:$PATH"
+  fi
+  exec /bin/bash -p "$root/scripts/dev/run_just.sh" --justfile "$root/justfile" \
+    --working-directory "$root" git_hooks::pre-push "$@"
 else
-  echo "[pre-push] running 'make ci' (CI gates, in the devcontainer)..." >&2
-  echo "           emergency bypass: SKIP_CI_PUSH=1 git push" >&2
-  make -C "$ROOT_DIR" ci
-  ci_rc=$?
-  # 3 is UNKNOWN, not FAIL (#542): the suite was KILLED -- signalled, or its
-  # snapshot went away under it -- so it reported no verdict at all. Blocking
-  # the push is still right (nothing was proven), but telling the developer to
-  # "fix the red gate(s) above" would send them hunting a failure that was
-  # never measured. Say which of the two happened.
-  if [[ "$ci_rc" -eq 3 ]]; then
-    echo "[FAIL] pre-push: 'make ci' was ABORTED (exit 3 = UNKNOWN) -- push blocked." >&2
-    echo "       The suite was killed, not failed: there is no verdict above to" >&2
-    echo "       act on and nothing red to fix. Re-run it, keeping the session" >&2
-    echo "       open (a detached run over ssh is reaped when it closes)." >&2
-    exit 1
-  fi
-  if [[ "$ci_rc" -ne 0 ]]; then
-    echo "[FAIL] pre-push: 'make ci' failed -- push blocked." >&2
-    echo "       Fix the red gate(s) above, or bypass with:" >&2
-    echo "         SKIP_CI_PUSH=1 git push   (emergency only)" >&2
-    exit 1
-  fi
+  [[ "$-" == *p* ]]
 fi
-
-exit 0

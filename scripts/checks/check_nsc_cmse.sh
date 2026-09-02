@@ -27,6 +27,22 @@
 #
 set -euo pipefail
 
+mode="scan"
+case "$#" in
+  0) ;;
+  1)
+    [[ "$1" == "--selftest" ]] || {
+      echo "usage: check_nsc_cmse.sh [--selftest]" >&2
+      exit 2
+    }
+    mode="selftest"
+    ;;
+  *)
+    echo "usage: check_nsc_cmse.sh [--selftest]" >&2
+    exit 2
+    ;;
+esac
+
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
@@ -59,6 +75,43 @@ fi
 flags=(-mcpu=cortex-m85 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
   -mcmse "$cstd" -DRA8_TRUSTZONE_ENABLE -Wall -Wextra -Werror -fsyntax-only)
 
+selftest_cmse() {
+  local scratch good bad
+  local -a selftest_flags
+  scratch="$(mktemp -d)"
+  trap 'rm -rf "$scratch"' RETURN
+  good="$scratch/good.c"
+  bad="$scratch/bad.c"
+  cat >"$good" <<'EOF'
+__attribute__((cmse_nonsecure_entry))
+int good_veneer(int a, int b, int c, int d) { return a + b + c + d; }
+EOF
+  cat >"$bad" <<'EOF'
+__attribute__((cmse_nonsecure_entry))
+int bad_veneer(int a, int b, int c, int d, int e) { return a + b + c + d + e; }
+EOF
+  # The detector is the compiler's CMSE argument-register check, which is
+  # architecture-independent within Armv8-M.  Use Cortex-M33 here so this
+  # isolated selftest also runs on older Arm GNU releases that predate M85;
+  # the production scan below deliberately retains the real M85 ABI flags.
+  selftest_flags=(-mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
+    -mcmse "$cstd" -DRA8_TRUSTZONE_ENABLE -Wall -Wextra -Werror -fsyntax-only)
+  if ! "$GCC" "${selftest_flags[@]}" "$good" >/dev/null 2>&1; then
+    echo "check_nsc_cmse --selftest: legal four-register veneer was rejected" >&2
+    return 1
+  fi
+  if "$GCC" "${selftest_flags[@]}" "$bad" >/dev/null 2>&1; then
+    echo "check_nsc_cmse --selftest: stack-spilling five-argument veneer passed" >&2
+    return 1
+  fi
+  echo "check_nsc_cmse --selftest: PASS (four-register pass, stack-spill reject)"
+}
+
+if [[ "$mode" == "selftest" ]]; then
+  selftest_cmse
+  exit $?
+fi
+
 incs=()
 for d in libs/*/inc; do
   [ -d "$d" ] && incs+=("-I$d")
@@ -70,7 +123,7 @@ done
 fail=0
 errf="$(mktemp)"
 for f in libs/ra8_nsc/src/*.c; do
-  if "$GCC" "${flags[@]}" "${incs[@]}" "$f" 2>"$errf"; then
+  if "$GCC" ${flags[@]+"${flags[@]}"} ${incs[@]+"${incs[@]}"} "$f" 2>"$errf"; then
     printf '  OK    %s\n' "$(basename "$f")"
   else
     printf '  FAIL  %s\n' "$(basename "$f")"

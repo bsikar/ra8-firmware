@@ -19,7 +19,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 # Force the C++ standard into every C++ TU's compile command. Without this,
 # CMake omits -std when clang's default already satisfies cxx_std_17, leaving
-# the .cpp shims (ra8_rabook_xml_shim, ra8_epub_xml_shim, ...) with no -std in
+# the .cpp shims (ra8_rabook_xml_shim, epub_xml_shim, ...) with no -std in
 # compile_commands.json -- then clang_tidy.sh's `--extra-arg-before=-std=c2x`
 # is the only -std and clang rejects "-std=c2x not allowed with C++".
 set(CMAKE_CXX_STANDARD 17)
@@ -87,7 +87,12 @@ if(RA8_MCDC)
     )
     set(RA8_MCDC_C_FLAGS
         -O0
-        -g
+        # LLVM's coverage mapping carries every source/decision location used
+        # by llvm-cov. DWARF is not an input to the MC/DC report, and copying
+        # it into every test executable made the complete build exceed 8 GiB.
+        # Keep the entire instrumented source/object universe while omitting
+        # this redundant debug payload.
+        -g0
         -fprofile-instr-generate
         -fcoverage-mapping
         -fcoverage-mcdc
@@ -137,7 +142,7 @@ if(RA8_MCDC)
       )
       set(RA8_MCDC_C_FLAGS
           -O0
-          -g
+          -g0
           --coverage
           -fprofile-arcs
           -ftest-coverage
@@ -150,7 +155,7 @@ if(RA8_MCDC)
       )
       set(RA8_MCDC_C_FLAGS
           -O0
-          -g
+          -g0
           --coverage
           -fprofile-arcs
           -ftest-coverage
@@ -203,7 +208,7 @@ endif()
 
 # RA8_SANITIZE: when non-empty (e.g. "undefined"), instrument every host-test
 # target with -fsanitize=<list> -- the undefined-behaviour gate driven by
-# `make ubsan`. Independent of the coverage / MC-DC instrumentation above; pick
+# `just quality::local::test 1`. Independent of the coverage / MC-DC instrumentation above; pick
 # at most one of {coverage, mcdc, sanitize} per build tree (separate dirs).
 set(RA8_SANITIZE
     ""
@@ -225,7 +230,7 @@ if(RA8_SANITIZE)
   endif()
 else()
   # The MAP_FIXED peripheral windows span [0x02000000, 0x68100000) (see
-  # tests/mocks/ra8_fake_mmap.c). On toolchains that default to non-PIE the
+  # tests/mocks/src/ra8_fake_mmap.c). On toolchains that default to non-PIE the
   # image loads at 0x400000, so a large-enough .bss (the gcov counters of a
   # coverage build crossed 0x02000000 in practice) pushes static data and the
   # brk heap INTO a window; the constructor's mmap then silently replaces live

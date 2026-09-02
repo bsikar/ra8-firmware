@@ -22,11 +22,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "jof.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_gfx_font.h"
-#include "ra8_jof.h"
 #include "ra8_tile_cache.h"
 
 /** @brief Log tag for the reader's null-pointer guards. */
@@ -52,11 +52,11 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_mg_status_cap    = 48U, /**< Status-string scratch capacity.      */
-  k_mg_status_text_x = 16U, /**< Status text left inset, panel px.    */
-  k_mg_glyph_h       = 16U, /**< ra8_gfx_font_8x16 glyph height.      */
-  k_mg_dec_max       = 12U, /**< Decimal digit scratch length.        */
-  k_mg_str_max       = 32U, /**< Bounded status-fragment copy length. */
+  k_mg_status_cap     = 48U, /**< Status-string scratch capacity.      */
+  k_mg_status_text_x  = 16U, /**< Status text left inset, panel px.    */
+  k_mg_glyph_h        = 16U, /**< ra8_gfx_font_8x16 glyph height.      */
+  k_mg_dec_max        = 12U, /**< Decimal digit scratch length.        */
+  k_mg_i32_dec_digits = 10U, /**< Maximum non-negative int32_t digits. */
 } mg_metric_t;
 
 /**
@@ -88,7 +88,7 @@ typedef enum : uint32_t {
  *
  * @details Every blit path here (::mg_blit_tile via ::mg_g565) reads one byte
  *          per pixel and expands it as gray8. A JOF atlas may instead declare
- *          `bpp` 3 (RGB888) or 4 (RGBA8888) -- ``ra8_jof_produce`` follows the
+ *          `bpp` 3 (RGB888) or 4 (RGBA8888) -- ``jof_produce`` follows the
  *          source decoder's channel count -- so ::mg_reader_init fails closed on
  *          anything but ::k_mg_gray8_bpp rather than mis-reading a colour tile
  *          one byte per pixel and rendering garbage (#339).
@@ -150,7 +150,7 @@ static void mg_offsets(const mg_reader_t* r, int32_t* ox, int32_t* oy)
   *oy                  = (py > 0) ? py : 0;
 }
 
-/** @brief Map a page pixel to a panel pixel; false if off-grid or off-screen. */
+/** @brief Map one caller-clipped page pixel to the panel; false if off-grid. */
 static bool mg_map(const mg_reader_t* r,
                    int32_t            s,
                    int32_t            ox,
@@ -167,12 +167,9 @@ static bool mg_map(const mg_reader_t* r,
   }
   const int32_t px = ox + (rx / s);
   const int32_t py = (int32_t)k_mg_statusbar_h + oy + (ry / s);
-  if ((px < 0) || (px >= r->fb_w)) {
-    return false;
-  }
-  if ((py < (int32_t)k_mg_statusbar_h) || (py >= r->fb_h)) {
-    return false;
-  }
+  /* mg_blit_tile is the sole caller and clips sx/sy to mg_region before this
+   * mapping. mg_offsets is non-negative and the region is framebuffer-sized,
+   * so the resulting panel coordinate is inside the drawable content area. */
   *dx = px;
   *dy = py;
   return true;
@@ -497,7 +494,8 @@ static uint32_t mg_append_uint(char* buf, uint32_t cap, uint32_t pos, int32_t va
     tmp[n] = '0';
     n++;
   }
-  while ((v > 0U) && (n < (uint32_t)k_mg_dec_max)) {
+  static_assert(k_mg_dec_max >= k_mg_i32_dec_digits, "signed 32-bit decimal text must fit");
+  while (v > 0U) {
     tmp[n] = (char)('0' + (v % (uint32_t)k_mg_dec_ten));
     n++;
     v /= (uint32_t)k_mg_dec_ten;
@@ -510,10 +508,10 @@ static uint32_t mg_append_uint(char* buf, uint32_t cap, uint32_t pos, int32_t va
   return pos;
 }
 
-/** @brief Append a NUL-terminated fragment, bounded by @p cap. */
-static uint32_t mg_append_str(char* buf, uint32_t cap, uint32_t pos, const char* s)
+/** @brief Append an exact immutable fragment, bounded by @p cap. */
+static uint32_t mg_append_str(char* buf, uint32_t cap, uint32_t pos, const char* s, uint32_t length)
 {
-  for (uint32_t i = 0U; (i < (uint32_t)k_mg_str_max) && (s[i] != '\0') && (pos < (cap - 1U)); ++i) {
+  for (uint32_t i = 0U; (i < length) && (pos < (cap - 1U)); ++i) {
     buf[pos] = s[i];
     pos++;
   }
@@ -528,11 +526,13 @@ ra8_err_t mg_reader_status(const mg_reader_t* r, char* buf, uint32_t cap)
   if (cap == 0U) {
     return k_ra8_err_invalid_size;
   }
-  uint32_t pos = 0U;
-  pos          = mg_append_str(buf, cap, pos, "MANGA  ");
-  pos = mg_append_str(buf, cap, pos, (r->zoom == (uint8_t)k_mg_zoom_full) ? "1:1  x=" : "FIT  x=");
+  uint32_t pos     = 0U;
+  pos              = mg_append_str(buf, cap, pos, "MANGA  ", sizeof("MANGA  ") - 1U);
+  const char* zoom = (r->zoom == (uint8_t)k_mg_zoom_full) ? "1:1  x=" : "FIT  x=";
+  static_assert(sizeof("1:1  x=") == sizeof("FIT  x="), "zoom labels must have equal extents");
+  pos = mg_append_str(buf, cap, pos, zoom, sizeof("1:1  x=") - 1U);
   pos = mg_append_uint(buf, cap, pos, r->view_x);
-  pos = mg_append_str(buf, cap, pos, " y=");
+  pos = mg_append_str(buf, cap, pos, " y=", sizeof(" y=") - 1U);
   (void)mg_append_uint(buf, cap, pos, r->view_y);
   return k_ra8_ok;
 }
@@ -640,15 +640,15 @@ ra8_err_t mg_tile_decode(void*                 ctx,
   RA8_CHECK_NULL_PTR(ctx, k_mg_tag, "src");
   RA8_CHECK_NULL_PTR(key, k_mg_tag, "key");
   const mg_tile_src_t* src = (const mg_tile_src_t*)ctx;
-  return ra8_jof_read_tile(src->pread,
-                           src->pread_ctx,
-                           src->info,
-                           key->tile_x,
-                           key->tile_y,
-                           src->scratch,
-                           src->scratch_cap,
-                           cell,
-                           cell_bytes,
-                           out_w,
-                           out_h);
+  return jof_read_tile(src->pread,
+                       src->pread_ctx,
+                       src->info,
+                       key->tile_x,
+                       key->tile_y,
+                       src->scratch,
+                       src->scratch_cap,
+                       cell,
+                       cell_bytes,
+                       out_w,
+                       out_h);
 }

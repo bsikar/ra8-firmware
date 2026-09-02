@@ -116,35 +116,27 @@ RA8_NSC_VENEER ra8_err_t ra8_nsc_periph_init(void)
   }
 
   ra8_err_t err = ra8_mstp_init();
-  if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
-    /* GCOVR_EXCL_START */
+  if (err != k_ra8_ok) {
     ra8_log_error_val(s_tag, "ra8_mstp_init", (uint32_t)err);
     return k_ra8_err_hw_init_failed;
-    /* GCOVR_EXCL_STOP */
   }
 
   err = ra8_pwr_init();
-  if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
-    /* GCOVR_EXCL_START */
+  if (err != k_ra8_ok) {
     ra8_log_error_val(s_tag, "ra8_pwr_init", (uint32_t)err);
     return k_ra8_err_hw_init_failed;
-    /* GCOVR_EXCL_STOP */
   }
 
   err = ra8_isr_init();
-  if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
-    /* GCOVR_EXCL_START */
+  if (err != k_ra8_ok) {
     ra8_log_error_val(s_tag, "ra8_isr_init", (uint32_t)err);
     return k_ra8_err_hw_init_failed;
-    /* GCOVR_EXCL_STOP */
   }
 
   err = ra8_dma_init();
-  if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
-    /* GCOVR_EXCL_START */
+  if (err != k_ra8_ok) {
     ra8_log_error_val(s_tag, "ra8_dma_init", (uint32_t)err);
     return k_ra8_err_hw_init_failed;
-    /* GCOVR_EXCL_STOP */
   }
 
 #ifdef RA8_APP_UART_LOG

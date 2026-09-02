@@ -5,9 +5,13 @@
 
 Scope is derived, not hardcoded
 -------------------------------
-``git ls-files`` enumerates every tracked Python file -- by ``*.py`` suffix
-and by ``#!...python`` shebang, so an extensionless executable script cannot
-sit outside the gate -- and ``--force-exclude`` makes ruff honour the
+``git ls-files`` enumerates every tracked or untracked-but-not-ignored, present
+Python file -- by ``*.py`` suffix and by ``#!...python`` shebang, so an
+extensionless executable script cannot sit outside the gate. Paths deleted in
+the worktree are ignored: they will not exist in the candidate commit, and
+handing them to ruff produces an ``E902`` I/O error that masks findings in
+files that do exist.
+``--force-exclude`` makes ruff honour the
 ``extend-exclude`` list in pyproject.toml (vendored SOUP, generated data,
 build trees) even though the paths are handed to it explicitly.  Explicit
 paths bypass exclusions without that flag, which would drag
@@ -51,6 +55,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -70,9 +75,18 @@ def _find_ruff() -> str | None:
 
 
 def _git_ls_files(*pathspec: str) -> list[str]:
-    """Return tracked paths matching `pathspec`, relative to the repo root."""
+    """Return tracked or untracked/non-ignored paths matching `pathspec`."""
     proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
-        ["git", "ls-files", "-z", *pathspec],  # noqa: S607 -- trusted: fixed git argv
+        [  # noqa: S607 -- trusted: fixed git argv
+            "git",
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "--",
+            *pathspec,
+        ],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -95,8 +109,21 @@ def _has_python_shebang(rel: str) -> bool:
     return first.startswith(b"#!") and b"python" in first
 
 
+def _present_files(files: list[str], root: Path = REPO_ROOT) -> list[str]:
+    """Return candidate paths that still exist in the worktree.
+
+    Args:
+        files: Repository-relative paths reported by the index.
+        root: Worktree root, overridden by the selftest fixture.
+
+    Returns:
+        Paths that are regular files in the candidate worktree.
+    """
+    return [rel for rel in files if (root / rel).is_file()]
+
+
 def _tracked_python_files() -> list[str]:
-    """Every tracked Python file, by extension OR by shebang.
+    """Every candidate-worktree Python file, by extension OR by shebang.
 
     Exclusions are ruff's job (``--force-exclude`` + ``extend-exclude``); this
     only decides what is *offered*, so a file cannot escape the gate by living
@@ -110,7 +137,11 @@ def _tracked_python_files() -> list[str]:
     exactly when to close the hole, rather than after one appears and sits
     unlinted.
     """
-    by_extension = _git_ls_files("*.py")
+    # The cached half of `git ls-files` still returns a path deleted in an
+    # uncommitted migration. Ruff reports that as E902. A local pre-commit gate
+    # must judge the candidate worktree, including new files, rather than
+    # require staging merely to learn whether the candidate is clean.
+    by_extension = _present_files(_git_ls_files("*.py"))
     known = set(by_extension)
     by_shebang = [rel for rel in _git_ls_files() if rel not in known and _has_python_shebang(rel)]
     return sorted(known.union(by_shebang))
@@ -391,6 +422,15 @@ def selftest(ruff: str) -> int:
     if _format_stdin_would_reformat(ruff, GOOD_FIXTURE, GOOD_FIXTURE_NAME):
         failures.append("  must-stay-quiet: `ruff format --check` rejected the clean fixture")
 
+    # An unsquashed migration leaves deleted paths in the index. Prove the
+    # scope keeps the neighbouring live file and drops only the absent one.
+    with tempfile.TemporaryDirectory() as tmp:
+        fixture_root = Path(tmp)
+        (fixture_root / "present.py").touch()
+        present = _present_files(["present.py", "deleted.py"], fixture_root)
+        if present != ["present.py"]:
+            failures.append("  worktree scope did not exclude exactly the deleted fixture")
+
     if failures:
         sys.stderr.write("check_ruff.py --selftest: FAILED\n")
         sys.stderr.write("\n".join(failures) + "\n")
@@ -402,7 +442,8 @@ def selftest(ruff: str) -> int:
 
     print(
         f"check_ruff.py --selftest: OK "
-        f"({len(EXPECTED_CODES)} rule families fire, good fixture silent, formatter both ways)."
+        f"({len(EXPECTED_CODES)} rule families fire, good fixture silent, "
+        "formatter both ways, deleted worktree path excluded)."
     )
     return 0
 

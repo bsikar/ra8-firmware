@@ -13,94 +13,187 @@
 #            every run; gaining measurement is one-way.
 #
 # Columns are TAB-separated. Rows are sorted by path.
-# rows: 1048  measured: 512  unmeasured: 536
+# rows: 1054  measured: 520  unmeasured: 534
 
-apps/shared/media_dl/src/mdl_app.c	MEASURED	5	5	0	0
-apps/shared/media_dl/src/mdl_app_admin.c	MEASURED	208	261	113	188
-apps/shared/media_dl/src/mdl_app_cover.c	MEASURED	69	106	36	72
-apps/shared/media_dl/src/mdl_app_direct.c	MEASURED	218	309	92	166
-apps/shared/media_dl/src/mdl_app_library.c	MEASURED	93	126	38	62
-apps/shared/media_dl/src/mdl_app_prepare.c	MEASURED	127	208	48	118
-apps/shared/media_dl/src/mdl_app_series.c	MEASURED	229	289	84	158
-apps/shared/media_dl/src/mdl_app_storage.c	MEASURED	51	59	50	76
-apps/shared/media_dl/src/mdl_cache.c	MEASURED	121	138	76	116
-apps/shared/media_dl/src/mdl_cache_io.c	MEASURED	283	322	153	270
-apps/shared/media_dl/src/mdl_config.c	MEASURED	218	242	110	150
-apps/shared/media_dl/src/mdl_discover.c	MEASURED	149	211	66	132
-apps/shared/media_dl/src/mdl_export.c	MEASURED	179	209	121	153
-apps/shared/media_dl/src/mdl_export_epub.c	MEASURED	155	171	96	128
-apps/shared/media_dl/src/mdl_export_epub_meta.c	MEASURED	115	120	50	60
-apps/shared/media_dl/src/mdl_export_io.c	MEASURED	217	266	156	282
-apps/shared/media_dl/src/mdl_export_jof.c	MEASURED	84	108	39	70
-apps/shared/media_dl/src/mdl_export_meta.c	MEASURED	306	357	222	324
-apps/shared/media_dl/src/mdl_export_rabook.c	MEASURED	145	159	72	126
-apps/shared/media_dl/src/mdl_export_rabook_io.c	MEASURED	74	94	50	102
-apps/shared/media_dl/src/mdl_export_tar.c	MEASURED	104	112	46	74
-apps/shared/media_dl/src/mdl_export_workspace.c	MEASURED	18	21	13	22
-apps/shared/media_dl/src/mdl_export_zip.c	MEASURED	144	168	93	142
-apps/shared/media_dl/src/mdl_extract.c	MEASURED	64	102	54	104
-apps/shared/media_dl/src/mdl_extract_hits.c	MEASURED	203	218	134	190
-apps/shared/media_dl/src/mdl_fetch.c	MEASURED	269	335	140	212
-apps/shared/media_dl/src/mdl_fetch_body.c	MEASURED	97	110	59	94
-apps/shared/media_dl/src/mdl_fetch_page.c	MEASURED	196	234	104	162
-apps/shared/media_dl/src/mdl_hash.c	MEASURED	58	65	40	56
-apps/shared/media_dl/src/mdl_library.c	MEASURED	189	210	126	180
-apps/shared/media_dl/src/mdl_net.c	MEASURED	43	44	51	56
-apps/shared/media_dl/src/mdl_net_c6link.c	MEASURED	85	85	51	54
-apps/shared/media_dl/src/mdl_pack.c	MEASURED	109	109	39	40
-apps/shared/media_dl/src/mdl_pathfs.c	MEASURED	12	15	14	22
-apps/shared/media_dl/src/mdl_politeness.c	MEASURED	209	217	118	138
-apps/shared/media_dl/src/mdl_report.c	MEASURED	100	100	34	34
-apps/shared/media_dl/src/mdl_robots.c	MEASURED	227	248	169	226
-apps/shared/media_dl/src/mdl_sanitize.c	MEASURED	120	127	101	118
-apps/shared/media_dl/src/mdl_search.c	MEASURED	82	89	83	92
-apps/shared/media_dl/src/mdl_session.c	MEASURED	101	118	66	78
-apps/shared/media_dl/src/mdl_state.c	MEASURED	245	268	190	278
-apps/shared/media_dl/src/mdl_state_codec.c	MEASURED	359	371	300	370
-apps/shared/media_dl/src/mdl_state_decimal.c	MEASURED	133	156	82	112
-apps/shared/media_dl/src/mdl_state_store.c	MEASURED	395	433	216	306
-apps/shared/media_dl/src/mdl_storage.c	MEASURED	209	254	128	218
-apps/shared/media_dl/src/mdl_stream.c	MEASURED	17	18	14	16
-apps/shared/media_dl/src/mdl_url_guard.c	MEASURED	117	130	114	140
-apps/shared/media_dl/src/mdl_urlname.c	MEASURED	230	241	212	284
-apps/shared/media_dl/src/mdl_verify.c	MEASURED	223	250	193	259
-apps/shared/media_dl/src/mdl_verify_rabook.c	MEASURED	39	43	22	40
-apps/shared/media_dl/src/mdl_verify_tarball.c	MEASURED	195	202	164	180
-apps/stand_alone/ereader/main.c	UNMEASURED	firmware-composition
-apps/stand_alone/ereader/ns_main.c	UNMEASURED	firmware-composition
-apps/stand_alone/ereader/secure_exception.c	UNMEASURED	firmware-composition
-apps/stand_alone/ereader/system_init.c	UNMEASURED	firmware-composition
-apps/stand_alone/ereader/trustzone_init.c	UNMEASURED	firmware-composition
-apps/stand_alone/ereader/vector_table.c	UNMEASURED	firmware-composition
-apps/stand_alone/media_dl/src/main.c	MEASURED	224	269	145	210
-apps/stand_alone/media_dl/src/mdl_cli.c	MEASURED	294	305	197	220
-apps/stand_alone/media_dl/src/mdl_cli_nums.c	MEASURED	105	123	59	86
-apps/stand_alone/media_dl/src/mdl_cli_stream.c	MEASURED	12	15	10	14
-apps/stand_alone/media_dl/src/mdl_cli_usage.c	MEASURED	19	20	8	10
-apps/stand_alone/media_dl/src/mdl_compose.c	MEASURED	49	51	11	13
-apps/stand_alone/media_dl/src/mdl_host_credentials.c	MEASURED	9	10	14	22
-apps/stand_alone/media_dl/src/mdl_net_curl.c	MEASURED	259	294	163	272
-apps/stand_alone/media_dl/src/mdl_net_curl_credentials.c	MEASURED	133	154	148	204
-examples/_unsupported/audio_loopback/main.c	UNMEASURED	firmware-composition
-examples/_unsupported/motor_3phase/main.c	UNMEASURED	firmware-composition
-examples/_unsupported/threadx_https_client/main.c	UNMEASURED	firmware-composition
-examples/_unsupported/threadx_nimble_peripheral/main.c	UNMEASURED	firmware-composition
-examples/_unsupported/threadx_sdcard_demo/main.c	UNMEASURED	firmware-composition
-examples/_unsupported/usb_audio_device/main.c	UNMEASURED	firmware-composition
+apps/board/stand_alone/ereader/src/main.c	UNMEASURED	firmware-composition
+apps/board/stand_alone/ereader/src/ns_main.c	UNMEASURED	firmware-composition
+apps/board/stand_alone/ereader/src/secure_exception.c	UNMEASURED	firmware-composition
+apps/board/stand_alone/ereader/src/system_init.c	UNMEASURED	firmware-composition
+apps/board/stand_alone/ereader/src/trustzone_init.c	UNMEASURED	firmware-composition
+apps/board/stand_alone/ereader/src/vector_table.c	UNMEASURED	firmware-composition
+apps/host/alphabet_soup/src/alphabet_soup.c	MEASURED	180	182	140	170
+apps/host/alphabet_soup/src/alphabet_soup_cli.c	MEASURED	62	63	35	38
+apps/host/alphabet_soup/src/main.c	MEASURED	21	22	7	8
+apps/host/mdl/src/main.c	MEASURED	224	269	145	210
+apps/host/mdl/src/mdl_cli.c	MEASURED	294	305	197	220
+apps/host/mdl/src/mdl_cli_nums.c	MEASURED	105	123	59	86
+apps/host/mdl/src/mdl_cli_stream.c	MEASURED	12	15	10	14
+apps/host/mdl/src/mdl_cli_usage.c	MEASURED	19	20	8	10
+apps/host/mdl/src/mdl_compose.c	MEASURED	49	51	11	13
+apps/host/mdl/src/mdl_host_credentials.c	MEASURED	9	10	14	22
+apps/host/mdl/src/mdl_net_curl.c	MEASURED	259	294	163	272
+apps/host/mdl/src/mdl_net_curl_credentials.c	MEASURED	133	154	148	204
+apps/shared_libs/book/src/book.c	MEASURED	155	155	101	108
+apps/shared_libs/book/src/book_chunked.c	MEASURED	82	87	53	58
+apps/shared_libs/book/src/book_chunked_validate.c	MEASURED	146	148	97	100
+apps/shared_libs/book/src/book_paged.c	MEASURED	227	238	143	158
+apps/shared_libs/book/src/book_stream.c	MEASURED	230	239	180	196
+apps/shared_libs/book/src/book_stream_wire.c	MEASURED	109	112	60	64
+apps/shared_libs/book/src/book_xhtml.c	MEASURED	172	174	133	139
+apps/shared_libs/comic/src/comic.c	MEASURED	192	192	118	130
+apps/shared_libs/comic/src/comic_cbr.c	MEASURED	58	60	30	38
+apps/shared_libs/comic/src/comic_cbt.c	MEASURED	37	39	18	26
+apps/shared_libs/comic/src/comic_cbz.c	MEASURED	82	89	34	52
+apps/shared_libs/comic/src/comic_tiles.c	MEASURED	108	108	61	64
+apps/shared_libs/comic/src/comic_wrapped.c	MEASURED	41	41	26	26
+apps/shared_libs/comic/src/ra8_rar.c	MEASURED	254	254	145	154
+apps/shared_libs/comic/src/ra8_rar5.c	MEASURED	230	245	118	134
+apps/shared_libs/comic/src/ra8_rar5_tables.c	MEASURED	162	170	65	72
+apps/shared_libs/compress/src/ra8_compress.c	MEASURED	48	51	27	30
+apps/shared_libs/compress/src/ra8_vfs_compress.c	MEASURED	46	50	40	44
+apps/shared_libs/epub/src/epub_chapter.c	MEASURED	222	223	185	186
+apps/shared_libs/epub/src/epub_entry.c	MEASURED	142	146	79	92
+apps/shared_libs/epub/src/epub_fs.c	MEASURED	39	39	29	32
+apps/shared_libs/epub/src/epub_img_import.c	MEASURED	64	65	30	36
+apps/shared_libs/epub/src/epub_img_tiles.c	MEASURED	157	162	93	100
+apps/shared_libs/epub/src/epub_miniz_alloc.c	MEASURED	130	137	64	72
+apps/shared_libs/epub/src/epub_open.c	MEASURED	178	187	104	114
+apps/shared_libs/epub/src/epub_xml_shim.c	MEASURED	314	318	269	296
+apps/shared_libs/epub/src/epub_xml_toc.c	MEASURED	215	218	211	236
+apps/shared_libs/epub/src/epub_zip_guard.c	MEASURED	10	11	5	6
+apps/shared_libs/jof/src/jof.c	MEASURED	201	208	117	136
+apps/shared_libs/jof/src/jof_audit.c	MEASURED	197	206	115	128
+apps/shared_libs/jof/src/jof_png.c	MEASURED	217	222	141	152
+apps/shared_libs/jof/src/jof_png_chunk.c	MEASURED	148	151	90	94
+apps/shared_libs/jof/src/jof_produce.c	MEASURED	331	342	182	202
+apps/shared_libs/jof/src/jof_produce_webp.c	MEASURED	63	68	30	36
+apps/shared_libs/longstrip/src/longstrip.c	MEASURED	190	207	85	124
+apps/shared_libs/mdl/src/mdl_app.c	MEASURED	5	5	0	0
+apps/shared_libs/mdl/src/mdl_app_admin.c	MEASURED	208	261	113	188
+apps/shared_libs/mdl/src/mdl_app_cover.c	MEASURED	69	106	36	72
+apps/shared_libs/mdl/src/mdl_app_direct.c	MEASURED	218	309	92	166
+apps/shared_libs/mdl/src/mdl_app_library.c	MEASURED	93	126	38	62
+apps/shared_libs/mdl/src/mdl_app_prepare.c	MEASURED	127	208	48	118
+apps/shared_libs/mdl/src/mdl_app_series.c	MEASURED	229	289	84	158
+apps/shared_libs/mdl/src/mdl_app_storage.c	MEASURED	51	59	50	76
+apps/shared_libs/mdl/src/mdl_cache.c	MEASURED	121	138	76	116
+apps/shared_libs/mdl/src/mdl_cache_io.c	MEASURED	283	322	153	270
+apps/shared_libs/mdl/src/mdl_config.c	MEASURED	218	242	110	150
+apps/shared_libs/mdl/src/mdl_discover.c	MEASURED	149	210	66	132
+apps/shared_libs/mdl/src/mdl_export.c	MEASURED	179	209	121	153
+apps/shared_libs/mdl/src/mdl_export_epub.c	MEASURED	155	171	96	128
+apps/shared_libs/mdl/src/mdl_export_epub_meta.c	MEASURED	115	120	50	60
+apps/shared_libs/mdl/src/mdl_export_io.c	MEASURED	217	266	156	282
+apps/shared_libs/mdl/src/mdl_export_jof.c	MEASURED	84	108	39	70
+apps/shared_libs/mdl/src/mdl_export_meta.c	MEASURED	306	357	222	324
+apps/shared_libs/mdl/src/mdl_export_rabook.c	MEASURED	145	159	72	126
+apps/shared_libs/mdl/src/mdl_export_rabook_io.c	MEASURED	74	94	50	102
+apps/shared_libs/mdl/src/mdl_export_tar.c	MEASURED	104	112	46	74
+apps/shared_libs/mdl/src/mdl_export_workspace.c	MEASURED	25	26	23	24
+apps/shared_libs/mdl/src/mdl_export_zip.c	MEASURED	143	167	93	142
+apps/shared_libs/mdl/src/mdl_extract.c	MEASURED	64	102	54	104
+apps/shared_libs/mdl/src/mdl_extract_hits.c	MEASURED	203	218	134	190
+apps/shared_libs/mdl/src/mdl_fetch.c	MEASURED	269	335	140	212
+apps/shared_libs/mdl/src/mdl_fetch_body.c	MEASURED	97	110	59	94
+apps/shared_libs/mdl/src/mdl_fetch_page.c	MEASURED	196	234	104	162
+apps/shared_libs/mdl/src/mdl_hash.c	MEASURED	58	65	40	56
+apps/shared_libs/mdl/src/mdl_library.c	MEASURED	189	210	126	180
+apps/shared_libs/mdl/src/mdl_net.c	MEASURED	43	44	51	56
+apps/shared_libs/mdl/src/mdl_net_c6link.c	MEASURED	85	85	51	54
+apps/shared_libs/mdl/src/mdl_pack.c	MEASURED	109	109	39	40
+apps/shared_libs/mdl/src/mdl_pathfs.c	MEASURED	12	15	14	22
+apps/shared_libs/mdl/src/mdl_politeness.c	MEASURED	209	217	118	138
+apps/shared_libs/mdl/src/mdl_report.c	MEASURED	100	100	34	34
+apps/shared_libs/mdl/src/mdl_robots.c	MEASURED	227	248	169	226
+apps/shared_libs/mdl/src/mdl_sanitize.c	MEASURED	120	127	101	118
+apps/shared_libs/mdl/src/mdl_search.c	MEASURED	82	89	83	92
+apps/shared_libs/mdl/src/mdl_session.c	MEASURED	101	118	66	78
+apps/shared_libs/mdl/src/mdl_state.c	MEASURED	245	268	190	278
+apps/shared_libs/mdl/src/mdl_state_codec.c	MEASURED	359	371	300	370
+apps/shared_libs/mdl/src/mdl_state_decimal.c	MEASURED	133	156	82	112
+apps/shared_libs/mdl/src/mdl_state_store.c	MEASURED	395	433	216	306
+apps/shared_libs/mdl/src/mdl_storage.c	MEASURED	209	254	128	218
+apps/shared_libs/mdl/src/mdl_stream.c	MEASURED	17	18	14	16
+apps/shared_libs/mdl/src/mdl_url_guard.c	MEASURED	117	130	114	140
+apps/shared_libs/mdl/src/mdl_urlname.c	MEASURED	230	241	212	284
+apps/shared_libs/mdl/src/mdl_verify.c	MEASURED	223	250	193	259
+apps/shared_libs/mdl/src/mdl_verify_rabook.c	MEASURED	39	43	22	40
+apps/shared_libs/mdl/src/mdl_verify_tarball.c	MEASURED	195	202	164	180
+apps/shared_libs/mdl_storage_vfs/src/mdl_rabook_vfs.c	MEASURED	157	158	95	98
+apps/shared_libs/mdl_storage_vfs/src/mdl_storage_vfs.c	MEASURED	317	320	202	216
+apps/shared_libs/rabook_compile/src/ra8_rabook_comic.c	MEASURED	138	141	98	106
+apps/shared_libs/rabook_compile/src/ra8_rabook_container.c	MEASURED	125	129	74	78
+apps/shared_libs/rabook_compile/src/ra8_rabook_finalize.c	MEASURED	204	212	78	92
+apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c	MEASURED	95	96	60	68
+apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline.c	MEASURED	156	163	77	88
+apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline_fs.c	MEASURED	12	12	8	8
+apps/shared_libs/rabook_compile/src/ra8_rabook_raster.c	MEASURED	138	142	70	76
+apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c	MEASURED	199	211	113	124
+apps/shared_libs/rabook_compile/src/rabook_compile.c	MEASURED	225	232	99	110
+apps/shared_libs/rabook_import/src/rabook_import.c	MEASURED	226	245	143	190
+apps/shared_libs/rabook_import/src/rabook_import_compiler.c	MEASURED	124	125	66	80
+apps/shared_libs/reflow/src/ra8_img_arena.c	MEASURED	41	41	20	22
+apps/shared_libs/reflow/src/ra8_stbtt_alloc.c	MEASURED	21	21	11	12
+apps/shared_libs/reflow/src/ra8_stbtt_guard.c	MEASURED	44	45	19	20
+apps/shared_libs/reflow/src/reflow_cache.c	MEASURED	199	210	67	78
+apps/shared_libs/reflow/src/reflow_css.c	MEASURED	197	207	192	206
+apps/shared_libs/reflow/src/reflow_css_cascade.c	MEASURED	233	233	205	210
+apps/shared_libs/reflow/src/reflow_css_rules.c	MEASURED	220	226	164	180
+apps/shared_libs/reflow/src/reflow_image.c	MEASURED	75	75	36	40
+apps/shared_libs/reflow/src/reflow_layout.c	MEASURED	255	274	128	154
+apps/shared_libs/reflow/src/reflow_layout_driver.c	MEASURED	159	172	110	120
+apps/shared_libs/reflow/src/reflow_layout_image.c	MEASURED	73	79	42	50
+apps/shared_libs/reflow/src/reflow_layout_table.c	MEASURED	129	133	69	76
+apps/shared_libs/reflow/src/reflow_link.c	MEASURED	81	81	73	82
+apps/shared_libs/reflow/src/reflow_parse.c	MEASURED	10	11	7	8
+apps/shared_libs/reflow/src/reflow_render.c	MEASURED	172	177	72	82
+apps/shared_libs/reflow/src/reflow_svg.c	MEASURED	149	152	149	152
+apps/shared_libs/reflow/src/reflow_svg_doc.c	MEASURED	253	260	167	182
+apps/shared_libs/reflow/src/reflow_svg_path.c	MEASURED	153	155	85	87
+apps/shared_libs/reflow/src/reflow_svg_shape.c	MEASURED	271	276	128	142
+apps/shared_libs/reflow/src/reflow_svg_xform.c	MEASURED	157	159	104	107
+apps/shared_libs/reflow/src/reflow_tokenize.c	MEASURED	264	286	200	228
+apps/shared_libs/reflow/src/reflow_tokenize_attr.c	MEASURED	96	97	78	80
+apps/shared_libs/reflow/src/reflow_tokenize_lex.c	MEASURED	178	183	116	124
+apps/shared_libs/reflow/v2/src/reflow_v2.cpp	UNMEASURED	platform-cross-only
+apps/shared_libs/unarch/src/unarch_gzip.c	MEASURED	165	172	98	106
+apps/shared_libs/unarch/src/unarch_io.c	MEASURED	16	16	10	10
+apps/shared_libs/unarch/src/unarch_tar.c	MEASURED	185	199	109	130
+apps/shared_libs/unarch/src/unarch_tar_fields.c	MEASURED	176	179	135	144
+apps/shared_libs/unarch/src/unarch_xz.c	MEASURED	136	138	86	88
+apps/shared_libs/unarch/src/unarch_xz_pool.c	MEASURED	36	36	18	18
+apps/shared_libs/webp/src/ra8_webp.c	MEASURED	46	46	36	36
+apps/shared_libs/webp/src/ra8_webp_arena.c	MEASURED	40	40	24	24
+apps/shared_libs/xml/src/xml.c	MEASURED	364	379	353	378
+apps/shared_libs/xml/src/xml_decode.c	MEASURED	222	241	191	206
+apps/shared_libs/xml/src/xml_doctype.c	MEASURED	69	71	92	100
+apps/shared_libs/zoom/src/zoom.c	MEASURED	270	273	148	155
+apps/shared_libs/zoom/src/zoom_book.c	MEASURED	27	27	23	24
+apps/shared_libs/zoom/src/zoom_render.c	MEASURED	60	60	38	40
+apps/shared_libs/zoom/src/zoom_tiles.c	MEASURED	93	93	68	72
+examples/_unsupported/audio_loopback/src/main.c	UNMEASURED	firmware-composition
+examples/_unsupported/motor_3phase/src/main.c	UNMEASURED	firmware-composition
+examples/_unsupported/threadx_https_client/src/main.c	UNMEASURED	firmware-composition
+examples/_unsupported/threadx_https_client/src/mbedtls_psa_rng.c	MEASURED	7	7	6	6
+examples/_unsupported/threadx_nimble_peripheral/src/main.c	UNMEASURED	firmware-composition
+examples/_unsupported/threadx_sdcard_demo/src/main.c	UNMEASURED	firmware-composition
+examples/_unsupported/usb_audio_device/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/common/c6_camera_server/src/c6_cam_app.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/common/c6_camera_server/src/c6_cam_audio.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/common/c6_camera_server/src/c6_cam_console.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/common/c6_camera_server/src/c6_cam_net.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/bkup_survival_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/cpu1_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/ns_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/system_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/epub_open/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/epub_parse/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/epub_toc/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/common/network_provision/src/ra8_net_provision.c	MEASURED	178	178	122	122
+examples/ek_ra8d2/hil_needs_revalidation/bkup_survival_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/compress_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/cpu1_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/ns_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/system_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/epub_open/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/epub_parse/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/epub_toc/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_book.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_comic.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_cover.c	UNMEASURED	firmware-composition
@@ -111,417 +204,400 @@ examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_sd.c	UNMEASURED	fi
 examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_shelf.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_toc.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_util.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/gpt_irq_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_1_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_2_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_3_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/lpm_idle_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/lpm_periodic_idle/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/lpm_software_standby_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/lpm_ulpt_standby/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/lpm_wake_matrix_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/lvd_monitor_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/mem_ecc_fault_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/mpu_partition_simple/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/mpu_partition_simple/vector_table.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/pagecache/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/pdg_delay_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/poeg_safe_shutoff/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/power_profiler/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/psa_crypto_hil/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/gpt_irq_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_1_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_2_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_3_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/lpm_idle_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/lpm_periodic_idle/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/lpm_software_standby_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/lpm_ulpt_standby/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/lpm_wake_matrix_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/lvd_monitor_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/mem_ecc_fault_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/mpu_partition_simple/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/mpu_partition_simple/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/pagecache/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/pdg_delay_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/poeg_safe_shutoff/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/power_profiler/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/psa_crypto_hil/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hil_needs_revalidation/psa_crypto_hil/src/psa_kat_shim.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/src/cache_store_demo.c	MEASURED	123	173	60	112
 examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/src/lx_nor_ram.c	MEASURED	33	47	15	26
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_cache_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_compress_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_demo/ra8_io_roundtrip.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sd_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sd_demo/ra8_io_roundtrip.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sdram_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sdram_demo/ra8_io_roundtrip.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_xspi_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/ra8_io_xspi_demo/ra8_io_roundtrip.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/reflow_content/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/reset_cause_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/rng_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/rot_verify_hil/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_cache_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_demo/src/ra8_io_roundtrip.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sd_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sd_demo/src/ra8_io_roundtrip.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sdram_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sdram_demo/src/ra8_io_roundtrip.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_xspi_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/ra8_io_xspi_demo/src/ra8_io_roundtrip.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/reflow_content/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/reset_cause_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/rng_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/rot_verify_hil/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hil_needs_revalidation/rot_verify_hil/src/psa_kat_shim.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/rsip_sha256_kat/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/rtc_alarm/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/rtc_periodic_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/touch_cal/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/touch_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_usb.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_usb_host.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/system_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/rsip_sha256_kat/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/rtc_alarm/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/rtc_periodic_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/touch_cal/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/touch_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/ns_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/ns_usb.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/ns_usb_host.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/system_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/usb_selftest_wlun_console.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/usb_selftest_wlun_host.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/adc_diag_tsn_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/battery_monitor_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/blink_m33_hal/cpu1_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/blink_m33_hal/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/blink_m33_hal/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/c6/c6_mdl_test/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/cache_hal_enable_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/common/ra8_io_roundtrip.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/compile_on_m33/cpu1_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/compile_on_m33/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/compile_on_m33/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/dtc_isr_arm_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/epaper_refresh/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/epub_stress/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ereader_comic/cm_tiled_check.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ereader_comic/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ereader_cover/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ereader_longstrip/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ereader_m33/cpu1_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ereader_m33/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ereader_m33/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ereader_manga/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c	MEASURED	314	340	122	176
-examples/ek_ra8d2/hw_pending/ereader_zoom/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c	MEASURED	237	243	133	177
-examples/ek_ra8d2/hw_pending/eth_gptp_timestamp_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/eth_hal_bringup/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/eth_l3switch_forward_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/eth_tsn_tas_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/gpt_edge_capture_count/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/hal_timebase_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/i2c_peripheral_responder/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/i3c_i2c_peripheral_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/import_reader/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/lin_commander_hil/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/lowpower_holdpage/cpu1_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/lowpower_holdpage/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/lowpower_holdpage/system_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/lowpower_holdpage/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/adc_diag_tsn_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/battery_monitor_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/blink_m33_hal/src/cpu1_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/blink_m33_hal/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/blink_m33_hal/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/c6/c6_mdl_test/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/cache_hal_enable_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/compile_on_m33/src/cpu1_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/compile_on_m33/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/compile_on_m33/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/dtc_isr_arm_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/epaper_refresh/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/epub_stress/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ereader_comic/src/cm_tiled_check.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ereader_comic/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ereader_cover/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ereader_longstrip/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ereader_m33/src/cpu1_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ereader_m33/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ereader_m33/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ereader_manga/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c	MEASURED	320	337	134	164
+examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c	MEASURED	241	247	135	175
+examples/ek_ra8d2/hw_pending/ereader_zoom/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/eth_gptp_timestamp_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/eth_hal_bringup/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/eth_l3switch_forward_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/eth_tsn_tas_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/gpt_edge_capture_count/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/hal_timebase_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/i2c_peripheral_responder/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/i3c_i2c_peripheral_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/import_reader/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/lin_commander_hil/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/lowpower_holdpage/src/cpu1_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/lowpower_holdpage/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/lowpower_holdpage/src/system_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/lowpower_holdpage/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/usb_msc_sdcard_console.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/usb_msc_sdcard_steps.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/media_download/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/media_download/media_download_format.c	MEASURED	54	65	33	64
-examples/ek_ra8d2/hw_pending/media_download/media_download_image.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/modem_at_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/system_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ota_ab_orchestration/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ra8_ftl_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ra8_io_mram_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ra8_io_sdhi_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ra8_io_swap_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/ra8_sdhi_card_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/scb_diag_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/ns_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/media_download/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/media_download/src/media_download_format.c	MEASURED	95	99	56	66
+examples/ek_ra8d2/hw_pending/media_download/src/media_download_image.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/modem_at_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/src/system_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ota_ab_orchestration/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ra8_ftl_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ra8_io_mram_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ra8_io_sdhi_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ra8_io_swap_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/ra8_sdhi_card_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/scb_diag_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/ns_main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/psa_verify_rng.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/system_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/vector_table.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/smbus_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/tls_client/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/tz_threadx_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/tz_threadx_demo/ns_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/tz_threadx_demo/system_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/tz_threadx_demo/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/tz_threadx_demo/vector_table.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_pending/webp_decode_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/system_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/smbus_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/tls_client/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/ns_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/system_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/tz_threadx_demo/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/webp_decode_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/src/c6_cam_camera.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/c6/c6_camera_mjpeg/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_camera_mjpeg/src/c6_cam_camera.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/c6/c6_fw_version/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/c6/c6_camera_mjpeg/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/c6_fwver_console.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/c6_fwver_link.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/c6_fwver_priv.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/c6_fwver_rpc.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/c6_hosted_console.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/c6_hosted_frame.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/c6_hosted_report.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_console.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_frame.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_sideband.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_xfer.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/c6_join_console.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/c6_join_net.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/c6/c6_wifi_link/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/c6_wifi_link/src/c6_wifi_console.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/c6/c6_wifi_link/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_console.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c	MEASURED	35	36	22	30
+examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c	MEASURED	39	40	25	26
 examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_ip.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/acmphs_compare/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/adc_b_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/agt_cascade_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/agt_periodic/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/agt_pulse_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/app_launch_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/app_shell_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/blink/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/blink_hal/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/blink_m33/cpu1_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/blink_m33/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/blink_m33/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/bscan_selftest/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/cac_accuracy_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/cpu1_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/cache_mpu_hil/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/camera_capture/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/acmphs_compare/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/adc_b_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/agt_cascade_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/agt_periodic/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/agt_pulse_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/app_launch_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/app_shell_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/blink/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/blink_hal/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/blink_m33/src/cpu1_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/blink_m33/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/blink_m33/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/bscan_selftest/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/cac_accuracy_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/src/cpu1_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/cache_mpu_hil/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/camera_capture/src/cam_ceu.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/camera_capture/src/cam_image.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/can_classic_loopback/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/canfd_filter_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/canfd_loopback/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/clock_check/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/cpu1_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/crc_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/crypto_aes_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dac_b_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dac_waveform/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/camera_capture/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/can_classic_loopback/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/canfd_filter_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/canfd_loopback/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/clock_check/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/cpu1_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/crc_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/crypto_aes_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dac_b_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dac_waveform/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/src/psa_verify_rng.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/vector_table.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/payload.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/vector_table.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dfu_selftest_boot/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dfu_selftest_boot/vector_table.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dfu_selftest_fs_host/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dfu_selftest_fs_host/vector_table.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dfu_selftest_hs_host/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dfu_selftest_hs_host/vector_table.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dma_coherency_hil/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dma_memcopy_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dma_memcopy_hal/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/doc_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dotf_selftest_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/drw_blend_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/drw_dlist_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/drw_fill_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dtc_coherency_hil/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dtc_transfer_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/cpu1_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/cpu1_main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ecc_monitor_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/elc_event_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ereader_align/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ereader_chrome/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ereader_image/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ereader_input/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ereader_jpeg/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ereader_link/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ereader_rabook/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ereader_svg/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ereader_table/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ereader_ui/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/src/payload.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dfu_selftest_boot/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dfu_selftest_boot/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dfu_selftest_fs_host/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dfu_selftest_fs_host/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dfu_selftest_hs_host/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dfu_selftest_hs_host/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dma_coherency_hil/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dma_memcopy_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dma_memcopy_hal/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/doc_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dotf_selftest_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/drw_blend_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/drw_dlist_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/drw_fill_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dtc_coherency_hil/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dtc_transfer_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/src/cpu1_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/src/cpu1_main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ecc_monitor_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/elc_event_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ereader_align/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ereader_chrome/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ereader_image/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ereader_input/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ereader_jpeg/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ereader_link/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ereader_rabook/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ereader_svg/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ereader_table/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/ereader_ui_input.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/ereader_ui_screens.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/eth_loopback/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/eth_open_probe/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/fault_crashlog_hil/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/fault_div0_hil/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/flash_journal/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/fs_format_mount/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/glcdc_render/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/gpio_input_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/gpt_capture_input/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/gpt_dma_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/gpt_one_shot_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/gpt_pwm_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/gpt_three_phase_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/i2c_i3c_combined/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/i2c_loopback/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/i3c_loopback/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/icu_extint_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/iic_b_facade_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/iwdt_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/keyboard/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/kint_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/lpm_deep_sleep_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/pdm_mic_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/rtt_log_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/sd_font_render/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/sdram_benchmark/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/eth_loopback/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/eth_open_probe/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/fault_crashlog_hil/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/fault_div0_hil/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/flash_journal/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/fs_format_mount/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/glcdc_render/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/gpio_input_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/gpt_capture_input/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/gpt_dma_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/gpt_one_shot_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/gpt_pwm_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/gpt_three_phase_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/i2c_i3c_combined/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/i2c_loopback/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/i3c_loopback/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/icu_extint_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/iic_b_facade_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/iwdt_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/keyboard/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/kint_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/lpm_deep_sleep_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/pdm_mic_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/rtt_log_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/sd_font_render/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/sdram_benchmark/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/src/psa_kat_shim.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/vector_table.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/spi_loopback/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ssie_audio_loop/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/threadx_blink/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/threadx_canfd_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/threadx_fs_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/threadx_fs_levelx_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/threadx_ipc_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/threadx_levelx_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/threadx_mpu_partition_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/threadx_systick_retune/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/timer_capture_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/uart_hello/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/uart_irq_echo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/ulpt_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/spi_loopback/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ssie_audio_loop/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/threadx_blink/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/threadx_canfd_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/threadx_fs_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/threadx_fs_levelx_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/threadx_ipc_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/threadx_levelx_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/threadx_mpu_partition_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/threadx_systick_retune/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/timer_capture_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/uart_hello/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/uart_irq_echo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/ulpt_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/src/usb_host_keyboard_console.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/src/usb_host_keyboard_device.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/src/usb_host_msc_browse_host.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/src/usb_host_msc_browse_steps.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/src/usb_selftest_cdc_steps.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_dfu/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_dfu/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_dfu/src/usb_selftest_dfu_steps.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/src/usb_selftest_fs_host_fatdisk.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/src/usb_selftest_fs_host_host.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/src/usb_selftest_hid_console.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/src/usb_selftest_hid_host.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_hs_host/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_hs_host/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_hs_host/src/usb_selftest_hs_host_host.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_hs_host/src/usb_selftest_hs_host_msc.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_microsd/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_microsd/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_microsd/src/usb_selftest_microsd_console.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_microsd/src/usb_selftest_microsd_steps.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_mlun/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_mlun/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_mlun/src/usb_selftest_mlun_steps.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/src/usb_selftest_ospi_format.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/src/usb_selftest_ospi_host.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/usb_selftest_ospi_rw_device.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/usb_selftest_ospi_rw_steps.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/src/usb_selftest_console.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/src/usb_selftest_device.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/src/usb_selftest_host.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/watchdog_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/wdt_reset_recovery_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/wdt_supervisor_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/wdt_window_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/widget_app/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/widget_app_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/widget_chrome_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/widget_compose_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/hil/widget_kit_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/display_pal_animation/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/lcd_color_cycle/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/lcd_draw_x/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/threadx_usbx_cdc_demo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_fs/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_fs/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/watchdog_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/wdt_reset_recovery_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/wdt_supervisor_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/wdt_window_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/widget_app/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/widget_app_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/widget_chrome_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/widget_compose_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/hil/widget_kit_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/display_pal_animation/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/lcd_color_cycle/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/lcd_draw_x/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/threadx_usbx_cdc_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_fs/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_fs/src/trustzone_init.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/trustzone_init.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/tz_secure_only_usb_hs_descriptors.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/tz_secure_only_usb_hs_steps.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/trustzone_init.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/usb_cdc_echo/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/usb_hid_device/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/usb_cdc_echo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/usb_hid_device/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/src/usb_host_file_ops_steps.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/usb_msc_device/main.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/usb_msc_mram/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/usb_msc_device/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/usb_msc_mram/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/manual/usb_msc_mram/src/usb_msc_mram_steps.c	UNMEASURED	firmware-composition
-examples/ek_ra8d2/hw_validated/manual/usb_msc_mram_hs/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_validated/manual/usb_msc_mram_hs/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_validated/manual/usb_msc_mram_hs/src/usb_msc_mram_hs_steps.c	UNMEASURED	firmware-composition
-examples/ra8p1_foundation/blink_ra8p1/main.c	UNMEASURED	firmware-composition
-examples/ra8p1_foundation/blink_ra8p1/vector_table.c	UNMEASURED	firmware-composition
-examples/ra8p1_foundation/npu_infer/main.c	UNMEASURED	firmware-composition
-examples/ra8p1_foundation/npu_infer/vector_table.c	UNMEASURED	firmware-composition
-examples/ra8p1_foundation/npu_smoke/main.c	UNMEASURED	firmware-composition
-examples/ra8p1_foundation/npu_smoke/vector_table.c	UNMEASURED	firmware-composition
-examples/ra8p1_foundation/npu_vela/main.c	UNMEASURED	firmware-composition
-examples/ra8p1_foundation/npu_vela/vector_table.c	UNMEASURED	firmware-composition
+examples/ra8p1_foundation/blink_ra8p1/src/main.c	UNMEASURED	firmware-composition
+examples/ra8p1_foundation/blink_ra8p1/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ra8p1_foundation/npu_infer/src/main.c	UNMEASURED	firmware-composition
+examples/ra8p1_foundation/npu_infer/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ra8p1_foundation/npu_smoke/src/main.c	UNMEASURED	firmware-composition
+examples/ra8p1_foundation/npu_smoke/src/vector_table.c	UNMEASURED	firmware-composition
+examples/ra8p1_foundation/npu_vela/src/main.c	UNMEASURED	firmware-composition
+examples/ra8p1_foundation/npu_vela/src/vector_table.c	UNMEASURED	firmware-composition
 libs/if/src/fw_if_fs.c	MEASURED	462	463	372	376
 libs/if/src/fw_if_fs_dir.c	MEASURED	73	81	54	66
 libs/if_ra8_vfs/src/fw_if_fs_ra8_vfs.c	MEASURED	416	431	164	186
 libs/ra8_app/src/ra8_app.c	MEASURED	197	202	143	170
 libs/ra8_audio/src/ra8_audio.c	MEASURED	132	132	97	97
 libs/ra8_audio/src/ra8_audio_source_memory.c	MEASURED	46	46	22	22
-libs/ra8_audio/src/ra8_audio_source_pdm.c	MEASURED	164	172	76	84
+libs/ra8_audio/src/ra8_audio_source_pdm.c	MEASURED	166	174	76	84
 libs/ra8_batt/src/ra8_batt.c	MEASURED	41	41	29	30
-libs/ra8_board_ek_ra8d2/boot/nmi_exception.c	UNMEASURED	platform-cross-only
-libs/ra8_board_ek_ra8d2/boot/secure_exception.c	UNMEASURED	platform-cross-only
-libs/ra8_board_ek_ra8d2/boot/system_init.c	UNMEASURED	platform-cross-only
-libs/ra8_board_ek_ra8d2/boot/trustzone_init.c	UNMEASURED	platform-cross-only
-libs/ra8_board_ek_ra8d2/boot/vector_table.c	UNMEASURED	platform-cross-only
+libs/ra8_board_ek_ra8d2/src/boot/nmi_exception.c	UNMEASURED	platform-cross-only
+libs/ra8_board_ek_ra8d2/src/boot/secure_exception.c	UNMEASURED	platform-cross-only
+libs/ra8_board_ek_ra8d2/src/boot/system_init.c	UNMEASURED	platform-cross-only
+libs/ra8_board_ek_ra8d2/src/boot/trustzone_init.c	UNMEASURED	platform-cross-only
+libs/ra8_board_ek_ra8d2/src/boot/vector_table.c	UNMEASURED	platform-cross-only
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2.c	MEASURED	181	181	81	88
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_audio_usb.c	MEASURED	195	208	70	82
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_camera.c	MEASURED	54	58	20	24
-libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_comms.c	MEASURED	66	66	37	40
+libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_comms.c	MEASURED	68	68	39	40
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_console_stream.c	MEASURED	5	5	4	4
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_dualcore.c	MEASURED	4	4	2	2
-libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_ethernet.c	MEASURED	100	111	47	68
+libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_ethernet.c	MEASURED	104	115	51	68
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_pdm.c	MEASURED	14	14	6	6
 libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_touch.c	MEASURED	20	20	8	8
-libs/ra8_board_ra8p1/boot/nmi_exception.c	UNMEASURED	platform-cross-only
-libs/ra8_board_ra8p1/boot/secure_exception.c	UNMEASURED	platform-cross-only
-libs/ra8_board_ra8p1/boot/system_init.c	UNMEASURED	platform-cross-only
-libs/ra8_board_ra8p1/boot/trustzone_init.c	UNMEASURED	platform-cross-only
-libs/ra8_board_ra8p1/boot/vector_table.c	UNMEASURED	platform-cross-only
-libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c	UNMEASURED	platform-cross-only
-libs/ra8_book/src/ra8_book.c	MEASURED	150	150	97	104
-libs/ra8_book/src/ra8_book_chunked.c	MEASURED	82	87	53	58
-libs/ra8_book/src/ra8_book_chunked_validate.c	MEASURED	143	145	97	100
-libs/ra8_book/src/ra8_book_paged.c	MEASURED	224	235	143	158
-libs/ra8_book/src/ra8_book_stream.c	MEASURED	341	354	236	256
-libs/ra8_book/src/ra8_book_xhtml.c	MEASURED	163	165	133	139
+libs/ra8_board_ra8p1/src/boot/nmi_exception.c	UNMEASURED	platform-cross-only
+libs/ra8_board_ra8p1/src/boot/secure_exception.c	UNMEASURED	platform-cross-only
+libs/ra8_board_ra8p1/src/boot/system_init.c	UNMEASURED	platform-cross-only
+libs/ra8_board_ra8p1/src/boot/trustzone_init.c	UNMEASURED	platform-cross-only
+libs/ra8_board_ra8p1/src/boot/vector_table.c	UNMEASURED	platform-cross-only
+libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c	MEASURED	124	124	66	66
 libs/ra8_box/src/ra8_box.c	MEASURED	136	143	65	78
 libs/ra8_c6link/src/ra8_c6link.c	MEASURED	175	181	115	124
 libs/ra8_c6link/src/ra8_c6link_arena.c	MEASURED	34	34	22	22
 libs/ra8_c6link/src/ra8_c6link_frame.c	MEASURED	65	65	26	26
-libs/ra8_c6link/src/ra8_c6link_mdl.c	MEASURED	232	244	226	253
+libs/ra8_c6link/src/ra8_c6link_mdl.c	MEASURED	243	255	226	253
 libs/ra8_c6link/src/ra8_c6link_mdl_service.c	MEASURED	253	264	170	182
 libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c	MEASURED	102	105	95	106
 libs/ra8_c6link/src/ra8_c6link_pump.c	MEASURED	56	56	28	28
-libs/ra8_c6link/src/ra8_c6link_rpc.c	MEASURED	147	150	71	81
+libs/ra8_c6link/src/ra8_c6link_rpc.c	MEASURED	149	152	71	81
 libs/ra8_c6link/src/ra8_c6link_tlv.c	MEASURED	47	47	32	32
 libs/ra8_c6link/src/ra8_c6link_wifi.c	MEASURED	138	145	40	53
-libs/ra8_c6link/src/ra8_c6link_wifi_sta.c	MEASURED	128	135	58	66
+libs/ra8_c6link/src/ra8_c6link_wifi_sta.c	MEASURED	133	139	61	68
 libs/ra8_c6link/src/ra8_mdl_storage_ram.c	MEASURED	59	63	48	52
 libs/ra8_cache_store/src/ra8_cache_store.c	MEASURED	182	189	108	152
 libs/ra8_cache_store/src/ra8_cache_store_mount.c	MEASURED	278	299	165	218
 libs/ra8_camera/src/ra8_camera.c	MEASURED	105	105	76	76
 libs/ra8_camera/src/ra8_camera_codec_jpeg_sw.c	MEASURED	101	101	52	52
 libs/ra8_camera/src/ra8_camera_codec_passthrough.c	MEASURED	15	15	8	8
-libs/ra8_camera/src/ra8_camera_source_ceu.c	MEASURED	157	159	87	90
+libs/ra8_camera/src/ra8_camera_source_ceu.c	MEASURED	126	127	72	74
 libs/ra8_camera/src/ra8_camera_source_memory.c	MEASURED	41	41	20	20
 libs/ra8_camera_io/src/ra8_camera_stream.c	MEASURED	16	16	11	12
-libs/ra8_comic/src/ra8_comic.c	MEASURED	190	190	114	126
-libs/ra8_comic/src/ra8_comic_cbr.c	MEASURED	56	59	29	38
-libs/ra8_comic/src/ra8_comic_cbt.c	MEASURED	37	39	18	26
-libs/ra8_comic/src/ra8_comic_cbz.c	MEASURED	80	87	32	50
-libs/ra8_comic/src/ra8_comic_tiles.c	MEASURED	108	108	61	64
-libs/ra8_comic/src/ra8_comic_wrapped.c	MEASURED	35	35	24	24
-libs/ra8_comic/src/ra8_rar.c	MEASURED	249	249	145	154
-libs/ra8_comic/src/ra8_rar5.c	MEASURED	227	242	118	134
-libs/ra8_comic/src/ra8_rar5_tables.c	MEASURED	161	169	65	72
 libs/ra8_core/src/ra8_crashlog.c	MEASURED	55	56	23	24
 libs/ra8_core/src/ra8_decomp_limits.c	MEASURED	121	122	75	76
 libs/ra8_core/src/ra8_error_handler.c	MEASURED	10	10	0	0
 libs/ra8_core/src/ra8_exception.c	MEASURED	62	62	11	12
 libs/ra8_core/src/ra8_infrastructure.c	MEASURED	9	9	0	0
-libs/ra8_core/src/ra8_log.c	MEASURED	108	108	24	26
-libs/ra8_core/src/ra8_pin_validator.c	MEASURED	44	45	13	14
+libs/ra8_core/src/ra8_log.c	MEASURED	106	106	22	24
+libs/ra8_core/src/ra8_pin_validator.c	MEASURED	47	47	18	18
 libs/ra8_core/src/ra8_rand_stub.c	MEASURED	9	9	2	2
 libs/ra8_core/src/ra8_sbrk_trap.c	MEASURED	2	2	0	0
 libs/ra8_core/src/ra8_scb.c	MEASURED	25	25	2	2
@@ -534,7 +610,7 @@ libs/ra8_dfu/src/ra8_dfu_antirollback.c	MEASURED	32	32	21	22
 libs/ra8_dfu/src/ra8_dfu_boot.c	MEASURED	38	38	48	48
 libs/ra8_dfu/src/ra8_dfu_device.c	UNMEASURED	compiled-not-executed
 libs/ra8_dfu/src/ra8_dfu_host.c	UNMEASURED	compiled-not-executed
-libs/ra8_dfu/src/ra8_dfu_launch.c	MEASURED	19	19	14	14
+libs/ra8_dfu/src/ra8_dfu_launch.c	MEASURED	14	14	10	10
 libs/ra8_dfu/src/ra8_dfu_program.c	MEASURED	95	103	53	63
 libs/ra8_dfu/src/ra8_rot.c	MEASURED	74	76	55	66
 libs/ra8_display_pal/src/ra8_display_pal.c	MEASURED	62	66	29	36
@@ -542,27 +618,17 @@ libs/ra8_display_pal/src/ra8_display_pal_eink.c	MEASURED	138	138	54	66
 libs/ra8_display_pal/src/ra8_display_pal_lcd.c	MEASURED	107	116	41	58
 libs/ra8_display_pal/src/ra8_display_pal_policy.c	MEASURED	60	60	31	31
 libs/ra8_epd_cal/src/ra8_epd_cal.c	MEASURED	169	171	100	102
-libs/ra8_epub/src/ra8_epub_chapter.c	MEASURED	218	219	180	184
-libs/ra8_epub/src/ra8_epub_entry.c	MEASURED	140	144	76	92
-libs/ra8_epub/src/ra8_epub_fs.c	MEASURED	38	38	26	32
-libs/ra8_epub/src/ra8_epub_img_import.c	MEASURED	64	65	30	36
-libs/ra8_epub/src/ra8_epub_img_tiles.c	MEASURED	157	162	93	100
-libs/ra8_epub/src/ra8_epub_miniz_alloc.c	MEASURED	125	132	64	72
-libs/ra8_epub/src/ra8_epub_open.c	MEASURED	167	176	89	108
-libs/ra8_epub/src/ra8_epub_xml_shim.c	MEASURED	315	319	269	296
-libs/ra8_epub/src/ra8_epub_xml_toc.c	MEASURED	217	220	211	236
-libs/ra8_epub/src/ra8_epub_zip_guard.c	MEASURED	10	11	5	6
 libs/ra8_fs/src/ra8_fs_fat.c	MEASURED	203	209	88	94
 libs/ra8_fs/src/ra8_fs_fat_alloc.c	MEASURED	166	170	81	90
 libs/ra8_fs/src/ra8_fs_fat_attr.c	MEASURED	67	69	31	34
-libs/ra8_fs/src/ra8_fs_fat_check.c	MEASURED	264	271	146	158
+libs/ra8_fs/src/ra8_fs_fat_check.c	MEASURED	274	281	153	162
 libs/ra8_fs/src/ra8_fs_fat_dir.c	MEASURED	265	283	138	164
 libs/ra8_fs/src/ra8_fs_fat_dirmk.c	MEASURED	154	155	79	80
-libs/ra8_fs/src/ra8_fs_fat_exfat_check.c	MEASURED	244	251	120	134
-libs/ra8_fs/src/ra8_fs_fat_exfat_dir.c	MEASURED	248	256	113	122
+libs/ra8_fs/src/ra8_fs_fat_exfat_check.c	MEASURED	262	269	129	138
+libs/ra8_fs/src/ra8_fs_fat_exfat_dir.c	MEASURED	250	258	114	122
 libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c	MEASURED	241	260	78	100
-libs/ra8_fs/src/ra8_fs_fat_exfat_label.c	MEASURED	61	63	25	28
-libs/ra8_fs/src/ra8_fs_fat_exfat_mutate.c	MEASURED	292	299	135	154
+libs/ra8_fs/src/ra8_fs_fat_exfat_label.c	MEASURED	62	64	26	28
+libs/ra8_fs/src/ra8_fs_fat_exfat_mutate.c	MEASURED	310	316	146	154
 libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c	MEASURED	138	141	45	50
 libs/ra8_fs/src/ra8_fs_fat_exfat_read.c	MEASURED	213	216	92	98
 libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c	MEASURED	267	285	124	144
@@ -572,12 +638,12 @@ libs/ra8_fs/src/ra8_fs_fat_file.c	MEASURED	220	221	92	94
 libs/ra8_fs/src/ra8_fs_fat_fileio.c	MEASURED	259	260	123	124
 libs/ra8_fs/src/ra8_fs_fat_fmt.c	MEASURED	200	210	96	106
 libs/ra8_fs/src/ra8_fs_fat_gpt.c	MEASURED	93	94	53	56
-libs/ra8_fs/src/ra8_fs_fat_label.c	MEASURED	160	162	90	96
+libs/ra8_fs/src/ra8_fs_fat_label.c	MEASURED	164	165	94	96
 libs/ra8_fs/src/ra8_fs_fat_lfn.c	MEASURED	127	127	75	76
 libs/ra8_fs/src/ra8_fs_fat_lfn_write.c	MEASURED	195	204	102	112
 libs/ra8_fs/src/ra8_fs_fat_lock.c	MEASURED	18	18	10	10
 libs/ra8_fs/src/ra8_fs_fat_mount.c	MEASURED	236	242	138	144
-libs/ra8_fs/src/ra8_fs_fat_name.c	MEASURED	296	297	199	204
+libs/ra8_fs/src/ra8_fs_fat_name.c	MEASURED	296	297	197	200
 libs/ra8_fs/src/ra8_fs_fat_space.c	MEASURED	82	82	33	34
 libs/ra8_fs/src/ra8_fs_fat_stat.c	MEASURED	153	153	62	62
 libs/ra8_fs/src/ra8_fs_fat_time.c	MEASURED	179	179	31	32
@@ -591,158 +657,158 @@ libs/ra8_gfx/src/ra8_gfx_dither.c	MEASURED	55	55	32	32
 libs/ra8_gfx/src/ra8_gfx_font_8x16.c	UNMEASURED	compiled-not-executed
 libs/ra8_gfx/src/ra8_gfx_text.c	MEASURED	304	305	164	172
 libs/ra8_gfx/src/ra8_gfx_text_glyph.c	MEASURED	77	77	48	50
-libs/ra8_hal/src/adc.c	MEASURED	291	300	94	106
-libs/ra8_hal/src/adc_selfdiag.c	MEASURED	96	100	35	39
+libs/ra8_hal/src/adc.c	MEASURED	291	300	106	118
+libs/ra8_hal/src/adc_selfdiag.c	MEASURED	96	100	41	45
 libs/ra8_hal/src/gpio.c	MEASURED	164	176	61	70
 libs/ra8_hal/src/ra8_acmphs.c	MEASURED	111	111	52	60
-libs/ra8_hal/src/ra8_agt.c	MEASURED	174	174	65	72
-libs/ra8_hal/src/ra8_bkup.c	MEASURED	179	179	79	86
-libs/ra8_hal/src/ra8_bkup_security.c	MEASURED	32	33	11	12
+libs/ra8_hal/src/ra8_agt.c	MEASURED	175	175	74	80
+libs/ra8_hal/src/ra8_bkup.c	MEASURED	178	178	93	100
+libs/ra8_hal/src/ra8_bkup_security.c	MEASURED	32	33	19	20
 libs/ra8_hal/src/ra8_bkup_tamper.c	MEASURED	92	92	51	52
-libs/ra8_hal/src/ra8_ble.c	MEASURED	153	167	81	104
+libs/ra8_hal/src/ra8_ble.c	MEASURED	152	166	83	106
 libs/ra8_hal/src/ra8_bscan.c	MEASURED	42	42	16	16
-libs/ra8_hal/src/ra8_cac.c	MEASURED	71	71	6	6
+libs/ra8_hal/src/ra8_cac.c	MEASURED	72	72	14	14
 libs/ra8_hal/src/ra8_cache.c	MEASURED	94	94	14	14
-libs/ra8_hal/src/ra8_canfd.c	MEASURED	194	196	68	74
+libs/ra8_hal/src/ra8_canfd.c	MEASURED	194	196	71	76
 libs/ra8_hal/src/ra8_canfd_afl.c	MEASURED	63	63	36	36
 libs/ra8_hal/src/ra8_canfd_frame.c	MEASURED	84	84	48	48
 libs/ra8_hal/src/ra8_canfd_tdc.c	MEASURED	21	23	12	14
-libs/ra8_hal/src/ra8_canfd_timing.c	MEASURED	74	79	29	36
+libs/ra8_hal/src/ra8_canfd_timing.c	MEASURED	74	79	28	34
 libs/ra8_hal/src/ra8_ceu.c	MEASURED	290	290	136	138
 libs/ra8_hal/src/ra8_ceu_init_regs.c	MEASURED	89	90	19	22
 libs/ra8_hal/src/ra8_cgc.c	MEASURED	168	169	58	64
 libs/ra8_hal/src/ra8_cgc_eswclk.c	MEASURED	71	71	30	30
-libs/ra8_hal/src/ra8_cgc_usb.c	MEASURED	234	254	97	112
-libs/ra8_hal/src/ra8_cnecc.c	MEASURED	290	290	126	138
+libs/ra8_hal/src/ra8_cgc_usb.c	MEASURED	130	130	52	52
+libs/ra8_hal/src/ra8_cnecc.c	MEASURED	293	293	132	144
 libs/ra8_hal/src/ra8_crc.c	MEASURED	61	61	16	16
 libs/ra8_hal/src/ra8_dac_b.c	MEASURED	116	121	30	38
 libs/ra8_hal/src/ra8_dma.c	MEASURED	99	99	47	48
-libs/ra8_hal/src/ra8_dmac.c	MEASURED	161	174	71	82
+libs/ra8_hal/src/ra8_dmac.c	MEASURED	161	174	73	84
 libs/ra8_hal/src/ra8_doc.c	MEASURED	62	62	14	14
-libs/ra8_hal/src/ra8_dotf.c	MEASURED	297	301	156	172
-libs/ra8_hal/src/ra8_dotf_power.c	MEASURED	51	55	16	18
-libs/ra8_hal/src/ra8_drw.c	MEASURED	262	267	81	100
+libs/ra8_hal/src/ra8_dotf.c	MEASURED	294	297	160	176
+libs/ra8_hal/src/ra8_dotf_power.c	MEASURED	51	55	30	32
+libs/ra8_hal/src/ra8_drw.c	MEASURED	262	267	85	104
 libs/ra8_hal/src/ra8_drw_draw.c	MEASURED	200	209	78	88
 libs/ra8_hal/src/ra8_dtc.c	MEASURED	66	66	9	10
 libs/ra8_hal/src/ra8_dual_core.c	MEASURED	56	56	18	22
 libs/ra8_hal/src/ra8_elc.c	MEASURED	43	43	12	12
-libs/ra8_hal/src/ra8_epaper.c	MEASURED	392	429	189	230
+libs/ra8_hal/src/ra8_epaper.c	MEASURED	306	316	151	160
 libs/ra8_hal/src/ra8_epaper_devinfo.c	MEASURED	40	40	30	30
 libs/ra8_hal/src/ra8_epaper_geom.c	MEASURED	79	79	78	78
-libs/ra8_hal/src/ra8_eth.c	MEASURED	218	234	72	88
+libs/ra8_hal/src/ra8_eth.c	MEASURED	218	234	70	84
 libs/ra8_hal/src/ra8_eth_coma.c	MEASURED	61	61	12	12
 libs/ra8_hal/src/ra8_eth_gptp.c	MEASURED	129	129	76	76
-libs/ra8_hal/src/ra8_eth_gwca.c	MEASURED	128	128	34	34
-libs/ra8_hal/src/ra8_eth_gwca_default.c	MEASURED	166	177	58	72
+libs/ra8_hal/src/ra8_eth_gwca.c	MEASURED	128	128	36	36
+libs/ra8_hal/src/ra8_eth_gwca_default.c	MEASURED	166	177	64	78
 libs/ra8_hal/src/ra8_eth_gwca_queue.c	MEASURED	114	116	70	74
-libs/ra8_hal/src/ra8_eth_link.c	MEASURED	117	121	51	58
+libs/ra8_hal/src/ra8_eth_link.c	MEASURED	108	108	52	52
 libs/ra8_hal/src/ra8_eth_media.c	MEASURED	10	10	6	6
 libs/ra8_hal/src/ra8_eth_mfwd.c	MEASURED	65	65	11	12
-libs/ra8_hal/src/ra8_etha.c	MEASURED	305	332	141	160
+libs/ra8_hal/src/ra8_etha.c	MEASURED	307	332	146	162
 libs/ra8_hal/src/ra8_etha_stats.c	MEASURED	74	74	46	46
 libs/ra8_hal/src/ra8_etha_tas.c	MEASURED	101	105	48	50
-libs/ra8_hal/src/ra8_ether_phy.c	MEASURED	81	81	48	50
+libs/ra8_hal/src/ra8_ether_phy.c	MEASURED	81	81	52	54
 libs/ra8_hal/src/ra8_ethosu_kernel.cc	UNMEASURED	platform-cross-only
 libs/ra8_hal/src/ra8_ethosu_shim.c	MEASURED	54	56	29	30
-libs/ra8_hal/src/ra8_flash.c	MEASURED	262	268	96	98
-libs/ra8_hal/src/ra8_flash_config.c	MEASURED	266	273	155	163
-libs/ra8_hal/src/ra8_flash_irq.c	MEASURED	188	188	104	108
+libs/ra8_hal/src/ra8_flash.c	MEASURED	276	278	130	132
+libs/ra8_hal/src/ra8_flash_config.c	MEASURED	266	273	159	167
+libs/ra8_hal/src/ra8_flash_irq.c	MEASURED	188	188	109	112
 libs/ra8_hal/src/ra8_fpu_probe.c	MEASURED	2	2	0	0
 libs/ra8_hal/src/ra8_glcdc.c	MEASURED	199	199	27	28
 libs/ra8_hal/src/ra8_glcdc_gamma.c	MEASURED	36	36	16	18
 libs/ra8_hal/src/ra8_glcdc_layer.c	MEASURED	111	112	28	30
-libs/ra8_hal/src/ra8_gpt.c	MEASURED	341	345	129	142
-libs/ra8_hal/src/ra8_i2c.c	MEASURED	172	185	83	96
-libs/ra8_hal/src/ra8_i2c_config.c	MEASURED	110	114	38	44
-libs/ra8_hal/src/ra8_i2c_peripheral.c	MEASURED	183	186	98	109
+libs/ra8_hal/src/ra8_gpt.c	MEASURED	341	345	137	150
+libs/ra8_hal/src/ra8_i2c.c	MEASURED	175	187	95	108
+libs/ra8_hal/src/ra8_i2c_config.c	MEASURED	110	112	42	46
+libs/ra8_hal/src/ra8_i2c_peripheral.c	MEASURED	182	184	103	113
 libs/ra8_hal/src/ra8_i3c.c	MEASURED	407	407	185	186
-libs/ra8_hal/src/ra8_i3c_i2c.c	MEASURED	215	223	95	106
-libs/ra8_hal/src/ra8_i3c_i2c_control.c	MEASURED	70	75	28	30
-libs/ra8_hal/src/ra8_i3c_i2c_peripheral.c	MEASURED	70	70	43	44
+libs/ra8_hal/src/ra8_i3c_i2c.c	MEASURED	218	225	109	120
+libs/ra8_hal/src/ra8_i3c_i2c_control.c	MEASURED	76	78	31	32
+libs/ra8_hal/src/ra8_i3c_i2c_peripheral.c	MEASURED	70	70	49	50
 libs/ra8_hal/src/ra8_icu.c	MEASURED	46	48	14	14
-libs/ra8_hal/src/ra8_ipc.c	MEASURED	323	333	185	208
+libs/ra8_hal/src/ra8_ipc.c	MEASURED	324	334	186	208
 libs/ra8_hal/src/ra8_ipc_sem_ring.c	MEASURED	146	149	81	90
-libs/ra8_hal/src/ra8_isr.c	MEASURED	125	131	37	40
+libs/ra8_hal/src/ra8_isr.c	MEASURED	128	134	39	40
 libs/ra8_hal/src/ra8_iwdt.c	MEASURED	30	30	6	6
 libs/ra8_hal/src/ra8_layer3_switch.c	MEASURED	32	32	22	24
-libs/ra8_hal/src/ra8_lpm.c	MEASURED	309	314	78	86
-libs/ra8_hal/src/ra8_lpm_graphics.c	MEASURED	38	38	8	8
-libs/ra8_hal/src/ra8_lvd.c	MEASURED	179	184	62	67
+libs/ra8_hal/src/ra8_lpm.c	MEASURED	309	314	84	92
+libs/ra8_hal/src/ra8_lpm_graphics.c	MEASURED	38	38	16	16
+libs/ra8_hal/src/ra8_lvd.c	MEASURED	179	180	74	79
 libs/ra8_hal/src/ra8_lvd_events.c	MEASURED	88	88	32	34
-libs/ra8_hal/src/ra8_lvd_runtime.c	MEASURED	119	119	35	36
-libs/ra8_hal/src/ra8_mipi_csi.c	MEASURED	289	290	88	96
+libs/ra8_hal/src/ra8_lvd_runtime.c	MEASURED	119	119	51	52
+libs/ra8_hal/src/ra8_mipi_csi.c	MEASURED	290	290	108	116
 libs/ra8_hal/src/ra8_mipi_csi_irq.c	MEASURED	160	169	38	48
-libs/ra8_hal/src/ra8_mipi_dsi.c	MEASURED	146	150	45	54
-libs/ra8_hal/src/ra8_mipi_dsi_cmd.c	MEASURED	126	126	69	70
+libs/ra8_hal/src/ra8_mipi_dsi.c	MEASURED	146	150	53	62
+libs/ra8_hal/src/ra8_mipi_dsi_cmd.c	MEASURED	126	126	73	74
 libs/ra8_hal/src/ra8_mipi_dsi_dispatch.c	MEASURED	296	296	115	123
-libs/ra8_hal/src/ra8_mipi_phy.c	MEASURED	292	309	111	117
+libs/ra8_hal/src/ra8_mipi_phy.c	MEASURED	292	309	123	129
 libs/ra8_hal/src/ra8_mipi_phy_timing.c	MEASURED	27	27	21	24
 libs/ra8_hal/src/ra8_mpc.c	MEASURED	78	82	26	26
 libs/ra8_hal/src/ra8_mstp.c	MEASURED	114	114	46	46
-libs/ra8_hal/src/ra8_npu.c	MEASURED	132	132	50	54
+libs/ra8_hal/src/ra8_npu.c	MEASURED	132	132	72	76
 libs/ra8_hal/src/ra8_npu_loader.c	MEASURED	103	103	48	48
 libs/ra8_hal/src/ra8_npu_quant.c	MEASURED	44	44	38	38
 libs/ra8_hal/src/ra8_ofs.c	MEASURED	2	2	0	0
-libs/ra8_hal/src/ra8_pdg.c	MEASURED	298	301	156	162
-libs/ra8_hal/src/ra8_pdm.c	MEASURED	121	125	54	62
+libs/ra8_hal/src/ra8_pdg.c	MEASURED	298	301	162	168
+libs/ra8_hal/src/ra8_pdm.c	MEASURED	121	125	56	64
 libs/ra8_hal/src/ra8_poeg.c	MEASURED	68	69	29	34
 libs/ra8_hal/src/ra8_pwr.c	MEASURED	70	73	18	20
 libs/ra8_hal/src/ra8_reset.c	MEASURED	195	195	89	89
 libs/ra8_hal/src/ra8_rmac.c	MEASURED	340	363	111	126
-libs/ra8_hal/src/ra8_rmac_mgmt.c	MEASURED	151	161	49	64
-libs/ra8_hal/src/ra8_rmac_phy.c	MEASURED	130	130	75	78
+libs/ra8_hal/src/ra8_rmac_mgmt.c	MEASURED	168	175	59	68
+libs/ra8_hal/src/ra8_rmac_phy.c	MEASURED	130	130	79	82
 libs/ra8_hal/src/ra8_rsip.c	MEASURED	277	286	128	136
-libs/ra8_hal/src/ra8_rsip_asym.c	MEASURED	252	257	152	159
-libs/ra8_hal/src/ra8_rsip_cipher.c	MEASURED	316	327	193	201
+libs/ra8_hal/src/ra8_rsip_asym.c	MEASURED	252	257	156	163
+libs/ra8_hal/src/ra8_rsip_cipher.c	MEASURED	316	326	195	203
 libs/ra8_hal/src/ra8_rsip_devsec.c	MEASURED	63	63	23	26
 libs/ra8_hal/src/ra8_rsip_ecc.c	MEASURED	107	110	66	69
 libs/ra8_hal/src/ra8_rsip_key_injection.c	MEASURED	142	155	56	62
 libs/ra8_hal/src/ra8_rsip_protected.c	MEASURED	158	158	81	86
 libs/ra8_hal/src/ra8_rsip_rsa.c	MEASURED	96	96	66	66
-libs/ra8_hal/src/ra8_rtc.c	MEASURED	138	138	28	28
-libs/ra8_hal/src/ra8_sci.c	MEASURED	306	307	133	134
-libs/ra8_hal/src/ra8_sci_dma_isr.c	MEASURED	82	84	40	42
+libs/ra8_hal/src/ra8_rtc.c	MEASURED	145	145	38	38
+libs/ra8_hal/src/ra8_sci.c	MEASURED	307	308	135	136
+libs/ra8_hal/src/ra8_sci_dma_isr.c	MEASURED	91	93	40	42
 libs/ra8_hal/src/ra8_sci_lin.c	MEASURED	153	153	91	96
 libs/ra8_hal/src/ra8_sci_spi.c	MEASURED	100	101	41	42
-libs/ra8_hal/src/ra8_sdcard.c	MEASURED	169	170	70	74
-libs/ra8_hal/src/ra8_sdhi.c	MEASURED	213	216	80	86
+libs/ra8_hal/src/ra8_sdcard.c	MEASURED	169	170	74	78
+libs/ra8_hal/src/ra8_sdhi.c	MEASURED	216	216	108	110
 libs/ra8_hal/src/ra8_sdramc.c	MEASURED	89	95	30	36
 libs/ra8_hal/src/ra8_smbus.c	MEASURED	176	177	92	96
 libs/ra8_hal/src/ra8_spi_b.c	MEASURED	233	240	113	120
-libs/ra8_hal/src/ra8_spi_b_dma.c	MEASURED	53	54	18	20
+libs/ra8_hal/src/ra8_spi_b_dma.c	MEASURED	62	63	18	20
 libs/ra8_hal/src/ra8_spi_b_target.c	MEASURED	64	65	17	18
-libs/ra8_hal/src/ra8_sram.c	MEASURED	235	237	100	104
+libs/ra8_hal/src/ra8_sram.c	MEASURED	235	237	104	108
 libs/ra8_hal/src/ra8_sram_security.c	MEASURED	63	64	27	30
-libs/ra8_hal/src/ra8_ssie.c	MEASURED	335	343	143	149
-libs/ra8_hal/src/ra8_ssie_stream.c	MEASURED	100	108	59	68
-libs/ra8_hal/src/ra8_touch.c	MEASURED	151	151	64	64
-libs/ra8_hal/src/ra8_tsn.c	MEASURED	89	90	33	34
+libs/ra8_hal/src/ra8_ssie.c	MEASURED	331	337	153	159
+libs/ra8_hal/src/ra8_ssie_stream.c	MEASURED	100	108	61	70
+libs/ra8_hal/src/ra8_touch.c	MEASURED	151	151	68	68
+libs/ra8_hal/src/ra8_tsn.c	MEASURED	89	90	35	36
 libs/ra8_hal/src/ra8_ulpt.c	MEASURED	71	73	25	32
 libs/ra8_hal/src/ra8_usb.c	MEASURED	166	167	54	58
-libs/ra8_hal/src/ra8_usb_cdc.c	MEASURED	105	111	56	64
+libs/ra8_hal/src/ra8_usb_cdc.c	MEASURED	120	124	66	68
 libs/ra8_hal/src/ra8_usb_composite.c	MEASURED	175	181	88	93
-libs/ra8_hal/src/ra8_usb_device.c	MEASURED	159	159	76	76
-libs/ra8_hal/src/ra8_usb_haud.c	MEASURED	198	214	66	79
-libs/ra8_hal/src/ra8_usb_hcdc.c	MEASURED	152	162	48	55
-libs/ra8_hal/src/ra8_usb_hcdc_ecm.c	MEASURED	200	211	76	85
-libs/ra8_hal/src/ra8_usb_hhid.c	MEASURED	227	244	83	96
-libs/ra8_hal/src/ra8_usb_hhub.c	MEASURED	142	146	49	52
-libs/ra8_hal/src/ra8_usb_hmsc.c	MEASURED	62	62	16	18
-libs/ra8_hal/src/ra8_usb_hmsc_enum.c	MEASURED	172	174	62	64
+libs/ra8_hal/src/ra8_usb_device.c	MEASURED	159	159	80	80
+libs/ra8_hal/src/ra8_usb_haud.c	MEASURED	198	214	71	83
+libs/ra8_hal/src/ra8_usb_hcdc.c	MEASURED	152	162	55	61
+libs/ra8_hal/src/ra8_usb_hcdc_ecm.c	MEASURED	200	211	83	91
+libs/ra8_hal/src/ra8_usb_hhid.c	MEASURED	227	244	91	104
+libs/ra8_hal/src/ra8_usb_hhub.c	MEASURED	140	144	49	52
+libs/ra8_hal/src/ra8_usb_hmsc.c	MEASURED	239	239	108	108
+libs/ra8_hal/src/ra8_usb_hmsc_enum.c	MEASURED	163	163	81	82
 libs/ra8_hal/src/ra8_usb_host_bulk.c	MEASURED	144	144	71	72
 libs/ra8_hal/src/ra8_usb_host_ctrl.c	MEASURED	229	235	87	98
-libs/ra8_hal/src/ra8_usb_irq.c	MEASURED	116	122	33	36
-libs/ra8_hal/src/ra8_usb_paud.c	MEASURED	127	131	94	100
-libs/ra8_hal/src/ra8_usb_phid.c	MEASURED	130	140	83	91
-libs/ra8_hal/src/ra8_usb_phy.c	MEASURED	77	80	5	8
-libs/ra8_hal/src/ra8_usb_pmsc.c	MEASURED	172	175	77	78
+libs/ra8_hal/src/ra8_usb_irq.c	MEASURED	117	123	37	40
+libs/ra8_hal/src/ra8_usb_paud.c	MEASURED	125	127	93	98
+libs/ra8_hal/src/ra8_usb_phid.c	MEASURED	128	136	84	91
+libs/ra8_hal/src/ra8_usb_phy.c	MEASURED	82	85	11	14
+libs/ra8_hal/src/ra8_usb_pmsc.c	MEASURED	170	170	76	76
 libs/ra8_hal/src/ra8_usb_pmsc_scsi.c	MEASURED	105	105	34	34
-libs/ra8_hal/src/ra8_usb_pprn.c	MEASURED	112	112	66	68
-libs/ra8_hal/src/ra8_usb_pvnd.c	MEASURED	90	90	61	62
+libs/ra8_hal/src/ra8_usb_pprn.c	MEASURED	110	110	65	66
+libs/ra8_hal/src/ra8_usb_pvnd.c	MEASURED	88	88	60	60
 libs/ra8_hal/src/ra8_usb_xfer.c	MEASURED	147	147	80	82
-libs/ra8_hal/src/ra8_vin.c	MEASURED	391	395	185	200
+libs/ra8_hal/src/ra8_vin.c	MEASURED	387	391	185	200
 libs/ra8_hal/src/ra8_vreg.c	MEASURED	207	210	68	72
-libs/ra8_hal/src/ra8_wdt.c	MEASURED	248	258	100	106
+libs/ra8_hal/src/ra8_wdt.c	MEASURED	251	259	104	110
 libs/ra8_hal/src/ra8_xspi.c	MEASURED	197	200	78	84
 libs/ra8_hal/src/ra8_xspi_flash.c	MEASURED	169	169	87	88
 libs/ra8_hal/src/timer.c	MEASURED	5	5	0	0
@@ -756,7 +822,6 @@ libs/ra8_io/src/ra8_io_blockdev_sdspi.c	MEASURED	25	25	7	10
 libs/ra8_io/src/ra8_io_blockdev_usbmsc.c	MEASURED	32	32	23	24
 libs/ra8_io/src/ra8_io_blockdev_vsource.c	MEASURED	56	60	24	28
 libs/ra8_io/src/ra8_io_blockdev_xspi.c	MEASURED	130	130	63	74
-libs/ra8_io/src/ra8_io_compress.c	MEASURED	48	51	27	30
 libs/ra8_io/src/ra8_io_fsfmt.c	MEASURED	170	174	118	130
 libs/ra8_io/src/ra8_io_i2c_bus.c	MEASURED	43	43	23	26
 libs/ra8_io/src/ra8_io_i2c_bus_i3c_compat.c	MEASURED	13	13	4	4
@@ -771,35 +836,25 @@ libs/ra8_io/src/ra8_io_stream_ram.c	MEASURED	26	27	13	22
 libs/ra8_io/src/ra8_io_stream_uart.c	MEASURED	19	19	9	14
 libs/ra8_io/src/ra8_io_stream_usbcdc.c	MEASURED	22	22	11	16
 libs/ra8_io/src/ra8_io_vfs.c	MEASURED	282	289	176	212
-libs/ra8_io/src/ra8_io_vfs_compress.c	MEASURED	46	50	40	44
 libs/ra8_io/src/ra8_io_vfs_namespace.c	MEASURED	137	139	93	108
-libs/ra8_jof/src/ra8_jof.c	MEASURED	204	211	117	136
-libs/ra8_jof/src/ra8_jof_audit.c	MEASURED	196	205	115	128
-libs/ra8_jof/src/ra8_jof_png.c	MEASURED	217	222	141	152
-libs/ra8_jof/src/ra8_jof_png_chunk.c	MEASURED	148	151	90	94
-libs/ra8_jof/src/ra8_jof_produce.c	MEASURED	331	344	178	202
-libs/ra8_jof/src/ra8_jof_produce_webp.c	MEASURED	64	69	30	36
-libs/ra8_jpeg/src/ra8_jpeg_sw.c	MEASURED	182	182	124	126
+libs/ra8_jpeg/src/ra8_jpeg_sw.c	MEASURED	182	182	125	126
 libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c	MEASURED	338	339	218	230
 libs/ra8_jpeg/src/ra8_jpeg_sw_encode.c	MEASURED	203	209	100	106
 libs/ra8_jpeg/src/ra8_jpeg_sw_encode_emit.c	MEASURED	155	155	32	34
 libs/ra8_jpeg/src/ra8_jpeg_sw_stream.c	MEASURED	151	160	76	90
 libs/ra8_keyboard/src/ra8_keyboard.c	MEASURED	137	140	49	53
-libs/ra8_longstrip/src/ra8_longstrip.c	MEASURED	190	207	85	124
 libs/ra8_lsm6dso/src/ra8_lsm6dso.c	MEASURED	143	149	69	92
-libs/ra8_mdl_storage_vfs/src/ra8_mdl_rabook_vfs.c	MEASURED	157	158	95	98
-libs/ra8_mdl_storage_vfs/src/ra8_mdl_storage_vfs.c	MEASURED	317	320	202	216
 libs/ra8_mem/src/ra8_arena.c	MEASURED	35	36	23	24
 libs/ra8_mem/src/ra8_glyph_atlas.c	MEASURED	52	53	20	24
 libs/ra8_mem/src/ra8_keycache.c	MEASURED	241	248	120	142
 libs/ra8_mem/src/ra8_slab.c	MEASURED	61	63	35	38
 libs/ra8_mem/src/ra8_tile_cache.c	MEASURED	144	145	83	85
 libs/ra8_mem/src/ra8_vmem.c	MEASURED	64	66	20	24
-libs/ra8_mem/src/ra8_vmem_stream.c	MEASURED	43	43	22	24
+libs/ra8_mem/src/ra8_vmem_stream.c	MEASURED	45	45	23	24
 libs/ra8_mem/src/ra8_vsource.c	MEASURED	57	63	38	50
 libs/ra8_modem_at/src/ra8_modem_at.c	MEASURED	263	282	166	187
 libs/ra8_mpu/src/ra8_mpu.c	MEASURED	126	127	63	64
-libs/ra8_net_pal/src/ra8_net_pal.c	MEASURED	104	109	50	56
+libs/ra8_net_pal/src/ra8_net_pal.c	MEASURED	103	108	50	56
 libs/ra8_nsc/src/ra8_nsc_cgc.c	MEASURED	7	7	2	2
 libs/ra8_nsc/src/ra8_nsc_comms.c	MEASURED	78	78	41	44
 libs/ra8_nsc/src/ra8_nsc_eth.c	MEASURED	11	11	12	12
@@ -807,51 +862,16 @@ libs/ra8_nsc/src/ra8_nsc_io.c	MEASURED	33	33	14	14
 libs/ra8_nsc/src/ra8_nsc_key_vault.c	MEASURED	4	4	2	4
 libs/ra8_nsc/src/ra8_nsc_log.c	MEASURED	14	14	8	8
 libs/ra8_nsc/src/ra8_nsc_ota.c	MEASURED	6	6	4	4
-libs/ra8_nsc/src/ra8_nsc_periph_init.c	MEASURED	13	13	2	2
+libs/ra8_nsc/src/ra8_nsc_periph_init.c	MEASURED	21	21	10	10
 libs/ra8_nsc/src/ra8_nsc_wdt.c	MEASURED	5	5	0	0
 libs/ra8_nsc/src/ra8_nsc_xspi.c	MEASURED	8	8	8	8
-libs/ra8_ota/src/ra8_ota.c	MEASURED	185	186	82	89
+libs/ra8_ota/src/ra8_ota.c	MEASURED	189	189	85	91
 libs/ra8_ota/src/ra8_ota_parse.c	MEASURED	128	128	97	108
 libs/ra8_ota/src/ra8_ota_verify.c	MEASURED	63	67	30	38
 libs/ra8_ov5640/src/ra8_ov5640.c	MEASURED	183	186	120	128
 libs/ra8_power_profile/src/ra8_power_profile.c	MEASURED	56	56	21	26
 libs/ra8_psa_crypto/src/ra8_psa_crypto.c	MEASURED	190	190	172	172
 libs/ra8_psa_crypto/src/ra8_psa_crypto_fake.c	MEASURED	148	149	58	64
-libs/ra8_rabook_compile/src/ra8_rabook_comic.c	MEASURED	138	141	98	106
-libs/ra8_rabook_compile/src/ra8_rabook_compile.c	MEASURED	222	229	95	106
-libs/ra8_rabook_compile/src/ra8_rabook_container.c	MEASURED	124	128	74	78
-libs/ra8_rabook_compile/src/ra8_rabook_finalize.c	MEASURED	200	209	76	92
-libs/ra8_rabook_compile/src/ra8_rabook_gray4.c	MEASURED	93	94	60	68
-libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	MEASURED	156	163	77	88
-libs/ra8_rabook_compile/src/ra8_rabook_pipeline_fs.c	MEASURED	12	12	8	8
-libs/ra8_rabook_compile/src/ra8_rabook_raster.c	MEASURED	139	143	70	76
-libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.c	MEASURED	191	203	107	120
-libs/ra8_rabook_import/src/ra8_rabook_import.c	MEASURED	221	240	132	180
-libs/ra8_rabook_import/src/ra8_rabook_import_compiler.c	MEASURED	124	125	66	80
-libs/ra8_reflow/src/ra8_img_arena.c	MEASURED	41	41	20	22
-libs/ra8_reflow/src/ra8_reflow_cache.c	MEASURED	183	194	67	78
-libs/ra8_reflow/src/ra8_reflow_css.c	MEASURED	194	204	192	206
-libs/ra8_reflow/src/ra8_reflow_css_cascade.c	MEASURED	221	221	189	194
-libs/ra8_reflow/src/ra8_reflow_css_rules.c	MEASURED	223	229	164	180
-libs/ra8_reflow/src/ra8_reflow_image.c	MEASURED	75	75	36	40
-libs/ra8_reflow/src/ra8_reflow_layout.c	MEASURED	256	276	128	154
-libs/ra8_reflow/src/ra8_reflow_layout_driver.c	MEASURED	159	172	110	120
-libs/ra8_reflow/src/ra8_reflow_layout_image.c	MEASURED	73	79	40	50
-libs/ra8_reflow/src/ra8_reflow_layout_table.c	MEASURED	131	135	69	76
-libs/ra8_reflow/src/ra8_reflow_link.c	MEASURED	78	78	69	78
-libs/ra8_reflow/src/ra8_reflow_parse.c	MEASURED	10	11	7	8
-libs/ra8_reflow/src/ra8_reflow_render.c	MEASURED	171	176	72	82
-libs/ra8_reflow/src/ra8_reflow_svg.c	MEASURED	144	147	147	150
-libs/ra8_reflow/src/ra8_reflow_svg_doc.c	MEASURED	253	260	167	182
-libs/ra8_reflow/src/ra8_reflow_svg_path.c	MEASURED	153	155	85	87
-libs/ra8_reflow/src/ra8_reflow_svg_shape.c	MEASURED	257	262	128	142
-libs/ra8_reflow/src/ra8_reflow_svg_xform.c	MEASURED	149	151	104	107
-libs/ra8_reflow/src/ra8_reflow_tokenize.c	MEASURED	266	289	196	224
-libs/ra8_reflow/src/ra8_reflow_tokenize_attr.c	MEASURED	95	96	78	80
-libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c	MEASURED	169	174	112	120
-libs/ra8_reflow/src/ra8_stbtt_alloc.c	MEASURED	21	21	11	12
-libs/ra8_reflow/src/ra8_stbtt_guard.c	MEASURED	44	45	19	20
-libs/ra8_reflow/v2/ra8_reflow_v2.cpp	UNMEASURED	platform-cross-only
 libs/ra8_sdfont/src/ra8_sdfont.c	UNMEASURED	platform-cross-only
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c	MEASURED	321	323	157	160
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	MEASURED	326	343	186	210
@@ -864,16 +884,8 @@ libs/ra8_tls/src/ra8_tls.c	MEASURED	139	148	87	96
 libs/ra8_touch_cal/src/ra8_touch_cal.c	MEASURED	217	217	94	96
 libs/ra8_tz_secure_boot/src/ra8_tz_secure_boot.c	MEASURED	107	116	35	44
 libs/ra8_ui/src/ra8_ui.c	MEASURED	80	83	59	72
-libs/ra8_unarch/src/ra8_unarch_gzip.c	MEASURED	163	170	98	106
-libs/ra8_unarch/src/ra8_unarch_io.c	MEASURED	16	16	10	10
-libs/ra8_unarch/src/ra8_unarch_tar.c	MEASURED	182	196	107	130
-libs/ra8_unarch/src/ra8_unarch_tar_fields.c	MEASURED	176	179	129	138
-libs/ra8_unarch/src/ra8_unarch_xz.c	MEASURED	134	136	86	88
-libs/ra8_unarch/src/ra8_unarch_xz_pool.c	MEASURED	35	35	18	18
-libs/ra8_usb_pal/src/ra8_usb_pal.c	MEASURED	144	151	86	94
+libs/ra8_usb_pal/src/ra8_usb_pal.c	MEASURED	142	149	86	94
 libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c	MEASURED	137	137	74	82
-libs/ra8_webp/src/ra8_webp.c	MEASURED	46	46	36	36
-libs/ra8_webp/src/ra8_webp_arena.c	MEASURED	40	40	24	24
 libs/ra8_widget/src/ra8_widget.c	MEASURED	125	129	87	98
 libs/ra8_widget/src/ra8_widget_book.c	MEASURED	94	94	39	40
 libs/ra8_widget/src/ra8_widget_button.c	MEASURED	41	41	20	20
@@ -887,38 +899,31 @@ libs/ra8_widget/src/ra8_widget_reflow_view.c	MEASURED	65	65	36	36
 libs/ra8_widget/src/ra8_widget_status_bar.c	MEASURED	38	38	16	16
 libs/ra8_widget/src/ra8_widget_toolbar.c	MEASURED	56	56	22	22
 libs/ra8_wifi/src/ra8_wifi.c	MEASURED	190	192	123	136
-libs/ra8_wifi/src/ra8_wifi_c6link.c	MEASURED	119	119	68	68
-libs/ra8_xml/src/ra8_xml.c	MEASURED	355	371	350	376
-libs/ra8_xml/src/ra8_xml_decode.c	MEASURED	222	241	191	206
-libs/ra8_xml/src/ra8_xml_doctype.c	MEASURED	68	70	92	100
-libs/ra8_zoom/src/ra8_zoom.c	MEASURED	270	273	148	155
-libs/ra8_zoom/src/ra8_zoom_book.c	MEASURED	27	27	23	24
-libs/ra8_zoom/src/ra8_zoom_render.c	MEASURED	60	60	38	40
-libs/ra8_zoom/src/ra8_zoom_tiles.c	MEASURED	93	93	68	72
+libs/ra8_wifi/src/ra8_wifi_c6link.c	MEASURED	122	122	68	68
 port/esp-hosted/src/ra8_esp_hosted_c6link.c	UNMEASURED	platform-cross-only
-port/esp-hosted/src/ra8_esp_hosted_fmt.c	MEASURED	171	176	126	134
-port/esp-hosted/src/ra8_esp_hosted_gpio.c	MEASURED	124	134	67	82
+port/esp-hosted/src/ra8_esp_hosted_fmt.c	MEASURED	170	174	124	130
+port/esp-hosted/src/ra8_esp_hosted_gpio.c	MEASURED	124	133	67	78
 port/esp-hosted/src/ra8_esp_hosted_gpio_edge.c	MEASURED	97	111	56	64
 port/esp-hosted/src/ra8_esp_hosted_log.c	MEASURED	62	66	39	44
 port/esp-hosted/src/ra8_esp_hosted_osi.c	MEASURED	88	91	27	34
 port/esp-hosted/src/ra8_esp_hosted_osi_absent.c	MEASURED	85	85	64	64
 port/esp-hosted/src/ra8_esp_hosted_pins.c	MEASURED	6	6	4	4
 port/esp-hosted/src/ra8_esp_hosted_port.c	MEASURED	38	87	32	56
-port/esp-hosted/src/ra8_esp_hosted_rtos.c	MEASURED	195	206	123	140
+port/esp-hosted/src/ra8_esp_hosted_rtos.c	MEASURED	198	208	121	132
 port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c	MEASURED	201	225	117	138
-port/esp-hosted/src/ra8_esp_hosted_rtos_sync.c	MEASURED	87	95	52	60
+port/esp-hosted/src/ra8_esp_hosted_rtos_sync.c	MEASURED	87	95	53	60
 port/esp-hosted/src/ra8_esp_hosted_spi.c	MEASURED	89	100	48	60
-port/esp32_c6/src/mdl_service.c	MEASURED	235	254	141	164
+port/esp32_c6/src/mdl_service.c	MEASURED	236	255	136	154
 port/levelx/src/lx_fs_backend.c	MEASURED	53	55	35	38
 port/levelx/src/lx_nor_driver_ra8_xspi.c	UNMEASURED	platform-cross-only
 port/netxduo/src/nx_ether_driver_c6.c	UNMEASURED	platform-cross-only
 port/netxduo/src/nx_ether_driver_ra8_eth.c	UNMEASURED	platform-cross-only
 port/nimble/src/ble_hci_ra8_ble.c	UNMEASURED	platform-cross-only
 port/nimble/src/nimble_npl_threadx.c	UNMEASURED	platform-cross-only
-port/posix/src/fw_if_fs_posix.c	MEASURED	352	422	155	226
-port/posix/src/fw_if_fs_posix_bind.c	MEASURED	34	45	12	24
-port/posix/src/fw_if_fs_posix_common.c	MEASURED	177	211	81	110
-port/posix/src/fw_if_fs_posix_stream.c	MEASURED	78	101	28	48
+port/posix/src/fw_if_fs_posix.c	MEASURED	361	421	158	226
+port/posix/src/fw_if_fs_posix_bind.c	MEASURED	159	168	77	88
+port/posix/src/fw_if_fs_posix_common.c	MEASURED	237	270	118	146
+port/posix/src/fw_if_fs_posix_stream.c	MEASURED	80	98	29	48
 port/posix/src/ra8_io_stream_posix.c	MEASURED	62	63	53	54
 port/usbx/src/ux_dcd_ra8_usb.c	UNMEASURED	platform-cross-only
 port/usbx/src/ux_dcd_ra8_usb_dvst.c	UNMEASURED	platform-cross-only
@@ -930,23 +935,23 @@ port/usbx/src/ux_dcd_ra8_usb_setup.c	UNMEASURED	platform-cross-only
 port/usbx/src/ux_dcd_ra8_usb_xfer.c	UNMEASURED	platform-cross-only
 port/usbx/src/ux_device_class_storage_inquiry.c	UNMEASURED	platform-cross-only
 port/usbx/src/ux_hcd_ra8_usb.c	UNMEASURED	platform-cross-only
-tools/cache_bench/cache_bench.c	UNMEASURED	hosted-no-coverage-build
-tools/cache_bench/cache_bench_host.c	UNMEASURED	hosted-no-coverage-build
-tools/cache_bench/cache_bench_io.c	UNMEASURED	hosted-no-coverage-build
-tools/cache_bench/cache_bench_report.c	UNMEASURED	hosted-no-coverage-build
-tools/cache_bench/policies.c	UNMEASURED	hosted-no-coverage-build
-tools/cache_bench/policy_scanresist.c	UNMEASURED	hosted-no-coverage-build
-tools/cache_bench/sweep_block.c	UNMEASURED	hosted-no-coverage-build
-tools/cache_bench/sweep_block_backends.c	UNMEASURED	hosted-no-coverage-build
-tools/cache_bench/sweep_block_payload.c	UNMEASURED	hosted-no-coverage-build
-tools/cache_bench/sweep_block_report.c	UNMEASURED	hosted-no-coverage-build
-tools/cache_bench/trace.c	UNMEASURED	hosted-no-coverage-build
-tools/exfat_mkimage/exfat_mkimage.c	UNMEASURED	hosted-no-coverage-build
-tools/glyph_bench/glyph_bench.c	UNMEASURED	hosted-no-coverage-build
-tools/mkbookimg/mkbookimg.c	UNMEASURED	hosted-no-coverage-build
-tools/mkbookimg/mkbookimg_books.c	UNMEASURED	hosted-no-coverage-build
-tools/mkfontimg/mkfontimg.c	UNMEASURED	hosted-no-coverage-build
-tools/mkfontimg/mkfontimg_host.c	UNMEASURED	hosted-no-coverage-build
+tools/cache_bench/src/cache_bench.c	UNMEASURED	hosted-no-coverage-build
+tools/cache_bench/src/cache_bench_host.c	UNMEASURED	hosted-no-coverage-build
+tools/cache_bench/src/cache_bench_io.c	UNMEASURED	hosted-no-coverage-build
+tools/cache_bench/src/cache_bench_report.c	UNMEASURED	hosted-no-coverage-build
+tools/cache_bench/src/policies.c	UNMEASURED	hosted-no-coverage-build
+tools/cache_bench/src/policy_scanresist.c	UNMEASURED	hosted-no-coverage-build
+tools/cache_bench/src/sweep_block.c	UNMEASURED	hosted-no-coverage-build
+tools/cache_bench/src/sweep_block_backends.c	UNMEASURED	hosted-no-coverage-build
+tools/cache_bench/src/sweep_block_payload.c	UNMEASURED	hosted-no-coverage-build
+tools/cache_bench/src/sweep_block_report.c	UNMEASURED	hosted-no-coverage-build
+tools/cache_bench/src/trace.c	UNMEASURED	hosted-no-coverage-build
+tools/exfat_mkimage/src/exfat_mkimage.c	UNMEASURED	hosted-no-coverage-build
+tools/glyph_bench/src/glyph_bench.c	UNMEASURED	hosted-no-coverage-build
+tools/mkbookimg/src/mkbookimg.c	UNMEASURED	hosted-no-coverage-build
+tools/mkbookimg/src/mkbookimg_books.c	UNMEASURED	hosted-no-coverage-build
+tools/mkfontimg/src/mkfontimg.c	UNMEASURED	hosted-no-coverage-build
+tools/mkfontimg/src/mkfontimg_host.c	UNMEASURED	hosted-no-coverage-build
 tools/ra8_emulator/src/display/board_overlay.c	UNMEASURED	hosted-no-coverage-build
 tools/ra8_emulator/src/display/board_overlay_draw.c	UNMEASURED	hosted-no-coverage-build
 tools/ra8_emulator/src/display/board_view_pixels.c	UNMEASURED	hosted-no-coverage-build
@@ -1061,6 +1066,6 @@ tools/rabook_viewer/src/ra8_viewer_output.c	UNMEASURED	hosted-no-coverage-build
 tools/rabook_viewer/src/ra8_viewer_ppm.c	UNMEASURED	hosted-no-coverage-build
 tools/rabook_viewer/src/ra8_viewer_reader.c	UNMEASURED	hosted-no-coverage-build
 tools/rabook_viewer/src/ra8_viewer_view_stub.c	UNMEASURED	hosted-no-coverage-build
-tools/reader_vmem/reader_vmem.c	UNMEASURED	hosted-no-coverage-build
-tools/reader_vmem/reader_vmem_host.c	UNMEASURED	hosted-no-coverage-build
-tools/reader_vmem/reader_vmem_workspace.c	UNMEASURED	hosted-no-coverage-build
+tools/reader_vmem/src/reader_vmem.c	UNMEASURED	hosted-no-coverage-build
+tools/reader_vmem/src/reader_vmem_host.c	UNMEASURED	hosted-no-coverage-build
+tools/reader_vmem/src/reader_vmem_workspace.c	UNMEASURED	hosted-no-coverage-build

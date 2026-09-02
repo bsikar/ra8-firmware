@@ -27,6 +27,7 @@ Run::
 
     check_header_file_placement.py                    # scan the whole tree
     check_header_file_placement.py path/to/file.h ... # scan listed files
+    check_header_file_placement.py --selftest         # prove both directions
 
 Exit 0 if every ``src/`` header is ``*_internal``, exit 1 (with a table)
 otherwise.
@@ -34,7 +35,9 @@ otherwise.
 
 from __future__ import annotations
 
+import argparse
 import sys
+import tempfile
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -45,15 +48,19 @@ from lint_targets import is_build_output_path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 HEADER_SUFFIXES = (".h", ".hpp", ".hh", ".hxx")
-SCAN_ROOTS = ("libs", "port", "examples", "tools", "apps")
+SCAN_ROOTS = ("libs", "port", "examples", "tools", "apps", "tests")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
+    "apps/shared_libs/third_party/",
+    # Generated font tables are data artifacts, not hand-authored module interfaces.
     "libs/ra8_fonts/",
-    "port/threadx/",
 )
 
 # The suffix that marks a src/ header as intentionally module-private.
 INTERNAL_STEM_SUFFIX = "_internal"
+
+# A whole-tree pass below this measured population has lost scope and must fail.
+MIN_PRIVATE_HEADERS = 100
 
 
 def _is_excluded(path: Path) -> bool:
@@ -117,6 +124,76 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
     return [p for p in out if not _is_excluded(p)]
 
 
+def _audit_targets(targets: Iterable[Path]) -> tuple[int, list[str]]:
+    """Return the private-header count and misplaced relative paths."""
+    scanned = 0
+    offenders: list[str] = []
+    for path in targets:
+        if not _under_src(path):
+            continue
+        scanned += 1
+        if not _is_internal(path):
+            offenders.append(_rel(path))
+    return scanned, sorted(offenders)
+
+
+def _whole_tree_census_ok(scanned: int, *, explicit_paths: bool) -> bool:
+    """Return whether the private-header census is non-vacuous for this mode."""
+    return explicit_paths or scanned >= MIN_PRIVATE_HEADERS
+
+
+def selftest() -> int:
+    """Prove private/public placement fires and stays quiet without scope leaks."""
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory(prefix="ra8-header-placement-") as temp:
+        root = Path(temp)
+        good = root / "tests/module/src/widget_internal.h"
+        bad = root / "tests/module/src/widget.h"
+        nested_public = root / "tests/module/src/sub/inc/public.h"
+        vendor = root / "libs/third_party/vendor/src/public.h"
+        app_vendor = root / "apps/shared_libs/third_party/vendor/src/public.h"
+        generated_font = root / "libs/ra8_fonts/src/generated.h"
+        build = root / "CMakeFiles/src/generated.h"
+        for path in (good, bad, nested_public, vendor, app_vendor, generated_font, build):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("#pragma once\n", encoding="ascii")
+        targets = _enumerate_targets([str(root)])
+        scanned, offenders = _audit_targets(targets)
+        expected_scanned = len((good, bad))
+        if scanned != expected_scanned or offenders != [str(bad)]:
+            failures.append(
+                f"mixed fixture scanned={scanned}, offenders={offenders!r}; expected bad only"
+            )
+        quiet_scanned, quiet = _audit_targets([good, nested_public])
+        if quiet_scanned != 1 or quiet:
+            failures.append("private _internal.h or nearest nested inc/ did not stay quiet")
+        excluded = {vendor, app_vendor, generated_font, build}
+        if excluded & set(targets):
+            failures.append("vendor, generated-font, or build exclusion leaked into the scan")
+        if not _is_excluded(Path("tests/module/build/src/generated.h")):
+            failures.append("tests/ build-tree output is not excluded")
+        if "tests" not in SCAN_ROOTS:
+            failures.append("tests/ is absent from the repository-wide scan roots")
+        if _whole_tree_census_ok(MIN_PRIVATE_HEADERS - 1, explicit_paths=False):
+            failures.append("collapsed whole-tree private-header census did not fail")
+        if not _whole_tree_census_ok(0, explicit_paths=True):
+            failures.append("explicit-file mode incorrectly requires the whole-tree floor")
+    if failures:
+        for failure in failures:
+            print(f"  [FAIL] {failure}", file=sys.stderr)
+        return 1
+    print("check_header_file_placement.py --selftest: PASS (fire, quiet, tests, exclusions)")
+    return 0
+
+
+def _parse_args(argv: list[str]) -> argparse.Namespace:
+    """Parse the CLI so misspelled options fail instead of becoming paths."""
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--selftest", action="store_true")
+    parser.add_argument("paths", nargs="*")
+    return parser.parse_args(argv[1:])
+
+
 def main(argv: list[str]) -> int:
     """Fail any header under a ``src/`` directory not named ``*_internal.h``.
 
@@ -128,19 +205,25 @@ def main(argv: list[str]) -> int:
     Returns 1 listing each misplaced header, 0 when every src/ header is
     module-private or when nothing in scope reached the filter.
     """
-    targets = _enumerate_targets(argv[1:])
-    if not targets:
+    args = _parse_args(argv)
+    if args.selftest:
+        if args.paths:
+            print("--selftest does not accept paths", file=sys.stderr)
+            return 2
+        return selftest()
+    targets = _enumerate_targets(args.paths)
+    if not targets and args.paths:
         print("check_header_file_placement.py: no headers to scan", file=sys.stderr)
         return 0
 
-    scanned = 0
-    offenders = []
-    for path in targets:
-        if not _under_src(path):
-            continue
-        scanned += 1
-        if not _is_internal(path):
-            offenders.append(_rel(path))
+    scanned, offenders = _audit_targets(targets)
+    if not _whole_tree_census_ok(scanned, explicit_paths=bool(args.paths)):
+        print(
+            "check_header_file_placement.py: whole-tree scan reached only "
+            f"{scanned} private header(s), below floor {MIN_PRIVATE_HEADERS}",
+            file=sys.stderr,
+        )
+        return 1
 
     if not offenders:
         print(
@@ -149,7 +232,6 @@ def main(argv: list[str]) -> int:
         )
         return 0
 
-    offenders.sort()
     print(
         f"check_header_file_placement.py: {len(offenders)} src/ header(s) are not *_internal.h:\n",
         file=sys.stderr,

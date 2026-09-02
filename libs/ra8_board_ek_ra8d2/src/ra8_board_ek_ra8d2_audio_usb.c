@@ -138,7 +138,6 @@ RA8_INTERNAL static ra8_err_t internal_audio_route_pins(void)
     ra8_port_pin_t pin;   /**< Pin.   */
     ra8_psel_t     psel;  /**< Psel.  */
     const char*    owner; /**< Owner. */
-    /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   } routes[] = {
     {(ra8_port_pin_t)k_ra8_board_audio_pin_bclk, k_ra8_psel_ssie, "ra8_board.audio.bclk"},
     {(ra8_port_pin_t)k_ra8_board_audio_pin_wclk, k_ra8_psel_ssie, "ra8_board.audio.wclk"},
@@ -147,7 +146,6 @@ RA8_INTERNAL static ra8_err_t internal_audio_route_pins(void)
     {(ra8_port_pin_t)k_ra8_board_audio_pin_i2c_sda, k_ra8_psel_iic, "ra8_board.audio.i2c.sda"},
     {(ra8_port_pin_t)k_ra8_board_audio_pin_i2c_scl, k_ra8_psel_iic, "ra8_board.audio.i2c.scl"},
   };
-  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   for (uint32_t i = 0U; i < sizeof(routes) / sizeof(routes[0]); ++i) {
     const ra8_err_t err = ra8_pfs_route_peripheral(routes[i].pin, routes[i].psel, routes[i].owner);
     if (err != k_ra8_ok) {
@@ -207,7 +205,6 @@ ra8_err_t ra8_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8
   if (sample_rate_hz == 0U) {
     return k_ra8_err_invalid_arg;
   }
-  // mcdc-deactivated: ra8_board_audio_init channel-validation guard; both conditions are exercised independently by tests/test_ra8_board_audio_validation, but llvm-cov gates require an N+1 vector that holds one condition true while the other is false -- only the all-valid (mono/stereo) inputs are reachable in production wiring.
   if (channels != (uint8_t)k_ra8_audio_channels_mono &&
       channels != (uint8_t)k_ra8_audio_channels_stereo) {
     return k_ra8_err_invalid_arg;
@@ -256,15 +253,14 @@ ra8_err_t ra8_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
    * cast-align by going int16_t* -> uint32_t* directly. The caller
    * contract requires ``buf`` to be 32-bit aligned (one stereo frame
    * naturally aligns); see ra8_board_audio_play_sample_block docs. */
-  const uint32_t        words  = len / (uint32_t)k_ra8_audio_samples_per_word;
-  const uintptr_t       addr   = (uintptr_t)buf;
-  const uint32_t* const packed = (const uint32_t*)
-    addr; /* NOLINT(performance-no-int-to-ptr) -- alignment-safe reinterpret documented above. */
-  uint16_t        written = 0U;
-  const ra8_err_t err     = ra8_ssie_write_buffer((uint8_t)k_ra8_board_audio_ssie_channel,
-                                                  packed,
-                                                  (uint16_t)words,
-                                                  &written);
+  const uint32_t        words   = len / (uint32_t)k_ra8_audio_samples_per_word;
+  const uintptr_t       addr    = (uintptr_t)buf;
+  const uint32_t* const packed  = (const uint32_t*)addr;
+  uint16_t              written = 0U;
+  const ra8_err_t       err     = ra8_ssie_write_buffer((uint8_t)k_ra8_board_audio_ssie_channel,
+                                                        packed,
+                                                        (uint16_t)words,
+                                                        &written);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -903,12 +899,10 @@ RA8_INTERNAL static ra8_err_t internal_usbhs_role_select_device(void)
    * pins, so any other packed value lands outside the enumerator set
    * and trips clang-analyzer EnumCastOutOfRange; suppress in the same
    * pattern used elsewhere in this file for board-specific pins. */
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t pd07 = (ra8_port_pin_t)RA8_PIN(k_ra8_port_13, k_ra8_pin_7);
-  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
-  const ra8_err_t err    = ra8_gpio_output_init(pd07, k_ra8_level_low);
-  g_usbhs_role_pin_err   = (uint32_t)err;
-  g_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_post_init;
+  const ra8_err_t      err  = ra8_gpio_output_init(pd07, k_ra8_level_low);
+  g_usbhs_role_pin_err      = (uint32_t)err;
+  g_usbhs_role_pin_probe    = (uint32_t)k_usbhs_role_probe_post_init;
   if (err == k_ra8_ok) {
     g_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_success;
   }

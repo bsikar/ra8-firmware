@@ -42,7 +42,10 @@ from line_citation_lex import (
 )
 from line_citation_lex import is_in_scope as _lex_in_scope
 
-EXCLUDE_PREFIXES = ("libs/third_party/",)
+EXCLUDE_PREFIXES = (
+    "libs/third_party/",
+    "apps/shared_libs/third_party/",
+)
 
 
 # Heuristic: a function definition has a return type, name, params, and
@@ -155,9 +158,11 @@ def _rows_for_file(repo_root: Path, rel: str) -> Iterator[list[object]]:
     for start, end in find_comment_spans(text) + find_mcdc_reason_spans(text):
         for m in CITATION_RE.finditer(text[start:end]):
             line_no = line_of_offset(text, start + m.start())
+            abs_off = start + m.start()
             matched = m.group(0)
             line = lines[line_no - 1] if 1 <= line_no <= len(lines) else ""
-            if is_exempt(matched, line):
+            line_start = text.rfind("\n", 0, abs_off) + 1
+            if is_exempt(matched, line, abs_off - line_start):
                 continue
             if (line_no, matched) in seen:
                 continue

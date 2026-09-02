@@ -33,5 +33,5 @@ ra8_add_app(
   NAME ereader_svg
   STACK_BYTES 32768
   DESCRIPTION "Headless zero-heap PNG decode+scale+blit -> framebuffer CRC over UART (#106 HIL)"
-  LIBS ra8_gfx ra8_reflow ra8_board_ek_ra8d2
+  LIBS ra8_gfx reflow ra8_board_ek_ra8d2
 )

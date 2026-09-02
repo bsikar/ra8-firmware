@@ -14,8 +14,9 @@ and a display app shows its screen next to that state. Because it runs the
 actual cross-compiled binary through the genuine bring-up path, what you see is
 what the flashed firmware draws.
 
-`make emu-<app>` from the repo root builds an app and opens it; `--help` covers
-the rest. The live window is a macOS Cocoa window (`make emu-setup` provisions
+`just apps::emulator::run <app>` from the repo root builds an app and opens it;
+`--help` covers the rest. The live window is a macOS Cocoa window
+(`just apps::emulator::setup` provisions
 the toolchain and dependencies); every other path -- headless boot, the MMIO
 report, frame capture, console capture -- builds and runs headless on Linux
 too, which is what lets the emulator gates run on a Linux CI runner.
@@ -47,9 +48,11 @@ The NPU is modelled **honestly but not implemented**: the window is mapped so
 NPU-touching firmware does not spin on a phantom ready bit, every read returns a
 stable zero -- no fabricated identity register, no faked done bit, an inference
 is never pretended -- writes are recorded, and the end-of-run report prints a
-`MAPPED BUT UNMODELLED` line with the access tally whenever it was touched. A
-real command-stream model is follow-up work (#222). On the RA8D2 profile the
-block is gated off entirely, so that run is byte-for-behaviour unchanged.
+`MAPPED BUT UNMODELLED` line with the access tally whenever it was touched.
+Closed issue #222 delivered this honest RA8P1 profile and mapped stub; a real
+command-stream model remains under the open emulator-fidelity epic #67. On the
+RA8D2 profile the block is gated off entirely, so that run is
+byte-for-behaviour unchanged.
 
 ## How it works
 

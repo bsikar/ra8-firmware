@@ -5,8 +5,8 @@
 
 WHY THIS EXISTS
 ===============
-``make ci`` boots a locally-built image tagged ``ra8-ci:latest``.  #521 made
-that image a pure function of ``.devcontainer/`` -- it carries its build
+``just ci`` boots a locally-built image tagged ``ra8-ci:latest``.  #521 made
+that image a pure function of its allowlisted build context -- it carries the
 context's sha256 as an OCI label, and ``scripts/ci/devcontainer_image.sh`` is
 the ONE thing that builds it, rebuilding rather than reusing a cached image
 whose label disagrees with the tree.  That guarantee holds only while
@@ -25,7 +25,8 @@ WHAT IT FORBIDS, PRECISELY
 A container-image BUILD (``docker build`` / ``podman build`` /
 ``buildah bud`` / the ``"${RUNTIME[@]}" build`` array form) whose ``-t`` / ``--tag``
 target names the ``ra8-ci`` image, in any first-party file under ``scripts/``,
-``infra/`` or ``.github/`` OTHER than ``scripts/ci/devcontainer_image.sh``.
+``infra/``, ``.github/`` or ``just/`` OTHER than
+``scripts/ci/devcontainer_image.sh``.
 
 Naming it precisely matters, because ``ra8-ci`` is also a runner LABEL
 (``runs-on: ra8-ci``), a filesystem PATH (``/var/lib/ra8-ci/``) and a scale-set
@@ -38,8 +39,11 @@ build invocation AND a tag argument, not on the string appearing:
     ``IMAGE_TAG="${RA8_CI_IMAGE:-ra8-ci:latest}"`` then ``-t "$IMAGE_TAG"``).
   * ``ra8-ci-runner:v2`` and ``ra8-devcontainer:latest`` do NOT match -- the
     ``ci_runner`` role builds those and is a different, legitimate subject.
-  * ``ra8-firmware-test:latest`` (the coverage/mcdc report images) does NOT
-    match.
+  * The retired ``ra8-firmware-dev`` and ``ra8-firmware-test`` tags are
+    forbidden even on a run-only command: either one would recreate a second,
+    unversioned developer image beside the digest-labelled ``ra8-ci`` image.
+  * Any other direct build from ``.devcontainer/Dockerfile`` is forbidden
+    outside the deployed runner-image role. A new tag cannot evade the rule.
 
 SCOPE, HONESTLY
 ---------------
@@ -80,8 +84,17 @@ SOLE_BUILDER = "scripts/ci/devcontainer_image.sh"
 # The fixtures are exercised through the temp-dir selftest, so nothing is lost.
 SELF = "scripts/checks/check_ci_image_single_builder.py"
 
-# The three trees a builder could hide in. Markdown is deliberately not here.
-SCOPE_DIRS = ("scripts/", "infra/", ".github/")
+# The four trees a builder could hide in. Markdown is deliberately not here.
+SCOPE_DIRS = ("scripts/", "infra/", ".github/", "just/")
+SCOPE_FILES = frozenset({"justfile"})
+
+# Vendored SOUP is governed by its upstream boundary, never by this checker.
+THIRD_PARTY_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/")
+
+# The deployed Actions runner intentionally layers its own image from the same
+# context. It is provisioned infrastructure rather than a developer image and
+# carries a separately checked contract.
+DEPLOYED_RUNNER_BUILDER = "infra/ansible/roles/ci_runner/tasks/main.yml"
 
 # A build verb: docker/podman [buildx] build, buildah bud, or a runtime taken
 # from a shell array/variable (``"${RUNTIME[@]}" build``) as devcontainer_image
@@ -105,6 +118,8 @@ VARREF_RE = re.compile(r"\$\{?(?P<var>[A-Za-z_]\w*)(?::-(?P<default>[^}]*))?\}?"
 # ``ra8-ci-runner`` and ``ra8-devcontainer`` do not match but a registry
 # prefix (``localhost/ra8-ci``) does.
 CI_IMAGE_RE = re.compile(r"(?:^|/)ra8-ci(?::|$)")
+LEGACY_DEV_IMAGE_RE = re.compile(r"(?<![\w-])ra8-firmware-(?:dev|test)(?::|\b)")
+DEVCONTAINER_CONTEXT_RE = re.compile(r"(?<![\w.])\.devcontainer(?:[/\"'\s]|$)")
 
 # A ``cmd:``/``run:``/``shell:``/``script:`` YAML block scalar opener.
 BLOCK_KEY_RE = re.compile(
@@ -247,13 +262,38 @@ def ci_tags_built(text: str) -> list[str]:
     return hits
 
 
+def legacy_dev_images(text: str) -> list[str]:
+    """Retired developer image names in active commands or assignments."""
+    commands = "\n".join(logical_commands(text))
+    return sorted(set(LEGACY_DEV_IMAGE_RE.findall(commands)))
+
+
+def builds_devcontainer_context(text: str) -> bool:
+    """Whether a build command names the repository devcontainer context."""
+    assignments = collect_assignments(text)
+    context_vars = {
+        name
+        for name, value in assignments.items()
+        if DEVCONTAINER_CONTEXT_RE.search(resolve(value, assignments))
+        or DEVCONTAINER_CONTEXT_RE.search(value)
+    }
+    for command in logical_commands(text):
+        if not BUILD_RE.search(command):
+            continue
+        if DEVCONTAINER_CONTEXT_RE.search(command):
+            return True
+        if any(re.search(rf"\$\{{?{re.escape(name)}(?:\}}|\b)", command) for name in context_vars):
+            return True
+    return False
+
+
 def in_scope(rel: str) -> bool:
     """True for a first-party non-Markdown file under one of the scope dirs."""
     return (
-        rel.startswith(SCOPE_DIRS)
+        (rel.startswith(SCOPE_DIRS) or rel in SCOPE_FILES)
         and not rel.endswith(".md")
         and rel != SELF
-        and not rel.startswith("libs/third_party/")
+        and not rel.startswith(THIRD_PARTY_PREFIXES)
     )
 
 
@@ -281,6 +321,33 @@ def find_builders(root: Path, rels: list[str]) -> dict[str, list[str]]:
         if tags:
             builders[rel] = tags
     return builders
+
+
+def find_context_builders(root: Path, rels: list[str]) -> list[str]:
+    """Files directly building the repository devcontainer context."""
+    hits: list[str] = []
+    for rel in rels:
+        try:
+            text = (root / rel).read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        if builds_devcontainer_context(text):
+            hits.append(rel)
+    return sorted(hits)
+
+
+def find_legacy_images(root: Path, rels: list[str]) -> dict[str, list[str]]:
+    """Map files still naming a retired developer image."""
+    hits: dict[str, list[str]] = {}
+    for rel in rels:
+        try:
+            text = (root / rel).read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        names = legacy_dev_images(text)
+        if names:
+            hits[rel] = names
+    return hits
 
 
 # --------------------------------------------------------------------------
@@ -329,17 +396,26 @@ OK_RUNNER = (
     "      -f ctx/runner/Dockerfile ctx/runner\n"
 )
 
-# A different image tag entirely (the coverage/mcdc report images).
+# A different image tag and context entirely is unrelated.
 OK_OTHER_TAG = (
-    'IMAGE_TAG="ra8-firmware-test:latest"\n'
-    'docker build -t "$IMAGE_TAG" -f .devcontainer/Dockerfile .devcontainer\n'
+    'IMAGE_TAG="ra8-firmware-docs:latest"\n'
+    'docker build -t "$IMAGE_TAG" -f docs/container/Dockerfile docs/container\n'
+)
+
+BAD_LEGACY_RUN = "docker run --rm ra8-firmware-dev:latest just tests::build\n"
+BAD_OTHER_CONTEXT_TAG = (
+    "docker build -t local-dev:latest -f .devcontainer/Dockerfile .devcontainer\n"
+)
+BAD_INDIRECT_CONTEXT = (
+    'CONTEXT_DIR="$REPO_ROOT/.devcontainer"\n'
+    'docker build -t local-dev:latest -f "$CONTEXT_DIR/Dockerfile" "$CONTEXT_DIR"\n'
 )
 
 # ra8-ci as a runner label and a path -- no build at all.
 OK_LABEL_PATH = "runs-on: ra8-ci\nlabels: [ra8-ci]\ndir: /var/lib/ra8-ci/build-context\n"
 
 # Uses (not builds) the image, and the -t there is a tty flag, not a tag.
-OK_RUN_ONLY = "docker run -t ra8-ci:latest make ci\n"
+OK_RUN_ONLY = "docker run -t ra8-ci:latest just ci\n"
 
 
 # Each case: (should the detector fire?, fixture text, assertion label).
@@ -349,7 +425,7 @@ _DETECTION_CASES = (
     (True, BAD_INDIRECT, "a variable-indirected ra8-ci build is detected"),
     (True, BAD_ANSIBLE, "a folded-YAML buildah bud of ra8-ci is detected"),
     (False, OK_RUNNER, "the ci_runner Jinja-var build is NOT flagged"),
-    (False, OK_OTHER_TAG, "a ra8-firmware-test build is NOT flagged"),
+    (False, OK_OTHER_TAG, "an unrelated image build is NOT flagged"),
     (False, OK_LABEL_PATH, "ra8-ci as a label/path is NOT flagged"),
     (False, OK_RUN_ONLY, "'docker run -t ra8-ci' (run, not build) is NOT flagged"),
 )
@@ -359,6 +435,31 @@ def _selftest_detection(failures: list[str]) -> None:
     """Assert ci_tags_built fires and stays quiet on the right inputs."""
     for should_fire, text, label in _DETECTION_CASES:
         expect(bool(ci_tags_built(text)) is should_fire, label, failures)
+    expect(
+        bool(legacy_dev_images(BAD_LEGACY_RUN)),
+        "a retired developer image is detected even on run-only use",
+        failures,
+    )
+    expect(
+        not legacy_dev_images(OK_RUN_ONLY),
+        "the canonical ra8-ci run is not a retired-image finding",
+        failures,
+    )
+    expect(
+        builds_devcontainer_context(BAD_OTHER_CONTEXT_TAG),
+        "a differently-tagged devcontainer build is detected",
+        failures,
+    )
+    expect(
+        builds_devcontainer_context(BAD_INDIRECT_CONTEXT),
+        "a variable-indirected devcontainer context is detected",
+        failures,
+    )
+    expect(
+        not builds_devcontainer_context(OK_OTHER_TAG),
+        "an unrelated image context stays out of scope",
+        failures,
+    )
 
 
 def _selftest_end_to_end(failures: list[str]) -> None:
@@ -392,6 +493,29 @@ def _selftest_end_to_end(failures: list[str]) -> None:
         )
 
 
+def _selftest_extended_end_to_end(failures: list[str]) -> None:
+    """Assert context/tag regressions are reported over a synthetic tree."""
+    context_rel = "just/devcontainer.just"  # PATHREF-OK: selftest fixture path
+    legacy_rel = "scripts/ci/old-wrapper.sh"  # PATHREF-OK: selftest fixture path
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "just").mkdir()
+        (root / "scripts/ci").mkdir(parents=True)
+        (root / context_rel).write_text(BAD_OTHER_CONTEXT_TAG, encoding="utf-8")
+        (root / legacy_rel).write_text(BAD_LEGACY_RUN, encoding="utf-8")
+        rels = [context_rel, legacy_rel]
+        expect(
+            find_context_builders(root, rels) == [context_rel],
+            "a second devcontainer-context builder is reported",
+            failures,
+        )
+        expect(
+            sorted(find_legacy_images(root, rels)) == [legacy_rel],
+            "a retired developer image use is reported",
+            failures,
+        )
+
+
 def _selftest_floor_on_real_tree(failures: list[str]) -> None:
     """The real tree must still contain the sole builder -- the non-vacuity floor."""
     resolved = True
@@ -404,12 +528,22 @@ def _selftest_floor_on_real_tree(failures: list[str]) -> None:
         return
     builders = find_builders(root, scoped_files(root))
     offenders = sorted(set(builders) - {SOLE_BUILDER})
+    context_builders = find_context_builders(root, scoped_files(root))
+    allowed_context_builders = {SOLE_BUILDER, DEPLOYED_RUNNER_BUILDER}
+    context_offenders = sorted(set(context_builders) - allowed_context_builders)
+    legacy = find_legacy_images(root, scoped_files(root))
     expect(
         SOLE_BUILDER in builders,
         f"the real tree still detects {SOLE_BUILDER} as the builder",
         failures,
     )
     expect(not offenders, f"the real tree has no second builder (saw {offenders})", failures)
+    expect(
+        not context_offenders,
+        f"the real tree has no second devcontainer-context builder (saw {context_offenders})",
+        failures,
+    )
+    expect(not legacy, f"the real tree has no retired developer image tag (saw {legacy})", failures)
 
 
 def selftest() -> int:
@@ -418,8 +552,34 @@ def selftest() -> int:
     failures: list[str] = []
     _selftest_detection(failures)
     _selftest_end_to_end(failures)
+    _selftest_extended_end_to_end(failures)
     _selftest_floor_on_real_tree(failures)
     return report(failures)
+
+
+def report_extended_violations(root: Path, rels: list[str]) -> bool:
+    """Report direct context builders and retired developer image names."""
+    failed = False
+    context_builders = find_context_builders(root, rels)
+    allowed_context_builders = {SOLE_BUILDER, DEPLOYED_RUNNER_BUILDER}
+    context_offenders = sorted(set(context_builders) - allowed_context_builders)
+    for rel in context_offenders:
+        print(
+            f"  {rel}: directly builds .devcontainer under a second image contract",
+            file=sys.stderr,
+        )
+        failed = True
+    legacy = find_legacy_images(root, rels)
+    for rel, names in sorted(legacy.items()):
+        print(f"  {rel}: uses retired developer image {' '.join(names)}", file=sys.stderr)
+        failed = True
+    if failed:
+        print(
+            f"Route writable developer runs through scripts/ci/devcontainer_run.sh;\n"
+            f"only {SOLE_BUILDER} may build its digest-labelled image.",
+            file=sys.stderr,
+        )
+    return failed
 
 
 def main(argv: list[str]) -> int:
@@ -433,7 +593,8 @@ def main(argv: list[str]) -> int:
         return selftest()
 
     root = _repo_root()
-    builders = find_builders(root, scoped_files(root))
+    rels = scoped_files(root)
+    builders = find_builders(root, rels)
 
     if args.list:
         for rel in sorted(builders):
@@ -470,7 +631,13 @@ def main(argv: list[str]) -> int:
         )
         return 1
 
-    print(f"check_ci_image_single_builder.py: {SOLE_BUILDER} is the only ra8-ci builder.")
+    if report_extended_violations(root, rels):
+        return 1
+
+    print(
+        "check_ci_image_single_builder.py: one digest-labelled developer image; "
+        f"{SOLE_BUILDER} is its only builder."
+    )
     return 0
 
 

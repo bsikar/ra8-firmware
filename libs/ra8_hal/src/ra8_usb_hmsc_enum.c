@@ -121,7 +121,7 @@ static ra8_err_t internal_enum_read_dev_desc(uint8_t* desc)
                                                   desc,
                                                   (uint16_t)k_ra8_hmsc_dev_desc_len,
                                                   &rx);
-  RA8_RETURN_ON_ERROR(err, s_tag, "enum: dev desc"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "enum: dev desc");
   if (rx != (uint16_t)k_ra8_hmsc_dev_desc_len) {
     return k_ra8_err_hw_error;
   }
@@ -216,10 +216,10 @@ static ra8_err_t internal_enum_assign_addr(uint8_t* dev_addr)
     .w_length        = 0U,
   };
   ra8_err_t err = ra8_usb_host_control_xfer(g_usb_hmsc_state.speed, &setup, nullptr, 0U, nullptr);
-  RA8_RETURN_ON_ERROR(err, s_tag, "enum: set address"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "enum: set address");
   ra8_delay_ms(k_ra8_hmsc_addr_settle_ms);
   err = ra8_usb_host_set_target(g_usb_hmsc_state.speed, (uint8_t)k_ra8_hmsc_assigned_address);
-  RA8_RETURN_ON_ERROR(err, s_tag, "enum: set target"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "enum: set target");
   *dev_addr = (uint8_t)k_ra8_hmsc_assigned_address;
   return k_ra8_ok;
 }
@@ -380,7 +380,7 @@ static ra8_err_t internal_enum_read_config(uint8_t* out_cfg_value)
                                             cfg,
                                             (uint16_t)k_ra8_hmsc_cfg_desc_len,
                                             &rx);
-  RA8_RETURN_ON_ERROR(err, s_tag, "enum: cfg header"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "enum: cfg header");
   uint16_t total =
     (uint16_t)((uint16_t)cfg[k_ra8_hmsc_off_cfg_total] |
                (uint16_t)((uint16_t)cfg[k_ra8_hmsc_off_cfg_total + 1U] << k_ra8_hmsc_byte_bits));
@@ -390,7 +390,7 @@ static ra8_err_t internal_enum_read_config(uint8_t* out_cfg_value)
   *out_cfg_value = cfg[k_ra8_hmsc_off_cfg_value];
   setup.w_length = total;
   err            = ra8_usb_host_control_xfer(g_usb_hmsc_state.speed, &setup, cfg, total, &rx);
-  RA8_RETURN_ON_ERROR(err, s_tag, "enum: cfg full"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "enum: cfg full");
   return internal_enum_walk_cfg(cfg, rx);
 }
 
@@ -424,7 +424,7 @@ static ra8_err_t internal_enum_configure(uint8_t dev_addr, uint8_t cfg_value)
     .w_length        = 0U,
   };
   ra8_err_t err = ra8_usb_host_control_xfer(g_usb_hmsc_state.speed, &set_cfg, nullptr, 0U, nullptr);
-  RA8_RETURN_ON_ERROR(err, s_tag, "enum: set config"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "enum: set config");
   const ra8_usb_setup_t get_lun = {
     .bm_request_type = k_ra8_hmsc_bm_class_iface_in,
     .b_request       = k_ra8_hmsc_req_get_max_lun,
@@ -451,7 +451,7 @@ static ra8_err_t internal_enum_configure(uint8_t dev_addr, uint8_t cfg_value)
                                 g_usb_hmsc_state.device.bulk_in_ep,
                                 true,
                                 g_usb_hmsc_state.device.bulk_in_max_packet);
-  RA8_RETURN_ON_ERROR(err, s_tag, "enum: pipe in"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "enum: pipe in");
   return ra8_usb_host_pipe_setup(g_usb_hmsc_state.speed,
                                  k_ra8_hmsc_pipe_bulk_out,
                                  dev_addr,
@@ -534,16 +534,16 @@ static ra8_err_t internal_enum_ladder(uint8_t* out_addr)
 {
   uint8_t   desc[k_ra8_hmsc_dev_desc_len] = {};
   ra8_err_t err                           = internal_enum_hunt(desc, out_addr);
-  RA8_RETURN_ON_ERROR(err, s_tag, "enumerate: hunt"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "enumerate: hunt");
   internal_enum_fill_ids(desc);
 
   err = internal_enum_assign_addr(out_addr);
-  RA8_RETURN_ON_ERROR(err, s_tag, "enumerate: address"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "enumerate: address");
   uint8_t cfg_value = 0U;
   err               = internal_enum_read_config(&cfg_value);
-  RA8_RETURN_ON_ERROR(err, s_tag, "enumerate: config"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "enumerate: config");
   err = internal_enum_configure(*out_addr, cfg_value);
-  RA8_RETURN_ON_ERROR(err, s_tag, "enumerate: configure"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "enumerate: configure");
   return k_ra8_ok;
 }
 

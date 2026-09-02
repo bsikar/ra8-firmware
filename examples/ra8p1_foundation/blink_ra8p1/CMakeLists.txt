@@ -4,14 +4,15 @@
 # Per-app CMake stub for `blink_ra8p1` -- the RA8P1 build-foundation app.
 #
 # Build it STANDALONE with the RA8P1 toolchain (it is deliberately excluded from
-# the top-level RA8D2 unified build so `make blink` / `make blink_hal` stay
+# the top-level RA8D2 unified build so `just apps::build blink` and
+# `just apps::build blink_hal` stay
 # byte-for-behaviour unchanged -- see the "ra8p1_foundation" skip in the repo
 # root CMakeLists.txt):
 #
 #   cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8p1.cmake
 #   cmake --build build
 #
-# or simply `make` in this directory (its Makefile points at toolchain-ra8p1).
+# or simply `just` in this directory (its justfile points at toolchain-ra8p1).
 #
 # All build logic lives in the shared cmake/ra8_add_app.cmake recipe; this file
 # only names the app. BOARD ra8p1 selects the dedicated libs/ra8_board_ra8p1

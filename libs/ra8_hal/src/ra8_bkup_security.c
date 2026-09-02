@@ -104,11 +104,11 @@ RA8_INTERNAL static ra8_err_t internal_validate_security_cfg(const ra8_bkup_secu
     return k_ra8_err_invalid_arg;
   }
   ra8_err_t err = internal_validate_boundary(cfg->saba);
-  RA8_RETURN_ON_ERROR(err, g_bkup_tag, "security_apply: saba bad"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, g_bkup_tag, "security_apply: saba bad");
   err = internal_validate_boundary(cfg->pabas);
-  RA8_RETURN_ON_ERROR(err, g_bkup_tag, "security_apply: pabas bad"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, g_bkup_tag, "security_apply: pabas bad");
   err = internal_validate_boundary(cfg->pabans);
-  RA8_RETURN_ON_ERROR(err, g_bkup_tag, "security_apply: pabans bad"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, g_bkup_tag, "security_apply: pabans bad");
   return k_ra8_ok;
 }
 
@@ -121,7 +121,7 @@ RA8_INTERNAL static ra8_err_t internal_validate_security_cfg(const ra8_bkup_secu
 {
   RA8_CHECK_NULL_PTR(cfg, g_bkup_tag, "security cfg must not be nullptr");
   const ra8_err_t v_err = internal_validate_security_cfg(cfg);
-  RA8_RETURN_ON_ERROR(v_err, g_bkup_tag, "security_apply: cfg bad"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, g_bkup_tag, "security_apply: cfg bad");
 
   /* BBFSAR / VBRSABAR / VBRPABARS / VBRPABARNS are security-attribution
    * registers, so they sit behind PRC4 -- not the PRC1 that guards the rest

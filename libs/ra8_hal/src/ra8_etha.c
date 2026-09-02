@@ -174,7 +174,7 @@ ra8_err_t ra8_etha_init(ra8_etha_port_t port, const ra8_etha_config_t* cfg)
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_eswm);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "etha_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "etha_init: mstp enable");
 
   volatile r_etha_regs_t* reg = ra8_etha(port);
 
@@ -233,7 +233,7 @@ ra8_err_t ra8_etha_get_status(ra8_etha_port_t port, ra8_etha_status_t* out)
     return k_ra8_err_invalid_arg;
   }
 
-  volatile r_etha_regs_t* reg = ra8_etha(port);
+  volatile const r_etha_regs_t* reg = ra8_etha(port);
   /* HUM Ch 32.3.1.2 "EAMS : Mode Status Register" p 1631 */
   const uint32_t ops = reg->EAMS & k_ra8_etha_mask_ops;
   /* HUM Ch 32.3.7.1.1 "EAEIS0 : Error Interrupt Status Register 0" p 1659 */
@@ -750,7 +750,7 @@ ra8_err_t ra8_etha_read_stats(ra8_etha_port_t port, ra8_etha_stats_t* out)
     return k_ra8_err_invalid_arg;
   }
 
-  volatile r_etha_regs_t* reg = ra8_etha(port);
+  volatile const r_etha_regs_t* reg = ra8_etha(port);
   /* HUM Ch 32.3.6.1 "EAUSMFSECN : Under Minimum Frame Size Error Counter Register" p 1656 */
   out->switch_min_frame_err = (uint16_t)(reg->EAUSMFSECN & k_ra8_etha_mask_mfs);
   /* HUM Ch 32.3.6.2 "EATFECN : TAG Filtering Error Counter Register" p 1657 */

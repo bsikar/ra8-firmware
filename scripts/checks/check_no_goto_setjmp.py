@@ -12,7 +12,7 @@ parser-independent sweep of first-party C/C++.
 Why a dedicated gate. Until now ``goto`` / ``setjmp`` were enforced only
 indirectly, via the MISRA cppcheck ratchet (Rule 15.1 forbids ``goto``,
 Rule 21.4 forbids ``<setjmp.h>``). That ratchet runs cppcheck at
-``--std=c11`` because the bundled cppcheck (2.20) cannot parse C23 -- the
+``--std=c11`` because the pinned cppcheck (2.13) cannot parse C23 -- the
 codebase's ``enum : uint8_t`` typed enums and ``[[...]]`` attributes raise
 ``syntaxError`` and the affected translation units are only partially parsed
 (see ``scripts/checks/misra_check_inner.sh`` and ADR-0002). A construct on a
@@ -87,6 +87,7 @@ ROOT_DIRS = ("libs", "examples", "port", "tools", "apps")
 # EXCLUDE_FRAGMENTS.
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
+    "apps/shared_libs/third_party/",
     "libs/ra8_fonts/",
 )
 

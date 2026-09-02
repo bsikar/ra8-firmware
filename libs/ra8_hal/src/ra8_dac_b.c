@@ -155,9 +155,13 @@ RA8_INTERNAL static void internal_stop_channel(uint8_t channel)
   /* DAC_B0 and DAC_B1 have separate MSTP bits.
    * HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 448 */
   ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_dac12_0);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init: mstp dac0"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init: mstp dac0");
+  /* GCOVR_EXCL_BR_STOP */
   mst_err = ra8_mstp_enable(k_ra8_mstp_dac12_1);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init: mstp dac1"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init: mstp dac1");
+  /* GCOVR_EXCL_BR_STOP */
 
   internal_disable_channel(k_ra8_dac_b_channel_0);
   internal_disable_channel(k_ra8_dac_b_channel_1);
@@ -232,9 +236,13 @@ ra8_err_t ra8_dac_b_init_configured(const ra8_dac_b_cfg_t* cfg)
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_dac12_0);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init_cfg: mstp dac0"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init_cfg: mstp dac0");
+  /* GCOVR_EXCL_BR_STOP */
   mst_err = ra8_mstp_enable(k_ra8_mstp_dac12_1);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init_cfg: mstp dac1"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init_cfg: mstp dac1");
+  /* GCOVR_EXCL_BR_STOP */
 
   internal_apply_cfg(k_ra8_dac_b_channel_0, cfg);
   internal_apply_cfg(k_ra8_dac_b_channel_1, cfg);
@@ -306,9 +314,9 @@ ra8_err_t ra8_dac_b_get_status(uint8_t* out_mask)
    * bit 0 -- channel 0 DACEN
    * bit 1 -- channel 1 DACEN
    */
-  uint8_t                  flags = 0U;
-  volatile r_dac_b_regs_t* reg0  = ra8_dac_b(k_ra8_dac_b_channel_0);
-  volatile r_dac_b_regs_t* reg1  = ra8_dac_b(k_ra8_dac_b_channel_1);
+  uint8_t                        flags = 0U;
+  volatile const r_dac_b_regs_t* reg0  = ra8_dac_b(k_ra8_dac_b_channel_0);
+  volatile const r_dac_b_regs_t* reg1  = ra8_dac_b(k_ra8_dac_b_channel_1);
   if ((reg0->DACR0 & k_ra8_dacr0_mask_dacen) != 0U) {
     flags |= 0x1U;
   }
@@ -344,7 +352,9 @@ ra8_err_t ra8_dac_b_enter_stop(void)
 ra8_err_t ra8_dac_b_exit_stop(void)
 {
   const ra8_err_t err0 = ra8_mstp_enable(k_ra8_mstp_dac12_0);
-  RA8_RETURN_ON_ERROR(err0, s_tag, "dac_b_exit_stop: mstp0"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(err0, s_tag, "dac_b_exit_stop: mstp0");
+  /* GCOVR_EXCL_BR_STOP */
   return ra8_mstp_enable(k_ra8_mstp_dac12_1);
 }
 

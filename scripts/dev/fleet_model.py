@@ -3,35 +3,14 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """The schema, arithmetic and derivations behind ``infra/fleet.yml``.
 
-``infra/fleet.yml`` is the one registry of what machines this project runs on.
-This module is the only thing that reads it, and everything a host needs
-downstream is *derived* here rather than restated anywhere else:
-
-* which playbook(s) provision it, and over which transport,
-* which Ansible variables its class maps its declared capacity onto,
-* the generated inventory,
-* the container names its runner instances will have, which the capacity
-  script needs in order to drain them,
-* whether the declared instance count is the one the sizing formula gives.
-
-Schema, arithmetic and dispatch live together on purpose. Splitting the
-validator from the mapping is how a checker ends up policing a shape the
-dispatcher no longer produces -- the exact drift this tree keeps finding in its
-own tooling. :mod:`fleet` (the CLI) and the ``fleet-declaration`` gate both
-import this module, so there is one definition and two front doors.
-
-The one thing that is NOT here is HOW A MACHINE IS REACHED -- its address, its
-login user, its ProxyJump chain, the generated ``~/.ssh`` fragment and the
-rules that keep an ssh alias out of the declaration. That is one coherent
-responsibility and it lives in :mod:`fleet_reach`, which this module imports
-and drives: :func:`validate` runs its rules and :func:`inventory_entry` uses
-its hop resolution, so the same two front doors still reach one definition of
-each.
+The CLI and declaration gate both import this model, keeping provisioning,
+capacity arithmetic, role variables, inventory and validation behind one
+definition. Machine reachability is isolated in :mod:`fleet_reach`; the native
+non-capacity HIL listener is isolated in :mod:`fleet_hil`.
 """
 
 from __future__ import annotations
 
-import shlex
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,7 +20,11 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import fleet_hil as fh
 import fleet_reach as fr
+import fleet_runner_model as frm
+
+CLASSES = frm.CLASSES
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FLEET_FILE = REPO_ROOT / "infra" / "fleet.yml"
@@ -130,76 +113,6 @@ PLAYS: dict[str, Play] = {
 }
 
 
-@dataclass(frozen=True)
-class HostClass:
-    """What a host's ``class:`` decides.
-
-    Attributes:
-        runner: Whether the host carries GitHub Actions runners at all. A dev
-            box and the bench do not, so no capacity arithmetic applies to
-            them.
-        budget_mode: The only ``budget.mode`` this class may declare.
-            ``reserved`` means the caps are kernel-enforced reservations that
-            must fit the budget; ``burst`` means they are ceilings a scheduler
-            may oversubscribe, so the requests are what must fit.
-        transport: ``ssh`` for a machine Ansible can reach directly, ``wsl``
-            for one where the play has to be copied inside a WSL2 distro and
-            run with ``--connection=local``.
-        capacity_kind: Which arm of ``scripts/ci/fleet_capacity.sh`` scales it.
-        summary: One line for the listing.
-    """
-
-    runner: bool
-    budget_mode: str
-    transport: str
-    capacity_kind: str
-    summary: str
-
-
-CLASSES: dict[str, HostClass] = {
-    "arc_k8s": HostClass(
-        runner=True,
-        budget_mode="burst",
-        transport="ssh",
-        capacity_kind="k8s",
-        summary="an ARC scale set on a k8s cluster",
-    ),
-    "docker_linux": HostClass(
-        runner=True,
-        budget_mode="reserved",
-        transport="ssh",
-        capacity_kind="docker",
-        summary="runner containers on a plain Docker host",
-    ),
-    "docker_wsl": HostClass(
-        runner=True,
-        budget_mode="reserved",
-        transport="wsl",
-        capacity_kind="docker",
-        summary="runner containers inside a Windows WSL2 distro",
-    ),
-    "dev_box": HostClass(
-        runner=False,
-        budget_mode="reserved",
-        transport="ssh",
-        capacity_kind="none",
-        summary="the shared verification box",
-    ),
-    "hil_bench": HostClass(
-        runner=False,
-        budget_mode="reserved",
-        transport="ssh",
-        capacity_kind="none",
-        summary="the hardware-in-the-loop bench",
-    ),
-}
-
-# The container the ci_runner_docker role names its instances after. Declared
-# here because fleet.py has to predict the names in order to drain them, and
-# the role has to produce them; the fleet-declaration gate asserts the two
-# agree rather than trusting this copy.
-CONTAINER_BASE = "ra8-ci-runner"
-
 # Ansible tags whose task set cannot stop, start or recreate a container, so a
 # converge limited to them needs no drain and costs the host no runner time.
 #
@@ -248,7 +161,8 @@ def load(path: Path = FLEET_FILE) -> dict[str, Any]:
         path: Declaration to read. Overridden only by the selftest.
 
     Returns:
-        The parsed mapping, with ``sizing`` and ``hosts`` guaranteed present.
+        The parsed mapping, with ``sizing``, ``runner_image`` and ``hosts``
+        guaranteed present.
 
     Raises:
         FleetError: The file is missing, is not a mapping, or lacks either of
@@ -261,7 +175,7 @@ def load(path: Path = FLEET_FILE) -> dict[str, Any]:
     if not isinstance(data, dict):
         msg = f"{path} does not parse to a mapping"
         raise FleetError(msg)
-    for key in ("sizing", "hosts"):
+    for key in ("sizing", "runner_image", "hosts"):
         if not isinstance(data.get(key), dict):
             msg = f"{path} has no '{key}:' mapping"
             raise FleetError(msg)
@@ -307,14 +221,7 @@ def instance_names(name: str, host: dict[str, Any]) -> list[str]:
         host: its runner names are generated per ephemeral pod by the
         controller, so there is no stable set to predict.
     """
-    if CLASSES[host["class"]].capacity_kind != "docker":
-        return []
-    runners = host.get("runners") or {}
-    base = runners.get("name", name)
-    count = int(runners.get("instances", 0))
-    if count == 1:
-        return [base]
-    return [f"{base}-{i}" for i in range(1, count + 1)]
+    return frm.instance_names(name, host)
 
 
 def container_names(host: dict[str, Any]) -> list[str]:
@@ -327,12 +234,7 @@ def container_names(host: dict[str, Any]) -> list[str]:
         Container names the capacity script drains, empty for a non-container
         class.
     """
-    if CLASSES[host["class"]].capacity_kind != "docker":
-        return []
-    count = int((host.get("runners") or {}).get("instances", 0))
-    if count == 1:
-        return [CONTAINER_BASE]
-    return [f"{CONTAINER_BASE}-{i}" for i in range(1, count + 1)]
+    return frm.container_names(host)
 
 
 def remote_shell(host: dict[str, Any]) -> str:
@@ -349,14 +251,7 @@ def remote_shell(host: dict[str, Any]) -> str:
     Returns:
         A remote command string ending in ``bash -s``.
     """
-    if CLASSES[host["class"]].transport == "wsl":
-        distro = shlex.quote(str(host["connect"]["distro"]))
-        return f"wsl -d {distro} -u root -e bash -s"
-    # The NAS deploy user is not in the docker group, and the k3s node needs
-    # root for kubectl; sudo is applied inside the script's docker/kubectl
-    # invocation rather than to the whole shell, so the script itself never
-    # needs privilege it does not use.
-    return "bash -s"
+    return frm.remote_shell(host)
 
 
 def docker_command(host: dict[str, Any]) -> str:
@@ -369,9 +264,7 @@ def docker_command(host: dict[str, Any]) -> str:
         ``docker`` where the connecting user owns the socket, ``sudo docker``
         otherwise.
     """
-    if CLASSES[host["class"]].transport == "wsl":
-        return "docker"
-    return "sudo docker"
+    return frm.docker_command(host)
 
 
 def _runner_vars(name: str, host: dict[str, Any]) -> dict[str, Any]:
@@ -384,7 +277,7 @@ def _runner_vars(name: str, host: dict[str, Any]) -> dict[str, Any]:
     Returns:
         The role variables for the host's class, empty for a non-runner class.
     """
-    if not CLASSES[host["class"]].runner:
+    if not CLASSES[host["class"]].capacity_runner:
         return {}
     run = host["runners"]
     if host["class"] == "arc_k8s":
@@ -412,6 +305,33 @@ def _runner_vars(name: str, host: dict[str, Any]) -> dict[str, Any]:
     if host["class"] == "docker_wsl":
         out.update(_wsl_vars(host))
     return out
+
+
+def _runner_image_vars(data: dict[str, Any], host: dict[str, Any]) -> dict[str, Any]:
+    """Map the one declared runner artifact onto its producer and consumers.
+
+    Args:
+        data: The complete fleet declaration.
+        host: One host's declaration.
+
+    Returns:
+        Image variables for the ARC producer or a Docker consumer, empty for a
+        machine that neither builds nor runs the shared image.
+    """
+    image = data["runner_image"]
+    if host["class"] == "arc_k8s":
+        return {
+            "ci_runner_image": image["image"],
+            "ci_runner_image_archive": image["archive"],
+        }
+    if CLASSES[host["class"]].capacity_kind == "docker":
+        return {
+            "ci_runner_docker_image": image["image"],
+            "ci_runner_docker_image_source_host": image["source_host"],
+            "ci_runner_docker_image_source_archive": image["archive"],
+            "ci_runner_docker_image_source_ssh": fr.ssh_target(data, image["source_host"]),
+        }
+    return {}
 
 
 def _wsl_vars(host: dict[str, Any]) -> dict[str, Any]:
@@ -517,24 +437,28 @@ def _capacity_vars(host: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def role_vars(name: str, host: dict[str, Any]) -> dict[str, Any]:
+def role_vars(data: dict[str, Any], name: str, host: dict[str, Any]) -> dict[str, Any]:
     """Every Ansible variable derived from one host's declared block.
 
-    This mapping is what makes ``infra/fleet.yml`` the single home for a knob:
-    the roles keep their own defaults so a standalone run still works, and
-    these override them as extra-vars, which beat ``host_vars``. The
-    ``fleet-declaration`` gate fails a committed ``host_vars`` file that
-    re-declares any name produced here, so a tunable cannot come to live in two
-    places.
+    Extra-vars beat ``host_vars``; the declaration gate rejects a committed
+    duplicate. Roles retain policy defaults, while a fleet-owned identity may
+    default empty so standalone execution fails instead of drifting.
 
     Args:
+        data: The complete fleet declaration, including the canonical image.
         name: Fleet host name.
         host: That host's declaration.
 
     Returns:
         Variable name to value, ready to hand to ``ansible-playbook -e``.
     """
-    return {**_runner_vars(name, host), **_dev_slice_vars(host), **_capacity_vars(host)}
+    return {
+        **_runner_vars(name, host),
+        **fh.runner_vars(data, host),
+        **_runner_image_vars(data, host),
+        **_dev_slice_vars(host),
+        **_capacity_vars(host),
+    }
 
 
 def inventory_entry(data: dict[str, Any], name: str) -> str:
@@ -569,10 +493,6 @@ def inventory_entry(data: dict[str, Any], name: str) -> str:
 def render_inventory(data: dict[str, Any]) -> str:
     """Generate the Ansible inventory from the declaration.
 
-    The inventory used to be hand-copied from an example file, which made the
-    set of machines a thing declared twice. It is generated now, so adding a
-    host block is the whole of adding a host.
-
     Args:
         data: The parsed declaration.
 
@@ -589,7 +509,7 @@ def render_inventory(data: dict[str, Any]) -> str:
     lines = [
         "# GENERATED by scripts/dev/fleet.py from infra/fleet.yml -- do not edit.",
         "# Add or retune a machine by editing that file; this is rewritten from",
-        "# it on every `make infra-*` run.",
+        "# it on every `just infra::*` run.",
         "",
     ]
     for group_name in sorted(groups):
@@ -615,7 +535,7 @@ def _check_shape(name: str, host: dict[str, Any]) -> list[str]:
     provisions = host.get("provisions") or []
     if not provisions:
         bad.append(
-            f"{name}: provisions is empty, so `make infra-apply HOST={name}` would do nothing"
+            f"{name}: provisions is empty, so `just infra::apply HOST={name}` would do nothing"
         )
     bad += [
         f"{name}: provisions '{p}' is not a known play {sorted(PLAYS)}"
@@ -640,7 +560,7 @@ def _check_runner_block(name: str, host: dict[str, Any]) -> list[str]:
     """
     cls = CLASSES[host["class"]]
     run, budget = host.get("runners"), host.get("budget")
-    if not cls.runner:
+    if not cls.capacity_runner:
         return [
             f"{name}: class {host['class']} carries no runners, so '{key}:' is meaningless here"
             for key in ("runners", "budget", "quiet_hours", "dev_slice")
@@ -720,7 +640,10 @@ def _sizing_deviations(host: dict[str, Any], sizing: dict[str, Any]) -> list[str
         One phrase per departure, empty when the host is sized by the formula.
     """
     run, budget = host["runners"], host["budget"]
-    par, per_mem = int(sizing["build_parallelism"]), int(sizing["memory_per_instance_gb"])
+    par, per_mem = (
+        int(sizing["build_parallelism"]),
+        int(sizing["memory_per_instance_gb"]),
+    )
     out = []
     if int(run["cpus"]) < par:
         out.append(
@@ -911,7 +834,7 @@ def _check_host_vars(data: dict[str, Any], host_vars_dir: Path) -> list[str]:
     """
     owned: set[str] = set()
     for name, host in data["hosts"].items():
-        owned |= set(role_vars(name, host))
+        owned |= set(role_vars(data, name, host))
     bad = []
     for path in sorted(host_vars_dir.glob("*.yml")):
         loaded = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -936,26 +859,42 @@ def validate(data: dict[str, Any], host_vars_dir: Path | None = None) -> list[st
         One message per violation, empty when the fleet is well declared.
     """
     sizing = data["sizing"]
+    image = data["runner_image"]
     problems = [
         f"sizing.{key} must be a positive integer"
         for key in ("build_parallelism", "memory_per_instance_gb")
         if not isinstance(sizing.get(key), int) or sizing[key] <= 0
     ]
+    problems += [
+        f"runner_image.{key} must be a non-empty string"
+        for key in ("source_host", "image", "archive")
+        if not isinstance(image.get(key), str) or not image[key].strip()
+    ]
+    source = image.get("source_host")
+    if isinstance(source, str) and source and source not in data["hosts"]:
+        problems.append(f"runner_image.source_host '{source}' is not a declared host")
+    elif source in data["hosts"] and "ci-runner" not in data["hosts"][source].get("provisions", []):
+        problems.append(
+            f"runner_image.source_host '{source}' does not provision ci-runner, "
+            "so no declared role produces its archive"
+        )
     # Every per-host rule below divides by these, so there is nothing further
     # to say about a fleet whose formula constants do not exist.
     if problems:
         return problems
+    problems += fh.check_uniqueness(data["hosts"])
     for name, host in data["hosts"].items():
         shape = _check_shape(name, host) + fr.check_connect(name, host, data["hosts"])
         problems += shape
         if shape or host.get("class") not in CLASSES:
             continue
+        problems += fh.check_runner(name, host, data["hosts"])
         block = _check_runner_block(name, host)
         problems += block
         # The arithmetic below reads keys the block check has just proved
         # present; running it over an incomplete host would raise rather than
         # report, and a checker that crashes teaches nothing.
-        if block or not CLASSES[host["class"]].runner:
+        if block or not CLASSES[host["class"]].capacity_runner:
             continue
         problems += _check_fit(name, host)
         problems += _check_sizing(name, host, sizing)

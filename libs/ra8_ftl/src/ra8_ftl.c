@@ -200,7 +200,7 @@ static ra8_err_t internal_alloc_blank(ra8_ftl_t* ftl, uint32_t* out)
   /* internal_pick_free with non-null args returns only k_ra8_ok or
    * k_ra8_err_no_data. */
   if (pick != k_ra8_ok) {
-    return pick; /* GCOVR_EXCL_LINE */
+    return pick; /* GCOVR_EXCL_LINE -- pick_free result set is ok or no-data only */
   }
   const ra8_err_t e = ra8_io_blockdev_erase(ftl->raw, phys, (uint32_t)k_ra8_ftl_one_block);
   if (e != k_ra8_ok) {

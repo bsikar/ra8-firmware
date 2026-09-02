@@ -6,8 +6,8 @@
 # Compiling WebP support is a four-part recipe, and every part is easy to get
 # silently wrong:
 #
-#   1. the vendored decoder TUs      libs/third_party/libwebp/src/*.c (recursive)
-#   2. the include ROOT              libs/third_party/libwebp  -- NOT its src/,
+#   1. the vendored decoder TUs      apps/shared_libs/third_party/libwebp/src/*.c
+#   2. the include ROOT              apps/shared_libs/third_party/libwebp
 #                                    because libwebp includes its own headers as
 #                                    "src/webp/decode.h"
 #   3. -DRA8_WEBP_USE_ARENA on (2)   activates the RA8 LOCAL PATCH in utils.c that
@@ -25,8 +25,8 @@
 # recipe (ARM toolchain, linker script, vector table) and the test build is one
 # monolithic target. A host tool that hand-lists firmware sources therefore had no
 # way to say "and WebP too" short of re-deriving all four parts by hand -- so
-# tools/rabook_imagepack and apps/stand_alone/media_dl instead each defined a do-nothing
-# ra8_jof_priv_webp_transcode() that returned k_ra8_err_not_supported purely to
+# tools/rabook_imagepack and apps/host/mdl instead each defined a do-nothing
+# jof_priv_webp_transcode() that returned k_ra8_err_not_supported purely to
 # satisfy the linker. Both tools linked clean, advertised WebP, and failed at
 # runtime on every WebP source. This module removes the reason those stubs existed:
 # the recipe now has exactly one definition that firmware apps, the host test
@@ -47,7 +47,7 @@
 # The vendored libwebp decoder (SOUP). Only the decode-only subset is vendored --
 # src/enc/ carries headers alone -- so a recursive *.c glob is exactly that subset.
 function(ra8_webp_vendor_sources out_var repo_root)
-  set(_root "${repo_root}/libs/third_party/libwebp")
+  set(_root "${repo_root}/apps/shared_libs/third_party/libwebp")
   if(NOT EXISTS "${_root}")
     message(FATAL_ERROR "ra8_webp_vendor_sources(): vendored libwebp missing at ${_root}")
   endif()
@@ -64,7 +64,7 @@ endfunction()
 # The first-party facade (ra8_webp.c) and its bump arena (ra8_webp_arena.c).
 # Held to the full project warning bar -- these never take the SOUP flags.
 function(ra8_webp_facade_sources out_var repo_root)
-  set(_root "${repo_root}/libs/ra8_webp")
+  set(_root "${repo_root}/apps/shared_libs/webp")
   if(NOT EXISTS "${_root}")
     message(FATAL_ERROR "ra8_webp_facade_sources(): ra8_webp facade missing at ${_root}")
   endif()
@@ -82,8 +82,8 @@ endfunction()
 # includes its own headers as "src/webp/decode.h".
 function(ra8_webp_includes out_var repo_root)
   set(${out_var}
-      ${repo_root}/libs/third_party/libwebp ${repo_root}/libs/ra8_webp/inc
-      ${repo_root}/libs/ra8_webp/src
+      ${repo_root}/apps/shared_libs/third_party/libwebp ${repo_root}/apps/shared_libs/webp/inc
+      ${repo_root}/apps/shared_libs/webp/src
       PARENT_SCOPE
   )
 endfunction()
@@ -91,22 +91,52 @@ endfunction()
 # Parts 3 + 4 of the recipe, applied to the vendored TUs only. RA8_WEBP_USE_ARENA
 # is load-bearing for the zero-heap property, not a tuning knob -- see
 # docs/SOUP/libwebp.md.
+#
+# This list is shared by three lanes -- the host unit-test build
+# (tests/cmake/core_hal.cmake), the host tools, and every firmware app that
+# links the decoder -- so it was measured on all three: gcc 14.2.0 and clang 18
+# on the host (504 compiles each) and arm-none-eabi-gcc 13.3.1 cross (378), each
+# flag removed on its own with the rest still applied, at -O0 and again at -Os.
+# The blanket -Wno-error is gone: it was absorbing exactly two classes, and both
+# are now named. -Wredundant-decls fires on the host lane
+# (dsp/upsampling_sse2.c redeclares WebPUpsamplers) and -Wstack-usage= on the
+# cross lane (utils/palette.c takes 5176 bytes against the 2200-byte per-app
+# budget). Three more names masked nothing on any lane and are deleted:
+# -Wno-sign-conversion and -Wno-implicit-int-conversion are both covered by
+# -Wno-conversion, and -Wno-undef never fired at all.
 function(ra8_webp_apply_soup_flags)
   if(NOT ARGN)
     message(FATAL_ERROR "ra8_webp_apply_soup_flags(): no sources given")
   endif()
-  set_source_files_properties(
-    ${ARGN} PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing;-DRA8_WEBP_USE_ARENA"
+  set(_ra8_wno_5
+      -Wno-conversion # libwebp narrowing (utils.h int -> uint8_t clamp)
+      -Wno-cast-align # dec/frame_dec.c casts uint8_t* to a wider element type
+      -Wno-cast-qual # dec/idec_dec.c casts away const on the input buffer
+      -Wno-double-promotion # utils/random_utils.c float -> double
+      -Wno-bad-function-cast # dec/vp8l_dec.c casts a uint32_t call result
+      -Wno-redundant-decls # host lane: dsp/upsampling_sse2.c redeclares WebPUpsamplers
+      -fno-strict-aliasing
+      -DRA8_WEBP_USE_ARENA
   )
+  # -Wstack-usage= exists only on GCC, and clang REJECTS an unknown -Wno-<name>
+  # under -Werror (-Wunknown-warning-option), so it is appended by compiler id
+  # rather than left to a blanket -Wno-error to cover. On the cross lane it is
+  # what utils/palette.c needs: a 5176-byte frame against the 2200-byte per-app
+  # -Wstack-usage budget. -fstack-usage still emits the .su data, so
+  # scripts/checks/stack_usage_check.py still sees the frame.
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    list(APPEND _ra8_wno_5 -Wno-stack-usage) # utils/palette.c has a measured 5176-byte SOUP frame.
+  endif()
+  set_source_files_properties(${ARGN} PROPERTIES COMPILE_OPTIONS "${_ra8_wno_5}")
 endfunction()
 
 # One-call path for a standalone consumer (host tools): add the vendored decoder
 # and the first-party facade to <target>, wire the include roots, and apply the
 # SOUP flags to exactly the vendored TUs.
 #
-# Callers that also compile the ra8_jof producer get its WebP arm
-# (ra8_jof_produce_webp.c) satisfied by this facade -- that arm is the
-# ra8_jof_priv_webp_transcode() definition, and compiling it alongside this call is
+# Callers that also compile the jof producer get its WebP arm
+# (jof_produce_webp.c) satisfied by this facade -- that arm is the
+# jof_priv_webp_transcode() definition, and compiling it alongside this call is
 # what makes WebP sources actually transcode rather than fail closed.
 function(ra8_webp_attach target repo_root)
   if(NOT TARGET ${target})

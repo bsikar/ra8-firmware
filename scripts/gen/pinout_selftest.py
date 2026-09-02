@@ -56,7 +56,7 @@ class Recorder:
 def lay(cells: Sequence[str]) -> str:
     """Lay cells out at ORIGINS, the way pdftotext renders a table row."""
     line = ""
-    for origin, cell in zip(ORIGINS, cells):
+    for origin, cell in zip(ORIGINS, cells, strict=False):
         line = line.ljust(origin) + cell
     return line
 

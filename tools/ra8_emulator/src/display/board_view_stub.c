@@ -79,7 +79,7 @@ bool board_view_pump(board_view_t* view)
 /* x/y are OUT parameters of the board_view.h contract: this headless backend
  * never writes them, but the Cocoa backend (board_view.m) does, so the
  * signature is fixed by the header both must satisfy. */
-// NOLINTNEXTLINE(readability-non-const-parameter)
+// NOLINTNEXTLINE(readability-non-const-parameter) -- interface contract fixes this writable pointer type.
 bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y)
 {
   (void)view;
@@ -99,7 +99,7 @@ bool board_view_poll_click(board_view_t* view, uint16_t* x, uint16_t* y)
 /* x/y are OUT parameters of the board_view.h contract: this headless backend
  * never writes them, but the Cocoa backend (board_view.m) does, so the
  * signature is fixed by the header both must satisfy. */
-// NOLINTNEXTLINE(readability-non-const-parameter)
+// NOLINTNEXTLINE(readability-non-const-parameter) -- interface contract fixes this writable pointer type.
 bool board_view_poll_drag(board_view_t* view, uint16_t* x, uint16_t* y)
 {
   (void)view;

@@ -73,8 +73,8 @@ probe_unicorn() {
     echo "NA NA"
     return 0
   }
-
-  local tmp probe bin cflags libs
+  local tmp probe bin
+  local -a cflags=() libs=()
   tmp="$(mktemp -d)"
   probe="$tmp/uc_probe.c"
   bin="$tmp/uc_probe"
@@ -101,17 +101,19 @@ EOF
   # the pinned prefix so the probe still binds the same library CMake's
   # find_library(unicorn) picks when pkg-config is absent.
   if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists unicorn 2>/dev/null; then
-    cflags="$(pkg-config --cflags unicorn 2>/dev/null || true)"
-    libs="$(pkg-config --libs unicorn 2>/dev/null || echo -lunicorn)"
+    read -r -a cflags <<<"$(pkg-config --cflags unicorn 2>/dev/null || true)"
+    read -r -a libs <<<"$(pkg-config --libs unicorn 2>/dev/null || echo -lunicorn)"
   else
-    cflags="-I${RA8_UNICORN_PREFIX}/include"
-    libs="-L${RA8_UNICORN_PREFIX}/lib -Wl,-rpath,${RA8_UNICORN_PREFIX}/lib -lunicorn"
+    cflags=("-I${RA8_UNICORN_PREFIX}/include")
+    libs=(
+      "-L${RA8_UNICORN_PREFIX}/lib"
+      "-Wl,-rpath,${RA8_UNICORN_PREFIX}/lib"
+      -lunicorn
+    )
   fi
 
-  # shellcheck disable=SC2086
-  if ! "$cc" $cflags "$probe" -o "$bin" $libs >/dev/null 2>&1; then
+  if ! "$cc" "${cflags[@]}" "$probe" -o "$bin" "${libs[@]}" >/dev/null 2>&1; then
     # Retry with a bare -lunicorn (default search path) before giving up.
-    # shellcheck disable=SC2086
     if ! "$cc" "$probe" -o "$bin" -lunicorn >/dev/null 2>&1; then
       rm -rf "$tmp"
       echo "NA NA"
@@ -195,7 +197,7 @@ fi
   echo "versions, so this gate refuses to run on an unpinned emulator (#354)."
   echo ""
   echo "Fix it by installing the pinned build:"
-  echo "  bash scripts/ci/install_unicorn.sh           # -> $RA8_UNICORN_PREFIX"
+  echo "  /bin/bash -p scripts/ci/install_unicorn.sh   # -> $RA8_UNICORN_PREFIX"
   echo "On a self-hosted runner, provision the same pin (docs/TOOLCHAIN.md)."
 } >&2
 exit 1

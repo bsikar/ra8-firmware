@@ -6,7 +6,7 @@ an external gate-driver IC.
 
 Untested, and the pin choice is a placeholder: the EK-RA8D2 header pins for a
 motor-driver IC were never confirmed against the board manual, so the GTIOC
-outputs in `main.c` are guesses and are marked as such. Confirm them before
+outputs in `src/main.c` are guesses and are marked as such. Confirm them before
 wiring anything that moves.
 
 The firmware emits only the three high-side gate signals, because a driver IC

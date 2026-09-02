@@ -15,7 +15,7 @@
  *
  * Any object that supplies `read_block()`, `write_block()`, and
  * `get_capacity()` works -- including the in-memory mock used in
- * `tests/test_ra8_fs.c`.
+ * `tests/storage/src/test_ra8_fs.c`.
  *
  * ## What this implements
  *   - BPB (BIOS Parameter Block) parse + FAT type auto-detection per
@@ -612,7 +612,8 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
  * @see ra8_fs_open()     Same resolution, but takes a handle.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fs_stat(ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out);
+[[nodiscard]] ra8_err_t
+ra8_fs_stat(const ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out);
 
 /* =============================================================================
  * Public API -- directory ops
@@ -640,7 +641,7 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
-ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb, void* ctx);
+ra8_fs_listdir(const ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb, void* ctx);
 
 /**
  * @brief Open a caller-owned directory cursor without holding the filesystem lock.
@@ -697,7 +698,7 @@ ra8_fs_dir_next(ra8_fs_dir_t* directory, ra8_fs_dirent_t* out, bool* out_entry);
  * clusters, leaving them allocated and unreachable -- lost clusters that only a
  * reformat recovers. Use `ra8_fs_rmdir()`.
  *
- * @param[in,out] handle Mount handle.
+ * @param[in] handle Mount handle.
  * @param[in]     path   NUL-terminated path to the file.
  *
  * @retval k_ra8_ok               File unlinked.
@@ -715,7 +716,7 @@ ra8_fs_dir_next(ra8_fs_dir_t* directory, ra8_fs_dirent_t* out, bool* out_entry);
  * @see ra8_fs_rmdir()  Removes a directory instead.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fs_unlink(ra8_fs_mount_t* handle, const char* path);
+[[nodiscard]] ra8_err_t ra8_fs_unlink(const ra8_fs_mount_t* handle, const char* path);
 
 /**
  * @brief Rename a file within its own directory.
@@ -757,7 +758,7 @@ ra8_fs_dir_next(ra8_fs_dir_t* directory, ra8_fs_dirent_t* out, bool* out_entry);
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
-ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path);
+ra8_fs_rename(const ra8_fs_mount_t* handle, const char* old_path, const char* new_path);
 
 /**
  * @brief Create a directory at @p path.
@@ -778,7 +779,7 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
  * a directory. `mkdir` is not a create-or-replace verb; `ra8_fs_write_file()`
  * is the one that replaces.
  *
- * @param[in,out] handle Mount handle.
+ * @param[in]     handle Mount handle.
  * @param[in]     path   NUL-terminated directory path to create.
  *
  * @return ra8_err_t Error code.
@@ -801,7 +802,7 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fs_mkdir(ra8_fs_mount_t* handle, const char* path);
+[[nodiscard]] ra8_err_t ra8_fs_mkdir(const ra8_fs_mount_t* handle, const char* path);
 
 /**
  * @brief Remove an empty directory at @p path.
@@ -822,7 +823,7 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
  * The volume root is not removable, and neither is a file: use `ra8_fs_unlink()`
  * for those.
  *
- * @param[in,out] handle Mount handle.
+ * @param[in]     handle Mount handle.
  * @param[in]     path   NUL-terminated directory path to remove.
  *
  * @return ra8_err_t Error code.
@@ -858,7 +859,7 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
  * @see ra8_fs_unlink()  Removes a file instead.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fs_rmdir(ra8_fs_mount_t* handle, const char* path);
+[[nodiscard]] ra8_err_t ra8_fs_rmdir(const ra8_fs_mount_t* handle, const char* path);
 
 #ifdef __cplusplus
 }

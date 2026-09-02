@@ -31,6 +31,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "er_pageturn.h"
 #include "ra8_app.h"
 #include "ra8_batt.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -41,9 +42,9 @@
 #include "ra8_panel.h"
 #include "ra8_panel_timing.h"
 #include "ra8_port_constants.h"
-#include "ra8_reflow.h"
 #include "ra8_ui.h"
 #include "ra8_widget.h"
+#include "reflow.h"
 
 /* ===========================================================================
  * Compile-time configuration -- typed enums per the no-magic-number rule.
@@ -256,7 +257,7 @@ typedef struct {
 
 /**
  * @enum er_reflow_cfg_t
- * @brief SD-font load + ra8_reflow body-render tunables (no magic numbers).
+ * @brief SD-font load + reflow body-render tunables (no magic numbers).
  */
 typedef enum : uint32_t {
   k_er_font_cap    = 512U * 1024U,       /**< Max font read off the card (bytes).   */
@@ -350,7 +351,7 @@ extern ra8_kbd_text_t       s_query;           /**< Live search query.          
 extern uint32_t             s_chapter_idx;     /**< Reading chapter index.                */
 extern uint32_t             s_reading_page;    /**< Reading current reflow page.          */
 extern uint32_t             s_reading_pages;   /**< Reading total reflow pages (>= 1).    */
-extern ra8_reflow_t         s_reflow_engine;   /**< ra8_reflow engine for the body.       */
+extern reflow_t             s_reflow_engine;   /**< reflow engine for the body.           */
 extern bool                 s_reflow_open;     /**< True while the engine holds a layout. */
 extern uint32_t             s_reflow_chapter;  /**< Chapter laid out (cache key).         */
 extern int32_t              s_reflow_w;        /**< Body width the layout used.           */

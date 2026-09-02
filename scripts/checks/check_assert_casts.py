@@ -15,6 +15,7 @@ Exit 0 if clean, 1 if any violation found.
 
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 _TYPES = r"u?int(?:8|16|32|64)?_t|int|size_t|ssize_t"
@@ -98,20 +99,57 @@ def check(path: Path) -> list[str]:
     return violations
 
 
+def selftest() -> int:
+    """Prove leading casts fire while clean and nested casts stay quiet."""
+    with tempfile.TemporaryDirectory(prefix="assert-casts-selftest-") as raw:
+        root = Path(raw)
+        bad = root / "bad.c"
+        good = root / "good.c"
+        bad.write_text(
+            "TEST_ASSERT_EQ((int)value, (uint32_t)expected);\n",
+            encoding="ascii",
+        )
+        good.write_text(
+            "TEST_ASSERT_EQ(value, expected);\nTEST_ASSERT_EQ(load((int)value), expected);\n",
+            encoding="ascii",
+        )
+        bad_findings = check(bad)
+        good_findings = check(good)
+    expected_bad_findings = 2
+    cases = (
+        (len(bad_findings) == expected_bad_findings, "leading casts on both arguments fire"),
+        (not good_findings, "clean and nested casts stay quiet"),
+    )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"check_assert_casts.py --selftest: {len(failed)} failure(s)", file=sys.stderr)
+        return 1
+    print("check_assert_casts.py --selftest: all cases pass (both directions).")
+    return 0
+
+
 def main() -> int:
-    """Scan the files named on argv and print every finding to stdout.
-
-    This gate takes its targets from the caller (the pre-commit hook passes
-    the staged C files) and has no discovery mode: an empty argv is a usage
-    error and exits 1, NOT a clean tree. A checker that treats "no files" as
-    success is the failure mode this repo keeps finding in its own tooling.
-
-    Returns 0 only when every named file is clean; 1 on any violation and on
-    the empty-argv usage error.
-    """
-    paths = [Path(p) for p in sys.argv[1:]]
+    """Scan the files named on argv and print every finding to stdout."""
+    args = sys.argv[1:]
+    if args == ["--selftest"]:
+        return selftest()
+    if any(arg.startswith("-") and arg != "--all" for arg in args) or (
+        "--all" in args and args != ["--all"]
+    ):
+        print("check_assert_casts.py: unknown or incompatible arguments", file=sys.stderr)
+        return 2
+    if args == ["--all"]:
+        repo_root = Path(__file__).resolve().parents[2]
+        paths = sorted((repo_root / "tests").rglob("*.c"))
+    else:
+        paths = [Path(p) for p in args]
     if not paths:
-        print("usage: check_assert_casts.py <file> [...]", file=sys.stderr)
+        print(
+            "usage: check_assert_casts.py <file> [...] or check_assert_casts.py --all",
+            file=sys.stderr,
+        )
         return 1
     all_violations: list[str] = []
     for p in paths:

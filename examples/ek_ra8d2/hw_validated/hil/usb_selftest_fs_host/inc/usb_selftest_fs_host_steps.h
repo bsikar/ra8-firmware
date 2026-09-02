@@ -1,6 +1,6 @@
 /**
  * @file
- * examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/src/usb_selftest_fs_host_steps.h
+ * examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/inc/usb_selftest_fs_host_steps.h
  * @brief Shared contract for the USB self-loop config B (FS host) example.
  *
  * @par Tag

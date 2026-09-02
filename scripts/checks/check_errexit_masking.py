@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -307,8 +308,6 @@ external_tool --flag || true
 
 def _selftest() -> int:
     """Assert the check fires on the defect AND stays silent on the remedy."""
-    import tempfile  # noqa: PLC0415 -- selftest-only dependency
-
     failures: list[str] = []
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as tmp:
         holder = Path(tmp)

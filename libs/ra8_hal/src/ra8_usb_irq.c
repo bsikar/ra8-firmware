@@ -87,27 +87,11 @@ static uint8_t internal_cb_slot(ra8_usb_speed_t speed)
                                        : (uint8_t)k_ra8_usb_cb_slot_fs;
 }
 
-/**
- * @brief Implementation of `ra8_usb_attach_handler()`.
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] speed See implementation.
- * @param[in] fn See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-ra8_err_t ra8_usb_attach_handler(ra8_usb_speed_t speed, ra8_usb_event_fn_t fn, void* ctx)
+void ra8_usb_attach_handler(ra8_usb_speed_t speed, ra8_usb_event_fn_t fn, void* ctx)
 {
   const uint8_t slot = internal_cb_slot(speed);
   s_usb_fn[slot]     = fn;
   s_usb_ctx[slot]    = ctx;
-  return k_ra8_ok;
 }
 
 /**
@@ -125,8 +109,8 @@ RA8_ISR_SAFE
 void ra8_usb_dispatch(ra8_usb_speed_t speed)
 {
   volatile r_usb_regs_t* reg = priv_pick(speed);
-  if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- speeds always valid */
-    return;             /* GCOVR_EXCL_LINE                           */
+  if (reg == nullptr) {
+    return;
   }
   /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1986.
    *
@@ -185,7 +169,7 @@ void ra8_usb_dispatch(ra8_usb_speed_t speed)
  */
 uint16_t ra8_usb_intsts0_snapshot(ra8_usb_speed_t speed)
 {
-  volatile r_usb_regs_t* reg = priv_pick(speed);
+  volatile const r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return 0U;
   }
@@ -362,7 +346,9 @@ RA8_INTERNAL
 static ra8_err_t internal_host_hs_bringup(volatile r_usb_regs_t* reg)
 {
   const ra8_err_t phy_err = priv_usbhs_phy_bringup(reg);
-  RA8_RETURN_ON_ERROR(phy_err, s_tag, "host_init: HS PHY bring-up"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- HW bring-up fault */
+  RA8_RETURN_ON_ERROR(phy_err, s_tag, "host_init: HS PHY bring-up");
+  /* GCOVR_EXCL_BR_STOP */
   priv_rmw16(&reg->SYSCFG, 0U, (uint16_t)(1U << k_ra8_syscfg_bit_usbe));
   priv_rmw16(&reg->SYSCFG,
              (uint16_t)((uint16_t)(1U << k_ra8_syscfg_bit_dcfm) |
@@ -395,11 +381,13 @@ ra8_err_t ra8_usb_host_init(ra8_usb_speed_t speed)
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
   const ra8_err_t mst_err = ra8_mstp_enable(priv_mstp(speed));
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "host_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "host_init: mstp enable");
 
   if (speed == k_ra8_usb_speed_hs) {
     const ra8_err_t hs_err = internal_host_hs_bringup(reg);
-    RA8_RETURN_ON_ERROR(hs_err, s_tag, "host_init: HS bring-up"); /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_BR_START -- HW bring-up fault */
+    RA8_RETURN_ON_ERROR(hs_err, s_tag, "host_init: HS bring-up");
+    /* GCOVR_EXCL_BR_STOP */
   } else {
     /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1967 */
     reg->SYSCFG = internal_host_syscfg_word(speed);

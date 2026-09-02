@@ -4,7 +4,7 @@ This project ships [libFuzzer](https://llvm.org/docs/LibFuzzer.html)
 (coverage-guided in-process fuzzer; FOSS, ships with `clang`) harnesses
 for the parsers most exposed to untrusted input. The harnesses live in
 `tests/fuzz/` and are opt-in via the CMake option `RA8_FUZZ=ON`. The
-default host test build (and the `make test` / `ctest` CI gate) is not
+default host test build (and the `just quality::local::test` / `ctest` CI gate) is not
 affected.
 
 ## Targets
@@ -18,17 +18,17 @@ container and the XML inside it, the image codecs, the font rasteriser,
 the comic-archive unwrappers, and the shared decompression-limits seam
 every decoder passes through.
 
-Add a new harness by dropping `tests/fuzz/fuzz_ra8_<x>.c` next to the
+Add a new harness by dropping `tests/fuzz/src/fuzz_ra8_<x>.c` next to the
 existing files and listing it in `tests/fuzz/CMakeLists.txt`
 (`RA8_FUZZ_TARGETS`). That registry is the single source of truth:
 `scripts/checks/run_fuzz.sh --list` parses it, cross-checks it against
-the `tests/fuzz/fuzz_ra8_*.c` sources (drift in either direction is a
-hard error), and both `make fuzz` and the nightly CI sweep consume it
+the `tests/fuzz/src/fuzz_ra8_*.c` sources (drift in either direction is a
+hard error), and both `just quality::local::fuzz` and the nightly CI sweep consume it
 through that script -- there is no second list to update.
 
 ## Running
 
-`make fuzz` is the smoke run. It delegates to
+`just quality::local::fuzz` is the smoke run. It delegates to
 `scripts/checks/run_fuzz.sh`, which configures and builds
 `tests/build-fuzz/` and then gives every harness a short budget; the
 build is skipped when no source changed, so a re-run only re-fuzzes.
@@ -43,7 +43,7 @@ then exits non-zero listing every harness that failed. Crash inputs
 land in `tests/build-fuzz/crashes/<target>/`.
 
 `.github/workflows/fuzz-nightly.yml` is a thin driver for the
-`fuzz-sweep` gate (`bash scripts/ci.sh --gate fuzz-sweep`), which runs
+`fuzz-sweep` gate (`just quality::gate::run fuzz-sweep`), which runs
 that same sweep nightly at a far larger per-target budget. The job
 fails on any crash and uploads the crash directory and the full sweep
 log as artifacts.
@@ -60,11 +60,13 @@ log as artifacts.
 
 ### macOS note
 
-The host test fake (`tests/mocks/ra8_fake_mmap.c`) installs RAM at
+The host test fake (`tests/mocks/src/ra8_fake_mmap.c`) installs RAM at
 the same MCU peripheral addresses via `mmap(MAP_FIXED, 0x40000000)`.
 macOS arm64 refuses MAP_FIXED below 4 GiB, so all host tests --
 including these fuzz harnesses -- run inside the project's Linux
-devcontainer (`scripts/ci/test-docker.sh`). The fuzz CMake file drops
+devcontainer. Use `just tests::devcontainer all` for host tests and
+`just quality::devcontainer::fuzz` for the fuzz smoke run; the legacy
+`scripts/ci/test-docker.sh` test spelling remains a thin delegate. The fuzz CMake file drops
 AddressSanitizer when configured on macOS so the build still succeeds
 for development, but a real fuzz session belongs in the container.
 
@@ -96,8 +98,8 @@ than random bytes lets libFuzzer reach interesting parser states in
 seconds rather than minutes, which is the difference between the
 smoke run finding a regression and missing it.
 
-The seeds are (re-)materialised by `scripts/checks/init_fuzz_corpora.sh`,
-which is invoked automatically by `make fuzz` and by
+The seeds are (re-)materialised by `scripts/builders/init_fuzz_corpora.sh`,
+which is invoked automatically by `just quality::local::fuzz` and by
 `scripts/checks/run_fuzz.sh` before each session. The script is
 idempotent: it overwrites the seed files in place but does not touch
 crash reproducers added by the fuzzer or by hand.
@@ -124,7 +126,7 @@ For each crash:
 
 1. Confirm the reproducer with
    `tests/build-fuzz/fuzz/<target> tests/build-fuzz/crashes/<target>/crash-<sha1>`.
-2. Add a regression test under `tests/test_<module>.c` that loads the
+2. Add a regression test under `tests/<category>/src/test_<module>.c` that loads the
    reproducer (or a hand-minimised version) and asserts the parser
    returns an error code instead of crashing.
 3. Fix the parser. The host suite plus the new regression test must
@@ -143,8 +145,8 @@ that ingest a fully attacker-controlled EPUB: `miniz` (ZIP), `stb_image`
 XML reader plus OPF/NCX/nav consumers. They are also the parsers with the largest and
 most state-rich grammar in the codebase, so they are the highest-value
 targets per CPU-second of fuzzing. `fuzz_ra8_stb_image`, `fuzz_ra8_stbtt`,
-and `fuzz_ra8_reflow_xml` reach the stb or XML parser directly on every
-input, whereas `fuzz_ra8_epub` reaches the XML layer only after miniz has
+and `fuzz_reflow_xml` reach the stb or XML parser directly on every
+input, whereas `fuzz_epub` reaches the XML layer only after miniz has
 inflated a well-formed ZIP -- so the three focused harnesses give the
 parsers far more coverage per second. Smaller parsers (e.g. UART command
 shells, internal config blobs) are not yet wrapped because the input is

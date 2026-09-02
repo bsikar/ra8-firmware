@@ -23,22 +23,22 @@ import pathlib
 import re
 import subprocess
 import sys
+import tempfile
 
 from annot_model import ParseStats, Violation
-from annot_scope import is_build_output, is_excluded, is_test_path, repo_root
+from annot_scope import SCAN_DIRS, is_build_output, is_excluded, is_test_path, repo_root
 
 # --------------------------------------------------------------------------
-# libclang import. The package is normally installed via:
-#   python3 -m pip install --user --break-system-packages libclang
-# In the dev container the wheel ships a bundled libclang.dylib / .so so
-# no system-level libclang package is required.
+# libclang import. ``just setup-python`` creates the repository venv and
+# installs the pinned binding there. The wheel ships a bundled
+# libclang.dylib / .so, so no system-level libclang package is required.
 # --------------------------------------------------------------------------
 try:
     from clang import cindex
 except ImportError:
     sys.stderr.write(
         "check_annotations.py: 'libclang' Python package missing.\n"
-        "  install: python3 -m pip install --user --break-system-packages libclang\n"
+        "  install the pinned repository tools: just setup-python\n"
     )
     sys.exit(2)
 
@@ -48,7 +48,7 @@ except ImportError:
 # None so a missing kind degrades to "no section attribute detected" instead of
 # raising AttributeError, which previously aborted the entire TU walk (silently
 # dropping every TU that defined an annotated function in-place, e.g.
-# ra8_widget_*, ra8_book, ra8_rabook_*).
+# ra8_widget_*, book, ra8_rabook_*).
 SECTION_ATTR_KIND = getattr(cindex.CursorKind, "SECTION_ATTR", None)
 
 #: libclang diagnostic severity for Error (3) and Fatal (4); anything at or
@@ -78,14 +78,14 @@ GENERATED_HEADERS = frozenset(
 #: from GENERATED_HEADERS (never produced without a build step, on any host):
 #: these exist only on the OS that ships them. ``sys/personality.h`` is
 #: glibc/Linux-only (the ``personality()`` syscall this checker's own probe
-#: (tests/mocks/ra8_fake_mmap.c) calls has no Darwin/BSD equivalent), so the
+#: (tests/mocks/src/ra8_fake_mmap.c) calls has no Darwin/BSD equivalent), so the
 #: include can never resolve on macOS. That is expected, not a parse defect:
 #: CLAUDE.md already documents that the host test suite does not run natively
 #: on macOS at all (mmap of peripheral RAM below 4 GiB is refused there), so
 #: this file's Linux-only code path is not exercised on that host either.
 #: Empty on Linux, where the header is real and a missing resolution there
 #: would still be the include-path defect this checker exists to catch.
-NON_LINUX_MISSING_HEADERS = frozenset({"personality.h"}) if sys.platform != "linux" else frozenset()
+NON_LINUX_MISSING_HEADERS = frozenset({"personality.h"})
 
 #: Cached include flags -- the glob is stable for a whole run.
 _INCLUDE_ARGS: list[str] = []
@@ -93,57 +93,46 @@ _INCLUDE_ARGS: list[str] = []
 #: Extracts the header name out of clang's "'foo.h' file not found".
 _MISSING_INCLUDE_RE = re.compile(r"'([^']+)' file not found")
 
-#: Directory patterns under the repo root that are header roots for some TU.
-_INCLUDE_ROOT_PATTERNS = (
-    # libs/<mod>/{inc,src,boot,v2}: inc/ is the public API, src/ holds
-    # the *_internal.h headers declaring RA8_PRIV symbols, and the
-    # remainder are per-library layouts (board boot code, reflow v2).
-    "libs/*",
-    "libs/*/*",
-    "tests",
-    "tests/include",
-    "tests/mocks",
-    # Shared test fixtures are included by bare header name from both root
-    # tests and tool tests, matching their CMake target include directories.
-    "tests/support",
-    "port/*/inc",
-    # A port may nest a compatibility include root under inc/ when the
-    # software it ports supplies headers by name that the host SDK would
-    # otherwise provide (port/esp-hosted/inc/idf_compat/ holds the ESP-IDF
-    # headers the vendored driver includes). Derive those roots rather than
-    # naming them: a port that grows one and is not listed here parses with
-    # an unresolved include, and every declaration behind it drops out of
-    # the call graph.
-    "port/*/inc/*",
-    "port/*/src",
-    # tools/<tool>/{inc,src}: the same public/private split the libraries
-    # use. cache_bench keeps its headers flat beside its sources, and the
-    # Vela model compiler writes generated/ -- both are real include roots
-    # for their own TUs, so derive them rather than assume the convention.
-    "tools/*",
-    "tools/*/inc",
-    "tools/*/src",
-    # apps/<category>/<product>: a product is a host build like a tool, but
-    # it sits one level deeper so that a category (stand_alone/, and later
-    # threadx_modules/) can group builds of a kind. The include roots are
-    # therefore the same three shapes with one more star; spelling them at
-    # tools/ depth would resolve nothing and every declaration behind those
-    # headers would drop out of the call graph.
-    "apps/*/*",
-    "apps/*/*/inc",
-    "apps/*/*/src",
-    # a tool whose src/ is grouped into domain subdirs (ra8_emulator:
-    # engine/periph/usb/display/io) keeps its *_internal.h beside the .c;
-    # a cross-boundary include from tests/ needs the subdir on the path,
-    # so derive those roots too (the same courtesy libs/*/* already gets).
-    "tools/*/src/*",
-    "tools/*/generated",
-    "apps/*/*/src/*",
+#: Non-conventional include roots that are intentionally outside ``inc/`` or
+#: a private ``src/`` directory. Keep this list narrow: every ordinary
+#: first-party interface belongs under ``inc/`` and is discovered recursively.
+_EXTRA_INCLUDE_ROOTS = (
+    "libs/ra8_fonts",  # generated Literata header
+    "port/esp-hosted/inc/idf_compat",  # exposes freertos/... compatibility headers
+    "tools/vela/generated",  # generated Vela model headers
 )
 
 
+def _first_party_include_roots() -> list[pathlib.Path]:
+    """Return all conventional first-party public and private include roots.
+
+    Source units may sit at different depths (for example
+    ``tests/mocks/inc`` and ``examples/<board>/<state>/<app>/inc``), so depth
+    globs are inherently stale after a reorganization. Public/shared headers
+    are rooted at every directory named ``inc``. A ``src`` directory joins the
+    include path only when it contains a sanctioned ``*_internal.h`` contract;
+    adding every implementation directory would hide misplaced public headers
+    and create unnecessary namesake shadowing.
+    """
+    root = repo_root()
+    roots: set[pathlib.Path] = set()
+    for top in SCAN_DIRS:
+        scan_root = root / top
+        if not scan_root.is_dir():
+            continue
+        roots.update(
+            path for path in scan_root.rglob("inc") if path.is_dir() and not is_excluded(path)
+        )
+        roots.update(
+            header.parent
+            for header in scan_root.rglob("*_internal.h")
+            if "src" in header.relative_to(scan_root).parts[:-1] and not is_excluded(header)
+        )
+    return sorted(roots)
+
+
 def _vendored_include_roots() -> list[pathlib.Path]:
-    """Return the header roots inside ``libs/third_party/``.
+    """Return header roots inside both canonical vendored-source trees.
 
     Vendored trees are excluded from *analysis* but must stay on the
     *include* path: ``port/`` implements interfaces those headers declare --
@@ -152,12 +141,15 @@ def _vendored_include_roots() -> list[pathlib.Path]:
     undeclared external symbols; with them they are what they actually are,
     implementations of a published contract.
     """
-    third_party = repo_root() / "libs" / "third_party"
-    if not third_party.is_dir():
-        return []
-    vendored = list(third_party.iterdir())
-    vendored += list(third_party.rglob("inc"))
-    vendored += list(third_party.rglob("include"))
+    platform_third_party = repo_root() / "libs" / "third_party"
+    app_third_party = repo_root() / "apps" / "shared_libs" / "third_party"
+    vendored: list[pathlib.Path] = []
+    for third_party in (platform_third_party, app_third_party):
+        if not third_party.is_dir():
+            continue
+        vendored += list(third_party.iterdir())
+        vendored += list(third_party.rglob("inc"))
+        vendored += list(third_party.rglob("include"))
     # Not every vendored tree uses an inc/ or include/ convention. esp-hosted
     # puts its public headers directly in host/ and common/**, and its driver
     # includes them by bare name, so the two conventions above miss them
@@ -182,9 +174,9 @@ def _vendored_include_roots() -> list[pathlib.Path]:
         "esp-hosted/common",
         "netxduo/addons/dhcp",
     ):
-        vendored.append(third_party / extra)
-    vendored += sorted((third_party / "esp-hosted" / "common").glob("*"))
-    vendored += sorted((third_party / "esp-hosted" / "host" / "drivers").rglob("*"))
+        vendored.append(platform_third_party / extra)
+    vendored += sorted((platform_third_party / "esp-hosted" / "common").glob("*"))
+    vendored += sorted((platform_third_party / "esp-hosted" / "host" / "drivers").rglob("*"))
     seen: set[pathlib.Path] = set()
     ordered: list[pathlib.Path] = []
     for d in vendored:
@@ -216,15 +208,8 @@ def _include_args() -> list[str]:
     absent, and the whole key-vault and OTA-commit API looked undeclared.
     """
     root = repo_root()
-    roots: list[pathlib.Path] = []
-    for pattern in _INCLUDE_ROOT_PATTERNS:
-        roots.extend(sorted(root.glob(pattern)))
-    # Applications keep their headers beside their sources with no inc/
-    # convention, so derive those roots from where the headers actually
-    # are. A quote-include always searches the including file's own
-    # directory first, so a namesake in a sibling app cannot displace an
-    # app's own header.
-    roots.extend(sorted({h.parent for h in (root / "examples").rglob("*.h")}))
+    roots = _first_party_include_roots()
+    roots.extend(root / relative for relative in _EXTRA_INCLUDE_ROOTS)
     roots = [d for d in roots if d.is_dir() and not is_excluded(d)]
     roots.extend(_vendored_include_roots())
 
@@ -251,20 +236,21 @@ def _resource_dirs_on_disk() -> list[pathlib.Path]:
 
 def _probe_is_clean(extra: list[str]) -> bool:
     """True when ``#include <stddef.h>`` parses without a fatal error."""
-    # Alongside this checker, wherever it lives -- a hardcoded directory
-    # here becomes a FileNotFoundError the moment the file moves.
-    probe = pathlib.Path(__file__).resolve().parent / ".ra8_annotations_probe.c"
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".c", prefix=".ra8_probe_", delete=False
+    ) as f:
+        f.write("#include <stddef.h>\n#include <stdint.h>\nsize_t ra8_probe(void);\n")
+        probe_path = f.name
     try:
-        probe.write_text("#include <stddef.h>\n#include <stdint.h>\nsize_t ra8_probe(void);\n")
         tu = cindex.Index.create().parse(
-            str(probe), args=["-std=c23", "-x", "c", "-DRA8_HOST_BUILD=1", *extra]
+            probe_path, args=["-std=c23", "-x", "c", "-DRA8_HOST_BUILD=1", *extra]
         )
         return not [d for d in (tu.diagnostics if tu else []) if d.severity >= DIAG_ERROR]
     except cindex.TranslationUnitLoadError:
         return False
     finally:
         with contextlib.suppress(OSError):
-            probe.unlink()
+            pathlib.Path(probe_path).unlink()
 
 
 def _homebrew_keg_only_clang_candidates() -> list[str]:
@@ -497,7 +483,8 @@ def parse_tu(path: pathlib.Path, stats: ParseStats) -> cindex.TranslationUnit | 
         if not match:
             continue
         header_name = pathlib.PurePath(match.group(1)).name
-        if header_name not in GENERATED_HEADERS and header_name not in NON_LINUX_MISSING_HEADERS:
+        non_linux_expected = sys.platform != "linux" and header_name in NON_LINUX_MISSING_HEADERS
+        if header_name not in GENERATED_HEADERS and not non_linux_expected:
             stats.missing_includes.add((str(path), match.group(1)))
     return tu
 

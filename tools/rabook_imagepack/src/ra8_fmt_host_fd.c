@@ -23,8 +23,27 @@
 #include "ra8_attributes.h"
 #include "ra8_fmt_host_fd_internal.h"
 
-/* The platform headers omit renameat() without a hosted-stream include. Keep
- * the narrow system prototype at this raw-descriptor boundary instead. */
+/**
+ * @brief Rename one directory-relative path to another atomically.
+ * @details Declares the POSIX.1-2008 libc entry point at this raw-descriptor
+ *          boundary without importing the hosted stream interface from
+ *          the hosted stream header. The declaration matches the
+ *          system-provided function; this translation unit does not provide an
+ *          implementation.
+ * @param[in] old_dir_fd Directory descriptor used to resolve @p old_path.
+ * @param[in] old_path NUL-terminated relative name of the staged artifact.
+ * @param[in] new_dir_fd Directory descriptor used to resolve @p new_path.
+ * @param[in] new_path NUL-terminated relative publication name.
+ * @return POSIX operation status.
+ * @retval 0 The destination atomically replaced the source name.
+ * @retval -1 The rename failed and `errno` identifies the cause.
+ * @pre Both path pointers address valid NUL-terminated relative names.
+ * @pre Both descriptors refer to open directories accessible to the caller.
+ * @post Success removes @p old_path and makes @p new_path name its prior object.
+ * @post Failure preserves both directory entries and sets `errno`.
+ * @note This declaration exposes no hosted stream API and owns no descriptor.
+ * @since 0.1.0
+ */
 extern int renameat(int old_dir_fd, const char* old_path, int new_dir_fd, const char* new_path);
 
 /** @brief Host adapter bounds. */
@@ -416,7 +435,7 @@ static ra8_err_t internal_transaction_commit(void* ctx)
 RA8_INTERNAL
 static void internal_snapshot(const struct stat* status, ra8_fmt_host_snapshot_t* out)
 {
-#if defined(__APPLE__)
+#ifdef __APPLE__
   const struct timespec modified = status->st_mtimespec;
   const struct timespec changed  = status->st_ctimespec;
 #else

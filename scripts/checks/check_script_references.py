@@ -3,8 +3,8 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Gate: every ``scripts/...`` path mentioned anywhere in the tree resolves.
 
-``scripts/`` is referenced from workflows, Makefiles, CMake listfiles, the git
-hooks, C comments, and ~90 Markdown documents.  Those references are plain
+``scripts/`` is referenced from Just recipes, workflows, CMake listfiles, the
+git hooks, C comments, and ~90 Markdown documents.  Those references are plain
 text: nothing type-checks them, so a ``git mv`` inside ``scripts/`` breaks them
 silently.  The repository has already been bitten by exactly that -- a rename
 left cross-references pointing at nothing and ``ci-fast`` did not notice,
@@ -63,14 +63,15 @@ Exit 0 if every reference resolves, 1 on findings, 2 on tool error.
 from __future__ import annotations
 
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 
+from git_environment import isolated_git_environment, trusted_git_executable
 from lint_targets import is_build_output_path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -95,6 +96,7 @@ OPT_OUT = "PATHREF-OK"
 # unchecked either: check_soup_upstream.py parses every one of them strictly.
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
+    "apps/shared_libs/third_party/",
     "libs/ra8_fonts/",
     "port/threadx/",
     "tools/vela/generated/",
@@ -169,7 +171,7 @@ _SIBLING_RE = re.compile(
 # filename. A trailing ``/`` is meaningful (directory) and is NOT stripped.
 _TRAILING_JUNK = ".,;:!?)`'\"|>"
 
-# Characters that mean the token is a shell / make interpolation rather than a
+# Characters that mean the token is a shell / just interpolation rather than a
 # literal path.
 _INTERPOLATION_CHARS = ("$", "{", "}")
 
@@ -199,10 +201,7 @@ def _git_ls_files(root: Path) -> list[str]:
     ``.claude/worktrees/``) that CI can never see, so the enumeration follows
     git's own view of the tree -- the same choice the sibling checkers make.
     """
-    git_tool = shutil.which("git")
-    if git_tool is None:
-        sys.stderr.write("check_script_references.py: FATAL -- `git` not on PATH\n")
-        sys.exit(2)
+    git_tool = trusted_git_executable()
     proc = subprocess.run(  # noqa: S603 -- fixed argv, resolved tool path
         [git_tool, "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
         cwd=root,
@@ -432,7 +431,7 @@ _SELFTEST_CASES: tuple[tuple[str, int, str], ...] = (
 )
 
 
-def _selftest() -> int:
+def _selftest_body() -> int:
     """Assert the detector fires on dead references and stays quiet on live ones.
 
     A path checker that silently stopped matching would report a clean tree --
@@ -471,7 +470,7 @@ def _selftest() -> int:
     # reaches a newly added file too, so a broken ls-files cannot report clean.
     with tempfile.TemporaryDirectory() as tmp:
         tmp_root = Path(tmp)
-        git_tool = shutil.which("git") or "git"
+        git_tool = trusted_git_executable()
         subprocess.run(  # noqa: S603 -- fixed argv, resolved tool path
             [git_tool, "init", "-q"], cwd=tmp_root, check=True, capture_output=True
         )
@@ -494,11 +493,17 @@ def _selftest() -> int:
     return 0
 
 
+def _selftest() -> int:
+    """Run path-reference fixtures without inheriting the caller's repository."""
+    with isolated_git_environment():
+        return _selftest_body()
+
+
 def main(argv: list[str]) -> int:
     """Verify every ``scripts/`` path named anywhere in the tree still resolves.
 
     A stale script reference fails only when someone runs it, which may be
-    months after the rename that broke it -- and in a Makefile or workflow
+    months after the rename that broke it -- and in a justfile or workflow
     that is a broken build for whoever is unlucky, not for whoever moved the
     file. This turns that into a build-time error at the moment of the move.
 

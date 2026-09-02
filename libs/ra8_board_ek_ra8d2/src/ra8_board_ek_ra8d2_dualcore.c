@@ -34,7 +34,7 @@ static const char* const s_tag = "ra8_board.dualcore";
  * @brief Whether the boot MPU marks the shared window Normal non-cacheable.
  *
  * @details
- * ``boot/system_init.c`` programmes MPU region 4 over the shared window only
+ * ``src/boot/system_init.c`` programmes MPU region 4 over the shared window only
  * under ``RA8_BOOT_ENABLE_CACHE_MPU``, which also gates enabling the M85
  * caches. Reporting the flag rather than a constant `true` keeps the
  * descriptor honest: in a build without it nothing is stale (there is no cache

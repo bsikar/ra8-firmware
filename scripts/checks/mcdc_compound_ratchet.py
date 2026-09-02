@@ -69,7 +69,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from check_new_compound_has_mcdc import audit_tree, collect_tree_citations
+from check_new_compound_has_mcdc import audit_tree, collect_tree_citations, stale_tree_citations
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BASELINE_FILE = REPO_ROOT / ".github" / "mcdc-compound-baseline.txt"
@@ -80,15 +80,17 @@ MAX_DETAIL_LINES = 10
 BASELINE_COLUMNS = 3
 """Column count of one baseline row: file, function, count."""
 
-MIN_PRODUCTION_FILES = 200
+MIN_PRODUCTION_FILES = 400
 """Refuse to ratchet a scan that saw implausibly few production files.
 
-The tree holds ~400 production `.c` files under `libs/` `src/` `port/`. A scan
-that finds a fraction of that is not looking at this repository -- a wrong
-`--root`, a partial checkout, a build snapshot missing a subtree. It would
-report FEWER findings, which reads as a burn-down, and `--update` would freeze
-that as the accepted state. Half the tree is the failure signature; a genuine
-deletion of half the firmware is not a thing that happens quietly.
+The tree holds about 540 production `.c` files under `libs/`, `port/`,
+`apps/shared_libs/`, and the firmware product directories derived by
+`lint_targets.firmware_app_dirs()`. A scan that finds a fraction of that is not
+looking at this repository -- a wrong `--root`, a partial checkout, a build
+snapshot missing a subtree. It would report FEWER findings, which reads as a
+burn-down, and `--update` would freeze that as the accepted state. Half the
+tree is the failure signature; a genuine deletion of half the firmware is not
+a thing that happens quietly.
 """
 
 MIN_CITATIONS = 50
@@ -118,12 +120,12 @@ def scan(root: Path) -> tuple[Counter, int, int]:
     return counts, len(files), len(collect_tree_citations(root))
 
 
-def load_baseline() -> Counter:
+def load_baseline(baseline_file: Path = BASELINE_FILE) -> Counter:
     """Read the committed baseline into a Counter. Missing file means empty."""
     counts: Counter = Counter()
-    if not BASELINE_FILE.is_file():
+    if not baseline_file.is_file():
         return counts
-    for raw in BASELINE_FILE.read_text(encoding="ascii").splitlines():
+    for raw in baseline_file.read_text(encoding="ascii").splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
@@ -134,7 +136,7 @@ def load_baseline() -> Counter:
     return counts
 
 
-def write_baseline(counts: Counter) -> None:
+def write_baseline(counts: Counter, baseline_file: Path = BASELINE_FILE) -> None:
     """Write `counts` out in the committed, sorted, diffable form."""
     total = sum(counts.values())
     lines = [
@@ -144,15 +146,20 @@ def write_baseline(counts: Counter) -> None:
         "#",
         "# Each row is a function holding N compound boolean decisions (`&&` / `||`)",
         "# with NO matching `@par MC/DC:` `path@function` citation in any",
-        "# tests/test_*.{c,cpp}. These predate enforcement (issue #426). The gate fails",
-        "# on any INCREASE, so the debt is frozen and can only be burned down; a",
+        "# supported indexed test source. These predate enforcement (issue #426).",
+        "# The gate fails on any INCREASE, so the debt is frozen and can only be",
+        "# burned down; a",
         "# newly-added uncovered decision raises a count and fails.",
+        "# Reusable production code under apps/shared_libs/ is included. Adding that",
+        "# previously omitted scope exposed 1,195 pre-existing decisions in 586 buckets,",
+        "# with zero growth outside apps/shared_libs/. This is a visibility correction,",
+        "# not a coverage regression or waiver; all rows share the same no-growth rule.",
         "#",
         f"# Total at this baseline: {total} uncovered compound decision(s)",
         f"# across {len({p for p, _ in counts})} file(s).",
         "#",
         "# Burn one down: add a `test_mcdc_<decision>` function with N+1 vectors",
-        "# to the matching tests/test_<module>.{c,cpp} whose MC/DC block cites",
+        "# to a supported indexed test source whose MC/DC block cites",
         "# `path@function`. See docs/MCDC.md for the worked example.",
         "#",
         "# Regenerate after burning findings down:",
@@ -173,7 +180,7 @@ def write_baseline(counts: Counter) -> None:
     for (path, function), n in sorted(counts.items()):
         if n:
             lines.append(f"{path}\t{function}\t{n}")
-    BASELINE_FILE.write_text("\n".join(lines) + "\n", encoding="ascii")
+    baseline_file.write_text("\n".join(lines) + "\n", encoding="ascii")
 
 
 def scope_reason(files: int, citations: int) -> str | None:
@@ -186,7 +193,8 @@ def scope_reason(files: int, citations: int) -> str | None:
     """
     if files < MIN_PRODUCTION_FILES:
         return (
-            f"only {files} production .c file(s) found under libs/ src/ port/, "
+            f"only {files} production .c file(s) found under libs/, port/, "
+            "apps/shared_libs/, and discovered firmware products, "
             f"below the {MIN_PRODUCTION_FILES} floor.\n"
             "  The scan is not looking at this repository (wrong --root, or a\n"
             "  partial checkout). A partial scan reports FEWER uncovered\n"
@@ -195,13 +203,41 @@ def scope_reason(files: int, citations: int) -> str | None:
         )
     if citations < MIN_CITATIONS:
         return (
-            f"only {citations} MC/DC citation(s) found in tests/test_*.{{c,cpp}}, "
+            f"only {citations} MC/DC citation(s) found in supported test sources, "
             f"below the {MIN_CITATIONS} floor.\n"
             "  Every finding is 'this function is not cited', so a truncated\n"
             "  citation index makes the whole tree look uncovered. What changed\n"
             "  is the index, not the code, so the count is meaningless."
         )
     return None
+
+
+def report_stale_citations(stale: list[tuple[str, int, str, str]]) -> int:
+    """Reject citation tokens whose source path and function no longer resolve."""
+    if not stale:
+        return 0
+    unique = sorted({(source, function) for _test, _line, source, function in stale})
+    print(
+        f"MC/DC citation validation: {len(unique)} stale path@function key(s) "
+        f"across {len(stale)} occurrence(s).",
+        file=sys.stderr,
+    )
+    for source, function in unique[:MAX_DETAIL_LINES]:
+        origins = sorted(
+            f"{test}:{line}"
+            for test, line, cited_source, cited_function in stale
+            if (cited_source, cited_function) == (source, function)
+        )
+        print(f"  {source}@{function}", file=sys.stderr)
+        print(f"      cited by {', '.join(origins)}", file=sys.stderr)
+    if len(unique) > MAX_DETAIL_LINES:
+        print(f"  ... and {len(unique) - MAX_DETAIL_LINES} more stale key(s)", file=sys.stderr)
+    print(
+        "Retarget moved functions to their current source path, or remove a citation "
+        "whose decision no longer exists.",
+        file=sys.stderr,
+    )
+    return 1
 
 
 def report(current: Counter, baseline: Counter) -> int:
@@ -228,9 +264,10 @@ def report(current: Counter, baseline: Counter) -> int:
             print(f"  ... and {len(grown) - MAX_DETAIL_LINES} more bucket(s)", file=sys.stderr)
         print(file=sys.stderr)
         print(
-            "Every compound boolean decision under libs/ port/ needs MC/DC\n"
+            "Every compound boolean decision under libs/, port/,\n"
+            "apps/shared_libs/, and discovered firmware products needs MC/DC\n"
             "vectors: add a `test_mcdc_<decision>` function with N+1 vectors to\n"
-            "the matching tests/test_<module>.{c,cpp} and cite the decision as\n"
+            "a supported indexed test source and cite the decision as\n"
             "`path@function` in its `@par MC/DC:` block (see docs/MCDC.md).\n"
             "\n"
             "The baseline is a burn-down of debt that predates enforcement, not\n"
@@ -268,6 +305,16 @@ _ST_UNCOVERED_C = """\
 ra8_err_t ra8_uncovered_fn(int a, int b)
 {
   if (a || b) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_APP_UNCOVERED_C = """\
+ra8_err_t ra8_app_uncovered_fn(int a, int b)
+{
+  if (a && b) {
     return k_ra8_ok;
   }
   return k_ra8_err;
@@ -324,10 +371,12 @@ def _st_write(root: Path, rel: str, body: str) -> None:
 
 
 def _st_build_tree(root: Path) -> None:
-    """Lay down a fixture tree: one covered, one uncovered, one SOUP decision."""
+    """Lay down platform/app production, covered, and exempt SOUP decisions."""
     _st_write(root, "libs/covered.c", _ST_COVERED_C)
     _st_write(root, "libs/uncovered.c", _ST_UNCOVERED_C)
+    _st_write(root, "apps/shared_libs/demo/src/app.c", _ST_APP_UNCOVERED_C)
     _st_write(root, "libs/third_party/soup.c", _ST_SOUP_C)
+    _st_write(root, "apps/shared_libs/third_party/soup/source.c", _ST_SOUP_C)
     _st_write(root, "tests/test_covered.c", _ST_TEST_C)
 
 
@@ -340,12 +389,14 @@ def _selftest_scan(tmp: Path) -> list[str]:
 
     if counts.get(("libs/uncovered.c", "ra8_uncovered_fn")) != 1:
         failures.append("scan() did not count the uncovered decision in libs/uncovered.c")
+    if counts.get(("apps/shared_libs/demo/src/app.c", "ra8_app_uncovered_fn")) != 1:
+        failures.append("scan() did not count the app-owned production decision")
     if any(path == "libs/covered.c" for path, _fn in counts):
         failures.append("scan() counted libs/covered.c, which carries MC/DC vectors")
     if any("third_party" in path for path, _fn in counts):
-        failures.append("scan() counted a libs/third_party/ decision (SOUP is exempt)")
-    if sum(counts.values()) != 1:
-        failures.append(f"scan() found {sum(counts.values())} decision(s), expected exactly 1")
+        failures.append("scan() counted a decision under a canonical SOUP root")
+    if sum(counts.values()) != 2:  # noqa: PLR2004 -- fixture plants exactly 2 decisions
+        failures.append(f"scan() found {sum(counts.values())} decision(s), expected exactly 2")
 
     # The measurement must SEE the growth it is meant to gate on.
     _st_write(root, "libs/uncovered.c", _ST_UNCOVERED_C_GROWN)
@@ -361,7 +412,7 @@ def _selftest_scan(tmp: Path) -> list[str]:
     return failures
 
 
-def _selftest_ratchet() -> list[str]:
+def _selftest_ratchet(tmp: Path) -> list[str]:
     """Assertions about the growth verdict and baseline round-tripping."""
     failures: list[str] = []
 
@@ -381,19 +432,16 @@ def _selftest_ratchet() -> list[str]:
     if report(Counter(), base) != 0:
         failures.append("report() failed a fully burned-down baseline")
 
-    # Round-trip: what is written must read back identically, or a re-baseline
-    # would silently reshape the debt it claims to be freezing.
-    original = BASELINE_FILE.read_text(encoding="ascii") if BASELINE_FILE.is_file() else None
-    try:
-        fixture = Counter({("libs/a.c", "fn_x"): 3, ("src/b.c", "fn_y"): 1})
-        write_baseline(fixture)
-        if load_baseline() != fixture:
-            failures.append("write_baseline()/load_baseline() did not round-trip")
-    finally:
-        if original is None:
-            BASELINE_FILE.unlink(missing_ok=True)
-        else:
-            BASELINE_FILE.write_text(original, encoding="ascii")
+    # Round-trip only through a caller-supplied throwaway authority. A selftest
+    # must never rewrite the committed baseline, even briefly: interruption in
+    # the old save/restore window left a fixture baseline in the worktree.
+    fixture_baseline = tmp / "mcdc-compound-baseline.txt"
+    if fixture_baseline.resolve() == BASELINE_FILE.resolve():
+        failures.append("selftest fixture resolved to the committed baseline")
+    fixture = Counter({("libs/a.c", "fn_x"): 3, ("src/b.c", "fn_y"): 1})
+    write_baseline(fixture, fixture_baseline)
+    if load_baseline(fixture_baseline) != fixture:
+        failures.append("write_baseline()/load_baseline() did not round-trip")
 
     return failures
 
@@ -410,6 +458,33 @@ def _selftest_scope_guard() -> list[str]:
     return failures
 
 
+def _selftest_citation_resolution(tmp: Path) -> list[str]:
+    """Prove moved/missing symbols fire and an exact live citation stays quiet."""
+    failures: list[str] = []
+    root = tmp / "citation-tree"
+    _st_write(root, "libs/covered.c", _ST_COVERED_C)
+    _st_write(root, "tests/test_citation.c", _ST_TEST_C)
+    if stale_tree_citations(root):
+        failures.append("citation validator rejected an exact live path@function")
+    _st_write(
+        root,
+        "tests/test_citation.c",
+        _ST_TEST_C.replace("libs/covered.c@ra8_covered_fn", "libs/old.c@ra8_covered_fn"),
+    )
+    stale = stale_tree_citations(root)
+    if len({(source, function) for _test, _line, source, function in stale}) != 1:
+        failures.append("citation validator did not reject exactly one moved source key")
+    _st_write(
+        root,
+        "tests/test_citation.c",
+        _ST_TEST_C.replace("ra8_covered_fn", "renamed_away"),
+    )
+    stale = stale_tree_citations(root)
+    if len({(source, function) for _test, _line, source, function in stale}) != 1:
+        failures.append("citation validator did not reject exactly one missing symbol key")
+    return failures
+
+
 def selftest() -> int:
     """Assert the measurement and the ratchet fire, in BOTH directions.
 
@@ -419,8 +494,10 @@ def selftest() -> int:
     second uncovered decision appear in a function it already knew about.
     """
     with tempfile.TemporaryDirectory() as td:
-        failures = _selftest_scan(Path(td))
-    failures += _selftest_ratchet() + _selftest_scope_guard()
+        tmp = Path(td)
+        failures = _selftest_scan(tmp) + _selftest_ratchet(tmp)
+        failures += _selftest_citation_resolution(tmp)
+    failures += _selftest_scope_guard()
 
     if failures:
         print("SELFTEST FAILED:", file=sys.stderr)
@@ -477,13 +554,18 @@ def main() -> int:
         parser.error("one of --check / --update / --list / --selftest is required")
 
     current, files, citations = scan(root)
+    stale = stale_tree_citations(root)
 
     # Refuse to ratchet a scan whose scope never got established, in EITHER
     # direction, before comparing or writing anything.
     broken = scope_reason(files, citations)
+    stale_rc = 0
     if broken:
         verb = "--update" if args.update else "--check"
         print(f"refusing to {verb}: {broken}", file=sys.stderr)
+    else:
+        stale_rc = report_stale_citations(stale)
+    if broken or stale_rc != 0:
         return 1
 
     if args.update:
@@ -511,7 +593,7 @@ def main() -> int:
 
     print(
         f"MC/DC ratchet: scanned {files} production file(s), "
-        f"{citations} citation(s) in tests/test_*.{{c,cpp}}."
+        f"{citations} citation(s) in supported indexed test sources."
     )
     return report(current, load_baseline())
 

@@ -281,7 +281,7 @@ static ra8_err_t internal_sdcard_identify(uint8_t instance)
    * RSPEND so the host stays in lockstep with the bus state machine. */
   const ra8_err_t e0 =
     ra8_sdhi_send_command(instance, (uint32_t)k_ra8_sdcard_cmd0_go_idle, 0U, rsp);
-  RA8_RETURN_ON_ERROR(e0, s_tag, "cmd0"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(e0, s_tag, "cmd0");
 
   /* HUM Ch 47.2.5 "SD_RSP10 : Response Register 10" p 3132 */
   /* CMD8 SEND_IF_COND -- echoes the low 12 bits of the argument back
@@ -290,7 +290,9 @@ static ra8_err_t internal_sdcard_identify(uint8_t instance)
                                              (uint32_t)k_ra8_sdcard_cmd8_send_if_cond,
                                              (uint32_t)k_ra8_sdcard_cmd8_pattern,
                                              rsp);
-  RA8_RETURN_ON_ERROR(e8, s_tag, "cmd8"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- no failing SDHI fake drives this cmd err */
+  RA8_RETURN_ON_ERROR(e8, s_tag, "cmd8");
+  /* GCOVR_EXCL_BR_STOP */
   if ((rsp[0] & (uint32_t)k_ra8_sdcard_cmd8_pattern_mask) !=
       ((uint32_t)k_ra8_sdcard_cmd8_pattern & (uint32_t)k_ra8_sdcard_cmd8_pattern_mask)) {
     return k_ra8_err_hw_init_failed;
@@ -330,12 +332,16 @@ static ra8_err_t internal_sdcard_publish_rca(uint8_t instance, uint16_t* out_rca
   /* CMD2 ALL_SEND_CID -- 136-bit R2; we don't decode the CID. */
   const ra8_err_t e2 =
     ra8_sdhi_send_command(instance, (uint32_t)k_ra8_sdcard_cmd2_all_send_cid, 0U, rsp);
-  RA8_RETURN_ON_ERROR(e2, s_tag, "cmd2"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- SD command fail never injected by suite */
+  RA8_RETURN_ON_ERROR(e2, s_tag, "cmd2");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* CMD3 SEND_RELATIVE_ADDR -- card publishes its RCA in rsp[0][31:16]. */
   const ra8_err_t e3 =
     ra8_sdhi_send_command(instance, (uint32_t)k_ra8_sdcard_cmd3_send_rca, 0U, rsp);
-  RA8_RETURN_ON_ERROR(e3, s_tag, "cmd3"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- cmd error propagation arm not driven */
+  RA8_RETURN_ON_ERROR(e3, s_tag, "cmd3");
+  /* GCOVR_EXCL_BR_STOP */
   *out_rca = (uint16_t)((rsp[0] >> 16U) & k_sd_rca_mask);
   return k_ra8_ok;
 }
@@ -380,7 +386,9 @@ internal_sdcard_publish_and_select(uint8_t instance, uint16_t* out_rca, uint32_t
   /* CMD9 SEND_CSD -- arg = RCA<<16; R2 holds the 128-bit CSD. */
   const ra8_err_t e9 =
     ra8_sdhi_send_command(instance, (uint32_t)k_ra8_sdcard_cmd9_send_csd, rca_arg, rsp);
-  RA8_RETURN_ON_ERROR(e9, s_tag, "cmd9"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- SDHI fake never fails this transfer */
+  RA8_RETURN_ON_ERROR(e9, s_tag, "cmd9");
+  /* GCOVR_EXCL_BR_STOP */
 
   const ra8_err_t dec_err = internal_decode_csd(rsp, out_blocks);
   if (dec_err != k_ra8_ok) {
@@ -390,7 +398,9 @@ internal_sdcard_publish_and_select(uint8_t instance, uint16_t* out_rca, uint32_t
   /* CMD7 SELECT_CARD -- arg = RCA<<16 to put this card into TRAN. */
   const ra8_err_t e7 =
     ra8_sdhi_send_command(instance, (uint32_t)k_ra8_sdcard_cmd7_select_card, rca_arg, rsp);
-  RA8_RETURN_ON_ERROR(e7, s_tag, "cmd7"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- no test injects SD read failure here */
+  RA8_RETURN_ON_ERROR(e7, s_tag, "cmd7");
+  /* GCOVR_EXCL_BR_STOP */
 
   *out_rca = rca;
   return k_ra8_ok;
@@ -506,7 +516,7 @@ static ra8_err_t internal_sdcard_card_online(uint8_t   instance,
 {
   /* HUM Ch 47.1 "SDHI Overview" p 3122 */ /* module bring-up first. */
   const ra8_err_t hw_err = ra8_sdhi_init(instance);
-  RA8_RETURN_ON_ERROR(hw_err, s_tag, "sdhi_init"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(hw_err, s_tag, "sdhi_init");
 
   const ra8_err_t id_err = internal_sdcard_identify(instance);
   if (id_err != k_ra8_ok) {
@@ -556,7 +566,9 @@ ra8_err_t ra8_sdcard_init(const ra8_sdcard_cfg_t* cfg)
    * speed. The SDR50 / DDR50 negotiation lives in the future
    * ::ra8_sdcard_set_speed extension. */
   const ra8_err_t eclk = ra8_sdhi_set_clock(cfg->instance, (uint32_t)k_ra8_sdcard_default_clk_div);
-  RA8_RETURN_ON_ERROR(eclk, s_tag, "set_clock"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- card error unwind not staged on host */
+  RA8_RETURN_ON_ERROR(eclk, s_tag, "set_clock");
+  /* GCOVR_EXCL_BR_STOP */
 
   s_sdcard.instance        = cfg->instance;
   s_sdcard.rca             = rca;

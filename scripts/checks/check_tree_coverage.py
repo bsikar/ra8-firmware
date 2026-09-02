@@ -16,7 +16,7 @@ Three overlapping regimes used to answer the same question differently: an
 aggregate ``gcovr --fail-under-line 90 --fail-under-branch 80`` plus a
 ``libs/``+``src/``-only per-file line floor; a SECOND full coverage build
 ratcheted against a two-number project-wide baseline; and a product-named
-media_dl per-file ratchet with its own baseline and its own scope list. Three
+mdl per-file ratchet with its own baseline and its own scope list. Three
 policies meant three answers to "is this file covered enough", two coverage
 builds of the same translation units, and -- because each had its own scope --
 a large majority of the tree that no policy mentioned at all.
@@ -47,8 +47,8 @@ MEASUREMENT
 -----------
 Every project in ``tree_coverage_model.PROJECTS`` is built and run separately
 and reported into its own gcovr trace; the traces are then merged. The merge is
-the point. The media_dl core is compiled by BOTH the host suite and the
-media_dl form, and a single gcovr sweep over one build tree therefore reports
+the point. The mdl core is compiled by BOTH the host suite and the mdl host
+form, and a single gcovr sweep over one build tree therefore reports
 whichever half it happened to see -- ``mdl_config.c`` measures 77.3% from the
 host suite alone and 90.1% from the union. One row per unit means one number
 per unit, and that number is what every project together executed.
@@ -707,7 +707,7 @@ def run_gate(*, update: bool) -> int:
 #: nobody.
 SELFTEST_BASELINE: dict[str, Row] = {
     "libs/ra8_demo/src/frozen.c": measured((90, 100, 80, 100)),
-    "apps/shared/media_dl/src/debt.c": measured((41, 100, 30, 100)),
+    "apps/shared_libs/mdl/src/debt.c": measured((41, 100, 30, 100)),
     "examples/ek_ra8d2/demo/main.c": unmeasured(REASON_FIRMWARE),
     "tools/demo/src/host.c": unmeasured(REASON_HOSTED),
 }
@@ -723,7 +723,7 @@ def _swap(rel: str, row: Row) -> dict[str, Row]:
 def _ratchet_cases() -> list[Case]:
     """Cases for the MEASURED ratchet: debt, ratio, floors, improvement."""
     frozen = "libs/ra8_demo/src/frozen.c"
-    debt = "apps/shared/media_dl/src/debt.c"
+    debt = "apps/shared_libs/mdl/src/debt.c"
     return [
         ("an unchanged tree stays quiet", dict(SELFTEST_BASELINE), False),
         ("uncovered line debt growth fires", _swap(frozen, measured((90, 101, 80, 100))), True),
@@ -772,8 +772,8 @@ def _kind_cases() -> list[Case]:
 
 
 #: The unit the move cases relocate, and where they relocate it to.
-MOVE_FROM = "apps/shared/media_dl/src/debt.c"
-MOVE_TO = "apps/stand_alone/media_dl/src/debt.c"
+MOVE_FROM = "apps/shared_libs/mdl/src/debt.c"
+MOVE_TO = "apps/host/mdl/src/debt.c"
 
 
 def _moved(destination: str, row: Row) -> dict[str, Row]:
@@ -792,7 +792,7 @@ def _move_cases() -> list[Case]:
         ("a move that regressed fires", _moved(MOVE_TO, measured((40, 100, 30, 100))), True),
         (
             "a move that also renames the file is not paired",
-            _moved("apps/stand_alone/media_dl/src/renamed.c", carried),
+            _moved("apps/host/mdl/src/renamed.c", carried),
             True,
         ),
         (
@@ -842,7 +842,7 @@ def _severity_failures() -> list[str]:
     """Prove --update refuses a regression and accepts a pure staleness."""
     frozen = "libs/ra8_demo/src/frozen.c"
     tool = "tools/demo/src/host.c"
-    debt = "apps/shared/media_dl/src/debt.c"
+    debt = "apps/shared_libs/mdl/src/debt.c"
     regression = evaluate(_swap(frozen, measured((80, 100, 80, 100))), SELFTEST_BASELINE)
     staleness = evaluate(_swap(tool, measured((10, 10, 10, 10))), SELFTEST_BASELINE)
     shrink = evaluate(_swap(debt, measured((31, 90, 25, 95))), SELFTEST_BASELINE)
@@ -871,12 +871,26 @@ def _scope_failures() -> list[str]:
         out.append("the live census must clear every root floor")
     if not census_floor_failures([rel for rel in live if not rel.startswith("tools/")]):
         out.append("a census with tools/ removed must fail its root floor")
-    if unclaimed_coverage_projects(["tests", "apps/shared/media_dl"]):
+    if unclaimed_coverage_projects(["tests", "apps/shared_libs/mdl"]):
         out.append("a claimed coverage project must not be reported unclaimed")
     if not unclaimed_coverage_projects(["tools/unwired"]):
         out.append("an unclaimed coverage project must be reported")
     if not in_census("libs/ra8_demo/src/a.c") or in_census("libs/ra8_demo/tests/a.c"):
         out.append("the census must take production units and reject test sources")
+    if (
+        structural_reason(
+            "apps/shared_libs/reflow/v2/src/reflow_v2.cpp",
+            compiled=False,
+            firmware_dirs=(),
+        )
+        != REASON_PLATFORM
+    ):
+        out.append("the mutually exclusive reflow v2 adapter must remain platform-cross-only")
+    if (
+        structural_reason("apps/shared_libs/demo/src/host.c", compiled=False, firmware_dirs=())
+        != REASON_HOSTED
+    ):
+        out.append("ordinary unmeasured app code must remain hosted debt")
     return out
 
 

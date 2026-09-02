@@ -30,19 +30,21 @@ through an authorized maintenance path first. Native FAT/exFAT does not claim a
 power-loss-atomic rename or a durable barrier, and this app does not invent those
 guarantees.
 
-## Configuration and the fail-closed image
+## Runtime configuration
 
-Credentials and the URL are build inputs and are never committed; the Makefile
-also sources the gitignored `coprocessor/esp32c6/wifi.env` when it exists. An
-aggregate or no-secret build leaves them empty, and that image **builds but fails
-before mounting storage or issuing an RPC** -- it is fail-closed by design.
+Every build is credential-free. After boot the image prints
+`ra8_net_provision: READY v1` and accepts exactly one bounded packet over the
+debug UART:
 
-That matters for evidence: an empty-config build proves nothing about whether the
-linker retained the feature. `make compile-proof` exists for exactly that gap. It
-builds with reserved, non-secret values in a separate directory, keeping the
-complete transfer path reachable under optimization, and then asserts that the
-final ELF contains the C6 transfer and strict RABOOK validation symbols plus a
-nonempty SDRAM workspace.
+```text
+RA8NET1:<ssid_hex>:<psk_hex>:<url_hex>
+```
+
+Unlike the join and camera examples, this app requires the URL field. Invalid,
+missing, or oversized input fails before storage publication or a media RPC.
+Received bytes are never echoed. Wi-Fi fields are erased after association and
+the URL is erased after the transfer returns, so neither compiler metadata nor
+firmware artifacts contain runtime configuration.
 
 ## Blocked on
 

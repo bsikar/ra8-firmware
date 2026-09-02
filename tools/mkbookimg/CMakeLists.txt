@@ -27,11 +27,14 @@ file(GLOB _ra8_fs_srcs CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/*.c)
 # The tool is split across two TUs (file-size gate): the host container plus
 # entry point, and the population pass that streams and verifies each book.
 add_executable(
-  mkbookimg ${CMAKE_CURRENT_SOURCE_DIR}/mkbookimg.c ${CMAKE_CURRENT_SOURCE_DIR}/mkbookimg_books.c
-            ${_ra8_fs_srcs}
+  mkbookimg ${CMAKE_CURRENT_SOURCE_DIR}/src/mkbookimg.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/mkbookimg_books.c ${_ra8_fs_srcs}
 )
 
-target_include_directories(mkbookimg PRIVATE ${_repo}/libs/ra8_fs/inc ${_repo}/libs/ra8_core/inc)
+target_include_directories(
+  mkbookimg PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${_repo}/libs/ra8_fs/inc
+                    ${_repo}/libs/ra8_core/inc
+)
 
 # First-party sources carry the project warning bar (NASA Power of 10
 # Rule 10) here exactly as they do in the ARM and host-test builds; only

@@ -44,13 +44,13 @@ add_custom_target(
 file(GLOB RA8_FS_FAT_TU_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/ra8_fs_fat*.c)
 list(APPEND RA8_FS_FAT_TU_SOURCES ${FW_ROOT}/libs/ra8_fs/src/ra8_fs_utf.c)
 add_executable(
-  test_ra8_fs_exfat ${CMAKE_CURRENT_SOURCE_DIR}/host/exfat_fs_test.c ${RA8_FS_FAT_TU_SOURCES}
+  test_ra8_fs_exfat ${CMAKE_CURRENT_SOURCE_DIR}/host/src/exfat_fs_test.c ${RA8_FS_FAT_TU_SOURCES}
 )
 add_dependencies(test_ra8_fs_exfat ra8_exfat_fixture)
 target_compile_options(test_ra8_fs_exfat PRIVATE -Wall -Wextra)
 target_include_directories(
-  test_ra8_fs_exfat PRIVATE ${FW_ROOT}/libs/ra8_fs/inc ${FW_ROOT}/libs/ra8_core/inc
-                            ${FW_ROOT}/libs/ra8_hal/inc
+  test_ra8_fs_exfat PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support/inc ${FW_ROOT}/libs/ra8_fs/inc
+                            ${FW_ROOT}/libs/ra8_core/inc ${FW_ROOT}/libs/ra8_hal/inc
 )
 target_compile_definitions(test_ra8_fs_exfat PRIVATE RA8_EXFAT_FIXTURE="${RA8_EXFAT_FIXTURE_IMG}")
 add_test(NAME test_ra8_fs_exfat COMMAND test_ra8_fs_exfat)
@@ -76,29 +76,26 @@ list(
 )
 add_executable(
   test_ra8_cache_store
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_cache_store.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_cache_store.c
   ${RA8_CACHE_STORE_SOURCES}
   ${RA8_LEVELX_NOR_STANDALONE}
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/lx_nor_fake_ram.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/src/lx_nor_fake_ram.c
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_cache_store PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_definitions(test_ra8_cache_store PRIVATE LX_STANDALONE_ENABLE)
-target_compile_options(
-  test_ra8_cache_store PRIVATE -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
-)
+target_compile_options(test_ra8_cache_store PRIVATE -Wall -Wextra)
 target_include_directories(
   test_ra8_cache_store
-  PRIVATE ${FW_ROOT}/libs/ra8_cache_store/inc
+  PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS}
+          ${FW_ROOT}/libs/ra8_cache_store/inc
           ${FW_ROOT}/libs/ra8_cache_store/src
           ${FW_ROOT}/libs/ra8_core/inc
           ${FW_ROOT}/libs/ra8_hal/inc
           ${FW_ROOT}/libs/ra8_mem/inc
           ${FW_ROOT}/libs/third_party/levelx/common/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+          ${CMAKE_CURRENT_SOURCE_DIR}/mocks/inc
 )
-# LevelX SOUP: silence its warnings (matches cmake/levelx.cmake handling).
-set_source_files_properties(${RA8_LEVELX_NOR_STANDALONE} PROPERTIES COMPILE_OPTIONS "-w")
 add_test(NAME test_ra8_cache_store COMMAND test_ra8_cache_store)
 
 # ---------------------------------------------------------------------------
@@ -113,10 +110,10 @@ add_test(NAME test_ra8_cache_store COMMAND test_ra8_cache_store)
 # ---------------------------------------------------------------------------
 add_executable(
   test_lx_fs_backend
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_lx_fs_backend.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_lx_fs_backend.c
   ${FW_ROOT}/port/levelx/src/lx_fs_backend.c
   ${RA8_LEVELX_NOR_STANDALONE}
-  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/lx_nor_fake_ram.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/src/lx_nor_fake_ram.c
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_lx_fs_backend PROPERTIES LINKER_LANGUAGE CXX)
@@ -124,12 +121,13 @@ target_compile_definitions(test_lx_fs_backend PRIVATE LX_STANDALONE_ENABLE)
 target_compile_options(test_lx_fs_backend PRIVATE -Wall -Wextra)
 target_include_directories(
   test_lx_fs_backend
-  PRIVATE ${FW_ROOT}/port/levelx/inc
+  PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS}
+          ${FW_ROOT}/port/levelx/inc
           ${FW_ROOT}/libs/ra8_fs/inc
           ${FW_ROOT}/libs/ra8_core/inc
           ${FW_ROOT}/libs/ra8_hal/inc
           ${FW_ROOT}/libs/third_party/levelx/common/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+          ${CMAKE_CURRENT_SOURCE_DIR}/mocks/inc
 )
 add_test(NAME test_lx_fs_backend COMMAND test_lx_fs_backend)
 
@@ -145,7 +143,7 @@ add_test(NAME test_lx_fs_backend COMMAND test_lx_fs_backend)
 set(RCS_DEMO_DIR ${FW_ROOT}/examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo)
 add_executable(
   test_cache_store_demo
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_cache_store_demo.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_cache_store_demo.c
   ${RCS_DEMO_DIR}/src/cache_store_demo.c
   ${RCS_DEMO_DIR}/src/lx_nor_ram.c
   ${RA8_CACHE_STORE_SOURCES}
@@ -154,12 +152,11 @@ add_executable(
 )
 set_target_properties(test_cache_store_demo PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_definitions(test_cache_store_demo PRIVATE LX_STANDALONE_ENABLE)
-target_compile_options(
-  test_cache_store_demo PRIVATE -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
-)
+target_compile_options(test_cache_store_demo PRIVATE -Wall -Wextra)
 target_include_directories(
   test_cache_store_demo
-  PRIVATE # Cache-store demo specifics: the example core, the cache-store library
+  PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS}
+          # Cache-store demo specifics: the example core, the cache-store library
           # (public + private for MC/DC access) and the standalone LevelX headers.
           ${RCS_DEMO_DIR}/inc
           ${FW_ROOT}/libs/ra8_cache_store/inc
@@ -181,6 +178,7 @@ target_include_directories(
           ${FW_ROOT}/libs/ra8_usb_pal/inc
           ${FW_ROOT}/libs/ra8_fs/inc
           ${FW_ROOT}/libs/ra8_io/inc
+          ${FW_ROOT}/apps/shared_libs/compress/inc
           ${FW_ROOT}/libs/ra8_ftl/inc
           ${FW_ROOT}/libs/ra8_mem/inc
           ${FW_ROOT}/libs/ra8_sdmmc_spi/inc
@@ -189,9 +187,9 @@ target_include_directories(
           ${FW_ROOT}/libs/ra8_ui/inc
           ${FW_ROOT}/libs/ra8_keyboard/inc
           ${FW_ROOT}/libs/ra8_box/inc
-          ${FW_ROOT}/libs/ra8_book/inc
-          ${FW_ROOT}/libs/ra8_rabook_compile/inc
-          ${FW_ROOT}/libs/ra8_rabook_import/inc
+          ${FW_ROOT}/apps/shared_libs/book/inc
+          ${FW_ROOT}/apps/shared_libs/rabook_compile/inc
+          ${FW_ROOT}/apps/shared_libs/rabook_import/inc
           ${FW_ROOT}/libs/ra8_batt/inc
           ${FW_ROOT}/libs/ra8_widget/inc
           ${FW_ROOT}/libs/ra8_app/inc
@@ -201,11 +199,11 @@ target_include_directories(
           ${FW_ROOT}/libs/ra8_dfu/inc
           ${FW_ROOT}/libs/ra8_display_pal/inc
           ${FW_ROOT}/libs/ra8_power_profile/inc
-          ${FW_ROOT}/libs/ra8_epub/inc
-          ${FW_ROOT}/libs/ra8_comic/inc
-          ${FW_ROOT}/libs/ra8_unarch/inc
-          ${FW_ROOT}/libs/ra8_reflow/inc
-          ${FW_ROOT}/libs/ra8_webp/inc
+          ${FW_ROOT}/apps/shared_libs/epub/inc
+          ${FW_ROOT}/apps/shared_libs/comic/inc
+          ${FW_ROOT}/apps/shared_libs/unarch/inc
+          ${FW_ROOT}/apps/shared_libs/reflow/inc
+          ${FW_ROOT}/apps/shared_libs/webp/inc
           ${FW_ROOT}/libs/ra8_touch_cal/inc
           ${FW_ROOT}/libs/ra8_epd_cal/inc
           ${FW_ROOT}/libs/ra8_mpu/inc
@@ -215,8 +213,8 @@ target_include_directories(
           ${FW_ROOT}/libs/ra8_lsm6dso/inc
           ${FW_ROOT}/libs/ra8_tz_secure_boot/inc
           ${FW_ROOT}/port/threadx/inc
-          ${FW_ROOT}/libs/third_party/miniz
-          ${FW_ROOT}/libs/third_party/stb
+          ${FW_ROOT}/apps/shared_libs/third_party/miniz
+          ${FW_ROOT}/apps/shared_libs/third_party/stb
           ${FW_ROOT}/libs/ra8_secure_app/inc
 )
 add_test(NAME test_cache_store_demo COMMAND test_cache_store_demo)

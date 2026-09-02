@@ -13,20 +13,21 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_c6link_internal.h"
 #include "ra8_c6link_mdl_internal.h"
 #include "ra8_media_download.pb-c.h"
 
-static_assert((uint32_t)k_ra8_mdl_format_loose == RA8__MDL__FORMAT__FORMAT_LOOSE);
-static_assert((uint32_t)k_ra8_mdl_format_cbz == RA8__MDL__FORMAT__FORMAT_CBZ);
-static_assert((uint32_t)k_ra8_mdl_format_cbt == RA8__MDL__FORMAT__FORMAT_CBT);
-static_assert((uint32_t)k_ra8_mdl_format_cbr == RA8__MDL__FORMAT__FORMAT_CBR);
-static_assert((uint32_t)k_ra8_mdl_format_cbt_xz == RA8__MDL__FORMAT__FORMAT_CBT_XZ);
-static_assert((uint32_t)k_ra8_mdl_format_cbt_gz == RA8__MDL__FORMAT__FORMAT_CBT_GZ);
-static_assert((uint32_t)k_ra8_mdl_format_epub == RA8__MDL__FORMAT__FORMAT_EPUB);
-static_assert((uint32_t)k_ra8_mdl_format_jof == RA8__MDL__FORMAT__FORMAT_JOF);
-static_assert((uint32_t)k_ra8_mdl_format_rabook == RA8__MDL__FORMAT__FORMAT_RABOOK);
-static_assert((uint32_t)k_ra8_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INVALID);
+static_assert((uint32_t)k_mdl_format_loose == RA8__MDL__FORMAT__FORMAT_LOOSE);
+static_assert((uint32_t)k_mdl_format_cbz == RA8__MDL__FORMAT__FORMAT_CBZ);
+static_assert((uint32_t)k_mdl_format_cbt == RA8__MDL__FORMAT__FORMAT_CBT);
+static_assert((uint32_t)k_mdl_format_cbr == RA8__MDL__FORMAT__FORMAT_CBR);
+static_assert((uint32_t)k_mdl_format_cbt_xz == RA8__MDL__FORMAT__FORMAT_CBT_XZ);
+static_assert((uint32_t)k_mdl_format_cbt_gz == RA8__MDL__FORMAT__FORMAT_CBT_GZ);
+static_assert((uint32_t)k_mdl_format_epub == RA8__MDL__FORMAT__FORMAT_EPUB);
+static_assert((uint32_t)k_mdl_format_jof == RA8__MDL__FORMAT__FORMAT_JOF);
+static_assert((uint32_t)k_mdl_format_rabook == RA8__MDL__FORMAT__FORMAT_RABOOK);
+static_assert((uint32_t)k_mdl_format_invalid == RA8__MDL__FORMAT__FORMAT_INVALID);
 
 /** @brief Response extractor variants. */
 typedef enum : uint8_t {
@@ -43,7 +44,7 @@ typedef struct {
   ra8_mdl_chunk_t*   chunk;            /**< Optional caller chunk destination.      */
   uint32_t           operation;        /**< Expected CustomRpc operation id.        */
   uint16_t           requested_bytes;  /**< Maximum accepted response body bytes.   */
-  ra8_mdl_format_t   requested_format; /**< Format the Accepted response must echo. */
+  mdl_format_t       requested_format; /**< Format the Accepted response must echo. */
   mdl_take_kind_t    kind;             /**< Expected generated response variant.    */
 } mdl_take_ctx_t;
 
@@ -320,6 +321,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_chunk(mdl_take_ctx_t*           
  * @details Rejects acknowledgements for another job or protocol version.
  * @param[in,out] take Active extraction/session context.
  * @param[in] data Packed generated Cancelled response.
+ * @param[in] len Valid bytes at @p data; the decoder reads no further.
  * @return Decode status.
  * @retval k_ra8_ok Matching cancellation deactivated the session.
  * @retval k_ra8_err_protocol_error Decode or correlation validation failed.
@@ -330,12 +332,12 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_chunk(mdl_take_ctx_t*           
  * @note Not thread-safe for a shared session or c6link arena.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_mdl_take_cancelled(mdl_take_ctx_t*            take,
-                                                          const ProtobufCBinaryData* data)
+RA8_INTERNAL static ra8_err_t
+internal_mdl_take_cancelled(mdl_take_ctx_t* take, const uint8_t* data, size_t len)
 {
   ProtobufCAllocator alloc = {};
   priv_c6link_arena_bind(&alloc, take->link);
-  Ra8__Mdl__Cancelled* msg = ra8__mdl__cancelled__unpack(&alloc, data->len, data->data);
+  Ra8__Mdl__Cancelled* msg = ra8__mdl__cancelled__unpack(&alloc, len, data);
   if (msg == nullptr) {
     return k_ra8_err_protocol_error;
   }
@@ -387,7 +389,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_response(void* ctx, const void* 
     case k_mdl_take_chunk:
       return internal_mdl_take_chunk(take, &body->data);
     case k_mdl_take_cancelled:
-      return internal_mdl_take_cancelled(take, &body->data);
+      return internal_mdl_take_cancelled(take, body->data.data, body->data.len);
     default:
       return k_ra8_err_protocol_error;
   }
@@ -395,7 +397,7 @@ RA8_INTERNAL static ra8_err_t internal_mdl_take_response(void* ctx, const void* 
 
 /* protobuf-c's pack-only binary-data ABI still declares its byte pointer
  * mutable. */
-// NOLINTBEGIN(readability-non-const-parameter)
+// NOLINTBEGIN(readability-non-const-parameter) -- interface contract fixes this writable pointer type.
 /**
  * @brief Send one already-encoded generated message through CustomRpc
  * @details Wraps caller-owned inner bytes without retaining them after the
@@ -445,9 +447,8 @@ RA8_TEST_HELPER ra8_err_t ra8_c6link_mdl_take_cancelled_test(ra8_c6link_t*      
                                                              const uint8_t*     packed,
                                                              size_t             len)
 {
-  mdl_take_ctx_t            take = {.link = link, .session = session, .kind = k_mdl_take_cancelled};
-  const ProtobufCBinaryData body = {.len = len, .data = (uint8_t*)packed};
-  return internal_mdl_take_cancelled(&take, &body);
+  mdl_take_ctx_t take = {.link = link, .session = session, .kind = k_mdl_take_cancelled};
+  return internal_mdl_take_cancelled(&take, packed, len);
 }
 
 RA8_TEST_HELPER bool ra8_c6link_mdl_http_field_valid_test(const char* text, size_t cap)
@@ -465,12 +466,38 @@ RA8_TEST_HELPER bool ra8_c6link_mdl_chunk_semantics_valid_test(const Ra8__Mdl__C
   return internal_mdl_chunk_semantics_valid(msg);
 }
 
-ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
-                                       const ra8_mdl_request_t* request,
-                                       ra8_mdl_session_t*       session)
+/**
+ * @brief Validate every caller-supplied start-request field before staging.
+ *
+ * @details
+ * Split out of `ra8_c6link_mdl_start_request()` so the argument contract and
+ * the wire encoding are separately reviewable and each stays inside the NASA
+ * Power of 10 Rule 4 length cap. The validation checks and their order are
+ * unchanged; the null-pointer guards are split between the caller and this
+ * helper, and every one of them still yields `k_ra8_err_null_ptr`.
+ *
+ * @param[in] request Caller request; may be null.
+ * @param[out] out_url_len Receives the validated URL length on success, so the
+ *                        caller copies exactly the length that was bounded here
+ *                        rather than re-deriving it from caller-owned memory.
+ *                        The single call site passes the address of a local, so
+ *                        this pointer is not re-checked here.
+ * @return Validation status.
+ * @retval k_ra8_ok Every field satisfies the documented contract.
+ * @retval k_ra8_err_null_ptr @p request or its URL is null.
+ * @retval k_ra8_err_invalid_arg A field is out of range or malformed.
+ * @pre The caller has already rejected a null link and session.
+ * @pre @p out_url_len is non-null.
+ * @pre @p request is readable for the whole structure.
+ * @post @p out_url_len holds the bounded URL length on success only.
+ * @post The return value is one of the documented retvals.
+ * @note Not thread-safe for a shared request structure.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_mdl_start_request_valid(const ra8_mdl_request_t* request,
+                                                               size_t*                  out_url_len)
 {
-  if ((link == nullptr) || (request == nullptr) || (request->url == nullptr) ||
-      (session == nullptr)) {
+  if ((request == nullptr) || (request->url == nullptr)) {
     return k_ra8_err_null_ptr;
   }
   const size_t https_prefix_len = sizeof("https://") - 1U;
@@ -480,7 +507,7 @@ ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
       (request->url[https_prefix_len] == '\0')) {
     return k_ra8_err_invalid_arg;
   }
-  if (((uint32_t)request->format > (uint32_t)k_ra8_mdl_format_rabook) ||
+  if (((uint32_t)request->format > (uint32_t)k_mdl_format_rabook) ||
       (request->http.timeout_ms > k_ra8_mdl_timeout_ms_max) ||
       !internal_mdl_http_field_valid(request->http.user_agent, k_ra8_mdl_user_agent_max) ||
       !internal_mdl_http_field_valid(request->http.referer, k_ra8_mdl_referer_max) ||
@@ -488,23 +515,92 @@ ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
       !internal_mdl_http_field_valid(request->http.if_modified_since, k_ra8_mdl_http_date_max)) {
     return k_ra8_err_invalid_arg;
   }
+  *out_url_len = url_len;
+  return k_ra8_ok;
+}
+
+/**
+ * @struct mdl_http_headers_t
+ * @brief Fixed-capacity storage for the four optional MDL HTTP request headers.
+ * @details Each buffer is sized by its own protocol maximum and zero-initialized,
+ *          so an absent header is transmitted as an empty string rather than as
+ *          a dangling pointer into caller memory.
+ * @invariant Every member is NUL-terminated for its whole declared capacity.
+ * @see internal_mdl_stage_headers()
+ * @since 0.1.0
+ */
+typedef struct {
+  char user_agent[k_ra8_mdl_user_agent_max];       /**< User-Agent staging.        */
+  char referer[k_ra8_mdl_referer_max];             /**< Referer staging.           */
+  char if_none_match[k_ra8_mdl_etag_max];          /**< If-None-Match staging.     */
+  char if_modified_since[k_ra8_mdl_http_date_max]; /**< If-Modified-Since staging. */
+} mdl_http_headers_t;
+
+/**
+ * @brief Copy every present optional HTTP header into bounded local storage.
+ *
+ * @details
+ * Split out of `ra8_c6link_mdl_start_request()` so that entry point stays under
+ * the reviewed statement-count threshold. Each field was already length-checked
+ * by `internal_mdl_start_request_valid()`, so each copy is bounded by its own
+ * protocol maximum; an absent field keeps the zero-initialized empty string.
+ *
+ * @param[in] http Caller-supplied optional headers; individual members may be null.
+ * @param[out] out Zero-initialized staging storage to fill.
+ * @return Nothing.
+ * @pre @p http and @p out are non-null.
+ * @pre Every non-null member of @p http fits its protocol maximum.
+ * @post Every present member is copied and NUL-terminated in @p out.
+ * @post Absent members are left as the caller's zero initialization.
+ * @note Not thread-safe for a shared @p out.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_mdl_stage_headers(const ra8_mdl_http_policy_t* http,
+                                                    mdl_http_headers_t*          out)
+{
+  if (http->user_agent != nullptr) {
+    memcpy(out->user_agent, http->user_agent, strlen(http->user_agent) + 1U);
+  }
+  if (http->referer != nullptr) {
+    memcpy(out->referer, http->referer, strlen(http->referer) + 1U);
+  }
+  if (http->if_none_match != nullptr) {
+    memcpy(out->if_none_match, http->if_none_match, strlen(http->if_none_match) + 1U);
+  }
+  if (http->if_modified_since != nullptr) {
+    memcpy(out->if_modified_since, http->if_modified_since, strlen(http->if_modified_since) + 1U);
+  }
+}
+
+ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
+                                       const ra8_mdl_request_t* request,
+                                       ra8_mdl_session_t*       session)
+{
+  if ((link == nullptr) || (session == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  size_t          url_len = 0U;
+  const ra8_err_t valid   = internal_mdl_start_request_valid(request, &url_len);
+  if (valid != k_ra8_ok) {
+    return valid;
+  }
   *session = (ra8_mdl_session_t){};
   char url_copy[k_ra8_mdl_url_max];
   memcpy(url_copy, request->url, url_len + 1U);
+  mdl_http_headers_t headers = {};
+  internal_mdl_stage_headers(&request->http, &headers);
   Ra8__Mdl__StartRequest inner;
   ra8__mdl__start_request__init(&inner);
-  inner.protocol_version = k_ra8_mdl_protocol_version;
-  inner.url              = url_copy;
-  inner.format           = (Ra8__Mdl__Format)request->format;
-  inner.user_agent = (char*)((request->http.user_agent != nullptr) ? request->http.user_agent : "");
-  inner.referer    = (char*)((request->http.referer != nullptr) ? request->http.referer : "");
-  inner.if_none_match =
-    (char*)((request->http.if_none_match != nullptr) ? request->http.if_none_match : "");
-  inner.if_modified_since =
-    (char*)((request->http.if_modified_since != nullptr) ? request->http.if_modified_since : "");
-  inner.timeout_ms      = request->http.timeout_ms;
-  uint8_t* const data   = link->mdl_request;
-  const size_t   packed = ra8__mdl__start_request__get_packed_size(&inner);
+  inner.protocol_version  = k_ra8_mdl_protocol_version;
+  inner.url               = url_copy;
+  inner.format            = (Ra8__Mdl__Format)request->format;
+  inner.user_agent        = headers.user_agent;
+  inner.referer           = headers.referer;
+  inner.if_none_match     = headers.if_none_match;
+  inner.if_modified_since = headers.if_modified_since;
+  inner.timeout_ms        = request->http.timeout_ms;
+  uint8_t* const data     = link->mdl_request;
+  const size_t   packed   = ra8__mdl__start_request__get_packed_size(&inner);
   // mcdc-deactivated: ra8_c6link_mdl_start_request codec self-consistency guard; all three conditions are constant-false on every reachable path, so this is a fail-closed backstop against a codec defect rather than an input class. get_packed_size() counts a message whose protocol_version is the non-zero k_ra8_mdl_protocol_version, so it never reports 0; k_ra8_mdl_request_bytes_max is the exact sum of every bounded field plus 96 bytes of tag and varint headroom, and each field was bounded before this point, so the packed message cannot exceed link->mdl_request; and protobuf-c pack() returns exactly what get_packed_size() computed for the same message.
   if ((packed == 0U) || (packed > sizeof(link->mdl_request)) ||
       (ra8__mdl__start_request__pack(&inner, data) != packed)) {
@@ -518,7 +614,7 @@ ra8_err_t ra8_c6link_mdl_start_request(ra8_c6link_t*            link,
 
 ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t*      link,
                                const char*        url,
-                               ra8_mdl_format_t   format,
+                               mdl_format_t       format,
                                ra8_mdl_session_t* session)
 {
   const ra8_mdl_request_t request = {.url = url, .format = format};

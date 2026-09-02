@@ -24,7 +24,7 @@ VFS round-trip, and stdio retargeted to two different sinks. Where each sibling
    writer, two destinations.
 
 The engine logic, the deterministic payload pattern and the read-back verdict are
-covered on the host in `tests/test_app_ra8_io_swap_demo.c`, which runs the same
+covered on the host in `tests/mocks/src/test_app_ra8_io_swap_demo.c`, which runs the same
 swap over a RAM backend and the register-level xSPI NOR model plus the in-RAM
 stdio sink, with MC/DC vectors for the compound read-back verdict and the
 pattern-equality guard.

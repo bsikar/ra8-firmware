@@ -2,7 +2,7 @@
 # Exists to prove the bedroom UI is resolution-adaptive: the same source that
 # fills the 1024x600 EK-RA8D2 panel and fits the 480x272 sample lays out
 # cleanly here too -- tab bar, heading, and the 2x2 card grid all on-screen.
-#   make emu-<app> PANEL=sample_800x480
+#   just apps::emulator::run <app> sample_800x480
 name   = "Generic 7in 800x480"
 width  = 800
 height = 480

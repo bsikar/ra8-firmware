@@ -70,7 +70,9 @@ static const ra8_mstp_t s_ulpt_mstp_table[] = {
     }
     /* HUM Ch 11.2.10 "MSTPCRE : Module Stop Control Register E" p 449 */
     const ra8_err_t mst_err = ra8_mstp_enable(s_ulpt_mstp_table[ch]);
-    RA8_RETURN_ON_ERROR(mst_err, s_tag, "ulpt_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+    RA8_RETURN_ON_ERROR(mst_err, s_tag, "ulpt_init: mstp enable");
+    /* GCOVR_EXCL_BR_STOP */
     /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 */
     reg->ULPTCR = 0U;
     /* HUM Ch 25.2.2 "ULPTMR1 : ULPT Mode Register 1" p 1192 */

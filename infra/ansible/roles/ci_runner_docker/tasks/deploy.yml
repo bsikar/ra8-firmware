@@ -1,0 +1,858 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# --- Deployment -------------------------------------------------------------
+
+- name: Deploy the runner
+  when: ci_runner_docker_state == 'present'
+  block:
+    - name: Ensure the image and compose directories exist
+      become: true
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ ci_runner_docker_image_archive | dirname }}"
+        - "{{ ci_runner_docker_compose_dir }}"
+
+    - name: Assert the canonical image source was derived from the fleet
+      ansible.builtin.assert:
+        that:
+          - (ci_runner_docker_image_source_archive | trim) | length > 0
+          - (ci_runner_docker_image_source_local_archive | trim) | length > 0
+            or (ci_runner_docker_image_source_host | trim) | length > 0
+          - (ci_runner_docker_image_source_local_archive | trim) | length > 0
+            or (ci_runner_docker_image_source_ssh | length) > 0
+        fail_msg: >-
+          No usable canonical runner-image source was supplied. Deploy through
+          `just infra::apply <host>`: fleet.py derives the producer, image ref,
+          archive path and SSH route from infra/fleet.yml. A standalone play is
+          not allowed to guess them or silently reuse a stale local tag.
+
+    - name: Checksum the canonical archive on its declared producer
+      when: (ci_runner_docker_image_source_local_archive | trim) | length == 0
+      delegate_to: "{{ ci_runner_docker_image_source_host }}"
+      become: true
+      ansible.builtin.stat:
+        path: "{{ ci_runner_docker_image_source_archive }}"
+        get_checksum: true
+        checksum_algorithm: sha256
+      register: ci_runner_docker_source_remote
+
+    - name: Checksum the canonical archive in the WSL transport cache
+      when: (ci_runner_docker_image_source_local_archive | trim) | length > 0
+      become: true
+      ansible.builtin.stat:
+        path: "{{ ci_runner_docker_image_source_local_archive }}"
+        get_checksum: true
+        checksum_algorithm: sha256
+      register: ci_runner_docker_source_local
+
+    - name: Settle on the canonical archive path and checksum
+      when: (ci_runner_docker_image_source_local_archive | trim) | length == 0
+      ansible.builtin.set_fact:
+        ci_runner_docker_source_path: "{{ ci_runner_docker_image_source_archive }}"
+        ci_runner_docker_source_checksum: >-
+          {{ ci_runner_docker_source_remote.stat.checksum | default('') }}
+        ci_runner_docker_source_exists: >-
+          {{ ci_runner_docker_source_remote.stat.exists | default(false) }}
+
+    - name: Settle on the WSL-local canonical archive path and checksum
+      when: (ci_runner_docker_image_source_local_archive | trim) | length > 0
+      ansible.builtin.set_fact:
+        ci_runner_docker_source_path: "{{ ci_runner_docker_image_source_local_archive }}"
+        ci_runner_docker_source_checksum: >-
+          {{ ci_runner_docker_source_local.stat.checksum | default('') }}
+        ci_runner_docker_source_exists: >-
+          {{ ci_runner_docker_source_local.stat.exists | default(false) }}
+
+    - name: Assert the canonical archive exists and was checksummed
+      ansible.builtin.assert:
+        that:
+          - ci_runner_docker_source_exists | bool
+          - ci_runner_docker_source_checksum | length == 64
+        fail_msg: >-
+          The canonical archive {{ ci_runner_docker_source_path }} is absent or
+          unreadable on
+          {{ ci_runner_docker_image_source_host
+             if (ci_runner_docker_image_source_local_archive | trim) | length == 0
+             else 'the WSL transport cache' }}. Converge the declared source
+          host first; Docker consumers never build a second toolchain image.
+
+    - name: Read the canonical image ID embedded in the producer archive
+      when: (ci_runner_docker_image_source_local_archive | trim) | length == 0
+      delegate_to: "{{ ci_runner_docker_image_source_host }}"
+      become: true
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import hashlib
+            import json
+            import pathlib
+            import re
+            import sys
+            import tarfile
+            with tarfile.open(sys.argv[1]) as archive:
+                manifest = archive.extractfile("manifest.json")
+                if manifest is None:
+                    raise SystemExit("archive has no manifest.json")
+                entries = json.load(manifest)
+                matches = [e for e in entries if sys.argv[2] in (e.get("RepoTags") or [])]
+                if len(matches) != 1:
+                    raise SystemExit(f"expected one {sys.argv[2]} entry, got {len(matches)}")
+                config_name = matches[0]["Config"]
+                config = archive.extractfile(config_name)
+                if config is None:
+                    raise SystemExit(f"archive has no {config_name}")
+                digest = hashlib.sha256(config.read()).hexdigest()
+                named = pathlib.PurePosixPath(config_name).name.removesuffix(".json")
+                if not re.fullmatch(r"[0-9a-f]{64}", named) or named != digest:
+                    raise SystemExit("config filename does not match its SHA-256")
+                print(f"sha256:{digest}")
+          - "{{ ci_runner_docker_image_source_archive }}"
+          - "{{ ci_runner_docker_image }}"
+      register: ci_runner_docker_source_manifest_remote
+      changed_when: false
+      check_mode: false
+
+    - name: Read the canonical image ID embedded in the WSL cache
+      when: (ci_runner_docker_image_source_local_archive | trim) | length > 0
+      become: true
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import hashlib
+            import json
+            import pathlib
+            import re
+            import sys
+            import tarfile
+            with tarfile.open(sys.argv[1]) as archive:
+                manifest = archive.extractfile("manifest.json")
+                if manifest is None:
+                    raise SystemExit("archive has no manifest.json")
+                entries = json.load(manifest)
+                matches = [e for e in entries if sys.argv[2] in (e.get("RepoTags") or [])]
+                if len(matches) != 1:
+                    raise SystemExit(f"expected one {sys.argv[2]} entry, got {len(matches)}")
+                config_name = matches[0]["Config"]
+                config = archive.extractfile(config_name)
+                if config is None:
+                    raise SystemExit(f"archive has no {config_name}")
+                digest = hashlib.sha256(config.read()).hexdigest()
+                named = pathlib.PurePosixPath(config_name).name.removesuffix(".json")
+                if not re.fullmatch(r"[0-9a-f]{64}", named) or named != digest:
+                    raise SystemExit("config filename does not match its SHA-256")
+                print(f"sha256:{digest}")
+          - "{{ ci_runner_docker_image_source_local_archive }}"
+          - "{{ ci_runner_docker_image }}"
+      register: ci_runner_docker_source_manifest_local
+      changed_when: false
+      check_mode: false
+
+    - name: Settle on the canonical image ID
+      ansible.builtin.set_fact:
+        ci_runner_docker_source_image_id: >-
+          {{ (ci_runner_docker_source_manifest_local.stdout
+              if (ci_runner_docker_image_source_local_archive | trim) | length > 0
+              else ci_runner_docker_source_manifest_remote.stdout) | trim }}
+
+    - name: Checksum the target's staged image archive
+      become: true
+      ansible.builtin.stat:
+        path: "{{ ci_runner_docker_image_archive }}"
+        get_checksum: true
+        checksum_algorithm: sha256
+      register: ci_runner_docker_archive
+
+    - name: Report a stale archive during a dry run
+      when:
+        - ansible_check_mode
+        - ci_runner_docker_archive.stat.checksum | default('')
+          != ci_runner_docker_source_checksum
+      ansible.builtin.debug:
+        msg: >-
+          Would refresh {{ ci_runner_docker_image_archive }} from the declared
+          canonical source (SHA-256 {{ ci_runner_docker_source_checksum }}).
+      changed_when: true
+
+    - name: Refresh the archive from the declared producer through the controller
+      when:
+        - not ansible_check_mode
+        - (ci_runner_docker_image_source_local_archive | trim) | length == 0
+        - ci_runner_docker_archive.stat.checksum | default('')
+          != ci_runner_docker_source_checksum
+      block:
+        - name: Allocate a private controller transfer directory
+          delegate_to: localhost
+          become: false
+          ansible.builtin.tempfile:
+            state: directory
+            prefix: ra8-runner-image-
+          register: ci_runner_docker_transfer_dir
+
+        - name: Stream the canonical archive to the controller
+          delegate_to: localhost
+          become: false
+          ansible.builtin.shell:
+            cmd: >-
+              umask 077;
+              {{ ci_runner_docker_image_source_ssh | map('quote') | join(' ') }}
+              sudo cat -- {{ ci_runner_docker_image_source_archive | quote }}
+              > {{ (ci_runner_docker_transfer_dir.path ~ '/ra8-ci-runner.tar') | quote }}
+            executable: /bin/bash
+          changed_when: true
+
+        - name: Verify the controller received the canonical bytes
+          delegate_to: localhost
+          become: false
+          ansible.builtin.stat:
+            path: "{{ ci_runner_docker_transfer_dir.path }}/ra8-ci-runner.tar"
+            get_checksum: true
+            checksum_algorithm: sha256
+          register: ci_runner_docker_controller_archive
+
+        - name: Assert the controller transfer checksum
+          ansible.builtin.assert:
+            that:
+              - ci_runner_docker_controller_archive.stat.checksum
+                == ci_runner_docker_source_checksum
+            fail_msg: >-
+              The controller received SHA-256
+              {{ ci_runner_docker_controller_archive.stat.checksum | default('<none>') }},
+              not producer checksum {{ ci_runner_docker_source_checksum }}.
+
+        - name: Stage the canonical archive on the Docker host
+          become: true
+          ansible.builtin.copy:
+            src: "{{ ci_runner_docker_transfer_dir.path }}/ra8-ci-runner.tar"
+            dest: "{{ ci_runner_docker_image_archive }}.part"
+            mode: "0644"
+
+      always:
+        - name: Remove the private controller transfer directory
+          when: ci_runner_docker_transfer_dir.path | default('') | length > 0
+          delegate_to: localhost
+          become: false
+          ansible.builtin.file:
+            path: "{{ ci_runner_docker_transfer_dir.path }}"
+            state: absent
+
+    - name: Stage the canonical archive from the WSL transport cache
+      when:
+        - not ansible_check_mode
+        - (ci_runner_docker_image_source_local_archive | trim) | length > 0
+        - ci_runner_docker_archive.stat.checksum | default('')
+          != ci_runner_docker_source_checksum
+      become: true
+      ansible.builtin.copy:
+        src: "{{ ci_runner_docker_image_source_local_archive }}"
+        dest: "{{ ci_runner_docker_image_archive }}.part"
+        remote_src: true
+        mode: "0644"
+
+    - name: Verify the staged target archive before publishing it
+      when:
+        - not ansible_check_mode
+        - ci_runner_docker_archive.stat.checksum | default('')
+          != ci_runner_docker_source_checksum
+      become: true
+      ansible.builtin.stat:
+        path: "{{ ci_runner_docker_image_archive }}.part"
+        get_checksum: true
+        checksum_algorithm: sha256
+      register: ci_runner_docker_archive_part
+
+    - name: Assert the staged target archive checksum
+      when:
+        - not ansible_check_mode
+        - ci_runner_docker_archive.stat.checksum | default('')
+          != ci_runner_docker_source_checksum
+      ansible.builtin.assert:
+        that:
+          - ci_runner_docker_archive_part.stat.checksum
+            == ci_runner_docker_source_checksum
+        fail_msg: >-
+          Refusing to publish {{ ci_runner_docker_image_archive }}: its staged
+          bytes do not match the canonical producer checksum.
+
+    - name: Atomically publish the refreshed target archive
+      when:
+        - not ansible_check_mode
+        - ci_runner_docker_archive.stat.checksum | default('')
+          != ci_runner_docker_source_checksum
+      become: true
+      ansible.builtin.command:
+        argv:
+          - mv
+          - -f
+          - "{{ ci_runner_docker_image_archive }}.part"
+          - "{{ ci_runner_docker_image_archive }}"
+      changed_when: true
+
+    - name: Read the currently loaded image ID
+      become: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - image
+          - inspect
+          - --format
+          - "{% raw %}{{.Id}}{% endraw %}"
+          - "{{ ci_runner_docker_image }}"
+      register: ci_runner_docker_image_probe
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Report a stale loaded image during a dry run
+      when:
+        - ansible_check_mode
+        - ci_runner_docker_image_probe.stdout | trim
+          != ci_runner_docker_source_image_id
+      ansible.builtin.debug:
+        msg: >-
+          Would load canonical image ID {{ ci_runner_docker_source_image_id }}
+          over current {{ ci_runner_docker_image_probe.stdout
+                          | default('<absent>', true) | trim }}.
+      changed_when: true
+
+    - name: Load the canonical toolchain image when the tag is stale
+      when:
+        - not ansible_check_mode
+        - ci_runner_docker_image_probe.stdout | trim
+          != ci_runner_docker_source_image_id
+      become: true
+      ansible.builtin.command:
+        argv: [docker, load, --input, "{{ ci_runner_docker_image_archive }}"]
+      register: ci_runner_docker_load
+      changed_when: true
+
+    - name: Read back the loaded canonical image ID
+      when: not ansible_check_mode
+      become: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - image
+          - inspect
+          - --format
+          - "{% raw %}{{.Id}}{% endraw %}"
+          - "{{ ci_runner_docker_image }}"
+      register: ci_runner_docker_loaded_image
+      changed_when: false
+
+    - name: Assert the loaded image is exactly the producer artifact
+      when: not ansible_check_mode
+      ansible.builtin.assert:
+        that:
+          - ci_runner_docker_loaded_image.stdout | trim
+            == ci_runner_docker_source_image_id
+        fail_msg: >-
+          {{ ci_runner_docker_image }} resolves to
+          {{ ci_runner_docker_loaded_image.stdout | trim }}, not canonical ID
+          {{ ci_runner_docker_source_image_id }} after loading the validated
+          archive. Refusing to boot an unproven toolchain.
+        success_msg: >-
+          {{ ci_runner_docker_image }} is canonical ID
+          {{ ci_runner_docker_source_image_id }}
+
+    - name: Inspect the image and state of existing runner containers
+      become: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - inspect
+          - --format
+          - >-
+            {% raw %}{{.Image}} {{.State.Running}}{% endraw %}
+          - "{{ item.container }}"
+      register: ci_runner_docker_existing_containers
+      changed_when: false
+      failed_when: false
+      check_mode: false
+      loop: "{{ ci_runner_docker_instance_list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Identify containers that do not use the canonical image ID
+      ansible.builtin.set_fact:
+        ci_runner_docker_stale_containers: >-
+          {{ (ci_runner_docker_stale_containers | default([]))
+             + ([item.item.container]
+                if item.rc == 0
+                   and (item.stdout.split() | first | default(''))
+                       != ci_runner_docker_source_image_id
+                else []) }}
+      loop: "{{ ci_runner_docker_existing_containers.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: Check stale running containers for an active job
+      when:
+        - item.rc == 0
+        - (item.stdout.split() | first | default(''))
+          != ci_runner_docker_source_image_id
+        - (item.stdout.split() | last | default('false')) == 'true'
+      become: true
+      ansible.builtin.command:
+        argv: [docker, top, "{{ item.item.container }}", -eo, "pid,comm,args"]
+      register: ci_runner_docker_stale_top
+      changed_when: false
+      failed_when: false
+      check_mode: false
+      loop: "{{ ci_runner_docker_existing_containers.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: Refuse to recreate a stale runner while it owns a job
+      when: not item.skipped | default(false)
+      ansible.builtin.assert:
+        that:
+          - item.rc == 0
+          - "'Runner.Worker' not in item.stdout"
+        fail_msg: >-
+          {{ item.item.item.container }} uses a stale runner image and currently
+          owns a Runner.Worker process. Recreating it would cancel the job.
+          Deploy through `just infra::apply <host>`, which drains first, or wait
+          for the job to finish; this role will not turn image freshness into
+          an orphaned Actions job.
+      loop: "{{ ci_runner_docker_stale_top.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item.item.name | default('runner') }}"
+
+    - name: Create the persistent runner homes
+      # One per instance. Separate directories are what make the instances
+      # genuinely independent runners rather than one runner started N times:
+      # each gets its own registration credentials AND its own _work checkout,
+      # so two jobs on this host never share a build tree.
+      become: true
+      ansible.builtin.file:
+        path: "{{ item.home }}"
+        state: directory
+        owner: "{{ ci_runner_docker_uid }}"
+        group: "{{ ci_runner_docker_gid }}"
+        mode: "0755"
+      loop: "{{ ci_runner_docker_instance_list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Seed the runner distribution out of the image onto the pool
+      # The bind mount would otherwise shadow the runner binaries the image
+      # ships. Copying them out once puts the distribution, its registration
+      # credentials and its _work tree on the pool together, which is what makes
+      # `docker rm` non-destructive and a SCALE upgrade survivable.
+      #
+      # `creates:` is the idempotence guard -- a re-run re-seeds nothing.
+      become: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - run
+          - --rm
+          - --volume
+          - "{{ item.home }}:/seed"
+          - --entrypoint
+          - /bin/bash
+          - "{{ ci_runner_docker_image }}"
+          - -c
+          - cp -a /home/runner/. /seed/
+        creates: "{{ item.home }}/run.sh"
+      loop: "{{ ci_runner_docker_instance_list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Check which instances are already registered with GitHub
+      become: true
+      ansible.builtin.stat:
+        path: "{{ item.home }}/.runner"
+      register: ci_runner_docker_registered
+      loop: "{{ ci_runner_docker_instance_list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Register the runners
+      # Skipped entirely once every instance has a .runner, which is what makes
+      # the play idempotent AND is why a reboot needs no credential:
+      # registration produces long-lived runner credentials on the pool, and
+      # only THEY are used to run jobs. The PAT is needed to (de)register and
+      # never after.
+      when: ci_runner_docker_registered.results
+            | rejectattr('stat.exists') | list | length > 0
+      block:
+        - name: Assert a credential is available for new registrations
+          # Existing homes carry the runner's own long-lived credential, so a
+          # normal converge must not demand or distribute a PAT it will never
+          # use. Assert only on the transition that actually registers a new
+          # instance. Removal has its own removal-token/PAT guard.
+          ansible.builtin.assert:
+            that:
+              - (ci_runner_docker_github_pat | default('') | trim) | length > 0
+                or (ci_runner_docker_registration_token | default('') | trim) | length > 0
+            fail_msg: >-
+              An unregistered runner home needs either a GitHub PAT or a
+              short-lived registration token. The PAT is read from OpenBao at
+              run time; for a PAT-free host, mint a one-hour token with `gh api
+              -X POST repos/{{ ci_runner_docker_repo_slug
+              }}/actions/runners/registration-token` and pass it as
+              ci_runner_docker_registration_token. No credential is needed to
+              converge an already-registered runner.
+            success_msg: "new registration credential present"
+
+        - name: Mint a runner registration token
+          # Minted on the control node so the PAT never reaches the runner
+          # host; only the short-lived registration token crosses, and it
+          # expires after one hour.
+          #
+          # Skipped when a token was supplied directly -- see the credential
+          # assert above for why a host may be given one instead of the PAT.
+          when: (ci_runner_docker_registration_token | default('') | trim) | length == 0
+          delegate_to: localhost
+          become: false
+          no_log: true
+          ansible.builtin.uri:
+            url: >-
+              {{ ci_runner_docker_api }}/runners/registration-token
+            method: POST
+            headers:
+              Authorization: "Bearer {{ ci_runner_docker_github_pat }}"
+              Accept: "application/vnd.github+json"
+            status_code: [201]
+          register: ci_runner_docker_reg_token
+
+        - name: Settle on the token the runner registers with
+          # One name for the credential from here on, whichever way it arrived,
+          # so the config.sh invocation below has no branch in it.
+          no_log: true
+          ansible.builtin.set_fact:
+            ci_runner_docker_token: >-
+              {{ ci_runner_docker_registration_token | default('') | trim
+                 if (ci_runner_docker_registration_token | default('') | trim) | length > 0
+                 else ci_runner_docker_reg_token.json.token }}
+
+        - name: Configure each runner against the repository
+          # One config.sh per instance, each against its own home, so each ends
+          # up a SEPARATE registration with its own credentials -- N entries in
+          # `gh api .../actions/runners`, not one runner started N times.
+          #
+          # A registration token is valid for an hour and is not consumed by a
+          # single use, so one token registers the whole set.
+          become: true
+          no_log: true
+          ansible.builtin.command:
+            argv:
+              - docker
+              - run
+              - --rm
+              - --volume
+              - "{{ item.home }}:/home/runner"
+              - --user
+              - "{{ ci_runner_docker_uid }}:{{ ci_runner_docker_gid }}"
+              - --workdir
+              - /home/runner
+              - --entrypoint
+              - /home/runner/config.sh
+              - "{{ ci_runner_docker_image }}"
+              - --unattended
+              - --replace
+              - --url
+              - "{{ ci_runner_docker_github_url }}"
+              - --token
+              - "{{ ci_runner_docker_token }}"
+              - --name
+              - "{{ item.name }}"
+              - --labels
+              - "{{ ci_runner_docker_labels }}"
+              - --runnergroup
+              - "{{ ci_runner_docker_group }}"
+              - --work
+              - _work
+            creates: "{{ item.home }}/.runner"
+          loop: "{{ ci_runner_docker_instance_list }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+    # Written from an inline body rather than a templates/*.j2 file on purpose:
+    # a Jinja template is a file type nothing in this tree lints or formats, and
+    # `check_lint_coverage.py` rejects unclassified types rather than letting a
+    # blind spot in. As a literal block scalar here it is covered by the same
+    # yamllint run as the rest of the role, and Ansible templates `content:`
+    # exactly as it would template a file.
+    - name: Render the compose file
+      become: true
+      ansible.builtin.copy:
+        dest: "{{ ci_runner_docker_compose_file }}"
+        mode: "0644"
+        content: |
+          ---
+          # Managed by the ci_runner_docker Ansible role -- edit the role, not
+          # this file; any hand edit is overwritten on the next play.
+          #
+          # Deliberately a compose file under a pool dataset rather than a
+          # systemd unit: TrueNAS SCALE rewrites the appliance root on upgrade,
+          # so anything in /etc or /usr is temporary storage. This file, the
+          # runner home it mounts and the image archive beside it all live on
+          # {{ ci_runner_docker_root }}.
+
+          # PINNED, and load-bearing. Compose derives a project name from the
+          # compose file's PARENT DIRECTORY when none is given, and every
+          # deployment of this role puts its file in a directory called
+          # `compose/`. Two runners on one host therefore both landed in a
+          # project literally named "compose", and the second `up
+          # --remove-orphans` deleted the first one's container as an orphan of
+          # its own project -- killing the job it was running. Naming the
+          # project after the container makes the deployments disjoint.
+          #
+          # Note the interaction with ci_runner_docker_instances: every instance
+          # on a host is a SERVICE in this one pinned project, deliberately.
+          # That is what makes `--remove-orphans` safe here -- it scopes to
+          # exactly this host's own set and cannot see, let alone delete, a
+          # container belonging to any other deployment. Giving each instance
+          # its own project would instead make each `up --remove-orphans` blind
+          # to its siblings, which is the same defect in a new shape.
+          name: {{ ci_runner_docker_container }}
+
+          services:
+          {% for inst in ci_runner_docker_instance_list %}
+            runner{{ '' if ci_runner_docker_instances | int == 1
+                     else inst.idx }}:
+              image: {{ ci_runner_docker_image }}
+              container_name: {{ inst.container }}
+              hostname: {{ inst.name }}
+
+              # The image is side-loaded from a docker-archive; no registry
+              # holds a `localhost/...` ref, so a pull is a guaranteed failure
+              # rather than a fallback.
+              pull_policy: never
+
+              # Survives a host reboot and a docker daemon restart, but stays
+              # down after an explicit `docker compose stop` -- so taking the
+              # runner out of the pool by hand is not undone by a reboot.
+              restart: unless-stopped
+
+              # run.sh spawns Runner.Listener, which spawns Runner.Worker per
+              # job. A real init reaps a cancelled job's orphans instead of
+              # letting them accumulate in a container that never exits.
+              init: true
+
+              user: "{{ ci_runner_docker_uid }}:{{ ci_runner_docker_gid }}"
+              working_dir: /home/runner
+
+              # The image sets no entrypoint and CMD ["/bin/bash"] to match the
+              # official runner image's contract, so the command that actually
+              # runs the runner is supplied here.
+              entrypoint: ["/home/runner/run.sh"]
+
+              volumes:
+                # This instance's own runner distribution, registration
+                # credentials and _work checkout. Nothing the runner needs to
+                # keep lives in the container's writable layer, which is what
+                # makes `docker rm` safe and a SCALE upgrade survivable.
+                - {{ inst.home }}:/home/runner
+
+              environment:
+                # Both are part of the official runner image's runtime
+                # contract: trap signals in the runner rather than the shell
+                # (clean job cancellation), and stream job logs to stdout so
+                # `docker logs` is the whole story.
+                RUNNER_MANUALLY_TRAP_SIG: "1"
+                ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT: "1"
+
+              # Caps -- rationale in the role defaults and in the host_vars for
+              # this machine.
+              cpus: {{ ci_runner_docker_cpus }}
+              mem_limit: {{ ci_runner_docker_memory }}
+              memswap_limit: {{ ci_runner_docker_memswap }}
+              pids_limit: {{ ci_runner_docker_pids_limit }}
+          {% if inst.cpuset %}
+
+              # Pinned to its OWN cores, and this is load-bearing rather than
+              # tuning. `cpus:` is a CFS quota, which nproc does NOT see: every
+              # instance would report the host's full thread count and every
+              # build would fan out `-j<all of them>`, so N instances would
+              # oversubscribe the machine N-fold and a fast host would feel
+              # slow. A cpuset changes the affinity mask, so nproc returns this
+              # instance's real share and Just's CMake job limit is automatically
+              # right. It also stops the instances migrating across each
+              # other's L3 slices.
+              cpuset: "{{ inst.cpuset }}"
+          {% endif %}
+
+              # Job logs already stream to the Actions UI; the local copy is
+              # for triage only, so cap it rather than letting it grow without
+              # bound on a runner expected to stay up for months.
+              logging:
+                driver: json-file
+                options:
+                  max-size: "50m"
+                  max-file: "3"
+          {% endfor %}
+
+    - name: Bring the runner up
+      become: true
+      ansible.builtin.command:
+        argv: >-
+          {{ ['docker', 'compose', '--project-name', ci_runner_docker_container,
+              '--file', ci_runner_docker_compose_file, 'up', '--detach',
+              '--remove-orphans']
+             + (['--force-recreate']
+                if (ci_runner_docker_stale_containers | length) > 0 else []) }}
+      register: ci_runner_docker_up
+      changed_when: "'Started' in ci_runner_docker_up.stderr
+                     or 'Created' in ci_runner_docker_up.stderr
+                     or 'Recreated' in ci_runner_docker_up.stderr"
+
+    - name: Read back the image ID each runner container actually uses
+      when: not ansible_check_mode
+      become: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - inspect
+          - --format
+          - "{% raw %}{{.Image}}{% endraw %}"
+          - "{{ item.container }}"
+      register: ci_runner_docker_container_images
+      changed_when: false
+      loop: "{{ ci_runner_docker_instance_list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Assert every container uses the canonical producer image
+      when: not ansible_check_mode
+      ansible.builtin.assert:
+        that:
+          - item.stdout | trim == ci_runner_docker_source_image_id
+        fail_msg: >-
+          {{ item.item.container }} uses {{ item.stdout | trim }}, not canonical
+          producer ID {{ ci_runner_docker_source_image_id }}. The tag is current
+          but Compose did not recreate the stale container.
+      loop: "{{ ci_runner_docker_container_images.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: Read back the caps the kernel is actually enforcing
+      # Asserting the compose file said 8 CPUs proves only that the file says
+      # so. Read each container's cgroup limits, which is what a runaway build
+      # actually hits.
+      when: not ansible_check_mode
+      become: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - inspect
+          - --format
+          - >-
+            {% raw %}{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}}
+            {{.HostConfig.PidsLimit}} {{.HostConfig.CpusetCpus}}{% endraw %}
+          - "{{ item.container }}"
+      register: ci_runner_docker_limits
+      changed_when: false
+      loop: "{{ ci_runner_docker_instance_list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Assert every runner is genuinely capped
+      when: not ansible_check_mode
+      ansible.builtin.assert:
+        that:
+          - (item.stdout.split() | first | int)
+            == (ci_runner_docker_cpus | float * 1000000000) | int
+          - (item.stdout.split())[1] | int > 0
+          - (item.stdout.split())[2] | int == (ci_runner_docker_pids_limit | int)
+          - not (ci_runner_docker_pin_cpus | bool)
+            or (item.stdout.split() | length) > 3
+        fail_msg: >-
+          {{ item.item.container }} reports
+          NanoCpus/Memory/PidsLimit/CpusetCpus '{{ item.stdout | trim }}',
+          which does not match the requested {{ ci_runner_docker_cpus }} CPUs /
+          {{ ci_runner_docker_memory }} / {{ ci_runner_docker_pids_limit }}
+          pids{{ ' / a cpuset' if ci_runner_docker_pin_cpus | bool else '' }}.
+          An uncapped runner turns a heavy CI job into an outage of whatever
+          this host's primary job is, so this is a failure, not a warning.
+        success_msg: >-
+          {{ item.item.name }} capped at {{ ci_runner_docker_cpus }} CPUs,
+          {{ ci_runner_docker_memory }}, {{ ci_runner_docker_pids_limit }}
+          pids{{ ', cpuset ' ~ item.item.cpuset
+                 if ci_runner_docker_pin_cpus | bool else '' }}
+      loop: "{{ ci_runner_docker_limits.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: Wait for every runner to report online to GitHub
+      # The play is not done when the containers are up -- it is done when
+      # GitHub will schedule a job onto them. Anything less is a deploy that
+      # reports success while the pool is unchanged.
+      #
+      # `busy` counts as ready: a runner that took a job the instant it
+      # connected is the strongest possible evidence it joined the pool.
+      when:
+        - not ansible_check_mode
+        - (ci_runner_docker_github_pat | default('') | trim) | length > 0
+      delegate_to: localhost
+      become: false
+      no_log: true
+      ansible.builtin.uri:
+        url: >-
+          {{ ci_runner_docker_api }}/runners?per_page=100
+        method: GET
+        headers:
+          Authorization: "Bearer {{ ci_runner_docker_github_pat }}"
+          Accept: "application/vnd.github+json"
+        status_code: [200]
+      register: ci_runner_docker_online
+      until: >-
+        ci_runner_docker_online.json.runners
+        | selectattr('name', 'in', ci_runner_docker_instance_list
+                                   | map(attribute='name') | list)
+        | selectattr('status', 'equalto', 'online') | list | length
+        == (ci_runner_docker_instances | int)
+      retries: "{{ ci_runner_docker_online_retries | int }}"
+      delay: "{{ ci_runner_docker_online_delay | int }}"
+
+    - name: Wait for every runner to announce it is working (no PAT on this host)
+      # Same question -- "will GitHub schedule onto this?" -- asked of the only
+      # party that can answer it without a credential: the runner itself.
+      #
+      # Matching ONLY "Listening for Jobs" is a trap this already fell into:
+      # the line is printed once, and a runner that picks up a job immediately
+      # scrolls it out of the log window within seconds. The check then fails
+      # on the single most successful outcome there is -- a runner that was
+      # given work before the deploy finished. So accept either the idle
+      # announcement or evidence of an active job.
+      when:
+        - not ansible_check_mode
+        - (ci_runner_docker_github_pat | default('') | trim) | length == 0
+      become: true
+      ansible.builtin.command:
+        argv: [docker, logs, "{{ item.container }}"]
+      register: ci_runner_docker_listen
+      until: >-
+        'Listening for Jobs' in ci_runner_docker_listen.stdout
+        or 'Running job' in ci_runner_docker_listen.stdout
+        or 'JobDispatcher' in ci_runner_docker_listen.stdout
+      retries: "{{ ci_runner_docker_online_retries | int }}"
+      delay: "{{ ci_runner_docker_online_delay | int }}"
+      changed_when: false
+      loop: "{{ ci_runner_docker_instance_list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Report the deployed runners
+      when: not ansible_check_mode
+      ansible.builtin.debug:
+        msg: >-
+          {{ ci_runner_docker_instances }} runner(s) online --
+          {{ ci_runner_docker_instance_list | map(attribute='name')
+             | join(', ') }} -- labels [{{ ci_runner_docker_labels }}] plus the
+          runner's own self-hosted/Linux/X64, each capped at
+          {{ ci_runner_docker_cpus }} CPUs and {{ ci_runner_docker_memory }}.
+          Runner homes, build work dirs and the image archive are on
+          {{ ci_runner_docker_root }}; image layers and the container writable
+          layers are on {{ ci_runner_docker_data_root.stdout | trim }}. Remove
+          them with `-e ci_runner_docker_state=absent`.

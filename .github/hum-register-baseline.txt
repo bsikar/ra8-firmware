@@ -5,8 +5,6 @@
 # to re-baseline, which locks the progress in. Closing the debt means this
 # file reaching zero rows and being deleted -- --update refuses to grow a
 # bucket, so a genuine increase has to be a reviewable hand edit.
-examples/ek_ra8d2/hw_pending/compile_on_m33/compile_on_m33.h	unknown-cite-symbol	1
-examples/ek_ra8d2/hw_pending/ereader_m33/ereader_m33.h	unknown-cite-symbol	1
 libs/ra8_hal/inc/ra8_agt_regs.h	unknown-window-symbol	1
 libs/ra8_hal/inc/ra8_canfd_regs.h	unknown-window-symbol	37
 libs/ra8_hal/inc/ra8_dotf_regs.h	unknown-window-symbol	2

@@ -10,6 +10,37 @@ Host programs. Nothing here is linked into firmware; several of them link the
 the board would read back. `ls tools/` is the registry, and each tool has its
 own README or `--help`.
 
+## Source layout
+
+Every compiled tool keeps implementation C/C++/Objective-C files in `src/`
+and authored headers in `inc/`. A compiled tool-local `tests/` build unit has
+its own `src/` and, when needed, `inc/`. CMake files, READMEs, and
+integration-test drivers remain at the tool root because they describe or drive
+the whole unit.
+
+`just tools::build` discovers every `tools/*/CMakeLists.txt`; the same registry
+drives `just tools::list` and `just tools::clean`. Native configure always goes
+through `scripts/builders/host_cmake.sh`, which proves the selected compiler can
+parse the repository's C23 surface and rejects a cache made by another source
+tree or compiler. A missing compiler or emulator dependency is a hard failure
+with setup guidance, never a silently skipped tool.
+
+The deliberate exemptions are non-compiled inputs and generated artifacts:
+emulator panel descriptions, viewer fixtures, Vela models and generated model
+headers stay in their named data directories. Python-only tools keep their
+entry modules at the tool root; they have no C header surface to place in
+`inc/`. A genuinely single-file script stays a single file; it is not split or
+wrapped in a synthetic build project merely to imitate a multi-TU C tool.
+
+Dependency ownership follows the product domain, not every binary that uses a
+library. Content compilers and viewers therefore consume Miniz and media
+codecs from `apps/shared_libs/third_party/`; their host-tool use does not make
+those dependencies platform- or tool-owned. A future
+`tools/<tool>/third_party/<component>` subtree is reserved for a dependency
+used exclusively by that one tool. It must be registered in the SBOM and carry
+the same provenance, qualification, license, and raw-byte checkout controls as
+the existing vendor roots. No current dependency qualifies.
+
 ## Run the firmware without a board
 
 [`ra8_emulator`](ra8_emulator/README.md) boots an unmodified cross-compiled

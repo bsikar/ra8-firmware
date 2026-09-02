@@ -302,6 +302,7 @@ typedef enum : uint8_t {
 /* Lifecycle */
 /* -------------------------------------------------------------------------- */
 
+#ifndef RA8_USB_POLLED_ONLY
 /**
  * @brief Resolve the USB controller's NVIC slot for the storm guard.
  *
@@ -328,6 +329,7 @@ RA8_INTERNAL static void internal_usbfs_storm_guard_init(ra8_usb_speed_t speed)
     s_usb_irq_slot = slot;
   }
 }
+#endif
 
 /**
  * @brief Bind ``_ux_system_slave->ux_system_slave_dcd`` to this bridge.
@@ -343,7 +345,7 @@ RA8_INTERNAL static void internal_usbfs_storm_guard_init(ra8_usb_speed_t speed)
  * @retval k_ra8_ok Bridge attached and IRQ line armed.
  * @retval k_ra8_err_invalid_state ``_ux_system_slave`` not bound.
  *
- * @pre ``ra8_usb_device_init`` and ``ra8_usb_attach_handler`` have succeeded.
+ * @pre ``ra8_usb_device_init`` completed and the USB handler is installed.
  * @pre Caller is in single-threaded init context.
  * @post ``_ux_system_slave->ux_system_slave_dcd`` references this bridge.
  * @post NVIC line for the controller is armed and pointed at the trampoline.
@@ -505,9 +507,8 @@ RA8_INTERNAL static void internal_init_setup_ep0(UX_SLAVE_DEVICE* device, UX_SLA
  * @return ``ra8_err_t`` status code.
  * @retval k_ra8_ok Bridge fully initialized and ready for enumeration.
  * @retval k_ra8_err_invalid_arg ``speed`` out of range.
- * @retval k_ra8_err_internal Underlying ``ra8_usb_*`` call rejected the
- *                           initialisation step (propagated via
- *                           ``RA8_RETURN_ON_ERROR``).
+ * @retval k_ra8_err_internal A fallible driver or ownership initialisation
+ *                            step failed.
  *
  * @pre ``_ux_system_slave`` is bound by ``_ux_device_stack_initialize``.
  * @pre Caller is on the USBX device task / init context (not in IRQ).
@@ -523,9 +524,7 @@ ra8_err_t ux_dcd_ra8_usb_initialize(ra8_usb_speed_t speed)
     return k_ra8_err_invalid_arg;
   }
   RA8_RETURN_ON_ERROR(ra8_usb_device_init(speed), s_tag, "ra8_usb_device_init");
-  RA8_RETURN_ON_ERROR(ra8_usb_attach_handler(speed, priv_event_cb, nullptr),
-                      s_tag,
-                      "ra8_usb_attach_handler");
+  ra8_usb_attach_handler(speed, priv_event_cb, nullptr);
 
   RA8_RETURN_ON_ERROR(internal_init_bind_owner(speed), s_tag, "bind_owner");
 
@@ -573,7 +572,7 @@ ra8_err_t ux_dcd_ra8_usb_uninitialize(void)
     return k_ra8_err_invalid_state;
   }
   /* Matching pair to the disabled ra8_isr_register in the init path. */
-  (void)ra8_usb_attach_handler(g_dcd.speed, nullptr, nullptr);
+  ra8_usb_attach_handler(g_dcd.speed, nullptr, nullptr);
   (void)ra8_usb_device_deinit(g_dcd.speed);
   if (g_dcd.owner != nullptr) {
     g_dcd.owner->ux_slave_dcd_status   = UX_DCD_STATUS_HALTED;

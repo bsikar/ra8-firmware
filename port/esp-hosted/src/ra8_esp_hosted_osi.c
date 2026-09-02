@@ -530,10 +530,8 @@ struct esp_hosted_spi_config esp_hosted_get_default_spi_config(void)
 {
   struct esp_hosted_spi_config cfg = {};
 
-  /* LEGACY-OK: pin_mosi / pin_miso are vendored esp-hosted field names. */
-  cfg.pin_mosi.port = RA8_ESP_HOSTED_GPIO_PORT(k_ra8_esp_hosted_pin_copi);
-  cfg.pin_mosi.pin  = RA8_ESP_HOSTED_GPIO_PIN(k_ra8_esp_hosted_pin_copi);
-  /* LEGACY-OK: pin_mosi / pin_miso are vendored esp-hosted field names. */
+  cfg.pin_mosi.port       = RA8_ESP_HOSTED_GPIO_PORT(k_ra8_esp_hosted_pin_copi);
+  cfg.pin_mosi.pin        = RA8_ESP_HOSTED_GPIO_PIN(k_ra8_esp_hosted_pin_copi);
   cfg.pin_miso.port       = RA8_ESP_HOSTED_GPIO_PORT(k_ra8_esp_hosted_pin_cipo);
   cfg.pin_miso.pin        = RA8_ESP_HOSTED_GPIO_PIN(k_ra8_esp_hosted_pin_cipo);
   cfg.pin_sclk.port       = RA8_ESP_HOSTED_GPIO_PORT(k_ra8_esp_hosted_pin_sck);

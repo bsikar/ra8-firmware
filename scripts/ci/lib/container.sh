@@ -25,6 +25,11 @@
 # ci.sh itself, so moving this out changed nothing about how the container is
 # entered.
 
+_RA8_CONTAINER_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=scripts/ci/lib/nofile.sh
+. "$_RA8_CONTAINER_LIB_DIR/nofile.sh"
+unset _RA8_CONTAINER_LIB_DIR
+
 # The container runtime's command words, one per line, or nothing when there is
 # none.
 #
@@ -45,10 +50,20 @@ ci_runtime_argv() {
   if [[ "${#words[@]}" -eq 0 ]]; then
     for candidate in podman docker nerdctl; do
       if command -v "$candidate" >/dev/null 2>&1; then
-        words=("$candidate")
-        break
+        if "$candidate" info >/dev/null 2>&1 || [[ "$candidate" == "docker" && "$(uname -s)" == "Darwin" && -x "$(command -v colima 2>/dev/null)" ]]; then
+          words=("$candidate")
+          break
+        fi
       fi
     done
+    if [[ "${#words[@]}" -eq 0 ]]; then
+      for candidate in podman docker nerdctl; do
+        if command -v "$candidate" >/dev/null 2>&1; then
+          words=("$candidate")
+          break
+        fi
+      done
+    fi
   fi
   [[ "${#words[@]}" -gt 0 ]] && printf '%s\n' "${words[@]}"
   return 0
@@ -88,7 +103,7 @@ ci_require_runtime() {
     exit 1
   fi
   # On macOS the project uses colima (no Docker Desktop license). Auto-start it,
-  # matching scripts/ci/test-docker.sh. podman on macOS uses its own VM instead.
+  # matching scripts/ci/devcontainer_run.sh. podman on macOS uses its own VM instead.
   if [[ "$(uname -s)" == "Darwin" && "$name" == "docker" ]]; then
     if ! command -v colima >/dev/null 2>&1; then
       echo "error: colima not on PATH. Install: brew install colima" >&2
@@ -122,7 +137,7 @@ ci_require_runtime() {
 # commit (#521). devcontainer_image.sh compares the build-context digest
 # recorded on the image against the working tree's, so an image built from a
 # different Dockerfile is rebuilt rather than reused. That is one definition,
-# shared with the dev_box Ansible role, so a converge and a `make ci` cannot
+# shared with the dev_box Ansible role, so a converge and a `just ci` cannot
 # disagree about what "current" means.
 ci_ensure_image() {
   local rebuild="$1" image="$2" repo="$3"
@@ -132,13 +147,13 @@ ci_ensure_image() {
   [[ "$rebuild" == "1" ]] && args+=(--rebuild)
   RA8_CONTAINER_RUNTIME="${runtime[*]}" \
     RA8_CI_IMAGE="$image" \
-    RA8_TOOLS_CACHE_DIR="$(ra8_tools_cache_host_dir)" \
-    bash "$repo/scripts/ci/devcontainer_image.sh" "${args[@]}"
+    RA8_TOOLS_CACHE_DIR="${RA8_TOOLS_CACHE_DIR:-/var/cache/ra8-tools}" \
+    /bin/bash -p "$repo/scripts/ci/devcontainer_image.sh" "${args[@]}"
 }
 
 # Linked git worktrees: mount the main repo's git dir too (#334).
 #
-# In a linked worktree -- an agent workspace from `make ws-new`, or a
+# In a linked worktree -- an agent workspace from `just workspace::new`, or a
 # .claude/worktrees/* tree -- `.git` is a FILE holding "gitdir: <path>" that
 # points into the MAIN repo's git directory. That directory is outside the
 # workspace bind mount, so the in-container `git archive HEAD` saw no repository
@@ -171,7 +186,7 @@ ci_worktree_run_args() {
 # Without this the cache is pointless here: HOME is /tmp inside the container
 # and --rm takes it away, so every run would start cold and cmake/ccache.cmake
 # would be wiring in a launcher whose cache never survives. A host directory
-# mounted read-write is what lets a second `make ci` -- by any agent, from any
+# mounted read-write is what lets a second `just ci` -- by any agent, from any
 # workspace -- hit objects the first one compiled. It cannot carry stale state
 # forward: a changed input is simply a different cache key.
 #
@@ -207,7 +222,9 @@ ci_ccache_run_args() {
 ci_toolcache_run_args() {
   local dir
   dir="$(ra8_tools_cache_host_dir)"
-  mkdir -p "$dir" 2>/dev/null || true
+  if ! mkdir -p "$dir" 2>/dev/null; then
+    return 0
+  fi
   [[ -d "$dir" && -w "$dir" ]] || return 0
   echo "==> pinned-tool cache: $dir -> /toolcache" >&2
   printf '%s\n' -v "$dir:/toolcache" -e RA8_TOOLS_CACHE=/toolcache
@@ -217,7 +234,7 @@ ci_toolcache_run_args() {
 # default, so this changes nothing where it is not set.
 #
 # One measured case: win-ci is a CI RUNNER host first and a verification host
-# second, so a `make ci` there must be weighted BELOW its runner containers
+# second, so a `just ci` there must be weighted BELOW its runner containers
 # rather than compete with them. It has to be a run-command flag --
 # `--cgroup-parent=<slice>` -- because the container's cgroup is created by the
 # docker DAEMON, so it inherits nothing from the slice this shell is in. The
@@ -242,6 +259,9 @@ ci_extra_run_args() {
 # --rm is load-bearing, not hygiene: the snapshot tree and every build dir the
 # gates create live INSIDE the container, so the container exiting is what
 # reclaims them. Nothing a gate writes can survive to poison the next run.
+# --init is equally load-bearing for signal tests: the gate process must not be
+# PID 1, which otherwise leaves killed orphan grandchildren as zombies and
+# makes an empty process-group assertion impossible inside the container.
 #
 # CMAKE_BUILD_PARALLEL_LEVEL defaults to 4 (the CI runner's value, so this
 # reproduces its timing) but is overridable for a beefier verification box.
@@ -250,32 +270,47 @@ ci_extra_run_args() {
 # the host, `-e RA8_MAX_JOBS` passes nothing and ra8_max_jobs falls through.
 ci_host_mode_exec() {
   local fast="$1" gate="$2" rebuild="$3" image="$4" repo="$5"
-  local runtime=() extra=() worktree=() ccache=() toolcache=()
-  mapfile -t runtime < <(ci_runtime_argv)
+  local runtime=() extra=() worktree=() ccache=() toolcache=() nofile=()
+  local _line
+  while IFS= read -r _line; do [[ -n "$_line" ]] && runtime+=("$_line"); done < <(ci_runtime_argv)
   [[ "${#runtime[@]}" -eq 0 ]] && ci_no_runtime "$fast"
   ci_require_runtime "${runtime[@]}"
   ci_ensure_image "$rebuild" "$image" "$repo" "${runtime[@]}"
 
-  mapfile -t worktree < <(ci_worktree_run_args "$repo")
-  mapfile -t ccache < <(ci_ccache_run_args)
-  mapfile -t toolcache < <(ci_toolcache_run_args)
-  mapfile -t extra < <(ci_extra_run_args)
+  while IFS= read -r _line; do [[ -n "$_line" ]] && worktree+=("$_line"); done < <(ci_worktree_run_args "$repo")
+  while IFS= read -r _line; do [[ -n "$_line" ]] && ccache+=("$_line"); done < <(ci_ccache_run_args)
+  while IFS= read -r _line; do [[ -n "$_line" ]] && toolcache+=("$_line"); done < <(ci_toolcache_run_args)
+  while IFS= read -r _line; do [[ -n "$_line" ]] && extra+=("$_line"); done < <(ci_extra_run_args)
+  ra8_nofile_validate_target "$RA8_NOFILE_TARGET"
+  while IFS= read -r _line; do [[ -n "$_line" ]] && nofile+=("$_line"); done < <(
+    ra8_nofile_container_run_args "$image" "${runtime[@]}"
+  )
 
   echo "==> running ${gate:-CI gates} in container (runtime=${runtime[*]} fast=$fast)"
+  # Host mode deliberately runs as root with an ephemeral private HOME, so the
+  # image's developer-user Git config does not apply.  Bind the one read-only
+  # mount as safe through Git's fixed process environment; otherwise Git
+  # rejects the host checkout before the snapshot can be materialised.
   exec "${runtime[@]}" run --rm \
+    --init \
     -u 0:0 \
+    --tmpfs /home/ra8-ci:rw,mode=0700 \
     -e RA8_CI_INNER=1 \
     -e RA8_CI_FAST="$fast" \
     -e RA8_CI_GATE="$gate" \
-    -e HOME=/tmp \
+    -e HOME=/home/ra8-ci \
+    -e GIT_CONFIG_COUNT=1 \
+    -e GIT_CONFIG_KEY_0=safe.directory \
+    -e GIT_CONFIG_VALUE_0=/workspace \
     -e RA8_MAX_JOBS \
-    -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}" \
+    -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-${RA8_MAX_JOBS:-}}" \
     -v "$repo":/workspace:ro \
     ${extra[@]+"${extra[@]}"} \
     ${worktree[@]+"${worktree[@]}"} \
     ${ccache[@]+"${ccache[@]}"} \
     ${toolcache[@]+"${toolcache[@]}"} \
+    "${nofile[@]}" \
     -w /workspace \
     "$image" \
-    bash scripts/ci.sh
+    /bin/bash -p scripts/ci.sh
 }

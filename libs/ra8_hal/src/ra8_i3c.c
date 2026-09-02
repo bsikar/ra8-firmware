@@ -280,7 +280,7 @@ internal_ra8_i3c_fifo_write(volatile r_i3c_regs_t* reg, const uint8_t* data, uin
  * @since 0.1.0
  */
 RA8_INTERNAL static void
-internal_ra8_i3c_fifo_read(volatile r_i3c_regs_t* reg, uint8_t* out, uint32_t len)
+internal_ra8_i3c_fifo_read(volatile const r_i3c_regs_t* reg, uint8_t* out, uint32_t len)
 {
   uint32_t       i           = 0U;
   const uint32_t k_word_size = k_ra8_i3c_word_size;
@@ -325,7 +325,9 @@ ra8_err_t ra8_i3c_init(uint8_t channel, const ra8_i3c_cfg_t* cfg)
   } else {
     /* Native I3C bring-up. HUM Ch 11.2.7 "MSTPCRB" p 444 + Ch 40. */
     const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_i3c);
-    RA8_RETURN_ON_ERROR(mst_err, s_tag, "i3c_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+    RA8_RETURN_ON_ERROR(mst_err, s_tag, "i3c_init: mstp enable");
+    /* GCOVR_EXCL_BR_STOP */
     volatile r_i3c_regs_t* reg = ra8_i3c();
     internal_ra8_i3c_reset_sequence(reg);
     /* Clear every status / enable register to a deterministic state.

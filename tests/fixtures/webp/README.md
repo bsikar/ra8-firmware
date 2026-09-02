@@ -1,8 +1,8 @@
 # WebP decode fixtures (#290)
 
 Committed WebP bitstreams that exercise the vendored libwebp decoder
-(`libs/third_party/libwebp/`) through the `ra8_webp` facade. They are decoded
-by `tests/test_ra8_webp.c` and are also the seed corpus for the
+(`apps/shared_libs/third_party/libwebp/`) through the `ra8_webp` facade. They are decoded
+by `tests/graphics/src/test_ra8_webp.c` and are also the seed corpus for the
 `fuzz_ra8_webp` libFuzzer harness.
 
 The test embeds each file's bytes inline (they are tiny) so it stays free of

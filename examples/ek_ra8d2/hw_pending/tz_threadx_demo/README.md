@@ -1,7 +1,7 @@
 # tz_threadx_demo
 
 A minimal, teaching-focused example of the structure the main e-reader
-application (`apps/stand_alone/ereader`) uses: CPU0 (Cortex-M85) split into a Secure and a
+application (`apps/board/stand_alone/ereader`) uses: CPU0 (Cortex-M85) split into a Secure and a
 Non-Secure project. The Secure side handles secure boot, configures the SAU,
 hosts the Non-Secure Callable veneers, and transitions to the Non-Secure world;
 the Non-Secure side runs the ThreadX kernel with two user threads that reach

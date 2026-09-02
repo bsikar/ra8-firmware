@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# Managed by the dev_box Ansible role -- edit the role, not this file.
+[Unit]
+Description=RA8 dedicated GitHub Actions HIL runner
+Documentation=https://github.com/actions/runner
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User={{ dev_box_hil_runner_user }}
+Group={{ dev_box_hil_runner_group }}
+WorkingDirectory={{ dev_box_hil_runner_root }}
+EnvironmentFile={{ dev_box_hil_runner_env_file }}
+Environment="HOME={{ dev_box_hil_runner_home }}"
+Environment="PATH={{ dev_box_arm_gcc_prefix }}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="CCACHE_DIR={{ dev_box_hil_ccache_dir }}"
+Environment="RA8_CCACHE_DIR={{ dev_box_hil_ccache_dir }}"
+ExecStart={{ dev_box_hil_runner_root }}/runsvc.sh
+Restart=always
+RestartSec=5s
+KillSignal=SIGINT
+TimeoutStopSec=5min
+UMask=0077
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

@@ -198,7 +198,7 @@ static ra8_err_t internal_setattr_exfat(const ra8_fs_mount_t* m,
  *          public ::ra8_fs_set_attr brackets this with the library lock; the
  *          full contract is documented there.
  *
- * @param[in,out] handle     Mount handle.
+ * @param[in]     handle     Mount handle.
  * @param[in]     path       Path to the entry.
  * @param[in]     set_mask   Attribute bits to set.
  * @param[in]     clear_mask Attribute bits to clear.
@@ -224,10 +224,10 @@ static ra8_err_t internal_setattr_exfat(const ra8_fs_mount_t* m,
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t internal_setattr_locked(ra8_fs_mount_t* handle,
-                                         const char*     path,
-                                         uint8_t         set_mask,
-                                         uint8_t         clear_mask)
+static ra8_err_t internal_setattr_locked(const ra8_fs_mount_t* handle,
+                                         const char*           path,
+                                         uint8_t               set_mask,
+                                         uint8_t               clear_mask)
 {
   if (handle == nullptr || path == nullptr) {
     return k_ra8_err_null_ptr;
@@ -263,8 +263,10 @@ static ra8_err_t internal_setattr_locked(ra8_fs_mount_t* handle,
  */
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t
-ra8_fs_set_attr(ra8_fs_mount_t* handle, const char* path, uint8_t set_mask, uint8_t clear_mask)
+ra8_err_t ra8_fs_set_attr(const ra8_fs_mount_t* handle,
+                          const char*           path,
+                          uint8_t               set_mask,
+                          uint8_t               clear_mask)
 {
   priv_lock_acquire();
   const ra8_err_t err = internal_setattr_locked(handle, path, set_mask, clear_mask);

@@ -101,7 +101,7 @@ def headline(all_decisions: list, classified: list) -> dict:
     partial_dec = sum(1 for d in all_decisions if MCDC_ZERO_PCT < d[4] < MCDC_FULL_PCT)
     no_dec = sum(1 for d in all_decisions if d[4] == MCDC_ZERO_PCT)
     files_seen = len({d[0] for d in all_decisions})
-    rate = (100.0 * yes_dec / total_dec) if total_dec else 0.0
+    decision_complete_rate = (100.0 * yes_dec / total_dec) if total_dec else 0.0
 
     deactivated_rows = [r for r in classified if r[6]]
     reachable_rows = [r for r in classified if not r[6]]
@@ -120,7 +120,7 @@ def headline(all_decisions: list, classified: list) -> dict:
         "partial_dec": partial_dec,
         "no_dec": no_dec,
         "files_seen": files_seen,
-        "rate": rate,
+        "decision_complete_rate": decision_complete_rate,
         "deactivated_rows": deactivated_rows,
         "reachable_rows": reachable_rows,
         "deact_count": deact_count,
@@ -145,7 +145,9 @@ def _md_preamble() -> list[str]:
     md_lines.append("")
     md_lines.append("## Methodology")
     md_lines.append("")
-    md_lines.append("- Source of truth: `build/mcdc-report/mcdc.txt` (output of `make mcdc`).")
+    md_lines.append(
+        "- Source of truth: `build/mcdc-report/mcdc.txt` (output of `just quality::local::mcdc`)."
+    )
     md_lines.append(
         '- A decision is one llvm-cov "MC/DC Decision Region".'
         " Condition count is taken from the `Number of Conditions:`"
@@ -174,7 +176,7 @@ def _md_topline(h: dict) -> list[str]:
     partial_dec = h["partial_dec"]
     no_dec = h["no_dec"]
     files_seen = h["files_seen"]
-    rate = h["rate"]
+    decision_complete_rate = h["decision_complete_rate"]
     deact_count = h["deact_count"]
     reachable_total = h["reachable_total"]
     reachable_rate = h["reachable_rate"]
@@ -186,18 +188,22 @@ def _md_topline(h: dict) -> list[str]:
     md_lines.append(f"- Decisions at 100% MC/DC (`yes`): **{yes_dec}**")
     md_lines.append(f"- Decisions partially covered (`partial`): **{partial_dec}**")
     md_lines.append(f"- Decisions fully uncovered (`no`): **{no_dec}**")
-    md_lines.append(f"- Coverage rate (yes / total): **{rate:.2f}%**")
-    md_lines.append(f"- Deactivated gap conditions (DO-178C 6.4.4.3): **{deact_count}**")
     md_lines.append(
-        f"- Reachable-condition denominator (total - deactivated): **{reachable_total}**"
+        "- Decision-complete rate (fully covered decisions / total decisions):"
+        f" **{decision_complete_rate:.2f}%**"
+    )
+    md_lines.append(f"- Deactivated gap decision regions (DO-178C 6.4.4.3): **{deact_count}**")
+    md_lines.append(
+        f"- Reachable decision-region denominator (total - deactivated): **{reachable_total}**"
     )
     md_lines.append(
-        f"- **Reachable MC/DC rate**: **{reachable_rate:.2f}%**"
-        " -- the enforced ratchet threshold is recorded in `.github/mcdc-baseline.txt`."
+        f"- **Reachable decision-complete MC/DC rate**: **{reachable_rate:.2f}%**"
+        " -- every counted decision region has complete MC/DC; the enforced"
+        " ratchet threshold is recorded in `.github/mcdc-baseline.txt`."
     )
     md_lines.append("")
     md_lines.append(
-        "See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog."
+        "See `docs/MCDC_DEACTIVATIONS.md` for the per-decision deactivation rationale catalog."
     )
     md_lines.append("")
     return md_lines
@@ -229,10 +235,10 @@ def _md_gap_tables(h: dict) -> list[str]:
     md_lines.append("## Deactivated gaps (DO-178C 6.4.4.3 exempted)")
     md_lines.append("")
     md_lines.append(
-        "These conditions are unreachable on any public-API path and"
-        " are therefore exempted from the MC/DC gate. Each row carries"
-        " the rationale used by the auto-classifier; humans may extend"
-        " the per-condition narrative in `docs/MCDC_DEACTIVATIONS.md`."
+        "These decision regions are unreachable on any public-API path and"
+        " are therefore exempted from the reachable decision-complete gate."
+        " Each row carries the rationale used by the auto-classifier; humans"
+        " may extend the per-decision narrative in `docs/MCDC_DEACTIVATIONS.md`."
     )
     md_lines.append("")
     md_lines.append("| File | Conds | Function | Excerpt | Rationale |")
@@ -273,7 +279,7 @@ def _md_module_tables(rows: list) -> list[str]:
     md_lines.append("---")
     md_lines.append("")
     md_lines.append(
-        "*Regenerated from the live `make mcdc` report. See"
+        "*Regenerated from the live `just quality::local::mcdc` report. See"
         " `docs/MCDC_GAPS.csv` for the full per-decision table"
         " including decision-text snippets and excerpts.*"
     )
@@ -291,12 +297,12 @@ def write_markdown(rows: list, h: dict) -> None:
 def _deact_preamble() -> list[str]:
     """The fixed header of the catalog: what it is, the standard, and the policy."""
     return [
-        "# MC/DC Deactivated-Condition Catalog",
+        "# MC/DC Deactivated-Decision Catalog",
         "",
-        "This file documents every MC/DC condition that has been"
+        "This file documents every MC/DC decision region that has been"
         " classified as **deactivated** under **DO-178C 6.4.4.3"
-        ' ("deactivated code")**. Deactivated conditions are exempted'
-        " from the 100% MC/DC gate because the public-API contract"
+        ' ("deactivated code")**. Deactivated decision regions are exempted'
+        " from the reachable decision-complete MC/DC gate because the public-API contract"
         " makes them unreachable; they remain in the source for"
         " defense-in-depth, fault-injection robustness, and to give"
         " static analyzers a clear local invariant to anchor on.",
@@ -309,8 +315,8 @@ def _deact_preamble() -> list[str]:
         " justified by a documented rationale, and (c) accompanied by"
         " upstream evidence that the exemption holds. The"
         " auto-classifier in `scripts/fix/regen_mcdc_gaps.py`"
-        " enumerates every such condition; this catalog records the"
-        " upstream guard or contract that makes each one unreachable.",
+        " enumerates every such decision region; this catalog records"
+        " the upstream guard or contract that makes each one unreachable.",
         "",
         "Equivalent industry references: IEC 61508-3:2010 7.4.7"
         " (defensive-programming code), ISO 26262-6:2018 9.4.5"
@@ -321,7 +327,7 @@ def _deact_preamble() -> list[str]:
         "Generated by `scripts/fix/regen_mcdc_gaps.py` from"
         " `build/mcdc-report/mcdc.txt`. Do not edit by hand above the"
         " `<!-- MANUAL -->` marker; manual narrative may be added below"
-        " the marker for a specific condition by appending its"
+        " the marker for a specific decision region by appending its"
         " `file::function::snippet` anchor (line numbers are not used:"
         " they drift on every reformat).",
         "",
@@ -343,14 +349,14 @@ def _escape_md_tags(text: str) -> str:
 
 
 def _deact_entries(deactivated_rows: list[tuple]) -> list[str]:
-    """One catalog section per deactivated condition, keyed by a stable anchor.
+    """One catalog section per deactivated decision, keyed by a stable anchor.
 
     The anchor is ``file::function::snippet`` rather than a line number
     precisely because line numbers drift on every reformat, which would
-    silently detach a hand-written justification from its condition.
+    silently detach a hand-written justification from its decision region.
     """
     if not deactivated_rows:
-        return ["(no deactivated conditions detected)", ""]
+        return ["(no deactivated decision regions detected)", ""]
     out: list[str] = []
     for src, _ln, n, func, excerpt, covered, _deact, rationale in deactivated_rows:
         anchor = _escape_md_tags(f"{src}::{func}::{decision_snippet(excerpt)}")
@@ -391,7 +397,7 @@ def _deact_manual_footer() -> list[str]:
 
 
 def write_deactivations(h: dict) -> None:
-    """Write the per-condition deactivation catalog (DO-178C 6.4.4.3)."""
+    """Write the per-decision deactivation catalog (DO-178C 6.4.4.3)."""
     deact_lines = [
         *_deact_preamble(),
         *_deact_entries(h["deactivated_rows"]),
@@ -404,7 +410,7 @@ def write_gate_json(h: dict) -> None:
     """Stash key counts so the gate script need not re-parse the report."""
     total_dec = h["total_dec"]
     yes_dec = h["yes_dec"]
-    rate = h["rate"]
+    decision_complete_rate = h["decision_complete_rate"]
     deact_count = h["deact_count"]
     reachable_total = h["reachable_total"]
     reachable_covered = h["reachable_covered"]
@@ -418,8 +424,8 @@ def write_gate_json(h: dict) -> None:
             f'  "deactivated_decisions": {deact_count},\n'
             f'  "reachable_total": {reachable_total},\n'
             f'  "reachable_covered": {reachable_covered},\n'
-            f'  "reachable_rate": {reachable_rate:.4f},\n'
-            f'  "absolute_rate": {rate:.4f}\n'
+            f'  "reachable_decision_complete_rate": {reachable_rate:.4f},\n'
+            f'  "decision_complete_rate": {decision_complete_rate:.4f}\n'
             "}\n",
             encoding="ascii",
         )

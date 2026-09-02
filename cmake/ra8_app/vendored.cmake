@@ -29,7 +29,7 @@ macro(_ra8_app_vendored_flags)
                ${_ra8_soup_wno_common}
                ${_ra8_soup_wno_c}
                -include
-               "${RA8_REPO_ROOT}/libs/ra8_reflow/inc/ra8_stbtt_alloc.h"
+               "${RA8_REPO_ROOT}/apps/shared_libs/reflow/inc/ra8_stbtt_alloc.h"
                "-DSTBTT_malloc(x,u)=ra8_stbtt_malloc(x)"
                "-DSTBTT_free(x,u)=ra8_stbtt_free(x)"
     )
@@ -54,14 +54,14 @@ macro(_ra8_app_vendored_flags)
   # -Wno set so -Werror stays in force for memory-safety classes. First-party
   # EPUB/XML C sources still go through the full warning set.
   # MINIZ_NO_STDIO/NO_TIME must be set for EVERY TU that includes miniz.h (the
-  # vendored miniz.c *and* ra8_epub's TUs) so the header ABI matches -- miniz.c
+  # vendored miniz.c *and* epub's TUs) so the header ABI matches -- miniz.c
   # references utime()/fopen() (absent on bare-metal newlib) only under the
-  # default config, and a mismatched config between miniz.c and ra8_epub corrupts
-  # the reader. ra8_epub uses only the in-memory reader, so the file path is
+  # default config, and a mismatched config between miniz.c and epub corrupts
+  # the reader. epub uses only the in-memory reader, so the file path is
   # never needed.
-  if(_ra8_epub_vendor)
+  if(_epub_vendor)
     set_property(
-      SOURCE ${_ra8_epub_vendor}
+      SOURCE ${_epub_vendor}
       APPEND
       PROPERTY COMPILE_OPTIONS ${_ra8_soup_wno_common}
                "$<$<COMPILE_LANGUAGE:C>:${_ra8_soup_wno_c}>"
@@ -96,14 +96,22 @@ macro(_ra8_app_vendored_flags)
     ra8_webp_apply_soup_flags(${_ra8_webp_vendor})
   endif()
 
-  # The vendored xz-embedded decoder (SOUP): blanket -w + -fno-strict-aliasing
-  # matching tests/CMakeLists.txt. Its attacker-facing memory-safety net is
-  # the ASan/UBSan libFuzzer harness (fuzz_ra8_unarch_xz) plus the bounded
-  # first-party wrapper (ra8_unarch_xz.c), which is held to the full warning
-  # bar and charges every decode against the decompression-limits policy.
+  # The vendored xz-embedded decoder (SOUP): one measured -Wno plus
+  # -fno-strict-aliasing, matching tests/cmake/core_hal.cmake. Its
+  # attacker-facing memory-safety net is the ASan/UBSan libFuzzer harness
+  # (fuzz_unarch_xz) plus the bounded first-party wrapper (unarch_xz.c), which
+  # is held to the full warning bar and charges every decode against the
+  # decompression-limits policy. Measured on all four xz TUs under
+  # arm-none-eabi-gcc 13.3.1 at -O0 by removing one flag at a time:
+  # -Wconversion fires (xz_dec_lzma2.c int -> uint16_t), and -Wsign-conversion
+  # never does on its own because gcc's -Wno-conversion already covers it.
   if(_ra8_xz_vendor)
+    set(_ra8_xz_compile_options
+        -Wno-conversion # xz_dec_lzma2.c narrows an int to uint16_t in upstream SOUP.
+        -fno-strict-aliasing
+    )
     set_source_files_properties(
-      ${_ra8_xz_vendor} PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing"
+      ${_ra8_xz_vendor} PROPERTIES COMPILE_OPTIONS "${_ra8_xz_compile_options}"
     )
   endif()
 endmacro()

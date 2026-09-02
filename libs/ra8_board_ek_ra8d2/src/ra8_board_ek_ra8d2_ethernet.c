@@ -31,6 +31,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_internal.h"
 #include "ra8_cgc.h"
 #include "ra8_elc_regs.h"
 #include "ra8_err.h"
@@ -128,10 +129,8 @@ typedef enum : uint32_t {
  */
 RA8_INTERNAL static ra8_err_t internal_eth_phy_hw_reset(void)
 {
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t rstn_pin = (ra8_port_pin_t)k_ra8_board_eth_pin_rstn;
-  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
-  ra8_err_t err = ra8_gpio_output_init(rstn_pin, k_ra8_level_low);
+  ra8_err_t            err      = ra8_gpio_output_init(rstn_pin, k_ra8_level_low);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -141,7 +140,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_phy_hw_reset(void)
   err = ra8_gpio_write(rstn_pin, k_ra8_level_high);
   if (err != k_ra8_ok) {
     /* ra8_gpio_write on a valid in-range mapped port/pin always returns k_ra8_ok off-target. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err; /* GCOVR_EXCL_LINE -- output_init already accepted this fixed mapped P708 pin */
   }
   for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_board_eth_phy_rst_post_iters; ++i) {
     __asm__ volatile("nop");
@@ -189,7 +188,6 @@ RA8_INTERNAL static ra8_err_t internal_eth_phy_hw_reset(void)
  */
 RA8_INTERNAL static ra8_err_t internal_eth_route_alt_pins(void)
 {
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t rstn_pin = (ra8_port_pin_t)k_ra8_board_eth_pin_rstn;
   for (uint32_t i = 0U; i < sizeof(s_eth_routes) / sizeof(s_eth_routes[0]); ++i) {
     if ((ra8_port_pin_t)s_eth_routes[i].pin == rstn_pin) {
@@ -218,10 +216,9 @@ RA8_INTERNAL static ra8_err_t internal_eth_route_alt_pins(void)
       ra8_pfs_set_drive_strength((ra8_port_pin_t)k_eth_tx_pins[i], k_ra8_pfs_dscr_middle);
     if (err != k_ra8_ok) {
       /* ra8_pfs_set_drive_strength on valid mapped tx pins always returns k_ra8_ok off-target. */
-      return err; /* GCOVR_EXCL_LINE */
+      return err; /* GCOVR_EXCL_LINE -- the fixed TX-pin table contains only mapped RA8D2 pins */
     }
   }
-  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   return k_ra8_ok;
 }
 
@@ -265,22 +262,20 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_eth_eswm_bring_up(uint32_t* out_eswclk_hz)
+RA8_PRIV ra8_err_t priv_ra8_board_eth_eswm_bring_up(uint32_t* out_eswclk_hz)
 {
   ra8_err_t err = ra8_cgc_eswclk_init();
   if (err != k_ra8_ok) {
-    /* ra8_cgc_eswclk_init always returns k_ra8_ok in RA8_OFF_TARGET (polls auto-satisfied). */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = ra8_cgc_eswclk_hz(out_eswclk_hz);
   if (err != k_ra8_ok) {
     /* ra8_cgc_eswclk_hz only fails on nullptr; out_eswclk_hz is always a valid pointer here. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err; /* GCOVR_EXCL_LINE -- nonnull out_eswclk_hz satisfies eswclk_hz's only guard */
   }
   err = ra8_mstp_enable(k_ra8_mstp_eswm);
   if (err != k_ra8_ok) {
-    /* ra8_mstp_enable returns k_ra8_ok in RA8_OFF_TARGET (readback poll excluded on host). */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   /* Chip-generic COMA bring-up (RRC pulse + RCEC clock fan-out + CABPIRM
    * buffer-pool init with BPR poll) now lives in the ETH HAL. */
@@ -301,7 +296,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_eswm_bring_up(uint32_t* out_eswclk_hz
  * @retval k_ra8_ok Walked to CONFIG.
  * @retval k_ra8_err_invalid_arg ra8_etha_set_mode rejected an argument.
  *
- * @pre  ``internal_eth_eswm_bring_up`` has succeeded.
+ * @pre  ``priv_ra8_board_eth_eswm_bring_up`` has succeeded.
  * @pre  Single-threaded init context.
  * @post ETHA1 EAMC reflects CONFIG; busy-wait between writes mirrors
  *       FSP r_rmac_phy_set_operation_mode.
@@ -309,7 +304,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_eswm_bring_up(uint32_t* out_eswclk_hz
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_eth_etha_to_config(void)
+RA8_PRIV ra8_err_t priv_ra8_board_eth_etha_to_config(void)
 {
   const ra8_etha_config_t etha_cfg = {
     .initial_mode = k_ra8_etha_opc_reset,
@@ -319,8 +314,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_etha_to_config(void)
   };
   ra8_err_t err = ra8_etha_init((ra8_etha_port_t)k_ra8_board_eth_etha_port, &etha_cfg);
   if (err != k_ra8_ok) {
-    /* ra8_etha_init returns k_ra8_ok with a valid port (1) and non-null cfg off-target. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   static const ra8_etha_opc_t k_chain[] = {
     k_ra8_etha_opc_disable,
@@ -329,8 +323,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_etha_to_config(void)
   for (uint8_t step = 0U; step < (uint8_t)(sizeof(k_chain) / sizeof(k_chain[0])); ++step) {
     err = ra8_etha_set_mode((ra8_etha_port_t)k_ra8_board_eth_etha_port, k_chain[step]);
     if (err != k_ra8_ok) {
-      /* ra8_etha_set_mode returns k_ra8_ok in RA8_OFF_TARGET with a valid port and mode. */
-      return err; /* GCOVR_EXCL_LINE */
+      return err;
     }
     for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_board_eth_etha_step_iters; ++i) {
       __asm__ volatile("nop");
@@ -381,7 +374,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_etha_to_operation(void)
  * stays under the function-size threshold.
  *
  * @param[in] eswclk_hz Live ESWCLK frequency in Hz (from
- *                      ::internal_eth_eswm_bring_up).
+ *                      ::priv_ra8_board_eth_eswm_bring_up).
  * @return k_ra8_ok on success; otherwise propagates ra8_rmac_init.
  * @retval k_ra8_ok RMAC1 initialised.
  * @retval k_ra8_err_invalid_arg ra8_rmac_init rejected the cfg block.
@@ -395,7 +388,6 @@ RA8_INTERNAL static ra8_err_t internal_eth_etha_to_operation(void)
  */
 RA8_INTERNAL static ra8_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
 {
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- OR-combined MRAFC flags and the board RMAC port are valid values outside the enumerator lists. */
   /* HUM Ch 33.4 "MRAFC : MAC Reception Address Filter Configuration
    * Register" p 1717: each frame class has an ENABLE bit (UCENE/BCENE
    * /MCENE in the [10:0] half + matching UCENP/BCENP/MCENP in the
@@ -435,7 +427,6 @@ RA8_INTERNAL static ra8_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
     .mdc_hz          = (uint32_t)k_ra8_rmac_mdc_default_hz,
   };
   return ra8_rmac_init((ra8_rmac_port_t)k_ra8_board_eth_rmac_port, &rmac_cfg);
-  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
 }
 
 /**
@@ -650,12 +641,12 @@ ra8_err_t ra8_board_ethernet_init(void)
    * reset. After this the per-port RMAC / ETHA register windows
    * answer reads and accept writes. */
   uint32_t eswclk_hz = 0U;
-  err                = internal_eth_eswm_bring_up(&eswclk_hz);
+  err                = priv_ra8_board_eth_eswm_bring_up(&eswclk_hz);
   if (err != k_ra8_ok) {
     return err;
   }
   /* Step 3: ETHA1 RESET -> DISABLE -> CONFIG so RMAC.MPIC is writable. */
-  err = internal_eth_etha_to_config();
+  err = priv_ra8_board_eth_etha_to_config();
   if (err != k_ra8_ok) {
     return err;
   }
@@ -673,7 +664,7 @@ ra8_err_t ra8_board_ethernet_init(void)
   if (err != k_ra8_ok) {
     /* ra8_eth_rgmii_select only fails on an out-of-range port; the board
      * RMAC port constant is always valid. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err; /* GCOVR_EXCL_LINE -- fixed board port 1 satisfies rgmii_select's 0..1 guard */
   }
   /* Step 5: RMAC1 bring-up. Programs MPIC (PSMCS / PIS / LSC / PIPP),
    * MAC address filter, and IRQ block. */

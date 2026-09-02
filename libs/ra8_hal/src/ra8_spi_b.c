@@ -352,13 +352,15 @@ ra8_err_t ra8_spi_init(uint8_t channel, const ra8_spi_cfg_t* cfg)
     return k_ra8_err_invalid_arg;
   }
   volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
   }
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 */
   const ra8_err_t mst_err = ra8_mstp_enable(s_spi_mstp_table[channel]);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "spi_init: mstp"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "spi_init: mstp");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* Disable (SPE=0) before reprogramming. */
   /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */
@@ -383,8 +385,8 @@ ra8_err_t ra8_spi_deinit(uint8_t channel)
     return k_ra8_err_invalid_arg;
   }
   volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
   }
   /* Clear SPE. */
   /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */
@@ -593,8 +595,10 @@ RA8_INTERNAL static void internal_push_unit(volatile r_spi_regs_t* reg,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_INTERNAL static void
-internal_pop_unit(volatile r_spi_regs_t* reg, void* rx, uint32_t idx, ra8_spi_bit_width_t bit_width)
+RA8_INTERNAL static void internal_pop_unit(volatile const r_spi_regs_t* reg,
+                                           void*                        rx,
+                                           uint32_t                     idx,
+                                           ra8_spi_bit_width_t          bit_width)
 {
   /* HUM Ch 43.2.2 "SPDR : SPI Data Register" p 2881 */
   const uint32_t value = reg->SPDR;
@@ -660,13 +664,13 @@ RA8_INTERNAL static ra8_err_t internal_xfer_common(uint8_t             channel,
   if (len == 0U) {
     return k_ra8_ok;
   }
-  // mcdc-deactivated: TU-local helper internal_apply_bit_width null-pair guard; the public-API ra8_spi_b_transfer entry validates that at least one of (tx, rx) is non-NULL before calling this helper, so the AND's two conditions cannot both be true on any reachable path -- defensive depth guard only.
+  // mcdc-deactivated: TU-local helper internal_xfer_common null-pair guard; the public-API ra8_spi_b_transfer entry validates that at least one of (tx, rx) is non-NULL before calling this helper, so the AND's two conditions cannot both be true on any reachable path -- defensive depth guard only.
   if ((tx == nullptr) && (rx == nullptr)) {
     return k_ra8_err_null_ptr;
   }
   volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
   }
 
   /* Lock SPCMD0.SPB to the requested width before pushing data. */
@@ -740,8 +744,8 @@ ra8_err_t ra8_spi_set_clock(uint8_t channel, uint32_t baud_hz, uint32_t pclka_hz
     return k_ra8_err_invalid_arg;
   }
   volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
   }
   if (baud_hz == 0U) {
     return k_ra8_err_invalid_arg;
@@ -766,8 +770,8 @@ ra8_err_t ra8_spi_get_errors(uint8_t channel, uint8_t* out_mask)
     return k_ra8_err_invalid_arg;
   }
   volatile const r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
   }
   const uint32_t ss = reg->SPSR;
   uint8_t        m  = k_ra8_spi_err_none;
@@ -793,8 +797,8 @@ ra8_err_t ra8_spi_clear_errors(uint8_t channel)
     return k_ra8_err_invalid_arg;
   }
   volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
   }
   /* SPI_B status flags clear via SPSRC (write-1). */
   /* HUM Ch 43.2.13 "SPSRC : SPI Status Clear Register" p 2905 */
@@ -823,8 +827,8 @@ ra8_err_t ra8_spi_enter_stop(uint8_t channel)
     return k_ra8_err_invalid_arg;
   }
   volatile r_spi_regs_t* reg = ra8_spi(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
+  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE -- bounded channel yields non-null reg */
+    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE -- bounded channel yields non-null reg    */
   }
   /* Clear SPE. */
   /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */

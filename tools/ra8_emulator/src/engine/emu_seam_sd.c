@@ -49,7 +49,8 @@
  * protocol (CMD17 / 0xFE token / CRC16 / the per-byte SPI loop) for the data
  * path. The FAT parse, inflate, and render all still run on the real firmware and
  * see identical bytes; the bypassed block protocol is covered by the host unit
- * test (tests/test_ra8_sdmmc_card_reflow.c) and by hardware. It is OFF by default:
+ * test (apps/shared_libs/reflow/tests/src/test_ra8_sdmmc_card_reflow.c) and by hardware. It is
+ * OFF by default:
  * HIL gates and the default run exercise the full handshake; turn it on only to
  * load a large book fast for an interactive or recorded capture. A card-absent
  * call, an out-of-range LBA, or a firmware without the symbol falls through to
@@ -71,7 +72,6 @@ typedef enum : uint16_t {
  */
 static bool s_fast_sd;
 
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 /**
  * @brief Perform on sdmmc read block for the emu seam SD model.
  * @details Perform on sdmmc read block for the emu seam sd model; this step is contained within the emu seam SD model and uses bounded caller or module-owned storage.

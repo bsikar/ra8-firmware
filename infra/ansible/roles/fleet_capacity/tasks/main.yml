@@ -103,18 +103,18 @@
 # quiet-hours window, and that is the fix for a measured outage rather than a
 # generalisation for its own sake.
 #
-# `make infra-scale HOST=truenas N=1` drained ra8-ci-runner-2 during a bench
+# `just infra::scale HOST=truenas N=1` drained ra8-ci-runner-2 during a bench
 # session. `restart: unless-stopped` deliberately does not undo an explicit
 # stop; truenas declares no window, so under the old shape it got no timer; so
 # nothing ever re-asked what the host should be. The NAS then served CI at half
 # its declared capacity, and the only thing in the tree that knew was
-# `make infra-status`, which prints the drift and exits 0. win-ci, which does
+# `just infra::status`, which prints the drift and exits 0. win-ci, which does
 # declare a window, would have healed the identical fault within ten minutes.
 #
 # fleet_capacity.sh `window` answers "what should this host be right now" on a
 # host with no window too -- its declared capacity -- so the timer converges
 # capacity generally and the quiet-hours window is one input to it. The
-# consequence, deliberately: a live `make infra-scale` is TEMPORARY. Standing a
+# consequence, deliberately: a live `just infra::scale` is TEMPORARY. Standing a
 # host down durably means changing `instances:` in infra/fleet.yml and
 # re-converging, which is a decision the next person can find.
 
@@ -139,7 +139,7 @@
       timer cannot be installed there, so nothing would ever restore this host's
       declared instance count after a drain -- the failure #513's sibling
       investigation found on the NAS. The capacity script and the manual
-      `make infra-scale` path still work; only the unattended convergence does
+      `just infra::scale` path still work; only the unattended convergence does
       not. Give the host a writable unit directory, or remove it from the
       fleet declaration.
 
@@ -205,6 +205,7 @@
     cmd: "{{ fleet_capacity_bin }} --help"
   register: fleet_capacity_help
   changed_when: false
+  check_mode: false
 
 - name: Assert the installed script is the one this role deploys
   ansible.builtin.assert:
@@ -223,6 +224,7 @@
   register: fleet_capacity_timer_state
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Assert the capacity convergence is actually scheduled
   ansible.builtin.assert:

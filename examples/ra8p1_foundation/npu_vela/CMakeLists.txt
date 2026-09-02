@@ -11,7 +11,7 @@
 #   cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8p1.cmake
 #   cmake --build build
 #
-# or simply `make` in this directory (its Makefile points at toolchain-ra8p1).
+# or simply `just` in this directory (its justfile points at toolchain-ra8p1).
 #
 # The shared cmake/ra8_add_app.cmake recipe compiles the full ra8_core + ra8_hal
 # (including the RA8P1-only ra8_npu.c + ra8_npu_loader.c, live under

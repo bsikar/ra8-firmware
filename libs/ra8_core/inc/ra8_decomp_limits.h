@@ -6,7 +6,7 @@
  * @details
  * Every archive / compressed-stream decoder in this firmware (ZIP-store and
  * DEFLATE via miniz, RAR4/RAR5, gzip, XZ/LZMA2, tar, and the raw-DEFLATE
- * buffer path in `ra8_io_compress.h`) consumes untrusted SD-card content and
+ * buffer path in `ra8_compress.h`) consumes untrusted SD-card content and
  * must be *bounded* and *fail-closed* on any hostile input. This header is
  * the single enforcement seam they all share: one policy record
  * (::ra8_decomp_limits_t), one running-budget tracker

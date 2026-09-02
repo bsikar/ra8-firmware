@@ -564,8 +564,8 @@ uint32_t ra8_tz_ns_signed_body_len(const uint32_t* ns_vector_table)
  * image and trailer do not exist at a real address on the unit-test host -- the
  * gate is absent and this returns ``k_ra8_ok`` so the jump proceeds unverified,
  * exactly as before. The gate's decision logic is covered directly in
- * ``tests/test_ra8_root_of_trust.c`` and the header read in
- * ``tests/test_tz_secure_boot.c``.
+ * ``tests/security/src/test_ra8_root_of_trust.c`` and the header read in
+ * ``tests/security/src/test_tz_secure_boot.c``.
  *
  * @param[in] ns_vector_table Base of the NS image (its vector table); non-NULL.
  *

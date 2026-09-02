@@ -287,7 +287,7 @@ static ra8_err_t internal_space_free_clusters(const ra8_fs_mount_t* m, uint32_t*
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t internal_space_locked(ra8_fs_mount_t* handle, ra8_fs_space_t* out)
+static ra8_err_t internal_space_locked(const ra8_fs_mount_t* handle, ra8_fs_space_t* out)
 {
   if (handle == nullptr || out == nullptr) {
     return k_ra8_err_null_ptr;
@@ -324,7 +324,7 @@ static ra8_err_t internal_space_locked(ra8_fs_mount_t* handle, ra8_fs_space_t* o
  */
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t ra8_fs_free_space(ra8_fs_mount_t* handle, ra8_fs_space_t* out)
+ra8_err_t ra8_fs_free_space(const ra8_fs_mount_t* handle, ra8_fs_space_t* out)
 {
   priv_lock_acquire();
   const ra8_err_t err = internal_space_locked(handle, out);

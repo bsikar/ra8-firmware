@@ -126,7 +126,7 @@ ra8_err_t display_get_caps(const display_handle_t* d, display_caps_t* out)
   return s_handle.iface->get_caps(s_handle.ctx, out);
 }
 
-ra8_err_t display_get_framebuffer(display_handle_t* d, display_fb_t* out)
+ra8_err_t display_get_framebuffer(const display_handle_t* d, display_fb_t* out)
 {
   const ra8_err_t v = internal_validate_handle(d);
   if (v != k_ra8_ok) {
@@ -136,7 +136,7 @@ ra8_err_t display_get_framebuffer(display_handle_t* d, display_fb_t* out)
   return s_handle.iface->get_framebuffer(s_handle.ctx, out);
 }
 
-ra8_err_t display_flush(display_handle_t* d, display_rect_t rect, display_refresh_hint_t hint)
+ra8_err_t display_flush(const display_handle_t* d, display_rect_t rect, display_refresh_hint_t hint)
 {
   const ra8_err_t v = internal_validate_handle(d);
   if (v != k_ra8_ok) {
@@ -145,7 +145,7 @@ ra8_err_t display_flush(display_handle_t* d, display_rect_t rect, display_refres
   return s_handle.iface->flush(s_handle.ctx, rect, hint);
 }
 
-ra8_err_t display_clear(display_handle_t* d, uint32_t color)
+ra8_err_t display_clear(const display_handle_t* d, uint32_t color)
 {
   const ra8_err_t v = internal_validate_handle(d);
   if (v != k_ra8_ok) {
@@ -154,7 +154,7 @@ ra8_err_t display_clear(display_handle_t* d, uint32_t color)
   return s_handle.iface->clear(s_handle.ctx, color);
 }
 
-ra8_err_t display_deinit(display_handle_t* d)
+ra8_err_t display_deinit(const display_handle_t* d)
 {
   const ra8_err_t v = internal_validate_handle(d);
   if (v != k_ra8_ok) {

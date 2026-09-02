@@ -179,11 +179,26 @@ target_include_directories(
                                 ${_RA8_ESP_HOSTED_FIRST_PARTY_INCLUDE_DIRS}
 )
 
-# Vendored SOUP is exempt from the project's warning bar: it is upstream's
-# code, held to upstream's standards, and re-flagging it would produce
-# noise nobody may act on without forking the vendor tree. Matches the
-# `-w` posture cmake/mbedtls.cmake applies to its own object library.
-target_compile_options(esp_hosted_objs PRIVATE -w)
+# ESP-IDF normally provides these two vendor-facing branch-hint tokens through
+# esp_compiler.h. Keep the lowercase upstream spellings out of first-party
+# headers and map them only while compiling the pinned vendor object library.
+target_compile_definitions(esp_hosted_objs PRIVATE likely=HOSTED_LIKELY unlikely=HOSTED_UNLIKELY)
+
+# No warning suppression here, deliberately. This object library used to
+# carry -Wno-implicit-function-declaration, -Wno-builtin-declaration-mismatch
+# and -Wno-int-conversion, filed as "vendored SOUP is exempt from the warning
+# bar". Measured under arm-none-eabi-gcc 13.3.1 at -O0, those three were
+# hiding four IMPLICITLY DECLARED functions in a network-facing transport,
+# not style noise: calloc and heap_caps_malloc in transport_util.c, and
+# assert and unlikely in spi_drv.c. C23 removed implicit declarations, so
+# each is a constraint violation; each also left an undefined symbol in the
+# object that only --gc-sections kept out of the image, and assert in
+# particular had stopped being a check at all. The port now supplies all four
+# from port/esp-hosted/inc/port_esp_hosted_host_os.h -- <stdlib.h>,
+# <assert.h>, the likely/unlikely branch hints and a real heap_caps_malloc
+# over the transport byte pool -- so the vendored translation units compile
+# clean with no suppression. If a future vendor bump reintroduces one, fix it
+# in the port header; do not re-add a -Wno-.
 
 target_link_libraries(esp_hosted_objs PUBLIC threadx)
 

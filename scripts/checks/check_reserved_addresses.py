@@ -77,6 +77,9 @@ RESERVED_WINDOWS: list[tuple[int, int, str]] = [
 # and exempt per CLAUDE.md; it is filtered below rather than listed here.
 SCAN_ROOTS = ("libs", "examples", "port", "tools", "apps", "tests")
 
+# Vendored SOUP is governed by its upstream boundary, never by this checker.
+THIRD_PARTY_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/")
+
 # Below this many `uintptr_t` enumerators the scan has plainly stopped
 # matching -- a syntax change in how the tree spells address enums would
 # otherwise leave this gate quietly enforcing nothing. Measured 2026-07-28:
@@ -181,13 +184,13 @@ def repo_root() -> pathlib.Path:
 def tracked_sources(root: pathlib.Path) -> list[pathlib.Path]:
     """List tracked first-party C sources and headers, excluding SOUP."""
     out = subprocess.run(  # noqa: S603  # fixed argv, no shell
-        ["git", "ls-files", "--", *(f"{d}/**/*.[ch]" for d in SCAN_ROOTS)],  # noqa: S607
+        ["git", "ls-files", "--", *(f"{d}/**/*.[ch]" for d in SCAN_ROOTS)],  # noqa: S607 -- fixed repository Git census
         capture_output=True,
         text=True,
         check=True,
         cwd=root,
     ).stdout.split()
-    return [root / p for p in out if not p.startswith("libs/third_party/")]
+    return [root / p for p in out if not p.startswith(THIRD_PARTY_PREFIXES)]
 
 
 def scan(paths: list[pathlib.Path]) -> tuple[list[Finding], int]:

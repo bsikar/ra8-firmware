@@ -241,9 +241,9 @@ static ra8_err_t internal_exfat_link_cluster(ra8_fs_file_t* file, uint32_t next)
 RA8_INTERNAL
 static ra8_err_t internal_exfat_grow_one(ra8_fs_file_t* file)
 {
-  ra8_fs_mount_t* m       = file->mount;
-  uint64_t        bmp_lba = 0U;
-  ra8_err_t       e       = priv_exfat_bitmap_lba(m, &bmp_lba);
+  const ra8_fs_mount_t* m       = file->mount;
+  uint64_t              bmp_lba = 0U;
+  ra8_err_t             e       = priv_exfat_bitmap_lba(m, &bmp_lba);
   if (e != k_ra8_ok) {
     return e;
   }

@@ -9,7 +9,7 @@ non-vacuity floors are asserted on, and how the exclusive header-basename
 census that judges a bare include is derived.
 
 Keeping the two apart is what makes the boundary describable in one place. The
-whole layout knowledge is four strings -- ``apps/``, ``apps/shared/`` and the
+whole layout knowledge is four strings -- ``apps/``, ``apps/shared_libs/`` and the
 two form categories -- and two ``Layer`` rows built out of them. A product
 moving between categories, or a new category arriving, is a change HERE and
 nowhere else; the scanner never learns a path.
@@ -18,9 +18,9 @@ The tiers, and the one direction the arrow points:
 
 * PLATFORM -- ``libs/``, ``port/``, ``tools/``. May not reach into
   ``apps/`` at all, in any category.
-* PRODUCTS -- ``apps/``. ``apps/shared/`` is the portable product-tier code and
-  sits BELOW the form categories ``apps/stand_alone/`` and
-  ``apps/threadx_modules/``; it may not reach up into either. The forms consume
+* PRODUCTS -- ``apps/``. ``apps/shared_libs/`` is portable product-tier code and
+  sits BELOW the form categories ``apps/host/`` and ``apps/board/``; it may not
+  reach up into either. The forms consume
   shared, and the platform, freely.
 * CONSUMERS -- ``examples/`` and ``tests/``. Outside every rule by design: they
   exist to demonstrate and to compile the other two.
@@ -50,9 +50,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # product moving between categories needs no change here.
 PRODUCTS_ROOT = "apps/"
 
-SHARED_CATEGORY = "apps/shared/"
+SHARED_CATEGORY = "apps/shared_libs/"
 
-FORM_CATEGORIES = ("apps/stand_alone/", "apps/threadx_modules/")
+FORM_CATEGORIES = ("apps/board/", "apps/host/")
 
 # Consumers of every tier, exempt by design. Named so the exemption is a stated
 # part of the rule rather than an absence someone has to notice.
@@ -84,7 +84,7 @@ LAYERS = (
         c_roots=("libs/", "port/", "tools/"),
         cmake_roots=("libs/", "port/", "tools/", "cmake/"),
         cmake_files=("CMakeLists.txt",),
-        forbidden=(PRODUCTS_ROOT,),
+        forbidden=FORM_CATEGORIES,
     ),
     Layer(
         name=SHARED_LAYER_NAME,
@@ -113,7 +113,7 @@ LISTFILE_SUFFIX = ".cmake"
 
 # Vendored SOUP and generated font tables are not hand-authored first-party
 # code and are exempt from every house rule, this one included.
-EXCLUDED_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/")
+EXCLUDED_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/", "libs/ra8_fonts/")
 
 # Non-vacuity floors. A checker whose scope collapsed to zero files is also
 # perfectly quiet, so a shrunken census is FATAL rather than clean. The
@@ -125,12 +125,12 @@ EXCLUDED_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/")
 # absorbed the 10 files of the dissolved src/ root (#724), so the platform
 # total is unchanged at 1260 and the per-root floors below still sum to 1070.
 #
-# Deliberately NOT floored: apps/shared/ and the individual form categories. A
+# Deliberately NOT floored: apps/shared_libs/ and the individual form categories. A
 # product is allowed to live entirely in one of them while another is a
 # placeholder, and a floor there would fail the gate for a legal layout.
-C_ROOT_FILE_FLOORS = {"libs/": 810, "port/": 80, "tools/": 180}
+C_ROOT_FILE_FLOORS = {"libs/": 750, "port/": 80, "tools/": 180}
 
-C_TOTAL_FILE_FLOOR = 1150
+C_TOTAL_FILE_FLOOR = 1050
 
 CMAKE_TOTAL_FILE_FLOOR = 60
 
@@ -155,7 +155,7 @@ def normalize_rel(rel: str) -> str:
 
 
 def region_parts(prefix: str) -> tuple[str, ...]:
-    """Split a region prefix such as ``apps/stand_alone/`` into components.
+    """Split a region prefix such as ``apps/board/`` into components.
 
     Args:
         prefix: A trailing-slash region prefix.

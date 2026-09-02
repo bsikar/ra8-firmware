@@ -13,7 +13,7 @@
 #
 #     cmake -S tests -B tests/build-bench -DRA8_BENCH=ON
 #     cmake --build tests/build-bench --target ra8_bench_all
-#     make bench       # convenience wrapper
+#     just quality::local::bench  # convenience wrapper
 #
 #
 
@@ -30,25 +30,15 @@ message(STATUS "RA8_BENCH=ON: building host-side performance benchmarks")
 set(RA8_BENCH_TARGETS bench_ra8_crc bench_ra8_jpeg_sw bench_ra8_gfx_text)
 
 foreach(_t ${RA8_BENCH_TARGETS})
-  add_executable(${_t} ${CMAKE_CURRENT_SOURCE_DIR}/${_t}.c $<TARGET_OBJECTS:ra8_core_hal>)
-  target_compile_options(
-    ${_t}
-    PRIVATE -O2
-            -DNDEBUG
-            -Wall
-            -Wextra
-            -Wno-unused-function
-            -Wno-unused-parameter
-            -Wno-unused-variable
-            -Wno-address-of-packed-member
-  )
+  add_executable(${_t} ${CMAKE_CURRENT_SOURCE_DIR}/src/${_t}.c $<TARGET_OBJECTS:ra8_core_hal>)
+  target_compile_options(${_t} PRIVATE -O2 -DNDEBUG -Wall -Wextra)
   target_include_directories(
     ${_t}
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
             ${FW_ROOT}/libs/ra8_core/inc
             ${FW_ROOT}/libs/ra8_hal/inc
             ${FW_ROOT}/libs/ra8_gfx/inc
-            ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
+            ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/inc
   )
   set_target_properties(${_t} PROPERTIES LINKER_LANGUAGE CXX)
   if(APPLE)
@@ -75,10 +65,10 @@ target_include_directories(bench_ra8_jpeg_sw PRIVATE ${FW_ROOT}/libs/ra8_jpeg/in
 
 # The deterministic output golden needs no production object library: it
 # exercises only the caller-owned RAM sink and typed benchmark renderer.
-add_executable(test_ra8_bench_output ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_bench_output.c)
+add_executable(test_ra8_bench_output ${CMAKE_CURRENT_SOURCE_DIR}/src/test_ra8_bench_output.c)
 target_compile_options(test_ra8_bench_output PRIVATE -Wall -Wextra -Werror)
 target_include_directories(
-  test_ra8_bench_output PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${FW_ROOT}/libs/ra8_core/inc
+  test_ra8_bench_output PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${FW_ROOT}/libs/ra8_core/inc
 )
 add_test(NAME test_ra8_bench_output COMMAND test_ra8_bench_output)
 list(APPEND RA8_BENCH_TARGETS test_ra8_bench_output)

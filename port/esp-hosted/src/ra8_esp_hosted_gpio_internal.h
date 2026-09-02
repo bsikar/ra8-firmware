@@ -192,8 +192,7 @@ RA8_PRIV [[nodiscard]] bool priv_ra8_esp_hosted_gpio_decode_pin(const void*     
  * @see priv_ra8_esp_hosted_gpio_pin_interface
  * @since 0.1.0
  */
-RA8_PRIV RA8_DI_SLOT("pin_driver") void priv_ra8_esp_hosted_gpio_set_pin_interface(
-  const ra8_pin_interface_t* iface);
+RA8_PRIV void priv_ra8_esp_hosted_gpio_set_pin_interface(const ra8_pin_interface_t* iface);
 
 /**
  * @brief Report the pin driver currently installed in the slice.

@@ -348,8 +348,8 @@ RA8_INTERNAL static uint32_t internal_ra8_mipi_dsi_make_dsisetr(const ra8_mipi_d
 ra8_err_t
 priv_ra8_mipi_dsi_internal_wait_eq(volatile const uint32_t* reg, uint32_t mask, uint32_t expect)
 {
-  for (uint32_t i = 0U; i < k_ra8_mipi_dsi_busy_loop_max; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((*reg & mask) == expect) {                               /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_mipi_dsi_busy_loop_max; ++i) {
+    if ((*reg & mask) == expect) {
       return k_ra8_ok;
     }
   }
@@ -440,11 +440,11 @@ RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* 
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   const ra8_err_t cfg_err = internal_ra8_mipi_dsi_validate_cfg(cfg);
-  RA8_RETURN_ON_ERROR(cfg_err, s_tag, "mipi_dsi_init: cfg invalid"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(cfg_err, s_tag, "mipi_dsi_init: cfg invalid");
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_mipi_dsi);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "mipi_dsi_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "mipi_dsi_init: mstp enable");
 
   internal_program_link(cfg);
   internal_program_timeouts(cfg);

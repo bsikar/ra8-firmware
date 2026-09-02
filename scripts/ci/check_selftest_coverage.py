@@ -36,22 +36,19 @@ and ``hil/`` drives the bench; demanding a both-directions selftest of
 ceremony gets disabled.  Scoping by the repo's own stated organisation is a
 principle, not an allowlist.
 
-THE BACKLOG IS RATCHETED, NOT WAIVED
-------------------------------------
+THE BACKLOG IS RETIRED, NOT WAIVED
+----------------------------------
 
-Turning Rule B on found a real backlog.  Failing on all of it at once would
-turn the tree red and teach everyone to skip the gate, so the pre-existing
-offenders are frozen in ``.github/selftest-baseline.txt`` -- the same shape as
-``tidy_ratchet.py`` and ``misra_ratchet.py``.  A NEW gate-wired detector with
-no selftest fails immediately.  A baseline row whose checker has since GAINED
-a selftest also fails, so the list can only shrink: the ratchet tightens
-itself rather than waiting to be tidied.
+Turning Rule B on found a real backlog, and issue #790 closed every row. The
+former ``.github/selftest-baseline.txt`` must remain absent: a NEW gate-wired
+detector with no selftest fails immediately, and recreating even an empty
+baseline fails too. There is no update mode because a detector regression is
+fixed by restoring its genuine both-direction selftest, never by freezing it.
 
 Run::
 
     check_selftest_coverage.py             # the gate
     check_selftest_coverage.py --list      # what is scanned, and its status
-    check_selftest_coverage.py --update    # re-seed the baseline (shrink only)
     check_selftest_coverage.py --selftest  # prove both directions
 
 Exit 0 if clean, 1 on a violation, 2 when the scan itself collapsed.
@@ -60,7 +57,9 @@ Exit 0 if clean, 1 on a violation, 2 when the scan itself collapsed.
 from __future__ import annotations
 
 import argparse
+import ast
 import re
+import shlex
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -69,22 +68,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 GATE_DIR = REPO_ROOT / "scripts" / "ci" / "gates"
 BASELINE_FILE = REPO_ROOT / ".github" / "selftest-baseline.txt"
 
-# A first-party script path as it appears in a gate body.
-INVOKE_RE = re.compile(r"(?<![\w./-])(scripts/[\w./-]+\.(?:py|sh))")
-
-# A selftest IMPLEMENTATION. Both spellings are live in this tree: the flag
-# form (`--selftest`, argparse or a bash `case` arm) and the subcommand form
-# (`monitor.sh selftest`, dispatched through a `cmd_selftest` function).
-# Matching only the flag form would report monitor.sh as having none, which is
-# false -- and a rule that fires on a compliant file is how a gate gets turned
-# off.
-IMPL_RE = re.compile(
-    r"""["']--selftest["']|--selftest\)|\bcmd_selftest\b|^\s*selftest\)""",
-    re.MULTILINE,
-)
-
-# A selftest INVOCATION on one line of a gate body, in either spelling.
-RUN_RE = re.compile(r"--selftest\b|\bselftest\b")
+# A first-party script path as one shell argv token. An optional prefix covers
+# the normal ``$REPO_ROOT/scripts/...`` spelling without treating prose in a
+# quoted argument as an invocation.
+SCRIPT_TOKEN_RE = re.compile(r"(?:^|.*/)(scripts/[\w./-]+\.(?:py|sh))$")
+SHELL_CONTROL = frozenset({";", "&&", "||", "|", "&", "(", ")"})
+SELFTEST_ARGS = frozenset({"--selftest", "selftest"})
 
 # Directories whose scripts are DETECTORS and therefore owe a selftest under
 # Rule B. Derived from the scripts/ taxonomy documented in CLAUDE.md.
@@ -115,6 +104,50 @@ def is_detector(rel: str) -> bool:
     return rel.startswith(DETECTOR_DIRS) or bool(DETECTOR_META_RE.match(rel))
 
 
+def _shell_segments(text: str) -> list[list[str]]:
+    """Tokenize shell source into simple-command segments.
+
+    Quoting and comments are handled by :mod:`shlex`; control operators end a
+    segment so a selftest argument on a neighboring command cannot confer
+    credit on a detector that did not receive it.
+    """
+    logical = text.replace("\\\n", " ")
+    segments: list[list[str]] = []
+    for line in logical.splitlines():
+        lexer = shlex.shlex(line, posix=True, punctuation_chars=";&|()")
+        lexer.commenters = "#"
+        lexer.whitespace_split = True
+        current: list[str] = []
+        try:
+            tokens = list(lexer)
+        except ValueError:
+            continue
+        for token in tokens:
+            if token in SHELL_CONTROL or (token and set(token) <= set(";&|()")):
+                if current:
+                    segments.append(current)
+                    current = []
+            else:
+                current.append(token)
+        if current:
+            segments.append(current)
+    return segments
+
+
+def _segment_invocations(tokens: list[str]) -> list[tuple[str, bool]]:
+    """Return scripts and exact selftest argv association for one command."""
+    scripts: list[tuple[int, str]] = []
+    for index, token in enumerate(tokens):
+        match = SCRIPT_TOKEN_RE.match(token)
+        if match:
+            scripts.append((index, match.group(1)))
+    found: list[tuple[str, bool]] = []
+    for position, (index, rel) in enumerate(scripts):
+        end = scripts[position + 1][0] if position + 1 < len(scripts) else len(tokens)
+        found.append((rel, any(token in SELFTEST_ARGS for token in tokens[index + 1 : end])))
+    return found
+
+
 def scan_gate_invocations(text: str) -> dict[str, bool]:
     """Map every first-party script invoked in `text` to whether a selftest ran.
 
@@ -126,14 +159,62 @@ def scan_gate_invocations(text: str) -> dict[str, bool]:
         this text carried a selftest.
     """
     found: dict[str, bool] = {}
-    for line in text.splitlines():
-        if line.lstrip().startswith("#"):
-            continue
-        ran = bool(RUN_RE.search(line))
-        for match in INVOKE_RE.finditer(line):
-            rel = match.group(1)
+    for segment in _shell_segments(text):
+        for rel, ran in _segment_invocations(segment):
             found[rel] = found.get(rel, False) or ran
     return found
+
+
+def _python_has_selftest(text: str) -> bool:
+    """Recognize an actual Python argv branch or argparse declaration."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            function = node.func
+            is_add_argument = (
+                isinstance(function, ast.Attribute) and function.attr == "add_argument"
+            )
+            if is_add_argument and any(
+                isinstance(arg, ast.Constant) and arg.value == "--selftest" for arg in node.args
+            ):
+                return True
+        if isinstance(node, ast.Compare) and any(
+            isinstance(child, ast.Constant) and child.value == "--selftest"
+            for child in ast.walk(node)
+        ):
+            return True
+    return False
+
+
+def _shell_has_selftest(text: str) -> bool:
+    """Recognize a shell case arm or argument-test dispatch for selftest."""
+    for line in text.replace("\\\n", " ").splitlines():
+        lexer = shlex.shlex(line, posix=True, punctuation_chars="()")
+        lexer.commenters = "#"
+        lexer.whitespace_split = True
+        try:
+            tokens = list(lexer)
+        except ValueError:
+            continue
+        if not tokens:
+            continue
+        if tokens[0] in SELFTEST_ARGS and ")" in tokens[1:]:
+            return True
+        if tokens[0] in {"if", "[", "[["} and "--selftest" in tokens[1:]:
+            return True
+    return False
+
+
+def source_has_selftest(rel: str, text: str) -> bool:
+    """Recognize an implemented selftest from source syntax, not token prose."""
+    if rel.endswith(".py"):
+        return _python_has_selftest(text)
+    if rel.endswith(".sh"):
+        return _shell_has_selftest(text)
+    return False
 
 
 def collect() -> dict[str, bool]:
@@ -205,7 +286,7 @@ def has_selftest(rel: str) -> bool:
     path = REPO_ROOT / rel
     if not path.is_file():
         return False
-    return bool(IMPL_RE.search(path.read_text(encoding="utf-8", errors="replace")))
+    return source_has_selftest(rel, path.read_text(encoding="utf-8", errors="replace"))
 
 
 def evaluate(invoked: dict[str, bool]) -> tuple[list[str], list[str]]:
@@ -231,58 +312,12 @@ def evaluate(invoked: dict[str, bool]) -> tuple[list[str], list[str]]:
     return rule_a, rule_b
 
 
-def load_baseline() -> set[str]:
-    """Read the frozen Rule B backlog.
-
-    Returns:
-        Repo-relative paths recorded as pre-existing offenders; empty when the
-        baseline file is absent (the seeding case).
-    """
-    if not BASELINE_FILE.is_file():
-        return set()
-    rows = set()
-    for line in BASELINE_FILE.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#"):
-            rows.add(stripped)
-    return rows
-
-
-def write_baseline(rows: set[str]) -> None:
-    """Write the Rule B backlog, sorted, under a header that explains it.
-
-    Args:
-        rows: Repo-relative paths to freeze.
-    """
-    header = [
-        "# Gate-wired detectors that do not yet accept a --selftest.",
-        "# Consumed by scripts/ci/check_selftest_coverage.py --check",
-        "# (CI gate: ci-parity).",
-        "#",
-        "# CLAUDE.md and scripts/ci.sh both require a both-directions",
-        "# --selftest, and until #531 nothing enforced it. These rows predate",
-        "# enforcement. The gate fails on any NEW gate-wired detector with no",
-        "# selftest, so the debt is frozen and can only be burned down.",
-        "#",
-        "# A row whose checker has SINCE gained a selftest is also a failure:",
-        "# the list tightens itself rather than waiting to be tidied. Delete",
-        "# the row in the same change that adds the selftest.",
-        "#",
-        "# Closing this out means this file reaching zero rows and being",
-        "# DELETED -- never regenerated larger.",
-        f"# Rows at this baseline: {len(rows)}",
-        "",
-    ]
-    BASELINE_FILE.write_text("\n".join([*header, *sorted(rows), ""]), encoding="utf-8")
-
-
-def _report(rule_a: list[str], new_b: list[str], stale: list[str]) -> None:
+def _report(rule_a: list[str], rule_b: list[str]) -> None:
     """Print every violation with the fix spelled out.
 
     Args:
         rule_a: Scripts whose selftest no gate runs.
-        new_b: Detectors newly missing a selftest.
-        stale: Baseline rows whose checker gained a selftest.
+        rule_b: Gate-wired detectors missing a selftest.
     """
     for rel in rule_a:
         sys.stderr.write(
@@ -290,24 +325,19 @@ def _report(rule_a: list[str], new_b: list[str], stale: list[str]) -> None:
             "      A selftest nobody executes is documentation. Add it to the gate,\n"
             f"      before the scan:   python3 {rel} --selftest\n\n"
         )
-    for rel in new_b:
+    for rel in rule_b:
         sys.stderr.write(
             f"  {rel}: a gate-wired detector with NO --selftest.\n"
             "      A detector that has quietly stopped matching is indistinguishable\n"
             "      from a clean tree. Add a --selftest asserting BOTH directions (a\n"
             "      must-fire case and a must-stay-quiet case) and run it in the gate.\n"
-            "      Do NOT add a row to .github/selftest-baseline.txt -- that list is\n"
-            "      frozen pre-existing debt and may only shrink.\n\n"
-        )
-    for rel in stale:
-        sys.stderr.write(
-            f"  {rel}: baselined as having no selftest, but it now has one.\n"
-            "      Remove its row from .github/selftest-baseline.txt.\n\n"
+            "      Do NOT recreate .github/selftest-baseline.txt; that debt authority\n"
+            "      is retired and must remain absent.\n\n"
         )
 
 
 def run_check() -> int:
-    """Apply Rule A and Rule B against the frozen baseline.
+    """Apply Rule A and Rule B with no remaining baseline authority.
 
     Returns:
         0 clean, 1 on a violation, 2 when the scan collapsed.
@@ -322,21 +352,24 @@ def run_check() -> int:
         return EXIT_VACUOUS
 
     rule_a, rule_b = evaluate(invoked)
-    baseline = load_baseline()
-    new_b = [rel for rel in rule_b if rel not in baseline]
-    stale = sorted(rel for rel in baseline if rel not in rule_b)
+    retired_baseline_present = BASELINE_FILE.is_file()
 
-    if rule_a or new_b or stale:
+    if rule_a or rule_b or retired_baseline_present:
         sys.stderr.write("check_selftest_coverage.py: selftest requirement violated\n\n")
-        _report(rule_a, new_b, stale)
-        total = len(rule_a) + len(new_b) + len(stale)
+        _report(rule_a, rule_b)
+        if retired_baseline_present:
+            sys.stderr.write(
+                "  .github/selftest-baseline.txt: the debt reached zero, so the "
+                "retired baseline must be deleted.\n\n"
+            )
+        total = len(rule_a) + len(rule_b) + int(retired_baseline_present)
         sys.stderr.write(f"{total} violation(s).\n")
         return EXIT_VIOLATION
 
     print(
         f"check_selftest_coverage.py: clean -- {len(invoked)} gate-invoked script(s); "
-        f"every selftest present is run; {len(baseline)} detector(s) still owe one "
-        "(frozen in .github/selftest-baseline.txt)."
+        "every selftest present is run; zero detector selftest debt; "
+        "retirement baseline absent."
     )
     return EXIT_OK
 
@@ -353,30 +386,6 @@ def run_list() -> int:
         kind = "detector" if is_detector(rel) else "other   "
         print(f"{kind}  impl={'Y' if impl else 'n'}  run={'Y' if ran else 'n'}  {rel}")
     print(f"total: {len(invoked)}")
-    return EXIT_OK
-
-
-def run_update() -> int:
-    """Re-seed the baseline, refusing to grow it.
-
-    Returns:
-        0 on success, 1 when the update would freeze new debt.
-    """
-    _, rule_b = evaluate(collect())
-    current = set(rule_b)
-    seeding = not BASELINE_FILE.is_file()
-    baseline = load_baseline()
-    grew = sorted(current - baseline)
-    if grew and not seeding:
-        sys.stderr.write(
-            f"refusing to --update: {len(grew)} row(s) would be ADDED. The baseline is "
-            "a burn-down; write the missing selftests instead.\n"
-        )
-        for rel in grew:
-            sys.stderr.write(f"  {rel}\n")
-        return EXIT_VIOLATION
-    write_baseline(current)
-    print(f"check_selftest_coverage.py: wrote {len(current)} row(s) to {BASELINE_FILE.name}")
     return EXIT_OK
 
 
@@ -409,6 +418,22 @@ def _selftest_cases() -> list[tuple[str, str, bool]]:
         (
             "a commented-out invocation is not an invocation",
             "gate_x() (\n  set -e\n  # python3 scripts/checks/check_asm.py\n  true\n)\n",
+            False,
+        ),
+        (
+            "a selftest word in a later command does not confer credit",
+            "gate_x() (\n  python3 scripts/checks/check_asm.py; echo --selftest\n)\n",
+            True,
+        ),
+        (
+            "a neighboring detector's selftest does not confer credit",
+            "gate_x() (\n  python3 scripts/checks/check_asm.py && "
+            "python3 scripts/checks/check_c23_headers.py --selftest\n)\n",
+            True,
+        ),
+        (
+            "quoted prose naming a detector is not an invocation",
+            'gate_x() (\n  echo "scripts/checks/check_asm.py --selftest"\n)\n',
             False,
         ),
     ]
@@ -491,15 +516,64 @@ def _taxonomy_cases() -> list[tuple[str, bool]]:
     ]
 
 
+def _implementation_cases() -> list[tuple[str, bool]]:
+    """Prove implementation credit requires executable dispatch syntax."""
+    python_probe = "scripts/checks/probe.py"  # PATHREF-OK: nonexistent selftest fixture
+    shell_probe = "scripts/checks/probe.sh"  # PATHREF-OK: nonexistent selftest fixture
+    return [
+        (
+            "Python argparse selftest declaration is implemented",
+            source_has_selftest(
+                python_probe,
+                'parser.add_argument("--selftest", action="store_true")\n',
+            ),
+        ),
+        (
+            "Python argv comparison is implemented",
+            source_has_selftest(
+                python_probe,
+                'if "--selftest" in argv[1:]:\n    run_selftest()\n',
+            ),
+        ),
+        (
+            "Python docstring token alone is not implemented",
+            not source_has_selftest(
+                python_probe,
+                '"""Run this checker with --selftest."""\n',
+            ),
+        ),
+        (
+            "shell case arm is implemented",
+            source_has_selftest(
+                shell_probe,
+                'case "$1" in\n  --selftest) run_selftest ;;\nesac\n',
+            ),
+        ),
+        (
+            "shell echo token alone is not implemented",
+            not source_has_selftest(
+                shell_probe,
+                'echo "probe.sh --selftest: PASS"\n',
+            ),
+        ),
+        (
+            "shell comment token alone is not implemented",
+            not source_has_selftest(
+                shell_probe,
+                "# --selftest) run_selftest ;;\n",
+            ),
+        ),
+    ]
+
+
 def _live_scan_cases() -> list[tuple[str, bool]]:
     """The two properties that can only be asserted against the real tree.
 
     Returns:
-        ``(label, held)`` for the non-vacuity floor and the shrink-only
+        ``(label, held)`` for the non-vacuity floor, zero debt, and retired
         baseline.
     """
     live = collect()
-    baseline = load_baseline()
     _, rule_b = evaluate(live)
     return [
         (
@@ -507,9 +581,10 @@ def _live_scan_cases() -> list[tuple[str, bool]]:
             len(live) >= MIN_INVOKED,
         ),
         (
-            "every baseline row is still a real offender (the list only shrinks)",
-            set(baseline) <= set(rule_b),
+            "the retired baseline is absent instead of being recreated",
+            not BASELINE_FILE.is_file(),
         ),
+        ("the live tree carries zero detector selftest debt", not rule_b),
     ]
 
 
@@ -535,7 +610,13 @@ def selftest() -> int:
     Returns:
         0 when every case holds, 1 otherwise.
     """
-    families = (_rule_a_cases, _helper_walk_cases, _taxonomy_cases, _live_scan_cases)
+    families = (
+        _rule_a_cases,
+        _helper_walk_cases,
+        _taxonomy_cases,
+        _implementation_cases,
+        _live_scan_cases,
+    )
     failures = sum(_report_cases(family()) for family in families)
     if failures:
         sys.stderr.write(f"check_selftest_coverage.py --selftest: {failures} case(s) failed.\n")
@@ -553,7 +634,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="enforce the --selftest requirement")
     parser.add_argument("--check", action="store_true", help="apply the rules (the gate mode)")
     parser.add_argument("--list", action="store_true", help="print the scanned set and status")
-    parser.add_argument("--update", action="store_true", help="re-seed the baseline (shrink only)")
     parser.add_argument("--selftest", action="store_true", help="prove both directions, then exit")
     args = parser.parse_args()
 
@@ -567,10 +647,8 @@ def main() -> int:
         return selftest()
     if args.list:
         return run_list()
-    if args.update:
-        return run_update()
     if not args.check:
-        parser.error("one of --check / --list / --update / --selftest is required")
+        parser.error("one of --check / --list / --selftest is required")
     return run_check()
 
 

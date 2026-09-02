@@ -155,10 +155,10 @@ static ra8_err_t internal_reset_and_wait(uint16_t poll_max)
   if (err != k_ra8_ok) {
     return err;
   }
-  for (uint16_t i = 0U; i < poll_max; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint16_t i = 0U; i < poll_max; ++i) {
     uint16_t reg = 0U;
     err = s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra8_rmac_phy_reg_control, &reg);
-    if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
+    if (err != k_ra8_ok) {
       return err;
     }
     if ((reg & k_ra8_rmac_phy_bmcr_reset) == 0U) {

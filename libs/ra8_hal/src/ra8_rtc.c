@@ -33,6 +33,7 @@
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_err.h"
 #include "ra8_log.h"
 #include "ra8_register_protection.h"
 #include "ra8_rtc_regs.h"
@@ -132,8 +133,13 @@ RA8_INTERNAL static uint8_t internal_bin_to_bcd(uint8_t bin)
 RA8_INTERNAL static void
 internal_wait_bit(volatile const uint8_t* reg, uint8_t mask, uint8_t expect)
 {
-  for (uint16_t i = 0U; i < k_ra8_rtc_wait_iters; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if (((*reg) & mask) == expect) {                     /* GCOVR_EXCL_BR_LINE */
+  for (uint16_t i = 0U; i < k_ra8_rtc_wait_iters; ++i) {
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    const bool matched = ra8_fake_mmio_poll(reg, i, ((*reg) & mask) == expect);
+#else
+    const bool matched = ((*reg) & mask) == expect;
+#endif
+    if (matched) {
       return;
     }
   }
@@ -216,8 +222,14 @@ RA8_INTERNAL static ra8_err_t internal_start_count_source(ra8_rtc_clk_src_t src)
       *ra8_sys_lococr() = 0U;
     }
     ra8_delay_ms((uint32_t)k_ra8_rtc_clk_stab_loco_ms);
-    if ((*ra8_sys_lococr() & k_ra8_lococr_lcstp_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra8_err_hw_init_failed;                         /* GCOVR_EXCL_LINE    */
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+    const bool loco_running =
+      ra8_fake_mmio_poll(ra8_sys_lococr(), 0U, (*ra8_sys_lococr() & k_ra8_lococr_lcstp_mask) == 0U);
+#else
+    const bool loco_running = (*ra8_sys_lococr() & k_ra8_lococr_lcstp_mask) == 0U;
+#endif
+    if (!loco_running) {
+      return k_ra8_err_hw_init_failed;
     }
     return k_ra8_ok;
   }
@@ -233,8 +245,14 @@ RA8_INTERNAL static ra8_err_t internal_start_count_source(ra8_rtc_clk_src_t src)
     *ra8_sys_sosccr() = 0U;
   }
   ra8_delay_ms((uint32_t)k_ra8_rtc_clk_stab_sub_ms);
-  if ((*ra8_sys_sosccr() & k_ra8_sosccr_sostp_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_hw_init_failed;                         /* GCOVR_EXCL_LINE    */
+#if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
+  const bool subclock_running =
+    ra8_fake_mmio_poll(ra8_sys_sosccr(), 0U, (*ra8_sys_sosccr() & k_ra8_sosccr_sostp_mask) == 0U);
+#else
+  const bool subclock_running = (*ra8_sys_sosccr() & k_ra8_sosccr_sostp_mask) == 0U;
+#endif
+  if (!subclock_running) {
+    return k_ra8_err_hw_init_failed;
   }
   return k_ra8_ok;
 }
@@ -246,9 +264,9 @@ ra8_err_t ra8_rtc_clock_init(ra8_rtc_clk_src_t src)
   }
 
   const ra8_err_t osc_err = internal_start_count_source(src);
-  if (osc_err != k_ra8_ok) {                              /* GCOVR_EXCL_BR_LINE */
-    ra8_log_error(s_tag, "rtc count source not running"); /* GCOVR_EXCL_LINE    */
-    return osc_err;                                       /* GCOVR_EXCL_LINE    */
+  if (osc_err != k_ra8_ok) {
+    ra8_log_error(s_tag, "rtc count source not running");
+    return osc_err;
   }
 
   volatile r_rtc_regs_t* rtc = ra8_rtc();
@@ -368,7 +386,7 @@ ra8_err_t ra8_rtc_get(ra8_rtc_datetime_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
 
-  volatile r_rtc_regs_t* rtc = ra8_rtc();
+  volatile const r_rtc_regs_t* rtc = ra8_rtc();
 
   out->second  = internal_bcd_to_bin(rtc->RSECCNT);
   out->minute  = internal_bcd_to_bin(rtc->RMINCNT);

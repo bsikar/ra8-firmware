@@ -25,13 +25,15 @@ Scope (derived, not a hardcoded root list -- #358):
 
 Exemptions:
   * docs/reference/* paths (HUM PDFs etc).
-  * libs/third_party/* (SOUP -- not our citations to manage).
+  * libs/third_party/* and apps/shared_libs/third_party/* (SOUP -- not our
+    citations to manage).
   * Any line containing `CITES-OK: <reason>` (reason text required).
   * CHANGELOG-style "moved from <file>:NNN to ..." historical notes.
   * `// SPDX-License-Identifier:` headers and `#include` directives.
-  * In docs: lines inside fenced code blocks whose info-string mentions
-    a tool name (`cppcheck`, `clang`, `clang-tidy`, `llvm-cov`, `gdb`,
-    `objdump`, `readelf`) -- these are tool transcripts, not citations.
+  * In docs: lines inside a Markdown-valid fenced block whose exact first
+    info-string identifier is a known tool (`cppcheck`, `clang`, `clang-tidy`,
+    `llvm-cov`, `gdb`, `objdump`, `readelf`) -- these are tool transcripts,
+    not citations.
   * In docs: inline-code spans (backticked) whose first token is one
     of the same tool names.
 """
@@ -48,10 +50,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from line_citation_lex import (
     CITATION_RE,
-    CITES_OK_RE,
-    DOCS_REFERENCE_RE,
-    MOVED_FROM_RE,
-    THIRD_PARTY_RE,
     all_tracked_files,
     find_comment_spans,
     find_mcdc_reason_spans,
@@ -60,6 +58,7 @@ from line_citation_lex import (
 )
 from line_citation_lex import is_in_scope as _lex_in_scope
 from lint_targets import is_build_output_path
+from markdown_reference_policy import FENCE_RE
 from selftest_assert import expect, report
 
 # Strict: cleanup wave landed; gate now blocks any new line-citation
@@ -70,8 +69,11 @@ WARN_ONLY_MODE = False
 # Snippet display limit for violation output lines.
 MAX_SNIPPET_LEN = 120
 SNIPPET_TRUNCATE_LEN = 117
+EXPECTED_POISON_FINDINGS = 2
+EXPECTED_DOC_POISON_FINDINGS = 3
+EXPECTED_FENCE_POISON_FINDINGS = 4
 
-EXCLUDE_PREFIXES = ("libs/third_party/", "docs/reference/")
+EXCLUDE_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/")
 # Vendored / generated doc trees. Not first-party prose, so out of scope --
 # named and reasoned rather than left to a positive root allowlist (#358).
 DOC_EXCLUDE_PREFIXES = ("docs/doxygen_theme/", "libs/ra8_fonts/")
@@ -85,6 +87,14 @@ TOOL_OUTPUT_TOKENS = (
     "objdump",
     "readelf",
 )
+
+
+def _fence_is_tool_output(info: str) -> bool:
+    """Accept only a recognized tool as the fence's exact first identifier."""
+    identifiers = info.split(maxsplit=1)
+    if not identifiers:
+        return False
+    return identifiers[0].casefold() in TOOL_OUTPUT_TOKENS
 
 
 def staged_files() -> list[str]:
@@ -116,27 +126,34 @@ def is_doc_in_scope(path: str) -> bool:
     Vendored SOUP, generated doc trees and build output are the only
     subtractions.
     """
-    if not path.endswith(DOC_EXTS):
+    if not path.lower().endswith(DOC_EXTS):
         return False
     if path.startswith(EXCLUDE_PREFIXES) or path.startswith(DOC_EXCLUDE_PREFIXES):
         return False
     return not is_build_output_path(path)
 
 
-def _line_is_tool_exempt(line: str) -> bool:
-    """Heuristic: line looks like tool transcript output."""
-    line.lstrip()
-    # Inline-code span starting with a known tool token.
-    # Examples:  `clang foo.c:12: warning: ...`
-    #            "  `cppcheck libs/x.c:99 ...`"
-    for tok in TOOL_OUTPUT_TOKENS:
-        if tok in line:
-            # Require the token to appear *before* the first file:line
-            # match on the line (i.e. it owns/produced that citation).
-            tok_pos = line.find(tok)
-            m = CITATION_RE.search(line)
-            if m and tok_pos < m.start():
-                return True
+def _line_is_tool_exempt(line: str, column: int) -> bool:
+    """Return whether ``column`` sits in an inline tool-transcript span."""
+    cursor = 0
+    while cursor < len(line):
+        if line[cursor] != "`":
+            cursor += 1
+            continue
+        end_run = cursor
+        while end_run < len(line) and line[end_run] == "`":
+            end_run += 1
+        marker = line[cursor:end_run]
+        close = line.find(marker, end_run)
+        if close < 0:
+            cursor = end_run
+            continue
+        if end_run <= column < close:
+            content = line[end_run:close].lstrip()
+            return any(
+                content == tok or content.startswith(tok + " ") for tok in TOOL_OUTPUT_TOKENS
+            )
+        cursor = close + len(marker)
     return False
 
 
@@ -150,9 +167,9 @@ def scan_doc_file(path: Path) -> list[tuple[int, str, str]]:
     not a citation the reader is meant to follow.
 
     Exemptions:
-      * Fenced code blocks whose info-string contains a tool name.
-      * Lines where a tool token precedes the citation (inline tool
-        transcript).
+      * Markdown-valid fenced blocks whose first info-string identifier is an
+        exact known tool name.
+      * Inline-code spans whose first token is a known tool (tool transcript).
       * `CITES-OK: <reason>` opt-out.
       * `moved from <file>:NN to ...` historical notes.
       * Anchor links / heading IDs of the form `(file:NN)` are still
@@ -167,33 +184,28 @@ def scan_doc_file(path: Path) -> list[tuple[int, str, str]]:
     fence_is_tool = False
     fence_marker = ""
     for line_no, raw in enumerate(text.splitlines(), start=1):
-        stripped = raw.lstrip()
-        # Fence open/close tracking (``` or ~~~).
-        if not in_fence and (stripped.startswith(("```", "~~~"))):
+        fence_match = FENCE_RE.match(raw)
+        if not in_fence and fence_match is not None:
             in_fence = True
-            fence_marker = stripped[:3]
-            info = stripped[3:].strip().lower()
-            fence_is_tool = any(tok in info for tok in TOOL_OUTPUT_TOKENS)
+            fence_marker = fence_match.group(1)
+            info = raw[fence_match.end(1) :].strip()
+            fence_is_tool = _fence_is_tool_output(info)
             continue
-        if in_fence and stripped.startswith(fence_marker):
-            in_fence = False
-            fence_is_tool = False
-            fence_marker = ""
-            continue
+        if in_fence and fence_match is not None:
+            marker = fence_match.group(1)
+            trailing = raw[fence_match.end(1) :].strip()
+            if marker[0] == fence_marker[0] and len(marker) >= len(fence_marker) and not trailing:
+                in_fence = False
+                fence_is_tool = False
+                fence_marker = ""
+                continue
         if in_fence and fence_is_tool:
             continue
         for m in CITATION_RE.finditer(raw):
             matched = m.group(0)
-            if DOCS_REFERENCE_RE.search(matched) or DOCS_REFERENCE_RE.search(raw):
+            if is_exempt(matched, raw, m.start()):
                 continue
-            if THIRD_PARTY_RE.search(matched) or THIRD_PARTY_RE.search(raw):
-                continue
-            cok = CITES_OK_RE.search(raw)
-            if cok and cok.group(1).strip():
-                continue
-            if MOVED_FROM_RE.search(raw):
-                continue
-            if _line_is_tool_exempt(raw):
+            if _line_is_tool_exempt(raw, m.start()):
                 continue
             snippet = raw.strip()
             if len(snippet) > MAX_SNIPPET_LEN:
@@ -241,7 +253,8 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
             line_no = line_of_offset(text, abs_off)
             matched = m.group(0)
             line = line_text(text, line_no)
-            if is_exempt(matched, line):
+            line_start = text.rfind("\n", 0, abs_off) + 1
+            if is_exempt(matched, line, abs_off - line_start):
                 continue
             if (line_no, matched) in seen:
                 continue
@@ -295,15 +308,17 @@ def _report_violations(
 
 
 def _selftest_scope(failures: list[str]) -> None:
-    """Assert SCAN_ROOTS scope: tools/ (source + docs) in, vendored SOUP out (#358)."""
+    """Assert derived scope: tools source/docs in, both SOUP roots out (#358)."""
     expect(
         is_in_scope("tools/ra8_emulator/src/main.c"),
         "tools/ C is in scope (SCAN_ROOTS omitted it before #358)",
         failures,
     )
     expect(is_doc_in_scope("tools/mcp/README.md"), "tools/ docs are in scope", failures)
+    expect(is_doc_in_scope("docs/reference/README.md"), "reference Markdown is in scope", failures)
+    expect(is_doc_in_scope("docs/UPPER.MD"), "uppercase Markdown is in scope", failures)
     expect(
-        not is_in_scope("libs/third_party/miniz/miniz.c"),
+        not is_in_scope("apps/shared_libs/third_party/miniz/miniz.c"),
         "vendored SOUP stays out of scope",
         failures,
     )
@@ -350,6 +365,35 @@ def _selftest_mcdc_reason_cases(tmp: Path, failures: list[str]) -> None:
     )
 
 
+def _selftest_fence_tool_cases(tmp: Path, failures: list[str]) -> None:
+    """Prove fenced tool exemptions bind to the exact first identifier."""
+    poison = tmp / "poison-fences.md"
+    poison.write_text(
+        "```notcppcheckthing\nlibs/live.c:999999\n```\n"
+        "```python title=cppcheck\nlibs/live.c:999999\n```\n"
+        "    ```cppcheck\nlibs/live.c:999999\n    ```\n"
+        "\t```cppcheck\nlibs/live.c:999999\n\t```\n",
+        encoding="utf-8",
+    )
+    expect(
+        len(scan_doc_file(poison)) == EXPECTED_FENCE_POISON_FINDINGS,
+        "fence substrings and unrelated metadata do not exempt citations",
+        failures,
+    )
+    legitimate = tmp / "tool-fences.md"
+    legitimate.write_text(
+        "```cppcheck\nlibs/live.c:999999\n```\n"
+        "```clang-tidy linenums=1\nlibs/live.c:999999\n```\n"
+        "````cppcheck\nlibs/live.c:999999\n```\nlibs/live.c:999999\n````\n",
+        encoding="utf-8",
+    )
+    expect(
+        not scan_doc_file(legitimate),
+        "exact tool fence identifiers exempt their transcripts",
+        failures,
+    )
+
+
 def selftest() -> int:
     """Prove a file:line citation fires, legal forms stay quiet, and scope holds."""
     print("check_line_citations.py --selftest")
@@ -369,7 +413,19 @@ def selftest() -> int:
             "symbol ref / moved-from / CITES-OK stays quiet (source)",
             failures,
         )
+        poison_src = Path(tmp) / "poison.c"
+        poison_src.write_text(
+            "/* moved from libs/old.c:12 to here; see libs/live.c:999999 */\n"
+            "/* compare libs/third_party/upstream.c:7 with libs/live.c:999999 */\n",
+            encoding="utf-8",
+        )
+        expect(
+            len(scan_file(poison_src)) == EXPECTED_POISON_FINDINGS,
+            "moved/vendor tokens do not exempt unrelated source citations",
+            failures,
+        )
         _selftest_mcdc_reason_cases(Path(tmp), failures)
+        _selftest_fence_tool_cases(Path(tmp), failures)
         bad_doc = Path(tmp) / "bad.md"
         bad_doc.write_text("See `ra8_ipc_regs.h:267` for the bit.\n", encoding="utf-8")
         expect(bool(scan_doc_file(bad_doc)), "a file:line citation in a doc fires", failures)
@@ -379,6 +435,21 @@ def selftest() -> int:
             encoding="utf-8",
         )
         expect(not scan_doc_file(good_doc), "doc CITES-OK stays quiet", failures)
+        poison_doc = Path(tmp) / "poison.md"
+        poison_doc.write_text(
+            "moved from libs/old.c:12 to here; see libs/live.c:999999\n"
+            "compare libs/third_party/upstream.c:7 with libs/live.c:999999\n"
+            "clang is installed; see libs/live.c:999999\n",
+            encoding="utf-8",
+        )
+        expect(
+            len(scan_doc_file(poison_doc)) == EXPECTED_DOC_POISON_FINDINGS,
+            "moved/vendor/tool tokens do not exempt unrelated document citations",
+            failures,
+        )
+        tool_doc = Path(tmp) / "tool.md"
+        tool_doc.write_text("`clang libs/live.c:999999: warning`\n", encoding="utf-8")
+        expect(not scan_doc_file(tool_doc), "inline tool transcript stays quiet", failures)
 
     _selftest_scope(failures)
     return report(failures)

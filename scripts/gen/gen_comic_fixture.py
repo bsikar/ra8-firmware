@@ -16,7 +16,7 @@ the app prints is identical on host, ra8_emulator, and silicon.
 
 Usage:
   python3 scripts/gen/gen_comic_fixture.py \
-      examples/ek_ra8d2/hw_pending/ereader_comic/comic_pages_fixture.h
+      examples/ek_ra8d2/hw_pending/ereader_comic/inc/comic_pages_fixture.h
 """
 
 from __future__ import annotations
@@ -29,6 +29,15 @@ from pathlib import Path
 PAGE_W = 480
 PAGE_H = 240
 PAGE_COUNT = 5
+DEFAULT_OUTPUT = (
+    Path(__file__).resolve().parents[2]
+    / "examples"
+    / "ek_ra8d2"
+    / "hw_pending"
+    / "ereader_comic"
+    / "inc"
+    / "comic_pages_fixture.h"
+)
 
 # Grayscale palette (0 = black ink, 255 = white paper).
 INK = 0
@@ -315,15 +324,15 @@ def emit_header(path: str | Path, cbz: bytes) -> None:
 def main() -> None:
     """Render every page, pack them into a CBZ, and write the C header.
 
-    Takes the output path from argv[1], defaulting to the bare filename in the
-    current directory. Returns None and exits 0 unconditionally: every failure
-    mode here (unwritable path, non-ASCII output) raises, and there is no
-    partial-success state a status code could describe.
+    Takes the output path from argv[1], defaulting to the canonical app inc/
+    path. Returns None and exits 0 unconditionally: every failure mode here
+    (unwritable path, non-ASCII output) raises, and there is no partial-success
+    state a status code could describe.
 
     The progress line goes to stderr so stdout stays free for the generated
     header if this is ever redirected.
     """
-    out = sys.argv[1] if len(sys.argv) > 1 else "comic_pages_fixture.h"
+    out = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_OUTPUT
     pngs = [encode_png(render_page(i)) for i in range(PAGE_COUNT)]
     cbz = build_cbz(pngs)
     emit_header(out, cbz)

@@ -234,7 +234,7 @@ RA8_PRIV [[nodiscard]] bool priv_ra8_esp_hosted_spi_is_open(void);
  * @see priv_ra8_esp_hosted_spi_open
  * @since 0.1.0
  */
-RA8_PRIV RA8_DI_SLOT("spi_bus") void priv_ra8_esp_hosted_spi_set_bus(const ra8_io_spi_bus_t* bus);
+RA8_PRIV void priv_ra8_esp_hosted_spi_set_bus(const ra8_io_spi_bus_t* bus);
 
 /**
  * @brief Replace the pin driver the transfer slot drives chip select with.
@@ -266,5 +266,4 @@ RA8_PRIV RA8_DI_SLOT("spi_bus") void priv_ra8_esp_hosted_spi_set_bus(const ra8_i
  * @see priv_ra8_esp_hosted_spi_set_bus
  * @since 0.1.0
  */
-RA8_PRIV RA8_DI_SLOT("chip_select") void priv_ra8_esp_hosted_spi_set_pin_interface(
-  const ra8_pin_interface_t* iface);
+RA8_PRIV void priv_ra8_esp_hosted_spi_set_pin_interface(const ra8_pin_interface_t* iface);

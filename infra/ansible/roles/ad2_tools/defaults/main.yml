@@ -29,9 +29,9 @@ ad2_tools_cache_dir: /var/cache/ra8-bench
 ad2_tools_adept_version: "2.27.9"
 ad2_tools_adept_deb: >-
   {{ ad2_tools_cache_dir }}/digilent.adept.runtime_{{ ad2_tools_adept_version }}-arm64.deb
-# URLs are the standard line-length exception.
-# yamllint disable-line rule:line-length
-ad2_tools_adept_url: "https://digilent.s3.us-west-2.amazonaws.com/Software/Adept2+Runtime/{{ ad2_tools_adept_version }}/digilent.adept.runtime_{{ ad2_tools_adept_version }}-arm64.deb"
+ad2_tools_adept_url: "https://digilent.s3.us-west-2.amazonaws.com/Software/\
+  Adept2+Runtime/{{ ad2_tools_adept_version }}/\
+  digilent.adept.runtime_{{ ad2_tools_adept_version }}-arm64.deb"
 # sha256 of the arm64 deb above. Computed on the bench from a fresh fetch of
 # that URL (2026-07-27) and cross-checked byte-for-byte against the copy the
 # hand-install used, so the pin describes what the URL actually serves.

@@ -498,10 +498,10 @@ ra8_err_t ra8_flash_zeroize_huk(void)
   /* HUM Ch 59 "MREZC : Extra MRAM Zeroization Control" p 3561 */
   *ra8_mram_reg16(k_ra8_mram_off_mrezc) = k_ra8_mrezc_full_zero;
 
-  for (uint32_t i = 0U; i < k_ra8_flash_zeroize_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_flash_zeroize_spin; ++i) {
     /* HUM Ch 59 "MREZS : Extra MRAM Zeroization Status" p 3561 */
     const uint8_t s = *ra8_mram_reg8(k_ra8_mram_off_mrezs);
-    if ((s & k_ra8_mrezs_mask_whukexe) == 0U) { /* GCOVR_EXCL_BR_LINE */
+    if ((s & k_ra8_mrezs_mask_whukexe) == 0U) {
       return k_ra8_ok;
     }
   }

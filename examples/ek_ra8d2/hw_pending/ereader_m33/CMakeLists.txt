@@ -32,7 +32,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME ereader_m33
-  STACK_BYTES 2200
+  STACK_BYTES 2200 AUX_SRCS src/cpu1_main.c
   DESCRIPTION "Dual-core (M85 + M33) e-reader: M33 runs the page-turn loop while the M85 parks"
 )
 
@@ -42,7 +42,7 @@ ra8_add_app(
 # freestanding M33 executable and links its .cpu1_image blob into the M85 ELF;
 # linker_script.ld pins .cpu1_image at ORIGIN(MRAM_CPU1) (0x020C0000).
 #
-# The M33 image walks the baked RABOOK1 book through the header-only ra8_book.h
+# The M33 image walks the baked RABOOK1 book through the header-only book.h
 # inline accessors (pure offset arithmetic) and RENDERS the held page through the
 # production ra8_gfx text stack. ra8_gfx is three dependency-clean, zero-heap,
 # scalar (no-Helium) TUs whose only header dependency is ra8_core's ra8_err.h
@@ -55,8 +55,8 @@ ra8_add_app(
 ra8_add_cpu1_image(
   PARENT ereader_m33
   NAME ereader_m33_cpu1
-  SOURCES cpu1_main.c
-  INCLUDES ${RA8_REPO_ROOT}/libs/ra8_book/inc ${RA8_REPO_ROOT}/libs/ra8_gfx/inc
+  SOURCES src/cpu1_main.c
+  INCLUDES ${RA8_REPO_ROOT}/apps/shared_libs/book/inc ${RA8_REPO_ROOT}/libs/ra8_gfx/inc
            ${RA8_REPO_ROOT}/libs/ra8_hal/inc
 )
 

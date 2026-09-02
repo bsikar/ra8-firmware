@@ -18,6 +18,14 @@
 # shellcheck disable=SC2034  # every list here is READ by smoke_run.sh, which is sourced alongside this file; shellcheck cannot see across the two
 # shellcheck disable=SC2154  # ROOT is set by smoke.sh before this file is sourced
 
+# Resolve the manifests once. Re-running `find` for every banner app made the
+# selftest traverse all in-source firmware build trees dozens of times, which
+# took minutes on the macOS bind mount. Pruning those trees also prevents a
+# copied hil.conf in build output from becoming an accidental authority.
+uart_hil_conf_index="$(
+  find "$ROOT/examples" -type d -name build -prune -o -type f -name hil.conf -print | sort
+)"
+
 # UI apps whose rendered frame must be rich (distinct-color floor). ereader_ui
 # is the e-reader chrome (ra8_box + ra8_gfx); this gates that it actually paints.
 # sd_font_render reads FONT.OTF off the modelled microSD and reflows it, so its
@@ -41,7 +49,7 @@ touch_click_apps="touch_demo"
 # pixel match of the panel framebuffer, a strictly stronger check than the
 # distinct-color floor above). ra8_emulator renders deterministically, so any
 # unintended chrome change fails here. Regenerate after an intentional change
-# with `make ereader-golden-update`. See scripts/gen/ereader_golden.py (#84).
+# with `just apps::emulator::golden_update`. See scripts/gen/ereader_golden.py (#84).
 golden_apps="ereader_ui"
 golden_dir="$ROOT/tests/golden/ereader_chrome"
 
@@ -225,7 +233,7 @@ dualcore_assert() { # app -> ITM verdict substring to assert on stdout
 # global $sd_image on success; leaves it empty (apps still run, just card-less)
 # if mkfontimg or the font is unavailable.
 build_sd_image() {
-  local font="$ROOT/libs/third_party/litehtml/containers/test/fonts/ahem.ttf"
+  local font="$ROOT/apps/shared_libs/third_party/litehtml/containers/test/fonts/ahem.ttf"
   local mk="$ROOT/tools/mkfontimg"
   [ -f "$font" ] || return 0
   cmake -B "$mk/build" -S "$mk" >/dev/null 2>&1 || return 0
@@ -348,7 +356,7 @@ emu_extra_args() { # app -> extra args on stdout
 # string -- pass on any output -- which is exactly the hole #398 closes).
 uart_banner_apps="
   uart_hello
-  ra8_io_demo ra8_io_sdram_demo ra8_io_compress_demo ra8_io_sd_demo
+  ra8_io_demo ra8_io_sdram_demo compress_demo ra8_io_sd_demo
   ra8_io_sdhi_demo ra8_sdhi_card_demo ra8_io_xspi_demo ra8_io_fsfmt_demo
   ra8_io_cache_demo
   epaper_refresh modem_at_demo battery_monitor_demo
@@ -398,14 +406,16 @@ uart_expect_override() { # app -> emulator-only expected substring, or empty
 # the app has no hil.conf, or its manifest declares no HIL_EXPECT. Sourced in a
 # subshell so nothing the manifest assigns leaks into the caller.
 uart_expect_from_hil_conf() { # app -> HIL_EXPECT from its hil.conf, or empty
-  local app="$1" dir
-  dir="$(find "$ROOT/examples" -type d -name "$app" 2>/dev/null | grep -v '/build/' | head -1)"
-  [ -n "$dir" ] || return 0
-  [ -f "$dir/hil.conf" ] || return 0
+  local app="$1" manifest
+  manifest="$(grep "/$app/hil.conf$" <<<"$uart_hil_conf_index" | head -1)"
+  [ -n "$manifest" ] || return 0
   (
     HIL_EXPECT=""
-    # shellcheck disable=SC1091  # per-app manifest resolved at runtime, not a lint input
-    . "$dir/hil.conf" >/dev/null 2>&1 || true
+    # shellcheck disable=SC1090  # runtime manifest, not a lint input
+    if ! . "$manifest" >/dev/null 2>&1; then
+      echo "invalid HIL manifest: $manifest" >&2
+      return 1
+    fi
     printf '%s' "$HIL_EXPECT"
   )
 }

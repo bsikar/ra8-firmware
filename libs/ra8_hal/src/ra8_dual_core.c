@@ -120,7 +120,8 @@ RA8_INTERNAL static inline void internal_actcsr_write(uint16_t value)
     (uint16_t)((value >> (uint16_t)k_ra8_dual_core_actcsr_key_shift) & k_dc_byte_mask);
   if (key != (uint16_t)k_ra8_dual_core_actcsr_key_value) {
     /* Only caller ra8_cpu1_release always presents KEY=0xA5; wrong-key drop is host-unreachable. */
-    return; /* Silent drop -- matches HUM Ch 2.9.1.9 KEY gate. */ /* GCOVR_EXCL_LINE */
+    /* Silent drop -- matches HUM Ch 2.9.1.9 KEY gate. */
+    return; /* GCOVR_EXCL_LINE -- build-fixed role */
   }
   uint16_t actcsr = s_fake.actcsr;
   if ((value & (uint16_t)k_ra8_dual_core_actcsr_actreq_mask) != 0U) {
@@ -506,8 +507,8 @@ ra8_err_t ra8_cpu1_release(void* entry, void* sp)
   }
   if (!internal_is_cpu0()) {
     /* RA8_BUILD_FOR_CPU1 is never defined in host builds; this branch is compile-time dead. */
-    ra8_log_error(s_tag, "release: caller is not CPU0"); /* GCOVR_EXCL_LINE */
-    return k_ra8_err_not_supported;                      /* GCOVR_EXCL_LINE */
+    ra8_log_error(s_tag, "release: caller is not CPU0"); /* GCOVR_EXCL_LINE -- build-fixed role */
+    return k_ra8_err_not_supported;                      /* GCOVR_EXCL_LINE -- build-fixed role */
   }
 
   /* HUM Ch 2.9.1.7 "CPU1INITVTOR" p 128-129: program CPU1's initial
@@ -561,8 +562,8 @@ ra8_err_t ra8_cpu1_halt(void)
 {
   if (!internal_is_cpu0()) {
     /* RA8_BUILD_FOR_CPU1 is never defined in host builds; this branch is compile-time dead. */
-    ra8_log_error(s_tag, "halt: caller is not CPU0"); /* GCOVR_EXCL_LINE */
-    return k_ra8_err_not_supported;                   /* GCOVR_EXCL_LINE */
+    ra8_log_error(s_tag, "halt: caller is not CPU0"); /* GCOVR_EXCL_LINE -- build-fixed CPU role */
+    return k_ra8_err_not_supported;                   /* GCOVR_EXCL_LINE -- build-fixed CPU role */
   }
 
   internal_waitcr_write((uint8_t)k_ra8_dual_core_waitcr_cpuwait_mask);

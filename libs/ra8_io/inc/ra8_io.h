@@ -15,7 +15,7 @@
  *
  * The subsystem is layered internally but ships as one coherent facade:
  *
- *       ra8_io  (one public facade: block devices, streams, files, compression)
+ *       ra8_io  (one public facade: block devices, streams, and files)
  *     stream  |  VFS / path router  |  file ops
  *     --------+---------------------+-------------------------------
  *          filesystem-format ops  (FAT12/16/32, exFAT, future formats)

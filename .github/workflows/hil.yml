@@ -5,10 +5,10 @@
 ---
 name: hil
 
-# Hardware-in-the-loop CI.  Runs on the Raspberry Pi 5 self-hosted runner
-# (labels: self-hosted, hil, pi5, ra8d2) that has the EK-RA8D2 board wired
-# to it: J-Link OB on /dev/ttyACM0 (SWD + VCOM, 115200 baud), USBFS on
-# J11 -> hub port 4, USBHS on J7 -> hub port 1.
+# Hardware-in-the-loop CI.  Builds run natively on the dedicated dev-box
+# listener (labels: self-hosted, hil, ra8d2); scripts/hil then drive the
+# EK-RA8D2 bench host over its guarded SSH interface.  The Raspberry Pi owns
+# the J-Link, serial and USB wiring but does not execute untrusted checkouts.
 #
 # The hil-all gate drives scripts/hil/all.sh, which auto-discovers every app
 # under examples/ek_ra8d2/hw_validated/hil/ and verifies each via its hil.conf
@@ -16,84 +16,169 @@ name: hil
 # directory automatically pulls it into CI as soon as it has a hil.conf.
 #
 # One board, one runner: the hil-board concurrency group ensures jobs never
-# race on the attached hardware.
-
-# TEMP (2026-06-22): HIL auto-triggers are disabled until the Raspberry Pi 5
-# self-hosted runner (labels: self-hosted, hil, ra8d2) with the EK-RA8D2 board
-# attached is wired back up. Without that runner the HIL job has nowhere to
-# execute and would block merges to main. Re-enable by uncommenting the
-# `push:` and `pull_request:` blocks below. The job can still be launched by
-# hand at any time via `workflow_dispatch` (Actions tab -> Run workflow).
+# race on the remote hardware.
 on:
-  #  push:
-  #    branches: [main]
-  #    paths:
-  #      - 'examples/ek_ra8d2/hw_validated/**'
-  #      - 'libs/ra8_board_ek_ra8d2/**'
-  #      - 'libs/ra8_core/**'
-  #      - 'libs/ra8_hal/**'
-  #      - 'libs/ra8_net_pal/**'
-  #      - 'libs/ra8_nsc/**'
-  #      - 'libs/ra8_usb_pal/**'
-  #      - 'port/threadx/**'
-  #      - 'port/usbx/**'
-  #      - 'libs/ra8_secure_app/**'
-  #      - 'cmake/**'
-  #      - 'scripts/hil/**'
-  #      - 'scripts/hil/usb/**'
-  #      - '.github/workflows/hil.yml'
-  #  pull_request:
-  #    branches: [main]
-  #    paths:
-  #      - 'examples/ek_ra8d2/hw_validated/**'
-  #      - 'libs/ra8_board_ek_ra8d2/**'
-  #      - 'libs/ra8_core/**'
-  #      - 'libs/ra8_hal/**'
-  #      - 'libs/ra8_net_pal/**'
-  #      - 'libs/ra8_nsc/**'
-  #      - 'libs/ra8_usb_pal/**'
-  #      - 'port/threadx/**'
-  #      - 'port/usbx/**'
-  #      - 'libs/ra8_secure_app/**'
-  #      - 'cmake/**'
-  #      - 'scripts/hil/**'
-  #      - 'scripts/hil/usb/**'
-  #      - '.github/workflows/hil.yml'
+  push:
+    branches: [main, dev]
+    paths:
+      - '.devcontainer/Dockerfile'
+      - 'infra/ansible/roles/hil_bench/**'
+      - 'infra/ansible/roles/c6_toolchain/**'
+      - 'infra/ansible/roles/ad2_tools/**'
+      - 'infra/ansible/roles/dev_box/**'
+      - 'infra/ansible/playbooks/dev-box.yml'
+      - 'infra/ansible/playbooks/hil-bench.yml'
+      - 'infra/ansible/requirements.yml'
+      - 'infra/ansible/ansible.cfg'
+      # Trusted Ansible installs the root helper; CI only verifies the
+      # installed identity and fails closed when convergence is pending.
+      - 'infra/ansible/roles/dev_box/files/ra8-hil-privileged.py'
+      - 'infra/ansible/roles/dev_box/files/ra8-hil-runner-idle-stop.py'
+      - 'infra/ansible/roles/dev_box/templates/ra8-hil-privileged-policy.json.j2'
+      - 'infra/ansible/roles/dev_box/tasks/hil_runner.yml'
+      - 'infra/ansible/roles/dev_box/tasks/main.yml'
+      - 'infra/ansible/roles/dev_box/handlers/main.yml'
+      - 'infra/ansible/roles/hil_bench/tasks/main.yml'
+      - 'infra/ansible/roles/hil_bench/defaults/main.yml'
+      - 'infra/fleet.yml'
+      - 'infra/bootstrap.sh'
+      - 'pyproject.toml'
+      - 'scripts/dev/bootstrap_uv.py'
+      - 'scripts/dev/**'
+      - 'scripts/dev/uv_release.json'
+      - 'scripts/dev/verify_locked_environment.py'
+      - 'scripts/dev/fleet_hil.py'
+      - 'scripts/dev/fleet*.py'
+      - 'scripts/dev/fleet_bench.py'
+      - 'scripts/dev/fleet.py'
+      - 'scripts/dev/fleet_runner_maintenance.py'
+      - 'scripts/dev/fleet_wsl.py'
+      - 'scripts/dev/fleet_wsl_stage.py'
+      - 'scripts/dev/infra.sh'
+      - 'scripts/dev/setup_python.sh'
+      - 'scripts/dev/setup_ansible.sh'
+      - 'scripts/checks/check_ansible_collections.py'
+      - 'scripts/checks/check_shebangs.py'
+      - 'scripts/checks/check_runner_image_deps.py'
+      - 'scripts/checks/check_tool_versions.py'
+      - 'scripts/checks/shell_entrypoint_policy*.py'
+      - 'scripts/checks/check_hil_privilege_boundary.py'
+      - 'scripts/checks/check_hil_convergence_safety.py'
+      - 'scripts/checks/hil_convergence_check_mode.py'
+      - 'scripts/checks/hil_convergence_safety_*.py'
+      - 'scripts/checks/hil_privileged_helper_selftest.py'
+      - 'scripts/ci/gates/checks.sh'
+      - 'uv.lock'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - 'apps/**'
+      - 'cmake/**'
+      - 'examples/ek_ra8d2/**'
+      - 'just/**'
+      - 'justfile'
+      - 'libs/**'
+      - 'port/**'
+      - 'scripts/builders/**'
+      - 'scripts/ci.sh'
+      - 'scripts/ci/**'
+      - 'scripts/hil/**'
+      - '.github/workflows/hil.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - '.devcontainer/Dockerfile'
+      - 'infra/ansible/roles/hil_bench/**'
+      - 'infra/ansible/roles/c6_toolchain/**'
+      - 'infra/ansible/roles/ad2_tools/**'
+      - 'infra/ansible/roles/dev_box/**'
+      - 'infra/ansible/playbooks/dev-box.yml'
+      - 'infra/ansible/playbooks/hil-bench.yml'
+      - 'infra/ansible/requirements.yml'
+      - 'infra/ansible/ansible.cfg'
+      # This workflow never applies the role or changes the installed helper.
+      - 'infra/ansible/roles/dev_box/files/ra8-hil-privileged.py'
+      - 'infra/ansible/roles/dev_box/files/ra8-hil-runner-idle-stop.py'
+      - 'infra/ansible/roles/dev_box/templates/ra8-hil-privileged-policy.json.j2'
+      - 'infra/ansible/roles/dev_box/tasks/hil_runner.yml'
+      - 'infra/ansible/roles/dev_box/tasks/main.yml'
+      - 'infra/ansible/roles/dev_box/handlers/main.yml'
+      - 'infra/ansible/roles/hil_bench/tasks/main.yml'
+      - 'infra/ansible/roles/hil_bench/defaults/main.yml'
+      - 'infra/fleet.yml'
+      - 'infra/bootstrap.sh'
+      - 'pyproject.toml'
+      - 'scripts/dev/bootstrap_uv.py'
+      - 'scripts/dev/**'
+      - 'scripts/dev/uv_release.json'
+      - 'scripts/dev/verify_locked_environment.py'
+      - 'scripts/dev/fleet_hil.py'
+      - 'scripts/dev/fleet*.py'
+      - 'scripts/dev/fleet_bench.py'
+      - 'scripts/dev/fleet.py'
+      - 'scripts/dev/fleet_runner_maintenance.py'
+      - 'scripts/dev/fleet_wsl.py'
+      - 'scripts/dev/fleet_wsl_stage.py'
+      - 'scripts/dev/infra.sh'
+      - 'scripts/dev/setup_python.sh'
+      - 'scripts/dev/setup_ansible.sh'
+      - 'scripts/checks/check_ansible_collections.py'
+      - 'scripts/checks/check_shebangs.py'
+      - 'scripts/checks/check_runner_image_deps.py'
+      - 'scripts/checks/check_tool_versions.py'
+      - 'scripts/checks/shell_entrypoint_policy*.py'
+      - 'scripts/checks/check_hil_privilege_boundary.py'
+      - 'scripts/checks/check_hil_convergence_safety.py'
+      - 'scripts/checks/hil_convergence_check_mode.py'
+      - 'scripts/checks/hil_convergence_safety_*.py'
+      - 'scripts/checks/hil_privileged_helper_selftest.py'
+      - 'scripts/ci/gates/checks.sh'
+      - 'uv.lock'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - 'apps/**'
+      - 'cmake/**'
+      - 'examples/ek_ra8d2/**'
+      - 'just/**'
+      - 'justfile'
+      - 'libs/**'
+      - 'port/**'
+      - 'scripts/builders/**'
+      - 'scripts/ci.sh'
+      - 'scripts/ci/**'
+      - 'scripts/hil/**'
+      - '.github/workflows/hil.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: hil-board
   cancel-in-progress: false
 
 env:
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  RA8_MAX_JOBS: 4
 
 jobs:
   hil-all:
     name: HIL all (auto-discover hil/)
+    # A fork PR can alter the checkout and would otherwise execute that code on
+    # a persistent self-hosted machine with SSH access to the bench.  Same-repo
+    # PRs require repository write authority and are the only PRs admitted.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, hil, ra8d2]
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install toolchain (idempotent)
-        run: |
-          # ci-parity: infra -- runner package provisioning only; runs no
-          # project check. The hil-all gate hard-fails when arm-none-eabi-gcc
-          # is still absent afterwards.
-          if ! command -v arm-none-eabi-gcc >/dev/null 2>&1 \
-              || ! dpkg -s libnewlib-arm-none-eabi >/dev/null 2>&1; then
-            sudo apt-get update -qq
-            sudo apt-get install -y --no-install-recommends \
-              gcc-arm-none-eabi libnewlib-arm-none-eabi cmake
-          fi
-          arm-none-eabi-gcc --version
-          cmake --version
-
       # Ahead of the suite, deliberately. It runs against a throwaway state
       # directory and takes no instrument, so it cannot disturb the run that
       # follows -- and if the bench lock is broken, that is worth knowing
-      # BEFORE 151 apps are flashed under a lock that is not holding.
-      - run: bash scripts/ci.sh --gate bench-lock-selftest
+      # BEFORE the discovered suite is flashed under a lock that is not holding.
+      - run: just quality::local::gate bench-lock-selftest
 
-      - run: bash scripts/ci.sh --gate hil-all
+      - run: just quality::local::gate hil-all

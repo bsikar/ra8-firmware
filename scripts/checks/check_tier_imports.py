@@ -8,9 +8,9 @@ its own:
 
 * PLATFORM -- ``libs/``, ``port/``, ``tools/``. General-purpose,
   reusable, knowing nothing about any one product.
-* PRODUCTS -- ``apps/``, split by FORM. ``apps/stand_alone/`` holds host-form
-  products, ``apps/threadx_modules/`` holds module-form products, and
-  ``apps/shared/`` holds the portable product-tier code both forms consume.
+* PRODUCTS -- ``apps/``, split by FORM. ``apps/host/`` holds hosted products,
+  ``apps/board/`` holds firmware products, and ``apps/shared_libs/`` holds the
+  portable product-tier code both forms consume.
 * CONSUMERS -- ``examples/`` and ``tests/``, which exist to demonstrate and to
   compile the other two and therefore legitimately name any path in the tree.
 
@@ -19,12 +19,12 @@ Two rules follow from that shape, and this gate is both of them:
 **Rule 1 -- the platform never imports a product.** Nothing under a platform
 root may ``#include`` a header from ``apps/`` or name an ``apps/`` path in a
 CMake source list or include directory. Any category: a platform file reaching
-into ``apps/shared/`` is the same defect as one reaching into
-``apps/stand_alone/``. The moment it does, the platform has stopped being
+into ``apps/shared_libs/`` is the same defect as one reaching into
+``apps/board/``. The moment it does, the platform has stopped being
 general-purpose and the tier boundary is a comment rather than a fact.
 
 **Rule 2 -- shared product code never imports a product FORM.**
-``apps/shared/`` sits below ``apps/stand_alone/`` and ``apps/threadx_modules/``:
+``apps/shared_libs/`` sits below ``apps/host/`` and ``apps/board/``:
 the forms consume shared freely, and shared must not reach back up. Shared code
 that knows which form is compiling it is not shared, it is a copy of one form
 with a switch in it.
@@ -91,7 +91,7 @@ The recall this gives up is stated rather than hidden:
   build succeeding, which is precisely how a checker ends up silently scoped to
   whatever last configured.
 * Rule 2's bare-name half is only as strong as the forms' exclusive census, and
-  that census is legitimately allowed to be EMPTY -- ``apps/shared/`` may hold
+  that census is legitimately allowed to be EMPTY -- ``apps/shared_libs/`` may hold
   every header while a form is a single ``main.c``. Rule 2's literal-path and
   CMake halves do not depend on the census and are always live, which is why
   the non-vacuity floors below apply to the tier populations rather than to
@@ -99,7 +99,7 @@ The recall this gives up is stated rather than hidden:
 
 What is caught with no ambiguity at all is the literal form: any include whose
 path carries the forbidden region's DIRECTORY components -- ``apps/...``,
-``../../apps/...``, ``apps/stand_alone/...`` -- fires regardless of the census.
+``../../apps/...``, ``apps/board/...`` -- fires regardless of the census.
 No platform path in this tree contains a component named ``apps`` (measured:
 zero), so that rule cannot misfire either.
 
@@ -372,7 +372,7 @@ def _git_working_tree() -> list[str]:
             cannot see the tree must fail, never report clean.
     """
     proc = subprocess.run(
-        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],  # noqa: S607
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],  # noqa: S607 -- fixed repository Git census
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -501,38 +501,34 @@ def _write(root: Path, rel: str, text: str) -> Target:
 
 # Rule 1 -- a platform file reaching into any products category.
 _FIRE_C_RULE1 = {
-    "libs/ra8_tier/src/literal.c": '#include "apps/stand_alone/media_dl/inc/mdl_cache.h"\n',
-    "libs/ra8_tier/src/shared.c": '#include "apps/shared/media_dl/inc/mdl_cache.h"\n',
-    "libs/ra8_tier/src/relative.c": '#include "../../../apps/thing/inc/mdl_cache.h"\n',
-    "libs/ra8_tier/src/bare.c": '#include "mdl_cache.h"\n',
-    "tools/tier_tool/src/angle.c": "#include <mdl_cache.h>\n",
-    "port/posix/src/nested.c": '#include "media_dl/inc/mdl_cache.h"\n',
-    "libs/ra8_secure_app/src/deep.c": '#include "apps/threadx_modules/dl/inc/dl.h"\n',
+    "libs/ra8_tier/src/literal.c": '#include "apps/host/mdl/inc/mdl_cli.h"\n',
+    "libs/ra8_tier/src/shared.c": '#include "apps/board/ereader/inc/ereader.h"\n',
+    "libs/ra8_tier/src/relative.c": '#include "../../../apps/board/thing/inc/mdl_cache.h"\n',
+    "libs/ra8_tier/src/bare.c": '#include "mdl_cli.h"\n',
+    "tools/tier_tool/src/angle.c": "#include <mdl_cli.h>\n",
+    "port/posix/src/nested.c": '#include "apps/host/mdl/inc/mdl_cli.h"\n',
+    "libs/ra8_secure_app/src/deep.c": '#include "apps/board/dl/inc/dl.h"\n',
 }
 
 # Rule 2 -- shared product code reaching up into a product FORM.
 _FIRE_C_RULE2 = {
-    "apps/shared/media_dl/src/up_standalone.c": (
-        '#include "apps/stand_alone/media_dl/inc/mdl_cli.h"\n'
+    "apps/shared_libs/mdl/src/up_standalone.c": ('#include "apps/host/mdl/inc/mdl_cli.h"\n'),
+    "apps/shared_libs/mdl/src/up_threadx.c": (
+        '#include "apps/board/threadx_modules/downloader/inc/dl_module.h"\n'
     ),
-    "apps/shared/media_dl/src/up_threadx.c": (
-        '#include "apps/threadx_modules/downloader/inc/dl_module.h"\n'
-    ),
-    "apps/shared/media_dl/src/up_bare.c": '#include "mdl_cli.h"\n',
+    "apps/shared_libs/mdl/src/up_bare.c": '#include "mdl_cli.h"\n',
 }
 
 _FIRE_CMAKE = {
     "libs/ra8_tier/CMakeLists.txt": (
-        "target_sources(ra8_tier PRIVATE\n  ${FW_ROOT}/apps/shared/media_dl/src/mdl_hash.c)\n"
+        "target_sources(ra8_tier PRIVATE\n  ${FW_ROOT}/apps/host/mdl/src/mdl_cli.c)\n"
     ),
-    "cmake/tier.cmake": (
-        "target_include_directories(t PRIVATE ${FW_ROOT}/apps/stand_alone/media_dl/inc)\n"
-    ),
+    "cmake/tier.cmake": ("target_include_directories(t PRIVATE ${FW_ROOT}/apps/host/mdl/inc)\n"),
     # An exempt orchestrator may add_subdirectory a product -- but COMPILING one
     # is a different claim, and it still fires.
-    "CMakeLists.txt": "target_sources(all PRIVATE apps/stand_alone/media_dl/src/main.c)\n",
-    "apps/shared/media_dl/CMakeLists.txt": (
-        "target_sources(mdl_core PRIVATE ${FW_ROOT}/apps/stand_alone/media_dl/src/mdl_cli.c)\n"
+    "CMakeLists.txt": "target_sources(all PRIVATE apps/host/mdl/src/main.c)\n",
+    "apps/shared_libs/mdl/CMakeLists.txt": (
+        "target_sources(mdl_core PRIVATE ${FW_ROOT}/apps/host/mdl/src/mdl_cli.c)\n"
     ),
 }
 
@@ -561,48 +557,48 @@ _QUIET_C = {
         '#include "ra8_attributes.h"\n'
         '#include "ra8_check.h"\n'
         "#include <stdint.h>\n"
-        '/* #include "apps/stand_alone/media_dl/inc/mdl_cache.h" -- not compiled */\n'
+        '/* #include "apps/host/mdl/inc/mdl_cache.h" -- not compiled */\n'
         '// #include "mdl_cache.h"\n'
         'static const char *k_help = "#include \\"mdl_cache.h\\"";\n'
-        'static const char *k_path = "apps/stand_alone/media_dl";\n'
+        'static const char *k_path = "apps/host/mdl";\n'
     ),
     "libs/ra8_tier/src/lookalike.c": '#include "myapps/thing.h"\n#include "ra8_apps_registry.h"\n',
     # Shared consuming the platform and its own category is the whole point.
-    "apps/shared/media_dl/src/legal.c": (
+    "apps/shared_libs/mdl/src/legal.c": (
         '#include "ra8_check.h"\n'
-        '#include "apps/shared/media_dl/inc/mdl_cache.h"\n'
+        '#include "apps/shared_libs/mdl/inc/mdl_cache.h"\n'
         '#include "mdl_cache.h"\n'
         "#include <stdint.h>\n"
     ),
     # A product FORM consuming shared -- the arrow's legal direction. It is not
     # a ruled layer at all, which scan_targets decides for itself.
-    "apps/stand_alone/media_dl/src/main.c": (
-        '#include "apps/shared/media_dl/inc/mdl_cache.h"\n#include "mdl_cache.h"\n'
+    "apps/host/mdl/src/main.c": (
+        '#include "apps/shared_libs/mdl/inc/mdl_cache.h"\n#include "mdl_cache.h"\n'
     ),
-    "apps/threadx_modules/downloader/src/mod.c": (
-        '#include "apps/shared/media_dl/inc/mdl_cache.h"\n'
+    "apps/board/threadx_modules/downloader/src/mod.c": (
+        '#include "apps/shared_libs/mdl/inc/mdl_cache.h"\n'
     ),
 }
 
 _QUIET_CMAKE = {
     "tools/rabook_imagepack/CMakeLists.txt": (
         "# The single-unit counterpart to the batch producers "
-        "(apps/stand_alone/media_dl, ...)\n"
+        "(apps/host/mdl, ...)\n"
         "add_executable(rabook_imagepack src/main.c)\n"
     ),
     "cmake/ra8_webp_vendor.cmake": (
-        "#[[ tools/rabook_imagepack and apps/stand_alone/media_dl each faked\n"
-        "    ra8_jof_priv_webp_transcode() ]]\n"
+        "#[[ tools/rabook_imagepack and apps/host/mdl each faked\n"
+        "    jof_priv_webp_transcode() ]]\n"
         "add_library(ra8_webp STATIC ${RA8_WEBP_SRCS})\n"
     ),
-    "CMakeLists.txt": "add_subdirectory(apps/stand_alone/media_dl)\n",
+    "CMakeLists.txt": "add_subdirectory(apps/host/mdl)\n",
     "libs/ra8_tier/CMakeLists.txt": "target_sources(ra8_tier PRIVATE src/tier.c)\n",
-    "apps/shared/media_dl/CMakeLists.txt": (
+    "apps/shared_libs/mdl/CMakeLists.txt": (
         "target_sources(mdl_core PRIVATE src/mdl_hash.c)\n"
-        "target_include_directories(mdl_core PUBLIC ${FW_ROOT}/apps/shared/media_dl/inc)\n"
+        "target_include_directories(mdl_core PUBLIC ${FW_ROOT}/apps/shared_libs/mdl/inc)\n"
     ),
-    "apps/stand_alone/media_dl/CMakeLists.txt": (
-        "target_sources(media_dl PRIVATE ${FW_ROOT}/apps/shared/media_dl/src/mdl_hash.c)\n"
+    "apps/host/mdl/CMakeLists.txt": (
+        "target_sources(mdl PRIVATE ${FW_ROOT}/apps/shared_libs/mdl/src/mdl_hash.c)\n"
     ),
 }
 
@@ -632,10 +628,10 @@ def _selftest_scope(failures: list[str]) -> None:
         expect(
             layer is not None and layer.name == PLATFORM_LAYER_NAME, f"{root} is platform", failures
         )
-    shared = layer_for_c("apps/shared/media_dl/src/core.c")
+    shared = layer_for_c("apps/shared_libs/mdl/src/core.c")
     expect(
         shared is not None and shared.name == SHARED_LAYER_NAME,
-        "apps/shared is the product-shared layer",
+        "apps/shared_libs is the product-shared layer",
         failures,
     )
     for category in FORM_CATEGORIES:
@@ -651,7 +647,11 @@ def _selftest_scope(failures: list[str]) -> None:
             f"{root} listfiles are exempt consumers",
             failures,
         )
-    expect(layer_for_c("libs/third_party/miniz/miniz.c") is None, "vendored SOUP is out", failures)
+    expect(
+        layer_for_c("apps/shared_libs/third_party/miniz/miniz.c") is None,
+        "vendored SOUP is out",
+        failures,
+    )
     expect(
         layer_for_c("tools/foo/build/CMakeFiles/probe.c") is None, "build output is out", failures
     )
@@ -671,17 +671,17 @@ def _selftest_scope(failures: list[str]) -> None:
 def _selftest_census(failures: list[str]) -> None:
     """Prove the exclusive-basename census and its ambiguity rule."""
     rels = [
-        "apps/shared/media_dl/inc/mdl_cache.h",
-        "apps/stand_alone/media_dl/inc/mdl_cli.h",
-        "apps/stand_alone/media_dl/inc/shared_name.h",
-        "apps/shared/media_dl/inc/shared_name.h",
+        "apps/shared_libs/mdl/inc/mdl_cache.h",
+        "apps/host/mdl/inc/mdl_cli.h",
+        "apps/host/mdl/inc/shared_name.h",
+        "apps/shared_libs/mdl/inc/shared_name.h",
         "libs/ra8_core/inc/ra8_check.h",
-        "apps/shared/media_dl/build/CMakeFiles/generated.h",
+        "apps/shared_libs/mdl/build/CMakeFiles/generated.h",
     ]
     census = build_exclusive(rels)
     expect(
-        census[PLATFORM_LAYER_NAME] == {"mdl_cache.h", "mdl_cli.h", "shared_name.h"},
-        "rule 1's census is every apps-exclusive header basename",
+        census[PLATFORM_LAYER_NAME] == {"mdl_cli.h"},
+        "rule 1's census is every form-exclusive header basename",
         failures,
     )
     expect(
@@ -697,7 +697,7 @@ def _selftest_census(failures: list[str]) -> None:
     expect(
         build_exclusive([r for r in rels if not r.startswith(SHARED_CATEGORY)])[SHARED_LAYER_NAME]
         == {"mdl_cli.h", "shared_name.h"},
-        "an EMPTY apps/shared is a legal layout the census still handles",
+        "an EMPTY apps/shared_libs is a legal layout the census still handles",
         failures,
     )
     expect(
@@ -711,7 +711,7 @@ def _selftest_census(failures: list[str]) -> None:
         failures,
     )
     expect(
-        classify_include("apps/shared/x.h", FORM_CATEGORIES, frozenset()) is None,
+        classify_include("apps/shared_libs/x.h", FORM_CATEGORIES, frozenset()) is None,
         "shared is not forbidden to itself",
         failures,
     )
@@ -726,16 +726,20 @@ _MEASURED_APPS_HEADERS = 52
 def _selftest_floors(failures: list[str]) -> None:
     """Prove every non-vacuity floor bites, and a healthy census does not."""
 
-    def census(**overrides: object) -> Census:
+    def census(
+        *,
+        c_counts: dict[str, int] | None = None,
+        cmake_count: int = _MEASURED_CMAKE,
+        apps_c_count: int = _MEASURED_APPS_C,
+        apps_header_count: int = _MEASURED_APPS_HEADERS,
+    ) -> Census:
         """Build a Census from the measured tree with one value perturbed."""
-        fields = {
-            "c_counts": dict(_MEASURED_C_COUNTS),
-            "cmake_count": _MEASURED_CMAKE,
-            "apps_c_count": _MEASURED_APPS_C,
-            "apps_header_count": _MEASURED_APPS_HEADERS,
-        }
-        fields.update(overrides)
-        return Census(**fields)  # type: ignore[arg-type]
+        return Census(
+            c_counts=dict(_MEASURED_C_COUNTS) if c_counts is None else c_counts,
+            cmake_count=cmake_count,
+            apps_c_count=apps_c_count,
+            apps_header_count=apps_header_count,
+        )
 
     expect(not census_floor_errors(census()), "the measured census clears every floor", failures)
     narrowed = dict(_MEASURED_C_COUNTS)
@@ -805,8 +809,8 @@ def _report(scanned: int, findings: list[Finding]) -> int:
         return EXIT_OK
     sys.stderr.write(
         "check_tier_imports.py: tier boundary violated -- the platform must not import "
-        "apps/, and apps/shared/ must not import a product form. Move the shared code "
-        "down (libs/ or apps/shared/) or invert the dependency:\n"
+        "apps/, and apps/shared_libs/ must not import a product form. Move the shared "
+        "code down (libs/ or apps/shared_libs/) or invert the dependency:\n"
     )
     for layer, kind, rel, lineno, named, source in findings:
         sys.stderr.write(f"  {rel}:{lineno}: [{layer}/{kind}] {named}\n      {source}\n")

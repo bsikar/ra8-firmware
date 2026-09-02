@@ -15,13 +15,13 @@
 # We point it at the host test build and every CMake host project (all built
 # OUT of the source tree; see BUILD_DIR / TOOL_BUILD_ROOT below) rather than the
 # cross-compile firmware build because clang cannot consume the arm-none-eabi
-# sysroot reliably. Together those builds cover first-party libs/, src/, port/,
-# tools/ and the HOST half of apps/ TUs -- the firmware half of apps/ is
+# sysroot reliably. Together those builds cover host-buildable first-party TUs
+# under libs/, port/, tools/, and apps/ -- cross-only firmware compositions are
 # excluded for the same sysroot reason (see host-project discovery below).
 #
-# Findings under libs/third_party/ are filtered out (SOUP -- see
-# CLAUDE.md, docs/SOUP/). First-party findings are recorded in
-# docs/STATIC_ANALYSIS.md as the project's expected baseline.
+# Findings under libs/third_party/ or apps/shared_libs/third_party/ are
+# filtered out (SOUP -- see CLAUDE.md and docs/SOUP/). First-party findings are
+# recorded in docs/STATIC_ANALYSIS.md as the project's expected baseline.
 #
 # Usage:
 #     scripts/checks/scan_build.sh             # full analyze + summary
@@ -122,14 +122,14 @@ unset _sb_base _sb_ver
 # configure or a no-op incremental build, not a policy on suite size.
 MIN_TRANSLATION_UNITS="${MIN_TRANSLATION_UNITS:-800}"
 
-# Measured nine HOST CMake projects: seven under tools/ and two under apps/
-# (the shared media_dl core and the stand_alone CLI form that composes it).
+# Measured 22 HOST CMake projects: seven under tools/ and fifteen under apps/
+# (shared libraries plus host forms such as mdl).
 # The firmware products under apps/ are NOT in that count -- see
 # host_project_dirs below. Discovery is derived, so adding a tenth
 # automatically puts it under scan-build; the floor turns a missing/collapsed
-# root into a loud infrastructure failure -- as it did when media_dl moved out
-# of tools/ and left the tools-only glob discovering seven.
-MIN_TOOL_PROJECTS="${MIN_TOOL_PROJECTS:-9}"
+# root into a loud infrastructure failure -- as it did when mdl moved out of
+# tools/ and the old tools-only glob discovered only seven projects.
+MIN_TOOL_PROJECTS="${MIN_TOOL_PROJECTS:-20}"
 
 # ===========================================================================
 # THE THREE DECISIONS, FACTORED OUT SO --selftest CAN DRIVE THEM
@@ -168,7 +168,8 @@ classify_reports() {
       continue
     fi
     bugtype="$(grep -oE '<!-- BUGTYPE [^>]*-->' "$html" | head -1 || true)"
-    if [[ "$bugfile" == *"/libs/third_party/"* ]]; then
+    if [[ "$bugfile" == *"/libs/third_party/"* ||
+      "$bugfile" == *"/apps/shared_libs/third_party/"* ]]; then
       THIRD_PARTY_COUNT=$((THIRD_PARTY_COUNT + 1))
     elif [[ "$bugfile" == *"/tests/"* ]]; then
       # Test scaffolding is exempt (CLAUDE.md / docs/MCDC.md).
@@ -199,8 +200,8 @@ tool_scope_is_big_enough() { [[ "$1" -ge "$MIN_TOOL_PROJECTS" ]]; }
 
 # --- host-project discovery -----------------------------------------------
 # apps/ -- the products tier -- carries BOTH kinds of build, and a glob over it
-# cannot tell them apart on its own. apps/*/media_dl is a host CLI clang builds
-# for x86_64 exactly like a tool; apps/stand_alone/ereader is a cross-compiled
+# cannot tell them apart on its own. apps/host/mdl is a host CLI clang builds
+# for x86_64 exactly like a tool; apps/board/stand_alone/ereader is a cross-compiled
 # TrustZone image. clang cannot consume the arm-none-eabi sysroot -- which is
 # the whole reason this script analyses the host builds rather than the
 # firmware one -- so configuring a firmware app here kills the run.
@@ -230,8 +231,8 @@ PYEOF
 # Build-directory key for the repo-relative project path $1.
 #
 # The PATH, flattened -- never the basename. Two products may legitimately
-# carry the same name in different categories (apps/shared/media_dl is the
-# portable core, apps/stand_alone/media_dl the CLI form that composes it), and
+# carry the same name in different categories (apps/shared_libs/mdl is the
+# portable core, apps/host/mdl the CLI form that composes it), and
 # a basename key configured the second into the first's build tree. CMake
 # refuses to reuse a cache generated from a different source directory, so the
 # second configure died and took the gate with it.
@@ -280,9 +281,9 @@ _sb_selftest_classifier() {
   # MUST be reported: ordinary first-party code, and a fixed-address finding
   # OUTSIDE the documented MMIO partitions (the filter must not be a blanket).
   _sb_fixture "$tmp/report-1.html" /w/port/esp-hosted/src/x.c "Memory leak"
-  _sb_fixture "$tmp/report-2.html" /w/libs/ra8_reflow/src/y.c "fixed address dereference"
+  _sb_fixture "$tmp/report-2.html" /w/apps/shared_libs/reflow/src/y.c "fixed address dereference"
   # MUST stay quiet: SOUP, test scaffolding, and the MMIO accessor pattern.
-  _sb_fixture "$tmp/report-3.html" /w/libs/third_party/miniz/miniz.c "Memory leak"
+  _sb_fixture "$tmp/report-3.html" /w/apps/shared_libs/third_party/miniz/miniz.c "Memory leak"
   _sb_fixture "$tmp/report-4.html" /w/tests/test_thing.c "Memory leak"
   _sb_fixture "$tmp/report-5.html" /w/libs/ra8_hal/src/ra8_vin.c "fixed address dereference"
   _sb_fixture "$tmp/report-6.html" /w/libs/ra8_core/src/ra8_log.c "fixed address dereference"
@@ -325,23 +326,23 @@ _sb_has_line() { grep -qxF -- "$2" <<<"$1" && echo yes || echo no; }
 # grows another product.
 _sb_selftest_discovery() {
   local firmware kept shared_key stand_key
-  firmware=$'apps/stand_alone/ereader'
+  firmware=$'apps/board/stand_alone/ereader'
   kept="$(select_host_projects "$firmware" \
-    tools/cache_bench apps/shared/media_dl apps/stand_alone/ereader \
-    apps/stand_alone/media_dl)"
+    tools/cache_bench apps/shared_libs/mdl apps/board/stand_alone/ereader \
+    apps/host/mdl)"
   _sb_expect "a firmware app is excluded from the host scope" \
-    no "$(_sb_has_line "$kept" apps/stand_alone/ereader)"
+    no "$(_sb_has_line "$kept" apps/board/stand_alone/ereader)"
   _sb_expect "a host product at category depth is discovered" \
-    yes "$(_sb_has_line "$kept" apps/shared/media_dl)"
+    yes "$(_sb_has_line "$kept" apps/shared_libs/mdl)"
   _sb_expect "the other category's host product is discovered too" \
-    yes "$(_sb_has_line "$kept" apps/stand_alone/media_dl)"
+    yes "$(_sb_has_line "$kept" apps/host/mdl)"
   _sb_expect "a plain tools/ project is discovered" \
     yes "$(_sb_has_line "$kept" tools/cache_bench)"
   _sb_expect "exactly the three host projects survive" 3 "$(grep -c . <<<"$kept")"
   # Identity is the PATH: two same-named products in different categories must
   # not land in one build tree, which is what killed the run.
-  shared_key="$(project_key apps/shared/media_dl)"
-  stand_key="$(project_key apps/stand_alone/media_dl)"
+  shared_key="$(project_key apps/shared_libs/mdl)"
+  stand_key="$(project_key apps/host/mdl)"
   _sb_expect "same-named products get distinct build-dir keys" different \
     "$([[ "$shared_key" == "$stand_key" ]] && echo same || echo different)"
   _sb_expect "a build-dir key carries no path separator" yes \
@@ -463,8 +464,7 @@ echo "==> scan-build: configuring host test build at $BUILD_DIR"
 # and exited 0 -- a clean verdict over an analysis that never happened.
 if ! "$SCAN_BUILD" --use-cc="$USE_CC" --use-c++="$USE_CXX" \
   "$CMAKE" -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-  -Wno-dev >/dev/null; then
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON >/dev/null; then
   echo "scan_build.sh: FATAL -- cmake configure failed; nothing was analysed." >&2
   exit 2
 fi
@@ -495,19 +495,19 @@ TOOL_PROJECTS=()
 while IFS= read -r _sb_rel; do
   [[ -n "$_sb_rel" ]] && TOOL_PROJECTS+=("$_sb_rel")
 done < <(select_host_projects "$FIRMWARE_APP_DIRS" \
-  ${TOOL_CANDIDATES[@]+"${TOOL_CANDIDATES[@]}"})
+  ${TOOL_CANDIDATES[@]+${TOOL_CANDIDATES[@]+"${TOOL_CANDIDATES[@]}"}})
 unset _sb_rel
 if ! tool_scope_is_big_enough "${#TOOL_PROJECTS[@]}"; then
   echo "scan_build.sh: FATAL -- discovered ${#TOOL_PROJECTS[@]} host CMake" >&2
   echo "  project(s); the floor is $MIN_TOOL_PROJECTS. The host scope collapsed." >&2
   exit 2
 fi
-for tool_rel in "${TOOL_PROJECTS[@]}"; do
+for tool_rel in ${TOOL_PROJECTS[@]+"${TOOL_PROJECTS[@]}"}; do
   tool_key="$(project_key "$tool_rel")"
   echo "==> scan-build: configuring host project $tool_rel"
   if ! CC="$USE_CC" CXX="$USE_CXX" "$CMAKE" \
     -B "$TOOL_BUILD_ROOT/$tool_key" -S "$REPO_ROOT/$tool_rel" \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -Wno-dev >/dev/null; then
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON >/dev/null; then
     echo "scan_build.sh: FATAL -- $tool_rel configure failed; nothing was analysed." >&2
     exit 2
   fi

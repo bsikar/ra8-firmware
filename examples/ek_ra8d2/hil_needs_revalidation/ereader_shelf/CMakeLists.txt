@@ -27,10 +27,10 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 # Hybrid baked+SD e-reader: ra8_box grid layout + ra8_ui geometry draw through
 # ra8_gfx into the SDRAM framebuffer ra8_display_pal scans over GLCDC to the
-# 1024x600 panel. ra8_book + miniz inflate the compressed .rabook blobs (baked in
+# 1024x600 panel. book + miniz inflate the compressed .rabook blobs (baked in
 # MRAM via library.h, or read from SD). src/*.c hold the per-screen modules.
-# ra8_comic opens CBZ (ZIP) + CBR (RAR) comic archives and streams page images
-# for the full-page comic reader (sh_comic.c, #236); it reuses ra8_epub's
+# comic opens CBZ (ZIP) + CBR (RAR) comic archives and streams page images
+# for the full-page comic reader (sh_comic.c, #236); it reuses epub's
 # miniz-with-ZIP + static pool, already a dep here.
 ra8_add_app(
   NAME ereader_shelf
@@ -41,28 +41,29 @@ ra8_add_app(
        ra8_display_pal
        ra8_box
        ra8_ui
-       ra8_book
+       book
        ra8_fs
        ra8_sdmmc_spi
-       ra8_epub
-       ra8_reflow
-       ra8_comic
+       epub
+       reflow
+       comic
        ra8_board_ek_ra8d2
        ra8_io_bus
 )
 
 # Pin the reader's optimisation level to -Og on this target, independent of the
 # configured build type. Two facts force this:
-#   * At -O0 the fully-linked reader (ra8_epub + miniz + bounded XML reader + stb +
-#     ra8_reflow + baked library.h ...) overflows the 1 MiB MRAM code region by
+#   * At -O0 the fully-linked reader (epub + miniz + bounded XML reader + stb +
+#     reflow + baked library.h ...) overflows the 1 MiB MRAM code region by
 #     ~17 KiB, so the top-level aggregate build (which defaults to Debug/-O0)
-#     and `make emu-ereader_shelf` cannot link it. A per-target option lands
+#     and `just apps::emulator::run ereader_shelf` cannot link it. A per-target option lands
 #     after the build-type -O flag, so -Og wins (GCC honours the last -O) and
 #     the app builds regardless of how it was configured.
 #   * The pin is a ra8_emulator GATE-SPEED choice, not a firmware limit. The
 #     firmware is optimisation-stable: the identical source renders byte-
 #     identical at -O0/-O1/-O2/-O3 on the host (clang + gcc), UBSan- and ASan-
-#     clean (guarded by tests/test_ereader_shelf_geometry.c), and -- since
+#     clean (guarded by apps/board/stand_alone/ereader/tests/src/test_ereader_shelf_geometry.c),
+#     and -- since
 #     ra8_emulator's LOB decode was fixed (#233) -- ra8_emulator now renders the -O1
 #     reader byte-identically to -Og too (both fb=0ADB62C6). So real M85 silicon
 #     (which has the Armv8.1-M LOB + MVE hardware natively) runs the reader at
@@ -83,7 +84,7 @@ ra8_add_app(
 target_compile_options(ereader_shelf.elf PRIVATE -Og)
 
 # Turn on the shared boot's Cortex-M85 L1 cache + MPU bring-up for this app. The
-# shared SystemInit (libs/ra8_board_ek_ra8d2/boot/system_init.c) is compiled into
+# shared SystemInit (libs/ra8_board_ek_ra8d2/src/boot/system_init.c) is compiled into
 # each app's own executable, so this PRIVATE define reaches that TU here and
 # nowhere else: it programmes the 5-region MPU and enables the I-cache, D-cache,
 # and branch predictor before main() runs (substrate silicon-validated by

@@ -19,6 +19,10 @@
   # timer. daemon_reload + state=restarted is what actually picks up new unit
   # text.
   become: true
+  # In check mode the copy task predicts the new unit files but systemd cannot
+  # restart a unit that has not actually landed yet. The copy diff is the dry-
+  # run evidence; restart only after a real apply.
+  when: not ansible_check_mode
   ansible.builtin.systemd_service:
     name: ra8-bench-reap.timer
     enabled: true

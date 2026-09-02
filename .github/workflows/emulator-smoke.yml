@@ -12,13 +12,13 @@
 # panic/fault halt -- guarding the emulator, the GLCDC bring-up path, and the
 # modelled peripheral blocks (GPIO / SCI UART / GPT+ICU IRQ / USB CDC).
 #
-# ra8_emulator needs Unicorn + Capstone. Capstone (disassembly only) comes from the
-# distro package via the infra step below. UNICORN IS PINNED: its version
+# ra8_emulator needs Unicorn + Capstone. Both are part of the Ansible-managed
+# ra8-ci runner image. UNICORN IS PINNED: its version
 # changes how Armv8.1-M (Helium/MVE) decodes, so an unpinned emulator makes the
 # same commit pass here and fault there (#354). It is provisioned as a
 # reproducible source build (docs/TOOLCHAIN.md) and each gate calls
 # require_pinned_unicorn, which FAILS LOUDLY if the runtime Unicorn is not the
-# pin -- the infra step no longer installs "whatever apt offers, once". The
+# pin -- workflow jobs never install "whatever apt offers, once". The
 # build finds both with CMake's find_library (off the APPLE path -- no
 # pkg-config required). The live --view window is macOS-only (Cocoa); these jobs
 # are headless, which ra8_emulator supports via board_view_stub.c.
@@ -83,38 +83,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Capstone
-        run: |
-          # ci-parity: infra -- runner package provisioning only; runs no
-          # project check. Capstone is ra8_emulator's disassembly-only dependency
-          # (not the instruction-decode variable), so the distro package is fine
-          # and the header the build needs either exists or it does not -- there
-          # is no version to skew past, which is what makes a probe safe here.
-          #
-          # Probe-then-install, because ra8-ci is an ephemeral pod booted from
-          # the devcontainer image: libcapstone-dev is already in that image and
-          # the pod's runner user has NO passwordless sudo, so an unconditional
-          # `sudo apt-get` dies on "sudo: a password is required" before the
-          # gate ever runs. The probe no-ops on the pod and still provisions a
-          # bare host runner.
-          #
-          # This is NOT the #354 guard that was removed: that one skipped the
-          # version-pinned UNICORN install and let a skewed Unicorn go
-          # unnoticed. Unicorn is still deliberately NOT installed here -- it is
-          # pinned to an exact version (docs/TOOLCHAIN.md) and provisioned as a
-          # reproducible source build, and the emulator gates verify the
-          # runtime Unicorn matches the pin and FAIL LOUDLY otherwise, so a
-          # skewed or absent Unicorn can never silently produce a green run.
-          set -euo pipefail
-          if [ -f /usr/include/capstone/capstone.h ]; then
-            echo "libcapstone-dev already present -- nothing to install"
-          else
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends libcapstone-dev
-          fi
-
-      - run: bash scripts/ci.sh --gate emulator-smoke
-      - run: bash scripts/ci.sh --gate emulator-io-fabric
+      - run: just quality::local::gate emulator-smoke
+      - run: just quality::local::gate emulator-io-fabric
 
   # The BREADTH matrix (#394) to emulator-smoke's depth: every example under
   # examples/ek_ra8d2/ built and booted on the emulator, with the failing count
@@ -156,37 +126,7 @@ jobs:
         with:
           lfs: false
 
-      - name: Install Capstone
-        run: |
-          # ci-parity: infra -- runner package provisioning only; runs no
-          # project check. Capstone is ra8_emulator's disassembly-only dependency
-          # (not the instruction-decode variable), so the distro package is fine
-          # and the header the build needs either exists or it does not -- there
-          # is no version to skew past, which is what makes a probe safe here.
-          #
-          # Probe-then-install, because ra8-ci is an ephemeral pod booted from
-          # the devcontainer image: libcapstone-dev is already in that image and
-          # the pod's runner user has NO passwordless sudo, so an unconditional
-          # `sudo apt-get` dies on "sudo: a password is required" before the
-          # gate ever runs. The probe no-ops on the pod and still provisions a
-          # bare host runner.
-          #
-          # This is NOT the #354 guard that was removed: that one skipped the
-          # version-pinned UNICORN install and let a skewed Unicorn go
-          # unnoticed. Unicorn is still deliberately NOT installed here -- it is
-          # pinned to an exact version (docs/TOOLCHAIN.md) and provisioned as a
-          # reproducible source build, and the emulator gates verify the
-          # runtime Unicorn matches the pin and FAIL LOUDLY otherwise, so a
-          # skewed or absent Unicorn can never silently produce a green run.
-          set -euo pipefail
-          if [ -f /usr/include/capstone/capstone.h ]; then
-            echo "libcapstone-dev already present -- nothing to install"
-          else
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends libcapstone-dev
-          fi
-
-      - run: bash scripts/ci.sh --gate emulator-matrix
+      - run: just quality::local::gate emulator-matrix
 
   # EIL (emulator-in-the-loop): the hardware-free mirror of the bench HIL suite
   # (scripts/hil/all.sh). Every app under examples/ek_ra8d2/hw_validated/hil/ is
@@ -196,7 +136,7 @@ jobs:
   # --stop-sym. No hardware, so it belongs in CI: it would have caught the recent
   # ra8_emulator div-0 the moment it landed. Where hil_all.sh flashes one physical
   # board serially, ra8_emulator instances share no hardware, so eil_all.sh runs the
-  # ~145 apps in PARALLEL at -j = the runner's core count; each run is bounded by
+  # the discovered apps in PARALLEL at -j = the runner's core count; each run is bounded by
   # the EIL_*_MAX_CHUNKS / EIL_*_WALL_S caps so a hung app cannot stall the job.
   # rtt_scrape apps are checked like uart_scrape (ra8_emulator drains the SEGGER
   # RTT control block and echoes `[rtt]` lines); hil_eth_tcp apps run for real
@@ -239,34 +179,4 @@ jobs:
         with:
           lfs: false
 
-      - name: Install Capstone
-        run: |
-          # ci-parity: infra -- runner package provisioning only; runs no
-          # project check. Capstone is ra8_emulator's disassembly-only dependency
-          # (not the instruction-decode variable), so the distro package is fine
-          # and the header the build needs either exists or it does not -- there
-          # is no version to skew past, which is what makes a probe safe here.
-          #
-          # Probe-then-install, because ra8-ci is an ephemeral pod booted from
-          # the devcontainer image: libcapstone-dev is already in that image and
-          # the pod's runner user has NO passwordless sudo, so an unconditional
-          # `sudo apt-get` dies on "sudo: a password is required" before the
-          # gate ever runs. The probe no-ops on the pod and still provisions a
-          # bare host runner.
-          #
-          # This is NOT the #354 guard that was removed: that one skipped the
-          # version-pinned UNICORN install and let a skewed Unicorn go
-          # unnoticed. Unicorn is still deliberately NOT installed here -- it is
-          # pinned to an exact version (docs/TOOLCHAIN.md) and provisioned as a
-          # reproducible source build, and the emulator gates verify the
-          # runtime Unicorn matches the pin and FAIL LOUDLY otherwise, so a
-          # skewed or absent Unicorn can never silently produce a green run.
-          set -euo pipefail
-          if [ -f /usr/include/capstone/capstone.h ]; then
-            echo "libcapstone-dev already present -- nothing to install"
-          else
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends libcapstone-dev
-          fi
-
-      - run: bash scripts/ci.sh --gate eil-integration
+      - run: just quality::local::gate eil-integration

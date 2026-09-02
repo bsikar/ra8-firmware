@@ -4,7 +4,8 @@
 """Generate and validate the ra8-firmware Software Bill of Materials (SBOM).
 
 This is the supply-chain provenance gate for the vendored third-party SOUP
-(Software Of Unknown Provenance) under ``libs/third_party/`` plus the one
+(Software Of Unknown Provenance) under the platform and application vendor
+roots, plus any registry-backed ``tools/<tool>/third_party/<component>`` and the one
 bundled font data asset under ``libs/ra8_fonts/``.  It emits a machine-readable
 CycloneDX 1.5 JSON document at ``docs/sbom/ra8-firmware.cdx.json`` that
 records, for every component: name, version, SPDX license (with the
@@ -17,11 +18,11 @@ single source of truth for the fields that cannot be derived mechanically
 that renders and validates it.  Everything that CAN be cross-checked against
 the tree is:
 
-  * **Directory drift** -- every direct child of ``libs/third_party/`` must
+  * **Directory drift** -- every direct child of a supported vendor root must
     have a registry entry, and every registry directory must exist on disk.
     A newly vendored component with no entry fails the gate.
   * **Version drift** -- for components whose in-tree headers carry a version
-    macro (the ThreadX family, Mbed TLS, TF-PSA-Crypto, miniz, TinyXML-2,
+    macro (the ThreadX family, Mbed TLS, TF-PSA-Crypto, miniz,
     stb), the macro is re-read from source and compared to the recorded
     version.  Versions are never invented; a component with no upstream
     release tag (litehtml, NimBLE dev snapshots) is pinned to the exact
@@ -79,6 +80,7 @@ import argparse
 import hashlib
 import json
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -87,7 +89,9 @@ from pathlib import Path
 from typing import TextIO
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 
+from git_environment import isolated_git_environment, trusted_git_executable
 from sbom_registry import (
     PROV_NOT_VENDORED,
     REGISTRY,
@@ -95,7 +99,10 @@ from sbom_registry import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-THIRD_PARTY_DIR = Path("libs/third_party")
+FIXED_VENDOR_ROOTS = (
+    Path("libs/third_party"),
+    Path("apps/shared_libs/third_party"),
+)
 SBOM_REL_PATH = Path("docs/sbom/ra8-firmware.cdx.json")
 
 PROJECT_NAME = "ra8-firmware"
@@ -106,6 +113,7 @@ GENERATOR_NAME = "gen_sbom.py"
 
 DIGEST_ALG = "SHA-256"
 GIT_MODE_SYMLINK = "120000"
+TOOL_VENDOR_ROOT_PARTS = 3
 
 # Vacuity floors.  A digest over an empty file list is a perfectly stable
 # hash of nothing, and would report a component as verified when its
@@ -126,18 +134,18 @@ class VacuousScanError(Exception):
     """Raised when an enumeration collapsed and no honest verdict is possible."""
 
 
-def _git_ls_files(rel_path: str) -> list[tuple[str, str]]:
-    """Return ``(git mode, repo-relative path)`` for every tracked file under `rel_path`.
+def _git_ls_files(rel_path: str, root: Path = REPO_ROOT) -> list[tuple[str, str]]:
+    """Return ``(git mode, repo-relative path)`` for the worktree under `rel_path`.
 
-    Enumeration is ``git ls-files`` rather than a filesystem walk so the digest
-    covers exactly what is committed: build output, editor droppings and
-    ignored scratch files cannot perturb a provenance hash.  The mode comes
-    from git (not ``stat``) so it is identical on every platform -- a chmod is
-    still a real modification and is still caught, but a checkout on a
-    filesystem without an executable bit does not fabricate drift.
+    Git supplies tracked plus untracked/non-ignored path names rather than a
+    filesystem walk, so build output and ignored scratch files cannot perturb a
+    provenance hash. Deleted index entries are dropped; current worktree modes
+    are recorded so unstaged moves, additions, deletions, and chmod changes are
+    all visible to the gate.
 
     Args:
         rel_path: Repo-relative path of a component (a directory or one file).
+        root: Repository worktree to enumerate; defaults to this checkout.
 
     Returns:
         ``(mode, path)`` pairs, unsorted; ``digest_entries`` imposes the order.
@@ -146,8 +154,17 @@ def _git_ls_files(rel_path: str) -> list[tuple[str, str]]:
         VacuousScanError: When ``git ls-files`` cannot run at all.
     """
     proc = subprocess.run(  # noqa: S603  # trusted: fixed git argv, no shell
-        ["git", "ls-files", "-sz", "--", rel_path],  # noqa: S607 -- trusted: fixed git argv
-        cwd=REPO_ROOT,
+        [  # noqa: S607 -- trusted: fixed git argv
+            "git",
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "-z",
+            "--",
+            rel_path,
+        ],
+        cwd=root,
         capture_output=True,
         text=True,
         check=False,
@@ -159,8 +176,15 @@ def _git_ls_files(rel_path: str) -> list[tuple[str, str]]:
     for record in proc.stdout.split("\0"):
         if not record:
             continue
-        meta, path = record.split("\t", 1)
-        entries.append((meta.split()[0], path))
+        path = record
+        source = root / path
+        if not source.exists() and not source.is_symlink():
+            continue
+        if source.is_symlink():
+            mode = GIT_MODE_SYMLINK
+        else:
+            mode = "100755" if source.stat().st_mode & stat.S_IXUSR else "100644"
+        entries.append((mode, path))
     return entries
 
 
@@ -267,26 +291,81 @@ def probe_version(comp: Component) -> str | None:
     return None
 
 
+def _vendor_root_for(path: Path) -> Path | None:
+    """Return the supported vendor root containing ``path``, if any.
+
+    Tool SOUP is permitted only at ``tools/<tool>/third_party/<component>``.
+    This keeps ownership local without creating a repository-wide tools vendor
+    bucket, while allowing the registry to grow if a truly tool-exclusive
+    dependency is introduced later.
+    """
+    parts = path.parts
+    if parts[:2] == ("libs", "third_party"):
+        return Path(*parts[:2])
+    if parts[:3] == ("apps", "shared_libs", "third_party"):
+        return Path(*parts[:3])
+    if len(parts) >= TOOL_VENDOR_ROOT_PARTS and parts[0] == "tools" and parts[2] == "third_party":
+        return Path(*parts[:3])
+    return None
+
+
+def _vendor_roots() -> tuple[Path, ...]:
+    """Discover fixed, registry-declared, and on-disk tool-private roots."""
+    roots = set(FIXED_VENDOR_ROOTS)
+    tools = REPO_ROOT / "tools"
+    if tools.is_dir():
+        roots.update(
+            Path("tools") / tool.name / "third_party"
+            for tool in tools.iterdir()
+            if tool.is_dir() and (tool / "third_party").is_dir()
+        )
+    for comp in REGISTRY:
+        root = _vendor_root_for(Path(comp.path))
+        if root is not None:
+            roots.add(root)
+    return tuple(sorted(roots, key=lambda path: path.as_posix()))
+
+
 def _third_party_dirs() -> set[str]:
-    """Return the direct child directory names under libs/third_party/."""
-    base = REPO_ROOT / THIRD_PARTY_DIR
-    return {p.name for p in base.iterdir() if p.is_dir()} if base.is_dir() else set()
+    """Return repo-relative direct-child paths under every supported vendor root."""
+    found: set[str] = set()
+    for rel_root in _vendor_roots():
+        base = REPO_ROOT / rel_root
+        if base.is_dir():
+            found.update(
+                (rel_root / path.name).as_posix() for path in base.iterdir() if path.is_dir()
+            )
+    return found
 
 
 def _catalogued_top_dirs() -> set[str]:
-    """Return the direct-child dir names of libs/third_party/ the registry covers.
+    """Return direct-child paths of supported vendor roots covered by the registry.
 
     A nested path such as ``esp-hosted/common/protobuf-c`` catalogues the
     ``esp-hosted`` top-level directory, so a tree carrying a separately
     pinned sub-component does not read as uncatalogued.
     """
-    prefix = THIRD_PARTY_DIR.parts
     dirs: set[str] = set()
     for comp in REGISTRY:
         parts = Path(comp.path).parts
-        if parts[: len(prefix)] == prefix and len(parts) > len(prefix):
-            dirs.add(parts[len(prefix)])
+        for rel_root in _vendor_roots():
+            prefix = rel_root.parts
+            if parts[: len(prefix)] == prefix and len(parts) > len(prefix):
+                dirs.add((rel_root / parts[len(prefix)]).as_posix())
+                break
     return dirs
+
+
+def _directory_drift(on_disk: set[str], catalogued: set[str]) -> list[str]:
+    """Return both directions of vendor-root/registry drift."""
+    errors = [
+        f"{extra}: on disk but not in REGISTRY (uncatalogued SOUP)"
+        for extra in sorted(on_disk - catalogued)
+    ]
+    errors.extend(
+        f"{missing}: in REGISTRY but not on disk" for missing in sorted(catalogued - on_disk)
+    )
+    return errors
 
 
 def cross_check() -> tuple[list[str], list[str]]:
@@ -303,14 +382,7 @@ def cross_check() -> tuple[list[str], list[str]]:
 
     catalogued = _catalogued_top_dirs()
     on_disk = _third_party_dirs()
-    errors.extend(
-        f"libs/third_party/{extra}: on disk but not in REGISTRY (uncatalogued SOUP)"
-        for extra in sorted(on_disk - catalogued)
-    )
-    errors.extend(
-        f"libs/third_party/{missing}: in REGISTRY but not on disk"
-        for missing in sorted(catalogued - on_disk)
-    )
+    errors.extend(_directory_drift(on_disk, catalogued))
 
     for comp in REGISTRY:
         comp_path = REPO_ROOT / comp.path
@@ -343,7 +415,7 @@ def _check_scan_not_vacuous(errors: list[str]) -> None:
     for comp in hashed_components():
         try:
             total += tree_digest(comp)[1]
-        except VacuousScanError as exc:  # noqa: PERF203  # one bad component must not stop the sweep
+        except VacuousScanError as exc:  # one bad component must not stop the sweep
             errors.append(f"{comp.key}: {exc}")
     if total and total < TOTAL_FILE_FLOOR:
         errors.append(
@@ -481,7 +553,7 @@ def build_bom() -> dict:
                     "name": "ra8:sbomNote",
                     "value": (
                         "Generated by scripts/gen/gen_sbom.py from the "
-                        "REGISTRY cross-checked against libs/third_party/. "
+                        "REGISTRY cross-checked against every supported third_party root. "
                         "Human inventory: THIRD_PARTY_LICENSES.md. Per-"
                         "component qualification: docs/SOUP/."
                     ),
@@ -662,6 +734,56 @@ def _selftest_tree(root: Path) -> list[tuple[str, str]]:
     ]
 
 
+def _selftest_worktree_cases(root: Path) -> list[tuple[str, bool]]:
+    """Prove the SBOM census observes unstaged vendor-tree state both ways."""
+    repo = root / "repo"
+    vendor = repo / "vendor"
+    vendor.mkdir(parents=True)
+    tracked = vendor / "tracked.c"
+    removed = vendor / "removed.c"
+    tracked.write_bytes(b"int tracked;\n")
+    removed.write_bytes(b"int removed;\n")
+    (repo / ".gitignore").write_text("vendor/ignored.c\n", encoding="ascii")
+    subprocess.run(  # noqa: S603 -- fixed Git authority and fixture-only argv
+        [trusted_git_executable(), "init", "-q", "-b", "main", "."],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(  # noqa: S603 -- fixed Git authority and fixture-only argv
+        [trusted_git_executable(), "add", "-A"],
+        cwd=repo,
+        check=True,
+    )
+    original_digest = digest_entries(repo, _git_ls_files("vendor", repo), "vendor")
+
+    tracked.write_bytes(b"int changed;\n")
+    tracked.chmod(0o755)
+    removed.unlink()
+    (vendor / "untracked.c").write_bytes(b"int untracked;\n")
+    (vendor / "ignored.c").write_bytes(b"int ignored;\n")
+    entries = _git_ls_files("vendor", repo)
+    paths = {path for _mode, path in entries}
+    return [
+        (
+            "MUST FIRE: unstaged bytes and mode change the SBOM worktree digest",
+            digest_entries(repo, entries, "vendor") != original_digest
+            and ("100755", "vendor/tracked.c") in entries,
+        ),
+        (
+            "MUST FIRE: an untracked vendor file enters the SBOM census",
+            "vendor/untracked.c" in paths,
+        ),
+        (
+            "MUST FIRE: a deleted tracked vendor file leaves the SBOM census",
+            "vendor/removed.c" not in paths,
+        ),
+        (
+            "MUST NOT FIRE: an ignored vendor file stays outside the SBOM census",
+            "vendor/ignored.c" not in paths,
+        ),
+    ]
+
+
 def _selftest_shape_cases(
     root: Path, entries: list[tuple[str, str]], base: str
 ) -> list[tuple[str, bool]]:
@@ -699,6 +821,58 @@ def _selftest_shape_cases(
             digest_entries(root, [("100755", entries[0][1]), *entries[1:]], "vendor") != base,
         ),
         ("MUST FIRE: an empty enumeration raises rather than hashing nothing", vacuous),
+    ]
+
+
+def _selftest_registry_cases() -> list[tuple[str, bool]]:
+    """Return registry/tree ownership assertions for every supported vendor shape."""
+    return [
+        (
+            "MUST FIRE: the live registry publishes a digest for every vendored component",
+            len(hashed_components()) == len(REGISTRY) - 1,
+        ),
+        (
+            "MUST NOT FIRE: matching entries across all vendor-root shapes stay quiet",
+            not _directory_drift(
+                {
+                    "libs/third_party/platform",
+                    "apps/shared_libs/third_party/app",
+                    "tools/viewer/third_party/tool_only",
+                },
+                {
+                    "libs/third_party/platform",
+                    "apps/shared_libs/third_party/app",
+                    "tools/viewer/third_party/tool_only",
+                },
+            ),
+        ),
+        (
+            "MUST FIRE: an uncatalogued app vendor is detected",
+            bool(
+                _directory_drift(
+                    {"libs/third_party/platform", "apps/shared_libs/third_party/extra"},
+                    {"libs/third_party/platform"},
+                )
+            ),
+        ),
+        (
+            "MUST FIRE: a missing app vendor is detected",
+            bool(
+                _directory_drift(
+                    {"libs/third_party/platform"},
+                    {"libs/third_party/platform", "apps/shared_libs/third_party/app"},
+                )
+            ),
+        ),
+        (
+            "MUST NOT FIRE: the narrow tool-private vendor shape is supported",
+            _vendor_root_for(Path("tools/viewer/third_party/decoder"))
+            == Path("tools/viewer/third_party"),
+        ),
+        (
+            "MUST FIRE: a repository-wide tools vendor bucket is unsupported",
+            _vendor_root_for(Path("tools/third_party/decoder")) is None,
+        ),
     ]
 
 
@@ -741,16 +915,11 @@ def _selftest_cases(root: Path, entries: list[tuple[str, str]]) -> list[tuple[st
 
     cases.extend(_selftest_shape_cases(root, entries, base))
 
-    cases.append(
-        (
-            "MUST FIRE: the live registry publishes a digest for every vendored component",
-            len(hashed_components()) == len(REGISTRY) - 1,
-        )
-    )
+    cases.extend(_selftest_registry_cases())
     return cases
 
 
-def run_selftest() -> int:
+def _run_selftest_body() -> int:
     """Prove the integrity digest fires on a mutation and stays quiet otherwise.
 
     Both directions are asserted because only one of them was ever true before:
@@ -764,6 +933,7 @@ def run_selftest() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         cases = _selftest_cases(root, _selftest_tree(root))
+        cases.extend(_selftest_worktree_cases(root))
     failed = [label for label, ok in cases if not ok]
     for label, ok in cases:
         print(f"  {'ok  ' if ok else 'FAIL'} {label}")
@@ -772,6 +942,12 @@ def run_selftest() -> int:
         return EXIT_VACUOUS
     print(f"{GENERATOR_NAME}: selftest passed ({len(cases)} cases, both directions).")
     return EXIT_OK
+
+
+def run_selftest() -> int:
+    """Run SBOM worktree fixtures without inheriting the caller's repository."""
+    with isolated_git_environment():
+        return _run_selftest_body()
 
 
 def main(argv: list[str]) -> int:

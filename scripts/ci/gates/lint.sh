@@ -9,11 +9,11 @@
 # and is the only entry point; RA8_GATE_REGISTRY -- the single list of what
 # gates exist -- stays there too. These files hold gate BODIES only, so there
 # is still exactly one home for a gate's definition and exactly one command
-# for a workflow to call (bash scripts/ci.sh --gate <name>). Adding a second
+# for a workflow to call (`just quality::local::gate <name>`). Adding a second
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: lint-py-shell, lint-cmake, lint-yaml, lint-make,
+# Gates in this file: lint-py-shell, lint-cmake, lint-yaml, lint-just,
 # lint-ld, lint-asm, lint-devcontainer, lint-coverage
 
 # --- lint-py-shell --------------------------------------------------------
@@ -68,16 +68,19 @@ gate_lint_py_shell() (
 # in .cmake-format.yaml.
 gate_lint_cmake() (
   set -e
-  require_cmd cmake-format "pip install --user cmakelang==0.6.13"
+  require_cmd cmake-format "run 'just setup-python'"
   require_cmd cmake-lint "ships with cmakelang; check the cmakelang install"
   require_tool_versions cmake-format cmake-lint
+  python3 scripts/checks/lint_targets.py --selftest
 
   # Scope comes from lint_targets.py, which is also what check_lint_coverage.py
   # asks when it verifies that every CMake listfile is covered. One definition,
   # two readers -- an inline `git ls-files | grep` here would be a second copy
   # of the coverage map and would drift from the coverage gate on first edit.
-  local files
-  mapfile -t files < <(python3 scripts/checks/lint_targets.py cmake)
+  local files=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && files+=("$line")
+  done < <(python3 scripts/checks/lint_targets.py cmake)
   if [[ ${#files[@]} -eq 0 ]]; then
     echo "ERROR: no CMake listfiles found; refusing to report success." >&2
     return 1
@@ -87,7 +90,7 @@ gate_lint_cmake() (
   # Both directions of the formatter, asserted before the real run: a
   # deliberately misformatted listfile must be rejected, and the formatter's
   # own output must be accepted.
-  bash scripts/checks/lint_selftest.sh cmake
+  /bin/bash -p scripts/checks/lint_selftest.sh --selftest cmake
 
   printf '%s\n' "${files[@]}" | xargs -r -P "$(ra8_max_jobs)" -n 20 cmake-format --check
   printf '%s\n' "${files[@]}" | xargs -r cmake-lint
@@ -100,35 +103,38 @@ gate_lint_cmake() (
 # unknown runner labels), which is the class of defect behind #357.
 gate_lint_yaml() (
   set -e
-  require_cmd yamllint "pip install --user yamllint==1.37.1"
+  require_cmd yamllint "run 'just setup-python'"
   require_cmd actionlint \
     "https://github.com/rhysd/actionlint/releases (pinned to 1.7.7)"
   require_tool_versions yamllint actionlint
+  python3 scripts/checks/lint_targets.py --selftest
 
   # Scope comes from lint_targets.py -- see the note in gate_lint_cmake.
-  local files
-  mapfile -t files < <(python3 scripts/checks/lint_targets.py yaml)
+  local files=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && files+=("$line")
+  done < <(python3 scripts/checks/lint_targets.py yaml)
   if [[ ${#files[@]} -eq 0 ]]; then
     echo "ERROR: no YAML files found; refusing to report success." >&2
     return 1
   fi
   echo "lint-yaml: ${#files[@]} files"
 
-  bash scripts/checks/lint_selftest.sh yaml
+  /bin/bash -p scripts/checks/lint_selftest.sh --selftest yaml
 
   yamllint --strict "${files[@]}"
   actionlint
 )
 
-# --- lint-make ------------------------------------------------------------
-# checkmake was evaluated and rejected -- its .PHONY parser reads only the
-# first physical line of a continued declaration, so its one applicable rule
-# misreports this tree. check_makefiles.py implements the rules correctly; the
-# full reasoning and the reduced test case are in its module docstring.
-gate_lint_make() (
+# --- lint-just ------------------------------------------------------------
+# Validates Just structure plus every literal first-party command reference.
+gate_lint_just() (
   set -e
-  python3 scripts/checks/check_makefiles.py --selftest
-  python3 scripts/checks/check_makefiles.py
+  python3 scripts/checks/check_justfiles.py --selftest
+  python3 scripts/checks/check_justfiles.py --check
+  python3 scripts/checks/check_just_references.py --selftest
+  python3 scripts/checks/check_just_references.py
+  python3 scripts/dev/scaffold.py --selftest
 )
 
 # --- lint-ld --------------------------------------------------------------
@@ -173,7 +179,7 @@ gate_lint_asm() (
 )
 
 # --- lint-devcontainer ----------------------------------------------------
-# .devcontainer/Dockerfile pins every tool version CI resolves, so a defect in
+# .devcontainer/Dockerfile and pyproject.toml own the tool versions CI resolves, so a defect in
 # it changes what every other gate runs -- and it was linted by nothing until
 # #371. hadolint found DL4006 on its first run: eight `curl | tar` pipelines
 # under `/bin/sh -c`, where a failed download still reported success and built

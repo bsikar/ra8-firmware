@@ -26,7 +26,7 @@
  * hash / trailer failure this function default-denies: it copies nothing,
  * branches nowhere, and simply returns to the caller's fallback path.
  *
- * The I/D caches are disabled on the EK-RA8D2 (libs/ra8_board_ek_ra8d2/boot/
+ * The I/D caches are disabled on the EK-RA8D2 (libs/ra8_board_ek_ra8d2/src/boot/
  * system_init.c keeps them off), so the write-then-execute is made coherent by a
  * DSB after the copy plus a DSB/ISB before the branch -- no cache maintenance.
  * If caches are ever enabled there, a clean-DCache + invalidate-ICache must be

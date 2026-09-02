@@ -582,6 +582,7 @@ typedef void (*ra8_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @retval k_ra8_ok                Self-test triggered.
  * @retval k_ra8_err_null_ptr      ``out_status`` is NULL.
  * @retval k_ra8_err_invalid_arg   Channel out of range.
+ * @retval k_ra8_err_hw_timeout    SELF_TEST did not clear within the bounded wait.
  *
  * @pre ``ra8_dotf_init`` has run.
  * @pre Channel is currently disabled.

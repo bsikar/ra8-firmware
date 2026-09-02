@@ -1,21 +1,35 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 ---
-# Provision a shared verification box -- the machine agents run `make ci` /
-# `make ci-native` on -- from nothing to full toolchain parity.
+# Provision a shared verification box -- the machine agents run `just ci` /
+# `just quality::native` on -- from nothing to full toolchain parity.
 #
-#   ansible-playbook -i inventory/hosts.ini playbooks/dev-box.yml
+# Operator entry point: `just infra::apply dev`. The fleet dispatcher supplies
+# the declared native HIL identity/topology; direct execution omits it.
 #
 # The role builds cppcheck and gcc from source (no Debian suite carries either
 # at the pinned version), so a FIRST run takes tens of minutes. Re-runs skip
 # both once the pinned versions are present and cost a handful of version
 # probes.
 #
-# Nothing here is CI-runner registration: this box runs gates locally and never
-# joins the Actions pool. That is playbooks/ci-runner.yml (ARC on k3s) or
-# playbooks/ci-runner-docker.yml (a plain runner in Docker).
+# The one exception to general CI capacity is a dedicated repo-scoped HIL
+# listener. It builds here with the native toolchain, then the existing HIL
+# drivers operate the fleet-declared remote bench. Its custom labels are owned
+# by infra/fleet.yml and checked against the workflow.
 - name: Provision the dev / verification box
   hosts: dev_boxes
   gather_facts: true
-  roles:
-    - dev_box
+  pre_tasks:
+    - name: Authenticate the dev-box mutation boundary before role selection
+      ansible.builtin.include_role:
+        name: dev_box
+        tasks_from: hil_mutation_guard.yml
+        apply:
+          tags: [always]
+      tags: [always]
+  tasks:
+    - name: Converge the dev-box only beneath its authenticated front door
+      when: dev_box_hil_mutation_authenticated | default(false) | bool
+      ansible.builtin.include_role:
+        name: dev_box
+      tags: [always]

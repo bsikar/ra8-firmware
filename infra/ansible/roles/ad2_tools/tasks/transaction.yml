@@ -1,0 +1,379 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Provision the Digilent Analog Discovery 2 on the HIL bench: the Adept runtime
+# (unattended, sha256-pinned), the WaveForms SDK (owner-staged deb, installed by
+# extraction), and a live check that the instrument can actually capture.
+# Idempotent: safe to re-run; converges packages + cache + device state.
+
+- name: Authenticate the whole-bench transaction before the AD2 role
+  ansible.builtin.include_role:
+    name: hil_bench
+    tasks_from: transaction_guard.yml
+    apply:
+      tags: [always]
+  tags: [always]
+
+- name: Require the authenticated whole-bench transaction for AD2 changes
+  ansible.builtin.assert:
+    that:
+      - hil_bench_transaction_authenticated | default(false) | bool
+    fail_msg: The bench transaction guard did not complete; refusing AD2 changes.
+  tags: [always]
+
+- name: Assert a distribution this role's package operations are calibrated for
+  # Not decoration, and it must precede the cache directory and the deb
+  # download below: everything here is Debian-specific by construction (an
+  # `ansible.builtin.apt` deb install, a `dpkg-query` version read-back and two
+  # `dpkg-deb` reads). Without it a non-Debian bench host gains a new cache
+  # directory and a downloaded vendor deb before the first apt task refuses --
+  # a host left partially configured by a role that never applied.
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'Debian'
+    fail_msg: >-
+      ad2_tools targets Debian-family hosts (measured against Ubuntu 24.04 on
+      the bench Pi 5); this host reports {{ ansible_distribution }}
+      {{ ansible_distribution_version }} ({{ ansible_os_family }}).
+    success_msg: >-
+      {{ ansible_distribution }} {{ ansible_distribution_version }}
+      ({{ ansible_distribution_release }})
+
+- name: Create the durable vendor-deb cache (never /tmp)
+  become: true
+  ansible.builtin.file:
+    path: "{{ ad2_tools_cache_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Download the pinned Adept runtime deb (sha256-verified)
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ ad2_tools_adept_url }}"
+    dest: "{{ ad2_tools_adept_deb }}"
+    checksum: "sha256:{{ ad2_tools_adept_sha256 }}"
+    mode: "0644"
+
+- name: Install the Adept runtime
+  # apt is correct HERE (unlike WaveForms below): the runtime's dependencies
+  # are satisfiable on the bench and it ships the udev rules asserted further
+  # down, which only a real package install puts in place.
+  become: true
+  ansible.builtin.apt:
+    deb: "{{ ad2_tools_adept_deb }}"
+    state: present
+
+- name: Assert the Adept runtime reports the pinned version
+  # `command`, never `shell`: the command module runs no shell, so `${Version}`
+  # reaches dpkg-query literally as its output format. Under `shell` the
+  # calling shell would expand it to the empty string, dpkg-query would print
+  # nothing, and the comparison below could then never hold on any host.
+  ansible.builtin.command:
+    cmd: "dpkg-query -W -f=${Version} digilent.adept.runtime"
+  register: ad2_tools_adept_installed
+  changed_when: false
+  failed_when: (ad2_tools_adept_installed.stdout | trim) != ad2_tools_adept_version
+
+- name: Check for the runtime's own udev rules (vendor-owned, not ours)
+  ansible.builtin.stat:
+    path: "{{ ad2_tools_udev_rules_file }}"
+  register: ad2_tools_udev
+
+- name: Fail when the vendor udev rules are missing
+  when: not ad2_tools_udev.stat.exists
+  ansible.builtin.fail:
+    msg: >-
+      {{ ad2_tools_udev_rules_file }} is missing, so non-root capture cannot
+      work. It is a dpkg conffile of digilent.adept.runtime -- if it was
+      deleted, reinstall the package
+      (`apt-get install --reinstall digilent.adept.runtime`). Do NOT hand-write
+      a replacement: the vendor rule also runs /usr/sbin/dftdrvdtch to detach
+      ftdi_sio so libdwf can claim the interface.
+
+# --- WaveForms: owner-staged, never silently skipped -----------------------
+
+- name: Check whether the WaveForms deb is already in the durable cache
+  ansible.builtin.stat:
+    path: "{{ ad2_tools_waveforms_deb }}"
+  register: ad2_tools_wf_cached
+
+- name: Look for an owner-staged WaveForms deb in the interactive download spots
+  when: not ad2_tools_wf_cached.stat.exists
+  ansible.builtin.find:
+    paths: "{{ ad2_tools_waveforms_staging_dirs }}"
+    patterns: "{{ ad2_tools_waveforms_staging_patterns }}"
+    file_type: file
+  register: ad2_tools_wf_inbox
+
+- name: Adopt the owner-staged WaveForms deb into the durable cache
+  when:
+    - not ad2_tools_wf_cached.stat.exists
+    - (ad2_tools_wf_inbox.matched | default(0)) > 0
+  become: true
+  ansible.builtin.copy:
+    src: "{{ (ad2_tools_wf_inbox.files | sort(attribute='mtime') | last).path }}"
+    dest: "{{ ad2_tools_waveforms_deb }}"
+    remote_src: true
+    mode: "0644"
+
+- name: Re-check the durable cache after adoption
+  ansible.builtin.stat:
+    path: "{{ ad2_tools_waveforms_deb }}"
+    checksum_algorithm: sha256
+  register: ad2_tools_wf_staged
+
+- name: Fail loud when the WaveForms deb has not been staged
+  # There is no unattended URL for this package, so a missing deb is an action
+  # item for a human, not a condition to skip past. Everything below this task
+  # is unconditional: once it passes, WaveForms IS installed and verified.
+  when: not ad2_tools_wf_staged.stat.exists
+  ansible.builtin.fail:
+    msg: |
+      WaveForms is NOT staged, so libdwf is missing and the Analog Discovery 2
+      cannot capture anything. This package cannot be fetched unattended --
+      every direct URL 403s behind a click-through licence gate -- so a human
+      must download it once:
+
+        1. Open {{ ad2_tools_waveforms_page }}
+        2. Pick the "Linux ARM 64-bit" .deb
+           (digilent.waveforms_{{ ad2_tools_waveforms_version }}_arm64.deb,
+            sha256 {{ ad2_tools_waveforms_sha256 }})
+        3. Put it on this host at any of:
+             {{ ad2_tools_waveforms_deb }}   <- where the role wants it
+             /tmp/waveforms.deb              <- adopted automatically
+             ~/Downloads/                    <- adopted automatically
+        4. Re-run this play. It moves the file into the durable cache,
+           checks the sha256 and the embedded version against the pinned
+           {{ ad2_tools_waveforms_version }}, extract-installs it and
+           smoke-tests the instrument.
+
+      Refusing to continue: a bench reporting success without libdwf would be
+      a lie.
+
+- name: Assert the staged deb is the artifact this role was written against
+  ansible.builtin.assert:
+    that:
+      - ad2_tools_wf_staged.stat.checksum == ad2_tools_waveforms_sha256
+    fail_msg: >-
+      Staged WaveForms deb sha256 is {{ ad2_tools_wf_staged.stat.checksum }},
+      not the recorded {{ ad2_tools_waveforms_sha256 }}. Either the download is
+      corrupt or Digilent re-cut the release. Refusing to install it: the
+      extract-install below copies from known paths inside the archive, so a
+      changed layout would install nothing and still look like it worked.
+
+- name: Read the staged WaveForms deb's embedded package version
+  ansible.builtin.command:
+    cmd: "dpkg-deb -f {{ ad2_tools_waveforms_deb }} Version"
+  register: ad2_tools_wf_deb_version
+  changed_when: false
+  # A read-back changes nothing, so let it run in check mode too. Without this
+  # the command module is skipped, `.stdout` is empty, and the assert below
+  # compares '' against the pin and fails -- which made `just infra::check bench`
+  # impossible to pass on a bench where the deb is correctly staged.
+  check_mode: false
+
+- name: Assert the staged deb is the pinned WaveForms release
+  ansible.builtin.assert:
+    that:
+      - (ad2_tools_wf_deb_version.stdout | trim) == ad2_tools_waveforms_version
+    fail_msg: >-
+      Staged WaveForms deb is version
+      '{{ ad2_tools_wf_deb_version.stdout | trim }}', not the pinned
+      '{{ ad2_tools_waveforms_version }}'. Download the pinned release from
+      {{ ad2_tools_waveforms_page }}, or move the pin in this role's defaults
+      deliberately -- do not install an unpinned instrument SDK on the bench.
+
+- name: Check which pieces of WaveForms are already installed
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ ad2_tools_libdwf_dir }}/libdwf.so.{{ ad2_tools_waveforms_version }}"
+    - "{{ ad2_tools_dwf_header_dir }}/dwf.h"
+    - "{{ ad2_tools_waveforms_resource_dir }}/waveforms/firmware"
+  register: ad2_tools_wf_pieces
+
+- name: Extract-install WaveForms (NOT apt -- see this role's defaults)
+  # The deb's `libc6 (>= 2.41)` dependency is unsatisfiable on the bench's
+  # glibc 2.39 and does not apply to the three pieces installed here: libdwf's
+  # own ceiling is GLIBC_2.38, verifiable with
+  #   objdump -T libdwf.so.3.25.1 | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1
+  # The 2.41 floor belongs to the Qt GUI binaries, which a headless bench does
+  # not install. Gated on ALL three pieces being present, so a partial or
+  # part-deleted install self-heals rather than being skipped by one marker.
+  when: not (ad2_tools_wf_pieces.results | map(attribute='stat.exists') | min)
+  become: true
+  block:
+    - name: Create a scratch directory to unpack the deb into
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: waveforms
+      register: ad2_tools_wf_tmp
+
+    - name: Unpack the WaveForms deb
+      ansible.builtin.command:
+        cmd: "dpkg-deb -x {{ ad2_tools_waveforms_deb }} {{ ad2_tools_wf_tmp.path }}"
+      changed_when: true
+
+    - name: Install libdwf, preserving the SONAME symlinks
+      # cp -P, not the copy module: the deb ships libdwf.so and libdwf.so.3 as
+      # symlinks to libdwf.so.{{ ad2_tools_waveforms_version }}, and a
+      # dereferencing copy would install three 1.9 MB regular files instead of
+      # one library plus two links. The glob is why this is shell, not command.
+      ansible.builtin.shell:
+        cmd: >-
+          cp -P {{ ad2_tools_wf_tmp.path }}/usr/lib/libdwf.so*
+          {{ ad2_tools_libdwf_dir }}/
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Install the dwf.h header
+      ansible.builtin.copy:
+        src: "{{ ad2_tools_wf_tmp.path }}/usr/include/digilent/waveforms/dwf.h"
+        dest: "{{ ad2_tools_dwf_header_dir }}/dwf.h"
+        remote_src: true
+        mode: "0644"
+
+    - name: Create the WaveForms resource directory
+      ansible.builtin.file:
+        path: "{{ ad2_tools_waveforms_resource_dir }}/waveforms"
+        state: directory
+        mode: "0755"
+
+    - name: Install the device firmware/configuration resources
+      # Copied with `cp -a ... /.` into an existing directory so a re-run after
+      # a partial install cannot nest waveforms/waveforms.
+      ansible.builtin.command:
+        cmd: >-
+          cp -a {{ ad2_tools_wf_tmp.path }}/usr/share/digilent/waveforms/.
+          {{ ad2_tools_waveforms_resource_dir }}/waveforms/
+      changed_when: true
+
+    - name: Refresh the loader cache so libdwf resolves
+      ansible.builtin.command:
+        cmd: ldconfig
+      changed_when: true
+  always:
+    - name: Remove the unpack scratch directory (nothing durable in /tmp)
+      when: ad2_tools_wf_tmp.path is defined
+      ansible.builtin.file:
+        path: "{{ ad2_tools_wf_tmp.path }}"
+        state: absent
+
+- name: Assert the loader resolves libdwf
+  ansible.builtin.shell:
+    cmd: "ldconfig -p | grep -F libdwf.so"
+    executable: /bin/bash
+  register: ad2_tools_libdwf
+  changed_when: false
+  failed_when: ad2_tools_libdwf.rc != 0
+
+- name: Check the header and the device resources landed
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ ad2_tools_dwf_header_dir }}/dwf.h"
+    - "{{ ad2_tools_waveforms_resource_dir }}/waveforms/firmware"
+  register: ad2_tools_wf_verify
+
+- name: Assert the header and the device resources landed
+  ansible.builtin.assert:
+    that:
+      - ad2_tools_wf_verify.results | map(attribute='stat.exists') | min
+    fail_msg: >-
+      The WaveForms extract-install did not place everything it must.
+      Missing:
+      {{ ad2_tools_wf_verify.results
+         | rejectattr('stat.exists')
+         | map(attribute='item') | join(', ') }}.
+      Without the firmware/configuration resources FDwfDeviceOpen fails
+      "Device not supported. No compatible configuration found" even though
+      the instrument enumerates -- which reads like a hardware fault and is
+      not one.
+
+# --- The instrument must actually be attached and usable -------------------
+#
+# Every probe below carries `check_mode: false`. They only READ -- a `lsusb`, a
+# grep over sysfs, a version query -- so running them under --check is safe, and
+# NOT running them is actively harmful: ansible skips command/shell tasks in
+# check mode, which leaves `.stdout` empty and makes the assertions that consume
+# it fail against a bench where the instrument is present and correct. That made
+# `just infra::check bench` impossible to pass. The one task deliberately
+# left to skip is the libdwf smoke test, which opens the device.
+
+- name: Probe the USB bus for the Analog Discovery 2
+  ansible.builtin.command:
+    cmd: "lsusb -d {{ ad2_tools_device_vidpid }}"
+  register: ad2_tools_lsusb
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Probe sysfs for the pinned Digilent serial
+  # Matched on serial as well as VID:PID -- any other FT232H on the bench
+  # answers to 0403:6014 on its own. sysfs is used rather than the
+  # /dev/serial/by-id symlink because that only exists while ftdi_sio holds
+  # the interface, which is exactly what dftdrvdtch takes away during capture.
+  ansible.builtin.shell:
+    cmd: "grep -rlx '{{ ad2_tools_device_serial }}' /sys/bus/usb/devices/*/serial"
+    executable: /bin/bash
+  register: ad2_tools_serial_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Assert the Analog Discovery 2 is attached and enumerated
+  ansible.builtin.assert:
+    that:
+      - ad2_tools_lsusb.rc == 0
+      - ad2_tools_device_vidpid in ad2_tools_lsusb.stdout
+      - ad2_tools_serial_probe.rc == 0
+    fail_msg: >-
+      Analog Discovery 2 (VID:PID {{ ad2_tools_device_vidpid }}, serial
+      {{ ad2_tools_device_serial }}) did not enumerate. lsusb rc
+      {{ ad2_tools_lsusb.rc }}, sysfs serial probe rc
+      {{ ad2_tools_serial_probe.rc }}. Check the USB cable into the bench hub
+      and that the instrument's power LED is lit -- the software above is
+      installed but has no device to talk to.
+
+- name: Smoke-test the AD2 through libdwf (loads, enumerates, opens)
+  # Runs the canonical bench tool rather than an inline one-liner, so a human
+  # can reproduce exactly what the role asserts. ansible.builtin.script copies
+  # it to the target and runs it there, so the bench needs no repo checkout;
+  # role_path resolves out of infra/ansible/roles/ad2_tools to the repo root.
+  # A non-zero exit fails the play, which is the point: enumeration alone does
+  # not prove the device resources are installed, and an open does.
+  ansible.builtin.script:
+    cmd: "{{ role_path }}/../../../../scripts/hil/ad2_smoke.py"
+  register: ad2_tools_smoke
+  changed_when: false
+
+- name: Probe the optional Adept dadutil enumeration CLI
+  # The runtime package ships libraries + /usr/sbin/dftdrvdtch only; dadutil
+  # lives in the separate Adept *utilities* package, which this bench does not
+  # install. Nothing above depends on it -- this probe only enriches the report
+  # on a host where the utilities package happens to be present.
+  ansible.builtin.command:
+    cmd: dadutil enum
+  check_mode: false
+  register: ad2_tools_dadutil
+  changed_when: false
+  failed_when: false
+
+- name: Report AD2 bench-instrument state
+  ansible.builtin.debug:
+    msg: >-
+      AD2 ready: adept runtime {{ ad2_tools_adept_installed.stdout | trim }},
+      WaveForms {{ ad2_tools_wf_deb_version.stdout | trim }} extract-installed
+      (libdwf in {{ ad2_tools_libdwf_dir }}, header in
+      {{ ad2_tools_dwf_header_dir }}, resources in
+      {{ ad2_tools_waveforms_resource_dir }}/waveforms), vendor udev rules at
+      {{ ad2_tools_udev_rules_file }}; instrument
+      {{ ad2_tools_device_vidpid }} serial {{ ad2_tools_device_serial }}
+      enumerated at
+      {{ ad2_tools_serial_probe.stdout_lines | first | trim | dirname }};
+      smoke test:
+      {{ (ad2_tools_smoke.stdout_lines | last | trim)
+         if (ad2_tools_smoke.stdout_lines is defined)
+         else 'SKIPPED (check mode -- it opens the device, so it is not a dry run)' }};
+      dadutil {{ 'enumerates the device' if ad2_tools_dadutil.rc == 0
+                 else 'not installed (Adept utilities package absent)' }}.

@@ -42,7 +42,7 @@ protocol version 2.12.11, which is what makes them wire-compatible.
 - **How it enters our build**: `coprocessor/esp32c6/build.sh` clones the upstream
   repository, checks out the pinned commit `949bb30`, applies the reviewed
   `0001-custom-rpc-sync-response-hook.patch`, stages the first-party
-  `ra8_mdl_service` component, drops in the proven
+  `mdl_service` component, drops in the proven
   `coprocessor/esp32c6/sdkconfig.defaults`, and builds the `network_adapter`
   peripheral-side application with the pinned esp-idf. The fetched SOUP is not
   vendored; the patch, component, and recipe are the reviewable record.
@@ -57,11 +57,11 @@ protocol version 2.12.11, which is what makes them wire-compatible.
   says nothing about the BT stack so what the C6 image contains is
   undetermined, and the RA8-side BLE work is still open (#493).
 - The C6 image is mixed: pinned esp-hosted-mcu SOUP plus the first-party
-  `ra8_mdl_service` component. A small checked patch exposes a synchronous,
+  `mdl_service` component. A small checked patch exposes a synchronous,
   bounded CustomRpc response hook; the first-party component implements a
   pull-based HTTPS artifact transfer behind it. The C6 image remains separate
   from the RA8D2 image, and only the upstream portion is accepted as SOUP.
-- This project uses "co-processor" / "peripheral-side" for the C6 app to match its inclusive terminology standard, in place of the upstream role name. <!-- LEGACY-OK: names the upstream esp-hosted-mcu slave role verbatim -->
+- This project uses "co-processor" / "peripheral-side" for the C6 app to match its inclusive terminology standard, in place of the upstream role name.
 - Integrity-claim category: none. No safety signal in this project depends on
   the C6 link; it is a connectivity convenience.
 
@@ -82,7 +82,7 @@ DO-178C Section 12.1.4 (previously developed software):
   project uses.
 - **Black-box treatment**: the upstream portion is admitted as a pre-developed
   component whose internal structure is not re-verified here (no source-level
-  MC/DC, MISRA, or Doxygen audit). The patch and `ra8_mdl_service` are
+  MC/DC, MISRA, or Doxygen audit). The patch and `mdl_service` are
   first-party code and remain subject to normal source review and tests. The
   C6 is reachable only through the RA8-side host driver's integration boundary
   and carries no integrity claim.
@@ -105,9 +105,14 @@ DO-178C Section 12.1.4 (previously developed software):
   `coprocessor/esp32c6/patches/0001-custom-rpc-sync-response-hook.patch` to the
   exact pinned commit. It adds a weak bounded CustomRpc hook and registers the
   first-party component; it does not alter radio, transport, or Wi-Fi logic.
-  `git apply --check` makes upstream drift a hard build failure, and the build
-  asserts that the strong first-party handler symbol is present in the final
-  ELF.
+  The per-push offline patch gate requires the full pin, numbered series, and
+  build entry point to remain connected. `git apply --check` makes upstream
+  drift a hard build failure, and the build asserts that the strong first-party
+  handler symbol is present in the final ELF. Independently, the controlled
+  weekly SOUP refresh fetches only that exact 40-hex commit into a disposable
+  checkout, sequentially applies the numbered series, then reverses it and
+  requires the pinned checkout to be clean again. That continuous proof is
+  apply-only: it never flashes or contacts the bench.
 
 ## CVE monitoring
 

@@ -36,7 +36,7 @@ firmware as Software Of Unknown Provenance (SOUP).
   `examples/ek_ra8d2/hw_validated/`** (measured at `e0ac93111`). They include
   all 26 applications that link USBX, all five ESP32-C6 Wi-Fi applications and
   the DFU bootloader family. Beyond the examples, the non-secure e-reader
-  product image enters the kernel directly (`apps/stand_alone/ereader/ns_main.c`,
+  product image enters the kernel directly (`apps/board/stand_alone/ereader/src/ns_main.c`,
   `tx_kernel_enter()`), and the first-party `libs/ra8_wdt_supervisor/` creates
   a ThreadX thread.
 - The applications actually NAMED `threadx_*` are ten in the supported tiers:
@@ -78,7 +78,7 @@ DO-178C Section 12.1.4 (previously developed software):
 
 - Direct ThreadX API calls are **not** confined to the `threadx_*` examples.
   The first-party callers are `libs/ra8_wdt_supervisor/` (`tx_thread_create`),
-  `apps/stand_alone/ereader/ns_main.c` (two `tx_thread_create` plus
+  `apps/board/stand_alone/ereader/src/ns_main.c` (two `tx_thread_create` plus
   `tx_kernel_enter`, the
   e-reader NS product image), `libs/ra8_core/src/ra8_time.c` (a weak-linked
   `_tx_timer_interrupt` tick hook that resolves to nothing when the kernel is
@@ -86,7 +86,7 @@ DO-178C Section 12.1.4 (previously developed software):
   `port/nimble/` and `port/esp-hosted/`. That is the audited blast radius.
 - `libs/ra8_hal/` does not depend on the kernel (zero `tx_*` API references),
   so the HAL is built and unit-tested off-target without ThreadX present.
-- The kernel path is exercised by the emulator gates, not by a `make smoke`
+- The kernel path is exercised by the emulator gates, not by the HIL suite
   target -- no such target exists. `scripts/emu/smoke.sh` behind the
   `emulator-smoke` gate boots the example applications in `ra8_emulator`, the
   `emulator-matrix` gate does the same across the full breadth ratcheted
@@ -117,5 +117,5 @@ and prose does not notice a tree-wide sweep reaching into `libs/third_party/`.
 - Use case + risk mitigation re-verified against the tree and corrected
   (#624): 2026-08-04. The kernel's footprint was understated by roughly 4x,
   a deleted application was still cited, and the named verification hook
-  (`make smoke`) never existed.
+  hardware-smoke coverage never existed.
 - Expected re-review by: 2027-05-02

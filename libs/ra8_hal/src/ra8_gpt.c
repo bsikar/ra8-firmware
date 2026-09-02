@@ -284,7 +284,9 @@ ra8_err_t ra8_gpt_start_free_run(uint8_t channel, uint32_t period)
   internal_gpt_clock_block_init();
   /* HUM Ch 11.2.10 "MSTPCRE : Module Stop Control Register E", p 449 */
   const ra8_err_t mst_err = ra8_mstp_enable(s_gpt_mstp_table[channel]);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "gpt_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "gpt_start: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   reg->GTWP  = k_ra8_gtwp_key_unlock;
   reg->GTSTP = 1UL;          /* Stop if running.   */
@@ -312,7 +314,7 @@ ra8_err_t ra8_gpt_stop(uint8_t channel)
 ra8_err_t ra8_gpt_read(uint8_t channel, uint32_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  volatile r_gpt_channel_regs_t* reg = ra8_gpt(channel);
+  volatile const r_gpt_channel_regs_t* reg = ra8_gpt(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
   *out = reg->GTCNT;
@@ -336,7 +338,7 @@ ra8_err_t ra8_gpt_init(uint8_t channel, const ra8_gpt_cfg_t* cfg)
   internal_gpt_clock_block_init();
   /* HUM Ch 11.2.10 "MSTPCRE : Module Stop Control Register E", p 449 */
   const ra8_err_t mst_err = ra8_mstp_enable(s_gpt_mstp_table[channel]);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "gpt_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "gpt_init: mstp enable");
 
   reg->GTWP  = k_ra8_gtwp_key_unlock;
   reg->GTSTP = k_ra8_gpt_gtstp_stop;
@@ -406,7 +408,7 @@ ra8_err_t ra8_gpt_set_duty(uint8_t channel, ra8_gpt_ccr_sel_t which, uint32_t va
 ra8_err_t ra8_gpt_get_status(uint8_t channel, uint32_t* out_mask)
 {
   RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  volatile r_gpt_channel_regs_t* reg = ra8_gpt(channel);
+  volatile const r_gpt_channel_regs_t* reg = ra8_gpt(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
   *out_mask = reg->GTST & k_ra8_gpt_gtst_mask;
@@ -471,9 +473,6 @@ ra8_err_t ra8_gpt_write_dma(uint8_t               channel,
     return k_ra8_err_invalid_arg;
   }
   volatile r_gpt_channel_regs_t* reg = ra8_gpt(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
-  }
   /* Word-wide DMA writes stream period values into GTPR;
      dst_inc=false so every element lands at the same MMIO address. */
   /* HUM Ch 22.2.21 "GTPR : General PWM Timer Cycle Setting Register" p 938 */
@@ -506,9 +505,6 @@ ra8_err_t ra8_gpt_read_dma(
     return k_ra8_err_invalid_arg;
   }
   volatile r_gpt_channel_regs_t* reg = ra8_gpt(channel);
-  if (reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_arg; /* GCOVR_EXCL_LINE    */
-  }
   /* Word-wide DMA reads stream GTCNT snapshots into out_counts[]. */
   /* HUM Ch 22.2.19 "GTCNT : General PWM Timer Counter" p 938 */
   ra8_dma_request_t req = {};
@@ -787,11 +783,11 @@ RA8_INTERNAL static ra8_err_t internal_three_phase_init_subs(const ra8_gpt_three
       .auto_start = false,
     };
     const ra8_err_t err = ra8_gpt_init(cfg->channels[i], &per_ch_cfg);
-    if (err != k_ra8_ok) {                      /* GCOVR_EXCL_BR_LINE */
-      for (uint8_t j = 0U; j < i; ++j) {        /* GCOVR_EXCL_LINE    */
-        (void)ra8_gpt_deinit(cfg->channels[j]); /* GCOVR_EXCL_LINE    */
-      } /* GCOVR_EXCL_LINE */
-      return err; /* GCOVR_EXCL_LINE */
+    if (err != k_ra8_ok) {
+      for (uint8_t j = 0U; j < i; ++j) {
+        (void)ra8_gpt_deinit(cfg->channels[j]);
+      }
+      return err;
     }
     mask |= (uint32_t)(1UL << cfg->channels[i]);
     s_three_phase.channels[i] = cfg->channels[i];
@@ -814,8 +810,8 @@ ra8_err_t ra8_gpt_three_phase_open(const ra8_gpt_three_phase_cfg_t* cfg)
 
   uint32_t        mask = 0U;
   const ra8_err_t err  = internal_three_phase_init_subs(cfg, &mask);
-  if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
-    return err;          /* GCOVR_EXCL_LINE    */
+  if (err != k_ra8_ok) {
+    return err;
   }
 
   /* Synchronous start: a single GTSTR write to the U-channel slot
@@ -842,11 +838,8 @@ ra8_err_t ra8_gpt_three_phase_set_duty(uint32_t u_duty, uint32_t v_duty, uint32_
   const uint32_t duties[k_ra8_gpt_three_phase_count] = {u_duty, v_duty, w_duty};
 
   /* Range check against the shared GTPR (read once from U). */
-  volatile r_gpt_channel_regs_t* u_reg = ra8_gpt(s_three_phase.channels[0]);
-  if (u_reg == nullptr) {           /* GCOVR_EXCL_BR_LINE */
-    return k_ra8_err_invalid_state; /* GCOVR_EXCL_LINE    */
-  }
-  const uint32_t period = u_reg->GTPR;
+  volatile const r_gpt_channel_regs_t* u_reg  = ra8_gpt(s_three_phase.channels[0]);
+  const uint32_t                       period = u_reg->GTPR;
   for (uint8_t i = 0U; i < k_ra8_gpt_three_phase_count; ++i) {
     if (duties[i] > period) {
       return k_ra8_err_invalid_arg;
@@ -855,12 +848,9 @@ ra8_err_t ra8_gpt_three_phase_set_duty(uint32_t u_duty, uint32_t v_duty, uint32_
 
   for (uint8_t i = 0U; i < k_ra8_gpt_three_phase_count; ++i) {
     volatile r_gpt_channel_regs_t* reg = ra8_gpt(s_three_phase.channels[i]);
-    if (reg == nullptr) {             /* GCOVR_EXCL_BR_LINE */
-      return k_ra8_err_invalid_state; /* GCOVR_EXCL_LINE    */
-    }
-    reg->GTWP                       = k_ra8_gtwp_key_unlock;
-    reg->GTCCR[k_ra8_gpt_ccr_idx_c] = duties[i];
-    reg->GTCCR[k_ra8_gpt_ccr_idx_e] = duties[i];
+    reg->GTWP                          = k_ra8_gtwp_key_unlock;
+    reg->GTCCR[k_ra8_gpt_ccr_idx_c]    = duties[i];
+    reg->GTCCR[k_ra8_gpt_ccr_idx_e]    = duties[i];
     reg->GTBER |= k_ra8_gpt_gtber_ccra_single | k_ra8_gpt_gtber_ccrb_single;
     reg->GTWP = k_ra8_gtwp_key_lock;
   }

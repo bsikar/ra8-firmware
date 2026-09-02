@@ -33,7 +33,7 @@ This is not a hypothetical. ``gate_cite_check`` and ``gate_no_ai_attribution``
 each ran a ``--selftest`` first "so a detector that stopped matching cannot
 pass as a clean tree" -- and then discarded that selftest's status, because
 both were ``{ }`` bodies. The protection the comment described was inert in
-``make ci`` while working under ``bash scripts/ci.sh --gate <name>``, i.e. the
+``just ci`` while working under ``just quality::local::gate <name>``, i.e. the
 exact local-green / CI-red divergence ``scripts/ci.sh`` claims is structurally
 impossible.
 
@@ -48,7 +48,7 @@ A THIRD RULE: A GATE MEASURES THE TREE UNDER TEST
 -------------------------------------------------
 
 ``run_suite_on_snapshot`` cds into a clean snapshot of HEAD and dispatches
-every gate from there, which is what "``make ci`` gates committed HEAD, exactly
+every gate from there, which is what "``just ci`` gates committed HEAD, exactly
 like CI" means.  ``$REPO_ROOT`` is something else entirely: the HOST checkout
 the runner was invoked from.  A gate body that reaches for it measures a
 different tree than the one the suite claims to be gating.
@@ -254,7 +254,7 @@ def check_fragment_scope(text: str, path: Path) -> list[str]:
 
     Applied to the WHOLE fragment rather than to the ``gate_*()`` bodies alone,
     because a gate is its helpers too.  ``gate_tools_build`` delegated to
-    ``_tb_media_dl`` / ``_tb_rabook_viewer`` / ``_tb_other_tools``, and it was
+    ``_tb_mdl`` / ``_tb_rabook_viewer`` / ``_tb_other_tools``, and it was
     those helpers that held most of the ``$REPO_ROOT`` paths -- a body-scoped
     rule would have passed the file with the defect still in it.
 

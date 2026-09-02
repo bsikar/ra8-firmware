@@ -48,11 +48,11 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
-internal_mdl_transfer_validate(ra8_c6link_t*                    link,
+internal_mdl_transfer_validate(const ra8_c6link_t*              link,
                                const char*                      url,
                                const char*                      destination,
                                const ra8_mdl_transfer_config_t* config,
-                               ra8_mdl_transfer_result_t*       result)
+                               const ra8_mdl_transfer_result_t* result)
 {
   if ((link == nullptr) || (url == nullptr) || (destination == nullptr) || (config == nullptr) ||
       (result == nullptr)) {
@@ -65,10 +65,10 @@ internal_mdl_transfer_validate(ra8_c6link_t*                    link,
       (config->sha256.ctx == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  if ((uint32_t)config->format > (uint32_t)k_ra8_mdl_format_rabook) {
+  if ((uint32_t)config->format > (uint32_t)k_mdl_format_rabook) {
     return k_ra8_err_invalid_arg;
   }
-  if ((config->format != k_ra8_mdl_format_loose) && (config->storage.validate == nullptr)) {
+  if ((config->format != k_mdl_format_loose) && (config->storage.validate == nullptr)) {
     return k_ra8_err_null_ptr;
   }
   const uint64_t byte_budget = (uint64_t)config->chunk_bytes * config->max_chunks;

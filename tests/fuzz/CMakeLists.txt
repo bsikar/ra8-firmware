@@ -12,9 +12,9 @@
 #         -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
 #     cmake --build tests/build-fuzz --target ra8_fuzz_all
 #
-# Or via the top-level Makefile:
+# Or via the top-level justfile:
 #
-#     make fuzz                # 30s smoke run of every harness
+#     just quality::local::fuzz  # 30s smoke run of every harness
 #
 # Per-harness longer sessions:
 #
@@ -63,7 +63,7 @@ else()
 endif()
 
 # Each fuzz target links against the slim ra8_core_hal_fuzz OBJECT library
-# (ra8_core_hal MINUS tests/mocks/ra8_fake_mmap.c; defined in
+# (ra8_core_hal MINUS tests/mocks/src/ra8_fake_mmap.c; defined in
 # tests/CMakeLists.txt). That library is compiled WITHOUT the fuzzer
 # sanitizer flags, so coverage feedback only spans the harness translation
 # unit. ASan and UBSan still observe out-of-bounds reads / integer UB
@@ -82,7 +82,7 @@ endif()
 set(RA8_FUZZ_TARGETS
     fuzz_ra8_jpeg_sw
     fuzz_ra8_jpeg_sw_block
-    fuzz_ra8_epub
+    fuzz_epub
     fuzz_ra8_modem_at
     fuzz_ra8_usb_pal
     fuzz_ra8_tls
@@ -90,15 +90,15 @@ set(RA8_FUZZ_TARGETS
     fuzz_ra8_etha
     fuzz_ra8_fs_fat
     fuzz_ra8_stb_image
-    fuzz_ra8_reflow_xml
+    fuzz_reflow_xml
     fuzz_ra8_stbtt
     fuzz_ra8_rar
     fuzz_ra8_webp
-    fuzz_ra8_jof
-    fuzz_ra8_jof_produce
-    fuzz_ra8_unarch_xz
-    fuzz_ra8_unarch_tar
-    fuzz_ra8_unarch_gzip
+    fuzz_jof
+    fuzz_jof_produce
+    fuzz_unarch_xz
+    fuzz_unarch_tar
+    fuzz_unarch_gzip
     fuzz_ra8_decomp_limits
 )
 
@@ -110,13 +110,37 @@ set(RA8_FUZZ_TARGETS
 #   fuzz_ra8_usb_pal  -- ra8_mstp_init + ra8_usb_pal_init / _ep_* touch USBFS regs
 set(RA8_FUZZ_MMIO_TARGETS fuzz_ra8_canfd fuzz_ra8_usb_pal)
 
+file(GLOB_RECURSE RA8_APP_FUZZ_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/fuzz_*.c)
+list(
+  FILTER
+  RA8_APP_FUZZ_SOURCES
+  INCLUDE
+  REGEX
+  "/tests/src/fuzz_[^/]+\\.c$"
+)
+
 foreach(_t ${RA8_FUZZ_TARGETS})
   # fuzz_log_sink.c installs a discard ra8_log byte sink before main() so no
   # harness reaches the ITM registers at 0xE0000000 (which are unmapped
   # here -- see fuzz_log_sink.c and issue #193). Linked into every harness.
-  set(_t_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${_t}.c ${CMAKE_CURRENT_SOURCE_DIR}/fuzz_log_sink.c)
+  set(_t_src ${CMAKE_CURRENT_SOURCE_DIR}/src/${_t}.c)
+  if(NOT EXISTS ${_t_src})
+    set(_t_matches "")
+    foreach(_candidate IN LISTS RA8_APP_FUZZ_SOURCES)
+      get_filename_component(_candidate_name ${_candidate} NAME_WE)
+      if(_candidate_name STREQUAL _t)
+        list(APPEND _t_matches ${_candidate})
+      endif()
+    endforeach()
+    list(LENGTH _t_matches _t_match_count)
+    if(NOT _t_match_count EQUAL 1)
+      message(FATAL_ERROR "RA8_FUZZ_TARGETS entry ${_t} resolves to ${_t_match_count} sources")
+    endif()
+    list(GET _t_matches 0 _t_src)
+  endif()
+  set(_t_srcs ${_t_src} ${CMAKE_CURRENT_SOURCE_DIR}/src/fuzz_log_sink.c)
   if(_t IN_LIST RA8_FUZZ_MMIO_TARGETS)
-    list(APPEND _t_srcs ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/ra8_fake_mmap.c)
+    list(APPEND _t_srcs ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/src/ra8_fake_mmap.c)
   endif()
   add_executable(${_t} ${_t_srcs} $<TARGET_OBJECTS:ra8_core_hal_fuzz>)
   target_compile_options(${_t} PRIVATE ${RA8_FUZZ_SAN_FLAGS})
@@ -127,22 +151,24 @@ foreach(_t ${RA8_FUZZ_TARGETS})
             ${FW_ROOT}/libs/ra8_hal/inc
             ${FW_ROOT}/libs/ra8_modem_at/inc
             ${FW_ROOT}/libs/ra8_net_pal/inc
-            ${FW_ROOT}/libs/ra8_epub/inc
-            ${FW_ROOT}/libs/ra8_epub/src
+            ${FW_ROOT}/apps/shared_libs/epub/inc
+            ${FW_ROOT}/apps/shared_libs/epub/src
+            ${FW_ROOT}/apps/shared_libs/xml/inc
+            ${FW_ROOT}/libs/ra8_jpeg/inc
             ${FW_ROOT}/libs/ra8_usb_pal/inc
             ${FW_ROOT}/libs/ra8_tls/inc
             ${FW_ROOT}/libs/ra8_fs/inc
-            ${FW_ROOT}/libs/ra8_reflow/inc
-            ${FW_ROOT}/libs/ra8_comic/inc
-            ${FW_ROOT}/libs/ra8_unarch/inc
-            ${FW_ROOT}/libs/ra8_webp/inc
-            ${FW_ROOT}/libs/ra8_jof/inc
-            ${FW_ROOT}/libs/third_party/stb
-            ${FW_ROOT}/libs/third_party/xz_embedded
-            # tests/ root: shared test fixtures (e.g. eth_frame_fixture.h,
-            # the fuzz_ra8_etha parse target).
-            ${CMAKE_CURRENT_SOURCE_DIR}/..
-            ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
+            ${FW_ROOT}/apps/shared_libs/reflow/inc
+            ${FW_ROOT}/apps/shared_libs/comic/inc
+            ${FW_ROOT}/apps/shared_libs/unarch/inc
+            ${FW_ROOT}/apps/shared_libs/webp/inc
+            ${FW_ROOT}/apps/shared_libs/jof/inc
+            ${FW_ROOT}/apps/shared_libs/third_party/stb
+            ${FW_ROOT}/apps/shared_libs/third_party/xz_embedded
+            ${CMAKE_CURRENT_SOURCE_DIR}/inc
+            ${CMAKE_CURRENT_SOURCE_DIR}/../fixtures/inc
+            ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/inc
+            ${CMAKE_CURRENT_SOURCE_DIR}/../support/inc
   )
   set_target_properties(${_t} PROPERTIES LINKER_LANGUAGE CXX)
 endforeach()
@@ -155,13 +181,13 @@ add_custom_target(
 )
 
 # Seed corpora live under tests/fuzz/corpus/<target>/ and are
-# (re-)materialised by scripts/checks/init_fuzz_corpora.sh. Both
-# `make fuzz` and scripts/checks/run_fuzz.sh invoke that script
+# (re-)materialised by scripts/builders/init_fuzz_corpora.sh. Both
+# `just quality::local::fuzz` and scripts/checks/run_fuzz.sh invoke that script
 # before running a harness, then pass the corpus directory as a
 # positional argument to libFuzzer. See docs/FUZZING.md.
 add_custom_target(
   ra8_fuzz_seed_corpora
-  COMMAND bash ${FW_ROOT}/scripts/checks/init_fuzz_corpora.sh
+  COMMAND bash ${FW_ROOT}/scripts/builders/init_fuzz_corpora.sh
   WORKING_DIRECTORY ${FW_ROOT}
   COMMENT "Seeding libFuzzer corpora under tests/fuzz/corpus/"
 )

@@ -8,14 +8,44 @@ file covers the developer-side workflow that surrounds that suite.
 
 ## How HIL CI is wired
 
-The project runs a self-hosted **Raspberry Pi 5 runner** (labels
-`self-hosted, hil, ra8d2`, host alias `star@star.local`) that has
-the EK-RA8D2 wired to it.
+The project runs a dedicated native Actions listener on the **dev box** (labels
+`self-hosted, hil, ra8d2`). It builds there, while the existing HIL scripts use
+an isolated SSH identity to operate the Raspberry Pi 5 bench wired to the
+EK-RA8D2. The `dev_box` Ansible role owns the pinned host tools; the workflow
+does not install dependencies. Its bench target comes from the protected
+controller `.env` as `PI_HOST`. Ansible installs `PI_HOST`, `JLINK_SN`, and
+`JLINK_DEVICE` into the runner's root-only service environment. The interactive
+`~/.config/ra8/hil.env` also receives `PI_REPO`, so `just hil::*` works from
+every linked worktree without copying configuration into each checkout. The
+interactive file preserves that account's user-qualified `PI_HOST`; the
+isolated service strips the username and uses only its role-owned SSH identity.
+
+[`rig_contract.sh`](../scripts/hil/lib/rig_contract.sh) is the single typed
+authority for all four values. It accepts user-qualified DNS/IPv4 SSH targets,
+identifier-shaped probe/device names, and traversal-free absolute or relative
+repository paths. Leading-option hosts, control characters, whitespace, shell
+metacharacters, malformed addresses, and unsafe path segments fail before any
+value reaches ssh, scp, a heredoc, or a remote command. Ansible parses only the
+allowlisted assignments and delegates their values to that same authority.
+IPv6 targets, including bracketed literals, are intentionally rejected: the
+current Ansible, systemd-environment, and SSH configuration path is specified
+and tested only for DNS names and IPv4. Give an IPv6-only bench a DNS name
+rather than adding a second grammar in one consumer.
+
+A checkout-local `.env` remains the workstation override, and `RA8_RIG_ENV`
+selects an explicit protected file when needed. The interactive loader never
+executes that file. The isolated declarative parser requires a current-user-
+owned, non-symlink, mode-0600 regular file, accepts literal assignments for the
+four declared fields and the documented non-secret wait/actor/TTY controls, and
+rejects command syntax and expansion. TAPO secrets and unknown keys never enter
+the shell representation. It reads through the authenticated descriptor, so
+replacing the pathname cannot change the bytes being parsed. Use `chmod 0600
+.env` after copying the example.
 
 The authoritative driver is
 [`scripts/hil/all.sh`](../scripts/hil/all.sh), which
 [`.github/workflows/hil.yml`](../.github/workflows/hil.yml) reaches through
-the `hil-all` gate (`bash scripts/ci.sh --gate hil-all`). It
+the `hil-all` gate (`just quality::local::gate hil-all`). It
 auto-discovers every app under
 `examples/ek_ra8d2/hw_validated/hil/` and verifies each app against
 its `hil.conf` manifest. Each manifest names a `HIL_MODE`, and
@@ -29,37 +59,82 @@ auto-recovery for the AHB-AP-gated / TrustZone-locked / LPM-stuck
 failure modes (see `scripts/hil/dlm_reset.sh` for the full DLM
 recovery flow).
 
+## Converging the dev-box HIL listener
+
+The registered native listener can be checked through its focused tag. A real
+converge enters the complete authenticated dev-box transaction:
+
+```sh
+just infra::check dev dev-box hil-runner
+just --yes infra::apply dev dev-box
+```
+
+Both are canonical fleet entry points. The dry run may select the
+`hil-runner` task slice because it changes nothing. The real apply deliberately
+accepts no public tag selector: the fleet dispatcher previews the complete
+play, authenticates the whole-bench hold, and stops only an idle listener
+before any dev-box mutation. First registration uses the separately typed
+`infra::register_hil` path.
+
+## Board-facing Ethernet topology
+
+Ethernet HIL does not auto-detect an `enx*`/`usb*` adapter. The EK-RA8D2 is
+wired to the bench host's fleet-declared built-in Ethernet port. The
+`hil_bench` role owns its interface name, permanent MAC, canonical sysfs device,
+and PHC index through `hil_bench_eth_iface`, `hil_bench_eth_mac`,
+`hil_bench_eth_sysfs_device`, and `hil_bench_eth_phc_index`. Convergence fails
+if that physical identity drifts, if it is an uplink, or if hardware transmit
+and receive timestamping/its PTP hardware clock are absent. A USB-Ethernet
+adapter is therefore intentionally rejected rather than selected as a
+fallback. At runtime `scripts/hil/eth_tcp.sh` asks the installed root-owned
+policy helper for the already-authenticated interface; it does not rediscover
+one by name or carrier state.
+
 ## Pre-push checklist (HIL-equipped contributors)
 
 If you have an EK-RA8D2 attached locally (independent of the Pi
 runner), you can pre-check your changes before pushing:
 
-1. Build every EVM app:
+1. Build the repository:
    ```sh
-   make build-all
+   just build_all
    ```
 2. Confirm the EK-RA8D2 is detected (see "Detecting the J-Link OB"
    below).
-3. Run the HIL driver locally:
+3. Run one offline-capable app against the board attached to this Mac:
    ```sh
-   bash scripts/hil/all.sh
+   just hil::run_local <app>
    ```
-   Subsets and per-mode runs are documented at the top of
-   `scripts/hil/all.sh`.
-4. Or run one app's per-mode helper from `scripts/hil/` directly --
-   the same script CI runs for that app's declared `HIL_MODE`.
+   This covers `uart_scrape`, `jlink_memprobe`, and the fault-recovery `alive`
+   mode. Wire-side peer modes still require the Pi.
+4. Run the full suite on the guarded remote rig when the change affects a
+   wire-side mode or shared HIL infrastructure:
+   ```sh
+   just hil::run
+   ```
+   Pass a comma-separated app list as the first argument to select a subset.
 
 Contributors **without** an EK-RA8D2 may still open PRs: the host
-unit-test build (`make test`) and the cross-build CI
-(`firmware.yml`) are what gate them. The Pi-attached `hil.yml` is
-scheduled separately from those (see its `on:` block for how it is
-triggered), because a bench with one board is a serial resource and
-cannot gate every push.
+unit-test build (`just quality::local::test`) and the cross-build CI
+(`firmware.yml`) are what gate them. Fork PRs are never admitted to the
+persistent HIL runner; same-repository PRs and pushes matching `hil.yml`'s path
+filter are scheduled separately because a bench with one board is a serial
+resource.
 
 ## Detecting the J-Link OB
 
 The EK-RA8D2's on-board J-Link OB enumerates as a SEGGER USB device
-once **J10** is plugged in. The detection one-liners differ by host:
+once **J10** is plugged in. Use the repository entry point first:
+
+```sh
+just hil::find_jlink
+```
+
+When `PI_HOST` is configured, the command queries that bench host over
+SSH without connecting to the target. On the Pi or a directly attached
+rig it scans locally. In both cases it prefers `JLinkExe ShowEmuList`
+and falls back to native USB enumeration. The direct host-specific
+checks below remain useful when bootstrapping without a `.env`.
 
 ### macOS
 
@@ -95,7 +170,7 @@ J-Link USB driver is not installed.
 ## Cross-references
 
 - [`HIL_SUITE.md`](HIL_SUITE.md) -- the authoritative HIL contract,
-  per-app table, modes, and Pi-runner infrastructure.
+  per-app table, modes, and remote-Pi infrastructure.
 - [`scripts/hil/all.sh`](../scripts/hil/all.sh) -- the
   HIL-suite driver invoked from CI.
 - [`scripts/hil/flash.sh`](../scripts/hil/flash.sh) -- the
@@ -103,6 +178,6 @@ J-Link USB driver is not installed.
 - [`scripts/hil/dlm_reset.sh`](../scripts/hil/dlm_reset.sh) -- DLM
   recovery for the AHB-AP-gated / TrustZone-locked failure modes.
 - [`.github/workflows/hil.yml`](../.github/workflows/hil.yml) -- the
-  Pi-attached HIL gate.
+  dev-built, remote-bench HIL gate.
 - [`CERTIFICATION_SCOPE.md`](CERTIFICATION_SCOPE.md) -- the
   "no third-party certification" decision.

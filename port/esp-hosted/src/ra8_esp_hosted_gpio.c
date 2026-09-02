@@ -169,11 +169,11 @@ static_assert((uint8_t)H_DR_INTR_EDGE <= (uint8_t)k_ra8_icu_irqmd_low,
  * @since 0.1.0
  */
 typedef struct ra8_esp_hosted_gpio_irq_row {
-  ra8_port_pin_t pin;         /**< Packed pin the channel watches.        */
   void (*handler)(void* arg); /**< Vendored callback to invoke.           */
-  void*   arg;                /**< Opaque argument for ``handler``.       */
-  uint8_t irq_num;            /**< ICU external-interrupt channel, 0..15. */
-  bool    used;               /**< True while the row is occupied.        */
+  void*          arg;         /**< Opaque argument for ``handler``.       */
+  ra8_port_pin_t pin;         /**< Packed pin the channel watches.        */
+  uint8_t        irq_num;     /**< ICU external-interrupt channel, 0..15. */
+  bool           used;        /**< True while the row is occupied.        */
 } ra8_esp_hosted_gpio_irq_row_t;
 
 /**
@@ -313,7 +313,9 @@ static uint8_t internal_irq_alloc(void)
  * the hot path is one load and one indirect call. It deliberately does not
  * log and does not block: the callback it invokes posts a semaphore from
  * interrupt context, which is the whole latency budget of the DATA_READY
- * line.
+ * line. Registration validates the handler and publishes the completed row
+ * before enabling the interrupt, so both values are guaranteed by the row's
+ * invariant rather than checked again in interrupt context.
  *
  * @param[in] ctx The ::ra8_esp_hosted_gpio_irq_row that installed it.
  *
@@ -330,9 +332,6 @@ static uint8_t internal_irq_alloc(void)
 RA8_INTERNAL RA8_ISR_SAFE static void internal_isr_trampoline(void* ctx)
 {
   const ra8_esp_hosted_gpio_irq_row_t* row = (const ra8_esp_hosted_gpio_irq_row_t*)ctx;
-  if ((row == nullptr) || (row->handler == nullptr)) {
-    return;
-  }
   row->handler(row->arg);
 }
 
@@ -725,6 +724,7 @@ internal_pull_gpio(void* gpio_port, uint32_t gpio_num, uint32_t pull_value, uint
 RA8_INTERNAL
 static int internal_hold_gpio(void* gpio_port, uint32_t gpio_num, uint32_t hold_value)
 {
+  (void)hold_value;
   ra8_port_pin_t pin = k_ra8_pin_none;
   if (!priv_ra8_esp_hosted_gpio_decode_pin(gpio_port, gpio_num, &pin)) {
     return RET_INVALID;

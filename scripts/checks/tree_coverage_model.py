@@ -35,7 +35,7 @@ Only three things are subtracted, and each is subtracted somewhere else first:
 * test sources. A file under a ``tests/`` directory is the INSTRUMENT, not the
   thing measured, and the ``tests/`` root is already outside the census by the
   same reasoning. Applying it at any depth is what keeps the rule uniform
-  instead of a per-product carve-out: ``apps/shared/media_dl/tests/`` and
+  instead of a per-product carve-out: ``apps/shared_libs/mdl/tests/`` and
   ``tools/ra8_emulator/tests/`` are test code exactly as ``tests/`` is.
 
 Headers carry no row. Inline code in a header is measured through the TUs that
@@ -122,7 +122,7 @@ def census_paths(paths: list[str] | None = None) -> list[str]:
 # Each one is configured with ``RA8_COVERAGE=ON``, built, run under ctest, and
 # reported by ``scripts/report/tree_coverage.sh`` into one gcovr trace. The
 # traces are then merged, so a translation unit compiled by more than one
-# project (the media_dl core is built by BOTH the host suite and the media_dl
+# project (the mdl core is built by BOTH the host suite and the mdl host
 # form) carries the union of what every project executed rather than whichever
 # number the last sweep happened to produce.
 #
@@ -163,7 +163,7 @@ PROJECTS: tuple[MeasurementProject, ...] = (
     # Measured 480 census units when the gate landed.
     MeasurementProject("host-tests", "tests", (), 400),
     # Measured 57 census units when the gate landed.
-    MeasurementProject("media-dl", "apps/stand_alone/media_dl", ("apps/shared/media_dl",), 50),
+    MeasurementProject("mdl", "apps/host/mdl", ("apps/shared_libs/mdl",), 50),
 )
 
 #: The declaration a listfile makes when it can emit coverage data.
@@ -243,12 +243,20 @@ PLATFORM_ROOTS: tuple[str, ...] = ("libs/", "src/", "port/")
 HOSTED_ROOTS: tuple[str, ...] = ("tools/", "apps/")
 FIRMWARE_ROOTS: tuple[str, ...] = ("examples/",)
 
+# Exact production adapters whose host build cannot coexist with the default
+# implementation in one coverage image. Reflow v2 implements the same public
+# symbols as v1 and is selected only by the firmware composition option; moving
+# it from libs/ into apps/shared_libs must not change that platform constraint.
+PLATFORM_CROSS_ONLY_UNITS: frozenset[str] = frozenset(
+    {"apps/shared_libs/reflow/v2/src/reflow_v2.cpp"}
+)
+
 
 def is_firmware_composition(rel: str, firmware_dirs: tuple[str, ...]) -> bool:
     """True when `rel` is only ever linked into a cross-compiled image.
 
     ``examples/`` is firmware by root. Under ``apps/`` the root answers
-    nothing -- media_dl is a host program and the e-reader is a TrustZone
+    nothing -- mdl is a host program and the e-reader is a TrustZone
     image -- so the discriminator is ``lint_targets.firmware_app_dirs()``: an
     app directory carrying BOTH a linker script and a vector table.
     """
@@ -272,6 +280,8 @@ def structural_reason(rel: str, *, compiled: bool, firmware_dirs: tuple[str, ...
         return REASON_COMPILED
     if is_firmware_composition(rel, firmware_dirs):
         return REASON_FIRMWARE
+    if rel in PLATFORM_CROSS_ONLY_UNITS:
+        return REASON_PLATFORM
     if rel.startswith(PLATFORM_ROOTS):
         return REASON_PLATFORM
     return REASON_HOSTED
@@ -290,10 +300,13 @@ def structural_reason(rel: str, *, compiled: bool, firmware_dirs: tuple[str, ...
 # ---------------------------------------------------------------------------
 
 ROOT_CENSUS_FLOORS: dict[str, int] = {
-    "libs": 385,  # measured 440
+    # The apps/shared_libs migration moved 82 production TUs out of libs/ and
+    # into apps/ without changing the tree-wide census. Rebalance both root
+    # floors together so the move cannot turn either root's guard vacuous.
+    "libs": 315,  # measured 362
     "examples": 300,  # measured 370
     "tools": 110,  # measured 134
-    "apps": 50,  # measured 64
+    "apps": 120,  # measured 150
     "port": 28,  # measured 35
 }
 

@@ -12,9 +12,9 @@ Many compound decisions in this firmware sit inside
 guard predicates, byte-order conversions) that are deliberately not
 part of the public API. Examples:
 
-* `internal_validate_arp_frame()` in `libs/ra8_net/src/ra8_net_arp.c`
-* `priv_check_pwm_invariant()` in `libs/ra8_hal/src/ra8_pwm.c`
-* `internal_pll_config_legal()` in `libs/ra8_hal/src/ra8_cgc.c`
+* `priv_ra8_drw_internal_rect_below_min()` in `libs/ra8_hal/src/ra8_drw.c`
+* `priv_ra8_dmac_internal_mode_disables_dts()` in `libs/ra8_hal/src/ra8_dmac.c`
+* `priv_ra8_rmac_phy_internal_speed_ok()` in `libs/ra8_hal/src/ra8_rmac_phy.c`
 
 These helpers are exactly where the most condition-dense `if (a && b
 && c)` lines live, because the public API typically delegates
@@ -51,8 +51,7 @@ musl's `__*` namespace, some CMSIS driver test suites).
 
 * **Each module that needs MC/DC of internal helpers ships a
   companion header `<module>_internal.h`** under the module's
-  `inc/` directory (or, for very large modules, a dedicated
-  `inc/internal/` subdir).
+  `inc/` directory.
 * The header is **declared but not installed**. Production code
   must not `#include` it. The pre-commit hook's
   `check_world_tags.py` is the gate: the internal header is

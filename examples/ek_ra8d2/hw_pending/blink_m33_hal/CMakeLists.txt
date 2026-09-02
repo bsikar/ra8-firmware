@@ -39,7 +39,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME blink_m33_hal
-  STACK_BYTES 2200
+  STACK_BYTES 2200 AUX_SRCS src/cpu1_main.c
   DESCRIPTION "Cortex-M33 secondary-core LED blink via the HAL PCNTR primitive for RA8D2"
 )
 
@@ -54,5 +54,5 @@ ra8_add_app(
 ra8_add_cpu1_image(
   PARENT blink_m33_hal
   NAME blink_m33_hal_cpu1
-  SOURCES cpu1_main.c
+  SOURCES src/cpu1_main.c
 )

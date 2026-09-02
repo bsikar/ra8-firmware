@@ -435,3 +435,7 @@ ra8_i3c_i2c_attach_handler(uint8_t channel, ra8_i3c_i2c_complete_fn_t fn, void* 
  * @note Thread safety: see the header declaration.
  */
 void ra8_i3c_i2c_dispatch_eri(uint8_t channel);
+
+#ifdef __cplusplus
+}
+#endif

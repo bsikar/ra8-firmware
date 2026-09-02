@@ -75,8 +75,9 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-internal_host_wait_pipe(volatile r_usb_regs_t* reg, volatile const uint16_t* sts, uint8_t pipe_num)
+static ra8_err_t internal_host_wait_pipe(volatile const r_usb_regs_t* reg,
+                                         volatile const uint16_t*     sts,
+                                         uint8_t                      pipe_num)
 {
   const uint16_t bit = (uint16_t)(1U << pipe_num);
   const uint8_t  idx = (uint8_t)(pipe_num - 1U);
@@ -86,7 +87,7 @@ internal_host_wait_pipe(volatile r_usb_regs_t* reg, volatile const uint16_t* sts
     }
     if ((reg->PIPECTR[idx] & (uint16_t)k_ra8_usb_pid_stall_bit) != 0U) {
       /* STALL bit is SIE-async; callers force PID=BUF before this spin, the fake cannot raise it. */
-      return k_ra8_err_hw_error; /* GCOVR_EXCL_LINE */
+      return k_ra8_err_hw_error; /* GCOVR_EXCL_LINE -- async SIE STALL absent from host fake */
     }
   }
   return k_ra8_err_hw_timeout;
@@ -474,7 +475,7 @@ ra8_err_t ra8_usb_host_bulk_in(ra8_usb_speed_t speed,
  */
 uint16_t ra8_usb_host_line_state(ra8_usb_speed_t speed)
 {
-  volatile r_usb_regs_t* reg = priv_pick(speed);
+  volatile const r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return 0U;
   }

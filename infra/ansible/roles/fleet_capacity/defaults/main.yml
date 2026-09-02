@@ -16,7 +16,7 @@
 # --- what to install --------------------------------------------------------
 
 # The script this role deploys. There is exactly one copy in the tree, and both
-# the unattended timer and every control-node `make infra-scale` run execute
+# the unattended timer and every control-node `just infra::scale` run execute
 # the same file -- the latter by piping it over ssh, so an operator command
 # always runs the version in the checkout.
 fleet_capacity_src: "{{ playbook_dir }}/../../../scripts/ci/fleet_capacity.sh"

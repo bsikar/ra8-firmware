@@ -60,3 +60,7 @@ openbao_nodeport_node_port: 32200
 # rather than waiting on a readiness that correctly never arrives.
 openbao_pod_retries: 30
 openbao_pod_delay: 5
+
+# roles/k3s_node provisions the client here. Scope it to kubernetes.core tasks
+# so ordinary target modules retain the distribution Python and apt bindings.
+openbao_python_interpreter: "/opt/ra8-k8s-client/bin/python3"

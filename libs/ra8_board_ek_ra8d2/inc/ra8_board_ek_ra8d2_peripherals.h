@@ -38,6 +38,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2_connectors.h"
 #include "ra8_err.h"
 #include "ra8_port_constants.h"
@@ -956,43 +957,35 @@ typedef enum : uint8_t {
 } ra8_board_eth_index_t;
 
 /**
- * @brief Bring up the on-board RGMII Ethernet PHY (PEF7071) and RMAC0.
+ * @brief Bring up the on-board RGMII Ethernet PHY and RMAC1/ETHA1.
  *
  * @details
- * 1. Routes all sixteen Ethernet data / control pins (UM Table 26 p 33)
- *    to their ETHERC RGMII alternate functions via
- *    ``ra8_pfs_route_peripheral`` (PSEL = ``k_ra8_psel_ether_rmii`` --
- *    same PSEL slot covers RMII and RGMII on RA8D2; the per-pin mux
- *    is identical and the ESWM MIICR1.MIISEL field picks RGMII).
- * 2. Initialises ETHA0 with the default ``ra8_etha_config_t`` (RESET
- *    mode, no IRQs enabled) via ``ra8_etha_init``.
- * 3. Initialises RMAC0 with ``phy_interface = k_ra8_rmac_pis_gmii``,
- *    ``link_speed = k_ra8_rmac_lsc_1000mbit``, ``duplex = full`` via
- *    ``ra8_rmac_init`` (auto-negotiation overrides this once link
- *    comes up; RMAC.MPIC.PIS is GMII for 1 Gbps and MII for
- *    10/100 Mbps per HUM Table 29.11).
+ * Hardware-resets the PEF7071/GPY111 through RSTN (P708), leaving that
+ * signal as a GPIO output driven high. The other 15 Ethernet signals are
+ * routed to their RGMII alternate functions before the ESWM clocks, power,
+ * module-stop gates, and COMA buffer pool are brought up. ETHA1 then walks
+ * RESET to CONFIG, the external media mux selects RGMII, and RMAC1 starts
+ * with its internal xMII profile at MII, 100 Mbps, full duplex.
  *
- * The on-board PHY's 25 MHz reference is provided by an external
- * crystal oscillator (UM Table 27 p 34); no chip-side REFCLK output
- * programming is needed. Caller is responsible for driving RSTN
- * (P708) low for >= 10 us before this function and for starting
- * auto-negotiation via ``ra8_rmac_phy_auto_neg_start`` after it
- * returns.
+ * After RMAC1 programming, ETHA1 enters OPERATION and this function
+ * soft-resets the PHY, applies the RGMII receive skew, advertises the
+ * supported 10/100 modes, and restarts PHY auto-negotiation internally.
  *
- * @retval k_ra8_ok                  PHY pins routed; ETHA0 + RMAC0 up.
- * @retval k_ra8_err_gpio_conflict   At least one Ethernet pin is owned.
- * @retval k_ra8_err_hw_init_failed  ETHA or RMAC init failed.
+ * @return ra8_err_t Result from the first failing Ethernet bring-up stage.
+ * @retval k_ra8_ok Bring-up completed and PHY auto-negotiation restarted.
+ * @retval k_ra8_err_gpio_conflict RSTN or an alternate-function pin is owned.
+ * @retval k_ra8_err_invalid_state An Ethernet module-stop reference is saturated.
+ * @retval k_ra8_err_hw_timeout A clock, module-stop, ETHA, COMA, or MDIO wait timed out.
  *
  * @pre IOPORT module powered (reset default).
  * @pre ra8_mstp_init() has run.
- * @post All sixteen Ethernet pins are in RGMII alternate-function mode.
- * @post ETHA0 and RMAC0 are initialized and ready for descriptor-ring
- *       configuration / auto-negotiation.
+ * @post Fifteen Ethernet pins use the RGMII alternate; RSTN remains GPIO-high.
+ * @post RMAC1 and ETHA1 are operational and PHY auto-negotiation is running.
  *
  * @note Not thread-safe; call once during board bring-up.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_board_ethernet_init(void);
+RA8_NODISCARD ra8_err_t ra8_board_ethernet_init(void);
 
 #ifdef __cplusplus
 }

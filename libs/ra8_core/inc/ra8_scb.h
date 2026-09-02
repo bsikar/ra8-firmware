@@ -36,7 +36,7 @@
  * architecturally RAZ, so an unconditional capture is safe either way.
  *
  * @note On a host build (`RA8_OFF_TARGET`) the SCB window is backed by the fake
- *       MMIO map (`tests/mocks/ra8_fake_mmap.c`), so every read and write is
+ *       MMIO map (`tests/mocks/src/ra8_fake_mmap.c`), so every read and write is
  *       observable to unit tests while having no real core effect; the decode
  *       and relocation logic are exercised exactly as on silicon.
  *

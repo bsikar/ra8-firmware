@@ -403,7 +403,7 @@ RA8_INTERNAL
 static ra8_err_t
 internal_write_position(ra8_fs_file_t* file, write_walk_t* way, uint32_t idx, uint32_t* out_cluster)
 {
-  ra8_fs_mount_t* m = file->mount;
+  const ra8_fs_mount_t* m = file->mount;
   if (file->first_cluster < k_cluster_first_data) {
     uint32_t        c   = 0;
     const ra8_err_t err = priv_alloc_eoc_cluster(m, &c);
@@ -453,9 +453,9 @@ internal_write_position(ra8_fs_file_t* file, write_walk_t* way, uint32_t idx, ui
 RA8_INTERNAL
 static ra8_err_t internal_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
 {
-  ra8_fs_mount_t* m             = file->mount;
-  const uint32_t  cluster_bytes = priv_cluster_bytes(m);
-  uint32_t        consumed      = 0;
+  const ra8_fs_mount_t* m             = file->mount;
+  const uint32_t        cluster_bytes = priv_cluster_bytes(m);
+  uint32_t              consumed      = 0;
   /* A write may allocate/grow the chain, invalidating any cached read waypoint. */
   file->walk_cache_cluster = 0;
   write_walk_t way         = {.cluster = file->first_cluster, .index = 0U};
@@ -546,9 +546,9 @@ static ra8_err_t internal_write_locked(ra8_fs_file_t* file, const uint8_t* buf, 
   if (err != k_ra8_ok) {
     return err;
   }
-  ra8_fs_mount_t* m      = file->mount;
-  uint8_t* const  dirsec = priv_sec_walk();
-  err                    = priv_read_sector(m, file->dir_entry_lba, dirsec);
+  const ra8_fs_mount_t* m      = file->mount;
+  uint8_t* const        dirsec = priv_sec_walk();
+  err                          = priv_read_sector(m, file->dir_entry_lba, dirsec);
   if (err != k_ra8_ok) {
     return err;
   }

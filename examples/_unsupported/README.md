@@ -8,5 +8,6 @@ them, so expect bit-rot that a refactor will not catch. Each app's own README
 says what it is waiting for.
 
 A new hardware-dependent app belongs here, so the next person scanning the tree
-can tell at a glance what can and cannot be validated. The apps that *are*
-validated every release live in [`../ek_ra8d2/`](../ek_ra8d2/README.md).
+can tell at a glance what can and cannot be validated on the stock board. Apps
+that need no extra hardware live in [`../ek_ra8d2/`](../ek_ra8d2/README.md),
+whose tiers distinguish recorded evidence from current-candidate claims.

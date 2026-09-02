@@ -6,7 +6,7 @@ the RA8D2. Everything else in this tier stands on it.
 
 The RA8P1 toolchain file includes the RA8D2 one -- identical Cortex-M85
 compiler and flags -- and adds the device define that `ra8_device.h` reads to
-select the RA8P1 feature set. A `#error` guard in `main.c` fails the build
+select the RA8P1 feature set. A `#error` guard in `src/main.c` fails the build
 loudly if it is ever configured with the RA8D2 toolchain, so the two cannot be
 confused silently.
 

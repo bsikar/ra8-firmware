@@ -18,7 +18,7 @@
 
 #include <stdint.h>
 
-#include "ra8_mdl_format.h"
+#include "mdl_format.h"
 #include "ra8_mdl_protocol.h"
 
 /**
@@ -56,11 +56,11 @@ typedef struct {
  * @struct ra8_mdl_request_t
  * @brief Complete typed HTTPS request accepted by protocol version 3.
  * @invariant `url` is a nonempty HTTPS URL shorter than ::k_ra8_mdl_url_max.
- * @invariant `format` is one concrete ::ra8_mdl_format_t value through RABOOK.
+ * @invariant `format` is one concrete ::mdl_format_t value through RABOOK.
  * @since 0.1.0
  */
 typedef struct {
   const char*           url;    /**< Absolute HTTPS source URL.        */
-  ra8_mdl_format_t      format; /**< Exact returned artifact identity. */
+  mdl_format_t          format; /**< Exact returned artifact identity. */
   ra8_mdl_http_policy_t http;   /**< Forwarded request policy.         */
 } ra8_mdl_request_t;

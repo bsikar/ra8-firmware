@@ -297,9 +297,6 @@ static UINT microsd_msc_read(VOID*  storage,
  * @note Hosts honouring the MODE SENSE WP bit never call this.
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [constParameterCallback] -- USBX's
- * ux_slave_class_storage_media_write function-pointer signature takes
- * non-const UCHAR*; we cannot const-qualify the parameter. */
 static UINT microsd_msc_write(VOID*  storage,
                               ULONG  lun,
                               UCHAR* data_pointer,
@@ -317,7 +314,6 @@ static UINT microsd_msc_write(VOID*  storage,
                                                        k_scsi_ascq_none);
   return UX_ERROR;
 }
-/* cppcheck-suppress-end [constParameterCallback] */
 
 /**
  * @brief Storage media-status callback. Always reports media-present.
@@ -451,7 +447,9 @@ static UINT microsd_class_register(void)
   for (uint32_t idx = 0U; idx < (uint32_t)k_microsd_count; idx++) {
     microsd_fill_lun(&msc_params, idx);
   }
-  return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_storage",
+  static UCHAR s_class_name[] = "ux_slave_class_storage";
+
+  return _ux_device_stack_class_register(s_class_name,
                                          _ux_device_class_storage_entry,
                                          1,
                                          0,

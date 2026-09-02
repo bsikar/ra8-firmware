@@ -121,10 +121,10 @@ def selftest() -> int:
     )
 
     enumerated = {
-        str(p) for p in _enumerate_targets(["examples/x/build/gen.c", "examples/x/main.c"])
+        str(p) for p in _enumerate_targets(["examples/x/build/gen.c", "examples/x/src/main.c"])
     }
     expect(
-        any(p.endswith("examples/x/main.c") for p in enumerated),
+        any(p.endswith("examples/x/src/main.c") for p in enumerated),
         "MUST FIRE: a real example source is enumerated",
         failures,
     )

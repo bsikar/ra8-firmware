@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # bench_selftest.sh -- proof that the bench lock does what it claims.
 #
@@ -35,7 +36,7 @@ _bench_st_basic() {
     failures=$((failures + 1))
   fi
   cmd_run --intent "selftest: mutual exclusion" --for 60s -- \
-    bash -c 'true' >/dev/null 2>&1
+    /bin/bash -p -c 'true' >/dev/null 2>&1
   rc=$?
   if [ "$rc" -eq 0 ]; then
     printf '  ok: run acquires, runs its payload and releases\n'
@@ -73,7 +74,7 @@ _bench_st_exclusion() {
       printf '  FAIL: held bench reported exit %s, want 1\n' "$rc"
       failures=$((failures + 1))
     fi
-    cmd_run --intent "selftest: second acquirer" --for 60s -- bash -c 'true' >/dev/null 2>&1
+    cmd_run --intent "selftest: second acquirer" --for 60s -- /bin/bash -p -c 'true' >/dev/null 2>&1
     rc=$?
     if [ "$rc" -eq "$RA8_BENCH_EXIT_HELD" ]; then
       printf '  ok: a second acquirer is DENIED (exit 1) and its payload never runs\n'
@@ -131,7 +132,6 @@ cmd_selftest() {
   # Redirect every lock operation below at a directory nobody else uses. This
   # is the ONLY place RA8_BENCH_DIR is ever moved off its canonical path, and
   # it is why the selftest can prove exclusion without excluding anyone.
-  # shellcheck disable=SC2034  # consumed by lib/bench_client.sh and lib/bench_host.sh, not here.
   RA8_BENCH_DIR="$sandbox"
   printf 'bench selftest: state directory %s (throwaway)\n' "$sandbox"
 
@@ -177,7 +177,7 @@ _bench_st_write_guard_script() {
   local script="$1" lib
   lib="$(dirname "$RA8_BENCH_HOST_SRC")"
   cat >"$script" <<GUARDTEST
-#!/usr/bin/env bash
+#!/bin/bash -p
 set -uo pipefail
 source "$lib/bench_lock.sh"
 ra8_bench_require "selftest: sourced guard" 120s || exit \$?
@@ -208,7 +208,7 @@ bench_selftest_guard() {
   script="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-guardtest.XXXXXX")"
   _bench_st_write_guard_script "$script"
 
-  RA8_BENCH_DIR="$RA8_BENCH_DIR" bash "$script" >"$script.out" 2>"$script.err" &
+  RA8_BENCH_DIR="$RA8_BENCH_DIR" /bin/bash -p "$script" >"$script.out" 2>"$script.err" &
   pid=$!
   while [ "$waited" -lt 60 ]; do
     grep -q '^GUARD-HELD ' "$script.out" 2>/dev/null && break
@@ -262,7 +262,7 @@ _bench_st_write_fence_script() {
   local script="$1" lib
   lib="$(dirname "$RA8_BENCH_HOST_SRC")"
   cat >"$script" <<FENCETEST
-#!/usr/bin/env bash
+#!/bin/bash -p
 set -uo pipefail
 source "$lib/bench_lock.sh"
 ra8_bench_require "selftest: fence" 300s || exit \$?
@@ -282,7 +282,7 @@ FENCETEST
 # or nothing when it never acquired.
 _bench_st_fence_start() {
   local script="$1" pid waited=0
-  RA8_BENCH_DIR="$RA8_BENCH_DIR" bash "$script" >"$script.out" 2>"$script.err" &
+  RA8_BENCH_DIR="$RA8_BENCH_DIR" /bin/bash -p "$script" >"$script.out" 2>"$script.err" &
   pid=$!
   while [ "$waited" -lt 60 ]; do
     grep -q '^FENCE-HELD ' "$script.out" 2>/dev/null && break

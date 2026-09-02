@@ -1,7 +1,7 @@
 # Plan for Software Aspects of Certification (PSAC)
 
-**Last refreshed**: 2026-05-03 (numbers re-synced to live audit
-artefacts after closure; see Section 8).
+**Last refreshed**: 2026-08-22 (test inventory and execution evidence refresh;
+see Section 8).
 
 **Status**: First draft, 2026-05-02. Authored against the Phase 7 schedule
 in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) Section 3.
@@ -32,9 +32,9 @@ from the RA8D2 group. The configuration is summarised in
 [`../../CLAUDE.md`](../../CLAUDE.md) Section "Target Hardware":
 
 - Arm Cortex-M85 primary core at 1 GHz with the Helium / MVE extension.
-- Arm Cortex-M33 secondary core at 250 MHz (currently unused; no M33
-  image is built in this tree).
-- 1 MB MRAM code store, 2 MB SRAM with ECC.
+- Arm Cortex-M33 secondary core at 250 MHz; M33/CPU1 and dual-core example
+  images exercise it.
+- 1 MB MRAM code store, 1664 KiB (1.625 MiB) SRAM with ECC.
 - 64 MB Octo-SPI NOR flash, 64 MB SDRAM, 7.0-inch parallel TFT,
   OV5640 5 MP camera, on-board J-Link OB debugger.
 - Package R7KA8D2KFLCAC, 289-pin BGA, 12 mm x 12 mm, 0.65 mm pitch.
@@ -78,10 +78,9 @@ nothing in the lifecycle assumes an authority is already in the loop.
 The codebase is partitioned into seven architectural rings documented
 in [`../RING_AND_WORLD.md`](../RING_AND_WORLD.md). Each translation
 unit declares its ring with a doxygen tag (`@ring` 0..6) which is
-audited by `scripts/checks/check_world_tags.py` (currently in WARN
-mode, scheduled to flip to STRICT during Phase 4). The rings are:
+audited in strict mode by `scripts/checks/check_world_tags.py`. The rings are:
 
-- Ring 0 -- silicon register definitions (`libs/ra8_hal/inc/ra8d2_*_regs.h`).
+- Ring 0 -- silicon register definitions (`libs/ra8_hal/inc/ra8_*_regs.h`).
 - Ring 1 -- thin register accessors (`libs/ra8_hal/src/ra8_*.c`).
 - Ring 2 -- driver state machines (HAL on top of Ring 1).
 - Ring 3 -- platform abstraction layers (`libs/ra8_*_pal/`).
@@ -100,10 +99,10 @@ partitioning rules and SAU configuration are in
 [`../RING_AND_WORLD.md`](../RING_AND_WORLD.md) Section "World
 tagging". Every translation unit declares a `@world` tag (S, NS, or
 NSC). NSC veneers live in [`../../libs/ra8_nsc/`](../../libs/ra8_nsc/)
-and are the only entry points from NS to S. The bring-up sequence
-for SAU and per-app TrustZone init lives in each app's
-`trustzone_init.c` (e.g.
-[`../../examples/ek_ra8d2/blink/trustzone_init.c`](../../examples/ek_ra8d2/blink/trustzone_init.c)).
+and are the only entry points from NS to S. The default SAU and TrustZone
+bring-up sequence comes from the selected board layer, with an app-local file
+used only when the app overrides it (for example,
+[`ra8_board_ek_ra8d2/src/boot/trustzone_init.c`](../../libs/ra8_board_ek_ra8d2/src/boot/trustzone_init.c)).
 
 ### 2.3 RTOS choice
 
@@ -111,17 +110,17 @@ The default substrate is bare-metal (`while(1)` main loops with the
 `ra8_time` SysTick driver). Examples that need cooperative scheduling
 link against ThreadX 6.5.0 from the SOUP catalogue
 ([`../SOUP/threadx.md`](../SOUP/threadx.md)). No first-party RTOS is
-shipped in this tree; the long-term option to write one in
-`libs/ra8_kernel/` is reserved but unscheduled.
+shipped in this tree; a first-party kernel remains a reserved but unscheduled
+long-term option.
 
 ### 2.4 Vendor SOUP inventory
 
 Pre-existing software is catalogued in [`../SOUP/`](../SOUP/) per
-IEC 61508-3 Clause 7.4.2.12 and DO-178C Section 12.1.4. The current
-register holds 11 components (ThreadX, NetX Duo, USBX,
-LevelX, Mbed TLS, TF-PSA-Crypto, Apache NimBLE, litehtml,
-miniz, stb, TinyXML-2). Each entry carries a written qualification
-basis and a 12-month re-review cadence.
+IEC 61508-3 Clause 7.4.2.12 and DO-178C Section 12.1.4. The generated SBOM at
+[`../sbom/ra8-firmware.cdx.json`](../sbom/ra8-firmware.cdx.json) and the SOUP
+index are the current component inventory; this plan does not duplicate their
+mutable count or names. Each entry carries a written qualification basis and a
+12-month re-review cadence.
 
 No vendor binary blob is shipped in this tree. The RSIP-E50D protected
 firmware -- the one blob a hardware-backed key-wrap path would need --
@@ -181,21 +180,19 @@ possible.
 DO-178C Section 6.4.4.3 distinguishes deactivated code (present but
 not exercised in the target operational configuration) from dead
 code (unreachable). Phase 2 of the roadmap requires every uncovered
-MC/DC condition to be classified as one of:
+MC/DC decision region to be classified as one of:
 
 - A genuine missing test vector, scheduled to be added.
-- A deactivated condition with a written rationale (to be appended
+- A deactivated decision region with a written rationale (to be appended
   to [`../MCDC_GAPS.md`](../MCDC_GAPS.md)).
 - Dead code, to be deleted under the project's zero-backward-
   compatibility policy ([`../../CLAUDE.md`](../../CLAUDE.md) Section
   "Backward Compatibility Policy").
 
 The current MC/DC instrumentation is described in
-[`../MCDC.md`](../MCDC.md). The first-party MC/DC measurement at
-the time of this refresh is **92.29 % absolute / 100.00 % reachable**
-(clang-18 instrumentation, 190/190 host tests pass, captured
-2026-05-03 ; see [`../MCDC.md`](../MCDC.md) "Measurement
-history"). 58 conditions are catalogued as deactivated under
+[`../MCDC.md`](../MCDC.md). Its archived 2026-05 measurement history is not a
+current structural-coverage claim and must be restamped for the release
+evidence pack. Deactivated decision regions are catalogued under
 DO-178C 6.4.4.3 in [`../MCDC_DEACTIVATIONS.md`](../MCDC_DEACTIVATIONS.md).
 
 ### 3.4 Parameter data items
@@ -216,10 +213,13 @@ the development chain is in
 [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md)
 Section 5 and the dossier stub is at
 [`./TOOL_QUALIFICATION.md`](./TOOL_QUALIFICATION.md). Every tool in
-the chain is currently classified TQL-5 because its output is
-re-verified by a downstream process (cross-compiler output is
-re-verified by hardware-in-the-loop smoke; instrumentation tools
-emit only test-only artefacts; static analysers are advisory).
+the chain is proposed at TQL-5 because its output has a downstream verification
+method. Retained evidence is bounded to the historical 118/118 physical build,
+the 2026-08-22 two-OS 689-case registration snapshot, and that snapshot's
+Linux/devcontainer 689/689 pass in 8.66 s. The selected-app HIL and remote-GDB lifecycle
+results are historical. Final tool qualification remains open for
+current-candidate hardware runs, release-specific logs, coverage, trace, and
+other evidence-pack inputs.
 
 ---
 
@@ -238,8 +238,8 @@ The development model is a **waterfall + agile hybrid**:
   and CI workflow ([`../../.github/workflows/firmware.yml`](../../.github/workflows/firmware.yml)).
   Breaking changes are encouraged
   ([`../../CLAUDE.md`](../../CLAUDE.md) "Backward Compatibility
-  Policy"); the only standing requirement is that `main` builds and
-  passes all CI gates.
+  Policy"); the standing integration requirement is that `dev` builds and
+  passes its required CI gates before release promotion to `main`.
 
 ### 4.2 Plan family
 
@@ -280,9 +280,9 @@ authoritative location in the live tree.
 | Design description                 | [`../RING_AND_WORLD.md`](../RING_AND_WORLD.md), [`../MEMORY_MAP.md`](../MEMORY_MAP.md) | 11.10 |
 | Source code                        | `libs/`, `examples/`, `port/`, `apps/`                     | 11.11           |
 | Executable object code             | per-app `build/<app>.elf` / `.hex`                         | 11.12           |
-| Software verif. cases & procedures | [`./SVCP.md`](./SVCP.md), `tests/test_*.c`                 | 11.13           |
-| Software verification results      | [`./SVR.md`](./SVR.md), `build/mcdc-report/`, `build/smoke/`, `build/misra/` | 11.14 |
-| Software life cycle env. config    | [`../../cmake/toolchain-ra8d2.cmake`](../../cmake/toolchain-ra8d2.cmake), devcontainer (planned) | 11.15 |
+| Software verif. cases & procedures | [`./SVCP.md`](./SVCP.md), distributed test inventory       | 11.13           |
+| Software verification results      | [`./SVR.md`](./SVR.md), `build/mcdc-report/`, HIL logs, `build/misra/` | 11.14 |
+| Software life cycle env. config    | [`../../cmake/toolchain-ra8d2.cmake`](../../cmake/toolchain-ra8d2.cmake), checked-in [`.devcontainer/`](../../.devcontainer/) | 11.15 |
 | Software config management records | git history, signed tags (planned), [`./SCMP.md`](./SCMP.md) | 11.16, 11.18  |
 | Problem reports                    | git issues + commit messages                               | 11.17           |
 | Software quality assurance records | CI logs in GitHub Actions; [`./SQAP.md`](./SQAP.md) appendix | 11.19         |
@@ -298,7 +298,7 @@ The 22-week schedule is owned by
 Section 3. This PSAC does not duplicate the per-phase task list; it
 simply records the calendar commitment.
 
-| Phase | Weeks | Deliverable summary                               |
+| Phase | Weeks | Original deliverable summary                      |
 |------:|------:|---------------------------------------------------|
 | 1     |  1-2  | 100 % MC/DC on critical-path modules              |
 | 2     |  3-6  | 95 %+ first-party MC/DC, deactivated-code register |
@@ -308,7 +308,9 @@ simply records the calendar commitment.
 | 6     | 17-18 | Hardware-in-the-loop CI on a self-hosted runner   |
 | 7     | 19-22 | Plan + verification + accomplishment document set |
 
-The PSAC and SDP land in week 19 (this commit).
+This is the original planning schedule, retained as history rather than a
+current completion claim. Current bounded evidence and pending restamps are
+recorded in Sections 8 and 9.
 
 ---
 
@@ -317,8 +319,8 @@ The PSAC and SDP land in week 19 (this commit).
 ### 7.1 Software of unknown provenance
 
 SOUP is admitted under IEC 61508-3 Clause 7.4.2.12 and DO-178C
-Section 12.1.4. The catalogue is at [`../SOUP/`](../SOUP/) (14
-components, see Section 2.4 above). Re-review cadence: 12 months
+Section 12.1.4. The catalogue is at [`../SOUP/`](../SOUP/) (20 component
+qualification pages excluding README). Re-review cadence: 12 months
 maximum from each entry's "Last review" stamp.
 
 ### 7.2 Vendor blobs and open blockers
@@ -372,32 +374,29 @@ out of scope until the RSIP blocker (Section 7.2) is resolved.
 
 ---
 
-## 8. Current-state metrics (2026-05-03 refresh)
+## 8. Bounded evidence metrics (2026-08-21/22 snapshots)
 
-These numbers are pulled from the live audit artefacts in this tree
-and reproduce the snapshot in
+This table combines live derived authorities with explicitly dated retained
+measurements. It reproduces the bounded evidence in
 [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md)
 Section 2. They are quoted here so an assessor reading the PSAC in
 isolation has the gap picture without chasing references.
 
 | Metric                                                      | Value             | Source                                  |
 |-------------------------------------------------------------|-------------------|-----------------------------------------|
-| First-party MC/DC, reachable (gate metric) | **100.00 %** | [`../MCDC.md`](../MCDC.md) measurement history |
-| First-party MC/DC, absolute                                 | 92.29 %           | same                                    |
-| Deactivated conditions (DO-178C 6.4.4.3)                    | 58                | [`../MCDC_DEACTIVATIONS.md`](../MCDC_DEACTIVATIONS.md) |
-| Functions audited for doxygen                               | 2747              | [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) |
-| Functions with at least one missing doxygen tag             | **0**             | [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) |
-| Total missing-tag instances                                 | 0                 | [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) |
-| MISRA-C 2012 unique findings (cppcheck advisory)            | 1271              | [`../MISRA.md`](../MISRA.md); cppcheck-only policy ([`./MISRA_DEVIATIONS.md`](./MISRA_DEVIATIONS.md)) |
-| Host unit-test files (`tests/test_*.c`)                     | 190               | `ls tests/test_*.c \| wc -l` (190/190 PASS) |
-| Example apps under `examples/`                              | 36 (26 EVM + 10 unsupported) | `find examples -mindepth 2 -maxdepth 2 -type d` |
-| EVM apps swept on hardware (latest sweep)                   | 26                | [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) night sweep |
-| EVM apps PASS (latest sweep)                                | 20                | [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) night sweep |
-| EVM apps WIP (panic_halt -- caught init failure)            | 4                 | [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) night sweep |
-| EVM apps UNKNOWN (alive but PC outside PASS keyword set)    | 2                 | [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) night sweep |
-| EVM apps FAIL (HardFault / lockup)                          | 0                 | [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) night sweep |
-| SOUP components catalogued                                  | 14                | [`../SOUP/README.md`](../SOUP/README.md) |
-| Vendor binary blobs blocked                                 | 2 (RSIP, BLE)     | [`../VENDOR_BLOBS.md`](../VENDOR_BLOBS.md) |
+| Test source files                                           | **693** (689 C, 4 C++) | retained 2026-08-22 snapshot |
+| Registered CTest cases, clean standalone macOS configure    | **689**           | retained 2026-08-22 snapshot |
+| Registered CTest cases, clean standalone Linux configure    | **689**           | retained 2026-08-22 snapshot |
+| Linux/devcontainer host execution                           | **689/689 passed in 8.66 s** | retained unit-gate result, 2026-08-22 |
+| macOS host execution                                        | **Not claimed**   | low-address tests require Linux/container; registration only |
+| EIL application inventory                                   | Derived by `scripts/dev/ra8_apps.py` | live app authority |
+| RA8D2 physical applications built                           | **118/118**       | retained historical snapshot; current matrix pending |
+| Real target HIL execution                                   | **Pending**       | run `hil-all` on the current candidate |
+| Remote GDB lifecycle                                        | **Historical pass** | restamp attach/continue/detach/stop for release evidence |
+
+Coverage, documentation, MISRA, SOUP, and vendor-blob populations must be
+refreshed from their live artifacts before the next evidence pack; the table
+does not turn an archived population into current evidence.
 
 The metrics that close before the next PSAC revision are recorded
 as the Phase 1 / Phase 2 / Phase 3 acceptance gates in
@@ -413,7 +412,7 @@ as the Phase 1 / Phase 2 / Phase 3 acceptance gates in
 - [`../MEMORY_MAP.md`](../MEMORY_MAP.md) -- RA8D2 memory map and partition assignments.
 - [`../MCDC.md`](../MCDC.md) -- MC/DC instrumentation and measurement.
 - [`../MISRA.md`](../MISRA.md) -- MISRA-C 2012 audit baseline.
-- [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) -- bring-up sweep results, including the hardware-PASS counts cited in Section 8.
+- [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) -- archived bring-up sweep history; current bounded evidence is recorded in the SVR.
 - [`../SOUP/`](../SOUP/) -- pre-existing software register.
 - [`../VENDOR_BLOBS.md`](../VENDOR_BLOBS.md) -- blocker register.
 - [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) -- 22-week schedule and tooling-chain TQL classification.

@@ -61,7 +61,7 @@ typedef struct {
   uint32_t encode_ms;    /**< Codec latency.                     */
 } c6_cam_frame_timing_t;
 
-/** @brief Run the shared ThreadX, C6-link, DHCP, and HTTP application flow. */
+/** @brief Run the shared runtime-provisioned C6, DHCP, and HTTP application flow. */
 [[nodiscard]] int32_t c6_cam_app_run(void);
 
 /** @brief Camera image and board-switch initialization, then one CEU capture. */

@@ -38,7 +38,7 @@ and nothing copies it out.
 ### 2. Unseal (after every restart)
 
 ```sh
-scripts/secrets/openbao_unseal.sh
+/bin/bash -p scripts/secrets/openbao_unseal.sh
 ```
 
 A Shamir-sealed OpenBao comes up **sealed** after every pod or node restart, by
@@ -48,7 +48,7 @@ failure, and this is the routine follow-up.
 ### 3. Configure a secret path, its policy and its AppRole
 
 ```sh
-scripts/secrets/openbao_configure.sh <secret-path> <policy-name> <role-name> \
+/bin/bash -p scripts/secrets/openbao_configure.sh <secret-path> <policy-name> <role-name> \
   < values.env > approle.env
 ```
 

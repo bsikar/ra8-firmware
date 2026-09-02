@@ -192,14 +192,16 @@ ra8_err_t ra8_usb_device_init(ra8_usb_speed_t speed)
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
   const ra8_err_t mst_err = ra8_mstp_enable(priv_mstp(speed));
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "usb_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "usb_init: mstp enable");
 
   if (speed == k_ra8_usb_speed_hs) {
     const ra8_err_t phy_err = priv_usbhs_phy_bringup(reg);
-    RA8_RETURN_ON_ERROR(phy_err, s_tag, "usb_init: HS PHY bring-up"); /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_BR_START -- HW bring-up fault */
+    RA8_RETURN_ON_ERROR(phy_err, s_tag, "usb_init: HS PHY bring-up");
+    /* GCOVR_EXCL_BR_STOP */
   } else {
     const ra8_err_t fs_err = priv_usbfs_module_bringup(reg);
-    RA8_RETURN_ON_ERROR(fs_err, s_tag, "usb_init: FS module bring-up"); /* GCOVR_EXCL_BR_LINE */
+    RA8_RETURN_ON_ERROR(fs_err, s_tag, "usb_init: FS module bring-up");
   }
 
   priv_usb_init_common(reg);
@@ -339,7 +341,7 @@ ra8_err_t ra8_usb_device_attach(ra8_usb_speed_t speed, bool attached)
 ra8_err_t ra8_usb_get_status(ra8_usb_speed_t speed, uint16_t* out_mask)
 {
   RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  volatile r_usb_regs_t* reg = priv_pick(speed);
+  volatile const r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -390,7 +392,7 @@ ra8_err_t ra8_usb_clear_status(ra8_usb_speed_t speed, uint16_t mask)
 ra8_err_t ra8_usb_get_device_state(ra8_usb_speed_t speed, ra8_usb_dev_state_t* out_state)
 {
   RA8_CHECK_NULL_PTR(out_state, s_tag, "out_state must not be nullptr");
-  volatile r_usb_regs_t* reg = priv_pick(speed);
+  volatile const r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }

@@ -1,10 +1,11 @@
 # examples/ek_ra8d2/hw_validated/c6/
 
 Apps that talk to the **ESP32-C6 companion radio** over esp-hosted. Every one
-has been run on real silicon and passes. They live in their own tier because of
-the bench, not because of their maturity: `make hil-c6` runs the lane through
-the same runner and the same per-app `hil.conf` manifests as the default suite,
-because there is one HIL runner in this tree, not one per bench configuration.
+has recorded real-silicon validation evidence. That evidence is historical,
+not an assertion that the current commit has been rerun: a current-pass claim
+requires a dated `just hil::c6` result. They live in their own tier because of
+the bench, not because of their maturity; the C6 lane uses the same runner and
+the same per-app `hil.conf` manifests as the default suite.
 
 ## Why they are not in `hw_validated/hil/`
 

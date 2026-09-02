@@ -339,7 +339,8 @@
  * @endcode
  * @since 0.1.0
  */
-#define H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS (-1) /* LEGACY-OK: name */
+#define H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS                                      \
+  (-1) /* LEGACY-OK: upstream esp-hosted macro name */
 
 /* ----------------------------------------------------------------------- */
 /* RPC concurrency bounds */

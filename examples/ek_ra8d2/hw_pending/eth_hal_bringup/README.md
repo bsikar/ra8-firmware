@@ -27,10 +27,13 @@ primitives compose on their own -- COMA out of reset, then the media mux selects
 RGMII. It does **not** assert a link is up, which would need the corrected RGMII
 skew and a peer.
 
-## Blocked on
+## Accepted hardware limitation
 
-Ethernet is hardware-blocked on this board: the EK-RA8D2 wire is marginal (#21).
-The COMA and RGMII register paths are host-tested instead
-(`tests/test_ra8_eth_coma.c` covers the bring-up happy path and the CABPIRM.BPR
-timeout; `tests/test_ra8_eth.c` covers `rgmii_select` per port and the bad-port
+The full-link path remains constrained by the accepted EK-RA8D2 transmit
+limitation characterized in closed issue #21. The issue was closed because the
+MTU=128 mitigation is sufficient for this project and the e-reader does not use
+this Ethernet port, not because full-size frames were repaired. The COMA and
+RGMII register paths are host-tested instead
+(`tests/misc/src/test_ra8_eth_coma.c` covers the bring-up happy path and the CABPIRM.BPR
+timeout; `tests/misc/src/test_ra8_eth.c` covers `rgmii_select` per port and the bad-port
 rejection).

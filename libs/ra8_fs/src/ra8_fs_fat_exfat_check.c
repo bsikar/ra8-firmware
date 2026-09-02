@@ -70,17 +70,21 @@ typedef enum : uint32_t {
  * @struct exfat_dir_stack_t
  * @brief Bounded worklist of exFAT directories still to walk (NASA P10 Rule 1).
  *
- * @details A stack of ::exfat_dir_t rather than recursion. Pushing past
- *          ::k_ra8_fs_check_max_dirs sets @p truncated -- recorded once as
- *          ::k_ra8_fs_check_fault_scan_truncated -- and drops the entry.
+ * @details Metadata for a caller-owned array of ::exfat_dir_t rather than
+ *          recursion. Pushing past ::k_ra8_fs_check_max_dirs sets @p truncated
+ *          -- recorded once as ::k_ra8_fs_check_fault_scan_truncated -- and
+ *          drops the entry without accessing @p items.
  *
  * @invariant `top <= k_ra8_fs_check_max_dirs`.
+ * @invariant `items` addresses `k_ra8_fs_check_max_dirs` entries whenever
+ *            `top < k_ra8_fs_check_max_dirs`; a full overflow-only sentinel
+ *            may leave it null because a push cannot access the array.
  * @since 0.1.0
  */
 typedef struct {
-  exfat_dir_t items[k_ra8_fs_check_max_dirs]; /**< The pending directories.        */
-  uint32_t    top;                            /**< Count of pending entries.       */
-  uint8_t     truncated;                      /**< 1 once an overflow was dropped. */
+  exfat_dir_t* items;     /**< Caller-owned pending-directory array. */
+  uint32_t     top;       /**< Count of pending entries.             */
+  uint8_t      truncated; /**< 1 once an overflow was dropped.       */
 } exfat_dir_stack_t;
 
 /**
@@ -197,21 +201,19 @@ static ra8_err_t internal_exchk_mark_fatchain(ra8_fs_check_ctx_t* ctx, uint32_t 
   uint32_t c = first;
   for (uint32_t hop = 0U; hop < ctx->rep->clusters_total; hop++) {
     if (priv_check_visit(ctx, c, k_ra8_fs_check_fault_bad_chain)) {
-      return k_ra8_ok; /* GCOVR_EXCL_LINE -- a cross-linked FAT-chained exFAT file */
+      return k_ra8_ok;
     }
     uint32_t        v   = 0U;
     const ra8_err_t err = priv_fat_get(ctx->m, c, &v);
     if (err != k_ra8_ok) {
-      return err; /* GCOVR_EXCL_LINE -- FAT read failure walking a chained file */
+      return err;
     }
     if (priv_is_eoc(ctx->m, v) != 0U) {
       return k_ra8_ok;
     }
     if (!priv_check_in_range(ctx, v)) {
-      /* GCOVR_EXCL_START -- a chained exFAT file whose FAT runs off the volume */
       priv_check_fault(ctx, k_ra8_fs_check_fault_bad_chain, c, 0U, 0U);
       return k_ra8_ok;
-      /* GCOVR_EXCL_STOP */
     }
     c = v;
   }
@@ -257,7 +259,7 @@ static ra8_err_t internal_exchk_mark_dir_alloc(ra8_fs_check_ctx_t* ctx, const ex
   uint32_t c = dir->cluster;
   for (uint32_t hop = 0U; hop < ctx->rep->clusters_total; hop++) {
     if (priv_check_visit(ctx, c, k_ra8_fs_check_fault_bad_dir_entry)) {
-      return k_ra8_ok; /* GCOVR_EXCL_LINE -- a cross-linked directory cluster */
+      return k_ra8_ok;
     }
     uint32_t        next = 0U;
     const ra8_err_t e    = priv_exfat_step_cluster(ctx->m, c, dir->contig_end, &next);
@@ -267,7 +269,7 @@ static ra8_err_t internal_exchk_mark_dir_alloc(ra8_fs_check_ctx_t* ctx, const ex
     if (e != k_ra8_ok) {
       return e;
     }
-    c = next; /* GCOVR_EXCL_LINE -- a directory whose allocation spans >1 cluster */
+    c = next;
   }
   (void)priv_check_visit(ctx, c, k_ra8_fs_check_fault_bad_dir_entry);
   return k_ra8_ok;
@@ -309,7 +311,7 @@ static void internal_exchk_system_run(ra8_fs_check_ctx_t* ctx, const uint8_t* e)
   const uint32_t cbytes = priv_cluster_bytes(ctx->m);
   const uint64_t nclus  = (bytes / cbytes) + ((bytes % cbytes) != 0U ? 1U : 0U);
   if (first == 0U) {
-    return; /* GCOVR_EXCL_LINE -- a system entry that names no cluster */
+    return;
   }
   internal_exchk_mark_run(ctx, first, nclus);
 }
@@ -394,7 +396,7 @@ static void internal_exchk_verify_set(ra8_fs_check_ctx_t* ctx,
   const uint8_t* strm = &set[k_exfat_entry_bytes];
   uint32_t       nlen = (uint32_t)strm[k_exfat_strm_off_nlen];
   if (nlen > (uint32_t)k_exfat_name_cap) {
-    nlen = (uint32_t)k_exfat_name_cap; /* GCOVR_EXCL_LINE -- a name over the driver cap */
+    nlen = (uint32_t)k_exfat_name_cap;
   }
   uint16_t units[k_exfat_name_cap] = {};
   internal_exchk_extract_name(set, nlen, units);
@@ -432,16 +434,29 @@ static void
 internal_exchk_push(ra8_fs_check_ctx_t* ctx, exfat_dir_stack_t* stack, const exfat_dir_t* dir)
 {
   if (stack->top >= (uint32_t)k_ra8_fs_check_max_dirs) {
-    /* GCOVR_EXCL_START -- a directory tree more than k_ra8_fs_check_max_dirs deep */
     if (stack->truncated == 0U) {
       stack->truncated = 1U;
       priv_check_fault(ctx, k_ra8_fs_check_fault_scan_truncated, dir->cluster, 0U, 0U);
     }
     return;
-    /* GCOVR_EXCL_STOP */
   }
   stack->items[stack->top] = *dir;
   stack->top++;
+}
+
+/* ra8_fs_check_test_exfat_push_overflow(): see header for the test-only contract. */
+RA8_TEST_HELPER
+void ra8_fs_check_test_exfat_push_overflow(ra8_fs_check_ctx_t* ctx,
+                                           uint32_t            cluster,
+                                           bool                already_truncated)
+{
+  exfat_dir_stack_t stack = {
+    .items     = nullptr,
+    .top       = (uint32_t)k_ra8_fs_check_max_dirs,
+    .truncated = already_truncated ? 1U : 0U,
+  };
+  const exfat_dir_t dir = {.cluster = cluster};
+  internal_exchk_push(ctx, &stack, &dir);
 }
 
 /**
@@ -695,9 +710,7 @@ internal_exchk_scan_dir(ra8_fs_check_ctx_t* ctx, const exfat_dir_t* dir, exfat_d
     uint8_t         e[k_exfat_entry_bytes] = {};
     const ra8_err_t r                      = priv_exfat_next_entry(ctx->m, &cur, e);
     if (r == k_ra8_err_not_found) {
-      /* GCOVR_EXCL_START -- a directory run ending exactly on a cluster edge */
       return k_ra8_ok; /* run ended without an end-of-directory marker */
-      /* GCOVR_EXCL_STOP */
     }
     if (r != k_ra8_ok) {
       return r;
@@ -743,23 +756,23 @@ internal_exchk_scan_dir(ra8_fs_check_ctx_t* ctx, const exfat_dir_t* dir, exfat_d
 RA8_INTERNAL
 static ra8_err_t internal_exchk_tree(ra8_fs_check_ctx_t* ctx)
 {
-  /* Explicit DFS worklist (~2 KiB) kept in module-static storage so this frame
-   * stays within the stack-usage budget; the walk is iterative (no recursion)
-   * and single-threaded under the fs lock, so the shared buffer never overlaps. */
-  static exfat_dir_stack_t s_worklist;
-  s_worklist.top       = 0U;
-  s_worklist.truncated = 0U;
-  priv_exfat_dir_root(ctx->m, &s_worklist.items[0]);
-  s_worklist.top = 1U;
-  while (s_worklist.top > 0U) {
-    s_worklist.top--;
-    const exfat_dir_t dir = s_worklist.items[s_worklist.top];
+  /* The explicit DFS array (~2 KiB) stays in module-static storage so this
+   * frame remains within budget. Metadata is automatic, letting the overflow
+   * test exercise the real push guard without allocating the whole array. The
+   * walk is iterative and single-threaded under the fs lock. */
+  static exfat_dir_t s_work_items[k_ra8_fs_check_max_dirs];
+  exfat_dir_stack_t  worklist = {.items = s_work_items};
+  priv_exfat_dir_root(ctx->m, &worklist.items[0]);
+  worklist.top = 1U;
+  while (worklist.top > 0U) {
+    worklist.top--;
+    const exfat_dir_t dir = worklist.items[worklist.top];
     ctx->rep->dirs_visited++;
     ra8_err_t err = internal_exchk_mark_dir_alloc(ctx, &dir);
     if (err != k_ra8_ok) {
       return err;
     }
-    err = internal_exchk_scan_dir(ctx, &dir, &s_worklist);
+    err = internal_exchk_scan_dir(ctx, &dir, &worklist);
     if (err != k_ra8_ok) {
       return err;
     }

@@ -43,6 +43,7 @@ ra8_add_app(
   NAME tz_nsc_cgc_usb
   STACK_BYTES 2200
   DESCRIPTION "TrustZone two-project: Secure side (CGC veneers + NS boot)"
+              AUX_SRCS src/ns_main.c src/ns_usb.c src/ns_usb_host.c
   LIBS ra8_tz_secure_boot
   NSC_SRCS ra8_nsc_cgc.c
 )
@@ -76,8 +77,9 @@ add_custom_command(
 include(${_d}/cmake/threadx_ns.cmake)
 
 add_executable(
-  tz_nsc_cgc_usb_ns.elf ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c ${CMAKE_CURRENT_SOURCE_DIR}/ns_usb.c
-                        ${CMAKE_CURRENT_SOURCE_DIR}/ns_usb_host.c
+  tz_nsc_cgc_usb_ns.elf
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_usb.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_usb_host.c
 )
 
 # Match the toolchain ABI of the Secure side but build for the NS world: no
@@ -96,8 +98,12 @@ target_compile_options(tz_nsc_cgc_usb_ns.elf PRIVATE -fshort-enums -ffreestandin
 # warnings-scope hole). threadx_ns keeps its own permissive vendor flags.
 ra8_target_enable_project_warnings(tz_nsc_cgc_usb_ns.elf STACK_USAGE_BYTES 2200)
 target_include_directories(
-  tz_nsc_cgc_usb_ns.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${RA8_REPO_ROOT}/libs/ra8_core/inc
-                                ${RA8_REPO_ROOT}/libs/ra8_hal/inc ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
+  tz_nsc_cgc_usb_ns.elf
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/src
+          ${RA8_REPO_ROOT}/libs/ra8_core/inc
+          ${RA8_REPO_ROOT}/libs/ra8_hal/inc
+          ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
 )
 target_link_libraries(tz_nsc_cgc_usb_ns.elf PRIVATE threadx_ns)
 target_link_options(
@@ -160,8 +166,21 @@ set(_ns_usb_srcs
     ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_scb.c
 )
 target_sources(tz_nsc_cgc_usb_ns.elf PRIVATE ${_ns_usb_srcs})
-# Vendored USBX + ra8_usb predate the first-party -Werror set.
-set_source_files_properties(${_ns_usb_srcs} PROPERTIES COMPILE_OPTIONS "-w")
+# Quiet only the vendored USBX sources. The first-party USBX bridge, HAL, and
+# core sources remain on the full project warning profile. Measured on all 187
+# USBX TUs this app compiles, under arm-none-eabi-gcc 13.3.1 at -O0, one flag
+# removed at a time: -Wdiscarded-qualifiers and -Wcast-align both fire;
+# -Wno-redundant-decls fired on none of the 187 and is deleted. (The app-wide
+# -Wno-error=redundant-decls in cmake/ra8_add_app.cmake is a separate control
+# and is not what made this one dead -- the class simply never occurs at this
+# vendor pin.)
+set(_ra8_tz_usbx_warnings
+    -Wno-discarded-qualifiers # USBX drops qualifiers through its legacy ULONG/VOID ABI.
+    -Wno-cast-align # USBX casts byte-buffer cursors to wider protocol-word pointers.
+)
+set_source_files_properties(
+  ${_ns_usbx_core} ${_ns_usbx_cdc} PROPERTIES COMPILE_OPTIONS "${_ra8_tz_usbx_warnings}"
+)
 # Vendored USBX headers are not clean under the first-party warning profile
 # (e.g. -Wredundant-decls in ux_device_stack.h); SYSTEM keeps the profile on
 # the first-party TUs that include them without -Werror-ing SOUP headers.

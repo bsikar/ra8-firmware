@@ -112,7 +112,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section 12.1.4:
   `libs/third_party/`; this document is the case-by-case justification for that
   exemption.
 
-## Phase 2: Ethos-U operator -> ra8_npu adapter (landed, issue #228)
+## Phase 2: Ethos-U operator -> ra8_npu adapter (adapter landed; #228 remains open)
 
 Phase 1 vendored the portable `ethosu.cc` stub. Phase 2 replaces it, in-build,
 with a first-party kernel: `cmake/tflite_micro.cmake` drops the vendored stub
@@ -124,7 +124,8 @@ the first-party `ra8_ethosu_shim` (no Arm `ethos-u-core-driver` is vendored). Th
 `examples/ra8p1_foundation/npu_infer` app links the runtime (`USES tflite_micro`)
 and asserts the operator is registered via `ra8_ethosu_kernel_available()`; a full
 Vela-model-driven inference additionally needs the offline Vela compiler
-(`tools/vela`) and silicon and remains a follow-up.
+(`tools/vela`) and silicon and remains a follow-up. Those unexecuted model and
+CPU-fallback paths are why issue #228 remains open.
 
 The real dispatch upstream lives at
 `tensorflow/lite/micro/kernels/ethos_u/ethosu.cc` and calls the Arm

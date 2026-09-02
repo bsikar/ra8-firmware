@@ -149,8 +149,9 @@ ra8_usb_pmsc_state_data_t g_usb_pmsc_state = {};
  *
  * @details See implementation.
  * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
+ * @return The bulk-endpoint maximum packet size in bytes for @p speed.
+ * @retval k_ra8_pmsc_bulk_max_packet_hs @p speed is k_ra8_usb_speed_hs.
+ * @retval k_ra8_pmsc_bulk_max_packet_fs Any other speed.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
@@ -173,8 +174,6 @@ static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
  * the MSC case. PIPE3 = bulk-IN, PIPE4 = bulk-OUT, matching the
  * host-MSC layer for symmetry.
  *
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
@@ -183,25 +182,24 @@ static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_configure_pipes(void)
+static void internal_configure_pipes(void)
 {
   const uint16_t bulk_mp = internal_bulk_max_packet(g_usb_pmsc_state.speed);
 
-  ra8_err_t err = ra8_usb_configure_endpoint(g_usb_pmsc_state.speed,
-                                             k_ra8_pmsc_pipe_bulk_in,
-                                             k_ra8_pmsc_ep_bulk_in,
-                                             k_ra8_usb_ep_dir_in,
-                                             k_ra8_usb_ep_type_bulk,
-                                             bulk_mp);
-  RA8_RETURN_ON_ERROR(err, s_tag, "pmsc: bulk-in cfg"); /* GCOVR_EXCL_BR_LINE */
-
-  err = ra8_usb_configure_endpoint(g_usb_pmsc_state.speed,
+  /* Both calls receive the init-validated speed and compile-time pipe tuples
+   * that satisfy every `ra8_usb_configure_endpoint` argument guard. */
+  (void)ra8_usb_configure_endpoint(g_usb_pmsc_state.speed,
+                                   k_ra8_pmsc_pipe_bulk_in,
+                                   k_ra8_pmsc_ep_bulk_in,
+                                   k_ra8_usb_ep_dir_in,
+                                   k_ra8_usb_ep_type_bulk,
+                                   bulk_mp);
+  (void)ra8_usb_configure_endpoint(g_usb_pmsc_state.speed,
                                    k_ra8_pmsc_pipe_bulk_out,
                                    k_ra8_pmsc_ep_bulk_out,
                                    k_ra8_usb_ep_dir_out,
                                    k_ra8_usb_ep_type_bulk,
                                    bulk_mp);
-  return err;
 }
 
 /**
@@ -561,12 +559,7 @@ ra8_err_t ra8_usb_pmsc_init(ra8_usb_speed_t speed)
   priv_zero_bytes(g_usb_pmsc_state.cbw_cdb, (uint32_t)k_ra8_pmsc_cdb_max_len);
   g_usb_pmsc_state.initialized = true;
 
-  const ra8_err_t pipes_err = internal_configure_pipes();
-  if (pipes_err != k_ra8_ok) {
-    (void)ra8_usb_device_deinit(speed);
-    g_usb_pmsc_state.initialized = false;
-    return pipes_err;
-  }
+  internal_configure_pipes();
 
   ra8_log_info_val(s_tag, "device-MSC ready", (uint32_t)speed);
   return k_ra8_ok;

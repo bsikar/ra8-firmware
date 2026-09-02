@@ -10,7 +10,7 @@
  * Run-time VMA: SRAM2 Non-secure alias 0x3210_0000. Load LMA: Secure MRAM
  * 0x0208_0000 (the Secure boot copies LMA->VMA after SRAMSABAR2 marks SRAM2
  * Non-secure, then -- after ra8_rot_verify_image passes -- BLXNS-es to the reset
- * vector). tools/rot_sign.py appends the ra8_rot_trailer_t after the body; the
+ * vector). tools/rot/src/rot_sign.py appends the ra8_rot_trailer_t after the body; the
  * .ns_rot_header below tells the Secure verifier the body length.
  *
  * Copyright (c) 2026 Brighton Sikarskie
@@ -48,7 +48,7 @@ SECTIONS
      * verifier reads at ns_base + 0x40 (immediately after the 16-slot vector
      * table) to learn the signed-body length WITHOUT a hardcoded trailer
      * address. magic = "NSR1" (bytes N,S,R,1 -> LE word 0x3152534E). body_len =
-     * whole loaded image (vectors..data) = LMA end - LMA start; tools/rot_sign.py
+     * whole loaded image (vectors..data) = LMA end - LMA start; tools/rot/src/rot_sign.py
      * appends the ra8_rot_trailer_t at ns_base + body_len. Keep it in sync with
      * ra8_ns_rot_header_t / k_ra8_tz_ns_rot_header_* in ra8_tz_secure_boot.h. */
     .ns_rot_header : ALIGN(4)

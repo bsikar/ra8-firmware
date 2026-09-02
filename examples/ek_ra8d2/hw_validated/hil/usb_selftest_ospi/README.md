@@ -28,11 +28,14 @@ granularity is the 4 KiB sector.
 
 ## Scope
 
-This exposes OSPI **read-only**: the host verifies content the device wrote. A
-host-writable OSPI drive that the host formats and writes files into, persisting
-across power cycles, needs a read-modify-erase-write backing (4 KiB erase
-granularity against 512-byte LBAs) and is tracked under #56 alongside the
-microSD and multi-LUN backings. WRITE(10) STALL recovery is #92.
+This app exposes OSPI **read-only**: the host verifies content the device wrote.
+The narrower persistent-media write path is now covered separately by
+`usb_selftest_ospi_rw`, while `usb_selftest_microsd` and `usb_selftest_mlun`
+cover card readback and per-LUN addressing. A general host-formatted OSPI
+filesystem that survives power cycles would still need a
+read-modify-erase-write backing (4 KiB erase granularity against 512-byte LBAs);
+that general filesystem mode is outside this read-only app's contract.
+WRITE(10) STALL recovery is tracked by open issue #92.
 
 ## Pinout
 

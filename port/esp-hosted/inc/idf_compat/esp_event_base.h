@@ -59,7 +59,6 @@
    take this project's conventions. clang-tidy's naming rule is suppressed
    across the block, following the ThreadX shim precedent in
    libs/ra8_wdt_supervisor and the sibling esp_log.h. */
-/* NOLINTBEGIN(readability-identifier-naming) -- ESP-IDF-fixed spellings. */
 
 /**
  * @typedef esp_event_base_t
@@ -77,8 +76,6 @@
  * @since 0.1.0
  */
 typedef const char* esp_event_base_t;
-
-/* NOLINTEND(readability-identifier-naming) */
 
 /**
  * @def ESP_EVENT_DECLARE_BASE

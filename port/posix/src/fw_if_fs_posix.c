@@ -9,8 +9,11 @@
  * @details
  * Implements portable filesystem operations relative to one opened root
  * descriptor. Component-wise no-follow traversal rejects parent escapes and
- * symlinks, while caller-owned file and transaction workspaces provide bounded
- * streaming, listing, metadata, and staged publication on hosted systems.
+ * every symbolic link on Linux. Darwin accepts only its exact filesystem-root
+ * `tmp` and `var` aliases, opening them through canonical `private` components
+ * rather than the alias pathname. Caller-owned file and transaction workspaces
+ * provide bounded streaming, listing, metadata, and staged publication on
+ * hosted systems.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -71,7 +74,6 @@ typedef enum : uint8_t {
   k_posix_directory_budget_overhead = 3U, /**< Dot entries plus EOF look-ahead. */
 } posix_directory_budget_t;
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_component_copy(const char* start, uint16_t length, char* out)
 {
   if (length == 0U) {
@@ -87,23 +89,52 @@ RA8_INTERNAL static ra8_err_t internal_component_copy(const char* start, uint16_
   return k_ra8_ok;
 }
 
-/* see header for full description */
-RA8_INTERNAL static ra8_err_t internal_intermediate_check(int parent_fd, const char* component)
+RA8_INTERNAL static ra8_err_t
+internal_intermediate_check(int parent_fd, const char* component, posix_root_alias_t* out_alias)
 {
-  struct stat meta = {};
+  *out_alias = k_posix_root_alias_none;
+  struct stat meta;
+  ra8_err_t   status = k_ra8_ok;
   if (fstatat(parent_fd, component, &meta, AT_SYMLINK_NOFOLLOW) != 0) {
-    return priv_fs_posix_errno(errno);
+    status = priv_fs_posix_errno(errno);
+  } else if (S_ISLNK(meta.st_mode)) {
+#ifdef __APPLE__
+    status = priv_fs_posix_root_alias_verify(parent_fd, component, out_alias);
+#else
+    status = k_ra8_err_access_denied;
+#endif
+  } else if (!S_ISDIR(meta.st_mode)) {
+    status = k_ra8_err_not_found;
+  } else {
+    status = k_ra8_ok;
   }
-  if (S_ISLNK(meta.st_mode)) {
-    return k_ra8_err_access_denied;
-  }
-  if (!S_ISDIR(meta.st_mode)) {
-    return k_ra8_err_not_found;
-  }
-  return k_ra8_ok;
+  return status;
 }
 
-/* see header for full description */
+RA8_PRIV ra8_err_t priv_fs_posix_component_open(int parent_fd, const char* component, int* out_fd)
+{
+  *out_fd                   = -1;
+  posix_root_alias_t alias  = k_posix_root_alias_none;
+  ra8_err_t          status = internal_intermediate_check(parent_fd, component, &alias);
+  if (status == k_ra8_ok) {
+#ifdef __APPLE__
+    if (alias != k_posix_root_alias_none) {
+      status = priv_fs_posix_root_alias_open(parent_fd, alias, out_fd);
+    } else
+#endif
+    {
+      const int opened =
+        openat(parent_fd, component, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+      if (opened < 0) {
+        status = priv_fs_posix_errno(errno);
+      } else {
+        *out_fd = opened;
+      }
+    }
+  }
+  return status;
+}
+
 RA8_INTERNAL static ra8_err_t
 internal_next_component(const char** cursor, char* out_name, uint16_t* out_length)
 {
@@ -125,31 +156,22 @@ internal_next_component(const char** cursor, char* out_name, uint16_t* out_lengt
   return k_ra8_ok;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_parent_open_step(int* current, const char* name)
 {
-  const ra8_err_t checked = internal_intermediate_check(*current, name);
-  if (checked != k_ra8_ok) {
-    (void)priv_fs_posix_close_fd(current);
-    return checked;
-  }
-  const int next = openat(*current, name, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
-  if (next < 0) {
-    const ra8_err_t failed = priv_fs_posix_errno(errno);
-    (void)priv_fs_posix_close_fd(current);
-    return failed;
+  int             next   = -1;
+  const ra8_err_t opened = priv_fs_posix_component_open(*current, name, &next);
+  if (opened != k_ra8_ok) {
+    return priv_fs_posix_close_fd_preserve(current, opened);
   }
   const ra8_err_t closed = priv_fs_posix_close_fd(current);
   if (closed != k_ra8_ok) {
     int next_owned = next;
-    (void)priv_fs_posix_close_fd(&next_owned);
-    return closed;
+    return priv_fs_posix_close_fd_preserve(&next_owned, closed);
   }
   *current = next;
   return k_ra8_ok;
 }
 
-/* see header for full description */
 RA8_PRIV ra8_err_t priv_fs_posix_parent_open(fw_fs_posix_state_t* state,
                                              const char*          path,
                                              int*                 out_parent_fd,
@@ -165,8 +187,7 @@ RA8_PRIV ra8_err_t priv_fs_posix_parent_open(fw_fs_posix_state_t* state,
     uint16_t        length  = 0U;
     const ra8_err_t scanned = internal_next_component(&cursor, name, &length);
     if (scanned != k_ra8_ok) {
-      (void)priv_fs_posix_close_fd(&current);
-      return scanned;
+      return priv_fs_posix_close_fd_preserve(&current, scanned);
     }
     if (cursor[length] == '\0') {
       (void)memcpy(out_leaf, name, (size_t)length + 1U);
@@ -179,11 +200,9 @@ RA8_PRIV ra8_err_t priv_fs_posix_parent_open(fw_fs_posix_state_t* state,
     }
     cursor = &cursor[(uint16_t)(length + 1U)];
   }
-  (void)priv_fs_posix_close_fd(&current);
-  return k_ra8_err_invalid_size;
+  return priv_fs_posix_close_fd_preserve(&current, k_ra8_err_invalid_size);
 }
 
-/* see header for full description */
 RA8_INTERNAL static fw_fs_node_type_t internal_node_type(mode_t mode)
 {
   if (S_ISREG(mode)) {
@@ -198,7 +217,6 @@ RA8_INTERNAL static fw_fs_node_type_t internal_node_type(mode_t mode)
   return k_fw_fs_node_other;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_native_stat(fw_fs_posix_state_t* state,
                                                    const char*          path,
                                                    struct stat*         out,
@@ -238,7 +256,6 @@ RA8_INTERNAL static ra8_err_t internal_native_stat(fw_fs_posix_state_t* state,
   return k_ra8_ok;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_stat(void* ctx, const char* path, fw_fs_stat_t* out)
 {
   fw_fs_posix_state_t* state  = (fw_fs_posix_state_t*)ctx;
@@ -252,7 +269,7 @@ RA8_INTERNAL static ra8_err_t internal_stat(void* ctx, const char* path, fw_fs_s
   out->size_bytes = exists ? (uint64_t)native.st_size : 0U;
   out->type       = exists ? internal_node_type(native.st_mode) : k_fw_fs_node_none;
   if (exists) {
-#if defined(__APPLE__)
+#ifdef __APPLE__
     out->created =
       priv_fs_posix_timestamp(native.st_birthtimespec.tv_sec, native.st_birthtimespec.tv_nsec);
     out->modified =
@@ -270,7 +287,6 @@ RA8_INTERNAL static ra8_err_t internal_stat(void* ctx, const char* path, fw_fs_s
   return k_ra8_ok;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t
 internal_directory_open(fw_fs_posix_state_t* state, const char* path, int* out_fd)
 {
@@ -284,27 +300,20 @@ internal_directory_open(fw_fs_posix_state_t* state, const char* path, int* out_f
   if (parent != k_ra8_ok) {
     return parent;
   }
-  const ra8_err_t checked = internal_intermediate_check(parent_fd, leaf);
-  if (checked != k_ra8_ok) {
-    (void)priv_fs_posix_close_fd(&parent_fd);
-    return checked;
-  }
-  const int       opened = openat(parent_fd, leaf, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
-  const int       saved_errno = errno;
+  int             opened      = -1;
+  const ra8_err_t open_status = priv_fs_posix_component_open(parent_fd, leaf, &opened);
   const ra8_err_t closed      = priv_fs_posix_close_fd(&parent_fd);
-  if (opened < 0) {
-    return priv_fs_posix_errno(saved_errno);
+  if (open_status != k_ra8_ok) {
+    return open_status;
   }
   if (closed != k_ra8_ok) {
     int owned = opened;
-    (void)priv_fs_posix_close_fd(&owned);
-    return closed;
+    return priv_fs_posix_close_fd_preserve(&owned, closed);
   }
   *out_fd = opened;
   return k_ra8_ok;
 }
 
-/* see header for full description */
 RA8_PRIV ra8_err_t priv_fs_posix_dir_open(void*       ctx,
                                           const char* path,
                                           void*       directory_state,
@@ -318,7 +327,6 @@ RA8_PRIV ra8_err_t priv_fs_posix_dir_open(void*       ctx,
   return internal_directory_open((fw_fs_posix_state_t*)ctx, path, &directory->fd);
 }
 
-/* see header for full description */
 RA8_PRIV ra8_err_t priv_fs_posix_dir_next(void*                 ctx,
                                           void*                 directory_state,
                                           fw_fs_dirent_value_t* out,
@@ -359,7 +367,6 @@ RA8_PRIV ra8_err_t priv_fs_posix_dir_next(void*                 ctx,
   return k_ra8_err_invalid_state;
 }
 
-/* see header for full description */
 RA8_PRIV ra8_err_t priv_fs_posix_dir_close(void* ctx, void* directory_state)
 {
   (void)ctx;
@@ -367,7 +374,6 @@ RA8_PRIV ra8_err_t priv_fs_posix_dir_close(void* ctx, void* directory_state)
   return priv_fs_posix_close_fd(&directory->fd);
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_mkdir(void* ctx, const char* path)
 {
   fw_fs_posix_state_t* state     = (fw_fs_posix_state_t*)ctx;
@@ -386,7 +392,6 @@ RA8_INTERNAL static ra8_err_t internal_mkdir(void* ctx, const char* path)
   return closed;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_unlink(void* ctx, const char* path)
 {
   fw_fs_posix_state_t* state  = (fw_fs_posix_state_t*)ctx;
@@ -420,7 +425,6 @@ RA8_INTERNAL static ra8_err_t internal_unlink(void* ctx, const char* path)
   return closed;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_rmdir(void* ctx, const char* path)
 {
   fw_fs_posix_state_t* state  = (fw_fs_posix_state_t*)ctx;
@@ -454,7 +458,6 @@ RA8_INTERNAL static ra8_err_t internal_rmdir(void* ctx, const char* path)
   return closed;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t
 internal_rename_noreplace(int old_fd, const char* old_leaf, int new_fd, const char* new_leaf)
 {
@@ -529,7 +532,6 @@ RA8_INTERNAL static ra8_err_t internal_rename_opened(int         old_fd,
   return k_ra8_ok;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_rename_validate_endpoints(fw_fs_posix_state_t* state,
                                                                  const char*          old_path,
                                                                  const char*          new_path)
@@ -561,7 +563,6 @@ RA8_INTERNAL static ra8_err_t internal_rename_validate_endpoints(fw_fs_posix_sta
   return k_ra8_ok;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t
 internal_rename(void* ctx, const char* old_path, const char* new_path, bool replace)
 {
@@ -596,7 +597,6 @@ internal_rename(void* ctx, const char* old_path, const char* new_path, bool repl
   return result;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_space(void* ctx, fw_fs_space_t* out)
 {
   fw_fs_posix_state_t* state = (fw_fs_posix_state_t*)ctx;
@@ -610,7 +610,6 @@ RA8_INTERNAL static ra8_err_t internal_space(void* ctx, fw_fs_space_t* out)
   return k_ra8_ok;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_stage_open(fw_fs_posix_state_t*       state,
                                                   posix_transaction_state_t* txn)
 {
@@ -638,7 +637,6 @@ RA8_INTERNAL static ra8_err_t internal_stage_open(fw_fs_posix_state_t*       sta
   return k_ra8_err_no_mem;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_txn_begin(void*                      ctx,
                                                  void*                      transaction_state,
                                                  uint32_t                   state_bytes,
@@ -681,7 +679,6 @@ RA8_INTERNAL static ra8_err_t internal_txn_begin(void*                      ctx,
   return internal_stage_open(state, txn);
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_txn_write(void*          ctx,
                                                  void*          transaction_state,
                                                  const uint8_t* src,
@@ -695,7 +692,6 @@ RA8_INTERNAL static ra8_err_t internal_txn_write(void*          ctx,
   return priv_fs_posix_write(ctx, &txn->file_state, src, len, out_written);
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_txn_seek(void* ctx, void* transaction_state, uint64_t offset)
 {
   posix_transaction_state_t* txn = (posix_transaction_state_t*)transaction_state;
@@ -713,7 +709,6 @@ RA8_INTERNAL static ra8_err_t internal_txn_seek(void* ctx, void* transaction_sta
   return priv_fs_posix_seek(ctx, &txn->file_state, offset);
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_txn_validate(void*               ctx,
                                                     void*               transaction_state,
                                                     fw_fs_validate_fn_t validator,
@@ -755,7 +750,6 @@ RA8_INTERNAL static ra8_err_t internal_txn_validate(void*               ctx,
   return shut;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_parent_sync(fw_fs_posix_state_t* state, const char* path)
 {
   int             parent_fd = -1;
@@ -773,7 +767,6 @@ RA8_INTERNAL static ra8_err_t internal_parent_sync(fw_fs_posix_state_t* state, c
   return (result == k_ra8_ok) ? closed : result;
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t
 internal_txn_commit(void* ctx, void* transaction_state, bool* out_published)
 {
@@ -792,7 +785,6 @@ internal_txn_commit(void* ctx, void* transaction_state, bool* out_published)
   return internal_parent_sync(state, txn->destination);
 }
 
-/* see header for full description */
 RA8_INTERNAL static ra8_err_t internal_txn_abort(void* ctx, void* transaction_state)
 {
   posix_transaction_state_t* txn   = (posix_transaction_state_t*)transaction_state;

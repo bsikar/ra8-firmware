@@ -130,10 +130,10 @@ def audit_aggregate(  # noqa: PLR0913  # body slice
 
     lows = [body_start, *delims]
     highs = [*delims, body_end]
-    code_starts = [_first_code_offset(code, lo, hi) for lo, hi in zip(lows, highs)]
+    code_starts = [_first_code_offset(code, lo, hi) for lo, hi in zip(lows, highs, strict=False)]
 
     rows = []
-    for idx, (lo, cs) in enumerate(zip(lows, code_starts)):
+    for idx, (lo, cs) in enumerate(zip(lows, code_starts, strict=False)):
         if cs is None:
             continue  # whitespace-only trailer (e.g. after the last comma)
         nxt = next((c for c in code_starts[idx + 1 :] if c is not None), body_end)
@@ -178,6 +178,20 @@ def _preceding_doc_run(
     return spans, has_pre
 
 
+_STANDARD_FEATURE_MACROS = frozenset(
+    {
+        "_GNU_SOURCE",
+        "_POSIX_C_SOURCE",
+        "_DARWIN_C_SOURCE",
+        "_DEFAULT_SOURCE",
+        "_XOPEN_SOURCE",
+        "_BSD_SOURCE",
+        "_ISOC11_SOURCE",
+        "_ISOC99_SOURCE",
+    }
+)
+
+
 def audit_macros(
     raw: str, code: str, comments: list[tuple[int, int, str | None]], rel: str
 ) -> list[tuple[str, int, str, str, str]]:
@@ -185,6 +199,8 @@ def audit_macros(
     rows = []
     for m in _DEFINE_RE.finditer(code):
         name = m.group(1)
+        if name in _STANDARD_FEATURE_MACROS:
+            continue
         def_line = m.start()
         spans, has_pre = _preceding_doc_run(comments, code, def_line)
         line_no = code.count("\n", 0, def_line) + 1

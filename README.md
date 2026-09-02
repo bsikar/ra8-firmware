@@ -1,13 +1,14 @@
 # ra8-firmware
 
-[![firmware](https://github.com/bsikar/ra8-firmware/actions/workflows/firmware.yml/badge.svg?branch=main)](https://github.com/bsikar/ra8-firmware/actions/workflows/firmware.yml)
+[![firmware](https://github.com/bsikar/ra8-firmware/actions/workflows/firmware.yml/badge.svg?branch=dev)](https://github.com/bsikar/ra8-firmware/actions/workflows/firmware.yml)
 
 A bare-metal firmware platform for the Renesas RA8 family (RA8D2 and RA8P1):
 a hand-written HAL over the chip's register map, ports of the RTOS / USB /
 networking / TLS stacks, and a host emulator that boots the real firmware
 images so none of it needs a board. No Renesas FSP code lives here -- the FSP
-sources and the Hardware User's Manual are reference material, and every line
-under `libs/` and `port/` is written against the manual.
+sources and the Hardware User's Manual are reference material. Every
+first-party line under `libs/` and `port/`, excluding the declared
+`third_party/` SOUP roots, is written against the manual.
 
 ## Shape of the system
 
@@ -25,15 +26,21 @@ cross-compiled), `tools/`, `scripts/`, `infra/` (the declared CI fleet),
 ## Running it
 
 ```sh
-make apps          # list the firmware apps
-make <app>         # cross-compile one, e.g. make blink
-make emu-<app>     # boot it on the emulator, no board
-make test          # host unit tests
+just apps::example::list        # list the firmware examples
+just apps::build <app>          # cross-compile one, e.g. just apps::build blink
+just apps::emulator::run <app>  # boot it on the emulator, no board
+just tests::build               # host unit tests
 ```
 
-`make help` is the grouped target reference. It is derived from the Makefiles,
-so unlike a list written out here it cannot drift. Hooks install on the first
-`make`.
+`just` is the grouped target reference. It is derived from the justfiles,
+so unlike a list written out here it cannot drift. On a fresh clone, install
+the repository-local Python environment, hooks, exact Ansible collections, and
+pinned CI image with `just setup`; it requires only Git, a standard-library
+Python in the range declared by `pyproject.toml`, `just`, trusted CA certificates, and a
+working Podman, Docker, or nerdctl runtime. Run `just dev-shell` afterward for
+a writable shell containing the pinned ARM compiler, host compilers, CMake,
+formatters, analyzers, and documentation tools; none are installed into the
+host's system Python or package directories.
 
 ## The emulator
 
@@ -41,15 +48,15 @@ so unlike a list written out here it cannot drift. Hooks install on the first
 cross-compiled `.elf` -- the same image that flashes to a board -- on an
 emulated Cortex-M over a modelled RA8D2 peripheral space, and shows the GLCDC
 framebuffer beside the board LEDs and live USB / UART / IRQ / touch state. The
-live window is macOS-only (Cocoa, provisioned by `make emu-setup`); booting,
+live window is macOS-only (Cocoa, provisioned by `just apps::emulator::setup`); booting,
 MMIO reporting, console capture and frame dumps run headless everywhere.
 
 Because it runs the real binary through the real bring-up code, it reproduces
 firmware bugs a short bench run never reaches. It models hardware *handshakes*
 rather than silicon timing, and some peripherals are modelled further than
 others, so it complements the bench instead of replacing it. CI leans on it:
-`make eil` boots every HIL app headless and asserts its expectation, and
-`make emu-matrix` sweeps every example.
+`just apps::emulator::eil` boots every HIL app headless and asserts its expectation, and
+`just apps::emulator::matrix` sweeps every example.
 
 ## Hardware
 
@@ -59,19 +66,20 @@ The bench board is an **EK-RA8D2**: Cortex-M85 at 1 GHz plus Cortex-M33 at
 Flashing and debugging need the SEGGER J-Link tools.
 
 Rig settings (probe serial, bench Pi) live in a gitignored `.env`; copy
-`.env.example` and run `make hil-find-jlink` for the serial. The `make hil-*`
-targets drive the maintainer's bench rig and will not work elsewhere without
-your own rig.
+`.env.example` and run `just hil::find_jlink` for the serial. The `just hil`
+namespace drives the maintainer's bench rig and will not work elsewhere without
+your own rig; run `just hil` to see every guarded operation.
 
-**Bricked board?** `bash scripts/hil/dlm_reset_local.sh recover` mass-erases an
-EK-RA8D2 cabled to this machine and returns it to the factory default
-(all-Secure, OEM_PL2); run `... check` first to confirm the probe reaches it.
+**Bricked board?** `just hil::dlm_recover_local` asks for confirmation,
+mass-erases an EK-RA8D2 cabled to this machine, and returns it to the factory
+default (all-Secure, OEM_PL2). Run `just hil::dlm_check_local` first to
+confirm the probe reaches it without changing the target.
 
 ## CI
 
 Every gate body lives once, in `scripts/ci.sh`, and each workflow step is a thin
-`bash scripts/ci.sh --gate <name>` driver, so local and CI cannot run different
-checks. `make ci` runs them all in the pinned devcontainer; `make ci-native` is
+`just quality::local::gate <name>` driver, so local and CI cannot run different
+checks. `just ci` runs them all in the pinned devcontainer; `just quality::native` is
 the same set without a container runtime, which is the supported path on Linux.
 
 ## Docs

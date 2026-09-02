@@ -14,8 +14,8 @@
  *  - `tools/ra8_emulator/src/periph/board_periph_npu.c` DECODES a stream in this layout and
  *    performs the stand-in "execution" against the tensor arenas, so the OUTPUT
  *    arena ends up holding a checkable, deterministic result.
- *  - `tests/test_ra8_npu.c` MOCKS the same decode against the host MMIO backing
- *    store, so `make test` covers the identical convention.
+ *  - `tests/misc/src/test_ra8_npu.c` MOCKS the same decode against the host MMIO backing
+ *    store, so `just quality::local::test` covers the identical convention.
  *
  * Keeping the magic value, the opcodes, the header word indices, and the
  * transfer bound in ONE place means the three consumers can never disagree: if

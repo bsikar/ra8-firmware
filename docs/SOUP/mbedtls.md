@@ -45,8 +45,9 @@ as Software Of Unknown Provenance (SOUP).
   `libs/ra8_ota/inc/ra8_ota.h` states this at its seam. The only wiring today
   uses `ra8_rsip` SHA with a TODO for a tf-psa ECDSA backend.
 - **Nothing TLS runs on hardware.** Both consumers cross-compile in CI (the
-  `build-cross` gate builds every app that has a `main.c` and a `Makefile`,
-  and both per-app Makefiles force `-DRA8_USE_MBEDTLS=ON`), but neither
+  `build-cross` gate builds the canonical matrix from
+  `scripts/dev/ra8_apps.py`,
+  and both apps' CMakeLists.txt force `-DRA8_USE_MBEDTLS=ON`), but neither
   carries a `hil.conf`: `tls_client` is `hw_pending` and
   `threadx_https_client` is `_unsupported`. The C6 Wi-Fi path is DHCP + ICMP
   only and has no TCP, so it has no transport for TLS either.

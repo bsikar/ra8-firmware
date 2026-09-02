@@ -110,7 +110,9 @@ ra8_err_t ra8_sdhi_init(uint8_t instance)
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 */
   const ra8_err_t mst_err = ra8_mstp_enable(s_sdhi_mstp_table[instance]);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "sdhi_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "sdhi_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3129 */
   /* Drop any stale flags before reset so the card-detection latch is
@@ -196,14 +198,13 @@ ra8_err_t ra8_sdhi_send_command(uint8_t instance, uint32_t cmd, uint32_t arg, ui
 
   /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3129 */
   /* Poll SD_INFO1.RSPEND (bit 0) with bounded spin budget. */
-  for (uint32_t i = 0U; i < k_ra8_sdhi_cmd_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_sdhi_cmd_spin; ++i) {
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     if (ra8_fake_mmio_poll(&reg->SD_INFO1,
                            i,
-                           (reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) !=
-                             0U)) { /* GCOVR_EXCL_BR_LINE */
+                           (reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) != 0U)) {
 #else
-    if ((reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) != 0U) {
 #endif
       if (out_rsp != nullptr) {
         /* HUM Ch 47.2.5 "SD_RSP10..SD_RSP76 : Response Registers" p 3132 */
@@ -267,7 +268,7 @@ ra8_err_t ra8_sdhi_set_bus_width(uint8_t instance, ra8_sdhi_bus_width_t width)
 
 ra8_err_t ra8_sdhi_set_bus_width_4bit(uint8_t instance, uint16_t rca)
 {
-  volatile r_sdhi_regs_t* reg = ra8_sdhi(instance);
+  volatile const r_sdhi_regs_t* reg = ra8_sdhi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "set_bus_width_4bit: instance out of range");
 
   uint32_t       rsp[4]    = {0U, 0U, 0U, 0U};
@@ -277,7 +278,7 @@ ra8_err_t ra8_sdhi_set_bus_width_4bit(uint8_t instance, uint16_t rca)
   /* CMD55 APP_CMD prefix (arg = RCA<<16) -- required before any ACMDxx. */
   const ra8_err_t e55 =
     ra8_sdhi_send_command(instance, (uint32_t)k_ra8_sdhi_cmd_app_cmd, cmd55_arg, rsp);
-  RA8_RETURN_ON_ERROR(e55, s_tag, "acmd6: CMD55 timeout"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(e55, s_tag, "acmd6: CMD55 timeout");
   const uint32_t cmd55_rsp = rsp[0];
 
   /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument" p 3124 */
@@ -286,7 +287,7 @@ ra8_err_t ra8_sdhi_set_bus_width_4bit(uint8_t instance, uint16_t rca)
                                              (uint32_t)k_ra8_sdhi_cmd_set_bus_width,
                                              (uint32_t)k_ra8_sdhi_acmd6_arg_4bit,
                                              rsp);
-  RA8_RETURN_ON_ERROR(e6, s_tag, "acmd6: ACMD6 timeout"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(e6, s_tag, "acmd6: ACMD6 timeout");
   const uint32_t acmd6_rsp = rsp[0];
 
   /* Card acknowledges only when CMD55 echoed APP_CMD AND the ACMD6 R1
@@ -305,7 +306,7 @@ ra8_err_t ra8_sdhi_set_bus_width_4bit(uint8_t instance, uint16_t rca)
 
 ra8_err_t ra8_sdhi_set_bus_width_8bit(uint8_t instance)
 {
-  volatile r_sdhi_regs_t* reg = ra8_sdhi(instance);
+  volatile const r_sdhi_regs_t* reg = ra8_sdhi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "set_bus_width_8bit: instance out of range");
 
   uint32_t rsp[4] = {0U, 0U, 0U, 0U};
@@ -318,7 +319,7 @@ ra8_err_t ra8_sdhi_set_bus_width_8bit(uint8_t instance)
                                              (uint32_t)k_ra8_sdhi_cmd_emmc_switch,
                                              (uint32_t)k_ra8_sdhi_cmd6_arg_8bit,
                                              rsp);
-  RA8_RETURN_ON_ERROR(e6, s_tag, "switch8: CMD6 timeout"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(e6, s_tag, "switch8: CMD6 timeout");
 
   /* The device accepts only when the R1b response carries no error /
    * status-violation bits; otherwise the host stays at its current
@@ -334,7 +335,7 @@ ra8_err_t ra8_sdhi_set_bus_width_8bit(uint8_t instance)
 ra8_err_t ra8_sdhi_get_status(uint8_t instance, uint32_t* out_mask)
 {
   RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  volatile r_sdhi_regs_t* reg = ra8_sdhi(instance);
+  volatile const r_sdhi_regs_t* reg = ra8_sdhi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
   /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3129 */
   *out_mask = reg->SD_INFO1;
@@ -464,14 +465,13 @@ static ra8_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, u
   reg->SD_CMD = cmd;
 
   /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3129 */
-  for (uint32_t i = 0U; i < k_ra8_sdhi_cmd_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_sdhi_cmd_spin; ++i) {
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     if (ra8_fake_mmio_poll(&reg->SD_INFO1,
                            i,
-                           (reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) !=
-                             0U)) { /* GCOVR_EXCL_BR_LINE */
+                           (reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) != 0U)) {
 #else
-    if ((reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->SD_INFO1 & k_ra8_sdhi_info1_rspend_mask) != 0U) {
 #endif
       reg->SD_INFO1 = reg->SD_INFO1 & ~k_ra8_sdhi_info1_rspend_mask;
       return k_ra8_ok;
@@ -553,14 +553,13 @@ static ra8_err_t internal_sdhi_drain(volatile r_sdhi_regs_t* reg, uint8_t* buf, 
   uint8_t* cursor = buf;
   for (uint32_t w = 0U; w < words; ++w) {
     uint32_t spin = 0U;
-    for (; spin < k_ra8_sdhi_fifo_spin; ++spin) { /* GCOVR_EXCL_BR_LINE */
+    for (; spin < k_ra8_sdhi_fifo_spin; ++spin) {
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
       if (ra8_fake_mmio_poll(&reg->SD_INFO2,
                              spin,
-                             (reg->SD_INFO2 & k_ra8_sdhi_info2_bre_mask) !=
-                               0U)) { /* GCOVR_EXCL_BR_LINE */
+                             (reg->SD_INFO2 & k_ra8_sdhi_info2_bre_mask) != 0U)) {
 #else
-      if ((reg->SD_INFO2 & k_ra8_sdhi_info2_bre_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+      if ((reg->SD_INFO2 & k_ra8_sdhi_info2_bre_mask) != 0U) {
 #endif
         break;
       }
@@ -612,14 +611,13 @@ static ra8_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* 
   const uint8_t* cursor = buf;
   for (uint32_t w = 0U; w < words; ++w) {
     uint32_t spin = 0U;
-    for (; spin < k_ra8_sdhi_fifo_spin; ++spin) { /* GCOVR_EXCL_BR_LINE */
+    for (; spin < k_ra8_sdhi_fifo_spin; ++spin) {
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
       if (ra8_fake_mmio_poll(&reg->SD_INFO2,
                              spin,
-                             (reg->SD_INFO2 & k_ra8_sdhi_info2_bwe_mask) !=
-                               0U)) { /* GCOVR_EXCL_BR_LINE */
+                             (reg->SD_INFO2 & k_ra8_sdhi_info2_bwe_mask) != 0U)) {
 #else
-      if ((reg->SD_INFO2 & k_ra8_sdhi_info2_bwe_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+      if ((reg->SD_INFO2 & k_ra8_sdhi_info2_bwe_mask) != 0U) {
 #endif
         break;
       }
@@ -669,7 +667,7 @@ static ra8_err_t internal_sdhi_finish_xfer(volatile r_sdhi_regs_t* reg, uint32_t
     /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3123 */
     const ra8_err_t stop_err =
       internal_sdhi_send(reg, (uint32_t)k_ra8_sdhi_cmd_stop_transmission, 0U);
-    RA8_RETURN_ON_ERROR(stop_err, s_tag, "block_xfer: CMD12 timeout"); /* GCOVR_EXCL_BR_LINE */
+    RA8_RETURN_ON_ERROR(stop_err, s_tag, "block_xfer: CMD12 timeout");
   }
   reg->SD_INFO1 = 0U;
   reg->SD_INFO2 = 0U;
@@ -690,12 +688,12 @@ ra8_err_t ra8_sdhi_read_block(uint8_t instance, uint32_t lba, uint8_t* buf, uint
   const uint32_t  cmd     = (block_count > 1U) ? (uint32_t)k_ra8_sdhi_cmd_read_multi_block
                                                : (uint32_t)k_ra8_sdhi_cmd_read_single_block;
   const ra8_err_t cmd_err = internal_sdhi_send(reg, cmd, lba);
-  RA8_RETURN_ON_ERROR(cmd_err, s_tag, "read_block: RSPEND timeout"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(cmd_err, s_tag, "read_block: RSPEND timeout");
 
   /* HUM Ch 47.2.21 "SD_BUF0 : SD Buffer Register" p 3143 */
   const uint32_t  total_words = block_count * k_ra8_sdhi_words_per_block;
   const ra8_err_t drain_err   = internal_sdhi_drain(reg, buf, total_words);
-  RA8_RETURN_ON_ERROR(drain_err, s_tag, "read_block: BRE timeout"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(drain_err, s_tag, "read_block: BRE timeout");
 
   return internal_sdhi_finish_xfer(reg, block_count);
 }
@@ -715,12 +713,12 @@ ra8_sdhi_write_block(uint8_t instance, uint32_t lba, const uint8_t* buf, uint32_
   const uint32_t  cmd     = (block_count > 1U) ? (uint32_t)k_ra8_sdhi_cmd_write_multi_block
                                                : (uint32_t)k_ra8_sdhi_cmd_write_single_block;
   const ra8_err_t cmd_err = internal_sdhi_send(reg, cmd, lba);
-  RA8_RETURN_ON_ERROR(cmd_err, s_tag, "write_block: RSPEND timeout"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(cmd_err, s_tag, "write_block: RSPEND timeout");
 
   /* HUM Ch 47.2.21 "SD_BUF0 : SD Buffer Register" p 3143 */
   const uint32_t  total_words = block_count * k_ra8_sdhi_words_per_block;
   const ra8_err_t fill_err    = internal_sdhi_fill(reg, buf, total_words);
-  RA8_RETURN_ON_ERROR(fill_err, s_tag, "write_block: BWE timeout"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(fill_err, s_tag, "write_block: BWE timeout");
 
   return internal_sdhi_finish_xfer(reg, block_count);
 }

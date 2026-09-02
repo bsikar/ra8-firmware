@@ -108,6 +108,14 @@ typedef enum : uint16_t {
   k_ra8_board_fb_align_bytes = 64U, /**< GLCDC AXI burst alignment, in bytes. */
 } ra8_panel_framebuffer_t;
 
+#ifdef __APPLE__
+/** @brief Internal section specifier on Mach-O hosts. */
+#define RA8_INTERNAL_PANEL_SECTION
+#else
+/** @brief Internal section specifier on target ELF binaries. */
+#define RA8_INTERNAL_PANEL_SECTION gnu::section(".sdram_data"),
+#endif
+
 /**
  * @def RA8_BOARD_PANEL_FRAMEBUFFER
  * @brief Declare a correctly aligned, sized and placed RGB565 framebuffer for
@@ -153,9 +161,7 @@ typedef enum : uint16_t {
  * @endcode
  *
  * @see k_ra8_board_fb_align_bytes  The alignment this applies.
- *
- * @since 0.1.0
  */
 #define RA8_BOARD_PANEL_FRAMEBUFFER(name)                                                          \
-  [[gnu::section(".sdram_data"), gnu::aligned(k_ra8_board_fb_align_bytes)]] static uint16_t        \
+  [[RA8_INTERNAL_PANEL_SECTION gnu::aligned(k_ra8_board_fb_align_bytes)]] static uint16_t          \
     name[(size_t)k_panel_height_px * (size_t)k_panel_width_px]

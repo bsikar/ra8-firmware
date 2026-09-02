@@ -230,7 +230,7 @@ internal_mram_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  ra8_io_blockdev_mram_state_t* st = (ra8_io_blockdev_mram_state_t*)ctx;
+  const ra8_io_blockdev_mram_state_t* st = (const ra8_io_blockdev_mram_state_t*)ctx;
   if (st->read_only) {
     return k_ra8_err_not_supported;
   }
@@ -284,7 +284,7 @@ RA8_INTERNAL
 RA8_INTERNAL static ra8_err_t internal_mram_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
-  ra8_io_blockdev_mram_state_t* st = (ra8_io_blockdev_mram_state_t*)ctx;
+  const ra8_io_blockdev_mram_state_t* st = (const ra8_io_blockdev_mram_state_t*)ctx;
   if (st->read_only) {
     return k_ra8_err_not_supported;
   }

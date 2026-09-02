@@ -20,7 +20,7 @@ Both reads must return `0x6C`. PEC is disabled because the IMU is not an SMBus
 PEC device; a production SMBus target such as a smart battery or power IC would
 use it, which `cfg.pec_enabled` turns on. A NAK or a wrong value halts on a BKPT
 **before** the PASS line, so the gate cannot pass by accident. The PEC CRC-8
-helper is covered on the host by `tests/test_ra8_smbus.c`.
+helper is covered on the host by `tests/misc/src/test_ra8_smbus.c`.
 
 Using the IMU as the target is a convenience: any register-file I2C device
 demonstrates the protocol-layer framing end to end.

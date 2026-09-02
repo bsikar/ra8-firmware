@@ -25,7 +25,7 @@ import re
 import sys
 import tempfile
 
-from annot_clang import cindex
+from annot_clang import _first_party_include_roots, cindex
 from annot_loopbound import run_loopbound_selftest
 from annot_model import AnnotatedSymbol, Violation, WalkState
 from annot_rules import enforce_rules
@@ -261,6 +261,43 @@ void host_unpublished(void)
 
 void host_priv_helper(void) {}
 """,
+    # --- apps/ host-only boundary after the products reorganization -------
+    # Only apps/host is exempt. The portable and board forms can reach a
+    # firmware image and must retain the Rule 3 allocation ban.
+    "apps/host/mod_alloc/src/host_alloc.c": """
+void* malloc(unsigned long n);
+
+[[clang::annotate("ra8_internal")]] static void host_product_allocator(void)
+{
+  (void)malloc(16UL);
+}
+""",
+    "apps/board/stand_alone/mod_alloc/src/board_alloc.c": """
+void* malloc(unsigned long n);
+
+[[clang::annotate("ra8_internal")]] static void board_product_allocator(void)
+{
+  (void)malloc(16UL);
+}
+""",
+    "apps/shared_libs/mod_alloc/src/shared_alloc.c": """
+void* malloc(unsigned long n);
+
+[[clang::annotate("ra8_internal")]] static void shared_product_allocator(void)
+{
+  (void)malloc(16UL);
+}
+""",
+    "apps/shared_libs/mod_alloc/tests/src/test_alloc.c": """
+void* malloc(unsigned long n);
+void free(void* p);
+
+[[clang::annotate("ra8_internal")]] static void host_test_wrapper_allocator(void)
+{
+  void* p = malloc(16UL);
+  free(p);
+}
+""",
     # --- exact generated-source boundary ---------------------------------
     # The reviewed protoc-c output is classified by lint coverage as generated
     # and must never be judged as hand-authored naming/linkage.  A neighboring
@@ -274,7 +311,7 @@ void future_generated_unpublished(void) {}
 """,
     # --- apps/: a module is the PRODUCT, across its build forms -----------
     # mod_product's portable core, under the shared category.
-    "apps/shared/mod_product/src/product_core.c": """
+    "apps/shared_libs/mod_product/src/product_core.c": """
 [[clang::annotate("ra8_priv")]] void product_priv_helper(void);
 
 void product_priv_helper(void) {}
@@ -282,7 +319,7 @@ void product_priv_helper(void) {}
     # The SAME product's host composition root, in a different category. A
     # build form driving its own core's promoted seam is what a composition
     # root is for, so this must stay QUIET.
-    "apps/stand_alone/mod_product/src/product_form.c": """
+    "apps/host/mod_product/src/product_form.c": """
 [[clang::annotate("ra8_priv")]] void product_form_caller(void);
 
 void product_priv_helper(void);
@@ -296,7 +333,7 @@ void product_form_caller(void)
     # core. Same boundary violation as one library calling another's private
     # helper, and it must still FIRE -- otherwise dropping the category from
     # the key would have bought the quiet case by going blind.
-    "apps/stand_alone/mod_stranger/src/stranger_form.c": """
+    "apps/host/mod_stranger/src/stranger_form.c": """
 [[clang::annotate("ra8_priv")]] void stranger_form_caller(void);
 
 void product_priv_helper(void);
@@ -377,6 +414,23 @@ void anonymous_namespace_bad() {}
 [[clang::annotate("ra8_internal")]] static void internal_cpp_good() {}
 }
 """,
+    # --- recursive include-root discovery after the src/inc migration ---
+    "tests/mocks/inc/mock_contract.h": "#pragma once\n",
+    "tests/support/inc/support_contract.h": """
+#pragma once
+void support_public_entry(void);
+""",
+    "tests/consumer/src/test_support_include.c": """
+#include "support_contract.h"
+void support_public_entry(void) {}
+""",
+    "examples/board/state/demo/inc/demo_contract.h": "#pragma once\n",
+    "tests/mocks/src/mock_contract_internal.h": "#pragma once\n",
+    # A src/ directory containing only an ordinary header is deliberately
+    # not an include root. The placement gate rejects this shape; accepting it
+    # here would hide that defect and widen header-name shadowing.
+    "tests/plain/src/plain_header.h": "#pragma once\n",
+    "tests/build/generated/inc/ignored_contract.h": "#pragma once\n",
 }
 
 #: What run_selftest() expects the linkage rule to report, by symbol name.
@@ -412,6 +466,7 @@ _SELFTEST_LINKAGE_CLEAN = (
     "lock_guarded_body",
     "lock_owner_caller",
     "lock_nested_body",
+    "support_public_entry",
 )
 
 
@@ -429,12 +484,7 @@ def _selftest_parse(root: pathlib.Path) -> WalkState:
     # let that boundary regress while every rule-level assertion stayed green.
     tu_paths = discover_translation_units()
 
-    include_args = [
-        f"-I{root}/libs/mod_link/inc",
-        f"-I{root}/libs/mod_link/src",
-        f"-I{root}/libs/mod_name/inc",
-        f"-I{root}/libs/mod_name/src",
-    ]
+    include_args = [f"-I{path}" for path in _first_party_include_roots()]
     state = WalkState()
     index = cindex.Index.create()
     for path in tu_paths:
@@ -495,7 +545,7 @@ def _check_priv_namesakes(
         )
     if "product_form.c" in offenders:
         failures.append(
-            "build-form regression: apps/stand_alone/mod_product driving its own "
+            "build-form regression: apps/host/mod_product driving its own "
             "core's RA8_PRIV 'product_priv_helper' was reported -- module_of() is "
             "keying apps/ on the category, so a product split across build forms "
             "reads as two libraries"
@@ -641,6 +691,19 @@ def _check_rule3(violations: list[Violation]) -> list[str]:
             "which the host toolchain compiles and no firmware image contains -- "
             "Rule 3 is a claim about firmware"
         )
+    if "host_product_allocator" in allocators:
+        failures.append("ra8_nasa_rule_3_ok false positive: apps/host is a hosted product form")
+    if "host_test_wrapper_allocator" in allocators:
+        failures.append(
+            "ra8_nasa_rule_3_ok false positive: a host test wrapper under "
+            "apps/shared_libs/.../tests cannot enter a firmware image"
+        )
+    failures.extend(
+        "ra8_nasa_rule_3_ok scope regression: "
+        f"'{name}' can be linked into firmware but was treated as host-only"
+        for name in ("board_product_allocator", "shared_product_allocator")
+        if name not in allocators
+    )
     return failures
 
 
@@ -672,6 +735,31 @@ def _check_generated_scope(symbols: dict[str, AnnotatedSymbol]) -> list[str]:
     return failures
 
 
+def _check_include_root_discovery(root: pathlib.Path) -> list[str]:
+    """Public ``inc`` and sanctioned private ``src`` roots survive any depth."""
+    actual = {path.relative_to(root).as_posix() for path in _first_party_include_roots()}
+    expected = {
+        "examples/board/state/demo/inc",
+        "libs/mod_link/inc",
+        "libs/mod_link/src",
+        "libs/mod_name/inc",
+        "libs/mod_name/src",
+        "tests/mocks/inc",
+        "tests/mocks/src",
+        "tests/support/inc",
+    }
+    failures = [
+        f"include-root discovery missed conventional path '{path}'"
+        for path in sorted(expected - actual)
+    ]
+    forbidden = {"tests/build/generated/inc", "tests/plain/src"}
+    failures.extend(
+        f"include-root discovery accepted excluded or non-private path '{path}'"
+        for path in sorted(forbidden & actual)
+    )
+    return failures
+
+
 def run_selftest() -> int:
     """Regression-test the checker itself. Returns a process exit code.
 
@@ -686,7 +774,7 @@ def run_selftest() -> int:
       like a clean tree. The synthetic module contains one definition of
       every passing shape and one of every failing shape.
     * **A root silently out of scope.** ``tools/`` was absent from SCAN_DIRS,
-      so ra8_emulator, media_dl and ra8_viewer were never checked and the gate
+      so ra8_emulator, mdl and ra8_viewer were never checked and the gate
       reported a clean tree over code it had not read. The ``tools/`` fixture
       pins the scope from inside the rules rather than by reading the
       constant: ``host_unpublished`` is only reachable if is_first_party()
@@ -704,11 +792,15 @@ def run_selftest() -> int:
     * **Generated-source scope.** The exact reproducible protoc-c output is
       excluded by the lint-coverage registry, while an unclassified neighboring
       ``*.pb-c.c`` remains ordinary first-party C and must still be judged.
+    * **Include-root discovery.** Public ``inc/`` directories at multiple
+      product depths and sanctioned ``src/*_internal.h`` directories are found,
+      while build output and an ordinary misplaced ``src`` header stay out.
     """
     with tempfile.TemporaryDirectory() as td:
         root = pathlib.Path(td).resolve()
         with override_repo_root(root):
             state = _selftest_parse(root)
+            include_root_failures = _check_include_root_discovery(root)
             violations = enforce_rules(
                 state,
                 naming_contract=True,
@@ -722,6 +814,7 @@ def run_selftest() -> int:
         *_check_naming_contract(violations),
         *_check_fixtures_parsed(state.symbols),
         *_check_generated_scope(state.symbols),
+        *include_root_failures,
         # The loop-bound scan is textual and libclang-free, so it self-tests on
         # synthetic source strings rather than the parsed synthetic tree.
         *run_loopbound_selftest(),
@@ -739,6 +832,7 @@ def run_selftest() -> int:
         "unheld call and stays quiet on RA8_OWNS_RESOURCE / propagated holders; "
         "the exact generated protoc-c source is excluded while an unclassified "
         "pb-c.c neighbor remains in scope; "
+        "recursive inc/ and sanctioned private src/ include roots are discovered; "
         "linkage prefixes agree with static/data scope and their annotations; "
         "loop-bound scan fires on a "
         "mis-attached marker and a stale RA8_BOUNDED_LOOP statement, stays quiet on "

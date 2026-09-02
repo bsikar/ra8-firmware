@@ -6,8 +6,10 @@ itself to a specific peripheral. It spans a 512-byte LBA block-device vtable
 with one backend per medium, SPI and I2C controller-bus vtables with one
 backend per twin peripheral implementation, targetable streams, a VFS mount
 table and file operations, pluggable filesystem formats, a page/block cache,
-and compression. `ra8_io.h` pulls in the whole facade; a single backend or
-feature header can be included on its own instead.
+and media-independent storage adapters. `ra8_io.h` pulls in the whole facade;
+a single backend or feature header can be included on its own instead. Content
+compression is an opt-in app-domain component under
+`apps/shared_libs/compress/`, not part of this platform fabric.
 
 `ra8_io` is tagged `[Ring 4 / PAL]`, and most of what is surprising about its
 shape follows from that one fact.

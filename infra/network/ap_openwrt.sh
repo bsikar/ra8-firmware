@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # ap_openwrt.sh -- configure the Meraki MR18 (OpenWrt) as the bench access
 # point for the isolated ESP32-C6 wireless LAN.
@@ -24,9 +25,9 @@
 # host (e.g. star's RTL8153) is cabled directly onto the bench LAN.
 #
 # Usage:
-#   infra/network/ap_openwrt.sh apply      # push the config (default)
-#   infra/network/ap_openwrt.sh show       # dump the AP's live wireless/network
-#   infra/network/ap_openwrt.sh dryrun     # print the uci batch, connect to nothing
+#   /bin/bash -p infra/network/ap_openwrt.sh apply   # push the config (default)
+#   /bin/bash -p infra/network/ap_openwrt.sh show    # dump the AP's live config
+#   /bin/bash -p infra/network/ap_openwrt.sh dryrun  # print only; connect to nothing
 #
 # Prereqs: run from the bench Pi or the Mac with a working path to the AP
 # (10.0.40.10) and the OpenBao consumer creds at ~/.config/hil/openbao.env.
@@ -34,13 +35,64 @@
 # STATUS: the equivalent uci has been APPLIED (2026-07-27) via the FortiGate
 # console jump (fg_bringup.py ap-configure); ra8-bench is live on radio1. This
 # standalone variant stays for the direct-IP-path case. See README.md.
-set -euo pipefail
+if [[ "$-" == *p* ]]; then
+  unset -v BASH_ENV ENV
+  declare -a ra8_startup_env_unset=()
+  _ra8_startup_refuse() {
+    printf 'error: privileged startup %s\n' "$1" >&2
+    exit 1
+  }
+  ra8_startup_env_done_count=0
+  while IFS= read -r -d '' ra8_startup_env_row; do
+    ra8_startup_env_name="${ra8_startup_env_row%%=*}"
+    case "$ra8_startup_env_name" in
+      RA8_STARTUP_ENV_DONE)
+        ra8_startup_env_done_count=$((ra8_startup_env_done_count + 1))
+        ;;
+      BASH_FUNC_*%% | BASH_FUNC_*'()') ra8_startup_env_unset+=(-u "$ra8_startup_env_name") ;;
+    esac
+  done < <(
+    /usr/bin/env -u RA8_STARTUP_ENV_DONE -0 &&
+      /usr/bin/printf 'RA8_STARTUP_ENV_DONE=1\0'
+  )
+  ((ra8_startup_env_done_count == 1)) && [[ "$ra8_startup_env_name" == RA8_STARTUP_ENV_DONE ]] || _ra8_startup_refuse 'environment enumeration was incomplete'
+  if ((${#ra8_startup_env_unset[@]})); then
+    [[ -z "${RA8_STARTUP_ENV_SCRUBBED-}" ]] || _ra8_startup_refuse 'scrub did not converge'
+    ra8_startup_reentry="$0"
+    [[ "$ra8_startup_reentry" == */* ]] || _ra8_startup_refuse 'requires a script path'
+    if [[ "$ra8_startup_reentry" != /* ]]; then
+      ra8_startup_reentry="$PWD/$ra8_startup_reentry"
+    fi
+    ra8_startup_check="$ra8_startup_reentry"
+    while [[ "$ra8_startup_check" != "/" ]]; do
+      [[ ! -L "$ra8_startup_check" ]] || _ra8_startup_refuse 'refuses a symlinked path'
+      ra8_startup_parent="${ra8_startup_check%/*}"
+      [[ -n "$ra8_startup_parent" ]] || ra8_startup_parent="/"
+      [[ "$ra8_startup_parent" != "$ra8_startup_check" ]] ||
+        _ra8_startup_refuse 'cannot validate its script path'
+      ra8_startup_check="$ra8_startup_parent"
+    done
+    [[ -f "$ra8_startup_reentry" ]] || _ra8_startup_refuse 'refuses a non-regular path'
+    if ! exec /usr/bin/env "${ra8_startup_env_unset[@]}" -u BASH_ENV -u ENV \
+      -u RA8_STARTUP_ENV_DONE RA8_STARTUP_ENV_SCRUBBED=1 \
+      /bin/bash -p -- "$ra8_startup_reentry" "$@"; then
+      _ra8_startup_refuse 'could not enter sanitized process'
+    fi
+  fi
+  unset -v ra8_startup_check ra8_startup_env_done_count
+  unset -v ra8_startup_env_name ra8_startup_env_row
+  unset -v ra8_startup_env_unset ra8_startup_parent ra8_startup_reentry
+  unset -v RA8_STARTUP_ENV_DONE
+  unset -v RA8_STARTUP_ENV_SCRUBBED
+  unset -f _ra8_startup_refuse
 
-MODE="${1:-apply}"
+  set -euo pipefail
 
-# Resolve one field of the bench-network secret from OpenBao (read-only).
-bao_field() {
-  python3 - "$1" <<'PY'
+  MODE="${1:-apply}"
+
+  # Resolve one field of the bench-network secret from OpenBao (read-only).
+  bao_field() {
+    python3 - "$1" <<'PY'
 import sys
 from pathlib import Path
 
@@ -50,13 +102,13 @@ from openbao_client import OpenBaoClient, load_config
 data = OpenBaoClient(load_config()).kv_get("ra8d2/bench-network")
 sys.stdout.write(data[sys.argv[1]])
 PY
-}
+  }
 
-# Emit the uci batch on stdout. Reads the PSK from stdin (fd 3) so it is not a
-# shell variable that could leak via `set -x` or the environment.
-render_uci() {
-  local ssid="$1" ap_ip="$2"
-  cat <<UCI
+  # Emit the uci batch on stdout. Reads the PSK from stdin (fd 3) so it is not a
+  # shell variable that could leak via `set -x` or the environment.
+  render_uci() {
+    local ssid="$1" ap_ip="$2"
+    cat <<UCI
 set network.lan.ipaddr='${ap_ip}'
 set network.lan.netmask='255.255.255.0'
 set network.lan.gateway='10.0.40.1'
@@ -86,40 +138,43 @@ set dhcp.lan.dhcpv4='disabled'
 set dhcp.lan.dhcpv6='disabled'
 set dhcp.lan.ra='disabled'
 UCI
-}
+  }
 
-case "${MODE}" in
-  show)
-    AP_IP="$(bao_field ap_ip)"
-    AP_USER="$(bao_field ap_ssh_user)"
-    echo "== ${AP_USER}@${AP_IP}: wireless + network ==" >&2
-    exec ssh "${AP_USER}@${AP_IP}" 'uci show wireless; echo ---; uci show network; echo ---; iwinfo'
-    ;;
-  dryrun)
-    SSID="$(bao_field bench_ssid)"
-    AP_IP="$(bao_field ap_ip)"
-    render_uci "${SSID}" "${AP_IP}"
-    echo "# (PSK redacted in dryrun; real run substitutes it from OpenBao)" >&2
-    exit 0
-    ;;
-  apply) ;;
-  *)
-    echo "usage: ap_openwrt.sh [apply|show|dryrun]" >&2
-    exit 2
-    ;;
-esac
+  case "${MODE}" in
+    show)
+      AP_IP="$(bao_field ap_ip)"
+      AP_USER="$(bao_field ap_ssh_user)"
+      echo "== ${AP_USER}@${AP_IP}: wireless + network ==" >&2
+      exec ssh "${AP_USER}@${AP_IP}" 'uci show wireless; echo ---; uci show network; echo ---; iwinfo'
+      ;;
+    dryrun)
+      SSID="$(bao_field bench_ssid)"
+      AP_IP="$(bao_field ap_ip)"
+      render_uci "${SSID}" "${AP_IP}"
+      echo "# (PSK redacted in dryrun; real run substitutes it from OpenBao)" >&2
+      exit 0
+      ;;
+    apply) ;;
+    *)
+      echo "usage: ap_openwrt.sh [apply|show|dryrun]" >&2
+      exit 2
+      ;;
+  esac
 
-SSID="$(bao_field bench_ssid)"
-AP_IP="$(bao_field ap_ip)"
-AP_USER="$(bao_field ap_ssh_user)"
+  SSID="$(bao_field bench_ssid)"
+  AP_IP="$(bao_field ap_ip)"
+  AP_USER="$(bao_field ap_ssh_user)"
 
-# Build the batch with the PSK substituted, and stream it straight into
-# `uci batch` on the AP via stdin -- never a file, never an argv.
-{
-  PSK="$(bao_field bench_psk)"
-  render_uci "${SSID}" "${AP_IP}" | sed "s|__PSK__|${PSK}|"
-  unset PSK
-} | ssh "${AP_USER}@${AP_IP}" \
-  'uci batch && uci commit && wifi reload && /etc/init.d/dnsmasq restart && /etc/init.d/odhcpd restart'
+  # Build the batch with the PSK substituted, and stream it straight into
+  # `uci batch` on the AP via stdin -- never a file, never an argv.
+  {
+    PSK="$(bao_field bench_psk)"
+    render_uci "${SSID}" "${AP_IP}" | sed "s|__PSK__|${PSK}|"
+    unset PSK
+  } | ssh "${AP_USER}@${AP_IP}" \
+    'uci batch && uci commit && wifi reload && /etc/init.d/dnsmasq restart && /etc/init.d/odhcpd restart'
 
-echo "AP configured: SSID='${SSID}' on radio1 (2.4 GHz), static ${AP_IP} on br-trusted, dumb-AP DHCP off." >&2
+  echo "AP configured: SSID='${SSID}' on radio1 (2.4 GHz), static ${AP_IP} on br-trusted, dumb-AP DHCP off." >&2
+else
+  [[ "$-" == *p* ]]
+fi

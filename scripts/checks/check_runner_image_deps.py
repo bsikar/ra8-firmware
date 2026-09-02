@@ -423,7 +423,7 @@ def _selftest_extraction() -> None:
         '  require_cmd clang-18 "the gate pins clang-18 to match CI"\n'
         "  require_cmd git || exit 1\n"
         "  require_cmd actionlint \\\n"
-        '  require_python_mod yaml "pip install pyyaml"\n'
+        '  require_python_mod yaml "run just setup-python"\n'
         "  require_python_mod clang.cindex \\\n"
         "  # require_cmd never_declared_only_mentioned\n"
         "  #   Use require_cmd / require_python_mod for every dependency.\n"

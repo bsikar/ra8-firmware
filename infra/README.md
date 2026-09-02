@@ -7,7 +7,7 @@ environment is recreated instead of hand-assembled.
 ## Quick start (clone -> deploy)
 
 ```
-make infra-setup          # or: bash infra/bootstrap.sh
+just infra::setup          # or: /bin/bash -p infra/bootstrap.sh
 ```
 
 The bootstrap checks prerequisites, writes your **git-ignored** inventory, names
@@ -20,7 +20,7 @@ it: your machine joins as a CI runner pool.
 
 ## What it does
 
-- **Dev box** -- one playbook installs the exact pinned toolchain, so `make ci`
+- **Dev box** -- one playbook installs the exact pinned toolchain, so `just ci`
   locally matches CI.
 - **CI runner** -- point a spare machine (or a friend's server) at the repo and
   it joins the runner pool: more hardware, more parallel CI. Two shapes are
@@ -40,7 +40,7 @@ fleet.yml    THE declaration: one block per machine -- its ADDRESS (an IP or a
              resolvable name, never an ssh alias), what kind of host it is, how
              many runner instances, its CPU and memory per instance, its labels,
              its quiet-hours window. Everything below is derived from it, as is
-             the ~/.ssh fragment `make infra-ssh-config` installs.
+             the ~/.ssh fragment `just infra::ssh_config` installs.
 ansible/     configures machines (dev_box, ci_runner, ci_runner_docker,
              wsl_ci_host, fleet_capacity, hil_bench, c6_toolchain, ad2_tools)
 images/      the CI runner container image (devcontainer toolchain + runner)
@@ -48,7 +48,7 @@ network/     the isolated ESP32-C6 bench LAN (FortiGate + OpenWrt AP)
 ```
 
 `ansible/inventory/hosts.ini` is **generated** from `fleet.yml` on every
-`make infra-*` run and is git-ignored; the committed half is
+`just infra::*` run and is git-ignored; the committed half is
 `ansible/inventory/host_vars/`, which holds structural facts about a machine
 (where its runner tree lives, which pools CI must avoid) and never a capacity
 knob. `scripts/checks/check_fleet_declaration.py` fails a `host_vars` file that
@@ -96,10 +96,12 @@ could resolve. `k3s_node` is those prerequisites, and a host that declares both
 plays runs them in that order:
 
 ```
-make infra-apply HOST=k3s-pve
+just infra::apply k3s-pve
 ```
 
-`PLAY=` on `scripts/dev/fleet.py` runs one on its own.
+For focused role debugging, the dispatcher can select one declared play, for
+example `just infra::check k3s-pve k3s-node`; routine convergence should keep
+the declaration's full order with the unqualified Just command.
 
 k3s is pinned by release version *and* by the sha256 of the release binary, and
 the upstream installer is fetched to disk and checksummed rather than piped
@@ -113,13 +115,127 @@ of the two the operator still owes it; the steps are in
 
 ## The dev box
 
-The machine agents run `make ci` / `make ci-native` on. It is **not** a CI
-runner -- it never joins the Actions pool -- so it lives in its own inventory
-group and its own playbook:
+The machine agents run `just ci` / `just quality::native` on. It also carries
+one repo-scoped native HIL listener; that listener builds firmware here and
+uses the existing SSH drivers to operate the bench declared in `fleet.yml`.
+The listener runs as a dedicated system account with `ProtectHome=true`, a
+private runner root, and a single SSH key accepted only by an equally isolated
+bench account; it cannot read the normal users' GitHub, SSH, TAPO or OpenBao
+credentials. It is not general runner capacity, so the machine remains in its
+own inventory group and playbook:
 
 ```
-make infra-apply HOST=dev
+just infra::apply dev
 ```
+
+The listener uses its own `/var/cache/ccache-ra8-hil` compiler cache, owned by
+`ra8-hil:ra8-hil` with mode 0700. It never receives ACL or write access to the
+interactive and general-CI cache at `/var/cache/ccache-ra8`. This separation is
+a trust boundary: firmware checkout content running as the HIL service cannot
+replace compiler objects later consumed by a human or a general CI job, and
+those users cannot replace objects consumed by HIL.
+
+Every HIL-owned shell entry and the generated CI monitor service enter through
+the fixed `/bin/bash -p` interpreter. The absolute privileged-mode boundary is
+deliberate on the supported Mac/Linux/WSL/bench hosts: it prevents inherited
+`BASH_ENV` and exported shell functions from executing before the reviewed
+entrypoint, and nested HIL callers preserve the same boundary.
+
+To create or repair only the private cache on an already-provisioned listener, use the
+fixed standalone front door from the repository root:
+
+```sh
+just --justfile infra/hil-cache.just check
+just --justfile infra/hil-cache.just apply
+```
+
+This explicit Justfile has no imports, variable exports, or backticks; its only
+setting disables dotenv loading. The repository's ordinary root and module
+files are therefore not parsed before the repair driver starts.
+
+The integrity checker treats repair entrypoint ownership as a first-party
+Git-authored token census, not as command-file classification. It validates the
+inherited live index's modes and blob bytes, then independently validates the
+present tracked and non-ignored untracked worktree bytes. Thus staged content
+cannot be hidden by replacing or deleting its worktree file, while unstaged
+content cannot be hidden behind a safe staged blob. A staged deletion disappears
+only from the index view; retained non-ignored worktree bytes remain in scope.
+Ignored build output does not enter either view. Regardless of filename, suffix,
+or executable mode, every file outside explicit vendor, generated, build, cache,
+and dependency trees is checked as raw bytes for alternate references in UTF-8,
+UTF-16LE, and UTF-16BE. First-party symbolic links and any Git warning or
+file-inspection error fail closed. Its selftest pins the two-view inventory,
+mismatched index/worktree bytes and modes, raw encodings, staged deletions,
+failure behavior, and every excluded tree boundary.
+
+The repair playbook is deliberately separate from the broad `dev_box` role and
+accepts no host, play, tag, or extra-variable argument. It targets only the
+fleet-declared `dev` machine, uses the literal `/var/cache/ccache-ra8-hil` path
+and existing literal `ra8-hil` account, and rejects UID 0, a symlink, or any
+non-directory cache root before setting owner `ra8-hil:ra8-hil` and mode 0700.
+It then creates and removes one cache-local throwaway file as `ra8-hil`. It
+refuses to bootstrap a
+missing identity and cannot stage the toolchain, install packages, create
+accounts, contact the bench, register/restart the Actions listener, or touch
+hardware because none of those roles or tasks is present in the standalone
+playbook.
+
+The driver copies only that playbook and the generated inventory into a
+private temporary directory and supplies its own minimal Ansible config. This
+prevents `host_vars`, `group_vars`, role tags, special `always` tags, or dynamic
+include inheritance from widening the repair. The checker integrity-pins the
+declared `dev` connection without printing its private endpoint, and the driver
+refuses every inherited `ANSIBLE_*` control variable before it starts Ansible;
+its private config is the only source allowed to set Ansible controls.
+Host-key checking remains on. The dry run does not create the throwaway file.
+If the cache root is absent, the dry run reports its pending creation and skips
+the child config whose parent intentionally does not exist in check mode; apply
+creates the root and its private config before the acceptance probe. The
+standalone repair does not update or restart the service. Use the complete
+listener converge below to migrate its environment to the private cache.
+
+After registration, inspect the focused listener slice with a dry run. A real
+converge must enter the complete authenticated dev-box transaction:
+
+```sh
+just infra::check dev dev-box hil-runner
+just --yes infra::apply dev dev-box
+```
+
+The dry run may select `hil-runner` because it changes nothing. The real apply
+deliberately rejects public tag selectors: the dispatcher previews the complete
+play, authenticates the whole-bench hold, and stops only an idle listener
+before any dev-box mutation. First registration uses the separately typed
+`infra::register_hil` path.
+
+The `hosts.dev.hil_runner` block is the single source for its registration
+name, repository, custom labels, owned workflow, and bench relationship. The
+fleet dispatcher derives the corresponding `dev_box_hil_runner_*` role inputs,
+and the declaration checker rejects both a workflow-side and a
+declaration-side label change that is not made at the other end.
+
+An already registered listener converges with the ordinary command above and
+must not be given another token. Only its first registration needs a short-lived
+GitHub repository runner-registration token. Put it in a mode-0600 temporary
+Ansible vars file outside the checkout, never in a command-line value:
+
+```sh
+hil_registration_vars="$(mktemp /tmp/ra8-hil-registration.XXXXXX)"
+trap 'rm -f -- "${hil_registration_vars}"' EXIT
+${EDITOR:-vi} "${hil_registration_vars}"
+# Add one YAML mapping in the editor:
+# dev_box_hil_runner_registration_token: "<ephemeral registration token>"
+just infra::register_hil "${hil_registration_vars}"
+```
+
+This narrowly typed recipe accepts only the mode-0600 registration vars file;
+it does not expose arbitrary Ansible arguments. Ordinary targeted checks and
+convergence use the Just commands above.
+
+The temporary file is created 0600 by `mktemp`; delete it as soon as the
+one-time registration succeeds. The role fails loudly without this input only
+when no `.runner` registration exists. It never writes the token into the
+runner environment, systemd unit, or repository.
 
 Two of its tools are built from source, and that is a property of the
 distribution rather than a preference. **cppcheck** is compared in `exact` mode
@@ -155,8 +271,8 @@ are **not** properties of the roles: every one of them comes from that host's
 block in `infra/fleet.yml`. See [`docs/CI_FLEET.md`](../docs/CI_FLEET.md).
 
 **Every workflow targets `ra8-ci`.** The one exception is `hil.yml`, which
-targets `[self-hosted, hil, ra8d2]` -- a physical-bench label naming the Pi with
-the EK-RA8D2 attached, not a capacity pool. Nothing schedules against a bare
+targets `[self-hosted, hil, ra8d2]` -- a dedicated dev-box listener that drives
+the remote physical bench, not a capacity pool. Nothing schedules against a bare
 `[self-hosted, Linux, X64]`; those labels are added by the runner itself and
 cannot be removed, and nothing targets them.
 
@@ -165,7 +281,7 @@ specific host can be pinned or drained without editing every workflow.
 
 **Why more than one host.** The build farm was one machine, and the k3s node
 hosting the ARC pods shared its silicon with the dev container where every
-agent runs `make ci`. Contention, not runner count, was the throughput ceiling;
+agent runs `just ci`. Contention, not runner count, was the throughput ceiling;
 the fix is more machines, not more pods on the first. Measured against the same
 gate and the same commit, an otherwise-idle host runs the heavy cross-build
 several times faster than a pod on the saturated node -- and that gap is
@@ -200,7 +316,8 @@ several independent runners rather than one runner with a very wide `-j`. The
 bound is clang-tidy, which has been OOM-killed on a too-small share: cores
 would divide further, memory is what says stop. Each instance gets its own
 registration, home and `_work` tree, and is pinned to its own cpuset so `nproc`
-inside it reports its real share and `make -j$(nproc)` cannot oversubscribe the
+inside it reports its real share and Just exports the matching CMake job limit,
+so a repository build cannot oversubscribe the
 box. If clang-tidy is ever sharded, per-shard memory drops and another instance
 becomes viable; re-measure then rather than assuming.
 
@@ -256,9 +373,9 @@ reliably leaves the runner offline while looking configured.
 **The clock may be wrong; it may not be non-monotonic.** A WSL2 VM does not
 boot with a trustworthy clock. Observed here: the VM came up minutes fast, the
 runner checked the tree out with those timestamps, `timesyncd` then stepped the
-clock back, and make spent the rest of the job reporting `Clock skew detected.
-Your build may be incomplete`. That is not cosmetic -- make's up-to-date
-decisions are timestamp comparisons. Docker is therefore ordered after the
+clock back, and the build system spent the rest of the job rejecting the skew.
+That is not cosmetic -- incremental-build decisions compare timestamps. Docker
+is therefore ordered after the
 clock has synchronised, and since the containers are `restart: unless-stopped`,
 the daemon's start time is exactly when this host begins accepting jobs.
 
@@ -280,7 +397,7 @@ whose contract is a duration (libFuzzer's `-max_total_time`, `timeout-minutes`,
 any benchmark) is measured on it. And the Windows clock is **asserted** rather
 than assumed: correcting it needs an elevated Windows action that WSL interop
 cannot perform, so the play fails with the exact `w32tm` commands instead of
-converging on a host that will resume stepping. `make ci-gate GATE=runner-clock`
+converging on a host that will resume stepping. `just quality::local::gate runner-clock`
 re-reads the fleet from the Actions API and is what proves it converged.
 
 **What survives a reboot, stated precisely.** WSL does not start distros on
@@ -343,15 +460,18 @@ that buys:
 - **Probably survives, not guaranteed.** The loaded Docker image and the
   container object. Both live in the Docker data root on a pool dataset, which
   a routine upgrade does not touch -- but a major migration of the Apps
-  subsystem has reinitialised that dataset before. This is why the image
-  archive is kept beside the runner home: recovery is `docker load` plus a
-  re-run, which is what the role does anyway.
+  subsystem has reinitialised that dataset before. This is why the canonical
+  image archive is distributed to the runner home: the fleet apply verifies
+  its digest and reloads it when necessary.
 - **Does not survive, and does not need to.** Nothing. The role installs
   nothing on the appliance root by design.
 
 So the recovery from any upgrade damage is the same single command as the
-initial deploy: re-run the playbook. It is idempotent -- it re-loads nothing it
-already has and re-registers nothing already registered.
+initial deploy, `just infra::apply truenas`. The fleet dispatcher supplies
+the canonical image metadata and the role is idempotent -- it re-loads nothing
+it already has and re-registers nothing already registered. Do not run a
+manual `docker load`; that bypasses the declared producer/archive/digest
+relationship the fleet checker enforces.
 
 One dependency is worth stating because it is easy to get wrong: on SCALE
 `docker.service` is **not** systemd-enabled. The middleware starts it as part
@@ -366,21 +486,22 @@ runner never comes back no matter what its restart policy says.
 ```sh
 # deploy (and converge an existing deployment). Drains the host first: a
 # converge recreates containers, which would cancel the jobs they hold.
-make infra-apply HOST=truenas
+just infra::apply truenas
 
 # just the drain script and the quiet-hours timer -- touches no container
-python3 scripts/dev/fleet.py apply truenas --tags capacity
+just infra::apply truenas "" capacity
 
 # remove: containers down, runners deregistered from GitHub, image dropped,
 # dataset destroyed. One command, nothing left behind.
-make infra-remove HOST=truenas
+just infra::remove truenas
 ```
 
 Removal is a role path rather than a README snippet on purpose: a hand-written
 teardown recipe drifts from the deploy it is supposed to undo, and the only
 way to be sure a removal is complete is for the same file to own both halves.
-Pass `-e ci_runner_docker_destroy_dataset=false` to keep the image archive for
-a later redeploy.
+To keep the image archive for a later redeploy, put
+`ci_runner_docker_destroy_dataset: false` in the mode-0600 vars file accepted
+as the optional second argument to `just infra::remove`.
 
 ### Resource caps
 
@@ -465,37 +586,79 @@ The same holds for `JLinkExe` and `rfp-cli` on the HIL bench, which the
 
 ## Toolchain source of truth
 
-`.devcontainer/Dockerfile` pins every host tool. `make ci`, the CI runner pods,
-the `dev_box` role and `scripts/ci/provision_runner.sh` all consume those pins,
-and the `toolchain-parity` gate fails if any box drifts from them.
+`.devcontainer/Dockerfile` pins every host tool. `just ci`, the Ansible-owned CI
+runner images, and the `dev_box` role all consume those pins; the
+`toolchain-parity` gate fails if any execution environment drifts from them.
 
-`provision_runner.sh` is the one definition of "bring a bare-metal host to the
-pinned toolchain", so the `dev_box` role calls it rather than carrying a second
-copy of the same installs. It requests the newer gcc pair from apt only where
-apt has a candidate for it -- Debian has none -- and leaves the verdict to the
-parity check either way, which still fails loudly when neither path produced a
-pinned compiler. It installs the pinned **doxygen** release the same way the
-Dockerfile does (download, sha256, `/usr/local/bin`), because
+The Debian dev box has two non-overlapping provisioning layers. Its Ansible
+role owns apt packages and the cppcheck/GCC source builds. The role then calls
+`scripts/dev/provision_dev_box_toolchain.sh`, the one definition for pinned
+release binaries and the isolated Python gate-tool venv. CI runners never call
+that host helper: their complete container image is built and deployed by the
+Ansible runner roles. The helper installs the pinned **doxygen** release the
+same way the Dockerfile does (download, sha256, `/usr/local/bin`), because
 `toolchain-parity` now compares that version too: it did not, which is why a
 major doxygen drift stayed invisible to the one gate whose job is catching
 exactly that (#522). The pin is asserted only on the architectures the
 Dockerfile pins it for -- doxygen publishes no official linux-arm64 binary, so
-an arm64 `make ci` container keeps apt's.
+an arm64 `just ci` container keeps apt's.
 
-The **image `make ci` boots** is pinned by the same file and now derived from
+The dev-box role stages its recipes and `.devcontainer` input from the control
+node's candidate worktree, not from the intentionally non-updating base checkout
+on the managed host. `scripts/dev/stage_worktree_context.py` builds a
+deterministic archive from present cached files plus non-ignored untracked
+files. It reads current worktree bytes, preserves portable executable and
+symlink modes, and excludes ignored caches and worktree-deleted paths. The role
+verifies the extracted tree exactly before reuse, so extra local residue also
+forces replacement. This is why a dirty pre-commit candidate is supported
+without allowing `__pycache__`, `.pyc`, or other ignored workstation output to
+affect the provisioned image context.
+
+The installed verifier remains a package rather than a copied standalone
+script. Its entry point and `git_environment.py` runtime dependency are built
+together in a new root-private release directory under `/usr/local/libexec`.
+The role proves the exact two-file census, ownership, modes, controller-source
+SHA-256 digests, and import behavior before making the directory readable and
+atomically switching `/usr/local/bin/ra8-stage-worktree-context` to it. A stale,
+misowned, writable, interrupted, or extra-file release is never repaired or
+executed in place. Failed assembly leaves the prior command untouched, and a
+successful publication removes inactive managed releases and staging residue.
+
+The **image `just ci` boots** is pinned by the same file and now derived from
 it: `scripts/ci/devcontainer_image.sh` stamps a sha256 of the whole
 `.devcontainer/` build context onto the image as a label and compares it back,
 so a cached image built from a different Dockerfile is rebuilt rather than
-reused. `make ci` calls it on every run -- which is what covers the Mac, where
+reused. `just ci` calls it on every run -- which is what covers the Mac, where
 no Ansible play ever lands -- and the `dev_box` role calls the same script so
-`make infra-apply HOST=dev` leaves the box warm and asserts, with
+`just infra::apply dev` leaves the box warm and asserts, with
 `check_runner_image_deps.py`, that every tool the gates declare resolves inside
 it. Before that, the box booted a stale image under a newer tree and reported
 gates red that passed natively on the same commit (#521).
 
+Image-build serialization has a separate managed lock authority at
+`/var/cache/ra8-devcontainer-image-lock`. The role owns the directory as
+`root:<dev-box-user-primary-group>` mode 0750 and pre-creates its single-link
+regular lock as mode 0660. Both callers therefore lock the same inode,
+but the interactive account cannot replace its pathname. A root:root mode-0444
+single-link marker records that account's numeric primary gid; runtime requires
+the directory and lock gids to equal that non-root value. Do not move this file
+into a sticky mode-1777 cache: with Linux `fs.protected_regular=2`, opening an
+existing file owned by the other caller with O_CREAT is denied by design. Away
+from an Ansible-managed dev box, the image helper uses a mode-0700 per-user
+directory below `XDG_CACHE_HOME` or `$HOME/.cache`; macOS remains supported
+without requiring `flock`. On a managed box the helper discovers the canonical
+authority even in non-login shells, then validates the marker, numeric identities
+and exact modes and opens the pre-created file without O_CREAT. The profile
+export is a second authority and is deliberately absent: explicit command
+environments or canonical discovery are the only managed paths. Normal and
+forced rebuilds both take the same lock and validate that the opened inode still
+matches the checked path.
+
 ## Secrets
 
-Only generic, shareable structure is committed -- no real hostnames, IPs, or
-tokens. Real inventory lives in git-ignored `ansible/private/`; secrets live in
-OpenBao and are fetched at run time. Copy an `*.example` file, fill in the real
-values, and run the playbook.
+Fleet topology, including routable host addresses, is committed in
+`infra/fleet.yml`; generated Ansible inventory is git-ignored. Tokens and other
+credentials are never part of either file. Long-lived secrets live in OpenBao
+or git-ignored `ansible/private/`, while one-time registration inputs use the
+mode-0600 external vars-file procedure above. Run `just infra::setup` to prepare
+a control node and `just infra::apply <host>` to converge a declaration.

@@ -63,7 +63,7 @@
  * defines RA8_THREADX_NON_SECURE so ThreadX builds for the Non-Secure side
  * instead. Selecting exactly one single-mode keeps the scheduler off the
  * dual-world secure-stack path. */
-#if defined(RA8_THREADX_NON_SECURE)
+#ifdef RA8_THREADX_NON_SECURE
 /** @brief TX SINGLE MODE NON SECURE. */
 #define TX_SINGLE_MODE_NON_SECURE
 #else

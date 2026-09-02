@@ -25,7 +25,7 @@ sits in it, and re-arms only after SOC recovers past the threshold by
 `k_ra8_batt_rearm_margin` or while charging -- so a steady or jittering low
 battery does not spam, and charging suppresses warnings outright. The decision
 logic is pure (no MMIO), so it is host-unit-tested with full MC/DC in
-`tests/test_ra8_batt.c`; this app is the on-target consumer.
+`tests/misc/src/test_ra8_batt.c`; this app is the on-target consumer.
 
 ## Blocked on
 

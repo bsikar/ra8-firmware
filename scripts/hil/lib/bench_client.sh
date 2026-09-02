@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # bench_client.sh -- the CLIENT-side machinery of the bench lock: how a
 # workstation, an agent session or a CI runner reaches the bench host, names
@@ -49,6 +50,8 @@
 
 _bench_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${RA8_BENCH_HOST_SRC:=$_bench_lib_dir/bench_host.sh}"
+: "${RA8_BENCH_VERIFY_SRC:=$_bench_lib_dir/bench_lock_verify.py}"
+: "${RA8_BENCH_BROKER_SRC:=$_bench_lib_dir/bench_lock_broker.py}"
 
 # PI_HOST and rig_is_local_pi come from rig_env.sh. Pulled in HERE rather than
 # left to the caller: several scripts source the guard before their own
@@ -95,18 +98,14 @@ bench_q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 # of it would drift on the first new flag. Results land in globals rather than
 # a return value because bash 3.2 has no name-refs and a function can only hand
 # back a status.
-# shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
 BENCH_OPT_INTENT=""
 BENCH_OPT_BUDGET_S=""
 BENCH_OPT_WAIT_S=0
 BENCH_OPT_CLASS=""
 BENCH_OPT_NAME=""
-# shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
 BENCH_OPT_GLASS=false
-# shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
 BENCH_OPT_CONFIRM=""
 # Whatever followed `--`: the payload for `run`.
-# shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
 BENCH_OPT_ARGV=()
 # Set when --for or --wait was given but could not be parsed as a duration.
 BENCH_OPT_BAD=""
@@ -114,17 +113,13 @@ BENCH_OPT_BAD=""
 # Reset every output parameter, so a second call in one process cannot inherit
 # a flag from the first.
 _bench_opts_reset() {
-  # shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
   BENCH_OPT_INTENT=""
   BENCH_OPT_BUDGET_S=""
   BENCH_OPT_WAIT_S=0
   BENCH_OPT_CLASS=""
   BENCH_OPT_NAME=""
-  # shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
   BENCH_OPT_GLASS=false
-  # shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
   BENCH_OPT_CONFIRM="${CONFIRM:-}"
-  # shellcheck disable=SC2034  # this parser is the writer; bench.sh and lib/bench_human.sh are the readers.
   BENCH_OPT_ARGV=()
   BENCH_OPT_BAD=""
 }
@@ -213,10 +208,14 @@ bench_b64() { base64 <"$1" | tr -d '\n'; }
 # a remote heredoc. The bench Pi's copy of this tree is whatever a suite last
 # left there; the lock must not depend on it.
 bench_host_cmd() {
-  local b64 out arg
+  local b64 broker_b64 out arg
   b64="$(bench_b64 "$RA8_BENCH_HOST_SRC")" || return 1
-  out="f=\$(mktemp /tmp/ra8-bench-host.XXXXXX); printf %s $(bench_q "$b64") | base64 -d >\"\$f\"; "
-  out="${out}RA8_BENCH_DIR=$(bench_q "$RA8_BENCH_DIR") exec bash \"\$f\""
+  broker_b64="$(bench_b64 "$RA8_BENCH_BROKER_SRC")" || return 1
+  out="f=\$(mktemp /tmp/ra8-bench-host.XXXXXX) || exit 3; b=\$(mktemp /tmp/ra8-bench-broker.XXXXXX) || exit 3; "
+  out="${out}trap 'rm -f -- \"\$f\" \"\$b\"' EXIT HUP INT TERM; "
+  out="${out}printf %s $(bench_q "$b64") | base64 -d >\"\$f\" || exit 3; "
+  out="${out}printf %s $(bench_q "$broker_b64") | base64 -d >\"\$b\" || exit 3; "
+  out="${out}RA8_BENCH_DIR=$(bench_q "$RA8_BENCH_DIR") RA8_BENCH_BROKER_SRC=\"\$b\" /bin/bash \"\$f\""
   for arg in "$@"; do
     out="$out $(bench_q "$arg")"
   done
@@ -244,7 +243,8 @@ bench_host() {
     local t rc
     t="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-host.XXXXXX")" || return "$RA8_BENCH_EXIT_UNKNOWN"
     cp "$RA8_BENCH_HOST_SRC" "$t" || return "$RA8_BENCH_EXIT_UNKNOWN"
-    RA8_BENCH_DIR="$RA8_BENCH_DIR" bash "$t" "$@" </dev/null
+    RA8_BENCH_DIR="$RA8_BENCH_DIR" RA8_BENCH_BROKER_SRC="$RA8_BENCH_BROKER_SRC" \
+      /bin/bash "$t" "$@" </dev/null
     rc=$?
     rm -f "$t" 2>/dev/null || true
     return "$rc"
@@ -254,6 +254,32 @@ bench_host() {
     return "$RA8_BENCH_EXIT_UNKNOWN"
   }
   # shellcheck disable=SC2029  # $cmd is composed HERE on purpose: it carries this file's own text, base64'd, so the bench host needs no checkout.
+  ssh "${RA8_BENCH_SSH_OPTS[@]}" "$PI_HOST" "$cmd" </dev/null
+}
+
+# bench_verify_live <lock_id> <hold_kind> <reviewed-host-sha256> <reviewed-broker-sha256>
+#
+# The holder record is telemetry. This ships the reviewed stdlib verifier by
+# value and accepts only its kernel-backed canonical-lock verdict.
+bench_verify_live() {
+  local lock_id="$1" kind="$2" digest="$3" broker_digest="$4" b64 cmd t rc
+  b64="$(bench_b64 "$RA8_BENCH_VERIFY_SRC")" || return "$RA8_BENCH_EXIT_UNKNOWN"
+  if rig_is_local_pi; then
+    t="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-verify.XXXXXX")" || return "$RA8_BENCH_EXIT_UNKNOWN"
+    cp "$RA8_BENCH_VERIFY_SRC" "$t" || {
+      rm -f "$t" 2>/dev/null || true
+      return "$RA8_BENCH_EXIT_UNKNOWN"
+    }
+    /usr/bin/python3 -I -S "$t" "$lock_id" "$kind" "$digest" "$broker_digest" </dev/null
+    rc=$?
+    rm -f "$t" 2>/dev/null || true
+    return "$rc"
+  fi
+  [ -n "${PI_HOST:-}" ] || return "$RA8_BENCH_EXIT_UNKNOWN"
+  cmd="f=\$(mktemp /tmp/ra8-bench-verify.XXXXXX) || exit 3; trap 'rm -f -- \"\$f\"' EXIT HUP INT TERM; "
+  cmd="${cmd}printf %s $(bench_q "$b64") | base64 -d >\"\$f\" || exit 3; "
+  cmd="${cmd}/usr/bin/python3 -I -S \"\$f\" $(bench_q "$lock_id") $(bench_q "$kind") $(bench_q "$digest") $(bench_q "$broker_digest")"
+  # shellcheck disable=SC2029  # reviewed verifier bytes are intentionally carried in this fixed remote command.
   ssh "${RA8_BENCH_SSH_OPTS[@]}" "$PI_HOST" "$cmd" </dev/null
 }
 
@@ -351,7 +377,7 @@ bench_field() {
 # command not found" in every guarded script. The visible effect was that a
 # guarded script invoked INSIDE another script's hold could not recognise the
 # hold as its own and was denied the bench by its own parent -- which is
-# exactly what `make hil-all` does for every app it runs. With a wait budget set
+# exactly what `just hil::suite` does for every app it runs. With a wait budget set
 # it is worse than a denial: the guard opens a SECOND channel on fd 7, and doing
 # so closes the first -- which is the hold -- so the bench is released and
 # re-taken mid-script, with a window in between that anyone can take.
@@ -402,7 +428,6 @@ bench_human_age() {
 # parent waits for output that the blocked child is holding the pipe for.
 # Redirection ORDER matters for the same reason: stdout and stderr are moved
 # off the inherited fds BEFORE stdin blocks on the fifo.
-# shellcheck disable=SC2034  # read by bench.sh and lib/bench_selftest.sh -- it is this library's output parameter.
 RA8_BENCH_HOLDER_PID=""
 bench_start_holder() {
   local lock_id="$1" cls="$2" name="$3" intent="$4" budget="$5" wait_s="$6"
@@ -416,7 +441,8 @@ bench_start_holder() {
     local t
     t="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-host.XXXXXX")" || return 1
     cp "$RA8_BENCH_HOST_SRC" "$t" || return 1
-    RA8_BENCH_DIR="$RA8_BENCH_DIR" bash "$t" hold wrapped "$wait_s" "$fields" \
+    RA8_BENCH_DIR="$RA8_BENCH_DIR" RA8_BENCH_BROKER_SRC="$RA8_BENCH_BROKER_SRC" \
+      /bin/bash "$t" hold wrapped "$wait_s" "$fields" \
       >"$out" 2>&1 <"$fifo" &
     RA8_BENCH_HOLDER_PID="$!"
     return 0
@@ -460,5 +486,5 @@ bench_report_denial() {
   bench_say "DENIED -- the bench is held by ${who:-someone}"
   [ -n "$what" ] && bench_say "  intent: $what"
   [ -n "$since" ] && bench_say "  since:  $since"
-  bench_say "  run \`make bench-status\` for the full record."
+  bench_say "  run \`just hil::status\` for the full record."
 }

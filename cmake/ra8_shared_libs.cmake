@@ -39,7 +39,10 @@ function(ra8_shared_lib_sources out_var repo_root board_dir)
   file(GLOB_RECURSE _hal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_hal/src/*.c)
   file(GLOB_RECURSE _net_pal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_net_pal/src/*.c)
   file(GLOB_RECURSE _usb_pal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_usb_pal/src/*.c)
-  file(GLOB_RECURSE _board CONFIGURE_DEPENDS ${board_dir}/src/*.c)
+  # Boot composition sources live in src/boot and are selected per image by
+  # ra8_app/sources.cmake. The shared archive owns only host-neutral board
+  # implementations directly under src/.
+  file(GLOB _board CONFIGURE_DEPENDS ${board_dir}/src/*.c)
   file(GLOB_RECURSE _secure CONFIGURE_DEPENDS ${repo_root}/libs/ra8_secure_app/src/*.c)
   set(${out_var}
       ${_core}
@@ -63,6 +66,7 @@ function(ra8_shared_lib_includes out_var repo_root board_dir)
       ${repo_root}/libs/ra8_hal/inc
       ${repo_root}/libs/ra8_net_pal/inc
       ${repo_root}/libs/ra8_usb_pal/inc
+      ${repo_root}/libs/ra8_io/inc
       ${repo_root}/libs/ra8_nsc/inc
       ${repo_root}/libs/ra8_secure_app/inc
       ${board_dir}/inc

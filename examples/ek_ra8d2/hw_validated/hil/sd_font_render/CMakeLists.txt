@@ -32,10 +32,10 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME sd_font_render
   STACK_BYTES 4400
-  DESCRIPTION "Load a TTF/OTF font off an SD card and render it with ra8_reflow"
+  DESCRIPTION "Load a TTF/OTF font off an SD card and render it with reflow"
   LIBS ra8_gfx
        ra8_display_pal
-       ra8_reflow
+       reflow
        ra8_sdfont
        ra8_sdmmc_spi
        ra8_fs

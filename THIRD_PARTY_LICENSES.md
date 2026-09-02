@@ -12,7 +12,7 @@ the per-component qualification catalog under [`docs/SOUP/`](docs/SOUP/).
 
 Both this file and the SBOM are generated/checked from one registry in
 [`scripts/gen/gen_sbom.py`](scripts/gen/gen_sbom.py); when you re-vendor
-a component, update that registry and run `make sbom`.
+a component, update that registry and run `just quality::local::sbom`.
 
 > Closes the aggregation half of recon seed **T5-14** (SOUP-5). The
 > provenance-pinning half, **T5-09** (SOUP-1), is closed too: every vendored
@@ -24,10 +24,13 @@ a component, update that registry and run `make sbom`.
 
 ## Scope
 
-- **Covered here:** the vendored Software Of Unknown Provenance (SOUP) under
-  `libs/third_party/` and the one bundled font data asset under `libs/ra8_fonts/`.
+- **Covered here:** vendored Software Of Unknown Provenance (SOUP) under
+  `libs/third_party/` and `apps/shared_libs/third_party/`, plus the one bundled
+  font data asset under `libs/ra8_fonts/`. The first vendor root contains
+  platform-wide dependencies; the second contains dependencies used only by
+  application products and their companion host tools.
 - **NOT covered (first-party, MIT):** all hand-written code under `libs/`,
-  `examples/`, `port/`, `tools/`, `tests/`, and `scripts/` is
+  `apps/`, `examples/`, `port/`, `tools/`, `tests/`, and `scripts/` is
   first-party and licensed under the root MIT `LICENSE.txt`. In particular
   `port/` is the project's own RA8D2 glue for the middleware (project Ring /
   World tags, project copyright) -- it is NOT vendored SOUP.
@@ -69,12 +72,11 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | Mbed TLS | 4.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/mbedtls/` | <https://github.com/Mbed-TLS/mbedtls> |
 | TF-PSA-Crypto | 1.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/tf-psa-crypto/` | <https://github.com/Mbed-TLS/TF-PSA-Crypto> |
 | Apache NimBLE | 1.10.0 (tag `nimble_1_10_0_tag`, git `a7a156f2`) | Apache-2.0 | `libs/third_party/nimble/` | <https://github.com/apache/mynewt-nimble> |
-| litehtml | git `8836bc1b` (post-v0.9 dev snapshot) | BSD-3-Clause | `libs/third_party/litehtml/` | <https://github.com/litehtml/litehtml> |
-| miniz | 11.0.2 (`MZ_VERSION`; release artifact `miniz-3.0.2.zip`) | MIT (zlib-style) | `libs/third_party/miniz/` | <https://github.com/richgel999/miniz> |
-| XZ Embedded (decode-only) | tag `v2024-12-30` (git `ae63ae3a`) | 0BSD | `libs/third_party/xz_embedded/` | <https://github.com/tukaani-project/xz-embedded> |
-| stb (stb_image + stb_truetype) | image 2.30 / truetype 1.26 | MIT OR Unlicense (public domain) | `libs/third_party/stb/` | <https://github.com/nothings/stb> |
-| libwebp (decode-only, **patched**) | 1.5.0 | BSD-3-Clause (+ PATENTS grant) | `libs/third_party/libwebp/` | <https://chromium.googlesource.com/webm/libwebp> |
-| TinyXML-2 (**patched**) | 11.0.0 | Zlib | `libs/third_party/tinyxml2/` | <https://github.com/leethomason/tinyxml2> |
+| litehtml | git `8836bc1b` (post-v0.9 dev snapshot) | BSD-3-Clause | `apps/shared_libs/third_party/litehtml/` | <https://github.com/litehtml/litehtml> |
+| miniz | 11.0.2 (`MZ_VERSION`; release artifact `miniz-3.0.2.zip`) | MIT (zlib-style) | `apps/shared_libs/third_party/miniz/` | <https://github.com/richgel999/miniz> |
+| XZ Embedded (decode-only) | tag `v2024-12-30` (git `ae63ae3a`) | 0BSD | `apps/shared_libs/third_party/xz_embedded/` | <https://github.com/tukaani-project/xz-embedded> |
+| stb (stb_image + stb_truetype) | image 2.30 / truetype 1.26 | MIT OR Unlicense (public domain) | `apps/shared_libs/third_party/stb/` | <https://github.com/nothings/stb> |
+| libwebp (decode-only, **patched**) | 1.5.0 | BSD-3-Clause (+ PATENTS grant) | `apps/shared_libs/third_party/libwebp/` | <https://chromium.googlesource.com/webm/libwebp> |
 | TFLite-micro | git `fddd3707` | Apache-2.0 | `libs/third_party/tflite-micro/` | <https://github.com/tensorflow/tflite-micro> |
 | FlatBuffers | 25.9.23 | Apache-2.0 | `libs/third_party/flatbuffers/` | <https://github.com/google/flatbuffers> |
 | gemmlowp | git `719139ce` | Apache-2.0 | `libs/third_party/gemmlowp/` | <https://github.com/google/gemmlowp> |
@@ -83,17 +85,18 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | protobuf-c (nested in esp-hosted) | 1.4.1 (git `abc67a11`) | BSD-2-Clause | `libs/third_party/esp-hosted/common/protobuf-c/` | <https://github.com/protobuf-c/protobuf-c> |
 | Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/ra8_fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
 
-Counts: **19 vendored source components** + **1 bundled font asset**. One of
-the nineteen (protobuf-c) is *nested*: upstream esp-hosted carries it as a git
+Counts: **18 vendored source components** + **1 bundled font asset**. One of
+the eighteen (protobuf-c) is *nested*: upstream esp-hosted carries it as a git
 submodule, so it is pinned and licensed in its own right rather than folded
-into its parent. Nine of the twenty carry a declared deviation from
-their upstream pin -- TinyXML-2, libwebp and stb each an in-tree code patch, the
-five Eclipse ThreadX trees a `.gitattributes` edit, and Mbed TLS /
+into its parent. Eight of the nineteen carry a declared deviation from
+their upstream pin -- libwebp and stb each carry an in-tree code patch, the
+four Eclipse ThreadX-family trees a `.gitattributes` edit, and Mbed TLS /
 TF-PSA-Crypto their build-generated sources -- so those are *modified* SOUP;
 the other eleven are byte-identical to their pin. Every deviation is
 enumerated in the component's `docs/SOUP/*.md` and machine-checked (see
 "Provenance and integrity" below). Separately, **Arm Ethos-U
-Vela** is a build-time host tool (pinned at `tools/vela/requirements.txt`),
+Vela** is a build-time host tool (pinned by the `vela` dependency group
+in `pyproject.toml` and resolved by `uv.lock`),
 linked into nothing -- see the build-tools note below and
 [`docs/SOUP/vela.md`](docs/SOUP/vela.md).
 
@@ -101,7 +104,7 @@ linked into nothing -- see the build-tools note below and
 
 ## Provenance and integrity
 
-**All twenty vendored components are now pinned to an upstream revision and
+**All nineteen vendored components are now pinned to an upstream revision and
 verified against it file by file.** Ten of them had no upstream pin at all
 until #548 -- their version was read out of a header in our own tree, which
 says what the code calls itself, not where it came from. Each was resolved by
@@ -128,7 +131,6 @@ permitted to differ.
 | XZ Embedded | tag `v2024-12-30` `ae63ae3a36ed01724674e8f3d750dc47bf125410` | 11/11 | none (8 relocated) |
 | stb | `31c1ad37456438565541f4919958214b6e762fb4` | 1/4 | 1 patched, 2 first-party |
 | libwebp (decode-only) | tag `v1.5.0` `a4d7a715337ded4451fec90ff8ce79728e04126c` | 101/102 | 1 patched (arena allocator) |
-| TinyXML-2 | tag `11.0.0` `9148bdf719e997d1f474be6bcc7943881046dba1` | 2/3 | 1 patched (#151) |
 | TFLite-micro | `fddd3707a3c5733af4cb866f18650441e6712504` | 278/278 | none |
 | FlatBuffers | tag `v25.9.23` `187240970746d00bbd26b0f5873ed54d2477f9f3` | 31/31 | none |
 | gemmlowp | `719139ce755a0f31cbf1c37f7f98adcc7fc9f425` | 7/7 | none |
@@ -137,8 +139,8 @@ permitted to differ.
 | protobuf-c (nested) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | 3/3 | none |
 | Literata | tag `3.103` `0c2761b727a1b3a7cffd313c37f0f5163dfc7a63` | 1/1 | none (1 relocated) |
 
-**Totals: 20 components, 9153 vendored files, 9135 byte-identical to their
-pinned upstream revision, 18 declared deviations.**
+**Totals: 19 components, 9150 vendored files, 9133 byte-identical to their
+pinned upstream revision, 17 declared deviations.**
 
 ### Why there are no hash values in this table
 
@@ -150,7 +152,8 @@ their evidence rather than reading a number written here.
    component-relative paths, git file mode and file content, each
    length-framed -- and publishes it in the SBOM alongside the file count that
    went into it. `gen_sbom.py --check` runs in the `sbom` gate, so a single
-   mutated byte under `libs/third_party/` fails CI and names the component.
+   mutated byte under either canonical third-party root fails CI and names the
+   component.
 2. **Upstream identity** (#548). `scripts/checks/check_soup_upstream.py`
    compares every vendored file against the git blob SHA-1 its *upstream
    project* publishes for the pinned revision, recorded per component in
@@ -171,8 +174,8 @@ would notice when it stopped being true. Read the digests from
 This closes **T5-09** in full. Applying the upstream check for the first time
 found five undeclared deviations this document had described as unmodified: the
 `[attr]` edit to five Eclipse ThreadX `.gitattributes` files, CRLF-converted
-USBX `.inf` templates, and a vendor-in formatter sweep over miniz, TinyXML-2
-and `stb_image.h`. Everything restorable was restored to upstream's bytes; what
+USBX `.inf` templates, and a vendor-in formatter sweep over miniz and
+`stb_image.h`. Everything restorable was restored to upstream's bytes; what
 remains is enumerated above and justified per component.
 
 ---
@@ -194,29 +197,28 @@ below); this section reproduces the copyright line and points to that text.
   `libs/third_party/nimble/LICENSE`; **NOTICE:**
   `libs/third_party/nimble/NOTICE` (must be propagated).
 - **litehtml** -- BSD-3-Clause. "Copyright (c) 2013, Yuri Kobets (tordex).
-  All rights reserved." Text: `libs/third_party/litehtml/LICENSE`.
+  All rights reserved." Text: `apps/shared_libs/third_party/litehtml/LICENSE`.
 - **miniz** -- MIT. "Copyright 2013-2014 RAD Game Tools and Valve Software;
   Copyright 2010-2014 Rich Geldreich and Tenacious Software LLC." Text:
-  `libs/third_party/miniz/LICENSE`.
+  `apps/shared_libs/third_party/miniz/LICENSE`.
 - **XZ Embedded** (decode-only) -- 0BSD. "Copyright (C) The XZ Embedded
   authors and contributors" (Lasse Collin; parts based on Igor Pavlov's
-  LZMA SDK). Text: `libs/third_party/xz_embedded/COPYING`; contributor
-  list: `libs/third_party/xz_embedded/AUTHORS`. Unmodified SOUP -- the
+  LZMA SDK). Text: `apps/shared_libs/third_party/xz_embedded/COPYING`; contributor
+  list: `apps/shared_libs/third_party/xz_embedded/AUTHORS`. Unmodified SOUP -- the
   allocator / mode porting layer is the first-party
-  `libs/ra8_unarch/inc/xz_config.h` (see
+  `apps/shared_libs/unarch/inc/xz_config.h` (see
   [`docs/SOUP/xz_embedded.md`](docs/SOUP/xz_embedded.md)).
 - **stb** -- public domain, dual `MIT OR Unlicense`. Sean Barrett
   (nothings.org). The license text lives ONLY in the tails of
   `stb_image.h` / `stb_truetype.h` -- there is no standalone `LICENSE` file
-  in `libs/third_party/stb/` (see Open items).
+  in `apps/shared_libs/third_party/stb/` (see Open items).
 - **libwebp** (decode-only) -- BSD-3-Clause. "Copyright (c) 2010, Google Inc.
-  All rights reserved." Text: `libs/third_party/libwebp/COPYING`; the
-  additional-IP-rights grant is `libs/third_party/libwebp/PATENTS` and the
-  contributor list is `libs/third_party/libwebp/AUTHORS`. Modified SOUP: one
-  allocator-fronting patch in `src/utils/utils.c` (see
+  All rights reserved." Text: `apps/shared_libs/third_party/libwebp/COPYING`; the
+  additional-IP-rights grant is `apps/shared_libs/third_party/libwebp/PATENTS` and the
+  contributor list is `apps/shared_libs/third_party/libwebp/AUTHORS`. Modified SOUP: one
+  allocator-fronting patch in
+  `apps/shared_libs/third_party/libwebp/src/utils/utils.c` (see
   [`docs/SOUP/libwebp.md`](docs/SOUP/libwebp.md)).
-- **TinyXML-2** -- zlib. Lee Thomason. Text:
-  `libs/third_party/tinyxml2/LICENSE.txt`.
 - **TFLite-micro** -- Apache-2.0. "Copyright The TensorFlow Authors."
   (Google / TensorFlow). Text: `libs/third_party/tflite-micro/LICENSE`.
 - **FlatBuffers** -- Apache-2.0. Copyright Google Inc. Text:
@@ -242,16 +244,6 @@ below); this section reproduces the copyright line and points to that text.
   License, Version 1.1; the full license text ships at
   `libs/ra8_fonts/Literata-OFL.txt`.
 
-### TinyXML-2 local modification
-
-TinyXML-2 is *not* pristine: a single behaviour-preserving in-TU patch (#151)
-generalizes the `XMLDocument::Identify` `PEDANTIC_WHITESPACE` branch so the
-on-device `.rabook` compiler round-trips byte-identically. The default parser
-behaviour is unchanged. Full description:
-[`docs/SOUP/tinyxml2.md`](docs/SOUP/tinyxml2.md) ("Deviations / patches").
-Because the tree is modified, its zlib obligation to "not misrepresent the
-original software" is met by this disclosure.
-
 ### Co-processor firmware (not linked into firmware)
 
 This runs on the companion **ESP32-C6** wireless co-processor, not on the
@@ -275,9 +267,15 @@ These run on the developer / CI host at build time and ship no code into the
 firmware image, so they are not in the SBOM component list, but they go through
 the vendor process (owner requirement) and are recorded here:
 
+- **uv 0.12.5** -- Apache-2.0 OR MIT. Astral Software Inc. The host
+  dependency resolver and environment synchronizer, downloaded only from the
+  official release and authenticated by `scripts/dev/uv_release.json`; source:
+  <https://github.com/astral-sh/uv>. It is not linked into firmware.
+
 - **Arm Ethos-U Vela** -- Apache-2.0. Arm Limited. The offline
   `.tflite -> Ethos-U command-stream` compiler. Pinned at
-  `tools/vela/requirements.txt` (`ethos-u-vela==5.1.0`); usage in
+  the `vela` dependency group in `pyproject.toml`, resolved by
+  `uv.lock` (`ethos-u-vela==5.1.0`); usage in
   `tools/vela/README.md`; qualification in
   [`docs/SOUP/vela.md`](docs/SOUP/vela.md). Its output command stream is a build
   input consumed on-device by the vendored TFLite-micro `ethos-u` operator.
@@ -295,12 +293,12 @@ moment a binary is shared.
    fingerprint; see the provenance table), which closes the unpinned half
    of the finding, but re-vendoring at a tagged release remains preferable
    -- litehtml is on the untrusted-EPUB path (linked via
-   `libs/ra8_reflow`). NimBLE was the other half of this finding and is
+   `apps/shared_libs/reflow`). NimBLE was the other half of this finding and is
    now resolved: it is vendored at the `nimble_1_10_0_tag` release tag
    (#508).
 2. **stb has no standalone `LICENSE` file (SOUP-5).** The `MIT OR Unlicense`
-   text exists only in the header tails. A standalone
-   `libs/third_party/stb/LICENSE` would make the attribution self-contained.
+   text exists only in the header tails. Adding a standalone license file to
+   `apps/shared_libs/third_party/stb/` would make the attribution self-contained.
 3. **CVE monitoring resolves only for commit-pinned components (SOUP-3).** The
    weekly [`osv-scan.yml`](.github/workflows/osv-scan.yml) workflow runs the
    pinned `osv-scanner` release against the SBOM and against every recorded
@@ -325,15 +323,15 @@ The SBOM and the registry that backs this inventory are kept in sync by one
 generator:
 
 ```sh
-make sbom          # regenerate docs/sbom/ra8-firmware.cdx.json from the tree
-make sbom-check    # fail if the committed SBOM is stale or the tree drifted
+just quality::local::sbom        # regenerate docs/sbom/ra8-firmware.cdx.json
+just quality::local::sbom_check  # fail if the committed SBOM is stale or drifted
 ```
 
-`gen_sbom.py --check` (invoked by `make sbom-check`, the pre-commit hook, and
+`gen_sbom.py --check` (invoked by `just quality::local::sbom_check`, the pre-commit hook, and
 the CI pre-commit gate suite) cross-checks the registry against the vendored
-tree: it fails on an uncatalogued `libs/third_party/` directory or a version
-macro that disagrees with the recorded version, so a newly vendored or bumped
-component cannot ship without updating both artifacts.
+tree: it fails on an uncatalogued directory under either canonical third-party
+root, or a version macro that disagrees with the recorded version, so a newly
+vendored or bumped component cannot ship without updating both artifacts.
 
 ---
 

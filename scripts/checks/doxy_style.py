@@ -21,22 +21,11 @@ set from ``lint_targets.first_party_paths`` -- ``git ls-files`` minus the named
 SOUP / generated exemptions -- not ``doxy_scope.SCAN_DIRS``, which stops at
 ``libs``/``port``.
 
-WHAT IS HARD AND WHAT IS RATCHETED
-----------------------------------
-``@file`` (present, and naming this file), ``@brief`` and the ``@param``
-direction are HARD: the tree already held all three at zero offenders once the
-one stale ``@file`` in ``port/mbedtls`` and the 55 bare ``@param`` tags were
-fixed, so there is no debt to grandfather and a new violation fails on sight.
-
-``@details`` is RATCHETED against ``.github/doxy-details-baseline.txt``, the
-same shape ``tidy_ratchet`` and ``misra_ratchet`` use.  130 first-party files
-had no ``@details`` paragraph when the rule was first enforced, and closing
-that means writing 130 real paragraphs -- a documentation campaign, not a
-mechanical edit.  Turning the whole tree red for it would produce exactly the
-tag-shaped filler ``doxy_audit``'s own docstring warns against, and a gate that
-cries wolf gets switched off.  So the debt is frozen file-by-file and may only
-shrink: a file outside the baseline fails immediately, and ``--update-baseline``
-refuses to ADD an entry.
+STRICT RULES
+------------
+``@file`` (present, and naming this file), ``@brief``, ``@details``, and the
+``@param`` direction are hard requirements. The original ``@details`` debt was
+closed, so no baseline remains and every new violation fails on sight.
 
 BOTH ACCEPTANCE PROPERTIES FROM #190
 ------------------------------------
@@ -65,9 +54,6 @@ from lint_targets import first_party_paths
 
 #: The real checkout root; every reported path is relative to it.
 REPO_ROOT = Path(__file__).resolve().parents[2]
-
-#: Frozen ``@details`` debt: one repo-relative path per line, ``#`` comments.
-DETAILS_BASELINE = REPO_ROOT / ".github" / "doxy-details-baseline.txt"
 
 #: Suffixes this gate audits. Every first-party C/C++ translation unit and
 #: header; `lint_targets` decides which of those are ours.
@@ -219,28 +205,6 @@ def audit_text(rel: str, raw: str) -> tuple[list[Row], int]:
     return [*rows, *param_rows], seen
 
 
-def read_baseline() -> set[str]:
-    """The frozen ``@details`` debt, or an empty set when the file is absent."""
-    if not DETAILS_BASELINE.is_file():
-        return set()
-    lines = DETAILS_BASELINE.read_text(encoding="ascii").splitlines()
-    return {ln.strip() for ln in lines if ln.strip() and not ln.lstrip().startswith("#")}
-
-
-BASELINE_HEADER = """\
-# doxy_audit --style: the frozen @details debt (#532).
-#
-# One repo-relative path per line: a first-party C file whose file-header
-# Doxygen block carries no @details paragraph. docs/STYLE_GUIDE.md requires
-# one; these predate the rule being enforced and are excused until written.
-#
-# This list may only SHRINK. A file that is not in it and has no @details
-# fails the gate on sight, and `--update-baseline` refuses to add an entry.
-# Closing the debt means this file reaching zero paths and being deleted --
-# by WRITING the paragraphs, never by generating tag-shaped filler.
-"""
-
-
 def scan() -> tuple[list[Row], list[str], int]:
     """Audit the whole first-party C set.
 
@@ -284,19 +248,6 @@ def _floor_failure(paths: list[str], params: int) -> str | None:
     return None
 
 
-def partition(rows: list[Row], baseline: set[str]) -> tuple[list[Row], list[str]]:
-    """Split findings into real violations and stale baseline entries.
-
-    A ``DETAILS_MISSING`` row for a baselined path is excused debt. A baselined
-    path with no such row is stale -- the paragraph was written, or the file is
-    gone -- and is a FAILURE rather than a notice, because a ratchet that
-    tolerates a stale entry lets the debt quietly grow back into it.
-    """
-    still_missing = {row[0] for row in rows if row[2] == DETAILS_MISSING}
-    violations = [row for row in rows if not (row[2] == DETAILS_MISSING and row[0] in baseline)]
-    return violations, sorted(baseline - still_missing)
-
-
 def _print_rows(rows: list[Row]) -> None:
     """Print offender rows, truncated to ``OFFENDER_CAP``."""
     for rel, line, code, detail in rows[:OFFENDER_CAP]:
@@ -313,50 +264,18 @@ def run_check() -> int:
         sys.stderr.write(f"doxy_audit --style: FATAL -- {complaint}\n")
         return 2
     rows.sort(key=lambda row: (row[0], row[1]))
-    violations, stale = partition(rows, read_baseline())
-    if not violations and not stale:
+    violations = rows
+    if not violations:
         print(
             f"doxy_audit --style: violations=0 (PASS) over {len(paths)} files, "
-            f"{params} @param tags, {len(read_baseline())} baselined @details"
+            f"{params} @param tags; strict @details enforcement"
         )
         return 0
-    print(f"doxy_audit --style: violations={len(violations)} stale-baseline={len(stale)} (FAIL)")
+    print(f"doxy_audit --style: violations={len(violations)} (FAIL)")
     if violations:
         print("Offenders (file:line  rule  -- detail):")
         _print_rows(violations)
         print()
         print("docs/STYLE_GUIDE.md 'File-header Doxygen block' and 'Function")
         print("documentation' state these rules; this gate is what enforces them.")
-    if stale:
-        print("Stale @details baseline entries (the paragraph is written, or the file is gone):")
-        for rel in stale[:OFFENDER_CAP]:
-            print(f"  {rel}")
-        print()
-        print("Lock the progress in with:")
-        print("  python3 scripts/checks/doxy_audit.py --style --update-baseline")
     return 1
-
-
-def run_update_baseline() -> int:
-    """Shrink the ``@details`` baseline to what is still missing. Never grows it."""
-    rows, paths, params = scan()
-    complaint = _floor_failure(paths, params)
-    if complaint is not None:
-        sys.stderr.write(f"doxy_audit --style: FATAL -- {complaint}\n")
-        return 2
-    missing = {row[0] for row in rows if row[2] == DETAILS_MISSING}
-    baseline = read_baseline()
-    additions = sorted(missing - baseline)
-    if additions:
-        sys.stderr.write(
-            "doxy_audit --style --update-baseline: refusing to GROW the baseline. "
-            f"{len(additions)} file(s) have no @details and are not frozen debt:\n"
-        )
-        for rel in additions[:OFFENDER_CAP]:
-            sys.stderr.write(f"  {rel}\n")
-        sys.stderr.write("Write the @details paragraph instead.\n")
-        return 1
-    kept = sorted(missing & baseline)
-    DETAILS_BASELINE.write_text(BASELINE_HEADER + "\n".join(kept) + "\n", encoding="ascii")
-    print(f"doxy_audit --style: baseline rewritten, {len(baseline)} -> {len(kept)} entries")
-    return 0

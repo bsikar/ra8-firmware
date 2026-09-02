@@ -59,13 +59,13 @@ def _require_libclang() -> ModuleType:
             "check_doc_attachment.py: FATAL -- the 'libclang' Python binding is missing,\n"
             "  so the documentation-attachment gate cannot run. This is an error, not a\n"
             "  skip: a gate that cannot run has not passed.\n"
-            "  install: python3 -m pip install --user --break-system-packages libclang\n"
+            "  install the pinned repository tools: just setup-python\n"
         )
         sys.exit(2)
     return cindex
 
 
-def _include_args(cindex: ModuleType) -> list[str]:  # noqa: ARG001  # kept for signature parity
+def _include_args(_cindex: ModuleType) -> list[str]:
     """``-I`` flags for every first-party header root."""
     roots: list[Path] = []
     for pattern in (

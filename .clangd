@@ -1,5 +1,5 @@
 CompileFlags:
-  CompilationDatabase: build/
+  CompilationDatabase: .
   Add:
     - -std=c23
     # arm-none-eabi toolchain headers: install from ARM GNU Toolchain
@@ -7,9 +7,6 @@ CompileFlags:
     # Add your local toolchain include path in ~/.config/clangd/config.yaml, e.g.:
     #   CompileFlags:
     #     Add: [-I/opt/arm-gnu-toolchain/arm-none-eabi/include]
-    - -I../src
-    - -I../libs/ra8_core/inc
-    - -I../libs/ra8_hal/inc
     - -D__ARM_ARCH_8_1M_MAIN__=1
     - -D__ARM_FEATURE_MVE=3
   # Strip Cortex-M85 / arm-none-eabi flags that clangd's clang frontend does

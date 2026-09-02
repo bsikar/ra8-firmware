@@ -11,5 +11,5 @@ a command stream, and finally the pieces a TFLite-Micro Ethos-U runtime needs
 above the driver.
 
 There is no RA8P1 board on the bench, so the whole tier is gated by building,
-by the host tests, and in the emulator. `make <appname>` from the repo root,
+by the host tests, and in the emulator. `just apps::build <appname>` from the repo root,
 same as any other example.

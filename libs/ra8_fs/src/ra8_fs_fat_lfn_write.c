@@ -122,7 +122,7 @@ static ra8_err_t internal_alias_unique(const ra8_fs_mount_t* m,
   /* Unreachable in practice: exhausting this needs 999999 entries sharing one
    * basis name, and the largest directory this driver can mount holds far
    * fewer. It is the Rule 2 bound's honest failure answer, not dead code. */
-  return k_ra8_err_no_mem; /* GCOVR_EXCL_LINE */
+  return k_ra8_err_no_mem; /* GCOVR_EXCL_LINE -- million-alias exhaustion, bounded-loop fallback */
 }
 
 /* =============================================================================

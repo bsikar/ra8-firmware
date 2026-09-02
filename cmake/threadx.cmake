@@ -143,10 +143,13 @@ target_link_options(
   threadx INTERFACE -Wl,--undefined=_tx_timer_interrupt -Wl,--undefined=g_ra8_threadx_systick_ready
 )
 
-# Quiet the upstream sources -- they trigger a handful of warnings that
-# the firmware build elevates to errors. Apply only to C TUs; the .S
-# files are passed through the assembler and reject -W flags.
-target_compile_options(threadx PRIVATE $<$<COMPILE_LANGUAGE:C>:-w>)
+# Quiet only the upstream C sources. The first-party SysTick glue in this
+# target must retain the project warning profile; applying -w to the target
+# hid warnings in that glue along with the SOUP. Assembly sources are not
+# listed because the assembler rejects compiler warning flags.
+set_source_files_properties(
+  ${RA8_THREADX_COMMON_SOURCES} ${RA8_THREADX_PORT_C} PROPERTIES COMPILE_OPTIONS ""
+)
 
 message(STATUS "ThreadX: ${CMAKE_PROJECT_NAME}/threadx target configured")
 message(STATUS "ThreadX: tx_user.h     = ${RA8_THREADX_PORT_DIR}/inc/tx_user.h")

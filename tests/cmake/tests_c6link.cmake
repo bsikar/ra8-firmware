@@ -29,13 +29,14 @@ set(RA8_C6LINK_INCLUDE_DIRS
     ${FW_ROOT}/libs/ra8_c6link/inc
     ${FW_ROOT}/libs/ra8_c6link/src
     ${FW_ROOT}/libs/ra8_core/inc
-    ${FW_ROOT}/libs/ra8_mdl/inc
+    ${FW_ROOT}/apps/shared_libs/mdl/tests/inc
+    ${FW_ROOT}/apps/shared_libs/mdl/inc
     ${FW_ROOT}/port/esp-hosted/inc
     # tests/ itself, for unity_minimal.h -- the mock asserts inside the
     # transport rows, so it needs the harness the tests use.
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/mocks
-    ${CMAKE_CURRENT_SOURCE_DIR}/support
+    ${RA8_TEST_SHARED_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/support/inc
     ${RA8_C6LINK_VENDOR_DIR}/common
     ${RA8_C6LINK_VENDOR_DIR}/common/transport
     ${RA8_C6LINK_VENDOR_DIR}/common/proto
@@ -47,35 +48,31 @@ file(GLOB RA8_C6LINK_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_c6link/src/*.
 # The generic facade and media-transfer suites share one bounded model fixture.
 # It owns the decode arena and observation log inside each executable, while its
 # internal header exposes only deliberate test operations and observations.
-set(RA8_C6LINK_TEST_SUPPORT ${CMAKE_CURRENT_SOURCE_DIR}/support/ra8_c6link_model_test.c)
-set(RA8_C6LINK_TEST_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_c6_model.c
-                          ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_c6_model_mdl_fault.c
+set(RA8_C6LINK_TEST_SUPPORT ${CMAKE_CURRENT_SOURCE_DIR}/support/src/ra8_c6link_model_test.c)
+set(RA8_C6LINK_TEST_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/mocks/src/ra8_c6_model.c
+                          ${FW_ROOT}/apps/shared_libs/mdl/tests/src/ra8_c6_model_mdl_fault.c
 )
-
-# esp-hosted SOUP: silence upstream's warnings, exactly as cmake/esp_hosted.cmake
-# does for the cross build. It is already outside the coverage filter
-# (libs/third_party/), so instrumentation is unaffected -- the -w only removes
-# warnings, not the --coverage flags add_compile_options() applied globally.
-set_source_files_properties(${RA8_C6LINK_SOUP} PROPERTIES COMPILE_OPTIONS "-w")
 
 # test_ra8_c6link_wire: the pure layers (decode arena, payload header, TLV
 # envelope) on their own, so a failure in the facade test is unambiguous about
 # which layer broke. No model, no transport.
 add_executable(
-  test_ra8_c6link_wire ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_wire.c ${RA8_C6LINK_SOURCES}
-                       ${RA8_C6LINK_SOUP} $<TARGET_OBJECTS:ra8_core_hal>
+  test_ra8_c6link_wire ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_wire.c
+                       ${RA8_C6LINK_SOURCES} ${RA8_C6LINK_SOUP} $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_c6link_wire PROPERTIES LINKER_LANGUAGE CXX)
-target_compile_options(test_ra8_c6link_wire PRIVATE -Wall -Wextra -Wno-unused-parameter)
+target_compile_options(test_ra8_c6link_wire PRIVATE -Wall -Wextra)
 target_include_directories(test_ra8_c6link_wire PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
 add_test(NAME test_ra8_c6link_wire COMMAND test_ra8_c6link_wire)
 
-# test_ra8_c6link: the whole facade against tests/mocks/ra8_c6_model.c, which
+# test_ra8_c6link: the whole facade against tests/mocks/src/ra8_c6_model.c, which
 # decodes what the host transmits with the same generated codec the ESP32-C6
 # runs and synthesises the answer the co-processor would send.
 add_executable(
   test_ra8_c6link
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_session.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_transport.c
   ${RA8_C6LINK_TEST_SUPPORT}
   ${RA8_C6LINK_TEST_MODEL}
   ${RA8_C6LINK_SOURCES}
@@ -83,8 +80,10 @@ add_executable(
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_c6link PROPERTIES LINKER_LANGUAGE CXX)
-target_compile_options(test_ra8_c6link PRIVATE -Wall -Wextra -Wno-unused-parameter)
-target_include_directories(test_ra8_c6link PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
+target_compile_options(test_ra8_c6link PRIVATE -Wall -Wextra)
+target_include_directories(
+  test_ra8_c6link PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/wireless/inc
+)
 add_test(NAME test_ra8_c6link COMMAND test_ra8_c6link)
 
 # test_ra8_c6link_media: downloader RPC semantics and the transactional
@@ -93,12 +92,12 @@ add_test(NAME test_ra8_c6link COMMAND test_ra8_c6link)
 # repository's 1000-line cap.
 add_executable(
   test_ra8_c6link_media
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media_decoder.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_media_http.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/ra8_c6link_transfer_validation_test.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_transfer_coordinator.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl_decode.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_media.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_media_decoder.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_media_http.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/src/ra8_c6link_transfer_validation_test.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_ra8_c6link_transfer_coordinator.c
+  ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl_decode.c
   ${RA8_C6LINK_TEST_SUPPORT}
   ${RA8_C6LINK_TEST_MODEL}
   ${RA8_C6LINK_SOURCES}
@@ -106,31 +105,33 @@ add_executable(
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_c6link_media PROPERTIES LINKER_LANGUAGE CXX)
-target_compile_options(test_ra8_c6link_media PRIVATE -Wall -Wextra -Wno-unused-parameter)
-target_include_directories(test_ra8_c6link_media PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
+target_compile_options(test_ra8_c6link_media PRIVATE -Wall -Wextra)
+target_include_directories(
+  test_ra8_c6link_media PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/wireless/inc
+)
 add_test(NAME test_ra8_c6link_media COMMAND test_ra8_c6link_media)
 
-# test_ra8_mdl_net_c6link: the downloader's real network vtable over the same
+# test_mdl_net_c6link_mock: the downloader's real network vtable over the same
 # generated protobuf/model transport, with independent SHA verification and
 # both caller-buffer and streaming-sink output contracts.
 add_executable(
-  test_ra8_mdl_net_c6link
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_mdl_net_c6link.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/../apps/shared/media_dl/src/mdl_net.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/../apps/shared/media_dl/src/mdl_net_c6link.c
+  test_mdl_net_c6link_mock
+  ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_mdl_net_c6link_mock.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../apps/shared_libs/mdl/src/mdl_net.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../apps/shared_libs/mdl/src/mdl_net_c6link.c
   ${RA8_C6LINK_TEST_SUPPORT}
   ${RA8_C6LINK_TEST_MODEL}
   ${RA8_C6LINK_SOURCES}
   ${RA8_C6LINK_SOUP}
   $<TARGET_OBJECTS:ra8_core_hal>
 )
-set_target_properties(test_ra8_mdl_net_c6link PROPERTIES LINKER_LANGUAGE CXX)
-target_compile_options(test_ra8_mdl_net_c6link PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+set_target_properties(test_mdl_net_c6link_mock PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_mdl_net_c6link_mock PRIVATE -Wall -Wextra -Werror)
 target_include_directories(
-  test_ra8_mdl_net_c6link PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/apps/shared/media_dl/inc
-                                  ${FW_ROOT}/libs/ra8_hal/inc
+  test_mdl_net_c6link_mock PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/apps/shared_libs/mdl/inc
+                                   ${FW_ROOT}/libs/ra8_hal/inc
 )
-add_test(NAME test_ra8_mdl_net_c6link COMMAND test_ra8_mdl_net_c6link)
+add_test(NAME test_mdl_net_c6link_mock COMMAND test_mdl_net_c6link_mock)
 
 # test_ra8_c6link_mdl: generated inner-protobuf round trips and the portable
 # service state machine. It deliberately stays independent of the large host
@@ -140,14 +141,14 @@ add_test(NAME test_ra8_mdl_net_c6link COMMAND test_ra8_mdl_net_c6link)
 if(NOT TARGET test_ra8_c6link_mdl)
   add_executable(
     test_ra8_c6link_mdl
-    ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl_policy.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl_guards.c
+    ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl.c
+    ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl_policy.c
+    ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl_guards.c
     ${FW_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl_service.c
     ${FW_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
     ${RA8_C6LINK_VENDOR_DIR}/common/protobuf-c/protobuf-c/protobuf-c.c
   )
-  target_compile_options(test_ra8_c6link_mdl PRIVATE -Wall -Wextra -Wno-unused-parameter)
+  target_compile_options(test_ra8_c6link_mdl PRIVATE -Wall -Wextra)
   target_include_directories(test_ra8_c6link_mdl PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
   add_test(NAME test_ra8_c6link_mdl COMMAND test_ra8_c6link_mdl)
 endif()
@@ -162,11 +163,11 @@ endif()
 if(NOT TARGET test_ra8_c6link_mdl_codec)
   add_executable(
     test_ra8_c6link_mdl_codec
-    ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl_codec.c
+    ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_c6link_mdl_codec.c
     ${FW_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
     ${RA8_C6LINK_VENDOR_DIR}/common/protobuf-c/protobuf-c/protobuf-c.c
   )
-  target_compile_options(test_ra8_c6link_mdl_codec PRIVATE -Wall -Wextra -Wno-unused-parameter)
+  target_compile_options(test_ra8_c6link_mdl_codec PRIVATE -Wall -Wextra)
   target_include_directories(test_ra8_c6link_mdl_codec PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
   add_test(NAME test_ra8_c6link_mdl_codec COMMAND test_ra8_c6link_mdl_codec)
 endif()
@@ -177,16 +178,14 @@ endif()
 # through the public CustomRpc hook without requiring a network or C6 board.
 add_executable(
   test_ra8_esp32_c6_mdl_service
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_esp32_c6_mdl_service.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/esp32_c6_http_model.c
+  ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_ra8_esp32_c6_mdl_service.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/src/esp32_c6_http_model.c
   ${FW_ROOT}/port/esp32_c6/src/mdl_service.c
   ${FW_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl_service.c
   ${FW_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
   ${RA8_C6LINK_VENDOR_DIR}/common/protobuf-c/protobuf-c/protobuf-c.c
 )
-target_compile_options(
-  test_ra8_esp32_c6_mdl_service PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
-)
+target_compile_options(test_ra8_esp32_c6_mdl_service PRIVATE -Wall -Wextra -Werror)
 target_include_directories(
   test_ra8_esp32_c6_mdl_service
   PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/port/esp32_c6/inc ${FW_ROOT}/port/esp32_c6/src
@@ -194,55 +193,59 @@ target_include_directories(
 )
 add_test(NAME test_ra8_esp32_c6_mdl_service COMMAND test_ra8_esp32_c6_mdl_service)
 
-# test_ra8_mdl_storage_vfs: the production media-download transaction binding
+# test_mdl_storage_vfs: the production media-download transaction binding
 # over a real RAM blockdev -> ra8_fs -> named-VFS stack. The adapter depends on
 # the c6link-owned storage seam but not the protobuf runtime or transport.
 add_executable(
-  test_ra8_mdl_storage_vfs
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_mdl_storage_vfs.c
-  ${FW_ROOT}/libs/ra8_mdl_storage_vfs/src/ra8_mdl_storage_vfs.c $<TARGET_OBJECTS:ra8_core_hal>
+  test_mdl_storage_vfs
+  ${FW_ROOT}/apps/shared_libs/mdl_storage_vfs/tests/src/test_mdl_storage_vfs.c
+  ${FW_ROOT}/apps/shared_libs/mdl_storage_vfs/src/mdl_storage_vfs.c $<TARGET_OBJECTS:ra8_core_hal>
 )
-set_target_properties(test_ra8_mdl_storage_vfs PROPERTIES LINKER_LANGUAGE CXX)
-target_compile_options(test_ra8_mdl_storage_vfs PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+set_target_properties(test_mdl_storage_vfs PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_mdl_storage_vfs PRIVATE -Wall -Wextra -Werror)
 target_include_directories(
-  test_ra8_mdl_storage_vfs
-  PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_mdl_storage_vfs/inc
-          ${FW_ROOT}/libs/ra8_io/inc ${FW_ROOT}/libs/ra8_fs/inc
+  test_mdl_storage_vfs
+  PRIVATE ${RA8_C6LINK_INCLUDE_DIRS}
+          ${FW_ROOT}/apps/shared_libs/mdl_storage_vfs/inc
+          ${FW_ROOT}/libs/ra8_io/inc
+          ${FW_ROOT}/libs/ra8_fs/inc
+          ${FW_ROOT}/apps/shared_libs/compress/inc
 )
-add_test(NAME test_ra8_mdl_storage_vfs COMMAND test_ra8_mdl_storage_vfs)
+add_test(NAME test_mdl_storage_vfs COMMAND test_mdl_storage_vfs)
 
-# test_ra8_mdl_storage_ram: the raw-source transaction used when the RA8 must
+# test_mdl_storage_ram: the raw-source transaction used when the RA8 must
 # transform verified C6 response bytes before publishing a reader artifact.
 # It compiles only the caller-buffer adapter and does not need protobuf or VFS.
 add_executable(
-  test_ra8_mdl_storage_ram ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_mdl_storage_ram.c
-                           ${FW_ROOT}/libs/ra8_c6link/src/ra8_mdl_storage_ram.c
+  test_mdl_storage_ram ${FW_ROOT}/apps/shared_libs/mdl/tests/src/test_mdl_storage_ram.c
+                       ${FW_ROOT}/libs/ra8_c6link/src/ra8_mdl_storage_ram.c
 )
-target_compile_options(test_ra8_mdl_storage_ram PRIVATE -Wall -Wextra -Werror)
-target_include_directories(test_ra8_mdl_storage_ram PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
-add_test(NAME test_ra8_mdl_storage_ram COMMAND test_ra8_mdl_storage_ram)
+target_compile_options(test_mdl_storage_ram PRIVATE -Wall -Wextra -Werror)
+target_include_directories(test_mdl_storage_ram PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
+add_test(NAME test_mdl_storage_ram COMMAND test_mdl_storage_ram)
 
 # test_app_media_download_format: the target app's portable source-image
 # formatter, exercised with production raster, book, compressor, and reader
 # implementations. No C6 transport or target-only peripheral is linked here.
 add_executable(
   test_app_media_download_format
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_app_media_download_format.c
-  ${FW_ROOT}/examples/ek_ra8d2/hw_pending/media_download/media_download_format.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/src/test_app_media_download_format.c
+  ${FW_ROOT}/examples/ek_ra8d2/hw_pending/media_download/src/media_download_format.c
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_app_media_download_format PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_options(test_app_media_download_format PRIVATE -Wall -Wextra -Werror)
 target_include_directories(
   test_app_media_download_format
-  PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/media_download
-          ${FW_ROOT}/libs/ra8_book/inc
+  PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/media_download/inc
+          ${FW_ROOT}/apps/shared_libs/book/inc
           ${FW_ROOT}/libs/ra8_io/inc
+          ${FW_ROOT}/apps/shared_libs/compress/inc
           ${FW_ROOT}/libs/ra8_mem/inc
-          ${FW_ROOT}/libs/ra8_rabook_compile/inc
-          ${FW_ROOT}/libs/ra8_reflow/inc
-          ${FW_ROOT}/libs/ra8_webp/inc
-          ${FW_ROOT}/libs/third_party/miniz
+          ${FW_ROOT}/apps/shared_libs/rabook_compile/inc
+          ${FW_ROOT}/apps/shared_libs/reflow/inc
+          ${FW_ROOT}/apps/shared_libs/webp/inc
+          ${FW_ROOT}/apps/shared_libs/third_party/miniz
           ${RA8_C6LINK_INCLUDE_DIRS}
 )
 add_test(NAME test_app_media_download_format COMMAND test_app_media_download_format)
@@ -255,28 +258,30 @@ add_test(NAME test_app_media_download_format COMMAND test_app_media_download_for
 # replay or a direct call around the transport.
 add_executable(
   test_ra8_c6link_rabook
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_rabook.c
+  ${FW_ROOT}/apps/shared_libs/rabook_compile/tests/src/test_ra8_c6link_rabook.c
   ${RA8_C6LINK_TEST_SUPPORT}
-  ${CMAKE_CURRENT_SOURCE_DIR}/support/rabook_compile_test_fixture.c
+  ${FW_ROOT}/apps/shared_libs/rabook_compile/tests/src/rabook_compile_test_fixture.c
   ${RA8_C6LINK_TEST_MODEL}
-  ${FW_ROOT}/libs/ra8_mdl_storage_vfs/src/ra8_mdl_storage_vfs.c
-  ${FW_ROOT}/libs/ra8_mdl_storage_vfs/src/ra8_mdl_rabook_vfs.c
+  ${FW_ROOT}/apps/shared_libs/mdl_storage_vfs/src/mdl_storage_vfs.c
+  ${FW_ROOT}/apps/shared_libs/mdl_storage_vfs/src/mdl_rabook_vfs.c
   ${RA8_C6LINK_SOURCES}
   ${RA8_C6LINK_SOUP}
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_c6link_rabook PROPERTIES LINKER_LANGUAGE CXX)
-target_compile_options(test_ra8_c6link_rabook PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+target_compile_options(test_ra8_c6link_rabook PRIVATE -Wall -Wextra -Werror)
 target_include_directories(
   test_ra8_c6link_rabook
   PRIVATE ${RA8_C6LINK_INCLUDE_DIRS}
-          ${FW_ROOT}/libs/ra8_mdl_storage_vfs/inc
-          ${FW_ROOT}/libs/ra8_book/inc
-          ${FW_ROOT}/libs/ra8_rabook_compile/inc
+          ${FW_ROOT}/apps/shared_libs/mdl_storage_vfs/inc
+          ${FW_ROOT}/apps/shared_libs/book/inc
+          ${FW_ROOT}/apps/shared_libs/rabook_compile/inc
+          ${FW_ROOT}/apps/shared_libs/rabook_compile/tests/inc
           ${FW_ROOT}/libs/ra8_fs/inc
           ${FW_ROOT}/libs/ra8_hal/inc
           ${FW_ROOT}/libs/ra8_io/inc
+          ${FW_ROOT}/apps/shared_libs/compress/inc
           ${FW_ROOT}/libs/ra8_mem/inc
-          ${FW_ROOT}/libs/third_party/miniz
+          ${FW_ROOT}/apps/shared_libs/third_party/miniz
 )
 add_test(NAME test_ra8_c6link_rabook COMMAND test_ra8_c6link_rabook)

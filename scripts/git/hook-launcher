@@ -1,0 +1,148 @@
+#!/bin/bash -p
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
+# RA8-MANAGED-HOOK-LAUNCHER-V1
+#
+# Installed under the shared Git common directory. Never execute a mutable
+# worktree hook: materialize and verify the invoking worktree HEAD's owner.
+
+if [[ "$-" == *p* ]]; then
+  unset -v BASH_ENV ENV
+  declare -a ra8_startup_env_unset=()
+  _ra8_startup_refuse() {
+    printf 'error: privileged startup %s\n' "$1" >&2
+    exit 1
+  }
+  ra8_startup_env_done_count=0
+  while IFS= read -r -d '' ra8_startup_env_row; do
+    ra8_startup_env_name="${ra8_startup_env_row%%=*}"
+    case "$ra8_startup_env_name" in
+      RA8_STARTUP_ENV_DONE)
+        ra8_startup_env_done_count=$((ra8_startup_env_done_count + 1))
+        ;;
+      BASH_FUNC_*%% | BASH_FUNC_*'()') ra8_startup_env_unset+=(-u "$ra8_startup_env_name") ;;
+    esac
+  done < <(
+    /usr/bin/env -u RA8_STARTUP_ENV_DONE -0 &&
+      /usr/bin/printf 'RA8_STARTUP_ENV_DONE=1\0'
+  )
+  ((ra8_startup_env_done_count == 1)) && [[ "$ra8_startup_env_name" == RA8_STARTUP_ENV_DONE ]] || _ra8_startup_refuse 'environment enumeration was incomplete'
+  if ((${#ra8_startup_env_unset[@]})); then
+    [[ -z "${RA8_STARTUP_ENV_SCRUBBED-}" ]] || _ra8_startup_refuse 'scrub did not converge'
+    ra8_startup_reentry="$0"
+    [[ "$ra8_startup_reentry" == */* ]] || _ra8_startup_refuse 'requires a script path'
+    if [[ "$ra8_startup_reentry" != /* ]]; then
+      ra8_startup_reentry="$PWD/$ra8_startup_reentry"
+    fi
+    ra8_startup_check="$ra8_startup_reentry"
+    while [[ "$ra8_startup_check" != "/" ]]; do
+      [[ ! -L "$ra8_startup_check" ]] || _ra8_startup_refuse 'refuses a symlinked path'
+      ra8_startup_parent="${ra8_startup_check%/*}"
+      [[ -n "$ra8_startup_parent" ]] || ra8_startup_parent="/"
+      [[ "$ra8_startup_parent" != "$ra8_startup_check" ]] ||
+        _ra8_startup_refuse 'cannot validate its script path'
+      ra8_startup_check="$ra8_startup_parent"
+    done
+    [[ -f "$ra8_startup_reentry" ]] || _ra8_startup_refuse 'refuses a non-regular path'
+    if ! exec /usr/bin/env "${ra8_startup_env_unset[@]}" -u BASH_ENV -u ENV \
+      -u RA8_STARTUP_ENV_DONE RA8_STARTUP_ENV_SCRUBBED=1 \
+      /bin/bash -p -- "$ra8_startup_reentry" "$@"; then
+      _ra8_startup_refuse 'could not enter sanitized process'
+    fi
+  fi
+  unset -v ra8_startup_check ra8_startup_env_done_count
+  unset -v ra8_startup_env_name ra8_startup_env_row
+  unset -v ra8_startup_env_unset ra8_startup_parent ra8_startup_reentry
+  unset -v RA8_STARTUP_ENV_DONE
+  unset -v RA8_STARTUP_ENV_SCRUBBED
+  unset -f _ra8_startup_refuse
+
+  set -euo pipefail
+
+  unset BASH_ENV ENV PYTHONHOME PYTHONPATH
+  unalias git python3 bash 2>/dev/null || true
+  unset -f git python3 bash 2>/dev/null || true
+  hash -r
+  PATH=/usr/bin:/bin:/usr/sbin:/sbin
+  export PATH
+
+  system_git=/usr/bin/git
+  [[ -f "$system_git" && ! -L "$system_git" && -x "$system_git" ]] || {
+    echo "ra8-hook-launcher: trusted /usr/bin/git is required" >&2
+    exit 1
+  }
+
+  temporary=""
+  hook_args=("$@")
+
+  die() {
+    echo "ra8-hook-launcher: $*" >&2
+    exit 1
+  }
+
+  cleanup() {
+    [[ -n "$temporary" && -f "$temporary" ]] || return 0
+    rm -f -- "$temporary"
+    temporary=""
+  }
+
+  hook="${0##*/}"
+  case "$hook" in
+    commit-msg | post-checkout | post-commit | post-merge | pre-commit | pre-push) ;;
+    *) die "unsupported installed hook name: $hook" ;;
+  esac
+
+  root="$("$system_git" rev-parse --show-toplevel 2>/dev/null)" || die "not in a Git worktree"
+  root="$(cd "$root" && pwd -P)"
+  common="$("$system_git" -C "$root" rev-parse --path-format=absolute --git-common-dir)"
+  common="$(cd "$common" && pwd -P)"
+  launcher_dir="$(cd "${0%/*}" && pwd -P)"
+  managed_dir="$common/ra8-hooks"
+  [[ "$launcher_dir" == "$managed_dir" ]] || die "launcher is outside the managed hook directory"
+  configured="$("$system_git" -C "$root" config --local --get core.hooksPath 2>/dev/null || true)"
+  [[ "$configured" == "$managed_dir" ]] || die "core.hooksPath is not the managed hook directory"
+
+  head="$("$system_git" -C "$root" rev-parse --verify HEAD)" || die "worktree has no committed HEAD"
+  entry="$("$system_git" -C "$root" ls-tree "$head" -- "scripts/git/$hook")"
+  IFS=$' \t' read -r mode type blob _path <<<"$entry"
+  [[ "$mode" == "100755" && "$type" == "blob" && -n "$blob" ]] ||
+    die "HEAD does not own an executable scripts/git/$hook blob"
+  expected="$("$system_git" -C "$root" rev-parse --verify "$head:scripts/git/$hook")"
+  [[ "$blob" == "$expected" ]] || die "hook tree entry and blob identity differ"
+
+  owner_dir="$common/ra8-hook-owners"
+  if [[ -e "$owner_dir" && (! -d "$owner_dir" || -L "$owner_dir") ]]; then
+    die "verified hook-owner cache is not a regular directory"
+  fi
+  mkdir -p "$owner_dir"
+  chmod 700 "$owner_dir"
+  owner="$owner_dir/$blob"
+  if [[ ! -e "$owner" ]]; then
+    temporary="$(mktemp "$owner_dir/.${blob}.XXXXXXXX")"
+    chmod 600 "$temporary"
+  fi
+  trap cleanup EXIT
+  trap 'cleanup; exit 3' HUP INT QUIT TERM
+  if [[ -n "$temporary" ]]; then
+    "$system_git" -C "$root" cat-file blob "$blob" >"$temporary"
+    actual="$("$system_git" -C "$root" hash-object --no-filters "$temporary")"
+    [[ "$actual" == "$blob" ]] || die "materialized hook differs from its HEAD blob"
+    chmod 500 "$temporary"
+    ln "$temporary" "$owner" 2>/dev/null || true
+    cleanup
+  fi
+  [[ -f "$owner" && ! -L "$owner" ]] || die "verified hook owner is not a regular file"
+  actual="$("$system_git" -C "$root" hash-object --no-filters "$owner")"
+  [[ "$actual" == "$blob" ]] || die "verified hook owner differs from its HEAD blob"
+  bash_bin="/bin/bash"
+  [[ -x "$bash_bin" ]] || die "trusted /bin/bash is required"
+
+  cleanup
+  trap - EXIT HUP INT QUIT TERM
+  export RA8_TRUSTED_GIT="$system_git"
+  exec env -u BASH_ENV -u ENV -u PYTHONHOME -u PYTHONPATH \
+    "$bash_bin" -p "$owner" "${hook_args[@]}"
+else
+  [[ "$-" == *p* ]]
+fi

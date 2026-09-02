@@ -55,7 +55,7 @@ In practice this means:
    Each `&&` or `||` requires N+1 test vectors that demonstrate each
    condition independently affects the outcome. Vectors are declared
    in a `@par MC/DC:` block in the test's Doxygen header. Coverage is
-   measured with `clang -fcoverage-mcdc` via `make mcdc`.
+   measured with `clang -fcoverage-mcdc` via `just quality::local::mcdc`.
 2. **No dynamic memory after init** (NASA Power-of-10 Rule 3). All
    buffers statically allocated.
 3. **All loops have provable upper bounds** (NASA Rule 2). Either a

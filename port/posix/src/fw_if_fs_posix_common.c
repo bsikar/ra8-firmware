@@ -7,10 +7,11 @@
  * [Ring 4 / Host Port] {World: Host}
  *
  * @details
- * Centralizes errno mapping, descriptor invalidation, bounded raw directory
- * record decoding, civil timestamp conversion, path copying, and sibling
- * stage-name construction. Keeping these operations shared gives every
- * backend path the same failure vocabulary and close-once lifecycle behavior.
+ * Centralizes errno mapping, descriptor invalidation, platform-neutral alias
+ * classification and canonical opening, Darwin actual-root verification,
+ * bounded raw directory record decoding, civil timestamp conversion, path
+ * copying, and sibling stage-name construction. Keeping these operations shared
+ * gives every backend path the same failure vocabulary and close-once behavior.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -22,9 +23,11 @@
 #endif
 
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -36,6 +39,16 @@
 
 #include "fw_if_fs_posix_internal.h"
 #include "ra8_err.h"
+
+#ifndef O_CLOEXEC
+/** @brief Zero fallback when the host lacks close-on-exec open flags. */
+#define O_CLOEXEC (0)
+#endif
+
+#ifndef O_NOFOLLOW
+/** @brief Zero fallback paired with explicit no-follow metadata validation. */
+#define O_NOFOLLOW (0)
+#endif
 
 RA8_PRIV ra8_err_t priv_fs_posix_errno(int value)
 {
@@ -70,7 +83,7 @@ RA8_PRIV ra8_err_t priv_fs_posix_errno(int value)
       return k_ra8_err_invalid_state;
     case EBUSY:
       return k_ra8_err_busy;
-#if defined(ENOTSUP)
+#ifdef ENOTSUP
     case ENOTSUP:
       return k_ra8_err_not_supported;
 #endif
@@ -92,7 +105,151 @@ RA8_PRIV ra8_err_t priv_fs_posix_close_fd(int* fd)
   return k_ra8_ok;
 }
 
-#if defined(RA8_POSIX_TEST)
+RA8_PRIV ra8_err_t priv_fs_posix_close_fd_preserve(int* fd, ra8_err_t primary)
+{
+  const ra8_err_t cleanup = priv_fs_posix_close_fd(fd);
+  return (primary != k_ra8_ok) ? primary : cleanup;
+}
+
+/**
+ * @brief Compare one bounded raw byte span with an expected byte sequence.
+ * @details Examines exactly @p bytes positions without requiring either span
+ *          to carry a terminator. The caller supplies the independently
+ *          validated extent used by the root-alias classifier.
+ * @param[in] actual Raw candidate bytes.
+ * @param[in] expected Immutable expected bytes.
+ * @param[in] bytes Number of positions to compare.
+ * @return Whether every compared byte is equal.
+ * @retval true All @p bytes positions match.
+ * @retval false At least one compared position differs.
+ * @pre @p actual and @p expected each address at least @p bytes readable bytes.
+ * @pre @p bytes is less than ::k_posix_component_cap.
+ * @post Neither input span is modified.
+ * @post The function reads no position at or beyond @p bytes.
+ * @note Pure and thread-safe.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static bool
+internal_bytes_equal(const char* actual, const char* expected, size_t bytes)
+{
+  bool equal = true;
+  RA8_LOOP_BOUND(k_posix_component_cap);
+  for (size_t index = 0U; index < bytes; ++index) {
+    if (actual[index] != expected[index]) {
+      equal = false;
+      break;
+    }
+  }
+  return equal;
+}
+
+RA8_PRIV ra8_err_t priv_fs_posix_root_alias_classify(const char*         component,
+                                                     const char*         target,
+                                                     size_t              target_bytes,
+                                                     posix_root_alias_t* out_alias)
+{
+  const char*        expected       = nullptr;
+  size_t             expected_bytes = 0U;
+  posix_root_alias_t classified     = k_posix_root_alias_none;
+  ra8_err_t          status         = k_ra8_err_access_denied;
+  *out_alias                        = k_posix_root_alias_none;
+  if (strcmp(component, "tmp") == 0) {
+    expected       = "private/tmp";
+    expected_bytes = sizeof("private/tmp") - 1U;
+    classified     = k_posix_root_alias_tmp;
+  }
+  if (strcmp(component, "var") == 0) {
+    expected       = "private/var";
+    expected_bytes = sizeof("private/var") - 1U;
+    classified     = k_posix_root_alias_var;
+  }
+  if (expected != nullptr) {
+    if (target_bytes == expected_bytes) {
+      if (internal_bytes_equal(target, expected, expected_bytes)) {
+        *out_alias = classified;
+        status     = k_ra8_ok;
+      }
+    }
+  }
+  return status;
+}
+
+#ifdef __APPLE__
+RA8_PRIV ra8_err_t priv_fs_posix_root_alias_verify(int                 parent_fd,
+                                                   const char*         component,
+                                                   posix_root_alias_t* out_alias)
+{
+  struct stat parent_meta;
+  struct stat root_meta;
+  ra8_err_t   status = k_ra8_ok;
+  *out_alias         = k_posix_root_alias_none;
+  if (fstat(parent_fd, &parent_meta) != 0) {
+    status = priv_fs_posix_errno(errno);
+  } else if (stat("/", &root_meta) != 0) {
+    status = priv_fs_posix_errno(errno);
+  } else if (parent_meta.st_dev != root_meta.st_dev) {
+    status = k_ra8_err_access_denied;
+  } else if (parent_meta.st_ino != root_meta.st_ino) {
+    status = k_ra8_err_access_denied;
+  } else {
+    char          target[k_posix_component_cap];
+    const ssize_t target_bytes = readlinkat(parent_fd, component, target, sizeof(target));
+    if (target_bytes < 0) {
+      status = priv_fs_posix_errno(errno);
+    } else {
+      status =
+        priv_fs_posix_root_alias_classify(component, target, (size_t)target_bytes, out_alias);
+    }
+  }
+  return status;
+}
+#endif
+
+RA8_PRIV ra8_err_t priv_fs_posix_root_alias_open(int root_fd, posix_root_alias_t alias, int* out_fd)
+{
+  const char* leaf       = nullptr;
+  int         private_fd = -1;
+  int         opened     = -1;
+  ra8_err_t   status     = k_ra8_err_invalid_arg;
+  *out_fd                = -1;
+  if (alias == k_posix_root_alias_tmp) {
+    leaf = "tmp";
+  }
+  if (alias == k_posix_root_alias_var) {
+    leaf = "var";
+  }
+  if (leaf != nullptr) {
+    private_fd = openat(root_fd, "private", O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+    if (private_fd < 0) {
+      status = priv_fs_posix_errno(errno);
+    } else {
+      opened = openat(private_fd, leaf, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+      if (opened < 0) {
+        status = priv_fs_posix_errno(errno);
+      } else {
+        status = k_ra8_ok;
+      }
+    }
+  }
+  if (private_fd >= 0) {
+    const ra8_err_t closed = priv_fs_posix_close_fd(&private_fd);
+    if (status == k_ra8_ok) {
+      if (closed != k_ra8_ok) {
+        status = closed;
+      }
+    }
+  }
+  if (status == k_ra8_ok) {
+    *out_fd = opened;
+    opened  = -1;
+  }
+  if (opened >= 0) {
+    status = priv_fs_posix_close_fd_preserve(&opened, status);
+  }
+  return status;
+}
+
+#ifdef RA8_POSIX_TEST
 /** @brief Test-only injected raw directory reader. */
 static fw_fs_posix_test_dir_read_fn_t s_test_directory_reader;
 
@@ -147,12 +304,16 @@ static int64_t internal_directory_read_native(void*    ctx,
   return (int64_t)result;
 #elif defined(__APPLE__) && defined(SYS_getdirentries64)
   off_t position = 0;
-#if defined(__clang__)
+#ifdef __clang__
+  /* macOS marks the raw descriptor syscall deprecated, but this bounded native
+   * record reader needs its byte count and avoids libc DIR stream state. Limit
+   * the compiler waiver to the single syscall expression. */
 #pragma clang diagnostic push
+/* Suppression rationale: Darwin exposes no non-deprecated raw getdirentries64 wrapper. */
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
   const int result = syscall(SYS_getdirentries64, fd, (char*)buffer, (size_t)capacity, &position);
-#if defined(__clang__)
+#ifdef __clang__
 #pragma clang diagnostic pop
 #endif
   *out_errno = (result < 0) ? errno : 0;
@@ -188,7 +349,7 @@ RA8_INTERNAL
 static int64_t
 internal_directory_read_once(int fd, uint8_t* buffer, uint32_t capacity, int* out_errno)
 {
-#if defined(RA8_POSIX_TEST)
+#ifdef RA8_POSIX_TEST
   if (s_test_directory_reader != nullptr) {
     return s_test_directory_reader(s_test_directory_reader_ctx, fd, buffer, capacity, out_errno);
   }
@@ -237,7 +398,7 @@ internal_directory_fill(int fd, uint8_t* buffer, uint32_t capacity, uint32_t* ou
   return k_ra8_err_busy;
 }
 
-#if defined(__linux__)
+#ifdef __linux__
 /**
  * @brief Validate one Linux `getdents64` record without unaligned loads.
  * @details Copies the record length safely, proves size/alignment, and locates

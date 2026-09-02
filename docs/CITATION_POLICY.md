@@ -6,7 +6,7 @@ citation rules. The short form lives in `CLAUDE.md`.
 ## Rule 1: in-tree line citations are FORBIDDEN
 
 Comments must not reference other files in this repository by
-`<file>:<line>` (e.g. `libs/ra8_drw/src/ra8_drw.c:776`). Line numbers <!-- CITES-OK: literal example of the forbidden pattern documenting the rule -->
+`<file>:<line>` (e.g. `libs/ra8_hal/src/ra8_drw.c:776`). Line numbers <!-- CITES-OK: literal example of the forbidden pattern documenting the rule -->
 go stale the moment any agent reformats or edits the target file, and
 they are not searchable -- a reader cannot grep for `:776` and find
 anything useful.
@@ -15,7 +15,7 @@ Use the function or symbol name instead:
 
 - `priv_ra8_drw_internal_rect_below_min`
 - `ra8_dmac::priv_ra8_dmac_internal_mode_disables_dts`
-- `see ra8_pid_step in libs/ra8_pid/src/ra8_pid.c`
+- `see priv_ra8_dmac_internal_mode_disables_dts in libs/ra8_hal/src/ra8_dmac.c`
 
 The pre-commit gate `scripts/checks/check_line_citations.py` enforces
 this rule strictly: any new in-tree `<file>:<line>` reference inside
@@ -33,9 +33,9 @@ spec without guessing. Acceptable forms:
 - `/* RFC 791 section 3.2 IPv4 header layout */`
 - `/* Datasheet R01DS0493EJ table 6.4 */`
 
-References to anything under `docs/reference/` (the committed PDFs)
-or `libs/third_party/` (SOUP) are exempt from rule 1 -- those line
-numbers belong to artifacts we do not edit.
+References to anything under `docs/reference/` (the committed PDFs),
+`libs/third_party/`, or `apps/shared_libs/third_party/` (SOUP) are exempt from
+rule 1 -- those line numbers belong to artifacts we do not edit.
 
 ## Per-line opt-out: `CITES-OK: <reason>`
 
@@ -45,8 +45,8 @@ where). Add `// CITES-OK: <reason>` to that line; the gate skips any
 line containing a non-empty reason after the marker.
 
 ```c
-/* moved from libs/old_module/foo.c:412 to libs/new_module/bar.c::priv_foo
- * CITES-OK: historical migration note, target file deleted */
+/* moved from libs/<old-module>/src/foo.c:412 -- CITES-OK: source file deleted */
+/* to libs/ra8_hal/src/ra8_cgc.c::ra8_cgc_init */
 ```
 
 CHANGELOG-style "moved from <file>:NNN to ..." snippets are also

@@ -1,4 +1,5 @@
-# Build artifacts from build_payload.sh / stage_slot_image.py.
+# Artifacts from examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/scripts/build_payload.sh
+# and examples/ek_ra8d2/hw_validated/hil/dfu_bootloader/scripts/stage_slot_image.py.
 # payload_image.h is GENERATED but committed (the demo embeds it); do not ignore.
 payload.bin
 payload.elf

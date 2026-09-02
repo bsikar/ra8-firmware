@@ -7,13 +7,13 @@ planned, not delivered -- the host `drivers/bt/` bridge is excluded from the
 build and the BLE HCI seam is still on loopback (#493).
 
 The C6 image is mixed: pinned Espressif esp-hosted-mcu SOUP plus the
-first-party `ra8_mdl_service` component. `build.sh` applies one checked-in patch
-to the pinned upstream commit to expose a bounded synchronous CustomRpc response
-hook, stages the component from `port/esp32_c6`, and verifies the service symbol
-reached the final ELF -- if the patch has drifted the build stops before
-compiling, rather than producing an image quietly missing the hook. The RA8-side
-host driver lives in `libs/third_party/esp-hosted/`, `port/esp-hosted/` and
-`libs/ra8_c6link/`.
+first-party `mdl_service` component. `build.sh` consumes the ordered,
+checked-in `patches/series` against the pinned upstream commit to expose a
+bounded synchronous CustomRpc response hook, stages the component from
+`port/esp32_c6`, and verifies the service symbol reached the final ELF. If any
+patch has drifted, the build stops before compiling rather than producing an
+image quietly missing the hook. The RA8-side host driver lives in
+`libs/third_party/esp-hosted/`, `port/esp-hosted/` and `libs/ra8_c6link/`.
 
 The media service is a pull-based HTTPS transfer: Start returns quickly, each
 Next request supplies backpressure and acknowledges its offset, and redirects
@@ -34,8 +34,11 @@ parameters and the bench cabling -- and it is a plain `KEY=value` fragment so
 pin numbers in Kconfig syntax because that is the only form esp-idf reads;
 `scripts/checks/check_c6_pin_config.py` diffs the two, in the `pre-commit-checks`
 gate, in the git hook (pure text compare -- no esp-idf needed) and again on the
-bench before every build. A third copy in this prose is exactly the drift that
-checker exists to remove, which is why there is no pin table on this page.
+build host before every build. The companion offline
+`scripts/checks/check_c6_integration.py` proves the staged file, component,
+patch-hook and post-link symbol contract without ESP-IDF or hardware; `build.sh`
+runs both gates before fetching. A third copy in this prose is exactly the drift
+that checker exists to remove, which is why there is no pin table on this page.
 
 `sdkconfig.defaults` is therefore derived but deliberately not generated: it is
 kept byte-stable because the bench-proven image was built from exactly those
@@ -116,12 +119,12 @@ IDF export script.
 **The esp-idf pin is not cosmetic: an earlier release does not build
 esp-hosted-mcu at all** -- its component-manager pull of tf-psa-crypto fails to
 compile p256-m. So `build.sh` asserts the exact pinned version, not merely the
-series, before it does anything else, then verifies `sdkconfig.defaults` against
-`pins.env`, fetches and patches the pinned upstream, stages the first-party
-component, cleans, builds, and asserts that the strong media-service handler
-(not the weak upstream fallback) and the component ABI marker both exist in the
-resulting ELF. The fetched upstream clone is git-ignored: it is SOUP, fetched at
-build time and never committed.
+series, before it does anything else, then runs both offline C6 gates, fetches
+the pinned upstream, applies every numbered patch in `patches/series`, stages
+the first-party component, cleans, builds, and asserts that the strong
+media-service handler (not the weak upstream fallback) and the component ABI
+marker both exist in the resulting ELF. The fetched upstream clone is
+git-ignored: it is SOUP, fetched at build time and never committed.
 
 **There is no `menuconfig` step, and running one is a mistake.** The
 configuration is `sdkconfig.defaults` plus the checker that verifies it against
@@ -162,9 +165,9 @@ on a power cycle, so `flash.sh` resolves the bridge by device identity (see
 writing to whatever holds a number. The flash size, mode and frequency come from
 `pins.env` as well; a wrong flash size is the other common bring-up failure.
 
-The Wi-Fi credentials the join app compiles in come from a git-ignored
-`wifi.env` beside its template. The real passphrase lives in OpenBao under the
-bench-network secret, never in this repository.
+The root `just apps::build` recipe validates and loads the gitignored
+`wifi.env` beside its template before CMake. The real passphrase lives in
+OpenBao under the bench-network secret, never in this repository.
 
 ## Flashing is not evidence
 

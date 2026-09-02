@@ -149,7 +149,7 @@ typedef bool (*ra8_mdl_cancel_requested_fn)(void* ctx);
  * @code
  * ra8_mdl_transfer_config_t cfg = {
  *   .storage = storage, .sha256 = hash,
- *   .format = k_ra8_mdl_format_rabook,
+ *   .format = k_mdl_format_rabook,
  *   .cancel_requested = ui_cancelled, .cancel_ctx = &ui,
  *   .chunk_bytes = k_ra8_mdl_chunk_data_max, .max_chunks = 4096U,
  * };
@@ -161,7 +161,7 @@ typedef bool (*ra8_mdl_cancel_requested_fn)(void* ctx);
 typedef struct ra8_mdl_transfer_config {
   ra8_mdl_storage_iface_t     storage;          /**< Transactional RA8-local destination. */
   ra8_mdl_sha256_iface_t      sha256;           /**< Independent running digest.          */
-  ra8_mdl_format_t            format;           /**< Requested and validated artifact.    */
+  mdl_format_t                format;           /**< Requested and validated artifact.    */
   ra8_mdl_http_policy_t       http;             /**< Forwarded downloader request policy. */
   ra8_mdl_cancel_requested_fn cancel_requested; /**< Optional cooperative cancel query.   */
   void*                       cancel_ctx;       /**< Context for `cancel_requested`.      */
@@ -190,7 +190,7 @@ typedef struct ra8_mdl_transfer_config {
 typedef struct ra8_mdl_transfer_result {
   uint64_t                bytes_stored;                   /**< Bytes atomically committed.    */
   uint32_t                chunks_received;                /**< Remote responses consumed.     */
-  ra8_mdl_format_t        format;                         /**< Validated committed format.    */
+  mdl_format_t            format;                         /**< Validated committed format.    */
   uint8_t                 sha256[k_ra8_mdl_sha256_bytes]; /**< Independently verified digest. */
   ra8_mdl_http_response_t response;                       /**< Proven terminal HTTP metadata. */
 } ra8_mdl_transfer_result_t;

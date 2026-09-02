@@ -29,10 +29,8 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# EXTRA_SRCS pulls in the backend-agnostic round-trip. This validated app keeps a
-# self-contained copy of the helper rather than reaching into the hw_pending tree;
-# it differs from the RAM / SDRAM / OSPI demos only by the SD-SPI transport
-# bring-up + its one backend bind line + its own PASS banner (#155).
+# The app-local src/ glob pulls in the backend-agnostic round-trip. This app
+# keeps a self-contained copy rather than reaching into the hw_pending tree.
 ra8_add_app(
   NAME ra8_io_sd_demo
   STACK_BYTES 4096
@@ -42,5 +40,4 @@ ra8_add_app(
        ra8_sdmmc_spi
        ra8_usb_pal
        ra8_board_ek_ra8d2
-  EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/ra8_io_roundtrip.c
 )

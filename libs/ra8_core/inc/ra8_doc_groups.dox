@@ -14,6 +14,12 @@
 //   - everything else    -> the grp_* subsystem its library belongs to
 
 /**
+ * @defgroup grp_alphabet_soup Alphabet Soup host application
+ * @brief Bounded parser and eight-direction word-search solver used by the
+ *        host-side Alphabet Soup application (apps/host/alphabet_soup).
+ */
+
+/**
  * @defgroup grp_core Core substrate
  * @brief Cross-cutting primitives: error codes, validation, logging,
  *        assertions, attributes, and device selection (libs/ra8_core).
@@ -118,9 +124,9 @@
  * @defgroup grp_ereader E-reader stack
  * @brief Reflow/layout, EPUB/CBZ parsing, the bounded unarchivers, the book
  *        model, rendering, the widget UI, and the memory hierarchy
- *        (libs/ra8_reflow, ra8_epub, ra8_comic, ra8_unarch, ra8_book,
- *        ra8_rabook_compile, ra8_rabook_import, ra8_gfx, ra8_widget,
- *        ra8_ui, ra8_box, ra8_display_pal, ra8_mem).
+ *        (apps/shared_libs/reflow, epub, comic, unarch, book,
+ *        rabook_compile, and rabook_import; libs/ra8_gfx, ra8_widget,
+ *        ra8_ui, ra8_box, ra8_display_pal, and ra8_mem).
  */
 
 /**

@@ -32,6 +32,8 @@ static volatile uint32_t s_tick_ms = 0U;
 /** @brief CPU cycles per millisecond, stamped by ra8_time_init. */
 static volatile uint32_t s_cycles_per_ms = 0U;
 
+void SysTick_Handler(void);
+
 /**
  * @brief Implementation of `ra8_time_init()` -- programme SysTick.
  *
@@ -205,7 +207,6 @@ void ra8_time_on_tick(void)
  * subsystem is absent and to its strong defn when present. */
 #ifndef RA8_OFF_TARGET
 
-/* NOLINTNEXTLINE(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) -- vendor (ThreadX) symbol; we must use Eclipse ThreadX's actual entry-point name. */
 [[gnu::weak]] extern void _tx_timer_interrupt(void);
 [[gnu::weak]] extern void ux_dcd_ra8_usb_irq_reenable(void);
 
@@ -226,9 +227,20 @@ void ra8_time_on_tick(void)
  * this stronger weak symbol; an even stronger non-weak one in the
  * application file wins above both.
  */
-void SysTick_Handler(void);
-
-/* NOLINTNEXTLINE(misc-use-internal-linkage) -- linker symbol for vector table. */
+/**
+ * @brief Service one SysTick event for the core timebase.
+ * @details The weak firmware implementation advances the millisecond counter,
+ *          then services linked ThreadX and USB hooks when their weak symbols
+ *          and readiness state permit. The host-test implementation advances
+ *          only the counter. An application may replace either weak definition
+ *          with a strong handler.
+ * @pre The handler is entered for one SysTick event or a host-test equivalent.
+ * @pre On target, `ra8_time_init()` configured the SysTick period.
+ * @post `s_tick_ms` has advanced by exactly one.
+ * @post Optional subsystem hooks run only when linked and ready.
+ * @note IRQ-safe; the weak symbol may be overridden by an application handler.
+ * @since 0.1.0
+ */
 [[gnu::weak]] void SysTick_Handler(void)
 {
   ra8_time_on_tick();
@@ -264,9 +276,6 @@ void SysTick_Handler(void);
  * and the macOS test linker (ld64) cannot resolve the firmware handler's
  * undefined weak externs. Provide a minimal handler that does only the
  * tick-counter work the test observes. */
-void SysTick_Handler(void);
-
-/* NOLINTNEXTLINE(misc-use-internal-linkage) -- linker symbol for vector table. */
 [[gnu::weak]] void SysTick_Handler(void)
 {
   ra8_time_on_tick();

@@ -1,7 +1,7 @@
 # ereader_manga
 
 A viewable reader for a page far larger than the 1024x600 panel. The baked page
-is transcoded through `ra8_jof_produce` into a band-tile atlas in an SDRAM
+is transcoded through `jof_produce` into a band-tile atlas in an SDRAM
 memstore -- one bounded band at a time, so the decoded page is never resident
 whole -- and served through a deliberately **small** `ra8_tile_cache`. The cache
 holds fewer cells than a viewport spans, which forces LRU eviction and
@@ -18,12 +18,13 @@ drags. Panning steps one tile per tap and clamps at the page bounds, so at
 fit-page an edge tap is a no-op until a centre tap returns to 1:1.
 
 The render is software gfx plus integer tile decode, so it is deterministic: the
-boot banner is identical on the host twin (`tests/test_app_ereader_manga.c`), in
+boot banner is identical on the host twin
+(`apps/board/stand_alone/ereader/tests/src/test_app_ereader_manga.c`), in
 the emulator and on silicon, and the headless gate asserts a fixed render.
 
 ## Fixture provenance
 
-`mg_page_fixture.h` is `@generated` by `scripts/gen/gen_manga_page_fixture.py`:
+`inc/mg_page_fixture.h` is `@generated` by `scripts/gen/gen_manga_page_fixture.py`:
 a grayscale PNG (all rows filter 0) laid out as a grid of 256px tiles, each a
 distinct solid gray with a black inner frame and a big blocky `C<col>R<row>`
 label -- so panning visibly changes which labels are on screen. Solid tile blocks

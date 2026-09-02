@@ -31,7 +31,7 @@ extern "C" {
 
 #include <stdint.h>
 
-// NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming)
+// NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) -- toolchain ABI fixes this reserved symbol spelling.
 
 /**
  * @brief Trap that replaces newlib's heap-extension syscall.

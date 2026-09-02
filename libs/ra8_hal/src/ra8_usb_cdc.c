@@ -34,6 +34,7 @@
 #include "ra8_err.h"
 #include "ra8_log.h"
 #include "ra8_usb.h"
+#include "ra8_usb_cdc_internal.h"
 
 static const char* s_tag = "USBCDC";
 
@@ -170,7 +171,9 @@ static ra8_err_t internal_configure_pipes(ra8_usb_speed_t speed)
                                              k_ra8_usb_ep_dir_in,
                                              k_ra8_usb_ep_type_bulk,
                                              bulk_mp);
-  RA8_RETURN_ON_ERROR(err, s_tag, "cdc: bulk-in cfg"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, /* GCOVR_EXCL_BR_LINE -- valid speed + static valid bulk-IN tuple */
+                      s_tag,
+                      "cdc: bulk-in cfg");
 
   err = ra8_usb_configure_endpoint(speed,
                                    k_ra8_cdc_pipe_bulk_out,
@@ -178,7 +181,9 @@ static ra8_err_t internal_configure_pipes(ra8_usb_speed_t speed)
                                    k_ra8_usb_ep_dir_out,
                                    k_ra8_usb_ep_type_bulk,
                                    bulk_mp);
-  RA8_RETURN_ON_ERROR(err, s_tag, "cdc: bulk-out cfg"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, /* GCOVR_EXCL_BR_LINE -- valid speed + static valid bulk-OUT tuple */
+                      s_tag,
+                      "cdc: bulk-out cfg");
 
   err = ra8_usb_configure_endpoint(speed,
                                    k_ra8_cdc_pipe_intr_in,
@@ -189,46 +194,36 @@ static ra8_err_t internal_configure_pipes(ra8_usb_speed_t speed)
   return err;
 }
 
-/* GCOVR_EXCL_START -- reachable only once the SIE has actually landed a
- * control-OUT packet in the DCP bank, which the host register window cannot
- * produce. ra8_usb_dcp_out_arm() clears the DCP BRDY latch as its first act
- * (BRDYSTS is write-0-to-clear on silicon; the host model is plain memory, so
- * the write simply stores the cleared bit), and only real hardware receiving a
- * host OUT token sets it again. ra8_usb_dcp_out_read() therefore reports
- * k_ra8_err_no_data on every one of the bounded poll's iterations, and this
- * helper is never entered from any host-side input.
- *
- * This is NOT the blanket exclusion the former stub carried: that one covered
- * the first 236 lines of the file and was justified by the helper's caller
- * being hard-wired to fail. The data stage is implemented now, and the
- * exclusion is scoped to the one helper whose entry condition is a physical
- * bus event. The decode itself is covered on silicon by the usb_cdc_echo HIL
- * app, which reports the host's requested baud back over the same link. */
 /**
  * @brief Apply a host SET_LINE_CODING payload to the cached CDC line coding.
  *
- * @details Decodes the little-endian 7-byte USB CDC PSTN line-coding structure:
- * the 32-bit DTE baud rate is assembled from bytes 0..3, followed by the
- * char-format, parity-type, and data-bits fields, and the result is written
- * into `s_state.coding`. A null pointer or a payload shorter than
- * `k_ra8_cdc_line_coding_len` bytes leaves the cached coding untouched.
+ * @details Decodes the little-endian seven-byte USB CDC PSTN line-coding
+ * structure. The 32-bit DTE baud rate is assembled from bytes zero through
+ * three, followed by the character-format, parity-type, and data-bit fields.
+ * A null pointer or a short payload leaves the cached coding untouched.
  *
- * @param[in] data Pointer to the line-coding payload in host (little-endian)
- *                 byte order; must reference at least `len` readable bytes.
- * @param[in] len  Length of `data` in bytes; must be at least
- *                 `k_ra8_cdc_line_coding_len` (7) or the call is a no-op.
- * @pre `s_state` has been initialized by `ra8_usb_cdc_init()`.
- * @pre `data` points to at least `len` valid, readable bytes.
- * @post On a valid payload, `s_state.coding` holds the requested baud rate,
- *       char format, parity type, and data-bit count.
- * @post When `data` is null or `len` is short, `s_state.coding` is unchanged.
- * @note Not thread-safe; call only from the USB control-transfer context.
+ * @param[in] data Pointer to the line-coding payload in host byte order; may
+ *                 be null to exercise the reject path.
+ * @param[in] len  Length of @p data in bytes.
+ *
+ * @pre The CDC state has been initialized by `ra8_usb_cdc_init()`.
+ * @pre When @p data is non-null, it references at least @p len readable bytes.
+ * @post A valid seven-byte payload replaces every cached line-coding field.
+ * @post A null or short payload leaves the cached line coding unchanged.
+ *
+ * @note Not thread-safe; production calls originate in the USB control path.
+ *
+ * @par MC/DC:
+ * Decision `(data == nullptr) || (len < 7)` uses N+1 = 3 vectors:
+ * - non-null data, length 7: false control vector
+ * - null data, length 7: first condition independently makes the result true
+ * - non-null data, length 6: second condition independently makes it true
+ *
  * @since 0.1.0
  */
 RA8_INTERNAL
 static void internal_apply_line_coding(const uint8_t* data, uint16_t len)
 {
-  // mcdc-deactivated: TU-local helper internal_apply_line_coding; the USB stack delivers SET_LINE_CODING control transfers with a 7-byte payload buffer (USB CDC PSTN spec 6.3.10), so data is always non-NULL and len is always exactly k_ra8_cdc_line_coding_len -- both short-circuit conditions cannot independently flip on any reachable path.
   if ((data == nullptr) || (len < k_ra8_cdc_line_coding_len)) {
     return;
   }
@@ -241,7 +236,12 @@ static void internal_apply_line_coding(const uint8_t* data, uint16_t len)
   s_state.coding.parity_type = data[k_ra8_cdc_idx_parity_type];
   s_state.coding.data_bits   = data[k_ra8_cdc_idx_data_bits];
 }
-/* GCOVR_EXCL_STOP */
+
+RA8_TEST_HELPER
+void ra8_usb_cdc_test_apply_line_coding(const uint8_t* data, uint16_t len)
+{
+  internal_apply_line_coding(data, len);
+}
 
 /* =============================================================================
  * Lifecycle
@@ -388,8 +388,7 @@ static ra8_err_t internal_pull_data_stage(uint8_t* buf, uint16_t cap, uint16_t* 
   for (uint16_t i = 0U; i < k_ra8_cdc_data_stage_polls; ++i) {
     rc = ra8_usb_dcp_out_read(s_state.speed, buf, cap, out_len);
     if (rc != k_ra8_err_no_data) {
-      return rc; /* GCOVR_EXCL_LINE -- needs a landed DCP packet; see the
-                  * exclusion note on internal_apply_line_coding. */
+      return rc;
     }
   }
   return rc;
@@ -420,7 +419,7 @@ static ra8_err_t internal_dispatch_class_setup(const ra8_usb_setup_t* setup)
       uint16_t        plen                                = 0U;
       const ra8_err_t pull = internal_pull_data_stage(buf, (uint16_t)sizeof(buf), &plen);
       if (pull == k_ra8_ok) {
-        internal_apply_line_coding(buf, plen); /* GCOVR_EXCL_LINE -- same. */
+        internal_apply_line_coding(buf, plen);
       }
       /* The status stage is ACKed either way: a host that abandoned the data
        * stage still gets a well-formed control-write completion, and the cached

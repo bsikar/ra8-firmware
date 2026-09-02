@@ -171,10 +171,10 @@ add_library(
 # Mbed TLS public include tree, then the TF-PSA-Crypto public
 # include tree, then the per-component private include trees the
 # library/core/drivers sources reach into via plain quoted includes.
+target_include_directories(mbedtls_objs PUBLIC ${_RA8_MBEDTLS_PORT_DIR})
 target_include_directories(
-  mbedtls_objs
-  PUBLIC ${_RA8_MBEDTLS_PORT_DIR}
-         ${_RA8_MBEDTLS_INC_DIR}
+  mbedtls_objs SYSTEM
+  PUBLIC ${_RA8_MBEDTLS_INC_DIR}
          ${_RA8_TFPSA_INC_DIR}
          ${_RA8_TFPSA_DRIVERS_INC_DIR}
          ${_RA8_TFPSA_CORE_DIR}
@@ -201,16 +201,15 @@ target_link_libraries(mbedtls_objs PRIVATE threadx)
 
 # Vendor sources predate -Wpedantic / -Werror cleanliness; let them
 # build at -w like the other vendored trees.
-target_compile_options(mbedtls_objs PRIVATE -w)
 
 # Public-facing INTERFACE target. Apps link this; everything else
 # flows through.
 add_library(mbedtls INTERFACE)
 target_sources(mbedtls INTERFACE $<TARGET_OBJECTS:mbedtls_objs>)
+target_include_directories(mbedtls INTERFACE ${_RA8_MBEDTLS_PORT_DIR})
 target_include_directories(
-  mbedtls
-  INTERFACE ${_RA8_MBEDTLS_PORT_DIR}
-            ${_RA8_MBEDTLS_INC_DIR}
+  mbedtls SYSTEM
+  INTERFACE ${_RA8_MBEDTLS_INC_DIR}
             ${_RA8_TFPSA_INC_DIR}
             ${_RA8_TFPSA_DRIVERS_INC_DIR}
             ${_RA8_TFPSA_CORE_DIR}

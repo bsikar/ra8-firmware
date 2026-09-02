@@ -31,10 +31,10 @@
 #include "ra8_gfx.h"
 #include "ra8_gfx_font.h"
 #include "ra8_glyph_atlas.h"
-#include "ra8_reflow.h"
-#include "ra8_reflow_image.h"
 #include "ra8_ui.h"
 #include "ra8_widget.h"
+#include "reflow.h"
+#include "reflow_image.h"
 
 /** @brief Baked Latin-1 font array (generated at build time). */
 extern const uint8_t      g_ra8_font_literata_latin1[];
@@ -82,7 +82,7 @@ typedef enum : uint32_t {
 } er_svg_len_t;
 
 /**
- * @brief ra8_reflow image loader: resolve any `<img src>` to the baked figure.
+ * @brief reflow image loader: resolve any `<img src>` to the baked figure.
  *
  * @details The mock library has no EPUB ZIP to read resources from, so every
  * `<img>` in the demo chapter resolves to the one bundled figure
@@ -570,7 +570,7 @@ void er_render_library(void)
 }
 
 /* ===========================================================================
- * Reading screen -- ra8_reflow body text (SD font) with a bitmap fallback
+ * Reading screen -- reflow body text (SD font) with a bitmap fallback
  * =========================================================================== */
 
 /**
@@ -579,12 +579,12 @@ void er_render_library(void)
  * @details A page turn re-renders the same body glyphs, so caching the
  * rasterised bitmaps (cells in SDRAM, like the framebuffer + decode arena)
  * avoids re-running stb_truetype every frame. Re-bound on each relayout
- * (ra8_reflow_init zeroes the engine); the cache clears per chapter, the natural
+ * (reflow_init zeroes the engine); the cache clears per chapter, the natural
  * working-set boundary. Output is byte-identical to the direct path -- oversized
  * glyphs fall back to direct rasterisation. The caller-owned storage is
  * function-static (single reflow engine, single-threaded UI loop).
  *
- * @pre ::s_reflow_engine has been initialised by ra8_reflow_init().
+ * @pre ::s_reflow_engine has been initialised by reflow_init().
  * @pre The SDRAM `.sdram_data` section is mapped (post ra8_sdramc_init()).
  * @post ::s_reflow_engine renders body glyphs through the glyph cache.
  * @post The cache starts empty (re-init clears it).
@@ -593,8 +593,6 @@ void er_render_library(void)
  */
 static void er_bind_glyph_atlas(void)
 {
-  /* cppcheck-suppress unassignedVariable ; filled through the pointer handed to
-     ra8_reflow_set_glyph_atlas() -> ra8_glyph_atlas_init(); cppcheck can't follow it. */
   [[gnu::section(".sdram_data")]] static uint8_t
     s_glyph_cells[(size_t)k_er_glyph_cells * (size_t)k_er_glyph_cell_bytes];
   static ra8_keycache_cell_t s_glyph_meta[k_er_glyph_cells];
@@ -602,9 +600,9 @@ static void er_bind_glyph_atlas(void)
   static ra8_glyph_dims_t    s_glyph_dims[k_er_glyph_cells];
   /* cppcheck-suppress unassignedVariable ; hash-bucket heads are cleared by
      ra8_glyph_atlas_init() through the storage pointer; not a direct assignment. */
-  static int32_t                         s_glyph_buckets[k_er_glyph_buckets];
-  static ra8_glyph_atlas_t               s_glyph_atlas;
-  const ra8_reflow_glyph_atlas_storage_t glyph_store = {
+  static int32_t                     s_glyph_buckets[k_er_glyph_buckets];
+  static ra8_glyph_atlas_t           s_glyph_atlas;
+  const reflow_glyph_atlas_storage_t glyph_store = {
     .cell_mem     = s_glyph_cells,
     .cell_bytes   = (uint32_t)k_er_glyph_cell_bytes,
     .cell_count   = (uint32_t)k_er_glyph_cells,
@@ -614,7 +612,7 @@ static void er_bind_glyph_atlas(void)
     .buckets      = s_glyph_buckets,
     .bucket_count = (uint32_t)k_er_glyph_buckets,
   };
-  (void)ra8_reflow_set_glyph_atlas(&s_reflow_engine, &s_glyph_atlas, &glyph_store);
+  (void)reflow_set_glyph_atlas(&s_reflow_engine, &s_glyph_atlas, &glyph_store);
 }
 
 /**
@@ -643,17 +641,17 @@ static bool
 er_reflow_relayout(int32_t body_w, int32_t body_h, const uint8_t* font_data, uint32_t font_len)
 {
   if (s_reflow_open) {
-    (void)ra8_reflow_close(&s_reflow_engine);
+    (void)reflow_close(&s_reflow_engine);
     s_reflow_open = false;
   }
-  if (ra8_reflow_init((uint16_t)body_w,
-                      (uint16_t)body_h,
-                      font_data,
-                      font_len,
-                      (uint16_t)k_er_reflow_px,
-                      (uint32_t)k_er_reflow_ink,
-                      (uint32_t)k_er_reflow_link,
-                      &s_reflow_engine) != k_ra8_ok) {
+  if (reflow_init((uint16_t)body_w,
+                  (uint16_t)body_h,
+                  font_data,
+                  font_len,
+                  (uint16_t)k_er_reflow_px,
+                  (uint32_t)k_er_reflow_ink,
+                  (uint32_t)k_er_reflow_link,
+                  &s_reflow_engine) != k_ra8_ok) {
     return false;
   }
   /* Bind the image loader + SDRAM decode arena so the chapter's <img> renders
@@ -663,15 +661,14 @@ er_reflow_relayout(int32_t body_w, int32_t body_h, const uint8_t* font_data, uin
                                          .cap    = (size_t)k_er_img_arena,
                                          .offset = 0U,
                                          .live   = 0U};
-  (void)
-    ra8_reflow_set_image_loader(&s_reflow_engine, er_image_loader, nullptr, &s_reflow_img_arena);
+  (void)reflow_set_image_loader(&s_reflow_engine, er_image_loader, nullptr, &s_reflow_img_arena);
   er_bind_glyph_atlas();
 
   uint32_t            pages = 0U;
   const er_chapter_t* chap  = &k_er_spine[s_chapter_idx];
-  if (ra8_reflow_layout_chapter(&s_reflow_engine, (const uint8_t*)chap->xhtml, chap->len, &pages) !=
+  if (reflow_layout_chapter(&s_reflow_engine, (const uint8_t*)chap->xhtml, chap->len, &pages) !=
       k_ra8_ok) {
-    (void)ra8_reflow_close(&s_reflow_engine);
+    (void)reflow_close(&s_reflow_engine);
     return false;
   }
   s_reading_pages  = pages;
@@ -683,21 +680,21 @@ er_reflow_relayout(int32_t body_w, int32_t body_h, const uint8_t* font_data, uin
 }
 
 /**
- * @brief Render the Reading body through ra8_reflow when an SD font is loaded.
+ * @brief Render the Reading body through reflow when an SD font is loaded.
  *
  * @details Lays the chapter XHTML out against the body rectangle (inset
  *          below the status bar, above the footer) and paints the current
- *          page (::s_reading_page) there via ra8_reflow_render_page_at.
+ *          page (::s_reading_page) there via reflow_render_page_at.
  *          er_render_reading has already cleared the framebuffer to paper
  *          and the body colour is dark ink, so the text shows (the
- *          ra8_reflow_init colour args are the text colours, not the
+ *          reflow_init colour args are the text colours, not the
  *          background). Publishes the layout's page count to ::s_reading_pages
  *          and clamps ::s_reading_page into range.
  *
  * @param[in] body_top Top y of the body band (pixels).
  * @param[in] height   Framebuffer height (pixels).
  * @return true if reflowed text was painted; false to use the bitmap fallback.
- * @retval true  ra8_reflow rendered the body.
+ * @retval true  reflow rendered the body.
  * @retval false No font / init / layout failure -- caller draws the bitmap body.
  * @pre ra8_gfx is bound and the body region is cleared to paper.
  * @pre @p height matches the bound framebuffer.
@@ -738,8 +735,7 @@ static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
   if (s_reading_page >= s_reading_pages) {
     s_reading_page = s_reading_pages - 1U;
   }
-  (void)
-    ra8_reflow_render_page_at(&s_reflow_engine, s_reading_page, (int32_t)k_er_margin_x, body_top);
+  (void)reflow_render_page_at(&s_reflow_engine, s_reading_page, (int32_t)k_er_margin_x, body_top);
   return true;
 }
 
@@ -749,7 +745,7 @@ static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
  * @param[in] height Framebuffer height in pixels.
  *
  * @return true if the body was reflowed (paginated); false on the bitmap fallback.
- * @retval true  ra8_reflow painted the current page (SD font or the baked font).
+ * @retval true  reflow painted the current page (SD font or the baked font).
  * @retval false The bundled bitmap lines were drawn (reflow-engine failure).
  * @pre ra8_gfx is bound.
  * @pre @p height matches the bound framebuffer.
@@ -921,10 +917,10 @@ bool er_apply_pageturn(er_dir_t dir)
 static bool er_nav_fragment(uint32_t off, uint32_t frag_off, uint32_t frag_len)
 {
   uint32_t page = 0U;
-  if (ra8_reflow_find_anchor(&s_reflow_engine,
-                             (const char*)&s_reflow_engine.text_pool[off + frag_off],
-                             frag_len,
-                             &page) != k_ra8_ok) {
+  if (reflow_find_anchor(&s_reflow_engine,
+                         (const char*)&s_reflow_engine.text_pool[off + frag_off],
+                         frag_len,
+                         &page) != k_ra8_ok) {
     return false;
   }
   if (page == s_reading_page) {
@@ -966,30 +962,30 @@ bool er_reading_link_tap(int32_t x, int32_t y)
   const int32_t body_top = (int32_t)k_er_statusbar_h + (int32_t)k_er_body_gap;
   uint32_t      off      = 0U;
   uint32_t      len      = 0U;
-  if (ra8_reflow_hit_test_link(&s_reflow_engine,
-                               s_reading_page,
-                               x - (int32_t)k_er_margin_x,
-                               y - body_top,
-                               &off,
-                               &len) != k_ra8_ok) {
+  if (reflow_hit_test_link(&s_reflow_engine,
+                           s_reading_page,
+                           x - (int32_t)k_er_margin_x,
+                           y - body_top,
+                           &off,
+                           &len) != k_ra8_ok) {
     return false;
   }
-  ra8_reflow_href_kind_t kind     = k_ra8_reflow_href_empty;
-  uint32_t               path_len = 0U;
-  uint32_t               frag_off = 0U;
-  uint32_t               frag_len = 0U;
-  if (ra8_reflow_href_split((const char*)&s_reflow_engine.text_pool[off],
-                            len,
-                            &kind,
-                            &path_len,
-                            &frag_off,
-                            &frag_len) != k_ra8_ok) {
+  reflow_href_kind_t kind     = k_reflow_href_empty;
+  uint32_t           path_len = 0U;
+  uint32_t           frag_off = 0U;
+  uint32_t           frag_len = 0U;
+  if (reflow_href_split((const char*)&s_reflow_engine.text_pool[off],
+                        len,
+                        &kind,
+                        &path_len,
+                        &frag_off,
+                        &frag_len) != k_ra8_ok) {
     return false;
   }
-  if (kind == k_ra8_reflow_href_fragment) {
+  if (kind == k_reflow_href_fragment) {
     return er_nav_fragment(off, frag_off, frag_len);
   }
-  if ((kind == k_ra8_reflow_href_chapter) || (kind == k_ra8_reflow_href_chapter_fragment)) {
+  if ((kind == k_reflow_href_chapter) || (kind == k_reflow_href_chapter_fragment)) {
     return er_nav_chapter(off, path_len);
   }
   return false;

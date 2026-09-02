@@ -21,15 +21,13 @@
 # infra/fleet.yml -- so the whole operation is:
 #
 #   gh api -X POST repos/bsikar/ra8-firmware/actions/runners/registration-token
-#   python3 scripts/dev/fleet.py apply win-ci \
-#     -e ci_runner_docker_registration_token=<token>
+#   just infra::register_runner win-ci /path/to/mode-0600-registration-vars.yml
 #
 #   # just the drain script and the quiet-hours timer, touching no container:
-#   python3 scripts/dev/fleet.py apply win-ci --tags capacity
+#   just infra::apply win-ci "" capacity
 #
 #   # remove, with a removal token from .../actions/runners/remove-token:
-#   python3 scripts/dev/fleet.py remove win-ci \
-#     -e ci_runner_docker_removal_token=<token>
+#   just infra::remove win-ci /path/to/mode-0600-removal-vars.yml
 #
 # The token is good for one hour and one use, so no long-lived credential ever
 # lands on the machine. See the ci_runner_docker credentials defaults, and

@@ -115,7 +115,7 @@ typedef enum : uint8_t {
  *  - `enable_dtie`        : enable DMINT.DTIE (transfer-end IRQ at
  *                           full completion).
  */
-/* cppcheck reads ra8_dmac.h without seeing tests/ra8_fake_dma.c or the
+/* cppcheck reads ra8_dmac.h without seeing tests/mocks/src/ra8_fake_dma.c or the
  * DMAC register accesses in libs/ra8_hal/src/ra8_dmac.c, so it flags
  * every field as unused even though the driver reads all of them. */
 typedef struct {

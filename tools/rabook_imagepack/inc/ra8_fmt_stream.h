@@ -22,9 +22,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "jof.h"
+#include "jof_audit.h"
 #include "ra8_err.h"
-#include "ra8_jof.h"
-#include "ra8_jof_audit.h"
 
 /** @brief Revalidate one positioned source against its captured immutable view.
  */
@@ -32,7 +32,7 @@ typedef ra8_err_t (*ra8_fmt_source_validate_fn)(void* ctx, uint64_t expected_siz
 
 /** @brief Immutable, randomly readable input object. */
 typedef struct {
-  ra8_jof_pread_fn           read_at;  /**< Positioned-read callback.    */
+  jof_pread_fn               read_at;  /**< Positioned-read callback.    */
   ra8_fmt_source_validate_fn validate; /**< Optional stability callback. */
   void*                      ctx;      /**< Backend-owned context.       */
   uint64_t                   size;     /**< Exact object byte length.    */
@@ -52,7 +52,7 @@ typedef ra8_err_t (*ra8_fmt_spool_seal_fn)(void* ctx, uint64_t expected_size);
 
 /** @brief Caller-owned scratch artifact with append, seal, and read seams. */
 typedef struct {
-  ra8_jof_pread_fn      read_at; /**< Positioned reader after seal. */
+  jof_pread_fn          read_at; /**< Positioned reader after seal. */
   ra8_fmt_sink_write_fn append;  /**< Append before seal.           */
   ra8_fmt_spool_seal_fn seal;    /**< Seal exact produced bytes.    */
   void*                 ctx;     /**< Backend-owned state.          */
@@ -127,12 +127,12 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_jof_audit_record_t* records;     /**< Audit record array.          */
-  uint32_t                record_cap;  /**< Record entries available.    */
-  uint8_t*                tile;        /**< Reusable decoded tile.       */
-  uint32_t                tile_cap;    /**< Decoded tile capacity.       */
-  uint8_t*                scratch;     /**< Compressed tile staging.     */
-  uint32_t                scratch_cap; /**< Compressed staging capacity. */
+  jof_audit_record_t* records;     /**< Audit record array.          */
+  uint32_t            record_cap;  /**< Record entries available.    */
+  uint8_t*            tile;        /**< Reusable decoded tile.       */
+  uint32_t            tile_cap;    /**< Decoded tile capacity.       */
+  uint8_t*            scratch;     /**< Compressed tile staging.     */
+  uint32_t            scratch_cap; /**< Compressed staging capacity. */
 } ra8_fmt_jof_inspect_workspace_t;
 
 /** @brief Caller-owned storage for strict streamed RBKC/RABOOK1 inspection. */
@@ -157,10 +157,10 @@ typedef struct {
  * @post No allocation occurs and no backend pointer is retained.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_jof_inspect_stream(const ra8_fmt_source_t*          source,
-                                                   bool                             verbose,
-                                                   ra8_fmt_jof_inspect_workspace_t* workspace,
-                                                   const ra8_fmt_sink_t*            report);
+[[nodiscard]] ra8_err_t ra8_fmt_jof_inspect_stream(const ra8_fmt_source_t*                source,
+                                                   bool                                   verbose,
+                                                   const ra8_fmt_jof_inspect_workspace_t* workspace,
+                                                   const ra8_fmt_sink_t*                  report);
 
 /**
  * @brief Strictly inspect one streamed RBKC container and its RABOOK1 payload.
@@ -224,7 +224,7 @@ typedef struct {
 [[nodiscard]] ra8_err_t
 ra8_fmt_jof_convert_stream(const ra8_fmt_source_t*                   source,
                            const ra8_fmt_jof_convert_requirements_t* requirements,
-                           ra8_fmt_jof_convert_workspace_t*          workspace,
+                           const ra8_fmt_jof_convert_workspace_t*    workspace,
                            ra8_fmt_transaction_t*                    transaction,
                            const ra8_fmt_sink_t*                     report,
                            const char*                               output_name);

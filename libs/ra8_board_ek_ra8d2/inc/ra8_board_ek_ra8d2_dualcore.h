@@ -19,7 +19,7 @@
  * ``examples/``, and a change to it would have had to find all nineteen.
  *
  * It is a BOARD fact, and the board already acts on it: this package's
- * ``boot/system_init.c`` programmes MPU region 4 over exactly this window.
+ * ``src/boot/system_init.c`` programmes MPU region 4 over exactly this window.
  * That translation unit now takes its numbers from here, so the boot and the
  * applications cannot drift apart.
  *

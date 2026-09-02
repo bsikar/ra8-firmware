@@ -192,7 +192,7 @@ RA8_INTERNAL static void internal_pdm_data_isr(void* ctx)
   if (stream->callback == nullptr) {
     return;
   }
-  volatile r_pdm_ch_regs_t* reg = ra8_pdm_ch(channel);
+  volatile const r_pdm_ch_regs_t* reg = ra8_pdm_ch(channel);
   /* HUM Ch 49.2.66 "PDDSRCHn : Data Status Register" p 3228 */
   uint32_t count = reg->PDDSR & (uint32_t)k_ra8_pdm_pddsr_num_mask;
   if (count > (uint32_t)k_ra8_pdm_fifo_depth) {
@@ -211,7 +211,7 @@ RA8_INTERNAL static void internal_pdm_data_isr(void* ctx)
 ra8_err_t ra8_pdm_init(void)
 {
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_pdmif);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "pdm_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "pdm_init: mstp enable");
 
   volatile r_pdm_regs_t* reg = ra8_pdm();
   /* HUM Ch 49.2.4 "PDCICR : Channel Interrupt Control Register" p 3198 */
@@ -278,7 +278,7 @@ ra8_err_t ra8_pdm_read(uint8_t ch, int32_t* out, uint32_t max, uint32_t* out_cou
     return k_ra8_err_invalid_arg;
   }
 
-  volatile r_pdm_ch_regs_t* reg = ra8_pdm_ch(ch);
+  volatile const r_pdm_ch_regs_t* reg = ra8_pdm_ch(ch);
   /* HUM Ch 49.2.66 "PDDSRCHn : Data Status Register" p 3228 */
   const uint32_t avail = reg->PDDSR & (uint32_t)k_ra8_pdm_pddsr_num_mask;
   const uint32_t n     = (avail < max) ? avail : max;

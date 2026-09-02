@@ -12,9 +12,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "book_chunked.h"
 #include "miniz.h"
 #include "ra8_attributes.h"
-#include "ra8_book_chunked.h"
 #include "ra8_fmt_stream.h"
 
 /** @brief Bounded report formatting constants. */
@@ -219,9 +219,9 @@ internal_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, siz
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_header(const ra8_fmt_sink_t*     report,
-                                 const ra8_fmt_source_t*   source,
-                                 const ra8_book_chunked_t* reader)
+static ra8_err_t internal_header(const ra8_fmt_sink_t*   report,
+                                 const ra8_fmt_source_t* source,
+                                 const book_chunked_t*   reader)
 {
   ra8_err_t rc = internal_text(report, "RBKC rabook container: ");
   if (rc == k_ra8_ok) {
@@ -298,7 +298,7 @@ internal_row(const ra8_fmt_sink_t* report, uint32_t idx, uint64_t begin, uint64_
  */
 RA8_INTERNAL
 static ra8_err_t
-internal_table(const ra8_fmt_sink_t* report, const ra8_book_chunked_t* reader, bool verbose)
+internal_table(const ra8_fmt_sink_t* report, const book_chunked_t* reader, bool verbose)
 {
   if (!verbose) {
     return k_ra8_ok;
@@ -335,10 +335,10 @@ internal_table(const ra8_fmt_sink_t* report, const ra8_book_chunked_t* reader, b
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_report(const ra8_fmt_sink_t*     report,
-                                 const ra8_fmt_source_t*   source,
-                                 const ra8_book_chunked_t* reader,
-                                 bool                      verbose)
+static ra8_err_t internal_report(const ra8_fmt_sink_t*   report,
+                                 const ra8_fmt_source_t* source,
+                                 const book_chunked_t*   reader,
+                                 bool                    verbose)
 {
   ra8_err_t rc = internal_header(report, source, reader);
   if (rc == k_ra8_ok) {
@@ -360,25 +360,25 @@ ra8_err_t ra8_fmt_rabook_inspect_stream(const ra8_fmt_source_t*             sour
       (report->write == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  source_adapter_t   adapter = {.source = source};
-  ra8_book_chunked_t reader  = {};
-  ra8_err_t          rc      = ra8_book_chunked_open(&reader,
-                                                     internal_exact_read,
-                                                     &adapter,
-                                                     source->size,
-                                                     internal_inflate,
-                                                     workspace->table,
-                                                     workspace->table_cap,
-                                                     workspace->compressed,
-                                                     workspace->compressed_cap);
-  ra8_book_header_t  header  = {};
+  source_adapter_t adapter = {.source = source};
+  book_chunked_t   reader  = {};
+  ra8_err_t        rc      = book_chunked_open(&reader,
+                                               internal_exact_read,
+                                               &adapter,
+                                               source->size,
+                                               internal_inflate,
+                                               workspace->table,
+                                               workspace->table_cap,
+                                               workspace->compressed,
+                                               workspace->compressed_cap);
+  book_header_t    header  = {};
   if (rc == k_ra8_ok) {
-    rc = ra8_book_chunked_validate_strict(&reader,
-                                          workspace->chunk,
-                                          workspace->chunk_cap,
-                                          workspace->scratch,
-                                          workspace->scratch_cap,
-                                          &header);
+    rc = book_chunked_validate_strict(&reader,
+                                      workspace->chunk,
+                                      workspace->chunk_cap,
+                                      workspace->scratch,
+                                      workspace->scratch_cap,
+                                      &header);
   }
   if ((rc == k_ra8_ok) && (source->validate != nullptr)) {
     rc = source->validate(source->ctx, source->size);

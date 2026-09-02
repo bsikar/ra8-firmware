@@ -81,7 +81,7 @@ RA8_INTERNAL static void internal_on_itm_stim_write(uc_engine*  uc,
   (void)addr;
   (void)size;
   (void)user;
-  const char c = (char)((uint32_t)value & 0xFFU); /* MAGIC-OK: low-byte mask */
+  const char c = (char)(uint8_t)value;
   if (c == '\r') {
     return;
   }

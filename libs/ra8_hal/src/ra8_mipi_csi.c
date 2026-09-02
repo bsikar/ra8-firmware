@@ -90,10 +90,10 @@ typedef enum : uint16_t {
 RA8_INTERNAL
 static ra8_err_t internal_wait_reset_idle(void)
 {
-  for (uint16_t i = 0U; i < k_ra8_mipi_csi_reset_spin_max; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint16_t i = 0U; i < k_ra8_mipi_csi_reset_spin_max; ++i) {
     /* HUM Ch 66.3.6 "RTST : Reset Status Register" p 3939 */
     const uint32_t rtst = *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_rtst);
-    if ((rtst & k_ra8_mipi_csi_rtst_vsrsts_mask) == 0UL) { /* GCOVR_EXCL_BR_LINE */
+    if ((rtst & k_ra8_mipi_csi_rtst_vsrsts_mask) == 0UL) {
       return k_ra8_ok;
     }
   }
@@ -299,11 +299,11 @@ ra8_err_t ra8_mipi_csi_init(const ra8_mipi_csi_config_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   const ra8_err_t cfg_err = internal_validate_cfg(cfg);
-  RA8_RETURN_ON_ERROR(cfg_err, s_tag, "mipi_csi_init: cfg out of range"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(cfg_err, s_tag, "mipi_csi_init: cfg out of range");
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_mipi_csi);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "mipi_csi_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "mipi_csi_init: mstp enable");
 
   /* HUM Ch 66.3.4 "MCT3 : Module Control Register 3" p 3938
    * Ensure RXEN = 0 before re-configuring the receiver. */
@@ -312,7 +312,7 @@ ra8_err_t ra8_mipi_csi_init(const ra8_mipi_csi_config_t* cfg)
   /* HUM Ch 66.3.6 "RTST : Reset Status Register" p 3939
    * Wait for any in-flight software reset to drain. */
   const ra8_err_t rst_err = internal_wait_reset_idle();
-  RA8_RETURN_ON_ERROR(rst_err, s_tag, "mipi_csi_init: vsrsts spin"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(rst_err, s_tag, "mipi_csi_init: vsrsts spin");
 
   internal_program_receiver(cfg);
   internal_program_irq_masks(cfg);
@@ -371,7 +371,7 @@ ra8_err_t ra8_mipi_csi_reset(void)
 ra8_err_t ra8_mipi_csi_start_receive(void)
 {
   const ra8_err_t state_err = internal_reject_if_running();
-  RA8_RETURN_ON_ERROR(state_err, s_tag, "mipi_csi start: already running"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(state_err, s_tag, "mipi_csi start: already running");
   /* HUM Ch 66.3.4 "MCT3 : Module Control Register 3" p 3938 */
   *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_mct3) = k_ra8_mipi_csi_mct3_rxen_mask;
   ra8_log_info(s_tag, "mipi_csi start_receive");
@@ -459,7 +459,7 @@ ra8_err_t ra8_mipi_csi_set_data_type_filter(uint32_t low_mask, uint32_t high_mas
 ra8_err_t ra8_mipi_csi_set_ecc_mode(bool eccv13, bool lfsren)
 {
   const ra8_err_t state_err = internal_reject_if_running();
-  RA8_RETURN_ON_ERROR(state_err, s_tag, "set_ecc_mode: rxen set"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(state_err, s_tag, "set_ecc_mode: rxen set");
 
   /* HUM Ch 66.3.2 "MCT0 : Module Control Register 0" p 3936 */
   uint32_t mct0 = *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_mct0);
@@ -477,7 +477,7 @@ ra8_err_t ra8_mipi_csi_set_ecc_mode(bool eccv13, bool lfsren)
 ra8_err_t ra8_mipi_csi_set_frame_error_mode(bool zlmd, bool edmd, bool rvmd)
 {
   const ra8_err_t state_err = internal_reject_if_running();
-  RA8_RETURN_ON_ERROR(state_err, s_tag, "set_frame_error_mode: rxen set"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(state_err, s_tag, "set_frame_error_mode: rxen set");
 
   /* HUM Ch 66.3.2 "MCT0 : Module Control Register 0" p 3936 */
   uint32_t mct0 = *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_mct0);
@@ -513,7 +513,7 @@ ra8_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t 
   }
 
   const ra8_err_t state_err = internal_reject_if_running();
-  RA8_RETURN_ON_ERROR(state_err, s_tag, "set_epd: rxen set"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(state_err, s_tag, "set_epd: rxen set");
 
   /* HUM Ch 66.3.7 "EPCT : EPD Option Control Register" p 3939 */
   uint32_t epct =
@@ -536,7 +536,7 @@ ra8_err_t ra8_mipi_csi_set_lrte(ra8_mipi_csi_vlsien_t vlsien, bool eotp_enable)
     return k_ra8_err_invalid_arg;
   }
   const ra8_err_t state_err = internal_reject_if_running();
-  RA8_RETURN_ON_ERROR(state_err, s_tag, "set_lrte: rxen set"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(state_err, s_tag, "set_lrte: rxen set");
 
   /* HUM Ch 66.3.8 "EMCT : EPD Misc Option Control Register" p 3941 */
   uint32_t emct = *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_emct);
@@ -730,10 +730,10 @@ ra8_err_t ra8_mipi_csi_short_packet_clear_fifo(void)
   *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_gsiu) = k_ra8_mipi_csi_gsiu_gfclr_mask;
 
   ra8_err_t err = k_ra8_err_hw_timeout;
-  for (uint16_t i = 0U; i < k_ra8_mipi_csi_gfclr_spin_max; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint16_t i = 0U; i < k_ra8_mipi_csi_gfclr_spin_max; ++i) {
     /* HUM Ch 66.3.25 "GSST : Generic Short Packet Status" p 3957 */
     const uint32_t gsst = *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_gsst);
-    if ((gsst & k_ra8_mipi_csi_gsst_gcd_mask) != 0UL) { /* GCOVR_EXCL_BR_LINE */
+    if ((gsst & k_ra8_mipi_csi_gsst_gcd_mask) != 0UL) {
       err = k_ra8_ok;
       break;
     }

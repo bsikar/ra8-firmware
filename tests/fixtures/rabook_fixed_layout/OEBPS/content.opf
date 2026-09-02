@@ -6,7 +6,7 @@
     <dc:creator>Spike Fixture</dc:creator>
     <dc:language>en</dc:language>
     <dc:identifier id="bookid">urn:uuid:196-fixed-layout-epub</dc:identifier>
-    <!-- Package-level fixed-layout hints. The desktop compiler and ra8_reflow
+    <!-- Package-level fixed-layout hints. The desktop compiler and reflow
          ignore these (the one-image-per-page shape falls out of the img being
          the only body content), so their only job here is to prove the compiler
          does not choke on pre-paginated rendition metadata. -->

@@ -391,7 +391,7 @@ static ra8_err_t internal_hex_dump(const ra8_fmt_source_t* source,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_dimensions(const ra8_jof_info_t* info, const ra8_fmt_sink_t* report)
+static ra8_err_t internal_dimensions(const jof_info_t* info, const ra8_fmt_sink_t* report)
 {
   ra8_err_t rc = internal_text(report, "  image      : ");
   if (rc == k_ra8_ok) {
@@ -451,7 +451,7 @@ static ra8_err_t internal_dimensions(const ra8_jof_info_t* info, const ra8_fmt_s
  */
 RA8_INTERNAL
 static ra8_err_t internal_geometry(const ra8_fmt_source_t* source,
-                                   const ra8_jof_info_t*   info,
+                                   const jof_info_t*       info,
                                    const ra8_fmt_sink_t*   report)
 {
   ra8_err_t rc = internal_text(report, "JOF atlas: ");
@@ -472,7 +472,7 @@ static ra8_err_t internal_geometry(const ra8_fmt_source_t* source,
   }
   if (rc == k_ra8_ok) {
     rc = internal_text(report,
-                       (info->codec == (uint8_t)k_ra8_jof_codec_deflate) ? "deflate)\n" : "raw)\n");
+                       (info->codec == (uint8_t)k_jof_codec_deflate) ? "deflate)\n" : "raw)\n");
   }
   if (rc == k_ra8_ok) {
     rc = internal_value_line(report, "  tile_count : ", info->tile_count, "\n");
@@ -509,9 +509,8 @@ static ra8_err_t internal_geometry(const ra8_fmt_source_t* source,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_table_row(const ra8_fmt_sink_t*         report,
-                                    uint32_t                      index,
-                                    const ra8_jof_audit_record_t* record)
+static ra8_err_t
+internal_table_row(const ra8_fmt_sink_t* report, uint32_t index, const jof_audit_record_t* record)
 {
   ra8_err_t rc = internal_u64(report, index, 8U);
   if (rc == k_ra8_ok) {
@@ -559,7 +558,7 @@ static ra8_err_t internal_table_row(const ra8_fmt_sink_t*         report,
  */
 RA8_INTERNAL
 static ra8_err_t
-internal_table(const ra8_jof_audit_record_t* records, uint32_t count, const ra8_fmt_sink_t* report)
+internal_table(const jof_audit_record_t* records, uint32_t count, const ra8_fmt_sink_t* report)
 {
   ra8_err_t rc =
     internal_text(report, "  tile      offset    length   payload   tw    th   hash\n");
@@ -582,37 +581,37 @@ internal_table(const ra8_jof_audit_record_t* records, uint32_t count, const ra8_
   return rc;
 }
 
-ra8_err_t ra8_fmt_jof_inspect_stream(const ra8_fmt_source_t*          source,
-                                     bool                             verbose,
-                                     ra8_fmt_jof_inspect_workspace_t* workspace,
-                                     const ra8_fmt_sink_t*            report)
+ra8_err_t ra8_fmt_jof_inspect_stream(const ra8_fmt_source_t*                source,
+                                     bool                                   verbose,
+                                     const ra8_fmt_jof_inspect_workspace_t* workspace,
+                                     const ra8_fmt_sink_t*                  report)
 {
   if ((source == nullptr) || (source->read_at == nullptr) || (workspace == nullptr) ||
       (report == nullptr) || (report->write == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  ra8_jof_audit_workspace_t audit_workspace = {.records     = workspace->records,
-                                               .record_cap  = workspace->record_cap,
-                                               .tile        = workspace->tile,
-                                               .tile_cap    = workspace->tile_cap,
-                                               .scratch     = workspace->scratch,
-                                               .scratch_cap = workspace->scratch_cap};
-  ra8_jof_audit_result_t    result          = {};
-  const ra8_err_t           audit_rc =
-    ra8_jof_audit(source->read_at, source->ctx, source->size, &audit_workspace, &result);
+  jof_audit_workspace_t audit_workspace = {.records     = workspace->records,
+                                           .record_cap  = workspace->record_cap,
+                                           .tile        = workspace->tile,
+                                           .tile_cap    = workspace->tile_cap,
+                                           .scratch     = workspace->scratch,
+                                           .scratch_cap = workspace->scratch_cap};
+  jof_audit_result_t    result          = {};
+  const ra8_err_t       audit_rc =
+    jof_audit(source->read_at, source->ctx, source->size, &audit_workspace, &result);
   if ((audit_rc != k_ra8_ok) && (audit_rc != k_ra8_err_validation_failed)) {
     return audit_rc;
   }
   ra8_err_t rc = internal_geometry(source, &result.info, report);
   if (verbose && (rc == k_ra8_ok)) {
-    rc = internal_hex_dump(source, report, "header", 0U, (size_t)k_ra8_jof_hdr_bytes);
+    rc = internal_hex_dump(source, report, "header", 0U, (size_t)k_jof_hdr_bytes);
   }
   if (verbose && (rc == k_ra8_ok)) {
     rc = internal_hex_dump(source,
                            report,
                            "footer",
-                           source->size - (uint64_t)k_ra8_jof_footer_bytes,
-                           (size_t)k_ra8_jof_footer_bytes);
+                           source->size - (uint64_t)k_jof_footer_bytes,
+                           (size_t)k_jof_footer_bytes);
   }
   if (verbose && (rc == k_ra8_ok)) {
     rc = internal_table(workspace->records, result.info.tile_count, report);

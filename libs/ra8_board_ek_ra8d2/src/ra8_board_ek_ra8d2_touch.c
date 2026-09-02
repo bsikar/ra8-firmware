@@ -69,10 +69,10 @@ ra8_err_t ra8_board_touch_open(const ra8_board_touch_cfg_t* cfg)
    * publishes 125 MHz, so none of them ran at the 400 kHz they asked for. */
   uint32_t        pclka_hz = 0U;
   const ra8_err_t clk_err  = ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz);
-  if (clk_err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
+  if (clk_err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE -- const channel/handle cannot fail post-bind */
     /* ra8_cgc_get_clock_hz with a valid clock-id and non-null out always
      * returns k_ra8_ok; kept so a future id change cannot pass silently. */
-    return clk_err; /* GCOVR_EXCL_LINE */
+    return clk_err; /* GCOVR_EXCL_LINE -- const channel/handle cannot fail post-bind */
   }
 
   const ra8_i3c_cfg_t bus_cfg = {
@@ -87,17 +87,17 @@ ra8_err_t ra8_board_touch_open(const ra8_board_touch_cfg_t* cfg)
 
   const ra8_err_t bind_err =
     ra8_io_i2c_bus_bind_i3c_compat(&s_touch_bus, (uint8_t)k_ra8_board_touch_i3c_channel);
-  if (bind_err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
+  if (bind_err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE -- const channel/handle cannot fail post-bind */
     /* Rejects only a null handle or an out-of-range channel, and both are
      * compile-time constants here. */
-    return bind_err; /* GCOVR_EXCL_LINE */
+    return bind_err; /* GCOVR_EXCL_LINE -- const channel/handle cannot fail post-bind */
   }
 
   ra8_i2c_bus_ops_t bus_ops = {};
   const ra8_err_t   ops_err = ra8_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops);
-  if (ops_err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
+  if (ops_err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE -- const channel/handle cannot fail post-bind */
     /* Rejects only an unbound or null handle; the bind above just succeeded. */
-    return ops_err; /* GCOVR_EXCL_LINE */
+    return ops_err; /* GCOVR_EXCL_LINE -- const channel/handle cannot fail post-bind */
   }
 
   const ra8_touch_cfg_t touch_cfg = {

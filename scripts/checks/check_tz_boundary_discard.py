@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -140,6 +141,42 @@ def check_file(path: str) -> list[tuple[int, str, str]]:
     return findings
 
 
+def selftest() -> int:
+    """Prove both boundary discard rules fire and handled/waived calls stay quiet."""
+    with tempfile.TemporaryDirectory(prefix="tz-discard-selftest-") as raw:
+        root = Path(raw)
+        family_bad = root / "ordinary.c"
+        boot_bad = root / "boot.c"
+        good = root / "good.c"
+        family_bad.write_text(
+            "void f(void) { (void)ra8_tz_secure_boot_verify(); }\n", encoding="ascii"
+        )
+        boot_bad.write_text("void SystemInit(void) { (void)ra8_cgc_init(); }\n", encoding="ascii")
+        good.write_text(
+            "void SystemInit(void) { if (ra8_cgc_init() != k_ra8_ok) { halt(); } }\n"
+            "void f(void) { (void)ra8_tz_secure_boot_verify(); } "
+            "/* TZ-DISCARD-OK: synthetic documented fallback */\n",
+            encoding="ascii",
+        )
+        bad_findings = check_file(str(family_bad)) + check_file(str(boot_bad))
+        good_findings = check_file(str(good))
+    cases = (
+        (
+            {rule for _line, rule, _snippet in bad_findings} == {"A", "B"},
+            "world-switch and boot-translation-unit discards both fire",
+        ),
+        (not good_findings, "handled results and exact reasoned waiver stay quiet"),
+    )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"check_tz_boundary_discard.py --selftest: {len(failed)} failure(s)", file=sys.stderr)
+        return 1
+    print("check_tz_boundary_discard.py --selftest: all cases pass (both directions).")
+    return 0
+
+
 def main() -> int:
     """Fail when a TrustZone boot-boundary call discards its ra8_err_t.
 
@@ -156,7 +193,13 @@ def main() -> int:
     Returns 1 listing each discard, 0 when clean, 2 when the whole-tree sweep
     enumerated too few files to trust.
     """
-    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    raw_args = sys.argv[1:]
+    if raw_args == ["--selftest"]:
+        return selftest()
+    if any(arg.startswith("-") for arg in raw_args):
+        print("usage: check_tz_boundary_discard.py [--selftest] [file ...]", file=sys.stderr)
+        return 2
+    args = raw_args
     whole_tree = not args
     files = args or discover()
     if whole_tree and len(files) < FILE_FLOOR:

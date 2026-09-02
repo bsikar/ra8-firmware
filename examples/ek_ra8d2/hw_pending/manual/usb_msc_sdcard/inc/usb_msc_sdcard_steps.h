@@ -1,6 +1,6 @@
 /**
  * @file
- * examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/src/usb_msc_sdcard_steps.h
+ * examples/ek_ra8d2/hw_pending/manual/usb_msc_sdcard/inc/usb_msc_sdcard_steps.h
  * @brief Shared contract for the live-SD USB MSC device console + worker steps
  *
  * @par Tag

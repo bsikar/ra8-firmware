@@ -100,20 +100,29 @@ set(_RA8_NETXDUO_SECURE_INC "${_RA8_NETXDUO_VENDOR_DIR}/nx_secure/inc")
 add_library(netxduo_objs OBJECT ${_RA8_NETXDUO_COMMON_SOURCES})
 
 target_include_directories(
-  netxduo_objs PUBLIC ${_RA8_NETXDUO_COMMON_INC} ${_RA8_NETXDUO_CRYPTO_INC}
-                      ${_RA8_NETXDUO_SECURE_INC} ${_RA8_NETXDUO_PORT_INC}
+  netxduo_objs SYSTEM PUBLIC ${_RA8_NETXDUO_COMMON_INC} ${_RA8_NETXDUO_CRYPTO_INC}
+                             ${_RA8_NETXDUO_SECURE_INC} ${_RA8_NETXDUO_PORT_INC}
 )
 
 target_link_libraries(netxduo_objs PRIVATE threadx)
 
-# Vendor sources predate -Wpedantic / -Werror cleanliness.
-target_compile_options(netxduo_objs PRIVATE -w)
+# No warning suppression here, deliberately. This object library carried
+# -Wno-redundant-decls, -Wno-discarded-qualifiers, -Wno-cast-align and
+# -Wno-cast-qual under the note "vendor sources predate -Wpedantic / -Werror
+# cleanliness". It has no warning profile to be unclean against: the target
+# never calls ra8_target_enable_project_warnings(), so its whole compile line
+# was -O0 plus those four flags. Compiling all 511 nx_*.c TUs with the four
+# removed, under arm-none-eabi-gcc 13.3.1 at -O0, emits nothing whatsoever --
+# not even -Wdiscarded-qualifiers, which is on by default. All four masked
+# nothing and are gone. (That this SOUP is unwarned rather than warned-and-
+# silenced is a separate question from whether these flags do anything; they do
+# not.)
 
 add_library(netxduo INTERFACE)
 target_sources(netxduo INTERFACE $<TARGET_OBJECTS:netxduo_objs>)
 target_include_directories(
-  netxduo INTERFACE ${_RA8_NETXDUO_COMMON_INC} ${_RA8_NETXDUO_CRYPTO_INC}
-                    ${_RA8_NETXDUO_SECURE_INC} ${_RA8_NETXDUO_PORT_INC}
+  netxduo SYSTEM INTERFACE ${_RA8_NETXDUO_COMMON_INC} ${_RA8_NETXDUO_CRYPTO_INC}
+                           ${_RA8_NETXDUO_SECURE_INC} ${_RA8_NETXDUO_PORT_INC}
 )
 target_link_libraries(netxduo INTERFACE threadx)
 

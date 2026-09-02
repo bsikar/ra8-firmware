@@ -9,11 +9,13 @@
 # and is the only entry point; RA8_GATE_REGISTRY -- the single list of what
 # gates exist -- stays there too. These files hold gate BODIES only, so there
 # is still exactly one home for a gate's definition and exactly one command
-# for a workflow to call (bash scripts/ci.sh --gate <name>). Adding a second
+# for a workflow to call (`just quality::local::gate <name>`). Adding a second
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: ci-parity, ascii, copyright, since, no-ai-attribution, no-ai-attribution-commits, inclusive-terminology, inclusive-terminology-commits, format
+# Gates in this file: ci-parity, ascii, copyright, since, markdown-references,
+# no-ai-attribution, no-ai-attribution-commits, inclusive-terminology,
+# inclusive-terminology-commits, format
 
 # --- ci-parity ------------------------------------------------------------
 # The backstop for the whole scheme: workflow-as-driver still drifts if
@@ -23,7 +25,7 @@
 # command's status and swallows everything before it. Every other multi-command
 # gate here is already a subshell; this one was the exception, which is exactly
 # why suite_errexit_selftest's `return 1` below could not fail the gate.
-# `make ci-status` is how every agent decides whether a commit is healthy, and
+# `just quality::local::gate ci-status-contract` is how every agent decides whether a commit is healthy, and
 # it has twice returned the WRONG verdict -- once read as FAIL, once as PASS --
 # because the branch-level "overall:" header was mistaken for a per-sha answer,
 # and because the per-sha path exited on the branch verdict rather than on the
@@ -33,15 +35,16 @@
 gate_ci_status_contract() (
   set -e
   require_cmd python3 "python3 is the interpreter every gate driver already needs"
-  bash scripts/ci/monitor.sh selftest
+  /bin/bash -p scripts/ci/monitor.sh selftest
 )
 
 gate_ci_parity() (
   set -e
-  require_python_mod yaml "pip install pyyaml (the CI runners ship it)"
+  require_python_mod yaml "run 'just setup-python'"
   suite_errexit_selftest
   suite_registry_selftest
   suite_build_lifecycle_selftest
+  bash scripts/ci/lib/nofile.sh --selftest
   # The runner must also be honest about runs that STOPPED. A SIGTERMed suite
   # once deleted its own snapshot and kept going, inventing a FAIL for every
   # gate that came after; a fabricated red costs a lane its time and teaches
@@ -224,7 +227,7 @@ _abort_reject() {
 _abort_run_probe() {
   local mode="$1" log="$2"
   RA8_ABORT_PROBE_RC=0
-  bash scripts/ci.sh --selftest-abort "$mode" >"$log" 2>&1
+  /bin/bash -p scripts/ci.sh --selftest-abort "$mode" >"$log" 2>&1
   RA8_ABORT_PROBE_RC=$?
   return 0
 }
@@ -251,7 +254,7 @@ _abort_run_killed_probe() {
   RA8_ABORT_PROBE_RC=0
   rm -f "$marker"
   set -m
-  RA8_CI_PROBE_MARKER="$marker" bash scripts/ci.sh \
+  RA8_CI_PROBE_MARKER="$marker" /bin/bash -p scripts/ci.sh \
     --selftest-abort hang >"$log" 2>&1 &
   job=$!
   set +m
@@ -282,7 +285,6 @@ _abort_check_killed() {
   local tmp="$1" failures=0
   local log="$tmp/hang.log"
   _abort_run_killed_probe "$tmp/marker" "$log"
-  # shellcheck disable=SC2154  # RA8_ABORT_PROBE_RC is set by the helper above.
   if [[ "$RA8_ABORT_PROBE_RC" == "-1" ]]; then
     echo "ERROR: ci.sh abort self-test FAILED -- the probe never entered a" >&2
     echo "       gate, so nothing was killed mid-measurement and this" >&2
@@ -410,9 +412,9 @@ _crs_make_snapshot_repo() {
   local dir="$1"
   mkdir -p "$dir"
   printf 'snapshot\n' >"$dir/file.txt"
-  git -C "$dir" init --quiet
-  git -C "$dir" add -A
-  git -C "$dir" -c user.email=ci@localhost -c user.name=ci \
+  run_sanitized_git -C "$dir" init --quiet
+  run_sanitized_git -C "$dir" add -A
+  run_sanitized_git -C "$dir" -c user.email=ci@localhost -c user.name=ci \
     commit --quiet --no-verify -m "ci.sh snapshot of HEAD"
 }
 
@@ -423,14 +425,14 @@ _crs_make_snapshot_repo() {
 _crs_make_real_repo() {
   local dir="$1" n
   mkdir -p "$dir"
-  git -C "$dir" init --quiet
+  run_sanitized_git -C "$dir" init --quiet
   for n in 1 2 3; do
     printf 'rev %s\n' "$n" >"$dir/file.txt"
-    git -C "$dir" add -A
-    git -C "$dir" -c user.email=ci@localhost -c user.name=ci \
+    run_sanitized_git -C "$dir" add -A
+    run_sanitized_git -C "$dir" -c user.email=ci@localhost -c user.name=ci \
       commit --quiet --no-verify -m "test: commit $n"
   done
-  git -C "$dir" checkout --quiet --detach HEAD
+  run_sanitized_git -C "$dir" checkout --quiet --detach HEAD
 }
 
 commit_range_selftest() (
@@ -440,6 +442,7 @@ commit_range_selftest() (
   # silently changing how the rest of the gate behaves.
   set -uo pipefail
   require_cmd git || exit 1
+  install_sanitized_git_environment || exit 1
   local tmp fake real range span
   tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-range-probe.XXXXXXXX")"
 
@@ -480,7 +483,7 @@ commit_range_selftest() (
   # local fallback chain, so pin the inputs to it.
   range="$(RA8_CI_HISTORY_REPO="$real" RA8_CI_COMMIT_RANGE="" \
     GITHUB_EVENT_PATH="" GITHUB_SHA="" GITHUB_EVENT_NAME="" ci_commit_range)"
-  span="$(git -C "$real" rev-list --count "$range" 2>/dev/null)" || span=""
+  span="$(run_sanitized_git -C "$real" rev-list --count "$range" 2>/dev/null)" || span=""
   if [[ -z "$span" || "$span" -lt 1 ]]; then
     rm -rf "$tmp"
     echo "ERROR: ci.sh commit-range self-test FAILED (direction 2, range)." >&2
@@ -497,13 +500,13 @@ commit_range_selftest() (
   # event ci_commit_range must drop that base and cover the tip commit; on a
   # dispatch it must keep the vacuous range for ci_report_commit_range to
   # reject. Model upstream == head with a local branch tracking a twin ref.
-  git -C "$real" checkout --quiet -b crs_main
-  git -C "$real" branch --quiet crs_twin crs_main
-  git -C "$real" branch --quiet --set-upstream-to=crs_twin crs_main
+  run_sanitized_git -C "$real" checkout --quiet -b crs_main
+  run_sanitized_git -C "$real" branch --quiet crs_twin crs_main
+  run_sanitized_git -C "$real" branch --quiet --set-upstream-to=crs_twin crs_main
   local push_range dispatch_range push_span
   push_range="$(RA8_CI_HISTORY_REPO="$real" RA8_CI_COMMIT_RANGE="" \
     GITHUB_EVENT_PATH="" GITHUB_SHA="" GITHUB_EVENT_NAME="push" ci_commit_range)"
-  push_span="$(git -C "$real" rev-list --count "$push_range" 2>/dev/null)" || push_span=""
+  push_span="$(run_sanitized_git -C "$real" rev-list --count "$push_range" 2>/dev/null)" || push_span=""
   if [[ -z "$push_span" || "$push_span" -lt 1 ]]; then
     rm -rf "$tmp"
     echo "ERROR: ci.sh commit-range self-test FAILED (direction 3, push)." >&2
@@ -515,7 +518,7 @@ commit_range_selftest() (
   fi
   dispatch_range="$(RA8_CI_HISTORY_REPO="$real" RA8_CI_COMMIT_RANGE="" \
     GITHUB_EVENT_PATH="" GITHUB_SHA="" GITHUB_EVENT_NAME="" ci_commit_range)"
-  if [[ "$(git -C "$real" rev-list --count "$dispatch_range" 2>/dev/null)" != "0" ]]; then
+  if [[ "$(run_sanitized_git -C "$real" rev-list --count "$dispatch_range" 2>/dev/null)" != "0" ]]; then
     rm -rf "$tmp"
     echo "ERROR: ci.sh commit-range self-test FAILED (direction 3, dispatch)." >&2
     echo "       With upstream == head a non-push event resolved" >&2
@@ -537,7 +540,7 @@ commit_range_selftest() (
 # Scope is DERIVED from git ls-files, never a directory list. This gate used to
 # loop over `src libs tests examples port scripts tools docs`, so the encoding
 # policy never saw the repo root, .github/, cmake/, coprocessor/, infra/ or
-# mk/ -- 106 files, including CLAUDE.md, the file that STATES the policy
+# just/ -- 106 files, including CLAUDE.md, the file that STATES the policy
 # (#533). A hardcoded root list does not fail when it goes stale; it reports
 # success over a shrinking slice. --selftest proves the detector fires on a
 # non-ASCII byte before a clean run is believed.
@@ -545,6 +548,20 @@ gate_ascii() (
   set -e
   python3 scripts/fix/fix-encoding.py --selftest
   python3 scripts/fix/fix-encoding.py --check --all
+)
+
+# --- markdown-references --------------------------------------------------
+# Markdown links and repository paths survive moves as plausible prose.
+# Inventory every tracked document, leave upstream Markdown untouched, prove
+# the parser in both directions, and regenerate the HUM map from its tracked
+# full PDF before trusting a clean scan.
+gate_markdown_references() (
+  set -e
+  require_cmd python3 "the Markdown reference checker is a Python gate"
+  python3 scripts/checks/check_markdown_references.py --selftest
+  python3 scripts/checks/check_markdown_references.py
+  python3 scripts/checks/check_chapter_map_freshness.py --selftest
+  python3 scripts/checks/check_chapter_map_freshness.py
 )
 
 # --- copyright ------------------------------------------------------------
@@ -591,20 +608,20 @@ gate_since() (
 )
 
 # --- toolchain-parity -----------------------------------------------------
-# The whole CI pipeline runs bare-metal on the self-hosted runner, NOT in the
-# pinned devcontainer (no `container:` key on any job), so the runner's ambient
-# toolchain can drift from the pins in .devcontainer/Dockerfile while the dev
-# box (also bare-metal, but separately hand-provisioned) still carries them.
-# That produces the worst failure mode: a gate GREEN on the dev box and RED on
-# CI -- a missing g++-14 sank the coverage gate for hours exactly this way, and
-# four more pinned tools were absent from the runner behind it. This gate makes
-# such drift LOUD and comprehensive in ONE place: --all verifies EVERY pinned
-# tool resolves to its pinned version, so a drifted runner fails HERE with a
-# named tool ("shellcheck NOT FOUND, want 0.11.0") instead of cryptically deep
-# in a downstream build. --selftest proves the comparator both ways first.
-# Reprovision a drifted bare-metal runner with scripts/ci/provision_runner.sh.
+# CI jobs execute inside Ansible-owned runner images, while native development
+# gates execute on the Ansible-owned Debian dev box. Both environments consume
+# the pins in .devcontainer/Dockerfile, but either deployed copy can still lag
+# its declaration. This gate makes that drift loud in one place: --all verifies
+# every pinned tool and names any mismatch instead of failing cryptically in a
+# downstream build. --selftest proves the comparator both ways first. Repair
+# drift through its owner: `just infra::apply dev` for the dev box or
+# `just infra::apply <runner-host>` for a CI runner image.
 gate_toolchain_parity() (
   set -e
+  /usr/bin/python3 -I scripts/dev/managed_python_env.py --selftest
+  /usr/bin/python3 -I scripts/dev/managed_python_env.py check-consumers --root "$PWD"
+  bash scripts/ci/lib/tool_env.sh --selftest
+  /bin/bash -p scripts/dev/setup_python.sh --selftest
   python3 scripts/checks/check_tool_versions.py --selftest
   python3 scripts/checks/check_tool_versions.py --all
 )
@@ -630,7 +647,7 @@ gate_no_ai_attribution() (
 # attributed to -- and fails -- the inclusive-terminology gate instead.
 gate_no_ai_attribution_commits() (
   set -uo pipefail
-  local range rc=0 sha f hook_out repo
+  local range rc=0 sha f hook_out repo identity
   # Prove the guard still tells real history from a snapshot, THEN prove this
   # run has real history to read. Both before the scan: a detector that has
   # stopped seeing its subject must not get to print a green line first.
@@ -641,10 +658,11 @@ gate_no_ai_attribution_commits() (
   # Print the commit COUNT and reject the zero-commit dispatch range (#357):
   # a run that examined nothing must not read as a pass.
   ci_report_commit_range "$repo" "$range" || return 1
-  for sha in $(git -C "$repo" rev-list "$range"); do
+  for sha in $(ci_history_git "$repo" rev-list "$range"); do
     f="$(mktemp)"
-    git -C "$repo" log -1 --format=%B "$sha" >"$f"
-    if ! hook_out="$(CHECK_ONLY=ai bash scripts/git/commit-msg "$f" 2>&1)"; then
+    ci_history_git "$repo" log -1 --format=%B "$sha" >"$f"
+    identity="$(ci_history_git "$repo" log -1 --format='%an %ae %cn %ce' "$sha")"
+    if ! hook_out="$(COMMIT_IDENTITY="$identity" CHECK_ONLY=ai /bin/bash -p scripts/git/commit-msg "$f" 2>&1)"; then
       echo "$hook_out"
       echo "::error::Commit $sha carries a forbidden trailer in its message"
       rc=1
@@ -659,7 +677,7 @@ gate_inclusive_terminology() (
   set -e
   # --selftest FIRST (#549): proves the detector fires on a legacy symbol,
   # spares vendored/hardware names, and that the derived scope reaches the
-  # roots (infra/, mk/) a hardcoded list had dropped.
+  # roots (infra/, just/) a hardcoded list had dropped.
   python3 scripts/checks/check_inclusive_terminology.py --selftest
   python3 scripts/checks/check_inclusive_terminology.py
 )
@@ -681,19 +699,21 @@ gate_inclusive_terminology_commits() (
   # Print the commit COUNT and reject the zero-commit dispatch range (#357):
   # a run that examined nothing must not read as a pass.
   ci_report_commit_range "$repo" "$range" || return 1
-  git -C "$repo" log "$range" --format=%B |
+  ci_history_git "$repo" log "$range" --format=%B |
     python3 scripts/checks/check_inclusive_terminology_commits.py
 )
 
 # --- format ---------------------------------------------------------------
 gate_format() (
   set -e
-  local cf
-  cf="$(pick_clang_format)"
   # format_code.sh drives check_comment_format.py, which is a DETECTOR: it is
   # the only thing that reports a comment block clang-format tore in two.
-  # Prove it still detects before believing its verdict on the tree.
+  # Prove both the formatter-version guard and comment detector still fire
+  # before believing their verdict on the tree.
   require_cmd python3
+  bash scripts/checks/format_code.sh --selftest
   python3 scripts/checks/check_comment_format.py --selftest
-  CLANG_FORMAT="$cf" bash scripts/checks/format_code.sh --check --verbose
+  python3 scripts/checks/check_pointer_boilerplate.py --selftest
+  python3 scripts/checks/check_pointer_boilerplate.py
+  CLANG_FORMAT=clang-format-22 bash scripts/checks/format_code.sh --check --verbose
 )

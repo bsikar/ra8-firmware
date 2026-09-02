@@ -36,6 +36,7 @@
 #include "ra8_check.h"
 #include "ra8_dotf_regs.h"
 #include "ra8_err.h"
+#include "ra8_hw_err.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 
@@ -526,11 +527,11 @@ static void internal_state_reset(uint8_t channel)
     /* DOTF clock gating: shared MSTPB16/17 with the matching XSPI.
      * HUM Ch 45.6.1 "Module-stop Function" p 3050 */
     const ra8_err_t mst_err = ra8_mstp_enable(s_dotf_mstp_table[ch]);
-    RA8_RETURN_ON_ERROR(mst_err, s_tag, "dotf_init: mstp enable failed"); /* GCOVR_EXCL_BR_LINE */
+    RA8_RETURN_ON_ERROR(mst_err, s_tag, "dotf_init: mstp enable failed");
 
     volatile ra8_dotf_regs_t* reg = ra8_dotf_regs(ch);
-    if (reg == nullptr) {              /* GCOVR_EXCL_BR_LINE -- ch already bounded */
-      return k_ra8_err_hw_init_failed; /* GCOVR_EXCL_LINE                          */
+    if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- loop proves ch<2; accessor nulls only ch>=2 */
+      return k_ra8_err_hw_init_failed; /* GCOVR_EXCL_LINE -- same bounded-channel accessor invariant */
     }
     internal_channel_reset(reg);
     internal_state_reset(ch);
@@ -766,7 +767,7 @@ static ra8_err_t internal_validate_rotate_inputs(uint8_t                      ch
 {
   RA8_CHECK_NULL_PTR(new_handle, s_tag, "new_handle must not be nullptr");
   const ra8_err_t val_err = internal_validate_rotate_inputs(channel, new_handle);
-  RA8_RETURN_ON_ERROR(val_err, s_tag, "rotate_key: validation failed"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(val_err, s_tag, "rotate_key: validation failed");
 
   volatile ra8_dotf_regs_t* reg = ra8_dotf_regs(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
@@ -894,18 +895,14 @@ static ra8_err_t internal_validate_rotate_inputs(uint8_t                      ch
   /* HUM Ch 45.1 p 3048 ("Supports self-test function").
    * REG00 bit 20 triggers BIST; the bit auto-clears in real silicon.
    * HUM Ch 45.3 "Register Descriptions" p 3049 */
-  reg->REG00    = saved | k_ra8_dotf_reg00_self_test;
-  uint32_t snap = 0U;
-  for (uint8_t i = 0U; i < k_ra8_dotf_self_test_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-    snap = reg->REG00;
-    if ((snap & k_ra8_dotf_reg00_self_test) == 0U) { /* GCOVR_EXCL_BR_LINE */
-      break;
-    }
-  }
-  *out_status = snap;
+  reg->REG00               = saved | k_ra8_dotf_reg00_self_test;
+  const ra8_err_t wait_err = ra8_hw_wait_flag_clear32(&reg->REG00,
+                                                      k_ra8_dotf_reg00_self_test,
+                                                      (uint32_t)k_ra8_dotf_self_test_spin);
+  *out_status              = reg->REG00;
   /* HUM Ch 45.3 "Register Descriptions" p 3049 */
   reg->REG00 = saved;
-  return k_ra8_ok;
+  return wait_err;
 }
 
 /* =============================================================================

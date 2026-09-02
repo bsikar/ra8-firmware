@@ -1,919 +1,664 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-# Pre-commit hook for ra8-firmware
-# Runs: ASCII check, C23 pattern check, defensive macro paren check,
-#       clang-format, clang-tidy
-#
-# Install with:
-#   ln -s ../../scripts/git/pre-commit .git/hooks/pre-commit
-# or just copy this file into .git/hooks/pre-commit and chmod +x.
-
-set -uo pipefail
-
-# Allow skipping checks
-if [[ "${1:-}" == "--no-verify" ]]; then
-  exit 0
-fi
-
-# -----------------------------------------------------------------------------
-# PINNED TOOL RESOLUTION -- the same helper every CI gate uses (#333).
-# -----------------------------------------------------------------------------
-# SOURCED, not copied. use_pinned_tool_path() prepends the directories the
-# pinned host tools live in, so this hook resolves the same binaries the
-# lint-py-shell gate does no matter how the shell was entered -- a login shell,
-# a non-interactive `ssh dev`, a GUI git client, or an editor whose PATH is
-# little more than /usr/bin:/bin. That divergence is not hypothetical: the hook
-# was reaching shellcheck 0.9.0 (which reports findings the pinned 0.11.0 does
-# not) and no ruff at all on a Mac that has both pinned tools installed, so
-# every commit on that box went out under --no-verify.
-#
-# The pins themselves are NOT restated here. They live in
-# .devcontainer/Dockerfile and are read by check_tool_versions.py, which is what
-# gate_lint_py_shell calls through require_tool_versions -- one definition of
-# truth for what "pinned" means, with the hook and the gate as two readers.
-# shellcheck source=scripts/ci/lib/tool_env.sh
-. scripts/ci/lib/tool_env.sh
-use_pinned_tool_path
-
-# Get list of staged files
-staged_files=$(git diff --cached --name-only --diff-filter=ACMR)
-
-# Flags to track errors
-error_found=0
-
-echo "Running pre-commit checks..."
-
-# -----------------------------------------------------------------------------
-# ASCII-ONLY SOURCE CODE CHECK
-# -----------------------------------------------------------------------------
-ascii_ok=true
-while IFS= read -r staged_file; do
-  # Check all text source files by extension or by specific filename.
-  if [[ "$staged_file" =~ \.(c|h|cpp|hpp|md|yml|yaml|sh|py|cmake|json|toml|cfg|conf|tex|css|html|xml|txt|ini)$ ]] ||
-    [[ "$(basename "$staged_file")" =~ ^(Makefile|Dockerfile|\.clang-format|\.clang-tidy|\.clangd|\.cppcheck-suppressions|\.editorconfig|\.gitattributes|\.gitignore)$ ]]; then
-    if grep -qP "[^\x00-\x7F]" "$staged_file" 2>/dev/null; then
-      echo "ERROR: Non-ASCII characters in staged file: $staged_file"
-      grep -nP "[^\x00-\x7F]" "$staged_file" | head -5
-      ascii_ok=false
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
+if [[ "$-" == *p* ]]; then
+  unset -v BASH_ENV ENV
+  declare -a ra8_startup_env_unset=()
+  _ra8_startup_refuse() {
+    printf 'error: privileged startup %s\n' "$1" >&2
+    exit 1
+  }
+  ra8_startup_env_done_count=0
+  while IFS= read -r -d '' ra8_startup_env_row; do
+    ra8_startup_env_name="${ra8_startup_env_row%%=*}"
+    case "$ra8_startup_env_name" in
+      RA8_STARTUP_ENV_DONE)
+        ra8_startup_env_done_count=$((ra8_startup_env_done_count + 1))
+        ;;
+      BASH_FUNC_*%% | BASH_FUNC_*'()') ra8_startup_env_unset+=(-u "$ra8_startup_env_name") ;;
+    esac
+  done < <(
+    /usr/bin/env -u RA8_STARTUP_ENV_DONE -0 &&
+      /usr/bin/printf 'RA8_STARTUP_ENV_DONE=1\0'
+  )
+  ((ra8_startup_env_done_count == 1)) && [[ "$ra8_startup_env_name" == RA8_STARTUP_ENV_DONE ]] || _ra8_startup_refuse 'environment enumeration was incomplete'
+  if ((${#ra8_startup_env_unset[@]})); then
+    [[ -z "${RA8_STARTUP_ENV_SCRUBBED-}" ]] || _ra8_startup_refuse 'scrub did not converge'
+    ra8_startup_reentry="$0"
+    [[ "$ra8_startup_reentry" == */* ]] || _ra8_startup_refuse 'requires a script path'
+    if [[ "$ra8_startup_reentry" != /* ]]; then
+      ra8_startup_reentry="$PWD/$ra8_startup_reentry"
+    fi
+    ra8_startup_check="$ra8_startup_reentry"
+    while [[ "$ra8_startup_check" != "/" ]]; do
+      [[ ! -L "$ra8_startup_check" ]] || _ra8_startup_refuse 'refuses a symlinked path'
+      ra8_startup_parent="${ra8_startup_check%/*}"
+      [[ -n "$ra8_startup_parent" ]] || ra8_startup_parent="/"
+      [[ "$ra8_startup_parent" != "$ra8_startup_check" ]] ||
+        _ra8_startup_refuse 'cannot validate its script path'
+      ra8_startup_check="$ra8_startup_parent"
+    done
+    [[ -f "$ra8_startup_reentry" ]] || _ra8_startup_refuse 'refuses a non-regular path'
+    if ! exec /usr/bin/env "${ra8_startup_env_unset[@]}" -u BASH_ENV -u ENV \
+      -u RA8_STARTUP_ENV_DONE RA8_STARTUP_ENV_SCRUBBED=1 \
+      /bin/bash -p -- "$ra8_startup_reentry" "$@"; then
+      _ra8_startup_refuse 'could not enter sanitized process'
     fi
   fi
-done < <(git diff --cached --name-only --diff-filter=ACM)
+  unset -v ra8_startup_check ra8_startup_env_done_count
+  unset -v ra8_startup_env_name ra8_startup_env_row
+  unset -v ra8_startup_env_unset ra8_startup_parent ra8_startup_reentry
+  unset -v RA8_STARTUP_ENV_DONE
+  unset -v RA8_STARTUP_ENV_SCRUBBED
+  unset -f _ra8_startup_refuse
 
-if [[ "$ascii_ok" == "false" ]]; then
-  echo ""
-  echo "Policy: All source files must use ASCII-only characters."
-  echo "See CLAUDE.md 'Character Encoding Policy' for details."
-  exit 1
-fi
+  set -euo pipefail
 
-# -----------------------------------------------------------------------------
-# C / C++ CHECKS
-# -----------------------------------------------------------------------------
-c_files=$(echo "$staged_files" | grep -E "\.(c|h)$" |
-  grep -vE "/(build|_deps|third_party)/" ||
-  true)
+  unset BASH_ENV ENV PYTHONHOME PYTHONPATH
+  unalias git python3 bash 2>/dev/null || true
+  unset -f git python3 bash 2>/dev/null || true
+  hash -r
+  RA8_OWNER_PATH=/usr/bin:/bin:/usr/sbin:/sbin
+  PATH="$RA8_OWNER_PATH"
+  export PATH RA8_OWNER_PATH
+  TRUSTED_GIT=/usr/bin/git
+  [[ -f "$TRUSTED_GIT" && ! -L "$TRUSTED_GIT" && -x "$TRUSTED_GIT" ]] || {
+    echo "pre-commit: trusted /usr/bin/git is unavailable or unsafe" >&2
+    exit 1
+  }
+  [[ "${RA8_TRUSTED_GIT:-$TRUSTED_GIT}" == "$TRUSTED_GIT" ]] || {
+    echo "pre-commit: refusing non-authority Git executable" >&2
+    exit 1
+  }
+  export RA8_TRUSTED_GIT="$TRUSTED_GIT"
 
-if [[ -n "$c_files" ]]; then
-  echo "Checking C/H files..."
+  RA8_HOOK_ABORTED=3
+  SOURCE_ROOT=""
+  SOURCE_INDEX=""
+  SOURCE_ALTERNATES=""
+  SOURCE_GIT_DIR=""
+  SOURCE_OBJECTS=""
+  SOURCE_HEAD=""
+  SOURCE_INDEX_BEFORE=""
+  SNAPSHOT_DIR=""
+  POLICY_TMPDIR=""
+  CONTROL_DIR=""
+  CHILD_PID=""
+  POLICY_RC=0
+  PENDING_SIGNAL=""
+  READY_PATH=""
+  PROOF_PATH=""
+  PROOF_TOKEN=""
+  OWNER_BASH=""
+  OWNER_PYTHON=""
+  OWNER_JUST=""
+  OWNER_TOOL_DIR=""
 
-  # Array form of the same list. The checkers below take a file list as argv,
-  # and passing the raw newline-separated string relies on word splitting --
-  # which silently mangles any path containing whitespace. mapfile splits on
-  # newlines only, so "${c_file_list[@]}" is safe for every path git can hand
-  # us. (This hook went unshellchecked until check_shell.py started sweeping
-  # by shebang; SC2086 flagged five such call sites here.)
-  mapfile -t c_file_list <<<"$c_files"
+  IFS= read -r -d '' SUPERVISOR_PROGRAM <<'PY' || true
+import os
+import signal
+import subprocess
+import sys
+import time
 
-  # ---- clang-format ------------------------------------------------------
-  if command -v clang-format &>/dev/null; then
-    if ! bash scripts/checks/format_code.sh --check; then
-      echo "[FAIL] formatting check failed."
-      echo "   Run: bash scripts/checks/format_code.sh"
-      error_found=1
+ABORTED = 3
+DRAIN_SECONDS = 5.0
+ready_path, *command = sys.argv[1:]
+proc = None
+status = 70
+
+
+def reset_child_signals():
+    for item in (signal.SIGHUP, signal.SIGINT, signal.SIGQUIT, signal.SIGTERM):
+        signal.signal(item, signal.SIG_DFL)
+
+
+def group_exists(pgid):
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+def wait_group_empty(pgid, timeout):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not group_exists(pgid):
+            return True
+        time.sleep(0.05)
+    return not group_exists(pgid)
+
+
+def drain_group(process, signum):
+    try:
+        os.killpg(process.pid, signum)
+    except ProcessLookupError:
+        pass
+    try:
+        process.wait(timeout=DRAIN_SECONDS)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait(timeout=DRAIN_SECONDS)
+    if wait_group_empty(process.pid, DRAIN_SECONDS):
+        return True
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    return wait_group_empty(process.pid, DRAIN_SECONDS)
+
+
+class ForwardedSignal(Exception):
+    def __init__(self, signum):
+        super().__init__(signum)
+        self.signum = signum
+
+
+def forward_signal(signum, _frame):
+    raise ForwardedSignal(signum)
+
+
+try:
+    proc = subprocess.Popen(
+        command,
+        start_new_session=True,
+        preexec_fn=reset_child_signals,
+    )
+    for handled in (signal.SIGHUP, signal.SIGINT, signal.SIGQUIT, signal.SIGTERM):
+        signal.signal(handled, forward_signal)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(ready_path, flags, 0o600)
+    try:
+        payload = f"{proc.pid}\n".encode("ascii")
+        written = os.write(fd, payload)
+        if written != len(payload):
+            raise OSError("short readiness write")
+    finally:
+        os.close(fd)
+    status = proc.wait()
+    if group_exists(proc.pid) and not drain_group(proc, signal.SIGTERM):
+        status = 70
+except ForwardedSignal as forwarded:
+    status = ABORTED if proc is not None and drain_group(proc, forwarded.signum) else 70
+except BaseException:
+    if proc is not None:
+        drain_group(proc, signal.SIGTERM)
+    raise
+finally:
+    if proc is not None and group_exists(proc.pid):
+        drain_group(proc, signal.SIGKILL)
+    if proc is not None and proc.poll() is None:
+        proc.kill()
+        proc.wait(timeout=DRAIN_SECONDS)
+sys.exit(status)
+PY
+  [[ -n "$SUPERVISOR_PROGRAM" ]] || exit 1
+
+  die() {
+    echo "pre-commit: $*" >&2
+    return 1
+  }
+
+  cleanup_snapshot() {
+    if [[ -n "$SNAPSHOT_DIR" && -d "$SNAPSHOT_DIR" ]]; then
+      rm -rf -- "$SNAPSHOT_DIR"
+      SNAPSHOT_DIR=""
     fi
-  else
-    echo ""
-    echo "WARNING: clang-format not found -- formatting check SKIPPED."
-    echo "   Install: sudo apt install clang-format"
-  fi
+    if [[ -n "$CONTROL_DIR" && -d "$CONTROL_DIR" ]]; then
+      rm -rf -- "$CONTROL_DIR"
+      CONTROL_DIR=""
+    fi
+  }
 
-  # ---- C23 source patterns -----------------------------------------------
-  # The four checks below (_Static_assert -> static_assert, = {0} -> = {},
-  # no <stdbool.h>, and paren-wrapped numeric #define values) were inline grep
-  # loops here for the life of the hook and were NOT run by the CI
-  # pre-commit-checks gate, so a violation the hook rejects passed CI on any
-  # machine whose hook was not installed. They now live in one first-party
-  # checker that BOTH this hook and gate_pre_commit_checks call, so there is a
-  # single definition of each rule (#407). The checker skips comments and
-  # string literals, which the raw greps did not.
-  if ! python3 scripts/checks/check_c23_patterns.py "${c_file_list[@]}"; then
-    echo "[FAIL] C23 source-pattern violation(s)."
-    echo "   Use static_assert, = {}, drop <stdbool.h>, and wrap bare"
-    echo "   numeric #define values in parens (e.g. #define FOO (1000))."
-    error_found=1
-  fi
+  terminate_policy_group() {
+    local sig="$1" pid="${CHILD_PID:-}"
+    [[ -n "$pid" ]] || return 0
+    kill -s "$sig" -- "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+    CHILD_PID=""
+  }
 
-  # ---- clang-tidy --------------------------------------------------------
-  if command -v clang-tidy &>/dev/null || command -v clang-tidy-18 &>/dev/null; then
-    # Mirror the CI tidy gate (gate_tidy in scripts/ci/gates/analysis.sh): run
-    # clang-tidy, then RATCHET the log against .github/tidy-baseline.txt so a
-    # commit fails only on NEW findings, not the pre-existing baselined debt.
-    # Keying the hook on clang_tidy.sh's raw exit made it stricter than CI --
-    # it returns non-zero on ANY finding, so the hook failed on baselined debt
-    # and forced --no-verify on every C commit. A tidy-log exit >=2 means
-    # clang_tidy.sh could not run (e.g. the compile database would not build),
-    # which is not a ratchetable result and must fail loudly.
-    tidy_log="$(mktemp)"
-    tidy_rc=0
-    bash scripts/checks/clang_tidy.sh --check --verbose >"$tidy_log" 2>&1 || tidy_rc=$?
-    cat "$tidy_log"
-    if [ "$tidy_rc" -ge 2 ]; then
-      echo "[FAIL] clang-tidy could not run (exit $tidy_rc); not ratcheting."
-      error_found=1
-    elif ! python3 scripts/checks/tidy_ratchet.py --check "$tidy_log"; then
-      echo "[FAIL] clang-tidy ratchet: new findings above the committed baseline."
-      echo "   Fix the new findings above, then re-stage and commit."
-      error_found=1
-    fi
-    rm -f "$tidy_log"
-  else
-    echo ""
-    echo "WARNING: clang-tidy not found -- static analysis SKIPPED."
-    echo "   Install: sudo apt install clang-tidy"
-  fi
+  abort_on_signal() {
+    local sig="$1"
+    trap - HUP INT QUIT TERM
+    terminate_policy_group "$sig"
+    cleanup_snapshot
+    echo "pre-commit: ABORTED by SIG${sig}; no commit verdict was produced." >&2
+    exit "$RA8_HOOK_ABORTED"
+  }
 
-  # ---- Doxygen full-coverage audit (strict: zero gaps required) ---------
-  # Runs only when C/H files are staged. Scans libs/, src/, port/ for any
-  # function that is missing a required Doxygen tag per CLAUDE.md.
-  if [[ -f scripts/checks/doxy_audit.py ]]; then
-    # Regression-test the auditor before trusting it: a regex-driven gate
-    # that stops recognising a construct reports zero gaps, which is
-    # indistinguishable from a fully documented tree.
-    if ! python3 scripts/checks/doxy_audit.py --selftest; then
-      echo "[FAIL] doxy_audit.py selftest failed -- the auditor itself is broken."
-      echo "       Do not trust the --check result below until this passes."
-      error_found=1
-    fi
-    if ! python3 scripts/checks/doxy_audit.py --check; then
-      echo "[FAIL] doxy_audit.py reported documentation gaps."
-      echo "       Every function in libs/, src/, port/ must have the"
-      echo "       full required Doxygen tag set (see CLAUDE.md)."
-      error_found=1
-    fi
-    # Member gate (#246): every enum value, struct/union member, and macro
-    # across the first-party tree must carry a doc comment.
-    if ! python3 scripts/checks/doxy_audit.py --members --check; then
-      echo "[FAIL] doxy_audit.py reported undocumented members."
-      echo "       Every enum value, struct/union member, and macro must"
-      echo "       carry a /**< ... */ (or preceding /** ... */) doc"
-      echo "       comment; macros need a /** @brief ... */ block."
-      error_found=1
-    fi
-    # Style gate (#532): the two docs/STYLE_GUIDE.md tag rules that attach
-    # to no symbol, so neither gate above ever saw them -- the file-header
-    # block and the @param direction bracket.
-    if ! python3 scripts/checks/doxy_audit.py --style; then
-      echo "[FAIL] doxy_audit.py --style reported file-header / @param gaps."
-      echo "       Every first-party C file opens with a @file block naming"
-      echo "       itself and carrying @brief (+ @details unless frozen in"
-      echo "       .github/doxy-details-baseline.txt), and every @param"
-      echo "       carries [in], [out] or [in,out]."
-      error_found=1
-    fi
-  fi
+  queue_owner_signal() {
+    [[ -n "$PENDING_SIGNAL" ]] || PENDING_SIGNAL="$1"
+  }
 
-  # ---- Doxygen attachment gate (strict: zero findings required) ---------
-  # doxy_audit above checks only that a block EXISTS. This one checks that
-  # the block describes the symbol it sits on -- pasted @param names, a
-  # @retval on a void function, two blocks in a row, a block naming another
-  # symbol, a block stranded on a forward declaration. A misattached block
-  # SATISFIES the presence gate, so nothing else catches these.
-  # Needs libclang; skipped with a warning locally when it is absent (CI
-  # installs a pinned wheel and fails hard if the import breaks).
-  if [[ -f scripts/checks/check_doc_attachment.py ]]; then
-    if ! python3 -c "import clang.cindex" 2>/dev/null; then
-      echo "WARNING: libclang missing -- doc-attachment gate SKIPPED."
-      echo "   Install: python3 -m pip install --user libclang"
+  install_owner_traps() {
+    trap cleanup_snapshot EXIT
+    trap 'queue_owner_signal HUP' HUP
+    trap 'queue_owner_signal INT' INT
+    trap 'queue_owner_signal QUIT' QUIT
+    trap 'queue_owner_signal TERM' TERM
+  }
+
+  activate_owner_signal_forwarding() {
+    local pending="$PENDING_SIGNAL"
+    trap 'abort_on_signal HUP' HUP
+    trap 'abort_on_signal INT' INT
+    trap 'abort_on_signal QUIT' QUIT
+    trap 'abort_on_signal TERM' TERM
+    if [[ -n "$pending" ]]; then
+      abort_on_signal "$pending"
+    fi
+  }
+
+  install_strict_git_environment() {
+    local name
+    while IFS='=' read -r name _; do
+      if [[ "$name" == GIT_* ]]; then
+        [[ "$name" =~ ^GIT_[A-Za-z0-9_]+$ ]] || die "unsafe Git environment name"
+        unset "$name"
+      fi
+    done < <(env)
+    unset BASH_ENV DIFF EDITOR ENV LESS LV MERGE_TOOL PAGER PYTHONHOME PYTHONPATH SSH_ASKPASS SUDO_ASKPASS VISUAL
+    export GIT_ATTR_NOSYSTEM=1
+    export GIT_CONFIG_GLOBAL=/dev/null
+    export GIT_CONFIG_NOSYSTEM=1
+    export GIT_CONFIG_SYSTEM=/dev/null
+    export GIT_EDITOR=false
+    export GIT_OPTIONAL_LOCKS=0
+    export GIT_PAGER=cat
+    export GIT_SEQUENCE_EDITOR=false
+    export GIT_SSH_COMMAND=false
+    export GIT_TERMINAL_PROMPT=0
+    export GIT_CONFIG_COUNT=3
+    export GIT_CONFIG_KEY_0=core.hooksPath
+    export GIT_CONFIG_VALUE_0=/dev/null
+    export GIT_CONFIG_KEY_1=core.fsmonitor
+    export GIT_CONFIG_VALUE_1=false
+    export GIT_CONFIG_KEY_2=core.attributesFile
+    export GIT_CONFIG_VALUE_2=/dev/null
+    export PAGER=cat
+    export TERM=dumb
+    return 0
+  }
+
+  init_private_repository() {
+    local root="$1" template="${1}.empty-template"
+    mkdir -p "$root" "$template"
+    "$TRUSTED_GIT" -C "$root" -c init.templateDir="$template" init --quiet
+    rm -rf -- "$template"
+  }
+
+  active_index_path() {
+    local source="$1" inherited="${GIT_INDEX_FILE-}"
+    if [[ -n "$inherited" ]]; then
+      case "$inherited" in
+        /*) printf '%s\n' "$inherited" ;;
+        *) printf '%s/%s\n' "$(pwd -P)" "$inherited" ;;
+      esac
+      return 0
+    fi
+    "$TRUSTED_GIT" -C "$source" rev-parse --path-format=absolute --git-path index
+  }
+
+  validate_inherited_alternates() {
+    local raw="${GIT_ALTERNATE_OBJECT_DIRECTORIES-}" entry
+    local -a entries=()
+    [[ -n "$raw" ]] || return 0
+    [[ "$raw" != *$'\n'* && "$raw" != *$'\r'* && "$raw" != *'"'* && "$raw" != *"'"* ]] ||
+      die "inherited Git alternates contain quoting or control characters"
+    IFS=':' read -r -a entries <<<"$raw"
+    [[ "${#entries[@]}" -gt 0 ]] || die "inherited Git alternates are empty"
+    for entry in "${entries[@]}"; do
+      [[ -n "$entry" ]] || die "inherited Git alternates contain an empty entry"
+      [[ "$entry" == /* ]] || die "inherited Git alternate is not absolute: $entry"
+      [[ -d "$entry" && ! -L "$entry" ]] ||
+        die "inherited Git alternate is unavailable or linked: $entry"
+    done
+  }
+
+  capture_source() {
+    local alternate alternate_report
+    validate_inherited_alternates
+    SOURCE_ROOT="$("$TRUSTED_GIT" rev-parse --show-toplevel)"
+    SOURCE_ROOT="$(cd "$SOURCE_ROOT" && pwd -P)"
+    SOURCE_INDEX="$(active_index_path "$SOURCE_ROOT")"
+    SOURCE_GIT_DIR="$("$TRUSTED_GIT" -C "$SOURCE_ROOT" rev-parse --path-format=absolute --absolute-git-dir)"
+    SOURCE_OBJECTS="$("$TRUSTED_GIT" -C "$SOURCE_ROOT" rev-parse --path-format=absolute --git-path objects)"
+    SOURCE_HEAD="$("$TRUSTED_GIT" -C "$SOURCE_ROOT" rev-parse --verify HEAD)"
+    alternate_report="$("$TRUSTED_GIT" -C "$SOURCE_ROOT" count-objects -v)"
+    SOURCE_ALTERNATES=""
+    while IFS= read -r alternate; do
+      [[ "$alternate" == "alternate: "* ]] || continue
+      alternate="${alternate#alternate: }"
+      [[ "$alternate" == /* && -d "$alternate" && ! -L "$alternate" ]] ||
+        die "Git alternate is not an absolute regular directory: $alternate"
+      [[ "$alternate" != *:* && "$alternate" != *$'\n'* ]] ||
+        die "Git alternate contains an unsafe separator"
+      SOURCE_ALTERNATES="${SOURCE_ALTERNATES:+$SOURCE_ALTERNATES:}$alternate"
+    done <<<"$alternate_report"
+    [[ -f "$SOURCE_INDEX" && ! -L "$SOURCE_INDEX" ]] ||
+      die "active Git index is absent, linked, or not a regular file"
+    [[ -d "$SOURCE_OBJECTS" && ! -L "$SOURCE_OBJECTS" ]] ||
+      die "primary Git object directory is absent, linked, or not a directory"
+    SOURCE_INDEX_BEFORE="$("$TRUSTED_GIT" hash-object --no-filters -- "$SOURCE_INDEX")"
+    install_strict_git_environment
+  }
+
+  source_metadata() {
+    case "$SOURCE_GIT_DIR:$SOURCE_OBJECTS:$SOURCE_ALTERNATES" in
+      *$'\n'*) die "Git source routing contains a newline" ;;
+    esac
+    [[ "$SOURCE_GIT_DIR" == /* && "$SOURCE_OBJECTS" == /* ]] ||
+      die "Git source routing is not absolute"
+  }
+
+  resolve_owner_tools() {
+    local account_home candidate resolved
+    OWNER_BASH=/bin/bash
+    OWNER_PYTHON=/usr/bin/python3
+    [[ -f "$OWNER_BASH" && ! -L "$OWNER_BASH" && -x "$OWNER_BASH" ]] ||
+      die "trusted /bin/bash is required"
+    [[ -x "$OWNER_PYTHON" ]] || die "trusted /usr/bin/python3 is required"
+    account_home="$("$OWNER_PYTHON" -I -c \
+      'import os, pwd; print(pwd.getpwuid(os.getuid()).pw_dir)')"
+    [[ "$account_home" == /* && "$account_home" != *$'\n'* ]] ||
+      die "system account home is not an absolute single-line path"
+    OWNER_JUST=""
+    for candidate in \
+      /usr/local/bin/just \
+      /opt/homebrew/bin/just \
+      /home/linuxbrew/.linuxbrew/bin/just \
+      /usr/bin/just \
+      "$account_home/.local/bin/just"; do
+      [[ -x "$candidate" ]] || continue
+      resolved="$("$OWNER_PYTHON" -I -c \
+        'import os, sys; print(os.path.realpath(sys.argv[1]))' "$candidate")"
+      [[ "$resolved" == /* && "$resolved" != *$'\n'* && -f "$resolved" && ! -L "$resolved" && -x "$resolved" ]] ||
+        continue
+      OWNER_JUST="$resolved"
+      break
+    done
+    [[ -n "$OWNER_JUST" ]] || die "just is absent from the fixed supported-host locations"
+    case "$OWNER_JUST" in
+      "$SOURCE_ROOT/"*) die "owner Just resolves through the mutable source tree" ;;
+    esac
+    [[ "$OWNER_PYTHON" == /* && "$OWNER_BASH" == /* && "$OWNER_JUST" == /* ]] ||
+      die "owner tools must resolve to absolute paths"
+  }
+
+  prepare_private_repository() {
+    SNAPSHOT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ra8-staged-hook.XXXXXXXX")"
+    SNAPSHOT_DIR="$(cd "$SNAPSHOT_DIR" && pwd -P)"
+    init_private_repository "$SNAPSHOT_DIR"
+    POLICY_TMPDIR="$SNAPSHOT_DIR/.git/policy-tmp"
+    mkdir -m 700 "$POLICY_TMPDIR"
+    COPIED_INDEX="$SNAPSHOT_DIR/.git/candidate.index"
+    CAPTURE_OBJECTS="$SNAPSHOT_DIR/.git/candidate-objects"
+    mkdir -p "$CAPTURE_OBJECTS" "$SNAPSHOT_DIR/.git/objects/info"
+    cp -- "$SOURCE_INDEX" "$COPIED_INDEX"
+  }
+
+  write_candidate_tree() {
+    local read_path
+    read_path="$SOURCE_OBJECTS${SOURCE_ALTERNATES:+:$SOURCE_ALTERNATES}"
+    CANDIDATE_TREE="$(GIT_DIR="$SOURCE_GIT_DIR" GIT_WORK_TREE="$SOURCE_ROOT" \
+      GIT_INDEX_FILE="$COPIED_INDEX" GIT_OBJECT_DIRECTORY="$CAPTURE_OBJECTS" \
+      GIT_ALTERNATE_OBJECT_DIRECTORIES="$read_path" "$TRUSTED_GIT" write-tree)"
+    {
+      printf '%s\n' "$SOURCE_OBJECTS"
+      if [[ -n "$SOURCE_ALTERNATES" ]]; then
+        local -a entries=()
+        IFS=':' read -r -a entries <<<"$SOURCE_ALTERNATES"
+        printf '%s\n' "${entries[@]}"
+      fi
+      printf '%s\n' "$CAPTURE_OBJECTS"
+    } >"$SNAPSHOT_DIR/.git/objects/info/alternates"
+  }
+
+  checkout_candidate_tree() {
+    "$TRUSTED_GIT" -C "$SNAPSHOT_DIR" update-ref HEAD "$SOURCE_HEAD"
+    "$TRUSTED_GIT" -C "$SNAPSHOT_DIR" read-tree "$CANDIDATE_TREE"
+    GIT_LFS_SKIP_SMUDGE=1 "$TRUSTED_GIT" -C "$SNAPSHOT_DIR" checkout-index --all
+  }
+
+  verify_candidate_tree() {
+    local snapshot_tree source_after sentinel
+    snapshot_tree="$("$TRUSTED_GIT" -C "$SNAPSHOT_DIR" write-tree)"
+    [[ "$snapshot_tree" == "$CANDIDATE_TREE" ]] || die "snapshot tree differs from active index"
+    "$TRUSTED_GIT" -C "$SNAPSHOT_DIR" diff --quiet --no-ext-diff || die "snapshot worktree differs from index"
+    [[ -z "$("$TRUSTED_GIT" -C "$SNAPSHOT_DIR" ls-files --others --exclude-standard)" ]] ||
+      die "snapshot contains untracked paths"
+    source_after="$("$TRUSTED_GIT" hash-object --no-filters -- "$SOURCE_INDEX")"
+    [[ "$source_after" == "$SOURCE_INDEX_BEFORE" ]] || die "source index was modified"
+    for sentinel in scripts/ci.sh scripts/ci/gates scripts/dev/run_just.sh justfile just/hooks.just; do
+      [[ -e "$SNAPSHOT_DIR/$sentinel" ]] || die "snapshot is missing $sentinel"
+    done
+  }
+
+  prepare_head_control_plane() {
+    local control_tree expected_tree entry
+    local -a entries=()
+    CONTROL_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ra8-head-policy.XXXXXXXX")"
+    CONTROL_DIR="$(cd "$CONTROL_DIR" && pwd -P)"
+    init_private_repository "$CONTROL_DIR"
+    mkdir -p "$CONTROL_DIR/.git/objects/info"
+    {
+      printf '%s\n' "$SOURCE_OBJECTS"
+      if [[ -n "$SOURCE_ALTERNATES" ]]; then
+        IFS=':' read -r -a entries <<<"$SOURCE_ALTERNATES"
+        for entry in "${entries[@]}"; do
+          [[ -n "$entry" ]] && printf '%s\n' "$entry"
+        done
+      fi
+    } >"$CONTROL_DIR/.git/objects/info/alternates"
+    "$TRUSTED_GIT" -C "$CONTROL_DIR" update-ref HEAD "$SOURCE_HEAD"
+    "$TRUSTED_GIT" -C "$CONTROL_DIR" read-tree "$SOURCE_HEAD"
+    GIT_LFS_SKIP_SMUDGE=1 "$TRUSTED_GIT" -C "$CONTROL_DIR" checkout-index --all
+    control_tree="$("$TRUSTED_GIT" -C "$CONTROL_DIR" write-tree)"
+    expected_tree="$("$TRUSTED_GIT" -C "$SOURCE_ROOT" rev-parse "$SOURCE_HEAD^{tree}")"
+    [[ "$control_tree" == "$expected_tree" ]] || die "HEAD control-plane tree differs from HEAD"
+    "$TRUSTED_GIT" -C "$CONTROL_DIR" diff --quiet --no-ext-diff || die "HEAD control plane is dirty"
+    [[ -x "$CONTROL_DIR/scripts/checks/check_hook_parity.py" ]] ||
+      die "HEAD does not own an executable hook validator"
+  }
+
+  make_policy_tools() {
+    OWNER_TOOL_DIR="$SNAPSHOT_DIR/.git/owner-tools"
+    mkdir -m 700 "$OWNER_TOOL_DIR"
+    ln -s "$OWNER_BASH" "$OWNER_TOOL_DIR/bash"
+    ln -s "$TRUSTED_GIT" "$OWNER_TOOL_DIR/git"
+    [[ -L "$OWNER_TOOL_DIR/bash" ]] || die "trusted policy Bash shim is absent"
+    [[ -L "$OWNER_TOOL_DIR/git" ]] || die "trusted policy Git shim is absent"
+    [[ "$(readlink "$OWNER_TOOL_DIR/bash")" == "$OWNER_BASH" ]] ||
+      die "trusted policy Bash shim changed target"
+    [[ "$(readlink "$OWNER_TOOL_DIR/git")" == "$TRUSTED_GIT" ]] ||
+      die "trusted policy Git shim changed target"
+  }
+
+  write_policy_population() {
+    local tree="$1" target="$2"
+    "$TRUSTED_GIT" -C "$SNAPSHOT_DIR" ls-tree -rz --full-tree "$tree" |
+      "$OWNER_PYTHON" -I -c '
+import pathlib
+import sys
+
+target = pathlib.Path(sys.argv[1])
+selected = []
+for row in sys.stdin.buffer.read().split(b"\0"):
+    if not row:
+        continue
+    _, separator, raw_path = row.partition(b"\t")
+    if not separator:
+        raise SystemExit("malformed policy tree row")
+    name = raw_path.rsplit(b"/", 1)[-1]
+    if name in {b".gitattributes", b".gitignore"}:
+        selected.append(row)
+target.write_bytes(b"\0".join(selected) + (b"\0" if selected else b""))
+' "$target"
+  }
+
+  verify_bootstrap_policy_population() {
+    local head_population="$SNAPSHOT_DIR/.git/head-policy.population"
+    local candidate_population="$SNAPSHOT_DIR/.git/candidate-policy.population"
+    write_policy_population "$SOURCE_HEAD" "$head_population"
+    write_policy_population "$CANDIDATE_TREE" "$candidate_population"
+    "$OWNER_PYTHON" -I -c '
+import pathlib
+import sys
+
+head = pathlib.Path(sys.argv[1]).read_bytes()
+candidate = pathlib.Path(sys.argv[2]).read_bytes()
+if candidate != head:
+    raise SystemExit("bootstrap policy population differs from HEAD")
+rows = [row for row in head.split(b"\0") if row]
+names = [row.partition(b"\t")[2].rsplit(b"/", 1)[-1] for row in rows]
+attributes = names.count(b".gitattributes")
+ignores = names.count(b".gitignore")
+if (attributes, ignores) != (6, 27):
+    raise SystemExit(
+        f"bootstrap policy population changed: {attributes} attributes, {ignores} ignores"
+    )
+' "$head_population" "$candidate_population" ||
+      die "candidate policy is not safe for the pre-validator bootstrap"
+  }
+
+  head_supports_attribute_validation() {
+    "$OWNER_PYTHON" -I -c '
+import pathlib
+import sys
+
+data = pathlib.Path(sys.argv[1]).read_bytes()
+raise SystemExit(0 if b"--check-attributes" in data else 1)
+' "$CONTROL_DIR/scripts/dev/git_environment.py"
+  }
+
+  run_head_validator() {
+    local policy_path="$OWNER_TOOL_DIR:$RA8_OWNER_PATH"
+    if head_supports_attribute_validation; then
+      "$OWNER_PYTHON" -I "$CONTROL_DIR/scripts/dev/git_environment.py" \
+        --check-attributes "$SNAPSHOT_DIR"
     else
-      if ! python3 scripts/checks/check_doc_attachment.py --selftest; then
-        echo "[FAIL] check_doc_attachment.py selftest failed -- the"
-        echo "       checker itself is broken; fix it before trusting"
-        echo "       any verdict it gives."
-        error_found=1
-      elif ! python3 scripts/checks/check_doc_attachment.py --check; then
-        echo "[FAIL] check_doc_attachment.py found doc blocks that do"
-        echo "       not describe what they are attached to."
-        error_found=1
+      verify_bootstrap_policy_population
+    fi
+    RA8_HOOK_POLICY_ROOT="$SNAPSHOT_DIR" PATH="$policy_path" \
+      "$OWNER_PYTHON" -I "$CONTROL_DIR/scripts/checks/check_hook_parity.py" --candidate-selftest
+    RA8_HOOK_POLICY_ROOT="$SNAPSHOT_DIR" PATH="$policy_path" \
+      "$OWNER_PYTHON" -I "$CONTROL_DIR/scripts/checks/check_hook_parity.py"
+  }
+
+  make_owner_proof() {
+    PROOF_PATH="$SNAPSHOT_DIR/.git/pre-commit.proof"
+    PROOF_TOKEN="$(printf '%s\0%s\0%s\n' "$$" "$RANDOM" "$SOURCE_INDEX_BEFORE" |
+      "$TRUSTED_GIT" hash-object --stdin)"
+    printf '%s\n' "$PROOF_TOKEN" |
+      "$OWNER_PYTHON" -I "$CONTROL_DIR/scripts/git/write-proof.py" "$PROOF_PATH"
+  }
+
+  wait_policy_ready() {
+    local n value="" rc=0
+    for ((n = 0; n < 200; n++)); do
+      if [[ -f "$READY_PATH" && ! -L "$READY_PATH" ]]; then
+        value="$(<"$READY_PATH")"
+        if [[ "$value" =~ ^[1-9][0-9]*$ ]]; then
+          activate_owner_signal_forwarding
+          return 0
+        fi
       fi
-    fi
-  fi
-
-  # ---- Per-app init-order audit (strict: zero violations) ---------------
-  # Walks every examples/<tier>/<app>/main.c and verifies the canonical
-  # CGC -> MSTP -> IOPORT -> TIME -> ICU -> peripheral sequence is held
-  # in source order. Strict mode is the default; --no-strict downgrades
-  # to warn-only.
-  if [[ -f scripts/checks/audit_init_order.py ]]; then
-    if ! python3 scripts/checks/audit_init_order.py; then
-      echo "[FAIL] audit_init_order.py reported per-app init-order"
-      echo "       violations. Every examples/<tier>/<app>/main.c must"
-      echo "       follow CGC -> MSTP -> IOPORT -> TIME -> ICU ->"
-      echo "       peripheral order. Re-run \`make audit-init\` to"
-      echo "       refresh docs/INIT_ORDER_AUDIT.md."
-      error_found=1
-    fi
-  fi
-
-  # ---- Doxygen @since tag enforcement -----------------------------------
-  if ! python3 scripts/checks/check-since-version.py "${c_file_list[@]}"; then
-    echo "[FAIL] public function declarations missing @since tags."
-    echo "   Every ra8_* function in a libs/ra8_*/inc/*.h file must have"
-    echo "   an @since tag in its preceding Doxygen block."
-    error_found=1
-  fi
-
-  # ---- Copyright header enforcement -------------------------------------
-  if ! python3 scripts/checks/check-copyright.py "${c_file_list[@]}"; then
-    echo "[FAIL] missing or wrong copyright/SPDX header."
-    error_found=1
-  fi
-
-  # ---- nullptr (C23) instead of NULL ------------------------------------
-  if ! python3 scripts/checks/check_no_null.py "${c_file_list[@]}"; then
-    echo "[FAIL] bare NULL token(s) in code -- replace with C23 nullptr."
-    echo "   Allowed: UX_NULL/TX_NULL/FX_NULL/NX_NULL vendor macros,"
-    echo "   comments, string literals, third_party trees."
-    error_found=1
-  fi
-
-  # ---- NASA P10 Rule 4 function-size cap -------------------------------
-  # The .clang-tidy LineThreshold=60 only fires when a file actually
-  # reaches clang-tidy, and the host tidy-build excludes every
-  # cross-compiled translation unit (anything pulling in ThreadX/
-  # USBX/NetX or MCU register headers).  This source-level checker
-  # closes that gap.  Its scope is derived from git ls-files plus per-file
-  # language detection (#359), so it now measures Python and shell functions
-  # too, via one parser per language.
-  #
-  # The selftest is enforced; the tree-wide scan is not yet -- 52 functions are
-  # over the cap, all named by running the checker.  See the matching note in
-  # scripts/ci/gates/checks.sh; #359 stays open until the scan is uncommented.
-  if ! python3 scripts/checks/check_function_size.py --selftest; then
-    echo "[FAIL] check_function_size.py selftest failed."
-    echo "   A size parser stopped matching; the gate cannot be trusted."
-    error_found=1
-  fi
-  # if ! python3 scripts/checks/check_function_size.py; then
-  #   echo "[FAIL] function-size violation(s) above the 60-line cap."
-  #   echo "   Extract helpers or hoist tables to file scope to shrink."
-  #   error_found=1
-  # fi
-
-  # ---- No magic numbers (whole tree) ----------------------------------
-  # Same blind-spot story as function-size: clang-tidy's
-  # readability-magic-numbers only fires for files in the host
-  # compile-db, which contains NO example main.c and silently drops
-  # every ARM-only / cross-compiled code path (Helium intrinsics,
-  # #ifdef __ARM_* blocks).  That is how `ra8_delay_ms(500U)` reached
-  # main.  This source-level checker scans libs/, src/, and example
-  # main.c directly (honouring clang-tidy NOLINT waivers).  The tree is
-  # clean, so it runs full-tree like check_function_size.py.
-  if ! python3 scripts/checks/check_magic_numbers.py; then
-    echo "[FAIL] magic number(s) found -- every integer literal must"
-    echo "   be a named typed enum (const only for floats; macros are"
-    echo "   NOT allowed for constants). Genuine exceptions may carry"
-    echo "   a trailing 'MAGIC-OK: <reason>' or a scoped clang-tidy"
-    echo "   NOLINT(readability-magic-numbers)."
-    error_found=1
-  fi
-
-  # ---- no redundant casts inside TEST_ASSERT_EQ --------------------------
-  test_files=$(echo "$c_files" | grep -E "^tests/" || true)
-  if [[ -n "$test_files" ]] && [[ -f scripts/checks/check_assert_casts.py ]]; then
-    mapfile -t test_file_list <<<"$test_files"
-    if ! python3 scripts/checks/check_assert_casts.py "${test_file_list[@]}"; then
-      echo "[FAIL] redundant cast(s) in TEST_ASSERT_EQ -- run strip_assert_casts.py."
-      error_found=1
-    fi
-  fi
-
-  # ---- cppcheck ----------------------------------------------------------
-  # ONE definition of the cppcheck policy. This step used to hand-roll its own
-  # scope -- every staged .c/.h except tests/ -- which is a SECOND, drifted
-  # definition of a check. CLAUDE.md is explicit that there is exactly one
-  # definition of a gate and that a gate body is never hand-copied, and the
-  # drift was not cosmetic: it failed commits over findings no gate has an
-  # opinion about. It diverged from gate_cppcheck in two separate ways.
-  #
-  # WHERE it looks. The gate covers src/, libs/, tools/ and the example apps.
-  # tools/ came under the gate in #596: before that it was reached only by
-  # scripts/checks/cppcheck.sh under --error-exitcode=0, where a finding
-  # CANNOT fail anything, so the first commit to stage tools/*.c met 65
-  # findings nothing had ever gated. This step mirrors the gate's scope, so it
-  # analyses staged tools/ TUs too, with the same C23 nullptr shim the gate
-  # force-includes (cppcheck 2.13 does not model the keyword).
-  #
-  # WHAT it analyses. cppcheck analyses TRANSLATION UNITS. The gate passes
-  # DIRECTORIES, so a header is analysed in the context of a .c that includes
-  # it. Passing a bare .h on the command line analyses it standalone instead,
-  # with none of its includes or macros resolved -- which is why four
-  # libs/ra8_nsc/inc headers reported `unknownMacro: RA8_INTERNAL_ANNOTATE`
-  # and ra8_ether_regs.h reported a bogus `unusedScopedObject`. The gate is
-  # green on the identical tree, which is the proof that those are artefacts
-  # of the invocation rather than defects in the headers.
-  #
-  # So: the gate's scope, and .c translation units. Headers stay covered
-  # through the TUs that include them, exactly as in CI. tools/ is now part of
-  # that scope (#596), which is why the grep below includes it.
-  #
-  # WHICH INCLUDES it resolves -- the third divergence, and the same defect one
-  # level down. The gate passes an include list; this step passed none, so
-  # every macro reaching a TU from a header was unresolved here and resolved
-  # in CI. Object-like annotations survived that (cppcheck skips an unknown
-  # identifier before a declaration), so it went unnoticed until the first
-  # FUNCTION-like one at file scope -- `RA8_OWNS_RESOURCE("ra8_fs_lock")` --
-  # read as a call and failed the commit with `unknownMacro` while
-  # scripts/checks/cppcheck.sh was green on the identical tree. The list now
-  # comes from that script, which is the one place that defines it.
-  if command -v cppcheck &>/dev/null; then
-    prod_files=$(echo "$c_files" | grep -E "^(src|libs|examples|tools)/" | grep -E "[.]c$" || true)
-    if [[ -n "$prod_files" ]]; then
-      mapfile -t prod_file_list <<<"$prod_files"
-      mapfile -t cppcheck_include_dirs < <(bash scripts/checks/cppcheck.sh --print-include-dirs)
-      if ! cppcheck --enable=warning,style,performance,portability \
-        --error-exitcode=1 \
-        --suppressions-list=.cppcheck-suppressions \
-        --inline-suppr \
-        --include=scripts/checks/cppcheck_c23_compat.h \
-        --std=c23 \
-        --quiet \
-        "${cppcheck_include_dirs[@]}" \
-        "${prod_file_list[@]}"; then
-        echo "[FAIL] cppcheck violations found."
-        error_found=1
+      if ! kill -0 "$CHILD_PID" 2>/dev/null; then
+        set +e
+        wait "$CHILD_PID"
+        rc=$?
+        set -e
+        CHILD_PID=""
+        die "policy supervisor exited before readiness (status $rc)"
+        return 1
       fi
+      sleep 0.05
+    done
+    terminate_policy_group TERM
+    die "policy supervisor did not establish a process group"
+    return 1
+  }
+
+  run_snapshot_policy() {
+    local policy_path="$OWNER_TOOL_DIR" rc=0
+    if [[ -d "$SOURCE_ROOT/.venv/bin" ]]; then
+      policy_path="$policy_path:$SOURCE_ROOT/.venv/bin"
     fi
-  else
-    echo ""
-    echo "WARNING: cppcheck not found -- static analysis SKIPPED."
-    echo "   Install: sudo apt install cppcheck"
-  fi
-fi
+    policy_path="$policy_path:$RA8_OWNER_PATH"
+    READY_PATH="$SNAPSHOT_DIR/.git/policy-ready"
+    cd "$SNAPSHOT_DIR"
+    OLDPWD="$SNAPSHOT_DIR"
+    export OLDPWD
+    PATH="$policy_path" TMPDIR="$POLICY_TMPDIR" RA8_STAGED_HOOK_SNAPSHOT=1 \
+      "$OWNER_PYTHON" -I -c "$SUPERVISOR_PROGRAM" "$READY_PATH" \
+      "$OWNER_JUST" \
+      --shell "$OWNER_BASH" --clear-shell-args --shell-arg -puc \
+      --justfile "$SNAPSHOT_DIR/justfile" --working-directory "$SNAPSHOT_DIR" \
+      git_hooks::pre-commit &
+    CHILD_PID=$!
+    wait_policy_ready
+    set +e
+    wait "$CHILD_PID"
+    rc=$?
+    set -e
+    CHILD_PID=""
+    cd "$SOURCE_ROOT"
+    POLICY_RC="$rc"
+    return 0
+  }
 
-# -----------------------------------------------------------------------------
-# ALWAYS-ON GATES: run on EVERY commit regardless of staged file types.
-# These cover the whole first-party tree (C/C++, Python, shell, config), so
-# they live outside the C-files-only block above.  They fail on ANY violation
-# -- no grandfathering -- and the language tool gates skip with a notice if the
-# tool is absent locally (CI runs them with --require).
-# -----------------------------------------------------------------------------
-# File-size cap (maintainability): no first-party code file over 1000 lines.
-# Scope derived from git ls-files + language detection (#359), so it covers
-# Python, shell, CMake, YAML, Make and linker scripts as well as C/C++.
-# Honours an in-file @generated / FILE-SIZE-OK waiver marker.
-#
-# Selftest AND the tree-wide scan, matching scripts/ci/gates/checks.sh. The
-# file-size campaign brought the tree to zero over-cap, so the scan CI already
-# enforces belongs here too: a selftest-only hook let a 1019-line file reach
-# CI (#689, #690).
-if ! python3 scripts/checks/check_file_size.py --selftest; then
-  echo "[FAIL] check_file_size.py selftest failed."
-  echo "   The derived scope or the cap logic is broken; verdict untrustworthy."
-  error_found=1
-fi
-if ! python3 scripts/checks/check_file_size.py; then
-  echo "[FAIL] file-size violation(s) above the 1000-line cap."
-  echo "   Split along responsibilities or extract a shared helper."
-  error_found=1
-fi
+  verify_completion_proof() {
+    local actual=""
+    if [[ ! -f "$PROOF_PATH" || -L "$PROOF_PATH" ]]; then
+      die "snapshot policy exited without its final completion proof"
+      return 1
+    fi
+    actual="$(<"$PROOF_PATH")"
+    if [[ "$actual" != "$PROOF_TOKEN" ]]; then
+      die "snapshot policy completion proof is invalid"
+      return 1
+    fi
+  }
 
-# Header placement: a header under a src/ dir must be module-private
-# (*_internal.h).  A non-internal src/ header is either a misfiled public
-# interface (move to inc/) or an unmarked private one (rename *_internal.h).
-if ! python3 scripts/checks/check_header_file_placement.py; then
-  echo "[FAIL] src/ header(s) that are not *_internal.h."
-  echo "   Move public interfaces to inc/, or rename private ones *_internal.h."
-  error_found=1
+  verify_source_unchanged() {
+    local source_after
+    source_after="$("$TRUSTED_GIT" hash-object --no-filters -- "$SOURCE_INDEX")"
+    [[ "$source_after" == "$SOURCE_INDEX_BEFORE" ]] || die "source index changed during policy"
+  }
+
+  main() {
+    local rc=0
+    [[ "$#" -eq 0 ]] || die "this Git hook accepts no arguments"
+    install_owner_traps
+    capture_source
+    source_metadata
+    resolve_owner_tools
+    prepare_private_repository
+    write_candidate_tree
+    checkout_candidate_tree
+    verify_candidate_tree
+    prepare_head_control_plane
+    make_policy_tools
+    run_head_validator
+    run_snapshot_policy
+    rc="$POLICY_RC"
+    if [[ "$rc" == "0" ]]; then
+      make_owner_proof
+      verify_completion_proof
+      verify_source_unchanged
+    fi
+    cleanup_snapshot
+    trap - EXIT HUP INT QUIT TERM
+    return "$rc"
+  }
+
+  main "$@"
+else
+  [[ "$-" == *p* ]]
 fi
-
-# Examples must not hand-encode board connector pins: the EK-RA8D2 pinout is a
-# board fact owned by libs/ra8_board_ek_ra8d2, not copy-pasted per app (#251).
-if ! python3 scripts/checks/check_example_board_pins.py; then
-  echo "[FAIL] example(s) hand-encode a board pin as (port << 8 | pin)."
-  echo "   Reference the board symbol (k_ra8_board_*_pin_*) instead."
-  error_found=1
-fi
-
-# Entry points follow their build domain's contract: firmware is
-# `void main(void)` including ra8_boot_entry.h, hosted is ISO `int main(...)`
-# (#707). The compiler cannot see the mismatch on its own -- the declaration
-# and the definition are in different translation units.
-if ! python3 scripts/checks/check_entry_points.py; then
-  echo "[FAIL] an entry point does not match its build domain's contract."
-  echo "   Firmware: void main(void) + #include \"ra8_boot_entry.h\"."
-  echo "   Hosted:   int main(void) / int main(int, char**)."
-  error_found=1
-fi
-
-# No .gitignore directory pattern may match at arbitrary depth. An unanchored
-# `build/` hid every directory of that name from git AND from thirteen checkers,
-# in complete silence, for the life of the tree (#377).
-if ! python3 scripts/checks/check_gitignore_scope.py; then
-  echo "[FAIL] unanchored .gitignore directory pattern(s)."
-  echo "   Anchor with a leading slash, or scope to the roots that produce it."
-  error_found=1
-fi
-
-# ra8_core is the foundation layer: it must not include any other lib's header
-# (no upward dependency -- see #243).
-if ! python3 scripts/checks/check_core_layering.py; then
-  echo "[FAIL] ra8_core has an upward include into another lib."
-  echo "   Move the shared declaration into ra8_core, or keep the consumer higher up."
-  error_found=1
-fi
-
-# Trailing newline on every first-party source file (C/C++, Python, shell,
-# CMake, YAML, ld).  .clang-format InsertNewlineAtEOF only covers C/C++.
-if ! python3 scripts/checks/check_final_newline.py; then
-  echo "[FAIL] file(s) missing a trailing newline."
-  echo "   Add a single newline at end of file."
-  error_found=1
-fi
-
-# Every scripts/... path mentioned anywhere in the tree resolves. Those
-# references are plain text -- a git mv inside scripts/ breaks doc links, hook
-# comments and workflow steps with no build error and no test failure.
-if ! python3 scripts/checks/check_script_references.py; then
-  echo "[FAIL] unresolved scripts/ path reference(s)."
-  echo "   Update the reference, or append 'PATHREF-OK: <reason>' if the path is prose."
-  error_found=1
-fi
-
-# Every shebang is `#!/usr/bin/env <interp>`. A hardcoded interpreter path
-# assumes a filesystem layout this tree cannot guarantee, and `# !/bin/bash`
-# (space before the bang) is not a shebang at all. Untracked files are in scope
-# so a script is judged the moment it is written, not after it is committed.
-if ! python3 scripts/checks/check_shebangs.py --selftest; then
-  echo "[FAIL] check_shebangs.py selftest failed -- the shebang rules are"
-  echo "       broken, so a clean scan below would mean nothing."
-  error_found=1
-fi
-if ! python3 scripts/checks/check_shebangs.py; then
-  echo "[FAIL] non-env shebang(s)."
-  echo "   Use '#!/usr/bin/env bash' (or sh / python3) -- a bare interpreter"
-  echo "   name resolved through PATH, with no arguments on the shebang line."
-  error_found=1
-fi
-
-# The ESP32-C6 SPI pin map is stated in two files that must agree:
-# coprocessor/esp32c6/pins.env (source of truth) and sdkconfig.defaults (the
-# same numbers in esp-idf's Kconfig syntax). Drift is invisible downstream --
-# the build and flash both succeed and the SPI link simply never comes up.
-if ! python3 scripts/checks/check_c6_pin_config.py --selftest; then
-  echo "[FAIL] check_c6_pin_config.py selftest failed -- the drift"
-  echo "       comparator is broken; do not trust the verdict below."
-  error_found=1
-fi
-if ! python3 scripts/checks/check_c6_pin_config.py; then
-  echo "[FAIL] C6 pin/flash config drift between pins.env and sdkconfig.defaults."
-  echo "   pins.env is the source of truth; update sdkconfig.defaults to match."
-  error_found=1
-fi
-
-# infra/fleet.yml is the one registry of the machines CI runs on and how much of
-# each one it may use. It has to hold together on its own terms, no host_vars
-# file may re-declare a tunable it owns, and every variable the mapping emits
-# must be one some role actually reads.
-if ! python3 scripts/checks/check_fleet_declaration.py --selftest; then
-  echo "[FAIL] check_fleet_declaration.py selftest failed -- the fleet"
-  echo "       rules are broken; do not trust the verdict below."
-  error_found=1
-fi
-if ! python3 scripts/checks/check_fleet_declaration.py; then
-  echo "[FAIL] infra/fleet.yml does not describe a fleet that could be built."
-  echo "   See docs/CI_FLEET.md for the declaration format and the sizing rule."
-  error_found=1
-fi
-
-# Pinned-version guard for the three tools the two gates below resolve, exactly
-# as gate_lint_py_shell does it. --selftest first, so a comparator that stopped
-# judging versions turns THIS red instead of waving every version through.
-#
-# A wrong or missing tool is a HARD FAIL, never a skip. Neither ruff nor
-# ShellCheck reports the same findings across adjacent releases,
-# so a hook that lints under whatever happens to be on PATH gives a
-# verdict CI will not reproduce -- and one that skips ruff entirely because a
-# non-login PATH cannot see it is the "gate that silently does nothing" defect
-# in its purest form. Remediation when this fires is to install the pin
-# (`pip install --user ruff==<pin>` lands in ~/.local/bin, which
-# use_pinned_tool_path puts ahead of a distro or Homebrew build), not to lower
-# the bar.
-if ! python3 scripts/checks/check_tool_versions.py --selftest; then
-  echo "[FAIL] check_tool_versions.py selftest failed -- the version"
-  echo "       comparator is broken, so no pin below can be trusted."
-  error_found=1
-fi
-if ! require_tool_versions ruff shellcheck shfmt; then
-  echo "[FAIL] a pinned lint tool is missing or the wrong version."
-  echo "   The pins live in .devcontainer/Dockerfile. Install the pinned"
-  echo "   build (~/.local/bin wins over /usr/local and /opt/homebrew);"
-  echo "   do NOT commit under a different version -- its findings are"
-  echo "   not the findings CI will produce."
-  error_found=1
-fi
-
-# Python lint + format (ruff) over every tracked first-party Python file.
-# --require: a missing ruff FAILS here rather than printing a notice and
-# exiting 0, which is what let ruff go unrun on this hook entirely.
-if ! python3 scripts/checks/check_ruff.py --require; then
-  echo "[FAIL] ruff lint/format finding(s)."
-  echo "   Fix the finding or run 'ruff format'."
-  error_found=1
-fi
-
-# Shell lint + format (shellcheck --severity=style + opt-in checks, and shfmt).
-# --require for the same reason as ruff above.
-if ! python3 scripts/checks/check_shell.py --require; then
-  echo "[FAIL] shellcheck/shfmt finding(s)."
-  echo "   Fix the finding or run 'shfmt -w -i 2 -ci <file>'."
-  error_found=1
-fi
-
-# Supply-chain SBOM freshness (T5-09 / T5-14): the committed CycloneDX SBOM
-# (docs/sbom/ra8-firmware.cdx.json) must match the vendored libs/third_party/
-# tree and the gen_sbom.py registry (version macros, catalogued directories).
-if ! python3 scripts/gen/gen_sbom.py --check; then
-  echo "[FAIL] SBOM is stale or the SOUP tree drifted from the registry."
-  echo "   Update scripts/gen/gen_sbom.py + run 'make sbom' and commit the result."
-  error_found=1
-fi
-
-# Vendored SOUP vs UPSTREAM (#548). The check above proves the tree has not
-# changed since the SBOM was regenerated; this one proves it is what upstream
-# published, against the blob hashes committed under docs/sbom/upstream/. It is
-# offline and takes about a second, so it belongs at commit time rather than
-# only at push: the failure it catches is a repo-wide rename reaching into
-# libs/third_party/, and that is exactly the commit you want to stop.
-if ! python3 scripts/checks/check_soup_upstream.py; then
-  echo "[FAIL] a vendored SOUP file no longer matches its pinned upstream revision."
-  echo "   Restore the upstream bytes, or declare the deviation in"
-  echo "   scripts/gen/sbom_registry.py, run 'make soup-refresh' (needs the"
-  echo "   network) and record it in the component's docs/SOUP/*.md."
-  error_found=1
-fi
-
-# -----------------------------------------------------------------------------
-# HUM citations, world tags, roadmap summary
-# -----------------------------------------------------------------------------
-# cite_check runs STRICT: its cite-VALIDATION pass (malformed cite / unknown
-# chapter / page-out-of-range) is clean tree-wide, so any regression blocks the
-# commit. check_world_tags now runs STRICT (0 findings tree-wide, #241).
-# roadmap_stats runs in --check mode
-# (the script itself never edits files in pre-commit; the developer is expected
-# to run it without --check to refresh).
-
-# ---- HUM citation validator (strict: cite-validation clean tree-wide) ----
-# NOTE: this is the cite-VALIDATION pass (does every existing cite parse and
-# point at a real chapter/page?). The complementary cite-COVERAGE pass (does
-# every MMIO access HAVE a cite?) is enforced too, as of #534 -- but as a
-# RATCHET in the `cite-check` CI gate (scripts/checks/cite_ratchet.py), which
-# the pre-push hook runs. It is deliberately not repeated here: no ratchet in
-# this tree runs per-commit (misra, tidy, matrix and mcdc-compound are all
-# gate-only), because a ratchet has to scan the whole tree -- 15s here, on
-# every commit, to re-detect something the push is already blocked on.
-if [[ -f scripts/checks/cite_check.py ]]; then
-  if ! python3 scripts/checks/cite_check.py --strict; then
-    echo "[FAIL] cite_check.py reported issues."
-    error_found=1
-  fi
-fi
-
-# ---- World-tag validator (strict: 0 findings tree-wide, #241) -----
-if [[ -f scripts/checks/check_world_tags.py ]]; then
-  if ! python3 scripts/checks/check_world_tags.py --strict; then
-    echo "[FAIL] check_world_tags.py reported issues."
-    error_found=1
-  fi
-fi
-
-# ---- NSC veneer definitions (strict) ------------------------------
-# Every RA8_NSC_VENEER declared in ra8_nsc.h must have a definition; a decl
-# with no def is a phantom NS->S trust-boundary entry point.
-if [[ -f scripts/checks/check_nsc_veneer_defs.py ]]; then
-  if ! python3 scripts/checks/check_nsc_veneer_defs.py; then
-    echo "[FAIL] check_nsc_veneer_defs.py reported an undefined NSC veneer."
-    error_found=1
-  fi
-fi
-
-# ---- stub-vs-production crypto guard (strict, #180) ---------------
-# Every insecure placeholder-crypto body must be wrapped in the
-# RA8_INSECURE_STUB_CRYPTO / RA8_OFF_TARGET guard with a fail-closed #else,
-# so a release/HIL image that forgot to swap in real crypto fails closed
-# instead of silently shipping the deterministic-TRNG / forgeable-MAC stub.
-if [[ -f scripts/checks/check_stub_crypto_guarded.py ]]; then
-  if ! python3 scripts/checks/check_stub_crypto_guarded.py; then
-    echo "[FAIL] check_stub_crypto_guarded.py: insecure stub crypto is not guarded fail-closed."
-    error_found=1
-  fi
-fi
-
-# ---- No silent stubs -----------------------------------------------
-# A function that discards its arguments and hands back a canned answer, so the
-# build links and the program claims a capability it does not have. Catches a
-# do-nothing second definition of a symbol implemented for real elsewhere
-# (SHADOW) and an unsupported-error return with no implementation behind it
-# (CANNED). Hardware that does not exist yet is waived by TODO(<named part>).
-if [[ -f scripts/checks/check_no_silent_stubs.py ]]; then
-  if ! python3 scripts/checks/check_no_silent_stubs.py --selftest >/dev/null; then
-    echo "[FAIL] check_no_silent_stubs.py: the detector's own selftest failed."
-    error_found=1
-  elif ! python3 scripts/checks/check_no_silent_stubs.py; then
-    echo "[FAIL] check_no_silent_stubs.py: a silent stub would be committed."
-    error_found=1
-  fi
-fi
-
-# ---- No RA8_OFF_TARGET-guarded asm in a HAL driver (#293) ------
-# wfi/dsb/isb/nop/cpsie/cpsid/reset-spin route through the shared seam
-# libs/ra8_hal/inc/ra8_hw_intrinsics.h (+ tests/mocks/ra8_host_asm_stub.c), so
-# a driver never carries its own #ifdef RA8_OFF_TARGET around inline asm.
-if [[ -f scripts/checks/check_no_driver_asm_guard.py ]]; then
-  if ! python3 scripts/checks/check_no_driver_asm_guard.py; then
-    echo "[FAIL] check_no_driver_asm_guard.py: a HAL driver guards asm on RA8_OFF_TARGET."
-    error_found=1
-  fi
-fi
-
-# ---- No anti-recovery brick action (owner policy 2026-07-23) -------
-# Forbid any first-party file from setting the ce "Disable Initialize" security
-# flag or transitioning the DLM to a terminal LCK_BOOT lock -- actions that
-# permanently disable device recovery. The recovery/check scripts are excluded;
-# --selftest asserts both directions before the scan.
-if [[ -f scripts/checks/check_no_antirecovery.py ]]; then
-  if ! python3 scripts/checks/check_no_antirecovery.py --selftest >/dev/null; then
-    echo "[FAIL] check_no_antirecovery.py: the detector's own selftest failed."
-    error_found=1
-  elif ! python3 scripts/checks/check_no_antirecovery.py; then
-    echo "[FAIL] check_no_antirecovery.py: an anti-recovery brick action would be committed."
-    error_found=1
-  fi
-fi
-
-# ---- Pre-flash IMAGE guard detector selftest ----------------------
-# scripts/hil/lib/preflash_guard.sh runs check_image_no_antirecovery.py before
-# every flash. Assert the detector still refuses a lockdown image and allows a
-# benign one (no tree to scan; selftest only).
-if [[ -f scripts/checks/check_image_no_antirecovery.py ]]; then
-  if ! python3 scripts/checks/check_image_no_antirecovery.py --selftest >/dev/null; then
-    echo "[FAIL] check_image_no_antirecovery.py: the image-guard selftest failed."
-    error_found=1
-  fi
-fi
-
-# ---- ROADMAP summary stats (strict: refuse stale summaries) -------
-if [[ -f scripts/report/roadmap_stats.py && -f docs/ROADMAP.md ]]; then
-  if ! python3 scripts/report/roadmap_stats.py --check; then
-    echo "[FAIL] ROADMAP.md summary block is stale."
-    echo "       Run: python3 scripts/report/roadmap_stats.py"
-    echo "       Then re-stage docs/ROADMAP.md and re-commit."
-    error_found=1
-  fi
-fi
-
-# -----------------------------------------------------------------------------
-# IEC 61508 SIL 3 / DO-178C QUALIFICATION GATES
-# -----------------------------------------------------------------------------
-# Per CLAUDE.md, this codebase targets IEC 61508 SIL 3 (industry-agnostic) /
-# DO-178C Level B / ISO 26262 ASIL C/D. DO-178B is OBSOLETE and must not
-# appear in new content. Every test of a compound boolean decision must
-# declare its MC/DC vector pattern via @par MC/DC: in Doxygen.
-
-# ---- Forbid obsolete safety-standard references (strict) ----------
-if [[ -f scripts/checks/check_obsolete_standards.py ]]; then
-  if ! python3 scripts/checks/check_obsolete_standards.py --staged; then
-    echo "[FAIL] Obsolete safety-standard reference (DO-178B)."
-    echo "       Use DO-178C, IEC 61508 SIL 3, or ISO 26262 instead."
-    error_found=1
-  fi
-fi
-
-# ---- HIL "honest contract" gate ---------------------------------
-# Forbid HIL_MODE=alive (without HIL_FAULT_EXPECTED=1) under
-# hw_validated/hil/. Apps in that directory must prove the feature
-# works on hardware (uart_scrape / usb_cdc / jlink_memprobe /
-# hil_eth_tcp). Apps that have no observable signal yet must live
-# in hw_pending/ until they are instrumented.
-if [[ -f scripts/checks/check_hil_alive_policy.py ]]; then
-  if ! python3 scripts/checks/check_hil_alive_policy.py; then
-    echo "[FAIL] HIL honest-contract policy violated."
-    error_found=1
-  fi
-fi
-
-# ---- EIL==HIL parity gate ---------------------------------------
-# Every hw_validated/hil app must also be exercised in the emulator:
-# it must carry a hil.conf, be discovered by eil_all.sh (not just
-# hil_all.sh), and declare a HIL_MODE ra8_emulator can check (no EIL
-# skips). Cheap structural gate -- re-derives both harnesses' app
-# discovery from hil_all.sh / eil_all.sh, so an added HIL app cannot
-# silently escape EIL coverage.
-if [[ -f scripts/checks/check_hil_eil_parity.py ]]; then
-  if ! python3 scripts/checks/check_hil_eil_parity.py; then
-    echo "[FAIL] check_hil_eil_parity.py: a HIL app is not EIL-covered."
-    error_found=1
-  fi
-fi
-
-# ---- In-tree line-citation gate (warn in Wave 0) ------------------
-# Comments must reference functions/symbols, not `<file>.c:NNN`. Line
-# numbers go stale on the next reformat. External citations (HUM,
-# FSP, RFC) remain mandatory. See docs/CITATION_POLICY.md and
-# scripts/checks/check_line_citations.py.
-if [[ -f scripts/checks/check_line_citations.py ]]; then
-  if ! python3 scripts/checks/check_line_citations.py; then
-    echo "[FAIL] check_line_citations.py reported issues."
-    error_found=1
-  fi
-fi
-
-# ---- C23 [[...]] attribute syntax (no GNU __attribute__) -----------
-if [[ -f scripts/checks/check_no_gnu_attribute.py ]]; then
-  if ! python3 scripts/checks/check_no_gnu_attribute.py; then
-    echo "[FAIL] check_no_gnu_attribute.py: use the C23 [[...]] form."
-    error_found=1
-  fi
-fi
-
-# ---- No silent ra8_err_t discards at TrustZone boot boundaries ----
-# A C23 (void)-cast silences [[nodiscard]] by ISO rule, so -Werror can
-# never catch `(void)ra8_cgc_init();` right before a BLXNS (T2-05,
-# tracker #191). This gate bans (void)-cast discards of the
-# ra8_tz_secure_boot_* family everywhere and of any ra8_*() call inside
-# a boot TU (a .c defining SystemInit / ra8_trustzone_init).
-if [[ -f scripts/checks/check_tz_boundary_discard.py ]]; then
-  if ! python3 scripts/checks/check_tz_boundary_discard.py; then
-    echo "[FAIL] check_tz_boundary_discard.py: handle the error, do not (void)-cast it."
-    error_found=1
-  fi
-fi
-
-# ---- @par MC/DC: block on staged tests -----------------------------
-# --staged gates exactly the test files about to be committed: each must
-# declare its MC/DC vector pattern in a @par MC/DC: block. CI runs the same
-# checker in --all mode over the whole tree (the flag is mandatory now -- the
-# checker refuses to run with no mode, #325). --selftest first proves the
-# detector fires in both directions before the staged set is trusted.
-if [[ -f scripts/checks/check_mcdc_block.py ]]; then
-  if ! python3 scripts/checks/check_mcdc_block.py --selftest; then
-    echo "[FAIL] check_mcdc_block.py --selftest failed (detector is broken)."
-    error_found=1
-  fi
-  if ! python3 scripts/checks/check_mcdc_block.py --staged; then
-    echo "[FAIL] check_mcdc_block.py reported issues."
-    error_found=1
-  fi
-fi
-
-# ---- New compound boolean decisions must ship with MC/DC tests ----
-# Static gate (no build): --staged diffs each staged .c file under libs/,
-# src/, port/ against HEAD and rejects any newly added `&&` / `||` decision
-# that does not have a `test_mcdc_*` function citing `path@function` in a
-# `@par MC/DC:` block under tests/. This is a regression-prevention companion
-# to the CI baseline gate -- it stops the project-wide MC/DC % from drifting
-# downward one commit at a time. (CI runs the same checker in --range mode; the
-# checker now refuses to run with no mode, so the flag is mandatory -- #355.)
-if [[ -f scripts/checks/check_new_compound_has_mcdc.py ]]; then
-  if ! python3 scripts/checks/check_new_compound_has_mcdc.py --staged; then
-    echo "[FAIL] check_new_compound_has_mcdc.py reported issues."
-    echo "       New compound boolean decisions must ship with"
-    echo "       matching MC/DC test vectors. See docs/MCDC.md."
-    error_found=1
-  fi
-fi
-
-# ---- AI-attribution gate (strict from day one) --------------------
-# Bans "Claude" / "Anthropic" / "OpenAI" / "Copilot" / "ChatGPT" /
-# "GPT-N" tokens, plus Co-Authored-By and Generated-by footers, from
-# every tracked file under libs/, src/, tests/, examples/, port/,
-# scripts/, docs/. The literal token "Claude" is reserved EXCLUSIVELY
-# for the project's own CLAUDE.md filename. See
-# docs/AI_ATTRIBUTION_POLICY.md.
-
-# ---- Inclusive terminology (source files) --------------------------
-# Bans MOSI/MISO/master/slave vocabulary. Use COPI/CIPO/Controller/
-# Peripheral instead. Per-line opt-out: LEGACY-OK: <reason>.
-if [[ -f scripts/checks/check_inclusive_terminology.py ]]; then
-  if ! python3 scripts/checks/check_inclusive_terminology.py; then
-    echo "[FAIL] check_inclusive_terminology.py reported issues."
-    echo "       Use COPI/CIPO, Controller/Peripheral, CS, Primary."
-    echo "       Per-line opt-out: LEGACY-OK: <reason>"
-    error_found=1
-  fi
-fi
-
-if [[ -f scripts/checks/check_no_ai_attribution.py ]]; then
-  if ! python3 scripts/checks/check_no_ai_attribution.py; then
-    echo "[FAIL] check_no_ai_attribution.py reported issues."
-    echo "       AI attribution is BANNED in tracked files. See"
-    echo "       docs/AI_ATTRIBUTION_POLICY.md for the rule and"
-    echo "       the rare per-line 'AI-OK: <reason>' opt-out."
-    error_found=1
-  fi
-fi
-
-# ---- "Wave N" session-bookkeeping reference gate (strict) ---------
-# Bans "Wave 70", "wave-3", "Wave_43b" style historical session refs
-# from comments / docs. Readers do not care WHEN a fix was found, only
-# WHY. Auto-fixer at scripts/fix/fix_wave_references.py --apply.
-if [[ -f scripts/checks/check_no_wave_references.py ]]; then
-  if ! python3 scripts/checks/check_no_wave_references.py; then
-    echo "[FAIL] check_no_wave_references.py reported issues."
-    echo "       Run: python3 scripts/fix/fix_wave_references.py --apply"
-    echo "       Per-line opt-out: append 'WAVE-OK: <reason>'."
-    error_found=1
-  fi
-fi
-
-# ---- Annotation-attribute enforcement (strict) -------------------
-# Walks the AST of every TU under libs/, src/, examples/, tests/,
-# port/ via libclang and applies the 19 ra8_* annotation rules
-# documented in docs/ANNOTATIONS.md. The tree clears the gate, so it
-# runs in --check (strict) mode here and in CI. When libclang is not
-# installed locally the script exits 0 (graceful skip); CI installs a
-# pinned libclang so the gate is enforced there unconditionally.
-if [[ -f scripts/checks/check_annotations.py ]]; then
-  if ! python3 scripts/checks/check_annotations.py --check --quiet; then
-    echo "[FAIL] check_annotations.py reported issues."
-    error_found=1
-  fi
-fi
-
-# ---- Stack-usage aggregator (strict for first-party) --------------
-# Re-runs the project-wide -fstack-usage aggregator over whatever
-# .su files already exist under examples/*/*/build*/. We do NOT
-# trigger a build here -- a fresh clone has no .su files yet and
-# running `make stack-usage` from a hook would slow every commit by
-# minutes. The script simply skips silently when nothing is built.
-#
-# Behaviour:
-#   * Soft violations in *first-party* TUs (frame > 2048 bytes) --
-#     HARD FAIL via --strict. Authors must either reduce the frame
-#     (move scratch buffers to module-static storage) or enroll the
-#     function in FIRST_PARTY_EXEMPTIONS at the top of
-#     scripts/checks/stack_usage_check.py with a written rationale.
-#   * Soft violations in *third-party* TUs (libs/third_party/) --
-#     reported but ignored (SOUP, see docs/SOUP/).
-#   * Critical-module breaches (ra8_isr/ra8_check/ra8_err/ra8_mpu/
-#     ra8_cgc/ra8_pfs > 256 bytes) -- HARD FAIL via the existing
-#     critical-path gate inside the script.
-#   * `dynamic` qualifier anywhere -- HARD FAIL. NASA Power-of-10
-#     Rule 3 forbids VLAs and alloca() in this firmware regardless
-#     of frame size. No deviation procedure is offered.
-#
-# Promoted from warn-only to strict (first-party) on 2026-05-02 once
-# every first-party function was verified at <2048 bytes against
-# HEAD. See docs/STACK_USAGE.md.
-#
-# --allow-empty is the pre-commit-only concession (#386): a fresh clone has no
-# .su files, and the CI `stack-usage` gate -- which runs WITHOUT it, after
-# build-cross -- is where an empty or collapsed sweep goes red. .su files that
-# decode to zero functions still fail here, since that is corruption, not a
-# fresh clone.
-if [[ -f scripts/checks/stack_usage_check.py ]]; then
-  if ! python3 scripts/checks/stack_usage_check.py --strict --quiet --allow-empty; then
-    echo "[FAIL] stack_usage_check.py: first-party frame > 2048 B,"
-    echo "       NASA P10 dynamic-frame violation, or a corrupt .su sweep."
-    error_found=1
-  fi
-fi
-
-# ---- Clang Static Analyzer (scan-build) -- CI-GATED, not per-commit --
-# scan-build is a multi-minute analyzed rebuild and is NOT invoked from
-# the per-commit hook. Run it locally with `make scan-build` (or
-# `make scan-build-strict`); see docs/STATIC_ANALYSIS.md for the
-# documented baseline -- currently 0 actionable first-party findings.
-#
-# This comment used to say "no workflow runs it, and RA8_GATE_REGISTRY
-# has no scan-build gate", which was true and made the claim in
-# docs/STATIC_ANALYSIS.md false. #532 closed it the other way round:
-# there is now a `scan-build` row in the registry, a gate_scan_build
-# body in scripts/ci/gates/analysis.sh, and a scan-build job in
-# firmware.yml, held together by the ci-parity gate. Regressions ARE
-# caught in CI now; they are simply not caught here.
-
-# ---- include-what-you-use (IWYU) -- warn-only --------------------
-# Same as scan-build: too slow for the per-commit hook. Run locally
-# with `make iwyu`. See scripts/checks/iwyu.sh.
-
-# -----------------------------------------------------------------------------
-# CONCLUSION
-# -----------------------------------------------------------------------------
-if [[ $error_found -ne 0 ]]; then
-  echo "[FAIL] Commit rejected due to linting/formatting errors."
-  exit 1
-fi
-
-echo "[PASS] All checks passed."
-exit 0

@@ -15,7 +15,7 @@ heuristic but conservative -- see `is_deactivated_decision()`.
 Source of truth: actual llvm-cov per-decision output. NOT a static parse
 of the source tree, NOT a heuristic match against test_mcdc_* function
 names. The previous CSV regenerator used heuristics and went stale; this
-one parses the same report `make mcdc` emits.
+one parses the same report `just quality::local::mcdc` emits.
 
 A decision is reported when llvm-cov shows it as < 100% MC/DC. The
 columns are:
@@ -703,7 +703,7 @@ def main() -> int:
     """
     if not MCDC_TXT.exists():
         print(
-            f"error: {MCDC_TXT} not found. Run `make mcdc` first to generate"
+            f"error: {MCDC_TXT} not found. Run `just quality::local::mcdc` first to generate"
             " the live llvm-cov report.",
             file=sys.stderr,
         )
@@ -739,11 +739,13 @@ def main() -> int:
 
     gap_rows = [d for d in all_decisions if d[4] < MCDC_FULL_PCT]
     print(
-        f"Wrote {CSV_OUT.relative_to(REPO_ROOT)} ({len(gap_rows)} gap rows;"
-        f" {h['deact_count']} deactivated, {len(h['reachable_rows'])} reachable),"
+        f"Wrote {CSV_OUT.relative_to(REPO_ROOT)} ({len(gap_rows)} gap decision rows;"
+        f" {h['deact_count']} deactivated,"
+        f" {len(h['reachable_rows'])} reachable),"
         f" {MD_OUT.relative_to(REPO_ROOT)},"
         f" {DEACT_MD_OUT.relative_to(REPO_ROOT)}."
-        f" Absolute MC/DC: {h['rate']:.2f}%; reachable MC/DC: {h['reachable_rate']:.2f}%."
+        f" Decision-complete rate: {h['decision_complete_rate']:.2f}%;"
+        f" reachable decision-complete rate: {h['reachable_rate']:.2f}%."
     )
     return 0
 

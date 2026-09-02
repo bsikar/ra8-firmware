@@ -6,7 +6,7 @@
 # Deploys GitHub's Actions Runner Controller (ARC, the gha-runner-scale-set
 # charts) into an existing k3s cluster and a runner scale set whose pods boot
 # from the devcontainer-toolchain image, so every CI job runs the exact
-# `make ci` toolchain.
+# `just ci` toolchain.
 
 # The repository (or org) the runners register against.
 ci_runner_github_url: "https://github.com/bsikar/ra8-firmware"
@@ -55,7 +55,7 @@ ci_runner_namespace: "arc-runners"
 #
 #   1. This k3s node is not bare metal. It is a guest on a 10-core/16-thread
 #      i5-12600K, sharing that physical chip with the "dev" box guest (the
-#      shared verification box every agent's `make ci` runs on) at
+#      shared verification box every agent's `just ci` runs on) at
 #      16 + 12 = 28 vCPU already committed to a 16-thread part before anything
 #      else on it. `uptime` on this node read load average 69-98 (1/5/15 min)
 #      against its own 16 vCPU while this fix was being verified here --
@@ -167,3 +167,8 @@ ci_runner_context_dir: "/var/lib/ra8-ci/build-context"
 
 # kubeconfig on the target (k3s default is root-owned).
 ci_runner_kubeconfig: "/etc/rancher/k3s/k3s.yaml"
+ci_runner_k3s_bin: "/usr/local/bin/k3s"
+
+# roles/k3s_node provisions the client here. Only kubernetes.core tasks select
+# this interpreter; package/file modules keep using the distribution Python.
+ci_runner_python_interpreter: "/opt/ra8-k8s-client/bin/python3"

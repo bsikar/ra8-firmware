@@ -73,7 +73,10 @@ target_link_options(
   -Wl,--undefined=g_ra8_threadx_systick_ready
 )
 
-# Upstream sources trip a few warnings the firmware build elevates to errors.
-target_compile_options(threadx_ns PRIVATE $<$<COMPILE_LANGUAGE:C>:-w>)
+# Quiet only the upstream C sources. Keep the first-party SysTick glue on the
+# project warning profile, and do not pass compiler warning flags to assembly.
+set_source_files_properties(
+  ${RA8_THREADX_NS_COMMON_SOURCES} ${RA8_THREADX_NS_PORT_C} PROPERTIES COMPILE_OPTIONS ""
+)
 
 message(STATUS "ThreadX-NS: threadx_ns target configured (TX_SINGLE_MODE_NON_SECURE)")

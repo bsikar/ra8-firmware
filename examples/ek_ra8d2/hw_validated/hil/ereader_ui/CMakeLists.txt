@@ -41,7 +41,7 @@ ra8_add_app(
        ra8_keyboard
        ra8_box
        ra8_display_pal
-       ra8_reflow
+       reflow
        ra8_sdfont
        ra8_sdmmc_spi
        ra8_fs

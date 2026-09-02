@@ -164,10 +164,10 @@ internal_xspi_read_chunked(uint8_t instance, uint32_t flash_addr, uint8_t* buf, 
  * @since 0.1.0
  */
 RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t internal_xspi_program_chunked(uint8_t        instance,
-                                                            uint32_t       flash_addr,
-                                                            const uint8_t* data,
-                                                            uint32_t       len)
+static ra8_err_t internal_xspi_program_chunked(uint8_t        instance,
+                                               uint32_t       flash_addr,
+                                               const uint8_t* data,
+                                               uint32_t       len)
 {
   RA8_CHECK_NULL_PTR(data, s_tag, "data must not be nullptr");
   uint32_t done = k_xspi_zero_blocks;
@@ -377,7 +377,8 @@ internal_xspi_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
  * @since 0.1.0
  */
 RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t internal_xspi_erase(void* ctx, uint32_t lba, uint32_t count)
+/* cppcheck-suppress constParameterCallback -- ra8_io_blockdev_ops_t fixes this callback's context type as void*. */
+static ra8_err_t internal_xspi_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   const ra8_io_blockdev_xspi_state_t* st = (const ra8_io_blockdev_xspi_state_t*)ctx;
@@ -430,7 +431,7 @@ RA8_INTERNAL static ra8_err_t internal_xspi_erase(void* ctx, uint32_t lba, uint3
  * @since 0.1.0
  */
 RA8_INTERNAL
-RA8_INTERNAL static ra8_err_t internal_xspi_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
+static ra8_err_t internal_xspi_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");

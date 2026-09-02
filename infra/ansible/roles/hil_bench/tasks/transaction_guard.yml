@@ -1,0 +1,83 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Read-only whole-bench guard shared by all three mutating bench roles.
+- name: Require the fleet-owned maintenance transaction for a mutating converge
+  ansible.builtin.assert:
+    that:
+      - >-
+        ansible_check_mode or
+        hil_bench_maintenance_lock_id is match('^[0-9a-f]{16}$')
+    fail_msg: >-
+      A live bench apply must enter through `just infra::apply star`, which
+      holds the canonical bench lock around the complete role transaction.
+      Direct playbook execution is supported only with --check.
+
+- name: Bind this apply to the exact live wrapped bench holder
+  when: not ansible_check_mode
+  block:
+    - name: Authenticate the controller and immutable fleet bench payload
+      delegate_to: localhost
+      become: false
+      ansible.builtin.command:
+        argv:
+          - "{{ playbook_dir }}/../../../.venv/bin/python3"
+          - -I
+          - "{{ playbook_dir }}/../../../scripts/dev/fleet_transaction_auth.py"
+          - "{{ inventory_hostname }}"
+          - hil_bench
+          - >-
+            {{ {
+              'hil_bench_arm_gcc_dumpversion': hil_bench_arm_gcc_dumpversion,
+              'hil_bench_arm_gcc_prefix': hil_bench_arm_gcc_prefix,
+              'hil_bench_arm_gcc_release': hil_bench_arm_gcc_release,
+              'hil_bench_arm_gcc_sha256_aarch64': hil_bench_arm_gcc_sha256_aarch64,
+              'hil_bench_arm_gcc_url': hil_bench_arm_gcc_url,
+              'hil_bench_eth_iface': hil_bench_eth_iface,
+              'hil_bench_eth_mac': hil_bench_eth_mac,
+              'hil_bench_eth_phc_index': hil_bench_eth_phc_index,
+              'hil_bench_eth_sysfs_device': hil_bench_eth_sysfs_device,
+              'hil_bench_jlink_speed': hil_bench_jlink_speed,
+              'hil_bench_lock_dir': hil_bench_lock_dir,
+              'hil_bench_python_context': hil_bench_python_context,
+              'hil_bench_python_marker': hil_bench_python_marker,
+              'hil_bench_python_venv': hil_bench_python_venv,
+              'hil_bench_ref': hil_bench_ref,
+              'hil_bench_repo_dir': hil_bench_repo_dir,
+              'hil_bench_repo_url': hil_bench_repo_url,
+              'hil_bench_uv_cache': hil_bench_uv_cache
+            } | to_json }}
+          - "{{ hil_bench_maintenance_lock_id }}"
+          - "{{ hil_bench_maintenance_holder_pid | string }}"
+          - "{{ hil_bench_maintenance_holder_start_ticks | string }}"
+          - "{{ hil_bench_maintenance_holder_target }}"
+      changed_when: false
+
+    - name: Authenticate the canonical kernel-held bench lock
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/python3
+          - -I
+          - -S
+          - -c
+          - >-
+            {{ lookup('ansible.builtin.file',
+                      playbook_dir ~ '/../../../scripts/hil/lib/bench_lock_verify.py',
+                      rstrip=false) }}
+          - "{{ hil_bench_maintenance_lock_id }}"
+          - wrapped
+          - >-
+            {{ lookup('ansible.builtin.file',
+                      playbook_dir ~ '/../../../scripts/hil/lib/bench_host.sh',
+                      rstrip=false)
+               | hash('sha256') }}
+          - >-
+            {{ lookup('ansible.builtin.file',
+                      playbook_dir ~ '/../../../scripts/hil/lib/bench_lock_broker.py',
+                      rstrip=false)
+               | hash('sha256') }}
+      changed_when: false
+
+- name: Record completion of the authenticated bench mutation boundary
+  ansible.builtin.set_fact:
+    hil_bench_transaction_authenticated: true

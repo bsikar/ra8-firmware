@@ -37,7 +37,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Scope is DERIVED, never a hardcoded directory list. The previous revision
 # named ``SCAN_DIRS = (libs, src, tests, examples, port, scripts, docs)`` and so
-# silently exempted every other tracked file -- tools/ (ra8_emulator, media_dl,
+# silently exempted every other tracked file -- tools/ (ra8_emulator, mdl,
 # ra8_viewer, ra8_fmt), .github/, .devcontainer/, cmake/ and the whole
 # repo root -- from a ban CLAUDE.md and docs/AI_ATTRIBUTION_POLICY.md apply to
 # "any tracked file" (#358). Enumeration now comes from git ls-files via
@@ -52,6 +52,8 @@ TEXT_EXTS = {
     ".cc",
     ".md",
     ".txt",
+    ".tsv",
+    ".csv",
     ".rst",
     ".py",
     ".sh",
@@ -363,7 +365,7 @@ def selftest() -> int:
         failures,
     )
     expect(
-        not _in_scan_scope("libs/third_party/miniz/miniz.c"),
+        not _in_scan_scope("apps/shared_libs/third_party/miniz/miniz.c"),
         "vendored SOUP stays out of scope",
         failures,
     )

@@ -19,8 +19,9 @@ header into this firmware as Software Of Unknown Provenance (SOUP).
 - **Origin**: Google (ruy -- matrix multiplication library).
 - **License**: Apache-2.0 (`LICENSE`).
 - **How it entered our tree**: vendored single header from the upstream commit
-  above -- the exact ruy pin TFLite-micro declares in
-  `tools/make/third_party_downloads.inc`.
+  above. The exact commit is recorded by `scripts/gen/sbom_registry.py` and
+  `docs/sbom/upstream/ruy.manifest`, keeping the checked-in header and generated
+  SBOM under one provenance authority.
 
 ## Use case in this firmware
 

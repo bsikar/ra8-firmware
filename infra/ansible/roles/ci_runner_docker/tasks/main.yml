@@ -33,7 +33,7 @@
       - (ci_runner_docker_name | default('') | trim) | length > 0
     fail_msg: >-
       ci_runner_docker_name is empty. Declare this machine in infra/fleet.yml
-      and deploy it with `make infra-apply HOST=<name>`, which derives the
+      and deploy it with `just infra::apply HOST=<name>`, which derives the
       name (and every other tunable) from that block. Registering with an
       inherited name would replace another host's runner.
     success_msg: "runner base name: {{ ci_runner_docker_name }}"
@@ -51,6 +51,7 @@
   register: ci_runner_docker_version
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Fail loud when Docker is missing or not running
   when: ci_runner_docker_version.rc != 0
@@ -79,6 +80,7 @@
   register: ci_runner_docker_compose_version
   changed_when: false
   failed_when: false
+  check_mode: false
 
 - name: Fail loud when the Docker Compose plugin is missing or pre-Spec (v1)
   # Compared as a NUMBER, not matched against '^2\.'. The rule being enforced
@@ -110,6 +112,7 @@
   become: true
   register: ci_runner_docker_cgroup
   changed_when: false
+  check_mode: false
 
 - name: Assert cgroup v2, which is what actually enforces the caps
   ansible.builtin.assert:
@@ -122,35 +125,6 @@
       cpu/memory caps are applied inconsistently and this host is not one this
       role has been validated against.
     success_msg: "cgroup v2 -- cpu/memory caps are enforced"
-
-- name: Assert a registration credential is available
-  # EITHER a PAT (the control node mints tokens from it as needed) OR a
-  # pre-minted short-lived registration token.
-  #
-  # The second form exists for hosts the PAT should never be copied to. The
-  # Windows/WSL build host is somebody's personal daily-driver machine, and
-  # this play runs ON it (connection: local, because reaching into WSL from
-  # outside would mean opening an inbound SSH port on that machine). With a
-  # PAT that would put a long-lived credential with repo scope on a gaming PC.
-  # A registration token is good for one hour and one registration, so minting
-  # it on the Mac and passing only that bounds the blast radius to almost
-  # nothing.
-  ansible.builtin.assert:
-    that:
-      - (ci_runner_docker_github_pat | default('') | trim) | length > 0
-        or (ci_runner_docker_registration_token | default('') | trim) | length > 0
-    fail_msg: >-
-      Neither a GitHub PAT nor a pre-minted registration token is available, so
-      the runner cannot be registered or removed. The PAT comes from OpenBao at
-      run time via ci_runner_github_pat -- the same secret the ARC ci_runner
-      role uses; see infra/ansible/group_vars/all.example.yml, or run
-      infra/bootstrap.sh. To keep the PAT off this host entirely, mint a token
-      with `gh api -X POST
-      repos/<owner>/<repo>/actions/runners/registration-token` and pass it as
-      -e ci_runner_docker_registration_token=<token>. Nothing is ever read from
-      a token committed to this repo.
-    success_msg: "registration credential present"
-  no_log: true
 
 # --- Instances --------------------------------------------------------------
 
@@ -249,6 +223,7 @@
   become: true
   register: ci_runner_docker_data_root
   changed_when: false
+  check_mode: false
 
 - name: Resolve the pool and mountpoint behind every path CI writes to
   # findmnt --target walks up to the real mount, so this reports the filesystem
@@ -268,6 +243,7 @@
     - "{{ ci_runner_docker_data_root.stdout | trim }}"
   register: ci_runner_docker_backing
   changed_when: false
+  check_mode: false
 
 - name: Refuse to place CI I/O on a forbidden pool or mountpoint
   # THE carve-out, enforced rather than documented.
@@ -319,7 +295,14 @@
           - --remove-orphans
       register: ci_runner_docker_down
       changed_when: ci_runner_docker_down.rc == 0
-      failed_when: false
+      # A removal re-run tolerates only the compose file already being gone
+      # (it lives under the runner root this same block destroys). Any other
+      # failure means a still-running runner was not stopped and must abort
+      # before deregistration and storage teardown.
+      failed_when: >-
+        ci_runner_docker_down.rc != 0
+        and 'no such file or directory' not in (ci_runner_docker_down.stderr | lower)
+        and 'no configuration file provided' not in (ci_runner_docker_down.stderr | lower)
 
     - name: Look up the runner's id on GitHub
       # Only when a PAT is available. A host given a short-lived registration
@@ -366,9 +349,9 @@
 
     - name: Deregister every instance with a removal token (no PAT on this host)
       # The PAT-free path, for hosts the PAT is deliberately never copied to.
-      # Mint the token on the control node with
-      #   gh api -X POST repos/<owner>/<repo>/actions/runners/remove-token
-      # and pass it as -e ci_runner_docker_removal_token=<token>.
+      # Mint the token on the control node, store it under the
+      # ci_runner_docker_removal_token key in a mode-0600 vars file, and pass
+      # only that file through the typed `just infra::remove` recipe.
       #
       # This one DOES need the runner home to still exist, which is why it runs
       # before the dataset is destroyed.
@@ -396,7 +379,16 @@
           - "{{ ci_runner_docker_removal_token }}"
       register: ci_runner_docker_cfg_remove
       changed_when: ci_runner_docker_cfg_remove.rc == 0
-      failed_when: false
+      # Tolerate only an instance that is already unregistered or was never
+      # configured; a real deregistration failure (expired token, GitHub
+      # error) leaves a permanently offline runner and must abort, exactly as
+      # the fail-loud sibling below promises for the credential-less case.
+      failed_when: >-
+        ci_runner_docker_cfg_remove.rc != 0
+        and 'not configured' not in
+            ((ci_runner_docker_cfg_remove.stdout | default('')) | lower)
+        and 'does not exist' not in
+            ((ci_runner_docker_cfg_remove.stdout | default('')) | lower)
       loop: "{{ ci_runner_docker_instance_list }}"
       loop_control:
         label: "{{ item.name }}"
@@ -416,7 +408,8 @@
           without deregistering would leave a permanently offline runner
           registered against the repository. Mint one with `gh api -X POST
           {{ ci_runner_docker_repo_slug }}/actions/runners/remove-token` and
-          pass it as -e ci_runner_docker_removal_token=<token>.
+          place it under ci_runner_docker_removal_token in the mode-0600 vars
+          file accepted by `just infra::remove`.
 
     - name: Remove the runner image
       become: true
@@ -424,7 +417,12 @@
         argv: [docker, image, rm, "{{ ci_runner_docker_image }}"]
       register: ci_runner_docker_image_rm
       changed_when: ci_runner_docker_image_rm.rc == 0
-      failed_when: false
+      # Only an already-clean host is benign; an image still pinned by a
+      # container or a docker failure must abort instead of reporting the
+      # image dropped.
+      failed_when: >-
+        ci_runner_docker_image_rm.rc != 0
+        and 'no such image' not in (ci_runner_docker_image_rm.stderr | lower)
 
     - name: Check for the TrueNAS middleware client before destroying
       ansible.builtin.stat:
@@ -449,7 +447,13 @@
           - '{"recursive": true, "force": true}'
       register: ci_runner_docker_ds_delete
       changed_when: ci_runner_docker_ds_delete.rc == 0
-      failed_when: false
+      # A dataset already gone on a re-run is the only benign answer; a busy
+      # dataset or middleware error is a silently failed destructive cleanup
+      # and must abort.
+      failed_when: >-
+        ci_runner_docker_ds_delete.rc != 0
+        and 'not found' not in (ci_runner_docker_ds_delete.stderr | lower)
+        and 'does not exist' not in (ci_runner_docker_ds_delete.stderr | lower)
 
     - name: Destroy the runner dataset with zfs (non-appliance host)
       when:
@@ -460,7 +464,11 @@
         argv: [zfs, destroy, -r, "{{ ci_runner_docker_dataset }}"]
       register: ci_runner_docker_zfs_destroy
       changed_when: ci_runner_docker_zfs_destroy.rc == 0
-      failed_when: false
+      # zfs reports a missing dataset distinctly; only that idempotent re-run
+      # answer is tolerated. A busy or held dataset must abort.
+      failed_when: >-
+        ci_runner_docker_zfs_destroy.rc != 0
+        and 'does not exist' not in (ci_runner_docker_zfs_destroy.stderr | lower)
 
     # Guarded, because an unguarded `state: absent` here is a recursive delete
     # aimed at a path on a storage pool. If either destroy above had failed --
@@ -476,7 +484,10 @@
                "{{ ci_runner_docker_root }}"]
       register: ci_runner_docker_still_mounted
       changed_when: false
-      failed_when: false
+      # findmnt answers only 0 (mounted) or 1 (nothing mounted); anything else
+      # is an execution failure that must never authorize the recursive
+      # delete below.
+      failed_when: ci_runner_docker_still_mounted.rc not in [0, 1]
 
     - name: Remove the runner root if it was a plain directory
       when:
@@ -498,466 +509,5 @@
           Nothing was ever written outside {{ ci_runner_docker_root }} and the
           Docker data root, so there is nothing else to clean up.
 
-# --- Deployment -------------------------------------------------------------
-
-- name: Deploy the runner
-  when: ci_runner_docker_state == 'present'
-  block:
-    - name: Ensure the image and compose directories exist
-      become: true
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: directory
-        mode: "0755"
-      loop:
-        - "{{ ci_runner_docker_image_archive | dirname }}"
-        - "{{ ci_runner_docker_compose_dir }}"
-
-    - name: Check whether the toolchain image is already loaded
-      become: true
-      ansible.builtin.command:
-        argv: [docker, image, inspect, "{{ ci_runner_docker_image }}"]
-      register: ci_runner_docker_image_probe
-      changed_when: false
-      failed_when: false
-
-    - name: Check for the staged image archive
-      become: true
-      ansible.builtin.stat:
-        path: "{{ ci_runner_docker_image_archive }}"
-      register: ci_runner_docker_archive
-
-    - name: Fail loud when neither the image nor its archive is present
-      # Deliberately NOT a build step. The toolchain image is the single source
-      # of truth for every pinned tool and the `toolchain-parity` gate fails a
-      # runner that drifts from those pins, so a second image built here from a
-      # possibly-different checkout is a drift source with no upside. The
-      # archive is an artifact the ci_runner role already produces; copying it
-      # is a human action item, not a condition to skip past.
-      when:
-        - ci_runner_docker_image_probe.rc != 0
-        - not ci_runner_docker_archive.stat.exists
-      ansible.builtin.fail:
-        msg: |
-          {{ ci_runner_docker_image }} is not loaded and there is no archive at
-          {{ ci_runner_docker_image_archive }} to load it from, so this host
-          cannot run a job in the CI toolchain.
-
-          This role reuses the image the ARC ci_runner role builds; it does not
-          build its own, because two independently built toolchains are two
-          things for the `toolchain-parity` gate to disagree about. Copy the
-          archive over from the k3s node, host to host:
-
-            ssh -A <k3s-node> 'sudo cat \
-              /var/lib/rancher/k3s/agent/images/ra8-ci-runner.tar \
-              | ssh <this-host> "cat > {{ ci_runner_docker_image_archive }}"'
-
-          Verify it arrived intact (sha256sum on both ends) and re-run this
-          play. If the k3s node has no archive either, run the ci_runner role
-          there first -- it is what produces one.
-
-    - name: Load the toolchain image from the archive
-      when: ci_runner_docker_image_probe.rc != 0
-      become: true
-      ansible.builtin.command:
-        argv: [docker, load, --input, "{{ ci_runner_docker_image_archive }}"]
-      register: ci_runner_docker_load
-      changed_when: true
-
-    - name: Assert the loaded image carries the tag the compose file boots
-      # The #484 trap, in this role's shape: an archive tagged :latest loads
-      # perfectly and leaves the container unable to find :v2, so the deploy
-      # "succeeds" and nothing runs. Check the tag that is actually present,
-      # never the tag the archive was assumed to have.
-      when: ci_runner_docker_image_probe.rc != 0
-      ansible.builtin.assert:
-        that:
-          - ci_runner_docker_image in ci_runner_docker_load.stdout
-        fail_msg: >-
-          `docker load` reported
-          '{{ ci_runner_docker_load.stdout | trim }}' -- not
-          {{ ci_runner_docker_image }}, which is the ref the compose file boots
-          with pull_policy: never. Loading this archive would leave the
-          container unable to start on an image it cannot pull. Re-export the
-          archive with the tag the deployment uses.
-        success_msg: "loaded {{ ci_runner_docker_image }}"
-
-    - name: Create the persistent runner homes
-      # One per instance. Separate directories are what make the instances
-      # genuinely independent runners rather than one runner started N times:
-      # each gets its own registration credentials AND its own _work checkout,
-      # so two jobs on this host never share a build tree.
-      become: true
-      ansible.builtin.file:
-        path: "{{ item.home }}"
-        state: directory
-        owner: "{{ ci_runner_docker_uid }}"
-        group: "{{ ci_runner_docker_gid }}"
-        mode: "0755"
-      loop: "{{ ci_runner_docker_instance_list }}"
-      loop_control:
-        label: "{{ item.name }}"
-
-    - name: Seed the runner distribution out of the image onto the pool
-      # The bind mount would otherwise shadow the runner binaries the image
-      # ships. Copying them out once puts the distribution, its registration
-      # credentials and its _work tree on the pool together, which is what makes
-      # `docker rm` non-destructive and a SCALE upgrade survivable.
-      #
-      # `creates:` is the idempotence guard -- a re-run re-seeds nothing.
-      become: true
-      ansible.builtin.command:
-        argv:
-          - docker
-          - run
-          - --rm
-          - --volume
-          - "{{ item.home }}:/seed"
-          - --entrypoint
-          - /bin/bash
-          - "{{ ci_runner_docker_image }}"
-          - -c
-          - cp -a /home/runner/. /seed/
-        creates: "{{ item.home }}/run.sh"
-      loop: "{{ ci_runner_docker_instance_list }}"
-      loop_control:
-        label: "{{ item.name }}"
-
-    - name: Check which instances are already registered with GitHub
-      become: true
-      ansible.builtin.stat:
-        path: "{{ item.home }}/.runner"
-      register: ci_runner_docker_registered
-      loop: "{{ ci_runner_docker_instance_list }}"
-      loop_control:
-        label: "{{ item.name }}"
-
-    - name: Register the runners
-      # Skipped entirely once every instance has a .runner, which is what makes
-      # the play idempotent AND is why a reboot needs no credential:
-      # registration produces long-lived runner credentials on the pool, and
-      # only THEY are used to run jobs. The PAT is needed to (de)register and
-      # never after.
-      when: ci_runner_docker_registered.results
-            | rejectattr('stat.exists') | list | length > 0
-      block:
-        - name: Mint a runner registration token
-          # Minted on the control node so the PAT never reaches the runner
-          # host; only the short-lived registration token crosses, and it is
-          # good for one hour and one registration.
-          #
-          # Skipped when a token was supplied directly -- see the credential
-          # assert above for why a host may be given one instead of the PAT.
-          when: (ci_runner_docker_registration_token | default('') | trim) | length == 0
-          delegate_to: localhost
-          become: false
-          no_log: true
-          ansible.builtin.uri:
-            url: >-
-              {{ ci_runner_docker_api }}/runners/registration-token
-            method: POST
-            headers:
-              Authorization: "Bearer {{ ci_runner_docker_github_pat }}"
-              Accept: "application/vnd.github+json"
-            status_code: [201]
-          register: ci_runner_docker_reg_token
-
-        - name: Settle on the token the runner registers with
-          # One name for the credential from here on, whichever way it arrived,
-          # so the config.sh invocation below has no branch in it.
-          no_log: true
-          ansible.builtin.set_fact:
-            ci_runner_docker_token: >-
-              {{ ci_runner_docker_registration_token | default('') | trim
-                 if (ci_runner_docker_registration_token | default('') | trim) | length > 0
-                 else ci_runner_docker_reg_token.json.token }}
-
-        - name: Configure each runner against the repository
-          # One config.sh per instance, each against its own home, so each ends
-          # up a SEPARATE registration with its own credentials -- N entries in
-          # `gh api .../actions/runners`, not one runner started N times.
-          #
-          # A registration token is valid for an hour and is not consumed by a
-          # single use, so one token registers the whole set.
-          become: true
-          no_log: true
-          ansible.builtin.command:
-            argv:
-              - docker
-              - run
-              - --rm
-              - --volume
-              - "{{ item.home }}:/home/runner"
-              - --user
-              - "{{ ci_runner_docker_uid }}:{{ ci_runner_docker_gid }}"
-              - --workdir
-              - /home/runner
-              - --entrypoint
-              - /home/runner/config.sh
-              - "{{ ci_runner_docker_image }}"
-              - --unattended
-              - --replace
-              - --url
-              - "{{ ci_runner_docker_github_url }}"
-              - --token
-              - "{{ ci_runner_docker_token }}"
-              - --name
-              - "{{ item.name }}"
-              - --labels
-              - "{{ ci_runner_docker_labels }}"
-              - --runnergroup
-              - "{{ ci_runner_docker_group }}"
-              - --work
-              - _work
-            creates: "{{ item.home }}/.runner"
-          loop: "{{ ci_runner_docker_instance_list }}"
-          loop_control:
-            label: "{{ item.name }}"
-
-    # Written from an inline body rather than a templates/*.j2 file on purpose:
-    # a Jinja template is a file type nothing in this tree lints or formats, and
-    # `check_lint_coverage.py` rejects unclassified types rather than letting a
-    # blind spot in. As a literal block scalar here it is covered by the same
-    # yamllint run as the rest of the role, and Ansible templates `content:`
-    # exactly as it would template a file.
-    - name: Render the compose file
-      become: true
-      ansible.builtin.copy:
-        dest: "{{ ci_runner_docker_compose_file }}"
-        mode: "0644"
-        content: |
-          ---
-          # Managed by the ci_runner_docker Ansible role -- edit the role, not
-          # this file; any hand edit is overwritten on the next play.
-          #
-          # Deliberately a compose file under a pool dataset rather than a
-          # systemd unit: TrueNAS SCALE rewrites the appliance root on upgrade,
-          # so anything in /etc or /usr is temporary storage. This file, the
-          # runner home it mounts and the image archive beside it all live on
-          # {{ ci_runner_docker_root }}.
-
-          # PINNED, and load-bearing. Compose derives a project name from the
-          # compose file's PARENT DIRECTORY when none is given, and every
-          # deployment of this role puts its file in a directory called
-          # `compose/`. Two runners on one host therefore both landed in a
-          # project literally named "compose", and the second `up
-          # --remove-orphans` deleted the first one's container as an orphan of
-          # its own project -- killing the job it was running. Naming the
-          # project after the container makes the deployments disjoint.
-          #
-          # Note the interaction with ci_runner_docker_instances: every instance
-          # on a host is a SERVICE in this one pinned project, deliberately.
-          # That is what makes `--remove-orphans` safe here -- it scopes to
-          # exactly this host's own set and cannot see, let alone delete, a
-          # container belonging to any other deployment. Giving each instance
-          # its own project would instead make each `up --remove-orphans` blind
-          # to its siblings, which is the same defect in a new shape.
-          name: {{ ci_runner_docker_container }}
-
-          services:
-          {% for inst in ci_runner_docker_instance_list %}
-            runner{{ '' if ci_runner_docker_instances | int == 1
-                     else inst.idx }}:
-              image: {{ ci_runner_docker_image }}
-              container_name: {{ inst.container }}
-              hostname: {{ inst.name }}
-
-              # The image is side-loaded from a docker-archive; no registry
-              # holds a `localhost/...` ref, so a pull is a guaranteed failure
-              # rather than a fallback.
-              pull_policy: never
-
-              # Survives a host reboot and a docker daemon restart, but stays
-              # down after an explicit `docker compose stop` -- so taking the
-              # runner out of the pool by hand is not undone by a reboot.
-              restart: unless-stopped
-
-              # run.sh spawns Runner.Listener, which spawns Runner.Worker per
-              # job. A real init reaps a cancelled job's orphans instead of
-              # letting them accumulate in a container that never exits.
-              init: true
-
-              user: "{{ ci_runner_docker_uid }}:{{ ci_runner_docker_gid }}"
-              working_dir: /home/runner
-
-              # The image sets no entrypoint and CMD ["/bin/bash"] to match the
-              # official runner image's contract, so the command that actually
-              # runs the runner is supplied here.
-              entrypoint: ["/home/runner/run.sh"]
-
-              volumes:
-                # This instance's own runner distribution, registration
-                # credentials and _work checkout. Nothing the runner needs to
-                # keep lives in the container's writable layer, which is what
-                # makes `docker rm` safe and a SCALE upgrade survivable.
-                - {{ inst.home }}:/home/runner
-
-              environment:
-                # Both are part of the official runner image's runtime
-                # contract: trap signals in the runner rather than the shell
-                # (clean job cancellation), and stream job logs to stdout so
-                # `docker logs` is the whole story.
-                RUNNER_MANUALLY_TRAP_SIG: "1"
-                ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT: "1"
-
-              # Caps -- rationale in the role defaults and in the host_vars for
-              # this machine.
-              cpus: {{ ci_runner_docker_cpus }}
-              mem_limit: {{ ci_runner_docker_memory }}
-              memswap_limit: {{ ci_runner_docker_memswap }}
-              pids_limit: {{ ci_runner_docker_pids_limit }}
-          {% if inst.cpuset %}
-
-              # Pinned to its OWN cores, and this is load-bearing rather than
-              # tuning. `cpus:` is a CFS quota, which nproc does NOT see: every
-              # instance would report the host's full thread count and every
-              # build would fan out `-j<all of them>`, so N instances would
-              # oversubscribe the machine N-fold and a fast host would feel
-              # slow. A cpuset changes the affinity mask, so nproc returns this
-              # instance's real share and `make -j$(nproc)` is automatically
-              # right. It also stops the instances migrating across each
-              # other's L3 slices.
-              cpuset: "{{ inst.cpuset }}"
-          {% endif %}
-
-              # Job logs already stream to the Actions UI; the local copy is
-              # for triage only, so cap it rather than letting it grow without
-              # bound on a runner expected to stay up for months.
-              logging:
-                driver: json-file
-                options:
-                  max-size: "50m"
-                  max-file: "3"
-          {% endfor %}
-
-    - name: Bring the runner up
-      become: true
-      ansible.builtin.command:
-        argv:
-          - docker
-          - compose
-          - --project-name
-          - "{{ ci_runner_docker_container }}"
-          - --file
-          - "{{ ci_runner_docker_compose_file }}"
-          - up
-          - --detach
-          - --remove-orphans
-      register: ci_runner_docker_up
-      changed_when: "'Started' in ci_runner_docker_up.stderr
-                     or 'Created' in ci_runner_docker_up.stderr
-                     or 'Recreated' in ci_runner_docker_up.stderr"
-
-    - name: Read back the caps the kernel is actually enforcing
-      # Asserting the compose file said 8 CPUs proves only that the file says
-      # so. Read each container's cgroup limits, which is what a runaway build
-      # actually hits.
-      become: true
-      ansible.builtin.command:
-        argv:
-          - docker
-          - inspect
-          - --format
-          - >-
-            {% raw %}{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}}
-            {{.HostConfig.PidsLimit}} {{.HostConfig.CpusetCpus}}{% endraw %}
-          - "{{ item.container }}"
-      register: ci_runner_docker_limits
-      changed_when: false
-      loop: "{{ ci_runner_docker_instance_list }}"
-      loop_control:
-        label: "{{ item.name }}"
-
-    - name: Assert every runner is genuinely capped
-      ansible.builtin.assert:
-        that:
-          - (item.stdout.split() | first | int)
-            == (ci_runner_docker_cpus | float * 1000000000) | int
-          - (item.stdout.split())[1] | int > 0
-          - (item.stdout.split())[2] | int == (ci_runner_docker_pids_limit | int)
-          - not (ci_runner_docker_pin_cpus | bool)
-            or (item.stdout.split() | length) > 3
-        fail_msg: >-
-          {{ item.item.container }} reports
-          NanoCpus/Memory/PidsLimit/CpusetCpus '{{ item.stdout | trim }}',
-          which does not match the requested {{ ci_runner_docker_cpus }} CPUs /
-          {{ ci_runner_docker_memory }} / {{ ci_runner_docker_pids_limit }}
-          pids{{ ' / a cpuset' if ci_runner_docker_pin_cpus | bool else '' }}.
-          An uncapped runner turns a heavy CI job into an outage of whatever
-          this host's primary job is, so this is a failure, not a warning.
-        success_msg: >-
-          {{ item.item.name }} capped at {{ ci_runner_docker_cpus }} CPUs,
-          {{ ci_runner_docker_memory }}, {{ ci_runner_docker_pids_limit }}
-          pids{{ ', cpuset ' ~ item.item.cpuset
-                 if ci_runner_docker_pin_cpus | bool else '' }}
-      loop: "{{ ci_runner_docker_limits.results }}"
-      loop_control:
-        label: "{{ item.item.name }}"
-
-    - name: Wait for every runner to report online to GitHub
-      # The play is not done when the containers are up -- it is done when
-      # GitHub will schedule a job onto them. Anything less is a deploy that
-      # reports success while the pool is unchanged.
-      #
-      # `busy` counts as ready: a runner that took a job the instant it
-      # connected is the strongest possible evidence it joined the pool.
-      when: (ci_runner_docker_github_pat | default('') | trim) | length > 0
-      delegate_to: localhost
-      become: false
-      no_log: true
-      ansible.builtin.uri:
-        url: >-
-          {{ ci_runner_docker_api }}/runners?per_page=100
-        method: GET
-        headers:
-          Authorization: "Bearer {{ ci_runner_docker_github_pat }}"
-          Accept: "application/vnd.github+json"
-        status_code: [200]
-      register: ci_runner_docker_online
-      until: >-
-        ci_runner_docker_online.json.runners
-        | selectattr('name', 'in', ci_runner_docker_instance_list
-                                   | map(attribute='name') | list)
-        | selectattr('status', 'equalto', 'online') | list | length
-        == (ci_runner_docker_instances | int)
-      retries: "{{ ci_runner_docker_online_retries | int }}"
-      delay: "{{ ci_runner_docker_online_delay | int }}"
-
-    - name: Wait for every runner to announce it is working (no PAT on this host)
-      # Same question -- "will GitHub schedule onto this?" -- asked of the only
-      # party that can answer it without a credential: the runner itself.
-      #
-      # Matching ONLY "Listening for Jobs" is a trap this already fell into:
-      # the line is printed once, and a runner that picks up a job immediately
-      # scrolls it out of the log window within seconds. The check then fails
-      # on the single most successful outcome there is -- a runner that was
-      # given work before the deploy finished. So accept either the idle
-      # announcement or evidence of an active job.
-      when: (ci_runner_docker_github_pat | default('') | trim) | length == 0
-      become: true
-      ansible.builtin.command:
-        argv: [docker, logs, "{{ item.container }}"]
-      register: ci_runner_docker_listen
-      until: >-
-        'Listening for Jobs' in ci_runner_docker_listen.stdout
-        or 'Running job' in ci_runner_docker_listen.stdout
-        or 'JobDispatcher' in ci_runner_docker_listen.stdout
-      retries: "{{ ci_runner_docker_online_retries | int }}"
-      delay: "{{ ci_runner_docker_online_delay | int }}"
-      changed_when: false
-      loop: "{{ ci_runner_docker_instance_list }}"
-      loop_control:
-        label: "{{ item.name }}"
-
-    - name: Report the deployed runners
-      ansible.builtin.debug:
-        msg: >-
-          {{ ci_runner_docker_instances }} runner(s) online --
-          {{ ci_runner_docker_instance_list | map(attribute='name')
-             | join(', ') }} -- labels [{{ ci_runner_docker_labels }}] plus the
-          runner's own self-hosted/Linux/X64, each capped at
-          {{ ci_runner_docker_cpus }} CPUs and {{ ci_runner_docker_memory }}.
-          Runner homes, build work dirs and the image archive are on
-          {{ ci_runner_docker_root }}; image layers and the container writable
-          layers are on {{ ci_runner_docker_data_root.stdout | trim }}. Remove
-          them with `-e ci_runner_docker_state=absent`.
+- name: Load runner deployment tasks
+  ansible.builtin.import_tasks: deploy.yml

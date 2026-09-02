@@ -42,11 +42,10 @@
  * so we must use a reserved identifier here. clang-tidy's
  * bugprone-reserved-identifier / cert-dcl51-cpp complain correctly
  * but we override because the name is fixed by newlib. */
-// NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) -- newlib fixes the _sbrk name.
 
 /* No coverage-exclusion marker here: the trap body is exercised
  * deterministically by the host white-box test
- * tests/test_ra8_sbrk_trap_cov.c, which renames `_sbrk` to `_sbrk_cov`, mocks
+ * tests/hal/src/test_ra8_sbrk_trap_cov.c, which renames `_sbrk` to `_sbrk_cov`, mocks
  * the fatal-error sink, and proves the function never returns. On a
  * correctly-built firmware image this stays unreached at run time (glibc
  * malloc on the host resolves its own break), but the three lines are
@@ -56,4 +55,3 @@ void* _sbrk(int32_t incr)
   (void)incr;
   ra8_fatal_error("SBRK", "_sbrk called -- firmware is heap-free", 0U);
 }
-// NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming)

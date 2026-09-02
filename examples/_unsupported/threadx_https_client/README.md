@@ -10,7 +10,7 @@ not name resolution.
 
 ## Certificate pinning is armed by default
 
-The peer's leaf certificate is pinned by SHA-256 as a constant in `main.c`, and
+The peer's leaf certificate is pinned by SHA-256 as a constant in `src/main.c`, and
 the placeholder ships as 32 zero bytes -- so an un-customised flash
 deliberately refuses to send the request rather than silently trusting whatever
 answers. Fill in the real digest, and expect to refill it, because leaf

@@ -72,8 +72,10 @@ void priv_fat_entry_apply_attr(uint8_t* entry, uint8_t set_mask, uint8_t clear_m
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-internal_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint64_t lba, uint32_t off)
+static ra8_err_t internal_truncate_existing(const ra8_fs_mount_t* handle,
+                                            ra8_fs_file_t*        f,
+                                            uint64_t              lba,
+                                            uint32_t              off)
 {
   if (f->first_cluster >= k_cluster_first_data) {
     ra8_err_t err = priv_free_chain(handle, f->first_cluster);
@@ -517,7 +519,7 @@ ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
 RA8_INTERNAL
 static ra8_err_t internal_close_stamp(ra8_fs_file_t* file)
 {
-  ra8_fs_mount_t* m = file->mount;
+  const ra8_fs_mount_t* m = file->mount;
   /* exFAT keeps its metadata in a checksummed entry set, not one 32-byte
    * directory entry, so the close flush is the same commit every write already
    * performs -- stamp, patch, checksum, write (#602). */

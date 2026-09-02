@@ -23,24 +23,23 @@ ra8_add_app(
   USES threadx esp_hosted
   LIBS ra8_board_ek_ra8d2
        ra8_c6link
-       ra8_mdl
-       ra8_mdl_storage_vfs
-       ra8_webp
+       mdl_storage_vfs
+       webp
+       compress
        ra8_io
        ra8_fs
        ra8_sdmmc_spi
-       ra8_book
+       book
        miniz
-  EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/media_download_format.c
-             ${CMAKE_CURRENT_SOURCE_DIR}/media_download_image.c
-             ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_comic.c
-             ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_compile.c
-             ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_container.c
-             ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_finalize.c
-             ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_gray4.c
-             ${_d}/libs/ra8_rabook_compile/src/ra8_rabook_raster.c
-             ${_d}/libs/ra8_reflow/src/ra8_img_arena.c
-             ${_d}/libs/third_party/stb/stb_image_impl.c
+  EXTRA_SRCS ${_d}/apps/shared_libs/rabook_compile/src/ra8_rabook_comic.c
+             ${_d}/apps/shared_libs/rabook_compile/src/rabook_compile.c
+             ${_d}/apps/shared_libs/rabook_compile/src/ra8_rabook_container.c
+             ${_d}/apps/shared_libs/rabook_compile/src/ra8_rabook_finalize.c
+             ${_d}/apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
+             ${_d}/apps/shared_libs/rabook_compile/src/ra8_rabook_raster.c
+             ${_d}/apps/shared_libs/reflow/src/ra8_img_arena.c
+             ${_d}/examples/ek_ra8d2/common/network_provision/src/ra8_net_provision.c
+             ${_d}/apps/shared_libs/third_party/stb/stb_image_impl.c
 )
 
 option(RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE
@@ -49,34 +48,14 @@ option(RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE
 
 if(TARGET media_download.elf)
   target_include_directories(
-    media_download.elf PRIVATE ${_d}/libs/ra8_rabook_compile/inc ${_d}/libs/ra8_reflow/inc
-                               ${_d}/libs/third_party/stb
+    media_download.elf
+    PRIVATE ${_d}/apps/shared_libs/rabook_compile/inc ${_d}/apps/shared_libs/reflow/inc
+            ${_d}/examples/ek_ra8d2/common/network_provision/inc
+            ${_d}/apps/shared_libs/third_party/stb
   )
-  set(_media_url "")
-  set(_media_ssid "")
-  set(_media_psk "")
-  if(DEFINED RA8_MEDIA_DOWNLOAD_URL)
-    set(_media_url "${RA8_MEDIA_DOWNLOAD_URL}")
-  elseif(DEFINED ENV{RA8_MEDIA_DOWNLOAD_URL})
-    set(_media_url "$ENV{RA8_MEDIA_DOWNLOAD_URL}")
-  endif()
-  if(DEFINED RA8_C6_WIFI_SSID)
-    set(_media_ssid "${RA8_C6_WIFI_SSID}")
-  elseif(DEFINED ENV{RA8_C6_WIFI_SSID})
-    set(_media_ssid "$ENV{RA8_C6_WIFI_SSID}")
-  endif()
-  if(DEFINED RA8_C6_WIFI_PSK)
-    set(_media_psk "${RA8_C6_WIFI_PSK}")
-  elseif(DEFINED ENV{RA8_C6_WIFI_PSK})
-    set(_media_psk "$ENV{RA8_C6_WIFI_PSK}")
-  endif()
-
   target_compile_definitions(
     media_download.elf
-    PRIVATE "RA8_MEDIA_DOWNLOAD_URL=\"${_media_url}\""
-            "RA8_C6_WIFI_SSID=\"${_media_ssid}\""
-            "RA8_C6_WIFI_PSK=\"${_media_psk}\""
-            "RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE=$<BOOL:${RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE}>"
+    PRIVATE "RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE=$<BOOL:${RA8_MEDIA_DOWNLOAD_SOURCE_IMAGE}>"
             MINIZ_NO_MALLOC
             MINIZ_NO_STDIO
             MINIZ_NO_TIME

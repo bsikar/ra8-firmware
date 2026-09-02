@@ -207,7 +207,6 @@ ra8_err_t ra8_rsip_protected_aes_init(const uint8_t*          wrapped_key,
                                       ra8_rsip_aes_mode_t     mode,
                                       const uint8_t*          iv)
 {
-  /* cppcheck-suppress unknownMacro -- cppcheck runs without include paths and cannot expand RA8_STACK_BUDGET. */
   RA8_STACK_BUDGET(k_unwrap_key_stack_bytes); /* unwrapped-key scratch; scrubbed on unwind */
   RA8_CHECK_NULL_PTR(wrapped_key, s_tag, "p_aes_init: wrapped_key");
 
@@ -463,7 +462,6 @@ ra8_err_t ra8_rsip_protected_rsa_decrypt(const uint8_t*      wrapped_priv,
                                          uint8_t*            plaintext_out,
                                          uint32_t            plaintext_cap)
 {
-  /* cppcheck-suppress unknownMacro -- cppcheck runs without include paths and cannot expand RA8_STACK_BUDGET. */
   RA8_STACK_BUDGET(k_rsa4096_priv_stack_bytes); /* RSA-4096 modulus scratch; scrubbed on unwind */
   RA8_CHECK_NULL_PTR(wrapped_priv, s_tag, "p_rsa_decrypt: wrapped_priv");
   RA8_CHECK_NULL_PTR(ciphertext, s_tag, "p_rsa_decrypt: ciphertext");
@@ -554,7 +552,6 @@ ra8_err_t ra8_rsip_protected_ecdsa_sign(const uint8_t*   wrapped_priv,
                                         uint32_t         hash_len,
                                         uint8_t*         sig_out)
 {
-  /* cppcheck-suppress unknownMacro -- cppcheck runs without include paths and cannot expand RA8_STACK_BUDGET. */
   RA8_STACK_BUDGET(k_ecc_priv_stack_bytes); /* ECC private scalar scratch; scrubbed on unwind */
   RA8_CHECK_NULL_PTR(wrapped_priv, s_tag, "p_ecdsa_sign: wrapped_priv");
   RA8_CHECK_NULL_PTR(hash, s_tag, "p_ecdsa_sign: hash");

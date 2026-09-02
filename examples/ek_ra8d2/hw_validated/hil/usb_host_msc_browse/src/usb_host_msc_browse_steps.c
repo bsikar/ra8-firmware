@@ -207,10 +207,8 @@ static void selftest_fat_fill_fat(uint32_t fat_sector, UCHAR* out)
   for (uint32_t j = 0U; j < (uint32_t)k_fat_entries_per_sec; j++) {
     const uint32_t entry = first_entry + j;
     uint16_t       value = 0U;
-    if (entry == 0U) {
-      value = (uint16_t)k_fat_entry0;
-    } else if (entry == 1U) {
-      value = (uint16_t)k_fat_eoc;
+    if (entry < (uint32_t)k_fat_first_cluster) {
+      value = (entry == 0U) ? (uint16_t)k_fat_entry0 : (uint16_t)k_fat_eoc;
     } else if (entry < (uint32_t)k_fat_last_mram_clus) {
       value = (uint16_t)(entry + 1U);
     } else if (entry == (uint32_t)k_fat_last_mram_clus) {
@@ -327,15 +325,13 @@ UINT selftest_msc_read(VOID*  storage,
   return UX_SUCCESS;
 }
 
-/* cppcheck-suppress-begin [constParameterCallback] -- USBX's
- * ux_slave_class_storage_media_write function-pointer signature takes
- * non-const UCHAR*; we cannot const-qualify the parameter. */
-UINT selftest_msc_write(VOID*  storage,
-                        ULONG  lun,
-                        UCHAR* data_pointer,
-                        ULONG  number_blocks,
-                        ULONG  lba,
-                        ULONG* media_status)
+UINT selftest_msc_write(
+  VOID*  storage,
+  ULONG  lun,
+  UCHAR* data_pointer, // NOLINT(readability-non-const-parameter) -- USBX media-write callback ABI.
+  ULONG  number_blocks,
+  ULONG  lba,
+  ULONG* media_status)
 {
   (void)storage;
   (void)lun;
@@ -347,7 +343,6 @@ UINT selftest_msc_write(VOID*  storage,
                                                        k_scsi_ascq_none);
   return UX_ERROR;
 }
-/* cppcheck-suppress-end [constParameterCallback] */
 
 UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_status)
 {

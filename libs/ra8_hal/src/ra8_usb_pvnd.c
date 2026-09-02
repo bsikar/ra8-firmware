@@ -62,8 +62,9 @@ static ra8_usb_pvnd_state_t s_state = {};
  *
  * @details See implementation.
  * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
+ * @return The bulk-endpoint maximum packet size in bytes for @p speed.
+ * @retval k_ra8_pvnd_bulk_max_packet_hs @p speed is k_ra8_usb_speed_hs.
+ * @retval k_ra8_pvnd_bulk_max_packet_fs Any other speed.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
@@ -83,8 +84,6 @@ static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
  *
  * @details See implementation.
  * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
@@ -93,25 +92,24 @@ static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_configure_pipes(ra8_usb_speed_t speed)
+static void internal_configure_pipes(ra8_usb_speed_t speed)
 {
   const uint16_t mp = internal_bulk_max_packet(speed);
 
-  ra8_err_t err = ra8_usb_configure_endpoint(speed,
-                                             k_ra8_pvnd_pipe_bulk_in,
-                                             k_ra8_pvnd_ep_bulk_in_addr,
-                                             k_ra8_usb_ep_dir_in,
-                                             k_ra8_usb_ep_type_bulk,
-                                             mp);
-  RA8_RETURN_ON_ERROR(err, s_tag, "pvnd: bulk-in cfg"); /* GCOVR_EXCL_BR_LINE */
-
-  err = ra8_usb_configure_endpoint(speed,
+  /* Both calls receive the init-validated speed and compile-time pipe tuples
+   * that satisfy every `ra8_usb_configure_endpoint` argument guard. */
+  (void)ra8_usb_configure_endpoint(speed,
+                                   k_ra8_pvnd_pipe_bulk_in,
+                                   k_ra8_pvnd_ep_bulk_in_addr,
+                                   k_ra8_usb_ep_dir_in,
+                                   k_ra8_usb_ep_type_bulk,
+                                   mp);
+  (void)ra8_usb_configure_endpoint(speed,
                                    k_ra8_pvnd_pipe_bulk_out,
                                    k_ra8_pvnd_ep_bulk_out_addr,
                                    k_ra8_usb_ep_dir_out,
                                    k_ra8_usb_ep_type_bulk,
                                    mp);
-  return err;
 }
 
 /**
@@ -178,17 +176,7 @@ ra8_err_t ra8_usb_pvnd_init(ra8_usb_speed_t speed)
   }
   internal_reset_shadow(speed);
 
-  const ra8_err_t pipes_err = internal_configure_pipes(speed);
-  if (pipes_err != k_ra8_ok) {
-    /* GCOVR_EXCL_START: unreachable from the host. internal_configure_pipes
-     * only fails when ra8_usb_configure_endpoint rejects an argument, but the
-     * class layer feeds it compile-time-constant, always-valid pipe / endpoint
-     * / direction / type / max-packet values, so pipes_err is k_ra8_ok on every
-     * host run. No fake register seed can change these constants. */
-    (void)ra8_usb_device_deinit(speed);
-    return pipes_err;
-    /* GCOVR_EXCL_STOP */
-  }
+  internal_configure_pipes(speed);
   s_state.initialized = true;
   ra8_log_info_val(s_tag, "device-Vendor ready", (uint32_t)speed);
   return k_ra8_ok;

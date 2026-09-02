@@ -3,18 +3,39 @@
 ---
 # Provision the hardware-in-the-loop bench host (the Pi with the EK-RA8D2 +
 # J-Link attached) to a known, current, board-reachable state.
-#   ansible-playbook -i inventory/hosts.ini playbooks/hil-bench.yml
+# Operator entry point: `just infra::apply star`. The fleet dispatcher owns
+# inventory and derived topology; this file is an internal implementation.
 - name: Provision the HIL bench
   hosts: hil_bench
   gather_facts: true
-  roles:
-    - hil_bench
+  pre_tasks:
+    - name: Authenticate the whole-bench transaction before role selection
+      ansible.builtin.include_role:
+        name: hil_bench
+        tasks_from: transaction_guard.yml
+        apply:
+          tags: [always]
+      tags: [always]
+  tasks:
+    - name: Converge the bench host beneath its authenticated front door
+      when: hil_bench_transaction_authenticated | default(false) | bool
+      ansible.builtin.include_role:
+        name: hil_bench
+      tags: [always]
     # The bench Pi also hosts the ESP32-C6 on PMOD1, so it builds + flashes the
     # C6 firmware. Drop this role for a HIL-only bench with no C6 attached.
-    - c6_toolchain
+    - name: Converge the C6 toolchain beneath the same authenticated front door
+      when: hil_bench_transaction_authenticated | default(false) | bool
+      ansible.builtin.include_role:
+        name: c6_toolchain
+      tags: [always]
     # The Digilent Analog Discovery 2 that probes the RA8 <-> C6 SPI + side-band
     # lines. Drop this role for a bench with no AD2 attached: it FAILS the play
     # when the (click-through-gated, hand-downloaded) WaveForms deb is not
     # staged, which is correct for a bench that has the instrument and wrong for
     # one that does not.
-    - ad2_tools
+    - name: Converge AD2 tools beneath the same authenticated front door
+      when: hil_bench_transaction_authenticated | default(false) | bool
+      ansible.builtin.include_role:
+        name: ad2_tools
+      tags: [always]

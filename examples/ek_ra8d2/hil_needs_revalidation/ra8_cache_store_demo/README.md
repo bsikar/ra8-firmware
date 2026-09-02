@@ -33,4 +33,4 @@ The app forces `RA8_USE_LEVELX_STANDALONE=ON`, which builds the vendored LevelX
 NOR sources with `LX_STANDALONE_ENABLE` so no ThreadX is pulled in.
 
 The same core and the same RAM NOR driver are compiled into the host unit test,
-so `make test` drives byte-identical logic on x86_64.
+so `just quality::local::test` drives byte-identical logic on x86_64.

@@ -55,7 +55,7 @@ if [[ ! -f "${DOXYFILE}" ]]; then
   exit 1
 fi
 
-DOXYGEN_BIN="$(bash "${SCRIPT_DIR}/provision_doxygen.sh")"
+DOXYGEN_BIN="$(/bin/bash -p "${SCRIPT_DIR}/provision_doxygen.sh")"
 echo "build_docs.sh: using doxygen $("${DOXYGEN_BIN}" --version) (${DOXYGEN_BIN})"
 
 # PROJECT_NUMBER in the Doxyfile expands $(RA8_PROJECT_VERSION) so the docs

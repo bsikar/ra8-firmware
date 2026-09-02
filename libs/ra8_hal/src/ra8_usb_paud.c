@@ -117,8 +117,9 @@ static ra8_usb_paud_state_t s_state = {};
  *
  * @details See implementation.
  * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
+ * @return The iso-endpoint maximum packet size in bytes for @p speed.
+ * @retval k_ra8_paud_iso_max_packet_hs @p speed is k_ra8_usb_speed_hs.
+ * @retval k_ra8_paud_iso_max_packet_fs_default Any other speed.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
@@ -138,8 +139,6 @@ static uint16_t internal_iso_max_packet(ra8_usb_speed_t speed)
  *
  * @details See implementation.
  * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
@@ -148,25 +147,24 @@ static uint16_t internal_iso_max_packet(ra8_usb_speed_t speed)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_configure_pipes(ra8_usb_speed_t speed)
+static void internal_configure_pipes(ra8_usb_speed_t speed)
 {
   const uint16_t mp = internal_iso_max_packet(speed);
 
-  ra8_err_t err = ra8_usb_configure_endpoint(speed,
-                                             k_ra8_paud_pipe_iso_in,
-                                             k_ra8_paud_ep_iso_in_addr,
-                                             k_ra8_usb_ep_dir_in,
-                                             k_ra8_usb_ep_type_iso,
-                                             mp);
-  RA8_RETURN_ON_ERROR(err, s_tag, "paud: iso-in cfg"); /* GCOVR_EXCL_BR_LINE */
-
-  err = ra8_usb_configure_endpoint(speed,
+  /* Both calls receive the init-validated speed and compile-time pipe tuples
+   * that satisfy every `ra8_usb_configure_endpoint` argument guard. */
+  (void)ra8_usb_configure_endpoint(speed,
+                                   k_ra8_paud_pipe_iso_in,
+                                   k_ra8_paud_ep_iso_in_addr,
+                                   k_ra8_usb_ep_dir_in,
+                                   k_ra8_usb_ep_type_iso,
+                                   mp);
+  (void)ra8_usb_configure_endpoint(speed,
                                    k_ra8_paud_pipe_iso_out,
                                    k_ra8_paud_ep_iso_out_addr,
                                    k_ra8_usb_ep_dir_out,
                                    k_ra8_usb_ep_type_iso,
                                    mp);
-  return err;
 }
 
 /**
@@ -258,11 +256,7 @@ ra8_err_t ra8_usb_paud_init(ra8_usb_speed_t speed)
   }
   internal_reset_shadow(speed);
 
-  const ra8_err_t pipes_err = internal_configure_pipes(speed);
-  if (pipes_err != k_ra8_ok) {
-    (void)ra8_usb_device_deinit(speed);
-    return pipes_err;
-  }
+  internal_configure_pipes(speed);
   s_state.initialized = true;
   ra8_log_info_val(s_tag, "device-Audio ready", (uint32_t)speed);
   return k_ra8_ok;

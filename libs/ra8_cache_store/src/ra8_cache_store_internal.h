@@ -80,7 +80,6 @@ typedef enum : uint32_t {
  * @invariant `crc` == CRC-32 over the preceding fields for a valid superblock.
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
   uint32_t magic;           /**< ::k_ra8_cs_super_magic.               */
   uint32_t version;         /**< ::k_ra8_cs_format_version.            */
@@ -94,7 +93,6 @@ typedef struct {
   uint32_t logical_sectors; /**< Usable logical-sector span.           */
   uint32_t crc;             /**< CRC-32 over the ten fields above.     */
 } ra8_cs_super_t;
-/* cppcheck-suppress-end unusedStructMember */
 
 /**
  * @struct ra8_cs_entry_hdr_t
@@ -107,7 +105,6 @@ typedef struct {
  * @invariant `hdr_crc` == CRC-32 over the preceding fields; `sector_count >= 1`.
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
   uint32_t magic;        /**< ::k_ra8_cs_entry_magic.                         */
   uint32_t seq;          /**< Append sequence number (monotonic).             */
@@ -118,7 +115,6 @@ typedef struct {
   uint16_t flags;        /**< Persisted flags (pinned bit).                   */
   uint32_t hdr_crc;      /**< CRC-32 over the six fields above.               */
 } ra8_cs_entry_hdr_t;
-/* cppcheck-suppress-end unusedStructMember */
 
 /**
  * @struct ra8_cs_dir_ent_t
@@ -126,7 +122,6 @@ typedef struct {
  * @invariant `sector_count >= 1`.
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
   uint32_t key;          /**< Content key.                   */
   uint32_t start_sector; /**< Entry header logical sector.   */
@@ -134,7 +129,6 @@ typedef struct {
   uint16_t sector_count; /**< Run length (header + payload). */
   uint16_t flags;        /**< Persisted flags (pinned bit).  */
 } ra8_cs_dir_ent_t;
-/* cppcheck-suppress-end unusedStructMember */
 
 static_assert(sizeof(ra8_cs_dir_ent_t) == (uint32_t)k_ra8_cs_dir_ent_bytes,
               "directory entry layout pinned at 16 bytes");

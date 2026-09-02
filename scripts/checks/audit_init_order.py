@@ -172,7 +172,7 @@ def audit_app(app: str, main_path: Path) -> AppAudit:
 
 
 def collect_apps(repo_root: Path) -> list[tuple[str, Path]]:
-    """Discover every app ``main.c`` under ``examples/``, at any depth.
+    """Discover every app ``src/main.c`` under ``examples/``, at any depth.
 
     The glob used to be ``examples/*/*/main.c`` -- exactly three levels -- while
     the tree's real layout is ``examples/<tier>/.../<app>/``, up to five deep.
@@ -183,7 +183,9 @@ def collect_apps(repo_root: Path) -> list[tuple[str, Path]]:
     instance, so the fix here is the recursive form plus the floor in ``main()``
     that makes a collapsed discovery fail instead of pass.
     """
-    return [(main.parent.name, main) for main in sorted(repo_root.glob("examples/**/main.c"))]
+    return [
+        (main.parent.parent.name, main) for main in sorted(repo_root.glob("examples/**/src/main.c"))
+    ]
 
 
 def render_markdown(audits: list[AppAudit], repo_root: Path) -> str:
@@ -244,7 +246,8 @@ def selftest() -> int:
 
     with tempfile.TemporaryDirectory() as tmp:
         app = Path(tmp) / "examples" / "tier" / "group" / "deep" / "app"
-        app.mkdir(parents=True)
+        src = app / "src"
+        src.mkdir(parents=True)
 
         # Written in the project's multi-line main() style: extract_calls walks
         # braces to stay inside main()'s body, so a one-line body would open and
@@ -253,10 +256,10 @@ def selftest() -> int:
             body = "\n".join(f"  {call}();" for call in calls)
             return f"int main(void)\n{{\n{body}\n  return 0;\n}}\n"
 
-        (app / "main.c").write_text(app_main("ra8_cgc_init", "ra8_mstp_init", "ra8_sci_init"))
+        (src / "main.c").write_text(app_main("ra8_cgc_init", "ra8_mstp_init", "ra8_sci_init"))
         found = collect_apps(Path(tmp))
-        expect(len(found) == 1, "recursive discovery reaches a five-deep app main.c", failures)
-        ordered = audit_app("app", app / "main.c")
+        expect(len(found) == 1, "recursive discovery reaches a nested app src/main.c", failures)
+        ordered = audit_app("app", src / "main.c")
         expect(
             len(ordered.calls) == SELFTEST_ORDERED_CALLS,
             "all three init calls are extracted from main()",
@@ -264,8 +267,8 @@ def selftest() -> int:
         )
         expect(not ordered.violations, "a correctly ordered app stays quiet", failures)
 
-        (app / "main.c").write_text(app_main("ra8_sci_init", "ra8_cgc_init"))
-        inverted = audit_app("app", app / "main.c")
+        (src / "main.c").write_text(app_main("ra8_sci_init", "ra8_cgc_init"))
+        inverted = audit_app("app", src / "main.c")
         expect(bool(inverted.violations), "a peripheral before CGC fires", failures)
 
     live = collect_apps(root)

@@ -11,28 +11,29 @@
 # BODIES only: the option parsing, the pass orchestration and the selftest
 # entry stay in the driver, so there is still exactly one way to run this.
 #
-# Functions here: collect_source_files, route_bucket
+# Functions here: source_path_is_live, collect_source_files,
+# source_requires_firmware_headers, route_bucket
 
 # ---------------------------------------------------------------------------
 # Collect first-party source files (exclude vendor paths)
 #
 # Scope: EVERY first-party C-family file in the repository -- C, C++ and
-# Objective-C, translation units and headers alike, under libs/,
-# tests/, tools/, examples/ and port/. CLAUDE.md ("Scope: these
+# Objective-C, translation units and headers alike, under libs/, apps/,
+# tests/, tools/, examples/, and port/. CLAUDE.md ("Scope: these
 # standards apply to EVERY first-party file in the repository") makes the
 # host tools, the host test suite and the firmware subject to exactly the
 # same rules; a file being "just an emulator", "just a test" or "just an
 # example" is not a reason to relax them.
 #
-# The ONLY exemptions are vendored SOUP (libs/third_party/)
-# and generated tables (libs/ra8_fonts/, tools/vela/generated/), matching the
-# CLAUDE.md exemption list. Build trees and CMake-fetched deps are excluded
-# because they are not source.
+# The ONLY exemptions are vendored SOUP under libs/third_party/ and
+# apps/shared_libs/third_party/, plus generated tables (libs/ra8_fonts/ and
+# tools/vela/generated/), matching the CLAUDE.md exemption list. Build trees
+# and CMake-fetched deps are excluded because they are not source.
 #
 # Scope is derived from `git ls-files`, NOT from a directory glob. An earlier
 # revision globbed `examples/*/*/main.c` to find app directories, which
 # matched only the apps sitting exactly three levels deep while the tree's
-# actual layout is examples/<tier>/.../<app>/, up to five deep. That is the
+# actual layout is examples/<tier>/.../<app>/src/main.c, up to six deep. That is the
 # #296 / #332 / #358 / #359 / #360 defect: a scan list that silently stopped
 # matching the tree. Deriving from git means a new directory at any depth is
 # picked up the day it lands.
@@ -44,12 +45,13 @@
 # sources of those flags here, and `route_bucket` below picks between them:
 #
 #   host       the unit-test build's compile_commands.json -- describes the
-#              host-buildable C and C++ in libs/, tests/ and tools/.
+#              enrolled host-buildable C and C++ in libs/, apps/, tests/,
+#              tools/, and hosted ports.
 #   firmware   a CROSS-COMPILE compile_commands.json built by
 #              scripts/builders/build_cross_compile_db.py, covering every
-#              cross-compiled TU in examples/ and port/ plus the
-#              handful of libs/ TUs that include ThreadX / NetX /
-#              USBX vendor headers.
+#              cross-compiled TU in examples/ and port/, firmware products
+#              under apps/, board boot code, and the handful of libs/ TUs that
+#              include ThreadX / NetX / USBX vendor headers.
 #   fixed      a hand-assembled command, for the host dev tools whose own
 #              per-tool build files never feed any compile database.
 #
@@ -88,6 +90,10 @@ for rel, cls in sorted(PATH_CLASS.items()):
 PY_GENERATED
 }
 
+source_path_is_live() {
+  [[ -f "$1" ]]
+}
+
 collect_source_files() {
   cd "$FIRMWARE_DIR" || return 1
   local generated
@@ -96,12 +102,16 @@ collect_source_files() {
     grep -E '\.(c|h|cpp|cc|cxx|hpp|hh|hxx|m)$' |
     grep -E '^(libs|tests|tools|apps|examples|port)/' |
     # Vendored SOUP and generated tables -- the CLAUDE.md exemption list.
-    grep -Ev '^(libs/third_party/|libs/ra8_fonts/|tools/vela/generated/)' |
+    grep -Ev '^(libs/third_party/|apps/shared_libs/third_party/|libs/ra8_fonts/|tools/vela/generated/)' |
     # Build trees and CMake-fetched deps are not source.
     grep -Ev '(^|/)(build|build-[^/]*|_deps)/' |
     # Generator-owned bytes, by exact path (see generated_source_paths).
     grep -vxF -e "$generated" |
     while IFS= read -r f; do
+      # A dirty migration can leave a staged rename/delete in the index while
+      # its replacement is still untracked. Analyse the live working tree,
+      # never a cached pathname whose file no longer exists.
+      source_path_is_live "$f" || continue
       # Objective-C needs the macOS SDK's AppKit / CoreGraphics headers to
       # parse at all, so it can only be linted on a macOS host. Claim it only
       # where it can really be checked: `--list-files` feeds
@@ -149,40 +159,104 @@ collect_source_files() {
 # so it stays in the normal passes. The test is a non-inline `static` FUNCTION
 # declaration, not merely the word `static`.
 # ---------------------------------------------------------------------------
-# Headers that are include-FRAGMENTS for a reason the content rule below
-# cannot see, listed by EXACT repo-relative path with the reason beside them.
+# Headers that are include-FRAGMENTS, listed as mode|EXACT-repo-relative-path.
 #
 # A naming convention (`*_internal.h`, `*_fixture.h`) would be the wrong rule
 # here: most headers with those names ARE self-contained -- libs/ra8_hal/src is
 # full of them -- and a suffix wildcard would drop the whole private-header
-# surface out of the analysis while reporting a smaller, cleaner run. So this
-# is an exact-path registry, the same mechanism lint_coverage_rules.py uses for
-# generated sources, and the selftest fails if a row names a file that no
-# longer exists, so it cannot rot into a stale allowlist.
-TIDY_HEADER_FRAGMENTS=(
-  # A ThreadX MODEL whose single shared state object is defined by whichever
-  # TU sets RA8_ESP_HOSTED_TX_SHIM_IMPL first. Parsed alone it has neither the
-  # vendor types nor that define: 38 findings, all parse errors.
-  "port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h"
+# surface out of the analysis while reporting a smaller, cleaner run. The
+# registry is therefore the one ownership manifest for the HeaderFilterRegex.
+# `static-decl` rows are independently derived by the content rule below;
+# `includer-context` rows document the exceptional parse contract that content
+# alone cannot see. The selftest proves the registry, content-derived census,
+# and shipped regex name exactly the same 28 authored headers.
+TIDY_HEADER_FRAGMENT_RECORDS=(
+  # Non-inline static declarations are contracts for their including TU, not
+  # standalone translation units. The content census must rediscover every
+  # one of these rows and reject any new unregistered fragment.
+  "static-decl|apps/board/stand_alone/ereader/tests/inc/test_ra8_manga_stream.h"
+  "static-decl|apps/shared_libs/epub/src/epub_xml_opf_internal.h"
+  "static-decl|apps/shared_libs/epub/src/epub_xml_toc_internal.h"
+  "static-decl|apps/shared_libs/mdl/tests/inc/test_mdl_fetch_fixture.h"
+  "static-decl|apps/shared_libs/unarch/tests/inc/unarch_tar_fixture.h"
+  "static-decl|apps/shared_libs/xml/src/xml_reader_internal.h"
+  "static-decl|libs/if_ra8_vfs/src/fw_if_fs_ra8_vfs_contracts_internal.h"
+  "static-decl|libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_core_contracts_internal.h"
+  "static-decl|libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io_contracts_internal.h"
+  "static-decl|port/posix/src/fw_if_fs_posix_contracts_internal.h"
+  "static-decl|port/posix/src/fw_if_fs_posix_stream_contracts_internal.h"
+  "static-decl|tests/storage/inc/test_ra8_fs_format_fixture.h"
+  "static-decl|tests/storage/inc/test_ra8_fs_check_util.h"
+  "static-decl|tests/support/inc/fs_sparse_backend_test_util.h"
+  "static-decl|tests/support/inc/ra8_gpio_test_contracts.h"
+  "static-decl|tests/support/inc/ra8_jpeg_sw_decode_cov_fixture.h"
+  "static-decl|tests/support/inc/ra8_keyboard_test_contracts.h"
+  "static-decl|tests/support/inc/ra8_mpu_test_internal.h"
+  "static-decl|tests/support/inc/ra8_power_profile_test_contracts.h"
+  "static-decl|tests/support/inc/ra8_tls_net_test_contracts.h"
+  "static-decl|tests/support/inc/ra8_tls_test_contracts.h"
+  "static-decl|tests/support/inc/ra8_touch_cal_test_contracts.h"
+  "static-decl|tests/usb/inc/test_ra8_usb_hmsc_enum_fixture.h"
+
   # Fixture constants and storage for the cache-store suite. It deliberately
   # inherits <stdint.h> and the ra8_cache_store types from its includer, so
   # standalone it cannot name uint8_t: 17 findings, all parse errors.
-  "tests/support/ra8_cache_store_fixture.h"
+  "includer-context|tests/support/inc/ra8_cache_store_fixture.h"
+  # Test-only fixture helpers consume the target-scoped repository-root
+  # definition supplied by ra8_add_test; the owning test TUs analyse them.
+  "includer-context|apps/shared_libs/reflow/tests/inc/reflow_v1_test_util.h"
+  # This OS-shape header is included from upstream nimble_npl.h after upstream
+  # defines ble_npl_event_fn. It deliberately cannot be parsed before that
+  # contract, matching every vendored NimBLE OS port.
+  "includer-context|port/nimble/inc/nimble/nimble_npl_os.h"
+  # The PSA configuration is consumed as a preprocessor configuration unit by
+  # TF-PSA-Crypto. The split platform body and umbrella are analysed through
+  # those vendor includers, with the controlling configuration state present.
+  "includer-context|port/mbedtls/inc/tf_psa_crypto_config.h"
+  "includer-context|port/mbedtls/inc/tf_psa_crypto_config_platform.h"
 )
+
+header_fragment_mode() {
+  local rel="$1" record
+  for record in ${TIDY_HEADER_FRAGMENT_RECORDS[@]+"${TIDY_HEADER_FRAGMENT_RECORDS[@]}"}; do
+    if [[ "${record#*|}" == "$rel" ]]; then
+      printf '%s\n' "${record%%|*}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+header_has_noninline_static_decl() {
+  python3 "$FIRMWARE_DIR/scripts/checks/tidy/static_decl_scan.py" "$1"
+}
+
+header_static_decl_state() {
+  local scan_rc
+  if header_has_noninline_static_decl "$1"; then
+    printf '%s\n' yes
+    return 0
+  else
+    scan_rc=$?
+  fi
+  if [[ "$scan_rc" -eq 1 ]]; then
+    printf '%s\n' no
+    return 0
+  fi
+  print_error "static declaration classifier failed for $1"
+  return "$RC_INFRA"
+}
 
 header_is_include_fragment() {
   local f="$1"
   [[ -f "$f" ]] || return 1
-  local rel registered
+  local rel state
   rel="${f#"$FIRMWARE_DIR"/}"
-  for registered in "${TIDY_HEADER_FRAGMENTS[@]}"; do
-    [[ "$rel" == "$registered" ]] && return 0
-  done
-  grep -qE "^([A-Za-z_][A-Za-z0-9_]*[[:space:]]+)*static[[:space:]]+inline[[:space:]]" "$f" &&
-    return 1
-  grep -qE \
-    "^([A-Za-z_][A-Za-z0-9_]*[[:space:]]+)*static[[:space:]]+[A-Za-z_][A-Za-z0-9_ *]*[[:space:]]\*?[A-Za-z_][A-Za-z0-9_]*[[:space:]]*\(" \
-    "$f"
+  header_fragment_mode "$rel" >/dev/null && return 0
+  if ! state="$(header_static_decl_state "$f")"; then
+    return "$RC_INFRA"
+  fi
+  [[ "$state" == yes ]]
 }
 
 # ---------------------------------------------------------------------------
@@ -202,6 +276,11 @@ route_bucket_by_language() {
     *.h | *.hpp | *.hh | *.hxx)
       if header_is_include_fragment "$f"; then
         echo included && return 0
+      else
+        local fragment_rc=$?
+        if [[ "$fragment_rc" -ne 1 ]]; then
+          return "$fragment_rc"
+        fi
       fi
       ;;
   esac
@@ -217,6 +296,13 @@ route_bucket_by_language() {
   return 1
 }
 
+# A libs/ TU that includes a ThreadX / NetX / USBX vendor header belongs to the
+# firmware pass. The host database has no path to those headers, whereas the
+# cross database contains the real compile command and include graph.
+source_requires_firmware_headers() {
+  grep -qlE '#\s*include\s*[<"](tx_api|nx_api|ux_api)\.h[">]' "$1" 2>/dev/null
+}
+
 # The FIRMWARE PRODUCT rule below deserves its own note, because it is the one
 # path pattern here that is narrower than the root it sits in. apps/ is the
 # products tier and its other inhabitants are host programs, routed to the
@@ -226,8 +312,10 @@ route_bucket_by_language() {
 # step, exactly as HOST_PORT_ROOTS is kept in step with
 # build_cross_compile_db.py.
 route_bucket() {
-  local f="$1"
-  route_bucket_by_language "$f" && return 0
+  local f="$1" language_rc=0
+  route_bucket_by_language "$f" || language_rc=$?
+  [[ "$language_rc" -eq 0 ]] && return 0
+  [[ "$language_rc" -eq 1 ]] || return "$language_rc"
   case "$f" in
     # ...except the HOSTED ports. port/posix/ binds fw_if_fs and
     # ra8_io_stream to the host kernel ABI, declares itself
@@ -237,6 +325,15 @@ route_bucket() {
     # before the generic port/ rule below, and kept in step with
     # HOST_PORT_ROOTS in scripts/builders/build_cross_compile_db.py.
     */port/posix/*) echo host && return 0 ;;
+    # Tests nested below a firmware product/example are host translation
+    # units registered by tests/cmake/unit_tests.cmake. They need that target's
+    # exact definitions and app-local include graph, not an inferred
+    # firmware/tool command. Keep this ahead of the product roots, matching
+    # is_firmware_source() in build_cross_compile_db.py.
+    */apps/board/stand_alone/*/tests/* | */apps/shared_libs/*/tests/* | \
+      */examples/*/tests/*)
+      echo host && return 0
+      ;;
     # Cross-compiled firmware: examples/ and port/ in full.
     */examples/* | */port/*) echo firmware && return 0 ;;
     # A board layer's boot/ directory is the reset path compiled into every
@@ -247,18 +344,14 @@ route_bucket() {
     # exists to prevent. It surfaced when `main` became `void main(void)`
     # behind `__STDC_HOSTED__ == 0`: a hosted-flags parse cannot see the
     # declaration and reports `use of undeclared identifier 'main'` (#707).
-    */libs/ra8_board_*/boot/*) echo firmware && return 0 ;;
+    */libs/ra8_board_*/src/boot/*) echo firmware && return 0 ;;
     # The e-reader image: a cross-compiled application built by ra8_add_app(),
     # registered in RA8_APPS and present in the cross database. Routing it to
     # the host bucket analysed its `void main(void)` as a hosted program
     # (#707). See the products-tier note above route_bucket().
-    */apps/stand_alone/ereader/*) echo firmware && return 0 ;;
+    */apps/board/stand_alone/ereader/*) echo firmware && return 0 ;;
   esac
-  # A libs/ TU that includes a ThreadX / NetX / USBX vendor header is
-  # firmware too: the host database carries no path to those headers, so it
-  # parsed as a clang-diagnostic-error and used to be skipped outright. The
-  # cross database compiles it for real and therefore knows where they live.
-  if grep -qlE '#\s*include\s*[<"](tx_api|nx_api|ux_api)\.h[">]' "$f" 2>/dev/null; then
+  if source_requires_firmware_headers "$f"; then
     echo firmware && return 0
   fi
   case "$f" in

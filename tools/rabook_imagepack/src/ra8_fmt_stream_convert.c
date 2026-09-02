@@ -13,9 +13,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "jof_produce.h"
 #include "ra8_attributes.h"
 #include "ra8_fmt_stream.h"
-#include "ra8_jof_produce.h"
 #include "ra8_webp.h"
 
 /** @brief Image-probe and report constants. */
@@ -43,6 +43,14 @@ typedef enum : uint32_t {
   k_convert_jpeg_sof_last  = 0xCFU, /**< Last JPEG SOF-range marker.               */
   k_convert_probe_min      = 12U,   /**< Smallest supported image prefix.          */
 } convert_const_t;
+
+/** @brief Fixed non-ASCII bytes in the PNG signature. */
+typedef enum : uint8_t {
+  k_convert_png_sig_high = 0x89U, /**< High-bit signature byte. */
+  k_convert_png_sig_cr   = 0x0DU, /**< Carriage return byte.    */
+  k_convert_png_sig_lf   = 0x0AU, /**< Line feed byte.          */
+  k_convert_png_sig_sub  = 0x1AU, /**< DOS EOF byte.            */
+} convert_png_signature_t;
 
 /** @brief Accepted source encoding selected by the header probe. */
 typedef enum : uint8_t {
@@ -237,8 +245,8 @@ static ra8_err_t internal_jpeg_sof0(const ra8_fmt_source_t* source,
   if (fields[0] != (uint8_t)k_convert_jpeg_8bit) {
     return k_ra8_err_not_supported;
   }
-  if ((width == 0U) || (height == 0U) || ((uint32_t)width > (uint32_t)k_ra8_jof_max_dim) ||
-      ((uint32_t)height > (uint32_t)k_ra8_jof_max_dim)) {
+  if ((width == 0U) || (height == 0U) || ((uint32_t)width > (uint32_t)k_jof_max_dim) ||
+      ((uint32_t)height > (uint32_t)k_jof_max_dim)) {
     return k_ra8_err_invalid_size;
   }
   *out_w = width;
@@ -326,8 +334,8 @@ internal_png_dims(const uint8_t prefix[k_convert_png_dims_end], uint16_t* out_w,
 {
   const uint32_t width  = internal_be32(&prefix[k_convert_png_w]);
   const uint32_t height = internal_be32(&prefix[k_convert_png_h]);
-  if ((width == 0U) || (height == 0U) || (width > (uint32_t)k_ra8_jof_max_dim) ||
-      (height > (uint32_t)k_ra8_jof_max_dim)) {
+  if ((width == 0U) || (height == 0U) || (width > (uint32_t)k_jof_max_dim) ||
+      (height > (uint32_t)k_jof_max_dim)) {
     return k_ra8_err_invalid_size;
   }
   *out_w = (uint16_t)width;
@@ -358,10 +366,16 @@ static ra8_err_t internal_probe(const ra8_fmt_source_t* source,
                                 uint16_t*               out_w,
                                 uint16_t*               out_h)
 {
-  static const uint8_t png_magic[8U] =
-    {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU}; /* MAGIC-OK */
-  uint8_t prefix[k_convert_probe_bytes];
-  size_t  count = sizeof(prefix);
+  static const uint8_t png_magic[8U] = {k_convert_png_sig_high,
+                                        'P',
+                                        'N',
+                                        'G',
+                                        k_convert_png_sig_cr,
+                                        k_convert_png_sig_lf,
+                                        k_convert_png_sig_sub,
+                                        k_convert_png_sig_lf};
+  uint8_t              prefix[k_convert_probe_bytes];
+  size_t               count = sizeof(prefix);
   if (source->size < (uint64_t)count) {
     count = (size_t)source->size;
   }
@@ -390,8 +404,8 @@ static ra8_err_t internal_probe(const ra8_fmt_source_t* source,
     if (rc != k_ra8_ok) {
       return rc;
     }
-    if ((width == 0U) || (height == 0U) || (width > (uint32_t)k_ra8_jof_max_dim) ||
-        (height > (uint32_t)k_ra8_jof_max_dim)) {
+    if ((width == 0U) || (height == 0U) || (width > (uint32_t)k_jof_max_dim) ||
+        (height > (uint32_t)k_jof_max_dim)) {
       return k_ra8_err_invalid_size;
     }
     *kind  = k_convert_kind_webp;
@@ -580,7 +594,7 @@ internal_field(const ra8_fmt_sink_t* report, uint64_t value, const char* suffix,
  */
 RA8_INTERNAL
 static ra8_err_t
-internal_report(const ra8_fmt_sink_t* report, const ra8_jof_info_t* info, const char* output_name)
+internal_report(const ra8_fmt_sink_t* report, const jof_info_t* info, const char* output_name)
 {
   ra8_err_t rc = internal_text(report, "convert: ");
   internal_field(report, info->width, "x", &rc);
@@ -613,7 +627,7 @@ ra8_err_t ra8_fmt_jof_convert_requirements(const ra8_fmt_source_t*             s
   out->tile_width = out->width;
   out->tile_height =
     (out->height < (uint16_t)k_convert_band_height) ? out->height : (uint16_t)k_convert_band_height;
-  out->work_bytes = ra8_jof_work_bytes(out->width, out->height, out->tile_width, out->tile_height);
+  out->work_bytes = jof_work_bytes(out->width, out->height, out->tile_width, out->tile_height);
   if (out->work_bytes == 0U) {
     return k_ra8_err_invalid_size;
   }
@@ -621,7 +635,7 @@ ra8_err_t ra8_fmt_jof_convert_requirements(const ra8_fmt_source_t*             s
     if (source->size > (uint64_t)UINT32_MAX) {
       return k_ra8_err_invalid_size;
     }
-    out->webp_work_bytes = ra8_jof_webp_work_bytes(out->width, out->height, (uint32_t)source->size);
+    out->webp_work_bytes = jof_webp_work_bytes(out->width, out->height, (uint32_t)source->size);
     if (out->webp_work_bytes == 0U) {
       return k_ra8_err_invalid_size;
     }
@@ -631,7 +645,7 @@ ra8_err_t ra8_fmt_jof_convert_requirements(const ra8_fmt_source_t*             s
 
 ra8_err_t ra8_fmt_jof_convert_stream(const ra8_fmt_source_t*                   source,
                                      const ra8_fmt_jof_convert_requirements_t* requirements,
-                                     ra8_fmt_jof_convert_workspace_t*          workspace,
+                                     const ra8_fmt_jof_convert_workspace_t*    workspace,
                                      ra8_fmt_transaction_t*                    transaction,
                                      const ra8_fmt_sink_t*                     report,
                                      const char*                               output_name)
@@ -652,15 +666,15 @@ ra8_err_t ra8_fmt_jof_convert_stream(const ra8_fmt_source_t*                   s
     internal_abort(transaction);
     return k_ra8_err_invalid_size;
   }
-  convert_pull_t              pull = {.source = source, .offset = 0U};
-  const ra8_jof_produce_cfg_t cfg  = {
+  convert_pull_t          pull = {.source = source, .offset = 0U};
+  const jof_produce_cfg_t cfg  = {
     .pull          = internal_pull,
     .pull_ctx      = &pull,
     .sink          = internal_append,
     .sink_ctx      = transaction,
     .tile_w        = requirements->tile_width,
     .tile_h        = requirements->tile_height,
-    .codec         = (uint8_t)k_ra8_jof_codec_deflate,
+    .codec         = (uint8_t)k_jof_codec_deflate,
     .max_width     = requirements->width,
     .max_height    = requirements->height,
     .work          = workspace->work,
@@ -668,8 +682,8 @@ ra8_err_t ra8_fmt_jof_convert_stream(const ra8_fmt_source_t*                   s
     .webp_work     = workspace->webp_work,
     .webp_work_cap = workspace->webp_work_cap,
   };
-  ra8_jof_info_t info = {};
-  ra8_err_t      rc   = ra8_jof_produce(&cfg, &info);
+  jof_info_t info = {};
+  ra8_err_t  rc   = jof_produce(&cfg, &info);
   if (rc != k_ra8_ok) {
     internal_abort(transaction);
     return rc;

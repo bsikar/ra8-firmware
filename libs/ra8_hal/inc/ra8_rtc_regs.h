@@ -106,7 +106,6 @@ typedef struct {
   volatile uint16_t RADJ2;   /**< +0x30 Time Error Adjustment 2 (FADJ).   */
 
   /* +0x32..+0x3F reserved (7 x uint16_t in FSP). */
-  /* NOLINTNEXTLINE(readability-magic-numbers) -- 7 = (0x40 - 0x32) / 2 reserved halfwords. */
   volatile uint16_t _r15[7]; /**< Reserved. */
 
   /**
@@ -114,17 +113,14 @@ typedef struct {
    * 0x04 stride). Modelled here as a plain byte array to keep the
    * struct size correct without pulling the bit-field union in.
    */
-  /* NOLINTNEXTLINE(readability-magic-numbers) -- 12 = 3 channels x 0x04 stride, raw bytes. */
   volatile uint8_t RTCCR[12];
   /* +0x4C..+0x4F reserved (5 halfwords minus RTCCR overlap = 2 hw). */
-  /* NOLINTNEXTLINE(readability-magic-numbers) -- 2 reserved halfwords at +0x4C..+0x4F. */
   volatile uint16_t _r16[2]; /**< Reserved. */
 
   /**
    * +0x50..+0x7F: CP[3] -- Capture registers (sec, min, hour, day,
    * month). Each channel is 0x10 bytes; modelled as raw bytes.
    */
-  /* NOLINTNEXTLINE(readability-magic-numbers) -- 48 = 3 channels x 0x10 capture bytes. */
   volatile uint8_t CP[48];
 } r_rtc_regs_t;
 

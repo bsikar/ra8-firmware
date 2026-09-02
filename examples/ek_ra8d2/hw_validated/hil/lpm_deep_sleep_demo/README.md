@@ -9,8 +9,8 @@ Two properties of this silicon shape the app, and both are easy to rediscover
 the hard way.
 
 **SysTick does not wake the core from Deep Sleep** under the default LPM
-configuration. Once the chip enters WFI it stays there until the next
-Initialize. A real wake needs a sub-clock source (RTC or AGT) or an external
+configuration. Once the chip enters WFI it stays there until a power-on reset.
+A real wake needs a sub-clock source (RTC or AGT) or an external
 IRQ pin, which is out of scope here -- so the automated check keys on the
 banner emitted just before the LPM entry and proves the firmware got that far
 without faulting, not that wake works.
@@ -27,5 +27,7 @@ before the LPM entry and `g_lpm_deep_wake_count` after it, so a broken LPM init
 moves the first and leaves the second at zero.
 
 After this app runs the chip sits in a deep-LPM state with the AHB-AP gated and
-cannot simply be reflashed: the bench has to Initialize it first, which is why
-this app carries a post-run initialize step. No external hardware required.
+cannot simply be reflashed. A direct RFP Initialize is too late because its own
+debug connection is gated. The HIL manifest therefore requires a bounded
+power cycle that halts and installs the next selected image in one debugger
+connection. No external hardware is required beyond the standard bench wiring.

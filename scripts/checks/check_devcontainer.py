@@ -52,7 +52,7 @@ FORMAT ROLE
 -----------
 Neither tool rewrites its input, so the formatter half is a canonical-form
 checker -- the same arrangement lint_coverage_rules.py already documents for
-Makefiles and linker scripts, where nothing in the ecosystem rewrites the file
+justfiles and linker scripts, where nothing in the ecosystem rewrites the file
 either. DC001 rejects the layout deviations that a formatter would otherwise
 fix: non-ASCII bytes, CRLF, a missing final newline, tab indentation and
 trailing whitespace.
@@ -64,6 +64,7 @@ stay quiet on the real files.
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import subprocess
 import sys
@@ -74,6 +75,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lint_coverage_rules import EXT_CLASS, NAME_CLASS
 from selftest_assert import expect, report
+
+# Vendored SOUP is governed by its upstream boundary, never by this checker.
+THIRD_PARTY_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/")
 
 REPO_ROOT = Path(
     subprocess.run(
@@ -135,7 +139,7 @@ def targets() -> list[str]:
         rel
         for rel in proc.stdout.split("\0")
         if rel
-        and not rel.startswith("libs/third_party/")
+        and not rel.startswith(THIRD_PARTY_PREFIXES)
         and rel != ".devcontainer/p10k.zsh"
         and classify(rel) in OWNED_CLASSES
     )
@@ -164,6 +168,31 @@ def check_format(rel: str, raw: bytes) -> list[Finding]:
         if line != line.rstrip():
             add(num, "trailing whitespace")
     return findings
+
+
+def check_uv_execution(rel: str, text: str) -> list[Finding]:
+    """DC004 -- execute uv only through the authenticated bootstrap runner."""
+    boundary = "WORKDIR /opt/ra8-python-project\n"
+    if boundary not in text:
+        return []
+    start = text.find(boundary) + len(boundary)
+    end = text.find("\nENV RA8_TOOL_VENV", start)
+    if text.count(boundary) != 1 or end < 0:
+        return [Finding(rel, 1, "DC004", "uv provisioning block is not structurally bounded")]
+    block = text[start:end]
+    normalized = " ".join(block.replace("\\\n", " ").split())
+    expected = " ".join(EXPECTED_UV_RUN_BLOCK.replace("\\\n", " ").split())
+    raw_uv = re.compile(r"(?:^|[;&|]\s*)(?:[^\s;]+/)?uv(?:\s|$)")
+    other_raw = any(
+        raw_uv.search(" ".join(instruction.replace("\\\n", " ").split()))
+        for instruction in re.findall(r"(?ms)^RUN .*?(?=\n(?:RUN|ENV|ARG|COPY|WORKDIR|#)|\Z)", text)
+        if instruction != block
+    )
+    unsafe = normalized != expected or other_raw
+    if not unsafe:
+        return []
+    line = text[:start].count("\n") + 1
+    return [Finding(rel, line, "DC004", "uv execution bypasses authenticated bytes")]
 
 
 def run_hadolint(rel: str, path: Path) -> list[Finding]:
@@ -227,6 +256,7 @@ def check_one(rel: str, root: Path = REPO_ROOT) -> list[Finding]:
     findings = check_format(rel, path.read_bytes())
     cls = classify(rel)
     if cls == "dockerfile":
+        findings.extend(check_uv_execution(rel, path.read_text(encoding="ascii")))
         findings.extend(run_hadolint(rel, path))
     elif cls == "zsh":
         findings.extend(run_zsh_syntax(rel, path))
@@ -267,6 +297,34 @@ ADD ./x /x
 RUN curl -fsSL http://example.com/a.tgz | tar -xz
 """
 
+EXPECTED_UV_RUN_BLOCK = (
+    "RUN set -eux; "
+    'UV_PROJECT_ENVIRONMENT="${PYTHON_TOOL_VENV}" UV_PYTHON_DOWNLOADS=never '
+    "/usr/bin/python3 -I -S /opt/ra8-uv-bootstrap/bootstrap_uv.py "
+    "--cache-root /opt/ra8-uv-cache --ensure-and-run --no-config sync "
+    "--locked --only-group ci --no-install-project --python /usr/bin/python3; "
+    "UV_PYTHON_DOWNLOADS=never "
+    "/usr/bin/python3 -I -S /opt/ra8-uv-bootstrap/bootstrap_uv.py "
+    "--cache-root /opt/ra8-uv-cache --run --no-config lock --check; "
+    "UV_PYTHON_DOWNLOADS=never "
+    "/usr/bin/python3 -I -S /opt/ra8-uv-bootstrap/bootstrap_uv.py "
+    "--cache-root /opt/ra8-uv-cache --run --no-config pip check "
+    '--python "${PYTHON_TOOL_VENV}/bin/python3"; '
+    '"${PYTHON_TOOL_VENV}/bin/python3" -c '
+    '"import PIL, clang.cindex, dotenv, kasa, serial, usb.core, yaml"; '
+    '"${PYTHON_TOOL_VENV}/bin/ruff" --version; '
+    '"${PYTHON_TOOL_VENV}/bin/cmake-format" --version; '
+    '"${PYTHON_TOOL_VENV}/bin/yamllint" --version; '
+    '"${PYTHON_TOOL_VENV}/bin/gcovr" --version; '
+    'rm -f -- "${PYTHON_TOOL_VENV}/.lock"'
+)
+
+GOOD_UV_BLOCK = (
+    "WORKDIR /opt/ra8-python-project\n"
+    f"{EXPECTED_UV_RUN_BLOCK}\n"
+    'ENV RA8_TOOL_VENV="${PYTHON_TOOL_VENV}"\n'
+)
+
 GOOD_ZSHRC = b"""export PATH="$HOME/.local/bin:$PATH"
 if [[ -r ~/.p10k.zsh ]]; then
   source ~/.p10k.zsh
@@ -288,6 +346,22 @@ def _assert_dockerfile(root: Path, failures: list[str]) -> None:
     expect(any(f.code == "DC002" for f in got), "hadolint fires on a bad Dockerfile", failures)
     expect("DL3020" in blob, "  ... reporting DL3020 (ADD instead of COPY)", failures)
     expect("DL4006" in blob, "  ... reporting DL4006 (pipe without pipefail)", failures)
+
+
+def _assert_uv_execution(failures: list[str]) -> None:
+    """Assert authenticated uv execution passes and captured-path execution fails."""
+    got = check_uv_execution(".devcontainer/Dockerfile", GOOD_UV_BLOCK)
+    expect(not got, f"authenticated uv Docker execution is clean (got {got})", failures)
+    mutations = (
+        ("RUN set -eux;", "RUN set -eux; /tmp/uv --version;", "raw uv execution"),
+        ("--run --no-config lock", "--verify-cache --no-config lock", "mode replacement"),
+        ("--run --no-config pip", "--no-config --run pip", "argv reordering"),
+        ("--no-config lock --check;", "--no-config lock --check || true;", "status masking"),
+    )
+    for old, new, label in mutations:
+        bad = GOOD_UV_BLOCK.replace(old, new, 1)
+        got = check_uv_execution(".devcontainer/Dockerfile", bad)
+        expect(any(finding.code == "DC004" for finding in got), f"{label} fires DC004", failures)
 
 
 def _assert_zshrc(root: Path, failures: list[str]) -> None:
@@ -360,6 +434,7 @@ def selftest() -> int:
         root = Path(tmp)
         (root / ".devcontainer").mkdir()
         _assert_dockerfile(root, failures)
+        _assert_uv_execution(failures)
         _assert_zshrc(root, failures)
         _assert_format_rules(failures)
 
@@ -371,7 +446,7 @@ def main(argv: list[str]) -> int:
     """Lint and format-check the devcontainer definition.
 
     The devcontainer is what gives the Mac an Ubuntu userland to run the CI
-    suite in, so a broken definition does not fail loudly -- it makes `make
+    suite in, so a broken definition does not fail loudly -- it makes `just
     ci` unable to run at all, on the one platform that cannot verify natively.
 
     Returns 0 when clean, 1 on any finding or a failing selftest.

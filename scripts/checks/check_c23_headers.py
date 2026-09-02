@@ -79,6 +79,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # ``is_build_output_path``. Matches the sibling gates' EXCLUDE_FRAGMENTS.
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
+    "apps/shared_libs/third_party/",
     "libs/ra8_fonts/",
 )
 
@@ -343,7 +344,10 @@ def _enum_cases() -> list[tuple[bool, str]]:
         One ``(failed, message)`` tuple per assertion; ``failed`` is True when
         the detector behaved wrongly.
     """
-    fires = lambda frag: bool(enum_violations(frag))  # noqa: E731 -- local alias keeps the table terse
+
+    def fires(fragment: str) -> bool:
+        return bool(enum_violations(fragment))
+
     return [
         (not fires("typedef enum { k_a = 0 } foo_t;"), "untyped `typedef enum {` not flagged"),
         (not fires("enum bearer { k_a = 1 };"), "untyped tagged `enum bearer {` not flagged"),

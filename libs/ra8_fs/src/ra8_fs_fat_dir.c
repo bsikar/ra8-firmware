@@ -156,8 +156,10 @@ static uint8_t internal_listdir_visit_sector(const ra8_fs_mount_t* m,
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t
-internal_listdir_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb, void* ctx)
+static ra8_err_t internal_listdir_locked(const ra8_fs_mount_t* handle,
+                                         const char*           path,
+                                         ra8_fs_listdir_cb_t   cb,
+                                         void*                 ctx)
 {
   if (handle == nullptr || cb == nullptr || path == nullptr) {
     return k_ra8_err_null_ptr;
@@ -455,7 +457,7 @@ static ra8_err_t internal_unlink_locate(const ra8_fs_mount_t* handle,
  *          deleted by writing 0xE5 to the first byte of the name field.
  *          Refuses a directory: use `ra8_fs_rmdir()` for those.
  *
- * @param[in,out] handle Mount handle.
+ * @param[in] handle Mount handle.
  * @param[in]     path   NUL-terminated path; only flat root names supported.
  *
  * @return Error code.
@@ -480,7 +482,7 @@ static ra8_err_t internal_unlink_locate(const ra8_fs_mount_t* handle,
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t internal_unlink_locked(ra8_fs_mount_t* handle, const char* path)
+static ra8_err_t internal_unlink_locked(const ra8_fs_mount_t* handle, const char* path)
 {
   if (handle == nullptr || path == nullptr) {
     return k_ra8_err_null_ptr;
@@ -679,7 +681,7 @@ internal_fat_rename(const ra8_fs_mount_t* handle, const char* old_path, const ch
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
 static ra8_err_t
-internal_rename_locked(ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
+internal_rename_locked(const ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -706,7 +708,7 @@ internal_rename_locked(ra8_fs_mount_t* handle, const char* old_path, const char*
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t
-ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb, void* ctx)
+ra8_fs_listdir(const ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb, void* ctx)
 {
   priv_lock_acquire();
   const ra8_err_t err = internal_listdir_locked(handle, path, cb, ctx);
@@ -794,7 +796,7 @@ ra8_err_t ra8_fs_dir_close(ra8_fs_dir_t* directory)
 }
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t ra8_fs_unlink(ra8_fs_mount_t* handle, const char* path)
+ra8_err_t ra8_fs_unlink(const ra8_fs_mount_t* handle, const char* path)
 {
   priv_lock_acquire();
   const ra8_err_t err = internal_unlink_locked(handle, path);
@@ -803,7 +805,7 @@ ra8_err_t ra8_fs_unlink(ra8_fs_mount_t* handle, const char* path)
 }
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
+ra8_err_t ra8_fs_rename(const ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
 {
   priv_lock_acquire();
   const ra8_err_t err = internal_rename_locked(handle, old_path, new_path);

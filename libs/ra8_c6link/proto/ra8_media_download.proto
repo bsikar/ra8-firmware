@@ -13,7 +13,7 @@ package ra8.mdl;
 // reject unknown fields. Wire extensions therefore require an explicit
 // protocol-version change instead of silently changing job semantics.
 
-// Values intentionally match ra8_mdl_format_t. Keep the generated and shared
+// Values intentionally match mdl_format_t. Keep the generated and shared
 // enums synchronized; production TUs assert the mapping at compile time.
 enum Format {
   FORMAT_LOOSE = 0;

@@ -17,4 +17,4 @@ BKPT before the PASS line can print.
 No panel, SD or touch hardware is in the path, so the banner is identical on
 host, emulator and silicon. That is what makes it a gate rather than a
 rendering test. The same model is covered on the host by
-`tests/test_ra8_keyboard.c`.
+`tests/security/src/test_ra8_keyboard.c`.

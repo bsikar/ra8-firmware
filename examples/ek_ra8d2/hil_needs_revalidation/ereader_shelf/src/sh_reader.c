@@ -4,7 +4,7 @@
  *
  * @details
  * Reads the open book chapter by chapter. For the current chapter it pulls the
- * plain text (ra8_book_chapter_text), folds typographic Unicode the bitmap font
+ * plain text (book_chapter_text), folds typographic Unicode the bitmap font
  * cannot draw to ASCII, greedily word-wraps to the panel width, and paginates.
  * Page turns advance within a chapter and cross chapter boundaries in either
  * direction, so the whole book reads continuously -- not just one chapter.
@@ -289,9 +289,9 @@ void sh_reader_prefetch_adjacent(void)
   }
   const uint32_t ch = g_sh.chapter;
   if ((ch + 1U) < g_sh.chapter_count) {
-    (void)ra8_book_src_prefetch_chapter(&g_sh.book_src, ch + 1U); /* warm N+1 */
+    (void)book_src_prefetch_chapter(&g_sh.book_src, ch + 1U); /* warm N+1 */
   }
   if (ch > 0U) {
-    (void)ra8_book_src_prefetch_chapter(&g_sh.book_src, ch - 1U); /* warm N-1 */
+    (void)book_src_prefetch_chapter(&g_sh.book_src, ch - 1U); /* warm N-1 */
   }
 }

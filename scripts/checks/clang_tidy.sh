@@ -31,7 +31,7 @@
 #      below RA8_TIDY_FILE_FLOOR
 #
 # Prerequisites:
-#   clang-tidy >= 16 (Ubuntu 24.04: sudo apt-get install clang-tidy)
+#   clang-tidy at the exact major selected by the Dockerfile-backed registry
 #   cmake (to configure the test build with compile_commands.json)
 #   arm-none-eabi-gcc >= 12.3 (the firmware pass needs a Cortex-M85 compiler)
 
@@ -90,6 +90,23 @@ BUILD_DIR=""
 RC_VIOLATIONS=1
 RC_INFRA=2
 
+# Read the exact versioned binary from the Dockerfile-derived tool registry.
+# This keeps the direct script, Just, and CI gate on the same pin authority;
+# executable names and caller-provided environment variables are not pins.
+if ! RA8_PINNED_CLANG_TIDY="$(
+  python3 "$SCRIPT_DIR/check_tool_versions.py" --print-binary clang-tidy
+)"; then
+  print_error "Cannot read the repository clang-tidy pin."
+  exit "$RC_INFRA"
+fi
+readonly RA8_PINNED_CLANG_TIDY
+RA8_PINNED_CLANG_TIDY_MAJOR="${RA8_PINNED_CLANG_TIDY##*-}"
+if [[ ! "$RA8_PINNED_CLANG_TIDY_MAJOR" =~ ^[0-9]+$ ]]; then
+  print_error "The repository clang-tidy pin has no numeric major: $RA8_PINNED_CLANG_TIDY"
+  exit "$RC_INFRA"
+fi
+readonly RA8_PINNED_CLANG_TIDY_MAJOR
+
 # A tree this size cannot legitimately collapse to a handful of files. If
 # collect_source_files returns less than this, something broke (a bad cwd, a
 # renamed scan root, a failed enumeration) and "no violations found" would be
@@ -115,7 +132,7 @@ if [[ ! -e "${_ra8_tidy_files[0]}" ]]; then
   printf 'clang_tidy.sh: FATAL -- no helper bodies found under %s\n' "${_RA8_TIDY_DIR}" >&2
   exit 2
 fi
-for _ra8_tidy_file in "${_ra8_tidy_files[@]}"; do
+for _ra8_tidy_file in ${_ra8_tidy_files[@]+"${_ra8_tidy_files[@]}"}; do
   # shellcheck source=/dev/null
   . "${_ra8_tidy_file}"
 done
@@ -178,25 +195,71 @@ parse_args() {
 }
 
 # ---------------------------------------------------------------------------
-# Locate clang-tidy (prefer versioned binaries, require >= 16)
+# Locate clang-tidy. Explicit CLANG_TIDY remains available for local
+# cross-platform use, but its reported major must still equal the repository
+# pin; an override changes the path, never the version contract.
 # ---------------------------------------------------------------------------
 find_clang_tidy() {
-  local candidates=(clang-tidy-18 clang-tidy-17 clang-tidy-16 clang-tidy)
-  for candidate in "${candidates[@]}"; do
-    if command -v "$candidate" &>/dev/null; then
-      local version
-      # Use -E (POSIX-extended) so the same script works under BSD sed
-      # (macOS) and GNU sed (Linux). BSD sed does not support `\+`.
-      version=$("$candidate" --version 2>&1 | sed -nE 's/.*version ([0-9]+).*/\1/p' | head -1)
-      if [[ -n "$version" && "$version" -ge 16 ]]; then
-        echo "$candidate"
-        return 0
-      fi
-    fi
-  done
-  print_error "clang-tidy >= 16 not found."
-  print_error "Install with: sudo apt-get install clang-tidy"
-  exit "$RC_INFRA"
+  local candidate="${CLANG_TIDY:-$RA8_PINNED_CLANG_TIDY}" major
+  if ! command -v "$candidate" >/dev/null 2>&1; then
+    print_error "Required clang-tidy driver is not available: $candidate"
+    return 1
+  fi
+  major="$(pinned_clang_driver_major "$candidate")" || return 1
+  printf '%s\n' "$candidate"
+}
+
+# Read a Clang-family driver's reported major. Executable names are not an
+# authority because package-manager and editor convenience links may point at
+# a different installed major.
+clang_driver_major() {
+  local driver="$1" version
+  version="$("$driver" --version 2>/dev/null)" || {
+    print_error "Cannot execute $driver to determine its major version."
+    return 1
+  }
+  if [[ ! "$version" =~ version[[:space:]]+([0-9]+) ]]; then
+    print_error "Cannot determine the major version of $driver."
+    return 1
+  fi
+  printf '%s\n' "${BASH_REMATCH[1]}"
+}
+
+# Validate one Clang-family driver's reported major against the repository pin.
+# Both candidate selection and compiler-pair resolution use this owner so the
+# pin check cannot drift between direct, Just, and CI entry points.
+pinned_clang_driver_major() {
+  local driver="$1" major
+  major="$(clang_driver_major "$driver")" || return 1
+  if [[ "$major" != "$RA8_PINNED_CLANG_TIDY_MAJOR" ]]; then
+    print_error "$driver reports major $major; repository pin is major $RA8_PINNED_CLANG_TIDY_MAJOR."
+    return 1
+  fi
+  printf '%s\n' "$major"
+}
+
+# Resolve the clang pair whose reported major exactly matches one clang-tidy
+# driver. All three version outputs are checked: a version-looking executable
+# name may be a stale alternative or a hostile link to another major.
+matching_clang_drivers() {
+  local clang_tidy="$1" major_probe="${2:-clang_driver_major}"
+  local major cc cxx cc_major cxx_major
+  major="$(pinned_clang_driver_major "$clang_tidy")" || return 1
+  cc="clang-$major"
+  cxx="clang++-$major"
+  if ! command -v "$cc" >/dev/null 2>&1 || ! command -v "$cxx" >/dev/null 2>&1; then
+    print_error "The fuzz compile database requires $cc and $cxx."
+    print_error "They must match the clang-tidy driver used by this run."
+    return 1
+  fi
+  cc_major="$("$major_probe" "$cc")" || return 1
+  cxx_major="$("$major_probe" "$cxx")" || return 1
+  if [[ "$cc_major" != "$major" || "$cxx_major" != "$major" ]]; then
+    print_error "$clang_tidy reports major $major, but its compiler pair reports"
+    print_error "$cc=$cc_major and $cxx=$cxx_major. Refusing a mixed compile database."
+    return 1
+  fi
+  printf '%s\n%s\n' "$cc" "$cxx"
 }
 
 # ---------------------------------------------------------------------------
@@ -204,31 +267,11 @@ find_clang_tidy() {
 # route each file to its pass, then hand off to run_all_passes (tidy/passes.sh)
 # which owns the pass sequence itself.
 # ---------------------------------------------------------------------------
-run_clang_tidy() {
-  local clang_tidy="$1"
-  local config_file="$FIRMWARE_DIR/.clang-tidy"
-
-  if [[ ! -f "$config_file" ]]; then
-    print_error ".clang-tidy not found at $config_file"
-    exit "$RC_INFRA"
-  fi
-
+init_tidy_args() {
   TIDY_FIX_FLAG=()
   if [[ "$FIX_MODE" == "true" ]]; then
     TIDY_FIX_FLAG=(--fix)
   fi
-
-  local files
-  mapfile -t files < <(collect_source_files)
-
-  if [[ ${#files[@]} -lt $RA8_TIDY_FILE_FLOOR ]]; then
-    print_error "clang_tidy.sh: FATAL -- only ${#files[@]} source file(s) in scope, floor is $RA8_TIDY_FILE_FLOOR."
-    print_error "  A collapsed scope reports a clean tree because it linted nothing."
-    exit "$RC_INFRA"
-  fi
-
-  print_status "Running $clang_tidy on ${#files[@]} file(s)..."
-  assert_scope_covered "${files[@]}"
   detect_sdk_args
 
   TIDY_INCLUDE_ARG=()
@@ -238,10 +281,37 @@ run_clang_tidy() {
   done < <(collect_include_args)
 
   TIDY_DB_ARG=()
-  mapfile -t TIDY_DB_ARG < <(db_pass_args)
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    TIDY_DB_ARG+=("$line")
+  done < <(db_pass_args)
+}
+
+run_clang_tidy() {
+  local clang_tidy="$1"
+  local config_file="$FIRMWARE_DIR/.clang-tidy"
+
+  if [[ ! -f "$config_file" ]]; then
+    print_error ".clang-tidy not found at $config_file"
+    exit "$RC_INFRA"
+  fi
+
+  local files=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    files+=("$line")
+  done < <(collect_source_files)
+
+  if [[ ${#files[@]} -lt $RA8_TIDY_FILE_FLOOR ]]; then
+    print_error "clang_tidy.sh: FATAL -- only ${#files[@]} source file(s) in scope, floor is $RA8_TIDY_FILE_FLOOR."
+    print_error "  A collapsed scope reports a clean tree because it linted nothing."
+    exit "$RC_INFRA"
+  fi
+
+  print_status "Running $clang_tidy on ${#files[@]} file(s)..."
+  assert_scope_covered ${files[@]+"${files[@]}"}
+  init_tidy_args
 
   TIDY_LIST_DIR="$(mktemp -d)"
-  route_files_into_lists "${files[@]}"
+  route_files_into_lists ${files[@]+"${files[@]}"}
 
   local exit_code=0
   run_all_passes "$clang_tidy" || exit_code=1
@@ -288,13 +358,15 @@ main() {
   fi
 
   local clang_tidy
-  clang_tidy="$(find_clang_tidy)"
+  if ! clang_tidy="$(find_clang_tidy)"; then
+    exit "$RC_INFRA"
+  fi
 
   if [[ "$VERBOSE" == "true" ]]; then
     print_status "Using: $($clang_tidy --version | head -1)"
   fi
 
-  configure_build
+  configure_build "$clang_tidy"
   run_clang_tidy "$clang_tidy"
 }
 

@@ -1,0 +1,18 @@
+--- a/misra_9.py
++++ b/misra_9.py
+@@ -298,7 +298,14 @@
+                     self.token = self.token.astOperand1
+                     isFirstElement = True
+                 else:
+-                    if self.root:
++                    # C23 6.7.10 defines an empty aggregate initializer as a
++                    # complete zero initializer. Non-aggregate and excess
++                    # brace levels remain structure violations.
++                    isEmptyAggregate = (self.token.str == '{' and
++                                        self.token.astOperand1 is None and
++                                        nextChild is not None and
++                                        (nextChild.isArray or nextChild.isRecord))
++                    if self.root and not isEmptyAggregate:
+                         # {}
+                         if self.root.name == '<-':
+                             self.root.parent.markStuctureViolation(self.token)

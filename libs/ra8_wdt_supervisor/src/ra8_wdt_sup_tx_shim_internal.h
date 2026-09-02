@@ -34,7 +34,7 @@ extern "C" {
  * These ten names ARE the vendor API spelling; the supervisor source calls
  * them because the real tx_api.h defines them, so there is no alternative
  * name to rename them to. Same reasoning as the five type aliases below.  */
-// NOLINTBEGIN(readability-identifier-naming)
+// NOLINTBEGIN(readability-identifier-naming) -- external ABI or interposition seam fixes these symbol spellings.
 /** @def tx_mutex_create Host-source alias for the file-local mutex-create stub. */
 #define tx_mutex_create internal_tx_mutex_create
 /** @def tx_mutex_get Host-source alias for the file-local mutex-lock stub. */

@@ -9,7 +9,7 @@
 # and is the only entry point; RA8_GATE_REGISTRY -- the single list of what
 # gates exist -- stays there too. These files hold gate BODIES only, so there
 # is still exactly one home for a gate's definition and exactly one command
-# for a workflow to call (bash scripts/ci.sh --gate <name>). Adding a second
+# for a workflow to call (`just quality::local::gate <name>`). Adding a second
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
@@ -44,7 +44,7 @@ gate_emulator_smoke() (
 #
 # This measures #67's own headline success criterion -- "every example runs in
 # the emulator". matrix.sh has existed and been well-formed for months while
-# being invoked by NOTHING: not ci.sh, not a workflow, not the Makefile. That
+# being invoked by NOTHING: not ci.sh, not a workflow, not the justfile. That
 # is this repo's dominant defect class applied to the epic's definition of
 # done, which is why the fix is an enforcing gate and not a report.
 #
@@ -68,11 +68,15 @@ gate_emulator_matrix() (
   # matrix.sh exits non-zero whenever the sweep is not perfectly clean, which is
   # the right default for a human running it by hand but is NOT this gate's
   # verdict -- the ratchet is. Capture the report either way, then judge.
-  bash scripts/emu/matrix.sh || true
+  if ! bash scripts/emu/matrix.sh; then
+    echo "matrix sweep reported failures; applying the committed ratchet" >&2
+  fi
   # Print the remaining failures grouped by CAUSE before the verdict, so every
   # run of the gate leaves a burn-down plan in the log rather than a bare count
   # someone has to go re-derive. Diagnostic: it must not decide the gate.
-  bash scripts/emu/matrix_triage.sh || true
+  if ! bash scripts/emu/matrix_triage.sh; then
+    echo "WARNING: matrix triage could not render diagnostics" >&2
+  fi
   python3 scripts/checks/matrix_ratchet.py --check
 )
 
@@ -95,7 +99,7 @@ gate_emulator_io_fabric() (
   use_pinned_arm_toolchain
   require_pinned_unicorn
   bash scripts/emu/smoke.sh \
-    ra8_io_demo ra8_io_sdram_demo ra8_io_compress_demo \
+    ra8_io_demo ra8_io_sdram_demo compress_demo \
     ra8_io_sd_demo ra8_io_sdhi_demo ra8_io_xspi_demo \
     ra8_io_fsfmt_demo ra8_io_cache_demo
 )
@@ -110,5 +114,5 @@ gate_eil_integration() (
   set -e
   use_pinned_arm_toolchain
   require_pinned_unicorn
-  bash scripts/emu/eil_all.sh -j "$(ra8_max_jobs)"
+  /bin/bash -p scripts/emu/eil_all.sh -j "$(ra8_max_jobs)"
 )

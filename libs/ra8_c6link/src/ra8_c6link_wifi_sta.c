@@ -32,6 +32,7 @@
 #include "ra8_c6link.h"
 #include "ra8_c6link_internal.h"
 #include "ra8_c6link_wifi.h"
+#include "ra8_secure.h"
 
 /**
  * @enum ra8_c6link_sta_wire_t
@@ -99,9 +100,12 @@ RA8_INTERNAL static uint8_t internal_c6link_sta_len(const char* text, uint8_t ca
 ra8_err_t ra8_c6link_sta_cfg_set(ra8_c6link_sta_cfg_t* cfg, const char* ssid, const char* pass)
 {
   if ((cfg == nullptr) || (ssid == nullptr)) {
+    if (cfg != nullptr) {
+      ra8_secure_memzero(cfg, sizeof(*cfg));
+    }
     return k_ra8_err_null_ptr;
   }
-  *cfg = (ra8_c6link_sta_cfg_t){};
+  ra8_secure_memzero(cfg, sizeof(*cfg));
 
   const uint8_t ssid_len = internal_c6link_sta_len(ssid, (uint8_t)sizeof cfg->ssid);
   if ((ssid_len == 0U) || (ssid_len > (uint8_t)k_ra8_c6link_ssid_max)) {
@@ -251,14 +255,16 @@ RA8_INTERNAL static ra8_err_t internal_c6link_sta_set_config(ra8_c6link_t*      
   req.payload_case        = RPC__PAYLOAD_REQ_WIFI_SET_CONFIG;
   req.req_wifi_set_config = &body;
 
-  ra8_c6link_take_ctx_t take = {.link   = link,
-                                .out    = nullptr,
-                                .rpc_id = (uint32_t)RPC_ID__Req_WifiSetConfig};
-  return priv_c6link_rpc_call(link,
-                              &req,
-                              (uint32_t)RPC_ID__Resp_WifiSetConfig,
-                              priv_c6link_take_resp,
-                              &take);
+  ra8_c6link_take_ctx_t take   = {.link   = link,
+                                  .out    = nullptr,
+                                  .rpc_id = (uint32_t)RPC_ID__Req_WifiSetConfig};
+  const ra8_err_t       result = priv_c6link_rpc_call(link,
+                                                      &req,
+                                                      (uint32_t)RPC_ID__Resp_WifiSetConfig,
+                                                      priv_c6link_take_resp,
+                                                      &take);
+  ra8_secure_memzero(&buf, sizeof(buf));
+  return result;
 }
 
 ra8_err_t ra8_c6link_wifi_join(ra8_c6link_t* link, const ra8_c6link_sta_cfg_t* cfg)

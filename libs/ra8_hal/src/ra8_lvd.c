@@ -321,25 +321,6 @@ RA8_INTERNAL static uint8_t internal_cr0_apply_reserved(const ra8_lvd_channel_ma
   return internal_n_cr0_with_reserved(base);
 }
 
-/**
- * @brief Read-modify-write helper for PVDmCMPCR / PVDnCMPCR.
- *
- * @param[in] off       CMPCR offset.
- * @param[in] clear_mask Bits to clear before applying ``set_bits``.
- * @param[in] set_bits   Bits to set after the clear.
- *
- * @pre PRCR.PRC3 unlocked.
- * @post Register reads as ((old & ~clear_mask) | set_bits).
- */
-[[maybe_unused]] RA8_INTERNAL static void
-internal_cmpcr_rmw(ra8_lvd_off_t off, uint8_t clear_mask, uint8_t set_bits)
-{
-  /* HUM Ch 8.2.2 "PVDmCMPCR : Voltage Monitor m Comparator Control Register" p 303 */
-  /* HUM Ch 8.2.3 "PVDnCMPCR : Voltage Monitor n Comparator Control Register" p 304 */
-  const uint8_t prev = *ra8_lvd_reg8(off);
-  *ra8_lvd_reg8(off) = (uint8_t)((prev & (uint8_t)~clear_mask) | set_bits);
-}
-
 /** @brief Implementation of `priv_ra8_lvd_internal_cr0_rmw()` -- RMW with reserved-bit refold. */
 void priv_ra8_lvd_internal_cr0_rmw(const ra8_lvd_channel_map_t* map,
                                    uint8_t                      clear_mask,
@@ -605,11 +586,11 @@ ra8_err_t ra8_lvd_channel_init(ra8_lvd_channel_t channel, const ra8_lvd_cfg_t* c
 
   uint8_t         idx     = 0U;
   const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
-  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_init: bad channel"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_init: bad channel");
 
   const ra8_lvd_channel_map_t map     = g_lvd_map[idx];
   const ra8_err_t             cfg_err = internal_validate_cfg(&map, cfg);
-  RA8_RETURN_ON_ERROR(cfg_err, s_tag, "lvd_init: bad cfg"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(cfg_err, s_tag, "lvd_init: bad cfg");
 
   internal_lvd_program_cmpcr(&map, cfg);
   internal_lvd_program_cr0_chain(&map, cfg);
@@ -644,7 +625,7 @@ ra8_err_t ra8_lvd_channel_deinit(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
   const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
-  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_deinit: bad channel"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_deinit: bad channel");
 
   const ra8_lvd_channel_map_t map = g_lvd_map[idx];
 
@@ -708,10 +689,10 @@ ra8_err_t ra8_lvd_set_threshold(ra8_lvd_channel_t channel, ra8_lvd_pvdlvl_t thre
 {
   uint8_t         idx     = 0U;
   const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
-  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_threshold: bad channel"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_threshold: bad channel");
 
   const ra8_err_t lvl_err = internal_validate_threshold(threshold);
-  RA8_RETURN_ON_ERROR(lvl_err, s_tag, "lvd_set_threshold: bad threshold"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(lvl_err, s_tag, "lvd_set_threshold: bad threshold");
 
   const ra8_lvd_channel_map_t map = g_lvd_map[idx];
 
@@ -756,10 +737,12 @@ ra8_err_t ra8_lvd_set_irq_edge(ra8_lvd_channel_t channel, ra8_lvd_edge_t edge)
 {
   uint8_t         idx     = 0U;
   const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
-  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_irq_edge: bad channel"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- channel_to_idx() error edge; set_irq_edge pre-validates the channel */
+  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_irq_edge: bad channel");
+  /* GCOVR_EXCL_BR_STOP */
 
   const ra8_err_t edge_err = internal_validate_edge(edge);
-  RA8_RETURN_ON_ERROR(edge_err, s_tag, "lvd_set_irq_edge: bad edge"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(edge_err, s_tag, "lvd_set_irq_edge: bad edge");
 
   const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {
@@ -801,7 +784,9 @@ ra8_err_t ra8_lvd_set_irq_kind(ra8_lvd_channel_t channel, ra8_lvd_irq_type_t kin
 {
   uint8_t         idx     = 0U;
   const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
-  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_irq_kind: bad channel"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- channel_to_idx() error edge; set_irq_kind pre-validates the channel */
+  RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_irq_kind: bad channel");
+  /* GCOVR_EXCL_BR_STOP */
 
   const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {

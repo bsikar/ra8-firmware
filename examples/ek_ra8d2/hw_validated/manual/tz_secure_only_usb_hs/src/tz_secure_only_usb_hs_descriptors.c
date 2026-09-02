@@ -8,7 +8,7 @@
  *
  * @details
  * Second sibling translation unit for
- * ``examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/main.c``.
+ * ``examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/main.c``.
  * Holds the four USBX descriptor tables (HS device framework, FS device
  * framework, string framework, language-id framework). These byte arrays
  * were moved here verbatim from ``main.c`` (a pure, behaviour-preserving

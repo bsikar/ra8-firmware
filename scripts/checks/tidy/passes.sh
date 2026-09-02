@@ -3,7 +3,6 @@
 # Copyright (c) 2026 Brighton Sikarskie
 # shellcheck shell=bash
 # shellcheck disable=SC2154  # FIRMWARE_DIR / BUILD_DIR / RC_INFRA and the print_* helpers come from scripts/checks/clang_tidy.sh, the only thing that sources this file
-# shellcheck disable=SC2034  # the TIDY_* arrays are assigned here and READ by clang_tidy.sh and invoke.sh, sourced alongside; shellcheck cannot see across the three
 #
 # scripts/checks/tidy/passes.sh -- The six passes, and the state they share.
 #
@@ -46,7 +45,7 @@ assert_scope_covered() {
   local root matched f
   for root in tests tools apps libs examples port; do
     matched=0
-    for f in "${files[@]}"; do
+    for f in ${files[@]+"${files[@]}"}; do
       case "$f" in "$FIRMWARE_DIR/$root"/*)
         matched=1
         break
@@ -104,7 +103,12 @@ route_files_into_lists() {
   done
   local f bucket
   for f in "$@"; do
-    bucket="$(route_bucket "$f")"
+    if bucket="$(route_bucket "$f")"; then
+      :
+    else
+      print_error "could not classify $f; refusing to omit it from clang-tidy"
+      exit "$RC_INFRA"
+    fi
     # A bucket with no pass behind it would land in a list file nothing ever
     # reads, and those files would go unlinted in silence -- the failure mode
     # this whole script is written to prevent. Refuse instead.
@@ -125,7 +129,7 @@ route_files_into_lists() {
 # ---------------------------------------------------------------------------
 run_pass_host() {
   invoke_clang_tidy "$1" "host C" "$TIDY_LIST_DIR/host.files" \
-    "${TIDY_FIX_FLAG[@]}" "${TIDY_DB_ARG[@]}" "${TIDY_INCLUDE_ARG[@]}" "${TIDY_SDK_ARG[@]}"
+    ${TIDY_FIX_FLAG[@]+"${TIDY_FIX_FLAG[@]}"} ${TIDY_DB_ARG[@]+"${TIDY_DB_ARG[@]}"} ${TIDY_INCLUDE_ARG[@]+"${TIDY_INCLUDE_ARG[@]}"} ${TIDY_SDK_ARG[@]+"${TIDY_SDK_ARG[@]}"}
 }
 
 # ---------------------------------------------------------------------------
@@ -147,9 +151,12 @@ run_pass_firmware() {
   # set here silently un-analyses every TU that spells UINT64_C().
   require_gcc_integer_constant_macros
   local firmware_arg=()
-  mapfile -t firmware_arg < <(firmware_pass_args)
+  firmware_arg=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    firmware_arg+=("$line")
+  done < <(firmware_pass_args)
   invoke_clang_tidy "$1" "firmware (cross)" "$TIDY_LIST_DIR/firmware.files" \
-    "${TIDY_FIX_FLAG[@]}" "${firmware_arg[@]}" "${TIDY_SDK_ARG[@]}"
+    ${TIDY_FIX_FLAG[@]+"${TIDY_FIX_FLAG[@]}"} ${firmware_arg[@]+"${firmware_arg[@]}"} ${TIDY_SDK_ARG[@]+"${TIDY_SDK_ARG[@]}"}
 }
 
 # ---------------------------------------------------------------------------
@@ -157,9 +164,12 @@ run_pass_firmware() {
 # ---------------------------------------------------------------------------
 run_pass_cxx() {
   local cxx_arg=()
-  mapfile -t cxx_arg < <(cxx_pass_args)
+  cxx_arg=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    cxx_arg+=("$line")
+  done < <(cxx_pass_args)
   invoke_clang_tidy "$1" "C++" "$TIDY_LIST_DIR/cxx.files" \
-    "${TIDY_FIX_FLAG[@]}" "${cxx_arg[@]}" "${TIDY_INCLUDE_ARG[@]}" "${TIDY_SDK_ARG[@]}"
+    ${TIDY_FIX_FLAG[@]+"${TIDY_FIX_FLAG[@]}"} ${cxx_arg[@]+"${cxx_arg[@]}"} ${TIDY_INCLUDE_ARG[@]+"${TIDY_INCLUDE_ARG[@]}"} ${TIDY_SDK_ARG[@]+"${TIDY_SDK_ARG[@]}"}
 }
 
 # ---------------------------------------------------------------------------
@@ -175,9 +185,12 @@ run_pass_objc() {
     return 0
   fi
   local objc_arg=()
-  mapfile -t objc_arg < <(objc_pass_args)
+  objc_arg=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    objc_arg+=("$line")
+  done < <(objc_pass_args)
   invoke_clang_tidy "$1" "Objective-C" "$TIDY_LIST_DIR/objc.files" \
-    "${TIDY_FIX_FLAG[@]}" "${objc_arg[@]}" "${TIDY_INCLUDE_ARG[@]}" "${TIDY_SDK_ARG[@]}"
+    ${TIDY_FIX_FLAG[@]+"${TIDY_FIX_FLAG[@]}"} ${objc_arg[@]+"${objc_arg[@]}"} ${TIDY_INCLUDE_ARG[@]+"${TIDY_INCLUDE_ARG[@]}"} ${TIDY_SDK_ARG[@]+"${TIDY_SDK_ARG[@]}"}
 }
 
 # ---------------------------------------------------------------------------
@@ -211,10 +224,10 @@ run_pass_objc() {
 # ---------------------------------------------------------------------------
 run_pass_ra8p1() {
   invoke_clang_tidy "$1" "ra8p1" "$TIDY_LIST_DIR/ra8p1.files" \
-    "${TIDY_FIX_FLAG[@]}" "${TIDY_DB_ARG[@]}" --extra-arg="-DRA8_DEVICE_RA8P1" \
+    ${TIDY_FIX_FLAG[@]+"${TIDY_FIX_FLAG[@]}"} ${TIDY_DB_ARG[@]+"${TIDY_DB_ARG[@]}"} --extra-arg="-DRA8_DEVICE_RA8P1" \
     --extra-arg="-I$FIRMWARE_DIR/libs/ra8_board_ra8p1/inc" \
     --extra-arg="-I$FIRMWARE_DIR/tools/vela/generated" \
-    "${TIDY_INCLUDE_ARG[@]}" "${TIDY_SDK_ARG[@]}"
+    ${TIDY_INCLUDE_ARG[@]+"${TIDY_INCLUDE_ARG[@]}"} ${TIDY_SDK_ARG[@]+"${TIDY_SDK_ARG[@]}"}
 }
 
 # ---------------------------------------------------------------------------
@@ -223,9 +236,12 @@ run_pass_ra8p1() {
 # ---------------------------------------------------------------------------
 run_pass_tools() {
   local tools_arg=()
-  mapfile -t tools_arg < <(tools_pass_args)
+  tools_arg=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    tools_arg+=("$line")
+  done < <(tools_pass_args)
   invoke_clang_tidy "$1" "tools" "$TIDY_LIST_DIR/tools.files" \
-    "${TIDY_FIX_FLAG[@]}" "${TIDY_INCLUDE_ARG[@]}" "${TIDY_SDK_ARG[@]}" "${tools_arg[@]}"
+    ${TIDY_FIX_FLAG[@]+"${TIDY_FIX_FLAG[@]}"} ${TIDY_INCLUDE_ARG[@]+"${TIDY_INCLUDE_ARG[@]}"} ${TIDY_SDK_ARG[@]+"${TIDY_SDK_ARG[@]}"} ${tools_arg[@]+"${tools_arg[@]}"}
 }
 
 # ---------------------------------------------------------------------------

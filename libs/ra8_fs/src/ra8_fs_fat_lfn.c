@@ -154,7 +154,7 @@ void priv_lfn_add(lfn_state_t* s, const uint8_t* ent)
     if (pos >= (uint32_t)k_lfn_write_max) {
       /* Unreachable: max pos = (k_lfn_max_entries-1)*k_lfn_chars_per_ent +
        * (k_lfn_chars_per_ent-1) = 18*13+12 = 246 < k_lfn_write_max = 247. */
-      break; /* GCOVR_EXCL_LINE */
+      break; /* GCOVR_EXCL_LINE -- loop index proof keeps pos below write bound */
     }
     if ((val == 0U) || (val == (uint32_t)k_lfn_unicode_pad)) {
       s->units[pos] = 0U; /* terminator / padding ends this group's name */
@@ -332,7 +332,6 @@ ra8_err_t priv_free_chain(const ra8_fs_mount_t* m, uint32_t start)
 {
   uint32_t cur   = start;
   uint32_t guard = 0;
-  /* mcdc-deactivated: loop bound; `cur < k_cluster_first_data` only on a corrupt FAT chain (the first-cluster reservation 0/1 is enforced at allocation). */
   while (cur >= k_cluster_first_data && (cur - k_cluster_first_data) < m->count_of_clusters) {
     uint32_t  next = 0;
     ra8_err_t err  = priv_fat_get(m, cur, &next);

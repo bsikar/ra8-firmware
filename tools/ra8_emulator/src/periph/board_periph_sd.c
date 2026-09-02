@@ -20,9 +20,10 @@
  * Commands self-frame off the @c 01xxxxxx lead bits, so the model needs no
  * chip-select wiring. The command-framing approach is verified end to end
  * against the real driver by the in-file seed model of
- * @c tests/test_ra8_sdmmc_card_reflow.c (single-block reads); the CMD18/CMD12
+ * @c apps/shared_libs/reflow/tests/src/test_ra8_sdmmc_card_reflow.c (single-block reads); the
+ * CMD18/CMD12
  * stream and the write paths are exercised against the same wire framing by
- * the driver's own host tests (@c tests/test_ra8_sdmmc_spi.c).
+ * the driver's own host tests (@c tests/storage/src/test_ra8_sdmmc_spi.c).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

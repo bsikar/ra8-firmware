@@ -34,7 +34,7 @@
  * RA8P1-only: the whole surface is guarded behind `RA8_HAS_NPU` (defined only
  * for `-DRA8_DEVICE_RA8P1`, see `ra8_device.h`), exactly like `ra8_npu.h`. There
  * is no RA8P1 board yet, so the adapter is host-tested for the exact NPU
- * register-programming contract only (see `tests/test_ra8_ethosu_shim.c`); a real
+ * register-programming contract only (see `tests/misc/src/test_ra8_ethosu_shim.c`); a real
  * Vela-compiled inference on silicon is a follow-up on the RA8P1 NPU epic. This
  * shim intentionally does NOT enable the dormant TFLite-micro C++ stack
  * (`RA8_USE_TFLITE_MICRO`, OFF by default): it only PROVIDES the symbols that

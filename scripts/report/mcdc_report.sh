@@ -23,8 +23,8 @@
 #      `llvm-cov show --show-mcdc-summary`.
 #   6. Exit non-zero if any first-party source has < 100% MC/DC.
 #
-# This is opt-in; the existing `make test` and `make coverage` flow
-# is untouched. Invoke via `make mcdc` or directly:
+# This is opt-in; the existing `just quality::local::test` and `just quality::local::mcdc` flow
+# is untouched. Invoke via `just quality::local::mcdc` or directly:
 #
 #   bash scripts/report/mcdc_report.sh
 #
@@ -34,6 +34,7 @@
 #   RA8_MCDC_BUILD_DIR       -- build dir (default: build/host-mcdc)
 #   RA8_MCDC_REPORT_DIR      -- report dir (default: build/mcdc-report)
 #   RA8_MCDC_THRESHOLD       -- minimum percent (default: 100)
+#   RA8_MCDC_BUILD_JOBS      -- build concurrency, 1 or 2 (default: 2)
 #
 
 set -euo pipefail
@@ -44,6 +45,73 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUILD_DIR="${RA8_MCDC_BUILD_DIR:-$REPO_ROOT/tests/build-cov}"
 REPORT_DIR="${RA8_MCDC_REPORT_DIR:-$REPO_ROOT/build/mcdc-report}"
 THRESHOLD="${RA8_MCDC_THRESHOLD:-100}"
+BUILD_JOBS="${RA8_MCDC_BUILD_JOBS:-2}"
+MCDC_CONTAINER_ENV=(
+  "RA8_MCDC_THRESHOLD=$THRESHOLD"
+  "RA8_MCDC_BUILD_JOBS=$BUILD_JOBS"
+)
+
+mcdc_valid_build_jobs() {
+  [[ "$1" =~ ^[12]$ ]]
+}
+
+mcdc_all_tests_passed() {
+  local passed="$1" failed="$2" total="$3"
+  [[ "$passed" =~ ^[0-9]+$ && "$failed" =~ ^[0-9]+$ && "$total" =~ ^[0-9]+$ ]] ||
+    return 1
+  ((total > 0 && passed + failed == total && failed == 0))
+}
+
+mcdc_llvm_tools_available() {
+  [[ -n "$1" && -x "$1" && -n "$2" && -x "$2" ]]
+}
+
+mcdc_read_reachable_decision_pct() {
+  python3 - "$1" <<'PY'
+import json
+import math
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    value = float(data["reachable_decision_complete_rate"])
+except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
+    raise SystemExit(
+        f"cannot read reachable_decision_complete_rate from {path}: {exc}"
+    ) from exc
+if not math.isfinite(value) or not 0.0 <= value <= 100.0:
+    raise SystemExit(
+        f"reachable_decision_complete_rate out of range in {path}: {value}"
+    )
+print(f"{value:.4f}")
+PY
+}
+
+# Preserve the last diagnostic lines while returning the producer's real
+# status. A plain `producer | tail` under pipefail was previously followed by
+# `|| continue`, which let a partial test-binary universe reach llvm-cov.
+mcdc_run_and_tail() {
+  local -a pipeline_status=()
+  set +e
+  "$@" 2>&1 | tail -40
+  pipeline_status=("${PIPESTATUS[@]}")
+  set -e
+  if [[ "${pipeline_status[0]}" -ne 0 ]]; then
+    echo "FAIL: command exited ${pipeline_status[0]} before the MC/DC matrix completed." >&2
+    return 1
+  fi
+  if [[ "${pipeline_status[1]}" -ne 0 ]]; then
+    echo "FAIL: diagnostic tail exited ${pipeline_status[1]}." >&2
+    return 1
+  fi
+}
+
+if ! mcdc_valid_build_jobs "$BUILD_JOBS"; then
+  echo "ERROR: RA8_MCDC_BUILD_JOBS must be 1 or 2 (got '$BUILD_JOBS')." >&2
+  exit 2
+fi
 
 # ---------------------------------------------------------------------------
 # The #346 guard, as a function so --selftest can drive the REAL thing rather
@@ -85,7 +153,7 @@ if [[ "${1:-}" == "--selftest" ]]; then
 
   # Dependency probe. A gate whose tool is absent must FAIL, never skip.
   _st_fail=0
-  for _tool in cmake sed; do
+  for _tool in awk cmake du python3 sed; do
     command -v "$_tool" >/dev/null 2>&1 || {
       echo "ERROR: required tool '$_tool' is not on PATH." >&2
       _st_fail=1
@@ -104,10 +172,61 @@ if [[ "${1:-}" == "--selftest" ]]; then
   [[ "$_st_fail" -eq 0 ]] || exit 1
   echo "    dependency probe OK ($_st_cc accepts -fcoverage-mcdc)"
 
+  if ! mcdc_valid_build_jobs 1 || ! mcdc_valid_build_jobs 2 ||
+    mcdc_valid_build_jobs 0 || mcdc_valid_build_jobs 3; then
+    echo "ERROR: MC/DC build-job ceiling self-test FAILED." >&2
+    exit 1
+  fi
+  echo "    build-job ceiling OK (1/2 accepted; 0/3 refused)"
+
+  if [[ "${MCDC_CONTAINER_ENV[0]}" != "RA8_MCDC_THRESHOLD=$THRESHOLD" ||
+    "${MCDC_CONTAINER_ENV[1]}" != "RA8_MCDC_BUILD_JOBS=$BUILD_JOBS" ]]; then
+    echo "ERROR: devcontainer MC/DC environment forwarding self-test FAILED." >&2
+    exit 1
+  fi
+  echo "    devcontainer environment OK (threshold and build jobs forwarded)"
+
+  if ! mcdc_run_and_tail bash -c 'printf "complete-build\n"; exit 0' >/dev/null; then
+    echo "ERROR: successful build pipeline self-test FAILED." >&2
+    exit 1
+  fi
+  if mcdc_run_and_tail bash -c 'printf "partial-build\n"; exit 7' \
+    >/dev/null 2>&1; then
+    echo "ERROR: failed build pipeline was allowed to continue." >&2
+    exit 1
+  fi
+  echo "    build pipeline OK (complete accepted; partial refused)"
+
+  if ! mcdc_all_tests_passed 4 0 4 || mcdc_all_tests_passed 3 1 4 ||
+    mcdc_all_tests_passed 3 0 4 || mcdc_all_tests_passed 0 0 0; then
+    echo "ERROR: MC/DC test-result verdict self-test FAILED." >&2
+    exit 1
+  fi
+  echo "    test verdict OK (complete pass accepted; failure/mismatch/zero refused)"
+
   _st_tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-mcdc-selftest.XXXXXXXX")"
-  # shellcheck disable=SC2064  # expand $_st_tmp now: the trap must not depend
-  # on the variable still being set when it fires.
-  trap "rm -rf '$_st_tmp'" EXIT
+  trap 'rm -rf -- "$_st_tmp"' EXIT
+
+  printf '{"reachable_decision_complete_rate":89.72}\n' >"$_st_tmp/gate.json"
+  if [[ "$(mcdc_read_reachable_decision_pct "$_st_tmp/gate.json")" != "89.7200" ]]; then
+    echo "ERROR: valid reachable-rate artifact was rejected." >&2
+    exit 1
+  fi
+  printf '{"not_reachable_decision_complete_rate":89.72}\n' >"$_st_tmp/bad-gate.json"
+  if mcdc_read_reachable_decision_pct "$_st_tmp/bad-gate.json" >/dev/null 2>&1 ||
+    mcdc_read_reachable_decision_pct "$_st_tmp/missing-gate.json" >/dev/null 2>&1; then
+    echo "ERROR: invalid/missing reachable-rate artifact was accepted." >&2
+    exit 1
+  fi
+  echo "    reachable artifact OK (valid accepted; invalid/missing refused)"
+
+  if ! mcdc_llvm_tools_available /bin/sh /bin/sh ||
+    mcdc_llvm_tools_available "$_st_tmp/missing-profdata" /bin/sh ||
+    mcdc_llvm_tools_available /bin/sh "$_st_tmp/missing-cov"; then
+    echo "ERROR: LLVM coverage-tool requirement self-test FAILED." >&2
+    exit 1
+  fi
+  echo "    LLVM tool requirement OK (present accepted; either missing refused)"
 
   # Direction 1 -- FIRES: a cache written by a different compiler is wiped.
   # This is exactly the suite's shape: coverage configures with gcc, mcdc
@@ -175,7 +294,7 @@ if [[ "${1:-}" == "--selftest" ]]; then
     "$_st_gcc" -x c - -fcoverage-mcdc -o /dev/null 2>/dev/null; then
     if cmake -B "$_st_tmp/cfg" -S "$REPO_ROOT/tests" \
       -DCMAKE_C_COMPILER="$_st_gcc" \
-      -DRA8_MCDC=ON -Wno-dev >"$_st_tmp/cfg.log" 2>&1; then
+      -DRA8_MCDC=ON >"$_st_tmp/cfg.log" 2>&1; then
       echo "ERROR: mcdc self-test FAILED (direction 3)." >&2
       echo "       tests/ configured RA8_MCDC=ON with $_st_gcc, which has" >&2
       echo "       no -fcoverage-mcdc, and SUCCEEDED. It must fail at" >&2
@@ -196,62 +315,9 @@ fi
 # scripts/report/tree_coverage.sh does. Pass --in-container to skip this.
 # ---------------------------------------------------------------------------
 if [[ "$(uname -s)" == "Darwin" && "${1:-}" != "--in-container" ]]; then
-  if ! command -v docker >/dev/null 2>&1; then
-    echo "error: docker not on PATH (need it on macOS for MC/DC)" >&2
-    exit 1
-  fi
-  if command -v colima >/dev/null 2>&1; then
-    if ! colima status >/dev/null 2>&1; then
-      echo "==> Starting colima VM"
-      colima start --cpu 4 --memory 6
-    fi
-  fi
-  if ! docker info >/dev/null 2>&1; then
-    echo "error: docker daemon not reachable" >&2
-    exit 1
-  fi
-
-  IMAGE_TAG="ra8-firmware-test:latest"
-  if ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
-    echo "==> Building $IMAGE_TAG"
-    docker build -t "$IMAGE_TAG" \
-      -f "$REPO_ROOT/.devcontainer/Dockerfile" \
-      "$REPO_ROOT/.devcontainer"
-  fi
-
-  docker run --rm \
-    -v "$REPO_ROOT":/work \
-    -w /work \
-    -e RA8_MCDC_THRESHOLD \
-    "$IMAGE_TAG" \
-    bash -lc '
-            set -e
-            if [[ $EUID -eq 0 ]]; then SUDO=""; else SUDO="sudo"; fi
-            # Required pieces for clang MC/DC: the compiler itself,
-            # llvm-profdata + llvm-cov for reporting, and compiler-rt
-            # which ships libclang_rt.profile-<arch>.a (otherwise the
-            # link step can not resolve __llvm_profile_*).
-            need_install=0
-            command -v clang-18 >/dev/null 2>&1   || need_install=1
-            command -v llvm-profdata-18 >/dev/null 2>&1 \
-                || command -v llvm-profdata >/dev/null 2>&1 || need_install=1
-            command -v llvm-cov-18 >/dev/null 2>&1 \
-                || command -v llvm-cov >/dev/null 2>&1 || need_install=1
-            ARCH=$(uname -m)
-            RT_LIB="/usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.profile-${ARCH}.a"
-            [[ -f "$RT_LIB" ]] || need_install=1
-            if [[ $need_install -eq 1 ]]; then
-                echo "==> Installing clang-18 + llvm-18 + libclang-rt-18-dev"
-                $SUDO apt-get update -qq
-                $SUDO env DEBIAN_FRONTEND=noninteractive \
-                    apt-get install -y -qq --no-install-recommends \
-                    clang-18 llvm-18 libclang-rt-18-dev
-            fi
-            export CC="${CC:-$(command -v clang-18 || command -v clang)}"
-            export CXX="${CXX:-$(command -v clang++-18 || command -v clang++)}"
-            bash scripts/report/mcdc_report.sh --in-container
-        '
-  exit $?
+  exec bash "$REPO_ROOT/scripts/ci/devcontainer_run.sh" -- \
+    env "${MCDC_CONTAINER_ENV[@]}" CC=clang-18 CXX=clang++-18 \
+    bash scripts/report/mcdc_report.sh --in-container
 fi
 
 # Strip the in-container marker so it never reaches argument parsing
@@ -335,6 +401,7 @@ echo "    MC/DC support = $([[ $HAVE_MCDC -eq 1 ]] && echo yes || echo NO -- fal
 echo "    build dir     = $BUILD_DIR"
 echo "    report dir    = $REPORT_DIR"
 echo "    threshold     = ${THRESHOLD}%"
+echo "    build jobs    = $BUILD_JOBS (hard maximum: 2)"
 echo ""
 
 if [[ $HAVE_MCDC -eq 0 ]]; then
@@ -349,6 +416,13 @@ if [[ $HAVE_MCDC -eq 0 ]]; then
   echo "       Install clang >= 18 (brew install llvm / apt install clang-18)." >&2
   echo "       To explore plain decision/condition coverage on a gcc-only" >&2
   echo "       box, configure tests/ by hand with -DRA8_MCDC_ALLOW_FALLBACK=ON." >&2
+  exit 1
+fi
+
+if ! mcdc_llvm_tools_available "$LLVM_PROFDATA_BIN" "$LLVM_COV_BIN"; then
+  echo "ERROR: matching llvm-profdata and llvm-cov executables are required." >&2
+  echo "       llvm-profdata = ${LLVM_PROFDATA_BIN:-<missing>}" >&2
+  echo "       llvm-cov      = ${LLVM_COV_BIN:-<missing>}" >&2
   exit 1
 fi
 
@@ -380,18 +454,27 @@ cmake -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
   -DRA8_MCDC=ON \
   -DRA8_COVERAGE=OFF \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-  -Wno-dev >/dev/null
+  >/dev/null
 
 # ---------------------------------------------------------------------------
 # 2. Build
 # ---------------------------------------------------------------------------
 echo "==> [2/5] Building host tests"
-# -j2 + --keep-going: full -j parallel link can OOM the devcontainer
-# (libclang_rt.profile is heavy); --keep-going lets us still produce a
-# report even if one or two targets fail to link.
-cmake --build "$BUILD_DIR" -j2 -- --keep-going 2>&1 | tail -40 || {
-  echo "(some targets failed; continuing with whatever built)" >&2
-}
+# MC/DC deliberately compiles with -g0: LLVM coverage maps, not DWARF, carry
+# the source/decision locations consumed below. Keeping DWARF in every test
+# executable previously pushed this complete build past 8 GiB without adding
+# any report evidence. The job ceiling also bounds peak linker memory. Neither
+# measure removes a source, target, test, profile, or llvm-cov object.
+# --keep-going diagnoses all link failures in one run; the captured producer
+# status still fails closed, before any tests or coverage tools can observe a
+# partial binary universe.
+if ! mcdc_run_and_tail cmake --build "$BUILD_DIR" -j"$BUILD_JOBS" -- --keep-going; then
+  echo "FAIL: the complete MC/DC test-binary matrix did not build." >&2
+  exit 1
+fi
+
+BUILD_KIB="$(du -sk "$BUILD_DIR" | awk '{print $1}')"
+printf '    build footprint = %s KiB (complete instrumented matrix)\n' "$BUILD_KIB"
 
 # ---------------------------------------------------------------------------
 # 3. Run -- one .profraw per test, so we can merge them.
@@ -423,6 +506,10 @@ for bin in "${TEST_BINARIES[@]}"; do
   fi
 done
 echo "    ${PASS} passed, ${FAIL} failed (of ${#TEST_BINARIES[@]} test binaries)"
+if ! mcdc_all_tests_passed "$PASS" "$FAIL" "${#TEST_BINARIES[@]}"; then
+  echo "FAIL: the complete MC/DC test matrix did not pass; refusing a partial report." >&2
+  exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # 4. Merge profiles (only meaningful with clang source-based coverage).
@@ -482,49 +569,55 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   # backend (ra8_display_pal_host_macos*) -- a desktop dev-preview tool, not
   # airborne firmware, so DO-178C MC/DC does not apply to it.
   #
-  # ...and media_dl -- both its shared core (apps/shared/media_dl) and its host
-  # form (apps/stand_alone/media_dl) -- whose per-file line/branch standing is
+  # ...and mdl -- both its shared core (apps/shared_libs/mdl) and its host
+  # form (apps/host/mdl) -- whose per-file line/branch standing is
   # held by the whole-tree `coverage-tree` gate over its own CTest suite, the
   # same gate that holds every other first-party translation unit.
   # Its production sources appear here only as LINK dependencies of the
   # portable-contract tests under tests/ -- each of those drives one contract
   # through the same code the tool build compiles, so the sources cannot be
-  # trimmed from those targets (verified: of 62 media_dl sources across the
+  # trimmed from those targets (verified: of 62 mdl sources across the
   # five mdl units, exactly one is unreferenced). Instrumenting them from here
   # put 1094 MC/DC conditions into this denominator with 961 never executed,
   # because the suite that does exercise them is a different build this report
-  # never runs. origin/dev's report contains zero media_dl files; this keeps
-  # the report measuring what it is the gate for, and leaves media_dl measured
+  # never runs. origin/dev's report contains zero mdl files; this keeps
+  # the report measuring what it is the gate for, and leaves mdl measured
   # where it is actually tested. Unifying the two regimes -- measuring MC/DC
   # from each tool's own suite -- is the real answer and is filed separately.
   mcdc_ignore_re='(third_party|/tests/|/usr/|c\+\+/v[0-9]+|ra8_display_pal_host_macos'
-  # Both category directories, matched by shape rather than named one by one:
-  # the product's core moved to apps/shared/ so a second build form could
+  # Both current build-form directories are named explicitly:
+  # the product's core moved to apps/shared_libs/ so a second build form could
   # consume it, and a pattern naming only the form would have put the whole
   # core back into this denominator with its coverage measured elsewhere.
-  mcdc_ignore_re+='|apps/[a-z_]+/media_dl/)'
+  mcdc_ignore_re+='|apps/(host|shared_libs)/mdl/)'
 
   # Per-file MC/DC dump (verbose, for human inspection).
-  "$LLVM_COV_BIN" show \
+  if ! "$LLVM_COV_BIN" show \
     "${OBJ_ARGS[@]}" \
     -instr-profile="$MERGED_PROFDATA" \
     -show-mcdc \
     -show-mcdc-summary \
     -format=text \
     -ignore-filename-regex="$mcdc_ignore_re" \
-    >"$TEXT_REPORT" 2>/dev/null || true
+    >"$TEXT_REPORT" 2>/dev/null; then
+    echo "FAIL: llvm-cov could not produce the MC/DC detail report." >&2
+    exit 1
+  fi
 
   # Per-file numeric summary (machine-parseable).
-  "$LLVM_COV_BIN" report \
+  if ! "$LLVM_COV_BIN" report \
     "${OBJ_ARGS[@]}" \
     -instr-profile="$MERGED_PROFDATA" \
     -show-mcdc-summary \
     -ignore-filename-regex="$mcdc_ignore_re" \
-    >"$SUMMARY_REPORT" 2>/dev/null || true
+    >"$SUMMARY_REPORT" 2>/dev/null; then
+    echo "FAIL: llvm-cov could not produce the MC/DC summary report." >&2
+    exit 1
+  fi
 
   echo ""
   echo "==> MC/DC summary (tail of $SUMMARY_REPORT):"
-  tail -20 "$SUMMARY_REPORT" || true
+  tail -20 "$SUMMARY_REPORT"
   echo ""
   echo "Full per-file MC/DC dump : $TEXT_REPORT"
   echo "Per-file numeric summary : $SUMMARY_REPORT"
@@ -534,20 +627,17 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   # llvm-cov's `report --show-mcdc-summary` adds an "MC/DC Coverage"
   # column; the TOTAL row is the last non-empty line.
   # -----------------------------------------------------------------
-  TOTAL_LINE="$(grep -E '^TOTAL' "$SUMMARY_REPORT" | tail -1 || true)"
-  if [[ -z "$TOTAL_LINE" ]]; then
-    echo ""
-    echo "WARNING: could not locate TOTAL row in $SUMMARY_REPORT --"
-    echo "         skipping MC/DC threshold gate."
-    exit 0
+  if ! TOTAL_LINE="$(grep -E '^TOTAL' "$SUMMARY_REPORT" | tail -1)" || [[ -z "$TOTAL_LINE" ]]; then
+    echo "FAIL: could not locate the TOTAL row in $SUMMARY_REPORT." >&2
+    exit 1
   fi
 
   # Extract the last percentage on the TOTAL line; with
   # --show-mcdc-summary that is the MC/DC coverage column.
-  MCDC_PCT="$(echo "$TOTAL_LINE" | grep -oE '[0-9]+\.[0-9]+%' | tail -1 | tr -d '%')"
-  if [[ -z "$MCDC_PCT" ]]; then
-    echo "WARNING: could not parse MC/DC % from TOTAL row -- skipping gate."
-    exit 0
+  if ! MCDC_PCT="$(echo "$TOTAL_LINE" | grep -oE '[0-9]+\.[0-9]+%' | tail -1 | tr -d '%')" ||
+    [[ -z "$MCDC_PCT" ]]; then
+    echo "FAIL: could not parse MC/DC % from the TOTAL row." >&2
+    exit 1
   fi
 
   echo ""
@@ -556,13 +646,12 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
 
   # ------------------------------------------------------------
   # Reachable-only gate (DO-178C 6.4.4.3 -- deactivated code).
-  # Regenerate the gap classifier and read the reachable rate.
-  # The gate fails when reachable_rate < THRESHOLD; documented-
-  # deactivated conditions are excluded from the denominator.
+  # Regenerate the gap classifier and read the reachable
+  # decision-complete rate. The gate fails when that rate is below
+  # THRESHOLD; documented-deactivated decision regions are excluded
+  # from the denominator.
   # ------------------------------------------------------------
-  if command -v python3 >/dev/null 2>&1; then
-    python3 "$REPO_ROOT/scripts/fix/regen_mcdc_gaps.py" || true
-  fi
+  python3 "$REPO_ROOT/scripts/fix/regen_mcdc_gaps.py"
 
   # ------------------------------------------------------------
   # NON-VACUITY FLOOR on the report itself, before any verdict is
@@ -594,6 +683,10 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   # ------------------------------------------------------------
   if command -v python3 >/dev/null 2>&1; then
     echo ""
+    if ! python3 "$REPO_ROOT/scripts/checks/check_mcdc_floor.py" --selftest; then
+      echo "FAIL: per-file MC/DC floor self-test failed."
+      exit 1
+    fi
     if ! python3 "$REPO_ROOT/scripts/checks/check_mcdc_floor.py"; then
       echo "FAIL: per-file MC/DC floor failed (offenders above)."
       exit 1
@@ -601,45 +694,26 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   fi
 
   GATE_JSON="$REPORT_DIR/gate.json"
-  REACHABLE_PCT=""
-  if [[ -f "$GATE_JSON" ]] && command -v python3 >/dev/null 2>&1; then
-    REACHABLE_PCT="$(python3 -c "
-import json,sys
-d=json.load(open('$GATE_JSON'))
-print(f\"{d['reachable_rate']:.4f}\")
-" 2>/dev/null || true)"
+  if ! REACHABLE_PCT="$(mcdc_read_reachable_decision_pct "$GATE_JSON")"; then
+    echo "FAIL: reachable decision-complete MC/DC classification is" >&2
+    echo "      missing or unreadable; refusing to substitute LLVM's" >&2
+    echo "      condition-level percentage." >&2
+    exit 1
   fi
 
-  if [[ -z "$REACHABLE_PCT" ]]; then
-    echo "WARNING: gate.json missing or unreadable -- falling back to absolute %." >&2
-    REACHABLE_PCT="$MCDC_PCT"
-  fi
-
-  printf "==> First-party reachable MC/DC coverage: %s%% (threshold %s%%)\n" \
+  printf "==> Reachable decision-complete MC/DC rate: %s%% (threshold %s%%)\n" \
     "$REACHABLE_PCT" "$THRESHOLD"
-  echo "    (Deactivated conditions excluded per DO-178C 6.4.4.3;"
+  echo "    (Deactivated decision regions excluded per DO-178C 6.4.4.3;"
   echo "     see docs/MCDC_DEACTIVATIONS.md.)"
 
   BELOW="$(awk -v a="$REACHABLE_PCT" -v b="$THRESHOLD" \
     'BEGIN { print (a + 0 < b + 0) ? 1 : 0 }')"
   if [[ "$BELOW" -eq 1 ]]; then
-    echo "FAIL: reachable MC/DC ${REACHABLE_PCT}% < threshold ${THRESHOLD}%"
+    echo "FAIL: reachable decision-complete MC/DC ${REACHABLE_PCT}% < threshold ${THRESHOLD}%"
     echo "      Add MC/DC vectors per docs/MCDC.md, or document the"
     echo "      gap as deactivated in docs/MCDC_DEACTIVATIONS.md."
     exit 1
   fi
-  echo "PASS: reachable MC/DC meets threshold"
+  echo "PASS: reachable decision-complete MC/DC meets threshold"
   exit 0
 fi
-
-# ---------------------------------------------------------------------------
-# Fallback path (no clang MC/DC). We already built + ran the tests
-# under whatever instrumentation was available; just say so.
-# ---------------------------------------------------------------------------
-echo "==> [4/5] Skipped: llvm-profdata merge (clang MC/DC not available)"
-echo "==> [5/5] Skipped: llvm-cov MC/DC report"
-echo ""
-echo "MC/DC report unavailable -- install clang >= 18 and re-run."
-echo "Tests still executed under fallback instrumentation; see"
-echo "scripts/report/tree_coverage.sh for line/branch coverage instead."
-exit 0

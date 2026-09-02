@@ -24,9 +24,9 @@
  *
  * Every build runs the identical register sequence. On the host the
  * CMDCMP poll consults the ``ra8_fake_mmio`` seam
- * (``tests/mocks/ra8_fake_mmio.c``) so a unit test can model the
+ * (``tests/mocks/src/ra8_fake_mmio.c``) so a unit test can model the
  * peripheral: the register-level NOR-flash model in
- * ``tests/mocks/ra8_fake_xspi_flash.c`` services each ``TRREQ`` kick on
+ * ``tests/mocks/src/ra8_fake_xspi_flash.c`` services each ``TRREQ`` kick on
  * the driver's own poll thread, and fault tests arm the seam to drive
  * the timeout legs (#238). Every register access carries a
  * ``HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986``
@@ -220,7 +220,7 @@ static ra8_err_t internal_flash_range_check(uint32_t flash_addr, uint32_t len)
  * Bounded poll of the XSPI ``INTS`` register for the ``CMDCMP`` (command
  * complete) flag. On the host build each poll iteration consults the
  * ``ra8_fake_mmio`` seam (the i2c / i3c / sdhi status-poll pattern): the
- * ``tests/mocks/ra8_fake_xspi_flash.c`` model services the pending ``TRREQ``
+ * ``tests/mocks/src/ra8_fake_xspi_flash.c`` model services the pending ``TRREQ``
  * kick synchronously inside the consult and the loop then observes the
  * CMDCMP flag the model raised, while a fault test arms the seam on
  * ``INTS`` to force the timeout / continuation legs. On completion it
@@ -535,7 +535,7 @@ internal_flash_stage_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, u
  * Issues ``RDSR`` (via ::ra8_xspi_flash_read_status) in a statically-bounded loop
  * until the ``WIP`` bit reads 0 or the program-timeout budget is exhausted. The
  * status byte comes from the real RDSR response in CDD0 on every build; on the
- * host the ``tests/mocks/ra8_fake_xspi_flash.c`` model answers it, holding WIP
+ * host the ``tests/mocks/src/ra8_fake_xspi_flash.c`` model answers it, holding WIP
  * asserted for as many polls as the test configured so the loop's continuation
  * and timeout legs are reachable.
  *

@@ -199,7 +199,7 @@ RA8_INTERNAL static ULONG internal_inquiry_fill_serial(UX_SLAVE_CLASS_STORAGE* s
 RA8_INTERNAL static UINT
 internal_inquiry_reject(UX_SLAVE_CLASS_STORAGE* storage, ULONG lun, UX_SLAVE_ENDPOINT* endpoint_in)
 {
-#if !defined(UX_DEVICE_STANDALONE)
+#ifndef UX_DEVICE_STANDALONE
   _ux_device_stack_endpoint_stall(endpoint_in);
 #else
   UX_PARAMETER_NOT_USED(endpoint_in);
@@ -239,7 +239,7 @@ RA8_INTERNAL static void internal_inquiry_send(UX_SLAVE_CLASS_STORAGE* storage,
                                                UX_SLAVE_TRANSFER*      transfer_request,
                                                ULONG                   inquiry_length)
 {
-#if defined(UX_DEVICE_STANDALONE)
+#ifdef UX_DEVICE_STANDALONE
   UX_PARAMETER_NOT_USED(endpoint_in);
   storage->ux_device_class_storage_state         = UX_DEVICE_CLASS_STORAGE_STATE_TRANS_START;
   storage->ux_device_class_storage_cmd_state     = UX_DEVICE_CLASS_STORAGE_CMD_READ;
@@ -301,7 +301,7 @@ UINT _ux_device_class_storage_inquiry(UX_SLAVE_CLASS_STORAGE* storage,
                           0,
                           0)
 
-#if !defined(UX_DEVICE_STANDALONE)
+#ifndef UX_DEVICE_STANDALONE
   /* A data phase the host marked OUT cannot satisfy INQUIRY: phase error. */
   if (storage->ux_slave_class_storage_host_length != 0U) {
     if ((storage->ux_slave_class_storage_cbw_flags & (UCHAR)k_inq_dir_in_bit) == 0U) {

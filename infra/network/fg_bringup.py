@@ -9,15 +9,8 @@ read until a SUBSTRING match (case-insensitive, because FortiOS capitalises
 "New Password:"), with chunked reads into a per-step buffer that is reset each
 step so a stale echo cannot self-match.
 
-Modes:
-  login        log in, capture the running config (read-only), log out
-  bootstrap    log in, execute factoryreset, then configure the wiped unit
-  configure    configure an already-wiped unit (skip factoryreset)
-  verify       log in, dump status / DHCP / routing, ping the AP
-  ap-inspect   jump to the AP over `execute ssh`, dump its wireless/network
-  ap-configure jump to the AP, stand up the ra8-bench SSID + dumb-AP settings
-  ap-status    jump to the AP, confirm ra8-bench hostapd is beaconing
-  ap-exec      jump to the AP, run each command passed after the mode argument
+Offline modes lint or render the tracked declaration. Explicit live modes log
+in, bootstrap/configure/verify the firewall, or inspect/configure the AP.
 
 Every credential is read from OpenBao and masked in the transcript.
 """
@@ -25,18 +18,76 @@ Every credential is read from OpenBao and masked in the transcript.
 from __future__ import annotations
 
 import contextlib
+import importlib
+import importlib.util
 import os
+import shlex
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
+from types import ModuleType
+from typing import TYPE_CHECKING
 
-import serial
+if TYPE_CHECKING:
+    import serial
 
-# openbao_client lives in the sibling scripts/secrets/ tree. Make it importable
-# whether this runs from the repo (infra/network/) or the bench Pi (~/ra8-bench).
-sys.path.insert(0, str(Path.home() / "ra8-firmware" / "scripts" / "secrets"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "secrets"))
-from openbao_client import OpenBaoClient, load_config
+
+def _load_exact_module(module_name: str, module_path: Path) -> ModuleType:
+    """Load one repository-owned module without adding a directory to sys.path.
+
+    The resolved file must remain in the requested directory, so a sibling
+    symlink cannot redirect execution outside the reviewed tree. Registering
+    the private module key before execution keeps dataclass type resolution
+    correct while preventing an ambient module with the public name from
+    satisfying the import.
+    """
+    expected_parent = module_path.parent.resolve(strict=True)
+    resolved_path = module_path.resolve(strict=True)
+    if resolved_path.parent != expected_parent or not resolved_path.is_file():
+        msg = f"refusing non-local Python module {module_path}"
+        raise ImportError(msg)
+    private_name = f"_ra8_exact_{module_name}"
+    spec = importlib.util.spec_from_file_location(private_name, resolved_path)
+    if spec is None or spec.loader is None:
+        msg = f"cannot load repository Python module {resolved_path}"
+        raise ImportError(msg)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[private_name] = module
+    loaded = False
+    try:
+        spec.loader.exec_module(module)
+        loaded = True
+    finally:
+        if not loaded:
+            sys.modules.pop(private_name, None)
+    return module
+
+
+_network_dir = Path(__file__).resolve().parent
+_fg_ap_safety = _load_exact_module("fg_ap_safety", _network_dir / "fg_ap_safety.py")
+_fg_selftest = _load_exact_module("fg_bringup_selftest", _network_dir / "fg_bringup_selftest.py")
+_fortigate_config = _load_exact_module("fortigate_config", _network_dir / "fortigate_config.py")
+
+AP_SETUP_COMMANDS = _fg_ap_safety.AP_SETUP_COMMANDS
+_ap_checked_command = _fg_ap_safety.checked_command
+_mask_secrets = _fg_ap_safety.mask_secrets
+_ap_status_succeeded = _fg_ap_safety.status_succeeded
+_uci_assignment = _fg_ap_safety.uci_assignment
+_validate_wpa2_psk = _fg_ap_safety.validate_wpa2_psk
+entrypoint_safety_checks = _fg_selftest.entrypoint_safety_checks
+isolated_import_checks = _fg_selftest.isolated_import_checks
+psk_selftest_checks = _fg_selftest.psk_selftest_checks
+cli_argument_selftest_checks = _fg_selftest.cli_argument_selftest_checks
+declaration_selftest_checks = _fg_selftest.declaration_selftest_checks
+just_recipe_selftest_checks = _fg_selftest.just_recipe_selftest_checks
+live_runtime_selftest_checks = _fg_selftest.live_runtime_selftest_checks
+DEFAULT_CONF = _fortigate_config.DEFAULT_CONF
+config_lint_errors = _fortigate_config.config_lint_errors
+load_config_lines = _fortigate_config.load_config_lines
+read_valid_config = _fortigate_config.read_valid_config
+render_config_lines = _fortigate_config.render_config_lines
+require_valid_config = _fortigate_config.require_valid_config
 
 # The console cable is addressed by DEVICE CLASS, not by its serial number, for
 # the same two reasons scripts/hil/lib/tty_resolve.sh gives: /dev/ttyUSB<n> is
@@ -52,7 +103,10 @@ BAUD = 9600
 BENCH = Path.home() / "ra8-bench"
 LOG = BENCH / "fortigate_console.log"
 STATUS_FILE = BENCH / "fg_bringup.status"
-CONF = BENCH / "fortigate-bench.conf"
+ARGC_IMPLICIT_LOGIN = 1
+ARGC_MODE_ONLY = 2
+ARGC_WITH_PATH = 3
+ARGC_WITH_PATH_AND_LAN = 4
 
 # read_until() indices for the post-wipe blank-password probe. The needle list
 # is ["forced", "new password", "#", "$", "incorrect"].
@@ -101,9 +155,7 @@ def redact(value: str) -> None:
 
 def mask(text: str) -> str:
     """Return text with every registered secret replaced by <REDACTED>."""
-    for s in _SECRETS:
-        text = text.replace(s, "<REDACTED>")
-    return text
+    return _mask_secrets(text, _SECRETS)
 
 
 def log(msg: str) -> None:
@@ -122,7 +174,11 @@ def status(msg: str) -> None:
 
 def creds() -> dict[str, str]:
     """Return the bench-network secret from OpenBao (read-only AppRole)."""
-    return OpenBaoClient(load_config()).kv_get("ra8d2/bench-network")
+    repo_client = Path(__file__).resolve().parents[2] / "scripts/secrets/openbao_client.py"
+    deployed_client = Path.home() / "ra8-firmware/scripts/secrets/openbao_client.py"
+    client_path = repo_client if repo_client.is_file() else deployed_client
+    openbao = _load_exact_module("openbao_client", client_path)
+    return openbao.OpenBaoClient(openbao.load_config()).kv_get("ra8d2/bench-network")
 
 
 def send(ser: serial.Serial, text: str, *, secret: bool = False) -> None:
@@ -224,7 +280,11 @@ def capture(ser: serial.Serial) -> str:
     """Read-only: disable paging, dump status + interfaces. Returns the text."""
     run_lines(ser, ["config system console", "set output standard", "end"], 20)
     out = ""
-    for cmd in ("get system status", "show system interface", "show system dhcp server"):
+    for cmd in (
+        "get system status",
+        "show system interface",
+        "show system dhcp server",
+    ):
         send(ser, cmd)
         _, buf = read_until(ser, ["#", "$"], 60)
         out += f"\n===== {cmd} =====\n{buf}\n"
@@ -248,6 +308,33 @@ def primary_lan_name(interface_text: str) -> str:
         if f'edit "{name}"' in interface_text:
             return name
     return "internal"
+
+
+def run_config_lint(path: Path) -> int:
+    """Validate a FortiOS declaration without touching credentials or hardware."""
+    try:
+        lines = read_valid_config(path)
+    except (OSError, UnicodeError, ValueError) as exc:
+        print(f"CONFIG LINT: FAIL: {exc}", file=sys.stderr)
+        return 1
+    print(f"CONFIG LINT: PASS ({len(lines)} commands from {path})")
+    return 0
+
+
+def run_replay_dry_run(path: Path, lan: str) -> int:
+    """Emit the validated command stream without opening the console."""
+    try:
+        lines = read_valid_config(path, lan)
+    except (OSError, UnicodeError, ValueError) as exc:
+        print(f"REPLAY DRY RUN: FAIL: {exc}", file=sys.stderr)
+        return 1
+    for line in lines:
+        print(line)
+    print(
+        f"REPLAY DRY RUN: PASS ({len(lines)} commands from {path}, LAN {lan!r})",
+        file=sys.stderr,
+    )
+    return 0
 
 
 def detect_lan(ser: serial.Serial) -> str:
@@ -311,7 +398,12 @@ def post_wipe_login(ser: serial.Serial, user: str, pw: str) -> str:
     return "fail"
 
 
-def configure_after_wipe(ser: serial.Serial, c: dict[str, str]) -> int:
+def configure_after_wipe(
+    ser: serial.Serial,
+    c: dict[str, str],
+    declaration_lines: list[str],
+    declaration_path: Path,
+) -> int:
     """Shared post-wipe path: log in, ensure admin password = pw, replay conf."""
     user, pw = c["fortigate_admin_user"], c["fortigate_admin_pass"]
     result = post_wipe_login(ser, user, pw)
@@ -336,21 +428,22 @@ def configure_after_wipe(ser: serial.Serial, c: dict[str, str]) -> int:
 
     lan = detect_lan(ser)
     status(f"replaying bench config on LAN interface '{lan}'")
-    text = CONF.read_text(encoding="ascii")
-    if lan != "internal":
-        text = text.replace('"internal"', f'"{lan}"')
-    conf_lines = [
-        ln.rstrip() for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")
-    ]
+    conf_lines = render_config_lines(declaration_lines, lan)
+    require_valid_config(conf_lines, declaration_path)
     run_lines(ser, conf_lines, 60)
     run_lines(ser, ["get system status", f"show system interface {lan}", "get system poe"], 40)
     status("DONE: FortiGate wiped and bench-configured (10.0.40.1/24) -- ready for AP")
     return 0
 
 
-def do_configure_mode(ser: serial.Serial, c: dict[str, str]) -> int:
+def do_configure_mode(
+    ser: serial.Serial,
+    c: dict[str, str],
+    declaration_lines: list[str],
+    declaration_path: Path,
+) -> int:
     """Configure an already-wiped unit (skips factoryreset)."""
-    return configure_after_wipe(ser, c)
+    return configure_after_wipe(ser, c, declaration_lines, declaration_path)
 
 
 def drain(ser: serial.Serial, seconds: float) -> str:
@@ -375,6 +468,25 @@ def ap_cmd(ser: serial.Serial, cmd: str, seconds: float = 4.0, *, secret: bool =
     """Send a command to the nested AP shell and drain its output for a window."""
     send(ser, cmd, secret=secret)
     return drain(ser, seconds)
+
+
+def ap_cmd_checked(
+    ser: serial.Serial,
+    cmd: str,
+    seconds: float = 4.0,
+    *,
+    secret: bool = False,
+    transport: tuple[Callable[..., None], Callable[..., str]] = (send, drain),
+) -> str:
+    """Run one AP command and require its fixed exit-status marker."""
+    sender, drainer = transport
+    wrapped = _ap_checked_command(cmd)
+    sender(ser, wrapped, secret=secret)
+    output = drainer(ser, seconds)
+    if not _ap_status_succeeded(output):
+        message = "AP command failed or returned an ambiguous status"
+        raise RuntimeError(message)
+    return output
 
 
 def ap_ssh_open(ser: serial.Serial, ip: str, user: str, pw: str) -> bool:
@@ -430,6 +542,11 @@ def do_ap_configure_mode(ser: serial.Serial, c: dict[str, str]) -> int:
     (their VLAN networks were wiped from the FortiGate) are disabled; the
     working home-network on 'lan' is left alone.
     """
+    try:
+        _validate_wpa2_psk(c["bench_psk"])
+    except ValueError:
+        status("ap-configure: bench_psk must be a printable 8..63 byte WPA2 passphrase")
+        return 2
     if not login(ser, c["fortigate_admin_user"], c["fortigate_admin_pass"]):
         status("ap-configure: FortiGate login failed")
         return 2
@@ -439,41 +556,29 @@ def do_ap_configure_mode(ser: serial.Serial, c: dict[str, str]) -> int:
         status("ap-configure: could not open the nested ssh to the AP")
         return 2
     status("ap-configure: inside OpenWrt -- applying uci")
-    setup = [
-        "uci set wireless.radio1.channel='6'",
-        "uci set wireless.radio1.htmode='HT20'",
-        "uci set wireless.radio1.disabled='0'",
-        "uci delete wireless.bench",
-        "uci set wireless.bench='wifi-iface'",
-        "uci set wireless.bench.device='radio1'",
-        "uci set wireless.bench.mode='ap'",
-        "uci set wireless.bench.network='lan'",
-        "uci set wireless.bench.ssid='ra8-bench'",
-        "uci set wireless.bench.encryption='psk2'",
-        "uci set wireless.iot_5g.disabled='1'",
-        "uci set wireless.iot_2g.disabled='1'",
-        "uci set wireless.guest_5g.disabled='1'",
-        "uci set wireless.guest_2g.disabled='1'",
-        # Dumb AP: the FortiGate (10.0.40.1) is the ONLY DHCP server. Stop the
-        # AP's dnsmasq/odhcpd from serving DHCP/RA on the lan bridge, else two
-        # servers race on 10.0.40.0/24 with overlapping pools.
-        "uci set dhcp.lan.ignore='1'",
-        "uci set dhcp.lan.dhcpv4='disabled'",
-        "uci set dhcp.lan.dhcpv6='disabled'",
-        "uci set dhcp.lan.ra='disabled'",
-    ]
-    for cmd in setup:
-        ap_cmd(ser, cmd, 2)
-    # the PSK, masked in the transcript
-    ap_cmd(ser, f"uci set wireless.bench.key='{c['bench_psk']}'", 2, secret=True)
-    ap_cmd(ser, "uci commit wireless", 4)
-    ap_cmd(ser, "uci commit dhcp", 4)
-    status("ap-configure: committed; reloading wifi + dhcp")
-    ap_cmd(ser, "wifi reload", 12)
-    ap_cmd(ser, "/etc/init.d/dnsmasq restart", 6)
-    ap_cmd(ser, "/etc/init.d/odhcpd restart", 6)
-    ap_cmd(ser, "sleep 3; uci show wireless.bench; uci show dhcp.lan.ignore", 6)
-    ap_cmd(ser, "iwinfo 2>/dev/null | grep -E 'ESSID|Channel'", 6)
+    try:
+        for cmd in AP_SETUP_COMMANDS:
+            ap_cmd_checked(ser, cmd, 2)
+        redact(shlex.quote(c["bench_psk"]))
+        psk_command = _uci_assignment("wireless.bench.key", c["bench_psk"])
+        ap_cmd_checked(ser, psk_command, 2, secret=True)
+        ap_cmd_checked(ser, "uci commit wireless", 4)
+        ap_cmd_checked(ser, "uci commit dhcp", 4)
+        status("ap-configure: committed; reloading wifi + dhcp")
+        ap_cmd_checked(ser, "wifi reload", 12)
+        ap_cmd_checked(ser, "/etc/init.d/dnsmasq restart", 6)
+        ap_cmd_checked(ser, "/etc/init.d/odhcpd restart", 6)
+        verify = (
+            'test "$(uci -q get wireless.bench.ssid)" = ra8-bench && '
+            'test "$(uci -q get wireless.bench.encryption)" = psk2 && '
+            'test "$(uci -q get dhcp.lan.ignore)" = 1 && '
+            'iwinfo 2>/dev/null | grep -F "ESSID: \\"ra8-bench\\"" >/dev/null'
+        )
+        ap_cmd_checked(ser, verify, 12)
+    except RuntimeError:
+        status("ap-configure: AP command or final SSID/hostapd assertion failed")
+        ap_ssh_close(ser)
+        return 2
     ap_ssh_close(ser)
     status("ap-configure complete: ra8-bench up on radio1 (2.4 GHz), dumb-AP DHCP off")
     return 0
@@ -538,7 +643,12 @@ def do_verify_mode(ser: serial.Serial, c: dict[str, str]) -> int:
     return 0
 
 
-def do_bootstrap_mode(ser: serial.Serial, c: dict[str, str]) -> int:
+def do_bootstrap_mode(
+    ser: serial.Serial,
+    c: dict[str, str],
+    declaration_lines: list[str],
+    declaration_path: Path,
+) -> int:
     """Log in, factory-reset, then configure the wiped unit end to end."""
     user, pw = c["fortigate_admin_user"], c["fortigate_admin_pass"]
     if not login(ser, user, pw):
@@ -564,105 +674,292 @@ def do_bootstrap_mode(ser: serial.Serial, c: dict[str, str]) -> int:
     if not got_login:
         status("wiped device never reached a login prompt")
         return 2
-    return configure_after_wipe(ser, c)
+    return configure_after_wipe(ser, c, declaration_lines, declaration_path)
 
 
-def run_selftest() -> int:
-    """Offline regression check for the LAN-name detection + token rewrite.
-
-    Touches no hardware and reads no secret. It pins the behaviour that the
-    odd/even split depends on: with the second switch 'lan-even' present, the
-    primary is still read correctly, and rewriting the 'internal' token to the
-    resolved primary name leaves every 'lan-even' reference intact. Both
-    directions are asserted (a must-detect-'lan' case and a must-detect-
-    'internal' case) so a scope collapse cannot pass quietly.
-    """
-    two_switch = (
-        "config system interface\n"
-        '    edit "wan1"\n        set mode dhcp\n    next\n'
-        '    edit "lan"\n        set ip 10.0.40.1 255.255.255.0\n'
-        "        set type hard-switch\n    next\n"
-        '    edit "lan-even"\n        set ip 10.0.41.1 255.255.255.0\n'
-        "        set type hard-switch\n    next\n"
-        "end\n"
+def run_selftest(*, config_only: bool = False) -> int:
+    """Run offline both-direction regression checks without secrets or hardware."""
+    config_checks, tracked_errors = declaration_selftest_checks(
+        primary_lan_name,
+        render_config_lines,
+        _fortigate_config,
     )
-    internal_box = (
-        "config system interface\n"
-        '    edit "internal"\n        set ip 10.0.40.1 255.255.255.0\n    next\n'
-        '    edit "lan-even"\n        set ip 10.0.41.1 255.255.255.0\n    next\n'
-        "end\n"
+    recipe_checks = just_recipe_selftest_checks(
+        Path(__file__).resolve().parents[2] / "just/infra.just"
     )
-    cases = [
-        ("primary read past lan-even", primary_lan_name(two_switch), "lan"),
-        ("no false-'internal' when primary is lan", primary_lan_name(internal_box), "internal"),
-        ("empty dump defaults to internal", primary_lan_name(""), "internal"),
-        ("lan-even alone never reads as lan", primary_lan_name('edit "lan-even"\n'), "internal"),
-    ]
+    checks = recipe_checks + config_checks
+    if not config_only:
+        checks = (
+            isolated_import_checks(Path(__file__).resolve(), _load_exact_module)
+            + cli_argument_selftest_checks(_live_arg_count_valid)
+            + live_runtime_selftest_checks(
+                main,
+                _live_runtime_safe,
+                Path(__file__).resolve().parents[2] / ".venv",
+            )
+            + recipe_checks
+            + entrypoint_safety_checks(main)
+            + psk_selftest_checks(
+                _uci_assignment,
+                redact,
+                mask,
+                _SECRETS,
+                (_validate_wpa2_psk, ap_cmd_checked),
+            )
+            + config_checks
+        )
     ok = True
-    for label, got, want in cases:
-        good = got == want
-        ok = ok and good
-        print(f"  [{'PASS' if good else 'FAIL'}] {label}: got {got!r}, want {want!r}")
-
-    # The rewrite configure_after_wipe() applies must resolve the primary token
-    # and leave the literal second switch untouched.
-    decl = (
-        'edit "internal"\n set srcintf "internal"\n'
-        ' set dstintf "lan-even"\n set srcintf "lan-even"\n'
-    )
-    rewritten = decl.replace('"internal"', '"lan"')
-    primary_resolved = '"internal"' not in rewritten and 'edit "lan"' in rewritten
-    lan_even_kept = rewritten.count('"lan-even"') == decl.count('"lan-even"')
-    checks = [
-        ("token rewrite resolves primary", primary_resolved),
-        ("token rewrite keeps lan-even", lan_even_kept),
-    ]
     for label, good in checks:
         ok = ok and good
         print(f"  [{'PASS' if good else 'FAIL'}] {label}")
+    for error in tracked_errors:
+        print(f"    {error}")
 
-    print("SELFTEST:", "PASS" if ok else "FAIL")
+    label = "CONFIG SELFTEST" if config_only else "SELFTEST"
+    print(f"{label}:", "PASS" if ok else "FAIL")
     return 0 if ok else 1
 
 
-def main() -> int:
-    """Parse the mode argument, open the console, and dispatch to the handler."""
-    mode = sys.argv[1] if len(sys.argv) > 1 else "login"
-    if mode == "--selftest":  # offline: no console, no OpenBao, no hardware
+def usage_error(message: str) -> int:
+    """Print a command-line error without touching credentials or hardware."""
+    print(f"fg_bringup: {message}", file=sys.stderr)
+    print(_usage_text(), file=sys.stderr)
+    return 2
+
+
+def _usage_text() -> str:
+    """Return the complete command-line usage without touching live inputs."""
+    return (
+        "usage: fg_bringup.py {--selftest [config]|config-lint [config]|"
+        "replay-dry-run [config] [lan]|bootstrap [config]|configure [config]|"
+        "login|verify|ap-inspect|ap-configure|ap-status|ap-exec [command ...]}"
+    )
+
+
+def usage_help() -> int:
+    """Print help for the explicitly requested read-only help mode."""
+    print(_usage_text())
+    return 0
+
+
+def _dispatch_selftest_cli(args: list[str]) -> int:
+    """Validate and dispatch the offline selftest CLI."""
+    if len(args) == 1:
         return run_selftest()
-    BENCH.mkdir(parents=True, exist_ok=True)
-    tty = resolve_tty()
-    log(f"=== fg_bringup {mode} open {tty} @{BAUD} ===")
+    if args == ["--selftest", "config"]:
+        return run_selftest(config_only=True)
+    return usage_error("--selftest accepts only the optional 'config' selector")
+
+
+def _dispatch_config_lint_cli(args: list[str]) -> int:
+    """Validate and dispatch the offline config-lint CLI."""
+    maximum_args = ARGC_WITH_PATH - 1
+    if len(args) > maximum_args:
+        return usage_error("config-lint accepts at most one config path")
+    path = Path(args[1]) if len(args) == maximum_args else DEFAULT_CONF
+    return run_config_lint(path)
+
+
+def _dispatch_replay_dry_run_cli(args: list[str]) -> int:
+    """Validate and dispatch the offline replay-dry-run CLI."""
+    maximum_args = ARGC_WITH_PATH_AND_LAN - 1
+    path_argc = ARGC_WITH_PATH - 1
+    if len(args) > maximum_args:
+        return usage_error("replay-dry-run accepts a config path and LAN name")
+    path = Path(args[1]) if len(args) >= path_argc else DEFAULT_CONF
+    lan = args[2] if len(args) == maximum_args else "internal"
+    return run_replay_dry_run(path, lan)
+
+
+def _dispatch_offline(mode: str, args: list[str]) -> int | None:
+    """Run an offline mode, or return None when live dispatch is required."""
+    if mode == "--selftest":
+        return _dispatch_selftest_cli(args)
+    if mode == "config-lint":
+        return _dispatch_config_lint_cli(args)
+    if mode == "replay-dry-run":
+        return _dispatch_replay_dry_run_cli(args)
+    return None
+
+
+def _live_arg_count_valid(mode: str, argument_count: int) -> bool:
+    """Return whether a known live mode has a safe argument shape."""
+    if mode in {"bootstrap", "configure"}:
+        return ARGC_MODE_ONLY <= argument_count <= ARGC_WITH_PATH
+    if mode == "ap-exec":
+        return argument_count >= ARGC_MODE_ONLY
+    return argument_count == ARGC_MODE_ONLY
+
+
+def _live_runtime_safe(
+    isolated: int,
+    sanitized: str | None,
+    prefix: Path,
+    base_prefix: Path,
+    expected_venv: Path,
+) -> bool:
+    """Return whether a live action has the reviewed Python startup boundary."""
+    return (
+        isolated == 1
+        and sanitized == "v1"
+        and prefix.absolute() == expected_venv.absolute()
+        and base_prefix.absolute() != prefix.absolute()
+    )
+
+
+def _live_runtime_error() -> str | None:
+    """Describe an unsafe live runtime, or return None for the Just boundary."""
+    expected_venv = Path(__file__).resolve().parents[2] / ".venv"
+    if _live_runtime_safe(
+        sys.flags.isolated,
+        os.environ.get("RA8_INFRA_SANITIZED"),
+        Path(sys.prefix),
+        Path(sys.base_prefix),
+        expected_venv,
+    ):
+        return None
+    return (
+        "live modes require a sanitized FortiGate Just recipe "
+        "using the repository .venv and Python isolated mode"
+    )
+
+
+def _live_argument_error(mode: str, argument_count: int) -> int | None:
+    """Return a usage error for an invalid live-mode invocation."""
+    live_modes = {
+        "login",
+        "bootstrap",
+        "configure",
+        "verify",
+        "ap-inspect",
+        "ap-configure",
+        "ap-status",
+        "ap-exec",
+    }
+    if mode not in live_modes:
+        return usage_error(f"unknown mode {mode!r}")
+    if _live_arg_count_valid(mode, argument_count):
+        return None
+    if mode in {"bootstrap", "configure"}:
+        return usage_error(f"{mode} accepts at most one config path")
+    return usage_error(f"{mode} accepts no arguments")
+
+
+def _live_declaration(mode: str, args: list[str]) -> tuple[Path, list[str]]:
+    """Load and validate the declaration before any live dependency is used."""
+    declaration_path = DEFAULT_CONF
+    if mode not in {"bootstrap", "configure"}:
+        return declaration_path, []
+    path_argc = ARGC_WITH_PATH - 1
+    if len(args) == path_argc:
+        declaration_path = Path(args[1])
+    return declaration_path, read_valid_config(declaration_path)
+
+
+def _live_preflight(mode: str, args: list[str]) -> tuple[Path, list[str]] | None:
+    """Validate live argv, runtime, and declaration before any dependency."""
+    if _live_argument_error(mode, len(args) + 1) is not None:
+        return None
+    runtime_error = _live_runtime_error()
+    if runtime_error is not None:
+        print(f"fg_bringup: refusing live mode: {runtime_error}", file=sys.stderr)
+        return None
+    try:
+        return _live_declaration(mode, args)
+    except (OSError, UnicodeError, ValueError) as exc:
+        print(f"fg_bringup: refusing live replay: {exc}", file=sys.stderr)
+        return None
+
+
+def _redacted_creds() -> dict[str, str]:
+    """Read live credentials and register every secret for log masking."""
+    config = creds()
+    secret_keys = (
+        "fortigate_admin_pass",
+        "fortigate_maintainer_pass",
+        "ap_ssh_pass",
+        "bench_psk",
+        "legacy_psk_iot_network",
+        "legacy_psk_home_network",
+        "legacy_psk_guest_network",
+    )
+    for key in secret_keys:
+        redact(config.get(key, ""))
+    return config
+
+
+def _dispatch_live_handler(
+    mode: str,
+    ser: serial.Serial,
+    config: dict[str, str],
+    declaration_lines: list[str],
+    declaration_path: Path,
+) -> int:
+    """Dispatch after the serial console and credentials are ready."""
+    if mode == "bootstrap":
+        return do_bootstrap_mode(ser, config, declaration_lines, declaration_path)
+    if mode == "configure":
+        return do_configure_mode(ser, config, declaration_lines, declaration_path)
     handlers = {
         "login": do_login_mode,
-        "bootstrap": do_bootstrap_mode,
-        "configure": do_configure_mode,
         "verify": do_verify_mode,
         "ap-inspect": do_ap_inspect_mode,
         "ap-configure": do_ap_configure_mode,
         "ap-status": do_ap_status_mode,
         "ap-exec": do_ap_exec_mode,
     }
+    return handlers[mode](ser, config)
+
+
+def _run_live_mode(mode: str, path: Path, lines: list[str]) -> int:
+    """Open the physical console and execute one already-validated live mode."""
+    runtime_error = _live_runtime_error()
+    if runtime_error is not None:
+        print(f"fg_bringup: refusing live mode: {runtime_error}", file=sys.stderr)
+        return 2
+    try:
+        serial = importlib.import_module("serial")
+    except ModuleNotFoundError as exc:
+        print(f"fg_bringup: live mode requires pyserial: {exc}", file=sys.stderr)
+        return 2
+    serial_path = Path(str(getattr(serial, "__file__", ""))).resolve()
+    if not serial_path.is_relative_to(Path(sys.prefix).resolve()):
+        print("fg_bringup: refusing pyserial outside the managed .venv", file=sys.stderr)
+        return 2
+
+    BENCH.mkdir(parents=True, exist_ok=True)
+    tty = resolve_tty()
+    log(f"=== fg_bringup {mode} open {tty} @{BAUD} ===")
     ser = serial.Serial(tty, BAUD, timeout=0.3, write_timeout=5, exclusive=True)
     try:
-        c = creds()
-        # Register EVERY secret value so it is masked in the transcript -- uci
-        # show / config dumps echo PSKs back, so a missing one leaks.
-        for key in (
-            "fortigate_admin_pass",
-            "fortigate_maintainer_pass",
-            "ap_ssh_pass",
-            "bench_psk",
-            "legacy_psk_iot_network",
-            "legacy_psk_home_network",
-            "legacy_psk_guest_network",
-        ):
-            redact(c.get(key, ""))
-        return handlers.get(mode, do_login_mode)(ser, c)
+        return _dispatch_live_handler(mode, ser, _redacted_creds(), lines, path)
     finally:
         log("=== fg_bringup close ===")
         with contextlib.suppress(serial.SerialException):
             ser.close()
+
+
+def main(
+    argv: list[str] | None = None,
+    *,
+    live_runner: Callable[[str, Path, list[str]], int] | None = None,
+) -> int:
+    """Parse the mode and dispatch offline checks before any live dependency."""
+    args = sys.argv[1:] if argv is None else argv
+    if not args:
+        return usage_error("an explicit mode is required")
+    mode = args[0]
+    if mode in {"-h", "--help"}:
+        return usage_help()
+    offline_result = _dispatch_offline(mode, args)
+    if offline_result is not None:
+        return offline_result
+    prepared = _live_preflight(mode, args)
+    if prepared is None:
+        return 2
+    declaration_path, declaration_lines = prepared
+    runner = _run_live_mode if live_runner is None else live_runner
+    return runner(mode, declaration_path, declaration_lines)
 
 
 if __name__ == "__main__":

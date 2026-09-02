@@ -22,4 +22,4 @@ reached, so the gate is exact.
 Because the driver touches no hardware at all, the banner is byte-identical on
 host, emulator and silicon, which makes this an emulator/silicon equivalence
 check as much as a driver test. The same logic is covered from the other side by
-the host unit tests in `tests/test_ra8_bscan.c`.
+the host unit tests in `tests/misc/src/test_ra8_bscan.c`.

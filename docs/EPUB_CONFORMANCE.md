@@ -8,14 +8,14 @@
 
 The reader is a grayscale e-ink reading device (Kindle / Kobo class). It is **not**
 a web browser: there is no runtime DOM, no JavaScript, no media. Rendering is a
-zero-allocation, bounded, MC/DC-testable text-flow engine (`libs/ra8_reflow`) fed
-by a zero-heap EPUB container parser (`libs/ra8_epub`).
+zero-allocation, bounded, MC/DC-testable text-flow engine (`apps/shared_libs/reflow`) fed
+by a zero-heap EPUB container parser (`apps/shared_libs/epub`).
 
 ---
 
 ## 1. Container / package surface (accepted)
 
-Parsed by `libs/ra8_epub` (miniz for ZIP and the caller-owned bounded pure-C
+Parsed by `apps/shared_libs/epub` (miniz for ZIP and the caller-owned bounded pure-C
 reader for XML), zero-heap:
 
 | Surface | Support |
@@ -37,8 +37,8 @@ opened" page; it never aborts the book.
 
 ## 2. XHTML element subset (rendered)
 
-The `ra8_reflow` v1 tokenizer recognizes the tags below
-(`libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c`). This list is the **ratified element
+The `reflow` v1 tokenizer recognizes the tags below
+(`apps/shared_libs/reflow/src/reflow_tokenize_lex.c`). This list is the **ratified element
 contract**:
 
 - **Block:** `<p>`, `<h1>`..`<h6>`, `<blockquote>`, `<ul>`, `<ol>`, `<li>`, `<hr>`.
@@ -63,7 +63,7 @@ their code points; unresolved references pass through verbatim.
 `<style>` blocks are flow-through (no styling applied). The supported styling
 surface is exactly:
 
-1. The intrinsic block/inline/heading layout `ra8_reflow` applies by tag.
+1. The intrinsic block/inline/heading layout `reflow` applies by tag.
 2. The **minimal authored box-model** that the application *chrome* uses --
    padding/margin, background fill, border, a constrained flex/grid, absolute
    placement -- added under #76/#80. That subset is bounded and MC/DC-able
@@ -71,7 +71,7 @@ surface is exactly:
    actually used are implemented.
 
 **litehtml stays benched.** A litehtml-backed `v2` exists behind
-`RA8_REFLOW_USE_LITEHTML` (default **OFF**). litehtml brings the full CSS box
+`REFLOW_USE_LITEHTML` (default **OFF**). litehtml brings the full CSS box
 model but pulls C++/STL + `malloc` (violates NASA P10 Rule 3) and a large
 SOUP surface onto the content path. It is the **content-only** escape hatch: if a real
 EPUB 3 corpus visibly defeats v1's text-flow model (tables, floats, embedded
@@ -103,7 +103,7 @@ Each unsupported feature has one defined behavior. None is undefined.
 
 ## 5. Image formats
 
-- **Cover image:** the raw bytes are extracted by `ra8_epub_get_cover_image()`
+- **Cover image:** the raw bytes are extracted by `epub_get_cover_image()`
   and decoded by the caller via stb_image for the library / book-open screen.
 - **In-content images:** **not decoded yet** -- laid out as a placeholder
   rectangle so surrounding text flows correctly. Wiring in-content decode
@@ -115,10 +115,10 @@ Each unsupported feature has one defined behavior. None is undefined.
 
 | Contract clause | Source of truth |
 |-----------------|-----------------|
-| Container / package | `libs/ra8_epub/` |
-| Element subset + flow-through | `libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c` (tag table) |
-| Block/heading/inline layout | `libs/ra8_reflow/src/ra8_reflow_layout.c` |
-| CSS off by default | `RA8_REFLOW_USE_LITEHTML` (CMake option, default OFF) |
+| Container / package | `apps/shared_libs/epub/` |
+| Element subset + flow-through | `apps/shared_libs/reflow/src/reflow_tokenize_lex.c` (tag table) |
+| Block/heading/inline layout | `apps/shared_libs/reflow/src/reflow_layout.c` |
+| CSS off by default | `REFLOW_USE_LITEHTML` (CMake option, default OFF) |
 | litehtml content-only scope | `docs/SOUP/litehtml.md` |
 
 Changes to the accepted element set or a degradation behavior must update this

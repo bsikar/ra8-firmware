@@ -3,19 +3,53 @@
 #
 # Top-level CMake for ra8-firmware (Cortex-M85 cross-build).
 #
-# Every directory under `examples/` containing a `main.c` is treated
+# Every directory under `examples/` containing a `src/main.c` is treated
 # as a standalone application -- its own boot files, linker script,
 # and CMakeLists.txt. The top-level project pulls them all in via
 # add_subdirectory() so a single `cmake --build build` builds every
 # app in one shot.
 #
-# Per-app `make` from inside `examples/<app>/` is the intended
+# Per-app `just` from inside `examples/<app>/` is the intended
 # day-to-day entry point; this top-level cmake exists so CI can build
 # everything with one configure step.
 #
 #
 
 cmake_minimum_required(VERSION 3.20)
+
+# If ON, we pivot the root CMake away from firmware and build host/tools/tests.
+option(RA8_HOST_MODE "Build host apps/tests/tools natively" OFF)
+if(RA8_HOST_MODE)
+  enable_testing()
+  # The host mdl composition adds its shared core. Configure it before the
+  # aggregate unit-test graph so that graph can reuse the existing targets
+  # instead of attempting to add the core a second time.
+  add_subdirectory(apps/host/mdl)
+  add_subdirectory(tests)
+  add_subdirectory(tools/mkfontimg)
+  add_subdirectory(tools/exfat_mkimage)
+  add_subdirectory(tools/rabook_imagepack)
+  add_subdirectory(tools/cache_bench)
+  add_subdirectory(tools/mkbookimg)
+  add_subdirectory(tools/rabook_viewer)
+  add_subdirectory(tools/ra8_emulator)
+  add_subdirectory(apps/host/alphabet_soup)
+  return()
+endif()
+
+# Prevent accidental host compilation
+if(NOT CMAKE_TOOLCHAIN_FILE AND NOT CMAKE_CROSSCOMPILING)
+  message(
+    FATAL_ERROR
+      "
+  [ERROR] Toolchain file missing!
+  This is a bare-metal embedded project and cannot be compiled with your host OS compiler.
+  - IDE Users (CLion / VS Code): Select a CMake Preset (e.g. 'RA8D2 Debug').
+  - CLI Users: Use 'cmake --preset ra8d2-debug' or
+    pass '-DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake'.
+  "
+  )
+endif()
 
 # Project version is owned by the top-level VERSION file so a single
 # `echo 0.2.0 > VERSION` propagates to cmake, the firmware @since tags,
@@ -40,23 +74,6 @@ endif()
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Compiler:   ${CMAKE_C_COMPILER}")
-
-# Activate the tracked git hooks (scripts/git/) for every clone so the
-# commit-msg / pre-commit / pre-push gates run for everyone -- defense in depth
-# with CI. A fresh clone has no hooks installed; point core.hooksPath at the
-# tracked dir at configure time. Idempotent; no-op outside a git work tree
-# (.git absent in a release tarball / vendored copy).
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
-  execute_process(
-    COMMAND git config core.hooksPath scripts/git
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    RESULT_VARIABLE _ra8_hooks_rc
-    OUTPUT_QUIET ERROR_QUIET
-  )
-  if(_ra8_hooks_rc EQUAL 0)
-    message(STATUS "Git hooks: core.hooksPath -> scripts/git")
-  endif()
-endif()
 
 # Compiler cache for the host-side targets configured from this listfile
 # (ra8_emulator, tools/). The cross builds get it from cmake/toolchain-ra8d2.cmake
@@ -103,15 +120,8 @@ option(RA8_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" OFF)
 # Vendored OS integrations. OFF by default so the bare-metal-only
 # top-level build keeps working without dragging the third_party trees
 # in. Per-app builds (e.g. the threadx_* demos) flip these on
-# explicitly through their own Makefile.
+# explicitly through their own justfile.
 option(RA8_USE_THREADX "Enable the vendored ThreadX RTOS" OFF)
-
-# Default app for top-level builds. `cmake --build build --target firmware`
-# builds the default; `cmake --build build` builds every discovered app.
-set(RA8_DEFAULT_APP
-    "ra8d2-ereader"
-    CACHE STRING "Default app target alias"
-)
 
 # Pull in the optional integration early so per-app subdirectories
 # can reference the `threadx` interface target directly. The file is a
@@ -142,14 +152,15 @@ foreach(tier ${_ra8_tier_entries})
   if(NOT IS_DIRECTORY ${_ra8_tier_full})
     continue()
   endif()
-  # examples/host/* are macOS-only dev tools (AppKit window backend), not
+  # apps/host/* are macOS-only dev tools (AppKit window backend), not
   # part of the cross-compiled firmware -- skip them in the unified build.
   #
   # examples/ra8p1_foundation/* target a DIFFERENT chip (RA8P1, R7KA8P1KFLCAC)
   # and must be configured with cmake/toolchain-ra8p1.cmake, not the RA8D2
   # toolchain this unified build uses. Skipping the tier here keeps every RA8D2
-  # target (make blink, make blink_hal, ...) byte-for-behaviour unchanged; the
-  # RA8P1 apps build standalone via their own per-app Makefile. See
+  # target (`just apps::build blink`, `just apps::build blink_hal`, ...)
+  # byte-for-behaviour unchanged; the RA8P1 apps build standalone via their own
+  # per-app justfile. See
   # libs/ra8_core/inc/ra8_device.h for the device-selection seam.
   if(tier STREQUAL "host" OR tier STREQUAL "ra8p1_foundation")
     continue()
@@ -164,7 +175,7 @@ foreach(tier ${_ra8_tier_entries})
     if(NOT IS_DIRECTORY ${_ra8_l2_full})
       continue()
     endif()
-    if(EXISTS ${_ra8_l2_full}/main.c AND EXISTS ${_ra8_l2_full}/CMakeLists.txt)
+    if(EXISTS ${_ra8_l2_full}/src/main.c AND EXISTS ${_ra8_l2_full}/CMakeLists.txt)
       # Level 2: examples/<tier>/<app>/
       list(APPEND RA8_APPS ${l2})
       list(APPEND RA8_APP_PATHS examples/${tier}/${l2})
@@ -179,7 +190,7 @@ foreach(tier ${_ra8_tier_entries})
         if(NOT IS_DIRECTORY ${_ra8_l3_full})
           continue()
         endif()
-        if(EXISTS ${_ra8_l3_full}/main.c AND EXISTS ${_ra8_l3_full}/CMakeLists.txt)
+        if(EXISTS ${_ra8_l3_full}/src/main.c AND EXISTS ${_ra8_l3_full}/CMakeLists.txt)
           # Level 3: examples/<tier>/<subtier>/<app>/
           list(APPEND RA8_APPS ${l3})
           list(APPEND RA8_APP_PATHS examples/${tier}/${l2}/${l3})
@@ -192,7 +203,7 @@ foreach(tier ${_ra8_tier_entries})
           foreach(l4 ${_ra8_level4_entries})
             set(_ra8_l4_full ${_ra8_l3_full}/${l4})
             if(IS_DIRECTORY ${_ra8_l4_full}
-               AND EXISTS ${_ra8_l4_full}/main.c
+               AND EXISTS ${_ra8_l4_full}/src/main.c
                AND EXISTS ${_ra8_l4_full}/CMakeLists.txt
             )
               # Level 4: examples/<tier>/<subtier>/<sub2>/<app>/
@@ -216,25 +227,9 @@ foreach(app_path ${RA8_APP_PATHS})
   add_subdirectory(${app_path})
 endforeach()
 
-# Include the main e-reader application target. Explicit rather than globbed:
-# apps/ is the PRODUCTS tier and most products are hosted host programs (the
-# media_dl CLI), so a discovery glob over apps/ would silently cross-compile
-# the next product that happens to keep a main.c at its root. The e-reader is
-# the firmware composition in that tier and says so here, by name.
-add_subdirectory(apps/stand_alone/ereader)
+# Add standalone board apps via add_subdirectory
+add_subdirectory(apps/board/stand_alone/ereader)
 list(APPEND RA8_APPS "ra8d2-ereader")
-
-# Convenience alias `firmware` that maps to the default app's elf.
-if("${RA8_DEFAULT_APP}" IN_LIST RA8_APPS)
-  add_custom_target(
-    firmware
-    DEPENDS ${RA8_DEFAULT_APP}.elf
-    COMMENT "Building the default app (${RA8_DEFAULT_APP})"
-  )
-  message(STATUS "Default app: ${RA8_DEFAULT_APP} (alias 'firmware')")
-else()
-  message(WARNING "RA8_DEFAULT_APP='${RA8_DEFAULT_APP}' is not among discovered apps.")
-endif()
 
 #############################################################################
 # Testing Infrastructure
@@ -253,6 +248,5 @@ message(STATUS "Compiler:   ${CMAKE_C_COMPILER}")
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C Standard: C${CMAKE_C_STANDARD} (GNU extensions enabled)")
 message(STATUS "Apps:       ${RA8_APPS}")
-message(STATUS "Default:    ${RA8_DEFAULT_APP}")
 message(STATUS "Source Root: ${CMAKE_CURRENT_LIST_DIR}")
 message(STATUS "====================================")

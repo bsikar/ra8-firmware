@@ -10,7 +10,7 @@ graph TD
     DRV["peripheral drivers<br/>libs/ra8_hal/src/ -- one per on-chip peripheral<br/>(timers, serial, analog, storage, graphics, DMA, ...)"]
     REG["register headers<br/>libs/ra8_hal/inc/ra8_*_regs.h -- hand-written from the HUM"]
     CORE["ra8_core<br/>err, check, log, time, pin validator, register guards,<br/>error handler, exception, infrastructure"]
-    BOOT["boot<br/>libs/ra8_board_*/boot/ and ld/"]
+    BOOT["boot<br/>libs/ra8_board_*/src/boot/ and ld/"]
     HW["Renesas R7KA8D2KFLCAC"]
 
     APP --> DRV
@@ -36,18 +36,18 @@ boundary mechanisms that carry traffic between them.
 ## Where code lives
 
 ```
-examples/<tier>/.../<app>/   one standalone example per directory
-apps/stand_alone/<product>/  a proving product, structured as its own repo
-  main.c                     the application entry -- often the only file here
-  CMakeLists.txt             a stub that calls ra8_add_app()
-  Makefile                   a wrapper around cmake plus scripts/ helpers
+examples/ek_ra8d2/<tier>/.../<app>/ one RA8D2 example per directory
+apps/board/stand_alone/<product>/ a proving product, structured as its own repo
+  apps/board/stand_alone/<product>/src/main.c application entry
+  apps/board/stand_alone/<product>/src/*.c    app-private implementations
+  app-local headers belong in a root-level directory named inc
+  CMakeLists.txt                   thin declaration that calls ra8_add_app()
+  linker_script.ld                 optional app-local memory-map override
+  README.md, configs, assets       non-source artifacts stay at the unit root
 
-  (overrides, present only when the app must diverge from the board defaults)
-  vector_table.c  system_init.c  secure_exception.c  nmi_exception.c
-  trustzone_init.c  linker_script.ld
-
-libs/ra8_board_<board>/       the DEFAULT boot files and linker script
-  boot/  ld/linker_script.ld
+libs/ra8_board_<board>/            default boot files and linker script
+  libs/ra8_board_<board>/src/boot/*.c
+  libs/ra8_board_<board>/ld/linker_script.ld
 
 libs/                         the standard library -- see libs/README.md
 ```
@@ -56,14 +56,16 @@ Bare-metal has no `crt0.o` shipped by the toolchain, so the board layer *is*
 `crt0.o`: it provides the vector table pinned to MRAM, the `.data` copy and
 `.bss` zero, and a `SystemInit()` that has already set VTOR, the FPU enables and
 NVIC priority grouping by the time `main()` runs. That is why an app is usually
-one file. Dropping a same-named file into the app directory overrides the board
-copy for that app alone -- divergent vector tables and linker scripts are
-supported, they are just not the default.
+one file. Dropping a same-named boot file into the app's `src/` directory
+overrides the board copy for that app alone; an app-root `linker_script.ld`
+overrides the default memory map. Divergent startup is supported, but is not
+the default.
 
 ### The build
 
-The top-level `CMakeLists.txt` discovers every directory holding a `main.c` and
-a `CMakeLists.txt`. All the logic is in one shared recipe,
+The top-level `CMakeLists.txt` discovers every selected app through
+`scripts/dev/ra8_apps.py`; each app has a main source under its `src`
+directory and a root CMake declaration. All the logic is in one shared recipe,
 `cmake/ra8_add_app.cmake`, so the per-app file only names the app:
 
 ```cmake
@@ -74,19 +76,19 @@ ra8_add_app(
 )
 ```
 
-`ra8_add_app()` links the app's `main.c`, the boot files and the linker script
+`ra8_add_app()` links the selected app's sources, the boot files, and the linker script
 (the app-local copy if present, else the board's) and the `ra8_*` libraries,
 `ra8_secure_app` among them. Its remaining options -- which board, which extra
 libraries, whether the app skips the NSC layer -- are documented in that
 file's header.
-Adding an app is dropping the directory in; the next `make` finds it.
+Adding an app is dropping the directory in; the next `just build_all` finds it.
 
 ## Boot
 
 ```mermaid
 graph TD
-    RST["Reset_Handler<br/>board boot/vector_table.c"]
-    SI["SystemInit -- board boot/system_init.c<br/>disable IRQ, VTOR to g_ra8_vector_table_start,<br/>CPACR CP10/CP11 (FPU), FPCCR LSPEN + ASPEN,<br/>ICIALLU + CCR.IC, CCR.DC, CCR.BP,<br/>NVIC priority grouping = 4 preempt bits"]
+    RST["Reset_Handler<br/>libs/ra8_board_ek_ra8d2/src/boot/vector_table.c"]
+    SI["SystemInit -- libs/ra8_board_ek_ra8d2/src/boot/system_init.c<br/>disable IRQ, VTOR to g_ra8_vector_table_start,<br/>CPACR CP10/CP11 (FPU), FPCCR LSPEN + ASPEN,<br/>ICIALLU + CCR.IC, CCR.DC, CCR.BP,<br/>NVIC priority grouping = 4 preempt bits"]
     CPY["copy .data from its MRAM load address to SRAM, zero .bss"]
     MAIN["main()<br/>ra8_infrastructure_init -- log backend, pin validator<br/>ra8_cgc_init -- PLL to CPUCLK0 at ~1 GHz<br/>ra8_time_init -- SysTick at 1 kHz<br/>application loop"]
 

@@ -6,20 +6,39 @@ restates the most-violated rules but **this file is the source of truth**.
 
 ## Table of contents
 
-1. [File-header Doxygen block](#file-header-doxygen-block)
-2. [Function documentation](#function-documentation)
-3. [Comment formatting](#comment-formatting)
-4. [Naming](#naming)
-5. [Types and constants (C23)](#types-and-constants-c23)
-6. [Program entry points](#program-entry-points)
-7. [Header guards](#header-guards)
-8. [Hardware register access](#hardware-register-access)
-9. [HUM citations](#hum-citations)
-10. [SOLID principles for C](#solid-principles-for-c)
-11. [NASA Power of 10](#nasa-power-of-10)
-12. [Backward compatibility (there is none)](#backward-compatibility-there-is-none)
-13. [Character encoding](#character-encoding)
-14. [Ring and World tagging](#ring-and-world-tagging)
+1. [Source layout](#source-layout)
+2. [File-header Doxygen block](#file-header-doxygen-block)
+3. [Function documentation](#function-documentation)
+4. [Comment formatting](#comment-formatting)
+5. [Naming](#naming)
+6. [Types and constants (C23)](#types-and-constants-c23)
+7. [Program entry points](#program-entry-points)
+8. [Header guards](#header-guards)
+9. [Hardware register access](#hardware-register-access)
+10. [HUM citations](#hum-citations)
+11. [SOLID principles for C](#solid-principles-for-c)
+12. [NASA Power of 10](#nasa-power-of-10)
+13. [Backward compatibility (there is none)](#backward-compatibility-there-is-none)
+14. [Character encoding](#character-encoding)
+15. [Ring and World tagging](#ring-and-world-tagging)
+
+## Source layout
+
+Every first-party C-family build unit under `apps/`, `examples/`, `libs/`,
+`port/`, `tests/`, and `tools/` uses the same structure:
+
+- `src/` owns implementation files and may contain module-private
+  `*_internal.h` headers beside their implementation.
+- `inc/` owns interfaces and fixtures shared across translation units.
+- A unit's root contains build metadata, configuration, documentation, linker
+  scripts, and data assets - never C-family source or header files.
+- A nested `tests/` suite is a build unit too, so it has its own `src/` and
+  `inc/` rather than placing source files directly at the test root.
+
+Do not add root-path fallbacks or compatibility aliases when moving a file;
+update every CMake target and path consumer in the same change. Vendored and
+generated sources are exempt. `scripts/checks/check_source_layout.py` enforces
+the rule over the complete first-party tree in the `pre-commit-checks` gate.
 
 ## File-header Doxygen block
 
@@ -68,12 +87,19 @@ they are here so the Required column can be audited rather than believed.
 | `@file` | Yes | `doxy_audit.py --style` | Must be present and must name **this** file: the bare basename (1648 files), the repo-relative path (456), or no argument at all (17, doxygen then infers it). A `@file` left naming the old location after a `git mv` fails here rather than becoming a doxygen warning nobody reads. |
 | `@brief` | Yes | `doxy_audit.py --style` | One sentence, ends without a period. |
 | `@par Tag` | Yes for Ring 3+ | `check_world_tags.py` | See [Ring and World tagging](#ring-and-world-tagging). |
-| `@details` | Yes | `doxy_audit.py --style`, **ratcheted** | Multi-paragraph explanation. 130 files predate enforcement and are frozen in `.github/doxy-details-baseline.txt`; that list may only shrink, and a file outside it fails on sight. |
+| `@details` | Yes | `doxy_audit.py --style`, strict | Multi-paragraph explanation. The original debt is closed; every missing paragraph fails and no baseline remains. |
 | Named `@par <Name>` | Optional | -- | Use for PRCR sequencing, IRQ wiring, state machines, anything subtle. |
 | `@author` | Optional | -- | Review convention, not a rule: 104 of 2121 first-party C files carry one, and `@copyright` below already names the author. Keep it where it exists; a new file does not need it. This row said "Yes" for the life of the tree while 95% of it disagreed and nothing checked. |
 | `@date` | Optional | -- | ISO 8601 (YYYY-MM-DD) where present; 103 files carry one. |
-| `@copyright` + SPDX | Yes | `check-copyright.py` | `Copyright (c) YEAR <author>` then `SPDX-License-Identifier: MIT`. The check greps the SPDX line and the copyright holder's name anywhere in the file -- it does not require the `@copyright` tag spelling, which is why 63 files (54 in `tools/`, 9 in `port/`) satisfy it with a plain `/* SPDX... */` pair outside the header block. |
+| `@copyright` + SPDX | Yes | `check-copyright.py` | The exact `@copyright Copyright (c) 2026 Brighton Sikarskie` line is immediately followed by `SPDX-License-Identifier: MIT` inside the `@file` block. A standalone attribution comment above the block is rejected. |
 | `@since` | Yes on public declarations | `check-since-version.py` | Semantic version the file first appeared at. **Presence** is gated only for `ra8_*` declarations in `libs/ra8_*/inc/`; the **value** of every `@since` anywhere in the tree must equal the top-level `VERSION`. |
+
+Hash-comment code files put `# SPDX-License-Identifier: MIT` and the exact
+copyright line at the start of the file, immediately after a shebang when one
+exists. A security-pinned shell or isolated-Python entry then puts its exact
+`# SHEBANG-SECURITY: ...` rationale after the attribution pair. The canonical
+protected order is therefore shebang, SPDX, copyright, security rationale;
+`check-copyright.py` and `check_shebangs.py` enforce the same preamble.
 
 ## Function documentation
 
@@ -148,8 +174,8 @@ means nothing to doxygen is not an improvement on a missing tag.
 ## Comment formatting
 
 Spacing inside single-line block comments is enforced by
-`scripts/checks/check_comment_format.py`, which runs as part of `make format`
-(applies) and `make check` (verifies), and so gates pre-commit and CI through
+`scripts/checks/check_comment_format.py`, which runs as part of `just quality::local::format`
+(applies) and `just quality::local::check` (verifies), and so gates pre-commit and CI through
 `scripts/checks/format_code.sh`. The rules:
 
 - **One space after the opener.** `/*text` -> `/* text`; the Doxygen member
@@ -194,7 +220,7 @@ block + one space) and never touches the comment interior
 (`ReflowComments: false`); **the pass owns the interior + the `*/` column**.
 Because the two never overlap, they reach a stable result together (a comment
 the pass tightens can free column budget that lets clang-format re-align the
-start, so `make format` repeats both to a fixed point).
+start, so `just quality::local::format` repeats both to a fixed point).
 
 Left untouched: multi-line `/** ... */` blocks, `//` line comments, decorative
 banners (`/**** ... ****/`), and inline mid-code comments (`f(/*tag=*/x)`) --
@@ -528,7 +554,7 @@ requirements**. There will never be public releases or versioned APIs.
 - Update ALL call sites in the same commit when changing APIs.
 - Delete old code immediately. No staged rollouts.
 - Rename types, functions, fields freely to improve clarity.
-- Main branch must build successfully.
+- The `dev` integration branch must build successfully; `main` is the release branch.
 
 ## Character encoding
 

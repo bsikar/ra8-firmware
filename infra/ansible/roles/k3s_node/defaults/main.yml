@@ -34,9 +34,8 @@ k3s_node_version: "v1.34.5+k3s1"
 k3s_node_binary_sha256: "efaa84416cf59f36f7c1b45bd12988dcf0112288f588a9fd5c0fbca6d309e9d9"
 k3s_node_install_sha256: "d264d4d43f7c5a27b44de0075513fb22dfb02d0b7cd33ba7a3838cb822f4729c"
 k3s_node_install_url: "https://get.k3s.io"
-# URLs are the standard line-length exception.
-# yamllint disable-line rule:line-length
-k3s_node_binary_url: "https://github.com/k3s-io/k3s/releases/download/{{ k3s_node_version | urlencode }}/k3s"
+k3s_node_binary_url: "https://github.com/k3s-io/k3s/releases/download/\
+  {{ k3s_node_version | urlencode }}/k3s"
 k3s_node_bin: /usr/local/bin/k3s
 k3s_node_kubeconfig: /etc/rancher/k3s/k3s.yaml
 
@@ -48,8 +47,8 @@ k3s_node_kubeconfig: /etc/rancher/k3s/k3s.yaml
 # works from an interactive login and not from a root task.
 k3s_node_helm_version: "v4.2.2"
 k3s_node_helm_sha256: "9adafecab4d406853bba163a70e9f104f47dbbf65ce24b7653bae7e36150bcb6"
-# yamllint disable-line rule:line-length
-k3s_node_helm_url: "https://get.helm.sh/helm-{{ k3s_node_helm_version }}-linux-amd64.tar.gz"
+k3s_node_helm_url: "https://get.helm.sh/\
+  helm-{{ k3s_node_helm_version }}-linux-amd64.tar.gz"
 k3s_node_helm_bin: /usr/local/bin/helm
 
 # buildah, which the ci_runner role uses to build the runner image on the node.
@@ -57,11 +56,13 @@ k3s_node_helm_bin: /usr/local/bin/helm
 # the workload, and a node rebuilt without it fails ci_runner's first task.
 k3s_node_apt_packages:
   - buildah
+  - python3-venv
 
 # The Python client kubernetes.core needs on the target for its k8s modules.
-# Pinned below 36: kubernetes 36.0.3 raised its floor to pyyaml >= 6.0.3, and
-# pip cannot replace the node distro debian-managed PyYAML 6.0.1 (no RECORD
-# file), so an unpinned install hard-fails mid-play. 35.x is satisfied by the
-# distro PyYAML. Revisit when the node image ships pyyaml >= 6.0.3.
-k3s_node_pip_packages:
-  - kubernetes<36
+# Keep it isolated from the distribution interpreter. requirements.lock is a
+# hash-pinned export of pyproject.toml's k3s group from the committed uv.lock;
+# the Python dependency policy gate rejects any stale export.
+k3s_node_python_venv: /opt/ra8-k8s-client
+k3s_node_requirements_lock: /opt/ra8-k8s-client.requirements.lock
+k3s_node_requirements_marker: /opt/ra8-k8s-client/.ra8-lock-sha256
+k3s_node_requirements_verifier: /opt/ra8-k8s-client.verify.py

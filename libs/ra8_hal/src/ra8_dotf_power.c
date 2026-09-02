@@ -64,7 +64,7 @@ static const ra8_mstp_t s_dotf_mstp_table[k_ra8_dotf_channel_count] = {
  * Internal sub-step of ``ra8_dotf_open``. Extracted so the public entry
  * point stays under the NASA Rule 4 / clang-tidy
  * ``readability-function-size`` and ``readability-function-cognitive-complexity``
- * thresholds without requiring an inline NOLINT override.
+ * thresholds without requiring an inline lint override.
  *
  * Sequence:
  *   1. Range-check ``cfg->channel``.
@@ -96,7 +96,7 @@ RA8_INTERNAL
   }
   /* Step 1: Power on the DOTF block (idempotent). HUM Ch 45.6.1 p 3050. */
   const ra8_err_t init_err = ra8_dotf_init();
-  RA8_RETURN_ON_ERROR(init_err, s_tag, "open: init"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(init_err, s_tag, "open: init");
   return k_ra8_ok;
 }
 
@@ -138,19 +138,23 @@ RA8_INTERNAL
 {
   /* Step 2: Install the wrapped key. HUM Ch 45.3 p 3049 (REG03 staging). */
   const ra8_err_t key_err = ra8_dotf_install_key(cfg->channel, &cfg->key);
-  RA8_RETURN_ON_ERROR(key_err, s_tag, "open: install_key"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(key_err, s_tag, "open: install_key");
 
   /* Step 3: Stage the IV. HUM Ch 45.1 p 3048 (counter mode). */
   const ra8_err_t iv_err = ra8_dotf_set_iv(cfg->channel, cfg->iv_words);
-  RA8_RETURN_ON_ERROR(iv_err, s_tag, "open: set_iv"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- embedded IV is non-null and channel was range-checked */
+  RA8_RETURN_ON_ERROR(iv_err, s_tag, "open: set_iv");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* Step 4: Stage the conversion region. HUM Ch 45.3.1 / 45.3.2 p 3049. */
   const ra8_err_t reg_err = ra8_dotf_set_region(cfg->channel, &cfg->region);
-  RA8_RETURN_ON_ERROR(reg_err, s_tag, "open: set_region"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(reg_err, s_tag, "open: set_region");
 
   /* Step 5: Promote to live region. */
   const ra8_err_t sel_err = ra8_dotf_select_region(cfg->channel, cfg->region.region_id);
-  RA8_RETURN_ON_ERROR(sel_err, s_tag, "open: select_region"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- successful set_region made this same id live-selectable */
+  RA8_RETURN_ON_ERROR(sel_err, s_tag, "open: select_region");
+  /* GCOVR_EXCL_BR_STOP */
   return k_ra8_ok;
 }
 
@@ -187,12 +191,14 @@ RA8_INTERNAL
 {
   /* Step 6: Side-channel level. */
   const ra8_err_t sca_err = ra8_dotf_set_sca_level(cfg->channel, cfg->sca_level);
-  RA8_RETURN_ON_ERROR(sca_err, s_tag, "open: set_sca_level"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(sca_err, s_tag, "open: set_sca_level");
 
   /* Step 7: Optionally arm the AES core. */
   if (cfg->enable_after) {
+    /* GCOVR_EXCL_BR_START -- validated channel maps to a non-null static DOTF block */
     const ra8_err_t en_err = ra8_dotf_enable(cfg->channel);
-    RA8_RETURN_ON_ERROR(en_err, s_tag, "open: enable"); /* GCOVR_EXCL_BR_LINE */
+    RA8_RETURN_ON_ERROR(en_err, s_tag, "open: enable");
+    /* GCOVR_EXCL_BR_STOP */
   }
   return k_ra8_ok;
 }
@@ -202,13 +208,13 @@ RA8_INTERNAL
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   const ra8_err_t vi_err = internal_open_validate_init(cfg);
-  RA8_RETURN_ON_ERROR(vi_err, s_tag, "open: validate_init"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(vi_err, s_tag, "open: validate_init");
 
   const ra8_err_t st_err = internal_open_stage_key_iv_region(cfg);
-  RA8_RETURN_ON_ERROR(st_err, s_tag, "open: stage"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(st_err, s_tag, "open: stage");
 
   const ra8_err_t fi_err = internal_open_finalise(cfg);
-  RA8_RETURN_ON_ERROR(fi_err, s_tag, "open: finalise"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(fi_err, s_tag, "open: finalise");
   return k_ra8_ok;
 }
 
@@ -258,7 +264,9 @@ RA8_INTERNAL
   for (uint8_t ch = 0U; ch < k_ra8_dotf_channel_count; ++ch) {
     /* HUM Ch 45.6.1 "Module-stop Function" p 3050 */
     const ra8_err_t mst_err = ra8_mstp_enable(s_dotf_mstp_table[ch]);
-    RA8_RETURN_ON_ERROR(mst_err, s_tag, "exit_stop: mstp enable failed"); /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_BR_START -- ra8_mstp_enable() error edge in the per-channel stop-exit loop */
+    RA8_RETURN_ON_ERROR(mst_err, s_tag, "exit_stop: mstp enable failed");
+    /* GCOVR_EXCL_BR_STOP */
   }
   return k_ra8_ok;
 }

@@ -38,5 +38,5 @@ ci_runner_docker_forbidden_mounts:
 # read-only, so /etc/systemd/system cannot take a unit file. The fleet_capacity
 # role FAILS rather than skipping if a window is ever declared here, because a
 # schedule that silently never fires is worse than none. Manual
-# `make infra-scale HOST=truenas N=<n>` works normally -- it pipes the capacity
+# `just infra::scale HOST=truenas N=<n>` works normally -- it pipes the capacity
 # script over ssh and needs nothing installed.

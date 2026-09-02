@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -p
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# SHEBANG-SECURITY: -p blocks BASH_ENV and exported-function startup injection.
 #
 # bench_lock.sh -- the mandatory bench guard, in the shape of preflash_guard.sh.
 #
@@ -130,7 +131,7 @@ _ra8_bench_start_fence() {
 # have just SIGTERMed this job, so `wait` returns 143 BY CONSTRUCTION. Every
 # guarded script runs `set -e`, and this runs from their EXIT trap, so an
 # unguarded `wait` here makes 143 the exit status of the whole script -- which
-# it did, turning every clean `make hil-flash` into a failure, until this line
+# it did, turning every clean `just hil::flash` into a failure, until this line
 # was written the way it is. `return 0` closes the same hole for the caller of
 # this function.
 _ra8_bench_stop_fence() {
@@ -206,8 +207,8 @@ ra8_bench_release_local() {
 #
 # Two spellings, one answer. RA8_BENCH_WAIT_S is seconds and is what the guard
 # has always read; RA8_BENCH_WAIT is the human form ("10m", "2h", "900s") that
-# `make hil-... WAIT=` sets, parsed HERE by bench_duration() rather than in the
-# Makefile -- there is already one duration parser and a second one in `make`
+# a Just recipe's optional wait argument sets, parsed HERE by bench_duration()
+# justfile -- there is already one duration parser and a second one in `just`
 # syntax is how the two drift apart.
 _ra8_bench_wait_s() {
   local parsed
@@ -276,16 +277,16 @@ _ra8_bench_report_failure() {
     bench_report_denial "$_RA8_BENCH_GUARD_TMP/hold.out"
     # "wait for it" used to be the whole advice, with no way to do it. The knob
     # existed -- RA8_BENCH_WAIT_S has always been read a few lines below -- but
-    # it was set by nothing, named in no document and reachable from no make
+    # it was set by nothing, named in no document and reachable from no task
     # target, so in practice every guarded entry point took the lock with
     # flock -n and failed the instant anybody else held it. On a bench shared by
     # ~20 agents and a nightly CI job, telling people to wait while offering
     # only "fail" or "preempt" pushes them towards preempting.
     printf '[bench-guard] QUEUE for it (block in the kernel until it is free):\n' >&2
-    printf '[bench-guard]   make hil-<target> ... WAIT=10m\n' >&2
+    printf '[bench-guard]   just hil::<target> ... 10m\n' >&2
     printf '[bench-guard]   RA8_BENCH_WAIT=10m %s\n' "${0##*/}" >&2
     printf '[bench-guard] or preempt (journaled, announced):\n' >&2
-    printf '[bench-guard]   make bench-take WHY="..."\n' >&2
+    printf '[bench-guard]   just hil::take "reason"\n' >&2
     return 0
   fi
   printf '[bench-guard] UNKNOWN -- could not establish a hold. NOT touching the bench.\n' >&2
@@ -306,7 +307,7 @@ _ra8_bench_report_failure() {
 #
 # It defaults to 0 -- fail fast -- because a person at a terminal would rather
 # be told than blocked, and because a script that blocks by default turns a busy
-# bench into a pile of silently stalled jobs. Set it (or `make hil-... WAIT=10m`,
+# bench into a pile of silently stalled jobs. Set it (or pass a recipe's wait argument,
 # or either name in .env for a standing policy) and the guard blocks in the
 # kernel instead, which is what you want for CI and for an unattended agent. It
 # becomes `flock -w` on the bench host, so the wait is a real kernel wait and

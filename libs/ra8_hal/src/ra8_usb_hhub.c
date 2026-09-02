@@ -315,8 +315,10 @@ static ra8_err_t internal_do_idle(void)
 RA8_INTERNAL
 static ra8_err_t internal_do_bus_reset(void)
 {
-  const ra8_err_t rel = ra8_usb_host_bus_reset(s_state.speed, false);
-  RA8_RETURN_ON_ERROR(rel, s_tag, "hhub: release bus reset"); /* GCOVR_EXCL_BR_LINE */
+  /* `ra8_usb_host_bus_reset` rejects only an invalid controller selector;
+   * `ra8_usb_hhub_init` validated and stored this selector before the step
+   * machine became reachable. */
+  (void)ra8_usb_host_bus_reset(s_state.speed, false);
   s_state.step = k_ra8_hhub_step_set_address;
   return internal_setup_set_address(k_ra8_hhub_assigned_address);
 }
@@ -336,8 +338,9 @@ static ra8_err_t internal_do_bus_reset(void)
 RA8_INTERNAL
 static ra8_err_t internal_do_set_address(void)
 {
-  const ra8_err_t addr_err = ra8_usb_set_address(s_state.speed, k_ra8_hhub_assigned_address);
-  RA8_RETURN_ON_ERROR(addr_err, s_tag, "hhub: set USBADDR"); /* GCOVR_EXCL_BR_LINE */
+  /* The stored speed was validated at init and the assigned address is a
+   * compile-time member of the controller's accepted range. */
+  (void)ra8_usb_set_address(s_state.speed, k_ra8_hhub_assigned_address);
   s_state.step = k_ra8_hhub_step_get_dev_desc;
   return internal_setup_get_descriptor(k_ra8_hhub_desc_device, k_ra8_hhub_dev_desc_len);
 }

@@ -32,11 +32,14 @@ file(GLOB _ra8_fs_fat_tu_sources CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/ra8_
 list(APPEND _ra8_fs_fat_tu_sources ${_repo}/libs/ra8_fs/src/ra8_fs_utf.c)
 
 add_executable(
-  mkfontimg ${CMAKE_CURRENT_SOURCE_DIR}/mkfontimg.c ${CMAKE_CURRENT_SOURCE_DIR}/mkfontimg_host.c
-            ${_ra8_fs_fat_tu_sources}
+  mkfontimg ${CMAKE_CURRENT_SOURCE_DIR}/src/mkfontimg.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/mkfontimg_host.c ${_ra8_fs_fat_tu_sources}
 )
 
-target_include_directories(mkfontimg PRIVATE ${_repo}/libs/ra8_fs/inc ${_repo}/libs/ra8_core/inc)
+target_include_directories(
+  mkfontimg PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${_repo}/libs/ra8_fs/inc
+                    ${_repo}/libs/ra8_core/inc
+)
 
 # First-party sources carry the project warning bar (NASA Power of 10
 # Rule 10) here exactly as they do in the ARM and host-test builds; only

@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Per-app size visualizer for ra8-firmware.
 
-Walks every examples/ek_ra8d2/<app>/build/<app>.elf, runs
+Walks every examples/ek_ra8d2/<tier>/.../<app>/build/<app>.elf, runs
 `arm-none-eabi-size --format=sysv` on it, parses the output, and
 emits two markdown tables to stdout:
 
@@ -11,10 +11,11 @@ emits two markdown tables to stdout:
      text / data / bss / total columns, sorted by total size.
   2. A per-app section breakdown (only when --verbose is passed).
 
-Optionally writes the rendered output to docs/APP_SIZES.md when
-`--write` is passed. If no .elf files are found anywhere under
-examples/ek_ra8d2/, the script prints a build hint and exits 0
-(so it never blocks make all / CI).
+Optionally writes the rendered output to the ignored local report
+``build/reports/APP_SIZES.md`` when ``--write`` is passed.  This report
+describes only ELF files present in the current workspace, so it is not a
+version-controlled source of truth.  Missing tools, missing ELFs, and an ELF
+that cannot be inspected all fail closed.
 
 Usage:
 
@@ -32,12 +33,13 @@ import argparse
 import shutil
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 APPS_DIR = REPO_ROOT / "examples" / "ek_ra8d2"
-DEFAULT_OUT = REPO_ROOT / "docs" / "APP_SIZES.md"
+DEFAULT_OUT = REPO_ROOT / "build" / "reports" / "APP_SIZES.md"
 SIZE_TOOL = "arm-none-eabi-size"
 
 # Section -> bucket. Anything matching .text* lands in "text", and
@@ -91,22 +93,80 @@ def find_size_tool() -> str | None:
     return shutil.which(SIZE_TOOL)
 
 
-def collect_elfs() -> list[Path]:
+def collect_elfs(apps_dir: Path = APPS_DIR) -> list[Path]:
     """Every built app ELF currently on disk.
 
     Reports what HAS been built rather than what could be: an app that was
     never compiled is simply absent from the size table, not zero-sized.
     """
     out: list[Path] = []
-    if not APPS_DIR.is_dir():
+    if not apps_dir.is_dir():
         return out
-    for app_dir in sorted(APPS_DIR.iterdir()):
-        if not app_dir.is_dir():
+    for build_dir in sorted(apps_dir.rglob("build")):
+        if not build_dir.is_dir():
             continue
-        elf = app_dir / "build" / f"{app_dir.name}.elf"
+        app_dir = build_dir.parent
+        if app_dir == apps_dir:
+            continue
+        elf = build_dir / f"{app_dir.name}.elf"
         if elf.is_file():
             out.append(elf)
     return out
+
+
+def input_error(size_tool: str | None, elfs: list[Path]) -> str | None:
+    """Describe a missing report prerequisite, or return ``None``."""
+    if size_tool is None:
+        return f"{SIZE_TOOL} not found on PATH"
+    if not elfs:
+        return (
+            "no examples/ek_ra8d2/<tier>/.../<app>/build/<app>.elf found; "
+            "build the desired applications first"
+        )
+    return None
+
+
+def run_selftest() -> int:
+    """Prove discovery and fail-closed report prerequisites."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "examples" / "ek_ra8d2"
+        expected = (
+            root / "hw_pending" / "alpha" / "build" / "alpha.elf",
+            root / "hw_validated" / "hil" / "beta" / "build" / "beta.elf",
+        )
+        for elf in expected:
+            elf.parent.mkdir(parents=True, exist_ok=True)
+            elf.touch()
+
+        unrelated = root / "hw_validated" / "hil" / "beta" / "build" / "helper.elf"
+        unrelated.touch()
+        shallow = root / "build" / "ek_ra8d2.elf"
+        shallow.parent.mkdir(parents=True, exist_ok=True)
+        shallow.touch()
+
+        found = collect_elfs(root)
+        want = list(expected)
+        if found != want:
+            print(
+                "app_sizes.py --selftest: FAILED\n"
+                f"  expected: {[str(path.relative_to(root)) for path in want]}\n"
+                f"  found:    {[str(path.relative_to(root)) for path in found]}",
+                file=sys.stderr,
+            )
+            return 1
+
+        if input_error(None, found) != f"{SIZE_TOOL} not found on PATH":
+            print("app_sizes.py --selftest: FAILED: missing tool was accepted", file=sys.stderr)
+            return 1
+        if input_error("/bin/size", []) is None:
+            print("app_sizes.py --selftest: FAILED: empty ELF set was accepted", file=sys.stderr)
+            return 1
+        if input_error("/bin/size", found) is not None:
+            print("app_sizes.py --selftest: FAILED: valid inputs were rejected", file=sys.stderr)
+            return 1
+
+    print("app_sizes.py --selftest: PASS (discovery and prerequisites fail closed)")
+    return 0
 
 
 _MIN_SYSV_PARTS = 2  # arm-none-eabi-size sysv output has at least "name size" columns
@@ -126,7 +186,12 @@ def run_size(size_tool: str, elf: Path) -> AppSizes:
         capture_output=True,
         text=True,
     )
-    sizes = AppSizes(name=elf.parent.parent.name, elf=elf)
+    app_dir = elf.parent.parent
+    try:
+        name = app_dir.relative_to(APPS_DIR).as_posix()
+    except ValueError:
+        name = app_dir.name
+    sizes = AppSizes(name=name, elf=elf)
     for raw_line in result.stdout.splitlines():
         line = raw_line.strip()
         if not line or line.startswith(("section", elf.name)):
@@ -216,18 +281,16 @@ def render_full(rows: list[AppSizes]) -> str:
     """Render the full markdown document."""
     head = (
         "# ra8-firmware -- per-application size report\n\n"
-        "Auto-generated by `scripts/report/app_sizes.py`. Re-run via\n"
-        "`make app-sizes`. Numbers come from "
+        "Local, ignored output generated by `scripts/report/app_sizes.py`. Re-run via\n"
+        "`just docs::sizes`. Numbers come from "
         "`arm-none-eabi-size --format=sysv` on each\n"
-        "`examples/ek_ra8d2/<app>/build/<app>.elf`.\n\n"
-        "- `text`  -- combined .vectors / .text / .rodata / .gnu.sgstubs / "
-        "  .init_array / .ARM.exidx (everything that lives in MRAM at "
-        "  runtime).\n"
+        "`examples/ek_ra8d2/<tier>/.../<app>/build/<app>.elf`.\n\n"
+        "- `text`  -- combined .vectors / .text / .rodata / .gnu.sgstubs /\n"
+        "  .init_array / .ARM.exidx (everything that lives in MRAM at runtime).\n"
         "- `data`  -- combined .data / .sdata (initialized RAM).\n"
-        "- `bss`   -- combined .bss / .stack_canary / .noinit (zero-init "
-        "  RAM).\n"
-        "- `total` -- text + data + bss (on-target footprint; "
-        "  `.debug_*`, `.ARM.attributes`, and `.option_setting_*` are\n"
+        "- `bss`   -- combined .bss / .stack_canary / .noinit (zero-init RAM).\n"
+        "- `total` -- text + data + bss (on-target footprint; `.debug_*`,\n"
+        "  `.ARM.attributes`, and `.option_setting_*` are\n"
         "  excluded because they do not consume target memory).\n\n"
     )
     return head + render_summary(rows) + "\n\n" + render_per_app(rows) + "\n"
@@ -242,28 +305,30 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--verbose", action="store_true", help="Print the per-app section breakdown too."
     )
+    parser.add_argument(
+        "--selftest", action="store_true", help="exercise nested app discovery and exit"
+    )
     args = parser.parse_args(argv)
 
-    size_tool = find_size_tool()
-    if size_tool is None:
-        print(
-            f"{SIZE_TOOL} not found on PATH; skipping. "
-            "(install arm-none-eabi-gnu-toolchain to run this report)",
-            file=sys.stderr,
-        )
-        return 0
+    if args.selftest:
+        return run_selftest()
 
+    size_tool = find_size_tool()
     elfs = collect_elfs()
-    if not elfs:
-        print("no examples/ek_ra8d2/<app>/build/<app>.elf found -- build with `make apps` first")
-        return 0
+    if problem := input_error(size_tool, elfs):
+        print(f"ERROR: {problem}", file=sys.stderr)
+        return 1
+    # input_error() establishes this; keep the type boundary explicit.
+    if size_tool is None:
+        return 1
 
     rows: list[AppSizes] = []
     for elf in elfs:
         try:
             rows.append(run_size(size_tool, elf))
-        except subprocess.CalledProcessError as exc:  # noqa: PERF203  # one ELF failure must not abort the rest
-            print(f"WARN: {SIZE_TOOL} failed for {elf}: {exc}", file=sys.stderr)
+        except subprocess.CalledProcessError as exc:
+            print(f"ERROR: {SIZE_TOOL} failed for {elf}: {exc}", file=sys.stderr)
+            return 1
 
     rendered = render_full(rows)
     print(rendered)

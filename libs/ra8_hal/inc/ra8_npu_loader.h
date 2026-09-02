@@ -8,7 +8,7 @@
  *
  * @details
  * The FRONT HALF of the Ethos-U55 model loader. The offline Vela build step
- * (`tools/vela/vela_gen.py`) compiles a quantized `.tflite` model and distills
+ * (`tools/vela/src/vela_gen.py`) compiles a quantized `.tflite` model and distills
  * the `ethos-u` custom operator's command stream plus its tensor region layout
  * into a lean, linkable `.npub` container (`ra8_npu_blob.h`). This loader validates
  * that container and maps it into an ::ra8_npu_job_t so `ra8_npu_submit()` /

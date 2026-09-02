@@ -37,6 +37,43 @@
 
 static const char* s_tag = "SCI";
 
+/**
+ * @brief Report whether a DMA entry point's channel register and length are usable.
+ *
+ * @details
+ * Both DMA entry points ask the same two questions of their arguments: did
+ * ::ra8_sci resolve the channel to a register block, and is the transfer length
+ * non-zero. Answering them here keeps each entry point to one early return and
+ * gives this check a single exit of its own.
+ *
+ * @param[in] reg Register block ::ra8_sci resolved for the caller's channel,
+ *                or `nullptr` when the channel index is out of range.
+ * @param[in] len Requested transfer length in bytes.
+ *
+ * @return ra8_err_t Argument-validation verdict.
+ * @retval k_ra8_ok Both the register block and the length are usable.
+ * @retval k_ra8_err_invalid_arg The channel did not resolve, or @p len is zero.
+ *
+ * @pre The caller has already null-checked its own pointer arguments.
+ * @pre @p reg is whatever ::ra8_sci returned for the caller's channel.
+ * @post No hardware register is read or written.
+ * @post The caller's arguments are unchanged.
+ *
+ * @note Thread-safe; the function is pure.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_dma_args_ok(const volatile r_sci_regs_t* reg, uint16_t len)
+{
+  ra8_err_t err = k_ra8_ok;
+  if (reg == nullptr) {
+    err = k_ra8_err_invalid_arg;
+  }
+  if (len == 0U) {
+    err = k_ra8_err_invalid_arg;
+  }
+  return err;
+}
+
 /* ---- DMA TX / RX ----------------------------------------- */
 
 /* Build a DMA request descriptor for byte-stream to/from SCI TDR/RDR -- see surrounding code and HUM citations. */
@@ -73,9 +110,10 @@ ra8_err_t ra8_sci_write_dma(uint8_t               channel,
 {
   RA8_CHECK_NULL_PTR(data, s_tag, "write_dma: data");
   RA8_CHECK_NULL_PTR(out_dma_channel, s_tag, "write_dma: out_dma_channel");
-  volatile r_sci_regs_t* reg = ra8_sci(channel);
-  if ((reg == nullptr) || (len == 0U)) {
-    return k_ra8_err_invalid_arg;
+  volatile r_sci_regs_t* reg     = ra8_sci(channel);
+  const ra8_err_t        args_ok = internal_dma_args_ok(reg, len);
+  if (args_ok != k_ra8_ok) {
+    return args_ok;
   }
   /* HUM Ch 38.2.3 "TDR : Transmit Data Register", p 2181 -- DMA writes
    * land in TDR; the engine streams one byte per element while the
@@ -93,20 +131,19 @@ ra8_err_t ra8_sci_write_dma(uint8_t               channel,
 /* out_buf is written by the DMAC engine via the dst_addr path, not
  * through the pointer directly, so clang-tidy would otherwise flag
  * it as a const candidate. */
-ra8_err_t ra8_sci_read_dma(
-  uint8_t channel,
-  uint8_t*
-    out_buf, // NOLINT(readability-non-const-parameter) -- written by the DMAC engine via dst_addr, never through the pointer.
-  uint16_t              len,
-  ra8_dma_complete_fn_t on_complete,
-  void*                 ctx,
-  uint8_t*              out_dma_channel)
+ra8_err_t ra8_sci_read_dma(uint8_t               channel,
+                           uint8_t*              out_buf,
+                           uint16_t              len,
+                           ra8_dma_complete_fn_t on_complete,
+                           void*                 ctx,
+                           uint8_t*              out_dma_channel)
 {
   RA8_CHECK_NULL_PTR(out_buf, s_tag, "read_dma: out_buf");
   RA8_CHECK_NULL_PTR(out_dma_channel, s_tag, "read_dma: out_dma_channel");
-  volatile r_sci_regs_t* reg = ra8_sci(channel);
-  if ((reg == nullptr) || (len == 0U)) {
-    return k_ra8_err_invalid_arg;
+  volatile r_sci_regs_t* reg     = ra8_sci(channel);
+  const ra8_err_t        args_ok = internal_dma_args_ok(reg, len);
+  if (args_ok != k_ra8_ok) {
+    return args_ok;
   }
   /* HUM Ch 38.2.2 "RDR : Receive Data Register", p 2180 -- RDR is
    * read-once per element; destination increments across out_buf[]. */

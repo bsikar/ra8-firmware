@@ -91,18 +91,15 @@ typedef enum : uint16_t {
  * @struct ra8_usb_pal_packet_t
  * @brief One packet on a per-endpoint ring.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t len;                         /**< 0 == empty slot.      */
   uint8_t  data[k_ra8_usb_pal_pkt_max]; /**< Packet payload bytes. */
 } ra8_usb_pal_packet_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_usb_pal_ep_slot_t
  * @brief Configuration + queue for one endpoint.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool                  opened;                         /**< True once ra8_usb_pal_ep_open fired. */
   ra8_usb_pal_ep_dir_t  dir;                            /**< Stored direction.                    */
@@ -113,7 +110,6 @@ typedef struct {
   uint16_t              count;                          /**< In-flight packet count.              */
   ra8_usb_pal_packet_t  ring[k_ra8_usb_pal_ring_slots]; /**< Per-EP queue.                        */
 } ra8_usb_pal_ep_slot_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_usb_pal_state_inner_t
@@ -287,8 +283,7 @@ static void internal_usb_event(void* ctx, ra8_usb_speed_t speed, uint16_t status
  * @return ``ra8_err_t`` error code.
  * @retval k_ra8_ok                  PAL ready, state = detached.
  * @retval k_ra8_err_invalid_arg     ``speed`` not FS or HS.
- * @retval k_ra8_err_hw_init_failed  ``ra8_usb_device_init`` or handler
- *                                  attach failed.
+ * @retval k_ra8_err_hw_init_failed  ``ra8_usb_device_init`` failed.
  *
  * @pre ``ra8_mstp_init`` and ``ra8_pwr_init`` have been called.
  * @pre IRQs masked or single-threaded init context.
@@ -319,15 +314,7 @@ ra8_err_t ra8_usb_pal_init(ra8_usb_speed_t speed)
   s_state.initialized = true;
   internal_reset_eps();
 
-  const ra8_err_t att_err = ra8_usb_attach_handler(speed, internal_usb_event, nullptr);
-  if (att_err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
-    /* GCOVR_EXCL_START */
-    ra8_log_error_val(s_tag, "ra8_usb_attach_handler failed", (uint32_t)att_err);
-    s_state.initialized = false;
-    (void)ra8_usb_device_deinit(speed);
-    return k_ra8_err_hw_init_failed;
-    /* GCOVR_EXCL_STOP */
-  }
+  ra8_usb_attach_handler(speed, internal_usb_event, nullptr);
 
   ra8_log_info(s_tag, "PAL ready");
   return k_ra8_ok;
@@ -360,7 +347,7 @@ ra8_err_t ra8_usb_pal_deinit(void)
     return k_ra8_err_invalid_state;
   }
   (void)ra8_usb_device_attach(s_state.speed, false);
-  (void)ra8_usb_attach_handler(s_state.speed, nullptr, nullptr);
+  ra8_usb_attach_handler(s_state.speed, nullptr, nullptr);
   const ra8_err_t err = ra8_usb_device_deinit(s_state.speed);
   s_state.initialized = false;
   s_state.event_fn    = nullptr;
@@ -396,12 +383,9 @@ ra8_err_t ra8_usb_pal_attach(bool attached)
   if (!s_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  const ra8_err_t err = ra8_usb_device_attach(s_state.speed, attached);
-  if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
-    /* GCOVR_EXCL_START */
-    return err;
-    /* GCOVR_EXCL_STOP */
-  }
+  /* `ra8_usb_device_attach` rejects only an invalid controller selector;
+   * successful initialization stored a validated selector in `s_state`. */
+  (void)ra8_usb_device_attach(s_state.speed, attached);
   if (attached) {
     s_state.state = k_ra8_usb_pal_state_attached;
   } else {

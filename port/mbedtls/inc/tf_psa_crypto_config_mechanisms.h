@@ -18,6 +18,19 @@
  * below.
  *
  *
+ * @note The PSA_WANT_xxx gates that tf-psa-crypto DERIVES for itself are
+ *       deliberately absent from this file. crypto_adjust_config_auto_enabled.h,
+ *       crypto_adjust_config_dependencies.h and crypto_adjust_config_key_pair_types.h
+ *       are included by tf-psa-crypto/build_info.h AFTER this configuration and
+ *       re-#define those names as a bare 1. A definition here would have to be
+ *       token-identical for that redefinition to be benign, and this project spells
+ *       object-like numeric macros (1) -- check_c23_patterns.py rule 4 -- so each such
+ *       gate produced a "PSA_WANT_x redefined" -Werror failure in every app that
+ *       reaches Mbed TLS through build_info.h (tls_client, threadx_https_client).
+ *       Declaring only what upstream does NOT derive leaves the effective macro set
+ *       unchanged -- proven by diffing arm-none-eabi-gcc -E -dM output across the
+ *       change -- and removes the clash at its source. Do not re-add them.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -51,8 +64,6 @@
 #define PSA_WANT_ALG_CCM (1)
 /** @brief PSA WANT ALG CCM STAR NO TAG. */
 #define PSA_WANT_ALG_CCM_STAR_NO_TAG (1)
-/** @brief PSA WANT ALG CMAC. */
-#define PSA_WANT_ALG_CMAC (1)
 /** @brief PSA WANT ALG CFB. */
 #define PSA_WANT_ALG_CFB (1)
 /** @brief PSA WANT ALG CHACHA20 POLY1305. */
@@ -61,8 +72,6 @@
 #define PSA_WANT_ALG_CTR (1)
 /** @brief PSA WANT ALG DETERMINISTIC ECDSA. */
 #define PSA_WANT_ALG_DETERMINISTIC_ECDSA (1)
-/** @brief PSA WANT ALG ECB NO PADDING. */
-#define PSA_WANT_ALG_ECB_NO_PADDING (1)
 /** @brief PSA WANT ALG ECDH. */
 #define PSA_WANT_ALG_ECDH (1)
 /** @brief PSA WANT ALG FFDH. */
@@ -79,8 +88,6 @@
 #define PSA_WANT_ALG_HKDF_EXTRACT (1)
 /** @brief PSA WANT ALG HKDF EXPAND. */
 #define PSA_WANT_ALG_HKDF_EXPAND (1)
-/** @brief PSA WANT ALG HMAC. */
-#define PSA_WANT_ALG_HMAC (1)
 /** @brief PSA WANT ALG MD5. */
 #define PSA_WANT_ALG_MD5 (1)
 /** @brief PSA WANT ALG OFB. */
@@ -162,30 +169,12 @@
 /** @brief PSA WANT DH RFC7919 8192. */
 #define PSA_WANT_DH_RFC7919_8192 (1)
 
-/** @brief PSA WANT KEY TYPE DERIVE. */
-#define PSA_WANT_KEY_TYPE_DERIVE (1)
-/** @brief PSA WANT KEY TYPE PASSWORD. */
-#define PSA_WANT_KEY_TYPE_PASSWORD (1)
-/** @brief PSA WANT KEY TYPE PASSWORD HASH. */
-#define PSA_WANT_KEY_TYPE_PASSWORD_HASH (1)
-/** @brief PSA WANT KEY TYPE HMAC. */
-#define PSA_WANT_KEY_TYPE_HMAC (1)
-/** @brief PSA WANT KEY TYPE AES. */
-#define PSA_WANT_KEY_TYPE_AES (1)
 /** @brief PSA WANT KEY TYPE ARIA. */
 #define PSA_WANT_KEY_TYPE_ARIA (1)
 /** @brief PSA WANT KEY TYPE CAMELLIA. */
 #define PSA_WANT_KEY_TYPE_CAMELLIA (1)
 /** @brief PSA WANT KEY TYPE CHACHA20. */
 #define PSA_WANT_KEY_TYPE_CHACHA20 (1)
-/** @brief PSA WANT KEY TYPE ECC PUBLIC KEY. */
-#define PSA_WANT_KEY_TYPE_ECC_PUBLIC_KEY (1)
-/** @brief PSA WANT KEY TYPE DH PUBLIC KEY. */
-#define PSA_WANT_KEY_TYPE_DH_PUBLIC_KEY (1)
-/** @brief PSA WANT KEY TYPE RAW DATA. */
-#define PSA_WANT_KEY_TYPE_RAW_DATA (1)
-/** @brief PSA WANT KEY TYPE RSA PUBLIC KEY. */
-#define PSA_WANT_KEY_TYPE_RSA_PUBLIC_KEY (1)
 
 /*
  * The following symbols extend and deprecate the legacy
@@ -194,33 +183,15 @@
  * a generic suport, whereas other ones add more features on top of that and
  * they are more specific.
  */
-/** @brief PSA WANT KEY TYPE ECC KEY PAIR BASIC. */
-#define PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_BASIC (1)
-/** @brief PSA WANT KEY TYPE ECC KEY PAIR IMPORT. */
-#define PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_IMPORT (1)
-/** @brief PSA WANT KEY TYPE ECC KEY PAIR EXPORT. */
-#define PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_EXPORT (1)
 /** @brief PSA WANT KEY TYPE ECC KEY PAIR GENERATE. */
 #define PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_GENERATE (1)
 /** @brief PSA WANT KEY TYPE ECC KEY PAIR DERIVE. */
 #define PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_DERIVE (1)
 
-/** @brief PSA WANT KEY TYPE RSA KEY PAIR BASIC. */
-#define PSA_WANT_KEY_TYPE_RSA_KEY_PAIR_BASIC (1)
-/** @brief PSA WANT KEY TYPE RSA KEY PAIR IMPORT. */
-#define PSA_WANT_KEY_TYPE_RSA_KEY_PAIR_IMPORT (1)
-/** @brief PSA WANT KEY TYPE RSA KEY PAIR EXPORT. */
-#define PSA_WANT_KEY_TYPE_RSA_KEY_PAIR_EXPORT (1)
 /** @brief PSA WANT KEY TYPE RSA KEY PAIR GENERATE. */
 #define PSA_WANT_KEY_TYPE_RSA_KEY_PAIR_GENERATE (1)
 //#define PSA_WANT_KEY_TYPE_RSA_KEY_PAIR_DERIVE   1 /* Not supported */
 
-/** @brief PSA WANT KEY TYPE DH KEY PAIR BASIC. */
-#define PSA_WANT_KEY_TYPE_DH_KEY_PAIR_BASIC (1)
-/** @brief PSA WANT KEY TYPE DH KEY PAIR IMPORT. */
-#define PSA_WANT_KEY_TYPE_DH_KEY_PAIR_IMPORT (1)
-/** @brief PSA WANT KEY TYPE DH KEY PAIR EXPORT. */
-#define PSA_WANT_KEY_TYPE_DH_KEY_PAIR_EXPORT (1)
 /** @brief PSA WANT KEY TYPE DH KEY PAIR GENERATE. */
 #define PSA_WANT_KEY_TYPE_DH_KEY_PAIR_GENERATE (1)
 //#define PSA_WANT_KEY_TYPE_DH_KEY_PAIR_DERIVE    1 /* Not supported */

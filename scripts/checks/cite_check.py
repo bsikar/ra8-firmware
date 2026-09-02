@@ -33,8 +33,8 @@ The script also accepts a list of explicit file arguments. With no
 arguments it scans every first-party C file, derived from git ls-files
 via lint_targets (#358) -- so tools/ra8_emulator (which models RA8
 registers and cites the RA8 HUM) and port/usbx were previously omitted
-and their citations went unvalidated. Vendored trees (port/threadx,
-libs/third_party) are dropped automatically.
+and their citations went unvalidated. Vendored C under port/threadx and both
+canonical third-party roots is dropped automatically.
 
 The chapter map is parsed from CHAPTER_MAP.md so the page-range
 truth lives in exactly one place. The pre-commit hook invokes this
@@ -145,8 +145,8 @@ def iter_source_files(targets: Iterable[pathlib.Path]) -> Iterable[pathlib.Path]
                 continue
             if sub.suffix.lower() not in SOURCE_SUFFIXES:
                 continue
-            # Skip vendored / build trees: nothing under libs/third_party
-            # or any build directory should be linted for HUM cites.
+            # Skip vendored / build trees: nothing under either canonical
+            # third-party root or any build directory is linted for HUM cites.
             parts = set(sub.parts)
             if "third_party" in parts or "build" in parts:
                 continue
@@ -176,7 +176,7 @@ def iter_source_files(targets: Iterable[pathlib.Path]) -> Iterable[pathlib.Path]
 # The trailing `\b` is load-bearing: without it the ALL-CAPS run is allowed to
 # stop in the middle of a CamelCase identifier, so a C++ member call whose first
 # two characters happen to be upper-case matched as a register. `text->CData()`
-# in the tinyxml2 shim was read as `text->CD` and reported as an uncited MMIO
+# in an XML shim was read as `text->CD` and reported as an uncited MMIO
 # access -- a class that grows with every C++ shim added, since `\b` is the only
 # thing that distinguishes `->CFDGSTS` (a real CAN-FD register) from `->CData`.
 ACCESS_RE = re.compile(r"(?:\)|[A-Za-z_]\w*)\s*->\s*[A-Z][A-Z0-9_]+\b")
@@ -483,7 +483,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "paths",
         nargs="*",
-        help="files or directories to scan (default: libs/ src/ tests/)",
+        help="files or directories to scan (default: every tracked first-party C file)",
     )
     parser.add_argument(
         "--warn",
@@ -656,7 +656,9 @@ def selftest() -> int:
         failures,
     )
     expect(
-        not any(s.startswith("libs/third_party/") for s in scope),
+        not any(
+            s.startswith(("libs/third_party/", "apps/shared_libs/third_party/")) for s in scope
+        ),
         "vendored SOUP stays out of scope",
         failures,
     )
@@ -699,11 +701,11 @@ def main(argv: list[str]) -> int:
         targets = [pathlib.Path(p) for p in args.paths]
     else:
         # Derived from git ls-files (#358): every first-party C file, not just
-        # libs/src/tests + discovered example apps. tools/ra8_emulator models RA8
+        # a short fixed root list. tools/ra8_emulator models RA8
         # registers and cites the RA8 HUM, and port/usbx holds first-party RA8
         # USB glue -- both were silently omitted, so their cites went
-        # unvalidated. Vendored trees (port/threadx, libs/third_party) are
-        # already dropped by first_party_paths.
+        # unvalidated. Vendored C under port/threadx and both canonical
+        # third-party roots is already dropped by first_party_paths.
         targets = [REPO_ROOT / rel for rel in first_party_paths(SOURCE_SUFFIXES)]
 
     findings: list[str] = []

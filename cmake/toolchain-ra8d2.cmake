@@ -46,7 +46,7 @@ set(CMAKE_CXX_COMPILER_WORKS 1)
 # Compiler cache for EVERY cross build
 # -----------------------------------------------------------------------------
 # This has to be here and not only in the top-level CMakeLists. Apps are built
-# standalone -- `make <app>` configures examples/<app>/ with this toolchain file
+# standalone -- `just apps::build <app>` configures the app with this toolchain file
 # and never processes the root listfile -- which is exactly how
 # build_all_examples.sh and the CI build-cross job build all ~200 of them.
 # Including cmake/ccache.cmake from the root alone therefore left the largest

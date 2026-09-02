@@ -20,5 +20,5 @@ the target and CRC-gates the result, so any drift trips the gate. No panel,
 SDRAM, touch or SD dependency -- `widget_app_demo` is the panel-visible sibling.
 
 Re-expressing the `ereader_ui` monolith as a composition of apps is the
-follow-on integration step; it waits on the `make ereader-golden` baseline
+follow-on integration step; it waits on the `just apps::emulator::golden` baseline
 settling, since that must stay byte-identical.

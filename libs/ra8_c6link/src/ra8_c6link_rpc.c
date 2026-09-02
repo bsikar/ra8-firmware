@@ -40,6 +40,7 @@
 #include "ra8_attributes.h"
 #include "ra8_c6link.h"
 #include "ra8_c6link_internal.h"
+#include "ra8_secure.h"
 
 /** @enum c6link_esp_status_t @brief Stable ESP-IDF general error values carried on the wire. */
 typedef enum : int32_t {
@@ -185,6 +186,7 @@ RA8_PRIV ra8_err_t priv_c6link_rpc_call(ra8_c6link_t*        link,
 
   const ra8_err_t staged = internal_c6link_rpc_stage(link, req);
   if (staged != k_ra8_ok) {
+    ra8_secure_memzero(link->tx, sizeof(link->tx));
     return staged;
   }
 
@@ -204,6 +206,7 @@ RA8_PRIV ra8_err_t priv_c6link_rpc_call(ra8_c6link_t*        link,
   const ra8_err_t    result = link->wait.result;
   link->wait                = (ra8_c6link_wait_t){};
   link->tx_len              = 0U;
+  ra8_secure_memzero(link->tx, sizeof(link->tx));
 
   if (pumped != k_ra8_ok) {
     return pumped;
@@ -340,7 +343,7 @@ RA8_INTERNAL static void internal_c6link_rpc_event(ra8_c6link_t* link, const Rpc
  *
  * @par MC/DC:
  * `armed && uid == wait.uid && msg_id == wait.resp_id` is a three-condition
- * decision; `tests/test_ra8_c6link.c` drives the N+1 vectors.
+ * decision; `tests/wireless/src/test_ra8_c6link.c` drives the N+1 vectors.
  */
 RA8_INTERNAL static bool internal_c6link_rpc_answer(ra8_c6link_t* link, const Rpc* msg)
 {

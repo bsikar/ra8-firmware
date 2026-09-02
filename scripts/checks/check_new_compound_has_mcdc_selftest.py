@@ -21,13 +21,17 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
+
 from check_new_compound_has_mcdc import (
     _git,
     _is_test_source_name,
     _working_test_sources,
     audit_range,
+    compound_decision_lines,
     resolve_range,
 )
+from git_environment import isolated_git_environment, trusted_git_executable
 
 _ST_PRE_C = """\
 ra8_err_t ra8_pre_fn(int a, int b)
@@ -62,6 +66,127 @@ ra8_err_t ra8_new_fn(int a, int b)
 }
 """
 
+_ST_APP_NEWDEC_C = """\
+ra8_err_t ra8_app_new_fn(int a, int b)
+{
+  if (a && b) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_APP_COVERED_C = """\
+ra8_err_t ra8_app_covered_fn(int a, int b)
+{
+  if (a && b) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_APP_COLOCATED_TEST_C = """\
+/**
+ * @test ra8_app_covered_fn_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (a && b)` cites
+ * apps/shared_libs/covered/src/covered.c@ra8_app_covered_fn
+ * - Vector 1: a=1, b=1 -> true
+ * - Vector 2: a=0, b=1 -> false (varies a)
+ * - Vector 3: a=1, b=0 -> false (varies b)
+ */
+void test_mcdc_ra8_app_covered_fn(void) {}
+"""
+
+_ST_MOVE_BASE_C = """\
+ra8_err_t ra8_moved_fn(int a, int b)
+{
+  if (a && b) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_MOVE_HEAD_C = """\
+ra8_err_t ra8_moved_fn(int left, int right)
+{
+  if (left &&
+      right) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_MOVE_EDIT_BASE_C = """\
+ra8_err_t ra8_moved_edit_fn(int a, int b, int c)
+{
+  if (a && b) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_MOVE_EDIT_HEAD_C = """\
+ra8_err_t ra8_moved_edit_fn(int a, int b, int c)
+{
+  if ((a && b) || c) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_SUBSTITUTE_BASE_C = """\
+ra8_err_t ra8_substitute_fn(int a, int b)
+{
+  if (a && b) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_SUBSTITUTE_HEAD_C = """\
+ra8_err_t ra8_substitute_fn(int c, int d)
+{
+  if (c || d) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_SPLIT_BASE_C = """\
+ra8_err_t ra8_split_first(int a, int b)
+{
+  return (a && b) ? k_ra8_ok : k_ra8_err;
+}
+
+ra8_err_t ra8_split_second(int c, int d)
+{
+  return (c || d) ? k_ra8_ok : k_ra8_err;
+}
+"""
+
+_ST_SPLIT_HEAD_C = """\
+ra8_err_t ra8_split_first(int a, int b)
+{
+  return (a && b) ? k_ra8_ok : k_ra8_err;
+}
+"""
+
+_ST_SPLIT_EXTRACTED_C = """\
+ra8_err_t ra8_split_second(int left, int right)
+{
+  return (left || right) ? k_ra8_ok : k_ra8_err;
+}
+"""
+
 _ST_COVERED_C = """\
 ra8_err_t ra8_covered_fn(int c, int d)
 {
@@ -83,6 +208,39 @@ _ST_TEST_COVERED_C = """\
  * - Vector 3: c=1, d=0 -> false (varies d)
  */
 void test_mcdc_ra8_covered_fn(void) {}
+"""
+
+_ST_INDEX_BASE_C = """\
+ra8_err_t ra8_staged_fn(int a, int b)
+{
+  if (a) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_INDEX_HEAD_C = """\
+ra8_err_t ra8_staged_fn(int a, int b)
+{
+  if (a && b) {
+    return k_ra8_ok;
+  }
+  return k_ra8_err;
+}
+"""
+
+_ST_INDEX_TEST_C = """\
+/**
+ * @test ra8_staged_fn_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (a && b)` cites libs/staged.c@ra8_staged_fn
+ * - Vector 1: a=1, b=1 -> true
+ * - Vector 2: a=0, b=1 -> false (varies a)
+ * - Vector 3: a=1, b=0 -> false (varies b)
+ */
+void test_mcdc_ra8_staged_fn(void) {}
 """
 
 _ST_SOUP_C = """\
@@ -128,6 +286,77 @@ ra8_err_t ra8_nolint_sig_covered_fn(int i,
 }
 """
 
+#: Sentinel a firing fixture line carries, so the expectation is read off the
+#: fixture itself. Asserting the exact LINE NUMBERS that fire -- rather than a
+#: count -- also proves the lexical view preserves source line numbering: a
+#: masking bug that swallowed a newline could not pass as clean.
+_ST_LEXICAL_MARKER = "ST-DECISION"
+
+#: Every construct that must NEVER read as a compound decision: multi-line
+#: Doxygen prose (including an `@code` span), literals holding comment
+#: delimiters, escaped quotes, a backslash-spliced line comment, a spliced
+#: `#define`, and a `#if` guard.
+_ST_LEXICAL_QUIET_C = """\
+/**
+ * @brief Multi-line Doxygen prose is not code.
+ *
+ * @details The interior lines of this block are exactly what a line-local
+ * scrub cannot see: a decision quoted as `(a == 1) && (b == 2)`, SEC1
+ * notation of the form ``0x04 || X(32) || Y(32)``, and a signature spelled
+ * ``raw r||s``.
+ *
+ * @par MC/DC:
+ * Decision: `if (a)` (1 condition, no compound `&&`/`||`).
+ *
+ * @code
+ * if (example_a && example_b) {
+ *   return 0;
+ * }
+ * @endcode
+ */
+static int st_quiet_fn(int a, int b)
+{
+  /* single-line block comment holding a && b */
+  const char *plain = "a && b";
+  const char *fake_open = "/* not a comment */ || still a string";
+  const char *escaped = "he said \\" && \\" and meant it";
+  const char apostrophe = '\\'';
+  // spliced line comment whose continuation still holds \\
+  the operators && and || on the next source line
+  (void)plain;
+  (void)fake_open;
+  (void)escaped;
+  (void)apostrophe;
+  return a + b;
+}
+
+#define ST_QUIET_MACRO(a, b) \\
+  ((a) && (b))
+
+#if defined(ST_QUIET_ONE) || defined(ST_QUIET_TWO)
+static int st_quiet_directive(void) { return 1; }
+#endif
+"""
+
+#: Every construct that MUST read as a compound decision. Each such line
+#: carries `_ST_LEXICAL_MARKER`; no other line may. The unterminated-looking
+#: `"/*"` literal is the over-blanking probe: a lexer that let it open a
+#: comment would silence both decisions below it.
+_ST_LEXICAL_FIRES_C = """\
+static int st_fire_fn(int a, int b)
+{
+  const char *opener = "/*";
+  (void)opener;
+  if (a && b) { /* ST-DECISION -- a literal must not open a comment */
+    return 1;
+  }
+  /* a block comment ending mid-line: || */ if (a || b) { /* ST-DECISION */
+    return 2;
+  }
+  return 0;
+}
+"""
+
 _ST_TEST_NOLINT_SIG_COVERED_C = """\
 /**
  * @test ra8_nolint_sig_covered_fn_mcdc
@@ -146,8 +375,8 @@ void test_mcdc_ra8_nolint_sig_covered_fn(void) {}
 def _st_git(repo: Path, *args: str) -> None:
     """Run a git command inside the self-test fixture repository."""
     subprocess.run(  # noqa: S603  # trusted: fixed git argv, temp repo
-        [  # noqa: S607
-            "git",
+        [
+            trusted_git_executable(),
             "-C",
             str(repo),
             "-c",
@@ -180,6 +409,10 @@ def _st_build_fixture(repo: Path) -> tuple[str, str]:
     repo.mkdir(parents=True, exist_ok=True)
     _st_git(repo, "init", "--quiet")
     _st_write(repo, "libs/pre.c", _ST_PRE_C)
+    _st_write(repo, "apps/shared_libs/moved/src/original.c", _ST_MOVE_BASE_C)
+    _st_write(repo, "apps/shared_libs/moved_edit/src/original.c", _ST_MOVE_EDIT_BASE_C)
+    _st_write(repo, "apps/shared_libs/substitute/src/predicate.c", _ST_SUBSTITUTE_BASE_C)
+    _st_write(repo, "apps/shared_libs/split/src/combined.c", _ST_SPLIT_BASE_C)
     _st_write(repo, "tests/.keep", "")
     _st_git(repo, "add", "-A")
     _st_git(repo, "commit", "--quiet", "--no-verify", "-m", "base")
@@ -187,24 +420,67 @@ def _st_build_fixture(repo: Path) -> tuple[str, str]:
 
     _st_write(repo, "libs/pre.c", _ST_PRE_C_HEAD)
     _st_write(repo, "libs/newdec.c", _ST_NEWDEC_C)
+    _st_write(repo, "apps/shared_libs/demo/src/newdec.c", _ST_APP_NEWDEC_C)
+    _st_write(repo, "apps/shared_libs/covered/src/covered.c", _ST_APP_COVERED_C)
+    _st_write(
+        repo,
+        "apps/shared_libs/covered/tests/src/test_covered.c",
+        _ST_APP_COLOCATED_TEST_C,
+    )
     _st_write(repo, "libs/covered.c", _ST_COVERED_C)
     _st_write(repo, "tests/test_covered.cpp", _ST_TEST_COVERED_C)
     _st_write(repo, "libs/third_party/soup.c", _ST_SOUP_C)
+    _st_write(repo, "apps/shared_libs/third_party/soup/source.c", _ST_SOUP_C)
     _st_write(repo, "libs/nolint_sig.c", _ST_NOLINT_SIG_C)
     _st_write(repo, "libs/nolint_sig_covered.c", _ST_NOLINT_SIG_COVERED_C)
     _st_write(repo, "tests/test_nolint_sig_covered.cpp", _ST_TEST_NOLINT_SIG_COVERED_C)
+    _st_git(
+        repo,
+        "mv",
+        "apps/shared_libs/moved/src/original.c",
+        "apps/shared_libs/moved/src/relocated.c",
+    )
+    _st_write(repo, "apps/shared_libs/moved/src/relocated.c", _ST_MOVE_HEAD_C)
+    _st_git(
+        repo,
+        "mv",
+        "apps/shared_libs/moved_edit/src/original.c",
+        "apps/shared_libs/moved_edit/src/relocated.c",
+    )
+    _st_write(repo, "apps/shared_libs/moved_edit/src/relocated.c", _ST_MOVE_EDIT_HEAD_C)
+    _st_write(repo, "apps/shared_libs/substitute/src/predicate.c", _ST_SUBSTITUTE_HEAD_C)
+    _st_write(repo, "apps/shared_libs/split/src/combined.c", _ST_SPLIT_HEAD_C)
+    _st_write(repo, "apps/shared_libs/split/src/extracted.c", _ST_SPLIT_EXTRACTED_C)
     _st_git(repo, "add", "-A")
     _st_git(repo, "commit", "--quiet", "--no-verify", "-m", "head")
     head = _git("-C", str(repo), "rev-parse", "HEAD").strip()
     return base, head
 
 
+def _st_check_move_contract(found_paths: set[str]) -> list[str]:
+    """Check move/split/substitution and app-colocated citation behavior."""
+    failures: list[str] = []
+    if "apps/shared_libs/moved_edit/src/relocated.c" not in found_paths:
+        failures.append("  did NOT fire when a moved function gained a compound operator")
+    if "apps/shared_libs/moved/src/relocated.c" in found_paths:
+        failures.append("  fired on a moved/reformatted decision with no operator growth")
+    if "apps/shared_libs/split/src/extracted.c" in found_paths:
+        failures.append("  fired on a same-component function extraction")
+    if "apps/shared_libs/substitute/src/predicate.c" not in found_paths:
+        failures.append("  did NOT fire on a same-count structural predicate replacement")
+    if "apps/shared_libs/covered/src/covered.c" in found_paths:
+        failures.append("  ignored an app-colocated MC/DC citation")
+    return failures
+
+
 def _st_check(files: list[str], findings: list[tuple[str, int, str]]) -> list[str]:
     """Assert the range audit fired on the right decision and nowhere else."""
     found_paths = {p for p, _, _ in findings}
-    failures: list[str] = []
+    failures = _st_check_move_contract(found_paths)
     if "libs/newdec.c" not in found_paths:
         failures.append("  did NOT fire on libs/newdec.c (a new uncovered decision)")
+    if "apps/shared_libs/demo/src/newdec.c" not in found_paths:
+        failures.append("  did NOT fire on app-owned production code")
     if "libs/covered.c" in found_paths:
         failures.append("  fired on libs/covered.c (it already carries MC/DC vectors)")
     if "libs/pre.c" in found_paths:
@@ -222,11 +498,39 @@ def _st_check(files: list[str], findings: list[tuple[str, int, str]]) -> list[st
             "name; enclosing_function() must skip the NOLINTNEXTLINE comment "
             "line, not resolve it as the function name)"
         )
-    if "libs/third_party/soup.c" in files:
-        failures.append("  selected a libs/third_party/ file (SOUP must be excluded)")
-    if len(findings) != 2:  # noqa: PLR2004 -- fixture plants exactly 2 uncovered decisions
+    if any("third_party" in path for path in files):
+        failures.append("  selected a third_party file (SOUP must be excluded)")
+    if len(findings) != 5:  # noqa: PLR2004 -- fixture plants exactly 5 uncovered functions
         failures.append(
-            f"  expected exactly 2 finding(s), got {len(findings)}: {sorted(found_paths)}"
+            f"  expected exactly 5 finding(s), got {len(findings)}: {sorted(found_paths)}"
+        )
+    return failures
+
+
+def _st_check_lexical_view() -> list[str]:
+    """Assert the lexical view hides prose and literals but never real code.
+
+    Both directions, because either alone proves nothing: a view that blanked
+    the whole file would satisfy the quiet fixture while silently reporting no
+    debt anywhere, and a view that blanked nothing would satisfy a firing
+    fixture while counting every comment as a decision. The firing expectation
+    is the exact set of marked line numbers, which doubles as the non-vacuity
+    floor -- an empty result can never satisfy it.
+    """
+    failures: list[str] = []
+    quiet = compound_decision_lines(_ST_LEXICAL_QUIET_C)
+    if quiet:
+        detail = "; ".join(f"line {line}: {text}" for line, text in sorted(quiet))
+        failures.append(f"  prose, a literal, or a directive read as a decision: {detail}")
+    expected = {
+        index
+        for index, line in enumerate(_ST_LEXICAL_FIRES_C.splitlines(), start=1)
+        if _ST_LEXICAL_MARKER in line
+    }
+    fired = {line for line, _text in compound_decision_lines(_ST_LEXICAL_FIRES_C)}
+    if fired != expected:
+        failures.append(
+            f"  real decisions fired on lines {sorted(fired)}; expected {sorted(expected)}"
         )
     return failures
 
@@ -264,14 +568,52 @@ def _st_check_test_scope() -> list[str]:
     return failures
 
 
-def run_selftest() -> int:
+def _st_staged_result(repo: Path) -> int:
+    """Run the real staged-mode CLI against ``repo`` and return its status."""
+    checker = Path(__file__).with_name("check_new_compound_has_mcdc.py")
+    return subprocess.run(  # noqa: S603 -- trusted interpreter/checker paths
+        [sys.executable, str(checker), "--staged"],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        text=True,
+    ).returncode
+
+
+def _st_check_index_citations() -> list[str]:
+    """Prove staged mode reads citations from the index in both directions."""
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory() as td:
+        repo = Path(td) / "fixture"
+        repo.mkdir()
+        _st_git(repo, "init", "--quiet")
+        _st_write(repo, "libs/staged.c", _ST_INDEX_BASE_C)
+        _st_git(repo, "add", "-A")
+        _st_git(repo, "commit", "--quiet", "--no-verify", "-m", "base")
+        _st_write(repo, "libs/staged.c", _ST_INDEX_HEAD_C)
+        _st_git(repo, "add", "libs/staged.c")
+        _st_write(repo, "tests/test_staged.c", _ST_INDEX_TEST_C)
+        if _st_staged_result(repo) != 1:
+            failures.append("  an untracked citation satisfied the staged decision gate")
+        _st_git(repo, "add", "tests/test_staged.c")
+        if _st_staged_result(repo) != 0:
+            failures.append("  a staged citation did not satisfy the staged decision gate")
+        _st_write(repo, "tests/test_staged.c", "/* unstaged removal */\n")
+        if _st_staged_result(repo) != 0:
+            failures.append("  an unstaged citation removal changed the index verdict")
+    return failures
+
+
+def _run_selftest_body() -> int:
     """Assert the detector fires on a new uncovered decision and stays quiet otherwise.
 
     Exercises the REAL range-audit code path against a throwaway repository, so
     a detector that quietly stopped matching cannot pass as clean. Both
-    directions are asserted: it must fire on ``libs/newdec.c`` and stay silent
-    on the pre-existing decision, the vector-covered decision, and the SOUP
-    decision.
+    directions are asserted: it must fire on platform and app-owned production
+    code and stay silent on the pre-existing decision, the vector-covered
+    decision, and both vendor-root SOUP decisions. ``_st_check_lexical_view()``
+    asserts the same pair for the lexical view the measurement reads through,
+    so comment prose can never be frozen into the ratchet baseline as debt.
     """
     with tempfile.TemporaryDirectory() as td:
         repo = Path(td) / "fixture"
@@ -283,7 +625,9 @@ def run_selftest() -> int:
             return 1
         files, findings = audit_range(str(repo), *rng)
         failures = _st_check(files, findings)
+    failures += _st_check_lexical_view()
     failures += _st_check_test_scope()
+    failures += _st_check_index_citations()
 
     if failures:
         print("check_new_compound_has_mcdc.py: --selftest FAILED", file=sys.stderr)
@@ -291,7 +635,16 @@ def run_selftest() -> int:
         return 1
     print(
         "check_new_compound_has_mcdc.py: --selftest OK "
-        "(fires on a new uncovered decision; silent on pre-existing, "
-        "vector-covered, and SOUP decisions; test-source scope holds both ways)."
+        "(fires on new platform/app and moved-with-growth decisions; silent on "
+        "moves, splits, alpha-renames, colocated vectors, and both "
+        "SOUP roots; test-source scope holds both ways; the lexical view hides "
+        "multi-line prose, literals, and spliced directives while every marked "
+        "real decision still fires)."
     )
     return 0
+
+
+def run_selftest() -> int:
+    """Run range and index fixtures without inheriting the caller's repo."""
+    with isolated_git_environment():
+        return _run_selftest_body()

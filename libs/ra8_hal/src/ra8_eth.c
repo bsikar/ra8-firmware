@@ -391,12 +391,10 @@ static ra8_err_t internal_resolve_sizes(const ra8_eth_cfg_t* cfg,
   if (bs == 0U) {
     bs = k_ra8_eth_buf_size;
   }
-  /* mcdc-deactivated: tx normalized to nonzero above; first OR-condition unreachable. */
-  if ((tx == 0U) || (tx > k_ra8_eth_num_tx_desc)) {
+  if (tx > k_ra8_eth_num_tx_desc) {
     return k_ra8_err_invalid_arg;
   }
-  /* mcdc-deactivated: rx normalized to nonzero above; first OR-condition unreachable. */
-  if ((rx == 0U) || (rx > k_ra8_eth_num_rx_desc)) {
+  if (rx > k_ra8_eth_num_rx_desc) {
     return k_ra8_err_invalid_arg;
   }
   if ((bs < k_ra8_eth_min_frame) || (bs > k_ra8_eth_buf_size)) {
@@ -489,7 +487,9 @@ ra8_err_t ra8_eth_init(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_eswm);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "eth_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "eth_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   volatile r_eswm_regs_t* reg = ra8_eswm();
   /* HUM Ch 29 "Layer 3 Ethernet Switch Module (ESWM)" p 1287 */
@@ -529,11 +529,10 @@ ra8_err_t ra8_eth_clear_status(uint32_t mask)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_eth_attach_handler(ra8_eth_event_fn_t fn, void* ctx)
+void ra8_eth_attach_handler(ra8_eth_event_fn_t fn, void* ctx)
 {
   s_eth_fn  = fn;
   s_eth_ctx = ctx;
-  return k_ra8_ok;
 }
 
 RA8_ISR_SAFE

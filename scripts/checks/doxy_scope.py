@@ -2,11 +2,12 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Which files ``doxy_audit.py`` reads, in each of its two scopes.
 
-The function gate covers every production C root, including all of ``tools/``.
-The member gate is wider still because it also covers examples and tests. The
-function debt that existed when tools entered the scope is frozen in the
-function baseline; excluding a tool until it became perfect made new gaps in
-that tool invisible and contradicted the repository-wide policy.
+The function gate covers first-party C under ``libs/``, ``port/``, ``tools/``,
+and ``apps/``, excluding nested test directories. The member gate is wider
+still because it also covers ``examples/`` and ``tests/``. The function debt
+that existed when tools entered the scope is frozen in the function baseline;
+excluding a tool until it became perfect made new gaps in that tool invisible
+and contradicted the repository-wide policy.
 
 Each scope also owns its own vacuity floor, and :func:`function_files` /
 :func:`member_files` are the materialising accessors every caller must use.
@@ -66,14 +67,14 @@ SCAN_DIRS = ["libs", "port", "tools", "apps"]
 # hand-authored, so the hand-documentation bar does not apply to it. No
 # directory named ``generated`` exists under libs/ or port/, so adding it
 # here changes only what the tools/ root contributes.
-EXCLUDE_PARTS = {"third_party", "generated", "build", ".git"}
+EXCLUDE_PARTS = {"third_party", "generated", "build", ".git", "tests", "test"}
 
 # Top-level dirs scanned by the report-only member audit (--members). Wider
 # than SCAN_DIRS on purpose: the member/enum/macro documentation bar is
 # repo-wide (CLAUDE.md "these standards apply to EVERY first-party file"), so
 # the fallout report must cover examples/, tools/, and tests/ too. Vendored
-# SOUP (libs/third_party/) and generated tables (libs/ra8_fonts/) stay exempt, the
-# same as the function audit.
+# SOUP under either canonical third-party root and generated tables under
+# libs/ra8_fonts/ stay exempt, the same as the function audit.
 MEMBER_SCAN_DIRS = ["libs", "port", "examples", "tools", "apps", "tests"]
 MEMBER_EXCLUDE_PARTS = {"third_party", "ra8_fonts", "build", "build-cov", "_deps", ".git"}
 

@@ -140,7 +140,8 @@ SECTIONS
      * This is a TWO-IMAGE app: the Non-Secure half is a SEPARATE, minimal
      * beacon ELF (ns_main.c linked with ns_image.ld) that carries NO libc and
      * NO RTOS. Its bytes reach ra8_emulator via --ns and the flash image via
-     * sign_and_merge.py; they are NOT part of this Secure ELF. So the .ns_*
+     * examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/scripts/sign_and_merge.py;
+     * they are NOT part of this Secure ELF. So the .ns_*
      * output sections below hold ONLY .ns_*-attributed input (none on the
      * Secure side). They must NOT pull the Secure side own libc (memset,
      * memcpy) into this region: that libc would overlap the beacon, and every

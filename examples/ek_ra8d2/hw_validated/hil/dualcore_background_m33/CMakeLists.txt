@@ -33,7 +33,7 @@ include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(
   NAME dualcore_background_m33
-  STACK_BYTES 2200
+  STACK_BYTES 2200 AUX_SRCS src/cpu1_main.c
   DESCRIPTION
     "Dual-core (M85 + M33) autonomous counter demo: M33 runs independently while M85 yields"
 )
@@ -47,5 +47,5 @@ ra8_add_app(
 ra8_add_cpu1_image(
   PARENT dualcore_background_m33
   NAME dualcore_background_m33_cpu1
-  SOURCES cpu1_main.c
+  SOURCES src/cpu1_main.c
 )

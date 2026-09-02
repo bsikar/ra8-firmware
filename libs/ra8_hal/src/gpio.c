@@ -219,7 +219,7 @@ ra8_err_t ra8_gpio_read(ra8_port_pin_t pin, ra8_level_t* out_level)
     return k_ra8_err_gpio_invalid_pin;
   }
 
-  volatile r_port_regs_t* port_regs = ra8_port(port);
+  volatile const r_port_regs_t* port_regs = ra8_port(port);
   if (port_regs == nullptr) {
     return k_ra8_err_hw_unmapped;
   }
@@ -361,26 +361,24 @@ ra8_err_t ra8_gpio_attach_irq(ra8_port_pin_t            pin,
     .filter_en  = cfg->filter_en,
   };
   err = ra8_icu_configure_irq_pin(irq_num, &icu_cfg);
-  if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE -- irq_num bounded */
-    /* GCOVR_EXCL_START */
-    (void)ra8_pin_validator_release(pin);
-    return err;
-    /* GCOVR_EXCL_STOP */
+  if (err != k_ra8_ok) {                  /* GCOVR_EXCL_BR_LINE -- irq_num bounded */
+    (void)ra8_pin_validator_release(pin); /* GCOVR_EXCL_LINE -- icu-reject cleanup */
+    return err;                           /* GCOVR_EXCL_LINE -- icu-reject cleanup */
   }
 
   const ra8_elc_event_t event = internal_event_for_irq(irq_num);
   err                         = ra8_isr_register(event, handler, ctx, cfg->priority, nullptr);
   if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE -- fresh reset_irq_state */
-    /* GCOVR_EXCL_START */
+    /* GCOVR_EXCL_START -- isr-reject unwind; ra8_isr_register cannot fail here */
     const ra8_icu_irq_cfg_t zero_cfg = {
       .sense      = (ra8_icu_irqmd_t)0U,
       .filter_div = (ra8_icu_fclksel_t)0U,
       .filter_en  = false,
     };
-    (void)ra8_icu_configure_irq_pin(irq_num, &zero_cfg);
-    (void)ra8_pin_validator_release(pin);
-    return err;
     /* GCOVR_EXCL_STOP */
+    (void)ra8_icu_configure_irq_pin(irq_num, &zero_cfg); /* GCOVR_EXCL_LINE -- isr-reject unwind */
+    (void)ra8_pin_validator_release(pin);                /* GCOVR_EXCL_LINE -- isr-reject unwind */
+    return err;                                          /* GCOVR_EXCL_LINE -- isr-reject unwind */
   }
 
   ra8_log_info_val(s_tag, "attach irq pin", (uint32_t)pin);

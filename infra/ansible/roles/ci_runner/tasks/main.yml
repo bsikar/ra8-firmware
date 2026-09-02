@@ -47,7 +47,85 @@
   loop_control:
     label: "{{ item.src }} ({{ item.what }})"
 
-- name: Assert both Dockerfiles arrived
+- name: Create the locked Python bootstrap path in the staged context
+  become: true
+  ansible.builtin.file:
+    path: "{{ ci_runner_context_dir }}/scripts/dev"
+    state: directory
+    mode: "0755"
+
+- name: Stage the root-context Python lock and bootstrap inputs
+  become: true
+  ansible.builtin.copy:
+    src: "{{ ci_runner_context_src }}/{{ item.src }}"
+    dest: "{{ ci_runner_context_dir }}/{{ item.dest }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - src: .dockerignore
+      dest: .dockerignore
+      mode: "0644"
+    - src: pyproject.toml
+      dest: pyproject.toml
+      mode: "0644"
+    - src: uv.lock
+      dest: uv.lock
+      mode: "0644"
+    - src: scripts/dev/bootstrap_uv.py
+      dest: scripts/dev/bootstrap_uv.py
+      mode: "0755"
+    - src: scripts/dev/bootstrap_uv_exec.py
+      dest: scripts/dev/bootstrap_uv_exec.py
+      mode: "0644"
+    - src: scripts/dev/managed_python_env.py
+      dest: scripts/dev/managed_python_env.py
+      mode: "0755"
+    - src: scripts/dev/managed_python_env_checks.py
+      dest: scripts/dev/managed_python_env_checks.py
+      mode: "0755"
+    - src: scripts/dev/uv_release.json
+      dest: scripts/dev/uv_release.json
+      mode: "0644"
+  loop_control:
+    label: "{{ item.src }}"
+
+- name: Read back every staged root-context authority byte-for-byte
+  when: not ansible_check_mode
+  become: true
+  ansible.builtin.slurp:
+    src: "{{ ci_runner_context_dir }}/{{ item }}"
+  register: ci_runner_root_context_bytes
+  loop:
+    - .dockerignore
+    - pyproject.toml
+    - scripts/dev/bootstrap_uv.py
+    - scripts/dev/bootstrap_uv_exec.py
+    - scripts/dev/managed_python_env.py
+    - scripts/dev/managed_python_env_checks.py
+    - scripts/dev/uv_release.json
+    - uv.lock
+
+- name: Prove the staged root authorities match the control checkout exactly
+  when: not ansible_check_mode
+  ansible.builtin.assert:
+    that:
+      - (item.content | b64decode | hash('sha256')) ==
+        (lookup('file', ci_runner_context_src + '/' + item.item, rstrip=false)
+         | hash('sha256'))
+    fail_msg: >-
+      The staged root-context input {{ item.item }} differs byte-for-byte from
+      {{ ci_runner_context_src }} on the control node; refusing a split-input
+      image build.
+  loop: "{{ ci_runner_root_context_bytes.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Assert both Dockerfiles and every locked Python input arrived
+  # These files are outputs of the staging tasks above. In check mode Ansible
+  # validates every control-side source and reports the copies, but correctly
+  # does not create their target-side outputs. Inspecting the old target
+  # context then would turn an intended change into a false missing-file
+  # failure.
+  when: not ansible_check_mode
   # A `buildah bud` against a missing -f is an error, but a HALF-staged context
   # is not: it builds, from whatever did arrive. Check the two files the builds
   # name before running either.
@@ -56,11 +134,21 @@
     path: "{{ ci_runner_context_dir }}/{{ item }}"
   register: ci_runner_context_stat
   loop:
+    - .dockerignore
     - .devcontainer/Dockerfile
+    - pyproject.toml
     - runner/Dockerfile
+    - scripts/dev/bootstrap_uv.py
+    - scripts/dev/bootstrap_uv_exec.py
+    - scripts/dev/managed_python_env.py
+    - scripts/dev/managed_python_env_checks.py
+    - scripts/dev/uv_release.json
+    - uv.lock
 
 - name: Fail loud when the staged context is incomplete
-  when: ci_runner_context_stat.results | rejectattr('stat.exists') | list | length > 0
+  when:
+    - not ansible_check_mode
+    - ci_runner_context_stat.results | rejectattr('stat.exists') | list | length > 0
   ansible.builtin.fail:
     msg: >-
       The staged build context under {{ ci_runner_context_dir }} is missing
@@ -77,7 +165,7 @@
       buildah bud --isolation chroot
       -t {{ ci_runner_devcontainer_image }}
       -f {{ ci_runner_context_dir }}/.devcontainer/Dockerfile
-      {{ ci_runner_context_dir }}/.devcontainer
+      {{ ci_runner_context_dir }}
   register: ci_runner_dc_build
   changed_when: ci_runner_dc_build.rc == 0
 
@@ -150,6 +238,7 @@
   changed_when: false
 
 - name: Assert the staged archive is tagged exactly as the scale set expects
+  when: not ansible_check_mode
   ansible.builtin.assert:
     that:
       - ci_runner_image in ci_runner_archive_tags.stdout_lines
@@ -199,6 +288,7 @@
   changed_when: false
 
 - name: Assert the image the pods boot exists in containerd and is pinned
+  when: not ansible_check_mode
   ansible.builtin.assert:
     that:
       - ci_runner_image in ci_runner_image_check.stdout
@@ -234,6 +324,8 @@
 
 - name: Install the ARC controller
   become: true
+  vars:
+    ansible_python_interpreter: "{{ ci_runner_python_interpreter }}"
   kubernetes.core.helm:
     name: arc
     chart_ref: "{{ ci_runner_controller_chart }}"
@@ -244,15 +336,68 @@
 
 - name: Ensure the runner namespace exists
   become: true
+  vars:
+    ansible_python_interpreter: "{{ ci_runner_python_interpreter }}"
   kubernetes.core.k8s:
     kind: Namespace
     name: "{{ ci_runner_namespace }}"
     state: present
     kubeconfig: "{{ ci_runner_kubeconfig }}"
 
-- name: Create the GitHub PAT secret ARC registers with (value from OpenBao)
+- name: Record whether an explicit ARC credential was supplied
+  ansible.builtin.set_fact:
+    ci_runner_explicit_github_credential_supplied: >-
+      {{ (ci_runner_github_pat | default('') | trim | length) > 0 }}
+
+- name: Probe the existing ARC credential without returning its value
+  # An established runner pool already has this secret. Requiring every
+  # idempotent converge to re-materialise its value on the control node makes
+  # an image refresh depend on a second copy of a long-lived credential. A
+  # first deployment must still supply ci_runner_github_pat; later runs may
+  # preserve the live Secret after the target-side template proves its expected
+  # key is non-empty. The controller receives only "present", never the value.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ ci_runner_k3s_bin }}"
+      - kubectl
+      - --kubeconfig
+      - "{{ ci_runner_kubeconfig }}"
+      - --namespace
+      - "{{ ci_runner_namespace }}"
+      - get
+      - secret
+      - "{{ ci_runner_github_secret_name }}"
+      - --output
+      - >-
+        go-template={{ '{{' }} if .data.github_token {{ '}}' }}present{{ '{{' }} end {{ '}}' }}
+  register: ci_runner_existing_github_credential
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Require one explicit or already-deployed ARC credential source
+  ansible.builtin.assert:
+    that:
+      - ci_runner_explicit_github_credential_supplied | bool
+        or (
+          ci_runner_existing_github_credential.rc == 0
+          and (ci_runner_existing_github_credential.stdout | trim) == 'present'
+        )
+    fail_msg: >-
+      No deployed {{ ci_runner_github_secret_name }} Secret with a github_token
+      key exists, and ci_runner_github_pat was not supplied. Bootstrap from a
+      mode-0600 infra/ansible/private/secrets.yml or the documented OpenBao
+      lookup; established converges preserve the deployed Secret.
+    success_msg: >-
+      ARC credential source is available without exposing its value.
+
+- name: Create or rotate the GitHub PAT secret ARC registers with
+  when: ci_runner_explicit_github_credential_supplied | bool
   become: true
   no_log: true
+  vars:
+    ansible_python_interpreter: "{{ ci_runner_python_interpreter }}"
   kubernetes.core.k8s:
     state: present
     kubeconfig: "{{ ci_runner_kubeconfig }}"
@@ -268,6 +413,8 @@
 
 - name: Install the ra8-ci runner scale set
   become: true
+  vars:
+    ansible_python_interpreter: "{{ ci_runner_python_interpreter }}"
   kubernetes.core.helm:
     name: "{{ ci_runner_scale_set_name }}"
     chart_ref: "{{ ci_runner_scaleset_chart }}"
@@ -286,7 +433,7 @@
           # as the pod, so it would still lose the cached doxygen download
           # every time the (ephemeral, one-pod-per-job) runner is recycled.
           # The single-node k3s cluster makes a node-local hostPath as durable
-          # as the ccache mount the containerised `make ci` path already uses
+          # as the ccache mount the containerised `just ci` path already uses
           # for the same reason.
           volumes:
             - name: ra8-tools-cache

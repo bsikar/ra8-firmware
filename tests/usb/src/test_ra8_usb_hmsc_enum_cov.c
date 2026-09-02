@@ -1,0 +1,969 @@
+/**
+ * @file test_ra8_usb_hmsc_enum_cov.c
+ * @brief White-box line-coverage tests for the polled host-MSC enumeration
+ *        ladder (`ra8_usb_hmsc_enum.c`).
+ *
+ * @details
+ * The enumeration ladder in `ra8_usb_hmsc_enum.c` walks a device from attach
+ * through address assignment, configuration parse, SET_CONFIGURATION,
+ * GET_MAX_LUN and bulk-pipe setup. Every chapter-9 step rides
+ * `ra8_usb_host_control_xfer`, whose success depends on real SIE handshakes
+ * (SUREQ self-clear, the SACK/SIGN interrupt latch, BRDY/BEMP edges, CFIFO
+ * fills). The host register mirror is plain RAM: the control engine clears
+ * the very SACK bit it then spins on, and nothing re-asserts it, so a
+ * transfer driven through the public `ra8_usb_hmsc_enumerate` can only ever
+ * reach the timeout legs (already exercised by `test_ra8_usb_hmsc.c`).
+ *
+ * To reach the ladder's data-driven logic (descriptor parse, endpoint
+ * selection, address assignment, publish) the module is compiled a second
+ * time here as a private instrumented copy: this TU `#include`s the module
+ * source with its hardware-transport dependencies redirected -- via
+ * preprocessor rename -- to deterministic, test-scripted mocks. The one
+ * exported symbol (`ra8_usb_hmsc_enumerate`) is renamed to
+ * `ra8_usb_hmsc_enumerate_cov` so it does not collide with the production
+ * copy linked from `ra8_core_hal`. The mocks feed realistic USB descriptor
+ * bytes so the REAL production logic runs line-by-line; only the wire is
+ * faked. No hardware line is bypassed by an exclusion marker.
+ *
+ * The shared shadow state `g_usb_hmsc_state` resolves to the single
+ * production definition in `ra8_usb_hmsc.c` (linked from `ra8_core_hal`), so
+ * the instrumented copy reads and writes the same object the production
+ * driver does.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+#include <string.h>
+
+#include "ra8_attributes.h"
+#include "ra8_check.h"
+#include "ra8_err.h"
+#include "ra8_hal_internal.h"
+#include "ra8_time.h"
+#include "ra8_usb.h"
+#include "ra8_usb_hmsc.h"
+#include "test_ra8_usb_hmsc_enum_fixture.h"
+#include "unity_minimal.h"
+
+/* =============================================================================
+ * Test-scripted mock backends for the enumeration ladder's dependencies.
+ * =============================================================================
+ */
+
+/** @brief GET_DESCRIPTOR(DEVICE) payload the control mock returns. */
+static uint8_t s_dev_desc[k_tc_dev_desc_len];
+/** @brief GET_DESCRIPTOR(CONFIGURATION) payload the control mock returns. */
+static uint8_t s_cfg_blob[k_t_cfg_blob_cap];
+/** @brief Valid byte count in ::s_cfg_blob. */
+static uint16_t s_cfg_len;
+/** @brief Bytes the control mock reports for a DEVICE descriptor read. */
+static uint16_t s_dev_rx;
+/** @brief Result the control mock returns for a DEVICE descriptor read. */
+static ra8_err_t s_dev_err;
+/** @brief Result the control mock returns for the CONFIGURATION header read. */
+static ra8_err_t s_cfg_header_err;
+/** @brief Result the control mock returns for the full CONFIGURATION read. */
+static ra8_err_t s_cfg_full_err;
+/** @brief Number of CONFIGURATION reads served since the fixture reset. */
+static uint32_t s_cfg_call_count;
+/** @brief Result the control mock returns for SET_ADDRESS. */
+static ra8_err_t s_setaddr_err;
+/** @brief Result the target-selection mock returns after SET_ADDRESS. */
+static ra8_err_t s_target_err;
+/** @brief Result the control mock returns for SET_CONFIGURATION. */
+static ra8_err_t s_setcfg_err;
+/** @brief Result the control mock returns for GET_MAX_LUN. */
+static ra8_err_t s_lun_err;
+/** @brief Bytes the control mock reports for a GET_MAX_LUN read. */
+static uint16_t s_lun_rx;
+/** @brief GET_MAX_LUN payload byte the control mock returns. */
+static uint8_t s_lun_val;
+/** @brief Value ::internal_mock_line_state reports (non-zero => device attached). */
+static uint16_t s_line_state;
+/** @brief Result ::internal_mock_pipe_setup returns. */
+static ra8_err_t s_pipe_err;
+/** @brief Next value ::internal_mock_time_ms returns; advances by ::s_time_step. */
+static uint32_t s_time_val;
+/** @brief Increment applied to ::s_time_val after each ::internal_mock_time_ms call. */
+static uint32_t s_time_step;
+
+/** @brief Attach-callback invocation count. */
+static uint32_t s_attach_count;
+/** @brief Context pointer captured by the attach callback. */
+static void* s_attach_ctx_seen;
+/** @brief Arbitrary context token handed to the attach callback. */
+static const uintptr_t s_tc_ctx_token = 0xC0FFEE01U;
+
+/**
+ * @brief Serve a mocked GET_DESCRIPTOR request.
+ *
+ * @details
+ * Device and configuration descriptors are served from separate fixture blobs
+ * with independently injectable error codes and short-read counts, which is how
+ * the enumeration coverage cases drive each failure branch in isolation. Any
+ * other descriptor type succeeds with no data.
+ *
+ * @param[in]  setup        The SETUP packet under service.
+ * @param[out] data         Buffer for the descriptor, or NULL.
+ * @param[in]  data_len     Capacity of @p data in bytes.
+ * @param[out] out_received Receives the byte count reported, or NULL.
+ *
+ * @return The injected result for the requested descriptor type.
+ * @retval k_ra8_ok An unmodelled descriptor type was requested.
+ *
+ * @pre @p setup is non-NULL.
+ * @pre The fixture blobs for the requested type are populated.
+ * @post The copy is clamped to @p data_len, never overrunning @p data.
+ * @post NULL @p data and @p out_received are both tolerated.
+ *
+ * @note Not thread-safe; the injection knobs are file-scope state. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_mock_get_descriptor(const ra8_usb_setup_t* setup,
+                                                           uint8_t*               data,
+                                                           uint16_t               data_len,
+                                                           uint16_t*              out_received)
+{
+  const uint8_t dtype = (uint8_t)((setup->w_value >> k_tc_byte_bits) & 0xFFU);
+  if (dtype == (uint8_t)k_tc_dtype_device) {
+    const uint16_t n =
+      (data_len < (uint16_t)k_tc_dev_desc_len) ? data_len : (uint16_t)k_tc_dev_desc_len;
+    if (data != nullptr) {
+      (void)memcpy(data, s_dev_desc, (size_t)n);
+    }
+    if (out_received != nullptr) {
+      *out_received = s_dev_rx;
+    }
+    return s_dev_err;
+  }
+  if (dtype == (uint8_t)k_tc_dtype_config) {
+    const uint16_t n = (data_len < s_cfg_len) ? data_len : s_cfg_len;
+    if (data != nullptr) {
+      (void)memcpy(data, s_cfg_blob, (size_t)n);
+    }
+    if (out_received != nullptr) {
+      *out_received = n;
+    }
+    const ra8_err_t err = (s_cfg_call_count == 0U) ? s_cfg_header_err : s_cfg_full_err;
+    ++s_cfg_call_count;
+    return err;
+  }
+  return k_ra8_ok;
+}
+
+/** @brief Provide the file-local mock ctrl xfer test helper. @details Implements the mock ctrl xfer fixture operation used only by this focused test executable. @param[in] speed Fixture argument governed by the exercised interface contract. @param[in] setup Fixture argument governed by the exercised interface contract. @param[in,out] data Fixture argument governed by the exercised interface contract. @param[in] data_len Fixture argument governed by the exercised interface contract. @param[out] out_received Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_mock_ctrl_xfer(ra8_usb_speed_t        speed,
+                                                      const ra8_usb_setup_t* setup,
+                                                      uint8_t*               data,
+                                                      uint16_t               data_len,
+                                                      uint16_t*              out_received)
+{
+  (void)speed;
+  const uint8_t req = setup->b_request;
+  if (req == 0x06U) { /* GET_DESCRIPTOR */
+    return internal_mock_get_descriptor(setup, data, data_len, out_received);
+  }
+  if (req == k_t_req_set_address) { /* SET_ADDRESS */
+    return s_setaddr_err;
+  }
+  if (req == k_t_req_set_config) { /* SET_CONFIGURATION */
+    return s_setcfg_err;
+  }
+  if (req == k_t_req_get_max_lun) { /* GET_MAX_LUN */
+    if ((data != nullptr) && (data_len >= 1U)) {
+      data[0] = s_lun_val;
+    }
+    if (out_received != nullptr) {
+      *out_received = s_lun_rx;
+    }
+    return s_lun_err;
+  }
+  return k_ra8_ok;
+}
+
+/** @brief Provide the file-local mock line state test helper. @details Implements the mock line state fixture operation used only by this focused test executable. @param[in] speed Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static uint16_t internal_mock_line_state(ra8_usb_speed_t speed)
+{
+  (void)speed;
+  return s_line_state;
+}
+
+/** @brief Provide the file-local mock bus reset test helper. @details Implements the mock bus reset fixture operation used only by this focused test executable. @param[in] speed Fixture argument governed by the exercised interface contract. @param[in] assert_reset Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_mock_bus_reset(ra8_usb_speed_t speed, bool assert_reset)
+{
+  (void)speed;
+  (void)assert_reset;
+  return k_ra8_ok;
+}
+
+/** @brief Provide the file-local mock set uact test helper. @details Implements the mock set uact fixture operation used only by this focused test executable. @param[in] speed Fixture argument governed by the exercised interface contract. @param[in] enable Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_mock_set_uact(ra8_usb_speed_t speed, bool enable)
+{
+  (void)speed;
+  (void)enable;
+  return k_ra8_ok;
+}
+
+/** @brief Provide the file-local mock set target test helper. @details Implements the mock set target fixture operation used only by this focused test executable. @param[in] speed Fixture argument governed by the exercised interface contract. @param[in] dev_addr Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_mock_set_target(ra8_usb_speed_t speed, uint8_t dev_addr)
+{
+  (void)speed;
+  (void)dev_addr;
+  return s_target_err;
+}
+
+/** @brief Provide the file-local mock pipe setup test helper. @details Implements the mock pipe setup fixture operation used only by this focused test executable. @param[in] speed Fixture argument governed by the exercised interface contract. @param[in] pipe_num Fixture argument governed by the exercised interface contract. @param[in] dev_addr Fixture argument governed by the exercised interface contract. @param[in] ep_num Fixture argument governed by the exercised interface contract. @param[in] device_to_host Fixture argument governed by the exercised interface contract. @param[in] max_packet Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_mock_pipe_setup(ra8_usb_speed_t speed,
+                                                       uint8_t         pipe_num,
+                                                       uint8_t         dev_addr,
+                                                       uint8_t         ep_num,
+                                                       bool            device_to_host,
+                                                       uint16_t        max_packet)
+{
+  (void)speed;
+  (void)pipe_num;
+  (void)dev_addr;
+  (void)ep_num;
+  (void)device_to_host;
+  (void)max_packet;
+  return s_pipe_err;
+}
+
+/** @brief Provide the file-local mock delay ms test helper. @details Implements the mock delay ms fixture operation used only by this focused test executable. @param[in] ms Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_mock_delay_ms(uint32_t ms)
+{
+  (void)ms;
+}
+
+/** @brief Provide the file-local mock time ms test helper. @details Implements the mock time ms fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static uint32_t internal_mock_time_ms(void)
+{
+  const uint32_t v = s_time_val;
+  s_time_val       = s_time_val + s_time_step;
+  return v;
+}
+
+/** @brief Provide the file-local cov on attach test helper. @details Implements the cov on attach fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] device Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_cov_on_attach(void* ctx, const ra8_usb_hmsc_device_t* device)
+{
+  (void)device;
+  ++s_attach_count;
+  s_attach_ctx_seen = ctx;
+}
+
+/** @brief Reset shadow state + mock scripts to a successful-enumeration baseline. @details Implements the reset state fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_reset_state(void)
+{
+  g_usb_hmsc_state.initialized = true;
+  g_usb_hmsc_state.attached    = false;
+  g_usb_hmsc_state.speed       = k_ra8_usb_speed_fs;
+  g_usb_hmsc_state.attach_cb   = nullptr;
+  g_usb_hmsc_state.attach_ctx  = nullptr;
+  g_usb_hmsc_state.device      = (ra8_usb_hmsc_device_t){};
+
+  (void)memset(s_dev_desc, 0, sizeof s_dev_desc);
+  s_dev_desc[0]                 = (uint8_t)k_tc_dev_desc_len;
+  s_dev_desc[1]                 = (uint8_t)k_tc_dtype_device;
+  s_dev_desc[k_tc_off_vid]      = (uint8_t)((uint16_t)k_tc_vid & k_t_byte_mask);
+  s_dev_desc[k_tc_off_vid + 1U] = (uint8_t)(((uint16_t)k_tc_vid >> k_tc_byte_bits) & k_t_byte_mask);
+  s_dev_desc[k_tc_off_pid]      = (uint8_t)((uint16_t)k_tc_pid & k_t_byte_mask);
+  s_dev_desc[k_tc_off_pid + 1U] = (uint8_t)(((uint16_t)k_tc_pid >> k_tc_byte_bits) & k_t_byte_mask);
+
+  (void)memset(s_cfg_blob, 0, sizeof s_cfg_blob);
+  s_cfg_len = internal_build_msc_config(s_cfg_blob);
+
+  s_dev_rx         = (uint16_t)k_tc_dev_desc_len;
+  s_dev_err        = k_ra8_ok;
+  s_cfg_header_err = k_ra8_ok;
+  s_cfg_full_err   = k_ra8_ok;
+  s_cfg_call_count = 0U;
+  s_setaddr_err    = k_ra8_ok;
+  s_target_err     = k_ra8_ok;
+  s_setcfg_err     = k_ra8_ok;
+  s_lun_err        = k_ra8_ok;
+  s_lun_rx         = 1U;
+  s_lun_val        = 0U;
+  s_line_state     = 1U;
+  s_pipe_err       = k_ra8_ok;
+  s_time_val       = 0U;
+  s_time_step      = 0U;
+
+  s_attach_count    = 0U;
+  s_attach_ctx_seen = nullptr;
+}
+
+/* Rename the one exported symbol so the instrumented copy does not clash with
+ * the production `ra8_usb_hmsc_enumerate` linked from ra8_core_hal, and redirect
+ * the hardware-transport calls to the deterministic mocks above. */
+ra8_err_t ra8_usb_hmsc_enumerate_cov(ra8_usb_hmsc_device_t* out_device);
+
+/** @brief RA8 USB hmsc enumerate. */
+/* Include-time interposition seam: each macro below must be spelled
+ * EXACTLY like the production symbol it replaces, so the project rule
+ * that macro names are UPPER_CASE cannot apply here -- renaming one
+ * silently un-hooks the mock and the test would exercise the real
+ * driver while still passing. */
+// NOLINTBEGIN(readability-identifier-naming) -- external ABI or interposition seam fixes these symbol spellings.
+#define ra8_usb_hmsc_enumerate ra8_usb_hmsc_enumerate_cov
+/** @brief RA8 USB host control xfer. */
+#define ra8_usb_host_control_xfer internal_mock_ctrl_xfer
+/** @brief RA8 USB host line state. */
+#define ra8_usb_host_line_state internal_mock_line_state
+/** @brief RA8 USB host bus reset. */
+#define ra8_usb_host_bus_reset internal_mock_bus_reset
+/** @brief RA8 USB host set uact. */
+#define ra8_usb_host_set_uact internal_mock_set_uact
+/** @brief RA8 USB host set target. */
+#define ra8_usb_host_set_target internal_mock_set_target
+/** @brief RA8 USB host pipe setup. */
+#define ra8_usb_host_pipe_setup internal_mock_pipe_setup
+/** @brief RA8 delay ms. */
+#define ra8_delay_ms internal_mock_delay_ms
+/** @brief RA8 time ms. */
+#define ra8_time_ms internal_mock_time_ms
+// NOLINTEND(readability-identifier-naming)
+
+#include "ra8_usb_hmsc_enum.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
+
+/* =============================================================================
+ * White-box tests: each drives the real production helper on scripted bytes.
+ * =============================================================================
+ */
+
+/**
+ * @test internal_test_read_dev_desc_short_and_full
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- `internal_enum_read_dev_desc`
+ * is a straight-line control read followed by a single-condition length check;
+ * no `&&` or `||`.) @brief Verify read dev desc short and full behavior. @details Executes the read dev desc short and full scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_dev_desc_short_and_full(void)
+{
+  TEST_BEGIN("read_dev_desc: full 18-byte read passes, short read fails");
+  internal_reset_state();
+
+  uint8_t desc[k_tc_dev_desc_len] = {};
+  /* Full read: 18 bytes -> k_ra8_ok. */
+  s_dev_rx = (uint16_t)k_tc_dev_desc_len;
+  TEST_ASSERT_EQ(k_ra8_ok, internal_enum_read_dev_desc(desc));
+
+  /* Short read: fewer than 18 bytes -> hw_error. */
+  s_dev_rx = (uint16_t)(k_tc_dev_desc_len - 1U);
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_enum_read_dev_desc(desc));
+
+  TEST_END("read_dev_desc: full 18-byte read passes, short read fails");
+}
+
+/**
+ * @test internal_test_hunt_success_and_attach_timeout
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- the attach spin and the
+ * (reset, address) hunt use single-condition guards only.) @brief Verify hunt success and attach timeout behavior. @details Executes the hunt success and attach timeout scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_hunt_success_and_attach_timeout(void)
+{
+  TEST_BEGIN("hunt: device answers at addr 0; separate attach-timeout leg");
+
+  /* Success leg: line state reports attach at once, addr-0 read answers. */
+  internal_reset_state();
+  uint8_t desc[k_tc_dev_desc_len] = {};
+  uint8_t addr                    = k_t_byte_mask;
+  s_line_state                    = 1U;
+  TEST_ASSERT_EQ(k_ra8_ok, internal_enum_hunt(desc, &addr));
+  TEST_ASSERT_EQ(0U, addr);
+
+  /* Attach-timeout leg: line state never leaves SE0, so the spin exits on the
+   * elapsed-milliseconds guard after two iterations; no device answers, so the
+   * hunt exhausts every (reset, address) attempt and reports a timeout. */
+  internal_reset_state();
+  s_line_state  = 0U;                   /* Never attaches.                            */
+  s_time_val    = 0U;                   /* t0 = 0 on first read.                      */
+  s_time_step   = k_t_time_step_us;     /* 0 -> 1500 (<=2000) -> 3000 (>2000, break). */
+  s_dev_err     = k_ra8_err_hw_timeout; /* No descriptor ever answers.                */
+  uint8_t addr2 = k_t_byte_mask;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, internal_enum_hunt(desc, &addr2));
+
+  TEST_END("hunt: device answers at addr 0; separate attach-timeout leg");
+}
+
+/**
+ * @test internal_test_assign_addr_both_legs
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- a single-condition
+ * "already addressed?" guard gates the SET_ADDRESS path.) @brief Verify assign addr both legs behavior. @details Executes the assign addr both legs scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_assign_addr_both_legs(void)
+{
+  TEST_BEGIN("assign_addr: skip when already addressed, else SET_ADDRESS to 1");
+  internal_reset_state();
+
+  /* Already addressed (non-zero) -> early return, address unchanged. */
+  uint8_t addr_nonzero = 2U;
+  TEST_ASSERT_EQ(k_ra8_ok, internal_enum_assign_addr(&addr_nonzero));
+  TEST_ASSERT_EQ(2U, addr_nonzero);
+
+  /* Default address (0) -> SET_ADDRESS + retarget -> operating address 1. */
+  uint8_t addr_zero = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, internal_enum_assign_addr(&addr_zero));
+  TEST_ASSERT_EQ(1U, addr_zero);
+
+  TEST_END("assign_addr: skip when already addressed, else SET_ADDRESS to 1");
+}
+
+/**
+ * @test internal_test_assign_addr_errors
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- each injected dependency
+ * error drives one independent return-on-error branch.)
+ * @brief Verify SET_ADDRESS and target-selection errors propagate.
+ * @pre The enumeration fixture is reset before each injected failure.
+ * @post The first failing dependency status is returned unchanged.
+ * @note File-local host-test fixture. @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_assign_addr_errors(void)
+{
+  TEST_BEGIN("assign_addr: SET_ADDRESS and target errors propagate");
+
+  internal_reset_state();
+  s_setaddr_err   = k_ra8_err_hw_timeout;
+  uint8_t address = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, internal_enum_assign_addr(&address));
+
+  internal_reset_state();
+  s_target_err = k_ra8_err_hw_timeout;
+  address      = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, internal_enum_assign_addr(&address));
+
+  TEST_END("assign_addr: SET_ADDRESS and target errors propagate");
+}
+
+/**
+ * @test internal_test_note_endpoint_all_slots
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- endpoint filtering and slot
+ * selection are single-condition guards.) @brief Verify note endpoint all slots behavior. @details Executes the note endpoint all slots scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_note_endpoint_all_slots(void)
+{
+  TEST_BEGIN("note_endpoint: records first bulk IN + OUT, ignores non-bulk/dups");
+  internal_reset_state();
+  g_usb_hmsc_state.device = (ra8_usb_hmsc_device_t){};
+
+  uint8_t ep_in[k_tc_ep_desc_len]   = {(uint8_t)k_tc_ep_desc_len,
+                                       (uint8_t)k_tc_dtype_endpoint,
+                                       (uint8_t)k_tc_ep_in_addr,
+                                       (uint8_t)k_tc_attr_bulk,
+                                       (uint8_t)k_tc_mps_lo,
+                                       0U,
+                                       0U};
+  uint8_t ep_out[k_tc_ep_desc_len]  = {(uint8_t)k_tc_ep_desc_len,
+                                       (uint8_t)k_tc_dtype_endpoint,
+                                       (uint8_t)k_tc_ep_out_addr,
+                                       (uint8_t)k_tc_attr_bulk,
+                                       (uint8_t)k_tc_mps_lo,
+                                       0U,
+                                       0U};
+  uint8_t ep_int[k_tc_ep_desc_len]  = {(uint8_t)k_tc_ep_desc_len,
+                                       (uint8_t)k_tc_dtype_endpoint,
+                                       (uint8_t)k_tc_ep_in2_addr,
+                                       (uint8_t)k_tc_attr_int,
+                                       (uint8_t)k_tc_mps_lo,
+                                       0U,
+                                       0U};
+  uint8_t ep_in2[k_tc_ep_desc_len]  = {(uint8_t)k_tc_ep_desc_len,
+                                       (uint8_t)k_tc_dtype_endpoint,
+                                       (uint8_t)k_tc_ep_in2_addr,
+                                       (uint8_t)k_tc_attr_bulk,
+                                       (uint8_t)k_tc_mps_lo,
+                                       0U,
+                                       0U};
+  uint8_t ep_out2[k_tc_ep_desc_len] = {(uint8_t)k_tc_ep_desc_len,
+                                       (uint8_t)k_tc_dtype_endpoint,
+                                       (uint8_t)k_tc_ep_out2_addr,
+                                       (uint8_t)k_tc_attr_bulk,
+                                       (uint8_t)k_tc_mps_lo,
+                                       0U,
+                                       0U};
+
+  internal_enum_note_endpoint(ep_int); /* non-bulk -> ignored. */
+  TEST_ASSERT_EQ(0U, g_usb_hmsc_state.device.bulk_in_ep);
+
+  internal_enum_note_endpoint(ep_in); /* first bulk IN -> recorded. */
+  TEST_ASSERT_EQ(1U, g_usb_hmsc_state.device.bulk_in_ep);
+  TEST_ASSERT_EQ(k_tc_mps, g_usb_hmsc_state.device.bulk_in_max_packet);
+
+  internal_enum_note_endpoint(ep_out); /* first bulk OUT -> recorded. */
+  TEST_ASSERT_EQ(2U, g_usb_hmsc_state.device.bulk_out_ep);
+  TEST_ASSERT_EQ(k_tc_mps, g_usb_hmsc_state.device.bulk_out_max_packet);
+
+  internal_enum_note_endpoint(ep_in2);  /* IN slot filled -> unchanged.  */
+  internal_enum_note_endpoint(ep_out2); /* OUT slot filled -> unchanged. */
+  TEST_ASSERT_EQ(1U, g_usb_hmsc_state.device.bulk_in_ep);
+  TEST_ASSERT_EQ(2U, g_usb_hmsc_state.device.bulk_out_ep);
+
+  TEST_END("note_endpoint: records first bulk IN + OUT, ignores non-bulk/dups");
+}
+
+/**
+ * @test internal_test_iface_is_msc_all_fields
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- the three class-field
+ * checks are separate single-condition `if` statements, each with its own
+ * early return, not a compound decision.) @brief Verify iface is msc all fields behavior. @details Executes the iface is msc all fields scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_iface_is_msc_all_fields(void)
+{
+  TEST_BEGIN("iface_is_msc: true only for class 0x08 / sub 0x06 / proto 0x50");
+
+  /* Interface descriptor: [5]=class [6]=subclass [7]=protocol. */
+  uint8_t iface[k_tc_iface_desc_len] = {(uint8_t)k_tc_iface_desc_len,
+                                        (uint8_t)k_tc_dtype_iface,
+                                        0U,
+                                        0U,
+                                        2U,
+                                        (uint8_t)k_tc_class_msc,
+                                        (uint8_t)k_tc_subclass_scsi,
+                                        (uint8_t)k_tc_protocol_bbb,
+                                        0U};
+  TEST_ASSERT(internal_enum_iface_is_msc(iface));
+
+  iface[k_t_iface_off_class] = (uint8_t)k_tc_class_hid; /* wrong class -> false. */
+  TEST_ASSERT(!internal_enum_iface_is_msc(iface));
+
+  iface[k_t_iface_off_class] = (uint8_t)k_tc_class_msc;
+  iface[6]                   = (uint8_t)k_tc_sub_rbc; /* wrong subclass -> false. */
+  TEST_ASSERT(!internal_enum_iface_is_msc(iface));
+
+  iface[6]                      = (uint8_t)k_tc_subclass_scsi;
+  iface[k_t_iface_off_protocol] = (uint8_t)k_tc_proto_cbi; /* wrong protocol -> false. */
+  TEST_ASSERT(!internal_enum_iface_is_msc(iface));
+
+  TEST_END("iface_is_msc: true only for class 0x08 / sub 0x06 / proto 0x50");
+}
+
+/**
+ * @brief Walk a rich config blob (non-MSC iface + stray EP + MSC bulk pair).
+ * @pre The enumeration state has been reset.
+ * @post The MSC bulk IN/OUT endpoints were discovered.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0 @details Implements the walk cfg rich blob fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_walk_cfg_rich_blob(void)
+{
+  g_usb_hmsc_state.device         = (ra8_usb_hmsc_device_t){};
+  uint8_t  blob[k_t_cfg_blob_cap] = {};
+  uint16_t o                      = 0U;
+  /* CONFIGURATION header. */
+  blob[o + 0U] = (uint8_t)k_tc_cfg_hdr_len;
+  blob[o + 1U] = (uint8_t)k_tc_dtype_config;
+  o            = (uint16_t)(o + k_tc_cfg_hdr_len);
+  /* Non-MSC interface (HID). */
+  blob[o + 0U]                  = (uint8_t)k_tc_iface_desc_len;
+  blob[o + 1U]                  = (uint8_t)k_tc_dtype_iface;
+  blob[o + k_t_iface_off_class] = (uint8_t)k_tc_class_hid;
+  o                             = (uint16_t)(o + k_tc_iface_desc_len);
+  /* Endpoint while NOT in an MSC scope -> skipped. */
+  blob[o + 0U] = (uint8_t)k_tc_ep_desc_len;
+  blob[o + 1U] = (uint8_t)k_tc_dtype_endpoint;
+  blob[o + 2U] = (uint8_t)k_tc_ep_in_addr;
+  blob[o + 3U] = (uint8_t)k_tc_attr_bulk;
+  o            = (uint16_t)(o + k_tc_ep_desc_len);
+  /* MSC interface + bulk IN + bulk OUT. */
+  blob[o + 0U]                     = (uint8_t)k_tc_iface_desc_len;
+  blob[o + 1U]                     = (uint8_t)k_tc_dtype_iface;
+  blob[o + k_t_iface_off_class]    = (uint8_t)k_tc_class_msc;
+  blob[o + 6U]                     = (uint8_t)k_tc_subclass_scsi;
+  blob[o + k_t_iface_off_protocol] = (uint8_t)k_tc_protocol_bbb;
+  o                                = (uint16_t)(o + k_tc_iface_desc_len);
+  blob[o + 0U]                     = (uint8_t)k_tc_ep_desc_len;
+  blob[o + 1U]                     = (uint8_t)k_tc_dtype_endpoint;
+  blob[o + 2U]                     = (uint8_t)k_tc_ep_in_addr;
+  blob[o + 3U]                     = (uint8_t)k_tc_attr_bulk;
+  blob[o + 4U]                     = (uint8_t)k_tc_mps_lo;
+  o                                = (uint16_t)(o + k_tc_ep_desc_len);
+  blob[o + 0U]                     = (uint8_t)k_tc_ep_desc_len;
+  blob[o + 1U]                     = (uint8_t)k_tc_dtype_endpoint;
+  blob[o + 2U]                     = (uint8_t)k_tc_ep_out_addr;
+  blob[o + 3U]                     = (uint8_t)k_tc_attr_bulk;
+  blob[o + 4U]                     = (uint8_t)k_tc_mps_lo;
+  o                                = (uint16_t)(o + k_tc_ep_desc_len);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_enum_walk_cfg(blob, o));
+  TEST_ASSERT_EQ(1U, g_usb_hmsc_state.device.bulk_in_ep);
+  TEST_ASSERT_EQ(2U, g_usb_hmsc_state.device.bulk_out_ep);
+}
+
+/**
+ * @brief Walk an MSC config with a bulk IN but no bulk OUT (hw_error).
+ * @pre None.
+ * @post `internal_enum_walk_cfg` reported the missing bulk OUT.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0 @details Implements the walk cfg in only fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_walk_cfg_in_only(void)
+{
+  g_usb_hmsc_state.device             = (ra8_usb_hmsc_device_t){};
+  uint8_t  in_only[32]                = {};
+  uint16_t p                          = 0U;
+  in_only[p + 0U]                     = (uint8_t)k_tc_iface_desc_len;
+  in_only[p + 1U]                     = (uint8_t)k_tc_dtype_iface;
+  in_only[p + k_t_iface_off_class]    = (uint8_t)k_tc_class_msc;
+  in_only[p + 6U]                     = (uint8_t)k_tc_subclass_scsi;
+  in_only[p + k_t_iface_off_protocol] = (uint8_t)k_tc_protocol_bbb;
+  p                                   = (uint16_t)(p + k_tc_iface_desc_len);
+  in_only[p + 0U]                     = (uint8_t)k_tc_ep_desc_len;
+  in_only[p + 1U]                     = (uint8_t)k_tc_dtype_endpoint;
+  in_only[p + 2U]                     = (uint8_t)k_tc_ep_in_addr;
+  in_only[p + 3U]                     = (uint8_t)k_tc_attr_bulk;
+  p                                   = (uint16_t)(p + k_tc_ep_desc_len);
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_enum_walk_cfg(in_only, p));
+}
+
+/**
+ * @brief Walk an MSC config with a bulk OUT but no bulk IN (hw_error).
+ * @pre None.
+ * @post `internal_enum_walk_cfg` reported the missing bulk IN.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0 @details Implements the walk cfg out only fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_walk_cfg_out_only(void)
+{
+  g_usb_hmsc_state.device              = (ra8_usb_hmsc_device_t){};
+  uint8_t  out_only[32]                = {};
+  uint16_t q                           = 0U;
+  out_only[q + 0U]                     = (uint8_t)k_tc_iface_desc_len;
+  out_only[q + 1U]                     = (uint8_t)k_tc_dtype_iface;
+  out_only[q + k_t_iface_off_class]    = (uint8_t)k_tc_class_msc;
+  out_only[q + 6U]                     = (uint8_t)k_tc_subclass_scsi;
+  out_only[q + k_t_iface_off_protocol] = (uint8_t)k_tc_protocol_bbb;
+  q                                    = (uint16_t)(q + k_tc_iface_desc_len);
+  out_only[q + 0U]                     = (uint8_t)k_tc_ep_desc_len;
+  out_only[q + 1U]                     = (uint8_t)k_tc_dtype_endpoint;
+  out_only[q + 2U]                     = (uint8_t)k_tc_ep_out_addr;
+  out_only[q + 3U]                     = (uint8_t)k_tc_attr_bulk;
+  q                                    = (uint16_t)(q + k_tc_ep_desc_len);
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_enum_walk_cfg(out_only, q));
+}
+
+/**
+ * @test internal_test_walk_cfg_success_and_errors
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- the descriptor stride uses
+ * nested single-condition guards, not `&&`/`||`.) @brief Verify walk cfg success and errors behavior. @details Executes the walk cfg success and errors scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_walk_cfg_success_and_errors(void)
+{
+  TEST_BEGIN("walk_cfg: finds MSC bulk pair; reports missing IN/OUT and zero len");
+
+  /* Rich blob: a non-MSC interface + stray endpoint precede the MSC interface
+   * so the "not in MSC" and "interface not MSC" legs are walked before the
+   * matching pair. */
+  internal_reset_state();
+  internal_walk_cfg_rich_blob();
+
+  /* IN present, OUT absent -> hw_error (missing bulk OUT). */
+  internal_walk_cfg_in_only();
+
+  /* OUT present, IN absent -> hw_error (missing bulk IN). */
+  internal_walk_cfg_out_only();
+
+  /* A zero-length descriptor breaks the walk before any endpoint is found. */
+  g_usb_hmsc_state.device = (ra8_usb_hmsc_device_t){};
+  uint8_t zero_len[16]    = {};
+  zero_len[0]             = 0U; /* bLength == 0 -> break. */
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_enum_walk_cfg(zero_len, (uint16_t)sizeof zero_len));
+
+  TEST_END("walk_cfg: finds MSC bulk pair; reports missing IN/OUT and zero len");
+}
+
+/**
+ * @test internal_test_read_config_clamp_and_normal
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- the buffer clamp is a
+ * single-condition guard.) @brief Verify read config clamp and normal behavior. @details Executes the read config clamp and normal scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_config_clamp_and_normal(void)
+{
+  TEST_BEGIN("read_config: normal total and oversized-total clamp both parse");
+
+  /* Normal total: the canonical 32-byte blob, wTotalLength within the cap. */
+  internal_reset_state();
+  g_usb_hmsc_state.device = (ra8_usb_hmsc_device_t){};
+  uint8_t cfgval          = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, internal_enum_read_config(&cfgval));
+  TEST_ASSERT_EQ(k_tc_cfg_value, cfgval);
+  TEST_ASSERT_EQ(1U, g_usb_hmsc_state.device.bulk_in_ep);
+
+  /* Oversized total: wTotalLength claims 200 (> 128 buffer) so the clamp
+   * fires; the walk still succeeds on the real descriptor bytes. */
+  internal_reset_state();
+  g_usb_hmsc_state.device    = (ra8_usb_hmsc_device_t){};
+  s_cfg_blob[k_tc_off_total] = (uint8_t)k_tc_clamp_total; /* lie about length. */
+  uint8_t cfgval2            = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, internal_enum_read_config(&cfgval2));
+  TEST_ASSERT_EQ(k_tc_cfg_value, cfgval2);
+
+  TEST_END("read_config: normal total and oversized-total clamp both parse");
+}
+
+/**
+ * @test internal_test_read_config_errors
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- the independently scripted
+ * header and full reads drive separate return-on-error branches.)
+ * @brief Verify both configuration-transfer errors propagate.
+ * @pre The enumeration fixture is reset before each injected failure.
+ * @post Header and full-read failures are returned unchanged.
+ * @note File-local host-test fixture. @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_read_config_errors(void)
+{
+  TEST_BEGIN("read_config: header and full transfer errors propagate");
+  uint8_t cfg_value = 0U;
+
+  internal_reset_state();
+  s_cfg_header_err = k_ra8_err_hw_timeout;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, internal_enum_read_config(&cfg_value));
+
+  internal_reset_state();
+  s_cfg_full_err = k_ra8_err_hw_timeout;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, internal_enum_read_config(&cfg_value));
+
+  TEST_END("read_config: header and full transfer errors propagate");
+}
+
+/**
+ * @test internal_test_configure_lun_variants
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- the GET_MAX_LUN success is
+ * two nested single-condition guards.) @brief Verify configure lun variants behavior. @details Executes the configure lun variants scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_configure_lun_variants(void)
+{
+  TEST_BEGIN("configure: GET_MAX_LUN value taken only on ok + 1-byte response");
+
+  /* GET_MAX_LUN answers ok with a 1-byte payload -> max_lun latches it. */
+  internal_reset_state();
+  g_usb_hmsc_state.device.bulk_in_ep  = 1U;
+  g_usb_hmsc_state.device.bulk_out_ep = 2U;
+  s_lun_err                           = k_ra8_ok;
+  s_lun_rx                            = 1U;
+  s_lun_val                           = (uint8_t)k_tc_lun_val;
+  TEST_ASSERT_EQ(k_ra8_ok, internal_enum_configure(1U, (uint8_t)k_tc_cfg_value));
+  TEST_ASSERT_EQ(k_tc_lun_val, g_usb_hmsc_state.device.max_lun);
+
+  /* GET_MAX_LUN stalls (error) -> LUN defaults to 0. */
+  internal_reset_state();
+  g_usb_hmsc_state.device.bulk_in_ep  = 1U;
+  g_usb_hmsc_state.device.bulk_out_ep = 2U;
+  s_lun_err                           = k_ra8_err_hw_error;
+  s_lun_val                           = (uint8_t)k_tc_lun_val;
+  TEST_ASSERT_EQ(k_ra8_ok, internal_enum_configure(1U, (uint8_t)k_tc_cfg_value));
+  TEST_ASSERT_EQ(0U, g_usb_hmsc_state.device.max_lun);
+
+  /* GET_MAX_LUN ok but returns zero bytes -> LUN defaults to 0. */
+  internal_reset_state();
+  g_usb_hmsc_state.device.bulk_in_ep  = 1U;
+  g_usb_hmsc_state.device.bulk_out_ep = 2U;
+  s_lun_err                           = k_ra8_ok;
+  s_lun_rx                            = 0U;
+  s_lun_val                           = (uint8_t)k_tc_lun_val;
+  TEST_ASSERT_EQ(k_ra8_ok, internal_enum_configure(1U, (uint8_t)k_tc_cfg_value));
+  TEST_ASSERT_EQ(0U, g_usb_hmsc_state.device.max_lun);
+
+  TEST_END("configure: GET_MAX_LUN value taken only on ok + 1-byte response");
+}
+
+/**
+ * @test internal_test_configure_errors
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- the independently scripted
+ * configuration and pipe failures drive separate return-on-error branches.)
+ * @brief Verify strict configuration and pipe errors propagate.
+ * @pre The enumeration fixture is reset before each injected failure.
+ * @post SET_CONFIGURATION and bulk-IN setup failures are returned unchanged.
+ * @note File-local host-test fixture. @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_configure_errors(void)
+{
+  TEST_BEGIN("configure: SET_CONFIGURATION and pipe errors propagate");
+
+  internal_reset_state();
+  s_setcfg_err = k_ra8_err_hw_timeout;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, internal_enum_configure(1U, (uint8_t)k_tc_cfg_value));
+
+  internal_reset_state();
+  g_usb_hmsc_state.device.bulk_in_ep  = 1U;
+  g_usb_hmsc_state.device.bulk_out_ep = 2U;
+  s_pipe_err                          = k_ra8_err_hw_timeout;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, internal_enum_configure(1U, (uint8_t)k_tc_cfg_value));
+
+  TEST_END("configure: SET_CONFIGURATION and pipe errors propagate");
+}
+
+/**
+ * @test internal_test_fill_ids_little_endian
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- pure little-endian field
+ * unpack.) @brief Verify fill ids little endian behavior. @details Executes the fill ids little endian scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_fill_ids_little_endian(void)
+{
+  TEST_BEGIN("fill_ids: unpacks little-endian idVendor / idProduct");
+  internal_reset_state();
+  g_usb_hmsc_state.device = (ra8_usb_hmsc_device_t){};
+
+  internal_enum_fill_ids(s_dev_desc);
+  TEST_ASSERT_EQ(k_tc_vid, g_usb_hmsc_state.device.vendor_id);
+  TEST_ASSERT_EQ(k_tc_pid, g_usb_hmsc_state.device.product_id);
+
+  TEST_END("fill_ids: unpacks little-endian idVendor / idProduct");
+}
+
+/**
+ * @test internal_test_publish_callback_and_copy
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- the callback and out-copy
+ * are independent single-condition null guards.) @brief Verify publish callback and copy behavior. @details Executes the publish callback and copy scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_publish_callback_and_copy(void)
+{
+  TEST_BEGIN("publish: fires callback + copies snapshot; tolerates both NULL");
+
+  /* Callback registered + destination provided -> both fire. */
+  internal_reset_state();
+  g_usb_hmsc_state.attach_cb         = internal_cov_on_attach;
+  g_usb_hmsc_state.attach_ctx        = (void*)s_tc_ctx_token;
+  g_usb_hmsc_state.device.bulk_in_ep = 1U;
+  ra8_usb_hmsc_device_t out          = {};
+  internal_enum_publish(1U, &out);
+  TEST_ASSERT_EQ(1U, s_attach_count);
+  TEST_ASSERT(s_attach_ctx_seen == (void*)s_tc_ctx_token);
+  TEST_ASSERT(g_usb_hmsc_state.attached);
+  TEST_ASSERT_EQ(1U, out.device_address);
+
+  /* No callback + NULL destination -> no crash, still flips attached. */
+  internal_reset_state();
+  g_usb_hmsc_state.attach_cb = nullptr;
+  internal_enum_publish(1U, nullptr);
+  TEST_ASSERT_EQ(0U, s_attach_count);
+  TEST_ASSERT(g_usb_hmsc_state.attached);
+  TEST_ASSERT_EQ(1U, g_usb_hmsc_state.device.device_address);
+
+  TEST_END("publish: fires callback + copies snapshot; tolerates both NULL");
+}
+
+/**
+ * @test internal_test_enumerate_full_success
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- the ladder is a sequence of
+ * single-condition error short-circuits.)
+ *
+ * @note End-to-end run of the renamed `ra8_usb_hmsc_enumerate_cov`: the mocks
+ * present a valid attach, a full device descriptor, a parseable MSC
+ * configuration and a well-behaved GET_MAX_LUN, so the whole ladder
+ * (hunt -> fill_ids -> assign_addr -> read_config -> configure -> publish)
+ * completes and the attach callback fires. @brief Verify enumerate full success behavior. @details Executes the enumerate full success scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_enumerate_full_success(void)
+{
+  TEST_BEGIN("enumerate: full ladder succeeds and publishes the device");
+  internal_reset_state();
+  g_usb_hmsc_state.attach_cb  = internal_cov_on_attach;
+  g_usb_hmsc_state.attach_ctx = (void*)s_tc_ctx_token;
+
+  ra8_usb_hmsc_device_t dev = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hmsc_enumerate_cov(&dev));
+  TEST_ASSERT(g_usb_hmsc_state.attached);
+  TEST_ASSERT_EQ(1U, s_attach_count);
+  TEST_ASSERT_EQ(1U, dev.device_address);
+  TEST_ASSERT_EQ(1U, dev.bulk_in_ep);
+  TEST_ASSERT_EQ(2U, dev.bulk_out_ep);
+  TEST_ASSERT_EQ(k_tc_vid, dev.vendor_id);
+  TEST_ASSERT_EQ(k_tc_pid, dev.product_id);
+
+  TEST_END("enumerate: full ladder succeeds and publishes the device");
+}
+
+/**
+ * @test internal_test_enumerate_stage_errors
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- each scripted ladder stage
+ * drives one independent aggregate return-on-error branch.)
+ * @brief Verify address, descriptor, and configure stage failures propagate.
+ * @pre The enumeration fixture is reset before each injected failure.
+ * @post No failing ladder reaches publication.
+ * @note File-local host-test fixture. @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_test_enumerate_stage_errors(void)
+{
+  TEST_BEGIN("enumerate: address, config, and configure errors propagate");
+  ra8_usb_hmsc_device_t dev = {};
+
+  internal_reset_state();
+  s_setaddr_err = k_ra8_err_hw_timeout;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_usb_hmsc_enumerate_cov(&dev));
+
+  internal_reset_state();
+  s_cfg_header_err = k_ra8_err_hw_timeout;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_usb_hmsc_enumerate_cov(&dev));
+
+  internal_reset_state();
+  s_setcfg_err = k_ra8_err_hw_timeout;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_usb_hmsc_enumerate_cov(&dev));
+  TEST_ASSERT(!g_usb_hmsc_state.attached);
+
+  TEST_END("enumerate: address, config, and configure errors propagate");
+}
+
+/**
+ * @test internal_test_enumerate_ladder_failure_and_guard
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- single-condition guards.)
+ *
+ * @note Two negative legs: (1) the init guard rejects an enumerate before
+ * init, and (2) a ladder whose device never answers propagates the hunt's
+ * timeout out of `ra8_usb_hmsc_enumerate_cov` without firing the callback. @brief Verify enumerate ladder failure and guard behavior. @details Executes the enumerate ladder failure and guard scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_enumerate_ladder_failure_and_guard(void)
+{
+  TEST_BEGIN("enumerate: pre-init guard + hunt-timeout propagation");
+
+  /* Pre-init guard. */
+  internal_reset_state();
+  g_usb_hmsc_state.initialized = false;
+  ra8_usb_hmsc_device_t dev    = {};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_hmsc_enumerate_cov(&dev));
+
+  /* Ladder failure: no descriptor ever answers -> hunt timeout out the top. */
+  internal_reset_state();
+  g_usb_hmsc_state.attach_cb = internal_cov_on_attach;
+  s_line_state               = 1U;
+  s_dev_err                  = k_ra8_err_hw_timeout;
+  TEST_ASSERT(ra8_usb_hmsc_enumerate_cov(&dev) != k_ra8_ok);
+  TEST_ASSERT_EQ(0U, s_attach_count);
+  TEST_ASSERT(!g_usb_hmsc_state.attached);
+
+  TEST_END("enumerate: pre-init guard + hunt-timeout propagation");
+}
+
+int main(void)
+{
+  internal_test_read_dev_desc_short_and_full();
+  internal_test_hunt_success_and_attach_timeout();
+  internal_test_assign_addr_both_legs();
+  internal_test_assign_addr_errors();
+  internal_test_note_endpoint_all_slots();
+  internal_test_iface_is_msc_all_fields();
+  internal_test_walk_cfg_success_and_errors();
+  internal_test_read_config_clamp_and_normal();
+  internal_test_read_config_errors();
+  internal_test_configure_lun_variants();
+  internal_test_configure_errors();
+  internal_test_fill_ids_little_endian();
+  internal_test_publish_callback_and_copy();
+  internal_test_enumerate_full_success();
+  internal_test_enumerate_stage_errors();
+  internal_test_enumerate_ladder_failure_and_guard();
+  return 0;
+}

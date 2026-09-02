@@ -134,9 +134,10 @@ silicon; a wrong channel is silent, not an error.
 
 The host-side node is the `/dev/cu.usbmodem*` whose digits match the
 probe's own serial -- the other node on the bus is a different
-interface. `make hil-find-jlink` resolves it, and `JLINK_SN` /
-`RA8_CONSOLE_TTY` in `.env` pin it. Bench-specific serials stay out of
-the tree.
+interface. `just hil::find_jlink` enumerates the configured bench over
+SSH, or this host for a directly attached rig; `JLINK_SN` /
+`RA8_CONSOLE_TTY` in `.env` pin the result. Bench-specific serials stay
+out of the tree.
 
 At 115200 8N1 the BRR divisor lands about 2.7% off the nominal baud,
 which the J-Link OB CDC bridge accepts. That is at the edge of UART

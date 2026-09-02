@@ -11,7 +11,7 @@
 # cmake -B build -S . && cmake --build build -j ./build/ra8_emulator
 # ../../examples/ek_ra8d2/.../<app>/build/<app>.elf
 #
-# Needs Unicorn + Capstone: macOS: make emu-setup (Homebrew Capstone +
+# Needs Unicorn + Capstone: macOS: `just apps::emulator::setup` (Homebrew Capstone +
 # source-built pinned Unicorn) Linux: libunicorn-dev + libcapstone-dev (or a
 # source install) -- found via pkg-config, so the emulator smoke gate runs on
 # the Linux CI runner.
@@ -54,7 +54,7 @@ if(APPLE)
     set(RA8_UNICORN_PREFIX "$ENV{HOME}/.local/ra8-firmware/unicorn")
   endif()
   # A prior configuration may have cached Homebrew Unicorn. Always rediscover
-  # the source-built pinned prefix when reconfiguring after `make emu-setup`.
+  # the source-built pinned prefix after `just apps::emulator::setup`.
   unset(UNICORN_INCLUDE_DIR CACHE)
   unset(UNICORN_LIBRARY CACHE)
 endif()
@@ -150,10 +150,7 @@ endif()
 # emu_* module-private cross-TU helpers.
 target_include_directories(
   ra8_emulator
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
-          ${CMAKE_CURRENT_SOURCE_DIR}/src/engine
-          ${CMAKE_CURRENT_SOURCE_DIR}/src/host
-          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_hal/inc
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_hal/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
 )
 
@@ -196,9 +193,9 @@ target_compile_options(ra8_emulator PRIVATE -Wall -Wextra -Werror)
 
 include(CTest)
 if(BUILD_TESTING)
-  add_executable(test_emu_host_io tests/test_emu_host_io.c src/host/emu_host_io.c)
+  add_executable(test_emu_host_io tests/src/test_emu_host_io.c src/host/emu_host_io.c)
   target_include_directories(
-    test_emu_host_io PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/host
+    test_emu_host_io PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
                              ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
   )
   target_compile_options(test_emu_host_io PRIVATE -Wall -Wextra -Werror)
@@ -206,7 +203,7 @@ if(BUILD_TESTING)
 
   add_executable(
     test_emu_presentation
-    tests/test_emu_presentation.c
+    tests/src/test_emu_presentation.c
     src/host/emu_host_io.c
     src/engine/emu_presentation.c
     src/engine/emu_view_tile.c
@@ -216,18 +213,16 @@ if(BUILD_TESTING)
   )
   target_include_directories(
     test_emu_presentation
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/host
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/display
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/engine
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+            ${UNICORN_INCLUDE_DIR}
   )
+  target_link_libraries(test_emu_presentation PRIVATE ${UNICORN_LIBRARY})
   target_compile_options(test_emu_presentation PRIVATE -Wall -Wextra -Werror)
   add_test(NAME test_emu_presentation COMMAND test_emu_presentation)
 
   add_executable(
     test_emu_elf_source
-    tests/test_emu_elf_source.c
+    tests/src/test_emu_elf_source.c
     src/engine/emu_memory_access.c
     src/host/emu_host_io.c
     src/engine/emu_elf.c
@@ -236,10 +231,7 @@ if(BUILD_TESTING)
   )
   target_include_directories(
     test_emu_elf_source
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/engine
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/host
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
             ${UNICORN_INCLUDE_DIR}
   )
   target_link_libraries(test_emu_elf_source PRIVATE ${UNICORN_LIBRARY})
@@ -247,27 +239,25 @@ if(BUILD_TESTING)
   add_test(NAME test_emu_elf_source COMMAND test_emu_elf_source)
 
   add_executable(
-    test_emu_memmap tests/test_emu_memmap.c src/host/emu_host_io.c src/engine/emu_memmap.c
+    test_emu_memmap tests/src/test_emu_memmap.c src/host/emu_host_io.c src/engine/emu_memmap.c
                     src/engine/emu_memory_access.c
   )
   target_include_directories(
     test_emu_memmap
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src/host
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc ${UNICORN_INCLUDE_DIR}
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+            ${UNICORN_INCLUDE_DIR}
   )
   target_link_libraries(test_emu_memmap PRIVATE ${UNICORN_LIBRARY})
   target_compile_options(test_emu_memmap PRIVATE -Wall -Wextra -Werror)
   add_test(NAME test_emu_memmap COMMAND test_emu_memmap)
 
   add_executable(
-    test_board_sd_storage tests/test_board_sd_storage.c src/host/emu_host_io.c
+    test_board_sd_storage tests/src/test_board_sd_storage.c src/host/emu_host_io.c
                           src/periph/board_periph_sd_image.c src/periph/board_periph_sd_format.c
   )
   target_include_directories(
-    test_board_sd_storage
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src/host
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/periph
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+    test_board_sd_storage PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+                                  ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
   )
   target_compile_options(test_board_sd_storage PRIVATE -Wall -Wextra -Werror)
   add_test(NAME test_board_sd_storage COMMAND test_board_sd_storage)

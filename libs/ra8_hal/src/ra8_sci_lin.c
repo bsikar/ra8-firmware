@@ -343,7 +343,7 @@ ra8_err_t ra8_sci_lin_send_break(uint8_t channel)
 
 ra8_err_t ra8_sci_lin_send_header(uint8_t channel, uint8_t id)
 {
-  volatile r_sci_regs_t* reg = ra8_sci(channel);
+  volatile const r_sci_regs_t* reg = ra8_sci(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "lin_send_header: channel out of range");
   if (id > (uint8_t)k_ra8_sci_lin_id_max) {
     return k_ra8_err_invalid_arg;

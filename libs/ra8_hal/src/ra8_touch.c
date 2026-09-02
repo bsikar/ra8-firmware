@@ -391,12 +391,12 @@ RA8_INTERNAL static ra8_err_t internal_open_finalise(const ra8_touch_cfg_t* cfg)
     return k_ra8_err_invalid_state;
   }
   const ra8_err_t cfg_err = internal_validate_cfg(cfg);
-  RA8_RETURN_ON_ERROR(cfg_err, s_tag, "ra8_touch_open: cfg validation"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(cfg_err, s_tag, "ra8_touch_open: cfg validation");
 
   internal_stash_state(cfg);
 
   const ra8_err_t fin_err = internal_open_finalise(cfg);
-  RA8_RETURN_ON_ERROR(fin_err, s_tag, "ra8_touch_open: finalise"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(fin_err, s_tag, "ra8_touch_open: finalise");
 
   s_state.cb     = nullptr;
   s_state.ctx    = nullptr;
@@ -526,8 +526,8 @@ internal_read_inner(ra8_touch_point_t* out_points, uint8_t max_count, uint8_t* g
 
   /* Step 3 + 4: clamp, pull the per-point block, decode. */
   const uint8_t emit = internal_clamp_emit(status, max_count);
-  uint8_t raw[(size_t)k_ra8_touch_gt911_max_points * (size_t)k_ra8_touch_gt911_point_bytes] = {};
   if (emit > 0U) {
+    uint8_t raw[(size_t)k_ra8_touch_gt911_max_points * (size_t)k_ra8_touch_gt911_point_bytes] = {};
     const uint32_t  bytes   = (uint32_t)emit * (uint32_t)k_ra8_touch_gt911_point_bytes;
     const ra8_err_t blk_err = internal_gt911_read(k_ra8_touch_gt911_reg_point0, raw, bytes);
     if (blk_err != k_ra8_ok) {

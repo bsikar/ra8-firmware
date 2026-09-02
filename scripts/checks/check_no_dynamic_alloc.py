@@ -33,9 +33,6 @@ Flags two classes of violation:
                       mz_zip_reader_extract_file_to_heap.
                       Use the *_to_mem variants with a caller buffer.
 
-      - tinyxml2:     XMLDocument owns heap-backed node/string pools unless a
-                      reviewed caller-owned allocator is explicitly bound.
-
       - ESP-IDF HTTP: esp_http_client_init, esp_http_client_set_url,
                       esp_http_client_open, esp_http_client_close,
                       esp_http_client_cleanup. These allocate or release
@@ -51,7 +48,7 @@ Flags two classes of violation:
 Scope:
 
   Firmware code under libs/ra8_*/, src/, port/esp32_c6/, and examples/<app>/
-  where <app> has main.c + CMakeLists.txt is blocking. First-party production
+  where <app> has src/main.c + a root CMakeLists.txt is blocking. First-party production
   C-family code under tools/ is blocking for direct allocation. Build outputs,
   vendored code, and host-side tests/ are exempt.
 
@@ -85,9 +82,12 @@ from __future__ import annotations
 import pathlib
 import re
 import sys
+import tempfile
 
 from doxy_lex import blank_noncode
 from lint_targets import firmware_app_dirs, is_build_output_path
+from suppression_catalog import ALLOC_ALLOW_RE
+from suppression_comment_lex import extract_comments
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 SOURCE_SUFFIXES = {
@@ -174,17 +174,44 @@ ALL_NAMES = DIRECT_ALLOCATORS + TRANSITIVE_ALLOCATORS
 # stbtt_GetCodepointBitmap.
 SYM_RE = re.compile(r"\b(" + "|".join(re.escape(n) for n in ALL_NAMES) + r")\b\s*\(")
 CPP_DIRECT_RE = re.compile(r"\b(new|delete)\b")
-OPAQUE_OWNER_TYPE_RE = re.compile(r"\bXMLDocument\b")
 
-# Inline exemption marker. The reason after the colon is mandatory.
-ALLOW_RE = re.compile(r"alloc-allow\s*:\s*\S")
-BARE_ALLOW_RE = re.compile(r"alloc-allow\b")
+# Inline exemption hints are valid only inside lexical C-family comments.
+ALLOC_ALLOW_HINT_RE = re.compile(r"\balloc-allow\b", re.IGNORECASE)
 
 # Minimum number of argv entries needed for a file/flag argument to be present.
 MIN_ARGC_WITH_ARG = 2
 
 SCOPE_FILE_FLOORS = {"firmware": 850, "tool": 200}
 TOTAL_FILE_FLOOR = 1100
+
+
+def is_executable_occurrence(code: str, start: int, brace_depth: int) -> bool:
+    """Distinguish allocator uses from top-level function declarations."""
+    prefix = code[:start]
+    local_depth = brace_depth + prefix.count("{") - prefix.count("}")
+    if local_depth > 0:
+        return True
+    stripped = code.lstrip()
+    if stripped.startswith("#"):
+        return stripped.startswith("#define")
+    return any(marker in prefix for marker in ("=", "{", ":"))
+
+
+def allocation_symbols(code: str, brace_depth: int) -> list[str]:
+    """Return executable allocator symbols exactly as the checker governs them."""
+    symbols = [
+        match.group(1)
+        for match in SYM_RE.finditer(code)
+        if is_executable_occurrence(code, match.start(), brace_depth)
+    ]
+    if code.lstrip().startswith("#"):
+        return symbols
+    symbols.extend(
+        f"C++ {match.group(1)}"
+        for match in CPP_DIRECT_RE.finditer(code)
+        if is_executable_occurrence(code, match.start(), brace_depth)
+    )
+    return symbols
 
 
 def _firmware_scan_dirs() -> list[pathlib.Path]:
@@ -216,14 +243,10 @@ def _firmware_scan_dirs() -> list[pathlib.Path]:
     out.extend(REPO_ROOT / rel for rel in firmware_app_dirs())
     examples = REPO_ROOT / "examples"
     if examples.is_dir():
-        for tier in sorted(examples.iterdir()):
-            if not tier.is_dir():
-                continue
-            for entry in sorted(tier.iterdir()):
-                if not entry.is_dir():
-                    continue
-                if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
-                    out.append(entry)
+        for path in sorted(examples.glob("**/src/main.c")):
+            app = path.parent.parent
+            if (app / "CMakeLists.txt").is_file():
+                out.append(app)
     return out
 
 
@@ -231,7 +254,7 @@ def _tool_scan_dirs() -> list[pathlib.Path]:
     """First-party production host trees governed by explicit ownership.
 
     Both roots, because both hold shipped host code: ``tools/`` the developer
-    utilities, ``apps/`` the products. They were one root until media_dl moved
+    utilities, ``apps/`` the products. They were one root until mdl moved
     out of ``tools/``, at which point the file floor below caught the loss --
     199 files against a floor of 200 -- rather than letting a whole product
     stop being checked for direct allocator calls.
@@ -243,6 +266,8 @@ def _tool_scan_dirs() -> list[pathlib.Path]:
 
 FIRMWARE_SCAN_DIRS = _firmware_scan_dirs()
 TOOL_SCAN_DIRS = _tool_scan_dirs()
+# Vendor, test, and build trees are outside the production allocation ban.
+EXCLUDED_PARTS = frozenset({"third_party", "tests", "build", "_deps"})
 FIRMWARE_SCAN_RELS = [directory.relative_to(REPO_ROOT) for directory in FIRMWARE_SCAN_DIRS]
 TOOL_SCAN_RELS = [directory.relative_to(REPO_ROOT) for directory in TOOL_SCAN_DIRS]
 
@@ -255,9 +280,8 @@ def _scope(path: pathlib.Path) -> str | None:
         rel = path.resolve().relative_to(REPO_ROOT)
     except ValueError:
         return None
-    excluded_parts = {"third_party", "tests", "build", "_deps"}
     rel_str = str(rel)
-    if any(part in excluded_parts for part in rel.parts) or is_build_output_path(rel.as_posix()):
+    if any(part in EXCLUDED_PARTS for part in rel.parts) or is_build_output_path(rel.as_posix()):
         return None
     if any(
         rel_str == str(directory) or rel_str.startswith(str(directory) + "/")
@@ -277,6 +301,38 @@ def _is_in_scope(path: pathlib.Path) -> bool:
     return _scope(path) is not None
 
 
+def _allocation_controls(path: pathlib.Path, text: str) -> tuple[set[int], list[tuple[int, str]]]:
+    """Return reasoned control lines and malformed allocation controls."""
+    control_lines: set[int] = set()
+    malformed: list[tuple[int, str]] = []
+    comments, _ = extract_comments(path.as_posix(), text)
+    for comment in comments:
+        if ALLOC_ALLOW_HINT_RE.search(comment.text) is None:
+            continue
+        if ALLOC_ALLOW_RE.search(comment.text.strip()) is not None:
+            control_lines.add(comment.line)
+        else:
+            malformed.append((comment.line, comment.text.strip()))
+    return control_lines, malformed
+
+
+def _allocation_occurrences(stripped_lines: list[str]) -> list[tuple[int, str]]:
+    """Return executable allocator uses while excluding declarations."""
+    occurrences: list[tuple[int, str]] = []
+    brace_depth = 0
+    for line_no, stripped in enumerate(stripped_lines, start=1):
+        preprocessor = stripped.lstrip().startswith("#")
+        for symbol in allocation_symbols(stripped, brace_depth):
+            direct = symbol.startswith("C++ ") or symbol in DIRECT_ALLOCATORS
+            suffix = "" if symbol.startswith("C++ ") else "()"
+            kind = "direct" if direct else "transitive"
+            occurrences.append((line_no, f"{kind} dynamic allocation: {symbol}{suffix}"))
+        if not preprocessor:
+            brace_depth += stripped.count("{") - stripped.count("}")
+            brace_depth = max(0, brace_depth)
+    return occurrences
+
+
 def check(path: pathlib.Path) -> list[str]:
     """Report every dynamic-allocation call in one production source file.
 
@@ -290,44 +346,62 @@ def check(path: pathlib.Path) -> list[str]:
 
     original_lines = text.splitlines()
     stripped_lines = blank_noncode(text)[0].splitlines()
-    problems: list[str] = []
-
-    for idx, stripped in enumerate(stripped_lines):
-        line_no = idx + 1
-        original = original_lines[idx] if idx < len(original_lines) else ""
-        for m in SYM_RE.finditer(stripped):
-            sym = m.group(1)
-            if ALLOW_RE.search(original):
-                continue
-            kind = "direct" if sym in DIRECT_ALLOCATORS else "transitive"
-            problems.append(
-                f"{path}:{line_no}: {kind} dynamic allocation: {sym}() -- {original.strip()}"
-            )
-        cpp_code = "" if stripped.lstrip().startswith("#") else stripped
-        for match in CPP_DIRECT_RE.finditer(cpp_code):
-            if ALLOW_RE.search(original):
-                continue
-            keyword = match.group(1)
-            problems.append(
-                f"{path}:{line_no}: direct dynamic allocation: C++ {keyword} -- {original.strip()}"
-            )
-        for _match in OPAQUE_OWNER_TYPE_RE.finditer(cpp_code):
-            if ALLOW_RE.search(original):
-                continue
-            problems.append(
-                f"{path}:{line_no}: transitive dynamic allocation: "
-                f"tinyxml2::XMLDocument -- {original.strip()}"
-            )
-
-    for idx, original in enumerate(original_lines):
-        line_no = idx + 1
-        if BARE_ALLOW_RE.search(original) and not ALLOW_RE.search(original):
-            problems.append(
-                f"{path}:{line_no}: alloc-allow without reason "
-                f"-- write `alloc-allow: <reason>` instead"
-            )
-
+    control_lines, malformed_controls = _allocation_controls(path, text)
+    occurrences = _allocation_occurrences(stripped_lines)
+    allocator_lines = {line_no for line_no, _ in occurrences}
+    allowed_lines = control_lines & allocator_lines
+    problems = [
+        f"{path}:{line_no}: {detail} -- {original_lines[line_no - 1].strip()}"
+        for line_no, detail in occurrences
+        if line_no not in allowed_lines
+    ]
+    problems.extend(
+        f"{path}:{line_no}: alloc-allow without reason -- {control}"
+        for line_no, control in malformed_controls
+    )
+    problems.extend(
+        f"{path}:{line_no}: alloc-allow without governed allocation"
+        for line_no in sorted(control_lines - allocator_lines)
+    )
     return problems
+
+
+def selftest() -> int:
+    """Prove executable allocators fire and declarations/reasoned controls do not."""
+    with tempfile.TemporaryDirectory(prefix="dynamic-alloc-selftest-") as raw:
+        root = pathlib.Path(raw)
+        bad = root / "bad.c"
+        good = root / "good.c"
+        bad.write_text(
+            "void f(void) { void *p = malloc(4); stbi_load(0, 0, 0, 0, 0); }\n",
+            encoding="ascii",
+        )
+        good.write_text(
+            "void *malloc(size_t size);\n"
+            "void f(void) { void *p = malloc(4); /* alloc-allow: fixed startup owner */ }\n"
+            "// free(p) is prose\n",
+            encoding="ascii",
+        )
+        bad_findings = check(bad)
+        good_findings = check(good)
+    expected_bad_findings = 2
+    cases = (
+        (
+            len(bad_findings) == expected_bad_findings
+            and any("direct dynamic allocation" in item for item in bad_findings)
+            and any("transitive dynamic allocation" in item for item in bad_findings),
+            "direct and known transitive executable allocators fire",
+        ),
+        (not good_findings, "declarations, prose, and reasoned controls stay quiet"),
+    )
+    failed = [label for passed, label in cases if not passed]
+    for passed, label in cases:
+        print(f"  [{'ok' if passed else 'FAIL'}] {label}")
+    if failed:
+        print(f"check_no_dynamic_alloc.py --selftest: {len(failed)} failure(s)", file=sys.stderr)
+        return 1
+    print("check_no_dynamic_alloc.py --selftest: all cases pass (both directions).")
+    return 0
 
 
 def collect_repo_paths() -> list[pathlib.Path]:
@@ -389,6 +463,17 @@ def main() -> int:
     Returns 1 listing each blocking call site, 0 when both production domains
     are clean, and 2 for invalid usage or a collapsed full sweep.
     """
+    args = sys.argv[1:]
+    if args == ["--selftest"]:
+        return selftest()
+    if any(arg.startswith("-") and arg != "--all" for arg in args) or (
+        "--all" in args and args != ["--all"]
+    ):
+        print(
+            "usage: check_no_dynamic_alloc.py FILE [FILE ...] | --all | --selftest",
+            file=sys.stderr,
+        )
+        return 2
     paths, error = _requested_paths()
     if paths is None:
         return error

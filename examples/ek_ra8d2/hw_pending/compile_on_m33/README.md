@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 # compile_on_m33
 
 The complete bounded EPUB-to-RABOOK1 path running on the Cortex-M33 (#149b):
-miniz reads the archive, `ra8_xml` and the EPUB consumers parse metadata and
-chapters, and `libs/ra8_rabook_compile` emits the result. On a real import the
+miniz reads the archive, `xml` and the EPUB consumers parse metadata and
+chapters, and `apps/shared_libs/rabook_compile` emits the result. On a real import the
 heavy conversion belongs on the M33 @ 250 MHz precisely so the M85 @ 1 GHz stays
 free to keep the reader UI live. Here the M33 builds a small compiled book and
 the M85 proves it is well-formed.
@@ -22,7 +22,7 @@ the M85 proves it is well-formed.
   the output blob just above it, both inside the shared upper-SRAM window and
   below the M33's own bank at `0x22190000`. The M33 writes; the M85 reads only
   after `done`.
-- **The M85 validates the result.** It runs `ra8_book_validate` over the shared
+- **The M85 validates the result.** It runs `book_validate` over the shared
   blob (magic, version, table extents, body CRC-32) and cross-checks the
   M33-reported CRC and chapter count -- the same gate the real reader applies
   before walking a book.

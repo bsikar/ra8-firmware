@@ -1,0 +1,741 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Provision the HIL bench Pi to a known, current, board-reachable state.
+# Idempotent: safe to re-run; converges the checkout + toolchain + permissions.
+
+- name: Authenticate the whole-bench transaction before this role
+  ansible.builtin.include_tasks:
+    file: transaction_guard.yml
+    apply:
+      tags: [always]
+  tags: [always]
+
+- name: Require the authenticated whole-bench transaction
+  ansible.builtin.assert:
+    that:
+      - hil_bench_transaction_authenticated | default(false) | bool
+    fail_msg: The bench transaction guard did not complete; refusing role changes.
+  tags: [always]
+
+- name: Assert a distribution this role's package operations are calibrated for
+  # Not decoration. Every package operation below is Debian-specific by
+  # construction: the toolchain and the pinned linuxptp come from
+  # `ansible.builtin.apt`, and the installed linuxptp version is read back with
+  # `dpkg-query`. Without this the role reaches its first mutator and fails
+  # inside apt with a message about python3-apt, which never says the real
+  # problem is the host's distribution.
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'Debian'
+    fail_msg: >-
+      hil_bench targets Debian-family hosts (measured against Ubuntu 24.04 on
+      the bench Pi 5); this host reports {{ ansible_distribution }}
+      {{ ansible_distribution_version }} ({{ ansible_os_family }}).
+    success_msg: >-
+      {{ ansible_distribution }} {{ ansible_distribution_version }}
+      ({{ ansible_distribution_release }})
+
+- name: Install the bench build/flash toolchain
+  become: true
+  ansible.builtin.apt:
+    name: "{{ hil_bench_apt_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure git-lfs is initialised for the bench user
+  ansible.builtin.command:
+    cmd: git lfs install
+  register: hil_bench_lfs_install
+  changed_when: "'already initialized' not in hil_bench_lfs_install.stdout"
+
+- name: Check the currently-installed pinned Arm toolchain version
+  ansible.builtin.command:
+    cmd: "{{ hil_bench_arm_gcc_prefix }}/bin/arm-none-eabi-gcc -dumpfullversion"
+  check_mode: false
+  register: hil_bench_arm_ver
+  changed_when: false
+  failed_when: false
+
+- name: Install the pinned Arm GNU Toolchain (aarch64) to /opt
+  when: hil_bench_arm_gcc_dumpversion not in (hil_bench_arm_ver.stdout | default(''))
+  become: true
+  block:
+    - name: Download the pinned Arm toolchain tarball (sha256-verified)
+      ansible.builtin.get_url:
+        url: "{{ hil_bench_arm_gcc_url }}"
+        dest: /tmp/ra8-armgcc.tar.xz
+        checksum: "sha256:{{ hil_bench_arm_gcc_sha256_aarch64 }}"
+        mode: "0644"
+    - name: Create the toolchain prefix
+      ansible.builtin.file:
+        path: "{{ hil_bench_arm_gcc_prefix }}"
+        state: directory
+        mode: "0755"
+    - name: Extract the toolchain (strip the tarball's top dir)
+      ansible.builtin.unarchive:
+        src: /tmp/ra8-armgcc.tar.xz
+        dest: "{{ hil_bench_arm_gcc_prefix }}"
+        remote_src: true
+        extra_opts: ["--strip-components=1"]
+    - name: Put the pinned toolchain on PATH for all login shells
+      ansible.builtin.copy:
+        dest: /etc/profile.d/ra8-arm-toolchain.sh
+        content: "export PATH={{ hil_bench_arm_gcc_prefix }}/bin:$PATH\n"
+        mode: "0644"
+
+- name: Assert the non-apt vendor tools are present (fail loud, never skip)
+  # Suppression rationale: command -v is a Bash builtin, so shell is required here.
+  ansible.builtin.shell: "command -v {{ item }}"  # noqa: command-instead-of-shell
+  args:
+    executable: /bin/bash
+  environment:
+    PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  loop: "{{ hil_bench_required_vendor_tools }}"
+  register: hil_bench_vendor_check
+  check_mode: false
+  changed_when: false
+  failed_when: hil_bench_vendor_check.rc != 0
+
+# --- linuxptp + a board-facing port that can actually timestamp -------------
+
+- name: Install the pinned linuxptp release
+  become: true
+  ansible.builtin.apt:
+    name: "linuxptp={{ hil_bench_linuxptp_version }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Assert the installed linuxptp is the pinned release
+  # `command`, never `shell`: the command module runs no shell, so `${Version}`
+  # reaches dpkg-query literally as its output format. Under `shell` the
+  # calling shell would expand it to the empty string, dpkg-query would print
+  # nothing, and the comparison below could then never hold on any host.
+  ansible.builtin.command:
+    cmd: "dpkg-query -W -f=${Version} linuxptp"
+  register: hil_bench_linuxptp_installed
+  check_mode: false
+  changed_when: false
+  failed_when: (hil_bench_linuxptp_installed.stdout | trim) != hil_bench_linuxptp_version
+
+- name: Assert every linuxptp binary the bench scripts invoke is present
+  # Suppression rationale: command -v is a Bash builtin, so shell is required here.
+  ansible.builtin.shell: "command -v {{ item }}"  # noqa: command-instead-of-shell
+  args:
+    executable: /bin/bash
+  loop: "{{ hil_bench_linuxptp_binaries }}"
+  register: hil_bench_linuxptp_bins
+  check_mode: false
+  changed_when: false
+  failed_when: hil_bench_linuxptp_bins.rc != 0
+
+- name: Mask the distro's system-wide PTP daemons
+  # See this role's defaults: a HIL helper owns ptp4l for the length of a run,
+  # and a system unit on the same interface is an invisible second speaker.
+  # `systemctl mask`, not the systemd module: two of the three units are
+  # templates, and the module insists on resolving an instance they cannot have
+  # ("Could not find the requested service ptp4l@.service"). mask is idempotent
+  # and prints the symlink line only when it actually changes something.
+  become: true
+  ansible.builtin.command:
+    cmd: "systemctl mask {{ item }}"
+  loop: "{{ hil_bench_linuxptp_masked_units }}"
+  register: hil_bench_ptp_mask
+  changed_when: "'Created symlink' in (hil_bench_ptp_mask.stdout + hil_bench_ptp_mask.stderr)"
+
+- name: Read the host's default-route interface
+  ansible.builtin.command:
+    cmd: ip -o route show default
+  register: hil_bench_default_route
+  check_mode: false
+  changed_when: false
+
+- name: Require the fleet-owned physical board-interface identity
+  ansible.builtin.assert:
+    that:
+      - hil_bench_eth_iface | length > 0
+      - hil_bench_eth_mac is match('^[0-9a-f]{2}(:[0-9a-f]{2}){5}$')
+      - hil_bench_eth_sysfs_device is match('^/sys/devices/[A-Za-z0-9_.:/-]+$')
+      - hil_bench_eth_phc_index | int >= 0
+    fail_msg: >-
+      The board interface name, permanent MAC, canonical sysfs device, and PHC
+      index must be derived from infra/fleet.yml; empty role defaults are not
+      an interface-selection fallback.
+
+- name: Read the board-facing interface's canonical device identity
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/readlink
+      - -f
+      - "/sys/class/net/{{ hil_bench_eth_iface }}/device"
+  register: hil_bench_eth_device
+  check_mode: false
+  changed_when: false
+
+- name: Read the board-facing interface's permanent MAC
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/cat
+      - "/sys/class/net/{{ hil_bench_eth_iface }}/address"
+  register: hil_bench_eth_address
+  check_mode: false
+  changed_when: false
+
+- name: Assert the board-facing port is the fleet-declared physical device
+  ansible.builtin.assert:
+    that:
+      - hil_bench_eth_device.stdout | trim == hil_bench_eth_sysfs_device
+      - hil_bench_eth_address.stdout | trim == hil_bench_eth_mac
+    fail_msg: >-
+      {{ hil_bench_eth_iface }} resolves to
+      {{ hil_bench_eth_device.stdout | trim }} with MAC
+      {{ hil_bench_eth_address.stdout | trim }}, not the permanent physical
+      identity declared in infra/fleet.yml. Refuse a renamed, replaced, or
+      virtual interface instead of mutating it.
+
+- name: Assert the board-facing interface is not the host's uplink
+  # The bench reaches the world over wlan0 and Tailscale rides it. Giving the
+  # board-facing port the uplink's job would take the bench off the network
+  # mid-run; scripts/hil/eth_tcp.sh refuses the uplink for the same reason, and
+  # this assert catches the misconfiguration at provision time instead.
+  ansible.builtin.assert:
+    that:
+      - (hil_bench_default_route.stdout.split() | length) < 5 or
+        (hil_bench_default_route.stdout.split()[4]) != hil_bench_eth_iface
+    fail_msg: >-
+      {{ hil_bench_eth_iface }} carries this host's default route
+      ({{ hil_bench_default_route.stdout | trim }}), so it cannot also be the
+      board-facing bench port. Either move the uplink or point
+      hil_bench_eth_iface at the port the EK-RA8D2 is cabled to.
+
+- name: Read the board-facing interface's timestamping capabilities
+  ansible.builtin.command:
+    cmd: "ethtool -T {{ hil_bench_eth_iface }}"
+  register: hil_bench_ethtool_t
+  check_mode: false
+  changed_when: false
+  failed_when: false
+
+- name: Assert the board-facing interface has a PTP hardware clock
+  # This is the whole reason the Ethernet cable moved off the USB adapter
+  # (#292): the adapter reports "PTP Hardware Clock: none" and software-receive
+  # only, so any offset measured through it is dominated by host scheduling
+  # jitter rather than by the board. Asserting the capability keeps a future
+  # re-cable from silently degrading every timing result.
+  ansible.builtin.assert:
+    that:
+      - hil_bench_ethtool_t.rc == 0
+      - "'hardware-receive' in hil_bench_ethtool_t.stdout"
+      - "'hardware-transmit' in hil_bench_ethtool_t.stdout"
+      - "hil_bench_ethtool_t.stdout is not search('PTP Hardware Clock: none')"
+    fail_msg: >-
+      {{ hil_bench_eth_iface }} cannot hardware-timestamp
+      (ethtool -T rc {{ hil_bench_ethtool_t.rc }}):
+      {{ hil_bench_ethtool_t.stdout | default(hil_bench_ethtool_t.stderr) | trim }}.
+      A USB-Ethernet adapter will always fail this -- none of them carry a PHC.
+      Cable the EK-RA8D2 to the host's built-in Ethernet port and set
+      hil_bench_eth_iface to it.
+
+- name: Read the PHC index the board-facing interface exposes
+  ansible.builtin.shell:
+    cmd: >-
+      ethtool -T {{ hil_bench_eth_iface }}
+      | awk '/PTP Hardware Clock:/ {print $4}'
+    executable: /bin/bash
+  register: hil_bench_phc_index
+  check_mode: false
+  changed_when: false
+
+- name: Assert the PHC character device exists
+  ansible.builtin.stat:
+    path: "/dev/ptp{{ hil_bench_phc_index.stdout | trim }}"
+  register: hil_bench_phc_dev
+  failed_when: not hil_bench_phc_dev.stat.exists
+
+- name: Assert the PHC index matches the permanent fleet identity
+  ansible.builtin.assert:
+    that:
+      - hil_bench_phc_index.stdout | trim == hil_bench_eth_phc_index | string
+    fail_msg: >-
+      {{ hil_bench_eth_iface }} reports PHC
+      {{ hil_bench_phc_index.stdout | trim }}, not fleet-declared PHC
+      {{ hil_bench_eth_phc_index }}. Refuse a replacement or virtual link.
+
+- name: Ensure the bench user can access the serial ports
+  become: true
+  ansible.builtin.user:
+    name: "{{ ansible_user | default('star') }}"
+    groups: "{{ hil_bench_serial_group }}"
+    append: true
+
+- name: Check out the repo at the pinned ref (force -- the bench tree is disposable)
+  ansible.builtin.git:
+    repo: "{{ hil_bench_repo_url }}"
+    dest: "{{ hil_bench_repo_dir }}"
+    version: "{{ hil_bench_ref }}"
+    force: true
+    accept_hostkey: true
+  # A full --check --diff otherwise emits the entire remote worktree delta,
+  # which can be many megabytes and obscures the actionable role changes.
+  diff: false
+  environment:
+    GIT_LFS_SKIP_SMUDGE: "1"
+
+- name: Pull LFS content the HIL builds bake in
+  ansible.builtin.command:
+    cmd: git lfs pull
+    chdir: "{{ hil_bench_repo_dir }}"
+  register: hil_bench_lfs_pull_result
+  changed_when: hil_bench_lfs_pull_result.rc == 0
+  when: hil_bench_lfs_pull | bool
+
+# --- Locked bench-side Python environment -----------------------------------
+
+- name: Define the one HIL Python execution-authority manifest
+  ansible.builtin.set_fact:
+    hil_bench_python_authorities:
+      - src: "{{ role_path }}/../../../../pyproject.toml"
+        dest: pyproject.toml
+        mode: "0644"
+      - src: "{{ role_path }}/../../../../uv.lock"
+        dest: uv.lock
+        mode: "0644"
+      - src: "{{ role_path }}/../../../../scripts/dev/bootstrap_uv.py"
+        dest: bootstrap_uv.py
+        mode: "0755"
+      - src: "{{ role_path }}/../../../../scripts/dev/bootstrap_uv_exec.py"
+        dest: bootstrap_uv_exec.py
+        mode: "0644"
+      - src: "{{ role_path }}/../../../../scripts/dev/uv_release.json"
+        dest: uv_release.json
+        mode: "0644"
+      - src: "{{ role_path }}/../../../../scripts/dev/verify_locked_environment.py"
+        dest: verify_locked_environment.py
+        mode: "0755"
+      - src: "{{ role_path }}/files/requirements.lock"
+        dest: requirements.lock
+        mode: "0644"
+
+- name: Initialize the HIL Python authority digest material
+  ansible.builtin.set_fact:
+    hil_bench_python_digest_material: ""
+
+- name: Bind every HIL Python authority byte, name, and mode into one digest
+  ansible.builtin.set_fact:
+    hil_bench_python_digest_material: >-
+      {{ hil_bench_python_digest_material + item.dest + ':' + item.mode + ':' +
+         (lookup('file', item.src, rstrip=false) | hash('sha256')) + '\n' }}
+  loop: "{{ hil_bench_python_authorities }}"
+  loop_control:
+    label: "{{ item.dest }}"
+
+- name: Finalize the HIL Python execution-authority digest
+  ansible.builtin.set_fact:
+    hil_bench_python_digest: >-
+      {{ hil_bench_python_digest_material | hash('sha256') }}
+
+- name: Create the root-owned HIL Python context
+  become: true
+  ansible.builtin.file:
+    path: "{{ hil_bench_python_context }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Stage the exact HIL Python project and bootstrap inputs
+  become: true
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ hil_bench_python_context }}/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop: "{{ hil_bench_python_authorities }}"
+  register: hil_bench_python_stage
+
+- name: Inspect every deployed HIL Python execution authority without following links
+  become: true
+  ansible.builtin.stat:
+    path: "{{ hil_bench_python_context }}/{{ item.dest }}"
+    follow: false
+  loop: "{{ hil_bench_python_authorities }}"
+  loop_control:
+    label: "{{ item.dest }}"
+  register: hil_bench_python_authority_stats
+  changed_when: false
+  check_mode: false
+
+- name: Refuse check mode when any HIL Python authority needs apply
+  ansible.builtin.assert:
+    that:
+      - not ansible_check_mode or
+        (hil_bench_python_stage.results | selectattr('changed') | list | length == 0)
+    fail_msg: >-
+      APPLY REQUIRED: deployed HIL Python authorities differ from this checkout;
+      refusing to execute stale bootstrap or verifier bytes in check mode.
+
+- name: Prove every deployed HIL Python authority is regular and mode-exact
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.isreg
+      - not item.stat.islnk
+      - item.stat.mode == item.item.mode
+    fail_msg: >-
+      APPLY REQUIRED: {{ item.item.dest }} is absent, linked, non-regular, or has
+      the wrong mode; refusing to execute the staged HIL Python authority.
+  loop: "{{ hil_bench_python_authority_stats.results }}"
+  loop_control:
+    label: "{{ item.item.dest }}"
+
+- name: Read back every deployed HIL Python execution authority
+  become: true
+  ansible.builtin.slurp:
+    src: "{{ hil_bench_python_context }}/{{ item.dest }}"
+  loop: "{{ hil_bench_python_authorities }}"
+  loop_control:
+    label: "{{ item.dest }}"
+  register: hil_bench_python_authority_bytes
+  changed_when: false
+  check_mode: false
+
+- name: Prove every deployed HIL Python authority is byte-exact
+  ansible.builtin.assert:
+    that:
+      - (item.content | b64decode | hash('sha256')) ==
+        (lookup('file', item.item.src, rstrip=false) | hash('sha256'))
+    fail_msg: >-
+      APPLY REQUIRED: deployed {{ item.item.dest }} differs byte-for-byte from
+      this checkout; refusing a split-input HIL Python execution.
+  loop: "{{ hil_bench_python_authority_bytes.results }}"
+  loop_control:
+    label: "{{ item.item.dest }}"
+
+- name: Inspect the applied HIL Python lock marker
+  become: true
+  ansible.builtin.stat:
+    path: "{{ hil_bench_python_marker }}"
+    follow: false
+  register: hil_bench_python_marker_stat
+
+- name: Read the applied HIL Python lock marker
+  when: hil_bench_python_marker_stat.stat.exists
+  become: true
+  ansible.builtin.slurp:
+    src: "{{ hil_bench_python_marker }}"
+  register: hil_bench_python_marker_state
+  changed_when: false
+  check_mode: false
+
+- name: Check whether the managed HIL Python interpreter exists
+  become: true
+  ansible.builtin.stat:
+    path: "{{ hil_bench_python_venv }}/bin/python3"
+  register: hil_bench_python_stat
+
+- name: Decide whether the applied HIL Python lock marker is current
+  ansible.builtin.set_fact:
+    hil_bench_python_lock_current: >-
+      {{ hil_bench_python_marker_stat.stat.exists and
+         hil_bench_python_marker_state.content is defined and
+         (hil_bench_python_marker_state.content | b64decode | trim) ==
+         hil_bench_python_digest }}
+
+- name: Preflight the current HIL Python package set
+  when:
+    - hil_bench_python_lock_current
+    - hil_bench_python_stat.stat.exists
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ hil_bench_python_venv }}/bin/python3"
+      - "{{ hil_bench_python_context }}/verify_locked_environment.py"
+      - "{{ hil_bench_python_context }}/requirements.lock"
+  register: hil_bench_exact_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Preflight every direct HIL Python consumer dependency
+  when:
+    - hil_bench_python_lock_current
+    - hil_bench_python_stat.stat.exists
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ hil_bench_python_venv }}/bin/python3"
+      - -c
+      - >-
+        import PIL, dotenv, kasa, serial, usb.core, usb.backend.libusb1;
+        assert usb.backend.libusb1.get_backend() is not None
+  register: hil_bench_import_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Authenticate cached uv for the current HIL Python environment
+  when:
+    - hil_bench_python_lock_current
+    - hil_bench_python_stat.stat.exists
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - "{{ hil_bench_python_context }}/bootstrap_uv.py"
+      - --verify-cache
+      - --manifest
+      - "{{ hil_bench_python_context }}/uv_release.json"
+      - --cache-root
+      - "{{ hil_bench_uv_cache }}"
+  register: hil_bench_uv_preflight
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Preflight the current HIL Python dependency graph through authenticated uv
+  when:
+    - hil_bench_python_lock_current
+    - hil_bench_python_stat.stat.exists
+    - (hil_bench_uv_preflight.rc | default(1)) == 0
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - "{{ hil_bench_python_context }}/bootstrap_uv.py"
+      - --manifest
+      - "{{ hil_bench_python_context }}/uv_release.json"
+      - --cache-root
+      - "{{ hil_bench_uv_cache }}"
+      - --run
+      - --no-config
+      - pip
+      - check
+      - --python
+      - "{{ hil_bench_python_venv }}/bin/python3"
+  environment:
+    UV_PYTHON_DOWNLOADS: never
+  register: hil_bench_uv_pip_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Rebuild a missing, stale, or drifted managed HIL Python environment
+  ansible.builtin.set_fact:
+    hil_bench_python_rebuild: >-
+      {{ not hil_bench_python_lock_current or
+         not hil_bench_python_stat.stat.exists or
+         (hil_bench_exact_probe.rc | default(1)) != 0 or
+         (hil_bench_import_probe.rc | default(1)) != 0 or
+         (hil_bench_uv_preflight.rc | default(1)) != 0 or
+         (hil_bench_uv_pip_probe.rc | default(1)) != 0 }}
+
+- name: Explain the HIL Python check-mode boundary
+  when:
+    - ansible_check_mode
+    - hil_bench_python_rebuild
+  ansible.builtin.debug:
+    msg: >-
+      The HIL Python lock changed. Apply will replace the managed environment;
+      check mode does not download uv or execute a stale environment.
+
+- name: Converge and verify the exact HIL Python environment
+  when: not ansible_check_mode
+  become: true
+  block:
+    - name: Remove the stale HIL Python environment
+      when: hil_bench_python_rebuild
+      ansible.builtin.file:
+        path: "{{ hil_bench_python_venv }}"
+        state: absent
+
+    - name: Synchronize the exact uv-locked HIL dependency group
+      when: hil_bench_python_rebuild
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/python3
+          - "{{ hil_bench_python_context }}/bootstrap_uv.py"
+          - --manifest
+          - "{{ hil_bench_python_context }}/uv_release.json"
+          - --cache-root
+          - "{{ hil_bench_uv_cache }}"
+          - --ensure-and-run
+          - --directory
+          - "{{ hil_bench_python_context }}"
+          - --no-config
+          - sync
+          - --locked
+          - --only-group
+          - hil
+          - --no-install-project
+          - --python
+          - /usr/bin/python3
+      environment:
+        UV_PROJECT_ENVIRONMENT: "{{ hil_bench_python_venv }}"
+        UV_PYTHON_DOWNLOADS: never
+      register: hil_bench_python_sync
+      changed_when: hil_bench_python_sync.rc == 0
+
+    - name: Prove the HIL environment has exactly the exported package set
+      ansible.builtin.command:
+        argv:
+          - "{{ hil_bench_python_venv }}/bin/python3"
+          - "{{ hil_bench_python_context }}/verify_locked_environment.py"
+          - "{{ hil_bench_python_context }}/requirements.lock"
+      changed_when: false
+
+    - name: Probe every direct HIL Python consumer dependency
+      ansible.builtin.command:
+        argv:
+          - "{{ hil_bench_python_venv }}/bin/python3"
+          - -c
+          - >-
+            import PIL, dotenv, kasa, serial, usb.core, usb.backend.libusb1;
+            assert usb.backend.libusb1.get_backend() is not None
+      changed_when: false
+
+    - name: Check the HIL Python dependency graph
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/python3
+          - "{{ hil_bench_python_context }}/bootstrap_uv.py"
+          - --manifest
+          - "{{ hil_bench_python_context }}/uv_release.json"
+          - --cache-root
+          - "{{ hil_bench_uv_cache }}"
+          - --run
+          - --no-config
+          - pip
+          - check
+          - --python
+          - "{{ hil_bench_python_venv }}/bin/python3"
+      environment:
+        UV_PYTHON_DOWNLOADS: never
+      changed_when: false
+
+    - name: Publish the HIL Python marker only after every proof passes
+      when: hil_bench_python_rebuild
+      ansible.builtin.copy:
+        content: "{{ hil_bench_python_digest }}\n"
+        dest: "{{ hil_bench_python_marker }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+- name: Provision the bench-lock state directory (#497)
+  # /var/lib and not /tmp or /run: the record must not depend on whether this
+  # host's /tmp is a tmpfs. A reboot is handled explicitly instead, by boot_id.
+  # 1777 because several accounts (the bench user, a CI runner, a human) share
+  # this box and any of them may be the next acquirer; the sticky bit keeps one
+  # from unlinking another's files.
+  become: true
+  ansible.builtin.file:
+    path: "{{ hil_bench_lock_dir }}"
+    state: directory
+    mode: "1777"
+  tags: [bench_lock]
+
+- name: Create the flock inode and the journal
+  # The flock is taken on THIS inode. Two actors flocking two different inodes
+  # is the one silent-corruption path in the design, so the canonical path is
+  # provisioned here rather than invented by whichever client got there first.
+  become: true
+  ansible.builtin.file:
+    path: "{{ hil_bench_lock_dir }}/{{ item }}"
+    state: touch
+    mode: "0666"
+    access_time: preserve
+    modification_time: preserve
+  loop:
+    - board.lock
+    - journal.ndjson
+  tags: [bench_lock]
+
+- name: Bound the release of a client that vanishes without closing its socket
+  # The bench lock releases the instant an ssh CLIENT dies, because the remote
+  # holder blocks on the channel as stdin -- measured at 0.29 s. That covers a
+  # killed process. It does NOT cover a client whose machine loses power or is
+  # severed at the network: no FIN arrives, so only sshd can notice, and with
+  # the default ClientAliveInterval of 0 that falls back to TCP keepalive --
+  # over two hours on this host's sysctls. That is precisely the stale lock the
+  # whole design exists to rule out, so it is configured, not hoped for.
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/60-ra8-bench-clientalive.conf
+    content: |
+      # Managed by the hil_bench ansible role -- see issue #497.
+      # Bounds how long a bench hold survives a client that vanished without
+      # closing its socket. 15s x 4 = ~60s, against hours of TCP keepalive.
+      ClientAliveInterval 15
+      ClientAliveCountMax 4
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Reload sshd
+  tags: [bench_lock]
+
+- name: Install the bench-lock reaper timer
+  # Advisory only, and deliberately so. The reaper does not release anything a
+  # live holder owns within its budget -- the flock already handles death. It
+  # exists to bound an OVERRUN: an agent or CI holder past the budget it
+  # declared gets SIGTERM. A HUMAN holder is only ever flagged, because they
+  # may be standing at the bench with a probe on a test point.
+  become: true
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/{{ item.name }}"
+    content: "{{ item.body }}"
+    mode: "0644"
+  loop:
+    - name: ra8-bench-reap.service
+      body: |
+        [Unit]
+        Description=Reap overrun RA8 bench holds (#497)
+
+        [Service]
+        Type=oneshot
+        ExecStart={{ hil_bench_repo_dir }}/scripts/hil/lib/bench_host.sh reap
+    - name: ra8-bench-reap.timer
+      body: |
+        [Unit]
+        Description=Reap overrun RA8 bench holds every 5 minutes (#497)
+
+        [Timer]
+        OnBootSec=5min
+        OnUnitActiveSec=5min
+
+        [Install]
+        WantedBy=timers.target
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Restart the bench reaper timer
+  tags: [bench_lock]
+
+- name: Health check -- the EK-RA8D2 must be reachable over J-Link (EIL==HIL ground truth)
+  # This RESETS AND HALTS the target. The fleet dispatcher already holds and
+  # supervises the authoritative wrapped lock around the whole play, including
+  # c6_toolchain and ad2_tools. Taking a second lock here would deadlock against
+  # our own transaction; direct playbook applies were refused before task one.
+  ansible.builtin.shell:
+    cmd: >-
+      device=$(/bin/bash -p
+      {{ (hil_bench_repo_dir ~ '/scripts/hil/lib/rig_contract.sh') | quote }}
+      --default JLINK_DEVICE) &&
+      printf 'si 1\nspeed {{ hil_bench_jlink_speed }}\nr\nh\nq\n' > /tmp/hil_bench_ping.jlink &&
+      JLinkExe -device "$device" -if SWD
+      -speed {{ hil_bench_jlink_speed }} -autoconnect 1
+      -CommandFile /tmp/hil_bench_ping.jlink
+  register: hil_bench_jlink_probe
+  changed_when: false
+  failed_when: "'Cortex-M85' not in hil_bench_jlink_probe.stdout"
+
+- name: Report bench state
+  ansible.builtin.debug:
+    msg: >-
+      HIL bench ready: repo at {{ hil_bench_ref }} in {{ hil_bench_repo_dir }},
+      toolchain + vendor tools present, board reachable
+      ({{ 'Cortex-M85 found' if 'Cortex-M85' in hil_bench_jlink_probe.stdout else 'NOT found' }});
+      linuxptp {{ hil_bench_linuxptp_installed.stdout | trim }} with
+      {{ hil_bench_linuxptp_binaries | join(', ') }}, board-facing port
+      {{ hil_bench_eth_iface }} hardware-timestamps on
+      /dev/ptp{{ hil_bench_phc_index.stdout | trim }}.

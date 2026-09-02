@@ -89,7 +89,6 @@ void priv_lock_release(void)
   s_lock.release(s_lock.ctx);
 }
 
-RA8_DI_SLOT("fs_lock")
 ra8_err_t ra8_fs_set_lock(const ra8_fs_lock_t* lock)
 {
   if (lock == nullptr) {

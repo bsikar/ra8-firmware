@@ -1,0 +1,795 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# A dedicated native Actions listener for HIL scheduling. It builds on the dev
+# box and delegates board interaction to the fleet-declared bench through
+# scripts/hil; no USB device or J-Link is attached to this host.
+
+- name: Re-authenticate the mutation boundary for direct HIL task inclusion
+  ansible.builtin.include_tasks:
+    file: hil_mutation_guard.yml
+    apply:
+      tags: [always]
+  tags: [always]
+
+- name: Require the authenticated HIL mutation boundary
+  ansible.builtin.assert:
+    that:
+      - dev_box_hil_mutation_authenticated | default(false) | bool
+    fail_msg: The HIL mutation guard did not complete; refusing listener changes.
+  tags: [always]
+
+- name: Require the fleet-derived native HIL declaration
+  ansible.builtin.assert:
+    that:
+      - dev_box_hil_runner_name | length > 0
+      - dev_box_hil_runner_repo_url | length > 0
+      - dev_box_hil_runner_labels | length > 0
+      - dev_box_hil_runner_bench_alias | length > 0
+      - dev_box_hil_runner_bench_address | length > 0
+      - dev_box_hil_runner_bench_names | length > 0
+      - dev_box_hil_runner_bench_iface | length > 0
+      - dev_box_hil_runner_bench_mac is match('^[0-9a-f]{2}(:[0-9a-f]{2}){5}$')
+      - dev_box_hil_runner_bench_sysfs_device is match('^/sys/devices/[A-Za-z0-9_.:/-]+$')
+      - dev_box_hil_runner_bench_phc_index | int >= 0
+      - dev_box_hil_runner_bench_policy_sha256 is match('^[0-9a-f]{64}$')
+    fail_msg: >-
+      Native HIL identity and bench topology come from infra/fleet.yml. Run
+      this role through `just infra::apply dev` rather than invoking the
+      playbook with its empty standalone defaults.
+
+- name: Check whether this runner is already registered
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_hil_runner_root }}/.runner"
+    follow: false
+  register: dev_box_hil_runner_registration
+  changed_when: false
+
+- name: Refuse a linked or non-regular runner registration identity
+  ansible.builtin.assert:
+    that:
+      - not dev_box_hil_runner_registration.stat.exists
+        or dev_box_hil_runner_registration.stat.isreg
+      - not dev_box_hil_runner_registration.stat.exists
+        or not dev_box_hil_runner_registration.stat.islnk
+    fail_msg: >-
+      {{ dev_box_hil_runner_root }}/.runner exists but is not a real regular
+      file; refusing to trust it as the dedicated listener registration.
+
+- name: Require a short-lived token only for first registration
+  ansible.builtin.assert:
+    that:
+      - dev_box_hil_runner_registration.stat.exists
+        or (dev_box_hil_runner_registration_token | default('') | length > 0)
+    fail_msg: >-
+      {{ dev_box_hil_runner_name }} is not registered. Mint a repo-scoped
+      one-hour registration token and pass it through a mode-0600 Ansible vars
+      file as dev_box_hil_runner_registration_token. Existing registrations
+      converge without any token.
+
+- name: Install the official runner's Debian runtime dependencies
+  become: true
+  ansible.builtin.apt:
+    name: "{{ dev_box_hil_runner_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Verify Ansible provisioned the globally pinned Just binary
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/just
+      - --version
+  register: dev_box_hil_just_version
+  changed_when: false
+  check_mode: false
+
+- name: Reject a missing or drifted Just installation
+  ansible.builtin.assert:
+    that:
+      - dev_box_hil_just_version.stdout | trim
+        == 'just ' ~ dev_box_pins.JUST_VERSION
+    fail_msg: >-
+      The HIL listener requires globally provisioned Just
+      {{ dev_box_pins.JUST_VERSION }}, but /usr/local/bin/just reports
+      {{ dev_box_hil_just_version.stdout | trim }}.  The workflow deliberately
+      does not install tools; fix the dev_box provisioner.
+
+- name: Create the isolated HIL runner group
+  become: true
+  ansible.builtin.group:
+    name: "{{ dev_box_hil_runner_group }}"
+    system: true
+
+- name: Inspect the dedicated HIL public key before account planning
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_hil_runner_home }}/.ssh/id_ed25519.pub"
+    follow: false
+  register: dev_box_hil_runner_public_key_stat
+  changed_when: false
+
+- name: Refuse a linked or non-regular dedicated HIL public key
+  ansible.builtin.assert:
+    that:
+      - not dev_box_hil_runner_public_key_stat.stat.exists
+        or dev_box_hil_runner_public_key_stat.stat.isreg
+      - not dev_box_hil_runner_public_key_stat.stat.exists
+        or not dev_box_hil_runner_public_key_stat.stat.islnk
+    fail_msg: >-
+      {{ dev_box_hil_runner_home }}/.ssh/id_ed25519.pub exists but is not a
+      real regular file; refusing to consume it as the bench authorization.
+
+- name: Create the isolated HIL runner account and its dedicated SSH key
+  become: true
+  ansible.builtin.user:
+    name: "{{ dev_box_hil_runner_user }}"
+    group: "{{ dev_box_hil_runner_group }}"
+    home: "{{ dev_box_hil_runner_home }}"
+    shell: /usr/sbin/nologin
+    system: true
+    create_home: true
+    generate_ssh_key: true
+    ssh_key_type: ed25519
+    ssh_key_file: .ssh/id_ed25519
+    ssh_key_comment: "ra8-hil@dev"
+
+- name: Keep the isolated runner home private
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_hil_runner_home }}"
+    state: directory
+    owner: "{{ dev_box_hil_runner_user }}"
+    group: "{{ dev_box_hil_runner_group }}"
+    mode: "0700"
+
+- name: Explain the fresh-account check-mode boundary
+  when:
+    - ansible_check_mode
+    - not dev_box_hil_runner_public_key_stat.stat.exists
+  ansible.builtin.debug:
+    msg: >-
+      The isolated HIL account and its SSH key are absent, and their creation
+      is reported as planned. Check mode does not materialize the public key;
+      this dry run ends here instead of consuming predicted-but-absent key
+      bytes. Apply once, then a subsequent check validates the complete
+      listener transaction without changes.
+
+- name: End a fresh-account check before consuming the planned public key
+  when:
+    - ansible_check_mode
+    - not dev_box_hil_runner_public_key_stat.stat.exists
+  ansible.builtin.meta: end_host
+
+- name: Inspect the private HIL compiler-cache root without following links
+  ansible.builtin.stat:
+    path: "{{ dev_box_hil_ccache_dir }}"
+    follow: false
+  register: dev_box_hil_ccache_root
+  changed_when: false
+
+- name: Refuse a linked or non-directory HIL compiler-cache root
+  ansible.builtin.assert:
+    that:
+      - >-
+        not dev_box_hil_ccache_root.stat.exists or
+        (dev_box_hil_ccache_root.stat.isdir and
+         not dev_box_hil_ccache_root.stat.islnk)
+    fail_msg: >-
+      {{ dev_box_hil_ccache_dir }} exists but is not a real directory; refusing
+      to use it as the isolated HIL compiler cache.
+    quiet: true
+
+- name: Create the private HIL compiler cache
+  # The cache contains objects produced from untrusted checkout content. Do not
+  # share it with interactive accounts or general CI: either direction would
+  # let one trust domain replace compiler output consumed by the other.
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_hil_ccache_dir }}"
+    state: directory
+    owner: "{{ dev_box_hil_runner_user }}"
+    group: "{{ dev_box_hil_runner_group }}"
+    mode: "0700"
+
+- name: Configure the private HIL compiler cache
+  # In check mode an absent directory is reported by the preceding task but is
+  # deliberately not created. Skip its child config until a later apply rather
+  # than making the dry run fail on a predicted parent directory.
+  when: not ansible_check_mode or dev_box_hil_ccache_root.stat.exists
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ dev_box_hil_ccache_dir }}/ccache.conf"
+    owner: "{{ dev_box_hil_runner_user }}"
+    group: "{{ dev_box_hil_runner_group }}"
+    mode: "0600"
+    content: |
+      # Private compiler cache for the native HIL runner.
+      # Managed by the dev_box Ansible role -- edit the role, not this file.
+      max_size = {{ dev_box_hil_ccache_max_size }}
+      base_dir = /
+      hash_dir = false
+      sloppiness = include_file_mtime,include_file_ctime,locale,time_macros
+      umask = 077
+
+- name: Prove the HIL runner can create and remove a private cache file
+  when: not ansible_check_mode
+  block:
+    - name: Create a private-cache throwaway file as the isolated runner
+      become: true
+      become_user: "{{ dev_box_hil_runner_user }}"
+      ansible.builtin.tempfile:
+        path: "{{ dev_box_hil_ccache_dir }}"
+        prefix: .ra8-hil-cache-probe.
+        state: file
+      register: dev_box_hil_ccache_probe
+      changed_when: false
+
+    - name: Remove the private-cache throwaway file as the isolated runner
+      become: true
+      become_user: "{{ dev_box_hil_runner_user }}"
+      ansible.builtin.file:
+        path: "{{ dev_box_hil_ccache_probe.path }}"
+        state: absent
+      changed_when: false
+
+  always:
+    - name: Remove any private-cache probe residue after a failed acceptance
+      when:
+        - dev_box_hil_ccache_probe is defined
+        - dev_box_hil_ccache_probe.path is defined
+        - dev_box_hil_ccache_probe.path | length > 0
+      become: true
+      become_user: "{{ dev_box_hil_runner_user }}"
+      ansible.builtin.file:
+        path: "{{ dev_box_hil_ccache_probe.path }}"
+        state: absent
+      changed_when: false
+
+- name: Read the dedicated HIL public key
+  become: true
+  ansible.builtin.slurp:
+    src: "{{ dev_box_hil_runner_home }}/.ssh/id_ed25519.pub"
+  register: dev_box_hil_runner_public_key
+
+- name: Create the isolated bench-side HIL group
+  delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
+  become: true
+  ansible.builtin.group:
+    name: "{{ dev_box_hil_runner_bench_user }}"
+    system: true
+
+- name: Create the isolated bench-side HIL account
+  delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
+  become: true
+  ansible.builtin.user:
+    name: "{{ dev_box_hil_runner_bench_user }}"
+    group: "{{ dev_box_hil_runner_bench_user }}"
+    home: "{{ dev_box_hil_runner_bench_home }}"
+    shell: /bin/bash
+    system: true
+    create_home: true
+    groups: dialout,plugdev
+    append: true
+
+- name: Keep the isolated bench-side home private
+  delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_hil_runner_bench_home }}"
+    state: directory
+    owner: "{{ dev_box_hil_runner_bench_user }}"
+    group: "{{ dev_box_hil_runner_bench_user }}"
+    mode: "0700"
+
+- name: Create the bench-side SSH directory
+  delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_hil_runner_bench_home }}/.ssh"
+    state: directory
+    owner: "{{ dev_box_hil_runner_bench_user }}"
+    group: "{{ dev_box_hil_runner_bench_user }}"
+    mode: "0700"
+
+- name: Authorize only the dedicated dev-box key on the bench account
+  # The account is role-owned, so replacing this file is intentional: a stale
+  # human key must not turn this non-human endpoint into a second login path.
+  # Forwarding and TTY features are unnecessary for the HIL scripts and widen
+  # the reach of arbitrary checkout code, so the key disables all of them.
+  delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ dev_box_hil_runner_bench_home }}/.ssh/authorized_keys"
+    owner: "{{ dev_box_hil_runner_bench_user }}"
+    group: "{{ dev_box_hil_runner_bench_user }}"
+    mode: "0600"
+    content: >-
+      no-agent-forwarding,no-port-forwarding,no-X11-forwarding,no-user-rc,no-pty
+      {{ dev_box_hil_runner_public_key.content | b64decode | trim }}
+
+- name: Create the root-owned HIL helper directory
+  delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/libexec
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the narrow privileged HIL helper
+  delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
+  become: true
+  ansible.builtin.copy:
+    src: ra8-hil-privileged.py
+    dest: /usr/local/libexec/ra8-hil-privileged
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the fleet-derived physical-interface helper policy
+  delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
+  become: true
+  ansible.builtin.template:
+    src: ra8-hil-privileged-policy.json.j2
+    dest: /etc/ra8-hil-privileged-policy.json
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/bin/python3 -m json.tool %s
+
+- name: Grant the bench account only the fixed HIL helper executable
+  # The helper independently validates exact operations, topology, interface,
+  # subnet, state ownership, argv, and time bounds.  No shell, ip, uhubctl,
+  # tee, arbitrary path, file-reading, or diagnostic executable is granted.
+  delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/ra8-hil
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+    content: |
+      {{ dev_box_hil_runner_bench_user }} ALL=(root) NOPASSWD: /usr/local/libexec/ra8-hil-privileged
+
+- name: Enforce the dedicated runner SSH directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_hil_runner_home }}/.ssh"
+    state: directory
+    owner: "{{ dev_box_hil_runner_user }}"
+    group: "{{ dev_box_hil_runner_group }}"
+    mode: "0700"
+
+- name: Pin the bench host key for the unattended runner
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ dev_box_hil_runner_home }}/.ssh/known_hosts"
+    owner: "{{ dev_box_hil_runner_user }}"
+    group: "{{ dev_box_hil_runner_group }}"
+    mode: "0600"
+    content: >-
+      {{ dev_box_hil_runner_bench_names | join(',') }}
+      {{ dev_box_hil_runner_bench_host_key }}
+
+- name: Restrict the unattended runner to its dedicated bench identity
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ dev_box_hil_runner_home }}/.ssh/config"
+    owner: "{{ dev_box_hil_runner_user }}"
+    group: "{{ dev_box_hil_runner_group }}"
+    mode: "0600"
+    content: |
+      Host {{ dev_box_hil_runner_bench_names | join(' ') }} *.local
+        HostName {{ dev_box_hil_runner_bench_address }}
+        User {{ dev_box_hil_runner_bench_user }}
+        IdentityFile {{ dev_box_hil_runner_home }}/.ssh/id_ed25519
+        IdentitiesOnly yes
+        BatchMode yes
+        PasswordAuthentication no
+        KbdInteractiveAuthentication no
+        StrictHostKeyChecking yes
+        UserKnownHostsFile {{ dev_box_hil_runner_home }}/.ssh/known_hosts
+
+- name: Inspect the protected rig environment on the control node
+  delegate_to: localhost
+  become: false
+  ansible.builtin.stat:
+    path: "{{ dev_box_hil_runner_rig_env_src }}"
+  register: dev_box_hil_rig_env_source
+
+- name: Require a regular mode-0600 rig environment source
+  ansible.builtin.assert:
+    that:
+      - dev_box_hil_rig_env_source.stat.exists
+      - dev_box_hil_rig_env_source.stat.isreg | default(false)
+      - dev_box_hil_rig_env_source.stat.mode == '0600'
+    fail_msg: >-
+      {{ dev_box_hil_runner_rig_env_src }} must be a regular mode-0600 file on
+      the control node.  It supplies PI_HOST and JLINK_SN for the HIL runner;
+      refusing to copy an absent or broadly readable secrets file.
+
+- name: Parse only the HIL allowlist from the protected rig environment
+  # Do not source or copy .env. It also contains TAPO credentials, which a
+  # repository workflow must never inherit. The parser writes values only to
+  # a mode-0600 temporary file; its visible output contains key names only so
+  # validation failures remain diagnosable without exposing secrets.
+  block:
+    - name: Allocate a protected allowlist result file on the control node
+      delegate_to: localhost
+      become: false
+      ansible.builtin.tempfile:
+        state: file
+        prefix: ra8-hil-rig-env-
+      register: dev_box_hil_rig_env_result
+      changed_when: false
+      check_mode: false
+
+    - name: Validate HIL keys through the shared typed rig contract
+      delegate_to: localhost
+      become: false
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ dev_box_context_src }}/scripts/hil/rig_env_parse.py"
+          - --input
+          - "{{ dev_box_hil_runner_rig_env_src }}"
+          - --output
+          - "{{ dev_box_hil_rig_env_result.path }}"
+          - --require
+          - PI_HOST
+          - --require
+          - JLINK_SN
+      register: dev_box_hil_rig_env_validation
+      changed_when: false
+      check_mode: false
+
+    - name: Read the protected allowlist result without logging values
+      delegate_to: localhost
+      become: false
+      ansible.builtin.slurp:
+        src: "{{ dev_box_hil_rig_env_result.path }}"
+      register: dev_box_hil_rig_env_payload
+      no_log: true
+      check_mode: false
+
+    - name: Decode the allowlisted rig settings without logging values
+      ansible.builtin.set_fact:
+        dev_box_hil_rig_env: >-
+          {{ dev_box_hil_rig_env_payload.content | b64decode | from_json }}
+      no_log: true
+
+    - name: Derive HIL endpoints without logging protected values
+      ansible.builtin.set_fact:
+        # The interactive account keeps its existing user-qualified SSH target;
+        # only the isolated service normalizes the host to its role-owned identity.
+        dev_box_hil_interactive_pi_host: "{{ dev_box_hil_rig_env.PI_HOST }}"
+        # Discard any maintainer username carried by the private .env. The service
+        # must use the role-owned ra8-hil identity from its SSH config, never the
+        # interactive account historically embedded in PI_HOST.
+        dev_box_hil_pi_host: >-
+          {{ (dev_box_hil_rig_env.PI_HOST | split('@')) | last }}
+        dev_box_hil_jlink_device: "{{ dev_box_hil_rig_env.JLINK_DEVICE }}"
+        dev_box_hil_pi_repo: "{{ dev_box_hil_rig_env.PI_REPO }}"
+      no_log: true
+  always:
+    - name: Remove the protected allowlist result file
+      delegate_to: localhost
+      become: false
+      ansible.builtin.file:
+        path: "{{ dev_box_hil_rig_env_result.path }}"
+        state: absent
+      when:
+        - dev_box_hil_rig_env_result is defined
+        - dev_box_hil_rig_env_result.path is defined
+      changed_when: false
+      check_mode: false
+
+- name: Require the typed bench host to be a fleet-declared endpoint
+  # Syntax and serialization safety are already owned by rig_contract.sh.
+  # This role-level assertion adds topology policy: the isolated runner may
+  # reach only its declared alias/name, never an otherwise valid arbitrary host.
+  ansible.builtin.assert:
+    that:
+      - dev_box_hil_pi_host in dev_box_hil_runner_bench_names
+        or dev_box_hil_pi_host is match('^[A-Za-z0-9-]+[.]local$')
+    fail_msg: >-
+      PI_HOST passed the shared typed value contract but is not a declared name
+      for the dedicated {{ dev_box_hil_runner_bench_alias }} SSH endpoint.
+
+- name: Create the protected runner configuration directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_hil_runner_env_file | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Create the interactive HIL configuration directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_hil_interactive_env_file | dirname }}"
+    state: directory
+    owner: "{{ dev_box_user }}"
+    group: "{{ dev_box_user }}"
+    mode: "0700"
+
+- name: Install the exact four-key interactive HIL environment
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ dev_box_hil_interactive_env_file }}"
+    owner: "{{ dev_box_user }}"
+    group: "{{ dev_box_user }}"
+    mode: "0600"
+    content: |
+      PI_HOST={{ dev_box_hil_interactive_pi_host }}
+      JLINK_SN={{ dev_box_hil_rig_env.JLINK_SN }}
+      JLINK_DEVICE={{ dev_box_hil_jlink_device }}
+      PI_REPO={{ dev_box_hil_pi_repo }}
+  no_log: true
+
+- name: Inspect the installed runner pin without following links
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_hil_runner_root }}/.ra8-version"
+    follow: false
+  register: dev_box_hil_runner_pin_stat
+
+- name: Check the installed runner pin
+  when: dev_box_hil_runner_pin_stat.stat.exists
+  become: true
+  ansible.builtin.slurp:
+    src: "{{ dev_box_hil_runner_root }}/.ra8-version"
+  register: dev_box_hil_runner_pin_file
+
+- name: Decide whether the pinned runner package must be installed
+  ansible.builtin.set_fact:
+    dev_box_hil_runner_install_needed: >-
+      {{ not dev_box_hil_runner_pin_stat.stat.exists
+         or dev_box_hil_runner_pin_file.content is not defined
+         or (dev_box_hil_runner_pin_file.content | b64decode | trim)
+            != dev_box_hil_runner_install_stamp }}
+
+- name: Explain the fresh-runner check-mode boundary
+  when:
+    - ansible_check_mode
+    - dev_box_hil_runner_install_needed | bool
+  ansible.builtin.debug:
+    msg: >-
+      The pinned Actions runner package is absent or drifted, and its
+      installation is reported as planned. Check mode does not materialize
+      runsvc.sh or Runner.Listener; this dry run ends here instead of consuming
+      predicted-but-absent package bytes. Apply once, then a subsequent check
+      validates the complete listener transaction without changes.
+
+- name: End a fresh-runner check before consuming planned package bytes
+  when:
+    - ansible_check_mode
+    - dev_box_hil_runner_install_needed | bool
+  ansible.builtin.meta: end_host
+
+- name: Install the exact three-key HIL service environment
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ dev_box_hil_runner_env_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      PI_HOST={{ dev_box_hil_pi_host }}
+      JLINK_SN={{ dev_box_hil_rig_env.JLINK_SN }}
+      JLINK_DEVICE={{ dev_box_hil_jlink_device }}
+  no_log: true
+
+- name: Create the runner root
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_hil_runner_root }}"
+    state: directory
+    owner: "{{ dev_box_hil_runner_user }}"
+    group: "{{ dev_box_hil_runner_group }}"
+    mode: "0700"
+
+- name: Remove only package-owned paths before a pinned runner upgrade
+  when: dev_box_hil_runner_install_needed | bool
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_hil_runner_root }}/{{ item }}"
+    state: absent
+  loop:
+    - bin
+    - externals
+    - config.sh
+    - env.sh
+    - run.sh
+    - run-helper.cmd.template
+    - run-helper.sh.template
+    - runsvc.sh
+    - safe_sleep.sh
+    - svc.sh
+
+- name: Download the pinned official Actions runner
+  when: dev_box_hil_runner_install_needed | bool
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ dev_box_hil_runner_url }}"
+    dest: "/var/tmp/actions-runner-linux-x64-{{ dev_box_hil_runner_version }}.tar.gz"
+    checksum: "sha256:{{ dev_box_hil_runner_sha256 }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Extract the pinned official Actions runner
+  when: dev_box_hil_runner_install_needed | bool
+  become: true
+  ansible.builtin.unarchive:
+    src: "/var/tmp/actions-runner-linux-x64-{{ dev_box_hil_runner_version }}.tar.gz"
+    dest: "{{ dev_box_hil_runner_root }}"
+    remote_src: true
+    owner: "{{ dev_box_hil_runner_user }}"
+    group: "{{ dev_box_hil_runner_group }}"
+
+- name: Keep all runner state private to the isolated account
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_hil_runner_root }}"
+    state: directory
+    owner: "{{ dev_box_hil_runner_user }}"
+    group: "{{ dev_box_hil_runner_group }}"
+    recurse: true
+
+- name: Record the installed runner pin
+  when: dev_box_hil_runner_install_needed | bool
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ dev_box_hil_runner_root }}/.ra8-version"
+    content: "{{ dev_box_hil_runner_install_stamp }}\n"
+    owner: "{{ dev_box_hil_runner_user }}"
+    group: "{{ dev_box_hil_runner_group }}"
+    mode: "0644"
+
+- name: Install the official service launcher beside the runner
+  # actions/runner ships this under bin/; its own svc.sh copies it to the root
+  # before creating a unit.  This role owns the unit, so it owns the same
+  # explicit, idempotent copy rather than asking svc.sh to create a second
+  # service definition.
+  become: true
+  ansible.builtin.copy:
+    src: "{{ dev_box_hil_runner_root }}/bin/runsvc.sh"
+    dest: "{{ dev_box_hil_runner_root }}/runsvc.sh"
+    remote_src: true
+    owner: "{{ dev_box_hil_runner_user }}"
+    group: "{{ dev_box_hil_runner_group }}"
+    mode: "0755"
+
+- name: Remove the downloaded runner archive
+  become: true
+  ansible.builtin.file:
+    path: "/var/tmp/actions-runner-linux-x64-{{ dev_box_hil_runner_version }}.tar.gz"
+    state: absent
+
+- name: Read back the installed runner version
+  become: true
+  become_user: "{{ dev_box_hil_runner_user }}"
+  ansible.builtin.command:
+    argv:
+      - "{{ dev_box_hil_runner_root }}/bin/Runner.Listener"
+      - --version
+  register: dev_box_hil_runner_version_probe
+  changed_when: false
+  check_mode: false
+
+- name: Assert the installed runner matches the reviewed pin
+  ansible.builtin.assert:
+    that:
+      - dev_box_hil_runner_version_probe.stdout | trim == dev_box_hil_runner_version
+    fail_msg: >-
+      Runner.Listener reports {{ dev_box_hil_runner_version_probe.stdout | trim }},
+      not pinned {{ dev_box_hil_runner_version }}.
+
+- name: Register the dedicated repo-scoped HIL runner
+  when: not dev_box_hil_runner_registration.stat.exists
+  become: true
+  become_user: "{{ dev_box_hil_runner_user }}"
+  ansible.builtin.command:
+    argv:
+      - ./config.sh
+      - --unattended
+      - --url
+      - "{{ dev_box_hil_runner_repo_url }}"
+      - --name
+      - "{{ dev_box_hil_runner_name }}"
+      - --labels
+      - "{{ dev_box_hil_runner_labels }}"
+      - --work
+      - "{{ dev_box_hil_runner_work_dir }}"
+      - --disableupdate
+    chdir: "{{ dev_box_hil_runner_root }}"
+  environment:
+    # config.sh officially reads ACTIONS_RUNNER_INPUT_<argument>.  Supplying
+    # TOKEN here keeps the credential out of argv/process listings, and the
+    # listener marks the token argument as a secret before tracing it.
+    ACTIONS_RUNNER_INPUT_TOKEN: "{{ dev_box_hil_runner_registration_token }}"
+  no_log: true
+
+- name: Install the dedicated HIL runner systemd unit
+  become: true
+  ansible.builtin.template:
+    src: ra8-hil-runner.service.j2
+    dest: "/etc/systemd/system/{{ dev_box_hil_runner_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable and start the dedicated HIL listener
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ dev_box_hil_runner_service }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Verify the dedicated HIL listener is active
+  # systemd_service reports a planned start in check mode but correctly does
+  # not start the listener. The live assertion is a post-apply acceptance.
+  when: not ansible_check_mode
+  become: true
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - is-active
+      - "{{ dev_box_hil_runner_service }}"
+  register: dev_box_hil_runner_active
+  changed_when: false
+  check_mode: false
+  retries: 15
+  delay: 2
+  until: dev_box_hil_runner_active.stdout | trim == 'active'
+
+- name: Verify each installed environment contains only its exact HIL allowlist
+  # A first dry-run correctly leaves a newly planned interactive file absent.
+  # Validate installed bytes after a real converge; check mode already renders
+  # both copy tasks and reports whether either exact allowlist body would change.
+  when: not ansible_check_mode
+  become: true
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - |
+        import sys
+
+        service = ["PI_HOST", "JLINK_SN", "JLINK_DEVICE"]
+        interactive = [*service, "PI_REPO"]
+        expected_by_path = dict(zip(sys.argv[1:], (service, interactive)))
+        for path in sys.argv[1:]:
+            expected = expected_by_path[path]
+            keys = []
+            with open(path, encoding="utf-8") as stream:
+                for raw in stream:
+                    line = raw.strip()
+                    if line and not line.startswith("#"):
+                        keys.append(line.split("=", 1)[0])
+            if keys != expected:
+                raise SystemExit(f"{path}: environment keys {keys!r}, expected {expected!r}")
+      - "{{ dev_box_hil_runner_env_file }}"
+      - "{{ dev_box_hil_interactive_env_file }}"
+  changed_when: false
+  check_mode: false
+
+- name: Prove the isolated runner can reach only its dedicated bench login
+  become: true
+  become_user: "{{ dev_box_hil_runner_user }}"
+  ansible.builtin.command:
+    argv:
+      - ssh
+      - "{{ dev_box_hil_runner_bench_alias }}"
+      - 'test "$USER" = "{{ dev_box_hil_runner_bench_user }}"'
+  environment:
+    HOME: "{{ dev_box_hil_runner_home }}"
+  changed_when: false
+  check_mode: false

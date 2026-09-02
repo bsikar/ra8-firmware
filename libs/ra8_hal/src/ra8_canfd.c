@@ -368,8 +368,8 @@ static ra8_err_t internal_wait_canfdcksrdy(uint8_t expected)
    * host unit-test build runs the same loop through the ra8_fake_mmio
    * seam (ra8_hw_err.h) instead of faking the ack write. */
   /* HUM Ch 9.2.46 "CANFDCKCR.CANFDCKSRDY" p 366 */
-  volatile uint8_t* const ckcr = ra8_sys_canfdckcr();
-  const uint8_t           mask = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
+  volatile const uint8_t* const ckcr = ra8_sys_canfdckcr();
+  const uint8_t                 mask = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
   if (expected != 0U) {
     return ra8_hw_wait_flag_set8(ckcr, mask, (uint32_t)k_ra8_canfd_ckcr_spin);
   }
@@ -523,13 +523,14 @@ ra8_err_t ra8_canfd_init(uint8_t channel)
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 447 */
   const ra8_err_t mst_err = ra8_mstp_enable(s_canfd_mstp_table[channel]);
-  RA8_RETURN_ON_ERROR(mst_err, s_tag, "canfd_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  /* GCOVR_EXCL_BR_START -- MSTP HW readback */
+  RA8_RETURN_ON_ERROR(mst_err, s_tag, "canfd_init: mstp enable");
+  /* GCOVR_EXCL_BR_STOP */
 
   /* Wait for RAM init done (CFDGSTS.GRAMINIT clears). */
   /* HUM Ch 41.2 "CFDGSTS : Global Status Register" p 2730 */
-  for (uint32_t i = 0U; i < k_ra8_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra8_gsts_bit_graminit)) ==
-        0U) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_canfd_spin; i++) {
+    if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra8_gsts_bit_graminit)) == 0U) {
       break;
     }
   }

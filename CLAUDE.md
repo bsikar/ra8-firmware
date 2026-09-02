@@ -1,6 +1,8 @@
-# CLAUDE.md <!-- AI-OK: filename self-reference -->
+# CLAUDE.md
 
-This file provides guidance to Claude Code when working with code in this repository. <!-- AI-OK: self-reference to Claude Code -->
+This file is the single repository-wide source of working guidance. `AGENTS.md`
+is a compatibility entry point that directs tools here, so shared rules are
+maintained once instead of copied into two files.
 
 > **For human readers:** the authoritative style guide is
 > [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) and the architectural-ring +
@@ -25,13 +27,18 @@ This file provides guidance to Claude Code when working with code in this reposi
 | **External Memory** | 64 MB Octo-SPI flash, 64 MB SDRAM |
 | **Debugger** | On-board SEGGER J-Link OB (SWD/JTAG) |
 | **Toolchain** | ARM GNU Toolchain (arm-none-eabi-gcc) + CMake |
-| **RTOS** | None (bare-metal + custom HAL). A hand-written RTOS may be introduced later. |
+| **RTOS** | Optional Eclipse ThreadX 6.5.0; applications may instead use a bare-metal main loop. |
 
 ## Development Approach
 
-- **Bare-metal** with a hand-written HAL layered on top of the chip's register map, the same way `star-rx72n-firmware` was built for the RX72N.
+- **Hand-written HAL** layered on top of the chip's register map, supporting
+  both bare-metal applications and applications that link the first-party
+  ThreadX port.
 - **No Renesas FSP code in this tree.** FSP headers and app notes may be used as **reference material** when writing the HAL, but every source file in `libs/` is hand-written under the rules below.
-- **Zero vendor IDE artifacts.** This repo is built from the command line with CMake + arm-none-eabi-gcc. e2 studio, IAR, Keil project files are NOT checked in.
+- **No vendor-generated build graphs or project files.** Just and CMake remain
+  the command-line source of truth. Checked-in VS Code settings/tasks and CLion
+  CMake integration may wrap those canonical commands, but e2 studio, IAR, and
+  Keil project files are NOT checked in.
 - **Reference material lives in `docs/reference/`**: the RA8D2 datasheet, Hardware User's Manual, technical brief, and high-temperature-operation app note are committed so they are always at hand.
 
 ### Useful External Resources
@@ -48,16 +55,87 @@ These are **reference-only** -- do not copy code from them into this repo withou
 
 ## Quick Reference Commands
 
-- **Build default app**: `make` (blink)
-- **Build specific app**: `make <app>` (e.g., `make blink_hal`)
-- **List discovered apps**: `make apps`
-- **Run host unit tests**: `make test`
-- **Check MC/DC coverage**: `make mcdc`
-- **Code formatter**: `make format` (apply) or `make check` (dry run)
-- **Run linter (clang-tidy)**: `make tidy`
-- **Generate Doxygen docs**: `make docs`
-- **Pre-commit validation**: `make ascii` (encoding check), `make version` (check @since tags)
-- **Reproduce CI before a push**: `make ci` (see below) -- NOT before commits
+- **Build the entire repository**: `just build_all`
+- **Enter the pinned development toolchain**: `just dev-shell`
+- **Build specific app**: `just apps::build <app>` (e.g., `just apps::build blink_hal`)
+- **List discovered firmware examples**: `just apps::example::list`
+- **Run host unit tests**: `just quality::gate::run unit-tests` (portable);
+  `just quality::local::test` only when the native host is CI-compatible
+- **Check MC/DC coverage**: `just quality::local::mcdc`
+- **Code formatter**: `just quality::local::format` (apply) or `just quality::local::check` (dry run)
+- **Run linter (clang-tidy)**: `just quality::local::tidy`
+- **Inventory lint/policy suppressions**: `just checks::suppressions markdown`
+- **Generate Doxygen docs**: `just docs::build`
+- **Pre-commit validation**: `just quality::local::ascii` (encoding check), `just quality::local::version` (check @since tags)
+- **Reproduce CI before a push**: `just ci` (see below) -- NOT before commits
+
+---
+
+## Suppressions Require Evidence
+
+Lint, analysis, coverage, formatter, and repository-policy suppressions are
+reviewed exceptions, not a shortcut to a green gate. Scope a waiver to the
+smallest rule and line or region that needs it, and write the concrete reason
+next to it. Bare markers, blanket rule disables, unexplained baselines, and
+file-wide exclusions are not acceptable when the underlying code can be
+fixed.
+
+`just checks::suppressions markdown` generates the deterministic manual-review
+inventory. Every row carries a durable site identity and a binding hash, and
+the committed review ledger (`.github/suppression-review-ledger.tsv` with its
+rationale vocabulary and batch records) binds each site to a reviewed
+decision. Only a ledger `retain` row with an exact binding match marks a row
+approved; generation never approves anything, and `--check` stays red while
+any site is unreviewed or carries an unremediated fix decision.
+
+### Identity is durable; line numbers are display only
+
+Each row carries a full-SHA256 `site_id` naming the OCCURRENCE and a full-SHA256
+`binding_sha256` over exactly what was approved. Inserting a line above a site or
+re-indenting it keeps the site's name; changing its reason, rule, scope, owner,
+evidence, count, or the suppressed construct itself invalidates the binding and
+reopens review. Repeated identical directives stay individually represented
+through a deterministic ordinal inside one anchor-equivalence class.
+
+### A branch marker must sit on the line that carries the branch
+
+`GCOVR_EXCL_BR_LINE` excludes the branch on its OWN physical line, and gcov
+attributes a decision to the line where the controlling expression starts. So
+an inline branch marker is only correct while the statement fits on one line.
+Give such a line a rationale, push it past the 100-column limit, and
+clang-format wraps the call -- stranding the marker on a continuation line
+where it excludes nothing. The comment still sits beside the code it describes,
+so review cannot see it; the only symptom is branch debt quietly reappearing in
+the coverage gate. Ninety-one markers in this tree were in that state at once.
+
+**Use a `GCOVR_EXCL_BR_START` / `GCOVR_EXCL_BR_STOP` region whenever the
+statement plus its rationale will not fit on one line.** Both marker lines
+stand alone, so no reflow can separate marker from statement and the rationale
+gets a full column budget. Never buy space for a comment by shortening a
+runtime log message: 30 error strings were collapsed that way, several distinct
+failure sites ending up sharing one generic string, so a field log could no
+longer say which call failed.
+
+`check_suppressions.py` reports `stranded-branch-marker` as an INTEGRITY
+failure, and its selftest asserts three directions -- a wrapped marker fires, an
+attached one stays quiet, and one following a multi-line block comment stays
+quiet (the interior of a `/* ... */` block looks exactly like an unfinished
+statement to a backward scan).
+
+### Every checker constant is classified
+
+`suppression_scope_registry.py` (typed scope/control authorities) and
+`suppression_nonauth_registry.py` (explicit non-authorities with a category
+reason) between them must classify EVERY module-level constant in
+`scripts/checks/` and `scripts/ci/`. An unclassified constant fails, whatever it
+is named -- the old name-pattern discovery is gone, so `ROOTS` or
+`SOURCE_SUFFIXES` no longer slips through. A registered authority must also be
+bound exactly once at module top level: augmented assignment, mutator calls,
+conditional or nested binding, subscript stores, `del`, `global` rebinding,
+same-module aliases, and mutation through an import anywhere in the tree are all
+rejected, so the authenticated digests always describe the runtime value. Path
+scope may not be smuggled past that registry as an inline literal in a
+`startswith`/`endswith` tuple or a `Path.parts` membership test.
 
 ---
 
@@ -68,10 +146,10 @@ These are **reference-only** -- do not copy code from them into this repo withou
 ### There is exactly ONE definition of a gate
 
 `scripts/ci.sh` holds the body of every CI check as a shell function, listed in
-its `RA8_GATE_REGISTRY`. Every workflow step is a thin driver:
+its `RA8_GATE_REGISTRY`. Every workflow step is a thin Just driver:
 
 ```yaml
-- run: bash scripts/ci.sh --gate <name>
+- run: just quality::local::gate <name>
 ```
 
 So the workflows decide only *scheduling* -- which gates run in which job, on
@@ -86,16 +164,17 @@ a gate was added, and it has already cost real work. Use `--gate` / `--native`.
 
 | Command | What it does |
 |---|---|
-| `make ci` | every gate, in the Ubuntu devcontainer (the macOS path) |
-| `make ci-fast` | the same, minus the `slow` speed class |
-| `make ci-native` | every gate natively, no container runtime needed |
-| `make ci-native-fast` | native, minus the `slow` gates |
-| `make ci-list` | print the registry: name, speed class, description |
-| `make ci-gate GATE=<name>` | run exactly one gate (what CI invokes) |
+| `just ci` | every gate, in the Ubuntu devcontainer (the macOS path) |
+| `just quality::fast` | the same, minus the `slow` speed class |
+| `just quality::native` | every gate natively, no container runtime needed |
+| `just quality::native_fast` | native, minus the `slow` gates |
+| `just quality::gate::list` | print the registry: name, speed class, description |
+| `just quality::gate::run <name>` | run one gate against the working tree in the supported host environment |
+| `just quality::local::gate <name>` | run exactly one gate (what CI invokes) |
 
-On **Linux** the native path *is* the CI environment, so `make ci-native` is
+On **Linux** the native path *is* the CI environment, so `just quality::native` is
 the supported run and needs no docker/podman -- with no runtime installed,
-`make ci` falls back to it automatically. On **macOS** it does not: the format
+`just ci` falls back to it automatically. On **macOS** it does not: the format
 gate pins `clang-format-22` (Homebrew ships a different major) and the host
 tests `mmap` peripheral RAM with `MAP_FIXED` below 4 GiB, which macOS arm64
 refuses, so every test SIGKILLs before `main()`. The container exists to give
@@ -117,9 +196,9 @@ in `scripts/ci/gates/`. A gate needing the host repository's *history* calls
 
 ### A killed run is UNKNOWN, not FAIL
 
-`make ci` uses the same three-value contract as `make ci-status`: `0` PASS,
+`just ci` uses the same three-value contract as `just quality::local::gate ci-status-contract`: `0` PASS,
 `1` FAIL, **`3` UNKNOWN**. Exit 3 means the run stopped being a measurement --
-it was signalled (a detached `nohup make ci-native &` is reaped by
+it was signalled (a detached `nohup just quality::native &` is reaped by
 systemd-logind when the last ssh session for that user closes), or the snapshot
 it was gating vanished under it. It prints `RESULT: ABORTED` and no per-gate
 `FAIL` row, because a killed run has no verdict.
@@ -137,7 +216,7 @@ and the run printed a FAIL table describing nothing about the tree under test
    themed fragment under `scripts/ci/gates/` that fits it. Those files are
    SOURCED by `ci.sh`, never executed, and hold bodies only: a second registry
    in one of them would recreate exactly the drift this design prevents.
-3. Add `run: bash scripts/ci.sh --gate <name>` to a workflow job.
+3. Add `run: just quality::local::gate <name>` to a workflow job.
 
 `scripts/ci/check_ci_parity.py` (the `ci-parity` gate) fails if you do
 either half without the other: a registered-but-unscheduled gate would pass
@@ -153,7 +232,7 @@ run: |
 ```
 
 and an infra step may not invoke anything under `scripts/`, a `tests/*.sh`
-driver, or a gate-ish `make` target. A check does not become infrastructure by
+driver, or a gate-ish `just` target. A check does not become infrastructure by
 being labelled one.
 
 ### Gates fail loudly on a missing tool -- they never skip
@@ -185,10 +264,11 @@ helper and never `check_workflows()`, the mode CI actually runs. Pair it with a
 **non-vacuity floor** (see `check_asm.py`) so a collapsed scan fails instead of
 reporting clean.
 
-The pre-existing backlog is frozen in `.github/selftest-baseline.txt` and may
-only SHRINK: a new gate-wired detector with no selftest fails immediately, and
-a baselined checker that gains one fails until its row is deleted. Do not add
-rows.
+The pre-existing backlog is fully retired: `.github/selftest-baseline.txt` must
+remain absent. A new gate-wired detector with no selftest fails
+immediately, and the coverage checker also rejects recreating an empty
+retirement baseline. Do not add a waiver or baseline row; add the genuine
+both-direction selftest and invoke it from the registered gate.
 
 The **pre-push hook** (`scripts/git/pre-push`) runs the suite automatically and
 **blocks the push** if any gate fails. For emergencies, bypass it with
@@ -200,10 +280,10 @@ every push hook).
 ## Working on the shared verification box
 
 Several agents share one Linux box. Two rules keep them from destroying each
-other's work; both are `make` targets, so neither depends on anyone
+other's work; both are `just` targets, so neither depends on anyone
 remembering a convention.
 
-### Get your own checkout: `make ws-new`
+### Get your own checkout: `just workspace::new`
 
 **Never work directly in `~/ra8-firmware`, and never improvise your own
 checkout.** Improvised trees (`~/ra8-296`, `~/ra8-base`, `~/wt-land296`) are
@@ -211,13 +291,13 @@ exactly how two agents had their working directories clobbered mid-run,
 corrupting a baseline measurement and an EIL run.
 
 ```sh
-make ws-new NAME=my-task            # isolated worktree at ~/ra8-ws/my-task
-make ws-new NAME=my-task REF=origin/main   # ...off a different ref
-cd ~/ra8-ws/my-task && make ci      # gates run here, unmodified
-make ws-free NAME=my-task           # give it back when done
+just workspace::new my-task            # isolated worktree at ~/ra8-ws/my-task
+just workspace::new my-task origin/main   # ...off a different ref
+cd ~/ra8-ws/my-task && just ci      # gates run here, unmodified
+just workspace::free my-task           # give it back when done
 ```
 
-`make ws-list` shows what exists, `make ws-doctor` checks the environment
+`just workspace::list` shows what exists, `just workspace::doctor` checks the environment
 (container runtime, ccache, disk). Workspaces are linked git worktrees, so they
 cost a checkout rather than a clone and share the object store -- a branch
 committed in one is immediately visible in all of them.
@@ -229,11 +309,11 @@ output never lands in the workspace at all (the containerised suite builds
 inside a `--rm` container), so there is nothing to `rm -rf` before a coverage
 run.
 
-`make ci` works from a workspace: `scripts/ci.sh` detects a linked worktree and
+`just ci` works from a workspace: `scripts/ci.sh` detects a linked worktree and
 bind-mounts the main repo's git directory alongside it, so the in-container
 read of `HEAD` resolves (#334).
 
-### Do not poll GitHub: `make ci-status`
+### Do not poll GitHub: `just quality::local::gate ci-status-contract`
 
 **Do not run `gh run watch`.** The REST quota is 5000/hour and it is *shared* by
 every agent on the box; ~18 concurrent watchers exhausted it twice in one day,
@@ -244,17 +324,23 @@ One shared daemon (`scripts/ci/monitor.sh daemon`, installed via
 status file. Read it instead -- any number of agents can, at zero quota cost:
 
 ```sh
-make ci-status              # newest sha on dev
-make ci-status SHA=<sha>    # a specific commit
-make ci-quota               # how much budget is left
+just workspace::status              # newest sha on dev
+just workspace::status <sha>    # a specific commit
+just workspace::quota               # how much budget is left
 ```
 
 Exit codes are `0` PASS, `1` FAIL, `3` **UNKNOWN**. UNKNOWN is a real answer and
 means "no verdict could be established" -- quota exhausted, daemon down, status
 file stale, sha not seen yet. **Never report UNKNOWN as either a pass or a
 failure.** When the quota is gone,
-`bash scripts/ci/monitor.sh runner-status --sha <sha>` reads outcomes off the
+`/bin/bash -p scripts/ci/monitor.sh runner-status --sha <sha>` reads outcomes off the
 runner box over ssh and costs nothing.
+
+HIL and monitor shell entrypoints are security-pinned to `/bin/bash -p` rather
+than the ordinary portable `#!/usr/bin/env bash` form. These scripts cross the
+hardware, SSH, generated-service, or runner boundary; privileged Bash mode
+blocks caller-controlled `BASH_ENV` and exported-function startup injection.
+Nested HIL shell calls must preserve the same absolute `-p` boundary.
 
 ---
 
@@ -270,12 +356,12 @@ inventory to change capacity -- `scripts/checks/check_fleet_declaration.py`
 fails a `host_vars` file that re-declares anything the declaration owns.
 
 ```sh
-make infra-ssh-config              make THIS machine a control node
-make infra-list                    what is declared, and how it is sized
-make infra-status                  what every host is running, right now
-make infra-check HOST=truenas      DRY RUN -- report, change nothing
-make infra-apply HOST=truenas      converge that machine to the declaration
-make infra-scale HOST=win-ci N=1   live capacity change; shrinking DRAINS
+just infra::ssh_config              turn THIS machine into a control node
+just infra::list                    what is declared, and how it is sized
+just infra::status                  what every host is running, right now
+just infra::check truenas      DRY RUN -- report, change nothing
+just infra::apply truenas      converge that machine to the declaration
+just infra::scale win-ci 1   live capacity change; shrinking DRAINS
 ```
 
 **Reachability is declared too, and never assumed.** Each host carries a real
@@ -284,7 +370,7 @@ another fleet host, and every ssh and Ansible invocation is built from those --
 so any machine with ansible and an accepted key can drive the fleet. Addressing
 a host by an `~/.ssh/config` alias is a gate failure: those existed on one
 laptop, which had no ansible, so nothing was a working control node and a
-half-drained NAS sat unconvergeable (#526). `make infra-ssh-config` GENERATES
+half-drained NAS sat unconvergeable (#526). `just infra::ssh_config` GENERATES
 the friendly aliases from the declaration; never hand-write them.
 
 **Read `docs/CI_FLEET.md` before touching any of it.** It is the runbook for
@@ -309,7 +395,7 @@ not add a "just stop the container" shortcut anywhere.
 
 ## Subagents & Swarms
 
-This repository utilizes specialized custom project subagents under `.claude/agents/` <!-- AI-OK: reference to .claude directory --> to perform focused, token-efficient audits. These reviewers are configured for specific compliance checking, allowing the main agent to delegate verification tasks:
+This repository utilizes specialized custom project subagents under `.claude/agents/` to perform focused, token-efficient audits. These reviewers are configured for specific compliance checking, allowing the main agent to delegate verification tasks:
 
 - **Code Style Compliance (`@style-reviewer`)**:
   - **Purpose**: Audits C23 syntax rules, Doxygen tag completeness, non-inclusive terminology replacements, and header guards.
@@ -318,7 +404,7 @@ This repository utilizes specialized custom project subagents under `.claude/age
 - **Safety & MC/DC Compliance (`@safety-reviewer`)**:
   - **Purpose**: Audits safety compliance (DO-178C Level B), compound boolean decision MC/DC test vector coverage, SOLID design principles, and NASA Power of 10 rules.
   - **When to Trigger**: On any modification to core logic, state machines, control flow, or host unit tests under `tests/`.
-  - **Scope**: Audits logic structures, loop bounds, return value validation, and test adequacy. Uses the powerful `sonnet` model and is equipped with the `Bash` tool to run tests and coverage checks via `make test` or `make mcdc`.
+  - **Scope**: Audits logic structures, loop bounds, return value validation, and test adequacy. Uses the powerful `sonnet` model and is equipped with the `Bash` tool to run tests and coverage checks via `just quality::local::test` or `just quality::local::mcdc`.
 - **HUM Citations Validation (`@citation-reviewer`)**:
   - **Purpose**: Meticulously audits direct register accesses to verify that each is immediately preceded by a valid Hardware User's Manual (HUM) citation, and strictly bans in-tree line-number citations.
   - **When to Trigger**: On any modification to register structures, inline register accessors, or HAL drivers interacting with MMIO (e.g. under `libs/ra8_hal/`).
@@ -358,9 +444,9 @@ arguments and handing back a canned answer -- is worse than a missing feature:
 the program links clean, advertises the capability, and fails at runtime or,
 worse, silently succeeds having done nothing.
 
-The motivating case: `tools/rabook_imagepack/webp_stub.c` and
-`apps/stand_alone/media_dl/webp_stub.c` each defined the real symbol
-`ra8_jof_priv_webp_transcode()`, threw away both arguments and returned
+The motivating case: the former `tools/rabook_imagepack/src/webp_stub.c` and
+the former `apps/host/mdl/src/webp_stub.c` each defined the real symbol
+`jof_priv_webp_transcode()`, threw away both arguments and returned
 `k_ra8_err_not_supported` -- while a complete WebP decoder sat vendored,
 wrapped, tested and fuzzed in this same repository. Both tools offered WebP
 conversion that could never work. The stubs existed because the libwebp build
@@ -403,7 +489,7 @@ plainly exists.
 ### Enforcement
 
 `scripts/checks/check_no_silent_stubs.py` runs in the `pre-commit-checks` gate
-(so it is covered by `make ci` / `make ci-native` and the matching workflow job)
+(so it is covered by `just ci` / `just quality::native` and the matching workflow job)
 and in the `scripts/git/pre-commit` hook. It fails on two narrowly-calibrated
 patterns:
 
@@ -432,7 +518,7 @@ quietly stopped matching cannot pass as clean.
 
 1. **Breaking changes are ENCOURAGED** - If it improves code quality, refactor immediately
 2. **No compatibility layers** - Delete old code, update all call sites in the same change
-3. **Main branch must work** - The only requirement is that main remains in a working state
+3. **Integration branch must work** - The `dev` branch must remain in a working state
 4. **No gradual transitions** - No deprecation warnings, no compatibility shims, no aliases
 
 ### What This Means in Practice
@@ -448,7 +534,7 @@ quietly stopped matching cannot pass as clean.
 - Update ALL call sites in the same commit when changing APIs
 - Delete old code immediately - no staged rollouts
 - Rename types, functions, fields freely to improve clarity
-- Ensure main branch builds successfully
+- Ensure the `dev` integration branch builds successfully
 
 ### Examples
 
@@ -485,7 +571,49 @@ typedef struct {
 
 ### Enforcement
 
-A pre-commit hook at `scripts/git/pre-commit` rejects any commit containing non-ASCII characters in source files. CI will also run the check.
+The committed `scripts/git/pre-commit` policy rejects any commit containing
+non-ASCII characters in source files. CI also runs the check.
+
+`just hooks` installs a tiny generic launcher under the shared Git common
+directory and points `core.hooksPath` there. The launcher materializes and
+verifies `scripts/git/<hook>` from the invoking worktree's immutable `HEAD`;
+staged or unstaged worktree hook bytes therefore cannot become the owner of
+their own commit. The committed pre-commit owner is a self-contained bootstrap:
+it does not parse the live Justfile or source live CI/gate code. It transports
+the active Git index into one private repository first. A second private
+checkout supplies the immutable `HEAD` validator. That validator rejects a
+candidate replacement of its checker/runtime boundary, exercises the exact
+candidate dispatch shape and sourced-gate control flow, and only then permits
+the owner to invoke trusted Just directly against the candidate snapshot. The
+candidate never receives a proof path or token. The owner observes the child
+status and creates its own exclusive final proof only after a zero exit. The
+snapshot retains the caller's HEAD as its baseline, so staged
+checks see `HEAD -> candidate`, while its index and working tree both equal the
+exact candidate tree. Unstaged repairs, deletions, untracked files, and
+hook-exported Git routing cannot mask committed bytes.
+
+The unavoidable local trust boundary is Git's common-dir launcher and
+`core.hooksPath` configuration, the immutable `HEAD` hook/control-plane blobs,
+`/usr/bin/git` used to establish launcher identity, and the host Bash, Git,
+Python, Just, and core utilities resolved after source-tree PATH entries are
+removed. The owner rejects a supervisor Python, Bash, or Just resolved through
+the repository. Only after immutable validation may candidate policy see the
+repository's ignored `.venv`; it receives no owner proof capability. Users can
+still bypass local hooks, so CI independently reruns the registered content
+gates. Policy belongs in `just/hooks.just`, not in the launcher or owner
+bootstrap.
+
+Changes to the launcher, installer, pre-commit owner, validator, or validator
+runtime are bootstrap changes: the current immutable validator deliberately
+refuses to approve its candidate replacement. They require explicit review and
+CI, an intentional local-hook bypass for that commit, and `just hooks` after
+the new commit becomes `HEAD`. A missing or uncommitted launcher fails closed;
+it is never piped as an empty script or taken from mutable worktree bytes.
+
+The local hook transport is POSIX-only: it requires Bash process control and
+Python's Unix session/signal APIs. Native Windows development uses the
+repository's supported POSIX environment or relies on the same content gates
+in CI; this hook does not claim a native `cmd.exe`/PowerShell transport.
 
 ---
 
@@ -497,11 +625,11 @@ A pre-commit hook at `scripts/git/pre-commit` rejects any commit containing non-
 
 ## AI Attribution Policy
 
-**Zero AI attribution anywhere in the codebase.** No file in `libs/`, `tests/`, `examples/`, `port/`, `scripts/`, or `docs/` may reference any AI-tool attribution as the author, reviewer, or contributor of code, tests, docs, or any artifact. <!-- AI-OK: policy description -->
+**Zero AI attribution anywhere in the codebase.** No file in `libs/`, `tests/`, `examples/`, `port/`, `scripts/`, or `docs/` may reference any AI-tool attribution as the author, reviewer, or contributor of code, tests, docs, or any artifact.
 
 Forbidden patterns include:
 - Comments citing an assistant as a reviewer
-- Co-Authored-By or generated-by footers in code comments <!-- AI-OK: policy description -->
+- Co-Authored-By or generated-by footers in code comments
 - Author lines naming an AI assistant
 
 The pre-commit gate `scripts/checks/check_no_ai_attribution.py` enforces this strictly. See `docs/AI_ATTRIBUTION_POLICY.md` for the full rules.
@@ -510,7 +638,11 @@ The pre-commit gate `scripts/checks/check_no_ai_attribution.py` enforces this st
 
 ## Summary Documents
 
-**Do not create summary documents, integration summaries, or completion reports unless explicitly requested by the user.** This includes files like `INTEGRATION_SUMMARY.md`, `COMPLETION_REPORT.md`, test scripts, or similar documentation. Only create these if the user specifically asks for them.
+**Do not create summary documents, integration summaries, or completion reports
+unless explicitly requested by the user.** `INTEGRATION_SUMMARY.md` must remain
+absent unless the user requests it, and `COMPLETION_REPORT.md` must remain absent
+under the same rule. Do not add ad hoc test scripts or similar documentation as
+substitutes.
 
 ---
 
@@ -640,7 +772,7 @@ Concretely, the following types of file MUST NOT be added to `docs/`:
 - Renesas / vendor support-ticket evidence (the ticket is the
   authoritative record; the public gist preserves it).
 - One-off measurement notes / benchmark snapshots that are not
-  re-run by a `make` target.
+  re-run by a `just` target.
 - Per-feature TODO lists or per-phase sprint plans.
 - "What I'd like to build next" docs.
 
@@ -655,7 +787,8 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
 > -- not just the firmware. `libs/`, `examples/`, `port/`, `tools/`
 > (including the `tools/ra8_emulator` host emulator), `tests/`, and `scripts/`
 > are all held to the same bar. The **only** exemption is vendored
-> third-party code under `libs/third_party/` (SOUP). Generated data under
+> third-party code under `libs/third_party/` or
+> `apps/shared_libs/third_party/` (SOUP). Generated data under
 > `libs/ra8_fonts/` is likewise exempt as it is not hand-authored. A file being
 > a "host tool" or "just an emulator" is NOT a reason to relax the rules:
 > uneven standards train sloppy habits. Every CI gate runs against this same
@@ -983,7 +1116,7 @@ The `RA8_*` annotation macros in `libs/ra8_core/inc/ra8_attributes.h` record arc
 | `RA8_DI_SLOT(role)` | Explicit Dependency Injection seam (mock required). |
 | `RA8_NSC_VENEER` | TrustZone S/NS entry-point veneer in `libs/ra8_nsc/`. |
 | `RA8_HW_REGISTER_ACCESS` | Inline MMIO accessor returning a `volatile` pointer. |
-| `RA8_NASA_RULE_3_OK` | Documented exception to NASA P10 Rule 3 (dynamic alloc). |
+| `RA8_NASA_RULE_3_OK(reason)` | Documented exception to NASA P10 Rule 3 (dynamic alloc). |
 | `RA8_MCDC_DEACTIVATED(reason)` | MC/DC deactivation; reason text gated by citation policy. |
 | `RA8_MAX_STACK(bytes)` | Per-function stack-frame budget (cross-checked via `.su`). |
 | `RA8_ISR_SAFE` | Function is callable from interrupt context. |
@@ -1098,7 +1231,7 @@ The project follows NASA/JPL Power of 10 rules for safety-critical embedded code
 - **MC/DC Coverage**: All compound boolean decisions must have MC/DC vectors in the unit tests.
 - **Independent Influence**: Demonstrate that each condition independently affects the outcome (N+1 test cases).
 - **Documentation**: State the MC/DC vector pattern in the test's Doxygen `@par MC/DC:` block.
-- **Exempt Code**: `libs/third_party/` (SOUP components) is exempt from MC/DC re-test in this repo. Component justifications live under `docs/SOUP/`.
+- **Exempt Code**: `libs/third_party/` and `apps/shared_libs/third_party/` (SOUP components) are exempt from MC/DC re-test in this repo. Component justifications live under `docs/SOUP/`.
 
 ### Example MC/DC Test Block
 
@@ -1109,7 +1242,7 @@ The project follows NASA/JPL Power of 10 rules for safety-critical embedded code
  * @par MC/DC:
  * Decision: `if (handler == nullptr || priority > k_ra8_isr_prio_max)` (2 conditions)
  * - Vector 1: handler=valid, priority=0       -> false (control: both conditions false)
- * - Vector 2: handler=NULL,  priority=0       -> true  (varies handler only)
+ * - Vector 2: handler=nullptr, priority=0      -> true  (varies handler only)
  * - Vector 3: handler=valid, priority=255     -> true  (varies priority only)
  * Vectors 1+2 prove handler independently affects outcome; 1+3 prove the
  * same for priority. N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
@@ -1140,28 +1273,32 @@ Mock injection (DIP) is preferred, but some validation paths can only be reached
 
 ```
 ra8-firmware/
-  CMakeLists.txt               Top-level CMake -- auto-discovers examples/<tier>/.../<app>/ dirs
-  Makefile                     Top-level shorthand: `make <app>` / `make apps`
+  CMakeLists.txt               Top-level CMake -- consumes the selected app
+                               inventory from scripts/dev/ra8_apps.py
+  justfile                     Top-level shorthand: `just apps::build <app>` / `just build_all`
   cmake/
     toolchain-ra8d2.cmake      arm-none-eabi cross-compile settings
   examples/
     ek_ra8d2/                  Stock EK-RA8D2 evaluation kit (no extra HW)
-      hw_validated/            Apps confirmed working on a stock EVM
-        smoke/                 No-UART smoke tests (e.g. blink, blink_hal)
-        uart/                  Apps that print over SCI UART
-        manual/                Apps needing manual jumper / button steps
-      hw_pending/              Apps written but not yet HW-validated
+      hw_validated/            Apps confirmed on hardware, grouped as c6/hil/manual
+      hil_needs_revalidation/  Formerly validated apps awaiting a fresh bench stamp
+      hw_pending/              Apps written but not yet hardware-validated
     _unsupported/              Apps needing external hardware (motor, audio CODEC, ...)
-    <tier>/.../<app>/          Each app dir contains:
-      main.c                   Application entry
-      vector_table.c           Per-app vector table + Reset_Handler
-      system_init.c            Per-app SystemInit
-      secure_exception.c       Per-app SecureFault handler
-      trustzone_init.{c,h}     Per-app SAU bring-up
-      linker_script.ld         Per-app memory map (may diverge from sibling apps)
+    <tier>/.../<app>/          Each selected app dir contains:
+      examples/ek_ra8d2/<tier>/.../<app>/src/main.c
+                               Application entry
       CMakeLists.txt           Per-app cmake target
-      Makefile                 Per-app `make` (configure + build via cmake)
-      README.md
+      examples/ek_ra8d2/<tier>/.../<app>/inc/
+                               Optional app-local interfaces
+      hil.conf                 Optional HIL/EIL contract
+      README.md                App purpose and validation instructions
+      examples/ek_ra8d2/<tier>/.../<app>/src/{vector_table,system_init,secure_exception,nmi_exception,trustzone_init}.c
+                               Optional board-default overrides; the board
+                               layer supplies each one that the app omits
+      examples/ek_ra8d2/<tier>/.../<app>/inc/trustzone_init.h
+                               Optional board-default override
+      linker_script.ld         Optional board-default memory-map override
+  libs/ra8_board_<board>/      Canonical board boot sources and linker map
   libs/                        Hand-written libraries
     ra8_core/                   ra8_err, ra8_check, ra8_log, ra8_assert, ...
     ra8_hal/                    Peripheral drivers + register header files
@@ -1170,12 +1307,12 @@ ra8-firmware/
                                  import, OTA commit, CMAC, TRNG) -- globbed
                                  into every app's Secure image
     ra8_net_pal/, ra8_usb_pal/   Platform abstraction layers
-  tests/                       Host-side unit tests (standard gcc/clang, not cross-compiled)
+  tests/                       Host-side unit tests; each unit uses src/ and inc/
   scripts/                     Organised by the QUESTION a script answers, not by
                                subsystem, so each file has one plausible home.
-    ci.sh                      The ONE CI entry point. RA8_GATE_REGISTRY lives
-                               here; every workflow calls
-                               `bash scripts/ci.sh --gate <name>`.
+    ci.sh                      The ONE gate registry and implementation entry
+                               point. Workflows reach it through
+                               `just quality::local::gate <name>`.
     ci/                        CI runner helpers + check_ci_parity.py
       gates/*.sh               Gate BODIES, sourced by ci.sh. Split by theme so
                                no file carries 1100 lines; still exactly one
@@ -1202,7 +1339,7 @@ ra8-firmware/
                                ozone, openocd, agent workspaces
     secrets/                   Key material and credential handling (RoT, OpenBao)
     git/
-      pre-commit               Pre-commit hook (ASCII, format, tidy, C23 patterns)
+      pre-commit               Exact-index snapshot transport for Just hook policy
   docs/
     reference/                 Committed datasheets and manuals (PDFs)
   .github/workflows/           CI
@@ -1215,18 +1352,29 @@ ra8-firmware/
   .editorconfig
   LICENSE.txt                  MIT, Copyright (c) 2026 Brighton Sikarskie
   CLAUDE.md                    This file <!-- AI-OK: reference to CLAUDE.md -->
+  AGENTS.md                    Compatibility entry point to repository guidance
   README.md
 ```
 
 ### Adding a new application
 
-Create a new directory `examples/<tier>/.../<newapp>/` containing:
-1. `main.c` -- the application entry.
-2. The five per-app boot files copied from a sibling app (`vector_table.c`, `system_init.c`, `secure_exception.c`, `trustzone_init.c`, `trustzone_init.h`). Update each `@file` to the new path.
-3. `linker_script.ld` (also copied; may diverge later).
-4. `CMakeLists.txt` and `Makefile` (copy from a sibling and update the `RA8_APP_NAME` / `APP` variable).
+For RA8D2, create a new directory
+`examples/ek_ra8d2/<tier>/.../<newapp>/` containing:
+1. `examples/ek_ra8d2/<tier>/.../<newapp>/src/main.c` -- the application entry.
+2. `CMakeLists.txt` using `ra8_add_app(NAME ...)` (copy a current sibling and
+   update its declared name and dependencies).
+3. A `README.md` describing purpose, execution, and validation status; add
+   `hil.conf` only when the app participates in HIL/EIL.
 
-The next `make` from the repo root re-disovers it -- no changes needed to the top-level `CMakeLists.txt` or top-level `Makefile`.
+The selected `libs/ra8_board_<board>/` layer supplies the normal vector table,
+system/exception/TrustZone initialization, local TrustZone interface, and
+linker script. Add any of those files to the app only when it deliberately
+overrides the board default; do not copy the canonical boot set into every app.
+Keep every app-local source under
+`examples/<platform>/<tier>/.../<app>/src/` and every app-local header under
+`examples/<platform>/<tier>/.../<app>/inc/`.
+
+The next `just build_all` from the repo root re-discovers it -- no changes needed to the top-level `CMakeLists.txt` or top-level `justfile`.
 
 ---
 
@@ -1239,4 +1387,6 @@ Committed under `docs/reference/`:
 - `ra8d2-technical-brief.pdf` (R01TB0104EJ) - high-level overview
 - `ra8d2-high-temperature-operation.pdf` (R01AN8060EJ) - application note
 
-**IMPORTANT:** Always reference the **Hardware User's Manual** (`r01uh1065ej0130-ra8d2.pdf`) when writing register-level code. Page numbers and section references in commit messages should cite this manual.
+**IMPORTANT:** Always reference the **Hardware User's Manual**
+(`docs/reference/ra8d2-hardware-user-manual.pdf`) when writing register-level
+code. Page numbers and section references in commit messages should cite it.

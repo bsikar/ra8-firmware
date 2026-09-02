@@ -65,7 +65,9 @@ from urllib.request import urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "gen"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 
+from git_environment import isolated_git_environment, trusted_git_executable
 from sbom_registry import (
     PROV_NOT_VENDORED,
     REGISTRY,
@@ -94,15 +96,14 @@ EXIT_VACUOUS = 2
 # pronounce all of them clean, and a manifest made only of `patch`/`local` rows
 # would prove nothing about upstream at all -- it would record our opinion of
 # our own tree, which is exactly the defect this gate exists to remove.  All
-# three are MEASURED against the live tree.  Re-measured 2026-08-04, after
-# #614 deleted the never-compiled r_sce_AMC vendoring: 21 components, 9420
-# vendored files, 9401 of them byte-identical to their pinned upstream
-# revision (was 22 / 9735 / 9716 on 2026-07-28).  The file floors keep enough
+# three are MEASURED against the live tree. Re-measured 2026-08-22 after the
+# unused XML vendor was removed: 19 components, 9150 vendored files, 9133 of
+# them byte-identical to their pinned upstream revision. The file floors keep enough
 # slack that ordinary re-vendoring does not trip them while sitting far above
-# any plausible collapse; MIN_COMPONENTS now has only one component of slack,
-# so deleting another vendored component is meant to fail here until whoever
+# any plausible collapse; MIN_COMPONENTS has no component slack, so adding or
+# deleting a vendored component is meant to fail here until whoever
 # does it re-measures these three numbers deliberately.
-MIN_COMPONENTS = 20
+MIN_COMPONENTS = 19
 MIN_ENTRIES = 9000
 MIN_UPSTREAM_VERIFIED = 8900
 
@@ -134,7 +135,7 @@ def blob_id(data: bytes) -> str:
     Returns:
         Lower-case hex SHA-1.
     """
-    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()  # noqa: S324
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()  # noqa: S324 -- Git object IDs require SHA-1
 
 
 # --------------------------------------------------------------------------- #
@@ -351,7 +352,7 @@ def _check_floors(
 def _run_git(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
     """Run a git command, returning the completed process."""
     return subprocess.run(  # noqa: S603  # trusted: fixed git argv, no shell
-        ["git", *args],  # noqa: S607 -- trusted: resolved from PATH, fixed argv
+        [trusted_git_executable(), *args],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -360,7 +361,7 @@ def _run_git(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def fetch_git_tree(comp: Component, cache: Path) -> tuple[str, dict[str, tuple[str, str]]]:
+def _fetch_git_tree(comp: Component, cache: Path) -> tuple[str, dict[str, tuple[str, str]]]:
     """Fetch the pinned upstream revision and return its full file listing.
 
     ``--filter=blob:none --depth 1`` brings the commit and its trees but no file
@@ -406,6 +407,12 @@ def fetch_git_tree(comp: Component, cache: Path) -> tuple[str, dict[str, tuple[s
     return commit, tree
 
 
+def fetch_git_tree(comp: Component, cache: Path) -> tuple[str, dict[str, tuple[str, str]]]:
+    """Fetch through a nested bare repository isolated from hook routing."""
+    with isolated_git_environment():
+        return _fetch_git_tree(comp, cache)
+
+
 def fetch_archive_tree(comp: Component, cache: Path) -> tuple[str, dict[str, tuple[str, str]]]:
     """Download the pinned release artifact and return its member listing.
 
@@ -427,7 +434,9 @@ def fetch_archive_tree(comp: Component, cache: Path) -> tuple[str, dict[str, tup
     local = cache / Path(comp.upstream_archive_url or "").name
     if not local.is_file():
         try:
-            with urlopen(comp.upstream_archive_url, timeout=FETCH_TIMEOUT_S) as src:  # noqa: S310
+            with urlopen(  # noqa: S310 -- manifest URL is pinned and hash-verified
+                comp.upstream_archive_url, timeout=FETCH_TIMEOUT_S
+            ) as src:
                 local.write_bytes(src.read())
         except OSError as exc:
             message = f"{comp.key}: downloading {comp.upstream_archive_url} failed: {exc}"

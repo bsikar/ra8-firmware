@@ -24,7 +24,7 @@ combinations like ``dynamic,bounded``.
 What this script does
 ---------------------
 
-1. Walks every ``examples/*/*/build*/**/*.su`` file.
+1. Walks every ``examples/**/build*/**/*.su`` file.
 2. For each function: records TU, function name, frame size, qualifier.
 3. Flags any function with frame > ``--frame-limit`` (default 2048) or
    with a ``dynamic`` qualifier.
@@ -100,8 +100,8 @@ RC_ENUMERATION_BROKE = 2
 # gate, but only for *first-party* code (everything outside
 # THIRD_PARTY_PATH_FRAGMENTS). Third-party SOUP is exempt because:
 #
-#   * It is pre-qualified and lives under libs/third_party/ -- its
-#     justification documents are filed under docs/SOUP/ (see
+#   * It is pre-qualified and lives under one of the two canonical third-party
+#     roots -- its justification documents are filed under docs/SOUP/ (see
 #     docs/SOUP/README.md).
 #   * The largest current offenders (miniz mz_zip_reader_*,
 #     tinfl_decompress_mem_to_*, ~10 kB frames) are deflate / zip
@@ -117,6 +117,7 @@ RC_ENUMERATION_BROKE = 2
 
 THIRD_PARTY_PATH_FRAGMENTS = (
     "/libs/third_party/",
+    "/apps/shared_libs/third_party/",
     # Vendor-supplied port shims live under port/ but mostly call into
     # third_party/ libraries; they remain first-party and gated.
 )
@@ -130,7 +131,7 @@ FIRST_PARTY_EXEMPTIONS = (
     # HEAD as of the commit that added this list):
     #
     # (
-    #     "libs/ra8_epub/src/ra8_epub_open.c",
+    #     "apps/shared_libs/epub/src/epub_open.c",
     #     "priv_parse_archive",
     #     4344,
     #     "ZIP central-directory parser: 4 kB scratch struct on stack "
@@ -481,7 +482,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Promote the soft frame limit to a hard gate for "
-            "*first-party* TUs (everything outside libs/third_party/). "
+            "*first-party* TUs (everything outside both third-party roots). "
             "Third-party SOUP remains exempt. First-party functions "
             "with a justified large frame must be enrolled in "
             "FIRST_PARTY_EXEMPTIONS at the top of this script."
@@ -606,7 +607,7 @@ def _check_enumeration(
             )
             return RC_OK
         print(
-            "stack_usage_check: FAIL -- no .su files found under examples/*/*/build*/ "
+            "stack_usage_check: FAIL -- no .su files found under examples/**/build*/ "
             "or build/shared_libs/.\n"
             "  The build never ran or its output moved: there is no stack budget to "
             "measure, so this is a failure, not a pass.\n"
@@ -747,7 +748,7 @@ def selftest() -> int:
         root = Path(tmp)
         build = root / "examples" / "app" / "build"
         low = ["--strict", "--min-functions", "1"]
-        clean_line = "libs/ra8_epub/src/ok.c:10:1:small_fn\t128\tstatic"
+        clean_line = "apps/shared_libs/epub/src/ok.c:10:1:small_fn\t128\tstatic"
 
         # 1. Empty sweep -- no .su anywhere. Must FAIL without --allow-empty ...
         expect_red(main(["--repo-root", str(root)]), "empty sweep")
@@ -773,7 +774,7 @@ def selftest() -> int:
         _write_su_fixture(
             build,
             "over.su",
-            [clean_line, "libs/ra8_epub/src/big.c:20:1:priv_scratch\t9000\tstatic"],
+            [clean_line, "apps/shared_libs/epub/src/big.c:20:1:priv_scratch\t9000\tstatic"],
         )
         expect_red(main(["--repo-root", str(root), *low]), "over-budget frame")
 

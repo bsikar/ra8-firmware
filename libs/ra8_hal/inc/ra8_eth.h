@@ -77,10 +77,25 @@ typedef void (*ra8_eth_event_fn_t)(void* ctx, uint32_t status_mask);
 [[nodiscard]] ra8_err_t ra8_eth_clear_status(uint32_t mask);
 
 /**
- * @brief Attach a shared event callback for ethernet events.
+ * @brief Replace the shared Ethernet event callback.
+ *
+ * @details
+ * Stores one callback/context pair for ::ra8_eth_dispatch. Passing NULL for
+ * @p fn detaches the current callback. Slot replacement performs no fallible
+ * work; callers observe completion when this function returns.
+ *
+ * @param[in] fn Callback to install, or NULL to detach.
+ * @param[in] ctx Context passed to @p fn; ignored while @p fn is NULL.
+ *
+ * @pre Caller serializes this update with ::ra8_eth_dispatch.
+ * @pre @p ctx remains valid for as long as the installed callback uses it.
+ * @post Subsequent dispatches observe the supplied callback/context pair.
+ * @post Passing NULL for @p fn prevents subsequent callback invocation.
+ *
+ * @note Not thread-safe; update the slot with Ethernet IRQ delivery masked.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_eth_attach_handler(ra8_eth_event_fn_t fn, void* ctx);
+void ra8_eth_attach_handler(ra8_eth_event_fn_t fn, void* ctx);
 
 /**
  * @brief Dispatch an ESWM event -- snapshot + fire callback.

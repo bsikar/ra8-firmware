@@ -36,7 +36,7 @@
 # or, much worse, teaches people that reds on the shared box can be waved
 # through, which is how a real regression gets through.
 #
-# It fires in practice, not in theory. A detached `nohup make ci-native &`
+# It fires in practice, not in theory. A detached `nohup just quality::native &`
 # started over ssh is reaped by systemd-logind when the last session for that
 # user closes (KillUserProcesses), and the shared boxes are contended.
 #
@@ -100,7 +100,7 @@ if [ -z "${_RA8_ABORT_SH:-}" ]; then
   RA8_CI_SNAPSHOT_SENTINELS=(
     "scripts/ci.sh"
     "scripts/ci/gates"
-    "Makefile"
+    "justfile"
     "CMakeLists.txt"
   )
 
@@ -149,7 +149,8 @@ if [ -z "${_RA8_ABORT_SH:-}" ]; then
     echo "would describe nothing about the tree under test (#542)." >&2
     echo "" >&2
     echo "Exit $RA8_CI_EXIT_ABORTED is UNKNOWN: neither a pass nor a fail," >&2
-    echo "the same contract 'make ci-status' uses. Re-run the suite to get a" >&2
+    echo "the same contract 'just workspace::status' uses. Re-run the suite" >&2
+    echo "to get a" >&2
     echo "verdict; do not read this as one." >&2
     echo "" >&2
     echo "A run started as a detached background job over ssh is killed this" >&2
@@ -260,7 +261,7 @@ if [ -z "${_RA8_ABORT_SH:-}" ]; then
   # ===========================================================================
   # THE PROBE the abort self-test drives.
   # ===========================================================================
-  # Reached ONLY through `bash scripts/ci.sh --selftest-abort <mode>`, and only
+  # Reached only through `/bin/bash -p scripts/ci.sh --selftest-abort <mode>`,
   # from suite_abort_selftest in scripts/ci/gates/hygiene.sh.
   #
   # It swaps the registry for fixture rows and then runs THE REAL

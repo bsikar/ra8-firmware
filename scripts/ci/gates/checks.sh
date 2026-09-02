@@ -9,7 +9,7 @@
 # and is the only entry point; RA8_GATE_REGISTRY -- the single list of what
 # gates exist -- stays there too. These files hold gate BODIES only, so there
 # is still exactly one home for a gate's definition and exactly one command
-# for a workflow to call (bash scripts/ci.sh --gate <name>). Adding a second
+# for a workflow to call (`just quality::local::gate <name>`). Adding a second
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
@@ -23,10 +23,10 @@
 #
 # The suite is grouped into helpers below rather than written as one 150-line
 # body. The grouping is CONTIGUOUS and the execution order is unchanged: these
-# checks are independent of one another, but the order decides which failure a
-# developer sees first, and reordering them would churn that for no gain. Each
-# helper is its own `( set -e; ... )` subshell, so the first failing check in a
-# group still aborts the whole gate.
+# checks are independent of one another, but their stable order keeps reports
+# deterministic. Each helper is its own `( set -e; ... )` subshell, so the
+# first failing check aborts that group; the aggregate still runs and reports
+# every other independent group.
 
 # Constructs that may not appear in first-party source at all: superseded
 # standards, missing TrustZone world tags, MC/DC block markers, heap use after
@@ -44,7 +44,7 @@ _pcc_banned_constructs() (
   # Every unit test must declare its MC/DC vector pattern via @par MC/DC:.
   # #325: the checker used `git diff --cached`, so in any CI checkout (nothing
   # staged) it scanned 0 files and passed unconditionally -- a no-op that read
-  # as green while `make ci` (which stages `git add -A`) saw the real backlog.
+  # as green while `just ci` (which stages `git add -A`) saw the real backlog.
   # --selftest FIRST proves the detector fires in BOTH directions, so one that
   # stopped matching cannot pass as clean; --all then audits the whole tree
   # index-independently (the fix), so CI and local agree. The --staged
@@ -52,6 +52,7 @@ _pcc_banned_constructs() (
   python3 scripts/checks/check_mcdc_block.py --selftest
   python3 scripts/checks/check_mcdc_block.py --all
   # --all asks it to enumerate src/ + libs/ rather than read staged files.
+  python3 scripts/checks/check_no_dynamic_alloc.py --selftest
   python3 scripts/checks/check_no_dynamic_alloc.py --all
   # Opaque C/POSIX FILE and DIR streams hide allocation and buffer ownership.
   # The production contract is fw_fs_file_t plus injected ra8_io/logging; host
@@ -68,7 +69,7 @@ _pcc_banned_constructs() (
   python3 scripts/checks/check_no_null.py --all
   # NASA P10 Rule 1 -- no goto/setjmp/longjmp in firmware. A parse-independent
   # textual backstop: goto/setjmp were enforced only indirectly via the MISRA
-  # cppcheck ratchet, which runs at --std=c11 (cppcheck 2.20 cannot parse C23)
+  # cppcheck ratchet, which runs at --std=c11 (cppcheck 2.13 cannot parse C23)
   # and skips C23-syntax lines, so a construct on a skipped line was never ruled
   # on. The textual scan does not depend on a parse and covers the whole tree.
   # (Recursion needs a call graph -- covered by annot_rules.py RA8_NO_RECURSION
@@ -86,7 +87,7 @@ _pcc_banned_constructs() (
 # Both checkers were rewritten under #359: their scope is now derived from
 # git ls-files plus per-file language detection rather than a hardcoded
 # root/suffix list that had quietly stopped describing the tree, so they
-# cover Python, shell, CMake, YAML, Make and linker scripts as well as C --
+# cover Python, shell, CMake, YAML, Just and linker scripts as well as C --
 # and the extensionless git hooks, which no suffix-driven scope has ever
 # seen. Both --selftests assert every parser in both directions.
 #
@@ -104,14 +105,102 @@ _pcc_size_caps() (
   python3 scripts/checks/check_function_size.py
 )
 
-# Where things are allowed to live: header placement, board-fact ownership,
-# library layering, and the scope of .gitignore patterns.
-_pcc_tree_structure() (
+# Migration contracts that span the executable hook/checker surfaces.
+_pcc_migration_contracts() (
   set -e
+  # Hook policy lives in Just while scripts/git/* remain transport wrappers.
+  # Guard that split explicitly: the first migration collapsed a large hook
+  # to a wrapper while silently dropping most staged checks.
+  python3 scripts/checks/check_hook_parity.py --selftest
+  python3 scripts/checks/check_hook_parity.py
+  # Shell recursion must preserve the Just executable that entered the recipe;
+  # a noninteractive SSH PATH need not contain that binary's directory.
+  /bin/bash -p scripts/dev/run_just.sh --selftest
+  python3 scripts/checks/check_shell_just_invocations.py --selftest
+  python3 scripts/checks/check_shell_just_invocations.py
+  # CI/checker user surfaces may depend on GNU Make as a build tool, but may
+  # not resurrect it as the repository task runner.
+  python3 scripts/checks/check_no_legacy_make.py --selftest
+  python3 scripts/checks/check_no_legacy_make.py
+  # Python-managed tools belong in venvs. Reject the system-pip override in
+  # active automation and in copy-pasteable developer guidance.
+  python3 scripts/checks/check_no_unsafe_python_install.py --selftest
+  python3 scripts/checks/check_no_unsafe_python_install.py
+  # Release bootstrap paths must pin both the upstream version and per-arch
+  # bytes. Prove the container, native dev box, and macOS paths all download to
+  # disk and verify before executing, parsing, or installing anything.
+  python3 scripts/checks/check_download_installers.py --selftest
+  python3 scripts/checks/check_download_installers.py
+  # Ansible stages dirty candidate bytes, but ignored caches and worktree-
+  # deleted paths must never enter its image/provisioning context. Exercise
+  # both directions of the exact Git census and archive verifier.
+  python3 scripts/dev/stage_worktree_context.py --selftest
+  # Native Just recipes must prove a C23 compiler pair, reset incompatible
+  # C/CXX caches, and discover every compiled tools/* CMake project. This
+  # prevents a Debian `cc` (gcc-12) configure and a newly added tool silently
+  # falling outside `just tools::build`/clean. ARM toolchain configures remain
+  # explicit and outside the host wrapper.
+  bash scripts/builders/host_cmake.sh --selftest
+  python3 scripts/checks/check_host_build_entrypoints.py --selftest
+  python3 scripts/checks/check_host_build_entrypoints.py
+)
+
+# The Python project, bootstrap, exports, and managed environment boundaries.
+# Every detector runs its synthetic both-direction proof before the real tree
+# check so a collapsed scope or parser cannot produce a vacuous green result.
+_pcc_python_authority() (
+  set -e
+  python3 scripts/dev/bootstrap_uv.py --selftest
+  /bin/bash -p scripts/dev/provision_dev_box_toolchain.sh --selftest-uv-cache-contract
+  /bin/bash -p scripts/dev/setup_ansible.sh --selftest
+  python3 scripts/checks/check_ansible_collections.py --selftest
+  python3 scripts/dev/verify_locked_environment.py --selftest
+  /bin/bash -p scripts/hil/lib/python_env.sh --selftest
+  python3 scripts/checks/check_python_lock_policy.py --selftest
+  python3 scripts/checks/check_python_lock_policy.py
+  /bin/bash -p scripts/ci/devcontainer_image.sh --selftest
+)
+
+# Source and credential placement contracts shared by every first-party build
+# unit. Kept separate from the board/repository checks so each helper stays
+# below the enforcing NASA Rule 4 function-size cap.
+_pcc_layout_and_credentials() (
+  set -e
+  # Every first-party C-family implementation lives under src/; interfaces
+  # live under inc/ while module-private headers may remain beside their
+  # implementation under src/. This keeps apps, examples, libraries, ports,
+  # tests, and tools structurally predictable instead of allowing each build
+  # unit to invent a flat layout.
+  python3 scripts/checks/check_source_layout.py --selftest
+  python3 scripts/checks/check_source_layout.py
+  # Bench network credentials enter only after a freshly flashed image asks
+  # for runtime provisioning. CMake, firmware source, and ordinary builders
+  # must never ingest them or resurrect the removed compile-time path.
+  python3 scripts/secrets/wifi_provision.py --selftest
+  python3 scripts/hil/uart_write.py --selftest
+  /bin/bash -p scripts/hil/lib/hil_conf.sh --selftest
+  python3 scripts/checks/check_no_build_credentials.py --selftest
+  python3 scripts/checks/check_no_build_credentials.py
+  python3 scripts/checks/hil_privileged_helper_selftest.py --selftest
+  python3 scripts/checks/check_hil_privilege_boundary.py --selftest
+  python3 scripts/checks/check_hil_privilege_boundary.py
+  python3 infra/ansible/roles/dev_box/files/ra8-hil-runner-idle-stop.py --selftest ignored.service
+  python3 scripts/checks/check_hil_convergence_safety.py --selftest
+  python3 scripts/checks/check_hil_convergence_safety.py
+  /bin/bash -p scripts/hil/lib/rig_contract.sh --selftest
+  python3 scripts/hil/rig_env_parse.py --selftest
+  python3 scripts/checks/check_hil_rig_contract.py --selftest
+  python3 scripts/checks/check_hil_rig_contract.py
   # A header under a src/ directory is module-private and must be named
   # *_internal.h. A non-internal src/ header is a misfiled public interface
   # (belongs in inc/) or an unmarked private one.
+  python3 scripts/checks/check_header_file_placement.py --selftest
   python3 scripts/checks/check_header_file_placement.py
+)
+
+# Board-fact ownership and library layering.
+_pcc_board_and_layering() (
+  set -e
   # The EK-RA8D2 pinout is a board fact owned by libs/ra8_board_ek_ra8d2.
   # Forbid the (port << 8 | pin) idiom in examples so the USB-pin duplication
   # #251 fixed (identical pins copy-pasted across 29 apps) cannot come back.
@@ -123,6 +212,12 @@ _pcc_tree_structure() (
   # do not leak across libraries, and hosted APIs stay behind port adapters.
   python3 scripts/checks/check_core_layering.py --selftest
   python3 scripts/checks/check_core_layering.py
+)
+
+# Repository-wide structural contracts that are independent of C source
+# placement: ignore scope, fleet declarations, and CI-image ownership.
+_pcc_repository_structure() (
+  set -e
   # No .gitignore directory pattern may match at arbitrary depth. `build/` did,
   # for the life of the tree: any directory named `build` was silently
   # unaddable, and nearly lost the files moved into scripts/build/  # PATHREF-OK: #359
@@ -139,6 +234,11 @@ _pcc_tree_structure() (
   # needed, so it runs here as well as on the bench (build.sh calls it too).
   python3 scripts/checks/check_c6_pin_config.py --selftest
   python3 scripts/checks/check_c6_pin_config.py
+  # The adjacent offline gate protects the fetched-patch integration seams:
+  # staged paths/basenames, ESP-IDF component identity, and the weak/strong ABI
+  # symbol chain. These regressions otherwise surface only in a full C6 build.
+  python3 scripts/checks/check_c6_integration.py --selftest
+  python3 scripts/checks/check_c6_integration.py
   # infra/fleet.yml is the single registry of the machines CI runs on and how
   # much of each one it may use. The declaration has to hold together on its
   # own terms (capacity that fits the declared budget, per-instance floors, a
@@ -149,8 +249,20 @@ _pcc_tree_structure() (
   # firing cannot pass as clean.
   python3 scripts/checks/check_fleet_declaration.py --selftest
   python3 scripts/checks/check_fleet_declaration.py
-  # ra8-ci:latest, the image `make ci` boots, is a pure function of
-  # .devcontainer/ only while scripts/ci/devcontainer_image.sh is its SOLE
+  # The FortiGate replay declaration is exact desired state, not an example.
+  # Run the checker directly first, so the Just recipe cannot disable the test
+  # that audits its own body. Then exercise that same public recipe using this
+  # gate's managed Python rather than requiring a checkout-local venv on a
+  # disposable runner. Neither path loads serial, secrets, or the network.
+  python3 -B -I infra/network/fg_bringup.py --selftest config
+  /bin/bash -p scripts/dev/run_just.sh \
+    infra::fortigate_config_selftest "$(command -v python3)"
+  # The fleet driver carries credentials across both SSH and WSL boundaries.
+  # Its offline selftest proves strict typed schemas, private snapshots,
+  # shell-argument integrity, redacted summaries, and cleanup after failure.
+  python3 scripts/dev/fleet.py selftest
+  # ra8-ci:latest, the image `just ci` boots, is a pure function of its exact
+  # root-context allowlist while scripts/ci/devcontainer_image.sh is its SOLE
   # builder (#521): a second `docker build -t ra8-ci` with the old
   # reuse-forever logic silently defeats the context-digest staleness guard,
   # exactly as the deleted inner-local.sh did (#528). This is the image's
@@ -159,6 +271,16 @@ _pcc_tree_structure() (
   # stopped matching fails instead of reporting a clean, empty scan.
   python3 scripts/checks/check_ci_image_single_builder.py --selftest
   python3 scripts/checks/check_ci_image_single_builder.py
+)
+
+# Where things are allowed to live: header placement, board-fact ownership,
+# library layering, and repository structure. Calls remain in their original
+# order so the first surfaced failure is unchanged.
+_pcc_tree_structure() (
+  set -e
+  _pcc_layout_and_credentials
+  _pcc_board_and_layering
+  _pcc_repository_structure
 )
 
 # How source is written: trailing newline, named constants, C23 attribute
@@ -174,10 +296,12 @@ _pcc_source_form() (
   # No magic numbers. clang-tidy's readability-magic-numbers only sees files
   # in the host compile-db (no example main.c, no ARM-only #ifdef paths),
   # which is how ra8_delay_ms(500U) slipped past CI.
+  python3 scripts/checks/check_magic_numbers.py --selftest
   python3 scripts/checks/check_magic_numbers.py
   # C23 [[...]] attribute syntax tree-wide (GNU __attribute__((...)) is
   # rejected except for interrupt / cmse_nonsecure_entry / cmse_nonsecure_call,
   # which clang has no portable [[gnu::]] spelling for).
+  python3 scripts/checks/check_no_gnu_attribute.py --selftest
   python3 scripts/checks/check_no_gnu_attribute.py
   # The four C23 source patterns (_Static_assert -> static_assert, = {0} ->
   # = {}, no <stdbool.h>, paren-wrapped numeric #define values). These lived
@@ -191,6 +315,7 @@ _pcc_source_form() (
   # No silent ra8_err_t discards at TrustZone boot boundaries. A C23
   # (void)-cast silences [[nodiscard]] by ISO rule, so -Werror can never catch
   # a discarded ra8_cgc_init() right before a BLXNS (#191).
+  python3 scripts/checks/check_tz_boundary_discard.py --selftest
   python3 scripts/checks/check_tz_boundary_discard.py
   # Ban the numbered session-bookkeeping tags from comments and docs.
   # --selftest proves the detector fires and that the derived scope reaches the
@@ -212,12 +337,14 @@ _pcc_security_invariants() (
   # Every RA8_NSC_VENEER declared in ra8_nsc.h must have a definition -- a
   # decl with no def advertises an NS->S trust-boundary entry point that does
   # not exist.
+  python3 scripts/checks/check_nsc_veneer_defs.py --selftest
   python3 scripts/checks/check_nsc_veneer_defs.py
   # Every insecure placeholder-crypto body (deterministic TRNG, forgeable
   # key-import MAC, plain-SRAM key vault, non-cryptographic RSIP key-wrap)
   # must sit behind the RA8_INSECURE_STUB_CRYPTO / RA8_OFF_TARGET guard
   # with a fail-closed #else, so a release image that forgot to swap in real
   # crypto fails closed instead of shipping the stub (#180).
+  python3 scripts/checks/check_stub_crypto_guarded.py --selftest
   python3 scripts/checks/check_stub_crypto_guarded.py
   # No function may exist only to satisfy the linker. Two narrowly-calibrated
   # rules: SHADOW (a do-nothing second definition of a symbol implemented for
@@ -235,8 +362,9 @@ _pcc_security_invariants() (
   # A HAL peripheral driver must not guard bare CPU asm
   # (wfi/dsb/isb/nop/cpsie/cpsid/reset-spin) on RA8_OFF_TARGET -- those
   # route through libs/ra8_hal/inc/ra8_hw_intrinsics.h +
-  # tests/mocks/ra8_host_asm_stub.c so the driver stays branch-free and
+  # tests/mocks/src/ra8_host_asm_stub.c so the driver stays branch-free and
   # coverage lands on the shipping path (#293).
+  python3 scripts/checks/check_no_driver_asm_guard.py --selftest
   python3 scripts/checks/check_no_driver_asm_guard.py
   # No first-party file may introduce a permanent anti-recovery brick ACTION
   # (setting the ce "Disable Initialize" security flag, or transitioning the DLM
@@ -360,23 +488,114 @@ _pcc_docs_and_tests() (
   # Every hw_validated/hil app must be instrumented (a probed counter +
   # HIL_MODE=jlink_memprobe) or explicitly HIL_FAULT_EXPECTED -- a bare
   # HIL_MODE=alive proves nothing.
+  python3 scripts/checks/check_hil_alive_policy.py --selftest
   python3 scripts/checks/check_hil_alive_policy.py
   # Reject explicit integer casts inside TEST_ASSERT_EQ arguments. The macro
   # widens both args to int64_t, so an outer (int)/(uint32_t) cast is
   # redundant and latently buggy (a (int) cast on a uint32_t enum truncates
   # before the widening).
-  python3 scripts/checks/check_assert_casts.py tests/*.c
+  python3 scripts/checks/check_assert_casts.py --selftest
+  python3 scripts/checks/check_assert_casts.py --all
+)
+
+_pcc_run_all() {
+  local -a failures=()
+  local label helper status restore_errexit=0
+  [[ $- == *e* ]] && restore_errexit=1
+  while (($# >= 2)); do
+    label="$1"
+    shift
+    helper="$1"
+    set +e
+    "$helper"
+    status=$?
+    if ((restore_errexit)); then
+      set -e
+    fi
+    if ((status != 0)); then
+      failures+=("${label} (exit ${status})")
+    fi
+    shift
+  done
+  if ((${#failures[@]} == 0)); then
+    return 0
+  fi
+  printf 'pre-commit-checks: %d subcheck(s) failed:\n' "${#failures[@]}" >&2
+  printf '  - %s\n' "${failures[@]}" >&2
+  return 1
+}
+
+_pcc_git_environment_selftest() {
+  python3 scripts/dev/git_environment.py --selftest
+}
+
+_pcc_ra8_apps_selftest() {
+  # This registry drives developer and HIL wrappers indirectly, so exercise
+  # its pruning and error contract before the selftest-coverage census.
+  python3 scripts/dev/ra8_apps.py --selftest
+}
+
+_pcc_selftest_fail_then_pass() (
+  set -e
+  printf 'before-failure\n' >>"$log"
+  false
+  printf 'after-failure\n' >>"$log"
+)
+
+_pcc_selftest_green() {
+  printf 'green\n' >>"$log"
+  return 0
+}
+
+_pcc_aggregate_selftest() (
+  local log output status
+  log="$(mktemp)"
+  trap 'rm -f "$log"' EXIT
+  set +e
+  output="$(_pcc_run_all masked _pcc_selftest_fail_then_pass later _pcc_selftest_green 2>&1)"
+  status=$?
+  set -e
+  [[ "$status" -eq 1 ]]
+  [[ "$(printf '%s\n' "$output" | grep -c 'masked (exit 1)')" -eq 1 ]]
+  [[ "$(sed -n '1p' "$log")" == before-failure ]]
+  [[ "$(sed -n '2p' "$log")" == green ]]
+  if grep -q '^after-failure$' "$log"; then
+    return 1
+  fi
+  : >"$log"
+  _pcc_run_all green _pcc_selftest_green
+  [[ "$(cat "$log")" == green ]]
 )
 
 gate_pre_commit_checks() (
   set -e
-  _pcc_banned_constructs
-  _pcc_size_caps
-  _pcc_tree_structure
-  _pcc_source_form
-  _pcc_security_invariants
-  _pcc_mcdc_discipline
-  _pcc_docs_and_tests
+  _pcc_run_all \
+    aggregate-selftest _pcc_aggregate_selftest \
+    git-environment _pcc_git_environment_selftest \
+    ra8-apps _pcc_ra8_apps_selftest \
+    banned-constructs _pcc_banned_constructs \
+    size-caps _pcc_size_caps \
+    migration-contracts _pcc_migration_contracts \
+    python-authority _pcc_python_authority \
+    tree-structure _pcc_tree_structure \
+    source-form _pcc_source_form \
+    security-invariants _pcc_security_invariants \
+    mcdc-discipline _pcc_mcdc_discipline \
+    docs-and-tests _pcc_docs_and_tests
+)
+
+# --- suppressions -----------------------------------------------------------
+# Every lint, analysis, coverage, baseline, skip, and checker-scope control in
+# the repository must be represented by a binding-exact reviewed ledger row.
+# The selftest runs first and proves both the accepting and rejecting paths,
+# including stale identities, reason-only binding changes, forged successor
+# references, and prerequisite skips whose registered gate does not fail
+# closed. Missing PyYAML is a hard dependency failure, never a skipped audit.
+gate_suppressions() (
+  set -e
+  require_python_mod yaml "run 'just setup-python'"
+  python3 scripts/checks/check_suppressions.py --selftest
+  python3 scripts/checks/check_suppressions.py --check
 )
 
 # --- agnostic-registers --------------------------------------------------
@@ -394,16 +613,13 @@ gate_agnostic_registers() (
 )
 
 # --- shebangs -------------------------------------------------------------
-# Every first-party shell script starts with `#!/usr/bin/env <interp>`, and
-# every shebang the tree carries uses that form. A hardcoded interpreter path
-# is a portability claim this tree cannot keep (NixOS, a Homebrew bash 5 on a
-# Mac whose /bin/bash is the 3.2 without mapfile, busybox images); a MISSING
-# shebang on a script -- the gate bodies and libs this file sits among used to
-# be exactly that -- leaves the interpreter to whoever execs it; and the
-# near-miss `# !/bin/bash` is not a shebang at all, it reads as one and the
-# kernel never sees it. Scope comes from git ls-files including untracked
-# files, so a brand-new script is judged the moment it is written. --selftest
-# FIRST, both directions, so a rule that stopped matching cannot pass as clean.
+# Every first-party shell path has an explicit typed authority: portable Bash
+# or POSIX sh uses an env shebang, while security boundaries use fixed
+# `/bin/bash -p`. Protected entries also bind the combined four-line preamble
+# (shebang, SPDX, copyright, exact security rationale), reviewed executable
+# mode, and complete outer privileged-body wrapper. Scope includes untracked
+# files, so a brand-new script is judged immediately. --selftest runs first in
+# both directions, so a collapsed authority cannot pass as clean.
 gate_shebangs() (
   set -e
   python3 scripts/checks/check_shebangs.py --selftest
@@ -413,8 +629,8 @@ gate_shebangs() (
 # --- tier-imports ---------------------------------------------------------
 # The three-tier dependency arrow (#718), enforced instead of described.
 # libs/, port/, src/ and tools/ are the PLATFORM and must not reach into
-# apps/; within the products tier, apps/shared/ sits BELOW the form
-# categories (apps/stand_alone/, apps/threadx_modules/) and must not reach up
+# apps/; within the products tier, apps/shared_libs/ sits BELOW the form
+# categories (apps/host/, apps/board/) and must not reach up
 # into them. Both directions have to be checked in two languages, because
 # there are two ways to couple: an #include, and a CMake source list or
 # include directory naming another layer's files.
@@ -437,8 +653,8 @@ gate_tier_imports() (
 )
 
 # --- init-order-freshness -------------------------------------------------
-# docs/INIT_ORDER_AUDIT.md is COMMITTED yet GENERATED (mk/docs.mk writes it via
-# audit_init_order.py --report). Nothing regenerated it and byte-compared the
+# docs/INIT_ORDER_AUDIT.md is COMMITTED yet GENERATED (`just docs::audit_init`
+# invokes audit_init_order.py --report). Nothing regenerated it and byte-compared the
 # committed copy, so it silently drifted -- it claimed 11 apps while the tree
 # held 217, for as long as the discovery glob was depth-capped (#190/#537). It
 # is cited from docs/qualification/, so a stale copy misrepresents the boot
@@ -456,12 +672,12 @@ gate_init_order_freshness() (
 )
 
 # --- roadmap-dashboard-freshness ------------------------------------------
-# docs/ROADMAP_DASHBOARD.md is COMMITTED yet GENERATED (mk/docs.mk writes it via
-# scripts/report/roadmap_dashboard.py), rendered purely from docs/ROADMAP.md.
-# Nothing regenerated it and byte-compared the committed copy, so it could
-# silently drift out of step with ROADMAP.md the same way INIT_ORDER_AUDIT.md
-# did (#537). This gate regenerates it from the current tree and FAILS if the
-# committed copy differs. The generator reads one committed markdown file and is
+# docs/ROADMAP_DASHBOARD.md is COMMITTED yet GENERATED (`just docs::dashboard`
+# invokes scripts/report/roadmap_dashboard.py), rendered purely from the closed
+# historical evidence in docs/ROADMAP.md. Nothing regenerated it and
+# byte-compared the committed copy, so it could silently drift out of step with
+# ROADMAP.md the same way INIT_ORDER_AUDIT.md did (#537). This gate regenerates
+# it from the current tree and FAILS if the committed copy differs. The generator is
 # hardware-free (byte-stable across runs), so unlike the slow artefact-freshness
 # gate this one needs no build output and sits in the fast group beside
 # init-order-freshness. --selftest FIRST, both directions, so a comparator that
@@ -559,7 +775,7 @@ gate_bench_lock() (
 gate_annotations() (
   set -e
   require_python_mod clang.cindex \
-    "CI installs libclang==18.1.1; add it to .devcontainer/Dockerfile too."
+    "Run 'just setup-python' locally; CI/container use the same uv lock."
   # Regression-test the checker itself before trusting its verdict.
   python3 scripts/checks/check_annotations.py --selftest
   python3 scripts/checks/check_annotations.py --check
@@ -574,7 +790,7 @@ gate_annotations() (
 gate_doc_attachment() (
   set -e
   require_python_mod clang.cindex \
-    "CI installs libclang==18.1.1; add it to .devcontainer/Dockerfile too."
+    "Run 'just setup-python' locally; CI/container use the same uv lock."
   # Regression-test the checker itself, in BOTH directions, before trusting its
   # verdict: every defect class must fire, and the legal-but-tricky forms
   # (@copydoc, the CLAUDE.md definition-site one-liner, macro-generated
@@ -686,5 +902,6 @@ gate_hum_register_map() (
 # Hardware-free, so an added HIL app cannot escape EIL coverage.
 gate_hil_eil_parity() (
   set -e
+  python3 scripts/checks/check_hil_eil_parity.py --selftest
   python3 scripts/checks/check_hil_eil_parity.py
 )

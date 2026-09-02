@@ -1,7 +1,7 @@
 # Root-of-Trust Signing Key
 
 The root-of-trust (RoT) signing key is the single anchor of the secure-boot
-chain: `tools/rot_sign.py sign` signs every launched image with the **private**
+chain: `tools/rot/src/rot_sign.py sign` signs every launched image with the **private**
 key, and the device trusts only images that verify against the **public** key
 provisioned into `libs/ra8_dfu/src/ra8_rot.c` (`s_rot_root_pubkey`). Lose the
 private key and no new image can be signed for the provisioned public key -- you
@@ -40,12 +40,12 @@ The AppRole policy must allow `create`/`update`/`read` on
 
 ## Common operations
 
-`scripts/secrets/rot_provision.sh` runs the first-time ceremony: generate a
+`/bin/bash -p scripts/secrets/rot_provision.sh` runs the first-time ceremony: generate a
 keypair, patch the public half into the firmware, store the private half.
 Everything afterwards goes through `scripts/secrets/rot_keystore.py` --
 storing a key as a new version, listing the history and its tags, reporting
 which backend is live, recovering an old version, and re-keying. Signing an
-image is `tools/rot_sign.py sign`. Both take `--help`, which is the authority
+image is `tools/rot/src/rot_sign.py sign`. Both take `--help`, which is the authority
 on their arguments.
 
 `rekey` never loses a key: it stores the outgoing working key first, so the

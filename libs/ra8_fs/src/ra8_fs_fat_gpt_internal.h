@@ -42,7 +42,7 @@
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_gpt_locate_volume(ra8_fs_mount_t* m, uint64_t* out_base);
+ra8_err_t priv_gpt_locate_volume(const ra8_fs_mount_t* m, uint64_t* out_base);
 
 /**
  * @brief Locate a GPT partition chosen by entry-array index.
@@ -70,4 +70,4 @@ ra8_err_t priv_gpt_locate_volume(ra8_fs_mount_t* m, uint64_t* out_base);
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_gpt_locate_partition(ra8_fs_mount_t* m, uint8_t index, uint64_t* out_base);
+ra8_err_t priv_gpt_locate_partition(const ra8_fs_mount_t* m, uint8_t index, uint64_t* out_base);

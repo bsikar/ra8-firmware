@@ -3,7 +3,7 @@
 The third e-reader reading mode (#289), beside reflowable EPUB text and paged
 CBZ/manga: a chapter is one **continuous vertical strip** -- tall image slices
 stacked seamlessly and read by scrolling, with no page boundaries. This app makes
-the `libs/ra8_longstrip` scroll engine viewable by binding its band-composite
+the `apps/shared_libs/longstrip` scroll engine viewable by binding its band-composite
 blit sink to the live 1024x600 GLCDC panel framebuffer, so an emulator window or
 a captured frame shows the actual reader screen.
 

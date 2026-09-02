@@ -171,7 +171,7 @@ RA8_PRIV void priv_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t clr
  * @note Pure function.
  * @since 0.1.0
  */
-RA8_PRIV bool priv_is_hs(volatile r_usb_regs_t* reg);
+RA8_PRIV bool priv_is_hs(volatile const r_usb_regs_t* reg);
 
 /**
  * @brief Set CFIFOSEL.MBW + CURPIPE + ISEL for the given pipe / direction.
@@ -412,6 +412,7 @@ RA8_PRIV void priv_usb_init_common(volatile r_usb_regs_t* reg);
  * @param[in] reg FS register block pointer (must be ::ra8_usb_fs()).
  * @return ::ra8_err_t
  * @retval k_ra8_ok USBE asserted.
+ * @retval k_ra8_err_hw_timeout SCKE did not acknowledge within the bounded wait.
  * @pre MSTPB11 ungated; USB48CLK fed from PLL2P/5 = 48 MHz.
  * @pre Caller is single-threaded init context.
  * @post SYSCFG: SCKE=1, DRPD=0, USBE=1.

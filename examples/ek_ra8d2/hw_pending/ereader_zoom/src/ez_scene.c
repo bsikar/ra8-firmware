@@ -7,7 +7,7 @@
  *
  * @details
  * Implements ez_scene.h. Every pixel this file puts on the panel comes from
- * integer arithmetic -- the procedural page sampler, the ra8_zoom composite, and
+ * integer arithmetic -- the procedural page sampler, the zoom composite, and
  * filled rectangles for the chrome -- so the framebuffer hash it reports is the
  * same number on the unit-test host, in ra8_emulator, and on silicon.
  *
@@ -26,8 +26,8 @@
 #include "ra8_gfx.h"
 #include "ra8_tile_cache.h"
 #include "ra8_ui.h"
-#include "ra8_zoom.h"
-#include "ra8_zoom_tiles.h"
+#include "zoom.h"
+#include "zoom_tiles.h"
 
 /** @brief Component tag for `RA8_CHECK_*` log lines. */
 static const char* const s_tag = "ereader_zoom";
@@ -143,7 +143,7 @@ typedef enum : uint32_t {
  * @invariant k_ez_st_focus_x / _y lie inside the content rectangle.
  * @par Example:
  * @code
- * (void)ra8_zoom_view_set_scale(&s->page, k_ez_st_scale, k_ez_st_focus_x, k_ez_st_focus_y, t);
+ * (void)zoom_view_set_scale(&s->page, k_ez_st_scale, k_ez_st_focus_x, k_ez_st_focus_y, t);
  * @endcode
  * @see ez_scene_selftest
  * @since 0.1.0
@@ -267,7 +267,7 @@ static ra8_ui_rect_t ez_lens_rect(ra8_ui_rect_t content)
  * @brief Build the shared composite-scratch descriptor from a configuration.
  * @param[in] cfg Scene configuration holding the three borrowed buffers.
  * @return The scratch descriptor both viewports use.
- * @retval "descriptor" Always; validation happens in ra8_zoom_view_open().
+ * @retval "descriptor" Always; validation happens in zoom_view_open().
  * @pre  Every scratch pointer in @p cfg is non-NULL.
  * @pre  The buffers outlive the scene.
  * @post The descriptor's capacities match the ez_scratch_t enum.
@@ -275,9 +275,9 @@ static ra8_ui_rect_t ez_lens_rect(ra8_ui_rect_t content)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-static ra8_zoom_scratch_t ez_scratch_of(const ez_scene_cfg_t* cfg)
+static zoom_scratch_t ez_scratch_of(const ez_scene_cfg_t* cfg)
 {
-  const ra8_zoom_scratch_t sc = {
+  const zoom_scratch_t sc = {
     .row        = cfg->row,
     .row_cap    = (uint32_t)k_ez_row_bytes,
     .strip      = cfg->strip,
@@ -343,7 +343,7 @@ static ra8_err_t ez_cfg_ptrs_ok(const ez_scene_cfg_t* cfg)
  * @param[in]     cfg Scene configuration (for the scratch buffers).
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok    Both views are open and owe a quality flush.
- * @retval k_ra8_err_* Propagated from ::ra8_zoom_view_open.
+ * @retval k_ra8_err_* Propagated from ::zoom_view_open.
  * @pre  `s->src` is bound and `s->content` is set.
  * @pre  The scratch buffers outlive the scene.
  * @post On k_ra8_ok the page view covers `s->content` and the loupe sits inside it.
@@ -353,40 +353,40 @@ static ra8_err_t ez_cfg_ptrs_ok(const ez_scene_cfg_t* cfg)
  */
 static ra8_err_t ez_open_views(ez_scene_t* s, const ez_scene_cfg_t* cfg)
 {
-  const ra8_zoom_scratch_t  scratch  = ez_scratch_of(cfg);
-  const ra8_zoom_view_cfg_t page_cfg = {
+  const zoom_scratch_t  scratch  = ez_scratch_of(cfg);
+  const zoom_view_cfg_t page_cfg = {
     .src       = s->src,
     .scratch   = scratch,
     .dst       = s->content,
-    .scale     = (uint8_t)k_ra8_zoom_scale_min,
+    .scale     = (uint8_t)k_zoom_scale_min,
     .scale_max = (uint8_t)k_ez_page_scale_max,
-    .policy    = k_ra8_zoom_policy_responsive,
+    .policy    = k_zoom_policy_responsive,
     .settle_ms = 0U,
     .focus_x   = 0,
     .focus_y   = 0,
   };
-  RA8_RETURN_ON_ERROR(ra8_zoom_view_open(&s->page, &page_cfg), s_tag, "page view open");
+  RA8_RETURN_ON_ERROR(zoom_view_open(&s->page, &page_cfg), s_tag, "page view open");
 
-  const ra8_ui_rect_t       lens     = ez_lens_rect(s->content);
-  const ra8_zoom_view_cfg_t lens_cfg = {
+  const ra8_ui_rect_t   lens     = ez_lens_rect(s->content);
+  const zoom_view_cfg_t lens_cfg = {
     .src       = s->src,
     .scratch   = scratch,
     .dst       = lens,
     .scale     = (uint8_t)k_ez_lens_scale_min,
     .scale_max = (uint8_t)k_ez_lens_scale_max,
-    .policy    = k_ra8_zoom_policy_responsive,
+    .policy    = k_zoom_policy_responsive,
     .settle_ms = 0U,
     .focus_x   = 0,
     .focus_y   = 0,
   };
-  return ra8_zoom_view_open(&s->lens, &lens_cfg);
+  return zoom_view_open(&s->lens, &lens_cfg);
 }
 
 /**
  * @brief Wire the tile cache over the borrowed storage and bind it as a source.
  * @details Split out of ::ez_scene_init so that function reads as "validate,
  *          lay out, bind the page, open the views". The tile grid is derived by
- *          ::ra8_zoom_tile_src_init from the page extent rather than passed in,
+ *          ::zoom_tile_src_init from the page extent rather than passed in,
  *          so it cannot disagree with the geometry it is meant to cover.
  * @param[in,out] s   Scene whose layout is already computed.
  * @param[in]     cfg Validated configuration supplying the cache storage.
@@ -415,16 +415,16 @@ static ra8_err_t ez_bind_page(ez_scene_t* s, const ez_scene_cfg_t* cfg)
     .decode_ctx   = nullptr,
   };
   RA8_RETURN_ON_ERROR(ra8_tile_cache_init(&s->cache, &cache_cfg), s_tag, "tile cache init");
-  RA8_RETURN_ON_ERROR(ra8_zoom_tile_src_init(&s->tiles,
-                                             &s->cache,
-                                             (uint32_t)k_ez_image_id,
-                                             (uint32_t)k_ez_page_w,
-                                             (uint32_t)k_ez_page_h,
-                                             (uint16_t)k_ez_tile_edge,
-                                             (uint16_t)k_ez_tile_edge),
+  RA8_RETURN_ON_ERROR(zoom_tile_src_init(&s->tiles,
+                                         &s->cache,
+                                         (uint32_t)k_ez_image_id,
+                                         (uint32_t)k_ez_page_w,
+                                         (uint32_t)k_ez_page_h,
+                                         (uint16_t)k_ez_tile_edge,
+                                         (uint16_t)k_ez_tile_edge),
                       s_tag,
                       "tiled source init");
-  return ra8_zoom_tile_src_bind(&s->tiles, &s->src);
+  return zoom_tile_src_bind(&s->tiles, &s->src);
 }
 
 ra8_err_t ez_scene_init(ez_scene_t* s, const ez_scene_cfg_t* cfg)
@@ -495,30 +495,30 @@ ez_zone_t ez_zone_hit(const ez_scene_t* s, int32_t x, int32_t y)
  */
 static bool ez_apply_pan(ez_scene_t* s, ez_zone_t zone, uint32_t now_ms)
 {
-  ra8_zoom_pan_t dir = k_ra8_zoom_pan_none;
+  zoom_pan_t dir = k_zoom_pan_none;
   switch (zone) {
     case k_ez_zone_pan_left:
-      dir = k_ra8_zoom_pan_left;
+      dir = k_zoom_pan_left;
       break;
     case k_ez_zone_pan_right:
-      dir = k_ra8_zoom_pan_right;
+      dir = k_zoom_pan_right;
       break;
     case k_ez_zone_pan_up:
-      dir = k_ra8_zoom_pan_up;
+      dir = k_zoom_pan_up;
       break;
     case k_ez_zone_pan_down:
-      dir = k_ra8_zoom_pan_down;
+      dir = k_zoom_pan_down;
       break;
     default:
       return false;
   }
   ra8_ui_rect_t before = {};
   ra8_ui_rect_t after  = {};
-  (void)ra8_zoom_view_window(&s->page, &before);
-  if (ra8_zoom_view_pan_dir(&s->page, dir, now_ms) != k_ra8_ok) {
+  (void)zoom_view_window(&s->page, &before);
+  if (zoom_view_pan_dir(&s->page, dir, now_ms) != k_ra8_ok) {
     return false;
   }
-  (void)ra8_zoom_view_window(&s->page, &after);
+  (void)zoom_view_window(&s->page, &after);
   if ((after.x == before.x) && (after.y == before.y)) {
     return false;
   }
@@ -541,19 +541,17 @@ bool ez_scene_tap(ez_scene_t* s, int32_t x, int32_t y, uint32_t now_ms)
      * anchor nor the scale moved. Say so explicitly: a pan of (0, 0) would
      * correctly report "nothing moved" and the lens would never be flushed to
      * an e-ink panel (a continuously-scanned LCD would hide the bug entirely). */
-    return ra8_zoom_view_invalidate(&s->page, now_ms) == k_ra8_ok;
+    return zoom_view_invalidate(&s->page, now_ms) == k_ra8_ok;
   }
   if (zone == k_ez_zone_lens) {
-    const uint8_t next = ra8_zoom_scale_cycle(s->lens.scale,
-                                              (uint8_t)k_ez_lens_scale_min,
-                                              (uint8_t)k_ez_lens_scale_max);
-    return ra8_zoom_view_set_scale(&s->lens, next, x, y, now_ms) == k_ra8_ok;
+    const uint8_t next =
+      zoom_scale_cycle(s->lens.scale, (uint8_t)k_ez_lens_scale_min, (uint8_t)k_ez_lens_scale_max);
+    return zoom_view_set_scale(&s->lens, next, x, y, now_ms) == k_ra8_ok;
   }
   if (zone == k_ez_zone_zoom) {
-    const uint8_t next = ra8_zoom_scale_cycle(s->page.scale,
-                                              (uint8_t)k_ra8_zoom_scale_min,
-                                              (uint8_t)k_ez_page_scale_max);
-    return ra8_zoom_view_set_scale(&s->page, next, x, y, now_ms) == k_ra8_ok;
+    const uint8_t next =
+      zoom_scale_cycle(s->page.scale, (uint8_t)k_zoom_scale_min, (uint8_t)k_ez_page_scale_max);
+    return zoom_view_set_scale(&s->page, next, x, y, now_ms) == k_ra8_ok;
   }
   return ez_apply_pan(s, zone, now_ms);
 }
@@ -627,9 +625,9 @@ ra8_err_t ez_scene_render(ez_scene_t* s)
 {
   RA8_CHECK_NULL_PTR(s, s_tag, "scene must not be nullptr");
   RA8_CHECK_NULL_PTR(s->src.read, s_tag, "scene source must not be nullptr");
-  RA8_RETURN_ON_ERROR(ra8_zoom_view_render(&s->page), s_tag, "page render");
+  RA8_RETURN_ON_ERROR(zoom_view_render(&s->page), s_tag, "page render");
   if (s->lens_on) {
-    RA8_RETURN_ON_ERROR(ra8_zoom_view_render(&s->lens), s_tag, "lens render");
+    RA8_RETURN_ON_ERROR(zoom_view_render(&s->lens), s_tag, "lens render");
     RA8_RETURN_ON_ERROR(ez_draw_lens_chrome(ez_lens_rect(s->content)), s_tag, "lens chrome");
   }
   return ez_draw_status(s);
@@ -647,21 +645,21 @@ ra8_err_t ez_scene_render(ez_scene_t* s)
  * @param[in]  lens_plan The loupe's drained plan.
  * @param[out] out       Receives the scene-level plan.
  * @return Nothing.
- * @pre  Both plans were just drained by ::ra8_zoom_view_present.
+ * @pre  Both plans were just drained by ::zoom_view_present.
  * @pre  @p out addresses writable storage.
  * @post `out->present` is false when neither view owed anything.
  * @post When `out->present` is true, `out->rect` is the smallest correct flush.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void ez_choose_plan(const ez_scene_t*         s,
-                           const ra8_zoom_present_t* page_plan,
-                           const ra8_zoom_present_t* lens_plan,
-                           ez_present_t*             out)
+static void ez_choose_plan(const ez_scene_t*     s,
+                           const zoom_present_t* page_plan,
+                           const zoom_present_t* lens_plan,
+                           ez_present_t*         out)
 {
   if (page_plan->present) {
     out->rect    = s->content;
-    out->quality = (page_plan->refresh == k_ra8_zoom_refresh_quality);
+    out->quality = (page_plan->refresh == k_zoom_refresh_quality);
     out->present = true;
     return;
   }
@@ -669,7 +667,7 @@ static void ez_choose_plan(const ez_scene_t*         s,
     /* The partial-update case: only the lens box changed, so only the lens box
      * is flushed -- 102400 pixels instead of the content area's 565248. */
     out->rect    = ez_lens_rect(s->content);
-    out->quality = (lens_plan->refresh == k_ra8_zoom_refresh_quality);
+    out->quality = (lens_plan->refresh == k_zoom_refresh_quality);
     out->present = true;
     return;
   }
@@ -680,10 +678,10 @@ ra8_err_t ez_scene_present(ez_scene_t* s, ez_present_t* out)
 {
   RA8_CHECK_NULL_PTR(s, s_tag, "scene must not be nullptr");
   RA8_CHECK_NULL_PTR(out, s_tag, "present out must not be nullptr");
-  ra8_zoom_present_t page_plan = {};
-  ra8_zoom_present_t lens_plan = {};
-  RA8_RETURN_ON_ERROR(ra8_zoom_view_present(&s->page, &page_plan), s_tag, "page present");
-  RA8_RETURN_ON_ERROR(ra8_zoom_view_present(&s->lens, &lens_plan), s_tag, "lens present");
+  zoom_present_t page_plan = {};
+  zoom_present_t lens_plan = {};
+  RA8_RETURN_ON_ERROR(zoom_view_present(&s->page, &page_plan), s_tag, "page present");
+  RA8_RETURN_ON_ERROR(zoom_view_present(&s->lens, &lens_plan), s_tag, "lens present");
   ez_choose_plan(s, &page_plan, &lens_plan, out);
   return k_ra8_ok;
 }
@@ -693,16 +691,22 @@ bool ez_scene_tick(ez_scene_t* s, uint32_t now_ms)
   if (s == nullptr) {
     return false;
   }
-  const bool page_due = ra8_zoom_view_tick(&s->page, now_ms);
-  const bool lens_due = ra8_zoom_view_tick(&s->lens, now_ms);
-  return page_due || (lens_due && s->lens_on);
+  const bool page_due = zoom_view_tick(&s->page, now_ms);
+  const bool lens_due = zoom_view_tick(&s->lens, now_ms);
+  if (page_due) {
+    return true;
+  }
+  if (lens_due) {
+    return s->lens_on;
+  }
+  return false;
 }
 
-ra8_err_t ez_scene_prefetch(ez_scene_t* s, ra8_zoom_pan_t dir, uint16_t* out_warmed)
+ra8_err_t ez_scene_prefetch(ez_scene_t* s, zoom_pan_t dir, uint16_t* out_warmed)
 {
   RA8_CHECK_NULL_PTR(s, s_tag, "scene must not be nullptr");
   RA8_CHECK_NULL_PTR(s->tiles.cache, s_tag, "scene tile source must be bound");
-  return ra8_zoom_tiles_prefetch(&s->tiles, &s->page, dir, (uint16_t)k_ez_prefetch_max, out_warmed);
+  return zoom_tiles_prefetch(&s->tiles, &s->page, dir, (uint16_t)k_ez_prefetch_max, out_warmed);
 }
 
 uint32_t ez_fnv1a(const void* buf, uint32_t len)
@@ -761,10 +765,10 @@ static ra8_err_t ez_render_and_hash(ez_scene_t* s, uint32_t* out_hash)
  */
 static ra8_err_t ez_selftest_pan(ez_scene_t* s, ez_selftest_t* out)
 {
-  RA8_RETURN_ON_ERROR(ra8_zoom_view_pan_dir(&s->page, k_ra8_zoom_pan_right, (uint32_t)k_ez_st_t0),
+  RA8_RETURN_ON_ERROR(zoom_view_pan_dir(&s->page, k_zoom_pan_right, (uint32_t)k_ez_st_t0),
                       s_tag,
                       "selftest pan");
-  RA8_RETURN_ON_ERROR(ez_scene_prefetch(s, k_ra8_zoom_pan_right, &out->warmed),
+  RA8_RETURN_ON_ERROR(ez_scene_prefetch(s, k_zoom_pan_right, &out->warmed),
                       s_tag,
                       "selftest prefetch");
   return ez_render_and_hash(s, &out->crc_pan);
@@ -788,11 +792,11 @@ static ra8_err_t ez_selftest_pan(ez_scene_t* s, ez_selftest_t* out)
  */
 static ra8_err_t ez_selftest_zoom(ez_scene_t* s, ez_selftest_t* out)
 {
-  RA8_RETURN_ON_ERROR(ra8_zoom_view_set_scale(&s->page,
-                                              (uint8_t)k_ez_st_scale,
-                                              (int32_t)k_ez_st_focus_x,
-                                              (int32_t)k_ez_st_focus_y,
-                                              (uint32_t)k_ez_st_t0),
+  RA8_RETURN_ON_ERROR(zoom_view_set_scale(&s->page,
+                                          (uint8_t)k_ez_st_scale,
+                                          (int32_t)k_ez_st_focus_x,
+                                          (int32_t)k_ez_st_focus_y,
+                                          (uint32_t)k_ez_st_t0),
                       s_tag,
                       "selftest zoom");
   return ez_render_and_hash(s, &out->crc_2x);
@@ -819,10 +823,10 @@ static ra8_err_t ez_selftest_zoom(ez_scene_t* s, ez_selftest_t* out)
 static ra8_err_t ez_selftest_lens(ez_scene_t* s, ez_selftest_t* out)
 {
   s->lens_on = true;
-  RA8_RETURN_ON_ERROR(ra8_zoom_view_invalidate(&s->lens, (uint32_t)k_ez_st_t0),
+  RA8_RETURN_ON_ERROR(zoom_view_invalidate(&s->lens, (uint32_t)k_ez_st_t0),
                       s_tag,
                       "selftest lens dirty");
-  RA8_RETURN_ON_ERROR(ra8_zoom_view_invalidate(&s->page, (uint32_t)k_ez_st_t0),
+  RA8_RETURN_ON_ERROR(zoom_view_invalidate(&s->page, (uint32_t)k_ez_st_t0),
                       s_tag,
                       "selftest page dirty");
   return ez_render_and_hash(s, &out->crc_lens);

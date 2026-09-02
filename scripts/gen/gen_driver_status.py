@@ -195,13 +195,25 @@ def _scan_callers(root: Path, roots: list[str]) -> tuple[dict[str, set[str]], di
     tests: dict[str, set[str]] = {r: set() for r in roots}
     apps: dict[str, set[str]] = {r: set() for r in roots}
 
+    def _app_directory(path: Path, base: Path) -> str | None:
+        for parent in path.parents:
+            if parent == base.parent:
+                break
+            if (parent / "CMakeLists.txt").is_file():
+                return parent.name
+        return None
+
     def _walk(base: Path, sink: dict[str, set[str]], label: str) -> None:
         if not base.is_dir():
             return
         for path in sorted(base.rglob("*")):
             if path.suffix not in _SOURCE_SUFFIXES or not path.is_file():
                 continue
-            key = path.relative_to(root).as_posix() if label == "rel" else path.parent.name
+            key = (
+                path.relative_to(root).as_posix() if label == "rel" else _app_directory(path, base)
+            )
+            if key is None:
+                continue
             for symbol in set(_CALL_RE.findall(_read(path))):
                 owner = _owner(symbol, ordered)
                 if owner is not None:
@@ -343,13 +355,15 @@ def _seed_tree(root: Path) -> None:
     (inc / "ra8_foo_regs.h").write_text("#pragma once\n", encoding="ascii")
     (inc / "ra8_foo_internal.h").write_text("#pragma once\n", encoding="ascii")
 
-    tests = root / "tests"
-    tests.mkdir()
+    tests = root / "tests" / "src"
+    tests.mkdir(parents=True)
     (tests / "test_something_else.c").write_text("void t(void) { ra8_foo_init(); }\n", "ascii")
 
     app = root / "examples" / "tier" / "blinky"
-    app.mkdir(parents=True)
-    (app / "main.c").write_text("int main(void) { ra8_foo_read(1); }\n", encoding="ascii")
+    src = app / "src"
+    src.mkdir(parents=True)
+    (app / "CMakeLists.txt").write_text("add_executable(blinky src/main.c)\n", encoding="ascii")
+    (src / "main.c").write_text("int main(void) { ra8_foo_read(1); }\n", encoding="ascii")
 
 
 def _selftest_cases(root: Path) -> list[tuple[str, bool]]:
@@ -378,7 +392,7 @@ def _selftest_cases(root: Path) -> list[tuple[str, bool]]:
         ("a header with no source is still listed", by_name["ra8_bar"].sources == ()),
         (
             "a differently-named host test still counts",
-            by_name["ra8_foo"].tests == ("tests/test_something_else.c",),
+            by_name["ra8_foo"].tests == ("tests/src/test_something_else.c",),
         ),
         ("an app naming a symbol is attributed", by_name["ra8_foo"].apps == ("blinky",)),
         (

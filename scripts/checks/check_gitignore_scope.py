@@ -44,7 +44,7 @@ TWO WAYS TO BE UNANCHORED AND LEGAL
    and `ra/` had in fact already swallowed the vendored FSP blob trees.
 
 2. An explicit `gitignore-scope-ok: <reason>` marker in the comment block
-   directly above the pattern. `downloads/` is the real case: apps/stand_alone/media_dl
+   directly above the pattern. `downloads/` is the real case: apps/host/mdl
    writes it relative to whatever directory it runs from, so there is no single
    root to anchor it to. The marker records that this was decided rather than
    overlooked, and an empty reason is not accepted.
@@ -58,6 +58,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -122,6 +123,25 @@ class Finding:
         )
 
 
+@dataclass(frozen=True)
+class MarkerBinding:
+    """One reasoned marker bound to the exact unanchored pattern it waives."""
+
+    marker_line: int
+    pattern_line: int
+    pattern: str
+    reason: str
+
+
+@dataclass
+class MarkerParseState:
+    """Mutable outputs shared while parsing one .gitignore."""
+
+    findings: list[Finding]
+    bindings: list[MarkerBinding]
+    errors: list[tuple[int, str]]
+
+
 def is_anchored(pattern: str) -> bool:
     """True when `pattern` is bound to a known place in the tree."""
     if pattern.startswith("/"):
@@ -129,32 +149,78 @@ def is_anchored(pattern: str) -> bool:
     return "/" in pattern.rstrip("/")
 
 
-def scan(text: str) -> list[Finding]:
-    """Every unanchored directory pattern in `text`, with its line number."""
-    findings: list[Finding] = []
-    pending_marker = False
+def _comment_marker(
+    line: str,
+    lineno: int,
+    pending: tuple[int, str] | None,
+    errors: list[tuple[int, str]],
+) -> tuple[int, str] | None:
+    """Update one comment block's pending marker."""
+    if MARKER not in line:
+        return pending
+    reason = line.split(MARKER, 1)[1].strip()
+    if pending is not None:
+        errors.append((pending[0], "marker is not bound to a pattern"))
+    if not reason:
+        errors.append((lineno, "marker reason is blank"))
+        return None
+    return (lineno, reason)
+
+
+def _bind_pattern(
+    line: str,
+    lineno: int,
+    pending: tuple[int, str] | None,
+    state: MarkerParseState,
+) -> None:
+    """Consume one non-comment line and bind/reject its pending marker."""
+    if line.startswith("!"):
+        message = "marker is bound to a negation"
+    elif not line.endswith("/"):
+        message = "marker is bound to a file pattern"
+    else:
+        name = line.rstrip("/")
+        needs_exemption = not is_anchored(line) and name not in RESERVED_DIR_NAMES
+        if needs_exemption and pending is None:
+            state.findings.append(Finding(lineno, line))
+            return
+        if needs_exemption and pending is not None:
+            state.bindings.append(MarkerBinding(pending[0], lineno, line, pending[1]))
+            return
+        message = "marker is bound to a pattern that needs no exemption"
+    if pending is not None:
+        state.errors.append((pending[0], message))
+
+
+def _analyse(text: str) -> tuple[list[Finding], list[MarkerBinding], list[tuple[int, str]]]:
+    """Return violations, exact marker bindings, and malformed/orphan markers."""
+    state = MarkerParseState([], [], [])
+    pending: tuple[int, str] | None = None
     for lineno, raw in enumerate(text.split("\n"), start=1):
         line = raw.strip()
         if not line:
-            pending_marker = False
-            continue
-        if line.startswith("#"):
-            # A marker stays live until the comment block ends, so it may sit
-            # above a short explanation rather than immediately on the pattern.
-            if MARKER in line and line.split(MARKER, 1)[1].strip():
-                pending_marker = True
-            continue
-        if line.startswith("!"):  # a negation re-includes; it cannot swallow
-            pending_marker = False
-            continue
-        if not line.endswith("/"):  # file patterns are a different question
-            pending_marker = False
-            continue
-        name = line.rstrip("/")
-        if not is_anchored(line) and name not in RESERVED_DIR_NAMES and not pending_marker:
-            findings.append(Finding(lineno, line))
-        pending_marker = False
-    return findings
+            if pending is not None:
+                state.errors.append((pending[0], "marker is not bound to a pattern"))
+            pending = None
+        elif line.startswith("#"):
+            pending = _comment_marker(line, lineno, pending, state.errors)
+        else:
+            _bind_pattern(line, lineno, pending, state)
+            pending = None
+    if pending is not None:
+        state.errors.append((pending[0], "marker reaches end of file without a pattern"))
+    return state.findings, state.bindings, state.errors
+
+
+def scan(text: str) -> list[Finding]:
+    """Every unanchored directory pattern in `text`, with its line number."""
+    return _analyse(text)[0]
+
+
+def marker_bindings(text: str) -> tuple[list[MarkerBinding], list[tuple[int, str]]]:
+    """Expose the exact bindings consumed by this gate to governance inventory."""
+    _findings, bindings, errors = _analyse(text)
+    return bindings, errors
 
 
 def _assert_fires(failures: list[str]) -> None:
@@ -199,7 +265,7 @@ def _assert_quiet(failures: list[str]) -> None:
     expect(not scan("*.o\n*.elf\n"), "file patterns are out of scope", failures)
     expect(not scan("!libs/third_party/**/ra/\n"), "a negation stays quiet", failures)
     expect(
-        not scan(f"# {MARKER} media_dl writes it relative to its own cwd\ndownloads/\n"),
+        not scan(f"# {MARKER} mdl writes it relative to its own cwd\ndownloads/\n"),
         "an explicit marker with a reason stays quiet",
         failures,
     )
@@ -220,6 +286,21 @@ def _assert_marker_discipline(failures: list[str]) -> None:
     expect(
         [f.pattern for f in scan(f"# {MARKER} ok\ndownloads/\n\nbuild/\n")] == ["build/"],
         "a marker does not leak past its own comment block",
+        failures,
+    )
+    bindings, errors = marker_bindings(f"# {MARKER} generated downloads\ndownloads/\n")
+    expect(
+        len(bindings) == 1
+        and bindings[0].pattern == "downloads/"
+        and bindings[0].reason == "generated downloads"
+        and not errors,
+        "a marker binds exactly one governed pattern with its reason",
+        failures,
+    )
+    bindings, errors = marker_bindings(f"# {MARKER} orphan\n/build/\n")
+    expect(
+        not bindings and bool(errors),
+        "a marker on an already anchored pattern fails closed as orphaned",
         failures,
     )
     real = (REPO_ROOT / ".gitignore").read_text()

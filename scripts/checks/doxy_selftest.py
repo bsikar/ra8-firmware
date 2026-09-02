@@ -15,11 +15,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-from doxy_function_baseline import function_key, partition_function_gaps
 from doxy_functions import audit_file
 from doxy_members import audit_members_file
 from doxy_scope import override_repo_root
-from doxy_style import _floor_failure, audit_text, partition
+from doxy_style import _floor_failure, audit_text
 
 # --------------------------------------------------------------------------
 # Self-test
@@ -50,7 +49,22 @@ static int bad_thin_block(int a, int b)
 """,
     "libs/mod_doc/inc/mod_doc.h": """
 #pragma once
-int hdr_undocumented(int a);
+/**
+ * @brief Return one value unchanged.
+ * @details Exercises a public definition whose included header owns the contract.
+ * @param[in] value Value to return.
+ * @return The original value.
+ * @retval 0 The input was zero.
+ * @pre @p value is initialised.
+ * @pre The caller accepts the unchanged result.
+ * @post No global state is mutated.
+ * @post The result equals @p value.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+int hdr_documented(int value);
+
+int hdr_undocumented(int value);
 """,
     # --- function mode: the shapes that must stay CLEAN --------------------
     "libs/mod_doc/src/good.c": """
@@ -97,9 +111,44 @@ static int good_fwd_declared(int a)
   return a * 3;
 }
 
+/* A public forward declaration is likewise only an ordering device. The
+   C23 attribute exercises the live Cortex-M handler definition spelling. */
+void good_attr_forward(void);
+
+/**
+ * @brief Handle a synthetic weak interrupt.
+ * @details Exercises a documented attributed definition after a bare prototype.
+ * @pre The synthetic interrupt is active.
+ * @pre The caller accepts the handler side effects.
+ * @post The synthetic interrupt has been handled.
+ * @post Control returns to the caller.
+ * @note Synthetic self-test fixture only.
+ * @since 0.1.0
+ */
+[[gnu::weak]] void good_attr_forward(void)
+{
+}
+
+/* A matching prototype must stay quiet even if the RA8_WEAK definition is
+   bare; the definition itself must still fire so the gate keeps its teeth. */
+void bad_weak_forward(void);
+
+RA8_WEAK void bad_weak_forward(void)
+{
+}
+
+/* A lookalike definition with a different parameter type must not silence the
+   declaration. This pair should fire at the unmatched prototype. */
+void bad_mismatched_forward(int value);
+
+RA8_WEAK void bad_mismatched_forward(unsigned value)
+{
+  (void)value;
+}
+
 /* Definition-site policy: a non-static definition in a .c carries no block --
    the header owns the contract. */
-int hdr_undocumented(int a)
+int hdr_documented(int a)
 {
   int total = 0;
   /* `else if (...)` is the shape NON_FUNC_NAMES exists for: the regex sees
@@ -121,6 +170,189 @@ int hdr_undocumented(int a)
   __asm__ volatile("nop");
   return total + good_fwd_declared(a);
 }
+
+/* Public definitions are waived at the definition site, but their bare
+   header declarations must still be reported by the ordinary header audit. */
+int hdr_undocumented(int value)
+{
+  return value;
+}
+""",
+    # Definition-site association must be exact. Only the first declaration
+    # below is a valid contract for the corresponding bare source definition.
+    "libs/mod_doc/src/contract_internal.h": """
+#pragma once
+/**
+ * @brief Accept a byte array.
+ * @details Exercises name-independent array-to-pointer signature matching.
+ * @param[in] arguments Bytes accepted by the function.
+ * @return Whether the first byte is nonzero.
+ * @retval true The first byte is nonzero.
+ * @retval false The first byte is zero.
+ * @pre @p arguments points to one readable byte.
+ * @pre The caller retains ownership of @p arguments.
+ * @post No memory is modified.
+ * @post The result depends only on the first byte.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] static bool contract_documented(const unsigned char arguments[]);
+
+/**
+ * @brief Incomplete on purpose.
+ * @details Missing the required contract tail on purpose.
+ * @param[in] value Input value.
+ * @return The original value.
+ * @retval 0 The input was zero.
+ */
+static int contract_incomplete(int value);
+
+/**
+ * @brief Document a different function.
+ * @details A complete contract with the wrong name must not mask a definition.
+ * @param[in] value Input value.
+ * @return The original value.
+ * @retval 0 The input was zero.
+ * @pre @p value is initialised.
+ * @pre The caller accepts the result.
+ * @post No memory is modified.
+ * @post The result equals @p value.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static int contract_other_name(int value);
+
+/**
+ * @brief Public-linkage lookalike.
+ * @details A non-static declaration must not own a static definition contract.
+ * @param[in] value Input value.
+ * @return The original value.
+ * @retval 0 The input was zero.
+ * @pre @p value is initialised.
+ * @pre The caller accepts the result.
+ * @post No memory is modified.
+ * @post The result equals @p value.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+int contract_static_mismatch(int value);
+
+/**
+ * @brief Wrong-signature lookalike.
+ * @details A declaration with another parameter type cannot own the contract.
+ * @param[in] text Input text.
+ * @return Whether text was supplied.
+ * @retval true Text was supplied.
+ * @retval false Text was null.
+ * @pre @p text may be null.
+ * @pre The caller retains ownership of @p text.
+ * @post No memory is modified.
+ * @post The result depends only on @p text.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static bool contract_signature_mismatch(const char* text);
+
+#include "contract_transitive_internal.h"
+""",
+    "libs/mod_doc/src/contract_transitive_internal.h": """
+#pragma once
+/**
+ * @brief Document a transitively visible lookalike.
+ * @details A nested include must not own a bare definition's contract.
+ * @param[in] value Input value.
+ * @return The original value.
+ * @retval 0 The input was zero.
+ * @pre @p value is initialised.
+ * @pre The caller accepts the result.
+ * @post No memory is modified.
+ * @post The result equals @p value.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static int contract_transitive(int value);
+""",
+    "libs/mod_doc/src/contract_inactive_internal.h": """
+#pragma once
+/**
+ * @brief Document an inactive lookalike.
+ * @details A disabled include must not own a bare definition's contract.
+ * @param[in] value Input value.
+ * @return The original value.
+ * @retval 0 The input was zero.
+ * @pre @p value is initialised.
+ * @pre The caller accepts the result.
+ * @post No memory is modified.
+ * @post The result equals @p value.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static int contract_inactive(int value);
+""",
+    "libs/mod_doc/src/contracts.c": """
+#include "contract_internal.h"
+#if 0
+#include "contract_inactive_internal.h"
+#endif
+
+static bool contract_documented(const unsigned char* arg0)
+{
+  return arg0[0] != 0;
+}
+
+static int contract_incomplete(int value)
+{
+  return value;
+}
+
+static int contract_wrong_name(int value)
+{
+  return value;
+}
+
+static int contract_cross_scope(int value)
+{
+  return value;
+}
+
+static int contract_static_mismatch(int value)
+{
+  return value;
+}
+
+static bool contract_signature_mismatch(int value)
+{
+  return value != 0;
+}
+
+static int contract_transitive(int value)
+{
+  return value;
+}
+
+static int contract_inactive(int value)
+{
+  return value;
+}
+""",
+    # This declaration is complete and has the exact private signature, but
+    # lives outside contracts.c's include graph and therefore cannot mask it.
+    "libs/other/src/cross_internal.h": """
+#pragma once
+/**
+ * @brief Cross-module lookalike.
+ * @details Must remain irrelevant unless the source explicitly includes it.
+ * @param[in] value Input value.
+ * @return The original value.
+ * @retval 0 The input was zero.
+ * @pre @p value is initialised.
+ * @pre The caller accepts the result.
+ * @post No memory is modified.
+ * @post The result equals @p value.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static int contract_cross_scope(int value);
 """,
     # --- member mode: both directions in one file -------------------------
     "libs/mod_doc/inc/members.h": """
@@ -153,14 +385,44 @@ typedef struct {
 """,
 }
 
-#: Function-mode offenders the gate must report, by function name.
-_SELFTEST_FUNC_EXPECTED = frozenset({"bad_no_block", "bad_thin_block", "hdr_undocumented"})
+#: Basic function-mode offenders the gate must report, by function name.
+_SELFTEST_FUNC_EXPECTED = frozenset(
+    {
+        "bad_no_block",
+        "bad_mismatched_forward",
+        "bad_thin_block",
+        "bad_weak_forward",
+        "contract_incomplete",
+        "hdr_undocumented",
+    }
+)
 
-#: Function-mode definitions the gate must leave alone. ``hdr_undocumented``
-#: is deliberately in both sets: it is a gap at its *header prototype* and
-#: clean at its *definition* in good.c, which is exactly the definition-site
-#: policy. The assertions below therefore key on (file, name), not name.
-_SELFTEST_FUNC_CLEAN = frozenset({"good_full_block", "good_fwd_declared", "hdr_undocumented"})
+#: Function-mode definitions the gate must leave alone.
+_SELFTEST_FUNC_CLEAN = frozenset(
+    {
+        "good_full_block",
+        "good_fwd_declared",
+        "good_attr_forward",
+        "hdr_documented",
+        "contract_documented",
+    }
+)
+
+# Each same-file forward fixture must produce one prototype and one definition.
+_SELFTEST_FORWARD_ROW_COUNT = 2
+
+#: Bare definitions that an incomplete or non-matching declaration must not mask.
+_SELFTEST_CONTRACT_GAPS = frozenset(
+    {
+        "contract_incomplete",
+        "contract_wrong_name",
+        "contract_cross_scope",
+        "contract_static_mismatch",
+        "contract_signature_mismatch",
+        "contract_transitive",
+        "contract_inactive",
+    }
+)
 
 #: Member-mode offenders the gate must report, as (kind, name).
 _SELFTEST_MEMBER_EXPECTED = frozenset(
@@ -185,16 +447,67 @@ def _audit_synthetic(root: Path) -> tuple[list, list]:
     return func_rows, member_rows
 
 
+def _check_same_file_forward_mode(func_rows: list) -> list[str]:
+    """Verify exact same-file prototype/definition association in both directions."""
+    forward_rows = {
+        name: [row for row in func_rows if row[2] == name]
+        for name in ("good_attr_forward", "bad_weak_forward", "bad_mismatched_forward")
+    }
+    failures = [
+        f"same-file forward selftest did not parse both rows for '{name}'"
+        for name, rows in forward_rows.items()
+        if len(rows) != _SELFTEST_FORWARD_ROW_COUNT
+    ]
+    good_forward_gaps = [row for row in forward_rows["good_attr_forward"] if row[3]]
+    if good_forward_gaps:
+        failures.append(
+            "same-file forward false positive: documented attributed definition "
+            "or its bare prototype was reported"
+        )
+    bad_forward_gaps = [row for row in forward_rows["bad_weak_forward"] if row[3]]
+    if len(bad_forward_gaps) != 1 or (
+        bad_forward_gaps
+        and bad_forward_gaps[0][1] != max(row[1] for row in forward_rows["bad_weak_forward"])
+    ):
+        failures.append(
+            "same-file forward gate went toothless: a bare RA8_WEAK definition "
+            "must fire exactly once at the definition, never at its prototype"
+        )
+    mismatched_gaps = [row for row in forward_rows["bad_mismatched_forward"] if row[3]]
+    if len(mismatched_gaps) != 1 or (
+        mismatched_gaps
+        and mismatched_gaps[0][1] != min(row[1] for row in forward_rows["bad_mismatched_forward"])
+    ):
+        failures.append(
+            "same-file forward signature match went toothless: a prototype with "
+            "no exact definition must fire exactly once at the prototype"
+        )
+    return failures
+
+
+def _check_header_contract_mode(gaps: set[tuple[str, str]]) -> list[str]:
+    """Verify private header contracts associate only with exact definitions."""
+    contract_source_gaps = {name for path, name in gaps if path == "libs/mod_doc/src/contracts.c"}
+    failures = [
+        f"header-contract lookup went toothless: bare definition '{name}' was "
+        "masked by a missing, incomplete, wrong-name, wrong-signature, "
+        "wrong-linkage, inactive, transitive, or out-of-scope declaration"
+        for name in sorted(_SELFTEST_CONTRACT_GAPS - contract_source_gaps)
+    ]
+    contract_documented_row = ("libs/mod_doc/src/contracts.c", "contract_documented")
+    if contract_documented_row in gaps:
+        failures.append(
+            "header-contract lookup false positive: a complete included static "
+            "declaration with a compatible array/pointer signature was not associated"
+        )
+    return failures
+
+
 def _check_function_mode(func_rows: list) -> list[str]:
     """The function gate must report every gap and spare every legal form.
 
-    The legal-but-tricky forms are the load-bearing half. A `.c` definition of
-    a function the header already documents must stay clean (CLAUDE.md,
-    "Definition-site comments"), a static forward prototype whose definition
-    carries the block must stay clean (otherwise this gate and
-    check_doc_attachment.py contradict each other and no file can satisfy
-    both), and `if` / `while` / `switch` must never be mistaken for
-    declarations.
+    This includes header-owned definitions, same-file forward prototypes, and
+    control-flow keywords that must never be mistaken for declarations.
     """
     gaps = {(r[0], r[2]) for r in func_rows if r[3]}
     gap_names = {name for _f, name in gaps}
@@ -207,15 +520,30 @@ def _check_function_mode(func_rows: list) -> list[str]:
         f"(fully documented, forward prototype, or a definition whose header "
         f"owns the contract) but was reported"
         for path, name in sorted(gaps)
-        if name in _SELFTEST_FUNC_CLEAN and path.endswith("good.c")
+        if name in _SELFTEST_FUNC_CLEAN
     )
     parsed = {r[2] for r in func_rows}
+    parsed_pairs = {(r[0], r[2]) for r in func_rows}
     failures.extend(
         f"selftest fixture did not parse: '{name}' never reached the auditor, "
         f"so its shape was never exercised"
         for name in sorted(_SELFTEST_FUNC_EXPECTED | _SELFTEST_FUNC_CLEAN)
         if name not in parsed
     )
+    required_source_rows = {
+        ("libs/mod_doc/src/contracts.c", "contract_documented"),
+        ("libs/mod_doc/src/good.c", "hdr_undocumented"),
+    }
+    failures.extend(
+        f"selftest fixture did not parse source row: '{path}:{name}'"
+        for path, name in sorted(required_source_rows - parsed_pairs)
+    )
+    if ("libs/mod_doc/src/good.c", "hdr_undocumented") in gaps:
+        failures.append(
+            "definition-site policy false positive: a public .c definition was "
+            "reported instead of its undocumented header declaration"
+        )
+    failures.extend(_check_same_file_forward_mode(func_rows))
     # Keywords are not declarations. `else if (...)` and `__asm__ volatile(...)`
     # both match FUNC_RE structurally -- the keyword in front reads as a return
     # type -- and are rejected only by NON_FUNC_NAMES. If that filter erodes,
@@ -226,21 +554,8 @@ def _check_function_mode(func_rows: list) -> list[str]:
         for bogus in ("if", "volatile")
         if bogus in parsed
     )
-    return failures
 
-
-def _check_function_ratchet(func_rows: list) -> list[str]:
-    """The function ratchet must excuse only the exact frozen debt."""
-    gaps = [row for row in func_rows if row[3]]
-    frozen = {function_key(gaps[0])}
-    new_rows, stale = partition_function_gaps(gaps, frozen | {"tools/gone.c\tf\t@brief"})
-    failures = []
-    if any(function_key(row) in frozen for row in new_rows):
-        failures.append("function ratchet reported exact frozen debt as new")
-    if len(new_rows) != len(gaps) - 1:
-        failures.append("function ratchet hid a gap not present in the baseline")
-    if stale != ["tools/gone.c\tf\t@brief"]:
-        failures.append("function ratchet did not report a stale baseline row")
+    failures.extend(_check_header_contract_mode(gaps))
     return failures
 
 
@@ -352,24 +667,21 @@ def _check_style_mode() -> list[str]:
     return failures
 
 
-def _check_style_ratchet() -> list[str]:
-    """The @details ratchet must excuse frozen debt, and only frozen debt."""
+def _check_style_strict() -> list[str]:
+    """The closed @details debt must stay strict with no baseline."""
     rows = [
         ("libs/frozen.c", 1, "DETAILS_MISSING", "no @details"),
         ("libs/fresh.c", 1, "DETAILS_MISSING", "no @details"),
         ("libs/fresh.c", 9, "PARAM_NO_DIRECTION", "plain @param"),
     ]
-    violations, stale = partition(rows, {"libs/frozen.c", "libs/written.c"})
-    offenders = {(row[0], row[2]) for row in violations}
+    offenders = {(row[0], row[2]) for row in rows}
     failures = []
-    if ("libs/frozen.c", "DETAILS_MISSING") in offenders:
-        failures.append("style ratchet: frozen @details debt was reported as a new violation")
+    if ("libs/frozen.c", "DETAILS_MISSING") not in offenders:
+        failures.append("strict style gate hid a formerly baselined @details gap")
     if ("libs/fresh.c", "DETAILS_MISSING") not in offenders:
-        failures.append("style ratchet: a file outside the baseline escaped the @details rule")
+        failures.append("strict style gate hid a fresh @details gap")
     if ("libs/fresh.c", "PARAM_NO_DIRECTION") not in offenders:
-        failures.append("style ratchet: the baseline excused a rule it does not cover")
-    if stale != ["libs/written.c"]:
-        failures.append(f"style ratchet: stale baseline entry not reported (got {stale})")
+        failures.append("strict style gate hid a directionless @param")
     return failures
 
 
@@ -402,10 +714,9 @@ def run_selftest() -> int:
 
     failures = [
         *_check_function_mode(func_rows),
-        *_check_function_ratchet(func_rows),
         *_check_member_mode(member_rows),
         *_check_style_mode(),
-        *_check_style_ratchet(),
+        *_check_style_strict(),
         *_check_style_floor(),
     ]
     if failures:
@@ -415,11 +726,13 @@ def run_selftest() -> int:
         return 1
     print(
         "doxy_audit selftest: OK (function gate reports bare and thin blocks and "
-        "spares definition-site, forward-prototype and control-flow forms; member "
-        "gate reports undocumented macros, enum values and struct members and "
-        "spares documented ones; style gate reports a missing/stale file header, "
-        "a missing @brief/@details and a directionless @param, spares the "
-        "backslash, continued-name and full-path spellings, excuses only frozen "
-        "@details debt, and refuses a vacuous scan)"
+        "spares definition-site, forward-prototype and control-flow forms; static "
+        "header contracts match only by direct unconditional include, name, linkage and compatible "
+        "signature while incomplete and lookalike declarations fail; member gate "
+        "reports undocumented macros, enum values and struct members and spares "
+        "documented ones; style gate reports a missing/stale file header, a missing "
+        "@brief/@details and a directionless @param, spares the backslash, "
+        "continued-name and full-path spellings, keeps @details strict without a baseline, "
+        "and refuses a vacuous scan)"
     )
     return 0

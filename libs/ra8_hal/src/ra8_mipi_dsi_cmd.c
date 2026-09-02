@@ -278,8 +278,8 @@ RA8_INTERNAL static ra8_err_t internal_ra8_mipi_dsi_validate_cmd(const ra8_mipi_
  */
 RA8_INTERNAL static ra8_err_t internal_check_link_state(const ra8_mipi_dsi_command_t* cmd)
 {
-  volatile r_mipi_dsi_regs_t* reg  = ra8_mipi_dsi();
-  const uint32_t              link = reg->LINKSR;
+  volatile const r_mipi_dsi_regs_t* reg  = ra8_mipi_dsi();
+  const uint32_t                    link = reg->LINKSR;
   if (cmd->low_power && ((link & k_ra8_mipi_dsi_link_vrun) != 0U)) {
     ra8_log_error(s_tag, "send_command: LP not allowed during video mode");
     return k_ra8_err_invalid_state;
@@ -371,10 +371,10 @@ RA8_INTERNAL static void internal_send_stage_and_pulse(const ra8_mipi_dsi_comman
 {
   RA8_CHECK_NULL_PTR(cmd, s_tag, "cmd must not be nullptr");
   const ra8_err_t v_err = internal_ra8_mipi_dsi_validate_cmd(cmd);
-  RA8_RETURN_ON_ERROR(v_err, s_tag, "send_command: validate"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, s_tag, "send_command: validate");
 
   const ra8_err_t link_err = internal_check_link_state(cmd);
-  RA8_RETURN_ON_ERROR(link_err, s_tag, "send_command: link state"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(link_err, s_tag, "send_command: link state");
 
   internal_send_stage_and_pulse(cmd);
 

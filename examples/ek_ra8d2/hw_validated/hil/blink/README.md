@@ -8,7 +8,7 @@ because if `blink` is dark then nothing further up the stack is worth debugging.
 
 It deliberately does not bring the CGC up. It runs at the reset-default MOCO
 rate -- about 8.4 MHz, measured on `DWT.CYCCNT` and consistent with the
-RA-family nominal 8 MHz -- and `k_blink_cpu_hz_at_reset` in `main.c` encodes
+RA-family nominal 8 MHz -- and `k_blink_cpu_hz_at_reset` in `src/main.c` encodes
 that. Cache, MPU and TrustZone bring-up are left out for the same reason.
 `clock_check` is the app that takes the chip up to its rated CPUCLK0;
 `blink_hal` is the same blink driven through the HAL instead.

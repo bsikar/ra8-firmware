@@ -88,7 +88,7 @@ FIRMWARE_ROOTS = ("examples/", "port/")
 HOSTED_ROOTS = ("tests/", "tools/", "apps/")
 
 # ...and the one root where the name settles nothing. `apps/` is the PRODUCTS
-# tier and it carries both domains: the media_dl CLI is a host program the C
+# tier and it carries both domains: the mdl CLI is a host program the C
 # runtime starts and whose exit status something reads, while the e-reader is a
 # two-image TrustZone composition reached from Reset_Handler. Classifying the
 # whole root either way is wrong for half of it -- calling the e-reader hosted
@@ -103,7 +103,7 @@ HOSTED_ROOTS = ("tests/", "tools/", "apps/")
 # declaration from drifting -- a new firmware product nobody listed FAILS, and a
 # listed path that stopped being one FAILS too. Neither half is load-bearing
 # alone.
-FIRMWARE_APPS = ("apps/stand_alone/ereader/",)
+FIRMWARE_APPS = ("apps/board/stand_alone/ereader/",)
 
 # Measured 2026-08-15 on dev @ ad515de20: 234 firmware entry points, 637
 # hosted ones. A tree this size cannot legitimately fall to a handful; an
@@ -116,7 +116,7 @@ HOSTED_FLOOR = 400
 # catches a subtler one where a root stops being enumerated but the others keep
 # the count above the floor.
 MUST_DISCOVER = (
-    "apps/stand_alone/ereader/main.c",
+    "apps/board/stand_alone/ereader/src/main.c",
     "libs/ra8_core/inc/ra8_boot_entry.h",
 )
 
@@ -149,9 +149,12 @@ class ScanError(RuntimeError):
 def domain_of(rel: str, firmware_apps: tuple[str, ...] = FIRMWARE_APPS) -> str | None:
     """Which build domain owns this path, or None if it is neither.
 
-    A named firmware product is tested BEFORE the hosted roots: every one of
-    them sits under ``apps/``, so the general rule would otherwise win.
+    Nested test build units are hosted even when they verify a firmware
+    product. A named firmware product is then tested before the general
+    ``apps/`` hosted root.
     """
+    if "tests" in rel.split("/"):
+        return "hosted"
     if rel.startswith(firmware_apps):
         return "firmware"
     if rel.startswith(HOSTED_ROOTS):
@@ -381,17 +384,17 @@ def enforce_floors(counts: dict[str, int], paths: list[str]) -> None:
 def _selftest_quiet(failures: list[str]) -> None:
     """MUST STAY QUIET: conforming entry points produce no finding."""
     good_fw = '#include "ra8_boot_entry.h"\nvoid main(void)\n{\n  for (;;) {\n  }\n}\n'
-    quiet, domain = check_file("examples/x/main.c", good_fw)
+    quiet, domain = check_file("examples/x/src/main.c", good_fw)
     expect(not quiet, f"a conforming firmware entry point is silent (got {quiet})", failures)
     expect(domain == "firmware", f"classified firmware (got {domain})", failures)
 
     good_hosted = "int main(void)\n{\n  return 0;\n}\n"
-    quiet, domain = check_file("tests/test_x.c", good_hosted)
+    quiet, domain = check_file("tests/misc/src/test_x.c", good_hosted)
     expect(not quiet, f"a conforming hosted entry point is silent (got {quiet})", failures)
     expect(domain == "hosted", f"classified hosted (got {domain})", failures)
 
     good_product_fw = '#include "ra8_boot_entry.h"\nvoid main(void)\n{\n  for (;;) {\n  }\n}\n'
-    quiet, domain = check_file("apps/stand_alone/ereader/main.c", good_product_fw)
+    quiet, domain = check_file("apps/board/stand_alone/ereader/src/main.c", good_product_fw)
     expect(not quiet, f"a conforming firmware PRODUCT is silent (got {quiet})", failures)
     expect(
         domain == "firmware",
@@ -399,15 +402,17 @@ def _selftest_quiet(failures: list[str]) -> None:
         failures,
     )
 
-    quiet, domain = check_file(
-        "apps/stand_alone/media_dl/src/main.c", "int main(void)\n{\n  return 0;\n}\n"
-    )
+    quiet, domain = check_file("apps/host/mdl/src/main.c", "int main(void)\n{\n  return 0;\n}\n")
     expect(not quiet, f"a conforming hosted PRODUCT is silent (got {quiet})", failures)
     expect(domain == "hosted", f"an unnamed product stays hosted (got {domain})", failures)
 
+    quiet, domain = check_file("apps/board/stand_alone/ereader/tests/src/test_main.c", good_hosted)
+    expect(not quiet, f"a firmware product's hosted test stays silent (got {quiet})", failures)
+    expect(domain == "hosted", f"a nested product test is hosted (got {domain})", failures)
+
     argv_main = "int main(int argc, char** argv)\n{\n  return 0;\n}\n"
     expect(
-        not check_file("tools/t/main.c", argv_main)[0],
+        not check_file("tools/t/src/main.c", argv_main)[0],
         "hosted int main(int, char**) is silent",
         failures,
     )
@@ -428,23 +433,23 @@ def _selftest_fires(failures: list[str]) -> None:
     """MUST FIRE: every rule catches its own violation."""
     fires = {
         "firmware entry point returning int": (
-            "examples/x/main.c",
+            "examples/x/src/main.c",
             '#include "ra8_boot_entry.h"\nint main(void)\n{\n  return 0;\n}\n',
         ),
         "firmware entry point missing the shared header": (
-            "examples/x/main.c",
+            "examples/x/src/main.c",
             "void main(void)\n{\n}\n",
         ),
         "value-returning return inside void main": (
-            "examples/x/main.c",
+            "examples/x/src/main.c",
             '#include "ra8_boot_entry.h"\nvoid main(void)\n{\n  return 1;\n}\n',
         ),
         "hosted entry point spelled int32_t": (
-            "tests/test_x.c",
+            "tests/misc/src/test_x.c",
             "int32_t main(void)\n{\n  return 0;\n}\n",
         ),
         "a renewed -Wmain suppression": (
-            "examples/x/main.c",
+            "examples/x/src/main.c",
             '#include "ra8_boot_entry.h"\n'
             '#pragma GCC diagnostic ignored "-Wmain"\n'
             "void main(void)\n{\n}\n",
@@ -454,15 +459,15 @@ def _selftest_fires(failures: list[str]) -> None:
             "int main(void)\n{\n  return 0;\n}\n",
         ),
         "a copied main declaration outside the shared header": (
-            "examples/x/vector_table.c",
+            "examples/x/src/vector_table.c",
             "extern int32_t main(void);\n",
         ),
         "a firmware PRODUCT written to the hosted contract": (
-            "apps/stand_alone/ereader/main.c",
+            "apps/board/stand_alone/ereader/src/main.c",
             '#include "ra8_boot_entry.h"\nint main(void)\n{\n  return 0;\n}\n',
         ),
         "a hosted PRODUCT written to the freestanding contract": (
-            "apps/stand_alone/media_dl/src/main.c",
+            "apps/host/mdl/src/main.c",
             "void main(void)\n{\n}\n",
         ),
     }
@@ -478,7 +483,7 @@ def _selftest_scope(failures: list[str]) -> None:
     )
     expect(any(p.startswith("tests/") for p in live), "the live scan reaches tests/", failures)
     expect(
-        all(not p.startswith("libs/third_party/") for p in live),
+        all(not p.startswith(("libs/third_party/", "apps/shared_libs/third_party/")) for p in live),
         "the live scan excludes vendored SOUP",
         failures,
     )
@@ -514,10 +519,10 @@ def _selftest_scope(failures: list[str]) -> None:
         bool(
             check_firmware_apps(
                 [
-                    "apps/stand_alone/ereader/vector_table.c",
-                    "apps/stand_alone/ereader/linker_script.ld",
-                    "apps/stand_alone/invented/vector_table.c",
-                    "apps/stand_alone/invented/invented.ld",
+                    "apps/board/stand_alone/ereader/src/vector_table.c",
+                    "apps/board/stand_alone/ereader/linker_script.ld",
+                    "apps/board/stand_alone/invented/src/vector_table.c",
+                    "apps/board/stand_alone/invented/invented.ld",
                 ]
             )
         ),
@@ -525,7 +530,7 @@ def _selftest_scope(failures: list[str]) -> None:
         failures,
     )
     expect(
-        domain_of("apps/stand_alone/ereader/main.c", ()) == "hosted",
+        domain_of("apps/board/stand_alone/ereader/src/main.c", ()) == "hosted",
         "without its FIRMWARE_APPS entry the e-reader would be misclassified",
         failures,
     )

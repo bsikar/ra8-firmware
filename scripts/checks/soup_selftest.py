@@ -32,6 +32,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "gen"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 
 from check_soup_upstream import (
     EXIT_FAIL,
@@ -44,6 +45,7 @@ from check_soup_upstream import (
     _resolve_entry,
     run_check,
 )
+from git_environment import isolated_git_environment, trusted_git_executable
 from sbom_registry import Component
 from soup_manifest import (
     KIND_LOCAL,
@@ -92,30 +94,35 @@ def _quiet(func: Callable[..., int], *args: object) -> int:
         return func(*args)
 
 
-def _fixture_component(**overrides: object) -> Component:
+def _fixture_component(
+    *,
+    key: str = "fixture",
+    upstream_commit: str = "0" * 40,
+    modified: bool = True,
+    patched_files: tuple[tuple[str, str], ...] = (("patched.c", "selftest patch"),),
+    local_files: tuple[tuple[str, str], ...] = (("generated.h", "selftest local"),),
+) -> Component:
     """Build the selftest's synthetic registry entry."""
-    fields: dict[str, object] = {
-        "key": "fixture",
-        "name": "fixture",
-        "version": "0",
-        "ctype": "library",
-        "url": "https://example.invalid/fixture",
-        "path": FIXTURE_PATH,
-        "provenance": "commit-pinned-sha256",
-        "description": "selftest fixture",
-        "upstream_commit": "0" * 40,
-        "modified": True,
-        "patched_files": (("patched.c", "selftest patch"),),
-        "local_files": (("generated.h", "selftest local"),),
-    }
-    fields.update(overrides)
-    return Component(**fields)  # type: ignore[arg-type]
+    return Component(
+        key=key,
+        name="fixture",
+        version="0",
+        ctype="library",
+        url="https://example.invalid/fixture",
+        path=FIXTURE_PATH,
+        provenance="commit-pinned-sha256",
+        description="selftest fixture",
+        upstream_commit=upstream_commit,
+        modified=modified,
+        patched_files=patched_files,
+        local_files=local_files,
+    )
 
 
 def _git(args: list[str], cwd: Path) -> None:
     """Run one git command in `cwd`, discarding its output."""
     subprocess.run(  # noqa: S603  # trusted: fixed git argv, no shell
-        ["git", *args],  # noqa: S607 -- trusted: resolved from PATH, fixed argv
+        [trusted_git_executable(), *args],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -126,9 +133,9 @@ def _git(args: list[str], cwd: Path) -> None:
 def _write_fixture_repo(root: Path) -> dict[str, tuple[str, str]]:
     """Materialise a REAL git repository holding the fixture vendored tree.
 
-    A real repository, not a stub: the blob ids the gate compares come out of a
-    git index, so a fixture that faked them would exercise a different code
-    path from the one CI runs.
+    A real repository, not a stub: Git supplies the same tracked/untracked
+    worktree census the gate uses in CI, and the gate derives raw blob ids from
+    those files.
 
     Args:
         root: Scratch directory to initialise as a repository.
@@ -143,6 +150,48 @@ def _write_fixture_repo(root: Path) -> dict[str, tuple[str, str]]:
         target.write_bytes(data)
     _git(["add", "-A"], root)
     return git_ls_files(FIXTURE_PATH, (), root)
+
+
+def _selftest_worktree_cases(
+    root: Path, original: dict[str, tuple[str, str]]
+) -> list[tuple[str, bool]]:
+    """Prove unstaged bytes, modes, additions, and deletions affect the census."""
+    source = root / FIXTURE_PATH / "src/a.c"
+    source.write_bytes(b"int changed;\n")
+    mutated = git_ls_files(FIXTURE_PATH, (), root)
+    source.write_bytes(_FIXTURE_FILES["src/a.c"])
+
+    added_path = root / FIXTURE_PATH / "untracked.c"
+    added_path.write_bytes(b"int untracked;\n")
+    added = git_ls_files(FIXTURE_PATH, (), root)
+    added_path.unlink()
+
+    deleted_path = root / FIXTURE_PATH / "src/b.c"
+    deleted_path.unlink()
+    deleted = git_ls_files(FIXTURE_PATH, (), root)
+    deleted_path.write_bytes(_FIXTURE_FILES["src/b.c"])
+
+    source.chmod(0o755)
+    remoded = git_ls_files(FIXTURE_PATH, (), root)
+    source.chmod(0o644)
+    return [
+        (
+            "MUST FIRE: an unstaged vendored-byte mutation changes the worktree blob",
+            mutated["src/a.c"][1] != original["src/a.c"][1],
+        ),
+        (
+            "MUST FIRE: an untracked vendored file enters the worktree census",
+            "untracked.c" in added,
+        ),
+        (
+            "MUST FIRE: a deleted tracked vendor file leaves the worktree census",
+            "src/b.c" not in deleted,
+        ),
+        (
+            "MUST FIRE: an unstaged executable-bit change changes the worktree mode",
+            remoded["src/a.c"][0] == "100755",
+        ),
+    ]
 
 
 def _write_fixture_manifest(root: Path, ours: dict[str, tuple[str, str]], **mutate: str) -> None:
@@ -241,8 +290,22 @@ def _selftest_registry_cases(
     _write_fixture_manifest(root, ours)
     comps = (_fixture_component(),)
 
-    def verdict(**overrides: object) -> int:
-        return _quiet(run_check, (_fixture_component(**overrides),), root, FIXTURE_FLOORS)
+    def verdict(
+        *,
+        key: str = "fixture",
+        upstream_commit: str = "0" * 40,
+        modified: bool = True,
+        patched_files: tuple[tuple[str, str], ...] = (("patched.c", "selftest patch"),),
+        local_files: tuple[tuple[str, str], ...] = (("generated.h", "selftest local"),),
+    ) -> int:
+        component = _fixture_component(
+            key=key,
+            upstream_commit=upstream_commit,
+            modified=modified,
+            patched_files=patched_files,
+            local_files=local_files,
+        )
+        return _quiet(run_check, (component,), root, FIXTURE_FLOORS)
 
     return [
         (
@@ -387,7 +450,7 @@ def _raises_manifest_error(key: str, text: str) -> bool:
     return False
 
 
-def run_selftest() -> int:
+def _run_selftest_body() -> int:
     """Prove the gate fires on every provenance defect and stays quiet otherwise.
 
     Both directions are asserted because only one of them has ever been true of
@@ -400,7 +463,8 @@ def run_selftest() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         ours = _write_fixture_repo(root)
-        cases = _selftest_manifest_cases(root, ours)
+        cases = _selftest_worktree_cases(root, ours)
+        cases.extend(_selftest_manifest_cases(root, ours))
         cases.extend(_selftest_registry_cases(root, ours))
     cases.extend(_selftest_resolve_cases())
     cases.extend(_selftest_format_cases())
@@ -420,3 +484,9 @@ def run_selftest() -> int:
         return EXIT_VACUOUS
     print(f"check_soup_upstream: selftest passed ({len(cases)} cases, both directions).")
     return EXIT_OK
+
+
+def run_selftest() -> int:
+    """Run provenance fixtures without inheriting the caller's repository."""
+    with isolated_git_environment():
+        return _run_selftest_body()

@@ -29,7 +29,7 @@
 #   MEMORY  a HARD cap, because memory does not yield: a page a dev build holds
 #           is a page a clang-tidy job cannot have. dev_slice_memory is
 #           MemoryMax on the slice, so every process in it -- the agent's
-#           shell, its `make`, AND the container `make ci` launches -- shares
+#           shell, its `just` build, AND the container `just ci` launches -- shares
 #           one kernel-enforced ceiling that is carved out of the host's budget
 #           before CI is sized. The fleet-declaration gate fails a declaration
 #           where the runners' reservation plus this does not fit.
@@ -98,7 +98,7 @@ dev_slice_swap: "3G"
 # Fraction of MemoryMax at which the kernel starts reclaiming rather than
 # waiting for the wall. A dev run throttled into reclaim finishes slowly; one
 # that hits MemoryMax with nothing below it is OOM-killed, which costs an agent
-# the whole run. Measured here: a full `make ci` in the slice reaches MemoryMax
+# the whole run. Measured here: a full `just ci` in the slice reaches MemoryMax
 # and stays there (98405 max events in one 20-minute run), so this is the knob
 # that decides whether that is a graceful slowdown or a kill.
 #
@@ -169,12 +169,12 @@ dev_slice_source_image: "{{ ci_runner_docker_image | default('localhost/ra8-ci-r
 # What a dev shell needs on the HOST side. Everything else is in the toolchain
 # image, because that is where the gates run.
 #
-#   make      drives the containerised suite (`make ci`, `make ws-new`)
-#   git       owns the worktrees `make ws-new` creates
+#   just      drives the containerised suite (`just ci`, `just workspace::new`)
+#   git       owns the worktrees `just workspace::new` creates
 #   git-lfs   NOT optional, and not about LFS content: this repository's
 #             .git/hooks/post-checkout is an LFS hook, and without the binary
 #             it exits non-zero -- which makes `git worktree add` FAIL, so
-#             `make ws-new` cannot create a workspace at all. Measured here,
+#             `just workspace::new` cannot create a workspace at all. Measured here,
 #             on the first attempt.
 #   ccache    the cache DIRECTORY is what matters (it is bind-mounted into the
 #             container), but `ws-doctor` probes for the binary, and a doctor
@@ -187,6 +187,6 @@ dev_slice_apt: [make, git, git-lfs, ccache]
 # on a headless distro: `docker pull` dies with "A specified logon session does
 # not exist" -- measured on this host. The runners never notice (their images
 # are side-loaded and their compose files are pull_policy: never), but a dev
-# `make ci --rebuild` would, with an error that names Windows logon sessions
+# `just ci --rebuild` would, with an error that names Windows logon sessions
 # and not the toolchain. Neutralised here, with the original kept beside it.
 dev_slice_fix_docker_creds: true

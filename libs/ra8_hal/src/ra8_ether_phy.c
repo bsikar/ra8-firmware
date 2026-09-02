@@ -89,10 +89,10 @@ static ra8_err_t internal_reset_and_wait(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  for (uint8_t i = 0U; i < k_ra8_ether_phy_reset_poll_max; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint8_t i = 0U; i < k_ra8_ether_phy_reset_poll_max; ++i) {
     uint16_t reg = 0U;
     err = s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra8_ether_phy_reg_control, &reg);
-    if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
+    if (err != k_ra8_ok) {
       return err;
     }
     if ((reg & k_ra8_ether_phy_bmcr_reset) == 0U) {

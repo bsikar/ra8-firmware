@@ -96,7 +96,9 @@ ble_npl_error_t ble_npl_mutex_init(struct ble_npl_mutex* mu)
   if (mu == nullptr) {
     return BLE_NPL_INVALID_PARAM;
   }
-  const UINT st = tx_mutex_create(&mu->handle, "npl_mu", TX_NO_INHERIT);
+  /** @brief Mutable mutex name retained by the ThreadX control block. */
+  static CHAR s_name[] = {'n', 'p', 'l', '_', 'm', 'u', '\0'};
+  const UINT  st       = tx_mutex_create(&mu->handle, s_name, TX_NO_INHERIT);
   return (st == TX_SUCCESS) ? BLE_NPL_OK : BLE_NPL_ERROR;
 }
 
@@ -134,7 +136,9 @@ ble_npl_error_t ble_npl_sem_init(struct ble_npl_sem* sem, uint16_t tokens)
   if (sem == nullptr) {
     return BLE_NPL_INVALID_PARAM;
   }
-  const UINT st = tx_semaphore_create(&sem->handle, "npl_sem", (ULONG)tokens);
+  /** @brief Mutable semaphore name retained by the ThreadX control block. */
+  static CHAR s_name[] = {'n', 'p', 'l', '_', 's', 'e', 'm', '\0'};
+  const UINT  st       = tx_semaphore_create(&sem->handle, s_name, (ULONG)tokens);
   return (st == TX_SUCCESS) ? BLE_NPL_OK : BLE_NPL_ERROR;
 }
 
@@ -195,7 +199,9 @@ void ble_npl_eventq_init(struct ble_npl_eventq* evq)
     return;
   }
   (void)memset(evq, 0, sizeof(*evq));
-  (void)tx_queue_create(&evq->q, "npl_evq", TX_1_ULONG, evq->storage, (ULONG)sizeof(evq->storage));
+  /** @brief Mutable queue name retained by the ThreadX control block. */
+  static CHAR s_name[] = {'n', 'p', 'l', '_', 'e', 'v', 'q', '\0'};
+  (void)tx_queue_create(&evq->q, s_name, TX_1_ULONG, evq->storage, (ULONG)sizeof(evq->storage));
 }
 
 /**
@@ -346,8 +352,10 @@ void ble_npl_callout_init(struct ble_npl_callout* co,
   co->evq    = evq;
   co->ev.fn  = ev_cb;
   co->ev.arg = ev_arg;
+  /** @brief Mutable timer name retained by the ThreadX control block. */
+  static CHAR s_name[] = {'n', 'p', 'l', '_', 'c', 'o', '\0'};
   (void)tx_timer_create(&co->handle,
-                        "npl_co",
+                        s_name,
                         internal_callout_trampoline,
                         (ULONG)(uintptr_t)co,
                         1U, /* initial-ticks (placeholder, reset on arm) */

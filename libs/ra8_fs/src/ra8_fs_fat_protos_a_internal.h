@@ -232,7 +232,7 @@ uint8_t priv_byte_equal(const uint8_t* a, const uint8_t* b, uint32_t n);
  * The metadata write is guarded by a four-condition conjunction: the handle is
  * dirty, the handle is in use, it has a mount, and that mount is in use. Its
  * five vectors are driven by `test_close_stamps_final_mtime` and
- * `test_close_guards_an_unusable_handle` in `tests/test_ra8_fs_timestamps.c`,
+ * `test_close_guards_an_unusable_handle` in `tests/storage/src/test_ra8_fs_timestamps.c`,
  * which cite it as
  * `libs/ra8_fs/src/ra8_fs_fat_file.c@priv_close_locked`.
  *

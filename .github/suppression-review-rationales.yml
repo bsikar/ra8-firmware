@@ -1,0 +1,164 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# Rationale vocabulary for the suppression review ledger.
+#
+# Each category names the one ledger state it can justify, the concrete
+# applicability test a reviewer must satisfy, the evidence kinds a ledger row
+# must reference, and the trigger that forces revalidation. Categories are
+# vocabulary, not approval: a row citing a category is only valid when a
+# review batch recorded the decision and the applicability criteria hold.
+#
+# Two categories close a row instead of justifying a live site.
+# `superseded-identity-rebinding` carries a still-standing decision forward to
+# the live successor a `replaced-by:` token names, for a site whose durable
+# identity changed under it; `resolved-construct-retired` retires a decision
+# whose construct is gone with no successor. Both exist so a reviewed row can
+# change identity or disappear without its audit history being deleted, which
+# is the only other way the reconciliation could be made quiet.
+---
+schema: suppression-review-rationales-1
+categories:
+  reviewed-scope-authority:
+    state: retain
+    applicability: >-
+      The row is one value of a checker scope/control authority whose
+      classification, subtype, and exact value were reviewed by the constant
+      census and are digest-bound; the census rejects unclassified, mutated,
+      or condition-dependent authorities.
+    evidence: [classification-batch, census-digest]
+    revalidate: on authority value or classification change
+  tool-false-positive:
+    state: retain
+    applicability: >-
+      The tool misreads correct code and the misread is named exactly: the
+      diagnostic text, why it is wrong here, and why the code cannot be
+      restated to avoid it.
+    evidence: [tool-output, source-context]
+    revalidate: on the pinned tool version changing
+  unreachable-defensive-path:
+    state: retain
+    applicability: >-
+      The excluded path is defensive code that no supported host or target
+      execution can reach, and no existing fake-MMIO or fault-injection seam
+      exercises the condition. Claiming hardware-only while a seam exists is
+      a review error, not a justification.
+    evidence: [source-context, seam-search]
+    revalidate: when a fault-injection or fake-MMIO seam for the peripheral lands
+  negative-test-contract:
+    state: retain
+    applicability: >-
+      The control encodes an intentional failure contract in a test (expected
+      nonzero status, strict xfail, WILL_FAIL) whose passing direction is
+      separately proven.
+    evidence: [test-name, passing-counterpart]
+    revalidate: when the exercised contract changes
+  portable-test-prerequisite-boundary:
+    state: retain
+    applicability: >-
+      A test may skip only when it is run directly on a portable host that
+      lacks the named prerequisite. The evidence names the exact test and its
+      passing counterpart, and the registered gate hard-requires the
+      prerequisite or converts its absence into a failure before any skip can
+      occur.
+    evidence: [test-name, passing-counterpart, registered-gate]
+    revalidate: when the test, counterpart, or registered gate changes
+  bounded-cleanup-status-mask:
+    state: retain
+    applicability: >-
+      A cleanup or probe step tolerates an enumerated benign failure mode and
+      either consumes the result in an immediate consumer or is backstopped by
+      a hard outcome assertion; the tolerated modes are named at the site.
+    evidence: [consumer-or-assert, source-context]
+    revalidate: when the consuming step changes
+  secret-output-redaction:
+    state: retain
+    applicability: >-
+      The task necessarily handles a named secret value, no non-secret
+      interface can carry the value, and no_log is scoped to only the task
+      that reads or transforms that value. Validation and failure reporting
+      remain visible through a separate value-free task or result.
+    evidence: [secret-value-consumer, visible-validation-path]
+    revalidate: when the secret consumer or visible validation path changes
+  language-or-compiler-contract:
+    state: retain
+    applicability: >-
+      The construct is required by a language, ABI, toolchain, or pinned tool
+      version constraint that is named exactly (for example a diagnostic that
+      cannot be scoped narrower on every pinned tool in the fleet).
+    evidence: [toolchain-pin, source-context]
+    revalidate: on the named pin changing
+  generated-reproducible-output:
+    state: retain
+    applicability: >-
+      The file is produced by a named, tracked, regular-file generator in this
+      repository and regenerating reproduces it byte-identically.
+    evidence: [generator-path, regeneration-command]
+    revalidate: on generator change
+  vendor-upstream-preserved:
+    state: retain
+    applicability: >-
+      The content is vendored SOUP preserved byte-exact from a pinned
+      upstream; the row is bound to the exact blob or pin, and first-party
+      policy deliberately does not rewrite it.
+    evidence: [upstream-pin, soup-record]
+    revalidate: on vendor blob or pin change
+  ratcheted-preexisting-debt:
+    state: retain
+    applicability: >-
+      The row is one entry of a committed shrink-only baseline whose consumer,
+      target, and ceiling are exact; the debt predates the ratchet and carries
+      migration provenance.
+    evidence: [baseline-consumer, provenance-note]
+    revalidate: on baseline key or ceiling change
+  fully-covered-structural-population:
+    state: retain
+    applicability: >-
+      The row adds one owner-approved translation unit to a shrink-only
+      coverage population while adding no uncovered line or branch debt. The
+      exact target and measured totals are ceiling-bound, and the consumer
+      still rejects any second unaudited unit or any uncovered new unit.
+    evidence: [baseline-consumer, coverage-result, owner-decision]
+    revalidate: on baseline key, measured totals, or ceiling change
+  fix-remove:
+    state: fix-required
+    applicability: The suppression is unnecessary and must be deleted at the site.
+    evidence: [review-decision]
+    revalidate: never; the state clears only by the site disappearing
+  fix-add-specific-reason:
+    state: fix-required
+    applicability: >-
+      The control may stand but its blank or generic reason must become a
+      concrete same-site technical reason.
+    evidence: [review-decision]
+    revalidate: never; the state clears only by a reviewed binding update
+  fix-narrow-scope:
+    state: fix-required
+    applicability: >-
+      The control is partly justified but too broad; the exact narrower rule,
+      region, or contract is named in the review evidence.
+    evidence: [review-decision, target-scope]
+    revalidate: never; the state clears only by a reviewed binding update
+  fix-replace-code:
+    state: fix-required
+    applicability: >-
+      The underlying code should change so the suppression becomes
+      unnecessary; the replacement approach is named in the review evidence.
+    evidence: [review-decision, replacement-sketch]
+    revalidate: never; the state clears only by the site disappearing
+  superseded-identity-rebinding:
+    state: superseded
+    applicability: >-
+      The reviewed decision still stands but the site's durable identity
+      changed because the construct, count, or digest it is bound to changed.
+      The row names the live replacement site, which carries the decision
+      forward.
+    evidence: [replacement-site, review-decision]
+    revalidate: never; the row is closed by naming its replacement
+  resolved-construct-retired:
+    state: resolved
+    applicability: >-
+      The reviewed decision still stands but the construct it was bound to is
+      gone from the tree and nothing live replaces it, so no successor site
+      carries the decision forward and nothing remains to revalidate.
+    evidence: [removal-evidence, review-decision]
+    revalidate: never; the row is closed by the construct's removal

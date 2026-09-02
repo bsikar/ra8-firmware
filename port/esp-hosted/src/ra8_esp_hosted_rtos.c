@@ -270,9 +270,6 @@ uint32_t priv_ra8_esp_hosted_rtos_slot_index(const void* handle,
  */
 RA8_INTERNAL static void internal_copy_name(char* dst, size_t cap, const char* src)
 {
-  if ((dst == nullptr) || (cap == 0U)) {
-    return;
-  }
   (void)memset(dst, 0, cap);
   if (src == nullptr) {
     return;
@@ -305,7 +302,7 @@ RA8_INTERNAL static void internal_thread_entry(ULONG index)
   if (idx >= (uint32_t)k_ra8_esp_hosted_max_threads) {
     return;
   }
-  if (s_rtos.thread_used[idx] && (s_rtos.threads[idx].entry != nullptr)) {
+  if (s_rtos.thread_used[idx]) {
     s_rtos.threads[idx].entry(s_rtos.threads[idx].arg);
   }
 }
@@ -328,16 +325,16 @@ RA8_INTERNAL static void internal_timer_expiry(ULONG index)
   if (idx >= (uint32_t)k_ra8_esp_hosted_max_timers) {
     return;
   }
-  if (s_rtos.timer_used[idx] && (s_rtos.timers[idx].cb_fn != nullptr)) {
+  if (s_rtos.timer_used[idx]) {
     s_rtos.timers[idx].cb_fn(s_rtos.timers[idx].arg);
   }
 }
 
 /**
  * @brief Burn a bounded number of core cycles standing in for a short delay.
- * @details The loop counter is volatile so the compiler cannot delete it, and
- * the iteration count comes from ::priv_ra8_esp_hosted_rtos_us_spin_iters, which
- * clamps it -- that clamp is what makes the loop statically bounded.
+ * @details The loop counter is volatile so the compiler cannot delete it. The
+ * loop itself runs at most ::k_ra8_esp_hosted_spin_iters_max passes and exits
+ * early once the requested, already-clamped iteration count is reached.
  * @param[in] usec Microseconds to approximate.
  * @pre The cached core rate is set, or the call becomes a no-op.
  * @pre The caller accepts a factor-of-two accuracy bound.
@@ -352,11 +349,10 @@ static void internal_spin_us(uint32_t usec)
 {
   const uint32_t    iters = priv_ra8_esp_hosted_rtos_us_spin_iters(s_rtos.cpu_hz, usec);
   volatile uint32_t sink  = 0U;
-  /* The bound is written into the condition rather than left implicit in
-     `iters`, so the loop's upper limit is provable from the loop itself --
-     which is what NASA Power of 10 Rule 2 asks for and what
-     RA8_BOUNDED_LOOP names. */
-  for (uint32_t i = 0U; (i < iters) && (i < (uint32_t)k_ra8_esp_hosted_spin_iters_max); ++i) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_esp_hosted_spin_iters_max; ++i) {
+    if (i >= iters) {
+      break;
+    }
     sink = sink + 1U;
   }
 }
@@ -615,10 +611,10 @@ static unsigned int internal_h_blocking_delay(unsigned int number)
                               ? (uint32_t)k_ra8_esp_hosted_delay_iters_max
                               : (uint32_t)number;
   volatile uint32_t sink  = 0U;
-  /* `iters` is already clamped above; restating the bound in the condition
-     makes the limit provable from the loop itself, per NASA Power of 10
-     Rule 2 and the RA8_BOUNDED_LOOP annotation. */
-  for (uint32_t i = 0U; (i < iters) && (i < (uint32_t)k_ra8_esp_hosted_delay_iters_max); ++i) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_esp_hosted_delay_iters_max; ++i) {
+    if (i >= iters) {
+      break;
+    }
     sink = sink + 1U;
   }
   return number;

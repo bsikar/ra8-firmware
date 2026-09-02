@@ -14,6 +14,7 @@ declaration-looking line inside a comment cannot be mistaken for code.
 
 from __future__ import annotations
 
+import itertools
 import re
 
 from docattach_model import (
@@ -167,7 +168,7 @@ def check_consecutive_blocks(path: str, text: str) -> list[Finding]:
     blocks = extract_doc_blocks(text)
     lines = _blank_comments_and_literals(text).splitlines()
     raw_lines = text.splitlines()
-    for prev, cur in zip(blocks, blocks[1:]):
+    for prev, cur in itertools.pairwise(blocks):
         if prev.standalone or prev.trailing or cur.trailing:
             continue
         # A block carrying an explicit @def / @fn / @struct / ... tag is

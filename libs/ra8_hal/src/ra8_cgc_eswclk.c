@@ -110,7 +110,8 @@ static uint32_t s_eswclk_hz = 0U;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_wait_cksrdy(volatile uint8_t* ckcr_reg, uint8_t expected)
+RA8_INTERNAL static ra8_err_t internal_wait_cksrdy(volatile const uint8_t* ckcr_reg,
+                                                   uint8_t                 expected)
 {
   const uint8_t mask = (uint8_t)(1U << k_ra8_eswckcr_bit_srdy);
   /* Bounded wait through ra8_hw_err.h: on host tests the ra8_fake_mmio
@@ -203,8 +204,8 @@ RA8_INTERNAL static ra8_err_t internal_switch_eswcr_to_pll1p(volatile uint8_t* c
  */
 RA8_INTERNAL static ra8_err_t internal_wait_pdctreswm_clear(uint8_t bit)
 {
-  volatile uint8_t* const pd   = ra8_sys_pdctreswm();
-  const uint8_t           mask = (uint8_t)(1U << bit);
+  volatile const uint8_t* const pd   = ra8_sys_pdctreswm();
+  const uint8_t                 mask = (uint8_t)(1U << bit);
   /* Bounded wait through ra8_hw_err.h: on host tests the ra8_fake_mmio
    * seam decides the poll, so the stuck-flag timeout leg is testable. */
   return ra8_hw_wait_flag_clear8(pd, mask, (uint32_t)k_ra8_cgc_eswclk_poll_limit);

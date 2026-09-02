@@ -344,7 +344,7 @@ RA8_PRIV void priv_c6link_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_nu
  *
  * @par MC/DC:
  * The malformed test is a two-condition decision and the tests drive N+1
- * vectors against it; see `tests/test_ra8_c6link.c`.
+ * vectors against it; see `tests/wireless/src/test_ra8_c6link.c`.
  */
 [[nodiscard]] RA8_PRIV ra8_c6link_frame_class_t
 priv_c6link_frame_classify(uint8_t* rx, ra8_c6link_rx_view_t* view);
@@ -546,7 +546,7 @@ typedef enum : uint16_t {
  *
  * @par MC/DC:
  * The tag test is a three-condition decision and the tests drive N+1 vectors
- * against it; see `tests/test_ra8_c6link.c`.
+ * against it; see `tests/wireless/src/test_ra8_c6link.c`.
  */
 [[nodiscard]] RA8_PRIV const uint8_t*
 priv_c6link_tlv_body(const uint8_t* payload, uint16_t len, uint16_t* proto_len);

@@ -29,7 +29,7 @@ include("${RA8_REPO_ROOT}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME tz_threadx_demo
   STACK_BYTES 2200
-  DESCRIPTION "TrustZone ThreadX Demo (Secure side)"
+  DESCRIPTION "TrustZone ThreadX Demo (Secure side)" AUX_SRCS src/ns_main.c
   LIBS ra8_tz_secure_boot
 )
 
@@ -54,7 +54,7 @@ set_target_properties(
 # ---- Non-Secure Target ----------------------------------------------------
 include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
 
-add_executable(tz_threadx_demo_ns.elf ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c)
+add_executable(tz_threadx_demo_ns.elf ${CMAKE_CURRENT_SOURCE_DIR}/src/ns_main.c)
 
 target_compile_definitions(tz_threadx_demo_ns.elf PRIVATE RA8_TRUSTZONE_ENABLE RA8_PERIPH_NS_ALIAS)
 
@@ -67,7 +67,8 @@ ra8_target_enable_project_warnings(tz_threadx_demo_ns.elf STACK_USAGE_BYTES 2200
 
 target_include_directories(
   tz_threadx_demo_ns.elf
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${RA8_REPO_ROOT}/libs/ra8_core/inc
           ${RA8_REPO_ROOT}/libs/ra8_hal/inc
           ${RA8_REPO_ROOT}/libs/ra8_nsc/inc

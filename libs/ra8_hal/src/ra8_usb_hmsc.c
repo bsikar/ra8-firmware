@@ -1,7 +1,3 @@
-/* GCOVR_EXCL_START -- host-unreachable: called only from the
- * internal_run_data_out data-chunk loop, which runs only after a bulk-OUT
- * CBW push completes; the plain-RAM fake never re-asserts the pipe's
- * BEMPSTS bit, so that push always times out before this helper is reached. */
 /**
  * @file ra8_usb_hmsc.c
  * @brief Native USB host-side MSC (Mass Storage Class) class layer
@@ -258,12 +254,7 @@ static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
   return (speed == k_ra8_usb_speed_hs) ? k_ra8_hmsc_bulk_max_packet_hs
                                        : k_ra8_hmsc_bulk_max_packet_fs;
 }
-/* GCOVR_EXCL_STOP */
 
-/* GCOVR_EXCL_START -- host-unreachable: called only from
- * ra8_usb_hmsc_read_capacity to decode the 8-byte capacity response, which
- * arrives only after a completed BOT command; the fake bulk-OUT CBW
- * push always times out, so the decode is never reached on the host. */
 /**
  * @brief Hand out the next BOT tag (monotonic uint32 counter).
  *
@@ -336,13 +327,7 @@ static uint32_t internal_unpack_u32_be(const uint8_t* src)
          ((uint32_t)src[2] << k_ra8_hmsc_shift_byte1) |
          ((uint32_t)src[3] << k_ra8_hmsc_shift_byte0);
 }
-/* GCOVR_EXCL_STOP */
 
-/* GCOVR_EXCL_START -- host-unreachable: the bulk-IN pull is issued only
- * from internal_read_csw / internal_run_data_in, both of which run only
- * after a bulk-OUT CBW push completes; the fake bulk-OUT never signals
- * completion (BEMPSTS is W0C-cleared and never re-asserted), so the push
- * always times out before any bulk-IN is reached. */
 /**
  * @brief Zero `len` bytes at `dst` byte-by-byte.
  *
@@ -465,13 +450,8 @@ ra8_err_t ra8_usb_hmsc_init(ra8_usb_speed_t speed)
   }
   const ra8_err_t usb_err = ra8_usb_host_init(speed);
   if (usb_err != k_ra8_ok) {
-    /* GCOVR_EXCL_START -- host-unreachable: ra8_usb_host_init fails only on an
-     * MSTP-enable or HS-PLL bring-up fault; under the fake MSTP is plain
-     * RAM (always enables) and the FRDY/bring-up polls short-circuit, so
-     * usb_err is always k_ra8_ok here. */
     ra8_log_error_val(s_tag, "ra8_usb_host_init failed", (uint32_t)usb_err);
     return k_ra8_err_hw_init_failed;
-    /* GCOVR_EXCL_STOP */
   }
 
   g_usb_hmsc_state.speed        = speed;
@@ -586,7 +566,6 @@ static ra8_err_t internal_recv_bytes(uint8_t* dst, uint16_t* inout_len)
   const uint16_t cap = *inout_len;
   return ra8_usb_host_bulk_in(g_usb_hmsc_state.speed, k_ra8_hmsc_pipe_bulk_in, dst, cap, inout_len);
 }
-/* GCOVR_EXCL_STOP */
 
 /* Build a 6-byte CDB for SCSI INQUIRY -- see surrounding code and HUM citations. */
 RA8_INTERNAL
@@ -605,10 +584,6 @@ static void internal_build_read_capacity_cdb(uint8_t* cdb)
   cdb[k_ra8_hmsc_cdb_off_opcode] = k_ra8_hmsc_scsi_read_capacity_10;
 }
 
-/* GCOVR_EXCL_START -- host-unreachable: reading the 13-byte CSW closes a
- * BOT exchange and runs only after the CBW push (and any data stage)
- * completes; the fake bulk-OUT CBW push always times out, so no
- * exchange ever reaches its CSW phase on the host. */
 /**
  * @brief Build a 10-byte CDB for SCSI READ(10) / WRITE(10).
  *
@@ -656,7 +631,7 @@ static ra8_err_t internal_issue_cbw(uint8_t        target_lun,
   uint8_t         cbw[k_ra8_hmsc_cbw_len] = {};
   const ra8_err_t cbw_err =
     ra8_usb_hmsc_build_cbw(target_lun, xfer_len, data_in, cdb, cdb_len, cbw);
-  RA8_RETURN_ON_ERROR(cbw_err, s_tag, "issue_cbw: build cbw"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(cbw_err, s_tag, "issue_cbw: build cbw");
   *out_tag = internal_unpack_u32_le(&cbw[k_ra8_hmsc_cbw_off_tag]);
   return internal_send_cbw(cbw);
 }
@@ -685,19 +660,18 @@ static ra8_err_t internal_read_csw(uint32_t expected_tag)
   uint8_t   csw[k_ra8_hmsc_csw_len] = {};
   uint16_t  len                     = k_ra8_hmsc_csw_len;
   ra8_err_t err                     = internal_recv_bytes(csw, &len);
-  RA8_RETURN_ON_ERROR(err, s_tag, "read_csw: bulk in"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "read_csw: bulk in");
   if (len != (uint16_t)k_ra8_hmsc_csw_len) {
     return k_ra8_err_hw_error;
   }
   ra8_usb_hmsc_csw_status_t status = k_ra8_hmsc_csw_status_phase_error;
   err                              = ra8_usb_hmsc_decode_csw(csw, expected_tag, &status);
-  RA8_RETURN_ON_ERROR(err, s_tag, "read_csw: decode"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "read_csw: decode");
   if (status != k_ra8_hmsc_csw_status_passed) {
     return k_ra8_err_hw_error;
   }
   return k_ra8_ok;
 }
-/* GCOVR_EXCL_STOP */
 
 /* function -- see surrounding code and HUM citations. */
 RA8_INTERNAL
@@ -709,15 +683,11 @@ static ra8_err_t internal_run_data_in(uint8_t        target_lun,
 {
   uint32_t        tag     = 0U;
   const ra8_err_t cbw_err = internal_issue_cbw(target_lun, *inout_len, true, cdb, cdb_len, &tag);
-  RA8_RETURN_ON_ERROR(cbw_err, s_tag, "run_data_in: issue cbw"); /* GCOVR_EXCL_BR_LINE */
-  /* GCOVR_EXCL_START -- host-unreachable: the data-IN pull + CSW read run
-   * only after the CBW push above succeeds; under the fake the push
-   * always times out, so cbw_err is always an error and this returns above. */
+  RA8_RETURN_ON_ERROR(cbw_err, s_tag, "run_data_in: issue cbw");
   const ra8_err_t derr = internal_recv_bytes(out_buf, inout_len);
-  RA8_RETURN_ON_ERROR(derr, s_tag, "run_data_in: data"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(derr, s_tag, "run_data_in: data");
   return internal_read_csw(tag);
 }
-/* GCOVR_EXCL_STOP */
 
 /* function -- see surrounding code and HUM citations. */
 RA8_INTERNAL
@@ -730,7 +700,7 @@ static ra8_err_t internal_run_data_out(uint8_t        target_lun,
   uint32_t        tag = 0U;
   const ra8_err_t cbw_err =
     internal_issue_cbw(target_lun, (uint32_t)push_len, false, cdb, cdb_len, &tag);
-  RA8_RETURN_ON_ERROR(cbw_err, s_tag, "run_data_out: issue cbw"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(cbw_err, s_tag, "run_data_out: issue cbw");
   /* The bulk-OUT primitive ships one packet per call, so chunk at the
    * DEVICE's enumerated bulk-OUT wMaxPacketSize -- NOT the host
    * controller's native ceiling. On a HS host driving an FS device (the
@@ -740,10 +710,6 @@ static ra8_err_t internal_run_data_out(uint8_t        target_lun,
    * and the WRITE wedges. The pipe's PIPEMAXP is already this value
    * (see the enum pipe setup). Fall back to the speed ceiling only if
    * enumeration left it unset. */
-  /* GCOVR_EXCL_START -- host-unreachable: the per-packet data-OUT chunk loop
-   * and the trailing CSW read run only after the CBW push
-   * (internal_issue_cbw above) succeeds; under the fake that push
-   * always times out, so this run always returns on the cbw_err leg above. */
   uint16_t mps = g_usb_hmsc_state.device.bulk_out_max_packet;
   if (mps == 0U) {
     mps = internal_bulk_max_packet(g_usb_hmsc_state.speed);
@@ -758,17 +724,12 @@ static ra8_err_t internal_run_data_out(uint8_t        target_lun,
                                                  k_ra8_hmsc_pipe_bulk_out,
                                                  &in_buf[offset],
                                                  chunk);
-    RA8_RETURN_ON_ERROR(werr, s_tag, "run_data_out: data chunk"); /* GCOVR_EXCL_BR_LINE */
+    RA8_RETURN_ON_ERROR(werr, s_tag, "run_data_out: data chunk");
     offset = (uint16_t)(offset + chunk);
   }
   return internal_read_csw(tag);
 }
-/* GCOVR_EXCL_STOP */
 
-/* GCOVR_EXCL_START -- host-unreachable: called only from ra8_usb_hmsc_inquiry
- * to decode the 36-byte INQUIRY response, which arrives only after a
- * completed BOT command; the fake bulk-OUT CBW push always times out,
- * so the INQUIRY response is never received and never decoded on the host. */
 /**
  * @brief Decode a 36-byte SCSI standard INQUIRY response into the public struct.
  *
@@ -810,7 +771,6 @@ static void internal_decode_inquiry(const uint8_t* raw, ra8_usb_hmsc_inquiry_res
                       &raw[k_ra8_hmsc_inq_off_product_rev],
                       (uint16_t)sizeof(response->product_revision));
 }
-/* GCOVR_EXCL_STOP */
 
 /* =============================================================================
  * SCSI commands -- public entry points
@@ -821,7 +781,7 @@ ra8_err_t ra8_usb_hmsc_inquiry(uint8_t target_lun, ra8_usb_hmsc_inquiry_response
 {
   RA8_CHECK_NULL_PTR(response, s_tag, "inquiry: response");
   const ra8_err_t ready_err = internal_check_ready(target_lun);
-  RA8_RETURN_ON_ERROR(ready_err, s_tag, "inquiry: not ready"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(ready_err, s_tag, "inquiry: not ready");
 
   uint8_t cdb[k_ra8_hmsc_cdb_max_len] = {};
   internal_build_inquiry_cdb(cdb);
@@ -830,13 +790,9 @@ ra8_err_t ra8_usb_hmsc_inquiry(uint8_t target_lun, ra8_usb_hmsc_inquiry_response
   uint16_t        got_len                                   = k_ra8_hmsc_inquiry_resp_len;
   const ra8_err_t err =
     internal_run_data_in(target_lun, cdb, (uint8_t)k_ra8_hmsc_cdb6_len, raw_response, &got_len);
-  RA8_RETURN_ON_ERROR(err, s_tag, "inquiry: bot"); /* GCOVR_EXCL_BR_LINE */
-  /* GCOVR_EXCL_START -- host-unreachable: decoding + success return run only
-   * after the BOT command completes; the fake bulk-OUT CBW push always
-   * times out, so this returns on the "bot" error leg above. */
+  RA8_RETURN_ON_ERROR(err, s_tag, "inquiry: bot");
   internal_decode_inquiry(raw_response, response);
   return k_ra8_ok;
-  /* GCOVR_EXCL_STOP */
 }
 
 ra8_err_t
@@ -845,7 +801,7 @@ ra8_usb_hmsc_read_capacity(uint8_t target_lun, uint32_t* block_count, uint32_t* 
   RA8_CHECK_NULL_PTR(block_count, s_tag, "read_capacity: block_count");
   RA8_CHECK_NULL_PTR(block_size, s_tag, "read_capacity: block_size");
   const ra8_err_t ready_err = internal_check_ready(target_lun);
-  RA8_RETURN_ON_ERROR(ready_err, s_tag, "read_capacity: not ready"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(ready_err, s_tag, "read_capacity: not ready");
 
   uint8_t cdb[k_ra8_hmsc_cdb_max_len] = {};
   internal_build_read_capacity_cdb(cdb);
@@ -854,21 +810,17 @@ ra8_usb_hmsc_read_capacity(uint8_t target_lun, uint32_t* block_count, uint32_t* 
   uint16_t        got_len = k_ra8_hmsc_read_capacity_resp_len;
   const ra8_err_t err =
     internal_run_data_in(target_lun, cdb, (uint8_t)k_ra8_hmsc_cdb10_len, raw_response, &got_len);
-  RA8_RETURN_ON_ERROR(err, s_tag, "read_capacity: bot"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, s_tag, "read_capacity: bot");
 
   /* Decode SBC-4 sec 5.10: byte[0..3] = LAST valid LBA (big-endian),
    * byte[4..7] = block size (big-endian). When the fake returns
    * zeros default to a sane block size so calling code can still
    * compute capacities. */
-  /* GCOVR_EXCL_START -- host-unreachable: decoding + success return run only
-   * after the BOT command completes; the fake bulk-OUT CBW push always
-   * times out, so this returns on the "bot" error leg above. */
   const uint32_t last_lba = internal_unpack_u32_be(&raw_response[k_ra8_hmsc_cap_off_last_lba]);
   const uint32_t blk      = internal_unpack_u32_be(&raw_response[k_ra8_hmsc_cap_off_blk_size]);
   *block_count            = last_lba + 1U;
   *block_size             = (blk == 0U) ? (uint32_t)k_ra8_hmsc_block_size_default : blk;
   return k_ra8_ok;
-  /* GCOVR_EXCL_STOP */
 }
 
 ra8_err_t
@@ -879,7 +831,7 @@ ra8_usb_hmsc_read10(uint8_t target_lun, uint32_t lba, uint16_t block_count, uint
     return k_ra8_err_invalid_arg;
   }
   const ra8_err_t ready_err = internal_check_ready(target_lun);
-  RA8_RETURN_ON_ERROR(ready_err, s_tag, "read10: not ready"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(ready_err, s_tag, "read10: not ready");
 
   uint8_t cdb[k_ra8_hmsc_cdb_max_len] = {};
   internal_build_rw10_cdb(k_ra8_hmsc_scsi_read_10, lba, block_count, cdb);
@@ -891,12 +843,8 @@ ra8_usb_hmsc_read10(uint8_t target_lun, uint32_t lba, uint16_t block_count, uint
   uint16_t        got_len  = (xfer_len > UINT16_MAX) ? UINT16_MAX : (uint16_t)xfer_len;
   const ra8_err_t err =
     internal_run_data_in(target_lun, cdb, (uint8_t)k_ra8_hmsc_cdb10_len, out_buf, &got_len);
-  RA8_RETURN_ON_ERROR(err, s_tag, "read10: bot"); /* GCOVR_EXCL_BR_LINE */
-  /* GCOVR_EXCL_START -- host-unreachable: the success return runs only after
-   * the BOT read completes; the fake bulk-OUT CBW push always times
-   * out, so this returns on the "bot" error leg above. */
+  RA8_RETURN_ON_ERROR(err, s_tag, "read10: bot");
   return k_ra8_ok;
-  /* GCOVR_EXCL_STOP */
 }
 
 ra8_err_t
@@ -907,7 +855,7 @@ ra8_usb_hmsc_write10(uint8_t target_lun, uint32_t lba, uint16_t block_count, con
     return k_ra8_err_invalid_arg;
   }
   const ra8_err_t ready_err = internal_check_ready(target_lun);
-  RA8_RETURN_ON_ERROR(ready_err, s_tag, "write10: not ready"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(ready_err, s_tag, "write10: not ready");
 
   uint8_t cdb[k_ra8_hmsc_cdb_max_len] = {};
   internal_build_rw10_cdb(k_ra8_hmsc_scsi_write_10, lba, block_count, cdb);
@@ -916,10 +864,6 @@ ra8_usb_hmsc_write10(uint8_t target_lun, uint32_t lba, uint16_t block_count, con
   const uint16_t  push_len = (xfer_len > UINT16_MAX) ? UINT16_MAX : (uint16_t)xfer_len;
   const ra8_err_t err =
     internal_run_data_out(target_lun, cdb, (uint8_t)k_ra8_hmsc_cdb10_len, in_buf, push_len);
-  RA8_RETURN_ON_ERROR(err, s_tag, "write10: bot"); /* GCOVR_EXCL_BR_LINE */
-  /* GCOVR_EXCL_START -- host-unreachable: the success return runs only after
-   * the BOT write completes; the fake bulk-OUT CBW push always times
-   * out, so this returns on the "bot" error leg above. */
+  RA8_RETURN_ON_ERROR(err, s_tag, "write10: bot");
   return k_ra8_ok;
-  /* GCOVR_EXCL_STOP */
 }

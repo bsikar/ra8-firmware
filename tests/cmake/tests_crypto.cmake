@@ -39,26 +39,53 @@ endif()
 # RA8_CHECK_NULL_PTR log a no-op so the TU needs no ra8_log backend to link.
 # ---------------------------------------------------------------------------
 add_executable(
-  test_ra8_rsip_devsec_failclosed ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_rsip_devsec_failclosed.c
-                                  ${FW_ROOT}/libs/ra8_hal/src/ra8_rsip_devsec.c
+  test_ra8_rsip_devsec_failclosed
+  ${CMAKE_CURRENT_SOURCE_DIR}/security/src/test_ra8_rsip_devsec_failclosed.c
+  ${FW_ROOT}/libs/ra8_hal/src/ra8_rsip_devsec.c
 )
 target_include_directories(
-  test_ra8_rsip_devsec_failclosed PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${FW_ROOT}/libs/ra8_core/inc
-                                          ${FW_ROOT}/libs/ra8_hal/inc
+  test_ra8_rsip_devsec_failclosed PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS}
+                                          ${FW_ROOT}/libs/ra8_core/inc ${FW_ROOT}/libs/ra8_hal/inc
 )
 target_compile_options(
   test_ra8_rsip_devsec_failclosed
   PRIVATE -Wall
           -Wextra
           -Werror
-          -Wno-unused-function
-          -Wno-unused-parameter
-          -Wno-unused-variable
           -URA8_OFF_TARGET
           -URA8_INSECURE_STUB_CRYPTO
           -DRA8_LOG_LEVEL=0
 )
 add_test(NAME test_ra8_rsip_devsec_failclosed COMMAND test_ra8_rsip_devsec_failclosed)
+
+# ---------------------------------------------------------------------------
+# The HTTPS example's PSA external-RNG adapter is normally firmware-only. Build
+# that exact production TU without RA8_OFF_TARGET and provide only its RSIP seam
+# from the test so null rejection, device failure, and success are measured.
+# ---------------------------------------------------------------------------
+add_executable(
+  test_mbedtls_psa_rng ${CMAKE_CURRENT_SOURCE_DIR}/security/src/test_mbedtls_psa_rng.c
+                       ${FW_ROOT}/examples/_unsupported/threadx_https_client/src/mbedtls_psa_rng.c
+)
+target_include_directories(
+  test_mbedtls_psa_rng PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support/inc ${FW_ROOT}/libs/ra8_core/inc
+                               ${FW_ROOT}/libs/ra8_hal/inc
+)
+target_include_directories(
+  test_mbedtls_psa_rng SYSTEM
+  PRIVATE ${FW_ROOT}/libs/third_party/tf-psa-crypto/drivers/builtin/include
+          ${FW_ROOT}/libs/third_party/tf-psa-crypto/include
+)
+target_compile_definitions(test_mbedtls_psa_rng PRIVATE MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG=1)
+target_compile_options(
+  test_mbedtls_psa_rng
+  PRIVATE -Wall
+          -Wextra
+          -Werror
+          -URA8_OFF_TARGET
+          -DRA8_LOG_LEVEL=0
+)
+add_test(NAME test_mbedtls_psa_rng COMMAND test_mbedtls_psa_rng)
 
 # ---------------------------------------------------------------------------
 # T5-04: real-backend crypto known-answer test. The rest of the host build
@@ -93,47 +120,44 @@ set(_RA8_TFPSA_KAT_INC
 )
 add_library(ra8_tfpsa_host_kat OBJECT ${_RA8_TFPSA_KAT_SRC})
 target_include_directories(ra8_tfpsa_host_kat PRIVATE ${_RA8_TFPSA_KAT_INC})
-target_compile_options(ra8_tfpsa_host_kat PRIVATE -w -fno-strict-aliasing)
+# No warning suppression: this OBJECT library never had a warning profile to
+# suppress. Its only compile options are the ones on this line, so -Wall is off
+# and neither -Wattributes nor -Wredundant-decls is ever enabled. Compiling all
+# 77 tf-psa-crypto TUs with -Wno-error, -Wno-attributes and -Wno-redundant-decls
+# removed emits nothing at all under gcc 14.2.0 or clang 18, so all three were
+# masking nothing and are deleted. -fno-strict-aliasing stays: it changes code
+# generation, not diagnostics.
+target_compile_options(ra8_tfpsa_host_kat PRIVATE -fno-strict-aliasing)
 add_executable(
-  test_psa_real_kat ${CMAKE_CURRENT_SOURCE_DIR}/test_psa_real_kat.c
+  test_psa_real_kat ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_psa_real_kat.c
                     $<TARGET_OBJECTS:ra8_tfpsa_host_kat>
 )
-target_include_directories(test_psa_real_kat PRIVATE ${_RA8_TFPSA_KAT_INC})
+target_include_directories(
+  test_psa_real_kat PRIVATE ${_RA8_TFPSA_KAT_INC} ${RA8_TEST_SHARED_INCLUDE_DIRS}
+                            ${FW_ROOT}/libs/ra8_core/inc
+)
 target_compile_options(test_psa_real_kat PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_psa_real_kat COMMAND test_psa_real_kat)
 
-if(RA8_REFLOW_USE_LITEHTML)
+if(REFLOW_USE_LITEHTML)
   add_executable(
-    test_ra8_reflow_v2 ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_reflow_v2.cpp
-                       $<TARGET_OBJECTS:ra8_core_hal>
+    test_reflow_v2
+    ${CMAKE_CURRENT_SOURCE_DIR}/../apps/shared_libs/reflow/tests/src/test_reflow_v2.cpp
+    $<TARGET_OBJECTS:ra8_core_hal>
   )
-  set_target_properties(test_ra8_reflow_v2 PROPERTIES LINKER_LANGUAGE CXX)
-  target_compile_options(
-    test_ra8_reflow_v2
-    PRIVATE -Wall
-            -Wextra
-            -Wno-unused-function
-            -Wno-unused-parameter
-            -Wno-unused-variable
-            -Wno-address-of-packed-member
-  )
-  target_compile_features(test_ra8_reflow_v2 PRIVATE cxx_std_17)
+  set_target_properties(test_reflow_v2 PROPERTIES LINKER_LANGUAGE CXX)
+  target_compile_options(test_reflow_v2 PRIVATE -Wall -Wextra)
+  target_compile_features(test_reflow_v2 PRIVATE cxx_std_17)
   target_include_directories(
-    test_ra8_reflow_v2
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+    test_reflow_v2
+    PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS}
             ${FW_ROOT}/libs/ra8_core/inc
-            ${FW_ROOT}/libs/ra8_reflow/inc
+            ${FW_ROOT}/apps/shared_libs/reflow/inc
             ${FW_ROOT}/libs/ra8_mem/inc
-            ${FW_ROOT}/libs/third_party/litehtml/include
-            ${FW_ROOT}/libs/third_party/stb
-            ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+            ${FW_ROOT}/apps/shared_libs/third_party/litehtml/include
+            ${FW_ROOT}/apps/shared_libs/third_party/stb
+            ${CMAKE_CURRENT_SOURCE_DIR}/mocks/inc
   )
-  target_link_libraries(test_ra8_reflow_v2 PRIVATE litehtml gumbo)
-  #  if(APPLE)
-  #    target_link_options(test_ra8_reflow_v2 PRIVATE
-  #      "-Wl,-pagezero_size,0x4000"
-  #      "-Wl,-segalign,0x4000"
-  #    )
-  #  endif()
-  add_test(NAME test_ra8_reflow_v2 COMMAND test_ra8_reflow_v2)
+  target_link_libraries(test_reflow_v2 PRIVATE litehtml gumbo)
+  add_test(NAME test_reflow_v2 COMMAND test_reflow_v2)
 endif()

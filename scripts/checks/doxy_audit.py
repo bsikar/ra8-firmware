@@ -9,21 +9,15 @@ locates every function definition/prototype, and checks the immediately
 preceding Doxygen block for the required tags listed in CLAUDE.md
 ("Doxygen Documentation Requirements").
 
-The pre-existing tool backlog is recorded per function and missing-tag set in
-``.github/doxy-function-baseline.txt``. New gaps fail immediately, and stale
-rows fail so the baseline can only shrink. This is the same honest ratchet used
-for MISRA and clang-tidy: known debt stays visible without excluding a whole
-first-party directory from enforcement. Machine-emitted tool code remains
-exempt like vendored SOUP.
+The pre-existing function backlog is closed. Every function gap now fails
+immediately; no documentation baseline or update path remains. Machine-emitted
+tool code remains exempt like vendored SOUP.
 
 Modes
 -----
   (no args)         Function audit report -> docs/DOXYGEN_GAPS.csv + .md
   --check           Strict function gate (exit 1 on any gap). Wired into CI
                     and the pre-commit hook.
-  --update-function-baseline
-                    Shrink the frozen function-gap baseline to the current
-                    debt. Refuses to grow it after the initial tools/ import.
   --selftest        Regression-test the auditor itself, in both directions,
                     for both enforcing modes. Runs before the real check in
                     the gate: a parser-driven gate that stops recognising a
@@ -47,9 +41,6 @@ Modes
                     the @param direction bracket. Unlike --members there is no
                     report-only twin -- a mode that measures instead of failing
                     is how the member gate was once mis-wired.
-  --style --update-baseline
-                    Shrink .github/doxy-details-baseline.txt to the files that
-                    still lack @details. Refuses to GROW it.
 
 CLAUDE.md ("Doxygen Documentation Requirements") demands that *every* enum
 value, struct/union member, and macro carry documentation -- an inline
@@ -77,30 +68,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from doxy_function_baseline import function_key, partition_function_gaps
 from doxy_functions import audit_file
 from doxy_members import audit_members_file
 from doxy_report import run_report
 from doxy_scope import _top_dir, function_files, member_files, repo_root
 from doxy_selftest import run_selftest
 from doxy_style import run_check as run_style_check
-from doxy_style import run_update_baseline as run_style_update
 
 #: Offender lines printed before the gate truncates, so a hook stays readable.
 OFFENDER_CAP = 50
-
-FUNCTION_BASELINE_FILE = repo_root() / ".github" / "doxy-function-baseline.txt"
-
-
-def _load_function_baseline() -> set[str]:
-    """Load the frozen function-documentation debt."""
-    if not FUNCTION_BASELINE_FILE.is_file():
-        return set()
-    return {
-        line.strip()
-        for line in FUNCTION_BASELINE_FILE.read_text(encoding="ascii").splitlines()
-        if line.strip() and not line.startswith("#")
-    }
 
 
 def run_check() -> int:
@@ -117,64 +93,22 @@ def run_check() -> int:
         all_rows.extend(audit_file(path))
 
     gap_rows = [r for r in all_rows if r[3]]
-    new_rows, stale = partition_function_gaps(gap_rows, _load_function_baseline())
-    if not new_rows and not stale:
-        print(f"doxy_audit --check: gaps={len(gap_rows)} frozen, new=0 (PASS)")
+    if not gap_rows:
+        print("doxy_audit --check: gaps=0 (PASS; strict, no baseline)")
         return 0
 
-    print(
-        f"doxy_audit --check: gaps={len(gap_rows)}, new={len(new_rows)}, "
-        f"stale-baseline={len(stale)} (FAIL)"
-    )
+    print(f"doxy_audit --check: gaps={len(gap_rows)} (FAIL; strict, no baseline)")
     print("Offending functions (file:line  function  -- missing tags):")
     # cap output to 50 lines so the hook stays readable
     cap = OFFENDER_CAP
-    for src, line, name, missing, _sev in new_rows[:cap]:
+    for src, line, name, missing, _sev in gap_rows[:cap]:
         print(f"  {src}:{line}  {name}  --  {';'.join(missing)}")
-    if len(new_rows) > cap:
-        print(f"  ... and {len(new_rows) - cap} more")
-    if stale:
-        print("Stale baseline rows (documentation improved; shrink the baseline):")
-        for key in stale[:cap]:
-            print(f"  {key}")
-        if len(stale) > cap:
-            print(f"  ... and {len(stale) - cap} more")
+    if len(gap_rows) > cap:
+        print(f"  ... and {len(gap_rows) - cap} more")
     print()
     print("Refresh the audit report by running:")
     print("  python3 scripts/checks/doxy_audit.py")
     return 1
-
-
-def update_function_baseline() -> int:
-    """Rewrite the function baseline to the current debt, refusing growth."""
-    rows = []
-    for path in function_files():
-        rows.extend(audit_file(path))
-    current = {function_key(row) for row in rows if row[3]}
-    previous = _load_function_baseline()
-    baseline_text = (
-        FUNCTION_BASELINE_FILE.read_text(encoding="ascii")
-        if FUNCTION_BASELINE_FILE.is_file()
-        else ""
-    )
-    initial = "INITIAL-SCOPE-EXPANSION" in baseline_text
-    if not initial and not current.issubset(previous):
-        added = sorted(current - previous)
-        sys.stderr.write(
-            f"doxy function baseline refuses to grow by {len(added)} row(s); "
-            "document the new gaps instead.\n"
-        )
-        return 1
-    header = [
-        "# Frozen function-documentation debt after tools/ entered the strict scope.",
-        "# Consumed by scripts/checks/doxy_audit.py --check.",
-        "# New rows fail; stale rows fail until this file is shrunk.",
-        f"# Rows: {len(current)}",
-    ]
-    lines = [*header, "", *sorted(current)] if current else header
-    FUNCTION_BASELINE_FILE.write_text("\n".join(lines) + "\n", encoding="ascii")
-    print(f"updated {FUNCTION_BASELINE_FILE}: {len(current)} row(s)")
-    return 0
 
 
 def run_members_report(explicit: list[str], out_csv: str | None) -> int:
@@ -305,12 +239,20 @@ def main() -> int:
     documented tree.
     """
     args = sys.argv[1:]
+    unknown = [
+        arg
+        for arg in args
+        if arg.startswith("--")
+        and arg not in {"--check", "--members", "--selftest", "--style"}
+        and not arg.startswith("--out=")
+    ]
+    if unknown:
+        sys.stderr.write(f"doxy_audit: unknown option(s): {' '.join(unknown)}\n")
+        return 2
     if "--selftest" in args:
         return run_selftest()
-    if "--update-function-baseline" in args:
-        return update_function_baseline()
     if "--style" in args:
-        return run_style_update() if "--update-baseline" in args else run_style_check()
+        return run_style_check()
     if "--members" in args:
         explicit, out_csv = _parse_members_args(args)
         return (

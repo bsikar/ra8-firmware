@@ -1,0 +1,857 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Provision the shared verification box from nothing to a box that can run
+# every gate. Idempotent: the two source builds are skipped once the pinned
+# version is installed, and everything else converges.
+#
+# This role is AUTHORITATIVE for what the dev box carries. Where a pinned
+# version already has a home in the tree it is READ from there, never restated:
+# Python lint/format pins come from uv.lock, the Unicorn pin comes out
+# of scripts/ci/unicorn_pin.sh, and the systemd units out of the scripts that
+# generate them. The role ends on check_tool_versions.py --all -- the exact
+# assertion the `toolchain-parity` gate makes -- so a run that cannot reach
+# parity fails loudly instead of reporting a false success.
+
+- name: Authenticate the HIL and bench mutation boundary before this role
+  ansible.builtin.include_tasks:
+    file: hil_mutation_guard.yml
+    apply:
+      tags: [always]
+  tags: [always]
+
+- name: Assert a distribution this role's source builds are calibrated for
+  # Not decoration. The two source builds below exist BECAUSE this is Debian:
+  # neither cppcheck 2.13 nor gcc-14 is an apt package here, while both are on
+  # the Ubuntu runners. On a distribution that packages them, this role would be
+  # installing from source for no reason.
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'Debian'
+    fail_msg: >-
+      dev_box targets Debian-family hosts (measured against Debian 12
+      bookworm); this host reports {{ ansible_distribution }}
+      {{ ansible_distribution_version }} ({{ ansible_os_family }}).
+    success_msg: >-
+      {{ ansible_distribution }} {{ ansible_distribution_version }}
+      ({{ ansible_distribution_release }})
+
+- name: Keep the system Bash startup guard safe under nounset
+  # Debian's stock guard reads $PS1 directly. A strict noninteractive caller
+  # that sources /etc/bash.bashrc therefore aborts before the guard can return.
+  become: true
+  ansible.builtin.replace:
+    path: /etc/bash.bashrc
+    regexp: '^\[ -z "\$PS1" \] && return$'
+    replace: '[ -z "${PS1:-}" ] && return'
+    validate: /bin/bash -p -n %s
+  tags: bash-startup
+
+- name: Verify the nounset-safe Bash startup guard is present
+  ansible.builtin.command:
+    argv:
+      - grep
+      - -Fx
+      - '[ -z "${PS1:-}" ] && return'
+      - /etc/bash.bashrc
+  changed_when: false
+  check_mode: false
+  tags: bash-startup
+
+- name: Install the substrate every later step needs
+  become: true
+  ansible.builtin.apt:
+    name: "{{ dev_box_apt_base }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check out the repo (the base tree `just workspace::new` links worktrees off)
+  # Deliberately NOT force:true, unlike hil_bench. The bench tree is disposable;
+  # this one is the object store every agent workspace shares, and a force
+  # checkout here would discard commits that live only in a linked worktree.
+  ansible.builtin.git:
+    repo: "{{ dev_box_repo_url }}"
+    dest: "{{ dev_box_base_checkout }}"
+    version: dev
+    update: false
+    accept_hostkey: true
+  environment:
+    GIT_LFS_SKIP_SMUDGE: "1"
+
+# --- The provisioning context -----------------------------------------------
+
+- name: Stage the exact candidate worktree context
+  # The included task owns the full contract: current dirty worktree bytes,
+  # non-ignored untracked files, no deleted/ignored residue, deterministic
+  # metadata, exact verification, and controller-side temporary cleanup.
+  ansible.builtin.include_tasks:
+    file: stage_context.yml
+    apply:
+      tags: hil-runner
+  tags: hil-runner
+
+- name: Assert the staged context arrived
+  # Most of what is staged fails loudly on its own: `bash <missing script>`
+  # exits 127 and takes the play with it. These two do not, which is why they
+  # are named. A missing Dockerfile makes the pin slurp fail with a path error
+  # rather than a reason, and a missing scripts/ci.sh makes
+  # check_runner_image_deps.py scan for gate dependencies in a file that is not
+  # there -- it has its own floor for that, but this role must not depend on
+  # another checker's backstop to notice it staged half a tree.
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_context_dir }}/{{ item }}"
+  register: dev_box_context_stat
+  loop:
+    - .dockerignore
+    - .devcontainer/Dockerfile
+    - pyproject.toml
+    - scripts/ci.sh
+    - scripts/dev/bootstrap_uv.py
+    - scripts/dev/bootstrap_uv_exec.py
+    - scripts/dev/managed_python_env.py
+    - scripts/dev/managed_python_env_checks.py
+    - scripts/dev/uv_release.json
+    - uv.lock
+  tags: hil-runner
+
+- name: Explain the context-refresh check-mode boundary
+  when:
+    - ansible_check_mode
+    - dev_box_context_refresh_needed
+  ansible.builtin.debug:
+    msg: >-
+      The candidate archive differs from the exact installed context, or the
+      root-owned context-helper package is not yet usable. Their replacement
+      is reported as planned. Check mode does not modify them, and remaining
+      tasks consume {{ dev_box_context_dir }}; this dry run ends here instead
+      of executing candidate checks against stale or nonexistent files. Apply
+      once, then a subsequent check validates the complete role without
+      changes.
+  tags: hil-runner
+
+- name: End a context-refresh dry run before consumers read stale files
+  when:
+    - ansible_check_mode
+    - dev_box_context_refresh_needed
+  ansible.builtin.meta: end_host
+  tags: hil-runner
+
+- name: Fail loud when it did not
+  when:
+    - not ansible_check_mode
+    - dev_box_context_stat.results | rejectattr('stat.exists') | list | length > 0
+  ansible.builtin.fail:
+    msg: >-
+      The staged context under {{ dev_box_context_dir }} is missing
+      {{ dev_box_context_stat.results | rejectattr('stat.exists')
+         | map(attribute='item') | join(', ') }}. It is copied from
+      {{ dev_box_context_src }} on the control node, so this means the play was
+      run from somewhere that is not a checkout of this repository. Provisioning
+      on would install from half a tree.
+  tags: hil-runner
+
+# --- Pinned versions: read, never restated ----------------------------------
+
+- name: Read the devcontainer Dockerfile (the pinned-version source of truth)
+  ansible.builtin.slurp:
+    src: "{{ dev_box_context_dir }}/.devcontainer/Dockerfile"
+  register: dev_box_dockerfile
+  tags: hil-runner
+
+- name: Parse its ARG pins
+  ansible.builtin.set_fact:
+    dev_box_pins: >-
+      {{ dict(dev_box_dockerfile.content | b64decode
+              | regex_findall('(?m)^ARG\s+([A-Z0-9_]+)=(\S+)')) }}
+  tags: hil-runner
+
+- name: Assert every pin this role consumes is actually declared there
+  # A renamed ARG would otherwise make a task install an empty version string
+  # and "succeed". Fail on the rename instead.
+  ansible.builtin.assert:
+    that:
+      - dev_box_pins[item] is defined
+      - (dev_box_pins[item] | length) > 0
+    fail_msg: >-
+      .devcontainer/Dockerfile declares no ARG {{ item }}, so this role cannot
+      learn that pin. It was renamed or removed -- update this role to match
+      rather than hard-coding a second copy of the version here.
+    quiet: true
+  loop:
+    - ARM_GCC_RELEASE
+    - ARM_GCC_SHA256_X86_64
+    - ACTIONLINT_SHA256_AMD64
+    - ACTIONLINT_SHA256_ARM64
+    - HADOLINT_SHA256_ARM64
+    - HADOLINT_SHA256_X86_64
+    - JUST_SHA256_AARCH64
+    - JUST_VERSION
+    - JUST_SHA256_X86_64
+    - PYTHON_TOOL_VENV
+    - SHELLCHECK_SHA256_AARCH64
+    - SHELLCHECK_SHA256_X86_64
+    - SHFMT_SHA256_AMD64
+    - SHFMT_SHA256_ARM64
+  tags: hil-runner
+
+# --- LLVM apt repository ----------------------------------------------------
+
+- name: Install the LLVM apt signing key
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ dev_box_llvm_key_url }}"
+    dest: /tmp/llvm-snapshot.asc
+    mode: "0644"
+
+- name: Dearmor the LLVM key into the keyring apt reads
+  become: true
+  ansible.builtin.command:
+    cmd: >-
+      gpg --batch --yes --dearmor
+      -o {{ dev_box_llvm_keyring }} /tmp/llvm-snapshot.asc
+    creates: "{{ dev_box_llvm_keyring }}"
+
+- name: Add the LLVM apt suites (22 for format/tidy, 18 for the tidy + MC/DC pin)
+  become: true
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by={{ dev_box_llvm_keyring }}]
+      http://apt.llvm.org/{{ ansible_distribution_release }}/
+      {{ item.suite }} main
+    filename: "{{ item.name }}"
+    state: present
+    update_cache: true
+  loop: "{{ dev_box_llvm_suites }}"
+  loop_control:
+    label: "{{ item.suite }}"
+
+- name: Install the gate, LLVM, source-build and runtime package groups
+  become: true
+  ansible.builtin.apt:
+    name: >-
+      {{ dev_box_apt_gates + dev_box_apt_llvm
+         + dev_box_apt_source_build + dev_box_apt_runtime }}
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Point the unsuffixed clang tools at the pinned majors
+  # Several checkers and editors invoke a bare `clang-format` / `clang-tidy`.
+  # Without these the bare name resolves to whatever major apt last installed,
+  # which is how a tree gets reformatted by the wrong version.
+  become: true
+  ansible.builtin.file:
+    src: "/usr/bin/{{ item.target }}"
+    dest: "/usr/local/bin/{{ item.link }}"
+    state: link
+  loop:
+    - link: clang-format
+      target: clang-format-22
+    - link: clang-tidy
+      target: clang-tidy-22
+  loop_control:
+    label: "{{ item.link }} -> {{ item.target }}"
+
+# --- cppcheck 2.13.0 from source --------------------------------------------
+
+# The version probes and post-install assertions from here down all carry
+# `check_mode: false`. Every one is READ-ONLY -- a `--version`, a parity check,
+# an image inspect -- so running it under `--check` changes nothing, and it is
+# what makes a dry run honest. A command SKIPPED in check mode registers no
+# stdout; the source-build `when:` guards then read '' and fire even on a
+# converged box, and the block dies interpolating the `.path` of a tempfile
+# check mode also skipped -- so `just infra::check dev` could not run to
+# completion at all. Probing for real keeps the guards accurate, the build
+# blocks are correctly not entered, and the read-backs the final asserts
+# consume have real output instead of a skip dict (#527).
+
+- name: Check the installed cppcheck version
+  ansible.builtin.command:
+    cmd: "{{ dev_box_cppcheck_prefix }}/bin/cppcheck --version"
+  register: dev_box_cppcheck_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Build and install the pinned cppcheck
+  when: >-
+    ('Cppcheck ' ~ dev_box_cppcheck_version)
+    not in (dev_box_cppcheck_probe.stdout | default(''))
+  become: true
+  block:
+    - name: Create a scratch directory for the cppcheck build
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: cppcheck
+      register: dev_box_cppcheck_tmp
+
+    - name: Download the pinned cppcheck source (sha256-verified)
+      ansible.builtin.get_url:
+        url: "{{ dev_box_cppcheck_url }}"
+        dest: "{{ dev_box_cppcheck_tmp.path }}/cppcheck.tar.gz"
+        checksum: "sha256:{{ dev_box_cppcheck_sha256 }}"
+        mode: "0644"
+
+    - name: Unpack it
+      ansible.builtin.unarchive:
+        src: "{{ dev_box_cppcheck_tmp.path }}/cppcheck.tar.gz"
+        dest: "{{ dev_box_cppcheck_tmp.path }}"
+        remote_src: true
+
+    - name: Configure cppcheck
+      # FILESDIR is the load-bearing option: without it the binary looks for
+      # its cfg/, addons/ and platforms/ next to the build tree, which is
+      # deleted below. It would then analyse with NO library configuration --
+      # running fine, reporting different findings, failing nothing.
+      ansible.builtin.command:
+        cmd: >-
+          cmake -S {{ dev_box_cppcheck_tmp.path }}/cppcheck-{{ dev_box_cppcheck_version }}
+          -B {{ dev_box_cppcheck_tmp.path }}/build
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_INSTALL_PREFIX={{ dev_box_cppcheck_prefix }}
+          -DFILESDIR={{ dev_box_cppcheck_filesdir }}
+          -DUSE_MATCHCOMPILER=ON
+        creates: "{{ dev_box_cppcheck_tmp.path }}/build/build.ninja"
+
+    - name: Compile cppcheck
+      ansible.builtin.command:
+        cmd: >-
+          cmake --build {{ dev_box_cppcheck_tmp.path }}/build
+          --parallel {{ ansible_processor_vcpus }}
+      changed_when: true
+
+    - name: Install cppcheck
+      ansible.builtin.command:
+        cmd: "cmake --install {{ dev_box_cppcheck_tmp.path }}/build"
+      changed_when: true
+  always:
+    - name: Remove the cppcheck build tree
+      when: dev_box_cppcheck_tmp.path is defined
+      ansible.builtin.file:
+        path: "{{ dev_box_cppcheck_tmp.path }}"
+        state: absent
+
+- name: Read back the installed cppcheck version
+  ansible.builtin.command:
+    cmd: "{{ dev_box_cppcheck_prefix }}/bin/cppcheck --version"
+  register: dev_box_cppcheck_installed
+  changed_when: false
+  check_mode: false
+
+- name: Check that cppcheck's library configuration landed with it
+  ansible.builtin.stat:
+    path: "{{ dev_box_cppcheck_filesdir }}/{{ item }}"
+  loop: [cfg, addons, platforms]
+  register: dev_box_cppcheck_files
+
+- name: Assert cppcheck is the pinned build AND can find its configuration
+  ansible.builtin.assert:
+    that:
+      - ('Cppcheck ' ~ dev_box_cppcheck_version) in dev_box_cppcheck_installed.stdout
+      - dev_box_cppcheck_files.results | map(attribute='stat.exists') | min
+    fail_msg: >-
+      cppcheck reports
+      '{{ dev_box_cppcheck_installed.stdout | trim }}' and its FILESDIR
+      {{ dev_box_cppcheck_filesdir }} is missing
+      {{ dev_box_cppcheck_files.results | rejectattr('stat.exists')
+         | map(attribute='item') | join(', ') | default('nothing', true) }}.
+      The misra/cppcheck gates are calibrated against
+      {{ dev_box_cppcheck_version }} WITH its library configuration; either half
+      absent changes the findings silently.
+    success_msg: >-
+      {{ dev_box_cppcheck_installed.stdout | trim }} with cfg/addons/platforms
+      in {{ dev_box_cppcheck_filesdir }}
+
+# --- gcc 14 from source (the slow step) -------------------------------------
+
+- name: Check the installed gcc-14 version
+  ansible.builtin.command:
+    cmd: "{{ dev_box_gcc_prefix }}/bin/gcc{{ dev_box_gcc_suffix }} -dumpfullversion"
+  register: dev_box_gcc_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Build and install the pinned gcc (tens of minutes -- skipped when present)
+  when: (dev_box_gcc_probe.stdout | default('') | trim) != dev_box_gcc_version
+  become: true
+  block:
+    - name: Create a scratch directory for the gcc build
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: gcc
+      register: dev_box_gcc_tmp
+
+    - name: Download the pinned gcc source (sha256-verified)
+      ansible.builtin.get_url:
+        url: "{{ dev_box_gcc_url }}"
+        dest: "{{ dev_box_gcc_tmp.path }}/gcc.tar.xz"
+        checksum: "sha256:{{ dev_box_gcc_sha256 }}"
+        mode: "0644"
+
+    - name: Unpack it
+      ansible.builtin.unarchive:
+        src: "{{ dev_box_gcc_tmp.path }}/gcc.tar.xz"
+        dest: "{{ dev_box_gcc_tmp.path }}"
+        remote_src: true
+
+    - name: Fetch gcc's in-tree prerequisites
+      # gcc ships this script precisely so a build does not depend on which
+      # gmp/mpfr/mpc/isl the distribution happens to carry. Using it makes the
+      # resulting compiler reproducible from the pinned tarball alone.
+      ansible.builtin.command:
+        cmd: ./contrib/download_prerequisites
+        chdir: "{{ dev_box_gcc_tmp.path }}/gcc-{{ dev_box_gcc_version }}"
+      changed_when: true
+
+    - name: Create the out-of-tree build directory
+      # gcc refuses to configure in its own source directory.
+      ansible.builtin.file:
+        path: "{{ dev_box_gcc_tmp.path }}/build"
+        state: directory
+        mode: "0755"
+
+    - name: Configure gcc
+      ansible.builtin.command:
+        cmd: >-
+          ../gcc-{{ dev_box_gcc_version }}/configure
+          --prefix={{ dev_box_gcc_prefix }}
+          --program-suffix={{ dev_box_gcc_suffix }}
+          --enable-languages={{ dev_box_gcc_languages }}
+          {{ dev_box_gcc_configure_extra }}
+        chdir: "{{ dev_box_gcc_tmp.path }}/build"
+        creates: "{{ dev_box_gcc_tmp.path }}/build/Makefile"
+
+    - name: Compile gcc
+      ansible.builtin.command:
+        cmd: "make -j{{ ansible_processor_vcpus }}"
+        chdir: "{{ dev_box_gcc_tmp.path }}/build"
+      changed_when: true
+
+    - name: Install gcc
+      ansible.builtin.command:
+        cmd: make install
+        chdir: "{{ dev_box_gcc_tmp.path }}/build"
+      changed_when: true
+
+    - name: Refresh the loader cache for gcc's shared runtime
+      ansible.builtin.command:
+        cmd: ldconfig
+      changed_when: true
+  always:
+    - name: Remove the gcc build tree
+      when: dev_box_gcc_tmp.path is defined
+      ansible.builtin.file:
+        path: "{{ dev_box_gcc_tmp.path }}"
+        state: absent
+
+- name: Read back both halves of the gcc-14 pair
+  ansible.builtin.command:
+    cmd: "{{ dev_box_gcc_prefix }}/bin/{{ item }}{{ dev_box_gcc_suffix }} -dumpfullversion"
+  loop: [gcc, g++]
+  register: dev_box_gcc_pair
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Assert BOTH gcc-14 and g++-14 are the pinned release
+  # The pair, not just the C half. The coverage build does
+  # enable_language(CXX), and a lone gcc-14 is exactly what took that gate down.
+  ansible.builtin.assert:
+    that:
+      - dev_box_gcc_pair.results
+        | map(attribute='stdout') | map('trim') | unique | list
+        == [dev_box_gcc_version]
+    fail_msg: >-
+      gcc{{ dev_box_gcc_suffix }} / g++{{ dev_box_gcc_suffix }} report
+      {{ dev_box_gcc_pair.results | map(attribute='stdout')
+         | map('trim') | list | join(' / ') }}, not
+      {{ dev_box_gcc_version }} for both. The tools-build and coverage gates
+      compile the host tools under this compiler as a second warning arm
+      alongside clang-18; half a pair is a gate that cannot link.
+    success_msg: "gcc + g++ {{ dev_box_gcc_version }} at {{ dev_box_gcc_prefix }}"
+
+# --- Arm GNU Toolchain (pin read from the Dockerfile) -----------------------
+
+- name: Check the installed Arm toolchain version
+  ansible.builtin.command:
+    cmd: "{{ dev_box_arm_gcc_prefix }}/bin/arm-none-eabi-gcc -dumpfullversion"
+  register: dev_box_arm_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Install the pinned Arm GNU Toolchain
+  when: dev_box_arm_probe.rc != 0
+  become: true
+  block:
+    - name: Download the pinned Arm toolchain tarball (sha256-verified)
+      ansible.builtin.get_url:
+        url: "https://developer.arm.com/-/media/Files/downloads/gnu/\
+          {{ dev_box_pins.ARM_GCC_RELEASE }}/binrel/\
+          arm-gnu-toolchain-{{ dev_box_pins.ARM_GCC_RELEASE }}-x86_64-arm-none-eabi.tar.xz"
+        dest: /tmp/ra8-armgcc.tar.xz
+        checksum: "sha256:{{ dev_box_pins.ARM_GCC_SHA256_X86_64 }}"
+        mode: "0644"
+
+    - name: Create the toolchain prefix
+      ansible.builtin.file:
+        path: "{{ dev_box_arm_gcc_prefix }}"
+        state: directory
+        mode: "0755"
+
+    - name: Extract the toolchain (strip the tarball's top dir)
+      ansible.builtin.unarchive:
+        src: /tmp/ra8-armgcc.tar.xz
+        dest: "{{ dev_box_arm_gcc_prefix }}"
+        remote_src: true
+        extra_opts: ["--strip-components=1"]
+  always:
+    - name: Remove the downloaded tarball
+      ansible.builtin.file:
+        path: /tmp/ra8-armgcc.tar.xz
+        state: absent
+
+- name: Read back the Arm toolchain version
+  ansible.builtin.command:
+    cmd: "{{ dev_box_arm_gcc_prefix }}/bin/arm-none-eabi-gcc --version"
+  register: dev_box_arm_installed
+  changed_when: false
+  check_mode: false
+
+- name: Assert the cross-compiler is the release the goldens were cut with
+  ansible.builtin.assert:
+    that:
+      - dev_box_pins.ARM_GCC_RELEASE | regex_replace('\.rel1$', '.Rel1')
+        in dev_box_arm_installed.stdout
+    fail_msg: >-
+      arm-none-eabi-gcc at {{ dev_box_arm_gcc_prefix }} reports
+      '{{ dev_box_arm_installed.stdout_lines | first | trim }}', not the pinned
+      {{ dev_box_pins.ARM_GCC_RELEASE }}. Codegen is version-sensitive here
+      (#178) and the EIL==HIL goldens depend on it, so a different release
+      builds different firmware from identical sources.
+    success_msg: "{{ dev_box_arm_installed.stdout_lines | first | trim }}"
+
+# --- Unicorn (pin owned by scripts/ci/unicorn_pin.sh) -----------------------
+
+- name: Install the pinned Unicorn from the repo's own installer
+  # Not reimplemented here. install_unicorn.sh reads scripts/ci/unicorn_pin.sh,
+  # is idempotent by design, and is the same script the devcontainer runs -- so
+  # the emulator decodes Armv8.1-M identically on this box, in the container and
+  # on the runners (#354). A second copy of the recipe in YAML would be a second
+  # thing to drift.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -p
+      - scripts/ci/install_unicorn.sh
+    chdir: "{{ dev_box_context_dir }}"
+  register: dev_box_unicorn
+  changed_when: "'already installed' not in dev_box_unicorn.stdout"
+
+- name: Assert the pinned Unicorn headers are installed
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -p
+      - scripts/checks/check_unicorn_version.sh
+    chdir: "{{ dev_box_context_dir }}"
+  register: dev_box_unicorn_check
+  changed_when: false
+  check_mode: false
+
+# --- Python and release tools, via the dev-box provisioner -----------------
+
+- name: Audit the Python lint and format tools without applying drift
+  # Check mode must execute the provisioner's read-only branch rather than let
+  # the command module skip it. Exit 2 is the typed "apply required" result;
+  # authentication/tool failures retain every other non-zero status.
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -p
+      - scripts/dev/provision_dev_box_toolchain.sh
+      - --check-only
+    chdir: "{{ dev_box_context_dir }}"
+  register: dev_box_provision_check
+  changed_when: dev_box_provision_check.rc == 2
+  failed_when: dev_box_provision_check.rc not in [0, 2]
+  check_mode: false
+  when: ansible_check_mode
+  tags: hil-runner
+
+- name: Bring the Python lint and format tools to the uv lock
+  # Ansible owns the Debian packages and source builds above. This helper owns
+  # only the release binaries and isolated Python tool venv, reads their pins
+  # from the committed uv lock, and finishes on check_tool_versions.py --all.
+  # CI runner containers are built separately and never invoke this host helper.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -p
+      - scripts/dev/provision_dev_box_toolchain.sh
+    chdir: "{{ dev_box_context_dir }}"
+  register: dev_box_provision
+  changed_when: "'->' in dev_box_provision.stdout"
+  when: not ansible_check_mode
+  tags: hil-runner
+
+- name: Assert the provisioned libclang binding actually imports
+  # A checker that cannot import its parser exits without checking anything --
+  # the exact hole check_annotations.py sat in for months. Keep this read-only
+  # non-vacuity probe after the provisioner, the sole Python-tool installer.
+  ansible.builtin.command:
+    cmd: >-
+      {{ dev_box_pins.PYTHON_TOOL_VENV }}/bin/python3
+      -c "import clang.cindex"
+  changed_when: false
+  check_mode: false
+  when: >-
+    not ansible_check_mode or
+    (dev_box_provision_check.rc | default(0)) == 0
+
+# --- Box-wide environment ---------------------------------------------------
+
+- name: Set the container runtime and the shared compiler cache for every shell
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ dev_box_profile_d }}"
+    mode: "0644"
+    content: |
+      # RA8 verification box: container-runtime + compiler-cache selection.
+      # Managed by the dev_box Ansible role -- edit the role, not this file.
+      export PATH={{ dev_box_pins.PYTHON_TOOL_VENV }}/bin:$PATH
+      export RA8_UV_CACHE_ROOT=/opt/ra8-uv-cache
+      #
+      # This box is an unprivileged LXC container. Rootless podman runs
+      # containers fine here, but CANNOT build the devcontainer image: apt drops
+      # privileges to the _apt user and its setgroups(2) call is denied inside
+      # the nested user namespace ("Failed to setgroups - setgroups (22:
+      # Invalid argument)"). Running podman as root inside this LXC avoids the
+      # nested namespace; root here is still an unprivileged uid on the Proxmox
+      # host, so nothing is escalated.
+      #
+      # Set centrally rather than per-agent so no one has to remember it.
+      export RA8_CONTAINER_RUNTIME="{{ dev_box_container_runtime }}"
+
+      # ONE shared compiler cache for every build on this box.
+      #
+      # Two variables, because two different consumers read them:
+      #   RA8_CCACHE_DIR -- scripts/ci.sh, which bind-mounts it into the
+      #                     container.
+      #   CCACHE_DIR     -- ccache itself, for builds run DIRECTLY on the box
+      #                     (Just/CMake outside the container). Without this
+      #                     second one, a local build silently falls back to
+      #                     ~/.cache/ccache -- a private cache that shares
+      #                     nothing with the container runs or with other
+      #                     agents, defeating the point entirely.
+      #
+      # Cache settings live in {{ dev_box_ccache_dir }}/ccache.conf (inside the
+      # cache dir, so they apply to every user that points here) and the
+      # directory is bounded by ccache LRU eviction, not by a cron job.
+      export RA8_CCACHE_DIR={{ dev_box_ccache_dir }}
+      export CCACHE_DIR={{ dev_box_ccache_dir }}
+
+- name: Create the shared compiler cache directory
+  # Mode 1777: every agent runs as its own uid and must be able to write and
+  # evict, and the sticky bit keeps one agent from unlinking another's entries
+  # by name.
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_ccache_dir }}"
+    state: directory
+    mode: "1777"
+
+- name: Configure the shared cache from inside the cache
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ dev_box_ccache_dir }}/ccache.conf"
+    mode: "0644"
+    content: |
+      # Shared compiler cache for the RA8 verification box.
+      # Managed by the dev_box Ansible role -- edit the role, not this file.
+      #
+      # This file lives INSIDE the cache directory on purpose: ccache reads
+      # $CCACHE_DIR/ccache.conf, so every agent that points CCACHE_DIR here
+      # picks up identical settings without needing its own
+      # ~/.config/ccache/ccache.conf. A per-user config would have silently
+      # given each agent a DIFFERENT cache, which is the failure this directory
+      # exists to prevent.
+      #
+      # max_size is what BOUNDS this directory -- ccache evicts
+      # least-recently-used entries itself, so the cache never needs a human or
+      # a cron job to trim it.
+      max_size = {{ dev_box_ccache_max_size }}
+
+      # Share hits across build directories. Each `just ci` run extracts a fresh
+      # snapshot to a new mktemp path and each agent works in its own worktree,
+      # so without these two settings every compilation would look unique and
+      # hit ~0%.
+      base_dir = /
+      hash_dir = false
+
+      # Tolerate header timestamp churn from repeated checkouts of identical
+      # content (a fresh worktree rewrites mtimes without changing bytes).
+      sloppiness = include_file_mtime,include_file_ctime,locale,time_macros
+
+      # Agents run as different uids; keep every cache file group-writable so
+      # one agent can evict or replace an entry another agent wrote.
+      umask = 000
+
+- name: Create the agent workspace root
+  ansible.builtin.file:
+    path: "{{ dev_box_workspace_root }}"
+    state: directory
+    owner: "{{ dev_box_user }}"
+    group: "{{ dev_box_user }}"
+    mode: "0755"
+
+# --- The image `just ci` boots ----------------------------------------------
+#
+# See dev_box_ci_image in defaults/main.yml for the four gates that failed in a
+# stale container while passing natively on this box (#521). The build itself is
+# NOT reimplemented here: scripts/ci/devcontainer_image.sh is the one definition
+# of how the image is built and of what makes a cached one current, and it is
+# the same script `just ci` calls. A second `podman build` in YAML would be a
+# second thing to drift, and the drift would be invisible -- both would produce
+# an image, and only one of them would be the image the gates expect.
+
+# The build lock has its own authority instead of living in a mode-1777 cache.
+# With fs.protected_regular=2, root is correctly denied an O_CREAT open of a
+# dev_box_user-owned file in a sticky root-owned directory. A root-owned 0750
+# directory plus one root:numeric-primary-gid 0660 file gives both callers the
+# same stable lock inode without allowing the group to replace its pathname.
+
+- name: Converge the managed devcontainer image lock authority
+  ansible.builtin.include_tasks: image_lock.yml
+
+- name: Prove the staleness check itself works, before trusting its verdict
+  # The whole mechanism is one comparison: a digest stamped on the image against
+  # a digest computed from the context. If the label stopped round-tripping, or
+  # the digest stopped reacting to a context change, this role would report a
+  # converged box while converging nothing. Assert both directions first.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -p
+      - scripts/ci/devcontainer_image.sh
+      - --selftest
+    chdir: "{{ dev_box_context_dir }}"
+  environment:
+    RA8_CI_IMAGE: "{{ dev_box_ci_image }}"
+    RA8_IMAGE_LOCK_DIR: "{{ dev_box_image_lock_dir }}"
+  changed_when: false
+  # No check_mode:false here on purpose: the selftest BUILDS throwaway labelled
+  # images to exercise the staleness round-trip, and a dry run neither builds
+  # the real image nor consumes this task's result -- so it is left to skip
+  # under --check rather than doing container builds no dry run asked for.
+
+- name: Build the gate image unless the cached one matches this context
+  # Idempotent by construction: `ensure` compares the context digest recorded on
+  # the image with the staged context's and returns without building when they
+  # agree, so a re-converge costs one inspect.
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -p
+      - scripts/ci/devcontainer_image.sh
+      - ensure
+    chdir: "{{ dev_box_context_dir }}"
+  environment:
+    RA8_CI_IMAGE: "{{ dev_box_ci_image }}"
+    RA8_IMAGE_LOCK_DIR: "{{ dev_box_image_lock_dir }}"
+  register: dev_box_image_build
+  changed_when: "'reusing cached' not in dev_box_image_build.stdout"
+
+- name: Assert every tool the gates declare resolves inside it
+  # The other question, and the one toolchain-parity structurally cannot answer:
+  # it compares the VERSIONS of tools that are present against the Dockerfile's
+  # ARG pins, so a dependency that is simply MISSING has no pin to disagree with
+  # (#513). This reads every require_cmd / require_python_mod out of
+  # scripts/ci.sh and the gate fragments and probes each one inside the image
+  # that was just built.
+  become: true
+  ansible.builtin.command:
+    cmd: >-
+      python3 scripts/checks/check_runner_image_deps.py
+      --image {{ dev_box_ci_image }}
+    chdir: "{{ dev_box_context_dir }}"
+  register: dev_box_image_deps
+  changed_when: false
+  check_mode: false
+
+# --- Fleet services ---------------------------------------------------------
+
+- name: Converge the dedicated native HIL Actions runner
+  ansible.builtin.include_tasks:
+    file: hil_runner.yml
+    apply:
+      tags: hil-runner
+  tags: hil-runner
+
+- name: Install the shared CI status poller
+  # Both units are GENERATED by these scripts, so the scripts install them. A
+  # copy of the unit files in this role would be a second definition that drifts
+  # the moment either script changes what it writes.
+  # Both install `systemctl --user` units, so neither needs become -- and
+  # neither would work with it: a root systemd user session is not the one the
+  # agents' units live in.
+  when: dev_box_install_services | bool
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -p
+      - scripts/ci/monitor.sh
+      - install-service
+    chdir: "{{ dev_box_context_dir }}"
+  changed_when: true
+
+- name: Install the workspace reaper
+  when: dev_box_install_services | bool
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -p
+      - scripts/dev/agent_workspace.sh
+      - install-timer
+    chdir: "{{ dev_box_context_dir }}"
+  changed_when: true
+
+# --- Acceptance -------------------------------------------------------------
+
+- name: Verify toolchain parity (the assertion the gate itself makes)
+  # The last word. Every install above can be individually wrong in a way its
+  # own probe missed; this is the check CI runs, unmodified, so a box that
+  # cannot reach parity fails the play rather than reporting a provisioned host.
+  ansible.builtin.command:
+    cmd: >-
+      {{ dev_box_pins.PYTHON_TOOL_VENV }}/bin/python3
+      scripts/checks/check_tool_versions.py --all
+    chdir: "{{ dev_box_context_dir }}"
+  environment:
+    PATH: >-
+      {{ dev_box_pins.PYTHON_TOOL_VENV }}/bin:/usr/local/bin:/usr/bin:/bin
+  register: dev_box_parity
+  changed_when: false
+  check_mode: false
+
+- name: Report dev box state
+  ansible.builtin.debug:
+    msg: >-
+      dev box ready: {{ dev_box_parity.stdout_lines | last | trim }}
+      cppcheck {{ dev_box_cppcheck_version }} (source),
+      gcc {{ dev_box_gcc_version }} (source),
+      {{ dev_box_arm_installed.stdout_lines | first | trim }},
+      {{ dev_box_unicorn_check.stdout_lines | last | default('unicorn pinned') | trim }};
+      {{ dev_box_ci_image }} {{ dev_box_image_deps.stdout_lines | last | trim }};
+      shared ccache at {{ dev_box_ccache_dir }}
+      ({{ dev_box_ccache_max_size }}), workspaces at
+      {{ dev_box_workspace_root }},
+      services {{ 'installed' if dev_box_install_services | bool else 'skipped' }}.

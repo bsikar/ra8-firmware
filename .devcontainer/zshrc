@@ -13,7 +13,8 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
-# User-local bin (pip --user, etc.) ahead of the system PATH.
+# User-local operator binaries ahead of the system PATH. Repository Python
+# tools already resolve from the image's isolated /opt venv.
 export PATH="$HOME/.local/bin:$PATH"
 
 # Oh My Zsh

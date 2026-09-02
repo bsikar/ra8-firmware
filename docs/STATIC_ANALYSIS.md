@@ -8,20 +8,21 @@ flagging null-deref, use-after-free, division-by-zero, dead-store,
 uninitialized-read and similar logic errors.
 
 ra8-firmware runs scan-build against the **host unit-test build and every
-CMake host tool** -- the cross-compile firmware build cannot be analyzed
-reliably because clang has no working sysroot for `arm-none-eabi`. Together
-these builds cover first-party `libs/`, `port/`, and `tools/`
-translation units. Tool projects are discovered from
-`tools/*/CMakeLists.txt`, and a scope floor makes a collapsed tools walk fail.
+first-party host CMake project** -- the cross-compile firmware build cannot be
+analyzed reliably because clang has no working sysroot for
+`arm-none-eabi`. Together these builds cover host-buildable first-party
+translation units under `libs/`, `port/`, `tools/`, and `apps/`. Host projects
+are derived from tracked CMake projects under `tools/` and `apps/`, and a
+scope floor makes a collapsed discovery walk fail.
 
 ## How to run
 
 ```sh
 # Local: full analyzer pass + summary
-make scan-build
+just quality::local::scan_build
 
 # Exactly what CI runs: the wrapper's own --selftest, then --strict.
-bash scripts/ci.sh --gate scan-build
+just quality::gate::run scan-build
 
 # Just the wrapper's both-directions selftest (seconds, no analyzer needed):
 bash scripts/checks/scan_build.sh --selftest
@@ -62,14 +63,15 @@ These classes of findings are silenced by the wrapper (see
 
 | Partition / pattern                                                                                | Why suppressed                                                                                                |
 |----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
-| `libs/third_party/`                                                                                | SOUP -- pre-qualified external code, see `docs/SOUP/`                                                          |
+| `libs/third_party/`, `apps/shared_libs/third_party/`                                               | SOUP -- pre-qualified external code, see `docs/SOUP/`                                                          |
 | `tests/`                                                                                           | Host-only test scaffolding, exempt per CLAUDE.md                                                               |
 | `core.FixedAddressDereference` in `libs/ra8_hal/{src,inc}/`, `libs/ra8_mpu/{src,inc}/`, `libs/ra8_core/src/ra8_log.c`, `libs/ra8_core/src/ra8_exception.c` | Hardware-register MMIO accessor pattern -- see "MMIO suppression rationale" below. **Matches nothing under the current pin**; kept for the day the pin moves. |
 
 In addition the wrapper disables these checkers globally:
 
 * `deadcode.DeadStores` -- fires constantly on the unit-test mocks
-  (every `tests/test_*.c` writes to `g_<peripheral>_regs[]` to seed a
+  (test sources under `tests/`, `apps/**/tests/`, and `examples/**/tests/`
+  write to `g_<peripheral>_regs[]` to seed a
   scenario, then the test reads back; the analyzer flags the seed write
   as dead because it doesn't see the read happen across the test
   boundary).
@@ -85,8 +87,8 @@ down here. What it asserts is the shape:
 
 - **Actionable first-party findings must be zero.** Anything else fails the
   `scan-build` gate.
-- **`libs/third_party/` and `tests/` findings are counted, then
-  suppressed** -- SOUP, and host-only test scaffolding.
+- **Findings under either canonical third-party root and under `tests/` are
+  counted, then suppressed** -- SOUP, and host-only test scaffolding.
 - **`core.FixedAddressDereference` inside the documented MMIO partitions is
   counted, then suppressed.** Under the current pin that checker does not
   exist at all, so its count is zero for a reason that has nothing to do
@@ -111,7 +113,7 @@ actually runs in, and the reasons are instructive rather than mysterious:
 * The third-party count moved with the analyzer major, and again with the
   vendored-SOUP tree growing underneath it.
 
-The lesson is the one #190 keeps finding: a number transcribed once from one
+The lesson repeatedly surfaced by the analyzer audit is that a number transcribed once from one
 machine is not evidence, and nothing noticed it had stopped being true
 because nothing re-derived it. The gate re-derives every count on every run.
 
@@ -176,7 +178,7 @@ PORT, SCI, SPI, ELC, ICU, ... register write trips the same checker.
 There is no way to satisfy the checker without abandoning
 register-level access.
 
-**Mitigation:** the cross-compile build (`make blink_hal`) does the
+**Mitigation:** the cross-compile build (`just apps::build blink_hal`) does the
 same thing on real hardware; the analyzer noise is purely an artefact
 of running on the host unit-test build where the addresses point at
 mock register banks. `scripts/checks/scan_build.sh` post-processes the
@@ -199,10 +201,10 @@ suppressed by this filter, which is exactly why it stays.
 The per-commit hook does **not** invoke scan-build (a full analyzed rebuild
 takes minutes -- too expensive to gate every commit). Instead:
 
-* Developers run `make scan-build` locally before opening a PR.
+* Developers run `just quality::local::scan_build` locally before opening a PR.
 * CI runs the **`scan-build` gate** on every push and same-repo PR: the
   `scan-build` job in `.github/workflows/firmware.yml`, which is a thin
-  `bash scripts/ci.sh --gate scan-build` driver over
+  `just quality::local::gate scan-build` driver over
   `scripts/checks/scan_build.sh --strict`. It is a required job like every
   other gate; there is no warn-only mode.
 

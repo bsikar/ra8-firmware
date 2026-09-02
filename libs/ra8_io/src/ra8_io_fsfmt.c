@@ -660,7 +660,7 @@ static const ra8_io_fsfmt_t s_fmt_exfat = {
  * @post No registry state is modified.
  * @post Success proves a dir_open/dir_next/dir_close cursor can be workspace-allocated.
  * @note Covered by `internal_cursor_capability_consistency` in
- *       `tests/test_ra8_io_fsfmt_cov.c` (N+1 = 8 vectors for N = 7 conditions).
+ *       `tests/storage/src/test_ra8_io_fsfmt_cov.c` (N+1 = 8 vectors for N = 7 conditions).
  * @since 0.1.0
  */
 RA8_INTERNAL

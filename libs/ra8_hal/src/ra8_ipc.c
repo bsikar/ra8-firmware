@@ -60,34 +60,28 @@ typedef enum : uint32_t {
  * @struct ra8_ipc_irq_slot_t
  * @brief Per-IRQ-event-line callback slot.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_ipc_irq_fn_t fn;  /**< User callback (NULL = unused).        */
   void*            ctx; /**< Opaque context handed back to ``fn``. */
 } ra8_ipc_irq_slot_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ipc_channel_state_t
  * @brief Per-channel runtime state held by the driver.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t           event_mask;                           /**< Filter mask.                 */
   bool               active;                               /**< true after init.             */
   ra8_ipc_irq_slot_t per_event[k_ra8_ipc_irq_event_count]; /**< Per-IRQ-line callback table. */
 } ra8_ipc_channel_state_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ipc_isr_state_t
  * @brief Per-IPC-unit ISR registration state.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool installed; /**< true while ``ra8_ipc_install_isr`` owns the slot. */
 } ra8_ipc_isr_state_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 static ra8_ipc_channel_state_t s_ipc_channels[k_ra8_ipc_channel_count];
 static ra8_ipc_event_fn_t      s_ipc_callback;
@@ -147,8 +141,8 @@ static volatile r_ipc_channel_regs_t* internal_ra8_ipc_get_regs(uint8_t channel)
     return nullptr;
   }
 #ifdef RA8_BUILD_FOR_CPU1
-  /* CPU1 (M33) has SECEXT disabled and runs as a permanent NS bus    */ /* LEGACY-OK: ARMv8-M */
-  /* controller. The IPC channels CPU1 owns (ch0 + ch2) are
+  /* CPU1 (M33) has SECEXT disabled and runs as a permanent NS bus
+   * controller. The IPC channels CPU1 owns (ch0 + ch2) are
    * NS-attributed via IPCSAR=0x00050000 set by CPU0's secure-boot.
    * The chip routes NS IPC accesses through the bit-28-set NS alias
    * (0x50020000), not the Secure alias the M85 HAL defaults to.
@@ -798,7 +792,7 @@ static void internal_ra8_ipc_isr(void* ctx)
 {
   const uint8_t unit = (uint8_t)(uintptr_t)ctx;
   if ((uint16_t)unit >= (uint16_t)k_ra8_ipc_nmi_unit_count) {
-    return; /* GCOVR_EXCL_LINE */
+    return; /* GCOVR_EXCL_LINE -- ISR ctx built only from a validated IPC unit */
   }
   /* HUM Ch 3.1 "Overview" p 204 -- channels 0/1 belong to IPC0
    * (unit 0); channels 2/3 belong to IPC1 (unit 1). */
@@ -821,7 +815,6 @@ static void internal_ra8_ipc_isr(void* ctx)
    * value-preserving since the enum's underlying type is ``uint16_t``.
    * The analyzer's enumerator-list check is suppressed for this
    * boundary cross only. */
-  /* NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- value-preserving cast to a not-yet-enumerated ELC event. */
   const ra8_elc_event_t event = (ra8_elc_event_t)event_raw;
   /* HUM Ch 18 "Event Link Controller" event-list -- IPC IRQs route
    * through the ICU like every other peripheral; ra8_isr_register
@@ -845,12 +838,11 @@ static void internal_ra8_ipc_isr(void* ctx)
     return k_ra8_err_not_found;
   }
   const uint16_t event_raw = internal_ra8_ipc_unit_to_event(unit);
-  /* See ra8_ipc_install_isr() for the rationale on this NOLINT. */
-  /* NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- value-preserving cast to a not-yet-enumerated ELC event. */
+  /* See ra8_ipc_install_isr() for the rationale on this lint suppression. */
   const ra8_elc_event_t event = (ra8_elc_event_t)event_raw;
   const ra8_err_t       err   = ra8_isr_unregister(event);
   if (err != k_ra8_ok) {
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   s_ipc_isr_state[unit].installed = false;
   return k_ra8_ok;

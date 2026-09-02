@@ -4,7 +4,7 @@
 # Private material, and the GENERATED inventory.
 #
 # inventory/hosts.ini is produced from infra/fleet.yml by scripts/dev/fleet.py
-# on every `make infra-*` run, so committing it would be committing a second,
+# on every `just infra::*` run, so committing it would be committing a second,
 # staler copy of the declaration. The committed half is
 # inventory/host_vars/: structural facts about a machine (where its runner
 # tree lives, which pools CI must avoid), never a capacity knob.

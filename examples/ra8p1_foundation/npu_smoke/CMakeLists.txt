@@ -10,7 +10,7 @@
 #   cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8p1.cmake
 #   cmake --build build
 #
-# or simply `make` in this directory (its Makefile points at toolchain-ra8p1).
+# or simply `just` in this directory (its justfile points at toolchain-ra8p1).
 #
 # All build logic lives in the shared cmake/ra8_add_app.cmake recipe; this file
 # only names the app. BOARD ra8p1 selects the dedicated libs/ra8_board_ra8p1

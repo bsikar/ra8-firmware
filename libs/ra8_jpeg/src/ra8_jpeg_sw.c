@@ -263,7 +263,7 @@ RA8_PRIV int32_t priv_jpeg_sw_htab_decode(ra8_jpeg_bitreader_t* br, const ra8_jp
    * with nbits >= 1 always returns 0 or 1 without invoking internal_br_fill, so
    * code < 0 is unreachable on any host input. */
   if (code < 0) {
-    return -1; /* GCOVR_EXCL_LINE */
+    return -1; /* GCOVR_EXCL_LINE -- internal_br_receive(nbits>=1) returns 0 or 1 */
   }
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_huff_lengths; i++) {
     if (code <= h->maxcode[i]) {
@@ -420,60 +420,6 @@ RA8_PRIV void priv_jpeg_sw_ycc_to_rgb(int32_t  y,
   *out_b    = internal_clamp_u8(b);
 }
 
-#ifdef __ARM_FEATURE_MVE
-/**
- * @brief Helium 8-lane YCbCr -> RGB row helper.
- *
- * @details
- * Loads eight chroma+luma samples into Q-registers, performs the
- * three coefficient multiplies via `vmulq_n_s16`, the right shift
- * via `vshrq_n_s16`, and the final clamp via the unsigned saturating
- * narrow store. The scalar tail handles `n % 8` leftover lanes.
- * The `<< 1` baked into each Q15 coefficient lets us use 16-bit
- * lanes without saturating the intermediate product on photographic
- * input.
- */
-[[maybe_unused]] static void
-ycc_to_rgb_row_mve(const int16_t* y, const int16_t* cb, const int16_t* cr, uint8_t* dst, uint16_t n)
-{
-  uint16_t i = 0U;
-  /* Q15 BT.601 coefficients (== Q16 / 2). */
-  while (i + 8U <= n) {
-    int16x8_t vy   = vld1q_s16(&y[i]);
-    int16x8_t vcb  = vsubq_n_s16(vld1q_s16(&cb[i]), (int16_t)k_ra8_jpeg_level_offset);
-    int16x8_t vcr  = vsubq_n_s16(vld1q_s16(&cr[i]), (int16_t)k_ra8_jpeg_level_offset);
-    int16x8_t vrr  = vshrq_n_s16(vmulq_n_s16(vcr, k_cr_r_q15), k_jpeg_ycc_q15_shift);
-    int16x8_t vbb  = vshrq_n_s16(vmulq_n_s16(vcb, k_cb_b_q15), k_jpeg_ycc_q15_shift);
-    int16x8_t vgg1 = vshrq_n_s16(vmulq_n_s16(vcb, k_cb_g_q15), k_jpeg_ycc_q15_shift);
-    int16x8_t vgg2 = vshrq_n_s16(vmulq_n_s16(vcr, k_cr_g_q15), k_jpeg_ycc_q15_shift);
-    int16x8_t vr   = vaddq_s16(vy, vrr);
-    int16x8_t vg   = vaddq_s16(vy, vaddq_s16(vgg1, vgg2));
-    int16x8_t vb   = vaddq_s16(vy, vbb);
-    /* Interleave: build R,G,B byte triples in scalar-friendly form. */
-    int16_t rb[8], gb[8], bb_[8];
-    vst1q_s16(rb, vr);
-    vst1q_s16(gb, vg);
-    vst1q_s16(bb_, vb);
-    for (uint8_t k = 0U; k < 8U; k++) {
-      dst[0] = internal_clamp_u8((int32_t)rb[k]);
-      dst[1] = internal_clamp_u8((int32_t)gb[k]);
-      dst[2] = internal_clamp_u8((int32_t)bb_[k]);
-      dst += (uint8_t)k_ra8_jpeg_rgb_components;
-    }
-    i = (uint16_t)(i + 8U);
-  }
-  for (; i < n; i++) {
-    priv_jpeg_sw_ycc_to_rgb((int32_t)y[i],
-                            (int32_t)cb[i],
-                            (int32_t)cr[i],
-                            &dst[0],
-                            &dst[1],
-                            &dst[2]);
-    dst += (uint8_t)k_ra8_jpeg_rgb_components;
-  }
-}
-#endif
-
 /* ------------------------------------------------------------------ */
 /* Public API: get_dimensions */
 /* ------------------------------------------------------------------ */
@@ -513,7 +459,6 @@ internal_dims_next_marker(const uint8_t* jpeg_buf, uint32_t jpeg_len, uint32_t* 
     return k_ra8_err_protocol_error;
   }
   /* Skip pad bytes. */
-  // mcdc-deactivated: internal_dims_next_marker JPEG marker-pad skip; the jpeg_len bound is checked by the caller's enclosing while and the marker-byte equality follows the JFIF spec (0xFF padding bytes always within the segment); both conditions are co-dependent in any well-formed stream.
   while (*i < jpeg_len && jpeg_buf[*i] == (uint8_t)k_ra8_jpeg_marker_byte) {
     (*i)++;
   }
@@ -634,7 +579,6 @@ RA8_INTERNAL static ra8_err_t internal_dims_step(const uint8_t* jpeg_buf,
     }
     return e;
   }
-  // mcdc-deactivated: internal_dims_step unsupported-SOFn detector; the 4-condition AND identifies SOF1..SOF15 except DHT/SOF8, but markers >= 0xFFC0 are by definition <= 0xFFCF in the JPEG marker space (range is 16 values), and SOF0 is handled above -- the upper-bound condition cannot independently flip on any reachable SOFn marker.
   if (mk >= k_jpeg_marker_sof_lo && mk <= k_jpeg_marker_sof_hi &&
       mk != (uint16_t)k_ra8_jpeg_marker_dht && mk != k_jpeg_marker_jpg) {
     return k_ra8_err_not_supported;

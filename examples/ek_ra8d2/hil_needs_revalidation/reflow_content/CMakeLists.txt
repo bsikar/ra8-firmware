@@ -32,5 +32,5 @@ ra8_add_app(
   NAME reflow_content
   STACK_BYTES 16384
   DESCRIPTION "Headless multi-page reflow render + CRC + font-size re-flow over UART (#115 HIL)"
-  LIBS ra8_gfx ra8_reflow ra8_board_ek_ra8d2
+  LIBS ra8_gfx reflow ra8_board_ek_ra8d2
 )
