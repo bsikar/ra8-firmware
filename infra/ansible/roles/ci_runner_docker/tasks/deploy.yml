@@ -362,6 +362,25 @@
           {{ ci_runner_docker_image }} is canonical ID
           {{ ci_runner_docker_source_image_id }}
 
+    - name: Prove the canonical image can launch Just before admitting a listener
+      # Every workflow enters the repository through Just. Image-ID parity is
+      # necessary, but a listener that cannot execute that entry point can
+      # still join the shared label and turn every assigned job into an exit
+      # 127 provisioning failure. Probe the exact loaded image before this
+      # converge is allowed to create or recreate a listener.
+      when: not ansible_check_mode
+      become: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - run
+          - --rm
+          - --entrypoint
+          - /usr/local/bin/just
+          - "{{ ci_runner_docker_image }}"
+          - --version
+      changed_when: false
+
     - name: Inspect the image and state of existing runner containers
       become: true
       ansible.builtin.command:
@@ -643,10 +662,21 @@
               user: "{{ ci_runner_docker_uid }}:{{ ci_runner_docker_gid }}"
               working_dir: /home/runner
 
-              # The image sets no entrypoint and CMD ["/bin/bash"] to match the
-              # official runner image's contract, so the command that actually
-              # runs the runner is supplied here.
-              entrypoint: ["/home/runner/run.sh"]
+              # Guard admission at the listener boundary as well as during
+              # Ansible convergence. A stale container that survives a host
+              # restart must refuse to connect to GitHub if the one command
+              # every workflow needs is absent; otherwise it accepts jobs and
+              # fails each one before its gate can run. The absolute path is
+              # part of the canonical devcontainer image contract.
+              entrypoint:
+                - /bin/bash
+                - -c
+                - |
+                  if ! /usr/local/bin/just --version >/dev/null; then
+                    echo "runner admission refused: /usr/local/bin/just is unavailable" >&2
+                    exit 78
+                  fi
+                  exec /home/runner/run.sh
 
               volumes:
                 # This instance's own runner distribution, registration

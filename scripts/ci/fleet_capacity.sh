@@ -272,6 +272,21 @@ container_state() {
   printf '%s' "${state:-absent}"
 }
 
+# Prove a parked container's exact image can enter every repository workflow
+# before making its listener eligible for work. This intentionally runs by
+# immutable image ID rather than by the mutable tag: after a failed converge,
+# the tag may already name the new image while the parked container still
+# points at the old one. A missing Just binary is the defect this boundary must
+# catch before `docker start` reconnects that stale listener to GitHub.
+assert_container_admitted() {
+  local name="$1" image
+  image="$(dk inspect -f '{{.Image}}' "${name}" 2>/dev/null || true)"
+  [ -n "${image}" ] || die "cannot resolve ${name}'s image; refusing to start it"
+  if ! dk run --rm --entrypoint /usr/local/bin/just "${image}" --version >/dev/null; then
+    die "${name}'s image ${image} cannot execute /usr/local/bin/just; refusing to start it"
+  fi
+}
+
 # 0 when a job is running in this container. Runner.Listener spawns exactly one
 # Runner.Worker process per job, so the process either exists or the runner is
 # idle. `pid` must stay in the -o list: docker rejects a ps format without it
@@ -360,6 +375,7 @@ unpark_instance() {
     running) log "active    ${name}: already running" ;;
     absent) die "${name} does not exist on this host. Deploy it first: just infra::apply <host>" ;;
     *)
+      assert_container_admitted "${name}"
       log "resuming  ${name}: was ${state}"
       dk start "${name}" >/dev/null
       ;;

@@ -160,7 +160,7 @@ def selftest() -> int:
         targets = _enumerate_targets([str(root)])
         scanned, offenders = _audit_targets(targets)
         expected_scanned = len((good, bad))
-        if scanned != expected_scanned or offenders != [str(bad)]:
+        if scanned != expected_scanned or offenders != [_rel(bad)]:
             failures.append(
                 f"mixed fixture scanned={scanned}, offenders={offenders!r}; expected bad only"
             )

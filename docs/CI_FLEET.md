@@ -412,6 +412,16 @@ just infra::status
 `tower-ci-1` and `tower-ci-2` should be `online`, and the per-host section
 should show both containers `running`.
 
+Before the role creates or recreates a Docker listener, it proves that the
+canonical producer image can execute `/usr/local/bin/just`, the entry point
+used by every workflow. The rendered Compose entry point repeats that probe on
+every subsequent container start and exits before `Runner.Listener` connects
+if it fails. The capacity controller independently probes the exact image ID
+of a stopped container before `docker start`; this also covers restoration
+after a failed first rollout, when the old Compose entry point may still be in
+place. A stale or damaged image therefore stays offline instead of accepting
+jobs and failing them all with `command not found`.
+
 > **A dry run cannot tell you everything.** The role deliberately executes its
 > read-only preflight probes in `--check` mode, including Docker and Compose
 > versions, cgroup mode, storage backing, archive identity, and existing

@@ -237,16 +237,19 @@ def run_selftest() -> list[str]:
     """Exercise typed vars acceptance and refusal in both directions."""
     with tempfile.TemporaryDirectory(prefix="ra8-fleet-vars-") as scratch:
         root = Path(scratch)
-        good = _fixture(
-            root, "registration.yml", b"ci_runner_docker_registration_token: test-token\n"
-        )
-        typed = read_typed_vars_file(str(good), RUNNER_REGISTRATION)
-        failures = _rejection_selftest(root, good)
-        if typed.source != good.resolve() or typed.content != good.read_bytes():
-            failures.append("valid typed file was not captured canonically")
-        if not _expect_refusal(good, "arbitrary operation"):
-            failures.append("unlisted typed operation was accepted")
-        removal = _fixture(root, "removal.yml", b"ci_runner_docker_destroy_dataset: false\n")
-        if read_typed_vars_file(str(removal), RUNNER_REMOVAL).source != removal.resolve():
-            failures.append("valid removal typed file was rejected")
-        return failures + _snapshot_cleanup_selftest(typed)
+        checkout = root / "checkout"
+        checkout.mkdir()
+        with patch.object(fm, "REPO_ROOT", checkout):
+            good = _fixture(
+                root, "registration.yml", b"ci_runner_docker_registration_token: test-token\n"
+            )
+            typed = read_typed_vars_file(str(good), RUNNER_REGISTRATION)
+            failures = _rejection_selftest(root, good)
+            if typed.source != good.resolve() or typed.content != good.read_bytes():
+                failures.append("valid typed file was not captured canonically")
+            if not _expect_refusal(good, "arbitrary operation"):
+                failures.append("unlisted typed operation was accepted")
+            removal = _fixture(root, "removal.yml", b"ci_runner_docker_destroy_dataset: false\n")
+            if read_typed_vars_file(str(removal), RUNNER_REMOVAL).source != removal.resolve():
+                failures.append("valid removal typed file was rejected")
+            return failures + _snapshot_cleanup_selftest(typed)
