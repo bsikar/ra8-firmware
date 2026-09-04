@@ -216,12 +216,13 @@ hosts:
       # ask. fleet.py copies the play in over this path and runs it inside the
       # distro with --connection=local. See docs/CI_FLEET.md.
       #
-      # 10.0.40.103 is on the isolated bench LAN, so the hop is the bench Pi --
-      # named as the fleet host `star`, whose own address is declared once,
-      # below, rather than repeated here.
-      address: 10.0.40.103
+      # The tailnet address is the CI-maintenance endpoint. The workstation's
+      # odd-port DHCP lease is intentionally transient and has no internet, so
+      # it cannot serve GitHub Actions there anyway. A temporary even-port leg
+      # brings this endpoint online for runner updates; odd-port bench access
+      # remains a separate, human-resolved jump through `star`.
+      address: 100.64.0.12
       user: sikar
-      jump: star
       distro: Ubuntu
       windows_user: sikar
     provisions: [wsl-ci-host]

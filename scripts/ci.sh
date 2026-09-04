@@ -499,7 +499,7 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
     # A base absent locally (force-push, shallow clone, the all-zero "new
     # branch" sentinel) is unusable -- fall back rather than error out.
     if [[ -z "$base" ]] || ! ci_history_git "$repo" cat-file -e "${base}^{commit}" 2>/dev/null; then
-      base="$(ci_history_git "$repo" rev-parse --verify --quiet '@{upstream}' 2>/dev/null || true)"
+      base="$(ci_history_git "$repo" rev-parse --verify --quiet '@{upstream}' 2>/dev/null)" || base=""
     fi
     # After a FORCE push the event's before-sha was rewritten out of existence,
     # and the @{upstream} fallback resolves to the freshly-pushed head itself --
@@ -513,7 +513,7 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
       base=""
     fi
     if [[ -z "$base" ]] || ! ci_history_git "$repo" cat-file -e "${base}^{commit}" 2>/dev/null; then
-      base="$(ci_history_git "$repo" rev-parse --verify --quiet "${head}~1" 2>/dev/null || true)"
+      base="$(ci_history_git "$repo" rev-parse --verify --quiet "${head}~1" 2>/dev/null)" || base=""
     fi
 
     if [[ -n "$base" ]]; then

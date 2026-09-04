@@ -40,6 +40,9 @@
 #   list                 what machines are declared, and how they are sized
 #   show <host>          inspect one host declaration and its derived values
 #   doctor               can THIS machine drive infra at all?
+#   reconcile            report ordinary-runner drift without changing it
+#   reconcile-apply      force producer-first ordinary-runner convergence
+#   reconcile-status     show the installed timer and its most recent result
 #   ssh-config           name every declared machine in your ~/.ssh/config
 #   ssh-config-preview   print the fragment without installing it
 #   check <host>         dry run: what would change, changing nothing
@@ -269,6 +272,25 @@ cmd_apply() {
   fleet apply "$@"
 }
 
+cmd_reconcile() {
+  "$PYTHON" -I "$ROOT/scripts/dev/fleet_reconcile.py" --mode check
+}
+
+cmd_reconcile_apply() {
+  "$PYTHON" -I "$ROOT/scripts/dev/fleet_reconcile.py" --mode apply --force
+}
+
+cmd_reconcile_status() {
+  if ! command -v systemctl >/dev/null 2>&1; then
+    die "systemd is unavailable; the reconciliation timer lives on the dev control node"
+  fi
+  systemctl status ra8-fleet-reconcile.timer --no-pager
+  echo
+  systemctl show ra8-fleet-reconcile.service \
+    --property=ActiveState,Result,ExecMainStatus,ExecMainStartTimestamp,ExecMainExitTimestamp \
+    --no-pager
+}
+
 cmd_register_runner() {
   [[ $# -eq 2 ]] || die "register-runner needs a host and typed vars file"
   require_playbook_env
@@ -380,6 +402,9 @@ usage: infra.sh <command> [args]
   list                what machines are declared, and how they are sized
   show <host>         inspect one host declaration and its derived values
   doctor              can THIS machine drive infra at all?
+  reconcile           report ordinary-runner drift without changing anything
+  reconcile-apply     force producer-first ordinary-runner convergence
+  reconcile-status    show the control-node timer and its most recent result
   ssh-config          name every declared machine in your ~/.ssh/config
   ssh-config-preview  print the generated fragment without installing it
   check <host>        dry run -- report what would change, change nothing
@@ -401,6 +426,9 @@ main() {
     list) cmd_list ;;
     show) cmd_show "$@" ;;
     doctor) cmd_doctor ;;
+    reconcile) cmd_reconcile ;;
+    reconcile-apply) cmd_reconcile_apply ;;
+    reconcile-status) cmd_reconcile_status ;;
     ssh-config) cmd_ssh_config ;;
     ssh-config-preview) cmd_ssh_config_preview ;;
     status) cmd_status ;;

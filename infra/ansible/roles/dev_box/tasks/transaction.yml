@@ -824,6 +824,14 @@
     chdir: "{{ dev_box_context_dir }}"
   changed_when: true
 
+- name: Install continuous ordinary-runner reconciliation
+  when: dev_box_install_services | bool
+  ansible.builtin.include_tasks:
+    file: fleet_reconcile.yml
+    apply:
+      tags: [fleet-reconcile]
+  tags: [fleet-reconcile]
+
 # --- Acceptance -------------------------------------------------------------
 
 - name: Verify toolchain parity (the assertion the gate itself makes)
