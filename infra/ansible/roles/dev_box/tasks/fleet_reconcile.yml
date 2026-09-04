@@ -1,0 +1,370 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# Install an immutable control snapshot and a periodic system service. The
+# service reconciles only hosts carrying `runners:` in infra/fleet.yml. The
+# native HIL listener and physical bench remain behind their signed,
+# human-present mutation boundary.
+
+- name: Read the exact staged-source archive digest
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_context_archive }}"
+    checksum_algorithm: sha256
+    get_checksum: true
+    follow: false
+  register: dev_box_reconcile_archive
+  check_mode: false
+
+- name: Inspect the installed reconciliation source digest
+  become: true
+  ansible.builtin.stat:
+    path: "{{ dev_box_reconcile_source }}/.ra8-source-sha256"
+    checksum_algorithm: sha256
+    get_checksum: false
+    follow: false
+  register: dev_box_reconcile_marker
+  check_mode: false
+
+- name: Read the installed reconciliation source digest
+  when: dev_box_reconcile_marker.stat.isreg | default(false)
+  become: true
+  ansible.builtin.slurp:
+    src: "{{ dev_box_reconcile_source }}/.ra8-source-sha256"
+  register: dev_box_reconcile_marker_content
+  check_mode: false
+
+- name: Decide whether the trusted reconciliation snapshot is stale
+  ansible.builtin.set_fact:
+    dev_box_reconcile_source_stale: >-
+      {{ not (dev_box_reconcile_marker.stat.isreg | default(false))
+         or (dev_box_reconcile_marker_content.content | default('') | b64decode | trim)
+            != dev_box_reconcile_archive.stat.checksum }}
+
+- name: Report a reconciliation snapshot refresh in check mode
+  when:
+    - ansible_check_mode
+    - dev_box_reconcile_source_stale
+  ansible.builtin.debug:
+    msg: >-
+      The trusted runner-reconciliation snapshot differs from the candidate
+      archive. Apply will stop its timer, replace the snapshot exactly, prove
+      its locked Python/Galaxy environment, then restart the timer.
+  changed_when: true
+
+- name: Replace the trusted reconciliation snapshot
+  when:
+    - not ansible_check_mode
+    - dev_box_reconcile_source_stale
+  block:
+    - name: Inspect the installed reconciliation timer unit
+      become: true
+      ansible.builtin.stat:
+        path: "/etc/systemd/system/{{ dev_box_reconcile_unit }}.timer"
+        follow: false
+      register: dev_box_reconcile_timer_unit
+
+    - name: Inspect the installed reconciliation service unit
+      become: true
+      ansible.builtin.stat:
+        path: "/etc/systemd/system/{{ dev_box_reconcile_unit }}.service"
+        follow: false
+      register: dev_box_reconcile_service_unit
+
+    - name: Stop reconciliation while its executable tree is replaced
+      when: dev_box_reconcile_timer_unit.stat.isreg | default(false)
+      become: true
+      ansible.builtin.systemd_service:
+        name: "{{ dev_box_reconcile_unit }}.timer"
+        state: stopped
+
+    - name: Stop an active reconciliation before replacing its source
+      when: dev_box_reconcile_service_unit.stat.isreg | default(false)
+      become: true
+      ansible.builtin.systemd_service:
+        name: "{{ dev_box_reconcile_unit }}.service"
+        state: stopped
+
+    - name: Remove the stale reconciliation source only
+      become: true
+      ansible.builtin.file:
+        path: "{{ dev_box_reconcile_source }}"
+        state: absent
+
+    - name: Create the reconciliation source root
+      become: true
+      ansible.builtin.file:
+        path: "{{ dev_box_reconcile_source }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Extract the exact candidate into the reconciliation source
+      become: true
+      ansible.builtin.unarchive:
+        src: "{{ dev_box_context_archive }}"
+        dest: "{{ dev_box_reconcile_source }}"
+        remote_src: true
+
+    - name: Prove the extracted source matches every archive member
+      become: true
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/python3
+          - "{{ dev_box_context_helper_active_entrypoint }}"
+          - verify
+          - --archive
+          - "{{ dev_box_context_archive }}"
+          - --directory
+          - "{{ dev_box_reconcile_source }}"
+      environment:
+        PYTHONDONTWRITEBYTECODE: "1"
+      changed_when: false
+
+    - name: Bind the installed source to its candidate archive
+      become: true
+      ansible.builtin.copy:
+        dest: "{{ dev_box_reconcile_source }}/.ra8-source-sha256"
+        owner: root
+        group: root
+        mode: "0444"
+        content: "{{ dev_box_reconcile_archive.stat.checksum }}\n"
+
+- name: Check the snapshot's locked infrastructure Python environment
+  when: not ansible_check_mode
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/env
+      - "UV_PROJECT_ENVIRONMENT={{ dev_box_reconcile_source }}/.venv"
+      - UV_PYTHON_DOWNLOADS=never
+      - /usr/bin/python3
+      - -B
+      - -I
+      - -S
+      - "{{ dev_box_reconcile_source }}/scripts/dev/bootstrap_uv.py"
+      - --cache-root
+      - "{{ dev_box_reconcile_source }}/.tools/uv"
+      - --run
+      - --no-config
+      - --directory
+      - "{{ dev_box_reconcile_source }}"
+      - sync
+      - --locked
+      - --only-group
+      - infra
+      - --no-install-project
+      - --python
+      - /usr/bin/python3
+      - --check
+  register: dev_box_reconcile_python_check
+  changed_when: false
+  failed_when: false
+
+- name: Synchronize the snapshot's locked infrastructure Python environment
+  when:
+    - not ansible_check_mode
+    - dev_box_reconcile_python_check.rc != 0
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/env
+      - "UV_PROJECT_ENVIRONMENT={{ dev_box_reconcile_source }}/.venv"
+      - UV_PYTHON_DOWNLOADS=never
+      - /usr/bin/python3
+      - -B
+      - -I
+      - -S
+      - "{{ dev_box_reconcile_source }}/scripts/dev/bootstrap_uv.py"
+      - --cache-root
+      - "{{ dev_box_reconcile_source }}/.tools/uv"
+      - --ensure-and-run
+      - --no-config
+      - --directory
+      - "{{ dev_box_reconcile_source }}"
+      - sync
+      - --locked
+      - --only-group
+      - infra
+      - --no-install-project
+      - --python
+      - /usr/bin/python3
+  changed_when: true
+
+- name: Check the snapshot's exact Galaxy collection set
+  when: not ansible_check_mode
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ dev_box_reconcile_source }}/.venv/bin/ansible-galaxy"
+      - collection
+      - list
+      - --format
+      - json
+    chdir: "{{ dev_box_reconcile_source }}"
+  environment:
+    ANSIBLE_COLLECTIONS_PATH: >-
+      {{ dev_box_reconcile_source }}/.ansible/collections
+  register: dev_box_reconcile_galaxy_list
+  changed_when: false
+  failed_when: false
+
+- name: Validate the snapshot's exact Galaxy collection set
+  when:
+    - not ansible_check_mode
+    - dev_box_reconcile_galaxy_list.rc == 0
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ dev_box_reconcile_source }}/.venv/bin/python3"
+      - "{{ dev_box_reconcile_source }}/scripts/checks/check_ansible_collections.py"
+      - --stdin
+      - --root
+      - "{{ dev_box_reconcile_source }}/.ansible/collections"
+    chdir: "{{ dev_box_reconcile_source }}"
+    stdin: "{{ dev_box_reconcile_galaxy_list.stdout }}"
+  register: dev_box_reconcile_galaxy_check
+  changed_when: false
+  failed_when: false
+
+- name: Synchronize the snapshot's exact Galaxy collection set
+  when:
+    - not ansible_check_mode
+    - >-
+      dev_box_reconcile_galaxy_list.rc != 0
+      or (dev_box_reconcile_galaxy_check.rc | default(1)) != 0
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /bin/bash
+      - -p
+      - scripts/dev/setup_ansible.sh
+    chdir: "{{ dev_box_reconcile_source }}"
+  changed_when: true
+
+- name: Render the declared inventory inside the trusted snapshot
+  when: not ansible_check_mode
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ dev_box_reconcile_source }}/.venv/bin/python3"
+      - -I
+      - scripts/dev/fleet.py
+      - inventory
+    chdir: "{{ dev_box_reconcile_source }}"
+  changed_when: false
+
+- name: Make only the generated inventory writable by the service account
+  when: not ansible_check_mode
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_reconcile_source }}/infra/ansible/inventory/hosts.ini"
+    state: file
+    owner: root
+    group: "{{ dev_box_user }}"
+    mode: "0660"
+
+- name: Create the reconciliation receipt directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_reconcile_state }}"
+    state: directory
+    owner: "{{ dev_box_user }}"
+    group: "{{ dev_box_user }}"
+    mode: "0700"
+
+- name: Prove the reconciliation controller's offline safety model
+  when: not ansible_check_mode
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ dev_box_reconcile_source }}/.venv/bin/python3"
+      - -I
+      - "{{ dev_box_reconcile_source }}/scripts/dev/fleet_reconcile.py"
+      - --selftest
+  changed_when: false
+
+- name: Install the continuous reconciliation systemd units
+  become: true
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/{{ item.name }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ item.content }}"
+  loop:
+    - name: "{{ dev_box_reconcile_unit }}.service"
+      content: |
+        # Managed by the dev_box Ansible role.
+        [Unit]
+        Description=Converge the RA8 ordinary GitHub runner fleet
+        Documentation=file://{{ dev_box_reconcile_source }}/docs/CI_FLEET.md
+        After=network-online.target
+        Wants=network-online.target
+
+        [Service]
+        Type=oneshot
+        User={{ dev_box_user }}
+        Group={{ dev_box_user }}
+        WorkingDirectory={{ dev_box_reconcile_source }}
+        Environment=HOME={{ dev_box_home }}
+        Environment=LANG=C.UTF-8
+        Environment=LC_ALL=C.UTF-8
+        Environment=PYTHONNOUSERSITE=1
+        Environment=ANSIBLE_LOCAL_TEMP={{ dev_box_reconcile_state }}/ansible-local
+        Environment=ANSIBLE_SSH_CONTROL_PATH_DIR={{ dev_box_reconcile_state }}/control
+        UMask=0077
+        ExecStart={{ dev_box_reconcile_source }}/.venv/bin/python3 \
+          -I \
+          {{ dev_box_reconcile_source }}/scripts/dev/fleet_reconcile.py \
+          --require-installed-authority \
+          --mode apply \
+          --state-dir {{ dev_box_reconcile_state }} \
+          --full-interval {{ dev_box_reconcile_full_interval_seconds }} \
+          --producer-interval {{ dev_box_reconcile_producer_interval_seconds }}
+        TimeoutStartSec=5h
+        Nice=10
+        IOSchedulingClass=idle
+        NoNewPrivileges=true
+        PrivateTmp=true
+        PrivateDevices=true
+        ProtectSystem=strict
+        ProtectHome=read-only
+        ReadWritePaths={{ dev_box_reconcile_state }}
+        ReadWritePaths={{ dev_box_reconcile_source }}/infra/ansible/inventory/hosts.ini
+    - name: "{{ dev_box_reconcile_unit }}.timer"
+      content: |
+        # Managed by the dev_box Ansible role.
+        [Unit]
+        Description=Periodically converge the RA8 ordinary GitHub runner fleet
+
+        [Timer]
+        OnBootSec=20min
+        OnUnitActiveSec={{ dev_box_reconcile_interval }}
+        RandomizedDelaySec={{ dev_box_reconcile_random_delay }}
+        Persistent=true
+
+        [Install]
+        WantedBy=timers.target
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Enable continuous runner reconciliation
+  when: not ansible_check_mode
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ dev_box_reconcile_unit }}.timer"
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Verify continuous runner reconciliation is scheduled
+  when: not ansible_check_mode
+  become: true
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - is-active
+      - "{{ dev_box_reconcile_unit }}.timer"
+  changed_when: false

@@ -16,6 +16,9 @@ default:
     @echo "  just infra::status                          Check live status of all fleet hosts"
     @echo "  just infra::show <host>                     Inspect a single host declaration"
     @echo "  just infra::doctor                          Verify machine environment can drive infra"
+    @echo "  just infra::reconcile                       Report runner drift without changing it"
+    @echo "  just infra::reconcile_apply                 Reconcile all ordinary runner hosts now"
+    @echo "  just infra::reconcile_status                Show the control-node timer and last run"
     @echo "  just infra::setup                           First-run onboarding for fresh clone"
     @echo "  just infra::ssh_config                      Generate ~/.ssh/config fleet host aliases"
     @echo "  just infra::ssh_config_preview              Print fleet aliases without installing them"
@@ -48,6 +51,23 @@ _boundary_selftest:
 # Run environment sanity check to verify this machine can drive infra
 doctor:
     {{ infra }} doctor
+
+# Report drift across the ordinary runner fleet without changing a host.
+reconcile:
+    {{ infra }} reconcile
+
+# Force one producer-first convergence instead of waiting for the control-node timer.
+[confirm("Rebuild/reconcile the runner producer and every persistent runner host?")]
+reconcile_apply:
+    {{ infra }} reconcile-apply
+
+alias reconcile-apply := reconcile_apply
+
+# Show whether continuous reconciliation is scheduled and its most recent result.
+reconcile_status:
+    {{ infra }} reconcile-status
+
+alias reconcile-status := reconcile_status
 
 # Check what every fleet host is running right now
 status:

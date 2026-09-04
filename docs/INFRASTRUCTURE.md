@@ -287,6 +287,13 @@ The first run against a host takes far longer than later ones. `just infra::appl
 dev` compiles gcc and cppcheck from source; re-runs skip both once the
 pinned versions are present and cost a handful of version probes.
 
+The dev box is also the trusted control node for ordinary-runner convergence.
+A system timer executes a root-owned, operator-promoted repository snapshot
+every six hours, with `k3s-pve` first and the persistent Docker/WSL consumers
+afterward. No GitHub Actions job receives the fleet SSH authority. Inspect it
+with `just infra::reconcile-status`; run the same decision path read-only with
+`just infra::reconcile`.
+
 ---
 
 ## 5. What is still NOT codified

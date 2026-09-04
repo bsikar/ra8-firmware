@@ -28,8 +28,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
-    assigned_rows: 70
-    rows_sha256: 02cdbba307e3cce29795a8919be7fe04975710dca21fbc930d6e2d2d069ae459
+    assigned_rows: 65
+    rows_sha256: 6de0887259da385440aff34e5860cbad51423acfe378b86c906b4a942cf33b88
     partition: "remaining concern rows: ansible/clang-tidy/python/cmake cross-review"
     evidence:
       - "issue-790 batch-b cross-review record"
@@ -85,8 +85,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
-    assigned_rows: 786
-    rows_sha256: fa6f3bc1800b8d70575195b8d448f99ff443e373a400058ac3ebeeb0c3ac5237
+    assigned_rows: 784
+    rows_sha256: 5e1f02e9ddf5834a2cfa0a641532ab4f6616af5fa3cc6eaab8b4bf3a39e6a693
     partition: "wave D: every remaining non-baseline occurrence reviewed by family"
     evidence:
       - "issue-790 wave-D family review record"
@@ -121,8 +121,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
-    assigned_rows: 4188
-    rows_sha256: c90f8078113501f2b08928d15f5e99662e4bf6cccd4ce97e31db13d7313f2797
+    assigned_rows: 4187
+    rows_sha256: 0ee3c1306a7f267a310c4664217adde401118ddc289428338d1d9a4ce0355ee3
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
@@ -194,8 +194,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-08-27
     identity_schema: 2-durable-site-identity
-    assigned_rows: 222
-    rows_sha256: c79e54bb3b32ba7e970893d5d1a9a716c7df92cd9e2a43bbbca53d1e017874c9
+    assigned_rows: 215
+    rows_sha256: a55c2501996b8c6dfd92cdda25897d54740731b740d13fd7641eaa2aeb423407
     partition: >-
       final landing governance: exact source-authority reconciliation and
       one owner-authorized fully covered structural population expansion
@@ -402,8 +402,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
-    assigned_rows: 169
-    rows_sha256: ca83a8c81991511ddbcfbdb67d242c7ea23a24197199596dbb9594778cec960d
+    assigned_rows: 135
+    rows_sha256: 8504511e639f51af91c0d27c3029a15ac24d7a8b1c44864036dc45e91086c5f9
     partition: >-
       HIL size-cap split reconciliation: three new bound-exit raw-byte
       authorities, two changed raw-byte pins, one moved negative-fixture
@@ -435,3 +435,29 @@ batches:
         value 6971b6e7aac6006052ca8e14785ac095261a0c3422616cc585a24d402d505bdc,
         and reason a80044f930143e9b426600aeaf0420e77f928592c32e572c666fb7e5c95ad7ca;
         every predecessor lineage was retargeted and no ledger row was deleted.
+  - id: runner-reconcile-20260903
+    authority: repository-suppression-review
+    date: 2026-09-03
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 66
+    rows_sha256: c1d3b1202f81739adad5c964b59f0f513dc46748e8cde002a28a3c75b6944faf
+    partition: >-
+      Continuous runner reconciliation and inherited runner-admission closure:
+      exact Ansible probe controls, one fixed-argv subprocess diagnostic,
+      checker authority successors, and retired dead identity chains.
+    evidence:
+      - >-
+        Every live Ansible status override has an immediate synchronization
+        consumer or exact assertion; the three failed_when probes trigger the
+        locked installer on every nonzero result instead of accepting failure.
+      - >-
+        The reconciler subprocess uses the current interpreter, a closed verb
+        set, an argv-only launch, and no shell; timeout kills the complete
+        process group before quarantine begins.
+      - >-
+        The checker census is exactly 1006 authorities and 3779 values, with
+        value bfc997c545f52eb827dc1fe087cbbe05dd1cf329ee04b9e441c87c092cea0241
+        and reason ee3610d129ec61d0852ee8009b1018468dcf9bb43111cae653e40ef4538d3877.
+      - >-
+        Full-tree inventory proves every retired site and named replacement
+        absent; no ledger row or prior review history was deleted.

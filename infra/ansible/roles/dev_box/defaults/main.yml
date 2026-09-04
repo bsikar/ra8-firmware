@@ -189,6 +189,8 @@ dev_box_context_helper_command: /usr/local/bin/ra8-stage-worktree-context
 dev_box_context_paths:
   - .devcontainer
   - .dockerignore
+  - docs/CI_FLEET.md
+  - infra
   - pyproject.toml
   - scripts
   - uv.lock
@@ -384,3 +386,20 @@ dev_box_workspace_root: "{{ dev_box_home }}/ra8-ws"
 # repo's own installers, never by writing unit files here -- the units are
 # generated from those scripts and a copy would drift from them.
 dev_box_install_services: true
+
+# --- Continuous runner convergence -----------------------------------------
+#
+# The ordinary runner fleet is reconciled by a trusted systemd service on this
+# control node, never by a repository Actions job. Giving a generic runner the
+# SSH authority that provisions every other runner would turn any workflow
+# edit into infrastructure-admin code. The service instead executes a
+# root-owned snapshot installed only by this role, as the declared dev-box user
+# whose existing SSH key reaches the fleet.
+dev_box_reconcile_root: /var/lib/ra8-fleet-reconcile
+dev_box_reconcile_source: "{{ dev_box_reconcile_root }}/source"
+dev_box_reconcile_state: "{{ dev_box_reconcile_root }}/state"
+dev_box_reconcile_unit: ra8-fleet-reconcile
+dev_box_reconcile_interval: 6h
+dev_box_reconcile_random_delay: 20min
+dev_box_reconcile_full_interval_seconds: 604800
+dev_box_reconcile_producer_interval_seconds: 86400

@@ -280,7 +280,8 @@ container_state() {
 # catch before `docker start` reconnects that stale listener to GitHub.
 assert_container_admitted() {
   local name="$1" image
-  image="$(dk inspect -f '{{.Image}}' "${name}" 2>/dev/null || true)"
+  image="$(dk inspect -f '{{.Image}}' "${name}" 2>/dev/null)" ||
+    die "cannot inspect ${name}'s image; refusing to start it"
   [ -n "${image}" ] || die "cannot resolve ${name}'s image; refusing to start it"
   if ! dk run --rm --entrypoint /usr/local/bin/just "${image}" --version >/dev/null; then
     die "${name}'s image ${image} cannot execute /usr/local/bin/just; refusing to start it"

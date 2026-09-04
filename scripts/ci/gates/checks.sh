@@ -261,6 +261,10 @@ _pcc_repository_structure() (
   # Its offline selftest proves strict typed schemas, private snapshots,
   # shell-argument integrity, redacted summaries, and cleanup after failure.
   python3 scripts/dev/fleet.py selftest
+  # The unattended controller may mutate every ordinary runner. Its offline
+  # model proves producer ordering, due-time decisions, post-apply idempotence,
+  # quarantine and consumer blocking before promotion to the control snapshot.
+  python3 scripts/dev/fleet_reconcile.py --selftest
   # ra8-ci:latest, the image `just ci` boots, is a pure function of its exact
   # root-context allowlist while scripts/ci/devcontainer_image.sh is its SOLE
   # builder (#521): a second `docker build -t ra8-ci` with the old

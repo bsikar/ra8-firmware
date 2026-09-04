@@ -1018,6 +1018,73 @@ The harness is in issue #519.
 
 ---
 
+## 10. Continuous runner reconciliation
+
+The capacity timers above decide how many already-deployed listeners should be
+running. They do not rebuild the canonical image or apply a changed Ansible
+role. The dev control node therefore also owns `ra8-fleet-reconcile.timer`.
+Every six hours it runs a read-only Ansible check of the ordinary runner hosts
+and applies real drift in dependency order:
+
+1. `k3s-pve` builds and publishes the canonical image and converges ARC;
+2. `truenas` and `win-ci` consume that exact image archive and recreate stale
+   persistent containers;
+3. a second check must report zero changed tasks before the host gets a success
+   receipt.
+
+The controller runs from `/var/lib/ra8-fleet-reconcile/source`, a root-owned
+snapshot installed by `just infra::apply dev`. It does not fetch Git, run a
+branch tip, or execute inside GitHub Actions. This is deliberate: a generic
+runner with the SSH authority to provision all other runners would make any
+workflow edit infrastructure-admin code. Applying the dev-box role is the
+reviewed promotion step that replaces the controller snapshot; the timer then
+brings every ordinary runner to those approved bytes.
+
+The next timer run applies a full convergence after a new snapshot. It also
+applies the producer daily and every consumer at least once every seven days,
+even when check mode reports no drift. The producer's context-staging tasks are
+deliberately non-idempotent in check mode, so their changed count is reported
+as `CHECK-NOISE`; the daily real apply and its role assertions are the
+authoritative test. The weekly consumer pass closes Ansible's other documented
+check-mode blind spots. Between full passes, real consumer drift is repaired at
+the next six-hour run. A failed mutation drains that host to zero capacity; a
+failed producer blocks consumer updates so an unverified archive is never
+distributed. A read-only failure does not take an unchanged, last-known-good
+host down.
+
+The native `dev-hil` listener and `star` are excluded. Their roles can touch
+the physical bench and remain behind the signed, human-present whole-bench
+hold. Continuous runner maintenance must not weaken that boundary merely
+because the listener happens to be registered with GitHub.
+
+Operator commands are:
+
+```sh
+just infra::reconcile          # read-only drift report from this checkout
+just infra::reconcile-apply    # reviewed, immediate full convergence
+just infra::reconcile-status   # timer plus the most recent service result
+ssh dev 'journalctl -u ra8-fleet-reconcile.service --since today'
+```
+
+The automated service never stores a GitHub PAT or registration token. Existing
+runner homes retain their own registration. If one is genuinely lost, the role
+fails loud and the normal typed, short-lived `infra::register_runner` bootstrap
+remains the only registration path.
+
+`win-ci` uses its tailnet address for fleet maintenance. That address is live
+when the workstation is on its temporary even-port update leg, which is also
+the only topology where its GitHub runners have internet access. When the cable
+returns to isolated odd port3, the tailnet and GitHub listeners are expected to
+be offline; reconciliation reports the read-only reachability failure and does
+not drain or rewrite the last-known-good installation. Human bench access on
+that segment remains through `star` after resolving the current transient DHCP
+lease, as documented in `infra/network/README.md`.
+
+Before promoting a new host into `infra/fleet.yml`, an operator must complete
+`just infra::doctor` and one reviewed `just infra::check <host>` from `dev`.
+That onboarding establishes network reachability and host-key trust before the
+locked-down timer is allowed to maintain the host unattended.
+
 ## See also
 
 - [`infra/fleet.yml`](../infra/fleet.yml) -- the declaration itself
