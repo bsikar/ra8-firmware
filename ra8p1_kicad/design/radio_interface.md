@@ -681,8 +681,10 @@ pin map below, with explicit input/tri-state/power types and visible NC
 contacts. Its 150 mil pins terminate on the 100 mil connection grid.
 U5 is placed with VCCA on +3V3_MCU, VCCB on +3V3_RADIO and pin 7 on GND.
 Its exact manufacturer and DigiKey ordering fields are included in the BOM.
-SPI/OE wiring and the two local bypass capacitors remain incomplete; this
-is not a qualified circuit. RADIO-009 is reserved for its schematic annotation.
+C49 and C50 provide separate local supply bypasses. U5.13 connects to U3.6
+(GPIO6, C6_SCLK), and U5.12 connects to U3.7 (GPIO7, C6_COPI).
+Remaining SPI/OE wiring and reset arbitration are incomplete; this is not a
+qualified circuit. The RADIO-009 schematic annotation links to this section.
 
 ### Device and channel assignment
 
@@ -707,6 +709,35 @@ Provide separate local 100 nF bypass capacitors from each supply to GND.
 Do not bridge the two supplies through either capacitor. Both ports support
 1.1..5.5 V, so equal nominal 3.3 V rails are permitted. This device provides
 power-domain separation, not galvanic isolation.
+
+C49 and C50 use TDK C1608X7R1H104K080AA, 100 nF, +/-10%, 50 V X7R,
+the same sourced ordering code as C45. C49 connects VCCA to GND; C50
+connects VCCB to GND. The choice implements TI section 12.1's 100 nF local
+bypass recommendation; it is not derived from the SPI bit period. Keep each
+capacitor's eventual supply/return loop local to its corresponding IC pins.
+Nominal capacitance, voltage rating and matching an application recommendation
+do not establish transient performance or the finished power budget.
+
+### Updated switched-rail capacitive-load accounting
+
+C50 adds to the switched output load; C49 is on the upstream MCU domain and
+does not. The earlier RADIO-004/RADIO-007 calculations record the C45+C46
+population at those revisions. With C50 now fitted, update their capacitor-only
+screens as follows, retaining all their stated limitations:
+
+```text
+Cexternal_nominal = C45 + C46 + C50 = 0.1 + 10 + 0.1 = 10.2 uF
+t90_to_10 = Rdis * C * ln(9)
+          = 150 ohm * 10.2e-6 F * ln(9) = 3.361754 ms typical-coefficient model
+Icapacitive = C * slew = 10.2e-6 F * 1900 V/s = 19.38 mA
+Open-CT comparison = 10.2e-6 F * 44000 V/s = 448.8 mA
+```
+
+These are not worst-case bounds. They exclude module internal capacitance,
+IC operating current and future fitted components. The discharge screen uses
+typical QOD resistance; the slew screen uses the earlier 3.6 V/25 C typical
+coefficient rather than a guaranteed 3.3 V ramp. No fixed reset-release delay
+may be inferred from either result.
 
 ### Conditional round-trip SPI timing budget
 
@@ -767,6 +798,17 @@ remaining_ns = half_cycle_ns-outbound_ns-inbound_ns
 assert period_ns == 200 and half_cycle_ns == 100
 assert outbound_ns+inbound_ns == 22
 assert remaining_ns == 78
+external_uf = F('0.1')+F(10)+F('0.1')
+assert external_uf == F('10.2')
+capacitive_ma = external_uf*F(1900)/1000
+assert capacitive_ma == F('19.38')
+assert external_uf*F(44000)/1000 == F('448.8')
+from math import isclose, log
+discharge_ms = 150*float(external_uf)*1e-6*log(9)*1000
+assert isclose(discharge_ms, 3.3617536033244164, rel_tol=1e-12)
+print(f'RADIO-009: {float(external_uf):.1f} uF nominal external switched load; '
+      f'{discharge_ms:.6f} ms typical-model discharge; '
+      f'{float(capacitive_ma):.2f} mA capacitor-only ramp current.')
 print('RADIO-009 PASS: 78 ns conditional remaining budget; timing not closed.')
 PY
 ```
