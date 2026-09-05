@@ -24,6 +24,8 @@ from pathlib import Path
 from threading import Lock
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 import fleet_model as fm
 import fleet_reach as fr
 
@@ -797,12 +799,27 @@ def _hard_parent_death_selftest(path: Path) -> list[str]:
     return ["guardian did not release after the complete child group exited"]
 
 
+def _isolated_import_selftest() -> list[str]:
+    """Prove the exact isolated interpreter entry can load local fleet modules."""
+    result = subprocess.run(  # noqa: S603 -- fixed Python and current module
+        ["/usr/bin/python3", "-I", str(Path(__file__).resolve()), "--selftest-import"],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    if result.returncode == 0:
+        return []
+    detail = result.stderr.strip() or f"exit {result.returncode}"
+    return [f"isolated mutation-lock entry failed: {detail}"]
+
+
 def run_selftest() -> list[str]:
     """Run deterministic boundary, metadata, capability, and exclusion proofs."""
     root = Path(__file__).resolve().parents[2]
     infra_text = (root / "scripts/dev/infra.sh").read_text(encoding="ascii")
     failures = (
-        _boundary_contract_errors(infra_text)
+        _isolated_import_selftest()
+        + _boundary_contract_errors(infra_text)
         + _capability_selftest()
         + _metadata_selftest()
         + _silent_transport_selftest()
@@ -822,6 +839,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse the offline selftest or one protected command."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--selftest", action="store_true")
+    parser.add_argument("--selftest-import", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("command", nargs=argparse.REMAINDER)
     return parser.parse_args(argv)
 
@@ -829,14 +847,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     """Enter the lock selftest or execute one serialized fleet mutation."""
     args = parse_args(argv)
+    if args.selftest_import:
+        return 0
     if args.selftest:
         failures = run_selftest()
         for failure in failures:
             print(f"fleet_mutation_lock.py --selftest: FAIL: {failure}", file=sys.stderr)
-        if failures:
-            return 1
-        print("fleet_mutation_lock.py --selftest: PASS")
-        return 0
+        if not failures:
+            print("fleet_mutation_lock.py --selftest: PASS")
+        return int(bool(failures))
     command = list(args.command)
     if command[:1] == ["--"]:
         command = command[1:]
