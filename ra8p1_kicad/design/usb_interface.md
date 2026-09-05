@@ -156,7 +156,7 @@ U1.H15, C41.1 and C42.1 connect to +3V3_MCU. C41.2, C42.2, U1.J17
 (VSS1_USBHS) and U1.J16 (VSS2_USBHS) connect to GND. C42 is polarized:
 positive terminal to the supply, negative terminal to ground. No PWR_FLAG
 is added: capacitors cannot qualify the unfinished regulator as a source.
-The separate AVCC_USBHS filtered supply still requires implementation.
+The separate AVCC_USBHS filtered supply is documented under USB-004 below.
 
 ### Exact parts and initial tolerance
 
@@ -280,5 +280,142 @@ if actual != (9, 11, F('37.6'), F('56.4'), F(1100, 21), F(400, 7), F('2.7'), F('
     raise ValueError('USB-003 tolerance or voltage arithmetic mismatch')
 print('USB-003 PASS: C41/C42 BOM, tolerance, voltage screening and nominal bias arithmetic.')
 print('Hardware rail, ripple and lifetime qualification remain open.')
+PY
+```
+
+## USB-004: High-speed analog supply filter
+
+Revision 1, 2026-09-05. Applies to FB1, C43 and U1.K15 on
+[the MCU interface sheet](../ereader/mcu_interfaces.kicad_sch). The USB-004
+schematic annotation links to this section. Tracking: [#824](https://github.com/bsikar/ra8-firmware/issues/824).
+
+### Requirement, circuit and exact parts
+
+[Renesas RA8x2 Quick Design Guide](https://www.renesas.com/en/document/apn/ra8p1-mcu-quick-design-guide),
+R01AN7883EU0110 revision 1.10, Table 2 p.7, prescribes an isolation
+inductor/ferrite between the 3.3 V system supply and AVCC_USBHS, with
+10 uF bypass to VSS1_USBHS/VSS2_USBHS. The 10 uF nominal capacitance
+is a manufacturer requirement, not a value derived from an invented load step.
+
+FB1 separates +3V3_MCU from +3V3_USBHS_A. The latter connects C43.1 and
+U1.K15 (AVCC_USBHS). C43.2 returns to GND, common with U1.J17 and U1.J16.
+No PWR_FLAG declares the still-unimplemented regulator a valid source.
+
+FB1 is Murata BLM18PG121SN1D: 120 ohm +/-25% impedance at 100 MHz,
+0.05 ohm maximum initial DC resistance, 2 A rated at 85 C ambient and
+1 A at 125 C. The [Murata reference specification](https://pim.murata.com/asset/pim4/ferriteBeadInductortypefilter/ENFA0003_PDF_FERRITEBEADINDUCTORTYPEFILTER),
+JENF243A_0003AN-01 p.1, separately gives 0.10 ohm maximum after testing.
+That after-test limit is not asserted to be a guaranteed hot DCR at every
+operating temperature. Final thermal and transient qualification remains open.
+
+C43 is [TDK C3216X7R1V106K160AC](https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C3216X7R1V106K160AC),
+10 uF +/-10%, 35 VDC, X7R (+/-15%), -55 to +125 C, commercial 1206,
+listed Production. Initial tolerance alone gives 10*(1 +/-0.10) = 9..11 uF.
+Voltage utilization at the MCU's 3.60 V active-supply maximum is
+3.60/35*100 = 10.285714 percent. This does not guarantee effective capacitance.
+
+### DC voltage-drop and dissipation screening
+
+The [RA8P1 datasheet](https://www.renesas.com/en/document/dst/ra8p1-group-datasheet),
+revision 1.30 Table 2.39 p.81, lists combined USB-HS supply current up to
+55.3 mA under its specified test conditions, with VCC_USBHS = AVCC_USBHS.
+Using the entire combined current for the analog branch is a conservative
+steady-state screening assumption under those conditions, not a measured
+analog-only current and not an inrush or arbitrary workload bound.
+
+```text
+I_screen = 55.3 mA = 0.0553 A
+Initial DCR screen:
+Vdrop = I*R = 0.0553*0.05 = 0.002765 V = 2.765 mV
+P = I^2*R = 0.0553^2*0.05 = 0.0001529045 W = 0.1529045 mW
+
+After-test DCR screen:
+Vdrop = 0.0553*0.10 = 0.005530 V = 5.530 mV
+P = 0.0553^2*0.10 = 0.000305809 W = 0.305809 mW
+Vanalog at ideal 3.3 V source = 3.3-0.00553 = 3.29447 V
+Minimum source for 3.00 V analog = 3.00+0.00553 = 3.00553 V
+Current utilization of 1 A rating at 125 C = 0.0553/1*100 = 5.53 percent
+```
+
+The 3.00553 V result excludes regulator tolerance, other interconnect losses,
+temperature-dependent resistance and transients. Both active USB-HS supplies
+must meet the datasheet's 3.00..3.60 V operating range. Verify rail ramp,
+sequencing and startup against the final power tree; these DC calculations
+do not qualify them. Do not calculate an inductance, filter cutoff or noise
+attenuation from the single 120 ohm impedance magnitude at 100 MHz.
+That requires the bead's complex frequency/bias behavior and the complete
+source, load and capacitor impedance network, including resonance/damping.
+
+### Exact capacitor bias data
+
+The [preserved TDK CSV](../resources/datasheets/TDK_C3216X7R1V106K160AC_dc_bias_2026-09-05.csv)
+was downloaded through the exact part's browser page on 2026-09-05 and
+verified row-for-row against the download. Only BOM, line endings and the
+trailing blank row are normalized. TDK explicitly identifies this graph
+as reference data, not guaranteed product characteristics.
+
+```text
+C(3.15 V) = 9.69875 uF; C(4.00 V) = 9.38950 uF
+C(V) = Ca + (V-Va)/(Vb-Va)*(Cb-Ca)
+C(3.3 V) = 9.69875 + (3.3-3.15)/0.85*(9.38950-9.69875)
+         = 9.644176470588... uF
+C(3.6 V) = 9.69875 + (3.6-3.15)/0.85*(9.38950-9.69875)
+         = 9.535029411764... uF
+```
+
+This is nominal linear interpolation, not a guaranteed lower bound.
+Initial tolerance, temperature, aging and AC excitation require separate
+consideration. The nominal 10 uF selection follows the guide; no claim is
+made that 10 uF minimum remains available across all operating conditions.
+
+### Reproducible arithmetic check
+
+Run from the repository root after exporting the native BOM. This checks
+the exact fitted parts, source curve identity and arithmetic, not physical
+filter performance.
+
+```sh
+python3 - <<'PY'
+import csv
+from fractions import Fraction as F
+from pathlib import Path
+
+path = Path('ra8p1_kicad/resources/datasheets/TDK_C3216X7R1V106K160AC_dc_bias_2026-09-05.csv')
+with Path('ra8p1_kicad/exports/ereader_rev1_bom.csv').open(newline='') as stream:
+    bom = list(csv.DictReader(stream))
+for ref, value, mpn, source in (
+        ('C43', '10u', 'C3216X7R1V106K160AC', '445-14799-1-ND'),
+        ('FB1', '120R @100MHz', 'BLM18PG121SN1D', '490-1037-1-ND')):
+    matches = [r for r in bom if ref in r['Reference'].split(',')]
+    if len(matches) != 1:
+        raise ValueError(ref + ' must occur exactly once')
+    r = matches[0]
+    if (r['Value'], r['Manufacturer_Part_Number'], r['DigiKey_Part_Number'], r['DNP']) != (
+            value, mpn, source, ''):
+        raise ValueError(ref + ' BOM differs from calculation inputs')
+with path.open(newline='') as stream:
+    data = [r for r in csv.reader(stream) if r]
+if data[0] != ['TDK Corporation'] or data[3] != ['C3216X7R1V106K160AC']:
+    raise ValueError('Wrong C43 manufacturer curve')
+if data[4] != ['DC/V', 'Capacitance(Nom.)/F']:
+    raise ValueError('Wrong C43 curve units')
+samples = {F(v): F(c)*10**6 for v, c in data[5:]}
+if (samples[F('3.15')], samples[F(4)]) != (F('9.69875'), F('9.38950')):
+    raise ValueError('C43 source samples changed')
+for voltage, expected in (('3.3', F(163951, 17000)), ('3.6', F(324191, 34000))):
+    result = samples[F('3.15')] + (F(voltage)-F('3.15'))/F('.85')*(samples[F(4)]-samples[F('3.15')])
+    if result != expected:
+        raise ValueError('C43 bias interpolation mismatch')
+current = F('.0553')
+for resistance, drop, power in (('.05', '.002765', '.0001529045'),
+                                ('.10', '.00553', '.000305809')):
+    if (current*F(resistance), current**2*F(resistance)) != (F(drop), F(power)):
+        raise ValueError('FB1 DC screening mismatch')
+actual = (F('3.3')-F('.00553'), 3+F('.00553'), current*100,
+          10*(1-F('.1')), 10*(1+F('.1')), F('3.6')/35*100)
+if actual != (F('3.29447'), F('3.00553'), F('5.53'), 9, 11, F(72, 7)):
+    raise ValueError('USB-004 rail or capacitor arithmetic mismatch')
+print('USB-004 PASS: exact C43 curve, interpolation, FB1 DC drop and dissipation.')
+print('USB-004 exact fitted BOM matches; transient and all-corners qualification remain open.')
 PY
 ```
