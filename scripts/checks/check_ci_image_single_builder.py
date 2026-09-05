@@ -98,8 +98,6 @@ THIRD_PARTY_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/")
 DEPLOYED_RUNNER_BUILDER = "infra/ansible/roles/ci_runner/tasks/main.yml"
 DOCKER_RUNNER_DEPLOY = "infra/ansible/roles/ci_runner_docker/tasks/deploy.yml"
 CAPACITY_HELPER = "scripts/ci/fleet_capacity.sh"
-MANAGED_IMAGE_LABEL = runner_cleanup.MANAGED_IMAGE_LABEL
-MANAGED_IMAGE_KIND = runner_cleanup.MANAGED_IMAGE_KIND
 
 # A build verb: docker/podman [buildx] build, buildah bud, or a runtime taken
 # from a shell array/variable (``"${RUNTIME[@]}" build``) as devcontainer_image
@@ -427,22 +425,22 @@ GOOD_RUNNER_CLEANUP = f"""
 - name: Build the devcontainer toolchain image (single source of truth)
   ansible.builtin.command:
     cmd: >-
-      buildah bud --label {MANAGED_IMAGE_LABEL}
-      --label {MANAGED_IMAGE_KIND}=devcontainer -t devcontainer .
+      buildah bud --label {runner_cleanup.MANAGED_IMAGE_LABEL}
+      --label {runner_cleanup.MANAGED_IMAGE_KIND}=devcontainer -t devcontainer .
 - name: Build the runner image (devcontainer + actions-runner)
   ansible.builtin.command:
     cmd: >-
-      buildah bud --label {MANAGED_IMAGE_LABEL}
-      --label {MANAGED_IMAGE_KIND}=runner -t runner .
+      buildah bud --label {runner_cleanup.MANAGED_IMAGE_LABEL}
+      --label {runner_cleanup.MANAGED_IMAGE_KIND}=runner -t runner .
 - name: Find superseded managed runner images
   ansible.builtin.command:
     argv:
       - buildah
       - images
       - --filter
-      - label={MANAGED_IMAGE_LABEL}
+      - label={runner_cleanup.MANAGED_IMAGE_LABEL}
       - --filter
-      - label={MANAGED_IMAGE_KIND}=runner
+      - label={runner_cleanup.MANAGED_IMAGE_KIND}=runner
       - --filter
       - dangling=true
       - --quiet
@@ -464,9 +462,9 @@ GOOD_RUNNER_CLEANUP = f"""
       - buildah
       - images
       - --filter
-      - label={MANAGED_IMAGE_LABEL}
+      - label={runner_cleanup.MANAGED_IMAGE_LABEL}
       - --filter
-      - label={MANAGED_IMAGE_KIND}=devcontainer
+      - label={runner_cleanup.MANAGED_IMAGE_KIND}=devcontainer
       - --filter
       - dangling=true
       - --quiet
@@ -545,9 +543,9 @@ GOOD_DOCKER_CLEANUP = f"""
       - --filter
       - dangling=true
       - --filter
-      - label={MANAGED_IMAGE_LABEL}
+      - label={runner_cleanup.MANAGED_IMAGE_LABEL}
       - --filter
-      - label={MANAGED_IMAGE_KIND}=runner
+      - label={runner_cleanup.MANAGED_IMAGE_KIND}=runner
       - --quiet
       - --no-trunc
   register: ci_runner_docker_dangling_images
@@ -627,17 +625,14 @@ def _selftest_runner_cleanup(failures: list[str]) -> None:
     )
     pin_filtered = GOOD_RUNNER_CLEANUP.replace(
         "    - item.repoTags | default([]) | length == 0\n",
-        "    - item.repoTags | default([]) | length == 0\n"
-        "    - not item.pinned | default(false)\n",
+        "    - item.repoTags | default([]) | length == 0\n    - not item.pinned | default(false)\n",
     )
     expect(
         bool(runner_cleanup.errors(pin_filtered)),
         "a cleanup that preserves pinned stale generations is rejected",
         failures,
     )
-    unsafe_helm = GOOD_RUNNER_CLEANUP.replace(
-        "force_conflicts: true", "force_conflicts: false"
-    )
+    unsafe_helm = GOOD_RUNNER_CLEANUP.replace("force_conflicts: true", "force_conflicts: false")
     expect(
         bool(runner_cleanup.errors(unsafe_helm)),
         "a Helm deploy that cannot reclaim transient field ownership is rejected",
@@ -818,9 +813,7 @@ def report_extended_violations(root: Path, rels: list[str]) -> bool:
         )
     )
     cleanup_errors.extend(
-        runner_cleanup.consumer_errors(
-            (root / DOCKER_RUNNER_DEPLOY).read_text(encoding="utf-8")
-        )
+        runner_cleanup.consumer_errors((root / DOCKER_RUNNER_DEPLOY).read_text(encoding="utf-8"))
     )
     for message in cleanup_errors:
         print(f"  {message}", file=sys.stderr)

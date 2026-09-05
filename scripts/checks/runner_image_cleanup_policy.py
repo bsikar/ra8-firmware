@@ -106,9 +106,16 @@ def _buildah_kind_errors(named: NamedTasks, kind: str, previous: int) -> tuple[l
     find_index, find_task = find_match
     remove_index, remove_task = remove_match
     expected_find = [
-        "buildah", "images", "--filter", f"label={MANAGED_IMAGE_LABEL}",
-        "--filter", f"label={MANAGED_IMAGE_KIND}={kind}", "--filter",
-        "dangling=true", "--quiet", "--no-trunc",
+        "buildah",
+        "images",
+        "--filter",
+        f"label={MANAGED_IMAGE_LABEL}",
+        "--filter",
+        f"label={MANAGED_IMAGE_KIND}={kind}",
+        "--filter",
+        "dangling=true",
+        "--quiet",
+        "--no-trunc",
     ]
     if _argv(find_task) != expected_find:
         errors.append(f"ci_runner image cleanup: {find_name!r} selector is not exact")

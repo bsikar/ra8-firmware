@@ -385,8 +385,7 @@ def autostart_errors(source: str) -> list[str]:
     start_command = start[1].get("ansible.builtin.command")
     start_argv = start_command.get("argv") if isinstance(start_command, dict) else None
     if (
-        start_argv
-        != ["{{ wsl_ci_host_schtasks }}", "/Run", "/TN", "{{ wsl_ci_host_task_name }}"]
+        start_argv != ["{{ wsl_ci_host_schtasks }}", "/Run", "/TN", "{{ wsl_ci_host_task_name }}"]
         or start[1].get("when") != "not ansible_check_mode"
         or start[1].get("changed_when") is not False
     ):
