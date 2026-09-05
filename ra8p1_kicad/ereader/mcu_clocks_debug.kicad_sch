@@ -382,9 +382,12 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Device:Crystal_GND24_Small"
+		(symbol "Device:C_Small"
+			(pin_numbers
+				(hide yes)
+			)
 			(pin_names
-				(offset 1.016)
+				(offset 0.254)
 				(hide yes)
 			)
 			(exclude_from_sim no)
@@ -392,8 +395,8 @@
 			(on_board yes)
 			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
-			(property "Reference" "Y"
-				(at 1.27 4.445 0)
+			(property "Reference" "C"
+				(at 0.254 1.778 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
@@ -403,8 +406,8 @@
 					(justify left)
 				)
 			)
-			(property "Value" "Crystal_GND24_Small"
-				(at 1.27 2.54 0)
+			(property "Value" "C_Small"
+				(at 0.254 -2.032 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
@@ -436,7 +439,7 @@
 					)
 				)
 			)
-			(property "Description" "Four pin crystal, GND on pins 2 and 4, small symbol"
+			(property "Description" "Unpolarized capacitor, small symbol"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -447,29 +450,7 @@
 					)
 				)
 			)
-			(property private "KLC_S3.3" "The rectangle is not a symbol body but a graphical element"
-				(at 0 -10.16 0)
-				(show_name yes)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property private "KLC_S4.1" "Some pins are on 50mil grid to make the symbol small"
-				(at 0 -12.7 0)
-				(show_name yes)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_keywords" "quartz ceramic resonator oscillator"
+			(property "ki_keywords" "capacitor cap"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -480,7 +461,7 @@
 					)
 				)
 			)
-			(property "ki_fp_filters" "Crystal*"
+			(property "ki_fp_filters" "C_*"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -491,13 +472,13 @@
 					)
 				)
 			)
-			(symbol "Crystal_GND24_Small_0_1"
+			(symbol "C_Small_0_1"
 				(polyline
 					(pts
-						(xy -1.27 1.27) (xy -1.27 1.905) (xy 1.27 1.905) (xy 1.27 1.27)
+						(xy -1.524 0.508) (xy 1.524 0.508)
 					)
 					(stroke
-						(width 0)
+						(width 0.3048)
 						(type default)
 					)
 					(fill
@@ -506,45 +487,10 @@
 				)
 				(polyline
 					(pts
-						(xy -1.27 -0.762) (xy -1.27 0.762)
+						(xy -1.524 -0.508) (xy 1.524 -0.508)
 					)
 					(stroke
-						(width 0.381)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.27 -1.27) (xy -1.27 -1.905) (xy 1.27 -1.905) (xy 1.27 -1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(rectangle
-					(start -0.762 -1.524)
-					(end 0.762 1.524)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 1.27 -0.762) (xy 1.27 0.762)
-					)
-					(stroke
-						(width 0.381)
+						(width 0.3302)
 						(type default)
 					)
 					(fill
@@ -552,11 +498,11 @@
 					)
 				)
 			)
-			(symbol "Crystal_GND24_Small_1_1"
+			(symbol "C_Small_1_1"
 				(pin passive line
-					(at -2.54 0 0)
-					(length 1.27)
-					(name "1"
+					(at 0 2.54 270)
+					(length 2.032)
+					(name ""
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -566,15 +512,15 @@
 					(number "1"
 						(effects
 							(font
-								(size 0.762 0.762)
+								(size 1.27 1.27)
 							)
 						)
 					)
 				)
 				(pin passive line
 					(at 0 -2.54 90)
-					(length 0.635)
-					(name "G"
+					(length 2.032)
+					(name ""
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -584,44 +530,7 @@
 					(number "2"
 						(effects
 							(font
-								(size 0.762 0.762)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 2.54 0 180)
-					(length 1.27)
-					(name "3"
-						(effects
-							(font
 								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "3"
-						(effects
-							(font
-								(size 0.762 0.762)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 -2.54 90)
-					(length 0.635)
-					(hide yes)
-					(name "G"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "4"
-						(effects
-							(font
-								(size 0.762 0.762)
 							)
 						)
 					)
@@ -6534,6 +6443,317 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Timing:XRCGB24M000F3M19R0"
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "Y"
+				(at 0 6.35 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "24MHz"
+				(at 0 3.81 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicResonatorCrystalUnit/SPEC_XRCGB24M000F3M19R0_PDF_CERAMICRESONATORCRYSTALUNIT"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "24MHz crystal, CL 6pF, ESR 100 ohm max, 300uW max; terminals 1/3; spare pads 2/4 NC"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Height" "0.70"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Manufacturer_Name" "Murata Electronics"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Manufacturer_Part_Number" "XRCGB24M000F3M19R0"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "DigiKey_Part_Number" "490-18296-1-ND"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/murata-electronics/XRCGB24M000F3M19R0/9959758"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Procurement_Status" "Selected for schematic - board oscillator matching required"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 13578; Active; USD CT 1:0.32 / 10:0.275 / 100:0.239; 17wk lead; recheck before order"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Mouser_URL" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "quartz ceramic resonator oscillator"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "Crystal*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "XRCGB24M000F3M19R0_0_1"
+				(polyline
+					(pts
+						(xy -1.27 1.27) (xy -1.27 1.905) (xy 1.27 1.905) (xy 1.27 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.27 -0.762) (xy -1.27 0.762)
+					)
+					(stroke
+						(width 0.381)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.27 -1.27) (xy -1.27 -1.905) (xy 1.27 -1.905) (xy 1.27 -1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(rectangle
+					(start -0.762 -1.524)
+					(end 0.762 1.524)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.27 -0.762) (xy 1.27 0.762)
+					)
+					(stroke
+						(width 0.381)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "XRCGB24M000F3M19R0_1_1"
+				(pin passive line
+					(at -2.54 0 0)
+					(length 1.27)
+					(name "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 0.762 0.762)
+							)
+						)
+					)
+				)
+				(pin no_connect line
+					(at 0 -2.54 90)
+					(length 0.635)
+					(name "NC"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 0.762 0.762)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 2.54 0 180)
+					(length 1.27)
+					(name "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 0.762 0.762)
+							)
+						)
+					)
+				)
+				(pin no_connect line
+					(at 0 -2.54 90)
+					(length 0.635)
+					(hide yes)
+					(name "NC"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 0.762 0.762)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "power:+3V3"
 			(power global)
 			(pin_numbers
@@ -6789,7 +7009,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "CLOCK NETWORKS\nEXTAL/XTAL and XCIN/XCOUT remain open in this increment.\nDo not treat these pins as intentionally unused.\nCrystal loading and startup requirements are under review."
+	(text "CLK-001: Y1 24 MHz / Murata XRCGB24M000F3M19R0\nCrystal CL = 6 pF; effective Cstray = 2 pF ASSUMED.\nCL = C35*C36/(C35+C36) + Cstray\nC35 = C36 = 2*(6-2) = 8 pF (NP0, +/-0.5 pF).\nCheck: 8*8/(8+8) + 2 = 6 pF. At fixed stray: 5.75..6.25 pF.\nInitial matching only: verify frequency, startup and drive <= 300 uW.\nFull derivation + Python check: ../design/clock_calculations.md\nRTC XCIN/XCOUT network remains to be completed."
 		(exclude_from_sim no)
 		(at 248.92 68.58 0)
 		(effects
@@ -6797,6 +7017,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/clock_calculations.md#clk-001-y1-main-oscillator-load-network")
 		)
 		(uuid "25f5c4ef-ef4b-4377-be3e-ea6e66abf6f1")
 	)
@@ -6811,7 +7032,7 @@
 		)
 		(uuid "46f0ad44-622c-44b3-b5a3-915f3fac5f52")
 	)
-	(text "References: RA8P1 HUM Rev.1.30 sections 2.5, 4.3-4.4, 21.4.\nQuick Design Guide R01AN7883EU0110 sections 2 and 6.\nReset timing: RA8P1 Datasheet Rev.1.30 Table 2.52 p.118.\nSwitch, header and resistor orderable part selections remain open."
+	(text "References: RA8P1 HUM Rev.1.30 sections 2.5, 4.3-4.4, 21.4.\nQuick Design Guide R01AN7883EU0110 sections 2 and 6.\nReset timing: RA8P1 Datasheet Rev.1.30 Table 2.52 p.118.\nExact purchasing selections and status are maintained in the BOM."
 		(exclude_from_sim no)
 		(at 208.28 223.52 0)
 		(effects
@@ -6828,6 +7049,16 @@
 	)
 	(wire
 		(pts
+			(xy 281.94 101.6) (xy 289.56 101.6)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "095631d3-d0dc-4d5c-9190-907dfdd1d69e")
+	)
+	(wire
+		(pts
 			(xy 66.04 73.66) (xy 71.12 73.66)
 		)
 		(stroke
@@ -6835,6 +7066,16 @@
 			(type default)
 		)
 		(uuid "0cc2ac07-8a2e-444a-9dc5-e0d90e1878ee")
+	)
+	(wire
+		(pts
+			(xy 269.24 101.6) (xy 269.24 109.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "16ccb609-d793-4697-92cf-13c394c8bc42")
 	)
 	(wire
 		(pts
@@ -6878,6 +7119,16 @@
 	)
 	(wire
 		(pts
+			(xy 289.56 101.6) (xy 289.56 109.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2cf9754d-8f3b-465e-969f-8b5a37738516")
+	)
+	(wire
+		(pts
 			(xy 119.38 76.2) (xy 149.86 76.2)
 		)
 		(stroke
@@ -6895,6 +7146,16 @@
 			(type default)
 		)
 		(uuid "617f00e0-7a17-469c-967a-c24463211f5c")
+	)
+	(wire
+		(pts
+			(xy 210.82 71.12) (xy 223.52 71.12)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "64e0104a-f484-47b3-85e9-5852cd6bb23f")
 	)
 	(wire
 		(pts
@@ -6948,6 +7209,16 @@
 	)
 	(wire
 		(pts
+			(xy 289.56 114.3) (xy 289.56 115.57)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "855a2ed5-cb07-4bf5-8fee-268bc83f7644")
+	)
+	(wire
+		(pts
 			(xy 53.34 83.82) (xy 53.34 88.9)
 		)
 		(stroke
@@ -6965,6 +7236,16 @@
 			(type default)
 		)
 		(uuid "90f44d58-66f6-4a8d-8a30-8a1fbb60f588")
+	)
+	(wire
+		(pts
+			(xy 269.24 101.6) (xy 276.86 101.6)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "921699ec-24db-46ee-aa9c-ffadc8eedc84")
 	)
 	(wire
 		(pts
@@ -7045,6 +7326,16 @@
 			(type default)
 		)
 		(uuid "bb7e893d-019c-4432-a9cd-d3c31acfa520")
+	)
+	(wire
+		(pts
+			(xy 210.82 68.58) (xy 223.52 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "be6d976f-0dc2-4f4c-b5e0-a53b3dd734eb")
 	)
 	(wire
 		(pts
@@ -7176,6 +7467,26 @@
 		)
 		(uuid "4ceda217-664f-4619-a3bf-3de7f6ab7f08")
 	)
+	(label "OSC_XTAL"
+		(at 223.52 71.12 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "5cf9e803-bf92-43c5-b0d0-f844cdfbfbf0")
+	)
+	(label "OSC_EXTAL"
+		(at 223.52 68.58 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "6038b854-af25-473d-9245-195012b548b1")
+	)
 	(label "MCU_BOOT_MD"
 		(at 119.38 68.58 0)
 		(effects
@@ -7256,6 +7567,16 @@
 		)
 		(uuid "b40ab2e9-f0c2-4691-a9c3-3d362b7f43c8")
 	)
+	(label "OSC_XTAL"
+		(at 289.56 101.6 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "c9a46f83-f39a-4565-8fb8-dd95b67b7e1c")
+	)
 	(label "MCU_RESET_N"
 		(at 45.72 162.56 0)
 		(effects
@@ -7275,6 +7596,16 @@
 			(justify left)
 		)
 		(uuid "df7c40c7-56ad-4f43-9b67-408e220ea920")
+	)
+	(label "OSC_EXTAL"
+		(at 269.24 101.6 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "e00ad587-c896-41aa-a2bb-8c51027bdcff")
 	)
 	(label "DBG_TDO_SWO"
 		(at 71.12 71.12 0)
@@ -9246,84 +9577,6 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 279.4 104.14 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "659c371a-b11b-4875-9063-46f682464b73")
-		(property "Reference" "#PWR030"
-			(at 279.4 110.49 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "GND"
-			(at 279.4 109.22 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 279.4 104.14 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 279.4 104.14 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 279.4 104.14 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "2241873c-e4f4-47a8-8b06-9270ef93d865")
-		)
-		(instances
-			(project "ereader_rev1"
-				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
-					(reference "#PWR030")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:GND")
 		(at 76.2 170.18 0)
 		(unit 1)
 		(body_style 1)
@@ -9411,7 +9664,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:Crystal_GND24_Small")
+		(lib_id "Timing:XRCGB24M000F3M19R0")
 		(at 279.4 101.6 0)
 		(unit 1)
 		(body_style 1)
@@ -9432,7 +9685,7 @@
 				)
 			)
 		)
-		(property "Value" "FL2400022"
+		(property "Value" "24MHz"
 			(at 279.4 97.79 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9442,7 +9695,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Timing:FL2400022"
+		(property "Footprint" ""
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9453,7 +9706,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.diodes.com/assets/Datasheets/FL.pdf"
+		(property "Datasheet" "https://pim.murata.com/asset/pim4/ceramicResonatorCrystalUnit/SPEC_XRCGB24M000F3M19R0_PDF_CERAMICRESONATORCRYSTALUNIT"
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9464,7 +9717,7 @@
 				)
 			)
 		)
-		(property "Description" "24 MHz crystal, 10 pF, 10 ppm, SMD 4-pad"
+		(property "Description" "24MHz crystal, CL 6pF, ESR 100 ohm max, 300uW max; terminals 1/3; spare pads 2/4 NC"
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9475,7 +9728,7 @@
 				)
 			)
 		)
-		(property "Height" "0.78"
+		(property "Height" "0.70"
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9486,7 +9739,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" "729-FL2400022"
+		(property "Mouser Part Number" ""
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9497,7 +9750,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" "https://www.mouser.co.uk/ProductDetail/Diodes-Incorporated/FL2400022?qs=Rp3RbKSfAt2zpz%2FaQHXuXA%3D%3D"
+		(property "Mouser Price/Stock" ""
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9508,7 +9761,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Name" "Diodes Incorporated"
+		(property "Manufacturer_Name" "Murata Electronics"
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9519,7 +9772,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "FL2400022"
+		(property "Manufacturer_Part_Number" "XRCGB24M000F3M19R0"
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9530,7 +9783,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "490-18296-1-ND"
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9541,7 +9794,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/murata-electronics/XRCGB24M000F3M19R0/9959758"
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9552,7 +9805,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - oscillator matching and exact MPN sourcing pending"
+		(property "Procurement_Status" "Selected for schematic - board oscillator matching required"
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9563,7 +9816,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 13578; Active; USD CT 1:0.32 / 10:0.275 / 100:0.239; 17wk lead; recheck before order"
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9575,6 +9828,17 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 279.4 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "Murata JGC49-3003B: 24MHz, CL6pF, ESR<=100 ohm, drive<=300uW; RA8P1 Group10 reference ESR ceiling210 ohm, not board validation. Terminals1/3; linked spare pads2/4 NC."
 			(at 279.4 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -9689,6 +9953,324 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
 					(reference "#PWR021")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 269.24 111.76 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "9321f12a-9975-4c27-9039-3b58ef994a3d")
+		(property "Reference" "C35"
+			(at 271.78 110.4962 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "8p"
+			(at 271.78 113.0362 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 269.24 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1005NP01H080D050BA"
+			(at 269.24 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "C0G/NP0, 50V, +/-0.5pF; exact MPN sourcing pending; RA8P1 Group10 initial load value"
+			(at 269.24 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-13781-1-ND"
+			(at 269.24 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/C1005NP01H080D050BA/3951017"
+			(at 269.24 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 269.24 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1005NP01H080D050BA"
+			(at 269.24 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected for schematic - final load tuning on PCB required"
+			(at 269.24 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "8pF +/-0.5pF, 50V NP0, 0402. Initial load network per RA8P1 Group10; 8pF/2 + estimated 2pF stray = 6pF. Board matching required."
+			(at 269.24 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 73746; Active; USD CT 1:0.11 / 10:0.058 / 100:0.0341; 24wk lead; recheck before order"
+			(at 269.24 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "da58d01f-3b09-4f6e-9343-c8174037d03b")
+		)
+		(pin "2"
+			(uuid "e9f2ddbd-fecf-4a53-bfad-399f57a6a15e")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "C35")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 289.56 111.76 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "a1e57cf2-df81-46da-9ec0-a0ac5f901acd")
+		(property "Reference" "C36"
+			(at 292.1 110.4962 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "8p"
+			(at 292.1 113.0362 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 289.56 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1005NP01H080D050BA"
+			(at 289.56 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "C0G/NP0, 50V, +/-0.5pF; exact MPN sourcing pending; RA8P1 Group10 initial load value"
+			(at 289.56 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-13781-1-ND"
+			(at 289.56 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/C1005NP01H080D050BA/3951017"
+			(at 289.56 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 289.56 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1005NP01H080D050BA"
+			(at 289.56 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected for schematic - final load tuning on PCB required"
+			(at 289.56 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "8pF +/-0.5pF, 50V NP0, 0402. Initial load network per RA8P1 Group10; 8pF/2 + estimated 2pF stray = 6pF. Board matching required."
+			(at 289.56 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 73746; Active; USD CT 1:0.11 / 10:0.058 / 100:0.0341; 24wk lead; recheck before order"
+			(at 289.56 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "4edcb89f-0282-4174-b8a2-2e5f2159f13d")
+		)
+		(pin "2"
+			(uuid "a3b47d1a-ca11-47c1-adba-49db1dc5568e")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "C36")
 					(unit 1)
 				)
 			)
@@ -10159,6 +10741,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
 					(reference "R5")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 289.56 115.57 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "b69a2c00-3d65-4b94-8627-1f17bc0f68c0")
+		(property "Reference" "#PWR031"
+			(at 289.56 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 289.56 120.65 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 289.56 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 289.56 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 289.56 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "31fdfea0-5a04-4f1c-a7cd-7a625900669b")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "#PWR031")
 					(unit 1)
 				)
 			)
@@ -10848,6 +11508,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
 					(reference "#PWR027")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 269.24 114.3 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f3ddd10f-8fcf-4539-a263-57f20b06ece8")
+		(property "Reference" "#PWR030"
+			(at 269.24 120.65 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 269.24 119.38 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 269.24 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 269.24 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 269.24 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "3ecb775e-e56b-43f0-8b40-721008012e8f")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "#PWR030")
 					(unit 1)
 				)
 			)
