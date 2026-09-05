@@ -4474,7 +4474,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.renesas.com/en/products/ra8p1"
+		(property "Datasheet" "https://www.renesas.com/en/document/dst/ra8p1-group-datasheet"
 			(at 0 0 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8315,7 +8315,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 0 0)
 				(length 3.81)
 				(name "VCL0"
@@ -8333,7 +8333,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -2.54 0)
 				(length 3.81)
 				(name "VCL1"
@@ -8351,7 +8351,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -5.08 0)
 				(length 3.81)
 				(name "VCL2"
@@ -8369,7 +8369,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -7.62 0)
 				(length 3.81)
 				(name "VCL3"
@@ -8387,7 +8387,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -10.16 0)
 				(length 3.81)
 				(name "VCL4"
@@ -8405,7 +8405,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -12.7 0)
 				(length 3.81)
 				(name "VCL5"
@@ -8423,7 +8423,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -15.24 0)
 				(length 3.81)
 				(name "VCL6"
@@ -8441,7 +8441,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -17.78 0)
 				(length 3.81)
 				(name "VCL7"
@@ -8459,7 +8459,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -20.32 0)
 				(length 3.81)
 				(name "VCL8"
@@ -8477,7 +8477,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -22.86 0)
 				(length 3.81)
 				(name "VCL9"
@@ -8495,7 +8495,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -25.4 0)
 				(length 3.81)
 				(name "VCL10"
@@ -8513,7 +8513,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -27.94 0)
 				(length 3.81)
 				(name "VCL11"
@@ -8531,7 +8531,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 0 180)
 				(length 3.81)
 				(name "VSS0"
@@ -8549,7 +8549,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -2.54 180)
 				(length 3.81)
 				(name "VSS1"
@@ -8567,7 +8567,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -5.08 180)
 				(length 3.81)
 				(name "VSS2"
@@ -8585,7 +8585,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -7.62 180)
 				(length 3.81)
 				(name "VSS3"
@@ -8603,7 +8603,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -10.16 180)
 				(length 3.81)
 				(name "VSS4"
@@ -8621,7 +8621,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -12.7 180)
 				(length 3.81)
 				(name "VSS5"
@@ -8639,7 +8639,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -15.24 180)
 				(length 3.81)
 				(name "VSS6"
@@ -8657,7 +8657,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -17.78 180)
 				(length 3.81)
 				(name "VSS7"
@@ -8675,7 +8675,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -20.32 180)
 				(length 3.81)
 				(name "VSS8"
@@ -8693,7 +8693,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -22.86 180)
 				(length 3.81)
 				(name "VSS9"
@@ -8711,7 +8711,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -25.4 180)
 				(length 3.81)
 				(name "VSS10"
@@ -8729,7 +8729,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -27.94 180)
 				(length 3.81)
 				(name "VSS11"
@@ -8768,7 +8768,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 0 0)
 				(length 3.81)
 				(name "VBATT"
@@ -8786,10 +8786,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -2.54 0)
 				(length 3.81)
-				(name "VCC_0_1"
+				(name "VCC_01"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -8804,10 +8804,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -5.08 0)
 				(length 3.81)
-				(name "VCC_0_2"
+				(name "VCC_02"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -8822,10 +8822,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -7.62 0)
 				(length 3.81)
-				(name "VCC_0_3"
+				(name "VCC_03"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -8840,10 +8840,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -10.16 0)
 				(length 3.81)
-				(name "VCC_0_4"
+				(name "VCC_04"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -8858,10 +8858,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -12.7 0)
 				(length 3.81)
-				(name "VCC_0_5"
+				(name "VCC_05"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -8876,10 +8876,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -15.24 0)
 				(length 3.81)
-				(name "VCC_0_6"
+				(name "VCC_06"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -8894,10 +8894,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -17.78 0)
 				(length 3.81)
-				(name "VCC_0_7"
+				(name "VCC_07"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -8912,10 +8912,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -20.32 0)
 				(length 3.81)
-				(name "VCC_0_8"
+				(name "VCC_08"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -8930,10 +8930,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -22.86 0)
 				(length 3.81)
-				(name "VCC_0_9"
+				(name "VCC_09"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -8948,10 +8948,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -25.4 0)
 				(length 3.81)
-				(name "VCC_1_0"
+				(name "VCC_10"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -8966,10 +8966,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -27.94 0)
 				(length 3.81)
-				(name "VCC2__11"
+				(name "VCC2_11"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -8984,10 +8984,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -30.48 0)
 				(length 3.81)
-				(name "VCC2__12"
+				(name "VCC2_12"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9002,10 +9002,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -33.02 0)
 				(length 3.81)
-				(name "VCC2__13"
+				(name "VCC2_13"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9020,10 +9020,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -35.56 0)
 				(length 3.81)
-				(name "VCC2__14"
+				(name "VCC2_14"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9038,10 +9038,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -38.1 0)
 				(length 3.81)
-				(name "VCC2__15"
+				(name "VCC2_15"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9056,10 +9056,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 0 180)
 				(length 3.81)
-				(name "VSS_0_1"
+				(name "VSS_01"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9074,10 +9074,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -2.54 180)
 				(length 3.81)
-				(name "VSS_0_2"
+				(name "VSS_02"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9092,10 +9092,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -5.08 180)
 				(length 3.81)
-				(name "VSS_0_3"
+				(name "VSS_03"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9110,10 +9110,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -7.62 180)
 				(length 3.81)
-				(name "VSS_0_4"
+				(name "VSS_04"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9128,10 +9128,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -10.16 180)
 				(length 3.81)
-				(name "VSS_0_5"
+				(name "VSS_05"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9146,10 +9146,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -12.7 180)
 				(length 3.81)
-				(name "VSS_0_6"
+				(name "VSS_06"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9164,10 +9164,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -15.24 180)
 				(length 3.81)
-				(name "VSS_0_7"
+				(name "VSS_07"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9182,10 +9182,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -17.78 180)
 				(length 3.81)
-				(name "VSS_0_8"
+				(name "VSS_08"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9200,10 +9200,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -20.32 180)
 				(length 3.81)
-				(name "VSS_0_9"
+				(name "VSS_09"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9218,10 +9218,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -22.86 180)
 				(length 3.81)
-				(name "VSS_1_0"
+				(name "VSS_10"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9236,10 +9236,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -25.4 180)
 				(length 3.81)
-				(name "VSS_1_1"
+				(name "VSS_11"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9254,10 +9254,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -27.94 180)
 				(length 3.81)
-				(name "VSS_1_2"
+				(name "VSS_12"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9272,10 +9272,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -30.48 180)
 				(length 3.81)
-				(name "VSS_1_3"
+				(name "VSS_13"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9290,10 +9290,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -33.02 180)
 				(length 3.81)
-				(name "VSS_1_4"
+				(name "VSS_14"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9308,10 +9308,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -35.56 180)
 				(length 3.81)
-				(name "VSS_1_5"
+				(name "VSS_15"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9347,10 +9347,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 0 0)
 				(length 3.81)
-				(name "VCC_D_CDC_1"
+				(name "VCC_DCDC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9365,10 +9365,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -2.54 0)
 				(length 3.81)
-				(name "VCC_D_CDC_2"
+				(name "VCC_DCDC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9383,10 +9383,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -5.08 0)
 				(length 3.81)
-				(name "VCC_D_CDC_3"
+				(name "VCC_DCDC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9401,10 +9401,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -7.62 0)
 				(length 3.81)
-				(name "VCC_D_CDC_4"
+				(name "VCC_DCDC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9419,10 +9419,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -10.16 0)
 				(length 3.81)
-				(name "VSS_D_CDC_1"
+				(name "VSS_DCDC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9437,10 +9437,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -12.7 0)
 				(length 3.81)
-				(name "VSS_D_CDC_2"
+				(name "VSS_DCDC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9455,10 +9455,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_out line
 				(at 17.78 0 180)
 				(length 3.81)
-				(name "VLO_1"
+				(name "VLO"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9473,10 +9473,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_out line
 				(at 17.78 -2.54 180)
 				(length 3.81)
-				(name "VLO_2"
+				(name "VLO"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9491,10 +9491,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_out line
 				(at 17.78 -5.08 180)
 				(length 3.81)
-				(name "VLO_3"
+				(name "VLO"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9509,10 +9509,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_out line
 				(at 17.78 -7.62 180)
 				(length 3.81)
-				(name "VLO_4"
+				(name "VLO"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9548,7 +9548,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 0 0)
 				(length 3.81)
 				(name "AVCC0"
@@ -9566,10 +9566,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -2.54 0)
 				(length 3.81)
-				(name "VREF_H"
+				(name "VREFH"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9584,10 +9584,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -17.78 -5.08 0)
 				(length 3.81)
-				(name "VREF_H0"
+				(name "VREFH0"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -9602,7 +9602,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 0 180)
 				(length 3.81)
 				(name "AVSS0"
@@ -9620,7 +9620,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -2.54 180)
 				(length 3.81)
 				(name "VREFL"
@@ -9638,10 +9638,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at 17.78 -5.08 180)
 				(length 3.81)
-				(name "VREFL_0"
+				(name "VREFL0"
 					(effects
 						(font
 							(size 1.27 1.27)
