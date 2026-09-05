@@ -11,6 +11,184 @@
 		(company "RA8P1 e-reader")
 	)
 	(lib_symbols
+		(symbol "Device:C_Polarized_Small"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0.254)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "C"
+				(at 0.254 1.778 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "C_Polarized_Small"
+				(at 0.254 -2.032 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Polarized capacitor, small symbol"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "cap capacitor"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "CP_*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "C_Polarized_Small_0_1"
+				(rectangle
+					(start -1.524 0.6858)
+					(end 1.524 0.3048)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(rectangle
+					(start -1.524 -0.3048)
+					(end 1.524 -0.6858)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type outline)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.27 1.524) (xy -0.762 1.524)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.016 1.27) (xy -1.016 1.778)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "C_Polarized_Small_1_1"
+				(pin passive line
+					(at 0 2.54 270)
+					(length 1.8542)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -2.54 90)
+					(length 1.8542)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Device:C_Small"
 			(pin_numbers
 				(hide yes)
@@ -6217,11 +6395,28 @@
 		)
 		(uuid "c7265f71-c8c8-43f9-998f-1d6b33f530d1")
 	)
+	(text "USB-003: USB-HS supply / U1.H15, C41, C42\nRenesas QDG Table 1 p.6: 10 nF ceramic + 47 uF electrolytic.\nC41 = 10*(1+/-0.10) = 9..11 nF initial; 50 V X7R.\nTDK nominal bias model: C41(3.3 V) = 10.084 nF (not guaranteed).\nC42 = 47*(1+/-0.20) = 37.6..56.4 uF initial; 6.3 V.\nVoltage screening: 3.6/6.3*100 = 57.14% rating, not rail sign-off.\nC42 positive to 3V3, negative to GND; no reverse voltage.\nC41 close to H15; short returns to VSS1/VSS2_USBHS.\nFull math + Python / qualification: ../design/usb_interface.md"
+		(exclude_from_sim no)
+		(at 292.1 238.76 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/usb_interface.md#usb-003-high-speed-digital-supply-bypass-and-bulk-capacitance")
+		)
+		(uuid "e1944758-a8ef-4e3a-9f4a-c5179715e4dd")
+	)
 	(junction
 		(at 20.32 220.98)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "43657015-02bd-4df0-b430-30b93e3f9350")
+	)
+	(junction
+		(at 266.7 213.36)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "6cc935ff-bd3c-490d-bba2-1b26289f7713")
 	)
 	(junction
 		(at 91.44 195.58)
@@ -6234,6 +6429,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "eead6827-d2ab-47be-8eb9-f2fd2e45c71c")
+	)
+	(junction
+		(at 266.7 190.5)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "f827aecd-d497-4355-860d-f80cdec74232")
 	)
 	(no_connect
 		(at 81.28 213.36)
@@ -6295,6 +6496,16 @@
 	)
 	(wire
 		(pts
+			(xy 266.7 213.36) (xy 304.8 213.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "33f6ac8d-f27e-464e-b015-56cbcdb32675")
+	)
+	(wire
+		(pts
 			(xy 20.32 215.9) (xy 30.48 215.9)
 		)
 		(stroke
@@ -6312,6 +6523,16 @@
 			(type default)
 		)
 		(uuid "67fcdf07-d9ed-46de-807c-0426628da5b2")
+	)
+	(wire
+		(pts
+			(xy 304.8 205.74) (xy 304.8 213.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "977d2e8a-0aa7-483c-a5b6-bea741cf45c2")
 	)
 	(wire
 		(pts
@@ -6352,6 +6573,16 @@
 			(type default)
 		)
 		(uuid "adc38c50-ef63-43cf-802d-d46fc579b89e")
+	)
+	(wire
+		(pts
+			(xy 266.7 190.5) (xy 304.8 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b5631a9e-9dba-4253-9d4f-d12e56fde4a0")
 	)
 	(wire
 		(pts
@@ -6405,6 +6636,26 @@
 	)
 	(wire
 		(pts
+			(xy 304.8 200.66) (xy 304.8 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "de7fddde-1a0a-494a-891a-79655d0028ec")
+	)
+	(wire
+		(pts
+			(xy 266.7 190.5) (xy 266.7 200.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e4323170-783f-4744-9ea1-0ff32e2ee9f2")
+	)
+	(wire
+		(pts
 			(xy 127 200.66) (xy 127 205.74)
 		)
 		(stroke
@@ -6412,6 +6663,16 @@
 			(type default)
 		)
 		(uuid "e73cda6a-a314-4dd0-add2-a9bdf723f1e2")
+	)
+	(wire
+		(pts
+			(xy 266.7 205.74) (xy 266.7 213.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ff99d955-93fd-4f1b-8949-00e5fcec8962")
 	)
 	(label "USBHS_RREF"
 		(at 127 200.66 0)
@@ -8636,6 +8897,85 @@
 		)
 	)
 	(symbol
+		(lib_id "power:+3V3")
+		(at 30.48 213.36 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "29ff8f1d-f49a-455b-a716-e5c3476608b9")
+		(property "Reference" "#PWR044"
+			(at 34.29 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3V3_MCU"
+			(at 26.67 213.3599 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 30.48 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 30.48 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 30.48 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "1d1d1ae3-43de-46dd-a54c-00960872b63c")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
+					(reference "#PWR044")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:R")
 		(at 127 209.55 0)
 		(unit 1)
@@ -8789,6 +9129,165 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
 					(reference "R6")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 266.7 203.2 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "44353e6f-bdec-4269-81ed-10763333619d")
+		(property "Reference" "C41"
+			(at 269.24 201.9362 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10n"
+			(at 269.24 204.4762 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 266.7 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H103K080AA"
+			(at 266.7 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "10 nF USB-HS VCC_USBHS local bypass, U1.H15 to VSS1/VSS2_USBHS. Renesas QDG Table 1 p.6; see USB-003 in design/usb_interface.md."
+			(at 266.7 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-1311-1-ND"
+			(at 266.7 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/C1608X7R1H103K080AA/567691"
+			(at 266.7 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 266.7 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H103K080AA"
+			(at 266.7 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
+			(at 266.7 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "Renesas QDG Table 1 p.6: 10 nF ceramic at U1.H15. 50 V X7R +/-10%; initial 9..11 nF. USB-003."
+			(at 266.7 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 512826 stock, 24 weeks; USD 1:0.10, 10:0.055, 100:0.0323."
+			(at 266.7 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "09754f02-98fc-4589-9998-ec0fc562065a")
+		)
+		(pin "2"
+			(uuid "bb139ad5-451d-4eb8-9272-42fb33f06f65")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
+					(reference "C41")
 					(unit 1)
 				)
 			)
@@ -12296,6 +12795,165 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:C_Polarized_Small")
+		(at 304.8 203.2 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "a62f87e3-031d-45f3-b13e-8c675c4a04b9")
+		(property "Reference" "C42"
+			(at 307.34 201.3838 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "47u 6.3V"
+			(at 307.34 203.9238 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 304.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://industrial.panasonic.com/ww/products/pt/aluminum-cap-smd/models/EEEFP0J470AR"
+			(at 304.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "47 uF +/-20% polarized aluminum electrolytic, USB-HS bulk bypass. Positive to 3V3, negative to GND. Panasonic EEE-FP0J470AR; USB-003."
+			(at 304.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "PCE4511CT-ND"
+			(at 304.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/panasonic-industry/EEE-FP0J470AR/1701010"
+			(at 304.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Panasonic Industry"
+			(at 304.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "EEE-FP0J470AR"
+			(at 304.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - initial bulk bypass; final rail, ripple and lifetime qualification open"
+			(at 304.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "USB-003; Renesas QDG Table 1 p.6: 47 uF electrolytic VCC_USBHS bypass. 6.3 V +/-20%, 0.36 ohm max ESR at 100 kHz/20 C; 240 mArms at 100 kHz/105 C."
+			(at 304.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05: DigiKey Active, 11266 stock, 37 weeks; USD 1:0.65, 10:0.408, 100:0.2699."
+			(at 304.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "c46061dd-76cd-484c-8638-b8348f4ef141")
+		)
+		(pin "2"
+			(uuid "ebdc334a-2da7-4159-ad5b-b483ff146671")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
+					(reference "C42")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 91.44 220.98 0)
 		(unit 1)
@@ -13508,6 +14166,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
 					(reference "#PWR038")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3V3")
+		(at 266.7 190.5 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "c1440d1f-ed6f-4388-b216-f501d76defc4")
+		(property "Reference" "#PWR042"
+			(at 266.7 194.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3V3_MCU"
+			(at 266.7 185.42 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 266.7 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 266.7 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 266.7 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "51078f1b-0eda-42a0-9eb3-86b0e5f584e2")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
+					(reference "#PWR042")
 					(unit 1)
 				)
 			)
@@ -16026,6 +16762,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
 					(reference "#PWR041")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 266.7 213.36 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "ea8ab556-4356-4d6f-8af5-ca8c5c9da5bc")
+		(property "Reference" "#PWR043"
+			(at 266.7 219.71 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 266.7 218.44 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 266.7 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 266.7 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 266.7 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "64ddf481-39ce-4d4e-810b-2b27285e8a3b")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
+					(reference "#PWR043")
 					(unit 1)
 				)
 			)
