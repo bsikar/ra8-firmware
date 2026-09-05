@@ -28,8 +28,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
-    assigned_rows: 55
-    rows_sha256: de31eb391c91f9f4be26610e24da33ae35bb6b46d08f88b94113810560f47aa6
+    assigned_rows: 53
+    rows_sha256: dc686ba960375490a83288f91da94a9f66a9f0a167483ce5a33d5081ed9b68d1
     partition: "remaining concern rows: ansible/clang-tidy/python/cmake cross-review"
     evidence:
       - "issue-790 batch-b cross-review record"
@@ -86,7 +86,7 @@ batches:
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
     assigned_rows: 784
-    rows_sha256: 5e1f02e9ddf5834a2cfa0a641532ab4f6616af5fa3cc6eaab8b4bf3a39e6a693
+    rows_sha256: a9e54247b84dbacce69655d4e71a22a1aac69d262aa61a0b12b43a7b86ec4fd9
     partition: "wave D: every remaining non-baseline occurrence reviewed by family"
     evidence:
       - "issue-790 wave-D family review record"
@@ -122,7 +122,7 @@ batches:
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
     assigned_rows: 4187
-    rows_sha256: 0ee3c1306a7f267a310c4664217adde401118ddc289428338d1d9a4ce0355ee3
+    rows_sha256: b22e907b42322aac9cf2c1cda56c51595cbd1cdea1acff0a4d15d1b4fa545676
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
@@ -264,7 +264,7 @@ batches:
     date: 2026-08-31
     identity_schema: 2-durable-site-identity
     assigned_rows: 162
-    rows_sha256: 7e2231ba1397fdd64a84047cc569ce14fbe3552d50098e866ff465c33b290922
+    rows_sha256: 2806edd012ad50660f1975888ba7ad9b0efdf04309467f1e057b1d4009aedee7
     partition: >-
       Final runtime suppression governance: authenticated checker census expansion,
       extracted HIL and devcontainer selftest controls, and complete lineage closure.
@@ -353,8 +353,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-08-31
     identity_schema: 2-durable-site-identity
-    assigned_rows: 5
-    rows_sha256: bbdacf1a32de78f5384fd5e20ece8015dfeb24284f41762c513443e6f7c8d465
+    assigned_rows: 4
+    rows_sha256: 796ca7a09600cc8c222dfeea9f998ecb95637d6982354d2db3a91335efc3d62f
     partition: >-
       ARC credential convergence: target-side Secret presence probing,
       value-free controller validation, and exact lineage preservation.
@@ -403,7 +403,7 @@ batches:
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
     assigned_rows: 124
-    rows_sha256: ca4eb8579ee1e78325b83750b126d7541ba208da206139ad6a446a12bdbc7321
+    rows_sha256: 8be34bb712faa64d9094a5dfa1de30bc90a6e78a6e0bbdd5adac0f468ceb406c
     partition: >-
       HIL size-cap split reconciliation: three new bound-exit raw-byte
       authorities, two changed raw-byte pins, one moved negative-fixture
@@ -439,8 +439,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-09-03
     identity_schema: 2-durable-site-identity
-    assigned_rows: 61
-    rows_sha256: aa837ecb131b1ae8e1b66ee482ddba9885bacdefecc75125e31d6e991aecba1b
+    assigned_rows: 59
+    rows_sha256: 52e0b7c4bd759ea2302f85e79a4b8b02b79091cb21fa98735a46eb262836b76b
     partition: >-
       Continuous runner reconciliation and inherited runner-admission closure:
       exact Ansible probe controls, fixed-argv subprocess diagnostics,
@@ -471,7 +471,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: d50b00665db104b1249425bd78441039640204fe12850ffd80c3a760c25a4af5
+    rows_sha256: c07a19173a9bda2c9d83efd06e83ccd305ef8cc7ba1862b4af5e86869af885aa
     partition: >-
       Runner reconciliation round-two authority refresh: the independently
       recomputed devcontainer image raw-byte pin and both full-worktree
@@ -530,7 +530,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 17
-    rows_sha256: bb14f30b0167d0d9722a81331161d70603cb64a55202761c708be28f0381576c
+    rows_sha256: fda38dd975f77c8bc0e6ee89300f240399b17619eb56dcfcf815d7f3f47c9c02
     partition: >-
       Round4 checker split: three exact fleet path authorities, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -554,7 +554,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 26
-    rows_sha256: 41fdf8ede6059a987a9d168e9022ca29ed2f240111b811f9342279fd9431fe60
+    rows_sha256: dd981dfc3965bb0a80d16fa981509a559d7440c0d845e0256e15ffb8c7548363
     partition: >-
       Round5 ARC checker split: one exact selftest path authority, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -577,8 +577,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-09-05
     identity_schema: 2-durable-site-identity
-    assigned_rows: 14
-    rows_sha256: e293a4bcddd421a896d2b66f9fbb85c1de42b325da9fa448e36b0b32cf18ea0b
+    assigned_rows: 8
+    rows_sha256: 41a124519de91798cf43b4e7166e4152c9a25181e993b337e64710271514b903
     partition: >-
       Live K3s, TrueNAS dev-slice, and WSL convergence controls after successful
       deployment, including exact readbacks and repair/assertion consumers.
@@ -598,3 +598,23 @@ batches:
         253831d91b5edb8cc84bce46f2836daa337aef53163c367437a9d987047aae6f,
         reason 57b25e3cd5690f0e6b90be422fe1fedc6df168481a4b02ccd17f8e0f7781c7b7,
         classification ad61deedcc8b442e7d8a361f33e3db25b639a5462ec4806f82546a14a658bd0c.
+  - id: runner-reconcile-storage-clock-20260905
+    authority: repository-suppression-review
+    date: 2026-09-05
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 36
+    rows_sha256: fe7a58ea9bde180c821f0079e8eaf6d09546ce164ed941722eb9342aaf5aa81b
+    partition: >-
+      Final runner storage, WSL clock, and lifecycle authority reconciliation.
+    evidence:
+      - >-
+        Two consecutive deployed fleet reconciliations completed successfully;
+        K3s, TrueNAS, and WSL retain only their current managed runner images.
+      - >-
+        WSL direct apply and exact check completed with changed=0 after offline
+        ext4 repair, VHD compaction, chrony readiness, and keep-alive recovery.
+      - >-
+        Checker census is exactly 1014 authorities and 3787 values, with value
+        digest 646fa2a73ef0e939da82f16fcbdd333d1f635590d14a131aec758fad72cd03c8,
+        reason digest fd483f46eacb51fa215eb48082e00f74315cea59f99bd028a849d9edb65f7bdb,
+        and classification 1de8ef8ba500b219f25f530651f2e9c332a3e308e1d3c0952bdc33292731ee35.

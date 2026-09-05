@@ -203,6 +203,8 @@ def _part4_selftest_fixtures() -> tuple[tuple[str, tuple[str, ...]], ...]:
                 """
                     checks/check_bench_lock.py:_FIRE_PRIVILEGED_HELPER
                     checks/check_bench_lock.py:_QUIET_PRIVILEGED_HELPER
+                    checks/check_ci_image_single_builder.py:GOOD_DOCKER_CLEANUP
+                    checks/check_ci_image_single_builder.py:GOOD_RUNNER_CLEANUP
                     checks/check_hil_rig_contract.py:FAKE_HARNESS
                     checks/check_hil_rig_contract.py:FAKE_INVALID
                     checks/check_hil_rig_contract.py:FAKE_VALID

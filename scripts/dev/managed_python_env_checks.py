@@ -133,9 +133,11 @@ def _dockerfile_receipt_contract() -> tuple[str, str, str]:
         "--lock /opt/ra8-python-project/uv.lock --group ci"
     )
     verify = f"{authority} verify {devcontainer_inputs}"
+    runtime_probe = '"${PYTHON_TOOL_VENV}/bin/python3" -c "import PIL.Image"'
+    receipt = f"{authority} write {devcontainer_inputs} && {verify} && {runtime_probe} && {verify}"
     marker = "printf '%s\\n' 'localhost/ra8-ci-runner (infra/images/runner/Dockerfile)'"
     runner_verify = f"{marker} > /etc/ra8-ci-runner && {authority} verify {runner_inputs}"
-    return cleanup, f"{authority} write {devcontainer_inputs} && {verify}", runner_verify
+    return cleanup, receipt, runner_verify
 
 
 def _receipt_root_user(instructions: tuple[tuple[str, str], ...], end: int) -> str:
@@ -154,6 +156,8 @@ def dockerfile_receipt_findings(source: str) -> list[str]:
     cleanup, receipt, _ = _dockerfile_receipt_contract()
     instructions = _dockerfile_instructions(source)
     managed_environment = (
+        'PYTHONDONTWRITEBYTECODE="1" '
+        'PYTHONNOUSERSITE="1" '
         'RA8_TOOL_VENV="${PYTHON_TOOL_VENV}" '
         'RA8_UV_CACHE_ROOT="/opt/ra8-uv-cache" '
         'VIRTUAL_ENV="${PYTHON_TOOL_VENV}" '
@@ -295,8 +299,9 @@ def _dockerfile_receipt_contract_selftest(dockerfile: Path, good: str) -> list[s
     """Return failures from independent hostile Docker receipt mutations."""
     cleanup, receipt, _ = _dockerfile_receipt_contract()
     managed_environment = next(
-        line for line in good.splitlines() if line.startswith("ENV RA8_TOOL_VENV=")
+        line for line in good.splitlines() if line.startswith("ENV PYTHONDONTWRITEBYTECODE=")
     )
+    runtime_probe = '"${PYTHON_TOOL_VENV}/bin/python3" -c "import PIL.Image"'
     mutations = (
         (f"RUN {receipt}\n", "RUN true\n", "a deleted receipt step"),
         (
@@ -305,6 +310,8 @@ def _dockerfile_receipt_contract_selftest(dockerfile: Path, good: str) -> list[s
             "a receipt moved before transient-lock cleanup",
         ),
         ("--group ci", "--group dev", "a weakened dependency-group binding"),
+        (runtime_probe, "true", "a deleted bytecode-stability runtime import"),
+        ('PYTHONDONTWRITEBYTECODE="1"', 'PYTHONDONTWRITEBYTECODE="0"', "bytecode enabled"),
         (
             'RA8_TOOL_VENV="${PYTHON_TOOL_VENV}"',
             'RA8_TOOL_VENV=""',
@@ -413,7 +420,9 @@ def consumer_contract_selftest() -> list[str]:
             path.write_text("\n".join(grouped[label]) + "\n", encoding="ascii")
         cleanup, receipt, verify = _dockerfile_receipt_contract()
         managed_environment = (
-            'ENV RA8_TOOL_VENV="${PYTHON_TOOL_VENV}" '
+            'ENV PYTHONDONTWRITEBYTECODE="1" '
+            'PYTHONNOUSERSITE="1" '
+            'RA8_TOOL_VENV="${PYTHON_TOOL_VENV}" '
             'RA8_UV_CACHE_ROOT="/opt/ra8-uv-cache" '
             'VIRTUAL_ENV="${PYTHON_TOOL_VENV}" '
             'UV_PYTHON_DOWNLOADS="never" '

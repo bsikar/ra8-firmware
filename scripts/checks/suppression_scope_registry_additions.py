@@ -22,6 +22,8 @@ def _positive_scope_literal_1_p1() -> tuple[str, ...]:
         checks/check_chapter_map_freshness.py:ARTEFACT
         checks/check_chapter_map_freshness.py:GENERATOR
         checks/check_chapter_map_freshness.py:SOURCE_PDF
+        checks/check_ci_image_single_builder.py:CAPACITY_HELPER
+        checks/check_ci_image_single_builder.py:DOCKER_RUNNER_DEPLOY
         checks/check_hil_privilege_boundary.py:CALLER_PATHS
         checks/check_hil_privilege_boundary.py:HELPER_REL
         checks/check_hil_privilege_boundary.py:MANIFEST_REL
@@ -152,6 +154,8 @@ def _allowed_token_literal_4_p1() -> tuple[str, ...]:
         checks/check_justfiles.py:NATIVE_FAST_COMMAND
         checks/check_justfiles.py:NATIVE_FAST_RECIPE_RE
         checks/check_python_lock_policy.py:INTERPRETER_IMPORT_ROOTS
+        checks/runner_image_cleanup_policy.py:MANAGED_IMAGE_KIND
+        checks/runner_image_cleanup_policy.py:MANAGED_IMAGE_LABEL
         checks/check_shell_just_invocations.py:PROTECTED_REASON
         checks/check_shell_just_invocations.py:PROTECTED_SHEBANG
         checks/markdown_reference_policy.py:COMPONENT_RELATIVE_PREFIXES
