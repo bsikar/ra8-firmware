@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Library / Home — E-Ink Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400;1,7..72,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+/* ===================== DESK / SHEET CHROME ===================== */
+body { background: var(--g13); }
+.sheet { padding: 48px 56px 72px; }
+
+.sheet-head {
+  background: var(--ink); color: var(--paper);
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 32px; margin-bottom: 48px;
+}
+.sheet-head .h-l { font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
+.sheet-head .h-r {
+  font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.14em;
+  color: var(--g12); text-transform: uppercase;
+}
+
+.stage { display: flex; gap: 72px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.frame-col { display: flex; flex-direction: column; align-items: center; }
+.frame-label {
+  font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--ink); margin-bottom: 4px; font-weight: 600;
+}
+.frame-sub {
+  font-family: var(--font-mono); font-size: 12.5px; letter-spacing: 0.03em;
+  color: var(--ink-muted); margin-bottom: 22px;
+}
+.frame-spec {
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
+  color: var(--ink-muted); margin-top: 24px; max-width: 1072px; letter-spacing: 0.02em;
+}
+.frame-spec b { color: var(--ink); font-weight: 600; }
+
+/* ===================== DEVICE ===================== */
+.device {
+  position: relative;
+  background: #0c0c0c;
+  border-radius: 46px;
+  padding: 28px;
+}
+.device .pgbtn {
+  position: absolute; right: -5px; width: 5px; height: 132px;
+  background: #1c1c1c; border-radius: 0 4px 4px 0;
+}
+.device .pgbtn.up { top: 420px; }
+.device .pgbtn.dn { top: 620px; }
+.device .brand {
+  position: absolute; bottom: 7px; left: 0; right: 0; text-align: center;
+  font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.42em;
+  color: #3a3a3a; font-weight: 600;
+}
+.screen {
+  width: 1072px; height: 1448px;
+  background: var(--paper);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  position: relative;
+}
+
+/* ===================== STATUS BAR ===================== */
+.statusbar {
+  height: 64px; flex: 0 0 auto;
+  display: flex; align-items: center; padding: 0 40px;
+  border-bottom: 1px solid var(--rule);
+}
+.statusbar .sb-name { font-size: 24px; font-weight: 600; }
+.statusbar .sb-right { margin-left: auto; display: flex; align-items: center; gap: 18px; }
+.statusbar .sb-clock { font-size: 18px; font-family: var(--font-mono); letter-spacing: 0.04em; }
+.statusbar .sb-batt { font-size: 18px; display: flex; align-items: center; gap: 8px; }
+
+/* ===================== TOOLBAR ===================== */
+.toolbar { display: flex; gap: 20px; padding: 28px 40px 0; align-items: stretch; flex: 0 0 auto; }
+.search {
+  flex: 1; height: 80px; border: 2px solid var(--ink);
+  display: flex; align-items: center; gap: 16px; padding: 0 24px;
+}
+.search .ph { font-size: 24px; color: var(--ink-muted); }
+.sort {
+  height: 80px; border: 2px solid var(--ink);
+  display: flex; align-items: center; gap: 14px; padding: 0 26px;
+  font-size: 22px; font-weight: 500;
+}
+.count {
+  flex: 0 0 auto; padding: 16px 40px 0;
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.count .c-n { font-size: 18px; color: var(--ink-muted); font-family: var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.count .c-tabs { display: flex; gap: 0; border: 2px solid var(--ink); }
+.count .c-tabs span { font-size: 18px; padding: 8px 18px; border-right: 2px solid var(--ink); }
+.count .c-tabs span:last-child { border-right: 0; }
+.count .c-tabs span.on { background: var(--ink); color: var(--paper); }
+
+/* clip region = the page */
+.content { flex: 1; overflow: hidden; }
+
+/* ===================== GRID ===================== */
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 36px 32px; padding: 28px 40px 0; align-content: start; }
+.tile .cover { width: 100%; }
+.t-title {
+  font-size: 24px; font-weight: 600; line-height: 1.16; margin-top: 16px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.t-author { font-size: 18px; color: var(--ink-muted); margin-top: 5px; }
+.bar { height: 6px; background: var(--fill); border: 1px solid var(--g10); margin-top: 14px; }
+.bar > i { display: block; height: 100%; background: var(--ink); }
+.bar.done { background: var(--ink); border-color: var(--ink); }
+
+/* ===================== COVERS ===================== */
+.cv {
+  width: 100%; aspect-ratio: 480 / 600;
+  border: 1px solid var(--ink); position: relative; overflow: hidden; display: flex;
+}
+.cv .ct { font-family: var(--font-read); font-weight: 600; line-height: 1.04; }
+.cv .ca { font-family: var(--font-read); }
+
+/* A — knockout plate, bottom-left, mid dither */
+.cv--A { align-items: flex-end; }
+.cv--A .plate { background: var(--paper); margin: 22px; padding: 14px 16px 16px; max-width: 84%; }
+.cv--A .ct { font-size: 38px; color: var(--ink); }
+.cv--A .ca { font-size: 21px; color: var(--ink); margin-top: 9px; }
+
+/* B — inverted band top */
+.cv--B { flex-direction: column; justify-content: space-between; }
+.cv--B .band { background: var(--ink); padding: 26px 22px; }
+.cv--B .band .ct { font-size: 40px; color: var(--paper); }
+.cv--B .ca { font-size: 21px; color: var(--ink); background: var(--paper); align-self: flex-start; margin: 0 0 26px 22px; padding: 6px 12px; }
+
+/* C — flat fill, centered, printed frame */
+.cv--C { background: var(--fill); align-items: center; justify-content: center; }
+.cv--C .frame { border: 2px solid var(--ink); margin: 26px; padding: 34px 26px; text-align: center; width: calc(100% - 52px); }
+.cv--C .ct { font-size: 36px; color: var(--ink); }
+.cv--C .hr { height: 2px; width: 56px; background: var(--ink); margin: 20px auto; }
+.cv--C .ca { font-size: 21px; font-style: italic; color: var(--ink); }
+
+/* D — dark dither, white title */
+.cv--D { align-items: flex-end; }
+.cv--D .plate2 { margin: 24px; }
+.cv--D .ct { font-size: 40px; color: var(--paper); }
+.cv--D .ca { font-size: 21px; color: var(--paper); margin-top: 10px; }
+
+/* ===================== LIST ===================== */
+.row {
+  display: flex; align-items: center; gap: 26px;
+  padding: 0 40px; height: 132px; border-bottom: 1px solid var(--rule);
+}
+.thumb { width: 84px; height: 112px; border: 1px solid var(--ink); flex: 0 0 auto; }
+.r-main { flex: 1; min-width: 0; }
+.r-title { font-size: 28px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r-author { font-size: 18px; color: var(--ink-muted); margin-top: 3px; }
+.r-bar { height: 5px; width: 300px; max-width: 60%; background: var(--fill); border: 1px solid var(--g10); margin-top: 13px; }
+.r-bar > i { display: block; height: 100%; background: var(--ink); }
+.r-bar.done { background: var(--ink); border-color: var(--ink); }
+.r-meta { flex: 0 0 auto; text-align: right; min-width: 132px; }
+.r-pct { font-size: 24px; font-family: var(--font-mono); font-weight: 600; }
+.r-pct.fin { font-size: 18px; }
+.r-time { font-size: 18px; color: var(--ink-muted); margin-top: 7px; white-space: nowrap; }
+
+/* ===================== BOTTOM NAV ===================== */
+.bottomnav {
+  height: 112px; flex: 0 0 auto;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 2px solid var(--ink);
+}
+.navitem { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.navitem .nlab { font-size: 18px; }
+.navitem--active { background: var(--ink); color: var(--paper); }
+
+/* ===================== VIEW TOGGLE (grid / list) ===================== */
+.viewtog { display: flex; height: 80px; flex: 0 0 auto; border: 2px solid var(--ink); }
+.viewtog .vt { width: 78px; display: flex; align-items: center; justify-content: center; border-right: 2px solid var(--ink); color: var(--ink); }
+.viewtog .vt:last-child { border-right: 0; }
+.viewtog .vt svg { width: 32px; height: 32px; }
+.viewtog .vt--active { background: var(--ink); color: var(--paper); }
+
+/* ===================== COVER-ART PLACEHOLDER ===================== */
+.hatch {
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M-1 1 L1 -1 M0 8 L8 0 M7 9 L9 7' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: 8px 8px;
+}
+.cv--art { align-items: center; justify-content: center; }
+.art-mark { background: var(--paper); border: 2px solid var(--ink); padding: 22px 26px; text-align: center; max-width: 80%; }
+.art-mark .art-ic { color: var(--ink); display: flex; justify-content: center; }
+.art-mark .art-ic svg { width: 74px; height: 60px; }
+.art-mark .art-tag { display: block; font-family: var(--font-mono); font-size: 17px; letter-spacing: 0.16em; margin-top: 13px; color: var(--ink); }
+.thumb--art { display: flex; align-items: center; justify-content: center; color: var(--ink); }
+.thumb--art svg { width: 42px; height: 34px; }
+
+/* ===================== STATUS-BAR SYNC INDICATOR ===================== */
+.sb-sync { display: flex; align-items: center; color: var(--ink); }
+.sb-sync svg { width: 25px; height: 25px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="sheet-head">
+    <div class="h-l">Library / Home</div>
+    <div class="h-r">Screen 01 · Grid + List · 1448 × 1072</div>
+  </header>
+
+  <div class="stage">
+    <!-- ================= GRID ================= -->
+    <div class="frame-col">
+      <div class="frame-label">Grid view</div>
+      <div class="frame-sub">covers forward · default home</div>
+      <div class="device">
+        <div class="pgbtn up"></div><div class="pgbtn dn"></div>
+        <div class="brand">PAPYR</div>
+        <div class="screen" id="screen-grid">
+          <div class="statusbar">
+            <span class="sb-name">Library</span>
+            <span class="sb-right">
+              <span class="sb-clock">9:41</span>
+              <svg viewBox="0 0 24 24" style="width:26px;height:24px"><path d="M2 8.5C7.5 3.5 16.5 3.5 22 8.5" fill="none" stroke="#000" stroke-width="2.4"/><path d="M5.5 12.5C9 9.3 15 9.3 18.5 12.5" fill="none" stroke="#000" stroke-width="2.4"/><path d="M9 16.5C10.7 15 13.3 15 15 16.5" fill="none" stroke="#000" stroke-width="2.4"/><circle cx="12" cy="19.5" r="1.7" fill="#000"/></svg>
+              <span class="sb-batt"><svg viewBox="0 0 36 20" style="width:40px;height:22px"><rect x="1" y="2" width="30" height="16" fill="none" stroke="#000" stroke-width="2"/><rect x="33" y="6.5" width="3" height="7" fill="#000"/><rect x="4" y="5" width="18" height="10" fill="#000"/></svg>82%</span>
+            </span>
+          </div>
+          <div class="toolbar">
+            <div class="search">
+              <svg viewBox="0 0 24 24" style="width:28px;height:28px" fill="none" stroke="#555" stroke-width="2.4"><circle cx="10.5" cy="10.5" r="7"/><line x1="15.6" y1="15.6" x2="21" y2="21" stroke-linecap="round"/></svg>
+              <span class="ph">Search title or author</span>
+            </div>
+            <div class="sort">
+              <svg viewBox="0 0 24 24" style="width:26px;height:26px" stroke="#000" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="15" y2="12"/><line x1="4" y1="17" x2="10" y2="17"/></svg>
+              Recent
+            </div>
+          </div>
+          <div class="count">
+            <span class="c-n">24 books</span>
+            <span class="c-tabs"><span class="on">All</span><span>Reading</span><span>Finished</span></span>
+          </div>
+          <div class="content"><div class="grid" id="grid"></div></div>
+          <nav class="bottomnav" id="nav-a"></nav>
+        </div>
+      </div>
+      <div class="frame-spec">
+        2-col grid · tile <b>480px</b>, gutter <b>--s4 32</b>, margin <b>--margin-ui 40</b>. Cover tone = <b>1-bit dither</b>, title typeset on white knockout. Under-cover title <b>--t-md</b>, author <b>--t-sm muted</b>, progress = <b>--fill</b> track + <b>--ink</b> fill. Row 2 peeks above the nav — the library paginates with the page-turn buttons, it does not smooth-scroll.
+      </div>
+    </div>
+
+    <!-- ================= LIST ================= -->
+    <div class="frame-col">
+      <div class="frame-label">List view</div>
+      <div class="frame-sub">denser · more books per page</div>
+      <div class="device">
+        <div class="pgbtn up"></div><div class="pgbtn dn"></div>
+        <div class="brand">PAPYR</div>
+        <div class="screen" id="screen-list">
+          <div class="statusbar">
+            <span class="sb-name">Library</span>
+            <span class="sb-right">
+              <span class="sb-clock">9:41</span>
+              <svg viewBox="0 0 24 24" style="width:26px;height:24px"><path d="M2 8.5C7.5 3.5 16.5 3.5 22 8.5" fill="none" stroke="#000" stroke-width="2.4"/><path d="M5.5 12.5C9 9.3 15 9.3 18.5 12.5" fill="none" stroke="#000" stroke-width="2.4"/><path d="M9 16.5C10.7 15 13.3 15 15 16.5" fill="none" stroke="#000" stroke-width="2.4"/><circle cx="12" cy="19.5" r="1.7" fill="#000"/></svg>
+              <span class="sb-batt"><svg viewBox="0 0 36 20" style="width:40px;height:22px"><rect x="1" y="2" width="30" height="16" fill="none" stroke="#000" stroke-width="2"/><rect x="33" y="6.5" width="3" height="7" fill="#000"/><rect x="4" y="5" width="18" height="10" fill="#000"/></svg>82%</span>
+            </span>
+          </div>
+          <div class="toolbar">
+            <div class="search">
+              <svg viewBox="0 0 24 24" style="width:28px;height:28px" fill="none" stroke="#555" stroke-width="2.4"><circle cx="10.5" cy="10.5" r="7"/><line x1="15.6" y1="15.6" x2="21" y2="21" stroke-linecap="round"/></svg>
+              <span class="ph">Search title or author</span>
+            </div>
+            <div class="sort">
+              <svg viewBox="0 0 24 24" style="width:26px;height:26px" stroke="#000" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="15" y2="12"/><line x1="4" y1="17" x2="10" y2="17"/></svg>
+              Recent
+            </div>
+          </div>
+          <div class="count">
+            <span class="c-n">24 books</span>
+            <span class="c-tabs"><span class="on">All</span><span>Reading</span><span>Finished</span></span>
+          </div>
+          <div class="content"><div class="list" id="list"></div></div>
+          <nav class="bottomnav" id="nav-b"></nav>
+        </div>
+      </div>
+      <div class="frame-spec">
+        Row <b>132px</b> (touch ≥ 64). Thumb <b>84 × 112</b>, title <b>--t-lg</b>, author <b>--t-sm muted</b>, inline progress bar + <b>%</b> and last-read at right. Rows divided by <b>--rule</b> hairlines, not boxes. Same chrome as grid; only the body changes — fits <b>8</b> books per page vs 4.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="tweaks-root"></div>
+
+<script>
+  // ---- one shared book list drives both views -------------------------
+  var books = [
+    { title: "The Lighthouse at the Edge of Tide", author: "Marguerite Hale", pct: 64, time: "2h ago",  style: "A", dither: "dither-50" },
+    { title: "A Field Guide to Quiet Weather",     author: "Tomas Reyes",      pct: 12, time: "Yesterday", style: "B", dither: "dither-25" },
+    { title: "The Cartographer's Apology",         author: "Niall Brennan",    pct: 89, time: "3d ago",  style: "C", dither: "" },
+    { title: "Salt and the Long Year",             author: "Edith Mwangi",     pct: 41, time: "5d ago",  style: "D", dither: "dither-75" },
+    { title: "Notes Toward a Theory of Rooms",     author: "Petra Vasquez",    pct: 5,  time: "1w ago",  style: "A", dither: "dither-25" },
+    { title: "The Hours Before Harvest",           author: "Johan Skye",       pct: 100,time: "2w ago",  style: "C", dither: "" },
+    { title: "Tin Letters from the Coast",         author: "Aoife Donnelly",   pct: 33, time: "3w ago",  style: "B", dither: "dither-50" },
+    { title: "Of Tide and Tinder",                 author: "Rosa Iturbe",      pct: 77, time: "1mo ago", style: "D", dither: "dither-75" }
+  ];
+
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // image-placeholder glyph used by Cover-art mode
+  var IMG_GLYPH = '<svg viewBox="0 0 48 40" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><rect x="2.5" y="2.5" width="43" height="35"/><circle cx="14" cy="13.5" r="3.8"/><path d="M5 35 L19 21 L29 30 L37 22.5 L45 29.5"/></svg>';
+
+  // ---- COVERS: typeset (default) vs cover-art placeholder --------------
+  function coverHTML(b, mode){
+    if (mode === 'art')
+      return '<div class="cv cv--art hatch"><div class="art-mark"><div class="art-ic">'+IMG_GLYPH+'</div><span class="art-tag">COVER ART</span></div></div>';
+    var t = esc(b.title), a = esc(b.author);
+    if (b.style === "A") return '<div class="cv cv--A '+b.dither+'"><div class="plate"><div class="ct">'+t+'</div><div class="ca">'+a+'</div></div></div>';
+    if (b.style === "B") return '<div class="cv cv--B '+b.dither+'"><div class="band"><div class="ct">'+t+'</div></div><div class="ca">'+a+'</div></div>';
+    if (b.style === "C") return '<div class="cv cv--C"><div class="frame"><div class="ct">'+t+'</div><div class="hr"></div><div class="ca">'+a+'</div></div></div>';
+    return '<div class="cv cv--D '+b.dither+'"><div class="plate2"><div class="ct">'+t+'</div><div class="ca">'+a+'</div></div></div>';
+  }
+  function thumbHTML(b, mode){
+    if (mode === 'art') return '<div class="thumb thumb--art hatch">'+IMG_GLYPH+'</div>';
+    var bg = b.style === 'C' ? ' style="background:var(--fill)"' : '';
+    return '<div class="thumb '+(b.dither||'')+'"'+bg+'></div>';
+  }
+
+  function barHTML(pct, cls){
+    if (pct >= 100) return '<div class="'+cls+' done"><i style="width:100%"></i></div>';
+    return '<div class="'+cls+'"><i style="width:'+Math.max(pct,2)+'%"></i></div>';
+  }
+
+  // ---- SORT ------------------------------------------------------------
+  function sortedBooks(key){
+    var arr = books.slice();
+    if (key === 'Title')    arr.sort(function(a,b){ return a.title.localeCompare(b.title); });
+    else if (key === 'Author')   arr.sort(function(a,b){ return a.author.localeCompare(b.author); });
+    else if (key === 'Progress') arr.sort(function(a,b){ return b.pct - a.pct; });
+    return arr; // 'Recent' keeps source order
+  }
+
+  // ---- RENDER GRID / LIST ---------------------------------------------
+  function renderGrid(mode, sortKey){
+    var grid = document.getElementById('grid'); grid.innerHTML = '';
+    sortedBooks(sortKey).slice(0, 6).forEach(function(b){
+      var el = document.createElement('div'); el.className = 'tile';
+      el.innerHTML = coverHTML(b, mode) +
+        '<div class="t-title">'+esc(b.title)+'</div>' +
+        '<div class="t-author">'+esc(b.author)+'</div>' + barHTML(b.pct, 'bar');
+      grid.appendChild(el);
+    });
+  }
+  function renderList(mode, sortKey){
+    var list = document.getElementById('list'); list.innerHTML = '';
+    sortedBooks(sortKey).forEach(function(b){
+      var pct = b.pct >= 100 ? '<div class="r-pct fin">Finished</div>' : '<div class="r-pct">'+b.pct+'%</div>';
+      var el = document.createElement('div'); el.className = 'row';
+      el.innerHTML = thumbHTML(b, mode) +
+        '<div class="r-main"><div class="r-title">'+esc(b.title)+'</div>' +
+          '<div class="r-author">'+esc(b.author)+'</div>' + barHTML(b.pct, 'r-bar') + '</div>' +
+        '<div class="r-meta">'+pct+'<div class="r-time">'+b.time+'</div></div>';
+      list.appendChild(el);
+    });
+  }
+
+  // ---- VIEW TOGGLE (on-screen grid/list switch) -----------------------
+  var ICON_GRID = '<svg viewBox="0 0 24 24"><g fill="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></g></svg>';
+  var ICON_ROWS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="4.5" height="4.5" fill="currentColor" stroke="none"/><line x1="10" y1="6.25" x2="21" y2="6.25"/><rect x="3" y="9.75" width="4.5" height="4.5" fill="currentColor" stroke="none"/><line x1="10" y1="12" x2="21" y2="12"/><rect x="3" y="15.5" width="4.5" height="4.5" fill="currentColor" stroke="none"/><line x1="10" y1="17.75" x2="21" y2="17.75"/></svg>';
+  function renderViewTogs(){
+    // frame 0 = grid view active, frame 1 = list view active
+    document.querySelectorAll('.toolbar').forEach(function(tb, i){
+      var tog = tb.querySelector('.viewtog');
+      if (!tog){
+        tog = document.createElement('div'); tog.className = 'viewtog';
+        tb.insertBefore(tog, tb.querySelector('.sort'));
+      }
+      var gridOn = (i === 0);
+      tog.innerHTML =
+        '<div class="vt'+(gridOn ? ' vt--active' : '')+'" title="Grid view">'+ICON_GRID+'</div>' +
+        '<div class="vt'+(!gridOn ? ' vt--active' : '')+'" title="List view">'+ICON_ROWS+'</div>';
+    });
+  }
+
+  // ---- BOTTOM NAV (local-first: Library · Resume · Settings) ----------
+  var ICONS = {
+    library:  '<svg viewBox="0 0 24 24" style="width:30px;height:30px"><g fill="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></g></svg>',
+    resume:   '<svg viewBox="0 0 24 24" style="width:30px;height:30px" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 6.2C9.9 4.9 7.3 4.2 4.2 4.2V17.8C7.3 17.8 9.9 18.5 12 19.8 14.1 18.5 16.7 17.8 19.8 17.8V4.2C16.7 4.2 14.1 4.9 12 6.2Z"/><line x1="12" y1="6.2" x2="12" y2="19.8"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" style="width:30px;height:30px" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="8" x2="21" y2="8"/><line x1="3" y1="16" x2="21" y2="16"/><rect x="13" y="5.5" width="5" height="5" fill="currentColor" stroke="none"/><rect x="6" y="13.5" width="5" height="5" fill="currentColor" stroke="none"/></svg>'
+  };
+  var NAV_ITEMS = [ {k:'library',lab:'Library',on:true}, {k:'resume',lab:'Resume'}, {k:'settings',lab:'Settings'} ];
+  function renderNavs(){
+    ['nav-a','nav-b'].forEach(function(id){
+      var nav = document.getElementById(id); nav.innerHTML = '';
+      nav.style.gridTemplateColumns = 'repeat('+NAV_ITEMS.length+',1fr)';
+      NAV_ITEMS.forEach(function(n){
+        var el = document.createElement('div');
+        el.className = 'navitem' + (n.on ? ' navitem--active' : '');
+        el.innerHTML = ICONS[n.k] + '<span class="nlab">'+n.lab+'</span>';
+        nav.appendChild(el);
+      });
+    });
+  }
+
+  // ---- CHROME BITS -----------------------------------------------------
+  // cover style is owned by the Settings screen; read the shared preference
+  function getCoverMode(){ try { return localStorage.getItem('papyr.covers') || 'typeset'; } catch(e){ return 'typeset'; } }
+  function setupSortLabels(){
+    document.querySelectorAll('.sort').forEach(function(s){
+      if (!s.querySelector('.sort-lab')){
+        Array.prototype.slice.call(s.childNodes).forEach(function(n){ if (n.nodeType === 3) s.removeChild(n); });
+        var span = document.createElement('span'); span.className = 'sort-lab'; span.textContent = 'Recent';
+        s.appendChild(span);
+      }
+    });
+  }
+  function setDeviceName(name){ document.querySelectorAll('.brand').forEach(function(e){ e.textContent = (name||'').toUpperCase(); }); }
+  function setSortLabel(text){ document.querySelectorAll('.sort-lab').forEach(function(e){ e.textContent = text; }); }
+  function toggleFilterTabs(show){ document.querySelectorAll('.c-tabs').forEach(function(e){ e.style.display = show ? '' : 'none'; }); }
+
+  // ---- APPLY ALL TWEAKS ------------------------------------------------
+  window.applyTweaks = function(t){
+    renderNavs();
+    var mode = getCoverMode();
+    renderGrid(mode, t.sort);
+    renderList(mode, t.sort);
+    setDeviceName(t.deviceName);
+    setSortLabel(t.sort);
+    toggleFilterTabs(t.filterTabs);
+  };
+
+  setupSortLabels();
+  renderViewTogs();
+  // initial paint (mirrors TWEAK_DEFAULTS until the panel mounts)
+  window.applyTweaks({ sort:'Recent', deviceName:'PAPYR', filterTabs:true });
+</script>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "sort": "Recent",
+    "filterTabs": true,
+    "deviceName": "PAPYR",
+    "syncBar": false,
+    "covers": "art"
+  }/*EDITMODE-END*/;
+
+  function App() {
+    const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+    React.useEffect(() => { if (window.applyTweaks) window.applyTweaks(t); }, [t]);
+    return (
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Library" />
+        <TweakToggle label="Filter tabs" value={t.filterTabs}
+          onChange={(v) => setTweak('filterTabs', v)} />
+        <TweakSelect label="Sort by" value={t.sort}
+          options={['Recent', 'Title', 'Author', 'Progress']}
+          onChange={(v) => setTweak('sort', v)} />
+
+        <TweakSection label="Device" />
+        <TweakText label="Name" value={t.deviceName} placeholder="PAPYR"
+          onChange={(v) => setTweak('deviceName', v)} />
+      </TweaksPanel>
+          onChange={(v) => setTweak('deviceName', v)} />
+      </TweaksPanel>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('tweaks-root')).render(<App />);
+</script>
+</body>
+</html>

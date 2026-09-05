@@ -1,0 +1,74 @@
+----------------------------------------------------------------------------------------------------------------------------------
+NCDrill File Report For: ek_ra8d2.PcbDoc   11.06.2025  12:32:23
+----------------------------------------------------------------------------------------------------------------------------------
+
+Layer Pair : L1_Top to L8_Bottom
+ASCII Plated RoundHoles File : d019762_06_s01_v0301_ek-ra8d2_mp_mp-RoundHoles-Plated.TXT
+ASCII Non-Plated RoundHoles File : d019762_06_s01_v0301_ek-ra8d2_mp_mp-RoundHoles-NonPlated.TXT
+ASCII Plated SlotHoles File : d019762_06_s01_v0301_ek-ra8d2_mp_mp-SlotHoles-Plated.TXT
+ASCII Non-Plated SlotHoles File : d019762_06_s01_v0301_ek-ra8d2_mp_mp-SlotHoles-NonPlated.TXT
+
+Tool       Hole Size               Hole Tolerance               Hole Type       Hole Count   Plated         Tool Travel
+----------------------------------------------------------------------------------------------------------------------------------
+T2      0.15mm (6mil)                                             Round             13        PTH        21.26mm (0.84inch)
+T3      0.2mm (8mil)                                              Round             1146      PTH        3346.49mm (131.75inch)
+T4      0.5mm (20mil)                                             Slot              12        PTH        319.21mm (12.57inch)
+T5      0.8mm (31mil)                                             Round             28        PTH        162.28mm (6.39inch)
+T6      0.85mm (33mil)                                            Round             52        PTH        125.41mm (4.94inch)
+T7      0.93mm (37mil)                                            Round             5         PTH        8.00mm (0.31inch)
+T8      1.02mm (40mil)                                            Round             16        PTH        58.42mm (2.30inch)
+T9      1.1mm (43mil)                                             Round             133       PTH        638.99mm (25.16inch)
+T10     0.6mm (24mil)                                             Round             2         NPTH       20.00mm (0.79inch)
+T11     0.65mm (26mil)                                            Round             3         NPTH       82.84mm (3.26inch)
+T12     0.65mm (26mil)                                            Slot              3         NPTH       165.86mm (6.53inch)
+T13     1.45mm (57mil)                                            Round             2         NPTH       13.20mm (0.52inch)
+T14     3.22mm (127mil)                                           Round             2         NPTH       11.43mm (0.45inch)
+T15     3.3mm (130mil)                                            Round             6         NPTH       384.04mm (15.12inch)
+----------------------------------------------------------------------------------------------------------------------------------
+Totals                                                                              1423
+Layer Pair : L3_SIG to L6_PWR
+ASCII Plated RoundHoles File : d019762_06_s01_v0301_ek-ra8d2_mp_mp-RoundHoles-Plated.TX3
+
+Tool       Hole Size               Hole Tolerance               Hole Type       Hole Count   Plated         Tool Travel
+----------------------------------------------------------------------------------------------------------------------------------
+T3      0.2mm (8mil)                                              Round             190       PTH        643.78mm (25.35inch)
+----------------------------------------------------------------------------------------------------------------------------------
+Totals                                                                              190
+----------------------------------------------------------------------------------------------------------------------------------
+Totals                                                                              1613
+MicroVia : L1_Top to L2_GND
+ASCII Plated RoundHoles File : d019762_06_s01_v0301_ek-ra8d2_mp_mp-RoundHoles-Plated.TX6
+
+Tool       Hole Size               Hole Tolerance               Hole Type       Hole Count   Plated         Tool Travel
+----------------------------------------------------------------------------------------------------------------------------------
+T1      0.1mm (4mil)                                              Round             596       PTH        1032.72mm (40.66inch)
+----------------------------------------------------------------------------------------------------------------------------------
+Totals                                                                              596
+MicroVia : L2_GND to L3_SIG
+ASCII Plated RoundHoles File : d019762_06_s01_v0301_ek-ra8d2_mp_mp-RoundHoles-Plated.TX7
+
+Tool       Hole Size               Hole Tolerance               Hole Type       Hole Count   Plated         Tool Travel
+----------------------------------------------------------------------------------------------------------------------------------
+T1      0.1mm (4mil)                                              Round             458       PTH        916.47mm (36.08inch)
+----------------------------------------------------------------------------------------------------------------------------------
+Totals                                                                              458
+MicroVia : L6_PWR to L7_GND
+ASCII Plated RoundHoles File : d019762_06_s01_v0301_ek-ra8d2_mp_mp-RoundHoles-Plated.TX9
+
+Tool       Hole Size               Hole Tolerance               Hole Type       Hole Count   Plated         Tool Travel
+----------------------------------------------------------------------------------------------------------------------------------
+T1      0.1mm (4mil)                                              Round             109       PTH        342.22mm (13.47inch)
+----------------------------------------------------------------------------------------------------------------------------------
+Totals                                                                              109
+MicroVia : L7_GND to L8_Bottom
+ASCII Plated RoundHoles File : d019762_06_s01_v0301_ek-ra8d2_mp_mp-RoundHoles-Plated.TX10
+
+Tool       Hole Size               Hole Tolerance               Hole Type       Hole Count   Plated         Tool Travel
+----------------------------------------------------------------------------------------------------------------------------------
+T1      0.1mm (4mil)                                              Round             165       PTH        401.73mm (15.82inch)
+----------------------------------------------------------------------------------------------------------------------------------
+Totals                                                                              165
+----------------------------------------------------------------------------------------------------------------------------------
+MicroVia Totals                                                                     1328
+
+Total Processing Time (hh:mm:ss) : 00:00:01
