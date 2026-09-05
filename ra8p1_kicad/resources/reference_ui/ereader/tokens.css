@@ -1,0 +1,99 @@
+/* ===========================================================================
+   E-INK READER — FOUNDATION TOKENS
+   6.0" e-ink · portrait · 1448 × 1072 px · ~300 PPI · 16-level grayscale
+   Import this file on every screen. No color. No gradients. No shadows.
+   No blur. No transparency. No animation. Inversion for pressed/active.
+   =========================================================================== */
+
+:root {
+  /* ---- 16-level grayscale ramp (4-bit, 0–255 in steps of 17) ------------- */
+  --g0:#000000;  --g1:#111111;  --g2:#222222;  --g3:#333333;
+  --g4:#444444;  --g5:#555555;  --g6:#666666;  --g7:#777777;
+  --g8:#888888;  --g9:#999999;  --g10:#aaaaaa; --g11:#bbbbbb;
+  --g12:#cccccc; --g13:#dddddd; --g14:#eeeeee; --g15:#ffffff;
+
+  /* ---- Semantic roles (the 4 working grays + paper) ---------------------- */
+  --ink:        var(--g0);    /* primary text, glyphs, strong borders        */
+  --ink-muted:  var(--g5);    /* secondary text: author, metadata, captions  */
+  --rule:       var(--g10);   /* hairline dividers, 1–2 px                    */
+  --rule-soft:  var(--g12);   /* faintest hairlines, inactive edges          */
+  --fill:       var(--g13);   /* flat fills: tracks, inactive segments       */
+  --fill-deep:  var(--g8);    /* heavier fill / progress / dither mid-tone    */
+  --paper:      var(--g15);   /* page background                             */
+
+  /* ---- Type ------------------------------------------------------------- */
+  --font-ui:   'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-read: 'Literata', Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Courier New', monospace;
+
+  --t-xl: 48px;  /* display: screen titles, large numerals, hero          */
+  --t-lg: 34px;  /* heading / reading body: titles, list rows, body text  */
+  --t-md: 24px;  /* ui label: buttons, nav labels, secondary text         */
+  --t-sm: 18px;  /* caption: status bar, footer chrome, ticks, fine print */
+
+  --lh-tight: 1.15;
+  --lh-ui:    1.30;
+  --lh-read:  1.55;
+
+  /* ---- Spacing — 8 px base grid ----------------------------------------- */
+  --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s5:40px;
+  --s6:48px; --s7:64px; --s8:80px; --s9:96px; --s10:112px;
+
+  /* ---- Layout metrics --------------------------------------------------- */
+  --screen-w: 1072px;          /* portrait width                            */
+  --screen-h: 1448px;          /* portrait height                           */
+  --margin-ui:   40px;         /* outer margin on menu/list screens         */
+  --margin-read: 72px;         /* generous reading-view margin              */
+  --statusbar-h: 64px;
+  --nav-h:       112px;
+  --row-h:       112px;        /* list-row height (touch target ≥ 64)       */
+  --touch-min:   64px;
+
+  /* ---- Hairline weights ------------------------------------------------- */
+  --hair: 1px;
+  --hair-2: 2px;
+}
+
+/* ===========================================================================
+   1-bit dither fills (true ordered dither, no gradients)
+   Use for tone on covers / fills. image-rendering keeps pixels crisp.
+   =========================================================================== */
+.dither-25, .dither-50, .dither-75 { image-rendering: pixelated; }
+
+.dither-25 {
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='2' height='2' fill='%23000'/%3E%3C/svg%3E");
+  background-size: 4px 4px;
+}
+.dither-50 {
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='2' height='2' fill='%23000'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23000'/%3E%3C/svg%3E");
+  background-size: 4px 4px;
+}
+.dither-75 {
+  background-color: var(--ink);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='2' height='2' fill='%23fff'/%3E%3C/svg%3E");
+  background-size: 4px 4px;
+}
+
+/* ===========================================================================
+   Reset + base
+   =========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-ui);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+svg { display: block; }
+
+/* ---- Type utilities ---------------------------------------------------- */
+.t-xl { font-size: var(--t-xl); line-height: var(--lh-tight); }
+.t-lg { font-size: var(--t-lg); line-height: var(--lh-ui); }
+.t-md { font-size: var(--t-md); line-height: var(--lh-ui); }
+.t-sm { font-size: var(--t-sm); line-height: var(--lh-ui); }
+.mono { font-family: var(--font-mono); }
+.read { font-family: var(--font-read); }
+.muted { color: var(--ink-muted); }

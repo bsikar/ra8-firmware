@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Table of Contents — E-Ink Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+/* ===================== DESK / SHEET CHROME ===================== */
+body { background: var(--g13); }
+.sheet { padding: 48px 56px 72px; }
+.sheet-head { background: var(--ink); color: var(--paper); display: flex; justify-content: space-between; align-items: center; padding: 20px 32px; margin-bottom: 44px; }
+.sheet-head .h-l { font-size: 22px; font-weight: 600; }
+.sheet-head .h-r { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.14em; color: var(--g12); text-transform: uppercase; }
+.stage { display: flex; gap: 72px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.frame-col { display: flex; flex-direction: column; align-items: center; }
+.frame-label { font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); margin-bottom: 4px; font-weight: 600; }
+.frame-sub { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-muted); margin-bottom: 22px; }
+.frame-spec { font-family: var(--font-mono); font-size: 12px; line-height: 1.7; color: var(--ink-muted); margin-top: 24px; max-width: 1072px; letter-spacing: 0.02em; }
+.frame-spec b { color: var(--ink); font-weight: 600; }
+
+/* ===================== DEVICE ===================== */
+.device { position: relative; background: #0c0c0c; border-radius: 46px; padding: 28px; }
+.device .pgbtn { position: absolute; right: -5px; width: 5px; height: 132px; background: #1c1c1c; border-radius: 0 4px 4px 0; }
+.device .pgbtn.up { top: 420px; } .device .pgbtn.dn { top: 620px; }
+.device .brand { position: absolute; bottom: 7px; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.42em; color: #3a3a3a; font-weight: 600; }
+.screen { width: 1072px; height: 1448px; background: var(--paper); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+
+/* ===================== TOP BAR ===================== */
+.topbar2 { height: 88px; flex: 0 0 auto; display: flex; align-items: center; padding: 0 28px; border-bottom: 2px solid var(--ink); }
+.tb2-back { display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 500; }
+.tb2-back svg { width: 28px; height: 28px; }
+.tb2-done { margin-left: auto; font-size: 22px; font-weight: 600; }
+
+/* ===================== HEADER ===================== */
+.toc-head { flex: 0 0 auto; padding: 26px 40px 6px; }
+.th-title { font-family: var(--font-read); font-size: 38px; font-weight: 600; line-height: 1.12; }
+.th-author { font-size: 22px; color: var(--ink-muted); margin-top: 8px; }
+
+/* ===================== PROGRESS ===================== */
+.toc-prog { flex: 0 0 auto; padding: 22px 40px 26px; border-bottom: 1px solid var(--rule); }
+.tp-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.tp-pct { font-size: 40px; font-weight: 600; }
+.tp-left { font-size: 20px; color: var(--ink-muted); font-family: var(--font-mono); letter-spacing: 0.02em; }
+.tp-bar { height: 8px; background: var(--fill); border: 1px solid var(--g10); margin-top: 18px; }
+.tp-bar > i { display: block; height: 100%; background: var(--ink); }
+
+/* ===================== TABS ===================== */
+.toc-tabs { flex: 0 0 auto; display: flex; margin: 24px 40px 8px; border: 2px solid var(--ink); }
+.toc-tabs .tab { flex: 1; text-align: center; font-size: 22px; font-weight: 500; padding: 16px 0; border-right: 2px solid var(--ink); cursor: pointer; user-select: none; }
+.toc-tabs .tab:last-child { border-right: 0; }
+.toc-tabs .tab.on { background: var(--ink); color: var(--paper); }
+
+/* ===================== BODY (clips like a page) ===================== */
+.toc-body { flex: 1; overflow: hidden; }
+.tablist { display: none; }
+.tablist.on { display: block; }
+
+/* contents */
+.crow { display: flex; align-items: center; gap: 22px; padding: 0 40px; min-height: 90px; border-bottom: 1px solid var(--rule); }
+.crow .cnum { font-family: var(--font-mono); font-size: 18px; color: var(--ink-muted); width: 34px; flex: 0 0 auto; }
+.crow .ctitle { font-size: 26px; font-weight: 500; flex: 1; }
+.crow .cpage { font-family: var(--font-mono); font-size: 20px; color: var(--ink-muted); flex: 0 0 auto; }
+.crow.current { background: var(--ink); color: var(--paper); }
+.crow.current .cnum, .crow.current .cpage { color: var(--g12); }
+/* edge-bar marker variant */
+.toc-body.marker-bar .crow.current { background: var(--paper); color: var(--ink); border-left: 8px solid var(--ink); padding-left: 32px; }
+.toc-body.marker-bar .crow.current .cnum, .toc-body.marker-bar .crow.current .cpage { color: var(--ink-muted); }
+.toc-body.marker-bar .crow.current .ctitle { font-weight: 700; }
+
+/* bookmarks */
+.brow { display: flex; gap: 22px; padding: 24px 40px; border-bottom: 1px solid var(--rule); align-items: flex-start; }
+.brow .bicon { flex: 0 0 auto; margin-top: 4px; }
+.brow .bicon svg { width: 28px; height: 28px; }
+.brow .bmain { flex: 1; min-width: 0; }
+.brow .bsnip { display: block; font-family: var(--font-read); font-size: 25px; line-height: 1.4; }
+.brow .bsnip .q { color: var(--ink-muted); }
+.brow .bmeta { display: block; font-family: var(--font-mono); font-size: 17px; color: var(--ink-muted); margin-top: 9px; letter-spacing: 0.02em; }
+.brow .bpage { flex: 0 0 auto; font-family: var(--font-mono); font-size: 20px; color: var(--ink-muted); text-align: right; }
+
+/* highlights */
+.hrow { padding: 24px 40px; border-bottom: 1px solid var(--rule); }
+.hrow .htext { font-family: var(--font-read); font-size: 25px; line-height: 1.42; }
+.hrow .htext mark { background: var(--fill); color: var(--ink); padding: 1px 4px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.hrow .hnote { font-family: var(--font-read); font-style: italic; font-size: 21px; color: var(--ink-muted); margin-top: 12px; padding-left: 18px; border-left: 3px solid var(--rule); }
+.hrow .hmeta { font-family: var(--font-mono); font-size: 17px; color: var(--ink-muted); margin-top: 12px; letter-spacing: 0.02em; }
+
+/* empty-state (if a tab had nothing) */
+.empty { padding: 80px 40px; text-align: center; color: var(--ink-muted); font-size: 24px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="sheet-head">
+    <div class="h-l">Table of Contents</div>
+    <div class="h-r">Screen 04 · Contents · Bookmarks · Highlights · 1448 × 1072</div>
+  </header>
+
+  <div class="stage">
+    <div class="frame-col">
+      <div class="frame-label">Contents</div>
+      <div class="frame-sub">chapters · current chapter inverted</div>
+      <div class="device">
+        <div class="pgbtn up"></div><div class="pgbtn dn"></div>
+        <div class="brand">PAPYR</div>
+        <div class="screen" id="screen-a"></div>
+      </div>
+      <div class="frame-spec">
+        Header = book + author. Progress summary: <b>% complete</b>, time left in chapter, a thin <b>--fill</b> / <b>--ink</b> bar. Chapter rows: title left, page right, <b>--rule</b> dividers; the current chapter is an <b>inverted</b> row (toggle to an edge-bar in Tweaks). Tabs repaint between Contents · Bookmarks · Highlights.
+      </div>
+    </div>
+
+    <div class="frame-col">
+      <div class="frame-label">Bookmarks</div>
+      <div class="frame-sub">where your saved places live</div>
+      <div class="device">
+        <div class="pgbtn up"></div><div class="pgbtn dn"></div>
+        <div class="brand">PAPYR</div>
+        <div class="screen" id="screen-b"></div>
+      </div>
+      <div class="frame-spec">
+        Each bookmark = the <b>line you saved</b> (serif snippet) with chapter + page, newest first. This is the home for the ribbon you tap in the reading menu. The <b>Highlights</b> tab holds marked passages and notes the same way.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="tweaks-root"></div>
+
+<template id="toc-tpl">
+  <div class="topbar2">
+    <div class="tb2-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="14,5 7,12 14,19"/></svg>Reading</div>
+    <div class="tb2-done">Done</div>
+  </div>
+  <div class="toc-head">
+    <div class="th-title">The Lighthouse at the Edge of Tide</div>
+    <div class="th-author">Marguerite Hale</div>
+  </div>
+  <div class="toc-prog">
+    <div class="tp-row"><span class="tp-pct">64%</span><span class="tp-left">&asymp; 38 min left in chapter</span></div>
+    <div class="tp-bar"><i style="width:64%"></i></div>
+  </div>
+  <div class="toc-tabs">
+    <div class="tab" data-tab="contents">Contents</div>
+    <div class="tab" data-tab="bookmarks">Bookmarks</div>
+    <div class="tab" data-tab="highlights">Highlights</div>
+  </div>
+  <div class="toc-body">
+    <div class="tablist" data-list="contents"></div>
+    <div class="tablist" data-list="bookmarks"></div>
+    <div class="tablist" data-list="highlights"></div>
+  </div>
+</template>
+
+<script>
+  var CHAPTERS = [
+    ["1", "A Door Left Open", 1],
+    ["2", "The Inventory of Small Things", 19],
+    ["3", "Saltgrass", 38],
+    ["4", "What the Tide Keeps", 55],
+    ["5", "The Mainland", 74],
+    ["6", "A Letter, Unsent", 96],
+    ["7", "The Long Calm", 118],
+    ["8", "Glass and Iron", 142],
+    ["9", "The Visitor", 169],
+    ["10", "Provisions", 188],
+    ["11", "The Keeper\u2019s Hour", 200],
+    ["12", "Wreck", 226],
+    ["13", "The Argument with the Current", 258],
+    ["14", "What the Morning Asked", 287]
+  ];
+  var CURRENT_CH = 11;
+
+  var BOOKMARKS = [
+    { snip: "There was a ship that night. She did not see it so much as feel it.", ch: 11, pg: 201, when: "2d ago" },
+    { snip: "Glass and iron, her father said, were the only honest materials left on the island.", ch: 8, pg: 142, when: "1w ago" },
+    { snip: "She wrote the letter twice, and burned it twice, and slept.", ch: 6, pg: 96, when: "2w ago" },
+    { snip: "The island kept a list of everyone it had ever lost.", ch: 1, pg: 17, when: "3w ago" }
+  ];
+
+  var HIGHLIGHTS = [
+    { pre: "the island belonged to no one and ", mark: "the light belonged to everyone", post: ".", note: "The whole book, in one line.", ch: 11, pg: 200 },
+    { pre: "", mark: "A calm is just a storm deciding", post: " what to become.", note: "", ch: 7, pg: 119 },
+    { pre: "What the tide keeps, ", mark: "it keeps for reasons of its own", post: ".", note: "Recurs in ch. 12 \u2014 check.", ch: 4, pg: 56 }
+  ];
+
+  var TPL = document.getElementById('toc-tpl');
+
+  function renderContents(el){
+    el.innerHTML = '';
+    CHAPTERS.forEach(function(c){
+      var row = document.createElement('div');
+      row.className = 'crow' + (parseInt(c[0], 10) === CURRENT_CH ? ' current' : '');
+      row.innerHTML = '<span class="cnum">' + c[0] + '</span><span class="ctitle">' + c[1] + '</span><span class="cpage">' + c[2] + '</span>';
+      el.appendChild(row);
+    });
+  }
+  function renderBookmarks(el){
+    el.innerHTML = '';
+    BOOKMARKS.forEach(function(b){
+      var row = document.createElement('div');
+      row.className = 'brow';
+      row.innerHTML =
+        '<span class="bicon"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.2L6 21V3Z"/></svg></span>' +
+        '<span class="bmain"><span class="bsnip"><span class="q">\u201c</span>' + b.snip + '<span class="q">\u201d</span></span>' +
+        '<span class="bmeta">Ch. ' + b.ch + ' \u00b7 added ' + b.when + '</span></span>' +
+        '<span class="bpage">p&nbsp;' + b.pg + '</span>';
+      el.appendChild(row);
+    });
+  }
+  function renderHighlights(el){
+    el.innerHTML = '';
+    HIGHLIGHTS.forEach(function(h){
+      var row = document.createElement('div');
+      row.className = 'hrow';
+      row.innerHTML =
+        '<div class="htext">' + h.pre + '<mark>' + h.mark + '</mark>' + h.post + '</div>' +
+        (h.note ? '<div class="hnote">' + h.note + '</div>' : '') +
+        '<div class="hmeta">Ch. ' + h.ch + ' \u00b7 Page ' + h.pg + '</div>';
+      el.appendChild(row);
+    });
+  }
+
+  function showTab(screen, name){
+    screen.querySelectorAll('.toc-tabs .tab').forEach(function(t){ t.classList.toggle('on', t.getAttribute('data-tab') === name); });
+    screen.querySelectorAll('.tablist').forEach(function(l){ l.classList.toggle('on', l.getAttribute('data-list') === name); });
+  }
+
+  function buildScreen(screen, startTab){
+    screen.appendChild(TPL.content.cloneNode(true));
+    renderContents(screen.querySelector('[data-list="contents"]'));
+    renderBookmarks(screen.querySelector('[data-list="bookmarks"]'));
+    renderHighlights(screen.querySelector('[data-list="highlights"]'));
+    screen.querySelectorAll('.toc-tabs .tab').forEach(function(t){
+      t.addEventListener('click', function(){ showTab(screen, t.getAttribute('data-tab')); });
+    });
+    showTab(screen, startTab);
+  }
+
+  buildScreen(document.getElementById('screen-a'), 'contents');
+  buildScreen(document.getElementById('screen-b'), 'bookmarks');
+
+  // ---- tweaks ----------------------------------------------------------
+  window.applyTocTweaks = function(t){
+    document.querySelectorAll('.toc-body').forEach(function(b){ b.classList.toggle('marker-bar', t.marker === 'bar'); });
+    document.querySelectorAll('.tp-left').forEach(function(e){ e.style.display = t.timeLeft ? '' : 'none'; });
+  };
+  window.applyTocTweaks({ marker: 'inverted', timeLeft: true });
+</script>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "marker": "inverted",
+    "timeLeft": true
+  }/*EDITMODE-END*/;
+
+  function App() {
+    const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+    React.useEffect(() => { if (window.applyTocTweaks) window.applyTocTweaks(t); }, [t]);
+    return (
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Contents" />
+        <TweakRadio label="Current chapter" value={t.marker}
+          options={[{value:'inverted', label:'Inverted'}, {value:'bar', label:'Edge bar'}]}
+          onChange={(v) => setTweak('marker', v)} />
+        <TweakToggle label="Time left in chapter" value={t.timeLeft}
+          onChange={(v) => setTweak('timeLeft', v)} />
+      </TweaksPanel>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('tweaks-root')).render(<App />);
+</script>
+</body>
+</html>

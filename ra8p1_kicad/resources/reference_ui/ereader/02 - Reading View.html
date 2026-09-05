@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reading View — E-Ink Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Lora:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+/* ===================== DESK / SHEET CHROME ===================== */
+body { background: var(--g13); }
+.sheet { padding: 48px 56px 72px; }
+.sheet-head { background: var(--ink); color: var(--paper); display: flex; justify-content: space-between; align-items: center; padding: 20px 32px; margin-bottom: 44px; }
+.sheet-head .h-l { font-size: 22px; font-weight: 600; }
+.sheet-head .h-r { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.14em; color: var(--g12); text-transform: uppercase; }
+.stage { display: flex; gap: 72px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.frame-col { display: flex; flex-direction: column; align-items: center; }
+.frame-label { font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); margin-bottom: 4px; font-weight: 600; }
+.frame-sub { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-muted); margin-bottom: 22px; }
+.frame-spec { font-family: var(--font-mono); font-size: 12px; line-height: 1.7; color: var(--ink-muted); margin-top: 24px; max-width: 1072px; letter-spacing: 0.02em; }
+.frame-spec b { color: var(--ink); font-weight: 600; }
+
+/* ===================== DEVICE ===================== */
+.device { position: relative; background: #0c0c0c; border-radius: 46px; padding: 28px; }
+.device .pgbtn { position: absolute; right: -5px; width: 5px; height: 132px; background: #1c1c1c; border-radius: 0 4px 4px 0; }
+.device .pgbtn.up { top: 420px; } .device .pgbtn.dn { top: 620px; }
+.device .brand { position: absolute; bottom: 7px; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.42em; color: #3a3a3a; font-weight: 600; }
+.screen { width: 1072px; height: 1448px; background: var(--paper); overflow: hidden; display: flex; flex-direction: column; position: relative; cursor: pointer; }
+
+/* ===================== READING PAGE ===================== */
+.reader {
+  --rd-size: 34px; --rd-lh: 1.55; --rd-margin: 72px;
+  --rd-justify: justify; --rd-font: var(--font-read);
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+}
+.page {
+  flex: 1; overflow: hidden;
+  font-family: var(--rd-font); font-size: var(--rd-size); line-height: var(--rd-lh);
+  color: var(--ink); text-align: var(--rd-justify); hyphens: auto;
+  padding: 80px var(--rd-margin) 24px;
+}
+.page p { margin: 0; text-indent: 1.7em; }
+.page p.first { text-indent: 0; }
+.page.has-dropcap p.first::first-letter {
+  float: left; font-size: 4.1em; line-height: 0.74; font-weight: 600;
+  padding: 0.04em 0.09em 0 0;
+}
+.chap { text-align: center; margin: 6px 0 46px; }
+.chap .ck { font-family: var(--font-ui); font-size: 18px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-muted); }
+.chap .ct { font-family: var(--rd-font); font-size: 42px; font-weight: 600; margin-top: 16px; line-height: 1.1; }
+.chap .cr { width: 60px; height: 2px; background: var(--ink); margin: 28px auto 0; }
+
+/* minimal footer (default chrome) */
+.footer {
+  flex: 0 0 auto; height: 64px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--rd-margin); font-size: 18px; color: var(--ink-muted);
+  border-top: 1px solid var(--rule); background: var(--paper);
+}
+.footer .f-mid { display: flex; align-items: baseline; gap: 14px; font-family: var(--font-mono); letter-spacing: 0.03em; white-space: nowrap; flex-shrink: 0; }
+.footer .f-ch, .footer .f-bt { white-space: nowrap; }
+.footer .f-mid .f-dot { color: var(--g11); }
+.footer .f-pct { color: var(--ink); }
+.footer .f-bt { display: flex; align-items: center; gap: 8px; }
+
+/* ===================== MENU CHROME (hard repaint, opaque) ===================== */
+.topbar, .bottombar { position: absolute; left: 0; right: 0; background: var(--paper); display: none; }
+.screen[data-menu="1"] .topbar, .screen[data-menu="1"] .bottombar { display: block; }
+.screen[data-menu="1"] .footer { visibility: hidden; }
+
+.topbar { top: 0; height: 104px; border-bottom: 2px solid var(--ink); }
+.topbar .tb-in { height: 100%; display: flex; align-items: center; padding: 0 28px; gap: 18px; position: relative; }
+.tb-btn { display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 500; }
+.tb-btn svg { width: 30px; height: 30px; }
+.tb-title { position: absolute; left: 50%; transform: translateX(-50%); font-size: 22px; font-weight: 600; max-width: 560px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-right { margin-left: auto; }
+.iconbtn { width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; }
+.iconbtn svg { width: 34px; height: 34px; }
+.iconbtn.on { background: var(--ink); color: var(--paper); }
+
+.bottombar { bottom: 0; border-top: 2px solid var(--ink); padding: 26px 40px 30px; }
+.scrub-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 18px; color: var(--ink-muted); margin-bottom: 16px; }
+.scrub-head > span { white-space: nowrap; }
+.scrub-head .sh-ch { font-weight: 600; color: var(--ink); }
+.scrub-head .sh-ch .sh-chpct { font-weight: 500; color: var(--ink-muted); }
+.scrub-head .sh-pg { font-family: var(--font-mono); letter-spacing: 0.03em; }
+.scrub { position: relative; height: 8px; background: var(--fill); border: 1px solid var(--g10); margin: 0 4px; touch-action: none; }
+.scrub > .sfill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); }
+.scrub > .sticks { position: absolute; inset: -9px 0; pointer-events: none; }
+.scrub > .sticks > b { position: absolute; top: 50%; transform: translateY(-50%); width: 2px; height: 12px; background: var(--ink); }
+.scrub > .shandle { position: absolute; top: 50%; width: 34px; height: 34px; transform: translate(-50%, -50%); background: var(--ink); border: 2px solid var(--ink); }
+.tools { display: flex; justify-content: space-around; margin-top: 30px; }
+.tool { display: flex; flex-direction: column; align-items: center; gap: 9px; min-width: 120px; padding: 6px 0; }
+.tool .ti { height: 40px; display: flex; align-items: center; justify-content: center; }
+.tool .ti svg { width: 36px; height: 36px; }
+.tool .ti .aa { font-family: var(--font-read); font-size: 34px; font-weight: 600; }
+.tool .tl { font-size: 18px; }
+.tool.on .ti, .tool.on .tl { font-weight: 700; }
+
+/* page-turn affordance hint dots (very subtle, only meaningful via interaction) */
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="sheet-head">
+    <div class="h-l">Reading View</div>
+    <div class="h-r">Screen 02 · Default + Menu · 1448 × 1072</div>
+  </header>
+
+  <div class="stage">
+    <!-- ================= DEFAULT ================= -->
+    <div class="frame-col">
+      <div class="frame-label">Reading</div>
+      <div class="frame-sub">default · this is paper · tap top for menu</div>
+      <div class="device">
+        <div class="pgbtn up"></div><div class="pgbtn dn"></div>
+        <div class="brand">PAPYR</div>
+        <div class="screen" id="screen-a" data-menu="0"></div>
+      </div>
+      <div class="frame-spec">
+        Edge-to-edge body in <b>--font-read</b> at <b>--t-lg 34 / 1.55</b>, margins <b>--margin-read 72</b>. The only chrome is a <b>1px --rule</b> footer: chapter · page X of Y · battery. Maximum ink, minimum interface. Tap the top to summon the menu; tap a left / right edge to turn the page (hard repaint, no scroll).
+      </div>
+    </div>
+
+    <!-- ================= MENU ================= -->
+    <div class="frame-col">
+      <div class="frame-label">Reading · menu</div>
+      <div class="frame-sub">tapped top · chrome is a hard repaint</div>
+      <div class="device">
+        <div class="pgbtn up"></div><div class="pgbtn dn"></div>
+        <div class="brand">PAPYR</div>
+        <div class="screen" id="screen-b" data-menu="1"></div>
+      </div>
+      <div class="frame-spec">
+        Top bar + bottom toolbar are <b>opaque panels with hard 2px ink edges</b> — a full repaint of those regions, never a translucent overlay (e-ink can't composite). Top: back · title · bookmark. Bottom: a page <b>scrubber</b> with chapter ticks, then Contents · Front-light · Aa. Tap the exposed page to dismiss.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="tweaks-root"></div>
+
+<!-- reusable screen markup template -->
+<template id="reader-tpl">
+  <div class="reader">
+    <div class="page"></div>
+    <div class="footer">
+      <span class="f-ch">The Keeper&rsquo;s Hour</span>
+      <span class="f-mid"><span class="f-pg"></span><span class="f-dot">&middot;</span><span class="f-pct"></span></span>
+      <span class="f-bt"><svg viewBox="0 0 36 20" style="width:38px;height:21px"><rect x="1" y="2" width="30" height="16" fill="none" stroke="#000" stroke-width="2"/><rect x="33" y="6.5" width="3" height="7" fill="#000"/><rect x="4" y="5" width="18" height="10" fill="#000"/></svg>82%</span>
+    </div>
+  </div>
+  <div class="topbar">
+    <div class="tb-in">
+      <div class="tb-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="14,5 7,12 14,19"/></svg>Library</div>
+      <div class="tb-title">The Lighthouse at the Edge of Tide</div>
+      <div class="tb-right iconbtn" data-bookmark><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.2L6 21V3Z"/></svg></div>
+    </div>
+  </div>
+  <div class="bottombar">
+    <div class="scrub-head"><span class="sh-ch">Chapter 11 · The Keeper&rsquo;s Hour <span class="sh-chpct"></span></span><span class="sh-pg"></span></div>
+    <div class="scrub">
+      <div class="sfill"></div>
+      <div class="sticks"></div>
+      <div class="shandle"></div>
+    </div>
+    <div class="tools">
+      <div class="tool" data-tool="contents"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="4.5" cy="6" r="1.4" fill="currentColor" stroke="none"/><line x1="9" y1="6" x2="21" y2="6"/><circle cx="4.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><line x1="9" y1="12" x2="21" y2="12"/><circle cx="4.5" cy="18" r="1.4" fill="currentColor" stroke="none"/><line x1="9" y1="18" x2="21" y2="18"/></svg></div><div class="tl">Contents</div></div>
+      <div class="tool" data-tool="light"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.4"/><g><line x1="12" y1="1.5" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22.5" y2="12"/><line x1="4.6" y1="4.6" x2="6.8" y2="6.8"/><line x1="17.2" y1="17.2" x2="19.4" y2="19.4"/><line x1="19.4" y1="4.6" x2="17.2" y2="6.8"/><line x1="6.8" y1="17.2" x2="4.6" y2="19.4"/></g></svg></div><div class="tl">Front-light</div></div>
+      <div class="tool" data-tool="aa"><div class="ti"><span class="aa">Aa</span></div><div class="tl">Text</div></div>
+    </div>
+  </div>
+</template>
+
+<script>
+  // ---- the book (consistent with Library: 64%, 312 pages) -------------
+  var TOTAL_PAGES = 312;
+  var START_PAGE = 200;       // ~64%
+  var CH_START = 189, CH_END = 214;   // chapter 11 page span
+  function chapterPct(pg){ return Math.max(0, Math.min(100, Math.round((pg - CH_START) / (CH_END - CH_START) * 100))); }
+  function totalPct(pg){ return Math.round(pg / TOTAL_PAGES * 100); }
+
+  var PAGES = [
+    // page 0 — chapter opening
+    '<div class="chap"><div class="ck">Chapter Eleven</div><div class="ct">The Keeper\u2019s Hour</div><div class="cr"></div></div>' +
+    '<p class="first">The light came on at dusk, as it always had, and Mara climbed the stair to meet it. Ninety-seven steps, worn shallow in their centers by keepers who had left no names she knew. She counted them the way some people counted prayers \u2014 not for the number, but for the rhythm, the small proof that the climb would end.</p>' +
+    '<p>At the top the lamp waited, patient as an animal. She wound the mechanism and watched the great lens begin its slow turn, throwing its long arm of light out over a sea that gave nothing back. Somewhere past the third reef the water deepened to a black that even noon could not soften.</p>' +
+    '<p>Her father had called this the keeper\u2019s hour \u2014 the narrow seam between the day\u2019s last work and the night\u2019s first watch, when the island belonged to no one and the light belonged to everyone. He had meant it kindly. Mara had come, over the long winters, to understand it as a kind of debt.</p>' +
+    '<p>She set the kettle on the iron ring and let the room fill with the small domestic sounds that kept the larger silence at bay. Outside, the wind tested the windows one by one and found them, as ever, holding.</p>',
+
+    // page 1
+    '<p class="first">There was a ship that night. She did not see it so much as feel it \u2014 a wrongness in the dark, a weight where there should have been only water. She had lived on the island long enough to read the sea the way a farmer reads a sky, and the sea was telling her something it did not want overheard.</p>' +
+    '<p>She took the glass from its hook and went out onto the gallery. The cold came up off the stone and through the soles of her boots. Below, the breakers worked the rocks with the same dull patience they had shown for a thousand years, indifferent to whatever small drama unfolded above them.</p>' +
+    '<p>For a long moment there was nothing. Then, between one sweep of the lamp and the next, she saw it: a shape with no lights of its own, riding low and wrong against the swell, drifting toward the reef as though it had given up the argument with the current entirely.</p>' +
+    '<p>No lantern. No answer to the lamp. A ship that did not wish to be seen, or could no longer manage to be.</p>' +
+    '<p>Mara lowered the glass. The keeper\u2019s hour was over. Whatever came now belonged to the night, and the night had never once asked her permission.</p>',
+
+    // page 2
+    '<p class="first">She rang the bell anyway \u2014 three strokes, a pause, three more \u2014 though there was no one on the island to hear it but herself and the gulls asleep in the cliff. The sound went out flat across the water and came back to her thinned, as if the dark had taken a portion of it for a toll.</p>' +
+    '<p>By the time she reached the boathouse the rain had started, fine and sideways, the kind that did not fall so much as hang in the air and wait to be walked through. She freed the dory from its blocks and put her shoulder to it, and the old wood complained the way old wood does, and gave.</p>' +
+    '<p>What she would do when she reached the ship she had not yet decided. It was the sort of question that answered itself in the doing, her father had said, though he had said a great many things, and not all of them had survived him.</p>' +
+    '<p>She pushed off into the black, and the light turned over her head, and for once she did not count anything at all.</p>'
+  ];
+
+  var TPL = document.getElementById('reader-tpl');
+
+  function frameState(screen){
+    if (!screen.__state) screen.__state = { idx: 0 };
+    return screen.__state;
+  }
+
+  function pageNumber(idx){ return START_PAGE + idx; }
+
+  function renderPage(screen){
+    var st = frameState(screen);
+    var pageEl = screen.querySelector('.page');
+    var hasDrop = pageEl.classList.contains('has-dropcap');
+    pageEl.innerHTML = PAGES[st.idx];
+    pageEl.classList.toggle('has-dropcap', hasDrop);
+    var pg = pageNumber(st.idx);
+    var chp = chapterPct(pg), tot = totalPct(pg);
+    screen.querySelector('.f-pg').textContent = pg + ' / ' + TOTAL_PAGES;
+    screen.querySelector('.f-pct').textContent = chp + '% / ' + tot + '%';
+    var shp = screen.querySelector('.sh-pg'); if (shp) shp.textContent = 'Page ' + pg + ' / ' + TOTAL_PAGES + ' \u00b7 ' + tot + '%';
+    var shc = screen.querySelector('.sh-chpct'); if (shc) shc.textContent = '\u2014 ' + chp + '%';
+    // scrubber position
+    var frac = pg / TOTAL_PAGES;
+    screen.querySelector('.sfill').style.width = (frac * 100) + '%';
+    screen.querySelector('.shandle').style.left = (frac * 100) + '%';
+  }
+
+  function buildScreen(screen){
+    screen.appendChild(TPL.content.cloneNode(true));
+    // chapter tick marks on the scrubber (relative chapter starts)
+    var ticks = screen.querySelector('.sticks');
+    [0.12, 0.27, 0.39, 0.52, 0.64, 0.78, 0.9].forEach(function(p){
+      var b = document.createElement('b'); b.style.left = (p * 100) + '%'; ticks.appendChild(b);
+    });
+    renderPage(screen);
+    wire(screen);
+  }
+
+  function setMenu(screen, on){ screen.setAttribute('data-menu', on ? '1' : '0'); }
+
+  function turn(screen, dir){
+    var st = frameState(screen);
+    var n = st.idx + dir;
+    if (n < 0 || n >= PAGES.length) return;
+    st.idx = n; renderPage(screen);
+  }
+
+  function wire(screen){
+    // bars swallow clicks so tapping a control doesn't dismiss the menu
+    screen.querySelector('.topbar').addEventListener('click', function(e){ e.stopPropagation(); });
+    screen.querySelector('.bottombar').addEventListener('click', function(e){ e.stopPropagation(); });
+
+    // bookmark toggle
+    var bm = screen.querySelector('[data-bookmark]');
+    bm.addEventListener('click', function(){
+      bm.classList.toggle('on');
+      var path = bm.querySelector('path');
+      path.setAttribute('fill', bm.classList.contains('on') ? 'currentColor' : 'none');
+    });
+
+    // tool press feedback (Contents / Front-light / Aa are stubs for now)
+    screen.querySelectorAll('.tool').forEach(function(t){
+      t.addEventListener('click', function(){
+        screen.querySelectorAll('.tool').forEach(function(x){ x.classList.remove('on'); });
+        t.classList.add('on');
+      });
+    });
+
+    // scrubber: click / drag to jump pages
+    var scrub = screen.querySelector('.scrub');
+    function jump(cx){
+      var r = scrub.getBoundingClientRect();
+      var p = Math.max(0, Math.min(1, (cx - r.left) / r.width));
+      var pg = Math.max(START_PAGE - START_PAGE, Math.round(p * TOTAL_PAGES));
+      // map absolute page back into our 3 sample pages around START_PAGE
+      var idx = Math.max(0, Math.min(PAGES.length - 1, pg - START_PAGE));
+      frameState(screen).idx = idx; renderPage(screen);
+    }
+    var down = false;
+    scrub.addEventListener('pointerdown', function(e){ down = true; jump(e.clientX); scrub.setPointerCapture(e.pointerId); });
+    scrub.addEventListener('pointermove', function(e){ if (down) jump(e.clientX); });
+    scrub.addEventListener('pointerup', function(){ down = false; });
+
+    // page taps: top → menu, left/right edges → turn, middle → menu / dismiss
+    screen.addEventListener('click', function(e){
+      var open = screen.getAttribute('data-menu') === '1';
+      if (open) { setMenu(screen, false); return; }
+      var r = screen.getBoundingClientRect();
+      var x = (e.clientX - r.left) / r.width;
+      var y = (e.clientY - r.top) / r.height;
+      if (y < 0.16) { setMenu(screen, true); return; }
+      if (x < 0.30) { turn(screen, -1); return; }
+      if (x > 0.70) { turn(screen, 1); return; }
+      setMenu(screen, true);
+    });
+  }
+
+  var SCREENS = [document.getElementById('screen-a'), document.getElementById('screen-b')];
+  SCREENS.forEach(buildScreen);
+
+  // ---- reading typography (driven by Tweaks) --------------------------
+  var FONTS = {
+    'Literata': "'Literata', Georgia, serif",
+    'Newsreader': "'Newsreader', Georgia, serif",
+    'Lora': "'Lora', Georgia, serif",
+    'Plex Sans': "'IBM Plex Sans', sans-serif"
+  };
+  window.applyReadingTweaks = function(t){
+    var lh = { tight: 1.35, normal: 1.55, wide: 1.82 }[t.spacing] || 1.55;
+    var mg = { narrow: 48, normal: 72, wide: 104 }[t.margins] || 72;
+    document.querySelectorAll('.reader').forEach(function(r){
+      r.style.setProperty('--rd-size', t.size + 'px');
+      r.style.setProperty('--rd-lh', lh);
+      r.style.setProperty('--rd-margin', mg + 'px');
+      r.style.setProperty('--rd-justify', t.justify ? 'justify' : 'left');
+      r.style.setProperty('--rd-font', FONTS[t.font] || FONTS.Literata);
+      r.querySelector('.page').classList.toggle('has-dropcap', !!t.dropcap);
+    });
+  };
+  window.applyReadingTweaks({ font: 'Literata', size: 34, spacing: 'normal', margins: 'normal', justify: true, dropcap: true });
+</script>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "font": "Literata",
+    "size": 34,
+    "spacing": "normal",
+    "margins": "normal",
+    "justify": true,
+    "dropcap": true
+  }/*EDITMODE-END*/;
+
+  function App() {
+    const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+    React.useEffect(() => { if (window.applyReadingTweaks) window.applyReadingTweaks(t); }, [t]);
+    return (
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Type" />
+        <TweakSelect label="Font" value={t.font}
+          options={['Literata', 'Newsreader', 'Lora', 'Plex Sans']}
+          onChange={(v) => setTweak('font', v)} />
+        <TweakSlider label="Size" value={t.size} min={28} max={46} step={2} unit="px"
+          onChange={(v) => setTweak('size', v)} />
+        <TweakSection label="Layout" />
+        <TweakRadio label="Line spacing" value={t.spacing}
+          options={[{value:'tight',label:'Tight'},{value:'normal',label:'Normal'},{value:'wide',label:'Wide'}]}
+          onChange={(v) => setTweak('spacing', v)} />
+        <TweakRadio label="Margins" value={t.margins}
+          options={[{value:'narrow',label:'Narrow'},{value:'normal',label:'Normal'},{value:'wide',label:'Wide'}]}
+          onChange={(v) => setTweak('margins', v)} />
+        <TweakToggle label="Justify" value={t.justify} onChange={(v) => setTweak('justify', v)} />
+        <TweakToggle label="Drop cap" value={t.dropcap} onChange={(v) => setTweak('dropcap', v)} />
+      </TweaksPanel>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('tweaks-root')).render(<App />);
+</script>
+</body>
+</html>

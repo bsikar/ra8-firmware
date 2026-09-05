@@ -1,0 +1,10 @@
+# Keep manufacturer reference files byte-identical to their source.
+libs/3dmodels/** -text
+# This source archive exceeds GitHub's ordinary file-size limit.
+resources/reference_designs/*.zip filter=lfs diff=lfs merge=lfs -text
+*.kicad_sch text eol=lf
+*.kicad_pcb text eol=lf
+*.kicad_pro text eol=lf
+*.kicad_sym text eol=lf
+*.kicad_mod text eol=lf
+resources/** -text

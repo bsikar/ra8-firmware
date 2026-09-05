@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sleep / Lock — E-Ink Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+body { background: var(--g13); }
+.sheet { padding: 48px 56px 72px; }
+.sheet-head { background: var(--ink); color: var(--paper); display: flex; justify-content: space-between; align-items: center; padding: 20px 32px; margin-bottom: 44px; }
+.sheet-head .h-l { font-size: 22px; font-weight: 600; }
+.sheet-head .h-r { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.14em; color: var(--g12); text-transform: uppercase; }
+.stage { display: flex; gap: 72px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.frame-col { display: flex; flex-direction: column; align-items: center; }
+.frame-label { font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); margin-bottom: 4px; font-weight: 600; }
+.frame-sub { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-muted); margin-bottom: 22px; }
+.frame-spec { font-family: var(--font-mono); font-size: 12px; line-height: 1.7; color: var(--ink-muted); margin-top: 24px; max-width: 1072px; letter-spacing: 0.02em; }
+.frame-spec b { color: var(--ink); font-weight: 600; }
+
+.device { position: relative; background: #0c0c0c; border-radius: 46px; padding: 28px; }
+.device .pgbtn { position: absolute; right: -5px; width: 5px; height: 132px; background: #1c1c1c; border-radius: 0 4px 4px 0; }
+.device .pgbtn.up { top: 420px; } .device .pgbtn.dn { top: 620px; }
+.device .brand { position: absolute; bottom: 7px; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.42em; color: #3a3a3a; font-weight: 600; }
+.screen { width: 1072px; height: 1448px; background: var(--paper); overflow: hidden; position: relative; cursor: pointer; }
+
+/* wake flash — the panel's Init-mode full white flash (instant, no fade) */
+.wake { position: absolute; inset: 0; background: var(--paper); display: none; z-index: 50; }
+.screen.flashing .wake { display: block; }
+
+/* ===================== A · FULL COVER ===================== */
+.cover-full { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+.cover-full .frame-in { position: absolute; inset: 40px; border: 2px solid var(--ink); pointer-events: none; }
+.cover-full .cf-plate { background: var(--paper); margin: 0 64px 220px; padding: 32px 36px 36px; align-self: flex-start; max-width: 78%; }
+.cover-full .cf-kicker { font-family: var(--font-ui); font-size: 20px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--ink-muted); }
+.cover-full .cf-title { font-family: var(--font-read); font-size: 66px; font-weight: 600; line-height: 1.05; margin-top: 18px; }
+.cover-full .cf-author { font-family: var(--font-read); font-size: 28px; margin-top: 20px; }
+
+.sleep-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 104px; background: var(--ink); color: var(--paper); display: flex; align-items: center; gap: 20px; padding: 0 44px; }
+.sleep-bar .sb-ic { display: flex; }
+.sleep-bar .sb-ic svg { width: 34px; height: 34px; }
+.sleep-bar .sb-txt { font-size: 24px; font-weight: 500; white-space: nowrap; }
+.sleep-bar .sb-bat { margin-left: auto; font-size: 22px; display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); }
+
+/* ===================== B · BOOK CARD ===================== */
+.sleep-card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 96px 80px; text-align: center; }
+.sleep-card .moon { color: var(--ink); margin-bottom: 30px; }
+.sleep-card .moon svg { width: 64px; height: 64px; }
+.sleep-card .sc-state { font-family: var(--font-mono); font-size: 19px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-muted); white-space: nowrap; }
+.sleep-card .sc-title { font-family: var(--font-read); font-size: 56px; font-weight: 600; line-height: 1.08; margin-top: 36px; }
+.sleep-card .sc-author { font-family: var(--font-read); font-style: italic; font-size: 28px; color: var(--ink-muted); margin-top: 20px; white-space: nowrap; }
+.sleep-card .sc-prog { width: 420px; max-width: 100%; margin-top: 64px; }
+.sleep-card .sc-bar { height: 8px; background: var(--fill); border: 1px solid var(--g10); }
+.sleep-card .sc-bar > i { display: block; height: 100%; background: var(--ink); }
+.sleep-card .sc-meta { font-family: var(--font-mono); font-size: 19px; color: var(--ink-muted); margin-top: 16px; letter-spacing: 0.03em; white-space: nowrap; }
+.sleep-card .sc-wake { position: absolute; left: 0; right: 0; bottom: 64px; font-size: 22px; color: var(--ink-muted); }
+
+/* top hairline status on card (subtle) */
+.card-status { position: absolute; top: 0; left: 0; right: 0; height: 64px; display: flex; align-items: center; padding: 0 44px; }
+.card-status .cs-r { margin-left: auto; font-family: var(--font-mono); font-size: 18px; color: var(--ink-muted); display: flex; align-items: center; gap: 10px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="sheet-head">
+    <div class="h-l">Sleep / Lock</div>
+    <div class="h-r">Screen 06 · static page held with no power · tap to wake · 1448 × 1072</div>
+  </header>
+
+  <div class="stage">
+    <!-- A · FULL COVER -->
+    <div class="frame-col">
+      <div class="frame-label">Cover sleep</div>
+      <div class="frame-sub">current book, full bleed · the default</div>
+      <div class="device">
+        <div class="pgbtn up"></div><div class="pgbtn dn"></div>
+        <div class="brand">PAPYR</div>
+        <div class="screen" data-wake>
+          <div class="cover-full dither-50">
+            <div class="frame-in"></div>
+            <div class="cf-plate">
+              <div class="cf-kicker">Reading &middot; 64%</div>
+              <div class="cf-title">The Lighthouse at the Edge of Tide</div>
+              <div class="cf-author">Marguerite Hale</div>
+            </div>
+          </div>
+          <div class="sleep-bar">
+            <span class="sb-ic"><svg viewBox="0 0 24 24"><path d="M16.5 3.6a9 9 0 1 0 4.1 13.4A7.2 7.2 0 0 1 16.5 3.6Z" fill="currentColor"/></svg></span>
+            <span class="sb-txt">Asleep &mdash; press any button to wake</span>
+            <span class="sb-bat"><svg viewBox="0 0 36 20" style="width:40px;height:22px"><rect x="1" y="2" width="30" height="16" fill="none" stroke="#fff" stroke-width="2"/><rect x="33" y="6.5" width="3" height="7" fill="#fff"/><rect x="4" y="5" width="18" height="10" fill="#fff"/></svg>82%</span>
+          </div>
+          <div class="wake"></div>
+        </div>
+      </div>
+      <div class="frame-spec">
+        The cover holds on the panel with <b>no power drawn</b> &mdash; bistable e-ink keeps the last image. Tone is <b>1-bit dither</b>, title on a white knockout, a printed inner rule. A solid <b>inverted</b> bar (hard edge, not translucent) carries the sleep state + battery. Tap to see the <b>Init-mode white flash</b> a real wake performs.
+      </div>
+    </div>
+
+    <!-- B · BOOK CARD -->
+    <div class="frame-col">
+      <div class="frame-label">Book card</div>
+      <div class="frame-sub">minimal · where you left off</div>
+      <div class="device">
+        <div class="pgbtn up"></div><div class="pgbtn dn"></div>
+        <div class="brand">PAPYR</div>
+        <div class="screen" data-wake>
+          <div class="sleep-card">
+            <div class="card-status"><span class="cs-r"><svg viewBox="0 0 36 20" style="width:38px;height:21px"><rect x="1" y="2" width="30" height="16" fill="none" stroke="#555" stroke-width="2"/><rect x="33" y="6.5" width="3" height="7" fill="#555"/><rect x="4" y="5" width="18" height="10" fill="#555"/></svg>82%</span></div>
+            <div class="moon"><svg viewBox="0 0 24 24"><path d="M16.5 3.6a9 9 0 1 0 4.1 13.4A7.2 7.2 0 0 1 16.5 3.6Z" fill="currentColor"/></svg></div>
+            <div class="sc-state">Asleep</div>
+            <div class="sc-title">The Lighthouse at the Edge of Tide</div>
+            <div class="sc-author">Marguerite Hale</div>
+            <div class="sc-prog">
+              <div class="sc-bar"><i style="width:64%"></i></div>
+              <div class="sc-meta">64% &middot; Chapter 11 &middot; The Keeper&rsquo;s Hour</div>
+            </div>
+            <div class="sc-wake">Press any button to wake</div>
+          </div>
+          <div class="wake"></div>
+        </div>
+      </div>
+      <div class="frame-spec">
+        A quieter screensaver: a crescent, the book you&rsquo;re mid-way through, and a thin progress bar so you see <b>where you left off</b> at a glance. Pure paper, all grayscale, max contrast. Same tap-to-wake flash.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="tweaks-root"></div>
+
+<script>
+  // tap-to-wake: simulate the panel's Init-mode full white flash (instant, no fade)
+  document.querySelectorAll('.screen[data-wake]').forEach(function(s){
+    s.addEventListener('click', function(){
+      if (s.classList.contains('flashing')) return;
+      s.classList.add('flashing');
+      setTimeout(function(){ s.classList.remove('flashing'); }, 220);
+    });
+  });
+
+  // tweaks
+  window.applySleepTweaks = function(t){
+    document.querySelectorAll('.sleep-bar .sb-txt, .sc-wake').forEach(function(e){ e.textContent = t.wakeHint; });
+    document.querySelectorAll('.sb-bat, .card-status').forEach(function(e){ e.style.visibility = t.battery ? 'visible' : 'hidden'; });
+    document.querySelectorAll('.cf-kicker').forEach(function(e){ e.style.display = t.coverProgress ? '' : 'none'; });
+  };
+  window.applySleepTweaks({ wakeHint: 'Asleep \u2014 press any button to wake', battery: true, coverProgress: true });
+</script>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "wakeHint": "Asleep — press any button to wake",
+    "battery": true,
+    "coverProgress": true
+  }/*EDITMODE-END*/;
+  function App() {
+    const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+    React.useEffect(() => { if (window.applySleepTweaks) window.applySleepTweaks(t); }, [t]);
+    return (
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Sleep screen" />
+        <TweakText label="Wake hint" value={t.wakeHint} onChange={(v) => setTweak('wakeHint', v)} />
+        <TweakToggle label="Battery" value={t.battery} onChange={(v) => setTweak('battery', v)} />
+        <TweakToggle label="Progress on cover" value={t.coverProgress} onChange={(v) => setTweak('coverProgress', v)} />
+      </TweaksPanel>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('tweaks-root')).render(<App />);
+</script>
+</body>
+</html>

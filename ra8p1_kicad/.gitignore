@@ -1,0 +1,8 @@
+# Machine-local KiCad state and recoverable editor history.
+*.kicad_prl
+*.lck
+*.bak
+*-backups/
+.history/
+.DS_Store
+fp-info-cache
