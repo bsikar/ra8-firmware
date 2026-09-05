@@ -5755,6 +5755,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" "559-R7KA8P1KFLCAC#UC0-ND"
+			(at 55.88 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/renesas-electronics-corporation/R7KA8P1KFLCAC-UC0/26738126"
+			(at 55.88 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+			(at 55.88 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 55.88 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "P3"
 			(uuid "b109275c-a242-4d5c-a0fd-605d9438cecf")
 		)
@@ -6752,6 +6796,50 @@
 			)
 		)
 		(property "ki_locked" ""
+			(at 248.92 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "559-R7KA8P1KFLCAC#UC0-ND"
+			(at 248.92 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/renesas-electronics-corporation/R7KA8P1KFLCAC-UC0/26738126"
+			(at 248.92 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+			(at 248.92 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
 			(at 248.92 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -7769,6 +7857,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" "559-R7KA8P1KFLCAC#UC0-ND"
+			(at 248.92 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/renesas-electronics-corporation/R7KA8P1KFLCAC-UC0/26738126"
+			(at 248.92 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+			(at 248.92 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 248.92 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "G1"
 			(uuid "b72d2793-ad4e-4b44-92e9-adcd336f118f")
 		)
@@ -8766,6 +8898,50 @@
 			)
 		)
 		(property "ki_locked" ""
+			(at 152.4 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "559-R7KA8P1KFLCAC#UC0-ND"
+			(at 152.4 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/renesas-electronics-corporation/R7KA8P1KFLCAC-UC0/26738126"
+			(at 152.4 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+			(at 152.4 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
 			(at 152.4 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -9783,6 +9959,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" "559-R7KA8P1KFLCAC#UC0-ND"
+			(at 152.4 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/renesas-electronics-corporation/R7KA8P1KFLCAC-UC0/26738126"
+			(at 152.4 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+			(at 152.4 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 152.4 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "U13"
 			(uuid "cfafdfc4-6d3f-4a1a-9c49-1bc4cb76cafe")
 		)
@@ -10780,6 +11000,50 @@
 			)
 		)
 		(property "ki_locked" ""
+			(at 345.44 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "559-R7KA8P1KFLCAC#UC0-ND"
+			(at 345.44 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/renesas-electronics-corporation/R7KA8P1KFLCAC-UC0/26738126"
+			(at 345.44 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+			(at 345.44 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
 			(at 345.44 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -11797,6 +12061,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" "559-R7KA8P1KFLCAC#UC0-ND"
+			(at 345.44 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/renesas-electronics-corporation/R7KA8P1KFLCAC-UC0/26738126"
+			(at 345.44 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+			(at 345.44 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 345.44 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "P17"
 			(uuid "01fbdc58-a355-48d5-8c49-e4376c809412")
 		)
@@ -12794,6 +13102,50 @@
 			)
 		)
 		(property "ki_locked" ""
+			(at 55.88 195.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "559-R7KA8P1KFLCAC#UC0-ND"
+			(at 55.88 195.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/renesas-electronics-corporation/R7KA8P1KFLCAC-UC0/26738126"
+			(at 55.88 195.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+			(at 55.88 195.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
 			(at 55.88 195.58 0)
 			(hide yes)
 			(show_name no)
