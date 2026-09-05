@@ -30,6 +30,10 @@ AD2_ROLE = "infra/ansible/roles/ad2_tools/tasks/transaction.yml"
 BENCH_DEFAULTS = "infra/ansible/roles/hil_bench/defaults/main.yml"
 FLEET = "scripts/dev/fleet.py"
 FLEET_BENCH = "scripts/dev/fleet_bench.py"
+FLEET_CAPACITY_CLIENT = "scripts/dev/fleet_capacity_client.py"
+FLEET_RECONCILE = "scripts/dev/fleet_reconcile.py"
+FLEET_RECONCILE_ARC_SELFTEST = "scripts/dev/fleet_reconcile_arc_selftest.py"
+FLEET_RECONCILE_PROCESS = "scripts/dev/fleet_reconcile_process.py"
 FLEET_RUNNER = "scripts/dev/fleet_runner_maintenance.py"
 FLEET_WSL = "scripts/dev/fleet_wsl.py"
 FLEET_WSL_STAGE = "scripts/dev/fleet_wsl_stage.py"
@@ -546,6 +550,10 @@ def _governed_source_paths() -> dict[str, str]:
         "idle_helper": IDLE_HELPER,
         "fleet": FLEET,
         "fleet_bench": FLEET_BENCH,
+        "fleet_capacity_client": FLEET_CAPACITY_CLIENT,
+        "fleet_reconcile": FLEET_RECONCILE,
+        "fleet_reconcile_arc_selftest": FLEET_RECONCILE_ARC_SELFTEST,
+        "fleet_reconcile_process": FLEET_RECONCILE_PROCESS,
         "fleet_runner": FLEET_RUNNER,
         "fleet_wsl": FLEET_WSL,
         "fleet_wsl_stage": FLEET_WSL_STAGE,

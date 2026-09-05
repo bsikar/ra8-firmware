@@ -78,6 +78,7 @@ fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export ANSIBLE_COLLECTIONS_PATH="$ROOT/.ansible/collections"
 FLEET="${ROOT}/scripts/dev/fleet.py"
+MUTATION_LOCK="${ROOT}/scripts/dev/fleet_mutation_lock.py"
 MANAGED_VENV="$ROOT/.venv"
 MANAGED_BIN="$MANAGED_VENV/bin"
 MANAGED_PATH="$MANAGED_BIN:/usr/local/bin:/usr/bin:/bin"
@@ -120,6 +121,10 @@ die() {
 
 fleet() {
   "$PYTHON" -I "${FLEET}" "$@"
+}
+
+fleet_mutation() {
+  "$PYTHON" -I "$MUTATION_LOCK" -- "$PYTHON" -I "$FLEET" "$@"
 }
 
 host_names() {
@@ -269,7 +274,7 @@ cmd_check() {
 
 cmd_apply() {
   require_playbook_env
-  fleet apply "$@"
+  fleet_mutation apply "$@"
 }
 
 cmd_reconcile() {
@@ -294,23 +299,23 @@ cmd_reconcile_status() {
 cmd_register_runner() {
   [[ $# -eq 2 ]] || die "register-runner needs a host and typed vars file"
   require_playbook_env
-  fleet register-runner "$@"
+  fleet_mutation register-runner "$@"
 }
 
 cmd_register_hil() {
   [[ $# -eq 1 ]] || die "register-hil needs one typed vars file"
   require_playbook_env
-  fleet register-hil "$@"
+  fleet_mutation register-hil "$@"
 }
 
 cmd_remove() {
   require_playbook_env
-  fleet remove "$@"
+  fleet_mutation remove "$@"
 }
 
 cmd_scale() {
   [ $# -ge 2 ] || die "scale needs a host and a target instance count"
-  fleet scale "$1" "$2"
+  fleet_mutation scale "$1" "$2"
 }
 
 # --- status -----------------------------------------------------------------

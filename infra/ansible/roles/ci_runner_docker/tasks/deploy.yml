@@ -728,8 +728,10 @@
       ansible.builtin.command:
         argv: >-
           {{ ['docker', 'compose', '--project-name', ci_runner_docker_container,
-              '--file', ci_runner_docker_compose_file, 'up', '--detach',
-              '--remove-orphans']
+              '--file', ci_runner_docker_compose_file]
+             + (['create', '--remove-orphans']
+                if fleet_reconcile_parked | default(false) | bool
+                else ['up', '--detach', '--remove-orphans'])
              + (['--force-recreate']
                 if (ci_runner_docker_stale_containers | length) > 0 else []) }}
       register: ci_runner_docker_up
@@ -823,6 +825,7 @@
       # connected is the strongest possible evidence it joined the pool.
       when:
         - not ansible_check_mode
+        - not (fleet_reconcile_parked | default(false) | bool)
         - (ci_runner_docker_github_pat | default('') | trim) | length > 0
       delegate_to: localhost
       become: false
@@ -857,6 +860,7 @@
       # announcement or evidence of an active job.
       when:
         - not ansible_check_mode
+        - not (fleet_reconcile_parked | default(false) | bool)
         - (ci_runner_docker_github_pat | default('') | trim) | length == 0
       become: true
       ansible.builtin.command:
@@ -874,7 +878,9 @@
         label: "{{ item.name }}"
 
     - name: Report the deployed runners
-      when: not ansible_check_mode
+      when:
+        - not ansible_check_mode
+        - not (fleet_reconcile_parked | default(false) | bool)
       ansible.builtin.debug:
         msg: >-
           {{ ci_runner_docker_instances }} runner(s) online --

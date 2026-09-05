@@ -20,7 +20,7 @@ import hil_convergence_safety_raw_digest_controls as raw_digest_controls
 # enumeration cannot prove an unaudited byte harmless, so each surface is
 # review-bound; intentional edits must update these pins separately.
 DEVCONTAINER_IMAGE_PATH = "scripts/ci/devcontainer_image.sh"
-DEVCONTAINER_IMAGE_RAW_SHA256 = "c0c4496a1c1d890eb9f7b7e5af6826921f4b4c5ffbf4f6616edced88bb7c1f21"
+DEVCONTAINER_IMAGE_RAW_SHA256 = "fe60cc3ce468fff302b5165ad44b6d782e060336d052446467b1662eaf0ab3c9"
 DEVCONTAINER_IMAGE_LOCK_RECEIPTS_PATH = "scripts/ci/devcontainer_image_lock_receipts.bash"
 DEVCONTAINER_IMAGE_LOCK_RECEIPTS_RAW_SHA256 = (
     "854cfd1163d3d49eda0b05d8a14c5b32385b4b96e7d08de20b03da5cbd1ee727"

@@ -565,11 +565,14 @@ def cache_exact_fd_execution_selftest() -> None:
             return real_run(argv, **kwargs)
 
         with mock.patch.object(subprocess, "run", side_effect=swap_then_run):
-            b.expect_bootstrap_error(
-                partial(b.run_cached_uv, manifest, root, ["work"], ensure=False),
-                "post-auth cache pathname replacement",
-                "changed after authenticating",
-            )
+            try:
+                b.run_cached_uv(manifest, root, ["work"], ensure=False)
+            except (b.CacheMetadataChangedError, b.CachePathBindingError):
+                pass
+            except b.BootstrapError:
+                b.fail("selftest: pathname replacement returned unrelated error class")
+            else:
+                b.fail("selftest: pathname replacement was not rejected")
         if victim.exists():
             b.fail("selftest: version probe executed unauthenticated replacement bytes")
 

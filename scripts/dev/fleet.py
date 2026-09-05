@@ -15,23 +15,40 @@ import argparse
 import os
 import subprocess
 import sys
-from collections.abc import Mapping
+import tempfile
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from threading import Event, Thread
 from typing import Any, Protocol
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import fleet_bench as fb
+import fleet_capacity_client as fcc
 import fleet_model as fm
+import fleet_mutation_lock as fml
 import fleet_reach as fr
 import fleet_runner_maintenance as frm
 import fleet_ssh_config as fsc
 import fleet_typed_vars as ftv
 import fleet_wsl as fw
 
-CAPACITY_SCRIPT = fm.REPO_ROOT / "scripts" / "ci" / "fleet_capacity.sh"
 IDLE_STOP_HELPER = fm.REPO_ROOT / "infra/ansible/roles/dev_box/files/ra8-hil-runner-idle-stop.py"
+MUTATING_COMMANDS = frozenset(
+    {
+        "register-runner",
+        "register-hil",
+        "apply",
+        "reconcile-parked-apply",
+        "reconcile-parked-check",
+        "reconcile-activate",
+        "remove",
+        "capacity-quarantine",
+        "capacity-restore",
+        "scale",
+    }
+)
 
 
 class _SubparserGroup(Protocol):
@@ -79,6 +96,7 @@ def _run(
     stdin: str | bytes | None = None,
     cwd: Path | None = None,
     env: Mapping[str, str] | None = None,
+    subprocess_kwargs: Mapping[str, object] | None = None,
 ) -> int:
     """Run a command, streaming its output, and return its status.
 
@@ -91,63 +109,23 @@ def _run(
         cwd: Directory to run in. Ansible needs ``infra/ansible``: both the
             playbook paths and ``ansible.cfg`` are resolved relative to it.
         env: Exact child environment, or the caller's environment when absent.
+        subprocess_kwargs: Narrow trusted FD inheritance for bench re-entry only.
 
     Returns:
         The command's exit status.
     """
+    options: dict[str, object] = {
+        "input": stdin,
+        "text": not isinstance(stdin, bytes),
+        "cwd": cwd,
+        "env": env,
+    }
+    if subprocess_kwargs is not None:
+        options.update(subprocess_kwargs)
     proc = subprocess.run(  # noqa: S603 -- argv is built from the declaration, never a shell string
-        argv,
-        input=stdin,
-        text=not isinstance(stdin, bytes),
-        cwd=cwd,
-        env=env,
-        check=False,
+        argv, check=False, **options
     )
     return proc.returncode
-
-
-def _capacity(data: dict[str, Any], name: str, args: list[str]) -> int:
-    """Run ``fleet_capacity.sh`` on a host, over that host's transport.
-
-    The script is piped from the checkout on every call rather than invoked
-    from a copy on the host, so an operator command always runs the version in
-    the tree. The copy the ``fleet_capacity`` role installs exists for the
-    unattended quiet-hours timer, which has no checkout to read from.
-
-    Args:
-        data: The parsed declaration.
-        name: Fleet host name.
-        args: Arguments after the fixed configuration flags.
-
-    Returns:
-        The script's exit status.
-    """
-    host = _host(data, name)
-    cls = fm.CLASSES[host["class"]]
-    if cls.capacity_kind == "none":
-        return _fail(f"{name} is a {host['class']} host and carries no runners to scale")
-    flags = ["--kind", cls.capacity_kind]
-    if cls.capacity_kind == "docker":
-        if fm.docker_command(host) != "docker":
-            flags.append("--sudo")
-        for container in fm.container_names(host):
-            flags += ["--container", container]
-        # An operator scale-down must reach the dev slice for the same reason
-        # the timer's does: `just infra::scale HOST=win-ci N=0` is the "I want
-        # to play a game for an hour" command, and it buys the owner nothing
-        # while a gate suite in the slice still has the machine.
-        if host.get("dev_slice"):
-            flags += ["--dev-slice", fm.DEV_SLICE_UNIT]
-    else:
-        flags += ["--scale-set", host["runners"]["labels"][0]]
-    # Never a quoted argument: for the WSL host this line is parsed by Windows'
-    # shell before `wsl -e` sees it, and quoting does not survive that. The
-    # capacity script's flags are shaped so none is ever needed.
-    remote = f"{fm.remote_shell(host)} -- {' '.join(flags)} {' '.join(args)}"
-    return _run(
-        [*fr.ssh_target(data, name), remote],
-        stdin=CAPACITY_SCRIPT.read_text(encoding="utf-8"),
-    )
 
 
 def cmd_list(data: dict[str, Any], _args: argparse.Namespace) -> int:
@@ -254,6 +232,60 @@ def cmd_validate(data: dict[str, Any], _args: argparse.Namespace) -> int:
     return 0
 
 
+def _publish_inventory(body: str) -> None:
+    """Atomically publish one complete shared Ansible inventory generation."""
+    fm.INVENTORY.parent.mkdir(parents=True, exist_ok=True)
+    fd, raw = tempfile.mkstemp(prefix=f".{fm.INVENTORY.name}.", dir=fm.INVENTORY.parent)
+    temporary = Path(raw)
+    try:
+        os.fchmod(fd, 0o644)
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(body)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(fm.INVENTORY)
+        directory = os.open(fm.INVENTORY.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _inventory_publication_selftest() -> list[str]:
+    """Prove concurrent readers observe only complete inventory generations."""
+    failures: list[str] = []
+    original = fm.INVENTORY
+    with tempfile.TemporaryDirectory(prefix="ra8-fleet-inventory-") as raw:
+        fm.INVENTORY = Path(raw) / "hosts.ini"
+        first = "[fleet]\n" + "a=1\n" * 8192
+        second = "[fleet]\n" + "b=2\n" * 8192
+        fm.INVENTORY.write_text(first, encoding="utf-8")
+        stopped = Event()
+        partial: list[str] = []
+
+        def read_generations() -> None:
+            while not stopped.is_set():
+                observed = fm.INVENTORY.read_text(encoding="utf-8")
+                if observed not in {first, second}:
+                    partial.append(observed)
+                    stopped.set()
+
+        reader = Thread(target=read_generations)
+        reader.start()
+        try:
+            for index in range(32):
+                _publish_inventory(first if index % 2 else second)
+        finally:
+            stopped.set()
+            reader.join()
+            fm.INVENTORY = original
+        if partial:
+            failures.append("concurrent inventory reader observed a partial generation")
+    return failures
+
+
 def cmd_inventory(data: dict[str, Any], args: argparse.Namespace) -> int:
     """Generate the Ansible inventory from the declaration.
 
@@ -268,8 +300,7 @@ def cmd_inventory(data: dict[str, Any], args: argparse.Namespace) -> int:
     if args.stdout:
         print(body, end="")
         return 0
-    fm.INVENTORY.parent.mkdir(parents=True, exist_ok=True)
-    fm.INVENTORY.write_text(body, encoding="utf-8")
+    _publish_inventory(body)
     print(f"wrote {fm.INVENTORY.relative_to(fm.REPO_ROOT)} ({len(data['hosts'])} host(s))")
     return 0
 
@@ -351,23 +382,26 @@ def _converge_refusal(args: argparse.Namespace, host: dict[str, Any], plays: lis
     return ""
 
 
-def _restore_after_converge(
-    data: dict[str, Any], args: argparse.Namespace, host: dict[str, Any], rc: int
-) -> int:
+def _restore_after_converge(data: dict[str, Any], args: argparse.Namespace, rc: int) -> int:
     """Restore declared capacity after a drained converge, preserving failure."""
-    restore = _capacity(data, args.host, ["scale", str(host["runners"]["instances"])])
-    if restore and rc:
-        print(
-            f"fleet: warning: converge failed with rc={rc} and capacity "
-            f"restoration also failed with rc={restore}",
-            file=sys.stderr,
-        )
-    return rc or restore
+    if rc:
+        quarantine = fcc.run(data, args.host, ["quarantine"], _run)
+        return rc or quarantine
+    return fcc.run(data, args.host, ["restore"], _run)
+
+
+def _is_parked_command(command: str) -> bool:
+    """Return whether reconciliation requires zero admission through postcheck."""
+    return command in {"reconcile-parked-apply", "reconcile-parked-check"}
 
 
 def _converge_extra(host: dict[str, Any], args: argparse.Namespace) -> list[str]:
     """Build Ansible flags without weakening credential handling."""
     extra = (["--check", "--diff"] if args.mode == "check" else []) + _remove_flags(host, args)
+    if _is_parked_command(args.command):
+        extra += ["-e", "fleet_reconcile_parked=true"]
+    if args.command in {"reconcile-activate", "reconcile-activation-check"}:
+        extra += ["-e", "fleet_reconcile_activation_hold=true"]
     # SHORT-LIVED credentials only, and preferably by file reference.
     #
     # Anything given as KEY=VALUE lands in this process's argv and in
@@ -558,7 +592,7 @@ def _run_converge_transport(request: _ConvergeTransport) -> int:
         )
         return fw.converge(
             spec,
-            sync_image=request.args.mode != "remove" and not request.no_drain_tags,
+            sync_image=request.args.mode == "apply" and not request.no_drain_tags,
             run=_run,
         )
     if request.typed_vars is None:
@@ -568,20 +602,50 @@ def _run_converge_transport(request: _ConvergeTransport) -> int:
         return _converge_ssh(request.data, request.args.host, request.plays, extra)
 
 
+def _bench_guard_subprocess_kwargs(
+    command: str, capability: Callable[[], dict[str, object]]
+) -> dict[str, object] | None:
+    """Carry the live guardian only through a mutating bench re-entry."""
+    return capability() if command in MUTATING_COMMANDS else None
+
+
+def _bench_guard_inheritance_selftest() -> list[str]:
+    """Prove only mutating bench re-entry inherits the live guardian FD."""
+    failures: list[str] = []
+    calls = 0
+    expected = {"env": {"RA8_FLEET_MUTATION_GUARDIAN_FD": "9"}, "pass_fds": (9,)}
+
+    def capability() -> dict[str, object]:
+        nonlocal calls
+        calls += 1
+        return expected
+
+    if _bench_guard_subprocess_kwargs("apply", capability) != expected or calls != 1:
+        failures.append("mutating bench re-entry dropped its guardian capability")
+    if _bench_guard_subprocess_kwargs("check", capability) is not None or calls != 1:
+        failures.append("read-only bench re-entry inherited a mutation capability")
+    return failures
+
+
 def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
     """Run a dry check or a guarded real converge of one host's plays.
 
-    Container-host applies drain first. Bench-host applies re-enter under the
-    physical bench lock before inventory generation or remote work.
+    Container-host applies drain first. A reconciler-only parked apply leaves
+    capacity at zero for its caller's postcheck. Bench-host applies re-enter
+    under the physical bench lock before inventory generation or remote work.
     """
     host = _host(data, args.host)
+    parked = _is_parked_command(args.command)
     plays = _plays_for(host, args.play)
     refusal = _converge_refusal(args, host, plays)
+    if parked and not host.get("runners"):
+        refusal = "parked reconciliation is limited to capacity-managed runner hosts"
     if refusal:
         return _fail(refusal)
     guard = _bench_guard_argv(host, plays, args)
     if guard:
-        return _run(guard, cwd=fm.REPO_ROOT)
+        guardian = _bench_guard_subprocess_kwargs(args.command, fml.guardian_subprocess_kwargs)
+        return _run(guard, cwd=fm.REPO_ROOT, subprocess_kwargs=guardian)
     typed_vars = _typed_vars_for_converge(args, host)
     rc = cmd_inventory(data, argparse.Namespace(stdout=False))
     if rc:
@@ -603,26 +667,22 @@ def cmd_converge(data: dict[str, Any], args: argparse.Namespace) -> int:
         args.mode == "apply"
         and not args.no_drain
         and not no_drain_tags
-        and fm.container_names(host)
+        and (parked or fm.container_names(host))
     )
     if drain:
-        print(f"==> draining {args.host} before converging (a converge recreates containers)")
-        # drain-all, not `scale 0`: a converge that changes the instance count
-        # across the 1 <-> N boundary also renames the containers, so the drain
-        # has to walk what is really on the host rather than what the
-        # declaration predicts.
-        rc = _capacity(data, args.host, ["drain-all"])
+        print(f"==> parking {args.host} before converging (a converge changes admission)")
+        # Persistent containers use drain-all because a 1 <-> N declaration
+        # change renames them. ARC admission is a direct zero scale; its
+        # ephemeral controller deletes only runners that hold no job.
+        rc = fcc.run(data, args.host, ["maintenance-enter"], _run)
         if rc:
             return _fail("could not drain the host; refusing to converge over running jobs")
     rc = _run_converge_transport(request)
-    if drain:
-        # Draining is a safety transaction, not a one-way state change. A
-        # failed play must not strand every previously healthy runner parked --
-        # that happened when a preflight rejected a missing, unused PAT before
-        # the role had touched the host. Best-effort restoration is safe even
-        # after a partial converge: it starts only containers that still exist,
-        # while the original Ansible status remains the command's verdict.
-        rc = _restore_after_converge(data, args, host, rc)
+    if drain and not parked:
+        # Interactive convergence restores the declared service after either
+        # outcome. The reconciler uses the parked command instead and owns
+        # postcheck, receipt publication, and the eventual capacity restore.
+        rc = _restore_after_converge(data, args, rc)
     return rc
 
 
@@ -699,7 +759,7 @@ def cmd_status(data: dict[str, Any], args: argparse.Namespace) -> int:
         # Flushed before handing the terminal to ssh, or Python's buffer holds
         # the heading until after the rows it introduces have already printed.
         sys.stdout.flush()
-        _capacity(data, name, ["status"])
+        fcc.run(data, name, ["status"], _run)
     return 0
 
 
@@ -741,23 +801,19 @@ def cmd_reach(data: dict[str, Any], _args: argparse.Namespace) -> int:
     return rc
 
 
+def cmd_capacity_quarantine(data: dict[str, Any], args: argparse.Namespace) -> int:
+    """Retain durable maintenance and drive one host to zero admission."""
+    return fcc.run(data, args.host, ["quarantine"], _run)
+
+
+def cmd_capacity_restore(data: dict[str, Any], args: argparse.Namespace) -> int:
+    """Restore the current quiet-hours target and clear durable maintenance."""
+    return fcc.run(data, args.host, ["restore"], _run)
+
+
 def cmd_scale(data: dict[str, Any], args: argparse.Namespace) -> int:
-    """Change how many instances a host is running, right now.
-
-    Growing starts parked instances. Shrinking DRAINS: an instance is stopped
-    only once it is idle, never signalled while it holds a job, because the
-    runner cancels its in-flight job on SIGTERM.
-
-    Args:
-        data: The parsed declaration.
-        args: Parsed command line; uses ``args.host`` and ``args.count``.
-
-    Returns:
-        The capacity script's status: non-zero when it could not converge
-        inside its deadline, which means instances were left running on
-        purpose.
-    """
-    return _capacity(data, args.host, ["scale", str(args.count)])
+    """Change live capacity, draining idle runners during shrink."""
+    return fcc.run(data, args.host, ["scale", str(args.count)], _run)
 
 
 def cmd_selftest(data: dict[str, Any], _args: argparse.Namespace) -> int:
@@ -767,6 +823,10 @@ def cmd_selftest(data: dict[str, Any], _args: argparse.Namespace) -> int:
         + fw.run_selftest(data)
         + fb.run_selftest()
         + frm.run_selftest()
+        + fml.run_selftest()
+        + fcc.run_selftest(data)
+        + _bench_guard_inheritance_selftest()
+        + _inventory_publication_selftest()
         + fb.parser_selftest(_parser)
     )
     if data["hosts"]["win-ci"]["class"] not in ftv.CONTAINER_RUNNER_CLASSES:
@@ -852,8 +912,29 @@ def _parser() -> argparse.ArgumentParser:
         "register-hil", help="first-register the one declared native HIL listener"
     ).add_argument("vars_file")
     _add_converge_parsers(subs)
+    parked_commands = {
+        "reconcile-parked-apply": ("apply", False),
+        "reconcile-parked-check": ("check", False),
+        "reconcile-activate": ("apply", True),
+        "reconcile-activation-check": ("check", True),
+    }
+    for command, (mode, no_drain) in parked_commands.items():
+        internal = subs.add_parser(command, help=argparse.SUPPRESS)
+        internal.add_argument("host")
+        internal.set_defaults(
+            mode=mode,
+            play=None,
+            no_drain=no_drain,
+            extra_var=[],
+            tags="",
+            vars_file="",
+            trusted_tags=False,
+        )
     status = subs.add_parser("status", help="what each host is running, right now")
     status.add_argument("host", nargs="?")
+    for command in ("capacity-quarantine", "capacity-restore"):
+        internal = subs.add_parser(command, help=argparse.SUPPRESS)
+        internal.add_argument("host")
     scale = subs.add_parser("scale", help="live capacity change; shrinking drains")
     scale.add_argument("host")
     scale.add_argument("count", type=int)
@@ -885,15 +966,28 @@ def main(argv: list[str] | None = None) -> int:
         "register-hil": cmd_register_hil,
         "check": cmd_converge,
         "apply": cmd_converge,
+        "reconcile-parked-apply": cmd_converge,
+        "reconcile-parked-check": cmd_converge,
+        "reconcile-activate": cmd_converge,
+        "reconcile-activation-check": cmd_converge,
         "remove": cmd_converge,
         "status": cmd_status,
+        "capacity-quarantine": cmd_capacity_quarantine,
+        "capacity-restore": cmd_capacity_restore,
         "scale": cmd_scale,
     }
-    args.mode = args.command
+    if not hasattr(args, "mode"):
+        args.mode = args.command
     try:
         data = fm.load()
+        if args.command in MUTATING_COMMANDS:
+            if "RA8_FLEET_MUTATION_GUARDIAN_FD" not in os.environ:
+                return fml.run_locked(
+                    data, [sys.executable, str(Path(__file__).resolve()), *original_argv]
+                )
+            fml.require_guardian_capability()
         return handlers[args.command](data, args)
-    except fm.FleetError as exc:
+    except (fml.MutationLockError, fm.FleetError) as exc:
         return _fail(str(exc))
 
 

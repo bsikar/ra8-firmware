@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import os
 import pwd
+import stat
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,8 @@ from typing import Any
 
 import fleet_model as fm
 import fleet_path_authority as fpa
+
+PRIVATE_DIRECTORY_MODE = 0o700
 
 
 class MaintenanceError(ValueError):
@@ -109,6 +112,23 @@ def _require_real_file(path: Path, label: str) -> Path:
     return resolved
 
 
+def _private_runtime_directory(environment: Mapping[str, str], key: str) -> str | None:
+    """Return one explicitly supplied, private Ansible runtime directory."""
+    value = environment.get(key)
+    if value is None:
+        return None
+    path = Path(value)
+    if not path.is_absolute():
+        message = f"{key} is not an absolute path"
+        raise MaintenanceError(message)
+    resolved = _require_real_directory(path, f"{key} directory")
+    metadata = resolved.stat()
+    if metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != PRIVATE_DIRECTORY_MODE:
+        message = f"{key} is not owned by this account with mode 0700"
+        raise MaintenanceError(message)
+    return str(resolved)
+
+
 def ansible_environment(environment: Mapping[str, str], ansible_cwd: Path) -> dict[str, str]:
     """Bind Ansible to the repository config without inherited control paths."""
     resolved_cwd = _require_real_directory(ansible_cwd, "Ansible working directory")
@@ -125,7 +145,6 @@ def ansible_environment(environment: Mapping[str, str], ansible_cwd: Path) -> di
     link_errors = fpa.confined_link_errors(collections)
     if link_errors:
         raise MaintenanceError("; ".join(link_errors))
-    del environment
     clean = {
         "HOME": pwd.getpwuid(os.getuid()).pw_dir,
         "LANG": "C.UTF-8",
@@ -136,6 +155,10 @@ def ansible_environment(environment: Mapping[str, str], ansible_cwd: Path) -> di
     clean["ANSIBLE_COLLECTIONS_PATH"] = str(collections)
     clean["ANSIBLE_COLLECTIONS_SCAN_SYS_PATH"] = "false"
     clean["PYTHONNOUSERSITE"] = "1"
+    for key in ("ANSIBLE_LOCAL_TEMP", "ANSIBLE_SSH_CONTROL_PATH_DIR"):
+        value = _private_runtime_directory(environment, key)
+        if value is not None:
+            clean[key] = value
     return clean
 
 
@@ -329,6 +352,51 @@ def _collection_tree_selftest(root: Path) -> list[str]:
     return failures
 
 
+def _runtime_directory_selftest(root: Path) -> list[str]:
+    """Prove approved runtime directories survive and unsafe ones fail closed."""
+    ansible_cwd, _collections, hostile = _environment_fixture(root)
+    runtime = root / "runtime"
+    local = runtime / "local"
+    control = runtime / "control"
+    local.mkdir(parents=True, mode=0o700)
+    control.mkdir(mode=0o700)
+    selected = {
+        **hostile,
+        "ANSIBLE_LOCAL_TEMP": str(local),
+        "ANSIBLE_SSH_CONTROL_PATH_DIR": str(control),
+    }
+    clean = callback_environment(selected, ansible_cwd)
+    failures = []
+    if clean.get("ANSIBLE_LOCAL_TEMP") != str(local.resolve()):
+        failures.append("private Ansible local-temp directory was discarded")
+    if clean.get("ANSIBLE_SSH_CONTROL_PATH_DIR") != str(control.resolve()):
+        failures.append("private Ansible control-path directory was discarded")
+    relative = {**hostile, "ANSIBLE_LOCAL_TEMP": "relative"}
+    try:
+        callback_environment(relative, ansible_cwd)
+    except MaintenanceError:
+        pass
+    else:
+        failures.append("relative Ansible runtime directory was accepted")
+    linked = runtime / "linked"
+    linked.symlink_to(local, target_is_directory=True)
+    symlinked = {**hostile, "ANSIBLE_LOCAL_TEMP": str(linked)}
+    try:
+        callback_environment(symlinked, ansible_cwd)
+    except MaintenanceError:
+        pass
+    else:
+        failures.append("linked Ansible runtime directory was accepted")
+    control.chmod(0o755)
+    try:
+        callback_environment(selected, ansible_cwd)
+    except MaintenanceError:
+        pass
+    else:
+        failures.append("group-readable Ansible runtime directory was accepted")
+    return failures
+
+
 def _environment_selftest() -> list[str]:
     """Prove exact Ansible/Python environment and no-link isolation."""
     with tempfile.TemporaryDirectory(prefix="ra8-ansible-env-") as scratch:
@@ -339,6 +407,7 @@ def _environment_selftest() -> list[str]:
         ansible_cwd, collections, hostile = _environment_fixture(second)
         failures.extend(_link_selftest(second, ansible_cwd, collections, hostile))
         failures.extend(_collection_tree_selftest(Path(scratch)))
+        failures.extend(_runtime_directory_selftest(Path(scratch) / "runtime-directories"))
         return failures
 
 

@@ -102,7 +102,10 @@ def _sync_requirements() -> set[str]:
         'UV_CACHE_DIR="$managed_cache" uv_run ',
         '  UV_PROJECT_ENVIRONMENT="$managed_root" UV_PYTHON_DOWNLOADS=never '
         'UV_CACHE_DIR="$managed_cache" uv_run --offline --no-cache ',
-        " --check",
+        "  sync_status=0",
+        " --check || sync_status=$?",
+        '  if [ "$sync_status" -eq 1 ]; then',
+        '  [ "$sync_status" -eq 0 ] || exit "$sync_status"',
     }
 
 
@@ -117,6 +120,11 @@ def _verify_requirements() -> set[str]:
         'export ANSIBLE_CONFIG="$PWD/ansible.cfg"',
         'export ANSIBLE_COLLECTIONS_PATH="$PWD/../../.ansible/collections"',
         "export ANSIBLE_COLLECTIONS_SCAN_SYS_PATH=false",
+        "  pipeline_status=(0 0)",
+        ' /dev/stdin || pipeline_status=("${PIPESTATUS[@]}")',
+        '  if [ "${pipeline_status[1]}" -eq 1 ] && [ "$mode" = check ]; then',
+        '  [ "${pipeline_status[0]}" -eq 0 ] || exit "${pipeline_status[0]}"',
+        '  [ "${pipeline_status[1]}" -eq 0 ] || exit "${pipeline_status[1]}"',
     }
 
 
@@ -124,11 +132,75 @@ def _required_strings(tree: ast.Module) -> bool:
     """Return whether executable render helpers contain every safety decision."""
     requirements = (
         (_function(tree, "_isolation_lines"), _isolation_requirements()),
-        (_function(tree, "_path_proof_lines"), _path_proof_requirements()),
-        (_function(tree, "_toolchain_sync_lines"), _sync_requirements()),
         (_function(tree, "_toolchain_verify_lines"), _verify_requirements()),
     )
-    return all(wanted <= _return_strings(function) for function, wanted in requirements)
+    proof_strings = set().union(
+        _return_strings(_function(tree, "_proof_function_lines")),
+        _return_strings(_function(tree, "_path_proof_lines")),
+    )
+    sync_strings = set().union(
+        *(
+            _return_strings(_function(tree, name))
+            for name in (
+                "_toolchain_sync_lines",
+                "_apply_environment_lines",
+                "_check_environment_lines",
+            )
+        )
+    )
+    return (
+        all(wanted <= _return_strings(function) for function, wanted in requirements)
+        and _path_proof_requirements() <= proof_strings
+        and _sync_requirements() <= sync_strings
+    )
+
+
+def _exact_builder_contract(tree: ast.Module) -> bool:
+    """Require exact unmasked apply sync and executable-helper mode proofs."""
+    apply = _function(tree, "_apply_environment_lines")
+    proof = _function(tree, "_path_proof_lines")
+    apply_return = (
+        next((node.value for node in apply.body if isinstance(node, ast.Return)), None)
+        if apply is not None
+        else None
+    )
+    proof_return = (
+        next((node.value for node in proof.body if isinstance(node, ast.Return)), None)
+        if proof is not None
+        else None
+    )
+    if not isinstance(apply_return, ast.List) or not isinstance(proof_return, ast.List):
+        return False
+    expected_apply = ast.parse(
+        "'  UV_PROJECT_ENVIRONMENT=\"$managed_root\" UV_PYTHON_DOWNLOADS=never ' "
+        "'UV_CACHE_DIR=\"$managed_cache\" uv_run ' "
+        'f"{sync_flags}"',
+        mode="eval",
+    ).body
+    expected_bootstrap = ast.parse(
+        "f\"require_exact_file {shlex.quote(stage + '/scripts/dev/bootstrap_uv.py')} \" "
+        'f"755 {bootstrap_digest}"',
+        mode="eval",
+    ).body
+    expected_helper = ast.parse(
+        "f\"require_exact_file {shlex.quote(stage + '/scripts/dev/bootstrap_uv_exec.py')} \" "
+        'f"644 {helper_digest}"',
+        mode="eval",
+    ).body
+    wanted = (expected_bootstrap, expected_helper)
+    apply_matches = sum(
+        ast.dump(item, include_attributes=False)
+        == ast.dump(expected_apply, include_attributes=False)
+        for item in apply_return.elts
+    )
+    proof_matches = [
+        sum(
+            ast.dump(item, include_attributes=False) == ast.dump(expected, include_attributes=False)
+            for item in proof_return.elts
+        )
+        for expected in wanted
+    ]
+    return apply_matches == 1 and proof_matches == [1, 1]
 
 
 def environment_errors(tree: ast.Module) -> list[str]:
@@ -176,6 +248,7 @@ def environment_errors(tree: ast.Module) -> list[str]:
         or ast.dump(combined_return, include_attributes=False)
         != ast.dump(composition, include_attributes=False)
         or not _required_strings(tree)
+        or not _exact_builder_contract(tree)
         or any(
             "uv_bin" in value or "--verify-cache" in value or "|| true" in value
             for value in sync_strings | verify_strings

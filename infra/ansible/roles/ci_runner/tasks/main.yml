@@ -411,6 +411,32 @@
       stringData:
         github_token: "{{ ci_runner_github_pat }}"
 
+- name: Install the held-admission ARC post-renderer
+  when: fleet_reconcile_activation_hold | bool
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ ci_runner_activation_post_renderer }}"
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/usr/bin/python3
+      import sys
+      import yaml
+
+      documents = list(yaml.safe_load_all(sys.stdin))
+      matches = 0
+      for document in documents:
+          if isinstance(document, dict) and document.get("kind") == "AutoscalingRunnerSet":
+              spec = document.setdefault("spec", {})
+              spec["minRunners"] = 0
+              spec["maxRunners"] = 0
+              matches += 1
+      if matches != 1:
+          print(f"expected one AutoscalingRunnerSet, found {matches}", file=sys.stderr)
+          raise SystemExit(2)
+      yaml.safe_dump_all(documents, sys.stdout, explicit_start=True, sort_keys=False)
+
 - name: Install the ra8-ci runner scale set
   become: true
   vars:
@@ -421,12 +447,19 @@
     chart_version: "{{ ci_runner_arc_chart_version }}"
     release_namespace: "{{ ci_runner_namespace }}"
     kubeconfig: "{{ ci_runner_kubeconfig }}"
+    post_renderer: >-
+      {{ ci_runner_activation_post_renderer
+         if fleet_reconcile_activation_hold | bool else omit }}
     values:
       githubConfigUrl: "{{ ci_runner_github_url }}"
       githubConfigSecret: "{{ ci_runner_github_secret_name }}"
       runnerScaleSetName: "{{ ci_runner_scale_set_name }}"
-      minRunners: "{{ ci_runner_min | int }}"
-      maxRunners: "{{ ci_runner_max | int }}"
+      minRunners: >-
+        {{ 0 if fleet_reconcile_parked | default(false) | bool
+           else ci_runner_min | int }}
+      maxRunners: >-
+        {{ 0 if fleet_reconcile_parked | default(false) | bool
+           else ci_runner_max | int }}
       template:
         spec:
           # hostPath, not emptyDir (#486): an emptyDir is exactly as ephemeral

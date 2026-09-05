@@ -49,6 +49,7 @@ mkdir -p "$OUT_DIR"
 RAW="$OUT_DIR/raw.txt"
 MISRA_RAW="$OUT_DIR/misra-raw.txt"
 RESULTS="$OUT_DIR/results.txt"
+RA8_MISRA_SOURCE_LIST="$OUT_DIR/translation-units.txt"
 
 # The first-party source roots this audit covers. Everything downstream --
 # the header search path, the cppcheck scan list, the dump discovery and the
@@ -64,6 +65,7 @@ RESULTS="$OUT_DIR/results.txt"
 # those headers are known. A net drop in findings is the dangerous direction
 # of that failure -- it reads as a burn-down.
 RA8_MISRA_ROOTS=(libs port tools apps)
+RA8_MISRA_SOURCE_FILES=()
 
 # cppcheck 2.13's bundled Rule 9 helper predates C23 empty initializers. Keep
 # the installed tool immutable: verify its exact bytes, copy its addons into a
@@ -253,20 +255,18 @@ ra8_misra_stage_addons() {
 #
 # So the verdict is not re-derived here. This asks lint_targets.is_build_output
 # -- the ONE definition of "this is build output" in the tree, shared with
-# .gitignore and thirteen other checkers -- and turns its answer into cppcheck
-# -i flags plus a filter for the header path and the dump discovery. A second
-# description of the same fact is exactly how `build/` came to mean two things.
+# .gitignore and thirteen other checkers -- and applies its answer to the source
+# census plus the header and artifact traversals. A second description of the
+# same fact is exactly how `build/` came to mean two things.
 #
 # The alternative considered and rejected: scanning only `git ls-files`. It
 # would have fixed this case, since build trees are gitignored, but by a rule
 # that is blanket in a different disguise -- it would drop every ignored path,
 # not just build output -- and it costs real recall. A brand-new .c that has not
-# been `git add`ed yet would silently leave the audit, and a baseline
-# regenerated in that state would be missing a whole file. It would also mean
-# re-implementing cppcheck's own source-file selection in bash, so the scanned
-# POPULATION could drift from what cppcheck picks up walking a directory.
-# Excluding the OUTPUT keeps the population exactly as it was and changes only
-# what was never source.
+# been `git add`ed yet must enter the audit immediately. The explicit source
+# census below therefore walks the working tree, filters exclusions once, and
+# becomes both cppcheck's file list and the expected dump inventory. There is no
+# second directory traversal whose source-selection semantics can drift.
 # ---------------------------------------------------------------------------
 
 # Print every build-output directory beneath the roots named as arguments.
@@ -321,15 +321,10 @@ ra8_misra_header_dirs() {
 }
 
 # Assemble every semantic cppcheck dump option in one array. The whole-tree
-# scan, the targeted POSIX refresh, and both behavioral selftests consume this
-# exact authority. Callers may add only scheduling (-j), one staged library
-# model, and their input path(s).
+# producer, targeted POSIX refresh, and behavioral selftests consume this exact
+# authority. Callers may add only scheduling (-j), one staged library model,
+# and the shared translation-unit file list.
 ra8_misra_build_dump_args() {
-  local build_dir
-  RA8_MISRA_EXCLUDE_ARGS=()
-  for build_dir in ${RA8_MISRA_BUILD_DIRS[@]+${RA8_MISRA_BUILD_DIRS[@]+"${RA8_MISRA_BUILD_DIRS[@]}"}}; do
-    RA8_MISRA_EXCLUDE_ARGS+=("-i$build_dir")
-  done
   RA8_MISRA_DUMP_ARGS=(
     --dump
     --enable=warning
@@ -340,11 +335,7 @@ ra8_misra_build_dump_args() {
     --suppress=syntaxError
     --suppress=internalError
     '--suppress=*:libs/third_party/*'
-    -ilibs/third_party
     '--suppress=*:apps/shared_libs/third_party/*'
-    -iapps/shared_libs/third_party
-    -itools/vela/generated
-    "${RA8_MISRA_EXCLUDE_ARGS[@]}"
     -U__clang__
     --std=c11
     --platform=unix32
@@ -371,6 +362,10 @@ ra8_misra_prepare_scan_arguments() {
   done < <(ra8_misra_header_dirs | sort -u)
   if [[ ${#INCLUDE_DIRS[@]} -eq 0 ]]; then
     echo "[ERROR] no header roots found -- run from the repo root" >&2
+    return 1
+  fi
+
+  if ! ra8_misra_load_source_files; then
     return 1
   fi
 
@@ -446,14 +441,85 @@ ra8_misra_refresh_dump() {
   fi
 }
 
-# Discover the exact translation-unit population cppcheck is expected to dump.
-# Keeping this derivation beside the dump inventory prevents a successful
-# command that silently omits one source from looking like debt burn-down.
+# Discover the exact translation-unit population for this working tree.
+# Untracked first-party sources are intentional inputs; build output and the
+# reviewed vendored/generated trees are removed here, before either producer or
+# consumer sees the population.
 ra8_misra_source_files() {
-  find ${RA8_MISRA_ROOTS[@]+"${RA8_MISRA_ROOTS[@]}"} -type f \
+  local listing="$1" root
+  for root in "${RA8_MISRA_ROOTS[@]}"; do
+    if [[ ! -e "$root" ]]; then
+      echo "[ERROR] MISRA source root does not exist: $root" >&2
+      return 1
+    fi
+    if [[ ! -d "$root" || -L "$root" ]]; then
+      echo "[ERROR] MISRA source root is not a real directory: $root" >&2
+      return 1
+    fi
+    if [[ ! -r "$root" || ! -x "$root" ]]; then
+      echo "[ERROR] MISRA source root is not readable: $root" >&2
+      return 1
+    fi
+  done
+  if ! find "${RA8_MISRA_ROOTS[@]}" -type f \
     \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' \) \
-    -not -path '*/third_party/*' -not -path '*/vela/generated/*' 2>/dev/null |
-    sort
+    -not -path '*/third_party/*' -not -path '*/vela/generated/*' |
+    sort >"$listing"; then
+    echo "[ERROR] MISRA source census producer failed" >&2
+    return 1
+  fi
+}
+
+# Materialize the census once on the output filesystem, then accept it only
+# after every root and the complete find/sort producer have succeeded. Both the
+# bounded cppcheck producer and expected dump inventory consume this array.
+ra8_misra_load_source_files() {
+  local listing source
+  local -a sources=()
+  RA8_MISRA_SOURCE_FILES=()
+  listing="$(mktemp "$OUT_DIR/source-census.XXXXXX")" || return 1
+  if ! ra8_misra_source_files "$listing"; then
+    rm -f -- "$listing"
+    return 1
+  fi
+  while IFS= read -r source || [[ -n "$source" ]]; do
+    [[ -n "$source" ]] || continue
+    ra8_misra_is_build_output "$source" && continue
+    sources+=("$source")
+  done <"$listing"
+  rm -f -- "$listing"
+  if [[ ${#sources[@]} -eq 0 ]]; then
+    echo "[ERROR] expected zero translation units -- run from the repo root" >&2
+    return 1
+  fi
+  RA8_MISRA_SOURCE_FILES=("${sources[@]}")
+}
+
+# Use cppcheck's file-list interface so the exact census is preserved without
+# risking the host's command-line size limit.
+ra8_misra_write_source_list() {
+  local listing="$1" source
+  : >"$listing" || return 1
+  for source in "${RA8_MISRA_SOURCE_FILES[@]}"; do
+    if [[ "$source" == *$'\n'* ]]; then
+      echo "[ERROR] translation-unit path contains a newline: $source" >&2
+      return 1
+    fi
+    printf '%s\n' "$source" >>"$listing" || return 1
+  done
+}
+
+# Run the whole-population producer with checked status and bounded parallelism.
+# The command prefix may contain timeout and then cppcheck, but the input itself
+# always comes from RA8_MISRA_SOURCE_FILES through one bounded file-list option.
+ra8_misra_run_dump_producer() {
+  local error_log="$1" label="$2" source_list="$3" jobs="$4"
+  shift 4
+  if ! ra8_misra_write_source_list "$source_list"; then
+    return 1
+  fi
+  ra8_misra_run_checked "$error_log" "$label" \
+    "$@" -j "$jobs" "${RA8_MISRA_DUMP_ARGS[@]}" "--file-list=$source_list"
 }
 
 # A killed audit can leave valid-looking dumps behind. Remove every artifact
@@ -503,11 +569,9 @@ ra8_misra_collect_dump_inventory() {
   local actual_dump expected_dump index source
   local -a actual_dumps=() expected_dumps=()
 
-  while IFS= read -r source; do
-    [[ -n "$source" ]] || continue
-    ra8_misra_is_build_output "$source" && continue
+  for source in "${RA8_MISRA_SOURCE_FILES[@]}"; do
     expected_dumps+=("$source.dump")
-  done < <(ra8_misra_source_files)
+  done
   if [[ ${#expected_dumps[@]} -eq 0 ]]; then
     echo "[ERROR] expected zero translation-unit dumps -- the audit did not run" >&2
     return 1
@@ -600,6 +664,7 @@ fi
 # since changed -- silent corruption of the ratchet comparison.
 # shellcheck disable=SC2329  # invoked by `trap cleanup_dumps EXIT` below.
 cleanup_dumps() {
+  rm -f -- "$RA8_MISRA_SOURCE_LIST"
   find ${RA8_MISRA_ROOTS[@]+"${RA8_MISRA_ROOTS[@]}"} -name '*.dump' -not -path '*/third_party/*' -delete 2>/dev/null || true
   find ${RA8_MISRA_ROOTS[@]+"${RA8_MISRA_ROOTS[@]}"} -name '*.ctu-info' -not -path '*/third_party/*' -delete 2>/dev/null || true
   if [[ -n "${RA8_MISRA_STAGED_ADDONS:-}" && -d "$RA8_MISRA_STAGED_ADDONS" ]]; then
@@ -700,16 +765,14 @@ fi
 # are already comments. Suppressing the four rules or absorbing the
 # findings into the baseline would blind the ratchet to real defects in
 # every annotated file.
-echo "[INFO] generating cppcheck dumps under ${RA8_MISRA_ROOTS[*]} ..." >&2
+echo "[INFO] generating cppcheck dumps for ${#RA8_MISRA_SOURCE_FILES[@]} translation units ..." >&2
 : >"$RAW"
 if ! ra8_misra_remove_all_dump_artifacts; then
   exit 1
 fi
-if ! ra8_misra_run_checked \
-  "$RAW" "whole-tree cppcheck" \
-  ${TIMEOUT_CMD[@]+"${TIMEOUT_CMD[@]}"} cppcheck -j "$JOBS" \
-  "${RA8_MISRA_DUMP_ARGS[@]}" \
-  ${RA8_MISRA_ROOTS[@]+"${RA8_MISRA_ROOTS[@]}"}; then
+if ! ra8_misra_run_dump_producer \
+  "$RAW" "whole-tree cppcheck" "$RA8_MISRA_SOURCE_LIST" "$JOBS" \
+  ${TIMEOUT_CMD[@]+"${TIMEOUT_CMD[@]}"} cppcheck; then
   exit 1
 fi
 if ! ra8_misra_reject_parse_failures "$RAW"; then

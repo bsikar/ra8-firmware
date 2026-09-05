@@ -19,6 +19,7 @@ declare SCRIPT_DIR
 declare RA8_MISRA_9_PATCH
 declare -a RA8_MISRA_DUMP_ARGS
 declare -a RA8_MISRA_ROOTS
+declare -a RA8_MISRA_SOURCE_FILES
 declare -a RA8_MISRA_BUILD_DIRS
 declare -a SUPPRESS_ARGS
 declare -a DUMPS
@@ -282,19 +283,19 @@ _ra8_misra_selftest_addon() {
 }
 
 _ra8_misra_selftest_dump_args() {
-  local arg has_fixed_exclusion has_parser_model has_suppressions
-  has_fixed_exclusion=0
+  local arg has_population_exclusion has_parser_model has_suppressions
+  has_population_exclusion=0
   has_parser_model=0
   has_suppressions=0
   for arg in "${RA8_MISRA_DUMP_ARGS[@]}"; do
-    [[ "$arg" == "-ilibs/third_party" ]] && has_fixed_exclusion=1
+    [[ "$arg" == -i* ]] && has_population_exclusion=1
     [[ "$arg" == "--std=c11" ]] && has_parser_model=1
     [[ "$arg" == --suppress=* ]] && has_suppressions=1
   done
-  if [[ "$has_fixed_exclusion" -eq 1 ]]; then
-    _ra8_misra_expect yes "the common dump authority carries third-party exclusions"
+  if [[ "$has_population_exclusion" -eq 0 ]]; then
+    _ra8_misra_expect yes "common dump arguments cannot re-filter the selected population"
   else
-    _ra8_misra_expect no "the common dump authority carries third-party exclusions"
+    _ra8_misra_expect no "common dump arguments cannot re-filter the selected population"
   fi
   if [[ "$has_parser_model" -eq 1 ]]; then
     _ra8_misra_expect yes "the common dump authority carries the parser model"
@@ -511,55 +512,147 @@ SH
   unset RA8_MISRA_MUTATE_STAGED
 }
 
-_ra8_misra_selftest_dump_inventory() {
-  local tmp="$1" root
-  local -a saved_build_dirs saved_roots
-  saved_roots=("${RA8_MISRA_ROOTS[@]}")
-  saved_build_dirs=("${RA8_MISRA_BUILD_DIRS[@]}")
-  root="$tmp/inventory-root"
-  mkdir -p "$root"
-  : >"$root/a.c"
-  : >"$root/b.cpp"
-  RA8_MISRA_ROOTS=("$root")
-  RA8_MISRA_BUILD_DIRS=()
-
-  : >"$root/a.c.dump"
-  : >"$root/b.cpp.dump"
-  if ra8_misra_collect_dump_inventory && [[ ${#DUMPS[@]} -eq 2 ]]; then
-    _ra8_misra_expect yes "an exact regular dump inventory is accepted"
+_ra8_misra_expect_census_rejected() {
+  local label="$1"
+  if ra8_misra_load_source_files >/dev/null 2>&1; then
+    _ra8_misra_expect no "$label"
+  elif [[ ${#RA8_MISRA_SOURCE_FILES[@]} -eq 0 ]]; then
+    _ra8_misra_expect yes "$label"
   else
-    _ra8_misra_expect no "an exact regular dump inventory is accepted"
+    _ra8_misra_expect no "$label"
   fi
+}
 
-  rm -f -- "$root/b.cpp.dump"
+_ra8_misra_selftest_census_failures() {
+  local tmp="$1" good unreadable wrapper
+  local -a saved_roots saved_source_files
+  saved_roots=("${RA8_MISRA_ROOTS[@]}")
+  saved_source_files=("${RA8_MISRA_SOURCE_FILES[@]}")
+  good="$tmp/census-good"
+  unreadable="$tmp/census-unreadable"
+  wrapper="$tmp/census-wrapper"
+  mkdir -p "$good" "$wrapper"
+  : >"$good/complete.c"
+
+  RA8_MISRA_ROOTS=("$good" "$tmp/census-missing")
+  _ra8_misra_expect_census_rejected "a missing declared source root rejects the census"
+
+  mkdir "$unreadable"
+  chmod 000 "$unreadable"
+  RA8_MISRA_ROOTS=("$good" "$unreadable")
+  _ra8_misra_expect_census_rejected "an unreadable declared source root rejects the census"
+  chmod 700 "$unreadable"
+
+  cat >"$wrapper/find" <<'SH'
+#!/bin/sh
+printf '%s\n' "$RA8_MISRA_PARTIAL_SOURCE"
+exit 23
+SH
+  chmod 700 "$wrapper/find"
+  RA8_MISRA_ROOTS=("$good")
+  export RA8_MISRA_PARTIAL_SOURCE="$good/partial.c"
+  if PATH="$wrapper:$PATH" ra8_misra_load_source_files >/dev/null 2>&1; then
+    _ra8_misra_expect no "a producer failure after partial output rejects the census"
+  elif [[ ${#RA8_MISRA_SOURCE_FILES[@]} -eq 0 ]]; then
+    _ra8_misra_expect yes "a producer failure after partial output rejects the census"
+  else
+    _ra8_misra_expect no "a producer failure after partial output rejects the census"
+  fi
+  unset RA8_MISRA_PARTIAL_SOURCE
+  RA8_MISRA_ROOTS=("${saved_roots[@]}")
+  RA8_MISRA_SOURCE_FILES=("${saved_source_files[@]}")
+}
+
+_ra8_misra_selftest_dump_population() {
+  local tmp="$1" source_list="$2" first="$3" second="$4"
+  if ra8_misra_load_source_files &&
+    [[ ${#RA8_MISRA_SOURCE_FILES[@]} -eq 2 ]] &&
+    [[ "${RA8_MISRA_SOURCE_FILES[0]}" == "$first" ]] &&
+    [[ "${RA8_MISRA_SOURCE_FILES[1]}" == "$second" ]]; then
+    _ra8_misra_expect yes "one multi-root census selects the exact translation units"
+  else
+    _ra8_misra_expect no "one multi-root census selects the exact translation units"
+  fi
+  if ra8_misra_run_dump_producer \
+    "$tmp/inventory-cppcheck.txt" "multi-file inventory cppcheck" \
+    "$source_list" 2 cppcheck; then
+    _ra8_misra_expect yes "the shared multi-file population drives cppcheck"
+  else
+    _ra8_misra_expect no "the shared multi-file population drives cppcheck"
+  fi
+  if ra8_misra_collect_dump_inventory && [[ ${#DUMPS[@]} -eq 2 ]]; then
+    _ra8_misra_expect yes "an exact producer dump inventory is accepted"
+  else
+    _ra8_misra_expect no "an exact producer dump inventory is accepted"
+  fi
+}
+
+_ra8_misra_selftest_dump_shapes() {
+  local first_root="$1" second_root="$2"
+  rm -f -- "$second_root/b.cpp.dump"
   if ra8_misra_collect_dump_inventory >/dev/null 2>&1; then
     _ra8_misra_expect no "a missing translation-unit dump is rejected"
   else
     _ra8_misra_expect yes "a missing translation-unit dump is rejected"
   fi
-
-  : >"$root/b.cpp.dump"
-  : >"$root/orphan.c.dump"
+  : >"$second_root/b.cpp.dump"
+  : >"$first_root/orphan.c.dump"
   if ra8_misra_collect_dump_inventory >/dev/null 2>&1; then
     _ra8_misra_expect no "an orphan analyzer dump is rejected"
   else
     _ra8_misra_expect yes "an orphan analyzer dump is rejected"
   fi
-
-  rm -f -- "$root/orphan.c.dump" "$root/b.cpp.dump"
-  ln -s "$root/a.c.dump" "$root/b.cpp.dump"
+  rm -f -- "$first_root/orphan.c.dump" "$second_root/b.cpp.dump"
+  ln -s "$first_root/a.c.dump" "$second_root/b.cpp.dump"
   if ra8_misra_collect_dump_inventory >/dev/null 2>&1; then
     _ra8_misra_expect no "a substituted symlink dump is rejected"
   else
     _ra8_misra_expect yes "a substituted symlink dump is rejected"
   fi
   if ra8_misra_remove_all_dump_artifacts &&
-    [[ ! -e "$root/a.c.dump" && ! -L "$root/b.cpp.dump" ]]; then
+    [[ ! -e "$first_root/a.c.dump" && ! -L "$second_root/b.cpp.dump" ]]; then
     _ra8_misra_expect yes "pre-scan cleanup removes regular and symlink residue"
   else
     _ra8_misra_expect no "pre-scan cleanup removes regular and symlink residue"
   fi
+}
 
+_ra8_misra_selftest_dump_omission() {
+  local tmp="$1" root="$2" source_list="$3" real_cppcheck="$4" omit_cppcheck="$5"
+  cat >"$omit_cppcheck" <<'SH'
+#!/bin/sh
+source_list=""
+for arg do
+  case "$arg" in
+    --file-list=*) source_list=${arg#--file-list=} ;;
+  esac
+done
+[ -n "$source_list" ] || exit 23
+IFS= read -r first_source <"$source_list" || exit 23
+exec "$RA8_MISRA_REAL_CPPCHECK" --dump --quiet --error-exitcode=0 "$first_source"
+SH
+  chmod 700 "$omit_cppcheck"
+  if ra8_misra_run_dump_producer \
+    "$tmp/omitted-cppcheck.txt" "silently omitting cppcheck" \
+    "$source_list" 2 env RA8_MISRA_REAL_CPPCHECK="$real_cppcheck" "$omit_cppcheck"; then
+    _ra8_misra_expect yes "a zero-status producer can silently omit one selected source"
+  else
+    _ra8_misra_expect no "a zero-status producer can silently omit one selected source"
+  fi
+  if ra8_misra_collect_dump_inventory >/dev/null 2>&1; then
+    _ra8_misra_expect no "a producer-silently-omitted dump is rejected"
+  else
+    _ra8_misra_expect yes "a producer-silently-omitted dump is rejected"
+  fi
+  if ra8_misra_remove_all_dump_artifacts >/dev/null 2>&1; then
+    _ra8_misra_expect yes "silently omitted dump residue is removable"
+  else
+    _ra8_misra_expect no "silently omitted dump residue is removable"
+  fi
+}
+
+_ra8_misra_selftest_dump_cleanup_failure() {
+  local root="$1"
   mkdir "$root/a.c.dump"
   if ra8_misra_remove_all_dump_artifacts >/dev/null 2>&1; then
     _ra8_misra_expect no "unremovable whole-tree residue is rejected"
@@ -567,8 +660,37 @@ _ra8_misra_selftest_dump_inventory() {
     _ra8_misra_expect yes "unremovable whole-tree residue is rejected"
   fi
   rmdir "$root/a.c.dump"
+}
+
+_ra8_misra_selftest_dump_inventory() {
+  local tmp="$1" first_root second_root real_cppcheck omit_cppcheck source_list
+  local -a saved_build_dirs saved_roots saved_source_files
+  saved_roots=("${RA8_MISRA_ROOTS[@]}")
+  saved_build_dirs=("${RA8_MISRA_BUILD_DIRS[@]}")
+  saved_source_files=("${RA8_MISRA_SOURCE_FILES[@]}")
+  first_root="$tmp/inventory-root-a"
+  second_root="$tmp/inventory-root-b"
+  source_list="$tmp/inventory-sources.txt"
+  omit_cppcheck="$tmp/omit-selected-cppcheck"
+  real_cppcheck="$(command -v cppcheck)"
+  mkdir -p "$first_root/third_party" "$first_root/vela/generated" \
+    "$first_root/build-output" "$second_root"
+  printf '%s\n' 'int inventory_a(void) { return 0; }' >"$first_root/a.c"
+  printf '%s\n' 'int inventory_b(void) { return 0; }' >"$second_root/b.cpp"
+  : >"$first_root/third_party/ignored.c"
+  : >"$first_root/vela/generated/ignored.c"
+  : >"$first_root/build-output/ignored.c"
+  RA8_MISRA_ROOTS=("$first_root" "$second_root")
+  RA8_MISRA_BUILD_DIRS=("$first_root/build-output")
+  _ra8_misra_selftest_dump_population \
+    "$tmp" "$source_list" "$first_root/a.c" "$second_root/b.cpp"
+  _ra8_misra_selftest_dump_shapes "$first_root" "$second_root"
+  _ra8_misra_selftest_dump_omission \
+    "$tmp" "$first_root" "$source_list" "$real_cppcheck" "$omit_cppcheck"
+  _ra8_misra_selftest_dump_cleanup_failure "$first_root"
   RA8_MISRA_ROOTS=("${saved_roots[@]}")
   RA8_MISRA_BUILD_DIRS=("${saved_build_dirs[@]}")
+  RA8_MISRA_SOURCE_FILES=("${saved_source_files[@]}")
 }
 
 _ra8_misra_selftest_parser_diagnostics() {
@@ -647,6 +769,7 @@ ra8_misra_selftest() {
     _ra8_misra_expect no "the exact cppcheck addons and POSIX model are staged"
   fi
   _ra8_misra_selftest_fail_closed "$tmp"
+  _ra8_misra_selftest_census_failures "$tmp"
   _ra8_misra_selftest_dump_inventory "$tmp"
   _ra8_misra_selftest_parser_diagnostics "$tmp"
   _ra8_misra_selftest_source_only "$tmp"

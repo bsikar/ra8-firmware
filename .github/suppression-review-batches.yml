@@ -194,8 +194,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-08-27
     identity_schema: 2-durable-site-identity
-    assigned_rows: 215
-    rows_sha256: a55c2501996b8c6dfd92cdda25897d54740731b740d13fd7641eaa2aeb423407
+    assigned_rows: 213
+    rows_sha256: 183abae48e3e696a164ef4a8c1d26e7476fc4f6b930a07a9e3c38d3648c910ae
     partition: >-
       final landing governance: exact source-authority reconciliation and
       one owner-authorized fully covered structural population expansion
@@ -402,8 +402,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
-    assigned_rows: 135
-    rows_sha256: 8504511e639f51af91c0d27c3029a15ac24d7a8b1c44864036dc45e91086c5f9
+    assigned_rows: 124
+    rows_sha256: ca4eb8579ee1e78325b83750b126d7541ba208da206139ad6a446a12bdbc7321
     partition: >-
       HIL size-cap split reconciliation: three new bound-exit raw-byte
       authorities, two changed raw-byte pins, one moved negative-fixture
@@ -439,25 +439,134 @@ batches:
     authority: repository-suppression-review
     date: 2026-09-03
     identity_schema: 2-durable-site-identity
-    assigned_rows: 66
-    rows_sha256: c1d3b1202f81739adad5c964b59f0f513dc46748e8cde002a28a3c75b6944faf
+    assigned_rows: 61
+    rows_sha256: aa837ecb131b1ae8e1b66ee482ddba9885bacdefecc75125e31d6e991aecba1b
     partition: >-
       Continuous runner reconciliation and inherited runner-admission closure:
-      exact Ansible probe controls, one fixed-argv subprocess diagnostic,
-      checker authority successors, and retired dead identity chains.
+      exact Ansible probe controls, fixed-argv subprocess diagnostics,
+      settled UV authority successors, and retired identity chains.
     evidence:
       - >-
         Every live Ansible status override has an immediate synchronization
-        consumer or exact assertion; the three failed_when probes trigger the
-        locked installer on every nonzero result instead of accepting failure.
+        consumer or exact assertion; the surviving systemctl is-active mask is
+        read-only and its status is consumed by the following exact assertion.
       - >-
         The reconciler subprocess uses the current interpreter, a closed verb
         set, an argv-only launch, and no shell; timeout kills the complete
         process group before quarantine begins.
       - >-
-        The checker census is exactly 1006 authorities and 3779 values, with
-        value bfc997c545f52eb827dc1fe087cbbe05dd1cf329ee04b9e441c87c092cea0241
-        and reason ee3610d129ec61d0852ee8009b1018468dcf9bb43111cae653e40ef4538d3877.
+        The checker census remains exactly 1006 authorities and 3779 values,
+        with value d02c73d726b0611560af66086e6a6ff77f800dcffb9b2176464b44e90173ae60
+        and reason f5a4976fdef0f93c43c8e463cc895ac88898542480ee241895eb74643f58253c.
       - >-
-        Full-tree inventory proves every retired site and named replacement
-        absent; no ledger row or prior review history was deleted.
+        All five settled authority predecessors remain as explicit superseded
+        rows bound directly to five reviewed live successors; no history was deleted.
+      - >-
+        Four new Ruff S603 sites bind only the fixed SSH holder argv, the exact
+        caller-supplied child argv, the exact signal-selftest entry point, and
+        the centralized exact capacity-fixture helper; every launch disables
+        shell interpretation.
+  - id: runner-reconcile-round2-authorities-20260904
+    authority: repository-suppression-review
+    date: 2026-09-04
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 4
+    rows_sha256: d50b00665db104b1249425bd78441039640204fe12850ffd80c3a760c25a4af5
+    partition: >-
+      Runner reconciliation round-two authority refresh: the independently
+      recomputed devcontainer image raw-byte pin and both full-worktree
+      suppression aggregate digest successors with complete lineage closure.
+    evidence:
+      - >-
+        scripts/ci/devcontainer_image.sh settled at raw SHA-256
+        fe60cc3ce468fff302b5165ad44b6d782e060336d052446467b1662eaf0ab3c9.
+      - >-
+        The final full-worktree census remains exactly 1006 authorities and
+        3779 values, with value digest
+        d02c73d726b0611560af66086e6a6ff77f800dcffb9b2176464b44e90173ae60
+        and reason digest
+        f5a4976fdef0f93c43c8e463cc895ac88898542480ee241895eb74643f58253c.
+      - >-
+        Three predecessors remain as explicit superseded rows, all six earlier
+        lineage rows point directly to the live successors, and no ledger row
+        was deleted or waived.
+  - id: runner-reconcile-round3-governance-20260904
+    authority: repository-suppression-review
+    date: 2026-09-04
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 19
+    rows_sha256: 738b5d85ae3059c5b9aa40f4b60a7dfc3cb20b19055c331bafd6288c740845ad
+    partition: >-
+      Round3 fleet reconciliation: staged-source reporting controls, fixed-argv
+      subprocess sites, new scheduling assertions, and one retired result mask.
+    evidence:
+      - >-
+        Ten existing Ansible task identities retain their reviewed semantics
+        with predecessor binding hashes preserved after source-layout changes;
+        one obsolete failed_when mask is retained as resolved history.
+      - >-
+        The fixed SSH guardian and fixed Bash offline WSL selftest use closed
+        executable/argv boundaries with shell interpretation disabled.
+      - >-
+        The staged unit check and both systemctl is-active checks are read-only;
+        each status remains fatal or is consumed by an exact assertion.
+      - >-
+        The authenticated checker census remains 1006 authorities and 3779
+        values, with value digest
+        d02c73d726b0611560af66086e6a6ff77f800dcffb9b2176464b44e90173ae60
+        and reason digest
+        f5a4976fdef0f93c43c8e463cc895ac88898542480ee241895eb74643f58253c;
+        classification remains
+        f7f8294b528fa36894ca76d55dc984f48382a5761f75a85614e3ab6f1358503d.
+      - >-
+        The former fleet_reconcile.py signal-selftest subprocess row remains as
+        resolved history after extraction removed that direct launch site.
+      - >-
+        The fixed-argv fleet process launcher moved intact into
+        fleet_reconcile_process.py; its predecessor remains superseded history
+        bound directly to the reviewed live successor.
+  - id: runner-reconcile-round4-authorities-20260904
+    authority: repository-suppression-review
+    date: 2026-09-04
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 17
+    rows_sha256: bb14f30b0167d0d9722a81331161d70603cb64a55202761c708be28f0381576c
+    partition: >-
+      Round4 checker split: three exact fleet path authorities, authenticated
+      census/count/digest successors, and complete direct lineage closure.
+    evidence:
+      - >-
+        The checker census is exactly 1009 authorities and 3782 values, with
+        value digest 29d83b8afcbbdc36cfb78f2e54d6b3423677e518cf995c7a08e9eb7c77481591,
+        reason digest 8a2413b9ec1a2f0362e580dbfabbab72d266b300af898e7e1542a24351d2e694,
+        and classification 819ce1c975a30264b9b8fc492a6d33a0122214e0091b40dc9c284aab39802c77.
+      - >-
+        Twelve live predecessor authorities remain explicit superseded history;
+        every earlier replaced-by lineage points directly to its live successor.
+      - >-
+        FLEET_CAPACITY_CLIENT, FLEET_RECONCILE, and FLEET_RECONCILE_PROCESS
+        are exact positive-scope paths covering every split runtime module.
+      - >-
+        The centralized capacity-fixture S603 site was rebound after its durable
+        anchor moved; predecessor history points directly to the live successor.
+  - id: runner-reconcile-round5-authorities-20260904
+    authority: repository-suppression-review
+    date: 2026-09-04
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 25
+    rows_sha256: b7fac2bf06d025ebf35185a4a142717a92c8229fe46bb85a7c28c865d19ab68c
+    partition: >-
+      Round5 ARC checker split: one exact selftest path authority, authenticated
+      census/count/digest successors, and complete direct lineage closure.
+    evidence:
+      - >-
+        The checker census is exactly 1010 authorities and 3783 values, with
+        value digest 253831d91b5edb8cc84bce46f2836daa337aef53163c367437a9d987047aae6f,
+        reason digest 57b25e3cd5690f0e6b90be422fe1fedc6df168481a4b02ccd17f8e0f7781c7b7,
+        and classification ad61deedcc8b442e7d8a361f33e3db25b639a5462ec4806f82546a14a658bd0c.
+      - >-
+        Twelve live predecessor authorities remain explicit superseded history;
+        every earlier replaced-by lineage points directly to its live successor.
+      - >-
+        FLEET_RECONCILE_ARC_SELFTEST is the exact positive-scope path for the
+        extracted activation-ordering and receipt-state regression suite.

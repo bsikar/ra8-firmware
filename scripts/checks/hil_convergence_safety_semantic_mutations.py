@@ -501,6 +501,142 @@ def aggregator_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool
     return cases
 
 
+def _fleet_import_cases() -> tuple[tuple[str, str, str, str, str], ...]:
+    """Return split fleet import-removal mutation specifications."""
+    return (
+        ("fleet", "import fleet_capacity_client as fcc", "", "capacity import", "runtime imports"),
+        (
+            "fleet_reconcile",
+            "import fleet_reconcile_process as frp",
+            "",
+            "process import",
+            "runtime imports",
+        ),
+        (
+            "fleet_reconcile",
+            "import fleet_reconcile_arc_selftest as fras",
+            "",
+            "ARC selftest import",
+            "runtime imports",
+        ),
+    )
+
+
+def _fleet_selftest_source_cases() -> tuple[tuple[str, str, str, str, str], ...]:
+    """Return split fleet selftest definition and dispatch mutations."""
+    return (
+        (
+            "fleet_capacity_client",
+            "def run_selftest(data: dict[str, Any]) -> list[str]:",
+            "def _removed_selftest(data: dict[str, Any]) -> list[str]:",
+            "capacity selftest definition",
+            "executable selftests",
+        ),
+        (
+            "fleet_reconcile_process",
+            "def run_selftest() -> list[str]:",
+            "def _removed_selftest() -> list[str]:",
+            "process selftest definition",
+            "executable selftests",
+        ),
+        (
+            "fleet_reconcile_arc_selftest",
+            "def run(apply_host: ApplyHost) -> list[str]:",
+            "def _removed_run(apply_host: ApplyHost) -> list[str]:",
+            "ARC selftest definition",
+            "executable selftests",
+        ),
+        (
+            "fleet_reconcile",
+            "    failures.extend(frp.run_selftest())\n",
+            "",
+            "process selftest call",
+            "executable selftests",
+        ),
+        (
+            "fleet_reconcile",
+            "    failures.extend(fras.run(apply_host))\n",
+            "",
+            "ARC selftest call",
+            "executable selftests",
+        ),
+    )
+
+
+def fleet_split_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool]]:
+    """Prove split fleet runtime imports, sources, and selftests are load-bearing."""
+    results = []
+    for key, token, replacement, label, diagnostic in (
+        *_fleet_import_cases(),
+        *_fleet_selftest_source_cases(),
+    ):
+        if inputs[key].count(token) != 1:
+            message = f"split fleet mutation fixture is not unique: {key}:{token}"
+            raise SemanticMutationError(message)
+        changed = dict(inputs)
+        changed[key] = inputs[key].replace(token, replacement, 1)
+        expected = f"fleet split modules: {diagnostic} are not exact"
+        results.append((f"fleet split {label} removal fires", expected in scan(changed)))
+    return results
+
+
+def fleet_guard_dispatch_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool]]:
+    """Prove guarded re-entry derives and passes its guardian capability."""
+    mutations = (
+        (
+            "        guardian = _bench_guard_subprocess_kwargs("
+            "args.command, fml.guardian_subprocess_kwargs)\n",
+            "        guardian = {}\n",
+            "guardian derivation",
+        ),
+        (
+            "        return _run(guard, cwd=fm.REPO_ROOT, subprocess_kwargs=guardian)\n",
+            "        return _run(guard, cwd=fm.REPO_ROOT)\n",
+            "guardian pass-through",
+        ),
+    )
+    expected = "fleet.py: selector/extra-var refusal is not before lock and inventory"
+    results = []
+    for old, new, label in mutations:
+        if inputs["fleet"].count(old) != 1:
+            message = f"guard dispatch mutation fixture is not unique: {label}"
+            raise SemanticMutationError(message)
+        changed = dict(inputs)
+        changed["fleet"] = inputs["fleet"].replace(old, new, 1)
+        results.append((f"fleet {label} mutation fires", expected in scan(changed)))
+    return results
+
+
+def fleet_activation_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool]]:
+    """Prove ARC activation check and final restore order stay load-bearing."""
+    mutations = (
+        (
+            "    clean, changed = inspect_activation_host(data, host, run)\n",
+            "    clean, changed = inspect_host(data, host, run)\n",
+            "activation check",
+        ),
+        (
+            '    restore = run(fleet_command(host, "restore"))\n',
+            '    restore = run(fleet_command(host, "check"))\n',
+            "final restore",
+        ),
+    )
+    expected = "fleet reconciliation: ARC activation/check/restore order is not exact"
+    source = inputs["fleet_reconcile"]
+    start = source.index("def _activate_arc(")
+    end = source.index("\ndef apply_host(", start)
+    activation = source[start:end]
+    results = []
+    for old, new, label in mutations:
+        if activation.count(old) != 1:
+            message = f"ARC order mutation fixture is not unique: {label}"
+            raise SemanticMutationError(message)
+        changed = dict(inputs)
+        changed["fleet_reconcile"] = source[:start] + activation.replace(old, new) + source[end:]
+        results.append((f"fleet ARC {label} mutation fires", expected in scan(changed)))
+    return results
+
+
 def digest_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool]]:
     """Return raw digest pin and path-identity mutation cases."""
     return (

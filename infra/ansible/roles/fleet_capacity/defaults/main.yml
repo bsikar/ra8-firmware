@@ -32,6 +32,8 @@ fleet_capacity_src: "{{ playbook_dir }}/../../../scripts/ci/fleet_capacity.sh"
 fleet_capacity_dir: "{{ ci_runner_docker_root | default('/etc/ra8-fleet') }}/capacity"
 fleet_capacity_bin: "{{ fleet_capacity_dir }}/ra8-fleet-capacity"
 fleet_capacity_env: "{{ fleet_capacity_dir }}/capacity.env"
+fleet_capacity_state_dir: "/var/lib/ra8-fleet"
+fleet_capacity_state_group: "{{ ansible_user }}"
 
 # --- what the script needs to know ------------------------------------------
 

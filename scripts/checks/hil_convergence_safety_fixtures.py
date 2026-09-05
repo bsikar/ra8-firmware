@@ -192,8 +192,8 @@ def _wsl_mode_mutations() -> tuple[Mutation, ...]:
         (
             "WSL check-mode verification made mutating",
             "fleet_wsl",
-            'f"{sync_flags} --check",',
-            'f"{sync_flags}",',
+            'f"{sync_flags} --check || sync_status=$?",',
+            'f"{sync_flags} || sync_status=$?",',
         ),
     )
 

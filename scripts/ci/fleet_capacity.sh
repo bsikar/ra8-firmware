@@ -68,6 +68,9 @@ set -euo pipefail
 RA8_FLEET_KIND="${RA8_FLEET_KIND:-docker}"
 RA8_FLEET_DOCKER="${RA8_FLEET_DOCKER:-docker}"
 RA8_FLEET_CONTAINERS="${RA8_FLEET_CONTAINERS:-}"
+RA8_FLEET_STATE_DIR="${RA8_FLEET_STATE_DIR:-/var/lib/ra8-fleet}"
+RA8_FLEET_STATE_GROUP="${RA8_FLEET_STATE_GROUP:-}"
+RA8_FLEET_MAINTENANCE="${RA8_FLEET_STATE_DIR}/maintenance"
 
 # Name prefix every runner container on a host shares, so `drain-all` can find
 # what is really there rather than what the declaration predicts.
@@ -140,12 +143,12 @@ commands:
   drain-all     park every runner container ON THIS HOST, whatever it is
                 called -- what a re-provision runs first, because a converge
                 recreates containers and would cancel their jobs
-  window        converge to what this host should be RIGHT NOW -- the
-                quiet-hours instance count inside a declared window, and its
-                declared capacity at every other time, INCLUDING on a host
-                that declares no window at all. What the systemd timer runs,
-                so a live `scale` is temporary on every host rather than only
-                on the ones with a window.
+  window        converge to the current declared/quiet-hours target, unless
+                persistent maintenance keeps admission at zero
+  maintenance-enter
+                durably park admission before a reconciliation apply
+  quarantine    retain durable maintenance and drive admission back to zero
+  restore       apply the current window target, then clear maintenance
 
 options:
   --kind docker|k8s      host shape                     (RA8_FLEET_KIND)
@@ -156,6 +159,7 @@ options:
                                                         (RA8_FLEET_PREFIX)
   --namespace NS         ARC runner namespace           (RA8_FLEET_NAMESPACE)
   --scale-set NAME       ARC scale set name             (RA8_FLEET_SCALESET)
+  --state-group NAME     shared controller/timer group  (RA8_FLEET_STATE_GROUP)
   --deadline SECONDS     give up draining after this    (RA8_FLEET_DEADLINE)
   --poll SECONDS         busy-check interval            (RA8_FLEET_POLL)
   --stop-grace SECONDS   docker stop -t for an IDLE instance
@@ -514,6 +518,24 @@ k8s_scale() {
   k8s_status
 }
 
+k8s_enter_maintenance() {
+  local output expected
+  log "patching  ${RA8_FLEET_SCALESET} maxRunners -> 0"
+  if output="$(kc patch autoscalingrunnerset -n "${RA8_FLEET_NAMESPACE}" \
+    "${RA8_FLEET_SCALESET}" --type=merge -p '{"spec":{"maxRunners":0}}' 2>&1)"; then
+    log "patched   ARC will retire idle runners down to zero; running jobs finish first."
+    k8s_status
+    return
+  fi
+  expected="Error from server (NotFound): autoscalingrunnersets.actions.github.com \"${RA8_FLEET_SCALESET}\" not found"
+  if [ "${output}" = "${expected}" ]; then
+    log "already    ${RA8_FLEET_SCALESET} is absent, so ARC admission is zero"
+    return 0
+  fi
+  printf '%s\n' "${output}" >&2
+  die "could not park ARC scale set ${RA8_FLEET_SCALESET}"
+}
+
 # --- quiet hours ------------------------------------------------------------
 #
 # ONE timer that runs often and asks "what should this host be right now",
@@ -573,25 +595,20 @@ in_quiet_window() {
 # quiet_hours block) and re-converge -- change the declaration, not the machine.
 # That is the whole point of a declarative fleet, and it is the difference
 # between a capacity decision a human can find later and one they cannot.
-cmd_window() {
-  local target
+effective_target() {
   if [ -z "${RA8_FLEET_QUIET_DAYS}" ]; then
-    target="${RA8_FLEET_FULL_INSTANCES}"
-    # Zero here would mean "converge this host to no CI at all", which no host
-    # declares outside a window: it is what an unset RA8_FLEET_FULL_INSTANCES
-    # looks like. Draining a whole host on a missing environment variable is
-    # not a thing to do quietly.
-    [ "${target}" -gt 0 ] 2>/dev/null ||
-      die "no window declared and RA8_FLEET_FULL_INSTANCES is '${target}';" \
-        "refusing to drain this host to zero capacity on an unset value"
-    log "no window: target ${target} (this host's declared capacity)"
+    [ "${RA8_FLEET_FULL_INSTANCES}" -gt 0 ] 2>/dev/null ||
+      die "no quiet-hours window and invalid full instance count '${RA8_FLEET_FULL_INSTANCES}'"
+    printf '%s' "${RA8_FLEET_FULL_INSTANCES}"
   elif in_quiet_window; then
-    target="${RA8_FLEET_QUIET_INSTANCES}"
-    log "inside    ${RA8_FLEET_QUIET_DAYS} ${RA8_FLEET_QUIET_START}-${RA8_FLEET_QUIET_END}: target ${target}"
+    printf '%s' "${RA8_FLEET_QUIET_INSTANCES}"
   else
-    target="${RA8_FLEET_FULL_INSTANCES}"
-    log "outside   ${RA8_FLEET_QUIET_DAYS} ${RA8_FLEET_QUIET_START}-${RA8_FLEET_QUIET_END}: target ${target}"
+    printf '%s' "${RA8_FLEET_FULL_INSTANCES}"
   fi
+}
+
+apply_target() {
+  local target="$1"
   case "${RA8_FLEET_KIND}" in
     docker)
       require_docker_config
@@ -600,6 +617,93 @@ cmd_window() {
     k8s) k8s_scale "${target}" ;;
     *) die "unknown --kind '${RA8_FLEET_KIND}' (docker|k8s)" ;;
   esac
+}
+
+privileged_install() {
+  if [ "$(id -u)" -eq 0 ]; then
+    /usr/bin/install "$@"
+  else
+    /usr/bin/sudo -n /usr/bin/install "$@"
+  fi
+}
+
+validate_state_authority() {
+  local owner group mode
+  [ -n "${RA8_FLEET_STATE_GROUP}" ] || die "capacity state group is not configured"
+  [ -d "${RA8_FLEET_STATE_DIR}" ] && [ ! -L "${RA8_FLEET_STATE_DIR}" ] ||
+    die "capacity state directory is absent or linked: ${RA8_FLEET_STATE_DIR}"
+  read -r owner group mode < <(stat -c '%U %G %a' "${RA8_FLEET_STATE_DIR}")
+  [ "${owner}" = root ] || [ "${owner}" = "$(id -un)" ] ||
+    die "capacity state directory has unsafe owner ${owner}"
+  [ "${group}" = "${RA8_FLEET_STATE_GROUP}" ] && [ "${mode}" = 770 ] ||
+    die "capacity state directory metadata is not ${RA8_FLEET_STATE_GROUP}:0770"
+}
+
+bootstrap_state_authority() {
+  local lock owner group mode
+  lock="${RA8_FLEET_STATE_DIR}/capacity.lock"
+  if [ ! -e "${RA8_FLEET_STATE_DIR}" ] && [ ! -L "${RA8_FLEET_STATE_DIR}" ]; then
+    privileged_install -d -o root -g "${RA8_FLEET_STATE_GROUP}" -m 0770 "${RA8_FLEET_STATE_DIR}"
+  fi
+  validate_state_authority
+  if [ ! -e "${lock}" ] && [ ! -L "${lock}" ]; then
+    if [ -w "${RA8_FLEET_STATE_DIR}" ]; then
+      /usr/bin/install -o "$(id -un)" -g "${RA8_FLEET_STATE_GROUP}" -m 0660 /dev/null "${lock}"
+    else
+      privileged_install -o root -g "${RA8_FLEET_STATE_GROUP}" -m 0660 /dev/null "${lock}"
+    fi
+  fi
+  [ -f "${lock}" ] && [ ! -L "${lock}" ] || die "capacity lock is absent, linked, or not regular"
+  read -r owner group mode < <(stat -c '%U %G %a' "${lock}")
+  [ "${owner}" = root ] || [ "${owner}" = "$(id -un)" ] || die "capacity lock has unsafe owner ${owner}"
+  [ "${group}" = "${RA8_FLEET_STATE_GROUP}" ] && [ "${mode}" = 660 ] ||
+    die "capacity lock metadata is not ${RA8_FLEET_STATE_GROUP}:0660"
+}
+
+set_maintenance() {
+  local temporary
+  validate_state_authority
+  temporary="${RA8_FLEET_MAINTENANCE}.tmp.$$"
+  printf 'parked by fleet reconciliation
+' >"${temporary}"
+  chmod 0644 "${temporary}"
+  mv -f -- "${temporary}" "${RA8_FLEET_MAINTENANCE}"
+}
+
+park_maintenance() {
+  local allow_missing_ars="$1"
+  set_maintenance
+  if [ "${RA8_FLEET_KIND}" = docker ]; then
+    cmd_drain_all
+  elif [ "${allow_missing_ars}" -eq 1 ]; then
+    k8s_enter_maintenance
+  else
+    apply_target 0
+  fi
+}
+
+cmd_window() {
+  local target
+  if [ -e "${RA8_FLEET_MAINTENANCE}" ] || [ -L "${RA8_FLEET_MAINTENANCE}" ]; then
+    [ -f "${RA8_FLEET_MAINTENANCE}" ] && [ ! -L "${RA8_FLEET_MAINTENANCE}" ] ||
+      die "maintenance authority is not a regular file"
+    log "maintenance: forcing target 0"
+    apply_target 0
+    return
+  fi
+  target="$(effective_target)"
+  log "window target ${target}"
+  apply_target "${target}"
+}
+
+cmd_restore() {
+  local target
+  [ -f "${RA8_FLEET_MAINTENANCE}" ] && [ ! -L "${RA8_FLEET_MAINTENANCE}" ] ||
+    die "cannot restore without a durable maintenance marker"
+  target="$(effective_target)"
+  log "restoring current window target ${target}"
+  apply_target "${target}"
+  rm -f -- "${RA8_FLEET_MAINTENANCE}"
 }
 
 # --- entry point ------------------------------------------------------------
@@ -625,6 +729,7 @@ parse_args() {
       --prefix) RA8_FLEET_PREFIX="$2" && shift 2 ;;
       --namespace) RA8_FLEET_NAMESPACE="$2" && shift 2 ;;
       --scale-set) RA8_FLEET_SCALESET="$2" && shift 2 ;;
+      --state-group) RA8_FLEET_STATE_GROUP="$2" && shift 2 ;;
       --deadline) RA8_FLEET_DEADLINE="$2" && shift 2 ;;
       --poll) RA8_FLEET_POLL="$2" && shift 2 ;;
       --stop-grace) RA8_FLEET_STOP_GRACE="$2" && shift 2 ;;
@@ -668,6 +773,9 @@ cmd_status() {
 
 cmd_scale() {
   [ $# -ge 1 ] || die "scale needs a target instance count"
+  if [ "$1" -gt 0 ] 2>/dev/null && [ -e "${RA8_FLEET_MAINTENANCE}" ]; then
+    die "maintenance is active; refusing caller-controlled admission"
+  fi
   case "${RA8_FLEET_KIND}" in
     docker)
       require_docker_config
@@ -694,12 +802,22 @@ main() {
     usage
     exit 2
   }
+  if [ "${cmd}" = maintenance-enter ]; then
+    bootstrap_state_authority
+  else
+    validate_state_authority
+  fi
+  exec 8>"${RA8_FLEET_STATE_DIR}/capacity.lock"
+  flock 8
   shift
   case "${cmd}" in
     status) cmd_status ;;
     scale) cmd_scale "$@" ;;
     drain-all) cmd_drain_all ;;
     window) cmd_window ;;
+    maintenance-enter) park_maintenance 1 ;;
+    quarantine) park_maintenance 0 ;;
+    restore) cmd_restore ;;
     *) die "unknown command '${cmd}'" ;;
   esac
 }
