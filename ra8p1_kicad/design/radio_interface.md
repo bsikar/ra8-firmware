@@ -133,7 +133,8 @@ No current waveform, response interval or allowable transient budget has
 yet been established for this rail, so a numerical droop sign-off would
 be unsupported. The complete waveform must remain within 3.0..3.6 V at
 the module supply contact. U4 now provides the load-switch output connection;
-its upstream supply and controls remain unimplemented. There is deliberately
+its VIN now connects to +3V3_MCU with C47 input bypass. The upstream regulator
+and switch controls remain unimplemented. There is deliberately
 no PWR_FLAG on this rail.
 
 Reproduce the arithmetic from the repository root (read-only):
@@ -175,7 +176,8 @@ qualification. Recheck availability and total price before ordering.
 Revision 1, 2026-09-05. Applies to U4 on
 [the radio sheet](../ereader/radio_esp32.kicad_sch), with the same RADIO-004
 identifier on the schematic. This is a partial implementation, not electrical
-release: VIN, ON and CT require completion with the upstream power tree,
+release: VIN is connected to +3V3_MCU with C47 input bypass; ON and CT
+require completion with the upstream regulator,
 reset supervisor and signal isolation under issues #825 and #826.
 
 U4 is Texas Instruments TPS22917DBVT, the active-high version. The exact
@@ -313,5 +315,60 @@ slew = F(1900)/F(1000)
 assert slew*cap_u == F('19.19')
 print(f'RC 90..10% estimate: {exact_ms:.9f} ms')
 print('RADIO-004 PASS: arithmetic only; rail/timing qualification open.')
+PY
+```
+
+## RADIO-005: input bypass
+
+Revision 1, 2026-09-05. Applies to C47 and U4 VIN on
+[the radio sheet](../ereader/radio_esp32.kicad_sch). The schematic carries
+the same RADIO-005 identifier and links back to this section.
+
+C47 connects between +3V3_MCU and GND, directly at the U4 input network.
+It uses TDK C3216X7R1V106K160AC, 10 uF nominal, +/-10%, 35 V X7R,
+with the same exact ordering code and sourcing fields as C46. The
+selection is initial local bypass, not completed regulator qualification.
+[TI TPS22917 datasheet](https://www.ti.com/lit/ds/symlink/tps22917.pdf)
+section 11, page 19, recommends 1 uF in most applications and additional
+bulk capacitance when the source responds slowly to load steps. It also
+requires the source to withstand the transient current demand. Choosing
+10 uF does not remove that requirement.
+
+The exact-part TDK curve and reproducible interpolation in
+[RADIO-003](#radio-003-bulk-capacitance) also apply to C47:
+
+```text
+C47(3.3 V) = 9.69875 + (3.3-3.15)/0.85*(9.38950-9.69875)
+           = 9.644176470588... uF nominal
+DeltaQ = integral(Iload(t)-Isource(t), dt)
+DeltaV_capacitive = DeltaQ / C47_effective
+```
+
+The capacitance is not a guaranteed minimum; initial tolerance,
+temperature, aging and excitation remain outside that curve calculation.
+ESR and ESL add voltage excursions, and the shared MCU rail adds other
+loads and capacitances. Do not use C47 alone to characterize the complete
+input power-distribution network. No numerical transient droop is claimed
+without a regulator response, load waveform and acceptable rail budget.
+
+C47 is upstream of U4, so it is deliberately excluded from RADIO-004's
+switched output-discharge capacitance C45+C46 = 10.1 uF nominal. Include
+C47 in the upstream regulator's eventual startup and stability analysis.
+No PWR_FLAG was added: the upstream regulator is not yet implemented.
+
+Run the RADIO-003 Python block to verify the shared exact-part curve.
+The following additionally verifies the nominal capacitance accounting:
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+
+caps_u = {'C45': F('0.1'), 'C46': F(10), 'C47': F(10)}
+output_refs = ('C45', 'C46')
+input_refs = ('C47',)
+assert set(output_refs).isdisjoint(input_refs)
+assert sum(caps_u[ref] for ref in output_refs) == F('10.1')
+assert sum(caps_u[ref] for ref in input_refs) == F(10)
+print('RADIO-005 PASS: nominal accounting only; verify nets separately.')
 PY
 ```
