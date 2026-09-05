@@ -132,8 +132,9 @@ ESR, interconnect impedance and regulator response add further effects.
 No current waveform, response interval or allowable transient budget has
 yet been established for this rail, so a numerical droop sign-off would
 be unsupported. The complete waveform must remain within 3.0..3.6 V at
-the module supply contact. Source circuitry remains unimplemented and
-there is deliberately no PWR_FLAG on this rail.
+the module supply contact. U4 now provides the load-switch output connection;
+its upstream supply and controls remain unimplemented. There is deliberately
+no PWR_FLAG on this rail.
 
 Reproduce the arithmetic from the repository root (read-only):
 
@@ -168,3 +169,149 @@ The 2026-09-05 listing showed Active status, 1435 units in stock, and USD
 5.55 / 4.80 / 4.1844 at quantities 1 / 10 / 100. A US tariff may apply.
 This is a dated procurement snapshot, not a stock reservation or design
 qualification. Recheck availability and total price before ordering.
+
+## RADIO-004: radio load switch
+
+Revision 1, 2026-09-05. Applies to U4 on
+[the radio sheet](../ereader/radio_esp32.kicad_sch), with the same RADIO-004
+identifier on the schematic. This is a partial implementation, not electrical
+release: VIN, ON and CT require completion with the upstream power tree,
+reset supervisor and signal isolation under issues #825 and #826.
+
+U4 is Texas Instruments TPS22917DBVT, the active-high version. The exact
+[TI datasheet](https://www.ti.com/lit/ds/symlink/tps22917.pdf),
+SLVSDW8B Rev. B, December 2021, is the electrical authority. Table 6-1,
+page 4, gives pins 1 VIN, 2 GND, 3 ON, 4 CT, 5 QOD and 6 VOUT.
+The project-local symbol is copied through KiCad from the bundled
+Power_Management:TPS22917DBV symbol, with exact ordering and sourcing fields.
+Its 100 mil pins retain the compact standard-symbol geometry, as with U2;
+the placed reference/value are automatically stacked above the body.
+No existing footprint or PCB geometry was changed or qualified.
+
+QOD is modeled as a passive analog discharge terminal, not a logic
+open-collector output: it exposes the switched internal 150 ohm typical
+discharge path and is explicitly intended to connect to VOUT. Keeping the
+bundled logic-output type produces a false conflict with VOUT's power-output
+type for TI's recommended direct connection. Only U4's project-local pin 5
+type was corrected; no ERC matrix rule or exclusion was changed. VIN/GND
+remain power inputs, VOUT a power output, ON an input and CT an output.
+
+Native fields identify [DigiKey 296-48370-1-ND](https://www.digikey.com/en/products/detail/texas-instruments/TPS22917DBVT/8567084).
+The listing inspected on 2026-09-05 showed Active status, 8127 units and USD
+1.14 / 0.822 / 0.6554 at quantities 1 / 10 / 100. Availability is not reserved.
+The DBVR listing is out of stock; do not report its DBVT substitute inventory
+as DBVR inventory. TI's packaging table identifies DBVT as a 250-piece small
+reel. TPS22917L is active-low and is not an interchangeable control option.
+
+### Leakage, rail drop and protection limits
+
+Table 7.5, page 6, specifies enabled input quiescent current of 0.5 uA
+typical, 1.0 uA maximum over -40..85 C, with output open. Disabled current
+for TPS22917 is 10 nA typical, 100 nA maximum over -40..85 C with VOUT at
+ground. These are switch-only figures; module, supervisor, isolator and
+board leakage must be added to the system sleep budget.
+
+RON is specified at discrete VIN values, not as an all-voltage 80 mohm
+maximum. At VIN=3.6 V and IOUT=200 mA it is 90 mohm typical and 140 mohm
+maximum over -40..85 C; at 1.8 V the corresponding maximum is 175 mohm.
+Do not interpolate these maxima into a guaranteed 3.3 V specification.
+The following is an explicit screening allocation, not a guaranteed bound:
+
+```text
+Assume upstream nominal 3.3 V +/-2% and allocated switch R = 0.175 ohm.
+Use I = 0.5 A as a supply-capability screening point, not a measured load.
+VIN_low = 3.3*(1-0.02) = 3.234 V
+Vdrop = I*R = 0.5*0.175 = 0.0875 V
+VOUT_screen = 3.234-0.0875 = 3.1465 V
+Headroom above module 3.0 V minimum = 0.1465 V
+P_switch_screen = I^2*R = 0.5^2*0.175 = 0.04375 W
+```
+
+This headroom excludes wiring, regulator transient error and other drops.
+It also does not establish reset-supervisor compatibility: U2's existing
+TPS3808G33 conservative release screen is 3.19395125 V (RST-001), above
+this loaded rail screen by 0.04745125 V. A radio supervisor cannot simply
+be copied with a claim of full-load release margin. Joint rail regulation,
+load-switch loss, reset thresholds and radio load sequencing need resolution.
+
+The switch's 2 A absolute maximum is not a current-limit function. Upstream
+fault protection remains necessary. Section 9.4 and Table 7.5 describe reverse
+current detection with -0.5 A typical/-1 A limit and 10 us typical activation
+at the stated reverse-voltage condition. Do not call this instantaneous,
+zero-reverse-current isolation. It does not isolate the ESP32 GPIOs from a
+powered host; separate partial-power-down signal isolation remains required.
+
+### Output discharge calculation
+
+U4.5 QOD connects directly to U4.6 VOUT, which supplies +3V3_RADIO.
+U4.2 connects to GND. Section 9.3.3, pages 15-16, permits this direct
+connection. With no added resistor, the nominal internal discharge resistance
+is 150 ohm. This is a typical value, not a characterized min/max guarantee.
+
+```text
+External nominal capacitance = C45+C46 = 0.1+10 = 10.1 uF
+For an unloaded ideal RC approximation:
+tau = R*C = 150*10.1e-6 = 0.001515 s = 1.515 ms
+t_90_to_10 = ln(0.9/0.1)*tau = ln(9)*tau = 3.328795235 ms
+TI equation 4 approximation: 2.2*R*C = 3.333 ms
+```
+
+The fitted capacitors' bias/tolerance, the module's internal capacitance,
+other future radio-rail parts and actual load change this result. When VIN
+collapses, discharge strength also falls (section 9.3.3.1). This estimate
+therefore does not set a guaranteed minimum radio-off time or prove a reset.
+Power-cycle timing must wait for the complete circuit and measured discharge.
+
+### Timing-capacitor rule for the next circuit increment
+
+CT connects to VIN, NOT ground, and TI specifies a capacitor voltage rating
+of at least 7 V (Table 7.3). This differs from the imported TPS22918 family.
+U4.4 remains visibly unwired; no timing capacitor is fitted or approved yet.
+
+Datasheet equation 1 prints CT = slew/SRON, but its units are inconsistent.
+Use equation 6 and the worked example on page 18:
+
+```text
+CT[pF] = SRON[(mV/us)*pF] / desired_slew[mV/us]
+desired_slew = allowed_capacitive_inrush / total_output_capacitance
+```
+
+The error is identified by dimensional analysis and the manufacturer's own
+worked example, not by silently changing the source. At the 3.6 V table
+point SRON is 1900 (mV/us)*pF for CT >=100 pF. For illustration only,
+CT=1000 pF would give 1.9 mV/us, and 10.1 uF would draw 19.19 mA
+capacitive inrush. Total input current also includes the load. These timing
+coefficients are typical; 3.6 V is a table point, not the selected rail value.
+Select CT only after the upstream transient budget and complete capacitance
+are known, and maintain an independent power-stable reset delay.
+
+### Reproducible arithmetic
+
+Run from any directory; this verifies the stated screening arithmetic only:
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+from math import log, isclose
+
+vin_low = F('3.3') * (1-F('0.02'))
+current, resistance = F('0.5'), F('0.175')
+drop = current * resistance
+vout = vin_low-drop
+assert vin_low == F('3.234') and drop == F('0.0875')
+assert vout == F('3.1465') and vout-F(3) == F('0.1465')
+assert current**2*resistance == F('0.04375')
+release = F('3.07')*F('1.015')*F('1.025')
+assert release-vout == F('0.04745125')
+cap_u = F('10.1')
+tau_ms = F(150)*cap_u/F(1000)
+assert tau_ms == F('1.515')
+exact_ms = log(9)*float(tau_ms)
+assert isclose(exact_ms, 3.328795234664, abs_tol=1e-9)
+assert F('2.2')*tau_ms == F('3.333')
+slew = F(1900)/F(1000)
+assert slew*cap_u == F('19.19')
+print(f'RC 90..10% estimate: {exact_ms:.9f} ms')
+print('RADIO-004 PASS: arithmetic only; rail/timing qualification open.')
+PY
+```
