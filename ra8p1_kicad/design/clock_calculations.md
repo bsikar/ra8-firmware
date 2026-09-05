@@ -2,7 +2,7 @@
 
 ## CLK-001: Y1 main oscillator load network
 
-Calculation revision 1, 2026-09-05. Applies to Y1, C35 and C36 on
+Calculation revision 2, 2026-09-05. Applies to Y1, C35 and C36 on
 [RA8P1 clocks, reset and debug](../ereader/mcu_clocks_debug.kicad_sch)
 (sheet 5 of the current [complete schematic export](../exports/ereader_rev1.pdf)).
 The schematic annotation carries the same stable identifier, CLK-001, and
@@ -76,6 +76,26 @@ not measure 2 pF parasitics on this design or qualify this Murata part on it.
 The simplified generic example in [3] uses 1 pF pin-to-pin capacitance and
 zero board parasitics; substituting that assumption instead would give
 2*(6-1) = 10 pF. Neither assumption replaces actual-board matching.
+
+### Crystal substitution and rematching
+
+The schematic's instruction to recalculate and rematch applies even when a
+replacement crystal has the same nominal frequency and package. Before
+substituting Y1 (or Y2 under CLK-002):
+
+1. Check the exact ordering suffix for specified CL, maximum ESR, maximum
+   drive, frequency tolerance, temperature range and terminal connections.
+2. Recalculate the external capacitors using that crystal's CL and the
+   relevant oscillator circuit's effective parasitic model. Do not carry
+   the main oscillator's parasitic assumption into the RTC circuit.
+3. Update the schematic, BOM and this record together, then run the Python
+   checker with the revised inputs and expected results.
+4. Repeat actual-board frequency, startup, drive and oscillation-margin
+   qualification. Equal CL does not establish equivalent ESR or drive limits.
+
+For example, a hypothetical 8 pF-load crystal at the same assumed 2 pF
+effective stray would require C = 2*(8-2) = 12 pF, not the fitted 8 pF.
+This is a sensitivity example, not an approved alternate part.
 
 ### Capacitor tolerance and sensitivity
 

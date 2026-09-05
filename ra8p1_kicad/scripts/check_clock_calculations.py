@@ -82,6 +82,11 @@ def main() -> None:
     capacitor = 2 * (target - stray)
     require_equal(capacitor, Fraction(8), "equal capacitor selection, pF")
     require_equal(load_pf(capacitor, capacitor, stray), target, "nominal CL, pF")
+    alternate_target = Fraction(8)
+    alternate_capacitor = 2 * (alternate_target - stray)
+    require_equal(alternate_capacitor, 12, "hypothetical alternate capacitor, pF")
+    require_equal(load_pf(alternate_capacitor, alternate_capacitor, stray),
+                  alternate_target, "hypothetical alternate CL, pF")
     low, high = capacitor - Fraction(1, 2), capacitor + Fraction(1, 2)
     corners = [load_pf(a, b, stray) for a in (low, high) for b in (low, high)]
     require_equal(min(corners), Fraction(23, 4), "minimum CL, pF")

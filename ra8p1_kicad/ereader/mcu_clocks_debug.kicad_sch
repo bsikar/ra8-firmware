@@ -7174,7 +7174,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "CLK-001: Y1 24 MHz / Murata XRCGB24M000F3M19R0\nCrystal CL = 6 pF; effective Cstray = 2 pF ASSUMED.\nCL = C35*C36/(C35+C36) + Cstray\nC35 = C36 = 2*(6-2) = 8 pF (NP0, +/-0.5 pF).\nCheck: 8*8/(8+8) + 2 = 6 pF. At fixed stray: 5.75..6.25 pF.\nInitial matching only: verify frequency, startup and drive <= 300 uW.\nFull derivation + Python check: ../design/clock_calculations.md"
+	(text "CLK-001: Y1 24 MHz / Murata XRCGB24M000F3M19R0\nCrystal CL = 6 pF; effective Cstray = 2 pF ASSUMED.\nCL = C35*C36/(C35+C36) + Cstray\nC35 = C36 = 2*(6-2) = 8 pF (NP0, +/-0.5 pF).\nCheck: 8*8/(8+8) + 2 = 6 pF. At fixed stray: 5.75..6.25 pF.\nDifferent crystal or changed parasitics: recalculate and rematch.\nInitial matching only: verify frequency, startup and drive <= 300 uW.\nFull derivation + Python check: ../design/clock_calculations.md"
 		(exclude_from_sim no)
 		(at 248.92 68.58 0)
 		(effects
