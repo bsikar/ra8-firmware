@@ -8181,6 +8181,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" "445-174497-1-ND"
+			(at 193.04 154.94 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/SPM5020T-2R2M-LR/5962361"
+			(at 193.04 154.94 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Candidate - reference recommended; validation pending"
+			(at 193.04 154.94 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1149; USD CT 1:1.35 / 10:1.111 / 100:0.9134; Active; 15wk lead; recheck before order"
+			(at 193.04 154.94 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "72d4d224-6750-4087-bbd1-02dc544ddf45")
 		)
@@ -8317,6 +8361,50 @@
 			)
 		)
 		(property "ki_locked" ""
+			(at 71.12 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "559-R7KA8P1KFLCAC#UC0-ND"
+			(at 71.12 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/renesas-electronics-corporation/R7KA8P1KFLCAC-UC0/26738126"
+			(at 71.12 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+			(at 71.12 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
 			(at 71.12 144.78 0)
 			(hide yes)
 			(show_name no)
@@ -9267,6 +9355,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" ""
+			(at 342.9 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 342.9 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 342.9 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 342.9 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "79c6e3c9-7aa6-44f5-85f8-faf526096635")
 		)
@@ -9338,6 +9470,50 @@
 		)
 		(property "Description" ""
 			(at 190.5 43.18 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" ""
+			(at 190.5 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 190.5 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 190.5 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 190.5 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9601,6 +9777,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" ""
+			(at 228.6 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 228.6 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 228.6 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 228.6 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "eeffb2c2-82cd-4911-a119-8da6b3c8f070")
 		)
@@ -9672,6 +9892,50 @@
 		)
 		(property "Description" ""
 			(at 254 177.8 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" ""
+			(at 254 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 254 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - verify effective capacitance under DC bias; source exact MPN"
+			(at 254 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 254 177.8 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9847,6 +10111,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" ""
+			(at 266.7 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 266.7 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 266.7 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 266.7 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "c5e2f9ec-58bd-430c-b3a1-336bbf7f19ac")
 		)
@@ -9918,6 +10226,50 @@
 		)
 		(property "Description" ""
 			(at 342.9 83.82 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" ""
+			(at 342.9 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 342.9 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 342.9 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 342.9 83.82 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10005,6 +10357,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" ""
+			(at 304.8 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 304.8 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 304.8 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 304.8 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "fdbeb832-4df2-48b2-a38b-70deccc17173")
 		)
@@ -10076,6 +10472,50 @@
 		)
 		(property "Description" ""
 			(at 228.6 43.18 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" ""
+			(at 228.6 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 228.6 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 228.6 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 228.6 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10339,6 +10779,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" ""
+			(at 304.8 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 304.8 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 304.8 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 304.8 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "6370886f-2169-49f3-a151-dea28dd40018")
 		)
@@ -10410,6 +10894,50 @@
 		)
 		(property "Description" ""
 			(at 152.4 83.82 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" ""
+			(at 152.4 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 152.4 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 152.4 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 152.4 83.82 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10585,6 +11113,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" ""
+			(at 190.5 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 190.5 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 190.5 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 190.5 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "4cb24f51-ec76-4ec1-95e5-1f2edea34598")
 		)
@@ -10664,6 +11236,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" ""
+			(at 152.4 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 152.4 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - verify effective capacitance under DC bias; source exact MPN"
+			(at 152.4 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 152.4 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "df70fc77-a085-43ee-8685-bad22bf05197")
 		)
@@ -10735,6 +11351,50 @@
 		)
 		(property "Description" ""
 			(at 215.9 218.44 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" ""
+			(at 215.9 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 215.9 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 215.9 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 215.9 218.44 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10967,6 +11627,50 @@
 			)
 		)
 		(property "ki_locked" ""
+			(at 71.12 45.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "559-R7KA8P1KFLCAC#UC0-ND"
+			(at 71.12 45.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/renesas-electronics-corporation/R7KA8P1KFLCAC-UC0/26738126"
+			(at 71.12 45.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+			(at 71.12 45.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
 			(at 71.12 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -11917,6 +12621,50 @@
 				)
 			)
 		)
+		(property "DigiKey_Part_Number" ""
+			(at 152.4 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 152.4 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 152.4 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 152.4 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "bc796a8d-7a8d-484e-8afe-afc17e491108")
 		)
@@ -11988,6 +12736,50 @@
 		)
 		(property "Description" ""
 			(at 266.7 43.18 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" ""
+			(at 266.7 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" ""
+			(at 266.7 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+			(at 266.7 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" ""
+			(at 266.7 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
