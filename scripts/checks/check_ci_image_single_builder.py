@@ -96,6 +96,7 @@ THIRD_PARTY_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/")
 # context. It is provisioned infrastructure rather than a developer image and
 # carries a separately checked contract.
 DEPLOYED_RUNNER_BUILDER = "infra/ansible/roles/ci_runner/tasks/main.yml"
+DOCKER_RUNNER_DEPLOY = "infra/ansible/roles/ci_runner_docker/tasks/deploy.yml"
 CAPACITY_HELPER = "scripts/ci/fleet_capacity.sh"
 MANAGED_IMAGE_LABEL = runner_cleanup.MANAGED_IMAGE_LABEL
 MANAGED_IMAGE_KIND = runner_cleanup.MANAGED_IMAGE_KIND
@@ -530,6 +531,43 @@ GOOD_RUNNER_CLEANUP = f"""
 """
 
 
+GOOD_DOCKER_CLEANUP = f"""
+- name: Assert every container uses the validated Docker-native image
+  ansible.builtin.assert:
+    that: [true]
+- name: Find superseded managed Docker runner images
+  when: not ansible_check_mode
+  ansible.builtin.command:
+    argv:
+      - docker
+      - image
+      - ls
+      - --filter
+      - dangling=true
+      - --filter
+      - label={MANAGED_IMAGE_LABEL}
+      - --filter
+      - label={MANAGED_IMAGE_KIND}=runner
+      - --quiet
+      - --no-trunc
+  register: ci_runner_docker_dangling_images
+  changed_when: false
+- name: Remove superseded managed Docker runner images
+  when: not ansible_check_mode
+  ansible.builtin.command:
+    argv:
+      - docker
+      - image
+      - rm
+      - "{{{{ item }}}}"
+  loop: "{{{{ ci_runner_docker_dangling_images.stdout_lines }}}}"
+  changed_when: true
+- name: Read back the caps the kernel is actually enforcing
+  ansible.builtin.command:
+    argv: [docker, inspect]
+"""
+
+
 # Each case: (should the detector fire?, fixture text, assertion label).
 _DETECTION_CASES = (
     (True, GOOD_SOLE, "the sole-builder shape is detected as a builder"),
@@ -621,6 +659,17 @@ def _selftest_runner_cleanup(failures: list[str]) -> None:
             )
         ),
         "an independently managed ARC capacity patch is rejected",
+        failures,
+    )
+    expect(
+        not runner_cleanup.consumer_errors(GOOD_DOCKER_CLEANUP),
+        "an owned dangling Docker image cleanup is accepted",
+        failures,
+    )
+    broad_consumer = GOOD_DOCKER_CLEANUP.replace("dangling=true", "dangling=false")
+    expect(
+        bool(runner_cleanup.consumer_errors(broad_consumer)),
+        "a non-dangling Docker consumer cleanup is rejected",
         failures,
     )
 
@@ -722,6 +771,14 @@ def _selftest_floor_on_real_tree(failures: list[str]) -> None:
         f"the ARC capacity patch shares Helm field ownership ({capacity_errors})",
         failures,
     )
+    consumer_errors = runner_cleanup.consumer_errors(
+        (root / DOCKER_RUNNER_DEPLOY).read_text(encoding="utf-8")
+    )
+    expect(
+        not consumer_errors,
+        f"Docker runner consumers clean only owned dangling images ({consumer_errors})",
+        failures,
+    )
 
 
 def selftest() -> int:
@@ -758,6 +815,11 @@ def report_extended_violations(root: Path, rels: list[str]) -> bool:
     cleanup_errors.extend(
         runner_cleanup.capacity_field_manager_errors(
             (root / CAPACITY_HELPER).read_text(encoding="utf-8")
+        )
+    )
+    cleanup_errors.extend(
+        runner_cleanup.consumer_errors(
+            (root / DOCKER_RUNNER_DEPLOY).read_text(encoding="utf-8")
         )
     )
     for message in cleanup_errors:

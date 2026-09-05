@@ -112,20 +112,24 @@
         - /etc/systemd/system/ra8-wsl-route-pin.service
         - /usr/local/sbin/ra8-wsl-route-pin
 
-    - name: Remove the slew-not-step chrony configuration
-      # The drop-in is ours; chrony itself is not uninstalled, for the same
+    - name: Remove the managed chrony configuration
+      # These drop-ins are ours; chrony itself is not uninstalled, for the same
       # reason Docker is not. Removing a package from somebody's machine on the
       # way out is not this role's call.
       ansible.builtin.file:
-        path: /etc/chrony/conf.d/10-ra8-slew-not-step.conf
+        path: "{{ item }}"
         state: absent
+      loop:
+        - /etc/chrony/conf.d/10-ra8-slew-not-step.conf
+        - /etc/systemd/system/chrony-wait.service.d/10-ra8-slew-readiness.conf
       register: wsl_ci_host_chrony_conf_removed
 
-    - name: Restart chronyd without the drop-in
+    - name: Restart chronyd without the managed drop-ins
       when: wsl_ci_host_chrony_conf_removed.changed
       ansible.builtin.systemd_service:
         name: chronyd
         state: restarted
+        daemon_reload: true
       register: wsl_ci_host_chronyd_restart
       # chrony may have been uninstalled by the owner since deploy; any other
       # restart failure hands the machine back with its time daemon down and
@@ -498,6 +502,29 @@
           makestep {{ wsl_ci_host_clock_step_threshold_s }} {{ wsl_ci_host_clock_step_updates }}
       register: wsl_ci_host_chrony_conf
 
+    - name: Ensure the chrony-wait override directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/system/chrony-wait.service.d
+        state: directory
+        mode: "0755"
+
+    - name: Configure chrony-wait for slew-safe readiness
+      # Ubuntu's packaged unit requires the remaining correction to fall below
+      # 100 ms. Once startup's bounded makestep window is over, ordinary WSL
+      # drift is deliberately slewed and can take longer than the unit's
+      # three-minute timeout to cross that threshold. A zero correction/skew
+      # limit makes waitsync check source synchronization only; systemd's
+      # timeout still fails closed when chronyd cannot select a source.
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/chrony-wait.service.d/10-ra8-slew-readiness.conf
+        mode: "0644"
+        content: |
+          # Managed by the ra8-firmware wsl_ci_host Ansible role.
+          # A selected source is ready; remaining correction slews monotonically.
+          [Service]
+          ExecStart=
+          ExecStart=/usr/bin/chronyc -h 127.0.0.1,::1 waitsync 0 0 0 1
+
     - name: Restart chronyd when its configuration changed
       # Explicit rather than a handler: handlers run at the end of the play,
       # long after the assertions below would have read the clock chronyd was
@@ -510,8 +537,8 @@
 
     - name: Enable chronyd and the unit that blocks until it has synchronised
       # chrony-wait is chrony's equivalent of systemd-time-wait-sync: it holds
-      # time-sync.target until chronyd reports a disciplined clock, which is
-      # what the Docker drop-in below orders against.
+      # time-sync.target until chronyd has selected a source. Any remaining
+      # correction is monotonic slew, which must not block runner admission.
       ansible.builtin.systemd_service:
         name: "{{ item }}"
         state: started
@@ -723,9 +750,30 @@
       register: wsl_ci_host_task_create
       changed_when: wsl_ci_host_task_create.rc == 0
 
+    - name: Start the Windows autostart task now
+      # `/Create /F` replaces an existing definition and leaves its formerly
+      # running instance stopped. Start the replacement before the image load:
+      # without this keep-alive WSL can reap the VM while Docker is importing
+      # the runner image, forcibly closing the controller connection.
+      when: not ansible_check_mode
+      ansible.builtin.command:
+        argv:
+          - "{{ wsl_ci_host_schtasks }}"
+          - /Run
+          - /TN
+          - "{{ wsl_ci_host_task_name }}"
+      changed_when: false
+
     - name: Read back the task Windows actually stored
       ansible.builtin.command:
-        argv: ["{{ wsl_ci_host_schtasks }}", /Query, /TN, "{{ wsl_ci_host_task_name }}"]
+        argv:
+          - "{{ wsl_ci_host_schtasks }}"
+          - /Query
+          - /TN
+          - "{{ wsl_ci_host_task_name }}"
+          - /V
+          - /FO
+          - LIST
       register: wsl_ci_host_task_query
       changed_when: false
       failed_when: false
@@ -747,15 +795,27 @@
         - wsl_ci_host_task_query.rc != 0
       ansible.builtin.meta: end_host
 
-    - name: Assert the autostart task exists
+    - name: Report a stopped Windows autostart task during a dry run
+      when:
+        - ansible_check_mode
+        - wsl_ci_host_task_query.rc == 0
+        - "'Running' not in wsl_ci_host_task_query.stdout"
+      ansible.builtin.debug:
+        msg: >-
+          Windows autostart task {{ wsl_ci_host_task_name }} is not running;
+          apply must restore the WSL keep-alive before runner image work.
+      changed_when: true
+
+    - name: Assert the autostart task exists and is running after apply
       ansible.builtin.assert:
         that:
           - wsl_ci_host_task_name in wsl_ci_host_task_query.stdout
+          - ansible_check_mode or 'Running' in wsl_ci_host_task_query.stdout
         fail_msg: >-
-          schtasks.exe did not report a task named
-          {{ wsl_ci_host_task_name }} after creating it, so nothing will start
-          this distro after a reboot and the runner would silently stay offline.
-        success_msg: "autostart task {{ wsl_ci_host_task_name }} registered"
+          schtasks.exe did not report a running task named
+          {{ wsl_ci_host_task_name }} after creating and starting it, so WSL
+          could reap the VM during a runner image load or CI job.
+        success_msg: "autostart task {{ wsl_ci_host_task_name }} registered and running"
 
     # --- Verify the configuration actually took ---------------------------
     #

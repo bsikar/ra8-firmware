@@ -11,6 +11,20 @@ MANAGED_IMAGE_KIND = "com.ra8-firmware.image-kind"
 NamedTasks = dict[str, list[tuple[int, dict[str, object]]]]
 
 
+def _flatten_tasks(items: list[object]) -> list[dict[str, object]]:
+    """Return top-level and block-nested Ansible tasks in execution order."""
+    flattened: list[dict[str, object]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        flattened.append(item)
+        for section in ("block", "rescue", "always"):
+            children = item.get(section)
+            if isinstance(children, list):
+                flattened.extend(_flatten_tasks(children))
+    return flattened
+
+
 def _named_tasks(source: str) -> tuple[NamedTasks, list[str]]:
     """Parse the deployed producer into uniquely addressable task candidates."""
     try:
@@ -20,7 +34,7 @@ def _named_tasks(source: str) -> tuple[NamedTasks, list[str]]:
     if not isinstance(value, list):
         return {}, ["ci_runner image cleanup: task file is not a list"]
     named: NamedTasks = {}
-    for index, item in enumerate(value):
+    for index, item in enumerate(_flatten_tasks(value)):
         if isinstance(item, dict) and isinstance(item.get("name"), str):
             named.setdefault(item["name"], []).append((index, item))
     return named, []
@@ -218,3 +232,46 @@ def errors(source: str) -> list[str]:
     findings.extend(_cri_errors(named, previous))
     findings.extend(_helm_ownership_errors(named))
     return findings
+
+
+def consumer_errors(source: str) -> list[str]:
+    """Require Docker consumers to remove only superseded managed images."""
+    named, errors = _named_tasks(source)
+    if errors:
+        return errors
+    before = _one(named, "Assert every container uses the validated Docker-native image", errors)
+    find = _one(named, "Find superseded managed Docker runner images", errors)
+    remove = _one(named, "Remove superseded managed Docker runner images", errors)
+    after = _one(named, "Read back the caps the kernel is actually enforcing", errors)
+    if any(task is None for task in (before, find, remove, after)):
+        return errors
+    if not before[0] < find[0] < remove[0] < after[0]:
+        errors.append("ci_runner_docker image cleanup: task order is not exact")
+    expected_find = [
+        "docker",
+        "image",
+        "ls",
+        "--filter",
+        "dangling=true",
+        "--filter",
+        f"label={MANAGED_IMAGE_LABEL}",
+        "--filter",
+        f"label={MANAGED_IMAGE_KIND}=runner",
+        "--quiet",
+        "--no-trunc",
+    ]
+    if (
+        _argv(find[1]) != expected_find
+        or find[1].get("register") != "ci_runner_docker_dangling_images"
+        or find[1].get("when") != "not ansible_check_mode"
+        or find[1].get("changed_when") is not False
+    ):
+        errors.append("ci_runner_docker image cleanup: owned dangling selector is not exact")
+    if (
+        _argv(remove[1]) != ["docker", "image", "rm", "{{ item }}"]
+        or remove[1].get("loop") != "{{ ci_runner_docker_dangling_images.stdout_lines }}"
+        or remove[1].get("when") != "not ansible_check_mode"
+        or remove[1].get("changed_when") is not True
+    ):
+        errors.append("ci_runner_docker image cleanup: bounded removal loop is not exact")
+    return errors

@@ -847,6 +847,8 @@ def _fleet_errors(inputs: dict[str, str]) -> list[str]:
     errors.extend(_converge_env_errors(tree))
     errors.extend(_wsl_mode_errors(tree))
     errors.extend(wsl.environment_errors(wsl_tree))
+    errors.extend(wsl.clock_errors(inputs["wsl_role"]))
+    errors.extend(wsl.autostart_errors(inputs["wsl_role"]))
     errors.extend(_wsl_stage_errors(wsl_tree, wsl_stage_tree))
     gate_lines = [line.strip() for line in inputs["gate"].splitlines() if line.strip()]
     if gate_lines.count("python3 scripts/dev/fleet.py selftest") != 1:

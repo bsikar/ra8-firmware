@@ -583,6 +583,7 @@ def _governed_source_paths() -> dict[str, str]:
         **_image_selftest_source_paths(),
         "dockerignore": ".dockerignore",
         "ci_runner": "infra/ansible/roles/ci_runner/tasks/main.yml",
+        "wsl_role": "infra/ansible/roles/wsl_ci_host/tasks/main.yml",
         "setup_ansible": "scripts/dev/setup_ansible.sh",
         "provision_toolchain": "scripts/dev/provision_dev_box_toolchain.sh",
         "bench_client": "scripts/hil/lib/bench_client.sh",

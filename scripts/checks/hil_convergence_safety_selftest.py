@@ -967,6 +967,7 @@ def _base_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool]]:
         + semantic_mutations.fleet_activation_cases(inputs, scan)
         + semantic_mutations.fleet_guard_dispatch_cases(inputs, scan)
         + semantic_mutations.digest_cases(inputs, scan)
+        + semantic_mutations.wsl_clock_cases(inputs, scan)
     )
 
 
