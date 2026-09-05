@@ -3,9 +3,14 @@
 Open `ereader/ereader_rev1.kicad_pro` in KiCad 10.0.5 or a compatible newer
 version. The project includes its schematic, board, project configuration,
 project-local library tables, symbols, footprints, and STEP models. Library
-paths resolve relative to the project; no global library installation is needed.
+paths resolve relative to the project; standard `Device` and `power` symbols
+use the bundled KiCad 10 libraries through `${KICAD10_SYMBOL_DIR}`. No custom
+global library installation is needed.
 
-The current schematic is an unwired processor inventory. The PCB is empty.
+The schematic has a root index and separate processor interface, core-power,
+and I/O-supply sheets. The power circuits are drafts with passive qualification
+still open; the processor interfaces and remaining subsystems are unfinished.
+The PCB is empty.
 Neither is a manufacturing release. Imported component models still require
 electrical and package qualification before use in a finished design.
 

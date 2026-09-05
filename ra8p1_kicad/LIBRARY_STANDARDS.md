@@ -78,11 +78,34 @@ preserved by the appearance cleanup and remain unverified source metadata.
 
 ## Electrical and mechanical acceptance
 
-Appearance cleanup is not electrical qualification. The current imports retain
-their original pin names, numbers and electrical types, including unverified
-passive/unspecified types and unusual ESP32 ground sub-pad numbering. Before
-wiring, check them against the exact ordering-code datasheet and footprint.
-Do not infer safety from an ERC result on all-passive imported symbols.
+Use standard KiCad `Device` primitives for ordinary passives and `power`
+symbols for global supplies and ground. Register the bundled libraries with
+`${KICAD10_SYMBOL_DIR}` in the project table; do not modify the user's global
+libraries or create substitute resistor/capacitor/inductor graphics. Cached
+symbols in each schematic preserve its rendering when opened elsewhere.
+
+Draw decoupling banks with visible common rail and return wires, junctions at
+actual branches, and named pin-pair placement notes. Power arrows point up,
+grounds point down, and signal paths normally flow left to right. Use local
+labels for sheet-local signals and hierarchical pins for inter-sheet signals;
+avoid replacing visible short connections with repeated labels.
+
+`PWR_FLAG` is an ERC source declaration, not a supply name or a substitute for
+a regulator. Place it only at a justified source or after a passive element
+that separates the source's power-output pin from the powered net. State the
+source beside any non-obvious flag. Do not flag an unimplemented supply just
+to suppress an undriven-power error. Never hide unfinished wiring with
+no-connect markers or globally weaken ERC rules.
+
+Appearance cleanup is not electrical qualification. Untouched imported units
+retain unverified names and passive/unspecified electrical types, including
+unusual ESP32 ground sub-pad numbering. The selected 289-ball RA8P1 core,
+DCDC, I/O-supply, and analog units have explicit power-pin names and types
+checked against its pin list; this does not qualify the remaining units or
+their footprints. Resolve the shared VLO output model before final ERC
+acceptance. Check each remaining symbol against its exact ordering-code
+datasheet before wiring, and qualify footprints before PCB work. Do not infer
+safety from an ERC result on all-passive imported symbols.
 
 New design net labels use `COPI`, `CIPO` and `CS` instead of legacy SPI terms.
 Review imported pin-name aliases against manufacturer documentation before

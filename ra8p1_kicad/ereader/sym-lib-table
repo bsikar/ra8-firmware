@@ -56,4 +56,18 @@
 		(options "")
 		(descr "Wireless project-local symbols")
 	)
+	(lib
+		(name "Device")
+		(type "KiCad")
+		(uri "${KICAD10_SYMBOL_DIR}/Device.kicad_sym")
+		(options "")
+		(descr "Standard KiCad 10 symbols")
+	)
+	(lib
+		(name "power")
+		(type "KiCad")
+		(uri "${KICAD10_SYMBOL_DIR}/power.kicad_sym")
+		(options "")
+		(descr "Standard KiCad 10 symbols")
+	)
 )

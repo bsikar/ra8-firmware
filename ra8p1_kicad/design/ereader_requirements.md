@@ -17,6 +17,11 @@ The following requirements were confirmed on 2026-09-05:
   section, followed by whole-board integration and manufacturing checks.
 - E-reader scope only. The Gaggia controller is a separate future project.
 
+The active milestone is the complete electrical schematic, including readable
+hierarchical sheets, qualified symbol pin mappings, ERC review, and a full
+schematic PDF. PCB layout, footprint qualification, manufacturing outputs,
+and physical bring-up are deferred; they are not schematic acceptance gates.
+
 ## Project organization
 
 Keep the root project files together in `ereader/`. Place hierarchical sheets
@@ -30,6 +35,46 @@ The hardware project, component libraries, references, and complete schematic
 PDF are versioned together on the hardware branch. Machine-local KiCad state
 and editor history are excluded. The large vendor design archive uses Git LFS;
 see `../README.md` for clone and export instructions.
+
+## Verified processor design basis
+
+The selected design part remains `R7KA8P1KFLCAC#UC0`. Renesas RA8P1 Group
+Datasheet R01DS0439EJ0130, Rev. 1.30 (2026-02-27), Figure 1.2 and Table 1.14,
+identify the base part as a standard, dual-core device with MIPI DSI/CSI,
+1 MB code MRAM, 2 MB SRAM, and no in-package serial flash. Its package code
+is PLBG0289JA-A. The operating junction-temperature range is 0 to 95 deg C.
+The suffix denotes full-tray packing, terminal material code C, and chip
+version A. Component stock and commercial availability are not established by
+this identification.
+
+The 289-ball package is 12 x 12 mm on a 0.65 mm pitch. The alternate 224-ball
+library symbol is not the selected board part. A switch to the extended
+temperature grade requires a separate review of frequency and electrical
+limits; it is not merely a BOM text substitution.
+
+Table 1.16 requires one 0.1 uF bypass capacitor between each numbered
+VCC/VCC2 supply and its matching VSS, placed close to the pins. VCL0 through
+VCL11 each require a 0.22 uF local capacitor to the corresponding VSS0 through
+VSS11. In the selected internal DCDC mode, all VLO pins connect to the input
+of a 2.2 uH inductor. Its output feeds the common MCU_VCORE net, all VCL pins,
+and a 47 uF output capacitor returned to VSS_DCDC. Never connect MCU_VCORE
+directly to the 3.3 V supply. VCC_DCDC requires 22 uF and 0.1 uF in parallel
+to VSS_DCDC. These connections follow the RA8P1 Hardware User's Manual
+R01UH1064EJ0130 Rev. 1.30, Table 69.2 and Figure 69.1, pages 4042-4043.
+
+The firmware contract is OFS2.DCDCEN = 1. External VDD mode is not selected:
+it does not support software standby, deep software standby modes 1-3,
+battery backup, or voltage scaling (section 69.2.2). Final passive selections
+must also meet the regulator's electrical characteristics, including effective
+capacitance and inductor current requirements.
+
+The existing boot notes are provisional. Debug target-reference voltage must
+follow the actual debug-pin supply domain; it is not a power input from the
+probe. Boot-mode and device-lifecycle restrictions must be checked before
+claiming a production recovery path.
+
+Sources: [RA8P1 Group Datasheet](https://www.renesas.com/en/document/dst/ra8p1-group-datasheet)
+and [RA8P1 Hardware User's Manual](https://www.renesas.com/en/document/mah/ra8p1-group-users-manual-hardware).
 
 ## Display section design inputs
 
@@ -55,7 +100,7 @@ electrical compatibility with the selected RA8P1 ordering code.
 ## Section acceptance criteria
 
 A section is complete for schematic integration when exact parts and source
-documents are identified, symbols and footprints are checked against those
+documents are identified, symbol pin mappings are checked against those
 documents, the connected circuit and passive values are reviewed, and its
 power, timing, firmware, mechanical, and neighboring-sheet interfaces are
 explicit. Record unresolved dependencies instead of selecting arbitrary
