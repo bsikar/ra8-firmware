@@ -72,6 +72,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import runner_image_cleanup_policy as runner_cleanup
 from selftest_assert import expect, report
 
 # The single blessed builder, repo-relative. If this file is renamed, update
@@ -95,6 +96,9 @@ THIRD_PARTY_PREFIXES = ("libs/third_party/", "apps/shared_libs/third_party/")
 # context. It is provisioned infrastructure rather than a developer image and
 # carries a separately checked contract.
 DEPLOYED_RUNNER_BUILDER = "infra/ansible/roles/ci_runner/tasks/main.yml"
+CAPACITY_HELPER = "scripts/ci/fleet_capacity.sh"
+MANAGED_IMAGE_LABEL = runner_cleanup.MANAGED_IMAGE_LABEL
+MANAGED_IMAGE_KIND = runner_cleanup.MANAGED_IMAGE_KIND
 
 # A build verb: docker/podman [buildx] build, buildah bud, or a runtime taken
 # from a shell array/variable (``"${RUNTIME[@]}" build``) as devcontainer_image
@@ -418,6 +422,114 @@ OK_LABEL_PATH = "runs-on: ra8-ci\nlabels: [ra8-ci]\ndir: /var/lib/ra8-ci/build-c
 OK_RUN_ONLY = "docker run -t ra8-ci:latest just ci\n"
 
 
+GOOD_RUNNER_CLEANUP = f"""
+- name: Build the devcontainer toolchain image (single source of truth)
+  ansible.builtin.command:
+    cmd: >-
+      buildah bud --label {MANAGED_IMAGE_LABEL}
+      --label {MANAGED_IMAGE_KIND}=devcontainer -t devcontainer .
+- name: Build the runner image (devcontainer + actions-runner)
+  ansible.builtin.command:
+    cmd: >-
+      buildah bud --label {MANAGED_IMAGE_LABEL}
+      --label {MANAGED_IMAGE_KIND}=runner -t runner .
+- name: Find superseded managed runner images
+  ansible.builtin.command:
+    argv:
+      - buildah
+      - images
+      - --filter
+      - label={MANAGED_IMAGE_LABEL}
+      - --filter
+      - label={MANAGED_IMAGE_KIND}=runner
+      - --filter
+      - dangling=true
+      - --quiet
+      - --no-trunc
+  register: ci_runner_dangling_runner_images
+  changed_when: false
+- name: Remove superseded managed runner images
+  ansible.builtin.command:
+    argv:
+      - buildah
+      - rmi
+      - "{{{{ item }}}}"
+  loop: "{{{{ ci_runner_dangling_runner_images.stdout_lines }}}}"
+  when: item | length > 0
+  changed_when: true
+- name: Find superseded managed devcontainer images
+  ansible.builtin.command:
+    argv:
+      - buildah
+      - images
+      - --filter
+      - label={MANAGED_IMAGE_LABEL}
+      - --filter
+      - label={MANAGED_IMAGE_KIND}=devcontainer
+      - --filter
+      - dangling=true
+      - --quiet
+      - --no-trunc
+  register: ci_runner_dangling_devcontainer_images
+  changed_when: false
+- name: Remove superseded managed devcontainer images
+  ansible.builtin.command:
+    argv:
+      - buildah
+      - rmi
+      - "{{{{ item }}}}"
+  loop: "{{{{ ci_runner_dangling_devcontainer_images.stdout_lines }}}}"
+  when: item | length > 0
+  changed_when: true
+- name: Inventory CRI images after publishing the current runner
+  ansible.builtin.command:
+    argv:
+      - k3s
+      - crictl
+      - images
+      - -o
+      - json
+  register: ci_runner_cri_images
+  when: not ansible_check_mode
+  changed_when: false
+- name: Reset the superseded runner image selection
+  ansible.builtin.set_fact:
+    ci_runner_stale_cri_images: []
+    ci_runner_image_repository: "{{{{ ci_runner_image | regex_replace(':[^/:]+$', '') }}}}"
+  when: not ansible_check_mode
+  changed_when: false
+- name: Select superseded untagged runner images
+  ansible.builtin.set_fact:
+    ci_runner_stale_cri_images: "{{{{ ci_runner_stale_cri_images + [item.id] }}}}"
+  loop: "{{{{ (ci_runner_cri_images.stdout | from_json).images }}}}"
+  when:
+    - not ansible_check_mode
+    - item.repoTags | default([]) | length == 0
+    - >-
+      item.repoDigests | default([])
+      | select(
+          'match',
+          '^' ~ (ci_runner_image_repository | regex_escape)
+          ~ '@sha256:[0-9a-f]{{64}}$'
+        )
+      | list | length > 0
+  changed_when: false
+- name: Remove superseded untagged runner images
+  ansible.builtin.command:
+    argv:
+      - k3s
+      - crictl
+      - rmi
+      - "{{{{ item }}}}"
+  loop: "{{{{ ci_runner_stale_cri_images }}}}"
+  when: not ansible_check_mode
+  changed_when: true
+- name: Install the ra8-ci runner scale set
+  kubernetes.core.helm:
+    force_conflicts: true
+"""
+
+
 # Each case: (should the detector fire?, fixture text, assertion label).
 _DETECTION_CASES = (
     (True, GOOD_SOLE, "the sole-builder shape is detected as a builder"),
@@ -458,6 +570,57 @@ def _selftest_detection(failures: list[str]) -> None:
     expect(
         not builds_devcontainer_context(OK_OTHER_TAG),
         "an unrelated image context stays out of scope",
+        failures,
+    )
+
+
+def _selftest_runner_cleanup(failures: list[str]) -> None:
+    """Assert ownership and dangling-only cleanup are both mandatory."""
+    expect(
+        not runner_cleanup.errors(GOOD_RUNNER_CLEANUP),
+        "an owned dangling-image cleanup is accepted",
+        failures,
+    )
+    unsafe = GOOD_RUNNER_CLEANUP.replace("dangling=true", "dangling=false", 1)
+    expect(
+        bool(runner_cleanup.errors(unsafe)),
+        "a non-dangling cleanup selector is rejected",
+        failures,
+    )
+    pin_filtered = GOOD_RUNNER_CLEANUP.replace(
+        "    - item.repoTags | default([]) | length == 0\n",
+        "    - item.repoTags | default([]) | length == 0\n"
+        "    - not item.pinned | default(false)\n",
+    )
+    expect(
+        bool(runner_cleanup.errors(pin_filtered)),
+        "a cleanup that preserves pinned stale generations is rejected",
+        failures,
+    )
+    unsafe_helm = GOOD_RUNNER_CLEANUP.replace(
+        "force_conflicts: true", "force_conflicts: false"
+    )
+    expect(
+        bool(runner_cleanup.errors(unsafe_helm)),
+        "a Helm deploy that cannot reclaim transient field ownership is rejected",
+        failures,
+    )
+    good_capacity = (
+        "kc patch autoscalingrunnerset -n namespace scale-set \\\n"
+        '  --field-manager=helm --type=merge -p \'{"spec":{"maxRunners":0}}\'\n'
+    )
+    expect(
+        not runner_cleanup.capacity_field_manager_errors(good_capacity),
+        "the ARC capacity patch shares Helm's field manager",
+        failures,
+    )
+    expect(
+        bool(
+            runner_cleanup.capacity_field_manager_errors(
+                good_capacity.replace("--field-manager=helm ", "")
+            )
+        ),
+        "an independently managed ARC capacity patch is rejected",
         failures,
     )
 
@@ -544,6 +707,21 @@ def _selftest_floor_on_real_tree(failures: list[str]) -> None:
         failures,
     )
     expect(not legacy, f"the real tree has no retired developer image tag (saw {legacy})", failures)
+    runner_source = (root / DEPLOYED_RUNNER_BUILDER).read_text(encoding="utf-8")
+    cleanup_errors = runner_cleanup.errors(runner_source)
+    expect(
+        not cleanup_errors,
+        f"the deployed runner producer cleans only owned dangling images ({cleanup_errors})",
+        failures,
+    )
+    capacity_errors = runner_cleanup.capacity_field_manager_errors(
+        (root / CAPACITY_HELPER).read_text(encoding="utf-8")
+    )
+    expect(
+        not capacity_errors,
+        f"the ARC capacity patch shares Helm field ownership ({capacity_errors})",
+        failures,
+    )
 
 
 def selftest() -> int:
@@ -551,6 +729,7 @@ def selftest() -> int:
     print("check_ci_image_single_builder.py --selftest")
     failures: list[str] = []
     _selftest_detection(failures)
+    _selftest_runner_cleanup(failures)
     _selftest_end_to_end(failures)
     _selftest_extended_end_to_end(failures)
     _selftest_floor_on_real_tree(failures)
@@ -572,6 +751,17 @@ def report_extended_violations(root: Path, rels: list[str]) -> bool:
     legacy = find_legacy_images(root, rels)
     for rel, names in sorted(legacy.items()):
         print(f"  {rel}: uses retired developer image {' '.join(names)}", file=sys.stderr)
+        failed = True
+    cleanup_errors = runner_cleanup.errors(
+        (root / DEPLOYED_RUNNER_BUILDER).read_text(encoding="utf-8")
+    )
+    cleanup_errors.extend(
+        runner_cleanup.capacity_field_manager_errors(
+            (root / CAPACITY_HELPER).read_text(encoding="utf-8")
+        )
+    )
+    for message in cleanup_errors:
+        print(f"  {message}", file=sys.stderr)
         failed = True
     if failed:
         print(

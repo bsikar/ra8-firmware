@@ -163,6 +163,8 @@
   ansible.builtin.command:
     cmd: >-
       buildah bud --isolation chroot
+      --label com.ra8-firmware.managed=runner-fleet
+      --label com.ra8-firmware.image-kind=devcontainer
       -t {{ ci_runner_devcontainer_image }}
       -f {{ ci_runner_context_dir }}/.devcontainer/Dockerfile
       {{ ci_runner_context_dir }}
@@ -174,12 +176,74 @@
   ansible.builtin.command:
     cmd: >-
       buildah bud --isolation chroot
+      --label com.ra8-firmware.managed=runner-fleet
+      --label com.ra8-firmware.image-kind=runner
       --build-arg BASE_IMAGE={{ ci_runner_devcontainer_image }}
       -t {{ ci_runner_image }}
       -f {{ ci_runner_context_dir }}/runner/Dockerfile
       {{ ci_runner_context_dir }}/runner
   register: ci_runner_runner_build
   changed_when: ci_runner_runner_build.rc == 0
+
+# A successful retag makes the previous managed generation dangling. Remove
+# only images carrying both our ownership and kind labels: a broad Buildah
+# prune could delete unrelated workloads on this node. Runner images go first
+# because each old runner generation depends on its matching devcontainer.
+- name: Find superseded managed runner images
+  become: true
+  ansible.builtin.command:
+    argv:
+      - buildah
+      - images
+      - --filter
+      - label=com.ra8-firmware.managed=runner-fleet
+      - --filter
+      - label=com.ra8-firmware.image-kind=runner
+      - --filter
+      - dangling=true
+      - --quiet
+      - --no-trunc
+  register: ci_runner_dangling_runner_images
+  changed_when: false
+
+- name: Remove superseded managed runner images
+  become: true
+  ansible.builtin.command:
+    argv:
+      - buildah
+      - rmi
+      - "{{ item }}"
+  loop: "{{ ci_runner_dangling_runner_images.stdout_lines }}"
+  when: item | length > 0
+  changed_when: true
+
+- name: Find superseded managed devcontainer images
+  become: true
+  ansible.builtin.command:
+    argv:
+      - buildah
+      - images
+      - --filter
+      - label=com.ra8-firmware.managed=runner-fleet
+      - --filter
+      - label=com.ra8-firmware.image-kind=devcontainer
+      - --filter
+      - dangling=true
+      - --quiet
+      - --no-trunc
+  register: ci_runner_dangling_devcontainer_images
+  changed_when: false
+
+- name: Remove superseded managed devcontainer images
+  become: true
+  ansible.builtin.command:
+    argv:
+      - buildah
+      - rmi
+      - "{{ item }}"
+  loop: "{{ ci_runner_dangling_devcontainer_images.stdout_lines }}"
+  when: item | length > 0
+  changed_when: true
 
 - name: Ensure the k3s auto-import and staging directories exist
   become: true
@@ -299,6 +363,65 @@
       would sit in ErrImageNeverPull until someone noticed (#484).
       Node reported: {{ ci_runner_image_check.stdout | default('<no output>') }}
     success_msg: "{{ ci_runner_image }} present in containerd and pinned"
+
+# Docker archives also create one untagged CRI image record for the imported
+# manifest. Retagging does not retire those records, so without an explicit
+# sweep every converge retains another unpacked multi-gigabyte rootfs. The host
+# is drained at this point; select only untagged images whose repository digest
+# belongs exactly to this role's declared runner repository. A stale generation
+# remains pinned after losing its tag, so pin state cannot identify currency.
+- name: Inventory CRI images after publishing the current runner
+  become: true
+  ansible.builtin.command:
+    argv:
+      - k3s
+      - crictl
+      - images
+      - -o
+      - json
+  register: ci_runner_cri_images
+  when: not ansible_check_mode
+  changed_when: false
+
+- name: Reset the superseded runner image selection
+  ansible.builtin.set_fact:
+    ci_runner_stale_cri_images: []
+    ci_runner_image_repository: "{{ ci_runner_image | regex_replace(':[^/:]+$', '') }}"
+  when: not ansible_check_mode
+  changed_when: false
+
+- name: Select superseded untagged runner images
+  ansible.builtin.set_fact:
+    ci_runner_stale_cri_images: "{{ ci_runner_stale_cri_images + [item.id] }}"
+  loop: "{{ (ci_runner_cri_images.stdout | from_json).images }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when:
+    - not ansible_check_mode
+    - item.repoTags | default([]) | length == 0
+    - >-
+      item.repoDigests | default([])
+      | select(
+          'match',
+          '^' ~ (ci_runner_image_repository | regex_escape)
+          ~ '@sha256:[0-9a-f]{64}$'
+        )
+      | list | length > 0
+  changed_when: false
+
+- name: Remove superseded untagged runner images
+  become: true
+  ansible.builtin.command:
+    argv:
+      - k3s
+      - crictl
+      - rmi
+      - "{{ item }}"
+  loop: "{{ ci_runner_stale_cri_images }}"
+  loop_control:
+    label: "{{ item }}"
+  when: not ansible_check_mode
+  changed_when: true
 
 # Pre-#484 deploys left the archive in /tmp, where nothing re-imports it and
 # systemd-tmpfiles eventually deletes it. Drop it so there is exactly one
@@ -498,6 +621,7 @@
   vars:
     ansible_python_interpreter: "{{ ci_runner_python_interpreter }}"
   kubernetes.core.helm:
+    force_conflicts: true
     name: "{{ ci_runner_scale_set_name }}"
     chart_ref: "{{ ci_runner_scaleset_chart }}"
     chart_version: "{{ ci_runner_arc_chart_version }}"
