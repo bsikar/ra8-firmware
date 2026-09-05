@@ -306,7 +306,9 @@ RUN set -eux; \
     "${PYTHON_TOOL_VENV}/bin/yamllint" --version; \
     "${PYTHON_TOOL_VENV}/bin/gcovr" --version; \
     rm -f -- "${PYTHON_TOOL_VENV}/.lock"
-ENV RA8_TOOL_VENV="${PYTHON_TOOL_VENV}" \
+ENV PYTHONDONTWRITEBYTECODE="1" \
+    PYTHONNOUSERSITE="1" \
+    RA8_TOOL_VENV="${PYTHON_TOOL_VENV}" \
     RA8_UV_CACHE_ROOT="/opt/ra8-uv-cache" \
     VIRTUAL_ENV="${PYTHON_TOOL_VENV}" \
     UV_PYTHON_DOWNLOADS="never" \
@@ -513,13 +515,17 @@ COPY --chown=${USERNAME}:${USERNAME} .devcontainer/p10k.zsh /home/${USERNAME}/.p
 RUN git config --global feature.manyFiles true \
     && git config --global --add safe.directory /workspace
 
-# Seal only after every image-build command has finished. Keeping this as the
-# final RUN instruction makes later managed-interpreter use structurally
-# impossible without moving the authenticated seal and failing its checker.
+# Seal only after every image-build command has finished. The final probe imports
+# an unprimed managed module under the runtime environment, then re-verifies the
+# receipt: runtime Python use may not grow __pycache__ inside the sealed tree.
 USER root
 RUN /usr/bin/python3 -I /opt/ra8-uv-bootstrap/managed_python_env.py write \
       --env "${PYTHON_TOOL_VENV}" --pyproject /opt/ra8-python-project/pyproject.toml \
       --lock /opt/ra8-python-project/uv.lock --group ci \
+    && /usr/bin/python3 -I /opt/ra8-uv-bootstrap/managed_python_env.py verify \
+      --env "${PYTHON_TOOL_VENV}" --pyproject /opt/ra8-python-project/pyproject.toml \
+      --lock /opt/ra8-python-project/uv.lock --group ci \
+    && "${PYTHON_TOOL_VENV}/bin/python3" -c "import PIL.Image" \
     && /usr/bin/python3 -I /opt/ra8-uv-bootstrap/managed_python_env.py verify \
       --env "${PYTHON_TOOL_VENV}" --pyproject /opt/ra8-python-project/pyproject.toml \
       --lock /opt/ra8-python-project/uv.lock --group ci

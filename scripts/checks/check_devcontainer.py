@@ -176,8 +176,9 @@ def check_uv_execution(rel: str, text: str) -> list[Finding]:
     if boundary not in text:
         return []
     start = text.find(boundary) + len(boundary)
-    end = text.find("\nENV RA8_TOOL_VENV", start)
-    if text.count(boundary) != 1 or end < 0:
+    environment = 'ENV PYTHONDONTWRITEBYTECODE="1"'
+    end = text.find(f"\n{environment}", start)
+    if text.count(boundary) != 1 or text.count(environment) != 1 or end < 0:
         return [Finding(rel, 1, "DC004", "uv provisioning block is not structurally bounded")]
     block = text[start:end]
     normalized = " ".join(block.replace("\\\n", " ").split())
@@ -322,7 +323,9 @@ EXPECTED_UV_RUN_BLOCK = (
 GOOD_UV_BLOCK = (
     "WORKDIR /opt/ra8-python-project\n"
     f"{EXPECTED_UV_RUN_BLOCK}\n"
-    'ENV RA8_TOOL_VENV="${PYTHON_TOOL_VENV}"\n'
+    'ENV PYTHONDONTWRITEBYTECODE="1" \\\n'
+    '    PYTHONNOUSERSITE="1" \\\n'
+    '    RA8_TOOL_VENV="${PYTHON_TOOL_VENV}"\n'
 )
 
 GOOD_ZSHRC = b"""export PATH="$HOME/.local/bin:$PATH"
@@ -357,6 +360,11 @@ def _assert_uv_execution(failures: list[str]) -> None:
         ("--run --no-config lock", "--verify-cache --no-config lock", "mode replacement"),
         ("--run --no-config pip", "--no-config --run pip", "argv reordering"),
         ("--no-config lock --check;", "--no-config lock --check || true;", "status masking"),
+        (
+            'ENV PYTHONDONTWRITEBYTECODE="1"',
+            'ENV PYTHONDONTWRITEBYTECODE="0"',
+            "bytecode protection removal",
+        ),
     )
     for old, new, label in mutations:
         bad = GOOD_UV_BLOCK.replace(old, new, 1)
