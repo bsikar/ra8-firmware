@@ -54,11 +54,17 @@ power there or drive signals into an unpowered MCU. R3-R5 are external
 TDO/SWO is an output with no pull. One interface supports both CPU cores.
 No onboard J-Link MCU is included.
 
-Connector, switch and resistor ordering codes remain to be selected. Crystal
-networks remain to be designed; open oscillator pins in this increment are
-not intentionally unused pins.
+Connector and switch ordering codes remain to be selected. R1-R5 use
+Yageo RC0603FR-0710KL; their ratings and sourcing are recorded in the BOM.
+The main oscillator is wired as described below. Open RTC oscillator
+pins in this increment are not intentionally unused pins.
 
 ## Oscillator qualification basis
+
+The crystal-specific derivation, tolerance corners, parasitic sensitivity and
+reproducible Python check are maintained in
+[CLK-001: main oscillator load network](clock_calculations.md#clk-001-y1-main-oscillator-load-network).
+The matching schematic annotation links to that record.
 
 R01AN7202EJ0102 Rev.1.02 explicitly assigns RA8P1 to matching group 10
 (Table 4.1). Do not substitute results for group 8 (RA8M1/RA8D1).
@@ -80,8 +86,35 @@ R01AN7202EJ0102 Rev.1.02 explicitly assigns RA8P1 to matching group 10
 Do not assign load capacitors from those examples to the imported parts
 without matching evidence. In particular, a 70 kohm RTC crystal does not
 meet the example's 50 kohm criterion for the lowest-drive mode.
-Y1 case pads 2 and 4 are grounded; its resonator terminals remain open
-pending the clock-part and capacitor decision.
+The imported FL2400022 remains in the candidate library but is no longer
+the placed main crystal. Y1 is now Murata XRCGB24M000F3M19R0: 24 MHz,
+CL 6 pF, ESR <= 100 ohm, drive <= 300 uW, initial tolerance +/-30 ppm,
+temperature shift +/-40 ppm over -40 to +85 C, and aging +/-5 ppm/year
+per exact specification JGC49-3003B. Its 100 ohm ESR is below the group-10
+reference's 210 ohm screening limit; that comparison does not establish
+oscillation margin on this board.
+
+Y1 terminals 1 and 3 connect to U1.K17 EXTAL and U1.K16 XTAL through
+local nets OSC_EXTAL and OSC_XTAL. The two other package lands are linked
+internally and specified NC; the project symbol models these as NC pads
+2 and 4, not grounded case pins. The exact footprint land numbering must
+be reviewed at the deferred PCB stage against Murata Figure 1.
+
+C35/C36 are TDK C1005NP01H080D050BA, 8 pF +/-0.5 pF, 50 V NP0, 0402,
+each returning its oscillator node to ground. Equal 8 pF capacitors
+provide 4 pF series load; an estimated 2 pF combined parasitic load gives
+the crystal's nominal 6 pF. This is an initial matching network based on
+Renesas's group-10 example, not a measured parasitic value. No external
+feedback or damping resistor is fitted in this initial network. The PCB
+must pass negative-resistance, startup, frequency and drive measurements;
+adjust load capacitance or add damping only with matching evidence.
+The RTC XCIN/XCOUT circuit is still unfinished.
+
+Sourcing checked 2026-09-05: DigiKey indexed stock 13,578 for Y1
+(`490-18296-1-ND`, USD 0.32 / 0.275 / 0.239 at 1 / 10 / 100), and
+73,746 for C35/C36 (`445-13781-1-ND`, USD 0.11 / 0.058 / 0.0341).
+Both listings are active. Dated snapshots and exact links are in the
+schematic-linked BOM; recheck stock before ordering.
 
 The final selection must record exact ordering codes, load capacitance,
 ESR, drive limits, MCU drive settings, and startup wait requirements.
@@ -93,6 +126,9 @@ connections and optional feedback/damping resistors.
 
 ## Sources
 
+- [Murata exact Y1 specification](https://pim.murata.com/asset/pim4/ceramicResonatorCrystalUnit/SPEC_XRCGB24M000F3M19R0_PDF_CERAMICRESONATORCRYSTALUNIT),
+  JGC49-3003B, ratings and terminal diagram, pages 2-3.
+- [TDK exact load capacitor](https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1005NP01H080D050BA).
 - [RX and RA oscillator design guide](https://www.renesas.com/en/document/apn/renesas-rx-and-ra-families-design-guide-main-clock-circuits-and-sub-clock-circuits-rev102),
   R01AN7202EJ0102 Rev.1.02, Tables 4.1, 4.1.9 and 4.2.10; sections 5-7.
 - [Diodes FL series](https://www.diodes.com/assets/Datasheets/FL.pdf),
