@@ -5700,7 +5700,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 55.88 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -5711,7 +5711,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 55.88 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -5777,7 +5777,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 55.88 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -5789,6 +5789,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 55.88 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 55.88 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -6751,7 +6762,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 248.92 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -6762,7 +6773,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 248.92 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -6828,7 +6839,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 248.92 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -6840,6 +6851,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 248.92 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 248.92 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -7802,7 +7824,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 248.92 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -7813,7 +7835,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 248.92 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -7879,7 +7901,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 248.92 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -7891,6 +7913,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 248.92 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 248.92 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -8853,7 +8886,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 152.4 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -8864,7 +8897,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 152.4 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -8930,7 +8963,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 152.4 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -8942,6 +8975,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 152.4 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 152.4 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -9904,7 +9948,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 152.4 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -9915,7 +9959,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 152.4 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -9981,7 +10025,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 152.4 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -9993,6 +10037,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 152.4 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 152.4 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -10955,7 +11010,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 345.44 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -10966,7 +11021,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 345.44 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -11032,7 +11087,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 345.44 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -11044,6 +11099,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 345.44 121.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 345.44 121.92 0)
 			(hide yes)
 			(show_name no)
@@ -12006,7 +12072,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 345.44 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -12017,7 +12083,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 345.44 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -12083,7 +12149,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 345.44 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -12095,6 +12161,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 345.44 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 345.44 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -13057,7 +13134,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 55.88 195.58 0)
 			(hide yes)
 			(show_name no)
@@ -13068,7 +13145,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 55.88 195.58 0)
 			(hide yes)
 			(show_name no)
@@ -13134,7 +13211,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 55.88 195.58 0)
 			(hide yes)
 			(show_name no)
@@ -13146,6 +13223,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 55.88 195.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 55.88 195.58 0)
 			(hide yes)
 			(show_name no)

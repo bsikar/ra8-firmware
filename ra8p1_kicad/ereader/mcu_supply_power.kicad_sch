@@ -8404,6 +8404,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 289.56 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "eeae5fff-59a8-4f01-a52c-3135ce8b875f")
 		)
@@ -8517,6 +8528,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 198.12 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 198.12 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -8650,6 +8672,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 335.28 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "8a35b061-146a-4c35-8f33-e25773c24a16")
 		)
@@ -8763,6 +8796,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 243.84 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 243.84 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8984,6 +9028,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 289.56 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "28cef504-2a2e-4b48-9e81-5ba57cde5459")
 		)
@@ -9195,6 +9250,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 152.4 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "5f1c4dac-38dd-4cc5-92b5-b4ebb49b77a6")
 		)
@@ -9318,6 +9384,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 335.28 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "82284b18-e1b2-4ee9-be43-89209baa82e5")
 		)
@@ -9431,6 +9508,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 152.4 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 152.4 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -10004,6 +10092,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 289.56 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "5f23013e-b586-4c8e-a1a0-5dfba5c4de69")
 		)
@@ -10117,6 +10216,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 335.28 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 335.28 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -10306,7 +10416,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 71.12 157.48 0)
 			(hide yes)
 			(show_name no)
@@ -10317,7 +10427,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 71.12 157.48 0)
 			(hide yes)
 			(show_name no)
@@ -10383,7 +10493,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 71.12 157.48 0)
 			(hide yes)
 			(show_name no)
@@ -10395,6 +10505,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 71.12 157.48 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 71.12 157.48 0)
 			(hide yes)
 			(show_name no)
@@ -11389,6 +11510,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 213.36 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "9ece395c-4b80-400e-8ae8-1ab7f17662cc")
 		)
@@ -11480,7 +11612,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 71.12 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -11491,7 +11623,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 71.12 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -11557,7 +11689,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 71.12 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -11569,6 +11701,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 71.12 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 71.12 48.26 0)
 			(hide yes)
 			(show_name no)
@@ -12563,6 +12706,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 152.4 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "a0e5ebc1-ecb0-4a64-b8d8-563938a6773b")
 		)
@@ -12676,6 +12830,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 243.84 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 243.84 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -12809,6 +12974,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 198.12 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "959612c7-1845-47d9-bc8c-d230047474a9")
 		)
@@ -12922,6 +13098,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 274.32 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 274.32 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -13143,6 +13330,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 243.84 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "fd942940-1b4b-4e68-b6e7-a9da902d6114")
 		)
@@ -13266,6 +13464,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 198.12 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "ccb2004d-cb5e-4d64-8a58-c6d8b16d05e8")
 		)
@@ -13379,6 +13588,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 152.4 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 152.4 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13590,6 +13810,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 335.28 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 335.28 177.8 0)
 			(hide yes)
 			(show_name no)
