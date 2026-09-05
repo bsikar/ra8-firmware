@@ -23,7 +23,7 @@
 	)
 	(text "Global supplies: +3V3_MCU and GND.\nCore regulator output MCU_VCORE stays local to the processor power sheet.\n\nRemaining subsystem circuits follow epic #821 and issues #824-#834:\nradio, memory/storage, USB/battery, system rails, display controller,\npanel power, touch, warm/cool lighting, buttons and sensors.\nNo empty subsystem sheets are represented as completed circuits.\n\nFootprint and PCB qualification are deferred by scope."
 		(exclude_from_sim no)
-		(at 198.12 86.36 0)
+		(at 198.12 139.7 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -45,17 +45,17 @@
 	)
 	(wire
 		(pts
-			(xy 185.42 102.87) (xy 185.42 139.7)
+			(xy 167.64 97.79) (xy 203.2 97.79)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "41c25e57-b184-4205-9ffb-e9f150696ba5")
+		(uuid "045ace60-4fae-4c14-888a-76627355a758")
 	)
 	(wire
 		(pts
-			(xy 167.64 102.87) (xy 185.42 102.87)
+			(xy 167.64 102.87) (xy 203.2 102.87)
 		)
 		(stroke
 			(width 0)
@@ -65,13 +65,33 @@
 	)
 	(wire
 		(pts
-			(xy 185.42 139.7) (xy 203.2 139.7)
+			(xy 167.64 95.25) (xy 203.2 95.25)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "b16c4780-e84d-4f34-8204-17e388bb111d")
+		(uuid "701daeea-3bb9-4544-b84f-d45aa59782e2")
+	)
+	(wire
+		(pts
+			(xy 167.64 85.09) (xy 203.2 85.09)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "cbc2ea0f-360b-4816-9245-4e3f3e39d9cc")
+	)
+	(wire
+		(pts
+			(xy 167.64 87.63) (xy 203.2 87.63)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fe7350b3-0f46-4995-9654-f7f72d4a367a")
 	)
 	(sheet
 		(at 30.48 226.06)
@@ -289,7 +309,7 @@
 		)
 	)
 	(sheet
-		(at 203.2 129.54)
+		(at 203.2 81.28)
 		(size 137.16 27.94)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -305,7 +325,7 @@
 		)
 		(uuid "9b84c337-6879-4714-899e-3993bcc30b88")
 		(property "Sheetname" "ESP32-C6 radio"
-			(at 203.2 128.8284 0)
+			(at 203.2 80.5684 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -316,7 +336,7 @@
 			)
 		)
 		(property "Sheetfile" "radio_esp32.kicad_sch"
-			(at 203.2 158.0646 0)
+			(at 203.2 109.8046 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -327,8 +347,48 @@
 			)
 		)
 		(pin "RADIO_PWR_EN" input
-			(at 203.2 139.7 180)
+			(at 203.2 102.87 180)
 			(uuid "79bebea2-8a48-4433-bed0-8ff149ac61e6")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "RADIO_CIPO" output
+			(at 203.2 97.79 180)
+			(uuid "0007993a-629e-459e-95ab-d47619a65018")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "RADIO_COPI" input
+			(at 203.2 87.63 180)
+			(uuid "de612280-ad59-4e93-968f-a509810fb822")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "RADIO_CS_N" input
+			(at 203.2 85.09 180)
+			(uuid "632be6bc-a32a-4ebc-ae6a-586537d095d2")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "RADIO_SCLK" input
+			(at 203.2 95.25 180)
+			(uuid "49bc3fbb-58ed-403b-ac98-6d0a9f4d3aba")
 			(effects
 				(font
 					(size 1.27 1.27)
