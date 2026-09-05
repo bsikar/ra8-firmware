@@ -107,6 +107,14 @@ acceptance. Check each remaining symbol against its exact ordering-code
 datasheet before wiring, and qualify footprints before PCB work. Do not infer
 safety from an ERC result on all-passive imported symbols.
 
+The 289-ball USB/MIPI unit now uses normalized manufacturer pin names,
+power-input types for its nine supply/ground pins, and bidirectional types
+for the four USB data pins. USBHS_RREF remains passive for its external
+reference resistor. The six unused MIPI lanes still retain passive types;
+their explicit no-connect treatment is not qualification for active MIPI use.
+Authority: RA8P1 Datasheet Rev.1.30 Table 1.17; RA8x2 Quick Design Guide
+Rev.1.10 Tables 1-2; RA8P1 HUM Rev.1.30 section 21.4 for unused MIPI.
+
 New design net labels use `COPI`, `CIPO` and `CS` instead of legacy SPI terms.
 Review imported pin-name aliases against manufacturer documentation before
 renaming them; visual normalization must not silently change their identity.
