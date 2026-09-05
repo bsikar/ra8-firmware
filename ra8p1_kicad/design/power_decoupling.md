@@ -2,7 +2,7 @@
 
 ## PWR-001: C39 MIPI analog-supply bypass
 
-Revision 1, 2026-09-05. Applies to C39 and U1 unit M on
+Revision 2, 2026-09-05. Applies to C39 and U1 unit M on
 [RA8P1 IO allocation](../ereader/mcu_interfaces.kicad_sch), sheet 2 of the
 [full schematic PDF](../exports/ereader_rev1.pdf). The PWR-001 schematic
 annotation links back here. Tracking: [issue #824](https://github.com/bsikar/ra8-firmware/issues/824).
@@ -48,9 +48,40 @@ is NOT a capacitance-retention percentage. Initial tolerance excludes DC
 bias, temperature dependence, aging, AC excitation and measurement conditions.
 X7R temperature classification does not establish DC-bias behavior. No
 guaranteed minimum operating capacitance or PDN impedance is claimed here.
-Review the exact-part characteristic data and final rail specification before
-promoting this candidate to qualified. Layout must provide a short local
+Nominal DC-bias screening is recorded below; final rail and PDN requirements
+remain to be qualified. Layout must provide a short local
 bypass loop between the named supply and ground pins; that is a later PCB task.
+
+### Nominal DC-bias screening and shared bypass selection
+
+TDK's English product page provides a DC Bias Characteristic graph with a
+Download data as CSV button. The browser download on 2026-09-05 is preserved
+as [manufacturer curve data](../resources/datasheets/TDK_C1608X7R1H104K080AA_dc_bias_2026-09-05.csv),
+with only UTF-8 BOM removal, line-ending normalization and trailing blank-line
+removal. Numeric values and the manufacturer/date/part headers are unchanged.
+The page explicitly identifies these curves as reference data that do not
+guarantee product characteristics.
+
+The two bracketing samples are 99.5575 nF at 3.15 V and 98.9525 nF at 4 V.
+Linear interpolation, not a new manufacturer measurement, gives:
+
+```text
+C(V) = 99.5575 + (V-3.15)/(4-3.15)*(98.9525-99.5575) nF
+C(3.3) = 99.450735... nF; nominal loss = 0.549265...%
+C(3.6) = 99.237206... nF; nominal loss = 0.762794...%
+```
+
+This small nominal loss supports selecting the part for the existing 100 nF
+bypass positions. It does not close final rail, temperature/aging, layout or
+PDN qualification, and it is not an all-corners capacitance guarantee.
+No minimum effective-capacitance requirement has been invented from the
+vendor's nominal 100 nF prescription.
+
+The same exact part is selected for C6 and C16-C34, whose current netlist
+places pin 1 on +3V3_MCU and pin 2 on GND. Together with C39 these are 21
+capacitors. This selection does not apply to the 220 nF VCL bypasses, bulk
+input/output capacitors, or either oscillator's load capacitors. Supply
+function changes require reevaluation of the affected bypass selection.
 
 ### Reproducible Python arithmetic and BOM check
 
@@ -63,19 +94,38 @@ import csv
 from fractions import Fraction as F
 
 with open('ra8p1_kicad/exports/ereader_rev1_bom.csv', newline='') as stream:
-    rows = [r for r in csv.DictReader(stream) if 'C39' in r['Reference'].split(',')]
-if len(rows) != 1:
-    raise ValueError('C39 must occur exactly once in BOM')
-row = rows[0]
-if (row['Value'], row['Manufacturer_Part_Number'], row['DNP']) != (
-        '100n', 'C1608X7R1H104K080AA', ''):
-    raise ValueError('C39 calculation inputs differ from BOM')
+    bom = list(csv.DictReader(stream))
+references = {'C6', 'C39'} | {'C'+str(n) for n in range(16, 35)}
+for reference in sorted(references):
+    rows = [r for r in bom if reference in r['Reference'].split(',')]
+    if len(rows) != 1:
+        raise ValueError(reference + ' must occur exactly once in BOM')
+    row = rows[0]
+    if (row['Value'], row['Manufacturer_Part_Number'], row['DNP']) != (
+            '100n', 'C1608X7R1H104K080AA', ''):
+        raise ValueError(reference + ' calculation inputs differ from BOM')
 checks = ((100*(1-F(1, 10)), 90), (100*(1+F(1, 10)), 110),
           (F(33, 10)/50*100, F(33, 5)), (F(36, 10)/50*100, F(36, 5)))
 for actual, expected in checks:
     if actual != expected:
         raise ValueError((actual, expected))
 print('PWR-001 PASS: 90..110 nF initial; voltage utilization 6.6% / 7.2%.')
-print('Operating capacitance and final rail qualification remain open.')
+curve_path = ('ra8p1_kicad/resources/datasheets/'
+              'TDK_C1608X7R1H104K080AA_dc_bias_2026-09-05.csv')
+with open(curve_path, newline='', encoding='utf-8-sig') as stream:
+    rows = list(csv.reader(stream))
+if rows[5] != ['C1608X7R1H104K080AA'] or rows[6] != ['DC/V', 'Capacitance(Nom.)/F']:
+    raise ValueError('Unexpected curve identity or units')
+samples = {F(r[0]): F(r[1])*10**9 for r in rows[7:] if len(r) == 2}
+a, b = F('3.15'), F(4)
+if (samples[a], samples[b]) != (F('99.5575'), F('98.9525')):
+    raise ValueError('DC-bias source samples changed')
+for v, expected in ((F('3.3'), F(676265, 6800)),
+                    (F('3.6'), F(674813, 6800))):
+    interpolated = samples[a] + (v-a)/(b-a)*(samples[b]-samples[a])
+    if interpolated != expected:
+        raise ValueError('DC-bias interpolation mismatch')
+    print(f'{float(v):.1f} V: {float(interpolated):.6f} nF nominal reference estimate')
+print('21 BOM inputs agree. Final rail and PDN qualification remain open.')
 PY
 ```

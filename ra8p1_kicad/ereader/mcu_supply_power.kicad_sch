@@ -8340,8 +8340,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 289.56 81.28 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8360,7 +8361,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 289.56 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8371,7 +8372,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 289.56 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8382,7 +8383,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 289.56 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8393,7 +8394,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 289.56 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8405,6 +8406,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 289.56 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 289.56 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 289.56 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 289.56 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8474,8 +8508,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 198.12 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8494,7 +8529,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 198.12 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -8505,7 +8540,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 198.12 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -8516,7 +8551,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 198.12 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -8527,7 +8562,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 198.12 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -8539,6 +8574,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 198.12 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 198.12 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 198.12 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 198.12 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -8608,8 +8676,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 335.28 81.28 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8628,7 +8697,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 335.28 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8639,7 +8708,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 335.28 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8650,7 +8719,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 335.28 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8661,7 +8730,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 335.28 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8673,6 +8742,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 335.28 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 335.28 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 335.28 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 335.28 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8742,8 +8844,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 243.84 81.28 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8762,7 +8865,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 243.84 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8773,7 +8876,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 243.84 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8784,7 +8887,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 243.84 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8795,7 +8898,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 243.84 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8807,6 +8910,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 243.84 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 243.84 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 243.84 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 243.84 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8964,8 +9100,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 289.56 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8984,7 +9121,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 289.56 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -8995,7 +9132,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 289.56 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9006,7 +9143,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 289.56 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9017,7 +9154,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 289.56 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9029,6 +9166,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 289.56 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 289.56 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 289.56 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 289.56 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9186,8 +9356,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 152.4 177.8 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9206,7 +9377,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 152.4 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -9217,7 +9388,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 152.4 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -9228,7 +9399,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 152.4 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -9239,7 +9410,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 152.4 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -9251,6 +9422,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 152.4 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 152.4 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 152.4 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 152.4 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -9320,8 +9524,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 335.28 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9340,7 +9545,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 335.28 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9351,7 +9556,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 335.28 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9362,7 +9567,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 335.28 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9373,7 +9578,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 335.28 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9385,6 +9590,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 335.28 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 335.28 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 335.28 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 335.28 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9454,8 +9692,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 152.4 81.28 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9474,7 +9713,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 152.4 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -9485,7 +9724,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 152.4 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -9496,7 +9735,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 152.4 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -9507,7 +9746,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 152.4 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -9519,6 +9758,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 152.4 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 152.4 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 152.4 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 152.4 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -10028,8 +10300,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 289.56 119.38 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10048,7 +10321,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 289.56 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -10059,7 +10332,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 289.56 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -10070,7 +10343,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 289.56 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -10081,7 +10354,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 289.56 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -10093,6 +10366,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 289.56 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 289.56 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 289.56 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 289.56 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -10162,8 +10468,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 335.28 119.38 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10182,7 +10489,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 335.28 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -10193,7 +10500,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 335.28 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -10204,7 +10511,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 335.28 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -10215,7 +10522,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 335.28 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -10227,6 +10534,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 335.28 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 335.28 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 335.28 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 335.28 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -11446,8 +11786,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 213.36 177.8 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11466,7 +11807,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 213.36 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -11477,7 +11818,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 213.36 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -11488,7 +11829,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 213.36 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -11499,7 +11840,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 213.36 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -11511,6 +11852,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 213.36 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 213.36 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 213.36 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 213.36 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -12642,8 +13016,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 152.4 119.38 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12662,7 +13037,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 152.4 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -12673,7 +13048,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 152.4 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -12684,7 +13059,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 152.4 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -12695,7 +13070,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 152.4 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -12707,6 +13082,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 152.4 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 152.4 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 152.4 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 152.4 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -12776,8 +13184,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 243.84 119.38 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12796,7 +13205,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 243.84 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -12807,7 +13216,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 243.84 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -12818,7 +13227,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 243.84 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -12829,7 +13238,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 243.84 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -12841,6 +13250,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 243.84 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 243.84 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 243.84 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 243.84 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -12910,8 +13352,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 198.12 81.28 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12930,7 +13373,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 198.12 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -12941,7 +13384,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 198.12 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -12952,7 +13395,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 198.12 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -12963,7 +13406,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 198.12 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -12975,6 +13418,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 198.12 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 198.12 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 198.12 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 198.12 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -13044,8 +13520,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 274.32 177.8 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13064,7 +13541,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 274.32 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -13075,7 +13552,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 274.32 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -13086,7 +13563,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 274.32 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -13097,7 +13574,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 274.32 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -13109,6 +13586,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 274.32 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 274.32 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 274.32 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 274.32 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -13266,8 +13776,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 243.84 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13286,7 +13797,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 243.84 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13297,7 +13808,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 243.84 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13308,7 +13819,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 243.84 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13319,7 +13830,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 243.84 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13331,6 +13842,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 243.84 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 243.84 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 243.84 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 243.84 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13400,8 +13944,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 198.12 119.38 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13420,7 +13965,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 198.12 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -13431,7 +13976,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 198.12 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -13442,7 +13987,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 198.12 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -13453,7 +13998,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 198.12 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -13465,6 +14010,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 198.12 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 198.12 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 198.12 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 198.12 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -13534,8 +14112,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 152.4 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13554,7 +14133,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 152.4 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13565,7 +14144,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 152.4 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13576,7 +14155,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 152.4 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13587,7 +14166,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 152.4 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13599,6 +14178,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 152.4 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 152.4 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 152.4 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 152.4 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13756,8 +14368,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 335.28 177.8 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13776,7 +14389,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 335.28 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -13787,7 +14400,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 335.28 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -13798,7 +14411,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 335.28 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -13809,7 +14422,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 335.28 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -13821,6 +14434,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 335.28 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 335.28 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 335.28 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 335.28 177.8 0)
 			(hide yes)
 			(show_name no)
