@@ -679,8 +679,10 @@ Tracking: [issue #826](https://github.com/bsikar/ra8-firmware/issues/826).
 The project-local `Power_Devices:TXU0304PWR` symbol implements the exact PW
 pin map below, with explicit input/tri-state/power types and visible NC
 contacts. Its 150 mil pins terminate on the 100 mil connection grid.
-This circuit is not yet placed, connected or qualified. RADIO-009 is
-reserved for its schematic annotation.
+U5 is placed with VCCA on +3V3_MCU, VCCB on +3V3_RADIO and pin 7 on GND.
+Its exact manufacturer and DigiKey ordering fields are included in the BOM.
+SPI/OE wiring and the two local bypass capacitors remain incomplete; this
+is not a qualified circuit. RADIO-009 is reserved for its schematic annotation.
 
 ### Device and channel assignment
 
