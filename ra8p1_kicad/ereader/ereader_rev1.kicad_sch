@@ -179,6 +179,52 @@
 		)
 	)
 	(sheet
+		(at 203.2 129.54)
+		(size 137.16 27.94)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "9b84c337-6879-4714-899e-3993bcc30b88")
+		(property "Sheetname" "ESP32-C6 radio"
+			(at 203.2 128.8284 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "radio_esp32.kicad_sch"
+			(at 203.2 158.0646 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
+					(page "6")
+				)
+			)
+		)
+	)
+	(sheet
 		(at 30.48 177.8)
 		(size 137.16 27.94)
 		(exclude_from_sim no)
