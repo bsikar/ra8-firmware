@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import ast
 
+import yaml
 from hil_convergence_safety_ast import assignment as _assignment
 from hil_convergence_safety_ast import function as _function
 from hil_convergence_safety_ast import module_assignment as _module_assignment
@@ -267,4 +268,153 @@ def environment_errors(tree: ast.Module) -> list[str]:
         or not hostile <= env_keys
     ):
         errors.append("fleet WSL: rendered managed environment boundary is not exact")
+    return errors
+
+
+def _flatten_role_tasks(items: list[object]) -> list[dict[str, object]]:
+    """Return top-level and block-nested Ansible tasks in execution order."""
+    flattened: list[dict[str, object]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        flattened.append(item)
+        for section in ("block", "rescue", "always"):
+            children = item.get(section)
+            if isinstance(children, list):
+                flattened.extend(_flatten_role_tasks(children))
+    return flattened
+
+
+def _named_role_tasks(source: str) -> tuple[dict[str, tuple[int, dict[str, object]]], list[str]]:
+    """Parse uniquely named WSL role tasks for structural policy checks."""
+    try:
+        value = yaml.safe_load(source)
+    except yaml.YAMLError:
+        return {}, ["WSL clock: role task file is not valid YAML"]
+    if not isinstance(value, list):
+        return {}, ["WSL clock: role task file is not a list"]
+    grouped: dict[str, list[tuple[int, dict[str, object]]]] = {}
+    for index, item in enumerate(_flatten_role_tasks(value)):
+        if isinstance(item, dict) and isinstance(item.get("name"), str):
+            grouped.setdefault(item["name"], []).append((index, item))
+    duplicated = [name for name, matches in grouped.items() if len(matches) != 1]
+    if duplicated:
+        return {}, [f"WSL clock: duplicate task names: {', '.join(sorted(duplicated))}"]
+    return {name: matches[0] for name, matches in grouped.items()}, []
+
+
+def _required_role_task(
+    named: dict[str, tuple[int, dict[str, object]]], name: str, errors: list[str]
+) -> tuple[int, dict[str, object]] | None:
+    """Return one required role task while attributing absence."""
+    task = named.get(name)
+    if task is None:
+        errors.append(f"WSL clock: missing task {name!r}")
+    return task
+
+
+def clock_errors(source: str) -> list[str]:
+    """Require slew-safe chrony readiness and clean removal ownership."""
+    named, errors = _named_role_tasks(source)
+    if errors:
+        return errors
+    names = (
+        "Remove the managed chrony configuration",
+        "Ensure the chrony-wait override directory exists",
+        "Configure chrony-wait for slew-safe readiness",
+        "Enable chronyd and the unit that blocks until it has synchronised",
+    )
+    matches = [_required_role_task(named, name, errors) for name in names]
+    if any(match is None for match in matches):
+        return errors
+    removal, directory, override, enable = matches
+    if not removal[0] < directory[0] < override[0] < enable[0]:
+        errors.append("WSL clock: readiness task order is not exact")
+    removal_file = removal[1].get("ansible.builtin.file")
+    removed = [
+        "/etc/chrony/conf.d/10-ra8-slew-not-step.conf",
+        "/etc/systemd/system/chrony-wait.service.d/10-ra8-slew-readiness.conf",
+    ]
+    if (
+        not isinstance(removal_file, dict)
+        or removal_file.get("path") != "{{ item }}"
+        or removal_file.get("state") != "absent"
+        or removal[1].get("loop") != removed
+    ):
+        errors.append("WSL clock: removal does not retire both managed drop-ins")
+    directory_file = directory[1].get("ansible.builtin.file")
+    if not isinstance(directory_file, dict) or directory_file != {
+        "path": "/etc/systemd/system/chrony-wait.service.d",
+        "state": "directory",
+        "mode": "0755",
+    }:
+        errors.append("WSL clock: chrony-wait override directory is not exact")
+    override_copy = override[1].get("ansible.builtin.copy")
+    expected = (
+        "# Managed by the ra8-firmware wsl_ci_host Ansible role.\n"
+        "# A selected source is ready; remaining correction slews monotonically.\n"
+        "[Service]\nExecStart=\n"
+        "ExecStart=/usr/bin/chronyc -h 127.0.0.1,::1 waitsync 0 0 0 1\n"
+    )
+    if not isinstance(override_copy, dict) or override_copy != {
+        "dest": "/etc/systemd/system/chrony-wait.service.d/10-ra8-slew-readiness.conf",
+        "mode": "0644",
+        "content": expected,
+    }:
+        errors.append("WSL clock: slew-safe chrony-wait override is not exact")
+    return errors
+
+
+def autostart_errors(source: str) -> list[str]:
+    """Require the Windows keep-alive to run before WSL image work."""
+    named, errors = _named_role_tasks(source)
+    if errors:
+        return errors
+    names = (
+        "Register the Windows autostart task",
+        "Start the Windows autostart task now",
+        "Read back the task Windows actually stored",
+        "Assert the autostart task exists and is running after apply",
+    )
+    matches = [_required_role_task(named, name, errors) for name in names]
+    if any(match is None for match in matches):
+        return errors
+    create, start, query, assertion = matches
+    if not create[0] < start[0] < query[0] < assertion[0]:
+        errors.append("WSL autostart: keep-alive task order is not exact")
+    start_command = start[1].get("ansible.builtin.command")
+    start_argv = start_command.get("argv") if isinstance(start_command, dict) else None
+    if (
+        start_argv
+        != ["{{ wsl_ci_host_schtasks }}", "/Run", "/TN", "{{ wsl_ci_host_task_name }}"]
+        or start[1].get("when") != "not ansible_check_mode"
+        or start[1].get("changed_when") is not False
+    ):
+        errors.append("WSL autostart: immediate keep-alive start is not exact")
+    query_command = query[1].get("ansible.builtin.command")
+    query_argv = query_command.get("argv") if isinstance(query_command, dict) else None
+    expected_query = [
+        "{{ wsl_ci_host_schtasks }}",
+        "/Query",
+        "/TN",
+        "{{ wsl_ci_host_task_name }}",
+        "/V",
+        "/FO",
+        "LIST",
+    ]
+    if (
+        query_argv != expected_query
+        or query[1].get("register") != "wsl_ci_host_task_query"
+        or query[1].get("changed_when") is not False
+        or query[1].get("failed_when") is not False
+        or query[1].get("check_mode") is not False
+    ):
+        errors.append("WSL autostart: verbose task readback is not exact")
+    assert_module = assertion[1].get("ansible.builtin.assert")
+    expected_conditions = [
+        "wsl_ci_host_task_name in wsl_ci_host_task_query.stdout",
+        "ansible_check_mode or 'Running' in wsl_ci_host_task_query.stdout",
+    ]
+    if not isinstance(assert_module, dict) or assert_module.get("that") != expected_conditions:
+        errors.append("WSL autostart: running-state assertion is not exact")
     return errors

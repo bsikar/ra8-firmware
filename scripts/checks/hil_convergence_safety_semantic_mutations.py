@@ -501,6 +501,25 @@ def aggregator_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool
     return cases
 
 
+def wsl_clock_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool]]:
+    """Prove WSL clock and keep-alive regressions cannot pass."""
+    key = "wsl_role"
+    source = inputs[key]
+    safe = "waitsync 0 0 0 1"
+    start = "- name: Start the Windows autostart task now"
+    if source.count(safe) != 1 or source.count(start) != 1:
+        message = "WSL clock or keep-alive fixture is not unique"
+        raise SemanticMutationError(message)
+    clock_changed = dict(inputs)
+    clock_changed[key] = source.replace(safe, "waitsync 0 0.1 0.0 1", 1)
+    start_changed = dict(inputs)
+    start_changed[key] = source.replace(start, f"{start} later", 1)
+    return [
+        ("WSL slew-safe readiness threshold restoration fires", bool(scan(clock_changed))),
+        ("WSL immediate keep-alive start removal fires", bool(scan(start_changed))),
+    ]
+
+
 def _fleet_import_cases() -> tuple[tuple[str, str, str, str, str], ...]:
     """Return split fleet import-removal mutation specifications."""
     return (
