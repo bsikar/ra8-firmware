@@ -553,8 +553,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
-    assigned_rows: 25
-    rows_sha256: b7fac2bf06d025ebf35185a4a142717a92c8229fe46bb85a7c28c865d19ab68c
+    assigned_rows: 26
+    rows_sha256: 41fdf8ede6059a987a9d168e9022ca29ed2f240111b811f9342279fd9431fe60
     partition: >-
       Round5 ARC checker split: one exact selftest path authority, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -570,3 +570,6 @@ batches:
       - >-
         FLEET_RECONCILE_ARC_SELFTEST is the exact positive-scope path for the
         extracted activation-ordering and receipt-state regression suite.
+      - >-
+        The isolated import selftest uses the current Python executable and the
+        fixed current module with argv only and shell interpretation disabled.
