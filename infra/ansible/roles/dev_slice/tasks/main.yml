@@ -233,6 +233,7 @@
       ansible.builtin.meta: flush_handlers
 
     - name: Start the slice
+      when: not ansible_check_mode
       # A slice with no units in it is inert but must be ACTIVE, or
       # `systemctl freeze` (the quiet-hours path) has nothing to act on and
       # /sys/fs/cgroup/<slice> does not exist to read the caps back from.
@@ -252,6 +253,7 @@
       loop: [cpu.weight, memory.max, memory.swap.max, memory.high]
       register: dev_slice_cgroup
       changed_when: false
+      check_mode: false
 
     - name: Read the weight CI's containers actually run at
       # system.slice, read rather than assumed: `docker info` reports the
@@ -263,6 +265,7 @@
         argv: [cat, /sys/fs/cgroup/system.slice/cpu.weight]
       register: dev_slice_ci_weight
       changed_when: false
+      check_mode: false
 
     - name: Assert the slice is genuinely capped and genuinely subordinate
       ansible.builtin.assert:
@@ -381,6 +384,7 @@
       register: dev_slice_source_id
       changed_when: false
       failed_when: false
+      check_mode: false
 
     - name: Fail loud when the runner toolchain image is not on this host
       # Deliberately not a build step, and not a pull. The gates in this slice
@@ -400,6 +404,7 @@
           (`just infra::apply HOST=<host>`), which loads the image.
 
     - name: Tag the runner image as the name scripts/ci.sh boots
+      when: not ansible_check_mode
       # scripts/ci.sh builds `ra8-ci:latest` from .devcontainer/Dockerfile when
       # it cannot find it. Here it can: the runner image IS that devcontainer
       # image with the actions-runner layered on top, already on the host, so
@@ -428,6 +433,7 @@
           - "{{ dev_slice_ci_image_alias }}"
       register: dev_slice_alias_id
       changed_when: false
+      check_mode: false
 
     - name: Assert the alias and the runners' image are one image
       ansible.builtin.assert:
@@ -617,6 +623,7 @@
           export RA8_TOOLS_CACHE_DIR={{ dev_slice_tools_cache_dir }}
 
     - name: Install the workspace reaper
+      when: not ansible_check_mode
       # The same lifecycle the dev box has, from the same script: workspaces
       # are reaped on a timer and on every `ws-new`, and the reaper refuses to
       # delete a tree that is in use, dirty, or holding commits that are on no
@@ -639,6 +646,7 @@
       register: dev_slice_reaper_state
       changed_when: false
       failed_when: false
+      check_mode: false
 
     - name: Assert the reaper timer is running
       # A timer that was written and not armed is the silent nothing this tree
@@ -659,9 +667,28 @@
           that installs a SYSTEM timer for uid 0, and refresh it if not.
         success_msg: "ra8-workspace-reap.timer active (system)"
 
+    - name: Read whether the dev slice can execute proof work
+      become: true
+      ansible.builtin.command:
+        argv: [systemctl, show, "--property=FreezerState", --value, "{{ dev_slice_unit }}"]
+      register: dev_slice_freezer_state
+      changed_when: false
+      check_mode: false
+
+    - name: Require a stable dev-slice freezer state
+      ansible.builtin.assert:
+        that:
+          - (dev_slice_freezer_state.stdout | trim) in ['running', 'frozen']
+        fail_msg: >-
+          {{ dev_slice_unit }} freezer state is
+          '{{ dev_slice_freezer_state.stdout | trim }}', not stable.
+
     # --- Prove it, end to end ---------------------------------------------
 
     - name: Prove host-side work lands in the slice
+      when:
+        - not ansible_check_mode
+        - (dev_slice_freezer_state.stdout | trim) == 'running'
       # The entry point is what an agent will actually type, so it is what is
       # tested -- not the mechanism underneath it. A wrapper that silently ran
       # its command outside the slice would leave every property above true and
@@ -673,6 +700,9 @@
       changed_when: false
 
     - name: Prove a containerised gate run lands in the slice
+      when:
+        - not ansible_check_mode
+        - (dev_slice_freezer_state.stdout | trim) == 'running'
       # The other half, and the one that is easy to get wrong: this asks the
       # docker daemon to place a container the way scripts/ci.sh will, then
       # reads back from the HOST side which cgroup it went into. Reading
@@ -697,6 +727,9 @@
       changed_when: false
 
     - name: Assert both halves of the dev slice actually contain their work
+      when:
+        - not ansible_check_mode
+        - (dev_slice_freezer_state.stdout | trim) == 'running'
       ansible.builtin.assert:
         that:
           - dev_slice_unit in dev_slice_probe_host.stdout

@@ -63,7 +63,7 @@
     - name: Delete the Windows autostart task
       ansible.builtin.command:
         argv:
-          - schtasks.exe
+          - "{{ wsl_ci_host_schtasks }}"
           - /Delete
           - /TN
           - "{{ wsl_ci_host_task_name }}"
@@ -78,7 +78,7 @@
       # still exists and the removal must fail loudly.
       ansible.builtin.command:
         argv:
-          - schtasks.exe
+          - "{{ wsl_ci_host_schtasks }}"
           - /Query
           - /TN
           - "{{ wsl_ci_host_task_name }}"
@@ -170,7 +170,6 @@
         src: "{{ wsl_ci_host_profile }}/.wslconfig.ra8-backup"
         dest: "{{ wsl_ci_host_profile }}/.wslconfig"
         remote_src: true
-        mode: "0644"
 
     - name: Report what removal left behind
       ansible.builtin.debug:
@@ -204,7 +203,15 @@
           [network]
           generateResolvConf=false
 
+    - name: Inspect resolv.conf without following links
+      ansible.builtin.stat:
+        path: /etc/resolv.conf
+        follow: false
+      register: wsl_ci_host_resolv_conf
+      check_mode: false
+
     - name: Remove any resolv.conf symlink WSL or systemd-resolved left behind
+      when: wsl_ci_host_resolv_conf.stat.islnk | default(false)
       # `copy` follows an existing symlink and writes through it, which would
       # put our nameservers in /run/systemd/resolve/stub-resolv.conf instead of
       # where the resolver reads them.
@@ -311,15 +318,17 @@
           [Install]
           WantedBy=timers.target
 
-    - name: Enable and start the route-pin units
+    - name: Enable and start the route-pin timer
       ansible.builtin.systemd_service:
-        name: "{{ item }}"
+        name: ra8-wsl-route-pin.timer
         state: started
         enabled: true
         daemon_reload: true
-      loop:
-        - ra8-wsl-route-pin.service
-        - ra8-wsl-route-pin.timer
+
+    - name: Apply the default-route pin once after unit changes
+      ansible.builtin.command:
+        argv: [systemctl, start, ra8-wsl-route-pin.service]
+      changed_when: false
 
     # --- Clock ------------------------------------------------------------
     #
@@ -526,6 +535,7 @@
             url: https://download.docker.com/linux/ubuntu/gpg
             dest: /etc/apt/keyrings/docker.asc
             mode: "0644"
+            checksum: "sha256:{{ wsl_ci_host_docker_gpg_sha256 }}"
 
         - name: Install the deb822 apt-source dependency
           # ansible.builtin.deb822_repository is implemented on top of
@@ -607,6 +617,7 @@
         cmd: which docker
       register: wsl_ci_host_which_docker
       changed_when: false
+      check_mode: false
 
     - name: Assert the native docker, not the Docker Desktop shim, is in use
       # Docker Desktop's WSL integration puts a shim on PATH from /mnt/c. It
@@ -642,12 +653,10 @@
         dest: "{{ wsl_ci_host_profile }}/.wslconfig.ra8-backup"
         remote_src: true
         force: false
-        mode: "0644"
 
     - name: Write the .wslconfig VM caps
       ansible.builtin.copy:
         dest: "{{ wsl_ci_host_profile }}/.wslconfig"
-        mode: "0644"
         content: |
           # Managed by the ra8-firmware wsl_ci_host Ansible role.
           # The owner's original is kept beside this file as
@@ -700,7 +709,7 @@
       # the vmIdleTimeout setting rather than relying on it alone.
       ansible.builtin.command:
         argv:
-          - schtasks.exe
+          - "{{ wsl_ci_host_schtasks }}"
           - /Create
           - /TN
           - "{{ wsl_ci_host_task_name }}"
@@ -716,9 +725,27 @@
 
     - name: Read back the task Windows actually stored
       ansible.builtin.command:
-        argv: [schtasks.exe, /Query, /TN, "{{ wsl_ci_host_task_name }}"]
+        argv: ["{{ wsl_ci_host_schtasks }}", /Query, /TN, "{{ wsl_ci_host_task_name }}"]
       register: wsl_ci_host_task_query
       changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Report a missing Windows autostart task during a dry run
+      when:
+        - ansible_check_mode
+        - wsl_ci_host_task_query.rc != 0
+      ansible.builtin.debug:
+        msg: >-
+          Windows autostart task {{ wsl_ci_host_task_name }} requires apply;
+          readback consumers cannot validate it until it exists.
+      changed_when: true
+
+    - name: End a missing-autostart-task dry run before readback consumers
+      when:
+        - ansible_check_mode
+        - wsl_ci_host_task_query.rc != 0
+      ansible.builtin.meta: end_host
 
     - name: Assert the autostart task exists
       ansible.builtin.assert:
@@ -742,6 +769,7 @@
         cmd: nproc
       register: wsl_ci_host_nproc
       changed_when: false
+      check_mode: false
 
     - name: Assert the CPU cap took effect
       # Only meaningful after `wsl --shutdown`: .wslconfig is read when the VM
@@ -784,6 +812,7 @@
       until: (wsl_ci_host_ntp.stdout | trim) == 'yes'
       retries: "{{ wsl_ci_host_clock_retries | int }}"
       delay: "{{ wsl_ci_host_clock_delay | int }}"
+      check_mode: false
 
     - name: Read the Windows host's own clock
       # Through interop, because this is the OTHER time source and it is the
@@ -794,19 +823,21 @@
       # stops being an inference and becomes a number the deploy can act on.
       ansible.builtin.command:
         argv:
-          - powershell.exe
+          - "{{ wsl_ci_host_powershell }}"
           - -NoProfile
           - -Command
           - "[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()"
       register: wsl_ci_host_windows_epoch
       changed_when: false
       failed_when: false
+      check_mode: false
 
     - name: Read the distro's synchronised clock for comparison
       ansible.builtin.command:
         cmd: date -u +%s
       register: wsl_ci_host_distro_epoch
       changed_when: false
+      check_mode: false
 
     - name: Assert the Windows clock could be read at all
       # No `when:` guard on the comparison below, so a host where interop is

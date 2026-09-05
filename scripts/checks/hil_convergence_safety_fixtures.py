@@ -208,10 +208,10 @@ def _wsl_transport_mutations() -> tuple[Mutation, ...]:
             "stage_failures = []  # fws.run_selftest()",
         ),
         (
-            "WSL no-follow cache receiver weakened",
+            "WSL exclusive cache receiver weakened",
             "fleet_wsl_stage",
-            "os.O_EXCL|os.O_NOFOLLOW",
-            "os.O_EXCL|0  # os.O_NOFOLLOW",
+            '"conv=fsync,excl"',
+            '"conv=fsync"',
         ),
         (
             "WSL cache ownership proof stranded",

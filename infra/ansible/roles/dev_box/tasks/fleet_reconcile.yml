@@ -80,6 +80,7 @@
     - "{{ dev_box_reconcile_state }}"
     - "{{ dev_box_reconcile_state }}/ansible-local"
     - "{{ dev_box_reconcile_state }}/control"
+    - "{{ dev_box_reconcile_state }}/inventory"
     - "{{ dev_box_home }}/.local/state/ra8-fleet-mutation"
   register: dev_box_reconcile_runtime_status
   check_mode: false
@@ -108,6 +109,17 @@
     group: "{{ dev_box_user }}"
     mode: "0700"
   loop: "{{ dev_box_reconcile_runtime_status.results }}"
+- name: Bind runtime host variables to the immutable reconciliation source
+  when: not ansible_check_mode
+  become: true
+  ansible.builtin.file:
+    src: "{{ dev_box_reconcile_source }}/infra/ansible/inventory/host_vars"
+    dest: "{{ dev_box_reconcile_state }}/inventory/host_vars"
+    state: link
+    owner: "{{ dev_box_user }}"
+    group: "{{ dev_box_user }}"
+    force: true
+
 
 - name: Inspect the installed reconciliation source root
   become: true
@@ -296,11 +308,22 @@
         argv: [/bin/bash, -p, scripts/dev/setup_ansible.sh]
         chdir: "{{ dev_box_reconcile_source }}.candidate"
       changed_when: true
+    - name: Expose the candidate collection root read-only to the service account
+      become: true
+      ansible.builtin.file:
+        path: "{{ dev_box_reconcile_source }}.candidate/.ansible/collections"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
     - name: Read the synchronized candidate Galaxy collection set
       become: true
+      become_user: "{{ dev_box_user }}"
       ansible.builtin.command:
         argv:
-          - "{{ dev_box_reconcile_source }}.candidate/.venv/bin/ansible-galaxy"
+          - "{{ dev_box_reconcile_source }}.candidate/.venv/bin/python3"
+          - -m
+          - ansible.cli.galaxy
           - collection
           - list
           - --format
@@ -312,6 +335,7 @@
       changed_when: false
     - name: Prove the synchronized candidate Galaxy collection set
       become: true
+      become_user: "{{ dev_box_user }}"
       ansible.builtin.command:
         argv:
           - "{{ dev_box_reconcile_source }}.candidate/.venv/bin/python3"
@@ -324,24 +348,19 @@
       changed_when: false
     - name: Render the candidate declared inventory
       become: true
+      become_user: "{{ dev_box_user }}"
       ansible.builtin.command:
         argv:
           - "{{ dev_box_reconcile_source }}.candidate/.venv/bin/python3"
           - -I
           - scripts/dev/fleet.py
           - inventory
+          - --stdout
         chdir: "{{ dev_box_reconcile_source }}.candidate"
       changed_when: false
-    - name: Restrict candidate inventory mutation to the service account
-      become: true
-      ansible.builtin.file:
-        path: "{{ dev_box_reconcile_source }}.candidate/infra/ansible/inventory/hosts.ini"
-        state: file
-        owner: root
-        group: "{{ dev_box_user }}"
-        mode: "0660"
     - name: Prove the candidate reconciliation controller
       become: true
+      become_user: "{{ dev_box_user }}"
       ansible.builtin.command:
         argv:
           - "{{ dev_box_reconcile_source }}.candidate/.venv/bin/python3"
@@ -397,6 +416,7 @@
         Environment=ANSIBLE_LOCAL_TEMP={{ dev_box_reconcile_state }}/ansible-local
         Environment=ANSIBLE_SSH_CONTROL_PATH_DIR={{ dev_box_reconcile_state }}/control
         UMask=0077
+        Environment=RA8_FLEET_INVENTORY={{ dev_box_reconcile_state }}/inventory/hosts.ini
         ExecStart=/usr/bin/env {{ dev_box_reconcile_source }}/.venv/bin/python3 \
           -I {{ dev_box_reconcile_source }}/scripts/dev/fleet_reconcile.py \
           --require-installed-authority --mode apply \
@@ -413,7 +433,6 @@
         ProtectHome=read-only
         ReadWritePaths={{ dev_box_reconcile_state }}
         ReadWritePaths={{ dev_box_home }}/.local/state/ra8-fleet-mutation
-        ReadWritePaths={{ dev_box_reconcile_source }}/infra/ansible/inventory/hosts.ini
     - name: "{{ dev_box_reconcile_unit }}.timer"
       content: |
         # Managed by the dev_box Ansible role.

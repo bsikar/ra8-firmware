@@ -463,7 +463,7 @@ def _fleet_selftest_errors(tree: ast.Module) -> list[str]:
         "failures = (ftv.run_selftest() + fw.run_selftest(data) + fb.run_selftest() + "
         "frm.run_selftest() + fml.run_selftest() + fcc.run_selftest(data) + "
         "_bench_guard_inheritance_selftest() + _inventory_publication_selftest() + "
-        "fb.parser_selftest(_parser))"
+        "fm.controller_inventory_selftest(data) + fb.parser_selftest(_parser))"
     )
     if function is None or _statement_index(function, statement) < 0:
         return ["fleet.py: executable HIL transaction selftests are not exact"]
@@ -546,17 +546,18 @@ def _runner_environment_input_errors(inputs: dict[str, str]) -> list[str]:
 
 
 def _playbook_environment_errors(tree: ast.Module) -> list[str]:
-    """Require the playbook executable beside the active locked Python."""
+    """Require Ansible to run as a module under the active locked Python."""
     function = _function(tree, "playbook_argv")
     if function is None:
-        return ["fleet.py: locked Ansible executable decision is not exact"]
+        return ["fleet.py: locked Ansible module decision is not exact"]
     argv = _assignment(function, "argv")
     first = argv.elts[0] if isinstance(argv, ast.List) and argv.elts else None
-    wanted = ast.parse("playbook_executable(sys.executable)", mode="eval").body
-    if first is None or ast.dump(first, include_attributes=False) != ast.dump(
+    prefix = first.value if isinstance(first, ast.Starred) else None
+    wanted = ast.parse("playbook_prefix(sys.executable)", mode="eval").body
+    if prefix is None or ast.dump(prefix, include_attributes=False) != ast.dump(
         wanted, include_attributes=False
     ):
-        return ["fleet.py: playbook argv does not use the locked executable"]
+        return ["fleet.py: playbook argv does not use locked Python module execution"]
     return []
 
 
@@ -648,7 +649,7 @@ fi"""
 
 
 def _wsl_cache_errors(wsl_tree: ast.Module, stage_tree: ast.Module) -> list[str]:
-    """Require cache ownership before reuse and a no-follow receiver."""
+    """Require cache ownership before reuse and a Windows-safe receiver."""
     errors: list[str] = []
     sync_image = _function(wsl_tree, "_sync_runner_image")
     cache_prepare = (
@@ -678,15 +679,27 @@ def _wsl_cache_errors(wsl_tree: ast.Module, stage_tree: ast.Module) -> list[str]
     if prepare_at < 0 or cache_probe_at < 0 or prepare_at >= cache_probe_at:
         errors.append("fleet WSL: runner cache ownership is not proven before reuse")
     receiver = _function(stage_tree, "cache_receive_command")
-    code = _assignment(receiver, "code") if receiver is not None else None
-    expected_code = (
-        "import os,shutil,sys;"
-        "fd=os.open(sys.argv[1],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600);"
-        "out=os.fdopen(fd,'wb');shutil.copyfileobj(sys.stdin.buffer,out);"
-        "out.flush();os.fsync(out.fileno());out.close()"
+    tokens = _assignment(receiver, "tokens") if receiver is not None else None
+    expected = ast.parse(
+        '["wsl", "-d", distro, "-u", "root", "-e", "/usr/bin/env", "-i", '
+        '"HOME=/root", "PATH=/usr/bin:/bin", "/usr/bin/dd", f"of={part}", '
+        '"bs=4M", "conv=fsync,excl", "status=none"]',
+        mode="eval",
+    ).body
+    refusal = (
+        "if any(not token or any(character not in safe for character in token) "
+        "for token in tokens):\n"
+        '    message = "runner-image receiver cannot be represented safely for Windows"\n'
+        "    raise ValueError(message)"
     )
-    if not isinstance(code, ast.Constant) or code.value != expected_code:
-        errors.append("fleet WSL stage: runner-cache receiver is not no-follow")
+    if (
+        tokens is None
+        or ast.dump(tokens, include_attributes=False)
+        != ast.dump(expected, include_attributes=False)
+        or receiver is None
+        or _statement_index(receiver, refusal) < 0
+    ):
+        errors.append("fleet WSL stage: runner-cache receiver is not exclusive and inert")
     return errors
 
 
@@ -713,7 +726,8 @@ def _wsl_stage_errors(wsl_tree: ast.Module, stage_tree: ast.Module) -> list[str]
     stage_selftest = _function(stage_tree, "run_selftest")
     expected_selftests = (
         "failures = (_stage_selftest(root) + _cache_selftest(root) + _link_selftest(root) + "
-        "_probe_selftest(root) + _transaction_lock_selftest(root))"
+        "_probe_selftest(root) + _transaction_lock_selftest(root) + "
+        "_cache_receiver_selftest())"
     )
     selftest_matches = (
         [

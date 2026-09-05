@@ -134,10 +134,12 @@ ci_runner_docker_compose_file: "{{ ci_runner_docker_compose_dir }}/docker-compos
 # gate fails when a runner drifts from those pins -- so a second, independently
 # built image is a drift source with no upside. The archive is produced by the
 # `ci_runner` role on the fleet-declared source host. This role validates and
-# synchronizes that artifact automatically, then reloads it whenever its image
-# ID changes; it refuses to invent a second image.
+# synchronizes that artifact automatically, then reloads it whenever its
+# archive checksum changes; it refuses to invent a second image.
 ci_runner_docker_image: "localhost/ra8-ci-runner:v2"
 ci_runner_docker_image_archive: "{{ ci_runner_docker_root }}/images/ra8-ci-runner.tar"
+ci_runner_docker_image_source_marker: >-
+  {{ ci_runner_docker_root }}/images/ra8-ci-runner.source.sha256
 
 # Canonical archive location, derived from infra/fleet.yml. On an SSH-managed
 # Docker host Ansible fetches from this inventory host through the controller,

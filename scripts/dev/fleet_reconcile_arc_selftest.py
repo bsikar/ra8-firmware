@@ -55,7 +55,7 @@ def _identity(argv: Sequence[str]) -> tuple[str, str]:
 def _clean() -> frp.CommandResult:
     """Return the accepted two-play ARC check evidence."""
     row = "producer : ok=9 changed={} unreachable=0 failed=0 skipped=1 rescued=0 ignored=0\n"
-    return frp.CommandResult(0, row.format(2) + row.format(0), "")
+    return frp.CommandResult(0, row.format(1) + row.format(0), "")
 
 
 def _success_and_failures(apply_host: ApplyHost, failures: list[str]) -> None:
@@ -72,7 +72,7 @@ def _success_and_failures(apply_host: ApplyHost, failures: list[str]) -> None:
             else frp.CommandResult(0, "", "")
         )
 
-    if not apply_host(data, "producer", success, expected_check_changes=2)[0]:
+    if not apply_host(data, "producer", success, expected_check_changes=1)[0]:
         failures.append("ARC declarative activation failed")
     expected = [
         ("parked-apply", "producer"),
@@ -92,7 +92,7 @@ def _success_and_failures(apply_host: ApplyHost, failures: list[str]) -> None:
             return _clean()
         return frp.CommandResult(1 if verb == "activation-check" else 0, "", "")
 
-    if apply_host(data, "producer", failed_check, expected_check_changes=2)[0]:
+    if apply_host(data, "producer", failed_check, expected_check_changes=1)[0]:
         failures.append("failed held ARC activation check passed")
     if calls[-2:] != [("activation-check", "producer"), ("quarantine", "producer")]:
         failures.append("failed ARC activation check did not retain zero")
@@ -121,7 +121,7 @@ def _hard_kill_cut(apply_host: ApplyHost, failures: list[str]) -> None:
         return frp.CommandResult(0, "", "")
 
     try:
-        apply_host(_data(), "producer", kill, expected_check_changes=2)
+        apply_host(_data(), "producer", kill, expected_check_changes=1)
         failures.append("post-activation hard-kill cut returned")
     except SimulatedHardKill:
         pass

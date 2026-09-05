@@ -275,7 +275,7 @@ def transaction_lock_lines(
         f'  [ "$(stat -c %u -- "$lock_root")" = {owner_uid} ] || {{',
         '  echo "unsafe WSL lock authority" >&2; exit 1;',
         "}",
-        'case "$(stat -c %a -- "$lock_root")" in 755|775) ;;',
+        'case "$(stat -c %a -- "$lock_root")" in 755|775|1777) ;;',
         '  *) echo "unsafe WSL lock authority mode" >&2; exit 1 ;;',
         "esac",
         'exec 9<"$lock_root"',
@@ -529,19 +529,30 @@ def cache_prepare_script(cache: str = WSL_RUNNER_IMAGE_CACHE) -> str:
 
 
 def cache_receive_command(distro: str, cache: str = WSL_RUNNER_IMAGE_CACHE) -> str:
-    """Return a no-follow receiver that exclusively creates the part file."""
-    code = (
-        "import os,shutil,sys;"
-        "fd=os.open(sys.argv[1],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600);"
-        "out=os.fdopen(fd,'wb');shutil.copyfileobj(sys.stdin.buffer,out);"
-        "out.flush();os.fsync(out.fileno());out.close()"
-    )
+    """Return a Windows-shell-safe exclusive runner-image receiver."""
     part = f"{cache}.part"
-    return (
-        f"wsl -d {shlex.quote(distro)} -u root -e /usr/bin/env -i "
-        "HOME=/root PATH=/usr/bin:/bin /usr/bin/python3 -I -S "
-        f"-c {shlex.quote(code)} {shlex.quote(part)}"
-    )
+    tokens = [
+        "wsl",
+        "-d",
+        distro,
+        "-u",
+        "root",
+        "-e",
+        "/usr/bin/env",
+        "-i",
+        "HOME=/root",
+        "PATH=/usr/bin:/bin",
+        "/usr/bin/dd",
+        f"of={part}",
+        "bs=4M",
+        "conv=fsync,excl",
+        "status=none",
+    ]
+    safe = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._,:=+-"
+    if any(not token or any(character not in safe for character in token) for token in tokens):
+        message = "runner-image receiver cannot be represented safely for Windows"
+        raise ValueError(message)
+    return " ".join(tokens)
 
 
 def cache_cleanup_script(cache: str = WSL_RUNNER_IMAGE_CACHE) -> str:
@@ -768,7 +779,32 @@ def _transaction_lock_selftest(root: Path) -> list[str]:
         failures.append("WSL check lock left durable residue")
     if holder.returncode == 0:
         failures.append("killed WSL check did not terminate its lock holder")
+    sticky_root = root / "sticky-lock"
+    sticky_root.mkdir()
+    sticky_root.chmod(0o1777)
+    sticky_lines = transaction_lock_lines(
+        exclusive=True, lock_root=str(sticky_root), owner_uid=os.getuid()
+    )
+    sticky_lines[-1] = "/usr/bin/flock -xn 9"
+    if _run_shell("\n".join(["set -euo pipefail", *sticky_lines])).returncode:
+        failures.append("root-owned sticky WSL lock authority was refused")
     return failures
+
+
+def _cache_receiver_selftest() -> list[str]:
+    """Prove the receiver is exclusive and inert to the Windows command shell."""
+    expected = (
+        "wsl -d Ubuntu -u root -e /usr/bin/env -i HOME=/root PATH=/usr/bin:/bin "
+        "/usr/bin/dd of=/opt/ra8-infra-cache/ra8-ci-runner.tar.part "
+        "bs=4M conv=fsync,excl status=none"
+    )
+    if cache_receive_command("Ubuntu") != expected:
+        return ["WSL runner-image receiver argv drifted"]
+    try:
+        cache_receive_command("Ubuntu&forged")
+    except ValueError:
+        return []
+    return ["WSL runner-image receiver accepted Windows command syntax"]
 
 
 def run_selftest() -> list[str]:
@@ -781,6 +817,7 @@ def run_selftest() -> list[str]:
             + _link_selftest(root)
             + _probe_selftest(root)
             + _transaction_lock_selftest(root)
+            + _cache_receiver_selftest()
         )
         if _bootstrap_action("apply", installed=False) != "--ensure":
             failures.append("mutable operator apply lost its authenticated ensure path")

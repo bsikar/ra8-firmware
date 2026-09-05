@@ -60,6 +60,7 @@
     owner: root
     group: root
     mode: "0755"
+  register: fleet_capacity_directory
 
 - name: Create the host-local capacity state directory
   become: true
@@ -69,6 +70,7 @@
     owner: root
     group: "{{ fleet_capacity_state_group }}"
     mode: "0770"
+  register: fleet_capacity_state_directory
 
 - name: Pre-create the shared capacity lock
   become: true
@@ -80,6 +82,7 @@
     mode: "0660"
     modification_time: preserve
     access_time: preserve
+  register: fleet_capacity_lock
 
 - name: Install the capacity script
   become: true
@@ -89,6 +92,7 @@
     owner: root
     group: root
     mode: "0755"
+  register: fleet_capacity_script_install
 
 # Non-secret by construction: instance names, a schedule and two integers. The
 # drain deliberately needs no GitHub credential -- it answers "is this instance
@@ -118,6 +122,7 @@
       RA8_FLEET_QUIET_START={{ fleet_capacity_quiet_start }}
       RA8_FLEET_QUIET_END={{ fleet_capacity_quiet_end }}
       RA8_FLEET_QUIET_DAYS={{ fleet_capacity_quiet_days }}
+  register: fleet_capacity_environment_install
 
 # --- the capacity timer -----------------------------------------------------
 #
@@ -208,6 +213,34 @@
         WantedBy=timers.target
   loop_control:
     label: "{{ item.name }}"
+  register: fleet_capacity_unit_install
+
+- name: Explain the capacity bootstrap check-mode boundary
+  when:
+    - ansible_check_mode
+    - >-
+      fleet_capacity_directory.changed
+      or fleet_capacity_state_directory.changed
+      or fleet_capacity_lock.changed
+      or fleet_capacity_script_install.changed
+      or fleet_capacity_environment_install.changed
+      or fleet_capacity_unit_install.changed
+  ansible.builtin.debug:
+    msg: >-
+      Capacity runtime files or units require apply. Check mode reports that
+      drift but cannot start or read back files which do not exist yet.
+
+- name: End a capacity bootstrap dry run before live consumers
+  when:
+    - ansible_check_mode
+    - >-
+      fleet_capacity_directory.changed
+      or fleet_capacity_state_directory.changed
+      or fleet_capacity_lock.changed
+      or fleet_capacity_script_install.changed
+      or fleet_capacity_environment_install.changed
+      or fleet_capacity_unit_install.changed
+  ansible.builtin.meta: end_host
 
 - name: Flush handlers so the timer is enabled against the units just written
   ansible.builtin.meta: flush_handlers

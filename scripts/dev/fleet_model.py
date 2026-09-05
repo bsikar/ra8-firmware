@@ -11,7 +11,9 @@ non-capacity HIL listener is isolated in :mod:`fleet_hil`.
 
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -29,13 +31,40 @@ CLASSES = frm.CLASSES
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FLEET_FILE = REPO_ROOT / "infra" / "fleet.yml"
 ANSIBLE_DIR = REPO_ROOT / "infra" / "ansible"
-INVENTORY = ANSIBLE_DIR / "inventory" / "hosts.ini"
+
+
+def _inventory_path() -> Path:
+    """Select the service's writable inventory without moving source authority."""
+    override = os.environ.get("RA8_FLEET_INVENTORY")
+    if override is None:
+        return ANSIBLE_DIR / "inventory" / "hosts.ini"
+    path = Path(override)
+    if not path.is_absolute():
+        message = "RA8_FLEET_INVENTORY must be an absolute path"
+        raise ValueError(message)
+    return path
+
+
+INVENTORY = _inventory_path()
 
 # Beside the inventory, not beside the playbooks. Ansible auto-loads host_vars
 # from the inventory SOURCE's directory; a host_vars tree anywhere else is
 # silently never read, which presents as a role running with its bare defaults
 # on a host that plainly declares otherwise.
 HOST_VARS_DIR = ANSIBLE_DIR / "inventory" / "host_vars"
+
+
+def validate_runtime_inventory(state_dir: Path) -> None:
+    """Bind installed inventory writes beside the immutable host-variable source."""
+    expected = state_dir / "inventory" / "hosts.ini"
+    if expected != INVENTORY:
+        message = "installed reconciliation inventory is outside its private state directory"
+        raise ValueError(message)
+    host_vars = expected.parent / "host_vars"
+    if not host_vars.is_symlink() or host_vars.readlink() != HOST_VARS_DIR:
+        message = "runtime inventory host variables are not bound to the immutable source"
+        raise ValueError(message)
+
 
 # Days a quiet-hours window may name, in the spelling systemd's OnCalendar
 # accepts, so the declaration goes into a timer without translation.
@@ -490,6 +519,24 @@ def inventory_entry(data: dict[str, Any], name: str) -> str:
     return entry
 
 
+def controller_inventory_entry() -> str:
+    """Return an explicit localhost entry only for the private service runtime."""
+    value = os.environ.get("ANSIBLE_LOCAL_TEMP")
+    if value is None:
+        return ""
+    path = Path(value)
+    safe = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._-"
+    if (
+        not path.is_absolute()
+        or str(path) != value
+        or ".." in path.parts
+        or any(character not in safe for character in value)
+    ):
+        message = "ANSIBLE_LOCAL_TEMP cannot be represented safely in inventory"
+        raise ValueError(message)
+    return f"localhost ansible_connection=local ansible_remote_tmp={value}"
+
+
 def render_inventory(data: dict[str, Any]) -> str:
     """Generate the Ansible inventory from the declaration.
 
@@ -512,11 +559,48 @@ def render_inventory(data: dict[str, Any]) -> str:
         "# it on every `just infra::*` run.",
         "",
     ]
+    controller = controller_inventory_entry()
+    if controller:
+        lines.extend(["[fleet_controller]", controller, ""])
     for group_name in sorted(groups):
         lines.append(f"[{group_name}]")
         lines.extend(sorted(groups[group_name]))
         lines.append("")
     return "\n".join(lines)
+
+
+def inventory_label() -> Path:
+    """Return a concise checkout-relative or exact runtime inventory path."""
+    try:
+        return INVENTORY.relative_to(REPO_ROOT)
+    except ValueError:
+        return INVENTORY
+
+
+def controller_inventory_selftest(data: dict[str, Any]) -> list[str]:
+    """Prove localhost uses the private service temp without inventory injection."""
+    failures: list[str] = []
+    previous = os.environ.get("ANSIBLE_LOCAL_TEMP")
+    try:
+        with tempfile.TemporaryDirectory(prefix="ra8-controller-inventory-") as raw:
+            local_temp = Path(raw) / "ansible-local"
+            local_temp.mkdir()
+            os.environ["ANSIBLE_LOCAL_TEMP"] = str(local_temp)
+            expected = f"localhost ansible_connection=local ansible_remote_tmp={local_temp}"
+            if render_inventory(data).count(expected) != 1:
+                failures.append("private localhost remote temp was absent from inventory")
+            os.environ["ANSIBLE_LOCAL_TEMP"] = f"{local_temp}\n[forged]"
+            try:
+                render_inventory(data)
+                failures.append("unsafe localhost remote temp entered inventory")
+            except ValueError:
+                pass
+    finally:
+        if previous is None:
+            os.environ.pop("ANSIBLE_LOCAL_TEMP", None)
+        else:
+            os.environ["ANSIBLE_LOCAL_TEMP"] = previous
+    return failures
 
 
 def _check_shape(name: str, host: dict[str, Any]) -> list[str]:

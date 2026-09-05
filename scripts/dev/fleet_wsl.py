@@ -237,6 +237,16 @@ def _proof_function_lines() -> list[str]:
         '    echo "unsafe or missing managed file: $1" >&2; exit 1;',
         "  }",
         "}",
+        "require_managed_python() {",
+        '  [ -L "$1" ] && [ "$(readlink -- "$1")" = python ] || {',
+        '    echo "unsafe managed Python entry: $1" >&2; exit 1;',
+        "  }",
+        '  python_link="$(dirname -- "$1")/python"',
+        '  [ -L "$python_link" ] && [ "$(readlink -- "$python_link")" = "$2" ] &&',
+        '    [ "$(readlink -f -- "$1")" = "$(readlink -f -- "$2")" ] || {',
+        '    echo "managed Python does not resolve to its pinned system interpreter" >&2; exit 1;',
+        "  }",
+        "}",
         "require_exact_file() {",
         '  require_real_file "$1"',
         '  [ "$(stat -c %a -- "$1")" = "$2" ] || {',
@@ -389,12 +399,12 @@ def _toolchain_sync_lines(stage: str, mode: str, system_python: str) -> list[str
     ]
 
 
-def _toolchain_verify_lines(stage: str, ansible_playbook: str) -> list[str]:
+def _toolchain_verify_lines(stage: str, ansible_playbook: str, system_python: str) -> list[str]:
     """Render exact-set, collection, and durable-authority verification."""
     verifier = f"{stage}/scripts/dev/verify_locked_environment.py"
     collection_checker = f"{stage}/scripts/checks/check_ansible_collections.py"
     return [
-        'require_real_file "$managed_root/bin/python3"',
+        f'require_managed_python "$managed_root/bin/python3" {shlex.quote(system_python)}',
         f"require_real_file {shlex.quote(ansible_playbook)}",
         'require_real_file "$managed_root/bin/ansible-galaxy"',
         "(",
@@ -442,7 +452,7 @@ def _ansible_environment_lines(spec: ConvergeSpec) -> list[str]:
         *_isolation_lines(),
         *_path_proof_lines(spec.stage, spec.managed_root, spec.managed_cache),
         *_toolchain_sync_lines(spec.stage, spec.mode, spec.system_python),
-        *_toolchain_verify_lines(spec.stage, spec.ansible_playbook),
+        *_toolchain_verify_lines(spec.stage, spec.ansible_playbook, spec.system_python),
     ]
 
 
@@ -455,9 +465,9 @@ def render_converge(spec: ConvergeSpec) -> tuple[str, list[str]]:
     typed_vars = spec.typed_vars
     stage = spec.stage
     ansible_playbook = spec.ansible_playbook
-    host = data["hosts"][name]
-    role_variables = fm.role_vars(data, name, host)
+    role_variables = fm.role_vars(data, name, data["hosts"][name])
     role_variables["ci_runner_docker_image_source_local_archive"] = WSL_RUNNER_IMAGE_CACHE
+    role_variables["fleet_capacity_state_group"] = "root"
     lines = _ansible_environment_lines(spec)
     if typed_vars is not None:
         encoded = base64.b64encode(typed_vars.content).decode("ascii")
@@ -642,6 +652,13 @@ def _write_fake_toolchain(root: Path, fixture: _SelftestFixture) -> None:
         fixture.system_python,
         "#!/usr/bin/env bash\nset -eu\n"
         '[ -z "${UV_CONFIG_FILE:-}" ]\n[ -z "${UV_INDEX_URL:-}" ]\n'
+        'case "$1" in\n'
+        "  *verify_locked_environment.py) "
+        'printf \'%s\\n\' "$*" >>"$RA8_TEST_PYTHON_LOG"; cat >/dev/null; '
+        'exit "${RA8_TEST_VERIFY_STATUS:-0}" ;;\n'
+        "  *check_ansible_collections.py) "
+        'printf \'%s\\n\' "$*" >>"$RA8_TEST_PYTHON_LOG"; cat >/dev/null; exit 0 ;;\n'
+        "esac\n"
         '[ "$1" = "$RA8_TEST_STAGE/scripts/dev/bootstrap_uv.py" ]\nshift\n'
         '[ "$1" = --manifest ]\n'
         '[ "$2" = "$RA8_TEST_STAGE/scripts/dev/uv_release.json" ]\nshift 2\n'
@@ -681,17 +698,8 @@ def _write_fake_toolchain(root: Path, fixture: _SelftestFixture) -> None:
         "        print(f'package-{index}==1.{index} \\\\')\n"
         "        print(f'    --hash=sha256:{index:064d}')\n",
     )
-    python = managed_bin / "python3"
-    _write_executable(
-        python,
-        "#!/usr/bin/env bash\nset -eu\n"
-        'printf \'%s\\n\' "$*" >>"$RA8_TEST_PYTHON_LOG"\n'
-        'case "$1" in\n'
-        "  *verify_locked_environment.py) cat >/dev/null; "
-        'exit "${RA8_TEST_VERIFY_STATUS:-0}" ;;\n'
-        "  *check_ansible_collections.py) cat >/dev/null ;;\n"
-        "esac\n",
-    )
+    (managed_bin / "python").symlink_to(fixture.system_python)
+    (managed_bin / "python3").symlink_to("python")
     galaxy = managed_bin / "ansible-galaxy"
     _write_executable(galaxy, "#!/usr/bin/env bash\nprintf '{}\\n'\n")
 
@@ -805,6 +813,8 @@ def _check_result(
         failures.append("WSL argument quoting did not preserve a metacharacter-bearing tag")
     if sentinel in argv_text:
         failures.append("WSL secret appeared in ansible-playbook argv")
+    if '"fleet_capacity_state_group": "root"' not in argv_text:
+        failures.append("WSL capacity state group did not bind to its root executor")
     remote_vars = Path(fixture.vars_path_log.read_text(encoding="utf-8").strip())
     if fixture.mode_log.read_text(encoding="utf-8").strip() != expected_mode:
         failures.append(f"WSL temporary vars transport was not mode 0{expected_mode}")

@@ -83,7 +83,12 @@ ci_runner_scale_set_name: "ra8-ci"
 ci_runner_min: 0
 ci_runner_max: 6
 fleet_reconcile_activation_hold: false
-ci_runner_activation_post_renderer: "{{ ci_runner_context_dir }}/arc-hold-post-renderer.py"
+ci_runner_helm_bin: "/usr/local/bin/helm"
+ci_runner_helm_plugins_dir: "/var/lib/ra8-ci/helm-plugins"
+ci_runner_activation_post_renderer_name: "ra8-arc-hold"
+ci_runner_activation_post_renderer_dir: >-
+  {{ ci_runner_helm_plugins_dir }}/{{ ci_runner_activation_post_renderer_name }}
+ci_runner_activation_post_renderer: "{{ ci_runner_activation_post_renderer_dir }}/render.py"
 
 # Per-pod resources. Requests are sized to share the node with other workloads;
 # limits let heavy gates (compile / misra / tidy / mcdc) burst -- see the

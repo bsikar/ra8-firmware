@@ -31,6 +31,9 @@ wsl_ci_host_windows_user: "sikar"
 
 # The distro name as `wsl -l -v` reports it. Also what the autostart task boots.
 wsl_ci_host_distro: "Ubuntu"
+wsl_ci_host_schtasks: "/mnt/c/Windows/System32/schtasks.exe"
+wsl_ci_host_powershell: "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+wsl_ci_host_docker_gpg_sha256: "1500c1f56fa9e26b9b8f42452a553675796ade0807cdce11975eb98170b3a570"
 
 # --- Resource caps ----------------------------------------------------------
 #
