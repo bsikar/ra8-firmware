@@ -43,6 +43,36 @@
 		)
 		(uuid "f3bd89da-73e1-40e4-a40f-b62ea061b15f")
 	)
+	(wire
+		(pts
+			(xy 185.42 102.87) (xy 185.42 139.7)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "41c25e57-b184-4205-9ffb-e9f150696ba5")
+	)
+	(wire
+		(pts
+			(xy 167.64 102.87) (xy 185.42 102.87)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "62e68338-9d8b-4599-ac66-e58c77f3d9f0")
+	)
+	(wire
+		(pts
+			(xy 185.42 139.7) (xy 203.2 139.7)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b16c4780-e84d-4f34-8204-17e388bb111d")
+	)
 	(sheet
 		(at 30.48 226.06)
 		(size 137.16 27.94)
@@ -123,6 +153,86 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+			)
+		)
+		(pin "RADIO_CS_N" output
+			(at 167.64 85.09 0)
+			(uuid "99a1477f-a392-4abe-bef5-13a586c1e1bc")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "RADIO_COPI" output
+			(at 167.64 87.63 0)
+			(uuid "c608bf25-2a98-48ff-837a-4c81634c2f46")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "RADIO_HANDSHAKE" input
+			(at 167.64 90.17 0)
+			(uuid "63925756-9990-4e99-a55e-e617f4e1d2c5")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "RADIO_DATA_READY" input
+			(at 167.64 92.71 0)
+			(uuid "a99a054e-b4e2-44cf-bcd8-6771bced8761")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "RADIO_SCLK" output
+			(at 167.64 95.25 0)
+			(uuid "d558e852-70c0-446f-88e0-a59a57d657a0")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "RADIO_CIPO" input
+			(at 167.64 97.79 0)
+			(uuid "3fc41b74-7545-4371-84f5-ffa0ff3c47ed")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "RADIO_RESET_REQ_N" output
+			(at 167.64 100.33 0)
+			(uuid "81977308-be67-456e-b1ee-2baab5e5d453")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "RADIO_PWR_EN" output
+			(at 167.64 102.87 0)
+			(uuid "865ed700-dcf7-4848-94cc-a13739307fc7")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
 			)
 		)
 		(instances
