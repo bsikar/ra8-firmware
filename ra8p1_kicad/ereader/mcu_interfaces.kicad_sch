@@ -6541,6 +6541,18 @@
 		)
 		(uuid "7d31ce58-df5c-4fd8-b179-f80006dcff7f")
 	)
+	(text "RADIO-008: SPIA_C P700..P703; IRQ26=P704, IRQ19=P705.\nP706=RESET_REQ_N; P707=PWR_EN. Host-domain signals.\nSwitched-domain isolation and reset arbitration remain open.\nPin map + conflicts: ../design/radio_interface.md#radio-008-ra8p1-host-allocation"
+		(exclude_from_sim no)
+		(at 42.926 165.1 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-008-ra8p1-host-allocation")
+		)
+		(uuid "7f54c0be-47cc-4034-9ea8-027c927e09eb")
+	)
 	(text "USB-002: USB full-speed supply / U1.U17, C40.\nRenesas QDG Table 1, p.6: 3.3 V with 100 nF bypass.\nC40 = 100*(1 +/-0.10) = 90..110 nF initial; 50 V X7R.\nNominal DC-bias estimate: 99.45 nF at 3.3 V (PWR-001).\nPlace C40 close to VCC_USB with a short VSS_USB return.\nFull basis + Python check: design/usb_interface.md"
 		(exclude_from_sim no)
 		(at 215.9 225.806 0)
@@ -6690,6 +6702,16 @@
 	)
 	(wire
 		(pts
+			(xy 71.12 124.46) (xy 96.52 124.46)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3c0d5648-7c93-4ba0-90d1-0dc72a24b9ea")
+	)
+	(wire
+		(pts
 			(xy 76.2 48.26) (xy 76.2 43.18)
 		)
 		(stroke
@@ -6710,6 +6732,46 @@
 	)
 	(wire
 		(pts
+			(xy 71.12 134.62) (xy 96.52 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "44019c45-da80-4dc9-8c0b-7523041baee7")
+	)
+	(wire
+		(pts
+			(xy 71.12 137.16) (xy 96.52 137.16)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5128b8da-33a1-4b8d-9e42-ed1a3a161c9b")
+	)
+	(wire
+		(pts
+			(xy 71.12 132.08) (xy 96.52 132.08)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5e8f01e5-8eb6-454f-9b95-5e657576b136")
+	)
+	(wire
+		(pts
+			(xy 71.12 129.54) (xy 96.52 129.54)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "67dcafc2-6c98-4720-96ce-46440ecf0e0a")
+	)
+	(wire
+		(pts
 			(xy 25.4 208.28) (xy 30.48 208.28)
 		)
 		(stroke
@@ -6717,6 +6779,16 @@
 			(type default)
 		)
 		(uuid "67fcdf07-d9ed-46de-807c-0426628da5b2")
+	)
+	(wire
+		(pts
+			(xy 71.12 127) (xy 96.52 127)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6bfb98b8-3921-4246-b1e1-116c1133b4cf")
 	)
 	(wire
 		(pts
@@ -6800,6 +6872,16 @@
 	)
 	(wire
 		(pts
+			(xy 71.12 121.92) (xy 96.52 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c68b8b42-2265-4714-a368-43f095052b16")
+	)
+	(wire
+		(pts
 			(xy 48.26 43.18) (xy 76.2 43.18)
 		)
 		(stroke
@@ -6807,6 +6889,16 @@
 			(type default)
 		)
 		(uuid "cec4e87f-4e2f-445f-aac0-ad36e424bfc8")
+	)
+	(wire
+		(pts
+			(xy 71.12 139.7) (xy 96.52 139.7)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d142a917-c6be-4672-a8e1-5ea219d629ea")
 	)
 	(wire
 		(pts
@@ -6907,6 +6999,94 @@
 			(justify right bottom)
 		)
 		(uuid "ee2f9f19-edd4-43d2-806d-9b5ee04b27b2")
+	)
+	(hierarchical_label "RADIO_DATA_READY"
+		(shape input)
+		(at 96.52 132.08 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "4f6e947a-b472-4d86-ab52-37679c6e5aa3")
+	)
+	(hierarchical_label "RADIO_SCLK"
+		(shape output)
+		(at 96.52 127 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "aef368c0-8b7c-43da-9b94-7024530505f0")
+	)
+	(hierarchical_label "RADIO_PWR_EN"
+		(shape output)
+		(at 96.52 139.7 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "b0ae883b-db7d-4aec-8d59-4cb59a883a86")
+	)
+	(hierarchical_label "RADIO_CIPO"
+		(shape input)
+		(at 96.52 121.92 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "b391921f-7d08-4f71-8b55-2f31c5e5e6c5")
+	)
+	(hierarchical_label "RADIO_COPI"
+		(shape output)
+		(at 96.52 124.46 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "b885791c-aba3-4d91-9794-93c233c32866")
+	)
+	(hierarchical_label "RADIO_CS_N"
+		(shape output)
+		(at 96.52 129.54 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "cb0f45a8-3c68-4045-a795-e3de8378999f")
+	)
+	(hierarchical_label "RADIO_HANDSHAKE"
+		(shape input)
+		(at 96.52 134.62 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "cf6e47b5-416c-474c-af41-7c7dee1c2665")
+	)
+	(hierarchical_label "RADIO_RESET_REQ_N"
+		(shape output)
+		(at 96.52 137.16 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "d54cf87f-b6c5-4b2c-acd9-a6ca7b66d6c2")
 	)
 	(symbol
 		(lib_id "power:+3V3")

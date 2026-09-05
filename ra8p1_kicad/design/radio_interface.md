@@ -24,16 +24,81 @@ The documented default C6 coprocessor mapping is:
 | RADIO_DATA_READY | 4 | 4 | Input, interrupt |
 | RADIO_EN | EN | 3 | Reset control; electrical drive circuit pending |
 
-This is a candidate mapping, not the final RA8P1 pin allocation. GPIO4 is
+Full-duplex SPI is the selected schematic transport. GPIO4 is
 also a strap and must not be loaded by a host pull during strap sampling.
 GPIO6/7 also have JTAG functions. Keep recovery programming separate from
-these reused signals. SDIO remains an alternative until host peripheral
-allocation and throughput requirements are reviewed. Do not label SPI
+these reused signals. SDIO is not connected in this design. Do not label SPI
 frequency as achieved throughput: framing, handshakes and firmware reduce it.
 
-Source: [Espressif Hosted full-duplex SPI guide](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/spi_full_duplex.md),
+Source: [Espressif Hosted full-duplex SPI guide](https://raw.githubusercontent.com/espressif/esp-hosted-mcu/main/docs/spi_full_duplex.md),
 sections 3.1 and 5, read 2026-09-05. Pin defaults are configurable and must
 be frozen with the coprocessor firmware configuration before release.
+
+### RADIO-008: RA8P1 host allocation
+
+Revision 1, 2026-09-05. Applies to U1E on the MCU I/O sheet. The selected
+host peripheral is SPIA, using its C pin mapping. Authority:
+[RA8P1 datasheet R01DS0439EJ0130](https://www.renesas.com/en/document/dst/ra8p1-group-datasheet),
+Table 1.17, standard-product BGA289 column, pages 28-30. Do not use the
+303-ball table or the alternate 224-ball column: their contact assignments
+are different. All eight port names and ball numbers below were checked
+against the project symbol before wiring the hierarchical labels.
+
+| MCU boundary net | U1 ball | Port / selected function | MCU sheet direction |
+| --- | --- | --- | --- |
+| RADIO_CIPO | F12 | P700 / MISOA_C | Input |
+| RADIO_COPI | F15 | P701 / MOSIA_C | Output |
+| RADIO_SCLK | F13 | P702 / RSPCKA_C | Output |
+| RADIO_CS_N | G14 | P703 / SSLA0_C | Output |
+| RADIO_DATA_READY | G13 | P704 / IRQ26 | Input |
+| RADIO_HANDSHAKE | F17 | P705 / IRQ19 | Input |
+| RADIO_RESET_REQ_N | E17 | P706 / GPIO, active-low request | Output |
+| RADIO_PWR_EN | F16 | P707 / GPIO, active-high request | Output |
+
+These are host-side signals in the MCU supply domain, not permission to
+short host and switched-radio domains together. RESET_REQ_N is a request
+to the pending reset arbitration circuit; it is not a direct EN connection.
+The parent sheet connects P707 to R7 through RADIO_PWR_EN. The other seven
+parent-sheet connections and radio-domain isolation remain incomplete.
+The generic multi-function GPIO symbol pins still use the imported passive
+ERC type; hierarchical directions do not replace final pin-type review.
+
+This allocation consumes neither SDRAM/ExBus signals nor OSPI signals in
+Table 1.17. It leaves SPIB for other peripherals and preserves the P100-P104
+OSPI0 group. It excludes Ethernet on these pins, SD1 eight-bit data pins
+4-7 in mapping B, and the overlapping parallel camera functions. P706/P707
+cannot also serve USBHS overcurrent inputs; the planned USB device/charging
+interface must not silently repurpose them for USB host mode. P703's IRQ19
+alternate is disabled: IRQ19 belongs to P705 only. IRQ26 and IRQ19 are
+ordinary interrupt inputs, not a claim of deep-standby wake capability.
+
+Firmware must implement the non-Espressif ESP-Hosted port, configure the
+selected SPIA mux and two distinct IRQ inputs, and keep CS inactive between
+transfers. A host transaction requires HANDSHAKE asserted; DATA_READY alone
+is not readiness. Start evaluation at 5 MHz per the Espressif guide, then
+qualify timing through the selected isolation components before increasing
+speed. At 5 MHz, a 1600-byte transfer takes at least 1600*8/5e6 = 2.56 ms;
+the per-direction raw ceiling is 5e6/8 = 625000 bytes/s. Protocol overhead,
+software scheduling and handshake gaps reduce payload throughput. This is
+not a demonstrated throughput figure or a completed application budget.
+
+Reproduce this arithmetic (no schematic changes):
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+clock_hz = 5000000
+frame_bytes = 1600
+assert F(frame_bytes*8, clock_hz) == F('0.00256')
+assert F(clock_hz, 8) == 625000
+print('RADIO-008 PASS: 2.56 ms/frame and 625000 bytes/s raw; not measured throughput.')
+PY
+```
+
+Boot and power controls must establish safe hardware defaults before the
+MCU firmware runs. In particular, disable MCU pull-ups on the enable divider
+and on C6 strap-related paths. Signal isolation, power-good qualification,
+reset hold and recovery access remain required under RADIO-002 and #825/#826.
 
 ## RADIO-002: module pin and boot constraints
 
@@ -73,8 +138,9 @@ this electrical correction.
 
 ## Power-domain integration
 
-The module rail is named +3V3_RADIO; its source and enable/control policy
-are not yet implemented. No PWR_FLAG declares the unfinished rail driven. Every
+The module rail is named +3V3_RADIO; U4 provides its load-switch source,
+but the upstream regulator and complete enable/control policy remain open.
+No PWR_FLAG declares the unfinished upstream supply driven. Every
 host-driven signal, pull-up, recovery signal and interrupt return must be
 reviewed for both host-off/radio-on and host-on/radio-off states. Firmware
 high-impedance configuration alone is not a guaranteed power-off isolation
