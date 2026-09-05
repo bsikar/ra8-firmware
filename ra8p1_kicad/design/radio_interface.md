@@ -676,8 +676,11 @@ PY
 Revision 1, 2026-09-05. Electrical selection record for the proposed
 TXU0304PWR SPI isolator on [the radio sheet](../ereader/radio_esp32.kicad_sch).
 Tracking: [issue #826](https://github.com/bsikar/ra8-firmware/issues/826).
-The local symbol is being constructed; this circuit is not yet placed,
-connected or qualified. RADIO-009 is reserved for its schematic annotation.
+The project-local `Power_Devices:TXU0304PWR` symbol implements the exact PW
+pin map below, with explicit input/tri-state/power types and visible NC
+contacts. Its 150 mil pins terminate on the 100 mil connection grid.
+This circuit is not yet placed, connected or qualified. RADIO-009 is
+reserved for its schematic annotation.
 
 ### Device and channel assignment
 
