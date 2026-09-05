@@ -363,15 +363,16 @@ if [[ "$-" == *p* ]]; then
 
   # Run the payload, and FENCE it: if the holder dies while the payload is still
   # going, the bench is no longer ours and the payload must stop touching it.
-  # stdin is passed through on fd 3 so the payload is not silently detached from
-  # the terminal the way a plain background job would be.
+  # stdin uses a Bash-allocated descriptor so every inherited capability FD
+  # remains untouched while the payload is supervised in the background.
   bench_supervise() {
     local holder="$1"
     shift
-    local pay rc
-    exec 3<&0
-    "$@" <&3 &
+    local pay rc stdin_fd
+    exec {stdin_fd}<&0
+    "$@" <&"$stdin_fd" &
     pay=$!
+    exec {stdin_fd}<&-
     while :; do
       if ! kill -0 "$pay" 2>/dev/null; then
         wait "$pay"

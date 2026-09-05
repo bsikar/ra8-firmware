@@ -66,7 +66,7 @@ REMOTE_HOLDER = (
     'fd_meta="$(/usr/bin/stat -Lc %d:%i:%u:%a:%F -- /proc/$$/fd/9)"; '
     '[ "$path_meta" = "$fd_meta" ]; '
     '/usr/bin/flock -n -E 75 9 || { rc=$?; [ "$rc" -eq 75 ] && exit 75; exit "$rc"; }; '
-    f"printf '{LOCK_READY.decode().rstrip()}\\n'; "
+    f'printf "{LOCK_READY.decode().rstrip()}\\n"; '
     "/bin/cat >/dev/null'"
 )
 
@@ -630,6 +630,9 @@ def _metadata_selftest() -> list[str]:
     clauses = ("set -e", "[ ! -L", "stat -c %u", "stat -c %a", "%d:%i", "exit 75")
     if any(clause not in REMOTE_HOLDER for clause in clauses):
         failures.append("remote holder setup metadata checks are incomplete")
+    ready_clause = f'printf "{LOCK_READY.decode().rstrip()}\\n"'
+    if ready_clause not in REMOTE_HOLDER:
+        failures.append("remote holder READY record is not newline-delimited")
     fake = {"hosts": {"dev": {"class": "dev_box", "connect": {"address": "127.0.0.1"}}}}
     argv = _holder_argv(fake)
     options = ("ConnectTimeout=15", "ServerAliveInterval=5", "ServerAliveCountMax=3")
