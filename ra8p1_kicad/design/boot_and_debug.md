@@ -1,63 +1,69 @@
-# MCU Architecture: Boot Modes, Debugging, and Feature Usage
+# RA8P1 boot, reset and debug
 
-This document explains the RA8D2 boot configuration, debugging interface, and lists the internal MCU features that will be used or omitted in the `ereader_rev1` design.
+The selected MCU is R7KA8P1KFLCAC#UC0. U1A and J1 are on
+`mcu_clocks_debug.kicad_sch`; this is not the RA8D2 evaluation-board circuit.
 
----
+## Mode selection
 
-## 1. Boot Modes & Configuration
+R2 pulls P201/MD high for normal startup with on-chip MRAM enabled and
+the external bus initially disabled. SW2 pulls MD low for service entry:
+hold BOOT while asserting and releasing external RESET. JTAG boot and
+SCI/USB boot cannot be entered using POR alone (HUM 4.3-4.4, pp.234-235).
 
-The RA8D2 selects its operating mode based on the state of the **MD (Mode) pin** (port pin `P201`) at the moment the device is released from reset.
+SWD/JTAG boot entry requires a debugger boot request while RES is low,
+with MD high at release. Device lifecycle, authentication and TrustZone
+settings can restrict access. A debug connector does not guarantee recovery
+from every security configuration. The MCU uses code MRAM and extra MRAM,
+not internal program flash. FSBL settings also affect startup (HUM 2.6).
 
-| Operating Mode | MD Pin Level | J16 Connection (Eval Board) | Function / Description |
-| :--- | :---: | :---: | :--- |
-| **Normal Operation (Single-Chip Mode)** | **High (1)** | Open (or Pins 2-3) | Bypasses the bootloader; CPU executes user application code directly from the main internal Flash. |
-| **SCI / USB Boot Mode** | **Low (0)** | Closed (Pins 1-2) | Boots into the internal factory ROM bootloader to flash code via UART or USB. |
+ROM USB programming uses USBFS, not USBHS. The product USBHS data port
+must not be described as a ROM recovery interface. J1 provides dedicated
+SWD/JTAG access; USBFS and SCI service routing need explicit decisions
+before final schematic integration.
 
-### Design Recommendation for Production:
-* **Default Mode**: Pull the MD pin (`P201`) **High** using a $4.7\text{ k}\Omega$ or $10\text{ k}\Omega$ resistor to $3.3\text{ V}$. This ensures the e-reader boots directly into the user interface on power-up.
-* **Programming Mode Access**: Connect the MD pin to a small unpopulated test point or jumper footprint on the PCB. During factory programming, this pin can be grounded (pulled Low) to boot the MCU into loader mode for the initial software installation.
+## Reset
 
----
+R1 pulls RES to +3V3_MCU; SW1 grounds it. Additional external reset
+drivers must be open-drain/open-collector to avoid contention with the probe.
+Do not fit an RC capacitor on RES: it must track VCC for the internal POR
+circuit (Quick Design Guide 2.5 and 6.1-6.2, pp.16 and 30-31).
 
-## 2. Debugging and Programming (JTAG/SWD)
+Service tooling shall hold RES low for at least 3 ms after VCC is valid.
+This exceeds the 2.4 ms power-on minimum in Datasheet Table 2.52, p.118.
+Do not use a shorter operating-state minimum as the universal service pulse.
+Switch bounce is not a substitute for a controlled programmer reset pulse.
 
-The J-Link On-Board (J-Link OB) debugger circuit found on the evaluation board (which uses an auxiliary RA4M2 MCU) must be **omitted** from the production schematic to minimize board cost, size, and power consumption.
+## J1: Cortex debug connection
 
-Instead, expose the MCU's **Serial Wire Debug (SWD)** pins to connect an external J-Link debugger/programmer.
+| Contact | Net | MCU ball / function |
+| --- | --- | --- |
+| 1 | +3V3_MCU | Target VCC sense only |
+| 2 | DBG_SWDIO | C6 / P210 / TMS / SWDIO |
+| 3 | GND | Ground |
+| 4 | DBG_SWCLK | D6 / P211 / TCK / SWCLK |
+| 5 | GND | Ground |
+| 6 | DBG_TDO_SWO | E7 / P209 / TDO / SWO |
+| 7 | No connection | Key position |
+| 8 | DBG_TDI | C7 / P208 / TDI |
+| 9 | GND | Ground detect |
+| 10 | MCU_RESET_N | D5 / RES |
 
-### Required SWD Debug Pins:
-1. **SWCLK** (Clock)
-2. **SWDIO** (Data I/O)
-3. **RESET** (System Reset)
-4. **GND** (Ground reference)
-5. **VCC** (Target voltage sense, $3.3\text{ V}$)
+The probe senses the target I/O voltage at contact 1; do not inject target
+power there or drive signals into an unpowered MCU. R3-R5 are external
+10 kohm pull-ups on SWDIO, SWCLK and TDI, consistent with HUM 21.4.
+TDO/SWO is an output with no pull. One interface supports both CPU cores.
+No onboard J-Link MCU is included.
 
-### Layout Implementation Options:
-* **For Prototypes**: Route the 5 SWD lines to a small 10-pin $1.27\text{ mm}$ pitch header (such as a Samtec FTSH) or a footprint-less **Tag-Connect** header for easy debugger connection.
-* **For Production Assembly**: Route the lines to small copper **Test Points** on the bottom of the PCB. The factory programming fixture will use spring-loaded pogo-pins to make contact and flash the board.
+Connector, switch and resistor ordering codes remain to be selected. Crystal
+networks remain to be designed; open oscillator pins in this increment are
+not intentionally unused pins.
 
----
+## Sources
 
-## 3. MCU Features: What We Use vs. What We Omit
-
-To optimize pins, layout complexity, and power, the RA8D2 features will be utilized as follows:
-
-### Omitted Features (Do Not Route/Connect):
-* **Gigabit Ethernet**: Unused (e-readers rely on wireless connectivity).
-* **Camera Interface (CEU)**: Unused (no camera is needed).
-* **Audio Interfaces (PDM, SSIE Audio Codec)**: Unused (no microphone or audio codec needed).
-* **MIPI DSI Graphic Connector**: Unused (replaced by E-Ink interface).
-* **Parallel Graphics LCD Interface**: Unused (replaced by E-Ink interface).
-* **USB Full-Speed (USBFS)**: Unused (rely solely on the faster USBHS port).
-
-### Active/Repurposed Features (Route to Respective Peripherals):
-* **Arm Helium (Vector Extensions)**: Leveraged internally by the CPU for fast PDF rendering, image processing/dithering, and text searches.
-* **2D Graphics Engine (DRW)**: Used to compose user interface elements and render pages into the frame buffer in external RAM.
-* **USB High-Speed (USBHS)**: Connected directly to the USB-C port (via ESD protection) for 480 Mbps data transfers and factory USB bootloader programming.
-* **External Bus Interface (EXBUS)**: Used to connect:
-  * External **SDRAM** (for system memory and frame buffers).
-  * High-speed parallel connection to the **E-Ink Display Controller** (e.g., IT8951).
-* **Octal SPI (OSPI)**: Used to interface with high-speed external SPI Flash for OS, fonts, and library storage.
-* **SDIO (SD/MMC Host)**: Connected to the Wi-Fi/Bluetooth wireless module.
-* **I2C Channels**: Connected to the capacitive touch screen controller, battery fuel gauge, accelerometer, and ambient light sensor.
-* **PWM Channels (Timers)**: Connected to the dual-channel LED front-light driver to adjust brightness and color temperature.
+- [RA8P1 Hardware User's Manual](https://www.renesas.com/en/document/mah/ra8p1-group-users-manual-hardware),
+  R01UH1064EJ0130 Rev.1.30, sections 2.4-2.6, 4.3-4.4 and 21.4.
+- [RA8P1 Datasheet](https://www.renesas.com/en/document/dst/ra8p1-group-datasheet),
+  R01DS0439EJ0130 Rev.1.30, pin list and Table 2.52.
+- [RA8x2 MCU Quick Design Guide](https://www.renesas.com/en/document/apn/ra8p1-mcu-quick-design-guide),
+  R01AN7883EU0110 Rev.1.10, sections 2 and 6. This guide explicitly includes
+  RA8P1; family-specific details still require its own HUM.

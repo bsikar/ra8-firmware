@@ -8,7 +8,7 @@ use the bundled KiCad 10 libraries through `${KICAD10_SYMBOL_DIR}`. No custom
 global library installation is needed.
 
 The schematic has a root index and separate processor interface, core-power,
-and I/O-supply sheets. The power circuits are drafts with passive qualification
+I/O-supply, and clock/reset/debug sheets. The power circuits are drafts with passive qualification
 still open; the processor interfaces and remaining subsystems are unfinished.
 The PCB is empty.
 Neither is a manufacturing release. Imported component models still require

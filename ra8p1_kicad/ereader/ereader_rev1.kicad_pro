@@ -8,7 +8,7 @@
       "internal_id": "",
       "mfg": "",
       "mpn": "",
-      "sch_revision": ""
+      "sch_revision": "0.3 DRAFT"
     },
     "layer_pairs": [],
     "layer_presets": [],
@@ -417,13 +417,29 @@
         "uuid": "0586cc51-9c57-495b-a0c9-c29ba0d48166"
       }
     ],
-    "used_designators": "U1",
+    "used_designators": "SW1-2,R1-5,L1,J1,C1-34,#PWR1-29,U1,Y1,#FLG1",
     "variants": []
   },
   "sheets": [
     [
       "0586cc51-9c57-495b-a0c9-c29ba0d48166",
       "ereader_rev1"
+    ],
+    [
+      "33c39500-46ef-4bfe-91bb-bf0f803ca6e5",
+      "RA8P1 IO allocation"
+    ],
+    [
+      "959e090e-e670-4625-b284-7df7298868e8",
+      "RA8P1 internal core regulator"
+    ],
+    [
+      "fa5f4067-b129-4b01-a2ba-614d12811413",
+      "RA8P1 IO and analog supplies"
+    ],
+    [
+      "29d11a66-d141-4e93-8408-b9f3c692a4bc",
+      "RA8P1 clocks, reset and debug"
     ]
   ],
   "text_variables": {},
