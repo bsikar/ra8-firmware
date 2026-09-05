@@ -843,6 +843,212 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Power_Devices:TPS3808G33DBVR"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 14.224 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "TPS3808G33DBVR"
+				(at 0 11.176 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
+				(at -2.54 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps3808.pdf"
+				(at -2.54 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "TI TPS3808G33DBVR; 3.07 V supervisor, active-low open-drain RESET, manual reset, CT-open 12..28 ms delay. SBVS050N Table 5-1; RST-001."
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "supply voltage supervisor"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "SOT?23*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "TPS3808G33DBVR_0_1"
+				(rectangle
+					(start -7.62 5.08)
+					(end 7.62 -5.08)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "TPS3808G33DBVR_1_1"
+				(pin open_collector line
+					(at 10.16 0 180)
+					(length 2.54)
+					(name "~{RESET}"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 -7.62 90)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -10.16 0 0)
+					(length 2.54)
+					(name "~{MR}"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -10.16 -2.54 0)
+					(length 2.54)
+					(name "CT"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -10.16 2.54 0)
+					(length 2.54)
+					(name "SENSE"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 7.62 270)
+					(length 2.54)
+					(name "VDD"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Processors:R7KA8P1KFLCAC#UC0"
 			(exclude_from_sim no)
 			(in_bom yes)
@@ -7186,7 +7392,7 @@
 		)
 		(uuid "25f5c4ef-ef4b-4377-be3e-ea6e66abf6f1")
 	)
-	(text "NO capacitor on RES: it must track VCC for internal POR.\nExternal reset drivers must be open-drain/open-collector.\nHold RESET low >= 3 ms, then release after VCC is valid.\nHold BOOT during external reset release for SCI/USBFS mode.\nNormal MD high; SWD/JTAG boot requests occur during RES low.\nDevice lifecycle / authentication restrictions still apply."
+	(text "RST-001: U2 supervises +3V3_MCU; SW1 asserts MR.\nCT open: release delay 12..28 ms; 12/2.4 = 5x MCU minimum.\nFalling threshold = 3.07*(1 +/- 0.015) = 3.02395..3.11605 V.\nConservative release screen = 3.11605*1.025 = 3.19395125 V.\nASSUMED rail +/-2%: 3.3*0.98 - 3.19395125 = 40.05 mV margin.\nR1 worst pull-up current = 3.6/9900 = 0.364 mA < 1 mA.\nRES low margin = 0.2*3.02395 - 0.4 = 0.20479 V.\nNo RES capacitor; open-drain reset drivers only.\nExternal RES startup path; do not assume internal POR flag.\nFull math, limits and Python: design/boot_and_debug.md RST-001."
 		(exclude_from_sim no)
 		(at 25.4 223.52 0)
 		(effects
@@ -7194,6 +7400,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/boot_and_debug.md#rst-001-external-supervisor-implementation-basis")
 		)
 		(uuid "46f0ad44-622c-44b3-b5a3-915f3fac5f52")
 	)
@@ -7219,9 +7426,19 @@
 		)
 		(uuid "ac32f66f-2cd4-4ff8-a3f2-b82851ee85f4")
 	)
+	(junction
+		(at 114.3 190.5)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "d6069711-403e-4d71-a842-ee69af269901")
+	)
 	(no_connect
 		(at 40.64 68.58)
 		(uuid "0051f98b-5e0b-4219-9373-277270b88fcf")
+	)
+	(no_connect
+		(at 104.14 205.74)
+		(uuid "5a4d0c3e-b365-414f-b062-941c58e22438")
 	)
 	(wire
 		(pts
@@ -7232,6 +7449,16 @@
 			(type default)
 		)
 		(uuid "095631d3-d0dc-4d5c-9190-907dfdd1d69e")
+	)
+	(wire
+		(pts
+			(xy 124.46 203.2) (xy 129.54 203.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0a9bcdef-06a8-483b-9ae4-9eeb527de51c")
 	)
 	(wire
 		(pts
@@ -7275,6 +7502,16 @@
 	)
 	(wire
 		(pts
+			(xy 114.3 190.5) (xy 114.3 195.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "242875df-83f0-4c55-a39b-eda2ad588672")
+	)
+	(wire
+		(pts
 			(xy 119.38 81.28) (xy 149.86 81.28)
 		)
 		(stroke
@@ -7312,6 +7549,36 @@
 			(type default)
 		)
 		(uuid "34face6f-34ce-4659-b74b-e428c6b1386c")
+	)
+	(wire
+		(pts
+			(xy 99.06 203.2) (xy 104.14 203.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3515ee0a-3f5e-4daf-867c-54850f9c840f")
+	)
+	(wire
+		(pts
+			(xy 165.1 200.66) (xy 165.1 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "46874992-fa22-411c-a94a-1014106831fc")
+	)
+	(wire
+		(pts
+			(xy 99.06 200.66) (xy 99.06 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "560b5d94-07c8-4c3c-9668-a8f67ec930e5")
 	)
 	(wire
 		(pts
@@ -7362,6 +7629,16 @@
 			(type default)
 		)
 		(uuid "670e3908-6d49-480c-b639-24b1a7f2cdab")
+	)
+	(wire
+		(pts
+			(xy 104.14 200.66) (xy 99.06 200.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6b6a5ede-bed6-4457-a24a-433e86e80041")
 	)
 	(wire
 		(pts
@@ -7565,6 +7842,26 @@
 	)
 	(wire
 		(pts
+			(xy 114.3 185.42) (xy 114.3 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c7baa336-9e51-4565-ad26-9860d87f2268")
+	)
+	(wire
+		(pts
+			(xy 114.3 190.5) (xy 165.1 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "cf5f4969-d911-495b-aef5-f834b2f60dd4")
+	)
+	(wire
+		(pts
 			(xy 210.82 73.66) (xy 223.52 73.66)
 		)
 		(stroke
@@ -7615,13 +7912,13 @@
 	)
 	(wire
 		(pts
-			(xy 60.96 162.56) (xy 45.72 162.56)
+			(xy 60.96 162.56) (xy 60.96 170.18)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "e1b99cf2-9ecc-4877-b22a-70e21b279969")
+		(uuid "e2e7c26b-57af-45c1-a3e5-c16b1577124a")
 	)
 	(wire
 		(pts
@@ -7652,6 +7949,16 @@
 			(type default)
 		)
 		(uuid "f80f87d1-83cc-4c1c-a0bd-a1cec7d413df")
+	)
+	(wire
+		(pts
+			(xy 99.06 190.5) (xy 114.3 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f9458b32-5d2b-4115-b9b0-a08123f948f0")
 	)
 	(wire
 		(pts
@@ -7843,6 +8150,16 @@
 		)
 		(uuid "bf859131-c9b2-401b-88d1-0e3beeaf5ea2")
 	)
+	(label "SW_RESET_N"
+		(at 99.06 203.2 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "c55a3763-1eb1-47ec-8c71-d6e706435dea")
+	)
 	(label "OSC_XTAL"
 		(at 289.56 101.6 0)
 		(effects
@@ -7883,6 +8200,16 @@
 		)
 		(uuid "e00ad587-c896-41aa-a2bb-8c51027bdcff")
 	)
+	(label "SW_RESET_N"
+		(at 60.96 170.18 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "e4026916-99ff-4f5d-9a2d-5b9271d3a7c3")
+	)
 	(label "DBG_TDO_SWO"
 		(at 71.12 71.12 0)
 		(effects
@@ -7892,6 +8219,16 @@
 			(justify left)
 		)
 		(uuid "ea074401-b147-4303-8932-3dbf3efd8cc3")
+	)
+	(label "MCU_RESET_N"
+		(at 129.54 203.2 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "eb84ea88-5125-401f-855c-85f0bdeb6ab7")
 	)
 	(label "DBG_SWDIO"
 		(at 71.12 68.58 0)
@@ -9245,6 +9582,84 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 165.1 205.74 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "1cf7f0ab-295c-4a1c-ac03-8d9cdf702237")
+		(property "Reference" "#PWR051"
+			(at 165.1 212.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 165.1 210.82 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 165.1 205.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 165.1 205.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 165.1 205.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "11aac55b-fd40-4f43-b147-6dab3af70d34")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "#PWR051")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Connectors:Cortex_Debug_10_Key")
 		(at 53.34 68.58 0)
 		(unit 1)
@@ -9655,6 +10070,154 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
 					(reference "SW2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 165.1 203.2 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "560c01f6-41c8-431c-b5ad-d8f7e94d34a0")
+		(property "Reference" "C44"
+			(at 167.64 201.9362 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 167.64 204.4762 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 165.1 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
+			(at 165.1 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TDK C1608X7R1H104K080AA; 100 nF, 50 V, X7R, +/-10%; U2 VDD bypass, RST-001."
+			(at 165.1 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
+			(at 165.1 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
+			(at 165.1 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
+			(at 165.1 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
+			(at 165.1 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 165.1 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 165.1 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "42041201-f698-4f85-a03a-49a801ae137d")
+		)
+		(pin "2"
+			(uuid "6e9836d5-d9f3-47b6-ace9-e9580ffdd0e3")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "C44")
 					(unit 1)
 				)
 			)
@@ -10456,6 +11019,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
 					(reference "Y1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 114.3 210.82 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "851fe8a9-6ff7-4ccf-9ac2-c4584d9ee4fe")
+		(property "Reference" "#PWR050"
+			(at 114.3 217.17 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 114.3 215.9 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 114.3 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 114.3 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 114.3 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "329759f3-daa8-4b6c-b426-2a7944cdeb77")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "#PWR050")
 					(unit 1)
 				)
 			)
@@ -11410,6 +12051,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
 					(reference "#PWR031")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3V3")
+		(at 114.3 185.42 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "bcc63e7d-8527-405a-be44-505918679f81")
+		(property "Reference" "#PWR049"
+			(at 114.3 189.23 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3V3_MCU"
+			(at 114.3 180.34 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 114.3 185.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 114.3 185.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 114.3 185.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "d738fd67-3ead-4f41-bf39-34b98b35004f")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "#PWR049")
 					(unit 1)
 				)
 			)
@@ -12493,6 +13212,175 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
 					(reference "#PWR030")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Power_Devices:TPS3808G33DBVR")
+		(at 114.3 203.2 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f91e8a0d-81af-4547-9d0c-10d4b9ed6222")
+		(property "Reference" "U2"
+			(at 132.08 196.7798 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "TPS3808G33DBVR"
+			(at 132.08 199.3198 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
+			(at 111.76 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps3808.pdf"
+			(at 111.76 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TI TPS3808G33DBVR; 3.07 V supervisor, active-low open-drain RESET, manual reset, CT-open 12..28 ms delay. SBVS050N Table 5-1; RST-001."
+			(at 114.3 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "296-17195-1-ND"
+			(at 114.3 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TPS3808G33DBVR/666727"
+			(at 114.3 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05: DigiKey 22054 stock; USD 1.84/1.355/1.0984 at qty 1/10/100; 16-week lead time. Recheck before order."
+			(at 114.3 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - TI active production; RST-001 electrical screening, power-tree/transient verification pending."
+			(at 114.3 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Texas Instruments"
+			(at 114.3 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "TPS3808G33DBVR"
+			(at 114.3 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RST-001: 3.07 V fixed threshold, CT-open 12..28 ms delay, open-drain RESET with MR input; static screens in design/boot_and_debug.md."
+			(at 114.3 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "4"
+			(uuid "1cb3976e-db64-46b6-93e6-efcedbfdbdaa")
+		)
+		(pin "6"
+			(uuid "1c437cd6-4bc2-46ac-bbc0-71b38572a7dc")
+		)
+		(pin "3"
+			(uuid "28d5da8f-32c1-4a06-9dbc-b2b52b4ad60f")
+		)
+		(pin "1"
+			(uuid "9dbc50fa-073a-4735-b70f-3aa33cd03580")
+		)
+		(pin "2"
+			(uuid "8d1edace-cb4f-4ea0-9764-28a76fa64626")
+		)
+		(pin "5"
+			(uuid "b992bcea-e964-409b-92dd-8975ace71d1f")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "U2")
 					(unit 1)
 				)
 			)
