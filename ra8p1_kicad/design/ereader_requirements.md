@@ -68,6 +68,15 @@ battery backup, or voltage scaling (section 69.2.2). Final passive selections
 must also meet the regulator's electrical characteristics, including effective
 capacitance and inductor current requirements.
 
+L1 is TDK SPM5020T-2R2M-LR, explicitly recommended by the RA8x2 MCU
+Quick Design Guide R01AN7883EU0110 Rev.1.10, Table 3. TDK specifies 2.2 uH
+at +/-20%, maximum DCR 40.7 mOhm, typical temperature-rise current 4.6 A
+(40 deg C rise), and typical inductance-change current 7 A (30% decrease).
+The typical figures are not guaranteed minimum ratings. The same Renesas
+table recommends Murata GRM32ER70J476KE20# and GRM31CR70J226KE19# for
+the 47 uF and 22 uF capacitors; exact packing suffixes and final capacitor
+qualification remain open. The guide is retained under `resources/`.
+
 The existing boot notes are provisional. Debug target-reference voltage must
 follow the actual debug-pin supply domain; it is not a power input from the
 probe. Boot-mode and device-lifecycle restrictions must be checked before

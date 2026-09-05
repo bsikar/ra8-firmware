@@ -70,4 +70,18 @@
 		(options "")
 		(descr "Standard KiCad 10 symbols")
 	)
+	(lib
+		(name "Connector")
+		(type "KiCad")
+		(uri "${KICAD10_SYMBOL_DIR}/Connector.kicad_sym")
+		(options "")
+		(descr "Standard KiCad 10 symbols")
+	)
+	(lib
+		(name "Switch")
+		(type "KiCad")
+		(uri "${KICAD10_SYMBOL_DIR}/Switch.kicad_sym")
+		(options "")
+		(descr "Standard KiCad 10 symbols")
+	)
 )

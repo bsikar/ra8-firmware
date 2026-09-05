@@ -4,19 +4,14 @@
 	(generator_version "10.0")
 	(uuid "0586cc51-9c57-495b-a0c9-c29ba0d48166")
 	(paper "A3")
-	(sheet_instances
-		(path "/"
-			(page "1")
-		)
-	)
-	(embedded_fonts no)
-	(lib_symbols)
 	(title_block
 		(title "RA8P1 e-reader - schematic index")
 		(date "2026-09-05")
-		(rev "0.2 DRAFT")
+		(rev "0.3 DRAFT")
 	)
+	(lib_symbols)
 	(text "RA8P1 E-READER"
+		(exclude_from_sim no)
 		(at 25.4 25.4 0)
 		(effects
 			(font
@@ -26,7 +21,19 @@
 		)
 		(uuid "023f4914-df49-4ef4-b2e2-f8b0e743c5f5")
 	)
+	(text "Global supplies: +3V3_MCU and GND.\nCore regulator output MCU_VCORE stays local to the processor power sheet.\n\nRemaining subsystem circuits follow epic #821 and issues #824-#834:\nradio, memory/storage, USB/battery, system rails, display controller,\npanel power, touch, warm/cool lighting, buttons and sensors.\nNo empty subsystem sheets are represented as completed circuits.\n\nFootprint and PCB qualification are deferred by scope."
+		(exclude_from_sim no)
+		(at 198.12 86.36 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "1c8a1a1d-5f5f-493a-881c-b63a58841aba")
+	)
 	(text "Processor schematic development\nPower networks are being implemented from RA8P1-specific references.\nThis revision is not a completed schematic or a fabrication release."
+		(exclude_from_sim no)
 		(at 25.4 43.18 0)
 		(effects
 			(font
@@ -37,18 +44,69 @@
 		(uuid "f3bd89da-73e1-40e4-a40f-b62ea061b15f")
 	)
 	(sheet
-		(at 30.48 81.28)
+		(at 30.48 226.06)
 		(size 137.16 27.94)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
 		(stroke
 			(width 0)
-			(type default)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "29d11a66-d141-4e93-8408-b9f3c692a4bc")
+		(property "Sheetname" "RA8P1 clocks, reset and debug"
+			(at 30.48 224.79 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Sheetfile" "mcu_clocks_debug.kicad_sch"
+			(at 30.48 255.27 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
+					(page "5")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 30.48 81.28)
+		(size 137.16 27.94)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0)
+			(type solid)
 		)
 		(fill
 			(color 0 0 0 0)
 		)
 		(uuid "33c39500-46ef-4bfe-91bb-bf0f803ca6e5")
-		(property "Sheetname" "RA8P1 clocks, debug and I/O allocation"
+		(property "Sheetname" "RA8P1 IO allocation"
 			(at 30.48 80.01 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -58,6 +116,8 @@
 		)
 		(property "Sheetfile" "mcu_interfaces.kicad_sch"
 			(at 30.48 110.49 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -76,9 +136,13 @@
 	(sheet
 		(at 30.48 129.54)
 		(size 137.16 27.94)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
 		(stroke
 			(width 0)
-			(type default)
+			(type solid)
 		)
 		(fill
 			(color 0 0 0 0)
@@ -86,6 +150,8 @@
 		(uuid "959e090e-e670-4625-b284-7df7298868e8")
 		(property "Sheetname" "RA8P1 internal core regulator"
 			(at 30.48 128.27 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -95,6 +161,8 @@
 		)
 		(property "Sheetfile" "mcu_core_power.kicad_sch"
 			(at 30.48 158.75 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -113,16 +181,22 @@
 	(sheet
 		(at 30.48 177.8)
 		(size 137.16 27.94)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
 		(stroke
 			(width 0)
-			(type default)
+			(type solid)
 		)
 		(fill
 			(color 0 0 0 0)
 		)
 		(uuid "fa5f4067-b129-4b01-a2ba-614d12811413")
-		(property "Sheetname" "RA8P1 I/O and analog supplies"
+		(property "Sheetname" "RA8P1 IO and analog supplies"
 			(at 30.48 176.53 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -132,6 +206,8 @@
 		)
 		(property "Sheetfile" "mcu_supply_power.kicad_sch"
 			(at 30.48 207.01 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -147,14 +223,10 @@
 			)
 		)
 	)
-	(text "Global supplies: +3V3_MCU and GND.\nCore regulator output MCU_VCORE stays local to the processor power sheet.\n\nRemaining subsystem circuits follow epic #821 and issues #824-#834:\nradio, memory/storage, USB/battery, system rails, display controller,\npanel power, touch, warm/cool lighting, buttons and sensors.\nNo empty subsystem sheets are represented as completed circuits.\n\nFootprint and PCB qualification are deferred by scope."
-		(at 198.12 86.36 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
+	(sheet_instances
+		(path "/"
+			(page "1")
 		)
-		(uuid "1c8a1a1d-5f5f-493a-881c-b63a58841aba")
 	)
+	(embedded_fonts no)
 )

@@ -4583,10 +4583,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin input line
 				(at -30.48 0 0)
 				(length 3.81)
-				(name "P201/_MD"
+				(name "P201/MD"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -4601,10 +4601,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin input line
 				(at -30.48 -2.54 0)
 				(length 3.81)
-				(name "P208/T_DI"
+				(name "P208/TDI"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -4619,10 +4619,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin output line
 				(at -30.48 -5.08 0)
 				(length 3.81)
-				(name "P209/T_DO"
+				(name "P209/TDO/SWO"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -4637,10 +4637,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin bidirectional line
 				(at -30.48 -7.62 0)
 				(length 3.81)
-				(name "P210/T_MS/S_WDIO"
+				(name "P210/TMS/SWDIO"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -4655,10 +4655,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin input line
 				(at -30.48 -10.16 0)
 				(length 3.81)
-				(name "P211/T_CK/S_WCLK"
+				(name "P211/TCK/SWCLK"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -4673,10 +4673,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin input line
 				(at -30.48 -12.7 0)
 				(length 3.81)
-				(name "RES"
+				(name "~{RES}"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -4691,10 +4691,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin input line
 				(at 30.48 0 180)
 				(length 3.81)
-				(name "P212/E_XTAL"
+				(name "P212/EXTAL"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -4709,10 +4709,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin output line
 				(at 30.48 -2.54 180)
 				(length 3.81)
-				(name "P213/X_TAL"
+				(name "P213/XTAL"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -4727,10 +4727,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin output line
 				(at 30.48 -5.08 180)
 				(length 3.81)
-				(name "P214/X_COUT"
+				(name "P214/XCOUT"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -4745,10 +4745,10 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin input line
 				(at 30.48 -7.62 180)
 				(length 3.81)
-				(name "P215/X_CIN/EX_CIN"
+				(name "P215/XCIN"
 					(effects
 						(font
 							(size 1.27 1.27)
