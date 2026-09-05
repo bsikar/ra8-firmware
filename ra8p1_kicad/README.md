@@ -29,13 +29,17 @@ explicitly incomplete sections. It is not a fabrication drawing of the PCB.
 From the repository root, regenerate it with:
 
 ```sh
-kicad-cli sch export pdf --no-background-color \
-  --output ra8p1_kicad/exports/ereader_rev1.pdf \
-  ra8p1_kicad/ereader/ereader_rev1.kicad_sch
+./ra8p1_kicad/scripts/export_design.sh
 ```
 
-On macOS the executable may be at
-`/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli`.
+The script also works when called by absolute path from another directory.
+It finds `kicad-cli` on PATH or in the standard macOS KiCad app bundle. Set
+`KICAD_CLI` to select another executable. An optional schematic path exports
+that project's complete hierarchy to `exports/<schematic-name>.pdf`.
+
+The script exports saved files, including all child sheets, and replaces the
+previous PDF only after KiCad succeeds and produces a nonempty PDF. It does
+not save unsaved editor changes. `--help` shows the available arguments.
 
 Before each commit, save all sheets, export the complete PDF, inspect every
 page, and run ERC. During circuit development, record unresolved findings;
