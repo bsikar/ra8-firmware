@@ -507,12 +507,15 @@ k8s_status() {
 # number it drains toward. Note the helm release still holds the DECLARED
 # maximum, so `just infra::apply HOST=k3s-pve` restores it; that is intentional
 # for a quiet-hours window, which is temporary by definition.
+# Helm 4 owns maxRunners through server-side apply. Use that same field manager
+# for temporary capacity patches so the next declarative apply cannot conflict
+# with a separately owned kubectl-patch field.
 k8s_scale() {
   local want="$1"
   [ "${want}" -ge 0 ] 2>/dev/null || die "scale needs a non-negative integer, got '${want}'"
   log "patching  ${RA8_FLEET_SCALESET} maxRunners -> ${want}"
   kc patch autoscalingrunnerset -n "${RA8_FLEET_NAMESPACE}" "${RA8_FLEET_SCALESET}" \
-    --type=merge -p "{\"spec\":{\"maxRunners\":${want}}}" >/dev/null
+    --field-manager=helm --type=merge -p "{\"spec\":{\"maxRunners\":${want}}}" >/dev/null
   log "patched   ARC will retire idle runners down to the new ceiling; running"
   log "          jobs finish first because its runners are ephemeral."
   k8s_status
@@ -522,7 +525,8 @@ k8s_enter_maintenance() {
   local output expected
   log "patching  ${RA8_FLEET_SCALESET} maxRunners -> 0"
   if output="$(kc patch autoscalingrunnerset -n "${RA8_FLEET_NAMESPACE}" \
-    "${RA8_FLEET_SCALESET}" --type=merge -p '{"spec":{"maxRunners":0}}' 2>&1)"; then
+    "${RA8_FLEET_SCALESET}" --field-manager=helm --type=merge \
+    -p '{"spec":{"maxRunners":0}}' 2>&1)"; then
     log "patched   ARC will retire idle runners down to zero; running jobs finish first."
     k8s_status
     return
