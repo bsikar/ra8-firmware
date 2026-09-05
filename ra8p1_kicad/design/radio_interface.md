@@ -821,3 +821,104 @@ print(f'RADIO-009: {float(external_uf):.1f} uF nominal external switched load; '
 print('RADIO-009 PASS: 78 ns conditional remaining budget; timing not closed.')
 PY
 ```
+
+## RADIO-010: Idle-state bias
+
+Applies to R9, R10, U5.8 (OE) and U3.11 (C6_CS_N) on
+[the radio schematic](../ereader/radio_esp32.kicad_sch).
+The schematic annotation links to this section. Tracking: issue #826.
+
+R9 pulls translator OE to ground when no enable driver is active. R10
+pulls chip select to the switched +3V3_RADIO supply when U5 is disabled.
+Connecting R10 to +3V3_MCU instead would create an unwanted powered-to-off
+path. Both are YAGEO RC0603FR-0710KL, DigiKey 311-10.0KHRCT-ND.
+
+### Inputs and limits
+
+- The [exact resistor specification](https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL)
+  gives 10 kohm, 1% tolerance, 100 ppm/C maximum TCR magnitude and 0.1 W
+  rating at 70 C. Use a conservative 100 C excursion from 25 C for this
+  resistance screen; this is not an extension of the module temperature rating.
+- [TI TXU0304, section 7.5, p.7](https://www.ti.com/lit/ds/symlink/txu0304.pdf)
+  gives minimum OE falling threshold VT- = 0.17 V at VCCA=VCCB=1.1 V.
+  This is the lowest listed equal-rail test point, not a continuous ramp
+  guarantee. OE is a Schmitt input; a generic CMOS VIL must not replace VT-.
+- [Espressif module datasheet v1.4, Table 6-3, p.26](https://www.espressif.com/sites/default/files/documentation/esp32-c6-wroom-1_wroom-1u_datasheet_en.pdf)
+  specifies VIH = 0.75*VDD minimum at 3.3 V and 25 C. The calculation below
+  does not extrapolate that table across temperature or the whole supply range.
+- Total adverse node leakage is allocated 12 uA, including future control
+  circuitry and board leakage. This is an engineering budget, NOT a measured
+  or manufacturer-guaranteed aggregate. The final driver and all power states
+  must demonstrate compliance. Disable a conflicting C6 internal pull-down;
+  a configured output driving low is not leakage.
+
+### Resistance and static voltage calculations
+
+Use multiplicative initial tolerance and temperature factors:
+
+```text
+Temperature factor = 100 ppm/C * 100 C = 0.01
+Rmin = 10000*(1-0.01)*(1-0.01) = 9801 ohm
+Rmax = 10000*(1+0.01)*(1+0.01) = 10201 ohm
+
+R9 worst allocated default-low voltage:
+VOE = Iadverse*Rmax = 12e-6*10201 = 0.122412 V
+Margin to the listed 1.1 V test-point VT- = 0.17-0.122412 = 0.047588 V
+
+R10 worst allocated idle voltage at 3.3 V:
+VCS = Vradio-Iadverse*Rmax = 3.3-0.122412 = 3.177588 V
+VIH = 0.75*3.3 = 2.475 V
+Static high margin = 3.177588-2.475 = 0.702588 V
+```
+
+These are conditional static screens. They do not establish startup,
+brownout, unequal-rail transient behavior, output-enable timing or SPI
+timing closure. R9 currently holds OE disabled; an active enable driver
+and its power/reset arbitration are still required for operation.
+
+### Current and power tradeoff
+
+```text
+Nominal R9 current with OE driven to 3.3 V = 3.3/10000 = 0.330 mA
+Nominal R10 current with CS driven to 0 V = 3.3/10000 = 0.330 mA
+Maximum screen current with 3.6 V across either resistor = 3.6/9801
+  = 0.367309458 mA
+Maximum screen dissipation = 3.6^2/9801 = 1.322314050 mW
+```
+
+R9's enabled current belongs in the active-radio budget. R10 draws this
+current while CS is low, not while it is idle high. Actual current depends
+on driver VOH/VOL. The power comparison uses the 70 C rating only; thermal
+derating is not qualified here. No RC settling time is asserted because
+the actual node capacitance and final driver have not been established.
+
+### Reproducible arithmetic
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+from math import isclose
+
+r_nom = F(10000)
+tolerance = F('0.01')
+temperature_factor = F(100, 1_000_000)*100
+r_min = r_nom*(1-tolerance)*(1-temperature_factor)
+r_max = r_nom*(1+tolerance)*(1+temperature_factor)
+assert (r_min, r_max) == (9801, 10201)
+leakage_allocation = F(12, 1_000_000)
+oe_low = leakage_allocation*r_max
+assert oe_low == F('0.122412')
+assert F('0.17')-oe_low == F('0.047588')
+cs_high = F('3.3')-oe_low
+vih = F('0.75')*F('3.3')
+assert cs_high == F('3.177588') and vih == F('2.475')
+assert cs_high-vih == F('0.702588')
+assert F('3.3')/r_nom*1000 == F('0.330')
+current_ma = F('3.6')/r_min*1000
+power_mw = F('3.6')**2/r_min*1000
+assert isclose(float(current_ma), 0.367309458, abs_tol=1e-9)
+assert isclose(float(power_mw), 1.322314050, abs_tol=1e-9)
+print('RADIO-010 PASS: conditional static arithmetic only; '
+      '12 uA allocation, enable logic and transient qualification remain open.')
+PY
+```
