@@ -11,145 +11,6 @@
 		(comment 1 "Incomplete electrical design - not for manufacture")
 	)
 	(lib_symbols
-		(symbol "+3V3_1"
-			(power global)
-			(pin_numbers
-				(hide yes)
-			)
-			(pin_names
-				(offset 0)
-				(hide yes)
-			)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(in_pos_files yes)
-			(duplicate_pin_numbers_are_jumpers no)
-			(property "Reference" "#PWR058"
-				(at 0 -3.81 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Value" "+3V3_MCU"
-				(at 0 5.08 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Footprint" ""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Datasheet" ""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Description" "Power symbol creates a global label with name \"+3V3\""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_keywords" "global power"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(symbol "+3V3_1_0_1"
-				(polyline
-					(pts
-						(xy -0.762 1.27) (xy 0 2.54)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 2.54) (xy 0.762 1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 0) (xy 0 2.54)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-			)
-			(symbol "+3V3_1_1_1"
-				(pin power_in line
-					(at 0 0 90)
-					(length 0)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
-		)
 		(symbol "Device:C_Small"
 			(pin_numbers
 				(hide yes)
@@ -1652,7 +1513,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "RADIO-004: U4 TPS22917DBVT / radio power gating\nQOD tied to VOUT: Rdis = 150 ohm TYPICAL.\nC45+C46 = 0.1+10 = 10.1 uF nominal external load.\nt90..10 = ln(9)*150*10.1u = 3.329 ms (ideal RC).\nNot a guaranteed off-time: module C/load and VIN decay matter.\nCT capacitor must return to VIN, not GND; rating >= 7 V.\nON, CT, reset/isolation and upstream regulator remain incomplete.\nMath + limits: ../design/radio_interface.md#radio-004-radio-load-switch"
+	(text "RADIO-004: U4 TPS22917DBVT / radio power gating\nQOD tied to VOUT: Rdis = 150 ohm TYPICAL.\nC45+C46 = 0.1+10 = 10.1 uF nominal external load.\nt90..10 = ln(9)*150*10.1u = 3.329 ms (ideal RC).\nNot a guaranteed off-time: module C/load and VIN decay matter.\nC48 connects CT to VIN, not GND; 50 V rating >=7 V required.\nHost control, reset/isolation and upstream regulator remain incomplete.\nMath + limits: ../design/radio_interface.md#radio-004-radio-load-switch"
 		(exclude_from_sim no)
 		(at 187.96 144.78 0)
 		(effects
@@ -1687,6 +1548,18 @@
 			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-005-input-bypass")
 		)
 		(uuid "8ba59534-1ba2-416f-9640-73339628a0f6")
+	)
+	(text "RADIO-007: C48 / CT slew-rate control, TDK C1608NP01H102J080AA\n1nF +/-5%, 50 V NP0; CT-to-VIN, NOT CT-to-GND.\nTI 3.6 V / 25 C TYPICAL table point, not guaranteed at 3.3 V:\nSlew = 1900/1000 = 1.9 mV/us; tON = 3.8*1000 = 3.8 ms.\ntR(10..90%) = 1.6*1000 = 1.6 ms (TI test load).\nC45+C46 = 10.1 uF nominal: Icap = C*dV/dt = 19.19 mA.\nOpen-CT comparison: 10.1u*44mV/us = 444.4 mA (typical).\nTotal inrush also includes module C/load and future rail parts.\nNot a current limiter or reset delay; startup qualification required.\nFull math: ../design/radio_interface.md#radio-007-slew-rate-capacitor"
+		(exclude_from_sim no)
+		(at 228.6 228.6 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-007-slew-rate-capacitor")
+		)
+		(uuid "a3b0d9cd-be71-4d46-b834-9a684f501730")
 	)
 	(text "RADIO-006: R7/R8 / active-high enable, default OFF\nR7 series = R8 pulldown = 10k 1%; +/-2% screening envelope.\nTPS22917 ON: low <=0.35 V; high >=1.0 V.\nAssume node leakage <=10 uA and host VOL<=0.5 V, VOH>=2.5 V.\nRparallel <=5.1k; divider fraction = 0.49..0.51.\nVlow <=0.5*0.51+10u*5.1k = 0.306 V <0.35 V.\nVhigh >=2.5*0.49-10u*5.1k = 1.174 V >1.0 V.\nHi-Z screen: 10u*10.2k = 0.102 V; disable host pull-up.\nHost pin, all power states, leakage and timing need qualification.\nFull math: ../design/radio_interface.md#radio-006-enable-divider"
 		(exclude_from_sim no)
@@ -1741,6 +1614,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "a101bbf7-9cb2-47c0-87d1-f71e9decc46a")
+	)
+	(junction
+		(at 124.46 152.4)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "b3e2bd8c-1ccc-47dc-a28e-a0b216942b6c")
 	)
 	(junction
 		(at 134.62 165.1)
@@ -1864,6 +1743,16 @@
 	)
 	(wire
 		(pts
+			(xy 137.16 152.4) (xy 144.78 152.4)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "77f86d17-b58d-4326-a59e-65b94659c4cf")
+	)
+	(wire
+		(pts
 			(xy 139.7 78.74) (xy 154.94 78.74)
 		)
 		(stroke
@@ -1931,6 +1820,16 @@
 			(type default)
 		)
 		(uuid "d77abdd8-9d97-47b4-9a34-c637a2f9dbde")
+	)
+	(wire
+		(pts
+			(xy 124.46 152.4) (xy 132.08 152.4)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d97b329e-e943-4258-aaca-274cfdf02114")
 	)
 	(wire
 		(pts
@@ -2916,7 +2815,6 @@
 		)
 	)
 	(symbol
-		(lib_name "+3V3_1")
 		(lib_id "power:+3V3")
 		(at 124.46 142.24 0)
 		(unit 1)
@@ -2989,6 +2887,163 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "#PWR058")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 134.62 152.4 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "7e076157-35bd-4e21-a7a1-3abdbdd7f030")
+		(property "Reference" "C48"
+			(at 134.6263 146.05 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "1n"
+			(at 134.6263 148.59 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 134.62 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608NP01H102J080AA"
+			(at 134.62 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TDK C1608NP01H102J080AA; 1nF +/-5%, 50V NP0; U4 CT-to-VIN timing capacitor. RADIO-007 typical timing screen, not a guaranteed reset delay."
+			(at 134.62 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-14055-1-ND"
+			(at 134.62 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/C1608NP01H102J080AA/3955721"
+			(at 134.62 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 134.62 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608NP01H102J080AA"
+			(at 134.62 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - initial slew-rate screen; full startup and transient qualification open; footprint deferred."
+			(at 134.62 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-007: 1nF NP0 50V from CT to VIN; TI >=7V rating met. Typical 3.6V table: slew 1900/1000=1.9mV/us, tON=3.8ms. Complete output C and upstream transient budget remain open."
+			(at 134.62 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 27277 stock, 24 weeks; USD 0.22/0.125/0.078 at 1/10/100. Recheck before ordering."
+			(at 134.62 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "20f9fc05-7d24-4d4b-a0c5-45c472849537")
+		)
+		(pin "1"
+			(uuid "b8573310-87c7-4e18-9706-0fc9626271d4")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "C48")
 					(unit 1)
 				)
 			)

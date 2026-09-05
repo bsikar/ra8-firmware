@@ -178,7 +178,8 @@ Revision 1, 2026-09-05. Applies to U4 on
 [the radio sheet](../ereader/radio_esp32.kicad_sch), with the same RADIO-004
 identifier on the schematic. This is a partial implementation, not electrical
 release: VIN is connected to +3V3_MCU with C47 input bypass; ON has the
-RADIO-006 divider. Host control and CT require completion with the upstream regulator,
+RADIO-006 divider and C48 connects CT to VIN. Host control requires completion
+with the upstream regulator,
 reset supervisor and signal isolation under issues #825 and #826.
 
 U4 is Texas Instruments TPS22917DBVT, the active-high version. The exact
@@ -265,11 +266,12 @@ collapses, discharge strength also falls (section 9.3.3.1). This estimate
 therefore does not set a guaranteed minimum radio-off time or prove a reset.
 Power-cycle timing must wait for the complete circuit and measured discharge.
 
-### Timing-capacitor rule for the next circuit increment
+### Timing-capacitor connection and calculation authority
 
 CT connects to VIN, NOT ground, and TI specifies a capacitor voltage rating
 of at least 7 V (Table 7.3). This differs from the imported TPS22918 family.
-U4.4 remains visibly unwired; no timing capacitor is fitted or approved yet.
+C48 is now fitted between U4.4 and VIN. Its exact-part selection and initial
+timing screen are documented in [RADIO-007](#radio-007-slew-rate-capacitor).
 
 Datasheet equation 1 prints CT = slew/SRON, but its units are inconsistent.
 Use equation 6 and the worked example on page 18:
@@ -281,12 +283,13 @@ desired_slew = allowed_capacitive_inrush / total_output_capacitance
 
 The error is identified by dimensional analysis and the manufacturer's own
 worked example, not by silently changing the source. At the 3.6 V table
-point SRON is 1900 (mV/us)*pF for CT >=100 pF. For illustration only,
-CT=1000 pF would give 1.9 mV/us, and 10.1 uF would draw 19.19 mA
+point SRON is 1900 (mV/us)*pF for CT >=100 pF. The initial fitted
+CT=1000 pF gives a 1.9 mV/us estimate, and 10.1 uF would draw 19.19 mA
 capacitive inrush. Total input current also includes the load. These timing
 coefficients are typical; 3.6 V is a table point, not the selected rail value.
-Select CT only after the upstream transient budget and complete capacitance
-are known, and maintain an independent power-stable reset delay.
+Finalize CT after the upstream transient budget and complete capacitance
+are known, and maintain an independent power-stable reset delay. Its present
+value is an initial implementation, not completed startup qualification.
 
 ### Reproducible arithmetic
 
@@ -465,7 +468,7 @@ manufacturer's temperature derating and final stress review.
 With the host Hi-Z and no injected leakage, ideal discharge from 1.65 V to
 0.35 V is t=R8*Cnode*ln(1.65/0.35). Cnode and all-state leakage are not yet
 qualified, so this does not establish a numerical reset or power-off delay.
-U4 CT, the radio supervisor, output discharge and GPIO isolation are separate
+U4 CT timing, the radio supervisor, output discharge and GPIO isolation are separate
 circuits; this divider does not replace them or prevent signal back-powering.
 
 ### Reproducible arithmetic
@@ -496,5 +499,108 @@ assert F('3.3')/20000 == F('0.000165')
 print(f'Divider current bound: {float(current)*1e6:.6f} uA before leakage')
 print(f'Divider power bound: {float(F("3.6")**2/(2*rlo))*1000:.9f} mW')
 print('RADIO-006 PASS: screening arithmetic; host/power-state qualification open.')
+PY
+```
+
+## RADIO-007: slew-rate capacitor
+
+Revision 1, 2026-09-05. C48 on the radio sheet is the U4 timing capacitor,
+connected between CT and VIN, not GND. Its schematic annotation links to this
+section. C48 is not an output bypass capacitor and is not added to the
+RADIO-004 output-discharge capacitance.
+
+### Exact part and sourcing
+
+C48 is [TDK C1608NP01H102J080AA](https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608NP01H102J080AA),
+1 nF +/-5%, 50 V, NP0 with 0 +/-30 ppm/C temperature characteristic.
+TDK lists Production status and -55..150 C operation. This stable dielectric
+is appropriate for an initial timing component; its 50 V rating exceeds
+TI's 7 V minimum timing-capacitor rating in Table 7.3. Do not substitute a
+6.3 V part merely because the external rail is nominally 3.3 V.
+
+[DigiKey 445-14055-1-ND](https://www.digikey.com/en/products/detail/tdk/C1608NP01H102J080AA/3955721)
+was listed Active on 2026-09-05 with 27,277 units, 24-week standard lead
+time and USD 0.22 / 0.125 / 0.078 at quantities 1 / 10 / 100. Recheck stock,
+price and any tariff before ordering. These exact values are recorded in
+C48's native sourcing fields. No footprint geometry was added or qualified.
+
+### Initial timing and capacitive-inrush screen
+
+The authority is [TI TPS22917 datasheet](https://www.ti.com/lit/ds/symlink/tps22917.pdf)
+SLVSDW8B Rev. B, Table 7.6, page 7, and section 10.2.2.1, page 18.
+Use the consistent equation 6, CT=SRON/slew; RADIO-004 explains the
+dimensionally inconsistent printed equation 1. The 1 nF initial choice slows
+the output edge substantially relative to open CT while retaining a
+millisecond-scale typical turn-on. It does not establish the final current
+budget or reset-release delay.
+
+At the 3.6 V table point, 25 C, using TI's typical coefficients:
+
+```text
+CT = 1 nF = 1000 pF
+slew = 1900 [(mV/us)*pF] / 1000 [pF] = 1.9 mV/us = 1900 V/s
+tON = 3.8 [us/pF] * 1000 [pF] = 3800 us = 3.8 ms
+tR = 1.6 [us/pF] * 1000 [pF] = 1600 us = 1.6 ms
+Cexternal_nominal = C45+C46 = 10.1 uF
+Icapacitive = C*dV/dt = 10.1e-6*1900 = 0.01919 A = 19.19 mA
+Open CT comparison: Icapacitive = 10.1e-6*44000 = 0.4444 A
+```
+
+tR is TI's 10..90% output rise-time metric; tON also includes turn-on delay.
+These are separately tabulated typical metrics, not exact interchangeable
+linear-ramp definitions. Table 7.6 uses CL=1 uF and RL=10 ohm unless
+otherwise stated. The external 10.1 uF calculation above is a capacitor-only
+estimate, not a repetition of TI's test load. Neither the 3.6 V coefficients
+nor the resulting times are guaranteed at the selected 3.3 V rail.
+
+Module internal capacitance, the reset supervisor and other future radio
+components add load. Operating current adds to capacitive current. Current
+drawn while the module rail ramps must be evaluated with the final EN/reset
+network; 19.19 mA is not the full module startup current. U4 is not a current
+limiter, and its 2 A absolute maximum must not be used as a protection setting.
+
+### Capacitor tolerance sensitivity, not IC timing limits
+
+For an initial -40..85 C screen, maximum offset from 25 C is 65 C:
+
+```text
+Cmin = 1000*(1-0.05)*(1-65*30e-6) = 948.1475 pF
+Cmax = 1000*(1+0.05)*(1+65*30e-6) = 1052.0475 pF
+```
+
+Substituting these endpoints into the typical coefficients illustrates
+capacitor sensitivity only. It does not create minimum/maximum limits for
+TI's typical slew or delay coefficients. Manufacturing/temperature variation
+of the IC, additional capacitor effects, rail regulation, parasitics and
+actual startup loading still require qualification. Keep an independent
+power-stable reset delay; do not release module EN solely after a fixed
+3.8 ms firmware wait.
+
+### Reproducible arithmetic
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+
+ct_pf = F(1000)
+sr_coefficient = F(1900)
+slew_mv_us = sr_coefficient/ct_pf
+assert slew_mv_us == F('1.9')
+assert F('3.8')*ct_pf == F(3800)
+assert F('1.6')*ct_pf == F(1600)
+output_u = F('0.1')+F(10)
+assert output_u*slew_mv_us == F('19.19')
+assert output_u*F(44) == F('444.4')
+cmin = ct_pf*F('0.95')*(1-F(65)*F('0.000030'))
+cmax = ct_pf*F('1.05')*(1+F(65)*F('0.000030'))
+assert cmin == F('948.1475') and cmax == F('1052.0475')
+assert F(50) >= F(7)
+for capacitance in (cmin, ct_pf, cmax):
+    slew = sr_coefficient/capacitance
+    print(f'C={float(capacitance):.4f} pF: typical-coefficient '
+          f'slew={float(slew):.6f} mV/us, '
+          f'tON={float(F("3.8")*capacitance/1000):.6f} ms, '
+          f'Icap={float(output_u*slew):.6f} mA')
+print('RADIO-007 PASS: arithmetic only; complete startup qualification open.')
 PY
 ```
