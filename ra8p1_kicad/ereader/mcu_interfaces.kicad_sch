@@ -11,6 +11,146 @@
 		(company "RA8P1 e-reader")
 	)
 	(lib_symbols
+		(symbol "Device:R"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "R"
+				(at 2.032 0 90)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "R"
+				(at 0 0 90)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at -1.778 0 90)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Resistor"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "R res resistor"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "R_*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "R_0_1"
+				(rectangle
+					(start -1.016 -2.54)
+					(end 1.016 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "R_1_1"
+				(pin passive line
+					(at 0 3.81 270)
+					(length 1.27)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -3.81 90)
+					(length 1.27)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Processors:R7KA8P1KFLCAC#UC0"
 			(exclude_from_sim no)
 			(in_bom yes)
@@ -5878,6 +6018,17 @@
 		)
 		(uuid "01649971-2a54-453a-9a7b-7948c53ff0bb")
 	)
+	(text "USB-001: R6 USBHS current-reference resistor\nRenesas QDG Table 2, p.7: 2.2 kohm +/-1%.\nRmin = 2200*(1-0.01) = 2178 ohm\nRmax = 2200*(1+0.01) = 2222 ohm\nInitial tolerance only; not a derived PHY current.\nFull basis + Python check: design/usb_interface.md"
+		(exclude_from_sim no)
+		(at 139.7 228.6 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/usb_interface.md#usb-001-r6-reference-resistor")
+		)
+		(uuid "125bcc62-4110-41c9-8533-c2109d511e34")
+	)
 	(text "MIPI unused: AVCC_MIPI to VCC; VSS_MIPI to GND.\nLeave VCC18_MIPI and all six D-PHY lanes open.\nFirmware: MSTPCRC.MSTPC10=1 and MSTPC17=1.\nRA8P1 HUM Rev.1.30, section 21.4, p.862."
 		(exclude_from_sim no)
 		(at 66.04 235.966 0)
@@ -5970,6 +6121,16 @@
 	)
 	(wire
 		(pts
+			(xy 25.4 208.28) (xy 30.48 208.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "67fcdf07-d9ed-46de-807c-0426628da5b2")
+	)
+	(wire
+		(pts
 			(xy 91.44 220.98) (xy 91.44 215.9)
 		)
 		(stroke
@@ -6027,6 +6188,36 @@
 			(type default)
 		)
 		(uuid "db75c89e-007c-456e-b35b-ce6ad6e9d845")
+	)
+	(wire
+		(pts
+			(xy 127 200.66) (xy 127 205.74)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e73cda6a-a314-4dd0-add2-a9bdf723f1e2")
+	)
+	(label "USBHS_RREF"
+		(at 127 200.66 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "2381992f-7adf-465f-bcb9-112b0bcfeb9d")
+	)
+	(label "USBHS_RREF"
+		(at 25.4 208.28 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "ee2f9f19-edd4-43d2-806d-9b5ee04b27b2")
 	)
 	(symbol
 		(lib_id "Processors:R7KA8P1KFLCAC#UC0")
@@ -8148,6 +8339,165 @@
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
 					(reference "U1")
 					(unit 3)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 127 209.55 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "2f8b4407-6d5c-4a19-9432-9507a84a027f")
+		(property "Reference" "R6"
+			(at 129.54 208.2799 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "2.2k 1%"
+			(at 129.54 210.8199 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 125.222 209.55 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-072K2L"
+			(at 127 209.55 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "YAGEO RC0603FR-072K2L; USBHS reference resistor; 2.2 kohm +/-1%, 0.1 W at 70 C, +/-100 ppm/C."
+			(at 127 209.55 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "311-2.20KHRCT-ND"
+			(at 127 209.55 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-072K2L/729963"
+			(at 127 209.55 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 127 209.55 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-072K2L"
+			(at 127 209.55 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - vendor reference value; PCB qualification deferred"
+			(at 127 209.55 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "Renesas RA8x2 Quick Design Guide revision 1.10 Table 2 p.7: 2.2 kohm +/-1% USBHS reference resistor. See design/usb_interface.md USB-001."
+			(at 127 209.55 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 DigiKey web: Active; 556166 stock; 17wk; USD qty1 0.10, qty10 0.025, qty100 0.0122."
+			(at 127 209.55 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "1450e2b6-605c-4d44-9dc4-858d2f9b2466")
+		)
+		(pin "2"
+			(uuid "9f08bfcc-60d1-493c-94e2-903a4873961b")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
+					(reference "R6")
+					(unit 1)
 				)
 			)
 		)
@@ -11334,6 +11684,84 @@
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
 					(reference "U1")
 					(unit 2)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 127 213.36 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "9be7e0ad-fc1e-46df-87bf-faa897301966")
+		(property "Reference" "#PWR037"
+			(at 127 219.71 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 127 218.44 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 127 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 127 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 127 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "18ae8677-f4b2-4064-b86e-f92432ca8777")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
+					(reference "#PWR037")
+					(unit 1)
 				)
 			)
 		)
