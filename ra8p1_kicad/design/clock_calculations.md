@@ -123,8 +123,7 @@ needs confirmation on the finished circuit. Crystal drive must remain at
 or below 300 uW. Do not derive actual drive from supply voltage or apply
 the full MCU output swing across the crystal ESR. Measurement loading must
 be controlled. Any load-value change requires recalculation, schematic/BOM
-update and repeated matching. RTC calculations will be a separate record
-once its exact crystal and MCU drive mode are selected.
+update and repeated matching. RTC calculations are recorded as CLK-002 below.
 
 ### Reproducible arithmetic verification
 
@@ -138,7 +137,7 @@ The [read-only checker](../scripts/check_clock_calculations.py) uses exact
 rational arithmetic, verifies nominal, tolerance corners, sensitivity and
 reference ESR ratios, and checks C35/C36/Y1 values against the exported BOM.
 It does not modify the schematic, choose parts or claim electrical sign-off.
-Expected output: `CLK-001 PASS: arithmetic and BOM inputs agree; hardware matching unverified.`
+Expected output includes separate CLK-001 and CLK-002 PASS messages.
 
 ### References
 
@@ -147,3 +146,121 @@ Expected output: `CLK-001 PASS: arithmetic and BOM inputs agree; hardware matchi
 2. [TDK exact C1005NP01H080D050BA specification](https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1005NP01H080D050BA).
 3. [Renesas oscillator design guide](https://www.renesas.com/en/document/apn/renesas-rx-and-ra-families-design-guide-main-clock-circuits-and-sub-clock-circuits-rev102),
    R01AN7202EJ0102 Rev.1.02, 2025-12-23, Table 4.1.9 and sections 5.1-5.4.
+
+## CLK-002: Y2 RTC oscillator load network
+
+Revision 1, 2026-09-05. Applies to Y2/C37/C38 on the same
+[clock schematic](../ereader/mcu_clocks_debug.kicad_sch), annotation CLK-002.
+Status: initial matching circuit; hardware qualification remains required.
+
+### Exact parts and connection
+
+Y2 is Abracon ABS07-LR-32.768KHZ-6-1-T. The ordering suffix selects 6 pF
+load, +/-10 ppm initial tolerance and tape packaging. The LR series specifies
+50 kohm maximum ESR at +25 C, 0.5 uW maximum drive (0.1 uW typical), and
+-40 to +85 C operation. These are not measurements of this circuit.
+The previously imported ABS07-32.768KHZ-1-T has different load and ESR
+specifications and is not interchangeable without rematching.
+
+C37/C38 are TDK C1005NP01H040C050BA, each 4 pF +/-0.25 pF, 50 V NP0.
+The tighter-tolerance C1005C0G1H040B050BA candidate was rejected because
+TDK marks it not recommended for new designs. The selected NP0 variant
+is listed in production. These specifications come from the exact
+[TDK product record](https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1005NP01H040C050BA).
+
+RTC_XCIN connects U1.L17, Y2.1 and C37.1. RTC_XCOUT connects U1.L16,
+Y2.2 and C38.1. Both capacitor pin 2 terminals connect to GND. No external
+feedback or damping resistor is fitted in this initial network.
+
+### Load calculation and uncertainty
+
+Using the same lumped model and limitations as CLK-001, but a DIFFERENT
+unmeasured effective stray assumption for the sub-clock circuit:
+
+```text
+CL_target = 6 pF (selected crystal)
+Cstray_effective = 4 pF (ASSUMED, not a pin specification)
+C37 = C38 = C = 2*(CL_target - Cstray_effective)
+              = 2*(6-4) = 4 pF
+CL_check = 4*4/(4+4) + 4 = 2 + 4 = 6 pF
+```
+
+The 4/4 pF starting network follows the group-10 sub-clock matching example
+in Renesas R01AN7202EJ0102 Table 4.2.10, p.25. The implied 4 pF effective
+stray is a model assumption inferred from that example, not independently
+established on this PCB. The main-clock circuit's 2 pF assumption does not
+automatically apply to the different RTC amplifier/pins. Actual matching
+may require changing these values. Do not count crystal C0 as board stray.
+
+At fixed 4 pF effective stray, initial capacitor tolerance gives:
+
+```text
+C_low = 4-0.25 = 3.75 pF; C_high = 4+0.25 = 4.25 pF
+CL_min = 3.75*3.75/(3.75+3.75)+4 = 5.875 pF
+CL_max = 4.25*4.25/(4.25+4.25)+4 = 6.125 pF
+Opposite corners = 3.75*4.25/(3.75+4.25)+4 = 5.9921875 pF
+Relative load deviation = +/-0.125/6*100 = +/-2.083333 percent
+```
+
+Sensitivity, with the installed capacitors held at nominal 4/4 pF:
+
+| Assumed stray (pF) | Required equal C for CL 6 pF (pF) | CL with 4/4 pF (pF) |
+| --- | --- | --- |
+| 2 | 8 | 4 |
+| 3 | 6 | 5 |
+| 4 | 4 | 6 |
+| 5 | 2 | 7 |
+
+These are scenarios, not a guaranteed parasitic range. Load error is not
+frequency error. Y2's +/-10 ppm initial tolerance corresponds to
+32768*10/1000000 = +/-0.32768 Hz, or +/-0.864 seconds/day at its specified
+test conditions; it excludes load mismatch, temperature and aging.
+The series specifies a parabolic temperature coefficient and +/-3 ppm
+first-year aging, so this is not an all-temperature clock accuracy claim.
+
+### Drive-mode basis and release requirements
+
+Initial setting: SOMCR.SODRV[1:0] = 10b (low-power mode 2), SOSEL = 0
+(resonator). HUM Rev.1.30 section 9.2.29, p.352, requires changing SOMCR
+only with SOSCCR.SOSTP = 1 and the applicable write protection unlocked.
+SOMCR resets only on VBATT_POR; an ordinary reset is not sufficient to
+assume its default state. This document defines an electrical integration
+requirement, not a firmware implementation.
+
+The group-10 reference board's low-power-mode-2 negative resistance is
+-600 kohm with a 120 kohm recommended maximum ESR. Reference screening:
+600/5 = 120 kohm; 600/50 = 12 times Y2's +25 C ESR maximum. The lowest
+drive mode has a recommended ceiling of only 50 kohm, equal to this
+crystal's room-temperature maximum; it is not selected on that basis.
+Neither comparison guarantees margin across temperature or on this PCB.
+Measure startup and negative resistance, including supply/temperature
+extremes, and verify crystal drive <=0.5 uW before release. Increasing
+drive can improve startup while violating crystal excitation limits.
+
+Determine the stabilization wait from actual oscillator evaluation per
+RA8P1 datasheet Table 2.51 and HUM section 9.4. Do not substitute an
+arbitrary fixed delay or assume this calculation measures startup time.
+Measure frequency through a buffered clock output; direct probing changes
+the small resonator load. No oscillator-node test point is added.
+
+### Sources, procurement and reproducibility
+
+- [Abracon ABS07-LR specification](https://abracon.com/Resonators/ABS07-LR.pdf),
+  revised 2025-10-10, pp.1-2, ratings and ordering code.
+- [Renesas oscillator guide](https://www.renesas.com/en/document/apn/renesas-rx-and-ra-families-design-guide-main-clock-circuits-and-sub-clock-circuits-rev102),
+  Table 4.2.10, p.25, and sections 5-6.
+- [RA8P1 HUM](https://www.renesas.com/en/document/mah/ra8p1-group-users-manual-hardware),
+  Rev.1.30, sections 9.2.29 and 9.4.
+- [RA8P1 datasheet](https://www.renesas.com/en/document/dst/ra8p1-group-datasheet),
+  Rev.1.30, Table 2.51.
+
+Dated sourcing is maintained in the BOM. On 2026-09-05, the indexed
+[DigiKey Y2 listing](https://www.digikey.com/en/products/detail/abracon-llc/ABS07-LR-32-768KHZ-6-1-T/5231514)
+showed 3,049 in stock, USD 1.50 at one / 1.1322 at 100, active, 20-week
+standard lead time. The
+[capacitor listing](https://www.digikey.com/en/products/detail/tdk/C1005NP01H040C050BA/3955443)
+showed 7,795, USD 0.10 at one / 0.0335 at 100. Recheck before ordering.
+
+Run the same `python3 ra8p1_kicad/scripts/check_clock_calculations.py`
+command to verify both records and all six exact BOM inputs. Arithmetic
+verification does not establish physical oscillator stability.

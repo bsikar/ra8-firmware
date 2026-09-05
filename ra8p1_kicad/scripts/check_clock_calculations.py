@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify CLK-001 arithmetic and exported BOM inputs without editing design files.
+"""Verify CLK-001/002 arithmetic and exported BOM inputs without editing files.
 
 Run from any directory with Python 3. Uses exact rational arithmetic in pF
 and ohms. See design/clock_calculations.md for sources and model limitations.
@@ -35,6 +35,9 @@ def check_bom() -> None:
         "Y1": ("24MHz", "XRCGB24M000F3M19R0"),
         "C35": ("8p", "C1005NP01H080D050BA"),
         "C36": ("8p", "C1005NP01H080D050BA"),
+        "Y2": ("32.768kHz", "ABS07-LR-32.768KHZ-6-1-T"),
+        "C37": ("4p", "C1005NP01H040C050BA"),
+        "C38": ("4p", "C1005NP01H040C050BA"),
     }
     for reference, (value, mpn) in expected_parts.items():
         matches = [row for row in rows if reference in row["Reference"].split(",")]
@@ -44,6 +47,32 @@ def check_bom() -> None:
         require_equal(row["Manufacturer_Part_Number"], mpn, f"{reference} MPN")
         require_equal(row["DNP"], "", f"{reference} populated")
         require_equal(row["Exclude from BOM"], "", f"{reference} BOM inclusion")
+
+
+def check_rtc() -> None:
+    """Verify CLK-002 pF, reference ESR ratios and initial ppm conversion."""
+    target, stray = Fraction(6), Fraction(4)
+    capacitor = 2 * (target - stray)
+    require_equal(capacitor, 4, "RTC capacitor selection, pF")
+    require_equal(load_pf(capacitor, capacitor, stray), target, "RTC nominal CL")
+    low, high = capacitor - Fraction(1, 4), capacitor + Fraction(1, 4)
+    corners = [load_pf(a, b, stray) for a in (low, high) for b in (low, high)]
+    require_equal(min(corners), Fraction(47, 8), "RTC minimum CL")
+    require_equal(max(corners), Fraction(49, 8), "RTC maximum CL")
+    require_equal(corners[1], Fraction(767, 128), "RTC opposite corner CL")
+    require_equal(corners[1], corners[2], "RTC corner symmetry")
+    require_equal((max(corners) - target) / target * 100, Fraction(25, 12),
+                  "RTC relative load error, percent")
+    for assumed, needed, actual in ((2, 8, 4), (3, 6, 5), (4, 4, 6), (5, 2, 7)):
+        require_equal(2 * (target - assumed), needed, "RTC sensitivity C")
+        require_equal(load_pf(capacitor, capacitor, Fraction(assumed)), actual,
+                      "RTC sensitivity CL")
+    require_equal(Fraction(600, 5), 120, "RTC reference ESR ceiling, kohm")
+    require_equal(Fraction(600, 50), 12, "RTC reference ESR ratio")
+    require_equal(Fraction(32768 * 10, 1000000), Fraction(1024, 3125),
+                  "RTC initial frequency tolerance, Hz")
+    require_equal(Fraction(86400 * 10, 1000000), Fraction(108, 125),
+                  "RTC initial time tolerance, seconds/day")
 
 
 def main() -> None:
@@ -70,9 +99,13 @@ def main() -> None:
     require_equal(Fraction(1050, 5), 210, "reference ESR screening, ohm")
     require_equal(Fraction(1050, 100), Fraction(21, 2), "reference ESR ratio")
     check_bom()
+    check_rtc()
     print("CLK-001 PASS: arithmetic and BOM inputs agree; hardware matching unverified.")
     print("C35=C36=8 pF; CL=6 pF assuming 2 pF effective stray.")
     print("Fixed-stray tolerance: 5.75..6.25 pF; opposite corner: 5.984375 pF.")
+    print("CLK-002 PASS: arithmetic and BOM inputs agree; hardware matching unverified.")
+    print("C37=C38=4 pF; CL=6 pF assuming 4 pF effective stray.")
+    print("Fixed-stray tolerance: 5.875..6.125 pF; opposite corner: 5.9921875 pF.")
 
 
 if __name__ == "__main__":
