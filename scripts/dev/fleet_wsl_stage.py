@@ -31,10 +31,13 @@ CACHE_OWNER = "ra8-firmware fleet WSL runner cache v1"
 OWNER_FILE = ".ra8-fleet-owner"
 GENERATION_FILE = ".ra8-stage-generation"
 REMOTE_APPLY_REQUIRED_STATUS = 42
-STAGE_MEMBERS = (
+STAGE_DIRECTORY_MEMBERS = (
     ".ansible/collections",
     ".tools/uv",
     "infra/ansible",
+)
+STAGE_MEMBERS = (
+    *STAGE_DIRECTORY_MEMBERS,
     "pyproject.toml",
     "scripts/checks/check_ansible_collections.py",
     "scripts/ci/fleet_capacity.sh",
@@ -702,14 +705,13 @@ def _probe_selftest(root: Path) -> list[str]:
         failures.append("missing WSL stage was not classified apply-required")
     _write_owner(stage, STAGE_OWNER)
     for member in STAGE_MEMBERS:
-        source = fm.REPO_ROOT / member
         target = stage / member
-        if source.is_dir():
+        if member in STAGE_DIRECTORY_MEMBERS:
             target.mkdir(parents=True, exist_ok=True)
         else:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(f"fixture:{member}\n", encoding="ascii")
-            target.chmod(stat.S_IMODE(source.stat().st_mode))
+            target.chmod(0o644)
     generation = stage_generation(stage)
     marker = stage / GENERATION_FILE
     marker.write_text(f"{generation}\n", encoding="ascii")
