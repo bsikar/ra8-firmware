@@ -78,3 +78,58 @@ checked 2026-09-05: Active, 556166 in stock, 17-week standard lead time.
 USD unit pricing: qty 1 0.10, qty 10 0.025, qty 100 0.0122.
 This is a dated snapshot, not a stock or price guarantee. Native schematic
 fields and the exported BOM carry the exact ordering code and source.
+
+## USB-002: Full-speed supply bypass
+
+Revision 1, 2026-09-05. Applies to U1.U17 (VCC_USB), U1.T17 (VSS_USB)
+and C40 on the MCU interface sheet. The USB-002 annotation links here.
+Renesas R01AN7883EU0110 Table 1, p.6 requires VCC_USB connected to the
+3.3 V system supply and bypassed to VSS_USB with a nearby 100 nF capacitor.
+
+Standard +3V3_MCU power symbols connect U1.U17 and the bypass block to the
+same global rail, without a second local name or a separate regulated or
+filtered rail. C40.1 is on that supply; C40.2 and U1.T17 are on GND.
+Place C40 physically close to the supply pin with a short ground return
+when the PCB is designed. Separation on this schematic does not prescribe
+physical separation. Do not add a PWR_FLAG to conceal the unfinished source
+regulator: this bypass is not a power source.
+
+C40 is TDK C1608X7R1H104K080AA, 100 nF +/-10%, 50 V X7R, the same
+screened part as the other 3.3 V bypasses. Manufacturer curve provenance,
+temperature/aging limitations and nominal DC-bias interpolation are in
+[PWR-001](power_decoupling.md#nominal-dc-bias-screening-and-shared-bypass-selection).
+
+```text
+C_initial_min = 100*(1-0.10) = 90 nF
+C_initial_max = 100*(1+0.10) = 110 nF
+C_nominal(3.3 V) = 99.5575 + (3.3-3.15)/0.85*(-0.605)
+                 = 99.450735... nF
+```
+
+These are respectively initial tolerance bounds and a nominal reference
+estimate, not a guaranteed all-corners operating capacitance. Final supply
+regulation, USB data routing/connector/protection and the high-speed analog
+filter and supply capacitors remain separate unfinished requirements.
+
+Run this read-only check from the repository root:
+
+```sh
+python3 - <<'PY'
+import csv
+from fractions import Fraction as F
+
+with open('ra8p1_kicad/exports/ereader_rev1_bom.csv', newline='') as stream:
+    rows = [r for r in csv.DictReader(stream) if 'C40' in r['Reference'].split(',')]
+if len(rows) != 1:
+    raise ValueError('C40 must occur exactly once')
+row = rows[0]
+if (row['Value'], row['Manufacturer_Part_Number'], row['DNP']) != (
+        '100n', 'C1608X7R1H104K080AA', ''):
+    raise ValueError('C40 BOM inputs differ from calculation')
+actual = (100*(1-F('0.10')), 100*(1+F('0.10')),
+          F('99.5575')+(F('3.3')-F('3.15'))/F('0.85')*F('-0.605'))
+if actual != (90, 110, F(676265, 6800)):
+    raise ValueError('USB-002 arithmetic mismatch')
+print('USB-002 PASS: 90..110 nF initial; 99.450735 nF nominal at 3.3 V.')
+PY
+```
