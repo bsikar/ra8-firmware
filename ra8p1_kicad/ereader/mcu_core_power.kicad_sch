@@ -9359,6 +9359,7 @@
 		)
 		(property "Datasheet" ""
 			(at 342.9 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9493,6 +9494,7 @@
 		)
 		(property "Datasheet" ""
 			(at 190.5 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9803,6 +9805,7 @@
 		)
 		(property "Datasheet" ""
 			(at 228.6 83.82 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9937,6 +9940,7 @@
 		)
 		(property "Datasheet" ""
 			(at 254 177.8 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10170,6 +10174,7 @@
 		)
 		(property "Datasheet" ""
 			(at 266.7 83.82 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10304,6 +10309,7 @@
 		)
 		(property "Datasheet" ""
 			(at 342.9 83.82 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10438,6 +10444,7 @@
 		)
 		(property "Datasheet" ""
 			(at 304.8 83.82 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10572,6 +10579,7 @@
 		)
 		(property "Datasheet" ""
 			(at 228.6 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10882,6 +10890,7 @@
 		)
 		(property "Datasheet" ""
 			(at 304.8 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11016,6 +11025,7 @@
 		)
 		(property "Datasheet" ""
 			(at 152.4 83.82 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11238,6 +11248,7 @@
 		)
 		(property "Datasheet" ""
 			(at 190.5 83.82 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11538,8 +11549,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
 			(at 215.9 218.44 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11558,7 +11570,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
 			(at 215.9 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -11569,7 +11581,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
 			(at 215.9 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -11580,7 +11592,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
 			(at 215.9 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -11591,7 +11603,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
 			(at 215.9 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -11603,6 +11615,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 215.9 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 215.9 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 215.9 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "100 nF +/-10%, 50 V X7R. +3V3_MCU bypass. TDK nominal DC-bias curve: interpolated 99.45 nF at 3.3 V; reference data, not guaranteed minimum. See PWR-001 design/power_decoupling.md."
 			(at 215.9 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -12824,6 +12869,7 @@
 		)
 		(property "Datasheet" ""
 			(at 152.4 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12958,6 +13004,7 @@
 		)
 		(property "Datasheet" ""
 			(at 266.7 43.18 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
