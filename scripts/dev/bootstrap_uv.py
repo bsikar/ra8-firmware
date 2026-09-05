@@ -52,6 +52,14 @@ class CacheApplyRequiredError(BootstrapError):
     """Report authenticated cache drift that a supported apply can repair."""
 
 
+class CacheMetadataChangedError(BootstrapError):
+    """Report that authenticated descriptor metadata changed before use completed."""
+
+
+class CachePathBindingError(BootstrapError):
+    """Report that a cache pathname no longer names its authenticated inode."""
+
+
 class DownloadHeaders(Protocol):
     """Describe the response header operation used by the downloader."""
 
@@ -465,7 +473,8 @@ def verify_fd_unchanged(path: Path, descriptor: int, expected: os.stat_result) -
     current = os.fstat(descriptor)
     stable = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink")
     if any(getattr(expected, field) != getattr(current, field) for field in stable):
-        fail(f"cached uv artifact changed after authenticating: {path}")
+        message = f"cached uv artifact changed after authenticating: {path}"
+        raise CacheMetadataChangedError(message)
 
 
 def verify_fd_path(path: Path, descriptor: int, mode: int) -> None:
@@ -476,7 +485,8 @@ def verify_fd_path(path: Path, descriptor: int, mode: int) -> None:
         reopened = open_cache_fd(path)
         path_state = os.fstat(reopened)
     except (BootstrapError, OSError) as exc:
-        fail(f"cached uv path moved during permission repair: {path}: {exc}")
+        message = f"cached uv path moved during permission repair: {path}: {exc}"
+        raise CachePathBindingError(message) from exc
     finally:
         if reopened >= 0:
             os.close(reopened)
@@ -485,7 +495,8 @@ def verify_fd_path(path: Path, descriptor: int, mode: int) -> None:
         path_state.st_ino,
     )
     if not stat.S_ISREG(path_state.st_mode) or path_state.st_nlink != 1 or not same_file:
-        fail(f"cached uv path moved during permission repair: {path}")
+        message = f"cached uv path moved during permission repair: {path}"
+        raise CachePathBindingError(message)
     if stat.S_IMODE(descriptor_state.st_mode) != mode:
         fail(f"cached uv permissions did not converge: {path}")
 

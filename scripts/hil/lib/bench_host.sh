@@ -367,12 +367,14 @@ bh_preempt() {
 bh_take_flock() {
   local wait_s="$1" fields="$2" retry="${3:-yes}" host_ticks code ack rc
   local broker_pid_name=RA8_LOCK_BROKER_PID
-  [ -f "${RA8_BENCH_BROKER_SRC:-}" ] && [ ! -L "$RA8_BENCH_BROKER_SRC" ] || return 1
+  [ -f "${RA8_BENCH_BROKER_SRC:-}" ] && [ ! -L "$RA8_BENCH_BROKER_SRC" ] ||
+    return "$BH_EXIT_UNKNOWN"
   host_ticks="$(sed -n 's/^[^)]*) //p' "/proc/$$/stat" 2>/dev/null | awk '{print $20}')"
-  case "$host_ticks" in '' | *[!0-9]*) return 1 ;; *) ;; esac
+  case "$host_ticks" in '' | *[!0-9]*) return "$BH_EXIT_UNKNOWN" ;; *) ;; esac
   # A non-newline sentinel prevents command substitution from stripping the
   # reviewed source's trailing newlines before Python receives it as argv[4].
-  code="$(cat -- "$RA8_BENCH_BROKER_SRC" && printf '\001')" || return 1
+  code="$(cat -- "$RA8_BENCH_BROKER_SRC" && printf '\001')" ||
+    return "$BH_EXIT_UNKNOWN"
   code="${code%?}"
   coproc RA8_LOCK_BROKER {
     exec /usr/bin/python3 -I -S -c "$code" "$BH_LOCK" "$BH_REC" \
@@ -386,7 +388,7 @@ bh_take_flock() {
       "ACQUIRED $BH_BROKER_PID "*) return 0 ;;
       *)
         bh_broker_close
-        return 1
+        return "$BH_EXIT_UNKNOWN"
         ;;
     esac
   fi
@@ -397,26 +399,34 @@ bh_take_flock() {
   bh_close_fd "$BH_BROKER_OUTPUT"
   BH_BROKER_INPUT=""
   BH_BROKER_OUTPUT=""
-  [ "$rc" -eq 11 ] || return 1
-  [ "$BH_BREAK_GLASS" = "true" ] && [ "$retry" = "yes" ] || return 1
+  [ "$rc" -eq 11 ] || return "$BH_EXIT_UNKNOWN"
+  [ "$BH_BREAK_GLASS" = "true" ] && [ "$retry" = "yes" ] ||
+    return "$BH_EXIT_HELD"
   # Break-glass: preempt the incumbent and try again, IN ONE OPERATION. Doing
   # it as a separate `release` then `hold` would leave a window in which a
   # third actor could take the bench between them -- and the whole reason
   # somebody is breaking glass is that the board is already wedged.
-  bh_preempt || return 1
+  bh_preempt || return "$BH_EXIT_HELD"
   bh_take_flock 15 "$fields" no
 }
 
 # bh_hold <mode> <wait_s> <fields_b64>
 bh_hold() {
-  local mode="$1" wait_s="$2" fields="$3"
+  local mode="$1" wait_s="$2" fields="$3" take_rc
   bh_provision || return "$BH_EXIT_UNKNOWN"
   bh_decode_fields "$fields" || {
     bh_log "FATAL -- malformed hold request"
     return "$BH_EXIT_UNKNOWN"
   }
 
-  bh_take_flock "$wait_s" "$fields" || {
+  bh_take_flock "$wait_s" "$fields"
+  take_rc=$?
+  if [ "$take_rc" -ne "$BH_EXIT_OK" ]; then
+    if [ "$take_rc" -ne "$BH_EXIT_HELD" ]; then
+      printf 'bench: UNKNOWN\n'
+      bh_log "lock broker could not establish an acquisition verdict"
+      return "$BH_EXIT_UNKNOWN"
+    fi
     # Denied. Print the incumbent so the caller can name who to go and ask.
     printf 'bench: DENIED\n'
     # Its exit status is the incumbent's state, which the caller already knows;
@@ -424,7 +434,7 @@ bh_hold() {
     # without errexit precisely so a non-zero verdict is a verdict, not an abort.
     bh_probe
     return "$BH_EXIT_HELD"
-  }
+  fi
 
   # Entitled to the board, but not yet the only one driving it. A leftover tool
   # from a holder whose hold died is still programming; wait it out before

@@ -76,9 +76,13 @@ def _positive_scope_literal_1_p2() -> tuple[str, ...]:
         checks/hil_convergence_safety_policy.py:DIRECT_DEPENDENCIES
         checks/hil_convergence_safety_policy.py:FLEET
         checks/hil_convergence_safety_policy.py:FLEET_BENCH
+        checks/hil_convergence_safety_policy.py:FLEET_CAPACITY_CLIENT
         checks/hil_convergence_safety_policy.py:FLEET_MODEL
         checks/hil_convergence_safety_policy.py:FLEET_PATH_AUTHORITY
         checks/hil_convergence_safety_policy.py:FLEET_REACH
+        checks/hil_convergence_safety_policy.py:FLEET_RECONCILE
+        checks/hil_convergence_safety_policy.py:FLEET_RECONCILE_ARC_SELFTEST
+        checks/hil_convergence_safety_policy.py:FLEET_RECONCILE_PROCESS
         checks/hil_convergence_safety_policy.py:FLEET_RUNNER
         checks/hil_convergence_safety_policy.py:FLEET_RUNNER_MODEL
         checks/hil_convergence_safety_policy.py:FLEET_WSL

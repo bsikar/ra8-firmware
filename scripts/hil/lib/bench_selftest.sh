@@ -116,6 +116,30 @@ _bench_st_confirm_phrase() {
   return 1
 }
 
+# A broker failure is UNKNOWN, never evidence that another actor owns the
+# bench. This runs a deliberately failing broker against the throwaway state
+# directory and proves the host preserves that distinction for the client.
+_bench_st_broker_failure_is_unknown() {
+  local broken fields original output rc
+  broken="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-broken-broker.XXXXXX")" || return 1
+  printf '%s\n' 'raise SystemExit(13)' >"$broken"
+  original="$RA8_BENCH_BROKER_SRC"
+  RA8_BENCH_BROKER_SRC="$broken"
+  fields="$(bench_fields_b64 broker-failure ci selftest \
+    "selftest: broker failure classification" 60 wrapped false)"
+  output="$(bench_host hold wrapped 0 "$fields" </dev/null 2>&1)"
+  rc=$?
+  RA8_BENCH_BROKER_SRC="$original"
+  rm -f -- "$broken"
+  if [ "$rc" -eq "$RA8_BENCH_EXIT_UNKNOWN" ] &&
+    printf '%s\n' "$output" | grep -q '^bench: UNKNOWN'; then
+    printf '  ok: broker failure reports UNKNOWN rather than contention\n'
+    return 0
+  fi
+  printf '  FAIL: broker failure reported rc %s without an UNKNOWN verdict\n' "$rc"
+  return 1
+}
+
 cmd_selftest() {
   local want_ssh_death=0
   while [ $# -gt 0 ]; do
@@ -150,6 +174,7 @@ cmd_selftest() {
   bench_selftest_guard || failures=$((failures + 1))
   bench_selftest_fence || failures=$((failures + 1))
   _bench_st_confirm_phrase || failures=$((failures + 1))
+  _bench_st_broker_failure_is_unknown || failures=$((failures + 1))
 
   if [ "$want_ssh_death" -eq 1 ]; then
     bench_selftest_ssh_death || failures=$((failures + 1))

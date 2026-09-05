@@ -15,3 +15,4 @@
       when: item is exists
   roles:
     - ci_runner
+    - fleet_capacity

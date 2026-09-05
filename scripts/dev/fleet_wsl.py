@@ -30,6 +30,8 @@ WSL_MANAGED_ROOT = "/opt/ra8-python-tools"
 WSL_MANAGED_CACHE = "/opt/ra8-python-tools-cache"
 WSL_ANSIBLE_PLAYBOOK = "/opt/ra8-python-tools/bin/ansible-playbook"
 WSL_SYSTEM_PYTHON = "/usr/bin/python3"
+APPLY_REQUIRED_STATUS = 4
+FATAL_VERIFIER_STATUS = 2
 FAKE_ANSIBLE_FAILURE_STATUS = 23
 FAKE_UV_FAILURE_STATUS = 31
 FAKE_UV_ARGV_FAILURE_STATUS = 93
@@ -215,18 +217,19 @@ def _managed_authority_paths(stage: str) -> tuple[tuple[str, ...], tuple[str, ..
     return paths, files
 
 
-def _path_proof_lines(stage: str, managed_root: str, managed_cache: str) -> list[str]:
-    """Render exact no-link checks for every executable authority."""
-    source_root = fm.REPO_ROOT if stage == WSL_STAGE else Path(stage)
-    bootstrap = source_root / "scripts/dev/bootstrap_uv.py"
-    helper = source_root / "scripts/dev/bootstrap_uv_exec.py"
-    bootstrap_digest = hashlib.sha256(bootstrap.read_bytes()).hexdigest()
-    helper_digest = hashlib.sha256(helper.read_bytes()).hexdigest()
-    paths, files = _managed_authority_paths(stage)
+def _proof_function_lines() -> list[str]:
+    """Render reusable no-link, metadata, mount, and durability shell helpers."""
     return [
         "require_real_dir() {",
         '  [ -d "$1" ] && [ ! -L "$1" ] && [ "$(readlink -f -- "$1")" = "$1" ] || {',
         '    echo "unsafe or missing managed directory: $1" >&2; exit 1;',
+        "  }",
+        "}",
+        "require_exact_dir() {",
+        '  require_real_dir "$1"',
+        '  [ "$(stat -c %u -- "$1")" = "$authority_uid" ] &&',
+        '    [ "$(stat -c %a -- "$1")" = 755 ] || {',
+        '    echo "unsafe managed directory metadata: $1" >&2; exit 1;',
         "  }",
         "}",
         "require_real_file() {",
@@ -259,16 +262,96 @@ def _path_proof_lines(stage: str, managed_root: str, managed_cache: str) -> list
         "f=os.open(sys.argv[1],os.O_RDONLY|os.O_DIRECTORY); "
         'os.fsync(f); os.close(f)\' "$1"',
         "}",
+    ]
+
+
+def _path_proof_lines(stage: str, managed_root: str, managed_cache: str) -> list[str]:
+    """Render exact no-link checks for every executable authority."""
+    source_root = fm.REPO_ROOT if stage == WSL_STAGE else Path(stage)
+    bootstrap = source_root / "scripts/dev/bootstrap_uv.py"
+    helper = source_root / "scripts/dev/bootstrap_uv_exec.py"
+    bootstrap_digest = hashlib.sha256(bootstrap.read_bytes()).hexdigest()
+    helper_digest = hashlib.sha256(helper.read_bytes()).hexdigest()
+    paths, files = _managed_authority_paths(stage)
+    return [
+        *_proof_function_lines(),
         *[f"require_real_dir {shlex.quote(path)}" for path in paths],
         *[f"require_real_file {shlex.quote(path)}" for path in files],
+        f"require_exact_file {shlex.quote(stage + '/' + fws.OWNER_FILE)} 644 "
+        f"{hashlib.sha256((fws.STAGE_OWNER + chr(10)).encode('ascii')).hexdigest()}",
         f"require_exact_file {shlex.quote(stage + '/scripts/dev/bootstrap_uv.py')} "
         f"755 {bootstrap_digest}",
         f"require_exact_file {shlex.quote(stage + '/scripts/dev/bootstrap_uv_exec.py')} "
         f"644 {helper_digest}",
+        f"authority_uid=$(stat -c %u -- {shlex.quote(stage)})",
         f"managed_root={shlex.quote(managed_root)}",
         f"managed_cache={shlex.quote(managed_cache)}",
         'require_real_dir "$(dirname "$managed_root")"',
         'require_real_dir "$(dirname "$managed_cache")"',
+    ]
+
+
+def _apply_environment_lines(sync_flags: str) -> list[str]:
+    """Render the mutable managed-environment half of a toolchain sync."""
+    return [
+        '  if [ -e "$managed_root" ] || [ -L "$managed_root" ]; then',
+        '    require_exact_dir "$managed_root"',
+        '    refuse_mount "$managed_root"',
+        "  else",
+        '    install -d -m 0755 -- "$managed_root"',
+        '    refuse_mount "$managed_root"',
+        "  fi",
+        '  if [ -e "$managed_cache" ] || [ -L "$managed_cache" ]; then',
+        '    require_exact_dir "$managed_cache"',
+        '    refuse_mount "$managed_cache"',
+        "  else",
+        '    install -d -m 0755 -- "$managed_cache"',
+        '    refuse_mount "$managed_cache"',
+        "  fi",
+        '  UV_PROJECT_ENVIRONMENT="$managed_root" UV_PYTHON_DOWNLOADS=never '
+        'UV_CACHE_DIR="$managed_cache" uv_run '
+        f"{sync_flags}",
+    ]
+
+
+def _check_environment_lines(sync_flags: str) -> list[str]:
+    """Render safe-drift classification and read-only environment verification."""
+    return [
+        '  if [ ! -e "$managed_root" ] && [ ! -L "$managed_root" ]; then',
+        f'    echo "managed WSL Python environment is missing; apply required" >&2; '
+        f"exit {fws.REMOTE_APPLY_REQUIRED_STATUS}",
+        "  fi",
+        '  require_exact_dir "$managed_root"',
+        '  refuse_mount "$managed_root"',
+        '  lock_marker="$managed_root/.ra8-infra-lock.sha256"',
+        '  if [ ! -e "$lock_marker" ] && [ ! -L "$lock_marker" ]; then',
+        f'    echo "managed WSL Python environment is stale; apply required" >&2; '
+        f"exit {fws.REMOTE_APPLY_REQUIRED_STATUS}",
+        "  fi",
+        '  [ -f "$lock_marker" ] && [ ! -L "$lock_marker" ] &&',
+        '    [ "$(stat -c %u -- "$lock_marker")" = "$authority_uid" ] &&',
+        '    [ "$(stat -c %a -- "$lock_marker")" = 644 ] || {',
+        '    echo "unsafe managed WSL Python environment marker" >&2; exit 1;',
+        "  }",
+        '  if [ "$(cat "$lock_marker")" != "$authority_digest" ]; then',
+        f'    echo "managed WSL Python environment is stale; apply required" >&2; '
+        f"exit {fws.REMOTE_APPLY_REQUIRED_STATUS}",
+        "  fi",
+        '  if [ ! -e "$managed_cache" ] && [ ! -L "$managed_cache" ]; then',
+        f'    echo "managed WSL cache is missing; apply required" >&2; '
+        f"exit {fws.REMOTE_APPLY_REQUIRED_STATUS}",
+        "  fi",
+        '  require_exact_dir "$managed_cache"',
+        '  refuse_mount "$managed_cache"',
+        "  sync_status=0",
+        '  UV_PROJECT_ENVIRONMENT="$managed_root" UV_PYTHON_DOWNLOADS=never '
+        'UV_CACHE_DIR="$managed_cache" uv_run --offline --no-cache '
+        f"{sync_flags} --check || sync_status=$?",
+        '  if [ "$sync_status" -eq 1 ]; then',
+        f'    echo "managed WSL Python environment differs; apply required" >&2; '
+        f"exit {fws.REMOTE_APPLY_REQUIRED_STATUS}",
+        "  fi",
+        '  [ "$sync_status" -eq 0 ] || exit "$sync_status"',
     ]
 
 
@@ -299,35 +382,9 @@ def _toolchain_sync_lines(stage: str, mode: str, system_python: str) -> list[str
         '| sha256sum)"',
         "authority_digest=${authority_digest%% *}",
         'if [ "$mode" = apply ]; then',
-        '  if [ -e "$managed_root" ] || [ -L "$managed_root" ]; then',
-        '    require_real_dir "$managed_root"',
-        '    refuse_mount "$managed_root"',
-        "  else",
-        '    install -d -m 0755 -- "$managed_root"',
-        '    refuse_mount "$managed_root"',
-        "  fi",
-        '  if [ -e "$managed_cache" ] || [ -L "$managed_cache" ]; then',
-        '    require_real_dir "$managed_cache"',
-        '    refuse_mount "$managed_cache"',
-        "  else",
-        '    install -d -m 0755 -- "$managed_cache"',
-        '    refuse_mount "$managed_cache"',
-        "  fi",
-        '  UV_PROJECT_ENVIRONMENT="$managed_root" UV_PYTHON_DOWNLOADS=never '
-        'UV_CACHE_DIR="$managed_cache" uv_run '
-        f"{sync_flags}",
+        *_apply_environment_lines(sync_flags),
         "else",
-        '  require_real_dir "$managed_root"',
-        '  refuse_mount "$managed_root"',
-        '  [ -f "$managed_root/.ra8-infra-lock.sha256" ] && '
-        '    [ ! -L "$managed_root/.ra8-infra-lock.sha256" ] && '
-        '    [ "$(cat "$managed_root/.ra8-infra-lock.sha256")" = "$authority_digest" ] || {',
-        '    echo "managed WSL Python environment is absent or stale; run infra apply" >&2;',
-        "    exit 1;",
-        "  }",
-        '  UV_PROJECT_ENVIRONMENT="$managed_root" UV_PYTHON_DOWNLOADS=never '
-        'UV_CACHE_DIR="$managed_cache" uv_run --offline --no-cache '
-        f"{sync_flags} --check",
+        *_check_environment_lines(sync_flags),
         "fi",
     ]
 
@@ -341,13 +398,20 @@ def _toolchain_verify_lines(stage: str, ansible_playbook: str) -> list[str]:
         f"require_real_file {shlex.quote(ansible_playbook)}",
         'require_real_file "$managed_root/bin/ansible-galaxy"',
         "(",
-        '  locked_export="$(mktemp "$managed_root/.ra8-infra-export.XXXXXX")"',
-        "  trap 'rm -f -- \"$locked_export\"' EXIT",
+        "  pipeline_status=(0 0)",
         "  uv_run --no-config --directory "
         + shlex.quote(stage)
         + " export --locked --offline --only-group infra "
-        '--no-emit-project --no-header >"$locked_export"',
-        '  "$managed_root/bin/python3" ' + shlex.quote(verifier) + ' "$locked_export"',
+        "--no-emit-project --no-header | "
+        '"$managed_root/bin/python3" '
+        + shlex.quote(verifier)
+        + ' /dev/stdin || pipeline_status=("${PIPESTATUS[@]}")',
+        '  [ "${pipeline_status[0]}" -eq 0 ] || exit "${pipeline_status[0]}"',
+        '  if [ "${pipeline_status[1]}" -eq 1 ] && [ "$mode" = check ]; then',
+        f'    echo "managed WSL package set differs; apply required" >&2; '
+        f"exit {fws.REMOTE_APPLY_REQUIRED_STATUS}",
+        "  fi",
+        '  [ "${pipeline_status[1]}" -eq 0 ] || exit "${pipeline_status[1]}"',
         ")",
         "ANSIBLE_COLLECTIONS_PATH=" + shlex.quote(stage + "/.ansible/collections") + " "
         '"$managed_root/bin/ansible-galaxy" collection list --format json | '
@@ -397,20 +461,30 @@ def render_converge(spec: ConvergeSpec) -> tuple[str, list[str]]:
     lines = _ansible_environment_lines(spec)
     if typed_vars is not None:
         encoded = base64.b64encode(typed_vars.content).decode("ascii")
-        lines.extend(
-            [
-                "umask 077",
-                f'ra8_vars_file="$(mktemp {shlex.quote(stage + "/.ansible-vars.XXXXXX")})"',
-                'cleanup_ra8_vars() { rm -f -- "$ra8_vars_file"; }',
-                "trap cleanup_ra8_vars EXIT",
-                "trap 'exit 130' INT",
-                "trap 'exit 143' TERM HUP",
-                "base64 -d >\"$ra8_vars_file\" <<'RA8_TYPED_VARS_EOF'",
-                *textwrap.wrap(encoded, width=76),
-                "RA8_TYPED_VARS_EOF",
-                'typed_args=(-e "@$ra8_vars_file")',
-            ]
-        )
+        lines.extend(["trap 'exit 130' INT", "trap 'exit 143' TERM HUP"])
+        if spec.mode == "check":
+            lines.extend(
+                [
+                    "exec {ra8_vars_fd}< <(base64 -d <<'RA8_TYPED_VARS_EOF'",
+                    *textwrap.wrap(encoded, width=76),
+                    "RA8_TYPED_VARS_EOF",
+                    ")",
+                    'typed_args=(-e "@/dev/fd/$ra8_vars_fd")',
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "umask 077",
+                    f'ra8_vars_file="$(mktemp {shlex.quote(stage + "/.ansible-vars.XXXXXX")})"',
+                    'cleanup_ra8_vars() { rm -f -- "$ra8_vars_file"; }',
+                    "trap cleanup_ra8_vars EXIT",
+                    "base64 -d >\"$ra8_vars_file\" <<'RA8_TYPED_VARS_EOF'",
+                    *textwrap.wrap(encoded, width=76),
+                    "RA8_TYPED_VARS_EOF",
+                    'typed_args=(-e "@$ra8_vars_file")',
+                ]
+            )
     else:
         lines.append("typed_args=()")
     summaries: list[str] = []
@@ -444,17 +518,41 @@ def converge(
     data = spec.data
     name = spec.name
     host = data["hosts"][name]
-    rc = fws.push(data, name, spec.mode, run)
+    generation = ""
+    if spec.mode == "check":
+        rc = fws.verify_stage_sources("check")
+        if not rc:
+            generation = fws.stage_generation()
+    else:
+        rc, generation = fws.prepare(data, name, spec.mode, run)
     if rc:
         return rc
     if sync_image:
         rc = _sync_runner_image(data, name, run)
         if rc:
+            run(
+                [*fr.ssh_target(data, name), fm.remote_shell(host)],
+                stdin=fws.stage_cleanup_script(),
+            )
             return rc
-    script, summaries = render_converge(spec)
+    converge_script, summaries = render_converge(spec)
+    prefix = ["set -euo pipefail", *fws.transaction_lock_lines(spec.mode != "check")]
+    if spec.mode == "check":
+        prefix.extend(fws.stage_probe_lines(generation))
+    else:
+        prefix.append(fws.stage_publish_script(generation=generation))
+    script = "\n".join([*prefix, converge_script])
     for summary in summaries:
         print(f"==> {summary}")
-    return run([*fr.ssh_target(data, name), fm.remote_shell(host)], stdin=script)
+    rc = run([*fr.ssh_target(data, name), fm.remote_shell(host)], stdin=script)
+    if spec.mode != "check":
+        run(
+            [*fr.ssh_target(data, name), fm.remote_shell(host)],
+            stdin=fws.stage_cleanup_script(),
+        )
+    if spec.mode == "check" and rc == fws.REMOTE_APPLY_REQUIRED_STATUS:
+        return APPLY_REQUIRED_STATUS
+    return rc
 
 
 @dataclass(frozen=True)
@@ -532,6 +630,7 @@ def _write_stage_authorities(stage: Path) -> None:
         path.write_text(content, encoding="ascii")
     (stage / "scripts/dev/bootstrap_uv.py").chmod(0o755)
     (stage / "scripts/dev/bootstrap_uv_exec.py").chmod(0o644)
+    (stage / fws.OWNER_FILE).write_text(f"{fws.STAGE_OWNER}\n", encoding="ascii")
 
 
 def _write_fake_toolchain(root: Path, fixture: _SelftestFixture) -> None:
@@ -575,6 +674,8 @@ def _write_fake_toolchain(root: Path, fixture: _SelftestFixture) -> None:
         "    stream.write('|'.join(args) + '\\n')\n"
         "if os.environ.get('RA8_TEST_UV_FAIL') == operation:\n"
         f"    raise SystemExit({FAKE_UV_FAILURE_STATUS})\n"
+        "if os.environ.get('RA8_TEST_UV_FAIL') == 'sync-drift' and args == check:\n"
+        "    raise SystemExit(1)\n"
         "if operation == 'export':\n"
         "    for index in range(10):\n"
         "        print(f'package-{index}==1.{index} \\\\')\n"
@@ -585,7 +686,11 @@ def _write_fake_toolchain(root: Path, fixture: _SelftestFixture) -> None:
         python,
         "#!/usr/bin/env bash\nset -eu\n"
         'printf \'%s\\n\' "$*" >>"$RA8_TEST_PYTHON_LOG"\n'
-        'case "$1" in *check_ansible_collections.py) cat >/dev/null ;; esac\n',
+        'case "$1" in\n'
+        "  *verify_locked_environment.py) cat >/dev/null; "
+        'exit "${RA8_TEST_VERIFY_STATUS:-0}" ;;\n'
+        "  *check_ansible_collections.py) cat >/dev/null ;;\n"
+        "esac\n",
     )
     galaxy = managed_bin / "ansible-galaxy"
     _write_executable(galaxy, "#!/usr/bin/env bash\nprintf '{}\\n'\n")
@@ -652,6 +757,7 @@ def _run_script(
     fixture: _SelftestFixture,
     uv_failure: str = "",
     expected_system_python: str = "",
+    verifier_status: int = 0,
 ) -> subprocess.CompletedProcess[str]:
     """Run the offline WSL shell with only a fake Ansible executable."""
     env = {
@@ -664,6 +770,7 @@ def _run_script(
         "RA8_TEST_UV": str(fixture.stage.parent / "verified-uv"),
         "RA8_TEST_UV_LOG": str(fixture.uv_log),
         "RA8_TEST_UV_FAIL": uv_failure,
+        "RA8_TEST_VERIFY_STATUS": str(verifier_status),
         "RA8_TEST_STAGE": str(fixture.stage),
         "RA8_TEST_PYTHON_LOG": str(fixture.python_log),
         "ANSIBLE_CONFIG": str(fixture.stage.parent / "hostile.cfg"),
@@ -683,6 +790,7 @@ def _check_result(
     fixture: _SelftestFixture,
     attack: str,
     sentinel: str,
+    expected_mode: str = "600",
 ) -> list[str]:
     """Check argv integrity, mode, redaction, and cleanup after fake failure."""
     if result.returncode != FAKE_ANSIBLE_FAILURE_STATUS:
@@ -698,10 +806,10 @@ def _check_result(
     if sentinel in argv_text:
         failures.append("WSL secret appeared in ansible-playbook argv")
     remote_vars = Path(fixture.vars_path_log.read_text(encoding="utf-8").strip())
-    if fixture.mode_log.read_text(encoding="utf-8").strip() != "600":
-        failures.append("WSL temporary vars file was not mode 0600")
+    if fixture.mode_log.read_text(encoding="utf-8").strip() != expected_mode:
+        failures.append(f"WSL temporary vars transport was not mode 0{expected_mode}")
     if remote_vars.exists():
-        failures.append("WSL temporary vars file survived Ansible failure")
+        failures.append("WSL temporary vars transport survived Ansible failure")
     if fixture.hostile_executed.exists():
         failures.append("WSL used a hostile PATH ansible-playbook")
     return failures
@@ -727,6 +835,27 @@ def _render_fixture(
     return render_converge(spec)
 
 
+def _environment_drift_selftest(check_script: str, fixture: _SelftestFixture) -> list[str]:
+    """Prove only safely authenticated environment drift requests apply."""
+    failures: list[str] = []
+    sync_drift = _run_script(check_script, fixture, "sync-drift")
+    if sync_drift.returncode != fws.REMOTE_APPLY_REQUIRED_STATUS:
+        failures.append("safe WSL sync drift was not classified apply-required")
+    package_drift = _run_script(check_script, fixture, verifier_status=1)
+    if package_drift.returncode != fws.REMOTE_APPLY_REQUIRED_STATUS:
+        failures.append("safe WSL package drift was not classified apply-required")
+    verifier_failure = _run_script(check_script, fixture, verifier_status=FATAL_VERIFIER_STATUS)
+    if verifier_failure.returncode != FATAL_VERIFIER_STATUS:
+        failures.append("fatal WSL package authentication failure was classified as drift")
+    marker = fixture.managed_root / ".ra8-infra-lock.sha256"
+    marker.chmod(0o666)
+    unsafe = _run_script(check_script, fixture)
+    marker.chmod(0o644)
+    if unsafe.returncode != 1:
+        failures.append("unsafe WSL environment marker was classified as drift")
+    return failures
+
+
 def _toolchain_mode_selftest(
     data: dict[str, Any], fixture: _SelftestFixture, typed: ftv.TypedVars, attack: str
 ) -> tuple[list[str], str, list[str], str]:
@@ -740,7 +869,19 @@ def _toolchain_mode_selftest(
         failures.append("WSL apply did not publish its exact lock marker")
     check_script, _ = _render_fixture(data, fixture, typed, attack, "check")
     check_result = _run_script(check_script, fixture)
-    failures.extend(_check_result(check_result, fixture, attack, "fleet-secret-sentinel"))
+    if list(fixture.managed_root.glob(".ra8-infra-export.*")):
+        failures.append("WSL check left a durable lock-export file")
+    if ".ra8-infra-export." in check_script or '>"$locked_export"' in check_script:
+        failures.append("WSL check still renders a durable lock-export write")
+    failures.extend(
+        _check_result(
+            check_result,
+            fixture,
+            attack,
+            "fleet-secret-sentinel",
+            expected_mode="500",
+        )
+    )
     if fixture.uv_log.is_file():
         sync_calls = [
             line
@@ -784,6 +925,7 @@ def _toolchain_authority_selftest(
 ) -> tuple[list[str], str, list[str]]:
     """Exercise bootstrap-helper identity and staged-config link rejection."""
     failures, apply_script, summaries, check_script = mode_result
+    failures.extend(_environment_drift_selftest(check_script, fixture))
 
     helper = fixture.stage / "scripts/dev/bootstrap_uv_exec.py"
     helper.chmod(0o755)

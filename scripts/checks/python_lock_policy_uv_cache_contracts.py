@@ -110,7 +110,7 @@ def mode_execution_references() -> dict[str, tuple[tuple[str, str, int], ...]]:
             ("replacement", "replace", 1),
             ("subprocess", "run", 1),
             ("b", "run_cached_uv", 1),
-            ("b", "expect_bootstrap_error", 1),
+            ("b", "fail", 3),
         ),
         "cache_same_inode_execution_selftest": (
             ("os", "fsync", 1),
@@ -220,7 +220,8 @@ def verify_fd_unchanged(path, descriptor, expected):
     current = os.fstat(descriptor)
     stable = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink")
     if any(getattr(expected, field) != getattr(current, field) for field in stable):
-        fail(f"cached uv artifact changed after authenticating: {path}")
+        message = f"cached uv artifact changed after authenticating: {path}"
+        raise CacheMetadataChangedError(message)
 """,
         "verify_fd_path": """
 def verify_fd_path(path, descriptor, mode):
@@ -230,7 +231,8 @@ def verify_fd_path(path, descriptor, mode):
         reopened = open_cache_fd(path)
         path_state = os.fstat(reopened)
     except (BootstrapError, OSError) as exc:
-        fail(f"cached uv path moved during permission repair: {path}: {exc}")
+        message = f"cached uv path moved during permission repair: {path}: {exc}"
+        raise CachePathBindingError(message) from exc
     finally:
         if reopened >= 0:
             os.close(reopened)
@@ -239,7 +241,8 @@ def verify_fd_path(path, descriptor, mode):
         path_state.st_ino,
     )
     if not stat.S_ISREG(path_state.st_mode) or path_state.st_nlink != 1 or not same_file:
-        fail(f"cached uv path moved during permission repair: {path}")
+        message = f"cached uv path moved during permission repair: {path}"
+        raise CachePathBindingError(message)
     if stat.S_IMODE(descriptor_state.st_mode) != mode:
         fail(f"cached uv permissions did not converge: {path}")
 """,

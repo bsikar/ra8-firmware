@@ -487,7 +487,9 @@ EOF
   }
 
   managed_image_lock_preflight() {
-    [[ "$IMAGE_LOCK_MANAGED" == "1" ]] || return
+    if [[ "$IMAGE_LOCK_MANAGED" != "1" ]]; then
+      return 0
+    fi
     command -v flock >/dev/null 2>&1 ||
       die "flock is required for the managed image lock"
   }
@@ -738,6 +740,8 @@ EOF
       die "selftest: unmanaged image lock is not private to the caller"
     [[ "$(file_mode "${private%/*}")" == "700" && "$(file_mode "$private")" == "600" ]] ||
       die "selftest: unmanaged image lock permissions are not private"
+    managed_image_lock_preflight ||
+      die "selftest: unmanaged image lock preflight returned failure"
     command -v flock >/dev/null 2>&1 || {
       echo "selftest: private lock metadata OK; contention skipped without flock"
       return

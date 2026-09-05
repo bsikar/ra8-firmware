@@ -82,6 +82,8 @@ ci_runner_namespace: "arc-runners"
 ci_runner_scale_set_name: "ra8-ci"
 ci_runner_min: 0
 ci_runner_max: 6
+fleet_reconcile_activation_hold: false
+ci_runner_activation_post_renderer: "{{ ci_runner_context_dir }}/arc-hold-post-renderer.py"
 
 # Per-pod resources. Requests are sized to share the node with other workloads;
 # limits let heavy gates (compile / misra / tidy / mcdc) burst -- see the

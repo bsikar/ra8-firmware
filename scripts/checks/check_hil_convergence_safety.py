@@ -439,7 +439,12 @@ def _converge_ast_errors(tree: ast.Module) -> list[str]:
         return ["fleet.py: cmd_converge is missing or duplicated"]
     expected = (
         "guard = _bench_guard_argv(host, plays, args)",
-        "if guard:\n    return _run(guard, cwd=fm.REPO_ROOT)",
+        (
+            "if guard:\n    guardian = _bench_guard_subprocess_kwargs("
+            "args.command, fml.guardian_subprocess_kwargs)\n"
+            "    return _run(guard, cwd=fm.REPO_ROOT, subprocess_kwargs=guardian)"
+        ),
+        "typed_vars = _typed_vars_for_converge(args, host)",
         "rc = cmd_inventory(data, argparse.Namespace(stdout=False))",
         "maintenance = _prepare_native_runner(request)",
         "if not maintenance.proceed:\n    return maintenance.status",
@@ -456,15 +461,54 @@ def _fleet_selftest_errors(tree: ast.Module) -> list[str]:
     function = _function(tree, "cmd_selftest")
     statement = (
         "failures = (ftv.run_selftest() + fw.run_selftest(data) + fb.run_selftest() + "
-        "frm.run_selftest() + fb.parser_selftest(_parser))"
+        "frm.run_selftest() + fml.run_selftest() + fcc.run_selftest(data) + "
+        "_bench_guard_inheritance_selftest() + _inventory_publication_selftest() + "
+        "fb.parser_selftest(_parser))"
     )
     if function is None or _statement_index(function, statement) < 0:
         return ["fleet.py: executable HIL transaction selftests are not exact"]
     return []
 
 
+def _runtime_directory_helper_errors(tree: ast.Module) -> list[str]:
+    """Require exact validation for selectively inherited runtime directories."""
+    helper = _function(tree, "_private_runtime_directory")
+    expected = (
+        '"""Return one explicitly supplied, private Ansible runtime directory."""',
+        "value = environment.get(key)",
+        "if value is None:\n    return None",
+        "path = Path(value)",
+        'if not path.is_absolute():\n    message = f"{key} is not an absolute path"\n'
+        "    raise MaintenanceError(message)",
+        'resolved = _require_real_directory(path, f"{key} directory")',
+        "metadata = resolved.stat()",
+        "if metadata.st_uid != os.getuid() or "
+        "stat.S_IMODE(metadata.st_mode) != PRIVATE_DIRECTORY_MODE:\n"
+        '    message = f"{key} is not owned by this account with mode 0700"\n'
+        "    raise MaintenanceError(message)",
+        "return str(resolved)",
+    )
+    mode = _assignment(tree, "PRIVATE_DIRECTORY_MODE")
+    wanted_mode = ast.parse("0o700", mode="eval").body
+    errors = []
+    if (
+        helper is None
+        or len(helper.body) != len(expected)
+        or any(
+            not _same_statement(node, statement)
+            for node, statement in zip(helper.body, expected, strict=True)
+        )
+    ):
+        errors.append("fleet runner maintenance: runtime directory validator is not exact")
+    if mode is None or ast.dump(mode, include_attributes=False) != ast.dump(
+        wanted_mode, include_attributes=False
+    ):
+        errors.append("fleet runner maintenance: private runtime directory mode is not exact")
+    return errors
+
+
 def _runner_environment_errors(tree: ast.Module) -> list[str]:
-    """Require inherited Ansible controls to be discarded structurally."""
+    """Require fixed environment plus two validated runtime-directory controls."""
     function = _function(tree, "ansible_environment")
     expected = (
         'resolved_cwd = _require_real_directory(ansible_cwd, "Ansible working directory")',
@@ -474,18 +518,31 @@ def _runner_environment_errors(tree: ast.Module) -> list[str]:
         "collections = _require_real_directory(collection_parent / "
         "'collections', 'collection root')",
         "link_errors = fpa.confined_link_errors(collections)",
-        "del environment",
         'clean = {"HOME": pwd.getpwuid(os.getuid()).pw_dir, "LANG": "C.UTF-8", '
         '"LC_ALL": "C.UTF-8", "PATH": "/usr/bin:/bin"}',
         'clean["ANSIBLE_CONFIG"] = str(config)',
         'clean["ANSIBLE_COLLECTIONS_PATH"] = str(collections)',
         'clean["ANSIBLE_COLLECTIONS_SCAN_SYS_PATH"] = "false"',
         'clean["PYTHONNOUSERSITE"] = "1"',
+        'for key in ("ANSIBLE_LOCAL_TEMP", "ANSIBLE_SSH_CONTROL_PATH_DIR"):\n'
+        "    value = _private_runtime_directory(environment, key)\n"
+        "    if value is not None:\n"
+        "        clean[key] = value",
         "return clean",
     )
+    errors = _runtime_directory_helper_errors(tree)
     if function is None or any(_statement_index(function, item) < 0 for item in expected):
-        return ["fleet runner maintenance: Ansible environment sanitizer is not exact"]
-    return []
+        errors.append("fleet runner maintenance: Ansible environment sanitizer is not exact")
+    return errors
+
+
+def _runner_environment_input_errors(inputs: dict[str, str]) -> list[str]:
+    """Check only the fleet-runner environment contract for focused mutations."""
+    try:
+        tree = ast.parse(inputs["fleet_runner"])
+    except SyntaxError:
+        return ["fleet runner maintenance: invalid Python"]
+    return _runner_environment_errors(tree)
 
 
 def _playbook_environment_errors(tree: ast.Module) -> list[str]:
@@ -641,25 +698,111 @@ def _wsl_stage_errors(wsl_tree: ast.Module, stage_tree: ast.Module) -> list[str]
     if wsl_selftest is None or _statement_index(wsl_selftest, stage_selftest_call) < 0:
         errors.append("fleet WSL: owned stage/cache semantic selftest is not executable")
     converge = _function(wsl_tree, "converge")
-    push_call = "rc = fws.push(data, name, spec.mode, run)"
-    if converge is None or _statement_index(converge, push_call) < 0:
+    push_call = "rc, generation = fws.prepare(data, name, spec.mode, run)"
+    push_matches = (
+        [
+            node
+            for node in ast.walk(converge)
+            if isinstance(node, ast.Assign) and _same_statement(node, push_call)
+        ]
+        if converge is not None
+        else []
+    )
+    if len(push_matches) != 1:
         errors.append("fleet WSL: owned stage publication is not executable")
     stage_selftest = _function(stage_tree, "run_selftest")
-    expected_return = "return _stage_selftest(root) + _cache_selftest(root) + _link_selftest(root)"
-    returns = (
-        [node for node in ast.walk(stage_selftest) if isinstance(node, ast.Return)]
+    expected_selftests = (
+        "failures = (_stage_selftest(root) + _cache_selftest(root) + _link_selftest(root) + "
+        "_probe_selftest(root) + _transaction_lock_selftest(root))"
+    )
+    selftest_matches = (
+        [
+            node
+            for node in ast.walk(stage_selftest)
+            if isinstance(node, ast.Assign) and _same_statement(node, expected_selftests)
+        ]
         if stage_selftest is not None
         else []
     )
-    if len(returns) != 1 or not _same_statement(returns[0], expected_return):
+    if len(selftest_matches) != 1:
         errors.append("fleet WSL stage: ownership semantic selftests are not exact")
-    push = _function(stage_tree, "push")
+    push = _function(stage_tree, "prepare")
     required = (
         "tar_rc, archive = _stage_archive(mode)",
-        "if tar_rc:\n    return tar_rc",
+        'if tar_rc:\n    return tar_rc, ""',
     )
     if push is None or any(_statement_index(push, statement) < 0 for statement in required):
         errors.append("fleet WSL stage: local archive is not proven before remote mutation")
+    return errors
+
+
+def _reconcile_activation_errors(tree: ast.Module) -> list[str]:
+    """Require ARC activation proof at zero before the sole capacity restore."""
+    activation = _function(tree, "_activate_arc")
+    apply_host = _function(tree, "apply_host")
+    sequence = (
+        'activation = run(fleet_command(host, "activate"))',
+        "clean, changed = inspect_activation_host(data, host, run)",
+        'restore = run(fleet_command(host, "restore"))',
+        "return True, 0",
+    )
+    indices = (
+        [_statement_index(activation, statement) for statement in sequence]
+        if activation is not None
+        else []
+    )
+    arc_branch = (
+        'if host_class.capacity_kind == "k8s":\n'
+        "    return _activate_arc(data, host, run, expected_check_changes)"
+    )
+    if (
+        len(indices) != len(sequence)
+        or -1 in indices
+        or indices != sorted(indices)
+        or apply_host is None
+        or _statement_index(apply_host, arc_branch) < 0
+    ):
+        return ["fleet reconciliation: ARC activation/check/restore order is not exact"]
+    return []
+
+
+def _fleet_split_module_errors(
+    fleet_tree: ast.Module,
+    capacity_tree: ast.Module,
+    reconcile_tree: ast.Module,
+    process_tree: ast.Module,
+    arc_selftest_tree: ast.Module,
+) -> list[str]:
+    """Require split runtime imports and executable owned selftests."""
+    required_imports = (
+        (fleet_tree, "fleet_capacity_client", "fcc"),
+        (reconcile_tree, "fleet_reconcile_process", "frp"),
+        (reconcile_tree, "fleet_reconcile_arc_selftest", "fras"),
+    )
+    imports_exact = all(
+        sum(
+            isinstance(node, ast.Import)
+            and len(node.names) == 1
+            and node.names[0].name == module
+            and node.names[0].asname == alias
+            for node in tree.body
+        )
+        == 1
+        for tree, module, alias in required_imports
+    )
+    errors = []
+    if not imports_exact:
+        errors.append("fleet split modules: runtime imports are not exact")
+    reconcile_selftest = _function(reconcile_tree, "selftest")
+    if (
+        _function(capacity_tree, "run_selftest") is None
+        or _function(process_tree, "run_selftest") is None
+        or _function(arc_selftest_tree, "run") is None
+        or reconcile_selftest is None
+        or _statement_index(reconcile_selftest, "failures.extend(frp.run_selftest())") < 0
+        or _statement_index(reconcile_selftest, "failures.extend(fras.run(apply_host))") < 0
+    ):
+        errors.append("fleet split modules: executable selftests are not exact")
     return errors
 
 
@@ -668,12 +811,22 @@ def _fleet_errors(inputs: dict[str, str]) -> list[str]:
     try:
         tree = ast.parse(inputs["fleet"])
         ast.parse(inputs["fleet_bench"])
+        capacity_tree = ast.parse(inputs["fleet_capacity_client"])
+        reconcile_tree = ast.parse(inputs["fleet_reconcile"])
+        process_tree = ast.parse(inputs["fleet_reconcile_process"])
+        arc_selftest_tree = ast.parse(inputs["fleet_reconcile_arc_selftest"])
         runner_tree = ast.parse(inputs["fleet_runner"])
         wsl_tree = ast.parse(inputs["fleet_wsl"])
         wsl_stage_tree = ast.parse(inputs["fleet_wsl_stage"])
     except SyntaxError:
         return ["fleet bench guard: invalid Python"]
     errors = _converge_ast_errors(tree) + _fleet_selftest_errors(tree)
+    errors.extend(
+        _fleet_split_module_errors(
+            tree, capacity_tree, reconcile_tree, process_tree, arc_selftest_tree
+        )
+    )
+    errors.extend(_reconcile_activation_errors(reconcile_tree))
     errors.extend(_playbook_environment_errors(runner_tree))
     errors.extend(_runner_environment_errors(runner_tree))
     errors.extend(_runner_prepare_errors(runner_tree))
@@ -731,7 +884,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--selftest", action="store_true")
     args = parser.parse_args(argv)
     if args.selftest:
-        return selftest.run(_scan)
+        return selftest.run(_scan, _runner_environment_input_errors)
     raw_errors = image_lock_digest.live_errors(policy.REPO_ROOT)
     if raw_errors:
         for error in raw_errors:

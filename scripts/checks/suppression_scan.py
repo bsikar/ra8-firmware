@@ -78,7 +78,7 @@ GOVERNANCE_COUNT_CONTRACTS = {
     "other-language-controls": ("family", "other-language-control", 0),
     "gitignore-scope-exemptions": ("tool", "gitignore-scope", 1),
     "hardware-canned-stub-waivers": ("tool", "check-no-silent-stubs", 0),
-    "checker-scope-values": ("family", "checker-scope-control", 3779),
+    "checker-scope-values": ("family", "checker-scope-control", 3783),
     "checker-nonfatal-declarations": ("directive", "nonfatal-declaration", 10),
     "checker-nonfatal-invocations": ("directive", "nonfatal-invocation", 0),
     "vendor-encoding-exemptions": ("family", "encoding-exemption", 4),

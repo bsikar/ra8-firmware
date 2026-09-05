@@ -89,7 +89,11 @@ def _dispatch_order_errors(fleet: ast.Module) -> list[str]:
         "refusal = _converge_refusal(args, host, plays)",
         "if refusal:\n    return _fail(refusal)",
         "guard = _bench_guard_argv(host, plays, args)",
-        "if guard:\n    return _run(guard, cwd=fm.REPO_ROOT)",
+        (
+            "if guard:\n    guardian = _bench_guard_subprocess_kwargs("
+            "args.command, fml.guardian_subprocess_kwargs)\n"
+            "    return _run(guard, cwd=fm.REPO_ROOT, subprocess_kwargs=guardian)"
+        ),
         "rc = cmd_inventory(data, argparse.Namespace(stdout=False))",
     )
     indices = [_index(converge, statement) for statement in order]

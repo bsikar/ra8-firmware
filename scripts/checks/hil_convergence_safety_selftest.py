@@ -588,10 +588,31 @@ def _fresh_boundary_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str,
     )
 
 
+def _fleet_selftest_removed_case(
+    inputs: dict[str, str], scan: Scan, target: str, label: str
+) -> tuple[str, bool]:
+    """Return one exact required fleet selftest call-removal case."""
+    changed = _mutate(inputs, "fleet", f"        + {target}\n", "")
+    finding = "fleet.py: executable HIL transaction selftests are not exact"
+    return label, _reports(changed, scan, finding)
+
+
+def _fleet_selftest_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool]]:
+    """Return live fleet selftest and independent required-call mutations."""
+    targets = (
+        ("fml.run_selftest()", "fleet mutation-lock selftest removal fires"),
+        ("fcc.run_selftest(data)", "capacity-client selftest removal fires"),
+        ("_bench_guard_inheritance_selftest()", "guard selftest removal fires"),
+        ("_inventory_publication_selftest()", "inventory selftest removal fires"),
+    )
+    cases = [_fleet_selftest_removed_case(inputs, scan, *case) for case in targets]
+    return [("complete convergence boundary stays quiet", not scan(inputs)), *cases]
+
+
 def _live_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool]]:
     """Return live semantic and whole-role ordering cases."""
     return [
-        ("complete convergence boundary stays quiet", not scan(inputs)),
+        *_fleet_selftest_cases(inputs, scan),
         (
             "indented canonical startup authority stays quiet",
             not v9.startup_authority_selftest(),
@@ -638,6 +659,46 @@ def _live_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool]]:
             bool(scan(_weaken_monitor_service_shell(inputs))),
         ),
         *_fresh_boundary_cases(inputs, scan),
+    ]
+
+
+def _runner_runtime_directory_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool]]:
+    """Return runtime-directory validation and allowlist mutations."""
+    mutations = (
+        (
+            "relative Ansible runtime directory acceptance",
+            "if not path.is_absolute():",
+            "if False:",
+        ),
+        (
+            "Ansible runtime directory owner-check removal",
+            "metadata.st_uid != os.getuid()",
+            "False",
+        ),
+        (
+            "Ansible runtime directory mode-check removal",
+            "stat.S_IMODE(metadata.st_mode) != PRIVATE_DIRECTORY_MODE",
+            "False",
+        ),
+        (
+            "private Ansible runtime mode widening",
+            "PRIVATE_DIRECTORY_MODE = 0o700",
+            "PRIVATE_DIRECTORY_MODE = 0o755",
+        ),
+        (
+            "Ansible runtime environment allowlist widening",
+            '("ANSIBLE_LOCAL_TEMP", "ANSIBLE_SSH_CONTROL_PATH_DIR")',
+            '("ANSIBLE_LOCAL_TEMP", "ANSIBLE_SSH_CONTROL_PATH_DIR", "TMPDIR")',
+        ),
+        (
+            "Ansible runtime directory validator bypass",
+            "value = _private_runtime_directory(environment, key)",
+            "value = environment.get(key)",
+        ),
+    )
+    return [
+        (label, bool(scan(_mutate(inputs, "fleet_runner", old, new))))
+        for label, old, new in mutations
     ]
 
 
@@ -902,14 +963,18 @@ def _base_cases(inputs: dict[str, str], scan: Scan) -> list[tuple[str, bool]]:
         _live_cases(inputs, scan)
         + _environment_cases(inputs, scan)
         + semantic_mutations.aggregator_cases(inputs, scan)
+        + semantic_mutations.fleet_split_cases(inputs, scan)
+        + semantic_mutations.fleet_activation_cases(inputs, scan)
+        + semantic_mutations.fleet_guard_dispatch_cases(inputs, scan)
         + semantic_mutations.digest_cases(inputs, scan)
     )
 
 
-def run(scan: Scan) -> int:
+def run(scan: Scan, runner_scan: Scan) -> int:
     """Prove the complete boundary stays quiet and independent removals fire."""
     inputs = policy.load_inputs(policy.REPO_ROOT)
     cases = _base_cases(inputs, scan)
+    cases.extend(_runner_runtime_directory_cases(inputs, runner_scan))
     for label, key, old, new in fixtures.mutations():
         changed = _mutate(inputs, key, old, new)
         expected = semantic_mutations.semantic_image_findings(label, key)

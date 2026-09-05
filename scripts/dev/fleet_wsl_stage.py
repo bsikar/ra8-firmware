@@ -4,10 +4,13 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import pwd
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -20,10 +23,14 @@ import fleet_reach as fr
 import fleet_runner_maintenance as frm
 
 WSL_STAGE = "/opt/ra8-infra"
+SHA256_HEX_LENGTH = 64
+ROOT_READ_MODE = 0o444
 WSL_RUNNER_IMAGE_CACHE = "/opt/ra8-infra-cache/ra8-ci-runner.tar"
 STAGE_OWNER = "ra8-firmware fleet WSL stage v1"
 CACHE_OWNER = "ra8-firmware fleet WSL runner cache v1"
 OWNER_FILE = ".ra8-fleet-owner"
+GENERATION_FILE = ".ra8-stage-generation"
+REMOTE_APPLY_REQUIRED_STATUS = 42
 STAGE_MEMBERS = (
     ".ansible/collections",
     ".tools/uv",
@@ -76,14 +83,40 @@ def _links_stay_within(root: Path) -> bool:
     return True
 
 
-def _verify_stage_sources(mode: str) -> int:
+def _installed_snapshot() -> bool:
+    """Return whether this source is the root-owned immutable service snapshot."""
+    marker = fm.REPO_ROOT / ".ra8-source-sha256"
+    try:
+        root_metadata = fm.REPO_ROOT.lstat()
+        metadata = marker.lstat()
+        digest = marker.read_text(encoding="ascii").strip()
+    except OSError:
+        return False
+    return (
+        not fm.REPO_ROOT.is_symlink()
+        and root_metadata.st_uid == 0
+        and stat.S_ISREG(metadata.st_mode)
+        and not marker.is_symlink()
+        and metadata.st_uid == 0
+        and stat.S_IMODE(metadata.st_mode) == ROOT_READ_MODE
+        and len(digest) == SHA256_HEX_LENGTH
+        and all(character in "0123456789abcdef" for character in digest)
+    )
+
+
+def _bootstrap_action(mode: str, installed: bool) -> str:
+    """Select mutation only for an operator-owned apply checkout."""
+    return "--ensure" if mode == "apply" and not installed else "--verify-cache"
+
+
+def verify_stage_sources(mode: str) -> int:
     """Authenticate local staged authorities before any remote side effect."""
     try:
         frm.ansible_environment(os.environ, fm.ANSIBLE_DIR)
     except frm.MaintenanceError as exc:
         return _fail(str(exc))
     bootstrap = fm.REPO_ROOT / "scripts/dev/bootstrap_uv.py"
-    action = "--ensure" if mode == "apply" else "--verify-cache"
+    action = _bootstrap_action(mode, _installed_snapshot())
     result = subprocess.run(  # noqa: S603 -- fixed repository tool and managed Python
         [sys.executable, str(bootstrap), action],
         cwd=fm.REPO_ROOT,
@@ -105,9 +138,72 @@ def _verify_stage_sources(mode: str) -> int:
     return 0
 
 
+def _generation_records(root: Path) -> list[tuple[str, str, int, str]]:
+    """Describe every staged path by name, type, mode, and authenticated payload."""
+    records: list[tuple[str, str, int, str]] = []
+    for member in STAGE_MEMBERS:
+        start = root / member
+        paths = [start]
+        if start.is_dir():
+            paths.extend(sorted(start.rglob("*"), key=lambda path: path.as_posix()))
+        for path in paths:
+            metadata = path.lstat()
+            relative = path.relative_to(root).as_posix()
+            mode = stat.S_IMODE(metadata.st_mode)
+            if path.is_symlink():
+                records.append((relative, "l", mode, str(path.readlink())))
+            elif path.is_dir():
+                records.append((relative, "d", mode, ""))
+            elif path.is_file():
+                digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                records.append((relative, "f", mode, digest))
+            else:
+                msg = f"unsupported WSL stage authority type: {relative}"
+                raise ValueError(msg)
+    return records
+
+
+def stage_generation(root: Path = fm.REPO_ROOT) -> str:
+    """Return the canonical complete-generation digest for staged authorities."""
+    encoded = json.dumps(_generation_records(root), separators=(",", ":")).encode("ascii")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _generation_probe_command(root: str) -> str:
+    """Render a read-only complete-generation digest probe for the remote stage."""
+    code = """import hashlib,json,os,stat,sys
+from pathlib import Path
+root=Path(sys.argv[1])
+members=json.loads(sys.argv[2])
+records=[]
+for member in members:
+    start=root/member
+    paths=[start]
+    if start.is_dir():
+        paths.extend(sorted(start.rglob("*"),key=lambda path:path.as_posix()))
+    for path in paths:
+        metadata=path.lstat()
+        relative=path.relative_to(root).as_posix()
+        mode=stat.S_IMODE(metadata.st_mode)
+        if path.is_symlink():
+            records.append((relative,"l",mode,os.readlink(path)))
+        elif path.is_dir():
+            records.append((relative,"d",mode,""))
+        elif path.is_file():
+            records.append((relative,"f",mode,hashlib.sha256(path.read_bytes()).hexdigest()))
+        else:
+            raise SystemExit("unsupported staged path type: "+relative)
+print(hashlib.sha256(json.dumps(records,separators=(",",":")).encode("ascii")).hexdigest())
+"""
+    members = json.dumps(STAGE_MEMBERS)
+    return (
+        f"/usr/bin/python3 -I -S -c {shlex.quote(code)} {shlex.quote(root)} {shlex.quote(members)}"
+    )
+
+
 def _stage_archive(mode: str) -> tuple[int, bytes]:
     """Build one authenticated local archive before touching the remote stage."""
-    rc = _verify_stage_sources(mode)
+    rc = verify_stage_sources(mode)
     if rc:
         return rc, b""
     tar_tool = Path("/usr/bin/tar")
@@ -131,13 +227,18 @@ def _stage_archive(mode: str) -> tuple[int, bytes]:
     return tar.returncode, tar.stdout
 
 
-def _owned_shell(owner: str) -> list[str]:
+def _owned_shell(owner: str, owner_uid: int = 0) -> list[str]:
     """Render reusable exact-owner and no-mount directory operations."""
     return [
         f"expected_owner={shlex.quote(owner)}",
+        f"expected_owner_uid={owner_uid}",
         "owned_dir() {",
         '  [ -d "$1" ] && [ ! -L "$1" ] && ! /usr/bin/mountpoint -q -- "$1" &&',
+        '    [ "$(stat -c %u -- "$1")" = "$expected_owner_uid" ] &&',
+        '    [ "$(stat -c %a -- "$1")" = 755 ] &&',
         f'    [ -f "$1/{OWNER_FILE}" ] && [ ! -L "$1/{OWNER_FILE}" ] &&',
+        f'    [ "$(stat -c %u -- "$1/{OWNER_FILE}")" = "$expected_owner_uid" ] &&',
+        f'    [ "$(stat -c %a -- "$1/{OWNER_FILE}")" = 644 ] &&',
         f'    [ "$(cat -- "$1/{OWNER_FILE}")" = "$expected_owner" ]',
         "}",
         "sync_file() {",
@@ -159,11 +260,66 @@ def _owned_shell(owner: str) -> list[str]:
     ]
 
 
+def transaction_lock_lines(
+    exclusive: bool, lock_root: str = "/run/lock", owner_uid: int = 0
+) -> list[str]:
+    """Render a no-write host-local reader or writer lock acquisition."""
+    option = "-x" if exclusive else "-s"
+    return [
+        f"lock_root={shlex.quote(lock_root)}",
+        '[ -d "$lock_root" ] && [ ! -L "$lock_root" ] &&',
+        '  [ "$(readlink -f -- "$lock_root")" = "$lock_root" ] &&',
+        f'  [ "$(stat -c %u -- "$lock_root")" = {owner_uid} ] || {{',
+        '  echo "unsafe WSL lock authority" >&2; exit 1;',
+        "}",
+        'case "$(stat -c %a -- "$lock_root")" in 755|775) ;;',
+        '  *) echo "unsafe WSL lock authority mode" >&2; exit 1 ;;',
+        "esac",
+        'exec 9<"$lock_root"',
+        f"/usr/bin/flock {option} 9",
+    ]
+
+
+def stage_probe_lines(expected: str, stage: str = WSL_STAGE) -> list[str]:
+    """Render authenticated read-only classification of one installed generation."""
+    marker = f"{stage}/{GENERATION_FILE}"
+    probe = _generation_probe_command(stage)
+    return [
+        f"stage={shlex.quote(stage)}",
+        f"generation_marker={shlex.quote(marker)}",
+        'if [ ! -e "$stage" ] && [ ! -L "$stage" ]; then',
+        f'  echo "WSL stage is missing; apply required" >&2; exit {REMOTE_APPLY_REQUIRED_STATUS}',
+        "fi",
+        *_owned_shell(STAGE_OWNER, 0 if stage == WSL_STAGE else os.getuid()),
+        'owned_dir "$stage" || { echo "unsafe WSL stage authority" >&2; exit 1; }',
+        'if [ ! -e "$generation_marker" ] && [ ! -L "$generation_marker" ]; then',
+        f'  echo "WSL generation manifest is missing; apply required" >&2; '
+        f"exit {REMOTE_APPLY_REQUIRED_STATUS}",
+        "fi",
+        '[ -f "$generation_marker" ] && [ ! -L "$generation_marker" ] &&',
+        '  [ "$(stat -c %u -- "$generation_marker")" = "$expected_owner_uid" ] &&',
+        '  [ "$(stat -c %a -- "$generation_marker")" = 444 ] || {',
+        '  echo "unsafe WSL generation manifest" >&2; exit 1;',
+        "}",
+        'installed_generation="$(cat -- "$generation_marker")"',
+        f'if [ "$installed_generation" != {shlex.quote(expected)} ]; then',
+        f'  echo "WSL stage is stale; apply required" >&2; exit {REMOTE_APPLY_REQUIRED_STATUS}',
+        "fi",
+        f'actual_generation="$({probe})" || {{',
+        '  echo "could not authenticate WSL stage generation" >&2; exit 1;',
+        "}",
+        '[ "$actual_generation" = "$installed_generation" ] || {',
+        '  echo "WSL stage generation authentication failed" >&2; exit 1;',
+        "}",
+    ]
+
+
 def stage_prepare_script(stage: str = WSL_STAGE) -> str:
     """Render deterministic recovery and fresh incoming-stage creation."""
     incoming = f"{stage}.incoming"
     previous = f"{stage}.previous"
-    lines = ["set -euo pipefail", *_owned_shell(STAGE_OWNER)]
+    owner_uid = 0 if stage == WSL_STAGE else os.getuid()
+    lines = ["set -euo pipefail", *_owned_shell(STAGE_OWNER, owner_uid)]
     lines.extend(
         [
             f"stage={shlex.quote(stage)}",
@@ -196,17 +352,58 @@ def stage_prepare_script(stage: str = WSL_STAGE) -> str:
     return "\n".join(lines) + "\n"
 
 
-def stage_publish_script(stage: str = WSL_STAGE) -> str:
+def stage_seal_script(generation: str, stage: str = WSL_STAGE) -> str:
+    """Authenticate an incoming generation and durably seal its manifest."""
+    incoming = f"{stage}.incoming"
+    marker = f"{incoming}/{GENERATION_FILE}"
+    probe = _generation_probe_command(incoming)
+    return "\n".join(
+        [
+            "set -euo pipefail",
+            *_owned_shell(STAGE_OWNER, 0 if stage == WSL_STAGE else os.getuid()),
+            f"incoming={shlex.quote(incoming)}",
+            'owned_dir "$incoming" || { echo "incoming WSL stage is not owned" >&2; exit 1; }',
+            f'actual_generation="$({probe})"',
+            f'[ "$actual_generation" = {shlex.quote(generation)} ] || {{',
+            '  echo "incoming WSL stage generation mismatch" >&2; exit 1;',
+            "}",
+            f"printf '%s\\n' {shlex.quote(generation)} >{shlex.quote(marker)}",
+            f"chmod 0444 {shlex.quote(marker)}",
+            f"sync_file {shlex.quote(marker)}",
+            'sync_dir "$incoming"',
+            "",
+        ]
+    )
+
+
+def stage_publish_script(stage: str = WSL_STAGE, generation: str | None = None) -> str:
     """Render atomic stage publication with deterministic rollback."""
     incoming = f"{stage}.incoming"
     previous = f"{stage}.previous"
-    lines = ["set -euo pipefail", *_owned_shell(STAGE_OWNER)]
+    generation = generation or ""
+    owner_uid = 0 if stage == WSL_STAGE else os.getuid()
+    lines = ["set -euo pipefail", *_owned_shell(STAGE_OWNER, owner_uid)]
     lines.extend(
         [
             f"stage={shlex.quote(stage)}",
             f"incoming={shlex.quote(incoming)}",
             f"previous={shlex.quote(previous)}",
             'owned_dir "$incoming" || { echo "incoming WSL stage is not owned" >&2; exit 1; }',
+            f"generation_marker={shlex.quote(incoming + '/' + GENERATION_FILE)}",
+            '[ -f "$generation_marker" ] && [ ! -L "$generation_marker" ] &&',
+            '  [ "$(stat -c %u -- "$generation_marker")" = "$expected_owner_uid" ] &&',
+            '  [ "$(stat -c %a -- "$generation_marker")" = 444 ] || {',
+            '  echo "incoming WSL generation manifest is unsafe" >&2; exit 1;',
+            "}",
+            *(
+                [
+                    f'[ "$(cat -- "$generation_marker")" = {shlex.quote(generation)} ] || {{',
+                    '  echo "incoming WSL generation manifest is stale" >&2; exit 1;',
+                    "}",
+                ]
+                if generation
+                else []
+            ),
             '[ ! -e "$previous" ] && [ ! -L "$previous" ] || {',
             '  echo "previous WSL stage was not recovered" >&2; exit 1;',
             "}",
@@ -233,7 +430,7 @@ def stage_cleanup_script(stage: str = WSL_STAGE) -> str:
     return "\n".join(
         [
             "set -euo pipefail",
-            *_owned_shell(STAGE_OWNER),
+            *_owned_shell(STAGE_OWNER, 0 if stage == WSL_STAGE else os.getuid()),
             f"incoming={shlex.quote(incoming)}",
             'if [ -e "$incoming" ] || [ -L "$incoming" ]; then',
             '  remove_owned_dir "$incoming"',
@@ -243,17 +440,18 @@ def stage_cleanup_script(stage: str = WSL_STAGE) -> str:
     )
 
 
-def push(data: dict[str, Any], name: str, mode: str, run: CommandRunner) -> int:
-    """Atomically publish authenticated control inputs to the WSL distro."""
+def prepare(data: dict[str, Any], name: str, mode: str, run: CommandRunner) -> tuple[int, str]:
+    """Transfer and authenticate an incoming generation without publishing it."""
     tar_rc, archive = _stage_archive(mode)
     if tar_rc:
-        return tar_rc
+        return tar_rc, ""
+    generation = stage_generation()
     host = data["hosts"][name]
     ssh = fr.ssh_target(data, name)
     shell = fm.remote_shell(host)
     rc = run([*ssh, shell], stdin=stage_prepare_script())
     if rc:
-        return rc
+        return rc, ""
     distro = str(host["connect"]["distro"])
     incoming = f"{WSL_STAGE}.incoming"
     unpack = (
@@ -261,10 +459,30 @@ def push(data: dict[str, Any], name: str, mode: str, run: CommandRunner) -> int:
         f"HOME=/root PATH=/usr/bin:/bin /usr/bin/tar -xzf - -C {shlex.quote(incoming)}"
     )
     rc = run([*ssh, unpack], stdin=archive)
+    if not rc:
+        rc = run([*ssh, shell], stdin=stage_seal_script(generation))
     if rc:
         run([*ssh, shell], stdin=stage_cleanup_script())
+        return rc, ""
+    return 0, generation
+
+
+def push(data: dict[str, Any], name: str, mode: str, run: CommandRunner) -> int:
+    """Atomically publish authenticated control inputs to the WSL distro."""
+    rc, generation = prepare(data, name, mode, run)
+    if rc:
         return rc
-    rc = run([*ssh, shell], stdin=stage_publish_script())
+    host = data["hosts"][name]
+    ssh = fr.ssh_target(data, name)
+    shell = fm.remote_shell(host)
+    script = "\n".join(
+        [
+            "set -euo pipefail",
+            *transaction_lock_lines(exclusive=True),
+            stage_publish_script(generation=generation),
+        ]
+    )
+    rc = run([*ssh, shell], stdin=script)
     if rc:
         run([*ssh, shell], stdin=stage_cleanup_script())
     return rc
@@ -274,7 +492,8 @@ def cache_prepare_script(cache: str = WSL_RUNNER_IMAGE_CACHE) -> str:
     """Render exact cache ownership and no-follow staging preparation."""
     root = str(Path(cache).parent)
     part = f"{cache}.part"
-    lines = ["set -euo pipefail", *_owned_shell(CACHE_OWNER)]
+    owner_uid = 0 if cache == WSL_RUNNER_IMAGE_CACHE else os.getuid()
+    lines = ["set -euo pipefail", *_owned_shell(CACHE_OWNER, owner_uid)]
     lines.extend(
         [
             f"cache_root={shlex.quote(root)}",
@@ -329,7 +548,7 @@ def cache_cleanup_script(cache: str = WSL_RUNNER_IMAGE_CACHE) -> str:
     return "\n".join(
         [
             "set -euo pipefail",
-            *_owned_shell(CACHE_OWNER),
+            *_owned_shell(CACHE_OWNER, 0 if cache == WSL_RUNNER_IMAGE_CACHE else os.getuid()),
             f"cache_root={shlex.quote(root)}",
             f"part={shlex.quote(part)}",
             'owned_dir "$cache_root" || { echo "runner cache ownership lost" >&2; exit 1; }',
@@ -347,7 +566,8 @@ def cache_publish_script(source_sha: str, cache: str = WSL_RUNNER_IMAGE_CACHE) -
     """Authenticate and atomically publish an owned runner-image part."""
     root = str(Path(cache).parent)
     part = f"{cache}.part"
-    lines = ["set -euo pipefail", *_owned_shell(CACHE_OWNER)]
+    owner_uid = 0 if cache == WSL_RUNNER_IMAGE_CACHE else os.getuid()
+    lines = ["set -euo pipefail", *_owned_shell(CACHE_OWNER, owner_uid)]
     lines.extend(
         [
             f"cache_root={shlex.quote(root)}",
@@ -411,8 +631,20 @@ def _stage_selftest(root: Path) -> list[str]:
         return failures
     incoming = Path(f"{stage}.incoming")
     (incoming / "new").write_text("new\n", encoding="ascii")
-    if _run_shell(stage_publish_script(str(stage))).returncode or not (stage / "new").is_file():
+    generation = "a" * SHA256_HEX_LENGTH
+    marker = incoming / GENERATION_FILE
+    marker.write_text(f"{generation}\n", encoding="ascii")
+    marker.chmod(ROOT_READ_MODE)
+    if (
+        _run_shell(stage_publish_script(str(stage), generation)).returncode
+        or not (stage / "new").is_file()
+    ):
         failures.append("owned WSL stage did not publish atomically")
+    previous = Path(f"{stage}.previous")
+    stage.rename(previous)
+    if _run_shell(stage_prepare_script(str(stage))).returncode or not (stage / "new").is_file():
+        failures.append("interrupted WSL publication did not recover the last-good generation")
+    _run_shell(stage_cleanup_script(str(stage)))
     return failures
 
 
@@ -461,8 +693,97 @@ def _link_selftest(root: Path) -> list[str]:
     return failures
 
 
+def _probe_selftest(root: Path) -> list[str]:
+    """Prove missing/stale drift and unsafe metadata remain distinct."""
+    failures: list[str] = []
+    stage = root / "probe-stage"
+    missing = _run_shell("\n".join(["set -euo pipefail", *stage_probe_lines("0" * 64, str(stage))]))
+    if missing.returncode != REMOTE_APPLY_REQUIRED_STATUS:
+        failures.append("missing WSL stage was not classified apply-required")
+    _write_owner(stage, STAGE_OWNER)
+    for member in STAGE_MEMBERS:
+        source = fm.REPO_ROOT / member
+        target = stage / member
+        if source.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(f"fixture:{member}\n", encoding="ascii")
+            target.chmod(stat.S_IMODE(source.stat().st_mode))
+    generation = stage_generation(stage)
+    marker = stage / GENERATION_FILE
+    marker.write_text(f"{generation}\n", encoding="ascii")
+    marker.chmod(ROOT_READ_MODE)
+    probe = "\n".join(["set -euo pipefail", *stage_probe_lines(generation, str(stage))])
+    if _run_shell(probe).returncode:
+        failures.append("matching authenticated WSL generation was refused")
+    marker.chmod(0o644)
+    marker.write_text(f"{'1' * SHA256_HEX_LENGTH}\n", encoding="ascii")
+    marker.chmod(ROOT_READ_MODE)
+    if _run_shell(probe).returncode != REMOTE_APPLY_REQUIRED_STATUS:
+        failures.append("stale WSL generation was not classified apply-required")
+    marker.chmod(0o644)
+    marker.write_text(f"{generation}\n", encoding="ascii")
+    marker.chmod(0o666)
+    if _run_shell(probe).returncode != 1:
+        failures.append("unsafe WSL generation metadata was classified as drift")
+    return failures
+
+
+def _transaction_lock_selftest(root: Path) -> list[str]:
+    """Prove readers coexist, exclude writers, and leave no check residue."""
+    failures: list[str] = []
+    lock_root = root / "lock"
+    lock_root.mkdir(mode=0o755)
+    reader_lines = transaction_lock_lines(
+        exclusive=False, lock_root=str(lock_root), owner_uid=os.getuid()
+    )
+    reader_script = "\n".join(["set -euo pipefail", *reader_lines, "echo READY", "read -r _"])
+    holder = subprocess.Popen(  # noqa: S603 -- fixed Bash runs generated offline selftest
+        ["/bin/bash", "-c", reader_script],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if holder.stdout is None or holder.stdin is None:
+        holder.kill()
+        holder.wait(timeout=5)
+        return ["WSL reader lock selftest did not create its observation pipes"]
+    if holder.stdout.readline().strip() != "READY":
+        failures.append("WSL reader lock did not acquire")
+    writer_lines = transaction_lock_lines(
+        exclusive=True, lock_root=str(lock_root), owner_uid=os.getuid()
+    )
+    writer_lines[-1] = "/usr/bin/flock -xn 9"
+    if _run_shell("\n".join(["set -euo pipefail", *writer_lines])).returncode == 0:
+        failures.append("WSL writer entered while a reader held the generation")
+    holder.terminate()
+    holder.wait(timeout=5)
+    if _run_shell("\n".join(["set -euo pipefail", *writer_lines])).returncode:
+        failures.append("WSL writer did not enter after readers exited")
+    if any(lock_root.iterdir()):
+        failures.append("WSL check lock left durable residue")
+    if holder.returncode == 0:
+        failures.append("killed WSL check did not terminate its lock holder")
+    return failures
+
+
 def run_selftest() -> list[str]:
     """Exercise offline ownership and atomic-publication boundaries."""
     with tempfile.TemporaryDirectory(prefix="ra8-wsl-stage-") as raw:
         root = Path(raw)
-        return _stage_selftest(root) + _cache_selftest(root) + _link_selftest(root)
+        failures = (
+            _stage_selftest(root)
+            + _cache_selftest(root)
+            + _link_selftest(root)
+            + _probe_selftest(root)
+            + _transaction_lock_selftest(root)
+        )
+        if _bootstrap_action("apply", installed=False) != "--ensure":
+            failures.append("mutable operator apply lost its authenticated ensure path")
+        if _bootstrap_action("apply", installed=True) != "--verify-cache":
+            failures.append("installed WSL apply attempted to mutate root-owned uv inputs")
+        if _bootstrap_action("check", installed=False) != "--verify-cache":
+            failures.append("WSL check attempted to mutate uv inputs")
+        return failures
