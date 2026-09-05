@@ -476,7 +476,7 @@
         - (item.stat.mode | default('')) == '0644'
       become: true
       ansible.builtin.copy:
-        src: "{{ item.item }}"
+        src: "/etc/systemd/system/{{ item.item }}"
         dest: "{{ dev_box_reconcile_root }}/unit-previous/{{ item.item | basename }}"
         remote_src: true
       loop: "{{ dev_box_reconcile_live_units.results }}"

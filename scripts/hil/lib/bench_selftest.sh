@@ -26,7 +26,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bench_client.sh"
 # claim the whole "no stale lock" property rests on.
 # Cases 1+2: a fresh bench is FREE, and `run` acquires, runs and releases.
 _bench_st_basic() {
-  local failures=0 rc
+  local failures=0 rc capability
   cmd_status >/dev/null 2>&1
   rc=$?
   if [ "$rc" -eq "$RA8_BENCH_EXIT_FREE" ]; then
@@ -42,6 +42,20 @@ _bench_st_basic() {
     printf '  ok: run acquires, runs its payload and releases\n'
   else
     printf '  FAIL: run exited %s on a trivial payload\n' "$rc"
+    failures=$((failures + 1))
+  fi
+  capability="$(mktemp "${TMPDIR:-/tmp}/ra8-bench-capability.XXXXXX")" || return 1
+  printf 'guardian\n' >"$capability"
+  exec 3<"$capability"
+  cmd_run --intent "selftest: inherited descriptor" --for 60s -- \
+    /usr/bin/python3 -I -c 'import os,sys; sys.exit(os.read(3,9) != b"guardian\n")' >/dev/null 2>&1
+  rc=$?
+  exec 3<&-
+  rm -f "$capability"
+  if [ "$rc" -eq 0 ]; then
+    printf '  ok: run preserves an inherited capability descriptor\n'
+  else
+    printf '  FAIL: run replaced an inherited capability descriptor (rc %s)\n' "$rc"
     failures=$((failures + 1))
   fi
   return "$failures"
