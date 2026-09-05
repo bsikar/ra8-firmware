@@ -686,8 +686,14 @@ C49 and C50 provide separate local supply bypasses. U5.13 connects to U3.6
 U5.11 connects to U3.11 (GPIO10, C6_CS_N); U3.27 (GPIO2, C6_CIPO)
 connects to U5.10. These four radio-side nets use local labels with separate
 short connections, without crossing the supply domains directly.
-Host-side SPI/OE wiring and reset arbitration are incomplete; this is not a
-qualified circuit. The RADIO-009 schematic annotation links to this section.
+The host SPI connections now pass through matching hierarchical ports and
+straight top-sheet wires to the RADIO-008 allocation: U1.F13 (P702) to U5.2
+for SCLK, U1.F15 (P701) to U5.3 for COPI, U1.G14 (P703) to U5.4 for CS_N,
+and U5.5 to U1.F12 (P700) for CIPO. Host and C6 signal nets remain separate
+on opposite sides of U5. Power enable remains U1.F16 (P707) to R7.1.
+OE wiring, reset arbitration and the handshake/data-ready interfaces remain
+incomplete; this is not a qualified circuit. The RADIO-009 schematic
+annotation links to this section.
 
 ### Device and channel assignment
 

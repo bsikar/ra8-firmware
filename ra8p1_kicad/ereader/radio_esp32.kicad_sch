@@ -2055,6 +2055,16 @@
 	)
 	(wire
 		(pts
+			(xy 27.94 91.44) (xy 30.48 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "43d607de-fab2-4f5e-aa5f-26aa35614001")
+	)
+	(wire
+		(pts
 			(xy 134.62 165.1) (xy 134.62 154.94)
 		)
 		(stroke
@@ -2072,6 +2082,16 @@
 			(type default)
 		)
 		(uuid "49041242-6741-4f54-8d88-93efa93dc708")
+	)
+	(wire
+		(pts
+			(xy 27.94 86.36) (xy 30.48 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "49527aba-789f-4517-980f-9e355171b758")
 	)
 	(wire
 		(pts
@@ -2195,6 +2215,16 @@
 	)
 	(wire
 		(pts
+			(xy 27.94 88.9) (xy 30.48 88.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8cf32c90-a174-4d9f-b369-c5a2fac84016")
+	)
+	(wire
+		(pts
 			(xy 35.56 68.58) (xy 35.56 73.66)
 		)
 		(stroke
@@ -2212,6 +2242,16 @@
 			(type default)
 		)
 		(uuid "acf8b950-fafe-484f-976f-eb2b5246af84")
+	)
+	(wire
+		(pts
+			(xy 27.94 83.82) (xy 30.48 83.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "afbcb866-e2b5-4f0b-9e8e-94046a5acf32")
 	)
 	(wire
 		(pts
@@ -2463,6 +2503,50 @@
 			(justify right)
 		)
 		(uuid "14538988-46d7-4b6e-9983-196ebe526cce")
+	)
+	(hierarchical_label "RADIO_SCLK"
+		(shape input)
+		(at 27.94 83.82 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "2b288957-cc8d-4f08-a2f2-23af2835a59b")
+	)
+	(hierarchical_label "RADIO_COPI"
+		(shape input)
+		(at 27.94 86.36 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "2b843c56-a017-4e44-950f-872e6b2e0f1d")
+	)
+	(hierarchical_label "RADIO_CIPO"
+		(shape output)
+		(at 27.94 91.44 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "3179f0c5-3f08-42ad-92ad-e541469f6943")
+	)
+	(hierarchical_label "RADIO_CS_N"
+		(shape input)
+		(at 27.94 88.9 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "4e06b5d8-a346-45af-a9fa-268009bca47b")
 	)
 	(symbol
 		(lib_id "power:+3V3")
