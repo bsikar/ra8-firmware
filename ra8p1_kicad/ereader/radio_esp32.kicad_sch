@@ -1980,7 +1980,7 @@
 		(uuid "fca26e75-f51f-41f0-a917-ac85a049227b")
 	)
 	(no_connect
-		(at 83.82 104.14)
+		(at 96.52 104.14)
 		(uuid "bc12c865-d226-4c37-ba0e-1a85cf17e691")
 	)
 	(wire
@@ -2005,26 +2005,6 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 83.82) (xy 68.58 93.98)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "1469e42d-6913-49f7-bda2-2b090723d692")
-	)
-	(wire
-		(pts
-			(xy 66.04 96.52) (xy 83.82 96.52)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "161f0305-9ad5-48a1-9183-de80c6718eff")
-	)
-	(wire
-		(pts
 			(xy 165.1 154.94) (xy 170.18 154.94)
 		)
 		(stroke
@@ -2032,6 +2012,16 @@
 			(type default)
 		)
 		(uuid "194863c1-cf93-403e-9d24-be558ff49a1f")
+	)
+	(wire
+		(pts
+			(xy 83.82 83.82) (xy 96.52 83.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "29551a1f-9bc1-4542-91da-913dcbd25927")
 	)
 	(wire
 		(pts
@@ -2055,13 +2045,13 @@
 	)
 	(wire
 		(pts
-			(xy 60.96 83.82) (xy 68.58 83.82)
+			(xy 83.82 96.52) (xy 96.52 96.52)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "3a774b9c-c2a7-45c7-bcd7-ff53c7b53132")
+		(uuid "40ac755f-929c-465f-a20a-7c815321c310")
 	)
 	(wire
 		(pts
@@ -2092,6 +2082,16 @@
 			(type default)
 		)
 		(uuid "4af5657d-d66c-439e-aa32-82e2b17f4d38")
+	)
+	(wire
+		(pts
+			(xy 60.96 88.9) (xy 73.66 88.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5df5f126-659c-4b6d-8e8a-0d56b6e9ff68")
 	)
 	(wire
 		(pts
@@ -2135,16 +2135,6 @@
 	)
 	(wire
 		(pts
-			(xy 60.96 86.36) (xy 66.04 86.36)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "72b61230-5c37-4f6e-8bb4-2133ec90a4af")
-	)
-	(wire
-		(pts
 			(xy 137.16 152.4) (xy 144.78 152.4)
 		)
 		(stroke
@@ -2162,6 +2152,16 @@
 			(type default)
 		)
 		(uuid "7cff9e6c-6c02-4c3e-ae2a-568d88e6ece7")
+	)
+	(wire
+		(pts
+			(xy 60.96 86.36) (xy 73.66 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "88e90261-313e-4923-82f3-47399437ef0b")
 	)
 	(wire
 		(pts
@@ -2225,6 +2225,36 @@
 	)
 	(wire
 		(pts
+			(xy 134.62 66.04) (xy 134.62 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b26ba9ae-a0b4-4acd-abcc-7030eb85039b")
+	)
+	(wire
+		(pts
+			(xy 60.96 91.44) (xy 73.66 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b4e9c325-00af-4004-9b27-1eb9ad8cecfb")
+	)
+	(wire
+		(pts
+			(xy 132.08 76.2) (xy 134.62 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c32005c5-d4b9-4a42-bc4d-dc904f17e53d")
+	)
+	(wire
+		(pts
 			(xy 154.94 73.66) (xy 154.94 68.58)
 		)
 		(stroke
@@ -2232,16 +2262,6 @@
 			(type default)
 		)
 		(uuid "c74a802d-2ddb-4a78-9ee0-059dc05e7e8a")
-	)
-	(wire
-		(pts
-			(xy 66.04 86.36) (xy 66.04 96.52)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "d33a6b63-3a81-4e93-84c4-8389c6b11a30")
 	)
 	(wire
 		(pts
@@ -2295,13 +2315,23 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 93.98) (xy 83.82 93.98)
+			(xy 83.82 93.98) (xy 96.52 93.98)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "e95f4154-0bbc-4d1f-876a-400f062370a4")
+		(uuid "e7115d15-96b0-4feb-bcd5-dcce8f9dbbb9")
+	)
+	(wire
+		(pts
+			(xy 60.96 83.82) (xy 73.66 83.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e7728404-58ff-4d6c-a8f1-a758b153743f")
 	)
 	(wire
 		(pts
@@ -2344,7 +2374,7 @@
 		(uuid "fece1c94-1e8b-4e1c-9238-2e051c149521")
 	)
 	(label "C6_SCLK"
-		(at 71.12 93.98 0)
+		(at 83.82 93.98 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -2353,8 +2383,28 @@
 		)
 		(uuid "3bf18d80-1e5a-4aaa-bc49-f8aa526537f1")
 	)
+	(label "C6_CIPO"
+		(at 83.82 83.82 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "5c8470e6-1084-416e-abd2-409c4f90c719")
+	)
+	(label "C6_CS_N"
+		(at 73.66 88.9 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "7367a259-d7c6-437f-88ca-3078b6ab14e1")
+	)
 	(label "C6_COPI"
-		(at 71.12 96.52 0)
+		(at 83.82 96.52 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -2362,6 +2412,46 @@
 			(justify left bottom)
 		)
 		(uuid "7ba75cca-b724-44f9-8e32-97fe6cd420dd")
+	)
+	(label "C6_CIPO"
+		(at 73.66 91.44 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "82c3be37-6807-44f0-bad3-42bc4ebadae6")
+	)
+	(label "C6_COPI"
+		(at 73.66 86.36 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "92cd63c3-11c4-422b-a348-4fa4563f5464")
+	)
+	(label "C6_CS_N"
+		(at 134.62 66.04 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "bd8ede04-ced5-4d63-868c-13d7a9638953")
+	)
+	(label "C6_SCLK"
+		(at 73.66 83.82 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "e34590b0-1ae8-4188-a249-00bc2b524908")
 	)
 	(hierarchical_label "RADIO_PWR_EN"
 		(shape input)
@@ -4199,7 +4289,7 @@
 	)
 	(symbol
 		(lib_id "Wireless:ESP32-C6-WROOM-1-N8")
-		(at 101.6 76.2 0)
+		(at 114.3 76.2 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -4210,7 +4300,7 @@
 		(fields_autoplaced yes)
 		(uuid "96b38abe-3f8f-40ed-9d14-ae4a0b8db615")
 		(property "Reference" "U3"
-			(at 101.6 66.04 0)
+			(at 114.3 66.04 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -4220,7 +4310,7 @@
 			)
 		)
 		(property "Value" "ESP32-C6-WROOM-1-N8"
-			(at 101.6 68.58 0)
+			(at 114.3 68.58 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -4230,7 +4320,7 @@
 			)
 		)
 		(property "Footprint" "Wireless:XCVR_ESP32-C6-WROOM-1-N8"
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4241,7 +4331,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.espressif.com/sites/default/files/documentation/esp32-c6-wroom-1_wroom-1u_datasheet_en.pdf"
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4252,7 +4342,7 @@
 			)
 		)
 		(property "Description" "Wi-Fi 6 + BLE 5.3 + 802.15.4 RISC-V SoC module, 8MB flash"
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4263,7 +4353,7 @@
 			)
 		)
 		(property "PARTREV" "1.0"
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4274,7 +4364,7 @@
 			)
 		)
 		(property "STANDARD" "Manufacturer Recommendations"
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4285,7 +4375,7 @@
 			)
 		)
 		(property "MAXIMUM_PACKAGE_HEIGHT" "3.25mm"
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4296,7 +4386,7 @@
 			)
 		)
 		(property "MANUFACTURER" "Espressif Systems"
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4307,7 +4397,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "Espressif Systems"
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4318,7 +4408,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "ESP32-C6-WROOM-1-N8"
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4329,7 +4419,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "1965-ESP32-C6-WROOM-1-N8CT-ND"
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4340,7 +4430,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/espressif-systems/ESP32-C6-WROOM-1-N8/17728866"
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4351,7 +4441,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 DigiKey: Active; 1435 in stock; USD qty1 5.55, qty10 4.80, qty100 4.1844. Tariff may apply; recheck before ordering."
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4362,7 +4452,7 @@
 			)
 		)
 		(property "Procurement_Status" "Sourced candidate; electrical integration and footprint qualification pending"
-			(at 101.6 76.2 0)
+			(at 114.3 76.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

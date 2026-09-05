@@ -683,7 +683,10 @@ U5 is placed with VCCA on +3V3_MCU, VCCB on +3V3_RADIO and pin 7 on GND.
 Its exact manufacturer and DigiKey ordering fields are included in the BOM.
 C49 and C50 provide separate local supply bypasses. U5.13 connects to U3.6
 (GPIO6, C6_SCLK), and U5.12 connects to U3.7 (GPIO7, C6_COPI).
-Remaining SPI/OE wiring and reset arbitration are incomplete; this is not a
+U5.11 connects to U3.11 (GPIO10, C6_CS_N); U3.27 (GPIO2, C6_CIPO)
+connects to U5.10. These four radio-side nets use local labels with separate
+short connections, without crossing the supply domains directly.
+Host-side SPI/OE wiring and reset arbitration are incomplete; this is not a
 qualified circuit. The RADIO-009 schematic annotation links to this section.
 
 ### Device and channel assignment
