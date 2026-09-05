@@ -670,3 +670,98 @@ for capacitance in (cmin, ct_pf, cmax):
 print('RADIO-007 PASS: arithmetic only; complete startup qualification open.')
 PY
 ```
+
+## RADIO-009: SPI power-domain isolation
+
+Revision 1, 2026-09-05. Electrical selection record for the proposed
+TXU0304PWR SPI isolator on [the radio sheet](../ereader/radio_esp32.kicad_sch).
+Tracking: [issue #826](https://github.com/bsikar/ra8-firmware/issues/826).
+The local symbol is being constructed; this circuit is not yet placed,
+connected or qualified. RADIO-009 is reserved for its schematic annotation.
+
+### Device and channel assignment
+
+The authority is [TI TXU0304 datasheet](https://www.ti.com/lit/ds/symlink/txu0304.pdf),
+SCES935A, sections 6, 7.5, 7.11, 8.1, 9.3 and 12.1. The PW package has
+14 pins, including visible NC contacts 6 and 9; it has no exposed-pad pin.
+This is a fixed-direction buffer, not an automatic-direction TXB device.
+
+| PW contact | Function | Proposed connection |
+| --- | --- | --- |
+| 1 | VCCA | +3V3_MCU |
+| 14 | VCCB | +3V3_RADIO |
+| 7 | GND | Common GND |
+| 2 -> 13 | A1 -> B1Y | Host SCLK -> C6 SCLK |
+| 3 -> 12 | A2 -> B2Y | Host COPI -> C6 COPI |
+| 4 -> 11 | A3 -> B3Y | Host CS_N -> C6 CS_N |
+| 10 -> 5 | B4 -> A4Y | C6 CIPO -> host CIPO |
+| 8 | OE, active high | Default-low interface enable; arbitration unresolved |
+| 6, 9 | NC | Unconnected, visible in symbol |
+
+Provide separate local 100 nF bypass capacitors from each supply to GND.
+Do not bridge the two supplies through either capacitor. Both ports support
+1.1..5.5 V, so equal nominal 3.3 V rails are permitted. This device provides
+power-domain separation, not galvanic isolation.
+
+### Conditional round-trip SPI timing budget
+
+At VCCA=VCCB=3.3 +/-0.3 V, maximum propagation delay is 11 ns in each
+direction over -40..125 C. TI specifies this with 5 pF load and 10 kohm
+test resistance. A larger actual load is not covered by this timing claim.
+
+For an initial 5 MHz SPI clock with opposite-edge launch and sample:
+
+```text
+T = 1/(5e6 Hz) = 200 ns
+Half-cycle = T/2 = 100 ns
+Translator round trip = 11 ns outbound SCLK + 11 ns inbound CIPO = 22 ns
+Remaining budget = 100 - 22 = 78 ns
+
+Required:
+C6 clock-to-output + RA8P1 setup + trace/skew allowance < 78 ns
+```
+
+This is a conditional budget, NOT timing closure or a 5 MHz guarantee.
+The chosen SPI mode, C6 clock-to-output limit, RA8P1 input setup requirement,
+duty-cycle distortion, output loading and interconnect delay must satisfy
+the inequality together. Frequency reduction does not resolve an invalid
+logic threshold, off-state path or reset sequence.
+
+### Power-off and enable constraints
+
+For one supply at 0 V and the other within 0..5.5 V, TI specifies Ioff of
++/-2 uA per port contact over -40..85 C and +/-2.5 uA over -40..125 C,
+with signal voltages in 0..5.5 V. The separate floating-supply leakage test
+uses signals at GND; do not extend that test to a driven-high floating rail.
+
+OE low disables all outputs. At the same 3.3 V timing test point, allow
+42 ns maximum disable time over -40..125 C before treating outputs as
+high impedance. This is a propagation limit under TI's stated test load,
+not a complete rail-collapse or firmware sequencing allowance.
+
+Use an external default-low OE network and establish valid power/reset
+conditions before enabling. Do not connect OE directly to RADIO_PWR_EN and
+assume that the load-switch command proves stable radio power. The C6-side
+CS_N idle level and host-side CIPO idle level need explicit handling while
+the buffer is disabled. GPIO handshakes, reset and debug paths require their
+own off-state review; isolating these four SPI channels does not isolate
+the complete module.
+
+### Reproducible arithmetic
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+
+frequency_hz = F(5_000_000)
+period_ns = F(1_000_000_000)/frequency_hz
+half_cycle_ns = period_ns/2
+outbound_ns = F(11)
+inbound_ns = F(11)
+remaining_ns = half_cycle_ns-outbound_ns-inbound_ns
+assert period_ns == 200 and half_cycle_ns == 100
+assert outbound_ns+inbound_ns == 22
+assert remaining_ns == 78
+print('RADIO-009 PASS: 78 ns conditional remaining budget; timing not closed.')
+PY
+```
