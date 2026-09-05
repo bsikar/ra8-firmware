@@ -446,7 +446,7 @@ ra8_misra_refresh_dump() {
 # reviewed vendored/generated trees are removed here, before either producer or
 # consumer sees the population.
 ra8_misra_source_files() {
-  local listing="$1" root
+  local listing="$1" mode root
   for root in "${RA8_MISRA_ROOTS[@]}"; do
     if [[ ! -e "$root" ]]; then
       echo "[ERROR] MISRA source root does not exist: $root" >&2
@@ -456,7 +456,14 @@ ra8_misra_source_files() {
       echo "[ERROR] MISRA source root is not a real directory: $root" >&2
       return 1
     fi
-    if [[ ! -r "$root" || ! -x "$root" ]]; then
+    if ! mode="$(stat -c '%a' -- "$root")"; then
+      echo "[ERROR] cannot inspect MISRA source root permissions: $root" >&2
+      return 1
+    fi
+    # Effective-access tests always pass for a root-run container. Check the
+    # directory's declared read/search bits so chmod 000 is rejected under
+    # every caller identity, including CI's root container user.
+    if (((8#$mode & 0444) == 0 || (8#$mode & 0111) == 0)); then
       echo "[ERROR] MISRA source root is not readable: $root" >&2
       return 1
     fi
