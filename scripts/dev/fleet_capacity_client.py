@@ -61,6 +61,14 @@ def policy_flags(host: dict[str, Any]) -> list[str]:
     ]
 
 
+def state_group(host: dict[str, Any]) -> str:
+    """Return the account group that executes the host-local capacity script."""
+    host_class = fm.CLASSES[host["class"]]
+    if host_class.transport == "wsl":
+        return "root"
+    return str(host["connect"]["user"])
+
+
 def run_selftest(data: dict[str, Any]) -> list[str]:
     """Prove exact streamed capacity argv for windowed and ordinary hosts."""
     failures: list[str] = []
@@ -81,6 +89,10 @@ def run_selftest(data: dict[str, Any]) -> list[str]:
     expected_nas = ["--full-instances", "2"]
     if policy_flags(data["hosts"]["truenas"]) != expected_nas:
         failures.append("ordinary Docker restore argv lost its declared capacity")
+    if state_group(data["hosts"]["win-ci"]) != "root":
+        failures.append("WSL capacity state did not bind to its root executor")
+    if state_group(data["hosts"]["truenas"]) != "truenas_admin":
+        failures.append("SSH capacity state lost its connecting account group")
     malformed = {**data["hosts"]["win-ci"], "quiet_hours": {"window": "18:00"}}
     try:
         policy_flags(malformed)
@@ -112,12 +124,12 @@ def run(data: dict[str, Any], name: str, args: list[str], command_runner: Comman
     cls = fm.CLASSES[host["class"]]
     if cls.capacity_kind == "none":
         return _fail(f"{name} is a {host['class']} host and carries no runners to scale")
-    state_group = str(host["connect"]["user"])
+    state_group_name = state_group(host)
     flags = [
         "--kind",
         cls.capacity_kind,
         "--state-group",
-        state_group,
+        state_group_name,
         *policy_flags(host),
     ]
     if cls.capacity_kind == "docker":

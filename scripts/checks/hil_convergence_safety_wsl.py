@@ -72,6 +72,10 @@ def _path_proof_requirements() -> set[str]:
     return {
         '  [ -d "$1" ] && [ ! -L "$1" ] && [ "$(readlink -f -- "$1")" = "$1" ] || {',
         '  [ -f "$1" ] && [ ! -L "$1" ] && [ "$(readlink -f -- "$1")" = "$1" ] || {',
+        "require_managed_python() {",
+        '  [ -L "$1" ] && [ "$(readlink -- "$1")" = python ] || {',
+        '  [ -L "$python_link" ] && [ "$(readlink -- "$python_link")" = "$2" ] &&',
+        '    [ "$(readlink -f -- "$1")" = "$(readlink -f -- "$2")" ] || {',
         'require_real_dir "$(dirname "$managed_root")"',
         'require_real_dir "$(dirname "$managed_cache")"',
         '  ! /usr/bin/mountpoint -q -- "$1" || {',
@@ -112,7 +116,7 @@ def _sync_requirements() -> set[str]:
 def _verify_requirements() -> set[str]:
     """Return required managed-environment verification commands."""
     return {
-        'require_real_file "$managed_root/bin/python3"',
+        'require_managed_python "$managed_root/bin/python3" ',
         'require_real_file "$managed_root/bin/ansible-galaxy"',
         '  mv -f -- "$marker" "$managed_root/.ra8-infra-lock.sha256"',
         '  sync_file "$managed_root/.ra8-infra-lock.sha256"',
@@ -226,7 +230,7 @@ def environment_errors(tree: ast.Module) -> list[str]:
         "[*_isolation_lines(), "
         "*_path_proof_lines(spec.stage, spec.managed_root, spec.managed_cache), "
         "*_toolchain_sync_lines(spec.stage, spec.mode, spec.system_python), "
-        "*_toolchain_verify_lines(spec.stage, spec.ansible_playbook)]",
+        "*_toolchain_verify_lines(spec.stage, spec.ansible_playbook, spec.system_python)]",
         mode="eval",
     ).body
     sync = _function(tree, "_toolchain_sync_lines")

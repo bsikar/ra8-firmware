@@ -301,7 +301,7 @@ def cmd_inventory(data: dict[str, Any], args: argparse.Namespace) -> int:
         print(body, end="")
         return 0
     _publish_inventory(body)
-    print(f"wrote {fm.INVENTORY.relative_to(fm.REPO_ROOT)} ({len(data['hosts'])} host(s))")
+    print(f"wrote {fm.inventory_label()} ({len(data['hosts'])} host(s))")
     return 0
 
 
@@ -827,6 +827,7 @@ def cmd_selftest(data: dict[str, Any], _args: argparse.Namespace) -> int:
         + fcc.run_selftest(data)
         + _bench_guard_inheritance_selftest()
         + _inventory_publication_selftest()
+        + fm.controller_inventory_selftest(data)
         + fb.parser_selftest(_parser)
     )
     if data["hosts"]["win-ci"]["class"] not in ftv.CONTAINER_RUNNER_CLASSES:

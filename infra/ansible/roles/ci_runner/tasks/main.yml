@@ -411,6 +411,43 @@
       stringData:
         github_token: "{{ ci_runner_github_pat }}"
 
+- name: Create the managed Helm plugin root
+  become: true
+  ansible.builtin.file:
+    path: "{{ ci_runner_helm_plugins_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Create the held-admission ARC post-renderer plugin
+  when: fleet_reconcile_activation_hold | bool
+  become: true
+  ansible.builtin.file:
+    path: "{{ ci_runner_activation_post_renderer_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the held-admission ARC post-renderer manifest
+  when: fleet_reconcile_activation_hold | bool
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ ci_runner_activation_post_renderer_dir }}/plugin.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      apiVersion: v1
+      type: postrenderer/v1
+      name: {{ ci_runner_activation_post_renderer_name }}
+      version: 1.0.0
+      runtime: subprocess
+      runtimeConfig:
+        platformCommand:
+          - command: ${HELM_PLUGIN_DIR}/render.py
+
 - name: Install the held-admission ARC post-renderer
   when: fleet_reconcile_activation_hold | bool
   become: true
@@ -436,6 +473,25 @@
           print(f"expected one AutoscalingRunnerSet, found {matches}", file=sys.stderr)
           raise SystemExit(2)
       yaml.safe_dump_all(documents, sys.stdout, explicit_start=True, sort_keys=False)
+- name: Prove Helm loaded the held-admission ARC post-renderer
+  when: fleet_reconcile_activation_hold | bool
+  become: true
+  ansible.builtin.command:
+    argv: ["{{ ci_runner_helm_bin }}", plugin, list]
+  environment:
+    HELM_PLUGINS: "{{ ci_runner_helm_plugins_dir }}"
+  register: ci_runner_activation_plugin_list
+  changed_when: false
+  check_mode: false
+
+- name: Require the exact held-admission ARC post-renderer plugin
+  when: fleet_reconcile_activation_hold | bool
+  ansible.builtin.assert:
+    that:
+      - ci_runner_activation_post_renderer_name in ci_runner_activation_plugin_list.stdout
+      - "'postrenderer/v1' in ci_runner_activation_plugin_list.stdout"
+    fail_msg: Helm did not load the managed ARC held-admission post-renderer plugin.
+
 
 - name: Install the ra8-ci runner scale set
   become: true
@@ -448,7 +504,7 @@
     release_namespace: "{{ ci_runner_namespace }}"
     kubeconfig: "{{ ci_runner_kubeconfig }}"
     post_renderer: >-
-      {{ ci_runner_activation_post_renderer
+      {{ ci_runner_activation_post_renderer_name
          if fleet_reconcile_activation_hold | bool else omit }}
     values:
       githubConfigUrl: "{{ ci_runner_github_url }}"
@@ -488,3 +544,5 @@
                 limits:
                   cpu: "{{ ci_runner_cpu_limit }}"
                   memory: "{{ ci_runner_mem_limit }}"
+  environment:
+    HELM_PLUGINS: "{{ ci_runner_helm_plugins_dir }}"

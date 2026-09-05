@@ -39,6 +39,9 @@ SELFTEST_SIGNAL_BOUND = 8
 # ci_runner check mode empties and restages its build context: exactly these
 # two tasks report changed on an otherwise-converged producer.
 PRODUCER_CHECK_NOISE = 2
+# While ARC admission is deliberately held at zero, its post-renderer removes
+# the scale-set difference and only the context-restage check noise remains.
+PRODUCER_HELD_CHECK_NOISE = 1
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -314,7 +317,9 @@ def reconcile_host(
         return True, {**previous, "checked_at": options.now}
     why = "drift" if actionable_changes else "periodic full verification"
     print(f"fleet-reconcile: {host}: applying ({why}, changed={changed})")
-    applied, _ = apply_host(data, host, run, expected_check_changes=expected_changes)
+    held_arc = producer and fm.CLASSES[data["hosts"][host]["class"]].capacity_kind == "k8s"
+    held_changes = PRODUCER_HELD_CHECK_NOISE if held_arc else expected_changes
+    applied, _ = apply_host(data, host, run, expected_check_changes=held_changes)
     if not applied:
         return False, {}
     return True, {
@@ -871,6 +876,7 @@ def selftest() -> int:
     _selftest_timeout(failures)
     failures.extend(frp.run_selftest())
     _selftest_signal_quarantine(failures)
+    failures.extend(frs.runtime_inventory_selftest(fm))
     failures.extend(frs.run(fm.REPO_ROOT))
     for failure in failures:
         print(f"fleet_reconcile.py --selftest: FAIL: {failure}", file=sys.stderr)
@@ -920,6 +926,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         state_dir = args.state_dir or Path.home() / ".local/state/ra8-fleet-reconcile"
         prepare_state_dir(state_dir)
+        if args.require_installed_authority:
+            fm.validate_runtime_inventory(state_dir)
         data = fm.load()
         options = ReconcileOptions(
             args.mode,

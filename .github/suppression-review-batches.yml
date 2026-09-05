@@ -28,8 +28,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
-    assigned_rows: 65
-    rows_sha256: 6de0887259da385440aff34e5860cbad51423acfe378b86c906b4a942cf33b88
+    assigned_rows: 55
+    rows_sha256: de31eb391c91f9f4be26610e24da33ae35bb6b46d08f88b94113810560f47aa6
     partition: "remaining concern rows: ansible/clang-tidy/python/cmake cross-review"
     evidence:
       - "issue-790 batch-b cross-review record"
@@ -573,3 +573,28 @@ batches:
       - >-
         The isolated import selftest uses the current Python executable and the
         fixed current module with argv only and shell interpretation disabled.
+  - id: runner-live-runtime-governance-20260905
+    authority: repository-suppression-review
+    date: 2026-09-05
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 14
+    rows_sha256: e293a4bcddd421a896d2b66f9fbb85c1de42b325da9fa448e36b0b32cf18ea0b
+    partition: >-
+      Live K3s, TrueNAS dev-slice, and WSL convergence controls after successful
+      deployment, including exact readbacks and repair/assertion consumers.
+    evidence:
+      - >-
+        Ten durable sites preserve predecessor binding hashes after task reason
+        and placement changes; four newly visible controls have exact consumers.
+      - >-
+        The two failed_when false readbacks interrogate Windows task and clock
+        state; their registered results are immediately interpreted and cannot
+        convert a failed convergence or assertion into success.
+      - >-
+        The live WSL apply completed successfully and its exact check recap was
+        ok with changed=0 after these controls settled.
+      - >-
+        Authority aggregates remain 1010 authorities and 3783 values, value
+        253831d91b5edb8cc84bce46f2836daa337aef53163c367437a9d987047aae6f,
+        reason 57b25e3cd5690f0e6b90be422fe1fedc6df168481a4b02ccd17f8e0f7781c7b7,
+        classification ad61deedcc8b442e7d8a361f33e3db25b639a5462ec4806f82546a14a658bd0c.

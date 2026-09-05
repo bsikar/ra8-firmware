@@ -155,12 +155,6 @@
       changed_when: false
       check_mode: false
 
-    - name: Settle on the canonical image ID
-      ansible.builtin.set_fact:
-        ci_runner_docker_source_image_id: >-
-          {{ (ci_runner_docker_source_manifest_local.stdout
-              if (ci_runner_docker_image_source_local_archive | trim) | length > 0
-              else ci_runner_docker_source_manifest_remote.stdout) | trim }}
 
     - name: Checksum the target's staged image archive
       become: true
@@ -295,6 +289,44 @@
           - "{{ ci_runner_docker_image_archive }}"
       changed_when: true
 
+    - name: Inspect the loaded-image source marker
+      become: true
+      ansible.builtin.stat:
+        path: "{{ ci_runner_docker_image_source_marker }}"
+        follow: false
+      register: ci_runner_docker_image_source_marker_stat
+      check_mode: false
+
+    - name: Refuse an unsafe loaded-image source marker
+      ansible.builtin.assert:
+        that:
+          - >-
+            not (ci_runner_docker_image_source_marker_stat.stat.exists | default(false))
+            or (
+              ci_runner_docker_image_source_marker_stat.stat.isreg | default(false)
+              and not (ci_runner_docker_image_source_marker_stat.stat.islnk | default(false))
+              and (ci_runner_docker_image_source_marker_stat.stat.uid | default(-1)) == 0
+              and (ci_runner_docker_image_source_marker_stat.stat.gid | default(-1)) == 0
+              and (ci_runner_docker_image_source_marker_stat.stat.mode | default('')) == '0644'
+            )
+        fail_msg: >-
+          {{ ci_runner_docker_image_source_marker }} is not a root-owned
+          regular mode-0644 image-source marker.
+
+    - name: Read the loaded-image source marker
+      when: ci_runner_docker_image_source_marker_stat.stat.exists | default(false)
+      become: true
+      ansible.builtin.slurp:
+        src: "{{ ci_runner_docker_image_source_marker }}"
+      register: ci_runner_docker_image_source_marker_read
+      check_mode: false
+
+    - name: Settle on the loaded canonical archive checksum
+      ansible.builtin.set_fact:
+        ci_runner_docker_loaded_source_checksum: >-
+          {{ ci_runner_docker_image_source_marker_read.content
+             | default('') | b64decode | trim }}
+
     - name: Read the currently loaded image ID
       become: true
       ansible.builtin.command:
@@ -313,20 +345,24 @@
     - name: Report a stale loaded image during a dry run
       when:
         - ansible_check_mode
-        - ci_runner_docker_image_probe.stdout | trim
-          != ci_runner_docker_source_image_id
+        - >-
+          ci_runner_docker_image_probe.rc != 0
+          or ci_runner_docker_loaded_source_checksum
+             != ci_runner_docker_source_checksum
       ansible.builtin.debug:
         msg: >-
-          Would load canonical image ID {{ ci_runner_docker_source_image_id }}
-          over current {{ ci_runner_docker_image_probe.stdout
-                          | default('<absent>', true) | trim }}.
+          Would load canonical archive SHA-256
+          {{ ci_runner_docker_source_checksum }} over target marker
+          {{ ci_runner_docker_loaded_source_checksum | default('<absent>', true) }}.
       changed_when: true
 
     - name: Load the canonical toolchain image when the tag is stale
       when:
         - not ansible_check_mode
-        - ci_runner_docker_image_probe.stdout | trim
-          != ci_runner_docker_source_image_id
+        - >-
+          ci_runner_docker_image_probe.rc != 0
+          or ci_runner_docker_loaded_source_checksum
+             != ci_runner_docker_source_checksum
       become: true
       ansible.builtin.command:
         argv: [docker, load, --input, "{{ ci_runner_docker_image_archive }}"]
@@ -347,27 +383,32 @@
       register: ci_runner_docker_loaded_image
       changed_when: false
 
-    - name: Assert the loaded image is exactly the producer artifact
+    - name: Assert the validated archive produced a Docker image identity
       when: not ansible_check_mode
       ansible.builtin.assert:
         that:
           - ci_runner_docker_loaded_image.stdout | trim
-            == ci_runner_docker_source_image_id
+            is match('^sha256:[0-9a-f]{64}$')
         fail_msg: >-
-          {{ ci_runner_docker_image }} resolves to
-          {{ ci_runner_docker_loaded_image.stdout | trim }}, not canonical ID
-          {{ ci_runner_docker_source_image_id }} after loading the validated
-          archive. Refusing to boot an unproven toolchain.
+          {{ ci_runner_docker_image }} did not resolve to a Docker image after
+          loading the checksum-verified canonical archive.
         success_msg: >-
-          {{ ci_runner_docker_image }} is canonical ID
-          {{ ci_runner_docker_source_image_id }}
+          {{ ci_runner_docker_image }} loaded as
+          {{ ci_runner_docker_loaded_image.stdout | trim }} from canonical
+          archive SHA-256 {{ ci_runner_docker_source_checksum }}.
+
+    - name: Select the Docker-native image identity for container comparisons
+      ansible.builtin.set_fact:
+        ci_runner_docker_target_image_id: >-
+          {{ (ci_runner_docker_loaded_image.stdout
+              if not ansible_check_mode
+              else ci_runner_docker_image_probe.stdout) | default('') | trim }}
 
     - name: Prove the canonical image can launch Just before admitting a listener
-      # Every workflow enters the repository through Just. Image-ID parity is
-      # necessary, but a listener that cannot execute that entry point can
-      # still join the shared label and turn every assigned job into an exit
-      # 127 provisioning failure. Probe the exact loaded image before this
-      # converge is allowed to create or recreate a listener.
+      # Archive-checksum binding proves which bytes were loaded. A listener
+      # still must execute the repository's Just entry point before admission.
+      # Probe the exact loaded image before this converge may create or
+      # recreate a listener.
       when: not ansible_check_mode
       become: true
       ansible.builtin.command:
@@ -380,6 +421,17 @@
           - "{{ ci_runner_docker_image }}"
           - --version
       changed_when: false
+
+    - name: Record the checksum-verified archive behind the loaded image
+      when: not ansible_check_mode
+      become: true
+      ansible.builtin.copy:
+        dest: "{{ ci_runner_docker_image_source_marker }}"
+        owner: root
+        group: root
+        mode: "0644"
+        content: "{{ ci_runner_docker_source_checksum }}\n"
+
 
     - name: Inspect the image and state of existing runner containers
       become: true
@@ -406,7 +458,7 @@
              + ([item.item.container]
                 if item.rc == 0
                    and (item.stdout.split() | first | default(''))
-                       != ci_runner_docker_source_image_id
+                       != ci_runner_docker_target_image_id
                 else []) }}
       loop: "{{ ci_runner_docker_existing_containers.results }}"
       loop_control:
@@ -416,7 +468,7 @@
       when:
         - item.rc == 0
         - (item.stdout.split() | first | default(''))
-          != ci_runner_docker_source_image_id
+          != ci_runner_docker_target_image_id
         - (item.stdout.split() | last | default('false')) == 'true'
       become: true
       ansible.builtin.command:
@@ -755,15 +807,15 @@
       loop_control:
         label: "{{ item.name }}"
 
-    - name: Assert every container uses the canonical producer image
+    - name: Assert every container uses the validated Docker-native image
       when: not ansible_check_mode
       ansible.builtin.assert:
         that:
-          - item.stdout | trim == ci_runner_docker_source_image_id
+          - item.stdout | trim == ci_runner_docker_target_image_id
         fail_msg: >-
-          {{ item.item.container }} uses {{ item.stdout | trim }}, not canonical
-          producer ID {{ ci_runner_docker_source_image_id }}. The tag is current
-          but Compose did not recreate the stale container.
+          {{ item.item.container }} uses {{ item.stdout | trim }}, not loaded
+          target ID {{ ci_runner_docker_target_image_id }}. The canonical
+          archive is current but Compose did not recreate the stale container.
       loop: "{{ ci_runner_docker_container_images.results }}"
       loop_control:
         label: "{{ item.item.name }}"

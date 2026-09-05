@@ -46,13 +46,13 @@ class MaintenanceDecision:
     status: int
 
 
-def playbook_executable(python: str) -> str:
-    """Return the executable beside one managed Python, failing closed."""
-    candidate = Path(python).parent / "ansible-playbook"
+def playbook_prefix(python: str) -> list[str]:
+    """Return the relocation-safe Ansible module entry under managed Python."""
+    candidate = Path(python)
     if not candidate.is_file() or not os.access(candidate, os.X_OK):
-        message = f"locked Ansible executable is absent beside {python}"
+        message = f"locked Python executable is absent: {python}"
         raise MaintenanceError(message)
-    return str(candidate)
+    return [str(candidate), "-m", "ansible.cli.playbook"]
 
 
 def playbook_argv(
@@ -65,7 +65,7 @@ def playbook_argv(
     """Build one inventory-backed playbook argv from locked authorities."""
     variables = fm.role_vars(data, name, host)
     argv = [
-        playbook_executable(sys.executable),
+        *playbook_prefix(sys.executable),
         "-i",
         str(fm.INVENTORY),
         f"playbooks/{fm.PLAYS[play].playbook}",
@@ -279,13 +279,13 @@ def _sanitizer_selftest(
     managed.mkdir(parents=True)
     hostile_bin.mkdir(parents=True)
     python = managed / "python3"
-    playbook = managed / "ansible-playbook"
-    for path in (python, playbook, hostile_bin / "ansible-playbook"):
+    for path in (python, hostile_bin / "ansible-playbook"):
         path.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
         path.chmod(0o755)
     hostile["PATH"] = str(hostile_bin)
-    if playbook_executable(str(python)) != str(playbook):
-        failures.append("hostile PATH replaced locked ansible-playbook")
+    expected_prefix = [str(python), "-m", "ansible.cli.playbook"]
+    if playbook_prefix(str(python)) != expected_prefix:
+        failures.append("hostile PATH replaced the managed Ansible module entry")
     return failures
 
 

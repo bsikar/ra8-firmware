@@ -10,9 +10,20 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Protocol
 
 CAPACITY_LOCK_MODE = 0o660
 UNSAFE_MOVE_COUNT = 2
+
+
+class InventoryModel(Protocol):
+    """Mutable inventory authority surface exercised by the selftest."""
+
+    INVENTORY: Path
+    HOST_VARS_DIR: Path
+
+    def validate_runtime_inventory(self, state_dir: Path) -> None:
+        """Validate one installed runtime inventory."""
 
 
 def _named_task_block(role_text: str, task_name: str) -> str:
@@ -479,6 +490,31 @@ def _source_contract_selftest(repo_root: Path, failures: list[str]) -> None:
         weakened = texts[name].replace(value, "", 1)
         if weakened.count(value) == expected:
             failures.append("source contract mutation unexpectedly stayed invisible")
+
+
+def runtime_inventory_selftest(model: InventoryModel) -> list[str]:
+    """Prove installed inventory and host variables share one exact authority."""
+    failures: list[str] = []
+    original = model.INVENTORY
+    with tempfile.TemporaryDirectory(prefix="ra8-runtime-inventory-") as raw:
+        state_dir = Path(raw)
+        inventory_dir = state_dir / "inventory"
+        inventory_dir.mkdir()
+        model.INVENTORY = inventory_dir / "hosts.ini"
+        host_vars = inventory_dir / "host_vars"
+        host_vars.symlink_to(model.HOST_VARS_DIR)
+        try:
+            model.validate_runtime_inventory(state_dir)
+            host_vars.unlink()
+            host_vars.symlink_to(state_dir)
+            try:
+                model.validate_runtime_inventory(state_dir)
+                failures.append("runtime inventory accepted a foreign host-vars authority")
+            except ValueError:
+                pass
+        finally:
+            model.INVENTORY = original
+    return failures
 
 
 def run(repo_root: Path) -> list[str]:
