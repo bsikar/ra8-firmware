@@ -56,8 +56,8 @@ No onboard J-Link MCU is included.
 
 Connector and switch ordering codes remain to be selected. R1-R5 use
 Yageo RC0603FR-0710KL; their ratings and sourcing are recorded in the BOM.
-The main oscillator is wired as described below. Open RTC oscillator
-pins in this increment are not intentionally unused pins.
+Both oscillator networks are wired as described below and in the linked
+calculation records; board-level matching remains required.
 
 ## Oscillator qualification basis
 
@@ -108,7 +108,9 @@ Renesas's group-10 example, not a measured parasitic value. No external
 feedback or damping resistor is fitted in this initial network. The PCB
 must pass negative-resistance, startup, frequency and drive measurements;
 adjust load capacitance or add damping only with matching evidence.
-The RTC XCIN/XCOUT circuit is still unfinished.
+The RTC uses Y2 ABS07-LR-32.768KHZ-6-1-T and 4 pF C37/C38 on XCIN/XCOUT.
+Its separate CLK-002 calculation records the exact part, assumed parasitics,
+initial low-power-mode-2 setting and required hardware validation.
 
 Sourcing checked 2026-09-05: DigiKey indexed stock 13,578 for Y1
 (`490-18296-1-ND`, USD 0.32 / 0.275 / 0.239 at 1 / 10 / 100), and

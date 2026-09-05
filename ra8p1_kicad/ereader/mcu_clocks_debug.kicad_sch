@@ -538,6 +538,171 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Device:Crystal_Small"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "Y"
+				(at 0 2.54 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "Crystal_Small"
+				(at 0 -2.54 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Two pin crystal, small symbol"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "quartz ceramic resonator oscillator"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "Crystal*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "Crystal_Small_0_1"
+				(polyline
+					(pts
+						(xy -1.27 -0.762) (xy -1.27 0.762)
+					)
+					(stroke
+						(width 0.381)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(rectangle
+					(start -0.762 -1.524)
+					(end 0.762 1.524)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.27 -0.762) (xy 1.27 0.762)
+					)
+					(stroke
+						(width 0.381)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "Crystal_Small_1_1"
+				(pin passive line
+					(at -2.54 0 0)
+					(length 1.27)
+					(name "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 2.54 0 180)
+					(length 1.27)
+					(name "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Device:R"
 			(pin_numbers
 				(hide yes)
@@ -7009,7 +7174,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "CLK-001: Y1 24 MHz / Murata XRCGB24M000F3M19R0\nCrystal CL = 6 pF; effective Cstray = 2 pF ASSUMED.\nCL = C35*C36/(C35+C36) + Cstray\nC35 = C36 = 2*(6-2) = 8 pF (NP0, +/-0.5 pF).\nCheck: 8*8/(8+8) + 2 = 6 pF. At fixed stray: 5.75..6.25 pF.\nInitial matching only: verify frequency, startup and drive <= 300 uW.\nFull derivation + Python check: ../design/clock_calculations.md\nRTC XCIN/XCOUT network remains to be completed."
+	(text "CLK-001: Y1 24 MHz / Murata XRCGB24M000F3M19R0\nCrystal CL = 6 pF; effective Cstray = 2 pF ASSUMED.\nCL = C35*C36/(C35+C36) + Cstray\nC35 = C36 = 2*(6-2) = 8 pF (NP0, +/-0.5 pF).\nCheck: 8*8/(8+8) + 2 = 6 pF. At fixed stray: 5.75..6.25 pF.\nInitial matching only: verify frequency, startup and drive <= 300 uW.\nFull derivation + Python check: ../design/clock_calculations.md"
 		(exclude_from_sim no)
 		(at 248.92 68.58 0)
 		(effects
@@ -7042,6 +7207,17 @@
 			(justify left)
 		)
 		(uuid "5a2c4f74-52db-4b54-8008-1514af2eb2d3")
+	)
+	(text "CLK-002: Y2 ABS07-LR-32.768KHZ-6-1-T\nCrystal CL=6 pF; Cstray=4 pF ASSUMED.\nCL=C37*C38/(C37+C38)+Cstray\nC37=C38=2*(6-4)=4 pF, +/-0.25 pF NP0.\nCheck: 4*4/(4+4)+4=6 pF.\nFixed-stray tolerance: 5.875..6.125 pF.\nInitial mode: SODRV=10b; SOSEL=0.\nQualify startup, frequency, drive <=0.5 uW.\nFull math/Python: ../design/clock_calculations.md"
+		(exclude_from_sim no)
+		(at 339.344 68.58 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/clock_calculations.md#clk-002-y2-rtc-oscillator-load-network")
+		)
+		(uuid "ac32f66f-2cd4-4ff8-a3f2-b82851ee85f4")
 	)
 	(no_connect
 		(at 40.64 68.58)
@@ -7139,6 +7315,16 @@
 	)
 	(wire
 		(pts
+			(xy 365.76 101.6) (xy 365.76 109.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "577c8259-56a8-4ac9-bb5c-287ca73cd3cc")
+	)
+	(wire
+		(pts
 			(xy 119.38 162.56) (xy 134.62 162.56)
 		)
 		(stroke
@@ -7156,6 +7342,16 @@
 			(type default)
 		)
 		(uuid "64e0104a-f484-47b3-85e9-5852cd6bb23f")
+	)
+	(wire
+		(pts
+			(xy 345.44 101.6) (xy 353.06 101.6)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "658f6742-02b9-4ef2-a8ee-34766b5f256e")
 	)
 	(wire
 		(pts
@@ -7206,6 +7402,16 @@
 			(type default)
 		)
 		(uuid "7857e9bd-0800-4e26-8567-9fb32e1cea73")
+	)
+	(wire
+		(pts
+			(xy 210.82 76.2) (xy 223.52 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "84c5b488-3b87-4b70-99e2-a6eb193a5d29")
 	)
 	(wire
 		(pts
@@ -7279,6 +7485,16 @@
 	)
 	(wire
 		(pts
+			(xy 358.14 101.6) (xy 365.76 101.6)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "aba70489-d559-4664-8243-0316904a8d36")
+	)
+	(wire
+		(pts
 			(xy 76.2 162.56) (xy 76.2 170.18)
 		)
 		(stroke
@@ -7349,6 +7565,16 @@
 	)
 	(wire
 		(pts
+			(xy 210.82 73.66) (xy 223.52 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d0b36768-adf6-4bbe-a1c7-0d53228fa874")
+	)
+	(wire
+		(pts
 			(xy 144.78 162.56) (xy 149.86 162.56)
 		)
 		(stroke
@@ -7376,6 +7602,16 @@
 			(type default)
 		)
 		(uuid "d4785071-e982-4dc9-bdd5-1ce0934f4632")
+	)
+	(wire
+		(pts
+			(xy 345.44 101.6) (xy 345.44 109.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "de8bf919-c70f-406d-9ca4-86d3682125b6")
 	)
 	(wire
 		(pts
@@ -7527,6 +7763,16 @@
 		)
 		(uuid "7eb5955d-fae6-496a-986e-8d69b9fdb637")
 	)
+	(label "RTC_XCIN"
+		(at 223.52 76.2 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "82f1b1e5-beb4-4ad2-973b-b9b867086193")
+	)
 	(label "MCU_BOOT_MD"
 		(at 119.38 162.56 0)
 		(effects
@@ -7557,6 +7803,26 @@
 		)
 		(uuid "9a89a93b-9a4a-48fa-8578-42b4ce2d3200")
 	)
+	(label "RTC_XCOUT"
+		(at 365.76 101.6 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "a3043f51-84c2-404a-a905-b177e0f3251e")
+	)
+	(label "RTC_XCIN"
+		(at 345.44 101.6 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "b1a75efb-ffdf-45b8-bd05-449070206f0e")
+	)
 	(label "DBG_SWCLK"
 		(at 266.7 165.1 0)
 		(effects
@@ -7566,6 +7832,16 @@
 			(justify left)
 		)
 		(uuid "b40ab2e9-f0c2-4691-a9c3-3d362b7f43c8")
+	)
+	(label "RTC_XCOUT"
+		(at 223.52 73.66 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "bf859131-c9b2-401b-88d1-0e3beeaf5ea2")
 	)
 	(label "OSC_XTAL"
 		(at 289.56 101.6 0)
@@ -9385,6 +9661,84 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 345.44 114.3 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "5d5574ae-c006-4c23-85c0-46350c67103e")
+		(property "Reference" "#PWR033"
+			(at 345.44 120.65 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 345.44 119.38 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 345.44 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 345.44 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 345.44 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "96d389c2-c7be-410e-be0d-b07a72602b3d")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "#PWR033")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:R")
 		(at 45.72 154.94 0)
 		(unit 1)
@@ -9577,6 +9931,84 @@
 	)
 	(symbol
 		(lib_id "power:GND")
+		(at 365.76 114.3 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "63ad4aae-e779-425e-b274-356f175968f0")
+		(property "Reference" "#PWR032"
+			(at 365.76 120.65 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 365.76 119.38 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 365.76 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 365.76 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 365.76 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "b72cf88a-8579-4db5-b1fc-84be5dca3e20")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "#PWR032")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
 		(at 76.2 170.18 0)
 		(unit 1)
 		(body_style 1)
@@ -9658,6 +10090,165 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
 					(reference "#PWR024")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 345.44 111.76 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "77c9d6b8-761c-4ded-bb8b-1f5e359f6c70")
+		(property "Reference" "C37"
+			(at 347.98 110.4962 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "4p"
+			(at 347.98 113.0362 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 345.44 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1005NP01H040C050BA"
+			(at 345.44 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TDK C1005NP01H040C050BA; 4pF +/-0.25pF; NP0 50V; RTC initial matching; CLK-002"
+			(at 345.44 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-13777-1-ND"
+			(at 345.44 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/C1005NP01H040C050BA/3955443"
+			(at 345.44 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 345.44 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1005NP01H040C050BA"
+			(at 345.44 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected for initial matching - board qualification required"
+			(at 345.44 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "4pF +/-0.25pF NP0 50V; RTC initial matching; CLK-002; stray unmeasured"
+			(at 345.44 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed stock 7795; USD 1:0.10,10:0.057,100:0.0335; recheck before order"
+			(at 345.44 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "7e22fca2-b768-4ebe-9ab1-3b27a9a86d09")
+		)
+		(pin "1"
+			(uuid "73784f2b-fe12-4d2f-9f2d-bd27bdffacb8")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "C37")
 					(unit 1)
 				)
 			)
@@ -11001,6 +11592,163 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:Crystal_Small")
+		(at 355.6 101.6 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "d0f4d806-2e3d-4963-84cd-42a1bd0bea47")
+		(property "Reference" "Y2"
+			(at 355.6 95.25 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "32.768kHz"
+			(at 355.6 97.79 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 355.6 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://abracon.com/Resonators/ABS07-LR.pdf"
+			(at 355.6 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Abracon ABS07-LR-32.768KHZ-6-1-T; CL 6pF; +/-10ppm; ESR 50kohm max at 25C; drive 0.5uW max; CLK-002"
+			(at 355.6 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "535-12943-1-ND"
+			(at 355.6 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/abracon-llc/ABS07-LR-32-768KHZ-6-1-T/5231514"
+			(at 355.6 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Abracon"
+			(at 355.6 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "ABS07-LR-32.768KHZ-6-1-T"
+			(at 355.6 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected for initial matching - board qualification required"
+			(at 355.6 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "CL6pF +/-10ppm; ESR50kohm max at25C; drive0.5uW max; CLK-002"
+			(at 355.6 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed stock 3049; Active; 20wk; USD1:1.50,10:1.303,100:1.1322; recheck before order"
+			(at 355.6 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "a5718557-9e6a-42aa-9b8e-a236dd06881f")
+		)
+		(pin "2"
+			(uuid "cd837645-3dd5-4895-aa9c-8aa0748c1839")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "Y2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:+3V3")
 		(at 119.38 147.32 0)
 		(unit 1)
@@ -11420,6 +12168,165 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
 					(reference "SW1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 365.76 111.76 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "e2e4bba1-13bf-444f-baab-5d7fd789cdeb")
+		(property "Reference" "C38"
+			(at 368.3 110.4962 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "4p"
+			(at 368.3 113.0362 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 365.76 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1005NP01H040C050BA"
+			(at 365.76 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TDK C1005NP01H040C050BA; 4pF +/-0.25pF; NP0 50V; RTC initial matching; CLK-002"
+			(at 365.76 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-13777-1-ND"
+			(at 365.76 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/C1005NP01H040C050BA/3955443"
+			(at 365.76 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 365.76 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1005NP01H040C050BA"
+			(at 365.76 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected for initial matching - board qualification required"
+			(at 365.76 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "4pF +/-0.25pF NP0 50V; RTC initial matching; CLK-002; stray unmeasured"
+			(at 365.76 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed stock 7795; USD 1:0.10,10:0.057,100:0.0335; recheck before order"
+			(at 365.76 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "e2ffb254-1d80-47f4-b9a9-c8d2e994efcf")
+		)
+		(pin "1"
+			(uuid "275eb291-5dbd-40e5-b6a5-4d1ac5855924")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "C38")
 					(unit 1)
 				)
 			)
