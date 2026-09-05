@@ -5249,10 +5249,10 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin power_in line
 					(at -25.4 -17.78 0)
 					(length 3.81)
-					(name "VCC_U_SBHS"
+					(name "VCC_USBHS"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5267,10 +5267,10 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at -25.4 -10.16 0)
 					(length 3.81)
-					(name "USBH_S_DP"
+					(name "USBHS_DP"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5285,10 +5285,10 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at -25.4 -7.62 0)
 					(length 3.81)
-					(name "USBH_S_DM"
+					(name "USBHS_DM"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5306,7 +5306,7 @@
 				(pin passive line
 					(at -25.4 -12.7 0)
 					(length 3.81)
-					(name "USBH_S_RRE_F"
+					(name "USBHS_RREF"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5321,10 +5321,10 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin power_in line
 					(at -25.4 -25.4 0)
 					(length 3.81)
-					(name "VSS2__USBH_S"
+					(name "VSS2_USBHS"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5339,10 +5339,10 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin power_in line
 					(at -25.4 -22.86 0)
 					(length 3.81)
-					(name "VSS1__USBH_S"
+					(name "VSS1_USBHS"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5357,10 +5357,10 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin power_in line
 					(at -25.4 0 0)
 					(length 3.81)
-					(name "AVCC__USBH_S"
+					(name "AVCC_USBHS"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5375,10 +5375,10 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin power_in line
 					(at 25.4 -17.78 180)
 					(length 3.81)
-					(name "VCC18__MIPI"
+					(name "VCC18_MIPI"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5393,10 +5393,10 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin power_in line
 					(at 25.4 -20.32 180)
 					(length 3.81)
-					(name "VSS__MIPI"
+					(name "VSS_MIPI"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5465,7 +5465,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin power_in line
 					(at 25.4 0 180)
 					(length 3.81)
 					(name "AVCC_MIPI"
@@ -5483,10 +5483,10 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at -25.4 -5.08 0)
 					(length 3.81)
-					(name "P815/U_SB_D_M"
+					(name "P815/USB_DM"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5501,10 +5501,10 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin power_in line
 					(at -25.4 -20.32 0)
 					(length 3.81)
-					(name "VSS_U_SB"
+					(name "VSS_USB"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5573,10 +5573,10 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at -25.4 -2.54 0)
 					(length 3.81)
-					(name "P814/U_SB_DP"
+					(name "P814/USB_DP"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5591,10 +5591,10 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin power_in line
 					(at -25.4 -15.24 0)
 					(length 3.81)
-					(name "VCC_U_SB"
+					(name "VCC_USB"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5888,6 +5888,18 @@
 		)
 		(uuid "c7265f71-c8c8-43f9-998f-1d6b33f530d1")
 	)
+	(junction
+		(at 20.32 220.98)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "43657015-02bd-4df0-b430-30b93e3f9350")
+	)
+	(junction
+		(at 20.32 218.44)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "eead6827-d2ab-47be-8eb9-f2fd2e45c71c")
+	)
 	(no_connect
 		(at 81.28 213.36)
 		(uuid "0742d31c-3912-4617-92ae-77a8a8f5d4f3")
@@ -5938,6 +5950,26 @@
 	)
 	(wire
 		(pts
+			(xy 20.32 220.98) (xy 30.48 220.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1e36bc75-5cca-437e-b73e-b2eecd040d64")
+	)
+	(wire
+		(pts
+			(xy 20.32 215.9) (xy 30.48 215.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "423ebcb3-2651-498f-9d09-98bea8b86ffe")
+	)
+	(wire
+		(pts
 			(xy 91.44 220.98) (xy 91.44 215.9)
 		)
 		(stroke
@@ -5948,6 +5980,36 @@
 	)
 	(wire
 		(pts
+			(xy 20.32 226.06) (xy 20.32 220.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a776871d-7dc7-4031-8e64-b53caa96c2da")
+	)
+	(wire
+		(pts
+			(xy 20.32 218.44) (xy 30.48 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "adc38c50-ef63-43cf-802d-d46fc579b89e")
+	)
+	(wire
+		(pts
+			(xy 20.32 220.98) (xy 20.32 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bc72900b-cfdf-4ca9-ba68-d87dd9673f02")
+	)
+	(wire
+		(pts
 			(xy 81.28 195.58) (xy 91.44 195.58)
 		)
 		(stroke
@@ -5955,6 +6017,16 @@
 			(type default)
 		)
 		(uuid "d2efc207-4df1-4fa1-a739-edf057e04046")
+	)
+	(wire
+		(pts
+			(xy 20.32 218.44) (xy 20.32 215.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "db75c89e-007c-456e-b35b-ce6ad6e9d845")
 	)
 	(symbol
 		(lib_id "Processors:R7KA8P1KFLCAC#UC0")
@@ -13541,6 +13613,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
 					(reference "#PWR035")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 20.32 226.06 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "d0ec141c-53cd-43f1-827e-f22a4be3747b")
+		(property "Reference" "#PWR036"
+			(at 20.32 232.41 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 20.32 231.14 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 20.32 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 20.32 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 20.32 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "f9a25918-cd51-43a0-bd91-026b51302335")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
+					(reference "#PWR036")
 					(unit 1)
 				)
 			)
