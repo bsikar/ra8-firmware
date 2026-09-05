@@ -8225,6 +8225,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 193.04 154.94 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "72d4d224-6750-4087-bbd1-02dc544ddf45")
 		)
@@ -8316,7 +8327,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 71.12 144.78 0)
 			(hide yes)
 			(show_name no)
@@ -8327,7 +8338,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 71.12 144.78 0)
 			(hide yes)
 			(show_name no)
@@ -8393,7 +8404,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 71.12 144.78 0)
 			(hide yes)
 			(show_name no)
@@ -8405,6 +8416,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 71.12 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 71.12 144.78 0)
 			(hide yes)
 			(show_name no)
@@ -9399,6 +9421,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 342.9 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "79c6e3c9-7aa6-44f5-85f8-faf526096635")
 		)
@@ -9512,6 +9545,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 190.5 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 190.5 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9821,6 +9865,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 228.6 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "eeffb2c2-82cd-4911-a119-8da6b3c8f070")
 		)
@@ -9934,6 +9989,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 254 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 254 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -10155,6 +10221,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 266.7 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "c5e2f9ec-58bd-430c-b3a1-336bbf7f19ac")
 		)
@@ -10268,6 +10345,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 342.9 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 342.9 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10401,6 +10489,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 304.8 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "fdbeb832-4df2-48b2-a38b-70deccc17173")
 		)
@@ -10514,6 +10613,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 228.6 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 228.6 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -10823,6 +10933,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 304.8 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "6370886f-2169-49f3-a151-dea28dd40018")
 		)
@@ -10936,6 +11057,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 152.4 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 152.4 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -11157,6 +11289,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 190.5 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "4cb24f51-ec76-4ec1-95e5-1f2edea34598")
 		)
@@ -11280,6 +11423,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 152.4 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "df70fc77-a085-43ee-8685-bad22bf05197")
 		)
@@ -11393,6 +11547,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 215.9 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 215.9 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -11582,7 +11747,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 71.12 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -11593,7 +11758,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 71.12 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -11659,7 +11824,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 71.12 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -11671,6 +11836,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 71.12 45.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 71.12 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -12665,6 +12841,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 152.4 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "bc796a8d-7a8d-484e-8afe-afc17e491108")
 		)
@@ -12778,6 +12965,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 266.7 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 266.7 43.18 0)
 			(hide yes)
 			(show_name no)

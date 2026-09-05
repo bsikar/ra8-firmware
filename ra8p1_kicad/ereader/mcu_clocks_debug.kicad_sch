@@ -7460,7 +7460,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" ""
+		(property "Mouser Part Number" "968-R7KA8P1KFLCACUC0"
 			(at 180.34 68.58 0)
 			(hide yes)
 			(show_name no)
@@ -7471,7 +7471,7 @@
 				)
 			)
 		)
-		(property "Mouser Price/Stock" ""
+		(property "Mouser Price/Stock" "2026-09-05 browser: 317 in stock; USD 1:29.47 / 10:23.82 / 25:22.75 / 100:21.71 / 189:21.70; MOQ 1, multiple 1. Recheck before order."
 			(at 180.34 68.58 0)
 			(hide yes)
 			(show_name no)
@@ -7537,7 +7537,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "HOLD - DigiKey discontinued; qualify orderable RA8P1 suffix"
+		(property "Procurement_Status" "Retain exact UC0 - Mouser stock verified; circuit qualification ongoing"
 			(at 180.34 68.58 0)
 			(hide yes)
 			(show_name no)
@@ -7549,6 +7549,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 1; USD 29.47; no backorders. Distributor status is not proof of manufacturer EOL."
+			(at 180.34 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Renesas-Electronics/R7KA8P1KFLCACUC0?qs=2FehpBK1j97Anbj%252BfZIC1A%3D%3D"
 			(at 180.34 68.58 0)
 			(hide yes)
 			(show_name no)
@@ -8479,7 +8490,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
 			(at 210.82 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -8523,7 +8534,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
 			(at 210.82 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -8534,7 +8545,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827"
 			(at 210.82 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -8545,7 +8556,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - source common 10k 1% resistor with suitable ratings"
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
 			(at 210.82 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -8556,7 +8567,51 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 2922248; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
+			(at 210.82 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 210.82 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
+			(at 210.82 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "10k 1%, 100mW at 70C, 0603; 3.6V/9.9k=0.364mA and 1.31mW worst nominal-tolerance load. MCU pull-up reference: HUM 21.4 and reset/MD guidance. PCB footprint deferred."
+			(at 210.82 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 210.82 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -8704,6 +8759,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 53.34 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 53.34 68.58 0)
 			(hide yes)
 			(show_name no)
@@ -8961,6 +9027,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 139.7 162.56 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "45e8f100-9469-4c5e-9b19-0c03111c4844")
 		)
@@ -9020,7 +9097,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
 			(at 45.72 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9064,7 +9141,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
 			(at 45.72 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9075,7 +9152,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827"
 			(at 45.72 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9086,7 +9163,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - source common 10k 1% resistor with suitable ratings"
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
 			(at 45.72 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9097,7 +9174,51 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 2922248; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
+			(at 45.72 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 45.72 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
+			(at 45.72 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "10k 1%, 100mW at 70C, 0603; 3.6V/9.9k=0.364mA and 1.31mW worst nominal-tolerance load. MCU pull-up reference: HUM 21.4 and reset/MD guidance. PCB footprint deferred."
+			(at 45.72 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 45.72 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9453,6 +9574,17 @@
 				)
 			)
 		)
+		(property "Mouser_URL" ""
+			(at 279.4 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "e3d7e24d-8388-4c21-996e-6fd29f9c8db4")
 		)
@@ -9694,7 +9826,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
 			(at 119.38 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9738,7 +9870,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
 			(at 119.38 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9749,7 +9881,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827"
 			(at 119.38 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9760,7 +9892,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - source common 10k 1% resistor with suitable ratings"
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
 			(at 119.38 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9771,7 +9903,51 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 2922248; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
+			(at 119.38 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 119.38 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
+			(at 119.38 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "10k 1%, 100mW at 70C, 0603; 3.6V/9.9k=0.364mA and 1.31mW worst nominal-tolerance load. MCU pull-up reference: HUM 21.4 and reset/MD guidance. PCB footprint deferred."
+			(at 119.38 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 119.38 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9841,7 +10017,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
 			(at 322.58 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9885,7 +10061,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
 			(at 322.58 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9896,7 +10072,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827"
 			(at 322.58 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9907,7 +10083,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - source common 10k 1% resistor with suitable ratings"
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
 			(at 322.58 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -9918,7 +10094,51 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 2922248; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
+			(at 322.58 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 322.58 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
+			(at 322.58 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "10k 1%, 100mW at 70C, 0603; 3.6V/9.9k=0.364mA and 1.31mW worst nominal-tolerance load. MCU pull-up reference: HUM 21.4 and reset/MD guidance. PCB footprint deferred."
+			(at 322.58 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 322.58 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -10252,7 +10472,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
 			(at 266.7 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -10296,7 +10516,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
 			(at 266.7 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -10307,7 +10527,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827"
 			(at 266.7 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -10318,7 +10538,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - source common 10k 1% resistor with suitable ratings"
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
 			(at 266.7 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -10329,7 +10549,51 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 2922248; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
+			(at 266.7 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 266.7 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
+			(at 266.7 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "10k 1%, 100mW at 70C, 0603; 3.6V/9.9k=0.364mA and 1.31mW worst nominal-tolerance load. MCU pull-up reference: HUM 21.4 and reset/MD guidance. PCB footprint deferred."
+			(at 266.7 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 266.7 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -10465,6 +10729,17 @@
 			)
 		)
 		(property "Sourcing_Snapshot" ""
+			(at 66.04 162.56 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
 			(at 66.04 162.56 0)
 			(hide yes)
 			(show_name no)
