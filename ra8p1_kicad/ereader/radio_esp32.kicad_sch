@@ -11,6 +11,145 @@
 		(comment 1 "Incomplete electrical design - not for manufacture")
 	)
 	(lib_symbols
+		(symbol "+3V3_1"
+			(power global)
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "#PWR058"
+				(at 0 -3.81 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "+3V3_MCU"
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Power symbol creates a global label with name \"+3V3\""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "global power"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "+3V3_1_0_1"
+				(polyline
+					(pts
+						(xy -0.762 1.27) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 2.54) (xy 0.762 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "+3V3_1_1_1"
+				(pin power_in line
+					(at 0 0 90)
+					(length 0)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Device:C_Small"
 			(pin_numbers
 				(hide yes)
@@ -1373,7 +1512,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "RADIO-004: U4 TPS22917DBVT / radio power gating\nQOD tied to VOUT: Rdis = 150 ohm TYPICAL.\nC45+C46 = 0.1+10 = 10.1 uF nominal external load.\nt90..10 = ln(9)*150*10.1u = 3.329 ms (ideal RC).\nNot a guaranteed off-time: module C/load and VIN decay matter.\nCT capacitor must return to VIN, not GND; rating >= 7 V.\nVIN, ON, CT and reset/isolation integration remain incomplete.\nMath + limits: ../design/radio_interface.md#radio-004-radio-load-switch"
+	(text "RADIO-004: U4 TPS22917DBVT / radio power gating\nQOD tied to VOUT: Rdis = 150 ohm TYPICAL.\nC45+C46 = 0.1+10 = 10.1 uF nominal external load.\nt90..10 = ln(9)*150*10.1u = 3.329 ms (ideal RC).\nNot a guaranteed off-time: module C/load and VIN decay matter.\nCT capacitor must return to VIN, not GND; rating >= 7 V.\nON, CT, reset/isolation and upstream regulator remain incomplete.\nMath + limits: ../design/radio_interface.md#radio-004-radio-load-switch"
 		(exclude_from_sim no)
 		(at 187.96 144.78 0)
 		(effects
@@ -1397,6 +1536,18 @@
 		)
 		(uuid "73b39401-7019-496b-9457-6f1577917331")
 	)
+	(text "RADIO-005: C47 / U4 VIN local bypass\n10 uF nominal, +/-10%, 35 V X7R; same exact TDK part as C46.\nC(3.3 V) = 9.69875 + (3.3-3.15)/0.85*(9.38950-9.69875)\n             = 9.64418 uF nominal; NOT a guaranteed minimum.\nDroop = integral(Iload-Isource)dt / Ceff + ESR/ESL effects.\nTI section 11: 1 uF usually sufficient; slow sources may need more.\nC47 is upstream: exclude it from C45+C46 output-discharge math.\nRegulator/transient qualification required; no source flag added.\nCalculations: ../design/radio_interface.md#radio-005-input-bypass"
+		(exclude_from_sim no)
+		(at 124.46 177.8 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-005-input-bypass")
+		)
+		(uuid "8ba59534-1ba2-416f-9640-73339628a0f6")
+	)
 	(junction
 		(at 170.18 149.86)
 		(diameter 0)
@@ -1414,6 +1565,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "0f8d480b-ed2a-4c0f-8cec-4fd9b70fbcfb")
+	)
+	(junction
+		(at 124.46 149.86)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "2d83a465-51af-4e17-98c2-3e9ac23da034")
 	)
 	(junction
 		(at 154.94 78.74)
@@ -1469,6 +1626,26 @@
 	)
 	(wire
 		(pts
+			(xy 124.46 152.4) (xy 124.46 149.86)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "49041242-6741-4f54-8d88-93efa93dc708")
+	)
+	(wire
+		(pts
+			(xy 124.46 149.86) (xy 144.78 149.86)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4af5657d-d66c-439e-aa32-82e2b17f4d38")
+	)
+	(wire
+		(pts
 			(xy 170.18 68.58) (xy 170.18 76.2)
 		)
 		(stroke
@@ -1486,6 +1663,16 @@
 			(type default)
 		)
 		(uuid "6486ea7c-b989-49a1-91e5-f9033f0d3c6d")
+	)
+	(wire
+		(pts
+			(xy 124.46 142.24) (xy 124.46 149.86)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6673a146-2cc1-47ae-818d-bb6cb75a8f42")
 	)
 	(wire
 		(pts
@@ -2129,6 +2316,85 @@
 		)
 	)
 	(symbol
+		(lib_name "+3V3_1")
+		(lib_id "power:+3V3")
+		(at 124.46 142.24 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "7ab8adba-3758-4e1b-a204-48ec78a5445c")
+		(property "Reference" "#PWR058"
+			(at 124.46 146.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3V3_MCU"
+			(at 124.46 137.16 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 124.46 142.24 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 124.46 142.24 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 124.46 142.24 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "b881ff23-1633-47fb-ae82-ee0ba6373876")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR058")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Wireless:ESP32-C6-WROOM-1-N8")
 		(at 190.5 76.2 0)
 		(unit 2)
@@ -2395,6 +2661,165 @@
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "U3")
 					(unit 2)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 124.46 154.94 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "864a2ccb-0dbf-4208-8886-0b490836df97")
+		(property "Reference" "C47"
+			(at 127 153.6762 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10u"
+			(at 127 156.2162 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 124.46 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C3216X7R1V106K160AC"
+			(at 124.46 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TDK C3216X7R1V106K160AC; 10 uF +/-10%, 35 V X7R; U4 VIN local input bypass. RADIO-005: nominal capacitance only; upstream regulator and transient qualification required."
+			(at 124.46 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-14799-1-ND"
+			(at 124.46 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/C3216X7R1V106K160AC/3956465"
+			(at 124.46 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 124.46 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C3216X7R1V106K160AC"
+			(at 124.46 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - initial screening; regulator/transient qualification open"
+			(at 124.46 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-005: U4 VIN bypass; TI section 11 recommends 1uF in most applications with more bulk for slow sources. 10uF nominal; TDK curve 9.644uF at 3.3V, not a guaranteed minimum or transient sign-off."
+			(at 124.46 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 11670 stock, 24 weeks; USD 0.68/0.424/0.2903 at 1/10/100."
+			(at 124.46 154.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "07c233d5-26d8-4e42-8137-003aeeab0022")
+		)
+		(pin "1"
+			(uuid "4b9a1bf5-2020-4356-b5e4-656c35de6c73")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "C47")
+					(unit 1)
 				)
 			)
 		)
@@ -2969,6 +3394,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "#PWR055")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 124.46 157.48 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "c1ba7ae5-2dff-48ed-9b35-63cc249bc66f")
+		(property "Reference" "#PWR057"
+			(at 124.46 163.83 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 124.46 162.56 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 124.46 157.48 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 124.46 157.48 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 124.46 157.48 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "60d5c08c-64e1-418b-9058-6fb41fbf3ec8")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR057")
 					(unit 1)
 				)
 			)
