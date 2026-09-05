@@ -134,7 +134,8 @@ yet been established for this rail, so a numerical droop sign-off would
 be unsupported. The complete waveform must remain within 3.0..3.6 V at
 the module supply contact. U4 now provides the load-switch output connection;
 its VIN now connects to +3V3_MCU with C47 input bypass. The upstream regulator
-and switch controls remain unimplemented. There is deliberately
+remains unimplemented. R7/R8 now connect ON to a default-off enable divider,
+but its host GPIO and timing control are not yet qualified. There is deliberately
 no PWR_FLAG on this rail.
 
 Reproduce the arithmetic from the repository root (read-only):
@@ -176,8 +177,8 @@ qualification. Recheck availability and total price before ordering.
 Revision 1, 2026-09-05. Applies to U4 on
 [the radio sheet](../ereader/radio_esp32.kicad_sch), with the same RADIO-004
 identifier on the schematic. This is a partial implementation, not electrical
-release: VIN is connected to +3V3_MCU with C47 input bypass; ON and CT
-require completion with the upstream regulator,
+release: VIN is connected to +3V3_MCU with C47 input bypass; ON has the
+RADIO-006 divider. Host control and CT require completion with the upstream regulator,
 reset supervisor and signal isolation under issues #825 and #826.
 
 U4 is Texas Instruments TPS22917DBVT, the active-high version. The exact
@@ -370,5 +371,130 @@ assert set(output_refs).isdisjoint(input_refs)
 assert sum(caps_u[ref] for ref in output_refs) == F('10.1')
 assert sum(caps_u[ref] for ref in input_refs) == F(10)
 print('RADIO-005 PASS: nominal accounting only; verify nets separately.')
+PY
+```
+
+## RADIO-006: enable divider
+
+Revision 1, 2026-09-05. R7 is the series resistor from hierarchical input
+RADIO_PWR_EN to U4 ON; R8 connects ON to GND. The radio sheet and its parent
+have matching input pins. The parent input remains unrouted pending host
+GPIO allocation; this is not a completed host interface.
+
+Both resistors are YAGEO RC0603FR-0710KL, 10 kohm +/-1%, 100 mW at 70 C,
+with +/-100 ppm/C temperature coefficient. Exact part and procurement fields
+are retained from the already sourced MCU resistors; copied MCU pull-up
+rationale is replaced with RADIO-006 rationale. Their sourcing snapshot is
+dated, not a reservation. Footprints remain deferred.
+
+### Why a divider, not just a pulldown
+
+[TI TPS22917 datasheet](https://www.ti.com/lit/ds/symlink/tps22917.pdf),
+Table 7.3, requires ON <=0.35 V for low and >=1.0 V for high. The
+[RA8P1 datasheet](https://www.renesas.com/en/document/dst/ra8p1-group-datasheet),
+R01DS0439EJ0130 Rev.1.30, Table 2.7, page 56, specifies general output
+VOL <=0.5 V at 1 mA and VOH >=VCC-0.5 V at -1 mA. Therefore a direct
+connection cannot be signed off from those GPIO limits alone. The divider
+attenuates the low level while retaining adequate high-level voltage.
+
+The following calculation assumes a host supply of at least 3.0 V, hence
+VOH >=2.5 V for the stated GPIO category. It is not approval of an arbitrary
+GPIO or drive-strength setting. The final allocation must satisfy the exact
+pin's electrical table, current limit, reset state and power-domain behavior.
+
+### Resistance and leakage screening
+
+Use an explicit +/-2% resistance envelope for screening. Initial +/-1% and
+100 ppm/C over -40..85 C relative to 25 C give a maximum 65 C offset:
+
+```text
+Rmax_screen = 10000*1.02 = 10200 ohm
+Rmin_screen = 10000*0.98 = 9800 ohm
+Initial + temperature upper factor = 1.01*(1+65*100e-6) = 1.016565
+Initial + temperature lower factor = 0.99*(1-65*100e-6) = 0.983565
+```
+
+Thus +/-2% covers those initial and temperature terms, but is not a full
+life/aging or solder-stress guarantee. Include those effects at final review.
+
+Allocate +/-10 uA total current injected into the ON node for screening.
+This is an allocation, NOT a measured board leakage or an all-state TI limit.
+TI Table 7.5 specifies +/-10 nA ON leakage in the enabled state only. The
+RA8P1 Table 2.7, page 57, gives up to 5 uA three-state leakage for 5 V-tolerant
+ports and 1 uA for other listed ports under its stated powered conditions.
+Neither table alone establishes behavior with the host unpowered. The final
+design must verify all power states and board leakage against the allocation.
+
+For R7 series, R8 shunt, and signed injected current Ileak:
+
+```text
+VON = VGPIO * R8/(R7+R8) + Ileak * (R7*R8)/(R7+R8)
+Divider fraction range = 9800/(10200+9800)..10200/(9800+10200)
+                       = 0.49..0.51
+Rparallel <=10200/2 = 5100 ohm
+VON_low <=0.5*0.51 + 10e-6*5100 = 0.306 V
+Low margin >=0.35-0.306 = 0.044 V
+VON_high >=2.5*0.49 - 10e-6*5100 = 1.174 V
+High margin >=1.174-1.0 = 0.174 V
+Host Hi-Z: VON <=10e-6*10200 = 0.102 V
+```
+
+These are conservative separated extrema; they do not depend on pretending
+all extrema occur at one resistor corner. The internal 750 kohm typical
+smart pulldown is omitted from this screen. TI disconnects it after ON is
+driven high, so it is not relied on to discharge a subsequently floating host
+control. R8 supplies the external default-off path. Disable any host internal
+pull-up: the RA8P1's up-to-300 uA pull-up would exceed the leakage allocation.
+
+### Current, dissipation and timing
+
+```text
+At VGPIO <=3.6 V, maximum divider current without node leakage:
+I <=3.6/(9800+9800) = 183.673469 uA
+Conservative host-current bound including the whole leakage allocation:
+Ihost <=183.673469+10 = 193.673469 uA <1 mA
+Ptotal <=3.6^2/19600 = 0.661224490 mW (zero-leakage screen)
+Nominal enabled current at 3.3 V = 3.3/20000 = 165 uA
+```
+
+Do not report the load switch's sub-microamp quiescent current as the whole
+enabled control budget: the divider draws the current above while enabled.
+The 100 mW resistor rating is ample for this screening load, subject to the
+manufacturer's temperature derating and final stress review.
+
+With the host Hi-Z and no injected leakage, ideal discharge from 1.65 V to
+0.35 V is t=R8*Cnode*ln(1.65/0.35). Cnode and all-state leakage are not yet
+qualified, so this does not establish a numerical reset or power-off delay.
+U4 CT, the radio supervisor, output discharge and GPIO isolation are separate
+circuits; this divider does not replace them or prevent signal back-powering.
+
+### Reproducible arithmetic
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+from itertools import product
+
+rlo, rhi = F(9800), F(10200)
+leak = F('0.000010')
+assert F('1.01')*(1+F(65)*F('0.0001')) == F('1.016565') < F('1.02')
+assert F('0.99')*(1-F(65)*F('0.0001')) == F('0.983565') > F('0.98')
+assert rlo/(rlo+rhi) == F('0.49')
+assert rhi/(rlo+rhi) == F('0.51')
+vlow = F('0.5')*F('0.51')+leak*rhi/2
+vhigh = F('2.5')*F('0.49')-leak*rhi/2
+assert vlow == F('0.306') < F('0.35')
+assert vhigh == F('1.174') > F(1)
+assert leak*rhi == F('0.102')
+for rs, rp, il in product((rlo,rhi),(rlo,rhi),(-leak,leak)):
+    parallel = rs*rp/(rs+rp)
+    assert F('0.5')*rp/(rs+rp)+il*parallel <= vlow
+    assert F('2.5')*rp/(rs+rp)+il*parallel >= vhigh
+current = F('3.6')/(2*rlo)
+assert current+leak < F('0.001')
+assert F('3.3')/20000 == F('0.000165')
+print(f'Divider current bound: {float(current)*1e6:.6f} uA before leakage')
+print(f'Divider power bound: {float(F("3.6")**2/(2*rlo))*1000:.9f} mW')
+print('RADIO-006 PASS: screening arithmetic; host/power-state qualification open.')
 PY
 ```

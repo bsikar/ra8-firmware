@@ -216,6 +216,16 @@
 				(justify left top)
 			)
 		)
+		(pin "RADIO_PWR_EN" input
+			(at 203.2 139.7 180)
+			(uuid "79bebea2-8a48-4433-bed0-8ff149ac61e6")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
 		(instances
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
