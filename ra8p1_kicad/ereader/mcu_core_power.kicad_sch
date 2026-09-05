@@ -9977,7 +9977,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - verify effective capacitance under DC bias; source exact MPN"
+		(property "Procurement_Status" "HOLD - exact 47uF MPN not approved; resolve reference-part lifecycle and effective capacitance"
 			(at 254 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -9988,7 +9988,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05 live Mouser search: GRM32ER70J476KE20L stock7034, End of Life; DigiKey indexed stock0 Active (conflict)"
 			(at 254 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -10000,6 +10000,17 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 254 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "Do not approve GRM32ER70J476KE20L solely from Renesas example: Mouser EOL flag; replacement and bias qualification required"
 			(at 254 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -11359,8 +11370,9 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://search.murata.co.jp/Ceramy/image/img/A01X/G101/ENG/GRM31CR70J226KE19-01CA.pdf"
 			(at 152.4 218.44 0)
+			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11379,7 +11391,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "490-6515-1-ND"
 			(at 152.4 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -11390,7 +11402,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/murata-electronics/GRM31CR70J226KE19L/3845712"
 			(at 152.4 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -11401,7 +11413,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - verify effective capacitance under DC bias; source exact MPN"
+		(property "Procurement_Status" "Candidate - validate DC bias, temperature and lifecycle before release"
 			(at 152.4 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -11412,7 +11424,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-05 DigiKey indexed stock110912; Active;17wk;USD1:1.00,10:0.636,100:0.4468"
 			(at 152.4 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -11424,6 +11436,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 152.4 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Murata Electronics"
+			(at 152.4 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "GRM31CR70J226KE19L"
+			(at 152.4 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "Renesas Quick Design Guide Table3 recommended family; 22uF +/-10% 6.3V X7R; effective capacitance and lifecycle approval pending"
 			(at 152.4 218.44 0)
 			(hide yes)
 			(show_name no)

@@ -77,6 +77,22 @@ table recommends Murata GRM32ER70J476KE20# and GRM31CR70J226KE19# for
 the 47 uF and 22 uF capacitors; exact packing suffixes and final capacitor
 qualification remain open. The guide is retained under `resources/`.
 
+The C3 BOM candidate is now GRM31CR70J226KE19L, 22 uF +/-10%, 6.3 V X7R,
+with the exact packaging suffix and supplier link recorded in KiCad. Its
+nominal value and reference-design recommendation do not establish minimum
+effective capacitance under DC bias, temperature and aging; qualification
+remains open.
+
+The 47 uF reference candidate GRM32ER70J476KE20L is NOT approved for C9.
+On 2026-09-05 the live Mouser browser search showed 7,034 in stock but an
+End of Life flag; DigiKey's indexed listing showed zero stock and Active.
+Resolve lifecycle with the manufacturer or qualify a current-production
+replacement. Inventory alone is not evidence of ongoing production.
+Keep C9's exact MPN unapproved until this and effective-capacitance/ESR
+requirements are resolved. Sourcing evidence:
+[Mouser reference part](https://www.mouser.com/ProductDetail/Murata-Electronics/GRM32ER70J476KE20L?qs=xcCo%252BfWZmQXLPFvGhPRdVA%3D%3D),
+[DigiKey reference part](https://www.digikey.com/en/products/detail/murata-electronics/GRM32ER70J476KE20L/2039090).
+
 The existing boot notes are provisional. Debug target-reference voltage must
 follow the actual debug-pin supply domain; it is not a power input from the
 probe. Boot-mode and device-lifecycle restrictions must be checked before
