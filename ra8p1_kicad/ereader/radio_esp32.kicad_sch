@@ -2034,6 +2034,18 @@
 			(embedded_fonts no)
 		)
 	)
+	(text "PWR-002: upstream regulator / reset voltage budget\nTPS63802 candidate: +/-1% feedback applies in PWM mode.\nExample 56k/10k, 0.1%, 25 ppm/C; deltaT=100 C.\nVout = Vfb*(1+Rt/Rb) + Ib*Rt; allocate +/-100 nA.\nPWM static screen: 3.242044..3.358485 V.\nRadio: 3.242044 - 0.5 A*0.175 ohm = 3.154544 V.\nAbove U6 rising screen: only 22.478 mV remains.\nMCU reset release headroom: 48.093 mV.\nNot a transient guarantee; regulator circuit not fitted.\nMath: ../design/power_decoupling.md#pwr-002-main-rail-regulation-and-reset-headroom"
+		(exclude_from_sim no)
+		(at 266.7 142.24 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/power_decoupling.md#pwr-002-main-rail-regulation-and-reset-headroom")
+		)
+		(uuid "1e311763-baef-42a6-83aa-c305d9e30b3d")
+	)
 	(text "RADIO-009: U5 isolates host and switched-radio signal domains.\nC49/C50: 100 nF local bypass; TI TXU0304 section 12.1.\nC50 adds 0.1 uF: fitted external radio capacitance = 10.2 uF nominal.\n5 MHz budget: 100 - 11 - 11 = 78 ns remaining (5 pF test load).\nSPI/OE and reset qualification remain open; timing is not closed.\nMath: ../design/radio_interface.md#radio-009-spi-power-domain-isolation"
 		(exclude_from_sim no)
 		(at 19.05 124.46 0)
