@@ -587,6 +587,45 @@ _ra8_misra_selftest_dump_population() {
   fi
 }
 
+_ra8_misra_selftest_locale_order() {
+  local old_lc="${LC_ALL-}" tmp="$1" root
+  local -a saved_build_dirs saved_roots saved_source_files
+  saved_roots=("${RA8_MISRA_ROOTS[@]}")
+  saved_build_dirs=("${RA8_MISRA_BUILD_DIRS[@]}")
+  saved_source_files=("${RA8_MISRA_SOURCE_FILES[@]}")
+  root="$tmp/locale-order"
+  mkdir -p "$root"
+  : >"$root/comic.c"
+  : >"$root/comic_cbr.c"
+  RA8_MISRA_ROOTS=("$root")
+  RA8_MISRA_BUILD_DIRS=()
+  if locale -a | grep -Eiq '^en_US\.utf-?8$'; then
+    export LC_ALL=en_US.UTF-8
+  else
+    export LC_ALL=C
+  fi
+  if ra8_misra_load_source_files; then
+    : >"$root/comic.c.dump"
+    : >"$root/comic_cbr.c.dump"
+    if ra8_misra_collect_dump_inventory; then
+      _ra8_misra_expect yes "source and suffixed dump ordering is locale-stable"
+    else
+      _ra8_misra_expect no "source and suffixed dump ordering is locale-stable"
+    fi
+  else
+    _ra8_misra_expect no "source and suffixed dump ordering is locale-stable"
+  fi
+  if [[ -n "$old_lc" ]]; then
+    export LC_ALL="$old_lc"
+  else
+    unset LC_ALL
+  fi
+  ra8_misra_remove_all_dump_artifacts
+  RA8_MISRA_ROOTS=("${saved_roots[@]}")
+  RA8_MISRA_BUILD_DIRS=("${saved_build_dirs[@]}")
+  RA8_MISRA_SOURCE_FILES=("${saved_source_files[@]}")
+}
+
 _ra8_misra_selftest_dump_shapes() {
   local first_root="$1" second_root="$2"
   rm -f -- "$second_root/b.cpp.dump"
@@ -771,6 +810,7 @@ ra8_misra_selftest() {
   _ra8_misra_selftest_fail_closed "$tmp"
   _ra8_misra_selftest_census_failures "$tmp"
   _ra8_misra_selftest_dump_inventory "$tmp"
+  _ra8_misra_selftest_locale_order "$tmp"
   _ra8_misra_selftest_parser_diagnostics "$tmp"
   _ra8_misra_selftest_source_only "$tmp"
 
