@@ -129,3 +129,132 @@ for v, expected in ((F('3.3'), F(676265, 6800)),
 print('21 BOM inputs agree. Final rail and PDN qualification remain open.')
 PY
 ```
+
+## PWR-002: Main-rail regulation and reset headroom
+
+Revision 1, 2026-09-05. Linked from the PWR-002 annotation on the
+[radio sheet](../ereader/radio_esp32.kicad_sch). Tracking:
+[power #825](https://github.com/bsikar/ra8-firmware/issues/825),
+[architecture #823](https://github.com/bsikar/ra8-firmware/issues/823), and
+[radio #826](https://github.com/bsikar/ra8-firmware/issues/826).
+This is a regulator-selection calculation, not an implemented power supply.
+
+### Source limits and operating-mode boundary
+
+[TI TPS63802 SLVSEU9D](https://www.ti.com/lit/ds/symlink/tps63802.pdf),
+section 8.5, specifies 500 mV nominal feedback, +/-1% accuracy in PWM mode,
+and 100 nA maximum feedback bias at 500 mV. Section 10.2.2.5 limits the
+bottom feedback resistor to 100 kohm. The 511k/91k reference divider is
+not an exact 3.300 V setting. PG's 95% rising/90% falling thresholds are
+typical; PG does not replace a guaranteed reset threshold.
+
+The candidate's +/-1% PWM specification must not be applied to all low-load
+PFM behavior. An eventual MODE control must establish PWM before relying
+on this calculation during radio operation; transition settling and the
+sleep-mode rail envelope require separate verification. No MODE control
+is implemented yet. These facts prevent treating the earlier assumed
+3.3 V +/-2% screen as a completed regulator specification.
+
+### Divider calculation
+
+Let Rt be VOUT-to-FB resistance and Rb be FB-to-ground resistance. Let Ib
+be positive when flowing into FB. KCL gives:
+
+```text
+(Vout - Vfb)/Rt = Vfb/Rb + Ib
+Vout = Vfb*(1 + Rt/Rb) + Ib*Rt
+
+fmin = (1 - initial_tolerance)*(1 - TCR*100 C)
+fmax = (1 + initial_tolerance)*(1 + TCR*100 C)
+Vmin = 0.495*(1 + Rt*fmin/(Rb*fmax)) - 100e-9*Rt*fmax
+Vmax = 0.505*(1 + Rt*fmax/(Rb*fmin)) + 100e-9*Rt*fmax
+```
+
+The symmetric 100 nA term is a conservative screening allocation, including
+an adverse polarity; it is not a manufacturer specification for every
+unpowered state or PCB contamination condition. The 100 C excursion from
+25 C is an allocation for the resistor calculation. Exact resistor parts
+are not selected or fitted in either example below.
+
+| Example divider | Assumed initial / TCR | Nominal V | PWM static minimum V | PWM static maximum V |
+| --- | --- | --- | --- | --- |
+| 511k / 91k | 1% / 100 ppm/C | 3.307692308 | 3.113494435 | 3.508630214 |
+| 56k / 10k | 0.1% / 25 ppm/C | 3.300000000 | 3.242044111 | 3.358485094 |
+
+The first example demonstrates why copying reference resistor values and
+using ordinary 1% parts cannot justify the existing reset margins. It is
+not a claim about the tolerances actually fitted to TI's evaluation board.
+The second is the preferred direction for resistor sourcing, at the cost
+of higher divider current: 3.3/66000 = 50 uA nominal, versus about 5.495 uA
+for the first example. Its 10k bottom resistor satisfies the 100k limit.
+This choice still does not approve the whole converter.
+
+### Cross-sheet voltage budget
+
+Using the precision-divider screen, RADIO-004's conditional 0.5 A radio
+load and 0.175 ohm switch resistance allowance:
+
+```text
+Switch drop = 0.5*0.175 = 0.0875 V
+Radio minimum, static screen = 3.242044111 - 0.0875 = 3.154544111 V
+U6 maximum rising screen, RADIO-011 example = 3.132066484 V
+Remaining radio release budget = 22.477627 mV
+U2 maximum rising screen, RST-001 = 3.193951250 V
+Remaining MCU release budget = 48.092861 mV
+Headroom below 3.6 V = 3.6 - 3.358485094 = 241.514906 mV
+```
+
+These are remaining allocations, not measured ripple or guaranteed transient
+margins. Routing loss, regulator transients, load steps, startup, operating
+mode and any unaccounted static error must fit their respective budgets.
+The narrow radio budget makes reducing load-switch drop worth comparing
+before approving the supervisor divider. Do not automatically raise the
+main rail: all connected devices and reset thresholds need reevaluation.
+
+### Current accounting boundary
+
+[RA8P1 datasheet Rev.1.30](https://www.renesas.com/en/document/dst/ra8p1-group-datasheet),
+Table 2.8, p.59, gives ICC = 6.27 mA maximum and ICC_DCDC = 390 mA in
+the 1 GHz/250 MHz, 95 C, 3.3 V maximum-condition row. Its note 4 uses
+typical DCDC efficiency for ICC_DCDC, so 396.27 mA is a reference screen,
+not a guaranteed all-corners input-current bound. IDD is internal core
+current; do not add its 1000 mA limit again to the 3.3 V source load.
+The table excludes output-pin loading and BGO operation.
+
+[ESP32-C6-WROOM-1 datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-c6-wroom-1_wroom-1u_datasheet_en.pdf),
+Table 6-4, lists a 382 mA Wi-Fi TX peak at its stated RF conditions.
+RADIO-004's 500 mA remains a design allocation, not a measured universal
+maximum. Combining it with the MCU reference screen gives 896.27 mA.
+This excludes storage, external IO loading, other rails, display, lighting,
+converter losses and charging. It must not be presented as the board's
+complete worst-case current or used alone to approve a 2 A converter.
+
+### Reproducible arithmetic
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+from math import isclose
+
+cases = [(511000,91000,F('.01'),100,3.1134944353990184,3.5086302140788614),
+         (56000,10000,F('.001'),25,3.242044111302129,3.3584850935146022)]
+for rt, rb, tolerance, tcr, expected_min, expected_max in cases:
+    fmin = (1-tolerance)*(1-F(tcr,1_000_000)*100)
+    fmax = (1+tolerance)*(1+F(tcr,1_000_000)*100)
+    vmin = F('.495')*(1+rt*fmin/(rb*fmax))-F('1e-7')*rt*fmax
+    vmax = F('.505')*(1+rt*fmax/(rb*fmin))+F('1e-7')*rt*fmax
+    assert isclose(float(vmin), expected_min, abs_tol=1e-12)
+    assert isclose(float(vmax), expected_max, abs_tol=1e-12)
+    print(f'{rt}/{rb}: {float(vmin):.9f}..{float(vmax):.9f} V')
+radio_min = vmin-F('.5')*F('.175')
+radio_margin = radio_min-F('3.1320664839416503')
+mcu_margin = vmin-F('3.19395125')
+assert isclose(float(radio_margin*1000),22.4776273604787,abs_tol=1e-9)
+assert isclose(float(mcu_margin*1000),48.0928613021293,abs_tol=1e-9)
+assert F('3.3')/66000 == F(50,1_000_000)
+assert F('6.27')+390+500 == F('896.27')
+print(f'Radio release budget: {float(radio_margin*1000):.6f} mV')
+print(f'MCU release budget: {float(mcu_margin*1000):.6f} mV')
+print('PWR-002 PASS: screening arithmetic, not regulator or board qualification.')
+PY
+```
