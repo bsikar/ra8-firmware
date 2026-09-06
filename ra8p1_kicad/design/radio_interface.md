@@ -922,3 +922,119 @@ print('RADIO-010 PASS: conditional static arithmetic only; '
       '12 uA allocation, enable logic and transient qualification remain open.')
 PY
 ```
+
+## RADIO-011: Radio supervisor threshold design
+
+U6 is the candidate TPS389001DSET on
+[the radio schematic](../ereader/radio_esp32.kicad_sch), with C51 local bypass.
+Tracking: #826 and the upstream supply design in #825. This record explains
+the threshold constraint; it does not approve an unfinished reset network.
+
+### Part identity and connection boundary
+
+[TI SLVSD65A, sections 5-7](https://www.ti.com/lit/ds/symlink/tps3890.pdf)
+identifies the adjustable device's nominal falling threshold as 1.15 V,
+threshold accuracy as +/-1%, and maximum hysteresis as 0.825% of the falling
+threshold. Section 6 specifies pins 1 SENSE, 2 GND, 3 active-low MR, 4 VDD,
+5 CT and 6 active-low open-drain RESET. CT uses a ground-referenced capacitor,
+unlike U4's VIN-referenced slew capacitor. VDD operates from 1.5 to 5.5 V.
+
+The native KiCad symbol has this exact mapping, visible pins, open-collector
+ERC type for the open-drain output, 150 mil pins, 100 mil endpoint grid,
+50 mil text and a 10 mil filled body outline. It is a separate symbol;
+U2's TPS3808G33 is unchanged. No inherited SOT-23 footprint is retained.
+
+U6 VDD is connected to upstream +3V3_MCU so it can remain powered while
+the radio rail discharges. C51 is TDK C1608X7R1H104K080AA, 100 nF ceramic
+to GND, following TI's section 6 bypass recommendation. It adds no
+capacitance to the switched-radio discharge model. See PWR-001 for the
+exact capacitor's nominal bias calculation, not a guaranteed PDN bound.
+
+SENSE, MR, CT and RESET are not connected yet. Intended domain boundaries
+are switched-radio sensing and a RESET pull-up to +3V3_RADIO, with MR
+arbitration on the upstream domain. These are not currently implemented.
+The missing controls must remain visible ERC findings, not be marked NC.
+
+[DigiKey's exact DSET listing](https://www.digikey.com/en/products/detail/texas-instruments/TPS389001DSET/6110554)
+was inspected on 2026-09-05: Active, 2090 in stock, 26-week lead time,
+USD 2.22 / 1.643 / 1.3395 at 1 / 10 / 100. Orderable cut-tape code is
+296-44489-1-ND. This is an availability snapshot, not reserved inventory.
+
+### Why the divider cannot be selected by nominal voltage alone
+
+Let Rt connect the monitored rail to SENSE and Rb connect SENSE to ground.
+For positive input current Is flowing into SENSE, Kirchhoff's current law is:
+
+```text
+(Vrail - Vsense)/Rt = Vsense/Rb + Is
+Vrail_trip = Vsense_trip*(1 + Rt/Rb) + Is*Rt
+```
+
+For a screening exercise, allocate 0.1% initial resistor tolerance,
+25 ppm/C TCR and a conservative 100 C excursion from 25 C. These are
+example divider specifications, NOT fitted resistor selections. Allocate
+100 nA adverse SENSE-node current in either direction. TI gives a 100 nA
+SENSE current maximum for the adjustable device at a 5 V test point;
+the symmetric all-state node allowance here still needs qualification.
+
+```text
+fmin = (1-0.001)*(1-25e-6*100) = 0.9965025
+fmax = (1+0.001)*(1+25e-6*100) = 1.0035025
+Rtmin/max = Rt_nom * fmin/max; Rbmin/max = Rb_nom * fmin/max
+
+Vfall_min = 1.15*(1-0.01)*(1 + Rtmin/Rbmax) - 100e-9*Rtmax
+Vrise_max = 1.15*(1+0.01)*(1+0.00825)*(1 + Rtmax/Rbmin)
+            + 100e-9*Rtmax
+```
+
+The rising expression conservatively combines falling-threshold accuracy
+and maximum hysteresis. It is not an additional independent accuracy term
+applied on top of the separately specified nominal rising threshold.
+
+| Example Rt / Rb | Minimum falling screen | Maximum rising screen | Margin below 3.1465 V loaded-rail screen |
+| --- | --- | --- | --- |
+| 16.5k / 10k | 3.002265442 V | 3.118597548 V | 27.902452 mV |
+| 16.7k / 10k | 3.024856538 V | 3.142203792 V | 4.296208 mV |
+| 33.2k / 20k | 3.011895176 V | 3.132066484 V | 14.433516 mV |
+
+The first example has only 2.265442 mV static margin above the module's
+3.0 V minimum; the second has only 4.296208 mV release headroom. The third
+balances the two but still leaves little transient allowance. None is an
+approved divider. The 3.1465 V source is RADIO-004's conditional rail screen,
+not a guaranteed final supply. Precision-divider selection and the actual
+regulator/load-switch budget must be resolved together.
+
+Static threshold headroom also does not prove brownout timing. The available
+time during a falling rail is DeltaV/abs(dV/dt); it must cover supervisor
+assertion delay, reset-node fall time and enable-path response at their
+applicable limits. A typical propagation figure cannot establish that bound.
+Controlled shutdown must disable the signal paths before switching off power.
+Final CT sizing must independently satisfy C6 reset/startup timing and
+leakage/capacitance tolerances; no CT value is approved in this increment.
+
+### Reproducible arithmetic
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+from math import isclose
+
+fmin = (1-F('.001'))*(1-F(25, 1_000_000)*100)
+fmax = (1+F('.001'))*(1+F(25, 1_000_000)*100)
+assert fmin == F('.9965025') and fmax == F('1.0035025')
+allocation_a = F(100, 1_000_000_000)
+cases = [(16500,10000,3.0022654418609966,3.118597547533869),
+         (16700,10000,3.024856538125978,3.1422037920494312),
+         (33200,20000,3.0118951758434873,3.1320664839416503)]
+for rt, rb, expected_low, expected_high in cases:
+    falling = F('1.15')*F('.99')*(1+rt*fmin/(rb*fmax))-allocation_a*rt*fmax
+    rising = (F('1.15')*F('1.01')*F('1.00825')*
+              (1+rt*fmax/(rb*fmin))+allocation_a*rt*fmax)
+    assert isclose(float(falling), expected_low, abs_tol=1e-12)
+    assert isclose(float(rising), expected_high, abs_tol=1e-12)
+    print(f'RADIO-011 {rt}/{rb}: falling={float(falling):.9f} V; '
+          f'rising={float(rising):.9f} V; '
+          f'release margin={float((F("3.1465")-rising)*1000):.6f} mV')
+print('RADIO-011 PASS: candidate-screen arithmetic only; no divider approved.')
+PY
+```
