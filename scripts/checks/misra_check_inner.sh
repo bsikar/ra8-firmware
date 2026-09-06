@@ -471,7 +471,7 @@ ra8_misra_source_files() {
   if ! find "${RA8_MISRA_ROOTS[@]}" -type f \
     \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' \) \
     -not -path '*/third_party/*' -not -path '*/vela/generated/*' |
-    sort >"$listing"; then
+    LC_ALL=C sort >"$listing"; then
     echo "[ERROR] MISRA source census producer failed" >&2
     return 1
   fi
@@ -594,7 +594,7 @@ ra8_misra_collect_dump_inventory() {
     actual_dumps+=("$actual_dump")
   done < <(
     find ${RA8_MISRA_ROOTS[@]+"${RA8_MISRA_ROOTS[@]}"} -name '*.dump' \
-      -not -path '*/third_party/*' -not -path '*/vela/generated/*' | sort
+      -not -path '*/third_party/*' -not -path '*/vela/generated/*' | LC_ALL=C sort
   )
 
   if [[ ${#actual_dumps[@]} -ne ${#expected_dumps[@]} ]]; then
