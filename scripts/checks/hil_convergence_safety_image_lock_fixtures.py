@@ -192,7 +192,7 @@ def _serialization_mutations() -> tuple[Mutation, ...]:
             "managed image lock top-level completion check removed",
             "devcontainer_image",
             '  main "$@"\n'
-            '  if [[ "${1:-}" == "--selftest" ]]; then\n'
+            '  if [[ "${1:-}" == "--selftest" || "${1:-}" == "--selftest-offline" ]]; then\n'
             '    [[ "$SELFTEST_MAIN_COMPLETE" == "1" ]] || '
             'die "selftest main returned before completion"\n'
             "  fi",
