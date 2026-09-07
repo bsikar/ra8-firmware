@@ -2130,7 +2130,7 @@
 		)
 		(uuid "b3fe64c9-81e0-47c7-9dd2-5988e0a7a95a")
 	)
-	(text "RADIO-011: U6 supervisor threshold screen\nC51: 100 nF VDD bypass per TI TPS3890 section 6.\nExample divider 33.2k / 20k is NOT FITTED or approved.\nAssume 0.1%, 25 ppm/C, deltaT=100 C, +/-100 nA.\nfmin=0.9965025; fmax=1.0035025.\nVtrip = Vsense*(1 + Rt/Rb) + Is*Rt.\nWorst falling screen = 3.011895176 V.\nWorst rising screen = 3.132066484 V.\nLoaded-rail screen 3.1465 V leaves only 14.434 mV.\nDivider, CT, reset arbitration and transients remain open.\nMath: ../design/radio_interface.md#radio-011-radio-supervisor-threshold-design"
+	(text "RADIO-011: U6 supervisor threshold screen\nC51: 100 nF VDD bypass per TI TPS3890 section 6.\nExample divider 33.2k / 20k is NOT FITTED or approved.\nAssume 0.1%, 25 ppm/C, deltaT=100 C, +/-100 nA.\nfmin=0.9965025; fmax=1.0035025.\nVtrip = Vsense*(1 + Rt/Rb) + Is*Rt.\nWorst falling screen = 3.011895176 V.\nWorst rising screen = 3.132066484 V.\nLoaded-rail screen 3.1465 V leaves only 14.434 mV.\nC52 delay: RADIO-012. Divider/arbitration remain open.\nMath: ../design/radio_interface.md#radio-011-radio-supervisor-threshold-design"
 		(exclude_from_sim no)
 		(at 266.7 101.6 0)
 		(effects
@@ -2141,6 +2141,18 @@
 			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-011-radio-supervisor-threshold-design")
 		)
 		(uuid "c87b6eaf-8d4f-4da0-88a2-efff6aae0d55")
+	)
+	(text "RADIO-012: C52 / U6 reset-release delay\nC52 = 1nF +/-5% NP0, CT to GND (not VIN).\nAt 100 C excursion, +/-30 ppm/C: 947.15..1053.15 pF.\ntnom = 1nF*1.23V/1.15uA + 25us = 1.094565 ms.\nAllocate +/-10nA external CT leakage; start discharged.\ntcharge_min = 947.15pF*1.17V/1.36uA = 814.828 us.\ntcharge_max = 1053.15pF*1.29V/0.89uA = 1526.476 us.\nCharge-only screen, NOT total reset min/max limits.\nC6 requires 50us stable supply and 50us reset low.\nComplete reset sequencing remains open.\nMath: ../design/radio_interface.md#radio-012-supervisor-reset-release-delay"
+		(exclude_from_sim no)
+		(at 266.7 25.4 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-012-supervisor-reset-release-delay")
+		)
+		(uuid "ef90dbfa-f81a-4b92-b0a7-0c26bdde4289")
 	)
 	(junction
 		(at 170.18 149.86)
@@ -2243,6 +2255,16 @@
 			(type default)
 		)
 		(uuid "041edd50-56fe-4766-9c0e-efb27e80d344")
+	)
+	(wire
+		(pts
+			(xy 248.92 78.74) (xy 254 78.74)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0a5a66ac-9a72-4a8a-a622-2613d12eca2f")
 	)
 	(wire
 		(pts
@@ -2573,6 +2595,16 @@
 			(type default)
 		)
 		(uuid "c74a802d-2ddb-4a78-9ee0-059dc05e7e8a")
+	)
+	(wire
+		(pts
+			(xy 248.92 81.28) (xy 248.92 78.74)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "cc58c4f3-7d73-4389-8540-8657133b895e")
 	)
 	(wire
 		(pts
@@ -5199,6 +5231,165 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:C_Small")
+		(at 248.92 83.82 180)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "8f925b51-60d1-4640-b164-9c2edf5bc87d")
+		(property "Reference" "C52"
+			(at 251.46 82.5435 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Value" "1n"
+			(at 251.46 85.0835 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" ""
+			(at 248.92 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608NP01H102J080AA"
+			(at 248.92 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TDK C1608NP01H102J080AA; 1nF +/-5%, 50V NP0; U6 CT-to-GND reset-release delay capacitor. RADIO-012 charge-time calculation; full reset sequencing remains open."
+			(at 248.92 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-14055-1-ND"
+			(at 248.92 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/C1608NP01H102J080AA/3955721"
+			(at 248.92 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 248.92 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608NP01H102J080AA"
+			(at 248.92 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - reset-release charge-time screen; final reset and power-state qualification open; footprint deferred."
+			(at 248.92 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-012: U6 CT-to-GND, 1nF NP0 50V +/-5%, +/-30ppm/C. Nominal delay = C*1.23V/1.15uA + 25us. Charge-time corner screen includes capacitor tolerance, 100C excursion and allocated 10nA leakage; full sequencing remains open."
+			(at 248.92 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 27277 stock, 24 weeks; USD 0.22/0.125/0.078 at 1/10/100. Recheck before ordering."
+			(at 248.92 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "dd459d58-a881-4be2-aaaa-6867497f6959")
+		)
+		(pin "1"
+			(uuid "23ee4400-52e7-46fc-ae47-f6d1964651ef")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "C52")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:R")
 		(at 25.4 105.41 0)
 		(unit 1)
@@ -6574,6 +6765,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "#PWR066")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 248.92 86.36 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "cc344f9d-4c3e-4511-bbd3-8d132649e78e")
+		(property "Reference" "#PWR070"
+			(at 248.92 92.71 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 248.92 91.44 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 248.92 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 248.92 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 248.92 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "e35130eb-3c94-4421-b08e-cfc407fdf46d")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR070")
 					(unit 1)
 				)
 			)
