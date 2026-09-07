@@ -2451,7 +2451,7 @@
 		)
 		(uuid "75b4af6d-5689-4dd7-8c8a-06293f9ec382")
 	)
-	(text "RADIO-015: U7 Schmitt-input reset arbitration\nIN1=GND: Y = MCU_RESET_N AND RADIO_RESET_REQ_N.\nEither low asserts U6 MR; C53 = 100nF MCU-rail bypass.\nR14: Rmin/max=10k*(1 +/-1%)*(1 +/-1%)=9801/10201 ohm.\n12uA adverse-current ALLOCATION: Vlow <= 0.122412 V.\nAt U7 3V test point: VT-_min-Vlow = 0.717588 V.\nAt 3.6V: I_R14 <= 0.367309 mA; P <= 1.322314 mW.\nIf |I_U7out|<=100uA: MR low/high margins >=0.65/0.8V\non shared 3.0-3.6V rail. MR load bound NOT yet verified.\nParent reset wiring, full-rail thresholds and sequencing open.\nMath: ../design/radio_interface.md#radio-015-reset-request-arbitration"
+	(text "RADIO-015: U7 Schmitt-input reset arbitration\nIN1=GND: Y = MCU_RESET_N AND RADIO_RESET_REQ_N.\nEither low asserts U6 MR; C53 = 100nF MCU-rail bypass.\nR14: Rmin/max=10k*(1 +/-1%)*(1 +/-1%)=9801/10201 ohm.\n12uA adverse-current ALLOCATION: Vlow <= 0.122412 V.\nAt U7 3V test point: VT-_min-Vlow = 0.717588 V.\nAt 3.6V: I_R14 <= 0.367309 mA; P <= 1.322314 mW.\nIf |I_U7out|<=100uA: MR low/high margins >=0.65/0.8V\non shared 3.0-3.6V rail. MR load bound NOT yet verified.\nReset hierarchy connected; full-rail thresholds/sequencing open.\nMath: ../design/radio_interface.md#radio-015-reset-request-arbitration"
 		(exclude_from_sim no)
 		(at 76.2 228.6 0)
 		(effects

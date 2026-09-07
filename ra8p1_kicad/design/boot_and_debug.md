@@ -85,6 +85,14 @@ TDK C1608X7R1H104K080AA, X7R, 50 V, +/-10%, sharing the documented
 capacitance-screening basis of PWR-001 for the existing 100 nF bypasses.
 No capacitor is added on MCU_RESET_N.
 
+MCU_RESET_N also leaves this sheet through a hierarchical output and feeds
+radio arbitration gate U7.3 through the root. This is an added input load,
+not another reset driver. Include U7 leakage and input capacitance in the
+reset high-level, sink-current and edge-time budgets; the R1-only current
+calculation below is not the complete loaded-net bound.
+See [RADIO-015](radio_interface.md#radio-015-reset-request-arbitration) for
+the gate connection contract and remaining electrical checks.
+
 R1 at 3.6 V and -1% tolerance sinks at most 3.6/9900 = 0.363636 mA,
 below the supervisor's 1 mA VOL test current at VDD >= 1.8 V. Its 0.4 V
 maximum VOL must still be checked against the RA8P1 RES low threshold;

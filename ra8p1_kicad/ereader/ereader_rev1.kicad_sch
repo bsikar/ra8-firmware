@@ -55,6 +55,26 @@
 	)
 	(wire
 		(pts
+			(xy 167.64 240.03) (xy 177.8 240.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0d8b4c65-15d8-4e93-8b9e-669f51f3826c")
+	)
+	(wire
+		(pts
+			(xy 193.04 105.41) (xy 203.2 105.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "188409b1-fdac-40f8-889b-e535536e8d9c")
+	)
+	(wire
+		(pts
 			(xy 167.64 102.87) (xy 203.2 102.87)
 		)
 		(stroke
@@ -75,6 +95,16 @@
 	)
 	(wire
 		(pts
+			(xy 167.64 100.33) (xy 203.2 100.33)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c71baeed-ed5f-4423-ae5d-c1366e6942e9")
+	)
+	(wire
+		(pts
 			(xy 167.64 85.09) (xy 203.2 85.09)
 		)
 		(stroke
@@ -92,6 +122,26 @@
 			(type default)
 		)
 		(uuid "fe7350b3-0f46-4995-9654-f7f72d4a367a")
+	)
+	(label "MCU_RESET_N"
+		(at 177.8 240.03 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "8af53a83-1b3b-4c3b-963c-a93c6a0e2db1")
+	)
+	(label "MCU_RESET_N"
+		(at 193.04 105.41 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "9c31a25b-85e9-4fce-81cc-2d59c303596d")
 	)
 	(sheet
 		(at 30.48 226.06)
@@ -128,6 +178,16 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+			)
+		)
+		(pin "MCU_RESET_N" output
+			(at 167.64 240.03 0)
+			(uuid "278c171f-7fd3-4b0d-a80a-873c64e3cf4d")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
 			)
 		)
 		(instances
@@ -389,6 +449,26 @@
 		(pin "RADIO_SCLK" input
 			(at 203.2 95.25 180)
 			(uuid "49bc3fbb-58ed-403b-ac98-6d0a9f4d3aba")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "RADIO_RESET_REQ_N" input
+			(at 203.2 100.33 180)
+			(uuid "3bd50822-7a10-4acb-ac55-adee4c23a035")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "MCU_RESET_N" input
+			(at 203.2 105.41 180)
+			(uuid "d88f9733-5f07-4bdc-bf42-65b96a551b5a")
 			(effects
 				(font
 					(size 1.27 1.27)
