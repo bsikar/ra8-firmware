@@ -1413,3 +1413,104 @@ print('RADIO-015 PASS: truth table and conditional DC arithmetic; '
       'load limits and sequencing remain unqualified.')
 PY
 ```
+
+## RADIO-016: SPI output-enable arbitration
+
+Revision 1, 2026-09-07. Native radio-sheet circuit: U8 and C54, driving
+U5.8 through SPI_IO_EN with the existing R9 default-low resistor.
+The RADIO-016 schematic note links here. Tracking: #826.
+
+U8 reuses RADIO-015's exact SN74LVC1G97DBVR selection and dated sourcing
+snapshot. C54 reuses the exact TDK 100 nF bypass from C53; the nominal
+capacitance calculation is [PWR-001](power_decoupling.md#nominal-dc-bias-screening-and-shared-bypass-selection).
+Neither component changes the switched-radio capacitance sum.
+
+| U8 pin | Net | Function |
+| --- | --- | --- |
+| 3 IN0 | C6_EN | Radio supervisor reset release; U3.3 and U6.6 |
+| 1 IN1 | GND | Select AND function |
+| 6 IN2 | RADIO_PWR_EN | Host request, upstream of R7 |
+| 4 Y | SPI_IO_EN | U5.8 OE and R9.1 |
+| 5 VCC | +3V3_MCU | Upstream supply, bypassed by C54 |
+| 2 GND | GND | Common reference |
+
+With valid supplies, SPI_IO_EN = C6_EN AND RADIO_PWR_EN. Reset assertion
+or a low host power request therefore requests SPI isolation. C6_EN is
+reset release, NOT firmware-ready; the host must keep chip select inactive
+and clock idle until the radio protocol is ready. Logic connectivity does
+not establish shutdown timing or behavior during sub-minimum supply ramps.
+
+### Conditional DC calculations
+
+[TI SN74LVC1G97 sections 6.5 and 8.4](https://www.ti.com/lit/ds/symlink/sn74lvc1g97.pdf)
+provide the gate function, input leakage test limit of 5 uA, and the 3 V,
+16 mA output limits VOH >=2.4 V and VOL <=0.45 V through 125 C.
+[TI TXU0304 section 7.5](https://www.ti.com/lit/ds/symlink/txu0304.pdf)
+gives OE thresholds at equal 3 V supplies: VT+ <=1.92 V and VT- >=0.89 V;
+OE leakage is -0.1 to 2 uA at the listed powered rail-endpoint conditions.
+These are discrete test-point limits, not an interpolated full-rail proof.
+
+Use RADIO-010's resistor bounds of 9801 to 10201 ohm. Allocate 12 uA
+total adverse OE-node current including U5 and board leakage. This is an
+allocation for unqualified states, not a substitute for their specifications.
+
+```text
+U8 high-state DC load <= 3.6/9801 + 12e-6 = 0.379309 mA
+0.379309 mA < 16 mA output test current
+3 V test-point high margin = 2.4 - 1.92 = 0.48 V
+3 V test-point low margin = 0.89 - 0.45 = 0.44 V
+R9 dissipation <= 3.6^2/9801 = 1.322314 mW
+```
+
+Do not use the gate's 100 uA VOH limit: R9 alone exceeds that loading.
+The margins above screen a valid 3 V operating point; unequal supplies,
+power ramps and the complete temperature/rail envelope remain open.
+
+U8 also loads C6_EN and RADIO_PWR_EN. Reserve 5 uA for each gate input
+within each node's 12 uA total allocation, leaving 7 uA for the other
+contributors. RADIO-013's R11 calculations remain conditional on that
+total; adding U8 does not silently grant an extra leakage allowance.
+The supervisor, ESP32 EN, host pin, U4 ON and board contributions require
+closure in their applicable states. Gate input capacitance also adds to
+the reset edge load; no maximum reset-fall time is claimed here.
+
+For a high-impedance host request, bound the complete R7/R8 path current
+by a 12 uA adverse allocation. Treating all of it as flowing through both
+resistors gives a conservative request-node screen:
+
+```text
+Vrequest_low <= 12e-6*(10201+10201) = 0.244824 V
+U8 3 V test-point low margin = 0.84-0.244824 = 0.595176 V
+```
+
+This does not bound a host actively driving or internally pulling high.
+Hardware startup pin state, enable/disable timing relative to load-switch
+turnoff, brownout response and off-state leakage remain required before
+the interface can be described as electrically qualified. No issue is
+closed by this static screen.
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+from itertools import product
+from math import isclose
+
+rmin, rmax = F(9801), F(10201)
+allocation = F('12e-6')
+load = F('3.6')/rmin + allocation
+assert isclose(float(load*1000), .3793094582185491)
+assert F('.0001') < load < F('.016')
+assert F('2.4')-F('1.92') == F('.48')
+assert F('.89')-F('.45') == F('.44')
+assert isclose(float(F('3.6')**2/rmin*1000), 1.3223140495867767)
+assert allocation-F('5e-6') == F('7e-6')
+request_low = allocation*(rmax+rmax)
+assert request_low == F('.244824')
+assert F('.84')-request_low == F('.595176')
+for reset_release, power_request in product((False, True), repeat=2):
+    mux_y = reset_release if power_request else False
+    assert mux_y == (reset_release and power_request)
+print('RADIO-016 PASS: truth table and conditional DC arithmetic; '
+      'full sequencing and leakage qualification remain open.')
+PY
+```
