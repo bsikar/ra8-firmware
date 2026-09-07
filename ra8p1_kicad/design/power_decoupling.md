@@ -197,8 +197,8 @@ load and 0.175 ohm switch resistance allowance:
 ```text
 Switch drop = 0.5*0.175 = 0.0875 V
 Radio minimum, static screen = 3.242044111 - 0.0875 = 3.154544111 V
-U6 maximum rising screen, RADIO-011 example = 3.132066484 V
-Remaining radio release budget = 22.477627 mV
+U6 maximum rising screen, RADIO-014 fitted divider = 3.139621574 V
+Remaining radio release budget = 14.922537 mV
 U2 maximum rising screen, RST-001 = 3.193951250 V
 Remaining MCU release budget = 48.092861 mV
 Headroom below 3.6 V = 3.6 - 3.358485094 = 241.514906 mV
@@ -247,9 +247,9 @@ for rt, rb, tolerance, tcr, expected_min, expected_max in cases:
     assert isclose(float(vmax), expected_max, abs_tol=1e-12)
     print(f'{rt}/{rb}: {float(vmin):.9f}..{float(vmax):.9f} V')
 radio_min = vmin-F('.5')*F('.175')
-radio_margin = radio_min-F('3.1320664839416503')
+radio_margin = radio_min-F('3.1396215743674185')
 mcu_margin = vmin-F('3.19395125')
-assert isclose(float(radio_margin*1000),22.4776273604787,abs_tol=1e-9)
+assert isclose(float(radio_margin*1000),14.9225369347108,abs_tol=1e-9)
 assert isclose(float(mcu_margin*1000),48.0928613021293,abs_tol=1e-9)
 assert F('3.3')/66000 == F(50,1_000_000)
 assert F('6.27')+390+500 == F('896.27')

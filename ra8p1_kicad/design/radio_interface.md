@@ -950,9 +950,10 @@ to GND, following TI's section 6 bypass recommendation. It adds no
 capacitance to the switched-radio discharge model. See PWR-001 for the
 exact capacitor's nominal bias calculation, not a guaranteed PDN bound.
 
-SENSE and MR are not connected yet. C52 connects CT to ground (RADIO-012).
+MR is not connected yet. C52 connects CT to ground (RADIO-012).
 RESET now drives C6_EN with R11 pulled up to +3V3_RADIO (RADIO-013).
-Switched-radio sensing and upstream-domain MR arbitration remain unimplemented.
+R12/R13 now sense the switched radio rail (RADIO-014).
+Upstream-domain MR arbitration remains unimplemented.
 The missing controls must remain visible ERC findings, not be marked NC.
 
 [DigiKey's exact DSET listing](https://www.digikey.com/en/products/detail/texas-instruments/TPS389001DSET/6110554)
@@ -1000,7 +1001,9 @@ applied on top of the separately specified nominal rising threshold.
 The first example has only 2.265442 mV static margin above the module's
 3.0 V minimum; the second has only 4.296208 mV release headroom. The third
 balances the two but still leaves little transient allowance. None is an
-approved divider. The 3.1465 V source is RADIO-004's conditional rail screen,
+approved divider at this screening stage. RADIO-014 records the subsequent
+R12/R13 selection with additional drift and leakage allocations. The 3.1465 V
+source is RADIO-004's conditional rail screen,
 not a guaranteed final supply. Precision-divider selection and the actual
 regulator/load-switch budget must be resolved together.
 
@@ -1089,8 +1092,9 @@ Residual CT voltage, leakage beyond the allocation, rapid retriggering and
 supply transients require evaluation. No external signal or test connector
 is attached to CT. Keep its physical loop short and clean.
 
-U6's SENSE divider and manual-reset arbitration remain unfinished.
-RADIO-013 implements the RESET-to-EN path. Supply stabilization and the minimum actual C6 EN-low interval
+U6's manual-reset arbitration remains unfinished; RADIO-014 adds its SENSE
+divider. RADIO-013 implements the RESET-to-EN path. Supply stabilization
+and the minimum actual C6 EN-low interval
 must be checked after those paths are completed. C52 alone does not close
 power-cycle, brownout or reset acceptance.
 
@@ -1171,7 +1175,7 @@ No extra capacitor is placed on EN: C52 sets the supervisor delay instead.
 EN rise time depends on R11 and actual node capacitance; the module's
 typical 2 pF pin value cannot establish a maximum delay. Reevaluate this
 network when adding any OE-sense input, test access or other capacitance.
-The SENSE and MR inputs are still open, so the reset network is not yet
+The MR input is still open (SENSE is connected in RADIO-014), so the reset network is not yet
 operationally complete despite the connected output path. The numerical
 logic margins above do not extend the module table to all temperatures.
 
@@ -1195,5 +1199,108 @@ power = F('3.6')**2/rmin
 assert isclose(float(power*1000),1.322314049586777,abs_tol=1e-12)
 print('RADIO-013 PASS: conditional sink and logic-level screens; '
       'reset sequencing and off-state qualification remain open.')
+PY
+```
+
+## RADIO-014: Switched-radio sense divider
+
+Revision 1, 2026-09-07. R12 connects +3V3_RADIO to U6.1 SENSE; R13
+connects that node to GND. Both are placed and wired in the native radio
+schematic. Its RADIO-014 annotation links here. Tracking: #826 / #825.
+
+### Exact selections
+
+| Ref | Manufacturer part | Value | DigiKey cut-tape code | Indexed stock | USD at 1 / 10 / 100 |
+| --- | --- | --- | --- | --- | --- |
+| R12 | Susumu RG1608P-3322-B-T5 | 33.2k | RG16P33.2KBCT-ND | 95,362 | 0.13 / 0.111 / 0.09210 |
+| R13 | Susumu RG1608P-203-B-T5 | 20k | RG16P20.0KBCT-ND | 186,950 | 0.11 / 0.093 / 0.07710 |
+
+Both listings were checked 2026-09-07: Active, 18-week standard lead time.
+These are indexed availability snapshots, not reserved stock or order quotes.
+Sources: [R12 listing](https://www.digikey.com/en/products/detail/susumu/RG1608P-3322-B-T5/1240944),
+[R13 listing](https://www.digikey.com/en/products/detail/susumu/RG1608P-203-B-T5/1240507).
+The 33.2k YAGEO alternative had only 370 indexed units at this check;
+the small price premium buys substantially more available stock.
+
+[Susumu RG specification, pp.17-18](https://www.susumu.co.jp/dl/?filename=n_catalog_partition01_en.pdf&type=application/pdf)
+decodes P as 25 ppm/C and B as 0.1%. These are regular-power 0.1 W,
+0603 parts; no correlated ratio tracking is assumed between discrete parts.
+The reliability tests are defined stress conditions, not an unconditional
+lifetime guarantee. Allocate an additional +/-0.15% resistance change per
+part for assembly/aging. This allowance requires qualification against the
+actual manufacturing process and intended service environment.
+
+### Extended static corner calculation
+
+Use RADIO-011's KCL and TI threshold/hysteresis limits. Add the independent
+0.15% drift allowance and enlarge the total adverse SENSE-node current
+allocation to +/-150 nA. The latter includes TI's listed 100 nA test-point
+maximum plus 50 nA board allowance; it is not a guarantee for every state.
+Use a 100 C excursion for the TCR screen, with no extension of component
+operating-temperature ratings.
+
+```text
+fmin = (1-0.001)*(1-25e-6*100)*(1-0.0015) = 0.99500774625
+fmax = (1+0.001)*(1+25e-6*100)*(1+0.0015) = 1.00500775375
+Rtmin/max = 33200*fmin/max; Rbmin/max = 20000*fmin/max
+Vtrip = Vsense*(1+Rt/Rb) + Is*Rt
+Nominal falling trip = 1.15*(1+33200/20000) = 3.059 V
+Vfall_min >= 1.15*0.99*(1+Rtmin/Rbmax)-150e-9*Rtmax
+           = 3.004600118 V
+Vrise_max <= 1.15*1.01*1.00825*(1+Rtmax/Rbmin)+150e-9*Rtmax
+           = 3.139621574 V
+Static margin above module minimum = 3.004600118-3 = 4.600118 mV
+PWR-002 static release headroom = 3.154544111-3.139621574
+                              = 14.922537 mV
+Nominal divider current at 3.3 V = 3.3/53200 = 62.030075 uA
+No-leak current screen at 3.6 V = 3.6/(53200*fmin) = 68.008690 uA
+Conservative rail-current bound including leakage < 68.159 uA
+Per-resistor power upper bound: 3.6^2/Rmin < 0.652 mW for either part
+```
+
+The falling expression deliberately uses the largest negative leakage term
+even though that resistance corner differs from the minimum-ratio corner.
+It is a conservative bound, not a claim that both occur simultaneously.
+The calculation below also checks all actual endpoint combinations.
+
+This divider adds DC load but no capacitor to RADIO-009's external-capacitance
+sum. Do not add a SENSE filter capacitor without recalculating brownout delay.
+Route the sense connection from the module supply node and keep its ground
+reference local; routing drop is not included in the numbers above.
+
+Only 4.6 mV remains in the falling static screen. This is insufficient by
+itself to claim reset asserts before a rapidly falling supply reaches 3 V.
+The allowed rail slew must satisfy
+abs(dV/dt) <= (Vfall_min-3 V)/(tassert_max+tENfall_max), using valid worst-case
+timing limits and overdrive conditions, not typical curves. MR arbitration,
+controlled shutdown and the final regulator/load-switch transient budget
+remain required. R12/R13 are the implemented divider, not approval of the
+complete reset or power architecture. Revise the selection if those budgets
+cannot be met.
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+from itertools import product
+from math import isclose
+
+lo = F('.999')*F('.9975')*F('.9985')
+hi = F('1.001')*F('1.0025')*F('1.0015')
+assert lo == F('.99500774625') and hi == F('1.00500775375')
+rt, rb, leakage = F(33200), F(20000), F('150e-9')
+fall = F('1.15')*F('.99')*(1+rt*lo/(rb*hi))-leakage*rt*hi
+rise = F('1.15')*F('1.01')*F('1.00825')*(1+rt*hi/(rb*lo))+leakage*rt*hi
+assert isclose(float(fall),3.004600117739068,abs_tol=1e-12)
+assert isclose(float(rise),3.1396215743674185,abs_tol=1e-12)
+for tr, br, current, accuracy in product((lo,hi),(lo,hi),(-leakage,leakage),(F('.99'),F('1.01'))):
+    falling = F('1.15')*accuracy*(1+rt*tr/(rb*br))+current*rt*tr
+    rising = F('1.15')*accuracy*F('1.00825')*(1+rt*tr/(rb*br))+current*rt*tr
+    assert falling >= fall and rising <= rise
+assert fall > 3 and rise < F('3.154544111302129')
+assert F('3.6')/((rt+rb)*lo)+leakage < F('68.159e-6')
+for resistance in (rt,rb):
+    assert F('3.6')**2/(resistance*lo) < F('.000652')
+print('RADIO-014 PASS: endpoint and conservative static bounds; '
+      '4.600118 mV falling / 14.922537 mV release headroom. Dynamics open.')
 PY
 ```
