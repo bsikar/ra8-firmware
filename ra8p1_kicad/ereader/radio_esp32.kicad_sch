@@ -1306,6 +1306,170 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Switch:SW_Push"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "SW"
+				(at 1.27 2.54 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "SW_Push"
+				(at 0 -1.524 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Push button switch, generic, two pins"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "switch normally-open pushbutton push-button"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "SW_Push_0_1"
+				(circle
+					(center -2.032 0)
+					(radius 0.508)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 1.27) (xy 0 3.048)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center 2.032 0)
+					(radius 0.508)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 2.54 1.27) (xy -2.54 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Wireless:ESP32-C6-WROOM-1-N8"
 			(exclude_from_sim no)
 			(in_bom yes)
@@ -2403,7 +2567,18 @@
 		)
 		(uuid "2fdd2c9d-c4d2-41f1-abba-69e229915ff5")
 	)
-	(text "RADIO-017: R15/R16/R17 boot/debug strap pull-ups to switched radio rail.\nFlash boot: GPIO9=1. Download: GPIO8=1, GPIO9=0; recovery driver not yet fitted.\nGPIO15=1 selects USB JTAG with applicable eFuses; retain straps >=3ms after EN rises.\nRmin/max=10k*(1+/-1%)*(1+/-100ppm/K*100K)=9801/10201 ohm.\nAt 3.3V: Vhigh>=3.3-12uA*10201=3.177588V; VIH=2.475V; margin=0.702588V.\nExternal low-state current<=3.6/9801=0.367309mA each; P<=1.322314mW each.\n12uA total/node is an allocation. Internal pull-up sink current and full-state timing OPEN.\nMath: ../design/radio_interface.md#radio-017-boot-and-debug-strap-bias"
+	(text "RADIO-018: SW3 manual BOOT / Panasonic EVQP7A01P.\nSPST-NO; 10uA at 2V minimum, 50mA at 12V maximum.\nR16 current <=3.6/9801=0.367309mA; add internal pull-up.\nIf total sink <=1mA: Vlow<=1mA*0.5ohm=0.5mV; P<=0.5uW.\nBounce <=10ms: hold BOOT >=20ms before EN rises, >=3ms after.\nHost must power radio; recovery data access/sequencing remain OPEN.\nSide actuator, -20..70C; enclosure/footprint qualification deferred.\nMath: ../design/radio_interface.md#radio-018-manual-boot-contact"
+		(exclude_from_sim no)
+		(at 177.8 261.62 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "37a8794a-3bd6-4f3c-8355-ab4a7cf733da")
+	)
+	(text "RADIO-017: R15/R16/R17 boot/debug strap pull-ups to switched radio rail.\nFlash boot: GPIO9=1. Download: GPIO8=1, GPIO9=0; manual BOOT is SW3 (RADIO-018).\nGPIO15=1 selects USB JTAG with applicable eFuses; retain straps >=3ms after EN rises.\nRmin/max=10k*(1+/-1%)*(1+/-100ppm/K*100K)=9801/10201 ohm.\nAt 3.3V: Vhigh>=3.3-12uA*10201=3.177588V; VIH=2.475V; margin=0.702588V.\nExternal low-state current<=3.6/9801=0.367309mA each; P<=1.322314mW each.\n12uA total/node is an allocation. Internal pull-up sink current and full-state timing OPEN.\nMath: ../design/radio_interface.md#radio-017-boot-and-debug-strap-bias"
 		(exclude_from_sim no)
 		(at 19.05 254 0)
 		(effects
@@ -3428,6 +3603,16 @@
 		(uuid "3bf18d80-1e5a-4aaa-bc49-f8aa526537f1")
 	)
 	(label "C6_BOOT_N"
+		(at 109.22 215.9 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "3d1e88a6-e4ab-4dca-9a9a-eea6ae653496")
+	)
+	(label "C6_BOOT_N"
 		(at 96.52 101.6 180)
 		(effects
 			(font
@@ -3847,6 +4032,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "C53")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 119.38 215.9 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "0eb4697d-5365-4f8c-bbde-f09362b991bc")
+		(property "Reference" "#PWR084"
+			(at 119.38 222.25 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 119.38 220.98 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 119.38 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 119.38 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 119.38 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "0d199d9d-d4cb-4267-b297-e183bba2406f")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR084")
 					(unit 1)
 				)
 			)
@@ -5841,6 +6104,163 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "#PWR053")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Switch:SW_Push")
+		(at 114.3 215.9 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "4258d25c-b3bd-4f1a-a7ed-c50899463de7")
+		(property "Reference" "SW3"
+			(at 114.3 208.28 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "EVQP7A01P"
+			(at 114.3 210.82 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 114.3 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://industrial.panasonic.com/cdbs/www-data/pdf/ATK0000/ATK0000C378.pdf"
+			(at 114.3 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "RADIO-018: Panasonic EVQP7A01P SPST-NO BOOT switch, C6_BOOT_N to GND. 10uA/2V minimum resistive load; 50mA/12V maximum; side actuation; -20..70C."
+			(at 114.3 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Panasonic Industry"
+			(at 114.3 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "EVQP7A01P"
+			(at 114.3 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "P16763CT-ND"
+			(at 114.3 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/panasonic-industry/EVQ-P7A01P/4429447"
+			(at 114.3 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-018: low-current SPST-NO BOOT contact to GND. R16 external current <=0.367309mA; contact R<=0.5ohm. 10ms bounce; hold before reset release. -20..70C, side actuator; mechanics deferred."
+			(at 114.3 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07 DigiKey indexed: Active; 32562 in stock; USD CT qty1 0.28 / 10 0.248 / 100 0.2076; 18-week lead. Dated snapshot, not order quote."
+			(at 114.3 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - primary electrical ratings and sourcing checked; full reset/recovery qualification open; footprint and actuator access deferred."
+			(at 114.3 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "7cdc1f13-3038-42e3-b5f3-1b428b2a2904")
+		)
+		(pin "1"
+			(uuid "25d66467-77bf-453c-954f-fb8cc203b481")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "SW3")
 					(unit 1)
 				)
 			)
