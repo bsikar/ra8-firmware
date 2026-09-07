@@ -1514,3 +1514,88 @@ print('RADIO-016 PASS: truth table and conditional DC arithmetic; '
       'full sequencing and leakage qualification remain open.')
 PY
 ```
+
+## RADIO-017: Boot and debug strap bias
+
+Revision 1, 2026-09-07. R15/R16/R17 on the radio sheet implement
+switched-rail pull-ups for U3 GPIO8, GPIO9 and GPIO15 respectively.
+The RADIO-017 schematic note links here. Tracking: #826.
+
+All three reuse YAGEO RC0603FR-0710KL, 10k, 1%, DigiKey
+311-10.0KHRCT-ND, with RADIO-010's exact specification and dated sourcing
+snapshot retained in the BOM. Their supply is +3V3_RADIO, not +3V3_MCU.
+This avoids introducing an upstream-rail pull-up into an unpowered module.
+
+[Espressif module datasheet v1.4, Tables 3-1, 4-1 through 4-7 and 6-3](https://www.espressif.com/sites/default/files/documentation/esp32-c6-wroom-1_wroom-1u_datasheet_en.pdf)
+identifies GPIO8/9/15 as contacts 10/15/23. GPIO9 has a weak internal
+pull-up; GPIO8 and GPIO15 float by default. Flash boot requires GPIO9
+high. Download boot requires GPIO8 high and GPIO9 low. Keep straps stable
+for at least 3 ms after EN rises. GPIO15 high selects USB JTAG when
+strap-based selection is enabled and neither debug path is disabled by
+eFuse; default eFuses already select USB JTAG. A pull-up cannot override
+an eFuse disabling an interface. The listed internal pull-up resistance
+is 45k typical, not a guaranteed minimum. Table 6-3 applies at 3.3 V,
+25 C and gives input VIH >=0.75*VDD and input current <=50 nA.
+
+| Part | Module pin | Net | Intended reset-time level |
+| --- | --- | --- | --- |
+| R15 | U3.10 GPIO8 | C6_GPIO8 | High, including download mode |
+| R16 | U3.15 GPIO9 | C6_BOOT_N | High normally; externally low for recovery |
+| R17 | U3.23 GPIO15 | C6_GPIO15 | High for USB debug-source selection |
+
+Recovery access and a suitable low-driving circuit are not yet installed.
+Their leakage, sink current, off-state behavior and strap timing must be
+included before recovery is qualified. MTMS/MTDI control SDIO edge choices;
+this SPI-hosted design does not use SDIO recovery. Do not infer their
+external loading is harmless for a future SDIO implementation.
+
+### Pull-up calculation
+
+Reuse the independently applied 1% tolerance and 100 ppm/K over 100 K
+resistance screen from RADIO-010. The excursion is an arithmetic envelope,
+not permission to exceed the module's rated temperature range. Allocate
+12 uA total adverse current per strap, including module, board and eventual
+recovery-circuit leakage. This exceeds the quoted 25 C input-current limit
+but is not yet a proven all-state total. Ignore the helpful internal GPIO9
+pull-up in the high-level calculation.
+
+```text
+Rmin = 10000*(1-0.01)*(1-100e-6*100) = 9801 ohm
+Rmax = 10000*(1+0.01)*(1+100e-6*100) = 10201 ohm
+Vstrap_high >= 3.3 - 12e-6*10201 = 3.177588 V
+VIH at the stated 3.3 V test point = 0.75*3.3 = 2.475 V
+High-level margin = 3.177588 - 2.475 = 0.702588 V
+External pull-up current when held low <= 3.6/9801 = 0.367309 mA
+External resistor dissipation <= 3.6^2/9801 = 1.322314 mW
+Three external pull-ups simultaneously held low <= 1.101928 mA
+```
+
+The low-state current calculation covers external resistors only. Add
+GPIO9's internal pull-up and any other sources to the eventual recovery
+driver sink budget; a typical 45k value cannot establish its worst case.
+Do not extrapolate the input threshold test point across the full rail and
+temperature range without evidence. The 3 ms strap hold requirement is
+not a capacitor-value calculation; no strap capacitors are fitted here.
+Keep these nets reserved through reset/strap sampling, and do not configure
+conflicting pull-downs or outputs as part of normal radio startup.
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+from math import isclose
+
+rmin = F(10000)*F('.99')*F('.99')
+rmax = F(10000)*F('1.01')*F('1.01')
+assert (rmin,rmax) == (F(9801),F(10201))
+strap_high = F('3.3')-F('12e-6')*rmax
+assert strap_high == F('3.177588')
+assert strap_high-F('.75')*F('3.3') == F('.702588')
+current = F('3.6')/rmin
+assert isclose(float(current*1000), .3673094582185491)
+assert isclose(float(3*current*1000), 1.1019283746556474)
+assert isclose(float(F('3.6')**2/rmin*1000), 1.3223140495867767)
+assert F('12e-6') > F('50e-9')
+print('RADIO-017 PASS: conditional strap bias and external-resistor '
+      'current arithmetic; recovery driver and full-state qualification open.')
+PY
+```

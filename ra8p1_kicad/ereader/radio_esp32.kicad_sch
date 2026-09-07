@@ -2403,6 +2403,17 @@
 		)
 		(uuid "2fdd2c9d-c4d2-41f1-abba-69e229915ff5")
 	)
+	(text "RADIO-017: R15/R16/R17 boot/debug strap pull-ups to switched radio rail.\nFlash boot: GPIO9=1. Download: GPIO8=1, GPIO9=0; recovery driver not yet fitted.\nGPIO15=1 selects USB JTAG with applicable eFuses; retain straps >=3ms after EN rises.\nRmin/max=10k*(1+/-1%)*(1+/-100ppm/K*100K)=9801/10201 ohm.\nAt 3.3V: Vhigh>=3.3-12uA*10201=3.177588V; VIH=2.475V; margin=0.702588V.\nExternal low-state current<=3.6/9801=0.367309mA each; P<=1.322314mW each.\n12uA total/node is an allocation. Internal pull-up sink current and full-state timing OPEN.\nMath: ../design/radio_interface.md#radio-017-boot-and-debug-strap-bias"
+		(exclude_from_sim no)
+		(at 19.05 254 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "507afa9f-8d1c-4d3d-9608-4fcc0ca79e5b")
+	)
 	(text "RADIO-009: U5 isolates host and switched-radio signal domains.\nC49/C50: 100 nF local bypass; TI TXU0304 section 12.1.\nC50 adds 0.1 uF: fitted external radio capacitance = 10.2 uF nominal.\n5 MHz budget: 100 - 11 - 11 = 78 ns remaining (5 pF test load).\nSPI/OE and reset qualification remain open; timing is not closed.\nMath: ../design/radio_interface.md#radio-009-spi-power-domain-isolation"
 		(exclude_from_sim no)
 		(at 19.05 124.46 0)
@@ -2625,6 +2636,12 @@
 		(uuid "c21f458a-5fde-453a-a31d-853689c2b96a")
 	)
 	(junction
+		(at 50.8 193.04)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "d3caf757-ed1b-4e31-a028-4e81bb6a387c")
+	)
+	(junction
 		(at 35.56 68.58)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -2842,6 +2859,16 @@
 	)
 	(wire
 		(pts
+			(xy 25.4 207.01) (xy 25.4 213.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5c1fee39-3134-4d8f-af6d-76555dd918ea")
+	)
+	(wire
+		(pts
 			(xy 60.96 88.9) (xy 73.66 88.9)
 		)
 		(stroke
@@ -2882,6 +2909,26 @@
 	)
 	(wire
 		(pts
+			(xy 50.8 193.04) (xy 50.8 199.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "66f9121f-520f-4740-9143-eb2a91fe922b")
+	)
+	(wire
+		(pts
+			(xy 50.8 193.04) (xy 25.4 193.04)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6c4e1a6f-be26-41b4-8be1-b528a12d3f62")
+	)
+	(wire
+		(pts
 			(xy 134.62 154.94) (xy 144.78 154.94)
 		)
 		(stroke
@@ -2889,6 +2936,16 @@
 			(type default)
 		)
 		(uuid "7055ccc5-98be-4d26-bde9-445ce756729a")
+	)
+	(wire
+		(pts
+			(xy 76.2 199.39) (xy 76.2 193.04)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7198aa64-6999-45fe-9c12-1c1d0f5a542d")
 	)
 	(wire
 		(pts
@@ -3112,6 +3169,16 @@
 	)
 	(wire
 		(pts
+			(xy 50.8 207.01) (xy 50.8 213.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c775953b-3d9f-495d-82bd-57beff3900a8")
+	)
+	(wire
+		(pts
 			(xy 248.92 81.28) (xy 248.92 78.74)
 		)
 		(stroke
@@ -3189,6 +3256,16 @@
 			(type default)
 		)
 		(uuid "df47d241-a18b-4b82-981f-7f65c0fdc87f")
+	)
+	(wire
+		(pts
+			(xy 76.2 207.01) (xy 76.2 213.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e0e23364-af30-422b-bd43-ace919bde139")
 	)
 	(wire
 		(pts
@@ -3282,6 +3359,26 @@
 	)
 	(wire
 		(pts
+			(xy 25.4 193.04) (xy 25.4 199.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fd941f2d-d8b1-4594-a152-35a748ffac11")
+	)
+	(wire
+		(pts
+			(xy 76.2 193.04) (xy 50.8 193.04)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fe321154-182e-40e9-acaf-79891ef26675")
+	)
+	(wire
+		(pts
 			(xy 139.7 73.66) (xy 139.7 68.58)
 		)
 		(stroke
@@ -3300,6 +3397,26 @@
 		)
 		(uuid "fece1c94-1e8b-4e1c-9238-2e051c149521")
 	)
+	(label "C6_GPIO15"
+		(at 132.08 86.36 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "1729e723-e1f3-425a-ad39-5686e65aec77")
+	)
+	(label "C6_GPIO8"
+		(at 96.52 99.06 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "17ae5404-45c9-46e8-a2e7-25a40be8c181")
+	)
 	(label "C6_SCLK"
 		(at 83.82 93.98 0)
 		(effects
@@ -3309,6 +3426,16 @@
 			(justify left bottom)
 		)
 		(uuid "3bf18d80-1e5a-4aaa-bc49-f8aa526537f1")
+	)
+	(label "C6_BOOT_N"
+		(at 96.52 101.6 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "3e387b09-27cc-40a3-9a99-de7e513d5dce")
 	)
 	(label "SPI_IO_EN"
 		(at 106.68 38.1 0)
@@ -3360,6 +3487,16 @@
 		)
 		(uuid "82c3be37-6807-44f0-bad3-42bc4ebadae6")
 	)
+	(label "C6_BOOT_N"
+		(at 50.8 213.36 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "8e75582d-0e28-44c6-bf93-af6733f7379c")
+	)
 	(label "C6_COPI"
 		(at 73.66 86.36 180)
 		(effects
@@ -3390,6 +3527,16 @@
 		)
 		(uuid "a21eaa6b-d106-4d64-b669-22d631e0c18d")
 	)
+	(label "C6_GPIO8"
+		(at 25.4 213.36 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "a43ef527-b9e9-43ce-b4d7-d2ac7d4398f1")
+	)
 	(label "RADIO_PWR_EN"
 		(at 76.2 43.18 180)
 		(effects
@@ -3399,6 +3546,16 @@
 			(justify right bottom)
 		)
 		(uuid "acc59286-cfe9-42f8-9894-5114d9fd2424")
+	)
+	(label "C6_GPIO15"
+		(at 76.2 213.36 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "b4ab543e-4f2c-43a4-a1fb-5f7dc067be4b")
 	)
 	(label "RADIO_MR_N"
 		(at 254 76.2 180)
@@ -5230,6 +5387,388 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 76.2 203.2 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "3577c538-6f1b-41b8-b604-1414a4494d37")
+		(property "Reference" "R17"
+			(at 80.01 201.93 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10k"
+			(at 80.01 204.47 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 74.422 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
+			(at 76.2 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "YAGEO RC0603FR-0710KL; 10k 1%. RADIO-017 switched-rail boot/debug strap pull-up; see linked calculation."
+			(at 76.2 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 76.2 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 76.2 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
+			(at 76.2 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827"
+			(at 76.2 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
+			(at 76.2 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 2922248; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
+			(at 76.2 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 76.2 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
+			(at 76.2 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-017: 10k boot/debug strap pull-up to +3V3_RADIO. R=9801..10201 ohm with 1% and 100ppm/K over 100K. 12uA adverse-current allocation gives 3.177588V at 3.3V; full-state qualification open."
+			(at 76.2 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
+			(at 76.2 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "0f705b3d-d730-4a4f-bf91-533d083b2c77")
+		)
+		(pin "2"
+			(uuid "d0698767-8f50-474b-8efa-d532a97584cc")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "R17")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 50.8 203.2 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "36fe0d53-7d95-44ff-8891-acb6f4c57257")
+		(property "Reference" "R16"
+			(at 54.61 201.93 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10k"
+			(at 54.61 204.47 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 49.022 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
+			(at 50.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "YAGEO RC0603FR-0710KL; 10k 1%. RADIO-017 switched-rail boot/debug strap pull-up; see linked calculation."
+			(at 50.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 50.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 50.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
+			(at 50.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827"
+			(at 50.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
+			(at 50.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 2922248; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
+			(at 50.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 50.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
+			(at 50.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-017: 10k boot/debug strap pull-up to +3V3_RADIO. R=9801..10201 ohm with 1% and 100ppm/K over 100K. 12uA adverse-current allocation gives 3.177588V at 3.3V; full-state qualification open."
+			(at 50.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
+			(at 50.8 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "023a83ed-2b21-4acd-ae84-d1596fe8240b")
+		)
+		(pin "2"
+			(uuid "79bf0f3e-79de-41ea-b9c6-eb44217abcec")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "R16")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:+3V3")
 		(at 170.18 68.58 0)
 		(unit 1)
@@ -5380,6 +5919,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "#PWR068")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:VCC")
+		(at 50.8 193.04 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "58411e6e-1d66-436a-8cb1-bd1b01d563e9")
+		(property "Reference" "#PWR083"
+			(at 50.8 196.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3V3_RADIO"
+			(at 50.8 187.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 50.8 193.04 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 50.8 193.04 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"VCC\""
+			(at 50.8 193.04 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "deee515d-2ca4-4101-8b4d-3edd46bc8661")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR083")
 					(unit 1)
 				)
 			)
@@ -9115,6 +9732,197 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "#PWR055")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 25.4 203.2 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "b0433e50-4048-4cc4-940a-4cf26a787040")
+		(property "Reference" "R15"
+			(at 29.21 201.93 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10k"
+			(at 29.21 204.47 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 23.622 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
+			(at 25.4 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "YAGEO RC0603FR-0710KL; 10k 1%. RADIO-017 switched-rail boot/debug strap pull-up; see linked calculation."
+			(at 25.4 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 25.4 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 25.4 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
+			(at 25.4 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827"
+			(at 25.4 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
+			(at 25.4 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 2922248; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
+			(at 25.4 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 25.4 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
+			(at 25.4 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-017: 10k boot/debug strap pull-up to +3V3_RADIO. R=9801..10201 ohm with 1% and 100ppm/K over 100K. 12uA adverse-current allocation gives 3.177588V at 3.3V; full-state qualification open."
+			(at 25.4 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
+			(at 25.4 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "6fc3d6ce-f5a3-4e73-bd35-af3e113e914d")
+		)
+		(pin "2"
+			(uuid "94083bc0-5b47-4936-8111-5683a407b816")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "R15")
 					(unit 1)
 				)
 			)
