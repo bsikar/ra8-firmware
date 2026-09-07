@@ -86,7 +86,7 @@ batches:
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
     assigned_rows: 784
-    rows_sha256: a9e54247b84dbacce69655d4e71a22a1aac69d262aa61a0b12b43a7b86ec4fd9
+    rows_sha256: 5e1f02e9ddf5834a2cfa0a641532ab4f6616af5fa3cc6eaab8b4bf3a39e6a693
     partition: "wave D: every remaining non-baseline occurrence reviewed by family"
     evidence:
       - "issue-790 wave-D family review record"
@@ -122,7 +122,7 @@ batches:
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
     assigned_rows: 4187
-    rows_sha256: 92905272235ad744bcf63000cc6b17f6758584dc5a7d9bf5aaa83475319c1c04
+    rows_sha256: 6372f8e9c6f3dc0bb7c7c6aac058ec7737f97c4b05d57863ac3eaf08499b5fbe
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
@@ -264,7 +264,7 @@ batches:
     date: 2026-08-31
     identity_schema: 2-durable-site-identity
     assigned_rows: 162
-    rows_sha256: 2806edd012ad50660f1975888ba7ad9b0efdf04309467f1e057b1d4009aedee7
+    rows_sha256: 7e2231ba1397fdd64a84047cc569ce14fbe3552d50098e866ff465c33b290922
     partition: >-
       Final runtime suppression governance: authenticated checker census expansion,
       extracted HIL and devcontainer selftest controls, and complete lineage closure.
@@ -375,7 +375,7 @@ batches:
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
     assigned_rows: 28
-    rows_sha256: add06bb9224ddce67517caf1cf88d79ab7c2209e7833f59f72e141740759ac2f
+    rows_sha256: 03f09d8b7ab15a87f29022ce3169c20f50beefabf31f782587f488f3445db22e
     partition: >-
       Dev-box selftest and check-mode idempotence reconciliation: seven exact
       reporting-only Ansible controls, eighteen exact scope-authority successors,
@@ -403,7 +403,7 @@ batches:
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
     assigned_rows: 124
-    rows_sha256: 62631e23e83047a932d5082ae1e156ffb8b99e0ab1daebaa9955776394687ca1
+    rows_sha256: acf613647fae7fac72c3a4c3c83b8c082fb33fd4b6b1eb8e2bce24ee71a07815
     partition: >-
       HIL size-cap split reconciliation: three new bound-exit raw-byte
       authorities, two changed raw-byte pins, one moved negative-fixture
@@ -440,7 +440,7 @@ batches:
     date: 2026-09-03
     identity_schema: 2-durable-site-identity
     assigned_rows: 59
-    rows_sha256: ee0e6fb48590489a3e52d5d7f7c96f6b9c1312c00d9f474fd4fd0482c3015e6f
+    rows_sha256: 748cfc6e020858a046160724dc30b9f84124ea17e01024eb1f2ea659e73791fe
     partition: >-
       Continuous runner reconciliation and inherited runner-admission closure:
       exact Ansible probe controls, fixed-argv subprocess diagnostics,
@@ -471,7 +471,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: 41e539803b22217cd18b0431be56778bf89d47be5f7ac1cfe6790634e27f30d6
+    rows_sha256: f574ad855a075d46a166c358247a3975288212bfbcef4e95fa793a3e049c860b
     partition: >-
       Runner reconciliation round-two authority refresh: the independently
       recomputed devcontainer image raw-byte pin and both full-worktree
@@ -530,7 +530,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 17
-    rows_sha256: a531fc35b7212b9ddbc20278b793de0e5263db8ccf34d7ffb3cbac0f68058d34
+    rows_sha256: 3f73d78e31d5c9d096bf35b5485b5aec731b50f163b4ffa9391eb40c233e2265
     partition: >-
       Round4 checker split: three exact fleet path authorities, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -554,7 +554,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 26
-    rows_sha256: 8dbad18a6c42863ae6947072583c804de9276abf944aa02280297c44475071fc
+    rows_sha256: 05ad204da9f3bbdd1d0171d2e309d476f6ec3077576562cd0efe0fb80d990afd
     partition: >-
       Round5 ARC checker split: one exact selftest path authority, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -603,7 +603,7 @@ batches:
     date: 2026-09-05
     identity_schema: 2-durable-site-identity
     assigned_rows: 36
-    rows_sha256: ba6092dd6b3a17a98fa4ea8b7e499466af0bcda9be31264a6e1ce478af35e4aa
+    rows_sha256: a3f2dd85988a761129a937bd0c530f1387812a52c807d23855e420c5f97b927f
     partition: >-
       Final runner storage, WSL clock, and lifecycle authority reconciliation.
     evidence:
@@ -623,7 +623,7 @@ batches:
     date: 2026-09-06
     identity_schema: 2-durable-site-identity
     assigned_rows: 3
-    rows_sha256: ae8843a9cbc7926ab4075ffdf1f1baa47116caad7d828762b5ac19cc36cad6d8
+    rows_sha256: be826459841e8631e51466f4cf4305a070408ae826e4befb237a49979a1fa33a
     partition: >-
       Runtime-less image policy selftest and locale-stable MISRA inventory.
     evidence:
@@ -642,7 +642,7 @@ batches:
     date: 2026-09-06
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: 7a2a21a9cc8f01b9bf20d5729ca296707fd29402c8c3d845bb5745a6c2092b90
+    rows_sha256: f9894a6062507c42f183d858bb8c7b8621dc2fa016041afd608e94ec5e9f3df7
     partition: >-
       Authenticated image selftest bytes and settled aggregate successors.
     evidence:
@@ -655,3 +655,33 @@ batches:
         Aggregates remain 1014 authorities and 3787 values, value digest
         234a44ff2329fdd0804e4da6fd2cf3be39796027b5e7764935a6bbe071388da8
         and reason 0d888662bf2b493526b1c55445b0a47150b616aa13c3c4d19b7e4e1626eff126.
+  - id: image-supervisor-load-deadline-20260907
+    authority: repository-suppression-review
+    date: 2026-09-07
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 4
+    rows_sha256: 981c4879eecfe651dbced3b0abb2bcb08b25166cdd16cdafb182578558eb147c
+    partition: >-
+      Load-safe image supervisor deadline review: the nested status receipt now
+      waits through its existing watchdog plus cleanup margin, and both exact
+      raw-byte digest authorities are rebound with complete direct lineage.
+    evidence:
+      - >-
+        The controller still owns the 30-second watchdog and the general
+        cleanup bound remains 10 seconds; the parent no longer times out ten
+        seconds before the controller's own watchdog can fire under load.
+      - >-
+        The full runtime devcontainer image selftest reproduced the prior
+        bound-exit worker failure during concurrent checks and passed after the
+        deadline repair under active load, including labelled and unlabelled
+        runtime round trips.
+      - >-
+        The supervisor and main-script SHA-256 values were independently
+        recomputed, both prior retained sites are explicit superseded history,
+        and every older replaced-by edge points directly at the live successor.
+      - >-
+        The final checker census remains exactly 1014 authorities and 3787
+        values, with classification
+        1de8ef8ba500b219f25f530651f2e9c332a3e308e1d3c0952bdc33292731ee35,
+        value 0754ba613ab359e61f0cd28593df3e558dac05890210c0f950fac2fbb80026ac,
+        and reason 19f0c524455275d11ccdc08ff9c83f0a7f4234af824bd22a229eabe9dfdf.
