@@ -79,8 +79,8 @@
 #   devcontainer_image.sh state               current | stale | absent
 #   devcontainer_image.sh ensure              build unless the cache is current
 #   devcontainer_image.sh ensure --rebuild    build regardless
-#   devcontainer_image.sh --selftest          prove the digest reacts, and that
-#                                             the label round-trips
+#   devcontainer_image.sh --selftest          all policy plus a runtime label round-trip
+#   devcontainer_image.sh --selftest-offline  policy proof for runtime-less CI containers
 #
 # Environment:
 #   RA8_CI_IMAGE            image tag to manage      (default ra8-ci:latest)
@@ -177,7 +177,7 @@ if [[ "$-" == *p* ]]; then
   IMAGE_LOCK_MANAGED=0
   SELFTEST_HELPER_RAW_SHA256="1d84ebe964ea5085a4145db610cb1d37ad61c02ea6d1e3220f8befdb2de1fcd7"
   SELFTEST_BOUND_EXIT_RAW_SHA256="79a1a39638b961ecb2daededdd363f04a7f765991b860a629cfbdc589df8de4d"
-  SELFTEST_CASES_RAW_SHA256="82f83d5717186669852c92e6af4ee426b35527053787586f9130029755d9cb96"
+  SELFTEST_CASES_RAW_SHA256="77284974e5886b4e7796999275145e229d42a6c4fc38c45d1786cba1c0878395"
   SELFTEST_SIGNAL_RAW_SHA256="37890007bdfe343848b8d42f2f58367e6018b0503b3117df6011ad599754ea21"
   export SELFTEST_SUPERVISOR_RAW_SHA256="27b73473be5078f5e7f894aba36a6b3bd91fbce2338510b3fc5a0a1cb8b55396"
   export SELFTEST_SUPERVISOR_CASES_RAW_SHA256="897a5be60eec486f9f9615fead84db22f8526dba189df305f561bc1c7b5e49e7"
@@ -843,7 +843,8 @@ scripts/ci/devcontainer_image.sh -- keep ra8-ci:latest matching the locked root 
   state               current | stale | absent
   ensure              build the image unless the cached one is current
   ensure --rebuild    build it regardless
-  --selftest          prove the digest reacts and the label round-trips
+  --selftest          all policy plus a runtime label round-trip
+  --selftest-offline  policy proof for runtime-less CI containers
 
 Environment: RA8_CI_IMAGE and RA8_CONTAINER_RUNTIME select the image/runtime.
 RA8_IMAGE_LOCK_DIR explicitly selects a managed lock. When unset, the canonical
@@ -856,7 +857,7 @@ EOF
 
   load_selftest_for_command() {
     case "$1" in
-      --selftest | --selftest-root-signal-child | \
+      --selftest | --selftest-offline | --selftest-root-signal-child | \
         --selftest-allocation-signal-child | \
         --selftest-allocation-checkpoint-child | \
         --selftest-case-signal-child | \
@@ -897,15 +898,19 @@ EOF
   }
 
   main() {
+    local selftest_mode
     load_selftest_for_command "${1:-}"
     case "${1:-}" in
       digest) context_digest ;;
       state) image_state ;;
       ensure) cmd_ensure "${2:-}" ;;
-      --selftest)
+      --selftest | --selftest-offline)
         SELFTEST_COMMAND_COMPLETE=0
-        cmd_selftest
-        [[ "$SELFTEST_COMMAND_COMPLETE" == "1" ]] || die "selftest command returned before completion"
+        selftest_mode=runtime
+        [[ "$1" == "--selftest-offline" ]] && selftest_mode=offline
+        cmd_selftest "$selftest_mode"
+        [[ "$SELFTEST_COMMAND_COMPLETE" == "1" ]] ||
+          die "selftest command returned before completion"
         ;;
       --selftest-root-signal-child | --selftest-allocation-signal-child | \
         --selftest-allocation-checkpoint-child | --selftest-case-signal-child)
@@ -926,14 +931,14 @@ EOF
       "") usage ;;
       *) die "unknown command '$1'. Try --help." ;;
     esac
-    if [[ "${1:-}" == "--selftest" ]]; then
+    if [[ "${1:-}" == "--selftest" || "${1:-}" == "--selftest-offline" ]]; then
       SELFTEST_MAIN_COMPLETE=1
     fi
   }
 
   SELFTEST_MAIN_COMPLETE=0
   main "$@"
-  if [[ "${1:-}" == "--selftest" ]]; then
+  if [[ "${1:-}" == "--selftest" || "${1:-}" == "--selftest-offline" ]]; then
     [[ "$SELFTEST_MAIN_COMPLETE" == "1" ]] || die "selftest main returned before completion"
   fi
 else

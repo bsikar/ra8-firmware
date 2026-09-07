@@ -122,7 +122,7 @@ batches:
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
     assigned_rows: 4187
-    rows_sha256: b22e907b42322aac9cf2c1cda56c51595cbd1cdea1acff0a4d15d1b4fa545676
+    rows_sha256: 6c436a5e54951aa0c51a530a009b0e74d0062fed4d65edc6e766587f4caf9ff4
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
@@ -440,7 +440,7 @@ batches:
     date: 2026-09-03
     identity_schema: 2-durable-site-identity
     assigned_rows: 59
-    rows_sha256: 52e0b7c4bd759ea2302f85e79a4b8b02b79091cb21fa98735a46eb262836b76b
+    rows_sha256: 5ed2d029ab79c988d63377ce52180607de660f9e89b8fd78478aee3ec17b60c1
     partition: >-
       Continuous runner reconciliation and inherited runner-admission closure:
       exact Ansible probe controls, fixed-argv subprocess diagnostics,
@@ -471,7 +471,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: c07a19173a9bda2c9d83efd06e83ccd305ef8cc7ba1862b4af5e86869af885aa
+    rows_sha256: 4c733beeb47aa787ad13078c99a9f68eb9d28fa8b2349b37e8de5bf836509840
     partition: >-
       Runner reconciliation round-two authority refresh: the independently
       recomputed devcontainer image raw-byte pin and both full-worktree
@@ -530,7 +530,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 17
-    rows_sha256: fda38dd975f77c8bc0e6ee89300f240399b17619eb56dcfcf815d7f3f47c9c02
+    rows_sha256: cca4b3a8f3ed76bb1a326bb705adae4a6e28e57e29ac9b7e73fbb41913f18269
     partition: >-
       Round4 checker split: three exact fleet path authorities, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -554,7 +554,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 26
-    rows_sha256: dd981dfc3965bb0a80d16fa981509a559d7440c0d845e0256e15ffb8c7548363
+    rows_sha256: 1f09fe5524a1d911dfcba72d43b2af46f8a83b53e23e3cc552034a12b691c246
     partition: >-
       Round5 ARC checker split: one exact selftest path authority, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -603,7 +603,7 @@ batches:
     date: 2026-09-05
     identity_schema: 2-durable-site-identity
     assigned_rows: 36
-    rows_sha256: fe7a58ea9bde180c821f0079e8eaf6d09546ce164ed941722eb9342aaf5aa81b
+    rows_sha256: 212ad55c5df82e6f3fc5af0630568a195ad582b001becd5d523af885bb0f52e2
     partition: >-
       Final runner storage, WSL clock, and lifecycle authority reconciliation.
     evidence:
@@ -618,3 +618,22 @@ batches:
         digest 646fa2a73ef0e939da82f16fcbdd333d1f635590d14a131aec758fad72cd03c8,
         reason digest fd483f46eacb51fa215eb48082e00f74315cea59f99bd028a849d9edb65f7bdb,
         and classification 1de8ef8ba500b219f25f530651f2e9c332a3e308e1d3c0952bdc33292731ee35.
+  - id: runner-selftest-portability-20260906
+    authority: repository-suppression-review
+    date: 2026-09-06
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 3
+    rows_sha256: fefd7f2c879eba485b73a8331d146c3ae7c32d8d78c51be54dbf94bbd4ed4b79
+    partition: >-
+      Runtime-less image policy selftest and locale-stable MISRA inventory.
+    evidence:
+      - >-
+        The offline image selftest executes every non-runtime attack inside CI;
+        the full host selftest still proves labelled and unlabelled round trips.
+      - >-
+        MISRA source and dump inventories use identical bytewise ordering; the
+        hostile en_US.UTF-8 fixture and WSL 867-unit audit both pass.
+      - >-
+        Authority aggregates remain 1014 authorities and 3787 values, value
+        c57d4b6195662e090da4fec22b8cbfe858164a920ad59f55cd02c1646e2f380e
+        and reason ec39809edc8ed64fd2eedcffb7edcd99aa655fd3f8baa79d588506a4329da7be.

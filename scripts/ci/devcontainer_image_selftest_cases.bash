@@ -780,7 +780,9 @@ prepare_devcontainer_selftest_suite() {
 }
 
 cmd_selftest() {
-  local tmp base
+  local mode="${1:-runtime}" tmp base
+  [[ "$mode" == "runtime" || "$mode" == "offline" ]] ||
+    die "selftest: unknown runtime-label mode: $mode"
   prepare_devcontainer_selftest_suite
   tmp="$SELFTEST_TMP_DIR"
   selftest_descriptor_bound_entry "$tmp" ||
@@ -825,7 +827,11 @@ cmd_selftest() {
     echo "selftest: root-only managed-lock attacks skipped; private directions OK"
   fi
   echo "selftest: exact root-context inputs react in both directions OK"
-  selftest_runtime_labels "$base"
+  if [[ "$mode" == "runtime" ]]; then
+    selftest_runtime_labels "$base"
+  else
+    echo "selftest: offline image policy complete; runtime label round-trip is host-only"
+  fi
   selftest_no_running_jobs || die "selftest: a supervised process survived the suite"
   finish_selftest_tmp || die "selftest: final temporary-directory cleanup failed"
   clear_selftest_suite_root || die "selftest: suite-root cleanup did not complete"
