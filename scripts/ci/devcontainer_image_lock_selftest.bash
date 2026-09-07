@@ -270,8 +270,8 @@ image_lock_ps_group_snapshot() {
 }
 
 bounded_process_absent() {
-  local pid="$1" steps="${2:-$SELFTEST_DEADLINE_STEPS}" attempt
-  for ((attempt = 0; attempt < steps; ++attempt)); do
+  local pid="$1" attempt
+  for ((attempt = 0; attempt < SELFTEST_DEADLINE_STEPS; ++attempt)); do
     if ! ps -o stat= -p "$pid" >/dev/null 2>&1 && ! kill -0 "$pid" 2>/dev/null; then
       return 0
     fi
@@ -354,7 +354,7 @@ assert_no_surviving_descendants() {
   [[ -e "$descendants" ]] || return 0
   while IFS= read -r pid; do
     [[ "$pid" =~ ^[0-9]+$ ]] || return 1
-    bounded_process_absent "$pid" "$((SELFTEST_DEADLINE_STEPS * 5))" || return 1
+    bounded_process_terminal "$pid" "$((SELFTEST_DEADLINE_STEPS * 5))" || return 1
   done <"$descendants"
 }
 
