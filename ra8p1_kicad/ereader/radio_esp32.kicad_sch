@@ -2046,6 +2046,18 @@
 		)
 		(uuid "1e311763-baef-42a6-83aa-c305d9e30b3d")
 	)
+	(text "RADIO-013: R11 / C6_EN reset pull-up\n10k 1%, 100ppm/C; deltaT=100 C allocation.\nRmin/max=10k*(1 +/-1%)*(1 +/-1%)=9801/10201 ohm.\nAllocate +/-12uA total adverse node leakage.\nIsink <=3.6/9801+12uA=0.379310mA <0.4mA.\nU6 VOL<=0.25V at 0.4mA, VDD>=1.5V.\nAt C6 table point 3.3V, 25 C:\nVEN>=3.3-12uA*10201=3.177588V >2.475V VIH.\nVIL=0.825V; low margin=0.825-0.25=0.575V.\nPmax=3.6^2/9801=1.322314mW.\nMR/SENSE, power states and timing remain open.\nMath: ../design/radio_interface.md (RADIO-013)"
+		(exclude_from_sim no)
+		(at 317.5 185.42 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-013-reset-output-and-module-enable-pull-up")
+		)
+		(uuid "2fdd2c9d-c4d2-41f1-abba-69e229915ff5")
+	)
 	(text "RADIO-009: U5 isolates host and switched-radio signal domains.\nC49/C50: 100 nF local bypass; TI TXU0304 section 12.1.\nC50 adds 0.1 uF: fitted external radio capacitance = 10.2 uF nominal.\n5 MHz budget: 100 - 11 - 11 = 78 ns remaining (5 pF test load).\nSPI/OE and reset qualification remain open; timing is not closed.\nMath: ../design/radio_interface.md#radio-009-spi-power-domain-isolation"
 		(exclude_from_sim no)
 		(at 19.05 124.46 0)
@@ -2378,6 +2390,26 @@
 	)
 	(wire
 		(pts
+			(xy 299.72 71.12) (xy 299.72 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "59e3a8e7-b3e5-463d-9d2c-44f29894b873")
+	)
+	(wire
+		(pts
+			(xy 279.4 76.2) (xy 299.72 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5a5bd545-c16b-49cc-82b9-8640fae52b7a")
+	)
+	(wire
+		(pts
 			(xy 60.96 88.9) (xy 73.66 88.9)
 		)
 		(stroke
@@ -2638,6 +2670,16 @@
 	)
 	(wire
 		(pts
+			(xy 83.82 76.2) (xy 96.52 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "db09da1b-f597-4254-8054-a1bfdccb4c89")
+	)
+	(wire
+		(pts
 			(xy 175.26 142.24) (xy 175.26 149.86)
 		)
 		(stroke
@@ -2806,6 +2848,16 @@
 		)
 		(uuid "92cd63c3-11c4-422b-a348-4fa4563f5464")
 	)
+	(label "C6_EN"
+		(at 279.4 76.2 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "a21eaa6b-d106-4d64-b669-22d631e0c18d")
+	)
 	(label "C6_CS_N"
 		(at 137.16 73.66 180)
 		(effects
@@ -2815,6 +2867,16 @@
 			(justify right bottom)
 		)
 		(uuid "bd8ede04-ced5-4d63-868c-13d7a9638953")
+	)
+	(label "C6_EN"
+		(at 83.82 76.2 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "d7398447-c561-4d81-90b2-32d969d2e5a5")
 	)
 	(label "C6_SCLK"
 		(at 73.66 83.82 180)
@@ -5062,6 +5124,84 @@
 		)
 	)
 	(symbol
+		(lib_id "power:+3V3")
+		(at 299.72 63.5 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "8b8f2d4e-8b9f-43d4-a778-117c4c982909")
+		(property "Reference" "#PWR071"
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3V3_RADIO"
+			(at 299.72 58.42 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 299.72 63.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 299.72 63.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 299.72 63.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "f1e94b28-756a-42b2-9c81-1253a5b892a9")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR071")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Power_Devices:TPS389001DSET")
 		(at 266.7 76.2 0)
 		(unit 1)
@@ -6999,6 +7139,197 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "#PWR067")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 299.72 67.31 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "ce0e466c-8a9d-4b17-9d75-8f91f7e18d74")
+		(property "Reference" "R11"
+			(at 303.53 66.04 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10k"
+			(at 303.53 68.58 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 297.942 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "YAGEO RC0603FR-0710KL; 10k 1%; RADIO-013 U6 open-drain RESET / C6_EN pull-up to switched +3V3_RADIO. No upstream-rail pull-up. Final reset sequencing remains open."
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827"
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 2922248; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-013: C6_EN pull-up to switched +3V3_RADIO. Rmin/max=9801/10201 ohm including tolerance and 100C TCR allocation. 12uA adverse leakage allocation: reset sink <0.380mA at 3.6V; released EN >=3.177588V at 3.3V. Full reset and power-state qualification open."
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
+			(at 299.72 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "b015dc96-1ed1-466d-822d-f738955bbcc6")
+		)
+		(pin "2"
+			(uuid "e4cd6bdb-7e44-4d0a-a664-a02afcfd8f39")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "R11")
 					(unit 1)
 				)
 			)
