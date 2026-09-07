@@ -2034,7 +2034,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "PWR-002: upstream regulator / reset voltage budget\nTPS63802 candidate: +/-1% feedback applies in PWM mode.\nExample 56k/10k, 0.1%, 25 ppm/C; deltaT=100 C.\nVout = Vfb*(1+Rt/Rb) + Ib*Rt; allocate +/-100 nA.\nPWM static screen: 3.242044..3.358485 V.\nRadio: 3.242044 - 0.5 A*0.175 ohm = 3.154544 V.\nAbove U6 rising screen: only 22.478 mV remains.\nMCU reset release headroom: 48.093 mV.\nNot a transient guarantee; regulator circuit not fitted.\nMath: ../design/power_decoupling.md#pwr-002-main-rail-regulation-and-reset-headroom"
+	(text "PWR-002: upstream regulator / reset voltage budget\nTPS63802 candidate: +/-1% feedback applies in PWM mode.\nExample 56k/10k, 0.1%, 25 ppm/C; deltaT=100 C.\nVout = Vfb*(1+Rt/Rb) + Ib*Rt; allocate +/-100 nA.\nPWM static screen: 3.242044..3.358485 V.\nRadio: 3.242044 - 0.5 A*0.175 ohm = 3.154544 V.\nAbove U6 RADIO-014 rising screen: 14.923 mV remains.\nMCU reset release headroom: 48.093 mV.\nNot a transient guarantee; regulator circuit not fitted.\nMath: ../design/power_decoupling.md (PWR-002)"
 		(exclude_from_sim no)
 		(at 266.7 142.24 0)
 		(effects
@@ -2046,7 +2046,7 @@
 		)
 		(uuid "1e311763-baef-42a6-83aa-c305d9e30b3d")
 	)
-	(text "RADIO-013: R11 / C6_EN reset pull-up\n10k 1%, 100ppm/C; deltaT=100 C allocation.\nRmin/max=10k*(1 +/-1%)*(1 +/-1%)=9801/10201 ohm.\nAllocate +/-12uA total adverse node leakage.\nIsink <=3.6/9801+12uA=0.379310mA <0.4mA.\nU6 VOL<=0.25V at 0.4mA, VDD>=1.5V.\nAt C6 table point 3.3V, 25 C:\nVEN>=3.3-12uA*10201=3.177588V >2.475V VIH.\nVIL=0.825V; low margin=0.825-0.25=0.575V.\nPmax=3.6^2/9801=1.322314mW.\nMR/SENSE, power states and timing remain open.\nMath: ../design/radio_interface.md (RADIO-013)"
+	(text "RADIO-013: R11 / C6_EN reset pull-up\n10k 1%, 100ppm/C; deltaT=100 C allocation.\nRmin/max=10k*(1 +/-1%)*(1 +/-1%)=9801/10201 ohm.\nAllocate +/-12uA total adverse node leakage.\nIsink <=3.6/9801+12uA=0.379310mA <0.4mA.\nU6 VOL<=0.25V at 0.4mA, VDD>=1.5V.\nAt C6 table point 3.3V, 25 C:\nVEN>=3.3-12uA*10201=3.177588V >2.475V VIH.\nVIL=0.825V; low margin=0.825-0.25=0.575V.\nPmax=3.6^2/9801=1.322314mW.\nMR arbitration, power states and timing remain open.\nMath: ../design/radio_interface.md (RADIO-013)"
 		(exclude_from_sim no)
 		(at 317.5 185.42 0)
 		(effects
@@ -2142,7 +2142,7 @@
 		)
 		(uuid "b3fe64c9-81e0-47c7-9dd2-5988e0a7a95a")
 	)
-	(text "RADIO-011: U6 supervisor threshold screen\nC51: 100 nF VDD bypass per TI TPS3890 section 6.\nExample divider 33.2k / 20k is NOT FITTED or approved.\nAssume 0.1%, 25 ppm/C, deltaT=100 C, +/-100 nA.\nfmin=0.9965025; fmax=1.0035025.\nVtrip = Vsense*(1 + Rt/Rb) + Is*Rt.\nWorst falling screen = 3.011895176 V.\nWorst rising screen = 3.132066484 V.\nLoaded-rail screen 3.1465 V leaves only 14.434 mV.\nC52 delay: RADIO-012. Divider/arbitration remain open.\nMath: ../design/radio_interface.md#radio-011-radio-supervisor-threshold-design"
+	(text "RADIO-014: R12/R13 switched-radio sense divider\n33.2k / 20k; Susumu RG, 0.1%, 25ppm/C.\nAllocate deltaT=100 C, 0.15% drift, +/-150nA total.\nfmin/max=(1 +/-0.001)*(1 +/-0.0025)*(1 +/-0.0015)\n          = 0.99500774625 / 1.00500775375.\nVtrip = Vsense*(1+Rt/Rb) + Is*Rt.\nVfall >=1.15*0.99*(1+Rtmin/Rbmax)-150nA*Rtmax\n      = 3.004600 V; margin above 3V only 4.600mV.\nVrise <=1.15*1.01*1.00825*(1+Rtmax/Rbmin)\n        +150nA*Rtmax = 3.139622 V.\nPWR-002 release headroom: 14.923mV, static only.\nIdiv_nom=3.3/53.2k=62.030uA; each P <0.652mW.\nMR arbitration and brownout dynamics remain open.\nMath: ../design/radio_interface.md (RADIO-014)"
 		(exclude_from_sim no)
 		(at 266.7 101.6 0)
 		(effects
@@ -2150,7 +2150,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-011-radio-supervisor-threshold-design")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-014-switched-radio-sense-divider")
 		)
 		(uuid "c87b6eaf-8d4f-4da0-88a2-efff6aae0d55")
 	)
@@ -2201,6 +2201,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "2d83a465-51af-4e17-98c2-3e9ac23da034")
+	)
+	(junction
+		(at 233.68 73.66)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "3f8b94fe-7b14-4b01-ab0c-bcd83b72f905")
 	)
 	(junction
 		(at 154.94 78.74)
@@ -2387,6 +2393,16 @@
 			(type default)
 		)
 		(uuid "4af5657d-d66c-439e-aa32-82e2b17f4d38")
+	)
+	(wire
+		(pts
+			(xy 233.68 73.66) (xy 233.68 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "50b96db2-038c-42de-93e5-d570b0b74b11")
 	)
 	(wire
 		(pts
@@ -2580,6 +2596,16 @@
 	)
 	(wire
 		(pts
+			(xy 233.68 73.66) (xy 254 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b158c37f-7901-4a3b-b9f0-76c00c15de19")
+	)
+	(wire
+		(pts
 			(xy 134.62 66.04) (xy 134.62 73.66)
 		)
 		(stroke
@@ -2747,6 +2773,16 @@
 			(type default)
 		)
 		(uuid "eb4965a8-96af-4cd3-a08d-51916062ae27")
+	)
+	(wire
+		(pts
+			(xy 233.68 71.12) (xy 233.68 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "eb6890c9-a984-4967-9e78-56442942f324")
 	)
 	(wire
 		(pts
@@ -3639,6 +3675,197 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 233.68 67.31 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "292a1b0e-36dc-4983-bd4e-15296e628006")
+		(property "Reference" "R12"
+			(at 237.49 66.04 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "33.2k"
+			(at 237.49 68.58 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 231.902 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.susumu.co.jp/dl/?filename=n_catalog_partition01_en.pdf&type=application/pdf"
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Susumu RG1608P-3322-B-T5; 33.2k 0.1% 25ppm/C. RADIO-014 upper SENSE divider from switched +3V3_RADIO to U6.1; full transient qualification open."
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "RG16P33.2KBCT-ND"
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/susumu/RG1608P-3322-B-T5/1240944"
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07 indexed: Active; stock 95362; USD CT 1:0.13 / 10:0.111 / 100:0.09210; 18wk lead; recheck before ordering."
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Susumu"
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RG1608P-3322-B-T5"
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-014 upper divider: 33.2k/20k, 0.1% 25ppm/C. Include 100C excursion, 0.15% additional drift and 150nA adverse sense-node current allocations. Falling >=3.004600V; rising <=3.139622V. Static screen only; power/reset dynamics remain open."
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "24fe5b5b-9fe8-49fc-8c03-6ead1633cb4b")
+		)
+		(pin "2"
+			(uuid "d2e989cb-d6ad-4cbc-9d4f-7318f5cc7f82")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "R12")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 251.46 66.04 0)
 		(unit 1)
@@ -4025,6 +4252,197 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "U4")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 233.68 80.01 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "65ae74f2-85c9-41d0-82f0-4ec3469e2876")
+		(property "Reference" "R13"
+			(at 237.49 78.74 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "20k"
+			(at 237.49 81.28 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 231.902 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.susumu.co.jp/dl/?filename=n_catalog_partition01_en.pdf&type=application/pdf"
+			(at 233.68 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Susumu RG1608P-203-B-T5; 20k 0.1% 25ppm/C. RADIO-014 lower SENSE divider from U6.1 to GND; full transient qualification open."
+			(at 233.68 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 233.68 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 233.68 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "RG16P20.0KBCT-ND"
+			(at 233.68 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/susumu/RG1608P-203-B-T5/1240507"
+			(at 233.68 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
+			(at 233.68 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07 indexed: Active; stock 186950; USD CT 1:0.11 / 10:0.093 / 100:0.07710; 18wk lead; recheck before ordering."
+			(at 233.68 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Susumu"
+			(at 233.68 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RG1608P-203-B-T5"
+			(at 233.68 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-014 lower divider: 33.2k/20k, 0.1% 25ppm/C. Include 100C excursion, 0.15% additional drift and 150nA adverse sense-node current allocations. Falling >=3.004600V; rising <=3.139622V. Static screen only; power/reset dynamics remain open."
+			(at 233.68 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
+			(at 233.68 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "ebe86267-83e1-4a0e-aad6-f46cad41b594")
+		)
+		(pin "2"
+			(uuid "b43f9e19-6f1c-4f77-88dd-e7410f5bbc80")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "R13")
 					(unit 1)
 				)
 			)
@@ -4453,6 +4871,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "C46")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 233.68 83.82 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "799403ce-a7de-4688-a744-23258e9fab94")
+		(property "Reference" "#PWR072"
+			(at 233.68 90.17 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 233.68 88.9 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 233.68 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 233.68 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 233.68 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "a5544eb7-d92e-4dbc-98ba-34a7d09c782f")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR072")
 					(unit 1)
 				)
 			)
@@ -7661,6 +8157,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "C50")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3V3")
+		(at 233.68 63.5 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f2a3de99-e5f5-4f05-9153-5e862c3ac8be")
+		(property "Reference" "#PWR073"
+			(at 233.68 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3V3_RADIO"
+			(at 233.68 58.42 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 233.68 63.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 233.68 63.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 233.68 63.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "a92fa9e8-a090-4aa9-9ea1-93014577bb0b")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR073")
 					(unit 1)
 				)
 			)
