@@ -20,7 +20,7 @@ import hil_convergence_safety_raw_digest_controls as raw_digest_controls
 # enumeration cannot prove an unaudited byte harmless, so each surface is
 # review-bound; intentional edits must update these pins separately.
 DEVCONTAINER_IMAGE_PATH = "scripts/ci/devcontainer_image.sh"
-DEVCONTAINER_IMAGE_RAW_SHA256 = "fd153780c8f98ab49de8f452af60581a2589e9d3763e4513775f7631fb44a794"
+DEVCONTAINER_IMAGE_RAW_SHA256 = "b1cf020b049303f7d4b8460e1c8bff26a8f6eb3c38ed01379ad9a9d263713222"
 DEVCONTAINER_IMAGE_LOCK_RECEIPTS_PATH = "scripts/ci/devcontainer_image_lock_receipts.bash"
 DEVCONTAINER_IMAGE_LOCK_RECEIPTS_RAW_SHA256 = (
     "854cfd1163d3d49eda0b05d8a14c5b32385b4b96e7d08de20b03da5cbd1ee727"
@@ -53,7 +53,7 @@ DEVCONTAINER_IMAGE_SELFTEST_PROCESS_RAW_SHA256 = (
 )
 DEVCONTAINER_IMAGE_SELFTEST_SUPERVISOR_PATH = "scripts/ci/devcontainer_image_selftest_supervisor.py"
 DEVCONTAINER_IMAGE_SELFTEST_SUPERVISOR_RAW_SHA256 = (
-    "27b73473be5078f5e7f894aba36a6b3bd91fbce2338510b3fc5a0a1cb8b55396"
+    "381a7f8c835fea59d1dafd3f06700131b8aad985af524e7d950e80106d87764f"
 )
 DEVCONTAINER_IMAGE_SELFTEST_SUPERVISOR_CASES_PATH = (
     "scripts/ci/devcontainer_image_selftest_supervisor_cases.py"

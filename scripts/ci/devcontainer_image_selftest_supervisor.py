@@ -467,8 +467,8 @@ def _controller(
 
 
 def _wait_status(path: Path) -> int:
-    """Return a bounded controller status while its leader remains live."""
-    deadline = time.monotonic() + DEADLINE_SECONDS
+    """Return a status within the controller watchdog plus cleanup margin."""
+    deadline = time.monotonic() + WATCHDOG_TIMEOUT_SECONDS + DEADLINE_SECONDS
     while time.monotonic() < deadline:
         try:
             descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
