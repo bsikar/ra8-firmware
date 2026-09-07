@@ -6,8 +6,9 @@ The selected MCU is R7KA8P1KFLCAC#UC0. U1A and J1 are on
 ## Mode selection
 
 R2 pulls P201/MD high for normal startup with on-chip MRAM enabled and
-the external bus initially disabled. SW2 pulls MD low for service entry:
-hold BOOT while asserting and releasing external RESET. JTAG boot and
+the external bus initially disabled. Internal copper pads TP2 provide MD
+and ground for the service fixture: hold MD low while asserting and
+releasing external RESET. There is no fitted BOOT switch. JTAG boot and
 SCI/USB boot cannot be entered using POR alone (HUM 4.3-4.4, pp.234-235).
 
 SWD/JTAG boot entry requires a debugger boot request while RES is low,
@@ -24,7 +25,7 @@ before final schematic integration.
 ## Reset
 
 R1 pulls RES to +3V3_MCU; U2 pulls it low when its monitored supply is
-below threshold or SW1 grounds U2's MR input. Additional external reset
+below threshold or a fixture shorts TP1 to ground U2's MR input. Additional external reset
 drivers must be open-drain/open-collector to avoid contention with the probe.
 No RC capacitor is fitted on RES. The external supervisor deliberately uses
 the RES-pin startup path; do not assume the internal POR flag semantics of
@@ -34,13 +35,13 @@ a RES pin rising simultaneously with VCC (Quick Design Guide 2.5 and
 Service tooling shall hold RES low for at least 3 ms after VCC is valid.
 This exceeds the 2.4 ms power-on minimum in Datasheet Table 2.52, p.118.
 Do not use a shorter operating-state minimum as the universal service pulse.
-Switch bounce is not a substitute for a controlled programmer reset pulse.
+Fixture contact bounce is not a substitute for a controlled programmer reset pulse.
 
 ### RST-001: external supervisor implementation basis
 
 Implementation in progress: U2 is TI TPS3808G33DBVR. VDD and SENSE are
 connected to +3V3_MCU, GND to ground, and CT has an intentional no-connect
-marker. RESET connects to MCU_RESET_N and SW1 connects to MR through
+marker. RESET connects to MCU_RESET_N and TP1 connects to MR through
 SW_RESET_N. C44 is the local 100 nF VDD bypass. These connections have
 been checked in the saved KiCad netlist. Native procurement fields and the
 exported BOM record both exact ordering codes and dated sourcing. This adds a hardware undervoltage
@@ -77,7 +78,7 @@ below 3 V. USB-004's bead-drop screen is not a substitute for that analysis.
 
 Implemented wiring: pin 6 VDD and pin 5 SENSE to +3V3_MCU, pin 2 GND,
 pin 1 open-drain RESET to MCU_RESET_N with existing R1 10 kohm pull-up,
-pin 4 CT intentionally open. SW1 connects to pin 3 MR so manual release also
+pin 4 CT intentionally open. TP1 connects to pin 3 MR so fixture release also
 receives the supervisor delay; the debugger connects directly to MCU_RESET_N.
 MR has an internal pull-up. Do not connect MR to RESET, which would create
 a self-holding reset loop. C44 provides the prescribed 100 nF VDD bypass:
@@ -168,7 +169,14 @@ power there or drive signals into an unpowered MCU. R3-R5 are external
 TDO/SWO is an output with no pull. One interface supports both CPU cores.
 No onboard J-Link MCU is included.
 
-Connector and switch ordering codes remain to be selected. R1-R5 use
+J1's connector ordering code remains to be selected. TP1 and TP2 are paired
+bare copper service pads, excluded from the purchased BOM and placement
+files but retained on the board. They are not DNP switches. Pad 1 is the
+named signal and pad 2 is ground; physical pad geometry is deferred with
+the PCB. TP1's supervisor MR access does not replace direct RES on J1.10.
+The single exposed product power/wake button belongs to the always-on
+power-control circuit, not these service controls. Its circuit remains to
+be placed and integrated. R1-R5 use
 Yageo RC0603FR-0710KL; their ratings and sourcing are recorded in the BOM.
 Both oscillator networks are wired as described below and in the linked
 calculation records; board-level matching remains required.
