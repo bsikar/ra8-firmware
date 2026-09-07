@@ -950,10 +950,9 @@ to GND, following TI's section 6 bypass recommendation. It adds no
 capacitance to the switched-radio discharge model. See PWR-001 for the
 exact capacitor's nominal bias calculation, not a guaranteed PDN bound.
 
-SENSE, MR and RESET are not connected yet. C52 now connects CT to ground
-as documented in RADIO-012. Intended domain boundaries
-are switched-radio sensing and a RESET pull-up to +3V3_RADIO, with MR
-arbitration on the upstream domain. These are not currently implemented.
+SENSE and MR are not connected yet. C52 connects CT to ground (RADIO-012).
+RESET now drives C6_EN with R11 pulled up to +3V3_RADIO (RADIO-013).
+Switched-radio sensing and upstream-domain MR arbitration remain unimplemented.
 The missing controls must remain visible ERC findings, not be marked NC.
 
 [DigiKey's exact DSET listing](https://www.digikey.com/en/products/detail/texas-instruments/TPS389001DSET/6110554)
@@ -1090,8 +1089,8 @@ Residual CT voltage, leakage beyond the allocation, rapid retriggering and
 supply transients require evaluation. No external signal or test connector
 is attached to CT. Keep its physical loop short and clean.
 
-U6's SENSE divider, manual-reset arbitration and RESET-to-EN path are still
-unfinished. Supply stabilization and the minimum actual C6 EN-low interval
+U6's SENSE divider and manual-reset arbitration remain unfinished.
+RADIO-013 implements the RESET-to-EN path. Supply stabilization and the minimum actual C6 EN-low interval
 must be checked after those paths are completed. C52 alone does not close
 power-cycle, brownout or reset acceptance.
 
@@ -1113,5 +1112,88 @@ assert isclose(float(tmax*10**6),1526.4758426966291,abs_tol=1e-9)
 assert tmin > F('50e-6')
 print('RADIO-012 PASS: 1.094565 ms nominal; charge-only screen '
       '0.814828..1.526476 ms, not full sequencing qualification.')
+PY
+```
+
+## RADIO-013: Reset output and module enable pull-up
+
+Revision 1, 2026-09-07. U6.6 RESET, U3.3 EN and R11.2 share local net
+C6_EN on the radio sheet. R11.1 connects to +3V3_RADIO, not +3V3_MCU.
+The native RADIO-013 annotation links to this record. Tracking: #826.
+
+R11 is YAGEO RC0603FR-0710KL, 10k +/-1%, using RADIO-010's exact
+resistor selection and dated sourcing snapshot. Its 100 ppm/C rating and
+100 C excursion allocation give:
+
+```text
+Rmin = 10000*(1-0.01)*(1-100*100e-6) = 9801 ohm
+Rmax = 10000*(1+0.01)*(1+100*100e-6) = 10201 ohm
+```
+
+[TI TPS3890 SLVSD65A](https://www.ti.com/lit/ds/symlink/tps3890.pdf),
+section 7.5, specifies RESET VOL <=0.25 V at 0.4 mA with VDD >=1.5 V;
+the higher-current 2 mA condition requires VDD >=2.7 V. Use the weaker
+0.4 mA condition here. The output is open drain. Its listed 250 nA
+high-impedance leakage uses VSENSE = VRESET = 5.5 V, not every power state.
+
+[ESP32-C6-WROOM-1 v1.4](https://www.espressif.com/sites/default/files/documentation/esp32-c6-wroom-1_wroom-1u_datasheet_en.pdf),
+Table 6-3, specifies reset release at >=0.75*VDD and reset at <=0.25*VDD.
+The table is explicitly scoped to 3.3 V, 25 C. Its input-current entries
+are 50 nA, and pin capacitance is 2 pF typical, not a maximum circuit load.
+
+Allocate 12 uA total adverse node leakage, including all connected devices
+and board leakage. This is a design allocation, not a measured total or
+an all-state vendor guarantee. No extra push-pull driver is connected.
+
+```text
+Conservative sink screen at rail <=3.6 V:
+I_RESET <= 3.6/9801 + 12e-6 = 0.379309458 mA < 0.4 mA
+(Using zero node voltage overestimates the pull-up current.)
+
+At the module's 3.3 V / 25 C table point:
+EN_high >= 3.3 - 12e-6*10201 = 3.177588 V
+VIH_nRST = 0.75*3.3 = 2.475 V
+High-level margin = 0.702588 V
+VIL_nRST = 0.25*3.3 = 0.825 V
+Low-level margin with U6 VOL=0.25 V = 0.575 V
+
+Nominal asserted pull-up current upper screen = 3.3/10000 = 0.330 mA
+Worst resistor power screen = 3.6^2/9801 = 1.322314050 mW
+```
+
+R11 adds no intentional DC pull-up from the live MCU rail to an unpowered
+module. This does not by itself prove zero off-state leakage through U6:
+its partial-power states and future OE circuitry still need review.
+Do not connect an independently powered programmer's push-pull reset output
+to C6_EN. Route external reset requests through the eventual MR arbitration.
+
+No extra capacitor is placed on EN: C52 sets the supervisor delay instead.
+EN rise time depends on R11 and actual node capacitance; the module's
+typical 2 pF pin value cannot establish a maximum delay. Reevaluate this
+network when adding any OE-sense input, test access or other capacitance.
+The SENSE and MR inputs are still open, so the reset network is not yet
+operationally complete despite the connected output path. The numerical
+logic margins above do not extend the module table to all temperatures.
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+from math import isclose
+
+rmin = 10000*F('.99')*F('.99')
+rmax = 10000*F('1.01')*F('1.01')
+assert (rmin,rmax) == (9801,10201)
+leak = F('12e-6')
+sink = F('3.6')/rmin+leak
+assert sink < F('.0004')
+assert isclose(float(sink*1000),.3793094582185491,abs_tol=1e-12)
+high = F('3.3')-leak*rmax
+assert high == F('3.177588')
+assert high-F('.75')*F('3.3') == F('.702588')
+assert F('.25')*F('3.3')-F('.25') == F('.575')
+power = F('3.6')**2/rmin
+assert isclose(float(power*1000),1.322314049586777,abs_tol=1e-12)
+print('RADIO-013 PASS: conditional sink and logic-level screens; '
+      'reset sequencing and off-state qualification remain open.')
 PY
 ```
