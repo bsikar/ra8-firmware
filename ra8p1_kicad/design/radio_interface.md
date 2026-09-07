@@ -950,7 +950,8 @@ to GND, following TI's section 6 bypass recommendation. It adds no
 capacitance to the switched-radio discharge model. See PWR-001 for the
 exact capacitor's nominal bias calculation, not a guaranteed PDN bound.
 
-SENSE, MR, CT and RESET are not connected yet. Intended domain boundaries
+SENSE, MR and RESET are not connected yet. C52 now connects CT to ground
+as documented in RADIO-012. Intended domain boundaries
 are switched-radio sensing and a RESET pull-up to +3V3_RADIO, with MR
 arbitration on the upstream domain. These are not currently implemented.
 The missing controls must remain visible ERC findings, not be marked NC.
@@ -1010,7 +1011,8 @@ assertion delay, reset-node fall time and enable-path response at their
 applicable limits. A typical propagation figure cannot establish that bound.
 Controlled shutdown must disable the signal paths before switching off power.
 Final CT sizing must independently satisfy C6 reset/startup timing and
-leakage/capacitance tolerances; no CT value is approved in this increment.
+leakage/capacitance tolerances. RADIO-012 records the subsequent C52 selection;
+the complete reset sequence remains unqualified.
 
 ### Reproducible arithmetic
 
@@ -1036,5 +1038,80 @@ for rt, rb, expected_low, expected_high in cases:
           f'rising={float(rising):.9f} V; '
           f'release margin={float((F("3.1465")-rising)*1000):.6f} mV')
 print('RADIO-011 PASS: candidate-screen arithmetic only; no divider approved.')
+PY
+```
+
+## RADIO-012: Supervisor reset-release delay
+
+Revision 1, 2026-09-07. C52 connects U6.5 (CT) to GND. It is not on
+the switched supply and does not add to RADIO-009's 10.2 uF rail load.
+The RADIO-012 schematic annotation links here. Tracking: #826.
+
+C52 uses the same exact sourced capacitor as C48:
+[TDK C1608NP01H102J080AA](https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608NP01H102J080AA),
+1 nF +/-5%, 50 V NP0, 0 +/-30 ppm/C. The dated 2026-09-05 sourcing
+snapshot is retained in its BOM fields, not represented as live inventory.
+Unlike C48's VIN-referenced load-switch slew control, C52 is a
+ground-referenced supervisor delay capacitor. Their descriptions and
+selection-basis fields deliberately differ.
+
+[TI TPS3890 SLVSD65A](https://www.ti.com/lit/ds/symlink/tps3890.pdf),
+section 8.3.1 equation 1, gives the delay model C*VCT/ICT plus the nominal
+open-CT delay. Section 7.5 gives VCT = 1.17/1.23/1.29 V and
+ICT = 0.90/1.15/1.35 uA (minimum/typical/maximum). Section 7.6 lists
+25 us nominal open-CT delay at VDD = 3.3 V; this is not a maximum bound.
+
+[Espressif's power-up/reset guidance](https://docs.espressif.com/projects/esp-hardware-design-guidelines/en/latest/esp32c6/schematic-checklist.html#chip-power-up-and-reset-timing)
+requires 50 us minimum supply stabilization before enable and 50 us minimum
+reset-low duration. These are separate requirements. A delay following a
+threshold crossing does not prove the supply has already stabilized.
+
+For an initial 100 C temperature excursion from 25 C, allocate 10 nA total
+external CT-node leakage in either direction. This allocation must cover the
+capacitor, PCB and any other connected path; it is not an additional TI
+internal charge-current tolerance. Assuming CT starts discharged:
+
+```text
+Cmin = 1 nF*(1-0.05)*(1-100*30e-6) = 947.15 pF
+Cmax = 1 nF*(1+0.05)*(1+100*30e-6) = 1053.15 pF
+t_nom = 1e-9*1.23/1.15e-6 + 25e-6 = 1.094565217 ms
+t_charge_min = 947.15e-12*1.17/(1.35e-6+10e-9)
+             = 814.827574 us
+t_charge_max = 1053.15e-12*1.29/(0.90e-6-10e-9)
+             = 1526.475843 us
+```
+
+The charge-only minimum screen is about 16.3 times 50 us. It supports
+the initial 1 nF choice without using a large X7R capacitor as a precision
+timing element. The charge-only maximum is NOT a total reset-release
+maximum: additional propagation/startup terms have no maximum supplied by
+this calculation. Do not add 25 us typical and label the result guaranteed.
+Residual CT voltage, leakage beyond the allocation, rapid retriggering and
+supply transients require evaluation. No external signal or test connector
+is attached to CT. Keep its physical loop short and clean.
+
+U6's SENSE divider, manual-reset arbitration and RESET-to-EN path are still
+unfinished. Supply stabilization and the minimum actual C6 EN-low interval
+must be checked after those paths are completed. C52 alone does not close
+power-cycle, brownout or reset acceptance.
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+from math import isclose
+
+cmin = F('1e-9')*F('.95')*F('.997')
+cmax = F('1e-9')*F('1.05')*F('1.003')
+assert cmin*10**12 == F('947.15')
+assert cmax*10**12 == F('1053.15')
+tnom = F('1e-9')*F('1.23')/F('1.15e-6')+F('25e-6')
+tmin = cmin*F('1.17')/(F('1.35e-6')+F('10e-9'))
+tmax = cmax*F('1.29')/(F('.90e-6')-F('10e-9'))
+assert isclose(float(tnom*10**6),1094.5652173913043,abs_tol=1e-9)
+assert isclose(float(tmin*10**6),814.8275735294118,abs_tol=1e-9)
+assert isclose(float(tmax*10**6),1526.4758426966291,abs_tol=1e-9)
+assert tmin > F('50e-6')
+print('RADIO-012 PASS: 1.094565 ms nominal; charge-only screen '
+      '0.814828..1.526476 ms, not full sequencing qualification.')
 PY
 ```
