@@ -1543,9 +1543,10 @@ is 45k typical, not a guaranteed minimum. Table 6-3 applies at 3.3 V,
 | R16 | U3.15 GPIO9 | C6_BOOT_N | High normally; externally low for recovery |
 | R17 | U3.23 GPIO15 | C6_GPIO15 | High for USB debug-source selection |
 
-Recovery access and a suitable low-driving circuit are not yet installed.
-Their leakage, sink current, off-state behavior and strap timing must be
-included before recovery is qualified. MTMS/MTDI control SDIO edge choices;
+SW3 now provides the manual low-driving contact in RADIO-018. Programming
+data access is not yet installed. Complete leakage, sink current, off-state
+behavior and strap timing must be included before recovery is qualified.
+MTMS/MTDI control SDIO edge choices;
 this SPI-hosted design does not use SDIO recovery. Do not infer their
 external loading is harmless for a future SDIO implementation.
 
@@ -1596,6 +1597,105 @@ assert isclose(float(3*current*1000), 1.1019283746556474)
 assert isclose(float(F('3.6')**2/rmin*1000), 1.3223140495867767)
 assert F('12e-6') > F('50e-9')
 print('RADIO-017 PASS: conditional strap bias and external-resistor '
-      'current arithmetic; recovery driver and full-state qualification open.')
+      'current arithmetic; complete recovery qualification open.')
+PY
+```
+
+## RADIO-018: Manual BOOT contact
+
+Revision 1, 2026-09-07. SW3 on the radio sheet connects C6_BOOT_N to
+GND when pressed. The RADIO-018 schematic note links here. Tracking: #826.
+The standard two-terminal normally-open pushbutton symbol represents
+the manufacturer's electrical contacts 1 and 2; footprint qualification
+remains deferred. No power is supplied through the switch.
+
+### Selection and sourcing
+
+Selected part: Panasonic EVQP7A01P (DigiKey spelling EVQ-P7A01P),
+DigiKey P16763CT-ND. The [DigiKey listing](https://www.digikey.com/en/products/detail/panasonic-industry/EVQ-P7A01P/4429447)
+checked 2026-09-07 shows Active, indexed stock 32,562, USD 0.28 / 0.248 /
+0.2076 at quantities 1 / 10 / 100, and 18-week standard lead time.
+This is a dated snapshot, not an order quote.
+
+[Panasonic's exact product specification](https://industry.panasonic.com/ap/en/products/control/switch/light-touch/number/evqp7a01p)
+and [series drawing, pp.1-2](https://industrial.panasonic.com/cdbs/www-data/pdf/ATK0000/ATK0000C378.pdf)
+specify a normally-open momentary contact, resistive-load range
+10 uA at 2 V through 50 mA at 12 V, contact resistance <=0.5 ohm,
+and bounce <=10 ms on making or breaking contact. It has a side actuator,
+2.2 N operating force, 100,000-cycle life, and -20 to +70 C operating
+range. It is not qualified for a broader product temperature range.
+Provide protected service access; final actuator/enclosure arrangement is
+part of mechanical work, not established by this schematic symbol.
+
+The standard C&K KMR221GLFS candidate was rejected here because its
+[series specification](https://www.ckswitches.com/media/1479/kmr2.pdf)
+lists a 1 mA minimum for the non-ULC contact. The external 10k pull-up
+does not provide that current. A low-current switch rating matters even
+when maximum current and voltage ratings appear ample.
+
+### Contact calculation and limits
+
+Use RADIO-017's R16 bounds, 9801..10201 ohm. Allocate at most 1 mA
+total contact current, including the internal GPIO9 pull-up and board
+contributions. The internal pull-up's guaranteed minimum resistance is
+not established here; the 1 mA total is therefore conditional, not a
+measured or guaranteed module load. For the minimum closed-contact current,
+allow 12 uA of the external pull-up current to leave through other paths.
+
+```text
+Iexternal_max <= 3.6/9801 = 0.367309458 mA
+Vclosed_max <= 1e-3*0.5 = 0.0005 V = 0.5 mV
+Pcontact_max <= (1e-3)^2*0.5 = 0.5 uW
+Iexternal_min >= (3.0-0.0005)/10201 = 0.294039800 mA
+Icontact_min >= Iexternal_min-0.012 mA = 0.282039800 mA
+Minimum-current margin = 0.282039800-0.010 = 0.272039800 mA
+Allocated maximum current / switch maximum = 1/50 = 2%
+3.3 V, 25 C low-level margin = 0.25*3.3-0.0005 = 0.8245 V
+```
+
+The lower-current bound deliberately ignores the helpful internal pull-up.
+The upper-current allocation must include it. The low-level comparison
+uses the module's stated 3.3 V, 25 C test point; it does not establish
+all-temperature thresholds. Do not configure GPIO9 as a driven-high output
+while the service button can be pressed. That would invalidate the 1 mA
+budget and create output contention.
+
+### Manual entry contract
+
+Press and settle SW3 at least 20 ms before the radio's EN rising edge:
+10 ms maximum contact bounce plus 10 ms handling margin. Keep it pressed
+through at least the following 3 ms strap hold interval from RADIO-017.
+GPIO8 remains high through R15. Do not add a BOOT capacitor to hide bounce;
+that changes the strap setup/release timing.
+
+The existing SW1 resets the MCU, which qualifies the radio reset through
+U7/U6. However, host reset can also deassert RADIO_PWR_EN. Manual entry
+therefore requires a host service path that subsequently powers the radio
+while SW3 remains pressed. SW3 alone neither supplies the radio nor proves
+recovery from broken host firmware. A host-independent service power/reset
+path and protected programming data access remain required. Do not mark
+recovery complete merely because the BOOT contact is connected.
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+from math import isclose
+
+rmin, rmax, rc = F(9801), F(10201), F('.5')
+allocated_current = F('.001')
+vclosed = allocated_current*rc
+assert vclosed == F('.0005')
+assert allocated_current**2*rc == F('0.5e-6')
+external_min = (F(3)-vclosed)/rmax
+contact_min = external_min-F('12e-6')
+assert isclose(float(external_min*1000), .2940398000196059)
+assert isclose(float(contact_min*1000), .2820398000196059)
+assert contact_min > F('10e-6')
+assert isclose(float(F('3.6')/rmin*1000), .3673094582185491)
+assert allocated_current/F('.05') == F('.02')
+assert F('.25')*F('3.3')-vclosed == F('.8245')
+assert F('.020')-F('.010') == F('.010')
+print('RADIO-018 PASS: conditional contact-current, voltage and timing '
+      'arithmetic; complete manual recovery remains unqualified.')
 PY
 ```
