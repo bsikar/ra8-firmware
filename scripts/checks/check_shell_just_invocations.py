@@ -94,7 +94,7 @@ SENSITIVE_BOUNDARY_LINES = (
     ),
     (
         "scripts/ci/gates/checks.sh",
-        (("/bin/bash -p scripts/ci/devcontainer_image.sh --selftest", 1),),
+        (("/bin/bash -p scripts/ci/devcontainer_image.sh --selftest-offline", 1),),
     ),
     (
         "scripts/ci/gates/hygiene.sh",

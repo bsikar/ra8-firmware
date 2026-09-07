@@ -158,7 +158,10 @@ _pcc_python_authority() (
   /bin/bash -p scripts/hil/lib/python_env.sh --selftest
   python3 scripts/checks/check_python_lock_policy.py --selftest
   python3 scripts/checks/check_python_lock_policy.py
-  /bin/bash -p scripts/ci/devcontainer_image.sh --selftest
+  # This subcheck also runs inside the toolchain container, which intentionally
+  # carries no nested runtime. Exercise every offline policy/lifecycle attack
+  # here; image-owning hosts retain `--selftest` for the real label round-trip.
+  /bin/bash -p scripts/ci/devcontainer_image.sh --selftest-offline
 )
 
 # Source and credential placement contracts shared by every first-party build
