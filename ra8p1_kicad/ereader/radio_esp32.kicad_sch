@@ -11,6 +11,212 @@
 		(comment 1 "Incomplete electrical design - not for manufacture")
 	)
 	(lib_symbols
+		(symbol "74xGxx:74LVC1G97"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at -2.54 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "74LVC1G97"
+				(at 0 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" "http://www.ti.com/lit/sg/scyt129e/scyt129e.pdf"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Configurable Multi-Function Single Gate, Low-Voltage CMOS"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "Configurable Single Gate LVC CMOS"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "SOT* SC*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "74LVC1G97_0_1"
+				(rectangle
+					(start -7.62 7.62)
+					(end 7.62 -7.62)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "74LVC1G97_1_1"
+				(pin input line
+					(at -12.7 0 0)
+					(length 5.08)
+					(name "IN1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 -12.7 90)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -12.7 5.08 0)
+					(length 5.08)
+					(name "IN0"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at 12.7 0 180)
+					(length 5.08)
+					(name "Y"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 12.7 270)
+					(length 5.08)
+					(name "VCC"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -12.7 -5.08 0)
+					(length 5.08)
+					(name "IN2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Device:C_Small"
 			(pin_numbers
 				(hide yes)
@@ -2033,6 +2239,145 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "power:VCC"
+			(power global)
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "#PWR"
+				(at 0 -3.81 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "VCC"
+				(at 0 3.556 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Power symbol creates a global label with name \"VCC\""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "global power"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "VCC_0_1"
+				(polyline
+					(pts
+						(xy -0.762 1.27) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 2.54) (xy 0.762 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "VCC_1_1"
+				(pin power_in line
+					(at 0 0 90)
+					(length 0)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 	)
 	(text "PWR-002: upstream regulator / reset voltage budget\nTPS63802 candidate: +/-1% feedback applies in PWM mode.\nExample 56k/10k, 0.1%, 25 ppm/C; deltaT=100 C.\nVout = Vfb*(1+Rt/Rb) + Ib*Rt; allocate +/-100 nA.\nPWM static screen: 3.242044..3.358485 V.\nRadio: 3.242044 - 0.5 A*0.175 ohm = 3.154544 V.\nAbove U6 RADIO-014 rising screen: 14.923 mV remains.\nMCU reset release headroom: 48.093 mV.\nNot a transient guarantee; regulator circuit not fitted.\nMath: ../design/power_decoupling.md (PWR-002)"
 		(exclude_from_sim no)
@@ -2072,7 +2417,7 @@
 	)
 	(text "RADIO-004: U4 TPS22917DBVT / radio power gating\nQOD tied to VOUT: Rdis = 150 ohm TYPICAL.\nC45+C46+C50 = 0.1+10+0.1 = 10.2 uF nominal external load.\nt90..10 = ln(9)*150*10.2u = 3.362 ms (ideal RC).\nNot a guaranteed off-time: module C/load and VIN decay matter.\nC48 connects CT to VIN, not GND; 50 V rating >=7 V required.\nReset/isolation and upstream regulator remain incomplete.\nLoad update: RADIO-009; device limits: RADIO-004.\nMath: ../design/radio_interface.md#radio-009-spi-power-domain-isolation"
 		(exclude_from_sim no)
-		(at 187.96 144.78 0)
+		(at 187.96 154.432 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -2105,6 +2450,18 @@
 			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-010-idle-state-bias")
 		)
 		(uuid "75b4af6d-5689-4dd7-8c8a-06293f9ec382")
+	)
+	(text "RADIO-015: U7 Schmitt-input reset arbitration\nIN1=GND: Y = MCU_RESET_N AND RADIO_RESET_REQ_N.\nEither low asserts U6 MR; C53 = 100nF MCU-rail bypass.\nR14: Rmin/max=10k*(1 +/-1%)*(1 +/-1%)=9801/10201 ohm.\n12uA adverse-current ALLOCATION: Vlow <= 0.122412 V.\nAt U7 3V test point: VT-_min-Vlow = 0.717588 V.\nAt 3.6V: I_R14 <= 0.367309 mA; P <= 1.322314 mW.\nIf |I_U7out|<=100uA: MR low/high margins >=0.65/0.8V\non shared 3.0-3.6V rail. MR load bound NOT yet verified.\nParent reset wiring, full-rail thresholds and sequencing open.\nMath: ../design/radio_interface.md#radio-015-reset-request-arbitration"
+		(exclude_from_sim no)
+		(at 76.2 228.6 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-015-reset-request-arbitration")
+		)
+		(uuid "80fa67e3-4738-46a7-8272-d6dc5e749f56")
 	)
 	(text "RADIO-005: C47 / U4 VIN local bypass\n10 uF nominal, +/-10%, 35 V X7R; same exact TDK part as C46.\nC(3.3 V) = 9.69875 + (3.3-3.15)/0.85*(9.38950-9.69875)\n             = 9.64418 uF nominal; NOT a guaranteed minimum.\nDroop = integral(Iload-Isource)dt / Ceff + ESR/ESL effects.\nTI section 11: 1 uF usually sufficient; slow sources may need more.\nC47 is upstream: exclude it from C45+C46 output-discharge math.\nRegulator/transient qualification required; no source flag added.\nCalculations: ../design/radio_interface.md#radio-005-input-bypass"
 		(exclude_from_sim no)
@@ -2203,10 +2560,22 @@
 		(uuid "2d83a465-51af-4e17-98c2-3e9ac23da034")
 	)
 	(junction
+		(at 228.6 109.22)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "3b66957b-12e2-449b-a5ac-fb64c2679b62")
+	)
+	(junction
 		(at 233.68 73.66)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "3f8b94fe-7b14-4b01-ab0c-bcd83b72f905")
+	)
+	(junction
+		(at 210.82 132.08)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "5adaf938-ad3b-4a55-bf03-84ee17a3a020")
 	)
 	(junction
 		(at 154.94 78.74)
@@ -2333,6 +2702,26 @@
 			(type default)
 		)
 		(uuid "2a9b0f18-fe24-4391-91f8-4ec9c8e2bdf4")
+	)
+	(wire
+		(pts
+			(xy 243.84 109.22) (xy 228.6 109.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2d36e0d2-63a1-4b72-881f-4f839a3f9fa8")
+	)
+	(wire
+		(pts
+			(xy 210.82 132.08) (xy 210.82 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "37950136-e3f6-4d54-8af1-cf0cd525ca98")
 	)
 	(wire
 		(pts
@@ -2566,6 +2955,16 @@
 	)
 	(wire
 		(pts
+			(xy 228.6 109.22) (xy 228.6 114.3)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9e2cc0b7-39bb-4ac0-aed3-8b79ed272a2d")
+	)
+	(wire
+		(pts
 			(xy 170.18 149.86) (xy 170.18 154.94)
 		)
 		(stroke
@@ -2646,6 +3045,16 @@
 	)
 	(wire
 		(pts
+			(xy 241.3 127) (xy 246.38 127)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c5ef9acc-0847-4620-bfc1-8e4575e9048b")
+	)
+	(wire
+		(pts
 			(xy 154.94 73.66) (xy 154.94 68.58)
 		)
 		(stroke
@@ -2663,6 +3072,16 @@
 			(type default)
 		)
 		(uuid "cc58c4f3-7d73-4389-8540-8657133b895e")
+	)
+	(wire
+		(pts
+			(xy 203.2 132.08) (xy 210.82 132.08)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "cc95a734-5215-4ff7-9d7b-27e7218df298")
 	)
 	(wire
 		(pts
@@ -2806,6 +3225,16 @@
 	)
 	(wire
 		(pts
+			(xy 210.82 132.08) (xy 215.9 132.08)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fa5667ba-d6b9-4798-ac8d-dc04dcd44ee3")
+	)
+	(wire
+		(pts
 			(xy 139.7 73.66) (xy 139.7 68.58)
 		)
 		(stroke
@@ -2894,6 +3323,16 @@
 		)
 		(uuid "a21eaa6b-d106-4d64-b669-22d631e0c18d")
 	)
+	(label "RADIO_MR_N"
+		(at 254 76.2 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "b9f9e6cf-6877-4901-8e7f-36b5d140dbfb")
+	)
 	(label "C6_CS_N"
 		(at 137.16 73.66 180)
 		(effects
@@ -2924,6 +3363,16 @@
 		)
 		(uuid "e34590b0-1ae8-4188-a249-00bc2b524908")
 	)
+	(label "RADIO_MR_N"
+		(at 246.38 127 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "edc2cceb-3b8a-4b30-bc4d-f451aec2e5a4")
+	)
 	(hierarchical_label "RADIO_PWR_EN"
 		(shape input)
 		(at 99.06 165.1 180)
@@ -2934,6 +3383,17 @@
 			(justify right)
 		)
 		(uuid "14538988-46d7-4b6e-9983-196ebe526cce")
+	)
+	(hierarchical_label "MCU_RESET_N"
+		(shape input)
+		(at 215.9 121.92 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "2a59b4c9-0866-4d1f-a558-e7bd8c2709ec")
 	)
 	(hierarchical_label "RADIO_SCLK"
 		(shape input)
@@ -2968,6 +3428,17 @@
 		)
 		(uuid "3179f0c5-3f08-42ad-92ad-e541469f6943")
 	)
+	(hierarchical_label "RADIO_RESET_REQ_N"
+		(shape input)
+		(at 203.2 132.08 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "486186a4-d68e-4ecb-9eb9-956a00ea842d")
+	)
 	(hierarchical_label "RADIO_CS_N"
 		(shape input)
 		(at 27.94 88.9 180)
@@ -2978,6 +3449,164 @@
 			(justify right)
 		)
 		(uuid "4e06b5d8-a346-45af-a9fa-268009bca47b")
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 243.84 111.76 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "05fe41bf-8b31-4b70-84a6-1d3386965d59")
+		(property "Reference" "C53"
+			(at 234.95 110.49 0)
+			(show_name no)
+			(do_not_autoplace yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 234.95 113.03 0)
+			(show_name no)
+			(do_not_autoplace yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 243.84 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
+			(at 243.84 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TDK C1608X7R1H104K080AA; 100nF 50V X7R 10%. RADIO-015 local U7 MCU-rail bypass; nominal bias calculation PWR-001."
+			(at 243.84 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
+			(at 243.84 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
+			(at 243.84 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
+			(at 243.84 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
+			(at 243.84 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 243.84 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 243.84 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-015: U7 local 100nF bypass on upstream +3V3_MCU. Reuse PWR-001 exact TDK nominal DC-bias calculation. Not switched-radio capacitance; PDN and reset qualification remain open."
+			(at 243.84 111.76 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "5ba1be69-01db-43ce-be34-cd5ec5c7acc1")
+		)
+		(pin "2"
+			(uuid "cf1c318f-97fb-4c24-ac49-cf7ebde854ae")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "C53")
+					(unit 1)
+				)
+			)
+		)
 	)
 	(symbol
 		(lib_id "Device:C_Small")
@@ -3944,6 +4573,252 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 210.82 142.24 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "2c8d7b5b-e79a-4381-a443-a30d0087e5c7")
+		(property "Reference" "#PWR078"
+			(at 210.82 148.59 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 210.82 147.32 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 210.82 142.24 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 210.82 142.24 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 210.82 142.24 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "95e2b5a6-746a-41d9-93fc-1d8decef0ebb")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR078")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "74xGxx:74LVC1G97")
+		(at 228.6 127 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "30aaed31-1afa-4c86-b06d-b92580cf56f2")
+		(property "Reference" "U7"
+			(at 254 120.65 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "SN74LVC1G97DBVR"
+			(at 254 123.19 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 228.6 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/sn74lvc1g97.pdf"
+			(at 228.6 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TI SN74LVC1G97DBVR Schmitt-input configurable gate. RADIO-015: IN1=GND gives Y=IN0 AND IN2 for active-low reset request arbitration. VCC on MCU rail."
+			(at 228.6 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Texas Instruments"
+			(at 228.6 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "SN74LVC1G97DBVR"
+			(at 228.6 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "296-15581-1-ND"
+			(at 228.6 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/SN74LVC1G97DBVR/571196"
+			(at 228.6 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07 indexed: Active; 30722 in stock; USD 1:0.23 / 10:0.16 / 100:0.12130; 9wk lead; recheck before ordering."
+			(at 228.6 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - exact pinout and sourcing checked; full reset/power qualification open; footprint deferred."
+			(at 228.6 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-015: Schmitt-input AND configuration, IN1 grounded. Gate reset request with MCU reset. Partial-power-down Ioff specified; analog ramp and full sequencing qualification remain open."
+			(at 228.6 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "72e356d6-0994-4575-b459-51eed1a10744")
+		)
+		(pin "2"
+			(uuid "aeed7a83-eabc-4d5f-b122-bebd28d93957")
+		)
+		(pin "4"
+			(uuid "23f66b69-35b6-45aa-9f55-ce35a41fa898")
+		)
+		(pin "5"
+			(uuid "4627f665-bbee-47c1-b679-c2ae5da511d2")
+		)
+		(pin "6"
+			(uuid "c233018b-8ab3-4087-aa84-fb6afb2dcddd")
+		)
+		(pin "3"
+			(uuid "2a7621e5-b5f2-4edd-9f3f-a636edd8fbce")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "U7")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:+3V3")
 		(at 170.18 68.58 0)
 		(unit 1)
@@ -4258,6 +5133,84 @@
 		)
 	)
 	(symbol
+		(lib_id "power:VCC")
+		(at 228.6 109.22 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "618a6a47-8220-4ee9-97f3-5fe54beea5b1")
+		(property "Reference" "#PWR076"
+			(at 228.6 113.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3V3_MCU"
+			(at 228.6 104.14 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 228.6 109.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 228.6 109.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"VCC\""
+			(at 228.6 109.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "bc83bfc4-822b-46e5-baa7-5f1977b5c0e0")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR076")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:R")
 		(at 233.68 80.01 0)
 		(unit 1)
@@ -4521,6 +5474,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "#PWR056")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 228.6 139.7 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "6e4b84c0-bc30-40d6-a8ad-5f55a78614c4")
+		(property "Reference" "#PWR075"
+			(at 228.6 146.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 228.6 144.78 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 228.6 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 228.6 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 228.6 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "a091760a-ed58-488a-9549-cfab184d8133")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR075")
 					(unit 1)
 				)
 			)
@@ -5461,6 +6492,85 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 215.9 127 270)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "843bc3a1-7c40-4e28-ac97-783fe53b836e")
+		(property "Reference" "#PWR074"
+			(at 209.55 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 212.09 126.9999 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" ""
+			(at 215.9 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 215.9 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 215.9 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "549f0e70-1d89-4cd3-b334-8980cf05f185")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR074")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C_Small")
 		(at 124.46 154.94 0)
 		(unit 1)
@@ -6020,6 +7130,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "C52")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 243.84 114.3 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "90ac7523-3a65-40bd-923c-50f67a4afc0d")
+		(property "Reference" "#PWR077"
+			(at 243.84 120.65 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 243.84 119.38 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 243.84 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 243.84 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 243.84 114.3 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "6f6e93e9-3672-418d-af74-6cc33077b63a")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "#PWR077")
 					(unit 1)
 				)
 			)
@@ -6708,6 +7896,197 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "#PWR059")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 210.82 138.43 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "a0a66427-786f-4c58-ba5d-22bd8228dcbf")
+		(property "Reference" "R14"
+			(at 214.63 137.16 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10k"
+			(at 214.63 139.7 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 209.042 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
+			(at 210.82 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "YAGEO RC0603FR-0710KL; 10k 1%. RADIO-015 default-low firmware reset request. Prevent release while host GPIO is high impedance; full power-state qualification remains required."
+			(at 210.82 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 210.82 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 210.82 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
+			(at 210.82 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827"
+			(at 210.82 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
+			(at 210.82 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 2922248; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
+			(at 210.82 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 210.82 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
+			(at 210.82 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RADIO-015: 10k request pulldown. With 1% tolerance and 100ppm/K over 100K, Rmax=10201 ohm. A 12uA adverse-current allocation gives 0.122412V. Host leakage and full-rail Schmitt thresholds require qualification."
+			(at 210.82 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
+			(at 210.82 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "1de7eef9-4d0e-40fc-b6a6-a8093289adc8")
+		)
+		(pin "2"
+			(uuid "f3da429e-7c5c-4b08-a80d-3c7e8823a57a")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
+					(reference "R14")
 					(unit 1)
 				)
 			)

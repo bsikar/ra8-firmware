@@ -1304,3 +1304,109 @@ print('RADIO-014 PASS: endpoint and conservative static bounds; '
       '4.600118 mV falling / 14.922537 mV release headroom. Dynamics open.')
 PY
 ```
+
+## RADIO-015: Reset request arbitration
+
+Revision 1, 2026-09-07. Native radio-sheet circuit: U7, C53 and R14.
+The RADIO-015 schematic note links to this section. Tracking: #826.
+The two hierarchical inputs still need their parent-sheet connections;
+this increment does not establish an end-to-end reset path.
+
+### Selection and connection contract
+
+U7 is TI SN74LVC1G97DBVR, DigiKey 296-15581-1-ND.
+The [DigiKey listing](https://www.digikey.com/en/products/detail/texas-instruments/SN74LVC1G97DBVR/571196)
+was checked 2026-09-07: Active, indexed stock 30,722, USD 0.23 / 0.16 /
+0.12130 at quantities 1 / 10 / 100, standard lead time nine weeks.
+This is a dated sourcing snapshot, not an order quote.
+
+[TI SCES416N sections 5, 6.3, 6.5 and 8.4](https://www.ti.com/lit/ds/symlink/sn74lvc1g97.pdf)
+specify Schmitt inputs and 1.65-5.5 V operation. Pin 1 is IN1, 2 GND,
+3 IN0, 4 Y, 5 VCC, 6 IN2. The function table gives Y = IN2 ? IN0 : IN1.
+With IN1 grounded, Y = IN0 AND IN2. At the 3 V test point, VT- minimum
+is 0.84 V and VT+ maximum is 1.87 V. At 100 uA output load, VOL is at
+most 0.1 V and VOH at least VCC-0.1 V over the operating supply range.
+Input leakage is specified at +/-5 uA for the listed rail-endpoint
+conditions, and Ioff at +/-10 uA with VCC=0. These do not specify
+logic behavior during sub-minimum supply ramps.
+
+| U7 pin | Connection | Purpose |
+| --- | --- | --- |
+| 3 IN0 | MCU_RESET_N hierarchical input | Hardware MCU reset qualification |
+| 1 IN1 | GND | Configure the AND function |
+| 6 IN2 | RADIO_RESET_REQ_N hierarchical input, R14 to GND | Host release request, default low |
+| 4 Y | RADIO_MR_N local net to U6.3 MR | Assert radio reset if either input is low |
+| 5 VCC | +3V3_MCU | Upstream, not switched-radio supply |
+| 2 GND | GND | Common reference |
+
+C53 reuses TDK C1608X7R1H104K080AA, 100 nF, 50 V, X7R, 10%.
+It bypasses U7's MCU-rail supply to GND. Its exact nominal bias calculation
+is [PWR-001](power_decoupling.md#nominal-dc-bias-screening-and-shared-bypass-selection).
+It is not part of the switched-radio discharge capacitance.
+R14 reuses RADIO-010's YAGEO RC0603FR-0710KL, 10k, 1% sourced part.
+Its procurement fields retain the original dated snapshot.
+
+### Bias arithmetic and conditional interface screen
+
+Use the same independent 1% initial tolerance and 100 ppm/K over a 100 K
+excursion as RADIO-010. This temperature excursion is a calculation
+allocation, not permission to exceed a component's temperature rating.
+Allocate 12 uA adverse request-node current, including gate, host and board
+contributions. The host's selected pin and all power states must meet it.
+
+```text
+Rmin = 10000*(1-0.01)*(1-100e-6*100) = 9801 ohm
+Rmax = 10000*(1+0.01)*(1+100e-6*100) = 10201 ohm
+Vrequest_low <= 12e-6*10201 = 0.122412 V
+3 V test-point low margin = 0.84-0.122412 = 0.717588 V
+Resistor current at 3.6 V <= 3.6/9801 = 0.367309 mA
+Resistor dissipation <= 3.6^2/9801 = 1.322314 mW
+```
+
+The 3 V margin is only a test-point screen. Do not interpolate Schmitt
+thresholds and present them as guaranteed limits over the final rail range.
+
+[TPS3890 section 7.5](https://www.ti.com/lit/ds/symlink/tps3890.pdf)
+requires MR low <=0.25*VDD and high >=0.7*VDD. Conditional on total U7
+output loading remaining within 100 uA, both devices sharing a valid
+3.0-3.6 V rail gives the following worst-endpoint margins:
+
+```text
+MR low margin >= 0.25*3.0-0.1 = 0.65 V
+MR high margin >= (3.0-0.1)-0.7*3.0 = 0.8 V
+```
+
+The supervisor's MR current, including current flowing out while low, has
+not yet been bounded by a guaranteed maximum in this analysis. Therefore
+the 100 uA condition is an allocation, not a verified load. These margins
+do not close the reset interface. Parent-sheet wiring, host startup state,
+input thresholds over the chosen rail range, MR loading, shutdown ordering,
+reset pulse duration, and supply-ramp behavior must be resolved before
+calling the complete reset path electrically qualified. U5 OE arbitration
+remains separate; U7 does not make the SPI interface safe by itself.
+
+```sh
+python3 - <<'PY'
+from fractions import Fraction as F
+from itertools import product
+from math import isclose
+
+rmin = F(10000)*F('.99')*F('.99')
+rmax = F(10000)*F('1.01')*F('1.01')
+assert rmin == 9801 and rmax == 10201
+vlo = F('12e-6')*rmax
+assert vlo == F('.122412')
+assert F('.84')-vlo == F('.717588')
+assert isclose(float(F('3.6')/rmin*1000), .3673094582185491)
+assert isclose(float(F('3.6')**2/rmin*1000), 1.3223140495867767)
+for rail in (F(3), F('3.6')):
+    assert F('.25')*rail-F('.1') >= F('.65')
+    assert rail-F('.1')-F('.7')*rail >= F('.8')
+for hardware_release, host_release in product((False, True), repeat=2):
+    in1 = False
+    mux_y = hardware_release if host_release else in1
+    assert mux_y == (hardware_release and host_release)
+print('RADIO-015 PASS: truth table and conditional DC arithmetic; '
+      'hierarchy, load limits and sequencing remain unqualified.')
+PY
+```
