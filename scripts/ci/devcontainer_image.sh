@@ -183,7 +183,7 @@ if [[ "$-" == *p* ]]; then
   export SELFTEST_SUPERVISOR_CASES_RAW_SHA256="897a5be60eec486f9f9615fead84db22f8526dba189df305f561bc1c7b5e49e7"
   export SELFTEST_SUPERVISOR_PROCESS_RAW_SHA256="0d6735a43532e39ebcda7d876ba8223062656a2fe944c00b611a6c85f3dd730c"
   export IMAGE_LOCK_RECEIPTS_RAW_SHA256="854cfd1163d3d49eda0b05d8a14c5b32385b4b96e7d08de20b03da5cbd1ee727"
-  export IMAGE_LOCK_SELFTEST_RAW_SHA256="8e789edd418313be475111cc8eb97bbdbfc004e98722b35c6ee9a6805a5651a1"
+  export IMAGE_LOCK_SELFTEST_RAW_SHA256="841890a177f349d1076c1370ec6882a3e9e215e6f7e5930cd9e5657dda86a9cd"
 
   # The OCI label the digest is stored in. Namespaced so it cannot collide with a
   # label the Ubuntu base image sets.
