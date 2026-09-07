@@ -1307,10 +1307,13 @@ PY
 
 ## RADIO-015: Reset request arbitration
 
-Revision 1, 2026-09-07. Native radio-sheet circuit: U7, C53 and R14.
+Revision 2, 2026-09-07. Native radio-sheet circuit: U7, C53 and R14.
 The RADIO-015 schematic note links to this section. Tracking: #826.
-The two hierarchical inputs still need their parent-sheet connections;
-this increment does not establish an end-to-end reset path.
+The root connects RADIO_RESET_REQ_N from the IO-allocation sheet to U7.6.
+MCU_RESET_N is exported from the clocks/debug sheet and connected through
+the root's named net to U7.3. Netlist checks verify U1.E17/R14.1/U7.6 share
+the host-request net and U2.1/U1.D5/J1.10/U7.3 share the hardware-reset net.
+This establishes connectivity, not complete electrical qualification.
 
 ### Selection and connection contract
 
@@ -1379,7 +1382,7 @@ MR high margin >= (3.0-0.1)-0.7*3.0 = 0.8 V
 The supervisor's MR current, including current flowing out while low, has
 not yet been bounded by a guaranteed maximum in this analysis. Therefore
 the 100 uA condition is an allocation, not a verified load. These margins
-do not close the reset interface. Parent-sheet wiring, host startup state,
+do not close the reset interface. Host startup state,
 input thresholds over the chosen rail range, MR loading, shutdown ordering,
 reset pulse duration, and supply-ramp behavior must be resolved before
 calling the complete reset path electrically qualified. U5 OE arbitration
@@ -1407,6 +1410,6 @@ for hardware_release, host_release in product((False, True), repeat=2):
     mux_y = hardware_release if host_release else in1
     assert mux_y == (hardware_release and host_release)
 print('RADIO-015 PASS: truth table and conditional DC arithmetic; '
-      'hierarchy, load limits and sequencing remain unqualified.')
+      'load limits and sequencing remain unqualified.')
 PY
 ```

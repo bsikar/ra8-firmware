@@ -7462,6 +7462,16 @@
 	)
 	(wire
 		(pts
+			(xy 129.54 203.2) (xy 129.54 210.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0c582ed7-1ae4-46e2-aec1-6719ddf5913b")
+	)
+	(wire
+		(pts
 			(xy 66.04 73.66) (xy 71.12 73.66)
 		)
 		(stroke
@@ -8239,6 +8249,17 @@
 			(justify left)
 		)
 		(uuid "fff0cea1-dbbf-459f-a269-8d6fb997898f")
+	)
+	(hierarchical_label "MCU_RESET_N"
+		(shape output)
+		(at 129.54 210.82 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "5762c7cf-2cb4-42fa-9b54-81c590c4f4f0")
 	)
 	(symbol
 		(lib_id "power:GND")
