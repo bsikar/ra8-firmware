@@ -731,7 +731,9 @@ def _signal_case(base: Path, sig: signal.Signals) -> None:
     try:
         _wait_for_path(ready, process)
         os.kill(process.pid, sig)
-        _stdout, stderr = process.communicate(timeout=20)
+        _stdout, stderr = process.communicate(
+            timeout=75,  # WSL teardown can drain after the 60-second hostile child exits.
+        )
     finally:
         _force_fixture_cleanup(process, temp_root)
     if process.returncode != ABORTED or "ABORTED" not in stderr:
