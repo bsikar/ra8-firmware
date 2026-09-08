@@ -249,6 +249,8 @@ target_link_libraries(test_mdl_credentials PRIVATE CURL::libcurl)
 add_test(NAME test_mdl_credentials COMMAND test_mdl_credentials)
 
 # Real socket/libcurl orchestration: deterministic local HTTP, no internet.
+# The whole CLI lifecycle runs dozens of instrumented subprocesses; the coverage
+# build is deliberately slower than the ordinary host build.
 find_program(MDL_BASH_EXECUTABLE NAMES bash REQUIRED)
 find_program(MDL_OPENSSL_EXECUTABLE NAMES openssl REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
@@ -257,4 +259,4 @@ add_test(
   COMMAND ${MDL_BASH_EXECUTABLE} ${MDL_FORM_TESTS_DIR}/http_integration.sh $<TARGET_FILE:mdl>
           ${Python3_EXECUTABLE} ${CMAKE_COMMAND} ${MDL_OPENSSL_EXECUTABLE}
 )
-set_tests_properties(test_mdl_http_integration PROPERTIES TIMEOUT 30 LABELS "integration;network")
+set_tests_properties(test_mdl_http_integration PROPERTIES TIMEOUT 120 LABELS "integration;network")

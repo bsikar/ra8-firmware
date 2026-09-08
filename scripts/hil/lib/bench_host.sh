@@ -170,11 +170,13 @@ bh_journal_add() {
 # ---------------------------------------------------------------------------
 
 # bh_flock_held -- 0 when somebody holds the lock, 1 when it is free.
-# Non-destructive: it takes the lock on a SEPARATE fd and drops it again inside
-# the subshell, so asking the question never changes the answer.
+# Non-destructive: it takes the lock on a SEPARATE read-only fd and drops it
+# again inside the subshell, so asking the question never changes the answer.
+# A write redirection adds O_CREAT and Linux fs.protected_regular may reject an
+# otherwise writable foreign-owned lock inode in this shared sticky directory.
 bh_flock_held() {
   [ -e "$BH_LOCK" ] || return 1
-  if (flock -n 8) 8>>"$BH_LOCK" 2>/dev/null; then
+  if (flock -n 8) 8<"$BH_LOCK" 2>/dev/null; then
     return 1
   fi
   return 0
