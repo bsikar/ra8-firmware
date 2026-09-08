@@ -73,7 +73,9 @@ BASELINE_FILE = REPO_ROOT / ".github" / "selftest-baseline.txt"
 # quoted argument as an invocation.
 SCRIPT_TOKEN_RE = re.compile(r"(?:^|.*/)(scripts/[\w./-]+\.(?:py|sh))$")
 SHELL_CONTROL = frozenset({";", "&&", "||", "|", "&", "(", ")"})
-SELFTEST_ARGS = frozenset({"--selftest", "selftest"})
+# The image policy has a genuine runtime-free variant for gates that execute
+# inside the image and therefore cannot safely start a nested container runtime.
+SELFTEST_ARGS = frozenset({"--selftest", "--selftest-offline", "selftest"})
 
 # Directories whose scripts are DETECTORS and therefore owe a selftest under
 # Rule B. Derived from the scripts/ taxonomy documented in CLAUDE.md.
@@ -413,6 +415,11 @@ def _selftest_cases() -> list[tuple[str, str, bool]]:
         (
             "the subcommand selftest spelling counts as running one",
             "gate_x() (\n  set -e\n  bash scripts/ci/monitor.sh selftest\n)\n",
+            False,
+        ),
+        (
+            "the runtime-free selftest spelling counts as running one",
+            "gate_x() (\n  set -e\n  bash scripts/ci/devcontainer_image.sh --selftest-offline\n)\n",
             False,
         ),
         (

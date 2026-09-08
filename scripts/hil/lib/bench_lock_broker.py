@@ -112,10 +112,20 @@ def _open_lock(
     closer: Callable[[int], None] = os.close,
 ) -> tuple[int, os.stat_result]:
     """Open one stable non-linked regular lock inode with CLOEXEC."""
-    flags = os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | getattr(os, "O_NOFOLLOW", 0)
+    flags = os.O_RDWR | os.O_CLOEXEC | getattr(os, "O_NOFOLLOW", 0)
     descriptor: int | None = None
     try:
-        descriptor = opener(path, flags, 0o666)
+        try:
+            descriptor = opener(path, flags, 0o666)
+        except FileNotFoundError:
+            # O_CREAT on an existing foreign-owned file in a sticky directory
+            # is denied when Linux fs.protected_regular=2, even with mode 0666.
+            # Create exclusively after absence, then reopen without O_CREAT if
+            # another legitimate actor wins that race.
+            try:
+                descriptor = opener(path, flags | os.O_CREAT | os.O_EXCL, 0o666)
+            except FileExistsError:
+                descriptor = opener(path, flags, 0o666)
         observed = fd_stat(descriptor)
         current = path.stat(follow_symlinks=False) if path_stat is None else path_stat(path)
         inheritable = os.get_inheritable(descriptor)
@@ -485,6 +495,150 @@ def _linked_lock_refusal(root: Path, lock: Path) -> str | None:
     return None
 
 
+def _existing_lock_open_selftest(root: Path) -> str | None:
+    """Model protected_regular and require a no-create open."""
+    lock = root / "open-existing.lock"
+    lock.write_bytes(b"")
+    calls: list[int] = []
+
+    def protected_opener(path: Path, flags: int, mode: int) -> int:
+        calls.append(flags)
+        if flags & os.O_CREAT:
+            message = "injected fs.protected_regular refusal"
+            raise PermissionError(message)
+        return os.open(path, flags, mode)
+
+    descriptor: int | None = None
+    try:
+        descriptor, _identity = _open_lock(lock, opener=protected_opener)
+    except BrokerError:
+        return "existing canonical lock failed under protected_regular semantics"
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+    if len(calls) != 1 or calls[0] & (os.O_CREAT | os.O_EXCL):
+        return "existing canonical lock was reopened with creation flags"
+    return None
+
+
+def _missing_lock_creation_selftest(root: Path) -> str | None:
+    """Require one no-create open followed by one exclusive create."""
+    lock = root / "open-missing.lock"
+    calls: list[int] = []
+
+    def opener(path: Path, flags: int, mode: int) -> int:
+        calls.append(flags)
+        return os.open(path, flags, mode)
+
+    descriptor: int | None = None
+    try:
+        descriptor, _identity = _open_lock(lock, opener=opener)
+    except BrokerError:
+        return "missing canonical lock was not created"
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+    create_flags = os.O_CREAT | os.O_EXCL
+    expected_calls = 2
+    if (
+        len(calls) != expected_calls
+        or calls[0] & create_flags
+        or calls[1] & create_flags != create_flags
+    ):
+        return "missing canonical lock did not use one exclusive-create retry"
+    return None
+
+
+def _concurrent_lock_creation_selftest(root: Path) -> str | None:
+    """Require a no-create reopen after another creator wins the race."""
+    lock = root / "open-collision.lock"
+    calls: list[int] = []
+    exclusive_call = 2
+
+    def opener(path: Path, flags: int, mode: int) -> int:
+        calls.append(flags)
+        if len(calls) == 1:
+            raise FileNotFoundError(path)
+        if len(calls) == exclusive_call:
+            path.write_bytes(b"")
+            raise FileExistsError(path)
+        return os.open(path, flags, mode)
+
+    descriptor: int | None = None
+    try:
+        descriptor, _identity = _open_lock(lock, opener=opener)
+    except BrokerError:
+        return "concurrent canonical lock creation was not accepted"
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+    create_flags = os.O_CREAT | os.O_EXCL
+    expected_calls = 3
+    if (
+        len(calls) != expected_calls
+        or calls[0] & create_flags
+        or calls[1] & create_flags != create_flags
+        or calls[2] & create_flags
+    ):
+        return "concurrent canonical lock creation did not reopen safely"
+    return None
+
+
+def _open_lock_error_selftest(root: Path) -> list[str]:
+    """Require unexpected open and create failures to remain exact."""
+    failures: list[str] = []
+    denied_calls: list[int] = []
+
+    def denied_opener(_path: Path, flags: int, _mode: int) -> int:
+        denied_calls.append(flags)
+        message = "injected ordinary-open refusal"
+        raise PermissionError(message)
+
+    try:
+        _open_lock(root / "open-denied.lock", opener=denied_opener)
+    except BrokerError as error:
+        if not isinstance(error.__cause__, PermissionError) or len(denied_calls) != 1:
+            failures.append("unexpected ordinary-open failure was retried or obscured")
+    else:
+        failures.append("unexpected ordinary-open failure was accepted")
+
+    creation_calls: list[int] = []
+    creation_failure = OSError("injected exclusive-create failure")
+    expected_creation_calls = 2
+
+    def creation_opener(_path: Path, flags: int, _mode: int) -> int:
+        creation_calls.append(flags)
+        if len(creation_calls) == 1:
+            raise FileNotFoundError
+        raise creation_failure
+
+    try:
+        _open_lock(root / "open-create-error.lock", opener=creation_opener)
+    except BrokerError as error:
+        if (
+            error.__cause__ is not creation_failure
+            or len(creation_calls) != expected_creation_calls
+        ):
+            failures.append("unexpected exclusive-create failure was retried or obscured")
+    else:
+        failures.append("unexpected exclusive-create failure was accepted")
+    return failures
+
+
+def _open_lock_creation_selftest(root: Path) -> list[str]:
+    """Exercise existing, missing, raced, and failed canonical opens."""
+    failures = _open_lock_error_selftest(root)
+    for check in (
+        _existing_lock_open_selftest,
+        _missing_lock_creation_selftest,
+        _concurrent_lock_creation_selftest,
+    ):
+        failure = check(root)
+        if failure is not None:
+            failures.append(failure)
+    return failures
+
+
 def _open_lock_cleanup_selftest(root: Path) -> list[str]:
     """Prove every post-open refusal releases exactly its owned lock FD."""
     failures: list[str] = []
@@ -699,7 +853,8 @@ def run_selftest() -> list[str]:
     with tempfile.TemporaryDirectory(prefix="ra8-lock-broker-") as raw:
         root = Path(raw)
         return (
-            _open_lock_cleanup_selftest(root)
+            _open_lock_creation_selftest(root)
+            + _open_lock_cleanup_selftest(root)
             + _finalizer_cleanup_selftest(root)
             + _broker_lifecycle_selftest(root)
             + _broker_failure_selftest(root)
