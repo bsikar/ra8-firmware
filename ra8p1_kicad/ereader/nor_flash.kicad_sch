@@ -4390,76 +4390,76 @@
 			)
 		)
 		(pin "E5"
-			(uuid "725614c8-8aea-4bfc-b56f-0f4c03030168")
+			(uuid "725614c8-8aea-4bfc-b56f-0f4c03030169")
 		)
 		(pin "E4"
-			(uuid "b58f69ac-0483-4b2f-afc3-a5902db7ad6f")
+			(uuid "b58f69ac-0483-4b2f-afc3-a5902db7ad70")
 		)
 		(pin "D1"
-			(uuid "4f5490e9-eb00-4299-8fad-8d0153fc3e7b")
+			(uuid "4f5490e9-eb00-4299-8fad-8d0153fc3e7c")
 		)
 		(pin "C5"
-			(uuid "cc0de503-2253-463d-b666-747733d702d3")
+			(uuid "cc0de503-2253-463d-b666-747733d702d4")
 		)
 		(pin "C1"
-			(uuid "81f6ea79-b7df-46d4-8b79-44c93c360aa1")
+			(uuid "81f6ea79-b7df-46d4-8b79-44c93c360aa2")
 		)
 		(pin "B5"
-			(uuid "2e3d372a-60cd-422b-a839-886ade93864c")
+			(uuid "2e3d372a-60cd-422b-a839-886ade93864d")
 		)
 		(pin "B4"
-			(uuid "9468d645-8f52-4acd-91fa-65b75adb20e5")
+			(uuid "9468d645-8f52-4acd-91fa-65b75adb20e6")
 		)
 		(pin "B3"
-			(uuid "c6e1e2d1-5054-4b0a-8ef5-aab490dafd68")
+			(uuid "c6e1e2d1-5054-4b0a-8ef5-aab490dafd69")
 		)
 		(pin "B1"
-			(uuid "5f0c2e1b-8ca1-4d4f-8cf6-7e5416fda704")
+			(uuid "5f0c2e1b-8ca1-4d4f-8cf6-7e5416fda705")
 		)
 		(pin "A3"
-			(uuid "f5d3432c-d401-4cf8-ae20-ab0e43301128")
+			(uuid "f5d3432c-d401-4cf8-ae20-ab0e43301129")
 		)
 		(pin "A4"
-			(uuid "f731355c-93e4-4005-bcef-f15d55a0a53a")
+			(uuid "f731355c-93e4-4005-bcef-f15d55a0a53b")
 		)
 		(pin "A5"
-			(uuid "a7b1c996-a274-4890-b37b-bcc18f13606f")
+			(uuid "a7b1c996-a274-4890-b37b-bcc18f136070")
 		)
 		(pin "B2"
-			(uuid "1a412519-5d06-45e6-93c1-1423b5acd90f")
+			(uuid "1a412519-5d06-45e6-93c1-1423b5acd910")
 		)
 		(pin "C2"
-			(uuid "035d8475-b327-4918-a2a8-e7fca62f06c3")
+			(uuid "035d8475-b327-4918-a2a8-e7fca62f06c4")
 		)
 		(pin "C3"
-			(uuid "f5620567-4b34-4d47-8fc1-5dde2e7526f2")
+			(uuid "f5620567-4b34-4d47-8fc1-5dde2e7526f3")
 		)
 		(pin "C4"
-			(uuid "61922697-7b1d-4d25-82fe-20a54f684641")
+			(uuid "61922697-7b1d-4d25-82fe-20a54f684642")
 		)
 		(pin "D2"
-			(uuid "1e2c15ee-1275-4ca6-adef-100bb0d7aed9")
+			(uuid "1e2c15ee-1275-4ca6-adef-100bb0d7aeda")
 		)
 		(pin "D3"
-			(uuid "816f86fb-eb0f-457e-a92d-63a61cd097b7")
+			(uuid "816f86fb-eb0f-457e-a92d-63a61cd097b8")
 		)
 		(pin "D4"
-			(uuid "faa5a288-f708-4066-80de-0b82f0db6bff")
+			(uuid "faa5a288-f708-4066-80de-0b82f0db6c00")
 		)
 		(pin "D5"
-			(uuid "e196c9bb-7f1f-4cb6-9b95-d59d81656f52")
+			(uuid "e196c9bb-7f1f-4cb6-9b95-d59d81656f53")
 		)
 		(pin "E1"
-			(uuid "2f907faf-3669-4d95-9472-06483fc96ae8")
+			(uuid "2f907faf-3669-4d95-9472-06483fc96ae9")
 		)
 		(pin "E2"
-			(uuid "aab266af-2c6b-4588-84e9-77ac5a547c45")
+			(uuid "aab266af-2c6b-4588-84e9-77ac5a547c46")
 		)
 		(pin "E3"
-			(uuid "b652aae6-1231-40c3-be09-a3f1b70d5559")
+			(uuid "b652aae6-1231-40c3-be09-a3f1b70d555a")
 		)
 		(pin "A2"
-			(uuid "bf07567d-c1b6-4d26-82a4-60ac4f04ee28")
+			(uuid "bf07567d-c1b6-4d26-82a4-60ac4f04ee29")
 		)
 		(instances
 			(project "ereader_rev1"
