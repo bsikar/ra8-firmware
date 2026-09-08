@@ -122,7 +122,7 @@ batches:
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
     assigned_rows: 4187
-    rows_sha256: 0795bda624a040f7675ed652df75d037c44d7d808ed9bb8bf8b8858660a44c1f
+    rows_sha256: d5c0f7db6fadb538cac0445c0354638f25d450f886565a6136d749f69d31a01f
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
@@ -375,7 +375,7 @@ batches:
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
     assigned_rows: 28
-    rows_sha256: d9c4f725494c251cfa59534e9576fc456ed939678e655fd5638866f046c45748
+    rows_sha256: 9340e70b87def32f553c0745437cad6078b49c18ba89446172a58474f1cec6a2
     partition: >-
       Dev-box selftest and check-mode idempotence reconciliation: seven exact
       reporting-only Ansible controls, eighteen exact scope-authority successors,
@@ -403,7 +403,7 @@ batches:
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
     assigned_rows: 124
-    rows_sha256: 92b8ea5dcfa993c9192884d1ad5434b3f311e3f6b9f419905fc69066e34ff595
+    rows_sha256: adb5d4ad1d6b77d2937255d6307e9f6e877edf35a52abbf7b39ceccc88a93fcd
     partition: >-
       HIL size-cap split reconciliation: three new bound-exit raw-byte
       authorities, two changed raw-byte pins, one moved negative-fixture
@@ -440,7 +440,7 @@ batches:
     date: 2026-09-03
     identity_schema: 2-durable-site-identity
     assigned_rows: 59
-    rows_sha256: ab5e9855927b622fcadeb701b84bb4a517b34d53829a0b3dc8b55777b8722271
+    rows_sha256: 125ae249b52fe32eaa62e8ea76e042659c318712a793722e28863c8c28af77a4
     partition: >-
       Continuous runner reconciliation and inherited runner-admission closure:
       exact Ansible probe controls, fixed-argv subprocess diagnostics,
@@ -471,7 +471,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: 91bd351a775bb2ef651663460637b084f0b8d66229be91a8d9784022e9470818
+    rows_sha256: 2ceb3a6226c8eef4f6796c4dc4e3eaf7635121faa4877291b777d40ed4e11d71
     partition: >-
       Runner reconciliation round-two authority refresh: the independently
       recomputed devcontainer image raw-byte pin and both full-worktree
@@ -530,7 +530,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 17
-    rows_sha256: c23e17208e0e983d456f2ed82942cfe89b8c887e200ce862b89d763e18fa4822
+    rows_sha256: 135e39d5f2490e68c69d935ec70ca54bc125300cd3119b4a06b58aa7075991fe
     partition: >-
       Round4 checker split: three exact fleet path authorities, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -554,7 +554,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 26
-    rows_sha256: 33fa06b612c1ef9b0d37b32668263958453ce45fe2cf2c521d435a71841a25a8
+    rows_sha256: 87793d8128abf096a6e8d9172ba7afd1c8ace412d0ecb01571c604f3b65e6ecd
     partition: >-
       Round5 ARC checker split: one exact selftest path authority, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -603,7 +603,7 @@ batches:
     date: 2026-09-05
     identity_schema: 2-durable-site-identity
     assigned_rows: 36
-    rows_sha256: b11b67fbdd64191604ba3a488e3b689e1928b6648215b9282d46a64dfa4b421a
+    rows_sha256: 4f3b3caec9c6057acc01509dd2357e5090240f9bd50a4fef3156f9385cff8636
     partition: >-
       Final runner storage, WSL clock, and lifecycle authority reconciliation.
     evidence:
@@ -623,7 +623,7 @@ batches:
     date: 2026-09-06
     identity_schema: 2-durable-site-identity
     assigned_rows: 3
-    rows_sha256: 3776212b20a82d85228044d98e504672e6c875dd4e63a73aa2b8fb38ad4fa930
+    rows_sha256: 7dcd5defe388fd6bef2ecb8eee93f55154adf68dbc6f6eb9979722dda3d91458
     partition: >-
       Runtime-less image policy selftest and locale-stable MISRA inventory.
     evidence:
@@ -642,7 +642,7 @@ batches:
     date: 2026-09-06
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: d121800579bb97099883baddc48055f26a5f089ad2b35f65384e55437fa8086e
+    rows_sha256: a39cf6802020dd61ec37413b815c1741bdbad4886fa1c2d8652cdca29d48e161
     partition: >-
       Authenticated image selftest bytes and settled aggregate successors.
     evidence:
@@ -660,7 +660,7 @@ batches:
     date: 2026-09-07
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: 369d3dd3f4f39cd0bac85aaa5f4cd67ec001aaf3c6bec2ebb41c6b7ca6a3d5eb
+    rows_sha256: 583cc5cdbe2756136ada6e8cb0a667a018399a6e8df373df8b3925392d63a3b9
     partition: >-
       Load-safe image supervisor deadline review: the nested status receipt now
       waits through its existing watchdog plus cleanup margin, and both exact
@@ -689,8 +689,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-09-07
     identity_schema: 2-durable-site-identity
-    assigned_rows: 14
-    rows_sha256: aaffb9075e2c2dddf0e9909f7f190b5d5dc8b732e7a8165bb34f5b79b176ec7c
+    assigned_rows: 20
+    rows_sha256: df29844a139ee8fb72b303c00720da31c8b87e3ea839a309aaedb0c2820febe5
     partition: >-
       WSL image-selftest cleanup deadline review: only descendant disappearance
       receives additional bounded observation time, with exact helper and main
@@ -710,14 +710,14 @@ batches:
         The final checker census remains exactly 1014 authorities and 3787
         values, with classification
         1de8ef8ba500b219f25f530651f2e9c332a3e308e1d3c0952bdc33292731ee35,
-        value fbae54731d07dd5b9c03331167af654c49773d32e31ead366bce4661a963d3d0,
-        and reason f7fb8867452ad6439ca80717fb93dcf3570cd3efb84c41c4cf908b3bdb327b32.
+        value 2fd7fd67c43bf3b38bd7eb08a28ba2693ff31b08ae7fa8c43a9058ecf53729fd,
+        and reason 659620621bfd7b7aedbbbdc245e398ad44a38ced6549926aa927503bce1bd1d5.
   - id: dev-slice-alias-checkmode-20260907
     authority: repository-suppression-review
     date: 2026-09-07
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: 4158919c78c81646e538bdde7448e89e9916f8bd8fb103d06e6f14448b83f221
+    rows_sha256: 76ecf1a2bd108577645e3743c928173d4967c803f9e7d20820986f2b0f7b7e57
     partition: >-
       Dev-slice image alias check-mode convergence: two newly visible
       read-only status controls and the final suppression aggregate successors.
@@ -735,5 +735,5 @@ batches:
         The authenticated checker census remains 1014 authorities and 3787
         values with classification
         1de8ef8ba500b219f25f530651f2e9c332a3e308e1d3c0952bdc33292731ee35,
-        value fbae54731d07dd5b9c03331167af654c49773d32e31ead366bce4661a963d3d0,
-        and reason f7fb8867452ad6439ca80717fb93dcf3570cd3efb84c41c4cf908b3bdb327b32.
+        value 2fd7fd67c43bf3b38bd7eb08a28ba2693ff31b08ae7fa8c43a9058ecf53729fd,
+        and reason 659620621bfd7b7aedbbbdc245e398ad44a38ced6549926aa927503bce1bd1d5.
