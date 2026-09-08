@@ -22,6 +22,111 @@ hierarchical sheets, qualified symbol pin mappings, ERC review, and a full
 schematic PDF. PCB layout, footprint qualification, manufacturing outputs,
 and physical bring-up are deferred; they are not schematic acceptance gates.
 
+## Consolidated owner requirements (2026-09-07)
+
+These requirements extend the original e-reader definition; they are not
+optional substitutes for the display, touch, or front light. This is also a
+portable music player. Unchecked items below are required work, not claims
+that the current schematic implements them.
+
+- [ ] RA8P1 host and ESP32-C6 radio, with complete supply, clock, reset,
+  boot, programming, interconnect, and powered-off isolation circuits.
+- [ ] Integrated e-paper controller, panel high-voltage power and VCOM,
+  capacitive touch, and independently adjustable warm/cool front light.
+  The Waveshare driver board is for prototyping only.
+- [ ] Rechargeable battery, USB-C, charging and power-path management,
+  protection, fuel measurement, safe power sequencing, and discharge.
+- [ ] External RAM and soldered onboard storage at least matching the
+  EK-RA8P1 baseline. The current reference is 64 MiB SDRAM and 64 MiB NOR;
+  capacity alone does not establish equivalent bandwidth or compatibility.
+- [ ] microSD for local music/files, with exact host interface, voltage,
+  card-detect, protection, and repository-example compatibility checked.
+- [ ] Premium headphone audio with both 3.5 mm single-ended and 4.4 mm
+  balanced outputs, USB-DAC operation, and local-file playback.
+  Define measurable noise, distortion, output impedance, load/power range,
+  clocking, protection, and thermal requirements. Universal headphone
+  compatibility or an unmeasured "best sound" claim is not acceptance.
+- [ ] Built-in speakers and their amplifiers, with safe output selection,
+  mute/pop suppression, and a complete battery/thermal budget.
+- [ ] Camera capture hardware, grounded in the repository examples and
+  official evaluation-board documentation, without pinmux conflicts.
+- [ ] Five exposed physical buttons as specified below, plus touch input.
+- [ ] Sensors, debug and factory recovery, including recovery when normal
+  application firmware is unavailable.
+
+### Five exposed buttons and recovery contract
+
+The owner specified five buttons total on 2026-09-07. Allocate them as:
+
+| Control | Required role |
+| --- | --- |
+| Power/wake | Power-on from off; wake/sleep request; orderly shutdown request; firmware-independent held-button forced off/recovery |
+| Previous page | Page backward |
+| Next page | Page forward |
+| Volume down | Decrease audio volume |
+| Volume up | Increase audio volume |
+
+This count is one power button, two page buttons, and two dedicated volume
+buttons. Do not silently collapse the latter four into two dual-use buttons.
+Firmware may add contextual mappings, but the five physical controls remain.
+For each, define debounce, ESD, pull defaults, voltage domain, leakage,
+simultaneous-key behavior, and operation in off/boot/run/sleep/fault/update.
+Reserve real MCU pins and verify wake-capable pin selection against the
+selected sleep mode before completing the sheet.
+
+The power button consolidates user-facing power/reset/recovery interaction;
+it does not directly short both processors' unrelated boot-mode nets.
+Normal startup is hardware controlled. A short press while powered is a
+firmware input; a sustained press must ultimately force power off without
+working firmware. Release and press again to restart. The exact forced-off
+time, rail discharge, brownout/rearm behavior, and deep-sleep wake path require
+electrical closure; a nominal timing calculation is not a guaranteed bound.
+
+RA8P1 reset/boot and ESP32 boot service-pad pairs are internal fixture access,
+not additional exposed buttons or fitted switches. Keep SWD and documented
+ROM-loader access for blank/corrupt firmware. Any optional user-facing
+button chord for a recovery UI is a separate firmware contract; do not claim
+it substitutes for a proven hardware programming path.
+
+### Execution and acceptance plan
+
+Track the work in epic #821 and subsystem issues #822-#834, #840 (audio),
+and #841 (camera). Issues #835-#838 cover deferred PCB/manufacturing stages.
+Power and controls are shared work under #825/#832; memory, onboard storage
+and microSD are under #827. Reopen interface and power-budget decisions when
+the expanded audio/camera load invalidates earlier allocations.
+
+1. Complete and independently review each electrical section and its exact
+   symbol pin mapping; keep the BOM synchronized with placed parts.
+2. Select viable parts using primary datasheets and dated DigiKey/Mouser
+   stock, price, lifecycle, and performance evidence. Flag unqualified
+   candidates and unavailable supporting specifications explicitly.
+3. Connect hierarchical interfaces and actual MCU pins, including all rail,
+   timing, pinmux, powered-off, recovery, and firmware dependencies.
+4. Put useful equations, assumptions, results, and stable calculation IDs
+   on the schematic and link them to full engineering documents. Verify
+   calculations with Python; distinguish estimates from guaranteed limits.
+5. Before each commit/push, review connectivity, pin types, ERC findings,
+   calculations, BOM, and the native schematic plus every changed PDF page.
+   Existing ERC errors are not a passing full-design gate.
+6. Export the full multipage schematic PDF with the export script. Version
+   editable project files, local libraries, necessary references, BOM,
+   engineering documents, and exports using portable project-relative paths.
+7. Complete whole-design review under #834 before claiming schematic done.
+   PCB layout and footprint/model qualification remain deferred.
+
+Latest owner direction is native KiCad GUI editing for design work. Scripts
+are for exports and permitted supporting calculations/imports, not schematic
+generation. Parallel agents research and independently review while one
+editor owns the live KiCad design. Maintain compact, consistent symbols,
+short clear wiring, readable hierarchy, standard power symbols, and honest
+ERC drive semantics; do not add power flags merely to hide real errors.
+
+Supporting engineering documents: [power](system_power_design.md),
+[power button](single_button_power.md), [service](service_interface.md),
+[audio](audio_subsystem.md), and
+[camera/storage/memory](camera_storage_interfaces.md).
+
 ## Project organization
 
 Keep the root project files together in `ereader/`. Place hierarchical sheets

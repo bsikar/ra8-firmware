@@ -1304,7 +1304,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 15.24 -22.86 180)
 					(length 3.81)
 					(name "P309"
@@ -1321,6 +1321,7 @@
 							)
 						)
 					)
+					(alternate "P309_IN" input line)
 				)
 				(pin passive line
 					(at -15.24 -5.08 0)
@@ -1358,7 +1359,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 15.24 -7.62 180)
 					(length 3.81)
 					(name "P303"
@@ -1375,8 +1376,9 @@
 							)
 						)
 					)
+					(alternate "P303_IN" input line)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 15.24 -27.94 180)
 					(length 3.81)
 					(name "P311"
@@ -1393,6 +1395,7 @@
 							)
 						)
 					)
+					(alternate "P311_IN" input line)
 				)
 				(pin passive line
 					(at -15.24 -2.54 0)
@@ -1556,7 +1559,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 15.24 -25.4 180)
 					(length 3.81)
 					(name "P310"
@@ -1573,6 +1576,7 @@
 							)
 						)
 					)
+					(alternate "P310_IN" input line)
 				)
 			)
 			(symbol "R7KA8P1KFLCAC#UC0_4_1"
@@ -2915,7 +2919,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 15.24 -17.78 180)
 					(length 3.81)
 					(name "P909"
@@ -2932,6 +2936,7 @@
 							)
 						)
 					)
+					(alternate "P909_IN" input line)
 				)
 				(pin passive line
 					(at 15.24 -22.86 180)
@@ -2951,7 +2956,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 15.24 -2.54 180)
 					(length 3.81)
 					(name "P903"
@@ -2968,6 +2973,7 @@
 							)
 						)
 					)
+					(alternate "P903_OD" open_collector line)
 				)
 				(pin passive line
 					(at 15.24 -25.4 180)
@@ -11060,12 +11066,14 @@
 		)
 		(pin "B14"
 			(uuid "ba44c5e4-23c2-42fa-9548-c2db1a5bf5a5")
+			(alternate "P909_IN")
 		)
 		(pin "C12"
 			(uuid "50f017ae-64b6-4c79-9f8e-c21273e5fa7c")
 		)
 		(pin "D9"
 			(uuid "513fc8fd-bdf8-4e53-8a5d-a80e395ebcbd")
+			(alternate "P903_OD")
 		)
 		(pin "D12"
 			(uuid "5b2e9d10-84de-4025-ae5d-2076458f4823")
@@ -11591,6 +11599,7 @@
 		)
 		(pin "E10"
 			(uuid "690e0825-81eb-4baf-9552-6f8aa794529a")
+			(alternate "P310_IN")
 		)
 		(pin "F14"
 			(uuid "facf2261-ac70-4045-9c56-616072a23250")
@@ -11699,6 +11708,7 @@
 		)
 		(pin "A12"
 			(uuid "83d89cef-79bf-4581-86a5-5a90a430a931")
+			(alternate "P309_IN")
 		)
 		(pin "A17"
 			(uuid "c33cfe00-978d-41da-8d7e-456a0c0e7c87")
@@ -11708,9 +11718,11 @@
 		)
 		(pin "B6"
 			(uuid "d90889bd-4bb5-4df4-9387-e8910005ede5")
+			(alternate "P303_IN")
 		)
 		(pin "B12"
 			(uuid "90ab86c9-b351-4417-ba4e-88f2dd7d2377")
+			(alternate "P311_IN")
 		)
 		(pin "B15"
 			(uuid "595bc043-cab3-4b74-81eb-3dbf2e1f0268")
@@ -12323,12 +12335,14 @@
 		)
 		(pin "B14"
 			(uuid "3021520a-fb05-4290-bbe3-259e299930a4")
+			(alternate "P909_IN")
 		)
 		(pin "C12"
 			(uuid "d95befea-1985-4c1f-986d-35a819284bde")
 		)
 		(pin "D9"
 			(uuid "e61ab935-d86e-4f3c-a359-6497b36b6c2c")
+			(alternate "P903_OD")
 		)
 		(pin "D12"
 			(uuid "0257a207-72fa-4d97-b368-6bd33502305a")
@@ -12515,6 +12529,7 @@
 		)
 		(pin "A12"
 			(uuid "af1ca957-2490-48fd-8176-ee2991c89256")
+			(alternate "P309_IN")
 		)
 		(pin "A17"
 			(uuid "8f212ba6-6817-4a06-9b1d-96852af1742b")
@@ -12524,9 +12539,11 @@
 		)
 		(pin "B6"
 			(uuid "2bd591cd-48ab-4a75-b053-eec434ac604f")
+			(alternate "P303_IN")
 		)
 		(pin "B12"
 			(uuid "85edfb66-b735-4ff7-8bd6-2678d93194d4")
+			(alternate "P311_IN")
 		)
 		(pin "B15"
 			(uuid "023039ad-2eff-45b4-9c6c-43c46842bc03")
@@ -12557,6 +12574,7 @@
 		)
 		(pin "E10"
 			(uuid "9fc04deb-a93c-4895-bea5-3047259e8add")
+			(alternate "P310_IN")
 		)
 		(pin "F14"
 			(uuid "70c5d4b8-d565-49a7-84fc-421e964b2427")

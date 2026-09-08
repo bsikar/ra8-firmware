@@ -5393,7 +5393,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin bidirectional line
 				(at 15.24 -22.86 180)
 				(length 3.81)
 				(name "P309"
@@ -5410,6 +5410,7 @@
 						)
 					)
 				)
+				(alternate "P309_IN" input line)
 			)
 			(pin passive line
 				(at -15.24 -5.08 0)
@@ -5447,7 +5448,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin bidirectional line
 				(at 15.24 -7.62 180)
 				(length 3.81)
 				(name "P303"
@@ -5464,8 +5465,9 @@
 						)
 					)
 				)
+				(alternate "P303_IN" input line)
 			)
-			(pin passive line
+			(pin bidirectional line
 				(at 15.24 -27.94 180)
 				(length 3.81)
 				(name "P311"
@@ -5482,6 +5484,7 @@
 						)
 					)
 				)
+				(alternate "P311_IN" input line)
 			)
 			(pin passive line
 				(at -15.24 -2.54 0)
@@ -5645,7 +5648,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin bidirectional line
 				(at 15.24 -25.4 180)
 				(length 3.81)
 				(name "P310"
@@ -5662,6 +5665,7 @@
 						)
 					)
 				)
+				(alternate "P310_IN" input line)
 			)
 		)
 		(symbol "R7KA8P1KFLCAC#UC0_4_1"
@@ -7004,7 +7008,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin bidirectional line
 				(at 15.24 -17.78 180)
 				(length 3.81)
 				(name "P909"
@@ -7021,6 +7025,7 @@
 						)
 					)
 				)
+				(alternate "P909_IN" input line)
 			)
 			(pin passive line
 				(at 15.24 -22.86 180)
@@ -7040,7 +7045,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin bidirectional line
 				(at 15.24 -2.54 180)
 				(length 3.81)
 				(name "P903"
@@ -7057,6 +7062,7 @@
 						)
 					)
 				)
+				(alternate "P903_OD" open_collector line)
 			)
 			(pin passive line
 				(at 15.24 -25.4 180)

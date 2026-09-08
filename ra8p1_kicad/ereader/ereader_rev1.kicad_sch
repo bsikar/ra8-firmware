@@ -32,7 +32,7 @@
 		)
 		(uuid "1c8a1a1d-5f5f-493a-881c-b63a58841aba")
 	)
-	(text "Processor schematic development\nPower networks are being implemented from RA8P1-specific references.\nThis revision is not a completed schematic or a fabrication release."
+	(text "Development draft - not for fabrication.\nRequirements: design/ereader_requirements.md\nTracking: GitHub epic #821."
 		(exclude_from_sim no)
 		(at 25.4 43.18 0)
 		(effects
@@ -55,6 +55,26 @@
 	)
 	(wire
 		(pts
+			(xy 144.78 50.8) (xy 144.78 81.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "08d96169-3343-46c4-8752-5e24ab668095")
+	)
+	(wire
+		(pts
+			(xy 167.64 107.95) (xy 177.8 107.95)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0c36dd3c-f233-4f95-bfa4-ba16cc9949d9")
+	)
+	(wire
+		(pts
 			(xy 167.64 240.03) (xy 177.8 240.03)
 		)
 		(stroke
@@ -62,6 +82,16 @@
 			(type default)
 		)
 		(uuid "0d8b4c65-15d8-4e93-8b9e-669f51f3826c")
+	)
+	(wire
+		(pts
+			(xy 203.2 50.8) (xy 144.78 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0fb1b28d-c1aa-42e0-a194-72bafcaa8d5b")
 	)
 	(wire
 		(pts
@@ -75,6 +105,36 @@
 	)
 	(wire
 		(pts
+			(xy 114.3 81.28) (xy 114.3 35.56)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "278ea873-40ea-45f3-b759-561cd74b9f34")
+	)
+	(wire
+		(pts
+			(xy 177.8 190.5) (xy 177.8 107.95)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4682c625-ce77-4542-a95f-90e9ea5ce53e")
+	)
+	(wire
+		(pts
+			(xy 213.36 115.57) (xy 193.04 115.57)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "53589bc6-6e8a-48c4-be0f-7e694326643c")
+	)
+	(wire
+		(pts
 			(xy 167.64 102.87) (xy 203.2 102.87)
 		)
 		(stroke
@@ -85,6 +145,16 @@
 	)
 	(wire
 		(pts
+			(xy 182.88 185.42) (xy 182.88 105.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6911cfca-331a-4b06-850c-da2f5c690ccb")
+	)
+	(wire
+		(pts
 			(xy 167.64 95.25) (xy 203.2 95.25)
 		)
 		(stroke
@@ -92,6 +162,76 @@
 			(type default)
 		)
 		(uuid "701daeea-3bb9-4544-b84f-d45aa59782e2")
+	)
+	(wire
+		(pts
+			(xy 167.64 105.41) (xy 182.88 105.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "71629b78-f131-47dd-8a0d-d62a3decfcf4")
+	)
+	(wire
+		(pts
+			(xy 124.46 40.64) (xy 124.46 81.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7836fadb-f4cd-4dc6-aea4-c17caacd8fd1")
+	)
+	(wire
+		(pts
+			(xy 114.3 35.56) (xy 203.2 35.56)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8b189433-bc0c-42ea-bc07-fbf631c3b9a3")
+	)
+	(wire
+		(pts
+			(xy 134.62 45.72) (xy 203.2 45.72)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9b98dea6-d920-4fe4-bf05-9caeba05e82a")
+	)
+	(wire
+		(pts
+			(xy 203.2 40.64) (xy 124.46 40.64)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9f78e16d-30c1-4b25-a4b2-bc97ebec24a7")
+	)
+	(wire
+		(pts
+			(xy 203.2 190.5) (xy 177.8 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a2075e3d-e251-48dc-a96e-989635c2ce73")
+	)
+	(wire
+		(pts
+			(xy 134.62 81.28) (xy 134.62 45.72)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bb796936-6f1d-43cf-8b0c-d60674dfd172")
 	)
 	(wire
 		(pts
@@ -115,6 +255,26 @@
 	)
 	(wire
 		(pts
+			(xy 193.04 105.41) (xy 193.04 115.57)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "cc72af41-5a0c-413c-9f40-aae6df8c6cab")
+	)
+	(wire
+		(pts
+			(xy 203.2 185.42) (xy 182.88 185.42)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e5eb154d-753a-4085-af14-6c871eac8d83")
+	)
+	(wire
+		(pts
 			(xy 167.64 87.63) (xy 203.2 87.63)
 		)
 		(stroke
@@ -134,7 +294,7 @@
 		(uuid "8af53a83-1b3b-4c3b-963c-a93c6a0e2db1")
 	)
 	(label "MCU_RESET_N"
-		(at 193.04 105.41 180)
+		(at 213.36 115.57 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -142,6 +302,92 @@
 			(justify right bottom)
 		)
 		(uuid "9c31a25b-85e9-4fce-81cc-2d59c303596d")
+	)
+	(sheet
+		(at 203.2 30.48)
+		(size 137.16 27.94)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "271b8555-8f60-4788-b897-ce1f320a6eb6")
+		(property "Sheetname" "Page and volume buttons"
+			(at 203.2 29.7684 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "user_controls.kicad_sch"
+			(at 203.2 59.0046 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "PAGE_PREV_N" output
+			(at 203.2 35.56 180)
+			(uuid "35e60ec1-c62b-4c0d-ad4e-f37a09ee035c")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "PAGE_NEXT_N" output
+			(at 203.2 40.64 180)
+			(uuid "a8b4a38a-c470-48f4-9956-60f32c1ade05")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "VOL_DOWN_N" output
+			(at 203.2 45.72 180)
+			(uuid "18ecc99f-5832-44cd-8f0a-cbf4b6c8ede9")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "VOL_UP_N" output
+			(at 203.2 50.8 180)
+			(uuid "8788f190-bf05-4a4d-aea7-e9f11a3d477d")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
+					(page "8")
+				)
+			)
+		)
 	)
 	(sheet
 		(at 30.48 226.06)
@@ -315,6 +561,66 @@
 				(justify right)
 			)
 		)
+		(pin "POWER_BUTTON_N" input
+			(at 167.64 105.41 0)
+			(uuid "59f60af8-a85f-4094-bae3-6657c4c74c4b")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "POWER_KILL_N" output
+			(at 167.64 107.95 0)
+			(uuid "56538f6c-2757-42e9-952e-32245cd1ba55")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "PAGE_PREV_N" input
+			(at 114.3 81.28 90)
+			(uuid "f95ab6fb-d273-4ce7-866d-7916c4d92fc1")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "PAGE_NEXT_N" input
+			(at 124.46 81.28 90)
+			(uuid "6ab16f19-ccc3-404b-9176-e55eee1eafa0")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "VOL_DOWN_N" input
+			(at 134.62 81.28 90)
+			(uuid "5e90903b-24dc-4f19-a473-85185f8db803")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "VOL_UP_N" input
+			(at 144.78 81.28 90)
+			(uuid "d6e2b96c-1c0b-41c0-9bed-4593407fdd85")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
 		(instances
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
@@ -480,6 +786,72 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
 					(page "6")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 203.2 177.8)
+		(size 137.16 27.94)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "b061757d-547c-4864-baf0-6ef9e16e1a8a")
+		(property "Sheetname" "Power button and source control"
+			(at 203.2 177.0884 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "power_button.kicad_sch"
+			(at 203.2 206.3246 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "POWER_BUTTON_N" output
+			(at 203.2 185.42 180)
+			(uuid "82515349-51d9-41ef-81df-d3bfcb6e39ff")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "POWER_KILL_N" input
+			(at 203.2 190.5 180)
+			(uuid "c5e9c1ed-f3e1-4b32-a2c5-d372a4d4058d")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
+					(page "7")
 				)
 			)
 		)
