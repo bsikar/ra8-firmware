@@ -29,7 +29,7 @@ batches:
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
     assigned_rows: 53
-    rows_sha256: 9c23f2960c752addb61e0649b3b6e2b1ec06551e1a1c5b3130fa15d14d173445
+    rows_sha256: 39a47f884e948853c35e407d9512f9007593aae8bcf5c9d31a0336a67e0a2249
     partition: "remaining concern rows: ansible/clang-tidy/python/cmake cross-review"
     evidence:
       - "issue-790 batch-b cross-review record"
@@ -578,7 +578,7 @@ batches:
     date: 2026-09-05
     identity_schema: 2-durable-site-identity
     assigned_rows: 8
-    rows_sha256: 543ea256a4b65683375ad7542dc6bea5fc37b5551fe39d76a9f4a1ed8f43b434
+    rows_sha256: 75c65c53f8a7f1ce7cc70d1b9c37d87c8e75732ab0765f228ef304c061bb41fc
     partition: >-
       Live K3s, TrueNAS dev-slice, and WSL convergence controls after successful
       deployment, including exact readbacks and repair/assertion consumers.
@@ -717,7 +717,7 @@ batches:
     date: 2026-09-07
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: 76ecf1a2bd108577645e3743c928173d4967c803f9e7d20820986f2b0f7b7e57
+    rows_sha256: 9c5605a31f11fab8eaca703be11f0235bc404d97951431c2f275540a685f5b5e
     partition: >-
       Dev-slice image alias check-mode convergence: two newly visible
       read-only status controls and the final suppression aggregate successors.
@@ -737,3 +737,19 @@ batches:
         1de8ef8ba500b219f25f530651f2e9c332a3e308e1d3c0952bdc33292731ee35,
         value 2fd7fd67c43bf3b38bd7eb08a28ba2693ff31b08ae7fa8c43a9058ecf53729fd,
         and reason 659620621bfd7b7aedbbbdc245e398ad44a38ced6549926aa927503bce1bd1d5.
+  - id: dev-slice-cgroup-checkmode-20260908
+    authority: repository-suppression-review
+    date: 2026-09-08
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 1
+    rows_sha256: ae6f73b8238640521609604c1c7bf132e402f59e6a95ff063a6334e8ea84f6ae
+    partition: >-
+      Inactive dev-slice check-mode convergence: one shifted read-only status
+      control after the role reports APPLY REQUIRED and ends before cgroup reads.
+    evidence:
+      - >-
+        Check mode never starts the slice; when its cgroup is absent the role
+        reports changed and ends the host before any kernel readback consumer.
+      - >-
+        Apply mode starts the slice, proves its cgroup exists, and retains every
+        exact CPU, memory, swap, and subordinate-weight assertion.

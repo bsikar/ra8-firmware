@@ -245,6 +245,29 @@
         daemon_reload: true
 
     # --- Read the caps back, never assume they took -----------------------
+    - name: Inspect the active dev slice cgroup
+      become: true
+      ansible.builtin.stat:
+        path: "/sys/fs/cgroup/{{ dev_slice_unit }}"
+        follow: false
+      register: dev_slice_cgroup_root
+      changed_when: false
+      check_mode: false
+
+    - name: Report an inactive dev slice during a dry run
+      when:
+        - ansible_check_mode
+        - not (dev_slice_cgroup_root.stat.isdir | default(false))
+      ansible.builtin.debug:
+        msg: "{{ dev_slice_unit }} requires activation before its kernel caps can be read."
+      changed_when: true
+
+    - name: End an inactive-slice dry run before readback consumers
+      when:
+        - ansible_check_mode
+        - not (dev_slice_cgroup_root.stat.isdir | default(false))
+      ansible.builtin.meta: end_host
+
 
     - name: Read the cgroup properties the kernel is enforcing
       become: true
