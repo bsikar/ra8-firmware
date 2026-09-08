@@ -597,14 +597,16 @@ change; their presence is not hardware qualification.
 
 ## CMS-010: IS42S32160F-7TLI pin and electrical contract
 
-Native symbol and engineering contract checkpoint, 2026-09-08, for
+Native SDRAM power/bypass checkpoint, 2026-09-08, for
 [memory issue #827](https://github.com/bsikar/ra8-firmware/issues/827).
-This section defines the next native SDRAM circuit implementation, not a placed
-or qualified circuit. It does not change firmware, ERC settings, or the
+This section records partial native SDRAM implementation and its electrical
+contract, not a completed or qualified circuit. It does not change firmware,
+ERC settings, or the
 existing CMS-009 controls checkpoint. The selected part is ISSI
 IS42S32160F-7TLI; this supersedes the CMS-008 historical Alliance candidate
 for implementation without rewriting that sourcing history. Footprint geometry
-is outside this pin-number audit. No memory circuit is claimed placed here.
+is outside this pin-number audit. Page 10 now contains the placed memory
+units and completed power/bypass wiring; signal implementation remains pending.
 
 Primary evidence:
 
@@ -715,8 +717,18 @@ through native Save As, with separate sourced identity, datasheet and BOM
 fields and no inherited IME on-die-ECC claim. The native symbol has 25
 control/address Input pins, 32 Bidirectional DQ pins, 24 Power input
 supply/ground pins and five Not connected pins. Native Symbol Checker
-reported no issues. This is a library checkpoint; sheet placement and
-full-circuit ERC/netlist validation have not yet occurred.
+reported no issues. All four U14 units are now placed. The 12 supply pins
+connect to +3V3_MCU, the 12 ground pins connect to GND, and the five NC
+pins remain isolated. All 57 signal pins are intentionally unfinished,
+not marked no-connect. Pulls, the source-series clock resistor, MCU bus
+connections and signal hierarchy are not yet connected. This checkpoint
+does not establish full-circuit ERC acceptance or electrical qualification.
+The checkpoint ERC retains the existing 202 errors and two non-excluded
+warnings, adding 57 unconnected-signal and 25 undriven-input errors on the
+new page: 284 errors and two warnings total, without waiving those errors.
+No errors were reported on its 24 power pins or 13 capacitors. The native
+BOM contains 61 groups, 162 components and 18 columns. Page 10 includes
+notes with a hyperlink to this CMS-010 contract.
 Set the selected MCU roles to 25 Output and 32 Bidirectional; the reviewed
 default MCU and IME pins were Passive. Symbol pin typing is an ERC model,
 not firmware pin configuration. MCU role typing remains part of the next
@@ -755,9 +767,12 @@ The CLK output itself is PA15's high-speed drive class and needs the
 separate waveform qualification below, not the generic control-pin VOL proof.
 [Yageo RC0603FR-0710KL specification](https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL).
 
-Starting bypass population is 12 x 100nF, one for each VDD/VDDQ pin, plus
-10uF local bulk, with no separate filter or load switch splitting VDDQ.
-Project candidates are C1608X7R1H104K080AA and C3216X7R1V106K160AC.
+Page 10's completed bypass wiring is C76-C87, 12 x 100nF, one for each
+VDD/VDDQ pin, plus C88, 10uF local bulk, with no separate filter or load
+switch splitting VDDQ. The parts are C1608X7R1H104K080AA and
+C3216X7R1V106K160AC. Their nominal total is 11.2uF, within the main-rail
+capacitance budget; effective capacitance and power-distribution impedance
+are not qualified by the nominal sum or schematic wiring.
 These are engineering starting values, not an ISSI capacitance minimum
 or proof of effective capacitance, impedance or transient response. Qualify
 bias, temperature, aging and mounting inductance with the selected parts.
@@ -910,6 +925,11 @@ assert {name: [int(pin) for pin in numbers.split(',')]
         for name, numbers, connection in groups} == expected_groups
 assert 2**13 * 2**9 * 4 * 4 == 64 * 2**20
 print('57 unique signals and MCU identities; all 86 memory pins covered once; 64 MiB')
+
+placed_bypass_nominal_uf = 12 * .1 + 10
+assert isclose(placed_bypass_nominal_uf, 11.2)
+print('C76-C88 nominal bypass uF', placed_bypass_nominal_uf,
+      '; not effective capacitance or proof of the whole-rail capacitance budget')
 
 vmin, vmax = 3.242044111302129, 3.3584850935146022  # PWR-002 static, not ripple
 read_high_margin = 2.4 - .7 * vmax
