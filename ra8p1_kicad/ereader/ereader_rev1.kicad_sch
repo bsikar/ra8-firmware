@@ -185,6 +185,16 @@
 	)
 	(wire
 		(pts
+			(xy 85.09 109.22) (xy 85.09 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "39674e80-d965-482c-b482-9bf899cc9742")
+	)
+	(wire
+		(pts
 			(xy 340.36 147.32) (xy 347.98 147.32)
 		)
 		(stroke
@@ -485,6 +495,16 @@
 	)
 	(wire
 		(pts
+			(xy 165.1 269.24) (xy 177.8 269.24)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b9133d07-ab7a-4dc7-b638-3e886df52e54")
+	)
+	(wire
+		(pts
 			(xy 134.62 81.28) (xy 134.62 45.72)
 		)
 		(stroke
@@ -653,6 +673,16 @@
 		)
 		(uuid "3f11d0cf-a9e8-480b-80e0-bb9954e641ac")
 	)
+	(label "SD_CD_N"
+		(at 85.09 121.92 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "40f9bcb7-0d61-4c83-a8f4-beee34b185c5")
+	)
 	(label "SDRAM_BA[0..1]"
 		(at 347.98 152.4 0)
 		(effects
@@ -692,6 +722,16 @@
 			(justify left bottom)
 		)
 		(uuid "62f79b5e-a893-4d29-b50b-9cfaf5ff1d39")
+	)
+	(label "SD_CD_N"
+		(at 165.1 269.24 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "633ea5e6-1370-414b-abe1-3bc9a8a65f57")
 	)
 	(label "NOR_INT_N"
 		(at 142.24 119.38 0)
@@ -1583,10 +1623,76 @@
 				(justify left)
 			)
 		)
+		(pin "SD_CD_N" input
+			(at 85.09 109.22 270)
+			(uuid "797c995b-4ec3-4876-85d4-cab8004565de")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
 		(instances
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
 					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 177.8 256.54)
+		(size 101.6 25.4)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "56afd4f3-07e7-49f9-a338-a5473efb7ed6")
+		(property "Sheetname" "microSD removable storage"
+			(at 177.8 255.8284 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "microsd.kicad_sch"
+			(at 177.8 282.5246 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "SD_CD_N" output
+			(at 177.8 269.24 180)
+			(uuid "27db13ac-753a-44ee-bd42-848df4298779")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
+					(page "12")
 				)
 			)
 		)
