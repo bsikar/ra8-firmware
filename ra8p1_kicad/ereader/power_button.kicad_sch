@@ -2501,7 +2501,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "SYS-007: SOURCE SUPERVISION / U11, R32-R34, C67-C71\nVtrip=Vref*(1+R32/R33)+Isense*R32.\nNominal=0.405*(1+732k/100k)=3.369600V.\nVref +/-2%, Isense +/-25nA; each R +/-0.1%, 25ppm/C, 100C.\nCorner trip=3.263705831..3.476597632V.\nC68: tau=(732k||100k)*1n=87.980769us (nominal).\nC69-C71: 3x100n C0G; initial/temp=284.145..316.827nF.\nCT delay=300/175+0.0005=1.714786s nominal.\n0.6*(284.145/175+0.0005)=0.974511s MODEL, not guarantee.\nRequire qualified reset hold >=0.90s >650ms KILL blank +10ms.\nR34: ENhigh>=2.7-3uA*(100k*1.01*1.01)=2.393970V.\nENlow<=0.4V; TPS63802 thresholds 1.13V rise/0.97V fall.\nU12/Q1/Q2 implement shutdown; USB latch-clear branch still needed.\nFull math, Python and qualification: ../design/system_power_design.md SYS-007."
+	(text "SYS-007 / PWR-004: SOURCE SUPERVISION / U11, R32-R34, C67-C71\nVtrip=Vref*(1+R32/R33)+Isense*R32.\nNominal=0.405*(1+732k/100k)=3.369600V.\nVref +/-2%, Isense +/-25nA; each R +/-0.1%, 25ppm/C, 100C.\nCorner trip=3.263705831..3.476597632V.\nC68: tau=(732k||100k)*1n=87.980769us (nominal).\nC69-C71: 3x100n C0G; initial/temp=284.145..316.827nF.\nCT delay=300/175+0.0005=1.714786s nominal.\n0.6*(284.145/175+0.0005)=0.974511s MODEL, not guarantee.\nRequire qualified reset hold >=0.90s >650ms KILL blank +10ms.\nR34=110k: ENhigh>=2.7-3.8uA*110k*1.01^2=2.273598V.\nPOR sink=(1.3-0.2)/(110k*0.99^2)+3.8uA=14.003041uA.\nMAIN_PWR_EN drives raw U16 buffer, not LTC3119 RUN directly.\nHeld U12 drives KILL/discharge/Q3 RUN clamp; USB-clear still needed.\nRUN network and correlated raw/held threshold screen: PWR-004.\nSources/Python: ../design/system_power_design.md SYS-007;\n../design/main_regulator_ltc3119.md PWR-004. Rail adoption blocked by #846."
 		(exclude_from_sim no)
 		(at 228.346 172.466 0)
 		(effects
@@ -2509,10 +2509,11 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_ltc3119.md")
 		)
 		(uuid "7a202d46-44e4-4f45-ab78-e76c406a4359")
 	)
-	(text "SYS-007 REVISED: HELD SUPPLY / U10, R31, C62-C66\nC63-C66: 4 x 100uF/10V; Cmin=400uF*0.9^3=291.6uF.\nVIN=raw SYS; VOUT->R31->reservoir; CE senses reservoir.\nIcontrol<=1.125mA incl 500uA bank leakage allocation.\nPre-trip reverse: 80mV/98.01ohm<0.817mA. Itotal=1.942mA.\nVinitial=3.263705831-max(0.250,0.001125*102.24)\n        =3.013705831V (threshold OR resistive-drop limit).\nt_hold=[291.6uF*(3.013705831-2.7)V-1uC]/1.942mA\n      =46.589ms >38.380ms shutdown allocation.\n1uC covers initial undershoot + reverse/gate transitions.\nQualify VIN=0..4.6V, slow/floating-source collapse and load.\nR31 short: 4.6^2/98.01<0.216W; 1W nominal rating.\nControl only: no MCU/audio/display loads on AON_HOLD.\nFull assumptions and Python: ../design/system_power_design.md SYS-007."
+	(text "SYS-007 / PWR-004: HELD SUPPLY / U10, R31, C62-C66\nC63-C66: 4 x 100uF/10V; Cmin=400uF*0.9^3=291.6uF.\nVIN=raw SYS; VOUT->R31->reservoir; CE senses reservoir.\nIcontrol<=1.125mA incl 500uA bank leakage allocation.\nPre-trip reverse: 80mV/98.01ohm<0.817mA. Itotal=1.942mA.\nVinitial=3.263705831-max(0.250,0.001125*102.24)\n        =3.013705831V (threshold OR resistive-drop limit).\nt_hold=[291.6uF*(3.013705831-2.7)V-1uC]/1.942mA\n      =46.589403ms >38.997458ms shutdown at 1mF.\nKey-return-aware hold margin=7.591945ms at 1mF.\n1uC covers initial undershoot + reverse/gate transitions.\nQualify VIN=0..4.6V, slow/floating-source collapse and load.\nR31 short: 4.6^2/98.01<0.216W; 1W nominal rating.\nControl only: no MCU/audio/display loads on AON_HOLD.\nSeparate unadopted eFuse extra load is not included.\nSources/Python: ../design/system_power_design.md SYS-007;\n../design/main_regulator_ltc3119.md PWR-004."
 		(exclude_from_sim no)
 		(at 228.6 127 0)
 		(effects
@@ -2520,10 +2521,11 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_ltc3119.md")
 		)
 		(uuid "807d8433-1b44-4fce-9ef1-4800bfe8bc6b")
 	)
-	(text "SYS-007: SHUTDOWN / U12, Q1-Q2, R35-R40, C72\nPOWER_OFF_H=NOT(MAIN_PWR_EN); held-domain VCC=2.7..4.6V.\nR35/R36=1k; R37/R38=1M; 1% + 100ppm/C over 100C.\n3-gate peak<=3*4.6/(1000*0.99^2)=14.080196mA <50mA.\nIncludes future USB-clear gate; static<=17.080196uA <100uA.\nVGSmin=(2.6-1020.1*1uA)/(1+1020.1/980100)=2.596278V.\n1uA per gate/board leakage is a qualification allocation.\nR39||R40 + Q2: Rmax=22*1.01^2/2+0.2=11.4211ohm.\nFor Cmain<=1mF: t=R*C*ln(3.6/0.3)=28.380367ms.\nTotal<=10+28.380367=38.380367ms <46.589ms held supply.\nEach 22R: P<=3.6^2/(22*0.99^2)=0.601052W; 1W at 70C.\nQualify 0.2ohm FET, 10ms TOTAL response, derating and backfeed.\nGate/transient charge shares the existing 1uC reserve.\nFull assumptions, Python and tests: ../design/system_power_design.md SYS-007."
+	(text "SYS-007 / PWR-004: SHUTDOWN / U12, Q1-Q3, R35-R40, R70-R71\nPOWER_OFF_H=NOT(MAIN_PWR_EN); held-domain VCC=2.7..4.6V.\nEach gate branch: 1k series / 1M pulldown; 1% + 100ppm/C, 100C.\n4-gate peak<=4*4.6/(1000*0.99^2)=18.773595mA <50mA.\nIncludes future USB-clear; static<=22.773595uA <100uA.\nVGSmin=(2.6-1020.1*1uA)/(1+1020.1/980100)=2.596278V.\n1uA per gate/board leakage is a qualification allocation.\nRUN/KILL/discharge/USB-clear FET drains remain separate.\nR39||R40 + Q2: Rmax=22*1.01^2/2+0.2=11.4211ohm.\nKey-filter return allocation Ir=1.5mA; R=Rmax.\nTotal=10ms+R*C*ln((3.6-Ir*R)/(0.3-Ir*R)).\nAt 850uF: 34.647839ms; at 1mF: 38.997458ms <46.589403ms.\nEach 22R: P<=3.6^2/(22*0.99^2)=0.601052W; 1W at 70C.\nQualify 0.2ohm FET, 10ms TOTAL response, derating and backfeed.\nGate/transient charge shares the existing 1uC reserve.\nVBATT firmware/option invariant remains unimplemented; #846 unresolved.\nSources/Python: ../design/system_power_design.md SYS-007;\n../design/main_regulator_ltc3119.md PWR-004."
 		(exclude_from_sim no)
 		(at 50.546 241.3 0)
 		(effects
@@ -2531,6 +2533,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_ltc3119.md")
 		)
 		(uuid "8e71e7e1-2c72-4bc7-a91e-b14475a13c76")
 	)
@@ -2545,7 +2548,7 @@
 		)
 		(uuid "917f2fb0-bc68-4027-a457-2f08586aca5f")
 	)
-	(text "INCOMPLETE POWER CONTROL - NOT FOR FABRICATION\nPB, INT, KILL, held supply and source supervisor are connected.\nU12/Q1/Q2 provide fault KILL clamp and main-rail discharge.\nMAIN_PWR_EN now controls U13 on Main 3V3 digital supply.\nSYS_AON source and USB permission-latch clear remain to be built.\nPower-control operation is not yet complete or qualified.\nEngineering: ../design/system_power_design.md SYS-007;\nconverter math: ../design/power_decoupling.md PWR-002/PWR-003."
+	(text "INCOMPLETE POWER CONTROL - NOT FOR FABRICATION\nPB, INT, KILL, held supply and source supervisor are connected.\nU12/Q1/Q2 provide fault KILL clamp and main-rail discharge.\nMAIN_PWR_EN feeds raw U16; held Q3 separately clamps U13 RUN.\nSYS_AON source and USB permission-latch clear remain to be built.\nPower-control operation is not yet complete or qualified.\nCurrent converter/control draft: ../design/main_regulator_ltc3119.md PWR-004.\nRail adoption is blocked by SDRAM logic-high conflict #846."
 		(exclude_from_sim no)
 		(at 228.6 50.8 0)
 		(effects
@@ -2553,6 +2556,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_ltc3119.md")
 		)
 		(uuid "afa27a53-5a4f-4b8c-86d1-ba4f95138af6")
 	)
@@ -2711,6 +2715,12 @@
 		(uuid "d0e2b252-69e5-4220-8905-1536ef7d12ff")
 	)
 	(junction
+		(at 231.14 233.68)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "eeba7ec9-053c-423d-8bb8-4ccb6578586c")
+	)
+	(junction
 		(at 63.5 195.58)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -2852,6 +2862,16 @@
 	)
 	(wire
 		(pts
+			(xy 231.14 233.68) (xy 242.57 233.68)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1816eb44-f466-49b7-afc5-86c8720b0e8e")
+	)
+	(wire
+		(pts
 			(xy 81.28 55.88) (xy 81.28 50.8)
 		)
 		(stroke
@@ -2919,6 +2939,16 @@
 			(type default)
 		)
 		(uuid "3462f5da-14fb-4d71-8f0f-54d355916991")
+	)
+	(wire
+		(pts
+			(xy 231.14 222.25) (xy 231.14 233.68)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3544bf45-598c-4a51-b8a2-c4aabe8fff80")
 	)
 	(wire
 		(pts
@@ -3032,7 +3062,7 @@
 	)
 	(wire
 		(pts
-			(xy 228.6 233.68) (xy 242.57 233.68)
+			(xy 228.6 233.68) (xy 231.14 233.68)
 		)
 		(stroke
 			(width 0)
@@ -3590,16 +3620,6 @@
 		)
 		(uuid "fd6287e0-4820-4e92-977f-f8e8908e4b09")
 	)
-	(label "POWER_OFF_H"
-		(at 231.14 233.68 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "3f0bc8de-5602-496d-b49f-c3f1ac16ca0e")
-	)
 	(label "POWER_KILL_N"
 		(at 269.24 224.79 0)
 		(effects
@@ -3650,6 +3670,17 @@
 			(justify left)
 		)
 		(uuid "11446f39-535a-4e37-97fa-e4bdd3b6965a")
+	)
+	(hierarchical_label "POWER_OFF_H"
+		(shape output)
+		(at 231.14 222.25 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "8dbf463a-885f-44b4-8c0f-378a991578cf")
 	)
 	(hierarchical_label "POWER_BUTTON_N"
 		(shape output)
@@ -4168,7 +4199,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "100k"
+		(property "Value" "110k"
 			(at 162.56 191.7699 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4190,7 +4221,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-07100KL"
+		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-07110KL"
 			(at 165.1 190.5 0)
 			(hide yes)
 			(show_name no)
@@ -4201,7 +4232,7 @@
 				)
 			)
 		)
-		(property "Description" "YAGEO RC0603FR-07100KL; 100k +/-1% MAIN_PWR_EN pullup to AON_HOLD; shared open-drain controller/supervisor."
+		(property "Description" "YAGEO RC0603FR-07110KL; 110k +/-1% MAIN_PWR_EN pull-up to AON_HOLD; PWR-004"
 			(at 165.1 190.5 0)
 			(hide yes)
 			(show_name no)
@@ -4234,7 +4265,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "311-100KHRCT-ND"
+		(property "DigiKey_Part_Number" "311-110KHRCT-ND"
 			(at 165.1 190.5 0)
 			(hide yes)
 			(show_name no)
@@ -4245,7 +4276,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-07100KL/729836"
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-07110KL/726905"
 			(at 165.1 190.5 0)
 			(hide yes)
 			(show_name no)
@@ -4256,7 +4287,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
+		(property "Procurement_Status" "Active; DigiKey stock checked 2026-09-08; unreserved; recheck before purchase"
 			(at 165.1 190.5 0)
 			(hide yes)
 			(show_name no)
@@ -4267,7 +4298,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-07: DigiKey stock 2200236; USD 0.10/0.025/0.0122 at quantities 1/10/100. Snapshot only; recheck before purchasing."
+		(property "Sourcing_Snapshot" "2026-09-08: DigiKey 214574 in stock; USD 0.10 at 1; unreserved"
 			(at 165.1 190.5 0)
 			(hide yes)
 			(show_name no)
@@ -4289,7 +4320,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "RC0603FR-07100KL"
+		(property "Manufacturer_Part_Number" "RC0603FR-07110KL"
 			(at 165.1 190.5 0)
 			(hide yes)
 			(show_name no)
@@ -4300,7 +4331,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "SYS-007: 100k EN pullup AON_HOLD to MAIN_PWR_EN. Allocate 3uA adverse combined leakage, +/-1% and 100ppm/C over100C: VENmin=2.7-3u*102010=2.393970V; above TPS63802 1.13V max rising threshold. Open-drain LOW<=0.4V; below 0.97V min falling threshold. POR and inverter continuous-rail behavior require qualification."
+		(property "Selection_Basis" "PWR-004: 110k AON_HOLD-to-MAIN_PWR_EN pull-up; 1% initial plus 100ppm/C over 100C. With 3.8uA adverse load, POR current <=14.003041uA and held 2.7V input >=2.273598V. See ../design/main_regulator_ltc3119.md."
 			(at 165.1 190.5 0)
 			(hide yes)
 			(show_name no)
@@ -6020,7 +6051,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "SYS-007: 1k per held-domain gate; Rmin=980.1R, Rmax=1020.1R including 1% and 100ppm/C over 100C. Three-gate peak <=14.080196mA at 4.6V; VGS>=2.596278V with 1M and 1uA leakage allocation. Response <=10ms shared allocation, qualification required. See ../design/system_power_design.md SYS-007."
+		(property "Selection_Basis" "SYS-007 / PWR-004: 1k per held-domain gate; R=980.1..1020.1 ohm including 1% and 100ppm/C over 100C. Four-branch allocation including future USB clear: peak <=18.773595mA, steady <=22.773595uA, VGS>=2.596278V with 1M and 1uA leakage allocation. Shared response <=10ms requires qualification. See ../design/main_regulator_ltc3119.md."
 			(at 246.38 233.68 90)
 			(hide yes)
 			(show_name no)
@@ -7045,7 +7076,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "SYS-007: 2.7-4.6V held-domain inverter; 1uA input leakage; 1k per gate, three-gate peak screen 14.080196mA; local 100n bypass. Settling and 500uA additional-current allocation require qualification. See ../design/system_power_design.md SYS-007."
+		(property "Selection_Basis" "SYS-007 / PWR-004: 2.7..4.6V held-domain inverter; 1uA input leakage. Four 1k/1M gate branches include future USB clear: peak <=18.773595mA, steady <=22.773595uA, VGS>=2.596278V. Local100n bypass; shared10ms settling and500uA non-rail-input current allocation require qualification. See ../design/main_regulator_ltc3119.md."
 			(at 215.9 233.68 0)
 			(hide yes)
 			(show_name no)
@@ -11062,7 +11093,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "SYS-007: two 22R 1W in parallel, Rpath_max=11.4211R with 0.2R qualified FET. For Cmain<=1mF, 3.6V to 0.3V discharge <=28.380367ms; total <=38.380367ms includes shared 10ms response. Derate with temperature and qualify repeated/continuous fault energy. See ../design/system_power_design.md SYS-007."
+		(property "Selection_Basis" "SYS-007 / PWR-004: two 22R 1W in parallel, Rpath_max=11.4211 ohm with qualified 0.2 ohm FET. Include 1.5mA key-filter return: at Cmain<=1mF, 3.6V to0.3V discharge <=28.997458ms; total <=38.997458ms includes shared10ms response. Derate and qualify repeated/continuous fault energy. Full equation: ../design/main_regulator_ltc3119.md."
 			(at 342.9 218.44 90)
 			(hide yes)
 			(show_name no)
@@ -11727,7 +11758,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "SYS-007: 1k per held-domain gate; Rmin=980.1R, Rmax=1020.1R including 1% and 100ppm/C over 100C. Three-gate peak <=14.080196mA at 4.6V; VGS>=2.596278V with 1M and 1uA leakage allocation. Response <=10ms shared allocation, qualification required. See ../design/system_power_design.md SYS-007."
+		(property "Selection_Basis" "SYS-007 / PWR-004: 1k per held-domain gate; R=980.1..1020.1 ohm including 1% and 100ppm/C over 100C. Four-branch allocation including future USB clear: peak <=18.773595mA, steady <=22.773595uA, VGS>=2.596278V with 1M and 1uA leakage allocation. Shared response <=10ms requires qualification. See ../design/main_regulator_ltc3119.md."
 			(at 311.15 233.68 90)
 			(hide yes)
 			(show_name no)
@@ -11964,7 +11995,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "SYS-007: two 22R 1W in parallel, Rpath_max=11.4211R with 0.2R qualified FET. For Cmain<=1mF, 3.6V to 0.3V discharge <=28.380367ms; total <=38.380367ms includes shared 10ms response. Derate with temperature and qualify repeated/continuous fault energy. See ../design/system_power_design.md SYS-007."
+		(property "Selection_Basis" "SYS-007 / PWR-004: two 22R 1W in parallel, Rpath_max=11.4211 ohm with qualified 0.2 ohm FET. Include 1.5mA key-filter return: at Cmain<=1mF, 3.6V to0.3V discharge <=28.997458ms; total <=38.997458ms includes shared10ms response. Derate and qualify repeated/continuous fault energy. Full equation: ../design/main_regulator_ltc3119.md."
 			(at 323.85 218.44 90)
 			(hide yes)
 			(show_name no)

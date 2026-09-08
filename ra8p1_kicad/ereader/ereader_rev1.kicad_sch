@@ -205,6 +205,16 @@
 	)
 	(wire
 		(pts
+			(xy 330.2 205.74) (xy 330.2 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "49d7e869-89d5-498e-8c12-80ab1c775252")
+	)
+	(wire
+		(pts
 			(xy 340.36 144.78) (xy 347.98 144.78)
 		)
 		(stroke
@@ -974,6 +984,16 @@
 		(pin "MAIN_PWR_EN" input
 			(at 304.8 218.44 90)
 			(uuid "97447220-eea9-4670-9c51-da9b5fa0274e")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "POWER_OFF_H" input
+			(at 330.2 218.44 90)
+			(uuid "746bb0f5-8746-448e-9ee0-840a698267b3")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1939,6 +1959,16 @@
 		(pin "MAIN_PWR_EN" output
 			(at 304.8 205.74 270)
 			(uuid "5dbfd4dc-8dcd-46e1-93bb-f97b2f288aa2")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "POWER_OFF_H" output
+			(at 330.2 205.74 270)
+			(uuid "f5dec90a-15ee-4e68-b906-46a4a6ccffc2")
 			(effects
 				(font
 					(size 1.27 1.27)
