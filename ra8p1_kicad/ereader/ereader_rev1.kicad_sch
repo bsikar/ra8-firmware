@@ -155,6 +155,16 @@
 	)
 	(wire
 		(pts
+			(xy 12.7 55.88) (xy 30.48 55.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "20e3e911-b7f6-4832-b39c-7f33d7d42ec7")
+	)
+	(wire
+		(pts
 			(xy 114.3 81.28) (xy 114.3 35.56)
 		)
 		(stroke
@@ -225,6 +235,16 @@
 	)
 	(wire
 		(pts
+			(xy 73.66 109.22) (xy 73.66 119.38)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5958d9e5-b418-4661-8a9e-890f9e2fafb3")
+	)
+	(wire
+		(pts
 			(xy 167.64 102.87) (xy 203.2 102.87)
 		)
 		(stroke
@@ -232,6 +252,16 @@
 			(type default)
 		)
 		(uuid "62e68338-9d8b-4599-ac66-e58c77f3d9f0")
+	)
+	(wire
+		(pts
+			(xy 12.7 68.58) (xy 30.48 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "655bb671-3676-4cce-b955-96b1c29de198")
 	)
 	(wire
 		(pts
@@ -255,6 +285,16 @@
 	)
 	(wire
 		(pts
+			(xy 119.38 109.22) (xy 119.38 119.38)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6c4a7559-9e93-4952-a410-68ef0336fd6b")
+	)
+	(wire
+		(pts
 			(xy 12.7 86.36) (xy 30.48 86.36)
 		)
 		(stroke
@@ -262,6 +302,16 @@
 			(type default)
 		)
 		(uuid "6eb42218-f3c5-4c68-b361-d5e615a5f3e0")
+	)
+	(wire
+		(pts
+			(xy 12.7 60.96) (xy 30.48 60.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6f742b3e-b6c5-4665-a46f-5a23b2e401db")
 	)
 	(wire
 		(pts
@@ -322,6 +372,16 @@
 			(type default)
 		)
 		(uuid "81593df3-c993-4db5-954b-9092def362e7")
+	)
+	(wire
+		(pts
+			(xy 12.7 66.04) (xy 30.48 66.04)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "84267ed6-59bf-4474-992e-a7b175d6651f")
 	)
 	(wire
 		(pts
@@ -393,6 +453,26 @@
 		)
 		(uuid "a2075e3d-e251-48dc-a96e-989635c2ce73")
 	)
+	(bus
+		(pts
+			(xy 96.52 109.22) (xy 96.52 124.46)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a4da9994-1540-47fe-9c77-d5f65806bc63")
+	)
+	(wire
+		(pts
+			(xy 12.7 58.42) (xy 30.48 58.42)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a6da3eaa-4fd1-4b21-b963-491c006496a5")
+	)
 	(wire
 		(pts
 			(xy 134.62 81.28) (xy 134.62 45.72)
@@ -453,6 +533,16 @@
 		)
 		(uuid "cc72af41-5a0c-413c-9f40-aae6df8c6cab")
 	)
+	(bus
+		(pts
+			(xy 12.7 63.5) (xy 30.48 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e16c2691-f5a3-4b98-8254-bb851392e906")
+	)
 	(wire
 		(pts
 			(xy 203.2 185.42) (xy 182.88 185.42)
@@ -472,6 +562,26 @@
 			(type default)
 		)
 		(uuid "e75a36e0-f857-4ae1-acfe-e970a622c543")
+	)
+	(wire
+		(pts
+			(xy 142.24 109.22) (xy 142.24 119.38)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "efbbd676-3f21-4df8-8692-0a8292b254fb")
+	)
+	(wire
+		(pts
+			(xy 50.8 109.22) (xy 50.8 119.38)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f16f771a-a8e5-4205-a36f-4df18fe002d0")
 	)
 	(bus
 		(pts
@@ -502,6 +612,26 @@
 			(justify left bottom)
 		)
 		(uuid "1d6d1057-b1b9-42f0-9267-9ab82522a440")
+	)
+	(label "NOR_CK_HOST"
+		(at 50.8 119.38 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "32c58215-2237-447a-ac64-090e88a6f8eb")
+	)
+	(label "MCU_RESET_N"
+		(at 12.7 55.88 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "3610b61b-fb92-4f60-8d91-5bb19435d4ec")
 	)
 	(label "SDRAM_WE_N"
 		(at 347.98 137.16 0)
@@ -553,6 +683,26 @@
 		)
 		(uuid "62f79b5e-a893-4d29-b50b-9cfaf5ff1d39")
 	)
+	(label "NOR_INT_N"
+		(at 142.24 119.38 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "6b3fe04e-0732-488b-9abe-66f4091267f3")
+	)
+	(label "NOR_CK_HOST"
+		(at 12.7 58.42 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "6e1f5356-eefe-41e0-9427-ed86f96ccf8d")
+	)
 	(label "SDRAM_CAS_N"
 		(at 347.98 147.32 0)
 		(effects
@@ -601,7 +751,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "8af53a83-1b3b-4c3b-963c-a93c6a0e2db1")
+		(uuid "9bb83abd-8240-4e73-935f-8198a71ea6c7")
 	)
 	(label "SDRAM_A[0..12]"
 		(at 12.7 96.52 0)
@@ -632,6 +782,16 @@
 			(justify left bottom)
 		)
 		(uuid "b2f905db-d700-483c-a463-d381d5c35d6f")
+	)
+	(label "NOR_DQ_HOST[0..7]"
+		(at 96.52 124.46 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "b43e3499-9b35-464f-8abc-92d42505ae73")
 	)
 	(label "SDRAM_CLK"
 		(at 347.98 154.94 0)
@@ -673,6 +833,46 @@
 		)
 		(uuid "be32fdbb-d35f-426b-addb-f3c1f61d9963")
 	)
+	(label "NOR_CS_N"
+		(at 12.7 60.96 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "c2a5cd32-31e3-403c-8f57-7d1d5e2e8d6d")
+	)
+	(label "NOR_CS_N"
+		(at 73.66 119.38 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "caa3c895-64d8-4cb0-b0ad-c2aa011d6008")
+	)
+	(label "NOR_DQ_HOST[0..7]"
+		(at 12.7 63.5 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "dd383c7f-16ac-4605-af49-28dc68712ffe")
+	)
+	(label "NOR_DS_HOST"
+		(at 12.7 66.04 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "e88d21b2-eb77-412b-96da-08f4d4f20a98")
+	)
 	(label "SDRAM_BA[0..1]"
 		(at 12.7 106.68 0)
 		(effects
@@ -682,6 +882,26 @@
 			(justify left bottom)
 		)
 		(uuid "e923b72d-0490-4ed6-a9ec-c438600bf598")
+	)
+	(label "NOR_DS_HOST"
+		(at 119.38 119.38 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "e9b79997-7d01-4d99-8729-e2be1686c636")
+	)
+	(label "NOR_INT_N"
+		(at 12.7 68.58 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "ef6306ed-2b8e-4dce-b866-b03b6f722179")
 	)
 	(label "SDRAM_CLK"
 		(at 12.7 101.6 0)
@@ -805,6 +1025,66 @@
 					(size 1.27 1.27)
 				)
 				(justify left top)
+			)
+		)
+		(pin "MCU_RESET_N" input
+			(at 30.48 55.88 180)
+			(uuid "8de0f475-4911-44e4-99d2-55631b0b1076")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "NOR_CK_HOST" input
+			(at 30.48 58.42 180)
+			(uuid "ade48e29-1e77-4784-9db9-1c7267fc5e72")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "NOR_CS_N" input
+			(at 30.48 60.96 180)
+			(uuid "0cdbc96e-d8fa-428b-9c89-bda128e7a77f")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "NOR_DQ_HOST[0..7]" bidirectional
+			(at 30.48 63.5 180)
+			(uuid "fdc759bd-743a-48a9-9af8-c97bdd86864f")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "NOR_DS_HOST" output
+			(at 30.48 66.04 180)
+			(uuid "f4d31fb4-26f7-41d5-ac12-016dbcedab77")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "NOR_INT_N" output
+			(at 30.48 68.58 180)
+			(uuid "cb355a46-4bf2-419a-a0dc-7b4f6ef4e2e0")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
 			)
 		)
 		(instances
@@ -1226,6 +1506,56 @@
 		(pin "SDRAM_BA[0..1]" output
 			(at 30.48 106.68 180)
 			(uuid "78287551-7aa4-42c4-94de-a8d232d90b97")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "NOR_CK_HOST" output
+			(at 50.8 109.22 270)
+			(uuid "c321813d-40a6-4996-b255-dded782076dc")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "NOR_CS_N" output
+			(at 73.66 109.22 270)
+			(uuid "985c2dfc-826f-4794-9199-15a89fe846c8")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "NOR_DQ_HOST[0..7]" bidirectional
+			(at 96.52 109.22 270)
+			(uuid "cd7ff0bd-e659-4992-b880-8405c06f9eef")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "NOR_DS_HOST" input
+			(at 119.38 109.22 270)
+			(uuid "bf395c26-0d80-410c-aaea-67cf219a86bf")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "NOR_INT_N" input
+			(at 142.24 109.22 270)
+			(uuid "6d965f21-8fc2-458d-99bd-9eeaa2d53c7a")
 			(effects
 				(font
 					(size 1.27 1.27)
