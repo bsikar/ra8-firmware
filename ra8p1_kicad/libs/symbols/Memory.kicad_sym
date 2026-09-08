@@ -4564,7 +4564,6 @@
 			)
 		)
 		(symbol "S28HL01GTFPBHI030_1_0"
-			(unit_name "Octal interface")
 			(pin input line
 				(at 16.51 -10.16 180)
 				(length 3.81)
@@ -4801,7 +4800,6 @@
 			)
 		)
 		(symbol "S28HL01GTFPBHI030_1_1"
-			(unit_name "Octal interface")
 			(rectangle
 				(start -12.7 2.54)
 				(end 12.7 -20.32)
@@ -4815,7 +4813,6 @@
 			)
 		)
 		(symbol "S28HL01GTFPBHI030_2_0"
-			(unit_name "Power and reserved")
 			(pin no_connect line
 				(at -16.51 -10.16 0)
 				(length 3.81)
@@ -5016,7 +5013,6 @@
 			)
 		)
 		(symbol "S28HL01GTFPBHI030_2_1"
-			(unit_name "Power and reserved")
 			(rectangle
 				(start -12.7 2.54)
 				(end 12.7 -22.86)

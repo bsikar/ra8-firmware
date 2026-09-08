@@ -770,6 +770,52 @@
 		)
 	)
 	(sheet
+		(at 30.48 53.34)
+		(size 77.47 20.32)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "23859413-ab36-480e-aeef-d0e8a227b709")
+		(property "Sheetname" "128 MiB Octal NOR"
+			(at 30.48 52.6284 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "nor_flash.kicad_sch"
+			(at 30.48 74.2446 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
+					(page "11")
+				)
+			)
+		)
+	)
+	(sheet
 		(at 203.2 30.48)
 		(size 137.16 27.94)
 		(exclude_from_sim no)
