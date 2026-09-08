@@ -283,7 +283,7 @@ def _write_stall_entry(root: Path) -> Path:
 
 
 def _process_group_members(group: int) -> set[int] | None:
-    """Return Linux process IDs in one exact process group."""
+    """Return live Linux process IDs in one exact process group."""
     members: set[int] = set()
     try:
         processes = tuple(Path("/proc").iterdir())
@@ -302,6 +302,8 @@ def _process_group_members(group: int) -> set[int] | None:
         fields = raw[closing + 2 :].split() if closing >= 0 else []
         if len(fields) <= PROCESS_GROUP_FIELD or not fields[PROCESS_GROUP_FIELD].isdigit():
             return None
+        if fields[0] == b"Z":
+            continue
         if int(fields[PROCESS_GROUP_FIELD]) == group:
             members.add(int(process.name))
     return members
