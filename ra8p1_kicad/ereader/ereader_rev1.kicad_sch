@@ -65,6 +65,16 @@
 	)
 	(wire
 		(pts
+			(xy 340.36 142.24) (xy 347.98 142.24)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0993f65d-76b4-4f5f-ad35-771e6fd809fd")
+	)
+	(wire
+		(pts
 			(xy 167.64 107.95) (xy 177.8 107.95)
 		)
 		(stroke
@@ -85,6 +95,26 @@
 	)
 	(wire
 		(pts
+			(xy 12.7 83.82) (xy 30.48 83.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0e8a9502-678e-4e8e-8ca6-3635ead76c86")
+	)
+	(bus
+		(pts
+			(xy 340.36 139.7) (xy 347.98 139.7)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0f271d47-964a-45bf-89c8-8f0ab55e0868")
+	)
+	(wire
+		(pts
 			(xy 203.2 50.8) (xy 144.78 50.8)
 		)
 		(stroke
@@ -92,6 +122,16 @@
 			(type default)
 		)
 		(uuid "0fb1b28d-c1aa-42e0-a194-72bafcaa8d5b")
+	)
+	(bus
+		(pts
+			(xy 12.7 106.68) (xy 30.48 106.68)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "148d3f8e-45d0-4396-8a90-17519fab10ae")
 	)
 	(wire
 		(pts
@@ -105,6 +145,16 @@
 	)
 	(wire
 		(pts
+			(xy 340.36 149.86) (xy 347.98 149.86)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1cba4c92-522c-4e6e-b767-79111ccb674d")
+	)
+	(wire
+		(pts
 			(xy 114.3 81.28) (xy 114.3 35.56)
 		)
 		(stroke
@@ -112,6 +162,26 @@
 			(type default)
 		)
 		(uuid "278ea873-40ea-45f3-b759-561cd74b9f34")
+	)
+	(wire
+		(pts
+			(xy 12.7 88.9) (xy 30.48 88.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "286e35ff-217e-4d6e-bbe9-f7229d94cfca")
+	)
+	(wire
+		(pts
+			(xy 340.36 147.32) (xy 347.98 147.32)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4317273e-b827-48ac-8079-42484e86a32a")
 	)
 	(wire
 		(pts
@@ -125,6 +195,16 @@
 	)
 	(wire
 		(pts
+			(xy 340.36 144.78) (xy 347.98 144.78)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "530fea54-af9c-43b1-987e-7fab899e3f08")
+	)
+	(wire
+		(pts
 			(xy 213.36 115.57) (xy 193.04 115.57)
 		)
 		(stroke
@@ -132,6 +212,16 @@
 			(type default)
 		)
 		(uuid "53589bc6-6e8a-48c4-be0f-7e694326643c")
+	)
+	(wire
+		(pts
+			(xy 340.36 137.16) (xy 347.98 137.16)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "56d32979-5a0e-449a-acf7-32afadf5663e")
 	)
 	(wire
 		(pts
@@ -145,6 +235,16 @@
 	)
 	(wire
 		(pts
+			(xy 12.7 101.6) (xy 30.48 101.6)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "661fbcd6-7bba-4459-8ed8-526049b1ceba")
+	)
+	(wire
+		(pts
 			(xy 182.88 185.42) (xy 182.88 105.41)
 		)
 		(stroke
@@ -152,6 +252,16 @@
 			(type default)
 		)
 		(uuid "6911cfca-331a-4b06-850c-da2f5c690ccb")
+	)
+	(wire
+		(pts
+			(xy 12.7 86.36) (xy 30.48 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6eb42218-f3c5-4c68-b361-d5e615a5f3e0")
 	)
 	(wire
 		(pts
@@ -173,6 +283,26 @@
 		)
 		(uuid "71629b78-f131-47dd-8a0d-d62a3decfcf4")
 	)
+	(bus
+		(pts
+			(xy 340.36 132.08) (xy 347.98 132.08)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "754f2e43-2a41-466d-9f98-32146267161c")
+	)
+	(bus
+		(pts
+			(xy 12.7 104.14) (xy 30.48 104.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "756cd215-2816-45a9-983c-9f538945b3a0")
+	)
 	(wire
 		(pts
 			(xy 124.46 40.64) (xy 124.46 81.28)
@@ -182,6 +312,16 @@
 			(type default)
 		)
 		(uuid "7836fadb-f4cd-4dc6-aea4-c17caacd8fd1")
+	)
+	(bus
+		(pts
+			(xy 340.36 134.62) (xy 347.98 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "81593df3-c993-4db5-954b-9092def362e7")
 	)
 	(wire
 		(pts
@@ -202,6 +342,26 @@
 			(type default)
 		)
 		(uuid "8b189433-bc0c-42ea-bc07-fbf631c3b9a3")
+	)
+	(wire
+		(pts
+			(xy 12.7 91.44) (xy 30.48 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8fe72d74-381b-411a-9eab-02052c0cd0ea")
+	)
+	(wire
+		(pts
+			(xy 340.36 154.94) (xy 347.98 154.94)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "95297387-2f6d-4f61-9ba6-f7cca08e2cae")
 	)
 	(wire
 		(pts
@@ -245,6 +405,26 @@
 	)
 	(wire
 		(pts
+			(xy 12.7 93.98) (xy 30.48 93.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bd259130-8230-4d31-b6ca-0a5f449e4539")
+	)
+	(bus
+		(pts
+			(xy 12.7 96.52) (xy 30.48 96.52)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bf0e701e-5141-4bba-a5df-2432843d07e4")
+	)
+	(wire
+		(pts
 			(xy 167.64 100.33) (xy 203.2 100.33)
 		)
 		(stroke
@@ -283,6 +463,26 @@
 		)
 		(uuid "e5eb154d-753a-4085-af14-6c871eac8d83")
 	)
+	(bus
+		(pts
+			(xy 340.36 152.4) (xy 347.98 152.4)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e75a36e0-f857-4ae1-acfe-e970a622c543")
+	)
+	(bus
+		(pts
+			(xy 12.7 99.06) (xy 30.48 99.06)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fd086300-8a3f-4c80-960c-1158604f0795")
+	)
 	(wire
 		(pts
 			(xy 167.64 87.63) (xy 203.2 87.63)
@@ -292,6 +492,106 @@
 			(type default)
 		)
 		(uuid "fe7350b3-0f46-4995-9654-f7f72d4a367a")
+	)
+	(label "SDRAM_CAS_N"
+		(at 12.7 93.98 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "1d6d1057-b1b9-42f0-9267-9ab82522a440")
+	)
+	(label "SDRAM_WE_N"
+		(at 347.98 137.16 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "3f11d0cf-a9e8-480b-80e0-bb9954e641ac")
+	)
+	(label "SDRAM_BA[0..1]"
+		(at 347.98 152.4 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "47c4d6b5-4d83-4ab9-8ea9-c3c0fad2ec2b")
+	)
+	(label "SDRAM_CS_N"
+		(at 12.7 83.82 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "49447e16-b146-44e9-9387-8d6fc7efabc1")
+	)
+	(label "SDRAM_WE_N"
+		(at 12.7 88.9 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "526c8bdf-b8b8-4220-924c-67666bd5c8ef")
+	)
+	(label "SDRAM_DQM[0..3]"
+		(at 12.7 104.14 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "62f79b5e-a893-4d29-b50b-9cfaf5ff1d39")
+	)
+	(label "SDRAM_CAS_N"
+		(at 347.98 147.32 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "73e61ea6-4efc-4e21-8800-1cbc97761967")
+	)
+	(label "SDRAM_CKE"
+		(at 12.7 91.44 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "79ec78a1-0c37-4b14-86c8-d9e0164754e9")
+	)
+	(label "SDRAM_DQ[0..31]"
+		(at 12.7 99.06 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "7f433d46-2c1e-460c-81e2-db2d431ccd38")
+	)
+	(label "SDRAM_DQM[0..3]"
+		(at 347.98 132.08 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "87a8d63a-42cd-47ae-9573-e0d5e9c2b809")
 	)
 	(label "MCU_RESET_N"
 		(at 177.8 240.03 0)
@@ -303,6 +603,16 @@
 		)
 		(uuid "8af53a83-1b3b-4c3b-963c-a93c6a0e2db1")
 	)
+	(label "SDRAM_A[0..12]"
+		(at 12.7 96.52 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "9bd153b7-da68-4a36-a084-0faaac766447")
+	)
 	(label "MCU_RESET_N"
 		(at 213.36 115.57 180)
 		(effects
@@ -312,6 +622,96 @@
 			(justify right bottom)
 		)
 		(uuid "9c31a25b-85e9-4fce-81cc-2d59c303596d")
+	)
+	(label "SDRAM_CS_N"
+		(at 347.98 142.24 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "b2f905db-d700-483c-a463-d381d5c35d6f")
+	)
+	(label "SDRAM_CLK"
+		(at 347.98 154.94 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "b77bd3fb-4e9e-4677-b3be-cf79836062e0")
+	)
+	(label "SDRAM_DQ[0..31]"
+		(at 347.98 139.7 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "bda5ad4a-25c9-48ff-b02c-20558541c27d")
+	)
+	(label "SDRAM_RAS_N"
+		(at 12.7 86.36 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "bda64225-24bf-45df-a22e-7a4efbb4ff71")
+	)
+	(label "SDRAM_A[0..12]"
+		(at 347.98 134.62 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "be32fdbb-d35f-426b-addb-f3c1f61d9963")
+	)
+	(label "SDRAM_BA[0..1]"
+		(at 12.7 106.68 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "e923b72d-0490-4ed6-a9ec-c438600bf598")
+	)
+	(label "SDRAM_CLK"
+		(at 12.7 101.6 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "f679815a-e6e7-4786-bade-8ef5afdfac86")
+	)
+	(label "SDRAM_CKE"
+		(at 347.98 144.78 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "f6d950ff-ebd5-43ad-9369-64b3077969c2")
+	)
+	(label "SDRAM_RAS_N"
+		(at 347.98 149.86 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "fd2801d5-42f6-4988-8d80-b3ab71ad5725")
 	)
 	(sheet
 		(at 203.2 218.44)
@@ -687,6 +1087,106 @@
 				(justify right)
 			)
 		)
+		(pin "SDRAM_CS_N" output
+			(at 30.48 83.82 180)
+			(uuid "79010ba2-6068-4ed3-ba37-144fef8f72fc")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SDRAM_RAS_N" output
+			(at 30.48 86.36 180)
+			(uuid "7d91cda1-fc57-4506-ad8c-245185130e9e")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SDRAM_WE_N" output
+			(at 30.48 88.9 180)
+			(uuid "44e61ce5-be0b-43f8-bdfb-cc8c03c942da")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SDRAM_CKE" output
+			(at 30.48 91.44 180)
+			(uuid "5471f085-3a0b-405f-a83d-711aa055ad65")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SDRAM_CAS_N" output
+			(at 30.48 93.98 180)
+			(uuid "60db4fc5-906a-4498-9750-ca3a53b8b440")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SDRAM_A[0..12]" output
+			(at 30.48 96.52 180)
+			(uuid "c9479ebc-3450-4f63-9566-0c9202010e06")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SDRAM_DQ[0..31]" bidirectional
+			(at 30.48 99.06 180)
+			(uuid "1983132e-cfe6-436d-9ce4-2fa7e06248a0")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SDRAM_CLK" output
+			(at 30.48 101.6 180)
+			(uuid "a610fb59-a54e-4de6-acce-b6244d06efbe")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SDRAM_DQM[0..3]" output
+			(at 30.48 104.14 180)
+			(uuid "bc6fd7b6-44a2-42fa-8843-dbdff2b77df4")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SDRAM_BA[0..1]" output
+			(at 30.48 106.68 180)
+			(uuid "78287551-7aa4-42c4-94de-a8d232d90b97")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
 		(instances
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
@@ -731,6 +1231,106 @@
 					(size 1.27 1.27)
 				)
 				(justify left top)
+			)
+		)
+		(pin "SDRAM_DQM[0..3]" input
+			(at 340.36 132.08 0)
+			(uuid "9ea50a09-195c-4d01-87a8-1908d9827703")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SDRAM_A[0..12]" input
+			(at 340.36 134.62 0)
+			(uuid "a9824419-be0d-4d08-b6ef-1c28986326ba")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SDRAM_WE_N" input
+			(at 340.36 137.16 0)
+			(uuid "040e3a8e-e94e-4f89-ac57-0fa436557177")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SDRAM_DQ[0..31]" bidirectional
+			(at 340.36 139.7 0)
+			(uuid "1f2103d5-c026-46a3-bb9f-f8eaf6bcb315")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SDRAM_CS_N" input
+			(at 340.36 142.24 0)
+			(uuid "36ba86ab-7efa-40c8-bf62-adf0886e1426")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SDRAM_CKE" input
+			(at 340.36 144.78 0)
+			(uuid "4889e6f1-0926-4fb1-bdac-6c6ab3492d68")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SDRAM_CAS_N" input
+			(at 340.36 147.32 0)
+			(uuid "95af3703-aa8c-46ce-bbd0-6578d08463a4")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SDRAM_RAS_N" input
+			(at 340.36 149.86 0)
+			(uuid "89db4cd4-3a74-4292-a0dc-e5b386253a3f")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SDRAM_BA[0..1]" input
+			(at 340.36 152.4 0)
+			(uuid "195ba527-279c-4011-b28e-9c1eba8951af")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SDRAM_CLK" input
+			(at 340.36 154.94 0)
+			(uuid "096c1fc3-a749-4b70-8801-ee631c3d6139")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
 			)
 		)
 		(instances
