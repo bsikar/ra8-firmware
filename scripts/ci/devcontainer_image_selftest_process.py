@@ -125,11 +125,18 @@ def _group_members(group: int) -> set[int] | None:
         if not entry.name.isdigit():
             continue
         try:
-            process_group = _stat_group((entry / "stat").read_bytes())
+            raw = (entry / "stat").read_bytes()
         except FileNotFoundError:
             continue
         except (OSError, RuntimeError):
             return None
+        closing = raw.rfind(b")")
+        fields = raw[closing + 2 :].split() if closing >= 0 else []
+        if not fields:
+            return None
+        if fields[0] == b"Z":
+            continue
+        process_group = _stat_group(raw)
         if process_group is None:
             return None
         if process_group == group:
