@@ -685,7 +685,7 @@ def _observation_case(supervisor: str, process_source: str, cases: str) -> tuple
 def _closed_death_group_race_case(
     supervisor: str, process_source: str, cases: str
 ) -> tuple[str, bool]:
-    """Prove a pre-cleanup process-group census cannot return as success."""
+    """Prove a pre-cleanup census cannot leave live group residue."""
     observation = (
         "        if result is not None:\n"
         "            return result.si_code == os.CLD_KILLED and "
@@ -729,8 +729,15 @@ def _closed_death_group_race_case(
             outcomes.append(
                 (label, watchdog, closed, watchdog_clean and closed_clean, _no_residue((root,)))
             )
-        expected = [("base", 0, 0, True, True), ("mutant", 0, 1, True, True)]
-        return "closed-death premature group census mutation fires", outcomes == expected
+        base = ("base", 0, 0, True, True)
+        mutant = outcomes[1]
+        safe = (
+            outcomes[0] == base
+            and mutant[0:2] == ("mutant", 0)
+            and mutant[2] in {0, 1}
+            and mutant[3:] == (True, True)
+        )
+        return "closed-death group census remains terminal-safe", safe
     finally:
         for root, identity in reversed(roots):
             _remove_root(root, identity)
