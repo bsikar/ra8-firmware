@@ -1,6 +1,6 @@
 # E-reader system-power engineering basis
 
-Revision 3, 2026-09-07. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825),
+Revision 4, 2026-09-07. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825),
 [architecture #823](https://github.com/bsikar/ra8-firmware/issues/823), and
 [inputs #832](https://github.com/bsikar/ra8-firmware/issues/832).
 This record defines candidate circuit interfaces and verified arithmetic.
@@ -22,7 +22,56 @@ add high-current headphone rails and built-in speakers. The MCU/radio-only
 load screen below is not the new product's peak budget and does not approve
 the charger or battery for full-power audio plus charging.
 
-## Native implementation checkpoint: 2026-09-07
+## Native held-supply implementation checkpoint: 2026-09-07
+
+The saved [power-button sheet](../ereader/power_button.kicad_sch) now contains
+U10 LM66100DCKR, R31 100 ohm/1 W, C62 100 nF input bypass, and C63-C66
+100 uF/10 V polarized reservoir capacitors. Its visible SYS-007 comment
+links back to the full calculations below. This supersedes the raw-supply
+connection and missing-reservoir statements in the historical checkpoint.
+
+Read-only native XML netlist assertions verify the corrected connection
+basis below; the BOM, PDF and native ERC refresh are also complete.
+
+| Net | Exact members in this control block |
+| --- | --- |
+| SYS_AON | R18.1, U10.1 VIN, C62.1 |
+| U10 output | U10.6 VOUT, R31.1 |
+| AON_HOLD | R31.2, U10.3 CE, C63.1, C64.1, C65.1, C66.1, U9.1 VIN, C55.1 |
+| GND | U10.2, U10.5 ST, C62.2, C63.2, C64.2, C65.2, C66.2, in addition to existing grounds |
+
+U10.4 is the stock symbol's hidden, electrically `no_connect` NC pin;
+it remains unwired, consistent with TI's internally unconnected pin.
+There is no raw-to-held wire bridge. A PWR_FLAG on AON_HOLD declares the
+real source path from U10 VOUT through passive R31 for ERC; its visible
+note identifies that purpose. No flag masks the missing raw SYS_AON source.
+C63-C66 positive terminals are on AON_HOLD, negative on GND.
+The seven added fitted components carry matching exact manufacturer/order
+numbers and source fields in the native schematic and regenerated BOM.
+Footprints remain unqualified and outside this checkpoint's scope.
+The regenerated native BOM contains 42 grouped rows, 122 unique included
+references and quantity sum 122; C63-C66 form one group of four. The fresh
+eight-page A3 PDF was rendered and its corrected power-button page visually
+inspected. The other seven page renders are byte-identical to their earlier
+visual review. These checks and arithmetic checks do not measure hardware.
+
+The complete power circuit is still unfinished: charger/protected-pack input,
+USB permission, source supervisor, EN pullup, main converter, inverter and
+KILL/discharge FETs remain absent. CLI ERC reports 204 errors and two
+warnings, the same total as committed baseline `c64acf2fb3`. The power-button
+sheet has U9 EN unconnected and raw SYS_AON power undriven; U10 VIN shares
+that raw source net. Native ERC reports 221 entries including the 15 existing
+exclusions. The missing source is explicit,
+not waived; the remaining errors must be resolved as the power tree is built.
+This is an editable progress checkpoint, not a functional power-control or
+fabrication release. The corrected 46.589403 ms hold interval is an allocation-based
+calculation, not a measured runtime guarantee.
+
+## Historical button-interface checkpoint: 2026-09-07
+
+The following records the earlier button-only state before the held-supply
+implementation above. Present-tense implementation statements in this
+historical record describe that earlier snapshot, not the current schematic.
 
 This is a progress checkpoint, not a completed power circuit or permission
 to fabricate, populate, or energize the full board. Read-only KiCad 10.0.5
@@ -572,12 +621,12 @@ control hold-up components.
 ### Connections
 
 ```text
-SYS_AON --- 100 ohm --- LM66100 ideal diode ---> AON_HOLD
-     |                                      3 x 100 uF / 10 V
-     +---- TPS3808 SENSE divider                   |
-     +---- main/audio/display converter VIN       +-- LTC2954 VIN
-                                                  +-- TPS3808 VDD
-                                                  +-- 74LVC1G14 VCC
+SYS_AON --- LM66100 VIN/VOUT --- 100 ohm ---> AON_HOLD
+     |          | CE                             | 4 x 100 uF / 10 V
+     |          +--------------------------------+
+     +---- TPS3808 SENSE divider                  +-- LTC2954 VIN
+     +---- main/audio/display converter VIN      +-- TPS3808 VDD
+                                                 +-- 74LVC1G14 VCC
 
 AON_HOLD -- 100k -- MAIN_PWR_EN -- TPS63802 EN
                         |  |  |
@@ -596,9 +645,9 @@ the inverter/FET relationship with a wire, diode or common pullup.
 
 | Part/pin | Required connection |
 | --- | --- |
-| LM66100DCKR 1 VIN | SYS_AON through 100 ohm; 100 nF local bypass |
-| LM66100 2 GND, 3 CE | GND; CE tied directly to VOUT, respectively |
-| LM66100 4 NC, 5 ST, 6 VOUT | Explicit NC; unused ST tied to GND per pin table; AON_HOLD |
+| LM66100DCKR 1 VIN | Raw SYS_AON directly; C62 100 nF local bypass to GND |
+| LM66100 2 GND, 3 CE | GND; CE tied to AON_HOLD downstream of R31, respectively |
+| LM66100 4 NC, 5 ST, 6 VOUT | Internally unconnected NC; unused ST tied to GND per pin table; VOUT through R31 100 ohm to AON_HOLD |
 | TPS3808G01DBVR 1 RESET | MAIN_PWR_EN, shared with LTC EN and converter EN |
 | TPS3808 2 GND, 3 MR | GND; MR tied to AON_HOLD |
 | TPS3808 4 CT | 3 x 100 nF C0G in parallel to GND, not 300 ms fixed mode |
@@ -649,7 +698,7 @@ fault/recovery transitions, not just steady states.
 The running cutoff below is not a cold-restart guarantee. LTC2954 specifies
 a falling UVLO upper limit of 2.5 V and hysteresis upper limit of 0.7 V;
 their conservative sum requires 3.20 V at its VIN for guaranteed UVLO
-release. The 2.9117 V held-rail minimum at the running cutoff is insufficient
+release. The 3.0137 V held-rail minimum at the running cutoff is insufficient
 for that claim. The successful-recovery operating contract is therefore
 raw SYS_AON at least 3.70 V, AON_HOLD at least 3.25 V, and **both** the
 1 s reservoir-settling allowance and the full source-qualification interval
@@ -657,16 +706,20 @@ completed before a new press. The nominal supervisor delay alone is
 1.715 s; waiting only 1 s is not a successful-start instruction. Establish
 the total maximum recovery wait in qualification; the shared EN node is
 held low by the off-state LTC and is not a separately readable source-valid
-signal. Under the declared 1 mA hold-load allocation:
+signal. Under the declared 1.125 mA control-load allocation, a deliberately
+conservative charging model subtracts 250 mV continuously and includes
+the 0.23 ohm installed switch-resistance allocation:
 
 ```text
-Vhold_steady_min = 3.70 - 0.250 - 102.01*0.001 = 3.347990 V
-C_hold_max_model = 300u * 1.1 * 1.1 * 1.1 = 399.3 uF
-t_to_3.25_model = Rmax*Cmax*ln(Vsteady/(Vsteady-3.25)) = 143.837 ms
+Rpath_max = 102.01 + 0.23 = 102.24 ohm
+Vhold_steady_model = 3.70 - 0.250 - 102.24*0.001125 = 3.334980 V
+C_hold_max_model = 400u * 1.1 * 1.1 * 1.1 = 532.4 uF
+t_to_3.25_model = Rpath_max*Cmax*ln(Vsteady/(Vsteady-3.25)) = 199.757 ms
 ```
 
-This RC model conservatively subtracts the diode turn-on threshold as a
-continuous drop; the 1 s reservoir allowance must also cover actual switch
+This RC charging model is more pessimistic than the static comparator/path
+bound used for hold-up below; it does not treat the turn-on threshold as an
+additional physical series diode. The 1 s reservoir allowance must also cover actual switch
 startup and qualified capacitor leakage, while supervisor qualification
 is a separate wait requirement. This is a recovery/test
 contract, not an added voltage comparator or a guaranteed-off threshold:
@@ -733,41 +786,84 @@ blanking plus a 10 ms KILL-recognition/control allowance. The older fixed
 
 ### Reservoir and discharge calculation
 
-Use three polarized `T491D107K010AT` in parallel. Their 10 V rating keeps
+Use four polarized `T491D107K010AT` in parallel. Their 10 V rating keeps
 the present 4.6 V SYS ceiling below 50% rated voltage. The
 [KEMET T491 specification](https://content.kemet.com/datasheets/KEM_T2005_T491.pdf)
 gives +/-10% tolerance, +/-10% temperature change through 85 C, +/-10%
 endurance capacitance change and temperature-dependent leakage. A
-conservative stacked screen is `C_hold_min = 300u * 0.9^3 = 218.7 uF`.
+conservative stacked screen is `C_hold_min = 400u * 0.9^3 = 291.6 uF`.
 Stacking 10 uA initial leakage, 10x at 85 C and 1.25x endurance gives a
-375 uA bank-leakage screen. This is not an unlimited-life qualification.
+500 uA bank-leakage screen. This is not an unlimited-life qualification.
 
-Allocate **1 mA total held-island current**, including capacitor leakage,
+Allocate **1.125 mA control-island current**, including capacitor leakage,
 LTC supply and low-PB internal bias, supervisor, EN/gate pullups, inverter
 static/non-rail input current and reverse-blocker leakage. The 500 uA
 inverter additional-current test condition is included; transition charge
 needs separate reserve. LTC PB current at exactly 0 V is not bounded by
 its 15 uA specification at PB=0.6 V. Characterize/obtain a valid bound for
-that condition and include it in the 1 mA limit; do not silently ignore it.
+that condition and include it in the 1.125 mA limit; do not silently ignore it.
+This adds 125 uA for the fourth reservoir capacitor to the previous 1 mA
+control-load allocation. It excludes the separately budgeted reverse current
+through R31 while the comparator has not yet switched off.
 
-LM66100's CE=VOUT connection provides reverse blocking. Its turn-on
-hysteresis permits a 250 mV source-to-held difference; use that, not just
-typical RDS(on), when deriving minimum initial hold voltage. Including
-100 ohm resistor corners at 1 mA:
+The rejected topology put R31 before U10 VIN and tied CE to immediate VOUT.
+With U10 already on and raw SYS grounded, R31 limited reverse current to
+about 29 mA at a 2.912 V reservoir. Across the typical 91 milliohm switch,
+that produced only 2.65 mV, below the typical 35 mV turn-off threshold.
+The switch could stay on and drain the reservoir through R31; the former
+three-capacitor minimum model reached 2.7 V in about 1.6 ms. A 1 uC switching
+reserve could not account for that continuous discharge. The former
+45.297878 ms result is rejected with that topology.
+
+The corrected circuit connects VIN directly to raw SYS, puts R31 after
+VOUT, and senses CE at AON_HOLD after R31. This is the output-resistor
+workaround described in [TI's reverse-blocking explanation](https://e2e.ti.com/support/power-management-group/power-management/f/power-management-forum/1088112/lm66100-how-the-rcb-circuit-works).
+The comparator now senses the full raw-to-reservoir difference, including
+R31's drop. Before turn-off, its 80 mV maximum threshold permits reverse
+current up to `0.080/98.01 = 0.816243 mA`; allocate **0.817 mA** throughout
+the hold interval, independently of the 1.125 mA control load. Comparator
+and switch latency require a separate charge reserve. The total continuous
+hold-current allocation is therefore **1.942 mA**.
+
+For the settled initial-voltage bound, use the larger of the 250 mV
+turn-on threshold magnitude and the control-load resistive drop. These
+are alternative limiting conditions with CE after R31, not additive
+series drops: when off, the reservoir must fall to the turn-on threshold;
+when on, its settled drop is the control current times the path resistance.
+Use 0.23 ohm maximum installed switch resistance as an allocation covering
+the operating range, based on the datasheet's 1.8 V maximum table point.
+Qualify it across the continuous supply sweep. Finite turn-on delay can
+cause initial undershoot; include that loss in the shared charge reserve.
 
 ```text
-Vhold_initial_min = 3.263705831 - 0.250 - 0.102010 = 2.911695831 V
-Qreserve = 1 uC (allocation for reverse-switching and gate/logic transients)
-thold_to_2.7 = [218.7u*(2.911695831-2.7) - 1u] / 1m
-             = 45.297878 ms
+Rpath_max = 102.01 + 0.23 = 102.24 ohm
+Vhold_initial_static_min = 3.263705831 - max(0.250, 0.001125*102.24)
+                        = 3.013705831 V
+Qreserve = 1 uC (initial undershoot plus reverse-switching and gate/logic losses)
+thold_to_2.7 = [291.6u*(3.013705831-2.7) - 1u] / 1.942m
+             = 46.589403 ms
 ```
 
 LM66100's 2 us reverse turn-off figure is typical, not a guaranteed upper
-limit. The 1 uC reserve is an explicit test requirement, not a derived
-guarantee. Raw-SYS removal and threshold-region ramps must demonstrate
-adequate AON_HOLD voltage throughout discharge. Include PB leakage into an
-unpowered controller during recovery. Do not add audio, LED, MCU or other
-power loads to AON_HOLD without redoing this energy budget.
+limit. The 1 uC combined reserve is an explicit test requirement, not a
+derived guarantee, and must not be spent independently at each transition.
+Raw-SYS removal, slow threshold-region ramps, floating-source removal and
+repeated fault/recovery transitions must demonstrate adequate AON_HOLD
+voltage throughout discharge and satisfy the total charge/current bounds.
+
+[TI's low-input clarification](https://e2e.ti.com/support/power-management-group/power-management/f/power-management-forum/1253466/lm66100-oring-with-discrete-mosfet-behavoiur-with-no-power-on-vin-or-ce-pins)
+states that CE can power the device when CE exceeds VIN by 80 mV, including
+a disconnected VIN. This supports the corrected collapse behavior, but
+the datasheet does not explicitly guarantee the quoted leakage limits at
+VIN = 0 V; its normal input operating range starts at 1.5 V. Another
+[TI leakage discussion](https://e2e.ti.com/support/power-management-group/power-management/f/power-management-forum/1354894/lm66100-shut-down-or-leakage-current)
+explicitly cautions against treating VIN = 0 V as normal operation.
+Blocking, CE supply current and reverse leakage across raw VIN = 0..4.6 V
+therefore need vendor confirmation or qualification within the declared
+budgets. No guaranteed 0 V leakage figure is inferred from typical plots
+or the default 3.6 V electrical-characteristics test condition. Include PB
+leakage into an unpowered controller during recovery. Do not add audio,
+LED, MCU or other power loads to AON_HOLD without redoing this energy budget.
 
 The switched main rail is allocated **no more than 1 mF total effective
 capacitance**, including attached peripherals that remain electrically
@@ -784,7 +880,8 @@ E_total_initial = 0.5 * 0.001 * 3.6^2 = 6.48 mJ
 
 Allow at most 10 ms for source detection, EN propagation, converter energy
 decay and establishment of discharge. The resulting 38.380367 ms screen
-fits the 45.297878 ms hold screen and the LTC 200 ms minimum rearm interval.
+fits the 46.589403 ms hold screen with 8.209035 ms margin and the LTC 200 ms
+minimum rearm interval.
 These are engineering allocations to verify together, not independently
 interchangeable datasheet guarantees. Repeated-insertion, partially charged
 reservoir and resistor-temperature tests are mandatory. A shorted reservoir
@@ -811,12 +908,12 @@ qualified project parts at the specified values.
 | 1 | TPS3808G01DBVR, source supervisor | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/TPS3808G01DBVR/666712); 101626, $1.96 |
 | 1 | 74LVC1G14GW,125, OFF_H inverter | [DigiKey](https://www.digikey.com/en/products/detail/nexperia-usa-inc/74LVC1G14GW-125/946729); 316674, $0.10 |
 | 2 | DMN2056U-7, discharge/KILL FETs | [DigiKey](https://www.digikey.com/en/products/detail/diodes-incorporated/DMN2056U-7/7352909); 80160, $0.39 |
-| 3 | T491D107K010AT, 100u/10V hold | [DigiKey](https://www.digikey.com/en/products/detail/kemet/T491D107K010AT/818629); 19481 indexed, $1.44 |
+| 4 | T491D107K010AT, 100u/10V hold | [DigiKey](https://www.digikey.com/en/products/detail/kemet/T491D107K010AT/818629); placement refresh: 11863, $1.64; $1.09/0.8033 at 10/100 |
 | 3 | GRM31C5C1H104JA01K, CT 100n C0G | [DigiKey](https://www.digikey.com/en/products/detail/murata-electronics/GRM31C5C1H104JA01K/2548138); 70095, $0.52 |
 | 1 | RT0805BRD07732KL, 732k divider top | [DigiKey](https://www.digikey.com/en/products/detail/yageo/RT0805BRD07732KL/6617094); 15646, $0.10 |
 | 1 | RT0603BRD07100KL, 100k divider bottom | [DigiKey](https://www.digikey.com/en/products/detail/yageo/RT0603BRD07100KL/1072187); 40038, $0.10 |
 | 2 | RC2512FK-0722RL, main discharge | [DigiKey](https://www.digikey.com/en/products/detail/yageo/RC2512FK-0722RL/5922011); 9772 indexed, $0.31 |
-| 1 | RC2512FK-07100RL, hold charging resistor | [DigiKey](https://www.digikey.com/en/products/detail/yageo/RC2512FK-07100RL/5921799); 3895, $0.33 |
+| 1 | RC2512FK-07100RL, hold charging resistor | [DigiKey](https://www.digikey.com/en/products/detail/yageo/RC2512FK-07100RL/5921799); placement refresh: 3845, $0.33 |
 
 ### Python verification for SYS-006/007
 
@@ -838,12 +935,16 @@ trips = [
 ]
 vtrip_min, vtrip_max = min(trips), max(trips)
 rmin_factor, rmax_factor = .99*.99, 1.01*1.01
-chold_min = 3*100e-6*.9*.9*.9
-chold_max_model = 3*100e-6*1.1*1.1*1.1
-ihold_alloc = .001
-vhold_min = vtrip_min - .25 - 100*rmax_factor*ihold_alloc
-vrestart_steady = 3.7 - .25 - 100*rmax_factor*ihold_alloc
-trestart_model = 100*rmax_factor*chold_max_model*log(
+chold_min = 4*100e-6*.9*.9*.9
+chold_max_model = 4*100e-6*1.1*1.1*1.1
+icontrol_alloc = .001125
+ireverse_threshold = .080/(100*rmin_factor)
+ireverse_alloc = .000817
+ihold_alloc = icontrol_alloc + ireverse_alloc
+rpath_max = 100*rmax_factor + .23
+vhold_min = vtrip_min - max(.25, rpath_max*icontrol_alloc)
+vrestart_steady = 3.7 - .25 - rpath_max*icontrol_alloc
+trestart_model = rpath_max*chold_max_model*log(
     vrestart_steady/(vrestart_steady-3.25))
 qtransient_alloc = 1e-6
 hold = (chold_min*(vhold_min-2.7)-qtransient_alloc)/ihold_alloc
@@ -857,11 +958,16 @@ checks = {
     'trip nominal V': (.405*(1+732e3/100e3), 3.3696),
     'trip lower V': (vtrip_min, 3.263705830523478),
     'trip upper V': (vtrip_max, 3.4765976320231147),
-    'hold C minimum F': (chold_min, .0002187),
-    'hold initial minimum V': (vhold_min, 2.911695830523478),
-    'restart steady minimum V': (vrestart_steady, 3.34799),
-    'restart charge model s': (trestart_model, .14383696952408792),
-    'hold interval s': (hold, .04529787813548458),
+    'hold C minimum F': (chold_min, .0002916),
+    'hold C maximum model F': (chold_max_model, .0005324),
+    'capacitor bank leakage screen A': (4*10e-6*10*1.25, .0005),
+    'reverse threshold current A': (ireverse_threshold, .0008162432404856647),
+    'total hold current allocation A': (ihold_alloc, .001942),
+    'hold initial static minimum V': (vhold_min, 3.013705830523478),
+    'restart steady model V': (vrestart_steady, 3.33498),
+    'restart charge model s': (trestart_model, .19975699545053444),
+    'hold interval s': (hold, .04658940277067255),
+    'hold shutdown margin s': (hold-discharge-.010, .00820903543277882),
     'discharge resistance ohm': (rdischarge_max, 11.4211),
     'discharge interval s': (discharge, .02838036733789373),
     'each discharge resistor peak W': (3.6**2/(22*rmin_factor), .6010518407212623),
@@ -877,6 +983,8 @@ for name, (actual, expected) in checks.items():
     assert isclose(actual, expected, rel_tol=1e-10, abs_tol=1e-12), (name, actual, expected)
     print(f'{name}: {actual:.12g}')
 assert vtrip_min > 3.05
+assert ireverse_alloc > ireverse_threshold
+assert isclose(icontrol_alloc, .001 + .000125, rel_tol=1e-12)
 assert hold > discharge + .010
 assert vrestart_steady > 2.5 + .7
 assert trestart_model < 1.0
@@ -897,8 +1005,10 @@ Corners 3.2637..3.4766 V incl reference, R/TC and SENSE leakage.
 EN low -> separate KILL clamp + active rail discharge; no EN/KILL short.
 CT=300n C0G; delay must exceed 650ms startup KILL blank (+10ms margin).
 Main Ctotal<=1mF: 11.4211ohm max gives 3.6->0.3V in28.38ms.
-Held control: 218.7uF min, <=1mA, 1uC transient reserve ->45.30ms.
-Cold-restart guarantee requires heldVIN>=3.25V; running cutoff alone is not enough.
+Held control: 291.6uF min; 1.125mA control +0.817mA reverse =1.942mA.
+CE senses held side of output100R; Vinitial=Vtrip_min-max(0.250,Icontrol*102.24).
+Combined1uC initial/switching reserve ->46.59ms; low-VIN leakage qualification required.
+Restart: raw>=3.70V, held>=3.25V;1s settling PLUS full source qualification.
 See ../design/system_power_design.md SYS-007 for full math and qualification.
 ```
 
