@@ -100,16 +100,51 @@ if [[ "$-" == *p* ]]; then
 
   # Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
   #
-  # The `:-$0` fallback is load-bearing, not defensive noise. The off-Pi branch
-  # below re-invokes THIS FILE on the bench host by piping it into `bash -s`, and
-  # a script read from stdin has an EMPTY BASH_SOURCE array -- so under `set -u`
-  # the remote copy aborted here, on its first line of work, with
-  # "BASH_SOURCE[0]: unbound variable". Every off-Pi `uart_scrape` run went that
-  # way, which is every app `just hil::suite` verifies. With the fallback, `$0` is
-  # `bash` and this resolves to the working directory the ssh command sets --
-  # which is why that command cds into the bench host's checkout.
-  _hil_dir="$(dirname "${BASH_SOURCE[0]:-$0}")"
-  _hil_dir="$(cd "$_hil_dir" && pwd)"
+  # The off-Pi branch re-invokes this file on the bench host through `bash -s`.
+  # Such a script has no BASH_SOURCE entry and `$0` is `/bin/bash`, not the
+  # working directory. Use the reviewed remote cwd explicitly in that mode.
+  _hil_entry="${BASH_SOURCE[0]:-}"
+  if [[ -n "$_hil_entry" ]]; then
+    _hil_dir="$(cd "$(dirname "$_hil_entry")" && pwd -P)"
+    _hil_entry="$_hil_dir/$(basename "$_hil_entry")"
+  else
+    _hil_dir="$(pwd -P)"
+  fi
+  print_uart_preview() {
+    head -20 "$1" | sed 's/\r/\\r/g' | sed 's/^/[uart] /'
+  }
+  if [[ "${1:-}" == "--selftest-stdin-dir" ]]; then
+    [[ "$_hil_dir" == "$(pwd -P)" && -r "$_hil_dir/lib/rig_env.sh" ]]
+    exit 0
+  fi
+  if [[ "${1:-}" == "--selftest" ]]; then
+    [[ -n "$_hil_entry" && -f "$_hil_entry" ]]
+    (
+      cd "$_hil_dir"
+      /bin/bash -p -s -- --selftest-stdin-dir <"$_hil_entry"
+    )
+    preview="$(mktemp)"
+    rendered="$(mktemp)"
+    trap 'rm -f "$preview" "$rendered"' EXIT
+    printf -v padding '%4096s' ''
+    for index in {1..1024}; do
+      printf '%04d:%s\r\n' "$index" "$padding"
+    done >"$preview"
+    if sed 's/\r/\\r/g' "$preview" | head -20 | sed 's/^/[uart] /' >/dev/null; then
+      echo "run_direct.sh --selftest: unbounded preview did not trigger SIGPIPE" >&2
+      exit 1
+    fi
+    print_uart_preview "$preview" >"$rendered"
+    [[ "$(wc -l <"$rendered")" == "20" ]]
+    grep -q '^\[uart\] 0020:.*\\r$' "$rendered"
+    if grep -q '^\[uart\] 0021:' "$rendered"; then
+      echo "run_direct.sh --selftest: bounded preview emitted line 21" >&2
+      exit 1
+    fi
+    printf 'run_direct.sh --selftest: PASS (file/stdin paths and bounded preview)\n'
+    exit 0
+  fi
+  unset _hil_entry
   # shellcheck source=scripts/hil/lib/rig_env.sh
   source "$_hil_dir/lib/rig_env.sh"
   rig_require PI_HOST JLINK_SN JLINK_DEVICE
@@ -289,7 +324,14 @@ if [[ "$-" == *p* ]]; then
         echo -e "${RED}[HIL]${NC} cannot reach ${PI_HOST}"
         exit 2
       }
-    REMOTE_DIR="/tmp/ra8_hil_${APP_NAME}_$$_${RANDOM}"
+    REMOTE_DIR="$(ssh "$PI_HOST" 'umask 077; mktemp -d /tmp/ra8_hil.XXXXXXXX')" || {
+      echo -e "${RED}[HIL]${NC} could not allocate a private remote staging directory" >&2
+      exit 2
+    }
+    [[ "$REMOTE_DIR" =~ ^/tmp/ra8_hil\.[A-Za-z0-9]{8}$ ]] || {
+      echo -e "${RED}[HIL]${NC} remote staging directory has an invalid identity" >&2
+      exit 2
+    }
     REMOTE_LOG=""
     REMOTE_PID=""
     REMOTE_TEE_PID=""
@@ -314,8 +356,25 @@ if [[ "$-" == *p* ]]; then
       return 0
     }
     _ra8_bench_add_exit_trap cleanup_remote_stage
-    # shellcheck disable=SC2029  # The unique staging path is deliberately composed by this client.
-    ssh "$PI_HOST" "mkdir -p -- ${REMOTE_DIR_Q}"
+    # The bench checkout may carry the interactive owner's private .env, which
+    # the isolated ra8-hil account must not read. Stream only the four already
+    # validated values into the remotely allocated mode-0700 directory, then
+    # make rig_env.sh consume that exact mode-0600 file. Their accepted grammar
+    # makes Bash %q byte-identical while keeping them out of ssh argv.
+    REMOTE_RIG_ENV="${REMOTE_DIR}/rig.env"
+    printf -v REMOTE_RIG_ENV_Q '%q' "$REMOTE_RIG_ENV"
+    printf -v REMOTE_PI_HOST_Q '%q' "$PI_HOST"
+    printf -v REMOTE_JLINK_SN_Q '%q' "$JLINK_SN"
+    printf -v REMOTE_JLINK_DEVICE_Q '%q' "$JLINK_DEVICE"
+    printf -v REMOTE_PI_REPO_Q '%q' "$PI_REPO"
+    # shellcheck disable=SC2029  # The validated remote rig path is intentionally expanded client-side.
+    if ! printf 'PI_HOST=%s\nJLINK_SN=%s\nJLINK_DEVICE=%s\nPI_REPO=%s\n' \
+      "$REMOTE_PI_HOST_Q" "$REMOTE_JLINK_SN_Q" "$REMOTE_JLINK_DEVICE_Q" \
+      "$REMOTE_PI_REPO_Q" |
+      ssh "$PI_HOST" "umask 077; /bin/cat >${REMOTE_RIG_ENV_Q}"; then
+      echo -e "${RED}[HIL]${NC} could not stage the protected remote rig environment" >&2
+      exit 2
+    fi
     REMOTE_HEX="${REMOTE_DIR}/firmware.hex"
     scp -q "$HEX" "${PI_HOST}:${REMOTE_HEX}"
     # If an ELF sibling exists, copy it too -- the OFS-strip path uses it.
@@ -340,7 +399,7 @@ if [[ "$-" == *p* ]]; then
     fi
     # Propagate the sanity-gate escape-hatch flags so the remote side
     # doesn't re-reject inputs the local side already vetted.
-    REMOTE_ENV=""
+    REMOTE_ENV="RA8_RIG_ENV=${REMOTE_RIG_ENV_Q} "
     [[ "${HIL_EXPECT_SHORT_OK:-0}" == "1" ]] && REMOTE_ENV+="HIL_EXPECT_SHORT_OK=1 "
     [[ "${HIL_EXPECT_OVERLAP_OK:-0}" == "1" ]] && REMOTE_ENV+="HIL_EXPECT_OVERLAP_OK=1 "
     # Carry the bench hold across the ssh. Without this the Pi-side copy would
@@ -391,6 +450,7 @@ if [[ "$-" == *p* ]]; then
         if ! python3 "$_hil_dir/../secrets/wifi_provision.py" \
           --timeout "$PROVISION_PROVIDER_TIMEOUT_S" emit |
           ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" "cd ${_pi_repo_q} || exit 2
+          export RA8_RIG_ENV=${REMOTE_RIG_ENV_Q}
           source lib/rig_env.sh
           provision_uart=\$(ra8_tty_resolve console) || exit 2
           stty -F \"\$provision_uart\" ${BAUD} raw -echo
@@ -655,7 +715,7 @@ JLINK
     sleep 0.1
   done
   echo "--- captured UART ---"
-  sed 's/\r/\\r/g' "${UART_LOG}" | head -20 | sed 's/^/[uart] /'
+  print_uart_preview "${UART_LOG}"
   echo "--- end ---"
 
   # Stop the background tty reader. It will keep running otherwise, consuming

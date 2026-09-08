@@ -171,6 +171,23 @@ class _ProcessCycleOps:
         self.journal.unlink()
 
 
+def _route_shape_checks(module: ModuleType) -> list[tuple[str, bool]]:
+    """Accept both iproute2 JSON spellings for one exact /32 route."""
+
+    def route_present(destination: str) -> bool:
+        payload = [{"dst": destination, "dev": "eth0", "prefsrc": "192.168.1.1"}]
+        with _patched(module, _json_command=lambda _argv: payload):
+            return bool(_member(module, "_route_present")("192.168.1.42", "eth0"))
+
+    return [
+        ("iproute host-form /32 route is recognized", route_present("192.168.1.42")),
+        (
+            "iproute explicit /32 route is recognized",
+            route_present("192.168.1.42/32"),
+        ),
+    ]
+
+
 def _request_checks(module: ModuleType) -> list[tuple[str, bool]]:
     """Return exact topology and argument-injection tests."""
     power_command = _member(module, "_usb_power_command")
@@ -178,10 +195,16 @@ def _request_checks(module: ModuleType) -> list[tuple[str, bool]]:
     validate_board_ip = _member(module, "_validate_board_ip")
     validate_port = _member(module, "_validate_port")
     expected = ["/usr/sbin/uhubctl", "-S", "-l", "2-1.3", "-p", "1", "-a", "off"]
+
     checks = [
         (
             "nominal port argv is exact",
             power_command("usb-port-power", ["1", "off"]) == expected,
+        ),
+        (
+            "legacy port 2 restore argv remains exact",
+            power_command("usb-port-power", ["2", "on"], restoring=True)
+            == ["/usr/sbin/uhubctl", "-S", "-l", "2-1.3", "-p", "2", "-a", "on"],
         ),
         (
             "root power topology is fixed",
@@ -191,10 +214,14 @@ def _request_checks(module: ModuleType) -> list[tuple[str, bool]]:
             "nominal board address accepted",
             validate_board_ip("192.168.1.42") == "192.168.1.42",
         ),
+        (
+            "J-Link control port accepted",
+            validate_port("3") == "3",
+        ),
     ]
     checks.extend(
         (f"port {value!r} rejected", _rejects(module, validate_port, value))
-        for value in ("1;id", "1 2", "../1", "-1", "3")
+        for value in ("1;id", "1 2", "../1", "-1", "2")
     )
     checks.extend(
         (f"action {value!r} rejected", _rejects(module, validate_action, value))
@@ -210,6 +237,7 @@ def _request_checks(module: ModuleType) -> list[tuple[str, bool]]:
             "192.168.1.2;id",
         )
     )
+    checks.extend(_route_shape_checks(module))
     return checks
 
 
@@ -382,11 +410,11 @@ def _cycle_checks(module: ModuleType) -> list[tuple[str, bool]]:
 
 
 def _recovers(module: ModuleType) -> bool:
-    """Return whether a later mutation restores one persisted cycle journal."""
+    """Return whether a later mutation restores one persisted legacy journal."""
     recovery_ops = _FakeCycleOps(module)
     recovery_state = {
         "kind": "port-power",
-        "port": "1",
+        "port": "2",
         "restore": "on",
         "version": 1,
     }
@@ -725,15 +753,24 @@ def _state_and_sysfs_checks(module: ModuleType) -> list[tuple[str, bool]]:
         bus = root / "sys/bus/usb/devices"
         valid_device = devices / "platform/usb2/2-1/2-1.3/2-1.3.1"
         escaped = root / "outside/2-1.3.2"
+        jlink_device = devices / "platform/usb2/2-1/2-1.3/2-1.3.3"
         valid_device.mkdir(parents=True)
+        jlink_device.mkdir(parents=True)
         escaped.mkdir(parents=True)
         bus.mkdir(parents=True)
         (bus / "2-1.3.1").symlink_to(valid_device)
+        (bus / "2-1.3.3").symlink_to(jlink_device)
         (bus / "2-1.3.2").symlink_to(escaped)
         checks.append(
             (
                 "kernel-style USB symlink accepted",
                 resolve_usb_device(bus, devices, "2-1.3.1") == valid_device.resolve(),
+            )
+        )
+        checks.append(
+            (
+                "current J-Link USB symlink accepted",
+                resolve_usb_device(bus, devices, "2-1.3.3") == jlink_device.resolve(),
             )
         )
         checks.append(

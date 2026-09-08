@@ -13,12 +13,14 @@ The project runs a dedicated native Actions listener on the **dev box** (labels
 an isolated SSH identity to operate the Raspberry Pi 5 bench wired to the
 EK-RA8D2. The `dev_box` Ansible role owns the pinned host tools; the workflow
 does not install dependencies. Its bench target comes from the protected
-controller `.env` as `PI_HOST`. Ansible installs `PI_HOST`, `JLINK_SN`, and
-`JLINK_DEVICE` into the runner's root-only service environment. The interactive
-`~/.config/ra8/hil.env` also receives `PI_REPO`, so `just hil::*` works from
-every linked worktree without copying configuration into each checkout. The
-interactive file preserves that account's user-qualified `PI_HOST`; the
-isolated service strips the username and uses only its role-owned SSH identity.
+controller `.env` as `PI_HOST`; its bench-host checkout path comes from the
+fleet relationship to that host. Ansible installs those values with `JLINK_SN`
+and `JLINK_DEVICE` into the runner's root-only service environment. The
+interactive `~/.config/ra8/hil.env` receives the controller's four user-facing
+values, including its own `PI_REPO`. This lets CI and `just hil::*` locate the
+same bench checkout despite using different SSH accounts. The interactive file
+preserves the user-qualified `PI_HOST`; the isolated service strips the
+username and uses only its role-owned SSH identity.
 
 [`rig_contract.sh`](../scripts/hil/lib/rig_contract.sh) is the single typed
 authority for all four values. It accepts user-qualified DNS/IPv4 SSH targets,

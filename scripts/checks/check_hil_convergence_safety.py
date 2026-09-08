@@ -181,11 +181,13 @@ def _transaction_command_errors(task: dict[str, object], role: str, delegate: st
     payload = str(argv[5]) if len(argv) == CONTROLLER_AUTH_ARGC else ""
     keys = re.findall(r"'([a-z0-9_]+)'\s*:", payload)
     prefix = "dev_box_hil_runner_" if role == "dev_box" else "hil_bench_"
-    expected_count = 24 if role == "dev_box" else 18
+    expected_count = 25 if role == "dev_box" else 18
+    required_keys = {"dev_box_hil_runner_bench_repo_dir"} if role == "dev_box" else set()
     if (
         len(keys) != expected_count
         or len(keys) != len(set(keys))
         or any(not key.startswith(prefix) for key in keys)
+        or not required_keys.issubset(keys)
     ):
         errors.append(f"{role} role: immutable fleet payload key set is not exact")
     return errors

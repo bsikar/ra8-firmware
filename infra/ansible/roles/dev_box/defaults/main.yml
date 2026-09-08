@@ -305,18 +305,18 @@ dev_box_hil_runner_work_dir: _work
 # never written to this repository, the service unit, or the rig env file.
 dev_box_hil_runner_registration_token: ""
 
-# The controller's protected .env is the source, but the role parses only the
-# four declared rig coordinates. The interactive file receives all four; the
-# service receives the three coordinates it consumes. TAPO_* and every other
-# .env entry are deliberately unreachable from the runner. The parser obtains
-# device/repository defaults from rig_contract.sh, so an older protected .env
-# still converges without a second Ansible default authority.
+# The controller's protected .env is parsed only for the four declared rig
+# coordinates. The interactive file receives those user-oriented values; the
+# service receives the same keys, with its checkout path derived from the fleet
+# bench relation because it logs in through a different isolated account.
+# TAPO_* and every other .env entry remain unreachable from the runner.
 dev_box_hil_runner_rig_env_src: "{{ dev_box_context_src }}/.env"
 # Fleet-owned bench relation. The declaration resolves the referenced
 # hil_bench host's address and aliases into these role inputs.
 dev_box_hil_runner_bench_alias: ""
 dev_box_hil_runner_bench_address: ""
 dev_box_hil_runner_bench_names: []
+dev_box_hil_runner_bench_repo_dir: ""
 dev_box_hil_runner_bench_iface: ""
 dev_box_hil_runner_bench_mac: ""
 dev_box_hil_runner_bench_sysfs_device: ""

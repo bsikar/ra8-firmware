@@ -182,7 +182,9 @@ if ((\${#matches[@]} != 1)); then
       "\${#matches[@]}" >&2
   exit 1
 fi
-if [[ "\${matches[0]}" != "2-1.3.2" ]]; then
+# Port 3 is the fixed J-Link OB control path; target USB tests use the other
+# declared downstream ports and must never cycle this one.
+if [[ "\${matches[0]}" != "2-1.3.3" ]]; then
   echo "${RED}[hil_flash_retry FAIL]${NC} J-Link is outside the declared bench USB topology" >&2
   exit 1
 fi

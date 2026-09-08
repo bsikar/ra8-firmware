@@ -112,6 +112,9 @@ def runner_vars(data: dict[str, Any], host: dict[str, Any]) -> dict[str, Any]:
         "dev_box_hil_runner_labels": ",".join(declared["labels"]),
         "dev_box_hil_runner_bench_alias": bench_name,
         "dev_box_hil_runner_bench_address": bench_address,
+        "dev_box_hil_runner_bench_repo_dir": (
+            f"/home/{bench_host['connect']['user']}/ra8-firmware"
+        ),
         "dev_box_hil_runner_bench_names": bench_names,
         "dev_box_hil_runner_bench_iface": interface["name"],
         "dev_box_hil_runner_bench_mac": interface["mac"],

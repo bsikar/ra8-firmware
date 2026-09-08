@@ -28,6 +28,8 @@
       - dev_box_hil_runner_bench_alias | length > 0
       - dev_box_hil_runner_bench_address | length > 0
       - dev_box_hil_runner_bench_names | length > 0
+      - dev_box_hil_runner_bench_repo_dir
+        is match('^/home/[A-Za-z0-9_-]+/ra8-firmware$')
       - dev_box_hil_runner_bench_iface | length > 0
       - dev_box_hil_runner_bench_mac is match('^[0-9a-f]{2}(:[0-9a-f]{2}){5}$')
       - dev_box_hil_runner_bench_sysfs_device is match('^/sys/devices/[A-Za-z0-9_.:/-]+$')
@@ -282,6 +284,31 @@
     owner: "{{ dev_box_hil_runner_bench_user }}"
     group: "{{ dev_box_hil_runner_bench_user }}"
     mode: "0700"
+
+- name: Allow the isolated bench account to traverse to the declared checkout
+  # Execute-only for other users exposes no directory listing. Descendant file
+  # modes still decide what the HIL account can read.
+  delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
+  become: true
+  ansible.builtin.file:
+    path: "{{ dev_box_hil_runner_bench_repo_dir | dirname }}"
+    state: directory
+    mode: "0751"
+
+- name: Verify the isolated bench account can read the HIL remote entry point
+  when: not ansible_check_mode
+  delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/sudo
+      - -u
+      - "{{ dev_box_hil_runner_bench_user }}"
+      - --
+      - /usr/bin/test
+      - -r
+      - "{{ dev_box_hil_runner_bench_repo_dir }}/scripts/hil/run_direct.sh"
+  changed_when: false
 
 - name: Create the bench-side SSH directory
   delegate_to: "{{ dev_box_hil_runner_bench_alias }}"
@@ -572,7 +599,7 @@
     - dev_box_hil_runner_install_needed | bool
   ansible.builtin.meta: end_host
 
-- name: Install the exact three-key HIL service environment
+- name: Install the exact four-key HIL service environment
   become: true
   ansible.builtin.copy:
     dest: "{{ dev_box_hil_runner_env_file }}"
@@ -583,6 +610,7 @@
       PI_HOST={{ dev_box_hil_pi_host }}
       JLINK_SN={{ dev_box_hil_rig_env.JLINK_SN }}
       JLINK_DEVICE={{ dev_box_hil_jlink_device }}
+      PI_REPO={{ dev_box_hil_runner_bench_repo_dir }}
   no_log: true
 
 - name: Create the runner root
@@ -763,8 +791,8 @@
       - |
         import sys
 
-        service = ["PI_HOST", "JLINK_SN", "JLINK_DEVICE"]
-        interactive = [*service, "PI_REPO"]
+        service = ["PI_HOST", "JLINK_SN", "JLINK_DEVICE", "PI_REPO"]
+        interactive = service.copy()
         expected_by_path = dict(zip(sys.argv[1:], (service, interactive)))
         for path in sys.argv[1:]:
             expected = expected_by_path[path]
