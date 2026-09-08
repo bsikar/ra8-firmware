@@ -2545,7 +2545,7 @@
 		)
 		(uuid "917f2fb0-bc68-4027-a457-2f08586aca5f")
 	)
-	(text "INCOMPLETE POWER CONTROL - NOT FOR FABRICATION\nPB, INT, KILL, held supply and source supervisor are connected.\nU12/Q1/Q2 now provide fault KILL clamp and main-rail discharge.\nSYS_AON has no source; MAIN_PWR_EN has no converter load yet.\nUSB permission-latch clear and source/converter blocks remain.\nPower-control operation is not yet complete or qualified.\nEngineering basis and tests: ../design/system_power_design.md SYS-007."
+	(text "INCOMPLETE POWER CONTROL - NOT FOR FABRICATION\nPB, INT, KILL, held supply and source supervisor are connected.\nU12/Q1/Q2 provide fault KILL clamp and main-rail discharge.\nMAIN_PWR_EN now controls U13 on Main 3V3 digital supply.\nSYS_AON source and USB permission-latch clear remain to be built.\nPower-control operation is not yet complete or qualified.\nEngineering: ../design/system_power_design.md SYS-007;\nconverter math: ../design/power_decoupling.md PWR-002/PWR-003."
 		(exclude_from_sim no)
 		(at 228.6 50.8 0)
 		(effects
@@ -3590,16 +3590,6 @@
 		)
 		(uuid "fd6287e0-4820-4e92-977f-f8e8908e4b09")
 	)
-	(label "MAIN_PWR_EN"
-		(at 129.54 60.96 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "3737a1f3-bd95-4c1e-ab2b-6a226ce9c304")
-	)
 	(label "POWER_OFF_H"
 		(at 231.14 233.68 0)
 		(effects
@@ -3671,6 +3661,17 @@
 			(justify left)
 		)
 		(uuid "c85b9c7b-9ea9-4137-a488-35b2c258ad66")
+	)
+	(hierarchical_label "MAIN_PWR_EN"
+		(shape output)
+		(at 129.54 60.96 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "ea668fe9-9dbb-4e63-a034-f50bde0aa2f7")
 	)
 	(symbol
 		(lib_id "power:GND")
@@ -10358,10 +10359,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "c17621ad-1091-4d68-8cab-fef42c14a3d9")
 		(property "Reference" "U9"
-			(at 116.4433 59.69 0)
+			(at 116.84 54.61 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10372,7 +10372,7 @@
 			)
 		)
 		(property "Value" "LTC2954ITS8-1"
-			(at 116.4433 62.23 0)
+			(at 116.84 57.15 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects

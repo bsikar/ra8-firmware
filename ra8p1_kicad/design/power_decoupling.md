@@ -132,12 +132,15 @@ PY
 
 ## PWR-002: Main-rail regulation and reset headroom
 
-Revision 1, 2026-09-05. Linked from the PWR-002 annotation on the
+Revision 2, 2026-09-08. Linked from the PWR-002 annotation on the
 [radio sheet](../ereader/radio_esp32.kicad_sch). Tracking:
 [power #825](https://github.com/bsikar/ra8-firmware/issues/825),
 [architecture #823](https://github.com/bsikar/ra8-firmware/issues/823), and
 [radio #826](https://github.com/bsikar/ra8-firmware/issues/826).
-This is a regulator-selection calculation, not an implemented power supply.
+This voltage screen is implemented by U13/R41/R42 on the
+[main supply sheet](../ereader/main_3v3_supply.kicad_sch); PWR-003 records
+the complete local circuit and its remaining qualification boundaries.
+It is not a qualified system power supply.
 
 ### Source limits and operating-mode boundary
 
@@ -148,12 +151,12 @@ bottom feedback resistor to 100 kohm. The 511k/91k reference divider is
 not an exact 3.300 V setting. PG's 95% rising/90% falling thresholds are
 typical; PG does not replace a guaranteed reset threshold.
 
-The candidate's +/-1% PWM specification must not be applied to all low-load
-PFM behavior. An eventual MODE control must establish PWM before relying
-on this calculation during radio operation; transition settling and the
-sleep-mode rail envelope require separate verification. No MODE control
-is implemented yet. These facts prevent treating the earlier assumed
-3.3 V +/-2% screen as a completed regulator specification.
+The candidate's +/-1% PWM specification must not be applied to low-load
+PFM behavior. U13 MODE is now tied directly to VIN, selecting forced PWM
+whenever enabled. Startup, transitions and the sleep-mode rail envelope
+still require verification. Any later firmware-controlled or power-saving
+MODE change reopens this budget. The earlier assumed 3.3 V +/-2% screen
+is not a completed regulator specification.
 
 ### Divider calculation
 
@@ -261,13 +264,14 @@ PY
 
 ## PWR-003: TPS63802 main digital converter
 
-Revision 1, 2026-09-08. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825).
+Revision 2, 2026-09-08. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825).
 This is the implementation basis for the main converter in the
 [e-reader project](../ereader/ereader_rev1.kicad_sch). The local library symbol
 is `Power_Devices:TPS63802DLA`, with TPS63802DLAR as its exact default part.
-The converter circuit and its PWR-003 annotation are not placed yet; use
-the annotation below when implementing that circuit. This is a conditional
-schematic selection, not a
+The circuit and linked PWR-002/PWR-003 calculation annotations are implemented
+on [Main 3V3 digital supply](../ereader/main_3v3_supply.kicad_sch), page 9.
+U13 EN connects through root-sheet pins to the existing U9/U11/R34/U12
+MAIN_PWR_EN network. This remains a conditional schematic selection, not a
 completed power tree, measured current envelope or fabrication release.
 The preceding PWR-002 voltage arithmetic remains authoritative. This
 section supersedes its tentative MODE control with **MODE tied to VIN**:
@@ -292,6 +296,13 @@ provide the converter requirements and pin contract:
 | 6 VOUT | +3V3_MCU with two local 22 uF capacitors to GND |
 | 7 L2, 9 L1 | Opposite terminals of the dedicated 0.47 uH inductor; neither terminal is a ground or output-rail connection |
 | VIN bypass | One local 10 uF capacitor from VIN to GND |
+
+Native references: U13 converter; L2 inductor; C73 input bypass; C74/C75
+output bypass; R41 upper and R42 lower feedback resistors. U13 PG carries
+an explicit no-connect flag. +3V3_MCU is driven by U13's power-output pin;
+no artificial power flag was added to that rail. SYS_AON's upstream source
+remains a separate unfinished circuit. The instances retain exact BOM
+fields and sourcing snapshots; footprint assignments remain deferred.
 
 | Function / quantity | Exact part | Primary electrical source |
 | --- | --- | --- |
@@ -518,14 +529,20 @@ assert checks['10k full-3.6V power screen W'][0] < .1
 print('PWR-003 arithmetic PASS; L/C, current, startup and thermal qualification remain open.')
 ```
 
-Suggested local annotation, with these results beside the converter:
+Two calculation annotations beside the native circuit provide the bidirectional
+document link:
 
-```text
-PWR-003 MAIN DIGITAL 3V3: MODE=VIN, fixed PWM.
-VOUT=0.5*(1+56k/10k)=3.300V; PWM static 3.242044..3.358485V (PWR-002).
-Main allocation 1.65A; SD/audio/camera/display supplies are separate.
-CIN/COUT conditional effective 4.590u/20.196uF; 60% residual must be qualified.
-L=0.47uH candidate; installed bias/temperature/reflow qualification OPEN.
-Cold/wake: RADIO OFF; 1.33A DCDC-only inrush reference excludes other charging.
-See ../design/power_decoupling.md PWR-003. Not fabrication release.
-```
+- `PWR-002 / PWR-003: SETPOINT AND LOCAL COMPONENTS` shows the 56k/10k
+  nominal setpoint and divider current, complete tolerance/TCR/feedback-bias
+  voltage-corner formulas, conditional effective-capacitance equations,
+  and initial versus installed-inductance limits.
+- `PWR-003: LOAD, SOURCE AND STARTUP ACCEPTANCE LIMITS` shows the 1.65 A
+  domain allocation, separate-domain exclusions, input path-loss allocation,
+  the 85% efficiency/current/loss/thermal screen, cold/wake subtotals,
+  additional-capacitance charging equation, discharge-capacitance ceiling
+  and release-margin qualification gates.
+
+Both point back to this section and its executable Python. Changes to values,
+allocation assumptions or conclusions require updating the corresponding
+native annotation and rerunning PWR-002/PWR-003; these screens are not a
+simulation or a measured qualification result.
