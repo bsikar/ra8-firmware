@@ -721,28 +721,6 @@
 				)
 			)
 		)
-		(property "ki_keywords" "Cortex Debug Connector ARM SWD JTAG"
-			(at 0 0 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(hide yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "ki_fp_filters" "PinHeader?2x05?P1.27mm*"
-			(at 0 0 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(hide yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
 		(symbol "Cortex_Debug_10_Key_0_1"
 			(rectangle
 				(start -10.16 12.7)
@@ -1066,7 +1044,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://datasheet.lcsc.com/szlcsc/Hirose-HRS-DM3AT-SF-PEJM5_C114218.pdf"
+		(property "Datasheet" "https://www.hirose.com/product/download/?distributor=chip1&lang=en&num=DM3AT-SF-PEJM5&type=2d"
 			(at 0 0 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1077,7 +1055,7 @@
 				)
 			)
 		)
-		(property "Description" "microSD card socket, push-push, card-detect, SMT"
+		(property "Description" "microSD push-push socket; MP2=detect B, MP4=detect A; MP1/3/5/6 shield; Hirose EDC-325165-00-00."
 			(at 0 0 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1143,6 +1121,17 @@
 				)
 			)
 		)
+		(property "ki_keywords" "microSD socket card detect push-push"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(symbol "DM3AT-SF-PEJM5_1_1"
 			(rectangle
 				(start -11.43 2.54)
@@ -1176,7 +1165,7 @@
 			(pin passive line
 				(at -15.24 -7.62 0)
 				(length 3.81)
-				(name "CD/DAT3"
+				(name "DAT3"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -1300,9 +1289,9 @@
 				)
 			)
 			(pin passive line
-				(at 15.24 0 180)
+				(at 15.24 -10.16 180)
 				(length 3.81)
-				(name "MP1"
+				(name "SHIELD1"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -1318,9 +1307,9 @@
 				)
 			)
 			(pin passive line
-				(at 15.24 -2.54 180)
+				(at 15.24 0 180)
 				(length 3.81)
-				(name "MP2"
+				(name "CD_B"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -1336,9 +1325,9 @@
 				)
 			)
 			(pin passive line
-				(at 15.24 -5.08 180)
+				(at 15.24 -12.7 180)
 				(length 3.81)
-				(name "MP3"
+				(name "SHIELD2"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -1354,9 +1343,9 @@
 				)
 			)
 			(pin passive line
-				(at 15.24 -7.62 180)
+				(at 15.24 -2.54 180)
 				(length 3.81)
-				(name "MP4"
+				(name "CD_A"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -1372,9 +1361,9 @@
 				)
 			)
 			(pin passive line
-				(at 15.24 -10.16 180)
+				(at 15.24 -15.24 180)
 				(length 3.81)
-				(name "MP5"
+				(name "SHIELD3"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -1390,9 +1379,9 @@
 				)
 			)
 			(pin passive line
-				(at 15.24 -12.7 180)
+				(at 15.24 -17.78 180)
 				(length 3.81)
-				(name "MP6"
+				(name "SHIELD4"
 					(effects
 						(font
 							(size 1.27 1.27)
