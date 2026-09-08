@@ -121,8 +121,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
-    assigned_rows: 4187
-    rows_sha256: d5c0f7db6fadb538cac0445c0354638f25d450f886565a6136d749f69d31a01f
+    assigned_rows: 4185
+    rows_sha256: 14a3e1c05b51e963ddea260961a197d2ed8fc4eabdf3710cb71ed0a7490fc501
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
@@ -374,8 +374,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
-    assigned_rows: 28
-    rows_sha256: 9340e70b87def32f553c0745437cad6078b49c18ba89446172a58474f1cec6a2
+    assigned_rows: 21
+    rows_sha256: edfa549a75c3756b20e4908524ed5c75be023c9ccd8cb0e15417b79c0e698623
     partition: >-
       Dev-box selftest and check-mode idempotence reconciliation: seven exact
       reporting-only Ansible controls, eighteen exact scope-authority successors,
@@ -753,3 +753,27 @@ batches:
       - >-
         Apply mode starts the slice, proves its cgroup exists, and retains every
         exact CPU, memory, swap, and subordinate-weight assertion.
+  - id: post-reconcile-workflows-20260908
+    authority: repository-suppression-review
+    date: 2026-09-08
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 17
+    rows_sha256: 52fc7165d841c7c79bb457bf4c712b955229a9d314d4b1b7bfe9a218c695b745
+    partition: >-
+      Post-reconciliation workflow repair: nine moved HIL Ansible controls,
+      six exact remote-execution shell controls, one bounded remote cleanup,
+      and one direct-runner remote-path control.
+    evidence:
+      - >-
+        Every changed_when control remains reporting-only with fatal module
+        errors; the single no_log task carries JLINK_SN and is followed by
+        visible exact-key and dedicated-login assertions.
+      - >-
+        Shellcheck SC2029 sites expand only %q-quoted, regex-validated remote
+        mktemp paths; SC2329 callbacks are registered immediately with the
+        shared EXIT dispatcher; the cleanup status mask cannot hide the
+        primary result or bench-lock release.
+      - >-
+        Full HIL execution reached 116 passing apps, focused reruns passed the
+        two repaired apps, low-power candidate-byte recovery passed, and the
+        exact pre-commit and lint gates passed before this review.
