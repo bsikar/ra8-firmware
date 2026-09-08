@@ -6453,7 +6453,7 @@
 		)
 		(uuid "7c26d4d3-2888-47b0-80ed-9dddfc3e5a38")
 	)
-	(text "L1 DCR <= 100mOhm. Effective capacitance and inductor current\nrating require final MPN qualification. The 3.3 V source and return\nwill be declared on the system-power sheet; no blanket ERC flags."
+	(text "L1 DCR <=100mOhm. Effective capacitance and inductor current\nrating require final MPN qualification. +3V3_MCU is supplied by U13\non Main 3V3 digital supply; upstream SYS_AON source remains open."
 		(exclude_from_sim no)
 		(at 269.24 220.98 0)
 		(effects

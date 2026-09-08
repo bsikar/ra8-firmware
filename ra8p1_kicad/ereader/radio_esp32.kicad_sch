@@ -2526,7 +2526,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "PWR-002: upstream regulator / reset voltage budget\nTPS63802 candidate: +/-1% feedback applies in PWM mode.\nExample 56k/10k, 0.1%, 25 ppm/C; deltaT=100 C.\nVout = Vfb*(1+Rt/Rb) + Ib*Rt; allocate +/-100 nA.\nPWM static screen: 3.242044..3.358485 V.\nRadio: 3.242044 - 0.5 A*0.175 ohm = 3.154544 V.\nAbove U6 RADIO-014 rising screen: 14.923 mV remains.\nMCU reset release headroom: 48.093 mV.\nNot a transient guarantee; regulator circuit not fitted.\nMath: ../design/power_decoupling.md (PWR-002)"
+	(text "PWR-002: upstream regulator / reset voltage budget\nU13 TPS63802DLAR: MODE=VIN for fixed PWM.\nR41/R42=56k/10k, 0.1%, 25ppm/C; deltaT=100C.\nVout=Vfb*(1+Rt/Rb)+Ib*Rt; allocate +/-100nA.\nPWM static screen: 3.242044..3.358485V.\nRadio: 3.242044-0.5A*0.175ohm=3.154544V.\nAbove U6 RADIO-014 rising screen: 14.923mV remains.\nMCU reset release headroom: 48.093mV.\nU13 circuit: Main 3V3 digital supply; transient qualification OPEN.\nMath: ../design/power_decoupling.md PWR-002/PWR-003."
 		(exclude_from_sim no)
 		(at 266.7 142.24 0)
 		(effects

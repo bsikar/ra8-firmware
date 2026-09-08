@@ -537,7 +537,7 @@
         "uuid": "0586cc51-9c57-495b-a0c9-c29ba0d48166"
       }
     ],
-    "used_designators": "Q1-2,U1-12,C1-72,FB1,SW1-5,R1-40,L1,J1,D1-5,#PWR1-135,Y1-2,#FLG1-2",
+    "used_designators": "Q1-2,U1-13,C1-76,FB1,SW1-5,R1-42,L1-2,J1,D1-5,#PWR1-142,Y1-2,#FLG1-2",
     "variants": []
   },
   "sheets": [
@@ -572,6 +572,10 @@
     [
       "271b8555-8f60-4788-b897-ce1f320a6eb6",
       "Page and volume buttons"
+    ],
+    [
+      "19124216-d47e-4431-bd15-7eeda34acc7b",
+      "Main 3V3 digital supply"
     ]
   ],
   "text_variables": {},

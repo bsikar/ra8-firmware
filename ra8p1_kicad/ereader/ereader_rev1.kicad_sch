@@ -185,6 +185,16 @@
 	)
 	(wire
 		(pts
+			(xy 304.8 205.74) (xy 304.8 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8a041295-28ab-4550-9b31-990bc5ed8552")
+	)
+	(wire
+		(pts
 			(xy 114.3 35.56) (xy 203.2 35.56)
 		)
 		(stroke
@@ -302,6 +312,62 @@
 			(justify right bottom)
 		)
 		(uuid "9c31a25b-85e9-4fce-81cc-2d59c303596d")
+	)
+	(sheet
+		(at 203.2 218.44)
+		(size 137.16 27.94)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "19124216-d47e-4431-bd15-7eeda34acc7b")
+		(property "Sheetname" "Main 3V3 digital supply"
+			(at 203.2 217.7284 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "main_3v3_supply.kicad_sch"
+			(at 203.2 246.9646 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "MAIN_PWR_EN" input
+			(at 304.8 218.44 90)
+			(uuid "97447220-eea9-4670-9c51-da9b5fa0274e")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
+					(page "9")
+				)
+			)
+		)
 	)
 	(sheet
 		(at 203.2 30.48)
@@ -841,6 +907,16 @@
 		(pin "POWER_KILL_N" input
 			(at 203.2 190.5 180)
 			(uuid "c5e9c1ed-f3e1-4b32-a2c5-d372a4d4058d")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "MAIN_PWR_EN" output
+			(at 304.8 205.74 270)
+			(uuid "5dbfd4dc-8dcd-46e1-93bb-f97b2f288aa2")
 			(effects
 				(font
 					(size 1.27 1.27)

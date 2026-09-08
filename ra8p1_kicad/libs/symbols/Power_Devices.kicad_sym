@@ -2404,7 +2404,7 @@
 				)
 			)
 			(pin input line
-				(at -12.7 -5.08 0)
+				(at -12.7 -7.62 0)
 				(length 3.81)
 				(name "EN"
 					(effects
@@ -2422,7 +2422,7 @@
 				)
 			)
 			(pin input line
-				(at -12.7 -7.62 0)
+				(at -12.7 -2.54 0)
 				(length 3.81)
 				(name "MODE"
 					(effects

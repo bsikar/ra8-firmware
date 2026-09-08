@@ -1,6 +1,6 @@
 # Camera, removable storage and external-memory allocation
 
-Revision 7, 2026-09-07. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
+Revision 8, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
 This is an engineering allocation record for native KiCad implementation,
 not a completed schematic, verified timing closure or hardware qualification.
 Cross-references: [radio](radio_interface.md), [power](system_power_design.md),
@@ -152,6 +152,8 @@ pin-by-pin and timing qualification using its actual manufacturer's
 Do not infer pin equivalence from matching density or run 166 MHz merely
 because the memory is rated for it. RA8P1 SDRAMC timing, selected clock,
 trace skew, loading, refresh, voltage and temperature are independent limits.
+CMS-008 selects the sourced Alliance candidate; CMS-010 below now records
+its exact pin-number audit and the remaining electrical qualification gates.
 
 Reserve these SDRAM signal ports, in bit order:
 
@@ -295,7 +297,7 @@ sheet; perform schematic visual review and ERC. The GPIO set test excludes
 unallocated power-control outputs, touch, e-paper, frontlight and additional
 audio control nets, so it is not a full-project conflict signoff.
 
-Suggested schematic note: `CMS-001..009: design/camera_storage_interfaces.md`.
+Suggested schematic note: `CMS-001..010: design/camera_storage_interfaces.md`.
 Place the relevant local calculation/result beside each functional block,
 not a large unrelated wall of text on the root sheet.
 
@@ -303,8 +305,8 @@ not a large unrelated wall of text on the root sheet.
 
 Recommend **Alliance AS4C16M32SC-7TIN** as the sourced schematic candidate,
 not as a pin-compatible replacement for the EK's BGA90 device. It preserves
-64 MiB, x32, four-bank, 13-row/9-column organization. The 86-pin TSOP-II
-needs its own exact symbol audit; this record does not change the native BOM.
+64 MiB, x32, four-bank, 13-row/9-column organization. CMS-010 contains the
+completed 86-pin identity audit; this record does not change the native BOM.
 The existing IME part's two-unit DigiKey stock is not a robust sourcing basis.
 
 Fresh direct-page snapshots, 2026-09-07, USD, excluding tax/shipping:
@@ -592,3 +594,347 @@ The notes show the voltage/leakage/tolerance assumptions, threshold/contact
 equations and nominal RC calculations, not only component values. Keep
 these two notes and this record synchronized when values or assumptions
 change; their presence is not hardware qualification.
+
+## CMS-010: AS4C16M32SC-7TIN pin and electrical contract
+
+Engineering preflight, 2026-09-08, for [memory issue #827](https://github.com/bsikar/ra8-firmware/issues/827).
+This section defines the next native SDRAM implementation, not a placed
+or qualified circuit. It does not change firmware, ERC settings, or the
+existing CMS-009 controls checkpoint. Footprint geometry is outside this
+pin-number audit. Procurement still requires Alliance's current production
+specification: the public SC document remains marked preliminary.
+
+Primary evidence:
+
+- [Alliance SC Rev.1.0, September 2018](https://www.alliancememory.com/wp-content/uploads/AllianceMemory_512M-SDRAM_Cdie_AS4C16M32SC-AS4C32M16SC-AS4C64M8SC-7TIN_Sept2018_rev1.0.pdf):
+  Figure 1 p6 (x32 top-view pinout), section 3.2 p10 (initialization),
+  Tables 10/11 p16 (DC/capacitance), Table 12 p17 (current), and Table 13
+  pp18-19 (AC limits and load/slew qualifications).
+- [RA8P1 datasheet R01DS0439EJ0130](https://www.renesas.com/en/document/dst/ra8p1-group-datasheet):
+  Table 1.17 (MIPI-enabled BGA289 pin functions), Tables 2.3/2.4/2.7
+  (supply and logic levels), Table 2.50 (SDCLK waveform limits), and
+  Table 2.57 / Figures 2.45-2.51 (SDRAM timing).
+- [RA8P1 HUM R01UH1064EJ0130](https://www.renesas.com/en/document/mah/ra8p1-group-users-manual-hardware):
+  section 9.2.32 p354 (disabled SDCLK is high), section 9.10.10
+  (clock selection), sections 15.3.18/19 pp613-614 (initialization and
+  address shift), section 15.6.6 (self-refresh), section 15.6.11.1 p671
+  (controller initialization), and Table 15.38 pp680-681 (address mapping).
+- [EK-RA8P1 Rev.1.04 Table 30 pp36-37](https://www.renesas.com/en/document/mat/ek-ra8p1-v1-users-manual)
+  corroborates the port reservation, but does not establish Alliance
+  timing or its TSOP pin numbers.
+
+### CMS-010A: Complete pin-number map
+
+The 57 signal rows below match CMS-004 and the current project MCU library
+pin identities. The memory A0 pin receives MCU external-bus A02, not A00.
+MCU A02..A14 connect to memory A0..A12; MCU A15/A16 connect to BA0/BA1.
+For x32, select the nine-bit row-address shift, `SDADR.MXC=01`, and 32-bit
+bus width. Memory A10/AP receives MCU A12's precharge-select function.
+There are 13 row bits, nine column bits, four banks, and four bytes/word:
+`8192 * 512 * 4 * 4 = 67108864 bytes = 64 MiB`.
+
+| Signal | Alliance pin | MCU port | U1 ball |
+| --- | ---: | --- | --- |
+| CLK | 68 | PA15 | E1 |
+| CKE | 67 | PA06 | C1 |
+| CS# | 20 | P813 | B1 |
+| RAS# | 19 | PA10 | F2 |
+| CAS# | 18 | PA09 | F4 |
+| WE# | 17 | PA08 | F3 |
+| BA0 | 22 | PD00 | K4 |
+| BA1 | 23 | PC15 | K1 |
+| A0 | 25 | PA03 | G2 |
+| A1 | 26 | PA02 | F1 |
+| A2 | 27 | PA01 | H4 |
+| A3 | 60 | PA00 | G1 |
+| A4 | 61 | P503 | H2 |
+| A5 | 62 | P504 | H1 |
+| A6 | 63 | P505 | H3 |
+| A7 | 64 | P506 | J1 |
+| A8 | 65 | P507 | J2 |
+| A9 | 66 | P508 | J3 |
+| A10/AP | 24 | P509 | J4 |
+| A11 | 21 | P510 | K3 |
+| A12 | 69 | P608 | K2 |
+| DQM0 | 16 | P614 | E3 |
+| DQM1 | 71 | PA05 | G3 |
+| DQM2 | 28 | P615 | E2 |
+| DQM3 | 59 | PA04 | D1 |
+| DQ0 | 2 | P302 | A5 |
+| DQ1 | 4 | P301 | C4 |
+| DQ2 | 5 | P300 | B5 |
+| DQ3 | 7 | P112 | A4 |
+| DQ4 | 8 | P113 | A2 |
+| DQ5 | 10 | P114 | B3 |
+| DQ6 | 11 | P115 | A3 |
+| DQ7 | 13 | P609 | A1 |
+| DQ8 | 74 | PA11 | B4 |
+| DQ9 | 76 | PA12 | B2 |
+| DQ10 | 77 | PA13 | C3 |
+| DQ11 | 79 | PA14 | D4 |
+| DQ12 | 80 | P610 | D3 |
+| DQ13 | 82 | P611 | D2 |
+| DQ14 | 83 | P612 | E4 |
+| DQ15 | 85 | P613 | C2 |
+| DQ16 | 31 | PC14 | F5 |
+| DQ17 | 33 | PC13 | J5 |
+| DQ18 | 34 | PC12 | G5 |
+| DQ19 | 36 | PC11 | H5 |
+| DQ20 | 37 | PC10 | M5 |
+| DQ21 | 39 | PC09 | L4 |
+| DQ22 | 40 | PC08 | M4 |
+| DQ23 | 42 | PC07 | K5 |
+| DQ24 | 45 | PC06 | N4 |
+| DQ25 | 47 | PC05 | L5 |
+| DQ26 | 48 | PC04 | L3 |
+| DQ27 | 50 | PC03 | L1 |
+| DQ28 | 51 | PC02 | L2 |
+| DQ29 | 53 | PC01 | M3 |
+| DQ30 | 54 | PC00 | M1 |
+| DQ31 | 56 | P607 | M2 |
+
+| Supply or unused group | Alliance pins | Connection |
+| --- | --- | --- |
+| VDD | 1, 15, 29, 43 | +3V3_MCU |
+| VDDQ | 3, 9, 35, 41, 49, 55, 75, 81 | Same +3V3_MCU |
+| VSS | 44, 58, 72, 86 | GND |
+| VSSQ | 6, 12, 32, 38, 46, 52, 78, 84 | GND |
+| NC | 14, 30, 57, 70, 73 | Explicit no-connect |
+
+All 86 numbers were independently transcribed from the Alliance Figure 1
+image and compared with the existing `Memory:IME5132SDBETG-6I` symbol:
+57 signal, 12 power, 12 ground and five NC identities match. A distinct
+Alliance symbol can therefore reuse that four-unit drawing through native
+Save As, with its own identity, datasheet and BOM fields. Remove the IME
+on-die-ECC description; Alliance does not promise that feature here.
+Set the Alliance's 25 control/address pins to Input, DQ0..31 to
+Bidirectional, supply/ground pins to Power input, and NC to Not connected.
+Set the selected MCU roles to 25 Output and 32 Bidirectional; the reviewed
+default MCU and IME pins were Passive. Symbol pin typing is an ERC model,
+not firmware pin configuration. No native pin type was changed by this audit.
+
+### CMS-010B: Shared supply, pull and bypass basis
+
+Use the same switched +3V3_MCU for VDD, VDDQ and their pullups. Both MCU VCC
+and VCC2 must remain in the 3.3 V domain: DQ0..19 use VCC and DQ20..31 use
+VCC2. The 3.0..3.6 V memory range is narrower than the MCU's general
+operating range. No separately powered probe or peripheral may inject this
+bus during hard-off. Keep the PWR-003 250 mA memory allocation, including
+I/O switching, and include all added capacitors in SYS-007's main-rail
+discharge-capacitance budget. [Main digital power basis](power_decoupling.md).
+
+Candidate default network: ten separate 10k pullups on CKE, DQM0..3,
+CS#, RAS#, CAS#, WE# and CLK. The five CKE/DQM pulls preserve the required
+high states while MCU pins are inputs; CS# high inhibits commands. The
+other control pulls avoid floating command inputs, and CLK high matches
+the peripheral's disabled-clock polarity. Do not substitute a CKE pull-down
+or rely on firmware-enabled internal pullups during reset. These pulls do
+not supply the missing power-on clock or prove initialization by themselves.
+
+Use project RC0603FR-0710KL as the 10k candidate. Screen +/-1% initial
+tolerance and +/-100 ppm/C over a conservative 100 C change, as in BTN-006.
+Alliance input leakage is +/-10 uA; the selected non-5V-tolerant MCU ports
+have +/-1 uA off-state leakage. Add 1 uA board leakage as a qualification
+allocation, not a vendor guarantee. At 3.0 V, pullup high is >=2.877588 V.
+At 3.6 V, the conservative low-output sink is <0.379 mA, below the
+ordinary control pins' 1 mA DC test condition. A 100k clock pull-down would
+fail a leakage-only low-level screen; do not add that weak default by habit.
+The CLK output itself is PA15's high-speed drive class and needs the
+separate waveform qualification below, not the generic control-pin VOL proof.
+[Yageo RC0603FR-0710KL specification](https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL).
+
+Starting bypass population is 12 x 100nF, one for each VDD/VDDQ pin, plus
+10uF local bulk, with no separate filter or load switch splitting VDDQ.
+Project candidates are C1608X7R1H104K080AA and C3216X7R1V106K160AC.
+These are engineering starting values, not an Alliance capacitance minimum
+or proof of effective capacitance, impedance or transient response. Qualify
+bias, temperature, aging and mounting inductance with the selected parts.
+The [Renesas quick guide](https://www.renesas.com/en/document/apn/ra8p1-mcu-quick-design-guide)
+and [memory architecture note](https://www.renesas.com/en/document/apn/getting-started-ra8p1-memory-architecture-configurations-and-topologies)
+reviewed here do not prescribe exact SDRAM series-resistor/bypass values.
+
+There is no VREF pin or DDR-style VTT requirement. Provide a source-series
+clock-resistor position for SI tuning; no 22/33 Ohm value is approved yet.
+Decide address/control and bidirectional DQ damping from the actual load,
+driver model and both-direction timing. A clock-only delay can consume
+write-hold margin. Do not claim the EK resistor value is valid for this
+TSOP memory, or copy OSPI trace rules into the SDRAM timing contract.
+
+### CMS-010C: Initialization and retention contract
+
+Alliance section 3.2 requires simultaneous VDD/VDDQ rise, valid initial
+command states and a 200 us pause before precharge-all. CKE and all DQM
+must be high during that pause. Complete mode-register programming and
+at least eight auto-refresh cycles, which may precede or follow MRS.
+Observe tRP, tRFC, tMRD and the required stable clock before ordinary
+access. DQ must not be driven against the memory during initialization.
+
+There is a genuine unresolved wording/interface condition: Alliance says
+the clock starts with power, but RA8P1 SDCKOCR resets to zero and its
+peripheral SDCLK is fixed high until enabled. Obtain an Alliance-supported
+delayed-clock startup contract; simply waiting 200 us after power while
+the clock remains stopped is not established as equivalent. The proposed
+pullups make the initial state controlled but do not resolve this condition.
+
+After that condition is resolved, the implementation must hold safe command
+and mask states while starting SDCLK and waiting the required pause, then
+follow HUM Figure 15.48's 32-bit initialization sequence. In particular,
+BSIZE/EXENB sequencing must follow the 32-bit case, rather than using the
+16-bit exception. Program mode/timing/address shift, enable refresh and
+finally enable accesses with the specified readback/barrier. Existing
+`ra8_sdramc_init()` is EK-RA8D2 firmware, not approved Alliance startup:
+its reviewed clock enable is immediately followed by initialization with
+no explicit clock-stable 200 us pause. No firmware was changed here.
+
+Hard-off discards RAM. Retention requires self-refresh entry before stopping
+SDCLK, keeping supply present and CKE actively low, including the HUM's
+IOKEEP/standby-output handling. Tristating CKE against its pullup exits that
+controlled state. Wake must honor the selected part's tXSR, restore the
+clock/control sequence and only then permit bus access. Ordinary power-down
+is not self-refresh and cannot retain data indefinitely.
+
+### CMS-010D: DC and timing qualification gates
+
+PWR-002's fixed-PWM static main-rail range is
+3.242044111..3.358485094 V, not a transient envelope. RA SDRAM inputs require
+VIH >=0.7*VCC or 0.7*VCC2, not the generic GPIO 0.8 factor. Against Alliance
+VOH >=2.4 V, the static read-high margin is only 49.060435 mV. The rail at
+zero high margin is 2.4/0.7 = 3.428571429 V; this is not an acceptable
+operating target or allowance to spend on ringing. Establish a positive
+noise-margin requirement and measured/modelled IO waveforms, including
+rail overshoot and ground offset. Static read-low margin is 572.613233 mV.
+Ordinary control-output DC screens give 742.044111 mV high and 300 mV low
+margin using the RA 1 mA test, but do not prove dynamic edges or PA15 CLK.
+
+RA Table 2.57 condition 2 requires SDCLK high-speed/high drive, other bus
+outputs high drive, and a 15 pF output-load condition. BCLK operation permits
+125 MHz; BCLKA has a separate 133 MHz limit. Do not configure simultaneous
+CSC operation while claiming these condition-2 timings. Alliance Table 11
+gives clock capacitance <=3.5 pF, command/address <=3.8 pF and DQ <=6 pF;
+MCU input capacitance for these pins is <=8 pF under its listed test.
+Interconnect and probes add loading and are not included by those numbers.
+
+The following are zero-interconnect screens at 125 MHz/CL3, not timing
+closure. RA delay/setup/hold limits come from Table 2.57. Alliance timings
+come from Table 13 and its footnotes; no typical parameters are used as
+all-corner guarantees.
+
+| Screen | Arithmetic, ns | Unallocated result |
+| --- | --- | ---: |
+| Read setup | 8 - 5.4 - 2.1 | 0.5 ns |
+| Write/address/control setup | 8 - 6.0 - 1.5 | 0.5 ns |
+| Write/address/control hold | 0.8 - 0.8 | 0 ns |
+| Read hold at the stated 0 pF endpoint | 1.8 - 1.5 | 0.3 ns |
+
+Alliance's 2.7 ns table tOH is specified at 50 pF. Footnote 5 instead gives
+1.8 ns at 0 pF, along with tAC=4.6 ns; do not use 2.7 ns for an unloaded
+short trace, or assume interpolation proves a minimum at arbitrary loads.
+The 5.4 ns setup screen remains subject to the stated load and slew limits.
+Alliance uses a 1.4 V AC timing reference and a 1 ns transition assumption;
+RA bus output timing uses the half-supply crossing. Correct the reference
+levels and apply Alliance's slow-edge adjustments before adding flight,
+skew, jitter, duty-cycle and model uncertainties. Also verify Alliance's
+2.5 ns minimum clock-high/low widths and 0.3..1.2 ns transition condition;
+RA's separate SDCLK waveform limits are not an automatic compatibility proof.
+
+For matched reference levels, let tc be MCU-to-memory clock flight and td
+be data flight. A first write screen adds (td-tc) to hold and subtracts it
+from setup; a read setup screen subtracts tc+td. Clock-only series delay
+therefore improves write setup but worsens write hold and read setup.
+These signs explain why matching lengths or slowing SDCLK alone does not
+close every constraint. At 62.5 MHz/CL3 the raw setup screens become 8.5 ns,
+but raw write hold remains zero. Use lower frequency for initial evaluation
+if appropriate; it is not an approved solution to the hold/DC/startup gates.
+
+### CMS-010E: Reproducible identity and arithmetic checks
+
+Run this Python block from the repository root. It checks the displayed
+pin-map coverage against independently transcribed memory signal numbers,
+capacity, pull and voltage corners, and timing arithmetic. Manufacturer
+identities were visually/source checked above; Python cannot turn those
+datasheet inputs into a board qualification or verify a future schematic.
+
+```python
+from pathlib import Path
+from math import isclose
+import re
+
+document = Path('ra8p1_kicad/design/camera_storage_interfaces.md').read_text()
+section = document.split('## CMS-010: AS4C16M32SC-7TIN pin and electrical contract')[1]
+rows = re.findall(
+    r'^\| ([A-Za-z0-9#/]+) \| (\d+) \| (P[0-9A-D][0-9]{2}) \| ([A-Z][0-9]+) \|$',
+    section, re.M)
+assert len(rows) == 57
+assert len({row[0] for row in rows}) == 57
+assert len({row[2] for row in rows}) == 57
+assert len({row[3] for row in rows}) == 57
+signals = {name: int(number) for name, number, port, ball in rows}
+expected = {'CLK': 68, 'CKE': 67, 'CS#': 20, 'RAS#': 19, 'CAS#': 18, 'WE#': 17}
+for prefix, pins in (
+    ('A', [25, 26, 27, 60, 61, 62, 63, 64, 65, 66, 24, 21, 69]),
+    ('BA', [22, 23]),
+    ('DQM', [16, 71, 28, 59]),
+    ('DQ', [2, 4, 5, 7, 8, 10, 11, 13, 74, 76, 77, 79, 80, 82, 83, 85,
+            31, 33, 34, 36, 37, 39, 40, 42, 45, 47, 48, 50, 51, 53, 54, 56]),
+):
+    expected.update({f'{prefix}{index}': pin for index, pin in enumerate(pins)})
+expected['A10/AP'] = expected.pop('A10')
+assert signals == expected
+groups = re.findall(r'^\| (VDDQ?|VSSQ?|NC) \| ([0-9, ]+) \| ([^|]+) \|$', section, re.M)
+assert len(groups) == 5
+other_pins = [int(pin) for name, numbers, connection in groups for pin in numbers.split(',')]
+assert sorted(list(signals.values()) + other_pins) == list(range(1, 87))
+expected_groups = {
+    'VDD': [1, 15, 29, 43], 'VDDQ': [3, 9, 35, 41, 49, 55, 75, 81],
+    'VSS': [44, 58, 72, 86], 'VSSQ': [6, 12, 32, 38, 46, 52, 78, 84],
+    'NC': [14, 30, 57, 70, 73],
+}
+assert {name: [int(pin) for pin in numbers.split(',')]
+        for name, numbers, connection in groups} == expected_groups
+assert 2**13 * 2**9 * 4 * 4 == 64 * 2**20
+print('57 unique signals and MCU identities; all 86 memory pins covered once; 64 MiB')
+
+vmin, vmax = 3.242044111302129, 3.3584850935146022  # PWR-002 static, not ripple
+read_high_margin = 2.4 - .7 * vmax
+read_low_margin = .3 * vmin - .4
+assert isclose(read_high_margin, .04906043453977871)
+assert isclose(read_low_margin, .5726132333906387)
+assert vmax < 2.4 / .7
+print('read high/low static margins V', read_high_margin, read_low_margin)
+print('zero high-margin rail V', 2.4 / .7)
+print('ordinary control high/low margins V', vmin - .5 - 2.0, .8 - .5)
+
+rmin, rmax = 10000 * .99 * .99, 10000 * 1.01 * 1.01
+memory_leak, mcu_leak, board_allocation = 10e-6, 1e-6, 1e-6
+pull_high = 3.0 - (memory_leak + mcu_leak + board_allocation) * rmax
+pull_sink = 3.6 / rmin + memory_leak + board_allocation
+assert isclose(pull_high, 2.877588) and pull_high > 2.0
+assert pull_sink < .379e-3 and pull_sink < 1e-3
+assert 100000 * 1.01 * 1.01 * (memory_leak + mcu_leak) > .8
+print('pull high V / low-output sink mA', pull_high, pull_sink * 1e3)
+
+for frequency in (125_000_000, 62_500_000):
+    period_ns = 1e9 / frequency
+    read_setup = period_ns - 5.4 - 2.1
+    write_setup = period_ns - 6.0 - 1.5
+    write_hold = .8 - .8
+    read_hold_endpoint = 1.8 - 1.5  # 0 pF endpoint, not interpolated qualification
+    assert isclose(read_setup, write_setup)
+    assert isclose(write_hold, 0) and isclose(read_hold_endpoint, .3)
+    assert isclose(read_setup, .5 if frequency == 125_000_000 else 8.5)
+    print('Hz / raw read setup / write setup / write hold / read hold endpoint ns',
+          frequency, read_setup, write_setup, write_hold, read_hold_endpoint)
+print('CMS-010 arithmetic PASS; startup, SI, positive noise margin and hardware qualification OPEN')
+```
+
+The DigiKey source was refreshed on 2026-09-08: active AS4C16M32SC-7TIN,
+[1450-1468-ND](https://www.digikey.com/en/products/detail/alliance-memory-inc/AS4C16M32SC-7TIN/9681183),
+178 stocked, USD 32.99 at one / 30.54 at ten, 16-week stated lead time.
+This refresh does not update the older Mouser snapshot or reserve stock.
+
+Proposed reciprocal schematic annotation, to add with the native memory
+circuit: `CMS-010 SDRAM: 64 MiB, x32, A02->A0; VDD/VDDQ=+3V3_MCU.`
+Then show the local results: `125 MHz raw setup 0.5 ns; write hold 0 ns;
+read-high static margin 49.06 mV. Startup/SI qualification OPEN.` Link to
+`../design/camera_storage_interfaces.md` and retain this calculation ID.
+The annotation is proposed, not claimed present in the schematic.
