@@ -207,8 +207,12 @@ def audit_ansible(text: str) -> list[str]:
         'dev_box_hil_pi_repo: "{{ dev_box_hil_rig_env.PI_REPO }}"',
         'dev_box_hil_jlink_device: "{{ dev_box_hil_rig_env.JLINK_DEVICE }}"',
         "PI_REPO={{ dev_box_hil_pi_repo }}",
-        'service = ["PI_HOST", "JLINK_SN", "JLINK_DEVICE"]',
-        'interactive = [*service, "PI_REPO"]',
+        "PI_REPO={{ dev_box_hil_runner_bench_repo_dir }}",
+        "dev_box_hil_runner_bench_repo_dir",
+        "dev_box_hil_runner_bench_repo_dir | dirname",
+        "dev_box_hil_runner_bench_repo_dir }}/scripts/hil/run_direct.sh",
+        'service = ["PI_HOST", "JLINK_SN", "JLINK_DEVICE", "PI_REPO"]',
+        "interactive = service.copy()",
     )
     findings.extend(
         f"{ANSIBLE}: missing parser/serialization binding {token!r}"
@@ -584,6 +588,10 @@ def _authority_mutations(sources: dict[str, str]) -> tuple[Mutation, ...]:
         (
             audit_ansible,
             sources["ansible"].replace("PI_REPO={{ dev_box_hil_pi_repo }}", "", 1),
+        ),
+        (
+            audit_ansible,
+            sources["ansible"].replace("PI_REPO={{ dev_box_hil_runner_bench_repo_dir }}", "", 1),
         ),
         (
             audit_ansible,

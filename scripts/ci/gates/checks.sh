@@ -192,6 +192,7 @@ _pcc_layout_and_credentials() (
   python3 scripts/checks/check_hil_convergence_safety.py
   /bin/bash -p scripts/hil/lib/rig_contract.sh --selftest
   python3 scripts/hil/rig_env_parse.py --selftest
+  /bin/bash -p scripts/hil/run_direct.sh --selftest
   python3 scripts/checks/check_hil_rig_contract.py --selftest
   python3 scripts/checks/check_hil_rig_contract.py
   # A header under a src/ directory is module-private and must be named

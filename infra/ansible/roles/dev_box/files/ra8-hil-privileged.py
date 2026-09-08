@@ -157,8 +157,15 @@ def _validate_action(value: str) -> str:
 
 def _validate_port(value: str) -> str:
     """Accept only the three wired EK-RA8D2 ports on the fixed VIA hub."""
-    if value not in {"1", "2", "4"}:
+    if value not in {"1", "3", "4"}:
         _fail("port is not part of the declared bench topology")
+    return value
+
+
+def _validate_restore_port(value: str) -> str:
+    """Accept current ports plus port 2 from a pending pre-migration journal."""
+    if value not in {"1", "2", "3", "4"}:
+        _fail("restore port is not part of the current or prior bench topology")
     return value
 
 
@@ -322,15 +329,16 @@ def _live_physical_identity(policy: dict[str, object]) -> tuple[str, str, int]:
     """Resolve the interface's MAC, physical sysfs device, and PHC."""
     iface = str(policy["board_iface"])
     sysfs_entry = Path("/sys/class/net") / iface
+    phc_index = int(policy["phc_index"])
     try:
         device = (sysfs_entry / "device").resolve(strict=True)
         mac = (sysfs_entry / "address").read_text(encoding="ascii").strip()
+        phc_device = (Path("/sys/class/ptp") / f"ptp{phc_index}" / "device").resolve(strict=True)
+        iface_device = (device / "net" / iface).resolve(strict=True)
     except (OSError, UnicodeError):
         _fail("fleet board interface physical identity is inaccessible")
-    phc_index = int(policy["phc_index"])
-    phc = device / "ptp" / f"ptp{phc_index}"
-    if not phc.exists():
-        _fail("fleet board interface does not expose its declared PHC")
+    if phc_device != iface_device:
+        _fail("fleet board interface PHC belongs to a different device")
     return mac, str(device), phc_index
 
 
@@ -466,9 +474,9 @@ def _route_present(board_ip: str, iface: str) -> bool:
     rows = _json_rows(
         _json_command(["/usr/sbin/ip", "-j", "route", "show", "exact", f"{board_ip}/32"])
     )
-    expected = f"{board_ip}/32"
+    expected = {board_ip, f"{board_ip}/32"}
     return any(
-        row.get("dst") == expected
+        row.get("dst") in expected
         and row.get("dev") == iface
         and row.get("prefsrc") == "192.168.1.1"
         for row in rows
@@ -627,11 +635,12 @@ def _network_neigh_flush(path: Path, policy: dict[str, object]) -> None:
     _run(["/usr/sbin/ip", "neigh", "flush", "dev", str(state["iface"])])
 
 
-def _usb_power_command(kind: str, args: list[str]) -> list[str]:
+def _usb_power_command(kind: str, args: list[str], *, restoring: bool = False) -> list[str]:
     """Build one exact uhubctl argv after validating the fixed topology."""
     port_power_argc = 2
     if kind == "usb-port-power" and len(args) == port_power_argc:
-        port = _validate_port(args[0])
+        validate = _validate_restore_port if restoring else _validate_port
+        port = validate(args[0])
         action = _validate_action(args[1])
         return ["/usr/sbin/uhubctl", "-S", "-l", "2-1.3", "-p", port, "-a", action]
     if kind == "usb-root-power" and len(args) == 1:
@@ -640,12 +649,13 @@ def _usb_power_command(kind: str, args: list[str]) -> list[str]:
     _fail("USB power request has an invalid argument shape")
 
 
-def _usb_authorize(args: list[str]) -> None:
-    """Write one byte to one of three fixed sysfs authorization files."""
+def _usb_authorize(args: list[str], *, restoring: bool = False) -> None:
+    """Write one byte to one fixed sysfs authorization file."""
     authorize_argc = 2
     if len(args) != authorize_argc:
         _fail("USB authorization request has an invalid argument shape")
-    port = _validate_port(args[0])
+    validate = _validate_restore_port if restoring else _validate_port
+    port = validate(args[0])
     value = _validate_authorized(args[1])
     device_id = f"2-1.3.{port}"
     device = _resolve_usb_device(
@@ -676,7 +686,7 @@ def _usb_authorize(args: list[str]) -> None:
 
 def _resolve_usb_device(bus_root: Path, sys_devices: Path, device_id: str) -> Path:
     """Resolve a kernel bus symlink only beneath the canonical device tree."""
-    if re.fullmatch(r"2-1\.3\.[124]", device_id) is None:
+    if re.fullmatch(r"2-1\.3\.[1234]", device_id) is None:
         _fail("USB device identity is outside the declared topology")
     try:
         canonical_root = sys_devices.resolve(strict=True)
@@ -707,6 +717,7 @@ class _CycleAction:
 
     kind: str
     args: tuple[str, ...]
+    restoring: bool = False
 
 
 class _CycleOps(Protocol):
@@ -744,7 +755,7 @@ def _strict_restore(value: object) -> dict[str, object]:
     if value["kind"] == "root-power":
         if port != "" or value["restore"] != "on":
             _fail("USB restore journal has invalid root-power state")
-    elif not isinstance(port, str) or _validate_port(port) != port:
+    elif not isinstance(port, str) or _validate_restore_port(port) != port:
         _fail("USB restore journal has an invalid port")
     elif value["restore"] != ("1" if value["kind"] == "authorize" else "on"):
         _fail("USB restore journal has an invalid restore action")
@@ -800,10 +811,10 @@ def _restore_action(state: dict[str, object]) -> _CycleAction:
     """Map a validated journal onto one exact restore action."""
     state = _strict_restore(state)
     if state["kind"] == "root-power":
-        return _CycleAction("root-power", ("on",))
+        return _CycleAction("root-power", ("on",), restoring=True)
     if state["kind"] == "port-power":
-        return _CycleAction("port-power", (str(state["port"]), "on"))
-    return _CycleAction("authorize", (str(state["port"]), "1"))
+        return _CycleAction("port-power", (str(state["port"]), "on"), restoring=True)
+    return _CycleAction("authorize", (str(state["port"]), "1"), restoring=True)
 
 
 class _LiveCycleOps:
@@ -816,10 +827,10 @@ class _LiveCycleOps:
     def apply(self, action: _CycleAction) -> None:
         """Apply an exact fixed-topology action."""
         if action.kind == "authorize":
-            _usb_authorize(list(action.args))
+            _usb_authorize(list(action.args), restoring=action.restoring)
         else:
             command = "usb-root-power" if action.kind == "root-power" else "usb-port-power"
-            _run(_usb_power_command(command, list(action.args)))
+            _run(_usb_power_command(command, list(action.args), restoring=action.restoring))
 
     def pause(self) -> None:
         """Wait the fixed recovery interval."""

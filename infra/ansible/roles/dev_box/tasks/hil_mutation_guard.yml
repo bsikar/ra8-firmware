@@ -88,6 +88,7 @@
               'dev_box_hil_runner_bench_names': dev_box_hil_runner_bench_names,
               'dev_box_hil_runner_bench_phc_index': dev_box_hil_runner_bench_phc_index,
               'dev_box_hil_runner_bench_policy_sha256': dev_box_hil_runner_bench_policy_sha256,
+              'dev_box_hil_runner_bench_repo_dir': dev_box_hil_runner_bench_repo_dir,
               'dev_box_hil_runner_bench_sysfs_device': dev_box_hil_runner_bench_sysfs_device,
               'dev_box_hil_runner_bench_user': dev_box_hil_runner_bench_user,
               'dev_box_hil_runner_env_file': dev_box_hil_runner_env_file,

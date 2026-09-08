@@ -8,9 +8,10 @@
 #
 #   1. Hardware PPPS via `uhubctl` (default): the VIA Labs hub at 2-1.3
 #      toggles data/power per-port at the USB level. Works reliably for
-#      USBHS J7 (port 1) and the J-Link OB (port 2). On USBFS J11
-#      (port 4) the device's D+ pull-up stays asserted across the hub-
-#      side toggle and the host's xhci-hcd does NOT issue a fresh bus
+#      USBHS J7 (port 1) and the J-Link OB (port 3). Port 2 is the
+#      Digilent AD2 and is deliberately outside this script's allowlist.
+#      On USBFS J11 (port 4) the device's D+ pull-up stays asserted across
+#      the hub-side toggle and the host's xhci-hcd does NOT issue a fresh bus
 #      reset, so re-enumeration silently fails.
 #
 #   2. Host-side `authorized` toggle (--soft): write 0 then 1 to
@@ -21,13 +22,14 @@
 #
 # EK-RA8D2 wiring on hub 2-1.3:
 #   port 1 -> J7  USBHS  (1209:000c when HS firmware is running)
-#   port 2 -> J-Link OB  (1366:1024 always)
+#   port 2 -> Digilent AD2 (0403:6014 always; not controlled here)
+#   port 3 -> J-Link OB   (1366:1024 always)
 #   port 4 -> J11 USBFS  (1209:000a when FS firmware is running)
 #
 # Usage (run from repo root on dev machine, or directly on the Pi):
 #   /bin/bash -p scripts/hil/ppps.sh [--soft] <off|on|cycle> [port]
 #     --soft : use host-side `authorized` toggle (no uhubctl).
-#     port   : defaults to 2 (J-Link). Pick 1 for USBHS, 4 for USBFS.
+#     port   : defaults to 3 (J-Link). Pick 1 for USBHS, 4 for USBFS.
 #
 # Exit codes:
 #   0 -- command succeeded
@@ -116,21 +118,21 @@ if [[ "$-" == *p* ]]; then
     exit 2
   }
   CMD="$1"
-  PORT="${2:-2}"
+  PORT="${2:-3}"
   case "$CMD" in off | on | cycle) ;; *)
     echo "Usage: $0 [--soft] <off|on|cycle> [port]"
     exit 2
     ;;
   esac
-  case "$PORT" in 1 | 2 | 4) ;; *)
-    echo "hil_ppps: port must be one of 1, 2, or 4" >&2
+  case "$PORT" in 1 | 3 | 4) ;; *)
+    echo "hil_ppps: port must be one of 1, 3, or 4" >&2
     exit 2
     ;;
   esac
 
   # ---- bench mutual exclusion --------------------------------------------------
-  # Hub ports 1/2/4 on 2-1.3 ARE J7, the J-Link and J11: cutting one mid-flash
-  # takes the probe out from under whoever is using it.
+  # Hub ports 1/3/4 on 2-1.3 are J7, the J-Link and J11: cutting one
+  # mid-flash takes the probe out from under whoever is using it.
   # shellcheck source=scripts/hil/lib/bench_lock.sh
   source "$_hil_dir/lib/bench_lock.sh"
   ra8_bench_require_recovery "hub port ${PORT}: ${CMD}" 10m || exit $?
