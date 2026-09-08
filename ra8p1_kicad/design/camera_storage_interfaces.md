@@ -1,6 +1,6 @@
 # Camera, removable storage and external-memory allocation
 
-Revision 12, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
+Revision 13, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
 This is an engineering allocation record for native KiCad implementation,
 not a completed schematic, verified timing closure or hardware qualification.
 Cross-references: [radio](radio_interface.md), [power](system_power_design.md),
@@ -196,15 +196,21 @@ This consumes 57 distinct signal ports. It conflicts with OSPI1 and with
 SSI0_B on P112..P115. Use OSPI0 for NOR, and the separate SSI1_A group
 for audio. P708 is not in this SDRAM allocation.
 
-Reserve OSPI0 as follows: CS#=P104/M6, CLK=P808/U5, DQS=P801/P6,
-RESET#=P106/N6; IO0..IO7=P100/U6, P803/P7, P103/R4, P101/R5,
-P102/P5, P800/T6, P802/R6, P804/R7. P104 is OM_0_CS1, not CS0.
-The EK-RA8P1 also routes its flash ECS# to P105/N7; determine whether the
-selected NOR actually has this pin before placing it.
+The selected NOR is now Infineon S28HL01GTFPBHI030, 1 Gbit / 128 MiB,
+3 V Octal DDR with a read data strobe. This doubles the EK capacity without
+substituting a Quad device. Reserve OSPI0 as follows: CS#=P104/M6,
+CLK=P808/U5, DQS=P801/P6; IO0..IO7=P100/U6, P803/P7, P103/R4,
+P101/R5, P102/P5, P800/T6, P802/R6, P804/R7. P104 is OM_0_CS1,
+not CS0. INT# uses P105/N7 as GPIO IRQ0, not an assumed ECS# protocol.
+Flash RESET# joins the existing MCU_RESET_N wire; P106/N6 is released
+from the NOR reservation. Internal MCU watchdog/software resets do not
+assert that external wire. CMS-011 below is the controlling pin, passive,
+reset, sourcing and qualification contract, including ten 30R series paths.
 
 Existing imported IS25LP01GJ-RHLE is 1 Gbit / 128 MiB Quad NOR, not Octal.
-An in-stock capacity-baseline fallback is Winbond **W25Q512JVFIQ**, 64 MiB
-Quad NOR. Its primary [selection guide](https://www.winbond.com/export/sites/winbond/product-selection-guide/file/2025-Product-Selection-Guide-Winbond-Code-Storage-Flash-Memory.pdf)
+The historical capacity-only comparison Winbond **W25Q512JVFIQ**, 64 MiB
+Quad NOR, is not an approved fallback for the selected Octal interface.
+Its primary [selection guide](https://www.winbond.com/export/sites/winbond/product-selection-guide/file/2025-Product-Selection-Guide-Winbond-Code-Storage-Flash-Memory.pdf)
 confirms 2.7..3.6 V and 133 MHz STR, not Octal/DTR equivalence. The
 [manufacturer datasheet, section 3.4](https://www.winbond.com/resource-files/W25Q512JV%20SPI%20RevB%2006252019%20KMS.pdf)
 gives SOIC-16 pins: IO3=1, VCC=2, RESET#=3, CS#=7, IO1=8, IO2=9,
@@ -250,7 +256,7 @@ groups = {
              "PA14 P610 P611 P612 P613 PC14 PC13 PC12 PC11 PC10 PC09 PC08 PC07 "
              "PC06 PC05 PC04 PC03 PC02 PC01 PC00 P607 PA06 PA15 P614 PA05 P615 "
              "PA04 PA08 PA09 PA10 P813",
-    "ospi0": "P104 P808 P801 P106 P100 P803 P103 P101 P102 P800 P802 P804 P105",
+    "ospi0": "P104 P808 P801 P100 P803 P103 P101 P102 P800 P802 P804 P105",
     "sdhi1": "P400 P401 P402 P403 P404 P405 P406",
     "camera_control": "P512 P511 P709 P501 P010",
     "radio": "P700 P701 P702 P703 P704 P705 P706 P707",
@@ -261,6 +267,7 @@ groups = {
 }
 sets = {name: set(pins.split()) for name, pins in groups.items()}
 assert len(sets["sdram"]) == 57
+assert len(sets["ospi0"]) == 12 and "P106" not in sets["ospi0"]
 for name, pins in groups.items():
     assert len(pins.split()) == len(sets[name]), name
 for a, b in combinations(sets, 2):
@@ -286,8 +293,9 @@ print("4-bit 50 MHz raw bus bytes/s", sd_raw_bytes_per_s)
 
 Results: 67,108,864 bytes; VGA frame 614,400 bytes; full-resolution YUV422
 frame 10,077,696 bytes; PCM 1,152,000 bytes/s; only 58.254222 seconds if
-the entire 64 MiB NOR were used for that PCM. The native SD bus theoretical
-payload is 25,000,000 bytes/s before protocol overhead and media stalls.
+the historical minimum 64 MiB NOR capacity were used for that PCM; the
+selected 128 MiB NOR is checked separately in CMS-011. The native SD bus
+theoretical payload is 25,000,000 bytes/s before protocol overhead and media stalls.
 Two large frames fitting RAM does not prove capture frame rate, CPU/cache
 coherency, DMA arbitration, ISP throughput or available application heap.
 Audio buffering must cover real card latency, not this raw bus-rate quotient.
@@ -1150,3 +1158,476 @@ should show the local results,
 `125 MHz raw setup 0.5 ns; write hold 0 ns; read-high static margin 49.06 mV.
 Startup/SI qualification OPEN.` That additional timing note is not claimed
 present in the current schematic.
+
+## CMS-011: 128 MiB Octal NOR electrical contract
+
+Tracking: [memory issue #827](https://github.com/bsikar/ra8-firmware/issues/827).
+Selected: **Infineon S28HL01GTFPBHI030**, industrial -40..85 C, 1 Gbit,
+2.7..3.6 V core and IO, 24-ball 8 x 8 mm BGA, 1 mm pitch, tray.
+The [manufacturer product record](https://www.infineon.com/part/S28HL01GTFPBHI030)
+identifies an active preferred product. This is an Octal capacity upgrade,
+not a pin-compatible or command-compatible substitution for the EK Macronix.
+The MCU VCC2 bank remains at +3V3_MCU with SDRAM; a 1.8 V NOR is not a
+substitute for this contract.
+
+**Native library checkpoint:** `Memory:S28HL01GTFPBHI030` is implemented in
+`../libs/symbols/Memory.kicad_sym`, with 13 interface pins in unit A and
+11 power/reserved pins in unit B. All 24 balls are explicit; DNU balls use
+the unconnected electrical type. The native Symbol Checker reports no
+issues. Both units use 150 mil pins, 50 mil text and filled body outlines.
+Exact manufacturer/distributor fields and the dated sourcing snapshot are
+embedded in the library symbol; its footprint remains deliberately blank.
+
+Circuit placement and wiring remain in progress. The symbol is not yet
+instantiated in the schematic or exported BOM. This section does not claim
+the following circuit components, nets or annotations are placed or
+ERC-clean. No new reference numbers or annotation UUIDs have been assigned
+in this record. Preserve the completed CMS-010 checkpoint; its BOM and ERC
+counts are not a report on the new NOR circuit.
+Reciprocal CMS-011 annotations must be added to the native MCU/NOR pages,
+then the exported netlist, BOM, ERC and full PDF independently checked.
+
+### CMS-011A: Source revision and exact pin contract
+
+The released English manufacturer datasheet available through Mouser is
+[002-18216 Rev. AB, 2024-05-13][nor-ab], not advance information. Its
+Figure 1 / Table 7, pp.6-7, define the following ball map and directions.
+The newer manufacturer [Chinese Rev. AD, 2025-06-30][nor-ad] is a revision
+cross-check, not a replacement for controlling English specifications:
+its notice gives English precedence. The revision history, p.179, records
+AC changes to tDIS, tBE units and thermal data, then AD changes to tSU/tHD.
+The current English download redirects to authentication. Obtain and
+review current English AD and applicable errata before design release;
+no separate public errata found in this review is not proof none exist.
+
+| Flash signal | Flash ball | MCU port | MCU ball | Connection / native pin type |
+| --- | --- | --- | --- | --- |
+| DQ0 | D3 | P100 | U6 | 30R series; bidirectional |
+| DQ1 | D2 | P803 | P7 | 30R series; bidirectional |
+| DQ2 | C4 | P103 | R4 | 30R series; bidirectional |
+| DQ3 | D4 | P101 | R5 | 30R series; bidirectional |
+| DQ4 | D5 | P102 | P5 | 30R series; bidirectional |
+| DQ5 | E3 | P800 | T6 | 30R series; bidirectional |
+| DQ6 | E2 | P802 | R6 | 30R series; bidirectional |
+| DQ7 | E1 | P804 | R7 | 30R series; bidirectional |
+| CK | B2 | P808 | U5 | 30R series; flash input |
+| DS | C3 | P801 | P6 | 30R series; flash output, MCU input in this mode |
+| CS# | C2 | P104 | M6 | Direct OM_0_CS1; flash input, 10k pullup |
+| INT# | A5 | P105 | N7 | Direct GPIO IRQ0; flash open-collector, 47k pullup |
+| RESET# | A4 | - | - | Direct MCU_RESET_N; flash input, existing R1 pullup |
+
+| Flash supply / unused | Flash balls | Connection / native pin type |
+| --- | --- | --- |
+| VCC | B4 | +3V3_MCU, power input |
+| VCCQ | D1, E4 | Same +3V3_MCU node, power input |
+| VSS | B3 | GND, power input |
+| VSSQ | C1, E5 | GND, power input |
+| DNU | A2, A3, B1, B5, C5 | Individually unconnected, no-connect type/marker |
+
+A1 is depopulated: do not create a twenty-fifth pin. There are 13 signal,
+6 supply/ground and 5 DNU balls. Supply symbols must represent actual nets,
+not hide absent wiring; no local PWR_FLAG is justified by this passive load.
+Use one common VCC/VCCQ supply node so sequencing cannot make VCCQ exceed
+VCC. Do not insert independently switched or delayed VCCQ branches.
+The [RA8P1 datasheet Rev.1.30][nor-ra-ds], Tables 1.17 and 2.1, confirms
+the GPIO/IRQ allocation and voltage domain; CMS-006 checks reservation
+collisions. P106/N6 is free, and no dedicated flash-reset GPIO is required.
+
+### CMS-011B: Series, default-state and local supply components
+
+[RA8P1 hardware manual Rev.1.30][nor-ra-hum], Table 45.2, p.2997, requires
+external **30 ohm +/-1%** series resistors on the eight SIO lines, SCLK and
+DQS for the JESD251 driver definition. Thus this circuit requires ten,
+not only a clock tuning position. SCLKN is unused. Do not copy SDRAM R43's
+0R rule to NOR, and do not add series elements to CS#, RESET# or INT# by
+analogy. The proposed MCU-side grouping is a layout starting point; it
+does not establish bidirectional signal integrity or prescribe trace lengths.
+
+Select ten **RT0603BRD0730RL**, 30R, +/-0.1%, +/-25 ppm/C. The
+[YAGEO RT specification, V17, 2026-02-12][nor-rt] gives 0.1 W at 70 C,
+derating to zero at 155 C, and 75 V maximum working voltage for this case.
+The actual continuous voltage limit is the lower of 75 V and sqrt(P*R),
+not permission to apply 75 V to 30R. These are signal resistors, not
+series DC supply resistors. Pulse loading, temperature rise and parasitic
+impedance remain SI/qualification tasks.
+
+For a conservative 100 C departure from the resistance reference temperature:
+
+```text
+R30min = 30*(1-0.001)*(1-25e-6*100) = 29.895075 ohm
+R30max = 30*(1+0.001)*(1+25e-6*100) = 30.105075 ohm
+Initial tolerance plus TCR therefore remain inside 29.7..30.3 ohm.
+Ordinary +/-1%, 100 ppm/C parts span 29.403..30.603 ohm for the same screen.
+```
+
+This does not include aging, assembly drift or AC impedance. Infineon's
+factory CFR4N/V[7:5]=101 selects an **internal** nominal 30R driver
+(Rev. AB Table 58, p.97); it does not replace the ten external parts.
+Keep that initial setting for qualification; any tuning must recheck both
+read and write directions and should not rewrite nonvolatile settings
+at every boot.
+
+Proposed passive contract, with no new native reference numbers implied:
+
+| Function | Quantity / value | Exact MPN | Existing native donor |
+| --- | --- | --- | --- |
+| DQ0..7, CK, DS series | 10 x 30R | YAGEO RT0603BRD0730RL | New sourced value; do not inherit 0R metadata |
+| CS# idle-high | 1 x 10k to +3V3_MCU | YAGEO RC0603FR-0710KL | R44 or R27, with new reference |
+| INT# idle-high | 1 x 47k to +3V3_MCU | YAGEO RC0603FR-0747KL | New sourced value |
+| Local VCC / VCCQ bypass | 3 x 100n to GND | TDK C1608X7R1H104K080AA | C76, one copy per supply ball |
+| Shared local bulk bypass | 1 x 10u to GND | TDK C3216X7R1V106K160AC | C88 |
+| RESET# idle-high | Existing R1, no added pull | Existing common-reset network | No new component |
+
+The capacitor proposal is an engineering starting point, not a claimed
+manufacturer minimum or completed impedance design. Nominal total is
+`3*0.1 + 10 = 10.3 uF`; initial +/-10% alone gives 9.27..11.33 uF.
+[TDK 100n product data][nor-c100] and [10u product data][nor-c10] identify
+50 V X7R 0603 and 35 V X7R 1206 respectively. PWR-001 records the 100n
+nominal DC-bias curve; the [10u characterization sheet][nor-c10-curve]
+is reference characterization, not an all-corners effective-capacitance
+guarantee. Include DC bias, temperature, aging, mounting inductance,
+rail ripple and main-rail discharge in later PDN qualification.
+
+### CMS-011C: Pull and common-reset arithmetic
+
+Use the PWR-002 static rail envelope 3.242044111..3.358485094 V, with a
+separate 3.6 V stress screen; neither includes unqualified transient ripple.
+RC0603 initial +/-1% and +/-100 ppm/C over 100 C give multiplicative
+resistance bounds 0.9801..1.0201 times nominal. The
+[10k manufacturer specification][nor-rc10] and
+[47k manufacturer specification][nor-rc47] identify the selected parts.
+At the conservative 125 C resistor-temperature screen, linear derating
+leaves `0.1*(155-125)/(155-70) = 35.294118 mW`; the DC loads below fit
+that power allowance and the lower of sqrt(P*R) or the 75 V case limit.
+This does not qualify contamination leakage or reset/interrupt edge speed.
+
+Flash ILI/ILO are +/-2 uA at 85 C (Rev. AB Table 87, pp.131-132,
+VCC maximum, input at VIH or VSS, CS# HIGH test conditions).
+P105 uses the ordinary **1 uA** MCU input/off-state bound, not an invented
+6 uA limit (RA8P1 Table 2.7, p.57). Allocate another 1 uA per node to board
+leakage; that is an acceptance condition requiring verification.
+
+```text
+R47min/max = 46064.7 / 47944.7 ohm
+INT high adverse current = 2uA flash + 1uA MCU + 1uA board = 4uA
+INT VHIGHmin = 3.242044111 - 4uA*47944.7 = 3.050265311 V
+INT high margin = VHIGHmin - 0.8*3.358485094 = 0.363477236 V
+INT low sink = 3.6/46064.7 + 1uA MCU + 1uA board = 80.150949 uA
+INT resistor stress = 3.6^2/46064.7 = 0.281343415 mW
+
+R10min/max = 9801 / 10201 ohm
+CS high adverse current = 2uA flash + 1uA MCU + 1uA board = 4uA
+CS VHIGHmin = 3.242044111 - 4uA*10201 = 3.201240111 V
+CS low sink = 3.6/9801 + 2uA flash + 1uA board = 0.370309458 mA
+CS resistor stress = 3.6^2/9801 = 1.322314050 mW
+```
+
+Infineon recommends a 5k..10k INT pullup, but its tabulated VOL <=0.2 V
+test is only 100 uA. The selected 47k is an explicit design departure to
+stay within that guaranteed DC test load: do not silently claim it is the
+vendor's recommendation. Its release-edge RC time and interrupt detection
+need qualification with actual trace/input capacitance and configured IRQ
+filtering, including release during active transactions rather than only
+the table's CS# HIGH leakage test. There is no arbitrary frequency or
+maximum-capacitance guarantee in this calculation. Flash off-state leakage is not added again to the
+actively sinking flash output; board/MCU adverse current is.
+
+The current common reset net contains R1.2, U2.1, U1.D5, J1.10 and U7.3.
+The new flash A4 joins this same +3V3_MCU-domain wire. The independent reset
+review used 5 uA MCU, 5 uA U7 and 2 uA flash adverse source current:
+`3.6/9801 + 12uA = 379.309458 uA`, below U2's 1 mA VOL test load.
+The flash adds at most `2uA*10201 = 20.402 mV` to this DC drop screen.
+For an explicit **25 uA total** adverse high-state leakage allocation,
+`3.02395 - 25uA*10201 = 2.768925 V`, with
+`2.768925 - 0.8*3.02395 = 0.349765 V` margin at the minimum U2 falling
+threshold. This total allocation must cover the board and attached probe;
+it is not a measured load or a sum of guaranteed capacitance bounds.
+Flash RESET# adds at most 7.5 pF (Table 85, p.130), while MCU/U7 typical
+capacitances do not establish a guaranteed whole-node maximum. Keep the
+existing R1 and qualify sink, release edge, probe loading and brownout;
+no additional NOR pullup is proposed. U2's source/threshold basis remains
+in [PWR-002](power_decoupling.md#pwr-002-main-rail-regulation-and-reset-headroom).
+
+### CMS-011D: Power, reset and transaction contract
+
+Apply Rev. AB sections 4.13/4.15, pp.73-81, and Table 89, pp.140-141:
+CS# must track the rising supply and remain inactive during initialization.
+For 1 Gbit, tPU is 500 us maximum after VCC reaches its operating minimum;
+tRP is 200 ns minimum, tRH is 500 us **from RESET# LOW to CS# LOW**,
+and tRS is 50 ns from RESET# HIGH to CS# LOW. A long-held reset can
+cover tRH; 500 us after every release is not the datasheet definition.
+
+The implementation policy is deliberately conservative: keep CS# HIGH and
+wait at least **1 ms after both qualified supply and external reset release**
+before the first NOR command. This is a firmware/fixture obligation, not a
+newly implemented delay circuit. U2's 12..28 ms release delay and the 3 ms
+service reset cover the long-reset case; a short debug pulse must still
+meet tRP and the pre-access delay. NOR reset timing must not be inferred
+from the MCU's shorter minimum reset pulse/internal wait.
+
+Hardware RESET# only handles assertions of the external MCU_RESET_N wire.
+An internal MCU watchdog or software reset can leave NOR powered in its
+previous volatile Octal state. Initialization must recover the current
+protocol without unsafe speculative writes, inspect device status, then
+configure the intended mode before XIP or DMA. Use the read-only DS
+direction in the selected xSPI flash profile; do not apply
+HyperBus write-mask signaling or drive against the flash strobe output.
+Preserve the factory nonvolatile SPI startup configuration and enter Octal through volatile
+configuration. Hardware reset reloads nonvolatile configuration; it does
+not erase a previously changed nonvolatile mode back to factory SPI.
+Recovery after internal resets, resets during writes and corrupt settings
+requires explicit testing. No firmware changes are included in this record.
+
+The full cold-restart screen requires VCC below 0.7 V for at least 25 us
+after a drop below the 2.4 V cutoff; observe the specified minimum rise/fall
+times of 1/30 us per volt, not an assumed instantaneous safe ramp.
+Include the local 10.3 uF in SYS-007 hard-off/discharge qualification;
+the whole-rail capacitance/active-load contract still controls. Neither
+shared reset nor supply discharge guarantees completion of interrupted
+program/erase. Journaled metadata and recoverable images remain required.
+
+This part is not a promise of the Macronix LW family's true simultaneous
+read/write behavior. Use the documented suspend/read/resume restrictions,
+or execute update-critical code from internal MRAM/SDRAM. Do not assume
+uninterrupted XIP from NOR while an embedded write operation blocks reads.
+
+### CMS-011E: Clock and power qualification gates
+
+The proposed performance baseline is **125 MHz Octal DDR with DS**, not
+Quad, and not a production timing guarantee. The selected HL-T limit is
+166 MHz: `1e9/166e6 = 6.024096386 ns`. A 166.666667 MHz MCU divider with
+a 6 ns period exceeds it despite rounded marketing labels. Frequency
+tolerance also belongs in the final selected-clock proof.
+
+The RA8P1 Rev.1.30 Table 2.65 high-speed conditions, drive selections and
+15 pF loading must be applied to the actual paths including all ten series
+resistors. In particular, minimum specified MCU CK slew and the flash AC
+test slew are not interchangeable; a nominal frequency comparison does
+not close timing. Verify DS alignment, input/output loading, trace skew,
+setup/hold, clock duty cycle, ringing and overshoot at supply/temperature
+corners. Current English AD review is also required; retaining AB's more
+conservative low-speed SPI setup/hold values is an interim screen, not
+permission to disregard a changed released specification.
+
+Rev. AB Table 87, pp.132-134, gives 1 Gbit program/erase maxima of 66 mA,
+POR 80 mA, 85 C standby 160 uA and deep-power-down 26 uA. Read-current
+figures exclude output switching. Its 173 mA DDR row is labeled 200 MHz
+for both HL/HS devices although the selected HL maximum is 166 MHz.
+That ambiguity prevents treating 173 mA as a clean manufacturer bound for
+this exact selected operating point.
+
+Reserve **250 mA for this NOR domain** as a qualification allocation,
+including its IO switching and pulls, not a manufacturer maximum.
+For an illustrative 15 pF total load on each of eight data outputs plus DS,
+with one charging transition per clock cycle on every output:
+
+```text
+I_switch_screen = 9 * 15pF * Vrail_max * fCK
+At 125 MHz: 56.674436 mA; 173 + 56.674436 = 229.674436 mA
+At 166 MHz: 75.263651 mA; 173 + 75.263651 = 248.263651 mA
+```
+
+This is charge arithmetic, not a simulation or a guarantee that 173 mA is
+valid/monotonic at lower clocks. The illustrative 15 pF must include the
+actual receiving/input and interconnect load; flash input capacitance is
+not a replacement for that output-load budget. Do not add the MCU's CK
+driver loss to NOR current while omitting it from the MCU rail budget.
+Reserve 1 mA within the 250 mA for the two external pulls and leakage;
+the executable screen below checks this conservative static allowance.
+
+The earlier PWR-003 NOR allocation of 100 mA is superseded for this
+selected part. Keeping other allocations unchanged raises the main rail
+from **1.65 A to 1.80 A**, the radio-off cold-start reference screen from
+1.730 A to **1.880 A**, and the wake screen from 1.670 A to **1.820 A**.
+Radio-on cold start would screen at **2.380 A** and remains prohibited.
+These are allocations/reference-current sums, not all-corners startup
+maxima; non-DCDC MCU current, capacitor charging, regulator efficiency,
+current-limit behavior, thermal rise and load transients still need closure.
+At 1.80 A the existing nominal 2 A TPS63802 has only 0.20 A nameplate
+headroom; do not certify guaranteed delivery or thermal margin from that
+subtraction. Reopen [PWR-003](power_decoupling.md#pwr-003-tps63802-main-digital-converter)
+and the battery/source budget before approving simultaneous operation.
+High-quality audio, radio and the required storage scope are not silently
+reduced to make this arithmetic fit.
+
+### CMS-011F: Exact sourcing snapshot and reproducible checks
+
+Snapshot 2026-09-08, USD excluding tax/shipping, not reserved stock. NOR,
+30R and 47k rows were refreshed directly; 10k/capacitor rows retain the
+same-date verified native-donor snapshots. Copy identity and order code,
+not another value's inherited sourcing metadata.
+
+| Exact MPN / DigiKey order code | Stock | USD at 1 / 10 / 100 |
+| --- | ---: | --- |
+| [S28HL01GTFPBHI030 / 448-S28HL01GTFPBHI030-ND][nor-dk] | 2553 | 22.21 / 20.586 / 18.9691 |
+| [RT0603BRD0730RL / 13-RT0603BRD0730RLCT-ND][nor-r30-dk] | 10201 | 0.10 / 0.067 / 0.0559 |
+| [RC0603FR-0747KL / 311-47.0KHRCT-ND][nor-r47-dk] | 2036190 | 0.10 / 0.025 / 0.0122 |
+| [RC0603FR-0710KL / 311-10.0KHRCT-ND][nor-r10-dk] | 2866522 | 0.10 / 0.025 / 0.0122 |
+| [C1608X7R1H104K080AA / 445-1314-1-ND][nor-c100-dk] | 372402 | 0.11 / 0.06 / 0.0359 |
+| [C3216X7R1V106K160AC / 445-14799-1-ND][nor-c10-dk] | 9358 | 0.68 / 0.424 / 0.2903 |
+
+The exact [Mouser NOR listing][nor-mouser], order code
+727-S28HL01GTFPBHI30, was also checked, but a current direct-page price
+and purchasable quantity could not be verified. Do not present an older
+search-index nonstock/MOQ result as current stock. DigiKey is the current
+verified source for this selection; refresh both before procurement.
+
+Run from the worktree root. This checks the displayed contract against
+independently transcribed pin identities and recomputes the engineering
+screens. It neither reads nor creates a future native NOR schematic.
+
+```python
+from pathlib import Path
+from math import isclose, sqrt
+import re
+
+document = Path('ra8p1_kicad/design/camera_storage_interfaces.md').read_text()
+section = document.split('## CMS-011: 128 MiB Octal NOR electrical contract')[1]
+rows = re.findall(
+    r'^\| (DQ[0-7]|CK|DS|CS#|INT#|RESET#) \| ([A-E][1-5]) '
+    r'\| (P\d{3}|-) \| ([A-Z]\d+|-) \| ([^|]+) \|$', section, re.M)
+expected = {
+    'DQ0': ('D3', 'P100', 'U6'), 'DQ1': ('D2', 'P803', 'P7'),
+    'DQ2': ('C4', 'P103', 'R4'), 'DQ3': ('D4', 'P101', 'R5'),
+    'DQ4': ('D5', 'P102', 'P5'), 'DQ5': ('E3', 'P800', 'T6'),
+    'DQ6': ('E2', 'P802', 'R6'), 'DQ7': ('E1', 'P804', 'R7'),
+    'CK': ('B2', 'P808', 'U5'), 'DS': ('C3', 'P801', 'P6'),
+    'CS#': ('C2', 'P104', 'M6'), 'INT#': ('A5', 'P105', 'N7'),
+    'RESET#': ('A4', '-', '-'),
+}
+assert len(rows) == 13
+assert {name: (ball, port, mcu_ball) for name, ball, port, mcu_ball, conn in rows} == expected
+assert sum('30R series' in conn for name, ball, port, mcu_ball, conn in rows) == 10
+assert 'MCU_RESET_N' in next(conn for name, ball, port, mcu_ball, conn in rows if name == 'RESET#')
+supply_rows = re.findall(
+    r'^\| (VCCQ?|VSSQ?|DNU) \| ([A-E1-5, ]+) \| ([^|]+) \|$', section, re.M)
+supply_groups = {name: balls.replace(',', '').split() for name, balls, conn in supply_rows}
+assert supply_groups == {
+    'VCC': ['B4'], 'VCCQ': ['D1', 'E4'], 'VSS': ['B3'],
+    'VSSQ': ['C1', 'E5'], 'DNU': ['A2', 'A3', 'B1', 'B5', 'C5'],
+}
+all_balls = [item[0] for item in expected.values()] + [b for group in supply_groups.values() for b in group]
+assert len(all_balls) == len(set(all_balls)) == 24
+assert set(all_balls) == {f'{r}{c}' for r in 'ABCDE' for c in range(1, 6)} - {'A1'}
+ports = {port for ball, port, mcu_ball in expected.values() if port != '-'}
+assert len(ports) == 12 and 'P106' not in ports
+reservation = re.search(r'"ospi0": "([^"]+)"', document).group(1).split()
+assert ports == set(reservation)
+assert len({mcu_ball for ball, port, mcu_ball in expected.values() if port != '-'}) == 12
+capacity = 2**30 // 8
+assert capacity == 128 * 2**20 and capacity >= 64 * 2**20
+print('CMS-011: 24 balls once, 12 reserved MCU ports, ten 30R paths, 128 MiB PASS')
+
+vmin, vmax, vstress = 3.242044111302129, 3.3584850935146022, 3.6
+initial_tol, tcr, delta_t = .01, 100e-6, 100
+def pull_bounds(nominal):
+    return (nominal*(1-initial_tol)*(1-tcr*delta_t),
+            nominal*(1+initial_tol)*(1+tcr*delta_t))
+r10min, r10max = pull_bounds(10000)
+r47min, r47max = pull_bounds(47000)
+assert isclose(r10min, 9801) and isclose(r10max, 10201)
+assert isclose(r47min, 46064.7) and isclose(r47max, 47944.7)
+flash_leak, mcu_leak, board_alloc = 2e-6, 1e-6, 1e-6
+int_high = vmin - (flash_leak+mcu_leak+board_alloc)*r47max
+int_sink = vstress/r47min + mcu_leak + board_alloc
+int_margin = int_high - .8*vmax
+cs_high = vmin - (flash_leak+mcu_leak+board_alloc)*r10max
+cs_sink = vstress/r10min + flash_leak + board_alloc
+int_heat, cs_heat = vstress**2/r47min, vstress**2/r10min
+assert isclose(int_high, 3.0502653113021294)
+assert isclose(int_margin, .3634772364904473) and int_margin > 0
+assert isclose(int_sink, 80.15094855713812e-6) and int_sink < 100e-6
+assert isclose(int_heat, .28134341480569726e-3)
+assert isclose(cs_high, 3.201240111302129)
+assert cs_high > .65*vmax and .5 < .35*vmin
+assert isclose(cs_sink, .3703094582185491e-3) and cs_sink < 1e-3
+assert isclose(cs_heat, 1.322314049586777e-3)
+pull_allocation = 1e-3
+assert int_sink + cs_sink < pull_allocation
+derated_power_125c = .1*(155-125)/(155-70)
+assert isclose(derated_power_125c, .03529411764705882)
+assert int_heat < derated_power_125c and cs_heat < derated_power_125c
+assert vstress < min(75, sqrt(derated_power_125c*r10min), sqrt(derated_power_125c*r47min))
+print('INT high V / margin V / sink uA / resistor mW',
+      int_high, int_margin, int_sink*1e6, int_heat*1e3)
+print('CS high V / high margin V / sink mA / resistor mW',
+      cs_high, cs_high-.65*vmax, cs_sink*1e3, cs_heat*1e3)
+print('two active-low pull sinks mA / allocated mA',
+      (int_sink+cs_sink)*1e3, pull_allocation*1e3)
+
+r30min = 30*(1-.001)*(1-25e-6*100)
+r30max = 30*(1+.001)*(1+25e-6*100)
+assert isclose(r30min, 29.895075) and isclose(r30max, 30.105075)
+assert 30*.99 < r30min < r30max < 30*1.01
+assert isclose(30*.99*.99, 29.403) and isclose(30*1.01*1.01, 30.603)
+assert sqrt(.1*r30min) < 75  # Actual DC power limit is lower than case voltage.
+print('30R initial+TCR screen ohm', r30min, r30max, '; aging/AC qualification OPEN')
+nominal_cap_uf = 3*.1 + 10
+assert isclose(nominal_cap_uf, 10.3)
+assert isclose(nominal_cap_uf*.9, 9.27) and isclose(nominal_cap_uf*1.1, 11.33)
+print('NOR bypass nominal/initial min/max uF', nominal_cap_uf,
+      nominal_cap_uf*.9, nominal_cap_uf*1.1, '; not effective-C guarantee')
+
+reset_sink = vstress/r10min + (5+5+2)*1e-6
+reset_drop_added = flash_leak*r10max
+reset_vtrip_min, reset_leak_alloc = 3.02395, 25e-6
+reset_high = reset_vtrip_min - reset_leak_alloc*r10max
+reset_margin = reset_high - .8*reset_vtrip_min
+assert isclose(reset_sink, 379.3094582185491e-6) and reset_sink < 1e-3
+assert isclose(reset_drop_added, .020402)
+assert isclose(reset_high, 2.768925) and isclose(reset_margin, .349765)
+assert reset_margin > 0
+print('common reset sink uA / added drop mV / allocated high margin V',
+      reset_sink*1e6, reset_drop_added*1e3, reset_margin)
+pre_access_policy_s = .001
+assert pre_access_policy_s > 500e-6 and pre_access_policy_s > 50e-9
+print('1 ms pre-access is a required policy, not implemented firmware or an RC proof')
+
+f_baseline, f_limit = 125e6, 166e6
+assert isclose(1e9/f_limit, 6.024096385542169)
+assert 1e9/6 > f_limit and f_baseline < f_limit
+nor_allocation, ambiguous_read_row = .250, .173
+for freq, expected_dynamic in ((f_baseline, .05667443595305891),
+                               (f_limit, .07526365094566276)):
+    dynamic = 9*15e-12*vmax*freq
+    assert isclose(dynamic, expected_dynamic)
+    print('Hz / illustrative switching mA / ambiguous-row sum mA',
+          freq, dynamic*1e3, (ambiguous_read_row+dynamic)*1e3)
+    assert ambiguous_read_row + dynamic + pull_allocation < nor_allocation
+new_main = 1.65 - .100 + nor_allocation
+cold_radio_off = 1.730 - .100 + nor_allocation
+wake_screen = 1.670 - .100 + nor_allocation
+assert isclose(new_main, 1.8) and isclose(cold_radio_off, 1.880)
+assert isclose(wake_screen, 1.820) and isclose(cold_radio_off+.5, 2.380)
+assert cold_radio_off+.5 > 2.0
+print('main / cold radio-off / wake / prohibited cold radio-on allocations A',
+      new_main, cold_radio_off, wake_screen, cold_radio_off+.5)
+print('CMS-011 arithmetic PASS; native implementation, current/timing/reset qualification OPEN')
+```
+
+Proposed reciprocal native note, to be tailored to actual references when
+placed: `CMS-011 | 128 MiB Octal NOR; 10 x 30R external JESD251 series.
+CS 10k. INT 47k: ILOW <=80.151uA; VHIGH >=3.050265V (4uA screen).
+3 x 100n + 10u = 10.3uF nominal. 125MHz DDR/DS candidate; SI/PDN open.
+Shared external reset only; >=1ms pre-access policy; internal MCU reset
+needs protocol recovery. NOR 250mA allocation reopens main-rail budget.`
+The note must hyperlink here; record its actual native page/UUID after
+placement, without implying that this proposal is already on the schematic.
+
+[nor-ab]: https://www.mouser.com/datasheet/3/70/1/8HS01GT_S28HL512T_S28HL01GT_512MB_1GB_SEMPER_TM_FLASH_OCTAL_INTERFACE_1_8V_3-DataSheet-v68_00-EN.pdf
+[nor-ad]: https://www.infineon.com/assets/row/public/documents/10/49/infineon-s28hs512t-s28hs01gt-s28hl512t-s28hl01gt-512mb-1gb-semper-tm-flash-octal-interface-1-8v-3-datasheet-cn.pdf
+[nor-ra-ds]: https://www.renesas.com/en/document/dst/ra8p1-group-datasheet
+[nor-ra-hum]: https://www.renesas.com/en/document/mah/ra8p1-group-users-manual-hardware
+[nor-rt]: https://yageogroup.com/content/datasheet/asset/file/PYU-RT_1-TO-0-01_ROHS_L
+[nor-rc10]: https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL
+[nor-rc47]: https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0747KL
+[nor-c100]: https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA
+[nor-c10]: https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C3216X7R1V106K160AC
+[nor-c10-curve]: https://product.tdk.com/system/files/dam/doc/product/capacitor/ceramic/mlcc/charasheet/c3216x7r1v106k160ac.pdf
+[nor-dk]: https://www.digikey.com/en/products/detail/infineon-technologies/S28HL01GTFPBHI030/15903885
+[nor-r30-dk]: https://www.digikey.com/en/products/detail/yageo/RT0603BRD0730RL/1072456
+[nor-r47-dk]: https://www.digikey.com/en/products/detail/yageo/RC0603FR-0747KL/730200
+[nor-r10-dk]: https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827
+[nor-c100-dk]: https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811
+[nor-c10-dk]: https://www.digikey.com/en/products/detail/tdk/C3216X7R1V106K160AC/3956465
+[nor-mouser]: https://www.mouser.com/ProductDetail/Infineon-Technologies/S28HL01GTFPBHI030?qs=sPbYRqrBIVlVJsyzP6oGfQ%3D%3D
