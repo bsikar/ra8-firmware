@@ -216,15 +216,31 @@ def _open_remote_holder(data: dict[str, Any]) -> subprocess.Popen[bytes]:
 
 
 def _group_exists(process_group: int) -> bool:
-    """Return whether any member of a protected process group remains."""
+    """Return whether a protected group retains any live member."""
     try:
-        os.killpg(process_group, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
+        entries = tuple(Path("/proc").iterdir())
+    except OSError:
         return True
-    else:
-        return True
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        try:
+            raw = (entry / "stat").read_bytes()
+        except FileNotFoundError:
+            continue
+        except OSError:
+            return True
+        closing = raw.rfind(b")")
+        fields = raw[closing + 2 :].split() if closing >= 0 else []
+        try:
+            state, _parent, group, *_remaining = fields
+        except ValueError:
+            return True
+        if not group.isdigit():
+            return True
+        if int(group) == process_group and state != b"Z":
+            return True
+    return False
 
 
 def _signal_groups(groups: set[int], process_signal: int) -> None:
