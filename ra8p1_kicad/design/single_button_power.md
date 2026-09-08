@@ -86,7 +86,7 @@ Additional unplaced SYS-007 parts do not yet have native references here.
 ### Native reference and calculation cross-map
 
 Read-only snapshot of [power_button.kicad_sch](../ereader/power_button.kicad_sch)
-on 2026-09-07, SHA256 prefix `7e29527228bb`. All eleven components below
+on 2026-09-07 for this eight-sheet controls checkpoint. All eleven components below
 have `in_bom=yes`, `dnp=no`, and exact manufacturer-part fields. This is
 saved-file connectivity/metadata verification, not a measured hardware test.
 
@@ -134,13 +134,22 @@ split is **U9.1 and C55.1 to AON_HOLD, while R18.1 stays on raw SYS_AON**.
 The existing shared wire is the earlier raw-supply stage, not implementation
 of SYS-007. Do not rename the whole shared net to AON_HOLD.
 
-The 2026-09-07 full-project ERC reports 204 errors and two warnings. Page 7
+The 2026-09-07 CLI full-project ERC reports 204 errors and two active warnings.
+The native GUI review also displays 15 excluded warnings (17 warnings
+including exclusions, 221 total displayed findings); exclusions are not fixes.
+Page 7
 has exactly the unconnected U9.6/EN and undriven SYS_AON findings; neither
 INT/KILL signal nor its assigned MCU pin has an ERC finding. Page 8's four
 page/volume circuits are fully routed as recorded in CMS-009 and have no
 ERC findings. This is not approval to power or fabricate the unfinished
 board. D1..D5 remain included in simulation by the owner's choice; no
 validated model or simulation-qualified circuit is claimed.
+The final native page-7 draft note explicitly identifies the unfinished
+SYS_AON source, EN route, held supply, supervision and discharge, with links
+to SYS-007 and this record. The final C55 text-clearance adjustment changes
+presentation, not connectivity. The same-checkpoint source path above is
+the reference; a movable-text-only save does not invalidate the electrical
+connection table.
 
 The sheet's `BTN-003: POWER-KEY INPUT / R18, R19, C56, SW1` note
 (native UUID `bd9d6b7a-5ac8-470a-8918-e857e43f19e2`) points back to

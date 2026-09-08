@@ -403,6 +403,9 @@ MCU control pins. The whole project is not ERC-clean: 197 unconnected-pin
 errors, four undriven-power errors, three VLO output-conflict errors and
 two radio-label warnings remain. The run included error, warning and
 exclusion severities; ignored project checks were not silently re-enabled.
+The native GUI review additionally displays 15 excluded warnings: 17
+warnings including exclusions and 221 total displayed findings. Those
+excluded findings are not counted as fixed by the four-key work.
 These findings must remain visible while the remaining sections are built.
 
 Reciprocal native note identifiers are:
@@ -431,8 +434,9 @@ shared between keys. This pin-number mapping is from KiCad's XML netlist,
 not an assumption based on the rotated resistor's appearance.
 
 The four matching root routes and exact end-to-end netlist checks pass.
-Preserve them during subsequent work, regenerate the full PDF/BOM and
-visually review the saved hierarchy before the design checkpoint commit.
+The full PDF and BOM have been refreshed, with native visual review of all
+eight PDF pages. Preserve the verified routes and keep these exports
+synchronized during subsequent work.
 U1's P309_IN/P310_IN/P311_IN
 and P909_IN selected pin functions already model the intended Input types;
 the reusable default GPIO types are Bidirectional. Symbol functions do not
