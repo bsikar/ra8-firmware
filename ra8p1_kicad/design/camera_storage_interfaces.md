@@ -1,6 +1,6 @@
 # Camera, removable storage and external-memory allocation
 
-Revision 9, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
+Revision 10, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
 This is an engineering allocation record for native KiCad implementation,
 not a completed schematic, verified timing closure or hardware qualification.
 Cross-references: [radio](radio_interface.md), [power](system_power_design.md),
@@ -597,7 +597,7 @@ change; their presence is not hardware qualification.
 
 ## CMS-010: IS42S32160F-7TLI pin and electrical contract
 
-Native SDRAM power/bypass checkpoint, 2026-09-08, for
+Native SDRAM signal-interconnect checkpoint, 2026-09-08, for
 [memory issue #827](https://github.com/bsikar/ra8-firmware/issues/827).
 This section records partial native SDRAM implementation and its electrical
 contract, not a completed or qualified circuit. It does not change firmware,
@@ -605,8 +605,11 @@ ERC settings, or the
 existing CMS-009 controls checkpoint. The selected part is ISSI
 IS42S32160F-7TLI; this supersedes the CMS-008 historical Alliance candidate
 for implementation without rewriting that sourcing history. Footprint geometry
-is outside this pin-number audit. Page 10 now contains the placed memory
-units and completed power/bypass wiring; signal implementation remains pending.
+is outside this pin-number audit. Page 10 contains the placed memory units,
+completed power/bypass wiring and all 57 signal connections through the
+root hierarchy to page 2. The ten command/clock pullups and selected MCU
+electrical pin roles remain unfinished; interconnection alone is not
+startup, signal-integrity or timing qualification.
 
 Primary evidence:
 
@@ -719,20 +722,35 @@ control/address Input pins, 32 Bidirectional DQ pins, 24 Power input
 supply/ground pins and five Not connected pins. Native Symbol Checker
 reported no issues. All four U14 units are now placed. The 12 supply pins
 connect to +3V3_MCU, the 12 ground pins connect to GND, and the five NC
-pins remain isolated. All 57 signal pins are intentionally unfinished,
-not marked no-connect. Pulls, the source-series clock resistor, MCU bus
-connections and signal hierarchy are not yet connected. This checkpoint
+pins remain isolated. Those power/bypass and NC connections are unchanged
+from the preceding checkpoint. Native XML now verifies all 56 direct U1-U14
+signal pairs against the table above. CLK is the remaining signal:
+U1.E1 and R43.2 form `SDRAM_CLK_SRC`; R43.1 and U14.68 form `SDRAM_CLK`.
+The populated 0R link preserves separate source and load nets.
+
+Each leaf now has four vector hierarchical labels,
+`SDRAM_A[0..12]`, `SDRAM_BA[0..1]`, `SDRAM_DQ[0..31]` and
+`SDRAM_DQM[0..3]`, plus six scalar labels: `SDRAM_CLK`, `SDRAM_CKE`,
+`SDRAM_CS_N`, `SDRAM_RAS_N`, `SDRAM_CAS_N` and `SDRAM_WE_N`.
+All ten root sheet-pin connections join the matching leaf labels; the
+whole-project XML contains 284 nets. No memory signal is marked no-connect.
+
+The checkpoint CLI ERC reports 145 errors and two active warnings, with
+zero findings on page 10 and no SDRAM-related root findings. Every remaining
+finding identity was present before this interconnect phase. The native GUI
+shows 145 errors and 17 warnings, including the same 15 existing excluded
+warnings; all four ignored checks are unchanged. No new exclusion or rule
+waiver was used to obtain these counts. The project is not ERC-clean.
+The native BOM contains 62 groups, 163 components and 18 columns, including
+R43. Reciprocal CMS-010 notes are present on pages 2 and 10.
+
+All 57 selected MCU signal pins still have Passive electrical types.
+Set them to 25 Output and 32 Bidirectional in the next native phase;
+the current interconnect checkpoint does not claim this completed.
+Symbol pin typing is an ERC model, not firmware pin configuration, and
+the current error reduction does not prove correct driver modelling.
+The ten 10k command/clock pullups are also not yet placed. This checkpoint
 does not establish full-circuit ERC acceptance or electrical qualification.
-The checkpoint ERC retains the existing 202 errors and two non-excluded
-warnings, adding 57 unconnected-signal and 25 undriven-input errors on the
-new page: 284 errors and two warnings total, without waiving those errors.
-No errors were reported on its 24 power pins or 13 capacitors. The native
-BOM contains 61 groups, 162 components and 18 columns. Page 10 includes
-notes with a hyperlink to this CMS-010 contract.
-Set the selected MCU roles to 25 Output and 32 Bidirectional; the reviewed
-default MCU and IME pins were Passive. Symbol pin typing is an ERC model,
-not firmware pin configuration. MCU role typing remains part of the next
-native circuit implementation; the symbol checkpoint does not claim it done.
 
 ### CMS-010B: Shared supply, pull and bypass basis
 
@@ -780,8 +798,20 @@ The [Renesas quick guide](https://www.renesas.com/en/document/apn/ra8p1-mcu-quic
 and [memory architecture note](https://www.renesas.com/en/document/apn/getting-started-ra8p1-memory-architecture-configurations-and-topologies)
 reviewed here do not prescribe exact SDRAM series-resistor/bypass values.
 
-There is no VREF pin or DDR-style VTT requirement. Provide a source-series
-clock-resistor position for SI tuning; no 22/33 Ohm value is approved yet.
+There is no VREF pin or DDR-style VTT requirement. R43 now provides the
+populated source-series clock-resistor position on page 2. Its exact part
+is YAGEO RC0603JR-070RL, DigiKey 311-0.0GRCT-ND, with a blank deferred
+footprint and the native value `0R`. The
+[manufacturer part specification](https://www.yageogroup.com/component-documentation/download/specsheet/RC0603JR-070RL)
+and [RC_L series Table 2, p5](https://www.yageogroup.com/content/datasheet/asset/file/PYU-RC_GROUP_51_ROHS_L)
+identify a 0603 jumper with initial resistance <50 mOhm and 1 A rated
+current; this is not a claim of an ideal zero resistance or a useful
+"5% of zero" tolerance. Its copied native sourcing snapshot is
+2026-09-08: [DigiKey stock 7,899,620](https://www.digikey.com/en/products/detail/yageo/RC0603JR-070RL/726675),
+USD 0.10 / 0.011 / 0.0066 at quantities 1 / 10 / 100. Stock is not reserved.
+R43 is an SI-tuning starting link, not approved damping or timing closure;
+no 22/33 Ohm value is approved yet. The future CLK pullup belongs on its
+memory-side `SDRAM_CLK` node, not `SDRAM_CLK_SRC`.
 Decide address/control and bidirectional DQ damping from the actual load,
 driver model and both-direction timing. A clock-only delay can consume
 write-hold margin. Do not claim the EK resistor value is valid for this
@@ -980,9 +1010,19 @@ Sourcing refresh, 2026-09-08, for this exact ordering code:
 This is a distributor snapshot, not reserved stock or a volume-supply
 guarantee. The native symbol uses the DigiKey ordering code and snapshot.
 
-Proposed reciprocal schematic annotation, to add with the native memory
-circuit: `CMS-010 SDRAM: 64 MiB, x32, A02->A0; VDD/VDDQ=+3V3_MCU.`
-Then show the local results: `125 MHz raw setup 0.5 ns; write hold 0 ns;
-read-high static margin 49.06 mV. Startup/SI qualification OPEN.` Link to
-`../design/camera_storage_interfaces.md` and retain this calculation ID.
-The annotation is proposed, not claimed present in the schematic.
+Reciprocal native annotations now present:
+
+- Page 2, `CMS-010 | R43: 0R source clock link.`, UUID
+  `5e3b6d56-5b13-4749-aa0d-b25d6926db3d`: populated tuning position,
+  with damping and timing explicitly unqualified.
+- Page 10, `CMS-010 | SDRAM power and bypass`, UUID
+  `3dfe9a7d-05b9-43c6-b336-a2b76637c897`: shared supply, C76-C88
+  identities and the nominal `12 * 0.1 + 10 = 11.2 uF` calculation.
+
+Both annotations hyperlink to this CMS-010 contract. Page 10's block heading
+also explicitly identifies the pending command pulls, MCU pin-role typing
+and timing qualification. Preserve these reciprocal references when the
+circuit changes. A future timing annotation should show the local results,
+`125 MHz raw setup 0.5 ns; write hold 0 ns; read-high static margin 49.06 mV.
+Startup/SI qualification OPEN.` That additional timing note is not claimed
+present in the current schematic.
