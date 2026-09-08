@@ -5688,7 +5688,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin input line
 				(at -15.24 -15.24 0)
 				(length 3.81)
 				(name "P406"

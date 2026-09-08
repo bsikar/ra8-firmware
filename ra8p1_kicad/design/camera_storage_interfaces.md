@@ -1,6 +1,6 @@
 # Camera, removable storage and external-memory allocation
 
-Revision 16, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
+Revision 17, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
 This is an engineering allocation record for native KiCad implementation,
 not a completed schematic, verified timing closure or hardware qualification.
 Cross-references: [radio](radio_interface.md), [power](system_power_design.md),
@@ -1781,3 +1781,197 @@ placement, without implying that this proposal is already on the schematic.
 [nor-c100-dk]: https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811
 [nor-c10-dk]: https://www.digikey.com/en/products/detail/tdk/C3216X7R1V106K160AC/3956465
 [nor-mouser]: https://www.mouser.com/ProductDetail/Infineon-Technologies/S28HL01GTFPBHI030?qs=sPbYRqrBIVlVJsyzP6oGfQ%3D%3D
+
+## CMS-012: Independent mechanical microSD card detect
+
+2026-09-08 implementation contract; native mechanical detect wiring and
+host/root hierarchy integration are complete and netlist-verified.
+This section covers only J2's mechanical switch and its host input, not
+the card power supply, CMD/DAT/CLK interface or complete microSD acceptance.
+The saved local circuit has exactly J2.MP2, R72.2, R73.1 and D6.1 on one
+contact node; R72.1 on +3V3_MCU; and exactly R73.2 plus U1.F14 on the
+end-to-end SD_CD_N net through the microSD and MCU hierarchy ports. D6.2,
+J2.6 and MP1/MP3/MP4/MP5/MP6 are GND. Four unique ground symbols remain,
+with no duplicated wire segments. Card VDD and all six bus signals remain
+open at this stage. All four embedded MCU symbol caches match the library's
+289-pin map: only P406/F14 changed from Passive to Input relative to the
+preceding checkpoint; other pin identities, alternate definitions, geometry
+and placed U1 fields were retained. The 210 preceding component references
+retain all 312 original net partitions after excluding the four new parts
+J2/R72/R73/D6. These checks establish CD connectivity, not complete ERC
+acceptance or card power/bus completion.
+
+```text
++3V3_MCU -- R72 10k --+-- J2.MP2 (CD_B)
+                     +-- D6.1 (IO); D6.2 -- GND
+                     +-- R73 1k -- SD_CD_N -- U1.P406 / F14 (SD1CD input)
+J2.MP4 (CD_A) -- GND
+J2.6 (VSS), MP1/MP3/MP5/MP6 (four shields) -- GND
+```
+
+R72 is on the **contact side** of R73, unlike the CMS-009 key pullups.
+There is no 1k/10k closed-state divider. No capacitor is placed on SD_CD_N:
+the initially considered C102=100nF is omitted entirely, not a DNP part.
+Neither detect contact is connected to card VDD or a card signal. J2.2 is
+DAT3, not this mechanical CD contact. The separate switched card supply
+and protected/isolated bus remain incomplete and must not be bypassed by
+connecting them to the main host rail.
+
+### Exact reusable parts and primary limits
+
+| Reference | Native donor / exact manufacturer part | Existing supplier identity |
+| --- | --- | --- |
+| R72, 10k | R18 / YAGEO RC0603FR-0710KL | [311-10.0KHRCT-ND][nor-r10-dk] |
+| R73, 1k | R19 / YAGEO RC0603FR-071KL | [311-1.00KHRCT-ND](https://www.digikey.com/en/products/detail/yageo/RC0603FR-071KL/726843) |
+| D6 | D1 / Texas Instruments ESD441DPYR | [296-ESD441DPYRCT-ND](https://www.digikey.com/en/products/detail/texas-instruments/ESD441DPYR/28715599) |
+
+Preserve those donors' exact MPN, manufacturer, supplier URL and explicitly
+dated 2026-09-07 snapshots; update Description, Selection_Basis and
+Procurement_Status for CMS-012. Reuse is not a fresh stock verification.
+The donor snapshots are R72 2,904,275 and R73 4,068,534 pieces, each USD
+0.10/0.025/0.0122 at 1/10/100; D6 3,273, USD 0.34/0.207/0.1291.
+These are unreserved historical observations, not current order guarantees.
+
+Primary evidence:
+
+- [Hirose EDC-325165-00-00 drawing][cms12-hrs-drawing], sheet 1 of 6,
+  revision mark 4 dated 2024-09-02, note 2: A/B open without a card and
+  closed with a card. [DM3 catalog D49662_en][cms12-hrs-catalog], printed
+  edition 2017.1, retrieved with August 2026 watermark, page 2: 100mOhm
+  initial contact resistance tested at **1mA**, with maximum 40mOhm change
+  after listed environmental/durability tests; DM3AT durability 10,000 cycles;
+  operating -25..85C. The series 0.5A/125VAC ratings are not evidence of a
+  minimum CD wetting current or permission to hot-switch that load.
+- [RA8P1 datasheet R01DS0439EJ0130][nor-ra-ds], Rev.1.30, 2026-02-27,
+  Tables 2.1/2.4/2.5/2.7, pages 44/46-49/57: P406 is not 5V-tolerant,
+  ordinary-port off-state leakage is at most 1uA at the stated rail-endpoint
+  tests, and its input capacitance category is 8pF maximum **at 25C**.
+  The SD_B ch1 peripheral threshold row is 0.625*VCC high / 0.25*VCC low;
+  GPIO and other VCC Schmitt inputs use 0.8*VCC / 0.2*VCC. This calculation
+  deliberately uses the stricter 0.8/0.2 envelope in both configurations;
+  it does not infer a separate SD1CD Schmitt-hysteresis guarantee.
+- [RA8P1 HUM R01UH1064EJ0130][nor-ra-hum], same revision/date,
+  Tables 21.2/21.11 and 48.2: P406 is VCC-powered, SD1CD is input-only.
+  Section 48.3.2.1 describes active-low mechanical detection. SD_INFO1
+  SDCDMON=1 means the pin is low/card present; 0 means high/absent.
+  SD_OPTION.CTOP sets the continuous detection interval in PCLKB cycles.
+- [YAGEO 10k][nor-rc10] and [1k exact specifications][cms12-r1]: 1%,
+  +/-100ppm/C. The following screen compounds tolerance and TCR over 100C,
+  giving R72=9801..10201Ohm and R73=980.1..1020.1Ohm. That calculation
+  excursion is not an expansion of the socket's -25..85C operating rating.
+- [TI ESD441 SLVSH26B][cms12-tvs], revised December 2025, section 5.6:
+  <100nA over the operating temperature range within +/-5.5V stand-off.
+  The 50nA figure is a 25C limit, not the all-temperature value. Pin 1 is
+  IO, pin 2 GND; 1pF is typical, not a maximum. Component IEC ratings
+  and typical clamp voltages do not establish the residual MCU waveform.
+
+### Executable DC and parasitic screen
+
+Use the full host range 3.0..3.6V, not a draft narrowed converter range.
+Allocate 1uA MCU +0.1uA TVS +1uA board/socket leakage = 2.1uA. The last
+term is a design allowance, not a guaranteed manufacturer maximum; it
+includes contamination and open-switch leakage. Conservatively moving all
+leakage to the MCU node overstates both high-state loss and low-state rise.
+The 0.14Ohm closed-contact value combines Hirose's initial/test-change
+numbers, but its applicability at this circuit's lower steady current is a
+**qualification assumption**, not a demonstrated wetting guarantee.
+
+```python
+from itertools import product
+
+rp = (10000*.99*.99, 10000*1.01*1.01)
+rs = (1000*.99*.99, 1000*1.01*1.01)
+voltages, leak, contact = (3.0, 3.6), 2.1e-6, .14
+cases = list(product(voltages, rp, rs))
+low = lambda v, r, s: v*contact/(r+contact) + leak*(s+r*contact/(r+contact))
+high = lambda v, r, s: v-leak*(r+s)
+vhigh = min(high(*case) for case in cases)
+vlow = max(low(*case) for case in cases)
+high_margin = min(high(v,r,s)-.8*v for v,r,s in cases)
+low_margin = min(.2*v-low(v,r,s) for v,r,s in cases)
+contact_min = voltages[0]/(rp[1]+contact)-leak
+contact_max = voltages[1]/rp[0]+leak
+pull_power = voltages[1]**2/rp[0]
+assert vhigh > 2.976435 and vlow < .002194
+assert high_margin > .576435 and low_margin > .597814
+assert contact_min > 291.984e-6 and contact_max < 369.410e-6
+assert pull_power < 1.323e-3
+print('CMS-012 high min / low max V', vhigh, vlow)
+print('high / low correlated margins V', high_margin, low_margin)
+print('contact min / max uA', contact_min*1e6, contact_max*1e6)
+print('R72 maximum steady power mW', pull_power*1e3)
+
+# Conditional two-node parasitic budget, NOT a guaranteed PCB measurement.
+# 8pF is the MCU's specified 25C test maximum; add 50pF host allowance.
+# 10pF contact allowance includes the TVS (1pF typical, no max) and routing.
+ch, ce = (8+50)*1e-12, 10e-12
+# Elmore first moment from rail to host for this passive two-node RC ladder.
+tracking_time = (rp[1]+rs[1])*ch + rp[1]*ce
+# For a continuous monotonic ramp, slew*time plus DC leakage bounds lag.
+fall_slew = (.3-leak*(rp[1]+rs[1]))/tracking_time
+assert tracking_time < .752834e-6 and fall_slew > 367193
+print('conditional tracking time us / maximum fall slope V/s',
+      tracking_time*1e6, fall_slew)
+print('corresponding 3.6V constant-slope fall minimum us',
+      3.6/fall_slew*1e6)
+print('CMS-012 DC screen PASS; wetting, bounce, parasitics and ESD qualification OPEN')
+```
+
+Executed results: high minimum 2.97643569V; low maximum
+0.002193926586V; correlated high/low margins 0.57643569V /
+0.597814643846V. Screened held contact current is 291.984778760..
+369.409458219uA. R72 dissipation is below 1.323mW. These are conditional
+design bounds, not a claim that Hirose guaranteed contact resistance at
+0.292mA. No published minimum CD wetting current or CD-specific maximum
+bounce duration was found in the cited documents. Confirm low-current
+contact reliability for the service environment, or revise pullup/part
+selection with explicit authority; do not silently treat the 1mA resistance
+test as either a mandatory minimum or a proven minimum-current guarantee.
+
+For the explicit parasitic budget, tracking time is 0.7528338us; maximum
+continuous falling slew is 367193.516V/s (a 3.6V constant-slope fall takes
+at least 9.804095us). This is a bounded circuit screen, not a measured
+all-temperature capacitance or guaranteed arbitrary-rail-collapse result.
+Verify actual parasitics and local host-rail slew, including fault/brownout
+and hard-off, before claiming Vin <= VCC+0.3 under all conditions. Ideal
+steps, ESD events and unbounded parasitics are outside this ramp calculation.
+
+The rejected 100nF-at-MCU version would retain energy directly on P406;
+an upstream series resistor would not limit that capacitor's current into
+the MCU input. With 126.558nF screened total capacitance and the original
+2.2uA leakage allowance, its equivalent conservative falling-slew limit
+was only 193.866V/s (18.57ms for a full 3.6V linear fall). The existing
+loaded hard-off circuit does not establish that restriction. Therefore no
+C102 is placed, and no internal clamp-current allowance is assumed.
+
+### Defaults, firmware contract and remaining qualification
+
+With a valid settled host rail, no card means high/absent and an inserted
+card means low/present; the mechanical state is independent of card VDD.
+Keep P406 input-only, with internal pulls disabled during GPIO and SD1CD
+use. Those internal pull currents span 10..300uA and are not part of the
+external-resistor calculation. Reset/high-impedance GPIO does not remove
+the external default. When the host rail is off, detection is not a valid
+logic indication and must not be used to infer a powered card interface.
+
+There is **no intentional analog debounce**. Require at least 20ms of
+continuously stable state before accepting insertion/removal or the initial
+post-reset state; this is a design policy, not a Hirose bounce guarantee.
+Use SD_OPTION.CTOP and/or software so the interval remains >=20ms at the
+actual fastest PCLKB, including clock changes. HUM 48.2.16 defines CTOP
+0x0..0xE as 2^10..2^24 cycles; 0xF is prohibited. Do not rewrite it while
+SD_INFO2.CBSY=1. On reset or wake, resample/debounce instead of assuming
+that a new insertion edge will occur for an already inserted card. Firmware
+debounce, power sequencing and removal-safe storage handling are requirements,
+not implemented changes in this schematic stage.
+
+D6 remains at the socket-side node with a short ground-current return.
+Its stand-off rating does not mean it clamps to 3.3V; qualify residual
+voltage at P406, R73 pulse stress, enclosure/contact ESD and PCB cleanliness.
+Do not claim overall ERC acceptance, microSD operation, card-power isolation,
+firmware correctness or full-system qualification from this CD-only screen.
+
+[cms12-hrs-drawing]: https://www.hirose.com/product/download/?distributor=chip1&lang=en&num=DM3AT-SF-PEJM5&type=2d
+[cms12-hrs-catalog]: https://www.hirose.com/en/product/document?documentid=D49662_en&documenttype=Catalog&lang=en&series=DM3
+[cms12-r1]: https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-071KL
+[cms12-tvs]: https://www.ti.com/lit/ds/symlink/esd441.pdf

@@ -1907,7 +1907,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin input line
 					(at -15.24 -15.24 0)
 					(length 3.81)
 					(name "P406"
@@ -7710,6 +7710,16 @@
 	)
 	(wire
 		(pts
+			(xy 304.8 63.5) (xy 330.2 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e04da374-f028-47ff-8a95-3416239ee4e9")
+	)
+	(wire
+		(pts
 			(xy 210.82 132.08) (xy 233.68 132.08)
 		)
 		(stroke
@@ -8547,6 +8557,17 @@
 			(justify left)
 		)
 		(uuid "61f66348-6f7d-452f-aa00-fc2f0d922e30")
+	)
+	(hierarchical_label "SD_CD_N"
+		(shape input)
+		(at 304.8 63.5 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "76fce97f-d281-464e-828f-81451bb866ee")
 	)
 	(hierarchical_label "SDRAM_BA[0..1]"
 		(shape output)

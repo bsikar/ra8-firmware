@@ -537,7 +537,7 @@
         "uuid": "0586cc51-9c57-495b-a0c9-c29ba0d48166"
       }
     ],
-    "used_designators": "Q1-3,U1-16,C1-101,FB1,SW1-5,R1-71,L1-2,J1,D1-5,#PWR1-167,Y1-2,#FLG1-2",
+    "used_designators": "TP4,Q1-3,U1-22,C1-111,FB1,SW1-5,R1-82,L1-2,J1-2,D1-6,#PWR1-204,Y1-2,#FLG1-2",
     "variants": []
   },
   "sheets": [
@@ -584,6 +584,10 @@
     [
       "23859413-ab36-480e-aeef-d0e8a227b709",
       "128 MiB Octal NOR"
+    ],
+    [
+      "56afd4f3-07e7-49f9-a338-a5473efb7ed6",
+      "microSD removable storage"
     ]
   ],
   "text_variables": {},
