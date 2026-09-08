@@ -1,6 +1,6 @@
 # E-reader system-power engineering basis
 
-Revision 4, 2026-09-07. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825),
+Revision 5, 2026-09-07. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825),
 [architecture #823](https://github.com/bsikar/ra8-firmware/issues/823), and
 [inputs #832](https://github.com/bsikar/ra8-firmware/issues/832).
 This record defines candidate circuit interfaces and verified arithmetic.
@@ -22,12 +22,15 @@ add high-current headphone rails and built-in speakers. The MCU/radio-only
 load screen below is not the new product's peak budget and does not approve
 the charger or battery for full-power audio plus charging.
 
-## Native held-supply implementation checkpoint: 2026-09-07
+## Native held-supply and supervisor implementation checkpoint: 2026-09-07
 
 The saved [power-button sheet](../ereader/power_button.kicad_sch) now contains
 U10 LM66100DCKR, R31 100 ohm/1 W, C62 100 nF input bypass, and C63-C66
-100 uF/10 V polarized reservoir capacitors. Its visible SYS-007 comment
-links back to the full calculations below. This supersedes the raw-supply
+100 uF/10 V polarized reservoir capacitors. It also contains U11
+TPS3808G01DBVR, R32/R33 precision source divider, R34 EN pullup, C67
+100 nF bypass, C68 1 nF SENSE filter and C69-C71 100 nF C0G CT bank.
+Its visible SYS-007 comments link back to the full calculations below.
+This supersedes the raw-supply
 connection and missing-reservoir statements in the historical checkpoint.
 
 Read-only native XML netlist assertions verify the corrected connection
@@ -35,10 +38,13 @@ basis below; the BOM, PDF and native ERC refresh are also complete.
 
 | Net | Exact members in this control block |
 | --- | --- |
-| SYS_AON | R18.1, U10.1 VIN, C62.1 |
+| SYS_AON | R18.1, U10.1 VIN, C62.1, R32.1 |
 | U10 output | U10.6 VOUT, R31.1 |
-| AON_HOLD | R31.2, U10.3 CE, C63.1, C64.1, C65.1, C66.1, U9.1 VIN, C55.1 |
-| GND | U10.2, U10.5 ST, C62.2, C63.2, C64.2, C65.2, C66.2, in addition to existing grounds |
+| AON_HOLD | R31.2, U10.3 CE, C63.1, C64.1, C65.1, C66.1, U9.1 VIN, C55.1, C67.1, R34.1, U11.3 MR, U11.6 VDD |
+| MAIN_PWR_EN (sheet-local) | U9.6 EN, U11.1 open-drain RESET, R34.2 |
+| U11 SENSE | U11.5, R32.2, R33.1, C68.1 |
+| U11 CT | U11.4, C69.1, C70.1, C71.1 |
+| GND | U10.2, U10.5 ST, U11.2, R33.2, C62-C71 pin 2, in addition to existing grounds |
 
 U10.4 is the stock symbol's hidden, electrically `no_connect` NC pin;
 it remains unwired, consistent with TI's internally unconnected pin.
@@ -46,22 +52,23 @@ There is no raw-to-held wire bridge. A PWR_FLAG on AON_HOLD declares the
 real source path from U10 VOUT through passive R31 for ERC; its visible
 note identifies that purpose. No flag masks the missing raw SYS_AON source.
 C63-C66 positive terminals are on AON_HOLD, negative on GND.
-The seven added fitted components carry matching exact manufacturer/order
+The sixteen held-supply/supervisor fitted components carry matching exact manufacturer/order
 numbers and source fields in the native schematic and regenerated BOM.
 Footprints remain unqualified and outside this checkpoint's scope.
-The regenerated native BOM contains 42 grouped rows, 122 unique included
-references and quantity sum 122; C63-C66 form one group of four. The fresh
+The regenerated native BOM contains 47 grouped rows, 131 unique included
+references and quantity sum 131; C63-C66 form one group of four and C69-C71
+form one group of three. The fresh
 eight-page A3 PDF was rendered and its corrected power-button page visually
 inspected. The other seven page renders are byte-identical to their earlier
 visual review. These checks and arithmetic checks do not measure hardware.
 
 The complete power circuit is still unfinished: charger/protected-pack input,
-USB permission, source supervisor, EN pullup, main converter, inverter and
-KILL/discharge FETs remain absent. CLI ERC reports 204 errors and two
-warnings, the same total as committed baseline `c64acf2fb3`. The power-button
-sheet has U9 EN unconnected and raw SYS_AON power undriven; U10 VIN shares
-that raw source net. Native ERC reports 221 entries including the 15 existing
-exclusions. The missing source is explicit,
+USB permission, main converter, inverter and KILL/discharge FETs remain
+absent. CLI ERC reports 203 errors and two warnings, one fewer error than
+committed baseline `4b228dacd4`. The removed error is U9 EN unconnected;
+the power-button sheet now has only raw SYS_AON power undriven. Native ERC
+reports 220 entries including the 15 existing exclusions. No severity or
+exclusion settings were changed. The missing source is explicit,
 not waived; the remaining errors must be resolved as the power tree is built.
 This is an editable progress checkpoint, not a functional power-control or
 fabrication release. The corrected 46.589403 ms hold interval is an allocation-based
@@ -747,6 +754,36 @@ Runtime must be qualified at the actual load/sag, not at an assumed relaxed
 cell voltage. TPS3808 hysteresis has no listed nonzero minimum for G01;
 restart safety uses latch clear plus delay, not an invented hysteresis bound.
 
+The divider selections are R32 `RT0805BRD07732KL` (732 kOhm) and R33
+`RT0603BRD07100KL` (100 kOhm). The
+[YAGEO RT series specification, pp. 5-6](https://yageogroup.com/content/datasheet/asset/file/PYU-RT_1-TO-0-01_ROHS_L)
+rates RT0805 at 0.125 W and 150 V maximum working voltage, and RT0603 at
+0.100 W and 75 V. Rated power applies at 70 C; derate above 70 C according
+to the published curve. The
+[R33 exact-part specification](https://www.yageogroup.com/component-documentation/download/specsheet/RT0603BRD07100KL)
+also confirms 0.100 W, 75 V, +/-0.1% and +/-25 ppm/C. The RT ordering code
+and electrical table establish the same tolerance/TCR for R32. Continuous
+voltage must meet both the power-derived limit `sqrt(P_allowed*R)` and the
+package working-voltage ceiling; the quoted overload voltage is not a
+continuous rating.
+
+For a conservative DC stress screen within the declared 0..4.6 V node
+envelope, apply the entire 4.6 V across each resistor individually instead
+of relying on the nominal divider ratio or extending the SENSE current
+specification away from its threshold test point:
+
+```text
+Rmin_factor = (1-0.001)*(1-25ppm/C*100C) = 0.9965025
+P_R32_screen = 4.6^2/(732k*Rmin_factor) = 29.008561 uW
+P_R33_screen = 4.6^2/(100k*Rmin_factor) = 212.342668 uW
+V_each_screen <= 4.6 V < 75 V < 150 V
+```
+
+These bounds are well below 125 mW / 100 mW at 70 C; actual divider
+dissipation is lower. This is a source-envelope calculation, not surge or
+fault qualification, and does not approve operation at arbitrary ambient
+temperature or an unqualified SYS_AON overvoltage.
+
 Allocate 3 uA total adverse EN leakage: LTC 1 uA high-voltage-test bound,
 supervisor 0.3 uA, Nexperia input 1 uA, TPS63802 0.2 uA and 0.5 uA board
 allowance. The 100k pullup is +/-1%, 100 ppm/C in this conservative screen.
@@ -775,11 +812,25 @@ drop less than 76 uV at the BTN 0.37931 mA sink screen.
 For CT use three `GRM31C5C1H104JA01K` 100 nF, +/-5%, 50 V C0G capacitors.
 The [Murata reference specification](https://www.mouser.com/datasheet/2/281/1/GRM31C5C1H104JA01_01A-1987788.pdf)
 provides the part basis. C0G avoids an unreviewed X7R bias/aging timing term.
-With +/-30 ppm/C and 100 C excursion, Ctotal = 284.145..315.945 nF.
+Printed p. 1 specifies +/-30 ppm/C from 25 C to 125 C, not a single linear
+bound for every cold temperature. Printed p. 5, Table A, instead allows
+capacitance changes of -0.24%..+0.58% at -55 C, -0.17%..+0.40% at -30 C,
+and -0.11%..+0.25% at -10 C. Use an initial tolerance/temperature screen
+of -0.30%..+0.58% to encompass the hot TC range and these published cold
+bounds. This corrects the former 315.945 nF upper screen:
+
+```text
+Ctotal_min = 3*100nF*0.95*(1-0.003) = 284.145 nF
+Ctotal_max = 3*100nF*1.05*(1+0.0058) = 316.827 nF
+```
+
 TI's nominal equation is `td = C(nF)/175 + 0.0005 s`: nominal 1.714786 s.
 A +/-40% IC-delay model, consistent with the published 180 nF timing row,
-gives a 0.974511 s minimum screen. This proportional model is **not** a
-new guaranteed min/max specification at every capacitance. Require a
+gives a 0.974511 s minimum and 2.535316 s maximum screen. This proportional
+model is **not** a new guaranteed min/max specification at every
+capacitance. The initial capacitor envelope does not include soldering,
+endurance, leakage or board contamination; qualify those effects rather
+than treating the calculation as an end-of-life guarantee. Require a
 measured/validated reset hold >=0.90 s across corners, exceeding 650 ms
 blanking plus a 10 ms KILL-recognition/control allowance. The older fixed
 300 ms mode is rejected for this early-brownout behavior.
@@ -911,7 +962,7 @@ qualified project parts at the specified values.
 | 4 | T491D107K010AT, 100u/10V hold | [DigiKey](https://www.digikey.com/en/products/detail/kemet/T491D107K010AT/818629); placement refresh: 11863, $1.64; $1.09/0.8033 at 10/100 |
 | 3 | GRM31C5C1H104JA01K, CT 100n C0G | [DigiKey](https://www.digikey.com/en/products/detail/murata-electronics/GRM31C5C1H104JA01K/2548138); 70095, $0.52 |
 | 1 | RT0805BRD07732KL, 732k divider top | [DigiKey](https://www.digikey.com/en/products/detail/yageo/RT0805BRD07732KL/6617094); 15646, $0.10 |
-| 1 | RT0603BRD07100KL, 100k divider bottom | [DigiKey](https://www.digikey.com/en/products/detail/yageo/RT0603BRD07100KL/1072187); 40038, $0.10 |
+| 1 | RT0603BRD07100KL, 100k divider bottom | [DigiKey YAG1235CT-ND](https://www.digikey.com/en/products/detail/yageo/RT0603BRD07100KL/1072187); placement refresh: 39669, $0.10; $0.067/0.0559 at 10/100 |
 | 2 | RC2512FK-0722RL, main discharge | [DigiKey](https://www.digikey.com/en/products/detail/yageo/RC2512FK-0722RL/5922011); 9772 indexed, $0.31 |
 | 1 | RC2512FK-07100RL, hold charging resistor | [DigiKey](https://www.digikey.com/en/products/detail/yageo/RC2512FK-07100RL/5921799); placement refresh: 3845, $0.33 |
 
@@ -926,6 +977,8 @@ from itertools import product
 from math import isclose, log
 
 precision_corners = ((1-.001)*(1-.0025), (1+.001)*(1+.0025))
+divider_top_power_screen = 4.6**2/(732e3*precision_corners[0])
+divider_bottom_power_screen = 4.6**2/(100e3*precision_corners[0])
 trips = [
     ref*(1+732e3*top/(100e3*bottom)) + leakage*732e3*top
     for ref, top, bottom, leakage in product(
@@ -951,13 +1004,15 @@ hold = (chold_min*(vhold_min-2.7)-qtransient_alloc)/ihold_alloc
 rdischarge_max = 22*rmax_factor/2 + .2
 discharge = rdischarge_max*.001*log(12)
 ct_min_nf = 3*100*.95*(1-30e-6*100)
-ct_max_nf = 3*100*1.05*(1+30e-6*100)
+ct_max_nf = 3*100*1.05*(1+.0058)  # Murata Table A cold upper bound
 checks = {
     'battery nominal energy Wh': (3.7*6, 22.2),
     'selected charge upper V': (4.1*1.004, 4.1164),
     'trip nominal V': (.405*(1+732e3/100e3), 3.3696),
     'trip lower V': (vtrip_min, 3.263705830523478),
     'trip upper V': (vtrip_max, 3.4765976320231147),
+    'divider top full-source power screen W': (divider_top_power_screen, 29.008561268172036e-6),
+    'divider bottom full-source power screen W': (divider_bottom_power_screen, 212.3426684830193e-6),
     'hold C minimum F': (chold_min, .0002916),
     'hold C maximum model F': (chold_max_model, .0005324),
     'capacitor bank leakage screen A': (4*10e-6*10*1.25, .0005),
@@ -975,14 +1030,18 @@ checks = {
     'EN high lower V': (2.7-3e-6*100e3*rmax_factor, 2.39397),
     'POR sink A': ((1.3-.2)/(100e3*rmin_factor)+3e-6, 14.223344556677891e-6),
     'CT minimum nF': (ct_min_nf, 284.145),
-    'CT maximum nF': (ct_max_nf, 315.945),
+    'CT maximum nF': (ct_max_nf, 316.827),
     'CT nominal delay s': (300/175+.0005, 1.7147857142857144),
     'CT minimum delay model s': (.6*(ct_min_nf/175+.0005), .9745114285714285),
+    'CT maximum delay model s': (1.4*(ct_max_nf/175+.0005), 2.535316),
 }
 for name, (actual, expected) in checks.items():
     assert isclose(actual, expected, rel_tol=1e-10, abs_tol=1e-12), (name, actual, expected)
     print(f'{name}: {actual:.12g}')
 assert vtrip_min > 3.05
+assert divider_top_power_screen < .125  # rated power at 70 C
+assert divider_bottom_power_screen < .100  # rated power at 70 C
+assert 4.6 < 75 < 150  # both selected continuous working-voltage ceilings
 assert ireverse_alloc > ireverse_threshold
 assert isclose(icontrol_alloc, .001 + .000125, rel_tol=1e-12)
 assert hold > discharge + .010
