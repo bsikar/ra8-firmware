@@ -881,6 +881,212 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Power_Devices:TPS3808G01DBVR"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 14.224 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "TPS3808G01DBVR"
+				(at 0 11.176 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
+				(at -2.54 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps3808.pdf"
+				(at -2.54 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "TI TPS3808G01DBVR; adjustable 0.405 V (+/-2%) supervisor, active-low open-drain RESET, manual reset, external CT delay. SBVS050N Table 5-1; SYS-007."
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "supply voltage supervisor"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "SOT?23*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "TPS3808G01DBVR_0_1"
+				(rectangle
+					(start -7.62 5.08)
+					(end 7.62 -5.08)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "TPS3808G01DBVR_1_1"
+				(pin open_collector line
+					(at 10.16 0 180)
+					(length 2.54)
+					(name "~{RESET}"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 -7.62 90)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -10.16 0 0)
+					(length 2.54)
+					(name "~{MR}"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -10.16 -2.54 0)
+					(length 2.54)
+					(name "CT"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -10.16 2.54 0)
+					(length 2.54)
+					(name "SENSE"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 7.62 270)
+					(length 2.54)
+					(name "VDD"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Power_Management:LM66100DCK"
 			(exclude_from_sim no)
 			(in_bom yes)
@@ -1763,6 +1969,17 @@
 			(embedded_fonts no)
 		)
 	)
+	(text "SYS-007: SOURCE SUPERVISION / U11, R32-R34, C67-C71\nVtrip=Vref*(1+R32/R33)+Isense*R32.\nNominal=0.405*(1+732k/100k)=3.369600V.\nVref +/-2%, Isense +/-25nA; each R +/-0.1%, 25ppm/C, 100C.\nCorner trip=3.263705831..3.476597632V.\nC68: tau=(732k||100k)*1n=87.980769us (nominal).\nC69-C71: 3x100n C0G; initial/temp=284.145..316.827nF.\nCT delay=300/175+0.0005=1.714786s nominal.\n0.6*(284.145/175+0.0005)=0.974511s MODEL, not guarantee.\nRequire qualified reset hold >=0.90s >650ms KILL blank +10ms.\nR34: ENhigh>=2.7-3uA*(100k*1.01*1.01)=2.393970V.\nENlow<=0.4V; TPS63802 thresholds 1.13V rise/0.97V fall.\nNo additional exposed button; fault clamp/latch clear still needed.\nFull math, Python and qualification: ../design/system_power_design.md SYS-007."
+		(exclude_from_sim no)
+		(at 228.346 172.466 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "7a202d46-44e4-4f45-ab78-e76c406a4359")
+	)
 	(text "SYS-007 REVISED: HELD SUPPLY / U10, R31, C62-C66\nC63-C66: 4 x 100uF/10V; Cmin=400uF*0.9^3=291.6uF.\nVIN=raw SYS; VOUT->R31->reservoir; CE senses reservoir.\nIcontrol<=1.125mA incl 500uA bank leakage allocation.\nPre-trip reverse: 80mV/98.01ohm<0.817mA. Itotal=1.942mA.\nVinitial=3.263705831-max(0.250,0.001125*102.24)\n        =3.013705831V (threshold OR resistive-drop limit).\nt_hold=[291.6uF*(3.013705831-2.7)V-1uC]/1.942mA\n      =46.589ms >38.380ms shutdown allocation.\n1uC covers initial undershoot + reverse/gate transitions.\nQualify VIN=0..4.6V, slow/floating-source collapse and load.\nR31 short: 4.6^2/98.01<0.216W; 1W nominal rating.\nControl only: no MCU/audio/display loads on AON_HOLD.\nFull assumptions and Python: ../design/system_power_design.md SYS-007."
 		(exclude_from_sim no)
 		(at 228.6 127 0)
@@ -1785,7 +2002,7 @@
 		)
 		(uuid "917f2fb0-bc68-4027-a457-2f08586aca5f")
 	)
-	(text "INCOMPLETE POWER CONTROL - NOT FOR FABRICATION\nPB, INT, KILL and held-supply reservoir are connected.\nSYS_AON has no source; U9 EN has no load or pull-up yet.\nSource supervision and rail discharge remain to be implemented.\nPower-control operation is not yet complete or qualified.\nImplementation and qualification: ../design/system_power_design.md\nSYS-007; button calculations: ../design/single_button_power.md."
+	(text "INCOMPLETE POWER CONTROL - NOT FOR FABRICATION\nPB, INT, KILL, held supply and source supervisor are connected.\nSYS_AON has no source; MAIN_PWR_EN has no converter load yet.\nFault-to-KILL clamp and main-rail discharge remain to be implemented.\nPower-control operation is not yet complete or qualified.\nImplementation and qualification: ../design/system_power_design.md\nSYS-007; button calculations: ../design/single_button_power.md."
 		(exclude_from_sim no)
 		(at 228.6 50.8 0)
 		(effects
@@ -1825,6 +2042,12 @@
 		(uuid "007b1bbd-7b9a-4089-9606-3b63fb91e138")
 	)
 	(junction
+		(at 76.2 223.52)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "15064ceb-ac9f-427e-8dfe-c759cc184e33")
+	)
+	(junction
 		(at 330.2 99.06)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -1843,6 +2066,12 @@
 		(uuid "378e5aaf-b3de-4a80-baca-79232486e0d1")
 	)
 	(junction
+		(at 114.3 187.96)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "5783e518-50c0-4f0e-a823-79bedebaee9a")
+	)
+	(junction
 		(at 292.1 99.06)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -1855,10 +2084,22 @@
 		(uuid "657cb0c7-2f74-473e-b550-e5dec22db3ea")
 	)
 	(junction
+		(at 88.9 218.44)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "6ea819a0-3d13-4bf7-9208-7c8e06c916ae")
+	)
+	(junction
 		(at 81.28 68.58)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "8a07590b-cfd7-4979-b141-36b34eb42ac9")
+	)
+	(junction
+		(at 76.2 218.44)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "8ee612e9-c67a-414e-bada-6190a8e7e944")
 	)
 	(junction
 		(at 287.02 99.06)
@@ -1883,6 +2124,24 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "9caa132f-af47-4426-834c-150e4ac4f8de")
+	)
+	(junction
+		(at 82.55 195.58)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "9e351358-0e4f-4d0a-a817-4e4e90de1111")
+	)
+	(junction
+		(at 114.3 185.42)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "bb151790-21a1-41f2-a6c3-c652e783dbda")
+	)
+	(junction
+		(at 63.5 195.58)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "f306d113-2ef9-4cdc-b3c0-b730fb9645fd")
 	)
 	(no_connect
 		(at 101.6 73.66)
@@ -1917,6 +2176,36 @@
 			(type default)
 		)
 		(uuid "08555d08-803a-4fee-8951-c010b551b5f4")
+	)
+	(wire
+		(pts
+			(xy 63.5 194.31) (xy 63.5 195.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0def780e-11b0-4206-8afa-c8eb9f57d0db")
+	)
+	(wire
+		(pts
+			(xy 114.3 185.42) (xy 127 185.42)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "12a36e5a-4604-4bbc-a0d0-1f3af57e5fbe")
+	)
+	(wire
+		(pts
+			(xy 76.2 223.52) (xy 88.9 223.52)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "13c1399a-3c38-4dfb-af37-09b5d1a45eb5")
 	)
 	(wire
 		(pts
@@ -1997,6 +2286,16 @@
 			(type default)
 		)
 		(uuid "27fd92f7-8c7c-41a5-b410-67d405fb47ca")
+	)
+	(wire
+		(pts
+			(xy 63.5 218.44) (xy 76.2 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2d08fd05-1d7b-43b9-ac09-216636c2045f")
 	)
 	(wire
 		(pts
@@ -2130,6 +2429,16 @@
 	)
 	(wire
 		(pts
+			(xy 114.3 187.96) (xy 114.3 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6c8ab8cd-add3-4dab-9ab9-e55c5895d54a")
+	)
+	(wire
+		(pts
 			(xy 287.02 99.06) (xy 292.1 99.06)
 		)
 		(stroke
@@ -2137,6 +2446,16 @@
 			(type default)
 		)
 		(uuid "723b2dab-5d2a-4e41-8d57-1401cda1cbfa")
+	)
+	(wire
+		(pts
+			(xy 104.14 198.12) (xy 101.6 198.12)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "74a940a6-25a0-44b9-8579-0c0eb7615868")
 	)
 	(wire
 		(pts
@@ -2150,6 +2469,26 @@
 	)
 	(wire
 		(pts
+			(xy 127 68.58) (xy 129.54 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7cb12052-1bd5-49bc-8740-f6eb0006634a")
+	)
+	(wire
+		(pts
+			(xy 101.6 198.12) (xy 101.6 187.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7d2a8b6b-07f5-40d1-8350-ffc16e1c8252")
+	)
+	(wire
+		(pts
 			(xy 311.15 99.06) (xy 311.15 106.68)
 		)
 		(stroke
@@ -2160,6 +2499,16 @@
 	)
 	(wire
 		(pts
+			(xy 96.52 218.44) (xy 96.52 200.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8c8a4801-0ce7-44fa-bd1c-62324c0d1855")
+	)
+	(wire
+		(pts
 			(xy 246.38 104.14) (xy 241.3 104.14)
 		)
 		(stroke
@@ -2167,6 +2516,26 @@
 			(type default)
 		)
 		(uuid "90ad7a5d-a7f7-4525-917f-59ba4f2981b5")
+	)
+	(wire
+		(pts
+			(xy 63.5 195.58) (xy 82.55 195.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "990b50fc-a8b8-4b82-a5af-397c3205dab5")
+	)
+	(wire
+		(pts
+			(xy 96.52 200.66) (xy 104.14 200.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9b444c2a-58b2-4b6f-bb0e-93ce50cb0262")
 	)
 	(wire
 		(pts
@@ -2210,6 +2579,16 @@
 	)
 	(wire
 		(pts
+			(xy 82.55 195.58) (xy 104.14 195.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a434aff9-06b7-4f10-b4af-7816dd19ee98")
+	)
+	(wire
+		(pts
 			(xy 152.4 96.52) (xy 152.4 100.33)
 		)
 		(stroke
@@ -2230,6 +2609,26 @@
 	)
 	(wire
 		(pts
+			(xy 165.1 194.31) (xy 165.1 198.12)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "abe47893-65e3-4420-8c16-e3ecde8447c5")
+	)
+	(wire
+		(pts
+			(xy 88.9 218.44) (xy 96.52 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "af4640e6-059e-4d01-a358-a9853123d045")
+	)
+	(wire
+		(pts
 			(xy 152.4 96.52) (xy 167.64 96.52)
 		)
 		(stroke
@@ -2247,6 +2646,36 @@
 			(type default)
 		)
 		(uuid "b437097c-538f-4e55-96c1-6ea38ddf6d7c")
+	)
+	(wire
+		(pts
+			(xy 63.5 223.52) (xy 76.2 223.52)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b7062608-f37c-4540-8b6c-bf670ec90df4")
+	)
+	(wire
+		(pts
+			(xy 114.3 185.42) (xy 114.3 187.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c0a4cf58-4a98-4b05-9dd0-319a5aa2b02e")
+	)
+	(wire
+		(pts
+			(xy 124.46 198.12) (xy 165.1 198.12)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c1e217ae-ff99-4408-b475-e0790ce3ca26")
 	)
 	(wire
 		(pts
@@ -2277,6 +2706,16 @@
 			(type default)
 		)
 		(uuid "cba2d15f-d23f-4284-afb3-1ffa3537beab")
+	)
+	(wire
+		(pts
+			(xy 101.6 187.96) (xy 114.3 187.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "cde62f5b-2080-4f85-8953-be2f535b2f84")
 	)
 	(wire
 		(pts
@@ -2320,6 +2759,16 @@
 	)
 	(wire
 		(pts
+			(xy 63.5 195.58) (xy 63.5 196.85)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "db06cc75-c388-4477-8bcf-9e0b89070c97")
+	)
+	(wire
+		(pts
 			(xy 349.25 106.68) (xy 349.25 99.06)
 		)
 		(stroke
@@ -2337,6 +2786,26 @@
 			(type default)
 		)
 		(uuid "e5a9a0af-1fa0-4d6f-8ba2-f2060da35281")
+	)
+	(wire
+		(pts
+			(xy 76.2 218.44) (xy 88.9 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ec561e97-99ef-4581-ac88-64085280bc67")
+	)
+	(wire
+		(pts
+			(xy 129.54 60.96) (xy 129.54 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f5579625-8684-4fd3-9e04-f0169f7a2b94")
 	)
 	(wire
 		(pts
@@ -2367,6 +2836,36 @@
 			(type default)
 		)
 		(uuid "fa34e40d-d36b-487e-b229-10ba4e58887c")
+	)
+	(wire
+		(pts
+			(xy 82.55 195.58) (xy 82.55 198.12)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fd6287e0-4820-4e92-977f-f8e8908e4b09")
+	)
+	(label "MAIN_PWR_EN"
+		(at 129.54 60.96 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "3737a1f3-bd95-4c1e-ab2b-6a226ce9c304")
+	)
+	(label "MAIN_PWR_EN"
+		(at 127 198.12 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "b26adac5-2e47-49ba-8b6e-772905e1988e")
 	)
 	(hierarchical_label "POWER_KILL_N"
 		(shape input)
@@ -2628,6 +3127,84 @@
 		)
 	)
 	(symbol
+		(lib_id "power:VCC")
+		(at 165.1 186.69 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "0319f35f-49e2-4e77-b09d-3853a102ebe8")
+		(property "Reference" "#PWR0127"
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "AON_HOLD"
+			(at 165.1 181.61 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 165.1 186.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 165.1 186.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"VCC\""
+			(at 165.1 186.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "090cdd57-c99d-40dd-9d93-311d66df0cc3")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "#PWR0127")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 233.68 111.76 0)
 		(unit 1)
@@ -2700,6 +3277,199 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
 					(reference "#PWR0112")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 165.1 190.5 0)
+		(mirror y)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "14da8d34-03ed-4ca6-be28-5e9351dd52bc")
+		(property "Reference" "R34"
+			(at 162.56 189.2299 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100k"
+			(at 162.56 191.7699 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 166.878 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-07100KL"
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "YAGEO RC0603FR-07100KL; 100k +/-1% MAIN_PWR_EN pullup to AON_HOLD; shared open-drain controller/supervisor."
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "311-100KHRCT-ND"
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-07100KL/729836"
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07: DigiKey stock 2200236; USD 0.10/0.025/0.0122 at quantities 1/10/100. Snapshot only; recheck before purchasing."
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-07100KL"
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "SYS-007: 100k EN pullup AON_HOLD to MAIN_PWR_EN. Allocate 3uA adverse combined leakage, +/-1% and 100ppm/C over100C: VENmin=2.7-3u*102010=2.393970V; above TPS63802 1.13V max rising threshold. Open-drain LOW<=0.4V; below 0.97V min falling threshold. POR and inverter continuous-rail behavior require qualification."
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
+			(at 165.1 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "de19d37a-b808-40f0-a081-d30dcd4fd8bb")
+		)
+		(pin "2"
+			(uuid "be98e686-54ca-41c6-8213-da21b21b3a30")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "R34")
 					(unit 1)
 				)
 			)
@@ -3384,6 +4154,402 @@
 	)
 	(symbol
 		(lib_id "power:VCC")
+		(at 114.3 185.42 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "21171f72-fd5e-4360-a1ca-a0d55279e32e")
+		(property "Reference" "#PWR0120"
+			(at 114.3 189.23 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "AON_HOLD"
+			(at 114.3 180.34 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 114.3 185.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 114.3 185.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"VCC\""
+			(at 114.3 185.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "dcb6af43-65bb-470a-926a-a3413bad6599")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "#PWR0120")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 82.55 200.66 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "2d7511d3-6ea6-43ad-8f2d-a3f2dbe75834")
+		(property "Reference" "C68"
+			(at 85.09 199.3962 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "1n"
+			(at 85.09 201.9362 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 82.55 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608NP01H102J080AA"
+			(at 82.55 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TDK C1608NP01H102J080AA; 1nF +/-5%, 50V NP0; source supervisor SENSE filter to GND."
+			(at 82.55 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 82.55 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608NP01H102J080AA"
+			(at 82.55 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-14055-1-ND"
+			(at 82.55 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/C1608NP01H102J080AA/3955721"
+			(at 82.55 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Production; in stock; recheck before purchase"
+			(at 82.55 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07 DigiKey: 27277 in stock; USD 0.22/0.125/0.078 at 1/10/100."
+			(at 82.55 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "SYS-007: SENSE-to-GND 1nF C0G filter; nominal (732k||100k)*1n=87.980769us. Included in <=10ms source-detection/control allocation; actual fault response requires qualification. 50V, +/-5%; IR minimum 10Gohm."
+			(at 82.55 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "91ff7226-a2a0-49aa-aa26-a7877a1a7e14")
+		)
+		(pin "1"
+			(uuid "46ab9fc3-f1fe-4c21-bbc7-6fa5db9c7931")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "C68")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 63.5 220.98 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "2f268db0-665d-4744-ac9e-ca7b8408398e")
+		(property "Reference" "C69"
+			(at 66.04 219.7162 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 66.04 222.2562 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 63.5 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.mouser.com/datasheet/2/281/1/GRM31C5C1H104JA01_01A-1987788.pdf"
+			(at 63.5 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Murata GRM31C5C1H104JA01K; 100nF +/-5%, 50V C0G; source-qualification CT bank."
+			(at 63.5 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Murata Electronics"
+			(at 63.5 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "GRM31C5C1H104JA01K"
+			(at 63.5 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "490-8335-1-ND"
+			(at 63.5 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/murata-electronics/GRM31C5C1H104JA01K/2548138"
+			(at 63.5 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "In stock; recheck before purchase"
+			(at 63.5 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07 DigiKey: 70095 in stock; USD 0.52/0.316/0.2112 at 1/10/100."
+			(at 63.5 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "SYS-007: three parallel 100nF C0G CT-to-GND; C initial/temperature envelope 284.145..316.827nF (Murata cold Table A +0.58%). TI nominal delay 300/175+0.0005=1.714786s. Proportional IC model minimum 0.974511s is not a guaranteed limit; require qualified hold >=0.90s. No X7R substitution."
+			(at 63.5 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "daa1b0b3-03d6-420e-8bb0-c6bb86b37e61")
+		)
+		(pin "1"
+			(uuid "6ba00509-3ca0-4bf6-8219-b14a9ec2dbc7")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "C69")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:VCC")
 		(at 114.3 50.8 0)
 		(unit 1)
 		(body_style 1)
@@ -3613,6 +4779,165 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
 					(reference "C55")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 63.5 200.66 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "3a6b5d11-ab92-49ab-9560-da58ac40dd3a")
+		(property "Reference" "R33"
+			(at 66.04 199.3899 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100k"
+			(at 66.04 201.9299 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 61.722 200.66 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RT0603BRD07100KL"
+			(at 63.5 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "YAGEO RT0603BRD07100KL; 100k ohm +/-0.1%, 25ppm/C precision thin-film source-divider bottom."
+			(at 63.5 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 63.5 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RT0603BRD07100KL"
+			(at 63.5 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "YAG1235CT-ND"
+			(at 63.5 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RT0603BRD07100KL/1072187"
+			(at 63.5 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "In stock; recheck before purchase"
+			(at 63.5 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07 DigiKey: 39669 in stock; USD 0.10/0.067/0.0559 at 1/10/100."
+			(at 63.5 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "SYS-007: precision 100k from U11 SENSE to GND; upper 732k. Each +/-0.1%, 25ppm/C, 100C excursion; U11 0.405V +/-2% and +/-25nA. Nominal trip 3.3696V, corners 3.263705831..3.476597632V. Do not substitute 1% EN-pullup part."
+			(at 63.5 200.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "b3e7796b-e768-48c5-ab0c-f81b652b98c3")
+		)
+		(pin "1"
+			(uuid "c720ec11-6f55-49c8-8b47-df2d83c31adc")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "R33")
 					(unit 1)
 				)
 			)
@@ -3856,6 +5181,243 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 63.5 190.5 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "3dfbe7a4-eddd-4630-a202-f935fe0be37a")
+		(property "Reference" "R32"
+			(at 66.04 189.2299 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "732k"
+			(at 66.04 191.7699 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 61.722 190.5 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://yageogroup.com/content/datasheet/asset/file/PYU-RT_1-TO-0-01_ROHS_L"
+			(at 63.5 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "YAGEO RT0805BRD07732KL; 732k ohm +/-0.1%, 25ppm/C precision thin-film source-divider top."
+			(at 63.5 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 63.5 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RT0805BRD07732KL"
+			(at 63.5 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "YAG4938CT-ND"
+			(at 63.5 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RT0805BRD07732KL/6617094"
+			(at 63.5 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "In stock; recheck before purchase"
+			(at 63.5 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07 DigiKey: 15646 in stock; USD 0.10/0.08/0.0665 at 1/10/100."
+			(at 63.5 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "SYS-007: 732k top from raw SYS_AON to U11 SENSE; lower 100k. Each +/-0.1%, 25ppm/C, 100C excursion; U11 0.405V +/-2% and +/-25nA. Nominal trip 3.3696V, corners 3.263705831..3.476597632V. Exact thin-film part; no 1% thick-film substitution."
+			(at 63.5 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "8763e32a-c832-4395-abfc-668bf87c459d")
+		)
+		(pin "1"
+			(uuid "f7e1d5ed-9fce-425d-b94f-749084b25e02")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "R32")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 114.3 205.74 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "4cac876b-b721-4d2d-978c-1b53e5c7b352")
+		(property "Reference" "#PWR0121"
+			(at 114.3 212.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 114.3 210.82 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 114.3 205.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 114.3 205.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 114.3 205.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "786b9a74-70b6-4acf-93fa-79a8472601de")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "#PWR0121")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C_Polarized_Small")
 		(at 349.25 109.22 0)
 		(unit 1)
@@ -4015,6 +5577,174 @@
 		)
 	)
 	(symbol
+		(lib_id "Power_Devices:TPS3808G01DBVR")
+		(at 114.3 198.12 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "5a76190a-8cfc-4838-88d5-b3d82b15eebb")
+		(property "Reference" "U11"
+			(at 114.3 172.72 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "TPS3808G01DBVR"
+			(at 114.3 175.26 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
+			(at 111.76 198.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps3808.pdf"
+			(at 111.76 198.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TI TPS3808G01DBVR; adjustable 0.405 V (+/-2%) supervisor, active-low open-drain RESET, manual reset, external CT delay. SBVS050N Table 5-1; SYS-007."
+			(at 114.3 198.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Texas Instruments"
+			(at 114.3 198.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "TPS3808G01DBVR"
+			(at 114.3 198.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "296-17188-1-ND"
+			(at 114.3 198.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TPS3808G01DBVR/666712"
+			(at 114.3 198.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Active; in stock; recheck before purchase"
+			(at 114.3 198.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07 DigiKey: 101626 in stock; USD 1.96/1.437/1.1643 at 1/10/100; 16 week lead time."
+			(at 114.3 198.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "SYS-007: adjustable 0.405V +/-2%, SENSE +/-25nA; 732k/100k precision divider gives 3.3696V nominal, 3.263705831..3.476597632V corners. RESET open-drain shares MAIN_PWR_EN; VDD and MR on AON_HOLD; CT 3x100n C0G, nominal 1.714786s; require qualified reset hold >=0.90s. No fixed-G33 substitution."
+			(at 114.3 198.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "6"
+			(uuid "e7944fc5-627e-4da3-84ab-7dabcb57a467")
+		)
+		(pin "4"
+			(uuid "0185b38d-516f-453d-9cd7-55859efd50bf")
+		)
+		(pin "5"
+			(uuid "b2e9c9c7-04d7-4ee8-8fde-6c455574dbc6")
+		)
+		(pin "3"
+			(uuid "4950975b-3aab-4895-8fcb-21418cdd285e")
+		)
+		(pin "2"
+			(uuid "9e3a7764-c1ef-404d-9982-e19e15d4b43e")
+		)
+		(pin "1"
+			(uuid "86bc0617-4c94-4fd6-ad4d-8cff71c5a47c")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "U11")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:VCC")
 		(at 152.4 81.28 0)
 		(unit 1)
@@ -4087,6 +5817,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
 					(reference "#PWR093")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 82.55 203.2 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "676f9e7b-52d5-4b70-90c1-90a13e575629")
+		(property "Reference" "#PWR0125"
+			(at 82.55 209.55 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 82.55 208.28 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 82.55 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 82.55 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 82.55 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "1fa62c2e-99de-49d0-be47-fc645908db86")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "#PWR0125")
 					(unit 1)
 				)
 			)
@@ -6351,6 +8159,165 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:C_Small")
+		(at 88.9 220.98 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "c73ae2ea-69e0-4369-a266-3e971216c3de")
+		(property "Reference" "C71"
+			(at 91.44 219.7162 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 91.44 222.2562 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 88.9 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.mouser.com/datasheet/2/281/1/GRM31C5C1H104JA01_01A-1987788.pdf"
+			(at 88.9 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Murata GRM31C5C1H104JA01K; 100nF +/-5%, 50V C0G; source-qualification CT bank."
+			(at 88.9 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Murata Electronics"
+			(at 88.9 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "GRM31C5C1H104JA01K"
+			(at 88.9 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "490-8335-1-ND"
+			(at 88.9 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/murata-electronics/GRM31C5C1H104JA01K/2548138"
+			(at 88.9 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "In stock; recheck before purchase"
+			(at 88.9 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07 DigiKey: 70095 in stock; USD 0.52/0.316/0.2112 at 1/10/100."
+			(at 88.9 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "SYS-007: three parallel 100nF C0G CT-to-GND; C initial/temperature envelope 284.145..316.827nF (Murata cold Table A +0.58%). TI nominal delay 300/175+0.0005=1.714786s. Proportional IC model minimum 0.974511s is not a guaranteed limit; require qualified hold >=0.90s. No X7R substitution."
+			(at 88.9 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "f93982d3-7501-4747-8da8-3f5a197f215b")
+		)
+		(pin "1"
+			(uuid "3ab32f65-f835-434c-8def-c1a6c46a5b74")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "C71")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:VDD")
 		(at 292.1 99.06 0)
 		(unit 1)
@@ -6501,6 +8468,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
 					(reference "#PWR0114")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 76.2 223.52 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "dc6a8241-b270-4eef-880c-bec17d6e8a80")
+		(property "Reference" "#PWR0126"
+			(at 76.2 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 76.2 228.6 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 76.2 223.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 76.2 223.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 76.2 223.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "f4753a8e-b1a4-4f6f-8929-ca1ef5c3c42d")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "#PWR0126")
 					(unit 1)
 				)
 			)
@@ -6779,6 +8824,399 @@
 	)
 	(symbol
 		(lib_id "power:VCC")
+		(at 63.5 186.69 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f24caf31-622b-42bc-b182-0d380f27479f")
+		(property "Reference" "#PWR0124"
+			(at 63.5 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "SYS_AON"
+			(at 63.5 181.61 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 63.5 186.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 63.5 186.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"VCC\""
+			(at 63.5 186.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "af8f2938-0ed6-453b-8afe-e0d4b765e2b2")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "#PWR0124")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 127 190.5 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f3d29974-30b3-472b-b9d3-13261731e2ee")
+		(property "Reference" "#PWR0122"
+			(at 127 196.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 127 195.58 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 127 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 127 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 127 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "156720fc-15b4-4a73-bc7f-5131f5c74161")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "#PWR0122")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 76.2 220.98 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f915a165-0342-4139-9a34-9204353670b3")
+		(property "Reference" "C70"
+			(at 78.74 219.7162 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 78.74 222.2562 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 76.2 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.mouser.com/datasheet/2/281/1/GRM31C5C1H104JA01_01A-1987788.pdf"
+			(at 76.2 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Murata GRM31C5C1H104JA01K; 100nF +/-5%, 50V C0G; source-qualification CT bank."
+			(at 76.2 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Murata Electronics"
+			(at 76.2 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "GRM31C5C1H104JA01K"
+			(at 76.2 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "490-8335-1-ND"
+			(at 76.2 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/murata-electronics/GRM31C5C1H104JA01K/2548138"
+			(at 76.2 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "In stock; recheck before purchase"
+			(at 76.2 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07 DigiKey: 70095 in stock; USD 0.52/0.316/0.2112 at 1/10/100."
+			(at 76.2 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "SYS-007: three parallel 100nF C0G CT-to-GND; C initial/temperature envelope 284.145..316.827nF (Murata cold Table A +0.58%). TI nominal delay 300/175+0.0005=1.714786s. Proportional IC model minimum 0.974511s is not a guaranteed limit; require qualified hold >=0.90s. No X7R substitution."
+			(at 76.2 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "757f6900-1098-43e1-8f5d-ed4c6af4100f")
+		)
+		(pin "1"
+			(uuid "1e1397a3-5a94-4ab5-b259-26af152fb1e0")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "C70")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 63.5 204.47 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f91654e0-1a6b-4a42-a519-5f17e9fa893e")
+		(property "Reference" "#PWR0123"
+			(at 63.5 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 63.5 209.55 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 63.5 204.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 63.5 204.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 63.5 204.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "a1c68cd4-1abb-4371-b8b9-72facf1ab3f3")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "#PWR0123")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:VCC")
 		(at 152.4 55.88 0)
 		(unit 1)
 		(body_style 1)
@@ -6850,6 +9288,164 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
 					(reference "#PWR092")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 127 187.96 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "fc8ee485-c5a2-42b8-9276-da30dfe37ee7")
+		(property "Reference" "C67"
+			(at 119.888 186.69 0)
+			(show_name no)
+			(do_not_autoplace yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 119.38 189.23 0)
+			(show_name no)
+			(do_not_autoplace yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 127 187.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
+			(at 127 187.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TDK C1608X7R1H104K080AA; 100nF, 50V, X7R, +/-10%; TPS3808G01 held-supply local bypass."
+			(at 127 187.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
+			(at 127 187.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
+			(at 127 187.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected reuse candidate; final source-rail effective capacitance and transient qualification pending; footprint deferred."
+			(at 127 187.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-07: DigiKey372402 USD0.11/0.06/0.03590; Mouser1180909 USD0.11/0.042/0.036 at1/10/100. Recheck before order."
+			(at 127 187.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 127 187.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 127 187.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "SYS-007: 100nF local bypass U11 VDD6 AON_HOLD to GND2, per TI TPS3808 application guidance. 50V X7R +/-10%; initial 90..110nF; effective capacitance/placement require qualification. Not a CT timing capacitor or reservoir contribution."
+			(at 127 187.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "6d4a5dd9-b548-4e10-87f5-7aea3ae6c90b")
+		)
+		(pin "2"
+			(uuid "15e7c743-9b71-4d9f-ac90-9720f88dd38e")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/b061757d-547c-4864-baf0-6ef9e16e1a8a"
+					(reference "C67")
 					(unit 1)
 				)
 			)
