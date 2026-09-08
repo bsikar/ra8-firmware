@@ -602,14 +602,9 @@ def _paths_have_no_live_references(paths: tuple[Path, ...]) -> bool:
 
 
 def _receipt_group_is_absent(group: int) -> bool:
-    """Use the kernel's exact negative-PGID authority to prove group absence."""
-    try:
-        os.killpg(group, 0)
-    except ProcessLookupError:
-        return True
-    except OSError:
-        return False
-    return False
+    """Prove an owned group contains no live process."""
+    members = _process_group_members(group)
+    return members == set()
 
 
 def _no_residue(paths: tuple[Path, ...]) -> bool:
