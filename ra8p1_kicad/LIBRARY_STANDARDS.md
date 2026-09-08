@@ -76,6 +76,13 @@ acceptance, Datasheet fields must identify manufacturer documents or valid
 project-relative references. Inherited product-page and distributor links are
 preserved by the appearance cleanup and remain unverified source metadata.
 
+Use KiCad 10 native pin stacks for internally shared package connections when
+this improves readability. Bracketed pin numbers such as `[3,4]` represent
+both physical pads, not a new pad named `3,4`. Keep all stack numbers visible;
+do not combine independent signals or unconnected package pins into a stack.
+This follows [KLC S4.3](https://klc.kicad.org/symbol/s4/s4.3/) and requires
+KiCad 10's [pin-stack support](https://docs.kicad.org/10.0/en/eeschema/eeschema.html#pin-stacks).
+
 ## Electrical and mechanical acceptance
 
 Use standard KiCad `Device` primitives for ordinary passives and `power`
@@ -118,6 +125,23 @@ Rev.1.10 Tables 1-2; RA8P1 HUM Rev.1.30 section 21.4 for unused MIPI.
 New design net labels use `COPI`, `CIPO` and `CS` instead of legacy SPI terms.
 Review imported pin-name aliases against manufacturer documentation before
 renaming them; visual normalization must not silently change their identity.
+
+The project-local `Power_Devices:LTC3119IUFD#PBF` uses 21 visible pin objects
+representing all 29 QFN pads exactly once. Its PVIN, PVOUT, SW1, SW2 and PGND
+stacks follow the internal connections in ADI's
+[3119fb Rev B, pages 2 and 11-13](https://www.analog.com/media/en/technical-documentation/data-sheets/3119fb.pdf).
+The exposed pad is PGND pad 29. VCC is a separate internal-bias output, not
+PVOUT; SVCC is a power input that must connect to VCC. PGOOD is open collector.
+SW1/SW2 and BST1/BST2 are passive electrical abstractions for switched analog
+nodes, not missing supply drivers that need arbitrary power flags. NC pads
+24, 26 and 27 remain separate visible passive pins because ADI permits either
+leaving them open or grounding them. Use explicit no-connect markers when
+leaving them open in a circuit. Uniform 200 mil legs accommodate the stacked
+numbers. Sourcing fields identify the exact I-grade QFN ordering code and a
+dated, unreserved distributor snapshot. The library pin-map check does not
+qualify the external loop, shutdown, source protection, thermal design or
+footprint; circuit integration is tracked separately in
+[#825](https://github.com/bsikar/ra8-firmware/issues/825).
 
 Footprints and 3D models describe physical dimensions, not schematic styling.
 Preserve pad numbers, pad sizes, pitch, mask/paste settings, courtyard,
