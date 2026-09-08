@@ -34,7 +34,7 @@ Priority key: 🔴 essential · 🟡 blocked/pending a decision · 🟢 standard
 ## 🔴 Power subsystem — *imported candidates; qualification pending*
 - [x] **Li-ion charger (power-path)** — `BQ25188YBGR` (TI, 1 A single-cell, I²C, WLCSP-8) ✅ in library
 - [x] **Fuel gauge** (2 in library — pick one) — `MAX17260SETD+T` (ADI ModelGauge m5, ⚠️ needs external **~10 mΩ shunt**) **or** `BQ27427YZFR` (TI, **integrated** sense resistor — no shunt)
-- [x] **3.3 V rail — BUCK-BOOST** — `TPS63802DLAT` (TI, 2 A, **adjustable → set to 3.3 V** via FB divider) ✅ in library; buck-boost required (Li-ion 3.0–4.2 V straddles 3.3 V, 4.2 V > RA8 max)
+- [x] **Main digital 3.3 V buck-boost candidate** - `Power_Devices:TPS63802DLA`, default exact MPN `TPS63802DLAR` (TI, nominal 2 A). Native symbol pin types and functional layout checked; circuit placement and qualification remain open. See [PWR-002/003](design/power_decoupling.md) for the precision divider, forced PWM, 1.65 A allocation and separate peripheral domains.
 - [x] **1.8 V rail** — `TPS7A0218PYCHR` (TI fixed **1.8 V** LDO, 200 mA, 25 nA Iq, 4-DSBGA, fed from 3.3 V) ✅ in library
 - [ ] **Battery connector** (+ protection IC if the cell has none)
 - [x] **USB-C receptacle + ESD array** — `12401610E4#2A` (Amphenol USB-C 3.2 Gen2) + `RCLAMP0582N.TCT` (Semtech low-cap ESD) ✅ in library; ⚪ optional USB-PD controller

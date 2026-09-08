@@ -2277,14 +2277,14 @@
 		)
 		(embedded_fonts no)
 	)
-	(symbol "TPS63802DLAT"
+	(symbol "TPS63802DLA"
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(in_pos_files yes)
 		(duplicate_pin_numbers_are_jumpers no)
 		(property "Reference" "U"
-			(at 0 8.89 0)
+			(at 0 16.51 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2293,8 +2293,8 @@
 				)
 			)
 		)
-		(property "Value" "TPS63802DLAT"
-			(at 0 6.35 0)
+		(property "Value" "TPS63802DLAR"
+			(at 0 13.97 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2325,7 +2325,7 @@
 				)
 			)
 		)
-		(property "Description" "2A buck-boost converter, adjustable output, 11uA Iq, VSON-10"
+		(property "Description" "2A adjustable buck-boost converter, DLA VSON-10, EN/MODE/PG"
 			(at 0 0 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2336,7 +2336,7 @@
 				)
 			)
 		)
-		(property "Height" "1"
+		(property "DigiKey_Part_Number" "296-TPS63802DLARCT-ND"
 			(at 0 0 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2347,18 +2347,7 @@
 				)
 			)
 		)
-		(property "Mouser Part Number" "595-TPS63802DLAT"
-			(at 0 0 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(hide yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Mouser Price/Stock" "https://www.mouser.co.uk/ProductDetail/Texas-Instruments/TPS63802DLAT?qs=9r4v7xj2LnmaSyyQsA%2FrUA%3D%3D"
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TPS63802DLAR/10715923"
 			(at 0 0 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2380,7 +2369,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "TPS63802DLAT"
+		(property "Manufacturer_Part_Number" "TPS63802DLAR"
 			(at 0 0 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2391,7 +2380,18 @@
 				)
 			)
 		)
-		(symbol "TPS63802DLAT_1_1"
+		(property "ki_keywords" "buck boost regulator adjustable TPS63802 DLA"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "TPS63802DLA_1_1"
 			(rectangle
 				(start -8.89 2.54)
 				(end 8.89 -12.7)
@@ -2403,8 +2403,8 @@
 					(type background)
 				)
 			)
-			(pin passive line
-				(at -12.7 -2.54 0)
+			(pin input line
+				(at -12.7 -5.08 0)
 				(length 3.81)
 				(name "EN"
 					(effects
@@ -2421,8 +2421,8 @@
 					)
 				)
 			)
-			(pin passive line
-				(at -12.7 -5.08 0)
+			(pin input line
+				(at -12.7 -7.62 0)
 				(length 3.81)
 				(name "MODE"
 					(effects
@@ -2439,8 +2439,8 @@
 					)
 				)
 			)
-			(pin passive line
-				(at -12.7 -7.62 0)
+			(pin power_in line
+				(at -1.27 -16.51 90)
 				(length 3.81)
 				(name "AGND"
 					(effects
@@ -2457,8 +2457,8 @@
 					)
 				)
 			)
-			(pin passive line
-				(at 12.7 0 180)
+			(pin input line
+				(at 12.7 -5.08 180)
 				(length 3.81)
 				(name "FB"
 					(effects
@@ -2475,8 +2475,8 @@
 					)
 				)
 			)
-			(pin passive line
-				(at 12.7 -2.54 180)
+			(pin open_collector line
+				(at 12.7 -7.62 180)
 				(length 3.81)
 				(name "PG"
 					(effects
@@ -2493,8 +2493,8 @@
 					)
 				)
 			)
-			(pin passive line
-				(at 12.7 -5.08 180)
+			(pin power_out line
+				(at 12.7 0 180)
 				(length 3.81)
 				(name "VOUT"
 					(effects
@@ -2512,7 +2512,7 @@
 				)
 			)
 			(pin passive line
-				(at 12.7 -7.62 180)
+				(at 2.54 6.35 270)
 				(length 3.81)
 				(name "L2"
 					(effects
@@ -2529,8 +2529,8 @@
 					)
 				)
 			)
-			(pin passive line
-				(at -12.7 -10.16 0)
+			(pin power_in line
+				(at 2.54 -16.51 90)
 				(length 3.81)
 				(name "GND"
 					(effects
@@ -2548,7 +2548,7 @@
 				)
 			)
 			(pin passive line
-				(at 12.7 -10.16 180)
+				(at -2.54 6.35 270)
 				(length 3.81)
 				(name "L1"
 					(effects
@@ -2565,7 +2565,7 @@
 					)
 				)
 			)
-			(pin passive line
+			(pin power_in line
 				(at -12.7 0 0)
 				(length 3.81)
 				(name "VIN"
