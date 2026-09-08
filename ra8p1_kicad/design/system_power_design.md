@@ -1,5 +1,17 @@
 # E-reader system-power engineering basis
 
+Scope update, 2026-09-08: the SYS-007 TPS63802 direct-EN, R34 100 kOhm,
+three-gate and no-key-return shutdown calculations below describe historical
+checkpoints. For the current saved migration draft, those calculations are
+superseded by [PWR-004](main_regulator_ltc3119.md): LTC3119 raw RUN buffer,
+held clamp, R34 110 kOhm, four-gate allocation and key-return-aware shutdown.
+The historical arithmetic and connectivity tables are not assertions about
+the changed circuit. Rail adoption remains blocked by the
+[unresolved SDRAM logic-high conflict #846](https://github.com/bsikar/ra8-firmware/issues/846).
+Independent control connectivity review passed as recorded in PWR-004;
+this is not bench qualification. Source protection, firmware invariants
+and the full migration are not complete.
+
 Revision 7, 2026-09-07. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825),
 [architecture #823](https://github.com/bsikar/ra8-firmware/issues/823), and
 [inputs #832](https://github.com/bsikar/ra8-firmware/issues/832).
@@ -15,8 +27,9 @@ SYS-008 supersedes the earlier charger comparison and SYS-006's tentative
 SYS-009 defines USB-current permission; these sections remain subject to
 their explicit qualification gates, not an assertion of fabrication release.
 Existing implemented rail consumers are in [the root schematic](../ereader/ereader_rev1.kicad_sch).
-Keep the main-regulator voltage calculation authoritative in
-[PWR-002](power_decoupling.md#pwr-002-main-rail-regulation-and-reset-headroom).
+The historical main-regulator voltage calculation is recorded in
+[PWR-002](power_decoupling.md#pwr-002-main-rail-regulation-and-reset-headroom);
+the current unresolved migration basis is PWR-004 as scoped above.
 
 The later [audio requirement and AUD-005 calculations](audio_subsystem.md#aud-005-audio-rails-thermal-load-and-power-path-impact)
 add high-current headphone rails and built-in speakers. The MCU/radio-only

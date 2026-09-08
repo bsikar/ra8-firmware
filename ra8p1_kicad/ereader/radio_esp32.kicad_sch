@@ -2526,7 +2526,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "PWR-002: upstream regulator / reset voltage budget\nU13 TPS63802DLAR: MODE=VIN for fixed PWM.\nR41/R42=56k/10k, 0.1%, 25ppm/C; deltaT=100C.\nVout=Vfb*(1+Rt/Rb)+Ib*Rt; allocate +/-100nA.\nPWM static screen: 3.242044..3.358485V.\nRadio: 3.242044-0.5A*0.175ohm=3.154544V.\nAbove U6 RADIO-014 rising screen: 14.923mV remains.\nMCU reset release headroom: 48.093mV.\nU13 circuit: Main 3V3 digital supply; transient qualification OPEN.\nMath: ../design/power_decoupling.md PWR-002/PWR-003."
+	(text "PWR-004 DRAFT: upstream regulator / reset voltage budget\nU13 LTC3119IUFD#PBF: PWM tied to private VCC_U13.\nR41/R42=33k/10k, 0.1%, 25ppm/C; deltaT=100C.\nVout=Vfb*(1+Rt/Rb)+Ib*Rt; allocate +/-100nA.\nStatic screen: 3.328456..3.509411V; allocate +/-75mV dynamics.\nProposed full envelope: 3.253456..3.584411V.\nRadio low: 3.253456-0.5A*0.175ohm=3.165956V.\nAbove RADIO-014 rising screen: 26.335mV remains.\nMCU reset release headroom: 59.505mV.\nThese are budgets, not measured or guaranteed waveforms.\nProposal NOT ADOPTED: SDRAM logic-high conflict #846.\nFull calculations: ../design/main_regulator_ltc3119.md PWR-004."
 		(exclude_from_sim no)
 		(at 266.7 142.24 0)
 		(effects
@@ -2534,7 +2534,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/power_decoupling.md#pwr-002-main-rail-regulation-and-reset-headroom")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_ltc3119.md")
 		)
 		(uuid "1e311763-baef-42a6-83aa-c305d9e30b3d")
 	)
@@ -2679,7 +2679,7 @@
 		)
 		(uuid "b3fe64c9-81e0-47c7-9dd2-5988e0a7a95a")
 	)
-	(text "RADIO-014: R12/R13 switched-radio sense divider\n33.2k / 20k; Susumu RG, 0.1%, 25ppm/C.\nAllocate deltaT=100 C, 0.15% drift, +/-150nA total.\nfmin/max=(1 +/-0.001)*(1 +/-0.0025)*(1 +/-0.0015)\n          = 0.99500774625 / 1.00500775375.\nVtrip = Vsense*(1+Rt/Rb) + Is*Rt.\nVfall >=1.15*0.99*(1+Rtmin/Rbmax)-150nA*Rtmax\n      = 3.004600 V; margin above 3V only 4.600mV.\nVrise <=1.15*1.01*1.00825*(1+Rtmax/Rbmin)\n        +150nA*Rtmax = 3.139622 V.\nPWR-002 release headroom: 14.923mV, static only.\nIdiv_nom=3.3/53.2k=62.030uA; each P <0.652mW.\nMR arbitration and brownout dynamics remain open.\nMath: ../design/radio_interface.md (RADIO-014)"
+	(text "RADIO-014: R12/R13 switched-radio sense divider\n33.2k / 20k; Susumu RG, 0.1%, 25ppm/C.\nAllocate deltaT=100 C, 0.15% drift, +/-150nA total.\nfmin/max=(1 +/-0.001)*(1 +/-0.0025)*(1 +/-0.0015)\n          = 0.99500774625 / 1.00500775375.\nVtrip = Vsense*(1+Rt/Rb) + Is*Rt.\nVfall >=1.15*0.99*(1+Rtmin/Rbmax)-150nA*Rtmax\n      = 3.004600 V; margin above 3V only 4.600mV.\nVrise <=1.15*1.01*1.00825*(1+Rtmax/Rbmin)\n        +150nA*Rtmax = 3.139622 V.\nPWR-004 draft release headroom: 26.335mV; #846 blocks adoption.\nIdiv_nom=3.3/53.2k=62.030uA; each P <0.652mW.\nMR arbitration and brownout dynamics remain open.\nMath: ../design/radio_interface.md (RADIO-014); PWR-004 below."
 		(exclude_from_sim no)
 		(at 266.7 101.6 0)
 		(effects

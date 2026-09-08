@@ -1,5 +1,14 @@
 # Power decoupling engineering records
 
+Scope update, 2026-09-08: the PWR-002/PWR-003 TPS63802 regulator selection,
+voltage/headroom and component calculations below describe historical native
+checkpoints. For the current saved LTC3119 migration draft, they are superseded
+by [PWR-004](main_regulator_ltc3119.md), including the raw RUN buffer, held
+clamp and R34 110 kOhm control basis. Historical arithmetic is retained, not
+asserted for the changed circuit. Rail adoption remains blocked by the
+[unresolved SDRAM logic-high conflict #846](https://github.com/bsikar/ra8-firmware/issues/846);
+PWR-004 is not an accepted voltage contract or a completed migration.
+
 ## PWR-001: C39 MIPI analog-supply bypass
 
 Revision 2, 2026-09-05. Applies to C39 and U1 unit M on
