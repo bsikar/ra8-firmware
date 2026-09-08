@@ -537,7 +537,7 @@
         "uuid": "0586cc51-9c57-495b-a0c9-c29ba0d48166"
       }
     ],
-    "used_designators": "Q1-2,U1-13,C1-76,FB1,SW1-5,R1-42,L1-2,J1,D1-5,#PWR1-142,Y1-2,#FLG1-2",
+    "used_designators": "Q1-2,U1-14,C1-88,FB1,SW1-5,R1-42,L1-2,J1,D1-5,#PWR1-148,Y1-2,#FLG1-2",
     "variants": []
   },
   "sheets": [
@@ -576,6 +576,10 @@
     [
       "19124216-d47e-4431-bd15-7eeda34acc7b",
       "Main 3V3 digital supply"
+    ],
+    [
+      "80804c03-d2be-4fa8-acf9-a14fac82df14",
+      "64 MiB SDRAM"
     ]
   ],
   "text_variables": {},

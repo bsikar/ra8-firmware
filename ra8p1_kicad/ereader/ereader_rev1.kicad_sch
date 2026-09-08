@@ -21,9 +21,9 @@
 		)
 		(uuid "023f4914-df49-4ef4-b2e2-f8b0e743c5f5")
 	)
-	(text "Global supplies: +3V3_MCU and GND.\nCore regulator output MCU_VCORE stays local to the processor power sheet.\n\nRemaining subsystem circuits follow epic #821 and issues #824-#834:\nradio, memory/storage, USB/battery, system rails, display controller,\npanel power, touch, warm/cool lighting, buttons and sensors.\nNo empty subsystem sheets are represented as completed circuits.\n\nFootprint and PCB qualification are deferred by scope."
+	(text "Global supplies: +3V3_MCU and GND.\nMCU_VCORE remains local to the processor core-power sheet.\nCircuit notes link to the supporting engineering calculations.\nFootprint and PCB qualification are deferred by scope."
 		(exclude_from_sim no)
-		(at 198.12 139.7 0)
+		(at 30.226 264.414 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -691,6 +691,52 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
 					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 203.2 129.54)
+		(size 137.16 27.94)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "80804c03-d2be-4fa8-acf9-a14fac82df14")
+		(property "Sheetname" "64 MiB SDRAM"
+			(at 203.2 128.8284 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "sdram.kicad_sch"
+			(at 203.2 158.0646 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
+					(page "10")
 				)
 			)
 		)
