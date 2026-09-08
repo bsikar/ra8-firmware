@@ -139,6 +139,123 @@ print('21 BOM inputs agree. Final rail and PDN qualification remain open.')
 PY
 ```
 
+## PWR-005: Twelve local VCL bypass capacitors
+
+Revision 1, 2026-09-08. Applies to C1, C2, C4, C5, C7, C8 and C10-C15
+on [RA8P1 internal core regulator](../ereader/mcu_core_power.kicad_sch),
+sheet 3 of the [full schematic PDF](../exports/ereader_rev1.pdf).
+The linked PWR-005 note on that sheet summarizes this record.
+Tracking: [processor minimum system #824](https://github.com/bsikar/ra8-firmware/issues/824).
+
+### Requirement and placement mapping
+
+Renesas [RA8x2 Quick Design Guide R01AN7883EU0110 Rev.1.10](https://www.renesas.com/en/document/apn/ra8p1-mcu-quick-design-guide),
+section 1.2, printed p.8, prescribes one 0.22 uF capacitor at each VCLn/VSSn
+pair in DCDC mode. Section 1.2, printed p.9, permits standard components at
+VCL; its more stringent low-parasitic discussion concerns VCC_DCDC and VLO.
+This is a manufacturer-prescribed nominal capacitance, not a value calculated
+from an assumed processor load pulse. The selected RA8P1 uses twelve pairs.
+
+| Pair | Local capacitor | Pair | Local capacitor |
+| --- | --- | --- | --- |
+| VCL0 / VSS0 | C1 | VCL6 / VSS6 | C2 |
+| VCL1 / VSS1 | C4 | VCL7 / VSS7 | C5 |
+| VCL2 / VSS2 | C7 | VCL8 / VSS8 | C8 |
+| VCL3 / VSS3 | C10 | VCL9 / VSS9 | C11 |
+| VCL4 / VSS4 | C12 | VCL10 / VSS10 | C13 |
+| VCL5 / VSS5 | C14 | VCL11 / VSS11 | C15 |
+
+All capacitor pin 1 terminals share MCU_VCORE; pin 2 terminals share GND.
+The table and existing pair labels specify local placement intent. A common
+net does not prove a short physical bypass loop; preserve all twelve local
+capacitors during PCB implementation. C9 is the separate 47 uF core bulk
+capacitor and is not qualified or selected by this record.
+
+### Exact selection and dated procurement
+
+Select TDK **C1608X7R1H224K080AB**, 220 nF +/-10%, 50 VDC, X7R,
+0603, -55 to +125 C. The [exact TDK product record](https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB)
+shows Production status and X7R's +/-15% temperature classification.
+This commercial-grade part covers the processor's specified temperature
+range; no automotive qualification is claimed.
+
+[DigiKey 445-7408-1-ND](https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843)
+snapshot 2026-09-08: 82,010 in stock, 24-week lead time, USD 0.17 / 0.098 /
+0.06030 at quantities 1 / 10 / 100. Stock is unreserved; tax, shipping and
+possible tariff are excluded. At the quantity-10 tier, twelve cost USD 1.176
+before those additions. This is a dated estimate, not a quote or purchase.
+
+### Capacitance arithmetic and manufacturer reference curve
+
+```text
+C_initial = 220*(1 +/- 0.10) = 198..242 nF per capacitor
+C_bank_nominal = 12*220 nF = 2.64 uF
+C_bank_initial = 12*(198..242) nF = 2.376..2.904 uF
+Illustrative 1.0 V rating utilization = 1.0/50*100 = 2.0%
+C_reference(1.0 V) = 220 + (1.0/1.25)*(223.065-220)
+                     = 222.452 nF
+C_reference(1.25 V) = 223.065 nF (manufacturer sample)
+```
+
+The 1.0 V and 1.25 V points screen the capacitor curve; they do not set or
+approve the MCU's core voltage. Voltage utilization is not capacitance
+retention. Initial tolerance does not include DC bias, temperature, aging,
+AC excitation, mounting or measurement conditions. Summing capacitance is
+not a high-frequency PDN model: interconnect inductance prevents treating
+the distributed bank as one ideal capacitor at every processor ball.
+
+The browser's DC Bias Characteristic CSV download is preserved as
+[TDK reference data](../resources/datasheets/TDK_C1608X7R1H224K080AB_dc_bias_2026-09-08.csv).
+Only the UTF-8 BOM, CRLF line endings and final blank line were normalized;
+headers and numeric samples are unchanged. TDK explicitly labels the curve
+as reference data, not guaranteed product characteristics. The interpolation
+is our arithmetic, not another manufacturer measurement. It shows no nominal
+DC-bias loss in this low-voltage screen, but establishes no guaranteed
+minimum effective capacitance. Final core PDN, startup and regulator stability
+qualification remain open; this selection does not resolve C9, L1 or #846.
+
+### Reproducible arithmetic and exact BOM-input verification
+
+Run from the repository root after the native BOM export:
+
+```sh
+python3 - <<'PY'
+import csv
+from fractions import Fraction as F
+
+refs = {'C1', 'C2', 'C4', 'C5', 'C7', 'C8'} | {'C'+str(n) for n in range(10, 16)}
+with open('ra8p1_kicad/exports/ereader_rev1_bom.csv', newline='') as stream:
+    bom = list(csv.DictReader(stream))
+for ref in sorted(refs):
+    matches = [r for r in bom if ref in r['Reference'].split(',')]
+    assert len(matches) == 1, ref
+    row = matches[0]
+    assert (row['Value'], row['Manufacturer_Part_Number'],
+            row['DigiKey_Part_Number'], row['DNP']) == (
+        '220n', 'C1608X7R1H224K080AB', '445-7408-1-ND', ''), ref
+assert len(refs) == 12
+assert (220*(1-F('.1')), 220*(1+F('.1'))) == (198, 242)
+assert (12*F('.220'), 12*F('.198'), 12*F('.242')) == (
+    F('2.64'), F('2.376'), F('2.904'))
+assert F(1)/50*100 == 2
+assert 12*F('.098') == F('1.176')
+path = ('ra8p1_kicad/resources/datasheets/'
+        'TDK_C1608X7R1H224K080AB_dc_bias_2026-09-08.csv')
+with open(path, newline='') as stream:
+    rows = list(csv.reader(stream))
+assert rows[5] == ['C1608X7R1H224K080AB']
+assert rows[6] == ['DC/V', 'Capacitance(Nom.)/F']
+samples = {F(r[0]): F(r[1])*10**9 for r in rows[7:] if len(r) == 2}
+assert samples[F(0)] == 220
+assert samples[F('1.25')] == F('223.065')
+estimate = samples[F(0)] + F(1)/F('1.25')*(samples[F('1.25')]-samples[F(0)])
+assert estimate == F('222.452')
+print('PWR-005 PASS: 12 exact BOM inputs; 198..242 nF initial per part;')
+print('2.376..2.904 uF initial bank; 222.452 nF nominal reference at 1.0 V.')
+print('No all-corners effective-capacitance or PDN guarantee asserted.')
+PY
+```
+
 ## PWR-002: Main-rail regulation and reset headroom
 
 Revision 2, 2026-09-08. Linked from the PWR-002 annotation on the
