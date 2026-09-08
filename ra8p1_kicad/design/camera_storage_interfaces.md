@@ -1,6 +1,6 @@
 # Camera, removable storage and external-memory allocation
 
-Revision 13, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
+Revision 14, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
 This is an engineering allocation record for native KiCad implementation,
 not a completed schematic, verified timing closure or hardware qualification.
 Cross-references: [radio](radio_interface.md), [power](system_power_design.md),
@@ -1178,14 +1178,31 @@ issues. Both units use 150 mil pins, 50 mil text and filled body outlines.
 Exact manufacturer/distributor fields and the dated sourcing snapshot are
 embedded in the library symbol; its footprint remains deliberately blank.
 
-Circuit placement and wiring remain in progress. The symbol is not yet
-instantiated in the schematic or exported BOM. This section does not claim
-the following circuit components, nets or annotations are placed or
-ERC-clean. No new reference numbers or annotation UUIDs have been assigned
-in this record. Preserve the completed CMS-010 checkpoint; its BOM and ERC
-counts are not a report on the new NOR circuit.
-Reciprocal CMS-011 annotations must be added to the native MCU/NOR pages,
-then the exported netlist, BOM, ERC and full PDF independently checked.
+**Native supply checkpoint:** page 11,
+[`nor_flash.kicad_sch`](../ereader/nor_flash.kicad_sch), now instantiates
+U15A/B and C89-C92. Optional unit display names were cleared in the shared
+library so references render conventionally as U15A and U15B, without
+appending long descriptions. B4/D1/E4 share +3V3_MCU; B3/C1/E5 share GND.
+C89-C91 are the selected 100n parts and C92 is the selected 10u part,
+all between those same rails, with CMS-011-specific sourcing fields.
+All five DNU balls remain explicit, electrically unconnected pins.
+No PWR_FLAG or simulation exclusion was added.
+
+This is not a complete NOR interface: all 13 signal pins remain open,
+including RESET#. The ten 30R series parts, two pulls, MCU pin-type updates
+and root/child signal connections remain to be implemented. Native and
+CLI ERC therefore add 16 expected interface errors (13 unconnected pins
+and three undriven inputs), with no supply/bypass errors. Full-project
+active results are 161 errors and two warnings, compared with 145 and
+two at the prior checkpoint; no new errors were waived or suppressed.
+The 15 existing excluded warnings are not active warnings in that count.
+The complete PDF now contains 11 A3 pages; the BOM includes U15 once and
+all four bypass capacitors. Preserve the existing CMS-010 circuitry.
+
+The native supply annotation `a9ed9069-8e7a-4cab-88ec-2a1ce6c5d680`
+on page 11 hyperlinks to CMS-011B, with its arithmetic checked by CMS-011F.
+Sheet instance UUID: `23859413-ab36-480e-aeef-d0e8a227b709`.
+Reciprocal MCU/interface annotations remain part of the unfinished phase.
 
 ### CMS-011A: Source revision and exact pin contract
 
@@ -1267,15 +1284,15 @@ Keep that initial setting for qualification; any tuning must recheck both
 read and write directions and should not rewrite nonvolatile settings
 at every boot.
 
-Proposed passive contract, with no new native reference numbers implied:
+Passive contract; only the four bypass capacitors are placed in this checkpoint:
 
 | Function | Quantity / value | Exact MPN | Existing native donor |
 | --- | --- | --- | --- |
 | DQ0..7, CK, DS series | 10 x 30R | YAGEO RT0603BRD0730RL | New sourced value; do not inherit 0R metadata |
 | CS# idle-high | 1 x 10k to +3V3_MCU | YAGEO RC0603FR-0710KL | R44 or R27, with new reference |
 | INT# idle-high | 1 x 47k to +3V3_MCU | YAGEO RC0603FR-0747KL | New sourced value |
-| Local VCC / VCCQ bypass | 3 x 100n to GND | TDK C1608X7R1H104K080AA | C76, one copy per supply ball |
-| Shared local bulk bypass | 1 x 10u to GND | TDK C3216X7R1V106K160AC | C88 |
+| Local VCC / VCCQ bypass | 3 x 100n to GND | TDK C1608X7R1H104K080AA | C89-C91 placed, sourced from C76 |
+| Shared local bulk bypass | 1 x 10u to GND | TDK C3216X7R1V106K160AC | C92 placed, sourced from C88 |
 | RESET# idle-high | Existing R1, no added pull | Existing common-reset network | No new component |
 
 The capacitor proposal is an engineering starting point, not a claimed
@@ -1474,7 +1491,8 @@ verified source for this selection; refresh both before procurement.
 
 Run from the worktree root. This checks the displayed contract against
 independently transcribed pin identities and recomputes the engineering
-screens. It neither reads nor creates a future native NOR schematic.
+screens. This first block checks the contract, not native connectivity;
+the second block below checks a freshly exported native netlist and BOM.
 
 ```python
 from pathlib import Path
@@ -1602,10 +1620,56 @@ assert isclose(wake_screen, 1.820) and isclose(cold_radio_off+.5, 2.380)
 assert cold_radio_off+.5 > 2.0
 print('main / cold radio-off / wake / prohibited cold radio-on allocations A',
       new_main, cold_radio_off, wake_screen, cold_radio_off+.5)
-print('CMS-011 arithmetic PASS; native implementation, current/timing/reset qualification OPEN')
+print('CMS-011 arithmetic PASS; native interface and current/timing/reset qualification OPEN')
 ```
 
-Proposed reciprocal native note, to be tailored to actual references when
+For the supply checkpoint, first export a fresh netlist (read-only) and
+use KiCad's whole-project BOM export to refresh `ereader_rev1_bom.csv`:
+
+```sh
+/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli sch export netlist --format kicadxml -o /tmp/ereader-nor-bypass.xml ra8p1_kicad/ereader/ereader_rev1.kicad_sch
+```
+
+```python
+from pathlib import Path
+import csv
+import xml.etree.ElementTree as ET
+
+root = ET.parse('/tmp/ereader-nor-bypass.xml').getroot()
+net_by_pin = {}
+for net in root.findall('./nets/net'):
+    for node in net.findall('node'):
+        key = (node.get('ref'), node.get('pin'))
+        assert key not in net_by_pin
+        net_by_pin[key] = net.get('name')
+for ball in ('B4', 'D1', 'E4'):
+    assert net_by_pin['U15', ball] == '+3V3_MCU'
+for ball in ('B3', 'C1', 'E5'):
+    assert net_by_pin['U15', ball] == 'GND'
+for ref in ('C89', 'C90', 'C91', 'C92'):
+    assert net_by_pin[ref, '1'] == '+3V3_MCU'
+    assert net_by_pin[ref, '2'] == 'GND'
+for ball in ('A2', 'A3', 'B1', 'B5', 'C5'):
+    assert net_by_pin['U15', ball].startswith('unconnected-')
+assert len([key for key in net_by_pin if key[0] == 'U15']) == 24
+
+bom = list(csv.DictReader(Path('ra8p1_kicad/exports/ereader_rev1_bom.csv').open()))
+by_ref = {}
+for row in bom:
+    for ref in row['Reference'].split(','):
+        assert ref not in by_ref
+        by_ref[ref] = row
+mpns = {'U15': 'S28HL01GTFPBHI030', 'C92': 'C3216X7R1V106K160AC',
+        **{ref: 'C1608X7R1H104K080AA' for ref in ('C89', 'C90', 'C91')}}
+for ref, mpn in mpns.items():
+    assert by_ref[ref]['Manufacturer_Part_Number'] == mpn
+    assert 'CMS-011' in by_ref[ref]['Selection_Basis']
+    assert 'CMS-011' in by_ref[ref]['Procurement_Status']
+assert by_ref['U15']['Qty'] == '1'
+print('CMS-011 native supply: six balls, eight capacitor terminals, five DNU, BOM identities PASS')
+```
+
+Proposed additional interface note, to be tailored to actual references when
 placed: `CMS-011 | 128 MiB Octal NOR; 10 x 30R external JESD251 series.
 CS 10k. INT 47k: ILOW <=80.151uA; VHIGH >=3.050265V (4uA screen).
 3 x 100n + 10u = 10.3uF nominal. 125MHz DDR/DS candidate; SI/PDN open.
