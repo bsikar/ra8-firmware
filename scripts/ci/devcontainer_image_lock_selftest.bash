@@ -254,7 +254,7 @@ bounded_group_gone() {
   local pgid="$1" attempt members
   for ((attempt = 0; attempt < SELFTEST_DEADLINE_STEPS; ++attempt)); do
     if ! members="$(image_lock_ps_group_snapshot | awk -v group="$pgid" \
-      '$1 == group { count += 1 } END { print count + 0 }')"; then
+      '$1 == group && $2 !~ /Z/ { count += 1 } END { print count + 0 }')"; then
       sleep 0.01
       continue
     fi
