@@ -114,6 +114,8 @@ def _live_process_identity(process: int) -> tuple[int, int, int] | None:
     ):
         message = "escaped-descendant process identity is malformed"
         raise RuntimeMutationError(message)
+    if fields[0] == b"Z":
+        return None
     return tuple(int(fields[index]) for index in identity_fields)
 
 
