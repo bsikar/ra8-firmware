@@ -1,11 +1,12 @@
 # E-reader system-power engineering basis
 
-Revision 5, 2026-09-07. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825),
+Revision 7, 2026-09-07. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825),
 [architecture #823](https://github.com/bsikar/ra8-firmware/issues/823), and
 [inputs #832](https://github.com/bsikar/ra8-firmware/issues/832).
-This record defines candidate circuit interfaces and verified arithmetic.
-It does not claim that these circuits are already placed in KiCad or that
-the whole-board power budget is closed. SYS-006 now selects an electrical
+This record defines circuit interfaces, verified arithmetic and the native
+implementation checkpoint below. Only that checkpoint identifies placed
+circuitry; the whole-board power budget and hardware qualification remain
+open. SYS-006 now selects an electrical
 battery candidate; purchased-lot, harness and mechanical approval remain
 distinct from that selection. SYS-007 supersedes the SYS-005 EN-only clamp
 with a concrete held-up control, latch-clear and discharge circuit.
@@ -22,13 +23,16 @@ add high-current headphone rails and built-in speakers. The MCU/radio-only
 load screen below is not the new product's peak budget and does not approve
 the charger or battery for full-power audio plus charging.
 
-## Native held-supply and supervisor implementation checkpoint: 2026-09-07
+## Native held-supply, supervisor and shutdown implementation checkpoint: 2026-09-07
 
 The saved [power-button sheet](../ereader/power_button.kicad_sch) now contains
 U10 LM66100DCKR, R31 100 ohm/1 W, C62 100 nF input bypass, and C63-C66
 100 uF/10 V polarized reservoir capacitors. It also contains U11
 TPS3808G01DBVR, R32/R33 precision source divider, R34 EN pullup, C67
 100 nF bypass, C68 1 nF SENSE filter and C69-C71 100 nF C0G CT bank.
+The shutdown block is now placed: U12 74LVC1G14GW,125 with C72 100 nF
+local bypass, Q1/Q2 DMN2056U-7, R35/R36 1 kOhm gate resistors,
+R37/R38 1 MOhm gate pulldowns and R39/R40 22 ohm discharge resistors.
 Its visible SYS-007 comments link back to the full calculations below.
 This supersedes the raw-supply
 connection and missing-reservoir statements in the historical checkpoint.
@@ -40,33 +44,42 @@ basis below; the BOM, PDF and native ERC refresh are also complete.
 | --- | --- |
 | SYS_AON | R18.1, U10.1 VIN, C62.1, R32.1 |
 | U10 output | U10.6 VOUT, R31.1 |
-| AON_HOLD | R31.2, U10.3 CE, C63.1, C64.1, C65.1, C66.1, U9.1 VIN, C55.1, C67.1, R34.1, U11.3 MR, U11.6 VDD |
-| MAIN_PWR_EN (sheet-local) | U9.6 EN, U11.1 open-drain RESET, R34.2 |
+| AON_HOLD | R31.2, U10.3 CE, C63.1, C64.1, C65.1, C66.1, U9.1 VIN, C55.1, C67.1, R34.1, U11.3 MR, U11.6 VDD, U12.5 VCC, C72.1 |
+| MAIN_PWR_EN (sheet-local) | U9.6 EN, U11.1 open-drain RESET, R34.2, U12.2 input |
 | U11 SENSE | U11.5, R32.2, R33.1, C68.1 |
 | U11 CT | U11.4, C69.1, C70.1, C71.1 |
-| GND | U10.2, U10.5 ST, U11.2, R33.2, C62-C71 pin 2, in addition to existing grounds |
+| POWER_OFF_H | U12.4 output, R35.1, R36.1 |
+| Q1 gate | Q1.1 G, R35.2, R37.2 |
+| Q2 gate | Q2.1 G, R36.2, R38.2 |
+| POWER_KILL_N | Q1.3 D, U9.8 KILL, R21.2, R22.1, U1.D9 P903 open drain |
+| Discharge drain | Q2.3 D, R39.1, R40.1 |
+| +3V3_MCU | R39.2, R40.2, in addition to existing rail consumers |
+| GND | U10.2, U10.5 ST, U11.2, R33.2, C62-C72 pin 2, U12.3, Q1.2 S, Q2.2 S, R37.1, R38.1, in addition to existing grounds |
 
 U10.4 is the stock symbol's hidden, electrically `no_connect` NC pin;
 it remains unwired, consistent with TI's internally unconnected pin.
+U12.1 likewise remains unwired as the stock symbol's electrically
+`no_connect` NC pin, consistent with Nexperia's pin assignment.
 There is no raw-to-held wire bridge. A PWR_FLAG on AON_HOLD declares the
 real source path from U10 VOUT through passive R31 for ERC; its visible
 note identifies that purpose. No flag masks the missing raw SYS_AON source.
 C63-C66 positive terminals are on AON_HOLD, negative on GND.
-The sixteen held-supply/supervisor fitted components carry matching exact manufacturer/order
+The 26 included held-supply/supervisor/shutdown components carry matching exact manufacturer/order
 numbers and source fields in the native schematic and regenerated BOM.
 Footprints remain unqualified and outside this checkpoint's scope.
-The regenerated native BOM contains 47 grouped rows, 131 unique included
-references and quantity sum 131; C63-C66 form one group of four and C69-C71
+The regenerated native BOM contains 52 grouped rows, 141 unique included
+references and quantity sum 141; C63-C66 form one group of four and C69-C71
 form one group of three. The fresh
 eight-page A3 PDF was rendered and its corrected power-button page visually
 inspected. The other seven page renders are byte-identical to their earlier
 visual review. These checks and arithmetic checks do not measure hardware.
 
-The complete power circuit is still unfinished: charger/protected-pack input,
-USB permission, main converter, inverter and KILL/discharge FETs remain
-absent. CLI ERC reports 203 errors and two warnings, one fewer error than
-committed baseline `4b228dacd4`. The removed error is U9 EN unconnected;
-the power-button sheet now has only raw SYS_AON power undriven. Native ERC
+The complete power circuit is still unfinished: the charger/protected-pack
+input and raw SYS_AON source, USB-current permission circuit and TPS63802
+main converter remain absent. The future SYS-009 third POWER_OFF_H gate
+is not placed. CLI ERC reports 203 errors and two warnings, with every
+finding identity unchanged from supervisor checkpoint `4c7ce6314c`.
+The power-button sheet still has only raw SYS_AON power undriven. Native ERC
 reports 220 entries including the 15 existing exclusions. No severity or
 exclusion settings were changed. The missing source is explicit,
 not waived; the remaining errors must be resolved as the power tree is built.
@@ -662,7 +675,7 @@ the inverter/FET relationship with a wire, diode or common pullup.
 | TPS3808 6 VDD | AON_HOLD, local 100 nF bypass |
 | Nexperia 74LVC1G14GW 1/2/3/4/5 | NC / MAIN_PWR_EN / GND / POWER_OFF_H / AON_HOLD |
 | Nexperia 74LVC1G14 local bypass | 100 nF directly between VCC pin 5 and GND pin 3 |
-| Two DMN2056U-7, G/S/D = 1/2/3 | Each gate via its own 100 ohm from POWER_OFF_H; each gate has 1M to GND; source GND; drains as diagram |
+| Two DMN2056U-7, G/S/D = 1/2/3 | Each gate via its own 1k from POWER_OFF_H; each gate has 1M to GND; source GND; drains as diagram |
 | LTC2954 VIN and local bypass | AON_HOLD, not raw SYS_AON |
 | LTC PB external 10k pullup | Raw SYS_AON; preserve BTN series-1k/100n/contact/ESD circuit |
 | LTC INT and KILL pullups | Switched +3V3_MCU; preserve BTN KILL 10k/100k bias and P903 open-drain request |
@@ -801,11 +814,58 @@ the cold-start test must cover the actual combined circuit. The large hold
 reservoir and charging resistor make the supervisor supply rise much slower
 than its required 15 us/V minimum rise time.
 
-At AON_HOLD >=2.7 V, the inverter specifies output high >=VCC-0.1 at
-100 uA load. Two 1M gate pulldowns plus gate leakage remain below that load;
-therefore gate drive is >=2.6 V after settling. DMN2056U has a 2.5 V gate
-RDS(on) test point. Use **0.2 ohm maximum installed discharge-path FET
-resistance** as a qualification allocation, not the 25 C 45 milliohm value
+The held-domain gate resistors are now **1k**, not the former 100 ohm.
+[Nexperia Rev 19.1, pp. 4-5](https://assets.nexperia.com/documents/data-sheet/74LVC1G14.pdf)
+limits inverter output current to +/-50 mA and specifies VOH >= VCC-0.1 V
+at 100 uA loading across the recommended supply and temperature range.
+Include all three POWER_OFF_H loads: SYS-007 KILL/discharge and the future
+SYS-009 USB-permission clear FET. The old three-branch 100 ohm network's
+resistor-only initial-step bound was 140.802 mA. That did not establish
+an actual overcurrent, but relied on unspecified driver impedance to limit
+the pulse. Use separate `RC0603FR-071KL` 1k series resistors and
+`RC0603FR-071ML` 1M gate-to-source pulldowns. Both are 0.1 W at 70 C,
+1%, 100 ppm/C, with 75 V working-voltage ceilings; see the
+[1k](https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-071KL)
+and [1M](https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-071ML)
+manufacturer specifications. Derate power with temperature.
+
+DMN2056U's published +/-100 nA gate leakage is a 25 C test, not a
+full-temperature guarantee. Allocate and qualify **1 uA adverse gate
+leakage per FET**, including board leakage, for the following DC screen:
+
+```text
+Rg_min = 1000*0.99*0.99 = 980.1 ohm
+Rg_max = 1000*1.01*1.01 = 1020.1 ohm
+Rpd_min = 1M*0.99*0.99 = 980100 ohm
+Ipeak_3gates <= 3*4.6/980.1 = 14.080196 mA < 50 mA
+Istatic_3gates <= 3*(4.6/980100 + 1uA) = 17.080196 uA < 100 uA
+VGS_high_min = (2.6 - 1020.1*1uA)/(1+1020.1/980100)
+             = 2.596277663 V > 2.5 V
+VGS_low_max <= 0.1 + 1020.1*1uA = 0.1010201 V
+P_Rg_fullrail <= 4.6^2/980.1 = 21.589634 mW < 100 mW at 70 C
+```
+
+The peak screen assumes output and gate nodes remain within 0..4.6 V;
+qualify overshoot and drain-to-gate coupling as well. Settling is not
+established from the [DMN2056U](https://www.diodes.com/datasheet/download/DMN2056U.pdf)
+4.3 nC gate-charge or 339 pF input-capacitance entries: these are typical,
+not maximum values. Require the three-gate circuit to establish the
+specified KILL clamp and discharge action within the existing 10 ms total
+source-detection/control-response allocation, not an additional 10 ms.
+Gate charging and inverter transition current share the existing 1 uC
+combined charge reserve; they do not each receive a separate reserve.
+
+The inverter's 4 uA static ceiling plus 500 uA non-rail-input allocation
+and all three gate branches total 521.080196 uA. After the 500 uA reservoir
+bank-leakage screen, 103.919804 uA of the 1.125 mA control allocation remains
+for LTC, supervisor, EN pullup, reverse-blocker control current and other
+leakages. This accounting includes the future USB gate but does not close
+the existing low-PB/low-VIN leakage qualification gates. The 500 uA
+additional-current test is at VIN=VCC-0.6 V; characterize the actual input
+trajectory and include transition current in the combined charge reserve.
+
+DMN2056U has a 2.5 V gate RDS(on) test point. Use **0.2 ohm maximum installed
+discharge-path FET resistance** as a qualification allocation, not the 25 C 45 milliohm value
 as an all-temperature promise. The same allocation makes the KILL clamp
 drop less than 76 uV at the BTN 0.37931 mA sink screen.
 
@@ -957,13 +1017,15 @@ qualified project parts at the specified values.
 | --- | --- | --- |
 | 1 | LM66100DCKR, hold isolation | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/LM66100DCKR/10273183); 28390, $0.32 |
 | 1 | TPS3808G01DBVR, source supervisor | [DigiKey](https://www.digikey.com/en/products/detail/texas-instruments/TPS3808G01DBVR/666712); 101626, $1.96 |
-| 1 | 74LVC1G14GW,125, OFF_H inverter | [DigiKey](https://www.digikey.com/en/products/detail/nexperia-usa-inc/74LVC1G14GW-125/946729); 316674, $0.10 |
-| 2 | DMN2056U-7, discharge/KILL FETs | [DigiKey](https://www.digikey.com/en/products/detail/diodes-incorporated/DMN2056U-7/7352909); 80160, $0.39 |
+| 1 | 74LVC1G14GW,125, OFF_H inverter | [DigiKey 1727-3072-1-ND](https://www.digikey.com/en/products/detail/nexperia-usa-inc/74LVC1G14GW-125/946729); placement refresh: 316557, $0.10; $0.061/0.0443 at 10/100 |
+| 2 | DMN2056U-7, discharge/KILL FETs | [DigiKey DMN2056U-7DICT-ND](https://www.digikey.com/en/products/detail/diodes-incorporated/DMN2056U-7/7352909); 80160, $0.39; $0.238/0.149 at 10/100 |
+| 2 | RC0603FR-071KL, held-domain gate 1k | [DigiKey 311-1.00KHRCT-ND](https://www.digikey.com/en/products/detail/yageo/RC0603FR-071KL/726843); placement refresh: 4044181, $0.10; $0.025/0.0122 at 10/100; SYS-009 adds one POWER_OFF_H branch |
+| 2 | RC0603FR-071ML, gate pulldown 1M | [DigiKey 311-1.00MHRCT-ND](https://www.digikey.com/en/products/detail/yageo/RC0603FR-071ML/726844); placement refresh: 436984, $0.10; $0.025/0.0122 at 10/100; SYS-009 adds one POWER_OFF_H branch |
 | 4 | T491D107K010AT, 100u/10V hold | [DigiKey](https://www.digikey.com/en/products/detail/kemet/T491D107K010AT/818629); placement refresh: 11863, $1.64; $1.09/0.8033 at 10/100 |
 | 3 | GRM31C5C1H104JA01K, CT 100n C0G | [DigiKey](https://www.digikey.com/en/products/detail/murata-electronics/GRM31C5C1H104JA01K/2548138); 70095, $0.52 |
 | 1 | RT0805BRD07732KL, 732k divider top | [DigiKey](https://www.digikey.com/en/products/detail/yageo/RT0805BRD07732KL/6617094); 15646, $0.10 |
 | 1 | RT0603BRD07100KL, 100k divider bottom | [DigiKey YAG1235CT-ND](https://www.digikey.com/en/products/detail/yageo/RT0603BRD07100KL/1072187); placement refresh: 39669, $0.10; $0.067/0.0559 at 10/100 |
-| 2 | RC2512FK-0722RL, main discharge | [DigiKey](https://www.digikey.com/en/products/detail/yageo/RC2512FK-0722RL/5922011); 9772 indexed, $0.31 |
+| 2 | RC2512FK-0722RL, main discharge | [DigiKey YAG3392CT-ND](https://www.digikey.com/en/products/detail/yageo/RC2512FK-0722RL/5922011); placement refresh: 31522, $0.31; $0.166/0.1025 at 10/100 |
 | 1 | RC2512FK-07100RL, hold charging resistor | [DigiKey](https://www.digikey.com/en/products/detail/yageo/RC2512FK-07100RL/5921799); placement refresh: 3845, $0.33 |
 
 ### Python verification for SYS-006/007
@@ -988,6 +1050,15 @@ trips = [
 ]
 vtrip_min, vtrip_max = min(trips), max(trips)
 rmin_factor, rmax_factor = .99*.99, 1.01*1.01
+gate_rmin, gate_rmax = 1000*rmin_factor, 1000*rmax_factor
+gate_pd_min = 1e6*rmin_factor
+gate_leak_alloc = 1e-6  # per FET, including board leakage; qualify over temperature
+gate_branch_static = 4.6/gate_pd_min + gate_leak_alloc
+gate_peak_three = 3*4.6/gate_rmin
+gate_static_three = 3*gate_branch_static
+gate_vhigh_min = ((2.7-.1)-gate_rmax*gate_leak_alloc)/(1+gate_rmax/gate_pd_min)
+gate_vlow_max = .1+gate_rmax*gate_leak_alloc
+inverter_gates_alloc = 4e-6+500e-6+gate_static_three
 chold_min = 4*100e-6*.9*.9*.9
 chold_max_model = 4*100e-6*1.1*1.1*1.1
 icontrol_alloc = .001125
@@ -1013,6 +1084,14 @@ checks = {
     'trip upper V': (vtrip_max, 3.4765976320231147),
     'divider top full-source power screen W': (divider_top_power_screen, 29.008561268172036e-6),
     'divider bottom full-source power screen W': (divider_bottom_power_screen, 212.3426684830193e-6),
+    'three held gates peak current screen A': (gate_peak_three, .014080195898377714),
+    'three held gates static current screen A': (gate_static_three, 17.080195898377715e-6),
+    'one held gate static current screen A': (gate_branch_static, 5.693398632792572e-6),
+    'held gate high minimum screen V': (gate_vhigh_min, 2.5962776626327404),
+    'held gate low maximum screen V': (gate_vlow_max, .1010201),
+    'gate resistor full-rail power screen W': (4.6**2/gate_rmin, .021589633710845827),
+    'inverter plus three gates allocation A': (inverter_gates_alloc, 521.0801958983778e-6),
+    'control allowance after inverter gates and cap leakage A': (icontrol_alloc-.0005-inverter_gates_alloc, 103.91980410162218e-6),
     'hold C minimum F': (chold_min, .0002916),
     'hold C maximum model F': (chold_max_model, .0005324),
     'capacitor bank leakage screen A': (4*10e-6*10*1.25, .0005),
@@ -1042,6 +1121,12 @@ assert vtrip_min > 3.05
 assert divider_top_power_screen < .125  # rated power at 70 C
 assert divider_bottom_power_screen < .100  # rated power at 70 C
 assert 4.6 < 75 < 150  # both selected continuous working-voltage ceilings
+assert gate_peak_three < .050
+assert gate_static_three < 100e-6
+assert gate_vhigh_min > 2.5
+assert gate_vlow_max < .4
+assert 4.6**2/gate_rmin < .1  # gate-resistor rated power at 70 C
+assert inverter_gates_alloc+.0005 < icontrol_alloc
 assert ireverse_alloc > ireverse_threshold
 assert isclose(icontrol_alloc, .001 + .000125, rel_tol=1e-12)
 assert hold > discharge + .010
@@ -1051,7 +1136,6 @@ assert discharge + .010 < .200
 assert checks['POR sink A'][0] < 15e-6
 assert checks['EN high lower V'][0] > 1.13
 assert checks['CT minimum delay model s'][0] > .650 + .010
-assert 2.7-.1 > 2.5
 assert 4.6/(100*rmin_factor*chold_min) < 1/(15e-6)
 print('SYS-006/007 arithmetic PASS; declared allocations still require qualification.')
 ```
@@ -1377,11 +1461,16 @@ pin-allocation table.
 | 74LVC2G38 5/6/3 | 2A=USB_CC_OUT1_B, 2B=USB_ENUM_NOT_OK, OD 2Y=TPS2553 EN |
 | 74LVC2G38 4/8 | GND / +3V3_USB_CTRL |
 | DMN2056U-7 clear FET | S2=GND, D3=USB_ENUM_CLR_WIRE, G1=USB_PERMISSION_CLEAR_H via 100 ohm; 47k gate pulldown |
-| DMN2056U-7 power-off FET | S2=GND, D3=USB_ENUM_CLR_WIRE, G1=POWER_OFF_H via 100 ohm; **1M** gate pulldown |
+| DMN2056U-7 power-off FET | S2=GND, D3=USB_ENUM_CLR_WIRE, G1=POWER_OFF_H via **1k**; **1M** gate pulldown; same exact gate-resistor parts as SYS-007 |
 
 The 1M on the held-domain POWER_OFF_H FET avoids adding a 47k static load
-to the SYS-007 hold reservoir. Include its gate charge and <=4.6 uA pull
-current in that section's existing allocations. No gate or drain connects
+to the SYS-007 hold reservoir. SYS-007 now counts this third held-domain
+branch explicitly: <=5.693399 uA includes the 1M tolerance/TC and a 1 uA
+gate/board-leakage qualification allocation. Its 1k series resistor is
+included in the three-branch peak/settled-drive checks. Gate charge remains
+inside the shared transition reserve. The separate firmware-driven clear
+FET's 100 ohm/47k network is unchanged by this held-driver correction.
+No gate or drain connects
 USB-control supply directly to the MCU reset or kill domain.
 
 Primary logic pin and timing sources:
