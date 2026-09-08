@@ -1,6 +1,6 @@
 # Camera, removable storage and external-memory allocation
 
-Revision 14, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
+Revision 15, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
 This is an engineering allocation record for native KiCad implementation,
 not a completed schematic, verified timing closure or hardware qualification.
 Cross-references: [radio](radio_interface.md), [power](system_power_design.md),
@@ -1188,21 +1188,34 @@ all between those same rails, with CMS-011-specific sourcing fields.
 All five DNU balls remain explicit, electrically unconnected pins.
 No PWR_FLAG or simulation exclusion was added.
 
-This is not a complete NOR interface: all 13 signal pins remain open,
-including RESET#. The ten 30R series parts, two pulls, MCU pin-type updates
-and root/child signal connections remain to be implemented. Native and
-CLI ERC therefore add 16 expected interface errors (13 unconnected pins
-and three undriven inputs), with no supply/bypass errors. Full-project
-active results are 161 errors and two warnings, compared with 145 and
-two at the prior checkpoint; no new errors were waived or suppressed.
-The 15 existing excluded warnings are not active warnings in that count.
-The complete PDF now contains 11 A3 pages; the BOM includes U15 once and
-all four bypass capacitors. Preserve the existing CMS-010 circuitry.
+**Native series/default-state checkpoint:** R54-R61 connect DQ0-DQ7,
+R62 connects CK and R63 connects DS through ten independently sourced
+30R parts. Each pin 1 is on its distinct local host net; each pin 2
+shares a net with exactly its intended U15 ball. R64 is the 10k CS pull
+and R65 is the 47k INT pull, both to +3V3_MCU. Their values, manufacturer
+parts, order codes, dated availability and qualification notes are native
+symbol fields and are included in the whole-project BOM.
+
+This is not a complete NOR interface: MCU pin-type updates and root/child
+signal connections remain to be implemented. The ten host nets are still
+local singleton nets, and local MCU_RESET_N contains only U15.A4, not the
+existing shared reset network. Native and CLI ERC now report 146 active
+errors and 13 active warnings, versus 161 and two in the supply checkpoint.
+The NOR reset remains undriven; eleven new isolated-label warnings expose
+the ten unfinished host nets and local reset. These are unfinished
+integration findings, not waived connections or proof of circuit closure.
+No ERC rule or exclusion was added. The 15 existing excluded warnings
+are not active warnings in that count. The complete PDF contains 11 A3
+pages; the BOM includes U15 once, four bypass capacitors and all twelve
+resistors. Existing CMS-010 and other component connectivity is preserved.
 
 The native supply annotation `a9ed9069-8e7a-4cab-88ec-2a1ce6c5d680`
 on page 11 hyperlinks to CMS-011B, with its arithmetic checked by CMS-011F.
 Sheet instance UUID: `23859413-ab36-480e-aeef-d0e8a227b709`.
 Reciprocal MCU/interface annotations remain part of the unfinished phase.
+The native series/pull annotation `18d4ef73-0341-4ce2-81e6-ceda0da87e84`
+on page 11 hyperlinks to CMS-011C. Its displayed resistance, leakage and
+sink-current arithmetic is recomputed by CMS-011F below.
 
 ### CMS-011A: Source revision and exact pin contract
 
@@ -1246,9 +1259,20 @@ A1 is depopulated: do not create a twenty-fifth pin. There are 13 signal,
 not hide absent wiring; no local PWR_FLAG is justified by this passive load.
 Use one common VCC/VCCQ supply node so sequencing cannot make VCCQ exceed
 VCC. Do not insert independently switched or delayed VCCQ branches.
-The [RA8P1 datasheet Rev.1.30][nor-ra-ds], Tables 1.17 and 2.1, confirms
-the GPIO/IRQ allocation and voltage domain; CMS-006 checks reservation
-collisions. P106/N6 is free, and no dedicated flash-reset GPIO is required.
+The [RA8P1 datasheet Rev.1.30][nor-ra-ds], Table 1.17, confirms the
+GPIO/IRQ allocation. The [hardware manual Rev.1.30][nor-ra-hum],
+Table 21.2, p.849, identifies the VCC2 supply domain. CMS-006 checks
+reservation collisions. P106/N6 is free; no dedicated flash-reset GPIO
+is required.
+
+For this flash, DS is read-only output (Rev. AB Table 7, p.7), so the
+configured MCU P801 pin is to be an input, not an output. Hardware manual
+section 45.2.1.7, p.3003, defines WRMSKMD: leave it at zero so the optional
+DQS write-mask output is disabled. Figure 45.10, p.3035, shows the
+DDR-with-DS mode sampling DQS while its output enable is low. This is a
+required firmware mode contract, not a claim that the firmware is already
+implemented; generic pad bidirectionality does not authorize driving the
+flash DS output. The native MCU pin-type update is still pending.
 
 ### CMS-011B: Series, default-state and local supply components
 
@@ -1284,13 +1308,14 @@ Keep that initial setting for qualification; any tuning must recheck both
 read and write directions and should not rewrite nonvolatile settings
 at every boot.
 
-Passive contract; only the four bypass capacitors are placed in this checkpoint:
+Passive contract; all twelve new resistors and four bypass capacitors are
+placed in this checkpoint. The shared reset hookup remains pending:
 
 | Function | Quantity / value | Exact MPN | Existing native donor |
 | --- | --- | --- | --- |
-| DQ0..7, CK, DS series | 10 x 30R | YAGEO RT0603BRD0730RL | New sourced value; do not inherit 0R metadata |
-| CS# idle-high | 1 x 10k to +3V3_MCU | YAGEO RC0603FR-0710KL | R44 or R27, with new reference |
-| INT# idle-high | 1 x 47k to +3V3_MCU | YAGEO RC0603FR-0747KL | New sourced value |
+| DQ0..7, CK, DS series | 10 x 30R | YAGEO RT0603BRD0730RL | R54-R63 placed; dedicated 30R metadata |
+| CS# idle-high | 1 x 10k to +3V3_MCU | YAGEO RC0603FR-0710KL | R64 placed, sourced from R44 |
+| INT# idle-high | 1 x 47k to +3V3_MCU | YAGEO RC0603FR-0747KL | R65 placed; dedicated 47k metadata |
 | Local VCC / VCCQ bypass | 3 x 100n to GND | TDK C1608X7R1H104K080AA | C89-C91 placed, sourced from C76 |
 | Shared local bulk bypass | 1 x 10u to GND | TDK C3216X7R1V106K160AC | C92 placed, sourced from C88 |
 | RESET# idle-high | Existing R1, no added pull | Existing common-reset network | No new component |
@@ -1500,7 +1525,7 @@ from math import isclose, sqrt
 import re
 
 document = Path('ra8p1_kicad/design/camera_storage_interfaces.md').read_text()
-section = document.split('## CMS-011: 128 MiB Octal NOR electrical contract')[1]
+section = document.split('\n## CMS-011: 128 MiB Octal NOR electrical contract', 1)[1]
 rows = re.findall(
     r'^\| (DQ[0-7]|CK|DS|CS#|INT#|RESET#) \| ([A-E][1-5]) '
     r'\| (P\d{3}|-) \| ([A-Z]\d+|-) \| ([^|]+) \|$', section, re.M)
@@ -1623,11 +1648,11 @@ print('main / cold radio-off / wake / prohibited cold radio-on allocations A',
 print('CMS-011 arithmetic PASS; native interface and current/timing/reset qualification OPEN')
 ```
 
-For the supply checkpoint, first export a fresh netlist (read-only) and
+For the native leaf checkpoint, first export a fresh netlist (read-only) and
 use KiCad's whole-project BOM export to refresh `ereader_rev1_bom.csv`:
 
 ```sh
-/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli sch export netlist --format kicadxml -o /tmp/ereader-nor-bypass.xml ra8p1_kicad/ereader/ereader_rev1.kicad_sch
+/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli sch export netlist --format kicadxml -o /tmp/ereader-nor-interface.xml ra8p1_kicad/ereader/ereader_rev1.kicad_sch
 ```
 
 ```python
@@ -1635,13 +1660,16 @@ from pathlib import Path
 import csv
 import xml.etree.ElementTree as ET
 
-root = ET.parse('/tmp/ereader-nor-bypass.xml').getroot()
+root = ET.parse('/tmp/ereader-nor-interface.xml').getroot()
 net_by_pin = {}
+pins_by_net = {}
 for net in root.findall('./nets/net'):
+    pins_by_net[net.get('name')] = set()
     for node in net.findall('node'):
         key = (node.get('ref'), node.get('pin'))
         assert key not in net_by_pin
         net_by_pin[key] = net.get('name')
+        pins_by_net[net.get('name')].add(key)
 for ball in ('B4', 'D1', 'E4'):
     assert net_by_pin['U15', ball] == '+3V3_MCU'
 for ball in ('B3', 'C1', 'E5'):
@@ -1653,6 +1681,22 @@ for ball in ('A2', 'A3', 'B1', 'B5', 'C5'):
     assert net_by_pin['U15', ball].startswith('unconnected-')
 assert len([key for key in net_by_pin if key[0] == 'U15']) == 24
 
+prefix = '/128 MiB Octal NOR/'
+signals = [(f'DQ{i}', ball) for i, ball in enumerate(
+    ('D3', 'D2', 'C4', 'D4', 'D5', 'E3', 'E2', 'E1'))]
+signals += [('CK', 'B2'), ('DS', 'C3')]
+for number, (signal, ball) in enumerate(signals, 54):
+    ref = f'R{number}'
+    host = 'NOR_DQ_HOST' + signal[2:] if signal.startswith('DQ') else f'NOR_{signal}_HOST'
+    assert net_by_pin[ref, '1'] == prefix + host
+    assert pins_by_net[prefix + host] == {(ref, '1')}  # Integration is still open.
+    assert pins_by_net[prefix + 'NOR_' + signal] == {(ref, '2'), ('U15', ball)}
+for ref, signal, ball in (('R64', 'NOR_CS_N', 'C2'), ('R65', 'NOR_INT_N', 'A5')):
+    assert net_by_pin[ref, '1'] == '+3V3_MCU'
+    assert pins_by_net[prefix + signal] == {(ref, '2'), ('U15', ball)}
+assert pins_by_net[prefix + 'MCU_RESET_N'] == {('U15', 'A4')}
+assert net_by_pin['U1', 'D5'] != prefix + 'MCU_RESET_N'
+
 bom = list(csv.DictReader(Path('ra8p1_kicad/exports/ereader_rev1_bom.csv').open()))
 by_ref = {}
 for row in bom:
@@ -1660,6 +1704,8 @@ for row in bom:
         assert ref not in by_ref
         by_ref[ref] = row
 mpns = {'U15': 'S28HL01GTFPBHI030', 'C92': 'C3216X7R1V106K160AC',
+        'R64': 'RC0603FR-0710KL', 'R65': 'RC0603FR-0747KL',
+        **{f'R{i}': 'RT0603BRD0730RL' for i in range(54, 64)},
         **{ref: 'C1608X7R1H104K080AA' for ref in ('C89', 'C90', 'C91')}}
 for ref, mpn in mpns.items():
     assert by_ref[ref]['Manufacturer_Part_Number'] == mpn
@@ -1667,6 +1713,7 @@ for ref, mpn in mpns.items():
     assert 'CMS-011' in by_ref[ref]['Procurement_Status']
 assert by_ref['U15']['Qty'] == '1'
 print('CMS-011 native supply: six balls, eight capacitor terminals, five DNU, BOM identities PASS')
+print('CMS-011 native leaf: ten separate series paths and two pulls PASS; host/reset integration OPEN')
 ```
 
 Proposed additional interface note, to be tailored to actual references when
