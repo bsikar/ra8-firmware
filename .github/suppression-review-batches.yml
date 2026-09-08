@@ -29,7 +29,7 @@ batches:
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
     assigned_rows: 53
-    rows_sha256: dc686ba960375490a83288f91da94a9f66a9f0a167483ce5a33d5081ed9b68d1
+    rows_sha256: 9c23f2960c752addb61e0649b3b6e2b1ec06551e1a1c5b3130fa15d14d173445
     partition: "remaining concern rows: ansible/clang-tidy/python/cmake cross-review"
     evidence:
       - "issue-790 batch-b cross-review record"
@@ -122,7 +122,7 @@ batches:
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
     assigned_rows: 4187
-    rows_sha256: 6a28503c92e723551a44a686cb53bf0135d0c1a5cc8edbd4fe318016adfd1702
+    rows_sha256: d59c595056083d87dabc9dc07f4e624f2cb12f2b4d232f50a1f4583a29fea6d6
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
@@ -375,7 +375,7 @@ batches:
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
     assigned_rows: 28
-    rows_sha256: b19598f27c76e38129615e6d54430c61a057ab5d98980f5f10148d6b90540399
+    rows_sha256: 52cc6dac0407a5082534f950c92477562f00b39e8fc4e4dd785fd86090022d09
     partition: >-
       Dev-box selftest and check-mode idempotence reconciliation: seven exact
       reporting-only Ansible controls, eighteen exact scope-authority successors,
@@ -403,7 +403,7 @@ batches:
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
     assigned_rows: 124
-    rows_sha256: 7fa60e350fd51842f1e07f34f7da9d49df69713c7104943f4b58c2bedcaaefcc
+    rows_sha256: 6bedef3c1042bab0be83206847a811619567502fa4862e4246cb86e9bdf1cce7
     partition: >-
       HIL size-cap split reconciliation: three new bound-exit raw-byte
       authorities, two changed raw-byte pins, one moved negative-fixture
@@ -440,7 +440,7 @@ batches:
     date: 2026-09-03
     identity_schema: 2-durable-site-identity
     assigned_rows: 59
-    rows_sha256: f85cade9dca05fcf1917309789592994bea441ad4902f87197a88cce2b2812f7
+    rows_sha256: f5cac62a1ffe48b37940fb1953e08f0b095c4ad72e261848148a148c0d889067
     partition: >-
       Continuous runner reconciliation and inherited runner-admission closure:
       exact Ansible probe controls, fixed-argv subprocess diagnostics,
@@ -471,7 +471,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: 419ffb0f21b1d54fad4c083304bd66b30f294785d58367ffd2cdccfa624ff87e
+    rows_sha256: 618d1bef89ba7c35d01a4b7aa2d09fad9feeaeab1e6e9609fdbd9b4f4887d7b4
     partition: >-
       Runner reconciliation round-two authority refresh: the independently
       recomputed devcontainer image raw-byte pin and both full-worktree
@@ -530,7 +530,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 17
-    rows_sha256: 6ef2ff52287dde5e39021ad79a6c13dc68a8ab31f9a1666990f9062621b40e54
+    rows_sha256: 67c14b74e250a224254cf22c074dcab805ecc7804fbc86877d885dae6eaa7eb5
     partition: >-
       Round4 checker split: three exact fleet path authorities, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -554,7 +554,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 26
-    rows_sha256: 581c61649848780e981bdc02bee42f81645609e6064a0ab0ac67f119c86ace03
+    rows_sha256: 53ef4fd642f78907b55f85dbd9abeca86172776e4e9f7284b5373336d03d342a
     partition: >-
       Round5 ARC checker split: one exact selftest path authority, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -578,7 +578,7 @@ batches:
     date: 2026-09-05
     identity_schema: 2-durable-site-identity
     assigned_rows: 8
-    rows_sha256: 41a124519de91798cf43b4e7166e4152c9a25181e993b337e64710271514b903
+    rows_sha256: 543ea256a4b65683375ad7542dc6bea5fc37b5551fe39d76a9f4a1ed8f43b434
     partition: >-
       Live K3s, TrueNAS dev-slice, and WSL convergence controls after successful
       deployment, including exact readbacks and repair/assertion consumers.
@@ -603,7 +603,7 @@ batches:
     date: 2026-09-05
     identity_schema: 2-durable-site-identity
     assigned_rows: 36
-    rows_sha256: 193db55c4156afa5cdcb099553291b20e312b4fe489b65498fac7befb445dd4b
+    rows_sha256: 76f6f65933225a3a82832d2953245892cedfc5af06905af2c567a8b15788d160
     partition: >-
       Final runner storage, WSL clock, and lifecycle authority reconciliation.
     evidence:
@@ -623,7 +623,7 @@ batches:
     date: 2026-09-06
     identity_schema: 2-durable-site-identity
     assigned_rows: 3
-    rows_sha256: 5117e5a80e9c3502097399b0772800e2d8ac243a0e855acef7b9ff7d292a7e0b
+    rows_sha256: 3b2ca79d16c055f04b504128778c9a3077feda4b207bec315060cc47a2ddd7c5
     partition: >-
       Runtime-less image policy selftest and locale-stable MISRA inventory.
     evidence:
@@ -642,7 +642,7 @@ batches:
     date: 2026-09-06
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: 2b46a685c32f001ea96948e4cf395d248800ae4f384bab0938d782def5f1e307
+    rows_sha256: 681c062d2f5f4abf0db2a0b13e40eb1bdcc02fb9cad5087c05f914f3bd864b31
     partition: >-
       Authenticated image selftest bytes and settled aggregate successors.
     evidence:
@@ -660,7 +660,7 @@ batches:
     date: 2026-09-07
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: 1750740347855f53e594e56150703ffefb32ad461a07b3a43b80da68b9db185a
+    rows_sha256: d07014575172956a9ae018bb90c7bc27323223ae87d210f187f6a69fe31d7c89
     partition: >-
       Load-safe image supervisor deadline review: the nested status receipt now
       waits through its existing watchdog plus cleanup margin, and both exact
@@ -689,8 +689,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-09-07
     identity_schema: 2-durable-site-identity
-    assigned_rows: 8
-    rows_sha256: 2a13ddc2396113193423732e8506ed2d2b048c1ab6a92653f13e45259810fd9d
+    assigned_rows: 10
+    rows_sha256: 4e152ac1ff31c32d848a3a0039a4ae2322eebb933c1cfd88985bdb9d7e883ca2
     partition: >-
       WSL image-selftest cleanup deadline review: only descendant disappearance
       receives additional bounded observation time, with exact helper and main
@@ -700,9 +700,9 @@ batches:
         The repeated-ps-failure case reproduced a signal-ignoring descendant
         surviving the generic two-second process bound on WSL under load.
       - >-
-        Descendant cleanup accepts terminal zombies as non-surviving and waits
-        at most ten seconds for live processes; the direct worker and group
-        safety bounds remain two seconds, so the detector is not weakened.
+        Bounded process absence treats absent and zombie processes as terminal
+        while retaining the original two-second limit for every live process;
+        reparented container zombies therefore cannot create a false failure.
       - >-
         The full runtime image selftest passed under active load after the
         repair, including exact root inputs and labelled/unlabelled round trips.
@@ -710,5 +710,30 @@ batches:
         The final checker census remains exactly 1014 authorities and 3787
         values, with classification
         1de8ef8ba500b219f25f530651f2e9c332a3e308e1d3c0952bdc33292731ee35,
-        value e5907de59901b8858b2a60df8a79cad3ca9da6b41aec1c51d2e8178c84d99656,
-        and reason a17c724ade7c14a827c5aa3b841402efdb6f31dc476d32447b343a437fcc9465.
+        value 7c25b3d710eb5d6ca94d8d66b310ce2101b7f1f6317ddb6c98b43101d3704bf3,
+        and reason 7b90d3172119098c4c6078a59e5a1207a6721306681559fbb6301b5d00e4bed9.
+  - id: dev-slice-alias-checkmode-20260907
+    authority: repository-suppression-review
+    date: 2026-09-07
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 4
+    rows_sha256: 4194c835fd15b759da2ae963a95d28bcb0fc48c3a0c8bef3b99b7a2acf33a0fb
+    partition: >-
+      Dev-slice image alias check-mode convergence: two newly visible
+      read-only status controls and the final suppression aggregate successors.
+    evidence:
+      - >-
+        Check mode reports an alias mismatch as APPLY REQUIRED instead of
+        asserting failure; apply mode retags only when the exact image IDs differ.
+      - >-
+        The post-apply alias read remains fatal and its equality assertion runs
+        only after the real mutation, preserving runner/dev-slice parity.
+      - >-
+        Existing reporting-only task bindings shifted after insertion but retain
+        identical read-only semantics and exact downstream consumers.
+      - >-
+        The authenticated checker census remains 1014 authorities and 3787
+        values with classification
+        1de8ef8ba500b219f25f530651f2e9c332a3e308e1d3c0952bdc33292731ee35,
+        value 7c25b3d710eb5d6ca94d8d66b310ce2101b7f1f6317ddb6c98b43101d3704bf3,
+        and reason 7b90d3172119098c4c6078a59e5a1207a6721306681559fbb6301b5d00e4bed9.
