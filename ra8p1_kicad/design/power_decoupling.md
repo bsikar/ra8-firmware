@@ -264,7 +264,7 @@ PY
 
 ## PWR-003: TPS63802 main digital converter
 
-Revision 2, 2026-09-08. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825).
+Revision 3, 2026-09-08. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825).
 This is the implementation basis for the main converter in the
 [e-reader project](../ereader/ereader_rev1.kicad_sch). The local library symbol
 is `Power_Devices:TPS63802DLA`, with TPS63802DLAR as its exact default part.
@@ -280,6 +280,9 @@ Any later power-saving mode change reopens the voltage and reset budgets.
 Use with [SYS-007/008](system_power_design.md),
 [memory/camera allocation](camera_storage_interfaces.md) and
 [audio power](audio_subsystem.md#aud-005-audio-rails-thermal-load-and-power-path-impact).
+This revision reconciles the load, startup and thermal screens with the
+selected CMS-011 NOR's 250 mA allocation. It does not change the native
+TPS63802 circuit, its component values or its qualification status.
 
 ### Connections and exact candidate parts
 
@@ -365,10 +368,10 @@ if exceeded, revise the supply or domain split before release.
 | --- | ---: | --- |
 | RA8P1, all connected 3.3 V supply pins and driven IO | 750 mA | Includes core-converter input, PHY/analog, BGO and IO; see accounting below |
 | ESP32 radio branch | 500 mA | RADIO-004 acceptance allocation, not an autonomous 500 mA clamp |
-| SDRAM including output switching | 250 mA | CMS-008's 170 mA refresh maximum is not additive with its 70/90 mA operating/burst modes |
-| NOR including output loading and pulls | 100 mA | Selected speed/device must fit; no unreviewed Octal substitution |
+| SDRAM including output switching and pulls | 250 mA | [CMS-010](camera_storage_interfaces.md#cms-010-is42s32160f-7tli-pin-and-electrical-contract): selected ISSI -7 IDD4 maximum is 210 mA with outputs open; bus charging and 4 mA pull allocation must fit |
+| NOR including output loading and pulls | 250 mA | [CMS-011](camera_storage_interfaces.md#cms-011-128-mib-octal-nor-electrical-contract): S28HL01GTFPBHI030, 128 MiB Octal; qualification allocation, not a guaranteed maximum |
 | Small sensors, control logic, pulls and feedback | 50 mA | Component selection and all asserted-low pull currents must fit |
-| **Total** | **1650 mA** | **350 mA / 17.5% below the nominal 2 A capability** |
+| **Total** | **1800 mA** | **200 mA / 10% below the nominal 2 A rating; not guaranteed delivery or transient margin** |
 
 [Renesas Rev.1.30, Tables 2.8, 2.32 and 2.39](https://www.renesas.com/en/document/dst/ra8p1-group-datasheet)
 separate the 396.27 mA ICC+ICC_DCDC reference from unloaded-IO PHY/analog
@@ -380,12 +383,24 @@ remains for external IO, core-converter efficiency differences and that
 BGO core increment. This remainder is not a measured margin. Do not add
 the 1000 mA internal IDD ceiling again as a 3.3 V source load.
 
-For NOR, [Winbond W25Q512JV Rev I, May 5 2026, section 9.4, p.83](https://www.winbond.com.tw/resource-files/W25Q512JV%20SPI%20RevI%20%2005052026%20Plus.pdf)
-lists read maxima of 35 mA at 50 MHz and 40 mA at 104 MHz, with outputs
-open and checkerboard data. Status write, page program and erase each
-have 25 mA maxima. These are alternative operating modes. The table does
-not bound 133 MHz read current. The 100 mA allocation is not approval of
-an unselected ISSI/Macronix device or software compatibility.
+The earlier 100 mA Winbond Quad candidate allocation is superseded by
+**250 mA for the selected Infineon S28HL01GTFPBHI030 Octal NOR**.
+[CMS-011](camera_storage_interfaces.md#cms-011-128-mib-octal-nor-electrical-contract)
+owns its exact pin/reset/sourcing contract and current evidence. Its
+[released manufacturer datasheet Rev. AB, Table 87, pp.132-134](https://www.mouser.com/datasheet/3/70/1/8HS01GT_S28HL512T_S28HL01GT_512MB_1GB_SEMPER_TM_FLASH_OCTAL_INTERFACE_1_8V_3-DataSheet-v68_00-EN.pdf)
+excludes output switching from read-current figures. The 173 mA DDR row
+is labeled 200 MHz for both voltage families although the selected HL
+part is limited to 166 MHz. It therefore does not provide a clean
+guaranteed bound for the proposed 125 MHz DDR/DS operating point.
+CMS-011's illustrative nine-output, 15 pF, 125 MHz charge screen adds
+56.674436 mA, giving 229.674436 mA with that ambiguous row. This is
+arithmetic for qualification planning, not a simulation or manufacturer
+guarantee. The 1 mA NOR pull/leakage allowance is inside the 250 mA;
+do not count it again in the separate logic row. SDRAM's 4 mA pull
+allowance likewise remains inside its 250 mA. Neither lowering the clock
+nor multiplying typical current by a factor proves the complete envelope.
+The selected Octal capacity/performance and required audio/radio features
+are not silently reduced to preserve the previous power total.
 
 Do not connect microSD, camera-module, ESS DAC/clock, headphone/speaker,
 e-paper controller/HV, touch or warm/cool frontlight power to this converter.
@@ -418,15 +433,15 @@ SYS-007's complete source-loss shutdown and hold-up qualification.
 At PWR-002's PWM static high corner, 3.358485094 V:
 
 ```text
-Pout = 3.3584850935 * 1.65 = 5.541500 W
+Pout = 3.3584850935 * 1.80 = 6.045273 W
 Pin = Pout / eta; Iin = Pin / VIN; Ploss = Pin - Pout
 ```
 
 | Assumed efficiency | Input at raw trip | Input at VIN=3.20 V | Total conversion loss | Loss * TI reference 81 C/W |
 | --- | ---: | ---: | ---: | ---: |
-| 85% | 1.997549 A | 2.037316 A | 0.977912 W | 79.210859 C |
-| 90% | 1.886574 A | 1.924132 A | 0.615722 W | 49.873504 C |
-| 93% | 1.825717 A | 1.862063 A | 0.417102 W | 33.785277 C |
+| 85% | 2.179144 A | 2.222527 A | 1.066813 W | 86.411846 C |
+| 90% | 2.058081 A | 2.099053 A | 0.671697 W | 54.407459 C |
+| 93% | 1.991691 A | 2.031342 A | 0.455021 W | 36.856665 C |
 
 Efficiency values are assumptions, not lower bounds. Charging all converter
 loss to the IC is a conservative heat-allocation screen; actual IC and
@@ -439,8 +454,19 @@ typical output-capability curves do not establish our all-corners rating.
 
 PWR-002 leaves only 14.922537 mV radio release and 48.092861 mV MCU
 release allocation. Ripple, path loss, startup and load steps must fit the
-applicable thresholds; 350 mA of current headroom is not 350 mV of voltage
+applicable thresholds; 200 mA of nameplate current headroom is not 200 mV of voltage
 headroom. Test at the converter and at the load/supervisor pins.
+
+The increased allocation reopens approval of this converter and the
+upstream source budget. Retaining TPS63802 requires demonstrated output
+delivery at the minimum VIN, actual inductor/capacitor corners, startup
+and transient loads, and enclosure thermal conditions. If those cannot
+be met with margin, a higher-capability converter or a reviewed domain
+split is an architecture decision, not a drop-in substitution or a
+reason to lower required product performance without review. This
+document does not select a replacement or claim the native circuit was
+changed. The battery/charger/source must also account for this higher
+input current plus every separately powered mandatory domain.
 
 ### Cold start and wake are separate current cases
 
@@ -450,12 +476,12 @@ gives VCC_DCDC cold-start inrush 1.330 A and deep-standby-return references
 maximum columns. These are **not whole-MCU/whole-rail current guarantees**.
 
 ```text
-Cold-start subtotal = 1.330 + 0.250 + 0.100 + 0.050 = 1.730 A
-Same subtotal with radio on = 1.730 + 0.500 = 2.230 A
-Largest wake-reference subtotal, radio off = 1.270 + 0.400 = 1.670 A
+Cold-start subtotal = 1.330 + 0.250 + 0.250 + 0.050 = 1.880 A
+Same subtotal with radio on = 1.880 + 0.500 = 2.380 A (prohibited)
+Largest wake-reference subtotal, radio off = 1.270 + 0.550 = 1.820 A
 ```
 
-The first subtotal leaves only 270 mA before the nominal 2 A capability,
+The first subtotal leaves only 120 mA before the nominal 2 A rating,
 and excludes non-DCDC MCU start current and capacitor charging not already
 represented in the reference measurement. It is not a safe-start proof.
 Do not add the complete 750 mA steady MCU allocation to the DCDC inrush:
@@ -479,8 +505,24 @@ does not edit KiCad, simulate the converter or qualify components.
 
 ```python
 from math import isclose
+from pathlib import Path
+import re
 
-main_alloc = dict(mcu=.750, radio=.500, sdram=.250, nor=.100, logic=.050)
+main_alloc = dict(mcu=.750, radio=.500, sdram=.250, nor=.250, logic=.050)
+# Bind this calculation to the displayed power table and selected NOR contract.
+document = Path('ra8p1_kicad/design/power_decoupling.md').read_text()
+section = document.split('## PWR-003: TPS63802 main digital converter')[1]
+allocation_rows = re.findall(r'^\| ([^|]+) \| (\d+) mA \|', section, re.M)
+assert len(allocation_rows) == 5
+assert {name.split()[0]: int(ma)/1000 for name, ma in allocation_rows} == {
+    'RA8P1,': main_alloc['mcu'], 'ESP32': main_alloc['radio'],
+    'SDRAM': main_alloc['sdram'], 'NOR': main_alloc['nor'],
+    'Small': main_alloc['logic'],
+}
+memory_document = Path('ra8p1_kicad/design/camera_storage_interfaces.md').read_text()
+nor_contract = memory_document.split('## CMS-011: 128 MiB Octal NOR electrical contract')[1]
+nor_ma = int(re.search(r'Reserve \*\*(\d+) mA for this NOR domain\*\*', nor_contract).group(1))
+assert main_alloc['nor'] == nor_ma/1000
 imain = sum(main_alloc.values())
 vout_hi = 3.3584850935146022  # unchanged PWR-002 result
 vtrip_lo = 3.263705830523478  # SYS-007 raw-node result
@@ -491,16 +533,16 @@ other_start = main_alloc['sdram'] + main_alloc['nor'] + main_alloc['logic']
 cold_ref = 1.330 + other_start
 precision_lo = (1-.001)*(1-25e-6*100)
 checks = {
-    'continuous main allocation A': (imain, 1.65),
-    'rating headroom A': (2-imain, .350),
-    'rating headroom percent': ((2-imain)/2*100, 17.5),
+    'continuous main allocation A': (imain, 1.80),
+    'nameplate headroom A': (2-imain, .200),
+    'nameplate headroom percent': ((2-imain)/2*100, 10.0),
     'MCU unqualified remainder A': (.750-mcu_named, .18313),
-    'output power high screen W': (pout, 5.541500404299093),
+    'output power high screen W': (pout, 6.045273168326284),
     'raw-to-VIN path allocation V': (vtrip_lo-vin_alloc, .06370583052347767),
-    'cold reference subtotal A': (cold_ref, 1.730),
-    'cold plus radio subtotal A': (cold_ref+main_alloc['radio'], 2.230),
-    'wake reference subtotal A': (1.270+other_start, 1.670),
-    'cold subtotal remaining A': (2-cold_ref, .270),
+    'cold reference subtotal A': (cold_ref, 1.880),
+    'prohibited cold plus radio subtotal A': (cold_ref+main_alloc['radio'], 2.380),
+    'wake reference subtotal A': (1.270+other_start, 1.820),
+    'cold subtotal remaining A': (2-cold_ref, .120),
     'CIN conditional effective uF': (10*.9*.85*.6, 4.590),
     'COUT conditional effective uF': (2*22*.9*.85*.6, 20.196),
     'inductor initial low uH': (.47*.8, .376),
@@ -512,9 +554,9 @@ for label, (actual, expected) in checks.items():
     assert isclose(actual, expected, rel_tol=1e-10, abs_tol=1e-12), label
     print(label, f'{actual:.12g}')
 thermal_cases = (
-    (.85, 1.9975489761913383, 2.0373163251099604, .9779118360527814, 79.2108587202753),
-    (.90, 1.8865740330695973, 1.9241320848260740, .6157222671443439, 49.87350363869185),
-    (.93, 1.8257168061963842, 1.8620633078962003, .4171021809687483, 33.78527665846861),
+    (.85, 2.1791443376632786, 2.2225269001199575, 1.0668129120575802, 86.411845876664),
+    (.90, 2.0580807633486518, 2.0990531834466264, .6716970187029201, 54.40745851493653),
+    (.93, 1.9916910613051466, 2.0313417904322186, .4550205610568163, 36.85666544560212),
 )
 for eta, iraw, iatvin, loss, trise in thermal_cases:
     pin = pout/eta
@@ -536,9 +578,12 @@ document link:
   nominal setpoint and divider current, complete tolerance/TCR/feedback-bias
   voltage-corner formulas, conditional effective-capacitance equations,
   and initial versus installed-inductance limits.
-- `PWR-003: LOAD, SOURCE AND STARTUP ACCEPTANCE LIMITS` shows the 1.65 A
-  domain allocation, separate-domain exclusions, input path-loss allocation,
-  the 85% efficiency/current/loss/thermal screen, cold/wake subtotals,
+- `PWR-003: LOAD, SOURCE AND STARTUP ACCEPTANCE LIMITS` shows this
+  revision's 1.80 A total, 2.222527 A input at 3.20 V / assumed 85%,
+  1.066813 W loss / 86.411846 C reference rise, and 1.880/1.820 A
+  radio-off cold/wake subtotals. The annotation was updated in native
+  KiCad together with U13's selection-basis field. It retains the
+  separate-domain exclusions, input path-loss allocation,
   additional-capacitance charging equation, discharge-capacitance ceiling
   and release-margin qualification gates.
 

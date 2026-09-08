@@ -1047,7 +1047,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "PWR-003: LOAD, SOURCE AND STARTUP ACCEPTANCE LIMITS\nMain continuous allocation: 0.750 MCU + 0.500 radio\n+ 0.250 SDRAM + 0.100 NOR + 0.050 logic = 1.650A.\nThese are qualification allocations, not measured maximum currents.\nSD, camera, audio, display/touch/frontlight need separate SYS supplies.\n\nPout=3.358485094*1.65=5.541500W.\nVIN>=3.20V allocation; raw trip min=3.263705831V.\nAllowed raw-to-VIN loss=3.263705831-3.20=63.705831mV.\nAt ASSUMED eta=85%: Iin=Pout/(eta*3.20)=2.037316A.\nPloss=Pout*(1/eta-1)=0.977912W.\nReference rise=Ploss*81C/W=79.210859C; NOT enclosure prediction.\nVerify hot current capability and junction temperature <125C with margin.\n\nCold subtotal, RADIO OFF: 1.330 DCDC + 0.400 other = 1.730A.\nRadio on would give 2.230A > nominal 2A; keep radio OFF through start/wake.\nLargest wake-reference subtotal=1.270+0.400=1.670A.\nDCDC figures are reference-only; non-DCDC start and extra charging excluded.\nAdditional charging: I=Cadditional*dV/dt; qualify the actual ramp.\nTotal directly connected main-rail C <=1mF for SYS-007 discharge budget.\nNo externally driven +3V3_MCU: forced PWM can sink reverse current.\n\nPWR-002 static release margin: radio 14.922537mV; MCU 48.092861mV.\nRipple, startup and transients must fit; no fabrication release.\nFull sources, derivation and Python: ../design/power_decoupling.md PWR-003;\nsource-loss shutdown: ../design/system_power_design.md SYS-007."
+	(text "PWR-003: LOAD, SOURCE AND STARTUP ACCEPTANCE LIMITS\nMain continuous allocation: 0.750 MCU + 0.500 radio\n+ 0.250 SDRAM + 0.250 NOR + 0.050 logic = 1.800A.\nThese are qualification allocations, not measured maximum currents.\nSD, camera, audio, display/touch/frontlight need separate SYS supplies.\n\nPout=3.358485094*1.80=6.045273W.\nVIN>=3.20V allocation; raw trip min=3.263705831V.\nAllowed raw-to-VIN loss=3.263705831-3.20=63.705831mV.\nAt ASSUMED eta=85%: Iin=Pout/(eta*3.20)=2.222527A.\nPloss=Pout*(1/eta-1)=1.066813W.\nReference rise=Ploss*81C/W=86.411846C; NOT enclosure prediction.\nVerify hot current capability and junction temperature <125C with margin.\n\nCold subtotal, RADIO OFF: 1.330 DCDC + 0.550 other = 1.880A.\nRadio on would give 2.380A > nominal 2A; keep radio OFF through start/wake.\nLargest wake-reference subtotal=1.270+0.550=1.820A.\nDCDC figures are reference-only; non-DCDC start and extra charging excluded.\nAdditional charging: I=Cadditional*dV/dt; qualify the actual ramp.\nTotal directly connected main-rail C <=1mF for SYS-007 discharge budget.\nNo externally driven +3V3_MCU: forced PWM can sink reverse current.\n\nPWR-002 static release margin: radio 14.922537mV; MCU 48.092861mV.\nRipple, startup and transients must fit; no fabrication release.\nFull sources, derivation and Python: ../design/power_decoupling.md PWR-003;\nsource-loss shutdown: ../design/system_power_design.md SYS-007."
 		(exclude_from_sim no)
 		(at 215.646 139.7 0)
 		(effects
@@ -2734,7 +2734,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "PWR-002/PWR-003; fixed PWM main digital converter; 1.65A allocation; qualify startup, transient and thermal corners"
+		(property "Selection_Basis" "PWR-002/PWR-003; fixed PWM main digital converter; 1.80A allocation; qualify startup, transient and thermal corners"
 			(at 165.1 88.9 0)
 			(hide yes)
 			(show_name no)
