@@ -1,6 +1,6 @@
 # Camera, removable storage and external-memory allocation
 
-Revision 15, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
+Revision 16, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
 This is an engineering allocation record for native KiCad implementation,
 not a completed schematic, verified timing closure or hardware qualification.
 Cross-references: [radio](radio_interface.md), [power](system_power_design.md),
@@ -1190,32 +1190,55 @@ No PWR_FLAG or simulation exclusion was added.
 
 **Native series/default-state checkpoint:** R54-R61 connect DQ0-DQ7,
 R62 connects CK and R63 connects DS through ten independently sourced
-30R parts. Each pin 1 is on its distinct local host net; each pin 2
+30R parts. Each pin 1 is on its distinct MCU host net; each pin 2
 shares a net with exactly its intended U15 ball. R64 is the 10k CS pull
 and R65 is the 47k INT pull, both to +3V3_MCU. Their values, manufacturer
 parts, order codes, dated availability and qualification notes are native
 symbol fields and are included in the whole-project BOM.
 
-This is not a complete NOR interface: MCU pin-type updates and root/child
-signal connections remain to be implemented. The ten host nets are still
-local singleton nets, and local MCU_RESET_N contains only U15.A4, not the
-existing shared reset network. Native and CLI ERC now report 146 active
-errors and 13 active warnings, versus 161 and two in the supply checkpoint.
-The NOR reset remains undriven; eleven new isolated-label warnings expose
-the ten unfinished host nets and local reset. These are unfinished
-integration findings, not waived connections or proof of circuit closure.
-No ERC rule or exclusion was added. The 15 existing excluded warnings
-are not active warnings in that count. The complete PDF contains 11 A3
-pages; the BOM includes U15 once, four bypass capacitors and all twelve
-resistors. Existing CMS-010 and other component connectivity is preserved.
+**Native MCU/hierarchy checkpoint:** the twelve selected MCU pins now
+connect through the root/child hierarchy. Each of the ten host nets contains
+exactly its selected U1 ball and series-resistor pin 1, separate from the
+corresponding resistor pin 2 / U15 ball net. CS# connects U1.M6, U15.C2 and
+R64.2; INT# separately connects U1.N7, U15.A5 and R65.2. RESET# U15.A4 joins
+the existing common node with J1.10, R1.2, U1.D5, U2.1 and U7.3. No signal
+series resistor is bypassed, and INT# is not joined to common reset.
+
+The project processor library and all four embedded MCU definitions have
+the same twelve configured pin-type updates: eight Bidirectional DQ pins,
+Output CK/CS# and Input DS/INT#. All 289 ball identities, unit assignments,
+positions and other pin properties are preserved. These electrical types
+model the selected circuit for ERC; they do not program the MCU.
+
+The integrated whole-project netlist has 299 nets and 193 components.
+Its complete node partitions match the prior leaf checkpoint plus the
+twelve intended MCU joins and the common-reset join. All 272 partitions
+restricted to non-NOR, non-reserved-MCU nodes are unchanged. This is a
+connectivity proof, not complete ERC acceptance or electrical qualification.
+The final CLI ERC reports 133 active errors and two active warnings; the
+native ERC total is 150 including 15 existing excluded warnings. Compared
+with the leaf checkpoint, 13 errors and 11 warnings are removed and no
+active finding identity is added. The two remaining active warnings are
+the existing radio DATA_READY and HANDSHAKE isolated hierarchical labels.
+The four ignored checks are unchanged; no new ERC exclusion or rule waiver
+was added. The project is not ERC-clean, and rendered-sheet review remains
+a separate check.
+
+The refreshed BOM has 69 groups, 18 fields and 190 included references.
+The difference from 193 netlist components is exactly the three existing
+BOM-excluded service points TP1-TP3. It includes U15 once, four bypass
+capacitors and all twelve NOR resistors. Existing CMS-010 and other
+component connectivity is preserved.
 
 The native supply annotation `a9ed9069-8e7a-4cab-88ec-2a1ce6c5d680`
 on page 11 hyperlinks to CMS-011B, with its arithmetic checked by CMS-011F.
 Sheet instance UUID: `23859413-ab36-480e-aeef-d0e8a227b709`.
-Reciprocal MCU/interface annotations remain part of the unfinished phase.
+Reciprocal MCU/interface annotation review remains a separate check.
 The native series/pull annotation `18d4ef73-0341-4ce2-81e6-ceda0da87e84`
 on page 11 hyperlinks to CMS-011C. Its displayed resistance, leakage and
-sink-current arithmetic is recomputed by CMS-011F below.
+sink-current arithmetic is recomputed by CMS-011F below. The same native
+note records connected MCU hierarchy/common reset, read-only DS with
+P801 Input / WRMSKMD=0, and the CMS-011D reset/protocol obligations.
 
 ### CMS-011A: Source revision and exact pin contract
 
@@ -1272,7 +1295,7 @@ DQS write-mask output is disabled. Figure 45.10, p.3035, shows the
 DDR-with-DS mode sampling DQS while its output enable is low. This is a
 required firmware mode contract, not a claim that the firmware is already
 implemented; generic pad bidirectionality does not authorize driving the
-flash DS output. The native MCU pin-type update is still pending.
+flash DS output. The native MCU pin-type update is now implemented.
 
 ### CMS-011B: Series, default-state and local supply components
 
@@ -1309,7 +1332,7 @@ read and write directions and should not rewrite nonvolatile settings
 at every boot.
 
 Passive contract; all twelve new resistors and four bypass capacitors are
-placed in this checkpoint. The shared reset hookup remains pending:
+placed. U15.A4 is connected to the existing common-reset network:
 
 | Function | Quantity / value | Exact MPN | Existing native donor |
 | --- | --- | --- | --- |
@@ -1645,14 +1668,14 @@ assert isclose(wake_screen, 1.820) and isclose(cold_radio_off+.5, 2.380)
 assert cold_radio_off+.5 > 2.0
 print('main / cold radio-off / wake / prohibited cold radio-on allocations A',
       new_main, cold_radio_off, wake_screen, cold_radio_off+.5)
-print('CMS-011 arithmetic PASS; native interface and current/timing/reset qualification OPEN')
+print('CMS-011 arithmetic PASS; current/timing/reset qualification OPEN; native integration checked separately')
 ```
 
-For the native leaf checkpoint, first export a fresh netlist (read-only) and
+For the integrated native checkpoint, first export a fresh netlist and
 use KiCad's whole-project BOM export to refresh `ereader_rev1_bom.csv`:
 
 ```sh
-/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli sch export netlist --format kicadxml -o /tmp/ereader-nor-interface.xml ra8p1_kicad/ereader/ereader_rev1.kicad_sch
+/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli sch export netlist --format kicadxml -o /tmp/ereader-nor-integrated.xml ra8p1_kicad/ereader/ereader_rev1.kicad_sch
 ```
 
 ```python
@@ -1660,15 +1683,17 @@ from pathlib import Path
 import csv
 import xml.etree.ElementTree as ET
 
-root = ET.parse('/tmp/ereader-nor-interface.xml').getroot()
+root = ET.parse('/tmp/ereader-nor-integrated.xml').getroot()
 net_by_pin = {}
 pins_by_net = {}
+type_by_pin = {}
 for net in root.findall('./nets/net'):
     pins_by_net[net.get('name')] = set()
     for node in net.findall('node'):
         key = (node.get('ref'), node.get('pin'))
         assert key not in net_by_pin
         net_by_pin[key] = net.get('name')
+        type_by_pin[key] = node.get('pintype')
         pins_by_net[net.get('name')].add(key)
 for ball in ('B4', 'D1', 'E4'):
     assert net_by_pin['U15', ball] == '+3V3_MCU'
@@ -1679,23 +1704,36 @@ for ref in ('C89', 'C90', 'C91', 'C92'):
     assert net_by_pin[ref, '2'] == 'GND'
 for ball in ('A2', 'A3', 'B1', 'B5', 'C5'):
     assert net_by_pin['U15', ball].startswith('unconnected-')
+    assert pins_by_net[net_by_pin['U15', ball]] == {('U15', ball)}
+    assert type_by_pin['U15', ball] == 'no_connect'
 assert len([key for key in net_by_pin if key[0] == 'U15']) == 24
 
 prefix = '/128 MiB Octal NOR/'
-signals = [(f'DQ{i}', ball) for i, ball in enumerate(
-    ('D3', 'D2', 'C4', 'D4', 'D5', 'E3', 'E2', 'E1'))]
-signals += [('CK', 'B2'), ('DS', 'C3')]
-for number, (signal, ball) in enumerate(signals, 54):
+signals = [(f'DQ{i}', ball, mcu_ball, 'bidirectional')
+           for i, (ball, mcu_ball) in enumerate(zip(
+               ('D3', 'D2', 'C4', 'D4', 'D5', 'E3', 'E2', 'E1'),
+               ('U6', 'P7', 'R4', 'R5', 'P5', 'T6', 'R6', 'R7')))]
+signals += [('CK', 'B2', 'U5', 'output'), ('DS', 'C3', 'P6', 'input')]
+for number, (signal, ball, mcu_ball, mcu_type) in enumerate(signals, 54):
     ref = f'R{number}'
     host = 'NOR_DQ_HOST' + signal[2:] if signal.startswith('DQ') else f'NOR_{signal}_HOST'
-    assert net_by_pin[ref, '1'] == prefix + host
-    assert pins_by_net[prefix + host] == {(ref, '1')}  # Integration is still open.
+    assert net_by_pin[ref, '1'] == '/' + host
+    assert pins_by_net['/' + host] == {(ref, '1'), ('U1', mcu_ball)}
     assert pins_by_net[prefix + 'NOR_' + signal] == {(ref, '2'), ('U15', ball)}
-for ref, signal, ball in (('R64', 'NOR_CS_N', 'C2'), ('R65', 'NOR_INT_N', 'A5')):
+    assert net_by_pin[ref, '1'] != net_by_pin[ref, '2']
+    assert type_by_pin['U1', mcu_ball] == mcu_type
+for ref, signal, ball, mcu_ball, mcu_type in (
+        ('R64', 'NOR_CS_N', 'C2', 'M6', 'output'),
+        ('R65', 'NOR_INT_N', 'A5', 'N7', 'input')):
     assert net_by_pin[ref, '1'] == '+3V3_MCU'
-    assert pins_by_net[prefix + signal] == {(ref, '2'), ('U15', ball)}
-assert pins_by_net[prefix + 'MCU_RESET_N'] == {('U15', 'A4')}
-assert net_by_pin['U1', 'D5'] != prefix + 'MCU_RESET_N'
+    assert pins_by_net['/' + signal] == {(ref, '2'), ('U15', ball), ('U1', mcu_ball)}
+    assert type_by_pin['U1', mcu_ball] == mcu_type
+reset_net = net_by_pin['U15', 'A4']
+assert pins_by_net[reset_net] == {
+    ('J1', '10'), ('R1', '2'), ('U1', 'D5'), ('U15', 'A4'), ('U2', '1'), ('U7', '3')}
+assert reset_net != net_by_pin['U15', 'A5']
+assert len(pins_by_net) == 299
+assert len(root.findall('./components/comp')) == 193
 
 bom = list(csv.DictReader(Path('ra8p1_kicad/exports/ereader_rev1_bom.csv').open()))
 by_ref = {}
@@ -1713,7 +1751,8 @@ for ref, mpn in mpns.items():
     assert 'CMS-011' in by_ref[ref]['Procurement_Status']
 assert by_ref['U15']['Qty'] == '1'
 print('CMS-011 native supply: six balls, eight capacitor terminals, five DNU, BOM identities PASS')
-print('CMS-011 native leaf: ten separate series paths and two pulls PASS; host/reset integration OPEN')
+print('CMS-011 native integration: twelve MCU roles, ten separate series paths, two pulls and common reset PASS')
+print('Firmware, timing/SI, PDN/current and reset qualification remain OPEN; not complete ERC acceptance')
 ```
 
 Proposed additional interface note, to be tailored to actual references when

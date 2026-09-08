@@ -1184,7 +1184,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "CMS-011 | NOR series and idle states\nR54-R63: 10 x 30R, 0.1%, 25 ppm/C.\n100 C departure from reference temperature:\nRmin = 30 x 0.999 x 0.9975 = 29.895075 ohm\nRmax = 30 x 1.001 x 1.0025 = 30.105075 ohm\nWithin JESD251 30R +/-1%: 29.7..30.3 ohm.\nExternal parts remain required; SI check OPEN.\n\nR64 CS pull: 10k; R65 INT pull: 47k.\n1%, 100 ppm/C, 100 C: factors 0.9801..1.0201.\nAt 4uA adverse leakage, rail min 3.242044 V:\nCS Vhigh >= 3.242044 - 4u x 10201 = 3.201240 V\nINT Vhigh >= 3.242044 - 4u x 47944.7 = 3.050265 V\nINT Ilow <= 3.6/46064.7 + 2u = 80.150949 uA\n< 100uA flash VOL test; 47k departs from 5-10k.\nRC timing and board leakage qualification OPEN.\n\nLinked CMS-011B/C/F: sources and Python checks.\nHost hierarchy and shared reset hookup pending."
+	(text "CMS-011 | NOR series and idle states\nR54-R63: 10 x 30R, 0.1%, 25 ppm/C.\n100 C departure from reference temperature:\nRmin = 30 x 0.999 x 0.9975 = 29.895075 ohm\nRmax = 30 x 1.001 x 1.0025 = 30.105075 ohm\nWithin JESD251 30R +/-1%: 29.7..30.3 ohm.\nExternal parts remain required; SI check OPEN.\n\nR64 CS pull: 10k; R65 INT pull: 47k.\n1%, 100 ppm/C, 100 C: factors 0.9801..1.0201.\nAt 4uA adverse leakage, rail min 3.242044 V:\nCS Vhigh >= 3.242044 - 4u x 10201 = 3.201240 V\nINT Vhigh >= 3.242044 - 4u x 47944.7 = 3.050265 V\nINT Ilow <= 3.6/46064.7 + 2u = 80.150949 uA\n< 100uA flash VOL test; 47k departs from 5-10k.\nRC timing and board leakage qualification OPEN.\n\nLinked CMS-011B/C/F: sources and Python checks.\nMCU hierarchy and common reset connected.\nDS is read-only: P801 input, WRMSKMD=0.\nCMS-011D defines reset and protocol recovery."
 		(exclude_from_sim no)
 		(at 152.4 164.846 0)
 		(effects
@@ -1444,6 +1444,16 @@
 		)
 		(uuid "5317b023-9eae-4013-b3ad-859338f9abc7")
 	)
+	(bus
+		(pts
+			(xy 63.5 63.5) (xy 76.2 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "58e8cc70-3371-4ab6-90fb-a784f07ef1ca")
+	)
 	(wire
 		(pts
 			(xy 121.92 96.52) (xy 135.89 96.52)
@@ -1503,6 +1513,16 @@
 			(type default)
 		)
 		(uuid "71ad31e3-ef7c-4b5c-b271-ff97ba6faae6")
+	)
+	(wire
+		(pts
+			(xy 168.91 99.06) (xy 182.88 99.06)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "730030d4-7e53-4aac-afbc-835cbe0cf239")
 	)
 	(wire
 		(pts
@@ -1866,16 +1886,6 @@
 	)
 	(wire
 		(pts
-			(xy 168.91 99.06) (xy 182.88 99.06)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "f369950b-8a84-4353-8f73-9783c9609b20")
-	)
-	(wire
-		(pts
 			(xy 257.81 91.44) (xy 262.89 91.44)
 		)
 		(stroke
@@ -2034,16 +2044,6 @@
 		)
 		(uuid "6fd192eb-5fd5-470d-a900-4f70fb0bc1f3")
 	)
-	(label "NOR_CS_N"
-		(at 165.1 148.59 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "7f993eee-50bd-4f36-aef5-afa791ef2250")
-	)
 	(label "NOR_DQ_HOST6"
 		(at 76.2 200.66 0)
 		(effects
@@ -2053,16 +2053,6 @@
 			(justify left bottom)
 		)
 		(uuid "8439017b-b5ad-4756-9c97-d9c6f80be8c6")
-	)
-	(label "NOR_CK_HOST"
-		(at 76.2 220.98 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "8b7c63b6-7fbe-469c-b7c0-9fb2517e7b31")
 	)
 	(label "NOR_DQ0"
 		(at 121.92 88.9 0)
@@ -2114,16 +2104,6 @@
 		)
 		(uuid "b3528c48-4be1-4877-8057-4e96b6439c9b")
 	)
-	(label "NOR_DS_HOST"
-		(at 76.2 231.14 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "b45f95b1-1408-49e6-87b2-e5ef43f17632")
-	)
 	(label "NOR_DQ0"
 		(at 116.84 139.7 0)
 		(effects
@@ -2133,16 +2113,6 @@
 			(justify left bottom)
 		)
 		(uuid "b7c270ed-92fd-4643-8b6c-55c5c0e51d82")
-	)
-	(label "NOR_INT_N"
-		(at 203.2 148.59 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "c8258433-b832-4bf4-9838-51a57dccfa55")
 	)
 	(label "NOR_DQ5"
 		(at 121.92 101.6 0)
@@ -2254,15 +2224,71 @@
 		)
 		(uuid "f5df3b2c-e69c-4566-950d-5f018f252eb2")
 	)
-	(label "MCU_RESET_N"
+	(hierarchical_label "NOR_INT_N"
+		(shape output)
+		(at 203.2 148.59 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "27ddbea1-d0b2-490f-8b24-975e37ca4a27")
+	)
+	(hierarchical_label "MCU_RESET_N"
+		(shape input)
 		(at 182.88 99.06 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify left)
 		)
-		(uuid "f6c80e24-3751-4e2d-bf2b-68a4c51d1424")
+		(uuid "3152ed68-0fe9-417a-af26-4787c9fbff67")
+	)
+	(hierarchical_label "NOR_CK_HOST"
+		(shape input)
+		(at 76.2 220.98 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "7a5d72fe-165c-4d25-8cb0-6901c6477c56")
+	)
+	(hierarchical_label "NOR_DS_HOST"
+		(shape output)
+		(at 76.2 231.14 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "8b1941c8-e22e-49a1-b6e4-deb42a2456d3")
+	)
+	(hierarchical_label "NOR_CS_N"
+		(shape input)
+		(at 165.1 148.59 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "97ae18df-8789-4da3-b452-4bd365564790")
+	)
+	(hierarchical_label "NOR_DQ_HOST[0..7]"
+		(shape bidirectional)
+		(at 76.2 63.5 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "9b29dba8-d722-4d04-850a-79c087794e35")
 	)
 	(symbol
 		(lib_id "Device:R")
