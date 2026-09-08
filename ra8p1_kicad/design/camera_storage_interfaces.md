@@ -1,6 +1,6 @@
 # Camera, removable storage and external-memory allocation
 
-Revision 11, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
+Revision 12, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
 This is an engineering allocation record for native KiCad implementation,
 not a completed schematic, verified timing closure or hardware qualification.
 Cross-references: [radio](radio_interface.md), [power](system_power_design.md),
@@ -103,14 +103,36 @@ against [RA8P1 Table 1.17](../../docs/reference/ra8p1-datasheet.pdf) and also
 | SD1DAT1_B | P403 / H13 | 8 DAT1 |
 | SD1DAT2_B | P404 / J13 | 1 DAT2 |
 | SD1DAT3_B | P405 / G12 | 2 DAT3 |
-| SD1CD | P406 / F14 | Independent card-detect contact; other contact to GND |
+| SD1CD | P406 / F14 | MP2 CD_B; MP4 CD_A to GND |
 | Card supply / ground | Qualified +3.3 V / GND | 4 VDD / 6 VSS |
 
 The socket's A/B detect switch is separate from its eight card contacts.
-Confirm the actual symbol's A/B and shell pin identifiers against Hirose's
-DM3AT-SF-PEJM5 drawing; do not rename a shell pad as a card contact.
+The project symbol `Connectors:DM3AT-SF-PEJM5` now names MP2 `CD_B`,
+MP4 `CD_A`, and MP1/MP3/MP5/MP6 `SHIELD1`..`SHIELD4`. Ground all four
+shield pads. Hirose's
+[EDC-325165-00-00 drawing, page 1, note 2](https://www.hirose.com/product/download/?distributor=chip1&lang=en&num=DM3AT-SF-PEJM5&type=2d)
+shows A/B open without a card and closed with a card. The mapping is an
+audit of the imported pad identities: B is the rear contact beside DAT1
+(MP2), and A is the side contact 10.5 mm forward (MP4). `MP` here is the
+imported identifier, not a declaration that every such pad is a shield.
+Pin 2 is displayed as `DAT3` to avoid confusing the card's DAT3/CD function
+with this independent mechanical switch. No pin numbers were changed.
+All fourteen pins remain passive, with consistent 150 mil pin lengths and
+50 mil text. The two detect contacts and four shields are visually grouped.
+The native Symbol Checker reports no issues. The socket is not yet placed
+in the schematic; this library checkpoint does not complete the microSD
+circuit, qualify the retained footprint, or add a populated BOM row.
 microSD has no mechanical write-protect switch. SD1WP is available at P700,
 which is already assigned to the radio; it is not needed for this socket.
+
+Sourcing snapshot, 2026-09-08: the exact active socket is
+[DigiKey HR1964CT-ND](https://www.digikey.com/en/products/detail/hirose-electric-co-ltd/DM3AT-SF-PEJM5/2533566),
+30,851 in stock, USD 3.55 / 3.019 / 2.56560 each at quantities 1 / 10 / 100,
+with a quoted 16-week manufacturer lead time. Stock is not reserved and
+prices exclude tax/shipping. The imported Mouser part number
+`798-DM3AT-SF-PEJM5` is retained; a current US/USD Mouser quote was not
+verified in this checkpoint. Copy refreshed procurement fields into the
+schematic instance and regenerate the BOM when it is actually placed.
 
 Use 3.3 V signaling. Do not claim UHS/HS200/HS400 capability from an eMMC
 marketing version. The RA8P1 SDHI SDR timing table gives a 20 ns minimum
@@ -122,9 +144,10 @@ low-capacitance protection, effective bypass capacitance and any load switch
 after their leakage, drive, timing and inrush calculations. Do not pull up
 CLK by habit. Power-off states must not phantom-power the card through IOs.
 
-Confirmed software-definition defect, not changed by this hardware task:
+Confirmed software-definition defect, not changed by this hardware task;
+tracked separately in [issue #845](https://github.com/bsikar/ra8-firmware/issues/845):
 [connectors.h](../../libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2_connectors.h)
-lines 922..949 calls P400 CMD, P401 CLK, P406 WP, P407 CD, and selects
+calls P400 CMD, P401 CLK, P406 WP, P407 CD, and selects
 instance 0. Both silicon datasheets instead give the assignment above;
 P407 has no SD1CD function. The corresponding pin-init routine and demos
 must be corrected and tested in a separate firmware change. Copying that
