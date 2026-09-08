@@ -6475,6 +6475,18 @@
 		)
 		(uuid "a4080977-51df-4f51-8b1f-e69c58d5daaf")
 	)
+	(text "PWR-005 | LOCAL VCL BYPASS - C1,C2,C4,C5,C7,C8,C10-C15\n220nF per VCL/VSS pair: Renesas QDG Rev1.10 section1.2 (p.8).\nTDK C1608X7R1H224K080AB: 50V X7R +/-10%, twelve local capacitors.\nC_initial = 220*(1 +/- .10) = 198..242nF each.\nBank = 12*220nF = 2.64uF nominal; 2.376..2.904uF initial.\nTDK nominal curve: C(1.0V) = 220+(1/1.25)*(223.065-220) = 222.452nF.\nCurve is reference only; bias/temperature/aging and PCB PDN remain unqualified.\nFull Python-verified calculations and placement map: PWR-005, power_decoupling.md."
+		(exclude_from_sim no)
+		(at 147.32 122.936 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left top)
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/power_decoupling.md#pwr-005-twelve-local-vcl-bypass-capacitors")
+		)
+		(uuid "b001219f-700e-49b9-a95b-2a31fc3462c1")
+	)
 	(text "VCL5 / VSS5"
 		(exclude_from_sim no)
 		(at 339.09 62.23 0)
@@ -9369,7 +9381,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB"
 			(at 342.9 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9390,7 +9402,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-7408-1-ND"
 			(at 342.9 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9401,7 +9413,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843"
 			(at 342.9 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9412,7 +9424,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected for prototype VCL bypass; PWR-005. PCB/PDN qualification deferred."
 			(at 342.9 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9423,7 +9435,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 82010 in stock; USD0.17/0.098/0.06030 at qty1/10/100; 24wk; unreserved. TDK Production."
 			(at 342.9 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9435,6 +9447,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 342.9 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 342.9 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H224K080AB"
+			(at 342.9 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-005: 220nF at each VCL/VSS pair per Renesas QDG Rev1.10 section1.2; TDK 50V X7R +/-10% production part. Nominal bias curve only; PDN qualification remains open."
 			(at 342.9 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9504,7 +9549,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB"
 			(at 190.5 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9525,7 +9570,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-7408-1-ND"
 			(at 190.5 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9536,7 +9581,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843"
 			(at 190.5 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9547,7 +9592,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected for prototype VCL bypass; PWR-005. PCB/PDN qualification deferred."
 			(at 190.5 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9558,7 +9603,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 82010 in stock; USD0.17/0.098/0.06030 at qty1/10/100; 24wk; unreserved. TDK Production."
 			(at 190.5 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9570,6 +9615,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 190.5 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 190.5 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H224K080AB"
+			(at 190.5 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-005: 220nF at each VCL/VSS pair per Renesas QDG Rev1.10 section1.2; TDK 50V X7R +/-10% production part. Nominal bias curve only; PDN qualification remains open."
 			(at 190.5 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -9815,7 +9893,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB"
 			(at 228.6 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -9836,7 +9914,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-7408-1-ND"
 			(at 228.6 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -9847,7 +9925,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843"
 			(at 228.6 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -9858,7 +9936,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected for prototype VCL bypass; PWR-005. PCB/PDN qualification deferred."
 			(at 228.6 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -9869,7 +9947,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 82010 in stock; USD0.17/0.098/0.06030 at qty1/10/100; 24wk; unreserved. TDK Production."
 			(at 228.6 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -9881,6 +9959,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 228.6 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 228.6 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H224K080AB"
+			(at 228.6 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-005: 220nF at each VCL/VSS pair per Renesas QDG Rev1.10 section1.2; TDK 50V X7R +/-10% production part. Nominal bias curve only; PDN qualification remains open."
 			(at 228.6 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10184,7 +10295,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB"
 			(at 266.7 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10205,7 +10316,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-7408-1-ND"
 			(at 266.7 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10216,7 +10327,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843"
 			(at 266.7 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10227,7 +10338,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected for prototype VCL bypass; PWR-005. PCB/PDN qualification deferred."
 			(at 266.7 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10238,7 +10349,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 82010 in stock; USD0.17/0.098/0.06030 at qty1/10/100; 24wk; unreserved. TDK Production."
 			(at 266.7 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10250,6 +10361,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 266.7 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 266.7 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H224K080AB"
+			(at 266.7 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-005: 220nF at each VCL/VSS pair per Renesas QDG Rev1.10 section1.2; TDK 50V X7R +/-10% production part. Nominal bias curve only; PDN qualification remains open."
 			(at 266.7 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10319,7 +10463,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB"
 			(at 342.9 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10340,7 +10484,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-7408-1-ND"
 			(at 342.9 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10351,7 +10495,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843"
 			(at 342.9 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10362,7 +10506,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected for prototype VCL bypass; PWR-005. PCB/PDN qualification deferred."
 			(at 342.9 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10373,7 +10517,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 82010 in stock; USD0.17/0.098/0.06030 at qty1/10/100; 24wk; unreserved. TDK Production."
 			(at 342.9 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10385,6 +10529,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 342.9 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 342.9 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H224K080AB"
+			(at 342.9 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-005: 220nF at each VCL/VSS pair per Renesas QDG Rev1.10 section1.2; TDK 50V X7R +/-10% production part. Nominal bias curve only; PDN qualification remains open."
 			(at 342.9 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10454,7 +10631,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB"
 			(at 304.8 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10475,7 +10652,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-7408-1-ND"
 			(at 304.8 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10486,7 +10663,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843"
 			(at 304.8 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10497,7 +10674,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected for prototype VCL bypass; PWR-005. PCB/PDN qualification deferred."
 			(at 304.8 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10508,7 +10685,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 82010 in stock; USD0.17/0.098/0.06030 at qty1/10/100; 24wk; unreserved. TDK Production."
 			(at 304.8 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10520,6 +10697,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 304.8 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 304.8 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H224K080AB"
+			(at 304.8 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-005: 220nF at each VCL/VSS pair per Renesas QDG Rev1.10 section1.2; TDK 50V X7R +/-10% production part. Nominal bias curve only; PDN qualification remains open."
 			(at 304.8 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -10589,7 +10799,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB"
 			(at 228.6 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -10610,7 +10820,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-7408-1-ND"
 			(at 228.6 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -10621,7 +10831,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843"
 			(at 228.6 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -10632,7 +10842,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected for prototype VCL bypass; PWR-005. PCB/PDN qualification deferred."
 			(at 228.6 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -10643,7 +10853,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 82010 in stock; USD0.17/0.098/0.06030 at qty1/10/100; 24wk; unreserved. TDK Production."
 			(at 228.6 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -10655,6 +10865,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 228.6 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 228.6 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H224K080AB"
+			(at 228.6 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-005: 220nF at each VCL/VSS pair per Renesas QDG Rev1.10 section1.2; TDK 50V X7R +/-10% production part. Nominal bias curve only; PDN qualification remains open."
 			(at 228.6 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -10900,7 +11143,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB"
 			(at 304.8 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -10921,7 +11164,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-7408-1-ND"
 			(at 304.8 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -10932,7 +11175,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843"
 			(at 304.8 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -10943,7 +11186,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected for prototype VCL bypass; PWR-005. PCB/PDN qualification deferred."
 			(at 304.8 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -10954,7 +11197,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 82010 in stock; USD0.17/0.098/0.06030 at qty1/10/100; 24wk; unreserved. TDK Production."
 			(at 304.8 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -10966,6 +11209,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 304.8 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 304.8 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H224K080AB"
+			(at 304.8 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-005: 220nF at each VCL/VSS pair per Renesas QDG Rev1.10 section1.2; TDK 50V X7R +/-10% production part. Nominal bias curve only; PDN qualification remains open."
 			(at 304.8 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -11035,7 +11311,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB"
 			(at 152.4 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -11056,7 +11332,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-7408-1-ND"
 			(at 152.4 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -11067,7 +11343,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843"
 			(at 152.4 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -11078,7 +11354,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected for prototype VCL bypass; PWR-005. PCB/PDN qualification deferred."
 			(at 152.4 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -11089,7 +11365,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 82010 in stock; USD0.17/0.098/0.06030 at qty1/10/100; 24wk; unreserved. TDK Production."
 			(at 152.4 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -11101,6 +11377,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 152.4 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 152.4 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H224K080AB"
+			(at 152.4 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-005: 220nF at each VCL/VSS pair per Renesas QDG Rev1.10 section1.2; TDK 50V X7R +/-10% production part. Nominal bias curve only; PDN qualification remains open."
 			(at 152.4 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -11258,7 +11567,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB"
 			(at 190.5 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -11279,7 +11588,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-7408-1-ND"
 			(at 190.5 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -11290,7 +11599,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843"
 			(at 190.5 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -11301,7 +11610,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected for prototype VCL bypass; PWR-005. PCB/PDN qualification deferred."
 			(at 190.5 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -11312,7 +11621,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 82010 in stock; USD0.17/0.098/0.06030 at qty1/10/100; 24wk; unreserved. TDK Production."
 			(at 190.5 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -11324,6 +11633,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 190.5 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 190.5 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H224K080AB"
+			(at 190.5 83.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-005: 220nF at each VCL/VSS pair per Renesas QDG Rev1.10 section1.2; TDK 50V X7R +/-10% production part. Nominal bias curve only; PDN qualification remains open."
 			(at 190.5 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -12885,7 +13227,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB"
 			(at 152.4 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -12906,7 +13248,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-7408-1-ND"
 			(at 152.4 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -12917,7 +13259,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843"
 			(at 152.4 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -12928,7 +13270,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected for prototype VCL bypass; PWR-005. PCB/PDN qualification deferred."
 			(at 152.4 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -12939,7 +13281,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 82010 in stock; USD0.17/0.098/0.06030 at qty1/10/100; 24wk; unreserved. TDK Production."
 			(at 152.4 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -12951,6 +13293,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 152.4 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 152.4 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H224K080AB"
+			(at 152.4 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-005: 220nF at each VCL/VSS pair per Renesas QDG Rev1.10 section1.2; TDK 50V X7R +/-10% production part. Nominal bias curve only; PDN qualification remains open."
 			(at 152.4 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13020,7 +13395,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H224K080AB"
 			(at 266.7 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13041,7 +13416,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" ""
+		(property "DigiKey_Part_Number" "445-7408-1-ND"
 			(at 266.7 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13052,7 +13427,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" ""
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H224K080AB/2732843"
 			(at 266.7 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13063,7 +13438,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "TBD - exact MPN, ratings and DigiKey sourcing required"
+		(property "Procurement_Status" "Selected for prototype VCL bypass; PWR-005. PCB/PDN qualification deferred."
 			(at 266.7 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13074,7 +13449,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" ""
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 82010 in stock; USD0.17/0.098/0.06030 at qty1/10/100; 24wk; unreserved. TDK Production."
 			(at 266.7 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -13086,6 +13461,39 @@
 			)
 		)
 		(property "Mouser_URL" ""
+			(at 266.7 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 266.7 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H224K080AB"
+			(at 266.7 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-005: 220nF at each VCL/VSS pair per Renesas QDG Rev1.10 section1.2; TDK 50V X7R +/-10% production part. Nominal bias curve only; PDN qualification remains open."
 			(at 266.7 43.18 0)
 			(hide yes)
 			(show_name no)
