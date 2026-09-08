@@ -1,6 +1,6 @@
 # Camera, removable storage and external-memory allocation
 
-Revision 10, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
+Revision 11, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
 This is an engineering allocation record for native KiCad implementation,
 not a completed schematic, verified timing closure or hardware qualification.
 Cross-references: [radio](radio_interface.md), [power](system_power_design.md),
@@ -597,19 +597,19 @@ change; their presence is not hardware qualification.
 
 ## CMS-010: IS42S32160F-7TLI pin and electrical contract
 
-Native SDRAM signal-interconnect checkpoint, 2026-09-08, for
+Native SDRAM interconnect and reset-default checkpoint, 2026-09-08, for
 [memory issue #827](https://github.com/bsikar/ra8-firmware/issues/827).
-This section records partial native SDRAM implementation and its electrical
-contract, not a completed or qualified circuit. It does not change firmware,
-ERC settings, or the
-existing CMS-009 controls checkpoint. The selected part is ISSI
+This section records native SDRAM implementation and its electrical
+contract, not electrical qualification or fabrication approval. It does not
+change firmware, ERC settings or the existing CMS-009 controls checkpoint.
+The selected part is ISSI
 IS42S32160F-7TLI; this supersedes the CMS-008 historical Alliance candidate
 for implementation without rewriting that sourcing history. Footprint geometry
 is outside this pin-number audit. Page 10 contains the placed memory units,
 completed power/bypass wiring and all 57 signal connections through the
-root hierarchy to page 2. The ten command/clock pullups and selected MCU
-electrical pin roles remain unfinished; interconnection alone is not
-startup, signal-integrity or timing qualification.
+root hierarchy to page 2. The ten command/clock pullups and all 57 selected
+MCU electrical pin roles are now implemented. Startup, signal-integrity,
+timing, power-distribution and shutdown qualification remain open.
 
 Primary evidence:
 
@@ -736,21 +736,22 @@ All ten root sheet-pin connections join the matching leaf labels; the
 whole-project XML contains 284 nets. No memory signal is marked no-connect.
 
 The checkpoint CLI ERC reports 145 errors and two active warnings, with
-zero findings on page 10 and no SDRAM-related root findings. Every remaining
-finding identity was present before this interconnect phase. The native GUI
-shows 145 errors and 17 warnings, including the same 15 existing excluded
+zero findings on page 10 and no SDRAM-related root findings. All 147 active
+finding identities are unchanged by the MCU pin-role and pullup work.
+The native GUI shows 145 errors and 17 warnings, including the same 15 existing excluded
 warnings; all four ignored checks are unchanged. No new exclusion or rule
 waiver was used to obtain these counts. The project is not ERC-clean.
-The native BOM contains 62 groups, 163 components and 18 columns, including
-R43. Reciprocal CMS-010 notes are present on pages 2 and 10.
+The native BOM contains 63 groups, 173 components and 18 columns, including
+R43 and one quantity-ten row for R44-R53. Reciprocal CMS-010 notes are
+present on pages 2 and 10.
 
-All 57 selected MCU signal pins still have Passive electrical types.
-Set them to 25 Output and 32 Bidirectional in the next native phase;
-the current interconnect checkpoint does not claim this completed.
-Symbol pin typing is an ERC model, not firmware pin configuration, and
-the current error reduction does not prove correct driver modelling.
-The ten 10k command/clock pullups are also not yet placed. This checkpoint
-does not establish full-circuit ERC acceptance or electrical qualification.
+All 57 selected MCU signal pins now have the intended electrical types:
+25 Output address/control/clock pins and 32 Bidirectional DQ pins. The
+project symbol and all four embedded MCU definitions are updated.
+Symbol pin typing is an ERC model, not firmware pin configuration or
+dynamic driver qualification. R44-R53 implement the ten 10k command/clock
+pullups specified below. This checkpoint does not establish full-circuit
+ERC acceptance or electrical qualification.
 
 ### CMS-010B: Shared supply, pull and bypass basis
 
@@ -765,25 +766,80 @@ Do not scale that table limit linearly with clock rate or omit bus loading.
 Include all added capacitors in SYS-007's main-rail
 discharge-capacitance budget. [Main digital power basis](power_decoupling.md).
 
-Candidate default network: ten separate 10k pullups on CKE, DQM0..3,
-CS#, RAS#, CAS#, WE# and CLK. The five CKE/DQM pulls preserve the required
-high states while MCU pins are inputs; CS# high inhibits commands. The
+The placed default network is ten separate 10k pullups on CKE, DQM0..3,
+CS#, RAS#, CAS#, WE# and CLK. Every resistor pin 1 connects to switched
++3V3_MCU; its pin 2 connects to the signal in this native reference map:
+
+| Reference | Signal net | U14 pin |
+| --- | --- | ---: |
+| R44 | SDRAM_CKE | 67 |
+| R45 | SDRAM_DQM0 | 16 |
+| R46 | SDRAM_DQM1 | 71 |
+| R47 | SDRAM_DQM2 | 28 |
+| R48 | SDRAM_DQM3 | 59 |
+| R49 | SDRAM_CS_N | 20 |
+| R50 | SDRAM_RAS_N | 19 |
+| R51 | SDRAM_CAS_N | 18 |
+| R52 | SDRAM_WE_N | 17 |
+| R53 | SDRAM_CLK | 68 |
+
+R53 is on R43's memory side, not `SDRAM_CLK_SRC`. The five CKE/DQM pulls
+preserve the required high states while MCU pins are inputs; CS# high
+inhibits commands. The
 other control pulls avoid floating command inputs, and CLK high matches
 the peripheral's disabled-clock polarity. Do not substitute a CKE pull-down
 or rely on firmware-enabled internal pullups during reset. These pulls do
 not supply the missing power-on clock or prove initialization by themselves.
 
-Use project RC0603FR-0710KL as the 10k candidate. Screen +/-1% initial
-tolerance and +/-100 ppm/C over a conservative 100 C change, as in BTN-006.
+All ten parts are YAGEO RC0603FR-0710KL, DigiKey 311-10.0KHRCT-ND,
+with native value `10k` and footprint geometry deferred. The verified
+2026-09-08 [DigiKey sourcing snapshot](https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827)
+is 2,866,522 in stock, USD 0.10 / 0.025 / 0.0122 at quantities 1 / 10 / 100;
+availability is not reserved. The part is 0603, +/-1%, +/-100 ppm/C,
+0.1 W at 70 C, with a -55..155 C operating range and 75 V maximum working
+voltage; the power/temperature derating requirement still applies.
+Screen +/-1% initial tolerance and +/-100 ppm/C over a conservative 100 C
+change, as in BTN-006:
+`Rmin = 10000 * 0.99 * 0.99 = 9801 Ohm` and
+`Rmax = 10000 * 1.01 * 1.01 = 10201 Ohm`.
 ISSI input leakage is +/-5 uA; the selected non-5V-tolerant MCU ports
 have +/-1 uA off-state leakage. Add 1 uA board leakage as a qualification
-allocation, not a vendor guarantee. At 3.0 V, pullup high is >=2.928593 V.
-At 3.6 V, the conservative low-output sink is <0.374 mA, below the
+allocation, not a vendor guarantee. For a tristated MCU input,
+`Ioff = (5 + 1 + 1) uA = 7 uA`, hence
+`VHIGHmin = 3.0 - 7e-6 * 10201 = 2.928593 V`.
+For an actively LOW MCU output, its input-leakage term is not added again:
+`Isink = 3.6 / 9801 + (5 + 1)e-6 = 0.373309458... mA`, below the
 ordinary control pins' 1 mA DC test condition. The CLK pullup is selected
 for the MCU's reset/disabled-clock polarity, not a pull-down leakage failure.
 The CLK output itself is PA15's high-speed drive class and needs the
 separate waveform qualification below, not the generic control-pin VOL proof.
 [Yageo RC0603FR-0710KL specification](https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL).
+
+The conservative resistor stress uses the full 3.6 V across Rmin, without
+credit for a nonzero GPIO low voltage:
+`Pmax = 3.6^2 / 9801 = 1.322314049... mW` per resistor.
+For all ten signals LOW at once, the pull-resistor rail load is
+`10 * 3.6 / 9801 = 3.673094582... mA`, and their total heat is
+`10 * 3.6^2 / 9801 = 13.223140495... mW`.
+Including the memory/board leakage terms in the conservative sink sum gives
+`10 * Isink = 3.733094582... mA`. These are static screens, not estimates
+of normal command duty cycle or memory switching current. Reserve 4 mA
+inside the existing PWR-003 250 mA SDRAM allocation, leaving 246 mA for
+the memory and dynamic I/O qualification; do not increase the main
+1.65 A allocation silently. The remaining 246 mA is an allocation, not a
+verified worst-case bound. All screens require the stated leakage,
+temperature and resistor bounds; they do not establish lifetime drift,
+signal integrity or board thermal qualification.
+
+These ten pullups introduce no always-on source or intentional capacitance:
+their rail is the same switched +3V3_MCU as MCU VCC/VCC2 and memory
+VDD/VDDQ. Do not count them as guaranteed shutdown discharge paths when
+MCU pins tristate, or permit an externally powered probe to inject the bus
+during hard-off. Retained self-refresh must actively hold CKE LOW against
+R44, adding up to `3.6 / 9801 = 0.367309458... mA` resistor current.
+Releasing that drive lets the pullup change the intended retention state.
+Hard-off still discards RAM; startup, retention and shutdown qualification
+remain separate from the completed passive interconnections.
 
 Page 10's completed bypass wiring is C76-C87, 12 x 100nF, one for each
 VDD/VDDQ pin, plus C88, 10uF local bulk, with no separate filter or load
@@ -810,7 +866,7 @@ current; this is not a claim of an ideal zero resistance or a useful
 2026-09-08: [DigiKey stock 7,899,620](https://www.digikey.com/en/products/detail/yageo/RC0603JR-070RL/726675),
 USD 0.10 / 0.011 / 0.0066 at quantities 1 / 10 / 100. Stock is not reserved.
 R43 is an SI-tuning starting link, not approved damping or timing closure;
-no 22/33 Ohm value is approved yet. The future CLK pullup belongs on its
+no 22/33 Ohm value is approved yet. R53 now pulls up its
 memory-side `SDRAM_CLK` node, not `SDRAM_CLK_SRC`.
 Decide address/control and bidirectional DQ damping from the actual load,
 driver model and both-direction timing. A clock-only delay can consume
@@ -956,6 +1012,20 @@ assert {name: [int(pin) for pin in numbers.split(',')]
 assert 2**13 * 2**9 * 4 * 4 == 64 * 2**20
 print('57 unique signals and MCU identities; all 86 memory pins covered once; 64 MiB')
 
+pull_rows = re.findall(r'^\| (R\d+) \| (SDRAM_[A-Z0-9_]+) \| (\d+) \|$', section, re.M)
+expected_pulls = {
+    'R44': ('SDRAM_CKE', 67), 'R45': ('SDRAM_DQM0', 16),
+    'R46': ('SDRAM_DQM1', 71), 'R47': ('SDRAM_DQM2', 28),
+    'R48': ('SDRAM_DQM3', 59), 'R49': ('SDRAM_CS_N', 20),
+    'R50': ('SDRAM_RAS_N', 19), 'R51': ('SDRAM_CAS_N', 18),
+    'R52': ('SDRAM_WE_N', 17), 'R53': ('SDRAM_CLK', 68),
+}
+assert len(pull_rows) == 10
+assert {ref: (net, int(pin)) for ref, net, pin in pull_rows} == expected_pulls
+assert len({pin for net, pin in expected_pulls.values()}) == 10
+assert {pin for net, pin in expected_pulls.values()} <= set(signals.values())
+print('R44-R53 ten-pull reference/target map PASS; native wiring checked separately')
+
 placed_bypass_nominal_uf = 12 * .1 + 10
 assert isclose(placed_bypass_nominal_uf, 11.2)
 print('C76-C88 nominal bypass uF', placed_bypass_nominal_uf,
@@ -979,6 +1049,29 @@ assert isclose(pull_high, 2.928593) and pull_high > 2.0
 assert isclose(pull_sink, .3733094582185491e-3)
 assert pull_sink < .374e-3 and pull_sink < 1e-3
 print('pull high V / low-output sink mA', pull_high, pull_sink * 1e3)
+
+pull_resistor_current = 3.6 / rmin
+pull_resistor_power = 3.6**2 / rmin
+ten_pull_current = 10 * pull_resistor_current
+ten_sink_screen = 10 * pull_sink
+ten_resistor_power = 10 * pull_resistor_power
+pull_allocation = 4e-3
+memory_allocation = 250e-3  # PWR-003; not a manufacturer maximum
+remaining_memory_allocation = memory_allocation - pull_allocation
+assert isclose(pull_resistor_current, .3673094582185491e-3)
+assert isclose(pull_resistor_power, 1.322314049586777e-3)
+assert isclose(ten_pull_current, 3.673094582185491e-3)
+assert isclose(ten_sink_screen, 3.733094582185491e-3)
+assert isclose(ten_resistor_power, 13.22314049586777e-3)
+assert ten_pull_current < ten_sink_screen < pull_allocation
+assert isclose(remaining_memory_allocation, .246)
+print('per-pull resistor current mA / heat mW',
+      pull_resistor_current * 1e3, pull_resistor_power * 1e3)
+print('all ten LOW: resistor current mA / sink screen mA / resistor heat mW',
+      ten_pull_current * 1e3, ten_sink_screen * 1e3, ten_resistor_power * 1e3)
+print('pull allocation mA / remaining memory and dynamic IO allocation mA',
+      pull_allocation * 1e3, remaining_memory_allocation * 1e3,
+      '; both within existing PWR-003 memory allocation, not hardware qualification')
 
 for frequency in (125_000_000, 62_500_000):
     period_ns = 1e9 / frequency
@@ -1018,11 +1111,19 @@ Reciprocal native annotations now present:
 - Page 10, `CMS-010 | SDRAM power and bypass`, UUID
   `3dfe9a7d-05b9-43c6-b336-a2b76637c897`: shared supply, C76-C88
   identities and the nominal `12 * 0.1 + 10 = 11.2 uF` calculation.
+- Page 10, `CMS-010 | R44-R53: 10k reset defaults`, UUID
+  `5e5b0bd4-c7e4-4068-83f4-db1d46ee8941`: resistor and leakage bounds,
+  `VHIGHmin = 3.0 - 7uA * 10201 = 2.928593 V`, and qualification limits.
+- Page 10, `CMS-010 | Pull load and power states`, UUID
+  `47df23ed-e7e5-4c56-9ffa-338aec18de44`: sink-current and resistor-power
+  equations, all-ten-LOW totals, the 4 mA allocation and retention/hard-off
+  constraints.
 
-Both annotations hyperlink to this CMS-010 contract. Page 10's block heading
-also explicitly identifies the pending command pulls, MCU pin-role typing
-and timing qualification. Preserve these reciprocal references when the
-circuit changes. A future timing annotation should show the local results,
+All four annotations hyperlink to this CMS-010 contract. Page 10's block
+heading now identifies signal and reset-default circuits, with startup,
+SI/timing and hardware qualification explicitly open. Preserve these
+reciprocal references when the circuit changes. A future timing annotation
+should show the local results,
 `125 MHz raw setup 0.5 ns; write hold 0 ns; read-high static margin 49.06 mV.
 Startup/SI qualification OPEN.` That additional timing note is not claimed
 present in the current schematic.
