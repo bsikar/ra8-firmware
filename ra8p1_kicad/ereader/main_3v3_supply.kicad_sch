@@ -877,14 +877,14 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Power_Devices:LTC3119IUFD#PBF"
+		(symbol "Power_Devices:TPS63806YFFR"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
 			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
 			(property "Reference" "U"
-				(at 0 27.94 0)
+				(at 0 16.51 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
@@ -893,8 +893,8 @@
 					)
 				)
 			)
-			(property "Value" "LTC3119IUFD#PBF"
-				(at 0 25.4 0)
+			(property "Value" "TPS63806YFFR"
+				(at 0 13.97 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
@@ -914,7 +914,7 @@
 					)
 				)
 			)
-			(property "Datasheet" "https://www.analog.com/media/en/technical-documentation/data-sheets/3119fb.pdf"
+			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps63806.pdf"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -925,7 +925,7 @@
 					)
 				)
 			)
-			(property "Description" "18 V synchronous buck-boost converter, adjustable 0.8-18 V output, UFD-28 QFN 4x5 mm with exposed PGND pad 29; I grade."
+			(property "Description" "Adjustable buck-boost converter, 15-ball WCSP, EN/MODE/PG"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -936,7 +936,7 @@
 					)
 				)
 			)
-			(property "Manufacturer_Name" "Analog Devices"
+			(property "DigiKey_Part_Number" "296-TPS63806YFFRCT-ND"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -947,7 +947,7 @@
 					)
 				)
 			)
-			(property "Manufacturer_Part_Number" "LTC3119IUFD#PBF"
+			(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TPS63806YFFR/10715517"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -958,7 +958,7 @@
 					)
 				)
 			)
-			(property "DigiKey_Part_Number" "505-LTC3119IUFD#PBF-ND"
+			(property "Manufacturer_Name" "Texas Instruments"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -969,7 +969,7 @@
 					)
 				)
 			)
-			(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/analog-devices-inc/LTC3119IUFD-PBF/6419504"
+			(property "Manufacturer_Part_Number" "TPS63806YFFR"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -980,7 +980,7 @@
 					)
 				)
 			)
-			(property "Selection_Basis" "ADI 3119fb Rev B pp2,11-13: exact QFN pin map; visible native stacks for internally shared pads. External loop, shutdown and source protection require circuit qualification."
+			(property "ki_keywords" "buck boost regulator adjustable TPS63806 YFF WCSP FPWM"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -991,69 +991,29 @@
 					)
 				)
 			)
-			(property "Procurement_Status" "Candidate - circuit integration and thermal/startup/loop qualification required; footprint deferred"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
+			(symbol "TPS63806YFFR_1_1"
+				(rectangle
+					(start -10.16 2.54)
+					(end 10.16 -12.7)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
 					)
 				)
-			)
-			(property "Sourcing_Snapshot" "2026-09-08 DigiKey stock 7024; Active; tube; USD1:24.07,10:19.305; unreserved snapshot"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_keywords" "buck boost regulator synchronous adjustable LTC3119 QFN"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(symbol "LTC3119IUFD#PBF_0_0"
-				(pin open_collector line
-					(at 17.78 -2.54 180)
+				(pin input line
+					(at -15.24 -7.62 0)
 					(length 5.08)
-					(name "PGOOD"
+					(name "EN"
 						(effects
 							(font
 								(size 1.27 1.27)
 							)
 						)
 					)
-					(number "7"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin power_in line
-					(at 17.78 -10.16 180)
-					(length 5.08)
-					(name "SVCC"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "8"
+					(number "A1"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1062,7 +1022,43 @@
 					)
 				)
 				(pin input line
-					(at 17.78 2.54 180)
+					(at -15.24 -2.54 0)
+					(length 5.08)
+					(name "MODE"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "B1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -2.54 -17.78 90)
+					(length 5.08)
+					(name "AGND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "C1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 15.24 -5.08 180)
 					(length 5.08)
 					(name "FB"
 						(effects
@@ -1071,7 +1067,25 @@
 							)
 						)
 					)
-					(number "9"
+					(number "D1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin open_collector line
+					(at 15.24 -7.62 180)
+					(length 5.08)
+					(name "PG"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "E1"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1080,97 +1094,7 @@
 					)
 				)
 				(pin power_in line
-					(at 5.08 -22.86 90)
-					(length 5.08)
-					(name "SGND"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "11"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin input line
-					(at -17.78 -5.08 0)
-					(length 5.08)
-					(name "MPPC"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "12"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin power_out line
-					(at 17.78 -7.62 180)
-					(length 5.08)
-					(name "VCC"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "13"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin input line
-					(at -17.78 -7.62 0)
-					(length 5.08)
-					(name "RT"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "14"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin input line
-					(at -17.78 0 0)
-					(length 5.08)
-					(name "RUN"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "15"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin power_in line
-					(at -17.78 5.08 0)
+					(at -15.24 0 0)
 					(length 5.08)
 					(name "VIN"
 						(effects
@@ -1179,7 +1103,7 @@
 							)
 						)
 					)
-					(number "16"
+					(number "[A2,A3]"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1188,106 +1112,16 @@
 					)
 				)
 				(pin passive line
-					(at -17.78 12.7 0)
+					(at -2.54 7.62 270)
 					(length 5.08)
-					(name "BST1"
+					(name "L1"
 						(effects
 							(font
 								(size 1.27 1.27)
 							)
 						)
 					)
-					(number "23"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at -17.78 -10.16 0)
-					(length 5.08)
-					(name "NC"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "24"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin input line
-					(at -17.78 -2.54 0)
-					(length 5.08)
-					(name "PWM/SYNC"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "25"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at -17.78 -12.7 0)
-					(length 5.08)
-					(name "NC"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "26"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at -17.78 -15.24 0)
-					(length 5.08)
-					(name "NC"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "27"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 17.78 12.7 180)
-					(length 5.08)
-					(name "BST2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "28"
+					(number "[B2,B3]"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1296,16 +1130,16 @@
 					)
 				)
 				(pin power_in line
-					(at -5.08 -22.86 90)
+					(at 2.54 -17.78 90)
 					(length 5.08)
-					(name "PGND"
+					(name "GND"
 						(effects
 							(font
 								(size 1.27 1.27)
 							)
 						)
 					)
-					(number "[1,6,17,22,29]"
+					(number "[C2,C3]"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1314,16 +1148,16 @@
 					)
 				)
 				(pin passive line
-					(at 5.08 20.32 270)
+					(at 2.54 7.62 270)
 					(length 5.08)
-					(name "SW2"
+					(name "L2"
 						(effects
 							(font
 								(size 1.27 1.27)
 							)
 						)
 					)
-					(number "[2,5]"
+					(number "[D2,D3]"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1332,90 +1166,21 @@
 					)
 				)
 				(pin power_out line
-					(at 17.78 7.62 180)
+					(at 15.24 0 180)
 					(length 5.08)
-					(name "PVOUT"
+					(name "VOUT"
 						(effects
 							(font
 								(size 1.27 1.27)
 							)
 						)
 					)
-					(number "[3,4]"
+					(number "[E2,E3]"
 						(effects
 							(font
 								(size 1.27 1.27)
 							)
 						)
-					)
-				)
-				(pin passive line
-					(at -5.08 20.32 270)
-					(length 5.08)
-					(name "SW1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "[18,21]"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin power_in line
-					(at -17.78 7.62 0)
-					(length 5.08)
-					(name "PVIN"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "[19,20]"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(symbol "LTC3119IUFD#PBF_1_0"
-				(pin output line
-					(at 17.78 -15.24 180)
-					(length 5.08)
-					(name "VC"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "10"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(symbol "LTC3119IUFD#PBF_1_1"
-				(rectangle
-					(start -12.7 15.24)
-					(end 12.7 -17.78)
-					(stroke
-						(width 0.254)
-						(type solid)
-					)
-					(fill
-						(type background)
 					)
 				)
 			)
@@ -1991,7 +1756,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "PWR-004 DRAFT: LOAD, CAPACITANCE AND SHUTDOWN LIMITS\nMain allocation=0.750 MCU+0.500 radio+0.250 SDRAM\n+0.250 NOR+0.050 logic=1.800A (not measured maxima).\nAudio, SD, camera, display and lighting require separate supplies.\nAt full Vhi=3.584411411V, Vin=3.2V and ASSUMED eta=0.75:\nPout=Vhi*1.8=6.451941W; Pin=Pout/eta=8.602587W.\nIin=Pin/Vin=2.688309A; total stage loss=Pin-Pout=2.150647W.\n2.25A cold-load allocation: Pin=10.753234W; Iin=3.360386A.\n3A temporary screen: Pin=14.337646W; Iin=4.480514A.\n3A is NOT a qualified continuous rating or source permission.\nRadio OFF at cold start; 1.88A reference subtotal excludes extra charging.\nQualify actual loaded startup/ramp, current limit and hot enclosed losses.\n\nCold storage=147.21u direct+10u C43/FB1+300u C99/C100=457.21uF.\nKey filters add 0.4uF through resistors, not parallel loop capacitance.\nPartial lower C=110.21u*0.9*0.85*0.6+47u*0.8+300u*0.8*0.8\n=280.18639uF; residual factors are ALLOCATIONS, not guarantees.\nQualify 250..850uF loop window; total shutdown storage <=1mF.\nC97 internal VCC and input/bootstrap bypasses are NOT main-output C.\nC99/C100 initial leakage allowance=2*94.5uA=189uA.\n\nSYS-007 Rdis,max=11.4211ohm; key-return allowance Ir=1.5mA.\ntfall=Rdis*C*ln((3.6-Ir*Rdis)/(0.3-Ir*Rdis))+10ms.\nAt 850uF: 34.647839ms; at 1mF: 38.997458ms.\nExisting held-budget screen=46.589403ms; validate all rail/interface tails.\nVBATT tied to VCC requires the no-switch initialization/option contract.\nEnabled-VBATT 1ms/V fall requirement FAILS the retained-load screen.\nRequired firmware/option invariant is NOT implemented; see linked record.\nRUN buffer and held clamp connected; source protection NOT implemented.\nRail adoption blocked by SDRAM logic-high conflict #846.\nNo power-up or fabrication release at this checkpoint.\n\nFull sources, assumptions and executable Python:\n../design/main_regulator_ltc3119.md PWR-004; SYS-007/009 interfaces."
+	(text "PWR-006 / LOAD, STORAGE AND SHUTDOWN\nAllocation: 1.8A operating; 2.25A cold-start screen, not measured load.\nPout=3.393012496*1.8=6.107422493W.\nAt allocated75% efficiency: Pin=8.143229991W; Iin@3.2V=2.544759372A.\nLoss=2.035807498W: NOT an acceptable continuous thermal result.\nAt90% efficiency: loss=0.678602499W.\nTJ screen=70C+78.8C/W*0.678602499W=123.474C.\nTI board theta-JA is not the final PCB thermal resistance.\n2.25A screen: Pin=3.393012496*2.25/0.75=10.179037489W.\nConverter limit, source limit, startup and thermal envelope need validation.\n\nNative storage inventory (nominal, not effective minimum):\nDirect main469.21uF + C43 through FB1 10uF + key filters0.4uF\n=479.61uF cold; radio-on adds10.2uF =>489.81uF.\nC99/C100 remain150uF each. C94 adds22uF to the output.\nOld bootstrap/private VCC/VC capacitors were not main-rail storage.\nWhole-main ceiling remains1mF for shutdown; no LTC stability transfer.\nCout lower acceptance and distributed PDN/startup are separate checks.\n\nPreserved discharge screen: Rmax11.4211ohm; key return<=1.5mA.\nVinf=1.5mA*11.4211ohm=0.01713165V.\nt=1mF*11.4211ohm*ln((3.6-Vinf)/(0.3-Vinf))+10ms\n =38.997458ms to0.3V, below held46.589403ms screen.\nResponse10ms includes command/clamp/discharge delays.\nHeld budget retains1uC transition charge and98.226405uA spare.\nSYS_AON source protection, loaded startup and fast faults remain open.\nExisting U2/U6 release maxima exceed the new low-rail envelope.\nDo not power up until reset coordination and source protection are complete.\nFull assumptions, sources and executable Python: click this note."
 		(exclude_from_sim no)
 		(at 215.646 190.5 0)
 		(effects
@@ -1999,11 +1764,11 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_ltc3119.md")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_tps63806.md")
 		)
 		(uuid "1f543ca1-6993-4fc1-a150-4c3cd26bfea2")
 	)
-	(text "PWR-004 RUN CONTROL: U16/C101, R68-R71, Q3; R34=110k\nU16 VCC=raw SYS_AON; A=MAIN_PWR_EN; Y->R68 1k->U13 RUN.\nR69=68k RUN-to-GND. Q3 drain=RUN after R68; source=GND.\nQ3 gate=POWER_OFF_H via R70 1k; R71=1M gate-to-GND.\nRUN/KILL/discharge/USB-clear drains remain separate.\nResistor screen: rmin=0.99^2; rmax=1.01^2.\nMAIN_PWR_EN adverse leakage allocation=3.8uA.\nPOR sink=(1.3-0.2)/(110k*rmin)+3.8uA\n        =14.003041uA <15uA test condition.\nENhigh at held 2.7V=2.7-3.8uA*110k*rmax=2.273598V.\nAt raw 3.263705831V, held drop<=0.250V: ENhigh>=2.587304V.\nCorrelate raw/held states with buffer thresholds; interpolation is a screen.\nRUNhigh=(3.2-0.1-1uA*1k*rmax)/(1+1k*rmax/(68k*rmin))\n       =3.052262V.\nRUNlow<=0.1+1uA*1k*rmax=0.101020V.\nBuffer DC load<=4.6/(68k*rmin)+1uA=70.021uA <100uA.\nAt raw=0: RUN<=(2uA Ioff+1uA allocation)*68k*rmax=0.208100V.\nThis endpoint does not cover undefined buffer behavior below 1.65V.\nHeld Q3 clamp supplies shutdown during raw collapse.\n\nFour gate branches include the future USB-clear branch:\nIpeak<=4*4.6/(1k*rmin)=18.773595mA <50mA absolute limit.\nIdc<=4*(4.6/(1M*rmin)+1uA)=22.773595uA <100uA.\nVGSmin=(2.6-1uA*1k*rmax)/(1+1k*rmax/(1M*rmin))\n      =2.596278V.\nWith installed FET R<=0.2ohm: RUN<=4.6*0.2/(1k*rmin+0.2)\n                               =0.938488mV.\nHeld-control spare=1125-500-500-4-22.773595=98.226405uA.\n1uA leakage and 0.2ohm are qualification allocations, not hot guarantees.\nRetain shared 10ms total response and 1uC transition reserve.\nSeparate proposed eFuse MR/FLT load is NOT included.\nSaved draft only: #846 rail/SDRAM conflict remains unresolved.\nFull sources, assumptions and Python: ../design/main_regulator_ltc3119.md."
+	(text "PWR-006 / HELD ENABLE AND SHUTDOWN CLAMP\nU16 buffers MAIN_PWR_EN; Q3 independently clamps EN during raw collapse.\nRUN_U13 is the preserved control net; U13 pin A1 is now EN.\nEN VIH>=1.2V; VIL<=0.4V. MODE tied to VIN selects forced PWM.\na=0.99*0.99=0.9801; b=1.01*1.01=1.0201 resistor factors.\nENhigh>=(3.2-0.1-1.2uA*1k*b)/(1+1k*b/(68k*a))\n =3.052060850V >1.2V. Includes allocated1uA Q3 off leakage.\nU16 high load<=4.6/(68k*a)+1.2uA=70.220568uA <100uA.\nENlow<=0.1+0.2uA*1k*b=0.100204020V <0.4V.\nAt zero raw: EN<=(2uA+1uA)*68k*b=0.208100400V.\nZero-raw screen uses U16 Ioff; not the intervening undefined region.\nHeld Q3: EN<=(4.6/(1k*a)+1uA)/(1/(1k*a)+1/0.2ohm)\n =0.938689mV <0.4V; ignores helpful R69.\nTI0.2uA EN leakage applies only under its powered test conditions.\nRetain1uA adverse EN allocation for absent/collapsing raw.\nQ3 installed hot leakage and0.2ohm Ron are acceptance allocations.\n\nFour held1k/1M gate branches, including reserved USB-clear:\nIpeak<=4*4.6/(1k*a)=18.773595mA (not continuous rating).\nIsteady<=4*(4.6/(1M*a)+1uA)=22.773595uA.\nVGS>=(2.7-0.1-1uA*1k*b)/(1+1k*b/(1M*a))=2.596278V.\nHeld control spare=1125-500-500-4-22.773595=98.226405uA.\n500uA terms: reservoir leakage and non-rail inverter-input allocation.\nRetain1uC transition charge and10ms complete response allocation.\nR34=110k: POR sink=(1.3-0.2)/(110k*a)+3.8uA=14.003041uA.\nKeep RUN, KILL, discharge and future USB-clear drains separate.\nSource protection and reset redesign remain open; no power-up approval.\nFull assumptions, primary sources and Python verification: click this note."
 		(exclude_from_sim no)
 		(at 266.446 116.84 0)
 		(effects
@@ -2011,11 +1776,11 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_ltc3119.md")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_tps63806.md")
 		)
 		(uuid "2609bf8c-db8e-4606-82f6-a0db60db90f9")
 	)
-	(text "MAIN DIGITAL SUPPLY: LTC3119 DRAFT / PWR-004\nRUN buffer and held shutdown clamp connected.\n3.4185V proposal NOT ADOPTED: SDRAM logic margin fails (#846).\nSource protection and whole-product verification remain incomplete.\nNOT FOR POWER-UP OR FABRICATION."
+	(text "MAIN DIGITAL SUPPLY: TPS63806 / PWR-006\n3.272277 V nominal; forced PWM; held shutdown clamp.\nDivider and bypass calculations: design/main_regulator_tps63806.md\nReset coordination (#846), source protection and qualification remain open.\nDEVELOPMENT SCHEMATIC - NOT FOR POWER-UP OR FABRICATION."
 		(exclude_from_sim no)
 		(at 88.646 37.846 0)
 		(effects
@@ -2027,7 +1792,7 @@
 		)
 		(uuid "44af95d7-9f7c-44fe-9736-b6cbce342565")
 	)
-	(text "PWR-004: SETPOINT AND COMPENSATION\nU13 LTC3119IUFD#PBF; fixed PWM; MPPC disabled via VCC.\nR41=33k; R42=10k; each 0.1%, 25ppm/C.\nVnom=0.795*(1+33k/10k)=3.418500V.\nFor 100C resistor excursion:\nfLo=0.999*0.9975=0.9965025; fHi=1.001*1.0025=1.0035025.\nVlo=0.779*(1+33k*fLo/(10k*fHi))-100nA*33k*fHi\n   =3.328456349V.\nVhi=0.811*(1+33k*fHi/(10k*fLo))+100nA*33k*fHi\n   =3.509411411V.\n100nA is total adverse FB-current ALLOCATION, not a hot guarantee.\nTotal remaining regulation/routing/ripple/transient allowance=+/-75mV.\nFull acceptance envelope=3.253456349..3.584411411V.\nMCU release margin=3.253456349-3.193951250=59.505099mV.\nRadio margin=3.253456349-0.0875-3.139621574=26.334775mV.\n3.6V ceiling margin=3.6-3.584411411=15.588589mV.\nThese are acceptance budgets, not measured or guaranteed waveforms.\n\nL2=3.3uH +/-20%; qualify installed 2..4.4uH and hot current.\nR66=162k; f=100MHz/(8+1.2*162)=494.071kHz.\nResistor-only corners=484.713..503.699kHz; silicon variation extra.\nR67=42.2k in SERIES with C98=4.7nF C0G from VC to GND.\nReduced model, 2160 corners: fc=1.417..9.966kHz; PM>=51.167deg.\nMaximum modeled 0.5A-step excursion=66.112mV.\nModel omits distributed PDN, parasitics, delay and saturation.\nInstalled loop-gain, startup, thermal and transient tests REQUIRED.\n\nFull equations, primary sources and executable Python:\n../design/main_regulator_ltc3119.md PWR-004."
+	(text "PWR-006 / FEEDBACK AND LOCAL PASSIVES\nVnom=0.500*(1+5600/(1000+10))=3.272277228 V.\nR41: 0.02%, 5ppm/C; R42: 0.01%, 2ppm/C; R66: 1%, 200ppm/C.\nInstalled bounds: initial*TCR(100C)*aging*assembly, then ohms.\nR41=5600*(1+/-0.0002)*(1+/-0.0005)*(1+/-0.001)\n    *(1+/-0.0005)+/-0.02 = 5587.669237..5612.349243 ohm.\nR42=1000*(1+/-0.0001)*(1+/-0.0002)*(1+/-0.001)\n    *(1+/-0.0005)+/-0.01 = 998.190970..1001.810970 ohm.\nR66=10*(1+/-0.01)*(1+/-0.02)*(1+/-0.01)+/-0.05\n    =9.554980..10.455020 ohm; one combined aging/assembly 1%.\nVlo=0.495*(1+R41min/(R42max+R66max))-100nA*R41max.\nVhi=0.505*(1+R41max/(R42min+R66min))+100nA*R41max.\nVstatic=3.226819680..3.318012496 V (FPWM only).\nOne combined +/-75mV regulation/ripple/transient/routing allowance:\nVcomplete=3.151819680..3.393012496 V; qualification required.\nSDRAM static VOH margin=2.4-0.7*3.393012496=24.891253mV.\nThis is not measured SI/noise headroom or reset qualification.\n\nL2: 470nH +/-20%; catalog spread alone is insufficient.\nScreen incoming0.412..0.518uH; allocated operating+/-10%\n=>0.3708..0.5698uH versus TI0.37..0.57uH. Qualify hot/current.\nC74/C75/C94: 3*22uF*0.8*0.85*0.6=26.928uF > TI21uF.\nC96: 22uF*0.8*0.85*0.6=8.976uF > TI4uF input minimum.\n0.6 is allocated combined bias/aging retention, NOT guaranteed.\nSamsung typical output-bias retention at3.393012496V=90.221554%.\nInput bias, aging, mounted impedance and startup need verification.\nFull assumptions, sources and executable Python: click this note."
 		(exclude_from_sim no)
 		(at 88.646 190.246 0)
 		(effects
@@ -2035,7 +1800,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_ltc3119.md")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_tps63806.md")
 		)
 		(uuid "c8b3824c-e7df-4680-863e-1599a8c0fdba")
 	)
@@ -2058,16 +1823,10 @@
 		(uuid "2a4d21c1-e8d1-45f0-9af1-5af858650022")
 	)
 	(junction
-		(at 165.1 127)
+		(at 165.1 121.92)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "341e9786-4a6a-40c5-a346-b22b393c612a")
-	)
-	(junction
-		(at 195.58 99.06)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "63e4aa94-a047-4895-916e-7bb65b8de1d7")
+		(uuid "3b3931a1-680f-4e5b-81ab-04e0a1f24e94")
 	)
 	(junction
 		(at 279.4 88.9)
@@ -2079,43 +1838,19 @@
 		(at 228.6 88.9)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "7949dc49-f1c4-4e02-8397-382e13749929")
-	)
-	(junction
-		(at 187.96 111.76)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "85262804-24a9-49b2-a118-7ec09bff261c")
-	)
-	(junction
-		(at 127 93.98)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "875f8c31-e7e2-4dba-81d6-3798d6e55d07")
+		(uuid "7d02c234-dbaa-4fc8-8bfd-29c8a83cbf4b")
 	)
 	(junction
 		(at 195.58 88.9)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "8a09372e-35fe-4e24-a8e4-b936d5f6610c")
+		(uuid "9279bdf9-a06e-4ad5-8a90-b20ff678ee17")
 	)
 	(junction
-		(at 139.7 93.98)
+		(at 195.58 100.33)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "8ce56405-4152-4ab8-8c49-41478f114d12")
-	)
-	(junction
-		(at 127 104.14)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "8f6eb639-83f6-46ba-89c7-e7f2e2fd79d8")
-	)
-	(junction
-		(at 160.02 78.74)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "951c22ab-25e6-491c-9825-3447fc4b835e")
+		(uuid "9e563cf8-6c35-4708-be46-f3e05a8e96aa")
 	)
 	(junction
 		(at 215.9 171.45)
@@ -2130,10 +1865,16 @@
 		(uuid "aaae37ca-f938-4cae-9a4e-0d0c86591492")
 	)
 	(junction
-		(at 170.18 78.74)
+		(at 127 93.98)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "f09d9f72-e043-4f28-ab82-e16eadaa246f")
+		(uuid "ba338583-9f9b-4767-93e6-eb8ba0daf60b")
+	)
+	(junction
+		(at 139.7 101.6)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "d4bd96cb-7ddd-4d63-ae9a-38ab1b14f5b5")
 	)
 	(junction
 		(at 109.22 154.94)
@@ -2142,20 +1883,18 @@
 		(uuid "fd963ce6-38bf-45c2-8b9e-48d626410c3a")
 	)
 	(no_connect
-		(at 147.32 111.76)
-		(uuid "1971fbb0-1775-49fe-87df-c96a47c50144")
+		(at 180.34 109.22)
+		(uuid "20d2d6ad-a2b8-4cd6-b721-36c0af5b1ea4")
 	)
-	(no_connect
-		(at 147.32 116.84)
-		(uuid "21df922f-372f-45db-8006-27a0c31b0593")
-	)
-	(no_connect
-		(at 147.32 114.3)
-		(uuid "832506f2-9c56-45cc-99f1-f8dca24ee817")
-	)
-	(no_connect
-		(at 182.88 104.14)
-		(uuid "c06dd421-0e74-4e1e-8ba8-a9f3d704d5bd")
+	(wire
+		(pts
+			(xy 149.86 104.14) (xy 139.7 104.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "01f0b9b4-af3e-4ab4-9014-58dc173b5a04")
 	)
 	(wire
 		(pts
@@ -2166,16 +1905,6 @@
 			(type default)
 		)
 		(uuid "0266dd41-246a-48dd-bd68-8868d7b9b922")
-	)
-	(wire
-		(pts
-			(xy 165.1 127) (xy 160.02 127)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "0768e26e-025c-4f90-9a16-d57489ce1e9b")
 	)
 	(wire
 		(pts
@@ -2199,6 +1928,16 @@
 	)
 	(wire
 		(pts
+			(xy 175.26 83.82) (xy 175.26 93.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "12ab3f52-f870-45a7-a478-8536b3d14e41")
+	)
+	(wire
+		(pts
 			(xy 114.3 93.98) (xy 127 93.98)
 		)
 		(stroke
@@ -2209,43 +1948,13 @@
 	)
 	(wire
 		(pts
-			(xy 132.08 109.22) (xy 147.32 109.22)
+			(xy 195.58 99.06) (xy 195.58 100.33)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "1be09dbb-cf88-460d-b80e-534cd0abe5f5")
-	)
-	(wire
-		(pts
-			(xy 127 104.14) (xy 147.32 104.14)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "1e0d21c4-7e0c-4ded-860a-d0075308c572")
-	)
-	(wire
-		(pts
-			(xy 127 93.98) (xy 139.7 93.98)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "2152a4bd-eb41-457c-936d-ec170d1e8ddf")
-	)
-	(wire
-		(pts
-			(xy 195.58 88.9) (xy 228.6 88.9)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "21a6aa3a-3a60-4487-b490-dc5eafaf8017")
+		(uuid "20ba4cd8-944b-4755-b375-7db8244e6b30")
 	)
 	(wire
 		(pts
@@ -2269,13 +1978,13 @@
 	)
 	(wire
 		(pts
-			(xy 228.6 115.57) (xy 228.6 114.3)
+			(xy 165.1 121.92) (xy 167.64 121.92)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "32eef7d3-bfc6-43a0-8e31-7d882f07c91d")
+		(uuid "2c96e64b-5ae1-4046-9212-284cade8fc8b")
 	)
 	(wire
 		(pts
@@ -2289,123 +1998,83 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 111.76) (xy 187.96 111.76)
+			(xy 182.88 88.9) (xy 195.58 88.9)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "335f2cc6-7bef-4115-8520-95a213d9e841")
+		(uuid "372399a7-d0e8-44d8-abe8-0f91c125a2e5")
 	)
 	(wire
 		(pts
-			(xy 187.96 111.76) (xy 187.96 109.22)
+			(xy 139.7 101.6) (xy 139.7 104.14)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "358c0356-2223-4761-8afd-50097f59406b")
+		(uuid "40101afd-867c-4a13-990e-6a243904dcfd")
 	)
 	(wire
 		(pts
-			(xy 187.96 93.98) (xy 187.96 88.9)
+			(xy 162.56 119.38) (xy 162.56 121.92)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "3c103cb5-7646-4ee2-a8da-98f42ad8389e")
+		(uuid "45fc69ae-22fe-4728-9fca-49a1f9cdb694")
 	)
 	(wire
 		(pts
-			(xy 215.9 130.81) (xy 215.9 127)
+			(xy 187.96 106.68) (xy 187.96 100.33)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "3e216a89-a840-4ac0-9212-b9fd2e8f5507")
+		(uuid "48f43542-4869-4867-a618-b59ed55d44cb")
 	)
 	(wire
 		(pts
-			(xy 170.18 71.12) (xy 170.18 78.74)
+			(xy 195.58 88.9) (xy 228.6 88.9)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "43317a1c-ccb2-4577-a3cd-696e70de8e88")
+		(uuid "4c878c36-a44c-43d2-9281-5db26717c1e7")
 	)
 	(wire
 		(pts
-			(xy 195.58 88.9) (xy 195.58 91.44)
+			(xy 161.29 83.82) (xy 154.94 83.82)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "45d20f04-3bd3-4b0b-b260-d604244b253b")
+		(uuid "4f69c76d-76f4-40f1-9b74-0fc47c412e4c")
 	)
 	(wire
 		(pts
-			(xy 228.6 114.3) (xy 187.96 114.3)
+			(xy 167.64 119.38) (xy 167.64 121.92)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "4752a60f-86f2-4239-8d4d-3797ee410c90")
+		(uuid "5274f214-4b0b-40ed-9e26-cd7f0b7053b3")
 	)
 	(wire
 		(pts
-			(xy 132.08 113.03) (xy 132.08 109.22)
+			(xy 195.58 119.38) (xy 195.58 121.92)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "4c8f6850-3b62-4c68-a80f-4f3534936b8b")
-	)
-	(wire
-		(pts
-			(xy 182.88 109.22) (xy 187.96 109.22)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "4cdf621c-74ca-4dd7-ae83-84e2d7af5706")
-	)
-	(wire
-		(pts
-			(xy 134.62 101.6) (xy 147.32 101.6)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "51c4686e-77dd-4695-bb86-3e3737e7a817")
-	)
-	(wire
-		(pts
-			(xy 168.91 71.12) (xy 170.18 71.12)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "53e0ccf3-525e-4663-bf59-ffe6de0ab67d")
-	)
-	(wire
-		(pts
-			(xy 228.6 123.19) (xy 228.6 125.73)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "55399b1e-1a70-42de-89d7-3d82e2e70b15")
+		(uuid "583c3411-2893-443f-8731-2d8ba568a305")
 	)
 	(wire
 		(pts
@@ -2419,23 +2088,23 @@
 	)
 	(wire
 		(pts
-			(xy 165.1 127) (xy 170.18 127)
+			(xy 241.3 97.79) (xy 241.3 100.33)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "5bd5f14c-157a-409e-af58-6b794b681a63")
+		(uuid "5d35e7aa-bc8d-465e-a230-63709ea9109e")
 	)
 	(wire
 		(pts
-			(xy 147.32 78.74) (xy 147.32 88.9)
+			(xy 187.96 100.33) (xy 195.58 100.33)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "5be2ccba-fbaa-4f84-abd0-e8fbcdf709ec")
+		(uuid "5e70de68-23ca-4957-bd9b-b2d13e10f480")
 	)
 	(wire
 		(pts
@@ -2469,33 +2138,13 @@
 	)
 	(wire
 		(pts
-			(xy 147.32 106.68) (xy 127 106.68)
+			(xy 127 93.98) (xy 139.7 93.98)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "63b834ec-d253-45e0-928d-6e9f457d2551")
-	)
-	(wire
-		(pts
-			(xy 160.02 71.12) (xy 160.02 78.74)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6d6daa90-ca3b-4468-b4b4-a2714792fc51")
-	)
-	(wire
-		(pts
-			(xy 194.31 127) (xy 187.96 127)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6fd24c78-905a-439f-87bf-9f24c9520682")
+		(uuid "73e34a55-5bec-48b5-93cc-4c9b2db7659d")
 	)
 	(wire
 		(pts
@@ -2509,13 +2158,13 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 78.74) (xy 173.99 78.74)
+			(xy 195.58 100.33) (xy 195.58 101.6)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "78b1b69e-2d1e-461e-9b67-63a27bea8cf8")
+		(uuid "78069ce4-588a-4d6d-b749-e6f3caa44f37")
 	)
 	(wire
 		(pts
@@ -2539,6 +2188,16 @@
 	)
 	(wire
 		(pts
+			(xy 180.34 106.68) (xy 187.96 106.68)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "82619e37-4b78-4dfc-816d-d2692a3074b4")
+	)
+	(wire
+		(pts
 			(xy 101.6 107.95) (xy 101.6 110.49)
 		)
 		(stroke
@@ -2546,16 +2205,6 @@
 			(type default)
 		)
 		(uuid "84985269-66c8-4a32-9c54-80175bb83728")
-	)
-	(wire
-		(pts
-			(xy 127 99.06) (xy 127 104.14)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "8ff7a4d6-9342-4471-b214-af256f7ab02d")
 	)
 	(wire
 		(pts
@@ -2569,23 +2218,13 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 124.46) (xy 170.18 127)
+			(xy 168.91 83.82) (xy 175.26 83.82)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "95d15b30-4729-4a88-bb93-3fc6683c991e")
-	)
-	(wire
-		(pts
-			(xy 148.59 78.74) (xy 147.32 78.74)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "9c1447be-09f8-418f-bc29-274567390b08")
+		(uuid "a058a29f-0541-40fe-a962-deeccdb9d6c0")
 	)
 	(wire
 		(pts
@@ -2599,13 +2238,13 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 99.06) (xy 195.58 99.06)
+			(xy 195.58 109.22) (xy 195.58 111.76)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "a4ad3210-17a6-47ee-8f8f-b6bf44079e01")
+		(uuid "ad9e5b6e-3a51-491b-8745-fa7e6f9afb31")
 	)
 	(wire
 		(pts
@@ -2649,63 +2288,13 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 78.74) (xy 182.88 88.9)
+			(xy 138.43 109.22) (xy 149.86 109.22)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "b52def88-01c8-49c7-abb9-8c08d8f1c302")
-	)
-	(wire
-		(pts
-			(xy 156.21 78.74) (xy 160.02 78.74)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b66832fe-8606-4582-bada-efedf21fe202")
-	)
-	(wire
-		(pts
-			(xy 187.96 127) (xy 187.96 116.84)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b7d84e23-87d1-427f-9229-30726cf86e2b")
-	)
-	(wire
-		(pts
-			(xy 161.29 71.12) (xy 160.02 71.12)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ba762490-9eb3-4aed-8b93-90a3d0eae5d9")
-	)
-	(wire
-		(pts
-			(xy 215.9 138.43) (xy 215.9 140.97)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c28da553-017e-4f56-8f1e-23d861bbc04e")
-	)
-	(wire
-		(pts
-			(xy 187.96 114.3) (xy 187.96 111.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c2df80d8-2fe8-4235-8401-c899d8731b94")
+		(uuid "bf3b0a78-7e39-4b72-bcb1-229289b831d2")
 	)
 	(wire
 		(pts
@@ -2716,16 +2305,6 @@
 			(type default)
 		)
 		(uuid "c33b2fc5-f300-4811-92dd-b97898df8b1e")
-	)
-	(wire
-		(pts
-			(xy 170.18 78.74) (xy 170.18 81.28)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c40c15f1-7b65-4e79-8339-8d474ec0a0f6")
 	)
 	(wire
 		(pts
@@ -2749,33 +2328,13 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 116.84) (xy 187.96 116.84)
+			(xy 139.7 101.6) (xy 139.7 93.98)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "c71c21c5-6e5a-4e6e-b05a-31227ffc9b72")
-	)
-	(wire
-		(pts
-			(xy 139.7 93.98) (xy 139.7 96.52)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c87e5f6b-d0bc-4352-a6d3-a3379556bcb4")
-	)
-	(wire
-		(pts
-			(xy 182.88 93.98) (xy 187.96 93.98)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c98d2edc-c09f-4fe4-862b-b2920a5fd251")
+		(uuid "c7a67ab5-0150-47af-b914-4dc45b33f096")
 	)
 	(wire
 		(pts
@@ -2789,23 +2348,13 @@
 	)
 	(wire
 		(pts
-			(xy 187.96 88.9) (xy 195.58 88.9)
+			(xy 149.86 101.6) (xy 139.7 101.6)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "cd5415a4-f4a6-4b5a-b106-e04cbd67e31e")
-	)
-	(wire
-		(pts
-			(xy 132.08 120.65) (xy 132.08 123.19)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "cd5f5d5c-a18c-4092-83a9-3f2537a8e961")
+		(uuid "ce97eaa0-446d-4d50-8327-032b05121249")
 	)
 	(wire
 		(pts
@@ -2819,33 +2368,63 @@
 	)
 	(wire
 		(pts
-			(xy 127 104.14) (xy 127 106.68)
+			(xy 180.34 101.6) (xy 182.88 101.6)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "d6cbb39a-da0b-4e8d-ae9b-0b4070f0711b")
+		(uuid "d3434111-c3a2-49ef-847b-dd86734e4f4a")
 	)
 	(wire
 		(pts
-			(xy 139.7 93.98) (xy 147.32 93.98)
+			(xy 154.94 93.98) (xy 162.56 93.98)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "dcd65f75-fc69-4875-b184-89329568fede")
+		(uuid "d6d1b21c-614c-4040-874f-70485736de6b")
 	)
 	(wire
 		(pts
-			(xy 139.7 96.52) (xy 147.32 96.52)
+			(xy 241.3 88.9) (xy 241.3 90.17)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "df68fe76-faec-473b-98e3-2882f52960da")
+		(uuid "d82a0528-409b-4a0f-a314-666db4138e54")
+	)
+	(wire
+		(pts
+			(xy 195.58 88.9) (xy 195.58 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "db77ee5f-aa5b-4a42-951a-5582d9a01dee")
+	)
+	(wire
+		(pts
+			(xy 182.88 101.6) (xy 182.88 88.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e1228b75-0dee-4741-b261-48ddec2fae3b")
+	)
+	(wire
+		(pts
+			(xy 162.56 121.92) (xy 165.1 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e6f2ead2-ac5e-4d4e-aaeb-ed94ef9ea7f9")
 	)
 	(wire
 		(pts
@@ -2859,26 +2438,6 @@
 	)
 	(wire
 		(pts
-			(xy 201.93 127) (xy 215.9 127)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ea984a0e-4751-4a0a-97e1-c6173d900cc2")
-	)
-	(wire
-		(pts
-			(xy 160.02 124.46) (xy 160.02 127)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ec670107-d322-40a5-ab4f-c9d17d40bff5")
-	)
-	(wire
-		(pts
 			(xy 114.3 100.33) (xy 114.3 93.98)
 		)
 		(stroke
@@ -2889,6 +2448,16 @@
 	)
 	(wire
 		(pts
+			(xy 154.94 83.82) (xy 154.94 93.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f0307c8c-e2ca-4103-aac5-097f0dadc258")
+	)
+	(wire
+		(pts
 			(xy 215.9 171.45) (xy 215.9 173.99)
 		)
 		(stroke
@@ -2896,26 +2465,6 @@
 			(type default)
 		)
 		(uuid "f4150021-d9f9-47db-8d34-0ac32384e7fb")
-	)
-	(wire
-		(pts
-			(xy 160.02 78.74) (xy 160.02 81.28)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "f7233790-7dec-4d7b-a6fd-2eabd196c899")
-	)
-	(wire
-		(pts
-			(xy 181.61 78.74) (xy 182.88 78.74)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "f74c067a-c448-45c7-b7c8-d6e6b0e44353")
 	)
 	(wire
 		(pts
@@ -2937,35 +2486,25 @@
 		)
 		(uuid "f8a9d67b-e5b8-4b48-b575-9850c00340c9")
 	)
-	(label "VCC_U13"
-		(at 215.9 114.3 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
+	(wire
+		(pts
+			(xy 167.64 93.98) (xy 175.26 93.98)
 		)
-		(uuid "60dd1efb-ce7f-4868-8be3-ae52289f3e07")
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fc1920ba-da06-48d3-acd1-8063334fc18a")
 	)
 	(label "RUN_U13"
-		(at 134.62 101.6 0)
+		(at 138.43 109.22 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
 			(justify left bottom)
 		)
-		(uuid "8a310213-b951-47fe-890a-f93d3f329a56")
-	)
-	(label "VCC_U13"
-		(at 127 99.06 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "983afbfa-a458-43fa-a86e-d930f7d59b4c")
+		(uuid "2ded755e-cef6-42a0-80a6-f12ef5dab7e0")
 	)
 	(label "RUN_U13"
 		(at 231.14 166.37 0)
@@ -3169,165 +2708,6 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
 					(reference "Q3")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:C")
-		(at 215.9 134.62 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "0577610c-7a8d-42fb-8a2b-8d94503e55cd")
-		(property "Reference" "C98"
-			(at 219.71 133.3499 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "4n7"
-			(at 219.71 135.8899 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 216.8652 138.43 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608C0G1H472J080AA"
-			(at 215.9 134.62 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4.7nF 5% 50V C0G +/-30ppm/C compensation capacitor; -55..125C"
-			(at 215.9 134.62 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer_Name" "TDK"
-			(at 215.9 134.62 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer_Part_Number" "C1608C0G1H472J080AA"
-			(at 215.9 134.62 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "DigiKey_Part_Number" "445-7400-1-ND"
-			(at 215.9 134.62 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Procurement_Status" "Sourced candidate; PWR-004 installed loop qualification pending; footprint deferred"
-			(at 215.9 134.62 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Sourcing_Snapshot" "2026-09-08; DigiKey stock 63481; USD qty1 0.19; qty10 0.11; unreserved"
-			(at 215.9 134.62 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Selection_Basis" "PWR-004: 4.7nF 5% C0G 30ppm/C, series with R67 42.2k from LTC3119 VC to quiet GND; included in 2160-corner reduced model, not a substitute for loop-gain and transient qualification."
-			(at 215.9 134.62 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608C0G1H472J080AA/2732835"
-			(at 215.9 134.62 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "2"
-			(uuid "9e936d4b-cc63-4d2b-bd7f-b2761c24ce53")
-		)
-		(pin "1"
-			(uuid "9ea4f2af-ecf9-462b-8621-8b9812019992")
-		)
-		(instances
-			(project "ereader_rev1"
-				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
-					(reference "C98")
 					(unit 1)
 				)
 			)
@@ -3590,7 +2970,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "33k"
+		(property "Value" "5k6"
 			(at 198.12 96.5199 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3623,7 +3003,7 @@
 				)
 			)
 		)
-		(property "Description" "33k 0.1% 25ppm/C thin-film feedback resistor"
+		(property "Description" "5k6 0.02% 5ppm/C precision upper feedback resistor"
 			(at 195.58 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -3645,7 +3025,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "RG1608P-333-B-T5"
+		(property "Manufacturer_Part_Number" "RG2012V-562-P-T1"
 			(at 195.58 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -3656,7 +3036,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "RG16P33.0KBCT-ND"
+		(property "DigiKey_Part_Number" "408-RG2012V-562-P-T1CT-ND"
 			(at 195.58 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -3667,7 +3047,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/susumu/RG1608P-333-B-T5/1240562"
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/susumu/RG2012V-562-P-T1/1248344"
 			(at 195.58 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -3678,7 +3058,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Sourced candidate; electrical qualification pending; footprint deferred"
+		(property "Procurement_Status" "Selected; unreserved stock snapshot; footprint deferred"
 			(at 195.58 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -3689,7 +3069,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-08; DigiKey stock 18305; USD qty1 0.11; unreserved"
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey cut tape: 702 stock; USD 2.18/1.808/1.5074 at 1/10/100; shipping/tax excluded"
 			(at 195.58 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -3700,7 +3080,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "PWR-004: upper feedback 33k 0.1% 25ppm/C; 100C excursion and 100nA adverse FB allocation; paired with R42 10k; full envelope 3.253456..3.584412V includes total +/-75mV acceptance allowance, not measured performance."
+		(property "Selection_Basis" "PWR-006: 5k6 upper feedback; 0.02%, 5ppm/C; installed tolerance model in design/main_regulator_tps63806.md."
 			(at 195.58 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -4086,7 +3466,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://search.murata.co.jp/Ceramy/image/img/A01X/G101/ENG/GRM32ER71C226KEA8-01A.pdf"
+		(property "Datasheet" "https://product.samsungsem.com/mlcc/CL32B226MOJNNN.do"
 			(at 228.6 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -4097,7 +3477,7 @@
 				)
 			)
 		)
-		(property "Description" "22uF 16V X7R 10%; output bypass; effective capacitance qualification required"
+		(property "Description" "22uF 20% 16V X7R 1210 MLCC; effective capacitance qualification required"
 			(at 228.6 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -4108,7 +3488,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Name" "Murata Electronics"
+		(property "Manufacturer_Name" "Samsung Electro-Mechanics"
 			(at 228.6 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -4119,7 +3499,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "GRM32ER71C226KEA8L"
+		(property "Manufacturer_Part_Number" "CL32B226MOJNNNE"
 			(at 228.6 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -4130,7 +3510,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "490-5890-1-ND"
+		(property "DigiKey_Part_Number" "1276-3395-1-ND"
 			(at 228.6 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -4141,7 +3521,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/murata-electronics/GRM32ER71C226KEA8L/3465247"
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/samsung-electro-mechanics/CL32B226MOJNNNE/3891481"
 			(at 228.6 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -4152,7 +3532,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Sourced candidate; electrical qualification pending; footprint deferred"
+		(property "Procurement_Status" "Selected; effective capacitance qualification required; footprint deferred"
 			(at 228.6 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -4163,7 +3543,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-08; DigiKey stock 30854; USD qty1 0.88000; qty10 0.55200; qty100 0.38540"
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 162775 stock; USD 0.52/0.318/0.2122 at 1/10/100; unreserved; shipping/tax excluded"
 			(at 228.6 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -4174,7 +3554,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "PWR-004: one of two retained 22uF 16V X7R 10% output ceramics, supplemented by C99/C100 polymer bulk. Qualify total installed loop window 250..850uF and full PDN; ceramic bias/aging factors are allocations, not guaranteed capacitance."
+		(property "Selection_Basis" "PWR-006: 22uF 20% 16V X7R 1210. C74/C75/C94 output; C96 input. Effective C/bias/aging qualification in design/main_regulator_tps63806.md."
 			(at 228.6 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -4202,7 +3582,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 195.58 106.68 0)
+		(at 228.6 100.33 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -4213,7 +3593,7 @@
 		(fields_autoplaced yes)
 		(uuid "53500565-a54a-4b54-a420-509b12db77e5")
 		(property "Reference" "#PWR0137"
-			(at 195.58 113.03 0)
+			(at 228.6 106.68 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4224,7 +3604,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 195.58 111.76 0)
+			(at 228.6 105.41 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -4234,7 +3614,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 195.58 106.68 0)
+			(at 228.6 100.33 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4245,7 +3625,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 195.58 106.68 0)
+			(at 228.6 100.33 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4256,7 +3636,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 195.58 106.68 0)
+			(at 228.6 100.33 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4267,7 +3647,7 @@
 			)
 		)
 		(pin "1"
-			(uuid "aa2e17e2-18c8-4eae-a8ae-5d3429ef5e20")
+			(uuid "aa2e17e2-18c8-4eae-a8ae-5d3429ef5e21")
 		)
 		(instances
 			(project "ereader_rev1"
@@ -4358,7 +3738,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 228.6 125.73 0)
+		(at 241.3 100.33 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -4367,9 +3747,9 @@
 		(in_pos_files yes)
 		(dnp no)
 		(fields_autoplaced yes)
-		(uuid "68788e65-91bf-4cb5-9e20-399df7e5ea80")
-		(property "Reference" "#PWR0157"
-			(at 228.6 132.08 0)
+		(uuid "68a0b5d6-1277-4d77-b589-0c25c8f0f1aa")
+		(property "Reference" "#PWR0138"
+			(at 241.3 106.68 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4380,7 +3760,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 228.6 130.81 0)
+			(at 241.3 105.41 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -4390,7 +3770,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 228.6 125.73 0)
+			(at 241.3 100.33 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4401,7 +3781,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 228.6 125.73 0)
+			(at 241.3 100.33 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4412,7 +3792,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 228.6 125.73 0)
+			(at 241.3 100.33 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4423,12 +3803,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "900348fa-b10c-458d-b797-1d38a7c85f26")
+			(uuid "bd68889f-136d-491d-8ef3-ba0bda874118")
 		)
 		(instances
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
-					(reference "#PWR0157")
+					(reference "#PWR0138")
 					(unit 1)
 				)
 			)
@@ -4595,7 +3975,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 132.08 116.84 0)
+		(at 195.58 115.57 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -4606,7 +3986,7 @@
 		(fields_autoplaced yes)
 		(uuid "6c92ca44-0a0f-44b5-b05f-f2061f2eaf52")
 		(property "Reference" "R66"
-			(at 134.62 115.5699 0)
+			(at 198.12 114.2999 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -4616,8 +3996,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "162k"
-			(at 134.62 118.1099 0)
+		(property "Value" "10R"
+			(at 198.12 116.8399 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -4628,7 +4008,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 130.302 116.84 90)
+			(at 193.802 115.57 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4638,8 +4018,8 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://yageogroup.com/content/datasheet/asset/file/PYU-AC_51_ROHS_L"
-			(at 132.08 116.84 0)
+		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710RL"
+			(at 195.58 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4649,8 +4029,8 @@
 				)
 			)
 		)
-		(property "Description" "162k 1% 100ppm/C thick-film oscillator programming resistor"
-			(at 132.08 116.84 0)
+		(property "Description" "10R 1% 200ppm/C lower feedback series trim resistor"
+			(at 195.58 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4660,8 +4040,8 @@
 				)
 			)
 		)
-		(property "Manufacturer_Name" "Yageo"
-			(at 132.08 116.84 0)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 195.58 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4671,8 +4051,8 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "AC0603FR-07162KL"
-			(at 132.08 116.84 0)
+		(property "Manufacturer_Part_Number" "RC0603FR-0710RL"
+			(at 195.58 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4682,8 +4062,8 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "13-AC0603FR-07162KLCT-ND"
-			(at 132.08 116.84 0)
+		(property "DigiKey_Part_Number" "311-10.0HRCT-ND"
+			(at 195.58 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4693,8 +4073,8 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/AC0603FR-07162KL/18105108"
-			(at 132.08 116.84 0)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710RL/726879"
+			(at 195.58 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4704,8 +4084,8 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Sourced candidate; electrical qualification pending; footprint deferred"
-			(at 132.08 116.84 0)
+		(property "Procurement_Status" "Selected; unreserved stock snapshot; footprint deferred"
+			(at 195.58 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4715,8 +4095,8 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-08; DigiKey stock 23478; USD qty1 0.11; qty10 0.029; unreserved"
-			(at 132.08 116.84 0)
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey cut tape: 36360 stock; USD 0.10/0.037/0.0187 at 1/10/100; shipping/tax excluded"
+			(at 195.58 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4726,8 +4106,8 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "PWR-004: LTC3119 RT to quiet GND; f=100MHz/(8+1.2*162)=494.071kHz nominal; initial 1% and 100ppm/C over 100C give resistor-only 484.713..503.699kHz; oscillator variation and installed switching behavior require qualification."
-			(at 132.08 116.84 0)
+		(property "Selection_Basis" "PWR-006: 10R lower feedback trim in series with R42 1k; 1%, 200ppm/C. See design/main_regulator_tps63806.md."
+			(at 195.58 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4747,241 +4127,6 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
 					(reference "R66")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:C")
-		(at 177.8 78.74 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "6cad0d16-9d19-4a67-a5a5-b3ffd2d1a52b")
-		(property "Reference" "C95"
-			(at 177.8 71.12 90)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "100n"
-			(at 177.8 73.66 90)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 181.61 77.7748 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://product.tdk.com/system/files/dam/doc/product/capacitor/ceramic/mlcc/catalog/mlcc_commercial_general_en.pdf"
-			(at 177.8 78.74 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "100 nF, 50 V, +/-10%, X7R MLCC; 0603 candidate"
-			(at 177.8 78.74 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer_Name" "TDK"
-			(at 177.8 78.74 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
-			(at 177.8 78.74 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "DigiKey_Part_Number" "445-1314-1-ND"
-			(at 177.8 78.74 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Procurement_Status" "Sourced candidate; PWR-004 installed electrical qualification pending; footprint deferred"
-			(at 177.8 78.74 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Sourcing_Snapshot" "2026-09-08; DigiKey stock 372402; USD qty1 0.11000; qty10 0.06000; qty100 0.03590"
-			(at 177.8 78.74 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Selection_Basis" "PWR-004: local 100nF bootstrap from BST2 pin28 to SW2 pins2/5, not GND; short switch-driver loop. Exact TDK 50V X7R 10% part; qualify installed bootstrap voltage and switching behavior."
-			(at 177.8 78.74 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
-			(at 177.8 78.74 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "2"
-			(uuid "b086a956-e287-4b83-b6cc-fa0b3a6bd48f")
-		)
-		(pin "1"
-			(uuid "99387c3d-8575-4777-934b-36ccf5fd1973")
-		)
-		(instances
-			(project "ereader_rev1"
-				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
-					(reference "C95")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:GND")
-		(at 228.6 100.33 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "71edd49c-63fd-4dc3-bb32-bc034612d208")
-		(property "Reference" "#PWR0138"
-			(at 228.6 106.68 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "GND"
-			(at 228.6 105.41 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 228.6 100.33 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 228.6 100.33 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 228.6 100.33 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "aa2e17e2-18c8-4eae-a8ae-5d3429ef5e20")
-		)
-		(instances
-			(project "ereader_rev1"
-				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
-					(reference "#PWR0138")
 					(unit 1)
 				)
 			)
@@ -5109,7 +4254,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "PWR-004: local 100nF VIN16-to-GND bypass; retain short local return; not part of main-output capacitance inventory. Exact TDK 50V X7R 10% part; installed bias and temperature behavior require qualification."
+		(property "Selection_Basis" "PWR-006: local 100nF VIN A2/A3-to-GND bypass; not main-output capacitance. TDK 50V X7R 10%; installed effective capacitance qualification required. See design/main_regulator_tps63806.md."
 			(at 114.3 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -5585,7 +4730,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://search.murata.co.jp/Ceramy/image/img/A01X/G101/ENG/GRM32ER71C226KEA8-01A.pdf"
+		(property "Datasheet" "https://product.samsungsem.com/mlcc/CL32B226MOJNNN.do"
 			(at 254 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5596,7 +4741,7 @@
 				)
 			)
 		)
-		(property "Description" "22uF 16V X7R 10%; output bypass; effective capacitance qualification required"
+		(property "Description" "22uF 20% 16V X7R 1210 MLCC; effective capacitance qualification required"
 			(at 254 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5607,7 +4752,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Name" "Murata Electronics"
+		(property "Manufacturer_Name" "Samsung Electro-Mechanics"
 			(at 254 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5618,7 +4763,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "GRM32ER71C226KEA8L"
+		(property "Manufacturer_Part_Number" "CL32B226MOJNNNE"
 			(at 254 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5629,7 +4774,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "490-5890-1-ND"
+		(property "DigiKey_Part_Number" "1276-3395-1-ND"
 			(at 254 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5640,7 +4785,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/murata-electronics/GRM32ER71C226KEA8L/3465247"
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/samsung-electro-mechanics/CL32B226MOJNNNE/3891481"
 			(at 254 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5651,7 +4796,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Sourced candidate; electrical qualification pending; footprint deferred"
+		(property "Procurement_Status" "Selected; effective capacitance qualification required; footprint deferred"
 			(at 254 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5662,7 +4807,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-08; DigiKey stock 30854; USD qty1 0.88000; qty10 0.55200; qty100 0.38540"
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 162775 stock; USD 0.52/0.318/0.2122 at 1/10/100; unreserved; shipping/tax excluded"
 			(at 254 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5673,7 +4818,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "PWR-004: one of two retained 22uF 16V X7R 10% output ceramics, supplemented by C99/C100 polymer bulk. Qualify total installed loop window 250..850uF and full PDN; ceramic bias/aging factors are allocations, not guaranteed capacitance."
+		(property "Selection_Basis" "PWR-006: 22uF 20% 16V X7R 1210. C74/C75/C94 output; C96 input. Effective C/bias/aging qualification in design/main_regulator_tps63806.md."
 			(at 254 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5925,7 +5070,7 @@
 			)
 		)
 		(pin "1"
-			(uuid "aa2e17e2-18c8-4eae-a8ae-5d3429ef5e20")
+			(uuid "aa2e17e2-18c8-4eae-a8ae-5d3429ef5e22")
 		)
 		(instances
 			(project "ereader_rev1"
@@ -5938,7 +5083,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 132.08 123.19 0)
+		(at 195.58 121.92 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -5949,7 +5094,7 @@
 		(fields_autoplaced yes)
 		(uuid "8bd83bf2-e227-4d37-ba1d-26c52a5b6d18")
 		(property "Reference" "#PWR0158"
-			(at 132.08 129.54 0)
+			(at 195.58 128.27 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5960,7 +5105,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 132.08 128.27 0)
+			(at 195.58 127 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -5970,7 +5115,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 132.08 123.19 0)
+			(at 195.58 121.92 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5981,7 +5126,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 132.08 123.19 0)
+			(at 195.58 121.92 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5992,7 +5137,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 132.08 123.19 0)
+			(at 195.58 121.92 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6059,7 +5204,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://search.murata.co.jp/Ceramy/image/img/A01X/G101/ENG/GRM32ER71C226KEA8-01A.pdf"
+		(property "Datasheet" "https://product.samsungsem.com/mlcc/CL32B226MOJNNN.do"
 			(at 88.9 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -6070,7 +5215,7 @@
 				)
 			)
 		)
-		(property "Description" "22uF 16V X7R 10%; local PVIN input bypass; installed effective capacitance requires qualification"
+		(property "Description" "22uF 20% 16V X7R 1210 MLCC; effective capacitance qualification required"
 			(at 88.9 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -6081,7 +5226,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Name" "Murata Electronics"
+		(property "Manufacturer_Name" "Samsung Electro-Mechanics"
 			(at 88.9 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -6092,7 +5237,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "GRM32ER71C226KEA8L"
+		(property "Manufacturer_Part_Number" "CL32B226MOJNNNE"
 			(at 88.9 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -6103,7 +5248,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "490-5890-1-ND"
+		(property "DigiKey_Part_Number" "1276-3395-1-ND"
 			(at 88.9 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -6114,7 +5259,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/murata-electronics/GRM32ER71C226KEA8L/3465247"
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/samsung-electro-mechanics/CL32B226MOJNNNE/3891481"
 			(at 88.9 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -6125,7 +5270,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Sourced candidate; electrical qualification pending; footprint deferred"
+		(property "Procurement_Status" "Selected; effective capacitance qualification required; footprint deferred"
 			(at 88.9 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -6136,7 +5281,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-08; DigiKey stock 30854; USD qty1 0.88000; qty10 0.55200; qty100 0.38540"
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 162775 stock; USD 0.52/0.318/0.2122 at 1/10/100; unreserved; shipping/tax excluded"
 			(at 88.9 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -6147,7 +5292,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "PWR-004: 22uF PVIN-to-GND local input bypass in parallel with C73 10uF; keep switch-current input loop short; qualify installed capacitance, ripple and input transient voltage. Not part of main-output capacitor inventory."
+		(property "Selection_Basis" "PWR-006: 22uF 20% 16V X7R 1210. C74/C75/C94 output; C96 input. Effective C/bias/aging qualification in design/main_regulator_tps63806.md."
 			(at 88.9 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -6175,7 +5320,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 165.1 127 0)
+		(at 165.1 121.92 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -6186,7 +5331,7 @@
 		(fields_autoplaced yes)
 		(uuid "9cd093b8-cba9-4822-9207-4c86b443200b")
 		(property "Reference" "#PWR0136"
-			(at 165.1 133.35 0)
+			(at 165.1 128.27 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6197,7 +5342,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 165.1 132.08 0)
+			(at 165.1 127 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6207,7 +5352,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 165.1 127 0)
+			(at 165.1 121.92 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6218,7 +5363,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 165.1 127 0)
+			(at 165.1 121.92 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6229,7 +5374,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 165.1 127 0)
+			(at 165.1 121.92 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6246,222 +5391,6 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
 					(reference "#PWR0136")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Power_Devices:LTC3119IUFD#PBF")
-		(at 165.1 101.6 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "a4a00cbc-4da0-41a5-ac1e-0de5b8e8d9fe")
-		(property "Reference" "U13"
-			(at 172.3233 81.28 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "LTC3119IUFD#PBF"
-			(at 172.3233 83.82 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 165.1 101.6 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.analog.com/media/en/technical-documentation/data-sheets/3119fb.pdf"
-			(at 165.1 101.6 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "18 V synchronous buck-boost converter, adjustable 0.8-18 V output, UFD-28 QFN 4x5 mm with exposed PGND pad 29; I grade."
-			(at 165.1 101.6 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "DigiKey_Part_Number" "505-LTC3119IUFD#PBF-ND"
-			(at 165.1 101.6 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/analog-devices-inc/LTC3119IUFD-PBF/6419504"
-			(at 165.1 101.6 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer_Name" "Analog Devices"
-			(at 165.1 101.6 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer_Part_Number" "LTC3119IUFD#PBF"
-			(at 165.1 101.6 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Procurement_Status" "Candidate - circuit integration and thermal/startup/loop qualification required; footprint deferred"
-			(at 165.1 101.6 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Sourcing_Snapshot" "2026-09-08 DigiKey stock 7024; Active; tube; USD1:24.07,10:19.305; unreserved snapshot"
-			(at 165.1 101.6 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Selection_Basis" "ADI 3119fb Rev B pp2,11-13: exact QFN pin map; visible native stacks for internally shared pads. External loop, shutdown and source protection require circuit qualification."
-			(at 165.1 101.6 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "9"
-			(uuid "8e600b36-f78a-4c00-987c-ea8e674f3316")
-		)
-		(pin "8"
-			(uuid "5a5683f1-e9b0-4c8b-ab80-909f97d30c84")
-		)
-		(pin "10"
-			(uuid "0d73620f-82d0-48b0-8dae-603e8817205d")
-		)
-		(pin "7"
-			(uuid "dc7ceb08-a797-4d45-b2ad-0849da1922ad")
-		)
-		(pin "[19,20]"
-			(uuid "8e016ffa-d81a-4ffd-9527-c1ddd3722063")
-		)
-		(pin "26"
-			(uuid "378ae697-1d65-41a3-b3ca-f9c5c1db33aa")
-		)
-		(pin "24"
-			(uuid "4ced6804-93e6-4528-a35f-e0c4c6f5b485")
-		)
-		(pin "23"
-			(uuid "05723095-0c98-40ce-a6bd-082c1536f99f")
-		)
-		(pin "25"
-			(uuid "ff7cfb0d-9ab7-4400-bfd8-98f22d6e93b9")
-		)
-		(pin "27"
-			(uuid "b6941f5d-e300-49fc-af08-a1df4bf88c48")
-		)
-		(pin "28"
-			(uuid "7c92e7c3-992e-465c-873c-246edd9f6ad6")
-		)
-		(pin "[1,6,17,22,29]"
-			(uuid "c31b9095-62a0-4b92-89e7-4ab2bc5ef95b")
-		)
-		(pin "[2,5]"
-			(uuid "c0f11f44-4929-4158-968f-a0d8df4d89d9")
-		)
-		(pin "[3,4]"
-			(uuid "4d1f1622-d967-4e90-9c95-bdfdd8f1e5d0")
-		)
-		(pin "[18,21]"
-			(uuid "9d6c358c-30e6-4158-87a7-aaf15f387e70")
-		)
-		(pin "15"
-			(uuid "4ec3d4b1-2b8e-4cd9-99d3-86cf26c9111b")
-		)
-		(pin "16"
-			(uuid "e1933417-c3fb-4f1e-bc54-8dd39ed6c4b9")
-		)
-		(pin "12"
-			(uuid "94bc1080-f555-43eb-b0a7-3c17f608da3f")
-		)
-		(pin "11"
-			(uuid "087781bf-c826-4999-8d5a-6476dd43917a")
-		)
-		(pin "14"
-			(uuid "7139dcd3-e293-48db-8aef-811929448fa3")
-		)
-		(pin "13"
-			(uuid "e2008202-d9f5-4487-8df5-d42b3302c4d5")
-		)
-		(instances
-			(project "ereader_rev1"
-				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
-					(reference "U13")
 					(unit 1)
 				)
 			)
@@ -6624,8 +5553,190 @@
 		)
 	)
 	(symbol
+		(lib_id "Power_Devices:TPS63806YFFR")
+		(at 165.1 101.6 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "b819ba54-7c94-4bbc-88e1-a0d6e0c5ffe8")
+		(property "Reference" "U13"
+			(at 171.704 90.424 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "TPS63806YFFR"
+			(at 169.7833 96.52 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 165.1 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps63806.pdf"
+			(at 165.1 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TPS63806 adjustable buck-boost converter, 15-ball WCSP, forced PWM"
+			(at 165.1 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "296-TPS63806YFFRCT-ND"
+			(at 165.1 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TPS63806YFFR/10715517"
+			(at 165.1 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Texas Instruments"
+			(at 165.1 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "TPS63806YFFR"
+			(at 165.1 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected; circuit/load/startup qualification required; footprint deferred"
+			(at 165.1 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey cut tape: 1485 stock; USD 3.04/2.277/1.8744 at 1/10/100; unreserved; shipping/tax excluded"
+			(at 165.1 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "PWR-006: 3.272277V nominal forced-PWM buck-boost, MODE tied VIN. Divider 5k6/(1k+10R), 470nH and qualified effective bypass requirements in design/main_regulator_tps63806.md. Reset coordination and source protection remain open."
+			(at 165.1 101.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "[E2,E3]"
+			(uuid "df4d1233-bcc8-475b-8d98-56a25c1c60b1")
+		)
+		(pin "B1"
+			(uuid "524922d2-efee-4948-88ea-9377778a73a6")
+		)
+		(pin "A1"
+			(uuid "4e7d56dc-1ee9-4f6d-b8f6-d72ccd93bbdd")
+		)
+		(pin "[D2,D3]"
+			(uuid "2c22cf19-0c4a-4d1d-bc85-2a0bdc504b29")
+		)
+		(pin "[C2,C3]"
+			(uuid "ce2ecf49-993e-45e8-99f2-52146b58dc78")
+		)
+		(pin "[B2,B3]"
+			(uuid "4f058f66-65b5-4896-b1f7-eac49d087e25")
+		)
+		(pin "[A2,A3]"
+			(uuid "89b275a2-45df-491e-972c-b3374a7b3ade")
+		)
+		(pin "E1"
+			(uuid "0c9f4778-765b-45b1-9530-244cfdf3ea69")
+		)
+		(pin "D1"
+			(uuid "b101a74d-da14-4e30-b152-0771b30c7e87")
+		)
+		(pin "C1"
+			(uuid "40655978-fd64-4ea1-bba0-e798c98f0500")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
+					(reference "U13")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:L")
-		(at 165.1 71.12 90)
+		(at 165.1 83.82 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -6636,7 +5747,7 @@
 		(fields_autoplaced yes)
 		(uuid "bdaf3680-760e-42a5-9a94-18bc2b974639")
 		(property "Reference" "L2"
-			(at 165.1 66.04 90)
+			(at 165.1 78.74 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6645,8 +5756,8 @@
 				)
 			)
 		)
-		(property "Value" "3u3"
-			(at 165.1 68.58 90)
+		(property "Value" "470n"
+			(at 165.1 81.28 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6656,7 +5767,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 165.1 71.12 0)
+			(at 165.1 83.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6666,8 +5777,8 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.eaton.com/content/dam/eaton/products/electronic-components/resources/data-sheet/eaton-exla1v07-automotive-high-current-molded-inductor-data-sheet-elx1222-en.pdf"
-			(at 165.1 71.12 0)
+		(property "Datasheet" "https://www.coilcraft.com/en-us/products/power/shielded-inductors/molded-inductor/xgl/xgl5020/xgl5020-471/"
+			(at 165.1 83.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6677,8 +5788,8 @@
 				)
 			)
 		)
-		(property "Description" "3.3uH 20% shielded power inductor; 18mOhm maximum DCR at 25C; installed current and temperature qualification required"
-			(at 165.1 71.12 0)
+		(property "Description" "470nH 20% shielded buck-boost inductor; incoming/current/temperature qualification required"
+			(at 165.1 83.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6688,8 +5799,8 @@
 				)
 			)
 		)
-		(property "Manufacturer_Name" "Eaton"
-			(at 165.1 71.12 90)
+		(property "Manufacturer_Name" "Coilcraft"
+			(at 165.1 83.82 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6699,8 +5810,8 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "EXLA1V0703-3R3-R"
-			(at 165.1 71.12 90)
+		(property "Manufacturer_Part_Number" "XGL5020-471MEC"
+			(at 165.1 83.82 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6710,8 +5821,8 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "283-EXLA1V0703-3R3-RCT-ND"
-			(at 165.1 71.12 90)
+		(property "DigiKey_Part_Number" "2457-XGL5020-471MEC-ND"
+			(at 165.1 83.82 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6721,8 +5832,8 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/eaton-electronics-division/EXLA1V0703-3R3-R/16893528"
-			(at 165.1 71.12 90)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/coilcraft/XGL5020-471MEC/16634589"
+			(at 165.1 83.82 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6732,8 +5843,8 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Sourced candidate; installed electrical and thermal qualification pending; footprint deferred"
-			(at 165.1 71.12 90)
+		(property "Procurement_Status" "Selected prototype candidate; incoming and hot/current qualification required; footprint deferred"
+			(at 165.1 83.82 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6743,8 +5854,8 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-08; DigiKey stock 1393; USD qty1 1.44; qty10 1.182; unreserved"
-			(at 165.1 71.12 90)
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey Marketplace/Coilcraft: 785 available; USD 3.83/3.83/3.345 at 1/10/100; USD10 shipping; approximately4 days; unreserved"
+			(at 165.1 83.82 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6754,8 +5865,8 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "PWR-004: 3.3uH +/-20%; 18mOhm max at 25C; 10A heating and 13A saturation references are not installed guarantees; qualify 2..4.4uH and hot current."
-			(at 165.1 71.12 90)
+		(property "Selection_Basis" "PWR-006: 0.47uH 20%; incoming screen 0.412..0.518uH plus allocated +/-10% operating change gives 0.3708..0.5698uH. Qualification required; design/main_regulator_tps63806.md."
+			(at 165.1 83.82 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6836,7 +5947,7 @@
 				)
 			)
 		)
-		(property "Description" "68k 1% 100ppm/C 0603 0.1W at 70C; LTC3119 RUN pull-down; PWR-004"
+		(property "Description" "68k 1% 100ppm/C 0603 0.1W at 70C; TPS63806 EN pull-down on RUN_U13; PWR-006"
 			(at 154.94 171.45 0)
 			(hide yes)
 			(show_name no)
@@ -7018,163 +6129,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:R")
-		(at 198.12 127 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "d17da720-9c62-4740-ba77-2e949c2923e7")
-		(property "Reference" "R67"
-			(at 198.12 120.65 90)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "42k2"
-			(at 198.12 123.19 90)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 198.12 128.778 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://yageogroup.com/content/datasheet/asset/file/PYU-RT_1-TO-0-01_ROHS_L"
-			(at 198.12 127 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "42.2k 0.1% 25ppm/C thin-film compensation resistor"
-			(at 198.12 127 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer_Name" "Yageo"
-			(at 198.12 127 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer_Part_Number" "RT0603BRD0742K2L"
-			(at 198.12 127 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "DigiKey_Part_Number" "YAG4556CT-ND"
-			(at 198.12 127 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RT0603BRD0742K2L/6616712"
-			(at 198.12 127 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Procurement_Status" "Sourced candidate; electrical qualification pending; footprint deferred"
-			(at 198.12 127 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Sourcing_Snapshot" "2026-09-08; DigiKey stock 22774; USD qty1 0.10; qty10 0.067; unreserved"
-			(at 198.12 127 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Selection_Basis" "PWR-004: 42.2k series with 4.7nF C0G from VC to quiet GND; initial 0.1% and 25ppm/C over 100C in 2160-corner reduced-model screen; installed loop-gain and transient qualification remain required."
-			(at 198.12 127 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "2"
-			(uuid "924fcae0-50f7-4e86-943c-d288b05bf83d")
-		)
-		(pin "1"
-			(uuid "d8809547-666b-4946-9a49-d3e277e9f565")
-		)
-		(instances
-			(project "ereader_rev1"
-				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
-					(reference "R67")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "74xGxx:74LVC1G17")
 		(at 114.3 165.1 0)
 		(unit 1)
@@ -7229,7 +6183,7 @@
 				(justify left)
 			)
 		)
-		(property "Description" "Raw SYS_AON powered non-inverting Schmitt buffer for LTC3119 RUN; PWR-004."
+		(property "Description" "Raw SYS_AON powered non-inverting Schmitt buffer for TPS63806 EN on RUN_U13; PWR-006."
 			(at 114.3 165.1 0)
 			(hide yes)
 			(show_name no)
@@ -7306,7 +6260,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "PWR-004: SYS_AON raw-powered RUN buffer with partial-power-down Ioff. Separate held-domain MOSFET clamp covers undefined sub-1.65V supply behavior. Full calculations: ../design/main_regulator_ltc3119.md."
+		(property "Selection_Basis" "PWR-006: SYS_AON raw-powered EN buffer with partial-power-down Ioff. Separate held-domain Q3 clamp covers undefined sub-1.65V supply behavior. Full EN calculations: design/main_regulator_tps63806.md."
 			(at 114.3 165.1 0)
 			(hide yes)
 			(show_name no)
@@ -7493,165 +6447,6 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
 					(reference "R70")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:C")
-		(at 228.6 119.38 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "d95337b6-1d23-4b80-8f41-bbf349e09c81")
-		(property "Reference" "C97"
-			(at 232.41 118.1099 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "10u"
-			(at 232.41 120.6499 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 229.5652 123.19 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://product.tdk.com/system/files/dam/doc/product/capacitor/ceramic/mlcc/charasheet/c3216x7r1v106k160ac.pdf"
-			(at 228.6 119.38 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "10uF 35V X7R 10%; private LTC3119 VCC bias bypass; installed effective capacitance requires qualification"
-			(at 228.6 119.38 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer_Name" "TDK Corporation"
-			(at 228.6 119.38 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer_Part_Number" "C3216X7R1V106K160AC"
-			(at 228.6 119.38 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "DigiKey_Part_Number" "445-14799-1-ND"
-			(at 228.6 119.38 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/C3216X7R1V106K160AC/3956465"
-			(at 228.6 119.38 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Procurement_Status" "Sourced candidate; electrical qualification pending; footprint deferred"
-			(at 228.6 119.38 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Sourcing_Snapshot" "2026-09-08; DigiKey stock 9358; USD qty1 0.68000; qty10 0.42400; qty100 0.29030"
-			(at 228.6 119.38 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Selection_Basis" "PWR-004: local 10uF bypass from LTC3119 VCC13 to GND; internal driver/control bias, not +3V3_MCU output storage. Qualify effective capacitance and internal VCC retention during source collapse; held RUN clamp remains required."
-			(at 228.6 119.38 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "2"
-			(uuid "333740ad-81e8-4fdc-8ede-1750d10ea19b")
-		)
-		(pin "1"
-			(uuid "18cd2c51-6f2c-4de8-839d-2d9c2c95e375")
-		)
-		(instances
-			(project "ereader_rev1"
-				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
-					(reference "C97")
 					(unit 1)
 				)
 			)
@@ -7974,7 +6769,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 195.58 102.87 0)
+		(at 195.58 105.41 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -7985,17 +6780,6 @@
 		(fields_autoplaced yes)
 		(uuid "ec93f758-8a02-49c8-997f-6fec9c79f956")
 		(property "Reference" "R42"
-			(at 198.12 101.5999 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "10k"
 			(at 198.12 104.1399 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8006,8 +6790,19 @@
 				(justify left)
 			)
 		)
+		(property "Value" "1k"
+			(at 198.12 106.6799 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
 		(property "Footprint" ""
-			(at 193.802 102.87 90)
+			(at 193.802 105.41 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8017,8 +6812,8 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RT0603BRD0710KL"
-			(at 195.58 102.87 0)
+		(property "Datasheet" "https://www.susumu.co.jp/common/pdf/RG_LL_Data_Sheet.pdf"
+			(at 195.58 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8028,8 +6823,8 @@
 				)
 			)
 		)
-		(property "Description" "10k 0.1% 25ppm/C thin-film feedback resistor"
-			(at 195.58 102.87 0)
+		(property "Description" "1k 0.01% 2ppm/C precision lower feedback resistor"
+			(at 195.58 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8039,8 +6834,8 @@
 				)
 			)
 		)
-		(property "Manufacturer_Name" "Yageo"
-			(at 195.58 102.87 0)
+		(property "Manufacturer_Name" "Susumu"
+			(at 195.58 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8050,8 +6845,8 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "RT0603BRD0710KL"
-			(at 195.58 102.87 0)
+		(property "Manufacturer_Part_Number" "RG2012L-102-L-T05"
+			(at 195.58 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8061,8 +6856,8 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "YAG1236CT-ND"
-			(at 195.58 102.87 0)
+		(property "DigiKey_Part_Number" "408-1631-1-ND"
+			(at 195.58 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8072,8 +6867,8 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RT0603BRD0710KL/1072198"
-			(at 195.58 102.87 0)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/susumu/RG2012L-102-L-T05/3737817"
+			(at 195.58 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8083,8 +6878,8 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Sourced candidate; electrical qualification pending; footprint deferred"
-			(at 195.58 102.87 0)
+		(property "Procurement_Status" "Selected; unreserved stock snapshot; footprint deferred"
+			(at 195.58 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8094,8 +6889,8 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-08; DigiKey stock 145267; USD qty1 0.10000; qty10 0.06700; qty100 0.05590"
-			(at 195.58 102.87 0)
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey cut tape: 501 stock; USD 3.66/3.026/2.5312 at 1/10/100; shipping/tax excluded"
+			(at 195.58 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8105,8 +6900,8 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "PWR-004: lower feedback 10k 0.1% 25ppm/C to quiet GND, paired with R41 33k; 100C resistor excursion and total adverse 100nA FB allocation; full acceptance envelope 3.253456..3.584412V includes combined +/-75mV allowance, not measured performance."
-			(at 195.58 102.87 0)
+		(property "Selection_Basis" "PWR-006: 1k lower feedback in series with R66 10R; 0.01%, 2ppm/C. See design/main_regulator_tps63806.md."
+			(at 195.58 105.41 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8133,7 +6928,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 152.4 78.74 90)
+		(at 241.3 93.98 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8144,27 +6939,29 @@
 		(fields_autoplaced yes)
 		(uuid "ed129686-dd1f-4561-a9f2-df173c0dd85d")
 		(property "Reference" "C94"
-			(at 152.4 71.12 90)
+			(at 245.11 92.7099 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(justify left)
 			)
 		)
-		(property "Value" "100n"
-			(at 152.4 73.66 90)
+		(property "Value" "22u"
+			(at 245.11 95.2499 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(justify left)
 			)
 		)
 		(property "Footprint" ""
-			(at 156.21 77.7748 0)
+			(at 242.2652 97.79 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8174,8 +6971,8 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://product.tdk.com/system/files/dam/doc/product/capacitor/ceramic/mlcc/catalog/mlcc_commercial_general_en.pdf"
-			(at 152.4 78.74 0)
+		(property "Datasheet" "https://product.samsungsem.com/mlcc/CL32B226MOJNNN.do"
+			(at 241.3 93.98 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8185,8 +6982,8 @@
 				)
 			)
 		)
-		(property "Description" "100 nF, 50 V, +/-10%, X7R MLCC; 0603 candidate"
-			(at 152.4 78.74 0)
+		(property "Description" "22uF 20% 16V X7R 1210 MLCC; effective capacitance qualification required"
+			(at 241.3 93.98 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8196,8 +6993,8 @@
 				)
 			)
 		)
-		(property "Manufacturer_Name" "TDK"
-			(at 152.4 78.74 0)
+		(property "Manufacturer_Name" "Samsung Electro-Mechanics"
+			(at 241.3 93.98 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8207,8 +7004,8 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
-			(at 152.4 78.74 0)
+		(property "Manufacturer_Part_Number" "CL32B226MOJNNNE"
+			(at 241.3 93.98 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8218,8 +7015,8 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "445-1314-1-ND"
-			(at 152.4 78.74 0)
+		(property "DigiKey_Part_Number" "1276-3395-1-ND"
+			(at 241.3 93.98 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8229,8 +7026,8 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Sourced candidate; PWR-004 installed electrical qualification pending; footprint deferred"
-			(at 152.4 78.74 0)
+		(property "Procurement_Status" "Selected; effective capacitance qualification required; footprint deferred"
+			(at 241.3 93.98 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8240,8 +7037,8 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-08; DigiKey stock 372402; USD qty1 0.11000; qty10 0.06000; qty100 0.03590"
-			(at 152.4 78.74 0)
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 162775 stock; USD 0.52/0.318/0.2122 at 1/10/100; unreserved; shipping/tax excluded"
+			(at 241.3 93.98 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8251,8 +7048,8 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "PWR-004: local 100nF bootstrap from BST1 pin23 to SW1 pins18/21, not GND; short switch-driver loop. Exact TDK 50V X7R 10% part; qualify installed bootstrap voltage and switching behavior."
-			(at 152.4 78.74 0)
+		(property "Selection_Basis" "PWR-006: 22uF 20% 16V X7R 1210. C74/C75/C94 output; C96 input. Effective C/bias/aging qualification in design/main_regulator_tps63806.md."
+			(at 241.3 93.98 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8262,8 +7059,8 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
-			(at 152.4 78.74 0)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/samsung-electro-mechanics/CL32B226MOJNNNE/3891481"
+			(at 241.3 93.98 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8283,84 +7080,6 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
 					(reference "C94")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:GND")
-		(at 215.9 140.97 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "ef92c713-9e6d-4716-8522-6790c5a8463c")
-		(property "Reference" "#PWR0159"
-			(at 215.9 147.32 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "GND"
-			(at 215.9 146.05 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 215.9 140.97 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 215.9 140.97 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 215.9 140.97 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "db02f6d5-7e23-478c-b308-f4ad095d8eca")
-		)
-		(instances
-			(project "ereader_rev1"
-				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/19124216-d47e-4431-bd15-7eeda34acc7b"
-					(reference "#PWR0159")
 					(unit 1)
 				)
 			)

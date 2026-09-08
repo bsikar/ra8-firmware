@@ -426,7 +426,7 @@
           "group_by": false,
           "label": "Description",
           "name": "Description",
-          "show": false
+          "show": true
         },
         {
           "group_by": false,
@@ -537,7 +537,7 @@
         "uuid": "0586cc51-9c57-495b-a0c9-c29ba0d48166"
       }
     ],
-    "used_designators": "TP4,Q1-3,U1-22,C1-111,FB1,SW1-5,R1-82,L1-2,J1-2,D1-6,#PWR1-204,Y1-2,#FLG1-2",
+    "used_designators": "TP4,Q1-3,U1-22,C1-111,FB1,SW1-5,Y1-2,D1-6,#PWR1-204,R1-82,L1-2,J1-2,#FLG1-2",
     "variants": []
   },
   "sheets": [

@@ -1,5 +1,14 @@
 # PWR-004: LTC3119 main-regulator migration design basis
 
+**Historical regulator checkpoint, superseded 2026-09-08 by
+[PWR-006 TPS63806](main_regulator_tps63806.md).** The native U13 stage is
+now TPS63806, not LTC3119. Retained buffer, held-clamp and discharge parts
+still cite this record for their original derivation; PWR-006 rechecks
+their EN interface and preserves their shutdown allocations. LTC3119
+divider, compensation, startup and stability calculations below do not
+describe or qualify the current regulator. Reset coordination, source
+protection and physical qualification remain open.
+
 Revision 1, 2026-09-08. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825)
 and [architecture #823](https://github.com/bsikar/ra8-firmware/issues/823).
 This record defines the calculated circuit basis for migration of U13 to
