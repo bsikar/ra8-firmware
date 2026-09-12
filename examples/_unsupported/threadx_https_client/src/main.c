@@ -867,15 +867,16 @@ RA8_INTERNAL static void internal_demo_thread_entry(ULONG thread_input)
 
 /**
  * @brief ``mbedtls_calloc`` hook backed by the ThreadX byte pool.
- * @details Computes the requested byte count, performs a nonblocking pool
- * allocation, clears the complete span, and returns it to Mbed TLS.
+ * @details Computes the requested byte count safely with overflow detection,
+ * performs a nonblocking pool allocation, clears the complete span, and returns
+ * it to Mbed TLS.
  * @param[in] n    Element count.
  * @param[in] size Element size in bytes.
  * @return Newly allocated zeroed memory, or NULL on failure.
- * @retval NULL The size is zero or the byte pool cannot satisfy the request.
+ * @retval nullptr The size is zero, multiplication overflows, or the pool is exhausted.
  * @retval non-NULL A zero-filled ThreadX-owned allocation.
  * @pre ``s_byte_pool`` has been created.
- * @pre ``n * size`` is representable in ``size_t`` for caller requests.
+ * @pre No pool mutex inversion exists in the calling context.
  * @post Successful storage is zero-initialized over the requested byte count.
  * @post Failure leaves the byte pool with no allocation owned by the caller.
  * @note This hook never waits, preventing allocator deadlock inside TLS paths.
@@ -883,11 +884,14 @@ RA8_INTERNAL static void internal_demo_thread_entry(ULONG thread_input)
  */
 RA8_INTERNAL static void* internal_demo_calloc(size_t n, size_t size)
 {
-  size_t total = n * size;
-  if (total == 0U) {
+  if ((n == 0U) || (size == 0U)) {
     return nullptr;
   }
-  VOID* p = NX_NULL;
+  if (n > (SIZE_MAX / size)) {
+    return nullptr;
+  }
+  const size_t total = n * size;
+  VOID*        p     = NX_NULL;
   if (tx_byte_allocate(&s_byte_pool, &p, (ULONG)total, TX_NO_WAIT) != TX_SUCCESS) {
     return nullptr;
   }

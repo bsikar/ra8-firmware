@@ -142,16 +142,14 @@ set(CMAKE_CXX_FLAGS_INIT
 )
 set(CMAKE_ASM_FLAGS_INIT "${RA8D2_CPU_FLAGS_STR}")
 
-# Linker flags
-#   --specs=nano.specs    use newlib-nano (smaller libc)
-#   --specs=nosys.specs   stub out syscalls (no host OS)
-#   --gc-sections         drop unused input sections
-#   -nostartfiles         we supply our own Reset_Handler and vector table
+add_compile_definitions(RA8_FREESTANDING)
+
+# Freestanding target linker flags:
+#   -nostdlib             no standard libc startup or default runtime libraries (newlib/libnosys forbidden)
+#   -Wl,--gc-sections     drop unused input sections
 set(CMAKE_EXE_LINKER_FLAGS_INIT
     "${RA8D2_CPU_FLAGS_STR} \
-     --specs=nano.specs \
-     --specs=nosys.specs \
-     -nostartfiles \
+     -nostdlib \
      -Wl,--gc-sections \
      -Wl,--print-memory-usage"
 )

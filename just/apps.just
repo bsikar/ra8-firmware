@@ -64,8 +64,9 @@ build app="" build_type="RelWithDebInfo":
       -DCMAKE_TOOLCHAIN_FILE="$PWD/$toolchain" \
       -DCMAKE_BUILD_TYPE="{{ build_type }}" \
       -U 'RA8_C6_WIFI_*' -U RA8_MEDIA_DOWNLOAD_URL \
-      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON "${cmake_args[@]}"
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ${cmake_args[@]+"${cmake_args[@]}"}
     cmake --build "$build_dir"
+    python3 scripts/checks/check_freestanding_runtime.py --scan-dir "$build_dir"
 
 # Remove all build output directories
 clean:

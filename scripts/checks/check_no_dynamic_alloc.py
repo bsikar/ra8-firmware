@@ -47,7 +47,8 @@ Flags two classes of violation:
 
 Scope:
 
-  Firmware code under libs/ra8_*/, src/, port/esp32_c6/, and examples/<app>/
+  Firmware code under libs/ra8_*/, src/, port/ (every subdirectory except host-only
+  port/posix, which is scoped under tool policy), and examples/<app>/
   where <app> has src/main.c + a root CMakeLists.txt is blocking. First-party production
   C-family code under tools/ is blocking for direct allocation. Build outputs,
   vendored code, and host-side tests/ are exempt.
@@ -237,9 +238,11 @@ def _firmware_scan_dirs() -> list[pathlib.Path]:
             for entry in sorted(libs.iterdir())
             if entry.is_dir() and entry.name.startswith("ra8_")
         )
-    c6_port = REPO_ROOT / "port" / "esp32_c6"
-    if c6_port.is_dir():
-        out.append(c6_port)
+    port = REPO_ROOT / "port"
+    if port.is_dir():
+        out.extend(
+            entry for entry in sorted(port.iterdir()) if entry.is_dir() and entry.name != "posix"
+        )
     out.extend(REPO_ROOT / rel for rel in firmware_app_dirs())
     examples = REPO_ROOT / "examples"
     if examples.is_dir():
@@ -259,9 +262,13 @@ def _tool_scan_dirs() -> list[pathlib.Path]:
     199 files against a floor of 200 -- rather than letting a whole product
     stop being checked for direct allocator calls.
     """
-    return [
+    dirs = [
         directory for directory in (REPO_ROOT / "tools", REPO_ROOT / "apps") if directory.is_dir()
     ]
+    posix_port = REPO_ROOT / "port" / "posix"
+    if posix_port.is_dir():
+        dirs.append(posix_port)
+    return dirs
 
 
 FIRMWARE_SCAN_DIRS = _firmware_scan_dirs()
@@ -385,6 +392,11 @@ def selftest() -> int:
         bad_findings = check(bad)
         good_findings = check(good)
     expected_bad_findings = 2
+    target_port_c = REPO_ROOT / "port" / "threadx" / "src" / "dummy.c"
+    posix_port_c = REPO_ROOT / "port" / "posix" / "src" / "ra8_io_stream_posix.c"
+    scope_target_port_ok = _scope(target_port_c) == "firmware"
+    scope_posix_port_ok = _scope(posix_port_c) == "tool"
+
     cases = (
         (
             len(bad_findings) == expected_bad_findings
@@ -393,6 +405,8 @@ def selftest() -> int:
             "direct and known transitive executable allocators fire",
         ),
         (not good_findings, "declarations, prose, and reasoned controls stay quiet"),
+        (scope_target_port_ok, "target port files are scoped under firmware"),
+        (scope_posix_port_ok, "host port/posix files are scoped under tool policy"),
     )
     failed = [label for passed, label in cases if not passed]
     for passed, label in cases:

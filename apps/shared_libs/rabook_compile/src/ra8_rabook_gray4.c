@@ -10,14 +10,13 @@
 
 #include "ra8_rabook_gray4.h"
 
-#include <assert.h>
-#include <stdint.h>
+#include <stdint.h> // ra8-keep-include: `uint32_t` used directly
 #include <string.h>
 
 #include "ra8_attributes.h"
 #include "ra8_check.h"
-#include "ra8_err.h"
-#include "ra8_log.h"
+#include "ra8_err.h" // ra8-keep-include: `ra8_err_t` used directly
+#include "ra8_log.h" // ra8-keep-include: `ra8_log_error` used directly
 
 /* -------------------------------------------------------------------------- */
 /* Private constants */
@@ -88,9 +87,9 @@ static uint8_t internal_bilinear_sample(const uint8_t* src,
                                         uint64_t       sx_fp,
                                         uint64_t       sy_fp)
 {
-  assert(src != nullptr);
-  assert(src_w > 0U);
-  assert(src_h > 0U);
+  RA8_ASSERT(src != nullptr, "Source pointer must not be null");
+  RA8_ASSERT(src_w > 0U, "Source width must be positive");
+  RA8_ASSERT(src_h > 0U, "Source height must be positive");
 
   uint16_t sx0 = (uint16_t)(sx_fp >> k_fp_shift);
   uint16_t sy0 = (uint16_t)(sy_fp >> k_fp_shift);

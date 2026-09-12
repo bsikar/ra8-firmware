@@ -244,6 +244,12 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_ra8_
 # through the ra8_add_test() auto-glob.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/misc/src/test_lx_fs_backend.c)
 
+# test_ra8_freestanding.c tests the project-owned freestanding runtime primitives
+# (ra8_freestanding_mem.c, ra8_freestanding_str.c, ra8_freestanding_math.c) with
+# RA8_TEST_FREESTANDING so calls demonstrably execute project implementations
+# rather than host libc. Registered by hand below with direct sources.
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/core/src/test_ra8_freestanding.c)
+
 # test_cache_store_demo.c (issue #257) compiles the ra8_cache_store_demo example
 # core + RAM NOR driver from examples/ plus the vendored LevelX NOR sources with
 # LX_STANDALONE_ENABLE, so it is registered by hand below rather than through the
@@ -871,3 +877,22 @@ foreach(rabook_compile_test IN ITEMS test_rabook_compile test_rabook_compile_str
     )
   endif()
 endforeach()
+
+# test_ra8_freestanding: standalone executable compiling the project-owned
+# freestanding C runtime implementations directly with RA8_TEST_FREESTANDING,
+# proving execution of project primitives without host libc substitution.
+# -fno-builtin keeps the host compiler from folding direct primitive calls
+# into builtins, which would bypass the implementations under test.
+add_executable(
+  test_ra8_freestanding
+  ${CMAKE_CURRENT_SOURCE_DIR}/core/src/test_ra8_freestanding.c
+  ${FW_ROOT}/libs/ra8_core/src/ra8_freestanding_mem.c
+  ${FW_ROOT}/libs/ra8_core/src/ra8_freestanding_str.c
+  ${FW_ROOT}/libs/ra8_core/src/ra8_freestanding_math.c
+)
+target_compile_definitions(test_ra8_freestanding PRIVATE RA8_TEST_FREESTANDING)
+target_compile_options(test_ra8_freestanding PRIVATE -Wall -Wextra -Werror -fno-builtin)
+target_include_directories(
+  test_ra8_freestanding PRIVATE ${RA8_TEST_SHARED_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_core/inc
+)
+add_test(NAME test_ra8_freestanding COMMAND test_ra8_freestanding)

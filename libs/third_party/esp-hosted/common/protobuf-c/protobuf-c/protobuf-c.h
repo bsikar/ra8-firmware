@@ -196,7 +196,14 @@ size_t foo__bar__baz_bah__pack_to_buffer
 #ifndef PROTOBUF_C_H
 #define PROTOBUF_C_H
 
-#include <assert.h>
+#if defined(RA8_FREESTANDING) || defined(__ARM_EABI__)
+# include "ra8_check.h"
+# ifndef assert
+#  define assert(expr) RA8_ASSERT(expr, "protobuf-c assertion")
+# endif
+#else
+# include <assert.h>
+#endif
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>

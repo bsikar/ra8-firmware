@@ -28,16 +28,14 @@
  * @since 0.1.0
  */
 
-#include <assert.h>
-#include <stdint.h>
+#include <stdint.h> // ra8-keep-include: `uint8_t` used directly
 #include <string.h>
 
-#include "ra8_attributes.h"
+#include "ra8_attributes.h" // ra8-keep-include: `RA8_INTERNAL` and `RA8_PRIV` used directly
 #include "ra8_check.h"
-#include "ra8_err.h"
+#include "ra8_err.h" // ra8-keep-include: `ra8_err_t` used directly
 #include "ra8_jpeg_sw.h"
 #include "ra8_jpeg_sw_internal.h"
-#include "ra8_log.h"
 
 /** @brief Component log tag. */
 static const char* s_tag = "JPEG_SW";
@@ -715,8 +713,8 @@ internal_dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32_t out_b
    * make the property locally provable to the analyzer and to NASA Power-
    * of-10 Rule 5 readers.
    */
-  assert(d->hmax > 0U);
-  assert(d->vmax > 0U);
+  RA8_ASSERT(d->hmax > 0U, "JPEG decoder hmax must be positive");
+  RA8_ASSERT(d->vmax > 0U, "JPEG decoder vmax must be positive");
 
   uint16_t mcu_w_px = (uint16_t)((uint16_t)k_ra8_jpeg_block_dim * d->hmax);
   uint16_t mcu_h_px = (uint16_t)((uint16_t)k_ra8_jpeg_block_dim * d->vmax);

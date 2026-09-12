@@ -31,3 +31,9 @@ C and C++ code is strictly audited for dead includes via speculative compilation
 ## 6. Attributes
 * Never use raw compiler attributes like `__attribute__((...))`. 
 * Always use the cross-platform `RA8_*` macros defined in `ra8_attributes.h`.
+
+## 7. Invariants and Assertions
+* Standard libc `assert()` and `<assert.h>` are FORBIDDEN in target firmware code (they drag in `__assert_func`, standard I/O, and runtime heap dependencies).
+* Use `static_assert(condition, message)` for compile-time invariants.
+* Use `RA8_ASSERT(condition, message)` from `ra8_check.h` for runtime programmer invariants.
+* Normal error propagation (`ra8_err_t`) must be used for recoverable hardware/runtime errors.

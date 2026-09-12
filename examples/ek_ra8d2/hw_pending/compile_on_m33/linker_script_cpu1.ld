@@ -57,12 +57,6 @@ SECTIONS
         g_ra8_ls_cpu1_bss_end   = .;
     } > SRAM_CPU1
 
-    /* newlib _sbrk references `end` as the heap base and must link. The epub
-     * allocators are static pools, so malloc/sbrk are never actually called on
-     * this image; `end` only resolves the symbol (heap grows toward the stack
-     * if a stray malloc ever runs, which the static-pool design prevents). */
-    PROVIDE(end  = .);
-    PROVIDE(_end = .);
 
     /* The epub working-set arenas live in external SDRAM, kept OUT of the
      * .bss zero range above: the 96 KiB first-fit pool (epub_miniz_alloc

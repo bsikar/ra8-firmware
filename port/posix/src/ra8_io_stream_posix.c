@@ -15,14 +15,18 @@
  * SPDX-License-Identifier: MIT
  */
 
+#ifndef RA8_OFF_TARGET
+#error "port/posix is host-only and must never be compiled or linked into target firmware."
+#endif
+
 #include "ra8_io_stream_posix.h"
 
 #include <errno.h>
-#include <stdint.h>
+#include <stdint.h> // ra8-keep-include: `uint8_t` used directly
 #include <unistd.h>
 
-#include "ra8_attributes.h"
-#include "ra8_err.h"
+#include "ra8_attributes.h" // ra8-keep-include: `RA8_INTERNAL` and `RA8_PRIV` used directly
+#include "ra8_err.h"        // ra8-keep-include: `ra8_err_t` used directly
 #include "ra8_io_stream_backend.h"
 #include "ra8_io_stream_posix_internal.h"
 

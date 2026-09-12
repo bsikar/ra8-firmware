@@ -66,7 +66,7 @@ macro(_ra8_app_vendored_flags)
       PROPERTY COMPILE_OPTIONS ${_ra8_soup_wno_common}
                "$<$<COMPILE_LANGUAGE:C>:${_ra8_soup_wno_c}>"
     )
-    target_compile_definitions(${_ra8_elf} PRIVATE MINIZ_NO_STDIO MINIZ_NO_TIME)
+    target_compile_definitions(${_ra8_elf} PRIVATE MINIZ_NO_STDIO MINIZ_NO_TIME MINIZ_NO_MALLOC)
   endif()
 
   # miniz-only apps: same narrow vendored-TU warning suppression + config
@@ -81,7 +81,7 @@ macro(_ra8_app_vendored_flags)
       PROPERTY COMPILE_OPTIONS ${_ra8_soup_wno_common} ${_ra8_soup_wno_c}
     )
     target_compile_definitions(
-      ${_ra8_elf} PRIVATE MINIZ_NO_STDIO MINIZ_NO_TIME MINIZ_NO_ARCHIVE_APIS
+      ${_ra8_elf} PRIVATE MINIZ_NO_STDIO MINIZ_NO_TIME MINIZ_NO_ARCHIVE_APIS MINIZ_NO_MALLOC
     )
   endif()
 

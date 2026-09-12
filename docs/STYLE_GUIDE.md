@@ -269,9 +269,10 @@ typedef enum : uint8_t {
   k_ra8_state_error     = 2,
 } ra8_state_t;
 
-// Always: static_assert (C23 keyword), not _Static_assert.
+// Always: static_assert (C23 keyword) for compile-time invariants.
 static_assert(sizeof(ra8_state_t) == 1, "tightly-packed enum");
-
+// Always: RA8_ASSERT(cond, msg) from ra8_check.h for runtime programmer invariants.
+// Never: assert() from <assert.h> in target firmware (pulls libc stdio/__assert_func).
 // Always: zero-init with empty braces.
 ra8_drv_state_t s = {};
 
@@ -293,6 +294,30 @@ Underlying-type choice:
 RA8D2 target it's `uint32_t`, on the 64-bit x86_64 unit-test host
 it's `uint64_t`. Using `uint32_t` for an address silently truncates
 on the test host and produces wrong pointer casts.
+
+### Standard C ABI and compiler runtime types
+
+Standard C ABI primitives (`memset`, `memcpy`, `memmove`, `memcmp`, `memchr`, `strlen`, `strnlen`, `strcmp`, `strncmp`, `strchr`, `strrchr`, `strstr`, `strcpy`, `strncpy`, `abs`) are compiler-recognized library functions whose prototypes are fixed by ISO C and the target ABI:
+
+```c
+void*  memset(void* dst, int value, size_t n);
+void*  memcpy(void* restrict dst, const void* restrict src, size_t n);
+void*  memmove(void* dst, const void* src, size_t n);
+int    memcmp(const void* a, const void* b, size_t n);
+void*  memchr(const void* s, int c, size_t n);
+size_t strlen(const char* s);
+size_t strnlen(const char* s, size_t maxlen);
+int    strcmp(const char* s1, const char* s2);
+int    strncmp(const char* s1, const char* s2, size_t n);
+char*  strchr(const char* s, int c);
+char*  strrchr(const char* s, int c);
+char*  strstr(const char* haystack, const char* needle);
+char*  strcpy(char* restrict dst, const char* restrict src);
+char*  strncpy(char* restrict dst, const char* restrict src, size_t n);
+int    abs(int j);
+```
+
+These functions MUST preserve their standard-mandated types (`int`, `size_t`, `const void*`, `char*`) so compiler builtins, loop-idiom recognizers, and cross-module code generation match the target ABI. Using fixed-width nicknames like `int32_t` in place of standard `int` is forbidden for standard ABI functions. The project fixed-width integer rule applies to all project-defined types, interfaces, structures, and values.
 
 Magic numbers are forbidden -- every literal becomes a typed enum:
 

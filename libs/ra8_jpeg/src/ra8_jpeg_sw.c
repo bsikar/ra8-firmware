@@ -43,15 +43,12 @@
 
 #include "ra8_jpeg_sw.h"
 
-#include <assert.h>
-#include <stdint.h>
-#include <string.h>
+#include <stdint.h> // ra8-keep-include: `uint8_t` used directly
 
-#include "ra8_attributes.h"
+#include "ra8_attributes.h" // ra8-keep-include: `RA8_INTERNAL` and `RA8_PRIV` used directly
 #include "ra8_check.h"
-#include "ra8_err.h"
+#include "ra8_err.h" // ra8-keep-include: `ra8_err_t` used directly
 #include "ra8_jpeg_sw_internal.h"
-#include "ra8_log.h"
 
 /** @brief Component log tag. */
 static const char* s_tag = "JPEG_SW";

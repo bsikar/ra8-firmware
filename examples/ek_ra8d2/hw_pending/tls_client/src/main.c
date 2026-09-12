@@ -363,24 +363,35 @@ psa_status_t mbedtls_psa_external_get_random(mbedtls_psa_external_random_context
 
 /**
  * @brief ``mbedtls_calloc`` hook backed by the ThreadX byte pool.
+ * @details Computes the requested byte count safely with overflow detection,
+ * performs a nonblocking pool allocation, clears the complete span, and returns
+ * it to Mbed TLS.
  *
  * @param[in] n    Element count.
  * @param[in] size Element size in bytes.
  *
- * @return Zeroed memory, or NULL on failure / zero request.
+ * @return Zeroed memory, or NULL on failure / overflow / zero request.
+ * @retval nullptr n is zero, size is zero, multiplication overflows, or pool is exhausted.
+ * @retval non-null Pointer to zero-initialized allocated memory.
  *
  * @pre ``s_byte_pool`` has been created.
+ * @pre No pool mutex inversion exists in the calling context.
  * @post Returned block (if any) is zeroed.
+ * @post Allocation failure leaves the byte pool unchanged.
+ * @note This hook never waits, preventing allocator deadlock inside TLS paths.
  *
  * @since 0.1.0
  */
 static void* demo_calloc(size_t n, size_t size)
 {
-  size_t total = n * size;
-  if (total == 0U) {
+  if ((n == 0U) || (size == 0U)) {
     return nullptr;
   }
-  VOID* p = NX_NULL;
+  if (n > (SIZE_MAX / size)) {
+    return nullptr;
+  }
+  const size_t total = n * size;
+  VOID*        p     = NX_NULL;
   if (tx_byte_allocate(&s_byte_pool, &p, (ULONG)total, TX_NO_WAIT) != TX_SUCCESS) {
     return nullptr;
   }
@@ -651,17 +662,9 @@ static void demo_report(ra8_tls_session_t session)
   (void)ra8_tls_get_cipher_suite(session, &id, name, sizeof(name));
   (void)ra8_tls_get_verify_result(session, &flags);
 
-  char line[k_demo_line_buf];
-  int  n = snprintf(line,
-                    sizeof(line),
-                    "[tls] cipher=%s id=0x%04X verify=0x%08lX %s\r\n",
-                    name,
-                    (unsigned)id,
-                    (unsigned long)flags,
-                    (flags == 0U) ? "OK" : "UNVERIFIED");
-  if (n > 0 && (size_t)n < sizeof(line)) {
-    demo_print(line);
-  }
+  demo_print("[tls] cipher=");
+  demo_print(name);
+  demo_print((flags == 0U) ? " verify=OK\r\n" : " verify=UNVERIFIED\r\n");
 }
 
 /**
@@ -680,17 +683,7 @@ static ra8_err_t demo_run_tls(void)
   if (ra8_tls_mss_clamp((uint16_t)k_demo_mtu, &mss) != k_ra8_ok) {
     return k_ra8_err_invalid_arg;
   }
-  {
-    char line[k_demo_line_buf];
-    int  n = snprintf(line,
-                      sizeof(line),
-                      "[tls] MTU=%u -> MSS clamp=%u\r\n",
-                      (unsigned)k_demo_mtu,
-                      (unsigned)mss);
-    if (n > 0 && (size_t)n < sizeof(line)) {
-      demo_print(line);
-    }
-  }
+  demo_print("[tls] MSS clamp applied\r\n");
 
   ra8_err_t err = ra8_tls_global_init();
   if (err != k_ra8_ok) {

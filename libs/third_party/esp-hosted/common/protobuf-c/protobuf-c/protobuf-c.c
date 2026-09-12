@@ -53,7 +53,11 @@
 #define TRUE				1
 #define FALSE				0
 
+#if defined(RA8_FREESTANDING) || defined(__ARM_EABI__)
+#define PROTOBUF_C__ASSERT_NOT_REACHED() RA8_ASSERT(0, "protobuf-c not reached")
+#else
 #define PROTOBUF_C__ASSERT_NOT_REACHED() assert(0)
+#endif
 
 /* Workaround for Microsoft compilers. */
 #ifdef _MSC_VER
@@ -151,16 +155,23 @@ static void *
 system_alloc(void *allocator_data, size_t size)
 {
 	(void)allocator_data;
+	(void)size;
+#if defined(RA8_FREESTANDING) || defined(__ARM_EABI__)
+	return NULL;
+#else
 	return malloc(size);
+#endif
 }
 
 static void
 system_free(void *allocator_data, void *data)
 {
 	(void)allocator_data;
+	(void)data;
+#if !defined(RA8_FREESTANDING) && !defined(__ARM_EABI__)
 	free(data);
+#endif
 }
-
 static inline void *
 do_alloc(ProtobufCAllocator *allocator, size_t size)
 {

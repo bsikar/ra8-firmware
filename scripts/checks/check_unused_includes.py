@@ -48,6 +48,7 @@ def _find_compiler() -> str:
 def _load_compile_db() -> dict[str, list[str]]:
     commands: dict[str, list[str]] = {}
     for db_path in (
+        _repo_root() / "compile_commands.json",
         _repo_root() / "build" / "tidy" / "compile_commands.json",
         _repo_root() / "build" / "compile_commands.json",
     ):
@@ -117,6 +118,124 @@ def _compile_args_for_file(path: Path, db: dict[str, list[str]]) -> list[str]:
     return _default_compile_args(path)
 
 
+def _conditional_depths(source: str) -> list[int]:
+    """Return the preprocessor conditional nesting depth at each line start."""
+    depths: list[int] = []
+    depth = 0
+    directive_re = re.compile(r"^\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b")
+    for line in source.split("\n"):
+        m = directive_re.match(line)
+        if m is not None:
+            kind = m.group(1)
+            if kind == "endif":
+                depth = max(0, depth - 1)
+                depths.append(depth)
+            elif kind in ("else", "elif"):
+                depths.append(max(0, depth - 1))
+            else:
+                depths.append(depth)
+                depth += 1
+        else:
+            depths.append(depth)
+    return depths
+
+
+def _keep_reason(source: str, match_end: int) -> str | None:
+    """Return the `ra8-keep-include` reason on an include line, if it has one."""
+    line_end = source.find("\n", match_end)
+    trailing = source[match_end : line_end if line_end != -1 else len(source)]
+    m = re.search(r"ra8-keep-include:\s*(\S.*)?$", trailing)
+    if m is None:
+        return None
+    reason = (m.group(1) or "").strip()
+    return reason or None
+
+
+def _keep_claimed_tokens(reason: str) -> list[str]:
+    """Return the backticked symbol tokens a keep marker vouches for."""
+    return re.findall(r"`([^`]+)`", reason)
+
+
+def _code_tokens(source: str) -> set[str]:
+    """Identifier tokens in non-include code with comments/strings stripped."""
+    no_comments = re.sub(r"/\*.*?\*/|//[^\n]*", " ", source, flags=re.DOTALL)
+    no_strings = re.sub(r"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'", " ", no_comments)
+    lines = [ln for ln in no_strings.split("\n") if not re.match(r"\s*#\s*include\b", ln)]
+    return set(re.findall(r"[A-Za-z_][A-Za-z0-9_]*", "\n".join(lines)))
+
+
+def _keep_honored(source: str, match_end: int) -> bool:
+    """Honor a keep marker only if it names used symbols in backticks."""
+    reason = _keep_reason(source, match_end)
+    if reason is None:
+        return False
+    claimed = _keep_claimed_tokens(reason)
+    if not claimed:
+        return False
+    code = _code_tokens(source)
+    return all(tok in code for tok in claimed)
+
+
+def _run_compile(base_cmd: list[str]) -> int:
+    """Run one speculative compile, returning its exit code."""
+    proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool
+        base_cmd, capture_output=True, text=True, check=False
+    )
+    return proc.returncode
+
+
+def _comment_include(source: str, match_start: int, inc_text: str, match_end: int) -> str:
+    """Return source with one include line commented out."""
+    return source[:match_start] + "// " + inc_text + source[match_end:]
+
+
+def _body_trivial_without_includes(
+    source: str, matches: list[re.Match[str]], base_cmd: list[str], scratch: Path
+) -> bool:
+    """Return True when the file still compiles with every include disabled."""
+    # If the file compiles perfectly fine when ALL includes are commented
+    # out simultaneously, then the file's body is likely disabled by macros
+    # (e.g. RA8_OFF_TARGET). In this state, speculative compilation cannot
+    # distinguish between used and unused includes, because none of them
+    # affect compilation.
+    mutated_all = source
+    for m in reversed(matches):
+        mutated_all = _comment_include(mutated_all, m.start(), m.group(1).strip(), m.end())
+    scratch.write_text(mutated_all, encoding="utf-8")
+    return _run_compile(base_cmd) == 0
+
+
+def _test_top_level_includes(
+    source: str, base_cmd: list[str], scratch: Path, path: Path, verbose: bool
+) -> list[tuple[int, str]]:
+    """Test each top-level include by speculative compilation."""
+    # Configuration-dependent includes (inside #if/#ifdef blocks, e.g. an
+    # MVE-gated <arm_mve.h>) cannot be judged by compilation under a single
+    # configuration, so only top-level includes are tested per line.
+    matches = list(_include_re().finditer(source))
+    depths = _conditional_depths(source)
+    unused: list[tuple[int, str]] = []
+    for m in matches:
+        line_no = source[: m.start()].count("\n") + 1
+        if depths[line_no - 1] > 0:
+            if verbose:
+                msg = f"check_unused_includes: skipping guarded include {path}:{line_no}\n"
+                sys.stderr.write(msg)
+            continue
+        # A `// ra8-keep-include: ...` marker records a reviewed direct-use
+        # (IWYU) keep: the header declares symbols this file uses, even when
+        # they also arrive transitively. The marker must vouch for at least
+        # one used symbol in backticks; bare markers, generic prose, and
+        # mistargeted tokens are not honored.
+        if _keep_honored(source, m.end()):
+            continue
+        inc_text = m.group(1).strip()
+        scratch.write_text(_comment_include(source, m.start(), inc_text, m.end()), encoding="utf-8")
+        if _run_compile(base_cmd) == 0:
+            unused.append((line_no, inc_text))
+    return unused
+
+
 def check_file(
     path: Path, db: dict[str, list[str]], *, verbose: bool = False
 ) -> list[tuple[int, str]]:
@@ -129,7 +248,6 @@ def check_file(
         return []
 
     compile_cmd = _compile_args_for_file(path, db)
-    unused: list[tuple[int, str]] = []
 
     with tempfile.TemporaryDirectory(prefix="ra8-include-check-") as tmp:
         scratch = Path(tmp) / path.name
@@ -137,28 +255,19 @@ def check_file(
 
         scratch.write_text(source, encoding="utf-8")
         base_cmd = [*compile_cmd, "-c", str(scratch), "-o", str(out_obj)]
-        base_proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool
-            base_cmd, capture_output=True, text=True, check=False
-        )
-        if base_proc.returncode != 0:
+        if "-Wmissing-prototypes" not in base_cmd:
+            base_cmd.extend(["-Wmissing-prototypes", "-Werror=missing-prototypes"])
+        if _run_compile(base_cmd) != 0:
             if verbose:
-                msg = f"check_unused_includes: skipping {path} (baseline does not compile)\n"
+                msg = f"check_unused_includes: skipping {path} (baseline fails)\n"
                 sys.stderr.write(msg)
             return []
-
-        for m in matches:
-            inc_text = m.group(1).strip()
-            mutated = source[: m.start()] + "// " + inc_text + source[m.end() :]
-            scratch.write_text(mutated, encoding="utf-8")
-
-            proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool
-                base_cmd, capture_output=True, text=True, check=False
-            )
-            if proc.returncode == 0:
-                line_no = source[: m.start()].count("\n") + 1
-                unused.append((line_no, inc_text))
-
-    return unused
+        if _body_trivial_without_includes(source, matches, base_cmd, scratch):
+            if verbose:
+                msg = f"check_unused_includes: skipping {path} (trivial body)\n"
+                sys.stderr.write(msg)
+            return []
+        return _test_top_level_includes(source, base_cmd, scratch, path, verbose)
 
 
 def _git_changed_c_files() -> list[Path]:
@@ -185,37 +294,137 @@ def _git_changed_c_files() -> list[Path]:
             text=True,
             check=False,
         )
-        for line in proc.stdout.splitlines():
-            p = _repo_root() / line.strip()
-            if p.is_file() and p.suffix == ".c":
-                c_files.append(p)
+        if proc.returncode == 0 and proc.stdout.strip():
+            for line in proc.stdout.splitlines():
+                p = _repo_root() / line.strip()
+                if p.is_file() and p.suffix == ".c":
+                    c_files.append(p)
     return sorted(set(c_files))
+
+
+def _selftest_basic(test_dir: Path) -> list[str]:
+    """Prove that unused includes are flagged while required ones are kept."""
+    failures: list[str] = []
+    c_file = test_dir / "bad.c"
+    c_file.write_text(
+        """#include <stdint.h>
+#include <stdbool.h>
+
+static uint32_t compute(void) {
+    return 42U;
+}
+""",
+        encoding="utf-8",
+    )
+    unused = check_file(c_file, {}, verbose=False)
+    inc_names = [item[1] for item in unused]
+    if "#include <stdbool.h>" not in inc_names:
+        failures.append("selftest: <stdbool.h> was not flagged as unused")
+    if "#include <stdint.h>" in inc_names:
+        failures.append("selftest: <stdint.h> was falsely flagged as unused")
+    return failures
+
+
+def _selftest_guarded(test_dir: Path) -> list[str]:
+    """Prove guarded includes stay quiet while top-level dead ones fire."""
+    failures: list[str] = []
+    guarded = test_dir / "guarded.c"
+    guarded.write_text(
+        """#include <stdint.h>
+#include <stdbool.h>
+#ifdef __ARM_FEATURE_MVE
+#include <dead_guarded.h>
+#endif
+
+static uint32_t compute(void) {
+    return 42U;
+}
+""",
+        encoding="utf-8",
+    )
+    guarded_unused = [item[1] for item in check_file(guarded, {}, verbose=False)]
+    if "#include <dead_guarded.h>" in guarded_unused:
+        failures.append("selftest: guarded include judged without its configuration")
+    if "#include <stdbool.h>" not in guarded_unused:
+        failures.append("selftest: top-level dead include beside a guard missed")
+    return failures
+
+
+def _selftest_keep_markers(test_dir: Path) -> list[str]:
+    """Prove validated keep markers stay quiet and dishonest ones fire."""
+    failures: list[str] = []
+    valid = test_dir / "valid.c"
+    valid.write_text(
+        """#include <stdint.h>
+#include <stdbool.h>  // ra8-keep-include: `bool` used directly
+
+static bool ready(void) {
+    return true;
+}
+""",
+        encoding="utf-8",
+    )
+    valid_unused = [item[1] for item in check_file(valid, {}, verbose=False)]
+    if "#include <stdbool.h>" in valid_unused:
+        failures.append("selftest: validated keep marker was not honored")
+    forged = test_dir / "forged.c"
+    forged.write_text(
+        """#include <stdint.h>
+#include <stdbool.h>  // ra8-keep-include: `missing_symbol_xyz` used directly
+
+static uint32_t compute(void) {
+    return 42U;
+}
+""",
+        encoding="utf-8",
+    )
+    forged_unused = [item[1] for item in check_file(forged, {}, verbose=False)]
+    if "#include <stdbool.h>" not in forged_unused:
+        failures.append("selftest: fabricated keep token stayed quiet")
+    generic = test_dir / "generic.c"
+    generic.write_text(
+        """#include <stdint.h>
+#include <stdbool.h>  // ra8-keep-include: reviewed direct-use keep
+
+static uint32_t compute(void) {
+    return 42U;
+}
+""",
+        encoding="utf-8",
+    )
+    generic_unused = [item[1] for item in check_file(generic, {}, verbose=False)]
+    if "#include <stdbool.h>" not in generic_unused:
+        failures.append("selftest: generic prose keep marker stayed quiet")
+    bare = test_dir / "bare.c"
+    bare.write_text(
+        """#include <stdint.h>
+#include <stdbool.h>  // ra8-keep-include:
+
+static uint32_t compute(void) {
+    return 42U;
+}
+""",
+        encoding="utf-8",
+    )
+    bare_unused = [item[1] for item in check_file(bare, {}, verbose=False)]
+    if "#include <stdbool.h>" not in bare_unused:
+        failures.append("selftest: bare keep marker without reason stayed quiet")
+    return failures
 
 
 def selftest() -> int:
     """Prove that unused includes are flagged while required includes are kept."""
     with tempfile.TemporaryDirectory(prefix="ra8-selftest-inc-") as tmp:
         test_dir = Path(tmp)
-        c_file = test_dir / "test.c"
-        c_file.write_text(
-            """#include <stdint.h>
-#include <stdbool.h>
-
-uint32_t compute(void) {
-    return 42U;
-}
-""",
-            encoding="utf-8",
+        failures = (
+            _selftest_basic(test_dir)
+            + _selftest_guarded(test_dir)
+            + _selftest_keep_markers(test_dir)
         )
-        unused = check_file(c_file, {}, verbose=False)
-        inc_names = [item[1] for item in unused]
-        if "#include <stdbool.h>" not in inc_names:
-            sys.stderr.write("selftest: FAILED -- <stdbool.h> was not flagged as unused\n")
-            return 1
-        if "#include <stdint.h>" in inc_names:
-            sys.stderr.write("selftest: FAILED -- <stdint.h> was falsely flagged as unused\n")
-            return 1
-
+    if failures:
+        for failure in failures:
+            sys.stderr.write(f"selftest: FAILED -- {failure}\n")
+        return 1
     print("check_unused_includes.py: selftest OK")
     return 0
 
@@ -249,20 +458,18 @@ def main(argv: list[str]) -> int:
         return 0
 
     db = _load_compile_db()
+
     total_unused = 0
     for f in files:
-        findings = check_file(f, db, verbose=args.verbose)
-        if findings:
-            total_unused += len(findings)
-            rel = f.relative_to(_repo_root()) if f.is_relative_to(_repo_root()) else f
-            for line_no, inc in findings:
-                print(f"{rel}:{line_no}: unused include: {inc}")
+        unused = check_file(f, db, verbose=args.verbose)
+        if unused:
+            for line_no, inc_text in unused:
+                print(f"{f}:{line_no}: unused include: {inc_text}")
+            total_unused += len(unused)
 
     if total_unused > 0:
-        sys.stderr.write(f"\ncheck_unused_includes.py: {total_unused} unused include(s) found.\n")
+        print(f"\ncheck_unused_includes.py: {total_unused} unused include(s) found.")
         return 1
-
-    print(f"check_unused_includes.py: clean ({len(files)} file(s) checked, 0 unused includes).")
     return 0
 
 

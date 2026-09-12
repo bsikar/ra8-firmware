@@ -17,6 +17,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+#ifndef RA8_OFF_TARGET
+#error "port/posix is host-only and must never be compiled or linked into target firmware."
+#endif
+
 #ifndef _GNU_SOURCE
 /** @brief Request GNU raw-directory syscall declarations on Linux. */
 #define _GNU_SOURCE
@@ -24,21 +28,20 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
-#include <stdint.h>
+#include <stdint.h> // ra8-keep-include: `uint8_t` used directly
 #include <string.h>
 #include <sys/stat.h>
-#include <time.h>
+#include <time.h> // ra8-keep-include: `time_t` and `gmtime_r` used directly
 #include <unistd.h>
 
-#include "ra8_attributes.h"
+#include "ra8_attributes.h" // ra8-keep-include: `RA8_INTERNAL` and `RA8_PRIV` used directly
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <sys/syscall.h>
 #endif
 
 #include "fw_if_fs_posix_internal.h"
-#include "ra8_err.h"
+#include "ra8_err.h" // ra8-keep-include: `ra8_err_t` used directly
 
 #ifndef O_CLOEXEC
 /** @brief Zero fallback when the host lacks close-on-exec open flags. */

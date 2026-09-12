@@ -92,6 +92,9 @@ if(TARGET compile_on_m33_cpu1.elf)
             # limits policy (epub_zip_guard.c -> ra8_decomp_limits_*); the M33
             # image hand-picks its sources, so link the core policy TU explicitly.
             ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
+            # Assertion sink: miniz MZ_ASSERT and core assertions route to
+            # ra8_fatal_error(); RA8_LOG_LEVEL=0 collapses logging to no-ops.
+            ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_error_handler.c
             ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/rabook_compile.c
             ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_finalize.c
             ${RA8_REPO_ROOT}/apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
@@ -107,8 +110,12 @@ if(TARGET compile_on_m33_cpu1.elf)
   # so the header ABI matches and miniz.c's fopen/utime file path (absent on
   # bare-metal newlib) is dropped -- epub uses only the in-memory reader.
   target_compile_definitions(
-    compile_on_m33_cpu1.elf PRIVATE RA8_LOG_LEVEL=0 MINIZ_NO_STDIO MINIZ_NO_TIME
-                                    RA8_RABOOK_NO_RASTER
+    compile_on_m33_cpu1.elf
+    PRIVATE RA8_LOG_LEVEL=0
+            MINIZ_NO_STDIO
+            MINIZ_NO_TIME
+            MINIZ_NO_MALLOC
+            RA8_RABOOK_NO_RASTER
   )
   # miniz.c needs the same -fno-strict-aliasing the M85 SOUP build uses, or the
   # M33 blob diverges from the byte-identical M85 path (a prior host divergence
