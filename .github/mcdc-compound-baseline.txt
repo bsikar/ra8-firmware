@@ -13,8 +13,8 @@
 # with zero growth outside apps/shared_libs/. This is a visibility correction,
 # not a coverage regression or waiver; all rows share the same no-growth rule.
 #
-# Total at this baseline: 1693 uncovered compound decision(s)
-# across 218 file(s).
+# Total at this baseline: 1595 uncovered compound decision(s)
+# across 210 file(s).
 #
 # Burn one down: add a `test_mcdc_<decision>` function with N+1 vectors
 # to a supported indexed test source whose MC/DC block cites
@@ -94,7 +94,6 @@ apps/shared_libs/jof/src/jof_produce.c	internal_probe_sniff	2
 apps/shared_libs/jof/src/jof_produce.c	jof_work_bytes	3
 apps/shared_libs/jof/src/jof_produce.c	priv_jof_bump_take	2
 apps/shared_libs/jof/src/jof_produce.c	priv_jof_on_geom	1
-apps/shared_libs/jof/src/jof_produce.c	priv_jof_on_rows	2
 apps/shared_libs/jof/src/jof_produce_webp.c	jof_webp_work_bytes	2
 apps/shared_libs/jof/src/jof_produce_webp.c	priv_jof_webp_transcode	1
 apps/shared_libs/longstrip/src/longstrip.c	longstrip_open	1
@@ -274,7 +273,6 @@ apps/shared_libs/mdl/src/mdl_extract_hits.c	internal_extract_meta	2
 apps/shared_libs/mdl/src/mdl_extract_hits.c	internal_is_ws	1
 apps/shared_libs/mdl/src/mdl_extract_hits.c	internal_merge_hit	1
 apps/shared_libs/mdl/src/mdl_extract_hits.c	internal_url_slug	3
-apps/shared_libs/mdl/src/mdl_extract_hits.c	mdl_extract_hits	2
 apps/shared_libs/mdl/src/mdl_extract_hits.c	mdl_extract_selector	2
 apps/shared_libs/mdl/src/mdl_fetch.c	internal_mdl_fetch_ctx_ready	3
 apps/shared_libs/mdl/src/mdl_fetch.c	internal_mdl_fetch_process_chapter	2
@@ -355,7 +353,6 @@ apps/shared_libs/mdl/src/mdl_sanitize.c	mdl_path_contained	3
 apps/shared_libs/mdl/src/mdl_sanitize.c	mdl_path_join	3
 apps/shared_libs/mdl/src/mdl_sanitize.c	mdl_sanitize_segment	1
 apps/shared_libs/mdl/src/mdl_sanitize.c	mdl_xml_escape	1
-apps/shared_libs/mdl/src/mdl_search.c	internal_is_unreserved	4
 apps/shared_libs/mdl/src/mdl_search.c	mdl_query_encode	2
 apps/shared_libs/mdl/src/mdl_search.c	mdl_search_filter_series_hits	3
 apps/shared_libs/mdl/src/mdl_session.c	internal_robots_target	3
@@ -523,56 +520,26 @@ apps/shared_libs/reflow/src/reflow_layout.c	priv_reflow_internal_final_page_need
 apps/shared_libs/reflow/src/reflow_layout.c	priv_reflow_internal_is_indent_tag	1
 apps/shared_libs/reflow/src/reflow_layout.c	priv_reflow_internal_right_overflow_break	1
 apps/shared_libs/reflow/src/reflow_layout.c	priv_reflow_internal_xhtml_invalid	1
-apps/shared_libs/reflow/src/reflow_layout.c	priv_reflow_layout_build_link_rects	1
-apps/shared_libs/reflow/src/reflow_layout_driver.c	internal_layout_tokens	2
 apps/shared_libs/reflow/src/reflow_layout_driver.c	reflow_get_page_count	1
 apps/shared_libs/reflow/src/reflow_layout_driver.c	reflow_init	3
 apps/shared_libs/reflow/src/reflow_layout_driver.c	reflow_layout_chapter	1
 apps/shared_libs/reflow/src/reflow_layout_driver.c	reflow_set_font_size	1
-apps/shared_libs/reflow/src/reflow_layout_image.c	internal_image_resolve_size	2
-apps/shared_libs/reflow/src/reflow_layout_image.c	internal_page_has_content	1
-apps/shared_libs/reflow/src/reflow_layout_image.c	internal_place_image	2
-apps/shared_libs/reflow/src/reflow_layout_image.c	priv_reflow_layout_apply_image	1
-apps/shared_libs/reflow/src/reflow_layout_table.c	internal_cell_text	3
-apps/shared_libs/reflow/src/reflow_layout_table.c	internal_is_cell_start	2
-apps/shared_libs/reflow/src/reflow_layout_table.c	internal_is_row_start	1
-apps/shared_libs/reflow/src/reflow_layout_table.c	internal_layout_row	1
 apps/shared_libs/reflow/src/reflow_parse.c	reflow_parse_xhtml	1
-apps/shared_libs/reflow/src/reflow_svg.c	priv_ra8_svgp_attr	4
 apps/shared_libs/reflow/src/reflow_svg.c	priv_ra8_svgp_lc	1
-apps/shared_libs/reflow/src/reflow_svg.c	priv_ra8_svgp_num	5
-apps/shared_libs/reflow/src/reflow_svg.c	priv_ra8_svgp_ws	1
-apps/shared_libs/reflow/src/reflow_svg_doc.c	internal_draw_shapes	2
-apps/shared_libs/reflow/src/reflow_svg_doc.c	internal_elem_at	1
 apps/shared_libs/reflow/src/reflow_svg_doc.c	internal_group_open	2
 apps/shared_libs/reflow/src/reflow_svg_doc.c	internal_parse_stops	1
-apps/shared_libs/reflow/src/reflow_svg_doc.c	internal_read_viewbox	2
 apps/shared_libs/reflow/src/reflow_svg_doc.c	internal_scan_grads	1
-apps/shared_libs/reflow/src/reflow_svg_doc.c	internal_tag_span	1
-apps/shared_libs/reflow/src/reflow_svg_doc.c	ra8_svg_image_href	2
-apps/shared_libs/reflow/src/reflow_svg_doc.c	ra8_svg_is_svg	5
 apps/shared_libs/reflow/src/reflow_svg_doc.c	ra8_svg_render	1
-apps/shared_libs/reflow/src/reflow_svg_doc.c	ra8_svg_size	3
 apps/shared_libs/reflow/src/reflow_svg_path.c	internal_flatten_cubic	1
 apps/shared_libs/reflow/src/reflow_svg_path.c	internal_flatten_quad	1
-apps/shared_libs/reflow/src/reflow_svg_path.c	internal_next_cmd	2
 apps/shared_libs/reflow/src/reflow_svg_path.c	internal_path_curve	2
 apps/shared_libs/reflow/src/reflow_svg_path.c	priv_ra8_svgp_draw_path	1
-apps/shared_libs/reflow/src/reflow_svg_shape.c	internal_arc_center	1
-apps/shared_libs/reflow/src/reflow_svg_shape.c	internal_arc_solve	2
-apps/shared_libs/reflow/src/reflow_svg_shape.c	internal_grad_eval	1
-apps/shared_libs/reflow/src/reflow_svg_shape.c	internal_parse_points	1
 apps/shared_libs/reflow/src/reflow_svg_shape.c	internal_scanline_x	2
 apps/shared_libs/reflow/src/reflow_svg_shape.c	internal_sort_i32	1
-apps/shared_libs/reflow/src/reflow_svg_shape.c	priv_ra8_svgp_draw_circle	2
-apps/shared_libs/reflow/src/reflow_svg_shape.c	priv_ra8_svgp_draw_polygon	1
 apps/shared_libs/reflow/src/reflow_svg_shape.c	priv_ra8_svgp_draw_polyline	1
 apps/shared_libs/reflow/src/reflow_svg_shape.c	priv_ra8_svgp_draw_rect	2
 apps/shared_libs/reflow/src/reflow_svg_shape.c	priv_ra8_svgp_flatten_arc	1
-apps/shared_libs/reflow/src/reflow_svg_xform.c	internal_is_num_start	1
-apps/shared_libs/reflow/src/reflow_svg_xform.c	internal_parse_xform	3
 apps/shared_libs/reflow/src/reflow_svg_xform.c	priv_ra8_svgp_has_rot	1
-apps/shared_libs/reflow/src/reflow_svg_xform.c	priv_ra8_svgp_numf	5
 apps/shared_libs/reflow/src/reflow_tokenize.c	internal_emit_text_run	1
 apps/shared_libs/reflow/src/reflow_tokenize.c	internal_handle_raw_text	1
 apps/shared_libs/reflow/src/reflow_tokenize.c	internal_handle_void	2
@@ -585,10 +552,6 @@ apps/shared_libs/reflow/src/reflow_tokenize_attr.c	priv_reflow_tok_find_attr	1
 apps/shared_libs/reflow/src/reflow_tokenize_attr.c	priv_reflow_tok_intern_link	1
 apps/shared_libs/reflow/src/reflow_tokenize_attr.c	priv_reflow_tok_rel_is_stylesheet	1
 apps/shared_libs/reflow/src/reflow_tokenize_attr.c	priv_reflow_tok_resolve_face_slot	1
-apps/shared_libs/reflow/src/reflow_tokenize_lex.c	internal_decode_numeric	6
-apps/shared_libs/reflow/src/reflow_tokenize_lex.c	internal_local_lower	2
-apps/shared_libs/reflow/src/reflow_tokenize_lex.c	priv_reflow_tok_decode_entity	2
-apps/shared_libs/reflow/src/reflow_tokenize_lex.c	priv_reflow_tok_is_xml_whitespace	1
 apps/shared_libs/unarch/src/unarch_tar_fields.c	priv_unarch_tar_checksum_ok	1
 apps/shared_libs/unarch/src/unarch_tar_fields.c	priv_unarch_tar_magic_ok	1
 libs/ra8_app/src/ra8_app.c	ra8_app_find	1
@@ -638,9 +601,6 @@ libs/ra8_gfx/src/ra8_gfx_text_glyph.c	ra8_gfx_text_out	1
 libs/ra8_gfx/src/ra8_gfx_text_glyph.c	ra8_gfx_text_size	1
 libs/ra8_hal/src/adc.c	internal_validate_group_cfg	1
 libs/ra8_hal/src/adc.c	ra8_adc_read_channel	1
-libs/ra8_hal/src/adc_selfdiag.c	internal_is_supported_ext_chan	1
-libs/ra8_hal/src/adc_selfdiag.c	internal_selfdiag_in_band	1
-libs/ra8_hal/src/adc_selfdiag.c	ra8_adc_self_diagnose	1
 libs/ra8_hal/src/ra8_bkup_tamper.c	internal_validate_chan	2
 libs/ra8_hal/src/ra8_ble.c	internal_dispatch_acl	2
 libs/ra8_hal/src/ra8_ble.c	internal_dispatch_event	1
@@ -655,7 +615,6 @@ libs/ra8_hal/src/ra8_canfd_timing.c	ra8_canfd_set_bitrate	1
 libs/ra8_hal/src/ra8_ceu.c	internal_arm_capture	1
 libs/ra8_hal/src/ra8_ceu.c	internal_wait_idle	1
 libs/ra8_hal/src/ra8_ceu.c	ra8_ceu_init	1
-libs/ra8_hal/src/ra8_cgc_eswclk.c	internal_eswclk_power_on_domain	1
 libs/ra8_hal/src/ra8_crc.c	internal_ra8_crc_is_32bit_poly	1
 libs/ra8_hal/src/ra8_dmac.c	priv_ra8_dmac_internal_dmint_extra_irq	1
 libs/ra8_hal/src/ra8_dmac.c	priv_ra8_dmac_internal_mode_disables_dts	1
@@ -680,10 +639,6 @@ libs/ra8_hal/src/ra8_epaper_geom.c	ra8_epaper_area_is_aligned	1
 libs/ra8_hal/src/ra8_epaper_geom.c	ra8_epaper_image_bytes	1
 libs/ra8_hal/src/ra8_eth.c	internal_resolve_sizes	1
 libs/ra8_hal/src/ra8_eth.c	ra8_eth_write	1
-libs/ra8_hal/src/ra8_eth_gwca_default.c	internal_drain_rx_slot	1
-libs/ra8_hal/src/ra8_eth_gwca_queue.c	ra8_eth_gwca_attach_buffers	1
-libs/ra8_hal/src/ra8_eth_gwca_queue.c	ra8_eth_gwca_init_ring	1
-libs/ra8_hal/src/ra8_eth_gwca_queue.c	ra8_eth_gwca_tx_frame	1
 libs/ra8_hal/src/ra8_etha.c	ra8_etha_clear_status	1
 libs/ra8_hal/src/ra8_etha.c	ra8_etha_configure_cbs	2
 libs/ra8_hal/src/ra8_etha.c	ra8_etha_configure_cut_through	1
@@ -707,7 +662,6 @@ libs/ra8_hal/src/ra8_flash.c	ra8_flash_block_protect_set	1
 libs/ra8_hal/src/ra8_flash.c	ra8_flash_lock_set	2
 libs/ra8_hal/src/ra8_flash_config.c	ra8_flash_config_set_write	3
 libs/ra8_hal/src/ra8_flash_config.c	ra8_flash_extra_mram_write	1
-libs/ra8_hal/src/ra8_flash_irq.c	ra8_flash_blank_check	4
 libs/ra8_hal/src/ra8_flash_irq.c	ra8_flash_set_window	1
 libs/ra8_hal/src/ra8_flash_irq.c	ra8_flash_status	3
 libs/ra8_hal/src/ra8_flash_irq.c	ra8_flash_write	1
@@ -776,8 +730,6 @@ libs/ra8_hal/src/ra8_pdg.c	ra8_pdg_pin_disable	1
 libs/ra8_hal/src/ra8_pdg.c	ra8_pdg_required_write_ns	1
 libs/ra8_hal/src/ra8_pdg.c	ra8_pdg_set_delay_batch	1
 libs/ra8_hal/src/ra8_pwr.c	ra8_pwr_enter_software_standby	1
-libs/ra8_hal/src/ra8_rmac_mgmt.c	internal_phy_args_ok	1
-libs/ra8_hal/src/ra8_rmac_mgmt.c	ra8_rmac_phy_link_status	1
 libs/ra8_hal/src/ra8_rmac_phy.c	priv_ra8_rmac_phy_internal_speed_ok	1
 libs/ra8_hal/src/ra8_rmac_phy.c	ra8_rmac_phy_link_status_get	1
 libs/ra8_hal/src/ra8_rsip.c	ra8_rsip_hmac_sha256_init	1
@@ -813,7 +765,6 @@ libs/ra8_hal/src/ra8_ssie.c	internal_build_ssifcr	1
 libs/ra8_hal/src/ra8_ssie.c	internal_build_ssiofr	2
 libs/ra8_hal/src/ra8_ssie.c	internal_validate_init_cfg	1
 libs/ra8_hal/src/ra8_ssie.c	ra8_ssie_set_thresholds	1
-libs/ra8_hal/src/ra8_ssie.c	ra8_ssie_start	1
 libs/ra8_hal/src/ra8_ssie_stream.c	internal_validate_dma_cfg	3
 libs/ra8_hal/src/ra8_ssie_stream.c	ra8_ssie_attach_dma_pair	1
 libs/ra8_hal/src/ra8_touch.c	internal_stash_state	1
@@ -841,7 +792,6 @@ libs/ra8_hal/src/ra8_usb_hhub.c	internal_port_ok	1
 libs/ra8_hal/src/ra8_usb_hhub.c	ra8_usb_hhub_init	1
 libs/ra8_hal/src/ra8_usb_hmsc.c	ra8_usb_hmsc_build_cbw	1
 libs/ra8_hal/src/ra8_usb_hmsc.c	ra8_usb_hmsc_decode_csw	2
-libs/ra8_hal/src/ra8_usb_hmsc.c	ra8_usb_hmsc_init	1
 libs/ra8_hal/src/ra8_usb_host_ctrl.c	internal_host_data_phase	1
 libs/ra8_hal/src/ra8_usb_host_ctrl.c	ra8_usb_dcp_out_read	1
 libs/ra8_hal/src/ra8_usb_irq.c	ra8_usb_enter_stop	1
@@ -865,7 +815,6 @@ libs/ra8_hal/src/ra8_usb_pvnd.c	internal_is_vendor_envelope	3
 libs/ra8_hal/src/ra8_usb_pvnd.c	ra8_usb_pvnd_init	1
 libs/ra8_hal/src/ra8_usb_pvnd.c	ra8_usb_pvnd_send	2
 libs/ra8_hal/src/ra8_usb_xfer.c	internal_check_queue_out_args	3
-libs/ra8_hal/src/ra8_usb_xfer.c	ra8_usb_dcp_in_data	1
 libs/ra8_hal/src/ra8_usb_xfer.c	ra8_usb_park_out_pipe	1
 libs/ra8_hal/src/ra8_usb_xfer.c	ra8_usb_queue_in	2
 libs/ra8_hal/src/ra8_usb_xfer.c	ra8_usb_rearm_out_pipe	1
@@ -932,7 +881,6 @@ libs/ra8_psa_crypto/src/ra8_psa_crypto_fake.c	internal_fake_aead_tag	4
 libs/ra8_psa_crypto/src/ra8_psa_crypto_fake.c	internal_fake_keystream	2
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c	internal_build_frame	1
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi.c	internal_probe_card	1
-libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	internal_fs_get_capacity	1
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	ra8_sdmmc_spi_erase_blocks	1
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	ra8_sdmmc_spi_read_blocks	2
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	ra8_sdmmc_spi_write_blocks	2

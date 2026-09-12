@@ -407,6 +407,8 @@ def build_specs() -> list[ToolSpec]:
         _python_spec("yamllint", "yamllint"),
         _spec(args, "actionlint", "ACTIONLINT_VERSION", MODE_EXACT),
         _spec(args, "hadolint", "HADOLINT_VERSION", MODE_EXACT),
+        # `go --version` is not a thing: the toolchain spells it `go version`.
+        ToolSpec("go", _arg(args, "GO_VERSION"), MODE_EXACT, "ARG GO_VERSION", ("version",)),
         ToolSpec(f"clang-format-{cf}", cf, MODE_MAJOR, f"clang-format-{cf}"),
         ToolSpec(f"clang-tidy-{ct}", ct, MODE_MAJOR, f"clang-tools-{ct}"),
         # gcc-14 is the second host-tool compiler arm (#356); the tools-build

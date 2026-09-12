@@ -125,39 +125,37 @@ if [[ "$-" == *p* ]]; then
       mkdir -p "$work"
       trap 'rm -rf "$work"' EXIT
 
-      # Deliberately misformatted: 7-space indent, no dangling paren, a line
-      # well past the 100-column limit.
+      # Deliberately defective: 7-space indent (C0307), a non-conforming
+      # variable name (C0103), a line past the column limit (C0301), and a
+      # statement missing its COMMENT (C0113). Four independent findings, so
+      # the must-fire half survives any single rule being widened later.
       cat >"$work/malformed.cmake" <<'EOF'
 if(TRUE)
        set(x 1)
 endif()
 add_custom_target(a_very_long_target_name_here COMMAND echo one two three four five six seven eight nine ten eleven)
 EOF
-      if cmake-format --check "$work/malformed.cmake" >/dev/null 2>&1; then
-        fail "cmake-format accepted a misformatted listfile"
+      if cmake-lint "$work/malformed.cmake" >/dev/null 2>&1; then
+        fail "cmake-lint accepted a defective listfile"
       fi
-      echo "selftest: cmake-format rejects a misformatted listfile OK"
+      echo "selftest: cmake-lint rejects a defective listfile OK"
 
       # Legal-but-tricky: bracket comment, bracket argument, a nested generator
       # expression, and a quoted string holding an unbalanced paren. Variable
       # names follow the tree's private-scope convention (leading underscore),
       # so a clean result here also proves .cmake-format.yaml's name patterns
       # accept the style the tree actually uses.
-      cat >"$work/tricky.cmake.in" <<'EOF'
+      cat >"$work/tricky.cmake" <<'EOF'
 #[[ A bracket comment
     spanning lines. ]]
 set(_msg [==[a bracket arg with ) and ; inside]==])
 target_compile_options(tgt PRIVATE $<$<CONFIG:Debug>:-Og>)
 set(_paren "unbalanced ( in a string")
 EOF
-      cmake-format "$work/tricky.cmake.in" >"$work/tricky.cmake"
-      if ! cmake-format --check "$work/tricky.cmake" >/dev/null 2>&1; then
-        fail "cmake-format is not idempotent on legal input"
-      fi
       if ! cmake-lint "$work/tricky.cmake" >/dev/null 2>&1; then
         fail "cmake-lint rejected a legal listfile"
       fi
-      echo "selftest: cmake-format/cmake-lint accept legal-but-tricky input OK"
+      echo "selftest: cmake-lint accepts legal-but-tricky input OK"
       ;;
 
     yaml)

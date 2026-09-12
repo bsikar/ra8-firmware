@@ -26,7 +26,7 @@ from suppression_catalog import (
     ownership,
 )
 from suppression_checker_nonfatal import scan_checker_nonfatal_controls
-from suppression_checker_scope import scan_checker_scope_controls
+from suppression_checker_scope import EXPECTED_VALUES, scan_checker_scope_controls
 from suppression_clang_tidy import scan_clang_tidy_config
 from suppression_comment_lex import extract_comments
 from suppression_control_scan import scan_control_file
@@ -78,7 +78,7 @@ GOVERNANCE_COUNT_CONTRACTS = {
     "other-language-controls": ("family", "other-language-control", 0),
     "gitignore-scope-exemptions": ("tool", "gitignore-scope", 1),
     "hardware-canned-stub-waivers": ("tool", "check-no-silent-stubs", 0),
-    "checker-scope-values": ("family", "checker-scope-control", 3787),
+    "checker-scope-values": ("family", "checker-scope-control", EXPECTED_VALUES),
     "checker-nonfatal-declarations": ("directive", "nonfatal-declaration", 10),
     "checker-nonfatal-invocations": ("directive", "nonfatal-invocation", 0),
     "vendor-encoding-exemptions": ("family", "encoding-exemption", 4),

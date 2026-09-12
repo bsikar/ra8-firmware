@@ -95,6 +95,9 @@ tests/fixtures/epub/real/*.epub
 # explicitly so the directory is greppable)
 /build/tree-coverage/
 
+# Go coverage profiles
+coverage.out
+
 # GCC RTL dump files
 *.expand
 
@@ -182,6 +185,7 @@ venv/
 .env.local
 .claude/*
 !.claude/agents/
+/.codex/
 doxy_run.txt
 .pi-connection
 

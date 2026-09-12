@@ -139,7 +139,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       g++-14 \
       git \
       graphviz \
-      iwyu \
       jq \
       libcapstone-dev \
       libclang-rt-18-dev \
@@ -399,6 +398,31 @@ RUN set -eux; \
     rm -rf /tmp/actionlint /tmp/actionlint.tar.gz; \
     cmake-format --version; cmake-lint --version; \
     yamllint --version; actionlint --version
+
+# Go -- the host CLI toolchain. apps/host/cbz2jof is Go: its CMake
+# find_program(go REQUIRED), the lint-go gate (gofmt + go vet), and the
+# tools-build generic-project arm that builds and ctests the package all fail
+# loudly without it. Pinned by version and per-architecture sha256 from the
+# official release archives, on both Linux arches this image builds for
+# (amd64 runners, arm64 Apple-Silicon `just ci`). Keep in step with
+# docs/TOOLCHAIN.md and apps/host/cbz2jof/go.mod.
+ARG GO_VERSION=1.27.1
+ARG GO_SHA256_AMD64=63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445
+ARG GO_SHA256_ARM64=3450b45a3f9ee8568792736a5c5e70a1f2e9b36c35a8f74958c03e51d7d92bec
+RUN set -eux; \
+    case "$(uname -m)" in \
+      x86_64) goarch=amd64; gosha="${GO_SHA256_AMD64}" ;; \
+      aarch64) goarch=arm64; gosha="${GO_SHA256_ARM64}" ;; \
+      *) echo "unsupported host arch $(uname -m) for Go" >&2; exit 1 ;; \
+    esac; \
+    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/go.tar.gz \
+      "https://go.dev/dl/go${GO_VERSION}.linux-${goarch}.tar.gz"; \
+    printf '%s  %s\n' "${gosha}" /tmp/go.tar.gz | sha256sum -c -; \
+    rm -rf /usr/local/go; \
+    tar -xzf /tmp/go.tar.gz -C /usr/local; \
+    rm /tmp/go.tar.gz; \
+    test "$(/usr/local/go/bin/go version | awk '{print $3}')" = "go${GO_VERSION}"
+ENV PATH="/usr/local/go/bin:${PATH}"
 
 # just -- command runner for CI gates and repository recipes.
 ARG JUST_VERSION=1.40.0

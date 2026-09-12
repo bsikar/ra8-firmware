@@ -169,12 +169,15 @@ family or ghost bullet = gate failure); justifications live with the rows.
 
 - `misra-c2012-7.4` (4 rows, 4 paths): esp-hosted tooling gap, plus the
   same char-array-initialiser gap on two mdl host tests.
-- `misra-c2012-8.4` (6 rows, 4 paths): the D-005 C23 declaration-parser gap
-  on the alphabet-soup implementations, and four line-scoped POSIX cross-TU
-  helpers whose internal header carries all matching prototypes.
-- `misra-c2012-8.9` (3 rows, 3 paths): `ra8_wdt.c` parse artefact, plus the
-  same function-mention counting artefact on two mdl host tests whose
-  objects are shared by a file-scope table or several functions.
+- `misra-c2012-8.4` (7 rows, 5 paths): the D-005 C23 declaration-parser gap
+  on the alphabet-soup implementations, four line-scoped POSIX cross-TU
+  helpers whose internal header carries all matching prototypes, and the
+  cbz2jof worker's `jof_produce()` call site (prototype in the included
+  `jof_produce.h`).
+- `misra-c2012-8.9` (5 rows, 4 paths): `ra8_wdt.c` parse artefact, the same
+  function-mention counting artefact on two mdl host tests whose objects are
+  shared by a file-scope table or several functions, and the cbz2jof worker
+  read-loop pointer operands.
 - `misra-c2012-9.2` (11 rows, 11 paths): D-003 C23 empty-initializer parser
   false positives in the newly audited or changed host/test translation units.
 - `misra-c2012-9.5` (1 row, 1 path): D-009 enum-named array extent parser
@@ -182,26 +185,38 @@ family or ghost bullet = gate failure); justifications live with the rows.
 - `misra-c2012-11.1` (1 row, 1 path): `tools/ra8_emulator` block.
 - `misra-c2012-11.2` (1 row, 1 path): `tools/ra8_emulator` block.
 - `misra-c2012-11.3` (1 row, 1 path): `tools/ra8_emulator` block.
-- `misra-c2012-11.5` (1 row, 1 path): `tools/ra8_emulator` block; distinct from D-010.
+- `misra-c2012-11.5` (3 rows, 2 paths): `tools/ra8_emulator` block, plus the
+  cbz2jof worker's allocator `void*` -> typed-arena casts; the allocator
+  boundary is distinct from D-010's accepted construct and from the emulator
+  block.
 - `misra-c2012-11.6` (2 rows, 2 paths): `tools/ra8_emulator` block, plus the
   caller-workspace alignment predicate in `ra8_io_vfs_namespace.c`, which has
   no conforming alternative and is already accepted at two sibling sites.
 - `misra-c2012-11.8` (1 row, 1 path): `tools/ra8_emulator` block.
 - `misra-c2012-12.1` (50 rows, 8 paths): validated D-004 review anchors (see D-004).
-- `misra-c2012-15.5` (2 rows, 2 paths): emulator block + `nx_ether_driver_c6.c` (D-001 idiom).
-- `misra-c2012-17.3` (6 rows, 5 paths): `nx_ether_driver_c6.c`, the
-  alphabet-soup CLI translation units and test runner, plus two line-scoped
-  POSIX `fstat`/`stat` calls, all D-002-class parse artefacts with visible
+- `misra-c2012-15.5` (4 rows, 4 paths): emulator block,
+  `nx_ether_driver_c6.c`, and the cbz2jof worker + entry (D-001 idiom
+  throughout; file-scoped like the c6 row, since the whole-file idiom is
+  accepted house style).
+- `misra-c2012-17.3` (8 rows, 6 paths): `nx_ether_driver_c6.c`, the
+  alphabet-soup CLI translation units and test runner, two line-scoped POSIX
+  `fstat`/`stat` calls, and the cbz2jof worker's `jof_probe_dims()` /
+  `jof_produce()` call sites, all D-002-class parse artefacts with visible
   declarations in included headers.
-- `misra-c2012-17.7` (1 row, 1 path): `tools/ra8_emulator` block.
-- `misra-c2012-18.4` (1 row, 1 path): `nx_ether_driver_c6.c` header assembly (Advisory).
-- `misra-c2012-21.3` (1 row, 1 path): `tools/ra8_emulator` block.
+- `misra-c2012-17.7` (2 rows, 2 paths): `tools/ra8_emulator` block + the
+  cbz2jof worker's intentionally-ignored read/close return values on the
+  error paths.
+- `misra-c2012-18.4` (4 rows, 2 paths): `nx_ether_driver_c6.c` header
+  assembly and the cbz2jof worker's byte-advance arithmetic (Advisory).
+- `misra-c2012-21.3` (11 rows, 2 paths): `tools/ra8_emulator` block + the
+  cbz2jof worker's designated-initializer and retry assignments.
 - `misra-c2012-21.6` (2 rows, 2 paths): `tools/ra8_emulator` block, plus the
   host-CLI `<stdio.h>` in `mdl_export_epub_meta.c`, the split half of a file
   whose own row is accepted in the baseline.
-- `misra-c2012-22.10` (2 rows, 2 paths): POSIX `read()`/`write()` set
-  `errno`, but cppcheck models only the C standard errno-setters, so the
-  mdl host tests' EINTR retry loops read as testing stale `errno`.
+- `misra-c2012-22.10` (4 rows, 3 paths): POSIX `read()`/`write()` set
+  `errno`, but cppcheck models only the C standard errno-setters, so the mdl
+  host tests' and the cbz2jof worker's EINTR retry loops read as testing
+  stale `errno`.
 - `misra-c2012-21.16` (1 row, 1 path): `char`-typed `memcmp` operand forced
   by `mdl_net_get_buf()`'s `char*` contract, compared only against zero.
 

@@ -17,11 +17,12 @@ A NOTE ON WHAT "FORMATTER" MEANS HERE
 -------------------------------------
 Two different things enforce layout in this tree, and both count:
 
-  * rewriters -- clang-format, shfmt, cmake-format, ruff format. Given a file
-    they emit the canonical form, and the gate runs them in --check mode.
+  * rewriters -- clang-format, gofmt, ruff format, shfmt, cmake-format,
+    just --fmt. Given a file they emit the canonical form, and the format
+    gate runs them in --check mode.
   * canonical-form checkers -- yamllint's style rules,
-    check_linker_scripts.py. Nothing rewrites a GNU ld script or a justfile in
-    this ecosystem, so these enforce the layout rules by rejecting deviations
+    check_linker_scripts.py. Nothing rewrites a GNU ld script in this
+    ecosystem, so these enforce the layout rules by rejecting deviations
     instead of by producing the fixed text.
 
 The distinction that matters for coverage is "does something reject this file
@@ -87,6 +88,7 @@ CLASSES: dict[str, ClassSpec] = {
     "dockerfile": _spec("dockerfile", CODE, "the devcontainer that pins every CI tool version"),
     "zsh": _spec("zsh", CODE, "zsh dialect; shellcheck refuses zsh, so not `shell`"),
     "python": _spec("python", CODE, "the gate suite and host tooling"),
+    "golang": _spec("golang", CODE, "host CLI and conversion policy"),
     "shell": _spec("shell", CODE, "gate drivers, HIL scripts, git hooks"),
     "cmake": _spec("cmake", CODE, "decides what compiles with which flags"),
     "make": _spec("make", CODE, "per-app and top-level build entry points"),
@@ -181,6 +183,7 @@ EXT_CLASS: dict[str, str] = {
     ".s": "asm",
     # Scripting
     ".py": "python",
+    ".go": "golang",
     ".sh": "shell",
     ".bash": "shell",
     # NOT "shell": shellcheck explicitly refuses zsh input, so calling a .zsh
@@ -277,7 +280,11 @@ NAME_CLASS: dict[str, str] = {
     ".shellcheckrc": "tool-config",
     ".pylintrc": "tool-config",
     ".globalrc": "tool-config",
+    ".cursorrules": "markdown",
     ".cppcheck-suppressions": "tool-config",
+    # Go module manifests: consumed and validated by the Go toolchain on use.
+    "go.mod": "tool-config",
+    "go.sum": "tool-config",
     # cppcheck-only C23 nullptr shim, force-included by the cppcheck gate; it is
     # never compiled into any TU, so clang-tidy cannot claim it as c-family and
     # it is classified for what it is -- configuration for a named tool.

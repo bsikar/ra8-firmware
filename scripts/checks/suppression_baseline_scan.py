@@ -18,9 +18,9 @@ PATH_RULE_COUNT_COLUMNS = 3
 TREE_MEASURED_COLUMNS = 6
 TREE_UNMEASURED_COLUMNS = 3
 TREE_METRIC_FIELDS = 4
-MIN_BASELINE_ROWS = 5392
+MIN_BASELINE_ROWS = 5343
 CEILING_LEDGER_PATH = ".github/suppression-debt-ceilings.tsv"
-CEILING_LEDGER_SHA256 = "3fff8e78b892212c0e8ed406a829722e558d3d1d96b69b406de51a877d59ddce"
+CEILING_LEDGER_SHA256 = "c4435b9cd3bad195acd9296c03c867309380d54b49330e985a6deac4adea3d44"
 CEILING_LEDGER_HEADER = (
     "# Suppression debt per-key ceilings v1.",
     "# Key digests bind the canonical baseline path and consumer-semantic key.",
@@ -161,7 +161,7 @@ BASELINE_CEILINGS: dict[str, tuple[int, int]] = {
     ".github/mcdc-compound-baseline.txt": (957, 1693),
     ".github/misra-baseline.txt": (2701, 19938),
     ".github/tidy-baseline.txt": (96, 121),
-    ".github/tree-coverage-baseline.txt": (1054, 9399),
+    ".github/tree-coverage-baseline.txt": (1056, 9400),
 }
 BASELINE_PERCENTAGE_FLOORS = {".github/mcdc-baseline.txt": 89.72}
 

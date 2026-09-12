@@ -125,11 +125,21 @@ class Provider:
 PROVIDERS: tuple[Provider, ...] = (
     Provider("clang-tidy", (LINT,), ("c-family",), "clang_tidy.sh", ("--list-files",), "bash"),
     Provider("clang-format", (FORMAT,), ("c-family",), "format_code.sh", ("--list-files",), "bash"),
-    Provider("ruff", (LINT, FORMAT), ("python",), "check_ruff.py", ("--list-files",)),
-    Provider("shellcheck+shfmt", (LINT, FORMAT), ("shell",), "check_shell.py", ("--list-files",)),
-    Provider("cmake-lint+format", (LINT, FORMAT), ("cmake",), "lint_targets.py", ("cmake",)),
+    Provider("ruff", (LINT,), ("python",), "check_ruff.py", ("--list-files",)),
+    Provider(
+        "ruff-format", (FORMAT,), ("python",), "format_tree.sh", ("--list-files", "python"), "bash"
+    ),
+    Provider("vet+staticcheck", (LINT,), ("golang",), "check_go.py", ("--list-files",)),
+    Provider("gofmt", (FORMAT,), ("golang",), "format_tree.sh", ("--list-files", "go"), "bash"),
+    Provider("shellcheck", (LINT,), ("shell",), "check_shell.py", ("--list-files",)),
+    Provider("shfmt", (FORMAT,), ("shell",), "format_tree.sh", ("--list-files", "shell"), "bash"),
+    Provider("cmake-lint", (LINT,), ("cmake",), "lint_targets.py", ("cmake",)),
+    Provider(
+        "cmake-format", (FORMAT,), ("cmake",), "format_tree.sh", ("--list-files", "cmake"), "bash"
+    ),
+    Provider("check_justfiles", (LINT,), ("just",), "check_justfiles.py", ("--list-files",)),
+    Provider("just-fmt", (FORMAT,), ("just",), "format_tree.sh", ("--list-files", "just"), "bash"),
     Provider("yamllint+actionlint", (LINT, FORMAT), ("yaml",), "lint_targets.py", ("yaml",)),
-    Provider("check_justfiles", (LINT, FORMAT), ("just",), "check_justfiles.py", ("--list-files",)),
     Provider(
         "check_linker_scripts",
         (LINT, FORMAT),
@@ -486,8 +496,11 @@ def _fixture() -> tuple[list[str], dict[str, set[str]]]:
         "clang-tidy": {"libs/ra8_core/src/ra8_err.c", "libs/ra8_core/inc/ra8_err.h"},
         "clang-format": {"libs/ra8_core/src/ra8_err.c", "libs/ra8_core/inc/ra8_err.h"},
         "ruff": {"scripts/checks/check_thing.py"},  # PATHREF-OK: synthetic
-        "shellcheck+shfmt": {"scripts/git/pre-commit"},
-        "cmake-lint+format": {"CMakeLists.txt"},
+        "ruff-format": {"scripts/checks/check_thing.py"},  # PATHREF-OK: synthetic
+        "shellcheck": {"scripts/git/pre-commit"},
+        "shfmt": {"scripts/git/pre-commit"},
+        "cmake-lint": {"CMakeLists.txt"},
+        "cmake-format": {"CMakeLists.txt"},
         "yamllint+actionlint": {".github/workflows/firmware.yml"},
         "check_linker_scripts": {"examples/app/linker_script.ld"},
         "check_asm": {"examples/app/boot.S"},
@@ -553,9 +566,10 @@ def _assert_fires(files: list[str], claimed: dict[str, set[str]], failures: list
 
     missing_py = {k: set(v) for k, v in claimed.items()}
     missing_py["ruff"] = set()
+    missing_py["ruff-format"] = set()
     expect(
         len(evaluate(files, missing_py).uncovered) == BOTH_ROLES,
-        "a provider that returns nothing fires for both its roles",
+        "losing python lint and format ownership fires both roles",
         failures,
     )
     missing_template = {k: set(v) for k, v in claimed.items()}
@@ -567,6 +581,7 @@ def _assert_fires(files: list[str], claimed: dict[str, set[str]], failures: list
     )
     leaked_census = {k: set(v) for k, v in claimed.items()}
     leaked_census["ruff"] = set()
+    leaked_census["ruff-format"] = set()
     leaked_census["fleet-ansible-template"].add(
         "scripts/checks/check_thing.py"  # PATHREF-OK: synthetic lint-coverage fixture
     )

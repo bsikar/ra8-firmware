@@ -49,6 +49,13 @@ gate_unit_tests() (
   bash tests/run_tests.sh
 )
 
+# --- test-go --------------------------------------------------------------
+gate_test_go() (
+  set -e
+  require_cmd go "the test-go gate needs the pinned Go toolchain (.devcontainer/Dockerfile GO_VERSION)"
+  python3 scripts/checks/check_go.py --test --coverage --require
+)
+
 # --- ubsan ----------------------------------------------------------------
 # The whole host suite rebuilt under -fsanitize=undefined in its own tree with
 # UBSAN_OPTIONS=halt_on_error=1, so any undefined behaviour is a hard test

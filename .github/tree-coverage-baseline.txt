@@ -13,7 +13,7 @@
 #            every run; gaining measurement is one-way.
 #
 # Columns are TAB-separated. Rows are sorted by path.
-# rows: 1054  measured: 520  unmeasured: 534
+# rows: 1056  measured: 520  unmeasured: 536
 
 apps/board/stand_alone/ereader/src/main.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/ns_main.c	UNMEASURED	firmware-composition
@@ -24,6 +24,8 @@ apps/board/stand_alone/ereader/src/vector_table.c	UNMEASURED	firmware-compositio
 apps/host/alphabet_soup/src/alphabet_soup.c	MEASURED	180	182	140	170
 apps/host/alphabet_soup/src/alphabet_soup_cli.c	MEASURED	62	63	35	38
 apps/host/alphabet_soup/src/main.c	MEASURED	21	22	7	8
+apps/host/cbz2jof/src/jof_worker.c	UNMEASURED	hosted-no-coverage-build
+apps/host/cbz2jof/src/jof_worker_main.c	UNMEASURED	hosted-no-coverage-build
 apps/host/mdl/src/main.c	MEASURED	224	269	145	210
 apps/host/mdl/src/mdl_cli.c	MEASURED	294	305	197	220
 apps/host/mdl/src/mdl_cli_nums.c	MEASURED	105	123	59	86
@@ -574,7 +576,7 @@ libs/ra8_box/src/ra8_box.c	MEASURED	136	143	65	78
 libs/ra8_c6link/src/ra8_c6link.c	MEASURED	175	181	115	124
 libs/ra8_c6link/src/ra8_c6link_arena.c	MEASURED	34	34	22	22
 libs/ra8_c6link/src/ra8_c6link_frame.c	MEASURED	65	65	26	26
-libs/ra8_c6link/src/ra8_c6link_mdl.c	MEASURED	243	255	226	253
+libs/ra8_c6link/src/ra8_c6link_mdl.c	MEASURED	250	262	228	255
 libs/ra8_c6link/src/ra8_c6link_mdl_service.c	MEASURED	253	264	170	182
 libs/ra8_c6link/src/ra8_c6link_mdl_transfer.c	MEASURED	102	105	95	106
 libs/ra8_c6link/src/ra8_c6link_pump.c	MEASURED	56	56	28	28
@@ -624,7 +626,7 @@ libs/ra8_fs/src/ra8_fs_fat_attr.c	MEASURED	67	69	31	34
 libs/ra8_fs/src/ra8_fs_fat_check.c	MEASURED	274	281	153	162
 libs/ra8_fs/src/ra8_fs_fat_dir.c	MEASURED	265	283	138	164
 libs/ra8_fs/src/ra8_fs_fat_dirmk.c	MEASURED	154	155	79	80
-libs/ra8_fs/src/ra8_fs_fat_exfat_check.c	MEASURED	262	269	129	138
+libs/ra8_fs/src/ra8_fs_fat_exfat_check.c	MEASURED	261	268	129	138
 libs/ra8_fs/src/ra8_fs_fat_exfat_dir.c	MEASURED	250	258	114	122
 libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c	MEASURED	241	260	78	100
 libs/ra8_fs/src/ra8_fs_fat_exfat_label.c	MEASURED	62	64	26	28
@@ -667,7 +669,7 @@ libs/ra8_hal/src/ra8_bkup_security.c	MEASURED	32	33	19	20
 libs/ra8_hal/src/ra8_bkup_tamper.c	MEASURED	92	92	51	52
 libs/ra8_hal/src/ra8_ble.c	MEASURED	152	166	83	106
 libs/ra8_hal/src/ra8_bscan.c	MEASURED	42	42	16	16
-libs/ra8_hal/src/ra8_cac.c	MEASURED	72	72	14	14
+libs/ra8_hal/src/ra8_cac.c	MEASURED	72	72	16	16
 libs/ra8_hal/src/ra8_cache.c	MEASURED	94	94	14	14
 libs/ra8_hal/src/ra8_canfd.c	MEASURED	194	196	71	76
 libs/ra8_hal/src/ra8_canfd_afl.c	MEASURED	63	63	36	36
@@ -719,10 +721,10 @@ libs/ra8_hal/src/ra8_glcdc_gamma.c	MEASURED	36	36	16	18
 libs/ra8_hal/src/ra8_glcdc_layer.c	MEASURED	111	112	28	30
 libs/ra8_hal/src/ra8_gpt.c	MEASURED	341	345	137	150
 libs/ra8_hal/src/ra8_i2c.c	MEASURED	175	187	95	108
-libs/ra8_hal/src/ra8_i2c_config.c	MEASURED	110	112	42	46
+libs/ra8_hal/src/ra8_i2c_config.c	MEASURED	110	112	44	48
 libs/ra8_hal/src/ra8_i2c_peripheral.c	MEASURED	182	184	103	113
 libs/ra8_hal/src/ra8_i3c.c	MEASURED	407	407	185	186
-libs/ra8_hal/src/ra8_i3c_i2c.c	MEASURED	218	225	109	120
+libs/ra8_hal/src/ra8_i3c_i2c.c	MEASURED	218	225	111	122
 libs/ra8_hal/src/ra8_i3c_i2c_control.c	MEASURED	76	78	31	32
 libs/ra8_hal/src/ra8_i3c_i2c_peripheral.c	MEASURED	70	70	49	50
 libs/ra8_hal/src/ra8_icu.c	MEASURED	46	48	14	14
@@ -736,7 +738,7 @@ libs/ra8_hal/src/ra8_lpm_graphics.c	MEASURED	38	38	16	16
 libs/ra8_hal/src/ra8_lvd.c	MEASURED	179	180	74	79
 libs/ra8_hal/src/ra8_lvd_events.c	MEASURED	88	88	32	34
 libs/ra8_hal/src/ra8_lvd_runtime.c	MEASURED	119	119	51	52
-libs/ra8_hal/src/ra8_mipi_csi.c	MEASURED	290	290	108	116
+libs/ra8_hal/src/ra8_mipi_csi.c	MEASURED	290	290	112	120
 libs/ra8_hal/src/ra8_mipi_csi_irq.c	MEASURED	160	169	38	48
 libs/ra8_hal/src/ra8_mipi_dsi.c	MEASURED	146	150	53	62
 libs/ra8_hal/src/ra8_mipi_dsi_cmd.c	MEASURED	126	126	73	74
@@ -779,13 +781,13 @@ libs/ra8_hal/src/ra8_spi_b_dma.c	MEASURED	62	63	18	20
 libs/ra8_hal/src/ra8_spi_b_target.c	MEASURED	64	65	17	18
 libs/ra8_hal/src/ra8_sram.c	MEASURED	235	237	104	108
 libs/ra8_hal/src/ra8_sram_security.c	MEASURED	63	64	27	30
-libs/ra8_hal/src/ra8_ssie.c	MEASURED	331	337	153	159
+libs/ra8_hal/src/ra8_ssie.c	MEASURED	331	337	155	161
 libs/ra8_hal/src/ra8_ssie_stream.c	MEASURED	100	108	61	70
 libs/ra8_hal/src/ra8_touch.c	MEASURED	151	151	68	68
 libs/ra8_hal/src/ra8_tsn.c	MEASURED	89	90	35	36
 libs/ra8_hal/src/ra8_ulpt.c	MEASURED	71	73	25	32
 libs/ra8_hal/src/ra8_usb.c	MEASURED	166	167	54	58
-libs/ra8_hal/src/ra8_usb_cdc.c	MEASURED	120	124	66	68
+libs/ra8_hal/src/ra8_usb_cdc.c	MEASURED	123	127	66	68
 libs/ra8_hal/src/ra8_usb_composite.c	MEASURED	175	181	88	93
 libs/ra8_hal/src/ra8_usb_device.c	MEASURED	159	159	80	80
 libs/ra8_hal/src/ra8_usb_haud.c	MEASURED	198	214	71	83
@@ -800,7 +802,7 @@ libs/ra8_hal/src/ra8_usb_host_ctrl.c	MEASURED	229	235	87	98
 libs/ra8_hal/src/ra8_usb_irq.c	MEASURED	117	123	37	40
 libs/ra8_hal/src/ra8_usb_paud.c	MEASURED	125	127	93	98
 libs/ra8_hal/src/ra8_usb_phid.c	MEASURED	128	136	84	91
-libs/ra8_hal/src/ra8_usb_phy.c	MEASURED	82	85	11	14
+libs/ra8_hal/src/ra8_usb_phy.c	MEASURED	83	85	11	14
 libs/ra8_hal/src/ra8_usb_pmsc.c	MEASURED	170	170	76	76
 libs/ra8_hal/src/ra8_usb_pmsc_scsi.c	MEASURED	105	105	34	34
 libs/ra8_hal/src/ra8_usb_pprn.c	MEASURED	110	110	65	66

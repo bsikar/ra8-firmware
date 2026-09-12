@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Linter and format checker for repository justfiles."""
+"""Linter for repository justfiles.
+
+Formatting (``just --fmt``) is enforced by the format gate (``format_tree.sh``),
+never here.
+"""
 
 from __future__ import annotations
 
@@ -134,7 +138,7 @@ def find_justfiles() -> list[Path]:
 
 
 def check_file(path: Path) -> list[str]:
-    """Check a justfile for syntax and formatting."""
+    """Check a justfile for structural defects (nesting, driver calls, contracts)."""
     findings: list[str] = []
     if not path.is_file():
         return [f"{path}: file not found"]
@@ -148,22 +152,6 @@ def check_file(path: Path) -> list[str]:
         findings.extend(check_firmware_build_default(text))
     if rel == "just/ci.just":
         findings.extend(check_ci_native_fast_contract(text, rel))
-
-    just_bin = shutil.which("just")
-    if not just_bin:
-        return findings
-
-    proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
-        [just_bin, "--unstable", "--fmt", "--check", "--justfile", str(path)],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if proc.returncode != 0:
-        findings.append(
-            f"{rel}: formatting check failed (run `just --fmt --justfile {rel}` to fix)"
-        )
     return findings
 
 
@@ -281,7 +269,7 @@ def main() -> int:
     """Check justfiles in the repository."""
     parser = argparse.ArgumentParser(description="Check justfiles in the repository")
     parser.add_argument("--list-files", action="store_true", help="List all scanned justfiles")
-    parser.add_argument("--check", action="store_true", help="Run formatting check on justfiles")
+    parser.add_argument("--check", action="store_true", help="Check justfiles (structural)")
     parser.add_argument("--selftest", action="store_true", help="Run internal selftest")
     parser.add_argument("paths", nargs="*", help="Optional specific paths to check")
     args = parser.parse_args()

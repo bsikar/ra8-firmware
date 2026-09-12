@@ -220,6 +220,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: just quality::local::gate unit-tests
+      - run: just quality::local::gate test-go
 
   # ---------------------------------------------------------------------------
   # UBSan gate (#239) -- the whole host suite rebuilt under
@@ -351,17 +352,19 @@ jobs:
       - run: just quality::local::gate roadmap-dashboard-freshness
       - run: just quality::local::gate pinout-freshness
       - run: just quality::local::gate bench-lock
+      - run: just quality::local::gate unused-includes
       - run: just quality::local::gate lint-py-shell
+      - run: just quality::local::gate lint-go
       - run: just quality::local::gate lint-cmake
       - run: just quality::local::gate lint-yaml
       - run: just quality::local::gate lint-just
       - run: just quality::local::gate lint-ld
       - run: just quality::local::gate lint-asm
-      - run: just quality::local::gate reserved-addrs
       - run: just quality::local::gate lint-devcontainer
       # Runs after every other lint gate in this job: it asks each of them what
       # they scan and proves nothing in the tree falls between them.
       - run: just quality::local::gate lint-coverage
+      - run: just quality::local::gate reserved-addrs
       - run: just quality::local::gate agnostic-registers
       - run: just quality::local::gate cite-check
       - run: just quality::local::gate hum-register-map

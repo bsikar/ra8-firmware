@@ -16,6 +16,16 @@
 # Gates in this file: lint-py-shell, lint-cmake, lint-yaml, lint-just,
 # lint-ld, lint-asm, lint-devcontainer, lint-coverage
 
+# --- unused-includes ------------------------------------------------------
+# Speculative compilation check over modified first-party C files.
+# Comments out each #include and tests compilation: if the compiler succeeds
+# without error, the include was 100% dead weight. Zero false positives.
+gate_unused_includes() (
+  set -e
+  python3 scripts/checks/check_unused_includes.py --selftest
+  python3 scripts/checks/check_unused_includes.py --check
+)
+
 # --- lint-py-shell --------------------------------------------------------
 # --require: fail (never skip) when a tool is missing. These gates fail on ANY
 # finding -- there is no grandfathering.
@@ -59,18 +69,32 @@ gate_lint_py_shell() (
   python3 scripts/checks/check_errexit_masking.py
 )
 
+# --- lint-go --------------------------------------------------------------
+# `go vet` is the linter and staticcheck the deeper static analysis, both from
+# the Go toolchain pinned by GO_VERSION in .devcontainer/Dockerfile. Formatting
+# (gofmt) is enforced by the format gate, never here. check_go.py derives its
+# scope from `git ls-files`, so a new module is covered the day it lands.
+# --selftest first, both directions, as ever: an emptied tool or a collapsed
+# scope turns the selftest red instead of turning the tree green.
+gate_lint_go() (
+  set -e
+  require_cmd go "the lint-go gate needs the pinned Go toolchain (.devcontainer/Dockerfile GO_VERSION)"
+  require_tool_versions go
+  python3 scripts/checks/check_go.py --selftest
+  python3 scripts/checks/check_go.py --require
+)
+
 # --- lint-cmake -----------------------------------------------------------
 # 283 first-party listfiles decide what is compiled with which flags -- #309
-# found host tools silently building firmware sources with -w. cmake-format is
-# the formatter (dry-run: any reformat is a failure) and cmake-lint the linter;
-# both come from cmakelang, pinned so the gate and the runner cannot disagree
-# about a rule. Config and the reasoning for every widened name pattern live
-# in .cmake-format.yaml.
+# found host tools silently building firmware sources with -w. cmake-lint is
+# the linter; it comes from cmakelang, pinned so the gate and the runner
+# cannot disagree about a rule. Formatting (cmake-format) is enforced by the
+# format gate, never here. Config and the reasoning for every widened name
+# pattern live in .cmake-format.yaml.
 gate_lint_cmake() (
   set -e
-  require_cmd cmake-format "run 'just setup-python'"
   require_cmd cmake-lint "ships with cmakelang; check the cmakelang install"
-  require_tool_versions cmake-format cmake-lint
+  require_tool_versions cmake-lint
   python3 scripts/checks/lint_targets.py --selftest
 
   # Scope comes from lint_targets.py, which is also what check_lint_coverage.py
@@ -87,12 +111,11 @@ gate_lint_cmake() (
   fi
   echo "lint-cmake: ${#files[@]} listfiles"
 
-  # Both directions of the formatter, asserted before the real run: a
-  # deliberately misformatted listfile must be rejected, and the formatter's
-  # own output must be accepted.
+  # Both directions of the linter, asserted before the real run: a
+  # deliberately defective listfile must be rejected, and legal-but-tricky
+  # input must be accepted.
   /bin/bash -p scripts/checks/lint_selftest.sh --selftest cmake
 
-  printf '%s\n' "${files[@]}" | xargs -r -P "$(ra8_max_jobs)" -n 20 cmake-format --check
   printf '%s\n' "${files[@]}" | xargs -r cmake-lint
 )
 

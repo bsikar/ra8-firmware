@@ -49,6 +49,7 @@ EXPECTED_GATES = (
     "doc-attachment",
     "toolchain-parity",
     "lint-py-shell",
+    "lint-go",
     "lint-just",
     "cite-check",
     "hil-eil-parity",

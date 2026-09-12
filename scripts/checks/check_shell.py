@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Gate: shellcheck + shfmt for first-party shell scripts.
+"""Gate: shellcheck for first-party shell scripts.
 
 ShellCheck (correctness, at ``--severity=style`` plus the opt-in checks listed
-in :data:`SHELLCHECK_ENABLE`) and shfmt (formatting, 2-space case-indented) are
-the shell equivalents of ruff.  This wrapper fails on any finding -- no
-grandfathering.  Both tools must be on PATH (or named via ``SHELLCHECK`` /
-``SHFMT``); without them the gate skips locally unless ``--require`` is passed,
-which CI uses to fail on a missing tool.
+in :data:`SHELLCHECK_ENABLE`) is the shell equivalent of ruff. Formatting
+(shfmt, 2-space case-indented) is enforced by the format gate
+(``format_tree.sh``), never here. This wrapper fails on any finding -- no
+grandfathering. ShellCheck must be on PATH (or named via ``SHELLCHECK``);
+without it the gate skips locally unless ``--require`` is passed, which CI
+uses to fail on a missing tool.
 
 ``style`` is the tightest severity ShellCheck offers, so nothing is filtered by
 level.  The opt-in checks are the ones that are both *fixable in place* and map
@@ -47,8 +48,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # relative path -> {SC code: count}
 Findings = dict[str, dict[str, int]]
 
-# shfmt style: 2-space indent, indent switch-case branches (matches the C side).
-SHFMT_ARGS = ("-i", "2", "-ci")
 
 # `style` is ShellCheck's tightest severity -- nothing is filtered out by level.
 SHELLCHECK_SEVERITY = "style"
@@ -195,7 +194,7 @@ def first_party_scripts() -> list[str]:
     -- pre-commit, pre-push, commit-msg, post-merge, post-commit,
     post-checkout -- is an extensionless bash script, so a suffix-only scope
     left the hooks that enforce this entire tree as the only shell in it that
-    nothing shellchecked or shfmt'd. That is the #296/#332/#358/#359/#360
+    nothing shellchecked. That is the #296/#332/#358/#359/#360
     defect class exactly: a scope narrower than the thing it claims to cover,
     reporting clean.
     """
@@ -230,17 +229,6 @@ def _run_shellcheck(tool: str, files: list[str], cwd: Path | None = None) -> Fin
         findings.setdefault(rel, {})
         findings[rel][code] = findings[rel].get(code, 0) + 1
     return findings
-
-
-def _run_shfmt(tool: str, files: list[str], cwd: Path | None = None) -> list[str]:
-    proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
-        [tool, "-l", *SHFMT_ARGS, *files],
-        cwd=cwd or REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return sorted(line.strip() for line in proc.stdout.splitlines() if line.strip())
 
 
 # --------------------------------------------------------------------------
@@ -337,22 +325,12 @@ SELFTEST_CASES: tuple[tuple[str, str, str, bool], ...] = (
     ),
 )
 
-# A file shfmt must reformat: 4-space indent where SHFMT_ARGS demands 2.
-SELFTEST_SHFMT_BAD = (
-    "fire_shfmt.sh",
-    '#!/usr/bin/env bash\nif true; then\n    echo "four-space indent"\nfi\n',
-)
-
 
 def selftest(tmp: Path) -> int:
     """Assert the gate fires on every enforced class and stays quiet otherwise."""
     sc_tool = _find("SHELLCHECK", "shellcheck")
-    fmt_tool = _find("SHFMT", "shfmt")
-    if not sc_tool or not fmt_tool:
-        missing = " and ".join(
-            n for n, t in (("shellcheck", sc_tool), ("shfmt", fmt_tool)) if not t
-        )
-        sys.stderr.write(f"check_shell.py --selftest: {missing} not found\n")
+    if not sc_tool:
+        sys.stderr.write("check_shell.py --selftest: shellcheck not found\n")
         return 2
 
     failures: list[str] = []
@@ -371,14 +349,8 @@ def selftest(tmp: Path) -> int:
             codes = _run_shellcheck(sc_tool, [fname], cwd=tmp).get(fname, {})
             failures.append(f"  shellcheck {verb} (unexpected): {label} {codes or ''}")
 
-    fmt_name, fmt_body = SELFTEST_SHFMT_BAD
-    (tmp / fmt_name).write_text(fmt_body)
-    if not _run_shfmt(fmt_tool, [fmt_name], cwd=tmp):
-        failures.append(f"  shfmt did not flag misindented file: {fmt_name}")
-    quiet_name = "quiet_shfmt.sh"
-    (tmp / quiet_name).write_text('#!/usr/bin/env bash\nif true; then\n  echo "ok"\nfi\n')
-    if _run_shfmt(fmt_tool, [quiet_name], cwd=tmp):
-        failures.append(f"  shfmt flagged a correctly formatted file: {quiet_name}")
+    fires = sum(1 for c in SELFTEST_CASES if c[3])
+    quiets = sum(1 for c in SELFTEST_CASES if not c[3])
 
     if failures:
         sys.stderr.write("check_shell.py --selftest: FAILED\n\n")
@@ -394,40 +366,36 @@ def selftest(tmp: Path) -> int:
     return 0
 
 
-def _report(checks: Findings, fmt: list[str]) -> None:
+def _report(checks: Findings) -> None:
     if checks:
         sys.stderr.write("check_shell.py: shellcheck finding(s):\n")
         for relfile in sorted(checks):
             for code, count in sorted(checks[relfile].items()):
                 sys.stderr.write(f"  {relfile}: {code} x{count}\n")
-    if fmt:
-        joined = " ".join(SHFMT_ARGS)
-        sys.stderr.write(f"check_shell.py: file(s) need `shfmt -w {joined}`:\n")
-        for relfile in fmt:
-            sys.stderr.write(f"  {relfile}\n")
     sys.stderr.write(
-        "\nFix the finding or reformat. A `# shellcheck disable=SCxxxx` needs an\n"
+        "\nFix the finding. A `# shellcheck disable=SCxxxx` needs an\n"
         "inline reason on the same line saying why the finding does not apply.\n"
     )
 
 
 def main(argv: list[str]) -> int:
-    """Run shellcheck and shfmt over every first-party worktree shell script.
+    """Run shellcheck over every first-party worktree shell script.
 
-    Both tools are REQUIRED, not optional: a missing one fails the gate rather
+    ShellCheck is REQUIRED, not optional: a missing tool fails the gate rather
     than reducing its scope, because a checker that quietly stops checking is
-    indistinguishable from a clean tree.
+    indistinguishable from a clean tree. Formatting (shfmt) is enforced by the
+    format gate, never here.
 
     ``--list-files`` reports the covered scope for check_lint_coverage.py and
-    is deliberately independent of whether either tool is installed -- the
-    question is what this gate covers, and a missing binary must not shrink
-    the answer to nothing.
+    the format gate. It is deliberately independent of whether shellcheck is
+    installed -- the question is what this gate covers, and a missing binary
+    must not shrink the answer to nothing.
 
     SCRIPT_FLOOR replaces the old ``no shell scripts to scan`` branch, which
     exited 0 on an empty enumeration -- a result indistinguishable from a clean
     tree and produced by having read nothing.
 
-    Returns 0 when clean, 1 on findings or a formatting difference, 2 when the
+    Returns 0 when clean, 1 on findings, 2 when the
     scope collapsed below SCRIPT_FLOOR, and 1 on a missing tool under
     ``--require``.
     """
@@ -435,21 +403,17 @@ def main(argv: list[str]) -> int:
         with tempfile.TemporaryDirectory() as td:
             return selftest(Path(td))
 
-    # Scope introspection for check_lint_coverage.py -- see the note in
-    # check_ruff.py's main(). Deliberately independent of whether shellcheck
-    # and shfmt are installed: the question is what this gate COVERS, and a
+    # Scope introspection for check_lint_coverage.py and the format gate -- see
+    # the note in check_ruff.py's main(). Deliberately independent of whether
+    # shellcheck is installed: the question is what this gate COVERS, and a
     # missing tool must not silently shrink the answer to nothing.
     if "--list-files" in argv[1:]:
         print("\n".join(first_party_scripts()))
         return 0
 
     sc_tool = _find("SHELLCHECK", "shellcheck")
-    fmt_tool = _find("SHFMT", "shfmt")
-    if not sc_tool or not fmt_tool:
-        missing = " and ".join(
-            n for n, t in (("shellcheck", sc_tool), ("shfmt", fmt_tool)) if not t
-        )
-        msg = f"check_shell.py: {missing} not found"
+    if not sc_tool:
+        msg = "check_shell.py: shellcheck not found"
         if "--require" in argv[1:]:
             sys.stderr.write(msg + " (--require set)\n")
             sys.exit(1)
@@ -465,14 +429,13 @@ def main(argv: list[str]) -> int:
         )
         return 2
     checks = _run_shellcheck(sc_tool, files)
-    fmt = _run_shfmt(fmt_tool, files)
-    if not checks and not fmt:
+    if not checks:
         print(
             f"check_shell.py: clean ({len(files)} file(s), "
             f"severity={SHELLCHECK_SEVERITY} + {len(SHELLCHECK_ENABLE)} opt-in check(s))."
         )
         return 0
-    _report(checks, fmt)
+    _report(checks)
     return 1
 
 
