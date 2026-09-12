@@ -25,7 +25,7 @@ from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Never
+from typing import NoReturn
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 
@@ -142,7 +142,7 @@ class CheckError(RuntimeError):
     """The checker could not establish a trustworthy result."""
 
 
-def _fail(message: str) -> Never:
+def _fail(message: str) -> NoReturn:
     raise CheckError(message)
 
 
@@ -245,7 +245,7 @@ def _path_refs(
     refs: list[PathRef] = []
     boundaries = (0, *(match.end() for match in HTML_PATH_SEPARATOR_RE.finditer(body)))
     endings = (*(match.start() for match in HTML_PATH_SEPARATOR_RE.finditer(body)), len(body))
-    for start, end in zip(boundaries, endings, strict=True):
+    for start, end in zip(boundaries, endings):
         span = body[start:end]
         for match in PATH_RE.finditer(span):
             token = match.group(1).rstrip(TRAILING_PATH_JUNK)

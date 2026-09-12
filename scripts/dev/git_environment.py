@@ -501,7 +501,7 @@ def _prove_hostile_process_attacks_execute(
         check=True,
     )
     subprocess.run(
-        ["/usr/bin/python3", "-c", "pass"],
+        [sys.executable, "-c", "pass"],
         env=environment,
         check=True,
     )
@@ -567,7 +567,7 @@ def _python_selftest(
     repo_root: Path, label: str, relative: str, *args: str
 ) -> tuple[str, tuple[str, ...]]:
     """Build one isolated, absolute-interpreter selftest command."""
-    return label, ("/usr/bin/python3", "-I", str(repo_root / relative), *args)
+    return label, (sys.executable, "-I", str(repo_root / relative), *args)
 
 
 def _registered_fixture_commands(repo_root: Path) -> tuple[tuple[str, tuple[str, ...]], ...]:
