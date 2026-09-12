@@ -37,9 +37,39 @@ This exceeds the 2.4 ms power-on minimum in Datasheet Table 2.52, p.118.
 Do not use a shorter operating-state minimum as the universal service pulse.
 Fixture contact bounce is not a substitute for a controlled programmer reset pulse.
 
+### RST-002: current MCU reset migration
+
+Native U2 has been replaced with TPS389001DSET and wired with R67
+ERA-6ARW333V 33k above SENSE, R74 RG1608N-203-W-T1 20k below SENSE,
+R75 RC0603FR-0710KL 10k MR pull-up and C95 C1608C0G1H103J080AA
+10n CT capacitor. The final targeted netlist check confirms the six U2
+pin partitions; native/CLI ERC remains 139 errors and two warnings, with
+no U2 violations or changed rules/exclusions. BOM and full PDF are refreshed;
+changed MCU/radio pages were visually inspected. This is not whole-circuit
+validation, a completed reset system or hardware qualification.
+
+The current pin contract is U2.1 SENSE at R67/R74, U2.2 GND, U2.3
+SW_RESET_N/TP1 with R75 to main, U2.4 +3V3_MCU with retained C44,
+U2.5 C95 to GND and U2.6 MCU_RESET_N with retained R1. MR and RESET
+remain separate. The old direct SENSE connection and CT no-connect are
+superseded. U7.3 remains a load on MCU_RESET_N through the hierarchy.
+
+[RST-002](reset_coordination_tps3890.md) owns the exact primary sources,
+procurement and executable calculations: conditional rising threshold
+3.019118825..3.113278988 V, main release margin 38.540692 mV and
+8.148276 ms minimum CT charge time versus the 2.4 ms RES requirement.
+The radio R12/R13 divider also now uses 33k/20k, but current U4 TPS22917
+fails its prior 87.5 mV loss screen by 48.959308 mV of release headroom.
+Radio DC closure remains unresolved. No fast-collapse, memory-quiescence
+or VBATT sequencing guarantee follows from this MCU migration.
+
 ### RST-001: external supervisor implementation basis
 
-Implementation in progress: U2 is TI TPS3808G33DBVR. VDD and SENSE are
+Historical checkpoint, superseded for current U2 by RST-002 above. All
+G33 pin mappings, sourcing, fixed-threshold and open-CT calculations in
+this subsection describe the former circuit, not the current native U2.
+
+At that checkpoint U2 was TI TPS3808G33DBVR. VDD and SENSE were
 connected to +3V3_MCU, GND to ground, and CT has an intentional no-connect
 marker. RESET connects to MCU_RESET_N and TP1 connects to MR through
 SW_RESET_N. C44 is the local 100 nF VDD bypass. These connections have
@@ -76,7 +106,7 @@ maximum in the table, so this part alone does not prove safe behavior during
 an arbitrarily fast brownout or guarantee the USB analog rail never falls
 below 3 V. USB-004's bead-drop screen is not a substitute for that analysis.
 
-Implemented wiring: pin 6 VDD and pin 5 SENSE to +3V3_MCU, pin 2 GND,
+Historical wiring: pin 6 VDD and pin 5 SENSE to +3V3_MCU, pin 2 GND,
 pin 1 open-drain RESET to MCU_RESET_N with existing R1 10 kohm pull-up,
 pin 4 CT intentionally open. TP1 connects to pin 3 MR so fixture release also
 receives the supervisor delay; the debugger connects directly to MCU_RESET_N.
@@ -143,7 +173,7 @@ vil_limit = F('.2')*low
 low_margin = vil_limit-F('.4')
 if (vil_limit, low_margin) != (F('.60479'), F('.20479')):
     raise ValueError('RST-001 static low-level screening mismatch')
-print('RST-001 PASS: threshold, delay, pull-up and static low-level arithmetic.')
+print('Historical RST-001 PASS: threshold, delay, pull-up and static low-level arithmetic.')
 print('Hardware, high-level leakage, power-tree and transient checks remain open.')
 PY
 ```

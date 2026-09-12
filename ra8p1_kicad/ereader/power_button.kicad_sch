@@ -2501,7 +2501,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "SYS-007 / PWR-004: SOURCE SUPERVISION / U11, R32-R34, C67-C71\nVtrip=Vref*(1+R32/R33)+Isense*R32.\nNominal=0.405*(1+732k/100k)=3.369600V.\nVref +/-2%, Isense +/-25nA; each R +/-0.1%, 25ppm/C, 100C.\nCorner trip=3.263705831..3.476597632V.\nC68: tau=(732k||100k)*1n=87.980769us (nominal).\nC69-C71: 3x100n C0G; initial/temp=284.145..316.827nF.\nCT delay=300/175+0.0005=1.714786s nominal.\n0.6*(284.145/175+0.0005)=0.974511s MODEL, not guarantee.\nRequire qualified reset hold >=0.90s >650ms KILL blank +10ms.\nR34=110k: ENhigh>=2.7-3.8uA*110k*1.01^2=2.273598V.\nPOR sink=(1.3-0.2)/(110k*0.99^2)+3.8uA=14.003041uA.\nMAIN_PWR_EN drives raw U16 buffer, not LTC3119 RUN directly.\nHeld U12 drives KILL/discharge/Q3 RUN clamp; USB-clear still needed.\nRUN network and correlated raw/held threshold screen: PWR-004.\nSources/Python: ../design/system_power_design.md SYS-007;\n../design/main_regulator_ltc3119.md PWR-004. Rail adoption blocked by #846."
+	(text "SYS-007 / PWR-006: SOURCE SUPERVISION / U11, R32-R34, C67-C71\nVtrip=Vref*(1+R32/R33)+Isense*R32.\nNominal=0.405*(1+732k/100k)=3.369600V.\nVref +/-2%, Isense +/-25nA; each R +/-0.1%, 25ppm/C, 100C.\nCorner trip=3.263705831..3.476597632V.\nC68: tau=(732k||100k)*1n=87.980769us (nominal).\nC69-C71: 3x100n C0G; initial/temp=284.145..316.827nF.\nCT delay=300/175+0.0005=1.714786s nominal.\n0.6*(284.145/175+0.0005)=0.974511s MODEL, not guarantee.\nRequire qualified reset hold >=0.90s >650ms KILL blank +10ms.\nR34=110k: ENhigh>=2.7-3.8uA*110k*1.01^2=2.273598V.\nPOR sink=(1.3-0.2)/(110k*0.99^2)+3.8uA=14.003041uA.\nMAIN_PWR_EN drives raw U16 buffer; held Q3 clamps TPS63806 EN.\nHeld U12 also drives KILL/discharge; USB-clear still needed.\nCurrent EN network and rail calculations: PWR-006.\nSources/Python: design/system_power_design.md SYS-007;\ndesign/main_regulator_tps63806.md PWR-006. Reset coordination: #846."
 		(exclude_from_sim no)
 		(at 228.346 172.466 0)
 		(effects
@@ -2509,7 +2509,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_ltc3119.md")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_tps63806.md")
 		)
 		(uuid "7a202d46-44e4-4f45-ab78-e76c406a4359")
 	)
@@ -2548,7 +2548,7 @@
 		)
 		(uuid "917f2fb0-bc68-4027-a457-2f08586aca5f")
 	)
-	(text "INCOMPLETE POWER CONTROL - NOT FOR FABRICATION\nPB, INT, KILL, held supply and source supervisor are connected.\nU12/Q1/Q2 provide fault KILL clamp and main-rail discharge.\nMAIN_PWR_EN feeds raw U16; held Q3 separately clamps U13 RUN.\nSYS_AON source and USB permission-latch clear remain to be built.\nPower-control operation is not yet complete or qualified.\nCurrent converter/control draft: ../design/main_regulator_ltc3119.md PWR-004.\nRail adoption is blocked by SDRAM logic-high conflict #846."
+	(text "INCOMPLETE POWER CONTROL - NOT FOR FABRICATION\nPB, INT, KILL, held supply and source supervisor are connected.\nU12/Q1/Q2 provide fault KILL clamp and main-rail discharge.\nMAIN_PWR_EN feeds raw U16; held Q3 separately clamps U13 EN.\nSYS_AON source and USB permission-latch clear remain to be built.\nCurrent converter: U13 TPS63806; design/main_regulator_tps63806.md PWR-006.\nMCU reset: design/reset_coordination_tps3890.md RST-002.\nRadio release margin and system shutdown coordination remain open (#846)."
 		(exclude_from_sim no)
 		(at 228.6 50.8 0)
 		(effects
@@ -2556,7 +2556,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_ltc3119.md")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_tps63806.md")
 		)
 		(uuid "afa27a53-5a4f-4b8c-86d1-ba4f95138af6")
 	)

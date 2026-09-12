@@ -4,6 +4,21 @@ Design record for issue #826 and schematic `radio_esp32.kicad_sch`.
 The retained module candidate is ESP32-C6-WROOM-1-N8. This record is an
 interface design basis, not a completed circuit or demonstrated RA8P1 port.
 
+Current reset migration, 2026-09-08: [RST-002](reset_coordination_tps3890.md)
+supersedes the former U2 fixed-supervisor and RADIO-014 divider selections.
+U2 TPS389001DSET is now wired with R67/R74 33k/20k, R75 10k MR pull-up
+and C95 10n CT; the targeted U2 netlist check is complete. Native/CLI ERC
+remains 139 errors and two warnings with no U2 violations and no changed
+rules/exclusions; BOM/PDF and the MCU/radio notes are refreshed. This is
+not independent whole-circuit validation. Native radio R12/R13
+now use ERA-6ARW333V 33k / RG1608N-203-W-T1 20k. U6 and U7 MR
+arbitration are retained. Current U4 remains TPS22917DBVT: its old
+87.5 mV loss screen gives 3.064319680 V minimum radio supply and
+-48.959308 mV release headroom. Joint radio DC coordination is unresolved.
+RST-002's positive 18.540692 mV radio margin depends on an unimplemented
+20 mV complete path-loss allocation. TPS22997RYZR is under separate
+replacement review, not adopted. No fast-collapse closure is claimed.
+
 ## RADIO-001: host transport
 
 ESP-Hosted supports a full-duplex SPI coprocessor connection on ESP32-C6.
@@ -22,7 +37,7 @@ The documented default C6 coprocessor mapping is:
 | RADIO_CS_N | 10 | 11 | Output |
 | RADIO_HANDSHAKE | 3 | 26 | Input, interrupt |
 | RADIO_DATA_READY | 4 | 4 | Input, interrupt |
-| RADIO_EN | EN | 3 | Reset control; electrical drive circuit pending |
+| RADIO_EN | EN | 3 | Reset control through U6; DC coordination unresolved |
 
 Full-duplex SPI is the selected schematic transport. GPIO4 is
 also a strap and must not be loaded by a host pull during strap sampling.
@@ -57,7 +72,7 @@ against the project symbol before wiring the hierarchical labels.
 
 These are host-side signals in the MCU supply domain, not permission to
 short host and switched-radio domains together. RESET_REQ_N is a request
-to the pending reset arbitration circuit; it is not a direct EN connection.
+to U7 reset arbitration; it is not a direct EN connection.
 The parent sheet connects P707 to R7 through RADIO_PWR_EN. The other seven
 parent-sheet connections and radio-domain isolation remain incomplete.
 The generic multi-function GPIO symbol pins still use the imported passive
@@ -298,11 +313,13 @@ P_switch_screen = I^2*R = 0.5^2*0.175 = 0.04375 W
 ```
 
 This headroom excludes wiring, regulator transient error and other drops.
-It also does not establish reset-supervisor compatibility: U2's existing
-TPS3808G33 conservative release screen is 3.19395125 V (RST-001), above
+It also did not establish reset-supervisor compatibility: the former U2
+TPS3808G33 conservative release screen was 3.19395125 V (RST-001), above
 this loaded rail screen by 0.04745125 V. A radio supervisor cannot simply
 be copied with a claim of full-load release margin. Joint rail regulation,
 load-switch loss, reset thresholds and radio load sequencing need resolution.
+This is historical rail screening; the current RST-002/TPS63806 dependency
+and negative radio release headroom are stated in the opening scope note.
 
 The switch's 2 A absolute maximum is not a current-limit function. Upstream
 fault protection remains necessary. Section 9.4 and Table 7.5 describe reverse
@@ -942,7 +959,9 @@ unlike U4's VIN-referenced slew capacitor. VDD operates from 1.5 to 5.5 V.
 The native KiCad symbol has this exact mapping, visible pins, open-collector
 ERC type for the open-drain output, 150 mil pins, 100 mil endpoint grid,
 50 mil text and a 10 mil filled body outline. It is a separate symbol;
-U2's TPS3808G33 is unchanged. No inherited SOT-23 footprint is retained.
+U2 now also uses TPS389001DSET under RST-002; its targeted connectivity
+check is complete, not full-system qualification. No inherited SOT-23
+footprint is retained.
 
 U6 VDD is connected to upstream +3V3_MCU so it can remain powered while
 the radio rail discharges. C51 is TDK C1608X7R1H104K080AA, 100 nF ceramic
@@ -950,11 +969,11 @@ to GND, following TI's section 6 bypass recommendation. It adds no
 capacitance to the switched-radio discharge model. See PWR-001 for the
 exact capacitor's nominal bias calculation, not a guaranteed PDN bound.
 
-MR is not connected yet. C52 connects CT to ground (RADIO-012).
+MR is connected to U7.4 RADIO_MR_N (RADIO-015). C52 connects CT to ground (RADIO-012).
 RESET now drives C6_EN with R11 pulled up to +3V3_RADIO (RADIO-013).
-R12/R13 now sense the switched radio rail (RADIO-014).
-Upstream-domain MR arbitration remains unimplemented.
-The missing controls must remain visible ERC findings, not be marked NC.
+R12/R13 sense the switched radio rail with the current RST-002 selections;
+RADIO-014 below preserves their former values and historical arithmetic.
+Upstream-domain MR arbitration is drawn, not a complete sequencing proof.
 
 [DigiKey's exact DSET listing](https://www.digikey.com/en/products/detail/texas-instruments/TPS389001DSET/6110554)
 was inspected on 2026-09-05: Active, 2090 in stock, 26-week lead time,
@@ -1092,10 +1111,10 @@ Residual CT voltage, leakage beyond the allocation, rapid retriggering and
 supply transients require evaluation. No external signal or test connector
 is attached to CT. Keep its physical loop short and clean.
 
-U6's manual-reset arbitration remains unfinished; RADIO-014 adds its SENSE
-divider. RADIO-013 implements the RESET-to-EN path. Supply stabilization
+U6's manual-reset arbitration is implemented in RADIO-015; RST-002 updates
+its SENSE divider. RADIO-013 implements the RESET-to-EN path. Supply stabilization
 and the minimum actual C6 EN-low interval
-must be checked after those paths are completed. C52 alone does not close
+remain subject to qualification. C52 alone does not close
 power-cycle, brownout or reset acceptance.
 
 ```sh
@@ -1169,14 +1188,14 @@ R11 adds no intentional DC pull-up from the live MCU rail to an unpowered
 module. This does not by itself prove zero off-state leakage through U6:
 its partial-power states and future OE circuitry still need review.
 Do not connect an independently powered programmer's push-pull reset output
-to C6_EN. Route external reset requests through the eventual MR arbitration.
+to C6_EN. Route external reset requests through the RADIO-015 MR arbitration.
 
 No extra capacitor is placed on EN: C52 sets the supervisor delay instead.
 EN rise time depends on R11 and actual node capacitance; the module's
 typical 2 pF pin value cannot establish a maximum delay. Reevaluate this
 network when adding any OE-sense input, test access or other capacitance.
-The MR input is still open (SENSE is connected in RADIO-014), so the reset network is not yet
-operationally complete despite the connected output path. The numerical
+The MR input is connected through RADIO-015, and RST-002 updates SENSE.
+Radio DC release remains unresolved with current U4. The numerical
 logic margins above do not extend the module table to all temperatures.
 
 ```sh
@@ -1204,9 +1223,20 @@ PY
 
 ## RADIO-014: Switched-radio sense divider
 
+Historical selection and arithmetic below are superseded by
+[RST-002](reset_coordination_tps3890.md). Current native R12 is Panasonic
+ERA-6ARW333V 33k and R13 is Susumu RG1608N-203-W-T1 20k, both
+0.05% / 10 ppm/C. Their conditional rising range is
+3.019118825..3.113278988 V. Current TPS22917 loss prevents claiming
+radio DC release closure; see the opening scope note. The old 33.2k
+selection, sourcing snapshots, PWR-002 headroom and Python below describe
+the former checkpoint only, not the present fitted values or rail.
+
 Revision 1, 2026-09-07. R12 connects +3V3_RADIO to U6.1 SENSE; R13
 connects that node to GND. Both are placed and wired in the native radio
-schematic. Its RADIO-014 annotation links here. Tracking: #826 / #825.
+schematic at that checkpoint. Its former RADIO-014 annotation linked here;
+the current RADIO-014 / RST-002 native note links to RST-002 instead.
+Tracking: #826 / #825.
 
 ### Exact selections
 
@@ -1300,7 +1330,7 @@ assert fall > 3 and rise < F('3.154544111302129')
 assert F('3.6')/((rt+rb)*lo)+leakage < F('68.159e-6')
 for resistance in (rt,rb):
     assert F('3.6')**2/(resistance*lo) < F('.000652')
-print('RADIO-014 PASS: endpoint and conservative static bounds; '
+print('Historical RADIO-014 PASS: endpoint and conservative static bounds; '
       '4.600118 mV falling / 14.922537 mV release headroom. Dynamics open.')
 PY
 ```

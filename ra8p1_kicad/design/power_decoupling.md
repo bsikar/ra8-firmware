@@ -2,12 +2,21 @@
 
 Scope update, 2026-09-08: the PWR-002/PWR-003 TPS63802 regulator selection,
 voltage/headroom and component calculations below describe historical native
-checkpoints. For the current saved LTC3119 migration draft, they are superseded
-by [PWR-004](main_regulator_ltc3119.md), including the raw RUN buffer, held
-clamp and R34 110 kOhm control basis. Historical arithmetic is retained, not
-asserted for the changed circuit. Rail adoption remains blocked by the
-[unresolved SDRAM logic-high conflict #846](https://github.com/bsikar/ra8-firmware/issues/846);
-PWR-004 is not an accepted voltage contract or a completed migration.
+checkpoints. The current saved regulator is TPS63806 under
+[PWR-006](main_regulator_tps63806.md); [PWR-004](main_regulator_ltc3119.md)
+records the superseded LTC3119 stage and retained raw buffer, held clamp
+and R34 110 kOhm control basis. Historical arithmetic is retained, not
+asserted for the changed circuit. [RST-002](reset_coordination_tps3890.md)
+now describes the wired U2 TPS389001DSET MCU reset and native radio
+33k/20k divider. The targeted U2 netlist check is complete; native/CLI ERC
+remains 139 errors and two warnings with no U2 violations or changed
+rules/exclusions. BOM/PDF are refreshed, with changed MCU/radio pages
+visually inspected; this is not independent whole-circuit validation.
+Former U2 3.193951250 V and U6 3.139621574 V release screens below are
+historical. Current U4 TPS22917's 87.5 mV loss screen leaves
+-48.959308 mV radio release headroom, so joint DC coordination remains
+unresolved under [#846](https://github.com/bsikar/ra8-firmware/issues/846).
+No qualified rail, completed reset system or fabrication approval is implied.
 
 ## PWR-001: C39 MIPI analog-supply bypass
 
