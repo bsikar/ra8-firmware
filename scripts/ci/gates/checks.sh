@@ -606,6 +606,7 @@ gate_suppressions() (
   set -e
   require_python_mod yaml "run 'just setup-python'"
   python3 scripts/checks/check_suppressions.py --selftest
+  python3 scripts/checks/suppression_rebind.py --selftest
   python3 scripts/checks/check_suppressions.py --check
 )
 

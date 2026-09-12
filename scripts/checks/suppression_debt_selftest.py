@@ -13,6 +13,7 @@ from suppression_model import Suppression
 TIDY = ".github/tidy-baseline.txt"
 COMPOUND = ".github/mcdc-compound-baseline.txt"
 TREE = ".github/tree-coverage-baseline.txt"
+FREESTANDING = ".github/freestanding-runtime-baseline.json"
 TIDY_HEADER = (
     "# clang-tidy ratchet baseline -- per-file-per-check finding counts.\n"
     "# Consumed by scripts/checks/tidy_ratchet.py --check (CI gate: tidy).\n"
@@ -157,3 +158,44 @@ def assert_baseline_ceiling_controls(base: Path, failures: list[str]) -> None:
     _assert_path_aliases(root, failures)
     _assert_tree_controls(root, failures)
     _assert_authority_controls(root, failures)
+    _assert_freestanding_controls(root, failures)
+
+
+def _assert_freestanding_controls(root: Path, failures: list[str]) -> None:
+    """Assert the freestanding runtime baseline ratchets shrink-only."""
+    _write_probe(root, "scripts/checks/check_freestanding_runtime.py")
+    clean = (
+        '{"apps": {"probe_app": {"forbidden_symbols": [], "forbidden_archives": {},'
+        ' "sbrk_provider": "none", "end_symbol": false}}, "linker_script_exceptions": []}'
+    )
+    _write_probe(root, FREESTANDING, clean)
+    rows, quiet_codes = _scan_probe(root, [FREESTANDING])
+    ledger = ceiling_snapshot(rows)
+    _rows, frozen_codes = _scan_probe(root, [FREESTANDING], ledger)
+    expect(
+        not quiet_codes and not frozen_codes,
+        "quiet: registered freestanding baseline validates",
+        failures,
+    )
+    grown = clean.replace('"forbidden_symbols": []', '"forbidden_symbols": ["malloc"]')
+    _write_probe(root, FREESTANDING, grown)
+    _rows, grown_codes = _scan_probe(root, [FREESTANDING], ledger)
+    expect(
+        "baseline-growth" in grown_codes,
+        "must fire: freestanding debt growth cannot exceed its ceiling",
+        failures,
+    )
+    _write_probe(root, FREESTANDING, '{"apps": {}}')
+    _rows, malformed_codes = _scan_probe(root, [FREESTANDING])
+    expect(
+        "malformed-baseline-row" in malformed_codes,
+        "must fire: malformed freestanding baseline is rejected",
+        failures,
+    )
+    _write_probe(root, ".github/unregistered-baseline.json", clean)
+    _rows, unknown_codes = _scan_probe(root, [".github/unregistered-baseline.json"])
+    expect(
+        "unknown-baseline-file" in unknown_codes,
+        "must fire: unregistered baseline files stay fail-closed",
+        failures,
+    )

@@ -1041,6 +1041,7 @@ _GROUPS = (
             "checks/soup_selftest.py:_REFUSAL_CASES",
             "checks/suppression_debt_selftest.py:COMPOUND",
             "checks/suppression_debt_selftest.py:COMPOUND_HEADER",
+            "checks/suppression_debt_selftest.py:FREESTANDING",
             "checks/suppression_debt_selftest.py:TIDY",
             "checks/suppression_debt_selftest.py:TIDY_HEADER",
             "checks/suppression_debt_selftest.py:TREE",
