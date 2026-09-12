@@ -1,7 +1,8 @@
 # RST-002: TPS3890 DC and startup reset coordination proposal
 
-Revision 4, 2026-09-08. **MCU native wiring completed and targeted
-connectivity checked. Radio DC coordination unresolved.** Tracking:
+Revision 5, 2026-09-12. **MCU native wiring completed and targeted
+connectivity checked. Radio switch migration implemented with targeted
+native mapping, final page-9 and BOM review passed; DC qualification remains open.** Tracking:
 [#846](https://github.com/bsikar/ra8-firmware/issues/846),
 [#825](https://github.com/bsikar/ra8-firmware/issues/825),
 [#826](https://github.com/bsikar/ra8-firmware/issues/826) and
@@ -21,14 +22,25 @@ radio-switch acceptance condition, including the new divider load.
 The former U2 release maximum 3.193951250 V and U6 release screen
 3.139621574 V cannot simply carry forward to these minimum rails.
 
-Current native U4 remains TPS22917DBVT. Its previous 0.5 A * 0.175 ohm
-= 87.5 mV switch-loss screen gives radio minimum 3.064319680 V and
-release headroom -48.959308 mV against this proposal's 3.113278988 V
-maximum rising threshold. That screen fails DC release coordination;
-the allocated 20 mV complete path loss is not implemented by the current
-switch. A separate low-loss replacement review proposes TPS22997RYZR,
-but it is NOT adopted here. Its exact implementation and complete path-loss
-acceptance must be resolved before claiming joint main/radio DC coordination.
+Native U4 is now TPS22964CYZPT, with R7 4.7k/R8 10k and C48 removed,
+under [RADIO-019](radio_interface.md#radio-019-tps22964c-low-loss-switch-migration).
+The 2026-09-12 working XML export confirms all six U4 balls and the exact
+ON partition. Native and CLI ERC preserve all 141 baseline findings exactly
+(139 errors/two warnings), with the four ignored checks unchanged. The
+12-page PDF was visually reviewed before the later page-9 wording fix;
+the full PDF is re-exported and final revised page-9 review passed.
+Native BOM has 19 columns/84 groups: all 210 included references, values
+and MPNs match XML, with no duplicates and only TP1-TP3 excluded.
+TPS22997 is not adopted. At a 505 mA path screen, a 30 milliohm installed switch allocation
+leaves 9.603960 milliohm for remaining series paths within 20 mV total.
+These are qualification allocations, not interpolated datasheet guarantees.
+Conditional radio release headroom remains 18.540692 mV; native substitution
+does not establish complete path acceptance. No AON_HOLD load is added.
+
+For historical comparison, former TPS22917's 0.5 A * 0.175 ohm = 87.5 mV
+loss screen gives radio minimum 3.064319680 V and -48.959308 mV release
+headroom. Its failure motivated the replacement; it is not the present
+switch's loss model. Preserve it below as historical arithmetic only.
 
 No fast-collapse solution is adopted here. In particular, the ten-IC
 [brownout fallback](main_rail_brownout_tps63806.md) is NOT adopted, and its
@@ -282,8 +294,11 @@ identities, not line-number citations.
 | [Radio](../ereader/radio_esp32.kicad_sch) | PWR-006: upstream U13 TPS63806YFFR | `1e311763-baef-42a6-83aa-c305d9e30b3d` |
 
 The MCU note exposes divider, threshold, CT and MR calculations. Both radio
-notes explicitly retain the TPS22917 negative release margin and state that
-the proposed <=20 mV replacement path is not implemented.
+notes described the preceding TPS22917 checkpoint. RADIO-019 now records
+the targeted working-netlist evidence for the new switch and current
+migration validation status. Native/CLI ERC findings are unchanged; the
+final revised page-9 visual review and full BOM reference/value/MPN
+reconciliation passed. These are not radio electrical qualification.
 
 ## Reproducible arithmetic
 
@@ -317,7 +332,7 @@ assert isclose(legacy_hi, 3.1199617295237623, abs_tol=1e-12)
 assert isclose(divider_max, 64.21156185002685e-6, abs_tol=1e-15)
 print('RST-002 falling/rising V:', fall, rise)
 print('Main/radio release margins V:', main_min-rise[1], radio_min-rise[1])
-print('Current TPS22917 old-screen radio minimum/margin V:',
+print('Historical TPS22917 old-screen radio minimum/margin V:',
       old_radio_min, old_radio_margin)
 print('Legacy conservative high V and margins:', legacy_hi,
       main_min-legacy_hi, radio_min-legacy_hi)
