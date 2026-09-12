@@ -20,7 +20,6 @@ default:
     @echo "  just quality::local::mcdc                          Generate DO-178C MC/DC coverage report"
     @echo "  just quality::local::fuzz [seconds] [runs]         Smoke-run every libFuzzer harness"
     @echo "  just quality::local::stack_usage                   Build firmware and enforce stack budgets"
-    @echo "  just quality::local::iwyu                          Run include-what-you-use (advisory)"
     @echo "  just quality::local::sbom                          Regenerate the committed CycloneDX SBOM"
     @echo "  just quality::local::sbom_check                    Verify the committed CycloneDX SBOM"
     @echo "  just quality::local::misra_baseline                Freeze MISRA burn-down on the pinned toolchain"
@@ -31,13 +30,17 @@ default:
     @echo "  just quality::local::ascii                         Check ASCII encoding across files"
     @echo "  just quality::local::version                       Verify @since version annotations"
 
-# Run code formatters in-place
-format:
-    bash scripts/checks/format_code.sh
+# Run every first-party formatter in place: C (clang-format), Go (gofmt),
+# Python (ruff format), shell (shfmt), CMake (cmake-format), justfiles.
+# Each language's scope is the same seam its CI gate reads, so nothing is
 
-# Verify formatting without modifying files
+# formatted here that CI does not also check.
+format:
+    bash scripts/checks/format_tree.sh
+
+# Verify every language is formatted without modifying files
 check:
-    bash scripts/checks/format_code.sh --check
+    bash scripts/checks/format_tree.sh --check
 
 # Run clang-tidy through the registered gate with CI/ratchet return semantics
 tidy:
@@ -46,6 +49,10 @@ tidy:
 # Run cppcheck static analysis
 cppcheck:
     /bin/bash -p scripts/checks/cppcheck.sh
+
+# Check for genuinely unused C includes via speculative compilation
+unused-includes:
+    "{{ just_executable() }}" quality::local::gate unused-includes
 
 # Check file encodings for non-ASCII characters
 ascii:
@@ -67,6 +74,11 @@ test ubsan="0":
         bash tests/build_tests.sh
         bash tests/run_tests.sh
     fi
+
+test-go:
+    "{{ just_executable() }}" quality::local::gate test-go
+
+alias test_go := test-go
 
 # Generate DO-178C Level B MC/DC coverage report
 mcdc:
@@ -115,9 +127,23 @@ misra_baseline:
 
 alias misra-baseline := misra_baseline
 
-# Run include-what-you-use. This remains advisory, matching the former target.
-iwyu:
-    bash scripts/checks/iwyu.sh
+# Automatically update cryptographic hashes and append missing suppressions to the ledger
+auto-sync:
+    python3 scripts/dev/auto_sync.py
+
+alias auto_sync := auto-sync
+
+# Interactively approve draft suppressions and generate a review batch
+review-suppressions:
+    python3 scripts/dev/review_suppressions.py
+
+alias review_suppressions := review-suppressions
+
+# Bless new checker scope authorities (automatically updates the hardcoded cryptographic ledger)
+bless-scope:
+    python3 scripts/checks/suppression_checker_scope.py --update
+
+alias bless_scope := bless-scope
 
 # Regenerate or verify the committed third-party CycloneDX inventory.
 sbom:

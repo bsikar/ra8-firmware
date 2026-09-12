@@ -85,8 +85,9 @@ the same set without a container runtime, which is the supported path on Linux.
 ## Docs
 
 [`docs/`](docs/) is the reference shelf. Start at
+[`DEVELOPMENT.md`](DEVELOPMENT.md) for a quick guide to local tooling and CI gates,
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the firmware is put
-together and [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) for the rules every
+together, and [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) for the rules every
 file is held to; [`docs/RING_AND_WORLD.md`](docs/RING_AND_WORLD.md) explains the
 architectural rings and TrustZone worlds each file is tagged with.
 [`CONTRIBUTING.md`](CONTRIBUTING.md) is how to land a change, and

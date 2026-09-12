@@ -319,8 +319,13 @@ EOF
   file_identity() {
     if stat -c '%d:%i' "$1" >/dev/null 2>&1; then
       stat -c '%d:%i' "$1"
-    else
+    elif [[ -e /proc/self/fd ]]; then
       stat -f '%d:%i' "$1"
+    else
+      # macOS: match fd_identity's inode-only form (no /proc, /dev/fd
+      # nodes carry no usable device). Both sides reduce together, so the
+      # callers' equality still detects file replacement.
+      stat -f '%i' "$1"
     fi
   }
 
@@ -341,8 +346,14 @@ EOF
     [[ -e "$fd_path" ]] || fd_path="/dev/fd/$1"
     if stat -Lc '%d:%i' "$fd_path" >/dev/null 2>&1; then
       stat -Lc '%d:%i' "$fd_path"
-    else
+    elif [[ "$fd_path" != /dev/fd/* ]]; then
       stat -f '%d:%i' "$fd_path"
+    else
+      # macOS has no /proc and /dev/fd/N are device nodes, not symlinks:
+      # stat reports the devfs node (right inode, wrong device). Identity is
+      # inode-only here -- still detects the file replacement the callers
+      # guard, and file_identity below matches it on this platform.
+      stat -f '%i' "$fd_path"
     fi
   }
 

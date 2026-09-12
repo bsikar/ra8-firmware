@@ -193,6 +193,10 @@ SYSTEM_HEADER_BASENAMES = frozenset(
 )
 DECLARED_BARE_CODE_FILES = {
     ("apps/host/mdl/README.md", "robots.txt"): "remote HTTP resource name",
+    ("apps/host/cbz2jof/README.md", "input.cbz"): "usage-example CBZ input name",
+    ("apps/host/cbz2jof/README.md", "book.cbz"): "usage-example CBZ input name",
+    ("apps/host/cbz2jof/README.md", "page-0001.jof"): "illustrative generated page-atlas name",
+    ("apps/host/cbz2jof/README.md", "page-0002.jof"): "illustrative generated page-atlas name",
     ("CLAUDE.md", "_internal.h"): "documented internal-header naming convention",
     ("PHILOSOPHIES.md", "sqlite3.c"): "linked upstream SQLite amalgamation example",
     ("docs/HIL_SUITE.md", "dwf.h"): "header installed from the external WaveForms package",
@@ -296,6 +300,21 @@ DECLARED_BARE_CODE_FILES = {
 }
 
 DECLARED_BARE_CONTEXT_SHA256 = {
+    ("apps/host/cbz2jof/README.md", "input.cbz"): (
+        "97a72df95225aebaec034376e1f73135d43a9b2b73899a664096d64277e14aef",
+    ),
+    ("apps/host/cbz2jof/README.md", "book.cbz"): (
+        "0217039478dd1eac744cd5894ff23da46459c79111d320c29e96a0681ea80465",
+        "203bd06813f324943dd5a15aafdadd515ea01e6edc10a8e225f05e88bb267bbb",
+        "3f469c76db525af480440b4ca600a54a193e9f4d78a875cdbc0eaadb4025091c",
+        "4e4c08db311fc1df442c31f2036d11ecd3d42ce671ec7631765bc5a9e8df8618",
+    ),
+    ("apps/host/cbz2jof/README.md", "page-0001.jof"): (
+        "dc174a6691055199aa44ade2890edad972a6df441dcdba814b61c06f952697e1",
+    ),
+    ("apps/host/cbz2jof/README.md", "page-0002.jof"): (
+        "7321dcf5d5bee5494a18da23a02a90b4b53cff5c17b9ebe9d97eecae49e01a95",
+    ),
     ("CLAUDE.md", "_internal.h"): (
         "2caf71102132104e14492534d8174f0e5873f0000d411c07c8e0c99e77a83385",
         "34fda9c9ca41bb45942eb3b4e651330fd2b397bfa80fd077811a86ad74ffeed1",

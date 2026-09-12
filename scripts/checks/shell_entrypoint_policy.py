@@ -265,7 +265,7 @@ _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
         executable=True,
         source_requires_privileged_parent=False,
     ),
-    "scripts/checks/iwyu.sh": ShellPolicy(
+    "scripts/checks/format_tree.sh": ShellPolicy(
         ShellSecurity.PORTABLE,
         ShellUsage.ENTRY,
         ShellDialect.BASH,

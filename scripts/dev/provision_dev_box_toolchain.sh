@@ -453,12 +453,53 @@ if [[ "$-" == *p* ]]; then
       "${BIN_DIR}/doxygen"
   )
 
+  # The pinned Go toolchain, installed exactly the way .devcontainer/Dockerfile
+  # installs it: same official archive, same sha256 check, same /usr/local/go
+  # destination. A directory tree rather than a single binary, so it extracts
+  # over the old tree instead of installing one file into BIN_DIR.
+  install_go() (
+    local version="$1" arch sha tmp
+    case "$(uname -m)" in
+      x86_64)
+        arch=amd64
+        sha="$(dockerfile_arg GO_SHA256_AMD64)"
+        ;;
+      aarch64)
+        arch=arm64
+        sha="$(dockerfile_arg GO_SHA256_ARM64)"
+        ;;
+      *)
+        echo "error: unsupported Go architecture: $(uname -m)" >&2
+        return 1
+        ;;
+    esac
+    release_tmp_begin
+    tmp="$RELEASE_TMP_DIR"
+    download_verified \
+      "https://go.dev/dl/go${version}.linux-${arch}.tar.gz" \
+      "${sha}" "${tmp}/go.tar.gz"
+    as_root rm -rf /usr/local/go
+    as_root tar -xzf "${tmp}/go.tar.gz" -C /usr/local
+    # The dev box resolves pinned gate tools from BIN_DIR (/usr/local/bin),
+    # which is what its profile and the HIL service unit put on PATH; the Go
+    # archive lands in /usr/local/go. Link the two binaries the gates resolve
+    # so `require_cmd go` and `require_tool gofmt` work without a PATH edit.
+    as_root ln -sf /usr/local/go/bin/go "${BIN_DIR}/go"
+    as_root ln -sf /usr/local/go/bin/gofmt "${BIN_DIR}/gofmt"
+    test -x "${BIN_DIR}/go" && test -x "${BIN_DIR}/gofmt"
+    [ "$(go version 2>/dev/null | awk '{print $3}')" = "go${version}" ] || {
+      echo "error: installed go version does not match pin ${version}" >&2
+      return 1
+    }
+  )
+
   require_release_digests() {
     local name value
     for name in SHELLCHECK_SHA256_X86_64 SHELLCHECK_SHA256_AARCH64 \
       SHFMT_SHA256_AMD64 SHFMT_SHA256_ARM64 ACTIONLINT_SHA256_AMD64 \
       ACTIONLINT_SHA256_ARM64 HADOLINT_SHA256_X86_64 HADOLINT_SHA256_ARM64 \
-      JUST_SHA256_X86_64 JUST_SHA256_AARCH64 DOXYGEN_SHA256_LINUX_X64; do
+      JUST_SHA256_X86_64 JUST_SHA256_AARCH64 DOXYGEN_SHA256_LINUX_X64 \
+      GO_SHA256_AMD64 GO_SHA256_ARM64; do
       value="$(dockerfile_arg "${name}")"
       [[ "${value}" =~ ^[0-9a-f]{64}$ ]] || {
         echo "error: ${name} is not a sha256 pin in the Dockerfile" >&2
@@ -482,10 +523,9 @@ if [[ "$-" == *p* ]]; then
 
   # The GitHub-release binaries and uv-managed Python tools, at the versions
   # read from their native or project authorities. Split out of main() so each
-  # 60-line NASA P10 Rule 4 cap the repo enforces on shell as well as C.
   install_pinned_tools() {
     local shellcheck_v="$1" shfmt_v="$2" actionlint_v="$3" hadolint_v="$4"
-    local just_v="$5" doxygen_v="$6"
+    local just_v="$5" doxygen_v="$6" go_v="$7"
     local just_bin="" just_installed_v=""
 
     ensure_release_tool shellcheck "${shellcheck_v}" \
@@ -503,6 +543,8 @@ if [[ "$-" == *p* ]]; then
     ensure_release_tool just "${just_v}" "${just_installed_v}" install_just
     ensure_release_tool doxygen "${doxygen_v}" \
       "$(doxygen --version 2>/dev/null | awk '{print $1}')" install_doxygen
+    ensure_release_tool go "${go_v}" \
+      "$(go version 2>/dev/null | awk '{print $3}' | sed 's/^go//')" install_go
   }
 
   # Synchronize Python-managed gate tools into the root-owned service
@@ -612,7 +654,7 @@ if [[ "$-" == *p* ]]; then
       exit 1
     }
 
-    local shellcheck_v shfmt_v actionlint_v hadolint_v just_v doxygen_v
+    local shellcheck_v shfmt_v actionlint_v hadolint_v just_v doxygen_v go_v
     local python_venv
     shellcheck_v="$(dockerfile_arg SHELLCHECK_VERSION)"
     shfmt_v="$(dockerfile_arg SHFMT_VERSION)"
@@ -621,11 +663,12 @@ if [[ "$-" == *p* ]]; then
     just_v="$(dockerfile_arg JUST_VERSION)"
     python_venv="$(dockerfile_arg PYTHON_TOOL_VENV)"
     doxygen_v="$(dockerfile_arg DOXYGEN_VERSION)"
+    go_v="$(dockerfile_arg GO_VERSION)"
 
     for pair in "SHELLCHECK_VERSION=${shellcheck_v}" "SHFMT_VERSION=${shfmt_v}" \
       "ACTIONLINT_VERSION=${actionlint_v}" "HADOLINT_VERSION=${hadolint_v}" \
       "JUST_VERSION=${just_v}" "PYTHON_TOOL_VENV=${python_venv}" \
-      "DOXYGEN_VERSION=${doxygen_v}"; do
+      "DOXYGEN_VERSION=${doxygen_v}" "GO_VERSION=${go_v}"; do
       [ -n "${pair#*=}" ] || {
         echo "error: could not read ${pair%%=*} from the Dockerfile" >&2
         exit 1
@@ -636,7 +679,7 @@ if [[ "$-" == *p* ]]; then
     if [ "${check_only}" -eq 0 ]; then
       echo "provisioning dev-box host tools from ${DOCKERFILE#"${ROOT}"/} pins:"
       install_pinned_tools "${shellcheck_v}" "${shfmt_v}" "${actionlint_v}" \
-        "${hadolint_v}" "${just_v}" "${doxygen_v}"
+        "${hadolint_v}" "${just_v}" "${doxygen_v}" "${go_v}"
       install_python_tools "${python_venv}"
     else
       if uv_cache_check; then

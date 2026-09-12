@@ -141,7 +141,7 @@ if [ -z "${_RA8_TOOL_ENV_SH:-}" ]; then
     for dir in "${preferred_dirs[@]}"; do
       [ -n "${dir}" ] && [ -d "${dir}" ] || continue
       found=0
-      for existing in "${ordered_dirs[@]}"; do
+      for existing in ${ordered_dirs[@]+"${ordered_dirs[@]}"}; do
         if [ "${existing}" = "${dir}" ]; then
           found=1
           break
@@ -161,7 +161,7 @@ if [ -z "${_RA8_TOOL_ENV_SH:-}" ]; then
         esac
       fi
       found=0
-      for existing in "${ordered_dirs[@]}"; do
+      for existing in ${ordered_dirs[@]+"${ordered_dirs[@]}"}; do
         if [ "${existing}" = "${dir}" ]; then
           found=1
           break

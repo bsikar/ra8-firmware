@@ -4,9 +4,12 @@
 
 from __future__ import annotations
 
+import argparse
 import ast
 import hashlib
 import json
+import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
@@ -29,13 +32,13 @@ from suppression_scope_registry import (
 
 CANDIDATE_PREFIXES = ("scripts/checks/", "scripts/ci/")
 EXPECTED_AUTHORITIES = 1014
-EXPECTED_VALUES = 3787
+EXPECTED_VALUES = 3824
 MIN_CENSUS_CONSTANTS = 1700
 PAIR_SIZE = 2
 GAP_MIN_ARGS = 4
-EXPECTED_AUTHORITY_VALUE_SHA256 = "2fd7fd67c43bf3b38bd7eb08a28ba2693ff31b08ae7fa8c43a9058ecf53729fd"
+EXPECTED_AUTHORITY_VALUE_SHA256 = "04edffe3cf1b48e2dac2b2da6218f87c9458c4d36010c5b6003d994022d6e208"
 EXPECTED_AUTHORITY_REASON_SHA256 = (
-    "659620621bfd7b7aedbbbdc245e398ad44a38ced6549926aa927503bce1bd1d5"
+    "9a6a998d2ea93e532aca52ddf41293e4c73eca895f34d770d0e84f42141506f3"
 )
 EXPECTED_CLASSIFICATION_SHA256 = "1de8ef8ba500b219f25f530651f2e9c332a3e308e1d3c0952bdc33292731ee35"
 _EMPTY_AUTHORITIES = frozenset(
@@ -721,6 +724,7 @@ def _apply_derived(authorities: dict[str, ResolvedAuthority]) -> None:
 
 SELF_PIN_IDENTITIES = frozenset(
     {
+        "scripts/checks/suppression_checker_scope.py:EXPECTED_VALUES",
         "scripts/checks/suppression_checker_scope.py:EXPECTED_AUTHORITY_VALUE_SHA256",
         "scripts/checks/suppression_checker_scope.py:EXPECTED_AUTHORITY_REASON_SHA256",
         "scripts/checks/suppression_checker_scope.py:EXPECTED_CLASSIFICATION_SHA256",
@@ -871,3 +875,87 @@ def scan_checker_scope_controls(
             )
         )
     return records, findings
+
+
+def _write_constants(
+    path: Path,
+    values: int,
+    value_digest: str,
+    reason_digest: str,
+) -> None:
+    """Rewrite the audited EXPECTED_* constants in this module's source."""
+    text = path.read_text(encoding="utf-8")
+    text = re.sub(
+        r"EXPECTED_VALUES = \d+",
+        f"EXPECTED_VALUES = {values}",
+        text,
+        count=1,
+    )
+    text = re.sub(
+        r'EXPECTED_AUTHORITY_VALUE_SHA256 = "[0-9a-f]{64}"',
+        f'EXPECTED_AUTHORITY_VALUE_SHA256 = "{value_digest}"',
+        text,
+        count=1,
+    )
+    text = re.sub(
+        r'EXPECTED_AUTHORITY_REASON_SHA256 = \(\n    "[0-9a-f]{64}"\n\)',
+        f'EXPECTED_AUTHORITY_REASON_SHA256 = (\n    "{reason_digest}"\n)',
+        text,
+        count=1,
+    )
+    path.write_text(text, encoding="utf-8")
+
+
+def _update(root: Path, paths: list[str]) -> int:
+    """Re-freeze the audited scope constants from the live census (idempotent)."""
+    authorities, findings, diagnosed = _collect_authorities(root, paths)
+    records, record_findings = _records_for_authorities(authorities, diagnosed)
+    findings.extend(record_findings)
+    if any(f.code == "checker-census-floor" for f in findings):
+        for f in findings:
+            if f.code == "checker-census-floor":
+                print(f"scope update refused: {f.message}", file=sys.stderr)
+        return 2
+    live_values = len(records)
+    live_value_digest = _authority_value_digest(authorities)
+    live_reason_digest = _authority_reason_digest(records)
+    module = Path(__file__).resolve()
+    _write_constants(module, live_values, live_value_digest, live_reason_digest)
+    print(
+        f"blessed scope constants: values={live_values} "
+        f"value-digest={live_value_digest[:12]} reason-digest={live_reason_digest[:12]}"
+    )
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI: check (default), --update to re-freeze the blessed scope constants."""
+    root = Path.cwd()
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--root", default=str(root))
+    parser.add_argument("--update", action="store_true", help="re-freeze the audited constants")
+    args = parser.parse_args(argv)
+    root = Path(args.root)
+    from suppression_scan import (  # noqa: PLC0415 -- avoids import cycle (scan imports this module)
+        git_paths,
+    )
+
+    raw_candidates, git_findings = git_paths(root)
+    if git_findings:
+        for finding in git_findings:
+            print(f"{finding.code}: {finding.message}", file=sys.stderr)
+        return 2
+    if args.update:
+        return _update(root, raw_candidates)
+    records, findings = scan_checker_scope_controls(root, raw_candidates)
+    for finding in findings:
+        print(f"{finding.code}: {finding.message}", file=sys.stderr)
+    if findings:
+        print(f"suppression_checker_scope.py: FAIL -- {len(findings)} finding(s)", file=sys.stderr)
+        return 1
+    print(f"suppression_checker_scope.py: PASS -- {len(records)} scope value(s) audited")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

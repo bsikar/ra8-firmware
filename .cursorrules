@@ -1,0 +1,33 @@
+# RA8 Firmware Development Rules
+
+This is a safety-critical repository (DO-178C / MISRA compliance). Strict rules apply. 
+If you are an AI assistant, you MUST follow these instructions precisely.
+
+## 1. The "auto-sync" Rule (CRITICAL)
+Whenever you modify a Python checking script in `scripts/checks/` or add a suppression comment in C/Go code (like `/* alloc-allow: ... */`, `RA8_NASA_RULE_3_OK`, or any `NOLINT`), you will break the cryptographic ledgers.
+* **Always run:** `just auto-sync` after making these changes.
+* This command will automatically update the SHA-256 hashes, ratchets, and ledgers in the `.github/` directory. 
+* Do not attempt to manually edit `.github/suppression-review-ledger.tsv` or `.github/tidy-baseline.txt`. Let the tooling do it.
+
+## 2. Unused Includes
+C and C++ code is strictly audited for dead includes via speculative compilation. 
+* Never leave unused `#include` directives. 
+* If you remove code, check if the headers it used can also be removed.
+* You can verify your work by running: `just quality::local::unused-includes`
+
+## 3. Function and File Sizes (NASA Power of 10)
+* Functions MUST NOT exceed 60 lines (NASA P10 Rule 4). If a function is too long, split it into smaller `static` helpers.
+* Files MUST NOT exceed 1000 lines.
+
+## 4. Doxygen Documentation
+* Every function, struct, enum, and macro must be documented.
+* Functions require `@brief`, `@details`, `@param`, `@return`, `@retval` (for every possible return code), `@pre` (min 2), `@post` (min 2), `@note`, and `@since`.
+
+## 5. Magic Numbers
+* Magic numbers are banned in C code. Use `typedef enum` for integer constants.
+* Floating-point numbers may use `const float`.
+* If a magic number is mathematically required and cannot be named, you must append a comment: `/* MAGIC-OK: <reason> */`.
+
+## 6. Attributes
+* Never use raw compiler attributes like `__attribute__((...))`. 
+* Always use the cross-platform `RA8_*` macros defined in `ra8_attributes.h`.

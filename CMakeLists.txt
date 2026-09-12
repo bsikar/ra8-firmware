@@ -25,6 +25,7 @@ if(RA8_HOST_MODE)
   # aggregate unit-test graph so that graph can reuse the existing targets
   # instead of attempting to add the core a second time.
   add_subdirectory(apps/host/mdl)
+  add_subdirectory(apps/host/cbz2jof)
   add_subdirectory(tests)
   add_subdirectory(tools/mkfontimg)
   add_subdirectory(tools/exfat_mkimage)

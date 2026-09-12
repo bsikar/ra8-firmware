@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Gate: ruff lint + format for every first-party Python file in the tree.
+"""Gate: ruff lint for every first-party Python file in the tree.
+
+Formatting (``ruff format``) is enforced by the format gate
+(``format_tree.sh``), never here.
 
 Scope is derived, not hardcoded
 -------------------------------
@@ -191,31 +194,13 @@ def _run_check(ruff: str, files: list[str]) -> dict[str, dict[str, int]]:
     return findings
 
 
-def _run_format(ruff: str, files: list[str]) -> list[str]:
-    proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
-        [ruff, "format", "--check", "--force-exclude", *files],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    lines = (proc.stdout + proc.stderr).splitlines()
-    return sorted(
-        _rel(line.split(":", 1)[1].strip()) for line in lines if line.startswith("Would reformat:")
-    )
-
-
-def _report(lint: dict[str, dict[str, int]], fmt: list[str]) -> None:
+def _report(lint: dict[str, dict[str, int]]) -> None:
     if lint:
         sys.stderr.write("check_ruff.py: ruff lint finding(s):\n")
         for relfile in sorted(lint):
             for code, count in sorted(lint[relfile].items()):
                 sys.stderr.write(f"  {relfile}: {code} x{count}\n")
-    if fmt:
-        sys.stderr.write("check_ruff.py: file(s) need `ruff format`:\n")
-        for relfile in fmt:
-            sys.stderr.write(f"  {relfile}\n")
-    sys.stderr.write("\nFix the finding, or run `ruff format`.\n")
+    sys.stderr.write("\nFix the finding.\n")
 
 
 # ---------------------------------------------------------------------------
@@ -382,25 +367,11 @@ def _lint_stdin(ruff: str, source: str, filename: str) -> set[str]:
     return {item.get("code") or "SYNTAX" for item in json.loads(proc.stdout or "[]")}
 
 
-def _format_stdin_would_reformat(ruff: str, source: str, filename: str) -> bool:
-    """True when `ruff format --check` would rewrite `source`."""
-    proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
-        [ruff, "format", "--check", "--stdin-filename", filename, "-"],
-        cwd=REPO_ROOT,
-        input=source,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return proc.returncode == 1
-
-
 # Virtual filenames handed to `ruff --stdin-filename`. Ruff resolves per-file
 # configuration against the name, so it has to look like a first-party .py
 # path; nothing is ever created on disk at either location.
 BAD_FIXTURE_NAME = "scripts/checks/ruff_selftest_bad.py"  # PATHREF-OK: virtual
 GOOD_FIXTURE_NAME = "scripts/checks/ruff_selftest_good.py"  # PATHREF-OK: virtual
-FMT_FIXTURE_NAME = "scripts/ruff_fmt_bad.py"  # PATHREF-OK: virtual
 
 
 def selftest(ruff: str) -> int:
@@ -414,13 +385,6 @@ def selftest(ruff: str) -> int:
 
     quiet = _lint_stdin(ruff, GOOD_FIXTURE, GOOD_FIXTURE_NAME)
     failures.extend(f"  must-stay-quiet: good fixture reported {code}" for code in sorted(quiet))
-
-    # The formatter half of the gate needs the same proof: a mangled fixture
-    # must be seen as needing a rewrite, and the clean one must not be.
-    if not _format_stdin_would_reformat(ruff, "x = {  'a' :1,'b':2 }\n", FMT_FIXTURE_NAME):
-        failures.append("  must-fire: `ruff format --check` accepted a mangled fixture")
-    if _format_stdin_would_reformat(ruff, GOOD_FIXTURE, GOOD_FIXTURE_NAME):
-        failures.append("  must-stay-quiet: `ruff format --check` rejected the clean fixture")
 
     # An unsquashed migration leaves deleted paths in the index. Prove the
     # scope keeps the neighbouring live file and drops only the absent one.
@@ -443,13 +407,13 @@ def selftest(ruff: str) -> int:
     print(
         f"check_ruff.py --selftest: OK "
         f"({len(EXPECTED_CODES)} rule families fire, good fixture silent, "
-        "formatter both ways, deleted worktree path excluded)."
+        "deleted worktree path excluded)."
     )
     return 0
 
 
 def main(argv: list[str]) -> int:
-    """Run ruff's lint and format checks over every tracked first-party Python file.
+    """Run ruff's lint check over every tracked first-party Python file.
 
     A missing ruff is handled two ways ON PURPOSE. Bare, it prints a notice
     and exits 0, so a contributor without ruff installed is not blocked by a
@@ -461,7 +425,7 @@ def main(argv: list[str]) -> int:
     to report its own post-exclusion scope rather than restating it. That is
     what keeps the two from disagreeing about which files are covered.
 
-    Returns 0 when lint and format are both clean, 1 on any finding, on a
+    Returns 0 when lint is clean, 1 on any finding, on a
     failing selftest, or on a missing ruff in a mode that requires it.
     """
     args = argv[1:]
@@ -480,9 +444,9 @@ def main(argv: list[str]) -> int:
     tracked = _tracked_python_files()
     files = _checked_files(ruff, tracked) if tracked else []
 
-    # Scope introspection for check_lint_coverage.py: report exactly the files
-    # this gate would lint and format, after ruff's own exclusions. The
-    # coverage gate asks every checker this rather than restating its scope,
+    # Scope introspection for check_lint_coverage.py and the format gate:
+    # report exactly the files this gate would lint, after ruff's own exclusions.
+    # The coverage gate asks every checker this rather than restating its scope,
     # so the two cannot disagree about what is covered.
     # Repo-relative: ruff reports absolute paths, and every other checker's
     # list mode speaks repo-relative paths.
@@ -499,11 +463,10 @@ def main(argv: list[str]) -> int:
         return 2
 
     lint = _run_check(ruff, tracked)
-    fmt = _run_format(ruff, tracked)
-    if not lint and not fmt:
-        print(f"check_ruff.py: clean ({len(files)} files, no lint or format findings).")
+    if not lint:
+        print(f"check_ruff.py: clean ({len(files)} files, no lint findings).")
         return 0
-    _report(lint, fmt)
+    _report(lint)
     return 1
 
 
