@@ -67,12 +67,21 @@ if [[ "$-" == *p* ]]; then
   set -euo pipefail
 
   ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+  # Deterministic host-tool PATH first: a direct `bash scripts/hil/dev.sh`
+  # invocation must not inherit the caller's PATH into local builds. The
+  # pinned toolchain then prepends on top of this base, never the reverse.
+  # shellcheck source=scripts/ci/lib/host_tool_path.sh
+  source "$ROOT/scripts/ci/lib/host_tool_path.sh"
+  ra8_use_trusted_host_path "$ROOT"
   # Resolve GCC and binutils through the same 13.3 pin as CI and CMake. A stale
   # unversioned ~/opt/arm-gnu-toolchain path must never select HIL codegen.
   # shellcheck source=scripts/ci/lib/arm_toolchain.sh
   source "$ROOT/scripts/ci/lib/arm_toolchain.sh"
   use_pinned_arm_toolchain
   require_pinned_arm_toolchain
+  # Fail here with a named missing tool, not deep inside all_examples.sh as
+  # `cmake: command not found`.
+  ra8_require_host_tools cmake python3
   # Rig config (PI_HOST) comes from the gitignored .env, not the tree.
   _hil_dir="$(dirname "${BASH_SOURCE[0]}")"
   _hil_dir="$(cd "$_hil_dir" && pwd)"

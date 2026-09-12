@@ -1,6 +1,6 @@
 # MISRA-C 2012 Deviation Register
 
-**Last refreshed**: 2026-08-22 (D-001..D-012 active). That ID range, the
+**Last refreshed**: 2026-09-12 (D-001..D-015 active). That ID range, the
 index's `Findings`/`Files` columns, the "Derived population" section and
 every in-section population restatement are machine-checked against the
 committed baseline by `check_misra_deviations.py` in the `misra` gate (#632).
@@ -90,27 +90,31 @@ gap-closure plan in `docs/MISRA.md`:
 3. **Code change** -- the violation is real and will be fixed in
    source; no deviation record is needed once the fix lands.
 
-Three entries have deliberately narrower scope than their rule-family
+Several entries have deliberately narrower scope than their rule-family
 population: D-004 accepts only its enumerated precedence idioms, D-011 accepts
-one XZ pool address-alignment conversion, and D-012 accepts one XZ porting
-macro. Every finding outside those exact scopes remains Code change debt.
+one XZ pool address-alignment conversion, D-012 accepts its enumerated XZ and
+freestanding compatibility names, and D-015 accepts six standard return
+conversions. Every finding outside those exact scopes remains Code change debt.
 
 ## Deviation index
 
 | ID    | Rule            | Category | Class             | Status   | MAR        | Findings | Files |
 |-------|-----------------|----------|-------------------|----------|------------|---------:|------:|
-| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 13506 | 684 |
+| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 13516 | 686 |
 | D-002 | misra-c2012-17.3 | Mandatory | Tooling gap       | Active   | 2026-11-02 | 558 | 167 |
 | D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 | 5 | 3 |
 | D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 | 365 | 112 |
 | D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 | 2092 | 389 |
-| D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 8 | 5 |
+| D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 23 | 6 |
 | D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 | 87 | 40 |
 | D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 | 42 | 8 |
 | D-009 | misra-c2012-9.5  | Required  | Tooling gap       | Active   | 2026-11-02 | 10 | 6 |
-| D-010 | misra-c2012-11.5 | Advisory  | Project deviation | Active   | 2027-08-03 | 718 | 216 |
+| D-010 | misra-c2012-11.5 | Advisory  | Project deviation | Active   | 2027-08-03 | 726 | 217 |
 | D-011 | misra-c2012-11.6 | Required  | Project deviation | Active   | 2027-08-21 | 52 | 29 |
-| D-012 | misra-c2012-21.1 | Required  | Project deviation | Active   | 2027-08-21 | 9 | 9 |
+| D-012 | misra-c2012-21.1 | Required  | Project deviation | Active   | 2027-08-21 | 23 | 10 |
+| D-013 | misra-c2012-5.5  | Required  | Project deviation | Active   | 2027-09-12 | 15 | 3 |
+| D-014 | misra-c2012-21.2 | Required  | Project deviation | Active   | 2027-09-12 | 16 | 2 |
+| D-015 | misra-c2012-11.8 | Required  | Project deviation | Active   | 2027-09-12 | 109 | 25 |
 
 `MAR` = mandatory annual review date (or earlier review trigger when
 the underlying tooling assumption changes). `Findings` / `Files` are
@@ -136,8 +140,8 @@ embeds them in the dumps handed to `misra.py`, so a suppressed finding
 never reaches the results (verified on the pinned binary, 2026-08-15) --
 then `misra_ratchet.py` freezes that population in the baseline below.
 
-Baseline: 19938 findings across 2701 file/rule rows (Cppcheck 2.13.0).
-Residual (no deviation record): 53 rules, 2486 findings, 1033 rows.
+Baseline: 20014 findings across 2710 file/rule rows (Cppcheck 2.13.0).
+Residual (no deviation record): 51 rules, 2375 findings, 1007 rows.
 The 2026-08-27 refresh removed 2,102 C23 Rule 9.2 false positives,
 four POSIX Rule 17.3 false positives, and 53 genuine findings through reviewed
 source fixes. The resulting 2,159-finding reduction had zero bucket growth
@@ -648,8 +652,9 @@ rules; the unqualified open-source audit tool is supplementary.
   be used.
 - **Category**: Advisory.
 - **Disposition**: Project deviation (deliberate, safety-motivated).
-- **Scope**: exactly one site is covered by this deviation,
-  `libs/ra8_nsc/inc/ra8_nsc_veneer.h` (1 finding). The rest of the
+- **Scope**: the accepted sites are the single macro-authority reset in
+  `libs/ra8_nsc/inc/ra8_nsc_veneer.h` and the guarded test-only standard-name
+  reset block in `libs/ra8_core/inc/ra8_freestanding.h`. The rest of the
   rule's population (index above) is the boot `vector_table.c` files'
   IRQ-stub X-macro cleanup `#undef`s: undispositioned ratchet-held
   debt, NOT accepted here.
@@ -679,6 +684,14 @@ an NSC translation unit -- as it did in `ra8_nsc_wdt.c` and
 `ra8_nsc_xspi.c` -- the CMSE attribute was dropped, the SG veneer was
 never emitted, and the Secure/Non-Secure boundary was broken with no
 diagnostic beyond a macro-redefinition warning.
+
+The freestanding test branch has a separate, compile-time reason to use the
+same construct. Standard headers may provide function-like definitions for
+the hosted names; the `RA8_TEST_FREESTANDING` build must clear those meanings
+before installing the project-owned ABI redirects. Without that reset, a test
+can silently call the host libc rather than exercise the target-compatible
+implementation. The block is guarded out of production target builds and is
+covered by the freestanding primitive tests.
 
 ### Why `#undef` is the correct construct
 
@@ -720,6 +733,9 @@ every use site -- is met more strongly here than by the rule itself:
 - `ra8_attributes.h` carries a Doxygen `@warning` naming the veneer
   header as authoritative; `ra8_nsc_veneer.h` documents the same
   relationship in its file-header comment.
+- The freestanding test configuration compiles and exercises every redirected
+  memory, string, and integer primitive, proving that the test-only macro
+  reset selects the project implementation rather than a hosted definition.
 
 ### Standards basis
 
@@ -730,9 +746,9 @@ TrustZone boundary break.
 
 ### Risk assessment
 
-Low. One site, in a header whose sole purpose is to define this
-macro, guarded by two independent automated checks (source-level and
-object-level).
+Low. Two tightly scoped sites, both guarded by independent automated checks
+(source-level and object-level); the freestanding reset is additionally
+confined to the test configuration.
 
 ### Review
 
@@ -992,9 +1008,9 @@ the unqualified open-source audit tool is supplementary.
   not be performed from pointer to void into pointer to object.
 - **Category**: Advisory.
 - **Disposition**: Project deviation (formal).
-- **Scope**: first-party code implementing a dependency-injection
-  seam; current population in the index above (83 file rows at its
-  2026-08-03 approval).
+- **Scope**: first-party code implementing a dependency-injection seam or a
+  compiler-required freestanding C runtime ABI; current population in the
+  index above.
 
 ### Root cause
 
@@ -1031,6 +1047,14 @@ backends that make these modules testable on the host.
   slot is called directly rather than through the pointer -- so the
   indirection cannot silently decay.
 
+The freestanding runtime has a separate ABI boundary with the same controlled
+conversion shape. ISO C requires the memory primitives to expose `void*`
+interfaces, while their implementations must access bytes through a character
+pointer. The casts in `libs/ra8_core/src/ra8_freestanding_mem.c` are therefore
+the representation-preserving conversion at the standard ABI boundary, not a
+cross-module object reinterpretation. They are confined to the five primitive
+implementations and are exercised by the freestanding tests and target link.
+
 ### Alternative verification
 
 - Host unit tests substitute a mock backend through the identical
@@ -1038,6 +1062,10 @@ backends that make these modules testable on the host.
 - `-Wall -Wextra -Werror` on both the cross and host builds rejects
   an incompatible function-pointer assignment into a table row,
   which is the failure mode this rule guards against.
+- The freestanding ABI symbols are linked in the bare-metal build and every
+  redirected primitive is exercised by the host freestanding test suite; a
+  signature or conversion change therefore fails both compile-time and
+  behavioral checks.
 
 ### Standards basis
 
@@ -1149,20 +1177,22 @@ alternative controls.
 
 ---
 
-## D-012: Rule 21.1 -- upstream XZ force-inline adapter
+## D-012: Rule 21.1 -- reserved ABI compatibility names
 
 - **Rule ID**: misra-c2012-21.1.
 - **Rule text (paraphrased per MISRA licence)**: a project shall not define or
   undefine an identifier reserved by the implementation.
 - **Category**: Required.
 - **Disposition**: Project deviation (formal).
-- **Exact scope**: only the guarded definition of `__always_inline` in
-  `apps/shared_libs/unarch/inc/xz_config.h`. It supplies the porting contract
-  consumed by `rc_normalize()`, `rc_bit()`, `rc_bittree()`, and
-  `rc_bittree_reverse()` in the byte-identical upstream file
-  `apps/shared_libs/third_party/xz_embedded/xz_dec_lzma2.c`. No other reserved identifier,
-  Rule 21.1 finding, or project-defined compatibility macro is approved by
-  this record.
+- **Exact scope**: the guarded definition of `__always_inline` in
+  `apps/shared_libs/unarch/inc/xz_config.h`, plus the guarded standard-name
+  redirects in `libs/ra8_core/inc/ra8_freestanding.h`. The XZ definition
+  supplies the porting contract consumed by `rc_normalize()`, `rc_bit()`,
+  `rc_bittree()`, and `rc_bittree_reverse()` in the byte-identical upstream
+  file `apps/shared_libs/third_party/xz_embedded/xz_dec_lzma2.c`; the
+  freestanding definitions provide the target ABI names in the test build. No
+  other reserved identifier, Rule 21.1 finding, or project-defined
+  compatibility macro is approved by this record.
 
 ### Rationale
 
@@ -1180,6 +1210,12 @@ wrapper and the XZ Embedded userspace port: the vendored `xz_private.h`
 includes `xz_config.h`, and the first-party `unarch_xz.c` includes it for the
 same porting definitions.
 
+The freestanding test redirects preserve the standard function spellings while
+selecting the project-owned implementations. They are enabled only by
+`RA8_TEST_FREESTANDING`, after clearing any hosted macro definitions, so tests
+exercise the same ABI names that the target compiler may emit without
+introducing a hosted libc dependency.
+
 ### Alternative mitigation and verification
 
 - `scripts/checks/check_soup_upstream.py` compares the vendored component with
@@ -1193,6 +1229,9 @@ same porting definitions.
   with warnings as errors. A spelling or attribute incompatibility therefore
   fails during compilation rather than changing the decoder interface at run
   time.
+- The freestanding unit tests cover every redirected memory, string, and
+  integer primitive, and the target link verifies that the ABI symbols resolve
+  to the project-owned implementation.
 - The adjacent clang-tidy `NOLINT` is scoped to the same macro and documents
   the independent reserved-identifier diagnostic; it does not suppress the
   cppcheck-MISRA evidence or expand this deviation's scope.
@@ -1229,6 +1268,182 @@ implementation dependency.
 
 ---
 
+## D-013: Rule 5.5 -- freestanding ABI names and macro compatibility
+
+- **Rule ID**: misra-c2012-5.5.
+- **Rule text (paraphrased per MISRA licence)**: an identifier shall be
+  distinct from a macro name.
+- **Category**: Required.
+- **Disposition**: Project deviation (formal).
+- **Exact scope**: the standard memory, string, and integer ABI primitives in
+  `libs/ra8_core/src/ra8_freestanding_math.c`,
+  `libs/ra8_core/src/ra8_freestanding_mem.c`, and
+  `libs/ra8_core/src/ra8_freestanding_str.c`, together with their
+  test-configuration aliases in `libs/ra8_core/inc/ra8_freestanding.h`.
+  The current scope is 15 findings across 3 files. No unrelated identifier or
+  macro collision is accepted by this record.
+
+### Rationale
+
+The target must provide the ISO C runtime entry points with their exact names:
+the compiler emits calls to `memset`, `memcpy`, `memmove`, `memcmp`, `memchr`,
+`strlen`, `strnlen`, `strcmp`, `strncmp`, `strchr`, `strrchr`, `strstr`,
+`strcpy`, `strncpy`, and `abs` while lowering ordinary target code. Renaming
+those functions would either require a compiler-specific built-in mapping or
+leave a newlib/libnosys dependency in the image, which is the dependency this
+runtime layer exists to remove.
+
+The host freestanding tests additionally alias the standard names to the
+project implementations after clearing hosted macro definitions. That keeps
+the test calls source-compatible with the target ABI while ensuring they do
+not accidentally resolve to the host libc. The identifier/macro overlap is
+therefore a deliberate compatibility boundary, not an accidental naming
+collision.
+
+### Alternative mitigation and verification
+
+- The aliases are confined to `RA8_TEST_FREESTANDING`; production target
+  translation units link the exact ABI symbols directly and do not inherit the
+  test aliases.
+- The freestanding selftests exercise every memory, string, and integer
+  primitive through the aliases, while the bare-metal link verifies that the
+  compiler-required names resolve without newlib or libnosys.
+- The formatter, warning-as-error host build, and cross build keep the alias
+  definitions and declarations synchronized; a spelling drift fails at build
+  time rather than silently selecting a different implementation.
+
+### Standards basis and risk
+
+MISRA-C:2012 section 5.2 permits this bounded Required-rule deviation because
+the exact ABI spelling is imposed by the compiler/runtime contract. The scope
+is limited to the 15 listed primitive identifiers, has no application-facing
+aliases, and is covered by both behavioral tests and the target link. The
+residual risk is low while the supported compiler set continues to emit these
+standard calls.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-09-12.
+- **Mandatory annual review**: 2027-09-12.
+- **Trigger for early review**: a compiler/toolchain change, a new ABI
+  primitive, or removal of the freestanding test selftests.
+
+---
+
+## D-014: Rule 21.2 -- freestanding standard-library declarations
+
+- **Rule ID**: misra-c2012-21.2.
+- **Rule text (paraphrased per MISRA licence)**: a reserved identifier or
+  macro name shall not be declared.
+- **Category**: Required.
+- **Disposition**: Project deviation (formal).
+- **Exact scope**: the 14 standard memory and string declarations in
+  `libs/ra8_core/inc/ra8_freestanding.h`. No other reserved identifier,
+  declaration, or standard-library rule finding is accepted by this record.
+
+### Rationale
+
+This header is the freestanding implementation's ABI declaration surface.
+Unlike a hosted translation unit, the target cannot include a libc header that
+owns these declarations: the image deliberately removes newlib and libnosys.
+The compiler and the rest of the project still require the standard names and
+signatures, so the project must declare the functions it supplies. Omitting
+the declarations would turn valid calls into implicit declarations or cause
+the compiler to select an unavailable hosted implementation.
+
+### Alternative mitigation and verification
+
+- The declarations are confined to one foundation header and match the ISO C
+  function signatures, including return types and pointer qualifiers where
+  applicable.
+- The freestanding implementation definitions are compiled with warnings as
+  errors, and the unit selftests call every declared primitive.
+- `check_script_references.py`, the Doxygen member audit, host tests, and the
+  RA8 cross build keep the declaration/definition surface complete and
+  reviewable. A new reserved declaration outside this exact header remains
+  ratchet-held code-change debt.
+
+### Standards basis and risk
+
+MISRA-C:2012 section 5.2 permits a documented deviation where a required
+implementation ABI cannot be expressed without the reserved standard names.
+The declarations do not invent an application API or alter the standard
+contracts; they make the project-owned freestanding implementation visible.
+The bounded header scope and warning-as-error definition checks keep the
+residual risk low.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-09-12.
+- **Mandatory annual review**: 2027-09-12.
+- **Trigger for early review**: a toolchain that supplies a validated
+  freestanding declaration set, or any change to the ABI function signatures.
+
+---
+
+## D-015: Rule 11.8 -- standard ABI const removal
+
+- **Rule ID**: misra-c2012-11.8.
+- **Rule text (paraphrased per MISRA licence)**: a cast shall not remove
+  the `const` qualification from the referenced type.
+- **Category**: Required.
+- **Disposition**: Project deviation (formal).
+- **Exact scope**: the six standard-library return conversions in
+  `libs/ra8_core/src/ra8_freestanding_mem.c` and
+  `libs/ra8_core/src/ra8_freestanding_str.c`: `memchr` returns a writable
+  `void*` from its standard `const void*` input, while `strchr`, `strrchr`,
+  and `strstr` return writable `char*` from their standard `const char*`
+  inputs. No other cast that removes `const` is accepted by this record.
+
+### Rationale
+
+The ISO C ABI fixes these signatures. `memchr` returns `void*`, and the
+string-search functions return `char*`, even though their input parameters
+are `const`-qualified. The project-owned freestanding implementation must
+provide those exact symbols and signatures so compiler-generated calls link
+without newlib or libnosys. Returning a const-qualified pointer would change
+the ABI and make conforming callers fail to compile; renaming the functions
+would leave the target dependent on the hosted runtime this layer removes.
+
+The casts occur only after a successful match (or for the terminating null
+character), so the returned address is within the caller-provided object. The
+standard contracts make the writable result the caller's responsibility, just
+as they do for the hosted library implementation.
+
+### Alternative mitigation and verification
+
+- The six conversions are confined to the project-owned freestanding ABI
+  bodies; no application-facing helper uses this deviation as a general
+  const-removal escape hatch.
+- The functions never write through the returned pointer during the search,
+  and the freestanding selftests verify matching and not-found behavior for
+  every search primitive.
+- Host and RA8 cross builds compile the exact standard signatures with
+  warnings as errors. The target link and the freestanding unit tests verify
+  that the compiler-required symbols resolve to these implementations.
+
+### Standards basis and risk
+
+MISRA-C:2012 section 5.2 permits a bounded Required-rule deviation where the
+standard ABI requires a signature that the rule's const-preservation idiom
+cannot express. The scope is limited to six return conversions in two runtime
+files; no pointer is converted to a different object type, and no returned
+pointer is dereferenced by the implementation. Residual risk is low because
+the compiler-enforced signatures, bounded implementations, and behavioral
+selftests jointly constrain the boundary.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-09-12.
+- **Mandatory annual review**: 2027-09-12.
+- **Trigger for early review**: a toolchain-provided freestanding ABI, a
+  change to any standard function signature, or any new const-removing cast.
+
+---
+
 ## Change log
 
 | Date       | Author              | Change                              |
@@ -1245,3 +1460,4 @@ implementation dependency.
 | 2026-08-22 | Brighton Sikarskie  | Reconcile the `src/`/`inc/` migration: retain app-local tests in scope, prove the initial 251-row/1,580-finding expansion, retain its final 248-row/1,500-finding population after exact suppressions, and separately disposition all genuine growth. |
 | 2026-08-22 | Brighton Sikarskie  | Add two line-scoped D-005 suppressions for RABOOK XML test seams whose visible C23 `[[nodiscard]]` declarations are dropped by pinned Cppcheck 2.13. |
 | 2026-08-22 | Brighton Sikarskie  | Add line-scoped D-002/D-005 dispositions for POSIX declarations dropped by pinned Cppcheck 2.13 while retaining every unrelated finding. |
+| 2026-09-12 | Brighton Sikarskie  | Record D-013/D-014/D-015 for the bounded freestanding runtime ABI names, declarations, and standard return signatures; refresh the post-#847 audit population. |

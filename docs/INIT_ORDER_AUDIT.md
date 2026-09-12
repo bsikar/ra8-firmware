@@ -56,8 +56,8 @@ Source: ``examples/ek_ra8d2/hil_needs_revalidation/bkup_survival_demo/src/main.c
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/compress_demo/src/main.c``
 
-- L335: ra8_log_init  (rank 100)
-- L337: ra8_io_stream_uart_init  (rank 100)
+- L340: ra8_log_init  (rank 100)
+- L342: ra8_io_stream_uart_init  (rank 100)
 
 ### cpu1_pingpong_ipc
 
@@ -1473,11 +1473,11 @@ Source: ``examples/ra8p1_foundation/npu_infer/src/main.c``
 
 Source: ``examples/ra8p1_foundation/npu_smoke/src/main.c``
 
-- L419: ra8_npu_init  (rank 100)
+- L450: ra8_npu_init  (rank 100)
 
 ### npu_vela
 
 Source: ``examples/ra8p1_foundation/npu_vela/src/main.c``
 
-- L342: ra8_npu_init  (rank 100)
+- L374: ra8_npu_init  (rank 100)
 

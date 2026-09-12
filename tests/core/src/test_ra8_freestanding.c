@@ -13,6 +13,7 @@
  */
 
 #ifndef RA8_TEST_FREESTANDING
+/** @brief Enable aliases that route standard calls to the freestanding test implementations. */
 #define RA8_TEST_FREESTANDING
 #endif
 
@@ -45,9 +46,9 @@ typedef enum : size_t {
  * @brief Buffer bracketed by canary zones to verify strict memory bounds.
  */
 typedef struct {
-  uint8_t pre[k_fs_canary_head];
-  uint8_t data[k_fs_buffer_size];
-  uint8_t post[k_fs_canary_tail];
+  uint8_t pre[k_fs_canary_head];  /**< Leading canary guard bytes.  */
+  uint8_t data[k_fs_buffer_size]; /**< Buffer contents under test.  */
+  uint8_t post[k_fs_canary_tail]; /**< Trailing canary guard bytes. */
 } guarded_buf_t;
 
 static guarded_buf_t s_gb1;
@@ -91,10 +92,10 @@ static void internal_buf_init(guarded_buf_t* gb)
 static void internal_assert_canaries(const guarded_buf_t* gb)
 {
   for (size_t i = 0U; i < k_fs_canary_head; ++i) {
-    TEST_ASSERT_EQ((size_t)k_fs_canary_val, (size_t)gb->pre[i]);
+    TEST_ASSERT_EQ(k_fs_canary_val, gb->pre[i]);
   }
   for (size_t i = 0U; i < k_fs_canary_tail; ++i) {
-    TEST_ASSERT_EQ((size_t)k_fs_canary_val, (size_t)gb->post[i]);
+    TEST_ASSERT_EQ(k_fs_canary_val, gb->post[i]);
   }
 }
 
@@ -155,7 +156,7 @@ static void internal_test_memset_patterns(void)
   for (size_t p = 0U; p < num_patterns; ++p) {
     (void)memset(s_gb1.data, (int)patterns[p], 64U);
     for (size_t i = 0U; i < 64U; ++i) {
-      TEST_ASSERT_EQ((size_t)patterns[p], (size_t)s_gb1.data[i]);
+      TEST_ASSERT_EQ(patterns[p], s_gb1.data[i]);
     }
   }
   internal_assert_canaries(&s_gb1);
@@ -192,7 +193,7 @@ static void internal_test_memcpy(void)
   ret = memcpy(&s_gb1.data[5], &s_gb2.data[3], 29U);
   TEST_ASSERT(ret == &s_gb1.data[5]);
   for (size_t i = 0U; i < 29U; ++i) {
-    TEST_ASSERT_EQ((size_t)s_gb2.data[3U + i], (size_t)s_gb1.data[5U + i]);
+    TEST_ASSERT_EQ(s_gb2.data[3U + i], s_gb1.data[5U + i]);
   }
   internal_assert_canaries(&s_gb1);
   internal_assert_canaries(&s_gb2);
@@ -224,7 +225,7 @@ static void internal_test_memmove_overlap(void)
   /* Forward overlap: dst < src (dst = data, src = data + 4, len = 16) */
   (void)memmove(&s_gb1.data[0], &s_gb1.data[4], 16U);
   for (size_t i = 0U; i < 16U; ++i) {
-    TEST_ASSERT_EQ((size_t)(i + 5U), (size_t)s_gb1.data[i]);
+    TEST_ASSERT_EQ((i + 5U), s_gb1.data[i]);
   }
 
   /* Reset pattern */
@@ -235,7 +236,7 @@ static void internal_test_memmove_overlap(void)
   /* Backward overlap: dst > src (dst = data + 4, src = data, len = 16) */
   (void)memmove(&s_gb1.data[4], &s_gb1.data[0], 16U);
   for (size_t i = 0U; i < 16U; ++i) {
-    TEST_ASSERT_EQ((size_t)(i + 1U), (size_t)s_gb1.data[4U + i]);
+    TEST_ASSERT_EQ((i + 1U), s_gb1.data[4U + i]);
   }
 
   /* Identical pointers */

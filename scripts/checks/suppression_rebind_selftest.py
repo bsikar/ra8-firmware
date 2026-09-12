@@ -117,11 +117,20 @@ def _selftest_move() -> list[str]:
 def _selftest_retire() -> list[str]:
     """Prove stale successions retire and bad ones refuse."""
     failures: list[str] = []
-    live = _fixture_record(path="scripts/checks/a.py", line=20, scope="decision-line:20")
-    stale_ref = "review-decision scripts/checks/a.py:19 mcdc-deactivated: operands vary."
+    live = _fixture_record(
+        path="scripts/checks/suppression_rebind_selftest.py", line=20, scope="decision-line:20"
+    )
+    stale_ref = (
+        "review-decision scripts/checks/suppression_rebind_selftest.py:19 "
+        "mcdc-deactivated: operands vary."
+    )
     stale = LedgerRow(2, "d" * 64, live.binding_sha256, "retain", "r", "batch-1", stale_ref)
     req = core.RetireRequest(
-        "d" * 64, live.site_id, "scripts/checks/a.py", "mcdc-deactivated", "doc move"
+        "d" * 64,
+        live.site_id,
+        "scripts/checks/suppression_rebind_selftest.py",
+        "mcdc-deactivated",
+        "doc move",
     )
     plan, reason = core.plan_retire([live], [stale], req)
     if plan is None:
@@ -129,7 +138,11 @@ def _selftest_retire() -> list[str]:
     if plan.successor != live.site_id or plan.batch_id != "batch-1":
         failures.append("retire plan misreports successor or batch")
     probe_req = core.RetireRequest(
-        "d" * 64, live.site_id, "scripts/checks/b.py", "mcdc-deactivated", "doc move"
+        "d" * 64,
+        live.site_id,
+        "scripts/checks/suppression_ledger.py",
+        "mcdc-deactivated",
+        "doc move",
     )
     probe, _ = core.plan_retire([live], [stale], probe_req)
     if probe is not None:
@@ -161,6 +174,32 @@ def _selftest_retire() -> list[str]:
     if probe is not None:
         failures.append("live site retires")
     return failures
+
+
+def _selftest_relink_legacy(
+    failures: list[str], case: tuple[Suppression, LedgerRow, LedgerRow, str, str]
+) -> None:
+    """Prove legacy separators normalize during relink."""
+    live, row, dead, ref, batches = case
+    legacy_ref = ref + ";;;"
+    legacy_row = _fixture_row("e" * 64, live.binding_sha256, legacy_ref, state="superseded")
+    legacy_req = core.RelinkRequest(
+        "e" * 64, "d" * 64, live.site_id, "src/a.c", "mcdc-deactivated", "x"
+    )
+    legacy_plan, legacy_reason = core.plan_relink([live], [legacy_row, dead], legacy_req)
+    if legacy_plan is None:
+        failures.append(f"legacy separators refuse to plan: {legacy_reason}")
+    else:
+        legacy_ledger = (
+            "site_id\tbinding_sha256\tstate\trationale_id\tbatch_id\tevidence_ref\n"
+            f"{'e' * 64}\t{live.binding_sha256}\tsuperseded\tr\tbatch-1\t{legacy_ref}\n"
+        )
+        legacy_batches = batches.replace(core.batch_digest([row]), core.batch_digest([legacy_row]))
+        legacy_result = core.apply_relink(legacy_ledger, legacy_batches, legacy_plan)
+        if isinstance(legacy_result, str):
+            failures.append(f"legacy separators refuse to apply: {legacy_result}")
+        elif f"replaced-by:{live.site_id}" not in legacy_result[0].split():
+            failures.append("legacy separators did not normalize to a clean link")
 
 
 def _selftest_relink() -> list[str]:
@@ -200,27 +239,11 @@ def _selftest_relink() -> list[str]:
         failures.append("relink did not refresh the successor link")
     if f"replaced-by:{'d' * 64}" in new_ledger:
         failures.append("relink left the dead link behind")
-    legacy_ref = ref + ";;;"
-    legacy_row = _fixture_row("e" * 64, live.binding_sha256, legacy_ref, state="superseded")
-    legacy_req = core.RelinkRequest(
-        "e" * 64, "d" * 64, live.site_id, "src/a.c", "mcdc-deactivated", "x"
-    )
-    legacy_plan, legacy_reason = core.plan_relink([live], [legacy_row, dead], legacy_req)
-    if legacy_plan is None:
-        failures.append(f"legacy separators refuse to plan: {legacy_reason}")
-    else:
-        legacy_ledger = (
-            "site_id\tbinding_sha256\tstate\trationale_id\tbatch_id\tevidence_ref\n"
-            f"{'e' * 64}\t{live.binding_sha256}\tsuperseded\tr\tbatch-1\t{legacy_ref}\n"
-        )
-        legacy_batches = batches.replace(core.batch_digest([row]), core.batch_digest([legacy_row]))
-        legacy_result = core.apply_relink(legacy_ledger, legacy_batches, legacy_plan)
-        if isinstance(legacy_result, str):
-            failures.append(f"legacy separators refuse to apply: {legacy_result}")
-        elif f"replaced-by:{live.site_id}" not in legacy_result[0].split():
-            failures.append("legacy separators did not normalize to a clean link")
+    _selftest_relink_legacy(failures, (live, row, dead, ref, batches))
     stray = _fixture_row(
-        "d" * 64, live.binding_sha256, "review scripts/checks/z.py:9 directive:other-kind rule:x."
+        "d" * 64,
+        live.binding_sha256,
+        "review scripts/checks/suppression_model.py:9 directive:other-kind rule:x.",
     )
     stray_req = core.RelinkRequest("e" * 64, "d" * 64, live.site_id, "src/a.c", "m", "x")
     plan, _ = core.plan_relink([live], [row, stray], stray_req)
