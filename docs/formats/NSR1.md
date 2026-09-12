@@ -184,7 +184,7 @@ computed from the linker's own symbols (`signed_body_end - ns_run_start`), and
 then asserts the placement. No post-processing step is involved: the header is a
 product of linking, so it cannot drift from the image it describes.
 
-`tools/rot/src/rot_sign.py` later appends the ROT1 trailer after exactly `body_len`
+`scripts/secrets/rot_sign.py` later appends the ROT1 trailer after exactly `body_len`
 bytes, which is what makes `[ body ][ trailer ]` line up with what the header
 claims.
 

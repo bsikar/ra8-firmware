@@ -13,13 +13,13 @@ hex + the NS image body:
   * ``<tampered>`` = Secure hex + signed NS image with  (digest mismatch -> denied)
                      one body byte flipped after signing
 
-Signing needs the held-out RoT private key (``tools/rot/src/rot_sign.py``). This step
+Signing needs the held-out RoT private key (``scripts/secrets/rot_sign.py``). This step
 DEGRADES GRACEFULLY: if the key is not present it prints the exact command to run
 later (with the key) and exits 0 -- the unsigned NS body is left for reference and
 the build still succeeds. Run this script by hand (``--key <path>``) once the key
 is available, or set ``RA8_ROT_KEY`` before the build.
 
-It shells out to ``objcopy`` (bin<->ihex), ``tools/rot/src/rot_sign.py`` (sign), and
+It shells out to ``objcopy`` (bin<->ihex), ``scripts/secrets/rot_sign.py`` (sign), and
 ``scripts/gen/merge_ihex.py`` (merge); no third-party Python packages.
 """
 
@@ -171,7 +171,7 @@ def main() -> int:
     parser.add_argument("--secure-hex", required=True, help="Secure ELF's ihex")
     parser.add_argument("--ns-elf", required=True, help="Non-Secure ELF")
     parser.add_argument("--objcopy", required=True, help="arm-none-eabi-objcopy path")
-    parser.add_argument("--rot-sign", required=True, help="tools/rot/src/rot_sign.py path")
+    parser.add_argument("--rot-sign", required=True, help="scripts/secrets/rot_sign.py path")
     parser.add_argument("--merge", required=True, help="scripts/gen/merge_ihex.py path")
     parser.add_argument("--out-genuine", required=True, help="output genuine merged hex")
     parser.add_argument("--out-tampered", required=True, help="output tampered merged hex")

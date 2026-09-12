@@ -13,7 +13,7 @@
  * branching -- default-deny on any failure.
  *
  * This app embeds one RoT-signed copy-to-run image (``signed_payload.h``,
- * dfu_copy_to_run's 32-byte payload signed by tools/rot/src/rot_sign.py at img_version
+ * dfu_copy_to_run's 32-byte payload signed by scripts/secrets/rot_sign.py at img_version
  * 7) and:
  *   1. Flips one body byte and hands the corrupted copy to ::ra8_dfu_launch --
  *      the signature check must fail, so the launch RETURNS (default-deny) and

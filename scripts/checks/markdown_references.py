@@ -245,7 +245,7 @@ def _path_refs(
     refs: list[PathRef] = []
     boundaries = (0, *(match.end() for match in HTML_PATH_SEPARATOR_RE.finditer(body)))
     endings = (*(match.start() for match in HTML_PATH_SEPARATOR_RE.finditer(body)), len(body))
-    for start, end in zip(boundaries, endings):
+    for start, end in zip(boundaries, endings, strict=True):
         span = body[start:end]
         for match in PATH_RE.finditer(span):
             token = match.group(1).rstrip(TRAILING_PATH_JUNK)
@@ -509,7 +509,7 @@ def _declared_absence(source: str, ref: PathRef) -> bool:
 def _declared_work_fixture(source: str, ref: PathRef) -> bool:
     """Recognize the exact intentionally path-shaped workflow-key fixture."""
     return (
-        source == "tools/work/tests/fixtures/bad_key.md"
+        source == "scripts/dev/work/tests/fixtures/bad_key.md"
         and ref.token == WORK_FIXTURE_PATH
         and "A key that looks like a path" in ref.source_line
     )

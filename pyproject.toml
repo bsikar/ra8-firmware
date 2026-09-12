@@ -226,8 +226,8 @@ ignore = [
 # both would make the syntax disagree with the portable stdlib runner. Normal
 # TestCase assertions and assertRaises keep unittest's failure context and
 # avoid the custom Expectations mixin this suite previously used to evade it.
-"tools/work/tests/test_*.py" = ["PT009"] # unittest assertions retain failure context
-"tools/work/tests/test*.py" = ["PT027"] # unittest assertRaises is the stdlib seam
+"scripts/dev/work/tests/test_*.py" = ["PT009"] # unittest assertions retain failure context
+"scripts/dev/work/tests/test*.py" = ["PT027"] # unittest assertRaises is the stdlib seam
 
 [tool.ruff.lint.pydocstyle]
 # MEASURED across all 143 first-party Python files before choosing, the same

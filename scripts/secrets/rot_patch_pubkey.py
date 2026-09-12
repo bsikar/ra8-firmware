@@ -4,7 +4,7 @@
 """Provision a root-of-trust public key into ra8_rot.c.
 
 Rewrites the single `s_rot_root_pubkey[...]` initialiser in ra8_rot.c from a C
-header emitted by `tools/rot/src/rot_sign.py keygen --pubkey-c`. The provisioning
+header emitted by `scripts/secrets/rot_sign.py keygen --pubkey-c`. The provisioning
 ceremony (scripts/secrets/rot_provision.sh) and the re-key flow (scripts/secrets/rot_keystore.py
 rekey) both call this, so the patch logic lives in exactly one place -- two
 copies of it drifting is how a board gets provisioned with a key that does not
@@ -16,7 +16,7 @@ declaration text. Renaming or reformatting that declaration in ra8_rot.c makes
 the match fail rather than silently patch the wrong thing.
 
 Usage:
-    python3 tools/rot/src/rot_patch_pubkey.py <ra8_rot.c> <pubkey-c-header>
+    python3 scripts/secrets/rot_patch_pubkey.py <ra8_rot.c> <pubkey-c-header>
 """
 
 from __future__ import annotations

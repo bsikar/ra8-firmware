@@ -12,7 +12,7 @@
 #     (ns_main.c) placed at the NS addresses by ns_image.ld, whose .ns_rot_header
 #     tells the Secure verifier the signed-body length.
 #
-# The NS image is SIGNED (tools/rot/src/rot_sign.py) and merged with the Secure hex into
+# The NS image is SIGNED (scripts/secrets/rot_sign.py) and merged with the Secure hex into
 # two flashable artifacts -- a genuine one (NS runs) and a one-byte-tampered one
 # (NS denied). Signing degrades gracefully when the RoT key is absent (see
 # examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/scripts/sign_and_merge.py).
@@ -153,7 +153,7 @@ add_custom_command(
   COMMAND
     python3 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/sign_and_merge.py --secure-hex
     secure_boot_ns_hil_secure.hex --ns-elf $<TARGET_FILE:secure_boot_ns_hil_ns.elf> --objcopy
-    ${CMAKE_OBJCOPY} --rot-sign ${_d}/tools/rot/src/rot_sign.py --merge
+    ${CMAKE_OBJCOPY} --rot-sign ${_d}/scripts/secrets/rot_sign.py --merge
     ${_d}/scripts/gen/merge_ihex.py --out-genuine secure_boot_ns_hil.hex --out-tampered
     secure_boot_ns_hil_tampered.hex --key ${_sbns_key}
   VERBATIM

@@ -18,7 +18,7 @@ autonomous remote work.
 | Workspace creation, locking, metadata, release, reaping | `scripts/dev/agent_workspace.sh` | Delegates creation; reads its metadata |
 | Gate definitions and verdicts | `scripts/ci.sh` and shared CI monitor | `ready --run-ci` runs exact local CI; `landed` accepts only cached remote PASS |
 | GitHub issues and project board | GitHub plus operator review | Emits a script; never runs it |
-| Work tracking target/schema | `tools/work/tracker.json` | Pins github.com, repository, project number, Status, and Track names |
+| Work tracking target/schema | `scripts/dev/work/tracker.json` | Pins github.com, repository, project number, Status, and Track names |
 
 No `<git-common-dir>/ra8-work` store exists. Canonical schema-2 records live at
 `$RA8_WS_ROOT/.meta/<workspace-name>`. `work` reserves names of the form
@@ -149,7 +149,7 @@ The emitted script is not executed by `work`. Before the first `gh issue
 create`, it:
 
 1. pins `github.com`, the exact repository, owner, and project number from
-   `tools/work/tracker.json`;
+   `scripts/dev/work/tracker.json`;
 2. requires issues enabled, repository create permission, and project update
    permission before the first issue is created;
 3. discovers every field, option, and label before mutation; and

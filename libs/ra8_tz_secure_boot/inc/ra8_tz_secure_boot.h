@@ -147,7 +147,7 @@ typedef enum : uint8_t {
  * Emitted by the NS linker script at ::k_ra8_tz_ns_rot_header_offset from the NS
  * base, this fixed 8-byte record lets the Secure verifier learn the signed body
  * length without a hand-encoded absolute trailer address. The signing tool
- * (``tools/rot/src/rot_sign.py``) appends the ::ra8_rot_trailer_t immediately after the
+ * (``scripts/secrets/rot_sign.py``) appends the ::ra8_rot_trailer_t immediately after the
  * ``body_len``-byte body, so the trailer begins at ``ns_base + body_len`` --
  * the exact ``[ body ][ trailer ]`` layout the copy-to-run boundary uses. The
  * header word itself lies inside the signed body, so ``body_len`` is covered by

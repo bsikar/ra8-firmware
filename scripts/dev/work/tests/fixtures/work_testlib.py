@@ -24,7 +24,7 @@ sys.path.insert(0, str(SRC_DIR))
 import work  # noqa: E402 -- import needs the source path above
 
 REGISTERED_GATE_ENV = "RA8_WORK_HARNESS_REGISTERED_GATE"
-REPO_ROOT = TESTS_DIR.parents[2]
+REPO_ROOT = TESTS_DIR.parents[3]
 sys.path.insert(0, str(REPO_ROOT / "scripts/dev"))
 
 from git_environment import (  # noqa: E402 -- repository scripts path is inserted above

@@ -8,7 +8,7 @@
 # Generates a NIST P-256 root keypair, writes the PRIVATE key out of the repo
 # tree, emits the PUBLIC key as the s_rot_root_pubkey C initialiser, and (with
 # --patch) provisions it into libs/ra8_dfu/src/ra8_rot.c. The private key never
-# enters git; it is what tools/rot/src/rot_sign.py uses to sign every launched image.
+# enters git; it is what scripts/secrets/rot_sign.py uses to sign every launched image.
 #
 # The signing key is the single anchor of the secure-boot chain of trust: if it
 # is lost, no new image can be signed for the provisioned public key (you must
@@ -120,14 +120,14 @@ if [[ "$-" == *p* ]]; then
   fi
 
   # 1. Generate the keypair and the C initialiser via the in-tree signer.
-  python3 "${REPO_ROOT}/tools/rot/src/rot_sign.py" keygen --key "${KEY_FILE}" --pubkey-c "${HEADER_TMP}"
+  python3 "${REPO_ROOT}/scripts/secrets/rot_sign.py" keygen --key "${KEY_FILE}" --pubkey-c "${HEADER_TMP}"
   chmod 600 "${KEY_FILE}"
 
   FINGERPRINT="$(openssl ec -in "${KEY_FILE}" -pubout 2>/dev/null | openssl dgst -sha256 | awk '{print $NF}')"
 
   # 2. Optionally provision the public key into ra8_rot.c.
   if [[ "${PATCH}" -eq 1 ]]; then
-    python3 "${REPO_ROOT}/tools/rot/src/rot_patch_pubkey.py" "${ROT_C}" "${HEADER_TMP}"
+    python3 "${REPO_ROOT}/scripts/secrets/rot_patch_pubkey.py" "${ROT_C}" "${HEADER_TMP}"
     if command -v clang-format-22 >/dev/null 2>&1; then
       clang-format-22 -i "${ROT_C}"
     elif command -v clang-format >/dev/null 2>&1; then
@@ -158,7 +158,7 @@ Re-run this ceremony with --store to do that automatically. Anyone with this
 key can sign firmware.
 
 To sign an application image for this key:
-  python3 tools/rot/src/rot_sign.py sign --key ${KEY_FILE} --image app.bin --out app.signed.bin --img-version N
+  python3 scripts/secrets/rot_sign.py sign --key ${KEY_FILE} --image app.bin --out app.signed.bin --img-version N
 EOF
 else
   [[ "$-" == *p* ]]

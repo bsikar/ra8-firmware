@@ -16,6 +16,7 @@ PLAN_ARGC = 3
 START_ARGC = 4
 STATUS_ARGC = 1
 PHASE_ARGC = 2
+BOARD_MOVE_ARGC = 3
 
 
 def fail(message: str) -> NoReturn:
@@ -88,6 +89,13 @@ def build_argv(argv: list[str]) -> list[str]:
     """Translate one fixed Just recipe shape into the public CLI argv."""
     if not argv:
         fail("missing Just action")
+    if argv[0] == "board":
+        if len(argv) > 1:
+            fail("board takes no arguments")
+        return ["board"]
+        if len(argv) != BOARD_MOVE_ARGC:
+            fail("board_move requires issue_number and status")
+        return ["board_move", argv[1], argv[2]]
     action, values = argv[0], argv[1:]
     adapters: dict[str, Adapter] = {
         "doctor": _doctor,
@@ -110,6 +118,20 @@ def main(argv: list[str]) -> int:
     except ValueError as exc:
         print(f"work Just adapter: {exc}", file=sys.stderr)
         return 2
+    if translated[0] == "board":
+        entrypoint = Path(__file__).resolve().with_name("work_board.py")
+        result = subprocess.run(  # noqa: S603
+            ["/usr/bin/python3", "-I", str(entrypoint)], check=False
+        )
+        return result.returncode
+
+    if translated[0] == "board_move":
+        entrypoint = Path(__file__).resolve().with_name("work_board_move.py")
+        result = subprocess.run(  # noqa: S603
+            ["/usr/bin/python3", "-I", str(entrypoint), translated[1], translated[2]], check=False
+        )
+        return result.returncode
+
     entrypoint = Path(__file__).resolve().with_name("work.py")
     result = subprocess.run(  # noqa: S603 -- fixed interpreter, entrypoint, and data argv
         ["/usr/bin/python3", "-I", str(entrypoint), *translated], check=False

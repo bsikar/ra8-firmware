@@ -146,15 +146,18 @@ def _closed(site: str, state: str, rationale: str, evidence: str) -> str:
     return f"{site}\t{'1' * 64}\t{state}\t{rationale}\tbatch-fixture\t{evidence}"
 
 
+_PORTABLE_TEST = "scripts/dev/work/tests/test_portable.py"  # PATHREF-OK: synthetic fixture path
+
+
 def _write_portable_contract(root: Path, *, fail_closed: bool) -> None:
     """Write the exact test and gate evidence used by portable-skip fixtures."""
-    test = root / "tools/work/tests/test_portable.py"
+    test = root / _PORTABLE_TEST
     test.parent.mkdir(parents=True, exist_ok=True)
     test.write_text(
         "def test_direct_skip():\n    pass\n\ndef test_registered_failure():\n    pass\n",
         encoding="ascii",
     )
-    helper = root / "tools/work/tests/fixtures/work_testlib.py"
+    helper = root / "scripts/dev/work/tests/fixtures/work_testlib.py"
     helper.parent.mkdir(parents=True, exist_ok=True)
     helper.write_text(
         'import os\nREGISTERED_GATE_ENV = "RA8_WORK_HARNESS_REGISTERED_GATE"\n'
@@ -165,9 +168,9 @@ def _write_portable_contract(root: Path, *, fail_closed: bool) -> None:
     gate = root / "scripts/ci/gates/tests.sh"
     gate.parent.mkdir(parents=True, exist_ok=True)
     registration = (
-        "  RA8_WORK_HARNESS_REGISTERED_GATE=1 python3 -I tools/work/src/work.py --selftest\n"
+        "  RA8_WORK_HARNESS_REGISTERED_GATE=1 python3 -I scripts/dev/work/src/work.py --selftest\n"
         if fail_closed
-        else "  python3 -I tools/work/src/work.py --selftest\n"
+        else "  python3 -I scripts/dev/work/src/work.py --selftest\n"
     )
     gate.write_text(
         "gate_work_harness() (\n  require_cmd bash\n  require_cmd sh\n" + registration + ")\n",
@@ -178,8 +181,8 @@ def _write_portable_contract(root: Path, *, fail_closed: bool) -> None:
 def _portable_evidence(gate: str = "work-harness") -> str:
     """Return a complete portable-prerequisite evidence reference."""
     return (
-        "test-name:tools/work/tests/test_portable.py::test_direct_skip "
-        "passing-counterpart:tools/work/tests/test_portable.py::test_registered_failure "
+        f"test-name:{_PORTABLE_TEST}::test_direct_skip "
+        f"passing-counterpart:{_PORTABLE_TEST}::test_registered_failure "
         f"registered-gate:{gate}"
     )
 
@@ -295,8 +298,7 @@ def _assert_portable_prerequisite_evidence(base: Path, failures: list[str]) -> N
     missing = _portable_case(
         base,
         "missing",
-        "test-name:tools/work/tests/test_portable.py::test_direct_skip "
-        "registered-gate:work-harness",
+        f"test-name:{_PORTABLE_TEST}::test_direct_skip registered-gate:work-harness",
     )
     expect(
         "malformed-review-ledger" in missing,
@@ -306,8 +308,8 @@ def _assert_portable_prerequisite_evidence(base: Path, failures: list[str]) -> N
     unknown_test = _portable_case(
         base,
         "unknown-test",
-        "test-name:tools/work/tests/test_portable.py::test_absent "
-        "passing-counterpart:tools/work/tests/test_portable.py::test_registered_failure "
+        f"test-name:{_PORTABLE_TEST}::test_absent "
+        f"passing-counterpart:{_PORTABLE_TEST}::test_registered_failure "
         "registered-gate:work-harness",
     )
     expect(

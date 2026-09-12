@@ -55,7 +55,7 @@ def _string_list(payload: object, key: str) -> tuple[str, ...]:
 
 @lru_cache(maxsize=1)
 def tracker_schema() -> TrackerSchema:
-    """Load and validate ``tools/work/tracker.json`` once per process."""
+    """Load and validate ``scripts/dev/work/tracker.json`` once per process."""
     path = Path(__file__).resolve().parents[1] / "tracker.json"
     try:
         payload = json.loads(path.read_text(encoding="ascii"))

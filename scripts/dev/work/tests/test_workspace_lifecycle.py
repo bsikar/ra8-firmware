@@ -19,8 +19,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(REPO_ROOT / "tools/work/tests/fixtures"))
+REPO_ROOT = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(REPO_ROOT / "scripts/dev/work/tests/fixtures"))
 
 from work_testlib import fixture_git_environment, git_binary  # noqa: E402 -- fixture path above
 

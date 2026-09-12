@@ -346,7 +346,7 @@ def _portable_gate_fails_closed(root: Path) -> bool:
     """Return whether the work-harness gate forbids prerequisite skips."""
     try:
         gate_text = (root / "scripts/ci/gates/tests.sh").read_text(encoding="utf-8")
-        helper_text = (root / "tools/work/tests/fixtures/work_testlib.py").read_text(
+        helper_text = (root / "scripts/dev/work/tests/fixtures/work_testlib.py").read_text(
             encoding="utf-8"
         )
     except OSError:
@@ -357,7 +357,7 @@ def _portable_gate_fails_closed(root: Path) -> bool:
         "require_cmd bash" in gate_body
         and "require_cmd sh" in gate_body
         and "RA8_WORK_HARNESS_REGISTERED_GATE=1" in gate_body
-        and "tools/work/src/work.py --selftest" in gate_body
+        and "scripts/dev/work/src/work.py --selftest" in gate_body
     )
     helper_contract = (
         'os.environ.get(REGISTERED_GATE_ENV) == "1"' in helper_text
