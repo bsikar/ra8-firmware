@@ -12,12 +12,23 @@ remains 139 errors and two warnings with no U2 violations and no changed
 rules/exclusions; BOM/PDF and the MCU/radio notes are refreshed. This is
 not independent whole-circuit validation. Native radio R12/R13
 now use ERA-6ARW333V 33k / RG1608N-203-W-T1 20k. U6 and U7 MR
-arbitration are retained. Current U4 remains TPS22917DBVT: its old
-87.5 mV loss screen gives 3.064319680 V minimum radio supply and
--48.959308 mV release headroom. Joint radio DC coordination is unresolved.
-RST-002's positive 18.540692 mV radio margin depends on an unimplemented
-20 mV complete path-loss allocation. TPS22997RYZR is under separate
-replacement review, not adopted. No fast-collapse closure is claimed.
+arbitration are retained. U4 is now TPS22964CYZPT with R7 4.7k/R8 10k;
+C48 and the former external CT/QOD branches are removed. The 2026-09-12
+working XML export confirms all six U4 balls and its ON partition under
+[RADIO-019](#radio-019-tps22964c-low-loss-switch-migration).
+Native and CLI ERC preserve exactly all 141 baseline findings (139 errors,
+two warnings), with all four ignored checks unchanged. The full 12-page PDF
+was visually reviewed; after the later page-9 wording correction, the full
+PDF was re-exported and final page-9 render review passed. Native BOM
+export has 19 columns/84 groups: all 210 included references, values and
+MPNs match the XML, with no duplicates and only TP1-TP3 excluded. These
+checks do not qualify hardware.
+RST-002's 18.540692 mV radio release margin remains conditional on a
+qualified 20 mV complete path loss, not guaranteed by the IC substitution.
+The former TPS22917 87.5 mV loss and -48.959308 mV release screens remain
+historical evidence. TPS22997 is not adopted. No fast-collapse closure is
+claimed. RADIO-004/006/007 and the TPS22917 capacitor/control portions of
+RADIO-009/016 preserve historical proofs, not the current switch circuit.
 
 ## RADIO-001: host transport
 
@@ -153,8 +164,9 @@ this electrical correction.
 
 ## Power-domain integration
 
-The module rail is named +3V3_RADIO; U4 provides its load-switch source,
-but the upstream regulator and complete enable/control policy remain open.
+The module rail is named +3V3_RADIO; U4 provides its load-switch source.
+The upstream TPS63806 is implemented under PWR-006; regulator qualification
+and the complete enable/control policy remain open.
 No PWR_FLAG declares the unfinished upstream supply driven. Every
 host-driven signal, pull-up, recovery signal and interrupt return must be
 reviewed for both host-off/radio-on and host-on/radio-off states. Firmware
@@ -214,8 +226,8 @@ No current waveform, response interval or allowable transient budget has
 yet been established for this rail, so a numerical droop sign-off would
 be unsupported. The complete waveform must remain within 3.0..3.6 V at
 the module supply contact. U4 now provides the load-switch output connection;
-its VIN now connects to +3V3_MCU with C47 input bypass. The upstream regulator
-remains unimplemented. R7/R8 now connect ON to a default-off enable divider,
+its VIN now connects to +3V3_MCU with C47 input bypass. The upstream TPS63806 is implemented under PWR-006 but remains unqualified.
+R7/R8 now connect ON to RADIO-019's 4.7k/10k default-off enable divider,
 but its host GPIO and timing control are not yet qualified. There is deliberately
 no PWR_FLAG on this rail.
 
@@ -254,6 +266,10 @@ This is a dated procurement snapshot, not a stock reservation or design
 qualification. Recheck availability and total price before ordering.
 
 ## RADIO-004: radio load switch
+
+Historical TPS22917 circuit/proof retained below. RADIO-019 records the
+native TPS22964 migration, R7 4.7k and removal of C48. Do not transfer
+CT/QOD or divider calculations to the new IC.
 
 Revision 1, 2026-09-05. Applies to U4 on
 [the radio sheet](../ereader/radio_esp32.kicad_sch), with the same RADIO-004
@@ -441,7 +457,9 @@ without a regulator response, load waveform and acceptable rail budget.
 C47 is upstream of U4, so it is deliberately excluded from RADIO-004's
 switched output-discharge capacitance C45+C46 = 10.1 uF nominal. Include
 C47 in the upstream regulator's eventual startup and stability analysis.
-No PWR_FLAG was added: the upstream regulator is not yet implemented.
+No PWR_FLAG was added. The upstream TPS63806 is now implemented under
+PWR-006; source protection and rail qualification remain open. The 10.1uF
+accounting below is historical; C50 makes the current external total 10.2uF.
 
 Run the RADIO-003 Python block to verify the shared exact-part curve.
 The following additionally verifies the nominal capacitance accounting:
@@ -461,6 +479,9 @@ PY
 ```
 
 ## RADIO-006: enable divider
+
+Historical TPS22917-specific proof. RADIO-019 records the implemented
+4.7k/10k ON divider with retained R7/R8 references.
 
 Revision 1, 2026-09-05. R7 is the series resistor from hierarchical input
 RADIO_PWR_EN to U4 ON; R8 connects ON to GND. The radio sheet and its parent
@@ -586,6 +607,9 @@ PY
 ```
 
 ## RADIO-007: slew-rate capacitor
+
+Historical TPS22917-specific proof. RADIO-019 records removal of C48:
+TPS22964 has internal slew control and no CT pin.
 
 Revision 1, 2026-09-05. C48 on the radio sheet is the U4 timing capacitor,
 connected between CT and VIN, not GND. Its schematic annotation links to this
@@ -954,7 +978,8 @@ identifies the adjustable device's nominal falling threshold as 1.15 V,
 threshold accuracy as +/-1%, and maximum hysteresis as 0.825% of the falling
 threshold. Section 6 specifies pins 1 SENSE, 2 GND, 3 active-low MR, 4 VDD,
 5 CT and 6 active-low open-drain RESET. CT uses a ground-referenced capacitor,
-unlike U4's VIN-referenced slew capacitor. VDD operates from 1.5 to 5.5 V.
+unlike the former TPS22917 VIN-referenced slew capacitor, now removed.
+VDD operates from 1.5 to 5.5 V.
 
 The native KiCad symbol has this exact mapping, visible pins, open-collector
 ERC type for the open-drain output, 150 mil pins, 100 mil endpoint grid,
@@ -1068,11 +1093,11 @@ Revision 1, 2026-09-07. C52 connects U6.5 (CT) to GND. It is not on
 the switched supply and does not add to RADIO-009's 10.2 uF rail load.
 The RADIO-012 schematic annotation links here. Tracking: #826.
 
-C52 uses the same exact sourced capacitor as C48:
+C52 uses the same exact sourced capacitor as the removed C48:
 [TDK C1608NP01H102J080AA](https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608NP01H102J080AA),
 1 nF +/-5%, 50 V NP0, 0 +/-30 ppm/C. The dated 2026-09-05 sourcing
 snapshot is retained in its BOM fields, not represented as live inventory.
-Unlike C48's VIN-referenced load-switch slew control, C52 is a
+Unlike former C48's VIN-referenced load-switch slew control, C52 is a
 ground-referenced supervisor delay capacitor. Their descriptions and
 selection-basis fields deliberately differ.
 
@@ -1227,8 +1252,8 @@ Historical selection and arithmetic below are superseded by
 [RST-002](reset_coordination_tps3890.md). Current native R12 is Panasonic
 ERA-6ARW333V 33k and R13 is Susumu RG1608N-203-W-T1 20k, both
 0.05% / 10 ppm/C. Their conditional rising range is
-3.019118825..3.113278988 V. Current TPS22917 loss prevents claiming
-radio DC release closure; see the opening scope note. The old 33.2k
+3.019118825..3.113278988 V. The TPS22964 migration is now drawn under
+RADIO-019, but complete path-loss qualification remains open. The old 33.2k
 selection, sourcing snapshots, PWR-002 headroom and Python below describe
 the former checkpoint only, not the present fitted values or rail.
 
@@ -1693,4 +1718,198 @@ assert F('.25')*F('3.3')-vclosed == F('.824')
 print('RADIO-018 PASS: conditional fixture-current and voltage arithmetic; '
       'complete service recovery remains unqualified.')
 PY
+```
+
+
+## RADIO-019: TPS22964C low-loss switch migration
+
+Revision 2, 2026-09-12. **U4 TPS22964CYZPT is implemented in native KiCad**
+with R7 4.7k/R8 10k and C48 removed. A targeted read-only check of the
+working XML export confirms the six-ball mapping, exact ON partition and
+component values below. Native/CLI ERC and initial full PDF review are
+complete as recorded in the opening status; final revised page-9 review
+and full BOM reconciliation also passed. This is not whole-circuit
+acceptance or hardware qualification. RADIO-018 remains
+reserved for the existing internal BOOT pads. Tracking: #826 and #846.
+[RST-002](reset_coordination_tps3890.md) owns reset thresholds;
+[PWR-006](main_regulator_tps63806.md) owns the main-rail envelope.
+
+### Exact connection and domain changes
+
+[TI SLVSBS6A Rev A, sections 7, 8.3-8.6 and 10-11](https://www.ti.com/lit/ds/symlink/tps22963c.pdf)
+is the primary authority for the TPS22964C variant, which includes QOD.
+Use the exact YZP ball names, not the old numbered SOT-23 pin mapping:
+
+| U4 ball | Role | Verified net |
+| --- | --- | --- |
+| A2, B2 | VIN | +3V3_MCU, both connected; retain C47 input bypass |
+| A1, B1 | VOUT | +3V3_RADIO, both connected |
+| C1 | GND | GND |
+| C2 | ON | RADIO_PWR_EN through R7 4.7k, with R8 10k to GND |
+
+R7 is changed from 10k to 4.7k, retaining its series position and R8 10k
+shunt. C48 and its obsolete CT node are removed. There is no external CT
+or QOD terminal. Preserve
+U8.6 on the raw host request, U5 signal isolation, U6/C52/R11 reset control,
+C45/C46/C50 switched bypasses, and separate host/radio SPI nodes.
+No new BIAS supply or AON_HOLD load is introduced. The working export
+contains ON exactly as U4.C2/R7.2/R8.1; C48 is absent and U4/R7/R8 values
+are TPS22964CYZPT/4.7k/10k. This confirms the stated local connectivity.
+Native and CLI ERC retain the same 141 baseline findings, not merely the
+same count; no exclusion or ignored-check change is claimed as a fix. The
+refreshed native BOM has 19 columns/84 groups. All 210 included references,
+values and MPNs match XML; there are no duplicates and only TP1-TP3 are
+excluded. All 12 PDF pages were reviewed, including final review of the
+re-exported page-9 wording correction. Electrical, startup and power-off
+qualification remains open.
+
+### Conditional path and enable-divider calculation
+
+TI specifies 27 milliohm maximum at VIN=3.3 V and 29 milliohm at 2.5 V,
+each at 200 mA magnitude and -40..85 C. These are discrete test points.
+Neither establishes a continuous-rail, 505 mA installed maximum. Require
+**30 milliohm maximum installed switch resistance** across the actual
+rail/load/temperature range as a qualification allocation. The 505 mA
+screen reserves 500 mA for radio demand and 5 mA for associated branch
+loads; it is not a current limiter or extra permission beyond the main
+power budget. Reconcile every actual contributor before release.
+
+```text
+Ipath = 0.505 A; total path loss allocation = 0.020 V
+Rpath_max = 0.020/0.505 = 0.0396039604 ohm
+Rremaining = Rpath_max-0.030 = 0.0096039604 ohm
+Switch drop = 0.505*0.030 = 0.01515 V
+Remaining series drop = 0.00485 V
+Radio minimum = 3.151819680-0.020 = 3.131819680 V
+Reset-release headroom = 3.131819680-3.113278988 = 0.018540692 V
+Switch conduction screen = 0.505^2*0.030 = 0.00765075 W
+```
+
+The remaining resistance covers all intervening traces, vias and contacts.
+PWR-006 already includes its single 75 mV main disturbance allocation;
+do not subtract it twice or spend the reset margin as another independent
+transient allowance. Local radio transients must fit the declared envelope.
+
+For VIN=2.5..5.5 V, ON requires high >=1.3 V and low <=0.6 V;
+for VIN=1..2.49 V the corresponding requirements are 1.1 V and 0.4 V.
+The retained divider attenuates the valid host's 0.5 V low below even
+0.4 V while preserving the 1.3 V high requirement. Use the existing
+RA8P1 GPIO screen VOH >=2.5 V and VOL <=0.5 V at 1 mA magnitude with
+valid host supply >=3.0 V; this is not an unpowered-host guarantee.
+
+R7 is YAGEO RC0603FR-074K7L 4.7k; R8 remains RC0603FR-0710KL 10k.
+Both are 1%, 100 ppm/C, 0.1 W at 70 C; derate above that temperature.
+[Exact R7 primary specification](https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-074K7L).
+Use initial tolerance and a 100 C excursion: fL=.99*.99, fH=1.01*1.01.
+Allocate 12 uA total adverse ON-node current, including U8, U4, host and
+board; do not allocate it separately per device. Conservative separated
+extrema bound both ratios and the leakage-voltage term:
+
+```text
+R7min/max=4606.47/4794.47 ohm; R8min/max=9801/10201 ohm
+Rparallel_max=R7max*R8max/(R7max+R8max)
+VONlow<=0.5*R8max/(R7min+R8max)+12uA*Rparallel_max
+       =0.383593053 V <0.4 V (16.406947 mV margin)
+VONhigh>=2.5*R8min/(R7max+R8min)-12uA*Rparallel_max
+        =1.639635774 V >1.3 V (339.635774 mV margin)
+Hi-Z ON<=12uA*R8max=0.122412 V
+Hi-Z host request<=12uA*(R7max+R8max)=0.17994564 V
+Host current<=3.6/(R7min+R8min)+12uA=0.261870380 mA <1 mA
+```
+
+The host-request bound assumes all adverse current traverses both parts;
+it screens the U8 input as well as ON. Disable the host internal pull-up.
+A future service mux must be checked against this load, which exceeds
+100 uA; its light-load VOH guarantee cannot replace this host proof.
+The divider removes the direct-drive threshold gap while the host's
+specified output bounds hold. It does not prove arbitrary collapse,
+unpowered GPIO behavior or ON timing relative to VIN/VOUT reversal.
+
+### Slew, discharge and reverse-current boundaries
+
+TPS22964C has 715 us typical 10-90% rise time at VIN=3.3 V, 25 C,
+CIN=1uF, COUT=0.1uF and ROUT=10 ohm. It is not an all-corners timing
+limit for this board. Using 10.2uF external nominal capacitance only:
+
+```text
+Icap_typical_linear = 10.2uF*(0.8*3.3V)/715us = 37.661538 mA
+QOD ideal RC t90..10 = R*C*ln(9)
+R=273 ohm typical: t90..10 = 6.118392 ms
+R=325 ohm table maximum: t90..10 = 7.283799 ms
+```
+
+The QOD maximum is specified with ON=0 and IOUT=2mA; using it in an ideal
+RC screen does not guarantee a full voltage-dependent discharge waveform.
+Module internal capacitance, capacitor corners, other loads and collapsing
+VIN remain unresolved. C47/C49/C51 stay upstream and are not radio output
+capacitance; C52 is private CT storage. No fixed off-time or reset delay
+is established by these screens. Retain radio OFF during MCU cold/wake
+inrush and enable only after the main rail settles. Verify the actual C6
+stable-supply/reset-low interval independently using U6.
+
+Reverse blocking is enabled only with the switch disabled and at least
+one of VIN/VOUT greater than 1 V. Enabled reverse conduction is allowed.
+The reverse-current table entries are typical, not a guaranteed leakage
+ceiling. During abrupt main collapse, ON may remain asserted while the
+radio capacitor holds VOUT above VIN; prove the total reverse charge and
+ON-disable behavior, including the sub-2.5 V threshold region and loss of valid host drive. Neither
+this part nor QOD establishes fast-brownout closure or substitutes for
+TXU0304 isolation, complete handshake isolation, or source-fault sequencing.
+The existing held KILL/EN/discharge circuit remains unchanged.
+
+### Dated sourcing and reproduction
+
+2026-09-12 independent sourcing snapshot: [DigiKey TPS22964CYZPT,
+296-41845-1-ND](https://www.digikey.com/en/products/detail/texas-instruments/TPS22964CYZPT/4457704),
+4 cut-tape units available; USD 1.56 / 1.143 / 0.9212 at 1 / 10 / 100.
+Stock is unreserved; no purchase or footprint qualification is implied.
+Do not silently substitute TPS22963C, which omits output discharge.
+
+R7 sourcing retrieved 2026-09-12: [DigiKey RC0603FR-074K7L,
+311-4.70KHRCT-ND](https://www.digikey.com/en/products/detail/yageo/RC0603FR-074K7L/727212)
+shows Active, 4,502,006 available, 17-week standard lead; USD
+0.10 / 0.025 / 0.0122 at 1 / 10 / 100. This is an unreserved cut-tape
+snapshot, excluding shipping/tax/tariff, not a purchase or passive-layout approval.
+
+Run with Python 3; this checks arithmetic, not native wiring or hardware:
+
+```python
+from math import isclose, log
+
+current, drop, rswitch = .505, .020, .030
+rremaining = drop/current-rswitch
+assert isclose(rremaining, .009603960396039606, abs_tol=1e-15)
+assert isclose(current*rswitch, .01515, abs_tol=1e-15)
+assert isclose(current**2*rswitch, .00765075, abs_tol=1e-15)
+radio_min = 3.151819680-drop
+release_margin = radio_min-3.113278988
+assert isclose(release_margin, .018540692, abs_tol=1e-12)
+r7lo, r7hi = 4700*.99*.99, 4700*1.01*1.01
+r8lo, r8hi = 10000*.99*.99, 10000*1.01*1.01
+leak = 12e-6
+parallel_hi = r7hi*r8hi/(r7hi+r8hi)
+vlow = .5*r8hi/(r7lo+r8hi)+leak*parallel_hi
+vhigh = 2.5*r8lo/(r7hi+r8lo)-leak*parallel_hi
+ihost = 3.6/(r7lo+r8lo)+leak
+assert isclose(vlow, .383593053, abs_tol=1e-9) and vlow < .4
+assert isclose(vhigh, 1.639635774, abs_tol=1e-9) and vhigh > 1.3
+assert isclose(ihost, .000261870380, abs_tol=1e-12) and ihost < .001
+assert isclose(leak*r8hi, .122412, abs_tol=1e-12)
+assert isclose(leak*(r7hi+r8hi), .17994564, abs_tol=1e-12)
+from itertools import product
+for r7, r8, current_leak in product((r7lo,r7hi),(r8lo,r8hi),(-leak,leak)):
+    rp = r7*r8/(r7+r8)
+    assert .5*r8/(r7+r8)+current_leak*rp <= vlow
+    assert 2.5*r8/(r7+r8)+current_leak*rp >= vhigh
+for resistor_lo in (r7lo, r8lo):
+    assert 3.6**2/resistor_lo < .1  # Conservative full-rail stress at 70 C.
+cap, rise_typ = 10.2e-6, 715e-6
+icap = cap*(.8*3.3)/rise_typ
+assert isclose(icap, .03766153846153846, abs_tol=1e-15)
+for resistance in (273, 325):
+    print('QOD conditional RC ms:', resistance, 1000*resistance*cap*log(9))
+print('Path remaining ohm / radio release V:', rremaining, release_margin)
+print('ON low/high V / host current A:', vlow, vhigh, ihost)
+print('RADIO-019 PASS: conditional arithmetic; targeted native mapping checked;')
+print('continuous-rail RON, inrush, collapse and discharge remain unqualified.')
 ```

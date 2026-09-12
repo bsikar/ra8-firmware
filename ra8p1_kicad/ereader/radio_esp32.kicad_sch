@@ -660,14 +660,14 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Power_Devices:TPS22917DBVT"
+		(symbol "Power_Devices:TPS22964CYZPT"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
 			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
 			(property "Reference" "U"
-				(at -6.35 6.35 0)
+				(at 0 11.43 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
@@ -676,8 +676,8 @@
 					)
 				)
 			)
-			(property "Value" "TPS22917DBVT"
-				(at 2.54 6.35 0)
+			(property "Value" "TPS22964CYZPT"
+				(at 0 8.89 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
@@ -686,7 +686,7 @@
 					)
 				)
 			)
-			(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
+			(property "Footprint" ""
 				(at 0 12.7 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -697,7 +697,7 @@
 					)
 				)
 			)
-			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps22917.pdf"
+			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps22963c.pdf"
 				(at 1.27 -17.78 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -708,7 +708,7 @@
 					)
 				)
 			)
-			(property "Description" "TI active-high 1..5.5 V load switch; low leakage, reverse-current blocking and output discharge; CT connects to VIN."
+			(property "Description" "TI active-high 1..5.5 V load switch, YZP six-ball; internal slew and output discharge; reverse blocking only when disabled."
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -730,7 +730,7 @@
 					)
 				)
 			)
-			(property "Manufacturer_Part_Number" "TPS22917DBVT"
+			(property "Manufacturer_Part_Number" "TPS22964CYZPT"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -741,7 +741,7 @@
 					)
 				)
 			)
-			(property "DigiKey_Part_Number" "296-48370-1-ND"
+			(property "DigiKey_Part_Number" "296-41845-1-ND"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -752,7 +752,7 @@
 					)
 				)
 			)
-			(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TPS22917DBVT/8567084"
+			(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TPS22964CYZPT/4457704"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -763,7 +763,7 @@
 					)
 				)
 			)
-			(property "Sourcing_Snapshot" "2026-09-05: DigiKey page lists Active, 8127 in stock; USD 1.14 / 0.822 / 0.6554 at qty 1 / 10 / 100. Recheck before purchase."
+			(property "Sourcing_Snapshot" "2026-09-12: DigiKey cut tape, 4 in stock; USD 1.56 / 1.143 / 0.9212 at qty 1 / 10 / 100. Unreserved; recheck before purchase."
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -774,7 +774,7 @@
 					)
 				)
 			)
-			(property "Procurement_Status" "Sourced candidate; rail budget, transient and sequencing qualification pending; footprint qualification deferred."
+			(property "Procurement_Status" "RADIO-019 selected switch; 30 milliohm installed / 20 mV complete path, startup, collapse and discharge qualification pending; footprint deferred."
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -796,18 +796,7 @@
 					)
 				)
 			)
-			(property "ki_fp_filters" "SOT?23*"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(symbol "TPS22917DBVT_0_1"
+			(symbol "TPS22964CYZPT_0_1"
 				(rectangle
 					(start -7.62 5.08)
 					(end 7.62 -5.08)
@@ -820,28 +809,10 @@
 					)
 				)
 			)
-			(symbol "TPS22917DBVT_1_1"
+			(symbol "TPS22964CYZPT_1_1"
 				(pin power_in line
-					(at -10.16 2.54 0)
-					(length 2.54)
-					(name "VIN"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin power_in line
-					(at 0 -7.62 90)
-					(length 2.54)
+					(at 0 -10.16 90)
+					(length 5.08)
 					(name "GND"
 						(effects
 							(font
@@ -849,7 +820,7 @@
 							)
 						)
 					)
-					(number "2"
+					(number "C1"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -858,8 +829,8 @@
 					)
 				)
 				(pin input line
-					(at -10.16 -2.54 0)
-					(length 2.54)
+					(at -12.7 -2.54 0)
+					(length 5.08)
 					(name "ON"
 						(effects
 							(font
@@ -867,43 +838,7 @@
 							)
 						)
 					)
-					(number "3"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin output line
-					(at -10.16 0 0)
-					(length 2.54)
-					(name "CT"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "4"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 10.16 -2.54 180)
-					(length 2.54)
-					(name "QOD"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "5"
+					(number "C2"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -912,8 +847,8 @@
 					)
 				)
 				(pin power_out line
-					(at 10.16 2.54 180)
-					(length 2.54)
+					(at 12.7 2.54 180)
+					(length 5.08)
 					(name "VOUT"
 						(effects
 							(font
@@ -921,7 +856,25 @@
 							)
 						)
 					)
-					(number "6"
+					(number "[A1,B1]"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -12.7 2.54 0)
+					(length 5.08)
+					(name "VIN"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "[A2,B2]"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -2526,7 +2479,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "PWR-006: upstream U13 TPS63806YFFR, forced PWM.\nVnom=.5*(1+5600/(1000+10))=3.272277228V.\nStatic resistor/reference/leakage screen: 3.226819680..3.318012496V.\nWith one +/-75mV dynamics allocation: 3.151819680..3.393012496V.\nRST-002 MCU rising maximum 3.113278988V leaves 38.540692mV.\nRadio U4 TPS22917 remains unresolved: old 87.5mV loss screen\nleaves -48.959308mV release margin. Replace and qualify path.\nThese are conditional budgets, not measured rail/reset waveforms.\nFull regulator calculations: design/main_regulator_tps63806.md.\nReset calculations: design/reset_coordination_tps3890.md."
+	(text "PWR-006: upstream U13 TPS63806YFFR, forced PWM.\nVnom=.5*(1+5600/(1000+10))=3.272277228V.\nStatic resistor/reference/leakage screen: 3.226819680..3.318012496V.\nWith one +/-75mV dynamics allocation: 3.151819680..3.393012496V.\nRST-002 MCU rising maximum 3.113278988V leaves 38.540692mV.\nRADIO-019 U4 TPS22964C: require <=20mV complete path at 505mA.\nRadio release margin =38.540692-20=18.540692mV, conditional.\nContinuous-rail RON, inrush, collapse and discharge need qualification.\nFull regulator calculations: design/main_regulator_tps63806.md.\nReset calculations: design/reset_coordination_tps3890.md."
 		(exclude_from_sim no)
 		(at 266.7 142.24 0)
 		(effects
@@ -2584,7 +2537,7 @@
 		)
 		(uuid "65624b99-0e43-4086-bb29-811c3a766cfa")
 	)
-	(text "RADIO-004: U4 TPS22917DBVT / radio power gating\nQOD tied to VOUT: Rdis = 150 ohm TYPICAL.\nC45+C46+C50 = 0.1+10+0.1 = 10.2 uF nominal external load.\nt90..10 = ln(9)*150*10.2u = 3.362 ms (ideal RC).\nNot a guaranteed off-time: module C/load and VIN decay matter.\nC48 connects CT to VIN, not GND; 50 V rating >=7 V required.\nReset/isolation and upstream regulator remain incomplete.\nLoad update: RADIO-009; device limits: RADIO-004.\nMath: ../design/radio_interface.md#radio-009-spi-power-domain-isolation"
+	(text "RADIO-019: U4 TPS22964CYZPT radio power gating\nRST-002: 3.151819680 - 0.020 - 3.113278988\n= 18.540692 mV conditional reset-release margin.\n505 mA: switch <=30 mOhm + rest <=9.6 mOhm\nrequired for <=20 mV path; qualification pending.\nInternal slew: 715 us TYP; no CT capacitor.\nQOD: 273 ohm TYP / 325 max; external C = 10.2uF.\nModule C and leakage unknown; no guaranteed off-time.\nRCB only disabled, either rail >1 V; decay unqualified.\nMath: ../design/radio_interface.md (RADIO-019)."
 		(exclude_from_sim no)
 		(at 187.96 154.432 0)
 		(effects
@@ -2592,7 +2545,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-009-spi-power-domain-isolation")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-019-tps22964c-low-loss-switch-migration")
 		)
 		(uuid "6ee9ae5e-64a4-457a-b04f-1c82cf26dbc0")
 	)
@@ -2655,7 +2608,7 @@
 		)
 		(uuid "8c0c2d13-1dc7-4e01-a9e1-9af793f086d4")
 	)
-	(text "RADIO-007: C48 / CT slew-rate control, TDK C1608NP01H102J080AA\n1nF +/-5%, 50 V NP0; CT-to-VIN, NOT CT-to-GND.\nTI 3.6 V / 25 C TYPICAL table point, not guaranteed at 3.3 V:\nSlew = 1900/1000 = 1.9 mV/us; tON = 3.8*1000 = 3.8 ms.\ntR(10..90%) = 1.6*1000 = 1.6 ms (TI test load).\nC45+C46+C50 = 10.2 uF: Icap = C*dV/dt = 19.38 mA.\nOpen-CT comparison: 10.2u*44mV/us = 448.8 mA (typical).\nTotal inrush also includes module C/load and future rail parts.\nNot a current limiter or reset delay; startup qualification required.\nTiming model: RADIO-007; updated load: RADIO-009.\nFull math: ../design/radio_interface.md#radio-009-spi-power-domain-isolation"
+	(text "RADIO-019: internal slew / conditional discharge screens\nTI tR(10..90%)=715us TYP at 3.3V, 25C, 10 ohm load,\nCIN=1uF/COUT=0.1uF; not this board or worst-case timing.\nExternal C45+C46+C50=10.2uF nominal; module C unknown.\nIcap=10.2uF*(0.8*3.3V)/715us=37.661538mA (linear TYP).\nt90..10=R*C*ln(9): 6.118392ms at 273 ohm TYP;\n7.283799ms using 325 ohm table max at ON=0, IOUT=2mA.\nIdeal RC only; C corners, leakage, VIN decay need qualification.\nKeep radio OFF during host cold/wake inrush; wait for rail settle.\nVerify U6/C6 reset interval independently; no fixed off-time.\nMath: ../design/radio_interface.md (RADIO-019)."
 		(exclude_from_sim no)
 		(at 228.6 228.6 0)
 		(effects
@@ -2663,11 +2616,11 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-009-spi-power-domain-isolation")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-019-tps22964c-low-loss-switch-migration")
 		)
 		(uuid "a3b0d9cd-be71-4d46-b834-9a684f501730")
 	)
-	(text "RADIO-006: R7/R8 / active-high enable, default OFF\nR7 series = R8 pulldown = 10k 1%; +/-2% screening envelope.\nTPS22917 ON: low <=0.35 V; high >=1.0 V.\nAssume node leakage <=10 uA and host VOL<=0.5 V, VOH>=2.5 V.\nRparallel <=5.1k; divider fraction = 0.49..0.51.\nVlow <=0.5*0.51+10u*5.1k = 0.306 V <0.35 V.\nVhigh >=2.5*0.49-10u*5.1k = 1.174 V >1.0 V.\nHi-Z screen: 10u*10.2k = 0.102 V; disable host pull-up.\nHost pin, all power states, leakage and timing need qualification.\nFull math: ../design/radio_interface.md#radio-006-enable-divider"
+	(text "RADIO-019: R7=4.7k / R8=10k, active-high ON, default OFF\n1% initial x 100ppm/C x 100C; adverse Ileak=+/-12uA.\nVON=(Vhost/R7+Ileak)/(1/R7+1/R8); use resistor corners.\nValid host VOL<=0.5V / VOH>=2.5V; pull-up disabled.\nVlow<=0.383594V <0.4V; Vhigh>=1.639635V >1.3V.\nHost source current <=0.261871mA in this envelope.\nHi-Z: 12uA*10201=0.122412V; leakage allocation required.\nNo logic guarantee once host leaves its valid voltage range.\nSource collapse, startup and shutdown qualification remain open.\nMath: ../design/radio_interface.md (RADIO-019)."
 		(exclude_from_sim no)
 		(at 228.6 185.42 0)
 		(effects
@@ -2675,11 +2628,11 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-006-enable-divider")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-019-tps22964c-low-loss-switch-migration")
 		)
 		(uuid "b3fe64c9-81e0-47c7-9dd2-5988e0a7a95a")
 	)
-	(text "RADIO-014 / RST-002: R12=33k, R13=20k switched-radio SENSE divider.\n0.05%, 10ppm/C; allocate 100C, +/-0.15% installed drift, +/-150nA total.\nfL=.9995*.999*.9985; fH=1.0005*1.001*1.0015.\nKlo=1+33000*fL/(20000*fH); Khi=1+33000*fH/(20000*fL).\nE=150nA*33000*fH; Vtrip=Vthreshold*(1+Rt/Rb)+Is*Rt.\nVfall=1.15*.99*Klo-E .. 1.15*1.01*Khi+E = 3.000822727..3.094473285V.\nVrise=1.157*.99*Klo-E .. 1.157*1.01*Khi+E = 3.019118825..3.113278988V.\nUse direct VITP limits; do not add hysteresis a second time.\nU4 TPS22917 remains UNRESOLVED: 3.151819680-.0875-3.113278988\n= -48.959308mV release margin at the existing 500mA loss screen.\nA qualified <=20mV complete radio path would give +18.540692mV;\nthat path is NOT implemented. No radio DC/startup sign-off.\nC52=1n charge interval .814828..1.526476ms; not total IC delay maximum.\nFull assumptions, sourcing and Python: design/reset_coordination_tps3890.md."
+	(text "RADIO-014 / RST-002: R12=33k, R13=20k switched-radio SENSE divider.\n0.05%, 10ppm/C; allocate 100C, +/-0.15% installed drift, +/-150nA total.\nfL=.9995*.999*.9985; fH=1.0005*1.001*1.0015.\nKlo=1+33000*fL/(20000*fH); Khi=1+33000*fH/(20000*fL).\nE=150nA*33000*fH; Vtrip=Vthreshold*(1+Rt/Rb)+Is*Rt.\nVfall=1.15*.99*Klo-E .. 1.15*1.01*Khi+E = 3.000822727..3.094473285V.\nVrise=1.157*.99*Klo-E .. 1.157*1.01*Khi+E = 3.019118825..3.113278988V.\nUse direct VITP limits; do not add hysteresis a second time.\nRADIO-019 U4 TPS22964C: 3.151819680-.020-3.113278988\n=18.540692mV conditional release margin; <=20mV path at 505mA required.\n30mOhm installed switch allocation needs full-range qualification.\nNo radio DC/startup or fast-brownout sign-off from this model.\nC52=1n charge interval .814828..1.526476ms; not total IC delay maximum.\nFull assumptions, sourcing and Python: design/reset_coordination_tps3890.md."
 		(exclude_from_sim no)
 		(at 266.7 101.6 0)
 		(effects
@@ -2702,12 +2655,6 @@
 			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-012-supervisor-reset-release-delay")
 		)
 		(uuid "ef90dbfa-f81a-4b92-b0a7-0c26bdde4289")
-	)
-	(junction
-		(at 170.18 149.86)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "01b09af3-d09e-4c89-8cd3-effda8157be6")
 	)
 	(junction
 		(at 134.62 73.66)
@@ -2782,12 +2729,6 @@
 		(uuid "a101bbf7-9cb2-47c0-87d1-f71e9decc46a")
 	)
 	(junction
-		(at 124.46 152.4)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "b3e2bd8c-1ccc-47dc-a28e-a0b216942b6c")
-	)
-	(junction
 		(at 269.24 60.96)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -2844,16 +2785,6 @@
 			(type default)
 		)
 		(uuid "0a5a66ac-9a72-4a8a-a622-2613d12eca2f")
-	)
-	(wire
-		(pts
-			(xy 165.1 154.94) (xy 170.18 154.94)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "194863c1-cf93-403e-9d24-be558ff49a1f")
 	)
 	(wire
 		(pts
@@ -2977,7 +2908,7 @@
 	)
 	(wire
 		(pts
-			(xy 124.46 149.86) (xy 144.78 149.86)
+			(xy 124.46 149.86) (xy 142.24 149.86)
 		)
 		(stroke
 			(width 0)
@@ -3087,7 +3018,7 @@
 	)
 	(wire
 		(pts
-			(xy 134.62 154.94) (xy 144.78 154.94)
+			(xy 134.62 154.94) (xy 142.24 154.94)
 		)
 		(stroke
 			(width 0)
@@ -3117,16 +3048,6 @@
 	)
 	(wire
 		(pts
-			(xy 137.16 152.4) (xy 144.78 152.4)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "77f86d17-b58d-4326-a59e-65b94659c4cf")
-	)
-	(wire
-		(pts
 			(xy 139.7 78.74) (xy 154.94 78.74)
 		)
 		(stroke
@@ -3147,7 +3068,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 149.86) (xy 175.26 149.86)
+			(xy 167.64 149.86) (xy 175.26 149.86)
 		)
 		(stroke
 			(width 0)
@@ -3224,16 +3145,6 @@
 			(type default)
 		)
 		(uuid "a55866d5-f80f-4bc9-b95e-f04ff0528b69")
-	)
-	(wire
-		(pts
-			(xy 170.18 149.86) (xy 170.18 154.94)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "acf8b950-fafe-484f-976f-eb2b5246af84")
 	)
 	(wire
 		(pts
@@ -3374,16 +3285,6 @@
 			(type default)
 		)
 		(uuid "d88ac857-0fbd-4fa3-9942-9f55c29dd93a")
-	)
-	(wire
-		(pts
-			(xy 124.46 152.4) (xy 132.08 152.4)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "d97b329e-e943-4258-aaca-274cfdf02114")
 	)
 	(wire
 		(pts
@@ -3544,16 +3445,6 @@
 			(type default)
 		)
 		(uuid "fe40c4d4-4abb-4d4d-bb4f-09cddb2bfa33")
-	)
-	(wire
-		(pts
-			(xy 165.1 149.86) (xy 170.18 149.86)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "fece1c94-1e8b-4e1c-9238-2e051c149521")
 	)
 	(label "C6_GPIO15"
 		(at 132.08 86.36 0)
@@ -4871,7 +4762,7 @@
 				)
 			)
 		)
-		(property "Value" "10k"
+		(property "Value" "4.7k"
 			(at 111.76 161.29 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4892,7 +4783,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
+		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-074K7L"
 			(at 111.76 165.1 0)
 			(hide yes)
 			(show_name no)
@@ -4903,7 +4794,7 @@
 				)
 			)
 		)
-		(property "Description" "YAGEO RC0603FR-0710KL; 10k 1%; RADIO-006 series/pulldown enable divider. 0.35 V low and 1 V high switch thresholds; host pin qualification required."
+		(property "Description" "YAGEO RC0603FR-074K7L; 4.7k 1%, 100 ppm/C; RADIO-019 series resistor with R8 10k for TPS22964C ON. Valid host-domain bounds; collapse qualification pending."
 			(at 111.76 165.1 0)
 			(hide yes)
 			(show_name no)
@@ -4936,7 +4827,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
+		(property "DigiKey_Part_Number" "311-4.70KHRCT-ND"
 			(at 111.76 165.1 0)
 			(hide yes)
 			(show_name no)
@@ -4947,7 +4838,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827"
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-074K7L/727212"
 			(at 111.76 165.1 0)
 			(hide yes)
 			(show_name no)
@@ -4958,7 +4849,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
+		(property "Procurement_Status" "Selected - RADIO-019 valid-domain divider bounds checked; collapse qualification pending; footprint deferred."
 			(at 111.76 165.1 0)
 			(hide yes)
 			(show_name no)
@@ -4969,7 +4860,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 2922248; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
+		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active; 4,502,006 in stock; USD 0.10 / 0.025 / 0.0122 at qty 1 / 10 / 100; 17-week lead. Unreserved; recheck before purchase."
 			(at 111.76 165.1 0)
 			(hide yes)
 			(show_name no)
@@ -4991,7 +4882,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
+		(property "Manufacturer_Part_Number" "RC0603FR-074K7L"
 			(at 111.76 165.1 0)
 			(hide yes)
 			(show_name no)
@@ -5002,7 +4893,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "RADIO-006: two 10k resistors attenuate RA8 GPIO low to TPS22917 ON. Screening +/-2% R, +/-10uA node leakage: low <=0.306V; high >=1.174V at host VOH>=2.5V. Host pin/power states and leakage qualification open; footprint deferred."
+		(property "Selection_Basis" "RADIO-019: R7 4.7k / R8 10k, 1% x 100 ppm/C x 100 C and adverse 12uA ON allocation; low <=0.383594 V, high >=1.639635 V for valid host domain. See ../design/radio_interface.md."
 			(at 111.76 165.1 0)
 			(hide yes)
 			(show_name no)
@@ -6329,7 +6220,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Power_Devices:TPS22917DBVT")
+		(lib_id "Power_Devices:TPS22964CYZPT")
 		(at 154.94 152.4 0)
 		(unit 1)
 		(body_style 1)
@@ -6350,7 +6241,7 @@
 				)
 			)
 		)
-		(property "Value" "TPS22917DBVT"
+		(property "Value" "TPS22964CYZPT"
 			(at 154.94 144.78 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6360,7 +6251,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
+		(property "Footprint" ""
 			(at 154.94 139.7 0)
 			(hide yes)
 			(show_name no)
@@ -6371,7 +6262,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps22917.pdf"
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps22963c.pdf"
 			(at 156.21 170.18 0)
 			(hide yes)
 			(show_name no)
@@ -6382,7 +6273,7 @@
 				)
 			)
 		)
-		(property "Description" "TI active-high 1..5.5 V load switch; low leakage, reverse-current blocking and output discharge; CT connects to VIN."
+		(property "Description" "TI active-high 1..5.5 V load switch, YZP six-ball; internal slew and output discharge; reverse blocking only when disabled."
 			(at 154.94 152.4 0)
 			(hide yes)
 			(show_name no)
@@ -6404,7 +6295,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "TPS22917DBVT"
+		(property "Manufacturer_Part_Number" "TPS22964CYZPT"
 			(at 154.94 152.4 0)
 			(hide yes)
 			(show_name no)
@@ -6415,7 +6306,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "296-48370-1-ND"
+		(property "DigiKey_Part_Number" "296-41845-1-ND"
 			(at 154.94 152.4 0)
 			(hide yes)
 			(show_name no)
@@ -6426,7 +6317,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TPS22917DBVT/8567084"
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TPS22964CYZPT/4457704"
 			(at 154.94 152.4 0)
 			(hide yes)
 			(show_name no)
@@ -6437,7 +6328,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-05: DigiKey page lists Active, 8127 in stock; USD 1.14 / 0.822 / 0.6554 at qty 1 / 10 / 100. Recheck before purchase."
+		(property "Sourcing_Snapshot" "2026-09-12: DigiKey cut tape, 4 in stock; USD 1.56 / 1.143 / 0.9212 at qty 1 / 10 / 100. Unreserved; recheck before purchase."
 			(at 154.94 152.4 0)
 			(hide yes)
 			(show_name no)
@@ -6448,7 +6339,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Sourced candidate; rail budget, transient and sequencing qualification pending; footprint qualification deferred."
+		(property "Procurement_Status" "RADIO-019 selected switch; 30 milliohm installed / 20 mV complete path, startup, collapse and discharge qualification pending; footprint deferred."
 			(at 154.94 152.4 0)
 			(hide yes)
 			(show_name no)
@@ -6459,22 +6350,16 @@
 				)
 			)
 		)
-		(pin "1"
-			(uuid "cc93f003-d76c-4668-bfef-7d3fa353c628")
-		)
-		(pin "6"
+		(pin "[A2,B2]"
 			(uuid "16a94876-d8fe-4e22-81c4-5fc3d80ca358")
 		)
-		(pin "2"
+		(pin "C1"
 			(uuid "23d983c6-4457-4096-a36a-13705289217d")
 		)
-		(pin "3"
-			(uuid "688fee69-a425-4c3c-b16f-779ee02720a8")
-		)
-		(pin "5"
+		(pin "[A1,B1]"
 			(uuid "b88dd3f9-6813-4000-b7b4-55683fd42478")
 		)
-		(pin "4"
+		(pin "C2"
 			(uuid "a0e8f5e6-d041-40ef-9822-bf0ddf7c6403")
 		)
 		(instances
@@ -6757,7 +6642,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 154.94 160.02 0)
+		(at 154.94 162.56 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -6768,7 +6653,7 @@
 		(fields_autoplaced yes)
 		(uuid "68d52a46-f6e6-4f04-be12-0cc9a79f9252")
 		(property "Reference" "#PWR056"
-			(at 154.94 166.37 0)
+			(at 154.94 168.91 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6779,7 +6664,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 154.94 165.1 0)
+			(at 154.94 167.64 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6789,7 +6674,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 154.94 160.02 0)
+			(at 154.94 162.56 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6800,7 +6685,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 154.94 160.02 0)
+			(at 154.94 162.56 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6811,7 +6696,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 154.94 160.02 0)
+			(at 154.94 162.56 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6966,7 +6851,7 @@
 				)
 			)
 		)
-		(property "Description" "YAGEO RC0603FR-0710KL; 10k 1%; RADIO-006 series/pulldown enable divider. 0.35 V low and 1 V high switch thresholds; host pin qualification required."
+		(property "Description" "YAGEO RC0603FR-0710KL; 10k 1%, 100 ppm/C; RADIO-019 ON pulldown with R7 4.7k for TPS22964C. Valid host-domain bounds; collapse qualification pending."
 			(at 134.62 171.45 0)
 			(hide yes)
 			(show_name no)
@@ -7065,7 +6950,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "RADIO-006: two 10k resistors attenuate RA8 GPIO low to TPS22917 ON. Screening +/-2% R, +/-10uA node leakage: low <=0.306V; high >=1.174V at host VOH>=2.5V. Host pin/power states and leakage qualification open; footprint deferred."
+		(property "Selection_Basis" "RADIO-019: R7 4.7k / R8 10k, 1% x 100 ppm/C x 100 C and adverse 12uA ON allocation; low <=0.383594 V, high >=1.639635 V for valid host domain. See ../design/radio_interface.md."
 			(at 134.62 171.45 0)
 			(hide yes)
 			(show_name no)
@@ -7412,163 +7297,6 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
 					(reference "#PWR058")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:C_Small")
-		(at 134.62 152.4 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "7e076157-35bd-4e21-a7a1-3abdbdd7f030")
-		(property "Reference" "C48"
-			(at 134.6263 146.05 90)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "1n"
-			(at 134.6263 148.59 90)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 134.62 152.4 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608NP01H102J080AA"
-			(at 134.62 152.4 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "TDK C1608NP01H102J080AA; 1nF +/-5%, 50V NP0; U4 CT-to-VIN timing capacitor. RADIO-007 typical timing screen, not a guaranteed reset delay."
-			(at 134.62 152.4 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "DigiKey_Part_Number" "445-14055-1-ND"
-			(at 134.62 152.4 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/C1608NP01H102J080AA/3955721"
-			(at 134.62 152.4 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer_Name" "TDK"
-			(at 134.62 152.4 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Manufacturer_Part_Number" "C1608NP01H102J080AA"
-			(at 134.62 152.4 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Procurement_Status" "Selected - initial slew-rate screen; full startup and transient qualification open; footprint deferred."
-			(at 134.62 152.4 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Selection_Basis" "RADIO-007: 1nF NP0 50V from CT to VIN; TI >=7V rating met. Typical 3.6V table: slew 1900/1000=1.9mV/us, tON=3.8ms. Complete output C and upstream transient budget remain open."
-			(at 134.62 152.4 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 27277 stock, 24 weeks; USD 0.22/0.125/0.078 at 1/10/100. Recheck before ordering."
-			(at 134.62 152.4 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "2"
-			(uuid "c9d56b4b-de06-4683-90ea-438593401389")
-		)
-		(pin "1"
-			(uuid "653c91bf-5c46-4ae1-9954-0802143270c7")
-		)
-		(instances
-			(project "ereader_rev1"
-				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/9b84c337-6879-4714-899e-3993bcc30b88"
-					(reference "C48")
 					(unit 1)
 				)
 			)
