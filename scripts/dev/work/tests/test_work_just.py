@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 SRC = Path(__file__).resolve().parents[1] / "src"
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 FIXTURE = Path(__file__).resolve().parent / "fixtures/valid_notes.md"
 sys.path.insert(0, str(SRC))
 sys.path.insert(0, str(Path(__file__).resolve().parent / "fixtures"))

@@ -44,11 +44,11 @@ from work_workspace import (
     recovery_command,
 )
 
-SOURCE_SCRIPT = Path(__file__).resolve().parents[3] / "scripts/dev/agent_workspace.sh"
-SOURCE_GUARD = Path(__file__).resolve().parents[3] / "scripts/dev/workspace_guard.py"
-SOURCE_GIT_ENVIRONMENT = Path(__file__).resolve().parents[3] / "scripts/dev/git_environment.py"
+SOURCE_SCRIPT = Path(__file__).resolve().parents[4] / "scripts/dev/agent_workspace.sh"
+SOURCE_GUARD = Path(__file__).resolve().parents[4] / "scripts/dev/workspace_guard.py"
+SOURCE_GIT_ENVIRONMENT = Path(__file__).resolve().parents[4] / "scripts/dev/git_environment.py"
 SOURCE_GIT_ENVIRONMENT_SHELL = (
-    Path(__file__).resolve().parents[3] / "scripts/dev/git_environment.sh"
+    Path(__file__).resolve().parents[4] / "scripts/dev/git_environment.sh"
 )
 LINUX_LIFECYCLE_REASON = "canonical lifecycle is Linux-only"
 LINUX_LIFECYCLE_AVAILABLE = sys.platform.startswith("linux")

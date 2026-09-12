@@ -136,7 +136,10 @@ if(CBZ2JOF_GO_EXECUTABLE)
     COMMENT "Staging jof-worker beside the cbz2jof CLI"
     VERBATIM
   )
-  add_custom_target(cbz2jof_cli ALL DEPENDS ${CBZ2JOF_CLI} ${CMAKE_CURRENT_BINARY_DIR}/jof-worker)
+  add_custom_target(
+    cbz2jof_cli ALL DEPENDS ${CBZ2JOF_CLI} ${CMAKE_CURRENT_BINARY_DIR}/jof-worker
+    COMMENT "Building the cbz2jof CLI and staging its worker"
+  )
 
   # ---------------------------------------------------------------------------
   # Go tests. The unit suite is untagged; the real-worker suite carries the

@@ -3,7 +3,7 @@ Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
 -->
 
-# tools/work
+# scripts/dev/work
 
 `work` is the repository workflow client. It validates notes, emits a
 reviewable GitHub issue-and-board script, and provides identifier-bound views
@@ -42,7 +42,7 @@ properties of the shared lifecycle, not hidden behavior of a second client.
 
 ```sh
 just work::doctor
-just work::plan_summary tools/work/tests/fixtures/valid_notes.md
+just work::plan_summary scripts/dev/work/tests/fixtures/valid_notes.md
 just work::start 742
 just work::start_execute 742
 just work::status
@@ -57,7 +57,7 @@ post-push phase: content-equivalent `origin/dev` plus cached remote PASS. It
 never polls GitHub.
 
 The command reference, notes schema, trust boundaries, and recovery model are
-in [docs/WORKFLOW_AUTOMATION.md](../../docs/WORKFLOW_AUTOMATION.md).
+in [docs/WORKFLOW_AUTOMATION.md](../../../docs/WORKFLOW_AUTOMATION.md).
 
 The offline tests intentionally use stdlib `unittest`. The narrow Ruff PT009
 and PT027 exemptions preserve `TestCase` assertions and `assertRaises` without

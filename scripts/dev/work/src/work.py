@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts/dev"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts/dev"))
 
 from work_emit import render_commands
 from work_gh import STATE_DEGRADED, STATE_UNAVAILABLE, Probe, probe_auth, probe_version

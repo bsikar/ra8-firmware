@@ -22,5 +22,5 @@ app branched away and the anti-rollback commit stuck.
 
 `inc/signed_payload.h` is generated from `dfu_copy_to_run`'s payload via
 `examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/scripts/build_payload.sh` and
-`tools/rot/src/rot_sign.py`. Regenerate and re-sign it whenever that payload
+`scripts/secrets/rot_sign.py`. Regenerate and re-sign it whenever that payload
 changes.

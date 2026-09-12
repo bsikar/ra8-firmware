@@ -32,7 +32,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts/dev"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts/dev"))
 
 from git_environment import (
     GitEnvironmentError,

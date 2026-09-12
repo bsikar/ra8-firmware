@@ -405,8 +405,8 @@ def main(argv: list[str]) -> int:
 
     # Scope introspection for check_lint_coverage.py and the format gate -- see
     # the note in check_ruff.py's main(). Deliberately independent of whether
-    # shellcheck is installed: the question is what this gate COVERS, and a
-    # missing tool must not silently shrink the answer to nothing.
+    # tools are installed: the question is what this gate COVERS, and a missing
+    # tool must not silently shrink the answer to nothing.
     if "--list-files" in argv[1:]:
         print("\n".join(first_party_scripts()))
         return 0

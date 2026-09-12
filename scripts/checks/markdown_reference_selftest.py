@@ -262,10 +262,10 @@ def _check_parser_cases(failures: list[str]) -> None:
     if shortcut.missing_references != (LinkRef(1, "docs/missing.md"),):
         failures.append("path-looking shortcut reference without a definition escaped")
     fixture = PathRef(1, 0, "../escape", "A key that looks like a path")
-    if not _declared_work_fixture("tools/work/tests/fixtures/bad_key.md", fixture):
+    if not _declared_work_fixture("scripts/dev/work/tests/fixtures/bad_key.md", fixture):
         failures.append("exact workflow fixture declaration was rejected")
     wrong_fixture = PathRef(1, 0, "../other", "A key that looks like a path")
-    if _declared_work_fixture("tools/work/tests/fixtures/bad_key.md", wrong_fixture):
+    if _declared_work_fixture("scripts/dev/work/tests/fixtures/bad_key.md", wrong_fixture):
         failures.append("a different workflow fixture escape was accepted")
     declared_document = parse_document(
         (REPO_ROOT / "docs/HIL_SUITE.md").read_text(encoding="utf-8")

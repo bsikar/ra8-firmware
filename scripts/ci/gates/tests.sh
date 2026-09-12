@@ -25,13 +25,13 @@ gate_work_harness() (
   require_cmd git "workspace binding tests use isolated local git repositories"
   require_cmd jq "the emitted GitHub script discovers board metadata with jq"
   require_cmd shellcheck "the generated operator script must be valid POSIX shell"
-  RA8_WORK_HARNESS_REGISTERED_GATE=1 python3 -I tools/work/src/work.py --selftest
+  RA8_WORK_HARNESS_REGISTERED_GATE=1 python3 -I scripts/dev/work/src/work.py --selftest
   /bin/bash -p -n scripts/dev/agent_workspace.sh
   bash scripts/dev/agent_workspace_selftest.sh
   local generated
   generated="$(mktemp)"
   trap 'rm -f "$generated"' EXIT
-  python3 -I tools/work/src/work.py plan tools/work/tests/fixtures/injection_notes.md \
+  python3 -I scripts/dev/work/src/work.py plan scripts/dev/work/tests/fixtures/injection_notes.md \
     --emit-commands >"$generated"
   shellcheck -s sh "$generated"
 )

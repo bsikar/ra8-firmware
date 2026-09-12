@@ -39,7 +39,7 @@ batches:
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
     assigned_rows: 2668
-    rows_sha256: a74bcad4ef99b07acac8706e7b357a88241e25d451c5d7ffc7915d0ceb74cca0
+    rows_sha256: c90548ebd6de522886918188059f5c079123878c2291fdbba29210d9001ee312
     partition: "checker scope/control authorities, encoding exemptions, generated artifacts"
     evidence:
       - "constant-classification review record"
@@ -122,7 +122,7 @@ batches:
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
     assigned_rows: 4185
-    rows_sha256: dad5bb6f3db8adc7997996ade9836bd56d16f4533820b031760c733bbcd61044
+    rows_sha256: 6ba2a3c7b6070ef47d329fc57678006dd1a01c8b6b9b0da2621a47334b04e538
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
@@ -403,7 +403,7 @@ batches:
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
     assigned_rows: 124
-    rows_sha256: 0d57bf801df0917098d212638ba124dafe1c77d6d5be0c57baed8d1b793b369d
+    rows_sha256: b7862e0abffcb083dbe69a52105d6a05f5dd5f7d40d45215d54eaab17aea6235
     partition: >-
       HIL size-cap split reconciliation: three new bound-exit raw-byte
       authorities, two changed raw-byte pins, one moved negative-fixture
@@ -471,7 +471,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: e503128b5f4590064f2e8b35352b8d6421352e889b9908052e9db03f13cf84cc
+    rows_sha256: 5dedfcc0c4a2ffa8a15c3b89b3a4cef4407f0383bd62544a597e0e7c772c2b72
     partition: >-
       Runner reconciliation round-two authority refresh: the independently
       recomputed devcontainer image raw-byte pin and both full-worktree
@@ -530,7 +530,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 17
-    rows_sha256: aad63b5d32d2709ba61a0329e96859f27ae7491a85864b365c307c3f764495d2
+    rows_sha256: 3ab49174dbd6107f4b2331a5a15885597792ecd28c496ba0a20f72b1477af3a0
     partition: >-
       Round4 checker split: three exact fleet path authorities, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -554,7 +554,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 26
-    rows_sha256: 7e329718cd60c54c51896ee49ad6b272ed9f4125a40713d39aecd53a52512550
+    rows_sha256: 051a5bba45dc33e9784dc62943ebcdcd1fe80b41f152dad67966b9de10451453
     partition: >-
       Round5 ARC checker split: one exact selftest path authority, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -603,7 +603,7 @@ batches:
     date: 2026-09-05
     identity_schema: 2-durable-site-identity
     assigned_rows: 36
-    rows_sha256: d7b7bf1192d6cf3bec61ce792b141b9de76d4c6363308147729bb18f46b66e53
+    rows_sha256: 2360e60a78e8d3998c3b51529f64fd1b7f2ba31eab2901547dec0e52bddc33fa
     partition: >-
       Final runner storage, WSL clock, and lifecycle authority reconciliation.
     evidence:
@@ -642,7 +642,7 @@ batches:
     date: 2026-09-06
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: 06a95cda653145a934662695a963b5340dabe586c96ffd5da61ad5e3f2136fa3
+    rows_sha256: 5fb550c7bae912175bf49bafe1067784be643fd0d27392cd2fc274d1d073cc3a
     partition: >-
       Authenticated image selftest bytes and settled aggregate successors.
     evidence:
@@ -660,7 +660,7 @@ batches:
     date: 2026-09-07
     identity_schema: 2-durable-site-identity
     assigned_rows: 4
-    rows_sha256: e889a23477e7ce20461813772d81f6c76cb0c39b61f4b0261392872647a60e02
+    rows_sha256: 9e7c62a6fab6b9b07d81a2c061f01bb281d547bcaedead32792c7f6fb49e7ce2
     partition: >-
       Load-safe image supervisor deadline review: the nested status receipt now
       waits through its existing watchdog plus cleanup margin, and both exact
@@ -690,7 +690,7 @@ batches:
     date: 2026-09-07
     identity_schema: 2-durable-site-identity
     assigned_rows: 20
-    rows_sha256: 056c4dc57b36ef67c69d10612e5b2b0e0d32a5a77f3ee1e2aff7d50972f8ffad
+    rows_sha256: ed9db3823d771ae323f4bebbfe580598336e675edf1434d3b9320025b22652fb
     partition: >-
       WSL image-selftest cleanup deadline review: only descendant disappearance
       receives additional bounded observation time, with exact helper and main
@@ -782,17 +782,32 @@ batches:
     date: 2026-09-09
     identity_schema: 2-durable-site-identity
     assigned_rows: 91
-    rows_sha256: cbe3f61f9d96059bda969fca22e19ddebefe022d3c5f701bbff7a99ed868e5aa
+    rows_sha256: d435c95ca9ecfd7c4effcca6a7021617b875eb5d49f93286686aabbb57170ff4
     partition: "Automated developer review batch"
     evidence:
-      - "auto-sync batch 2026-09-09: cbz2jof MISRA dispositions (D-001/D-002/D-005/D-010 classes per .cppcheck-suppressions justification blocks) plus check_go.py/hook_runtime re-derived checker rows; each remaining draft is a live suppression site verified by the census that auto_sync.py emitted"
+      - "auto-sync batch 2026-09-09: cbz2jof MISRA dispositions (D-001/D-002/D-005/D-010 classes
+        per .cppcheck-suppressions justification blocks) plus check_go.py/hook_runtime re-derived
+        checker rows; each remaining draft is a live suppression site verified by the census that
+        auto_sync.py emitted"
 
   - id: auto-review-batch-20260910
     authority: repository-suppression-review
     date: 2026-09-10
     identity_schema: 2-durable-site-identity
     assigned_rows: 40
-    rows_sha256: 7f6d5b79559c8072ef0a468ee8708c8cf37a92a9bba7cf1052024a379afefc6e
+    rows_sha256: a1b46ee045cc4fcb4a6582ac3acc0513603ed0dae9d40da0cb2103676f7ab84d
     partition: "Automated developer review batch (ledger reconciliation)"
     evidence:
-      - "live suppression sites verified against the census auto_sync emitted; merged same-day approvals into one record"
+      - "live suppression sites verified against the census auto_sync emitted; merged same-day
+        approvals into one record"
+  - id: auto-review-batch-20260911
+    authority: repository-suppression-review
+    date: 2026-09-11
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 85
+    rows_sha256: 46b20269272f7f8efe984a461f0f017fa40c64e27b534c7980fcdcb22942bca0
+    partition: "Automated developer review batch"
+    evidence:
+      - "reconcile work-move/checker-drift fallout: rebind moved-file rows to"
+      - "live successors with predecessor links, retire deleted constructs,"
+      - "review new sites on merits; Linux-census driven"

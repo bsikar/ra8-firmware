@@ -7,7 +7,7 @@
  *
  * @details
  * Runs the REAL ``ra8_rot`` verify chain on the M85 against a signed image
- * fixture (``rot_fixture.h``, produced by tools/rot/src/rot_sign.py with the project RoT
+ * fixture (``rot_fixture.h``, produced by scripts/secrets/rot_sign.py with the project RoT
  * key): SHA-256 of the body, the anti-rollback version-bind hash, and an
  * ECDSA-P256 signature check via the tf-psa-crypto software backend (the RSIP
  * crypto hardware is dead -- see libs/ra8_hal/src/ra8_rsip.c). It proves a working

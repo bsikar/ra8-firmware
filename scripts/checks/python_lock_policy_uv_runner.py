@@ -41,7 +41,7 @@ class AuthenticatedUv:
         environment = {**(os.environ if env is None else env), **self.extra_environment}
         return subprocess.run(  # noqa: S603 -- fixed interpreter/bootstrap and exact argv.
             [
-                sys.executable,
+                "/usr/bin/python3",
                 "-I",
                 "-S",
                 str(self.bootstrap),
