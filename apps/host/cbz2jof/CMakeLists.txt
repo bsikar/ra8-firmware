@@ -137,7 +137,8 @@ if(CBZ2JOF_GO_EXECUTABLE)
     VERBATIM
   )
   add_custom_target(
-    cbz2jof_cli ALL DEPENDS ${CBZ2JOF_CLI} ${CMAKE_CURRENT_BINARY_DIR}/jof-worker
+    cbz2jof_cli ALL
+    DEPENDS ${CBZ2JOF_CLI} ${CMAKE_CURRENT_BINARY_DIR}/jof-worker
     COMMENT "Building the cbz2jof CLI and staging its worker"
   )
 
