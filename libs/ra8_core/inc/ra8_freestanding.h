@@ -42,21 +42,36 @@ extern "C" {
 #undef strncpy
 #undef abs
 
-#define memset  ra8_memset
-#define memcpy  ra8_memcpy
+/** @brief Redirect memset calls to the freestanding implementation. */
+#define memset ra8_memset
+/** @brief Redirect memcpy calls to the freestanding implementation. */
+#define memcpy ra8_memcpy
+/** @brief Redirect memmove calls to the freestanding implementation. */
 #define memmove ra8_memmove
-#define memcmp  ra8_memcmp
-#define memchr  ra8_memchr
-#define strlen  ra8_strlen
+/** @brief Redirect memcmp calls to the freestanding implementation. */
+#define memcmp ra8_memcmp
+/** @brief Redirect memchr calls to the freestanding implementation. */
+#define memchr ra8_memchr
+/** @brief Redirect strlen calls to the freestanding implementation. */
+#define strlen ra8_strlen
+/** @brief Redirect strnlen calls to the freestanding implementation. */
 #define strnlen ra8_strnlen
-#define strcmp  ra8_strcmp
+/** @brief Redirect strcmp calls to the freestanding implementation. */
+#define strcmp ra8_strcmp
+/** @brief Redirect strncmp calls to the freestanding implementation. */
 #define strncmp ra8_strncmp
-#define strchr  ra8_strchr
+/** @brief Redirect strchr calls to the freestanding implementation. */
+#define strchr ra8_strchr
+/** @brief Redirect strrchr calls to the freestanding implementation. */
 #define strrchr ra8_strrchr
-#define strstr  ra8_strstr
-#define strcpy  ra8_strcpy
+/** @brief Redirect strstr calls to the freestanding implementation. */
+#define strstr ra8_strstr
+/** @brief Redirect strcpy calls to the freestanding implementation. */
+#define strcpy ra8_strcpy
+/** @brief Redirect strncpy calls to the freestanding implementation. */
 #define strncpy ra8_strncpy
-#define abs     ra8_abs
+/** @brief Redirect abs calls to the freestanding implementation. */
+#define abs ra8_abs
 #endif /* RA8_TEST_FREESTANDING */
 
 /**
@@ -93,7 +108,7 @@ void* memset(void* dst, int value, size_t n);
  * @note Freestanding runtime primitive; never allocates; reentrant and thread-safe when memory regions are not concurrently modified.
  * @since 0.1.0
  */
-void* memcpy(void* restrict dst, const void* restrict src, size_t n);
+void* memcpy(void* dst, const void* src, size_t n);
 
 /**
  * @brief Copy memory area between potentially overlapping regions.
@@ -284,7 +299,7 @@ char* strstr(const char* haystack, const char* needle);
  * @note Freestanding runtime primitive; never allocates; reentrant and thread-safe when strings are not concurrently modified.
  * @since 0.1.0
  */
-char* strcpy(char* restrict dst, const char* restrict src);
+char* strcpy(char* dst, const char* src);
 
 /**
  * @brief Copy bounded string to destination buffer.
@@ -302,7 +317,7 @@ char* strcpy(char* restrict dst, const char* restrict src);
  * @note Freestanding runtime primitive; never allocates; reentrant and thread-safe when strings are not concurrently modified.
  * @since 0.1.0
  */
-char* strncpy(char* restrict dst, const char* restrict src, size_t n);
+char* strncpy(char* dst, const char* src, size_t n);
 
 /**
  * @brief Compute absolute value of integer.

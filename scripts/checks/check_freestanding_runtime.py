@@ -85,7 +85,16 @@ def _allowed_compiler_archives() -> set[str]:
 
 def _allowed_project_archives() -> set[str]:
     """First-party build-product archives allowed to contribute live members."""
-    return {"libthreadx.a", "libthreadx_ns.a", "libra8_shared_ek_ra8d2.a"}
+    return {
+        "libthreadx.a",
+        "libthreadx_ns.a",
+        "libra8_shared_ek_ra8d2.a",
+        "libtfpsa_arm.a",
+        "libtfpsa_dfu.a",
+        "libtfpsa_rot.a",
+        "libtfpsa_sb.a",
+        "libtfpsa_sbns.a",
+    }
 
 
 def _allowed_libm_members() -> set[str]:

@@ -102,6 +102,8 @@ def _dev_shell_command_errors(source: str) -> list[str]:
 def _hil_just_errors(source: str) -> list[str]:
     """Require every HIL recipe shell boundary to enter fixed privileged Bash."""
     errors: list[str] = []
+    # PATH stays a fixed deterministic expression: the trusted host-tool
+    # helper builds it from a closed location list (never the caller PATH).
     expected_environment = {
         'export BASH_ENV := "/dev/null"',
         'export ENV := "/dev/null"',
@@ -109,7 +111,7 @@ def _hil_just_errors(source: str) -> list[str]:
         'export PYTHONPATH := ""',
         'export PYTHONNOUSERSITE := "1"',
         'export RA8_TOOL_VENV := ""',
-        'export PATH := ".venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"',
+        "export PATH := `/bin/bash -p scripts/ci/lib/host_tool_path.sh --print-path`",
     }
     if expected_environment - set(source.splitlines()):
         errors.append("just/hil.just: public environment sanitizer is incomplete")

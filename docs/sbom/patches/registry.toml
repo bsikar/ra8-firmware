@@ -64,6 +64,24 @@ file = "0001-use-ra8-arena-allocator.patch"
 classification = "functional"
 
 [[component]]
+key = "miniz"
+delivery = "vendored"
+series = "docs/sbom/patches/miniz/series"
+
+[[component.patches]]
+file = "0001-use-ra8-assertion-policy.patch"
+classification = "functional"
+
+[[component]]
+key = "esp-hosted/protobuf-c"
+delivery = "vendored"
+series = "docs/sbom/patches/protobuf-c/series"
+
+[[component.patches]]
+file = "0001-use-ra8-runtime-policy.patch"
+classification = "functional"
+
+[[component]]
 key = "esp-hosted-mcu"
 delivery = "fetched"
 series = "coprocessor/esp32c6/patches/series"

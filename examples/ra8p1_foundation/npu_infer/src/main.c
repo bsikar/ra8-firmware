@@ -46,7 +46,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -78,7 +77,9 @@ typedef enum : uint32_t {
   k_npu_infer_baud        = 115200U,                 /**< SCI8 J-Link OB console baud. */
   k_npu_infer_arena_bytes = 32U,                     /**< Tensor-arena length (bytes). */
   k_npu_infer_cmd_words   = k_ra8_npu_fake_word_num, /**< Command-stream word count.   */
-  k_npu_infer_line_cap    = 96U,                     /**< Banner line buffer cap.      */
+  k_npu_infer_hex_digits  = 8U,                      /**< Fixed-width hex word digits. */
+  k_npu_infer_hex_shift   = 4U,                      /**< Bits per hex nibble.         */
+  k_npu_infer_hex_mask    = 0x0FU,                   /**< Mask for one hex nibble.     */
 } npu_infer_size_t;
 
 /**
@@ -397,11 +398,42 @@ RA8_INTERNAL static bool internal_npu_infer_verify(uint32_t* out_check)
   return ok;
 }
 
+RA8_INTERNAL static void internal_npu_infer_write(const uint8_t* data, size_t len)
+{
+  (void)ra8_board_uart_console_write(data, len);
+}
+
+RA8_INTERNAL static void internal_npu_infer_write_hex32(uint32_t value)
+{
+  static const uint8_t k_hex[]                        = "0123456789ABCDEF";
+  uint8_t              digits[k_npu_infer_hex_digits] = {};
+  for (uint8_t i = 0U; i < (uint8_t)k_npu_infer_hex_digits; ++i) {
+    const uint8_t shift =
+      (uint8_t)(((uint8_t)k_npu_infer_hex_digits - 1U - i) * (uint8_t)k_npu_infer_hex_shift);
+    digits[i] = k_hex[(value >> shift) & (uint32_t)k_npu_infer_hex_mask];
+  }
+  internal_npu_infer_write(digits, (size_t)k_npu_infer_hex_digits);
+}
+
+RA8_INTERNAL static void internal_npu_infer_write_status(bool ok)
+{
+  const uint8_t* text = ok ? (const uint8_t*)"OK" : (const uint8_t*)"FAIL";
+  const size_t   len  = ok ? 2U : 4U;
+  internal_npu_infer_write(text, len);
+}
+
+RA8_INTERNAL static void internal_npu_infer_write_verdict(bool pass)
+{
+  const uint8_t* text = pass ? (const uint8_t*)"PASS" : (const uint8_t*)"FAIL";
+  internal_npu_infer_write(text, 4U);
+}
+
 /**
- * @brief Format and print the one-line verdict banner over the SCI8 console.
+ * @brief Print the one-line verdict banner over the SCI8 console.
  *
- * @details Formats every run dimension into a bounded stack buffer and emits
- * one line followed by a console flush when formatting succeeds.
+ * @details Emits fixed text fragments and fixed-width hexadecimal fields
+ * directly, avoiding the libc ``snprintf`` implementation unavailable to the
+ * freestanding target.
  * @param[in] id      NPU_ID read after init.
  * @param[in] tflm_ok Whether the real TFLite-micro Ethos-U op is registered.
  * @param[in] run_ok  Whether the submit/arm/run/wait-irq sequence returned ok.
@@ -412,25 +444,25 @@ RA8_INTERNAL static bool internal_npu_infer_verify(uint32_t* out_check)
  * @pre The supplied flags and checkword are final snapshots for this run.
  * @post One banner line has been written and flushed to the console.
  * @post File-scope verdict globals and NPU arenas remain unchanged.
- * @note A formatting failure suppresses the write rather than emitting garbage.
+ * @note Individual diagnostic writes are best-effort; the final flush keeps the
+ *       complete line observable by the HIL scraper.
  * @since 0.1.0
  */
 RA8_INTERNAL static void
 internal_npu_infer_emit(uint32_t id, bool tflm_ok, bool run_ok, uint32_t check, bool pass)
 {
-  char      line[k_npu_infer_line_cap];
-  const int n = snprintf(line,
-                         sizeof(line),
-                         "npu-infer: id=0x%08X tflm=%s irq=%s out=0x%08X verdict=%s\r\n",
-                         (unsigned)id,
-                         tflm_ok ? "OK" : "FAIL",
-                         run_ok ? "OK" : "FAIL",
-                         (unsigned)check,
-                         pass ? "PASS" : "FAIL");
-  if (n > 0) {
-    (void)ra8_board_uart_console_write((const uint8_t*)line, (size_t)n);
-    (void)ra8_board_uart_console_flush();
-  }
+  internal_npu_infer_write((const uint8_t*)"npu-infer: id=0x", sizeof("npu-infer: id=0x") - 1U);
+  internal_npu_infer_write_hex32(id);
+  internal_npu_infer_write((const uint8_t*)" tflm=", sizeof(" tflm=") - 1U);
+  internal_npu_infer_write_status(tflm_ok);
+  internal_npu_infer_write((const uint8_t*)" irq=", sizeof(" irq=") - 1U);
+  internal_npu_infer_write_status(run_ok);
+  internal_npu_infer_write((const uint8_t*)" out=0x", sizeof(" out=0x") - 1U);
+  internal_npu_infer_write_hex32(check);
+  internal_npu_infer_write((const uint8_t*)" verdict=", sizeof(" verdict=") - 1U);
+  internal_npu_infer_write_verdict(pass);
+  internal_npu_infer_write((const uint8_t*)"\r\n", sizeof("\r\n") - 1U);
+  (void)ra8_board_uart_console_flush();
 }
 
 /**

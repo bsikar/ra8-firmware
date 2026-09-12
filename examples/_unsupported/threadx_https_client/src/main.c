@@ -682,17 +682,28 @@ RA8_INTERNAL static int internal_demo_verify_cert_pin(void)
  */
 RA8_INTERNAL static int internal_demo_http_get(void)
 {
-  int n = snprintf(
-    (char*)s_request_buf,
-    sizeof(s_request_buf),
-    "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nUser-Agent: ra8d2-https-client/0.1\r\n\r\n",
-    s_demo_host_name);
-  if (n <= 0 || (size_t)n >= sizeof(s_request_buf)) {
+  size_t      request_len     = 0U;
+  const char* request_parts[] = {
+    "GET / HTTP/1.1\r\nHost: ",
+    s_demo_host_name,
+    "\r\nConnection: close\r\nUser-Agent: ra8d2-https-client/0.1\r\n\r\n",
+  };
+  s_request_buf[0] = '\0';
+  for (size_t i = 0U; i < (sizeof(request_parts) / sizeof(request_parts[0])); ++i) {
+    const size_t part_len = strlen(request_parts[i]);
+    if (part_len > (sizeof(s_request_buf) - request_len - 1U)) {
+      return -1;
+    }
+    (void)memcpy(&s_request_buf[request_len], request_parts[i], part_len);
+    request_len += part_len;
+    s_request_buf[request_len] = '\0';
+  }
+  if (request_len == 0U) {
     return -1;
   }
   size_t written = 0U;
-  while (written < (size_t)n) {
-    int rc = mbedtls_ssl_write(&s_ssl, s_request_buf + written, (size_t)n - written);
+  while (written < request_len) {
+    int rc = mbedtls_ssl_write(&s_ssl, s_request_buf + written, request_len - written);
     if (rc == MBEDTLS_ERR_SSL_WANT_READ || rc == MBEDTLS_ERR_SSL_WANT_WRITE) {
       continue;
     }

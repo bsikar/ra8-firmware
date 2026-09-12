@@ -57,12 +57,16 @@ add_library(
   ${RA8_THREADX_NS_PORT_C}
   ${RA8_THREADX_NS_PROJECT_LOW_LEVEL}
   "${RA8_THREADX_PORT_DIR}/src/cortex_m85/tx_systick_ready.c"
+  "${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_freestanding_mem.c"
+  "${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_freestanding_str.c"
+  "${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_freestanding_math.c"
 )
 
 target_include_directories(
   threadx_ns SYSTEM PUBLIC "${RA8_THREADX_ROOT}/common/inc" "${RA8_THREADX_M85_GNU}/inc"
 )
 target_include_directories(threadx_ns PUBLIC "${RA8_THREADX_PORT_DIR}/inc")
+target_include_directories(threadx_ns PRIVATE "${RA8_REPO_ROOT}/libs/ra8_core/inc")
 
 # RA8_THREADX_NON_SECURE flips tx_user.h to TX_SINGLE_MODE_NON_SECURE. PUBLIC so
 # the consuming app's TUs (ns_main.c) see the same kernel-option view.

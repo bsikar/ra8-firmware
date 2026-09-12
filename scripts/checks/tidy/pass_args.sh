@@ -387,6 +387,12 @@ tools_pass_args() {
   done < <(git -C "$FIRMWARE_DIR" ls-files \
     "tools/*.h" "tools/*.hpp" "apps/*.h" "apps/*.hpp" |
     sed -E "s#/[^/]+\$##" | sort -u)
+  # The tools pass owns hosted applications as well as standalone tools. They
+  # include the POSIX adapters, whose headers fail closed unless the hosted
+  # build marker is present. Match the host test build here so tidy analyzes
+  # those adapters with their real host-only contract instead of tripping the
+  # deliberate target-linkage guard.
+  printf '%s\n' '--extra-arg=-DRA8_OFF_TARGET'
   local cflag
   local pkg
   if command -v pkg-config &>/dev/null; then

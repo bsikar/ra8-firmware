@@ -1,0 +1,61 @@
+diff --git a/protobuf-c/protobuf-c.c b/protobuf-c/protobuf-c.c
+index 0606cf677d..867c2329b0 100644
+--- a/protobuf-c/protobuf-c.c
++++ b/protobuf-c/protobuf-c.c
+@@ -53,7 +53,11 @@
+ #define TRUE				1
+ #define FALSE				0
+ 
++#if defined(RA8_FREESTANDING) || defined(__ARM_EABI__)
++#define PROTOBUF_C__ASSERT_NOT_REACHED() RA8_ASSERT(0, "protobuf-c not reached")
++#else
+ #define PROTOBUF_C__ASSERT_NOT_REACHED() assert(0)
++#endif
+ 
+ /* Workaround for Microsoft compilers. */
+ #ifdef _MSC_VER
+@@ -151,16 +155,23 @@ static void *
+ system_alloc(void *allocator_data, size_t size)
+ {
+ 	(void)allocator_data;
++	(void)size;
++#if defined(RA8_FREESTANDING) || defined(__ARM_EABI__)
++	return NULL;
++#else
+ 	return malloc(size);
++#endif
+ }
+ 
+ static void
+ system_free(void *allocator_data, void *data)
+ {
+ 	(void)allocator_data;
++	(void)data;
++#if !defined(RA8_FREESTANDING) && !defined(__ARM_EABI__)
+ 	free(data);
++#endif
+ }
+-
+ static inline void *
+ do_alloc(ProtobufCAllocator *allocator, size_t size)
+ {
+diff --git a/protobuf-c/protobuf-c.h b/protobuf-c/protobuf-c.h
+index 5fa52da626..73379f0064 100755
+--- a/protobuf-c/protobuf-c.h
++++ b/protobuf-c/protobuf-c.h
+@@ -196,7 +196,14 @@ size_t foo__bar__baz_bah__pack_to_buffer
+ #ifndef PROTOBUF_C_H
+ #define PROTOBUF_C_H
+ 
+-#include <assert.h>
++#if defined(RA8_FREESTANDING) || defined(__ARM_EABI__)
++# include "ra8_check.h"
++# ifndef assert
++#  define assert(expr) RA8_ASSERT(expr, "protobuf-c assertion")
++# endif
++#else
++# include <assert.h>
++#endif
+ #include <limits.h>
+ #include <stddef.h>
+ #include <stdint.h>

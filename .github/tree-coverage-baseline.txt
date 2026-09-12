@@ -13,7 +13,7 @@
 #            every run; gaining measurement is one-way.
 #
 # Columns are TAB-separated. Rows are sorted by path.
-# rows: 1056  measured: 520  unmeasured: 536
+# rows: 1059  measured: 523  unmeasured: 536
 
 apps/board/stand_alone/ereader/src/main.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/ns_main.c	UNMEASURED	firmware-composition
@@ -597,6 +597,9 @@ libs/ra8_core/src/ra8_crashlog.c	MEASURED	55	56	23	24
 libs/ra8_core/src/ra8_decomp_limits.c	MEASURED	121	122	75	76
 libs/ra8_core/src/ra8_error_handler.c	MEASURED	10	10	0	0
 libs/ra8_core/src/ra8_exception.c	MEASURED	62	62	11	12
+libs/ra8_core/src/ra8_freestanding_math.c	MEASURED	2	2	0	0
+libs/ra8_core/src/ra8_freestanding_mem.c	MEASURED	40	41	23	24
+libs/ra8_core/src/ra8_freestanding_str.c	MEASURED	77	77	47	48
 libs/ra8_core/src/ra8_infrastructure.c	MEASURED	9	9	0	0
 libs/ra8_core/src/ra8_log.c	MEASURED	106	106	22	24
 libs/ra8_core/src/ra8_pin_validator.c	MEASURED	47	47	18	18

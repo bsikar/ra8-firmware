@@ -26,8 +26,9 @@ Software Of Unknown Provenance (SOUP).
   + `miniz.h`). The amalgamation is published only as a RELEASE ARTIFACT
   and never existed in the upstream git tree, so it is pinned by artifact
   rather than by commit (#548): `miniz-3.0.2.zip`, SHA-256
-  `ada38db0b703a56d3dd6d57bf84a9c5d664921d870d8fea4db153979fb5332c5`. All
-  three vendored files are byte-identical to members of that archive.
+  `ada38db0b703a56d3dd6d57bf84a9c5d664921d870d8fea4db153979fb5332c5`.
+  `miniz.c` and `LICENSE` are byte-identical to members of that archive;
+  `miniz.h` carries the one reviewed target-runtime patch below.
 
 ## Use case in this firmware
 
@@ -92,9 +93,13 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Deviations / patches
 
-None: all three vendored files are byte-identical to members of the pinned
-`miniz-3.0.2.zip` release artifact, verified on every CI run against
-`docs/sbom/upstream/miniz.manifest`.
+One functional patch is applied to `miniz.h`: when the target is built
+freestanding, `MZ_ASSERT` routes through the first-party `RA8_ASSERT` policy;
+host builds retain the upstream `assert` behavior. This removes the target's
+hosted assertion dependency without changing the decoder's assertion sites.
+The exact patch is
+`docs/sbom/patches/miniz/0001-use-ra8-assertion-policy.patch`, and the offline
+patch gate replays it against the pinned artifact bytes on every run.
 
 They were not, until #548. The vendor-in sweep (`75b635cc7`) ran the project
 formatter over the amalgamation, so `miniz.c` and `miniz.h` differed from the

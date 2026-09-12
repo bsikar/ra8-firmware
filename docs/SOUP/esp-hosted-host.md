@@ -63,8 +63,9 @@ esp-hosted aggregate hash.
 - **How it entered our tree**: `git archive` of the pinned commit, restricted
   to `host/`, `common/`, `LICENSE` and `README.md`, with two subtractions (see
   "Vendoring scope"). The protobuf-c submodule was materialized separately
-  from its own upstream at the submodule's pinned commit. All **80** vendored
-  files were verified byte-identical to their upstream pins after copying.
+  from its own upstream at the submodule's pinned commit. The 77 esp-hosted
+  files and the protobuf-c LICENSE remain byte-identical; the two protobuf-c
+  source files carry the reviewed target-runtime patch below.
 
 ## Vendoring scope
 
@@ -293,11 +294,14 @@ DO-178C Section 12.1.4 (previously developed software):
 
 ## Deviations / patches
 
-**None.** All 80 vendored files are byte-identical to their upstream pins
-(77 to esp-hosted `949bb30`, 3 to protobuf-c `abc67a11`). The two omissions
-described under "Vendoring scope" are whole-file exclusions, not source
-modifications; no vendored file was edited. All porting happens in
-first-party code outside this directory.
+The esp-hosted driver files remain byte-identical to upstream `949bb30`. The
+nested protobuf-c runtime has one functional patch,
+`docs/sbom/patches/protobuf-c/0001-use-ra8-runtime-policy.patch`: target builds
+route its unreachable assertion and hosted allocator paths through the
+first-party RA8 policy, while host builds retain the upstream behavior. The
+two omissions described under "Vendoring scope" are whole-file exclusions,
+not source modifications. The offline patch gate replays the numbered patch
+against the `abc67a11` blobs and requires the checked-in bytes to match.
 
 ## CVE monitoring
 

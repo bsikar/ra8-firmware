@@ -13,7 +13,7 @@
 # with zero growth outside apps/shared_libs/. This is a visibility correction,
 # not a coverage regression or waiver; all rows share the same no-growth rule.
 #
-# Total at this baseline: 1595 uncovered compound decision(s)
+# Total at this baseline: 1593 uncovered compound decision(s)
 # across 210 file(s).
 #
 # Burn one down: add a `test_mcdc_<decision>` function with N+1 vectors
@@ -462,7 +462,6 @@ apps/shared_libs/mdl/src/mdl_verify.c	mdl_verify_open_file	2
 apps/shared_libs/mdl/src/mdl_verify.c	priv_mdl_verify_arena_alloc	1
 apps/shared_libs/mdl/src/mdl_verify.c	priv_mdl_verify_is_image	3
 apps/shared_libs/mdl/src/mdl_verify.c	priv_mdl_verify_safe_member_name	4
-apps/shared_libs/mdl/src/mdl_verify.c	priv_mdl_verify_workspace_take	2
 apps/shared_libs/mdl/src/mdl_verify_rabook.c	internal_rabook_read	3
 apps/shared_libs/mdl/src/mdl_verify_rabook.c	priv_mdl_verify_rabook	3
 apps/shared_libs/mdl/src/mdl_verify_tarball.c	internal_gzip_consume	5

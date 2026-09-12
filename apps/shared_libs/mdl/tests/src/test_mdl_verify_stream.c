@@ -680,6 +680,10 @@ RA8_INTERNAL static void internal_test_verify_arguments(void)
   TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&edge, k_fx_one, k_fx_big_align));
   mdl_export_workspace_t over = {.data = s_io, .cap = sizeof(s_io), .used = SIZE_MAX};
   TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&over, k_fx_one, alignof(max_align_t)));
+  uintptr_t base = 0U;
+  (void)memcpy((void*)&base, (const void*)&over.data, sizeof(over.data));
+  over.used = (size_t)(UINTPTR_MAX - base);
+  TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&over, k_fx_one, alignof(max_align_t)));
 
   mdl_verify_report_t report = {};
   mdl_verify_io_t     io     = {};
@@ -699,6 +703,46 @@ RA8_INTERNAL static void internal_test_verify_arguments(void)
 }
 
 /**
+ * @test internal_test_mcdc_workspace_take_overflow
+ *
+ * @par MC/DC:
+ * Decision: `(workspace->used > (UINTPTR_MAX - base)) || ((base +
+ * workspace->used) > (UINTPTR_MAX - mask))` cites
+ * apps/shared_libs/mdl/src/mdl_verify.c@priv_mdl_verify_workspace_take.
+ * - Vector 1: used=0, aligned cursor in capacity -> false (both conditions false)
+ * - Vector 2: used=SIZE_MAX -> true (varies the first condition)
+ * - Vector 3: used=UINTPTR_MAX-base -> true (varies the second condition)
+ * Vectors 1+2 isolate the first condition; vectors 1+3 isolate the second.
+ * N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ * @brief Exercise the workspace cursor overflow guard.
+ * @details Selects one valid cursor and one independently failing side of the
+ *          two-part pointer-arithmetic overflow decision.
+ * @pre The fixture byte arena is addressable.
+ * @post The valid vector reserves one byte; both overflow vectors fail closed.
+ * @note Test-only; assertion failure terminates the process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_mcdc_workspace_take_overflow(void)
+{
+  TEST_BEGIN("workspace take overflow MC/DC");
+  mdl_export_workspace_t ws = {.data = s_io, .cap = sizeof(s_io), .used = 0U};
+  TEST_ASSERT_NOT_NULL(priv_mdl_verify_workspace_take(&ws, k_fx_one, alignof(max_align_t)));
+
+  mdl_export_workspace_t first = {.data = s_io, .cap = sizeof(s_io), .used = SIZE_MAX};
+  TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&first, k_fx_one, k_fx_one));
+
+  uintptr_t base = 0U;
+  (void)memcpy((void*)&base, (const void*)&first.data, sizeof(first.data));
+  mdl_export_workspace_t second = {
+    .data = s_io,
+    .cap  = sizeof(s_io),
+    .used = (size_t)(UINTPTR_MAX - base),
+  };
+  TEST_ASSERT_NULL(priv_mdl_verify_workspace_take(&second, k_fx_one, alignof(max_align_t)));
+  TEST_END("workspace take overflow MC/DC");
+}
+
+/**
  * @brief Run the streamed USTAR and gzip verifier regressions.
  * @return Zero after all assertions pass. @retval 0 Every registered vector behaved exactly.
  * @pre The root-confined portable test storage can be initialized. @pre The assertion process is active.
@@ -713,6 +757,7 @@ int main(void)
   internal_test_gzip_framing();
   internal_test_gzip_stream_bounds();
   internal_test_gzip_payload_faults();
+  internal_test_mcdc_workspace_take_overflow();
   internal_test_verify_arguments();
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_deinit());
   return 0;

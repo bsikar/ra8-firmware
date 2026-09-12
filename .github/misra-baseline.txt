@@ -15,13 +15,8 @@
 # in comparable pre-existing (file, rule) buckets. Zero comparable old
 # (file, rule) buckets grew. Full ownership and compensating controls:
 # docs/qualification/MISRA_DEVIATIONS.md.
-# 2026-08-27 burn-down audit (#790): the pinned C23 empty-initializer model
-# removes 2,102 false positives; the targeted POSIX model removes four false
-# Rule 17.3 findings; and reviewed source fixes remove 53 genuine findings.
-# The exact pinned producer measured 19,938 findings in 2,701 buckets, a 2,159
-# finding reduction with zero bucket growth against the 22,097 baseline.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 19938
+# total findings: 20014
 # columns: file<TAB>rule<TAB>count
 apps/board/stand_alone/ereader/src/main.c	misra-c2012-8.4	1
 apps/board/stand_alone/ereader/src/ns_main.c	misra-c2012-11.4	8
@@ -1014,6 +1009,9 @@ libs/ra8_camera_io/src/ra8_camera_stream.c	misra-c2012-15.5	3
 libs/ra8_camera_io/src/ra8_camera_stream.c	misra-c2012-8.4	1
 libs/ra8_core/inc/ra8_attributes.h	misra-c2012-20.10	4
 libs/ra8_core/inc/ra8_check.h	misra-c2012-5.4	2
+libs/ra8_core/inc/ra8_freestanding.h	misra-c2012-20.5	15
+libs/ra8_core/inc/ra8_freestanding.h	misra-c2012-21.1	14
+libs/ra8_core/inc/ra8_freestanding.h	misra-c2012-21.2	14
 libs/ra8_core/inc/ra8_register_guard.h	misra-c2012-2.7	1
 libs/ra8_core/inc/ra8_time.h	misra-c2012-20.1	1
 libs/ra8_core/src/ra8_crashlog.c	misra-c2012-15.5	5
@@ -1025,6 +1023,12 @@ libs/ra8_core/src/ra8_exception.c	misra-c2012-11.4	1
 libs/ra8_core/src/ra8_exception.c	misra-c2012-15.5	1
 libs/ra8_core/src/ra8_exception.c	misra-c2012-3.1	1
 libs/ra8_core/src/ra8_exception.c	misra-c2012-8.4	2
+libs/ra8_core/src/ra8_freestanding_math.c	misra-c2012-5.5	1
+libs/ra8_core/src/ra8_freestanding_mem.c	misra-c2012-11.5	8
+libs/ra8_core/src/ra8_freestanding_mem.c	misra-c2012-15.5	4
+libs/ra8_core/src/ra8_freestanding_mem.c	misra-c2012-5.5	5
+libs/ra8_core/src/ra8_freestanding_str.c	misra-c2012-15.5	6
+libs/ra8_core/src/ra8_freestanding_str.c	misra-c2012-5.5	9
 libs/ra8_core/src/ra8_infrastructure.c	misra-c2012-14.2	1
 libs/ra8_core/src/ra8_infrastructure.c	misra-c2012-15.5	1
 libs/ra8_core/src/ra8_infrastructure.c	misra-c2012-8.11	2

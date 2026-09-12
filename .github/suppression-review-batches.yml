@@ -68,7 +68,7 @@ batches:
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
     assigned_rows: 4416
-    rows_sha256: e0bc99cd569cd27a95a517da4a102a131382e81bdd38612fc794523e5fc14154
+    rows_sha256: 107d22422713e2576016a2ac2fa296aa4c91bbef7df55af0d6c8050a3554ebde
     partition: "wave B: every baseline-ratchet occurrence reviewed against its consumer"
     evidence:
       - "issue-790 wave-B baseline review record"
@@ -122,7 +122,7 @@ batches:
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
     assigned_rows: 4185
-    rows_sha256: a03d478bf94169ad5569b6ecc86c3bfdde2495c2a5d71c1bba59be0246703aed
+    rows_sha256: ac2ee0270ac8e4e5c10f7c91dd3e35fe2510b5fb62156096e1657386c224caad
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
@@ -142,7 +142,7 @@ batches:
     date: 2026-08-27
     identity_schema: 2-durable-site-identity
     assigned_rows: 492
-    rows_sha256: 15cb1ebf2764524bdb470be274937efcb95048dd4e5bdb5b652c17200b74af7b
+    rows_sha256: 7323503f2e2156dad1f392ce6bbd366676a63824638201366578bfacc820b400
     partition: "MISRA baseline burn-down: retired and rebound exact authorities"
     evidence:
       - "pinned Cppcheck 2.13.0 full scan: 19,938 findings, zero growth"
@@ -795,7 +795,7 @@ batches:
     date: 2026-09-10
     identity_schema: 2-durable-site-identity
     assigned_rows: 40
-    rows_sha256: 67bf73cd75b5738a5da3f50062edbee2713b55eccb88319a59ad2d5cd03b18b4
+    rows_sha256: edca5f08d7826731f79f9396d78019d9e9a0e9a26844b19e54991a891db8a884
     partition: "Automated developer review batch (ledger reconciliation)"
     evidence:
       - "live suppression sites verified against the census auto_sync emitted; merged same-day
@@ -805,7 +805,7 @@ batches:
     date: 2026-09-11
     identity_schema: 2-durable-site-identity
     assigned_rows: 85
-    rows_sha256: 4429bfbe6d26b2ba4c0f195dd8025d7d26e11a392f77cfe1ae3f18ca5ae0968a
+    rows_sha256: 30f16183d75a8c5b92312754a972353dd6f18b3f6f19fbb1174960940896b7b7
     partition: "Automated developer review batch"
     evidence:
       - "reconcile work-move/checker-drift fallout: rebind moved-file rows to"
@@ -820,25 +820,34 @@ batches:
     rows_sha256: 1c68a32fae2136b23c84bdfe0366ab2af8c2557f993997f313945922833bc3c1
     partition: "Freestanding-runtime review finding H2"
     evidence:
-      - "review-decision check_freestanding_runtime runs pinned arm-none-eabi-nm/readelf with fixed argv and no shell to inspect target ELFs; S603 cannot scope narrower for required toolchain subprocess use."
+      - >-
+        review-decision check_freestanding_runtime runs pinned
+        arm-none-eabi-nm/readelf with fixed argv and no shell to inspect target
+        ELFs; S603 cannot scope narrower for required toolchain subprocess use.
   - id: freestanding-audit-scope-20260911
     authority: repository-suppression-review
     date: 2026-09-11
     identity_schema: 2-durable-site-identity
     assigned_rows: 2
-    rows_sha256: 567e7a5f4701793d999deaecb5f443d19a5ef2a571258d372f228c94b7530d0b
+    rows_sha256: ea93c3184eea8cab5ffef6eeb8a24b70d044c1ba74f57e04a6c745b38c481e4c
     partition: "Automated developer review batch"
     evidence:
-      - "review-decision audit-driven checker edits (fail-closed live-archive policy, keep-marker token validation) changed scope census; auto-sync re-blessed digests 92dbba57bd20/b0cb7589a572"
+      - >-
+        review-decision audit-driven checker edits (fail-closed live-archive
+        policy, keep-marker token validation) changed scope census; auto-sync
+        re-blessed digests 92dbba57bd20/b0cb7589a572
   - id: suppressions-scope-20260911
     authority: repository-suppression-review
     date: 2026-09-11
     identity_schema: 2-durable-site-identity
     assigned_rows: 16
-    rows_sha256: 1f10a916c41b38c4c8f1f814abe6191140bc1e93e30fddcb2ef2b1d9d5875dad
+    rows_sha256: 03cea5301d25842999c93a8b4cf70ed722a36749adeca339e327beb87c0bba69
     partition: "Automated developer review batch"
     evidence:
-      - "review-decision audit-driven checker changes (rebind workflow, freestanding baseline registration) updated the scope census; values digest a6858ee2958d"
+      - >-
+        review-decision audit-driven checker changes (rebind workflow,
+        freestanding baseline registration) updated the scope census; values
+        digest a6858ee2958d
   - id: freestanding-baseline-20260911
     authority: repository-suppression-review
     date: 2026-09-11
@@ -847,13 +856,145 @@ batches:
     rows_sha256: 67e3579aac1b647b7dd21c2982e667281f23e6f56744bb6888513ae60df03f86
     partition: "Automated developer review batch"
     evidence:
-      - "review-decision zero-debt freestanding target ratchet from issue #847; per-app debt may only shrink; consumer scripts/checks/check_freestanding_runtime.py"
+      - >-
+        review-decision zero-debt freestanding target ratchet from issue #847;
+        per-app debt may only shrink; consumer
+        scripts/checks/check_freestanding_runtime.py
   - id: suppressions-pins-20260911
     authority: repository-suppression-review
     date: 2026-09-11
     identity_schema: 2-durable-site-identity
     assigned_rows: 3
-    rows_sha256: 65861d358cf42c8c4e5a6b238f9b14c4ff1f6b2813a372a94f463aeaaae7a8d4
+    rows_sha256: cf7f87d1ee2fb3a73a1a1e918b36f2da8e40fbf21003e962d2b1622ef819ada6
     partition: "Automated developer review batch"
     evidence:
-      - "review-decision container-verified scope pins and classification successor; values digest 415d0b8e reason digest 62a49e7d"
+      - >-
+        review-decision container-verified scope pins and classification
+        successor; values digest 415d0b8e reason digest 62a49e7d
+  - id: selective-review-20260912-043117
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 5
+    rows_sha256: 8a713414bfe07c21ba7188c2ef844245afcf95983d5a8222120bd33560768805
+    partition: >-
+      selective retain of 5 ledger row(s): 7be96cdc4dfa, 882470420dbd,
+      97cecd276903, ad91a93247e9, e0ef4052e990
+    evidence:
+      - >-
+        merge review: five rows live with exact bindings matching merged scope
+        census and policy registrations
+  - id: selective-review-20260912-043258
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 3
+    rows_sha256: 3481a250582aabb3524f687cd586670fe74a03be38eaae98d679271bc50174ca
+    partition: "selective retain of 3 ledger row(s): 14440c2c8849, 9f5d9f5df8b6, 9f6d5c70b9aa"
+    evidence:
+      - "merge review: three required shell annotations present with exact live bindings"
+  - id: selective-review-20260912-043541
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 4
+    rows_sha256: ecc155e2cd937d7272392fca771a30c830693df3d6d8c4db9c243dd34dc95cb2
+    partition: >-
+      selective retire of 4 ledger row(s): 2be83d521bcc, 4e5cbeab2a41,
+      b5e9f95eadea, de47189930f2
+    evidence:
+      - >-
+        merge review: four sites absent from live inventory; superseded values
+        and removed construct verified gone
+  - id: selective-review-20260912-043729
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 1
+    rows_sha256: 2e46faac53466f85b0bbe4d7248b2d16df5b10781fd752c4e399dea1d4c9113b
+    partition: "selective retire of 1 ledger row(s): 10c8d139209c"
+    evidence:
+      - "merge review: census value superseded by live successor"
+  - id: selective-review-20260912-043917
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 1
+    rows_sha256: 5c34e5fb519ac9fd53483bf07e7baccb3b37f321f80f97d4c2892c327d25d3cc
+    partition: "selective retire of 1 ledger row(s): 3cb70cbf4593"
+    evidence:
+      - "merge review: census reason digest superseded by live successor"
+  - id: selective-review-20260912-044105
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 1
+    rows_sha256: d7a95f683dbabf0f5dc40b13514652f42aa6fe698d77c1df480f628bbe86d1a7
+    partition: "selective retire of 1 ledger row(s): b9813d0b4b54"
+    evidence:
+      - "merge review: census value digest superseded by live successor"
+  - &selective_review_20260912
+    id: selective-review-20260912-204713
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 9
+    rows_sha256: a1e85d174714583cd89e0262b257f7a7d5c8db806ed4165621d8f6e1acc407d9
+    partition: >-
+      selective retain of 9 ledger row(s): 41784c0b6a45, 4df30260fcb6,
+      54a451155f08, 787f1afde5fc, a0a46d23d8ee, a35a249d061f, a452e23036e8,
+      c5f66e8684d0, cea77f280e50
+    evidence:
+      - >-
+        baseline-consumer:scripts/checks/misra_ratchet.py
+        provenance-note:issues-786-790-freestanding-runtime
+  - id: selective-review-20260912-204823
+    <<: *selective_review_20260912
+    assigned_rows: 3
+    rows_sha256: 6fd592ab4d3c5df7909087c7f46f546a436eddc3a4b4f58bceaa066fb14baa20
+    partition: "selective retain of 3 ledger row(s): 6537aa1da28b, 988ef5ea9595, cdb75b0faf2d"
+    evidence:
+      - >-
+        baseline-consumer:scripts/checks/check_tree_coverage.py
+        coverage-result:freestanding-runtime-population owner-decision:issue-847
+  - {id: selective-review-20260912-204935, <<: *selective_review_20260912, assigned_rows: 4,
+     rows_sha256: 6b38732801483f98e8dae11d5f0800ff6c9ec57844d7ec4f58b0e48df8e38bd3,
+     partition: "selective retain of 4 ledger row(s): 063e4d42b9e3, bf852f0b9b7a,
+       d4027924af13, fa34e5bf8d13",
+     evidence: ["classification-batch:scope-census-20260912 census-digest:current-live-authority"]}
+  - {id: selective-review-20260912-205046, <<: *selective_review_20260912, assigned_rows: 3,
+     rows_sha256: b0ee67bf9e795fec1cdd489e568531aeb6902358e4a7865fda9c0adc75a12dfe,
+     partition: "selective retain of 3 ledger row(s): 389fc6ba6c2c, 6a9fa88918ad, 80f33bfd0a8c",
+     evidence: ["classification-batch:scope-census-20260912 census-digest:2e7c3ef1-f4cab157"]}
+  - id: selective-review-20260912-205158
+    <<: *selective_review_20260912
+    assigned_rows: 1
+    rows_sha256: a387c9ff707db9cf31e88c2714d07ea1ddb891ce920439192d80c8e66879d716
+    partition: "selective retain of 1 ledger row(s): c568b9de7861"
+    evidence:
+      - >-
+        tool-output:clang-tidy-readability-identifier-naming
+        source-context:upstream-fixed-lower-case-macro-contract
+  - {id: selective-review-20260912-213613, <<: *selective_review_20260912, assigned_rows: 7,
+     rows_sha256: 7c9f0e6c15dc218c68bf08a0b4a0f36c8ee9d20f064d4886a987063bd6bddaa4,
+     partition: "selective retain of 7 ledger row(s): 451d364884f5, 451e1eb89285,
+       4bbd8efc831a, 58e5915332e6, 67eb99b27959, 76897e4dd792,
+       95409776c006",
+     evidence: ["classification-batch:scope-census-20260912 census-digest:18a91ccd-4766d308"]}
+  - id: selective-review-20260912-213911
+    <<: *selective_review_20260912
+    assigned_rows: 2
+    rows_sha256: 7386322d2d07512c37f18d0c126e734d457bdb4d5ee45acea55c982572596d2c
+    partition: "selective retire of 2 ledger row(s): 88d15cc226e7, afe544e57358"
+    evidence:
+      - >-
+        removal-evidence:live-inventory-20260912
+        review-decision:stale-identity-reconciliation
+  - id: selective-review-20260912-215730
+    <<: *selective_review_20260912
+    assigned_rows: 5
+    rows_sha256: 8e6724909267bcd328d13c05cb060bd4de9952971dd6ea4da31c28091154dde2
+    partition: >-
+      selective retain of 5 ledger row(s): 1f3ef1ba544e, 32fb44c41539,
+      959df4e4c18d, cdb898857827, e52b9902ec4b
+    evidence: ["classification-batch:scope-census-20260912 census-digest:685059fc-a0ea0bb8"]

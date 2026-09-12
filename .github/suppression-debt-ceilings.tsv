@@ -1670,6 +1670,7 @@
 .github/misra-baseline.txt	09bda8238243faec25f39cf5b895c6d57762d12a55b6acd5d21238852c02c291	1
 .github/misra-baseline.txt	09be2355d0a1d29535fb8be1f86d6bf3df05f0a74132aa9c9ff76187cd9f2240	13
 .github/misra-baseline.txt	09c3371da4f1b16a171791f0c03f9b01c471930fba80d91b0ea22e4f080d5171	1
+.github/misra-baseline.txt	09d185ea225c2008e85e6c1b894bfcc9ab8184b010d42f086d457dca88fa901e	4
 .github/misra-baseline.txt	09da6bb8fdfd2e54a29852e8ca5ea7ec93fb94bdd670ea765b5c78c2c657c497	1
 .github/misra-baseline.txt	09fc1f472a0ff0a167892691dc723de41267dedf97b98141ce483f074a30a2f0	3
 .github/misra-baseline.txt	0a03dace9afe92185068793ca110ccbac87a184eb94330b5d2fc9a2572288fb1	20
@@ -2035,6 +2036,7 @@
 .github/misra-baseline.txt	26d1cc06ab5bb1fa66c3817315dada4696c5ec05b83346de32a3a81868b367b7	2
 .github/misra-baseline.txt	26fc93e85a2526def3f990633235f05c25d8418f4ca96facbe76674b42601ad8	2
 .github/misra-baseline.txt	2755121998bc48add8849853a552f73cb74d0c9bfb81e6eddc7657314eef6799	16
+.github/misra-baseline.txt	278b0694f2d3e5bbad0263956b619572edbd3bf4e94b6fc4f2229a91268ebf23	6
 .github/misra-baseline.txt	2795358c0a4b4d7239ccb8ee5f3835c1c72c9d9a1c018b2a3ee4f78332c193b5	1
 .github/misra-baseline.txt	279cbf18479ceebd488567b1949a0bec1d554573f9c6f578247a87982fa81b94	17
 .github/misra-baseline.txt	27afcd877162c8e3583eb061e27b294860ee494c6bf8e90172bbde3ac0e7ec07	3
@@ -2566,6 +2568,7 @@
 .github/misra-baseline.txt	56022b419b2f702c746c825e6006af2937db4a1f83f2fca17f09d6a3646e91c9	1
 .github/misra-baseline.txt	56146f41b247b9f04304b783a8995a1a0c7924637b87bf47eb56e48faab20ce0	1
 .github/misra-baseline.txt	5616624289b3b2af46c08fb4319ccca2033a13c77cf6c84ed675e00cd13f0b9f	1
+.github/misra-baseline.txt	5618a1209cf96701546250bf237f58b8f76e2281252293dce6feaa9dd2cb2ee4	9
 .github/misra-baseline.txt	56225786a2ad4265016b63b687153999d57de423f84a319a0af1c53286bfce60	1
 .github/misra-baseline.txt	56327e1ef87c5b0a1073de90aacb8f9354bc9a21234fdd686d7e0462c510a4e0	3
 .github/misra-baseline.txt	5647dbd5c28c340f1a004aab11461b51ebde779f6061a9ae60cc04d5c1d3921b	1
@@ -2655,6 +2658,7 @@
 .github/misra-baseline.txt	5ce682cc2432c3135b54daf9914f63eac10cfe50bc64dce4e66c47f9d8631c8c	1
 .github/misra-baseline.txt	5cf62b23b2ec5ae86d25d0d70e16033322e59af59f1c61ac9751f8b986690f85	4
 .github/misra-baseline.txt	5cfabc25996fc2e9ef631a311701169e02c4ba69c6e01202a5e7810c910323fe	1
+.github/misra-baseline.txt	5d009e8e32053a82b1d5bbf539d119296fa26486526c43333ac1f05f6cf47370	14
 .github/misra-baseline.txt	5d0177429a7d23d1481391cb15ab0571bc662fa02c26977b4146efe102308c34	9
 .github/misra-baseline.txt	5d4055dbfb51ff8da8fda23a001cd9145a58dec4a74ce37c29afb699685964aa	2
 .github/misra-baseline.txt	5d48b060a44a798dd163bb4938a27f6936e900c927de99633511bc2f3afd6b59	3
@@ -3663,6 +3667,7 @@
 .github/misra-baseline.txt	af8dc31216d57c970f0281a90c6fda3a5f6fa3d1e4e4af4fa2778b9bb23039c9	6
 .github/misra-baseline.txt	af97f72ca40d26899e64223525ac133cc91482103f193dd88486a9fb216f06d0	2
 .github/misra-baseline.txt	afa65c0891f76b35eb4c449290d6c7d47b762a8c8bbf57d3fdfd9be850c22a16	1
+.github/misra-baseline.txt	afb0609e247c07f77b4905e31845edf73b40e02b80e89fde927380d75850b3be	14
 .github/misra-baseline.txt	afba96fd2ad0b4511fde3a8723191b7d55be7133c40ea2c2c0ae672a44a07161	2
 .github/misra-baseline.txt	aff7b5262f75ab94ae9dca9e7bceabfc23b777a54f6c72f9a634ed97eaa5f4d2	4
 .github/misra-baseline.txt	b0001741aafe679bb3d9df1902fe27b22de06cb5e3dde7cb1529be066e7bbdaf	29
@@ -4204,6 +4209,7 @@
 .github/misra-baseline.txt	db6bee17be5d20d0e8e61b06fbb05844315b1121d20f88ea60625afb92fcf3eb	3
 .github/misra-baseline.txt	db73d63fc4e76f4771ca8fc4aad947e9a2aeb9ba9b298f71017a63b488bd17fb	1
 .github/misra-baseline.txt	db74be2d2defa93a97a3496f3e62fa3d9257e894121c7bdb7167d18aa5caba46	3
+.github/misra-baseline.txt	db792a06be1cbec7c6aa4929c0fcbcf69d6c2bf35c88a138528fc77293dd1262	5
 .github/misra-baseline.txt	db7e8af9bab218f2234d9bf925b79cef2d8835e4124abb06bc7236829ecd9212	1
 .github/misra-baseline.txt	db83f5316d3895d8f1c5964cc058048f56f342cd6cfcd10ff816cd7cad27198d	4
 .github/misra-baseline.txt	db89b00a5a14cc75116cf1f8696d83168456493b9d2120c07fc9e3953f4d456c	1
@@ -4396,6 +4402,7 @@
 .github/misra-baseline.txt	ea76616d7abcfb1741072c6dee7576934e6820f21180c109128d8420b4913a73	16
 .github/misra-baseline.txt	ea80fa9dc0ccce97753711f37f52c5ff8b17b0bfe9c136e0005028d0eaaa60cf	2
 .github/misra-baseline.txt	ea838624edfb32ada95a18bee8c3f39d4af12d25215d89a2d46171da38cf18b4	1
+.github/misra-baseline.txt	ea878dce776036b8eca35552407e42ff1d1eec86edd9adac10eb638cadbf136f	1
 .github/misra-baseline.txt	ea8a7a60d15e557932e40bf91d68437acc2c6b5eaaa9719c01a5012529bb4883	1
 .github/misra-baseline.txt	ea95956015b43c79ec48eabd1225d4fd40e78a2ea9c5cb7e6b570f98a28e8699	3
 .github/misra-baseline.txt	eaa4d406121b6d12374b7d48649a95696a709df88b0d37a5a196e9db3f29016a	1
@@ -4415,6 +4422,7 @@
 .github/misra-baseline.txt	ec1348136a87a6d379fd1e60092fdac94a519bde226bb9cb291021bad8446b49	1
 .github/misra-baseline.txt	ec16b42283efda09698e5e6cef92c24de4ce5e343185498781b09a286e1eb8d9	1
 .github/misra-baseline.txt	ec248bd6c7dc3901cb526b12664fb88845a0be095661832efda6091030cec093	6
+.github/misra-baseline.txt	ec2720e56c7b61a74de2bff76acd655adf061b2dc3c9ed511ab0140bf175c7c6	15
 .github/misra-baseline.txt	ec54eaac1a96bde689f9e62b6e3ba828857d806a23c72b86ff58fc1622e171a7	4
 .github/misra-baseline.txt	ec63ebd3c895dd62eb94f9777cf22dbc31ccd256901a2289a1a2b2f104f44bd3	1
 .github/misra-baseline.txt	eca82002919a9c7dde2a093677b36311ab4b56fa10f9ad020f6860a4db7e4cc7	2
@@ -4424,6 +4432,7 @@
 .github/misra-baseline.txt	ecf8404b31882cde33bf3b9d86f95e6c79467489a3272d7a963273566dd23189	32
 .github/misra-baseline.txt	ecfd0bf1f5d55586916bf25451480c17b07986d1fb0167aa37cc9ec804a2b5e9	2
 .github/misra-baseline.txt	ecff3b235a15992309d99f6bc146ef65f302970033d089068bf41e65fec79a7d	3
+.github/misra-baseline.txt	ed14b1b3859c612ba309706bf5f8456417dc773177bfcc9d18734b5597731712	8
 .github/misra-baseline.txt	ed3750e4aacc90b59e5a6601ea857d2332b90fdca32ceae0e934a2ba95645a8f	1
 .github/misra-baseline.txt	ed40e8ad317ef329dad87b666572ab1652a89d353c5613bf87a2682fa0f73771	3
 .github/misra-baseline.txt	ed627a657401d9e17c34c8634ab075f65526773032a899a092bd44426dcfdcc6	1
@@ -5029,6 +5038,7 @@
 .github/tree-coverage-baseline.txt	414045ddb633bfd51f1a3ab2d3f47fd7bbb0b9d53b6473c4c5cb0c6b56b97a6a	U:firmware-composition
 .github/tree-coverage-baseline.txt	41d1d81c2934a8570a5c5da2f771f725d6e733f9b78f0eca479caf0fa7bdcadd	M:198,208,121,132
 .github/tree-coverage-baseline.txt	41e2539863c25006602e96e5025b879129307cff70a891cc5c06e36d18e4c042	U:firmware-composition
+.github/tree-coverage-baseline.txt	41e5d06ddcc56cd15cf8485112628a17ba620703394f3e321ffe422d9679755a	M:77,77,47,48
 .github/tree-coverage-baseline.txt	41e967dfb564826bbf3bea610e93c6fec7710999be73af7d164abc7a38fc68ed	M:136,143,65,78
 .github/tree-coverage-baseline.txt	421d30187d34f0134e29db70b3151eee5767d454f6f275d7d26bdc5e6b0dedda	U:hosted-no-coverage-build
 .github/tree-coverage-baseline.txt	427694826e55c76011ac8f8a2a26d73ccf051a5c65f789c5c56ca4bfaaccaa7b	M:182,189,108,152
@@ -5113,6 +5123,7 @@
 .github/tree-coverage-baseline.txt	540ccd40d48b8083ec159d5b5894c19941684b3a9cfc6cc8220af3fb333f0702	U:firmware-composition
 .github/tree-coverage-baseline.txt	5475ef6d312210d49fa58e3a5b3214d4bfa86b4591767327e9650631d348b348	M:63,68,30,36
 .github/tree-coverage-baseline.txt	54d0e25c218a32c8b9f448e9c049c0482378510e07c4aa0bfc4b838fcc495929	M:165,172,98,106
+.github/tree-coverage-baseline.txt	550c5230932a9db319524303cb792ad8506edda9aecf1ed4456666bae80b062b	M:40,41,23,24
 .github/tree-coverage-baseline.txt	5541c4ede2f7f8ae56f4b14efef14f82178122ebeb0a3d3dc51ab759fd2706d0	M:159,172,110,120
 .github/tree-coverage-baseline.txt	556e3c34e90e084ddccefdcc4d32c9d8d73200c03214d85dc28d59e7660aec82	U:platform-cross-only
 .github/tree-coverage-baseline.txt	5593aed5702566e781b93d27906efb4797500541758a8c58db7af84a357a7c49	M:62,63,18,20
@@ -5263,6 +5274,7 @@
 .github/tree-coverage-baseline.txt	77728aafc75fccfa199bec7ba3fa9bdefefe6d317da0592b5c27754778e9be9c	U:firmware-composition
 .github/tree-coverage-baseline.txt	7801dc59932f09b63b2444378740472e212ecd2a85c2223476627b08cd9a55c5	M:24,24,12,12
 .github/tree-coverage-baseline.txt	78038f87e0586dd585bf74f850f961b25ad57f752a7f6e230e43ea7e41e81cea	M:188,188,109,112
+.github/tree-coverage-baseline.txt	78407f3df87bf6818117005f0e0e9b19e72e9b36216063455f0558c63465e0dc	M:2,2,0,0
 .github/tree-coverage-baseline.txt	7848323464decc2e301a7f78ac9ea12e3e76513c89ff5d76c33aa61b412204ec	U:firmware-composition
 .github/tree-coverage-baseline.txt	785000cad49241c21c2d6210247d0e35c8a66fa7192ad74b91398fcb4678dfe6	U:hosted-no-coverage-build
 .github/tree-coverage-baseline.txt	7865f457f89ea2a5e833bec1341326208c8e9f60654e43ddeef51263621f41ef	U:firmware-composition

@@ -103,8 +103,10 @@ The final pinned audit and its derived qualification records freeze the measured
 result. Relative to the 22,097-finding baseline, the C23 compatibility correction
 removes 2,102 modeled false positives, the targeted POSIX model removes four
 false Rule 17.3 findings, and reviewed source fixes remove 53 genuine findings.
-The committed 19,938-finding baseline records the complete 2,159-finding
-reduction with zero bucket growth.
+The freestanding-runtime reconciliation then adds 82 ratchet-held findings in
+the compiler-required ABI layer; those are covered by D-001, D-006, D-010, and
+D-012 through D-015. The committed 20,020-finding baseline records that exact
+population with zero bucket growth.
 
 ## Running the audit
 
@@ -209,7 +211,10 @@ The substantive records include:
 | 12.1 operator precedence        | Partial deviation + code change (D-004) | Implicit precedence accepted for `* /` over `+ -`, unary over binary, member access over any, and postfix call over any. Redundant parentheses added everywhere else; clang-format will not re-flatten them. |
 | 8.4 compatible declaration visible | Tooling gap (D-005)           | Every hit traces to `syntaxError` on the `[[nodiscard]]` attribute of the matching public-header prototype, or to a third-party header deliberately excluded from the audit. The cross compiler rejects any real Rule 8.4 violation as a build error, so the source obeys the rule. |
 | 11.6 pointer/integer conversion | Narrow project deviation (D-011) | The XZ caller-workspace installer converts one `void*` value to `uintptr_t` solely to reject an address that cannot satisfy the decoder arena's alignment contract. No integer is converted back to a pointer. |
-| 21.1 reserved identifiers       | Narrow project deviation (D-012) | A guarded first-party XZ porting macro preserves the exact `__always_inline` spelling consumed by byte-identical upstream SOUP. Other Rule 21.1 findings are not accepted by this record. |
+| 21.1 reserved identifiers       | Narrow project deviation (D-012) | Guarded first-party XZ and freestanding test adapters preserve the exact compiler/runtime spellings; no other Rule 21.1 findings are accepted. |
+| 5.5 identifier/macro distinction | Narrow project deviation (D-013) | The freestanding runtime must expose compiler-required standard names, and its test-only aliases must select those implementations rather than hosted libc. |
+| 21.2 reserved declarations      | Narrow project deviation (D-014) | The freestanding foundation must declare the standard ABI functions it implements after removing newlib/libnosys from the target image. |
+| 11.8 const-removing conversion  | Narrow project deviation (D-015) | The standard `memchr`/string-search signatures require writable return types from const inputs; the six conversions are confined to the freestanding ABI bodies. |
 
 A tooling-gap disposition is not a permanent excuse. Each carries an
 early-review trigger that fires when the pinned checker gains the capability it

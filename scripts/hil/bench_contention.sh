@@ -234,7 +234,9 @@ EOF
     # a real staging failure goes unread.
     local -a xflag=()
     tar --no-xattrs -cf /dev/null -T /dev/null 2>/dev/null && xflag=(--no-xattrs)
-    COPYFILE_DISABLE=1 tar "${xflag[@]}" -czf "$tarball" -C "$_bc_root" "${paths[@]}" 2>/dev/null
+    # Guarded expansion: BSD tar lacks --no-xattrs, leaving xflag empty, and an
+    # empty "${xflag[@]}" under `set -u` is fatal on Bash 3.2 (see bench_lock.sh).
+    COPYFILE_DISABLE=1 tar ${xflag[@]+"${xflag[@]}"} -czf "$tarball" -C "$_bc_root" "${paths[@]}" 2>/dev/null
   }
 
   # The app directory, as an absolute path. One definition, used by staging and

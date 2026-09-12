@@ -167,7 +167,7 @@ static void internal_test_nominal_allocation(void)
   void* p = internal_guarded_calloc(k_elem_count_nominal, k_elem_size_medium);
   TEST_ASSERT_NOT_NULL(p);
   TEST_ASSERT_EQ(1U, s_mock_pool.alloc_calls);
-  TEST_ASSERT_EQ((size_t)(k_elem_count_nominal * k_elem_size_medium), s_mock_pool.used);
+  TEST_ASSERT_EQ((k_elem_count_nominal * k_elem_size_medium), s_mock_pool.used);
 
   /* Verify zero initialization */
   const uint8_t* bytes = (const uint8_t*)p;

@@ -39,6 +39,8 @@
 
 #include "ra8_check.h"
 #ifndef assert
+/** @brief Route vendored ESP-hosted assertions through the RA8 assertion policy. */
+/* NOLINTNEXTLINE(readability-identifier-naming) -- upstream-fixed lower-case macro spelling. */
 #define assert(expr) RA8_ASSERT(expr, "esp-hosted assertion")
 #endif
 #include <inttypes.h>

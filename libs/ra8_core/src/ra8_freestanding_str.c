@@ -156,14 +156,20 @@ int strncmp(const char* s1, const char* s2, size_t n)
  */
 char* strchr(const char* s, int c)
 {
-  const char target = (char)c;
-  while (*s != '\0') {
-    if (*s == target) {
-      return (char*)(uintptr_t)s;
+  const char  target = (char)c;
+  const char* cursor = s;
+  char*       result = nullptr;
+  while (*cursor != '\0') {
+    if (*cursor == target) {
+      (void)memcpy((void*)&result, (const void*)&cursor, sizeof(result));
+      break;
     }
-    ++s;
+    ++cursor;
   }
-  return (target == '\0') ? (char*)(uintptr_t)s : nullptr;
+  if (target == '\0') {
+    (void)memcpy((void*)&result, (const void*)&cursor, sizeof(result));
+  }
+  return result;
 }
 
 /**
@@ -184,14 +190,18 @@ char* strchr(const char* s, int c)
 char* strrchr(const char* s, int c)
 {
   const char  target = (char)c;
+  const char* cursor = s;
   const char* last   = nullptr;
-  while (*s != '\0') {
-    if (*s == target) {
-      last = s;
+  while (*cursor != '\0') {
+    if (*cursor == target) {
+      last = cursor;
     }
-    ++s;
+    ++cursor;
   }
-  return (target == '\0') ? (char*)(uintptr_t)s : (char*)(uintptr_t)last;
+  const char* result_source = (target == '\0') ? cursor : last;
+  char*       result        = nullptr;
+  (void)memcpy((void*)&result, (const void*)&result_source, sizeof(result));
+  return result;
 }
 
 /**
@@ -212,7 +222,9 @@ char* strrchr(const char* s, int c)
 char* strstr(const char* haystack, const char* needle)
 {
   if (needle[0] == '\0') {
-    return (char*)(uintptr_t)haystack;
+    char* result = nullptr;
+    (void)memcpy((void*)&result, (const void*)&haystack, sizeof(result));
+    return result;
   }
   for (size_t i = 0U; haystack[i] != '\0'; ++i) {
     size_t j = 0U;
@@ -223,7 +235,10 @@ char* strstr(const char* haystack, const char* needle)
       ++j;
     }
     if (needle[j] == '\0') {
-      return (char*)(uintptr_t)&haystack[i];
+      const char* result_source = &haystack[i];
+      char*       result        = nullptr;
+      (void)memcpy((void*)&result, (const void*)&result_source, sizeof(result));
+      return result;
     }
   }
   return nullptr;
@@ -243,7 +258,7 @@ char* strstr(const char* haystack, const char* needle)
  * @note Freestanding runtime primitive; never allocates; reentrant and thread-safe when strings are not concurrently modified.
  * @since 0.1.0
  */
-char* strcpy(char* restrict dst, const char* restrict src)
+char* strcpy(char* dst, const char* src)
 {
   size_t i = 0U;
   while (src[i] != '\0') {
@@ -270,7 +285,7 @@ char* strcpy(char* restrict dst, const char* restrict src)
  * @note Freestanding runtime primitive; never allocates; reentrant and thread-safe when strings are not concurrently modified.
  * @since 0.1.0
  */
-char* strncpy(char* restrict dst, const char* restrict src, size_t n)
+char* strncpy(char* dst, const char* src, size_t n)
 {
   size_t i = 0U;
   while (i < n) {
@@ -286,4 +301,5 @@ char* strncpy(char* restrict dst, const char* restrict src, size_t n)
   }
   return dst;
 }
+
 #endif /* !RA8_OFF_TARGET || RA8_TEST_FREESTANDING */

@@ -237,9 +237,14 @@ RA8_INTERNAL static ra8_err_t internal_demo_roundtrip(const char* prefix, uint32
   RA8_CHECK_NULL_PTR(prefix, s_tag, "prefix");
   RA8_CHECK_NULL_PTR(out_blob_len, s_tag, "out_blob_len");
 
-  char path[(size_t)k_ra8_io_vfs_name_max + sizeof("STORY.RBK") + 1U] = {};
-  (void)strncpy(path, prefix, sizeof(path) - 1U);
-  (void)strncat(path, "STORY.RBK", sizeof(path) - strlen(path) - 1U);
+  char         path[(size_t)k_ra8_io_vfs_name_max + sizeof("STORY.RBK") + 1U] = {};
+  const size_t prefix_limit = sizeof(path) - sizeof("STORY.RBK");
+  const size_t prefix_len   = strnlen(prefix, prefix_limit);
+  if (prefix_len >= prefix_limit) {
+    return k_ra8_err_invalid_size;
+  }
+  (void)memcpy(path, prefix, prefix_len);
+  (void)memcpy(&path[prefix_len], "STORY.RBK", sizeof("STORY.RBK"));
 
   uint32_t blob_len = 0;
   RA8_RETURN_ON_ERROR(ra8_vfs_compress_write(path,

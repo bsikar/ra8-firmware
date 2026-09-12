@@ -6,9 +6,9 @@
 # commit: abc67a11c6db271bedbb9f58be85d6f4e2ea8389
 # upstream-files: 83
 # vendored-files: 3
-# upstream-verified: 3
-# patched: 0
+# upstream-verified: 1
+# patched: 2
 # local: 0
 ok 100644 c84ada6d02889703c44750ec95d04db7f5df0ca4 LICENSE
-ok 100644 0606cf677da28e91052d0d32754b4b6a93e3d3e8 protobuf-c/protobuf-c.c
-ok 100755 5fa52da626aa6433260934683ab1490b40c7f23a protobuf-c/protobuf-c.h
+patch 100644 0606cf677da28e91052d0d32754b4b6a93e3d3e8 867c2329b0436d36b923498cc8241577480ab4d4 protobuf-c/protobuf-c.c
+patch 100755 5fa52da626aa6433260934683ab1490b40c7f23a 73379f0064919ea99ba95d3e243b04f2b5af9064 protobuf-c/protobuf-c.h

@@ -383,9 +383,8 @@ DECLARED_BARE_CONTEXT_SHA256 = {
         "d5b3ca320e35ceb5af213c3de985e4cc621dcb7edb17dc3c7b089b58ace168b4",
     ),
     ("docs/SOUP/miniz.md", "miniz-3.0.2.zip"): (
+        "832faa326305edf08430ec91eebc697b0a1ee9d3b412bf4fa4a549bd2a373242",
         "c53637b11351d9ffa5abe88209834b3f61f96a9e86dce13f68416311bea9637e",
-        "e86e59814206706f14b64ba5684599103176ed5c5a3640e0fbcd13a61b631caa",
-        "f2d69043220ddca4131c093489b4c14a1316e56866a3b76d689db8876df2aaba",
     ),
     ("docs/SOUP/tf-psa-crypto.md", "generate_driver_wrappers.py"): (
         "8c6f5aa29ef64f51f237391f0daf8437afaf256a92417da46dd78f580c0a8cb9",
