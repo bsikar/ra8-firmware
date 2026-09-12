@@ -21,17 +21,21 @@
  * @since 0.1.0
  */
 
+#ifndef RA8_OFF_TARGET
+#error "port/posix is host-only and must never be compiled or linked into target firmware."
+#endif
+
 #include <errno.h>
 #include <fcntl.h>
-#include <stdint.h>
+#include <stdint.h> // ra8-keep-include: `uint8_t` used directly
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "fw_if_fs.h"
+#include "fw_if_fs.h" // ra8-keep-include: `fw_fs_stream_iface_t` backend interface used directly
 #include "fw_if_fs_backend.h"
 #include "fw_if_fs_posix_stream_contracts_internal.h"
-#include "ra8_attributes.h"
-#include "ra8_err.h"
+#include "ra8_attributes.h" // ra8-keep-include: `RA8_INTERNAL` and `RA8_PRIV` used directly
+#include "ra8_err.h"        // ra8-keep-include: `ra8_err_t` used directly
 
 #ifndef O_CLOEXEC
 /** @brief Zero fallback when the host lacks close-on-exec open flags. */

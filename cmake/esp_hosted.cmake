@@ -170,7 +170,7 @@ add_library(
 # the port headers, vendored ones included -- that is a consequence of
 # keeping the pin map in one place, not an accident.
 set(_RA8_ESP_HOSTED_FIRST_PARTY_INCLUDE_DIRS
-    ${_RA8_ESP_HOSTED_REPO_ROOT}/libs/ra8_core/inc
+    ${_RA8_ESP_HOSTED_REPO_ROOT}/libs/ra8_core/inc ${_RA8_ESP_HOSTED_REPO_ROOT}/libs/ra8_check/inc
     ${_RA8_ESP_HOSTED_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
 )
 

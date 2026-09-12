@@ -37,3 +37,4 @@ ra8_add_app(
   USES threadx netxduo mbedtls
   LIBS ra8_tls
 )
+target_compile_definitions(tls_client.elf PRIVATE MBEDTLS_PLATFORM_MEMORY)

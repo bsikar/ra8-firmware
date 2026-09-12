@@ -54,6 +54,9 @@ _pcc_banned_constructs() (
   # --all asks it to enumerate src/ + libs/ rather than read staged files.
   python3 scripts/checks/check_no_dynamic_alloc.py --selftest
   python3 scripts/checks/check_no_dynamic_alloc.py --all
+  python3 scripts/checks/check_freestanding_runtime.py --selftest
+  python3 scripts/checks/check_freestanding_runtime.py --check-scripts
+  python3 scripts/checks/check_freestanding_runtime.py --check-asserts
   # Opaque C/POSIX FILE and DIR streams hide allocation and buffer ownership.
   # The production contract is fw_fs_file_t plus injected ra8_io/logging; host
   # adapters use raw descriptors with bounded caller-owned state. Selftest

@@ -18,6 +18,10 @@
 
 #pragma once
 
+#ifndef RA8_OFF_TARGET
+#error "port/posix is host-only and must never be compiled or linked into target firmware."
+#endif
+
 #include <stdint.h>
 
 #include "ra8_attributes.h"

@@ -1,0 +1,41 @@
+{
+  "apps": {
+    "blink": {
+      "end_symbol": false,
+      "forbidden_archives": {},
+      "forbidden_symbols": [],
+      "sbrk_provider": "none"
+    },
+    "compile_on_m33": {
+      "end_symbol": false,
+      "forbidden_archives": {},
+      "forbidden_symbols": [],
+      "sbrk_provider": "none"
+    },
+    "compile_on_m33_cpu1": {
+      "end_symbol": false,
+      "forbidden_archives": {},
+      "forbidden_symbols": [],
+      "sbrk_provider": "none"
+    },
+    "ereader_cover": {
+      "end_symbol": false,
+      "forbidden_archives": {},
+      "forbidden_symbols": [],
+      "sbrk_provider": "none"
+    },
+    "tls_client": {
+      "end_symbol": false,
+      "forbidden_archives": {},
+      "forbidden_symbols": [],
+      "sbrk_provider": "none"
+    },
+    "wifi_hal_join": {
+      "end_symbol": false,
+      "forbidden_archives": {},
+      "forbidden_symbols": [],
+      "sbrk_provider": "none"
+    }
+  },
+  "linker_script_exceptions": []
+}

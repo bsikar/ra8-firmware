@@ -139,3 +139,31 @@ and from there:
 Drivers read the live value from `ra8_cgc_get_clock_hz()` rather than
 hard-coding `k_ra8_pclkb_hz` -- the constants in `ra8_time_constants.h` are the
 bring-up *targets*, not a promise about the running system.
+
+## Freestanding Runtime & Memory Architecture
+
+Target firmware is fully freestanding (`-ffreestanding -nostdlib`). The project owns its entire startup and runtime environment:
+
+- **Startup & Bootstrap**: The project owns `Reset_Handler`, the vector table, `SystemInit`, cache/MPU setup, `.data` section relocation from MRAM to SRAM, and `.bss` zeroing. Normal newlib C runtime startup (`crt0`, `crtbegin`, `crtend`) is neither used nor linked.
+- **Zero-Heap / NASA Power of 10 Rule 3**: No general-purpose heap exists. Target images omit linker symbols `end` and `_end` and declare no `.heap` section. Standard allocators (`malloc`, `calloc`, `realloc`, `free`, `reallocarray`, `strdup`, `asprintf`) are forbidden and unavailable on the target. Any accidental call fails at link time with an unresolved reference.
+- **Approved Allocation Models**: Bounded, deterministic allocation is permitted through ThreadX byte pools (`TX_BYTE_POOL`), ThreadX block pools (`TX_BLOCK_POOL`), NetX packet pools, caller-owned arenas, and bounded static workspaces.
+- **Freestanding C Runtime Primitives**: The compiler-required C ABI primitives are implemented directly in `libs/ra8_core/` without libc:
+  - Memory: `memset`, `memcpy`, `memmove`, `memcmp`, `memchr` (`ra8_freestanding_mem.c`).
+  - String: `strlen`, `strnlen`, `strcmp`, `strncmp`, `strchr`, `strrchr`, `strstr`, `strcpy`, `strncpy` (`ra8_freestanding_str.c`).
+  - Integer Math: `abs` (`ra8_freestanding_math.c`).
+  - Compiler-emitted calls to `memset` and `memcpy` resolve strictly to project-owned objects.
+- **External Library Policy**:
+  - `newlib` and `newlib-nano` (`libg_nano.a`, `libc_nano.a`, `libc.a`): forbidden in target firmware.
+  - `libnosys` (`libnosys.a`, including its unbounded bump-`sbrk`): forbidden.
+  - `libgcc` (`libgcc.a`): approved compiler runtime support (`__aeabi_*` division and floating-point helpers).
+  - `libm` (`libm.a`): approved compiler math runtime (transcendental functions), explicitly gated to the 26-member allowlist in `_allowed_libm_members()` of `check_freestanding_runtime.py` to prevent introduction of `malloc`/`stdio`.
+  - First-party archives (`libthreadx.a`, `libthreadx_ns.a`, `libra8_shared_ek_ra8d2.a`): approved project-domain build products, gated by `_allowed_project_archives()`.
+  - Any other live archive member fails closed: trust is never inferred from toolchain path substrings. Extracted-but-discarded and LOAD-only mentions are not live and do not fail.
+- **Invariants & Assertions**:
+  - `static_assert(condition, message)`: compile-time assertions.
+  - `RA8_ASSERT(condition, message)`: runtime programmer invariants (logs via `ra8_log` and halts via `ra8_fatal_error`).
+  - Standard `assert(...)` from `<assert.h>` is forbidden in target code (it pulls in `__assert_func`, standard I/O streams, and allocator internals).
+- **Enforcement & Gating**:
+  - Source checks alone are insufficient; post-link binary and ELF/map verification is mandatory.
+  - `scripts/checks/check_no_dynamic_alloc.py` enforces source-level bans on direct allocators across firmware and production code.
+  - `scripts/checks/check_freestanding_runtime.py` verifies target ELFs and map files for zero newlib/libnosys members, absence of heap anchors, absence of `.heap` sections, reviewed runtime ABI allowlists, and proper symbol provider resolution.

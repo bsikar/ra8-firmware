@@ -6,35 +6,27 @@
  * [Ring 1 / Core] {World: S}
  *
  * @details
- * The project links newlib-nano (via ``--specs=nano.specs``) which
- * pulls in ``malloc`` / ``free`` / the stdio allocator if any caller
- * happens to reference them. Newlib's heap resolves through
- * ``_sbrk(int incr)``, a POSIX-ish contract that returns the old
- * program-break and advances it by ``incr``. Providing our own
- * ``_sbrk`` that always fails at link/run time guarantees:
+ * Target firmware is freestanding and links with `-nostdlib` without newlib
+ * or libnosys. General-purpose allocators (`malloc`, `free`, etc.) are unavailable
+ * and fail closed at link time with undefined symbol errors.
  *
- *  1. The linker still resolves the newlib symbol (so nano.specs is
- *     happy), meaning we do NOT need to drop nano.specs and lose
- *     size-optimised libc.
- *  2. Any accidental future call to ``malloc`` / ``printf`` / etc.
- *     traps cleanly into the error handler instead of silently
- *     returning a heap pointer from SRAM that the project policy
- *     says must not exist.
- *  3. The old ``.heap`` region in the linker script can be deleted;
- *     4 KB of SRAM frees up.
+ * This file provides a strong `_sbrk` stub as defense-in-depth:
+ *  1. If any legacy object or external routine attempts to resolve or invoke
+ *     `_sbrk`, it halts loudly via `ra8_fatal_error` rather than silently
+ *     corrupting memory or resolving to an unbounded bump allocator.
+ *  2. In clean freestanding target firmware with zero heap callers, this object's
+ *     sections are automatically discarded by linker garbage collection (`--gc-sections`).
+ *  3. Linker scripts define no `end` anchor and no `.heap` section.
  *
- * Project policy (CLAUDE.md: "Zero dynamic allocation in firmware
- * (safety-critical)" and NASA Power of 10 Rule 3: "No dynamic memory
- * after initialisation") forbids any heap use in libs/ and src/.
- * This file is the hard enforcement layer.
- *
+ * Project policy (NASA Power of 10 Rule 3: "No dynamic memory after
+ * initialisation") forbids any heap use in libs/ and src/.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_sbrk_trap.h"
 
-#include <stdint.h>
+#include <stddef.h> // ra8-keep-include: `ptrdiff_t` used directly
 
 #include "ra8_error_handler.h"
 
@@ -50,8 +42,9 @@
  * correctly-built firmware image this stays unreached at run time (glibc
  * malloc on the host resolves its own break), but the three lines are
  * covered on host, so no marker is needed. */
-void* _sbrk(int32_t incr)
+void* _sbrk(ptrdiff_t incr)
 {
   (void)incr;
   ra8_fatal_error("SBRK", "_sbrk called -- firmware is heap-free", 0U);
+  __builtin_unreachable();
 }

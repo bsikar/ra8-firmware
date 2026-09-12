@@ -7,18 +7,11 @@
  * [Ring 1 / CORE] {World: S}
  *
  * @details
- * NASA Power of 10 Rule 3 forbids dynamic allocation after init, and this
- * firmware has no heap at all. ``ra8_sbrk_trap.c`` defines a strong
- * ``_sbrk`` so any code that reaches newlib's allocator halts loudly at
- * the exact call rather than silently corrupting whatever sits past the
- * break.
- *
- * The symbol is external because the C library resolves it -- newlib's
- * ``malloc`` calls ``_sbrk`` by name, and nothing in this tree calls it
- * at all. This header exists so the definition and the host death-test
- * that drives it agree on one prototype instead of restating it: they had
- * a copy each, and nothing checked them against each other.
- *
+ * NASA Power of 10 Rule 3 forbids dynamic allocation after init, and target
+ * firmware has no heap at all. Firmware is freestanding and links with `-nostdlib`
+ * without newlib or libnosys. Standard allocator calls fail closed at link time.
+ * ``ra8_sbrk_trap.c`` provides a defense-in-depth tripwire so any legacy or
+ * external routine attempting to invoke ``_sbrk`` halts safely via ``ra8_fatal_error``.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -29,7 +22,7 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
+#include <stddef.h>
 
 // NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) -- toolchain ABI fixes this reserved symbol spelling.
 
@@ -69,7 +62,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
-void* _sbrk(int32_t incr);
+void* _sbrk(ptrdiff_t incr);
 
 // NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming)
 

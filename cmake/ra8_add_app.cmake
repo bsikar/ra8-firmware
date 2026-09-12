@@ -322,6 +322,16 @@ macro(ra8_add_app)
 
   ra8_target_enable_project_warnings(${_ra8_elf} STACK_USAGE_BYTES ${_RA8_APP_STACK_BYTES})
 
+  # Fail-closed check: ensure no host-only port/posix sources enter target firmware
+  foreach(_ra8_src IN LISTS _RA8_APP_SOURCES)
+    if(_ra8_src MATCHES "port/posix")
+      message(
+        FATAL_ERROR
+          "Target firmware application ${_RA8_APP_NAME} attempted to link host-only port/posix source: ${_ra8_src}"
+      )
+    endif()
+  endforeach()
+
   # -ffreestanding: this is bare metal. There is no hosted C environment here --
   # no OS, no process, no exit status, and `main` is reached from
   # Reset_Handler, not from a C runtime that has a return value to hand
@@ -337,6 +347,7 @@ macro(ra8_add_app)
   # The flag and the `void` entry point travel together: drop it and every
   # firmware main.c stops compiling.
   target_compile_options(${_ra8_elf} PRIVATE -ffreestanding -fshort-enums)
+  target_compile_definitions(${_ra8_elf} PRIVATE RA8_FREESTANDING)
 
   if(RA8_TRUSTZONE_ENABLE)
     target_compile_definitions(${_ra8_elf} PRIVATE RA8_TRUSTZONE_ENABLE)
@@ -394,6 +405,7 @@ macro(ra8_add_app)
       target_sources(${_ra8_elf} PRIVATE ${_ra8_port})
     endif()
   endforeach()
+  target_link_libraries(${_ra8_elf} PRIVATE gcc)
 
   target_link_options(${_ra8_elf} PRIVATE -T${_ra8_linker} -Wl,--Map=${_RA8_APP_NAME}.map)
   set_target_properties(${_ra8_elf} PROPERTIES LINK_DEPENDS ${_ra8_linker})
@@ -460,11 +472,18 @@ function(ra8_add_cpu1_image)
   foreach(_s ${C1_SOURCES})
     list(APPEND _c1_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${_s})
   endforeach()
+  list(
+    APPEND
+    _c1_srcs
+    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_freestanding_mem.c
+    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_freestanding_str.c
+    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_freestanding_math.c
+  )
 
   # The M33 image: -mcpu=cortex-m33, no M85 startup (own cpu1_reset_handler),
   # freestanding, size-optimised to fit the 256 KiB MRAM_CPU1 region.
   add_executable(${C1_NAME}.elf ${_c1_srcs})
-  target_compile_definitions(${C1_NAME}.elf PRIVATE RA8_BUILD_FOR_CPU1)
+  target_compile_definitions(${C1_NAME}.elf PRIVATE RA8_BUILD_FOR_CPU1 RA8_FREESTANDING)
   target_compile_options(
     ${C1_NAME}.elf
     PRIVATE -mcpu=cortex-m33
@@ -538,10 +557,12 @@ function(ra8_add_cpu1_image)
     -mthumb
     -mfloat-abi=hard
     -mfpu=fpv5-sp-d16
-    -nostartfiles
+    -nostdlib
     -T${_c1_ld}
     -Wl,--Map=${C1_NAME}.map
+    -Wl,--gc-sections
   )
+  target_link_libraries(${C1_NAME}.elf PRIVATE gcc)
   # The CPU1 image links NO ra8_hal, but it may INCLUDE the freestanding-clean
   # PORT headers so an M33 image drives a pin through a HAL primitive
   # (ra8_pcntr.h -> ra8_port_regs.h) instead of hand-rolling raw MMIO (issue

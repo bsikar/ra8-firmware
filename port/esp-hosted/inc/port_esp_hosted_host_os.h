@@ -37,11 +37,13 @@
 
 #pragma once
 
-#include <assert.h>
+#include "ra8_check.h"
+#ifndef assert
+#define assert(expr) RA8_ASSERT(expr, "esp-hosted assertion")
+#endif
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 /* ESP-IDF hosts reach these through their own build; on this host the
    port supplies them, and this header is where the vendored core expects

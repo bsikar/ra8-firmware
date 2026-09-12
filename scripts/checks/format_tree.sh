@@ -216,7 +216,8 @@ fi
 # --- Go -------------------------------------------------------------------
 require_tool gofmt
 language_scope go
-mapfile -t go_files </tmp/ra8-fmt-go.list
+go_files=()
+while IFS= read -r line || [ -n "$line" ]; do [ -z "$line" ] || go_files+=("$line"); done </tmp/ra8-fmt-go.list
 if [ "$CHECK_ONLY" -eq 1 ]; then
   run_check go list gofmt -l "${go_files[@]}" || exit 1
 else
@@ -224,7 +225,8 @@ else
 fi
 require_tool ruff
 language_scope python
-mapfile -t python_files </tmp/ra8-fmt-python.list
+python_files=()
+while IFS= read -r line || [ -n "$line" ]; do [ -z "$line" ] || python_files+=("$line"); done </tmp/ra8-fmt-python.list
 if [ "$CHECK_ONLY" -eq 1 ]; then
   run_check python exitcode ruff format --check "${python_files[@]}" || exit 1
 else
@@ -232,7 +234,8 @@ else
 fi
 require_tool shfmt
 language_scope shell
-mapfile -t shell_files </tmp/ra8-fmt-shell.list
+shell_files=()
+while IFS= read -r line || [ -n "$line" ]; do [ -z "$line" ] || shell_files+=("$line"); done </tmp/ra8-fmt-shell.list
 if [ "$CHECK_ONLY" -eq 1 ]; then
   run_check shell list shfmt -i 2 -ci -l "${shell_files[@]}" || exit 1
 else
@@ -242,7 +245,8 @@ fi
 # --- CMake ----------------------------------------------------------------
 require_tool cmake-format
 language_scope cmake
-mapfile -t cmake_files </tmp/ra8-fmt-cmake.list
+cmake_files=()
+while IFS= read -r line || [ -n "$line" ]; do [ -z "$line" ] || cmake_files+=("$line"); done </tmp/ra8-fmt-cmake.list
 if [ "$CHECK_ONLY" -eq 1 ]; then
   run_check cmake exitcode cmake-format --check "${cmake_files[@]}" || exit 1
 else

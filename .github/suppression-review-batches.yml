@@ -811,3 +811,22 @@ batches:
       - "reconcile work-move/checker-drift fallout: rebind moved-file rows to"
       - "live successors with predecessor links, retire deleted constructs,"
       - "review new sites on merits; Linux-census driven"
+
+  - id: freestanding-s603-20260911
+    authority: repository-suppression-review
+    date: 2026-09-11
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 2
+    rows_sha256: 1c68a32fae2136b23c84bdfe0366ab2af8c2557f993997f313945922833bc3c1
+    partition: "Freestanding-runtime review finding H2"
+    evidence:
+      - "review-decision check_freestanding_runtime runs pinned arm-none-eabi-nm/readelf with fixed argv and no shell to inspect target ELFs; S603 cannot scope narrower for required toolchain subprocess use."
+  - id: freestanding-audit-scope-20260911
+    authority: repository-suppression-review
+    date: 2026-09-11
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 2
+    rows_sha256: 17518c55de7030c80005a0c3e8add405111b6a31824d2d786d9707de356fe528
+    partition: "Automated developer review batch"
+    evidence:
+      - "review-decision audit-driven checker edits (fail-closed live-archive policy, keep-marker token validation) changed scope census; auto-sync re-blessed digests 92dbba57bd20/b0cb7589a572"

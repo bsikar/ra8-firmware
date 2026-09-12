@@ -24,6 +24,10 @@
 
 #pragma once
 
+#ifndef RA8_OFF_TARGET
+#error "port/posix is host-only and must never be compiled or linked into target firmware."
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
