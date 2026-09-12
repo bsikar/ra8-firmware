@@ -27,7 +27,7 @@ import sys
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Never
+from typing import NoReturn
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SELF = Path(__file__).resolve()
@@ -98,7 +98,7 @@ class ReferenceCheckError(RuntimeError):
     """Raised when the authoritative Just surface cannot be checked."""
 
 
-def _fail(message: str) -> Never:
+def _fail(message: str) -> NoReturn:
     raise ReferenceCheckError(message)
 
 

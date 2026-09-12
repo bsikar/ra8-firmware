@@ -16,7 +16,7 @@ import tempfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Never
+from typing import NoReturn
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -50,7 +50,7 @@ class SourceRouting:
     head: str
 
 
-def _fail(message: str) -> Never:
+def _fail(message: str) -> NoReturn:
     raise CandidateError(message)
 
 
