@@ -2526,7 +2526,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "PWR-004 DRAFT: upstream regulator / reset voltage budget\nU13 LTC3119IUFD#PBF: PWM tied to private VCC_U13.\nR41/R42=33k/10k, 0.1%, 25ppm/C; deltaT=100C.\nVout=Vfb*(1+Rt/Rb)+Ib*Rt; allocate +/-100nA.\nStatic screen: 3.328456..3.509411V; allocate +/-75mV dynamics.\nProposed full envelope: 3.253456..3.584411V.\nRadio low: 3.253456-0.5A*0.175ohm=3.165956V.\nAbove RADIO-014 rising screen: 26.335mV remains.\nMCU reset release headroom: 59.505mV.\nThese are budgets, not measured or guaranteed waveforms.\nProposal NOT ADOPTED: SDRAM logic-high conflict #846.\nFull calculations: ../design/main_regulator_ltc3119.md PWR-004."
+	(text "PWR-006: upstream U13 TPS63806YFFR, forced PWM.\nVnom=.5*(1+5600/(1000+10))=3.272277228V.\nStatic resistor/reference/leakage screen: 3.226819680..3.318012496V.\nWith one +/-75mV dynamics allocation: 3.151819680..3.393012496V.\nRST-002 MCU rising maximum 3.113278988V leaves 38.540692mV.\nRadio U4 TPS22917 remains unresolved: old 87.5mV loss screen\nleaves -48.959308mV release margin. Replace and qualify path.\nThese are conditional budgets, not measured rail/reset waveforms.\nFull regulator calculations: design/main_regulator_tps63806.md.\nReset calculations: design/reset_coordination_tps3890.md."
 		(exclude_from_sim no)
 		(at 266.7 142.24 0)
 		(effects
@@ -2534,7 +2534,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_ltc3119.md")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/main_regulator_tps63806.md")
 		)
 		(uuid "1e311763-baef-42a6-83aa-c305d9e30b3d")
 	)
@@ -2679,7 +2679,7 @@
 		)
 		(uuid "b3fe64c9-81e0-47c7-9dd2-5988e0a7a95a")
 	)
-	(text "RADIO-014: R12/R13 switched-radio sense divider\n33.2k / 20k; Susumu RG, 0.1%, 25ppm/C.\nAllocate deltaT=100 C, 0.15% drift, +/-150nA total.\nfmin/max=(1 +/-0.001)*(1 +/-0.0025)*(1 +/-0.0015)\n          = 0.99500774625 / 1.00500775375.\nVtrip = Vsense*(1+Rt/Rb) + Is*Rt.\nVfall >=1.15*0.99*(1+Rtmin/Rbmax)-150nA*Rtmax\n      = 3.004600 V; margin above 3V only 4.600mV.\nVrise <=1.15*1.01*1.00825*(1+Rtmax/Rbmin)\n        +150nA*Rtmax = 3.139622 V.\nPWR-004 draft release headroom: 26.335mV; #846 blocks adoption.\nIdiv_nom=3.3/53.2k=62.030uA; each P <0.652mW.\nMR arbitration and brownout dynamics remain open.\nMath: ../design/radio_interface.md (RADIO-014); PWR-004 below."
+	(text "RADIO-014 / RST-002: R12=33k, R13=20k switched-radio SENSE divider.\n0.05%, 10ppm/C; allocate 100C, +/-0.15% installed drift, +/-150nA total.\nfL=.9995*.999*.9985; fH=1.0005*1.001*1.0015.\nKlo=1+33000*fL/(20000*fH); Khi=1+33000*fH/(20000*fL).\nE=150nA*33000*fH; Vtrip=Vthreshold*(1+Rt/Rb)+Is*Rt.\nVfall=1.15*.99*Klo-E .. 1.15*1.01*Khi+E = 3.000822727..3.094473285V.\nVrise=1.157*.99*Klo-E .. 1.157*1.01*Khi+E = 3.019118825..3.113278988V.\nUse direct VITP limits; do not add hysteresis a second time.\nU4 TPS22917 remains UNRESOLVED: 3.151819680-.0875-3.113278988\n= -48.959308mV release margin at the existing 500mA loss screen.\nA qualified <=20mV complete radio path would give +18.540692mV;\nthat path is NOT implemented. No radio DC/startup sign-off.\nC52=1n charge interval .814828..1.526476ms; not total IC delay maximum.\nFull assumptions, sourcing and Python: design/reset_coordination_tps3890.md."
 		(exclude_from_sim no)
 		(at 266.7 101.6 0)
 		(effects
@@ -2687,7 +2687,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-014-switched-radio-sense-divider")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/reset_coordination_tps3890.md")
 		)
 		(uuid "c87b6eaf-8d4f-4da0-88a2-efff6aae0d55")
 	)
@@ -5139,7 +5139,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "33.2k"
+		(property "Value" "33k"
 			(at 237.49 68.58 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5161,7 +5161,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.susumu.co.jp/dl/?filename=n_catalog_partition01_en.pdf&type=application/pdf"
+		(property "Datasheet" "https://industrial.panasonic.com/jp/products/pt/high-precision-chip-resistors/models/ERA6ARW333V"
 			(at 233.68 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -5172,7 +5172,7 @@
 				)
 			)
 		)
-		(property "Description" "Susumu RG1608P-3322-B-T5; 33.2k 0.1% 25ppm/C. RADIO-014 upper SENSE divider from switched +3V3_RADIO to U6.1; full transient qualification open."
+		(property "Description" "33k 0.05% 10ppm/C 0805 thin-film reset sense upper resistor; RST-002"
 			(at 233.68 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -5205,7 +5205,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "RG16P33.2KBCT-ND"
+		(property "DigiKey_Part_Number" "P33KBSCT-ND"
 			(at 233.68 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -5216,7 +5216,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/susumu/RG1608P-3322-B-T5/1240944"
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/panasonic-industry/ERA-6ARW333V/3073417"
 			(at 233.68 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -5227,7 +5227,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
+		(property "Procurement_Status" "Selected; installed drift and reset qualification required; footprint deferred"
 			(at 233.68 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -5238,7 +5238,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-07 indexed: Active; stock 95362; USD CT 1:0.13 / 10:0.111 / 100:0.09210; 18wk lead; recheck before ordering."
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey cut tape: 9330 stock; USD0.57/0.472/0.391 at1/10/100; 41wk; unreserved; shipping/tax excluded"
 			(at 233.68 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -5249,7 +5249,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Name" "Susumu"
+		(property "Manufacturer_Name" "Panasonic Industry"
 			(at 233.68 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -5260,7 +5260,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "RG1608P-3322-B-T5"
+		(property "Manufacturer_Part_Number" "ERA-6ARW333V"
 			(at 233.68 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -5271,7 +5271,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "RADIO-014 upper divider: 33.2k/20k, 0.1% 25ppm/C. Include 100C excursion, 0.15% additional drift and 150nA adverse sense-node current allocations. Falling >=3.004600V; rising <=3.139622V. Static screen only; power/reset dynamics remain open."
+		(property "Selection_Basis" "RST-002: 33k upper SENSE with 20k lower; 0.05%, 10ppm/C. Conditional rising 3.019118825..3.113278988V. See design/reset_coordination_tps3890.md; fast-fault qualification separate."
 			(at 233.68 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -6608,7 +6608,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.susumu.co.jp/dl/?filename=n_catalog_partition01_en.pdf&type=application/pdf"
+		(property "Datasheet" "https://www.susumu.co.jp/common/pdf/n_catalog_partition01_en.pdf"
 			(at 233.68 80.01 0)
 			(hide yes)
 			(show_name no)
@@ -6619,7 +6619,7 @@
 				)
 			)
 		)
-		(property "Description" "Susumu RG1608P-203-B-T5; 20k 0.1% 25ppm/C. RADIO-014 lower SENSE divider from U6.1 to GND; full transient qualification open."
+		(property "Description" "20k 0.05% 10ppm/C 0603 thin-film reset sense lower resistor; RST-002"
 			(at 233.68 80.01 0)
 			(hide yes)
 			(show_name no)
@@ -6652,7 +6652,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "RG16P20.0KBCT-ND"
+		(property "DigiKey_Part_Number" "RG16N20.0KWCT-ND"
 			(at 233.68 80.01 0)
 			(hide yes)
 			(show_name no)
@@ -6663,7 +6663,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/susumu/RG1608P-203-B-T5/1240507"
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/susumu/RG1608N-203-W-T1/600628"
 			(at 233.68 80.01 0)
 			(hide yes)
 			(show_name no)
@@ -6674,7 +6674,7 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Selected - electrical ratings and sourcing checked; footprint deferred"
+		(property "Procurement_Status" "Selected; installed drift and reset qualification required; footprint deferred"
 			(at 233.68 80.01 0)
 			(hide yes)
 			(show_name no)
@@ -6685,7 +6685,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-07 indexed: Active; stock 186950; USD CT 1:0.11 / 10:0.093 / 100:0.07710; 18wk lead; recheck before ordering."
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey cut tape: 78737 stock; USD0.64/0.529/0.4381 at1/10/100; 22wk; unreserved; shipping/tax excluded"
 			(at 233.68 80.01 0)
 			(hide yes)
 			(show_name no)
@@ -6707,7 +6707,7 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "RG1608P-203-B-T5"
+		(property "Manufacturer_Part_Number" "RG1608N-203-W-T1"
 			(at 233.68 80.01 0)
 			(hide yes)
 			(show_name no)
@@ -6718,7 +6718,7 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "RADIO-014 lower divider: 33.2k/20k, 0.1% 25ppm/C. Include 100C excursion, 0.15% additional drift and 150nA adverse sense-node current allocations. Falling >=3.004600V; rising <=3.139622V. Static screen only; power/reset dynamics remain open."
+		(property "Selection_Basis" "RST-002: 20k lower SENSE with 33k upper; 0.05%, 10ppm/C. Conditional rising 3.019118825..3.113278988V. See design/reset_coordination_tps3890.md; fast-fault qualification separate."
 			(at 233.68 80.01 0)
 			(hide yes)
 			(show_name no)

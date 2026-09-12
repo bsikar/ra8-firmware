@@ -17,7 +17,18 @@ only TP1-TP3 are excluded. The pre-migration implementation is described by
 [PWR-004](main_regulator_ltc3119.md); its voltage, external compensation and
 startup calculations do not transfer to TPS63806. Reset coordination,
 source protection and qualification remain separate acceptance steps.
-No reset proposal is adopted and no fabrication approval is implied.
+[RST-002](reset_coordination_tps3890.md) now records the wired native U2
+TPS389001DSET with R67/R74 33k/20k, R75 10k MR pull-up and C95 10n CT;
+the targeted final U2 connectivity check is complete. Native/CLI ERC remains
+139 errors and two warnings with no U2 violations or changed rules/exclusions.
+BOM/PDF and native reset notes are refreshed; changed MCU/radio pages were
+visually inspected. This is not whole-circuit validation. Radio R12/R13 now
+use the same 33k/20k threshold basis, but U4 remains TPS22917. Its old
+87.5 mV path-loss screen gives -48.959308 mV radio release headroom;
+the proposed 20 mV replacement-path allocation is not implemented.
+Joint radio DC coordination is unresolved. This does not adopt the
+fast-brownout fallback or imply fabrication approval. Counts and audit
+results above describe the regulator checkpoint, not the later reset edits.
 
 ### Native migration checkpoint
 
@@ -137,8 +148,10 @@ static logic-high headroom, not an additional noise allowance or a closure
 of memory qualification. The rail is 206.987504 mV below 3.6 V at the upper
 endpoint and 151.819680 mV above 3.0 V at the lower endpoint. Reset release,
 radio-switch drop and every connected load's actual limits still require
-their own coordinated review. Reset component selection is explicitly
-pending; do not carry forward PWR-004's reset-margin conclusions.
+their own coordinated review. RST-002's MCU reset selection is implemented
+and its targeted connectivity checked; radio DC coordination and full-system
+reset qualification remain unresolved. Do not carry forward PWR-004's
+reset-margin conclusions.
 The separately preserved [brownout fallback](main_rail_brownout_tps63806.md)
 is explicitly proposed, not adopted by this migration.
 
@@ -532,9 +545,10 @@ PY
 
 This basis supports the audited native regulator checkpoint, not a finished
 product voltage contract. Passive implementation, logical pin mapping and
-held-enable connectivity have passed differential audit. Complete the
-independent reset decision and update dependent records to their adopted
-state before claiming a complete power design. Keep the BOM, ERC, netlist
+held-enable connectivity have passed differential audit. RST-002 additionally
+records the targeted MCU reset connectivity check. Resolve radio DC release
+and full-system reset/fault coordination before claiming a complete power
+design. Keep the BOM, ERC, netlist
 and full PDF synchronized at each checkpoint. Footprint and layout
 qualification remain deferred.
 Bench release additionally requires source protection/budget, all-corners

@@ -990,14 +990,14 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Power_Devices:TPS3808G33DBVR"
+		(symbol "Power_Devices:TPS389001DSET"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
 			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
 			(property "Reference" "U"
-				(at 0 14.224 0)
+				(at 0 15.24 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
@@ -1006,8 +1006,8 @@
 					)
 				)
 			)
-			(property "Value" "TPS3808G33DBVR"
-				(at 0 11.176 0)
+			(property "Value" "TPS389001DSET"
+				(at 0 12.7 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
@@ -1016,7 +1016,7 @@
 					)
 				)
 			)
-			(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
+			(property "Footprint" ""
 				(at -2.54 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -1027,7 +1027,7 @@
 					)
 				)
 			)
-			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps3808.pdf"
+			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps3890.pdf"
 				(at -2.54 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -1038,7 +1038,7 @@
 					)
 				)
 			)
-			(property "Description" "TI TPS3808G33DBVR; 3.07 V supervisor, active-low open-drain RESET, manual reset, CT-open 12..28 ms delay. SBVS050N Table 5-1; RST-001."
+			(property "Description" "TI TPS389001DSET adjustable voltage supervisor; 1.15 V nominal falling SENSE threshold, active-low open-drain RESET, manual reset, ground-referenced CT delay capacitor. SLVSD65A sections 5-7. DSE six-pin WSON; footprint qualification deferred."
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -1060,35 +1060,22 @@
 					)
 				)
 			)
-			(property "ki_fp_filters" "SOT?23*"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(symbol "TPS3808G33DBVR_0_1"
+			(symbol "TPS389001DSET_1_1"
 				(rectangle
-					(start -7.62 5.08)
-					(end 7.62 -5.08)
+					(start -8.89 6.35)
+					(end 8.89 -6.35)
 					(stroke
 						(width 0.254)
-						(type default)
+						(type solid)
 					)
 					(fill
 						(type background)
 					)
 				)
-			)
-			(symbol "TPS3808G33DBVR_1_1"
-				(pin open_collector line
-					(at 10.16 0 180)
-					(length 2.54)
-					(name "~{RESET}"
+				(pin input line
+					(at -12.7 2.54 0)
+					(length 3.81)
+					(name "SENSE"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1104,8 +1091,8 @@
 					)
 				)
 				(pin power_in line
-					(at 0 -7.62 90)
-					(length 2.54)
+					(at 2.54 -10.16 90)
+					(length 3.81)
 					(name "GND"
 						(effects
 							(font
@@ -1122,8 +1109,8 @@
 					)
 				)
 				(pin input line
-					(at -10.16 0 0)
-					(length 2.54)
+					(at -12.7 0 0)
+					(length 3.81)
 					(name "~{MR}"
 						(effects
 							(font
@@ -1139,10 +1126,10 @@
 						)
 					)
 				)
-				(pin input line
-					(at -10.16 -2.54 0)
-					(length 2.54)
-					(name "CT"
+				(pin power_in line
+					(at 2.54 10.16 270)
+					(length 3.81)
+					(name "VDD"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1158,9 +1145,9 @@
 					)
 				)
 				(pin input line
-					(at -10.16 2.54 0)
-					(length 2.54)
-					(name "SENSE"
+					(at -12.7 -2.54 0)
+					(length 3.81)
+					(name "CT"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1175,10 +1162,10 @@
 						)
 					)
 				)
-				(pin power_in line
-					(at 0 7.62 270)
-					(length 2.54)
-					(name "VDD"
+				(pin open_collector line
+					(at 12.7 0 180)
+					(length 3.81)
+					(name "~{RESET}"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -7381,15 +7368,15 @@
 		)
 		(uuid "25f5c4ef-ef4b-4377-be3e-ea6e66abf6f1")
 	)
-	(text "RST-001: U2 supervises +3V3_MCU; TP1 is internal MR service access.\nCT open: release delay 12..28 ms; 12/2.4 = 5x MCU minimum.\nFalling threshold = 3.07*(1 +/- 0.015) = 3.02395..3.11605 V.\nConservative release screen = 3.11605*1.025 = 3.19395125 V.\nASSUMED rail +/-2%: 3.3*0.98 - 3.19395125 = 40.05 mV margin.\nR1 worst pull-up current = 3.6/9900 = 0.364 mA < 1 mA.\nRES low margin = 0.2*3.02395 - 0.4 = 0.20479 V.\nNo RES capacitor; open-drain reset drivers only.\nExternal RES startup path; do not assume internal POR flag.\nFull math, limits and Python: design/boot_and_debug.md RST-001.	"
+	(text "RST-002: U2 TPS389001DSET; R67=33k, R74=20k, R75=10k, C95=10n.\nSense resistors: +/-0.05%, 10ppm/C over 100C, allocated +/-0.15% assembly/aging.\nfL=.9995*.999*.9985=.99700274925; fH=1.0005*1.001*1.0015=1.00300275075.\nKlo=1+33000*fL/(20000*fH); Khi=1+33000*fH/(20000*fL); E=150nA*33000*fH.\nVfall=1.15*.99*Klo-E .. 1.15*1.01*Khi+E = 3.000822727..3.094473285V.\nVrise=1.157*.99*Klo-E .. 1.157*1.01*Khi+E = 3.019118825..3.113278988V.\nMain release margin=3.151819680-3.113278988=38.540692mV; no double hysteresis.\nC95: 10n C0G +/-5%, 30ppm/C over 100C; allocate +/-10nA external CT leakage.\ntcharge,min=10n*.95*.997*1.17/(1.35u+10n)=8.148276ms > 2.4ms RES minimum.\ntcharge,max=10n*1.05*1.003*1.29/(.90u-10n)=15.264758ms; NOT total-delay max.\nR75 MR pull-up: R=9801..10201ohm; allocate +/-50uA total adverse MR current.\nMR high margin=.3*3.151819680-50uA*10201=.435495904V; sink <=.396190439mA.\nConditional DC/startup design, not fast-collapse or SDRAM-quiescence proof.\nFull derivation, assumptions, sourcing and Python: design/reset_coordination_tps3890.md."
 		(exclude_from_sim no)
-		(at 25.4 223.52 0)
+		(at 25.4 248.92 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
 			(justify left)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/boot_and_debug.md#rst-001-external-supervisor-implementation-basis")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/reset_coordination_tps3890.md")
 		)
 		(uuid "46f0ad44-622c-44b3-b5a3-915f3fac5f52")
 	)
@@ -7416,6 +7403,18 @@
 		(uuid "ac32f66f-2cd4-4ff8-a3f2-b82851ee85f4")
 	)
 	(junction
+		(at 119.38 190.5)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "87e495bf-6aa0-45a3-9cf6-6331de293915")
+	)
+	(junction
+		(at 88.9 200.66)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "9779e38c-21cc-46c6-bb6f-b8b05ca8ab0a")
+	)
+	(junction
 		(at 114.3 190.5)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -7424,10 +7423,6 @@
 	(no_connect
 		(at 40.64 68.58)
 		(uuid "0051f98b-5e0b-4219-9373-277270b88fcf")
-	)
-	(no_connect
-		(at 104.14 205.74)
-		(uuid "5a4d0c3e-b365-414f-b062-941c58e22438")
 	)
 	(wire
 		(pts
@@ -7438,16 +7433,6 @@
 			(type default)
 		)
 		(uuid "095631d3-d0dc-4d5c-9190-907dfdd1d69e")
-	)
-	(wire
-		(pts
-			(xy 124.46 203.2) (xy 129.54 203.2)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "0a9bcdef-06a8-483b-9ae4-9eeb527de51c")
 	)
 	(wire
 		(pts
@@ -7501,13 +7486,13 @@
 	)
 	(wire
 		(pts
-			(xy 114.3 190.5) (xy 114.3 195.58)
+			(xy 104.14 205.74) (xy 104.14 210.82)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "242875df-83f0-4c55-a39b-eda2ad588672")
+		(uuid "23ea0506-11fa-43f1-b989-f3a4cf6a6bee")
 	)
 	(wire
 		(pts
@@ -7551,13 +7536,13 @@
 	)
 	(wire
 		(pts
-			(xy 99.06 203.2) (xy 104.14 203.2)
+			(xy 88.9 190.5) (xy 114.3 190.5)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "3515ee0a-3f5e-4daf-867c-54850f9c840f")
+		(uuid "3c49613c-a782-4089-9acf-911ccac6340a")
 	)
 	(wire
 		(pts
@@ -7568,16 +7553,6 @@
 			(type default)
 		)
 		(uuid "46874992-fa22-411c-a94a-1014106831fc")
-	)
-	(wire
-		(pts
-			(xy 99.06 200.66) (xy 99.06 190.5)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "560b5d94-07c8-4c3c-9668-a8f67ec930e5")
 	)
 	(wire
 		(pts
@@ -7598,6 +7573,16 @@
 			(type default)
 		)
 		(uuid "617f00e0-7a17-469c-967a-c24463211f5c")
+	)
+	(wire
+		(pts
+			(xy 119.38 190.5) (xy 165.1 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6409b4ab-2305-41a5-a085-e35db5b37f85")
 	)
 	(wire
 		(pts
@@ -7628,16 +7613,6 @@
 			(type default)
 		)
 		(uuid "670e3908-6d49-480c-b639-24b1a7f2cdab")
-	)
-	(wire
-		(pts
-			(xy 104.14 200.66) (xy 99.06 200.66)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6b6a5ede-bed6-4457-a24a-433e86e80041")
 	)
 	(wire
 		(pts
@@ -7678,6 +7653,16 @@
 			(type default)
 		)
 		(uuid "7857e9bd-0800-4e26-8567-9fb32e1cea73")
+	)
+	(wire
+		(pts
+			(xy 88.9 193.04) (xy 88.9 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7c47c9d5-5bd8-40b4-9733-17ed44dc77a4")
 	)
 	(wire
 		(pts
@@ -7791,6 +7776,16 @@
 	)
 	(wire
 		(pts
+			(xy 88.9 200.66) (xy 88.9 208.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b3ac98e5-0731-4e04-924d-438b183c1305")
+	)
+	(wire
+		(pts
 			(xy 266.7 151.13) (xy 266.7 147.32)
 		)
 		(stroke
@@ -7851,7 +7846,17 @@
 	)
 	(wire
 		(pts
-			(xy 114.3 190.5) (xy 165.1 190.5)
+			(xy 88.9 200.66) (xy 104.14 200.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ce29a27d-bd4d-4228-9cf8-01c6bfa592c3")
+	)
+	(wire
+		(pts
+			(xy 114.3 190.5) (xy 119.38 190.5)
 		)
 		(stroke
 			(width 0)
@@ -7911,6 +7916,16 @@
 	)
 	(wire
 		(pts
+			(xy 119.38 190.5) (xy 119.38 193.04)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "df6f1d59-747c-4e94-a381-02a4f2b77377")
+	)
+	(wire
+		(pts
 			(xy 60.96 162.56) (xy 60.96 170.18)
 		)
 		(stroke
@@ -7951,16 +7966,6 @@
 	)
 	(wire
 		(pts
-			(xy 99.06 190.5) (xy 114.3 190.5)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "f9458b32-5d2b-4115-b9b0-a08123f948f0")
-	)
-	(wire
-		(pts
 			(xy 50.8 83.82) (xy 50.8 88.9)
 		)
 		(stroke
@@ -7968,6 +7973,16 @@
 			(type default)
 		)
 		(uuid "ff111c45-5a65-4c7f-80fc-60b473246b7e")
+	)
+	(label "SW_RESET_N"
+		(at 88.9 168.91 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "0d4afe88-a5c0-49c7-a22c-8f29fb3cc62b")
 	)
 	(label "MCU_RESET_N"
 		(at 71.12 60.96 0)
@@ -8150,7 +8165,7 @@
 		(uuid "bf859131-c9b2-401b-88d1-0e3beeaf5ea2")
 	)
 	(label "SW_RESET_N"
-		(at 99.06 203.2 180)
+		(at 104.14 203.2 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8333,6 +8348,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
 					(reference "#PWR026")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 104.14 215.9 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "0e0bbe9e-c8c2-493b-b02e-f13a3f03046b")
+		(property "Reference" "#PWR0157"
+			(at 104.14 222.25 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 104.14 220.98 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 104.14 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 104.14 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 104.14 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "e328e9fb-4de6-4e6f-8ac1-ff7c9550a2f7")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "#PWR0157")
 					(unit 1)
 				)
 			)
@@ -10080,7 +10173,7 @@
 				)
 			)
 		)
-		(property "Description" "TDK C1608X7R1H104K080AA; 100 nF, 50 V, X7R, +/-10%; U2 VDD bypass, RST-001."
+		(property "Description" "TDK C1608X7R1H104K080AA; 100 nF, 50 V, X7R, +/-10%; U2 TPS3890 VDD bypass, RST-002. Nominal bias screening PWR-001; installed PDN qualification required."
 			(at 165.1 203.2 0)
 			(hide yes)
 			(show_name no)
@@ -10167,6 +10260,165 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
 					(reference "C44")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 104.14 213.36 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "57c45476-a275-4bd4-916a-455578226b77")
+		(property "Reference" "C95"
+			(at 106.68 212.0962 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10n"
+			(at 106.68 214.6362 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 104.14 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608C0G1H103J080AA"
+			(at 104.14 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "10n 50V 5% C0G 0603 reset-delay capacitor; RST-002"
+			(at 104.14 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-7404-1-ND"
+			(at 104.14 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608C0G1H103J080AA/2732839"
+			(at 104.14 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 104.14 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608C0G1H103J080AA"
+			(at 104.14 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected for conditional startup delay; CT leakage and reset qualification pending; footprint deferred."
+			(at 104.14 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RST-002: 10n C0G 5%, 30ppm/C, 100C and 10nA external CT leakage allocation yield 8.148276..15.264758ms charge interval; not total IC delay maximum. See design/reset_coordination_tps3890.md."
+			(at 104.14 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 24965 stock; USD 0.24/0.141/0.0886 at 1/10/100; unreserved, recheck before order."
+			(at 104.14 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "422a2992-bbe6-4b41-a02d-4cc7d68051c3")
+		)
+		(pin "2"
+			(uuid "9ada2f82-f579-4266-b879-a570b16ea54b")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "C95")
 					(unit 1)
 				)
 			)
@@ -10608,6 +10860,84 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 88.9 215.9 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "7345b615-ef9a-4fca-b242-0a4ebe712c7c")
+		(property "Reference" "#PWR0159"
+			(at 88.9 222.25 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 88.9 220.98 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 88.9 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 88.9 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 88.9 215.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "9b53f2dc-23a4-48ab-9e7b-44b39f6d489a")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "#PWR0159")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C_Small")
 		(at 345.44 111.76 0)
 		(unit 1)
@@ -10975,7 +11305,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 114.3 210.82 0)
+		(at 119.38 213.36 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -10986,7 +11316,7 @@
 		(fields_autoplaced yes)
 		(uuid "851fe8a9-6ff7-4ccf-9ac2-c4584d9ee4fe")
 		(property "Reference" "#PWR050"
-			(at 114.3 217.17 0)
+			(at 119.38 219.71 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10997,7 +11327,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 114.3 215.9 0)
+			(at 119.38 218.44 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11007,7 +11337,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 114.3 210.82 0)
+			(at 119.38 213.36 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11018,7 +11348,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 114.3 210.82 0)
+			(at 119.38 213.36 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11029,7 +11359,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 114.3 210.82 0)
+			(at 119.38 213.36 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12696,6 +13026,165 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 88.9 196.85 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "d2807215-5a0f-4e6a-a221-55c70fc37444")
+		(property "Reference" "R67"
+			(at 91.44 195.5799 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "33k"
+			(at 91.44 198.1199 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 87.122 196.85 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://industrial.panasonic.com/jp/products/pt/high-precision-chip-resistors/models/ERA6ARW333V"
+			(at 88.9 196.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "33k 0.05% 10ppm/C 0805 thin-film reset sense upper resistor; RST-002"
+			(at 88.9 196.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "P33KBSCT-ND"
+			(at 88.9 196.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/panasonic-industry/ERA-6ARW333V/3073417"
+			(at 88.9 196.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Panasonic Industry"
+			(at 88.9 196.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "ERA-6ARW333V"
+			(at 88.9 196.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected for conditional DC/startup design; installed drift and reset qualification pending; footprint deferred."
+			(at 88.9 196.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RST-002: 33k/20k sense divider, 0.05% and 10ppm/C. Conditional rising threshold 3.019118825..3.113278988V; installed drift/leakage qualification required. See design/reset_coordination_tps3890.md."
+			(at 88.9 196.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 9330 stock; USD 0.57/0.472/0.391 at 1/10/100; 41 weeks; unreserved, recheck before order."
+			(at 88.9 196.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "1b851588-4d54-4596-96ab-f14b408b6548")
+		)
+		(pin "2"
+			(uuid "b111a403-543d-4b49-a18f-a26621de104f")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "R67")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Connector:TestPoint_2Pole")
 		(at 66.04 162.56 0)
 		(unit 1)
@@ -12769,6 +13258,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
 					(reference "TP1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3V3")
+		(at 88.9 161.29 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "d81e9972-a5c6-48fd-8374-e4e98b40df0e")
+		(property "Reference" "#PWR0172"
+			(at 88.9 165.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3V3_MCU"
+			(at 88.9 156.21 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 88.9 161.29 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 88.9 161.29 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 88.9 161.29 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "66ca53e2-740e-4618-b866-71b9aa6c25db")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "#PWR0172")
 					(unit 1)
 				)
 			)
@@ -13022,6 +13589,165 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 88.9 212.09 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "e8a8f20b-c79c-4bc9-96d9-c2276ec0a83e")
+		(property "Reference" "R74"
+			(at 91.44 210.8199 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "20k"
+			(at 91.44 213.3599 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 87.122 212.09 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.susumu.co.jp/common/pdf/n_catalog_partition01_en.pdf"
+			(at 88.9 212.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "20k 0.05% 10ppm/C 0603 thin-film reset sense lower resistor; RST-002"
+			(at 88.9 212.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "RG16N20.0KWCT-ND"
+			(at 88.9 212.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/susumu/RG1608N-203-W-T1/600628"
+			(at 88.9 212.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Susumu"
+			(at 88.9 212.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RG1608N-203-W-T1"
+			(at 88.9 212.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected for conditional DC/startup design; installed drift and reset qualification pending; footprint deferred."
+			(at 88.9 212.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RST-002: 33k/20k sense divider, 0.05% and 10ppm/C. Conditional rising threshold 3.019118825..3.113278988V; installed drift/leakage qualification required. See design/reset_coordination_tps3890.md."
+			(at 88.9 212.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 78737 stock; USD 0.64/0.529/0.4381 at 1/10/100; 22 weeks; unreserved, recheck before order."
+			(at 88.9 212.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "66c29471-f88b-4562-8c90-5c7df17d20b2")
+		)
+		(pin "2"
+			(uuid "d34e4b27-25fb-4501-8329-8fe627c428cf")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "R74")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 269.24 114.3 0)
 		(unit 1)
@@ -13100,8 +13826,167 @@
 		)
 	)
 	(symbol
-		(lib_id "Power_Devices:TPS3808G33DBVR")
-		(at 114.3 203.2 0)
+		(lib_id "Device:R")
+		(at 88.9 165.1 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f70c3ee8-91a3-44c1-bdc3-6ec0dec15084")
+		(property "Reference" "R75"
+			(at 91.44 163.8299 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10k"
+			(at 91.44 166.3699 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 87.122 165.1 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
+			(at 88.9 165.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "10k 1% 100ppm/C 0603 reset-request pull-up; RST-002"
+			(at 88.9 165.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
+			(at 88.9 165.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/726880"
+			(at 88.9 165.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 88.9 165.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
+			(at 88.9 165.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected for conditional DC/startup design; reset qualification pending; footprint deferred."
+			(at 88.9 165.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RST-002: 10k MR pull-up, 1%, 100ppm/C; 9801..10201ohm over 100C. Allocated adverse MR leakage 50uA gives 435.495904mV high margin. See design/reset_coordination_tps3890.md."
+			(at 88.9 165.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 2797669 stock; USD 0.10/0.025/0.0122 at 1/10/100; unreserved, recheck before order."
+			(at 88.9 165.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "0c947630-7c16-4847-bac5-6269695d4d81")
+		)
+		(pin "2"
+			(uuid "4ea44c28-f82e-4dae-b564-325713ac3a26")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/29d11a66-d141-4e93-8408-b9f3c692a4bc"
+					(reference "R75")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Power_Devices:TPS389001DSET")
+		(at 116.84 203.2 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -13112,7 +13997,7 @@
 		(fields_autoplaced yes)
 		(uuid "f91e8a0d-81af-4547-9d0c-10d4b9ed6222")
 		(property "Reference" "U2"
-			(at 132.08 196.7798 0)
+			(at 134.62 196.7798 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13121,8 +14006,8 @@
 				)
 			)
 		)
-		(property "Value" "TPS3808G33DBVR"
-			(at 132.08 199.3198 0)
+		(property "Value" "TPS389001DSET"
+			(at 134.62 199.3198 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13131,29 +14016,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
-			(at 111.76 203.2 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps3808.pdf"
-			(at 111.76 203.2 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "TI TPS3808G33DBVR; 3.07 V supervisor, active-low open-drain RESET, manual reset, CT-open 12..28 ms delay. SBVS050N Table 5-1; RST-001."
+		(property "Footprint" ""
 			(at 114.3 203.2 0)
 			(hide yes)
 			(show_name no)
@@ -13164,7 +14027,7 @@
 				)
 			)
 		)
-		(property "DigiKey_Part_Number" "296-17195-1-ND"
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps3890.pdf"
 			(at 114.3 203.2 0)
 			(hide yes)
 			(show_name no)
@@ -13175,8 +14038,8 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TPS3808G33DBVR/666727"
-			(at 114.3 203.2 0)
+		(property "Description" "Adjustable reset supervisor, active-low open-drain RESET, MR and programmable CT; RST-002"
+			(at 116.84 203.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13186,8 +14049,8 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-05: DigiKey 22054 stock; USD 1.84/1.355/1.0984 at qty 1/10/100; 16-week lead time. Recheck before order."
-			(at 114.3 203.2 0)
+		(property "DigiKey_Part_Number" "296-44489-1-ND"
+			(at 116.84 203.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13197,8 +14060,8 @@
 				)
 			)
 		)
-		(property "Procurement_Status" "Selected - TI active production; RST-001 electrical screening, power-tree/transient verification pending."
-			(at 114.3 203.2 0)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TPS389001DSET/6110554"
+			(at 116.84 203.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13209,7 +14072,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "Texas Instruments"
-			(at 114.3 203.2 0)
+			(at 116.84 203.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13219,8 +14082,8 @@
 				)
 			)
 		)
-		(property "Manufacturer_Part_Number" "TPS3808G33DBVR"
-			(at 114.3 203.2 0)
+		(property "Manufacturer_Part_Number" "TPS389001DSET"
+			(at 116.84 203.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13230,8 +14093,30 @@
 				)
 			)
 		)
-		(property "Selection_Basis" "RST-001: 3.07 V fixed threshold, CT-open 12..28 ms delay, open-drain RESET with MR input; static screens in design/boot_and_debug.md."
-			(at 114.3 203.2 0)
+		(property "Procurement_Status" "Selected and wired for conditional DC/startup coordination; system transient/reset qualification pending; footprint deferred."
+			(at 116.84 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "RST-002: adjustable 1.15V falling/1.157V rising supervisor, open-drain reset. R67/R74 33k/20k; C95 10n and R75 10k. Conditional main-rail DC/startup coordination; fast-collapse qualification remains open. See design/reset_coordination_tps3890.md."
+			(at 116.84 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-08 DigiKey: 2090 stock; USD 2.22/1.643/1.3395 at 1/10/100; unreserved, recheck before order."
+			(at 116.84 203.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
