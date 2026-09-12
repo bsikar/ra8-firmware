@@ -122,7 +122,7 @@ batches:
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
     assigned_rows: 4185
-    rows_sha256: 6ba2a3c7b6070ef47d329fc57678006dd1a01c8b6b9b0da2621a47334b04e538
+    rows_sha256: a03d478bf94169ad5569b6ecc86c3bfdde2495c2a5d71c1bba59be0246703aed
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
@@ -142,7 +142,7 @@ batches:
     date: 2026-08-27
     identity_schema: 2-durable-site-identity
     assigned_rows: 492
-    rows_sha256: 93a9987040548198803af9c210e3fb0cd1affa55fff203b89450fb112a22caa3
+    rows_sha256: 15cb1ebf2764524bdb470be274937efcb95048dd4e5bdb5b652c17200b74af7b
     partition: "MISRA baseline burn-down: retired and rebound exact authorities"
     evidence:
       - "pinned Cppcheck 2.13.0 full scan: 19,938 findings, zero growth"
@@ -403,7 +403,7 @@ batches:
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
     assigned_rows: 124
-    rows_sha256: b7862e0abffcb083dbe69a52105d6a05f5dd5f7d40d45215d54eaab17aea6235
+    rows_sha256: d7abb9ce3f8c323cd5a9bf3a50ddf2c0cc10f8d2d98726a9493dff76a129bc16
     partition: >-
       HIL size-cap split reconciliation: three new bound-exit raw-byte
       authorities, two changed raw-byte pins, one moved negative-fixture
@@ -530,7 +530,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 17
-    rows_sha256: 3ab49174dbd6107f4b2331a5a15885597792ecd28c496ba0a20f72b1477af3a0
+    rows_sha256: 3b5180c3856c264562f9c1b1f375ffeec940072c37fbc3a533b0f4799d8d36d5
     partition: >-
       Round4 checker split: three exact fleet path authorities, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -554,7 +554,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 26
-    rows_sha256: 051a5bba45dc33e9784dc62943ebcdcd1fe80b41f152dad67966b9de10451453
+    rows_sha256: d34e574e45952c6741fb83acdd2ca4181f8aea38b445f3afe0251389827010a1
     partition: >-
       Round5 ARC checker split: one exact selftest path authority, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -603,7 +603,7 @@ batches:
     date: 2026-09-05
     identity_schema: 2-durable-site-identity
     assigned_rows: 36
-    rows_sha256: 2360e60a78e8d3998c3b51529f64fd1b7f2ba31eab2901547dec0e52bddc33fa
+    rows_sha256: 4b8847eafa287d82f0c48ed6b6d83b99597a4a7dfe0b583e14ddf4ca34a13d58
     partition: >-
       Final runner storage, WSL clock, and lifecycle authority reconciliation.
     evidence:
@@ -782,7 +782,7 @@ batches:
     date: 2026-09-09
     identity_schema: 2-durable-site-identity
     assigned_rows: 91
-    rows_sha256: d435c95ca9ecfd7c4effcca6a7021617b875eb5d49f93286686aabbb57170ff4
+    rows_sha256: af8c8b72300254b11be751eda47feb7d5e73423ea43be9fd99ffd7dea6fb482d
     partition: "Automated developer review batch"
     evidence:
       - "auto-sync batch 2026-09-09: cbz2jof MISRA dispositions (D-001/D-002/D-005/D-010 classes
@@ -795,7 +795,7 @@ batches:
     date: 2026-09-10
     identity_schema: 2-durable-site-identity
     assigned_rows: 40
-    rows_sha256: a1b46ee045cc4fcb4a6582ac3acc0513603ed0dae9d40da0cb2103676f7ab84d
+    rows_sha256: 67bf73cd75b5738a5da3f50062edbee2713b55eccb88319a59ad2d5cd03b18b4
     partition: "Automated developer review batch (ledger reconciliation)"
     evidence:
       - "live suppression sites verified against the census auto_sync emitted; merged same-day
@@ -805,7 +805,7 @@ batches:
     date: 2026-09-11
     identity_schema: 2-durable-site-identity
     assigned_rows: 85
-    rows_sha256: 46b20269272f7f8efe984a461f0f017fa40c64e27b534c7980fcdcb22942bca0
+    rows_sha256: 4429bfbe6d26b2ba4c0f195dd8025d7d26e11a392f77cfe1ae3f18ca5ae0968a
     partition: "Automated developer review batch"
     evidence:
       - "reconcile work-move/checker-drift fallout: rebind moved-file rows to"
@@ -826,7 +826,34 @@ batches:
     date: 2026-09-11
     identity_schema: 2-durable-site-identity
     assigned_rows: 2
-    rows_sha256: 17518c55de7030c80005a0c3e8add405111b6a31824d2d786d9707de356fe528
+    rows_sha256: 567e7a5f4701793d999deaecb5f443d19a5ef2a571258d372f228c94b7530d0b
     partition: "Automated developer review batch"
     evidence:
       - "review-decision audit-driven checker edits (fail-closed live-archive policy, keep-marker token validation) changed scope census; auto-sync re-blessed digests 92dbba57bd20/b0cb7589a572"
+  - id: suppressions-scope-20260911
+    authority: repository-suppression-review
+    date: 2026-09-11
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 16
+    rows_sha256: 1f10a916c41b38c4c8f1f814abe6191140bc1e93e30fddcb2ef2b1d9d5875dad
+    partition: "Automated developer review batch"
+    evidence:
+      - "review-decision audit-driven checker changes (rebind workflow, freestanding baseline registration) updated the scope census; values digest a6858ee2958d"
+  - id: freestanding-baseline-20260911
+    authority: repository-suppression-review
+    date: 2026-09-11
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 7
+    rows_sha256: 67e3579aac1b647b7dd21c2982e667281f23e6f56744bb6888513ae60df03f86
+    partition: "Automated developer review batch"
+    evidence:
+      - "review-decision zero-debt freestanding target ratchet from issue #847; per-app debt may only shrink; consumer scripts/checks/check_freestanding_runtime.py"
+  - id: suppressions-pins-20260911
+    authority: repository-suppression-review
+    date: 2026-09-11
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 3
+    rows_sha256: 65861d358cf42c8c4e5a6b238f9b14c4ff1f6b2813a372a94f463aeaaae7a8d4
+    partition: "Automated developer review batch"
+    evidence:
+      - "review-decision container-verified scope pins and classification successor; values digest 415d0b8e reason digest 62a49e7d"

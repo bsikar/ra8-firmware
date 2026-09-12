@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -20,7 +21,7 @@ TREE_UNMEASURED_COLUMNS = 3
 TREE_METRIC_FIELDS = 4
 MIN_BASELINE_ROWS = 5343
 CEILING_LEDGER_PATH = ".github/suppression-debt-ceilings.tsv"
-CEILING_LEDGER_SHA256 = "c4435b9cd3bad195acd9296c03c867309380d54b49330e985a6deac4adea3d44"
+CEILING_LEDGER_SHA256 = "9bca0bf37f23e49f2845078e9e370424da47c80ac79bfa0718fd709a43150607"
 CEILING_LEDGER_HEADER = (
     "# Suppression debt per-key ceilings v1.",
     "# Key digests bind the canonical baseline path and consumer-semantic key.",
@@ -81,6 +82,14 @@ SPECS: dict[str, BaselineSpec] = {
             "# ra8_emulator example-matrix baseline -- see scripts/checks/matrix_ratchet.py",
             "# MEASURE THIS ON THE CI RUNNER, NEVER ON A DEVELOPER BOX -- see #400.",
         ),
+    ),
+    ".github/freestanding-runtime-baseline.json": BaselineSpec(
+        "freestanding-runtime",
+        "freestanding-apps",
+        "scripts/checks/check_freestanding_runtime.py",
+        "Zero-debt freestanding target ratchet from issue #847; per-app debt may only shrink.",
+        key_shape="rule",
+        ceiling_shape="count",
     ),
     ".github/hum-register-baseline.txt": BaselineSpec(
         "hum-register-map",
@@ -156,6 +165,7 @@ BASELINE_CEILINGS: dict[str, tuple[int, int]] = {
     ".github/agnostic-register-baseline.txt": (292, 672),
     ".github/cite-baseline.txt": (246, 2831),
     ".github/emulator-matrix-baseline.txt": (0, 0),
+    ".github/freestanding-runtime-baseline.json": (7, 0),
     ".github/hum-register-baseline.txt": (46, 451),
     ".github/mcdc-baseline.txt": (1, 1),
     ".github/mcdc-compound-baseline.txt": (957, 1693),
@@ -372,6 +382,89 @@ def _parse_opaque(baseline: str, line: int, raw: str, spec: BaselineSpec) -> Par
     return _record(baseline, line, spec, ("", raw.strip(), 1, "")), ""
 
 
+def _freestanding_archive_units(archives: object) -> int | None:
+    """Count live-archive debt units, or None when malformed."""
+    if not isinstance(archives, dict):
+        return None
+    members = 0
+    for name, items in archives.items():
+        if not isinstance(name, str) or not isinstance(items, list):
+            return None
+        if not all(isinstance(m, str) for m in items):
+            return None
+        members += len(items)
+    return members
+
+
+def _freestanding_units(entry: object) -> int | None:
+    """Count debt units in one freestanding app entry, or None when malformed."""
+    if not isinstance(entry, dict):
+        return None
+    symbols = entry.get("forbidden_symbols")
+    if not isinstance(symbols, list) or not all(isinstance(s, str) for s in symbols):
+        return None
+    members = _freestanding_archive_units(entry.get("forbidden_archives"))
+    provider = entry.get("sbrk_provider")
+    end = entry.get("end_symbol")
+    if members is None or not isinstance(provider, str) or not isinstance(end, bool):
+        return None
+    return len(symbols) + members + (0 if provider == "none" else 1) + (1 if end else 0)
+
+
+def _json_key_line(text: str, key: str) -> int:
+    """Return the 1-based line defining one JSON object key."""
+    match = re.search(r'"' + re.escape(key) + r'"\s*:', text)
+    if match is None:
+        return 1
+    return text.count("\n", 0, match.start()) + 1
+
+
+def _freestanding_rows(
+    text: str,
+) -> tuple[list[tuple[DebtRow, int]], str]:
+    """Parse the freestanding JSON ratchet into located per-app debt rows."""
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return [], "baseline is not valid JSON"
+    if not isinstance(data, dict):
+        return [], "baseline root must be an object"
+    apps = data.get("apps")
+    exceptions = data.get("linker_script_exceptions")
+    if not isinstance(apps, dict) or not isinstance(exceptions, list):
+        return [], "baseline must define apps and linker_script_exceptions"
+    if not all(isinstance(e, str) for e in exceptions):
+        return [], "linker_script_exceptions must list strings"
+    rows, error = _freestanding_app_rows(text, apps)
+    if error:
+        return [], error
+    rows.append(
+        (
+            ("", "linker-script-exceptions", len(exceptions), ""),
+            _json_key_line(text, "linker_script_exceptions"),
+        )
+    )
+    return rows, ""
+
+
+def _freestanding_app_rows(
+    text: str, apps: dict[object, object]
+) -> tuple[list[tuple[DebtRow, int]], str]:
+    """Parse sorted per-app debt rows with source locations."""
+    names = sorted(app for app in apps if isinstance(app, str))
+    if len(names) != len(apps):
+        return [], "app keys must be strings"
+    rows: list[tuple[DebtRow, int]] = []
+    for app in names:
+        if SAFE_RULE_RE.fullmatch(app) is None:
+            return [], f"unsafe app key {app!r}"
+        units = _freestanding_units(apps[app])
+        if units is None:
+            return [], f"malformed app entry {app!r}"
+        rows.append((("", app, units, ""), _json_key_line(text, app)))
+    return rows, ""
+
+
 PARSERS = {
     "path-rule-count": _parse_path_rule_count,
     "path-count": _parse_path_count,
@@ -586,6 +679,8 @@ def _parse_file(
 ) -> tuple[list[Suppression], list[Finding]]:
     """Parse and structurally validate one committed baseline."""
     text = (root / baseline).read_text(encoding="ascii")
+    if spec.shape == "freestanding-apps":
+        return _parse_freestanding_file(root, baseline, spec, ledger)
     records: list[Suppression] = []
     findings: list[Finding] = []
     keys: dict[str, int] = {}
@@ -605,6 +700,15 @@ def _parse_file(
             continue
         _accept_record(record, (root, baseline, spec, keys, ledger, findings))
         records.append(record)
+    findings.extend(_check_file_totals(baseline, spec, records, text))
+    return records, findings
+
+
+def _check_file_totals(
+    baseline: str, spec: BaselineSpec, records: list[Suppression], text: str
+) -> list[Finding]:
+    """Enforce audited row/unit ceilings and declared totals for one baseline."""
+    findings: list[Finding] = []
     row_ceiling, unit_ceiling = BASELINE_CEILINGS[baseline]
     units = sum(item.match_count for item in records)
     if len(records) > row_ceiling or units > unit_ceiling:
@@ -625,6 +729,25 @@ def _parse_file(
             if declared != actual:
                 message = f"declares {declared}, parsed {actual}"
                 findings.append(Finding("stale-baseline-total", message, baseline))
+    return findings
+
+
+def _parse_freestanding_file(
+    root: Path, baseline: str, spec: BaselineSpec, ledger: CeilingLedger | None
+) -> tuple[list[Suppression], list[Finding]]:
+    """Parse the freestanding JSON ratchet through the shared validation path."""
+    text = (root / baseline).read_text(encoding="ascii")
+    records: list[Suppression] = []
+    findings: list[Finding] = []
+    keys: dict[str, int] = {}
+    rows, error = _freestanding_rows(text)
+    if error:
+        return [], [Finding("malformed-baseline-row", error, baseline)]
+    for debt, line_no in rows:
+        record = _record(baseline, line_no, spec, debt)
+        _accept_record(record, (root, baseline, spec, keys, ledger, findings))
+        records.append(record)
+    findings.extend(_check_file_totals(baseline, spec, records, text))
     return records, findings
 
 
