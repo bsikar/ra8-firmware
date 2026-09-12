@@ -118,6 +118,14 @@ function(ra8_webp_apply_soup_flags)
       -fno-strict-aliasing
       -DRA8_WEBP_USE_ARENA
   )
+  # The target is fully freestanding and has no libc implementation of
+  # assert/__assert_func. Keep libwebp's assertions source-identical while
+  # making its standard assert macro compile to the required no-op production
+  # form; the decoder's attacker-facing checks are exercised by the ASan/UBSan
+  # fuzz harness and the first-party bounded facade.
+  if(CMAKE_SYSTEM_NAME STREQUAL "Generic")
+    list(APPEND _ra8_wno_5 -DNDEBUG)
+  endif()
   # -Wstack-usage= exists only on GCC, and clang REJECTS an unknown -Wno-<name>
   # under -Werror (-Wunknown-warning-option), so it is appended by compiler id
   # rather than left to a blanket -Wno-error to cover. On the cross lane it is

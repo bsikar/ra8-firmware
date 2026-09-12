@@ -157,7 +157,11 @@ fi
 _ra8_bench_run_exit_traps() {
   local status=$? handler
   trap - EXIT
-  for handler in "${_RA8_BENCH_EXIT_HANDLERS[@]}"; do
+  # Guarded expansion: on Bash 3.2 an empty "${array[@]}" under `set -u` is a
+  # fatal unbound-variable error (fixed in 4.4). The ${arr[@]+"${arr[@]}"}
+  # form expands to zero words when empty on every Bash, and to the exact
+  # elements otherwise -- the same idiom as tool_env.sh and usb_test.sh.
+  for handler in ${_RA8_BENCH_EXIT_HANDLERS[@]+"${_RA8_BENCH_EXIT_HANDLERS[@]}"}; do
     "$handler"
   done
   if [ -n "$_RA8_BENCH_ORIGINAL_EXIT_TRAP" ]; then
@@ -178,7 +182,7 @@ _ra8_bench_add_exit_trap() {
     trap _ra8_bench_run_exit_traps EXIT
     _RA8_BENCH_EXIT_DISPATCH_INSTALLED=1
   fi
-  _RA8_BENCH_EXIT_HANDLERS=("$new" "${_RA8_BENCH_EXIT_HANDLERS[@]}")
+  _RA8_BENCH_EXIT_HANDLERS=("$new" ${_RA8_BENCH_EXIT_HANDLERS[@]+"${_RA8_BENCH_EXIT_HANDLERS[@]}"})
 }
 
 # Release the hold this shell owns. Idempotent; safe to call when there is

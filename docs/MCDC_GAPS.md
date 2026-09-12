@@ -13,14 +13,14 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **275**
-- Total compound decisions in scope: **1567**
-- Decisions at 100% MC/DC (`yes`): **1481**
+- Source files with at least one decision: **276**
+- Total compound decisions in scope: **1568**
+- Decisions at 100% MC/DC (`yes`): **1482**
 - Decisions partially covered (`partial`): **64**
 - Decisions fully uncovered (`no`): **22**
-- Decision-complete rate (fully covered decisions / total decisions): **94.51%**
+- Decision-complete rate (fully covered decisions / total decisions): **94.52%**
 - Deactivated gap decision regions (DO-178C 6.4.4.3): **86**
-- Reachable decision-region denominator (total - deactivated): **1481**
+- Reachable decision-region denominator (total - deactivated): **1482**
 - **Reachable decision-complete MC/DC rate**: **100.00%** -- every counted decision region has complete MC/DC; the enforced ratchet threshold is recorded in `.github/mcdc-baseline.txt`.
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-decision deactivation rationale catalog.
@@ -366,6 +366,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_etha_stats | 1 | 1 | 0 | 0 |
 | ra8_ether_phy | 1 | 1 | 0 | 0 |
 | ra8_ethosu_shim | 1 | 1 | 0 | 0 |
+| ra8_freestanding_str | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_alloc | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_exfat_fmt | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_exfat_label | 1 | 1 | 0 | 0 |

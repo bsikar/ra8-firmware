@@ -404,6 +404,15 @@ REGISTRY: tuple[Component, ...] = (
         probe_file="miniz.h",
         probe_re=r'MZ_VERSION\s+"([0-9.]+)"',
         expected_version="11.0.2",
+        modified=True,
+        patched_files=(
+            (
+                "miniz.h",
+                "Target builds route miniz assertions through the first-party "
+                "RA8 assertion policy; host builds retain assert(). See "
+                "docs/SOUP/miniz.md.",
+            ),
+        ),
         extra_notes=(
             "Untrusted-ZIP decoder built with -w + -fno-strict-aliasing; a "
             "toolchain-version-specific miscompile is documented (T5-02 / "
@@ -685,6 +694,20 @@ REGISTRY: tuple[Component, ...] = (
         license_file="libs/third_party/esp-hosted/common/protobuf-c/LICENSE",
         upstream_commit="abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
         upstream_ref="abc67a11c6db271bedbb9f58be85d6f4e2ea8389",
+        modified=True,
+        patched_files=(
+            (
+                "protobuf-c/protobuf-c.c",
+                "Target builds route unreachable assertions through the first-party "
+                "RA8 assertion policy and make the system allocator fail closed; "
+                "see docs/SOUP/esp-hosted-host.md.",
+            ),
+            (
+                "protobuf-c/protobuf-c.h",
+                "Target builds provide the RA8 assertion policy instead of hosted "
+                "assert.h; see docs/SOUP/esp-hosted-host.md.",
+            ),
+        ),
         probe_file="protobuf-c/protobuf-c.h",
         probe_re=r"#\s*define\s+PROTOBUF_C_VERSION\s+\"([0-9.]+)\"",
         expected_version="1.4.1",

@@ -150,6 +150,7 @@
 
 /**
  * \def MBEDTLS_PLATFORM_EXIT_ALT
+ * @brief Enable an alternate implementation of the platform setbuf function.
  *
  * MBEDTLS_PLATFORM_XXX_ALT: Uncomment a macro to let Mbed TLS support the
  * function in the platform abstraction layer.
@@ -174,11 +175,16 @@
  * platform function
  */
 #define MBEDTLS_PLATFORM_SETBUF_ALT
+/** @brief Enable an alternate platform exit implementation. */
 #define MBEDTLS_PLATFORM_EXIT_ALT
 //#define MBEDTLS_PLATFORM_TIME_ALT
+/** @brief Enable an alternate platform fprintf implementation. */
 #define MBEDTLS_PLATFORM_FPRINTF_ALT
+/** @brief Enable an alternate platform printf implementation. */
 #define MBEDTLS_PLATFORM_PRINTF_ALT
+/** @brief Enable an alternate platform snprintf implementation. */
 #define MBEDTLS_PLATFORM_SNPRINTF_ALT
+/** @brief Enable an alternate platform vsnprintf implementation. */
 #define MBEDTLS_PLATFORM_VSNPRINTF_ALT
 
 //#define MBEDTLS_PLATFORM_NV_SEED_ALT
@@ -268,6 +274,7 @@
 
 /**
  * \def MBEDTLS_PLATFORM_NO_STD_FUNCTIONS
+ * @brief Disable default bindings to standard C library functions.
  *
  * Do not assign standard functions in the platform layer (e.g. calloc() to
  * MBEDTLS_PLATFORM_STD_CALLOC and printf() to MBEDTLS_PLATFORM_STD_PRINTF)

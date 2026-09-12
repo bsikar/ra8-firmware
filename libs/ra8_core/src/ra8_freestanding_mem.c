@@ -67,10 +67,10 @@ void* memset(void* dst, int value, size_t n)
  * @note Freestanding runtime primitive; never allocates; reentrant and thread-safe when memory regions are not concurrently modified.
  * @since 0.1.0
  */
-void* memcpy(void* restrict dst, const void* restrict src, size_t n)
+void* memcpy(void* dst, const void* src, size_t n)
 {
-  uint8_t* restrict d       = (uint8_t* restrict)dst;
-  const uint8_t* restrict s = (const uint8_t* restrict)src;
+  uint8_t*       d = (uint8_t*)dst;
+  const uint8_t* s = (const uint8_t*)src;
   for (size_t i = 0U; i < n; ++i) {
     d[i] = s[i];
   }
@@ -102,7 +102,7 @@ void* memmove(void* dst, const void* src, size_t n)
   }
   uint8_t*       d = (uint8_t*)dst;
   const uint8_t* s = (const uint8_t*)src;
-  if ((uintptr_t)d < (uintptr_t)s) {
+  if (d < s) {
     for (size_t i = 0U; i < n; ++i) {
       d[i] = s[i];
     }
@@ -167,7 +167,8 @@ void* memchr(const void* s, int c, size_t n)
   const uint8_t  target = (uint8_t)c;
   for (size_t i = 0U; i < n; ++i) {
     if (p[i] == target) {
-      return (void*)(uintptr_t)(p + i);
+      /* cppcheck-suppress misra-c2012-11.4 -- ISO C memchr requires a writable void* result from a const input. */
+      return (void*)(uintptr_t)&p[i];
     }
   }
   return nullptr;

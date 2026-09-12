@@ -820,7 +820,10 @@ batches:
     rows_sha256: 1c68a32fae2136b23c84bdfe0366ab2af8c2557f993997f313945922833bc3c1
     partition: "Freestanding-runtime review finding H2"
     evidence:
-      - "review-decision check_freestanding_runtime runs pinned arm-none-eabi-nm/readelf with fixed argv and no shell to inspect target ELFs; S603 cannot scope narrower for required toolchain subprocess use."
+      - >-
+        review-decision check_freestanding_runtime runs pinned
+        arm-none-eabi-nm/readelf with fixed argv and no shell to inspect target
+        ELFs; S603 cannot scope narrower for required toolchain subprocess use.
   - id: freestanding-audit-scope-20260911
     authority: repository-suppression-review
     date: 2026-09-11
@@ -829,7 +832,10 @@ batches:
     rows_sha256: 567e7a5f4701793d999deaecb5f443d19a5ef2a571258d372f228c94b7530d0b
     partition: "Automated developer review batch"
     evidence:
-      - "review-decision audit-driven checker edits (fail-closed live-archive policy, keep-marker token validation) changed scope census; auto-sync re-blessed digests 92dbba57bd20/b0cb7589a572"
+      - >-
+        review-decision audit-driven checker edits (fail-closed live-archive
+        policy, keep-marker token validation) changed scope census; auto-sync
+        re-blessed digests 92dbba57bd20/b0cb7589a572
   - id: suppressions-scope-20260911
     authority: repository-suppression-review
     date: 2026-09-11
@@ -838,7 +844,10 @@ batches:
     rows_sha256: 1f10a916c41b38c4c8f1f814abe6191140bc1e93e30fddcb2ef2b1d9d5875dad
     partition: "Automated developer review batch"
     evidence:
-      - "review-decision audit-driven checker changes (rebind workflow, freestanding baseline registration) updated the scope census; values digest a6858ee2958d"
+      - >-
+        review-decision audit-driven checker changes (rebind workflow,
+        freestanding baseline registration) updated the scope census; values
+        digest a6858ee2958d
   - id: freestanding-baseline-20260911
     authority: repository-suppression-review
     date: 2026-09-11
@@ -847,7 +856,10 @@ batches:
     rows_sha256: 67e3579aac1b647b7dd21c2982e667281f23e6f56744bb6888513ae60df03f86
     partition: "Automated developer review batch"
     evidence:
-      - "review-decision zero-debt freestanding target ratchet from issue #847; per-app debt may only shrink; consumer scripts/checks/check_freestanding_runtime.py"
+      - >-
+        review-decision zero-debt freestanding target ratchet from issue #847;
+        per-app debt may only shrink; consumer
+        scripts/checks/check_freestanding_runtime.py
   - id: suppressions-pins-20260911
     authority: repository-suppression-review
     date: 2026-09-11
@@ -856,4 +868,68 @@ batches:
     rows_sha256: 65861d358cf42c8c4e5a6b238f9b14c4ff1f6b2813a372a94f463aeaaae7a8d4
     partition: "Automated developer review batch"
     evidence:
-      - "review-decision container-verified scope pins and classification successor; values digest 415d0b8e reason digest 62a49e7d"
+      - >-
+        review-decision container-verified scope pins and classification
+        successor; values digest 415d0b8e reason digest 62a49e7d
+  - id: selective-review-20260912-043117
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 5
+    rows_sha256: dc4ebeb0a7935170962b2aa8336f494fa8ade248e8c286deb4c5fc335424459c
+    partition: >-
+      selective retain of 5 ledger row(s): 7be96cdc4dfa, 882470420dbd,
+      97cecd276903, ad91a93247e9, e0ef4052e990
+    evidence:
+      - >-
+        merge review: five rows live with exact bindings matching merged scope
+        census and policy registrations
+  - id: selective-review-20260912-043258
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 3
+    rows_sha256: 3481a250582aabb3524f687cd586670fe74a03be38eaae98d679271bc50174ca
+    partition: "selective retain of 3 ledger row(s): 14440c2c8849, 9f5d9f5df8b6, 9f6d5c70b9aa"
+    evidence:
+      - "merge review: three required shell annotations present with exact live bindings"
+  - id: selective-review-20260912-043541
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 4
+    rows_sha256: ecc155e2cd937d7272392fca771a30c830693df3d6d8c4db9c243dd34dc95cb2
+    partition: >-
+      selective retire of 4 ledger row(s): 2be83d521bcc, 4e5cbeab2a41,
+      b5e9f95eadea, de47189930f2
+    evidence:
+      - >-
+        merge review: four sites absent from live inventory; superseded values
+        and removed construct verified gone
+  - id: selective-review-20260912-043729
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 1
+    rows_sha256: 46962aafa232a4de7156d6d008cd4512519a68afc60459ea3711e12396d896b4
+    partition: "selective retire of 1 ledger row(s): 10c8d139209c"
+    evidence:
+      - "merge review: census value superseded by live successor"
+  - id: selective-review-20260912-043917
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 1
+    rows_sha256: e11bc4764a6964104c10cd03666d32db76cd2a7402f66acba58bea3d1bc522eb
+    partition: "selective retire of 1 ledger row(s): 3cb70cbf4593"
+    evidence:
+      - "merge review: census reason digest superseded by live successor"
+  - id: selective-review-20260912-044105
+    authority: repository-suppression-review
+    date: 2026-09-12
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 1
+    rows_sha256: 9e0294fc91e75e42e214533ba072a146bb192bfe0e2ecd98c743e6d1f17118f5
+    partition: "selective retire of 1 ledger row(s): b9813d0b4b54"
+    evidence:
+      - "merge review: census value digest superseded by live successor"

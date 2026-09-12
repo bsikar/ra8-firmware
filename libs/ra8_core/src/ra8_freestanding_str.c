@@ -156,14 +156,17 @@ int strncmp(const char* s1, const char* s2, size_t n)
  */
 char* strchr(const char* s, int c)
 {
-  const char target = (char)c;
-  while (*s != '\0') {
-    if (*s == target) {
-      return (char*)(uintptr_t)s;
+  const char  target = (char)c;
+  const char* cursor = s;
+  while (*cursor != '\0') {
+    if (*cursor == target) {
+      /* cppcheck-suppress misra-c2012-11.4 -- ISO C strchr requires a writable char* result from a const input. */
+      return (char*)(uintptr_t)cursor;
     }
-    ++s;
+    ++cursor;
   }
-  return (target == '\0') ? (char*)(uintptr_t)s : nullptr;
+  /* cppcheck-suppress misra-c2012-11.4 -- ISO C strchr requires a writable char* result from a const input. */
+  return (target == '\0') ? (char*)(uintptr_t)cursor : nullptr;
 }
 
 /**
@@ -184,14 +187,16 @@ char* strchr(const char* s, int c)
 char* strrchr(const char* s, int c)
 {
   const char  target = (char)c;
+  const char* cursor = s;
   const char* last   = nullptr;
-  while (*s != '\0') {
-    if (*s == target) {
-      last = s;
+  while (*cursor != '\0') {
+    if (*cursor == target) {
+      last = cursor;
     }
-    ++s;
+    ++cursor;
   }
-  return (target == '\0') ? (char*)(uintptr_t)s : (char*)(uintptr_t)last;
+  /* cppcheck-suppress misra-c2012-11.4 -- ISO C strrchr requires a writable char* result from a const input. */
+  return (target == '\0') ? (char*)(uintptr_t)cursor : (char*)(uintptr_t)last;
 }
 
 /**
@@ -212,6 +217,7 @@ char* strrchr(const char* s, int c)
 char* strstr(const char* haystack, const char* needle)
 {
   if (needle[0] == '\0') {
+    /* cppcheck-suppress misra-c2012-11.4 -- ISO C strstr requires a writable char* result from a const input. */
     return (char*)(uintptr_t)haystack;
   }
   for (size_t i = 0U; haystack[i] != '\0'; ++i) {
@@ -223,6 +229,7 @@ char* strstr(const char* haystack, const char* needle)
       ++j;
     }
     if (needle[j] == '\0') {
+      /* cppcheck-suppress misra-c2012-11.4 -- ISO C strstr requires a writable char* result from a const input. */
       return (char*)(uintptr_t)&haystack[i];
     }
   }
@@ -243,7 +250,7 @@ char* strstr(const char* haystack, const char* needle)
  * @note Freestanding runtime primitive; never allocates; reentrant and thread-safe when strings are not concurrently modified.
  * @since 0.1.0
  */
-char* strcpy(char* restrict dst, const char* restrict src)
+char* strcpy(char* dst, const char* src)
 {
   size_t i = 0U;
   while (src[i] != '\0') {
@@ -270,7 +277,7 @@ char* strcpy(char* restrict dst, const char* restrict src)
  * @note Freestanding runtime primitive; never allocates; reentrant and thread-safe when strings are not concurrently modified.
  * @since 0.1.0
  */
-char* strncpy(char* restrict dst, const char* restrict src, size_t n)
+char* strncpy(char* dst, const char* src, size_t n)
 {
   size_t i = 0U;
   while (i < n) {
@@ -286,4 +293,5 @@ char* strncpy(char* restrict dst, const char* restrict src, size_t n)
   }
   return dst;
 }
+
 #endif /* !RA8_OFF_TARGET || RA8_TEST_FREESTANDING */

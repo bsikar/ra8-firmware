@@ -36,6 +36,7 @@ HIL_POLICY_ROWS: tuple[ShellPolicyRow, ...] = (
     ("scripts/hil/hid_test.sh", "privileged", "entry", "bash", True, False),
     ("scripts/hil/jlink_memprobe.sh", "privileged", "entry", "bash", True, False),
     ("scripts/hil/lib/bench_client.sh", "privileged", "sourced-only", "bash", False, True),
+    ("scripts/hil/lib/bench_exit_traps_selftest.sh", "privileged", "entry", "bash", False, False),
     ("scripts/hil/lib/bench_host.sh", "privileged", "sourced-only", "bash", False, True),
     ("scripts/hil/lib/bench_human.sh", "privileged", "sourced-only", "bash", False, True),
     ("scripts/hil/lib/bench_lock.sh", "privileged", "sourced-only", "bash", False, True),

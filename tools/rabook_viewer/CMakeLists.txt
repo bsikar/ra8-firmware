@@ -237,6 +237,9 @@ ra8_viewer_read_path(
   KEEP ra8_log.c ra8_error_handler.c ra8_decomp_limits.c
   DROP ra8_crashlog.c
        ra8_exception.c
+       ra8_freestanding_math.c
+       ra8_freestanding_mem.c
+       ra8_freestanding_str.c
        ra8_infrastructure.c
        ra8_pin_validator.c
        ra8_rand_stub.c

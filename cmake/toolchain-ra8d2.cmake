@@ -145,7 +145,8 @@ set(CMAKE_ASM_FLAGS_INIT "${RA8D2_CPU_FLAGS_STR}")
 add_compile_definitions(RA8_FREESTANDING)
 
 # Freestanding target linker flags:
-#   -nostdlib             no standard libc startup or default runtime libraries (newlib/libnosys forbidden)
+#   -nostdlib             no standard libc startup or default runtime
+#                         libraries (newlib/libnosys forbidden)
 #   -Wl,--gc-sections     drop unused input sections
 set(CMAKE_EXE_LINKER_FLAGS_INIT
     "${RA8D2_CPU_FLAGS_STR} \

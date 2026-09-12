@@ -43,7 +43,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
@@ -69,9 +68,11 @@
 typedef enum : uint32_t {
   k_npu_vela_baud       = 115200U, /**< SCI8 J-Link OB console baud.         */
   k_npu_vela_arena      = 128U,    /**< Runtime arena for output activation. */
-  k_npu_vela_line_cap   = 96U,     /**< Banner line buffer cap.              */
   k_npu_vela_word_bytes = 4U,      /**< Bytes in one little-endian word.     */
   k_npu_vela_byte_mask  = 0xFFU,   /**< 8-bit element wrap (matches the op). */
+  k_npu_vela_hex_digits = 8U,      /**< Fixed-width hexadecimal word digits. */
+  k_npu_vela_hex_shift  = 4U,      /**< Bits per hexadecimal nibble.         */
+  k_npu_vela_hex_mask   = 0x0FU,   /**< Mask for one hexadecimal nibble.     */
 } npu_vela_size_t;
 
 /**
@@ -286,11 +287,42 @@ RA8_INTERNAL static ra8_err_t internal_npu_vela_run_job(ra8_npu_job_t* out_job)
   return ra8_npu_wait();
 }
 
+RA8_INTERNAL static void internal_npu_vela_write(const uint8_t* data, size_t len)
+{
+  (void)ra8_board_uart_console_write(data, len);
+}
+
+RA8_INTERNAL static void internal_npu_vela_write_hex32(uint32_t value)
+{
+  static const uint8_t k_hex[]                       = "0123456789ABCDEF";
+  uint8_t              digits[k_npu_vela_hex_digits] = {};
+  for (uint8_t i = 0U; i < (uint8_t)k_npu_vela_hex_digits; ++i) {
+    const uint8_t shift =
+      (uint8_t)(((uint8_t)k_npu_vela_hex_digits - 1U - i) * (uint8_t)k_npu_vela_hex_shift);
+    digits[i] = k_hex[(value >> shift) & (uint32_t)k_npu_vela_hex_mask];
+  }
+  internal_npu_vela_write(digits, (size_t)k_npu_vela_hex_digits);
+}
+
+RA8_INTERNAL static void internal_npu_vela_write_status(bool ok)
+{
+  const uint8_t* text = ok ? (const uint8_t*)"OK" : (const uint8_t*)"FAIL";
+  const size_t   len  = ok ? 2U : 4U;
+  internal_npu_vela_write(text, len);
+}
+
+RA8_INTERNAL static void internal_npu_vela_write_verdict(bool pass)
+{
+  const uint8_t* text = pass ? (const uint8_t*)"PASS" : (const uint8_t*)"FAIL";
+  internal_npu_vela_write(text, 4U);
+}
+
 /**
- * @brief Format and print the one-line verdict banner over the SCI8 console.
+ * @brief Print the one-line verdict banner over the SCI8 console.
  *
- * @details Formats load, run, output, and verdict evidence into a bounded local
- * line, then writes and flushes it when formatting succeeds.
+ * @details Emits fixed text fragments and fixed-width hexadecimal fields
+ * directly, avoiding the libc ``snprintf`` implementation unavailable to the
+ * freestanding target.
  * @param[in] id      NPU_ID read after init.
  * @param[in] load_ok Whether ra8_npu_load() succeeded.
  * @param[in] run_ok  Whether the submit/run/wait sequence returned k_ra8_ok.
@@ -301,25 +333,25 @@ RA8_INTERNAL static ra8_err_t internal_npu_vela_run_job(ra8_npu_job_t* out_job)
  * @pre All supplied status values are final snapshots for this run.
  * @post One banner line has been written and flushed to the console.
  * @post The NPU job, arena, and published globals remain unchanged.
- * @note A nonpositive formatting result safely suppresses console output.
+ * @note Individual diagnostic writes are best-effort; the final flush keeps the
+ *       complete line observable by the HIL scraper.
  * @since 0.1.0
  */
 RA8_INTERNAL static void
 internal_npu_vela_emit(uint32_t id, bool load_ok, bool run_ok, uint32_t check, bool pass)
 {
-  char      line[k_npu_vela_line_cap];
-  const int n = snprintf(line,
-                         sizeof(line),
-                         "npu-vela: id=0x%08X load=%s run=%s out=0x%08X verdict=%s\r\n",
-                         (unsigned)id,
-                         load_ok ? "OK" : "FAIL",
-                         run_ok ? "OK" : "FAIL",
-                         (unsigned)check,
-                         pass ? "PASS" : "FAIL");
-  if (n > 0) {
-    (void)ra8_board_uart_console_write((const uint8_t*)line, (size_t)n);
-    (void)ra8_board_uart_console_flush();
-  }
+  internal_npu_vela_write((const uint8_t*)"npu-vela: id=0x", sizeof("npu-vela: id=0x") - 1U);
+  internal_npu_vela_write_hex32(id);
+  internal_npu_vela_write((const uint8_t*)" load=", sizeof(" load=") - 1U);
+  internal_npu_vela_write_status(load_ok);
+  internal_npu_vela_write((const uint8_t*)" run=", sizeof(" run=") - 1U);
+  internal_npu_vela_write_status(run_ok);
+  internal_npu_vela_write((const uint8_t*)" out=0x", sizeof(" out=0x") - 1U);
+  internal_npu_vela_write_hex32(check);
+  internal_npu_vela_write((const uint8_t*)" verdict=", sizeof(" verdict=") - 1U);
+  internal_npu_vela_write_verdict(pass);
+  internal_npu_vela_write((const uint8_t*)"\r\n", sizeof("\r\n") - 1U);
+  (void)ra8_board_uart_console_flush();
 }
 
 /**

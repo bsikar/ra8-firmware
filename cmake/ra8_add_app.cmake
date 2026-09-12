@@ -325,9 +325,8 @@ macro(ra8_add_app)
   # Fail-closed check: ensure no host-only port/posix sources enter target firmware
   foreach(_ra8_src IN LISTS _RA8_APP_SOURCES)
     if(_ra8_src MATCHES "port/posix")
-      message(
-        FATAL_ERROR
-          "Target firmware application ${_RA8_APP_NAME} attempted to link host-only port/posix source: ${_ra8_src}"
+      message(FATAL_ERROR "Target firmware application ${_RA8_APP_NAME} attempted to link "
+                          "host-only port/posix source: ${_ra8_src}"
       )
     endif()
   endforeach()

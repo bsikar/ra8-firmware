@@ -12,7 +12,7 @@ export PYTHONHOME := ""
 export PYTHONPATH := ""
 export PYTHONNOUSERSITE := "1"
 export RA8_TOOL_VENV := ""
-export PATH := ".venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH := `/bin/bash -p scripts/ci/lib/host_tool_path.sh --print-path`
 
 # Show HIL help menu
 default:
