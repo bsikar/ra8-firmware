@@ -793,6 +793,18 @@ gate_annotations() (
   python3 scripts/checks/check_annotations.py --check
 )
 
+# --- enum-underlying-casts -----------------------------------------------
+# Preserve the C23 fixed-enum representability constraint. A cast enclosing a
+# complete initializer can narrow before the compiler checks the enumerator;
+# operand casts used to select intermediate arithmetic width remain legal.
+gate_enum_underlying_casts() (
+  set -e
+  require_python_mod clang.cindex \
+    "Run 'just setup-python' locally; CI/container use the same uv lock."
+  python3 scripts/checks/check_enum_underlying_casts.py --selftest
+  python3 scripts/checks/check_enum_underlying_casts.py --all
+)
+
 # --- doc-attachment -------------------------------------------------------
 # doxy_audit.py (run inside pre-commit-checks) asks only whether a block is
 # PRESENT. A block attached to the wrong symbol SATISFIES that: paste one block

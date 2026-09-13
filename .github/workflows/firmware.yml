@@ -378,14 +378,14 @@ jobs:
       - run: just quality::local::gate roadmap-stats
 
   # ---------------------------------------------------------------------------
-  # The two libclang AST gates, split out of the pre-commit suite (they were
+  # The libclang AST gates, split out of the pre-commit suite (the original two were
   # 82% of its wall clock) and split from each other, because they share only
   # an install step and nothing else -- 8.8 min and 5.0 min that used to run
   # end-to-end on one runner now overlap on two.
   #
   # Each carries its own libclang install: the probe is idempotent and costs
   # about a second on a warm pod, which is the correct trade for 5 min of
-  # serialisation. Both gates require_python_mod the binding and FAIL when it
+  # serialisation. Every gate requires_python_mod the binding and FAILS when it
   # is absent -- check_annotations.py exits 0 with no binding, so a missing
   # install can never read as a silent pass in either job.
   # ---------------------------------------------------------------------------
@@ -399,6 +399,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: just quality::local::gate annotations
+
+  enum-underlying-casts:
+    name: Fixed-enum initializer cast safety (libclang)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: just quality::local::gate enum-underlying-casts
 
   doc-attachment:
     name: Doxygen block attachment (libclang)
