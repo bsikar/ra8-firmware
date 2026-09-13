@@ -172,8 +172,8 @@ typedef enum : uint16_t {
  * board's, not a second declaration of it.
  */
 typedef enum : uint8_t {
-  k_er_touch_channel    = (uint8_t)k_ra8_board_touch_i3c_channel, /**< The board's GT911 bus. */
-  k_er_touch_max_points = 1U,                                     /**< One contact = one tap. */
+  k_er_touch_channel    = k_ra8_board_touch_i3c_channel, /**< The board's GT911 bus. */
+  k_er_touch_max_points = 1U,                            /**< One contact = one tap. */
 } er_touch_cfg_t;
 
 /**

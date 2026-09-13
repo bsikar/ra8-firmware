@@ -124,12 +124,11 @@ bool s_bkup_initialized;
  * @brief Local numeric constants -- avoid magic numbers per CLAUDE.md.
  */
 typedef enum : uint16_t {
-  k_ra8_bkup_max_vdet_level =
-    (uint16_t)k_ra8_bkup_vdet_1p75v, /**< Highest legal VDETLVL encoding. */
+  k_ra8_bkup_max_vdet_level = k_ra8_bkup_vdet_1p75v, /**< Highest legal VDETLVL encoding. */
   k_ra8_bkup_no_switch_lvl_raw =
     0x06U, /**< 110b sentinel for VDETLVL "initial value" (HUM 12.3.7.3). */
   k_ra8_bkup_status_clear_keep_mask =
-    (uint16_t)((uint8_t)~k_ra8_bkup_vbtbpsr_mask_vbporf), /**< W0C base for VBPORF. */
+    ((uint8_t)~k_ra8_bkup_vbtbpsr_mask_vbporf), /**< W0C base for VBPORF. */
   k_ra8_bkup_vbae_settle_iters =
     1000U, /**< NOP-spin count: >= 500 ns at 1 GHz M85 (HUM Ch 12.2.6 p 504). */
 } ra8_bkup_internal_t;

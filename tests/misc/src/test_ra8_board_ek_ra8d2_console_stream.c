@@ -61,7 +61,7 @@ static const char* const s_cs_payload = "ok";
  * @brief Expected transmit-register residue after ::s_cs_payload is written.
  */
 typedef enum : uint8_t {
-  k_cs_payload_last_byte = (uint8_t)'k', /**< Last character of ::s_cs_payload. */
+  k_cs_payload_last_byte = 'k', /**< Last character of ::s_cs_payload. */
 } board_console_stream_payload_t;
 
 /**

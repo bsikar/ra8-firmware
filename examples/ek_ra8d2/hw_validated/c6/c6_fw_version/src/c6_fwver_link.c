@@ -68,9 +68,9 @@
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_c6_fwver_hdr_bytes = (uint16_t)sizeof(struct esp_payload_header),
+  k_c6_fwver_hdr_bytes = sizeof(struct esp_payload_header),
   /**< Payload-header size; twelve bytes on this ABI. */
-  k_c6_fwver_max_payload = (uint16_t)MAX_PAYLOAD_SIZE,
+  k_c6_fwver_max_payload = MAX_PAYLOAD_SIZE,
   /**< Largest payload a valid data frame may advertise. */
   k_c6_fwver_nibble_mask = 0x0FU,
   /**< Mask applied before a write to a four-bit header field. ``if_type``

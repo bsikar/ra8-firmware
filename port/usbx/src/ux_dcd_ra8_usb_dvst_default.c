@@ -323,7 +323,7 @@ typedef enum : uint32_t {
  * @brief Selected DCPCTR bit masks (HUM Ch 37.2.31 p 2095).
  */
 typedef enum : uint16_t {
-  k_ra8_dcpctr_mask_sqmon = (uint16_t)(1U << 6U), /**< SQMON (bit 6): SETUP-latched flag. */
+  k_ra8_dcpctr_mask_sqmon = (1U << 6U), /**< SQMON (bit 6): SETUP-latched flag. */
 } ra8_usb_dcpctr_bits_t;
 
 /**

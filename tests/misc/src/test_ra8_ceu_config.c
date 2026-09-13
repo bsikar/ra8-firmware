@@ -70,7 +70,7 @@ typedef enum : uint16_t {
 
 typedef enum : uint32_t {
   k_test_ceu_ints =
-    (uint32_t)((uint32_t)k_ra8_ceu_evt_cpe | (uint32_t)k_ra8_ceu_evt_vd), /**< Test ceu ints. */
+    ((uint32_t)k_ra8_ceu_evt_cpe | (uint32_t)k_ra8_ceu_evt_vd), /**< Test ceu ints. */
 } test_ceu_ints_t;
 
 typedef enum : uintptr_t {

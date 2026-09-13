@@ -81,31 +81,29 @@ typedef enum : uint8_t {
  * (the WUPEN0 and WUPEN1 register description tables).
  */
 typedef enum : uint16_t {
-  k_ra8_pwr_wake_irq0 = (uint16_t)(k_ra8_pwr_wupen_reg_0 << 8),        /**< RA8 pwr wake irq0. */
-  k_ra8_pwr_wake_irq1 = (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 1U), /**< RA8 pwr wake irq1. */
-  k_ra8_pwr_wake_irq2 = (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 2U), /**< RA8 pwr wake irq2. */
-  k_ra8_pwr_wake_irq3 = (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 3U), /**< RA8 pwr wake irq3. */
-  k_ra8_pwr_wake_irq4 = (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 4U), /**< RA8 pwr wake irq4. */
-  k_ra8_pwr_wake_irq5 = (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 5U), /**< RA8 pwr wake irq5. */
-  k_ra8_pwr_wake_irq6 = (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 6U), /**< RA8 pwr wake irq6. */
-  k_ra8_pwr_wake_irq7 = (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 7U), /**< RA8 pwr wake irq7. */
+  k_ra8_pwr_wake_irq0 = (k_ra8_pwr_wupen_reg_0 << 8),        /**< RA8 pwr wake irq0. */
+  k_ra8_pwr_wake_irq1 = ((k_ra8_pwr_wupen_reg_0 << 8) | 1U), /**< RA8 pwr wake irq1. */
+  k_ra8_pwr_wake_irq2 = ((k_ra8_pwr_wupen_reg_0 << 8) | 2U), /**< RA8 pwr wake irq2. */
+  k_ra8_pwr_wake_irq3 = ((k_ra8_pwr_wupen_reg_0 << 8) | 3U), /**< RA8 pwr wake irq3. */
+  k_ra8_pwr_wake_irq4 = ((k_ra8_pwr_wupen_reg_0 << 8) | 4U), /**< RA8 pwr wake irq4. */
+  k_ra8_pwr_wake_irq5 = ((k_ra8_pwr_wupen_reg_0 << 8) | 5U), /**< RA8 pwr wake irq5. */
+  k_ra8_pwr_wake_irq6 = ((k_ra8_pwr_wupen_reg_0 << 8) | 6U), /**< RA8 pwr wake irq6. */
+  k_ra8_pwr_wake_irq7 = ((k_ra8_pwr_wupen_reg_0 << 8) | 7U), /**< RA8 pwr wake irq7. */
 
-  k_ra8_pwr_wake_iwdt = (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 16U), /**< RA8 pwr wake iwdt. */
-  k_ra8_pwr_wake_lvd1 = (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 18U), /**< RA8 pwr wake lvd1. */
-  k_ra8_pwr_wake_lvd2 = (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 19U), /**< RA8 pwr wake lvd2. */
-  k_ra8_pwr_wake_rtc_alarm =
-    (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 24U), /**< RA8 pwr wake rtc alarm. */
-  k_ra8_pwr_wake_rtc_period =
-    (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 25U), /**< RA8 pwr wake rtc period. */
+  k_ra8_pwr_wake_iwdt       = ((k_ra8_pwr_wupen_reg_0 << 8) | 16U), /**< RA8 pwr wake iwdt.       */
+  k_ra8_pwr_wake_lvd1       = ((k_ra8_pwr_wupen_reg_0 << 8) | 18U), /**< RA8 pwr wake lvd1.       */
+  k_ra8_pwr_wake_lvd2       = ((k_ra8_pwr_wupen_reg_0 << 8) | 19U), /**< RA8 pwr wake lvd2.       */
+  k_ra8_pwr_wake_rtc_alarm  = ((k_ra8_pwr_wupen_reg_0 << 8) | 24U), /**< RA8 pwr wake rtc alarm.  */
+  k_ra8_pwr_wake_rtc_period = ((k_ra8_pwr_wupen_reg_0 << 8) | 25U), /**< RA8 pwr wake rtc period. */
   k_ra8_pwr_wake_usbhs_resume =
-    (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 26U), /**< RA8 pwr wake usbhs resume. */
+    ((k_ra8_pwr_wupen_reg_0 << 8) | 26U), /**< RA8 pwr wake usbhs resume. */
   k_ra8_pwr_wake_usbfs_resume =
-    (uint16_t)((k_ra8_pwr_wupen_reg_0 << 8) | 27U), /**< RA8 pwr wake usbfs resume. */
+    ((k_ra8_pwr_wupen_reg_0 << 8) | 27U), /**< RA8 pwr wake usbfs resume. */
 
-  k_ra8_pwr_wake_agt0  = (uint16_t)(k_ra8_pwr_wupen_reg_1 << 8),        /**< RA8 pwr wake agt0.  */
-  k_ra8_pwr_wake_agt1  = (uint16_t)((k_ra8_pwr_wupen_reg_1 << 8) | 1U), /**< RA8 pwr wake agt1.  */
-  k_ra8_pwr_wake_ulpt0 = (uint16_t)((k_ra8_pwr_wupen_reg_1 << 8) | 2U), /**< RA8 pwr wake ulpt0. */
-  k_ra8_pwr_wake_ulpt1 = (uint16_t)((k_ra8_pwr_wupen_reg_1 << 8) | 3U), /**< RA8 pwr wake ulpt1. */
+  k_ra8_pwr_wake_agt0  = (k_ra8_pwr_wupen_reg_1 << 8),        /**< RA8 pwr wake agt0.  */
+  k_ra8_pwr_wake_agt1  = ((k_ra8_pwr_wupen_reg_1 << 8) | 1U), /**< RA8 pwr wake agt1.  */
+  k_ra8_pwr_wake_ulpt0 = ((k_ra8_pwr_wupen_reg_1 << 8) | 2U), /**< RA8 pwr wake ulpt0. */
+  k_ra8_pwr_wake_ulpt1 = ((k_ra8_pwr_wupen_reg_1 << 8) | 3U), /**< RA8 pwr wake ulpt1. */
 } ra8_pwr_wake_t;
 
 /* =============================================================================

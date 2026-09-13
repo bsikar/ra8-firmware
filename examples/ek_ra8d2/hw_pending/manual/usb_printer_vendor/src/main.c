@@ -98,9 +98,9 @@ typedef enum : uint16_t {
  * @brief The INTSTS0 event bits the polled loop reacts to (HUM Ch 36.2.9).
  */
 typedef enum : uint16_t {
-  k_demo_int_brdy = (uint16_t)(1U << (uint16_t)k_ra8_int0_bit_brdy), /**< Buffer ready.  */
-  k_demo_int_ctrt = (uint16_t)(1U << (uint16_t)k_ra8_int0_bit_ctrt), /**< Control stage. */
-  k_demo_int_dvst = (uint16_t)(1U << (uint16_t)k_ra8_int0_bit_dvst), /**< Device state.  */
+  k_demo_int_brdy = (1U << (uint16_t)k_ra8_int0_bit_brdy), /**< Buffer ready.  */
+  k_demo_int_ctrt = (1U << (uint16_t)k_ra8_int0_bit_ctrt), /**< Control stage. */
+  k_demo_int_dvst = (1U << (uint16_t)k_ra8_int0_bit_dvst), /**< Device state.  */
 } demo_intsts0_t;
 
 /**

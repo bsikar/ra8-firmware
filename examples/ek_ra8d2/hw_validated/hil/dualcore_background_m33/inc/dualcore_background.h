@@ -65,7 +65,7 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uintptr_t {
-  k_bg_sram_base = (uintptr_t)k_ra8_board_shared_ram_base, /**< Shared block = window base. */
+  k_bg_sram_base = k_ra8_board_shared_ram_base, /**< Shared block = window base. */
 } bg_addr_t;
 
 /**

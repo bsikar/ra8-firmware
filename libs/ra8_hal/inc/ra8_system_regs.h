@@ -225,23 +225,20 @@ typedef enum : uint8_t {
  * to work and change nothing.
  */
 typedef enum : uint16_t {
-  k_ra8_prcr_key      = 0xA500U, /**< Password in upper byte.                       */
-  k_ra8_prcr_grp0_cgc = 0x0001U, /**< PRC0 @ bit 0: clock generation circuit.       */
-  k_ra8_prcr_grp1_lpm = 0x0002U, /**< PRC1 @ bit 1: low-power modes + VBATT backup. */
-  k_ra8_prcr_grp3_pvd = 0x0008U, /**< PRC3 @ bit 3: PVD + VBATTMNSELR.              */
-  k_ra8_prcr_grp4_sar = 0x0010U, /**< PRC4 @ bit 4: security/privilege attribution. */
-  k_ra8_prcr_grp5_rst = 0x0020U, /**< PRC5 @ bit 5: reset control.                  */
-  k_ra8_prcr_unlock_cgc =
-    (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp0_cgc), /**< RA8 prcr unlock cgc. */
-  k_ra8_prcr_unlock_lpm =
-    (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp1_lpm), /**< RA8 prcr unlock lpm. */
-  k_ra8_prcr_unlock_pvd =
-    (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp3_pvd), /**< RA8 prcr unlock pvd. */
-  k_ra8_prcr_unlock_sar =
-    (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp4_sar), /**< RA8 prcr unlock sar. */
-  k_ra8_prcr_unlock_rst =
-    (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp5_rst), /**< RA8 prcr unlock rst. */
-  k_ra8_prcr_lock_all = k_ra8_prcr_key,               /**< RA8 prcr lock all.   */
+  k_ra8_prcr_key      = 0xA500U, /**< Password in upper byte.  */
+  k_ra8_prcr_grp0_cgc = 0x0001U, /**< PRC0: clock generation.  */
+  k_ra8_prcr_grp1_lpm = 0x0002U, /**< PRC1: low power + VBATT. */
+  k_ra8_prcr_grp3_pvd = 0x0008U, /**< PRC3: PVD + VBATTMNSELR. */
+  k_ra8_prcr_grp4_sar = 0x0010U, /**< PRC4: security attrs.    */
+  k_ra8_prcr_grp5_rst = 0x0020U, /**< PRC5: reset control.     */
+
+  k_ra8_prcr_unlock_cgc = (k_ra8_prcr_key | k_ra8_prcr_grp0_cgc), /**< RA8 prcr unlock cgc. */
+  k_ra8_prcr_unlock_lpm = (k_ra8_prcr_key | k_ra8_prcr_grp1_lpm), /**< RA8 prcr unlock lpm. */
+  k_ra8_prcr_unlock_pvd = (k_ra8_prcr_key | k_ra8_prcr_grp3_pvd), /**< RA8 prcr unlock pvd. */
+  k_ra8_prcr_unlock_sar = (k_ra8_prcr_key | k_ra8_prcr_grp4_sar), /**< RA8 prcr unlock sar. */
+  k_ra8_prcr_unlock_rst = (k_ra8_prcr_key | k_ra8_prcr_grp5_rst), /**< RA8 prcr unlock rst. */
+
+  k_ra8_prcr_lock_all = k_ra8_prcr_key, /**< RA8 prcr lock all. */
 } ra8_prcr_t;
 
 /* =============================================================================

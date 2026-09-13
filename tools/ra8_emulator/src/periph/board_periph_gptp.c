@@ -74,8 +74,8 @@
  * ::k_ra8_gptp_base_addr for ::k_gptp_win_span bytes.
  */
 typedef enum : uint64_t {
-  k_gptp_win_base = (uint64_t)k_ra8_gptp_base_addr, /**< GPTP window base (0x403E_0000). */
-  k_gptp_win_span = 0x1000UL,                       /**< Whole GPTP aperture length.     */
+  k_gptp_win_base = k_ra8_gptp_base_addr, /**< GPTP window base (0x403E_0000). */
+  k_gptp_win_span = 0x1000UL,             /**< Whole GPTP aperture length.     */
 } gptp_win_geom_t;
 
 /** @brief Per-tick order slot: right after the R-Switch cluster (58). */

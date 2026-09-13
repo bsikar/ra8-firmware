@@ -335,35 +335,35 @@ typedef enum : uint8_t {
  * @brief Composite bit masks used by the polling driver.
  */
 typedef enum : uint32_t {
-  k_ra8_i3c_i2c_msk_prts_prtmd     = (uint32_t)(1U << 0U),  /**< HUM 40.2.1 PRTS.PRTMD, p 2449   */
-  k_ra8_i3c_i2c_msk_cectl_clke     = (uint32_t)(1U << 0U),  /**< HUM 40.2 CECTL.CLKE, p 2453     */
-  k_ra8_i3c_i2c_msk_bctl_buse      = (uint32_t)(1U << 31U), /**< HUM 40.2 BCTL.BUSE, p 2454      */
-  k_ra8_i3c_i2c_msk_rstctl_ri3crst = (uint32_t)(1U << 0U),  /**< HUM 40.2 RSTCTL.RI3CRST, p 2456 */
-  k_ra8_i3c_i2c_msk_bfctl_male     = (uint32_t)(1U << 0U),  /**< HUM 40.2 BFCTL.MALE,   p 2461   */
-  k_ra8_i3c_i2c_msk_bfctl_nale     = (uint32_t)(1U << 1U),  /**< HUM 40.2 BFCTL.NALE,   p 2461   */
-  k_ra8_i3c_i2c_msk_bfctl_scsyne   = (uint32_t)(1U << 8U),  /**< HUM 40.2 BFCTL.SCSYNE, p 2461   */
-  k_ra8_i3c_i2c_msk_bfctl_fmpe     = (uint32_t)(1U << 14U), /**< HUM 40.2 BFCTL.FMPE,   p 2461   */
-  k_ra8_i3c_i2c_msk_ackctl_ackt    = (uint32_t)(1U << 1U),  /**< HUM 40.2 ACKCTL.ACKT,  p 2468   */
-  k_ra8_i3c_i2c_msk_ackctl_acktwp  = (uint32_t)(1U << 2U),  /**< HUM 40.2 ACKCTL.ACKTWP,p 2468   */
-  k_ra8_i3c_i2c_msk_scstrctl_rwe   = (uint32_t)(1U << 1U),  /**< HUM 40.2 SCSTRCTL.RWE, p 2469   */
-  k_ra8_i3c_i2c_msk_cndctl_stcnd   = (uint32_t)(1U << 0U),  /**< HUM 40.2 CNDCTL.STCND, p 2473   */
-  k_ra8_i3c_i2c_msk_cndctl_srcnd   = (uint32_t)(1U << 1U),  /**< HUM 40.2 CNDCTL.SRCND, p 2473   */
-  k_ra8_i3c_i2c_msk_cndctl_spcnd   = (uint32_t)(1U << 2U),  /**< HUM 40.2 CNDCTL.SPCND, p 2473   */
-  k_ra8_i3c_i2c_msk_bst_stcnddf    = (uint32_t)(1U << 0U),  /**< HUM 40.2 BST.STCNDDF,  p 2482   */
-  k_ra8_i3c_i2c_msk_bst_spcnddf    = (uint32_t)(1U << 1U),  /**< HUM 40.2 BST.SPCNDDF,  p 2482   */
-  k_ra8_i3c_i2c_msk_bst_nackdf     = (uint32_t)(1U << 4U),  /**< HUM 40.2 BST.NACKDF,   p 2482   */
-  k_ra8_i3c_i2c_msk_bst_tendf      = (uint32_t)(1U << 8U),  /**< HUM 40.2 BST.TENDF,    p 2482   */
-  k_ra8_i3c_i2c_msk_bst_alf        = (uint32_t)(1U << 16U), /**< HUM 40.2 BST.ALF,      p 2482   */
-  k_ra8_i3c_i2c_msk_bst_todf       = (uint32_t)(1U << 20U), /**< HUM 40.2 BST.TODF,     p 2482   */
-  k_ra8_i3c_i2c_msk_ntst_tdbef0    = (uint32_t)(1U << 0U),  /**< HUM 40.2 NTST.TDBEF0,  p 2486   */
-  k_ra8_i3c_i2c_msk_ntst_rdbff0    = (uint32_t)(1U << 1U),  /**< HUM 40.2 NTST.RDBFF0,  p 2486   */
-  k_ra8_i3c_i2c_msk_ntie_tdbeie0   = (uint32_t)(1U << 0U),  /**< HUM 40.2 NTIE.TDBEIE0, p 2488   */
-  k_ra8_i3c_i2c_msk_ntie_rdbfie0   = (uint32_t)(1U << 1U),  /**< HUM 40.2 NTIE.RDBFIE0, p 2488   */
-  k_ra8_i3c_i2c_msk_bie_nackdie    = (uint32_t)(1U << 4U),  /**< HUM 40.2 BIE.NACKDIE,  p 2484   */
-  k_ra8_i3c_i2c_msk_bie_tendie     = (uint32_t)(1U << 8U),  /**< HUM 40.2 BIE.TENDIE,   p 2484   */
-  k_ra8_i3c_i2c_msk_bie_alie       = (uint32_t)(1U << 16U), /**< HUM 40.2 BIE.ALIE,     p 2484   */
-  k_ra8_i3c_i2c_msk_bie_todie      = (uint32_t)(1U << 20U), /**< HUM 40.2 BIE.TODIE,    p 2484   */
-  k_ra8_i3c_i2c_msk_bcst_bfref     = (uint32_t)(1U << 0U),  /**< HUM 40.2 BCST.BFREF,   p 2491   */
+  k_ra8_i3c_i2c_msk_prts_prtmd     = (1U << 0U),  /**< HUM 40.2.1 PRTS.PRTMD, p 2449   */
+  k_ra8_i3c_i2c_msk_cectl_clke     = (1U << 0U),  /**< HUM 40.2 CECTL.CLKE, p 2453     */
+  k_ra8_i3c_i2c_msk_bctl_buse      = (1U << 31U), /**< HUM 40.2 BCTL.BUSE, p 2454      */
+  k_ra8_i3c_i2c_msk_rstctl_ri3crst = (1U << 0U),  /**< HUM 40.2 RSTCTL.RI3CRST, p 2456 */
+  k_ra8_i3c_i2c_msk_bfctl_male     = (1U << 0U),  /**< HUM 40.2 BFCTL.MALE,   p 2461   */
+  k_ra8_i3c_i2c_msk_bfctl_nale     = (1U << 1U),  /**< HUM 40.2 BFCTL.NALE,   p 2461   */
+  k_ra8_i3c_i2c_msk_bfctl_scsyne   = (1U << 8U),  /**< HUM 40.2 BFCTL.SCSYNE, p 2461   */
+  k_ra8_i3c_i2c_msk_bfctl_fmpe     = (1U << 14U), /**< HUM 40.2 BFCTL.FMPE,   p 2461   */
+  k_ra8_i3c_i2c_msk_ackctl_ackt    = (1U << 1U),  /**< HUM 40.2 ACKCTL.ACKT,  p 2468   */
+  k_ra8_i3c_i2c_msk_ackctl_acktwp  = (1U << 2U),  /**< HUM 40.2 ACKCTL.ACKTWP,p 2468   */
+  k_ra8_i3c_i2c_msk_scstrctl_rwe   = (1U << 1U),  /**< HUM 40.2 SCSTRCTL.RWE, p 2469   */
+  k_ra8_i3c_i2c_msk_cndctl_stcnd   = (1U << 0U),  /**< HUM 40.2 CNDCTL.STCND, p 2473   */
+  k_ra8_i3c_i2c_msk_cndctl_srcnd   = (1U << 1U),  /**< HUM 40.2 CNDCTL.SRCND, p 2473   */
+  k_ra8_i3c_i2c_msk_cndctl_spcnd   = (1U << 2U),  /**< HUM 40.2 CNDCTL.SPCND, p 2473   */
+  k_ra8_i3c_i2c_msk_bst_stcnddf    = (1U << 0U),  /**< HUM 40.2 BST.STCNDDF,  p 2482   */
+  k_ra8_i3c_i2c_msk_bst_spcnddf    = (1U << 1U),  /**< HUM 40.2 BST.SPCNDDF,  p 2482   */
+  k_ra8_i3c_i2c_msk_bst_nackdf     = (1U << 4U),  /**< HUM 40.2 BST.NACKDF,   p 2482   */
+  k_ra8_i3c_i2c_msk_bst_tendf      = (1U << 8U),  /**< HUM 40.2 BST.TENDF,    p 2482   */
+  k_ra8_i3c_i2c_msk_bst_alf        = (1U << 16U), /**< HUM 40.2 BST.ALF,      p 2482   */
+  k_ra8_i3c_i2c_msk_bst_todf       = (1U << 20U), /**< HUM 40.2 BST.TODF,     p 2482   */
+  k_ra8_i3c_i2c_msk_ntst_tdbef0    = (1U << 0U),  /**< HUM 40.2 NTST.TDBEF0,  p 2486   */
+  k_ra8_i3c_i2c_msk_ntst_rdbff0    = (1U << 1U),  /**< HUM 40.2 NTST.RDBFF0,  p 2486   */
+  k_ra8_i3c_i2c_msk_ntie_tdbeie0   = (1U << 0U),  /**< HUM 40.2 NTIE.TDBEIE0, p 2488   */
+  k_ra8_i3c_i2c_msk_ntie_rdbfie0   = (1U << 1U),  /**< HUM 40.2 NTIE.RDBFIE0, p 2488   */
+  k_ra8_i3c_i2c_msk_bie_nackdie    = (1U << 4U),  /**< HUM 40.2 BIE.NACKDIE,  p 2484   */
+  k_ra8_i3c_i2c_msk_bie_tendie     = (1U << 8U),  /**< HUM 40.2 BIE.TENDIE,   p 2484   */
+  k_ra8_i3c_i2c_msk_bie_alie       = (1U << 16U), /**< HUM 40.2 BIE.ALIE,     p 2484   */
+  k_ra8_i3c_i2c_msk_bie_todie      = (1U << 20U), /**< HUM 40.2 BIE.TODIE,    p 2484   */
+  k_ra8_i3c_i2c_msk_bcst_bfref     = (1U << 0U),  /**< HUM 40.2 BCST.BFREF,   p 2491   */
 } ra8_i3c_i2c_mask_t;
 
 /**

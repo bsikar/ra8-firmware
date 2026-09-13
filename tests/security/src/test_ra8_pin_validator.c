@@ -18,8 +18,7 @@
  *        so the pin-range guard is the only rejection that can fire.
  */
 typedef enum : uint16_t {
-  k_pin_bad_index_only =
-    (uint16_t)k_ra8_pin_count, /**< Port 0, pin index one past the last legal pin. */
+  k_pin_bad_index_only = k_ra8_pin_count, /**< Port 0, pin index one past the last legal pin. */
 } pin_validator_fixture_t;
 
 /**

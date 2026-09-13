@@ -81,14 +81,14 @@ typedef enum : uint8_t {
   k_ra8_i2c_peripheral_addr_7b_max = 0x7FU, /**< Largest valid 7-bit own address.     */
   k_ra8_i2c_peripheral_slot_max    = 2U,    /**< Highest own-address comparator slot. */
   /** Shift to place a 7-bit own address into SARLy.SVA[6:0] (bits [7:1]). */
-  k_ra8_i2c_peripheral_addr_shift = (uint8_t)k_ra8_i2c_sarl_sva_pos,
+  k_ra8_i2c_peripheral_addr_shift = k_ra8_i2c_sarl_sva_pos,
   /** SARUy value for the 7-bit address format (FS = 0, SVA[1:0] = 0). */
   k_ra8_i2c_peripheral_saru_7bit = 0U,
   /** ICIER target-interrupt arm mask: RIE (RXI, bit 5) | TIE (TXI, bit 7) |
    * SPIE (STOP, bit 3) -- the own-address-match data + STOP interrupts. */
   k_ra8_i2c_peripheral_icier_arm =
-    (uint8_t)((1U << (uint8_t)k_ra8_i2c_icier_rie_pos) | (1U << (uint8_t)k_ra8_i2c_icier_tie_pos) |
-              (1U << (uint8_t)k_ra8_i2c_icier_spie_pos)),
+    ((1U << (uint8_t)k_ra8_i2c_icier_rie_pos) | (1U << (uint8_t)k_ra8_i2c_icier_tie_pos) |
+     (1U << (uint8_t)k_ra8_i2c_icier_spie_pos)),
 } ra8_i2c_peripheral_const_t;
 
 /* =============================================================================

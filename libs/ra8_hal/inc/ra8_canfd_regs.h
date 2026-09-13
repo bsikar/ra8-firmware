@@ -638,7 +638,7 @@ typedef enum : uint32_t {
  * "Acceptance Filter List" pp 2702-2867.
  */
 typedef enum : uint16_t {
-  k_ra8_canfd_afl_total = (uint16_t)(16U * 16U), /**< 16 pages x 16 entries. */
+  k_ra8_canfd_afl_total = (16U * 16U), /**< 16 pages x 16 entries. */
 } ra8_canfd_afl_total_t;
 
 /**

@@ -82,7 +82,7 @@ typedef enum : uint8_t {
   /** Queue depth for each of the two transmit and receive priority
       queues, restated here so the SPI configuration the port publishes
       matches what the transport actually creates. */
-  k_ra8_esp_hosted_osi_queue_depth = (uint8_t)H_TRANSPORT_QUEUE_SIZE,
+  k_ra8_esp_hosted_osi_queue_depth = H_TRANSPORT_QUEUE_SIZE,
   /** SPI mode the co-processor image is built for. */
   k_ra8_esp_hosted_osi_spi_mode = 3U,
   /** Wake-up reason meaning the host performed an ordinary reboot. */

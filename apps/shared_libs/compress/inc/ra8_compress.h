@@ -47,7 +47,7 @@ extern "C" {
  */
 typedef enum : uint32_t {
   /** @brief Minimum compress scratch size (one miniz `tdefl_compressor`). */
-  k_ra8_compress_scratch_bytes = (uint32_t)sizeof(tdefl_compressor),
+  k_ra8_compress_scratch_bytes = sizeof(tdefl_compressor),
 } ra8_compress_const_t;
 
 /**

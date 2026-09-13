@@ -321,9 +321,8 @@ typedef struct {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra8_fs_attr_settable =
-    (uint8_t)((uint8_t)k_ra8_fs_attr_read_only | (uint8_t)k_ra8_fs_attr_hidden |
-              (uint8_t)k_ra8_fs_attr_system | (uint8_t)k_ra8_fs_attr_archive),
+  k_ra8_fs_attr_settable = ((uint8_t)k_ra8_fs_attr_read_only | (uint8_t)k_ra8_fs_attr_hidden |
+                            (uint8_t)k_ra8_fs_attr_system | (uint8_t)k_ra8_fs_attr_archive),
   /**< Union of the four settable bits (0x27). */
 } ra8_fs_attr_settable_t;
 

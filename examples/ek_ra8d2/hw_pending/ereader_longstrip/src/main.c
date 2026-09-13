@@ -102,7 +102,7 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ls_canvas_w = (uint32_t)k_panel_width_px,                   /**< Strip width, pixels. */
+  k_ls_canvas_w = k_panel_width_px,                             /**< Strip width, pixels. */
   k_ls_canvas_h = (uint32_t)k_ls_bands * (uint32_t)k_ls_band_h, /**< 4480 px.             */
   k_ls_bpp      = 3U,                                           /**< RGB888 strip pixels. */
   /** One band payload, bytes. */
@@ -158,8 +158,8 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_ls_zone_top = (uint16_t)(k_panel_height_px / 3U),        /**< y < this: up.   */
-  k_ls_zone_mid = (uint16_t)((k_panel_height_px * 2U) / 3U), /**< < this: chrome. */
+  k_ls_zone_top = (k_panel_height_px / 3U),        /**< y < this: up.   */
+  k_ls_zone_mid = ((k_panel_height_px * 2U) / 3U), /**< < this: chrome. */
 } ls_zone_t;
 
 /**

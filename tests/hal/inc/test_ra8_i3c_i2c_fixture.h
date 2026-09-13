@@ -19,9 +19,9 @@ typedef enum : uint8_t {
   k_ra8_i3c_i2c_test_byte_c  = 0x33U, /**< A third, for three-byte writes.    */
   k_ra8_i3c_i2c_test_rx_byte = 0xC3U, /**< A byte unlike every TX fixture.    */
   /** @brief Pre-shifted write-form address. */
-  k_ra8_i3c_i2c_test_addr_w = (uint8_t)(k_ra8_i3c_i2c_test_target << 1U),
+  k_ra8_i3c_i2c_test_addr_w = (k_ra8_i3c_i2c_test_target << 1U),
   /** @brief Pre-shifted read-form address. */
-  k_ra8_i3c_i2c_test_addr_r = (uint8_t)((k_ra8_i3c_i2c_test_target << 1U) | 1U),
+  k_ra8_i3c_i2c_test_addr_r = ((k_ra8_i3c_i2c_test_target << 1U) | 1U),
 } ra8_i3c_i2c_test_addr_t;
 
 /** @brief Channel numbers: the one that exists and two invalid selectors. */

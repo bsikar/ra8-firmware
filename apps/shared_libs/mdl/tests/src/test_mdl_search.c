@@ -36,7 +36,7 @@ typedef enum : uint16_t {
 /** @brief Bounds of the generated hit-list capacity fixture. */
 typedef enum : uint16_t {
   k_capacity_html_bytes = 8192,                          /**< Generated page bytes.   */
-  k_hits_capacity       = (uint16_t)k_mdl_max_hits,      /**< Exactly the hit cap.    */
+  k_hits_capacity       = k_mdl_max_hits,                /**< Exactly the hit cap.    */
   k_hits_over_capacity  = (uint16_t)k_mdl_max_hits + 1U, /**< One anchor past it.     */
   k_kept_hits_one       = 1,                             /**< One publishable anchor. */
   k_kept_hits_two       = 2,                             /**< Two publishable hits.   */

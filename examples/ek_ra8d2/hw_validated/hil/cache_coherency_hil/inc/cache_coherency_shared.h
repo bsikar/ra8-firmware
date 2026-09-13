@@ -74,8 +74,7 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uintptr_t {
-  k_cache_coherency_shared_addr =
-    (uintptr_t)k_ra8_board_shared_ram_base, /**< Shared block = window base. */
+  k_cache_coherency_shared_addr = k_ra8_board_shared_ram_base, /**< Shared block = window base. */
 } cache_coherency_addr_t;
 
 /**

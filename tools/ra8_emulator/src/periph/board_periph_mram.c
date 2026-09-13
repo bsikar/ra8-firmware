@@ -171,11 +171,11 @@ typedef enum : uint8_t {
 
 /** @brief Sizing + report-order constants. */
 typedef enum : uint32_t {
-  k_mram_reg_words   = (uint32_t)(k_mram_reg_span / 4UL), /**< Shadow words.         */
-  k_mram_payload_max = 32U,                               /**< Max config-set bytes. */
-  k_mram_byte_mask   = 0xFFU,                             /**< One byte.             */
-  k_mram_hi_shift    = 8U,                                /**< High-byte shift.      */
-  k_mram_block_order = 92U,                               /**< Report order slot.    */
+  k_mram_reg_words   = (k_mram_reg_span / 4UL), /**< Shadow words.         */
+  k_mram_payload_max = 32U,                     /**< Max config-set bytes. */
+  k_mram_byte_mask   = 0xFFU,                   /**< One byte.             */
+  k_mram_hi_shift    = 8U,                      /**< High-byte shift.      */
+  k_mram_block_order = 92U,                     /**< Report order slot.    */
 } mram_lit_t;
 
 /** @brief MRAM model state: register shadow + MACI collection + counters. */

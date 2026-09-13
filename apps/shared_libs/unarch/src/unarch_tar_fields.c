@@ -40,15 +40,15 @@ static const char* const s_tag_tar_f = "unarch_tar";
  * @since Version 0.1.0
  */
 typedef enum : uint32_t {
-  k_tar_octal_base    = 8U,            /**< Octal radix.                       */
-  k_tar_decimal_base  = 10U,           /**< pax record-length / size radix.    */
-  k_tar_b256_flag     = 0x80U,         /**< Base-256 marker bit in byte 0.     */
-  k_tar_b256_negative = 0x40U,         /**< Sign bit of a base-256 value.      */
-  k_tar_b256_payload  = 0x7FU,         /**< Payload mask of base-256 byte 0.   */
-  k_tar_b256_fit      = 8U,            /**< Trailing bytes that fit in uint64. */
-  k_tar_shift_byte    = 8U,            /**< Bits per base-256 byte.            */
-  k_tar_pax_len_max   = 7U,            /**< Max digits in a pax record length. */
-  k_tar_chksum_space  = (uint32_t)' ', /**< chksum bytes count as spaces.      */
+  k_tar_octal_base    = 8U,    /**< Octal radix.                       */
+  k_tar_decimal_base  = 10U,   /**< pax record-length / size radix.    */
+  k_tar_b256_flag     = 0x80U, /**< Base-256 marker bit in byte 0.     */
+  k_tar_b256_negative = 0x40U, /**< Sign bit of a base-256 value.      */
+  k_tar_b256_payload  = 0x7FU, /**< Payload mask of base-256 byte 0.   */
+  k_tar_b256_fit      = 8U,    /**< Trailing bytes that fit in uint64. */
+  k_tar_shift_byte    = 8U,    /**< Bits per base-256 byte.            */
+  k_tar_pax_len_max   = 7U,    /**< Max digits in a pax record length. */
+  k_tar_chksum_space  = ' ',   /**< chksum bytes count as spaces.      */
 } tar_field_const_t;
 
 /**

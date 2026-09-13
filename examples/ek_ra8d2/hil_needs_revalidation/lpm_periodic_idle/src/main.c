@@ -134,7 +134,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_lpi_led = (uint8_t)k_ra8_board_led1, /**< Blue user LED heartbeat. */
+  k_lpi_led = k_ra8_board_led1, /**< Blue user LED heartbeat. */
 } lpi_led_t;
 
 /** @brief Boot banner -- emitted once before the first work step. */

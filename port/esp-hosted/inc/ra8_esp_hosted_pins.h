@@ -101,19 +101,19 @@
 typedef enum : uint16_t {
   /** Chip select, RA8 output. Pmod1.1; the probe resolved this net to the
       SPI position of the board's Pmod1 mode mux, which needs SW4-3 ON. */
-  k_ra8_esp_hosted_pin_chip_select = (uint16_t)k_ra8_board_pmod1_spi_cs,
+  k_ra8_esp_hosted_pin_chip_select = k_ra8_board_pmod1_spi_cs,
   /** Controller-out peripheral-in data, RA8 output, routed to the SCI
       channel rather than driven as a GPIO. */
-  k_ra8_esp_hosted_pin_copi = (uint16_t)k_ra8_board_pmod1_spi_copi,
+  k_ra8_esp_hosted_pin_copi = k_ra8_board_pmod1_spi_copi,
   /** Controller-in peripheral-out data, RA8 input, routed to the SCI
       channel rather than sampled as a GPIO. */
-  k_ra8_esp_hosted_pin_cipo = (uint16_t)k_ra8_board_pmod1_spi_cipo,
+  k_ra8_esp_hosted_pin_cipo = k_ra8_board_pmod1_spi_cipo,
   /** Serial clock, RA8 output, routed to the SCI channel. */
-  k_ra8_esp_hosted_pin_sck = (uint16_t)k_ra8_board_pmod1_spi_sck,
+  k_ra8_esp_hosted_pin_sck = k_ra8_board_pmod1_spi_sck,
   /** HANDSHAKE, RA8 input, C6 output. J26-7, which lands on P006 -- the
       one Pmod1 side-band net with an ICU channel (IRQ11), so this signal
       gets the hardware edge path. */
-  k_ra8_esp_hosted_pin_handshake = (uint16_t)k_ra8_board_pmod1_irq,
+  k_ra8_esp_hosted_pin_handshake = k_ra8_board_pmod1_irq,
   /** DATA_READY, RA8 input, C6 output. J26-8, which lands on P402. The
       package routes no ICU channel there, so the port services it with
       its software edge detector. That is the right way round for this
@@ -121,12 +121,12 @@ typedef enum : uint16_t {
       holds DATA_READY asserted until the host drains the frame, so a
       poll cannot miss it, whereas HANDSHAKE pulses low once per
       transaction and needs the edge. */
-  k_ra8_esp_hosted_pin_data_ready = (uint16_t)k_ra8_board_pmod1_reset,
+  k_ra8_esp_hosted_pin_data_ready = k_ra8_board_pmod1_reset,
   /** Co-processor reset, RA8 output. ``k_ra8_pin_none`` until the rebuilt
       harness wires one: ``pins.env`` records the C6 reset input as
       disconnected, and inventing a pin here would make the port drive an
       unrelated net during bring-up. */
-  k_ra8_esp_hosted_pin_reset = (uint16_t)k_ra8_pin_none,
+  k_ra8_esp_hosted_pin_reset = k_ra8_pin_none,
 } ra8_esp_hosted_pin_t;
 
 /**

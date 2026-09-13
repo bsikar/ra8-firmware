@@ -93,10 +93,10 @@ typedef enum : int32_t {
 
 /** @brief Enum upper bounds used by RA8_CHECK_RANGE_TAG. */
 typedef enum : uint8_t {
-  k_lsm6dso_xl_fs_max = (uint8_t)k_lsm6dso_g_fs_2000dps, /**< shared cap value 0x04. */
-  k_lsm6dso_xl_fs_cap = (uint8_t)k_lsm6dso_xl_fs_8g,     /**< Highest XL FS code.    */
-  k_lsm6dso_g_fs_cap  = (uint8_t)k_lsm6dso_g_fs_2000dps, /**< Highest G  FS code.    */
-  k_lsm6dso_odr_cap   = (uint8_t)k_lsm6dso_odr_6660hz,   /**< Highest ODR code.      */
+  k_lsm6dso_xl_fs_max = k_lsm6dso_g_fs_2000dps, /**< shared cap value 0x04. */
+  k_lsm6dso_xl_fs_cap = k_lsm6dso_xl_fs_8g,     /**< Highest XL FS code.    */
+  k_lsm6dso_g_fs_cap  = k_lsm6dso_g_fs_2000dps, /**< Highest G  FS code.    */
+  k_lsm6dso_odr_cap   = k_lsm6dso_odr_6660hz,   /**< Highest ODR code.      */
 } ra8_lsm6dso_cap_t;
 
 /* =============================================================================
