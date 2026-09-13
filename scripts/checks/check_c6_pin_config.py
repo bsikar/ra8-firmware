@@ -191,7 +191,8 @@ the board User's Manual citation for every row.
 """
 
 _PORT_ROW_RE = re.compile(
-    r"(?P<enum>k_ra8_esp_hosted_pin_[a-z_]+)\s*=\s*\(uint16_t\)(?P<sym>k_ra8_[a-z0-9_]+)"
+    r"(?P<enum>k_ra8_esp_hosted_pin_[a-z_]+)\s*=\s*"
+    r"(?:\(uint16_t\)\s*)?(?P<sym>k_ra8_[a-z0-9_]+)"
 )
 
 
@@ -777,13 +778,13 @@ def _selftest_cases_ra8_map() -> list[tuple[str, str, str, bool]]:
 
 
 _GOOD_PORT_HEADER = """
-  k_ra8_esp_hosted_pin_chip_select = (uint16_t)k_ra8_board_pmod1_spi_cs,
-  k_ra8_esp_hosted_pin_copi = (uint16_t)k_ra8_board_pmod1_spi_copi,
-  k_ra8_esp_hosted_pin_cipo = (uint16_t)k_ra8_board_pmod1_spi_cipo,
-  k_ra8_esp_hosted_pin_sck = (uint16_t)k_ra8_board_pmod1_spi_sck,
-  k_ra8_esp_hosted_pin_handshake = (uint16_t)k_ra8_board_pmod1_irq,
-  k_ra8_esp_hosted_pin_data_ready = (uint16_t)k_ra8_board_pmod1_reset,
-  k_ra8_esp_hosted_pin_reset = (uint16_t)k_ra8_pin_none,
+  k_ra8_esp_hosted_pin_chip_select = k_ra8_board_pmod1_spi_cs,
+  k_ra8_esp_hosted_pin_copi = k_ra8_board_pmod1_spi_copi,
+  k_ra8_esp_hosted_pin_cipo = k_ra8_board_pmod1_spi_cipo,
+  k_ra8_esp_hosted_pin_sck = k_ra8_board_pmod1_spi_sck,
+  k_ra8_esp_hosted_pin_handshake = k_ra8_board_pmod1_irq,
+  k_ra8_esp_hosted_pin_data_ready = k_ra8_board_pmod1_reset,
+  k_ra8_esp_hosted_pin_reset = k_ra8_pin_none,
 """
 """A port pin map that agrees with ``_GOOD_PINS``."""
 
@@ -801,8 +802,8 @@ def _selftest_cases_port_header() -> list[tuple[str, str, str, bool]]:
         four-tuple shape the shared driver consumes.
     """
     swapped = _GOOD_PORT_HEADER.replace(
-        "k_ra8_esp_hosted_pin_handshake = (uint16_t)k_ra8_board_pmod1_irq",
-        "k_ra8_esp_hosted_pin_handshake = (uint16_t)k_ra8_board_pmod1_reset",
+        "k_ra8_esp_hosted_pin_handshake = k_ra8_board_pmod1_irq",
+        "k_ra8_esp_hosted_pin_handshake = k_ra8_board_pmod1_reset",
     )
     return [
         ("port header agrees", _GOOD_PORT_HEADER, "", False),
@@ -810,7 +811,7 @@ def _selftest_cases_port_header() -> list[tuple[str, str, str, bool]]:
         (
             "port header omits a signal",
             _GOOD_PORT_HEADER.replace(
-                "  k_ra8_esp_hosted_pin_sck = (uint16_t)k_ra8_board_pmod1_spi_sck,\n", ""
+                "  k_ra8_esp_hosted_pin_sck = k_ra8_board_pmod1_spi_sck,\n", ""
             ),
             "",
             True,
