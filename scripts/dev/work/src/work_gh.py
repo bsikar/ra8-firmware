@@ -4,13 +4,12 @@
 
 Two jobs, one module, and the split between them is the point.
 
-The probe half is what ``work doctor`` calls. It runs ``gh --version`` and
-``gh auth status`` and nothing else, and it reports three-valued results:
-:data:`STATE_OK`, :data:`STATE_DEGRADED` and :data:`STATE_UNAVAILABLE`. The
-distinction that matters is between "gh is here and its token lacks the
-``project`` scope" and "gh is not here, or could not answer at all". Collapsing
-those two into one failure is how an agent ends up believing a board mutation
-is impossible when the real problem is that it is standing on the wrong host.
+The probe half is what ``work doctor`` calls. It runs ``gh --version``, ``gh
+auth status``, ``gh project item-list --help``, and ``gh issue view --help``
+and reports whether the CLI, authentication, required project scope, and board
+query/detail capabilities are usable.
+It distinguishes an unavailable answer from an explicit required-capability
+failure so the doctor cannot report an older project extension as ready.
 
 The template half never runs anything. ``work plan --emit-commands`` renders a
 shell script to stdout for a person to read and run themselves, from a host
@@ -24,10 +23,11 @@ Nothing in this module writes anything, anywhere.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from shutil import which
 
-from work_git import ToolMissingError, WorkError, run_process
+from work_git import Completed, ToolMissingError, WorkError, run_process
 
 #: The probe answered and everything it needs is present.
 STATE_OK = "OK"
@@ -38,15 +38,20 @@ STATE_DEGRADED = "DEGRADED"
 #: The probe could not answer at all.
 STATE_UNAVAILABLE = "UNAVAILABLE"
 
-#: The OAuth scope a GitHub Projects mutation needs.
+#: The probe answered and found a required capability missing.
+STATE_FAIL = "FAIL"
+
+#: The OAuth scope GitHub project reads and mutations need.
 PROJECT_SCOPE = "project"
 
 _SCOPES_MARKER = "Token scopes:"
+_CAPABILITY_NAME = "gh board reads"
+_RELATIONSHIP_FIELDS = ("parent", "subIssues", "blockedBy", "blocking")
 
 
 @dataclass(frozen=True)
 class Probe:
-    """One three-valued readiness answer."""
+    """One four-state readiness answer."""
 
     name: str
     state: str
@@ -60,6 +65,17 @@ def gh_executable() -> str | None:
         An absolute path, or None.
     """
     return which("gh")
+
+
+def _help_probe(found: str, argv: list[str], label: str) -> Completed | Probe:
+    """Run one exact help command and normalize unavailable/failing answers."""
+    try:
+        done = run_process([found, *argv], timeout=20)
+    except (ToolMissingError, WorkError) as exc:
+        return Probe(_CAPABILITY_NAME, STATE_UNAVAILABLE, f"{label} did not answer: {exc}")
+    if not done.ok:
+        return Probe(_CAPABILITY_NAME, STATE_FAIL, f"{label} exited {done.returncode}")
+    return done
 
 
 def probe_version() -> Probe:
@@ -102,11 +118,11 @@ def parse_scopes(text: str) -> list[str] | None:
 
 
 def probe_auth() -> Probe:
-    """Report whether a ``gh`` token is present and whether it can mutate a board.
+    """Report whether a ``gh`` token can read and mutate the project board.
 
     Returns:
         :data:`STATE_OK` when the token carries :data:`PROJECT_SCOPE`,
-        :data:`STATE_DEGRADED` when it authenticates without that scope, and
+        :data:`STATE_FAIL` when it authenticates without that scope, and
         :data:`STATE_UNAVAILABLE` when gh is missing or the status command
         could not be trusted to answer.
     """
@@ -127,10 +143,39 @@ def probe_auth() -> Probe:
     if PROJECT_SCOPE not in scopes:
         detail = (
             f"token scopes are [{', '.join(scopes)}] with no {PROJECT_SCOPE} scope. "
-            "Board mutations must be run from a host whose token has it."
+            "Project board reads and mutations require it."
         )
-        return Probe("gh auth", STATE_DEGRADED, detail)
+        return Probe("gh auth", STATE_FAIL, detail)
     return Probe("gh auth", STATE_OK, f"token scopes are [{', '.join(scopes)}]")
+
+
+def probe_project_query() -> Probe:
+    """Report whether board snapshot and relationship reads are supported.
+
+    Returns:
+        :data:`STATE_OK` when every required option and JSON field is
+        advertised, :data:`STATE_FAIL` when a command answers without one,
+        and :data:`STATE_UNAVAILABLE` when a help command cannot answer.
+    """
+    found = gh_executable()
+    if found is None:
+        return Probe(_CAPABILITY_NAME, STATE_UNAVAILABLE, "gh is not installed on PATH")
+    project = _help_probe(found, ["project", "item-list", "--help"], "gh project item-list --help")
+    if isinstance(project, Probe):
+        return project
+    combined = f"{project.stdout}\n{project.stderr}"
+    if re.search(r"(^|[ \t])--query([ \t]|$)", combined, re.MULTILINE) is None:
+        detail = "gh project item-list --help does not advertise --query"
+        return Probe(_CAPABILITY_NAME, STATE_FAIL, detail)
+    issue = _help_probe(found, ["issue", "view", "--help"], "gh issue view --help")
+    if isinstance(issue, Probe):
+        return issue
+    issue_help = f"{issue.stdout}\n{issue.stderr}"
+    missing = [field for field in _RELATIONSHIP_FIELDS if field not in issue_help]
+    if missing:
+        detail = f"gh issue view --help does not advertise JSON fields: {', '.join(missing)}"
+        return Probe(_CAPABILITY_NAME, STATE_FAIL, detail)
+    return Probe(_CAPABILITY_NAME, STATE_OK, "gh supports project queries and issue relationships")
 
 
 def _first_useful_line(text: str) -> str:

@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "fixtures"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import work
+import work_gh
 import work_git
 from work_git import (
     GitWriteAttemptError,
@@ -402,6 +403,7 @@ class DoctorTruth(HarnessCase):
             patch.object(work.shutil, "which", without_jq),
             patch.object(work, "probe_version", return_value=local_probe),
             patch.object(work, "probe_auth", return_value=local_probe),
+            patch.object(work, "probe_project_query", return_value=local_probe),
         ):
             checks = work._doctor_checks(  # noqa: SLF001 -- focused readiness fixture
                 work.discover_repo(self.repo), self.repo
@@ -412,6 +414,58 @@ class DoctorTruth(HarnessCase):
     def test_doctor_docstring_admits_auth_probe_network(self) -> None:
         """The command no longer claims absolute network silence."""
         self.assertIn("API probe", work.cmd_doctor.__doc__ or "")
+
+    def test_project_query_probe_uses_exact_help_command(self) -> None:
+        """Capability discovery cannot grow an arbitrary gh argument tail."""
+        project = work_git.Completed((), 0, "  --query string\n", "")
+        issue = work_git.Completed((), 0, "parent subIssues blockedBy blocking\n", "")
+        with (
+            patch.object(work_gh, "gh_executable", return_value="/trusted/gh"),
+            patch.object(work_gh, "run_process", side_effect=(project, issue)) as run,
+        ):
+            probe = work_gh.probe_project_query()
+        self.assertEqual(
+            [call.args[0] for call in run.call_args_list],
+            [
+                ["/trusted/gh", "project", "item-list", "--help"],
+                ["/trusted/gh", "issue", "view", "--help"],
+            ],
+        )
+        self.assertEqual(probe.state, work_gh.STATE_OK)
+
+    def test_project_query_probe_fails_when_flag_is_absent(self) -> None:
+        """An older gh project extension is a hard board-read failure."""
+        answer = work_git.Completed((), 0, "Usage: gh project item-list\n", "")
+        with (
+            patch.object(work_gh, "gh_executable", return_value="/trusted/gh"),
+            patch.object(work_gh, "run_process", return_value=answer),
+        ):
+            probe = work_gh.probe_project_query()
+        self.assertEqual(probe.state, work_gh.STATE_FAIL)
+
+    def test_project_query_probe_fails_when_relationship_field_is_absent(self) -> None:
+        """Doctor must reject a CLI that cannot render native issue relationships."""
+        project = work_git.Completed((), 0, "  --query string\n", "")
+        issue = work_git.Completed((), 0, "parent subIssues blockedBy\n", "")
+        with (
+            patch.object(work_gh, "gh_executable", return_value="/trusted/gh"),
+            patch.object(work_gh, "run_process", side_effect=(project, issue)),
+        ):
+            probe = work_gh.probe_project_query()
+        self.assertEqual(probe.state, work_gh.STATE_FAIL)
+        self.assertIn("blocking", probe.detail)
+
+    def test_missing_project_scope_is_a_hard_failure(self) -> None:
+        """Board reads and mutations share GitHub's project scope requirement."""
+        output = "Token scopes: 'repo', 'read:org'\n"
+        answer = work_git.Completed((), 0, "", output)
+        with (
+            patch.object(work_gh, "gh_executable", return_value="/trusted/gh"),
+            patch.object(work_gh, "run_process", return_value=answer),
+        ):
+            probe = work_gh.probe_auth()
+        self.assertEqual(probe.state, work_gh.STATE_FAIL)
+        self.assertIn("reads and mutations", probe.detail)
 
 
 if __name__ == "__main__":

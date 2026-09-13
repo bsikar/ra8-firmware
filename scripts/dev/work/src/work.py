@@ -26,7 +26,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts/dev"))
 
 from work_emit import render_commands
-from work_gh import STATE_DEGRADED, STATE_UNAVAILABLE, Probe, probe_auth, probe_version
+from work_gh import (
+    STATE_DEGRADED,
+    STATE_UNAVAILABLE,
+    Probe,
+    probe_auth,
+    probe_project_query,
+    probe_version,
+)
 from work_git import (
     GitCommandError,
     RepoPaths,
@@ -72,7 +79,7 @@ MIN_PYTHON = (3, 11)
 CHECK_OK = "OK"
 CHECK_FAIL = "FAIL"
 WS_ROOT_ENV = "RA8_WS_ROOT"
-SELFTEST_MINIMUM = 101
+SELFTEST_MINIMUM = 167
 
 
 @dataclass(frozen=True)
@@ -181,6 +188,7 @@ def _doctor_checks(paths: RepoPaths, cwd: Path) -> list[Check]:
         ),
         _probe_to_check(probe_version()),
         _probe_to_check(probe_auth()),
+        _probe_to_check(probe_project_query()),
     ]
 
 
