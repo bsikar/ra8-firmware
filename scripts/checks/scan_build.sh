@@ -122,14 +122,14 @@ unset _sb_base _sb_ver
 # configure or a no-op incremental build, not a policy on suite size.
 MIN_TRANSLATION_UNITS="${MIN_TRANSLATION_UNITS:-800}"
 
-# Measured 22 HOST CMake projects: seven under tools/ and fifteen under apps/
-# (shared libraries plus host forms such as mdl).
+# Measured 14 standalone HOST CMake projects: nine under tools/ and five under
+# apps/. Composition-only listfiles are analyzed through their consumers.
 # The firmware products under apps/ are NOT in that count -- see
 # host_project_dirs below. Discovery is derived, so adding a tenth
 # automatically puts it under scan-build; the floor turns a missing/collapsed
 # root into a loud infrastructure failure -- as it did when mdl moved out of
 # tools/ and the old tools-only glob discovered only seven projects.
-MIN_TOOL_PROJECTS="${MIN_TOOL_PROJECTS:-20}"
+MIN_TOOL_PROJECTS="${MIN_TOOL_PROJECTS:-12}"
 
 # ===========================================================================
 # THE THREE DECISIONS, FACTORED OUT SO --selftest CAN DRIVE THEM
@@ -226,6 +226,17 @@ from lint_targets import firmware_app_dirs
 for rel in firmware_app_dirs():
     print(rel)
 PYEOF
+}
+
+# Whether a CMake listfile is a standalone project that can be configured with
+# `cmake -S`. Composition-only listfiles intentionally omit both declarations:
+# their consumers include them after establishing the project and policy.
+cmake_listfile_is_project() {
+  local listfile="$1"
+  if ! grep -Eiq '^[[:space:]]*cmake_minimum_required[[:space:]]*\(' "$listfile"; then
+    return 1
+  fi
+  grep -Eiq '^[[:space:]]*project[[:space:]]*\(' "$listfile"
 }
 
 # Build-directory key for the repo-relative project path $1.
@@ -365,6 +376,18 @@ _sb_selftest_live_discriminator() {
     _sb_expect "a classified firmware app lives under apps/ ($rel)" yes \
       "$([[ "$rel" == apps/* ]] && echo yes || echo no)"
   done <<<"$firmware"
+  if cmake_listfile_is_project \
+    "$REPO_ROOT/apps/shared_libs/mdl/CMakeLists.txt"; then
+    _sb_expect "a standalone CMake project is configured" yes yes
+  else
+    _sb_expect "a standalone CMake project is configured" yes no
+  fi
+  if cmake_listfile_is_project \
+    "$REPO_ROOT/apps/shared_libs/book/CMakeLists.txt"; then
+    _sb_expect "a composition-only CMake listfile is excluded" no yes
+  else
+    _sb_expect "a composition-only CMake listfile is excluded" no no
+  fi
 }
 
 run_selftest() {
@@ -464,7 +487,8 @@ echo "==> scan-build: configuring host test build at $BUILD_DIR"
 # and exited 0 -- a clean verdict over an analysis that never happened.
 if ! "$SCAN_BUILD" --use-cc="$USE_CC" --use-c++="$USE_CXX" \
   "$CMAKE" -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON >/dev/null; then
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+  -Werror=dev -Werror=deprecated >/dev/null; then
   echo "scan_build.sh: FATAL -- cmake configure failed; nothing was analysed." >&2
   exit 2
 fi
@@ -481,6 +505,9 @@ TOOL_CANDIDATES=()
 for cmake_file in "$REPO_ROOT"/tools/*/CMakeLists.txt \
   "$REPO_ROOT"/apps/*/*/CMakeLists.txt; do
   [[ -f "$cmake_file" ]] || continue
+  if ! cmake_listfile_is_project "$cmake_file"; then
+    continue
+  fi
   _sb_dir="${cmake_file%/CMakeLists.txt}"
   TOOL_CANDIDATES+=("${_sb_dir#"$REPO_ROOT"/}")
 done
@@ -507,7 +534,8 @@ for tool_rel in ${TOOL_PROJECTS[@]+"${TOOL_PROJECTS[@]}"}; do
   echo "==> scan-build: configuring host project $tool_rel"
   if ! CC="$USE_CC" CXX="$USE_CXX" "$CMAKE" \
     -B "$TOOL_BUILD_ROOT/$tool_key" -S "$REPO_ROOT/$tool_rel" \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON >/dev/null; then
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -Werror=dev -Werror=deprecated >/dev/null; then
     echo "scan_build.sh: FATAL -- $tool_rel configure failed; nothing was analysed." >&2
     exit 2
   fi
