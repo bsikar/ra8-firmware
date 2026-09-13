@@ -220,6 +220,13 @@ source-charged inventory and effective-capacitance acceptance remain open.
 
 ## SD-003: Main-rail budget and reproducible screens
 
+The table and arithmetic below are the microSD checkpoint subtotal.
+[CMS-013](camera_storage_interfaces.md#cms-013---mipi-host-18v-supply-implementation-in-progress)
+adds 20mA for the host MIPI 1.8V branch, bringing the current steady CSI
+planning allocation to 2.095A (2.090A only with the established radio
+support overlap described below). Camera sensor, audio and display loads
+still require separate allocations; neither subtotal is the complete system.
+
 | Simultaneous load allocation | A |
 | --- | ---: |
 | RA8P1 | 0.750 |

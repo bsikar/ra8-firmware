@@ -3333,7 +3333,7 @@
 		)
 		(uuid "1f718b83-23fd-4e36-9330-5d027d5d3684")
 	)
-	(text "SD-003 | MAIN LOAD / RESET FANOUT\nMain=.750+.505+.250+.250+.050+.250+.020=2.075A.\n2.070A only if existing 50mA already includes radio 5mA.\nAt Vin 3.2V / assumed 75% efficiency / Vout 3.393012V:\nIin=2.933542A; converter loss=2.346834W; thermal/source OPEN.\nSD adds 10.6uF main and 22.1uF switched, plus card.\nRST-002: U19 adds 5uA; devices 17uA+overhead 13uA=30uA.\nReset sink=.376190mA<.4mA; high>=2.845789V.\nAllocation/conditional math only; firmware and bench acceptance OPEN."
+	(text "SD-003 | PRE-MIPI SUBTOTAL / RESET FANOUT\nMain=.750+.505+.250+.250+.050+.250+.020=2.075A before CMS-013.\nCMS-013 adds 20mA: 2.095A (2.090A only with radio 5mA overlap).\nPre-MIPI at Vin 3.2V / assumed 75% efficiency / Vout 3.393012V:\nIin=2.933542A; converter loss=2.346834W; thermal/source OPEN.\nSD adds 10.6uF main and 22.1uF switched, plus card.\nRST-002: U19 adds 5uA; devices 17uA+overhead 13uA=30uA.\nReset sink=.376190mA<.4mA; high>=2.845789V.\nAllocation/conditional math only; firmware and bench acceptance OPEN."
 		(exclude_from_sim no)
 		(at 38.862 260.604 0)
 		(effects

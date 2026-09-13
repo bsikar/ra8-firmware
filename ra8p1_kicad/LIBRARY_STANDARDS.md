@@ -119,6 +119,8 @@ power-input types for its nine supply/ground pins, and bidirectional types
 for the four USB data pins. USBHS_RREF remains passive for its external
 reference resistor. The six unused MIPI lanes still retain passive types;
 their explicit no-connect treatment is not qualification for active MIPI use.
+CMS-013 now connects VCC18_MIPI R2 to +1V8_MIPI with local C111 bypass;
+camera-lane types and connections still require active-interface review.
 Authority: RA8P1 Datasheet Rev.1.30 Table 1.17; RA8x2 Quick Design Guide
 Rev.1.10 Tables 1-2; RA8P1 HUM Rev.1.30 section 21.4 for unused MIPI.
 

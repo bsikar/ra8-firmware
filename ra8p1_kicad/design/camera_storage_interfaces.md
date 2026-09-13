@@ -2015,3 +2015,206 @@ firmware correctness or full-system qualification from this CD-only screen.
 [cms12-hrs-catalog]: https://www.hirose.com/en/product/document?documentid=D49662_en&documenttype=Catalog&lang=en&series=DM3
 [cms12-r1]: https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-071KL
 [cms12-tvs]: https://www.ti.com/lit/ds/symlink/esd441.pdf
+
+## CMS-013 - MIPI host 1.8V supply (implementation in progress)
+
+Status: native implementation in progress. U23, the project-local
+`Power_Devices:LT3042IMSE#PBF`, is placed on the MCU I/O and analog supply
+sheet with EN/UV tied to IN and OUTS tied to OUT. IN, EN/UV and PGFB
+connect to +3V3_MCU; ILIM and both ground contacts connect to GND, and
+PG has an explicit no-connect. C108 and C109 provide the selected 22uF
+input/output bypasses. C110 is the selected 100nF C0G SET-to-GND
+capacitor. These connections have passed focused exported-netlist checks;
+the pre-existing net partitions were preserved after adding the bypasses.
+R94 is the selected 1k permanent output load, connected across OUT and
+GND. Focused checks confirm its exact net membership and corrected part
+metadata, and all 330 preceding microSD net partitions remain intact after
+excluding the newly added MIPI components. R95 is the selected 18k,
+0.1%, 25ppm/C SET resistor, connected in parallel with C110. Its exact
+SET/GND membership, MPN, distributor SKU and sourcing metadata have
+passed focused checks; all 330 baseline net partitions remain preserved.
+The output is named +1V8_MIPI, with exact exported membership
+U23.9, U23.10, C109.1, R94.2, U1.R2 and C111.1. C111.2 connects to
+GND. The MCU VCC18_MIPI no-connect was removed; the six camera-lane
+no-connects remain. Independent read-only review confirmed this connection
+and preservation of all 329 other baseline net partitions after excluding
+new components and the intentional R2 join. This section does not establish camera power,
+interface operation or rail-sequencing closure. The refreshed native BOM
+contains 19 columns, 98 groups and 256 included references. The full
+12-page PDF includes the MCU bypass and both native CMS-013 calculation
+notes. All pages received independent visual review; its C111/USB-001
+overlap finding was corrected in the native editor. SD-003 now explicitly
+identifies its pre-MIPI subtotal and the added 20mA branch. Independent
+review passed both visual corrections and C111 metadata. Full BOM-to-netlist
+identity, quantities, values and MPN checks pass; only TP1-TP3 are excluded.
+CMS-013 and clock Python checks, version and whitespace checks pass.
+The ASCII check retains its pre-existing 63-character failure in unchanged
+PARTS-CHECKLIST.md. These are bounded implementation checks, not complete
+schematic or hardware acceptance.
+Native ERC and the exported all-severity report both retain 125 findings
+(123 errors, two warnings). Comparison by sheet, severity, violation type
+and item identity found no additions or removals against the microSD
+checkpoint. This is preservation of the existing backlog, not ERC closure.
+
+The RA8P1 datasheet R01DS0439EJ0130, Table 2.2, specifies 1.65..1.95V for
+VCC18_MIPI. Table 2.44 specifies a minimum rise gradient of 8.4us/V for
+both MIPI supplies. Table 2.39 lists CSI high-speed VCC18_MIPI current up
+to 4.1mA at 105C, two lanes and 720Mbps; this is not a startup-current limit.
+Use the official [RA8P1 datasheet][cms13-ra] and retain the selected MCU's
+temperature grade. AVCC_MIPI remains a separate 3.3V supply requirement.
+The RA8P1 Quick Design Guide Rev. 1.10, Table 1, additionally requires
+a local 100nF bypass between MCU R2 and VSS_MIPI. The regulator's SET
+capacitor does not provide this supply bypass.
+
+C111 implements that local bypass using TDK C1608X7R1H104K080AA,
+100nF, +/-10%, 50V X7R. Its native description and selection basis identify
+R2 and QDG Table 1. Installed capacitance and PDN qualification remain
+open. Its explicitly historical September 5 sourcing snapshot is retained
+from the existing TDK selection; availability must be rechecked before
+purchase. This is separate from C110, the regulator SET capacitor.
+
+The proposed LT3042 connection follows [ADI Rev. C][cms13-adi]: IN pins
+1/2 and EN/UV pin 3 follow the main rail; PGFB pin 6 connects to IN to
+disable fast start. PG pin 4 is unused. OUTS pin 9 connects to OUT pin 10;
+GND pin 8 and exposed pad 11 connect to ground. Grounded ILIM pin 5
+retains internal current limiting, not a small branch-current allocation.
+SET pin 7 uses a resistor and capacitor to ground. Output capacitance
+must remain at least 4.7uF effective. Reverse-output protection supports
+retained output during input collapse; PGFB tied to IN does not preserve
+negative-input protection. Do not claim complete board reverse protection.
+
+Proposed passive selections, verified at DigiKey on 2026-09-12:
+
+| Function | Exact MPN | Stock | USD 1 / 10 / 100 |
+|---|---|---:|---|
+| SET resistor, 18k, 0.1%, 25ppm/C | [RT0603BRD0718KL][cms13-rset-stock] | 45,015 | 0.10 / 0.067 / 0.0559 |
+| Permanent bleed, 1k, 1%, 100ppm/C | [RC0603FR-071KL][cms13-bleed-stock] | 4,828,305 | 0.10 / 0.025 / 0.0122 |
+| SET capacitor, 100nF, 5%, C0G, 50V | [GRM31C5C1H104JA01K][cms13-cset-stock] | 68,175 | 0.52 / 0.316 / 0.2112 |
+| Input and output, one each, 22uF, 20%, X7R, 16V | [CL32B226MOJNNNE][cms13-cio-stock] | 162,494 | 0.52 / 0.318 / 0.2122 |
+
+All four distributor listings indicated Active. Primary specifications:
+[YAGEO SET resistor][cms13-rset], [YAGEO bleed resistor][cms13-bleed],
+[Murata SET capacitor][cms13-cset] and [Samsung input/output capacitor][cms13-cio].
+These parts are now present in the native regulator circuit as R95, R94,
+C110 and C108/C109 respectively, and are included in the refreshed BOM.
+
+The Samsung part is an existing native donor. Its conditional effective
+capacitance screen is 22uF * 0.8 initial tolerance * 0.85 temperature *
+0.6 residual retention = 8.976uF per part, exceeding 4.7uF. The remaining
+bias/aging/etc. retention must be at least 31.4172% after initial tolerance
+and temperature. The 60% allocation requires verification; manufacturer
+typical curves do not guarantee this combined installed-part bound. One
+10uF, 10% donor under the same screen gives only 4.59uF and is insufficient.
+
+The following tolerance screen uses a 100C resistor excursion and a
+100nA combined SET leakage allocation. ADI's 98..102uA SET-current and
+2mV offset limits apply under specified settled operating conditions,
+including 2V < VIN < 20V and at least 1mA load. The bleed satisfies that
+load condition at
+the minimum operating rail. These limits do not bound initial startup.
+
+```python
+rmin = 18000 * .999 * (1 - 25e-6 * 100)
+rmax = 18000 * 1.001 * (1 + 25e-6 * 100)
+vmin = (98e-6 - 100e-9) * rmin - .002
+vmax = (102e-6 + 100e-9) * rmax + .002
+bleed_min = 1.65 / (1000 * 1.01 * 1.01)
+assert 1.65 < vmin < vmax < 1.95
+assert bleed_min > 1e-3
+print('CMS-013 modeled DC V / minimum bleed A', vmin, vmax, bleed_min)
+
+# Conditional SET charging model; not an instantaneous OUT-slew guarantee.
+cmin = 100e-9 * .95 * (1 - 30e-6 * 100)
+set_slope = (102e-6 + 100e-9) / cmin / 1e6
+assert set_slope < 1 / 8.4
+print('conditional CSET minimum F / SET slope V/us', cmin, set_slope)
+
+cio_min = 22e-6 * .8 * .85 * .6
+required_retention = 4.7e-6 / (22e-6 * .8 * .85)
+assert cio_min > 4.7e-6
+print('conditional input/output C minimum F / retention floor',
+      cio_min, required_retention)
+
+# Separate no-bias cold endpoint screen; not a combined lifetime bound.
+cold_min = 100e-9 * .95 * (1 - .0024)
+cold_max = 100e-9 * 1.05 * (1 + .0058)
+assert cold_min > cmin
+print('CSET -55C endpoint minimum / maximum F', cold_min, cold_max)
+```
+
+Executed results: 1.754036706..1.846236894V, minimum bleed 1.617488482mA,
+conditional CSET minimum 94.715nF and SET slope 0.001077971V/us.
+The slope calculation is a charging model, not guaranteed OUT behavior.
+Murata's coefficient explicitly covers 25..125C. Its Jan. 10, 2025 reference
+sheet, Table A on page 6, separately specifies cold-endpoint changes:
+-55C -0.24..+0.58%, -30C -0.17..+0.40%, and -10C -0.11..+0.25%.
+With initial tolerance, the -55C endpoint is 94.772..105.609nF. Page 3
+specifies no bias, five minutes per temperature stage and less than 1Vrms
+measurement; separate drift and environmental allowances remain. Do not
+call these endpoint tests an arbitrary combined lifetime bound. Resolve
+actual output startup/restart behavior, effective output capacitance,
+rail discharge and MCU supply sequencing before claiming acceptance.
+The 100nA leakage allowance requires implementation evidence. Account for
+regulator quiescent current and permanent bleed in the system power budget.
+
+### Steady CSI branch allocation
+
+Allocate 20mA additional +3V3_MCU current for U23 and its loads. This
+raises the [SD-003 subtotal](microsd_power_interface.md#sd-003-main-rail-budget-and-reproducible-screens)
+from 2.075A to 2.095A. The 2.090A alternative applies only after the
+existing 5mA radio-support overlap is established. These are planning
+allocations, not complete system maxima or startup-current bounds.
+
+[ADI Rev. C][cms13-adi] specifies full-temperature ground-current maxima
+of 3.5mA at 1mA load, 5mA at 50mA, 7mA at 100mA and 13mA at 200mA.
+Note 6 identifies dropout, VIN = VOUT, as the worst ground-current
+condition; the ground-current figure excludes SET and ILIM currents.
+Use 13mA as a deliberately conservative engineering allocation here,
+not as a newly guaranteed interpolated row at the approximately 6mA load.
+Allocate another 100uA for auxiliary currents, including ILIM, EN/UV,
+PGFB and leakage. This allowance requires verification: the nominal ILIM
+ratio and typical PGFB current do not prove a combined maximum.
+
+The [RA8P1 Table 2.39][cms13-ra] CSI HS condition uses at most 4.0mA
+VCC18_MIPI current at 95C, two lanes and 720Mbps. The screen below uses
+4.1mA from the 105C row conservatively, without expanding the selected
+MCU's temperature grade. AVCC_MIPI current remains within the existing
+750mA MCU allocation; it is not added again. No DSI/all-mode current
+claim follows from this CSI screen. Sensor power is still separate.
+
+```python
+from math import isclose
+bleed_max = 1.95 / (1000 * .99 * .99)
+branch_screen = .0041 + bleed_max + .013 + .000102 + .000100
+branch_allocation = .020
+assert branch_screen < branch_allocation
+total = 2.075 + branch_allocation
+assert isclose(total, 2.095)
+assert isclose(total - .005, 2.090)
+vmain_hi = 3.393012496197
+source_current = vmain_hi * total / .75 / 3.2
+converter_loss = vmain_hi * total * (1/.75 - 1)
+assert 2.961 < source_current < 2.962
+assert 2.369 < converter_loss < 2.370
+print('bleed / branch screen A', bleed_max, branch_screen)
+print('main allocation / source screen A / converter loss W',
+      total, source_current, converter_loss)
+```
+
+Executed screen: 1.989592899mA bleed, 19.291592899mA branch,
+2.095A main allocation, 2.961817158A input and 2.369453727W converter
+loss at the stated 3.2V input and assumed 75% efficiency. Source support,
+inductor/current and thermal acceptance remain open. Charging C108/C109
+and downstream capacitance, regulator startup behavior and other loads
+are not bounded by this steady-state arithmetic.
+
+[cms13-ra]: https://www.renesas.com/en/document/dst/ra8p1-group-datasheet
+[cms13-adi]: https://www.analog.com/media/en/technical-documentation/data-sheets/lt3042.pdf
+[cms13-rset-stock]: https://www.digikey.com/en/products/detail/yageo/RT0603BRD0718KL/1072301
+[cms13-bleed-stock]: https://www.digikey.com/en/products/detail/yageo/RC0603FR-071KL/726843
+[cms13-cset-stock]: https://www.digikey.com/en/products/detail/murata-electronics/GRM31C5C1H104JA01K/2548138
+[cms13-rset]: https://yageogroup.com/component-documentation/download/specsheet/RT0603BRD0718KL
+[cms13-bleed]: https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-071KL
+[cms13-cset]: https://www.mouser.com/datasheet/3/76/1/GRM31C5C1H104JA01-01A.pdf
+[cms13-cio-stock]: https://www.digikey.com/en/products/detail/samsung-electro-mechanics/CL32B226MOJNNNE/3891481
+[cms13-cio]: https://product.samsungsem.com/mlcc/CL32B226MOJNNN.do

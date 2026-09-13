@@ -6527,7 +6527,7 @@
 	)
 	(text "USB-001: R6 USBHS current-reference resistor\nRenesas QDG Table 2, p.7: 2.2 kohm +/-1%.\nRmin = 2200*(1-0.01) = 2178 ohm\nRmax = 2200*(1+0.01) = 2222 ohm\nInitial tolerance only; not a derived PHY current.\nFull basis + Python check: design/usb_interface.md"
 		(exclude_from_sim no)
-		(at 139.7 228.6 0)
+		(at 145.796 241.3 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6593,7 +6593,7 @@
 		)
 		(uuid "ad841f15-915f-4a17-bb70-fe384e5696cf")
 	)
-	(text "MIPI unused: AVCC_MIPI to VCC; VSS_MIPI to GND.\nLeave VCC18_MIPI and all six D-PHY lanes open.\nFirmware: MSTPCRC.MSTPC10=1 and MSTPC17=1.\nRA8P1 HUM Rev.1.30, section 21.4, p.862."
+	(text "CMS-013: R2 VCC18_MIPI = +1V8_MIPI from U23.\nC111: 100 nF local bypass to VSS_MIPI/GND\n(RA8P1 QDG Rev.1.10, Table 1); C39 bypasses AVCC_MIPI.\nCamera lanes and operating sequence remain pending.\nKeep CSI/DSI stopped until integration is qualified."
 		(exclude_from_sim no)
 		(at 66.04 235.966 0)
 		(effects
@@ -6619,6 +6619,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "43657015-02bd-4df0-b430-30b93e3f9350")
+	)
+	(junction
+		(at 111.76 213.36)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "6134b36e-fe04-483f-935b-db635ceee34e")
 	)
 	(junction
 		(at 266.7 213.36)
@@ -6649,10 +6655,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "f827aecd-d497-4355-860d-f80cdec74232")
-	)
-	(no_connect
-		(at 81.28 213.36)
-		(uuid "0742d31c-3912-4617-92ae-77a8a8f5d4f3")
 	)
 	(no_connect
 		(at 81.28 205.74)
@@ -7310,6 +7312,16 @@
 	)
 	(wire
 		(pts
+			(xy 81.28 213.36) (xy 111.76 213.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8d6c7101-0d61-4759-8503-9524d0f52c39")
+	)
+	(wire
+		(pts
 			(xy 167.64 48.26) (xy 182.88 48.26)
 		)
 		(stroke
@@ -7707,6 +7719,16 @@
 			(type default)
 		)
 		(uuid "de7fddde-1a0a-494a-891a-79655d0028ec")
+	)
+	(wire
+		(pts
+			(xy 111.76 213.36) (xy 111.76 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e035bb15-18a0-40a4-a982-e7d88664fd17")
 	)
 	(wire
 		(pts
@@ -10019,6 +10041,84 @@
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
 					(reference "U1")
 					(unit 5)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3V3")
+		(at 111.76 213.36 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "1f19f38c-5181-40b8-882b-9e9a88f9b670")
+		(property "Reference" "#PWR0219"
+			(at 111.76 217.17 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+1V8_MIPI"
+			(at 111.76 208.28 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 111.76 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 111.76 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 111.76 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "58ebf52b-8438-4e5e-a1c6-b457dcaadb84")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
+					(reference "#PWR0219")
+					(unit 1)
 				)
 			)
 		)
@@ -17132,6 +17232,84 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 111.76 223.52 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "c029a402-f6ef-4843-87a5-44d95837927f")
+		(property "Reference" "#PWR0220"
+			(at 111.76 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 111.76 228.6 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 111.76 223.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 111.76 223.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 111.76 223.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "0b321b22-2673-4829-bebd-e1c13f41bcba")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
+					(reference "#PWR0220")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:+3V3")
 		(at 266.7 190.5 0)
 		(unit 1)
@@ -19813,6 +19991,165 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
 					(reference "#PWR041")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 111.76 220.98 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "e3d71dd1-8d31-458f-b6b5-2565c6d36024")
+		(property "Reference" "C111"
+			(at 114.3 219.7162 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 114.3 222.2562 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 111.76 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
+			(at 111.76 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "TDK C1608X7R1H104K080AA; 100 nF +/-10%, 50 V X7R. Local VCC18_MIPI R2 bypass per RA8P1 QDG Rev.1.10 Table 1; CMS-013. Installed capacitance and PDN qualification remain open."
+			(at 111.76 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "445-1314-1-ND"
+			(at 111.76 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
+			(at 111.76 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "TDK"
+			(at 111.76 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
+			(at 111.76 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected - installed capacitance and PDN qualification open; historical sourcing snapshot, recheck before purchase"
+			(at 111.76 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "CMS-013: RA8P1 QDG Rev.1.10 Table 1 specifies 100 nF local VCC18_MIPI R2 bypass to VSS_MIPI. 50 V X7R +/-10%; local 1.8 V rail bypass, separate from U23 SET capacitor. Installed capacitance and PDN qualification remain open."
+			(at 111.76 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-05: TDK Production; DigiKey Active, 374087 in stock, 24 weeks; USD 1:0.11, 10:0.06, 100:0.0359."
+			(at 111.76 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "34e61190-5010-4b0e-8d0f-cdbb3537dd37")
+		)
+		(pin "2"
+			(uuid "3542260e-40e0-43e4-bb11-ab3c970899f1")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/33c39500-46ef-4bfe-91bb-bf0f803ca6e5"
+					(reference "C111")
 					(unit 1)
 				)
 			)
