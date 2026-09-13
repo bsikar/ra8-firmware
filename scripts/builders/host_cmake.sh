@@ -20,7 +20,7 @@ usage() {
 
 _write_fake_compiler() {
   local path="$1" status="$2"
-  printf '#!/usr/bin/env bash\nexit %s\n' "$status" >"$path"
+  printf '#!/usr/bin/env bash\nwhile IFS= read -r _line; do :; done\nexit %s\n' "$status" >"$path"
   chmod 0755 "$path"
 }
 
@@ -67,6 +67,7 @@ _selftest_caches() {
 selftest() {
   local scratch good_cc good_cxx bad
   scratch="$(mktemp -d "${TMPDIR:-/tmp}/ra8-host-cmake.XXXXXXXX")"
+  scratch="$(cd "$scratch" && pwd -P)"
   HOST_CMAKE_SELFTEST_SCRATCH="$scratch"
   trap 'rm -rf -- "${HOST_CMAKE_SELFTEST_SCRATCH:?}"' EXIT
   good_cc="$scratch/clang-99"
