@@ -409,6 +409,8 @@ def build_specs() -> list[ToolSpec]:
         _spec(args, "hadolint", "HADOLINT_VERSION", MODE_EXACT),
         # `go --version` is not a thing: the toolchain spells it `go version`.
         ToolSpec("go", _arg(args, "GO_VERSION"), MODE_EXACT, "ARG GO_VERSION", ("version",)),
+        # `zig --version` is not a thing: the toolchain spells it `zig version`.
+        ToolSpec("zig", _arg(args, "ZIG_VERSION"), MODE_EXACT, "ARG ZIG_VERSION", ("version",)),
         ToolSpec(f"clang-format-{cf}", cf, MODE_MAJOR, f"clang-format-{cf}"),
         ToolSpec(f"clang-tidy-{ct}", ct, MODE_MAJOR, f"clang-tools-{ct}"),
         # gcc-14 is the second host-tool compiler arm (#356); the tools-build
@@ -633,6 +635,8 @@ def _selftest_cases() -> list[tuple[ToolSpec, bool]]:
         (ToolSpec("ra8_fake_major19", "18", MODE_MAJOR, "selftest"), False),
         (ToolSpec("ra8_fake_gcovr70", "7.0", MODE_EXACT, "selftest"), True),
         (ToolSpec("ra8_fake_gcovr86", "7.0", MODE_EXACT, "selftest"), False),
+        (ToolSpec("ra8_fake_zig_match", "0.14.1", MODE_EXACT, "selftest", ("version",)), True),
+        (ToolSpec("ra8_fake_zig_mismatch", "0.14.1", MODE_EXACT, "selftest", ("version",)), False),
         (ToolSpec("ra8_fake_absent", "1.0.0", MODE_EXACT, "selftest"), False),
     ]
 
@@ -652,6 +656,8 @@ def _run_selftest_cases() -> list[str]:
         _write_fake(tmp_dir, "ra8_fake_major19", "Ubuntu LLVM version 19.1.0")
         _write_fake(tmp_dir, "ra8_fake_gcovr70", "gcovr 7.0")
         _write_fake(tmp_dir, "ra8_fake_gcovr86", "gcovr 8.6")
+        _write_fake(tmp_dir, "ra8_fake_zig_match", "0.14.1")
+        _write_fake(tmp_dir, "ra8_fake_zig_mismatch", "0.13.0")
         os.environ["PATH"] = f"{tmp_dir}{os.pathsep}{saved_path}"
         try:
             for spec, want_pass in _selftest_cases():

@@ -92,7 +92,7 @@ if [[ "$-" == *p* ]]; then
   RELEASE_TMP_ROOT_IDENTITY=""
   RELEASE_TMP_ALLOCATION_PENDING=0
   RELEASE_TMP_CHECKPOINT_MODE=""
-  RELEASE_SELFTEST_RAW_SHA256="ca44963575fff3ac3e12bfbf2adca1413a39d565d60830ffc50f1f900cfa5eae"
+  RELEASE_SELFTEST_RAW_SHA256="b37e09ffed1540e744469bbc8ca285850ada7b99bd6c15abad96c0eec6fc1429"
 
   # Read `ARG <name>=<value>` from the Dockerfile. Fails loudly (non-empty guard
   # by the caller) if the pin is absent, so a renamed ARG cannot silently skip a
@@ -493,13 +493,45 @@ if [[ "$-" == *p* ]]; then
     }
   )
 
+  install_zig() (
+    local version="$1" arch sha tmp
+    case "$(uname -m)" in
+      x86_64)
+        arch=x86_64
+        sha="$(dockerfile_arg ZIG_SHA256_X86_64)"
+        ;;
+      aarch64)
+        arch=aarch64
+        sha="$(dockerfile_arg ZIG_SHA256_AARCH64)"
+        ;;
+      *)
+        echo "error: unsupported Zig architecture: $(uname -m)" >&2
+        return 1
+        ;;
+    esac
+    release_tmp_begin
+    tmp="$RELEASE_TMP_DIR"
+    download_verified \
+      "https://ziglang.org/download/${version}/zig-${arch}-linux-${version}.tar.xz" \
+      "${sha}" "${tmp}/zig.tar.xz"
+    as_root rm -rf /usr/local/zig
+    as_root mkdir -p /usr/local/zig
+    as_root tar -xf "${tmp}/zig.tar.xz" --strip-components=1 -C /usr/local/zig
+    as_root ln -sf /usr/local/zig/zig "${BIN_DIR}/zig"
+    test -x "${BIN_DIR}/zig"
+    [ "$(zig version 2>/dev/null)" = "${version}" ] || {
+      echo "error: installed zig version does not match pin ${version}" >&2
+      return 1
+    }
+  )
+
   require_release_digests() {
     local name value
     for name in SHELLCHECK_SHA256_X86_64 SHELLCHECK_SHA256_AARCH64 \
       SHFMT_SHA256_AMD64 SHFMT_SHA256_ARM64 ACTIONLINT_SHA256_AMD64 \
       ACTIONLINT_SHA256_ARM64 HADOLINT_SHA256_X86_64 HADOLINT_SHA256_ARM64 \
       JUST_SHA256_X86_64 JUST_SHA256_AARCH64 DOXYGEN_SHA256_LINUX_X64 \
-      GO_SHA256_AMD64 GO_SHA256_ARM64; do
+      GO_SHA256_AMD64 GO_SHA256_ARM64 ZIG_SHA256_X86_64 ZIG_SHA256_AARCH64; do
       value="$(dockerfile_arg "${name}")"
       [[ "${value}" =~ ^[0-9a-f]{64}$ ]] || {
         echo "error: ${name} is not a sha256 pin in the Dockerfile" >&2
@@ -525,7 +557,7 @@ if [[ "$-" == *p* ]]; then
   # read from their native or project authorities. Split out of main() so each
   install_pinned_tools() {
     local shellcheck_v="$1" shfmt_v="$2" actionlint_v="$3" hadolint_v="$4"
-    local just_v="$5" doxygen_v="$6" go_v="$7"
+    local just_v="$5" doxygen_v="$6" go_v="$7" zig_v="$8"
     local just_bin="" just_installed_v=""
 
     ensure_release_tool shellcheck "${shellcheck_v}" \
@@ -545,6 +577,8 @@ if [[ "$-" == *p* ]]; then
       "$(doxygen --version 2>/dev/null | awk '{print $1}')" install_doxygen
     ensure_release_tool go "${go_v}" \
       "$(go version 2>/dev/null | awk '{print $3}' | sed 's/^go//')" install_go
+    ensure_release_tool zig "${zig_v}" \
+      "$(zig version 2>/dev/null)" install_zig
   }
 
   # Synchronize Python-managed gate tools into the root-owned service
@@ -654,7 +688,7 @@ if [[ "$-" == *p* ]]; then
       exit 1
     }
 
-    local shellcheck_v shfmt_v actionlint_v hadolint_v just_v doxygen_v go_v
+    local shellcheck_v shfmt_v actionlint_v hadolint_v just_v doxygen_v go_v zig_v
     local python_venv
     shellcheck_v="$(dockerfile_arg SHELLCHECK_VERSION)"
     shfmt_v="$(dockerfile_arg SHFMT_VERSION)"
@@ -664,11 +698,13 @@ if [[ "$-" == *p* ]]; then
     python_venv="$(dockerfile_arg PYTHON_TOOL_VENV)"
     doxygen_v="$(dockerfile_arg DOXYGEN_VERSION)"
     go_v="$(dockerfile_arg GO_VERSION)"
+    zig_v="$(dockerfile_arg ZIG_VERSION)"
 
     for pair in "SHELLCHECK_VERSION=${shellcheck_v}" "SHFMT_VERSION=${shfmt_v}" \
       "ACTIONLINT_VERSION=${actionlint_v}" "HADOLINT_VERSION=${hadolint_v}" \
       "JUST_VERSION=${just_v}" "PYTHON_TOOL_VENV=${python_venv}" \
-      "DOXYGEN_VERSION=${doxygen_v}" "GO_VERSION=${go_v}"; do
+      "DOXYGEN_VERSION=${doxygen_v}" "GO_VERSION=${go_v}" \
+      "ZIG_VERSION=${zig_v}"; do
       [ -n "${pair#*=}" ] || {
         echo "error: could not read ${pair%%=*} from the Dockerfile" >&2
         exit 1
@@ -679,7 +715,7 @@ if [[ "$-" == *p* ]]; then
     if [ "${check_only}" -eq 0 ]; then
       echo "provisioning dev-box host tools from ${DOCKERFILE#"${ROOT}"/} pins:"
       install_pinned_tools "${shellcheck_v}" "${shfmt_v}" "${actionlint_v}" \
-        "${hadolint_v}" "${just_v}" "${doxygen_v}" "${go_v}"
+        "${hadolint_v}" "${just_v}" "${doxygen_v}" "${go_v}" "${zig_v}"
       install_python_tools "${python_venv}"
     else
       if uv_cache_check; then
