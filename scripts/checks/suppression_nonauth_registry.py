@@ -20,6 +20,7 @@ _GROUPS = (
         "cli-default",
         (
             "checks/check_init_order_freshness.py:GENERATOR",
+            "checks/check_enum_underlying_casts.py:DEFAULT_JOBS",
             "checks/check_python_lock_policy.py:BOOTSTRAP",
             "checks/check_runner_clock.py:K_API_BASE",
             "checks/check_runner_clock.py:K_DEFAULT_RUNS",
@@ -53,6 +54,8 @@ _GROUPS = (
             "checks/check_build_shard_union.py:REPO_ROOT",
             "checks/check_c23_headers.py:REPO_ROOT",
             "checks/check_c23_patterns.py:REPO_ROOT",
+            "checks/check_enum_underlying_casts.py:REPO_ROOT",
+            "checks/check_enum_underlying_casts.py:RA8_PIN_HEADER",
             "checks/check_c6_integration.py:REPO_ROOT",
             "checks/check_c6_patch_upstream.py:REPO_ROOT",
             "checks/check_c6_pin_config.py:REPO_ROOT",
@@ -185,6 +188,7 @@ _GROUPS = (
             "checks/check_bench_lock.py:TTY_OPEN_RE",
             "checks/check_c23_headers.py:_ENUM_RE",
             "checks/check_c23_headers.py:_PRAGMA_ONCE_RE",
+            "checks/check_enum_underlying_casts.py:INVENTORY_RE",
             "checks/check_c23_patterns.py:_BARE_DEFINE_RE",
             "checks/check_c23_patterns.py:_RULES",
             "checks/check_c23_patterns.py:_STATIC_ASSERT_RE",
@@ -401,6 +405,7 @@ _GROUPS = (
         (
             "checks/annot_loopbound.py:_RULE",
             "checks/check_devcontainer.py:HADOLINT_VERSION",
+            "checks/check_enum_underlying_casts.py:DIAGNOSTIC_NAME",
             "checks/check_hum_register_map.py:RULES",
             "checks/check_init_order_freshness.py:REMEDIATION",
             "checks/check_magic_numbers.py:OPT_OUT",
