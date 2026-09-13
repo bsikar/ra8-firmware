@@ -260,3 +260,5 @@ tests/fuzz/corpus/**
 /apps/**/build/
 /apps/**/build-*/
 /.compile_commands_scratch/
+# Codegraph indexes are local workspace artifacts, not firmware source.
+/.codegraph/
