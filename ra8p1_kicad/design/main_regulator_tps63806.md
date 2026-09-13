@@ -1,5 +1,13 @@
 # PWR-006: TPS63806 main-regulator replacement design basis
 
+Current load-accounting update: [CMS-013](camera_storage_interfaces.md#steady-csi-branch-allocation)
+adds a 20mA steady CSI host-supply allocation to the microSD subtotal,
+for 2.095A on +3V3_MCU. At the stated upper rail voltage, 3.2V input
+and assumed 75% efficiency, the screen is 2.961817158A input and
+2.369453727W converter loss. Source/current/thermal qualification remains
+open; this is not a complete camera/audio/display system budget. The
+migration counts and calculations below retain their checkpoint scope.
+
 Revision 2 native migration checkpoint, 2026-09-08. Tracking: [power #825](https://github.com/bsikar/ra8-firmware/issues/825),
 [architecture #823](https://github.com/bsikar/ra8-firmware/issues/823), and
 [SDRAM voltage compatibility #846](https://github.com/bsikar/ra8-firmware/issues/846).

@@ -166,6 +166,162 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Device:C_Small"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0.254)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "C"
+				(at 0.254 1.778 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "C_Small"
+				(at 0.254 -2.032 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Unpolarized capacitor, small symbol"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "capacitor cap"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "C_*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "C_Small_0_1"
+				(polyline
+					(pts
+						(xy -1.524 0.508) (xy 1.524 0.508)
+					)
+					(stroke
+						(width 0.3048)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.524 -0.508) (xy 1.524 -0.508)
+					)
+					(stroke
+						(width 0.3302)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "C_Small_1_1"
+				(pin passive line
+					(at 0 2.54 270)
+					(length 2.032)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -2.54 90)
+					(length 2.032)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Device:L"
 			(pin_numbers
 				(hide yes)
@@ -334,6 +490,472 @@
 						)
 					)
 					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "Device:R"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "R"
+				(at 2.032 0 90)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "R"
+				(at 0 0 90)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at -1.778 0 90)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Resistor"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "R res resistor"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "R_*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "R_0_1"
+				(rectangle
+					(start -1.016 -2.54)
+					(end 1.016 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "R_1_1"
+				(pin passive line
+					(at 0 3.81 270)
+					(length 1.27)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -3.81 90)
+					(length 1.27)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "Power_Devices:LT3042IMSE#PBF"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 10.16 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "LT3042IMSE#PBF"
+				(at 0 7.62 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "Package_SO:MSOP-10-1EP_3x3mm_P0.5mm_EP1.68x1.88mm"
+				(at 0 8.255 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" "https://www.analog.com/media/en/technical-documentation/data-sheets/lt3042.pdf"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "200mA, Adjustable, Ultralow Noise, Ultrahigh PSRR RF Linear Regulator, MSOP-10"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Manufacturer_Name" "Analog Devices"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Manufacturer_Part_Number" "LT3042IMSE#PBF"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Selection_Basis" "CMS-013: adjustable MIPI 1.8V supply; 200mA I-grade MSOP. ADI Rev C pin map and reverse-output protection. SET ramp model, effective capacitance and rail sequencing require qualification."
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Sourcing_Snapshot" "2026-09-12 Mouser: 10189 stock, 23wk, USD8.29/6.42/5.43 at qty1/10/100, tube. DigiKey: Active, zero stock, 19wk. Unreserved; recheck before purchase."
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Analog-Devices/LT3042IMSEPBF?qs=oahfZPh6IAKNLbWsEo0jgA%3D%3D"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Mouser Part Number" "584-LT3042IMSE#PBF"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "linear voltage regulator low-noise"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "MSOP*1EP*3x3mm*P0.5mm*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "LT3042IMSE#PBF_0_1"
+				(rectangle
+					(start -7.62 5.08)
+					(end 7.62 -7.62)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "LT3042IMSE#PBF_1_1"
+				(pin input line
+					(at -12.7 0 0)
+					(length 5.08)
+					(name "EN/UV"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin open_collector line
+					(at 12.7 -5.08 180)
+					(length 5.08)
+					(name "PG"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -12.7 -2.54 0)
+					(length 5.08)
+					(name "ILIM"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 12.7 -2.54 180)
+					(length 5.08)
+					(name "PGFB"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -12.7 -5.08 0)
+					(length 5.08)
+					(name "SET"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "7"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 12.7 0 180)
+					(length 5.08)
+					(name "OUTS"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "9"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_out line
+					(at 12.7 2.54 180)
+					(length 5.08)
+					(name "OUT"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "10"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -12.7 2.54 0)
+					(length 5.08)
+					(name "IN"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "[1,2]"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 -12.7 90)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "[8,11]"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -6376,6 +6998,17 @@
 		)
 		(uuid "2b19cc9f-41f2-4e39-b95a-741f3a9a7e45")
 	)
+	(text "CMS-013: LT3042 MIPI host 1.8 V supply - conditional design screens\nR95: 18k, 0.1%, 25ppm/C; ISET 98..102uA, offset +/-2mV, leakage allocation 100nA.\nModeled DC: 1.754036706..1.846236894 V; RA8P1 range 1.65..1.95 V.\nR94 1k permanent load: minimum 1.617488482mA; maintains >=1mA DC test load.\nC110 100nF C0G: conditional minimum 94.715nF; SET slope 0.001077971V/us.\nSET charging model is not a guaranteed OUT ramp; RA8P1 minimum rise 8.4us/V.\nC108/C109: 22uF * 0.8 * 0.85 * 0.6 = 8.976uF each; >=4.7uF required.\n60% retained capacitance and 100nA leakage allocations require verification.\nEN and PGFB follow IN; fast start disabled. ILIM grounded; PG unused.\nADI LT3042 Rev C; RA8P1 datasheet Tables 2.2, 2.39, 2.44. Python checked.\nSee design/camera_storage_interfaces.md CMS-013 for sources and full conditions.\nStartup/restart, rail sequencing/discharge, installed capacitance and PDN remain open."
+		(exclude_from_sim no)
+		(at 38.608 254.508 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "37cb4486-4f38-421d-9da1-9fdbe70e77be")
+	)
 	(text "VREFH / VREFL"
 		(exclude_from_sim no)
 		(at 270.51 196.85 0)
@@ -6508,6 +7141,17 @@
 		)
 		(uuid "b89f39bf-7c1f-4cb7-80f0-9691ba940544")
 	)
+	(text "CMS-013: +20mA steady CSI branch planning allocation\n4.1mA PHY + 1.989593mA bleed + 13mA allocated GND\n+ 0.102mA SET + 0.100mA auxiliary = 19.291593mA.\n13mA is an engineering envelope, not an interpolated guarantee.\nAuxiliary allowance requires verification; startup/inrush excluded.\nAVCC_MIPI remains within existing MCU allocation.\nMain subtotal: 2.075 + 0.020 = 2.095A; full system budget pending.\nAt 3.393012496V, 3.2V input and assumed 75% efficiency:\ninput 2.961817158A; converter loss 2.369453727W.\nSource, current and thermal acceptance remain open.\nSources, conditions and Python: design/camera_storage_interfaces.md."
+		(exclude_from_sim no)
+		(at 151.13 254.508 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "c8cfdf5d-7a65-4f1e-8543-9fd7681842e7")
+	)
 	(text "VCC_10"
 		(exclude_from_sim no)
 		(at 331.47 100.33 0)
@@ -6541,7 +7185,7 @@
 		)
 		(uuid "ee8f7319-424b-4d62-b082-831164195784")
 	)
-	(text "VCC and VCC2 use 3.3 V. All returns use one board ground plane.\nVBATT follows the main rail; no separate backup-cell supply.\nAnalog references use AVCC0 / AVSS0. Place bypasses at named ball pairs.\nUSB/MIPI supplies remain on the interface sheet and are not yet wired.\nHUM Rev.1.30: Table 69.2 p.4042; unused references: section 21.4 pp.861-862.\nThis is an electrical draft; capacitor MPN qualification remains open."
+	(text "VCC and VCC2 use 3.3 V. All returns use one board ground plane.\nVBATT follows the main rail; no separate backup-cell supply.\nAnalog references use AVCC0 / AVSS0. Place bypasses at named ball pairs.\nUSB and MIPI supply pins and local bypasses are on the interface sheet.\nU23 supplies VCC18_MIPI; camera lanes and sequencing remain pending.\nSee CMS-013 and design/power_decoupling.md for source-backed conditions.\nThis is an electrical draft; installed capacitor and PDN qualification remain open."
 		(exclude_from_sim no)
 		(at 147.32 223.52 0)
 		(effects
@@ -6673,10 +7317,22 @@
 		(uuid "4245a089-6e4e-498e-8f21-a11587912c0a")
 	)
 	(junction
+		(at 87.63 218.44)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "42bc428c-a541-4c85-8786-ade94ae3a2e9")
+	)
+	(junction
 		(at 198.12 91.44)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "49d3aecb-2156-4658-93b9-18558d463172")
+	)
+	(junction
+		(at 49.53 218.44)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "5380a0b1-9350-442a-acc9-497fee95502d")
 	)
 	(junction
 		(at 101.6 71.12)
@@ -6691,10 +7347,28 @@
 		(uuid "5a0b198f-6c4a-40db-867c-be2290ff1cb0")
 	)
 	(junction
+		(at 62.23 218.44)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "5d126e2e-e4d8-4d20-bebf-b1eff089a002")
+	)
+	(junction
+		(at 62.23 232.41)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "5da794a0-a759-45ed-af6a-5058d55c65b4")
+	)
+	(junction
 		(at 243.84 33.02)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "603df81a-f751-4db1-9204-bda389cb8235")
+	)
+	(junction
+		(at 113.03 210.82)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "6212337d-bf4e-4a52-ab2b-a9021cf25a22")
 	)
 	(junction
 		(at 43.18 73.66)
@@ -6882,6 +7556,10 @@
 		(color 0 0 0 0)
 		(uuid "fc89c296-98de-40b5-bc06-c61369ce62ec")
 	)
+	(no_connect
+		(at 87.63 226.06)
+		(uuid "83b5ddda-2b15-417b-8103-e4ac5b54efa8")
+	)
 	(wire
 		(pts
 			(xy 198.12 71.12) (xy 243.84 71.12)
@@ -6934,6 +7612,16 @@
 	)
 	(wire
 		(pts
+			(xy 113.03 210.82) (xy 87.63 210.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "05e8ea1d-d679-48eb-8305-874cff5993a1")
+	)
+	(wire
+		(pts
 			(xy 88.9 60.96) (xy 101.6 60.96)
 		)
 		(stroke
@@ -6941,6 +7629,16 @@
 			(type default)
 		)
 		(uuid "0a5f0316-09a3-4429-b9e8-8cc28b097621")
+	)
+	(wire
+		(pts
+			(xy 87.63 210.82) (xy 87.63 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0ab561a4-2105-44f5-8b9c-50c8096aec4c")
 	)
 	(wire
 		(pts
@@ -6971,6 +7669,16 @@
 			(type default)
 		)
 		(uuid "10042a5e-9417-46be-96e9-5f86472067a2")
+	)
+	(wire
+		(pts
+			(xy 57.15 223.52) (xy 62.23 223.52)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "10866af8-98d4-4cd8-82d3-cc33a5b0667a")
 	)
 	(wire
 		(pts
@@ -7234,6 +7942,16 @@
 	)
 	(wire
 		(pts
+			(xy 39.37 222.25) (xy 39.37 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3a3ae250-9ba9-44d9-b563-528efd683f56")
+	)
+	(wire
+		(pts
 			(xy 101.6 60.96) (xy 101.6 63.5)
 		)
 		(stroke
@@ -7284,6 +8002,16 @@
 	)
 	(wire
 		(pts
+			(xy 113.03 222.25) (xy 113.03 210.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "41ee5203-2319-4a50-8402-25aecd19caa0")
+	)
+	(wire
+		(pts
 			(xy 152.4 71.12) (xy 198.12 71.12)
 		)
 		(stroke
@@ -7291,6 +8019,16 @@
 			(type default)
 		)
 		(uuid "4489d201-a3f6-4e93-a007-006111a04554")
+	)
+	(wire
+		(pts
+			(xy 87.63 218.44) (xy 87.63 220.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "457f48ba-6a90-4766-abbd-8121db7af727")
 	)
 	(wire
 		(pts
@@ -7311,6 +8049,16 @@
 			(type default)
 		)
 		(uuid "4ad7f9cf-2d08-478d-93c2-3bdf03505d8c")
+	)
+	(wire
+		(pts
+			(xy 113.03 210.82) (xy 130.81 210.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4dfb1602-cb16-4127-8419-d6a8f1e61fdd")
 	)
 	(wire
 		(pts
@@ -7354,6 +8102,16 @@
 	)
 	(wire
 		(pts
+			(xy 130.81 222.25) (xy 130.81 210.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5256f327-920e-469a-8f06-70a24114c76b")
+	)
+	(wire
+		(pts
 			(xy 152.4 85.09) (xy 152.4 91.44)
 		)
 		(stroke
@@ -7381,6 +8139,16 @@
 			(type default)
 		)
 		(uuid "55d27351-9b56-4d1b-9eec-2d50707e6c76")
+	)
+	(wire
+		(pts
+			(xy 39.37 218.44) (xy 49.53 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5618900b-fb87-47df-966b-7bfa00bf3b07")
 	)
 	(wire
 		(pts
@@ -7474,6 +8242,16 @@
 	)
 	(wire
 		(pts
+			(xy 62.23 218.44) (xy 49.53 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "72826e84-e4a1-4fcf-bfd1-f477cf7e1ac6")
+	)
+	(wire
+		(pts
 			(xy 274.32 187.96) (xy 335.28 187.96)
 		)
 		(stroke
@@ -7531,6 +8309,16 @@
 			(type default)
 		)
 		(uuid "7b8ec2d7-1309-4b43-bd2e-c83c8e1ede6d")
+	)
+	(wire
+		(pts
+			(xy 62.23 232.41) (xy 62.23 237.49)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7f20820c-9222-41a5-ba6d-d879b9dd539d")
 	)
 	(wire
 		(pts
@@ -7824,6 +8612,16 @@
 	)
 	(wire
 		(pts
+			(xy 49.53 236.22) (xy 49.53 232.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "aeec6172-a4e7-4cf1-8f5f-fadc29ea79c4")
+	)
+	(wire
+		(pts
 			(xy 101.6 157.48) (xy 101.6 160.02)
 		)
 		(stroke
@@ -7921,6 +8719,16 @@
 			(type default)
 		)
 		(uuid "c0b60ca8-dcf7-44f0-91e9-d2032f201239")
+	)
+	(wire
+		(pts
+			(xy 87.63 223.52) (xy 100.33 223.52)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c1c7a38d-ace1-439c-873c-65d3c3972bd0")
 	)
 	(wire
 		(pts
@@ -8074,6 +8882,16 @@
 	)
 	(wire
 		(pts
+			(xy 49.53 210.82) (xy 49.53 218.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d6e565ec-48a5-4741-b804-723adb1126a1")
+	)
+	(wire
+		(pts
 			(xy 101.6 73.66) (xy 101.6 76.2)
 		)
 		(stroke
@@ -8091,6 +8909,16 @@
 			(type default)
 		)
 		(uuid "d9490865-1d16-489a-ade8-54e09c9591ed")
+	)
+	(wire
+		(pts
+			(xy 49.53 232.41) (xy 62.23 232.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d9ce4c8b-8765-487a-9fad-9822427e1b2d")
 	)
 	(wire
 		(pts
@@ -8211,6 +9039,26 @@
 			(type default)
 		)
 		(uuid "ed60646f-0ce9-4990-b86d-e61311c407ee")
+	)
+	(wire
+		(pts
+			(xy 62.23 226.06) (xy 62.23 232.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "eda9a1de-b6c2-4a6f-b0b4-7354d004868e")
+	)
+	(wire
+		(pts
+			(xy 62.23 218.44) (xy 62.23 220.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ef418990-7ec7-4e72-84a0-4c7bf00476b9")
 	)
 	(wire
 		(pts
@@ -8975,6 +9823,84 @@
 		)
 	)
 	(symbol
+		(lib_id "power:+3V3")
+		(at 113.03 210.82 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "1cadcbdb-b7ec-4bea-b344-cfccaa5db869")
+		(property "Reference" "#PWR0218"
+			(at 113.03 214.63 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+1V8_MIPI"
+			(at 113.03 205.74 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 113.03 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 113.03 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 113.03 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "d29c36bb-4b73-4a94-9760-bac1b9471637")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "#PWR0218")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 335.28 187.96 0)
 		(unit 1)
@@ -9057,6 +9983,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
 					(reference "#PWR020")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 39.37 229.87 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "2c759b7a-aee6-418f-bf54-8e620519b312")
+		(property "Reference" "#PWR0213"
+			(at 39.37 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 39.37 234.95 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 39.37 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 39.37 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 39.37 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "c86af62b-c14c-448e-bb00-780056118b30")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "#PWR0213")
 					(unit 1)
 				)
 			)
@@ -9319,6 +10323,84 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 49.53 243.84 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "3bfcdca8-7c25-4c4d-86d1-3a696f0336e2")
+		(property "Reference" "#PWR0217"
+			(at 49.53 250.19 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 49.53 248.92 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 49.53 243.84 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 49.53 243.84 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 49.53 243.84 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "0e819881-a934-4736-b0ed-aa42e25d94de")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "#PWR0217")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C")
 		(at 152.4 177.8 0)
 		(unit 1)
@@ -9481,6 +10563,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
 					(reference "C19")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 130.81 229.87 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "3fa3baa8-0360-4f23-a32c-b7fb84f5f5a2")
+		(property "Reference" "#PWR0216"
+			(at 130.81 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 130.81 234.95 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 130.81 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 130.81 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 130.81 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "5c8065f4-72af-43b6-a2eb-7b2fb087f2b5")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "#PWR0216")
 					(unit 1)
 				)
 			)
@@ -9905,6 +11065,324 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
 					(reference "#PWR019")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C")
+		(at 113.03 226.06 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "4734a14e-cfd5-4bc2-8ee3-86c82ce55009")
+		(property "Reference" "C109"
+			(at 116.84 224.7899 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "22u"
+			(at 116.84 227.3299 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 113.9952 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.samsungsem.com/mlcc/CL32B226MOJNNN.do"
+			(at 113.03 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Samsung CL32B226MOJNNNE; 22uF, 16V, X7R, +/-20%, 1210. LT3042 MIPI rail bypass; CMS-013 effective-capacitance model and installed qualification apply."
+			(at 113.03 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Samsung Electro-Mechanics"
+			(at 113.03 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "CL32B226MOJNNNE"
+			(at 113.03 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "1276-3395-1-ND"
+			(at 113.03 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/samsung-electro-mechanics/CL32B226MOJNNNE/3891481"
+			(at 113.03 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected; effective capacitance qualification required; footprint deferred"
+			(at 113.03 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active; 162494 in stock; USD 1:0.52, 10:0.318, 100:0.2122. Unreserved snapshot; see microsd_power_interface.md."
+			(at 113.03 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "CMS-013: LT3042 input/output bypass. Conditional 22uF*0.8*0.85*0.60=8.976uF exceeds 4.7uF; 60% bias retention is an allocation requiring installed verification. See design/camera_storage_interfaces.md."
+			(at 113.03 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "1b47fca7-d923-4fb4-8435-0db82fb28e57")
+		)
+		(pin "1"
+			(uuid "41cb1781-f28d-42c1-8aa0-55791dca67d5")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "C109")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C_Small")
+		(at 62.23 240.03 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "47b2775f-2d76-434e-8001-cb59f7d052ef")
+		(property "Reference" "C110"
+			(at 64.77 238.7662 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 64.77 241.3062 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 62.23 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.mouser.com/datasheet/3/76/1/GRM31C5C1H104JA01-01A.pdf"
+			(at 62.23 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Murata GRM31C5C1H104JA01K; 100nF, +/-5%, 50V C0G, 1206. LT3042 SET capacitor for MIPI host 1.8V supply; CMS-013 ramp model and qualification apply."
+			(at 62.23 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Murata Electronics"
+			(at 62.23 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "GRM31C5C1H104JA01K"
+			(at 62.23 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "490-8335-1-ND"
+			(at 62.23 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/murata-electronics/GRM31C5C1H104JA01K/2548138"
+			(at 62.23 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "In stock; recheck before purchase"
+			(at 62.23 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-12 DigiKey Active; 68175 stock; 17wk; USD 0.52/0.316/0.2112 at qty1/10/100. Unreserved snapshot; recheck before purchase. CMS-013."
+			(at 62.23 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "CMS-013: SET ramp capacitor. Conditional Cmin=94.715nF and I/C=0.001078V/us with 102uA plus 100nA allocation; this is not an instantaneous OUT-slew guarantee. Cold-temperature table and installed startup/leakage qualification: design/camera_storage_interfaces.md."
+			(at 62.23 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "74224578-b032-4018-a6df-22b7b380447b")
+		)
+		(pin "1"
+			(uuid "9beb4ac6-08cc-4c7d-992a-4f449fccd78f")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "C110")
 					(unit 1)
 				)
 			)
@@ -10432,6 +11910,165 @@
 	)
 	(symbol
 		(lib_id "Device:C")
+		(at 39.37 226.06 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "7115de0c-6f2e-4bfe-9e68-e0b8179975b1")
+		(property "Reference" "C108"
+			(at 43.18 224.7899 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "22u"
+			(at 43.18 227.3299 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 40.3352 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://product.samsungsem.com/mlcc/CL32B226MOJNNN.do"
+			(at 39.37 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Samsung CL32B226MOJNNNE; 22uF, 16V, X7R, +/-20%, 1210. LT3042 MIPI rail bypass; CMS-013 effective-capacitance model and installed qualification apply."
+			(at 39.37 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Samsung Electro-Mechanics"
+			(at 39.37 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "CL32B226MOJNNNE"
+			(at 39.37 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "1276-3395-1-ND"
+			(at 39.37 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/samsung-electro-mechanics/CL32B226MOJNNNE/3891481"
+			(at 39.37 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected; effective capacitance qualification required; footprint deferred"
+			(at 39.37 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active; 162494 in stock; USD 1:0.52, 10:0.318, 100:0.2122. Unreserved snapshot; see microsd_power_interface.md."
+			(at 39.37 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "CMS-013: LT3042 input/output bypass. Conditional 22uF*0.8*0.85*0.60=8.976uF exceeds 4.7uF; 60% bias retention is an allocation requiring installed verification. See design/camera_storage_interfaces.md."
+			(at 39.37 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "a273a4a8-0c40-4f58-8940-7b4d3bfbd491")
+		)
+		(pin "1"
+			(uuid "35beb5b3-5737-45a4-8310-80b60fd6b73f")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "C108")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C")
 		(at 335.28 119.38 0)
 		(unit 1)
 		(body_style 1)
@@ -10593,6 +12230,84 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
 					(reference "C33")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 74.93 233.68 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "806c8657-8249-4662-a484-0f6a6952f7d6")
+		(property "Reference" "#PWR0210"
+			(at 74.93 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 74.93 238.76 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 74.93 233.68 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 74.93 233.68 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 74.93 233.68 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "b5c587b9-14c7-481d-b836-63cf00dd691b")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "#PWR0210")
 					(unit 1)
 				)
 			)
@@ -11755,6 +13470,355 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 57.15 223.52 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "997386c1-af29-4aee-ba2f-d59ac1b8c74e")
+		(property "Reference" "#PWR0209"
+			(at 57.15 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 57.15 228.6 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 57.15 223.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 57.15 223.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 57.15 223.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "b5c587b9-14c7-481d-b836-63cf00dd691b")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "#PWR0209")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 130.81 226.06 0)
+		(mirror x)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "9ad1afad-beed-4ba5-9e94-bc7f6ab01808")
+		(property "Reference" "R94"
+			(at 128.27 224.7899 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Value" "1k"
+			(at 128.27 227.3299 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" ""
+			(at 129.032 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-071KL"
+			(at 130.81 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "YAGEO RC0603FR-071KL; 1k, 1%, 100ppm/C, 0603, 0.1W at 70C. Permanent LT3042 MIPI output load and passive discharge path; CMS-013."
+			(at 130.81 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 130.81 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 130.81 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "311-1.00KHRCT-ND"
+			(at 130.81 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-071KL/726843"
+			(at 130.81 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected for MIPI regulator permanent output load; installed rail sequencing and discharge qualification remain open; footprint deferred."
+			(at 130.81 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-12 DigiKey Active; 4828305 stock; 17wk; USD 0.10/0.025/0.0122 at qty1/10/100. Unreserved snapshot; recheck before purchase. CMS-013."
+			(at 130.81 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 130.81 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RC0603FR-071KL"
+			(at 130.81 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "CMS-013: 1k permanent output load; 1.65V/(1000*1.01*1.01)=1.61749mA minimum under tolerance/100C TCR model, exceeding LT3042 1mA DC-spec load condition. Rail collapse timing remains unqualified. See design/camera_storage_interfaces.md."
+			(at 130.81 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
+			(at 130.81 226.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "33ea0b80-5e47-4359-9a54-6bfc8fac3e1c")
+		)
+		(pin "2"
+			(uuid "5ad59982-90e4-477a-970b-c6a6e54b3dda")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "R94")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3V3")
+		(at 100.33 223.52 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "9b1bc120-2938-4ed7-b524-33951b3b7cb3")
+		(property "Reference" "#PWR0212"
+			(at 100.33 227.33 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3V3_MCU"
+			(at 100.33 218.44 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 100.33 223.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 100.33 223.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 100.33 223.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "f67febef-0dbe-44e0-861b-6378c30ce180")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "#PWR0212")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C")
 		(at 213.36 177.8 0)
 		(unit 1)
@@ -11917,6 +13981,199 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
 					(reference "C23")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 49.53 240.03 0)
+		(mirror x)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "a8a9d004-180b-4143-8610-fa07e2ad90ed")
+		(property "Reference" "R95"
+			(at 46.99 238.7599 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Value" "18k"
+			(at 46.99 241.2999 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" ""
+			(at 47.752 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RT0603BRD0718KL"
+			(at 49.53 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "YAGEO RT0603BRD0718KL; 18k, 0.1%, 25ppm/C, 0603, 0.1W at 70C. LT3042 SET resistor for nominal 1.8V MIPI host supply; CMS-013."
+			(at 49.53 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 49.53 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 49.53 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_Part_Number" "YAG1552CT-ND"
+			(at 49.53 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RT0603BRD0718KL/1072301"
+			(at 49.53 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Procurement_Status" "Selected for MIPI LT3042 SET network; installed leakage, startup and rail-sequencing qualification remain open; footprint deferred."
+			(at 49.53 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-12 DigiKey Active; 45015 stock; 20wk; USD 0.10/0.067/0.0559 at qty1/10/100. Unreserved snapshot; recheck before purchase. CMS-013."
+			(at 49.53 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "YAGEO"
+			(at 49.53 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "RT0603BRD0718KL"
+			(at 49.53 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "CMS-013: 18k SET resistor; 0.1% and 25ppm/C over 100C model, 98..102uA SET current, +/-2mV offset and +/-100nA leakage allocation give 1.75404..1.84624V. DC limits require 2<VIN<20V and load >=1mA; startup unqualified. See design/camera_storage_interfaces.md."
+			(at 49.53 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" ""
+			(at 49.53 240.03 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "83b473eb-89d8-4cbd-92d3-1a2b0527c78b")
+		)
+		(pin "2"
+			(uuid "be22ad2b-8e4b-4eb8-9c61-750ffd30c7af")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "R95")
 					(unit 1)
 				)
 			)
@@ -12991,6 +15248,240 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 113.03 229.87 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "b067c54a-8718-47d6-90cb-8567399b43c2")
+		(property "Reference" "#PWR0214"
+			(at 113.03 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 113.03 234.95 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 113.03 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 113.03 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 113.03 229.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "9fb2bd85-0548-44fd-a0c7-7cd8e3a580c7")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "#PWR0214")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 62.23 242.57 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "bcedb0f4-9218-49f5-8ebb-a526257d1851")
+		(property "Reference" "#PWR0215"
+			(at 62.23 248.92 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 62.23 247.65 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 62.23 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 62.23 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 62.23 242.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "2987f82f-0489-4c0b-b24f-ecf583a08e5f")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "#PWR0215")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3V3")
+		(at 49.53 210.82 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "bd646ee8-b7db-48cf-b766-0a5da4e0209c")
+		(property "Reference" "#PWR0211"
+			(at 49.53 214.63 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+3V3_MCU"
+			(at 49.53 205.74 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 49.53 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 49.53 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 49.53 210.82 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "460da264-bda7-446f-b20e-1343cabb006a")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "#PWR0211")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C")
 		(at 152.4 119.38 0)
 		(unit 1)
@@ -13657,6 +16148,173 @@
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
 					(reference "C27")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Power_Devices:LT3042IMSE#PBF")
+		(at 74.93 220.98 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "cf5c2f42-3787-4ecf-b07c-b08c15981624")
+		(property "Reference" "U23"
+			(at 74.93 210.82 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "LT3042IMSE#PBF"
+			(at 74.93 213.36 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Package_SO:MSOP-10-1EP_3x3mm_P0.5mm_EP1.68x1.88mm"
+			(at 74.93 212.725 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.analog.com/media/en/technical-documentation/data-sheets/lt3042.pdf"
+			(at 74.93 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "200mA, Adjustable, Ultralow Noise, Ultrahigh PSRR RF Linear Regulator, MSOP-10"
+			(at 74.93 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Name" "Analog Devices"
+			(at 74.93 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer_Part_Number" "LT3042IMSE#PBF"
+			(at 74.93 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Selection_Basis" "CMS-013: adjustable MIPI 1.8V supply; 200mA I-grade MSOP. ADI Rev C pin map and reverse-output protection. SET ramp model, effective capacitance and rail sequencing require qualification."
+			(at 74.93 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sourcing_Snapshot" "2026-09-12 Mouser: 10189 stock, 23wk, USD8.29/6.42/5.43 at qty1/10/100, tube. DigiKey: Active, zero stock, 19wk. Unreserved; recheck before purchase."
+			(at 74.93 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser_URL" "https://www.mouser.com/en/ProductDetail/Analog-Devices/LT3042IMSEPBF?qs=oahfZPh6IAKNLbWsEo0jgA%3D%3D"
+			(at 74.93 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Mouser Part Number" "584-LT3042IMSE#PBF"
+			(at 74.93 220.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "[8,11]"
+			(uuid "0e9a5efe-3521-4f9b-9231-fb929563550b")
+		)
+		(pin "3"
+			(uuid "996d42f0-ccf9-4a3f-82cc-63bed6cdc286")
+		)
+		(pin "6"
+			(uuid "99db90b1-33e1-452a-b147-a1e7e67e1c67")
+		)
+		(pin "4"
+			(uuid "e40d69ba-65ef-4bad-99f9-34b94fe3c147")
+		)
+		(pin "5"
+			(uuid "7c039404-e416-4e43-85cc-4376d066491b")
+		)
+		(pin "7"
+			(uuid "0335ce54-d9ca-4d01-b884-a415ef5e5ab1")
+		)
+		(pin "10"
+			(uuid "ab6a9130-05ce-4625-8671-577bed239d17")
+		)
+		(pin "9"
+			(uuid "638f926f-a370-453b-bb3c-495d6175173c")
+		)
+		(pin "[1,2]"
+			(uuid "72fa41c8-dcd8-4684-8c85-6d99fd096b24")
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166/fa5f4067-b129-4b01-a2ba-614d12811413"
+					(reference "U23")
 					(unit 1)
 				)
 			)

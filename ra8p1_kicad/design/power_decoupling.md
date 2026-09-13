@@ -31,11 +31,13 @@ and VSS_MIPI. This is a manufacturer-prescribed nominal bypass value, not a
 value derived from a measured transient-current waveform. C39.1 connects to
 U1.T4 / +3V3_MCU; C39.2 connects to GND, shared with U1.R3 / VSS_MIPI.
 
-MIPI is unused. The [RA8P1 Hardware User's Manual](https://www.renesas.com/en/document/mah/ra8p1-group-users-manual-hardware),
-revision 1.30, section 21.4, p.862, requires AVCC_MIPI connected to VCC,
-VSS_MIPI to VSS, and VCC18_MIPI plus the six D-PHY lanes left open. The
-existing no-connect markers implement that unused-interface treatment.
-C39 is not connected to VCC18_MIPI.
+The original unused-MIPI checkpoint followed RA8P1 HUM Rev.1.30 section
+21.4. The current [CMS-013](camera_storage_interfaces.md#cms-013---mipi-host-18v-supply-implementation-in-progress)
+implementation powers VCC18_MIPI R2 from U23's +1V8_MIPI rail and adds
+C111 as its local 100nF bypass per QDG Table 1. The six D-PHY lanes
+remain unconnected pending camera integration. C39 remains the separate
+AVCC_MIPI bypass; powering R2 does not establish camera operation or
+rail-sequencing qualification.
 
 ### Exact candidate and sourcing
 
