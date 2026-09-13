@@ -182,13 +182,11 @@ hosts:
       # keeps instance 1 registered as `truenas-ci-1`, the name that was
       # already in the pool, and adds `truenas-ci-2` beside it.
       name: truenas-ci
-      # TWO, from the formula rather than from the previous hand-written 1:
-      # min(8/4, 16/8) = 2. The host's total CI footprint is unchanged -- the
-      # same 8 threads and 16 GiB it always reserved -- but split into two
-      # runners instead of one, because queue depth is the fleet's bottleneck
-      # and a single runner leaves half of a reserved budget idle whenever one
-      # job is all it can hold.
-      instances: 2
+      # One instance is retained while the ARC pool is restored on k3s-pve.
+      instances: 1
+      sizing_note: >-
+        Temporarily reduced from the formula-derived two while k3s-pve ARC
+        capacity is being restored; restore to two after the pool is healthy.
       cpus: 4
       memory_gb: 8
       # Each instance sees only its own 4 threads, so Just's exported CMake job limit
