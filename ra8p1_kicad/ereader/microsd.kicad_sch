@@ -3388,6 +3388,12 @@
 		(uuid "100582ae-2c68-4102-98a4-5902d5f999e3")
 	)
 	(junction
+		(at 220.98 181.61)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "1697ee40-eb64-4dc8-8ed1-b0bd47b8c68c")
+	)
+	(junction
 		(at 248.92 93.98)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3472,13 +3478,19 @@
 		(uuid "71faaf66-c41c-4a2b-a20f-18b86f6df13f")
 	)
 	(junction
+		(at 149.86 219.71)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "76180561-32d9-4326-b20d-a18210d1a861")
+	)
+	(junction
 		(at 149.86 38.1)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "79b528e7-9e1e-4702-b19b-53fb6f10e421")
 	)
 	(junction
-		(at 289.56 134.62)
+		(at 238.76 146.05)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "89415e3f-2d12-4b0c-837e-6d80749345ef")
@@ -3532,13 +3544,13 @@
 		(uuid "c1766af3-baa3-4dde-b99d-e67f45969ec6")
 	)
 	(junction
-		(at 162.56 124.46)
+		(at 175.26 127)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "ccef649c-f558-493b-a832-308de078b7dc")
 	)
 	(junction
-		(at 182.88 171.45)
+		(at 182.88 170.18)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "d2d7a865-585a-47c4-bfd9-2dabec4c02cd")
@@ -3550,19 +3562,25 @@
 		(uuid "de5418bd-2efe-4619-b318-3e4a5d504851")
 	)
 	(junction
+		(at 29.21 219.71)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "e40cd37f-0200-469c-8e4a-e355920d68fa")
+	)
+	(junction
 		(at 93.98 204.47)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "ea649244-d1a2-404b-a762-386a7e0ad16c")
 	)
 	(junction
-		(at 162.56 139.7)
+		(at 175.26 144.78)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "ea90d5e4-f715-40a3-a9d4-1f8ea39dff79")
 	)
 	(junction
-		(at 289.56 119.38)
+		(at 238.76 128.27)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "ebd8b013-0607-4ee5-be6f-53d0a373e4c3")
@@ -3628,6 +3646,16 @@
 			(type default)
 		)
 		(uuid "022c66ea-6149-4c33-a472-01485e1ea6c5")
+	)
+	(wire
+		(pts
+			(xy 149.86 96.52) (xy 149.86 97.79)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0255559f-c330-4791-b184-30dbdd63a308")
 	)
 	(wire
 		(pts
@@ -3701,6 +3729,16 @@
 	)
 	(wire
 		(pts
+			(xy 238.76 125.73) (xy 238.76 129.54)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0adaa453-bf82-4dec-9f87-921ba8f148d4")
+	)
+	(wire
+		(pts
 			(xy 83.82 224.79) (xy 83.82 204.47)
 		)
 		(stroke
@@ -3731,6 +3769,16 @@
 	)
 	(wire
 		(pts
+			(xy 149.86 43.18) (xy 149.86 44.45)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "12f208fb-97e8-496f-b93c-5f86fa4bbe04")
+	)
+	(wire
+		(pts
 			(xy 39.37 224.79) (xy 39.37 242.57)
 		)
 		(stroke
@@ -3751,7 +3799,7 @@
 	)
 	(wire
 		(pts
-			(xy 320.04 129.54) (xy 320.04 134.62)
+			(xy 269.24 139.7) (xy 269.24 146.05)
 		)
 		(stroke
 			(width 0)
@@ -3768,6 +3816,16 @@
 			(type default)
 		)
 		(uuid "1ae8f7a9-5371-44ee-9686-e81f123176f3")
+	)
+	(wire
+		(pts
+			(xy 149.86 78.74) (xy 149.86 80.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1b522459-6acb-4ead-bfb0-a2f4b9978755")
 	)
 	(wire
 		(pts
@@ -3831,7 +3889,7 @@
 	)
 	(wire
 		(pts
-			(xy 193.04 134.62) (xy 193.04 139.7)
+			(xy 205.74 138.43) (xy 205.74 144.78)
 		)
 		(stroke
 			(width 0)
@@ -3851,7 +3909,17 @@
 	)
 	(wire
 		(pts
-			(xy 167.64 245.11) (xy 182.88 245.11)
+			(xy 149.86 60.96) (xy 149.86 62.23)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2d2814fc-719f-4399-a397-009985a60546")
+	)
+	(wire
+		(pts
+			(xy 166.37 245.11) (xy 182.88 245.11)
 		)
 		(stroke
 			(width 0)
@@ -3941,6 +4009,16 @@
 	)
 	(wire
 		(pts
+			(xy 238.76 144.78) (xy 238.76 147.32)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "364bb6ce-2dc6-4b7d-b31d-982318b106dd")
+	)
+	(wire
+		(pts
 			(xy 121.92 60.96) (xy 121.92 63.5)
 		)
 		(stroke
@@ -4001,6 +4079,26 @@
 	)
 	(wire
 		(pts
+			(xy 220.98 167.64) (xy 220.98 168.91)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3c810f1a-8390-4a30-89b8-d3bbe4225620")
+	)
+	(wire
+		(pts
+			(xy 149.86 219.71) (xy 149.86 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3e4265be-a103-42a0-8320-22cd7607a1b4")
+	)
+	(wire
+		(pts
 			(xy 102.87 73.66) (xy 114.3 73.66)
 		)
 		(stroke
@@ -4011,6 +4109,26 @@
 	)
 	(wire
 		(pts
+			(xy 149.86 25.4) (xy 149.86 26.67)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3f87afbf-3c08-4c4d-8b83-d2caacbb3764")
+	)
+	(wire
+		(pts
+			(xy 175.26 125.73) (xy 175.26 128.27)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4188d0d5-9a4f-4398-b53b-7b73ac4b3d57")
+	)
+	(wire
+		(pts
 			(xy 177.8 73.66) (xy 177.8 81.28)
 		)
 		(stroke
@@ -4018,6 +4136,26 @@
 			(type default)
 		)
 		(uuid "41fd918a-837a-4304-9b8e-e7207982458c")
+	)
+	(wire
+		(pts
+			(xy 127 160.02) (xy 127 161.29)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4316a41a-bfb7-4f96-935e-5e28629cba0f")
+	)
+	(wire
+		(pts
+			(xy 147.32 219.71) (xy 149.86 219.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "431857e1-0d63-4041-ae2c-30d3feffcc4a")
 	)
 	(wire
 		(pts
@@ -4071,13 +4209,43 @@
 	)
 	(wire
 		(pts
-			(xy 289.56 119.38) (xy 320.04 119.38)
+			(xy 71.12 200.66) (xy 71.12 201.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4f17f1d9-2a41-4518-a7b6-ba40c1e016d1")
+	)
+	(wire
+		(pts
+			(xy 238.76 128.27) (xy 269.24 128.27)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "4fb0e76b-07dc-44b5-a47a-fa01dd12cab5")
+	)
+	(wire
+		(pts
+			(xy 198.12 210.82) (xy 198.12 212.09)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "51b1728d-3c89-4f9d-b3ce-3f0f4c1b915b")
+	)
+	(wire
+		(pts
+			(xy 29.21 240.03) (xy 29.21 238.76)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "52518783-6f5c-4ca9-971f-68c7e0d6d940")
 	)
 	(wire
 		(pts
@@ -4131,7 +4299,17 @@
 	)
 	(wire
 		(pts
-			(xy 162.56 124.46) (xy 193.04 124.46)
+			(xy 157.48 104.14) (xy 157.48 102.87)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "59a1c25a-589e-4001-a188-5a09ad59c447")
+	)
+	(wire
+		(pts
+			(xy 175.26 127) (xy 205.74 127)
 		)
 		(stroke
 			(width 0)
@@ -4171,16 +4349,6 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 166.37) (xy 182.88 167.64)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "5d80f4e5-0d5b-4969-a8e1-afae9e611cc6")
-	)
-	(wire
-		(pts
 			(xy 41.91 229.87) (xy 41.91 251.46)
 		)
 		(stroke
@@ -4211,23 +4379,13 @@
 	)
 	(wire
 		(pts
-			(xy 157.48 73.66) (xy 157.48 77.47)
+			(xy 157.48 73.66) (xy 157.48 76.2)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "62273f23-b16c-4302-9b18-5cf031a7d5b6")
-	)
-	(wire
-		(pts
-			(xy 149.86 231.14) (xy 149.86 219.71)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "62619646-c7a4-4de0-94a8-45206d3e0348")
 	)
 	(wire
 		(pts
@@ -4241,13 +4399,13 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 171.45) (xy 182.88 173.99)
+			(xy 101.6 219.71) (xy 101.6 218.44)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "66dcb044-f1f8-4add-86dd-2549181fa260")
+		(uuid "64ea9ede-5473-40e0-8a80-f5b4fcff43ad")
 	)
 	(wire
 		(pts
@@ -4271,7 +4429,7 @@
 	)
 	(wire
 		(pts
-			(xy 165.1 171.45) (xy 182.88 171.45)
+			(xy 165.1 170.18) (xy 182.88 170.18)
 		)
 		(stroke
 			(width 0)
@@ -4298,6 +4456,26 @@
 			(type default)
 		)
 		(uuid "6f2f218b-6f4a-4298-91a7-1d3debfdc5cf")
+	)
+	(wire
+		(pts
+			(xy 175.26 143.51) (xy 175.26 146.05)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6f55323c-cbcc-4307-82ec-ffc7a194d13b")
+	)
+	(wire
+		(pts
+			(xy 165.1 170.18) (xy 165.1 171.45)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "70d1442e-5a85-4912-9a8f-80eda907a3a6")
 	)
 	(wire
 		(pts
@@ -4331,6 +4509,16 @@
 	)
 	(wire
 		(pts
+			(xy 168.91 229.87) (xy 170.18 229.87)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "768da6c7-3a0c-4c49-b55e-7555aae20cac")
+	)
+	(wire
+		(pts
 			(xy 187.96 116.84) (xy 187.96 88.9)
 		)
 		(stroke
@@ -4361,6 +4549,16 @@
 	)
 	(wire
 		(pts
+			(xy 182.88 246.38) (xy 182.88 245.11)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7f39cc27-4a24-4c49-b9cb-1df1304e5b8e")
+	)
+	(wire
+		(pts
 			(xy 81.28 170.18) (xy 81.28 179.07)
 		)
 		(stroke
@@ -4368,6 +4566,26 @@
 			(type default)
 		)
 		(uuid "82290ef7-34c9-4def-97e7-a7d49b3cd871")
+	)
+	(wire
+		(pts
+			(xy 54.61 243.84) (xy 54.61 242.57)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "82b70a59-9eeb-4ee0-a650-2c6b633a58f0")
+	)
+	(wire
+		(pts
+			(xy 26.67 219.71) (xy 29.21 219.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "851796a3-ae35-42fc-96bd-99edd8943944")
 	)
 	(wire
 		(pts
@@ -4401,7 +4619,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 229.87) (xy 170.18 257.81)
+			(xy 168.91 229.87) (xy 168.91 257.81)
 		)
 		(stroke
 			(width 0)
@@ -4461,7 +4679,7 @@
 	)
 	(wire
 		(pts
-			(xy 127 161.29) (xy 134.62 161.29)
+			(xy 127 160.02) (xy 134.62 160.02)
 		)
 		(stroke
 			(width 0)
@@ -4471,7 +4689,7 @@
 	)
 	(wire
 		(pts
-			(xy 134.62 127) (xy 134.62 130.81)
+			(xy 134.62 127) (xy 134.62 129.54)
 		)
 		(stroke
 			(width 0)
@@ -4488,6 +4706,16 @@
 			(type default)
 		)
 		(uuid "901560db-efc4-4ac3-ac26-be05b992c5b6")
+	)
+	(wire
+		(pts
+			(xy 149.86 240.03) (xy 149.86 238.76)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "91f975d3-37af-4871-aa81-9150ecbc76e0")
 	)
 	(wire
 		(pts
@@ -4521,13 +4749,13 @@
 	)
 	(wire
 		(pts
-			(xy 289.56 111.76) (xy 289.56 119.38)
+			(xy 220.98 181.61) (xy 223.52 181.61)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "99052e8c-a337-4283-8d71-8fb463207c11")
+		(uuid "99fb994d-7e16-436b-b783-d442dd16720e")
 	)
 	(wire
 		(pts
@@ -4541,7 +4769,7 @@
 	)
 	(wire
 		(pts
-			(xy 157.48 55.88) (xy 157.48 59.69)
+			(xy 157.48 55.88) (xy 157.48 58.42)
 		)
 		(stroke
 			(width 0)
@@ -4551,7 +4779,7 @@
 	)
 	(wire
 		(pts
-			(xy 167.64 224.79) (xy 167.64 245.11)
+			(xy 166.37 224.79) (xy 166.37 245.11)
 		)
 		(stroke
 			(width 0)
@@ -4571,7 +4799,7 @@
 	)
 	(wire
 		(pts
-			(xy 134.62 109.22) (xy 134.62 113.03)
+			(xy 134.62 109.22) (xy 134.62 111.76)
 		)
 		(stroke
 			(width 0)
@@ -4631,7 +4859,7 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 193.04) (xy 182.88 194.31)
+			(xy 182.88 193.04) (xy 182.88 195.58)
 		)
 		(stroke
 			(width 0)
@@ -4681,7 +4909,7 @@
 	)
 	(wire
 		(pts
-			(xy 320.04 124.46) (xy 320.04 119.38)
+			(xy 269.24 134.62) (xy 269.24 128.27)
 		)
 		(stroke
 			(width 0)
@@ -4698,6 +4926,16 @@
 			(type default)
 		)
 		(uuid "b19c96a8-cb98-4e7c-b6fe-c956ad2fb34f")
+	)
+	(wire
+		(pts
+			(xy 134.62 119.38) (xy 134.62 120.65)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b1e6a923-6059-4daf-8f37-b725be5e4254")
 	)
 	(wire
 		(pts
@@ -4738,6 +4976,16 @@
 			(type default)
 		)
 		(uuid "b85c4093-2f2f-483b-9ac0-a2e7da078185")
+	)
+	(wire
+		(pts
+			(xy 134.62 137.16) (xy 134.62 138.43)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ba7e9960-18dc-4c93-8f25-c9da863c3754")
 	)
 	(wire
 		(pts
@@ -4791,13 +5039,13 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 167.64) (xy 182.88 171.45)
+			(xy 29.21 219.71) (xy 29.21 231.14)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "bd6a4c6b-eb82-4bcc-91ab-9469805b1c7f")
+		(uuid "c0ce56cf-2b99-47c6-9f36-2d1d4a7de982")
 	)
 	(wire
 		(pts
@@ -4811,7 +5059,7 @@
 	)
 	(wire
 		(pts
-			(xy 289.56 134.62) (xy 320.04 134.62)
+			(xy 238.76 146.05) (xy 269.24 146.05)
 		)
 		(stroke
 			(width 0)
@@ -4821,7 +5069,7 @@
 	)
 	(wire
 		(pts
-			(xy 149.86 257.81) (xy 170.18 257.81)
+			(xy 149.86 257.81) (xy 168.91 257.81)
 		)
 		(stroke
 			(width 0)
@@ -4871,23 +5119,13 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 38.1) (xy 170.18 41.91)
+			(xy 170.18 38.1) (xy 170.18 40.64)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "c69858a5-b7c9-4434-aebe-21da690fac4c")
-	)
-	(wire
-		(pts
-			(xy 29.21 231.14) (xy 29.21 219.71)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c73ba5e6-12ff-467c-81df-1befd2a9c376")
 	)
 	(wire
 		(pts
@@ -4921,7 +5159,7 @@
 	)
 	(wire
 		(pts
-			(xy 220.98 175.26) (xy 220.98 181.61)
+			(xy 220.98 176.53) (xy 220.98 181.61)
 		)
 		(stroke
 			(width 0)
@@ -4981,7 +5219,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 224.79) (xy 167.64 224.79)
+			(xy 170.18 224.79) (xy 166.37 224.79)
 		)
 		(stroke
 			(width 0)
@@ -5011,7 +5249,7 @@
 	)
 	(wire
 		(pts
-			(xy 162.56 139.7) (xy 193.04 139.7)
+			(xy 175.26 144.78) (xy 205.74 144.78)
 		)
 		(stroke
 			(width 0)
@@ -5031,6 +5269,16 @@
 	)
 	(wire
 		(pts
+			(xy 182.88 166.37) (xy 182.88 173.99)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e05e75d9-d5d5-436d-8164-35edd0ecb468")
+	)
+	(wire
+		(pts
 			(xy 182.88 86.36) (xy 213.36 86.36)
 		)
 		(stroke
@@ -5038,6 +5286,36 @@
 			(type default)
 		)
 		(uuid "e0d876f0-7d21-4f5d-9589-798ba3cd6f75")
+	)
+	(wire
+		(pts
+			(xy 127 170.18) (xy 127 168.91)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e1421d0a-d2d8-48fd-8185-e9168b680c71")
+	)
+	(wire
+		(pts
+			(xy 157.48 83.82) (xy 157.48 85.09)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e1751fa5-1840-46ce-bda4-7bcc1bc56ca7")
+	)
+	(wire
+		(pts
+			(xy 142.24 177.8) (xy 142.24 179.07)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e1c4e0ac-9eab-4ed8-8120-71ba59c9ea93")
 	)
 	(wire
 		(pts
@@ -5111,6 +5389,16 @@
 	)
 	(wire
 		(pts
+			(xy 88.9 195.58) (xy 88.9 194.31)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e788d4ce-497d-458d-a269-cc34b9102977")
+	)
+	(wire
+		(pts
 			(xy 182.88 245.11) (xy 203.2 245.11)
 		)
 		(stroke
@@ -5131,6 +5419,16 @@
 	)
 	(wire
 		(pts
+			(xy 157.48 66.04) (xy 157.48 67.31)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "eae307ae-55d5-4a65-9899-d63a6aa9b86d")
+	)
+	(wire
+		(pts
 			(xy 134.62 179.07) (xy 134.62 187.96)
 		)
 		(stroke
@@ -5141,7 +5439,7 @@
 	)
 	(wire
 		(pts
-			(xy 193.04 129.54) (xy 193.04 124.46)
+			(xy 205.74 133.35) (xy 205.74 127)
 		)
 		(stroke
 			(width 0)
@@ -5158,6 +5456,16 @@
 			(type default)
 		)
 		(uuid "f1a9a41b-ca79-473b-9f8d-0f52874ff227")
+	)
+	(wire
+		(pts
+			(xy 106.68 195.58) (xy 106.68 194.31)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f39a8680-54f6-45aa-b72b-85ee5f3deb3c")
 	)
 	(wire
 		(pts
@@ -5181,7 +5489,7 @@
 	)
 	(wire
 		(pts
-			(xy 134.62 161.29) (xy 134.62 179.07)
+			(xy 134.62 160.02) (xy 134.62 179.07)
 		)
 		(stroke
 			(width 0)
@@ -5208,6 +5516,26 @@
 			(type default)
 		)
 		(uuid "fb34e1dd-767e-4856-903f-07e6ecff0d3f")
+	)
+	(wire
+		(pts
+			(xy 71.12 208.28) (xy 71.12 207.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fc0568ff-177f-47d0-8ab5-d743516e7721")
+	)
+	(wire
+		(pts
+			(xy 170.18 48.26) (xy 170.18 49.53)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fcf5f6ad-852f-43b6-9ab7-33a03b28378d")
 	)
 	(wire
 		(pts
@@ -5343,7 +5671,7 @@
 	)
 	(hierarchical_label "SD_READY"
 		(shape output)
-		(at 220.98 181.61 0)
+		(at 223.52 181.61 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -5365,7 +5693,7 @@
 	)
 	(hierarchical_label "SD_PWR_REQ"
 		(shape input)
-		(at 29.21 219.71 180)
+		(at 26.67 219.71 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -5376,7 +5704,7 @@
 	)
 	(hierarchical_label "SD_IO_REQ"
 		(shape input)
-		(at 149.86 219.71 180)
+		(at 147.32 219.71 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -5442,7 +5770,7 @@
 	)
 	(symbol
 		(lib_id "power:VDD")
-		(at 142.24 179.07 0)
+		(at 142.24 177.8 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -5453,7 +5781,7 @@
 		(fields_autoplaced yes)
 		(uuid "0018b7aa-ee88-471b-94f7-4b2ab3a2c16b")
 		(property "Reference" "#PWR0174"
-			(at 142.24 182.88 0)
+			(at 142.24 181.61 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5464,7 +5792,7 @@
 			)
 		)
 		(property "Value" "VDD_SD"
-			(at 142.24 173.99 0)
+			(at 142.24 172.72 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -5474,7 +5802,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 142.24 179.07 0)
+			(at 142.24 177.8 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5485,7 +5813,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 142.24 179.07 0)
+			(at 142.24 177.8 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5496,7 +5824,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VDD\""
-			(at 142.24 179.07 0)
+			(at 142.24 177.8 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6558,7 +6886,7 @@
 	)
 	(symbol
 		(lib_id "power:VDD")
-		(at 149.86 62.23 0)
+		(at 149.86 60.96 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -6568,7 +6896,7 @@
 		(dnp no)
 		(uuid "17653403-39bd-41c8-acf5-40b886a75556")
 		(property "Reference" "#PWR0200"
-			(at 149.86 66.04 0)
+			(at 149.86 64.77 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6579,7 +6907,7 @@
 			)
 		)
 		(property "Value" "VDD_SD"
-			(at 140.97 60.96 0)
+			(at 140.97 59.69 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6589,7 +6917,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 149.86 62.23 0)
+			(at 149.86 60.96 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6600,7 +6928,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 149.86 62.23 0)
+			(at 149.86 60.96 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6611,7 +6939,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VDD\""
-			(at 149.86 62.23 0)
+			(at 149.86 60.96 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6804,7 +7132,7 @@
 	)
 	(symbol
 		(lib_id "power:VDD")
-		(at 149.86 26.67 0)
+		(at 149.86 25.4 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -6815,7 +7143,7 @@
 		(fields_autoplaced yes)
 		(uuid "260807cf-118d-49b7-b767-16857b8dfa33")
 		(property "Reference" "#PWR0198"
-			(at 149.86 30.48 0)
+			(at 149.86 29.21 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6826,7 +7154,7 @@
 			)
 		)
 		(property "Value" "VDD_SD"
-			(at 149.86 21.59 0)
+			(at 149.86 20.32 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6836,7 +7164,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 149.86 26.67 0)
+			(at 149.86 25.4 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6847,7 +7175,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 149.86 26.67 0)
+			(at 149.86 25.4 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6858,7 +7186,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VDD\""
-			(at 149.86 26.67 0)
+			(at 149.86 25.4 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6882,7 +7210,7 @@
 	)
 	(symbol
 		(lib_id "Device:D_Zener")
-		(at 170.18 45.72 270)
+		(at 170.18 44.45 270)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -6892,7 +7220,7 @@
 		(dnp no)
 		(uuid "263a1182-b410-477e-aad8-fe0e36eb84c4")
 		(property "Reference" "D7"
-			(at 178.816 44.45 90)
+			(at 178.816 43.18 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6903,7 +7231,7 @@
 			)
 		)
 		(property "Value" "ESD441DPYR"
-			(at 187.96 46.99 90)
+			(at 187.96 45.72 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6914,7 +7242,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 170.18 45.72 0)
+			(at 170.18 44.45 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6925,7 +7253,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/esd441.pdf"
-			(at 170.18 45.72 0)
+			(at 170.18 44.45 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6936,7 +7264,7 @@
 			)
 		)
 		(property "Description" "TI ESD441DPYR; IO1=card-side SD signal, GND2; ground-only microSD CMD/DAT/CLK ESD protection. See ../design/microsd_power_interface.md. No generic zener simulation model."
-			(at 170.18 45.72 0)
+			(at 170.18 44.45 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6947,7 +7275,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "Texas Instruments"
-			(at 170.18 45.72 90)
+			(at 170.18 44.45 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6958,7 +7286,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "ESD441DPYR"
-			(at 170.18 45.72 90)
+			(at 170.18 44.45 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6969,7 +7297,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "296-ESD441DPYRCT-ND"
-			(at 170.18 45.72 90)
+			(at 170.18 44.45 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6980,7 +7308,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/ESD441DPYR/28715599"
-			(at 170.18 45.72 90)
+			(at 170.18 44.45 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6991,7 +7319,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active; 2456 in stock; USD 1:0.34, 10:0.207, 100:0.1291. Unreserved snapshot; see microsd_power_interface.md."
-			(at 170.18 45.72 90)
+			(at 170.18 44.45 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7002,7 +7330,7 @@
 			)
 		)
 		(property "Selection_Basis" "TI SLVSH26C: 3.3V SD card-side clamp; IO1/GND2. Recommended VIO 0..5.5V; 5.5V VRWM with IIO<100nA across operating temperature; leakage 50nA max at 5.5V/25C. CL=1pF typical at 0V, 1MHz, 30mVpp/25C; no guaranteed capacitance maximum. Qualify assembled 25/50MHz timing and ESD residuals."
-			(at 170.18 45.72 90)
+			(at 170.18 44.45 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7013,7 +7341,7 @@
 			)
 		)
 		(property "Procurement_Status" "Selected for microSD 3.3V card-side bus protection; exact sourcing and pin mapping checked. Installed leakage, 25/50MHz signal integrity and ESD residual qualification pending; footprint deferred."
-			(at 170.18 45.72 90)
+			(at 170.18 44.45 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7189,6 +7517,7 @@
 	(symbol
 		(lib_id "Device:R")
 		(at 149.86 234.95 0)
+		(mirror y)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -7196,10 +7525,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "2e269367-7ace-4318-a9e1-bae14b3fab0a")
 		(property "Reference" "R79"
-			(at 147.32 233.6799 0)
+			(at 152.4 233.6799 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7210,7 +7538,7 @@
 			)
 		)
 		(property "Value" "10k"
-			(at 147.32 236.2199 0)
+			(at 152.4 236.2199 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7221,7 +7549,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 148.082 234.95 90)
+			(at 151.638 234.95 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7337,7 +7665,6 @@
 	(symbol
 		(lib_id "Device:R")
 		(at 274.32 68.58 0)
-		(mirror y)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -7345,10 +7672,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "2f0ce5bc-4319-469b-8858-44cfcb32abc5")
 		(property "Reference" "R72"
-			(at 271.78 67.3099 0)
+			(at 276.86 67.3099 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7359,7 +7685,7 @@
 			)
 		)
 		(property "Value" "10k"
-			(at 271.78 69.8499 0)
+			(at 276.86 69.8499 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7370,7 +7696,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 276.098 68.58 0)
+			(at 272.542 68.58 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7607,7 +7933,7 @@
 	)
 	(symbol
 		(lib_id "Device:C_Small")
-		(at 193.04 132.08 0)
+		(at 205.74 135.89 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -7618,7 +7944,7 @@
 		(fields_autoplaced yes)
 		(uuid "34ea325e-3a9f-48b4-99d4-f2b6affeb9e4")
 		(property "Reference" "C106"
-			(at 195.58 130.8162 0)
+			(at 208.28 134.6262 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7629,7 +7955,7 @@
 			)
 		)
 		(property "Value" "100n"
-			(at 195.58 133.3562 0)
+			(at 208.28 137.1662 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7640,7 +7966,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 193.04 132.08 0)
+			(at 205.74 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7651,7 +7977,7 @@
 			)
 		)
 		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
-			(at 193.04 132.08 0)
+			(at 205.74 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7662,7 +7988,7 @@
 			)
 		)
 		(property "Description" "TDK C1608X7R1H104K080AA; 100 nF, 50 V, X7R, +/-10%; microSD local bypass. See ../design/microsd_power_interface.md; installed PDN and collapse qualification required."
-			(at 193.04 132.08 0)
+			(at 205.74 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7673,7 +7999,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "445-1314-1-ND"
-			(at 193.04 132.08 0)
+			(at 205.74 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7684,7 +8010,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
-			(at 193.04 132.08 0)
+			(at 205.74 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7695,7 +8021,7 @@
 			)
 		)
 		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
-			(at 193.04 132.08 0)
+			(at 205.74 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7706,7 +8032,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active, 329450 in stock; USD 1:0.11, 10:0.060, 100:0.0359; unreserved snapshot. See microsd_power_interface.md."
-			(at 193.04 132.08 0)
+			(at 205.74 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7717,7 +8043,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "TDK"
-			(at 193.04 132.08 0)
+			(at 205.74 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7728,7 +8054,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
-			(at 193.04 132.08 0)
+			(at 205.74 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7902,7 +8228,7 @@
 	)
 	(symbol
 		(lib_id "Power_Devices:TMUX1511RSVR")
-		(at 162.56 132.08 0)
+		(at 175.26 135.89 0)
 		(unit 5)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -7913,7 +8239,7 @@
 		(fields_autoplaced yes)
 		(uuid "3afe4dd9-0c5c-4bf1-b901-88753548cdc9")
 		(property "Reference" "U21"
-			(at 170.18 130.8099 0)
+			(at 182.88 134.6199 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7924,7 +8250,7 @@
 			)
 		)
 		(property "Value" "TMUX1511RSVR"
-			(at 170.18 133.3499 0)
+			(at 182.88 137.1599 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7935,7 +8261,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 162.56 134.62 0)
+			(at 175.26 138.43 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7946,7 +8272,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tmux1511.pdf"
-			(at 162.56 132.08 0)
+			(at 175.26 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7957,7 +8283,7 @@
 			)
 		)
 		(property "Description" "TI TMUX1511RSVR; four independent normally-open SPST bilateral switches, 1.5..5.5 V supply, powered-off protection. RSV16 mapping, four switch units plus power/NC unit. SCDS390B."
-			(at 162.56 132.08 0)
+			(at 175.26 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7968,7 +8294,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "Texas Instruments"
-			(at 162.56 132.08 0)
+			(at 175.26 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7979,7 +8305,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "TMUX1511RSVR"
-			(at 162.56 132.08 0)
+			(at 175.26 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7990,7 +8316,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "296-53443-1-ND"
-			(at 162.56 132.08 0)
+			(at 175.26 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8001,7 +8327,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TMUX1511RSVR/9954161"
-			(at 162.56 132.08 0)
+			(at 175.26 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8012,7 +8338,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active, 110,392 in stock; USD 0.68 / 0.485 / 0.3805 at qty 1 / 10 / 100; 9-week lead. Unreserved; recheck before purchase."
-			(at 162.56 132.08 0)
+			(at 175.26 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8023,7 +8349,7 @@
 			)
 		)
 		(property "Procurement_Status" "Selected for microSD bus isolation; powered-off leakage, rail-collapse behavior and 50 MHz signal integrity qualification pending; footprint deferred."
-			(at 162.56 132.08 0)
+			(at 175.26 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8034,7 +8360,7 @@
 			)
 		)
 		(property "Selection_Basis" "Two devices isolate six 3.3 V SDHI1_B lines; SEL high closes each channel. Main-powered VDD, SD_READY-qualified control. See ../design/microsd_power_interface.md."
-			(at 162.56 132.08 0)
+			(at 175.26 135.89 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8181,7 +8507,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 127 168.91 0)
+		(at 127 170.18 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8192,7 +8518,7 @@
 		(fields_autoplaced yes)
 		(uuid "4089531d-cd55-405b-bd9a-6d446445ff60")
 		(property "Reference" "#PWR0190"
-			(at 127 175.26 0)
+			(at 127 176.53 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8203,7 +8529,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 127 173.99 0)
+			(at 127 175.26 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8213,7 +8539,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 127 168.91 0)
+			(at 127 170.18 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8224,7 +8550,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 127 168.91 0)
+			(at 127 170.18 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8235,7 +8561,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 127 168.91 0)
+			(at 127 170.18 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8259,7 +8585,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 106.68 194.31 0)
+		(at 106.68 195.58 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8270,7 +8596,7 @@
 		(fields_autoplaced yes)
 		(uuid "423540b9-32ed-4dc7-a1f6-296e49dd72c2")
 		(property "Reference" "#PWR0175"
-			(at 106.68 200.66 0)
+			(at 106.68 201.93 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8281,7 +8607,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 106.68 199.39 0)
+			(at 106.68 200.66 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8291,7 +8617,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 106.68 194.31 0)
+			(at 106.68 195.58 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8302,7 +8628,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 106.68 194.31 0)
+			(at 106.68 195.58 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8313,7 +8639,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 106.68 194.31 0)
+			(at 106.68 195.58 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8337,7 +8663,7 @@
 	)
 	(symbol
 		(lib_id "power:VDD")
-		(at 71.12 201.93 0)
+		(at 71.12 200.66 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8348,7 +8674,7 @@
 		(fields_autoplaced yes)
 		(uuid "4455d05f-76a1-4519-abd4-bd4c1f0522ff")
 		(property "Reference" "#PWR0182"
-			(at 71.12 205.74 0)
+			(at 71.12 204.47 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8359,7 +8685,7 @@
 			)
 		)
 		(property "Value" "+3V3_MCU"
-			(at 71.12 196.85 0)
+			(at 71.12 195.58 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8369,7 +8695,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 71.12 201.93 0)
+			(at 71.12 200.66 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8380,7 +8706,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 71.12 201.93 0)
+			(at 71.12 200.66 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8391,7 +8717,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VDD\""
-			(at 71.12 201.93 0)
+			(at 71.12 200.66 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9109,6 +9435,7 @@
 	(symbol
 		(lib_id "Device:R")
 		(at 101.6 214.63 0)
+		(mirror y)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -9116,10 +9443,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "57625237-170e-41eb-9330-4a3f4365a10b")
 		(property "Reference" "R77"
-			(at 99.06 213.3599 0)
+			(at 104.14 213.3599 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9130,7 +9456,7 @@
 			)
 		)
 		(property "Value" "10k"
-			(at 99.06 215.8999 0)
+			(at 104.14 215.8999 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9141,7 +9467,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 99.822 214.63 90)
+			(at 103.378 214.63 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9402,7 +9728,8 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 220.98 171.45 0)
+		(at 220.98 172.72 0)
+		(mirror y)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -9410,10 +9737,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "5912f5a5-14fd-4c71-969c-bb0ccf379701")
 		(property "Reference" "R81"
-			(at 218.44 170.1799 0)
+			(at 223.52 171.4499 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9424,7 +9750,7 @@
 			)
 		)
 		(property "Value" "10k"
-			(at 218.44 172.7199 0)
+			(at 223.52 173.9899 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9435,7 +9761,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 219.202 171.45 90)
+			(at 222.758 172.72 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9446,7 +9772,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
-			(at 220.98 171.45 0)
+			(at 220.98 172.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9457,7 +9783,7 @@
 			)
 		)
 		(property "Description" "YAGEO RC0603FR-0710KL; 10k, 1%, 100 ppm/C; microSD control bias resistor. 9801..10201 ohm tolerance model over 100 C; see ../design/microsd_power_interface.md."
-			(at 220.98 171.45 0)
+			(at 220.98 172.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9468,7 +9794,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
-			(at 220.98 171.45 0)
+			(at 220.98 172.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9479,7 +9805,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "YAGEO"
-			(at 220.98 171.45 0)
+			(at 220.98 172.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9490,7 +9816,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
-			(at 220.98 171.45 0)
+			(at 220.98 172.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9501,7 +9827,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/726880"
-			(at 220.98 171.45 0)
+			(at 220.98 172.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9512,7 +9838,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active; 2356440 in stock; USD 1:0.10, 10:0.025, 100:0.0122. Unreserved snapshot; see microsd_power_interface.md."
-			(at 220.98 171.45 0)
+			(at 220.98 172.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9523,7 +9849,7 @@
 			)
 		)
 		(property "Procurement_Status" "Selected for microSD control bias; valid-supply DC budget checked; startup and collapse qualification pending; footprint deferred."
-			(at 220.98 171.45 0)
+			(at 220.98 172.72 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9550,7 +9876,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 162.56 139.7 0)
+		(at 175.26 146.05 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -9561,7 +9887,7 @@
 		(fields_autoplaced yes)
 		(uuid "5a069651-fdf4-471e-a8ac-849721b6b744")
 		(property "Reference" "#PWR0195"
-			(at 162.56 146.05 0)
+			(at 175.26 152.4 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9572,7 +9898,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 162.56 144.78 0)
+			(at 175.26 151.13 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9582,7 +9908,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 162.56 139.7 0)
+			(at 175.26 146.05 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9593,7 +9919,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 162.56 139.7 0)
+			(at 175.26 146.05 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9604,7 +9930,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 162.56 139.7 0)
+			(at 175.26 146.05 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9784,7 +10110,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 182.88 245.11 0)
+		(at 182.88 246.38 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -9795,7 +10121,7 @@
 		(fields_autoplaced yes)
 		(uuid "5c6409c8-5173-4109-8217-90d1bd4a7348")
 		(property "Reference" "#PWR0186"
-			(at 182.88 251.46 0)
+			(at 182.88 252.73 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9806,7 +10132,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 182.88 250.19 0)
+			(at 182.88 251.46 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9816,7 +10142,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 182.88 245.11 0)
+			(at 182.88 246.38 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9827,7 +10153,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 182.88 245.11 0)
+			(at 182.88 246.38 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9838,7 +10164,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 182.88 245.11 0)
+			(at 182.88 246.38 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9862,7 +10188,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 29.21 238.76 0)
+		(at 29.21 240.03 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -9873,7 +10199,7 @@
 		(fields_autoplaced yes)
 		(uuid "63e3a13f-bc26-4af8-a8c8-f095d9b0ae59")
 		(property "Reference" "#PWR0185"
-			(at 29.21 245.11 0)
+			(at 29.21 246.38 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9884,7 +10210,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 29.21 243.84 0)
+			(at 29.21 245.11 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9894,7 +10220,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 29.21 238.76 0)
+			(at 29.21 240.03 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9905,7 +10231,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 29.21 238.76 0)
+			(at 29.21 240.03 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9916,7 +10242,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 29.21 238.76 0)
+			(at 29.21 240.03 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10139,7 +10465,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 149.86 238.76 0)
+		(at 149.86 240.03 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -10150,7 +10476,7 @@
 		(fields_autoplaced yes)
 		(uuid "65e45b92-bb4c-45e5-835d-a1ff1f9fca29")
 		(property "Reference" "#PWR0188"
-			(at 149.86 245.11 0)
+			(at 149.86 246.38 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10161,7 +10487,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 149.86 243.84 0)
+			(at 149.86 245.11 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10171,7 +10497,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 149.86 238.76 0)
+			(at 149.86 240.03 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10182,7 +10508,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 149.86 238.76 0)
+			(at 149.86 240.03 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10193,7 +10519,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 149.86 238.76 0)
+			(at 149.86 240.03 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10218,6 +10544,7 @@
 	(symbol
 		(lib_id "Device:R")
 		(at 127 165.1 0)
+		(mirror y)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -10225,10 +10552,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "66b275db-7ea6-4533-aae3-3faa4ca5d52c")
 		(property "Reference" "R82"
-			(at 124.46 163.8299 0)
+			(at 129.54 163.8299 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10239,7 +10565,7 @@
 			)
 		)
 		(property "Value" "330"
-			(at 124.46 166.3699 0)
+			(at 129.54 166.3699 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10250,7 +10576,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 125.222 165.1 90)
+			(at 128.778 165.1 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10590,7 +10916,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 289.56 134.62 0)
+		(at 238.76 147.32 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -10601,7 +10927,7 @@
 		(fields_autoplaced yes)
 		(uuid "6f1f901c-8a79-4503-b96f-730d47b4321e")
 		(property "Reference" "#PWR0194"
-			(at 289.56 140.97 0)
+			(at 238.76 153.67 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10612,7 +10938,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 289.56 139.7 0)
+			(at 238.76 152.4 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10622,7 +10948,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 289.56 134.62 0)
+			(at 238.76 147.32 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10633,7 +10959,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 289.56 134.62 0)
+			(at 238.76 147.32 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10644,7 +10970,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 289.56 134.62 0)
+			(at 238.76 147.32 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10826,7 +11152,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 101.6 218.44 0)
+		(at 101.6 219.71 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -10837,7 +11163,7 @@
 		(fields_autoplaced yes)
 		(uuid "7088f88a-5936-480b-9656-e77da63c6fa9")
 		(property "Reference" "#PWR0184"
-			(at 101.6 224.79 0)
+			(at 101.6 226.06 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10848,7 +11174,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 101.6 223.52 0)
+			(at 101.6 224.79 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10858,7 +11184,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 101.6 218.44 0)
+			(at 101.6 219.71 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10869,7 +11195,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 101.6 218.44 0)
+			(at 101.6 219.71 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10880,7 +11206,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 101.6 218.44 0)
+			(at 101.6 219.71 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11442,7 +11768,7 @@
 	)
 	(symbol
 		(lib_id "Device:D_Zener")
-		(at 157.48 81.28 270)
+		(at 157.48 80.01 270)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -11452,7 +11778,7 @@
 		(dnp no)
 		(uuid "809d365d-4ae7-44c5-a717-e6e18e842518")
 		(property "Reference" "D9"
-			(at 166.116 80.01 90)
+			(at 166.116 78.74 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11463,7 +11789,7 @@
 			)
 		)
 		(property "Value" "ESD441DPYR"
-			(at 175.26 82.55 90)
+			(at 175.26 81.28 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11474,7 +11800,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 157.48 81.28 0)
+			(at 157.48 80.01 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11485,7 +11811,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/esd441.pdf"
-			(at 157.48 81.28 0)
+			(at 157.48 80.01 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11496,7 +11822,7 @@
 			)
 		)
 		(property "Description" "TI ESD441DPYR; IO1=card-side SD signal, GND2; ground-only microSD CMD/DAT/CLK ESD protection. See ../design/microsd_power_interface.md. No generic zener simulation model."
-			(at 157.48 81.28 0)
+			(at 157.48 80.01 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11507,7 +11833,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "Texas Instruments"
-			(at 157.48 81.28 90)
+			(at 157.48 80.01 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11518,7 +11844,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "ESD441DPYR"
-			(at 157.48 81.28 90)
+			(at 157.48 80.01 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11529,7 +11855,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "296-ESD441DPYRCT-ND"
-			(at 157.48 81.28 90)
+			(at 157.48 80.01 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11540,7 +11866,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/ESD441DPYR/28715599"
-			(at 157.48 81.28 90)
+			(at 157.48 80.01 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11551,7 +11877,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active; 2456 in stock; USD 1:0.34, 10:0.207, 100:0.1291. Unreserved snapshot; see microsd_power_interface.md."
-			(at 157.48 81.28 90)
+			(at 157.48 80.01 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11562,7 +11888,7 @@
 			)
 		)
 		(property "Selection_Basis" "TI SLVSH26C: 3.3V SD card-side clamp; IO1/GND2. Recommended VIO 0..5.5V; 5.5V VRWM with IIO<100nA across operating temperature; leakage 50nA max at 5.5V/25C. CL=1pF typical at 0V, 1MHz, 30mVpp/25C; no guaranteed capacitance maximum. Qualify assembled 25/50MHz timing and ESD residuals."
-			(at 157.48 81.28 90)
+			(at 157.48 80.01 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11573,7 +11899,7 @@
 			)
 		)
 		(property "Procurement_Status" "Selected for microSD 3.3V card-side bus protection; exact sourcing and pin mapping checked. Installed leakage, 25/50MHz signal integrity and ESD residual qualification pending; footprint deferred."
-			(at 157.48 81.28 90)
+			(at 157.48 80.01 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11678,7 +12004,7 @@
 	)
 	(symbol
 		(lib_id "power:VDD")
-		(at 149.86 80.01 0)
+		(at 149.86 78.74 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -11688,7 +12014,7 @@
 		(dnp no)
 		(uuid "844c18ca-fbb7-424a-8329-6263d3926954")
 		(property "Reference" "#PWR0201"
-			(at 149.86 83.82 0)
+			(at 149.86 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11699,7 +12025,7 @@
 			)
 		)
 		(property "Value" "VDD_SD"
-			(at 140.97 78.74 0)
+			(at 140.97 77.47 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11709,7 +12035,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 149.86 80.01 0)
+			(at 149.86 78.74 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11720,7 +12046,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 149.86 80.01 0)
+			(at 149.86 78.74 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11731,7 +12057,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VDD\""
-			(at 149.86 80.01 0)
+			(at 149.86 78.74 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11755,7 +12081,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 157.48 102.87 0)
+		(at 157.48 104.14 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -11765,7 +12091,7 @@
 		(dnp no)
 		(uuid "878db001-a3e3-4bd5-a0c1-1af4c0dac019")
 		(property "Reference" "#PWR0206"
-			(at 157.48 109.22 0)
+			(at 157.48 110.49 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11776,7 +12102,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 163.83 104.14 0)
+			(at 163.83 105.41 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11786,7 +12112,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 157.48 102.87 0)
+			(at 157.48 104.14 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11797,7 +12123,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 157.48 102.87 0)
+			(at 157.48 104.14 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11808,7 +12134,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 157.48 102.87 0)
+			(at 157.48 104.14 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12079,7 +12405,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 54.61 242.57 0)
+		(at 54.61 243.84 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -12090,7 +12416,7 @@
 		(fields_autoplaced yes)
 		(uuid "95810b84-a151-4377-9b5c-7acde46c45dc")
 		(property "Reference" "#PWR0180"
-			(at 54.61 248.92 0)
+			(at 54.61 250.19 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12101,7 +12427,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 54.61 247.65 0)
+			(at 54.61 248.92 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12111,7 +12437,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 54.61 242.57 0)
+			(at 54.61 243.84 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12122,7 +12448,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 54.61 242.57 0)
+			(at 54.61 243.84 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12133,7 +12459,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 54.61 242.57 0)
+			(at 54.61 243.84 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12540,7 +12866,7 @@
 	)
 	(symbol
 		(lib_id "Power_Devices:TMUX1511RSVR")
-		(at 289.56 127 0)
+		(at 238.76 137.16 0)
 		(unit 5)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -12551,7 +12877,7 @@
 		(fields_autoplaced yes)
 		(uuid "9f2b9042-5878-4444-aeea-f47b78201f20")
 		(property "Reference" "U22"
-			(at 297.18 125.7299 0)
+			(at 246.38 135.8899 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12562,7 +12888,7 @@
 			)
 		)
 		(property "Value" "TMUX1511RSVR"
-			(at 297.18 128.2699 0)
+			(at 246.38 138.4299 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12573,7 +12899,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 289.56 129.54 0)
+			(at 238.76 139.7 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12584,7 +12910,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tmux1511.pdf"
-			(at 289.56 127 0)
+			(at 238.76 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12595,7 +12921,7 @@
 			)
 		)
 		(property "Description" "TI TMUX1511RSVR; four independent normally-open SPST bilateral switches, 1.5..5.5 V supply, powered-off protection. RSV16 mapping, four switch units plus power/NC unit. SCDS390B."
-			(at 289.56 127 0)
+			(at 238.76 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12606,7 +12932,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "Texas Instruments"
-			(at 289.56 127 0)
+			(at 238.76 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12617,7 +12943,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "TMUX1511RSVR"
-			(at 289.56 127 0)
+			(at 238.76 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12628,7 +12954,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "296-53443-1-ND"
-			(at 289.56 127 0)
+			(at 238.76 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12639,7 +12965,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/TMUX1511RSVR/9954161"
-			(at 289.56 127 0)
+			(at 238.76 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12650,7 +12976,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active, 110,392 in stock; USD 0.68 / 0.485 / 0.3805 at qty 1 / 10 / 100; 9-week lead. Unreserved; recheck before purchase."
-			(at 289.56 127 0)
+			(at 238.76 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12661,7 +12987,7 @@
 			)
 		)
 		(property "Procurement_Status" "Selected for microSD bus isolation; powered-off leakage, rail-collapse behavior and 50 MHz signal integrity qualification pending; footprint deferred."
-			(at 289.56 127 0)
+			(at 238.76 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12672,7 +12998,7 @@
 			)
 		)
 		(property "Selection_Basis" "Two devices isolate six 3.3 V SDHI1_B lines; SEL high closes each channel. Main-powered VDD, SD_READY-qualified control. See ../design/microsd_power_interface.md."
-			(at 289.56 127 0)
+			(at 238.76 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12966,7 +13292,8 @@
 	)
 	(symbol
 		(lib_id "Device:D_Zener")
-		(at 274.32 91.44 270)
+		(at 274.32 91.44 90)
+		(mirror x)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -12974,10 +13301,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "a64a3956-fab7-4409-9fe0-6ed4d258a4b7")
 		(property "Reference" "D6"
-			(at 271.78 90.1699 90)
+			(at 276.86 90.1699 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12988,7 +13314,7 @@
 			)
 		)
 		(property "Value" "ESD441DPYR"
-			(at 271.78 92.7099 90)
+			(at 276.86 92.7099 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13125,7 +13451,7 @@
 	)
 	(symbol
 		(lib_id "power:VDD")
-		(at 149.86 97.79 0)
+		(at 149.86 96.52 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -13135,7 +13461,7 @@
 		(dnp no)
 		(uuid "af0937f2-caea-49e6-8489-98be82044e59")
 		(property "Reference" "#PWR0202"
-			(at 149.86 101.6 0)
+			(at 149.86 100.33 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13146,7 +13472,7 @@
 			)
 		)
 		(property "Value" "VDD_SD"
-			(at 140.97 96.52 0)
+			(at 140.97 95.25 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13156,7 +13482,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 149.86 97.79 0)
+			(at 149.86 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13167,7 +13493,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 149.86 97.79 0)
+			(at 149.86 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13178,7 +13504,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VDD\""
-			(at 149.86 97.79 0)
+			(at 149.86 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13843,6 +14169,7 @@
 	(symbol
 		(lib_id "Device:R")
 		(at 29.21 234.95 0)
+		(mirror y)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -13850,10 +14177,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "b6b7bbec-665c-4a46-8d46-db32a56f3ee1")
 		(property "Reference" "R78"
-			(at 26.67 233.6799 0)
+			(at 31.75 233.6799 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13864,7 +14190,7 @@
 			)
 		)
 		(property "Value" "10k"
-			(at 26.67 236.2199 0)
+			(at 31.75 236.2199 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13875,7 +14201,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 27.432 234.95 90)
+			(at 30.988 234.95 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13990,7 +14316,7 @@
 	)
 	(symbol
 		(lib_id "Device:D_Zener")
-		(at 157.48 63.5 270)
+		(at 157.48 62.23 270)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -14000,7 +14326,7 @@
 		(dnp no)
 		(uuid "b91c32d0-23f1-4e3e-9a2f-2b90755b7048")
 		(property "Reference" "D8"
-			(at 166.116 62.23 90)
+			(at 166.116 60.96 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14011,7 +14337,7 @@
 			)
 		)
 		(property "Value" "ESD441DPYR"
-			(at 175.26 64.77 90)
+			(at 175.26 63.5 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14022,7 +14348,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 157.48 63.5 0)
+			(at 157.48 62.23 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14033,7 +14359,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/esd441.pdf"
-			(at 157.48 63.5 0)
+			(at 157.48 62.23 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14044,7 +14370,7 @@
 			)
 		)
 		(property "Description" "TI ESD441DPYR; IO1=card-side SD signal, GND2; ground-only microSD CMD/DAT/CLK ESD protection. See ../design/microsd_power_interface.md. No generic zener simulation model."
-			(at 157.48 63.5 0)
+			(at 157.48 62.23 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14055,7 +14381,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "Texas Instruments"
-			(at 157.48 63.5 90)
+			(at 157.48 62.23 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14066,7 +14392,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "ESD441DPYR"
-			(at 157.48 63.5 90)
+			(at 157.48 62.23 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14077,7 +14403,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "296-ESD441DPYRCT-ND"
-			(at 157.48 63.5 90)
+			(at 157.48 62.23 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14088,7 +14414,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/ESD441DPYR/28715599"
-			(at 157.48 63.5 90)
+			(at 157.48 62.23 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14099,7 +14425,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active; 2456 in stock; USD 1:0.34, 10:0.207, 100:0.1291. Unreserved snapshot; see microsd_power_interface.md."
-			(at 157.48 63.5 90)
+			(at 157.48 62.23 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14110,7 +14436,7 @@
 			)
 		)
 		(property "Selection_Basis" "TI SLVSH26C: 3.3V SD card-side clamp; IO1/GND2. Recommended VIO 0..5.5V; 5.5V VRWM with IIO<100nA across operating temperature; leakage 50nA max at 5.5V/25C. CL=1pF typical at 0V, 1MHz, 30mVpp/25C; no guaranteed capacitance maximum. Qualify assembled 25/50MHz timing and ESD residuals."
-			(at 157.48 63.5 90)
+			(at 157.48 62.23 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14121,7 +14447,7 @@
 			)
 		)
 		(property "Procurement_Status" "Selected for microSD 3.3V card-side bus protection; exact sourcing and pin mapping checked. Installed leakage, 25/50MHz signal integrity and ESD residual qualification pending; footprint deferred."
-			(at 157.48 63.5 90)
+			(at 157.48 62.23 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14297,6 +14623,7 @@
 	(symbol
 		(lib_id "Device:R")
 		(at 203.2 234.95 0)
+		(mirror y)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -14304,10 +14631,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "bf8dd405-2afc-4b05-b95b-d696a827078a")
 		(property "Reference" "R80"
-			(at 200.66 233.6799 0)
+			(at 205.74 233.6799 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14318,7 +14644,7 @@
 			)
 		)
 		(property "Value" "10k"
-			(at 200.66 236.2199 0)
+			(at 205.74 236.2199 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14329,7 +14655,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 201.422 234.95 90)
+			(at 204.978 234.95 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14444,7 +14770,7 @@
 	)
 	(symbol
 		(lib_id "Device:D_Zener")
-		(at 134.62 116.84 270)
+		(at 134.62 115.57 270)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -14454,7 +14780,7 @@
 		(dnp no)
 		(uuid "c4020dbb-1f02-48bb-96f3-1403f9792fca")
 		(property "Reference" "D11"
-			(at 143.256 115.57 90)
+			(at 143.256 114.3 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14465,7 +14791,7 @@
 			)
 		)
 		(property "Value" "ESD441DPYR"
-			(at 152.4 120.65 90)
+			(at 152.4 119.38 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14476,7 +14802,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 134.62 116.84 0)
+			(at 134.62 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14487,7 +14813,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/esd441.pdf"
-			(at 134.62 116.84 0)
+			(at 134.62 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14498,7 +14824,7 @@
 			)
 		)
 		(property "Description" "TI ESD441DPYR; IO1=card-side SD signal, GND2; ground-only microSD CMD/DAT/CLK ESD protection. See ../design/microsd_power_interface.md. No generic zener simulation model."
-			(at 134.62 116.84 0)
+			(at 134.62 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14509,7 +14835,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "Texas Instruments"
-			(at 134.62 116.84 90)
+			(at 134.62 115.57 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14520,7 +14846,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "ESD441DPYR"
-			(at 134.62 116.84 90)
+			(at 134.62 115.57 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14531,7 +14857,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "296-ESD441DPYRCT-ND"
-			(at 134.62 116.84 90)
+			(at 134.62 115.57 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14542,7 +14868,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/ESD441DPYR/28715599"
-			(at 134.62 116.84 90)
+			(at 134.62 115.57 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14553,7 +14879,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active; 2456 in stock; USD 1:0.34, 10:0.207, 100:0.1291. Unreserved snapshot; see microsd_power_interface.md."
-			(at 134.62 116.84 90)
+			(at 134.62 115.57 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14564,7 +14890,7 @@
 			)
 		)
 		(property "Selection_Basis" "TI SLVSH26C: 3.3V SD card-side clamp; IO1/GND2. Recommended VIO 0..5.5V; 5.5V VRWM with IIO<100nA across operating temperature; leakage 50nA max at 5.5V/25C. CL=1pF typical at 0V, 1MHz, 30mVpp/25C; no guaranteed capacitance maximum. Qualify assembled 25/50MHz timing and ESD residuals."
-			(at 134.62 116.84 90)
+			(at 134.62 115.57 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14575,7 +14901,7 @@
 			)
 		)
 		(property "Procurement_Status" "Selected for microSD 3.3V card-side bus protection; exact sourcing and pin mapping checked. Installed leakage, 25/50MHz signal integrity and ESD residual qualification pending; footprint deferred."
-			(at 134.62 116.84 90)
+			(at 134.62 115.57 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14602,7 +14928,7 @@
 	)
 	(symbol
 		(lib_id "Device:D_Zener")
-		(at 134.62 134.62 270)
+		(at 134.62 133.35 270)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -14612,7 +14938,7 @@
 		(dnp no)
 		(uuid "c51b10be-3d34-42d8-af5e-ece4997a2acf")
 		(property "Reference" "D12"
-			(at 143.256 133.35 90)
+			(at 143.256 132.08 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14623,7 +14949,7 @@
 			)
 		)
 		(property "Value" "ESD441DPYR"
-			(at 152.4 135.89 90)
+			(at 152.4 134.62 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14634,7 +14960,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 134.62 134.62 0)
+			(at 134.62 133.35 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14645,7 +14971,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/esd441.pdf"
-			(at 134.62 134.62 0)
+			(at 134.62 133.35 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14656,7 +14982,7 @@
 			)
 		)
 		(property "Description" "TI ESD441DPYR; IO1=card-side SD signal, GND2; ground-only microSD CMD/DAT/CLK ESD protection. See ../design/microsd_power_interface.md. No generic zener simulation model."
-			(at 134.62 134.62 0)
+			(at 134.62 133.35 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14667,7 +14993,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "Texas Instruments"
-			(at 134.62 134.62 90)
+			(at 134.62 133.35 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14678,7 +15004,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "ESD441DPYR"
-			(at 134.62 134.62 90)
+			(at 134.62 133.35 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14689,7 +15015,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "296-ESD441DPYRCT-ND"
-			(at 134.62 134.62 90)
+			(at 134.62 133.35 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14700,7 +15026,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/ESD441DPYR/28715599"
-			(at 134.62 134.62 90)
+			(at 134.62 133.35 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14711,7 +15037,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active; 2456 in stock; USD 1:0.34, 10:0.207, 100:0.1291. Unreserved snapshot; see microsd_power_interface.md."
-			(at 134.62 134.62 90)
+			(at 134.62 133.35 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14722,7 +15048,7 @@
 			)
 		)
 		(property "Selection_Basis" "TI SLVSH26C: 3.3V SD card-side clamp; IO1/GND2. Recommended VIO 0..5.5V; 5.5V VRWM with IIO<100nA across operating temperature; leakage 50nA max at 5.5V/25C. CL=1pF typical at 0V, 1MHz, 30mVpp/25C; no guaranteed capacitance maximum. Qualify assembled 25/50MHz timing and ESD residuals."
-			(at 134.62 134.62 90)
+			(at 134.62 133.35 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14733,7 +15059,7 @@
 			)
 		)
 		(property "Procurement_Status" "Selected for microSD 3.3V card-side bus protection; exact sourcing and pin mapping checked. Installed leakage, 25/50MHz signal integrity and ESD residual qualification pending; footprint deferred."
-			(at 134.62 134.62 90)
+			(at 134.62 133.35 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14959,7 +15285,7 @@
 	)
 	(symbol
 		(lib_id "power:VCC")
-		(at 162.56 124.46 0)
+		(at 175.26 125.73 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -14970,7 +15296,7 @@
 		(fields_autoplaced yes)
 		(uuid "c82d04ab-de59-4237-a827-cdbf6a6fc549")
 		(property "Reference" "#PWR0196"
-			(at 162.56 128.27 0)
+			(at 175.26 129.54 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14981,7 +15307,7 @@
 			)
 		)
 		(property "Value" "+3V3_MCU"
-			(at 162.56 119.38 0)
+			(at 175.26 120.65 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14991,7 +15317,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 162.56 124.46 0)
+			(at 175.26 125.73 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15002,7 +15328,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 162.56 124.46 0)
+			(at 175.26 125.73 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15013,7 +15339,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 162.56 124.46 0)
+			(at 175.26 125.73 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15037,7 +15363,7 @@
 	)
 	(symbol
 		(lib_id "power:VDD")
-		(at 149.86 44.45 0)
+		(at 149.86 43.18 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -15047,7 +15373,7 @@
 		(dnp no)
 		(uuid "c9069174-5cca-4d85-8ffd-a1114383f1bf")
 		(property "Reference" "#PWR0199"
-			(at 149.86 48.26 0)
+			(at 149.86 46.99 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15058,7 +15384,7 @@
 			)
 		)
 		(property "Value" "VDD_SD"
-			(at 156.21 43.18 0)
+			(at 156.21 41.91 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -15068,7 +15394,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 149.86 44.45 0)
+			(at 149.86 43.18 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15079,7 +15405,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 149.86 44.45 0)
+			(at 149.86 43.18 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15090,7 +15416,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VDD\""
-			(at 149.86 44.45 0)
+			(at 149.86 43.18 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15260,7 +15586,7 @@
 	)
 	(symbol
 		(lib_id "Device:C_Small")
-		(at 320.04 127 0)
+		(at 269.24 137.16 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -15271,7 +15597,7 @@
 		(fields_autoplaced yes)
 		(uuid "d92fc04c-97f6-4614-88f2-724c5652d7d2")
 		(property "Reference" "C107"
-			(at 322.58 125.7362 0)
+			(at 271.78 135.8962 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -15282,7 +15608,7 @@
 			)
 		)
 		(property "Value" "100n"
-			(at 322.58 128.2762 0)
+			(at 271.78 138.4362 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -15293,7 +15619,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 320.04 127 0)
+			(at 269.24 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15304,7 +15630,7 @@
 			)
 		)
 		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
-			(at 320.04 127 0)
+			(at 269.24 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15315,7 +15641,7 @@
 			)
 		)
 		(property "Description" "TDK C1608X7R1H104K080AA; 100 nF, 50 V, X7R, +/-10%; microSD local bypass. See ../design/microsd_power_interface.md; installed PDN and collapse qualification required."
-			(at 320.04 127 0)
+			(at 269.24 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15326,7 +15652,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "445-1314-1-ND"
-			(at 320.04 127 0)
+			(at 269.24 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15337,7 +15663,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk-corporation/C1608X7R1H104K080AA/513811"
-			(at 320.04 127 0)
+			(at 269.24 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15348,7 +15674,7 @@
 			)
 		)
 		(property "Procurement_Status" "Selected - nominal DC-bias screened; final rail and PDN qualification open"
-			(at 320.04 127 0)
+			(at 269.24 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15359,7 +15685,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active, 329450 in stock; USD 1:0.11, 10:0.060, 100:0.0359; unreserved snapshot. See microsd_power_interface.md."
-			(at 320.04 127 0)
+			(at 269.24 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15370,7 +15696,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "TDK"
-			(at 320.04 127 0)
+			(at 269.24 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15381,7 +15707,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
-			(at 320.04 127 0)
+			(at 269.24 137.16 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15408,7 +15734,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 182.88 194.31 0)
+		(at 182.88 195.58 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -15419,7 +15745,7 @@
 		(fields_autoplaced yes)
 		(uuid "dad68252-ada7-401b-8523-3b7a220c0d97")
 		(property "Reference" "#PWR0176"
-			(at 182.88 200.66 0)
+			(at 182.88 201.93 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15430,7 +15756,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 182.88 199.39 0)
+			(at 182.88 200.66 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -15440,7 +15766,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 182.88 194.31 0)
+			(at 182.88 195.58 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15451,7 +15777,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 182.88 194.31 0)
+			(at 182.88 195.58 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15462,7 +15788,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 182.88 194.31 0)
+			(at 182.88 195.58 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15935,7 +16261,7 @@
 	)
 	(symbol
 		(lib_id "power:VCC")
-		(at 289.56 111.76 0)
+		(at 238.76 125.73 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -15946,7 +16272,7 @@
 		(fields_autoplaced yes)
 		(uuid "ec9db516-aee6-49d9-b53b-0091c004c239")
 		(property "Reference" "#PWR0197"
-			(at 289.56 115.57 0)
+			(at 238.76 129.54 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15957,7 +16283,7 @@
 			)
 		)
 		(property "Value" "+3V3_MCU"
-			(at 289.56 106.68 0)
+			(at 238.76 120.65 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -15967,7 +16293,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 289.56 111.76 0)
+			(at 238.76 125.73 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15978,7 +16304,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 289.56 111.76 0)
+			(at 238.76 125.73 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15989,7 +16315,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 289.56 111.76 0)
+			(at 238.76 125.73 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16554,7 +16880,7 @@
 	)
 	(symbol
 		(lib_id "power:VDD")
-		(at 198.12 212.09 0)
+		(at 198.12 210.82 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -16565,7 +16891,7 @@
 		(fields_autoplaced yes)
 		(uuid "f59bd8d0-0e1d-45d4-9d3a-fa88016e784e")
 		(property "Reference" "#PWR0187"
-			(at 198.12 215.9 0)
+			(at 198.12 214.63 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16576,7 +16902,7 @@
 			)
 		)
 		(property "Value" "+3V3_MCU"
-			(at 198.12 207.01 0)
+			(at 198.12 205.74 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -16586,7 +16912,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 198.12 212.09 0)
+			(at 198.12 210.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16597,7 +16923,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 198.12 212.09 0)
+			(at 198.12 210.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16608,7 +16934,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VDD\""
-			(at 198.12 212.09 0)
+			(at 198.12 210.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16710,7 +17036,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 88.9 194.31 0)
+		(at 88.9 195.58 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -16721,7 +17047,7 @@
 		(fields_autoplaced yes)
 		(uuid "fcd29c2e-a4ac-4ed0-9a2b-d2368687e730")
 		(property "Reference" "#PWR0179"
-			(at 88.9 200.66 0)
+			(at 88.9 201.93 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16732,7 +17058,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 88.9 199.39 0)
+			(at 88.9 200.66 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -16742,7 +17068,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 88.9 194.31 0)
+			(at 88.9 195.58 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16753,7 +17079,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 88.9 194.31 0)
+			(at 88.9 195.58 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16764,7 +17090,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 88.9 194.31 0)
+			(at 88.9 195.58 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16865,7 +17191,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 71.12 207.01 0)
+		(at 71.12 208.28 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -16876,7 +17202,7 @@
 		(fields_autoplaced yes)
 		(uuid "fd576088-cf12-4c4d-ac9d-b62d6cbe6c43")
 		(property "Reference" "#PWR0183"
-			(at 71.12 213.36 0)
+			(at 71.12 214.63 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16887,7 +17213,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 71.12 212.09 0)
+			(at 71.12 213.36 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -16897,7 +17223,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 71.12 207.01 0)
+			(at 71.12 208.28 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16908,7 +17234,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 71.12 207.01 0)
+			(at 71.12 208.28 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16919,7 +17245,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 71.12 207.01 0)
+			(at 71.12 208.28 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

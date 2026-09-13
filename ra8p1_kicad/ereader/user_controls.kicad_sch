@@ -963,6 +963,16 @@
 	)
 	(wire
 		(pts
+			(xy 182.88 82.55) (xy 182.88 81.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0bfcc69a-351e-41b6-b0c3-163f1eef14f0")
+	)
+	(wire
+		(pts
 			(xy 152.4 63.5) (xy 152.4 71.12)
 		)
 		(stroke
@@ -1010,6 +1020,16 @@
 			(type default)
 		)
 		(uuid "3f18c9f8-9721-4c3b-875b-4e2fc5192340")
+	)
+	(wire
+		(pts
+			(xy 182.88 158.75) (xy 182.88 157.48)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "487c6f39-b5bf-46c3-8777-6b12f86d5c78")
 	)
 	(wire
 		(pts
@@ -1083,6 +1103,16 @@
 	)
 	(wire
 		(pts
+			(xy 81.28 82.55) (xy 81.28 81.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "627dd0ac-8363-45d2-8a66-97522f807217")
+	)
+	(wire
+		(pts
 			(xy 168.91 139.7) (xy 182.88 139.7)
 		)
 		(stroke
@@ -1133,7 +1163,17 @@
 	)
 	(wire
 		(pts
-			(xy 35.56 80.01) (xy 35.56 81.28)
+			(xy 152.4 158.75) (xy 152.4 157.48)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8423ed48-fbe5-4255-9763-c68c069a6b1c")
+	)
+	(wire
+		(pts
+			(xy 35.56 80.01) (xy 35.56 82.55)
 		)
 		(stroke
 			(width 0)
@@ -1173,7 +1213,7 @@
 	)
 	(wire
 		(pts
-			(xy 137.16 156.21) (xy 137.16 157.48)
+			(xy 137.16 156.21) (xy 137.16 158.75)
 		)
 		(stroke
 			(width 0)
@@ -1190,6 +1230,16 @@
 			(type default)
 		)
 		(uuid "91170605-a976-4813-ab19-016a7e7177ca")
+	)
+	(wire
+		(pts
+			(xy 50.8 158.75) (xy 50.8 157.48)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "93f7e5c4-a0c3-4b0e-a1be-0f625f9cfc97")
 	)
 	(wire
 		(pts
@@ -1243,7 +1293,7 @@
 	)
 	(wire
 		(pts
-			(xy 137.16 80.01) (xy 137.16 81.28)
+			(xy 137.16 80.01) (xy 137.16 82.55)
 		)
 		(stroke
 			(width 0)
@@ -1273,7 +1323,17 @@
 	)
 	(wire
 		(pts
-			(xy 35.56 156.21) (xy 35.56 157.48)
+			(xy 50.8 82.55) (xy 50.8 81.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bd826f75-2f67-4cb4-aecf-962343e0dad2")
+	)
+	(wire
+		(pts
+			(xy 35.56 156.21) (xy 35.56 158.75)
 		)
 		(stroke
 			(width 0)
@@ -1330,6 +1390,26 @@
 			(type default)
 		)
 		(uuid "d3a225b7-604b-40a0-a648-6dc027e3cc2f")
+	)
+	(wire
+		(pts
+			(xy 81.28 158.75) (xy 81.28 157.48)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d9ede4c4-d411-4d92-9bf4-cc8a19afca72")
+	)
+	(wire
+		(pts
+			(xy 152.4 82.55) (xy 152.4 81.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e00fcd6d-b9f4-4710-997b-5afbaa8e6f1a")
 	)
 	(wire
 		(pts
@@ -1952,7 +2032,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 81.28 157.48 0)
+		(at 81.28 158.75 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -1963,7 +2043,7 @@
 		(fields_autoplaced yes)
 		(uuid "2403d0f4-7be7-4daf-b263-b0b695c22afa")
 		(property "Reference" "#PWR0104"
-			(at 81.28 163.83 0)
+			(at 81.28 165.1 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1974,7 +2054,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 81.28 162.56 0)
+			(at 81.28 163.83 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -1984,7 +2064,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 81.28 157.48 0)
+			(at 81.28 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1995,7 +2075,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 81.28 157.48 0)
+			(at 81.28 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2006,7 +2086,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 81.28 157.48 0)
+			(at 81.28 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2188,7 +2268,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 152.4 157.48 0)
+		(at 152.4 158.75 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2199,7 +2279,7 @@
 		(fields_autoplaced yes)
 		(uuid "28755fae-c992-4b48-9f11-cb2f7f1a4de7")
 		(property "Reference" "#PWR096"
-			(at 152.4 163.83 0)
+			(at 152.4 165.1 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2210,7 +2290,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 152.4 162.56 0)
+			(at 152.4 163.83 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2220,7 +2300,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 152.4 157.48 0)
+			(at 152.4 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2231,7 +2311,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 152.4 157.48 0)
+			(at 152.4 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2242,7 +2322,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 152.4 157.48 0)
+			(at 152.4 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2266,7 +2346,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 137.16 157.48 0)
+		(at 137.16 158.75 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2277,7 +2357,7 @@
 		(fields_autoplaced yes)
 		(uuid "2ec4ab12-bab6-4bff-bfe0-3a8e76caa82e")
 		(property "Reference" "#PWR095"
-			(at 137.16 163.83 0)
+			(at 137.16 165.1 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2288,7 +2368,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 137.16 162.56 0)
+			(at 137.16 163.83 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2298,7 +2378,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 137.16 157.48 0)
+			(at 137.16 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2309,7 +2389,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 137.16 157.48 0)
+			(at 137.16 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2320,7 +2400,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 137.16 157.48 0)
+			(at 137.16 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2535,7 +2615,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 182.88 157.48 0)
+		(at 182.88 158.75 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2546,7 +2626,7 @@
 		(fields_autoplaced yes)
 		(uuid "4d4c1ffc-d8ce-45fe-885f-28f6e1aa8add")
 		(property "Reference" "#PWR097"
-			(at 182.88 163.83 0)
+			(at 182.88 165.1 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2557,7 +2637,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 182.88 162.56 0)
+			(at 182.88 163.83 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2567,7 +2647,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 182.88 157.48 0)
+			(at 182.88 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2578,7 +2658,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 182.88 157.48 0)
+			(at 182.88 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2589,7 +2669,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 182.88 157.48 0)
+			(at 182.88 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2963,7 +3043,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 152.4 81.28 0)
+		(at 152.4 82.55 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2974,7 +3054,7 @@
 		(fields_autoplaced yes)
 		(uuid "5b7c4906-df3e-4fa0-905f-4eacb3e56eb5")
 		(property "Reference" "#PWR099"
-			(at 152.4 87.63 0)
+			(at 152.4 88.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2985,7 +3065,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 152.4 86.36 0)
+			(at 152.4 87.63 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2995,7 +3075,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 152.4 81.28 0)
+			(at 152.4 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3006,7 +3086,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 152.4 81.28 0)
+			(at 152.4 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3017,7 +3097,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 152.4 81.28 0)
+			(at 152.4 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3041,7 +3121,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 50.8 81.28 0)
+		(at 50.8 82.55 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -3052,7 +3132,7 @@
 		(fields_autoplaced yes)
 		(uuid "6ebb63cd-91f5-4a6a-8b50-13d2f05fa320")
 		(property "Reference" "#PWR0102"
-			(at 50.8 87.63 0)
+			(at 50.8 88.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3063,7 +3143,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 50.8 86.36 0)
+			(at 50.8 87.63 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3073,7 +3153,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 50.8 81.28 0)
+			(at 50.8 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3084,7 +3164,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 50.8 81.28 0)
+			(at 50.8 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3095,7 +3175,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 50.8 81.28 0)
+			(at 50.8 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3468,7 +3548,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 35.56 81.28 0)
+		(at 35.56 82.55 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -3479,7 +3559,7 @@
 		(fields_autoplaced yes)
 		(uuid "87fa4e03-6f9e-4fdd-a123-e424670a80ed")
 		(property "Reference" "#PWR0101"
-			(at 35.56 87.63 0)
+			(at 35.56 88.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3490,7 +3570,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 35.56 86.36 0)
+			(at 35.56 87.63 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3500,7 +3580,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 35.56 81.28 0)
+			(at 35.56 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3511,7 +3591,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 35.56 81.28 0)
+			(at 35.56 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3522,7 +3602,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 35.56 81.28 0)
+			(at 35.56 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3860,7 +3940,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 35.56 157.48 0)
+		(at 35.56 158.75 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -3871,7 +3951,7 @@
 		(fields_autoplaced yes)
 		(uuid "994a4b1b-303b-417a-92ad-28ed80376d34")
 		(property "Reference" "#PWR0106"
-			(at 35.56 163.83 0)
+			(at 35.56 165.1 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3882,7 +3962,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 35.56 162.56 0)
+			(at 35.56 163.83 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3892,7 +3972,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 35.56 157.48 0)
+			(at 35.56 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3903,7 +3983,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 35.56 157.48 0)
+			(at 35.56 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3914,7 +3994,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 35.56 157.48 0)
+			(at 35.56 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4290,7 +4370,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 137.16 81.28 0)
+		(at 137.16 82.55 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -4301,7 +4381,7 @@
 		(fields_autoplaced yes)
 		(uuid "b05cb76a-db10-4f7b-8ac0-1d05e15b7b81")
 		(property "Reference" "#PWR0100"
-			(at 137.16 87.63 0)
+			(at 137.16 88.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4312,7 +4392,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 137.16 86.36 0)
+			(at 137.16 87.63 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -4322,7 +4402,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 137.16 81.28 0)
+			(at 137.16 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4333,7 +4413,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 137.16 81.28 0)
+			(at 137.16 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4344,7 +4424,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 137.16 81.28 0)
+			(at 137.16 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4559,7 +4639,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 182.88 81.28 0)
+		(at 182.88 82.55 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -4570,7 +4650,7 @@
 		(fields_autoplaced yes)
 		(uuid "be3fa948-278e-4bfa-9a56-4e5816ac06dd")
 		(property "Reference" "#PWR098"
-			(at 182.88 87.63 0)
+			(at 182.88 88.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4581,7 +4661,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 182.88 86.36 0)
+			(at 182.88 87.63 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -4591,7 +4671,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 182.88 81.28 0)
+			(at 182.88 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4602,7 +4682,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 182.88 81.28 0)
+			(at 182.88 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4613,7 +4693,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 182.88 81.28 0)
+			(at 182.88 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5226,7 +5306,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 50.8 157.48 0)
+		(at 50.8 158.75 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -5237,7 +5317,7 @@
 		(fields_autoplaced yes)
 		(uuid "e3b21959-b9dd-4de3-947a-f843466d98bd")
 		(property "Reference" "#PWR0105"
-			(at 50.8 163.83 0)
+			(at 50.8 165.1 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5248,7 +5328,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 50.8 162.56 0)
+			(at 50.8 163.83 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -5258,7 +5338,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 50.8 157.48 0)
+			(at 50.8 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5269,7 +5349,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 50.8 157.48 0)
+			(at 50.8 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5280,7 +5360,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 50.8 157.48 0)
+			(at 50.8 158.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5463,7 +5543,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 81.28 81.28 0)
+		(at 81.28 82.55 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -5474,7 +5554,7 @@
 		(fields_autoplaced yes)
 		(uuid "ebebe890-7ff1-4fc4-abc5-642f2d79d532")
 		(property "Reference" "#PWR0103"
-			(at 81.28 87.63 0)
+			(at 81.28 88.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5485,7 +5565,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 81.28 86.36 0)
+			(at 81.28 87.63 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -5495,7 +5575,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 81.28 81.28 0)
+			(at 81.28 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5506,7 +5586,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 81.28 81.28 0)
+			(at 81.28 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5517,7 +5597,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 81.28 81.28 0)
+			(at 81.28 82.55 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

@@ -2758,7 +2758,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 96.52) (xy 83.82 96.52)
+			(xy 71.12 96.52) (xy 83.82 96.52)
 		)
 		(stroke
 			(width 0)
@@ -2768,7 +2768,7 @@
 	)
 	(wire
 		(pts
-			(xy 259.08 78.74) (xy 279.4 78.74)
+			(xy 273.05 78.74) (xy 279.4 78.74)
 		)
 		(stroke
 			(width 0)
@@ -2778,7 +2778,17 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 83.82) (xy 83.82 83.82)
+			(xy 355.6 217.17) (xy 355.6 215.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0c09ec9a-46df-4190-9219-8c70fbeb9dac")
+	)
+	(wire
+		(pts
+			(xy 71.12 83.82) (xy 83.82 83.82)
 		)
 		(stroke
 			(width 0)
@@ -2798,7 +2808,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 91.44) (xy 190.5 91.44)
+			(xy 184.15 91.44) (xy 190.5 91.44)
 		)
 		(stroke
 			(width 0)
@@ -2948,7 +2958,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 76.2) (xy 83.82 76.2)
+			(xy 71.12 76.2) (xy 83.82 76.2)
 		)
 		(stroke
 			(width 0)
@@ -3148,7 +3158,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 106.68) (xy 83.82 106.68)
+			(xy 71.12 106.68) (xy 83.82 106.68)
 		)
 		(stroke
 			(width 0)
@@ -3185,6 +3195,16 @@
 			(type default)
 		)
 		(uuid "38bd2dd5-41e0-447c-bc2e-da09f7a04caa")
+	)
+	(wire
+		(pts
+			(xy 317.5 179.07) (xy 317.5 177.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "39c2796f-0686-42d6-81fa-9db58720e1d0")
 	)
 	(wire
 		(pts
@@ -3328,7 +3348,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 83.82) (xy 190.5 83.82)
+			(xy 184.15 83.82) (xy 190.5 83.82)
 		)
 		(stroke
 			(width 0)
@@ -3438,7 +3458,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 88.9) (xy 83.82 88.9)
+			(xy 71.12 88.9) (xy 83.82 88.9)
 		)
 		(stroke
 			(width 0)
@@ -3478,7 +3498,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 86.36) (xy 190.5 86.36)
+			(xy 184.15 86.36) (xy 190.5 86.36)
 		)
 		(stroke
 			(width 0)
@@ -3548,7 +3568,7 @@
 	)
 	(wire
 		(pts
-			(xy 259.08 93.98) (xy 279.4 93.98)
+			(xy 273.05 93.98) (xy 279.4 93.98)
 		)
 		(stroke
 			(width 0)
@@ -3558,7 +3578,7 @@
 	)
 	(wire
 		(pts
-			(xy 259.08 86.36) (xy 279.4 86.36)
+			(xy 273.05 86.36) (xy 279.4 86.36)
 		)
 		(stroke
 			(width 0)
@@ -3568,7 +3588,7 @@
 	)
 	(wire
 		(pts
-			(xy 259.08 91.44) (xy 279.4 91.44)
+			(xy 273.05 91.44) (xy 279.4 91.44)
 		)
 		(stroke
 			(width 0)
@@ -3648,7 +3668,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 104.14) (xy 83.82 104.14)
+			(xy 71.12 104.14) (xy 83.82 104.14)
 		)
 		(stroke
 			(width 0)
@@ -3658,7 +3678,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 93.98) (xy 190.5 93.98)
+			(xy 184.15 93.98) (xy 190.5 93.98)
 		)
 		(stroke
 			(width 0)
@@ -3738,7 +3758,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 88.9) (xy 190.5 88.9)
+			(xy 184.15 88.9) (xy 190.5 88.9)
 		)
 		(stroke
 			(width 0)
@@ -3848,7 +3868,7 @@
 	)
 	(wire
 		(pts
-			(xy 259.08 88.9) (xy 279.4 88.9)
+			(xy 273.05 88.9) (xy 279.4 88.9)
 		)
 		(stroke
 			(width 0)
@@ -3858,7 +3878,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 78.74) (xy 83.82 78.74)
+			(xy 71.12 78.74) (xy 83.82 78.74)
 		)
 		(stroke
 			(width 0)
@@ -3925,6 +3945,16 @@
 			(type default)
 		)
 		(uuid "a151e399-d13c-4743-ac54-c58663e75c27")
+	)
+	(wire
+		(pts
+			(xy 127 118.11) (xy 127 119.38)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a1a0424f-f9b8-4da9-ae46-0eefeaabbcca")
 	)
 	(wire
 		(pts
@@ -4008,7 +4038,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 76.2) (xy 190.5 76.2)
+			(xy 184.15 76.2) (xy 190.5 76.2)
 		)
 		(stroke
 			(width 0)
@@ -4048,7 +4078,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 101.6) (xy 83.82 101.6)
+			(xy 71.12 101.6) (xy 83.82 101.6)
 		)
 		(stroke
 			(width 0)
@@ -4058,7 +4088,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 81.28) (xy 190.5 81.28)
+			(xy 184.15 81.28) (xy 190.5 81.28)
 		)
 		(stroke
 			(width 0)
@@ -4138,7 +4168,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 81.28) (xy 83.82 81.28)
+			(xy 71.12 81.28) (xy 83.82 81.28)
 		)
 		(stroke
 			(width 0)
@@ -4228,7 +4258,7 @@
 	)
 	(wire
 		(pts
-			(xy 259.08 76.2) (xy 279.4 76.2)
+			(xy 273.05 76.2) (xy 279.4 76.2)
 		)
 		(stroke
 			(width 0)
@@ -4258,7 +4288,7 @@
 	)
 	(wire
 		(pts
-			(xy 259.08 83.82) (xy 279.4 83.82)
+			(xy 273.05 83.82) (xy 279.4 83.82)
 		)
 		(stroke
 			(width 0)
@@ -4278,7 +4308,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 111.76) (xy 83.82 111.76)
+			(xy 71.12 111.76) (xy 83.82 111.76)
 		)
 		(stroke
 			(width 0)
@@ -4298,7 +4328,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 109.22) (xy 83.82 109.22)
+			(xy 71.12 109.22) (xy 83.82 109.22)
 		)
 		(stroke
 			(width 0)
@@ -4308,7 +4338,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 93.98) (xy 83.82 93.98)
+			(xy 71.12 93.98) (xy 83.82 93.98)
 		)
 		(stroke
 			(width 0)
@@ -4348,7 +4378,7 @@
 	)
 	(wire
 		(pts
-			(xy 259.08 81.28) (xy 279.4 81.28)
+			(xy 273.05 81.28) (xy 279.4 81.28)
 		)
 		(stroke
 			(width 0)
@@ -4378,7 +4408,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 78.74) (xy 190.5 78.74)
+			(xy 184.15 78.74) (xy 190.5 78.74)
 		)
 		(stroke
 			(width 0)
@@ -4418,7 +4448,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 99.06) (xy 83.82 99.06)
+			(xy 71.12 99.06) (xy 83.82 99.06)
 		)
 		(stroke
 			(width 0)
@@ -4458,7 +4488,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 86.36) (xy 83.82 86.36)
+			(xy 71.12 86.36) (xy 83.82 86.36)
 		)
 		(stroke
 			(width 0)
@@ -4505,6 +4535,16 @@
 			(type default)
 		)
 		(uuid "e6b1cc59-ff55-4737-beea-93a7720c3f55")
+	)
+	(wire
+		(pts
+			(xy 177.8 199.39) (xy 177.8 200.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e75dec7a-f00b-43c9-8387-864f8ed45ed1")
 	)
 	(wire
 		(pts
@@ -4568,7 +4608,17 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 91.44) (xy 83.82 91.44)
+			(xy 177.8 161.29) (xy 177.8 162.56)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f557df58-b6d0-4d83-ad44-d0bee1a4d131")
+	)
+	(wire
+		(pts
+			(xy 71.12 91.44) (xy 83.82 91.44)
 		)
 		(stroke
 			(width 0)
@@ -4577,22 +4627,22 @@
 		(uuid "fd1e0796-b863-4507-bf3d-e284aae0fe5b")
 	)
 	(label "SDRAM_A9"
-		(at 68.58 99.06 0)
+		(at 71.12 99.06 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "00add625-25a2-4d78-a0db-5705032147c7")
 	)
 	(label "SDRAM_DQ23"
-		(at 259.08 93.98 0)
+		(at 273.05 93.98 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "015a1d06-c6a2-4911-afac-358496edf95d")
 	)
@@ -4607,12 +4657,12 @@
 		(uuid "01d5c2d4-bfcd-447b-b3ba-f78cd7a34f63")
 	)
 	(label "SDRAM_A7"
-		(at 68.58 93.98 0)
+		(at 71.12 93.98 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "084cb7cc-98a0-4470-af89-2a49a493c42f")
 	)
@@ -4647,12 +4697,12 @@
 		(uuid "1e066948-679c-47f5-9639-f026e5339503")
 	)
 	(label "SDRAM_DQ18"
-		(at 259.08 81.28 0)
+		(at 273.05 81.28 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "1e4e1674-9b35-42cd-962f-98dbf91f772f")
 	)
@@ -4677,12 +4727,12 @@
 		(uuid "20351cd4-1cc3-40da-834d-11707d1f5497")
 	)
 	(label "SDRAM_DQ4"
-		(at 170.18 86.36 0)
+		(at 184.15 86.36 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "2cd47b55-2122-4f8d-8bb2-64b64cbfba2f")
 	)
@@ -4697,12 +4747,12 @@
 		(uuid "2d2a08cc-07b1-4844-9dc5-d05e472d529a")
 	)
 	(label "SDRAM_A1"
-		(at 68.58 78.74 0)
+		(at 71.12 78.74 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "2e9827b7-b052-4643-a4dc-8d2c5795566d")
 	)
@@ -4737,12 +4787,12 @@
 		(uuid "3aa24fd5-d133-487b-ae90-7666eb53b304")
 	)
 	(label "SDRAM_DQ20"
-		(at 259.08 86.36 0)
+		(at 273.05 86.36 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "3c64d437-dc40-45df-be27-e29aac449fe1")
 	)
@@ -4767,22 +4817,22 @@
 		(uuid "3d4df099-6de9-4950-bcef-a0a66be8f499")
 	)
 	(label "SDRAM_DQ3"
-		(at 170.18 83.82 0)
+		(at 184.15 83.82 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "4248fb77-45e7-49af-86a5-045ea882ceee")
 	)
 	(label "SDRAM_DQ2"
-		(at 170.18 81.28 0)
+		(at 184.15 81.28 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "42b283c1-1e84-4f02-8804-af7d49fa27a3")
 	)
@@ -4797,52 +4847,52 @@
 		(uuid "442f2df9-5a5c-4c7e-81fb-ed670a70bf01")
 	)
 	(label "SDRAM_A12"
-		(at 68.58 106.68 0)
+		(at 71.12 106.68 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "48dcf0a3-c900-4b68-9a03-c5ff9da1b4cc")
 	)
 	(label "SDRAM_DQ22"
-		(at 259.08 91.44 0)
+		(at 273.05 91.44 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "49219b43-84ae-495d-934a-7f433b5ee1ef")
 	)
 	(label "SDRAM_DQ0"
-		(at 170.18 76.2 0)
+		(at 184.15 76.2 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "49615edc-2b5a-46f3-98ee-5e6608c27411")
 	)
 	(label "SDRAM_DQ19"
-		(at 259.08 83.82 0)
+		(at 273.05 83.82 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "4d1e2e9b-ac44-481e-91be-778beed33f24")
 	)
 	(label "SDRAM_A0"
-		(at 68.58 76.2 0)
+		(at 71.12 76.2 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "4e8e1fbc-ce0c-48ba-b28c-43e34325554d")
 	)
@@ -4877,12 +4927,12 @@
 		(uuid "563b62f3-57d6-45d3-aa68-f36d02a7bd28")
 	)
 	(label "SDRAM_DQ7"
-		(at 170.18 93.98 0)
+		(at 184.15 93.98 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "57b1881d-4682-4803-9d2c-b26d723dd280")
 	)
@@ -4917,22 +4967,22 @@
 		(uuid "68e56a38-528a-4e4c-8964-cfcc062ae245")
 	)
 	(label "SDRAM_BA1"
-		(at 68.58 111.76 0)
+		(at 71.12 111.76 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "6939f85f-2fde-4e82-8008-f350136f5f61")
 	)
 	(label "SDRAM_A5"
-		(at 68.58 88.9 0)
+		(at 71.12 88.9 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "6ce61a24-0d78-4451-ba63-c6790fe57a7a")
 	)
@@ -4947,22 +4997,22 @@
 		(uuid "6d8ca681-b7c1-44e1-95cf-e019c0b595b6")
 	)
 	(label "SDRAM_DQ16"
-		(at 259.08 76.2 0)
+		(at 273.05 76.2 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "6ed25cbd-9e96-4e0e-9e47-253e692c35af")
 	)
 	(label "SDRAM_DQ1"
-		(at 170.18 78.74 0)
+		(at 184.15 78.74 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "74526e49-3a29-4acb-9bba-9370fb5db4f7")
 	)
@@ -4987,22 +5037,22 @@
 		(uuid "7872d86c-b44d-407a-a374-dbd9d488de07")
 	)
 	(label "SDRAM_DQ21"
-		(at 259.08 88.9 0)
+		(at 273.05 88.9 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "7e4bc2c0-525d-4d5c-b998-aadd9e682667")
 	)
 	(label "SDRAM_A10"
-		(at 68.58 101.6 0)
+		(at 71.12 101.6 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "845dd3f9-c2bc-4873-90e5-2419ccb54312")
 	)
@@ -5017,12 +5067,12 @@
 		(uuid "919b1ff0-b14a-48a3-9d56-f6e06fb6ef94")
 	)
 	(label "SDRAM_A8"
-		(at 68.58 96.52 0)
+		(at 71.12 96.52 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "9fb65c70-9c08-4b53-93ea-da2321febadc")
 	)
@@ -5037,22 +5087,22 @@
 		(uuid "a21def13-2275-4ba4-b61d-14e64eff8df7")
 	)
 	(label "SDRAM_A11"
-		(at 68.58 104.14 0)
+		(at 71.12 104.14 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "a3d734b9-afe8-41f7-89ab-bb9473f1de5f")
 	)
 	(label "SDRAM_A3"
-		(at 68.58 83.82 0)
+		(at 71.12 83.82 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "a9f66594-2edb-42f7-97d4-c0498d78df1d")
 	)
@@ -5067,22 +5117,22 @@
 		(uuid "af6ccd8b-e545-4651-abe2-c1883fe38e95")
 	)
 	(label "SDRAM_A4"
-		(at 68.58 86.36 0)
+		(at 71.12 86.36 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "afc5dfad-fd2f-4130-bc74-092db7fd7eb4")
 	)
 	(label "SDRAM_DQ17"
-		(at 259.08 78.74 0)
+		(at 273.05 78.74 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "b44bf0df-9453-47b7-9bb9-067e473bd9e9")
 	)
@@ -5107,22 +5157,22 @@
 		(uuid "b7af1b02-0e5c-4c3d-aead-bd65365823da")
 	)
 	(label "SDRAM_DQ5"
-		(at 170.18 88.9 0)
+		(at 184.15 88.9 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "bf154a0b-32cc-4033-b208-5600bcd85c78")
 	)
 	(label "SDRAM_A6"
-		(at 68.58 91.44 0)
+		(at 71.12 91.44 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "c2bda45c-7a07-409b-b11c-997c9b995808")
 	)
@@ -5137,12 +5187,12 @@
 		(uuid "c37634f9-a414-4b6c-ad63-0ab028cca9b4")
 	)
 	(label "SDRAM_A2"
-		(at 68.58 81.28 0)
+		(at 71.12 81.28 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "c3fc798c-6b50-49d4-b201-c6a8c93fc1cf")
 	)
@@ -5157,22 +5207,22 @@
 		(uuid "d11fe40b-5da2-480e-a3ac-6a91fe4ded13")
 	)
 	(label "SDRAM_BA0"
-		(at 68.58 109.22 0)
+		(at 71.12 109.22 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "d761ee3f-8102-4a90-94e2-cf7be51c78a8")
 	)
 	(label "SDRAM_DQ6"
-		(at 170.18 91.44 0)
+		(at 184.15 91.44 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "d944869b-b965-49fc-aae3-a4345394a4fb")
 	)
@@ -6716,7 +6766,7 @@
 	)
 	(symbol
 		(lib_id "power:VCC")
-		(at 177.8 200.66 0)
+		(at 177.8 199.39 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -6727,7 +6777,7 @@
 		(fields_autoplaced yes)
 		(uuid "6a1b1d17-c4da-467d-af6a-3be24848076c")
 		(property "Reference" "#PWR0148"
-			(at 177.8 204.47 0)
+			(at 177.8 203.2 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6738,7 +6788,7 @@
 			)
 		)
 		(property "Value" "+3V3_MCU"
-			(at 177.8 195.58 0)
+			(at 177.8 194.31 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6748,7 +6798,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 177.8 200.66 0)
+			(at 177.8 199.39 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6759,7 +6809,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 177.8 200.66 0)
+			(at 177.8 199.39 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6770,7 +6820,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 177.8 200.66 0)
+			(at 177.8 199.39 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7928,7 +7978,7 @@
 	)
 	(symbol
 		(lib_id "power:VCC")
-		(at 127 119.38 0)
+		(at 127 118.11 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -7939,7 +7989,7 @@
 		(fields_autoplaced yes)
 		(uuid "8e7a07cd-b75c-4be5-b767-92689e4ed179")
 		(property "Reference" "#PWR0149"
-			(at 127 123.19 0)
+			(at 127 121.92 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7950,7 +8000,7 @@
 			)
 		)
 		(property "Value" "+3V3_MCU"
-			(at 127 114.3 0)
+			(at 127 113.03 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7960,7 +8010,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 127 119.38 0)
+			(at 127 118.11 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7971,7 +8021,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 127 119.38 0)
+			(at 127 118.11 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7982,7 +8032,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 127 119.38 0)
+			(at 127 118.11 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8574,7 +8624,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 317.5 177.8 0)
+		(at 317.5 179.07 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8585,7 +8635,7 @@
 		(fields_autoplaced yes)
 		(uuid "aa893d3f-fb98-4261-81d7-881ad7728d15")
 		(property "Reference" "#PWR0146"
-			(at 317.5 184.15 0)
+			(at 317.5 185.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8596,7 +8646,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 317.5 182.88 0)
+			(at 317.5 184.15 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8606,7 +8656,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 317.5 177.8 0)
+			(at 317.5 179.07 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8617,7 +8667,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 317.5 177.8 0)
+			(at 317.5 179.07 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8628,7 +8678,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 317.5 177.8 0)
+			(at 317.5 179.07 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10174,7 +10224,7 @@
 	)
 	(symbol
 		(lib_id "power:VCC")
-		(at 177.8 162.56 0)
+		(at 177.8 161.29 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -10185,7 +10235,7 @@
 		(fields_autoplaced yes)
 		(uuid "cf6458d8-f88c-4d92-8fb5-c2c8c3c1b76b")
 		(property "Reference" "#PWR0147"
-			(at 177.8 166.37 0)
+			(at 177.8 165.1 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10196,7 +10246,7 @@
 			)
 		)
 		(property "Value" "+3V3_MCU"
-			(at 177.8 157.48 0)
+			(at 177.8 156.21 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10206,7 +10256,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 177.8 162.56 0)
+			(at 177.8 161.29 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10217,7 +10267,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 177.8 162.56 0)
+			(at 177.8 161.29 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10228,7 +10278,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VCC\""
-			(at 177.8 162.56 0)
+			(at 177.8 161.29 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10638,7 +10688,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 355.6 215.9 0)
+		(at 355.6 217.17 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -10649,7 +10699,7 @@
 		(fields_autoplaced yes)
 		(uuid "e3338d1c-6dad-4587-9c00-88ef32f9093b")
 		(property "Reference" "#PWR0145"
-			(at 355.6 222.25 0)
+			(at 355.6 223.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10660,7 +10710,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 355.6 220.98 0)
+			(at 355.6 222.25 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10670,7 +10720,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 355.6 215.9 0)
+			(at 355.6 217.17 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10681,7 +10731,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 355.6 215.9 0)
+			(at 355.6 217.17 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10692,7 +10742,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 355.6 215.9 0)
+			(at 355.6 217.17 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
