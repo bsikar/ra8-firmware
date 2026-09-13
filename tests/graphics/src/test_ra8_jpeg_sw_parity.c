@@ -107,8 +107,7 @@ static const pt_golden_t s_pt_goldens[] = {
 
 /** @brief Number of golden vectors. */
 enum : uint32_t {
-  k_pt_golden_count =
-    (uint32_t)(sizeof(s_pt_goldens) / sizeof(s_pt_goldens[0])), /**< Pt golden count. */
+  k_pt_golden_count = (sizeof(s_pt_goldens) / sizeof(s_pt_goldens[0])), /**< Pt golden count. */
 };
 
 /** @brief Shared scratch buffers (large; keep off the stack). */

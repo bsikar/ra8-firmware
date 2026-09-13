@@ -51,8 +51,7 @@ typedef enum : uint8_t {
 } test_comp_setup_t;
 
 typedef enum : uint8_t {
-  k_test_comp_handler_self =
-    (uint8_t)k_ra8_usb_composite_max_classes, /**< Test comp handler self. */
+  k_test_comp_handler_self = k_ra8_usb_composite_max_classes, /**< Test comp handler self. */
 } test_comp_handler_t;
 
 /* ---- Stub class layers ---- */

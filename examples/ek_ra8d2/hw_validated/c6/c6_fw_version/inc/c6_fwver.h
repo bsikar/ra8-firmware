@@ -136,7 +136,7 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_c6_fwver_frame_bytes = (uint16_t)MAX_TRANSPORT_BUFFER_SIZE,
+  k_c6_fwver_frame_bytes = MAX_TRANSPORT_BUFFER_SIZE,
   /**< Bytes clocked in one full-duplex transaction. */
   k_c6_fwver_max_transfers = 64U,
   /**< Transactions one pump may clock before giving up. */

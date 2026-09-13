@@ -144,7 +144,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra8_usb_composite_handler_self =
-    (uint8_t)k_ra8_usb_composite_max_classes, /**< RA8 USB composite handler self. */
+    k_ra8_usb_composite_max_classes, /**< RA8 USB composite handler self. */
 } ra8_usb_composite_handler_sentinel_t;
 
 /* =============================================================================

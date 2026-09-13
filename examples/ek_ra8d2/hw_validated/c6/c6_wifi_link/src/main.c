@@ -81,7 +81,7 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_c6_wifi_expect_chip = (uint32_t)ESP_PRIV_FIRMWARE_CHIP_ESP32C6,
+  k_c6_wifi_expect_chip = ESP_PRIV_FIRMWARE_CHIP_ESP32C6,
   /**< Firmware chip id the answering co-processor must report. */
   k_c6_wifi_drain_polls = 8U,
   /**< Transactions clocked after the station starts, so the Wi-Fi events the

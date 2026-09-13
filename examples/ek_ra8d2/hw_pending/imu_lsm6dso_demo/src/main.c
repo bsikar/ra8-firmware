@@ -61,12 +61,11 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_imu_decimal_base   = 10U,     /**< Radix for integer-to-ASCII. */
-  k_imu_demo_baud      = 115200U, /**< Imu demo baud.              */
-  k_imu_demo_period_ms = 250U,    /**< Imu demo period ms.         */
-  k_imu_demo_bus_hz    = 100000U, /**< Imu demo bus Hz.            */
-  k_imu_demo_iic_channel =
-    (uint32_t)k_ra8_board_mikrobus_iic_b_channel, /**< Imu demo iic channel. */
+  k_imu_decimal_base     = 10U,                                /**< Radix for integer-to-ASCII. */
+  k_imu_demo_baud        = 115200U,                            /**< Imu demo baud.              */
+  k_imu_demo_period_ms   = 250U,                               /**< Imu demo period ms.         */
+  k_imu_demo_bus_hz      = 100000U,                            /**< Imu demo bus Hz.            */
+  k_imu_demo_iic_channel = k_ra8_board_mikrobus_iic_b_channel, /**< Imu demo iic channel.       */
 } imu_demo_const_t;
 
 /** @brief MikroBUS SDA/SCL routed through Arduino D14/D15 to SDA1/SCL1. */

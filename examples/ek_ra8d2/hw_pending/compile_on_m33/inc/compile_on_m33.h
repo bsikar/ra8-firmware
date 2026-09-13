@@ -94,7 +94,7 @@ typedef enum : uintptr_t {
   /** @brief Output blob offset: past the 32 KiB staged input. */
   k_com33_blob_offset = 0x8100U,
   /** @brief Mailbox base -- the start of the board's shared window. */
-  k_com33_mailbox_addr = (uintptr_t)k_ra8_board_shared_ram_base,
+  k_com33_mailbox_addr = k_ra8_board_shared_ram_base,
   /** @brief Staged input base, carved from the shared window. */
   k_com33_epub_addr = (uintptr_t)k_ra8_board_shared_ram_base + (uintptr_t)k_com33_epub_offset,
   /** @brief Output blob base, carved from the shared window. */

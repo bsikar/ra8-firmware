@@ -54,8 +54,8 @@ extern "C" {
  * @brief Box-tree sentinels and the "no colour" marker.
  */
 typedef enum : int32_t {
-  k_ra8_box_none      = -1,         /**< No child / no sibling link.  */
-  k_ra8_box_no_colour = (int32_t)0, /**< Carried fill/border: absent. */
+  k_ra8_box_none      = -1, /**< No child / no sibling link.  */
+  k_ra8_box_no_colour = 0,  /**< Carried fill/border: absent. */
 } ra8_box_const_t;
 
 /**

@@ -38,10 +38,10 @@ static const char* s_tag = "TOUCH";
  * @brief Implementation-only constants (no magic numbers).
  */
 typedef enum : uint32_t {
-  k_ra8_touch_product_id_byte0 = (uint32_t)'9', /**< First char of "911".    */
-  k_ra8_touch_irq_pin_count    = 32U,           /**< Total ICU IRQ channels. */
-  k_ra8_touch_byte_mask        = 0xFFU,         /**< 8-bit byte mask.        */
-  k_ra8_touch_byte_shift       = 8U,            /**< Bits per byte.          */
+  k_ra8_touch_product_id_byte0 = '9',   /**< First char of "911".    */
+  k_ra8_touch_irq_pin_count    = 32U,   /**< Total ICU IRQ channels. */
+  k_ra8_touch_byte_mask        = 0xFFU, /**< 8-bit byte mask.        */
+  k_ra8_touch_byte_shift       = 8U,    /**< Bits per byte.          */
 } ra8_touch_internal_t;
 
 /**

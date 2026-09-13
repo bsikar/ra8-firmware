@@ -284,31 +284,31 @@ typedef enum : uint8_t {
  * @brief Composite bit masks used by the polling driver (HUM Ch 39.2).
  */
 typedef enum : uint8_t {
-  k_ra8_i2c_msk_iccr1_sowp   = (uint8_t)(1U << 4U), /**< HUM 39.2.1 ICCR1.SOWP, p 2369   */
-  k_ra8_i2c_msk_iccr1_iicrst = (uint8_t)(1U << 6U), /**< HUM 39.2.1 ICCR1.IICRST, p 2369 */
-  k_ra8_i2c_msk_iccr1_ice    = (uint8_t)(1U << 7U), /**< HUM 39.2.1 ICCR1.ICE, p 2369    */
-  k_ra8_i2c_msk_iccr2_st     = (uint8_t)(1U << 1U), /**< HUM 39.2.2 ICCR2.ST, p 2371     */
-  k_ra8_i2c_msk_iccr2_rs     = (uint8_t)(1U << 2U), /**< HUM 39.2.2 ICCR2.RS, p 2371     */
-  k_ra8_i2c_msk_iccr2_sp     = (uint8_t)(1U << 3U), /**< HUM 39.2.2 ICCR2.SP, p 2371     */
-  k_ra8_i2c_msk_iccr2_trs    = (uint8_t)(1U << 5U), /**< HUM 39.2.2 ICCR2.TRS, p 2371    */
-  k_ra8_i2c_msk_iccr2_mst    = (uint8_t)(1U << 6U), /**< HUM 39.2.2 ICCR2.MST, p 2371    */
-  k_ra8_i2c_msk_iccr2_bbsy   = (uint8_t)(1U << 7U), /**< HUM 39.2.2 ICCR2.BBSY, p 2371   */
-  k_ra8_i2c_msk_icmr3_ackbr  = (uint8_t)(1U << 2U), /**< HUM 39.2.5 ICMR3.ACKBR, p 2376  */
-  k_ra8_i2c_msk_icmr3_ackbt  = (uint8_t)(1U << 3U), /**< HUM 39.2.5 ICMR3.ACKBT, p 2376  */
-  k_ra8_i2c_msk_icmr3_ackwp  = (uint8_t)(1U << 4U), /**< HUM 39.2.5 ICMR3.ACKWP, p 2376  */
-  k_ra8_i2c_msk_icmr3_wait   = (uint8_t)(1U << 6U), /**< HUM 39.2.5 ICMR3.WAIT, p 2376   */
-  k_ra8_i2c_msk_icfer_male   = (uint8_t)(1U << 1U), /**< HUM 39.2.6 ICFER.MALE, p 2378   */
-  k_ra8_i2c_msk_icfer_nacke  = (uint8_t)(1U << 4U), /**< HUM 39.2.6 ICFER.NACKE, p 2378  */
-  k_ra8_i2c_msk_icfer_nfe    = (uint8_t)(1U << 5U), /**< HUM 39.2.6 ICFER.NFE, p 2378    */
-  k_ra8_i2c_msk_icfer_scle   = (uint8_t)(1U << 6U), /**< HUM 39.2.6 ICFER.SCLE, p 2378   */
-  k_ra8_i2c_msk_icfer_fmpe   = (uint8_t)(1U << 7U), /**< HUM 39.2.6 ICFER.FMPE, p 2378   */
-  k_ra8_i2c_msk_icsr2_al     = (uint8_t)(1U << 1U), /**< HUM 39.2.10 ICSR2.AL, p 2384    */
-  k_ra8_i2c_msk_icsr2_stop   = (uint8_t)(1U << 3U), /**< HUM 39.2.10 ICSR2.STOP, p 2384  */
-  k_ra8_i2c_msk_icsr2_nackf  = (uint8_t)(1U << 4U), /**< HUM 39.2.10 ICSR2.NACKF, p 2384 */
-  k_ra8_i2c_msk_icsr2_rdrf   = (uint8_t)(1U << 5U), /**< HUM 39.2.10 ICSR2.RDRF, p 2384  */
-  k_ra8_i2c_msk_icsr2_tend   = (uint8_t)(1U << 6U), /**< HUM 39.2.10 ICSR2.TEND, p 2384  */
-  k_ra8_i2c_msk_icsr2_tdre   = (uint8_t)(1U << 7U), /**< HUM 39.2.10 ICSR2.TDRE, p 2384  */
-  k_ra8_i2c_msk_icmr1_mtwp   = (uint8_t)(1U << 7U), /**< HUM 39.2.3 ICMR1.MTWP, p 2374   */
+  k_ra8_i2c_msk_iccr1_sowp   = (1U << 4U), /**< HUM 39.2.1 ICCR1.SOWP, p 2369   */
+  k_ra8_i2c_msk_iccr1_iicrst = (1U << 6U), /**< HUM 39.2.1 ICCR1.IICRST, p 2369 */
+  k_ra8_i2c_msk_iccr1_ice    = (1U << 7U), /**< HUM 39.2.1 ICCR1.ICE, p 2369    */
+  k_ra8_i2c_msk_iccr2_st     = (1U << 1U), /**< HUM 39.2.2 ICCR2.ST, p 2371     */
+  k_ra8_i2c_msk_iccr2_rs     = (1U << 2U), /**< HUM 39.2.2 ICCR2.RS, p 2371     */
+  k_ra8_i2c_msk_iccr2_sp     = (1U << 3U), /**< HUM 39.2.2 ICCR2.SP, p 2371     */
+  k_ra8_i2c_msk_iccr2_trs    = (1U << 5U), /**< HUM 39.2.2 ICCR2.TRS, p 2371    */
+  k_ra8_i2c_msk_iccr2_mst    = (1U << 6U), /**< HUM 39.2.2 ICCR2.MST, p 2371    */
+  k_ra8_i2c_msk_iccr2_bbsy   = (1U << 7U), /**< HUM 39.2.2 ICCR2.BBSY, p 2371   */
+  k_ra8_i2c_msk_icmr3_ackbr  = (1U << 2U), /**< HUM 39.2.5 ICMR3.ACKBR, p 2376  */
+  k_ra8_i2c_msk_icmr3_ackbt  = (1U << 3U), /**< HUM 39.2.5 ICMR3.ACKBT, p 2376  */
+  k_ra8_i2c_msk_icmr3_ackwp  = (1U << 4U), /**< HUM 39.2.5 ICMR3.ACKWP, p 2376  */
+  k_ra8_i2c_msk_icmr3_wait   = (1U << 6U), /**< HUM 39.2.5 ICMR3.WAIT, p 2376   */
+  k_ra8_i2c_msk_icfer_male   = (1U << 1U), /**< HUM 39.2.6 ICFER.MALE, p 2378   */
+  k_ra8_i2c_msk_icfer_nacke  = (1U << 4U), /**< HUM 39.2.6 ICFER.NACKE, p 2378  */
+  k_ra8_i2c_msk_icfer_nfe    = (1U << 5U), /**< HUM 39.2.6 ICFER.NFE, p 2378    */
+  k_ra8_i2c_msk_icfer_scle   = (1U << 6U), /**< HUM 39.2.6 ICFER.SCLE, p 2378   */
+  k_ra8_i2c_msk_icfer_fmpe   = (1U << 7U), /**< HUM 39.2.6 ICFER.FMPE, p 2378   */
+  k_ra8_i2c_msk_icsr2_al     = (1U << 1U), /**< HUM 39.2.10 ICSR2.AL, p 2384    */
+  k_ra8_i2c_msk_icsr2_stop   = (1U << 3U), /**< HUM 39.2.10 ICSR2.STOP, p 2384  */
+  k_ra8_i2c_msk_icsr2_nackf  = (1U << 4U), /**< HUM 39.2.10 ICSR2.NACKF, p 2384 */
+  k_ra8_i2c_msk_icsr2_rdrf   = (1U << 5U), /**< HUM 39.2.10 ICSR2.RDRF, p 2384  */
+  k_ra8_i2c_msk_icsr2_tend   = (1U << 6U), /**< HUM 39.2.10 ICSR2.TEND, p 2384  */
+  k_ra8_i2c_msk_icsr2_tdre   = (1U << 7U), /**< HUM 39.2.10 ICSR2.TDRE, p 2384  */
+  k_ra8_i2c_msk_icmr1_mtwp   = (1U << 7U), /**< HUM 39.2.3 ICMR1.MTWP, p 2374   */
 } ra8_i2c_mask_t;
 
 /**
@@ -322,16 +322,16 @@ typedef enum : uint8_t {
  * transfer plane is unaffected.
  */
 typedef enum : uint8_t {
-  k_ra8_i2c_msk_icser_sar0e = (uint8_t)(1U << 0U), /**< HUM 39.2.7 ICSER.SAR0E, p 2380 */
-  k_ra8_i2c_msk_icser_sar1e = (uint8_t)(1U << 1U), /**< HUM 39.2.7 ICSER.SAR1E, p 2380 */
-  k_ra8_i2c_msk_icser_sar2e = (uint8_t)(1U << 2U), /**< HUM 39.2.7 ICSER.SAR2E, p 2380 */
-  k_ra8_i2c_msk_icser_gcae  = (uint8_t)(1U << 3U), /**< HUM 39.2.7 ICSER.GCAE, p 2380  */
-  k_ra8_i2c_msk_icsr1_aas0  = (uint8_t)(1U << 0U), /**< HUM 39.2.9 ICSR1.AAS0, p 2382  */
-  k_ra8_i2c_msk_icsr1_aas1  = (uint8_t)(1U << 1U), /**< HUM 39.2.9 ICSR1.AAS1, p 2382  */
-  k_ra8_i2c_msk_icsr1_aas2  = (uint8_t)(1U << 2U), /**< HUM 39.2.9 ICSR1.AAS2, p 2382  */
-  k_ra8_i2c_msk_icsr1_gca   = (uint8_t)(1U << 3U), /**< HUM 39.2.9 ICSR1.GCA, p 2382   */
+  k_ra8_i2c_msk_icser_sar0e = (1U << 0U), /**< HUM 39.2.7 ICSER.SAR0E, p 2380 */
+  k_ra8_i2c_msk_icser_sar1e = (1U << 1U), /**< HUM 39.2.7 ICSER.SAR1E, p 2380 */
+  k_ra8_i2c_msk_icser_sar2e = (1U << 2U), /**< HUM 39.2.7 ICSER.SAR2E, p 2380 */
+  k_ra8_i2c_msk_icser_gcae  = (1U << 3U), /**< HUM 39.2.7 ICSER.GCAE, p 2380  */
+  k_ra8_i2c_msk_icsr1_aas0  = (1U << 0U), /**< HUM 39.2.9 ICSR1.AAS0, p 2382  */
+  k_ra8_i2c_msk_icsr1_aas1  = (1U << 1U), /**< HUM 39.2.9 ICSR1.AAS1, p 2382  */
+  k_ra8_i2c_msk_icsr1_aas2  = (1U << 2U), /**< HUM 39.2.9 ICSR1.AAS2, p 2382  */
+  k_ra8_i2c_msk_icsr1_gca   = (1U << 3U), /**< HUM 39.2.9 ICSR1.GCA, p 2382   */
   /** Union AAS0|AAS1|AAS2|GCA: any own-address/general-call match. */
-  k_ra8_i2c_msk_icsr1_match = (uint8_t)((1U << 0U) | (1U << 1U) | (1U << 2U) | (1U << 3U)),
+  k_ra8_i2c_msk_icsr1_match = ((1U << 0U) | (1U << 1U) | (1U << 2U) | (1U << 3U)),
 } ra8_i2c_peripheral_mask_t;
 
 /**

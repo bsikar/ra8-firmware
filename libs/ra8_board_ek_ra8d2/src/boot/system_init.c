@@ -414,7 +414,7 @@ enum : uint32_t {
   k_ra8_mpu_sram_base  = 0x22000000UL, /**< M85 private SRAM0+1, 1 MiB, cacheable. */
   k_ra8_mpu_sram_limit = 0x220FFFE0UL, /**< RA8 MPU SRAM limit.                    */
   k_ra8_mpu_shram_base =
-    (uint32_t)k_ra8_board_shared_ram_base, /**< Shared SRAM2+3: M33 mailbox + CPU1 RAM. */
+    k_ra8_board_shared_ram_base, /**< Shared SRAM2+3: M33 mailbox + CPU1 RAM. */
   k_ra8_mpu_shram_limit =
     (uint32_t)k_ra8_board_cpu1_sram_base + (uint32_t)k_ra8_board_cpu1_sram_size_bytes -
     k_ra8_mpu_region_quantum,           /**< Non-cacheable -> M85<->M33 stays coherent. */

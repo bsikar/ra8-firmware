@@ -123,7 +123,7 @@ typedef enum : uint8_t {
   k_ra8_mipi_dsi_lane_none  = 0U,      /**< No lanes selected.       */
   k_ra8_mipi_dsi_lane_clock = 1U << 0, /**< Clock lane.              */
   k_ra8_mipi_dsi_lane_data  = 1U << 1, /**< All data lanes (1 or 2). */
-  k_ra8_mipi_dsi_lane_all   = (uint8_t)((1U << 0) | (1U << 1)),
+  k_ra8_mipi_dsi_lane_all   = ((1U << 0) | (1U << 1)),
   /**< Composite mask: clock + all data lanes. */
 } ra8_mipi_dsi_lane_sel_t;
 

@@ -66,8 +66,8 @@
  * counter really advances.
  */
 typedef enum : uint64_t {
-  k_eth_win_base = (uint64_t)k_ra8_mfwd_base_addr, /**< MFWD base = window base. */
-  k_eth_win_span = 0xF000UL,                       /**< MFWD..GWCA end.          */
+  k_eth_win_base = k_ra8_mfwd_base_addr, /**< MFWD base = window base. */
+  k_eth_win_span = 0xF000UL,             /**< MFWD..GWCA end.          */
 } eth_win_geom_t;
 
 /**

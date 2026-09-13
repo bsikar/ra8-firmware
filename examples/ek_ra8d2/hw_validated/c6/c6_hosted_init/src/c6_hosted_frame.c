@@ -64,9 +64,9 @@
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_c6_hosted_hdr_bytes = (uint16_t)sizeof(struct esp_payload_header),
+  k_c6_hosted_hdr_bytes = sizeof(struct esp_payload_header),
   /**< Payload-header size; twelve bytes on this ABI. */
-  k_c6_hosted_max_payload = (uint16_t)MAX_PAYLOAD_SIZE,
+  k_c6_hosted_max_payload = MAX_PAYLOAD_SIZE,
   /**< Largest payload a valid frame may advertise. */
   k_c6_hosted_byte_ones = 0xFFU,
   /**< The all-ones byte an unterminated RA8 input reads. */

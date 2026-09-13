@@ -459,13 +459,13 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_ra8_board_uart_console_pin_txd =
-    (uint16_t)RA8_PIN(k_ra8_port_13, k_ra8_pin_2), /**< PD02 TXD (provisional). */
+    RA8_PIN(k_ra8_port_13, k_ra8_pin_2), /**< PD02 TXD (provisional). */
   k_ra8_board_uart_console_pin_rxd =
-    (uint16_t)RA8_PIN(k_ra8_port_13, k_ra8_pin_3), /**< PD03 RXD (provisional). */
+    RA8_PIN(k_ra8_port_13, k_ra8_pin_3), /**< PD03 RXD (provisional). */
   k_ra8_board_uart_console_pin_rts =
-    (uint16_t)RA8_PIN(k_ra8_port_13, k_ra8_pin_4), /**< PD04 RTS (provisional). */
+    RA8_PIN(k_ra8_port_13, k_ra8_pin_4), /**< PD04 RTS (provisional). */
   k_ra8_board_uart_console_pin_cts =
-    (uint16_t)RA8_PIN(k_ra8_port_13, k_ra8_pin_5), /**< PD05 CTS (provisional). */
+    RA8_PIN(k_ra8_port_13, k_ra8_pin_5), /**< PD05 CTS (provisional). */
 } ra8_board_uart_console_pin_t;
 
 /**

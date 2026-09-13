@@ -102,7 +102,7 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uintptr_t {
-  k_erm33_mailbox_addr = (uintptr_t)k_ra8_board_shared_ram_base, /**< Mailbox base = window base. */
+  k_erm33_mailbox_addr = k_ra8_board_shared_ram_base, /**< Mailbox base = window base. */
 } erm33_mailbox_addr_t;
 
 /**

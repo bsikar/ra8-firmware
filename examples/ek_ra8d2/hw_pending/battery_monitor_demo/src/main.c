@@ -61,7 +61,7 @@ typedef enum : uint32_t {
   /** IIC_B bit rate. */
   k_bm_bus_hz = 100000U,
   /** IIC_B channel (0). */
-  k_bm_iic_chan = (uint32_t)k_ra8_board_mikrobus_iic_b_channel,
+  k_bm_iic_chan = k_ra8_board_mikrobus_iic_b_channel,
   /** Poll period. */
   k_bm_period_ms  = 1000U,
   k_bm_fg_addr    = 0x36U, /**< MAX17048 7-bit I2C address.                 */

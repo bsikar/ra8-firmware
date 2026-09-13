@@ -47,7 +47,7 @@
  * @brief Local numeric constants -- avoid magic numbers per CLAUDE.md.
  */
 typedef enum : uint16_t {
-  k_ra8_bkup_max_nc_width = (uint16_t)k_ra8_bkup_nc_width_1hz, /**< Highest legal VINCW encoding. */
+  k_ra8_bkup_max_nc_width = k_ra8_bkup_nc_width_1hz, /**< Highest legal VINCW encoding. */
 } ra8_bkup_tamper_internal_t;
 
 /* =============================================================================

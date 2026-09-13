@@ -46,8 +46,8 @@
  * @since Version 0.1.0
  */
 typedef enum : uint16_t {
-  k_wrap_hdr_bytes = (uint16_t)((sizeof(unarch_mem_t) + ((size_t)k_comic_wrap_align - 1U)) &
-                                ~((size_t)k_comic_wrap_align - 1U)),
+  k_wrap_hdr_bytes = ((sizeof(unarch_mem_t) + ((size_t)k_comic_wrap_align - 1U)) &
+                      ~((size_t)k_comic_wrap_align - 1U)),
   /**< Descriptor slot at the arena start (aligned sizeof). */
 } wrap_dims_t;
 

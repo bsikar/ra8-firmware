@@ -206,9 +206,9 @@ typedef enum : uint8_t {
  * value (0x8000) is the "silence" sentinel.
  */
 typedef enum : int32_t {
-  k_ra8_haud_volume_silence = (int32_t)0x8000, /**< Silence sentinel.    */
-  k_ra8_haud_volume_min_db  = (int32_t)-32768, /**< -128.0 dB ceiling.   */
-  k_ra8_haud_volume_max_db  = (int32_t)32767,  /**< +127.998 dB ceiling. */
+  k_ra8_haud_volume_silence = 0x8000, /**< Silence sentinel.    */
+  k_ra8_haud_volume_min_db  = -32768, /**< -128.0 dB ceiling.   */
+  k_ra8_haud_volume_max_db  = 32767,  /**< +127.998 dB ceiling. */
 } ra8_usb_haud_volume_t;
 
 /**

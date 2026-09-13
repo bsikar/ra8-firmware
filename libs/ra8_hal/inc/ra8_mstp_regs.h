@@ -139,87 +139,85 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   /* ---- MSTPCRA -- HUM 11.2.6 p 443 -- DMA, SRAM ----------------- */
-  k_ra8_mstp_sram0 = (uint16_t)(k_ra8_mstp_reg_a << 8),        /**< MSTPA0 SRAM0 */
-  k_ra8_mstp_sram1 = (uint16_t)((k_ra8_mstp_reg_a << 8) | 1U), /**< MSTPA1 SRAM1 */
-  k_ra8_mstp_sram2 = (uint16_t)((k_ra8_mstp_reg_a << 8) | 2U), /**< MSTPA2 SRAM2 */
-  k_ra8_mstp_sram3 = (uint16_t)((k_ra8_mstp_reg_a << 8) | 3U), /**< MSTPA3 SRAM3 */
-  k_ra8_mstp_dmac0_dtc0 =
-    (uint16_t)((k_ra8_mstp_reg_a << 8) | 22U), /**< MSTPA22 DMAC0+DTC0 (shared) */
-  k_ra8_mstp_dmac1_dtc1 =
-    (uint16_t)((k_ra8_mstp_reg_a << 8) | 23U), /**< MSTPA23 DMAC1+DTC1 (shared) */
+  k_ra8_mstp_sram0      = (k_ra8_mstp_reg_a << 8),         /**< MSTPA0 SRAM0                */
+  k_ra8_mstp_sram1      = ((k_ra8_mstp_reg_a << 8) | 1U),  /**< MSTPA1 SRAM1                */
+  k_ra8_mstp_sram2      = ((k_ra8_mstp_reg_a << 8) | 2U),  /**< MSTPA2 SRAM2                */
+  k_ra8_mstp_sram3      = ((k_ra8_mstp_reg_a << 8) | 3U),  /**< MSTPA3 SRAM3                */
+  k_ra8_mstp_dmac0_dtc0 = ((k_ra8_mstp_reg_a << 8) | 22U), /**< MSTPA22 DMAC0+DTC0 (shared) */
+  k_ra8_mstp_dmac1_dtc1 = ((k_ra8_mstp_reg_a << 8) | 23U), /**< MSTPA23 DMAC1+DTC1 (shared) */
 
   /* ---- MSTPCRB -- HUM 11.2.7 p 444..445 -- comms ---------------- */
-  k_ra8_mstp_i3c   = (uint16_t)((k_ra8_mstp_reg_b << 8) | 4U),  /**< MSTPB4 I3C          */
-  k_ra8_mstp_iic2  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 7U),  /**< MSTPB7 IIC2         */
-  k_ra8_mstp_iic1  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 8U),  /**< MSTPB8 IIC1         */
-  k_ra8_mstp_iic0  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 9U),  /**< MSTPB9 IIC0         */
-  k_ra8_mstp_usbfs = (uint16_t)((k_ra8_mstp_reg_b << 8) | 11U), /**< MSTPB11 USBFS0      */
-  k_ra8_mstp_usbhs = (uint16_t)((k_ra8_mstp_reg_b << 8) | 12U), /**< MSTPB12 USBHS       */
-  k_ra8_mstp_ospi0 = (uint16_t)((k_ra8_mstp_reg_b << 8) | 16U), /**< MSTPB16 OSPI0+DOTF0 */
-  k_ra8_mstp_ospi1 = (uint16_t)((k_ra8_mstp_reg_b << 8) | 17U), /**< MSTPB17 OSPI1+DOTF1 */
-  k_ra8_mstp_spi1  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 18U), /**< MSTPB18 SPI1        */
-  k_ra8_mstp_spi0  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 19U), /**< MSTPB19 SPI0        */
-  k_ra8_mstp_sci9  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 22U), /**< MSTPB22 SCI9        */
-  k_ra8_mstp_sci8  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 23U), /**< MSTPB23 SCI8        */
-  k_ra8_mstp_sci7  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 24U), /**< MSTPB24 SCI7        */
-  k_ra8_mstp_sci6  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 25U), /**< MSTPB25 SCI6        */
-  k_ra8_mstp_sci5  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 26U), /**< MSTPB26 SCI5        */
-  k_ra8_mstp_sci4  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 27U), /**< MSTPB27 SCI4        */
-  k_ra8_mstp_sci3  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 28U), /**< MSTPB28 SCI3        */
-  k_ra8_mstp_sci2  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 29U), /**< MSTPB29 SCI2        */
-  k_ra8_mstp_sci1  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 30U), /**< MSTPB30 SCI1        */
-  k_ra8_mstp_sci0  = (uint16_t)((k_ra8_mstp_reg_b << 8) | 31U), /**< MSTPB31 SCI0        */
+  k_ra8_mstp_i3c   = ((k_ra8_mstp_reg_b << 8) | 4U),  /**< MSTPB4 I3C          */
+  k_ra8_mstp_iic2  = ((k_ra8_mstp_reg_b << 8) | 7U),  /**< MSTPB7 IIC2         */
+  k_ra8_mstp_iic1  = ((k_ra8_mstp_reg_b << 8) | 8U),  /**< MSTPB8 IIC1         */
+  k_ra8_mstp_iic0  = ((k_ra8_mstp_reg_b << 8) | 9U),  /**< MSTPB9 IIC0         */
+  k_ra8_mstp_usbfs = ((k_ra8_mstp_reg_b << 8) | 11U), /**< MSTPB11 USBFS0      */
+  k_ra8_mstp_usbhs = ((k_ra8_mstp_reg_b << 8) | 12U), /**< MSTPB12 USBHS       */
+  k_ra8_mstp_ospi0 = ((k_ra8_mstp_reg_b << 8) | 16U), /**< MSTPB16 OSPI0+DOTF0 */
+  k_ra8_mstp_ospi1 = ((k_ra8_mstp_reg_b << 8) | 17U), /**< MSTPB17 OSPI1+DOTF1 */
+  k_ra8_mstp_spi1  = ((k_ra8_mstp_reg_b << 8) | 18U), /**< MSTPB18 SPI1        */
+  k_ra8_mstp_spi0  = ((k_ra8_mstp_reg_b << 8) | 19U), /**< MSTPB19 SPI0        */
+  k_ra8_mstp_sci9  = ((k_ra8_mstp_reg_b << 8) | 22U), /**< MSTPB22 SCI9        */
+  k_ra8_mstp_sci8  = ((k_ra8_mstp_reg_b << 8) | 23U), /**< MSTPB23 SCI8        */
+  k_ra8_mstp_sci7  = ((k_ra8_mstp_reg_b << 8) | 24U), /**< MSTPB24 SCI7        */
+  k_ra8_mstp_sci6  = ((k_ra8_mstp_reg_b << 8) | 25U), /**< MSTPB25 SCI6        */
+  k_ra8_mstp_sci5  = ((k_ra8_mstp_reg_b << 8) | 26U), /**< MSTPB26 SCI5        */
+  k_ra8_mstp_sci4  = ((k_ra8_mstp_reg_b << 8) | 27U), /**< MSTPB27 SCI4        */
+  k_ra8_mstp_sci3  = ((k_ra8_mstp_reg_b << 8) | 28U), /**< MSTPB28 SCI3        */
+  k_ra8_mstp_sci2  = ((k_ra8_mstp_reg_b << 8) | 29U), /**< MSTPB29 SCI2        */
+  k_ra8_mstp_sci1  = ((k_ra8_mstp_reg_b << 8) | 30U), /**< MSTPB30 SCI1        */
+  k_ra8_mstp_sci0  = ((k_ra8_mstp_reg_b << 8) | 31U), /**< MSTPB31 SCI0        */
 
   /* ---- MSTPCRC -- HUM 11.2.8 p 446..447 -- video, security ----- */
-  k_ra8_mstp_cac       = (uint16_t)(k_ra8_mstp_reg_c << 8),         /**< MSTPC0 CAC              */
-  k_ra8_mstp_crc       = (uint16_t)((k_ra8_mstp_reg_c << 8) | 1U),  /**< MSTPC1 CRC              */
-  k_ra8_mstp_glcdc     = (uint16_t)((k_ra8_mstp_reg_c << 8) | 4U),  /**< MSTPC4 GLCDC            */
-  k_ra8_mstp_drw       = (uint16_t)((k_ra8_mstp_reg_c << 8) | 6U),  /**< MSTPC6 2D Drawing       */
-  k_ra8_mstp_ssie1     = (uint16_t)((k_ra8_mstp_reg_c << 8) | 7U),  /**< MSTPC7 SSIE1            */
-  k_ra8_mstp_ssie0     = (uint16_t)((k_ra8_mstp_reg_c << 8) | 8U),  /**< MSTPC8 SSIE0            */
-  k_ra8_mstp_mipi_dsi  = (uint16_t)((k_ra8_mstp_reg_c << 8) | 10U), /**< MSTPC10 MIPI DSI        */
-  k_ra8_mstp_sdhi1     = (uint16_t)((k_ra8_mstp_reg_c << 8) | 11U), /**< MSTPC11 SDHI1           */
-  k_ra8_mstp_sdhi0     = (uint16_t)((k_ra8_mstp_reg_c << 8) | 12U), /**< MSTPC12 SDHI0           */
-  k_ra8_mstp_doc       = (uint16_t)((k_ra8_mstp_reg_c << 8) | 13U), /**< MSTPC13 DOC             */
-  k_ra8_mstp_elc       = (uint16_t)((k_ra8_mstp_reg_c << 8) | 14U), /**< MSTPC14 ELC             */
-  k_ra8_mstp_ceu       = (uint16_t)((k_ra8_mstp_reg_c << 8) | 16U), /**< MSTPC16 CEU             */
-  k_ra8_mstp_mipi_csi  = (uint16_t)((k_ra8_mstp_reg_c << 8) | 17U), /**< MSTPC17 MIPI CSI        */
-  k_ra8_mstp_pdmif     = (uint16_t)((k_ra8_mstp_reg_c << 8) | 24U), /**< MSTPC24 PDM-IF          */
-  k_ra8_mstp_canfd1    = (uint16_t)((k_ra8_mstp_reg_c << 8) | 26U), /**< MSTPC26 CANFD1          */
-  k_ra8_mstp_canfd0    = (uint16_t)((k_ra8_mstp_reg_c << 8) | 27U), /**< MSTPC27 CANFD0          */
-  k_ra8_mstp_ethphyclk = (uint16_t)((k_ra8_mstp_reg_c << 8) | 28U), /**< MSTPC28 Ether-PHY clock */
-  k_ra8_mstp_eswm      = (uint16_t)((k_ra8_mstp_reg_c << 8) | 30U), /**< MSTPC30 ESWM            */
-  k_ra8_mstp_rsip      = (uint16_t)((k_ra8_mstp_reg_c << 8) | 31U), /**< MSTPC31 RSIP-E50D       */
+  k_ra8_mstp_cac       = (k_ra8_mstp_reg_c << 8),         /**< MSTPC0 CAC              */
+  k_ra8_mstp_crc       = ((k_ra8_mstp_reg_c << 8) | 1U),  /**< MSTPC1 CRC              */
+  k_ra8_mstp_glcdc     = ((k_ra8_mstp_reg_c << 8) | 4U),  /**< MSTPC4 GLCDC            */
+  k_ra8_mstp_drw       = ((k_ra8_mstp_reg_c << 8) | 6U),  /**< MSTPC6 2D Drawing       */
+  k_ra8_mstp_ssie1     = ((k_ra8_mstp_reg_c << 8) | 7U),  /**< MSTPC7 SSIE1            */
+  k_ra8_mstp_ssie0     = ((k_ra8_mstp_reg_c << 8) | 8U),  /**< MSTPC8 SSIE0            */
+  k_ra8_mstp_mipi_dsi  = ((k_ra8_mstp_reg_c << 8) | 10U), /**< MSTPC10 MIPI DSI        */
+  k_ra8_mstp_sdhi1     = ((k_ra8_mstp_reg_c << 8) | 11U), /**< MSTPC11 SDHI1           */
+  k_ra8_mstp_sdhi0     = ((k_ra8_mstp_reg_c << 8) | 12U), /**< MSTPC12 SDHI0           */
+  k_ra8_mstp_doc       = ((k_ra8_mstp_reg_c << 8) | 13U), /**< MSTPC13 DOC             */
+  k_ra8_mstp_elc       = ((k_ra8_mstp_reg_c << 8) | 14U), /**< MSTPC14 ELC             */
+  k_ra8_mstp_ceu       = ((k_ra8_mstp_reg_c << 8) | 16U), /**< MSTPC16 CEU             */
+  k_ra8_mstp_mipi_csi  = ((k_ra8_mstp_reg_c << 8) | 17U), /**< MSTPC17 MIPI CSI        */
+  k_ra8_mstp_pdmif     = ((k_ra8_mstp_reg_c << 8) | 24U), /**< MSTPC24 PDM-IF          */
+  k_ra8_mstp_canfd1    = ((k_ra8_mstp_reg_c << 8) | 26U), /**< MSTPC26 CANFD1          */
+  k_ra8_mstp_canfd0    = ((k_ra8_mstp_reg_c << 8) | 27U), /**< MSTPC27 CANFD0          */
+  k_ra8_mstp_ethphyclk = ((k_ra8_mstp_reg_c << 8) | 28U), /**< MSTPC28 Ether-PHY clock */
+  k_ra8_mstp_eswm      = ((k_ra8_mstp_reg_c << 8) | 30U), /**< MSTPC30 ESWM            */
+  k_ra8_mstp_rsip      = ((k_ra8_mstp_reg_c << 8) | 31U), /**< MSTPC31 RSIP-E50D       */
 
   /* ---- MSTPCRD -- HUM 11.2.9 p 448..449 -- timers, analog ------ */
-  k_ra8_mstp_agt1    = (uint16_t)((k_ra8_mstp_reg_d << 8) | 4U),  /**< MSTPD4 AGT1          */
-  k_ra8_mstp_agt0    = (uint16_t)((k_ra8_mstp_reg_d << 8) | 5U),  /**< MSTPD5 AGT0          */
-  k_ra8_mstp_pdg     = (uint16_t)((k_ra8_mstp_reg_d << 8) | 6U),  /**< MSTPD6 PDG           */
-  k_ra8_mstp_poeg_d  = (uint16_t)((k_ra8_mstp_reg_d << 8) | 11U), /**< MSTPD11 POEG group D */
-  k_ra8_mstp_poeg_c  = (uint16_t)((k_ra8_mstp_reg_d << 8) | 12U), /**< MSTPD12 POEG group C */
-  k_ra8_mstp_poeg_b  = (uint16_t)((k_ra8_mstp_reg_d << 8) | 13U), /**< MSTPD13 POEG group B */
-  k_ra8_mstp_poeg_a  = (uint16_t)((k_ra8_mstp_reg_d << 8) | 14U), /**< MSTPD14 POEG group A */
-  k_ra8_mstp_dac12_1 = (uint16_t)((k_ra8_mstp_reg_d << 8) | 19U), /**< MSTPD19 DAC12 ch 1   */
-  k_ra8_mstp_dac12_0 = (uint16_t)((k_ra8_mstp_reg_d << 8) | 20U), /**< MSTPD20 DAC12 ch 0   */
-  k_ra8_mstp_adc16h  = (uint16_t)((k_ra8_mstp_reg_d << 8) | 21U), /**< MSTPD21 ADC16H       */
-  k_ra8_mstp_tsn     = (uint16_t)((k_ra8_mstp_reg_d << 8) | 22U), /**< MSTPD22 Temperature  */
-  k_ra8_mstp_acmphs3 = (uint16_t)((k_ra8_mstp_reg_d << 8) | 25U), /**< MSTPD25 ACMPHS3      */
-  k_ra8_mstp_acmphs2 = (uint16_t)((k_ra8_mstp_reg_d << 8) | 26U), /**< MSTPD26 ACMPHS2      */
-  k_ra8_mstp_acmphs1 = (uint16_t)((k_ra8_mstp_reg_d << 8) | 27U), /**< MSTPD27 ACMPHS1      */
-  k_ra8_mstp_acmphs0 = (uint16_t)((k_ra8_mstp_reg_d << 8) | 28U), /**< MSTPD28 ACMPHS0      */
+  k_ra8_mstp_agt1    = ((k_ra8_mstp_reg_d << 8) | 4U),  /**< MSTPD4 AGT1          */
+  k_ra8_mstp_agt0    = ((k_ra8_mstp_reg_d << 8) | 5U),  /**< MSTPD5 AGT0          */
+  k_ra8_mstp_pdg     = ((k_ra8_mstp_reg_d << 8) | 6U),  /**< MSTPD6 PDG           */
+  k_ra8_mstp_poeg_d  = ((k_ra8_mstp_reg_d << 8) | 11U), /**< MSTPD11 POEG group D */
+  k_ra8_mstp_poeg_c  = ((k_ra8_mstp_reg_d << 8) | 12U), /**< MSTPD12 POEG group C */
+  k_ra8_mstp_poeg_b  = ((k_ra8_mstp_reg_d << 8) | 13U), /**< MSTPD13 POEG group B */
+  k_ra8_mstp_poeg_a  = ((k_ra8_mstp_reg_d << 8) | 14U), /**< MSTPD14 POEG group A */
+  k_ra8_mstp_dac12_1 = ((k_ra8_mstp_reg_d << 8) | 19U), /**< MSTPD19 DAC12 ch 1   */
+  k_ra8_mstp_dac12_0 = ((k_ra8_mstp_reg_d << 8) | 20U), /**< MSTPD20 DAC12 ch 0   */
+  k_ra8_mstp_adc16h  = ((k_ra8_mstp_reg_d << 8) | 21U), /**< MSTPD21 ADC16H       */
+  k_ra8_mstp_tsn     = ((k_ra8_mstp_reg_d << 8) | 22U), /**< MSTPD22 Temperature  */
+  k_ra8_mstp_acmphs3 = ((k_ra8_mstp_reg_d << 8) | 25U), /**< MSTPD25 ACMPHS3      */
+  k_ra8_mstp_acmphs2 = ((k_ra8_mstp_reg_d << 8) | 26U), /**< MSTPD26 ACMPHS2      */
+  k_ra8_mstp_acmphs1 = ((k_ra8_mstp_reg_d << 8) | 27U), /**< MSTPD27 ACMPHS1      */
+  k_ra8_mstp_acmphs0 = ((k_ra8_mstp_reg_d << 8) | 28U), /**< MSTPD28 ACMPHS0      */
 
   /* ---- MSTPCRE -- HUM 11.2.10 p 449..450 -- ULPT, GPT ---------- */
-  k_ra8_mstp_ulpt1  = (uint16_t)((k_ra8_mstp_reg_e << 8) | 8U),  /**< MSTPE8 ULPT1       */
-  k_ra8_mstp_ulpt0  = (uint16_t)((k_ra8_mstp_reg_e << 8) | 9U),  /**< MSTPE9 ULPT0       */
-  k_ra8_mstp_gpt13  = (uint16_t)((k_ra8_mstp_reg_e << 8) | 18U), /**< MSTPE18 GPT13      */
-  k_ra8_mstp_gpt12  = (uint16_t)((k_ra8_mstp_reg_e << 8) | 19U), /**< MSTPE19 GPT12      */
-  k_ra8_mstp_gpt11  = (uint16_t)((k_ra8_mstp_reg_e << 8) | 20U), /**< MSTPE20 GPT11      */
-  k_ra8_mstp_gpt10  = (uint16_t)((k_ra8_mstp_reg_e << 8) | 21U), /**< MSTPE21 GPT10      */
-  k_ra8_mstp_gpt4_9 = (uint16_t)((k_ra8_mstp_reg_e << 8) | 27U), /**< MSTPE27 GPT4..GPT9 */
-  k_ra8_mstp_gpt3   = (uint16_t)((k_ra8_mstp_reg_e << 8) | 28U), /**< MSTPE28 GPT3       */
-  k_ra8_mstp_gpt2   = (uint16_t)((k_ra8_mstp_reg_e << 8) | 29U), /**< MSTPE29 GPT2       */
-  k_ra8_mstp_gpt1   = (uint16_t)((k_ra8_mstp_reg_e << 8) | 30U), /**< MSTPE30 GPT1       */
-  k_ra8_mstp_gpt0   = (uint16_t)((k_ra8_mstp_reg_e << 8) | 31U), /**< MSTPE31 GPT0       */
+  k_ra8_mstp_ulpt1  = ((k_ra8_mstp_reg_e << 8) | 8U),  /**< MSTPE8 ULPT1       */
+  k_ra8_mstp_ulpt0  = ((k_ra8_mstp_reg_e << 8) | 9U),  /**< MSTPE9 ULPT0       */
+  k_ra8_mstp_gpt13  = ((k_ra8_mstp_reg_e << 8) | 18U), /**< MSTPE18 GPT13      */
+  k_ra8_mstp_gpt12  = ((k_ra8_mstp_reg_e << 8) | 19U), /**< MSTPE19 GPT12      */
+  k_ra8_mstp_gpt11  = ((k_ra8_mstp_reg_e << 8) | 20U), /**< MSTPE20 GPT11      */
+  k_ra8_mstp_gpt10  = ((k_ra8_mstp_reg_e << 8) | 21U), /**< MSTPE21 GPT10      */
+  k_ra8_mstp_gpt4_9 = ((k_ra8_mstp_reg_e << 8) | 27U), /**< MSTPE27 GPT4..GPT9 */
+  k_ra8_mstp_gpt3   = ((k_ra8_mstp_reg_e << 8) | 28U), /**< MSTPE28 GPT3       */
+  k_ra8_mstp_gpt2   = ((k_ra8_mstp_reg_e << 8) | 29U), /**< MSTPE29 GPT2       */
+  k_ra8_mstp_gpt1   = ((k_ra8_mstp_reg_e << 8) | 30U), /**< MSTPE30 GPT1       */
+  k_ra8_mstp_gpt0   = ((k_ra8_mstp_reg_e << 8) | 31U), /**< MSTPE31 GPT0       */
 } ra8_mstp_t;
 
 /**

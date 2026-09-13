@@ -81,11 +81,11 @@ typedef enum : uint16_t {
   k_c6_fwver_tlv_len_lo   = 1U,    /**< Offset of a tag's length, low byte.   */
   k_c6_fwver_tlv_len_hi   = 2U,    /**< Offset of a tag's length, high byte.  */
   k_c6_fwver_tlv_value    = 3U,    /**< Offset of a tag's value.              */
-  k_c6_fwver_tlv_ep_len   = (uint16_t)(sizeof(RPC_EP_NAME_RSP) - 1U),
+  k_c6_fwver_tlv_ep_len   = (sizeof(RPC_EP_NAME_RSP) - 1U),
   /**< Endpoint-name length; both endpoint names share it. */
   k_c6_fwver_tlv_overhead =
-    (uint16_t)((uint16_t)k_c6_fwver_tlv_value + (uint16_t)(sizeof(RPC_EP_NAME_RSP) - 1U) +
-               (uint16_t)k_c6_fwver_tlv_value),
+    ((uint16_t)k_c6_fwver_tlv_value + (uint16_t)(sizeof(RPC_EP_NAME_RSP) - 1U) +
+     (uint16_t)k_c6_fwver_tlv_value),
   /**< Bytes the envelope costs on top of the protobuf payload. */
   k_c6_fwver_tlv_shift = 8U,    /**< Shift between the two length bytes. */
   k_c6_fwver_tlv_mask  = 0xFFU, /**< Byte mask for the low length byte.  */

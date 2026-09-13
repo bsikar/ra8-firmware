@@ -95,7 +95,7 @@ static const char* const s_tag = "eh_spi";
  */
 typedef enum : uint16_t {
   /** Bytes clocked in one full-duplex transaction, from the port header. */
-  k_ra8_esp_hosted_spi_frame_bytes = (uint16_t)MAX_TRANSPORT_BUFFER_SIZE,
+  k_ra8_esp_hosted_spi_frame_bytes = MAX_TRANSPORT_BUFFER_SIZE,
 } ra8_esp_hosted_spi_frame_t;
 
 static_assert((uint8_t)k_ra8_esp_hosted_spi_mode == (uint8_t)k_ra8_spi_mode_3,

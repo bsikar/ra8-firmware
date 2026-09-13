@@ -132,8 +132,7 @@ static const ra8_mpu_region_t s_mpu_regions[] = {
 };
 
 typedef enum : uint8_t {
-  k_mpu_region_count =
-    (uint8_t)(sizeof(s_mpu_regions) / sizeof(s_mpu_regions[0])), /**< MPU region count. */
+  k_mpu_region_count = (sizeof(s_mpu_regions) / sizeof(s_mpu_regions[0])), /**< MPU region count. */
 } mpu_region_count_t;
 
 /**

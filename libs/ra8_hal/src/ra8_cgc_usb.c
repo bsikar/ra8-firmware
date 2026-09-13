@@ -122,7 +122,7 @@ typedef enum : uint32_t {
  * the routine is robust to call ordering.
  */
 typedef enum : uint32_t {
-  k_ra8_mstpb11_usbfs_mask = (uint32_t)(1UL << 11), /**< MSTPCRB.MSTPB11 (USBFS0). */
+  k_ra8_mstpb11_usbfs_mask = (1UL << 11), /**< MSTPCRB.MSTPB11 (USBFS0). */
 } ra8_usbfs_mstp_local_t;
 
 /**
@@ -466,7 +466,7 @@ typedef enum : uint32_t {
  * MSTPB12 (USBHS) the SREQ->SRDY handshake silently hangs.
  */
 typedef enum : uint32_t {
-  k_ra8_mstpb12_usbhs_mask = (uint32_t)(1UL << 12), /**< MSTPCRB.MSTPB12 (USBHS). */
+  k_ra8_mstpb12_usbhs_mask = (1UL << 12), /**< MSTPCRB.MSTPB12 (USBHS). */
 } ra8_usbhs_mstp_local_t;
 
 /**
