@@ -1,5 +1,14 @@
 # E-reader system-power engineering basis
 
+Current integration update, 2026-09-12: the native main regulator is U13
+TPS63806, described by [PWR-006](main_regulator_tps63806.md), and the
+[CMS-013](camera_storage_interfaces.md#steady-csi-branch-allocation) host
+MIPI supply is implemented. The current main-rail allocation is 2.095A.
+The charger, protected VBUS switch and USB-control island in SYS-008/009
+remain unplaced. [SYS-010](#sys-010-current-source-budget-and-next-implementation)
+supersedes historical product-load subtotals below; those older records
+do not establish current whole-product source capability.
+
 Scope update, 2026-09-08: the SYS-007 TPS63802 direct-EN, R34 100 kOhm,
 three-gate and no-key-return shutdown calculations below describe historical
 checkpoints. For the current saved migration draft, those calculations are
@@ -1167,6 +1176,68 @@ Combined1uC initial/switching reserve ->46.59ms; low-VIN leakage qualification r
 Restart: raw>=3.70V, held>=3.25V;1s settling PLUS full source qualification.
 See ../design/system_power_design.md SYS-007 for full math and qualification.
 ```
+
+## SYS-010: Current source budget and next implementation
+
+The ba033ebe7 native checkpoint has SYS_AON consumers, including U13,
+U10 and U16, but no BQ25616, TUSB320, TPS2553, CHARGER_VBUS or
++3V3_USB_CTRL implementation. The next source implementation is the
+SYS-008 autonomous charger feeding existing SYS_AON, together with the
+SYS-009 protected-VBUS current limiter and independent USB-control island.
+Preserve the fresh configured-500mA latch, true Schmitt buffers, shared
+TPS2553/TMUX supply and POWER_OFF_H clear path. No additional main
+converter is selected by this integration update.
+
+The current [CMS-013 main allocation](camera_storage_interfaces.md#steady-csi-branch-allocation)
+and [AUD-005 baseline headphone screen](audio_subsystem.md#aud-005-audio-rails-thermal-load-and-power-path-impact)
+give the following reproducible planning screen:
+
+```python
+from math import isclose
+main_input_w = 2.095 * 3.393012496197 / .75
+headphone_input_w = 2.892695047520901
+subtotal_w = main_input_w + headphone_input_w
+source_a = subtotal_w / 3.2
+usb_available_w = 5 * (478 / 453) * .9
+assert isclose(main_input_w, 9.47781490604362)
+assert isclose(subtotal_w, 12.37050995356452)
+assert isclose(source_a, 3.865784360488912)
+assert 0 < 4 - source_a < .135
+print('main / headphone subtotal W', main_input_w, subtotal_w)
+print('source A / remaining initial 4A allocation A', source_a, 4-source_a)
+print('nominal USB available W / battery supplement deficit W',
+      usb_available_w, subtotal_w-usb_available_w)
+```
+
+Executed results: 12.370509954W subtotal and 3.865784360A at 3.2V,
+leaving only 134.215640mA of the initial 4A engineering allocation.
+This excludes remaining DAC/I-V, camera sensor, display, front light and
+other unallocated loads. It cannot approve a complete product within 4A.
+The 75% main-converter and 90% USB conversion efficiencies are assumptions;
+this is neither a measured demand nor a guaranteed worst-case maximum.
+Nominal USB input provides 4.748344371W, leaving a 7.622165583W deficit
+even before net charging. Retain battery supplementation; do not promise
+full-load operation plus charging from the selected USB input.
+
+The Jauch pack's 6A maximum discharge remains a separate manufacturer
+limit. The initial 4A allowance may only be revised after complete load,
+pack/harness/connector and thermal review. The current figures do not
+authorize operation down to an assumed 3.0V system rail or bypass the
+existing source supervisor/cutoff design.
+
+[BQ25616](https://www.ti.com/lit/ds/symlink/bq25616.pdf) remains a
+candidate for this battery-supplemented architecture: its recommended
+6A BAT discharge rating is distinct from its 3.2A SW-path rating.
+Battery supplement flows through BATFET; the two current ratings must
+not be treated as interchangeable. Its existing resistor-defined charging
+and temperature contract remains subject to SYS-008 conditions.
+
+[TPS2553](https://www.ti.com/lit/ds/symlink/tps2553.pdf) additionally
+limits recommended continuous current to 1.5A through TJ=105C and 1.2A
+through 125C. The 1.107627A normal charger maximum fits either current
+row, but sustained higher-limit/fault operation near 1.366A must respect
+the 105C condition or be derated. Package temperature and VINDPM/current
+limiter interaction remain qualification requirements.
 
 ## SYS-008: Autonomous charger and cell-contact temperature circuit
 

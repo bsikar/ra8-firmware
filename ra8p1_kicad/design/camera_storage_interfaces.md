@@ -1,6 +1,6 @@
 # Camera, removable storage and external-memory allocation
 
-Revision 18, 2026-09-12. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
+Revision 19, 2026-09-12. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
 This is an engineering allocation record for native KiCad implementation,
 not a completed schematic, verified timing closure or hardware qualification.
 Cross-references: [radio](radio_interface.md), [power](system_power_design.md),
@@ -39,7 +39,14 @@ DVP support for this shield on RA at retrieval time.
 
 ## CMS-002: Exact camera module and connector contract
 
-Use **Arducam CU450_OV5640**, the 36 x 40 mm Camera Expansion Board named in
+Procurement correction, 2026-09-12: Renesas staff confirms that CU450 was
+designed for Renesas and is not sold separately. Retain the following as
+the EK reference contract, not a production purchasing instruction.
+[Renesas verified support answer](https://community.renesas.com/mcu/ra/f/forum/60538/regarding-buying-an-arducam-0v5640-cu450-cmos-5mp-mipi-csi-2-camera).
+CMS-014 below evaluates the independently orderable Pcam 5C alternative;
+neither module nor its host connector is placed in the current schematic.
+
+The historical allocation used **Arducam CU450_OV5640**, the 36 x 40 mm Camera Expansion Board named in
 the [EK-RA8P1 v1 manual, Rev.1.04, section 3 and Table 36](https://www.renesas.com/en/document/mat/ek-ra8p1-v1-users-manual).
 This identifies the module and its actual 40-contact interface. The raw
 OV5640 sensor datasheet does not define that connector. B0156, B0530,
@@ -87,6 +94,108 @@ module supports prototyping, but this record does not authorize buying an
 unverified camera or inferring its internal regulators. For camera power
 gating, address SCCB pullups and every clock/control back-power path; pulling
 RESET low is not equivalent to removing power safely.
+
+## CMS-014: Pcam 5C module implementation candidate
+
+Digilent **410-358**, Pcam 5C, supplies an OV5640 with two MIPI lanes.
+This is the next implementation candidate, subject to the electrical and
+cable checks below. The selected RA8P1 package and dedicated lane allocation
+remain unchanged. The MCU host supply is already implemented under CMS-013;
+the camera module's 3.3V demand is additional.
+
+[Digilent's manual](https://media.digikey.com/pdf/Data%20Sheets/Digilent%20PDFs/Pcam_5C_RefManual_Web.pdf)
+specifies 3.0..3.6V, 200mA maximum, SCCB up to 400kHz with 1.5k host
+pullups, and a 12MHz onboard clock. Its module-side J1 contract is:
+
+| J1 contact | Function | Proposed RA8P1 endpoint |
+| --- | --- | --- |
+| 2 / 3 | Lane 0 N / P | U1 / T1 |
+| 5 / 6 | Lane 1 N / P | U3 / T3 |
+| 8 / 9 | Clock N / P | U2 / T2 |
+| 13 / 14 | SCL / SDA | P512/P13 / P511/U15 |
+| 11 | PWUP | P709/P16, subject to hardware default/clear circuit |
+| 15 | 3.3V input | Qualified camera supply |
+| 1 / 4 / 7 / 10 | Ground | GND |
+| 12 | NC | Explicit no-connect |
+
+Use host connector candidate **TE 1-1734248-5**, matching J2 on
+[Digilent Zybo Z7 D.1 sheet 2](https://files.digilent.com/resources/programmable-logic/zybo-z7/zybo-z7-d1-sch.pdf).
+[Zybo manual Table 15.1 and installation instructions](https://digilent.com/reference/_media/reference/programmable-logic/zybo-z7/zybo-z7_rm.pdf)
+give the same numbered functions as Pcam J1. The documented installation
+therefore connects host contact n to module contact n, not 16-n.
+[Wurth 686715100001 drawing](https://www.we-online.com/components/products/datasheet/686715100001.pdf),
+Rev.001.003 dated 2026-06-03, identifies the schematic's 100mm cable as
+15-conductor, 1.00mm pitch, Type 2 with opposite exposed ends.
+The TE connector is vertical and single-sided, accepting 0.30+/-0.05mm
+flex. Follow the [TE drawing Rev.E1](https://www.te.com/commerce/DocumentDelivery/DDEController?Action=srchrtrv&DocFormat=pdf&DocLang=English&DocNm=1734248&DocType=Customer+Drawing&PartCntxt=1-1734248-5)
+circuit-one mark when creating the
+native symbol and later qualifying the footprint; do not infer numbering
+from a generic connector image. Module-end exposed contacts face its PCB;
+the Zybo host-end contacts face away from that board's center. The new
+board's assembly instructions must translate these references to its own
+orientation. P501/R8 external XCLK
+and P010/P10 interrupt are unnecessary for the basic Pcam interface; keep
+their earlier reservations until the replacement is actually integrated.
+The camera firmware must adapt its PLL setup to 12MHz and PWUP timing
+(low at least 100ms, then high at least 50ms before SCCB access). Existing
+EK 24MHz setup is not a compatible binary configuration.
+
+[Digilent schematic 500-358 C.0](https://digilent.com/reference/_media/reference/add-ons/pcam-5c/pcam_5c_sch.pdf)
+identifies GTL2002 SCCB translation, LP5907 1.8V/2.8V regulators and
+onboard reset sequencing. PWUP is a regulator-enable control, not a
+separate sensor reset. Host pullups, module translator bias, and PHY
+collapse sequencing require independent off-state review; do not infer
+zero backfeed from the presence of onboard regulators. No raw-sensor
+supply circuit is being substituted for this module.
+
+The host control candidate is SN74LVC1G97 configured as camera request
+AND MCU_RESET_N, with request and PWUP pulldowns. This addresses the
+[LP5907](https://www.ti.com/lit/ds/symlink/lp5907.pdf) EN-low limit of
+0.4V versus the 0.5V host GPIO-low allowance. The
+[logic gate](https://www.ti.com/lit/ds/symlink/sn74lvc1g97.pdf) specifies
+0.1V maximum low at 100uA; verify the complete input/leakage load and
+reset fanout before placement. This is a proposed circuit, not yet wired.
+[GTL2002 function tables](https://www.nxp.com/docs/en/data-sheet/GTL2002.pdf)
+support translator isolation with SREF at zero. A separately switched
+module supply is therefore not inherently required for commanded off,
+but the transition while its 1.8V supply decays still needs review.
+LP5907's 230-ohm discharge value is typical, not a guaranteed shutdown
+deadline. Require camera transmitter-off before host PHY power removal;
+unexpected collapse needs a qualified timing/hold-up contract.
+
+Source snapshot, 2026-09-12: [DigiKey 1286-1191-ND](https://www.digikey.com/en/products/detail/digilent-inc/410-358/8111762)
+lists Active, 376 units, four-week manufacturer lead time and USD53 at
+quantity one, excluding tax/shipping. Stock is not reserved. The June 2,
+2026 [Digilent regional-availability PCN](https://www.mouser.com/PCN/Digilent_Inc_Digilent_EMC_PCN_3871911_Product_availability_table_%281%29.pdf)
+identifies non-US restrictions and does not identify a US restriction.
+Confirm acceptance for any non-US destination; an Active listing alone
+is not a worldwide procurement approval.
+
+The same dated [DigiKey host-connector listing, A101418CT-ND](https://www.digikey.com/en/products/detail/te-connectivity-amp-connectors/1-1734248-5/2272380)
+shows Active, 25,233 units, eight-week manufacturer lead time and
+USD1.49 / 1.268 / 1.0772 at quantities 1 / 10 / 100.
+These are candidate procurement records; no native BOM row exists yet.
+
+The 200mA camera allocation must be added to the CMS-013 2.095A main-rail
+screen if powered there. Before host pullups and any new interface logic,
+the tentative total becomes 2.295A. Applying the same modeled conversion
+conditions as SYS-010 gives the following deliberately incomplete budget:
+
+```python
+from math import isclose
+camera_a = .200
+digital_a = 2.095 + camera_a
+source_a = (digital_a * 3.393012496197 / .75 + 2.892695047520901) / 3.2
+assert isclose(digital_a, 2.295)
+assert source_a > 4
+print('tentative digital A / source subtotal A', digital_a, source_a)
+```
+
+Executed result: 4.148535402A source subtotal at 3.2V.
+This is a source-budget screen, not converter qualification or a measured
+peak. It already exceeds the initial 4A source allocation before the
+remaining audio, display and front-light loads. Complete SYS-010's pack,
+harness and thermal review before increasing that allocation.
 
 ## CMS-003: microSD native connection and a repository mismatch
 
