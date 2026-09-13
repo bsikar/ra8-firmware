@@ -347,9 +347,20 @@ release_selftest_loader_refusals() {
   trap - EXIT HUP INT TERM
 }
 
+zig_provision_contract_selftest() {
+  local zig_v amd64_sha arm64_sha
+  zig_v="$(dockerfile_arg ZIG_VERSION)" || return 1
+  [[ "$zig_v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 1
+  amd64_sha="$(dockerfile_arg ZIG_SHA256_X86_64)" || return 1
+  [[ "$amd64_sha" =~ ^[0-9a-f]{64}$ ]] || return 1
+  arm64_sha="$(dockerfile_arg ZIG_SHA256_AARCH64)" || return 1
+  [[ "$arm64_sha" =~ ^[0-9a-f]{64}$ ]] || return 1
+}
+
 uv_cache_contract_selftest() {
   local scenario=current output status=0 output_file tmp
   local -a calls=()
+  zig_provision_contract_selftest || return 1
   release_selftest_loader_refusals || return 1
   release_tmp_contract_selftest || return 1
   release_tmp_begin || return 1

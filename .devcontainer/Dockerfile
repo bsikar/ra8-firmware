@@ -424,6 +424,27 @@ RUN set -eux; \
     test "$(/usr/local/go/bin/go version | awk '{print $3}')" = "go${GO_VERSION}"
 ENV PATH="/usr/local/go/bin:${PATH}"
 
+# zig -- compiler for the reg_gen host code generation tool.
+# Official releases: https://ziglang.org/download/
+ARG ZIG_VERSION=0.14.1
+ARG ZIG_SHA256_X86_64=24aeeec8af16c381934a6cd7d95c807a8cb2cf7df9fa40d359aa884195c4716c
+ARG ZIG_SHA256_AARCH64=f7a654acc967864f7a050ddacfaa778c7504a0eca8d2b678839c21eea47c992b
+RUN set -eux; \
+    case "$(uname -m)" in \
+      x86_64)  zigarch=x86_64;  zigsha="${ZIG_SHA256_X86_64}" ;; \
+      aarch64) zigarch=aarch64; zigsha="${ZIG_SHA256_AARCH64}" ;; \
+      *) echo "unsupported host arch $(uname -m) for Zig" >&2; exit 1 ;; \
+    esac; \
+    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/zig.tar.xz \
+      "https://ziglang.org/download/${ZIG_VERSION}/zig-${zigarch}-linux-${ZIG_VERSION}.tar.xz"; \
+    printf '%s  %s\n' "${zigsha}" /tmp/zig.tar.xz | sha256sum -c -; \
+    rm -rf /usr/local/zig; \
+    mkdir -p /usr/local/zig; \
+    tar -xf /tmp/zig.tar.xz --strip-components=1 -C /usr/local/zig; \
+    rm /tmp/zig.tar.xz; \
+    test "$(/usr/local/zig/zig version)" = "${ZIG_VERSION}"
+ENV PATH="/usr/local/zig:${PATH}"
+
 # just -- command runner for CI gates and repository recipes.
 ARG JUST_VERSION=1.40.0
 ARG JUST_SHA256_X86_64=181b91d0ceebe8a57723fb648ed2ce1a44d849438ce2e658339df4f8db5f1263

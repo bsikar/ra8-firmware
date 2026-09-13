@@ -1,0 +1,8 @@
+{
+  "peripheral": "TIMER0",
+  "base_address": "0x40001000",
+  "registers": [
+    {"name": "CTRL", "offset": "0x00", "size": 32, "description": "Control Register"},
+    {"name": "STATUS", "offset": "0x04", "size": 32, "description": "Status Register"}
+  ]
+}
