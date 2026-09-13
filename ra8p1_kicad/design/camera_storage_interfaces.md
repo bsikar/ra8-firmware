@@ -44,6 +44,17 @@ DVP support for this shield on RA at retrieval time.
 
 ## CMS-016: Two-camera expansion and lighting requirements
 
+Layout checkpoint, 2026-09-13: the native Pcam sheet was enlarged from A4
+to A3, its existing circuit moved together toward the upper left, and a
+separate five-line interface/startup note added below it. The refreshed
+13-page PDF camera page was visually reviewed. All 334 exported net
+partitions and all 117 ERC finding identities match the preceding radio
+checkpoint; no component or pin allocation changed in this layout pass.
+The overview MCU frame still needs more space; unsuccessful native resize
+attempts were cancelled without saved changes to that sheet. This is a
+layout checkpoint, not completion of either camera qualification or the
+full schematic.
+
 Status, 2026-09-13: required architecture revision, not a placed CEU circuit.
 The owner requires front and rear cameras, front selfie illumination and a
 rear flashlight. Battery power, premium audio, all five physical controls,
@@ -66,12 +77,12 @@ Independent review of the BGA289 alternatives in
 
 | CEU signal | Candidate port / ball | Existing allocation affected |
 | --- | --- | --- |
-| VIO_D0 | P206 / B15 | Reserved SSI1_A audio data |
+| VIO_D0 | P206 / B15 | Former SSI1_A reservation; audio moved to SSI1_B |
 | VIO_D1 | P902 / E9 | No inspected placed net |
 | VIO_D2 | P909 / B14 | Volume-up relocated to P307; CEU not yet placed |
 | VIO_D3 | P908 / B13 | No inspected placed net |
-| VIO_D4 | P907 / A15 | Reserved SSI1_A audio clock |
-| VIO_D5 | P906 / A13 | Reserved SSI1_A audio frame sync |
+| VIO_D4 | P907 / A15 | Former SSI1_A reservation; audio moved to SSI1_B |
+| VIO_D5 | P906 / A13 | Former SSI1_A reservation; audio moved to SSI1_B |
 | VIO_D6 | P905 / A14 | No inspected placed net |
 | VIO_D7 | P703 / G14 | Radio CS_N relocated to P604; CEU not yet placed |
 | VIO_CLK | PB04 / D13 | No inspected placed net |
@@ -802,10 +813,11 @@ P407 has no SD1CD function. The corresponding pin-init routine and demos
 must be corrected and tested in a separate firmware change. Copying that
 enum into a schematic would create a real wiring error.
 
-The already-validated SPI fallback uses SCI0 SCK=P601, COPI=P603,
-CIPO=P602, CS=P604 on EK Pmod2. It can coexist with SDRAM and the DVP
-camera, but adopting it here would trade native-bus performance for earlier
-firmware reuse. No switched dual-routing network is proposed for production.
+The historically validated EK SPI fallback uses SCI0 SCK=P601, COPI=P603,
+CIPO=P602, CS=P604 on EK Pmod2. Those pins now serve the placed radio on
+this design under CMS-016. The EK example remains a protocol/filesystem
+reference, not a compatible replacement for this board's native SDHI1_B.
+No switched dual-routing network is proposed for production.
 
 ## CMS-004: External RAM and soldered NOR baseline
 
@@ -842,8 +854,8 @@ Reserve these SDRAM signal ports, in bit order:
 | WE# / CAS# / RAS# / CS# | PA08 / PA09 / PA10 / P813 |
 
 This consumes 57 distinct signal ports. It conflicts with OSPI1 and with
-SSI0_B on P112..P115. Use OSPI0 for NOR, and the separate SSI1_A group
-for audio. P708 is not in this SDRAM allocation.
+SSI0_B on P112..P115. Use OSPI0 for NOR and reserve SSI1_B
+P702/P701/P700 for audio under CMS-016. P708 is not in this SDRAM allocation.
 
 The selected NOR is now Infineon S28HL01GTFPBHI030, 1 Gbit / 128 MiB,
 3 V Octal DDR with a read data strobe. This doubles the EK capacity without
@@ -882,19 +894,23 @@ CLK PD05/C16, CMD PD04/C14, DAT0 PD03/C15, DAT1 PD02/B17,
 DAT2 PD01/B16, DAT3 P111/E8. No overlap with the preceding mandatory buses.
 The EK SCI8 console already uses PD02/PD03; move that console if this option
 is implemented. The eight-bit extension consumes DAT4 P110, DAT5 P109,
-DAT6 P108, DAT7 P206, with DAT7 conflicting with SSI1_A audio data.
+DAT6 P108, DAT7 P206, with DAT7 conflicting with CMS-016 CEU VIO_D0.
 No eMMC MPN, supply network or connector is approved by this reservation.
 
 The original EK DVP camera group uses P703/P702/P701/P700/P406/P405/P902/P400
 for eight data bits, plus PB02/PB03/PB04 for synchronization/clock. It
-therefore directly conflicts with both current radio and native microSD.
+therefore directly conflicts with SSI1_B audio and native microSD.
+CMS-016 uses an alternate CEU8 mapping and relocates the radio to SCI0.
 These are pin conflicts, not problems solved by software scheduling if the
 two external devices remain physically connected without isolation.
 
 ## CMS-006: Python-verifiable allocation and capacity arithmetic
 
-Executed using Python's standard library. This proves the listed sets and
-arithmetic, not alternate-function register programming or timing closure.
+Historical single-camera allocation, superseded by CMS-016 for current
+pin ownership. The old radio, SSI1_A and volume-up groups below are retained
+only to reproduce the original conflict analysis; do not implement them.
+Executed using Python's standard library. This proves the listed historical
+sets and arithmetic, not alternate-function programming or timing closure.
 
 ```python
 from itertools import combinations

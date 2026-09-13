@@ -3,7 +3,7 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "8c509067-c431-4c4a-b23f-797b8db2a31f")
-	(paper "A4")
+	(paper "A3")
 	(lib_symbols
 		(symbol "Connector_Generic:Conn_01x15"
 			(pin_names
@@ -1362,79 +1362,90 @@
 			(embedded_fonts no)
 		)
 	)
+	(text "CMS-014 / CMS-015: Pcam 5C, 2-lane CSI-2 to VIN0\nU24: PWUP = CAM_PWR_REQ AND MCU_RESET_N.\nPWUP low >=100ms; then high >=50ms before SCCB.\nQualification and second-camera/lighting work remain open.\nSee ../design/camera_storage_interfaces.md, CMS-014..016."
+		(exclude_from_sim no)
+		(at 65.786 125.73 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "25af0f26-c9cf-4dff-a587-9903d3e8dd81")
+	)
 	(junction
-		(at 171.45 82.55)
+		(at 125.73 71.12)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "00b4a7b9-6d5f-429f-b0f9-f67bddfb9163")
 	)
 	(junction
-		(at 158.75 97.79)
+		(at 113.03 86.36)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "5354773f-7a0a-4387-80be-f7bf5aed5024")
 	)
 	(junction
-		(at 204.47 115.57)
+		(at 158.75 104.14)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "837f16c3-5ec2-4b40-bac5-351002ef9434")
 	)
 	(junction
-		(at 142.24 97.79)
+		(at 96.52 86.36)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "91459460-2fc1-473b-9a0f-2eb2a7cb28fb")
 	)
 	(junction
-		(at 200.66 72.39)
+		(at 154.94 60.96)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "93e7220c-251e-41ec-a817-317a2c6908a2")
 	)
 	(junction
-		(at 158.75 100.33)
+		(at 113.03 88.9)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "9c74029d-b04f-409c-85bf-e3dc89b4d561")
 	)
 	(junction
-		(at 204.47 87.63)
+		(at 158.75 76.2)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "a0cf7863-d59c-4618-80ef-670ca201d456")
 	)
 	(junction
-		(at 133.35 77.47)
+		(at 87.63 66.04)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "d0d1ca21-4de1-458e-a60d-beaaaad7daf7")
 	)
 	(junction
-		(at 200.66 64.77)
+		(at 154.94 53.34)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "d34656d4-08c3-4e65-97aa-e77d83af77ba")
 	)
 	(junction
-		(at 200.66 80.01)
+		(at 154.94 68.58)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "de853202-271d-4381-bae7-f873d483c27f")
 	)
 	(junction
-		(at 210.82 90.17)
+		(at 165.1 78.74)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "f70d0ec7-a85d-4be3-b693-897b738cc78b")
 	)
 	(no_connect
-		(at 210.82 85.09)
+		(at 165.1 73.66)
 		(uuid "cae28059-51cf-47d6-85a1-832fb04347bd")
 	)
 	(wire
 		(pts
-			(xy 210.82 57.15) (xy 200.66 57.15)
+			(xy 165.1 45.72) (xy 154.94 45.72)
 		)
 		(stroke
 			(width 0)
@@ -1444,7 +1455,7 @@
 	)
 	(wire
 		(pts
-			(xy 171.45 82.55) (xy 210.82 82.55)
+			(xy 125.73 71.12) (xy 165.1 71.12)
 		)
 		(stroke
 			(width 0)
@@ -1454,7 +1465,7 @@
 	)
 	(wire
 		(pts
-			(xy 200.66 72.39) (xy 210.82 72.39)
+			(xy 154.94 60.96) (xy 165.1 60.96)
 		)
 		(stroke
 			(width 0)
@@ -1464,7 +1475,7 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 69.85) (xy 210.82 69.85)
+			(xy 137.16 58.42) (xy 165.1 58.42)
 		)
 		(stroke
 			(width 0)
@@ -1474,7 +1485,7 @@
 	)
 	(wire
 		(pts
-			(xy 200.66 80.01) (xy 200.66 97.79)
+			(xy 154.94 68.58) (xy 154.94 86.36)
 		)
 		(stroke
 			(width 0)
@@ -1484,7 +1495,7 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 67.31) (xy 210.82 67.31)
+			(xy 137.16 55.88) (xy 165.1 55.88)
 		)
 		(stroke
 			(width 0)
@@ -1494,7 +1505,7 @@
 	)
 	(wire
 		(pts
-			(xy 200.66 72.39) (xy 200.66 80.01)
+			(xy 154.94 60.96) (xy 154.94 68.58)
 		)
 		(stroke
 			(width 0)
@@ -1504,7 +1515,7 @@
 	)
 	(wire
 		(pts
-			(xy 200.66 57.15) (xy 200.66 64.77)
+			(xy 154.94 45.72) (xy 154.94 53.34)
 		)
 		(stroke
 			(width 0)
@@ -1514,7 +1525,7 @@
 	)
 	(wire
 		(pts
-			(xy 171.45 99.06) (xy 171.45 100.33)
+			(xy 125.73 87.63) (xy 125.73 88.9)
 		)
 		(stroke
 			(width 0)
@@ -1524,7 +1535,7 @@
 	)
 	(wire
 		(pts
-			(xy 158.75 97.79) (xy 158.75 100.33)
+			(xy 113.03 86.36) (xy 113.03 88.9)
 		)
 		(stroke
 			(width 0)
@@ -1534,7 +1545,7 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 74.93) (xy 210.82 74.93)
+			(xy 137.16 63.5) (xy 165.1 63.5)
 		)
 		(stroke
 			(width 0)
@@ -1544,7 +1555,7 @@
 	)
 	(wire
 		(pts
-			(xy 133.35 97.79) (xy 142.24 97.79)
+			(xy 87.63 86.36) (xy 96.52 86.36)
 		)
 		(stroke
 			(width 0)
@@ -1554,7 +1565,7 @@
 	)
 	(wire
 		(pts
-			(xy 158.75 95.25) (xy 158.75 97.79)
+			(xy 113.03 83.82) (xy 113.03 86.36)
 		)
 		(stroke
 			(width 0)
@@ -1564,7 +1575,7 @@
 	)
 	(wire
 		(pts
-			(xy 212.09 111.76) (xy 212.09 115.57)
+			(xy 166.37 100.33) (xy 166.37 104.14)
 		)
 		(stroke
 			(width 0)
@@ -1574,7 +1585,7 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 77.47) (xy 210.82 77.47)
+			(xy 137.16 66.04) (xy 165.1 66.04)
 		)
 		(stroke
 			(width 0)
@@ -1584,7 +1595,7 @@
 	)
 	(wire
 		(pts
-			(xy 212.09 90.17) (xy 212.09 104.14)
+			(xy 166.37 78.74) (xy 166.37 92.71)
 		)
 		(stroke
 			(width 0)
@@ -1594,7 +1605,7 @@
 	)
 	(wire
 		(pts
-			(xy 204.47 87.63) (xy 210.82 87.63)
+			(xy 158.75 76.2) (xy 165.1 76.2)
 		)
 		(stroke
 			(width 0)
@@ -1604,7 +1615,7 @@
 	)
 	(wire
 		(pts
-			(xy 133.35 77.47) (xy 133.35 78.74)
+			(xy 87.63 66.04) (xy 87.63 67.31)
 		)
 		(stroke
 			(width 0)
@@ -1614,7 +1625,7 @@
 	)
 	(wire
 		(pts
-			(xy 204.47 111.76) (xy 204.47 115.57)
+			(xy 158.75 100.33) (xy 158.75 104.14)
 		)
 		(stroke
 			(width 0)
@@ -1624,7 +1635,7 @@
 	)
 	(wire
 		(pts
-			(xy 210.82 90.17) (xy 212.09 90.17)
+			(xy 165.1 78.74) (xy 166.37 78.74)
 		)
 		(stroke
 			(width 0)
@@ -1634,7 +1645,7 @@
 	)
 	(wire
 		(pts
-			(xy 146.05 82.55) (xy 142.24 82.55)
+			(xy 100.33 71.12) (xy 96.52 71.12)
 		)
 		(stroke
 			(width 0)
@@ -1644,7 +1655,7 @@
 	)
 	(wire
 		(pts
-			(xy 125.73 77.47) (xy 133.35 77.47)
+			(xy 80.01 66.04) (xy 87.63 66.04)
 		)
 		(stroke
 			(width 0)
@@ -1654,7 +1665,7 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 90.17) (xy 210.82 90.17)
+			(xy 137.16 78.74) (xy 165.1 78.74)
 		)
 		(stroke
 			(width 0)
@@ -1664,7 +1675,7 @@
 	)
 	(wire
 		(pts
-			(xy 171.45 82.55) (xy 171.45 91.44)
+			(xy 125.73 71.12) (xy 125.73 80.01)
 		)
 		(stroke
 			(width 0)
@@ -1674,7 +1685,7 @@
 	)
 	(wire
 		(pts
-			(xy 204.47 87.63) (xy 204.47 104.14)
+			(xy 158.75 76.2) (xy 158.75 92.71)
 		)
 		(stroke
 			(width 0)
@@ -1684,7 +1695,7 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 92.71) (xy 210.82 92.71)
+			(xy 137.16 81.28) (xy 165.1 81.28)
 		)
 		(stroke
 			(width 0)
@@ -1694,7 +1705,7 @@
 	)
 	(wire
 		(pts
-			(xy 133.35 77.47) (xy 146.05 77.47)
+			(xy 87.63 66.04) (xy 100.33 66.04)
 		)
 		(stroke
 			(width 0)
@@ -1704,7 +1715,7 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 59.69) (xy 210.82 59.69)
+			(xy 137.16 48.26) (xy 165.1 48.26)
 		)
 		(stroke
 			(width 0)
@@ -1714,7 +1725,7 @@
 	)
 	(wire
 		(pts
-			(xy 204.47 115.57) (xy 212.09 115.57)
+			(xy 158.75 104.14) (xy 166.37 104.14)
 		)
 		(stroke
 			(width 0)
@@ -1724,7 +1735,7 @@
 	)
 	(wire
 		(pts
-			(xy 200.66 80.01) (xy 210.82 80.01)
+			(xy 154.94 68.58) (xy 165.1 68.58)
 		)
 		(stroke
 			(width 0)
@@ -1734,7 +1745,7 @@
 	)
 	(wire
 		(pts
-			(xy 200.66 64.77) (xy 210.82 64.77)
+			(xy 154.94 53.34) (xy 165.1 53.34)
 		)
 		(stroke
 			(width 0)
@@ -1744,7 +1755,7 @@
 	)
 	(wire
 		(pts
-			(xy 125.73 87.63) (xy 146.05 87.63)
+			(xy 80.01 76.2) (xy 100.33 76.2)
 		)
 		(stroke
 			(width 0)
@@ -1754,7 +1765,7 @@
 	)
 	(wire
 		(pts
-			(xy 142.24 97.79) (xy 158.75 97.79)
+			(xy 96.52 86.36) (xy 113.03 86.36)
 		)
 		(stroke
 			(width 0)
@@ -1764,7 +1775,7 @@
 	)
 	(wire
 		(pts
-			(xy 200.66 64.77) (xy 200.66 72.39)
+			(xy 154.94 53.34) (xy 154.94 60.96)
 		)
 		(stroke
 			(width 0)
@@ -1774,7 +1785,7 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 62.23) (xy 210.82 62.23)
+			(xy 137.16 50.8) (xy 165.1 50.8)
 		)
 		(stroke
 			(width 0)
@@ -1784,7 +1795,7 @@
 	)
 	(wire
 		(pts
-			(xy 142.24 82.55) (xy 142.24 97.79)
+			(xy 96.52 71.12) (xy 96.52 86.36)
 		)
 		(stroke
 			(width 0)
@@ -1794,7 +1805,7 @@
 	)
 	(wire
 		(pts
-			(xy 158.75 100.33) (xy 171.45 100.33)
+			(xy 113.03 88.9) (xy 125.73 88.9)
 		)
 		(stroke
 			(width 0)
@@ -1804,7 +1815,7 @@
 	)
 	(wire
 		(pts
-			(xy 133.35 86.36) (xy 133.35 97.79)
+			(xy 87.63 74.93) (xy 87.63 86.36)
 		)
 		(stroke
 			(width 0)
@@ -1814,7 +1825,7 @@
 	)
 	(wire
 		(pts
-			(xy 182.88 87.63) (xy 204.47 87.63)
+			(xy 137.16 76.2) (xy 158.75 76.2)
 		)
 		(stroke
 			(width 0)
@@ -1824,7 +1835,7 @@
 	)
 	(hierarchical_label "CAM_D0_N"
 		(shape output)
-		(at 182.88 59.69 180)
+		(at 137.16 48.26 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1835,7 +1846,7 @@
 	)
 	(hierarchical_label "CAM_SDA"
 		(shape bidirectional)
-		(at 182.88 90.17 180)
+		(at 137.16 78.74 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1846,7 +1857,7 @@
 	)
 	(hierarchical_label "CAM_SCL"
 		(shape bidirectional)
-		(at 182.88 87.63 180)
+		(at 137.16 76.2 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1857,7 +1868,7 @@
 	)
 	(hierarchical_label "CAM_D0_P"
 		(shape output)
-		(at 182.88 62.23 180)
+		(at 137.16 50.8 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1868,7 +1879,7 @@
 	)
 	(hierarchical_label "CAM_D1_P"
 		(shape output)
-		(at 182.88 69.85 180)
+		(at 137.16 58.42 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1879,7 +1890,7 @@
 	)
 	(hierarchical_label "CAM_D1_N"
 		(shape output)
-		(at 182.88 67.31 180)
+		(at 137.16 55.88 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1890,7 +1901,7 @@
 	)
 	(hierarchical_label "CAM_CLK_N"
 		(shape output)
-		(at 182.88 74.93 180)
+		(at 137.16 63.5 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1901,7 +1912,7 @@
 	)
 	(hierarchical_label "CAM_CLK_P"
 		(shape output)
-		(at 182.88 77.47 180)
+		(at 137.16 66.04 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1912,7 +1923,7 @@
 	)
 	(hierarchical_label "CAM_PWR_REQ"
 		(shape input)
-		(at 125.73 77.47 180)
+		(at 80.01 66.04 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1923,7 +1934,7 @@
 	)
 	(hierarchical_label "MCU_RESET_N"
 		(shape input)
-		(at 125.73 87.63 180)
+		(at 80.01 76.2 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -1934,7 +1945,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 171.45 95.25 0)
+		(at 125.73 83.82 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -1945,7 +1956,7 @@
 		(fields_autoplaced yes)
 		(uuid "506fdcfe-1257-437f-8c19-65a2dfb05ca9")
 		(property "Reference" "R97"
-			(at 173.99 93.9799 0)
+			(at 128.27 82.5499 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -1956,7 +1967,7 @@
 			)
 		)
 		(property "Value" "10k"
-			(at 173.99 96.5199 0)
+			(at 128.27 85.0899 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -1967,7 +1978,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 169.672 95.25 90)
+			(at 123.952 83.82 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1978,7 +1989,7 @@
 			)
 		)
 		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
-			(at 171.45 95.25 0)
+			(at 125.73 83.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1989,7 +2000,7 @@
 			)
 		)
 		(property "Description" "Resistor"
-			(at 171.45 95.25 0)
+			(at 125.73 83.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2000,7 +2011,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
-			(at 171.45 95.25 0)
+			(at 125.73 83.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2011,7 +2022,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/726880"
-			(at 171.45 95.25 0)
+			(at 125.73 83.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2022,7 +2033,7 @@
 			)
 		)
 		(property "Procurement_Status" "Active; stocked DigiKey 2026-09-12; footprint and assembly qualification deferred."
-			(at 171.45 95.25 0)
+			(at 125.73 83.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2033,7 +2044,7 @@
 			)
 		)
 		(property "Selection_Basis" "Camera PWUP output pull-down: 10k, 1%, 100ppm/C. With 100C drift model, Rmax=10201 ohm; a 20uA total off-state leakage acceptance allocation gives 0.20402V. This allocation is not a module leakage guarantee; qualify powered-off and rail-collapse behavior. See ../design/camera_storage_interfaces.md."
-			(at 171.45 95.25 0)
+			(at 125.73 83.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2044,7 +2055,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12 DigiKey US: Active, 2356142 in stock; USD 0.10 / 0.025 / 0.0122 at qty 1 / 10 / 100; 17-week lead. Unreserved; excludes tax/shipping; recheck before purchase."
-			(at 171.45 95.25 0)
+			(at 125.73 83.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2055,7 +2066,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "YAGEO"
-			(at 171.45 95.25 0)
+			(at 125.73 83.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2066,7 +2077,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
-			(at 171.45 95.25 0)
+			(at 125.73 83.82 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2093,7 +2104,7 @@
 	)
 	(symbol
 		(lib_id "Power_Devices:SN74LVC1G97DBVR")
-		(at 158.75 82.55 0)
+		(at 113.03 71.12 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2103,7 +2114,7 @@
 		(dnp no)
 		(uuid "55b84137-a8fe-4ced-9028-371bace58e9c")
 		(property "Reference" "U24"
-			(at 156.21 64.77 0)
+			(at 110.49 53.34 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -2113,7 +2124,7 @@
 			)
 		)
 		(property "Value" "SN74LVC1G97DBVR"
-			(at 156.21 67.31 0)
+			(at 110.49 55.88 0)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -2123,7 +2134,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 158.75 82.55 0)
+			(at 113.03 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2134,7 +2145,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/sn74lvc1g97.pdf"
-			(at 158.75 82.55 0)
+			(at 113.03 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2145,7 +2156,7 @@
 			)
 		)
 		(property "Description" "TI SN74LVC1G97DBVR; configurable single gate, 1.65..5.5 V. DBV6: IN1=1 GND=2 IN0=3 Y=4 VCC=5 IN2=6. IN1 low gives Y=IN0 AND IN2. SCES416N."
-			(at 158.75 82.55 0)
+			(at 113.03 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2156,7 +2167,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "Texas Instruments"
-			(at 158.75 82.55 0)
+			(at 113.03 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2167,7 +2178,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "SN74LVC1G97DBVR"
-			(at 158.75 82.55 0)
+			(at 113.03 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2178,7 +2189,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "296-15581-1-ND"
-			(at 158.75 82.55 0)
+			(at 113.03 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2189,7 +2200,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/texas-instruments/SN74LVC1G97DBVR/571196"
-			(at 158.75 82.55 0)
+			(at 113.03 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2200,7 +2211,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12: DigiKey Active, 26,850 in stock; USD 0.23 / 0.160 / 0.1213 at qty 1 / 10 / 100; 9-week lead. Unreserved; recheck before purchase."
-			(at 158.75 82.55 0)
+			(at 113.03 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2211,7 +2222,7 @@
 			)
 		)
 		(property "Procurement_Status" "Selected for reset-qualified Pcam PWUP; startup and rail-collapse qualification pending; footprint and assembly qualification deferred."
-			(at 158.75 82.55 0)
+			(at 113.03 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2222,7 +2233,7 @@
 			)
 		)
 		(property "Selection_Basis" "Camera PWUP qualification: IN1=GND, IN0=CAM_PWR_REQ, IN2=MCU_RESET_N implements AND; main-powered VCC with C112 100n bypass. VOL <=0.1V at 100uA supports LP5907 EN low; VOH >=2.4V at 16mA at 3V test point. Continuous-supply, off-state and rail-collapse behavior require qualification. See ../design/camera_storage_interfaces.md."
-			(at 158.75 82.55 0)
+			(at 113.03 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2261,7 +2272,7 @@
 	)
 	(symbol
 		(lib_id "power:+3V3")
-		(at 158.75 69.85 90)
+		(at 113.03 58.42 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2272,7 +2283,7 @@
 		(fields_autoplaced yes)
 		(uuid "5e8f6f40-38be-46f5-b4ce-5b84b736f6f6")
 		(property "Reference" "#PWR0224"
-			(at 162.56 69.85 0)
+			(at 116.84 58.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2283,7 +2294,7 @@
 			)
 		)
 		(property "Value" "+3V3_MCU"
-			(at 154.94 69.8499 90)
+			(at 109.22 58.4199 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2294,7 +2305,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 158.75 69.85 0)
+			(at 113.03 58.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2305,7 +2316,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 158.75 69.85 0)
+			(at 113.03 58.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2316,7 +2327,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+3V3\""
-			(at 158.75 69.85 0)
+			(at 113.03 58.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2340,7 +2351,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 133.35 63.5 0)
+		(at 87.63 52.07 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2351,7 +2362,7 @@
 		(fields_autoplaced yes)
 		(uuid "635fbf90-2b55-4b29-b01d-9b4b5c37b57d")
 		(property "Reference" "C112"
-			(at 137.16 62.2299 0)
+			(at 91.44 50.7999 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2362,7 +2373,7 @@
 			)
 		)
 		(property "Value" "100n"
-			(at 137.16 64.7699 0)
+			(at 91.44 53.3399 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2373,7 +2384,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 134.3152 67.31 0)
+			(at 88.5952 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2384,7 +2395,7 @@
 			)
 		)
 		(property "Datasheet" "https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608X7R1H104K080AA"
-			(at 133.35 63.5 0)
+			(at 87.63 52.07 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2395,7 +2406,7 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
-			(at 133.35 63.5 0)
+			(at 87.63 52.07 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2406,7 +2417,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "445-1314-1-ND"
-			(at 133.35 63.5 0)
+			(at 87.63 52.07 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2417,7 +2428,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/tdk/C1608X7R1H104K080AA/513811"
-			(at 133.35 63.5 0)
+			(at 87.63 52.07 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2428,7 +2439,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "TDK Corporation"
-			(at 133.35 63.5 0)
+			(at 87.63 52.07 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2439,7 +2450,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "C1608X7R1H104K080AA"
-			(at 133.35 63.5 0)
+			(at 87.63 52.07 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2450,7 +2461,7 @@
 			)
 		)
 		(property "Procurement_Status" "DigiKey lists Active and stocked 2026-09-12. TDK direct retrieval unavailable at sourcing refresh; effective capacitance and footprint qualification deferred."
-			(at 133.35 63.5 0)
+			(at 87.63 52.07 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2461,7 +2472,7 @@
 			)
 		)
 		(property "Selection_Basis" "U24 local bypass: 100nF nominal, 10%, 50V X7R, 0603; reuse selected C111 part. Connect across U24 VCC and GND per TI bypass guidance. Effective capacitance under bias, temperature and aging, placement inductance and supply transients require qualification. See ../design/camera_storage_interfaces.md."
-			(at 133.35 63.5 0)
+			(at 87.63 52.07 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2472,7 +2483,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12 DigiKey US: Active, 329450 in stock; USD 0.11 / 0.06 / 0.0359 at qty 1 / 10 / 100; 24-week lead. Unreserved; excludes tax/shipping; recheck before purchase."
-			(at 133.35 63.5 0)
+			(at 87.63 52.07 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2499,7 +2510,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 133.35 82.55 0)
+		(at 87.63 71.12 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2510,7 +2521,7 @@
 		(fields_autoplaced yes)
 		(uuid "70adfa2b-6ef7-4b40-a119-6eac6b550876")
 		(property "Reference" "R96"
-			(at 135.89 81.2799 0)
+			(at 90.17 69.8499 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2521,7 +2532,7 @@
 			)
 		)
 		(property "Value" "10k"
-			(at 135.89 83.8199 0)
+			(at 90.17 72.3899 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2532,7 +2543,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 131.572 82.55 90)
+			(at 85.852 71.12 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2543,7 +2554,7 @@
 			)
 		)
 		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-0710KL"
-			(at 133.35 82.55 0)
+			(at 87.63 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2554,7 +2565,7 @@
 			)
 		)
 		(property "Description" "Resistor"
-			(at 133.35 82.55 0)
+			(at 87.63 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2565,7 +2576,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "YAGEO"
-			(at 133.35 82.55 0)
+			(at 87.63 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2576,7 +2587,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "RC0603FR-0710KL"
-			(at 133.35 82.55 0)
+			(at 87.63 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2587,7 +2598,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "311-10.0KHRCT-ND"
-			(at 133.35 82.55 0)
+			(at 87.63 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2598,7 +2609,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/726880"
-			(at 133.35 82.55 0)
+			(at 87.63 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2609,7 +2620,7 @@
 			)
 		)
 		(property "Procurement_Status" "Active; stocked DigiKey 2026-09-12; footprint and assembly qualification deferred."
-			(at 133.35 82.55 0)
+			(at 87.63 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2620,7 +2631,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12 DigiKey US: Active, 2356142 in stock; USD 0.10 / 0.025 / 0.0122 at qty 1 / 10 / 100; 17-week lead. Unreserved; excludes tax/shipping; recheck before purchase."
-			(at 133.35 82.55 0)
+			(at 87.63 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2631,7 +2642,7 @@
 			)
 		)
 		(property "Selection_Basis" "Camera request pull-down: 10k, 1%, 100ppm/C. With 100C drift model, Rmax=10201 ohm; allocated MCU plus gate leakage 10uA gives 0.10201V. Powered-off and rail-collapse behavior require qualification. See ../design/camera_storage_interfaces.md."
-			(at 133.35 82.55 0)
+			(at 87.63 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2658,7 +2669,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 204.47 107.95 0)
+		(at 158.75 96.52 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2668,7 +2679,7 @@
 		(dnp no)
 		(uuid "7c24106f-888d-40d3-9647-77610fbab51f")
 		(property "Reference" "R98"
-			(at 195.58 106.426 0)
+			(at 149.86 94.996 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2679,7 +2690,7 @@
 			)
 		)
 		(property "Value" "1.5k"
-			(at 195.58 108.966 0)
+			(at 149.86 97.536 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2690,7 +2701,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 202.692 107.95 90)
+			(at 156.972 96.52 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2701,7 +2712,7 @@
 			)
 		)
 		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-071K5L"
-			(at 204.47 107.95 0)
+			(at 158.75 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2712,7 +2723,7 @@
 			)
 		)
 		(property "Description" "Resistor"
-			(at 204.47 107.95 0)
+			(at 158.75 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2723,7 +2734,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "311-1.50KHRCT-ND"
-			(at 204.47 107.95 0)
+			(at 158.75 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2734,7 +2745,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-071K5L/726864"
-			(at 204.47 107.95 0)
+			(at 158.75 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2745,7 +2756,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "YAGEO"
-			(at 204.47 107.95 0)
+			(at 158.75 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2756,7 +2767,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "RC0603FR-071K5L"
-			(at 204.47 107.95 0)
+			(at 158.75 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2767,7 +2778,7 @@
 			)
 		)
 		(property "Procurement_Status" "Active; stocked DigiKey 2026-09-12; footprint and assembly qualification deferred."
-			(at 204.47 107.95 0)
+			(at 158.75 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2778,7 +2789,7 @@
 			)
 		)
 		(property "Selection_Basis" "Camera SCCB host pull-up: 1.5k, 1%, 100ppm/C per Pcam host guidance. Conditional combined host/module sink screen is 3.013mA at 0.4V; require dedicated RA IIC FMPE=1. Host 300ns RC screen permits 231.39pF; module sink, translator drop and complete bus timing require qualification. See ../design/camera_storage_interfaces.md."
-			(at 204.47 107.95 0)
+			(at 158.75 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2789,7 +2800,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12 DigiKey US: Active, 1029247 in stock; USD 0.11 / 0.027 / 0.0129 at qty 1 / 10 / 100; 17-week lead. Unreserved; excludes tax/shipping; recheck before purchase."
-			(at 204.47 107.95 0)
+			(at 158.75 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2816,7 +2827,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 158.75 100.33 0)
+		(at 113.03 88.9 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2827,7 +2838,7 @@
 		(fields_autoplaced yes)
 		(uuid "8e58e9e6-7fa8-4f8d-83c4-f3d8f9bc741a")
 		(property "Reference" "#PWR0223"
-			(at 158.75 106.68 0)
+			(at 113.03 95.25 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2838,7 +2849,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 158.75 105.41 0)
+			(at 113.03 93.98 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2848,7 +2859,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 158.75 100.33 0)
+			(at 113.03 88.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2859,7 +2870,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 158.75 100.33 0)
+			(at 113.03 88.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2870,7 +2881,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 158.75 100.33 0)
+			(at 113.03 88.9 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2894,7 +2905,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 212.09 107.95 0)
+		(at 166.37 96.52 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2905,7 +2916,7 @@
 		(fields_autoplaced yes)
 		(uuid "912069a7-6aca-480b-93ea-83c938fa1f7b")
 		(property "Reference" "R99"
-			(at 214.63 106.6799 0)
+			(at 168.91 95.2499 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2916,7 +2927,7 @@
 			)
 		)
 		(property "Value" "1.5k"
-			(at 214.63 109.2199 0)
+			(at 168.91 97.7899 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2927,7 +2938,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 210.312 107.95 90)
+			(at 164.592 96.52 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2938,7 +2949,7 @@
 			)
 		)
 		(property "Datasheet" "https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-071K5L"
-			(at 212.09 107.95 0)
+			(at 166.37 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2949,7 +2960,7 @@
 			)
 		)
 		(property "Description" "Resistor"
-			(at 212.09 107.95 0)
+			(at 166.37 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2960,7 +2971,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "311-1.50KHRCT-ND"
-			(at 212.09 107.95 0)
+			(at 166.37 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2971,7 +2982,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-071K5L/726864"
-			(at 212.09 107.95 0)
+			(at 166.37 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2982,7 +2993,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "YAGEO"
-			(at 212.09 107.95 0)
+			(at 166.37 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2993,7 +3004,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "RC0603FR-071K5L"
-			(at 212.09 107.95 0)
+			(at 166.37 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3004,7 +3015,7 @@
 			)
 		)
 		(property "Procurement_Status" "Active; stocked DigiKey 2026-09-12; footprint and assembly qualification deferred."
-			(at 212.09 107.95 0)
+			(at 166.37 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3015,7 +3026,7 @@
 			)
 		)
 		(property "Selection_Basis" "Camera SCCB host pull-up: 1.5k, 1%, 100ppm/C per Pcam host guidance. Conditional combined host/module sink screen is 3.013mA at 0.4V; require dedicated RA IIC FMPE=1. Host 300ns RC screen permits 231.39pF; module sink, translator drop and complete bus timing require qualification. See ../design/camera_storage_interfaces.md."
-			(at 212.09 107.95 0)
+			(at 166.37 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3026,7 +3037,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12 DigiKey US: Active, 1029247 in stock; USD 0.11 / 0.027 / 0.0129 at qty 1 / 10 / 100; 17-week lead. Unreserved; excludes tax/shipping; recheck before purchase."
-			(at 212.09 107.95 0)
+			(at 166.37 96.52 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3053,7 +3064,7 @@
 	)
 	(symbol
 		(lib_id "power:+3V3")
-		(at 133.35 59.69 90)
+		(at 87.63 48.26 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -3063,7 +3074,7 @@
 		(dnp no)
 		(uuid "96484df7-a696-4459-82c8-a4a6b6615816")
 		(property "Reference" "#PWR0225"
-			(at 137.16 59.69 0)
+			(at 91.44 48.26 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3074,7 +3085,7 @@
 			)
 		)
 		(property "Value" "+3V3_MCU"
-			(at 129.286 59.436 90)
+			(at 83.566 48.006 90)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -3085,7 +3096,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 133.35 59.69 0)
+			(at 87.63 48.26 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3096,7 +3107,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 133.35 59.69 0)
+			(at 87.63 48.26 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3107,7 +3118,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+3V3\""
-			(at 133.35 59.69 0)
+			(at 87.63 48.26 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3131,7 +3142,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 200.66 97.79 0)
+		(at 154.94 86.36 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -3142,7 +3153,7 @@
 		(fields_autoplaced yes)
 		(uuid "9831cfd4-9b2e-43e7-87d0-e256ea23cc28")
 		(property "Reference" "#PWR0221"
-			(at 200.66 104.14 0)
+			(at 154.94 92.71 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3153,7 +3164,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 200.66 102.87 0)
+			(at 154.94 91.44 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3163,7 +3174,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 200.66 97.79 0)
+			(at 154.94 86.36 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3174,7 +3185,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 200.66 97.79 0)
+			(at 154.94 86.36 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3185,7 +3196,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 200.66 97.79 0)
+			(at 154.94 86.36 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3209,7 +3220,7 @@
 	)
 	(symbol
 		(lib_id "power:+3V3")
-		(at 182.88 92.71 90)
+		(at 137.16 81.28 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -3219,7 +3230,7 @@
 		(dnp no)
 		(uuid "c3683ed5-6cff-4518-ae3f-cbc76651f0d9")
 		(property "Reference" "#PWR0222"
-			(at 186.69 92.71 0)
+			(at 140.97 81.28 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3230,7 +3241,7 @@
 			)
 		)
 		(property "Value" "+3V3_MCU"
-			(at 190.246 95.25 90)
+			(at 144.526 83.82 90)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -3241,7 +3252,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 182.88 92.71 0)
+			(at 137.16 81.28 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3252,7 +3263,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 182.88 92.71 0)
+			(at 137.16 81.28 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3263,7 +3274,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+3V3\""
-			(at 182.88 92.71 0)
+			(at 137.16 81.28 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3287,7 +3298,7 @@
 	)
 	(symbol
 		(lib_id "Connector_Generic:Conn_01x15")
-		(at 215.9 74.93 0)
+		(at 170.18 63.5 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -3298,7 +3309,7 @@
 		(fields_autoplaced yes)
 		(uuid "c9c93bda-b050-4e66-b078-4c8da5fadace")
 		(property "Reference" "J3"
-			(at 218.44 73.6599 0)
+			(at 172.72 62.2299 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3309,7 +3320,7 @@
 			)
 		)
 		(property "Value" "1-1734248-5"
-			(at 218.44 76.1999 0)
+			(at 172.72 64.7699 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3320,7 +3331,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 215.9 74.93 0)
+			(at 170.18 63.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3331,7 +3342,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.te.com/commerce/DocumentDelivery/DDEController?Action=srchrtrv&DocFormat=pdf&DocLang=English&DocNm=1734248&DocType=Customer+Drawing&PartCntxt=1-1734248-5"
-			(at 215.9 74.93 0)
+			(at 170.18 63.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3342,7 +3353,7 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x15, script generated (kicad-library-utils/schlib/autogen/connector/)"
-			(at 215.9 74.93 0)
+			(at 170.18 63.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3353,7 +3364,7 @@
 			)
 		)
 		(property "DigiKey_Part_Number" "A101418CT-ND"
-			(at 215.9 74.93 0)
+			(at 170.18 63.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3364,7 +3375,7 @@
 			)
 		)
 		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/te-connectivity-amp-connectors/1-1734248-5/2272380"
-			(at 215.9 74.93 0)
+			(at 170.18 63.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3375,7 +3386,7 @@
 			)
 		)
 		(property "Manufacturer_Name" "TE Connectivity"
-			(at 215.9 74.93 0)
+			(at 170.18 63.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3386,7 +3397,7 @@
 			)
 		)
 		(property "Manufacturer_Part_Number" "1-1734248-5"
-			(at 215.9 74.93 0)
+			(at 170.18 63.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3397,7 +3408,7 @@
 			)
 		)
 		(property "Procurement_Status" "Active; stocked DigiKey 2026-09-12; footprint and assembly qualification deferred"
-			(at 215.9 74.93 0)
+			(at 170.18 63.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3408,7 +3419,7 @@
 			)
 		)
 		(property "Selection_Basis" "CMS-014: matches Digilent Zybo Z7 D.1 J2 and Pcam 5C pinout. Wurth 686715100001 cable maps host n to module n; 15 contacts, 1mm pitch, 0.30mm flex. Footprint qualification deferred. See ../design/camera_storage_interfaces.md."
-			(at 215.9 74.93 0)
+			(at 170.18 63.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3419,7 +3430,7 @@
 			)
 		)
 		(property "Sourcing_Snapshot" "2026-09-12 DigiKey US: 25233 stock; USD 1.49 / 1.268 / 1.0772 at qty 1 / 10 / 100; 8-week lead time; excludes tax/shipping; stock not reserved."
-			(at 215.9 74.93 0)
+			(at 170.18 63.5 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3485,7 +3496,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 133.35 67.31 0)
+		(at 87.63 55.88 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -3496,7 +3507,7 @@
 		(fields_autoplaced yes)
 		(uuid "e2a7c510-52af-45b2-acaa-f2edd2b5fd7a")
 		(property "Reference" "#PWR0226"
-			(at 133.35 73.66 0)
+			(at 87.63 62.23 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3507,7 +3518,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 133.35 72.39 0)
+			(at 87.63 60.96 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3517,7 +3528,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 133.35 67.31 0)
+			(at 87.63 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3528,7 +3539,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 133.35 67.31 0)
+			(at 87.63 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3539,7 +3550,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 133.35 67.31 0)
+			(at 87.63 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3563,7 +3574,7 @@
 	)
 	(symbol
 		(lib_id "power:+3V3")
-		(at 204.47 115.57 90)
+		(at 158.75 104.14 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -3573,7 +3584,7 @@
 		(dnp no)
 		(uuid "f629632a-6e12-4a92-8701-ae5fc3ce4f93")
 		(property "Reference" "#PWR0227"
-			(at 208.28 115.57 0)
+			(at 162.56 104.14 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3584,7 +3595,7 @@
 			)
 		)
 		(property "Value" "+3V3_MCU"
-			(at 211.836 118.11 90)
+			(at 166.116 106.68 90)
 			(show_name no)
 			(do_not_autoplace yes)
 			(effects
@@ -3595,7 +3606,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 204.47 115.57 0)
+			(at 158.75 104.14 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3606,7 +3617,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 204.47 115.57 0)
+			(at 158.75 104.14 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3617,7 +3628,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+3V3\""
-			(at 204.47 115.57 0)
+			(at 158.75 104.14 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

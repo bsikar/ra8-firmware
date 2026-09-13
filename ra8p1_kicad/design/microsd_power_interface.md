@@ -399,14 +399,16 @@ certification. No extra held control rail or hard fault latch is proposed.
 
 ## Interface coexistence and firmware boundary
 
-SDHI1_B does not consume the reserved SDRAM, OSPI0 or SSI1_A audio pins
-(P907/P906/P206). The selected MIPI camera control reservations
-P501/P709/P511/P512/P010 and dedicated PHY can coexist. The old parallel
-DVP camera overlaps P400/P405/P406 and cannot coexist with this native SD
-mapping; use the selected MIPI camera path. P700 is radio-owned, but this
-socket needs no SD1WP. Optional 8-bit eMMC has an audio conflict and is
-not a substitute that may be silently added. Preserve the existing
-camera/display MIPI resource constraints in CMS-002.
+SDHI1_B preserves SDRAM, OSPI0 and the CMS-016 SSI1_B audio reservation
+(P702/P701/P700). The radio now uses SCI0 P601/P603/P602 and GPIO CS P604.
+The MIPI camera control reservations P501/P709/P511/P512/P010 and dedicated
+PHY remain. CMS-016's alternate CEU8 allocation also preserves SDHI1_B;
+only the original EK parallel-camera mapping overlaps P400/P405/P406.
+The second camera is not yet placed, and disjoint pins do not establish
+simultaneous capture bandwidth or timing. P700 is reserved for audio;
+this socket needs no SD1WP. Optional eight-bit eMMC DAT7 on P206 conflicts
+with CEU VIO_D0 and cannot be silently added. Preserve the camera/display
+MIPI resource constraints in CMS-002 and the current CMS-016 allocation.
 
 Firmware issue [#845](https://github.com/bsikar/ra8-firmware/issues/845)
 tracks the incorrect connector enum (swapped CLK/CMD, wrong CD/WP and
