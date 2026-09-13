@@ -131,6 +131,7 @@ PROVIDERS: tuple[Provider, ...] = (
     ),
     Provider("vet+staticcheck", (LINT,), ("golang",), "check_go.py", ("--list-files",)),
     Provider("gofmt", (FORMAT,), ("golang",), "format_tree.sh", ("--list-files", "go"), "bash"),
+    Provider("zig", (LINT, FORMAT), ("zig",), "check_zig.py", ("--list-files",)),
     Provider("shellcheck", (LINT,), ("shell",), "check_shell.py", ("--list-files",)),
     Provider("shfmt", (FORMAT,), ("shell",), "format_tree.sh", ("--list-files", "shell"), "bash"),
     Provider("cmake-lint", (LINT,), ("cmake",), "lint_targets.py", ("cmake",)),

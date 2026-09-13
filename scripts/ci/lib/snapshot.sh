@@ -264,7 +264,7 @@ suite_reclaim_completed_builds() {
   done < <(suite_reclaim_targets "$next_gate")
   [[ "${#completed_builds[@]}" -gt 0 ]] || return 0
   [[ -n "$RA8_CI_SNAPSHOT_DIR" ]] || return 0
-  if [[ "$BASHPID" != "$RA8_CI_SNAPSHOT_OWNER" ]]; then
+  if [[ "${BASHPID:-$$}" != "$RA8_CI_SNAPSHOT_OWNER" ]]; then
     echo "ERROR: only the snapshot owner may reclaim suite build trees." >&2
     return 1
   fi
@@ -302,7 +302,7 @@ suite_build_lifecycle_boundary_selftest() {
   (
     cd "$probe"
     RA8_CI_SNAPSHOT_DIR="$probe"
-    RA8_CI_SNAPSHOT_OWNER="$BASHPID"
+    RA8_CI_SNAPSHOT_OWNER="${BASHPID:-$$}"
     suite_reclaim_completed_builds "$boundary"
   ) >/dev/null 2>&1 || rc=$?
   if [[ "$rc" -ne 0 ]]; then

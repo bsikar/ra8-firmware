@@ -73,6 +73,7 @@ TEXT_EXTS = {
     ".ld",
     ".s",
     ".S",
+    ".zig",
 }
 
 # Always-skip path fragments.

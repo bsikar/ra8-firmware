@@ -127,7 +127,7 @@ if [ -z "${_RA8_ABORT_SH:-}" ]; then
   # runs this in a subshell, the tree the siblings are about to use survives.
   ci_snapshot_cleanup() {
     [[ -n "$RA8_CI_SNAPSHOT_DIR" ]] || return 0
-    [[ "$BASHPID" == "$RA8_CI_SNAPSHOT_OWNER" ]] || return 0
+    [[ "${BASHPID:-$$}" == "$RA8_CI_SNAPSHOT_OWNER" ]] || return 0
     rm -rf "$RA8_CI_SNAPSHOT_DIR" "$RA8_CI_SNAPSHOT_DIR.index"
   }
 
@@ -177,7 +177,7 @@ if [ -z "${_RA8_ABORT_SH:-}" ]; then
   # suite over a half-written tree.
   ci_snapshot_own() {
     RA8_CI_SNAPSHOT_DIR="$1"
-    RA8_CI_SNAPSHOT_OWNER="$BASHPID"
+    RA8_CI_SNAPSHOT_OWNER="${BASHPID:-$$}"
     RA8_CI_SNAPSHOT_SEALED=0
     ci_install_abort_traps
   }

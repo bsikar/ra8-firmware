@@ -74,6 +74,7 @@ SCAN_EXTS: frozenset[str] = frozenset(
         ".py",
         ".txt",
         ".csv",  # docs/MCDC_GAPS.csv and other generated/authored tables
+        ".zig",
     }
 )
 

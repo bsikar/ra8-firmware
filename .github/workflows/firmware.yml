@@ -221,6 +221,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: just quality::local::gate unit-tests
       - run: just quality::local::gate test-go
+      - run: just quality::local::gate test-zig
 
   # ---------------------------------------------------------------------------
   # UBSan gate (#239) -- the whole host suite rebuilt under
@@ -360,6 +361,10 @@ jobs:
       - if: always()
         run: just quality::local::gate disambig-readmes
       - if: always()
+        run: just quality::local::gate init-order-freshness
+      - if: always()
+        run: just quality::local::gate roadmap-dashboard-freshness
+      - if: always()
         run: just quality::local::gate pinout-freshness
       - if: always()
         run: just quality::local::gate bench-lock
@@ -369,6 +374,8 @@ jobs:
         run: just quality::local::gate lint-py-shell
       - if: always()
         run: just quality::local::gate lint-go
+      - if: always()
+        run: just quality::local::gate lint-zig
       - if: always()
         run: just quality::local::gate lint-cmake
       - if: always()
