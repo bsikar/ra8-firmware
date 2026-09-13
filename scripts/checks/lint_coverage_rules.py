@@ -89,6 +89,7 @@ CLASSES: dict[str, ClassSpec] = {
     "zsh": _spec("zsh", CODE, "zsh dialect; shellcheck refuses zsh, so not `shell`"),
     "python": _spec("python", CODE, "the gate suite and host tooling"),
     "golang": _spec("golang", CODE, "host CLI and conversion policy"),
+    "zig": _spec("zig", CODE, "Zig host applications and tools"),
     "shell": _spec("shell", CODE, "gate drivers, HIL scripts, git hooks"),
     "cmake": _spec("cmake", CODE, "decides what compiles with which flags"),
     "make": _spec("make", CODE, "per-app and top-level build entry points"),
@@ -188,6 +189,7 @@ EXT_CLASS: dict[str, str] = {
     # Scripting
     ".py": "python",
     ".go": "golang",
+    ".zig": "zig",
     ".sh": "shell",
     ".bash": "shell",
     # NOT "shell": shellcheck explicitly refuses zsh input, so calling a .zsh

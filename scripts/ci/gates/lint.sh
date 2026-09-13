@@ -84,6 +84,17 @@ gate_lint_go() (
   python3 scripts/checks/check_go.py --require
 )
 
+# --- lint-zig -------------------------------------------------------------
+# `zig fmt --ast-check --check` verifies formatting and AST correctness over all
+# first-party Zig files. check_zig.py derives its scope from `git ls-files`.
+# --selftest first, both directions, as ever.
+gate_lint_zig() (
+  set -e
+  require_cmd zig "the lint-zig gate needs the Zig toolchain"
+  python3 scripts/checks/check_zig.py --selftest
+  python3 scripts/checks/check_zig.py --require --lint
+)
+
 # --- lint-cmake -----------------------------------------------------------
 # 283 first-party listfiles decide what is compiled with which flags -- #309
 # found host tools silently building firmware sources with -w. cmake-lint is

@@ -159,6 +159,7 @@ SUFFIX_LANG = {
     ".mk": "make",
     ".just": "just",
     ".ld": "ld",
+    ".zig": "zig",
 }
 
 # Exact basenames that carry no suffix but are unambiguously one language.
@@ -180,7 +181,7 @@ SHEBANG_LANG = {
     "python3": "python",
 }
 
-LANGUAGES = ("c", "python", "shell", "cmake", "yaml", "just", "ld")
+LANGUAGES = ("c", "python", "shell", "cmake", "yaml", "just", "ld", "zig")
 
 
 def is_build_output_path(path: object) -> bool:

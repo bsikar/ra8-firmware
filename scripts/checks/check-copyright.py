@@ -86,6 +86,7 @@ SPDX_TEXT = "SPDX-License-Identifier: MIT"
 STYLE_HASH = "hash"
 STYLE_DOXY = "doxy"  # C family: attribution inside the @file block
 STYLE_PLAIN = "plain"  # linker scripts: bare lines in the leading block
+STYLE_SLASH = "slash"  # Zig family: leading // or //! comment lines
 
 LANG_STYLE = {
     "c": STYLE_DOXY,
@@ -95,6 +96,7 @@ LANG_STYLE = {
     "cmake": STYLE_HASH,
     "just": STYLE_HASH,
     "yaml": STYLE_HASH,
+    "zig": STYLE_SLASH,
 }
 ENFORCED_LANGS = tuple(LANG_STYLE)
 
@@ -116,6 +118,7 @@ _SUFFIX_STYLE = {
     ".just": STYLE_HASH,
     ".yml": STYLE_HASH,
     ".yaml": STYLE_HASH,
+    ".zig": STYLE_SLASH,
 }
 _BASENAME_STYLE = {
     "CMakeLists.txt": STYLE_HASH,
@@ -135,6 +138,14 @@ FILE_FLOOR = 1500
 
 def _hashless(line: str) -> str:
     return line.lstrip().removeprefix("#").strip()
+
+
+def _slashless(line: str) -> str:
+    s = line.strip()
+    for prefix in ("//! ", "//! ", "// ", "//"):
+        if s.startswith(prefix):
+            return s[len(prefix) :].strip()
+    return s
 
 
 def _starless(line: str) -> str:
@@ -248,7 +259,30 @@ def classify(lines: list[str], style: str) -> str | None:
     stripped = [ln.rstrip("\r\n") for ln in lines]
     if style == STYLE_HASH:
         return _classify_hash(stripped)
+    if style == STYLE_SLASH:
+        return _classify_slash(stripped)
     return _classify_block(stripped, style)
+
+
+def _classify_slash(lines: list[str]) -> str | None:
+    idx = 1 if lines and lines[0].startswith("#!") else 0
+    if len(lines) >= idx + 2:
+        l1 = lines[idx].strip()
+        l2 = lines[idx + 1].strip()
+        for prefix in ("// ", "//! "):
+            if l1 == f"{prefix}{SPDX_TEXT}" and l2 == f"{prefix}{COPY_TEXT}":
+                return None
+    joined = "\n".join(lines[:60])
+    if SPDX_TEXT not in joined and COPY_TEXT not in joined:
+        return "missing the SPDX + copyright preamble entirely"
+    if SPDX_TEXT not in joined:
+        return "missing the SPDX-License-Identifier line"
+    if COPY_TEXT not in joined:
+        return "missing the copyright line"
+    return (
+        f"preamble is not the canonical leading pair (expected '// {SPDX_TEXT}' "
+        f"then '// {COPY_TEXT}' at line {idx + 1})"
+    )
 
 
 def _classify_hash(lines: list[str]) -> str | None:
@@ -336,11 +370,39 @@ def _rewrite(text: str, style: str) -> str | None:
     lines = text.splitlines()
     if classify(lines, style) is None:
         return None
-    fixed = _rewrite_hash(lines) if style == STYLE_HASH else _rewrite_block(lines, style)
+    if style == STYLE_HASH:
+        fixed = _rewrite_hash(lines)
+    elif style == STYLE_SLASH:
+        fixed = _rewrite_slash(lines)
+    else:
+        fixed = _rewrite_block(lines, style)
     if fixed is None:
         return None
     trailing = "\n" if text.endswith("\n") else ""
     return "\n".join(fixed) + trailing
+
+
+def _rewrite_slash(lines: list[str]) -> list[str]:
+    shebang = None
+    body = lines
+    if lines and lines[0].startswith("#!"):
+        shebang, body = lines[0], lines[1:]
+    kept: list[str] = []
+    in_region = True
+    prefix = "//"
+    for line in body:
+        s = line.strip()
+        if in_region and (s == "" or s.startswith("//")):
+            if s.startswith("//!"):
+                prefix = "//!"
+            if s.startswith("//") and _slashless(line) in {SPDX_TEXT, COPY_TEXT}:
+                continue
+            kept.append(line)
+            continue
+        in_region = False
+        kept.append(line)
+    head = [shebang] if shebang else []
+    return [*head, f"{prefix} {SPDX_TEXT}", f"{prefix} {COPY_TEXT}", *kept]
 
 
 def _rewrite_hash(lines: list[str]) -> list[str]:
@@ -502,6 +564,8 @@ MUST_STAY_QUIET: tuple[tuple[str, str, list[str]], ...] = (
         ],
     ),
     ("hash without shebang", STYLE_HASH, _GOOD_HASH_NOSB),
+    ("slash with //", STYLE_SLASH, [f"// {SPDX_TEXT}", f"// {COPY_TEXT}", "", "const x = 1;"]),
+    ("slash with //!", STYLE_SLASH, [f"//! {SPDX_TEXT}", f"//! {COPY_TEXT}", "", "const x = 1;"]),
 )
 
 MUST_FIRE: tuple[tuple[str, str, list[str]], ...] = (
@@ -588,6 +652,17 @@ MUST_FIRE: tuple[tuple[str, str, list[str]], ...] = (
         ],
     ),
     ("hash missing both", STYLE_HASH, ["#!/usr/bin/env bash", "# just prose", "echo hi"]),
+    (
+        "slash reversed",
+        STYLE_SLASH,
+        [f"// {COPY_TEXT}", f"// {SPDX_TEXT}"],
+    ),
+    (
+        "slash missing spdx",
+        STYLE_SLASH,
+        [f"// {COPY_TEXT}", "", "const x = 1;"],
+    ),
+    ("slash missing both", STYLE_SLASH, ["// just prose", "const x = 1;"]),
 )
 
 

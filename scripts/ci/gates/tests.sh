@@ -56,6 +56,13 @@ gate_test_go() (
   python3 scripts/checks/check_go.py --test --coverage --require
 )
 
+# --- test-zig -------------------------------------------------------------
+gate_test_zig() (
+  set -e
+  require_cmd zig "the test-zig gate needs the Zig toolchain"
+  python3 scripts/checks/check_zig.py --require --test
+)
+
 # --- ubsan ----------------------------------------------------------------
 # The whole host suite rebuilt under -fsanitize=undefined in its own tree with
 # UBSAN_OPTIONS=halt_on_error=1, so any undefined behaviour is a hard test
