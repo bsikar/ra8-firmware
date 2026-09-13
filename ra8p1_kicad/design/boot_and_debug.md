@@ -25,7 +25,7 @@ before final schematic integration.
 ## Reset
 
 R1 pulls RES to +3V3_MCU; U2 pulls it low when its monitored supply is
-below threshold or a fixture shorts TP1 to ground U2's MR input. Additional external reset
+below threshold or a fixture grounds U2's MR input through TP1. Additional external reset
 drivers must be open-drain/open-collector to avoid contention with the probe.
 No RC capacitor is fitted on RES. The external supervisor deliberately uses
 the RES-pin startup path; do not assume the internal POR flag semantics of
@@ -52,16 +52,30 @@ The current pin contract is U2.1 SENSE at R67/R74, U2.2 GND, U2.3
 SW_RESET_N/TP1 with R75 to main, U2.4 +3V3_MCU with retained C44,
 U2.5 C95 to GND and U2.6 MCU_RESET_N with retained R1. MR and RESET
 remain separate. The old direct SENSE connection and CT no-connect are
-superseded. U7.3 remains a load on MCU_RESET_N through the hierarchy.
+superseded. The common reset endpoints are U2.6, R1.2, U1.D5, J1.10,
+U15.A4, U7.3 and added microSD power-gate input U19.6.
 
 [RST-002](reset_coordination_tps3890.md) owns the exact primary sources,
 procurement and executable calculations: conditional rising threshold
 3.019118825..3.113278988 V, main release margin 38.540692 mV and
 8.148276 ms minimum CT charge time versus the 2.4 ms RES requirement.
-The radio R12/R13 divider also now uses 33k/20k, but current U4 TPS22917
-fails its prior 87.5 mV loss screen by 48.959308 mV of release headroom.
-Radio DC closure remains unresolved. No fast-collapse, memory-quiescence
-or VBATT sequencing guarantee follows from this MCU migration.
+The radio R12/R13 divider also uses 33k/20k. Native U4 is now
+TPS22964CYZPT under RADIO-019, with a conditional 20 mV total path-loss
+allocation and 18.540692 mV radio release headroom. Complete path/DC
+qualification remains open; the former TPS22917 loss screen is historical.
+No fast-collapse, memory-quiescence or VBATT sequencing guarantee follows
+from this MCU migration.
+
+Current U2 loading includes 5 uA MCU +5 uA U7 +2 uA NOR +5 uA U19
+=17 uA device allocation. U19 was not reserved in the former 12 uA sum.
+Preserve 13 uA for supervisor/board/probe and other adverse leakage, giving
+30 uA total. With R1=9801..10201 ohm and the RST-002 main envelope,
+sink <=0.376190439 mA fits U2's 0.4 mA test for VOL<=0.25 V at
+VDD>=1.5 V. Released high is >=2.845789680 V, with 0.324333936 V
+MCU high margin. U19 reduces that margin by 51.005 mV. At the minimum
+falling corner, the static released high/margin are 2.694792727 V /
+0.294134545 V. These are acceptance allocations, not guaranteed ramp,
+probe or release-edge behavior; RST-002 contains the executable proof.
 
 ### RST-001: external supervisor implementation basis
 
@@ -116,7 +130,8 @@ TDK C1608X7R1H104K080AA, X7R, 50 V, +/-10%, sharing the documented
 capacitance-screening basis of PWR-001 for the existing 100 nF bypasses.
 No capacitor is added on MCU_RESET_N.
 
-MCU_RESET_N also leaves this sheet through a hierarchical output and feeds
+At that historical G33 checkpoint, MCU_RESET_N left this sheet through a
+hierarchical output and fed
 radio arbitration gate U7.3 through the root. This is an added input load,
 not another reset driver. Include U7 leakage and input capacitance in the
 reset high-level, sink-current and edge-time budgets; the R1-only current
@@ -124,7 +139,8 @@ calculation below is not the complete loaded-net bound.
 See [RADIO-015](radio_interface.md#radio-015-reset-request-arbitration) for
 the gate connection contract and remaining electrical checks.
 
-R1 at 3.6 V and -1% tolerance sinks at most 3.6/9900 = 0.363636 mA,
+Historical G33-only screen (not current TPS3890 loading): R1 at 3.6 V
+and -1% tolerance sinks at most 3.6/9900 = 0.363636 mA,
 below the supervisor's 1 mA VOL test current at VDD >= 1.8 V. Its 0.4 V
 maximum VOL must still be checked against the RA8P1 RES low threshold;
 the current comparison alone is not logic-level qualification. Datasheet
@@ -205,8 +221,8 @@ files but retained on the board. They are not DNP switches. Pad 1 is the
 named signal and pad 2 is ground; physical pad geometry is deferred with
 the PCB. TP1's supervisor MR access does not replace direct RES on J1.10.
 The single exposed product power/wake button belongs to the always-on
-power-control circuit, not these service controls. Its circuit remains to
-be placed and integrated. R1-R5 use
+power-control circuit, not these service controls. Its native held-control circuit is recorded in SYS-007 and BTN-010;
+full-system qualification remains open. R1-R5 use
 Yageo RC0603FR-0710KL; their ratings and sourcing are recorded in the BOM.
 Both oscillator networks are wired as described below and in the linked
 calculation records; board-level matching remains required.

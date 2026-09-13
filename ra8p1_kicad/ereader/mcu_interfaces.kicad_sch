@@ -8448,6 +8448,17 @@
 		)
 		(uuid "f979b3bf-6c46-43d7-b02b-18e32db96634")
 	)
+	(hierarchical_label "SD_IO_REQ"
+		(shape output)
+		(at 71.12 142.24 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "011cdcb1-c0a8-4d72-9835-0f2a705ddd72")
+	)
 	(hierarchical_label "SDRAM_CS_N"
 		(shape output)
 		(at 114.3 154.94 180)
@@ -8458,6 +8469,28 @@
 			(justify right)
 		)
 		(uuid "11e1e85b-e7ff-4deb-b674-26ae41d01161")
+	)
+	(hierarchical_label "SD_CLK"
+		(shape output)
+		(at 330.2 48.26 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "159629d4-14ac-464c-abb2-0718827b76b3")
+	)
+	(hierarchical_label "SD_DAT1"
+		(shape bidirectional)
+		(at 330.2 55.88 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "1b0b146c-4816-4bef-80fd-c65dc713ed74")
 	)
 	(hierarchical_label "SDRAM_RAS_N"
 		(shape output)
@@ -8502,6 +8535,17 @@
 			(justify left)
 		)
 		(uuid "4f6e947a-b472-4d86-ab52-37679c6e5aa3")
+	)
+	(hierarchical_label "SD_DAT0"
+		(shape bidirectional)
+		(at 330.2 53.34 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "529e2bbd-19b2-4e2e-a9d7-a096cc0c3676")
 	)
 	(hierarchical_label "SDRAM_CLK"
 		(shape output)
@@ -8557,6 +8601,17 @@
 			(justify left)
 		)
 		(uuid "61f66348-6f7d-452f-aa00-fc2f0d922e30")
+	)
+	(hierarchical_label "SD_CMD"
+		(shape bidirectional)
+		(at 330.2 50.8 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "7185fd66-4cee-48c9-944b-00cd59748f89")
 	)
 	(hierarchical_label "SD_CD_N"
 		(shape input)
@@ -8745,6 +8800,17 @@
 		)
 		(uuid "d54cf87f-b6c5-4b2c-acd9-a6ca7b66d6c2")
 	)
+	(hierarchical_label "SD_PWR_REQ"
+		(shape output)
+		(at 167.64 63.5 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "d6bcc97d-e96b-4b75-8a8f-0367005f524f")
+	)
 	(hierarchical_label "PAGE_NEXT_N"
 		(shape input)
 		(at 279.4 73.66 0)
@@ -8777,6 +8843,39 @@
 			(justify right)
 		)
 		(uuid "e6b1e7eb-0e60-42ff-8ee5-1520b30547ab")
+	)
+	(hierarchical_label "SD_DAT3"
+		(shape bidirectional)
+		(at 330.2 60.96 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "e8a6dca8-b64e-4c8c-9344-3c83459e0978")
+	)
+	(hierarchical_label "SD_DAT2"
+		(shape bidirectional)
+		(at 330.2 58.42 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "eee49d46-bef8-4c3b-b29a-f5e53c16db2b")
+	)
+	(hierarchical_label "SD_READY"
+		(shape input)
+		(at 330.2 66.04 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "ff294c73-e420-4c5f-8b98-1b5b77b504b2")
 	)
 	(symbol
 		(lib_id "power:+3V3")

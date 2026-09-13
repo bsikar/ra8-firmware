@@ -1,6 +1,6 @@
 # Camera, removable storage and external-memory allocation
 
-Revision 17, 2026-09-08. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
+Revision 18, 2026-09-12. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
 This is an engineering allocation record for native KiCad implementation,
 not a completed schematic, verified timing closure or hardware qualification.
 Cross-references: [radio](radio_interface.md), [power](system_power_design.md),
@@ -119,9 +119,11 @@ Pin 2 is displayed as `DAT3` to avoid confusing the card's DAT3/CD function
 with this independent mechanical switch. No pin numbers were changed.
 All fourteen pins remain passive, with consistent 150 mil pin lengths and
 50 mil text. The two detect contacts and four shields are visually grouped.
-The native Symbol Checker reports no issues. The socket is not yet placed
-in the schematic; this library checkpoint does not complete the microSD
-circuit, qualify the retained footprint, or add a populated BOM row.
+The native Symbol Checker reported no issues at the library checkpoint.
+The socket is now J2 on the microSD sheet, with mechanical detect under
+CMS-012 and power/data integration under the
+[microSD implementation contract](microsd_power_interface.md). Native
+placement and BOM reconciliation do not qualify the retained footprint.
 microSD has no mechanical write-protect switch. SD1WP is available at P700,
 which is already assigned to the radio; it is not needed for this socket.
 
@@ -131,8 +133,8 @@ Sourcing snapshot, 2026-09-08: the exact active socket is
 with a quoted 16-week manufacturer lead time. Stock is not reserved and
 prices exclude tax/shipping. The imported Mouser part number
 `798-DM3AT-SF-PEJM5` is retained; a current US/USD Mouser quote was not
-verified in this checkpoint. Copy refreshed procurement fields into the
-schematic instance and regenerate the BOM when it is actually placed.
+verified in that checkpoint. The dated procurement fields are now in the
+schematic instance and reconciled native BOM; retain their observation date.
 
 Use 3.3 V signaling. Do not claim UHS/HS200/HS400 capability from an eMMC
 marketing version. The RA8P1 SDHI SDR timing table gives a 20 ns minimum
@@ -522,10 +524,14 @@ contains the open-drain initialization and 70 mV guaranteed DC low-margin check.
 
 D2..D5 place one **ESD441DPYR** at each direct key's external node, before
 its 1k resistor. Its ground-only protection has no supply-rail connection that
-could bypass hard-off. TI SLVSH26B section 5.6 explicitly specifies
-<100 nA across temperature within the +/-5.5 V stand-off range; do not
-substitute the 25 C typical leakage figure. The pin map is 1=IO, 2=GND.
-[TI ESD441 datasheet](https://www.ti.com/lit/ds/symlink/esd441.pdf).
+could bypass hard-off. TI SLVSH26C, verified 2026-09-12, corrects the
+recommended IO-to-GND range to 0..5.5 V; the earlier negative steady-state
+rating is not supported. Section 5.6 specifies 5.5 V positive stand-off
+with <100 nA across operating temperature. The separate 50 nA maximum
+leakage row applies at 5.5 V and 25 C, not all temperatures. The pin map
+is 1=IO, 2=GND. The positive 3.0..3.6 V key calculation and its 0.1 uA
+TVS allocation below remain valid; no negative DC rating is needed.
+[TI ESD441 SLVSH26C, sections 4, 5.4, 5.6 and revision history](https://www.ti.com/lit/ds/symlink/esd441.pdf).
 Fresh 2026-09-07 stock: [DigiKey 296-ESD441DPYRCT-ND](https://www.digikey.com/en/products/detail/texas-instruments/ESD441DPYR/28715599)
 3,273, USD 0.34/0.207 at 1/10; [Mouser 595-ESD441DPYR](https://www.mouser.com/ProductDetail/Texas-Instruments/ESD441DPYR?qs=bpu3f%2FCR1jziUA14lbLOFw%3D%3D)
 11,380, USD 0.34/0.149 at 1/10, both 9-week factory lead time.
@@ -1201,7 +1207,9 @@ connect through the root/child hierarchy. Each of the ten host nets contains
 exactly its selected U1 ball and series-resistor pin 1, separate from the
 corresponding resistor pin 2 / U15 ball net. CS# connects U1.M6, U15.C2 and
 R64.2; INT# separately connects U1.N7, U15.A5 and R65.2. RESET# U15.A4 joins
-the existing common node with J1.10, R1.2, U1.D5, U2.1 and U7.3. No signal
+the common node, now J1.10, R1.2, U1.D5, U2.6, U7.3 and U19.6.
+The original NOR checkpoint used former U2.1 and preceded U19; RST-002
+owns the current supervisor and added microSD gate input. No signal
 series resistor is bypassed, and INT# is not joined to common reset.
 
 The project processor library and all four embedded MCU definitions have
@@ -1397,21 +1405,35 @@ the table's CS# HIGH leakage test. There is no arbitrary frequency or
 maximum-capacitance guarantee in this calculation. Flash off-state leakage is not added again to the
 actively sinking flash output; board/MCU adverse current is.
 
-The current common reset net contains R1.2, U2.1, U1.D5, J1.10 and U7.3.
-The new flash A4 joins this same +3V3_MCU-domain wire. The independent reset
-review used 5 uA MCU, 5 uA U7 and 2 uA flash adverse source current:
-`3.6/9801 + 12uA = 379.309458 uA`, below U2's 1 mA VOL test load.
-The flash adds at most `2uA*10201 = 20.402 mV` to this DC drop screen.
-For an explicit **25 uA total** adverse high-state leakage allocation,
-`3.02395 - 25uA*10201 = 2.768925 V`, with
-`2.768925 - 0.8*3.02395 = 0.349765 V` margin at the minimum U2 falling
-threshold. This total allocation must cover the board and attached probe;
-it is not a measured load or a sum of guaranteed capacitance bounds.
-Flash RESET# adds at most 7.5 pF (Table 85, p.130), while MCU/U7 typical
-capacitances do not establish a guaranteed whole-node maximum. Keep the
-existing R1 and qualify sink, release edge, probe loading and brownout;
-no additional NOR pullup is proposed. U2's source/threshold basis remains
-in [PWR-002](power_decoupling.md#pwr-002-main-rail-regulation-and-reset-headroom).
+The current common reset net contains R1.2, U2.6, U1.D5, J1.10,
+U7.3, U15.A4 and the added microSD power-gate input U19.6. U2 is now
+TPS389001DSET. [RST-002](reset_coordination_tps3890.md) owns the current
+source, threshold and loading basis; former TPS3808 U2.1/1mA/3.02395V
+calculations are superseded.
+
+The prior 12 uA device allocation was MCU 5 uA + U7 5 uA + flash 2 uA;
+it did not reserve U19. Adding its 5 uA gives 17 uA. Preserve the former
+13 uA overhead, giving **30 uA total** for devices, released-supervisor
+leakage, board, probe and any other adverse current. This is an installed
+acceptance allocation, not a measured or universally guaranteed sum.
+Using RST-002's main envelope and R1=9801..10201 ohm:
+
+```text
+Sink <= 3.393012496/9801 + 30uA = 0.376190439 mA <0.4 mA
+Released high >= 3.151819680 - 30uA*10201 = 2.845789680 V
+MCU high margin = 2.845789680 - .8*3.151819680 = 0.324333936 V
+At falling-corner rail 3.000822727 V: high >=2.694792727 V
+MCU high margin at falling corner = 0.294134545 V
+U19 additional drop = 5uA*10201 = 51.005 mV
+```
+
+U2 VOL <=0.25 V at VDD>=1.5 V and 0.4 mA applies to this conditional
+sink screen. Flash's 2 uA term still contributes 20.402 mV, already
+inside the total. Its RESET# adds at most 7.5 pF (Table 85, p.130);
+MCU/gate capacitance figures do not establish a whole-node maximum.
+Keep R1 and qualify receiver thresholds, release edges, probe loading,
+startup and brownout; no additional NOR pullup is proposed. The falling
+corner is a static screen, not a reset propagation or rail-collapse proof.
 
 ### CMS-011D: Power, reset and transaction contract
 
@@ -1425,8 +1447,9 @@ cover tRH; 500 us after every release is not the datasheet definition.
 The implementation policy is deliberately conservative: keep CS# HIGH and
 wait at least **1 ms after both qualified supply and external reset release**
 before the first NOR command. This is a firmware/fixture obligation, not a
-newly implemented delay circuit. U2's 12..28 ms release delay and the 3 ms
-service reset cover the long-reset case; a short debug pulse must still
+newly implemented delay circuit. Current U2's conditional >=8.148276 ms
+CT charge interval (RST-002) and the 3 ms service reset cover the long-reset
+case under their stated supply conditions; a short debug pulse must still
 meet tRP and the pre-access delay. NOR reset timing must not be inferred
 from the MCU's shorter minimum reset pulse/internal wait.
 
@@ -1634,16 +1657,25 @@ assert isclose(nominal_cap_uf*.9, 9.27) and isclose(nominal_cap_uf*1.1, 11.33)
 print('NOR bypass nominal/initial min/max uF', nominal_cap_uf,
       nominal_cap_uf*.9, nominal_cap_uf*1.1, '; not effective-C guarantee')
 
-reset_sink = vstress/r10min + (5+5+2)*1e-6
-reset_drop_added = flash_leak*r10max
-reset_vtrip_min, reset_leak_alloc = 3.02395, 25e-6
-reset_high = reset_vtrip_min - reset_leak_alloc*r10max
-reset_margin = reset_high - .8*reset_vtrip_min
-assert isclose(reset_sink, 379.3094582185491e-6) and reset_sink < 1e-3
-assert isclose(reset_drop_added, .020402)
-assert isclose(reset_high, 2.768925) and isclose(reset_margin, .349765)
-assert reset_margin > 0
-print('common reset sink uA / added drop mV / allocated high margin V',
+reset_main_min, reset_main_max = 3.151819680, 3.393012496
+reset_device_alloc = (5+5+2+5)*1e-6  # MCU, U7, NOR, added U19.
+reset_leak_alloc = reset_device_alloc + 13e-6
+reset_sink = reset_main_max/r10min + reset_leak_alloc
+reset_drop_added = 5e-6*r10max  # Added U19, not the already-counted NOR.
+reset_vtrip_min = 3.000822726706337
+reset_high = reset_main_min - reset_leak_alloc*r10max
+reset_margin = reset_high - .8*reset_main_min
+reset_fall_high = reset_vtrip_min - reset_leak_alloc*r10max
+reset_fall_margin = reset_fall_high - .8*reset_vtrip_min
+assert isclose(reset_device_alloc, 17e-6) and isclose(reset_leak_alloc, 30e-6)
+assert isclose(reset_sink, .0003761904393429242) and reset_sink < .4e-3
+assert isclose(reset_drop_added, .051005)
+assert isclose(flash_leak*r10max, .020402)
+assert isclose(reset_high, 2.845789680) and isclose(reset_margin, .324333936)
+assert isclose(reset_fall_high, 2.6947927267063374)
+assert isclose(reset_fall_margin, .2941345453412675)
+assert reset_margin > 0 and reset_fall_margin > 0
+print('current common reset sink uA / U19 added drop mV / high margin V',
       reset_sink*1e6, reset_drop_added*1e3, reset_margin)
 pre_access_policy_s = .001
 assert pre_access_policy_s > 500e-6 and pre_access_policy_s > 50e-9
@@ -1671,8 +1703,11 @@ print('main / cold radio-off / wake / prohibited cold radio-on allocations A',
 print('CMS-011 arithmetic PASS; current/timing/reset qualification OPEN; native integration checked separately')
 ```
 
-For the integrated native checkpoint, first export a fresh netlist and
-use KiCad's whole-project BOM export to refresh `ereader_rev1_bom.csv`:
+Historical NOR-only checkpoint verification follows. Its U2.1 identity,
+six-endpoint reset partition, component/net counts and BOM expectations
+predate RST-002 and U19; do not run it against current native exports or
+use it as the current reset contract. It requires the corresponding saved
+checkpoint XML and BOM. The export command records the original procedure:
 
 ```sh
 /Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli sch export netlist --format kicadxml -o /tmp/ereader-nor-integrated.xml ra8p1_kicad/ereader/ereader_rev1.kicad_sch
@@ -1859,11 +1894,16 @@ Primary evidence:
   +/-100ppm/C. The following screen compounds tolerance and TCR over 100C,
   giving R72=9801..10201Ohm and R73=980.1..1020.1Ohm. That calculation
   excursion is not an expansion of the socket's -25..85C operating rating.
-- [TI ESD441 SLVSH26B][cms12-tvs], revised December 2025, section 5.6:
-  <100nA over the operating temperature range within +/-5.5V stand-off.
-  The 50nA figure is a 25C limit, not the all-temperature value. Pin 1 is
-  IO, pin 2 GND; 1pF is typical, not a maximum. Component IEC ratings
-  and typical clamp voltages do not establish the residual MCU waveform.
+- [TI ESD441 SLVSH26C][cms12-tvs], verified 2026-09-12, sections 5.4/5.6:
+  recommended IO-to-GND range is 0..5.5V; the revision corrects the earlier
+  negative-range claim. No -5.5V steady-state rating is supported.
+  Positive 5.5V stand-off specifies <100nA across operating temperature;
+  the separate 50nA maximum at 5.5V is a 25C limit. Pin 1 is IO, pin 2
+  GND; 1pF is typical at 0V, 1MHz, 30mV peak-to-peak and 25C, with no
+  specified maximum. The positive 3.0..3.6V card-detect reasoning and
+  0.1uA TVS allocation below remain valid, so its calculations are
+  unchanged. Component IEC ratings and typical clamp voltages do not
+  establish the residual MCU waveform or qualify negative transients.
 
 ### Executable DC and parasitic screen
 
