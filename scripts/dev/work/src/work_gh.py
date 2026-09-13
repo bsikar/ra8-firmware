@@ -4,13 +4,11 @@
 
 Two jobs, one module, and the split between them is the point.
 
-The probe half is what ``work doctor`` calls. It runs ``gh --version`` and
-``gh auth status`` and nothing else, and it reports three-valued results:
-:data:`STATE_OK`, :data:`STATE_DEGRADED` and :data:`STATE_UNAVAILABLE`. The
-distinction that matters is between "gh is here and its token lacks the
-``project`` scope" and "gh is not here, or could not answer at all". Collapsing
-those two into one failure is how an agent ends up believing a board mutation
-is impossible when the real problem is that it is standing on the wrong host.
+The probe half is what ``work doctor`` calls. It runs ``gh --version``, ``gh
+auth status``, and ``gh project item-list --help`` and reports whether the CLI,
+authentication, required project scope, and read-query capability are usable.
+It distinguishes an unavailable answer from an explicit required-capability
+failure so the doctor cannot report an older project extension as ready.
 
 The template half never runs anything. ``work plan --emit-commands`` renders a
 shell script to stdout for a person to read and run themselves, from a host
@@ -24,6 +22,7 @@ Nothing in this module writes anything, anywhere.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from shutil import which
 
@@ -38,7 +37,10 @@ STATE_DEGRADED = "DEGRADED"
 #: The probe could not answer at all.
 STATE_UNAVAILABLE = "UNAVAILABLE"
 
-#: The OAuth scope a GitHub Projects mutation needs.
+#: The probe answered and found a required capability missing.
+STATE_FAIL = "FAIL"
+
+#: The OAuth scope GitHub project reads and mutations need.
 PROJECT_SCOPE = "project"
 
 _SCOPES_MARKER = "Token scopes:"
@@ -102,11 +104,11 @@ def parse_scopes(text: str) -> list[str] | None:
 
 
 def probe_auth() -> Probe:
-    """Report whether a ``gh`` token is present and whether it can mutate a board.
+    """Report whether a ``gh`` token can read and mutate the project board.
 
     Returns:
         :data:`STATE_OK` when the token carries :data:`PROJECT_SCOPE`,
-        :data:`STATE_DEGRADED` when it authenticates without that scope, and
+        :data:`STATE_FAIL` when it authenticates without that scope, and
         :data:`STATE_UNAVAILABLE` when gh is missing or the status command
         could not be trusted to answer.
     """
@@ -127,10 +129,36 @@ def probe_auth() -> Probe:
     if PROJECT_SCOPE not in scopes:
         detail = (
             f"token scopes are [{', '.join(scopes)}] with no {PROJECT_SCOPE} scope. "
-            "Board mutations must be run from a host whose token has it."
+            "Project board reads and mutations require it."
         )
-        return Probe("gh auth", STATE_DEGRADED, detail)
+        return Probe("gh auth", STATE_FAIL, detail)
     return Probe("gh auth", STATE_OK, f"token scopes are [{', '.join(scopes)}]")
+
+
+def probe_project_query() -> Probe:
+    """Report whether ``gh project item-list`` supports server-side queries.
+
+    Returns:
+        :data:`STATE_OK` when ``--query`` is advertised, :data:`STATE_FAIL`
+        when the command answers without it, and :data:`STATE_UNAVAILABLE`
+        when the local help command cannot answer.
+    """
+    found = gh_executable()
+    if found is None:
+        return Probe("gh project query", STATE_UNAVAILABLE, "gh is not installed on PATH")
+    try:
+        done = run_process([found, "project", "item-list", "--help"], timeout=20)
+    except (ToolMissingError, WorkError) as exc:
+        detail = f"gh project item-list --help did not answer: {exc}"
+        return Probe("gh project query", STATE_UNAVAILABLE, detail)
+    if not done.ok:
+        detail = f"gh project item-list --help exited {done.returncode}"
+        return Probe("gh project query", STATE_FAIL, detail)
+    combined = f"{done.stdout}\n{done.stderr}"
+    if re.search(r"(^|[ \t])--query([ \t]|$)", combined, re.MULTILINE) is None:
+        detail = "gh project item-list --help does not advertise --query"
+        return Probe("gh project query", STATE_FAIL, detail)
+    return Probe("gh project query", STATE_OK, "gh project item-list supports --query")
 
 
 def _first_useful_line(text: str) -> str:

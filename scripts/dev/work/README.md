@@ -20,12 +20,15 @@ and release behavior remain authoritative. `work status`, `work ready`, and
 read only schema-2 records under `$RA8_WS_ROOT/.meta` whose `owner` is `work`.
 They never adopt an unrelated workspace.
 
-The client performs no GitHub mutation. `work plan --emit-commands` prints a
-POSIX shell script for an operator to review and run. That script proves the
-repository, project, fields, options, and labels before its first mutation.
-The exact github.com/repository/project target comes from `tracker.json`.
-Permissions and all field/option/label discovery complete before mutation;
-the emitted script records partial work without auto-deleting anything.
+The client performs no GitHub mutation. Its board commands are strict read-only
+views: they allow only the exact `gh project item-list` and `gh issue view`
+argument vectors documented below, pin `GH_HOST=github.com`, remove `GH_REPO`,
+and use the repository/project target from `tracker.json`. `work plan
+--emit-commands` prints a POSIX shell script for an operator to review and run.
+That script proves the repository, project, fields, options, and labels before
+its first mutation. Permissions and all field/option/label discovery complete
+before mutation; the emitted script records partial work without auto-deleting
+anything.
 
 Plan notes reject C0 controls other than structural line feed, plus DEL and C1
 controls, Unicode line/paragraph separators, and Unicode bidi controls before
@@ -42,6 +45,11 @@ properties of the shared lifecycle, not hidden behavior of a second client.
 
 ```sh
 just work::doctor
+just work::board_focus
+just work::board_quick_wins
+just work::board_track "Codebase"
+just work::board_epic "epic:Harness"
+just work::board_issue 742
 just work::plan_summary scripts/dev/work/tests/fixtures/valid_notes.md
 just work::start 742
 just work::start_execute 742
@@ -50,6 +58,14 @@ just work::ready 742
 just work::landed 742
 just work::test
 ```
+
+The board recipes query only open Issue items in the configured repository.
+`board_focus` highlights
+the project statuses that deserve attention, `board_quick_wins` shows only
+explicit `Ready` plus `effort:S` candidates, and the Track/Epic commands filter
+without changing the board. `board_issue` combines the open-project snapshot
+with native parent, sub-issue, blocked-by, and blocking relationships. These
+are evidence views, not scheduling or closure decisions.
 
 `work start` is a mutation-free preview. `work ready` runs exact local CI on a
 clean committed claim before the sole push. `work landed` is the separate

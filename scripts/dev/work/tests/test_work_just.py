@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -16,6 +17,8 @@ from unittest.mock import patch
 SRC = Path(__file__).resolve().parents[1] / "src"
 REPO_ROOT = Path(__file__).resolve().parents[4]
 FIXTURE = Path(__file__).resolve().parent / "fixtures/valid_notes.md"
+BOARD_GH_FIXTURE = Path(__file__).resolve().parent / "fixtures/fake_board_read_gh.py"
+WORK_JUST = REPO_ROOT / "just/work.just"
 sys.path.insert(0, str(SRC))
 sys.path.insert(0, str(Path(__file__).resolve().parent / "fixtures"))
 
@@ -60,6 +63,38 @@ class FixedAdapter(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_argv(["plan", "notes", "default", "", "--extra"])
 
+    def test_board_explorer_actions_map_to_fixed_subcommands(self) -> None:
+        """Every public read-only recipe has one non-variadic CLI shape."""
+        cases = {
+            ("board_focus",): ["board", "focus"],
+            ("board_quick_wins",): ["board", "quick-wins"],
+            ("board_track", "Codebase"): ["board", "track", "Codebase"],
+            ("board_epic", "epic:Harness"): ["board", "epic", "epic:Harness"],
+            ("board_issue", "13"): ["board", "issue", "13"],
+        }
+        for raw, expected in cases.items():
+            with self.subTest(raw=raw):
+                self.assertEqual(build_argv(list(raw)), expected)
+
+    def test_board_explorer_rejects_extra_arguments(self) -> None:
+        """No explorer recipe exposes a generic flags tail."""
+        with self.assertRaises(ValueError):
+            build_argv(["board_track", "Codebase", "--format=json"])
+
+    def test_bare_board_action_is_refused(self) -> None:
+        """Verify the deleted status-column command has no adapter path."""
+        with self.assertRaisesRegex(ValueError, "invalid Just action: board"):
+            build_argv(["board"])
+
+    def test_public_test_uses_the_supported_host_aware_gate_boundary(self) -> None:
+        """Verify macOS reaches Linux through the existing gate selector."""
+        recipe = WORK_JUST.read_text(encoding="ascii")
+        expected = (
+            'test:\n    "{{ just_executable() }}" '
+            "quality::gate::run work-harness\n"
+        )
+        self.assertIn(expected, recipe)
+
 
 class RealJustFacade(unittest.TestCase):
     """Invoke the actual recipe rather than testing only Python helpers."""
@@ -88,6 +123,48 @@ class RealJustFacade(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("Plan: Local workflow harness prototype", result.stdout)
             self.assertFalse(marker.exists(), "Just recipe executed metacharacter data")
+
+    def test_board_explorer_recipes_run_through_real_just_without_mutation(self) -> None:
+        """The public facade reaches every read view using only fake gh reads."""
+        just = shutil.which("just")
+        self.assertIsNotNone(just, "the registered harness gate requires just")
+        with tempfile.TemporaryDirectory(prefix="ra8-board-just-") as raw:
+            root = Path(raw)
+            fake_gh = root / "gh"
+            fake_gh.write_text(
+                "#!/usr/bin/env python3\n"
+                + BOARD_GH_FIXTURE.read_text(encoding="ascii"),
+                encoding="ascii",
+            )
+            fake_gh.chmod(0o755)
+            log = root / "gh.jsonl"
+            environment = os.environ.copy()
+            environment["PATH"] = f"{root}{os.pathsep}{environment['PATH']}"
+            environment["FAKE_BOARD_FIXTURES"] = str(FIXTURE.parent)
+            environment["FAKE_BOARD_LOG"] = str(log)
+            cases = (
+                (("work::board_focus",), "=== Board Focus:"),
+                (("work::board_quick_wins",), "=== Board Quick-win Candidates:"),
+                (("work::board_track", "Codebase"), "=== Board Track: Codebase"),
+                (("work::board_epic", "Release"), "=== Board Epic: Release"),
+                (("work::board_issue", "13"), "=== Board Issue: #13"),
+            )
+            for arguments, expected in cases:
+                with self.subTest(arguments=arguments):
+                    result = subprocess.run(  # noqa: S603 -- resolved Just and fixed recipes
+                        [str(just), *arguments],
+                        cwd=REPO_ROOT,
+                        env=environment,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                        timeout=30,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn(expected, result.stdout)
+            calls = [json.loads(line) for line in log.read_text(encoding="ascii").splitlines()]
+            self.assertEqual(len(calls), 6)
+            self.assertTrue(all(call[0] in {"project", "issue"} for call in calls))
 
 
 if __name__ == "__main__":

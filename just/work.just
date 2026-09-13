@@ -9,8 +9,11 @@ default:
     @echo ""
     @echo "COMMANDS:"
     @echo "  just work::doctor"
-    @echo "  just work::board"
-    @echo "  just work::board_move <id> <status>"
+    @echo "  just work::board_focus                 # read-only"
+    @echo "  just work::board_quick_wins            # read-only"
+    @echo "  just work::board_track <track>         # read-only"
+    @echo "  just work::board_epic <epic>           # read-only"
+    @echo "  just work::board_issue <id>            # read-only"
     @echo "  just work::plan <notes>"
     @echo "  just work::plan_summary <notes>"
     @echo "  just work::plan_commands <notes>"
@@ -64,11 +67,27 @@ landed id ws_root="":
 
 # Run the canonical registered gate, including real-Just argv preservation
 test:
-    /bin/bash -p scripts/ci.sh --gate work-harness
+    "{{ just_executable() }}" quality::gate::run work-harness
 
-# View the project Kanban board
-board:
-    python3 -I scripts/dev/work/src/work_just.py board
+# Show active, owner-blocked, high-priority, and bench-blocked work without mutation
+board_focus:
+    python3 -I scripts/dev/work/src/work_just.py board_focus
+
+# Show explicit Ready + effort:S candidates without claiming they are closable
+board_quick_wins:
+    python3 -I scripts/dev/work/src/work_just.py board_quick_wins
+
+# Filter open project issues by configured Track without mutation
+board_track track:
+    python3 -I scripts/dev/work/src/work_just.py board_track {{ quote(track) }}
+
+# Filter open project issues by an explicit epic label without mutation
+board_epic epic:
+    python3 -I scripts/dev/work/src/work_just.py board_epic {{ quote(epic) }}
+
+# Inspect one open project issue and its native relationships without mutation
+board_issue id:
+    python3 -I scripts/dev/work/src/work_just.py board_issue {{ quote(id) }}
 
 # Move an issue to a different status column on the Kanban board
 board_move id status:
