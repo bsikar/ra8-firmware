@@ -34,7 +34,7 @@
 	)
 	(text "Development draft - not for fabrication.\nRequirements: design/ereader_requirements.md\nTracking: GitHub epic #821."
 		(exclude_from_sim no)
-		(at 25.4 43.18 0)
+		(at 25.146 32.766 0)
 		(effects
 			(font
 				(size 1.778 1.778)
@@ -42,6 +42,22 @@
 			(justify left)
 		)
 		(uuid "f3bd89da-73e1-40e4-a40f-b62ea061b15f")
+	)
+	(junction
+		(at 172.72 240.03)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "590a7bc6-322a-4eab-85e2-7dbe0c23c39d")
+	)
+	(wire
+		(pts
+			(xy 27.94 66.04) (xy 12.7 66.04)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "01a3e2d2-36c8-402b-8924-a81f09cabe00")
 	)
 	(wire
 		(pts
@@ -85,7 +101,7 @@
 	)
 	(wire
 		(pts
-			(xy 167.64 240.03) (xy 177.8 240.03)
+			(xy 167.64 240.03) (xy 172.72 240.03)
 		)
 		(stroke
 			(width 0)
@@ -155,13 +171,23 @@
 	)
 	(wire
 		(pts
-			(xy 12.7 55.88) (xy 30.48 55.88)
+			(xy 22.86 45.72) (xy 30.48 45.72)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "20e3e911-b7f6-4832-b39c-7f33d7d42ec7")
+	)
+	(wire
+		(pts
+			(xy 29.21 58.42) (xy 29.21 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "22d9cbfd-be00-40c3-9b48-72bb9d45fb01")
 	)
 	(wire
 		(pts
@@ -182,6 +208,26 @@
 			(type default)
 		)
 		(uuid "286e35ff-217e-4d6e-bbe9-f7229d94cfca")
+	)
+	(wire
+		(pts
+			(xy 172.72 240.03) (xy 177.8 240.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "29c27e6a-1f5a-4a0f-883b-97a42aec1e2f")
+	)
+	(wire
+		(pts
+			(xy 22.86 45.72) (xy 22.86 55.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2cd5c9e0-25a1-401e-8a4c-f3f80abf9726")
 	)
 	(wire
 		(pts
@@ -263,6 +309,16 @@
 		)
 		(uuid "5958d9e5-b418-4661-8a9e-890f9e2fafb3")
 	)
+	(bus
+		(pts
+			(xy 26.67 63.5) (xy 12.7 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5d1a1a89-d40f-4a95-8cf1-75910dc50638")
+	)
 	(wire
 		(pts
 			(xy 167.64 102.87) (xy 203.2 102.87)
@@ -275,7 +331,7 @@
 	)
 	(wire
 		(pts
-			(xy 12.7 68.58) (xy 30.48 68.58)
+			(xy 29.21 58.42) (xy 30.48 58.42)
 		)
 		(stroke
 			(width 0)
@@ -325,7 +381,7 @@
 	)
 	(wire
 		(pts
-			(xy 12.7 60.96) (xy 30.48 60.96)
+			(xy 25.4 50.8) (xy 30.48 50.8)
 		)
 		(stroke
 			(width 0)
@@ -395,13 +451,23 @@
 	)
 	(wire
 		(pts
-			(xy 12.7 66.04) (xy 30.48 66.04)
+			(xy 27.94 55.88) (xy 30.48 55.88)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "84267ed6-59bf-4474-992e-a7b175d6651f")
+	)
+	(wire
+		(pts
+			(xy 27.94 55.88) (xy 27.94 66.04)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "85e1f785-5a29-4d0f-87ae-c0e13f16daf7")
 	)
 	(wire
 		(pts
@@ -445,6 +511,16 @@
 	)
 	(wire
 		(pts
+			(xy 172.72 240.03) (xy 172.72 259.08)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9996074a-217f-4c48-b1dd-e7e1cac2b710")
+	)
+	(wire
+		(pts
 			(xy 134.62 45.72) (xy 203.2 45.72)
 		)
 		(stroke
@@ -473,6 +549,16 @@
 		)
 		(uuid "a2075e3d-e251-48dc-a96e-989635c2ce73")
 	)
+	(wire
+		(pts
+			(xy 25.4 50.8) (xy 25.4 60.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a23d9d33-865f-4267-81c8-282b81d30d3a")
+	)
 	(bus
 		(pts
 			(xy 96.52 109.22) (xy 96.52 124.46)
@@ -485,13 +571,43 @@
 	)
 	(wire
 		(pts
-			(xy 12.7 58.42) (xy 30.48 58.42)
+			(xy 24.13 48.26) (xy 30.48 48.26)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "a6da3eaa-4fd1-4b21-b963-491c006496a5")
+	)
+	(wire
+		(pts
+			(xy 24.13 58.42) (xy 12.7 58.42)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b11dee9f-4836-4a5f-b772-2fcfb9102d72")
+	)
+	(bus
+		(pts
+			(xy 26.67 53.34) (xy 26.67 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b1474096-1d18-439a-bc92-e9b52fac24c5")
+	)
+	(wire
+		(pts
+			(xy 29.21 68.58) (xy 12.7 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b6c7d1b8-aa95-478c-91c6-d3b7e5a492d4")
 	)
 	(wire
 		(pts
@@ -563,15 +679,35 @@
 		)
 		(uuid "cc72af41-5a0c-413c-9f40-aae6df8c6cab")
 	)
+	(wire
+		(pts
+			(xy 22.86 55.88) (xy 12.7 55.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d966217c-672e-463e-a8b4-0c395f883a67")
+	)
 	(bus
 		(pts
-			(xy 12.7 63.5) (xy 30.48 63.5)
+			(xy 26.67 53.34) (xy 30.48 53.34)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "e16c2691-f5a3-4b98-8254-bb851392e906")
+	)
+	(wire
+		(pts
+			(xy 177.8 259.08) (xy 172.72 259.08)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e5064637-b7c8-46c8-8831-edbed8bb60ab")
 	)
 	(wire
 		(pts
@@ -592,6 +728,26 @@
 			(type default)
 		)
 		(uuid "e75a36e0-f857-4ae1-acfe-e970a622c543")
+	)
+	(wire
+		(pts
+			(xy 25.4 60.96) (xy 12.7 60.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e85b9c8e-5ecd-4552-a1fb-8f8b5966a320")
+	)
+	(wire
+		(pts
+			(xy 24.13 48.26) (xy 24.13 58.42)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "eb9d5364-d59f-4ff3-83a5-1778649820e6")
 	)
 	(wire
 		(pts
@@ -633,6 +789,36 @@
 		)
 		(uuid "fe7350b3-0f46-4995-9654-f7f72d4a367a")
 	)
+	(label "SD_DAT0"
+		(at 64.77 81.28 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "0995ef6a-c59e-4d68-97b0-a5ed2d38b086")
+	)
+	(label "SD_PWR_REQ"
+		(at 177.8 261.62 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "15ab1c69-f83d-4471-81de-d0831025b0eb")
+	)
+	(label "SD_CLK"
+		(at 279.4 259.08 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "1be19b5d-b5d2-4b9e-9e9d-9123ac2e5f2e")
+	)
 	(label "SDRAM_CAS_N"
 		(at 12.7 93.98 0)
 		(effects
@@ -642,6 +828,16 @@
 			(justify left bottom)
 		)
 		(uuid "1d6d1057-b1b9-42f0-9267-9ab82522a440")
+	)
+	(label "SD_CMD"
+		(at 59.69 81.28 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "324147c7-7001-437b-9932-693e34c135ea")
 	)
 	(label "NOR_CK_HOST"
 		(at 50.8 119.38 0)
@@ -703,6 +899,16 @@
 		)
 		(uuid "49447e16-b146-44e9-9387-8d6fc7efabc1")
 	)
+	(label "SD_CMD"
+		(at 279.4 261.62 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "51f90af8-ebec-4c35-a4fb-8ee60226b012")
+	)
 	(label "SDRAM_WE_N"
 		(at 12.7 88.9 0)
 		(effects
@@ -732,6 +938,16 @@
 			(justify left bottom)
 		)
 		(uuid "633ea5e6-1370-414b-abe1-3bc9a8a65f57")
+	)
+	(label "SD_READY"
+		(at 177.8 271.78 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "69d315ea-11b5-4025-9f6d-08a05c200983")
 	)
 	(label "NOR_INT_N"
 		(at 142.24 119.38 0)
@@ -763,6 +979,26 @@
 		)
 		(uuid "73e61ea6-4efc-4e21-8800-1cbc97761967")
 	)
+	(label "SD_DAT1"
+		(at 69.85 81.28 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "7658562c-7ef5-4e87-8b95-f21971373e1a")
+	)
+	(label "SD_CLK"
+		(at 54.61 81.28 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "76b59e30-234d-44f3-b4b5-b76d81807afe")
+	)
 	(label "SDRAM_CKE"
 		(at 12.7 91.44 0)
 		(effects
@@ -772,6 +1008,26 @@
 			(justify left bottom)
 		)
 		(uuid "79ec78a1-0c37-4b14-86c8-d9e0164754e9")
+	)
+	(label "SD_IO_REQ"
+		(at 177.8 264.16 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "7a56fc66-3c3b-46c3-b9d8-3561287482fc")
+	)
+	(label "SD_DAT2"
+		(at 74.93 81.28 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "7ee8381b-8af4-4c70-8a3c-7e4ec2eb41e1")
 	)
 	(label "SDRAM_DQ[0..31]"
 		(at 12.7 99.06 0)
@@ -823,6 +1079,36 @@
 		)
 		(uuid "9c31a25b-85e9-4fce-81cc-2d59c303596d")
 	)
+	(label "SD_READY"
+		(at 95.25 81.28 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "a42a8417-e6ab-4edf-a089-844043f52d40")
+	)
+	(label "SD_DAT3"
+		(at 80.01 81.28 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "a66057d1-46cc-4fa0-8388-89ab8c592bd8")
+	)
+	(label "SD_DAT3"
+		(at 279.4 271.78 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "b231e09d-c470-45ec-8a87-821fb04793fc")
+	)
 	(label "SDRAM_CS_N"
 		(at 347.98 142.24 0)
 		(effects
@@ -843,6 +1129,16 @@
 		)
 		(uuid "b43e3499-9b35-464f-8abc-92d42505ae73")
 	)
+	(label "SD_IO_REQ"
+		(at 85.09 81.28 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "b61b43e6-d1bb-480f-a0da-9bd8b585351b")
+	)
 	(label "SDRAM_CLK"
 		(at 347.98 154.94 0)
 		(effects
@@ -852,6 +1148,16 @@
 			(justify left bottom)
 		)
 		(uuid "b77bd3fb-4e9e-4677-b3be-cf79836062e0")
+	)
+	(label "SD_DAT2"
+		(at 279.4 269.24 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "ba3f0595-5496-4e3b-bb97-bfbf59677a2d")
 	)
 	(label "SDRAM_DQ[0..31]"
 		(at 347.98 139.7 0)
@@ -902,6 +1208,16 @@
 			(justify left bottom)
 		)
 		(uuid "caa3c895-64d8-4cb0-b0ad-c2aa011d6008")
+	)
+	(label "SD_PWR_REQ"
+		(at 90.17 81.28 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "d678c77c-afdc-45d8-a6f0-36822cf3e3c7")
 	)
 	(label "NOR_DQ_HOST[0..7]"
 		(at 12.7 63.5 0)
@@ -972,6 +1288,26 @@
 			(justify left bottom)
 		)
 		(uuid "f6d950ff-ebd5-43ad-9369-64b3077969c2")
+	)
+	(label "SD_DAT0"
+		(at 279.4 264.16 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "f8a04a4c-af84-4e1b-8c0f-44cdc0026509")
+	)
+	(label "SD_DAT1"
+		(at 279.4 266.7 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "fafb2978-e26d-49f8-8b9f-cbad1294ca64")
 	)
 	(label "SDRAM_RAS_N"
 		(at 347.98 149.86 0)
@@ -1050,7 +1386,7 @@
 		)
 	)
 	(sheet
-		(at 30.48 53.34)
+		(at 30.48 43.18)
 		(size 77.47 20.32)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -1066,7 +1402,7 @@
 		)
 		(uuid "23859413-ab36-480e-aeef-d0e8a227b709")
 		(property "Sheetname" "128 MiB Octal NOR"
-			(at 30.48 52.6284 0)
+			(at 30.48 42.4684 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -1077,7 +1413,7 @@
 			)
 		)
 		(property "Sheetfile" "nor_flash.kicad_sch"
-			(at 30.48 74.2446 0)
+			(at 30.48 64.0846 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -1088,7 +1424,7 @@
 			)
 		)
 		(pin "MCU_RESET_N" input
-			(at 30.48 55.88 180)
+			(at 30.48 45.72 180)
 			(uuid "8de0f475-4911-44e4-99d2-55631b0b1076")
 			(effects
 				(font
@@ -1098,7 +1434,7 @@
 			)
 		)
 		(pin "NOR_CK_HOST" input
-			(at 30.48 58.42 180)
+			(at 30.48 48.26 180)
 			(uuid "ade48e29-1e77-4784-9db9-1c7267fc5e72")
 			(effects
 				(font
@@ -1108,7 +1444,7 @@
 			)
 		)
 		(pin "NOR_CS_N" input
-			(at 30.48 60.96 180)
+			(at 30.48 50.8 180)
 			(uuid "0cdbc96e-d8fa-428b-9c89-bda128e7a77f")
 			(effects
 				(font
@@ -1118,7 +1454,7 @@
 			)
 		)
 		(pin "NOR_DQ_HOST[0..7]" bidirectional
-			(at 30.48 63.5 180)
+			(at 30.48 53.34 180)
 			(uuid "fdc759bd-743a-48a9-9af8-c97bdd86864f")
 			(effects
 				(font
@@ -1128,7 +1464,7 @@
 			)
 		)
 		(pin "NOR_DS_HOST" output
-			(at 30.48 66.04 180)
+			(at 30.48 55.88 180)
 			(uuid "f4d31fb4-26f7-41d5-ac12-016dbcedab77")
 			(effects
 				(font
@@ -1138,7 +1474,7 @@
 			)
 		)
 		(pin "NOR_INT_N" output
-			(at 30.48 68.58 180)
+			(at 30.48 58.42 180)
 			(uuid "cb355a46-4bf2-419a-a0dc-7b4f6ef4e2e0")
 			(effects
 				(font
@@ -1633,6 +1969,96 @@
 				(justify left)
 			)
 		)
+		(pin "SD_CLK" output
+			(at 54.61 81.28 90)
+			(uuid "2f6dbf82-4500-4df1-98cf-e11a99c33ad7")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_CMD" bidirectional
+			(at 59.69 81.28 90)
+			(uuid "58cc1431-ea7b-4c22-9633-d58725423529")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_DAT0" bidirectional
+			(at 64.77 81.28 90)
+			(uuid "c258ed3b-9862-4939-895f-4309a2be3dd4")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_DAT1" bidirectional
+			(at 69.85 81.28 90)
+			(uuid "bdc2c2db-5a33-4870-a422-73405883a29c")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_DAT2" bidirectional
+			(at 74.93 81.28 90)
+			(uuid "8dc43cf8-f770-4faa-9923-10e3d18f0796")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_DAT3" bidirectional
+			(at 80.01 81.28 90)
+			(uuid "c6d5252e-4f33-4d35-8a2a-1beada7816e6")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_IO_REQ" output
+			(at 85.09 81.28 90)
+			(uuid "25dc7476-6e12-490d-975d-335d1f533235")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_PWR_REQ" output
+			(at 90.17 81.28 90)
+			(uuid "810e1c41-3f69-42cb-bb43-456bc0104c96")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_READY" input
+			(at 95.25 81.28 90)
+			(uuid "e4fa528d-2128-4497-9868-a6b718dc86c1")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
 		(instances
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
@@ -1682,6 +2108,106 @@
 		(pin "SD_CD_N" output
 			(at 177.8 269.24 180)
 			(uuid "27db13ac-753a-44ee-bd42-848df4298779")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "MCU_RESET_N" input
+			(at 177.8 259.08 180)
+			(uuid "7dc73139-8083-4546-a563-9880e9c24dbd")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SD_CLK" input
+			(at 279.4 259.08 0)
+			(uuid "27c8ee8c-4093-4b3e-8d29-90964787dead")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_CMD" bidirectional
+			(at 279.4 261.62 0)
+			(uuid "16bdcf8f-721e-4761-abfb-95a82fcc9ff2")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_DAT0" bidirectional
+			(at 279.4 264.16 0)
+			(uuid "52c040c9-8cd9-439f-9c51-4cd6c3e61b7c")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_DAT1" bidirectional
+			(at 279.4 266.7 0)
+			(uuid "4789aa3b-9d15-4024-98ec-4d0a691086c7")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_DAT2" bidirectional
+			(at 279.4 269.24 0)
+			(uuid "a614b979-c5e6-422e-a4ab-e7f1968fc35a")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_DAT3" bidirectional
+			(at 279.4 271.78 0)
+			(uuid "6b8f554f-b0c1-42a2-ba3a-e3d748518530")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "SD_IO_REQ" input
+			(at 177.8 264.16 180)
+			(uuid "871d9225-0b34-4f15-91c0-87f93ec68d84")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SD_PWR_REQ" input
+			(at 177.8 261.62 180)
+			(uuid "5d10131c-e553-4f94-aeee-ae8c5ed19980")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "SD_READY" output
+			(at 177.8 271.78 180)
+			(uuid "98496ba0-2a34-4a27-98b1-3579bc59edf5")
 			(effects
 				(font
 					(size 1.27 1.27)
