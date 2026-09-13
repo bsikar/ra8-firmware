@@ -3,7 +3,7 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "9614c506-4462-4da8-8e08-a3afd07e4acc")
-	(paper "A3")
+	(paper "A2")
 	(title_block
 		(title "ESP32-C6 radio")
 		(date "2026-09-05")
@@ -2481,7 +2481,7 @@
 	)
 	(text "PWR-006: upstream U13 TPS63806YFFR, forced PWM.\nVnom=.5*(1+5600/(1000+10))=3.272277228V.\nStatic resistor/reference/leakage screen: 3.226819680..3.318012496V.\nWith one +/-75mV dynamics allocation: 3.151819680..3.393012496V.\nRST-002 MCU rising maximum 3.113278988V leaves 38.540692mV.\nRADIO-019 U4 TPS22964C: require <=20mV complete path at 505mA.\nRadio release margin =38.540692-20=18.540692mV, conditional.\nContinuous-rail RON, inrush, collapse and discharge need qualification.\nFull regulator calculations: design/main_regulator_tps63806.md.\nReset calculations: design/reset_coordination_tps3890.md."
 		(exclude_from_sim no)
-		(at 266.7 142.24 0)
+		(at 427.99 128.016 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -2493,7 +2493,7 @@
 	)
 	(text "RADIO-013: R11 / C6_EN reset pull-up\n10k 1%, 100ppm/C; deltaT=100 C allocation.\nRmin/max=10k*(1 +/-1%)*(1 +/-1%)=9801/10201 ohm.\nAllocate +/-12uA total adverse node leakage.\nIsink <=3.6/9801+12uA=0.379310mA <0.4mA.\nU6 VOL<=0.25V at 0.4mA, VDD>=1.5V.\nAt C6 table point 3.3V, 25 C:\nVEN>=3.3-12uA*10201=3.177588V >2.475V VIH.\nVIL=0.825V; low margin=0.825-0.25=0.575V.\nPmax=3.6^2/9801=1.322314mW.\nMR arbitration, power states and timing remain open.\nMath: ../design/radio_interface.md (RADIO-013)"
 		(exclude_from_sim no)
-		(at 317.5 185.42 0)
+		(at 427.99 175.26 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -2610,7 +2610,7 @@
 	)
 	(text "RADIO-019: internal slew / conditional discharge screens\nTI tR(10..90%)=715us TYP at 3.3V, 25C, 10 ohm load,\nCIN=1uF/COUT=0.1uF; not this board or worst-case timing.\nExternal C45+C46+C50=10.2uF nominal; module C unknown.\nIcap=10.2uF*(0.8*3.3V)/715us=37.661538mA (linear TYP).\nt90..10=R*C*ln(9): 6.118392ms at 273 ohm TYP;\n7.283799ms using 325 ohm table max at ON=0, IOUT=2mA.\nIdeal RC only; C corners, leakage, VIN decay need qualification.\nKeep radio OFF during host cold/wake inrush; wait for rail settle.\nVerify U6/C6 reset interval independently; no fixed off-time.\nMath: ../design/radio_interface.md (RADIO-019)."
 		(exclude_from_sim no)
-		(at 228.6 228.6 0)
+		(at 427.99 271.78 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -2622,7 +2622,7 @@
 	)
 	(text "RADIO-019: R7=4.7k / R8=10k, active-high ON, default OFF\n1% initial x 100ppm/C x 100C; adverse Ileak=+/-12uA.\nVON=(Vhost/R7+Ileak)/(1/R7+1/R8); use resistor corners.\nValid host VOL<=0.5V / VOH>=2.5V; pull-up disabled.\nVlow<=0.383594V <0.4V; Vhigh>=1.639635V >1.3V.\nHost source current <=0.261871mA in this envelope.\nHi-Z: 12uA*10201=0.122412V; leakage allocation required.\nNo logic guarantee once host leaves its valid voltage range.\nSource collapse, startup and shutdown qualification remain open.\nMath: ../design/radio_interface.md (RADIO-019)."
 		(exclude_from_sim no)
-		(at 228.6 185.42 0)
+		(at 427.99 223.266 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -2634,7 +2634,7 @@
 	)
 	(text "RADIO-014 / RST-002: R12=33k, R13=20k switched-radio SENSE divider.\n0.05%, 10ppm/C; allocate 100C, +/-0.15% installed drift, +/-150nA total.\nfL=.9995*.999*.9985; fH=1.0005*1.001*1.0015.\nKlo=1+33000*fL/(20000*fH); Khi=1+33000*fH/(20000*fL).\nE=150nA*33000*fH; Vtrip=Vthreshold*(1+Rt/Rb)+Is*Rt.\nVfall=1.15*.99*Klo-E .. 1.15*1.01*Khi+E = 3.000822727..3.094473285V.\nVrise=1.157*.99*Klo-E .. 1.157*1.01*Khi+E = 3.019118825..3.113278988V.\nUse direct VITP limits; do not add hysteresis a second time.\nRADIO-019 U4 TPS22964C: 3.151819680-.020-3.113278988\n=18.540692mV conditional release margin; <=20mV path at 505mA required.\n30mOhm installed switch allocation needs full-range qualification.\nNo radio DC/startup or fast-brownout sign-off from this model.\nC52=1n charge interval .814828..1.526476ms; not total IC delay maximum.\nFull assumptions, sourcing and Python: design/reset_coordination_tps3890.md."
 		(exclude_from_sim no)
-		(at 266.7 101.6 0)
+		(at 427.99 71.374 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -2646,7 +2646,7 @@
 	)
 	(text "RADIO-012: C52 / U6 reset-release delay\nC52 = 1nF +/-5% NP0, CT to GND (not VIN).\nAt 100 C excursion, +/-30 ppm/C: 947.15..1053.15 pF.\ntnom = 1nF*1.23V/1.15uA + 25us = 1.094565 ms.\nAllocate +/-10nA external CT leakage; start discharged.\ntcharge_min = 947.15pF*1.17V/1.36uA = 814.828 us.\ntcharge_max = 1053.15pF*1.29V/0.89uA = 1526.476 us.\nCharge-only screen, NOT total reset min/max limits.\nC6 requires 50us stable supply and 50us reset low.\nComplete reset sequencing remains open.\nMath: ../design/radio_interface.md#radio-012-supervisor-reset-release-delay"
 		(exclude_from_sim no)
-		(at 266.7 25.4 0)
+		(at 427.99 25.4 0)
 		(effects
 			(font
 				(size 1.27 1.27)
