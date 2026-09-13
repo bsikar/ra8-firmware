@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# FILE-SIZE-OK: one immutable record per review batch keeps this loader-owned authority auditable.
 # Review batches for the suppression ledger.
 ---
 schema: suppression-review-batches-1
@@ -805,7 +806,7 @@ batches:
     date: 2026-09-11
     identity_schema: 2-durable-site-identity
     assigned_rows: 85
-    rows_sha256: 30f16183d75a8c5b92312754a972353dd6f18b3f6f19fbb1174960940896b7b7
+    rows_sha256: ae408c4085a19c78ed482c13b9ffbfbced8e12d9e6e76d6e5c6fe52c948a772c
     partition: "Automated developer review batch"
     evidence:
       - "reconcile work-move/checker-drift fallout: rebind moved-file rows to"
@@ -998,3 +999,21 @@ batches:
       selective retain of 5 ledger row(s): 1f3ef1ba544e, 32fb44c41539,
       959df4e4c18d, cdb898857827, e52b9902ec4b
     evidence: ["classification-batch:scope-census-20260912 census-digest:685059fc-a0ea0bb8"]
+  - id: selective-review-20260913-064718
+    authority: repository-suppression-review
+    date: 2026-09-13
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 5
+    rows_sha256: 194c8699e939e2da0dad86214a5f1ed710149675161e575028eb0eb8aac94083
+    partition: "selective retain of 5 ledger row(s): 4c05bdd8a14c, 4f2a9439de44, 542d132d8c0b, cd1ab392a35c, f26a478cc4fb"
+    evidence:
+      - "tool-output source-context: scripts/dev/work/tests/test_work_board.py:20-23 Ruff E402 follows required source-only sys.path setup for uninstalled sibling modules; moving imports before setup breaks target resolution. scripts/dev/work/tests/test_work_just.py:151 Ruff S603 executes the resolved Just binary with fixed recipe names and controlled fixture arguments; no untrusted executable or argv enters the call."
+  - id: selective-review-20260913-074107
+    authority: repository-suppression-review
+    date: 2026-09-13
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 1
+    rows_sha256: ba54e8d2bf7e5da4e2a5420c9cc4349af2a94c86c1d86079b7f374aabfc534eb
+    partition: "selective retain of 1 ledger row(s): 08de759a3e86"
+    evidence:
+      - "review-decision loader-owned suppression batch authority requires one immutable record per batch in one file; line-oriented append-only review history remains auditable and check_file_size.py passes via this exact marker"

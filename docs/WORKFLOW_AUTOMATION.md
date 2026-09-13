@@ -17,7 +17,7 @@ autonomous remote work.
 |---|---|---|
 | Workspace creation, locking, metadata, release, reaping | `scripts/dev/agent_workspace.sh` | Delegates creation; reads its metadata |
 | Gate definitions and verdicts | `scripts/ci.sh` and shared CI monitor | `ready --run-ci` runs exact local CI; `landed` accepts only cached remote PASS |
-| GitHub issues and project board | GitHub plus operator review | Emits a script; never runs it |
+| GitHub issues and project board | GitHub plus operator review | Reads through fixed commands; emits but never runs a mutation script |
 | Work tracking target/schema | `scripts/dev/work/tracker.json` | Pins github.com, repository, project number, Status, and Track names |
 
 No `<git-common-dir>/ra8-work` store exists. Canonical schema-2 records live at
@@ -46,9 +46,56 @@ container runtime. Any uncertainty retains every byte.
 ### `work doctor`
 
 Checks Python, Git, jq, repository discovery, the canonical workspace script,
-workspace-root writability, `gh`, and GitHub authentication scope. It changes
-nothing. The `gh auth status` check may make a read-only API request, so this
-is not an offline command.
+workspace-root writability, `gh`, GitHub authentication scope, and whether
+`gh project item-list --help` advertises the required `--query` capability. A
+missing `project` scope or query capability is a failure because board reads
+must fail closed. Doctor changes nothing. The `gh auth status` check may make a
+read-only API request, so this is not an offline command.
+
+### Read-only board exploration
+
+Five read-only views are available:
+
+```sh
+just work::board_focus
+just work::board_quick_wins
+just work::board_track "Codebase"
+just work::board_epic "epic:Release"
+just work::board_issue 742
+```
+
+All board snapshots use the server query `is:issue is:open repo:<repository>`
+against the configured project. The parser requires a complete, internally
+consistent snapshot and refuses duplicate JSON keys, duplicate issue numbers,
+foreign repositories, non-Issue content, and ambiguous case-only field names.
+Tool, transport, and data failures print no partial report.
+
+`board_focus` always renders Needs you, In flight, Ready candidates, and
+Bench-blocked sections. Ready candidates require `Horizon=Now` when any Horizon
+data exists; only when Horizon is entirely unavailable does explicit P0 field
+or label evidence provide the fallback. `board_quick_wins` requires exact
+`Status=Ready` and an explicit `effort:S` label, then separates fixed blocker
+markers (`owner` for Needs you status, `bench` for `needs-bench`, and `purchase`
+for `needs-purchase`) without claiming either group is ready to close. Labels
+never move an issue between project-status sections.
+
+Track selectors match the configured tracker values case-insensitively. Epic
+selectors accept either a bare value or one optional `epic:` prefix and match
+only explicit epic labels. Matching Track and Epic reports group issues by the
+configured Status order, followed by No Status and sorted unexpected statuses.
+
+`board_issue` first proves the positive ASCII issue number occurs in the open
+project snapshot. It then reads the issue's current title, state, labels,
+parent, sub-issues, blocked-by, and blocking relationships. Notices expose
+state/title/URL/label races between the two reads, and connection totals expose
+relations omitted by GitHub pagination. No board view infers priority, effort,
+epic, or blockers from prose.
+
+Every board subprocess passes an exact argv allowlist. The environment pins
+`GH_HOST=github.com`, removes `GH_REPO`, keeps the caller's authentication, and
+uses a 30-second timeout. Terminal output converts remote controls and non-ASCII
+bytes to `?`, buffers complete explorer reports, and clamps physical output to
+60-160 columns.
 
 ### `work plan NOTES`
 
@@ -190,7 +237,8 @@ The registered `work-harness` gate runs the offline unittest suite, requires a
 non-vacuous discovery floor, syntax-checks the canonical Bash lifecycle,
 executes emitted commands against a fake `gh`, invokes the real Just facade
 with hostile path data, runs the destructive lifecycle selftest, and
-shellchecks the generated operator script. The suite uses normal
+shellchecks the generated operator script. Board explorer tests use JSON
+fixtures and mocked process results; they never contact GitHub. The suite uses normal
 `unittest.TestCase` assertions; a
 narrow Ruff PT009 and PT027 policy entry records that intentional
 standard-library test style. PT009 would replace `TestCase` assertions, while

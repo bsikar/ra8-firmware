@@ -50,6 +50,8 @@ def _string_list(payload: object, key: str) -> tuple[str, ...]:
         fail(f"tracker schema {key} contains an invalid value")
     if len(set(values)) != len(values):
         fail(f"tracker schema {key} contains a duplicate")
+    if len({value.casefold() for value in values}) != len(values):
+        fail(f"tracker schema {key} contains a case-insensitive duplicate")
     return values
 
 

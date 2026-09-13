@@ -23,6 +23,7 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "fixtures"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -259,7 +260,7 @@ class PlanOutputModes(unittest.TestCase):
         """Invoke the offline plan CLI with the shared valid notes fixture."""
         return subprocess.run(  # noqa: S603 -- fixed interpreter and repository script
             [
-                "/usr/bin/python3",
+                sys.executable,
                 "-I",
                 str(WORK_CLI),
                 "plan",
@@ -271,6 +272,13 @@ class PlanOutputModes(unittest.TestCase):
             timeout=20,
             check=False,
         )
+
+    def test_subprocess_uses_the_authoritative_supported_interpreter(self) -> None:
+        """Verify the child inherits the supported interpreter running the suite."""
+        completed = subprocess.CompletedProcess([], 0, "", "")
+        with patch.object(subprocess, "run", return_value=completed) as run:
+            self.assertIs(self._run(), completed)
+        self.assertEqual(run.call_args.args[0][0], sys.executable)
 
     def test_conflicting_stdout_modes_are_exact_refusals(self) -> None:
         """Summary, command script, and stdout JSON are pairwise exclusive."""
