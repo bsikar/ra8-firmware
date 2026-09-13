@@ -186,6 +186,7 @@ if [[ "$-" == *p* ]]; then
     "tier-imports|fast|the platform never imports apps/; apps/shared_libs never imports a form"
     "bench-lock|fast|every bench-touching script takes the bench lock"
     "annotations|fast|RA8_* annotation attributes (libclang)"
+    "enum-underlying-casts|fast|fixed-enum initializer cast safety (libclang)"
     "doc-attachment|fast|a Doxygen block describes the symbol it is attached to"
     "tests-readme|fast|tests/README.md documents every tests/ subdir, none stale"
     "disambig-readmes|fast|disambiguation READMEs: every machine-checked claim still holds"
