@@ -3,7 +3,7 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "0586cc51-9c57-495b-a0c9-c29ba0d48166")
-	(paper "A3")
+	(paper "A2")
 	(title_block
 		(title "RA8P1 e-reader - schematic index")
 		(date "2026-09-05")
@@ -58,6 +58,16 @@
 			(type default)
 		)
 		(uuid "01a3e2d2-36c8-402b-8924-a81f09cabe00")
+	)
+	(wire
+		(pts
+			(xy 490.22 144.78) (xy 502.92 144.78)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "02cbb03e-08f7-4b49-bd69-512c9beca827")
 	)
 	(wire
 		(pts
@@ -139,6 +149,16 @@
 		)
 		(uuid "0fb1b28d-c1aa-42e0-a194-72bafcaa8d5b")
 	)
+	(wire
+		(pts
+			(xy 429.26 139.7) (xy 441.96 139.7)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1333fe5a-2136-4cf7-9bcb-99b187421ef1")
+	)
 	(bus
 		(pts
 			(xy 12.7 106.68) (xy 30.48 106.68)
@@ -211,6 +231,16 @@
 	)
 	(wire
 		(pts
+			(xy 490.22 142.24) (xy 502.92 142.24)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "287ac23d-27ad-4d42-b879-1451cde8274e")
+	)
+	(wire
+		(pts
 			(xy 172.72 240.03) (xy 177.8 240.03)
 		)
 		(stroke
@@ -228,6 +258,16 @@
 			(type default)
 		)
 		(uuid "2cd5c9e0-25a1-401e-8a4c-f3f80abf9726")
+	)
+	(wire
+		(pts
+			(xy 68.58 109.22) (xy 68.58 129.54)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "37a8c897-ba88-48cc-bed8-69e1fffb8aa3")
 	)
 	(wire
 		(pts
@@ -321,6 +361,36 @@
 	)
 	(wire
 		(pts
+			(xy 107.95 109.22) (xy 107.95 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5da6b0fb-c900-442a-8ff9-7f4393fc717e")
+	)
+	(wire
+		(pts
+			(xy 429.26 137.16) (xy 441.96 137.16)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5e7b17ea-1e6f-47c7-bed7-64d8bfcc4620")
+	)
+	(wire
+		(pts
+			(xy 105.41 109.22) (xy 105.41 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "60453b76-2ed1-44da-b6ed-856e86b8f92a")
+	)
+	(wire
+		(pts
 			(xy 167.64 102.87) (xy 203.2 102.87)
 		)
 		(stroke
@@ -328,6 +398,16 @@
 			(type default)
 		)
 		(uuid "62e68338-9d8b-4599-ac66-e58c77f3d9f0")
+	)
+	(wire
+		(pts
+			(xy 113.03 109.22) (xy 113.03 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "64aacf66-f589-43b8-8984-09d98a873643")
 	)
 	(wire
 		(pts
@@ -351,6 +431,16 @@
 	)
 	(wire
 		(pts
+			(xy 440.69 142.24) (xy 441.96 142.24)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "68b4d04a-99a0-490d-ac9a-3699c785a84d")
+	)
+	(wire
+		(pts
 			(xy 182.88 185.42) (xy 182.88 105.41)
 		)
 		(stroke
@@ -358,6 +448,26 @@
 			(type default)
 		)
 		(uuid "6911cfca-331a-4b06-850c-da2f5c690ccb")
+	)
+	(wire
+		(pts
+			(xy 115.57 109.22) (xy 115.57 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6b405410-a2ce-4485-a0a4-f9458efb1890")
+	)
+	(wire
+		(pts
+			(xy 490.22 137.16) (xy 502.92 137.16)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6bf8eb48-7c22-48cd-97fe-b00bdde79fba")
 	)
 	(wire
 		(pts
@@ -378,6 +488,16 @@
 			(type default)
 		)
 		(uuid "6eb42218-f3c5-4c68-b361-d5e615a5f3e0")
+	)
+	(wire
+		(pts
+			(xy 490.22 147.32) (xy 502.92 147.32)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6f16a0c8-840c-401a-afcf-cbbcebb51096")
 	)
 	(wire
 		(pts
@@ -438,6 +558,46 @@
 			(type default)
 		)
 		(uuid "7836fadb-f4cd-4dc6-aea4-c17caacd8fd1")
+	)
+	(wire
+		(pts
+			(xy 440.69 142.24) (xy 440.69 184.15)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "79dbe8c3-19a8-4c16-8e6d-a44d52ae3303")
+	)
+	(wire
+		(pts
+			(xy 102.87 109.22) (xy 102.87 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7a340323-86cd-4883-9d18-09a96743fb8a")
+	)
+	(wire
+		(pts
+			(xy 440.69 184.15) (xy 345.44 184.15)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7be737b7-987d-4553-998e-86f272ab185b")
+	)
+	(wire
+		(pts
+			(xy 110.49 109.22) (xy 110.49 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7c7ff21e-e138-4c0f-a80e-d29522efbfba")
 	)
 	(bus
 		(pts
@@ -521,6 +681,16 @@
 	)
 	(wire
 		(pts
+			(xy 58.42 109.22) (xy 58.42 129.54)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9b6e68c4-5c74-40de-8e77-48de1d99c959")
+	)
+	(wire
+		(pts
 			(xy 134.62 45.72) (xy 203.2 45.72)
 		)
 		(stroke
@@ -528,6 +698,16 @@
 			(type default)
 		)
 		(uuid "9b98dea6-d920-4fe4-bf05-9caeba05e82a")
+	)
+	(wire
+		(pts
+			(xy 63.5 109.22) (xy 63.5 129.54)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9ccc4b70-53f2-48a4-9e21-8017cf82d34f")
 	)
 	(wire
 		(pts
@@ -601,6 +781,16 @@
 	)
 	(wire
 		(pts
+			(xy 490.22 139.7) (xy 502.92 139.7)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b194425f-e0c5-442c-ac1f-cbaf13739ce1")
+	)
+	(wire
+		(pts
 			(xy 29.21 68.58) (xy 12.7 68.58)
 		)
 		(stroke
@@ -648,6 +838,16 @@
 			(type default)
 		)
 		(uuid "bf0e701e-5141-4bba-a5df-2432843d07e4")
+	)
+	(wire
+		(pts
+			(xy 490.22 134.62) (xy 502.92 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bf451187-5501-44b2-b2fb-3b0c3a93b866")
 	)
 	(wire
 		(pts
@@ -751,6 +951,16 @@
 	)
 	(wire
 		(pts
+			(xy 429.26 134.62) (xy 441.96 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "eea6254c-fed3-4cc9-a8a0-603270b5ef6e")
+	)
+	(wire
+		(pts
 			(xy 142.24 109.22) (xy 142.24 119.38)
 		)
 		(stroke
@@ -788,6 +998,16 @@
 			(type default)
 		)
 		(uuid "fe7350b3-0f46-4995-9654-f7f72d4a367a")
+	)
+	(label "CAM_D1_N"
+		(at 502.92 144.78 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "06c7ffcb-9ec5-4027-9ffd-16f4138a7a06")
 	)
 	(label "SD_DAT0"
 		(at 64.77 81.28 90)
@@ -829,6 +1049,16 @@
 		)
 		(uuid "1d6d1057-b1b9-42f0-9267-9ab82522a440")
 	)
+	(label "CAM_PWR_REQ"
+		(at 429.26 134.62 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "23363e59-13cd-4c50-beab-e171c4f70801")
+	)
 	(label "SD_CMD"
 		(at 59.69 81.28 90)
 		(effects
@@ -840,12 +1070,12 @@
 		(uuid "324147c7-7001-437b-9932-693e34c135ea")
 	)
 	(label "NOR_CK_HOST"
-		(at 50.8 119.38 0)
+		(at 50.8 119.38 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "32c58215-2237-447a-ac64-090e88a6f8eb")
 	)
@@ -858,6 +1088,16 @@
 			(justify left bottom)
 		)
 		(uuid "3610b61b-fb92-4f60-8d91-5bb19435d4ec")
+	)
+	(label "CAM_SCL"
+		(at 68.58 129.54 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "3a84ba85-70e7-47b9-bf67-2dd30f4a7037")
 	)
 	(label "SDRAM_WE_N"
 		(at 347.98 137.16 0)
@@ -919,6 +1159,26 @@
 		)
 		(uuid "526c8bdf-b8b8-4220-924c-67666bd5c8ef")
 	)
+	(label "CAM_D1_N"
+		(at 113.03 121.92 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "53bebc2f-6acb-4db0-8dcb-8898c781c07c")
+	)
+	(label "CAM_D1_P"
+		(at 502.92 147.32 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "62dca4af-8734-4344-900c-d91f994c8d1b")
+	)
 	(label "SDRAM_DQM[0..3]"
 		(at 12.7 104.14 0)
 		(effects
@@ -959,6 +1219,16 @@
 		)
 		(uuid "6b3fe04e-0732-488b-9abe-66f4091267f3")
 	)
+	(label "CAM_D1_P"
+		(at 115.57 121.92 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "6b7f335f-2fa6-40d0-8c84-fe9695c0b60a")
+	)
 	(label "NOR_CK_HOST"
 		(at 12.7 58.42 0)
 		(effects
@@ -979,6 +1249,16 @@
 		)
 		(uuid "73e61ea6-4efc-4e21-8800-1cbc97761967")
 	)
+	(label "CAM_SDA"
+		(at 63.5 129.54 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "74ae5a98-c680-4a0d-8c8c-3bd67e9fc8ee")
+	)
 	(label "SD_DAT1"
 		(at 69.85 81.28 90)
 		(effects
@@ -998,6 +1278,16 @@
 			(justify left bottom)
 		)
 		(uuid "76b59e30-234d-44f3-b4b5-b76d81807afe")
+	)
+	(label "CAM_PWR_REQ"
+		(at 58.42 129.54 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "7899007c-2406-4f46-bc82-05b746f470dc")
 	)
 	(label "SDRAM_CKE"
 		(at 12.7 91.44 0)
@@ -1039,6 +1329,16 @@
 		)
 		(uuid "7f433d46-2c1e-460c-81e2-db2d431ccd38")
 	)
+	(label "CAM_D0_N"
+		(at 107.95 121.92 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "876c62ff-493f-472a-8ad4-46b6cab28930")
+	)
 	(label "SDRAM_DQM[0..3]"
 		(at 347.98 132.08 0)
 		(effects
@@ -1048,6 +1348,16 @@
 			(justify left bottom)
 		)
 		(uuid "87a8d63a-42cd-47ae-9573-e0d5e9c2b809")
+	)
+	(label "MCU_RESET_N"
+		(at 345.44 184.15 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "8de6be0f-eb91-4917-b9c5-de204d51a4a5")
 	)
 	(label "MCU_RESET_N"
 		(at 177.8 240.03 0)
@@ -1089,6 +1399,16 @@
 		)
 		(uuid "a42a8417-e6ab-4edf-a089-844043f52d40")
 	)
+	(label "CAM_SDA"
+		(at 429.26 139.7 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "a59e36cd-62b9-4905-b993-5c6a0d80421d")
+	)
 	(label "SD_DAT3"
 		(at 80.01 81.28 90)
 		(effects
@@ -1098,6 +1418,36 @@
 			(justify left bottom)
 		)
 		(uuid "a66057d1-46cc-4fa0-8388-89ab8c592bd8")
+	)
+	(label "CAM_CLK_N"
+		(at 502.92 134.62 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "a8f91b8e-20cf-430d-8a2f-0c35ab73a097")
+	)
+	(label "CAM_D0_P"
+		(at 502.92 142.24 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "a9a05ed4-c71e-4b9d-8393-e786fc3750db")
+	)
+	(label "CAM_CLK_P"
+		(at 105.41 121.92 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "add311ba-33d7-4f42-b9bf-54918028702b")
 	)
 	(label "SD_DAT3"
 		(at 279.4 271.78 0)
@@ -1128,6 +1478,16 @@
 			(justify left bottom)
 		)
 		(uuid "b43e3499-9b35-464f-8abc-92d42505ae73")
+	)
+	(label "CAM_D0_N"
+		(at 502.92 139.7 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "b52e1991-d774-4f05-a18f-0ce208358a00")
 	)
 	(label "SD_IO_REQ"
 		(at 85.09 81.28 90)
@@ -1219,6 +1579,16 @@
 		)
 		(uuid "d678c77c-afdc-45d8-a6f0-36822cf3e3c7")
 	)
+	(label "CAM_SCL"
+		(at 429.26 137.16 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "d85eab41-41cd-45fa-b0f0-0629ace927b6")
+	)
 	(label "NOR_DQ_HOST[0..7]"
 		(at 12.7 63.5 0)
 		(effects
@@ -1228,6 +1598,16 @@
 			(justify left bottom)
 		)
 		(uuid "dd383c7f-16ac-4605-af49-28dc68712ffe")
+	)
+	(label "CAM_CLK_P"
+		(at 502.92 137.16 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "debd68e1-0a65-49d3-b03f-c696a17d50c4")
 	)
 	(label "NOR_DS_HOST"
 		(at 12.7 66.04 0)
@@ -1258,6 +1638,26 @@
 			(justify left bottom)
 		)
 		(uuid "e9b79997-7d01-4d99-8729-e2be1686c636")
+	)
+	(label "CAM_CLK_N"
+		(at 102.87 121.92 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "eaf4f6b0-631b-491d-80df-c8358b16bf9b")
+	)
+	(label "CAM_D0_P"
+		(at 110.49 121.92 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "ecedba33-649a-4fed-8121-fbbe52b863ed")
 	)
 	(label "NOR_INT_N"
 		(at 12.7 68.58 0)
@@ -1659,7 +2059,7 @@
 			)
 		)
 		(property "Sheetfile" "mcu_interfaces.kicad_sch"
-			(at 30.48 110.49 0)
+			(at 17.272 125.476 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2059,6 +2459,96 @@
 				(justify right)
 			)
 		)
+		(pin "CAM_CLK_N" input
+			(at 102.87 109.22 270)
+			(uuid "13ae37dc-0c40-43a5-b297-e674a37acb4a")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAM_CLK_P" input
+			(at 105.41 109.22 270)
+			(uuid "417e532e-fbed-4b53-8332-22fa1fabc808")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAM_D0_N" input
+			(at 107.95 109.22 270)
+			(uuid "8d15a931-ab20-414e-8114-06049b680517")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAM_D0_P" input
+			(at 110.49 109.22 270)
+			(uuid "50ff7aa3-48f1-4bfc-8fb2-fca3724f681c")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAM_D1_N" input
+			(at 113.03 109.22 270)
+			(uuid "fd4108c5-1e6d-4ce8-bf36-5bcb1c55f158")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAM_D1_P" input
+			(at 115.57 109.22 270)
+			(uuid "c2ece8ca-b478-422c-8a1a-9974d4093f91")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAM_PWR_REQ" output
+			(at 58.42 109.22 270)
+			(uuid "568cabb7-8705-4741-8a85-167828bf4145")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAM_SCL" bidirectional
+			(at 68.58 109.22 270)
+			(uuid "9000e98e-3065-468a-a20d-ec31866fa182")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAM_SDA" bidirectional
+			(at 63.5 109.22 270)
+			(uuid "224d8cf7-df3d-42b8-9302-ff00d54927cd")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
 		(instances
 			(project "ereader_rev1"
 				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
@@ -2224,6 +2714,152 @@
 		)
 	)
 	(sheet
+		(at 441.96 132.08)
+		(size 48.26 26.67)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "7d952ccb-a30d-45e8-8e9c-d5f216640cd3")
+		(property "Sheetname" "Pcam 5C camera"
+			(at 441.96 131.3684 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "camera.kicad_sch"
+			(at 441.96 159.3346 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "CAM_PWR_REQ" input
+			(at 441.96 134.62 180)
+			(uuid "42c312f0-6538-4f8a-92ae-75785d9a5bc9")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAM_SCL" bidirectional
+			(at 441.96 137.16 180)
+			(uuid "b4775f4a-d66b-452f-a47b-e8aebb66a6e6")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAM_SDA" bidirectional
+			(at 441.96 139.7 180)
+			(uuid "06ae4cb9-1421-43c7-bae7-90f04ea4d0d5")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "MCU_RESET_N" input
+			(at 441.96 142.24 180)
+			(uuid "964ef02e-4b15-46ad-a817-0ccf3bb7efc1")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CAM_CLK_N" output
+			(at 490.22 134.62 0)
+			(uuid "32a06bfc-18d3-4280-a074-1f7364a60316")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "CAM_CLK_P" output
+			(at 490.22 137.16 0)
+			(uuid "9728f03e-a875-4770-a553-674e35b5b3be")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "CAM_D0_N" output
+			(at 490.22 139.7 0)
+			(uuid "f0688798-ffb2-4129-9bbf-ecfd76bc9808")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "CAM_D0_P" output
+			(at 490.22 142.24 0)
+			(uuid "d83d75aa-c440-4eaf-a1c5-27863bbb1c24")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "CAM_D1_N" output
+			(at 490.22 144.78 0)
+			(uuid "4f582981-4cd6-4b8b-bc70-f278b38a8098")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "CAM_D1_P" output
+			(at 490.22 147.32 0)
+			(uuid "3b2cc1e9-2b2d-431e-be15-eb678a34600d")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(instances
+			(project "ereader_rev1"
+				(path "/0586cc51-9c57-495b-a0c9-c29ba0d48166"
+					(page "13")
+				)
+			)
+		)
+	)
+	(sheet
 		(at 203.2 129.54)
 		(size 137.16 27.94)
 		(exclude_from_sim no)
@@ -2370,7 +3006,7 @@
 		)
 	)
 	(sheet
-		(at 30.48 129.54)
+		(at 30.48 304.8)
 		(size 137.16 27.94)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2385,7 +3021,7 @@
 		)
 		(uuid "959e090e-e670-4625-b284-7df7298868e8")
 		(property "Sheetname" "RA8P1 internal core regulator"
-			(at 30.48 128.27 0)
+			(at 30.48 303.53 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2396,7 +3032,7 @@
 			)
 		)
 		(property "Sheetfile" "mcu_core_power.kicad_sch"
-			(at 30.48 158.75 0)
+			(at 30.48 334.01 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2617,7 +3253,7 @@
 		)
 	)
 	(sheet
-		(at 30.48 177.8)
+		(at 203.2 304.8)
 		(size 137.16 27.94)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2632,7 +3268,7 @@
 		)
 		(uuid "fa5f4067-b129-4b01-a2ba-614d12811413")
 		(property "Sheetname" "RA8P1 IO and analog supplies"
-			(at 30.48 176.53 0)
+			(at 203.2 303.53 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2643,7 +3279,7 @@
 			)
 		)
 		(property "Sheetfile" "mcu_supply_power.kicad_sch"
-			(at 30.48 207.01 0)
+			(at 203.2 334.01 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects

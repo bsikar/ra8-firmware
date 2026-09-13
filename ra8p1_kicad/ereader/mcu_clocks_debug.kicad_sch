@@ -2326,7 +2326,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 15.24 -17.78 180)
 					(length 3.81)
 					(name "P307"
@@ -2343,6 +2343,7 @@
 							)
 						)
 					)
+					(alternate "P307_IN" input line)
 				)
 				(pin passive line
 					(at 15.24 -30.48 180)
@@ -6589,7 +6590,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 25.4 -10.16 180)
 					(length 3.81)
 					(name "MIPI_DL0_P"
@@ -6607,7 +6608,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 25.4 -5.08 180)
 					(length 3.81)
 					(name "MIPI_CL_P"
@@ -6625,7 +6626,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 25.4 -15.24 180)
 					(length 3.81)
 					(name "MIPI_DL1_P"
@@ -6697,7 +6698,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 25.4 -7.62 180)
 					(length 3.81)
 					(name "MIPI_DL0_N"
@@ -6715,7 +6716,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 25.4 -2.54 180)
 					(length 3.81)
 					(name "MIPI_CL_N"
@@ -6733,7 +6734,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 25.4 -12.7 180)
 					(length 3.81)
 					(name "MIPI_DL1_N"

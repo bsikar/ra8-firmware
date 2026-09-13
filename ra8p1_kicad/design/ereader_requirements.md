@@ -48,11 +48,57 @@ that the current schematic implements them.
   compatibility or an unmeasured "best sound" claim is not acceptance.
 - [ ] Built-in speakers and their amplifiers, with safe output selection,
   mute/pop suppression, and a complete battery/thermal budget.
-- [ ] Camera capture hardware, grounded in the repository examples and
-  official evaluation-board documentation, without pinmux conflicts.
+- [ ] Two cameras: front-facing for selfies and possible face authentication,
+  and rear-facing for photography. Use separate MIPI CSI-to-VIN and parallel
+  CEU paths after complete pinmux, clock, bandwidth and power review.
+- [ ] Independently controlled front camera illumination and rear flashlight,
+  separate from the warm/cool display front light.
+- [ ] Water-resistant product architecture, including USB-C moisture detection
+  and wet-port power inhibition, with protection for exposed contacts.
 - [ ] Five exposed physical buttons as specified below, plus touch input.
 - [ ] Sensors, debug and factory recovery, including recovery when normal
   application firmware is unavailable.
+
+### Owner additions (2026-09-13)
+
+The owner requires two cameras and identified the MCU's two-lane MIPI
+CSI-to-VIN path and separate 16-bit-capable parallel CEU as the intended
+interfaces. An 8-bit parallel sensor remains possible; the peripheral's
+maximum bus width does not specify the required sensor width. Verify actual
+package pin availability and system bandwidth before promising concurrent
+capture. Preserve all five buttons, premium audio, SDRAM, NOR and microSD
+while resolving camera pin conflicts; existing reservations may be revised
+only with coordinated interface review.
+
+Provide a front-facing camera for selfies and possible face authentication,
+with independently adjustable front-facing illumination, and a rear camera
+with flashlight capability. Visible selfie illumination is the current
+working basis. Infrared/depth sensing and spoof-resistant authentication
+remain an investigation, not an implemented or guaranteed Face ID equivalent.
+Define separate continuous torch and pulsed flash current/thermal limits,
+hardware default-off behavior, and source transient budgets. These lights
+do not replace either warm or cool display-frontlight control.
+
+The rechargeable battery and the previously identified Waveshare-based
+e-paper setup remain mandatory. The existing integrated-controller direction
+is unchanged: the HAT is the prototype reference. The exact purchased panel
+assembly and the ED060KHE candidate must not be treated as interchangeable
+without matching electrical, touch, light-guide and waveform evidence.
+
+Water resistance is a product requirement even while enclosure and PCB
+implementation are deferred. Select connectors and electrical protection
+with a sealable enclosure, exposed-contact corrosion and liquid ingress in
+mind. USB-C requires moisture detection and a hardware-enforced safe state
+that inhibits charging and VBUS sourcing while wet, with a defined dry-port
+recovery policy. Review detection coverage, false indications, leakage,
+power-off behavior, externally supplied VBUS, and interaction with CC/PD,
+USB data and accessory functions before selecting the port controller and
+switches. Moisture detection alone does not protect every exposed contact.
+Include both headphone jacks, buttons and camera/service interfaces in the
+ingress and corrosion review while retaining their required functionality.
+No IP rating or immersion tolerance is claimed without an enclosure-level
+test definition and physical qualification; water resistance is not an
+electrical permission to operate or charge a wet connector.
 
 ### Five exposed buttons and recovery contract
 

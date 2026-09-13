@@ -230,8 +230,16 @@ If the DAC supplies clocks in speaker mode, it remains powered and muted;
 include that power until an independent clock solution is implemented.
 Check digital input tolerance when any consumer is powered down, adding
 qualified isolation if necessary. Do not assume shutdown equals powered-off
-I/O tolerance. Proposed SSI1_A pins must be confirmed in the common pin map:
-P907 BCLK, P906 LRCLK and P206 data; optional 8-bit eMMC conflicts with P206.
+I/O tolerance. The 2026-09-13 two-camera requirement reopens the proposed
+SSI1_A allocation: the CEU candidate conflicts with all three pins below.
+Resolve the coordinated allocation in
+[CMS-016](camera_storage_interfaces.md#cms-016-two-camera-expansion-and-lighting-requirements)
+while retaining the full headphone/speaker/USB-DAC scope. CMS-016 now
+reserves SSI1_B: P702/F13 BCLK input, P701/F15 LRCLK input and P700/F12
+data output. The radio has moved off these pins; audio placement, timing
+and all-state electrical qualification remain open. The former SSI1_A
+reservation was P907 BCLK, P906 LRCLK and P206 data; it is superseded by
+the coordinated CEU route. Optional 8-bit eMMC also conflicts with P206.
 
 USB uses the MCU high-speed interface and a USB Audio Class 2 asynchronous
 playback endpoint with explicit feedback. The

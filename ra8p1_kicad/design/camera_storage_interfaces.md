@@ -1,12 +1,17 @@
 # Camera, removable storage and external-memory allocation
 
-Revision 19, 2026-09-12. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
+Revision 27, 2026-09-13. Target: R7KA8P1KFLCAC#UC0, MIPI-enabled BGA289.
 This is an engineering allocation record for native KiCad implementation,
 not a completed schematic, verified timing closure or hardware qualification.
 Cross-references: [radio](radio_interface.md), [power](system_power_design.md),
 [single button](single_button_power.md), and [parts inventory](../PARTS-CHECKLIST.md).
 
 ## CMS-001: Architecture and evidence boundary
+
+The single-camera allocation below is the historical starting point.
+CMS-016 supersedes that product scope with front and rear cameras; its
+unresolved CEU/audio/button conflicts must be closed before the allocation
+can be called complete. CMS-014/015 retain the implemented Pcam MIPI path.
 
 Reserve 64 MiB of 32-bit SDRAM, at least 64 MiB of soldered NOR, a separate
 4-bit microSD socket, and the CU450_OV5640 camera interface in MIPI mode.
@@ -37,6 +42,254 @@ of a validated RA8P1 capture configuration. Zephyr likewise documents only
 DVP support for this shield on RA at retrieval time.
 [Zephyr's CU450 shield documentation](https://docs.zephyrproject.org/latest/boards/shields/arducam_cu450_ov5640/doc/index.html).
 
+## CMS-016: Two-camera expansion and lighting requirements
+
+Status, 2026-09-13: required architecture revision, not a placed CEU circuit.
+The owner requires front and rear cameras, front selfie illumination and a
+rear flashlight. Battery power, premium audio, all five physical controls,
+and the Waveshare-based display/touch/warm-cool frontlight scope remain.
+The intended camera interfaces are two-lane MIPI CSI-to-VIN and parallel
+CEU. Separate interfaces do not prove simultaneous capture at arbitrary
+resolution or frame rate; clocks, buffering, memory arbitration and total
+bandwidth need a combined budget. English HUM retrieval did not establish
+a simultaneous-capture guarantee during this review.
+
+[Renesas CEU documentation](https://renesas.github.io/fsp/group___c_e_u.html)
+supports an 8-bit sensor on VIO_D0..D7 as well as a 16-bit camera bus.
+VIO_CLK receives sensor PCLK; HD/VD receive horizontal/vertical timing.
+The 16-bit-capable peripheral therefore does not require a 16-bit sensor.
+Firmware control and SCCB remain separate from the capture data interface.
+
+Independent review of the BGA289 alternatives in
+[RA8P1 datasheet Rev.1.30, Table 1.17, pp26-33][cms13-ra] identifies this
+8-bit route for further coordinated review:
+
+| CEU signal | Candidate port / ball | Existing allocation affected |
+| --- | --- | --- |
+| VIO_D0 | P206 / B15 | Reserved SSI1_A audio data |
+| VIO_D1 | P902 / E9 | No inspected placed net |
+| VIO_D2 | P909 / B14 | Volume-up relocated to P307; CEU not yet placed |
+| VIO_D3 | P908 / B13 | No inspected placed net |
+| VIO_D4 | P907 / A15 | Reserved SSI1_A audio clock |
+| VIO_D5 | P906 / A13 | Reserved SSI1_A audio frame sync |
+| VIO_D6 | P905 / A14 | No inspected placed net |
+| VIO_D7 | P703 / G14 | Radio CS_N relocated to P604; CEU not yet placed |
+| VIO_CLK | PB04 / D13 | No inspected placed net |
+| VIO_HD | PB03 / D16 | No inspected placed net |
+| VIO_VD | PB02 / E13 | No inspected placed net |
+
+P312/C13 is deliberately excluded: CMS-009 records a conflict between
+its datasheet listing and HUM Table 21.10 availability for MIPI289. An
+unconnected symbol pin does not resolve that manufacturer-document issue.
+
+The coordinated candidate moves the radio transport from SPIA_C to
+SCI0 Simple SPI, freeing SSI1_B for the complete existing audio function.
+Only five already connected MCU signals move: radio clock, COPI, CIPO,
+CS_N and volume-up. The three audio pins are reservation changes, not
+removal of the DAC/headphone/speaker/USB-DAC requirements.
+
+| Function | Candidate port / ball | Alternate / direction |
+| --- | --- | --- |
+| Audio BCLK | P702 / F13 | SSIBCK1_B, input from DAC |
+| Audio LRCLK | P701 / F15 | SSILRCK1_B, input from DAC |
+| Audio data | P700 / F12 | SSIDATA1_B, output |
+| RADIO_SCLK | P601 / P4 | SCK0_B, SCI0 clock output |
+| RADIO_COPI | P603 / P1 | MOSI0_B, SCI0 output |
+| RADIO_CIPO | P602 / P2 | MISO0_B, SCI0 input |
+| RADIO_CS_N | P604 / N2 | GPIO output; software-controlled select |
+| VOL_UP_N | P307 / C11 | IRQ27-DS input; disable trace function |
+
+The other four controls remain POWER_BUTTON_N P303/B6 IRQ29-DS,
+PAGE_PREV_N P309/A12 IRQ25-DS, PAGE_NEXT_N P310/E10 IRQ24-DS and
+VOL_DOWN_N P311/B12 IRQ23-DS. Radio READY P704/G13 IRQ26,
+HANDSHAKE P705/F17 IRQ19, reset request P706/E17 and power request
+P707/F16 remain. Disable alternate IRQ routing on the SCI/GPIO-CS pins,
+particularly IRQ27 on P603, IRQ29 on P601 and IRQ26 on P604; those
+channels already belong to the selected button/radio inputs.
+
+Read-only Python comparison against the recovered native XML on
+2026-09-13 found the CEU8, SSI1_B, SCI0, five-button, retained radio-control
+and camera groups mutually disjoint. The only occupied balls reassigned
+are B14, F12, F13, F15 and G14. SDRAM, NOR and microSD connections
+remain, including P708/N12 SD_IO_REQ. Existing MIPI contacts and camera
+SCCB P512/P13 and P511/U15, control P709/P16, and P501/R8/P010/P10
+reservations remain. This is a candidate net-allocation check, not evidence
+that the revised connections are placed or that every remaining product
+function has an assigned pin.
+
+[Renesas SCI_B SPI documentation][cms16-sci] explicitly supports RA8P1,
+full-duplex transfers, both clock polarities/phases and DMA. In controller
+mode CS must be driven in software. SCI0 here is hardware Simple SPI,
+not a UART or bit-banged replacement. Preserve the radio's initial 5MHz
+evaluation target, isolation and handshake protocol, but recalculate its
+SCI receive/setup and round-trip timing, clock divider, DMA priorities
+and cache-coherency contract. SPIA timing evidence does not automatically
+transfer to SCI0. SSI1_B must retain the DAC-supplied clock direction and
+the existing audio frequency/format limits.
+
+The candidate retains switched +3V3_MCU logic supplies: current VCC and
+VCC2 both connect to that rail, while the MIPI PHY retains its separate
++1V8_MIPI supply. It creates no AON_HOLD load. This supply observation
+does not substitute for checking each revised pin's VCC/VCC2/analog-bank
+classification, drive strength, Schmitt thresholds and powered-off limits
+against current HUM electrical tables. Recheck the unchanged button RC
+screen for P307 and confirm its deep-standby enable/flag selection; the
+IRQ27-DS datasheet entry alone is not a complete wake implementation.
+The English HUM retrieval limitation remains explicit.
+
+Independent placement review, 2026-09-13: GO for the five listed MCU
+connectivity changes. RA8P1 datasheet Table 2.6
+pp51-52 explicitly classifies P307 as VCC and P600..P607 as VCC2; both
+native supplies presently connect to +3V3_MCU. P307 is a non-5V-tolerant
+Schmitt input with the existing 1uA leakage allocation. Re-executed CMS-009
+button calculations retain low maximum 0.341555V, minimum low margin
+0.315032V and high minimum 2.977558V. Keep the external filter/pullup and
+disable the internal pull and trace output.
+
+Renesas's [RA8P1 device header][cms16-header] corroborates IRQ27 wake
+enable DPSIER5.DIRQ27E bit 3 and flag DPSIFR5.DIRQ27F bit 3, but edge
+selection is DPSIEGR4.DIRQ27EG bit 3. Do not infer an edge register 5
+from the enable/flag register numbers. The [LPM API][cms16-lpm-api]
+defines falling edge as zero and rising edge as one; the
+[LPM implementation][cms16-lpm] reads flags before writing zero.
+Preserve other wake sources and handle a key already held before sleep.
+This corroborates the allocation; full HUM sequencing and bench wake
+verification remain open. SCI receive timing and drive/edge qualification
+also remain open and cannot inherit the SPIA timing signoff.
+
+Native migration checkpoint, 2026-09-13: all four radio bus signals have
+moved to the reviewed SCI0/GPIO group, using aligned 300mil stubs and
+50mil left-facing hierarchical labels. Exported XML confirms these exact
+two-node nets: SCLK U1.P4/U5.2, CIPO U1.P2/U5.5, COPI U1.P1/U5.3,
+and CS_N U1.N2/U5.4. Former balls F13/F12/F15/G14 are isolated pending
+audio/CEU implementation. Read-only partition comparison proves exactly
+these four MCU substitutions, retaining every other net membership and
+all component/library records (U1 unit UUID order is normalized without
+changing its set). There are 334 nets. Native and CLI ERC remain 122 findings:
+120 errors and two warnings, with unchanged type counts. The MCU note
+now describes CMS-016 and links here. The complete two-camera allocation and SCI timing,
+isolation, reset behavior and hardware operation remain unqualified.
+Independent read-only review passed the four-substitution scope, all 266
+component records, 35 library parts, 13 libraries, the net partition and
+the matching native/documented allocation. This does not close the
+remaining product-level allocation or electrical qualifications.
+
+Volume-up migration checkpoint, 2026-09-13: VOL_UP_N now joins U1.C11
+(P307_IN, Input), C61.1, R26.2 and R30.2. B14 is isolated for future
+CEU VIO_D2. The native MCU library defines default P307 as Bidirectional
+and its selected P307_IN alternate as Input; every placed U1 unit cache
+was synchronized while preserving fields and other selected functions.
+Read-only XML partition comparison against the radio checkpoint proves
+exactly the B14-to-C11 substitution and the exchanged isolated pin, with
+all other memberships unchanged across 334 nets. All 266 component and
+13 library records remain unchanged after normalizing U1 unit UUID order.
+The only changed library pin record is C11's corrected default type.
+Native and CLI ERC now agree at 123 findings (121 errors, two warnings): the added
+pin_not_driven finding is the freed B14 input awaiting its CEU connection.
+It is retained, not suppressed. Independent read-only review passed all
+five substitutions, the unchanged records, all four synchronized MCU
+library caches, the selected input alternate and the exact ERC delta.
+The four ignored ERC checks remain unchanged. These five placed moves do not qualify
+the unimplemented second camera or the revised peripheral timing.
+
+Review-output checkpoint, 2026-09-13: root and MCU allocation pages are
+now A2 landscape. The core/analog root blocks occupy separate lower areas;
+the MCU C39 note is larger, left-aligned and separated below the circuit.
+Camera R98 reference/value now sit left of the resistor, clear of R99.
+All 13 PDF pages were rendered and visually reviewed; the root MCU
+hierarchical block still needs further spacing, so this is not final layout
+acceptance. Native BOM export contains 103 grouped rows, 19 columns and
+263 included components; TP1..TP3 retain their explicit BOM exclusions.
+Read-only comparison after these layout edits preserves all 334 net
+partitions and 266 component records, with ERC still 121 errors/two warnings.
+
+Other VIO_D2 choices consume microSD DAT3 or SDRAM A6. A 16-bit route
+additionally conflicts with page/volume controls or radio/SDRAM. Display,
+illumination and service reservations remain incomplete. Complete their
+combined allocation before calling the system pin plan closed; do not
+delete buttons or reduce audio functionality to make CEU fit.
+
+Adafruit 5840 OV5640 autofocus breakout is a candidate for a parallel
+interface audit, not a selected production BOM item. Its
+[manufacturer pinout](https://learn.adafruit.com/adafruit-ov5640-camera-breakout/pinouts)
+describes 3.3V board power, eight data outputs D2..D9, PCLK, HS, VS,
+SCCB, reset/power-down and external/onboard clock options. Map its D2..D9
+to CEU D0..D7 only after the exact board revision, voltage limits, current,
+off-state behavior, clock configuration, autofocus and connector are
+qualified. Two OV5640 modules require independently addressable control
+paths or a qualified SCCB mux/address arrangement.
+
+Independent assembly review, 2026-09-13: the
+[Adafruit Eagle schematic](https://github.com/adafruit/Adafruit-OV5640-Camera-Breakout-PCB)
+establishes this JP2 physical-pad map for the exact 5840 breakout. These
+are reviewed interface candidates, not placed nets or a completed power design.
+
+| JP2 contact | Assembly signal | Proposed host connection |
+| --- | --- | --- |
+| 1 / 2 | 3.3V / GND | Qualified camera supply / GND |
+| 3 / 4 | SCL / SDA | Independent second-camera SCCB path |
+| 5 | VSYNC | PB02/E13, CEU VD |
+| 6 | HREF | PB03/D16, CEU HD |
+| 7 | PCLK | PB04/D13, CEU CLK |
+| 8 | External XCLK | NC with onboard INT clock selected |
+| 9 | DATA9 | P703/G14, CEU D7 |
+| 10 | DATA8 | P905/A14, CEU D6 |
+| 11 | DATA7 | P906/A13, CEU D5 |
+| 12 | DATA6 | P907/A15, CEU D4 |
+| 13 | DATA5 | P908/B13, CEU D3 |
+| 14 | DATA4 | P909/B14, CEU D2 |
+| 15 | DATA3 | P902/E9, CEU D1 |
+| 16 | DATA2 | P206/B15, CEU D0 |
+| 17 / 18 | RESET_N / PWDN | Separate controlled outputs; allocation open |
+
+The onboard oscillator is 24MHz; selecting it requires cutting EXT and
+bridging INT. RESET_N has a 10k pullup and 100nF; PWDN has a 10k
+pulldown, so the untouched assembly defaults enabled. Explicitly design
+reset/powerdown arbitration. Its SCCB pullups are 10k to camera supply,
+and PCLK already has 22pF. Include that loading in the interconnect budget.
+The [5840 product requirements](https://www.adafruit.com/product/5840)
+also require VM jumper closure and autofocus firmware. Motor current,
+acquisition current and inrush are not yet bounded. STROBE is a test pad,
+not a JP2 contact; the front light needs a separate driver and control.
+
+The [Adafruit driver](https://raw.githubusercontent.com/adafruit/Adafruit_CircuitPython_OV5640/main/adafruit_ov5640/__init__.py)
+defaults to 7-bit SCCB address 0x3C, colliding with Pcam. Its address
+argument does not demonstrate a programmable hardware address. A separate
+bus or qualified mux must also resolve powered-off injection from pullups
+and host-driven control pins. PWDN does not disconnect board input power.
+
+Production qualification gap: Adafruit specifies regulated 3.3V board
+operation and connects DOVDD directly to that input. However, its genuine
+[OmniVision OV5640 v2.03 datasheet, Table 8-3, printed p8-2](https://cdn-learn.adafruit.com/assets/assets/000/118/994/original/OV5640_datasheet.pdf?1677598686=)
+lists 3.0V maximum VDD-IO. This discrepancy requires assembly-specific
+manufacturer clarification; it does not establish that the sold module
+fails. Do not declare the proposed 3.1518..3.3930V rail envelope qualified
+or substitute bare-sensor figures for assembly current, temperature,
+logic-level and sequencing limits. A separately linked Leopard
+LI-OV5640-MIPI-AF document describes a different assembly and cannot close
+these requirements. Signal planning can continue while power qualification
+remains open.
+
+Procurement snapshot, 2026-09-13, unreserved: Adafruit 5840 lists 15 stock,
+USD 9.95/8.96/7.96 at 1/10/100; [DigiKey 1528-5840-ND](https://www.digikey.com/en/products/detail/adafruit-industries-llc/5840/22163377)
+lists Active, 134 stock, four-week lead and USD 9.95 at one. This is not
+a production BOM selection or purchase authorization.
+
+Provide four independently controlled lighting functions: warm display,
+cool display, front camera illumination and rear flashlight. Front/rear
+visible LEDs need regulated current, hardware default-off/reset inhibition,
+separate continuous and pulsed limits, and source/thermal budgets. Camera
+light does not replace the panel light guide. Infrared/depth sensing for
+face authentication remains an investigation; ordinary RGB capture and
+visible illumination do not establish spoof-resistant authentication.
+The existing SYS-010 single-camera current screen excludes the second
+camera and both camera lights and must not be treated as the new maximum.
+
+[cms16-sci]: https://renesas.github.io/fsp/group___s_c_i___b___s_p_i.html
+[cms16-header]: https://github.com/renesas/fsp/blob/master/ra/fsp/src/bsp/cmsis/Device/RENESAS/Include/R7KA8P1KF_core0.h
+[cms16-lpm-api]: https://github.com/renesas/fsp/blob/master/ra/fsp/inc/api/r_lpm_api.h
+[cms16-lpm]: https://github.com/renesas/fsp/blob/master/ra/fsp/src/r_lpm/r_lpm.c
+
 ## CMS-002: Exact camera module and connector contract
 
 Procurement correction, 2026-09-12: Renesas staff confirms that CU450 was
@@ -44,7 +297,9 @@ designed for Renesas and is not sold separately. Retain the following as
 the EK reference contract, not a production purchasing instruction.
 [Renesas verified support answer](https://community.renesas.com/mcu/ra/f/forum/60538/regarding-buying-an-arducam-0v5640-cu450-cmos-5mp-mipi-csi-2-camera).
 CMS-014 below evaluates the independently orderable Pcam 5C alternative;
-neither module nor its host connector is placed in the current schematic.
+CMS-015 records the later host-connector/control leaf placement and six
+CSI hierarchy joins, followed by all three MCU control joins. Camera
+qualification remains pending.
 
 The historical allocation used **Arducam CU450_OV5640**, the 36 x 40 mm Camera Expansion Board named in
 the [EK-RA8P1 v1 manual, Rev.1.04, section 3 and Table 36](https://www.renesas.com/en/document/mat/ek-ra8p1-v1-users-manual).
@@ -154,7 +409,8 @@ AND MCU_RESET_N, with request and PWUP pulldowns. This addresses the
 0.4V versus the 0.5V host GPIO-low allowance. The
 [logic gate](https://www.ti.com/lit/ds/symlink/sn74lvc1g97.pdf) specifies
 0.1V maximum low at 100uA; verify the complete input/leakage load and
-reset fanout before placement. This is a proposed circuit, not yet wired.
+reset fanout under CMS-015's allocation. Its common reset connection is
+now integrated, as are the six CSI signals, request and SCCB controls.
 [GTL2002 function tables](https://www.nxp.com/docs/en/data-sheet/GTL2002.pdf)
 support translator isolation with SREF at zero. A separately switched
 module supply is therefore not inherently required for commanded off,
@@ -174,7 +430,8 @@ is not a worldwide procurement approval.
 The same dated [DigiKey host-connector listing, A101418CT-ND](https://www.digikey.com/en/products/detail/te-connectivity-amp-connectors/1-1734248-5/2272380)
 shows Active, 25,233 units, eight-week manufacturer lead time and
 USD1.49 / 1.268 / 1.0772 at quantities 1 / 10 / 100.
-These are candidate procurement records; no native BOM row exists yet.
+These are procurement records for the later CMS-015 leaf placement;
+refreshed full-project BOM reconciliation remains pending.
 
 The 200mA camera allocation must be added to the CMS-013 2.095A main-rail
 screen if powered there. Before host pullups and any new interface logic,
@@ -196,6 +453,287 @@ This is a source-budget screen, not converter qualification or a measured
 peak. It already exceeds the initial 4A source allocation before the
 remaining audio, display and front-light loads. Complete SYS-010's pack,
 harness and thermal review before increasing that allocation.
+
+## CMS-015: Pcam control, reset loading and SCCB screens
+
+Status, 2026-09-13: the inspected camera working XML contains U24
+**SN74LVC1G97DBVR**, R96/R97 10k, R98/R99 1.5k and C112 100n.
+The earlier DCKR proposal is not the native selection. J3 is the host
+connector. The reset connection is now integrated through the hierarchy.
+The request and SCCB signals now join their MCU ports through the root
+hierarchy, as verified in the control integration checkpoint below.
+This does not establish electrical qualification, refreshed PDF/BOM
+acceptance or successful capture.
+
+CSI integration checkpoint, 2026-09-13: all six MCU-side no-connect
+markers have been replaced in the native editor by short wires and
+input hierarchical labels. Matching root sheet pins, wire stubs and
+local labels now join the camera to the MCU. Exported-netlist checks
+and independent review confirm exactly these two-contact nets:
+
+| MCU input port | U1 BGA contact | Joined camera connector contact |
+| --- | --- | --- |
+| CAM_CLK_N | U2 | J3.8 |
+| CAM_CLK_P | T2 | J3.9 |
+| CAM_D0_N | U1 | J3.2 |
+| CAM_D0_P | T1 | J3.3 |
+| CAM_D1_N | U3 | J3.5 |
+| CAM_D1_P | T3 | J3.6 |
+
+All 266 component records and 35 library-part records are unchanged by
+these root joins. Independent netlist comparison confirms exactly six
+net unions (343 to 337 nets), with every other net and the eight-contact
+common reset preserved. Native and all-severity CLI ERC agree at
+126 errors and 2 warnings. Compared with the 152-finding parent-port
+checkpoint, exactly six unconnected sheet-pin errors and 18 isolated
+label warnings are removed; there are no new findings. The four ignored
+tests are unchanged. Remaining ERC work is not waived.
+
+The root page is now A2 landscape. MCU supply blocks occupy a separate
+row, and the camera block has space for six aligned 500mil wire stubs
+and 50mil labels at 100mil pitch. All 272 root object UUIDs are unique.
+The crowded MCU root block still requires layout work; refreshed native
+BOM and full PDF review remain required before phase acceptance.
+
+Historical MCU control-leaf checkpoint, 2026-09-13: native wires and 50mil
+hierarchical labels now connect CAM_PWR_REQ to P709/P16 (output),
+CAM_SDA to P511/U15 and CAM_SCL to P512/P13 (bidirectional). These
+are still separate from the camera leaf. The exported XML retains
+266 components, 337 nets and exactly the previous net memberships.
+CLI ERC is 131 findings: the three unused MCU-pin errors are replaced
+by three missing-parent-pin errors and three isolated-label warnings;
+every other finding is unchanged. Manual root port placement and joins
+remain required. An automatic root import was undone because it moved
+the sheet boundary and left 11 wire ends dangling; the saved checkpoint
+has no such wire-end findings.
+
+Control integration checkpoint, 2026-09-13: manual native root ports
+and labeled wire stubs now join all three control nets. MCU parent
+ports are spaced at 200mil pitch; camera-side stubs are 500mil long
+with 50mil labels. The MCU filename and nearby NOR_CK_HOST text have
+been repositioned to clear the control group.
+
+| Joined net | Exact component contacts |
+| --- | --- |
+| CAM_PWR_REQ | U1.P16, R96.1, U24.3 |
+| CAM_SCL | U1.P13, J3.13, R98.1 |
+| CAM_SDA | U1.U15, J3.14, R99.1 |
+
+Read-only XML comparison confirms exactly these three net unions
+(337 to 334 nets). Every other node partition and all 266 component
+records, library parts and library records remain unchanged. Native and
+CLI ERC agree at 122 findings (120 errors, 2 warnings), down from the 131-finding
+leaf checkpoint: three hierarchy mismatches, three unconnected pins
+and three isolated labels are removed. No wire-end errors appear.
+The MCU overview still needs more space; this checkpoint does not
+constitute complete layout, electrical qualification, or PDF/BOM acceptance.
+
+The dedicated IIC1 assignment was independently reviewed against
+[RA8P1 Rev.1.30 Tables 1.17, 2.5 and 2.7][cms13-ra]. Retain
+ICFER.FMPE=1 for the modeled pullup load, with SCCB clock at most
+400kHz. The guaranteed 15mA sink row applies to SCL1_A/SDA1_A;
+the 20mA typical row is not the acceptance limit. P709 uses ordinary
+low drive, with its output latch initialized low before enabling the
+output. Sensor-side VOL, bus timing, leakage and rail-collapse behavior
+remain qualification items. CMS-016 preserves these three assignments.
+
+Independent review of the reset-stage XML confirms /MCU_RESET_N contains
+exactly J1.10, R1.2, U1.D5, U15.A4, U19.6, U2.6, U24.6 and U7.3;
+the separate camera-leaf reset net no longer exists. ERC falls from 143
+to 140 findings: the unconnected reset sheet pin, isolated reset label
+and undriven U24.6 input are removed. Recreating the parent sheet block
+changed nine remaining camera sheet-pin UUIDs/positions; those are the
+same unconnected-port findings, not new electrical regressions. Comparison
+by sheet, severity, type and item description finds only the three reset
+removals, no additions; all other retained finding details and ignored
+checks are unchanged. Remaining ERC work is not waived.
+
+| U24 pin | Leaf connection |
+| --- | --- |
+| 1 IN1, 2 GND | GND |
+| 3 IN0 | CAM_PWR_REQ; R96.1, with R96.2 to GND |
+| 4 Y | J3.11 PWUP and R97.1; R97.2 to GND |
+| 5 VCC | +3V3_MCU; C112 to GND |
+| 6 IN2 | MCU_RESET_N; verified common-reset join |
+
+[TI SCES416N, sections 5/6.5/8.4][cms15-gate] establishes this pin map
+and Y = IN0 AND IN2 when IN1 is grounded. R96/R97 are YAGEO
+RC0603FR-0710KL; the 1% initial and 100ppm/C, 100C excursion model gives
+9801..10201 ohm. The 100C excursion is an arithmetic assumption, not
+whole-module temperature qualification. No extra pull is added to reset.
+
+### Shared MIPI PHY pin types
+
+The project BGA289 symbol `R7KA8P1KFLCAC#UC0` now represents all six
+MIPI contacts as bidirectional, and the targeted U1 library update is
+saved: CL_N U2, CL_P T2, DL0_N U1, DL0_P T1, DL1_N U3 and DL1_P T3.
+This is an engineering representation of selectable DSI transmit and
+CSI receive functions. The current camera hierarchy uses input ports
+at the MCU boundary to express the intended CSI receiver configuration;
+it does not make these silicon contacts dedicated receiver-only pins.
+
+[RA8P1 datasheet R01DS0439EJ0130, Rev.1.30, Table 1.16, p19][cms13-ra]
+describes the contacts as DSI/CSI. Its direction column lists clock and
+data lane 1 as output, and data lane 0 as I/O. That DSI-oriented column
+does not establish unconditional input-only behavior for CSI. The
+[quick guide, sections 17.1-17.3][cms15-phy-guide] describes mutually
+exclusive DSI and CSI use, with DSI transmission and CSI reception.
+The currently served R01AN7883EU0110 Rev.1.10 is titled RA8x2 MCU Quick
+Design Guide (printed pp77-79); the earlier RA8P1 Rev.1.00 section 17.3
+also identifies CSI reception. The RA8P1 datasheet remains the
+device-specific pin reference.
+
+Bidirectional preserves the selectable active PHY capability instead
+of hiding it behind passive pin types. It is not a claim that every
+lane supports reverse traffic while CSI is selected. This review did
+not retrieve the English HUM successfully and therefore does not
+certify every CSI low-power/escape state as receive-only. Firmware
+must retain the intended CSI mode; pin typing does not close signal
+integrity, power sequencing, off-state or capture qualification.
+
+### Reset and PWUP default model
+
+Before camera integration, [RST-002](reset_coordination_tps3890.md) and
+CMS-011C allocate MCU 5uA + U7 5uA + NOR 2uA + U19 5uA = 17uA.
+U24 was not reserved: add 5uA, yielding 22uA devices. Preserve the 13uA
+overhead for supervisor, board, debugger and other adverse leakage,
+giving **35uA for the current reset-integrated circuit**. The preceding
+30uA CMS-011C/RST-002 calculations describe the pre-camera baseline;
+this section supersedes that loading screen for the added U24 input.
+The total is an acceptance allocation, not a guaranteed current sum.
+
+The gate's +/-5uA input limit uses VI=0 or 5.5V and VCC=0..5.5V;
+Ioff is separately +/-10uA at VCC=0. Its input capacitance is 3.5pF
+typical, not a maximum. Do not extend these conditions through arbitrary
+partial power. At VCC=3.0V, VT+ maximum is 1.87V and VT- minimum is
+0.84V; threshold rows at discrete supplies do not prove an interpolated
+continuous-rail bound. Retain reset edge/fanout qualification.
+
+[LP5907 SNVS798Q][cms15-ldo] specifies EN low <=0.4V and high >=1.2V
+for VIN=2.2..5.5V. U24's VOL<=0.1V at <=100uA, VCC=1.65..5.5V,
+avoids relying on the host's 0.5V GPIO-low allowance. Verify complete
+module/board current into PWUP remains within that sink test. At VCC=3V,
+the gate's VOH>=2.4V at 16mA supports a separate high-state test-point
+screen; R97 alone draws up to 0.3462mA, so the 100uA VOH row does not
+apply. Module enable/RC loads and charging transients must be included.
+
+Allocate 10uA adverse request leakage (MCU plus gate) and 20uA adverse
+PWUP leakage for default-state screens. These are acceptance budgets,
+including board/module effects where relevant, not published module
+maxima. Disable internal MCU pulls. No guarantee is made below valid
+gate supply or for a missing/unpowered module with external injection.
+
+```python
+from math import isclose
+
+vhi, vlo = 3.393012496197, 3.151819680
+vfall = 3.000822726706337
+rmin, rmax = 10000*.99*.99, 10000*1.01*1.01
+reset_devices = (5+5+2+5+5)*1e-6
+reset_total = reset_devices + 13e-6
+reset_sink = vhi/rmin + reset_total
+reset_high = vlo - reset_total*rmax
+reset_margin = reset_high - .8*vlo
+fall_high = vfall - reset_total*rmax
+fall_margin = fall_high - .8*vfall
+gate_3v_margin = 3.0 - reset_total*rmax - 1.87
+assert isclose(reset_devices, 22e-6)
+assert isclose(reset_total, 35e-6)
+assert reset_sink < .0004
+assert isclose(reset_high, 2.794784680)
+assert isclose(reset_margin, .273328936)
+request_default = 10e-6*rmax
+pwup_default = 20e-6*rmax
+assert request_default < .35 and pwup_default < .4
+print('CMS-015 current reset sink A / high V / MCU margin V',
+      reset_sink, reset_high, reset_margin)
+print('fall high / MCU margin / separate 3V gate margin V',
+      fall_high, fall_margin, gate_3v_margin)
+print('additional reset drop V / sink headroom A',
+      5e-6*rmax, .0004-reset_sink)
+print('request / PWUP allocated defaults V', request_default, pwup_default)
+```
+
+Executed results: sink 0.381190439mA, leaving 18.809561uA below the
+0.4mA test load; high 2.794784680V and MCU margin 0.273328936V.
+At the falling corner, high is 2.643787727V and margin 0.243129545V.
+The added drop is 51.005mV. At the separate 3V gate point the high margin
+is 0.772965V. Request/PWUP allocated defaults are 0.10201/0.20402V.
+Reported decimals are rounded results, not outward-rounded guarantee
+inequalities. U2's <=0.25V low at VDD>=1.5V and 0.4mA supports only
+the stated static sink screen, not low-POR or collapse behavior.
+
+### SCCB pullup current and timing model
+
+R98.2/R99.2 connect to +3V3_MCU; R98.1 and J3.13 form CAM_SCL,
+R99.1 and J3.14 form CAM_SDA. Use 1.5k host pulls as required by the
+[Pcam manual][cms15-manual]. The module schematic also has 1.5k pulls
+to its 1.8V rail, so a sinking device sees both sides through GTL2002.
+The screen below assumes the module pull resistors meet the host's
+1%/100ppm grade and its 1.8V rail stays within +2%; those combined
+module bounds require confirmation and are not established by resistor
+values on the schematic alone. The host selected MPN is
+[RC0603FR-071K5L][cms15-r15].
+
+[RA8P1 Table 2.7][cms13-ra] specifies IIC VOL<=0.4V at 3mA,
+or <=0.6V at 6mA. The modeled 0.4V load slightly exceeds 3mA.
+Configure the dedicated IIC with ICFER.FMPE=1 to use its <=0.4V at
+15mA specification, VCC>=2.7V; do not use the generic GPIO 1mA screen.
+The Pcam manual does not establish sensor sink/VIL limits or combined
+translator drop. Obtain those limits and verify both directions.
+
+```python
+from math import log, isclose
+
+rpmin, rpmax = 1500*.99*.99, 1500*1.01*1.01
+vhost, vcam = 3.393012496197, 1.8*1.02
+sink_zero = (vhost+vcam)/rpmin
+sink_04 = (vhost+vcam-2*.4)/rpmin
+# Host-side lumped 30%-70% RC rise model, not translated-bus closure.
+cap_300ns = 300e-9/(log(7/3)*rpmax)
+cap_1000ns = 1e-6/(log(7/3)*rpmax)
+assert .003 < sink_04 < sink_zero < .015
+assert isclose(cap_300ns, 231.39349105849004e-12)
+print('CMS-015 conditional zero/0.4V sink mA', sink_zero*1e3, sink_04*1e3)
+print('host RC capacitance at 300ns / 1000ns pF',
+      cap_300ns*1e12, cap_1000ns*1e12)
+```
+
+Executed current screens are 3.556788/3.012626mA. The
+[TI pullup derivation][cms15-rise] gives tr=ln(7/3)*R*C, hence
+231.393491pF for 300ns and 771.311637pF for 1000ns in this model.
+These are not permissions to exceed other bus capacitance limits.
+Include cable, connector, protection, receiver and translator capacitance;
+verify both translated waveforms, VOL, high level and edge timing at the
+chosen <=400kHz rate. GTL2002's test-point Ron/capacitance values are not
+a complete sensor/host timing or voltage-margin proof.
+
+### Off-state and power-budget boundary
+
+[GTL2002 Tables 4/5][cms15-gtl] support static isolation with SREF=0;
+this supports using the module's own PWUP-controlled LDOs for commanded
+off without inherently requiring another supply switch. LP5907's 230-ohm
+discharge is typical-only and it lacks dedicated UVLO. Keep the host PHY
+powered while stopping capture and lowering PWUP; establish transmitter
+off before removing host PHY power. Unexpected main collapse still needs
+measured/qualified rail ordering or a revised isolation/hold-up circuit.
+Neither the gate nor static translator table supplies that timing proof.
+Use the manual's >=100ms PWUP-low reset and >=50ms high-before-SCCB
+policy with qualified host rails; those waits do not prove fault shutdown.
+
+CMS-014's 2.295A main subtotal and 4.148535402A source screen exclude
+the new host pulls, gate and dynamic interface load. Account for these
+without adding the module's internal pull current twice to its 200mA
+allocation. Do not increase the 4A source allocation without SYS-010's
+remaining pack/harness/thermal review. No firmware change is claimed.
+
+[cms15-gate]: https://www.ti.com/lit/ds/symlink/sn74lvc1g97.pdf
+[cms15-ldo]: https://www.ti.com/lit/ds/symlink/lp5907.pdf
+[cms15-manual]: https://media.digikey.com/pdf/Data%20Sheets/Digilent%20PDFs/Pcam_5C_RefManual_Web.pdf
+[cms15-r15]: https://yageogroup.com/component-documentation/download/specsheet/RC0603FR-071K5L
+[cms15-rise]: https://www.ti.com/lit/an/slva689/slva689.pdf
+[cms15-gtl]: https://www.nxp.com/docs/en/data-sheet/GTL2002.pdf
+[cms15-phy-guide]: https://www.renesas.com/en/document/apn/ra8p1-mcu-quick-design-guide
 
 ## CMS-003: microSD native connection and a repository mismatch
 
@@ -582,7 +1120,7 @@ The full PDF and BOM have been refreshed, with native visual review of all
 eight PDF pages. Preserve the verified routes and keep these exports
 synchronized during subsequent work.
 U1's P309_IN/P310_IN/P311_IN
-and P909_IN selected pin functions already model the intended Input types;
+and P307_IN selected pin functions model the intended Input types;
 the reusable default GPIO types are Bidirectional. Symbol functions do not
 configure the MCU's firmware pin routing or prove wake behavior.
 
@@ -591,7 +1129,7 @@ configure the MCU's firmware pin routing or prove wake behavior.
 | Previous page / PAGE_PREV_N | P309 / A12 | IRQ25-DS | DPSIER5.DIRQ25E, bit 1 |
 | Next page / PAGE_NEXT_N | P310 / E10 | IRQ24-DS | DPSIER5.DIRQ24E, bit 0 |
 | Volume down / VOL_DOWN_N | P311 / B12 | IRQ23-DS | DPSIER4.DIRQ23E, bit 7 |
-| Volume up / VOL_UP_N | P909 / B14 | IRQ21-DS | DPSIER4.DIRQ21E, bit 5 |
+| Volume up / VOL_UP_N | P307 / C11 | IRQ27-DS | DPSIER5.DIRQ27E, bit 3 |
 | Power-controller INT / POWER_BUTTON_N | P303 / B6 | IRQ29-DS | DPSIER5.DIRQ29E, bit 5 |
 
 Evidence: RA8P1 datasheet Table 1.17 and
@@ -603,9 +1141,11 @@ Tables 2.5/2.7 give Schmitt limits 0.8*VCC high and 0.2*VCC low, with
 1 uA off-state leakage for the direct-key pins and 5 uA for P303.
 
 P312 was rejected despite its C13 entry in Table 1.17: HUM Table 21.10
-visually marks it unavailable for MIPI289. P909 avoids relying on that
-unresolved document conflict. Do not confuse the e-reader with EK header
-routing. The GPIO test in CMS-006 includes these reservations. IRQ channels
+visually marks it unavailable for MIPI289. The original P909 allocation
+avoided that unresolved conflict; CMS-016 now moves volume-up to P307
+and reserves P909 for CEU. CMS-016 records the current IRQ27 flag/edge
+registers and qualification limits. Do not confuse the e-reader with EK header
+routing. The older GPIO test in CMS-006 records the original reservations. IRQ channels
 also remain distinct from camera IRQ14 and radio IRQ19/26. Alternate IRQ
 functions on SDRAM, debug and other peripheral pins must remain disabled.
 
@@ -2144,8 +2684,9 @@ SET/GND membership, MPN, distributor SKU and sourcing metadata have
 passed focused checks; all 330 baseline net partitions remain preserved.
 The output is named +1V8_MIPI, with exact exported membership
 U23.9, U23.10, C109.1, R94.2, U1.R2 and C111.1. C111.2 connects to
-GND. The MCU VCC18_MIPI no-connect was removed; the six camera-lane
-no-connects remain. Independent read-only review confirmed this connection
+GND. At this supply checkpoint the MCU VCC18_MIPI no-connect was removed,
+while the six camera-lane no-connects remained. CMS-015 records their
+later replacement by CSI input ports. Independent read-only review confirmed this connection
 and preservation of all 329 other baseline net partitions after excluding
 new components and the intentional R2 join. This section does not establish camera power,
 interface operation or rail-sequencing closure. The refreshed native BOM

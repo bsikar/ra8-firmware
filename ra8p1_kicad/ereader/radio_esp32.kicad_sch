@@ -6895,7 +6895,7 @@
 				)
 			)
 		)
-		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/729827"
+		(property "DigiKey_URL" "https://www.digikey.com/en/products/detail/yageo/RC0603FR-0710KL/726880"
 			(at 134.62 171.45 0)
 			(hide yes)
 			(show_name no)
@@ -6917,7 +6917,7 @@
 				)
 			)
 		)
-		(property "Sourcing_Snapshot" "2026-09-05 indexed: stock 2922248; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
+		(property "Sourcing_Snapshot" "2026-09-13 DigiKey direct: stock 2356142; Active; USD CT 1:0.10 / 10:0.025 / 100:0.01220 / 1000:0.00661; 17wk lead; recheck before order"
 			(at 134.62 171.45 0)
 			(hide yes)
 			(show_name no)

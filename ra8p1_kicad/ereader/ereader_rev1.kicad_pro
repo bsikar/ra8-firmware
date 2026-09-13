@@ -537,7 +537,7 @@
         "uuid": "0586cc51-9c57-495b-a0c9-c29ba0d48166"
       }
     ],
-    "used_designators": "TP4,FB1,Q1-3,Y1-2,U1-23,C1-111,SW1-5,D1-12,#PWR1-220,R1-95,#FLG1-2,L1-2,J1-2",
+    "used_designators": "TP4,FB1,Q1-3,Y1-2,U1-24,C1-112,SW1-5,D1-12,#PWR1-227,R1-99,#FLG1-2,L1-2,J1-3",
     "variants": []
   },
   "sheets": [
@@ -588,6 +588,10 @@
     [
       "56afd4f3-07e7-49f9-a338-a5473efb7ed6",
       "microSD removable storage"
+    ],
+    [
+      "7d952ccb-a30d-45e8-8e9c-d5f216640cd3",
+      "Pcam 5C camera"
     ]
   ],
   "text_variables": {},

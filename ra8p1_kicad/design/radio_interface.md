@@ -4,6 +4,18 @@ Design record for issue #826 and schematic `radio_esp32.kicad_sch`.
 The retained module candidate is ESP32-C6-WROOM-1-N8. This record is an
 interface design basis, not a completed circuit or demonstrated RA8P1 port.
 
+Current host allocation, 2026-09-13: [CMS-016](camera_storage_interfaces.md#cms-016-two-camera-expansion-and-lighting-requirements)
+supersedes the SPIA_C host pin allocation below. The native MCU bus now
+uses SCI0 SCLK P601/P4, CIPO P602/P2, COPI P603/P1 and GPIO CS_N
+P604/N2. The radio-side U5 pins and all other net memberships are retained.
+P700..P702 are freed for SSI1_B audio and P703 for CEU D7, neither yet
+placed. SPIA timing calculations below are historical for that transport;
+SCI timing, DMA/cache behavior and hardware qualification remain open.
+The current full-project native/CLI ERC is 121 errors and two warnings,
+including the freed B14 input awaiting CEU after the volume-up migration;
+older
+reset/switch-stage ERC and export counts below describe those checkpoints.
+
 Current reset migration, 2026-09-08: [RST-002](reset_coordination_tps3890.md)
 supersedes the former U2 fixed-supervisor and RADIO-014 divider selections.
 U2 TPS389001DSET is now wired with R67/R74 33k/20k, R75 10k MR pull-up

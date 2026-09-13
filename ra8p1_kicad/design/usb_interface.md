@@ -1,5 +1,12 @@
 # RA8P1 USB electrical design
 
+USB-001..004 record the installed PHY reference and supply components.
+[USB-005](#usb-005-wet-port-and-dual-role-controller-candidate-review)
+records the replacement architecture investigation required by the current
+water-resistance and USB2 device/host/USB-DAC requirements. No connector,
+moisture controller or replacement power-path circuit is selected by that
+review.
+
 ## USB-001: R6 reference resistor
 
 Revision 1, 2026-09-05. Applies to U1.J15 and R6 on
@@ -419,3 +426,102 @@ print('USB-004 PASS: exact C43 curve, interpolation, FB1 DC drop and dissipation
 print('USB-004 exact fitted BOM matches; transient and all-corners qualification remain open.')
 PY
 ```
+
+## USB-005: Wet-port and dual-role controller candidate review
+
+Revision 1, 2026-09-13. **Candidate research only; not a selected circuit,
+native implementation, or hardware qualification.** The current
+[product requirements](ereader_requirements.md) retain autonomous battery
+charging, USB2 device and host operation, and digital USB-DAC support while
+requiring hardware inhibition of charging and VBUS sourcing when wet.
+
+The earlier sink-only TUSB320LAIRWBR/TPS2553DRVR proposal in
+[SYS-009](system_power_design.md#sys-009-usb-c-budget-configured-500-ma-latch-and-input-switch)
+is superseded as an implementation direction for these expanded requirements.
+Its conditional current calculations remain historical evidence for that
+topology; they do not qualify the new controller, host supply or wet-port
+behavior. In particular, the old SYS-008 BQ25616 OTG-to-GND connection cannot
+supply a USB peripheral. The [TUSB320LAI datasheet](https://www.ti.com/lit/ds/symlink/tusb320lai.pdf)
+defines CC attach/current/role detection, not liquid detection, and the
+[TPS2553 datasheet](https://www.ti.com/lit/ds/symlink/tps2553.pdf) defines a
+current-limited switch, not a moisture discriminator. USB-001..004 remain
+applicable PHY design records.
+
+### TPS25751D candidate and primary evidence
+
+[TI TPS25751 datasheet](https://www.ti.com/lit/ds/symlink/tps25751.pdf),
+SLVSH93A, March 2024, supports standalone dual-role operation with integrated
+sink and 5 V source paths. Section 9.2.2.2 requires external SBU sensing
+circuitry and protection against SBU-to-VBUS shorts; section 9.2.2.2.1 says
+liquid detection disables power paths. Table 8-6 SafeMode keeps the sink
+path off until configuration loads. AlwaysEnableSink instead enables it
+before configuration and is unsuitable as the proposed wet-start default.
+These features make TPS25751D a candidate, not a complete wet-port proof.
+
+[TPS25751 TRM](https://www.ti.com/lit/pdf/slvucr8), SLVUCR8A, section 3.27,
+register 0x98, defaults liquid detection and corrosion mitigation to OFF.
+The configuration must enable both. Corrosion mitigation disables the port
+and pulls down CC; programmable sample timing, thresholds and exit hysteresis
+control detection and recovery. **Dry-before-first-enable ordering remains
+unresolved:** SafeMode before configuration does not prove that the first
+valid dry measurement precedes sink/source enable after configuration.
+Confirm that ordering, missing/corrupt EEPROM behavior and brownout recovery
+with the selected configuration/firmware and manufacturer evidence. RA8P1
+firmware must not be the sole mechanism preventing wet charging or sourcing.
+
+[TPS25751 EVM guide](https://www.ti.com/lit/ug/slvucp9b/slvucp9b.pdf),
+SLVUCP9B, October 2025, section 4.4 explicitly makes internal BC1.2 and
+liquid detection/corrosion mitigation mutually exclusive: both use GPIO4/5.
+Its external protection implementation uses TPD4S201; the older controller
+datasheet illustrates TPD2S300. Neither reference is an automatic selection
+for this board. USB2 data itself can remain on separately protected D+/D-
+to the RA8P1. Legacy charger identification needs another implementation or
+a conservative permission policy; disabling BC1.2 does not grant additional
+input current.
+
+The [TI product documentation](https://www.ti.com/product/TPS25751) lists
+autonomous charger integration for BQ25756/BQ25756E, BQ25790/BQ25792,
+BQ25798, BQ25713 and BQ25731; it does not list BQ25616. Retaining BQ25616
+would require an independently proved power-path/charge-enable/OTG design.
+Choosing a supported charger instead reopens battery settings, source
+current, thermal and input-permission calculations. Neither choice is made
+here, and no current stock or exact orderable-package selection is asserted.
+
+### FUSB251UCX companion alternative
+
+[onsemi FUSB251 datasheet](https://www.onsemi.com/download/data-sheet/pdf/fusb251-d.pdf),
+pp.9-10, provides CC/SBU protection and moisture measurement, but moisture
+detection defaults disabled. Results use registers and an interrupt; after
+CC measurement the CC switches close again regardless of moisture presence.
+It contains no VBUS power switch. In dead battery, its Rd terminations invite
+an external source to apply VBUS. Thus adding FUSB251UCX to TUSB320 alone
+does not establish autonomous wet inhibition. A separate always-available
+control and fail-safe power-disconnect implementation would be necessary.
+This remains an alternative for evaluation, not a fitted or selected part.
+
+### Proposed architecture boundary and unresolved qualification
+
+The engineering direction to evaluate is an independently powered port
+controller/configuration island, a normally disabled reverse-blocking sink
+path to the charger, and a normally disabled source path from regulated
+battery-derived 5 V. Wet/fault permission must inhibit both paths independently
+of the application MCU; charger-disable and boost-disable controls are needed
+where the final topology could otherwise bypass that inhibition. USB2 data
+protection/disconnection and its unpowered behavior need their own circuit.
+Digital USB-DAC operation requires USB host/data and a valid peripheral power
+budget; it does not require analog audio routing over SBU. Controller power
+role alone does not prove RA8P1 USB role switching or audio-class firmware.
+
+Opening local switches does not remove externally supplied VBUS from the
+receptacle. A legacy or noncompliant source may keep it energized. The
+connector-side protection and sensing island must withstand that condition
+and wet cross-pin shorts while isolating internal power/data circuits. A
+powered-down detection island cannot be assumed to retain a dry verdict;
+dead-battery insertion must return to a safe state and repeat qualification.
+
+SBU sensing is not proof that every contact is dry. Thresholds, detection
+latency during attached operation, contamination, recovery delay, temperature,
+standby current, source/load transients and wet insertion with a depleted
+battery remain unqualified. Connector sealing, enclosure construction and
+the environmental test definition are separate requirements; this record
+does not establish an ingress-protection rating or corrosion lifetime.

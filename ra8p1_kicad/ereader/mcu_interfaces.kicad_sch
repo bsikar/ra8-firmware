@@ -3,7 +3,7 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "33c39500-46ef-4bfe-91bb-bf0f803ca6e5")
-	(paper "A3")
+	(paper "A2")
 	(title_block
 		(title "RA8P1 IO allocation")
 		(date "2026-09-05")
@@ -1795,7 +1795,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 15.24 -17.78 180)
 					(length 3.81)
 					(name "P307"
@@ -1812,6 +1812,7 @@
 							)
 						)
 					)
+					(alternate "P307_IN" input line)
 				)
 				(pin passive line
 					(at 15.24 -30.48 180)
@@ -6058,7 +6059,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 25.4 -10.16 180)
 					(length 3.81)
 					(name "MIPI_DL0_P"
@@ -6076,7 +6077,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 25.4 -5.08 180)
 					(length 3.81)
 					(name "MIPI_CL_P"
@@ -6094,7 +6095,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 25.4 -15.24 180)
 					(length 3.81)
 					(name "MIPI_DL1_P"
@@ -6166,7 +6167,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 25.4 -7.62 180)
 					(length 3.81)
 					(name "MIPI_DL0_N"
@@ -6184,7 +6185,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 25.4 -2.54 180)
 					(length 3.81)
 					(name "MIPI_CL_N"
@@ -6202,7 +6203,7 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin bidirectional line
 					(at 25.4 -12.7 180)
 					(length 3.81)
 					(name "MIPI_DL1_N"
@@ -6559,7 +6560,7 @@
 		)
 		(uuid "7d31ce58-df5c-4fd8-b179-f80006dcff7f")
 	)
-	(text "RADIO-008: SPIA_C P700..P703; IRQ26=P704, IRQ19=P705.\nP706=RESET_REQ_N; P707=PWR_EN. Host-domain signals.\nSwitched-domain isolation and reset arbitration remain open.\nPin map + conflicts: ../design/radio_interface.md#radio-008-ra8p1-host-allocation"
+	(text "CMS-016: SCI0 SCK=P601; CIPO=P602; COPI=P603; CS_N=P604.\nREADY=P704/IRQ26; HANDSHAKE=P705/IRQ19.\nP706=RESET_REQ_N; P707=PWR_EN. Host-domain signals.\nTiming, switched-domain isolation and reset arbitration remain open."
 		(exclude_from_sim no)
 		(at 42.926 165.1 0)
 		(effects
@@ -6567,7 +6568,7 @@
 				(size 1.27 1.27)
 			)
 			(justify left top)
-			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/radio_interface.md#radio-008-ra8p1-host-allocation")
+			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/camera_storage_interfaces.md#cms-016-two-camera-expansion-and-lighting-requirements")
 		)
 		(uuid "7f54c0be-47cc-4034-9ea8-027c927e09eb")
 	)
@@ -6584,11 +6585,12 @@
 	)
 	(text "PWR-001: C39 AVCC_MIPI bypass, 100 nF (QDG Table 2, p.7).\nTDK C1608X7R1H104K080AA; also used at C6 and C16-C34.\nInitial C = 100*(1 +/-0.10) = 90..110 nF; 50 V X7R.\nTDK DC-bias samples: 99.5575 nF / 3.15 V; 98.9525 nF / 4 V.\nC(3.3 V) = 99.5575 + (3.3-3.15)/0.85*(-0.605) = 99.45 nF.\nInterpolated nominal reference, NOT a guaranteed minimum.\nFinal rail / PDN qualification open; 3.3/50*100 = 6.6% rating.\nFull basis + Python check: design/power_decoupling.md"
 		(exclude_from_sim no)
-		(at 88.9 261.62 0)
+		(at 33.782 282.448 0)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1.778 1.778)
 			)
+			(justify left)
 			(href "https://github.com/bsikar/ra8-firmware/blob/design/ereader-circuit/ra8p1_kicad/design/power_decoupling.md#pwr-001-c39-mipi-analog-supply-bypass")
 		)
 		(uuid "ad841f15-915f-4a17-bb70-fe384e5696cf")
@@ -6656,30 +6658,6 @@
 		(color 0 0 0 0)
 		(uuid "f827aecd-d497-4355-860d-f80cdec74232")
 	)
-	(no_connect
-		(at 81.28 205.74)
-		(uuid "21636c31-a404-4fc4-84bd-96913def0c01")
-	)
-	(no_connect
-		(at 81.28 198.12)
-		(uuid "4259c269-8e1f-49f4-866f-b1e278a77380")
-	)
-	(no_connect
-		(at 81.28 203.2)
-		(uuid "627666ed-456d-49de-980b-8bfa23e69f65")
-	)
-	(no_connect
-		(at 81.28 210.82)
-		(uuid "83facd96-cc3f-4fc1-842e-f7eb31615653")
-	)
-	(no_connect
-		(at 81.28 208.28)
-		(uuid "a99f833a-3d07-4667-a862-5925a445ac8a")
-	)
-	(no_connect
-		(at 81.28 200.66)
-		(uuid "b4321ef7-0322-4e78-814a-96156ff0e2b4")
-	)
 	(wire
 		(pts
 			(xy 17.78 147.32) (xy 40.64 147.32)
@@ -6709,6 +6687,16 @@
 			(type default)
 		)
 		(uuid "0639629a-3e04-4b14-9688-d9db8ee50df6")
+	)
+	(wire
+		(pts
+			(xy 360.68 76.2) (xy 368.3 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0acc28b8-382e-4aaa-8328-62526bcbebea")
 	)
 	(wire
 		(pts
@@ -6822,6 +6810,16 @@
 	)
 	(wire
 		(pts
+			(xy 71.12 144.78) (xy 76.2 144.78)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "246c9635-3c43-48bd-a3b3-030156e2dad3")
+	)
+	(wire
+		(pts
 			(xy 233.68 160.02) (xy 233.68 170.18)
 		)
 		(stroke
@@ -6852,7 +6850,7 @@
 	)
 	(wire
 		(pts
-			(xy 167.64 139.7) (xy 182.88 139.7)
+			(xy 264.16 66.04) (xy 279.4 66.04)
 		)
 		(stroke
 			(width 0)
@@ -6922,7 +6920,7 @@
 	)
 	(wire
 		(pts
-			(xy 71.12 124.46) (xy 96.52 124.46)
+			(xy 33.02 129.54) (xy 40.64 129.54)
 		)
 		(stroke
 			(width 0)
@@ -6949,6 +6947,16 @@
 			(type default)
 		)
 		(uuid "3f388804-8614-42d1-8650-edd50209697f")
+	)
+	(wire
+		(pts
+			(xy 81.28 198.12) (xy 85.09 198.12)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "40372480-4e81-4775-b4db-3cec8dad3728")
 	)
 	(wire
 		(pts
@@ -7022,6 +7030,16 @@
 	)
 	(wire
 		(pts
+			(xy 81.28 200.66) (xy 85.09 200.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "488d87c9-ce2d-4ac9-a994-09cc5c92091e")
+	)
+	(wire
+		(pts
 			(xy 360.68 68.58) (xy 368.3 68.58)
 		)
 		(stroke
@@ -7069,6 +7087,16 @@
 			(type default)
 		)
 		(uuid "59cdf51e-30a0-435c-bef0-bd7a12e6965b")
+	)
+	(wire
+		(pts
+			(xy 81.28 208.28) (xy 85.09 208.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5dbeb60e-3add-4b7c-a5c0-464e4043de4e")
 	)
 	(wire
 		(pts
@@ -7142,7 +7170,7 @@
 	)
 	(wire
 		(pts
-			(xy 71.12 129.54) (xy 96.52 129.54)
+			(xy 33.02 132.08) (xy 40.64 132.08)
 		)
 		(stroke
 			(width 0)
@@ -7172,7 +7200,7 @@
 	)
 	(wire
 		(pts
-			(xy 71.12 127) (xy 96.52 127)
+			(xy 33.02 124.46) (xy 40.64 124.46)
 		)
 		(stroke
 			(width 0)
@@ -7209,6 +7237,16 @@
 			(type default)
 		)
 		(uuid "72d66375-54e6-42f1-b48c-3533313168d7")
+	)
+	(wire
+		(pts
+			(xy 81.28 210.82) (xy 85.09 210.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "738a2cec-7215-4899-a0c5-78892c1f2806")
 	)
 	(wire
 		(pts
@@ -7329,6 +7367,16 @@
 			(type default)
 		)
 		(uuid "8e788c3c-aa65-4958-aace-5d3710c7a14f")
+	)
+	(wire
+		(pts
+			(xy 360.68 78.74) (xy 368.3 78.74)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9679344d-2c29-4c43-ae61-3c86ecfbf70f")
 	)
 	(wire
 		(pts
@@ -7542,6 +7590,16 @@
 	)
 	(wire
 		(pts
+			(xy 81.28 205.74) (xy 85.09 205.74)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c1b6dadb-d6dc-4e75-b097-5d80294058b4")
+	)
+	(wire
+		(pts
 			(xy 264.16 73.66) (xy 279.4 73.66)
 		)
 		(stroke
@@ -7592,7 +7650,7 @@
 	)
 	(wire
 		(pts
-			(xy 71.12 121.92) (xy 96.52 121.92)
+			(xy 33.02 127) (xy 40.64 127)
 		)
 		(stroke
 			(width 0)
@@ -7709,6 +7767,16 @@
 			(type default)
 		)
 		(uuid "de231490-4641-483d-bef3-54cfc3109f1e")
+	)
+	(wire
+		(pts
+			(xy 81.28 203.2) (xy 85.09 203.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "de73119e-5d99-4191-8ad6-f28e35b942d8")
 	)
 	(wire
 		(pts
@@ -8481,6 +8549,28 @@
 		)
 		(uuid "011cdcb1-c0a8-4d72-9835-0f2a705ddd72")
 	)
+	(hierarchical_label "CAM_CLK_N"
+		(shape input)
+		(at 85.09 198.12 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "05a389ec-72b4-4fb2-9edc-4ca3d1f531bf")
+	)
+	(hierarchical_label "CAM_D0_P"
+		(shape input)
+		(at 85.09 205.74 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "0eeaf040-a8da-47f0-b90d-79cd652f9d80")
+	)
 	(hierarchical_label "SDRAM_CS_N"
 		(shape output)
 		(at 114.3 154.94 180)
@@ -8538,7 +8628,7 @@
 	)
 	(hierarchical_label "VOL_UP_N"
 		(shape input)
-		(at 182.88 139.7 0)
+		(at 279.4 66.04 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8546,6 +8636,17 @@
 			(justify left)
 		)
 		(uuid "3a508fab-859e-4e5b-baac-6a7e54c16652")
+	)
+	(hierarchical_label "CAM_D1_N"
+		(shape input)
+		(at 85.09 208.28 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "4e4f3534-24ff-4ebf-bfa4-c4c57c8f8e9f")
 	)
 	(hierarchical_label "RADIO_DATA_READY"
 		(shape input)
@@ -8624,6 +8725,28 @@
 		)
 		(uuid "61f66348-6f7d-452f-aa00-fc2f0d922e30")
 	)
+	(hierarchical_label "CAM_D0_N"
+		(shape input)
+		(at 85.09 203.2 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "6506219f-66e7-4eac-ba8f-4d3055bd050a")
+	)
+	(hierarchical_label "CAM_PWR_REQ"
+		(shape output)
+		(at 76.2 144.78 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "69da8be5-19bf-4518-a928-904961bd23d2")
+	)
 	(hierarchical_label "SD_CMD"
 		(shape bidirectional)
 		(at 330.2 50.8 180)
@@ -8657,6 +8780,17 @@
 		)
 		(uuid "7f0426b8-b842-44a2-8ae3-06a09f135333")
 	)
+	(hierarchical_label "CAM_D1_P"
+		(shape input)
+		(at 85.09 210.82 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "88bd6494-bd6d-4085-97aa-83a039ac295a")
+	)
 	(hierarchical_label "SDRAM_A[0..12]"
 		(shape output)
 		(at 63.5 101.6 0)
@@ -8678,6 +8812,17 @@
 			(justify right)
 		)
 		(uuid "92af372d-b456-45eb-9a53-d034db90c387")
+	)
+	(hierarchical_label "CAM_SDA"
+		(shape bidirectional)
+		(at 368.3 76.2 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "9b25f783-650c-4329-9242-f92fbd7d8e6d")
 	)
 	(hierarchical_label "VOL_DOWN_N"
 		(shape input)
@@ -8703,12 +8848,12 @@
 	)
 	(hierarchical_label "RADIO_SCLK"
 		(shape output)
-		(at 96.52 127 0)
+		(at 33.02 124.46 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left)
+			(justify right)
 		)
 		(uuid "aef368c0-8b7c-43da-9b94-7024530505f0")
 	)
@@ -8736,23 +8881,23 @@
 	)
 	(hierarchical_label "RADIO_CIPO"
 		(shape input)
-		(at 96.52 121.92 0)
+		(at 33.02 127 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left)
+			(justify right)
 		)
 		(uuid "b391921f-7d08-4f71-8b55-2f31c5e5e6c5")
 	)
 	(hierarchical_label "RADIO_COPI"
 		(shape output)
-		(at 96.52 124.46 0)
+		(at 33.02 129.54 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left)
+			(justify right)
 		)
 		(uuid "b885791c-aba3-4d91-9794-93c233c32866")
 	)
@@ -8791,12 +8936,12 @@
 	)
 	(hierarchical_label "RADIO_CS_N"
 		(shape output)
-		(at 96.52 129.54 0)
+		(at 33.02 132.08 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left)
+			(justify right)
 		)
 		(uuid "cb0f45a8-3c68-4045-a795-e3de8378999f")
 	)
@@ -8832,6 +8977,28 @@
 			(justify left)
 		)
 		(uuid "d6bcc97d-e96b-4b75-8a8f-0367005f524f")
+	)
+	(hierarchical_label "CAM_SCL"
+		(shape bidirectional)
+		(at 368.3 78.74 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "d931e174-d155-4eac-b085-ea75b4755f6c")
+	)
+	(hierarchical_label "CAM_CLK_P"
+		(shape input)
+		(at 85.09 200.66 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "df9d5fec-496b-4b25-969d-426eeea14a51")
 	)
 	(hierarchical_label "PAGE_NEXT_N"
 		(shape input)
@@ -10342,6 +10509,7 @@
 		)
 		(pin "C11"
 			(uuid "c5f4b34f-f250-4488-bdc8-612e9e7b57f8")
+			(alternate "P307_IN")
 		)
 		(pin "C9"
 			(uuid "21f4f9eb-0dec-4e3e-a58b-696f51d3b855")
