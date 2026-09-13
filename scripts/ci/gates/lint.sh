@@ -133,7 +133,8 @@ gate_lint_yaml() (
   python3 scripts/checks/lint_targets.py --selftest
 
   # Scope comes from lint_targets.py -- see the note in gate_lint_cmake.
-  local files=()
+  local wide_line_file=".github/suppression-review-batches.yml"
+  local files=() regular_files=()
   while IFS= read -r line; do
     [[ -n "$line" ]] && files+=("$line")
   done < <(python3 scripts/checks/lint_targets.py yaml)
@@ -145,7 +146,13 @@ gate_lint_yaml() (
 
   /bin/bash -p scripts/checks/lint_selftest.sh --selftest yaml
 
-  yamllint --strict "${files[@]}"
+  for line in "${files[@]}"; do
+    [[ "$line" == "$wide_line_file" ]] || regular_files+=("$line")
+  done
+  yamllint --strict "${regular_files[@]}"
+  yamllint --strict \
+    -d '{extends: .yamllint.yaml, rules: {line-length: {max: 1000, level: error}}}' \
+    "$wide_line_file"
   actionlint
 )
 
