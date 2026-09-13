@@ -311,6 +311,16 @@
 	)
 	(wire
 		(pts
+			(xy 167.64 92.71) (xy 203.2 92.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4efcbcfc-975c-4df9-a4aa-d57960346ef2")
+	)
+	(wire
+		(pts
 			(xy 340.36 144.78) (xy 347.98 144.78)
 		)
 		(stroke
@@ -958,6 +968,16 @@
 			(type default)
 		)
 		(uuid "eea6254c-fed3-4cc9-a8a0-603270b5ef6e")
+	)
+	(wire
+		(pts
+			(xy 167.64 90.17) (xy 203.2 90.17)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ef9a5e69-e29f-4130-a56e-ba4cce8c855b")
 	)
 	(wire
 		(pts
@@ -3151,6 +3171,26 @@
 		(pin "MCU_RESET_N" input
 			(at 203.2 105.41 180)
 			(uuid "d88f9733-5f07-4bdc-bf42-65b96a551b5a")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "RADIO_DATA_READY" output
+			(at 203.2 92.71 180)
+			(uuid "75a54920-690d-4d55-b33d-0d9bbb56eefe")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "RADIO_HANDSHAKE" output
+			(at 203.2 90.17 180)
+			(uuid "c72ea5db-0a0e-4269-ae16-6d722d433475")
 			(effects
 				(font
 					(size 1.27 1.27)

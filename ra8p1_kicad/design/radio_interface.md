@@ -1497,7 +1497,7 @@ Neither component changes the switched-radio capacitance sum.
 | 3 IN0 | C6_EN | Radio supervisor reset release; U3.3 and U6.6 |
 | 1 IN1 | GND | Select AND function |
 | 6 IN2 | RADIO_PWR_EN | Host request, upstream of R7 |
-| 4 Y | SPI_IO_EN | U5.8 OE and R9.1 |
+| 4 Y | SPI_IO_EN | U5.8 OE, U25.6 OE and R9.1 |
 | 5 VCC | +3V3_MCU | Upstream supply, bypassed by C54 |
 | 2 GND | GND | Common reference |
 
@@ -1517,13 +1517,14 @@ gives OE thresholds at equal 3 V supplies: VT+ <=1.92 V and VT- >=0.89 V;
 OE leakage is -0.1 to 2 uA at the listed powered rail-endpoint conditions.
 These are discrete test-point limits, not an interpolated full-rail proof.
 
-Use RADIO-010's resistor bounds of 9801 to 10201 ohm. Allocate 12 uA
-total adverse OE-node current including U5 and board leakage. This is an
+Use RADIO-010's resistor bounds of 9801 to 10201 ohm. Allocate 14 uA
+total adverse OE-node current including U5, U25 and board leakage. RADIO-020
+adds 2 uA for U25 without consuming the previous 12 uA allowance. This is an
 allocation for unqualified states, not a substitute for their specifications.
 
 ```text
-U8 high-state DC load <= 3.6/9801 + 12e-6 = 0.379309 mA
-0.379309 mA < 16 mA output test current
+U8 high-state DC load <= 3.6/9801 + 14e-6 = 0.381309 mA
+0.381309 mA < 16 mA output test current
 3 V test-point high margin = 2.4 - 1.92 = 0.48 V
 3 V test-point low margin = 0.89 - 0.45 = 0.44 V
 R9 dissipation <= 3.6^2/9801 = 1.322314 mW
@@ -1564,8 +1565,9 @@ from math import isclose
 
 rmin, rmax = F(9801), F(10201)
 allocation = F('12e-6')
-load = F('3.6')/rmin + allocation
-assert isclose(float(load*1000), .3793094582185491)
+oe_allocation = allocation + F('2e-6')  # U25; request-node allowance unchanged.
+load = F('3.6')/rmin + oe_allocation
+assert isclose(float(load*1000), .3813094582185491)
 assert F('.0001') < load < F('.016')
 assert F('2.4')-F('1.92') == F('.48')
 assert F('.89')-F('.45') == F('.44')
@@ -1841,13 +1843,14 @@ unpowered GPIO behavior or ON timing relative to VIN/VOUT reversal.
 
 TPS22964C has 715 us typical 10-90% rise time at VIN=3.3 V, 25 C,
 CIN=1uF, COUT=0.1uF and ROUT=10 ohm. It is not an all-corners timing
-limit for this board. Using 10.2uF external nominal capacitance only:
+limit for this board. RADIO-020 adds C113: using 10.3uF external nominal
+capacitance (C45+C46+C50+C113) only:
 
 ```text
-Icap_typical_linear = 10.2uF*(0.8*3.3V)/715us = 37.661538 mA
+Icap_typical_linear = 10.3uF*(0.8*3.3V)/715us = 38.030769 mA
 QOD ideal RC t90..10 = R*C*ln(9)
-R=273 ohm typical: t90..10 = 6.118392 ms
-R=325 ohm table maximum: t90..10 = 7.283799 ms
+R=273 ohm typical: t90..10 = 6.178376 ms
+R=325 ohm table maximum: t90..10 = 7.355209 ms
 ```
 
 The QOD maximum is specified with ON=0 and IOUT=2mA; using it in an ideal
@@ -1915,9 +1918,9 @@ for r7, r8, current_leak in product((r7lo,r7hi),(r8lo,r8hi),(-leak,leak)):
     assert 2.5*r8/(r7+r8)+current_leak*rp >= vhigh
 for resistor_lo in (r7lo, r8lo):
     assert 3.6**2/resistor_lo < .1  # Conservative full-rail stress at 70 C.
-cap, rise_typ = 10.2e-6, 715e-6
+cap, rise_typ = 10.3e-6, 715e-6
 icap = cap*(.8*3.3)/rise_typ
-assert isclose(icap, .03766153846153846, abs_tol=1e-15)
+assert isclose(icap, .03803076923076923, abs_tol=1e-15)
 for resistance in (273, 325):
     print('QOD conditional RC ms:', resistance, 1000*resistance*cap*log(9))
 print('Path remaining ohm / radio release V:', rremaining, release_margin)
@@ -1925,3 +1928,108 @@ print('ON low/high V / host current A:', vlow, vhigh, ihost)
 print('RADIO-019 PASS: conditional arithmetic; targeted native mapping checked;')
 print('continuous-rail RON, inrush, collapse and discharge remain unqualified.')
 ```
+
+## RADIO-020: Radio-to-host status isolation
+
+2026-09-13 work in progress, tracking #826. Native U25, C113/C114 and
+R100/R101 are placed and wired on the radio sheet. Root hierarchy joins
+to the MCU are exported and verified; electrical qualification remains open.
+
+U25 is Texas Instruments TXU0102DCUR, with two forward channels. The native
+Power_Devices symbol is independently editable; its footprint is deferred.
+The source is [TI SCES941A, March 2022, Table 6-1 and sections 7.5, 9.4,
+11](https://www.ti.com/lit/ds/symlink/txu0102.pdf).
+
+| U25 pin | Native radio-sheet connection | Intended host endpoint |
+| --- | --- | --- |
+| 5 A1 | C6_DATA_READY, U3.4 GPIO4 | Through pin 8 to U1.G13/P704/IRQ26 |
+| 4 A2 | C6_HANDSHAKE, U3.26 GPIO3 | Through pin 1 to U1.F17/P705/IRQ19 |
+| 8 B1Y | RADIO_DATA_READY, R100.2 | U1.G13, verified in exported netlist |
+| 1 B2Y | RADIO_HANDSHAKE, R101.1 | U1.F17, verified in exported netlist |
+| 3 VCCA | +3V3_RADIO, C113.1 | Switched supply |
+| 7 VCCB | +3V3_MCU, C114.1 | Host supply |
+| 6 OE | SPI_IO_EN, U8.4/U5.8/R9.1 | Shared isolation request |
+| 2 GND | Common GND | Common reference |
+
+C113/C114 each provide 100 nF to ground. C113 raises external switched
+capacitance from 10.2 to 10.3 uF; earlier RADIO-009 capacitance calculations
+describe the pre-U25 circuit. RADIO-019 above contains the updated screen.
+C114 is upstream. RADIO-016 now budgets 14 uA on OE; the C6_EN and
+RADIO_PWR_EN node allocations remain 12 uA each.
+
+TI specifies high impedance with OE low or either rail below 100 mV under
+the specified conditions. The interval between 100 mV and valid operation
+is not qualified here. Floating-supply isolation requires its separate
+test conditions; a discharged island is not a floating supply. Through
+125 C the listed input/three-state leakage bounds are 2 uA and zero-supply
+Ioff is 2.5 uA. At 100 uA loading, output bounds are VCCB-0.1 V and 0.1 V.
+Discrete input threshold tests do not prove the entire board rail range.
+
+R100/R101 are YAGEO RC0603FR-0747KL, 47k, 1%, 100 ppm/K, grounded on
+R100.1/R101.2. Their dated part sourcing is retained from the shared resistor
+selection in [microSD power interface](microsd_power_interface.md).
+Disable MCU internal pulls. No external bias was added to module GPIO4;
+its strap loading and U25 input loading still require closure.
+
+The following is a conditional board leakage allocation, not an installed
+measurement. The 12 uA low-state screen leaves 8.5 uA beyond the assumed
+2.5 uA translator and 1 uA host contributions. Validate these assumptions
+for every powered/off state before using the margins as qualification.
+
+```python
+from math import isclose, log
+
+rlo, rhi = 47000*.99*.99, 47000*1.01*1.01
+vmin, vmax = 3.151819680, 3.393012496
+assert isclose(rlo, 46064.7) and isclose(rhi, 47944.7)
+load = vmax/rlo + 1e-6
+assert isclose(load, 74.6575402857e-6) and load < 100e-6
+isolated_low = (2.5e-6 + 1e-6)*rhi
+allocated_low = 12e-6*rhi
+assert isclose(isolated_low, .16780645)
+assert isclose(allocated_low, .5753364)
+assert isclose(.2*vmin-allocated_low, .055027536)
+assert isclose(.2*vmin-.1, .530363936)
+assert vmax**2/rlo < .001  # Conservative resistor stress below 1 mW.
+assert isclose(3.6/9801+14e-6, .0003813094582185491)
+cap = (0.1+10+0.1+0.1)*1e-6
+assert isclose(cap, 10.3e-6)
+assert isclose(cap*.8*3.3/715e-6, .03803076923076923)
+assert isclose(273*cap*log(9), .006178375789011716)
+assert isclose(325*cap*log(9), .007355209272632995)
+print('RADIO-020 PASS: conditional arithmetic only; electrical qualification open.')
+```
+
+Firmware must mask status interrupts while isolation is requested and
+reconcile the actual levels after reset and supply settling. A low caused
+by isolation is not protocol readiness. Supply collapse, strap compatibility,
+board leakage, edge loading and sequencing require validation; no secure
+boot or protocol-ready guarantee follows from this circuit.
+
+Native verification, 2026-09-13: the exported netlist contains the two
+three-node host nets listed above and both module-to-U25 input nets.
+Excluding the five new components preserves all 334 pre-existing net
+partitions. ERC is 117 findings, down from 123: four unconnected-pin and
+two isolated-label findings removed, no added finding identities. The
+remaining 110 unconnected pins, three undriven power pins, three pin-type
+conflicts and one undriven signal are still open design work.
+
+The native RADIO-009/016/019 notes now account for C113 and U25's OE
+loading. The configured native BOM export has 19 columns, 105 groups and
+268 included references (TP1-TP3 remain excluded). Every included value
+and manufacturer part number matches the current exported netlist, and
+the net partitions remain identical to the independently reviewed circuit.
+The complete 13-page PDF was refreshed and its changed overview and radio
+pages inspected. A compact native RADIO-020 annotation below U25 records
+the bias assumptions, equation, conditional low-level margin and open
+qualification. Overview MCU-pin spacing remains a separate layout follow-up;
+this radio checkpoint does not claim completion of the whole schematic.
+
+Independent review on 2026-09-13 passed the U25 pin mapping, channel
+connections, supply/OE nets, bypass and output bias, hierarchy directions,
+conditional calculations and ERC delta. Its procurement-field finding was
+resolved by adding native Procurement_Status and Sourcing_Snapshot fields.
+[DigiKey's TXU0102DCUR listing](https://www.digikey.com/en/products/detail/texas-instruments/TXU0102DCUR/16341507)
+on that date showed Active status, 26,218 in stock, nine-week standard lead
+time, and USD 1.14/0.823/0.6559 unit pricing at quantities 1/10/100 in cut
+tape. These are dated sourcing observations, not guaranteed future supply.
