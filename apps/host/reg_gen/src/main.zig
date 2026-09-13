@@ -1,52 +1,27 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! reg_gen: Generates C23 register headers from JSON register definitions.
+//! reg_gen: Generates strict C23 register headers from JSON register definitions.
 
 const std = @import("std");
+pub const generator = @import("generator.zig");
 
-const Register = struct {
-    name: []const u8,
-    offset: []const u8,
-    size: u32,
-    description: []const u8,
-};
-
-const PeripheralDef = struct {
-    peripheral: []const u8,
-    base_address: []const u8,
-    registers: []const Register,
-};
-
-fn toLower(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
-    const result = try allocator.alloc(u8, input.len);
-    for (input, 0..) |c, i| {
-        result[i] = std.ascii.toLower(c);
-    }
-    return result;
+fn printUsage(writer: anytype) !void {
+    try writer.print(
+        \\reg_gen: C23 Register Header Generator
+        \\Usage: reg_gen [options] [path/to/registers.json]
+        \\
+        \\Options:
+        \\  -h, --help                Print this help and exit
+        \\  -o, --output <file>       Write output to <file> instead of stdout
+        \\
+        \\Arguments:
+        \\  [path/to/registers.json]  Path to input JSON (defaults to registers.json if found)
+        \\
+    , .{});
 }
 
-fn toUpper(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
-    const result = try allocator.alloc(u8, input.len);
-    for (input, 0..) |c, i| {
-        result[i] = std.ascii.toUpper(c);
-    }
-    return result;
-}
-
-fn determineSmallestType(max_val: u64) []const u8 {
-    if (max_val <= 0xFF) {
-        return "uint8_t";
-    } else if (max_val <= 0xFFFF) {
-        return "uint16_t";
-    } else if (max_val <= 0xFFFFFFFF) {
-        return "uint32_t";
-    } else {
-        return "uint64_t";
-    }
-}
-
-fn findJsonFile(allocator: std.mem.Allocator) ![]const u8 {
+fn findJsonFile(buf: *[std.fs.max_path_bytes]u8) ![]const u8 {
     const candidates = [_][]const u8{
         "registers.json",
         "apps/host/reg_gen/registers.json",
@@ -55,170 +30,166 @@ fn findJsonFile(allocator: std.mem.Allocator) ![]const u8 {
     for (candidates) |path| {
         const file = std.fs.cwd().openFile(path, .{}) catch continue;
         file.close();
-        return try allocator.dupe(u8, path);
+        return path;
     }
 
-    // Try relative to executable
     var bin_dir_buf: [std.fs.max_path_bytes]u8 = undefined;
     const exe_dir = std.fs.selfExeDirPath(&bin_dir_buf) catch null;
     if (exe_dir) |dir| {
-        const joined = try std.fs.path.join(allocator, &[_][]const u8{ dir, "registers.json" });
+        const joined = std.fmt.bufPrint(buf, "{s}{c}registers.json", .{ dir, std.fs.path.sep }) catch return error.PathTooLong;
         const file = std.fs.cwd().openFile(joined, .{}) catch null;
         if (file) |f| {
             f.close();
             return joined;
         }
-        allocator.free(joined);
     }
 
     return error.FileNotFound;
 }
 
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+pub const CliOptions = struct {
+    input_path: ?[]const u8 = null,
+    output_path: ?[]const u8 = null,
+    show_help: bool = false,
+};
+
+pub fn parseCliArgs(args: []const []const u8, err_writer: anytype) !CliOptions {
+    var opts = CliOptions{};
+    var i: usize = 1;
+    while (i < args.len) : (i += 1) {
+        const arg = args[i];
+        if (std.mem.eql(u8, arg, "-h") or std.mem.eql(u8, arg, "--help")) {
+            opts.show_help = true;
+            return opts;
+        } else if (std.mem.eql(u8, arg, "-o") or std.mem.eql(u8, arg, "--output")) {
+            i += 1;
+            if (i >= args.len) {
+                try err_writer.print("Error: --output requires a file argument\n", .{});
+                return error.InvalidArguments;
+            }
+            opts.output_path = args[i];
+        } else if (std.mem.startsWith(u8, arg, "-")) {
+            try err_writer.print("Error: unrecognized option '{s}'\n", .{arg});
+            return error.InvalidArguments;
+        } else if (opts.input_path == null) {
+            opts.input_path = arg;
+        } else {
+            try err_writer.print("Error: unexpected extra argument '{s}'\n", .{arg});
+            return error.InvalidArguments;
+        }
+    }
+    return opts;
+}
+
+fn run(allocator: std.mem.Allocator) !void {
+    const stderr = std.io.getStdErr().writer();
 
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
-    const json_path = if (args.len > 1)
-        try allocator.dupe(u8, args[1])
-    else
-        try findJsonFile(allocator);
-    defer allocator.free(json_path);
+    const opts = try parseCliArgs(args, stderr);
+    if (opts.show_help) {
+        try printUsage(std.io.getStdOut().writer());
+        return;
+    }
 
-    const file = try std.fs.cwd().openFile(json_path, .{});
+    var path_buf: [std.fs.max_path_bytes]u8 = undefined;
+    const resolved_input = if (opts.input_path) |p|
+        p
+    else
+        findJsonFile(&path_buf) catch |err| {
+            try stderr.print("Error: could not locate default registers.json: {s}\n", .{@errorName(err)});
+            return err;
+        };
+
+    const file = std.fs.cwd().openFile(resolved_input, .{}) catch |err| {
+        try stderr.print("Error opening input file '{s}': {s}\n", .{ resolved_input, @errorName(err) });
+        return err;
+    };
     defer file.close();
 
-    const json_bytes = try file.readToEndAlloc(allocator, 1024 * 1024);
+    const json_bytes = file.readToEndAlloc(allocator, 10 * 1024 * 1024) catch |err| {
+        try stderr.print("Error reading file '{s}': {s}\n", .{ resolved_input, @errorName(err) });
+        return err;
+    };
     defer allocator.free(json_bytes);
 
-    const parsed = try std.json.parseFromSlice(
-        PeripheralDef,
-        allocator,
-        json_bytes,
-        .{ .ignore_unknown_fields = true },
-    );
+    const parsed = generator.parseDefinition(allocator, json_bytes) catch |err| {
+        try stderr.print("Error parsing register definition JSON in '{s}': {s}\n", .{ resolved_input, @errorName(err) });
+        return err;
+    };
     defer parsed.deinit();
 
-    const def = parsed.value;
-    const peri_lower = try toLower(allocator, def.peripheral);
-    defer allocator.free(peri_lower);
-    const peri_upper = try toUpper(allocator, def.peripheral);
-    defer allocator.free(peri_upper);
+    if (opts.output_path) |out_p| {
+        const out_file = std.fs.cwd().createFile(out_p, .{}) catch |err| {
+            try stderr.print("Error creating output file '{s}': {s}\n", .{ out_p, @errorName(err) });
+            return err;
+        };
+        defer out_file.close();
+        try generator.generateC23Header(parsed.value, allocator, out_file.writer());
+    } else {
+        const stdout = std.io.getStdOut().writer();
+        try generator.generateC23Header(parsed.value, allocator, stdout);
+    }
+}
 
-    // Determine smallest fitting integer type for register offsets
-    var max_offset: u64 = 0;
-    for (def.registers) |reg| {
-        const offset_val = try std.fmt.parseInt(u64, reg.offset, 0);
-        if (offset_val > max_offset) {
-            max_offset = offset_val;
+pub fn main() u8 {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer {
+        const check = gpa.deinit();
+        if (check == .leak) {
+            std.log.err("Memory leak detected in reg_gen GeneralPurposeAllocator", .{});
         }
     }
-    const offset_type = determineSmallestType(max_offset);
+    const allocator = gpa.allocator();
 
-    const stdout = std.io.getStdOut().writer();
+    run(allocator) catch return 1;
+    return 0;
+}
 
-    try stdout.print(
-        \\/**
-        \\ * @file {s}_regs.h
-        \\ * @brief {s} Register Definitions
-        \\ *
-        \\ * @copyright Copyright (c) 2026 Brighton Sikarskie
-        \\ * SPDX-License-Identifier: MIT
-        \\ */
-        \\
-        \\#pragma once
-        \\
-        \\#include <stdint.h>
-        \\
-        \\#ifdef __cplusplus
-        \\extern "C" {{
-        \\#endif
-        \\
-        \\/**
-        \\ * @brief {s} Base Address.
-        \\ */
-        \\typedef enum : uintptr_t {{
-        \\  k_{s}_base_addr = {s}UL, /**< Base address for {s}. */
-        \\}} {s}_addr_t;
-        \\
-        \\/**
-        \\ * @brief {s} Register Offsets.
-        \\ */
-        \\typedef enum : {s} {{
-        \\
-    , .{
-        peri_lower,
-        peri_upper,
-        peri_upper,
-        peri_lower,
-        def.base_address,
-        peri_upper,
-        peri_lower,
-        peri_upper,
-        offset_type,
-    });
+// ---------------------------------------------------------------------------
+// Unit Tests
+// ---------------------------------------------------------------------------
 
-    for (def.registers) |reg| {
-        const reg_lower = try toLower(allocator, reg.name);
-        defer allocator.free(reg_lower);
-        try stdout.print("  k_{s}_{s}_offset = {s}U, /**< {s} */\n", .{
-            peri_lower,
-            reg_lower,
-            reg.offset,
-            reg.description,
-        });
-    }
+test "main module references generator tests" {
+    _ = generator;
+}
 
-    try stdout.print(
-        \\}} {s}_offset_t;
-        \\
-        \\/**
-        \\ * @struct {s}_regs_t
-        \\ * @brief {s} register block layout.
-        \\ */
-        \\typedef struct {{
-        \\
-    , .{
-        peri_lower,
-        peri_lower,
-        peri_upper,
-    });
+test "printUsage outputs help text" {
+    var buffer = std.ArrayList(u8).init(std.testing.allocator);
+    defer buffer.deinit();
 
-    for (def.registers) |reg| {
-        const reg_upper = try toUpper(allocator, reg.name);
-        defer allocator.free(reg_upper);
-        try stdout.print("  volatile uint{d}_t {s}; /**< +{s} {s} */\n", .{
-            reg.size,
-            reg_upper,
-            reg.offset,
-            reg.description,
-        });
-    }
+    try printUsage(buffer.writer());
+    try std.testing.expect(std.mem.indexOf(u8, buffer.items, "Usage: reg_gen") != null);
+    try std.testing.expect(std.mem.indexOf(u8, buffer.items, "--help") != null);
+    try std.testing.expect(std.mem.indexOf(u8, buffer.items, "--output") != null);
+}
 
-    try stdout.print(
-        \\}} {s}_regs_t;
-        \\
-        \\/**
-        \\ * @brief Initialize {s} registers struct with C23 zero-initialization.
-        \\ */
-        \\static inline {s}_regs_t {s}_regs_init(void)
-        \\{{
-        \\  {s}_regs_t regs = {{}};
-        \\  return regs;
-        \\}}
-        \\
-        \\#ifdef __cplusplus
-        \\}}
-        \\#endif
-        \\
-    , .{
-        peri_lower,
-        peri_upper,
-        peri_lower,
-        peri_lower,
-        peri_lower,
-    });
+test "parseCliArgs handles valid arguments and options" {
+    var err_buf = std.ArrayList(u8).init(std.testing.allocator);
+    defer err_buf.deinit();
+
+    const args1 = [_][]const u8{ "reg_gen", "-h" };
+    const opts1 = try parseCliArgs(&args1, err_buf.writer());
+    try std.testing.expect(opts1.show_help);
+
+    const args2 = [_][]const u8{ "reg_gen", "-o", "out.h", "regs.json" };
+    const opts2 = try parseCliArgs(&args2, err_buf.writer());
+    try std.testing.expect(!opts2.show_help);
+    try std.testing.expectEqualStrings("out.h", opts2.output_path.?);
+    try std.testing.expectEqualStrings("regs.json", opts2.input_path.?);
+}
+
+test "parseCliArgs error conditions" {
+    var err_buf = std.ArrayList(u8).init(std.testing.allocator);
+    defer err_buf.deinit();
+
+    const args_missing_o = [_][]const u8{ "reg_gen", "-o" };
+    try std.testing.expectError(error.InvalidArguments, parseCliArgs(&args_missing_o, err_buf.writer()));
+
+    const args_unknown = [_][]const u8{ "reg_gen", "--unknown" };
+    try std.testing.expectError(error.InvalidArguments, parseCliArgs(&args_unknown, err_buf.writer()));
+
+    const args_extra = [_][]const u8{ "reg_gen", "file1.json", "file2.json" };
+    try std.testing.expectError(error.InvalidArguments, parseCliArgs(&args_extra, err_buf.writer()));
 }
