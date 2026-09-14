@@ -39,6 +39,7 @@
 /port/**/build/
 /tools/**/build/
 CMakeFiles/
+.zig-cache/
 CMakeCache.txt
 cmake_install.cmake
 compile_commands.json

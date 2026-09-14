@@ -84,6 +84,7 @@ RESERVED_DIR_NAMES = frozenset(
         ".settings",
         ".venv",
         ".vscode",
+        ".zig-cache",
         "CMakeFiles",
         "__pycache__",
         "node_modules",

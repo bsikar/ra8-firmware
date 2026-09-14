@@ -110,9 +110,12 @@ BUILD_TREE_ROOTS = frozenset(
 # directory and are therefore matched at ANY depth. This is the ONLY
 # depth-agnostic rule left, and every name in it is reserved by the tool that
 # creates it: CMake writes CMakeFiles/ and _deps/, CPython writes __pycache__/,
-# npm writes node_modules/. Nobody can legitimately author a source directory
-# with one of these names, so matching them anywhere cannot swallow source.
-TOOL_OUTPUT_DIR_NAMES = frozenset({"CMakeFiles", "_deps", "__pycache__", "node_modules"})
+# Zig writes .zig-cache/, and npm writes node_modules/. Nobody can legitimately
+# author a source directory with one of these names, so matching them anywhere
+# cannot swallow source.
+TOOL_OUTPUT_DIR_NAMES = frozenset(
+    {".zig-cache", "CMakeFiles", "_deps", "__pycache__", "node_modules"}
+)
 
 
 def is_build_dir_name(name: str) -> bool:
@@ -431,6 +434,7 @@ def selftest() -> int:
                 "source build dir is visible",
             ),
             (is_build_output("tools/demo/build/object.o"), "tool build output is excluded"),
+            (is_build_output("apps/host/reg_gen/.zig-cache/cache.zig"), "Zig cache is excluded"),
             (
                 not is_build_output("internal/build/helper.sh"),
                 "non-product build directory is not output",
