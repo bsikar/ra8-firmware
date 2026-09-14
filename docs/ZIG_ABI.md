@@ -292,6 +292,68 @@ the expected result. The required first reusable ABI fixture is implementation
 work owned by #867: it must demonstrate both a recoverable error return and
 that it never relies on panic recovery. #865 remains open until that fixture
 evidence lands.
+## ISR, concurrency, and memory ordering
+
+Every exported function declares one calling-context classification in its
+public header. The default is **task-only, non-reentrant**: it may be called by
+one ordinary caller at a time and never from an ISR. A library does not become
+concurrently callable merely because a host test happens to use threads.
+
+| Classification | Permitted caller | Required contract |
+| --- | --- | --- |
+| **Boot-only** | Single-threaded initialization with relevant IRQs masked. | State the initialization phase and the IRQ-masking or serialization precondition. |
+| **Task-only, non-reentrant** | One ordinary bare-metal main-loop or ThreadX task caller. | State the owning caller or the required external serialization. |
+| **Task-safe** | Concurrent ordinary task callers only. | Name the synchronization owner and the protected state; it is still not ISR-safe. |
+| **ISR-safe** | The documented ordinary caller and the documented ISR(s). | Carry an explicit `RA8_ISR_SAFE` contract in the C declaration and satisfy every ISR rule below. |
+
+An API that needs a lock states who acquires it, its order relative to other
+locks, and whether the caller must hold it on entry. An ISR-safe export never
+acquires a mutex, waits for a lock, sleeps, performs unbounded retry, allocates,
+or invokes a callback, logger, allocator, or transitive C or Zig callee unless
+that exact operation is independently documented as ISR-safe. The full ISR
+call path is reviewed against those same restrictions. It uses only bounded
+work and has an explicit latency budget. Registration, unregistration,
+destruction, and callbacks remain task-only unless a later API contract
+expressly changes that rule.
+
+### Shared state and atomics
+
+Shared state is private implementation state, not an ABI-visible aggregate.
+An adapter may validate and copy a public value, but it must not publish a
+partially synchronized aggregate for another execution context to read.
+Where ordinary callers and an ISR share state, the library chooses exactly one
+reviewed mechanism for each state item: an IRQ-masked critical section with a
+stated mask scope, or a fixed-width naturally aligned atomic with a stated
+access protocol. Mixing uncoordinated atomic, non-atomic, and `volatile`
+accesses to the same state is forbidden.
+
+Each atomic operation names its memory order in code and explains the
+publication relationship in the API or implementation contract. A producer
+that publishes initialized state uses release semantics and its consumer uses
+the matching acquire semantics. A read-modify-write operation that both
+observes and publishes shared state uses acquire-release semantics unless a
+stronger reviewed order is required. Relaxed ordering is permitted only for an
+independent value where no data publication depends on it; the proof is
+documented. Sequential consistency is not the default and requires a reason.
+
+`volatile` is reserved for hardware register access. It neither makes ordinary
+memory atomic nor establishes a happens-before relationship. Compiler barriers,
+CPU barriers, and cache maintenance are hardware-specific operations; they may
+not be substituted for an atomic or lock protocol. An exported MMIO-facing API
+names the register block, privilege/security world, required ordering or
+barrier, target-only behavior, and its host-test seam. Direct public access to
+an MMIO address, native pointer, or register-image aggregate remains forbidden.
+
+### Evidence and review
+
+Each migrated library records its execution-context classification in the C
+header and tests every allowed context. Host tests may exercise task
+interleavings and deterministic atomic protocols, but they do not prove ISR
+latency or target memory ordering. An ISR-safe export additionally requires a
+target review of its bounded work, stack use, interrupt priority interaction,
+and any MMIO/barrier sequence. A migration review rejects an implicit
+host-thread assumption, an unclassified export, or an ISR path that calls a
+task-only API.
 
 ## Allowed scalar values
 
