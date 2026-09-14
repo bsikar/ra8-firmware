@@ -244,6 +244,55 @@ until a later dedicated contract authorizes them. C contract tests cover a
 successful callback, a callback-reported error, cancellation, unregister while
 idle, and destruction ordering.
 
+## Panics, traps, and exported boundaries
+
+An exported adapter is a no-panic boundary for every documented caller input.
+It validates public arguments, capacity, handles, and state before entering
+native Zig, and maps each recoverable failure to the `ra8_err_t` contract. It
+does not use `unreachable`, an unchecked cast, a force unwrap, or a panic to
+report a caller error, allocation exhaustion, unsupported operation, or an
+ordinary hardware/transport failure.
+
+Zig does not provide a general mechanism to catch a panic and safely resume a
+C caller. Therefore the adapter prevents recoverable paths from reaching a
+panic; it does not translate an already-running panic into `k_ra8_fail`. A
+programming defect that violates an internal invariant follows the repository's
+fatal assertion/trap policy and must leave hardware in its documented safe
+state. It is distinct from an invalid C argument and is never hidden by a
+generic error return.
+
+Native Zig code uses explicit error unions for expected failures and the
+adapter exhaustively maps them. Allocation failure is `k_ra8_err_no_mem`.
+Assertions are permitted only for internal invariants after public validation;
+they are not input validation. Diagnostic logging at the boundary records a
+stable public error and context only when its library policy requires it; it
+does not expose Zig panic text or error-set names.
+
+The adapter pattern is an explicit mapping, never `catch unreachable` or an
+escaping `try`:
+
+```zig
+const result = implementation.read(input) catch |err| switch (err) {
+    error.OutOfMemory => return c.k_ra8_err_no_mem,
+    error.InvalidInput => return c.k_ra8_err_invalid_arg,
+    error.NotReady => return c.k_ra8_err_hw_not_ready,
+};
+out.* = result;
+return c.k_ra8_ok;
+```
+
+The internal error set is closed at this boundary. A newly introduced error is
+reviewed and mapped before it can reach an export; it may not fall through to
+an unchecked default or a panic.
+
+Host tests exercise each recoverable adapter failure and prove that it returns
+the documented C result without aborting. Deliberately fatal invariant paths
+are tested only in an isolated process when practical, where termination is
+the expected result. The required first reusable ABI fixture is implementation
+work owned by #867: it must demonstrate both a recoverable error return and
+that it never relies on panic recovery. #865 remains open until that fixture
+evidence lands.
+
 ## Allowed scalar values
 
 Public value parameters, return values, and structure fields may use only the
