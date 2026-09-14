@@ -142,7 +142,7 @@ An API uses one of these terms in its C header and documentation:
 | **Borrowed input** | Caller retains ownership for the duration of the call; the library does not retain the pointer. |
 | **Copied input** | Caller retains ownership; the library has copied all required bytes before success returns. |
 | **Caller-owned output** | Caller owns the destination storage; the library writes it only under the error contract and does not retain it. |
-| **Library-owned output** | The library returns a pointer that must be released by its named matching release function. |
+| **Library-owned output** | The library publishes a pointer through a documented out-parameter; the caller releases it with its named matching release function. |
 | **Retained input** | The library stores caller memory after return; prohibited unless the callback/retention contract explicitly authorizes it. |
 
 Ordinary input spans are borrowed. They pair a fixed-width pointer and length,
@@ -372,16 +372,31 @@ operation or an opaque handle under the ownership contract.
 
 ## Pointers, addresses, and byte order
 
-Pointers are permitted only as function parameters or returns, never as fields
-in public aggregates. They are target-sized and therefore cannot be part of a
-host/RA8-identical value layout, serialized data, persistent state, register
-image, or wire protocol.
+Pointers are permitted only as function parameters, never as direct public
+returns or fields in public aggregates. Data and handles are published through
+documented out-parameters, so ownership, null-on-failure behavior, and release
+responsibility remain visible in the C declaration. Pointers are target-sized
+and therefore cannot be part of a host/RA8-identical value layout, serialized
+data, persistent state, register image, or wire protocol.
 
-The only initial pointer forms are pointers to fixed-width byte data and
-pointers to a forward-declared opaque C type. Nullability, lifetime,
-mutability, buffer lengths, and ownership are not implied by the type spelling
-and must be specified by the ownership contract before the API is exposed.
-Function pointers are callbacks and wait for the callback contract.
+The initial public function-parameter pointer forms are limited to:
+
+- fixed-width byte data for a documented borrowed input or caller-owned output
+  span;
+- a public fixed-width scalar or public aggregate for a documented borrowed
+  input or caller-owned output value;
+- a forward-declared opaque C type, including an out-parameter used to publish
+  a newly created handle;
+- an indirect out-parameter that publishes library-owned byte data or an
+  opaque handle, such as `uint8_t** out_bytes` or `ra8_sample_t** out_handle`,
+  under the ownership and release rules above; and
+- a documented callback function pointer and its `void*` context under the
+  callback contract.
+
+Every pointer declaration states its nullability, lifetime, mutability, buffer
+length or aggregate role, and ownership. Those properties are not implied by
+the pointer spelling. Pointers to native Zig structures are never public;
+function pointers are callbacks and wait for the callback contract.
 
 `uintptr_t`, `intptr_t`, casts between pointers and integers, and pointers to
 native Zig structures are prohibited in the public ABI. A hardware address,
