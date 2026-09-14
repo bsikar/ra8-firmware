@@ -6,10 +6,10 @@ This document defines the physical boundary for a first-party library migrated
 from C to Zig. It keeps the repository's consumers in C, makes the C ABI
 deliberate, and gives native Zig implementation code a clean place to grow.
 
-This is a layout convention. Each migration must define its ABI representation
-contract, including scalar and aggregate representation plus error and output
-behavior. Ownership, callbacks, traps, and concurrency are specified by their
-respective issues before a migrated library exposes them.
+This is a layout convention. The [ABI representation contract](ZIG_ABI.md)
+defines scalar and aggregate representation plus error and output behavior.
+Ownership, callbacks, traps, and concurrency are specified before a migrated
+library exposes them.
 
 ## Library layout
 
