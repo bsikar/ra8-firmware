@@ -179,7 +179,10 @@ and runtime acceptance path.
    build graph.
 5. Add a C acceptance test that uses only the public header and artifact.
 6. Apply the foundation policies for representation, failures, ownership,
-   callbacks, traps, and concurrency before exposing those categories.
+   callbacks, traps, and concurrency before exposing those categories. Every
+   export declares its calling-context classification; reject an implicit
+   host-thread assumption, an unclassified export, or an ISR path that reaches
+   a task-only API.
 
 The reusable ABI harness, policy enforcement, and migration review checklist
 are deliberately follow-on work. This document makes their physical targets
