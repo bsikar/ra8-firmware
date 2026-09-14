@@ -11,8 +11,120 @@ the host and the 32-bit RA8 target. A convenient target-local representation is
 not allowed at the boundary when it would make width, alignment, signedness, or
 calling behavior depend on the consumer's architecture.
 
-This document covers representation only. Error reporting, ownership,
-callbacks, panic containment, and concurrency have separate contracts.
+This document covers representation and error reporting. Ownership, callbacks,
+panic containment, and concurrency have separate contracts.
+
+## Error and output contract
+
+Every exported C ABI function that can fail returns `ra8_err_t` from
+`libs/ra8_core/inc/ra8_err.h`. `k_ra8_ok` is the only success value. A Zig
+adapter maps every recoverable implementation failure to one documented
+`k_ra8_err_*` value; it never exports a Zig error union, error-set member,
+optional-as-status convention, or panic representation.
+
+An exported function that cannot fail may return `void` only when it has no
+input validation, allocation or capacity dependency, external operation, or
+observable failure mode. If any such condition can arise, it returns
+`ra8_err_t`. A function's return value is its sole mandatory error channel:
+there is no ABI-visible `errno`, last-error global, thread-local error, or
+diagnostic string that callers must inspect.
+
+### Mapping Zig failures to `ra8_err_t`
+
+The adapter owns a closed, reviewed mapping from internal Zig failures to the
+existing public vocabulary. Map to the most specific existing code; do not
+expose a library-private integer or collapse a known cause into `k_ra8_fail`.
+
+| Failure class | Public result | Retry rule |
+| --- | --- | --- |
+| Required pointer is absent | `k_ra8_err_null_ptr` | Not retryable until the caller supplies it. |
+| Length, capacity, alignment, or encoded-size limit is invalid | `k_ra8_err_invalid_size` | Not retryable until corrected. |
+| Other malformed or inconsistent input | `k_ra8_err_invalid_arg` | Not retryable until corrected. |
+| Unsupported feature or configuration | `k_ra8_err_not_supported` | Not retryable without a different capability or build. |
+| Fixed pool or bounded workspace exhausted | `k_ra8_err_no_mem` | Retry only after capacity is released or the input changes. |
+| Resource is busy, data is absent, or a nonblocking action would block | `k_ra8_err_busy`, `k_ra8_err_no_data`, or `k_ra8_err_would_block` | Retry after the documented external condition changes. |
+| Device is not ready | `k_ra8_err_hw_not_ready` | Retry only after the documented readiness transition. |
+| Timeout | `k_ra8_err_timeout` or `k_ra8_err_hw_timeout` | Retryability and side effects must be stated by the API. |
+| Known transport, validation, hardware, or state failure | The matching specific `k_ra8_err_*` value | Stated by the API; do not infer safety from the category. |
+| Reviewed internal failure with no public equivalent | `k_ra8_fail` | Not retryable unless the API explicitly says otherwise. |
+
+Adding a genuinely new public error needs an explicit numeric member in
+`ra8_err_t`, documentation, and ABI review. It is not acceptable to cast a
+Zig error ordinal, use an unrecognized numeric value, or add a library-local
+status enumeration at the C boundary.
+
+### Validation order and no-write default
+
+The adapter validates the entire public argument tuple before invoking the
+implementation or writing an output. It uses this fixed precedence:
+
+1. Required output pointers are checked first.
+2. Other required pointers are checked second.
+3. Length, capacity, alignment, and range checks follow.
+4. Cross-argument semantic checks follow.
+5. Only then may the implementation run and publish outputs.
+
+For every non-success result, the default is **no published output**: scalar
+and aggregate output objects retain their incoming bytes, output counts retain
+their incoming values, and output buffers are not modified. The adapter must
+compute into native temporary state and copy to caller storage only after the
+operation succeeds. This lets C tests initialize outputs to sentinels and
+assert each failure path without interpreting Zig state.
+
+An API that cannot meet this transactional default must be explicitly named
+and documented as a partial-result operation. Its public header identifies
+which output prefix is valid on each non-success code, sets an output count to
+the exact valid prefix length, and describes input consumption and retry
+semantics. A partial-result API is never inferred from an ordinary
+pointer-and-length signature.
+
+### Pointer, length, and output combinations
+
+For an ordinary input byte span, a null data pointer is permitted only when its
+length is zero; it denotes an empty span and is never dereferenced. A nonzero
+length with a null data pointer returns `k_ra8_err_null_ptr`. A length beyond
+the documented maximum returns `k_ra8_err_invalid_size`, with no output write.
+
+An ordinary scalar or aggregate output pointer is always required. A null
+output pointer returns `k_ra8_err_null_ptr` before any other argument is
+examined, and all other outputs remain unchanged. Do not use a null output
+pointer as an undocumented request to discard a result.
+
+For an output byte span, a non-null destination is required whenever capacity
+is nonzero. A null destination with zero capacity is permitted only for a
+header-documented sizing-query form that also supplies a required output-size
+pointer; otherwise it returns `k_ra8_err_null_ptr`. Insufficient capacity
+returns `k_ra8_err_invalid_size` and writes neither the destination nor any
+output count under the no-write default.
+
+The header documents any intentional exception to these rules in the function
+contract, including the exact validation precedence. An exception still uses a
+public `ra8_err_t` result and must be covered by C acceptance tests.
+
+### Retryability, side effects, and diagnostics
+
+An error code alone does not promise that replaying a call is safe. Each
+fallible function documents, for every non-success code, whether it performed
+no side effect, may have changed internal state, may be retried immediately,
+or requires an external event, reset, or new input. `k_ra8_err_cancelled`
+retains its existing atomic-cancellation meaning: no public operation effect
+was committed.
+
+Expected caller mistakes and ordinary recoverable conditions are reported by
+the return code and are not automatically logged by the Zig adapter. Logging a
+recoverable error requires an actionable event, rate policy, and ownership in
+the library contract; the log must use stable public diagnostics rather than
+an internal Zig error name. Fatal traps and panic containment are handled by
+the separate panic-boundary contract, not represented as `ra8_err_t` by
+default.
+
+### Adapter rule
+
+The adapter performs the public validation and maps only reviewed internal
+failure cases. It publishes each output after success and returns
+`k_ra8_ok` last. Native Zig modules may use error unions internally, but those
+types stop at the adapter. The reusable ABI harness will compile C callers
+that exercise every mapped failure, output sentinel, and pointer-length case.
 
 ## Allowed scalar values
 
