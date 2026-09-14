@@ -45,6 +45,8 @@ gate_unit_tests() (
   # instead. A gate must never be able to report "nothing to run" as success.
   require_cmd cmake "apt-get install -y cmake"
   require_cmd ctest "ships with cmake; check the cmake install"
+  require_cmd zig "the Zig ABI fixture is compiled by the unit-tests gate"
+  require_tool_versions zig
   bash tests/build_tests.sh
   bash tests/run_tests.sh
 )
