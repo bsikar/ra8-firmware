@@ -510,38 +510,7 @@ _pcc_docs_and_tests() (
 )
 
 _pcc_run_all() {
-  local -a failures=()
-  local label helper status output_file restore_errexit=0
-  [[ $- == *e* ]] && restore_errexit=1
-  while (($# >= 2)); do
-    label="$1"
-    shift
-    helper="$1"
-    output_file="$(mktemp)"
-    set +e
-    "$helper" >"$output_file" 2>&1
-    status=$?
-    if ((restore_errexit)); then
-      set -e
-    fi
-    if ((status != 0)); then
-      failures+=("${label} (exit ${status})")
-      printf 'pre-commit-checks: failed subcheck %s [exit %s]; output follows:\n' \
-        "$label" "$status"
-    fi
-    cat "$output_file"
-    if ((status != 0)); then
-      printf 'pre-commit-checks: end of failed subcheck %s\n' "$label"
-    fi
-    rm -f "$output_file"
-    shift
-  done
-  if ((${#failures[@]} == 0)); then
-    return 0
-  fi
-  printf 'pre-commit-checks: %d subcheck(s) failed:\n' "${#failures[@]}" >&2
-  printf '  - %s\n' "${failures[@]}" >&2
-  return 1
+  ci_run_all "$@"
 }
 
 _pcc_git_environment_selftest() {
@@ -612,7 +581,7 @@ gate_pre_commit_checks() (
 # closed. Missing PyYAML is a hard dependency failure, never a skipped audit.
 gate_suppressions() (
   set -e
-  require_python_mod yaml "run 'just setup-python'"
+  require_python_mod yaml "run 'just setup_python'"
   python3 scripts/checks/check_suppressions.py --selftest
   python3 scripts/checks/suppression_rebind.py --selftest
   python3 scripts/checks/check_suppressions.py --check
@@ -795,7 +764,7 @@ gate_bench_lock() (
 gate_annotations() (
   set -e
   require_python_mod clang.cindex \
-    "Run 'just setup-python' locally; CI/container use the same uv lock."
+    "Run 'just setup_python' locally; CI/container use the same uv lock."
   # Regression-test the checker itself before trusting its verdict.
   python3 scripts/checks/check_annotations.py --selftest
   python3 scripts/checks/check_annotations.py --check
@@ -808,7 +777,7 @@ gate_annotations() (
 gate_enum_underlying_casts() (
   set -e
   require_python_mod clang.cindex \
-    "Run 'just setup-python' locally; CI/container use the same uv lock."
+    "Run 'just setup_python' locally; CI/container use the same uv lock."
   python3 scripts/checks/check_enum_underlying_casts.py --selftest
   python3 scripts/checks/check_enum_underlying_casts.py --all
 )
@@ -822,7 +791,7 @@ gate_enum_underlying_casts() (
 gate_doc_attachment() (
   set -e
   require_python_mod clang.cindex \
-    "Run 'just setup-python' locally; CI/container use the same uv lock."
+    "Run 'just setup_python' locally; CI/container use the same uv lock."
   # Regression-test the checker itself, in BOTH directions, before trusting its
   # verdict: every defect class must fire, and the legal-but-tricky forms
   # (@copydoc, the CLAUDE.md definition-site one-liner, macro-generated

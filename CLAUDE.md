@@ -41,6 +41,21 @@ maintained once instead of copied into two files.
   Keil project files are NOT checked in.
 - **Reference material lives in `docs/reference/`**: the RA8D2 datasheet, Hardware User's Manual, technical brief, and high-temperature-operation app note are committed so they are always at hand.
 
+### Planned Zig library migration
+
+First-party libraries will progressively migrate from C implementations to
+Zig. C host tests remain the language-independent acceptance suite, and Rust
+HIL examples will exercise the same C ABI as their C counterparts. The C ABI
+is a narrow, documented unsafe membrane; it must not force C-like types,
+pointer conventions, or ownership practices into internal Zig modules.
+
+AI-assisted Zig changes require explicit human review of ownership, pointer
+escape, cleanup on every failure path, interrupt/concurrency constraints, and
+ABI representation. A green test suite is necessary evidence, not proof that
+a bulk AI rewrite has a sound ownership model. Follow
+[`docs/ZIG_MIGRATION.md`](docs/ZIG_MIGRATION.md) for the binding migration,
+ABI, and verification rules.
+
 ### Useful External Resources
 
 These are **reference-only** -- do not copy code from them into this repo without rewriting under this project's style rules.
@@ -56,7 +71,7 @@ These are **reference-only** -- do not copy code from them into this repo withou
 ## Quick Reference Commands
 
 - **Build the entire repository**: `just build_all`
-- **Enter the pinned development toolchain**: `just dev-shell`
+- **Enter the pinned development toolchain**: `just dev_shell`
 - **Build specific app**: `just apps::build <app>` (e.g., `just apps::build blink_hal`)
 - **List discovered firmware examples**: `just apps::example::list`
 - **Run host unit tests**: `just quality::gate::run unit-tests` (portable);

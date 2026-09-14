@@ -9,12 +9,12 @@ default:
     @echo "HOST APPS - Standalone Desktop Applications"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just apps::host::build <app|all>             Build a host application (or 'all')"
-    @echo "  just apps::host::clean <app|all>             Remove host application build artifacts"
-    @echo "  just apps::host::new <name>                  Scaffold a new host application"
-    @echo "  just apps::host::run <app> args=\"\"           Run a host application CLI"
-    @echo "  just apps::host::list                        List all discovered host applications"
-    @echo "  just apps::host::search <keyword>            Search host applications by keyword"
+    @echo "  just apps::host::build <app|all>    Build a host application (or 'all')"
+    @echo "  just apps::host::clean <app|all>    Remove host application build artifacts"
+    @echo "  just apps::host::new <name>         Scaffold a new host application"
+    @echo "  just apps::host::run <app> args=\"\"  Run a host application CLI"
+    @echo "  just apps::host::list               List all discovered host applications"
+    @echo "  just apps::host::search <keyword>   Search host applications by keyword"
     @echo ""
 
 # List all standalone host applications

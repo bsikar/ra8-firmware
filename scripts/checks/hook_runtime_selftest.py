@@ -899,7 +899,7 @@ def _policy_case(base: Path, name: str, hooks_text: str) -> bool:
             str(root / "justfile"),
             "--working-directory",
             str(root),
-            "git_hooks::pre-commit",
+            "git_hooks::pre_commit",
         ],
         cwd=root,
         env=environment,

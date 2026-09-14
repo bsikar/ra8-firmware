@@ -58,7 +58,7 @@ working container runtime (`podman`, `docker`, or `nerdctl`; macOS Docker uses
 Colima). `just setup` creates the ignored repository-local `.venv`, installs
 the exact Python lock and Galaxy collections, configures the tracked hooks,
 and refreshes the pinned `ra8-ci` image. It never installs into the system
-Python. Re-run `just setup-python` when only Python or hooks need refreshing.
+Python. Re-run `just setup_python` when only Python or hooks need refreshing.
 Windows development uses WSL2. See `docs/PYTHON_ENVIRONMENTS.md` for lock
 maintenance and managed environment ownership.
 

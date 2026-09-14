@@ -461,7 +461,7 @@ Source: ``examples/ek_ra8d2/hw_pending/import_reader/src/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/imu_lsm6dso_demo/src/main.c``
 
-- L502: ra8_lsm6dso_init  (rank 100)
+- L501: ra8_lsm6dso_init  (rank 100)
 
 ### lin_commander_hil
 
@@ -1183,8 +1183,8 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_levelx_demo/src/main.c``
 
 Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_mpu_partition_demo/src/main.c``
 
-- L260: ra8_cgc_init  (rank 10)
-- L272: ra8_board_led_init  (rank 100)
+- L259: ra8_cgc_init  (rank 10)
+- L271: ra8_board_led_init  (rank 100)
 
 ### threadx_netx_tcp_echo
 

@@ -8,27 +8,32 @@ default:
     @echo "These commands run NATIVELY on your host machine."
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just quality::local::gate <name>                   Run a specific CI gate natively by name"
-    @echo "  just quality::local::format                        Auto-format source code in place"
-    @echo "  just quality::local::check                         Verify formatting without modifying files"
-    @echo "  just quality::local::tidy                          Run clang-tidy static analysis"
-    @echo "  just quality::local::cppcheck                      Run cppcheck static analysis"
-    @echo "  just quality::local::misra                         Run MISRA-C:2012 compliance audit"
-    @echo "  just quality::local::scan_build                    Run Clang Static Analyzer"
-    @echo "  just quality::local::test                          Run host unit test suite"
-    @echo "  just quality::local::coverage                      Run whole-tree coverage gate"
-    @echo "  just quality::local::mcdc                          Generate DO-178C MC/DC coverage report"
-    @echo "  just quality::local::fuzz [seconds] [runs]         Smoke-run every libFuzzer harness"
-    @echo "  just quality::local::stack_usage                   Build firmware and enforce stack budgets"
-    @echo "  just quality::local::sbom                          Regenerate the committed CycloneDX SBOM"
-    @echo "  just quality::local::sbom_check                    Verify the committed CycloneDX SBOM"
-    @echo "  just quality::local::misra_baseline                Freeze MISRA burn-down on the pinned toolchain"
-    @echo "  just quality::local::vela_check                    Verify the generated Vela model header"
-    @echo "  just quality::local::vela_regen                    Regenerate the fake Vela model header"
-    @echo "  just quality::local::vela_compile <tflite> [out]   Compile a TFLite model with Vela"
-    @echo "  just quality::local::bench                         Run host microbenchmarks"
-    @echo "  just quality::local::ascii                         Check ASCII encoding across files"
-    @echo "  just quality::local::version                       Verify @since version annotations"
+    @echo "  just quality::local::gate <name>                  Run a specific CI gate natively by name"
+    @echo "  just quality::local::format                       Auto-format source code in place"
+    @echo "  just quality::local::check                        Verify formatting without modifying files"
+    @echo "  just quality::local::tidy                         Run clang-tidy static analysis"
+    @echo "  just quality::local::cppcheck                     Run cppcheck static analysis"
+    @echo "  just quality::local::misra                        Run MISRA-C:2012 compliance audit"
+    @echo "  just quality::local::scan_build                   Run Clang Static Analyzer"
+    @echo "  just quality::local::test                         Run host unit test suite"
+    @echo "  just quality::local::coverage                     Run whole-tree coverage gate"
+    @echo "  just quality::local::mcdc                         Generate DO-178C MC/DC coverage report"
+    @echo "  just quality::local::fuzz [seconds] [runs]        Smoke-run every libFuzzer harness"
+    @echo "  just quality::local::stack_usage                  Build firmware and enforce stack budgets"
+    @echo "  just quality::local::sbom                         Regenerate the committed CycloneDX SBOM"
+    @echo "  just quality::local::sbom_check                   Verify the committed CycloneDX SBOM"
+    @echo "  just quality::local::misra_baseline               Freeze MISRA burn-down on the pinned toolchain"
+    @echo "  just quality::local::vela_check                   Verify the generated Vela model header"
+    @echo "  just quality::local::vela_regen                   Regenerate the fake Vela model header"
+    @echo "  just quality::local::vela_compile <tflite> [out]  Compile a TFLite model with Vela"
+    @echo "  just quality::local::bench                        Run host microbenchmarks"
+    @echo "  just quality::local::ascii                        Check ASCII encoding across files"
+    @echo "  just quality::local::version                      Verify @since version annotations"
+    @echo "  just quality::local::test_go                      Run Go tests through the CI gate"
+    @echo "  just quality::local::unused_includes              Check for unused C includes"
+    @echo "  just quality::local::auto_sync                    Run suppression auto-sync"
+    @echo "  just quality::local::review_suppressions          Review draft suppressions"
+    @echo "  just quality::local::bless_scope                  Bless checker scope"
 
 # Run every first-party formatter in place: C (clang-format), Go (gofmt),
 # Python (ruff format), shell (shfmt), CMake (cmake-format), justfiles.
@@ -51,7 +56,7 @@ cppcheck:
     /bin/bash -p scripts/checks/cppcheck.sh
 
 # Check for genuinely unused C includes via speculative compilation
-unused-includes:
+unused_includes:
     "{{ just_executable() }}" quality::local::gate unused-includes
 
 # Check file encodings for non-ASCII characters
@@ -75,10 +80,8 @@ test ubsan="0":
         bash tests/run_tests.sh
     fi
 
-test-go:
+test_go:
     "{{ just_executable() }}" quality::local::gate test-go
-
-alias test_go := test-go
 
 # Generate DO-178C Level B MC/DC coverage report
 mcdc:
@@ -106,8 +109,6 @@ stack_usage:
     "{{ just_executable() }}" quality::local::gate build-cross
     "{{ just_executable() }}" quality::local::gate stack-usage
 
-alias stack-usage := stack_usage
-
 # Run MISRA-C:2012 audit
 misra check="0":
     #!/usr/bin/env bash
@@ -125,25 +126,17 @@ misra_baseline:
     bash scripts/checks/misra_check_inner.sh
     python3 scripts/checks/misra_ratchet.py --update
 
-alias misra-baseline := misra_baseline
-
 # Automatically update cryptographic hashes and append missing suppressions to the ledger
-auto-sync:
+auto_sync:
     python3 scripts/dev/auto_sync.py
 
-alias auto_sync := auto-sync
-
 # Interactively approve draft suppressions and generate a review batch
-review-suppressions:
+review_suppressions:
     python3 scripts/dev/review_suppressions.py
 
-alias review_suppressions := review-suppressions
-
 # Bless new checker scope authorities (automatically updates the hardcoded cryptographic ledger)
-bless-scope:
+bless_scope:
     python3 scripts/checks/suppression_checker_scope.py --update
-
-alias bless_scope := bless-scope
 
 # Regenerate or verify the committed third-party CycloneDX inventory.
 sbom:
@@ -152,23 +145,15 @@ sbom:
 sbom_check:
     /bin/bash -p scripts/ci.sh --gate sbom
 
-alias sbom-check := sbom_check
-
 # Verify, regenerate, or compile an Arm Ethos-U Vela model artifact.
 vela_check:
     python3 tools/vela/src/vela_gen.py check tools/vela/models/npu_addk_fake.json tools/vela/generated/ra8_npu_model_addk_fake.h
 
-alias vela-check := vela_check
-
 vela_regen:
     python3 tools/vela/src/vela_gen.py emit tools/vela/models/npu_addk_fake.json -o tools/vela/generated/ra8_npu_model_addk_fake.h
 
-alias vela-regen := vela_regen
-
 vela_compile tflite out="build/vela":
     python3 tools/vela/src/vela_gen.py compile "{{ tflite }}" -o "{{ out }}"
-
-alias vela-compile := vela_compile
 
 # Run Clang Static Analyzer (scan-build)
 scan_build strict="0":
@@ -179,8 +164,6 @@ scan_build strict="0":
     else
         bash scripts/checks/scan_build.sh
     fi
-
-alias scan-build := scan_build
 
 # Run host microbenchmarks
 bench:

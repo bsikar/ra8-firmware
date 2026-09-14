@@ -9,9 +9,10 @@ default:
     @echo "EXAMPLES - Firmware Examples and Reference Code"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just apps::example::build <name|all>         Build a firmware example (or 'all')"
-    @echo "  just apps::example::list                     List all firmware examples"
-    @echo "  just apps::example::search <keyword>         Search firmware examples by keyword"
+    @echo "  just apps::example::build <name|all>  Build a firmware example (or 'all')"
+    @echo "  just apps::example::list              List all firmware examples"
+    @echo "  just apps::example::search <keyword>  Search firmware examples by keyword"
+    @echo "  just apps::example::new <name>        Scaffold a new firmware example"
     @echo ""
 
 # Build a firmware example (or 'all')

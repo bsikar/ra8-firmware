@@ -67,7 +67,7 @@ if [[ "$-" == *p* ]]; then
     export PATH="$root/.venv/bin:$PATH"
   fi
   exec /bin/bash -p "$root/scripts/dev/run_just.sh" --justfile "$root/justfile" \
-    --working-directory "$root" git_hooks::pre-push "$@"
+    --working-directory "$root" git_hooks::pre_push "$@"
 else
   [[ "$-" == *p* ]]
 fi

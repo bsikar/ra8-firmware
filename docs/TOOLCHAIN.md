@@ -59,11 +59,11 @@ bootstrap prerequisites. It:
 4. asks `scripts/ci/devcontainer_image.sh` to build or refresh `ra8-ci:latest`
    from the tightly allowlisted locked root context.
 
-`just dev-shell` enters that image with the checkout mounted read-write, so
+`just dev_shell` enters that image with the checkout mounted read-write, so
 the compiler and analyzer installation created by `just setup` is immediately
 usable for ordinary development commands without modifying host packages.
 
-No step writes into the host's system Python. Use `just setup-python` for the
+No step writes into the host's system Python. Use `just setup_python` for the
 lighter Python-and-hooks refresh when the container image is already current.
 Linux fleet machines remain provisioned through the declared Ansible roles;
 macOS emulator-only native dependencies remain owned by
@@ -179,7 +179,7 @@ CI pins ruff==**0.15.19**, shfmt **v3.13.1**, shellcheck **v0.11.0**. The dev bo
 ships ruff from `/opt/ra8-python-tools` and the native shell tools from
 `/usr/local/bin`, all at the Dockerfile versions, so
 `just quality::local::gate lint-py-shell` on dev is CI-faithful. Local
-`just setup-python` installs the ruff pin in `.venv`; `just setup` also ensures
+`just setup_python` installs the ruff pin in `.venv`; `just setup` also ensures
 the devcontainer containing the two native shell tools.
 
 Native release binaries are pinned by version **and** a per-architecture
@@ -198,7 +198,7 @@ changes which `clang-tidy` and `gcovr` you get (#333). Always use
 
 The `lint-cmake` and `lint-yaml` gates (#362) pin `cmakelang`==**0.6.13**
 (which provides both `cmake-format` and `cmake-lint`), `yamllint`==**1.37.1**
-and `actionlint` **v1.7.7**. `just setup-python` installs the Python tools in
+and `actionlint` **v1.7.7**. `just setup_python` installs the Python tools in
 the repository-local `.venv`; the devcontainer, runner, and provisioned dev box
 install their Python tools in `/opt/ra8-python-tools`. `actionlint` is installed
 as a pinned native binary in those managed environments. The non-Python

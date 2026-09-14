@@ -3,8 +3,8 @@
 Just is the public interface for Python setup. Run `just setup` on a new
 checkout to create the locked project environment, install the git hooks and
 exact Ansible Galaxy collections, and prepare the pinned compiler image. Run
-`just setup-python` when only `.venv` and the hooks need refreshing, or
-`just setup-ansible` when the Python environment and Galaxy collections are
+`just setup_python` when only `.venv` and the hooks need refreshing, or
+`just setup_ansible` when the Python environment and Galaxy collections are
 needed without building the compiler image.
 
 No setup path writes to the system Python. Do not use system `pip`, override

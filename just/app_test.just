@@ -7,11 +7,11 @@ default:
     @echo "APP TESTS - Host Application Unit & Integration Tests"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just apps::test::run <app|all>               Run unit tests for a host application"
-    @echo "  just apps::test::integration                 Run integration tests combining tools"
-    @echo "  just apps::test::clean <app|all>             Remove test build artifacts"
-    @echo "  just apps::test::list                        List testable host applications"
-    @echo "  just apps::test::search <keyword>            Search testable host applications"
+    @echo "  just apps::test::run <app|all>     Run unit tests for a host application"
+    @echo "  just apps::test::integration       Run integration tests combining tools"
+    @echo "  just apps::test::clean <app|all>   Remove test build artifacts"
+    @echo "  just apps::test::list              List testable host applications"
+    @echo "  just apps::test::search <keyword>  Search testable host applications"
     @echo ""
 
 # List all testable host applications

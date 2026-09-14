@@ -118,7 +118,7 @@ if [[ "$-" == *p* ]]; then
   fi
 
   if [ ! -x "${PYTHON}" ] || [ ! -x "${ANSIBLE_PLAYBOOK}" ]; then
-    echo "error: locked Ansible environment is absent; run 'just setup-python'" >&2
+    echo "error: locked Ansible environment is absent; run 'just setup_python'" >&2
     exit 2
   fi
 

@@ -278,7 +278,7 @@ alias that existed on the Mac, which had no ansible, while the dev box had
 ansible and could resolve none of them (#526). `infra/fleet.yml` now carries
 each machine's real address, `fleet.py` builds every command from it, and
 `just infra::ssh_config` generates the friendly aliases -- so becoming a control
-node is `just setup-ansible`; Ansible core comes from `uv.lock` and
+node is `just setup_ansible`; Ansible core comes from `uv.lock` and
 Galaxy collections come from `infra/ansible/requirements.yml`.
 `just infra::doctor` says
 which half you are missing.
@@ -291,7 +291,7 @@ The dev box is also the trusted control node for ordinary-runner convergence.
 A system timer executes a root-owned, operator-promoted repository snapshot
 every six hours, with `k3s-pve` first and the persistent Docker/WSL consumers
 afterward. No GitHub Actions job receives the fleet SSH authority. Inspect it
-with `just infra::reconcile-status`; run the same decision path read-only with
+with `just infra::reconcile_status`; run the same decision path read-only with
 `just infra::reconcile`.
 
 ---

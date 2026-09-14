@@ -236,7 +236,7 @@ A control node needs two things, and neither is a hand-copied ~/.ssh/config any
 more -- every address is declared in infra/fleet.yml and every command here is
 built from it (#526):
 
-  1. ansible        `just setup-ansible` (uv-locked Python plus exact Galaxy collections)
+  1. ansible        `just setup_ansible` (uv-locked Python plus exact Galaxy collections)
   2. a key each declared host accepts for its declared login user
 
 Then `just infra::setup` writes the git-ignored inventory, and

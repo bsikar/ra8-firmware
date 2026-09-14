@@ -7,8 +7,8 @@ default:
     @echo "CI GATES - Operations"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just quality::gate::list                     List all available CI gates"
-    @echo "  just quality::gate::run <name>               Run one gate in the supported host environment"
+    @echo "  just quality::gate::list        List all available CI gates"
+    @echo "  just quality::gate::run <name>  Run one gate in the supported host environment"
 
 list:
     #!/usr/bin/env python3

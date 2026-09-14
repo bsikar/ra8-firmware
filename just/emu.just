@@ -9,18 +9,18 @@ default:
     @echo "EMULATOR - macOS Unicorn CPU Simulation & Profiling"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just apps::emulator::run <app>               Run app in emulator with live window view"
-    @echo "  just apps::emulator::gui                     Launch interactive E-Reader desktop GUI"
-    @echo "  just apps::emulator::setup                   Install macOS host dependencies"
-    @echo "  just apps::emulator::matrix                  Run headless emulator matrix test suite"
-    @echo "  just apps::emulator::matrix_triage           Triage failures from last matrix run"
-    @echo "  just apps::emulator::matrix_baseline         Update matrix ratchet baseline"
-    @echo "  just apps::emulator::eil [app] [jobs]        Run Emulated Hardware-In-The-Loop tests"
-    @echo "  just apps::emulator::golden                  Check e-reader chrome golden images"
-    @echo "  just apps::emulator::golden_update           Update e-reader chrome golden images"
-    @echo "  just apps::emulator::profile <app>           Generate flamechart execution profile"
-    @echo "  just apps::emulator::list                    List all apps capable of being emulated"
-    @echo "  just apps::emulator::search <keyword>        Search emulatable apps by keyword"
+    @echo "  just apps::emulator::run <app>         Run app in emulator with live window view"
+    @echo "  just apps::emulator::gui               Launch interactive E-Reader desktop GUI"
+    @echo "  just apps::emulator::setup             Install macOS host dependencies"
+    @echo "  just apps::emulator::matrix            Run headless emulator matrix test suite"
+    @echo "  just apps::emulator::matrix_triage     Triage failures from last matrix run"
+    @echo "  just apps::emulator::matrix_baseline   Update matrix ratchet baseline"
+    @echo "  just apps::emulator::eil [app] [jobs]  Run Emulated Hardware-In-The-Loop tests"
+    @echo "  just apps::emulator::golden            Check e-reader chrome golden images"
+    @echo "  just apps::emulator::golden_update     Update e-reader chrome golden images"
+    @echo "  just apps::emulator::profile <app>     Generate flamechart execution profile"
+    @echo "  just apps::emulator::list              List all apps capable of being emulated"
+    @echo "  just apps::emulator::search <keyword>  Search emulatable apps by keyword"
     @echo ""
 
 # List all emulatable apps
@@ -97,13 +97,9 @@ matrix:
 matrix_triage:
     bash scripts/emu/matrix_triage.sh
 
-alias matrix-triage := matrix_triage
-
 # Update the emulator matrix ratchet baseline
 matrix_baseline:
     bash scripts/emu/matrix.sh --baseline
-
-alias matrix-baseline := matrix_baseline
 
 # Run EIL (Emulated Hardware-In-The-Loop), optionally for one app / worker count
 eil app="" jobs="":

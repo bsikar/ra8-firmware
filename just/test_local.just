@@ -3,12 +3,19 @@
 
 set working-directory := ".."
 
-default name="":
+default:
+    @echo "TESTS::LOCAL - Native host test runner"
+    @echo ""
+    @echo "COMMANDS:"
+    @echo "  just tests::local::run <name|all>  Run a test or selector natively"
+    @echo ""
+
+run name="":
     #!/usr/bin/env bash
     set -euo pipefail
     if [ -z "{{ name }}" ]; then
         echo "Error: Please specify a test name or regex (or 'all')." >&2
-        echo "Usage: just tests::local <name|all>" >&2
+        echo "Usage: just tests::local::run <name|all>" >&2
         exit 2
     fi
     "{{ just_executable() }}" tests::build

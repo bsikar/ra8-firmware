@@ -78,7 +78,7 @@ def update_ledger() -> None:
     new_content.extend(ledger_dict[k] for k in sorted(ledger_dict.keys()))
 
     ledger_path.write_text("\n".join(new_content) + "\n", encoding="utf-8")
-    print("==> Ledger updated. Run 'just quality::local::review-suppressions' to approve them.")
+    print("==> Ledger updated. Run 'just quality::local::review_suppressions' to approve them.")
 
 
 def main() -> None:

@@ -4,7 +4,7 @@
 # Root justfile for ra8-firmware.
 # Run `just` or `just --list` for available commands.
 
-set dotenv-load := true
+set dotenv-load
 set shell := ["/bin/bash", "-puc"]
 
 export BASH_ENV := "/dev/null"
@@ -35,47 +35,49 @@ mod git_hooks "just/hooks.just"
 default:
     @echo ""
     @echo "DOMAIN SUBMODULES (Run any command below to explore its tools):"
-    @echo "  just apps                                   Applications and Examples repository"
-    @echo "  just libs                                   Firmware libraries"
-    @echo "  just tests                                  Host Unit & Integration Tests"
-    @echo "  just hil                                    Remote Pi hardware-in-the-loop bench"
-    @echo "  just quality                                CI gates, static analysis, and sanitizers"
-    @echo "  just tools                                  Desktop utilities and developer tooling"
-    @echo "  just docs                                   Doxygen HTML docs and audits"
-    @echo "  just workspace                              Isolated git agent workspaces"
-    @echo "  just work                                   Plans and canonical task workspaces"
-    @echo "  just infra                                  Ansible fleet infrastructure"
+    @echo "  just apps              Applications and Examples repository"
+    @echo "  just libs              Firmware libraries"
+    @echo "  just tests             Host Unit & Integration Tests"
+    @echo "  just hil               Remote Pi hardware-in-the-loop bench"
+    @echo "  just quality           CI gates, static analysis, and sanitizers"
+    @echo "  just tools             Desktop utilities and developer tooling"
+    @echo "  just docs              Doxygen HTML docs and audits"
+    @echo "  just workspace         Isolated git agent workspaces"
+    @echo "  just work              Plans and canonical task workspaces"
+    @echo "  just infra             Ansible fleet infrastructure"
     @echo ""
     @echo "REPOSITORY META COMMANDS:"
-    @echo "  just build_all                              Build absolutely everything in the repository"
-    @echo "  just setup                                  Prepare venv/hooks and pinned compiler image"
-    @echo "  just setup-python                           Install only the uv-locked Python environment"
-    @echo "  just dev-shell                              Enter the pinned writable development environment"
-    @echo "  just checks                                 Pre-commit verification: format, tidy, unit tests"
-    @echo "  just hooks                                  Install tracked git hooks into .git/hooks"
+    @echo "  just setup             Prepare venv/hooks and pinned compiler image"
+    @echo "  just setup_python      Install only the uv-locked Python environment"
+    @echo "  just setup_ansible     Install exact Ansible collections"
+    @echo "  just build_all         Build absolutely everything in the repository"
+    @echo "  just ci                Run the full CI gate suite"
+    @echo "  just dev_shell         Enter the pinned writable development environment"
+    @echo "  just checks            Pre-commit verification: format, tidy, unit tests"
+    @echo "  just hooks             Install tracked git hooks into .git/hooks"
+    @echo "  just git_hooks         Explore git hook commands"
+    @echo "  just search <keyword>  Search across Apps, Examples, and Tests"
     @echo ""
 
 # Prepare the repository-local venv/hooks and the pinned compiler/tool image.
 
-# Python stays repository-local; exact compilers run through `just dev-shell`.
-setup: setup-ansible
+# Python stays repository-local; exact compilers run through `just dev_shell`.
+setup: setup_ansible
     /bin/bash -p scripts/ci/devcontainer_image.sh ensure
-    @echo "Pinned compilers are ready; enter with: {{ just_executable() }} dev-shell"
+    @echo "Pinned compilers are ready; enter with: {{ just_executable() }} dev_shell"
 
 # Install only the pinned repository-local Python environment and hooks
-setup-python:
+setup_python:
     /bin/bash -p scripts/dev/setup_python.sh setup
     "{{ just_executable() }}" hooks
 
 # Install exact Ansible Galaxy collections into this checkout
-setup-ansible: setup-python
+setup_ansible: setup_python
     /bin/bash -p scripts/dev/setup_ansible.sh
 
 # Enter a writable shell with every pinned compiler, analyzer, and host tool
 dev_shell:
     /bin/bash -p scripts/ci/devcontainer_run.sh -- /bin/bash -p
-
-alias dev-shell := dev_shell
 
 # Install immutable-HEAD hook launchers under the shared Git common directory
 hooks:
@@ -96,8 +98,6 @@ build_all:
     "{{ just_executable() }}" apps::board::build all
     @echo "==> Building all host unit and integration tests..."
     "{{ just_executable() }}" tests::build
-
-alias build-all := build_all
 
 # Unified search across Apps, Examples, and Tests
 search keyword:

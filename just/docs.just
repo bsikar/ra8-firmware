@@ -9,13 +9,13 @@ default:
     @echo "DOCS - Documentation, Dashboards & Architecture Audits"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just docs::build                             Generate Doxygen HTML documentation"
-    @echo "  just docs::clean                             Remove generated Doxygen HTML documentation"
-    @echo "  just docs::push                              Build and publish Doxygen to gh-pages"
-    @echo "  just docs::dashboard                         Refresh historical HAL completion dashboard"
-    @echo "  just docs::record_stats                      Refresh historical HAL completion summary"
-    @echo "  just docs::sizes                             Summarize app .text/.data/.bss footprints"
-    @echo "  just docs::audit_init                        Audit peripheral init order across apps"
+    @echo "  just docs::build         Generate Doxygen HTML documentation"
+    @echo "  just docs::clean         Remove generated Doxygen HTML documentation"
+    @echo "  just docs::push          Build and publish Doxygen to gh-pages"
+    @echo "  just docs::dashboard     Refresh historical HAL completion dashboard"
+    @echo "  just docs::record_stats  Refresh historical HAL completion summary"
+    @echo "  just docs::sizes         Summarize app .text/.data/.bss footprints"
+    @echo "  just docs::audit_init    Audit peripheral init order across apps"
     @echo ""
 
 # Remove generated Doxygen HTML documentation
@@ -45,5 +45,3 @@ sizes:
 # Run init-order audit across apps and update docs/INIT_ORDER_AUDIT.md
 audit_init:
     python3 scripts/checks/audit_init_order.py --report docs/INIT_ORDER_AUDIT.md
-
-alias audit-init := audit_init

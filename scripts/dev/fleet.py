@@ -332,6 +332,13 @@ def cmd_ssh_target(data: dict[str, Any], args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_remote_shell(data: dict[str, Any], args: argparse.Namespace) -> int:
+    """Print the declared shell boundary for one host."""
+    host = _host(data, args.host)
+    print(fm.remote_shell(host))
+    return 0
+
+
 def _plays_for(host: dict[str, Any], only: str | None) -> list[str]:
     """Which plays an apply or check should run.
 
@@ -904,6 +911,9 @@ def _parser() -> argparse.ArgumentParser:
     subs.add_parser(
         "ssh-target", help="the ssh command that reaches one host from here"
     ).add_argument("host")
+    subs.add_parser(
+        "remote-shell", help="the shell boundary that executes stdin on one host"
+    ).add_argument("host")
     register_runner = subs.add_parser(
         "register-runner", help="first-register one declared Docker runner host"
     )
@@ -963,6 +973,7 @@ def main(argv: list[str] | None = None) -> int:
         "inventory": cmd_inventory,
         "ssh-config": cmd_ssh_config,
         "ssh-target": cmd_ssh_target,
+        "remote-shell": cmd_remote_shell,
         "register-runner": cmd_register_runner,
         "register-hil": cmd_register_hil,
         "check": cmd_converge,

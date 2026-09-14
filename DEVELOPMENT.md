@@ -6,13 +6,13 @@ We use a "fail-closed" cryptographic ratchet architecture. This means **you cann
 
 ---
 
-## 1. The Golden Rule: `just quality::local::auto-sync`
+## 1. The Golden Rule: `just quality::local::auto_sync`
 
 If you modify a Python checking script, add a suppression comment to C code (e.g., `/* alloc-allow: ... */`), or CI fails with a `ledger-missing-site` error: **do not edit the `.github/` ledgers by hand.**
 
 Instead, run:
 ```bash
-just quality::local::auto-sync
+just quality::local::auto_sync
 ```
 This single command automatically updates all cryptographic hashes, runs the tree formatters, and appends any missing suppressions to the `.github/` ledger as drafts. 
 
@@ -22,7 +22,7 @@ If CI fails with `ledger-unreviewed`, it means you have draft suppressions in th
 
 Run:
 ```bash
-just quality::local::review-suppressions
+just quality::local::review_suppressions
 ```
 This interactive script will ask you for a rationale (e.g., `tool-false-positive`), generate a signed cryptographic review batch, and mark your suppressions as approved so CI can pass.
 
@@ -32,7 +32,7 @@ Unlike standard AST linters that throw thousands of false positives on embedded 
 
 If you want to check if your headers are clean before pushing, run:
 ```bash
-just quality::local::unused-includes
+just quality::local::unused_includes
 ```
 If this tool flags a header, it is mathematically proven to be dead weight. Delete it.
 

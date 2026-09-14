@@ -9,11 +9,11 @@ default:
     @echo "BOARD APPS - On-Target Firmware Applications"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just apps::board::build <app|all>            Build a standalone board application"
-    @echo "  just apps::board::clean <app|all>            Remove board application build artifacts"
-    @echo "  just apps::board::list                       List all discovered board applications"
-    @echo "  just apps::board::search <keyword>           Search board applications by keyword"
-    @echo "  just apps::board::new <name>                 Scaffold a new board application"
+    @echo "  just apps::board::build <app|all>   Build a standalone board application"
+    @echo "  just apps::board::clean <app|all>   Remove board application build artifacts"
+    @echo "  just apps::board::list              List all discovered board applications"
+    @echo "  just apps::board::search <keyword>  Search board applications by keyword"
+    @echo "  just apps::board::new <name>        Scaffold a new board application"
     @echo ""
 
 # List all standalone board applications

@@ -3,12 +3,19 @@
 
 set working-directory := ".."
 
-default name="":
+default:
+    @echo "TESTS::DEVCONTAINER - Isolated Linux test runner"
+    @echo ""
+    @echo "COMMANDS:"
+    @echo "  just tests::devcontainer::run <name|all>  Run a test or selector in Linux"
+    @echo ""
+
+run name="":
     #!/usr/bin/env bash
     set -euo pipefail
     if [[ -z "{{ name }}" ]]; then
         echo "Error: Please specify a test name or regex (or 'all')." >&2
-        echo "Usage: just tests::devcontainer <name|all>" >&2
+        echo "Usage: just tests::devcontainer::run <name|all>" >&2
         exit 2
     fi
 

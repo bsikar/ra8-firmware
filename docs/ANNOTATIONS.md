@@ -459,7 +459,7 @@ The script depends on the `libclang` Python wheel, which ships its own
 `libclang.{so,dylib}` so no system-wide LLVM install is required:
 
 ```sh
-just setup-python
+just setup_python
 ```
 
 That recipe creates the repository `.venv` and installs the project-pinned

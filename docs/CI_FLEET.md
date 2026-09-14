@@ -208,7 +208,7 @@ way. Nothing in `fleet.py` reads it, which is why a machine with an empty
 
 Two things a fresh control node does still need, and neither is a name:
 
-1. **ansible** -- run `just setup-ansible`; uv installs locked
+1. **ansible** -- run `just setup_ansible`; uv installs locked
    `ansible-core` and the recipe installs exact repository-local Galaxy
    collections.
 2. **a key each host accepts** for its declared `connect.user`. `just
@@ -1061,8 +1061,8 @@ Operator commands are:
 
 ```sh
 just infra::reconcile          # read-only drift report from this checkout
-just infra::reconcile-apply    # reviewed, immediate full convergence
-just infra::reconcile-status   # timer plus the most recent service result
+just infra::reconcile_apply    # reviewed, immediate full convergence
+just infra::reconcile_status   # timer plus the most recent service result
 ssh dev 'journalctl -u ra8-fleet-reconcile.service --since today'
 ```
 

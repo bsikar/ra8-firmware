@@ -600,7 +600,7 @@ raise SystemExit(0 if b"--check-attributes" in data else 1)
       "$OWNER_JUST" \
       --shell "$OWNER_BASH" --clear-shell-args --shell-arg -puc \
       --justfile "$SNAPSHOT_DIR/justfile" --working-directory "$SNAPSHOT_DIR" \
-      git_hooks::pre-commit &
+      git_hooks::pre_commit &
     CHILD_PID=$!
     wait_policy_ready
     set +e

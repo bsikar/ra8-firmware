@@ -8,23 +8,23 @@ default:
     @echo "TOOLS - Developer Utilities & Desktop Apps"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just tools::list                             List discovered compiled host tools"
-    @echo "  just tools::build                            Build all host developer tools"
-    @echo "  just tools::build_one <tool>                 Build one compiled host tool"
-    @echo "  just tools::clean                            Remove all tool build artifacts"
-    @echo "  just tools::viewer                           Build native macOS rabook_viewer GUI"
-    @echo "  just tools::view <path>                      Open a .rabook file in the viewer"
-    @echo "  just tools::mcp                              Run Model Context Protocol server selftest"
-    @echo "  just tools::mcp_server                       Start the Model Context Protocol server"
-    @echo "  just tools::jlink_w4 <bin> <base> [device]   Emit, but do not run, a J-Link w4 script"
-    @echo "  just tools::books                            Recompile EPUB library into .rabook files"
-    @echo "  just tools::rabook_golden                    Regenerate rabook parity fixtures"
-    @echo "  just tools::rabook_fixture                   Regenerate the gray8 rabook fixture"
-    @echo "  just tools::bluenoise_update                 Regenerate the blue-noise dither mask"
-    @echo "  just tools::bench_cache                      Run full memory/glyph cache benchmark sweep"
-    @echo "  just tools::build_cache_bench                Build cache_bench standalone executable"
-    @echo "  just tools::build_reader_vmem                Build reader_vmem standalone executable"
-    @echo "  just tools::build_glyph_bench                Build glyph_bench standalone executable"
+    @echo "  just tools::list                            List discovered compiled host tools"
+    @echo "  just tools::build                           Build all host developer tools"
+    @echo "  just tools::build_one <tool>                Build one compiled host tool"
+    @echo "  just tools::clean                           Remove all tool build artifacts"
+    @echo "  just tools::viewer                          Build native macOS rabook_viewer GUI"
+    @echo "  just tools::view <path>                     Open a .rabook file in the viewer"
+    @echo "  just tools::mcp                             Run Model Context Protocol server selftest"
+    @echo "  just tools::mcp_server                      Start the Model Context Protocol server"
+    @echo "  just tools::jlink_w4 <bin> <base> [device]  Emit, but do not run, a J-Link w4 script"
+    @echo "  just tools::books                           Recompile EPUB library into .rabook files"
+    @echo "  just tools::rabook_golden                   Regenerate rabook parity fixtures"
+    @echo "  just tools::rabook_fixture                  Regenerate the gray8 rabook fixture"
+    @echo "  just tools::bluenoise_update                Regenerate the blue-noise dither mask"
+    @echo "  just tools::bench_cache                     Run full memory/glyph cache benchmark sweep"
+    @echo "  just tools::build_cache_bench               Build cache_bench standalone executable"
+    @echo "  just tools::build_reader_vmem               Build reader_vmem standalone executable"
+    @echo "  just tools::build_glyph_bench               Build glyph_bench standalone executable"
     @echo ""
 
 # Remove all tool build artifacts
@@ -42,8 +42,6 @@ build tool="all":
 # Build one discovered host developer tool
 build_one tool:
     bash scripts/builders/build_host_tools.sh build "{{ tool }}"
-
-alias build-one := build_one
 
 # Build the native macOS/POSIX document viewer
 viewer:
@@ -161,19 +159,13 @@ bluenoise_update:
 build_cache_bench:
     "{{ just_executable() }}" tools::build_one cache_bench
 
-alias build-cache-bench := build_cache_bench
-
 # Build reader_vmem host executable
 build_reader_vmem:
     "{{ just_executable() }}" tools::build_one reader_vmem
 
-alias build-reader-vmem := build_reader_vmem
-
 # Build glyph_bench host executable
 build_glyph_bench:
     "{{ just_executable() }}" tools::build_one glyph_bench
-
-alias build-glyph-bench := build_glyph_bench
 
 # Run the full cache benchmark toolchain (reader_vmem, cache_bench, glyph_bench)
 bench_cache: build_cache_bench build_reader_vmem build_glyph_bench
@@ -187,5 +179,3 @@ bench_cache: build_cache_bench build_reader_vmem build_glyph_bench
     tools/cache_bench/build/cache_bench --sweep-block
     echo "==== glyph_bench: glyph-cache budget sweep ===="
     tools/glyph_bench/build/glyph_bench
-
-alias bench-cache := bench_cache

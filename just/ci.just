@@ -7,14 +7,16 @@ default:
     @echo "QUALITY & CI - Formatters, Linters, Static Analysis & Testing"
     @echo ""
     @echo "SUBMODULES:"
-    @echo "  just quality::local                          Run tools NATIVELY on your host machine"
-    @echo "  just quality::remote                         Run one gate in a remote worktree"
-    @echo "  just quality::devcontainer                   Run tools ISOLATED inside the devcontainer"
-    @echo "  just quality::gate                           CI Gate metadata and operations"
+    @echo "  just quality::local         Run tools NATIVELY on your host machine"
+    @echo "  just quality::remote        Run one gate in a remote worktree"
+    @echo "  just quality::devcontainer  Run tools ISOLATED inside the devcontainer"
+    @echo "  just quality::gate          CI Gate metadata and operations"
     @echo ""
     @echo "CI WORKFLOW DRIVERS:"
-    @echo "  just quality::run                            Run full CI gate suite"
-    @echo "  just quality::fast                           Run fast local CI gates"
+    @echo "  just quality::run           Run full CI gate suite"
+    @echo "  just quality::fast          Run fast local CI gates"
+    @echo "  just quality::native        Run the full native CI gate suite"
+    @echo "  just quality::native_fast   Run the fast native CI gate suite"
 
 # --- Toolchain Resolution ---
 # format_code.sh owns the formatter default and validates its major so direct
@@ -44,5 +46,3 @@ native:
 
 native_fast:
     /bin/bash -p scripts/ci.sh --native --fast
-
-alias native-fast := native_fast

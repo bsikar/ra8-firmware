@@ -556,6 +556,52 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
     return 0
   }
 
+  # Run independent steps to completion and print one final verdict table.
+  # Gate bodies use this when a later check is still meaningful after an
+  # earlier one fails; prerequisites must remain in the same fail-fast group.
+  ci_run_all() {
+    local -a failures=() labels=() results=()
+    local label helper output_file step_status restore_errexit=0
+    [[ $- == *e* ]] && restore_errexit=1
+    while (($# >= 2)); do
+      label="$1"
+      shift
+      helper="$1"
+      shift
+      labels+=("$label")
+      output_file="$(mktemp)"
+      printf '==> CI step: %s\n' "$label"
+      set +e
+      "$helper" >"$output_file" 2>&1
+      step_status=$?
+      if ((restore_errexit)); then
+        set -e
+      fi
+      cat "$output_file"
+      rm -f "$output_file"
+      if ((step_status == 0)); then
+        results+=("PASS")
+      else
+        results+=("FAIL (exit ${step_status})")
+        failures+=("${label} (exit ${step_status})")
+      fi
+    done
+    printf '\n== CI step summary ==\n'
+    local index=0
+    while ((index < ${#labels[@]})); do
+      printf '  %-36s %s\n' "${labels[$index]}" "${results[$index]}"
+      index=$((index + 1))
+    done
+    if ((${#failures[@]})); then
+      printf 'CI step summary: %d failed, %d passed\n' \
+        "${#failures[@]}" "$((${#results[@]} - ${#failures[@]}))" >&2
+      printf '  - %s\n' "${failures[@]}" >&2
+      return 1
+    fi
+    printf 'CI step summary: %d passed, 0 failed\n' "${#results[@]}"
+    return 0
+  }
+
   # ===========================================================================
   # GATE BODIES
   #

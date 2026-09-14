@@ -245,8 +245,8 @@ def _check_wrappers(pre_commit: str, pre_push: str) -> list[str]:
     active = _active_lines("owner:\n" + pre_commit)
     if any(line.startswith(("source ", ". ")) for line in active) or "scripts/ci/lib" in pre_commit:
         failures.append("pre-commit owner hook imports live repository control code")
-    if HOOK_LAUNCHER not in push_command or 'git_hooks::pre-push "$@"' not in push_command:
-        failures.append("pre-push wrapper does not forward argv to git_hooks::pre-push")
+    if HOOK_LAUNCHER not in push_command or 'git_hooks::pre_push "$@"' not in push_command:
+        failures.append("pre-push wrapper does not forward argv to git_hooks::pre_push")
     if pre_push.count(HOOK_LAUNCHER) != 1:
         failures.append("pre-push wrapper contains policy beyond one Just dispatch")
     for label, command in (("pre-push", push_command),):
@@ -276,7 +276,7 @@ def _check_pre_commit_flow(recipe: str, active: tuple[str, ...]) -> list[str]:
 def _check_pre_commit(hooks: str) -> list[str]:
     """Check staged semantics and the base hook's still-valid gate coverage."""
     failures: list[str] = []
-    recipe = _recipe(hooks, "pre-commit")
+    recipe = _recipe(hooks, "pre_commit")
     active = _active_lines(recipe)
     if not recipe:
         return ["hooks.just has no pre-commit recipe"]
@@ -401,7 +401,7 @@ def _check_snapshot_dispatch(ci_script: str, pre_commit: str) -> list[str]:
 def _check_pre_push(hooks: str) -> list[str]:
     """Check LFS, pushed-commit policy, and the one full-CI invocation."""
     failures: list[str] = []
-    recipe = _recipe(hooks, "pre-push remote url")
+    recipe = _recipe(hooks, "pre_push remote url")
     if not recipe:
         return ["hooks.just has no pre-push recipe"]
     required = (
