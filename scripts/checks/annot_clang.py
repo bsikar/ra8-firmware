@@ -29,7 +29,7 @@ from annot_model import ParseStats, Violation
 from annot_scope import SCAN_DIRS, is_build_output, is_excluded, is_test_path, repo_root
 
 # --------------------------------------------------------------------------
-# libclang import. ``just setup-python`` creates the repository venv and
+# libclang import. ``just setup_python`` creates the repository venv and
 # installs the pinned binding there. The wheel ships a bundled
 # libclang.dylib / .so, so no system-level libclang package is required.
 # --------------------------------------------------------------------------
@@ -38,7 +38,7 @@ try:
 except ImportError:
     sys.stderr.write(
         "check_annotations.py: 'libclang' Python package missing.\n"
-        "  install the pinned repository tools: just setup-python\n"
+        "  install the pinned repository tools: just setup_python\n"
     )
     sys.exit(2)
 

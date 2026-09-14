@@ -59,7 +59,7 @@ def _require_libclang() -> ModuleType:
             "check_doc_attachment.py: FATAL -- the 'libclang' Python binding is missing,\n"
             "  so the documentation-attachment gate cannot run. This is an error, not a\n"
             "  skip: a gate that cannot run has not passed.\n"
-            "  install the pinned repository tools: just setup-python\n"
+            "  install the pinned repository tools: just setup_python\n"
         )
         sys.exit(2)
     return cindex

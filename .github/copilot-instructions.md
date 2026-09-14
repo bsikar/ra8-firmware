@@ -5,7 +5,7 @@ If you are an AI assistant, you MUST follow these instructions precisely.
 
 ## 1. The "auto-sync" Rule (CRITICAL)
 Whenever you modify a Python checking script in `scripts/checks/` or add a suppression comment in C/Go code (like `/* alloc-allow: ... */`, `RA8_NASA_RULE_3_OK`, or any `NOLINT`), you will break the cryptographic ledgers.
-* **Always run:** `just quality::local::auto-sync` after making these changes.
+* **Always run:** `just quality::local::auto_sync` after making these changes.
 * This command will automatically update the SHA-256 hashes, ratchets, and ledgers in the `.github/` directory. 
 * Do not attempt to manually edit `.github/suppression-review-ledger.tsv` or `.github/tidy-baseline.txt`. Let the tooling do it.
 
@@ -13,7 +13,7 @@ Whenever you modify a Python checking script in `scripts/checks/` or add a suppr
 C and C++ code is strictly audited for dead includes via speculative compilation. 
 * Never leave unused `#include` directives. 
 * If you remove code, check if the headers it used can also be removed.
-* You can verify your work by running: `just quality::local::unused-includes`
+* You can verify your work by running: `just quality::local::unused_includes`
 
 ## 3. Function and File Sizes (NASA Power of 10)
 * Functions MUST NOT exceed 60 lines (NASA P10 Rule 4). If a function is too long, split it into smaller `static` helpers.
@@ -37,3 +37,13 @@ C and C++ code is strictly audited for dead includes via speculative compilation
 * Use `static_assert(condition, message)` for compile-time invariants.
 * Use `RA8_ASSERT(condition, message)` from `ra8_check.h` for runtime programmer invariants.
 * Normal error propagation (`ra8_err_t`) must be used for recoverable hardware/runtime errors.
+
+## 8. Planned Zig Library Migration
+When implementing or reviewing a planned Zig library, treat the C ABI as a
+narrow documented boundary, not as the implementation model. Keep C ABI types,
+pointer conversions, and foreign ownership rules in the ABI adapter; preserve
+idiomatic Zig interfaces internally. Before accepting AI-assisted Zig changes,
+review ownership, pointer escape, failure cleanup, ABI layout, and
+interrupt/concurrency behavior. C tests and Rust HIL examples verify the same
+ABI contract but do not replace that review. See
+[`docs/ZIG_MIGRATION.md`](../docs/ZIG_MIGRATION.md).

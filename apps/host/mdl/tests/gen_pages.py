@@ -24,7 +24,7 @@ import sys
 try:
     from PIL import Image, ImageDraw
 except ImportError:
-    sys.stderr.write("gen_pages.py: needs Pillow; run 'just setup-python'\n")
+    sys.stderr.write("gen_pages.py: needs Pillow; run 'just setup_python'\n")
     sys.exit(3)
 
 # argv layout: OUTDIR COUNT W H (plus argv[0]).

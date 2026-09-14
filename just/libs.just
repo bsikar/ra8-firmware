@@ -9,9 +9,9 @@ default:
     @echo "LIB - Firmware Shared Libraries"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just libs::list                              List all discovered shared libraries"
-    @echo "  just libs::search <keyword>                  Search shared libraries by keyword"
-    @echo "  just libs::new <name>                        Scaffold a new shared library"
+    @echo "  just libs::list              List all discovered shared libraries"
+    @echo "  just libs::search <keyword>  Search shared libraries by keyword"
+    @echo "  just libs::new <name>        Scaffold a new shared library"
     @echo ""
 
 # Scaffold a new shared library

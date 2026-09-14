@@ -18,18 +18,19 @@ default:
     @echo "APP - Firmware Applications and Examples"
     @echo ""
     @echo "SUBMODULES:"
-    @echo "  just apps::shared                            App-level shared libraries (portable)"
-    @echo "  just apps::host                              Standalone desktop applications"
-    @echo "  just apps::board                             On-target standalone board applications"
-    @echo "  just apps::test                              Host application unit & integration tests"
-    @echo "  just apps::emulator                          macOS CPU simulation and profiling"
-    @echo "  just apps::hardware                          Local bench hardware flash and debug"
-    @echo "  just apps::filter                            Pre-configured firmware application queues"
-    @echo "  just apps::example                           Firmware examples and reference code"
+    @echo "  just apps::shared            App-level shared libraries (portable)"
+    @echo "  just apps::host              Standalone desktop applications"
+    @echo "  just apps::board             On-target standalone board applications"
+    @echo "  just apps::test              Host application unit & integration tests"
+    @echo "  just apps::emulator          macOS CPU simulation and profiling"
+    @echo "  just apps::hardware          Local bench hardware flash and debug"
+    @echo "  just apps::filter            Pre-configured firmware application queues"
+    @echo "  just apps::example           Firmware examples and reference code"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just apps::clean                             Remove all build output directories"
-    @echo "  just apps::compile_commands                  Regenerate compile_commands.json database"
+    @echo "  just apps::build <app>       Build one firmware application"
+    @echo "  just apps::clean             Remove all build output directories"
+    @echo "  just apps::compile_commands  Regenerate compile_commands.json database"
     @echo ""
 
 # Build a single firmware application
@@ -81,5 +82,3 @@ clean:
 # Regenerate the repository-root compile_commands.json across all apps
 compile_commands:
     python3 scripts/builders/build_cross_compile_db.py -o . --check
-
-alias compile-commands := compile_commands

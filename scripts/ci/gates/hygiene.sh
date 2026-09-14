@@ -40,7 +40,7 @@ gate_ci_status_contract() (
 
 gate_ci_parity() (
   set -e
-  require_python_mod yaml "run 'just setup-python'"
+  require_python_mod yaml "run 'just setup_python'"
   suite_errexit_selftest
   suite_registry_selftest
   suite_build_lifecycle_selftest

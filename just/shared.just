@@ -9,11 +9,11 @@ default:
     @echo "SHARED LIBS - App-Level Shared Libraries"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just apps::shared::list                      List available shared libraries"
-    @echo "  just apps::shared::build <lib|all>           Build a shared library (or 'all')"
-    @echo "  just apps::shared::clean <lib|all>           Remove shared library build artifacts"
-    @echo "  just apps::shared::new <name>                Scaffold a new shared library in apps/shared_libs"
-    @echo "  just apps::shared::test <lib|all>            Run unit tests for a shared library"
+    @echo "  just apps::shared::list             List available shared libraries"
+    @echo "  just apps::shared::build <lib|all>  Build a shared library (or 'all')"
+    @echo "  just apps::shared::clean <lib|all>  Remove shared library build artifacts"
+    @echo "  just apps::shared::new <name>       Scaffold a new shared library in apps/shared_libs"
+    @echo "  just apps::shared::test <lib|all>   Run unit tests for a shared library"
     @echo ""
 
 # Build a shared library (or 'all')

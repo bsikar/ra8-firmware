@@ -219,10 +219,11 @@ hosts:
       # The tailnet address is the CI-maintenance endpoint. The workstation's
       # odd-port DHCP lease is intentionally transient and has no internet, so
       # it cannot serve GitHub Actions there anyway. A temporary even-port leg
-      # brings this endpoint online for runner updates; odd-port bench access
-      # remains a separate, human-resolved jump through `star`.
+      # brings this endpoint online for runner updates. The fleet's reachable
+      # bastion is `star`, so every control node uses the same route.
       address: 100.64.0.12
       user: sikar
+      jump: star
       distro: Ubuntu
       windows_user: sikar
     provisions: [wsl-ci-host]

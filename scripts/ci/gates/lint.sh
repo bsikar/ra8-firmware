@@ -126,7 +126,7 @@ gate_lint_cmake() (
 # unknown runner labels), which is the class of defect behind #357.
 gate_lint_yaml() (
   set -e
-  require_cmd yamllint "run 'just setup-python'"
+  require_cmd yamllint "run 'just setup_python'"
   require_cmd actionlint \
     "https://github.com/rhysd/actionlint/releases (pinned to 1.7.7)"
   require_tool_versions yamllint actionlint
@@ -158,13 +158,38 @@ gate_lint_yaml() (
 
 # --- lint-just ------------------------------------------------------------
 # Validates Just structure plus every literal first-party command reference.
-gate_lint_just() (
-  set -e
+_lint_justfiles() {
   python3 scripts/checks/check_justfiles.py --selftest
   python3 scripts/checks/check_justfiles.py --check
+}
+
+_lint_just_references() {
   python3 scripts/checks/check_just_references.py --selftest
   python3 scripts/checks/check_just_references.py
+}
+
+_lint_just_navigation() {
+  python3 scripts/checks/check_just_navigation.py --selftest
+  python3 scripts/checks/check_just_navigation.py
+}
+
+_lint_just_help_format() {
+  python3 scripts/checks/check_just_help_format.py --selftest
+  python3 scripts/checks/check_just_help_format.py
+}
+
+_lint_just_scaffold() {
   python3 scripts/dev/scaffold.py --selftest
+}
+
+gate_lint_just() (
+  set -e
+  ci_run_all \
+    justfiles _lint_justfiles \
+    just-references _lint_just_references \
+    just-navigation _lint_just_navigation \
+    just-help-format _lint_just_help_format \
+    scaffold-selftest _lint_just_scaffold
 )
 
 # --- lint-ld --------------------------------------------------------------

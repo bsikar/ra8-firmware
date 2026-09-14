@@ -3,8 +3,17 @@
 
 set working-directory := ".."
 
+# Show git hook commands.
+default:
+    @echo "GIT HOOKS"
+    @echo ""
+    @echo "COMMANDS:"
+    @echo "  just git_hooks::pre_commit               Run the staged pre-commit policy"
+    @echo "  just git_hooks::pre_push <remote> <url>  Run pre-push checks and CI"
+    @echo ""
+
 # Run the staged pre-commit policy through authoritative CI gate definitions
-pre-commit:
+pre_commit:
     #!/bin/bash -p
     set -euo pipefail
 
@@ -82,7 +91,7 @@ pre-commit:
     # pre-push `just ci` run builds the firmware before its stack-usage gate.
 
 # Upload LFS objects, validate pushed commit metadata, then run the full CI suite
-pre-push remote url:
+pre_push remote url:
     #!/bin/bash -p
     set -euo pipefail
 

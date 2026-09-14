@@ -26,11 +26,24 @@ BARE_NESTED_JUST_RE = re.compile(r"(?:^\s*@?|\b(?:then|do|else)\s+|(?:&&|\|\||;)
 CI_SH_CALL_RE = re.compile(r"^\s*@?/bin/bash\s+-p\s+scripts/ci\.sh(?P<args>(?:\s+.*)?)$")
 CI_SH_SWITCHES = frozenset({"--container", "--fast", "--list-gates", "--native", "--rebuild"})
 CI_SH_VALUE_OPTIONS = frozenset({"--gate", "--selftest-abort"})
+VALUE_OPTION_TOKEN_COUNT = 2
+REMOTE_CI_PREPARE_COUNT = 2
 NATIVE_FAST_RECIPE_RE = re.compile(
     r"^native_fast:[ \t]*\n(?P<body>(?:[ \t]+[^\n]*(?:\n|$))*)",
     re.MULTILINE,
 )
 NATIVE_FAST_COMMAND = "/bin/bash -p scripts/ci.sh --native --fast"
+REMOTE_CI_WSL_BLOCK_RE = re.compile(
+    r'if \[\[ "\$remote_shell" == wsl\* \]\]; then(?P<body>.*?)\n    else', re.DOTALL
+)
+REMOTE_CI_LINUX_BLOCK_RE = re.compile(
+    r'^    else(?P<body>.*?)^    fi\n[ \t]*\n    if ! printf', re.MULTILINE | re.DOTALL
+)
+REMOTE_CI_SNAPSHOT_COMMIT = (
+    "git -c user.email=ci@localhost -c user.name=ci commit --quiet --no-verify "
+    "-m 'remote CI transport snapshot'"
+)
+REMOTE_CI_HISTORY_COMMIT = "git commit --quiet --allow-empty --no-verify -m $remote_history_message"
 
 
 def check_firmware_build_default(text: str) -> list[str]:
@@ -59,6 +72,11 @@ def check_nested_just_invocations(text: str, rel: str) -> list[str]:
     findings: list[str] = []
     for number, line in enumerate(text.splitlines(), start=1):
         if "scripts/ci/devcontainer_run.sh" in line:
+            continue
+        # An SSH command runs on a different host, whose Just executable is
+        # intentionally resolved from that host's PATH. The invoking
+        # executable path is valid only for same-machine recursion.
+        if re.search(r"\bssh\b.*\bjust(?=\s|$)", line):
             continue
         if BARE_NESTED_JUST_RE.search(line) is not None:
             findings.append(
@@ -90,7 +108,7 @@ def check_ci_driver_invocations(text: str, rel: str) -> list[str]:
                 if index + 1 >= len(args) or args[index + 1].startswith("--"):
                     findings.append(f"{rel}:{number}: {option} requires one value")
                     break
-                index += 2
+                index += VALUE_OPTION_TOKEN_COUNT
                 continue
             findings.append(
                 f"{rel}:{number}: unsupported scripts/ci.sh option or argument {option!r}"
@@ -108,6 +126,88 @@ def check_ci_native_fast_contract(text: str, rel: str) -> list[str]:
     if body != [NATIVE_FAST_COMMAND]:
         return [f"{rel}: native_fast must contain only `{NATIVE_FAST_COMMAND}`; found {body!r}"]
     return []
+
+
+def _missing_active_snippets(
+    text: str, rel: str, scope: str, snippets: tuple[str, ...]
+) -> list[str]:
+    """Return diagnostics for required active remote-transport fragments."""
+    return [
+        f"{rel}: {scope} remote CI missing active {snippet!r}"
+        for snippet in snippets
+        if snippet not in text
+    ]
+
+
+def check_remote_ci_contract(text: str, rel: str) -> list[str]:
+    """Require remote CI to preserve host isolation and WSL container parity."""
+    findings: list[str] = []
+    wsl_match = REMOTE_CI_WSL_BLOCK_RE.search(text)
+    linux_match = REMOTE_CI_LINUX_BLOCK_RE.search(text)
+    if wsl_match is None:
+        findings.append(f"{rel}: remote CI has no WSL isolation branch")
+    else:
+        wsl = wsl_match.group("body")
+        findings.extend(
+            _missing_active_snippets(
+                wsl,
+                rel,
+                "WSL",
+                (
+                    'remote_profile="/etc/profile.d/ra8-dev-slice.sh"',
+                    'remote_launcher="/usr/local/bin/ra8-dev"',
+                    'gate_command="/bin/bash -p scripts/ci.sh"',
+                    'gate_command="/bin/bash -p scripts/ci.sh --gate $remote_gate_arg --container"',
+                ),
+            )
+        )
+    if linux_match is None:
+        findings.append(f"{rel}: remote CI has no Linux throttling branch")
+    else:
+        linux = linux_match.group("body")
+        findings.extend(
+            _missing_active_snippets(
+                linux,
+                rel,
+                "Linux",
+                (
+                    "RA8_REMOTE_MAX_JOBS",
+                    'remote_jobs="${RA8_REMOTE_MAX_JOBS:-2}"',
+                    'if [[ ! "$remote_jobs" =~ ^[1-9][0-9]*$ ]]; then',
+                    "nice -n 19 ionice -c3",
+                    'gate_command="/bin/bash -p scripts/ci.sh --native"',
+                ),
+            )
+        )
+    if text.count(REMOTE_CI_SNAPSHOT_COMMIT) != 1:
+        findings.append(f"{rel}: remote CI must create exactly one transport snapshot commit")
+    if REMOTE_CI_HISTORY_COMMIT not in text:
+        findings.append(f"{rel}: remote CI must preserve the candidate commit metadata")
+    findings.extend(
+        _missing_active_snippets(
+            text,
+            rel,
+            "",
+            (
+                'remote_name={{ quote(name) }}',
+                'remote_host={{ quote(host) }}',
+                (
+                    'read -r -a remote_ssh '
+                    '<<<"$(./.venv/bin/python3 scripts/dev/fleet.py ssh-target "$remote_host")"'
+                ),
+                'printf -v remote_gate_arg \'%q\' "$remote_name"',
+                'remote_tar="${remote_shell%/bin/bash -s}ionice -c3 /usr/bin/tar"',
+                'printf \'source %q\\n\' "$remote_profile"',
+                'printf \'exec %s %s\\n\' "$remote_launcher" "$gate_command"',
+            ),
+        )
+    )
+    findings.extend(
+        f"{rel}: remote CI must shell-quote {raw} before Bash parses it"
+        for raw in ("{{ name }}", "{{ host }}")
+        if raw in text
+    )
+    return findings
 
 
 def find_justfiles() -> list[Path]:
@@ -129,11 +229,11 @@ def find_justfiles() -> list[Path]:
         text=True,
         check=True,
     )
-    paths: list[Path] = []
-    for raw_line in proc.stdout.splitlines():
-        line = raw_line.strip()
-        if line and (REPO_ROOT / line).is_file():
-            paths.append(REPO_ROOT / line)
+    paths = [
+        REPO_ROOT / line
+        for raw_line in proc.stdout.splitlines()
+        if (line := raw_line.strip()) and (REPO_ROOT / line).is_file()
+    ]
     return sorted(paths)
 
 
@@ -152,6 +252,8 @@ def check_file(path: Path) -> list[str]:
         findings.extend(check_firmware_build_default(text))
     if rel == "just/ci.just":
         findings.extend(check_ci_native_fast_contract(text, rel))
+    if rel == "just/ci_remote.just":
+        findings.extend(check_remote_ci_contract(text, rel))
     return findings
 
 
@@ -247,6 +349,62 @@ def _selftest_native_fast() -> tuple[int, str | None]:
     return len(native_fast_cases), None
 
 
+def _selftest_remote_ci() -> tuple[int, str | None]:
+    """Exercise the remote isolation contract in both directions."""
+    valid = f'''remote_name={{{{ quote(name) }}}}
+remote_host={{{{ quote(host) }}}}
+remote_shell="x"
+read -r -a remote_ssh <<<"$(./.venv/bin/python3 scripts/dev/fleet.py ssh-target "$remote_host")"
+remote_tar="${{remote_shell%/bin/bash -s}}ionice -c3 /usr/bin/tar"
+printf -v remote_gate_arg '%q' "$remote_name"
+remote_prepare="git init -q && git add --all && {REMOTE_CI_SNAPSHOT_COMMIT} && \\
+    $remote_history_environment {REMOTE_CI_HISTORY_COMMIT}"
+if [[ "$remote_shell" == wsl* ]]; then
+    remote_profile="/etc/profile.d/ra8-dev-slice.sh"
+    remote_launcher="/usr/local/bin/ra8-dev"
+    if [[ "$remote_name" == "__full__" ]]; then
+        gate_command="/bin/bash -p scripts/ci.sh"
+    else
+        gate_command="/bin/bash -p scripts/ci.sh --gate $remote_gate_arg --container"
+    fi
+else
+    remote_jobs="${{RA8_REMOTE_MAX_JOBS:-2}}"
+    if [[ ! "$remote_jobs" =~ ^[1-9][0-9]*$ ]]; then
+        exit 2
+    fi
+    remote_launcher="env RA8_MAX_JOBS=$remote_jobs CMAKE_BUILD_PARALLEL_LEVEL=$remote_jobs \\
+        nice -n 19 ionice -c3"
+    if [[ "$remote_name" == "__full__" ]]; then
+        gate_command="/bin/bash -p scripts/ci.sh --native"
+    else
+        gate_command="/bin/bash -p scripts/ci.sh --gate $remote_gate_arg"
+    fi
+fi
+
+if ! printf
+    printf 'source %q\\n' "$remote_profile"
+    printf 'exec %s %s\\n' "$remote_launcher" "$gate_command"
+    '''
+    valid = "\n".join(f"    {line}" for line in valid.splitlines())
+    remote_cases = (
+        (valid, False, "isolated WSL transport stays valid"),
+        (valid.replace("--container", ""), True, "native WSL gate fires"),
+        (valid.replace(REMOTE_CI_SNAPSHOT_COMMIT, "", 1), True, "missing transport HEAD fires"),
+        (valid.replace(REMOTE_CI_HISTORY_COMMIT, "", 1), True, "missing candidate metadata fires"),
+        (valid.replace("nice -n 19 ionice -c3", "", 1), True, "unthrottled Linux gate fires"),
+        (
+            valid.replace('if [[ ! "$remote_jobs" =~ ^[1-9][0-9]*$ ]]; then', "", 1),
+            True,
+            "unvalidated job cap fires",
+        ),
+        (valid + '\n    echo "{{ name }} {{ host }}"', True, "raw recipe argument fires"),
+    )
+    for text, expected, label in remote_cases:
+        if bool(check_remote_ci_contract(text, "just/ci_remote.just")) != expected:
+            return len(remote_cases), label
+    return len(remote_cases), None
+
+
 def selftest() -> int:
     """Run internal selftest."""
     total = 0
@@ -255,6 +413,7 @@ def selftest() -> int:
         _selftest_nested_just,
         _selftest_ci_driver,
         _selftest_native_fast,
+        _selftest_remote_ci,
     ):
         count, failure = run_cases()
         total += count

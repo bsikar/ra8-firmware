@@ -94,11 +94,11 @@ if [[ "$-" == *p* ]]; then
   check_prerequisites() {
     local owner_root="$1" target="$2" requirements="$3" python="$4" galaxy="$5"
     [[ -x "$galaxy" ]] || {
-      echo "ERROR: locked ansible-galaxy is absent; run 'just setup-python' first" >&2
+      echo "ERROR: locked ansible-galaxy is absent; run 'just setup_python' first" >&2
       return 1
     }
     [[ -x "$python" ]] || {
-      echo "ERROR: locked Python environment is absent; run 'just setup-python' first" >&2
+      echo "ERROR: locked Python environment is absent; run 'just setup_python' first" >&2
       return 1
     }
     [[ -f "$requirements" ]] || {

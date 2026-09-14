@@ -137,7 +137,7 @@ if [ -z "${_RA8_HOST_TOOL_PATH_SH:-}" ]; then
           hint="install CMake under a trusted prefix (/opt/homebrew/bin on Apple Silicon macOS, /usr/local/bin on Intel macOS or Linux)"
           ;;
         python3)
-          hint="run 'just setup-python' to create the repository .venv"
+          hint="run 'just setup_python' to create the repository .venv"
           ;;
         *)
           hint="install '${tool}' under a trusted prefix"

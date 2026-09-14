@@ -538,22 +538,28 @@
       loop_control:
         label: "{{ item.name }}"
 
-    - name: Check which instances are already registered with GitHub
+    - name: Check which instances have the declared GitHub labels
+      # `.runner` only proves that a registration exists; it does not record
+      # the labels passed to config.sh. A quarantined registration can
+      # therefore survive forever behind the old existence guard. The marker
+      # is named with the exact label-set hash so a label change forces a
+      # reconfiguration while an unchanged registration remains idempotent.
       become: true
       ansible.builtin.stat:
-        path: "{{ item.home }}/.runner"
-      register: ci_runner_docker_registered
+        path: "{{ item.home }}/.ra8-labels-{{ ci_runner_docker_labels | hash('sha256') }}"
+      register: ci_runner_docker_labels_current
       loop: "{{ ci_runner_docker_instance_list }}"
       loop_control:
         label: "{{ item.name }}"
 
     - name: Register the runners
-      # Skipped entirely once every instance has a .runner, which is what makes
-      # the play idempotent AND is why a reboot needs no credential:
+      # Skipped once every instance has a marker for the exact declared label
+      # set. A pre-existing `.runner` without that marker is deliberately
+      # reconfigured, which repairs stale or quarantine-only labels.
       # registration produces long-lived runner credentials on the pool, and
       # only THEY are used to run jobs. The PAT is needed to (de)register and
       # never after.
-      when: ci_runner_docker_registered.results
+      when: ci_runner_docker_labels_current.results
             | rejectattr('stat.exists') | list | length > 0
       block:
         - name: Assert a credential is available for new registrations
@@ -643,7 +649,19 @@
               - "{{ ci_runner_docker_group }}"
               - --work
               - _work
-            creates: "{{ item.home }}/.runner"
+            creates: "{{ item.home }}/.ra8-labels-{{ ci_runner_docker_labels | hash('sha256') }}"
+          loop: "{{ ci_runner_docker_instance_list }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Record the exact labels applied to each runner
+          become: true
+          ansible.builtin.file:
+            path: "{{ item.home }}/.ra8-labels-{{ ci_runner_docker_labels | hash('sha256') }}"
+            state: touch
+            owner: "{{ ci_runner_docker_uid }}"
+            group: "{{ ci_runner_docker_gid }}"
+            mode: "0644"
           loop: "{{ ci_runner_docker_instance_list }}"
           loop_control:
             label: "{{ item.name }}"

@@ -45,8 +45,6 @@ misra check="0":
 scan_build strict="0":
     bash scripts/ci/devcontainer_run.sh -- just quality::local::scan_build "{{ strict }}"
 
-alias scan-build := scan_build
-
 mcdc:
     bash scripts/ci/devcontainer_run.sh -- just quality::local::mcdc
 
