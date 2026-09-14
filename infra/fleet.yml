@@ -176,6 +176,11 @@ hosts:
       address: 10.10.10.1
       user: truenas_admin
     provisions: [ci-runner-docker]
+    sizing_note: >-
+      Deliberately held at one instead of the formula-derived two because
+      observed system load was already too high for a second concurrent
+      runner; increase only after a capacity measurement shows the host can
+      sustain it without contention.
     runners:
       # Base name for the GitHub registrations. One instance keeps the base
       # unsuffixed; above one they become <base>-1..<base>-N -- so this base
@@ -184,9 +189,6 @@ hosts:
       name: truenas-ci
       # One instance is retained while the ARC pool is restored on k3s-pve.
       instances: 1
-      sizing_note: >-
-        Temporarily reduced from the formula-derived two while k3s-pve ARC
-        capacity is being restored; restore to two after the pool is healthy.
       cpus: 4
       memory_gb: 8
       # Each instance sees only its own 4 threads, so Just's exported CMake job limit

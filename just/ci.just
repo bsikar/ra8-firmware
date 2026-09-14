@@ -8,6 +8,7 @@ default:
     @echo ""
     @echo "SUBMODULES:"
     @echo "  just quality::local                          Run tools NATIVELY on your host machine"
+    @echo "  just quality::remote                         Run one gate in a remote worktree"
     @echo "  just quality::devcontainer                   Run tools ISOLATED inside the devcontainer"
     @echo "  just quality::gate                           CI Gate metadata and operations"
     @echo ""
@@ -28,6 +29,7 @@ export CLANG_FORMAT := env('CLANG_FORMAT', `if command -v clang-format-22 >/dev/
 export CLANG_TIDY := env('CLANG_TIDY', `python3 scripts/checks/check_tool_versions.py --print-binary clang-tidy`)
 
 mod local 'ci_local.just'
+mod remote 'ci_remote.just'
 mod devcontainer 'ci_devcontainer.just'
 mod gate 'ci_gate.just'
 

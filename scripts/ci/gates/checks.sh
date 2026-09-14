@@ -511,21 +511,29 @@ _pcc_docs_and_tests() (
 
 _pcc_run_all() {
   local -a failures=()
-  local label helper status restore_errexit=0
+  local label helper status output_file restore_errexit=0
   [[ $- == *e* ]] && restore_errexit=1
   while (($# >= 2)); do
     label="$1"
     shift
     helper="$1"
+    output_file="$(mktemp)"
     set +e
-    "$helper"
+    "$helper" >"$output_file" 2>&1
     status=$?
     if ((restore_errexit)); then
       set -e
     fi
     if ((status != 0)); then
       failures+=("${label} (exit ${status})")
+      printf 'pre-commit-checks: failed subcheck %s [exit %s]; output follows:\n' \
+        "$label" "$status"
     fi
+    cat "$output_file"
+    if ((status != 0)); then
+      printf 'pre-commit-checks: end of failed subcheck %s\n' "$label"
+    fi
+    rm -f "$output_file"
     shift
   done
   if ((${#failures[@]} == 0)); then

@@ -86,7 +86,7 @@ def run_selftest(data: dict[str, Any]) -> list[str]:
     ]
     if policy_flags(data["hosts"]["win-ci"]) != expected_win:
         failures.append("WSL restore argv lost its declared quiet-hours target")
-    expected_nas = ["--full-instances", "2"]
+    expected_nas = ["--full-instances", "1"]
     if policy_flags(data["hosts"]["truenas"]) != expected_nas:
         failures.append("ordinary Docker restore argv lost its declared capacity")
     if state_group(data["hosts"]["win-ci"]) != "root":
