@@ -126,6 +126,94 @@ failure cases. It publishes each output after success and returns
 types stop at the adapter. The reusable ABI harness will compile C callers
 that exercise every mapped failure, output sentinel, and pointer-length case.
 
+## Ownership, buffers, and opaque handles
+
+Every exported function names the owner of each resource before and after the
+call. Ownership is never inferred from `const`, a pointer spelling, or a Zig
+implementation detail. The public ABI does not expose a Zig allocator, slice,
+array-list, error payload, or pointer to native Zig state.
+
+### Buffer vocabulary
+
+An API uses one of these terms in its C header and documentation:
+
+| Term | Contract |
+| --- | --- |
+| **Borrowed input** | Caller retains ownership for the duration of the call; the library does not retain the pointer. |
+| **Copied input** | Caller retains ownership; the library has copied all required bytes before success returns. |
+| **Caller-owned output** | Caller owns the destination storage; the library writes it only under the error contract and does not retain it. |
+| **Library-owned output** | The library returns a pointer that must be released by its named matching release function. |
+| **Retained input** | The library stores caller memory after return; prohibited unless the callback/retention contract explicitly authorizes it. |
+
+Ordinary input spans are borrowed. They pair a fixed-width pointer and length,
+are valid only for the call, and are never stored by the adapter or an internal
+module. A library that needs bytes after return copies them into storage that it
+owns; a successful copy transfers no ownership from the caller. Strings are
+byte spans with an explicitly documented encoding and length; NUL termination
+is not assumed unless the API says so.
+
+Capacity and length use the fixed-width representation contract. A
+library-owned variable-length result uses `uint8_t** out_bytes` and
+`uint32_t* out_len`; it publishes both only on success. Text uses the same
+byte form with a documented encoding. Its library supplies one named
+`ra8_err_t ra8_<library>_bytes_release(uint8_t** in_out_bytes)` function that
+releases the allocation and sets the caller pointer to null on success. The
+associated returned length is invalid only after a successful release. The
+caller does not call `free`, a Zig allocator, or a generic release helper.
+`in_out_bytes == NULL` returns `k_ra8_err_null_ptr` because the adapter cannot
+clear it. `*in_out_bytes == NULL` is the optional idempotent no-op case and
+must be stated by the header; otherwise it returns `k_ra8_err_null_ptr`.
+
+### Opaque handles
+
+State crossing the ABI is an incomplete C type used only behind a pointer. Its
+definition remains private to Zig; the C header never publishes its size,
+fields, alignment, or allocation strategy.
+
+```c
+typedef struct ra8_sample ra8_sample_t;
+
+ra8_err_t ra8_sample_create(ra8_sample_t** out_handle);
+ra8_err_t ra8_sample_destroy(ra8_sample_t** in_out_handle);
+```
+
+Creation allocates or binds all library-owned state only after validation. On
+failure, it publishes no handle and leaves the caller's output unchanged under
+the error contract. On success, the caller owns one handle reference and must
+use the named destroy or deinit function exactly once for that reference.
+
+Destroy and deinit take an in-out handle pointer when they can invalidate it.
+On successful destruction they release all library-owned resources and set the
+caller's handle to null. Repeated destruction of that null value succeeds as a
+no-op. Only a non-null handle returned by the matching create function and not
+yet destroyed is valid. A copied alias after destruction, a fabricated pointer,
+or a handle of another type is a caller contract violation; the adapter must
+not promise to recognize it before dereferencing it. Borrowed handles are
+never destroyed by the borrower.
+
+`init`/`deinit` is reserved for caller-provided storage whose size and layout
+are themselves public and stable. A Zig-backed opaque type therefore normally
+uses `create`/`destroy`; it must not make callers allocate guessed storage for
+private Zig state.
+
+### Transfer, retention, and cleanup
+
+The initial Zig ABI forbids ownership transfer of caller-owned raw buffers.
+An API needing a transfer uses a named opaque handle or a library-owned copy
+instead. It also forbids implicit pointer retention. A future retained-pointer
+API must name its retain and release boundary, duration, cancellation path,
+threading context, and teardown behavior before it is exposed.
+
+Every allocating or multi-step creation path has one cleanup path for each
+failure point. Allocation exhaustion maps to `k_ra8_err_no_mem`; it leaks no
+resource, publishes no partial handle, and does not consume a caller-owned
+buffer. Each allocating library supplies a private host-test allocation seam
+that can fail every allocation point deterministically; it is not part of the
+public ABI. C contract tests use that seam to prove no leak, untouched outputs,
+and a later successful create/destroy. They also test null and cleared-handle
+repeated teardown without inspecting Zig state; arbitrary pointer misuse is
+not a safe C test vector.
+
 ## Allowed scalar values
 
 Public value parameters, return values, and structure fields may use only the

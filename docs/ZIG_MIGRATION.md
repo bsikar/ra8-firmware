@@ -8,8 +8,9 @@ deliberate, and gives native Zig implementation code a clean place to grow.
 
 This is a layout convention. The [ABI representation contract](ZIG_ABI.md)
 defines scalar and aggregate representation plus error and output behavior.
-Ownership, callbacks, traps, and concurrency are specified before a migrated
-library exposes them.
+It also defines ownership, buffers, opaque handles, callbacks, traps, and
+concurrency; every applicable rule is settled before a migrated library exposes
+its ABI.
 
 ## Library layout
 
