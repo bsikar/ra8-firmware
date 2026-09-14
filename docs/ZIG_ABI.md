@@ -214,6 +214,36 @@ and a later successful create/destroy. They also test null and cleared-handle
 repeated teardown without inspecting Zig state; arbitrary pointer misuse is
 not a safe C test vector.
 
+## Callbacks, retention, and reentrancy
+
+Callbacks are prohibited by default. A library may accept one only through a
+named registration API whose header declares a fixed C function-pointer type,
+an explicit `void*` context, callback return meaning, calling context, and
+unregistration function. The adapter passes no Zig closure, slice, allocator,
+or borrowed internal pointer to C.
+
+Registration borrows the callback and context; the caller retains ownership.
+The caller keeps both valid until successful unregister or destroy returns.
+Unregister is the named release boundary: after it succeeds, no callback may
+start or continue, and it waits for any active callback to finish.
+Registration, unregistration, and destruction are not reentrant from the
+callback unless the header explicitly authorizes that exact operation. A
+callback may not call any API on the same handle except functions explicitly
+documented as reentrant.
+
+Retaining any other caller pointer after return is prohibited unless the API
+uses the same explicit register/unregister lifecycle. The header states who
+cancels outstanding work and which error is returned if cancellation cannot
+complete. Destroy performs an
+implicit unregister before releasing state, or returns a documented error and
+leaves the handle live; it never calls a callback after successful destruction.
+
+Callbacks run only in ordinary task/caller context. ISR-context callbacks,
+callbacks while locks are held, and callbacks during teardown are prohibited
+until a later dedicated contract authorizes them. C contract tests cover a
+successful callback, a callback-reported error, cancellation, unregister while
+idle, and destruction ordering.
+
 ## Allowed scalar values
 
 Public value parameters, return values, and structure fields may use only the
