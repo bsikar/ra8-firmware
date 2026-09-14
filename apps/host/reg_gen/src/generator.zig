@@ -626,6 +626,56 @@ test "generateC23Header with padding holes and C23 static_assert" {
     try std.testing.expect(std.mem.indexOf(u8, output, "static inline volatile timer0_regs_t *timer0_get_regs(void)") != null);
 }
 
+fn expectC23HeaderCompiles(def: PeripheralDef) !void {
+    const allocator = std.testing.allocator;
+    var header = std.ArrayList(u8).init(allocator);
+    defer header.deinit();
+
+    try generateC23Header(def, allocator, header.writer());
+
+    var child = std.process.Child.init(
+        &.{ "clang-18", "-std=c23", "-Wall", "-Wextra", "-Werror", "-fsyntax-only", "-x", "c-header", "-" },
+        allocator,
+    );
+    child.stdin_behavior = .Pipe;
+    child.stdout_behavior = .Ignore;
+    child.stderr_behavior = .Inherit;
+    try child.spawn();
+    try child.stdin.?.writeAll(header.items);
+    child.stdin.?.close();
+    child.stdin = null;
+
+    switch (try child.wait()) {
+        .Exited => |code| {
+            if (code != 0) {
+                return error.GeneratedHeaderDoesNotCompile;
+            }
+        },
+        else => return error.GeneratedHeaderCompilerDidNotExit,
+    }
+}
+
+test "generated headers compile under the pinned C23 compiler" {
+    const timer = PeripheralDef{
+        .peripheral = "TIMER0",
+        .base_address = "0x40001000",
+        .registers = &[_]Register{
+            .{ .name = "CTRL", .offset = "0x00", .size = 32, .description = "Control Register" },
+            .{ .name = "STATUS", .offset = "0x08", .size = 32, .description = "Status Register" },
+        },
+    };
+    const pcie = PeripheralDef{
+        .peripheral = "PCIE0",
+        .base_address = "0x100000000",
+        .registers = &[_]Register{
+            .{ .name = "BAR0", .offset = "0x00", .size = 64, .description = "Base Address Register 0" },
+        },
+    };
+
+    try expectC23HeaderCompiles(timer);
+    try expectC23HeaderCompiles(pcie);
+}
+
 test "generateC23Header with trailing padding for struct alignment" {
     const allocator = std.testing.allocator;
     const def = PeripheralDef{

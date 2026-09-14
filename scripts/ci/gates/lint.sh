@@ -91,6 +91,7 @@ gate_lint_go() (
 gate_lint_zig() (
   set -e
   require_cmd zig "the lint-zig gate needs the Zig toolchain"
+  require_tool_versions zig
   python3 scripts/checks/check_zig.py --selftest
   python3 scripts/checks/check_zig.py --require --lint
 )

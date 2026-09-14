@@ -60,6 +60,8 @@ gate_test_go() (
 gate_test_zig() (
   set -e
   require_cmd zig "the test-zig gate needs the Zig toolchain"
+  require_tool_versions zig
+  require_cmd clang-18 "reg_gen's generated C23 header contract uses the pinned host compiler"
   python3 scripts/checks/check_zig.py --require --test
 )
 

@@ -40,6 +40,6 @@ add_custom_target(
 enable_testing()
 add_test(
   NAME test_reg_gen
-  COMMAND ${ZIG_EXECUTABLE} test ${ZIG_TARGET_FLAGS} ${REG_GEN_SRC}
+  COMMAND ${ZIG_EXECUTABLE} build test
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
