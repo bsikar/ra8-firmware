@@ -1060,7 +1060,12 @@ ssh dev 'journalctl -u ra8-fleet-reconcile.service --since today'
 The automated service never stores a GitHub PAT or registration token. Existing
 runner homes retain their own registration. If one is genuinely lost, the role
 fails loud and the normal typed, short-lived `infra::register_runner` bootstrap
-remains the only registration path.
+remains the only registration path. During that parked bootstrap, the role
+retires only the stale local registration metadata before invoking the runner
+configurator in replacement mode; runner binaries, tool caches, and `_work`
+directories remain intact. This also repairs a server-expired registration or
+label change without letting the configurator mistake stale local metadata for
+a live identity.
 
 `win-ci` uses its tailnet address for fleet maintenance. That address is live
 when the workstation is on its temporary even-port update leg, which is also
