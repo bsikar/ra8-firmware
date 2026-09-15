@@ -108,11 +108,19 @@ function(ra8_signatures_match_policy out_var header rust)
       "${_ra8_header_apply}"
       "ra8_err_t ra8_rust_abi_fixture_create(ra8_rust_abi_fixture_t** out_handle)"
       "void ra8_rust_abi_fixture_test_fail_next_allocation(void)"
+      "void ra8_rust_abi_fixture_test_reset_apply_calls(void)"
+      "uint32_t ra8_rust_abi_fixture_test_apply_calls(void)"
+      "uint32_t ra8_rust_abi_fixture_test_live_handles(void)"
       "ra8_err_t ra8_rust_abi_fixture_destroy(ra8_rust_abi_fixture_t** in_out_handle)"
   )
   set(_ra8_rust_signatures
-      "${_ra8_rust_apply}" "${_ra8_rust_create}"
-      "pub extern \"C\" fn ra8_rust_abi_fixture_test_fail_next_allocation()" "${_ra8_rust_destroy}"
+      "${_ra8_rust_apply}"
+      "${_ra8_rust_create}"
+      "pub extern \"C\" fn ra8_rust_abi_fixture_test_fail_next_allocation()"
+      "pub extern \"C\" fn ra8_rust_abi_fixture_test_reset_apply_calls()"
+      "pub extern \"C\" fn ra8_rust_abi_fixture_test_apply_calls() -> u32"
+      "pub extern \"C\" fn ra8_rust_abi_fixture_test_live_handles() -> u32"
+      "${_ra8_rust_destroy}"
   )
   set(_ra8_matches TRUE)
   foreach(_ra8_signature IN LISTS _ra8_header_signatures)
