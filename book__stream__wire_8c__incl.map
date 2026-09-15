@@ -1,0 +1,23 @@
+<map id="apps/shared_libs/book/src/book_stream_wire.c" name="apps/shared_libs/book/src/book_stream_wire.c">
+<area shape="rect" id="Node000001" title="Wire decoding and canonical layout validation for streamed books." alt="" coords="99,5,279,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,76,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="154,48,76,89,73,84,152,43"/>
+<area shape="rect" id="Node000003" href="$book__stream__internal_8h.html" title="Private wire geometry for strict RABOOK1 stream validation." alt="" coords="101,93,277,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="191,46,191,79,186,79,186,46"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="251,167,377,192"/>
+<area shape="poly" id="edge12_Node000001_Node000009" title=" " alt="" coords="231,43,263,64,291,92,306,122,314,152,309,154,301,124,287,95,259,68,228,48"/>
+<area shape="rect" id="Node000004" href="$book__stream_8h.html" title="Strict, zero&#45;allocation validation of a streamed RABOOK1 flat blob." alt="" coords="108,167,227,192"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="188,120,177,154,172,153,183,118"/>
+<area shape="poly" id="edge11_Node000003_Node000009" title=" " alt="" coords="210,116,283,157,280,162,207,121"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="57,387,128,412"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="158,194,141,215,124,241,111,275,103,311,96,373,91,373,98,310,106,274,120,239,136,212,154,191"/>
+<area shape="rect" id="Node000006" href="$book_8h.html" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="134,240,201,265"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="170,192,170,226,165,226,165,192"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="229,313,308,339"/>
+<area shape="poly" id="edge10_Node000004_Node000008" title=" " alt="" coords="179,191,215,238,256,300,252,303,210,242,174,194"/>
+<area shape="poly" id="edge7_Node000006_Node000005" title=" " alt="" coords="157,267,138,288,120,315,108,345,100,374,95,372,103,343,116,312,134,285,153,264"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="130,313,205,339"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="170,266,170,300,165,300,165,266"/>
+<area shape="poly" id="edge8_Node000006_Node000008" title=" " alt="" coords="185,263,242,303,239,307,182,268"/>
+<area shape="poly" id="edge9_Node000008_Node000005" title=" " alt="" coords="241,341,135,384,133,379,239,336"/>
+</map>

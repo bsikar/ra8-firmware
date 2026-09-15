@@ -1,0 +1,16 @@
+<map id="ra8_vmem_stream_t" name="ra8_vmem_stream_t">
+<area shape="rect" id="Node000001" title="Binds one page&#45;cached object to the byte&#45;stream read adapter." alt="" coords="121,389,278,415"/>
+<area shape="rect" id="Node000002" href="$structra8__vmem__t.html" title="Page&#45;cache state (caller&#45;owned; treat as private)." alt="" coords="147,293,251,319"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="202,333,202,389,197,389,197,333"/>
+<area shape="rect" id="Node000003" href="$structra8__vmem__cfg__t.html" title="Caller&#45;supplied storage + loader for ra8_vmem_init." alt="" coords="182,101,313,127"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="244,141,205,294,200,293,238,140"/>
+<area shape="rect" id="Node000004" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="5,5,159,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="115,35,228,99,226,103,113,40"/>
+<area shape="rect" id="Node000007" href="$structra8__keycache__cfg__t.html" title="Caller&#45;supplied storage + policy + renderer for ra8_keycache_init." alt="" coords="7,101,157,127"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="85,45,85,101,79,101,79,45"/>
+<area shape="rect" id="Node000005" href="$structra8__vmem__key__t.html" title="The (object_id, frame&#45;aligned offset) key the page cache hashes on." alt="" coords="183,5,317,31"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="252,45,250,101,245,101,247,44"/>
+<area shape="rect" id="Node000006" href="$structra8__keycache__t.html" title="Cache engine state (caller&#45;owned; treat as private)." alt="" coords="62,197,185,223"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="143,232,192,291,188,295,139,235"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="95,138,121,196,116,198,90,141"/>
+</map>

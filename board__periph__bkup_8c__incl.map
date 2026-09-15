@@ -1,0 +1,33 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_bkup.c" name="tools/ra8_emulator/src/periph/board_periph_bkup.c">
+<area shape="rect" id="Node000001" title="VBATT backup&#45;register (VBTBKRn) reset&#45;retained domain model." alt="" coords="274,5,453,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="185,255,256,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="274,48,215,58,156,72,107,89,89,99,77,110,72,121,71,133,80,159,98,185,116,205,146,229,179,247,176,251,143,233,112,209,93,188,75,162,66,134,67,119,73,106,86,95,105,84,155,66,214,53,273,42"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="451,108,518,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="402,58,458,98,455,102,399,62"/>
+<area shape="rect" id="Node000004" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="88,108,249,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="305,63,208,105,206,100,303,58"/>
+<area shape="rect" id="Node000009" href="$board__periph__prcr__internal_8h.html" title="Module&#45;private PRCR unlock state shared with the protected blocks." alt="" coords="335,181,543,207"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="372,59,382,95,398,132,423,169,418,172,393,135,377,97,367,61"/>
+<area shape="rect" id="Node000010" href="$emu__host__io__internal_8h.html" title="Bounded raw&#45;descriptor I/O seam for the RA8 emulator." alt="" coords="568,181,743,207"/>
+<area shape="poly" id="edge14_Node000001_Node000010" title=" " alt="" coords="379,59,405,97,422,115,441,131,496,159,555,176,554,182,494,164,438,136,418,119,401,100,375,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="156,135,142,150,129,168,122,187,126,205,147,230,174,247,172,251,143,234,121,208,117,186,124,165,138,147,153,132"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="5,255,140,280"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="158,135,137,157,116,183,98,214,85,243,80,241,94,211,112,180,133,153,154,132"/>
+<area shape="rect" id="Node000006" href="$emu__memory__access_8h.html" title="Central first&#45;party Unicorn memory access seam." alt="" coords="135,181,311,207"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="180,132,208,169,204,172,176,135"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="226,207,224,241,219,241,220,207"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="200,209,111,251,109,246,198,204"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="281,255,355,280"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="240,205,293,244,290,248,237,209"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="379,255,505,280"/>
+<area shape="poly" id="edge10_Node000006_Node000008" title=" " alt="" coords="259,204,394,248,393,253,258,209"/>
+<area shape="poly" id="edge12_Node000009_Node000002" title=" " alt="" coords="405,209,270,253,268,248,403,204"/>
+<area shape="poly" id="edge13_Node000009_Node000008" title=" " alt="" coords="442,207,444,241,438,241,437,207"/>
+<area shape="poly" id="edge17_Node000010_Node000002" title=" " alt="" coords="569,209,432,229,270,257,269,252,432,224,568,204"/>
+<area shape="poly" id="edge16_Node000010_Node000007" title=" " alt="" coords="598,209,370,257,369,252,597,204"/>
+<area shape="poly" id="edge19_Node000010_Node000008" title=" " alt="" coords="622,209,490,253,489,248,620,204"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="574,255,649,280"/>
+<area shape="poly" id="edge15_Node000010_Node000011" title=" " alt="" coords="650,208,628,244,623,242,646,206"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="673,255,769,280"/>
+<area shape="poly" id="edge18_Node000010_Node000012" title=" " alt="" coords="668,205,703,243,699,246,664,209"/>
+</map>

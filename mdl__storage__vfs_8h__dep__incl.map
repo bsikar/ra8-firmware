@@ -1,0 +1,7 @@
+<map id="apps/shared_libs/mdl_storage_vfs/inc/mdl_storage_vfs.h" name="apps/shared_libs/mdl_storage_vfs/inc/mdl_storage_vfs.h">
+<area shape="rect" id="Node000001" title="No&#45;heap VFS storage binding for the media&#45;download coordinator." alt="" coords="107,5,267,60"/>
+<area shape="rect" id="Node000002" href="$mdl__storage__vfs_8c.html" title="Transactional media&#45;download storage over named RA8 VFS mounts." alt="" coords="5,108,165,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="152,72,114,110,110,106,148,68"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2media__download_2src_2main_8c.html" title="Download, validate, publish, and reopen one C6&#45;fetched .rabook." alt="" coords="190,108,386,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="225,68,263,106,260,110,221,72"/>
+</map>

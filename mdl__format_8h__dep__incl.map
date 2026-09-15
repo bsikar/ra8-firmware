@@ -1,0 +1,163 @@
+<map id="apps/shared_libs/mdl/inc/mdl_format.h" name="apps/shared_libs/mdl/inc/mdl_format.h">
+<area shape="rect" id="Node000001" title="Shared media artifact format contract for download and export paths." alt="" coords="2790,5,2950,45"/>
+<area shape="rect" id="Node000002" href="$mdl__compose__internal_8h.html" title="What this FORM injects, and how one parsed invocation reaches a mode." alt="" coords="84,401,251,441"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="2777,34,2334,57,1750,96,1318,133,888,184,781,191,686,188,521,175,445,177,408,182,370,192,332,206,293,226,253,253,211,286,190,312,178,343,172,375,170,402,164,401,166,374,173,342,185,309,207,282,249,248,290,222,330,201,369,187,407,177,445,171,521,170,686,183,781,186,887,179,1318,128,1750,91,2333,51,2776,28"/>
+<area shape="rect" id="Node000005" href="$mdl__app_8h.html" title="The downloader&#39;s portable application layer: one run mode, one call." alt="" coords="899,189,1059,229"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="2777,38,1060,202,1059,197,2776,33"/>
+<area shape="rect" id="Node000018" href="$mdl__export_8h.html" title="Package a downloaded chapter folder into a reader&#45;openable container." alt="" coords="2790,93,2950,133"/>
+<area shape="poly" id="edge21_Node000001_Node000018" title=" " alt="" coords="2873,59,2873,93,2867,93,2867,59"/>
+<area shape="rect" id="Node000042" href="$media__download__image_8c.html" title="Convert one C6&#45;fetched encoded image into a strict .rabook." alt="" coords="4587,504,4806,559"/>
+<area shape="poly" id="edge66_Node000001_Node000042" title=" " alt="" coords="2964,25,3330,29,3823,39,4067,47,4283,59,4449,73,4508,81,4547,91,4604,109,4652,127,4672,140,4687,157,4696,179,4699,207,4699,313,4699,504,4694,504,4694,313,4694,207,4691,180,4682,159,4668,144,4650,132,4602,114,4545,96,4507,87,4448,78,4282,64,4067,53,3823,44,3330,34,2964,30"/>
+<area shape="rect" id="Node000043" href="$ra8__mdl__http_8h.html" title="Wire&#45;neutral media HTTP request and response records." alt="" coords="4395,93,4534,133"/>
+<area shape="poly" id="edge67_Node000001_Node000043" title=" " alt="" coords="2964,29,4395,106,4395,111,2963,34"/>
+<area shape="rect" id="Node000003" href="$apps_2host_2mdl_2src_2main_8c.html" title="mdl – host CLI for the e&#45;reader media downloader." alt="" coords="196,519,381,544"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="200,448,277,516,274,520,197,452"/>
+<area shape="rect" id="Node000004" href="$mdl__compose_8c.html" title="The composition of THIS form: libcurl in, one parsed command out." alt="" coords="5,511,172,551"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="148,454,105,513,100,510,143,451"/>
+<area shape="poly" id="edge11_Node000005_Node000002" title=" " alt="" coords="885,213,732,218,553,229,466,239,386,251,320,267,271,286,239,311,212,343,192,375,178,402,173,400,187,372,208,340,235,307,269,282,318,262,385,246,465,233,553,224,732,212,885,208"/>
+<area shape="poly" id="edge10_Node000005_Node000003" title=" " alt="" coords="886,218,804,226,707,239,605,259,505,287,445,305,397,320,356,344,337,363,316,388,300,422,292,458,290,518,285,518,286,458,295,420,312,385,333,359,353,340,395,315,444,299,504,281,604,254,706,234,803,220,886,213"/>
+<area shape="rect" id="Node000006" href="$mdl__cli_8h.html" title="Command&#45;line parsing for the mdl CLI." alt="" coords="517,291,684,331"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="896,235,672,294,671,289,895,230"/>
+<area shape="rect" id="Node000010" href="$mdl__app_8c.html" title="The application layer&#39;s one composition seam: the bound working set." alt="" coords="899,401,1059,441"/>
+<area shape="poly" id="edge12_Node000005_Node000010" title=" " alt="" coords="982,243,982,401,977,401,977,243"/>
+<area shape="rect" id="Node000011" href="$mdl__app__internal_8h.html" title="Module&#45;private contract shared by the application&#45;mode translation units." alt="" coords="1645,291,1820,331"/>
+<area shape="poly" id="edge13_Node000005_Node000011" title=" " alt="" coords="1073,220,1645,296,1645,301,1073,225"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="512,337,244,404,242,399,511,332"/>
+<area shape="rect" id="Node000007" href="$mdl__cli_8c.html" title="Implementation of the mdl command&#45;line parser." alt="" coords="327,401,493,441"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="557,340,445,403,442,399,554,336"/>
+<area shape="rect" id="Node000008" href="$mdl__cli__nums_8c.html" title="Strict bounded numeric&#45;option parsing for mdl." alt="" coords="517,401,684,441"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="603,345,603,401,598,401,598,345"/>
+<area shape="rect" id="Node000009" href="$mdl__cli__usage_8c.html" title="Stable command&#45;line help rendering for mdl." alt="" coords="708,401,875,441"/>
+<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="647,336,759,399,757,403,645,340"/>
+<area shape="poly" id="edge14_Node000011_Node000010" title=" " alt="" coords="1632,319,1516,327,1376,340,1223,360,1072,389,1025,404,1024,399,1071,384,1222,355,1375,334,1516,321,1631,314"/>
+<area shape="rect" id="Node000012" href="$mdl__app__admin_8c.html" title="Discovery, descriptor generation, and verification actions." alt="" coords="1839,401,2003,441"/>
+<area shape="poly" id="edge15_Node000011_Node000012" title=" " alt="" coords="1779,336,1889,399,1886,403,1776,340"/>
+<area shape="rect" id="Node000013" href="$mdl__app__cover_8c.html" title="Cached series&#45;cover acquisition and validated publication." alt="" coords="1083,401,1243,441"/>
+<area shape="poly" id="edge16_Node000011_Node000013" title=" " alt="" coords="1632,325,1455,349,1355,367,1256,389,1210,404,1209,399,1255,384,1354,362,1454,344,1631,320"/>
+<area shape="rect" id="Node000014" href="$mdl__app__direct_8c.html" title="Direct artifact, page, pack, and run composition actions." alt="" coords="2078,401,2238,441"/>
+<area shape="poly" id="edge17_Node000011_Node000014" title=" " alt="" coords="1821,332,2084,399,2083,404,1819,337"/>
+<area shape="rect" id="Node000015" href="$mdl__app__library_8c.html" title="Tracked&#45;library list, remove, and update&#45;all actions." alt="" coords="1267,401,1430,441"/>
+<area shape="poly" id="edge18_Node000011_Node000015" title=" " alt="" coords="1638,337,1443,389,1399,404,1397,399,1441,384,1637,332"/>
+<area shape="rect" id="Node000016" href="$mdl__app__prepare_8c.html" title="Descriptor&#45;driven series preparation and safe path setup." alt="" coords="1454,401,1627,441"/>
+<area shape="poly" id="edge19_Node000011_Node000016" title=" " alt="" coords="1689,340,1576,403,1573,399,1686,336"/>
+<area shape="rect" id="Node000017" href="$mdl__app__series_8c.html" title="Series selection, download lifecycle, and export actions." alt="" coords="1651,401,1814,441"/>
+<area shape="poly" id="edge20_Node000011_Node000017" title=" " alt="" coords="1735,345,1735,401,1730,401,1730,345"/>
+<area shape="poly" id="edge22_Node000018_Node000005" title=" " alt="" coords="2776,122,1060,206,1059,201,2776,117"/>
+<area shape="poly" id="edge36_Node000018_Node000011" title=" " alt="" coords="2776,119,2543,126,2254,139,1994,158,1902,170,1848,184,1814,207,1785,236,1745,292,1741,289,1781,232,1811,202,1846,179,1901,165,1994,152,2254,134,2543,121,2776,114"/>
+<area shape="rect" id="Node000019" href="$mdl__pack_8h.html" title="Archive packaging of downloaded page folders for the mdl CLI." alt="" coords="1859,189,2019,229"/>
+<area shape="poly" id="edge23_Node000018_Node000019" title=" " alt="" coords="2776,119,2633,125,2449,137,2244,155,2038,184,2004,191,2003,186,2038,179,2243,150,2448,131,2633,120,2776,114"/>
+<area shape="rect" id="Node000020" href="$mdl__pack_8c.html" title="Implementation of the downloaded&#45;folder archive packaging." alt="" coords="1918,291,2078,331"/>
+<area shape="poly" id="edge63_Node000018_Node000020" title=" " alt="" coords="2776,121,2593,129,2378,142,2188,160,2121,172,2083,184,2066,201,2045,230,2010,292,2005,290,2041,227,2062,198,2081,179,2120,166,2187,155,2377,137,2593,124,2776,115"/>
+<area shape="rect" id="Node000021" href="$mdl__verify_8h.html" title="Bounded, no&#45;heap structural validation of mdl artifacts." alt="" coords="3490,189,3650,229"/>
+<area shape="poly" id="edge26_Node000018_Node000021" title=" " alt="" coords="2964,121,3180,144,3436,179,3490,188,3489,193,3435,184,3179,150,2963,126"/>
+<area shape="rect" id="Node000024" href="$mdl__verify__internal_8h.html" title="Private bounded validator seams shared by the mdl verifiers." alt="" coords="3550,291,3737,331"/>
+<area shape="poly" id="edge64_Node000018_Node000024" title=" " alt="" coords="2964,119,3132,140,3227,157,3321,179,3454,227,3601,289,3599,294,3452,232,3320,184,3226,162,3131,145,2964,125"/>
+<area shape="rect" id="Node000026" href="$mdl__verify__rabook__internal_8h.html" title="Private strict RBKC validator seam for media downloader artifacts." alt="" coords="3830,284,4001,339"/>
+<area shape="poly" id="edge65_Node000018_Node000026" title=" " alt="" coords="2964,115,3131,123,3332,136,3524,154,3603,166,3663,179,3724,200,3782,227,3877,282,3875,286,3780,232,3722,205,3661,184,3602,171,3524,160,3332,141,3131,128,2964,121"/>
+<area shape="rect" id="Node000028" href="$mdl__export_8c.html" title="Coordinate bounded chapter export and validated publication." alt="" coords="2883,401,3043,441"/>
+<area shape="poly" id="edge37_Node000018_Node000028" title=" " alt="" coords="2882,146,2960,401,2955,402,2877,148"/>
+<area shape="rect" id="Node000029" href="$mdl__export__epub_8c.html" title="Emit deterministic fixed&#45;layout EPUB3 chapter containers." alt="" coords="2651,511,2825,551"/>
+<area shape="poly" id="edge38_Node000018_Node000029" title=" " alt="" coords="2777,135,2596,174,2489,200,2380,231,2277,266,2186,304,2114,345,2087,366,2068,388,2040,435,2036,449,2039,458,2047,464,2063,468,2118,469,2202,467,2316,468,2462,477,2640,501,2674,509,2673,514,2639,507,2462,483,2316,473,2202,472,2118,474,2062,473,2045,469,2034,461,2031,449,2035,433,2064,385,2084,363,2111,341,2183,299,2275,261,2379,226,2487,195,2595,168,2776,129"/>
+<area shape="rect" id="Node000030" href="$mdl__export__epub__meta_8c.html" title="Render the EPUB3 package document, navigation, and identifier." alt="" coords="3505,504,3667,559"/>
+<area shape="poly" id="edge39_Node000018_Node000030" title=" " alt="" coords="2964,116,3373,138,3589,156,3679,167,3747,179,3824,199,3883,221,4014,282,4077,303,4130,316,4153,325,4176,338,4197,357,4218,385,4228,404,4232,422,4229,440,4217,458,4189,473,4138,485,3989,506,3817,520,3668,529,3667,524,3816,515,3989,501,4137,480,4187,468,4214,454,4224,438,4226,423,4223,406,4213,388,4193,361,4173,342,4151,330,4128,321,4075,308,4012,286,3881,226,3823,204,3745,184,3678,172,3589,161,3372,143,2963,121"/>
+<area shape="rect" id="Node000031" href="$mdl__export__internal_8h.html" title="Module&#45;private contracts shared by chapter export writers." alt="" coords="2707,291,2899,331"/>
+<area shape="poly" id="edge40_Node000018_Node000031" title=" " alt="" coords="2869,148,2861,191,2847,237,2818,293,2814,290,2842,235,2855,189,2863,147"/>
+<area shape="rect" id="Node000033" href="$mdl__export__jof_8c.html" title="JOF tile&#45;atlas exporter: one .jof band atlas per chapter page." alt="" coords="3067,401,3227,441"/>
+<area shape="poly" id="edge58_Node000018_Node000033" title=" " alt="" coords="2898,142,3132,400,3128,403,2894,145"/>
+<area shape="rect" id="Node000034" href="$mdl__export__meta_8c.html" title="Parse, validate, and serialize portable publication metadata." alt="" coords="3252,401,3427,441"/>
+<area shape="poly" id="edge59_Node000018_Node000034" title=" " alt="" coords="2914,138,2978,179,3313,399,3310,403,2975,184,2911,143"/>
+<area shape="rect" id="Node000038" href="$mdl__export__tar_8c.html" title="Stream deterministic CBT and gzip&#45;wrapped CBT containers." alt="" coords="3451,401,3611,441"/>
+<area shape="poly" id="edge60_Node000018_Node000038" title=" " alt="" coords="2934,136,3036,179,3120,221,3183,258,3246,294,3330,336,3481,399,3479,404,3328,341,3244,299,3181,262,3118,226,3034,184,2932,141"/>
+<area shape="rect" id="Node000039" href="$mdl__export__zip_8c.html" title="Provide bounded miniz storage and the CBZ container writer." alt="" coords="2262,401,2422,441"/>
+<area shape="poly" id="edge62_Node000018_Node000039" title=" " alt="" coords="2777,130,2694,150,2651,165,2611,184,2570,208,2530,237,2458,299,2399,358,2359,403,2355,399,2395,354,2454,295,2527,232,2567,204,2609,179,2650,160,2692,145,2776,125"/>
+<area shape="rect" id="Node000040" href="$mdl__export__io__internal_8h.html" title="Private portable byte&#45;stream contracts for media exporters." alt="" coords="2622,189,2833,229"/>
+<area shape="poly" id="edge53_Node000018_Node000040" title=" " alt="" coords="2831,143,2758,191,2755,186,2828,139"/>
+<area shape="rect" id="Node000041" href="$mdl__export__workspace_8c.html" title="Manage the caller&#45;owned media export bump workspace." alt="" coords="2094,189,2305,229"/>
+<area shape="poly" id="edge61_Node000018_Node000041" title=" " alt="" coords="2776,126,2568,149,2324,184,2284,191,2283,186,2323,179,2568,144,2776,121"/>
+<area shape="poly" id="edge24_Node000019_Node000011" title=" " alt="" coords="1889,237,1773,294,1770,289,1887,232"/>
+<area shape="poly" id="edge25_Node000019_Node000020" title=" " alt="" coords="1960,239,1989,290,1985,293,1955,242"/>
+<area shape="poly" id="edge27_Node000021_Node000011" title=" " alt="" coords="3476,216,2627,251,2171,271,1906,287,1821,298,1820,292,1906,281,2171,266,2626,245,3476,211"/>
+<area shape="rect" id="Node000022" href="$mdl__export__io_8c.html" title="Portable source streams and validated exporter publication stages." alt="" coords="3341,291,3501,331"/>
+<area shape="poly" id="edge28_Node000021_Node000022" title=" " alt="" coords="3532,239,3450,293,3447,289,3529,234"/>
+<area shape="rect" id="Node000023" href="$mdl__verify_8c.html" title="Portable bounded structural validators for media artifacts." alt="" coords="3838,401,3998,441"/>
+<area shape="poly" id="edge29_Node000021_Node000023" title=" " alt="" coords="3640,231,3695,253,3750,282,3897,399,3893,403,3747,286,3693,258,3638,236"/>
+<area shape="poly" id="edge30_Node000021_Node000024" title=" " alt="" coords="3594,238,3632,290,3627,293,3590,241"/>
+<area shape="poly" id="edge33_Node000021_Node000026" title=" " alt="" coords="3648,230,3830,283,3829,288,3647,235"/>
+<area shape="poly" id="edge31_Node000024_Node000023" title=" " alt="" coords="3705,334,3871,399,3869,404,3703,339"/>
+<area shape="rect" id="Node000025" href="$mdl__verify__tarball_8c.html" title="Streamed USTAR and gzip&#45;framed CBT structural validation." alt="" coords="3635,401,3814,441"/>
+<area shape="poly" id="edge32_Node000024_Node000025" title=" " alt="" coords="3668,341,3713,400,3708,403,3664,344"/>
+<area shape="poly" id="edge34_Node000026_Node000023" title=" " alt="" coords="3919,353,3920,401,3915,401,3914,353"/>
+<area shape="rect" id="Node000027" href="$mdl__verify__rabook_8c.html" title="Strict allocation&#45;free RBKC validation for media downloader artifacts." alt="" coords="4022,401,4203,441"/>
+<area shape="poly" id="edge35_Node000026_Node000027" title=" " alt="" coords="3977,343,4079,399,4077,403,3974,348"/>
+<area shape="poly" id="edge41_Node000031_Node000028" title=" " alt="" coords="2844,337,2937,399,2934,403,2841,341"/>
+<area shape="poly" id="edge42_Node000031_Node000029" title=" " alt="" coords="2740,340,2710,361,2687,388,2680,405,2678,420,2687,455,2702,485,2721,510,2717,513,2698,488,2682,457,2673,421,2674,404,2682,385,2706,357,2737,336"/>
+<area shape="rect" id="Node000032" href="$mdl__export__epub__internal_8h.html" title="Private bounded EPUB3 writer contracts for the media downloader." alt="" coords="2697,394,2859,449"/>
+<area shape="poly" id="edge43_Node000031_Node000032" title=" " alt="" coords="2798,345,2787,394,2782,393,2793,344"/>
+<area shape="poly" id="edge46_Node000031_Node000033" title=" " alt="" coords="2885,333,3056,384,3098,399,3097,404,3055,389,2884,338"/>
+<area shape="poly" id="edge47_Node000031_Node000034" title=" " alt="" coords="2913,324,3069,348,3240,384,3289,399,3287,404,3239,389,3068,354,2912,329"/>
+<area shape="rect" id="Node000035" href="$mdl__export__rabook__internal_8h.html" title="Private bounded RABOOK export contracts for the media downloader." alt="" coords="2447,394,2621,449"/>
+<area shape="poly" id="edge48_Node000031_Node000035" title=" " alt="" coords="2745,339,2601,396,2599,391,2743,334"/>
+<area shape="poly" id="edge51_Node000031_Node000038" title=" " alt="" coords="2913,315,3024,323,3156,337,3298,357,3439,384,3486,399,3485,404,3437,389,3297,362,3155,342,3023,329,2913,321"/>
+<area shape="poly" id="edge52_Node000031_Node000039" title=" " alt="" coords="2694,333,2569,357,2435,389,2390,404,2388,399,2433,384,2568,352,2693,328"/>
+<area shape="poly" id="edge44_Node000032_Node000029" title=" " alt="" coords="2766,463,2748,512,2743,510,2761,461"/>
+<area shape="poly" id="edge45_Node000032_Node000030" title=" " alt="" coords="2859,450,2872,453,3047,486,3223,507,3381,519,3505,525,3504,531,3381,524,3222,512,3046,491,2871,459,2858,455"/>
+<area shape="rect" id="Node000036" href="$mdl__export__rabook_8c.html" title="Bounded fixed&#45;layout EPUB&#45;to&#45;RBKC writer for media chapters." alt="" coords="2441,511,2627,551"/>
+<area shape="poly" id="edge49_Node000035_Node000036" title=" " alt="" coords="2537,463,2537,511,2531,511,2531,463"/>
+<area shape="rect" id="Node000037" href="$mdl__export__rabook__io_8c.html" title="Portable temporary EPUB and flat&#45;blob adapters for RABOOK export." alt="" coords="2211,511,2417,551"/>
+<area shape="poly" id="edge50_Node000035_Node000037" title=" " alt="" coords="2469,457,2354,514,2351,509,2467,453"/>
+<area shape="poly" id="edge54_Node000040_Node000014" title=" " alt="" coords="2674,237,2554,287,2412,341,2332,366,2251,389,2209,404,2207,399,2249,384,2330,361,2410,336,2552,282,2672,232"/>
+<area shape="poly" id="edge56_Node000040_Node000022" title=" " alt="" coords="2847,225,3341,296,3340,301,2846,230"/>
+<area shape="poly" id="edge55_Node000040_Node000031" title=" " alt="" coords="2752,238,2791,290,2787,293,2748,241"/>
+<area shape="poly" id="edge57_Node000040_Node000035" title=" " alt="" coords="2702,241,2560,396,2556,392,2699,237"/>
+<area shape="rect" id="Node000044" href="$ra8__c6link__mdl_8h.html" title="Pull&#45;based media download client over ESP&#45;hosted CustomRpc." alt="" coords="5766,189,5905,229"/>
+<area shape="poly" id="edge68_Node000043_Node000044" title=" " alt="" coords="4548,118,5766,200,5766,205,4547,123"/>
+<area shape="rect" id="Node000061" href="$ra8__c6link__mdl__msg_8h.html" title="Media service dispatch contract for the ESP32&#45;C6 integration." alt="" coords="4279,189,4451,229"/>
+<area shape="poly" id="edge93_Node000043_Node000061" title=" " alt="" coords="4436,145,4387,191,4383,187,4433,141"/>
+<area shape="rect" id="Node000064" href="$ra8__c6link__mdl__service__internal_8h.html" title="Private bounded&#45;allocation seam for the portable media service." alt="" coords="4475,181,4654,236"/>
+<area shape="poly" id="edge96_Node000043_Node000064" title=" " alt="" coords="4497,141,4538,179,4535,183,4493,145"/>
+<area shape="rect" id="Node000045" href="$examples_2ek__ra8d2_2hw__pending_2c6_2c6__mdl__test_2src_2main_8c.html" title="Cross&#45;build fixture for the bounded C6 media RPC types." alt="" coords="5828,394,6011,449"/>
+<area shape="poly" id="edge69_Node000044_Node000045" title=" " alt="" coords="5840,242,5848,288,5863,338,5879,367,5898,392,5894,396,5875,370,5858,340,5843,290,5835,243"/>
+<area shape="rect" id="Node000046" href="$ra8__c6link__mdl__transfer_8h.html" title="Transactional RA8&#45;side coordinator for C6 media byte streams." alt="" coords="5242,291,5437,331"/>
+<area shape="poly" id="edge70_Node000044_Node000046" title=" " alt="" coords="5753,229,5433,294,5431,289,5752,224"/>
+<area shape="rect" id="Node000059" href="$ra8__c6link__mdl_8c.html" title="Pull&#45;based media download client over generated protobuf codecs." alt="" coords="6035,401,6174,441"/>
+<area shape="poly" id="edge90_Node000044_Node000059" title=" " alt="" coords="5919,211,5961,219,6005,232,6046,253,6081,282,6099,311,6108,344,6110,375,6109,401,6104,401,6105,375,6102,344,6094,313,6077,286,6043,257,6003,237,5960,224,5918,216"/>
+<area shape="rect" id="Node000060" href="$ra8__c6link__mdl__internal_8h.html" title="Private response&#45;validation seams for the media RPC client." alt="" coords="5873,291,6067,331"/>
+<area shape="poly" id="edge91_Node000044_Node000060" title=" " alt="" coords="5873,235,5946,289,5943,293,5870,239"/>
+<area shape="poly" id="edge79_Node000046_Node000045" title=" " alt="" coords="5451,322,5623,347,5816,384,5843,391,5842,396,5815,389,5622,352,5450,328"/>
+<area shape="rect" id="Node000047" href="$mdl__net__c6link_8h.html" title="Media network backend over the ESP32&#45;C6 raw HTTPS transport." alt="" coords="5643,401,5803,441"/>
+<area shape="poly" id="edge71_Node000046_Node000047" title=" " alt="" coords="5436,332,5632,384,5675,399,5674,404,5631,389,5435,337"/>
+<area shape="rect" id="Node000049" href="$mdl__rabook__vfs_8h.html" title="Strict no&#45;heap RBKC validator and reader over named RA8 VFS mounts." alt="" coords="5201,394,5361,449"/>
+<area shape="poly" id="edge73_Node000046_Node000049" title=" " alt="" coords="5325,345,5297,395,5293,393,5320,342"/>
+<area shape="rect" id="Node000051" href="$examples_2ek__ra8d2_2hw__pending_2media__download_2src_2main_8c.html" title="Download, validate, publish, and reopen one C6&#45;fetched .rabook." alt="" coords="5016,504,5212,559"/>
+<area shape="poly" id="edge83_Node000046_Node000051" title=" " alt="" coords="5270,339,5228,360,5191,389,5168,416,5149,447,5125,505,5120,503,5144,445,5163,413,5187,385,5225,356,5267,334"/>
+<area shape="rect" id="Node000052" href="$mdl__storage__vfs_8h.html" title="No&#45;heap VFS storage binding for the media&#45;download coordinator." alt="" coords="4966,394,5126,449"/>
+<area shape="poly" id="edge76_Node000046_Node000052" title=" " alt="" coords="5276,339,5118,396,5116,391,5275,333"/>
+<area shape="rect" id="Node000054" href="$media__download__image__internal_8h.html" title="Private encoded&#45;image download and RABOOK publication composition." alt="" coords="4734,387,4942,456"/>
+<area shape="poly" id="edge80_Node000046_Node000054" title=" " alt="" coords="5229,334,5097,358,4955,389,4943,392,4942,387,4953,384,5096,353,5228,329"/>
+<area shape="rect" id="Node000055" href="$ra8__mdl__storage__ram_8h.html" title="Caller&#45;buffer transaction adapter for verified C6 media sources." alt="" coords="4479,401,4659,441"/>
+<area shape="poly" id="edge84_Node000046_Node000055" title=" " alt="" coords="5228,325,4995,351,4722,389,4648,404,4647,399,4722,384,4994,345,5228,320"/>
+<area shape="rect" id="Node000057" href="$ra8__c6link__mdl__transfer_8c.html" title="Bounded transactional coordinator for C6 media byte streams." alt="" coords="5424,511,5617,551"/>
+<area shape="poly" id="edge87_Node000046_Node000057" title=" " alt="" coords="5356,343,5385,397,5425,454,5458,485,5492,509,5489,513,5455,489,5421,458,5380,400,5351,345"/>
+<area shape="rect" id="Node000058" href="$ra8__c6link__mdl__transfer__internal_8h.html" title="Private commit&#45;stage seam for the transactional media coordinator." alt="" coords="5436,394,5619,449"/>
+<area shape="poly" id="edge88_Node000046_Node000058" title=" " alt="" coords="5385,336,5483,392,5480,396,5382,340"/>
+<area shape="rect" id="Node000048" href="$mdl__net__c6link_8c.html" title="Digest&#45;verified media network backend over C6link." alt="" coords="5643,511,5803,551"/>
+<area shape="poly" id="edge72_Node000047_Node000048" title=" " alt="" coords="5726,455,5726,511,5721,511,5721,455"/>
+<area shape="rect" id="Node000050" href="$mdl__rabook__vfs_8c.html" title="Strict no&#45;heap RBKC validation and reading through the RA8 VFS." alt="" coords="5237,504,5397,559"/>
+<area shape="poly" id="edge74_Node000049_Node000050" title=" " alt="" coords="5296,461,5310,503,5305,505,5291,463"/>
+<area shape="poly" id="edge75_Node000049_Node000051" title=" " alt="" coords="5230,458,5156,506,5153,501,5227,454"/>
+<area shape="poly" id="edge78_Node000052_Node000051" title=" " alt="" coords="5072,459,5100,502,5095,505,5068,462"/>
+<area shape="rect" id="Node000053" href="$mdl__storage__vfs_8c.html" title="Transactional media&#45;download storage over named RA8 VFS mounts." alt="" coords="4831,504,4991,559"/>
+<area shape="poly" id="edge77_Node000052_Node000053" title=" " alt="" coords="5004,460,4946,506,4943,502,5001,455"/>
+<area shape="poly" id="edge82_Node000054_Node000042" title=" " alt="" coords="4785,466,4733,506,4730,502,4782,462"/>
+<area shape="poly" id="edge81_Node000054_Node000051" title=" " alt="" coords="4938,459,5048,501,5046,506,4936,463"/>
+<area shape="poly" id="edge85_Node000055_Node000042" title=" " alt="" coords="4603,448,4667,502,4664,506,4600,452"/>
+<area shape="rect" id="Node000056" href="$ra8__mdl__storage__ram_8c.html" title="Caller&#45;buffer transaction adapter for C6 media source bytes." alt="" coords="4385,511,4563,551"/>
+<area shape="poly" id="edge86_Node000055_Node000056" title=" " alt="" coords="4545,454,4493,513,4489,509,4541,450"/>
+<area shape="poly" id="edge89_Node000058_Node000057" title=" " alt="" coords="5527,463,5525,511,5519,511,5522,463"/>
+<area shape="poly" id="edge92_Node000060_Node000059" title=" " alt="" coords="6006,338,6083,399,6079,403,6002,342"/>
+<area shape="rect" id="Node000062" href="$ra8__c6link__mdl__service_8c.html" title="Portable one&#45;job media service state machine for the ESP32&#45;C6 port." alt="" coords="4468,291,4659,331"/>
+<area shape="poly" id="edge94_Node000061_Node000062" title=" " alt="" coords="4415,233,4527,289,4525,294,4413,237"/>
+<area shape="rect" id="Node000063" href="$mdl__service_8c.html" title="ESP&#45;IDF HTTP backend and synchronous CustomRpc hook for media chunks." alt="" coords="4278,291,4443,331"/>
+<area shape="poly" id="edge95_Node000061_Node000063" title=" " alt="" coords="4366,243,4364,291,4359,291,4361,243"/>
+<area shape="poly" id="edge97_Node000064_Node000062" title=" " alt="" coords="4567,250,4566,291,4561,291,4561,250"/>
+</map>

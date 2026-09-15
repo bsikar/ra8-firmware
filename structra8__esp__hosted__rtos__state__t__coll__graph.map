@@ -1,0 +1,9 @@
+<map id="ra8_esp_hosted_rtos_state_t" name="ra8_esp_hosted_rtos_state_t">
+<area shape="rect" id="Node000001" title="Module state of the thread, timer and clock half – entirely static." alt="" coords="111,212,267,252"/>
+<area shape="rect" id="Node000002" href="$structra8__esp__hosted__thread__slot__t.html" title="One row of the fixed thread table." alt="" coords="5,101,179,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="120,150,174,210,170,213,116,153"/>
+<area shape="rect" id="Node000003" href="$structTX__THREAD.html" title="Opaque thread stand&#45;in for the host build." alt="" coords="42,5,142,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="95,45,95,101,89,101,89,45"/>
+<area shape="rect" id="Node000004" href="$structra8__esp__hosted__timer__slot__t.html" title="One row of the fixed timer table." alt="" coords="203,101,370,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="263,153,208,213,204,210,259,150"/>
+</map>

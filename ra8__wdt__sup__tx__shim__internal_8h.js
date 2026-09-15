@@ -1,0 +1,35 @@
+var ra8__wdt__sup__tx__shim__internal_8h =
+[
+    [ "TX_MUTEX", "structTX__MUTEX.html", "structTX__MUTEX" ],
+    [ "TX_THREAD", "structTX__THREAD.html", "structTX__THREAD" ],
+    [ "TX_AUTO_START", "ra8__wdt__sup__tx__shim__internal_8h.html#aee9175140aa8bec9231681075606cbbb", null ],
+    [ "tx_mutex_create", "ra8__wdt__sup__tx__shim__internal_8h.html#ac08bc21f07d26682783addb2e593ddb3", null ],
+    [ "tx_mutex_delete", "ra8__wdt__sup__tx__shim__internal_8h.html#a88d145063efaf86194a66d69de8058ea", null ],
+    [ "tx_mutex_get", "ra8__wdt__sup__tx__shim__internal_8h.html#af92536f40103d37bac29cc2517530265", null ],
+    [ "tx_mutex_put", "ra8__wdt__sup__tx__shim__internal_8h.html#adf37265ecc930ca7e0b91066081ec75a", null ],
+    [ "TX_NO_INHERIT", "ra8__wdt__sup__tx__shim__internal_8h.html#a01b648c0da5735a51436514105e73217", null ],
+    [ "TX_NO_TIME_SLICE", "ra8__wdt__sup__tx__shim__internal_8h.html#aaf140725a6b53381b22dac8a6c8eec20", null ],
+    [ "TX_SUCCESS", "ra8__wdt__sup__tx__shim__internal_8h.html#a380ecaa0581b9c44e69a85d3eac3d726", null ],
+    [ "tx_thread_create", "ra8__wdt__sup__tx__shim__internal_8h.html#a695b2e7ce5904410526bac9eefa75d6f", null ],
+    [ "tx_thread_delete", "ra8__wdt__sup__tx__shim__internal_8h.html#a3ed342b6830cfdeca33968786f1fcff5", null ],
+    [ "tx_thread_sleep", "ra8__wdt__sup__tx__shim__internal_8h.html#aa5efa9a820888288dcb3953f5cbab819", null ],
+    [ "tx_thread_terminate", "ra8__wdt__sup__tx__shim__internal_8h.html#a745296675ec9417244300061c9753713", null ],
+    [ "tx_time_get", "ra8__wdt__sup__tx__shim__internal_8h.html#a811fd48f3dee67c44617560eea1273fd", null ],
+    [ "TX_WAIT_FOREVER", "ra8__wdt__sup__tx__shim__internal_8h.html#af56db64978595f4e645b4b23b1e7d15e", null ],
+    [ "CHAR", "ra8__wdt__sup__tx__shim__internal_8h.html#aebb9e13210d88d43e32e735ada43a425", null ],
+    [ "UINT", "ra8__wdt__sup__tx__shim__internal_8h.html#a36cb3b01d81ffd844bbbfb54003e06ec", null ],
+    [ "ULONG", "ra8__wdt__sup__tx__shim__internal_8h.html#af632da489ebc3708ec3ab6791ee53fa4", null ],
+    [ "ra8_wdt_sup_tx_shim_canary_t", "ra8__wdt__sup__tx__shim__internal_8h.html#a66cc25c7d2d5d535fac34851691e4b13", [
+      [ "k_ra8_wdt_sup_tx_shim_mutex_canary", "ra8__wdt__sup__tx__shim__internal_8h.html#a66cc25c7d2d5d535fac34851691e4b13a9de70c8aa768bf56a37a1fa42f766ed6", null ],
+      [ "k_ra8_wdt_sup_tx_shim_thread_canary", "ra8__wdt__sup__tx__shim__internal_8h.html#a66cc25c7d2d5d535fac34851691e4b13adea12836fb4c47740c4f608dd13c19f4", null ]
+    ] ],
+    [ "internal_tx_mutex_create", "ra8__wdt__sup__tx__shim__internal_8h.html#a0216613fbcda93c88d8e0abf31349a5e", null ],
+    [ "internal_tx_mutex_delete", "ra8__wdt__sup__tx__shim__internal_8h.html#a6fe57366e76af21ccb1fdde390cff1f9", null ],
+    [ "internal_tx_mutex_get", "ra8__wdt__sup__tx__shim__internal_8h.html#add261462c90e59d3385a4282d73766e7", null ],
+    [ "internal_tx_mutex_put", "ra8__wdt__sup__tx__shim__internal_8h.html#a69114143dd93c40ba012435f475c5e16", null ],
+    [ "internal_tx_thread_create", "ra8__wdt__sup__tx__shim__internal_8h.html#aa19b6f5b4ab7894792650b3d438eb987", null ],
+    [ "internal_tx_thread_delete", "ra8__wdt__sup__tx__shim__internal_8h.html#aaaeb8f44f99bf1a58db81891420de3e9", null ],
+    [ "internal_tx_thread_sleep", "ra8__wdt__sup__tx__shim__internal_8h.html#ab5730a8da8fe66b450eda227d3a7c680", null ],
+    [ "internal_tx_thread_terminate", "ra8__wdt__sup__tx__shim__internal_8h.html#a069ad6e338fb415dfbc94bf8a846f8b8", null ],
+    [ "internal_tx_time_get", "ra8__wdt__sup__tx__shim__internal_8h.html#afa8283efc8a8e44b59246a7d1868b160", null ]
+];

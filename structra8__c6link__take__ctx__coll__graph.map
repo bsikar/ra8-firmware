@@ -1,0 +1,17 @@
+<map id="ra8_c6link_take_ctx" name="ra8_c6link_take_ctx">
+<area shape="rect" id="Node000001" title="What an answer extractor is given alongside the decoded message." alt="" coords="661,112,812,137"/>
+<area shape="rect" id="Node000002" href="$structra8__c6link.html" title="Caller&#45;allocated link handle." alt="" coords="491,112,580,137"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="594,122,661,122,661,127,594,127"/>
+<area shape="rect" id="Node000003" href="$structra8__c6link__transport.html" title="Function&#45;pointer seam a backend fills so the facade can reach the C6." alt="" coords="220,5,375,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="389,27,429,39,468,56,502,82,527,110,523,114,499,86,465,60,427,44,388,32"/>
+<area shape="rect" id="Node000004" href="$structra8__c6link__event.html" title="One decoded co&#45;processor announcement." alt="" coords="231,59,364,84"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="378,80,467,98,503,109,501,114,466,103,377,85"/>
+<area shape="rect" id="Node000005" href="$structra8__c6link__mac.html" title="One IEEE 802 address, by value." alt="" coords="5,59,129,84"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="143,69,231,69,231,74,143,74"/>
+<area shape="rect" id="Node000006" href="$structra8__c6link__wait.html" title="The one outstanding request a link is waiting on." alt="" coords="235,112,359,137"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="373,122,491,122,491,127,373,127"/>
+<area shape="rect" id="Node000007" href="$structra8__c6link__fault.html" title="What the co&#45;processor said when a request did not succeed." alt="" coords="234,165,361,191"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="374,168,466,150,507,135,509,140,467,155,375,173"/>
+<area shape="rect" id="Node000008" href="$structra8__c6link__stats.html" title="What one pump did on the wire, counted rather than inferred." alt="" coords="233,219,361,244"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="374,221,421,210,465,192,499,165,523,136,527,139,503,168,468,196,422,215,376,227"/>
+</map>

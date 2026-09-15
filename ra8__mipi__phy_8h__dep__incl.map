@@ -1,0 +1,13 @@
+<map id="libs/ra8_hal/inc/ra8_mipi_phy.h" name="libs/ra8_hal/inc/ra8_mipi_phy.h">
+<area shape="rect" id="Node000001" title="MIPI D&#45;PHY driver – physical layer shared by DSI and CSI." alt="" coords="210,5,355,45"/>
+<area shape="rect" id="Node000002" href="$ra8__board__ek__ra8d2__comms_8c.html" title="EK&#45;RA8D2 BSP – MIPI&#45;DSI panel + J&#45;Link VCOM serial bring&#45;up." alt="" coords="5,93,187,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="234,54,150,96,147,91,231,49"/>
+<area shape="rect" id="Node000003" href="$ra8__mipi__phy_8c.html" title="MIPI D&#45;PHY driver implementation." alt="" coords="182,196,327,236"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="266,58,252,94,248,121,248,149,253,196,248,196,243,149,243,121,247,93,261,57"/>
+<area shape="rect" id="Node000004" href="$ra8__mipi__phy__internal_8h.html" title="Module&#45;private link seam shared between the MIPI D&#45;PHY drivertranslation units." alt="" coords="262,101,421,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="304,55,332,99,327,102,300,58"/>
+<area shape="rect" id="Node000005" href="$ra8__mipi__phy__timing_8c.html" title="MIPI D&#45;PHY driver – HUM timing tables and table&#45;driven setup." alt="" coords="368,196,517,236"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="369,44,406,63,436,92,448,118,452,146,449,196,444,196,447,147,443,119,431,95,403,68,367,49"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="316,153,274,198,270,194,312,149"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="374,148,424,194,420,198,370,152"/>
+</map>

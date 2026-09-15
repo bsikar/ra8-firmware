@@ -1,0 +1,25 @@
+var group__grp__hal__usb =
+[
+    [ "ra8_touch.h", "ra8__touch_8h.html", null ],
+    [ "ra8_touch_gt911_regs.h", "ra8__touch__gt911__regs_8h.html", null ],
+    [ "ra8_usb.h", "ra8__usb_8h.html", null ],
+    [ "ra8_usb_cdc.h", "ra8__usb__cdc_8h.html", null ],
+    [ "ra8_usb_composite.h", "ra8__usb__composite_8h.html", null ],
+    [ "ra8_usb_device.h", "ra8__usb__device_8h.html", null ],
+    [ "ra8_usb_haud.h", "ra8__usb__haud_8h.html", null ],
+    [ "ra8_usb_hcdc.h", "ra8__usb__hcdc_8h.html", null ],
+    [ "ra8_usb_hcdc_ecm.h", "ra8__usb__hcdc__ecm_8h.html", null ],
+    [ "ra8_usb_hhid.h", "ra8__usb__hhid_8h.html", null ],
+    [ "ra8_usb_hhub.h", "ra8__usb__hhub_8h.html", null ],
+    [ "ra8_usb_hmsc.h", "ra8__usb__hmsc_8h.html", null ],
+    [ "ra8_usb_host.h", "ra8__usb__host_8h.html", null ],
+    [ "ra8_usb_paud.h", "ra8__usb__paud_8h.html", null ],
+    [ "ra8_usb_phid.h", "ra8__usb__phid_8h.html", null ],
+    [ "ra8_usb_pmsc.h", "ra8__usb__pmsc_8h.html", null ],
+    [ "ra8_usb_pprn.h", "ra8__usb__pprn_8h.html", null ],
+    [ "ra8_usb_pvnd.h", "ra8__usb__pvnd_8h.html", null ],
+    [ "ra8_usb_regs.h", "ra8__usb__regs_8h.html", null ],
+    [ "ra8_usb_hmsc_internal.h", "ra8__usb__hmsc__internal_8h.html", null ],
+    [ "ra8_usb_internal.h", "ra8__usb__internal_8h.html", null ],
+    [ "ra8_usb_pmsc_internal.h", "ra8__usb__pmsc__internal_8h.html", null ]
+];

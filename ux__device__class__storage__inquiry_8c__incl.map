@@ -1,0 +1,13 @@
+<map id="port/usbx/src/ux_device_class_storage_inquiry.c" name="port/usbx/src/ux_device_class_storage_inquiry.c">
+<area shape="rect" id="Node000001" title="SPC&#45;correct SCSI INQUIRY override for the USBX device storage class." alt="" coords="199,5,378,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,76,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="230,48,90,92,88,87,228,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="101,93,226,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="260,48,195,88,192,84,257,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="250,93,327,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="291,46,291,79,286,79,286,46"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="352,93,548,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="328,43,415,85,413,90,326,48"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="572,93,715,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="374,43,579,88,578,93,373,48"/>
+</map>

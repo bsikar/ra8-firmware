@@ -1,0 +1,9 @@
+<map id="port/esp&#45;hosted/inc/port_esp_hosted_host_log.h" name="port/esp&#45;hosted/inc/port_esp_hosted_host_log.h">
+<area shape="rect" id="Node000001" title="esp&#45;hosted port header: the per&#45;file log tag the core expects." alt="" coords="169,5,375,45"/>
+<area shape="rect" id="Node000002" href="$ra8__esp__hosted__osi_8c.html" title="The esp&#45;hosted OS&#45;abstraction vtable and its non&#45;RTOS slots." alt="" coords="5,101,171,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="224,54,126,103,124,98,221,49"/>
+<area shape="rect" id="Node000003" href="$ra8__esp__hosted__osi__absent_8c.html" title="Vtable rows for transports this board does not carry." alt="" coords="195,93,349,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="275,59,275,93,269,93,269,59"/>
+<area shape="rect" id="Node000004" href="$ra8__esp__hosted__port_8c.html" title="Bring&#45;up and teardown of the esp&#45;hosted RA8D2 + ThreadX port." alt="" coords="374,101,546,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="323,49,423,98,421,103,321,54"/>
+</map>

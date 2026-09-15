@@ -1,0 +1,5 @@
+<map id="port/esp32_c6/src/esp_idf_mdl_compat_internal.h" name="port/esp32_c6/src/esp_idf_mdl_compat_internal.h">
+<area shape="rect" id="Node000001" title="ESP&#45;IDF media&#45;service declarations for target builds and AST audits." alt="" coords="5,5,208,45"/>
+<area shape="rect" id="Node000002" href="$mdl__service_8c.html" title="ESP&#45;IDF HTTP backend and synchronous CustomRpc hook for media chunks." alt="" coords="24,93,189,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="109,59,109,93,104,93,104,59"/>
+</map>

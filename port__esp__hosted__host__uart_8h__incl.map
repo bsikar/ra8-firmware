@@ -1,0 +1,7 @@
+<map id="port/esp&#45;hosted/inc/port_esp_hosted_host_uart.h" name="port/esp&#45;hosted/inc/port_esp_hosted_host_uart.h">
+<area shape="rect" id="Node000001" title="esp&#45;hosted port header: UART transport buffer size." alt="" coords="30,5,198,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,76,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="94,62,62,99,58,96,90,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="100,108,275,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="138,58,170,96,166,99,134,62"/>
+</map>

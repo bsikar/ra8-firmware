@@ -1,0 +1,7 @@
+<map id="mdl_http_state" name="mdl_http_state">
+<area shape="rect" id="Node000001" title="Single retained ESP&#45;IDF client and one serialized remote transfer." alt="" coords="143,101,263,127"/>
+<area shape="rect" id="Node000002" href="$structmbedtls__sha256__context.html" title="Parser&#45;only storage standing in for ESP&#45;IDF&#39;s SHA&#45;256 context." alt="" coords="5,5,191,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="123,38,192,99,189,103,119,42"/>
+<area shape="rect" id="Node000003" href="$structra8__mdl__http__response__t.html" title="HTTP status and selected response headers proven by the C6 backend." alt="" coords="215,5,402,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="287,42,218,103,215,99,284,38"/>
+</map>

@@ -1,0 +1,66 @@
+var book__stream__internal_8h =
+[
+    [ "stream_validate_t", "structstream__validate__t.html", "structstream__validate__t" ],
+    [ "stream_bit_t", "book__stream__internal_8h.html#a86b917fa301db2a7d2ab8210d3689818", [
+      [ "k_stream_bits_per_byte", "book__stream__internal_8h.html#a86b917fa301db2a7d2ab8210d3689818a3581e697cd14ed4a6b3c2dc29bcbaf49", null ],
+      [ "k_stream_mark_round", "book__stream__internal_8h.html#a86b917fa301db2a7d2ab8210d3689818a6d6bd50e9c1a98d5603c9aeaf9948335", null ],
+      [ "k_stream_le_shift_3", "book__stream__internal_8h.html#a86b917fa301db2a7d2ab8210d3689818a586e309d6ee1954394e67b58cfa0edd3", null ]
+    ] ],
+    [ "stream_header_off_t", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7e", [
+      [ "k_stream_hdr_version", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea91c1743eda1286cdcf1ee1418eba2049", null ],
+      [ "k_stream_hdr_total", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea7645b6aaf71cb1c0ccf77945dc7b2421", null ],
+      [ "k_stream_hdr_flags", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7eaa471e5925921a5ca078436b657128d98", null ],
+      [ "k_stream_hdr_title", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea606c49ae3d2d614b0e880b394a5d9595", null ],
+      [ "k_stream_hdr_author", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7eaab0054a7daf2108216dfd880041c594a", null ],
+      [ "k_stream_hdr_language", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7eac533c19ee7e0e3c93c1e80197f0f9f00", null ],
+      [ "k_stream_hdr_identifier", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea95b215235246f73287e1ea096631856f", null ],
+      [ "k_stream_hdr_cover", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea654b63d6e35eaacdba7266beb3dd330f", null ],
+      [ "k_stream_hdr_chapter_count", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea08782319e9b439ab1b4cebfb6b90b1e7", null ],
+      [ "k_stream_hdr_chapter_off", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7eae31001d90c5d84d1e35680130c0aab91", null ],
+      [ "k_stream_hdr_node_count", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea3b0e422f720da3451ebf4f2a192b45e9", null ],
+      [ "k_stream_hdr_node_off", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7eaab001211acffc30a34fe4c902e8c8fdb", null ],
+      [ "k_stream_hdr_attr_count", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea754818cb22934677c05959ecebbbaec3", null ],
+      [ "k_stream_hdr_attr_off", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7eac6eedb86f82842b87b1439aec82a0a69", null ],
+      [ "k_stream_hdr_style_count", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea07682ee8b07fb66e08044c8fa2ee51ab", null ],
+      [ "k_stream_hdr_style_off", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7eabdee65bccaa6b54943142c9682e69b19", null ],
+      [ "k_stream_hdr_image_count", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea400cf42734b003db0e363828a55b34fa", null ],
+      [ "k_stream_hdr_image_off", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7eaa99cebeda75d10cda8b1b1d1ecd6785e", null ],
+      [ "k_stream_hdr_string_off", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea8481d124544569d19beeb85cbc6771d1", null ],
+      [ "k_stream_hdr_string_size", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea4740441aabca4d3af65182728785d271", null ],
+      [ "k_stream_hdr_pool_off", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea0f76b6b0b3649d5a2d21811cdcf63d97", null ],
+      [ "k_stream_hdr_pool_size", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7eac497125fea667673ff26d579c095c2c3", null ],
+      [ "k_stream_hdr_crc", "book__stream__internal_8h.html#a65d25b29730757d8bad15b11be319f7ea987cb389c8332610d7088bd6960ffacb", null ]
+    ] ],
+    [ "stream_image_off_t", "book__stream__internal_8h.html#a055a3fcd6fa4d6cdb15523b53824fa1d", [
+      [ "k_stream_image_id", "book__stream__internal_8h.html#a055a3fcd6fa4d6cdb15523b53824fa1daf0d5216a79cf4d8df72513c5fc1266be", null ],
+      [ "k_stream_image_width", "book__stream__internal_8h.html#a055a3fcd6fa4d6cdb15523b53824fa1dae1f008e861453192244e40ef1fe82088", null ],
+      [ "k_stream_image_height", "book__stream__internal_8h.html#a055a3fcd6fa4d6cdb15523b53824fa1daefc967d723b7f6aba2ff17d2287ede15", null ],
+      [ "k_stream_image_format", "book__stream__internal_8h.html#a055a3fcd6fa4d6cdb15523b53824fa1dae0376fa8521d3eb8e48f7e1a9ad0f2e6", null ],
+      [ "k_stream_image_pixfmt", "book__stream__internal_8h.html#a055a3fcd6fa4d6cdb15523b53824fa1da6a452f5fca43f053a7c9caffb82b27c3", null ],
+      [ "k_stream_image_reserved", "book__stream__internal_8h.html#a055a3fcd6fa4d6cdb15523b53824fa1dae615437dedee0599846823c6e52311d9", null ],
+      [ "k_stream_image_data_off", "book__stream__internal_8h.html#a055a3fcd6fa4d6cdb15523b53824fa1da6c9eabfb249a8d945287ea7d5261e6b6", null ],
+      [ "k_stream_image_data_size", "book__stream__internal_8h.html#a055a3fcd6fa4d6cdb15523b53824fa1dafcd641c8e04169ffd33c3466d505df0b", null ],
+      [ "k_stream_image_raw_size", "book__stream__internal_8h.html#a055a3fcd6fa4d6cdb15523b53824fa1da17e1b280de409cfeafce7edf2cd05700", null ]
+    ] ],
+    [ "stream_node_off_t", "book__stream__internal_8h.html#aa217c724623897957f5b8325959ec01c", [
+      [ "k_stream_node_kind", "book__stream__internal_8h.html#aa217c724623897957f5b8325959ec01ca01ebe54d3953d02d7de920983e7b234c", null ],
+      [ "k_stream_node_reserved", "book__stream__internal_8h.html#aa217c724623897957f5b8325959ec01ca448c953a05f8f2540fc401d877f5c74b", null ],
+      [ "k_stream_node_attr_count", "book__stream__internal_8h.html#aa217c724623897957f5b8325959ec01cad20cc06cd47b0e5124470fec1888589c", null ],
+      [ "k_stream_node_name", "book__stream__internal_8h.html#aa217c724623897957f5b8325959ec01ca6a432cb71575538228130467d38e523e", null ],
+      [ "k_stream_node_text", "book__stream__internal_8h.html#aa217c724623897957f5b8325959ec01caa91962eafe36d1578f995db5da231d02", null ],
+      [ "k_stream_node_first_attr", "book__stream__internal_8h.html#aa217c724623897957f5b8325959ec01ca7bd780255d086e140d67f61694cca309", null ],
+      [ "k_stream_node_first_child", "book__stream__internal_8h.html#aa217c724623897957f5b8325959ec01ca69c8113b41457c69e3926ea1c09d7072", null ],
+      [ "k_stream_node_next_sibling", "book__stream__internal_8h.html#aa217c724623897957f5b8325959ec01caf1ee4577ef036d23ee0c90cd2ffd41f1", null ]
+    ] ],
+    [ "internal_book_stream_le16", "book__stream__internal_8h.html#a684415a217379185ae845c8be595d1e8", null ],
+    [ "internal_book_stream_le32", "book__stream__internal_8h.html#a20cd827d595726813b7b43ec7d346e66", null ],
+    [ "priv_book_stream_nonempty_string_ref", "book__stream__internal_8h.html#a938408b2e1f5a9dd4d8111fc32fdc4da", null ],
+    [ "priv_book_stream_read", "book__stream__internal_8h.html#acf95ca7ec942f066685a09b24c2b63f9", null ],
+    [ "priv_book_stream_read_validate_header", "book__stream__internal_8h.html#aaf96d2fd4d8f571a127e3b0196fe9084", null ],
+    [ "priv_book_stream_string_ref", "book__stream__internal_8h.html#adf9a723145c05e603f8201fc33dc9bf3", null ],
+    [ "priv_book_stream_validate_element", "book__stream__internal_8h.html#a7ccfc12835a27e3662d0de6737f1c001", null ],
+    [ "priv_book_stream_validate_metadata", "book__stream__internal_8h.html#af3f33019db13953ada38c87340ad5fdd", null ],
+    [ "priv_book_stream_validate_string_envelope", "book__stream__internal_8h.html#a477333ce01de323f7b1e28dea2523e5c", null ],
+    [ "priv_book_stream_validate_styles", "book__stream__internal_8h.html#a9addf67ade31bad59a3ff50acf6f44ea", null ],
+    [ "priv_book_stream_validate_text", "book__stream__internal_8h.html#a25c7069d2fe197a2fe91c66ae9e38380", null ]
+];

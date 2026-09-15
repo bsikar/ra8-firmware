@@ -1,0 +1,30 @@
+<map id="port/usbx/inc/ux_dcd_ra8_usb_internal.h" name="port/usbx/inc/ux_dcd_ra8_usb_internal.h">
+<area shape="rect" id="Node000001" title="USBX device&#45;controller&#45;driver bridge to ra8_usb – per&#45;module cross&#45;translation&#45;unit contract." alt="" coords="139,5,295,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="165,460,235,485"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="147,48,99,67,54,95,36,112,21,132,11,154,8,178,8,327,12,352,22,374,38,394,58,411,105,438,152,456,150,461,103,443,55,415,34,398,18,377,7,354,3,328,3,178,6,152,16,129,32,109,51,91,97,63,145,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="361,93,487,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="268,43,382,86,380,91,266,48"/>
+<area shape="rect" id="Node000004" href="$ra8__isr_8h.html" title="NVIC + ICU IELSR allocator." alt="" coords="80,313,157,339"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="185,48,159,68,138,95,127,121,120,148,112,205,113,258,117,299,112,300,108,258,107,205,114,147,122,119,134,92,155,64,181,43"/>
+<area shape="rect" id="Node000007" href="$ra8__usb_8h.html" title="Native USB controller driver public API (device + host modes)." alt="" coords="273,167,359,192"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="251,43,278,65,301,92,313,122,318,152,313,153,308,124,296,95,274,68,248,48"/>
+<area shape="rect" id="Node000010" href="$ux__dcd__ra8__usb_8h.html" title="USBX device&#45;controller&#45;driver (DCD) bridge to ra8_usb." alt="" coords="148,93,287,119"/>
+<area shape="poly" id="edge17_Node000001_Node000010" title=" " alt="" coords="220,46,220,79,215,79,215,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="109,340,85,374,79,393,84,411,97,427,114,440,153,458,150,463,111,445,93,431,79,413,74,392,80,371,105,337"/>
+<area shape="rect" id="Node000005" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="94,387,210,412"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="127,338,143,373,138,375,122,340"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="286,387,365,412"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="153,336,280,380,278,385,151,341"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="162,411,187,447,182,450,158,414"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="307,414,234,455,231,451,304,410"/>
+<area shape="rect" id="Node000008" href="$ra8__usb__device_8h.html" title="Native USB controller driver public API – shared types + device mode." alt="" coords="337,313,471,339"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="331,190,353,211,374,239,390,269,400,299,395,301,385,271,370,241,349,215,328,194"/>
+<area shape="rect" id="Node000009" href="$ra8__usb__host_8h.html" title="Native USB controller driver public API – host&#45;mode bring&#45;up." alt="" coords="240,240,360,265"/>
+<area shape="poly" id="edge13_Node000007_Node000009" title=" " alt="" coords="316,193,308,227,303,226,311,192"/>
+<area shape="poly" id="edge11_Node000008_Node000002" title=" " alt="" coords="406,339,400,375,392,396,379,414,350,437,316,453,282,463,249,470,248,464,280,458,314,448,347,432,375,410,387,393,395,374,401,338"/>
+<area shape="poly" id="edge12_Node000008_Node000006" title=" " alt="" coords="393,341,350,379,346,376,390,337"/>
+<area shape="poly" id="edge14_Node000009_Node000002" title=" " alt="" coords="297,267,214,448,209,446,292,265"/>
+<area shape="poly" id="edge15_Node000009_Node000006" title=" " alt="" coords="305,265,324,373,318,373,299,266"/>
+<area shape="poly" id="edge16_Node000009_Node000008" title=" " alt="" coords="318,263,377,303,374,307,315,268"/>
+<area shape="poly" id="edge18_Node000010_Node000007" title=" " alt="" coords="235,117,290,156,287,161,232,121"/>
+</map>

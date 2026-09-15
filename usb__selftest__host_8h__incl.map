@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/inc/usb_selftest_host.h" name="examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/inc/usb_selftest_host.h">
+<area shape="rect" id="Node000001" title="Host&#45;side entry point of the soak self&#45;test." alt="" coords="5,5,217,60"/>
+<area shape="rect" id="Node000002" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="72,108,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="114,60,114,94,109,94,109,60"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="76,181,147,207"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="114,134,114,168,109,168,109,134"/>
+</map>

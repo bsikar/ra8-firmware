@@ -1,0 +1,26 @@
+<map id="libs/ra8_hal/src/ra8_usb_pmsc_internal.h" name="libs/ra8_hal/src/ra8_usb_pmsc_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU surface shared between the device&#45;MSC BOT statemachine (ra8_usb_pmsc.c) and the SCSI command..." alt="" coords="236,5,399,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="178,460,249,485"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="236,34,161,47,123,58,87,73,55,92,30,115,14,144,8,178,8,327,12,354,24,377,41,397,63,414,115,441,165,458,163,463,112,446,60,419,38,401,19,380,7,355,3,328,3,178,9,142,26,112,52,87,85,68,121,53,160,42,235,29"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="456,93,581,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="367,43,477,86,475,91,365,48"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="251,387,330,412"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="348,44,373,65,396,92,417,133,421,178,421,254,419,275,412,296,388,331,356,360,325,382,322,377,353,356,383,328,407,293,414,274,416,254,416,178,411,134,391,95,369,69,344,48"/>
+<area shape="rect" id="Node000005" href="$ra8__usb_8h.html" title="Native USB controller driver public API (device + host modes)." alt="" coords="173,167,259,192"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="291,48,266,69,244,95,230,124,222,154,217,152,225,122,239,92,262,65,287,44"/>
+<area shape="rect" id="Node000008" href="$ra8__usb__pmsc_8h.html" title="Native USB device&#45;side MSC (Mass Storage Class) class layer." alt="" coords="254,93,381,119"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="320,46,320,79,315,79,315,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="280,414,238,452,234,449,276,410"/>
+<area shape="rect" id="Node000006" href="$ra8__usb__device_8h.html" title="Native USB controller driver public API – shared types + device mode." alt="" coords="43,313,178,339"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="199,194,172,215,146,242,130,271,119,300,114,299,125,269,142,238,168,211,196,190"/>
+<area shape="rect" id="Node000007" href="$ra8__usb__host_8h.html" title="Native USB controller driver public API – host&#45;mode bring&#45;up." alt="" coords="156,240,276,265"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="219,192,219,226,213,226,213,192"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="121,338,199,447,195,450,117,341"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="141,336,250,379,248,384,139,341"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="219,266,216,446,211,446,213,266"/>
+<area shape="poly" id="edge11_Node000007_Node000004" title=" " alt="" coords="224,265,281,373,276,375,220,267"/>
+<area shape="poly" id="edge12_Node000007_Node000006" title=" " alt="" coords="201,268,140,308,138,303,198,263"/>
+<area shape="poly" id="edge14_Node000008_Node000002" title=" " alt="" coords="327,118,354,174,366,211,371,251,371,327,367,374,359,393,343,414,326,430,305,443,263,462,261,457,303,439,322,426,339,410,354,390,362,373,365,327,365,251,361,213,349,175,322,120"/>
+<area shape="poly" id="edge15_Node000008_Node000004" title=" " alt="" coords="319,119,296,373,290,373,314,118"/>
+<area shape="poly" id="edge16_Node000008_Node000005" title=" " alt="" coords="303,121,245,161,242,156,300,116"/>
+</map>

@@ -1,0 +1,19 @@
+<map id="tools/ra8_emulator/inc/emu_mmio.h" name="tools/ra8_emulator/inc/emu_mmio.h">
+<area shape="rect" id="Node000001" title="Sparse MMIO model of the Renesas peripheral space." alt="" coords="744,5,889,45"/>
+<area shape="rect" id="Node000002" href="$emu__cpu1_8c.html" title="Second&#45;core (cpu1) engine implementation (see emu_cpu1.h)." alt="" coords="5,101,180,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="731,34,487,55,339,73,192,96,159,103,158,98,191,91,339,67,487,50,730,29"/>
+<area shape="rect" id="Node000003" href="$emu__memmap_8c.html" title="Emulated memory map implementation (see emu_memmap.h)." alt="" coords="204,101,411,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="731,42,423,96,388,103,387,98,421,91,730,37"/>
+<area shape="rect" id="Node000004" href="$emu__mmio_8c.html" title="Sparse MMIO model implementation (see emu_mmio.h)." alt="" coords="435,101,617,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="746,52,586,103,584,98,744,47"/>
+<area shape="rect" id="Node000005" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="642,101,807,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="790,57,745,102,741,99,787,53"/>
+<area shape="rect" id="Node000006" href="$emu__run__report_8c.html" title="Run&#45;end report + finalize (see emu_run_internal.h)." alt="" coords="831,93,986,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="847,53,885,91,881,95,843,57"/>
+<area shape="rect" id="Node000007" href="$emu__view_8c.html" title="Board&#45;view presentation implementation (see emu_view.h)." alt="" coords="1011,101,1185,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="887,47,1042,98,1040,103,886,52"/>
+<area shape="rect" id="Node000008" href="$emu__view__surface_8c.html" title="Bounded&#45;tile GLCDC rotation, raw&#45;fd composition, and PPM export." alt="" coords="1209,93,1373,148"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="903,37,1042,60,1199,91,1210,93,1208,99,1197,96,1041,65,903,42"/>
+<area shape="rect" id="Node000009" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="1397,101,1543,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="904,29,1124,49,1256,67,1387,91,1415,98,1414,103,1385,96,1255,72,1123,55,903,35"/>
+</map>

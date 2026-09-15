@@ -1,0 +1,17 @@
+<map id="apps/host/alphabet_soup/src/alphabet_soup_cli_internal.h" name="apps/host/alphabet_soup/src/alphabet_soup_cli_internal.h">
+<area shape="rect" id="Node000001" title="Private host&#45;file helpers for the Alphabet Soup CLI wrapper." alt="" coords="142,5,325,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,181,80,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="143,55,96,77,76,92,58,109,46,138,43,167,38,167,41,136,54,107,72,87,94,72,141,50"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="171,255,242,280"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="247,59,258,90,267,127,269,168,261,208,249,229,233,247,229,244,245,226,256,206,264,167,261,128,253,91,242,61"/>
+<area shape="rect" id="Node000004" href="$fw__if__fs__types_8h.html" title="Portable filesystem value types and caller&#45;owned opaque handles." alt="" coords="69,108,195,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="204,62,158,101,154,97,201,58"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="167,181,246,207"/>
+<area shape="poly" id="edge9_Node000001_Node000005" title=" " alt="" coords="232,61,213,168,208,167,226,60"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="321,108,447,133"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="281,58,353,99,350,103,278,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="119,135,70,175,66,170,116,131"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="136,133,144,167,158,205,187,243,183,246,154,208,138,168,131,134"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="146,131,186,170,183,174,142,135"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="209,207,209,241,204,241,204,207"/>
+</map>

@@ -1,0 +1,19 @@
+<map id="port/esp&#45;hosted/inc/port_esp_hosted_host_config_transports.h" name="port/esp&#45;hosted/inc/port_esp_hosted_host_config_transports.h">
+<area shape="rect" id="Node000001" title="esp&#45;hosted port header: constants for the transports not in use." alt="" coords="672,5,840,60"/>
+<area shape="rect" id="Node000002" href="$port__esp__hosted__host__config_8h.html" title="esp&#45;hosted port header: transport selection, side&#45;band pin map, link polarity." alt="" coords="672,108,840,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="759,74,759,108,753,108,753,74"/>
+<area shape="rect" id="Node000003" href="$c6__fwver__link_8c.html" title="The esp&#45;hosted transaction pump: frame in, frame out, counted." alt="" coords="5,211,211,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="659,150,457,176,223,213,212,215,211,210,222,208,457,171,658,145"/>
+<area shape="rect" id="Node000004" href="$c6__hosted__report_8c.html" title="Banner, resolved pin map and side&#45;band reporting for the bring&#45;up." alt="" coords="235,211,435,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="659,162,435,216,434,210,658,157"/>
+<area shape="rect" id="Node000005" href="$ra8__esp__hosted__c6link_8c.html" title="The three trampolines that put ra8_c6link on this board&#39;s wire." alt="" coords="459,218,645,258"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="692,171,592,220,589,215,689,166"/>
+<area shape="rect" id="Node000006" href="$ra8__esp__hosted__gpio_8c.html" title="The eight side&#45;band GPIO slots of the esp&#45;hosted OS&#45;abstraction vtable." alt="" coords="669,218,843,258"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="759,177,759,218,753,218,753,177"/>
+<area shape="rect" id="Node000007" href="$ra8__esp__hosted__osi_8c.html" title="The esp&#45;hosted OS&#45;abstraction vtable and its non&#45;RTOS slots." alt="" coords="868,218,1033,258"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="820,167,915,215,913,220,818,171"/>
+<area shape="rect" id="Node000008" href="$ra8__esp__hosted__osi__absent_8c.html" title="Vtable rows for transports this board does not carry." alt="" coords="1057,211,1212,265"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="854,158,1046,208,1058,211,1057,217,1045,213,853,163"/>
+<area shape="rect" id="Node000009" href="$ra8__esp__hosted__port_8c.html" title="Bring&#45;up and teardown of the esp&#45;hosted RA8D2 + ThreadX port." alt="" coords="1237,218,1409,258"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="854,147,1027,172,1225,208,1256,215,1255,221,1223,213,1026,177,853,152"/>
+</map>

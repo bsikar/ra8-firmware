@@ -1,0 +1,25 @@
+<map id="apps/shared_libs/mdl/src/mdl_app_storage_internal.h" name="apps/shared_libs/mdl/src/mdl_app_storage_internal.h">
+<area shape="rect" id="Node000001" title="Private portable filesystem operations shared by CLI application modes." alt="" coords="263,5,424,60"/>
+<area shape="rect" id="Node000002" href="$mdl__storage_8h.html" title="Injected portable storage resources for downloader domain code." alt="" coords="33,108,148,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="267,63,138,106,136,101,265,58"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="203,328,282,353"/>
+<area shape="poly" id="edge15_Node000001_Node000007" title=" " alt="" coords="338,61,266,281,254,316,249,314,261,279,333,59"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="381,108,506,133"/>
+<area shape="poly" id="edge14_Node000001_Node000008" title=" " alt="" coords="376,58,421,97,418,101,372,62"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="26,328,101,353"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="76,136,55,156,38,182,31,217,34,253,43,287,54,315,49,317,38,288,29,254,26,217,33,180,51,152,73,132"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="30,401,100,427"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="73,136,48,156,27,183,13,220,9,252,10,328,8,341,10,352,23,373,40,391,36,395,19,377,5,354,3,341,5,328,4,252,8,219,23,180,44,152,70,132"/>
+<area shape="rect" id="Node000005" href="$fw__if__fs_8h.html" title="Architecture&#45;neutral filesystem namespace, stream, and transaction ports." alt="" coords="48,181,132,207"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="93,134,93,168,88,168,88,134"/>
+<area shape="poly" id="edge13_Node000002_Node000007" title=" " alt="" coords="114,131,146,150,182,177,218,212,245,254,252,285,250,314,245,314,246,285,240,256,214,215,179,181,143,154,111,136"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="86,208,76,229,68,255,64,285,64,314,59,314,59,285,62,254,71,227,81,206"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="83,208,48,259,30,292,17,329,14,341,17,352,28,373,43,390,39,394,24,376,12,354,9,341,12,327,25,290,44,256,79,205"/>
+<area shape="rect" id="Node000006" href="$fw__if__fs__types_8h.html" title="Portable filesystem value types and caller&#45;owned opaque handles." alt="" coords="78,255,204,280"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="101,205,127,242,123,245,96,209"/>
+<area shape="poly" id="edge12_Node000005_Node000007" title=" " alt="" coords="134,203,178,222,200,235,219,253,235,283,243,313,238,314,230,285,215,256,197,240,176,226,132,208"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="130,282,88,320,85,317,127,278"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="141,281,132,315,115,355,88,393,83,390,111,352,127,313,136,279"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="159,278,216,318,213,322,156,282"/>
+<area shape="poly" id="edge11_Node000007_Node000004" title=" " alt="" coords="215,356,107,399,105,394,213,351"/>
+</map>

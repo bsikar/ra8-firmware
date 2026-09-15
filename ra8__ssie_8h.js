@@ -1,0 +1,95 @@
+var ra8__ssie_8h =
+[
+    [ "ra8_ssie_cfg_t", "structra8__ssie__cfg__t.html", "structra8__ssie__cfg__t" ],
+    [ "ra8_ssie_status_t", "structra8__ssie__status__t.html", "structra8__ssie__status__t" ],
+    [ "ra8_ssie_dma_cfg_t", "structra8__ssie__dma__cfg__t.html", "structra8__ssie__dma__cfg__t" ],
+    [ "ra8_ssie_event_fn_t", "ra8__ssie_8h.html#a07437752a4f2a28e68c8da050bfeec53", null ],
+    [ "ra8_ssie_bclk_div_t", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86", [
+      [ "k_ra8_ssie_bclk_div_1", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86a5708e0d1ddc7d4d00ed73cfd63a68e2e", null ],
+      [ "k_ra8_ssie_bclk_div_2", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86aec2ec8ea4ed84f4e070e30978f429798", null ],
+      [ "k_ra8_ssie_bclk_div_4", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86a2497553ccebd5d94beb9edc481e927da", null ],
+      [ "k_ra8_ssie_bclk_div_8", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86a535387fa7ecafc8640691c615182ddc0", null ],
+      [ "k_ra8_ssie_bclk_div_16", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86aa8b9306ada1b4ad4d4e046d7c58b441c", null ],
+      [ "k_ra8_ssie_bclk_div_32", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86a1e8a55fa9c4c3ecbf863a2701694162c", null ],
+      [ "k_ra8_ssie_bclk_div_64", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86aab84bb5ab1d45a47193f9801ea85704e", null ],
+      [ "k_ra8_ssie_bclk_div_128", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86acc0e42a51e1622b0dbe53edc0ad2aa17", null ],
+      [ "k_ra8_ssie_bclk_div_6", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86a55b6126f6f8407f0f4d6af00cfe0d386", null ],
+      [ "k_ra8_ssie_bclk_div_12", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86ae8f8f91819a1ed6c49887e2acce78db6", null ],
+      [ "k_ra8_ssie_bclk_div_24", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86a4b46c600fc3b099b40cf4c771bb77911", null ],
+      [ "k_ra8_ssie_bclk_div_48", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86a8bc792f6e11667d83d588907403b3b81", null ],
+      [ "k_ra8_ssie_bclk_div_96", "ra8__ssie_8h.html#a922115bde9283a143979047f25011f86ab3af441045cae15c8fcee0c442cfb320", null ]
+    ] ],
+    [ "ra8_ssie_data_word_t", "ra8__ssie_8h.html#ab28e31553c82c0920c9e77d1823ce629", [
+      [ "k_ra8_ssie_dwl_8", "ra8__ssie_8h.html#ab28e31553c82c0920c9e77d1823ce629ae931aef754086b01cc700f9e9b21ac1d", null ],
+      [ "k_ra8_ssie_dwl_16", "ra8__ssie_8h.html#ab28e31553c82c0920c9e77d1823ce629a298c92a255a581dea3e4f19e68e3a414", null ],
+      [ "k_ra8_ssie_dwl_18", "ra8__ssie_8h.html#ab28e31553c82c0920c9e77d1823ce629a47abd10e0453e8f96559772e7ad8d552", null ],
+      [ "k_ra8_ssie_dwl_20", "ra8__ssie_8h.html#ab28e31553c82c0920c9e77d1823ce629a38b25d554b2f195d87c870f3d1f468b4", null ],
+      [ "k_ra8_ssie_dwl_22", "ra8__ssie_8h.html#ab28e31553c82c0920c9e77d1823ce629af64228edbbc7bab877bc2cb3a88d6676", null ],
+      [ "k_ra8_ssie_dwl_24", "ra8__ssie_8h.html#ab28e31553c82c0920c9e77d1823ce629af12d163c801dc65517da1712c57ecd2e", null ],
+      [ "k_ra8_ssie_dwl_32", "ra8__ssie_8h.html#ab28e31553c82c0920c9e77d1823ce629a0099066a5472262d43b2429c0220f2f0", null ]
+    ] ],
+    [ "ra8_ssie_dir_t", "ra8__ssie_8h.html#a9ab7f941790addd6e91c6622820338de", [
+      [ "k_ra8_ssie_dir_rx", "ra8__ssie_8h.html#a9ab7f941790addd6e91c6622820338deab54f46cc10c2a34872ed31099316139f", null ],
+      [ "k_ra8_ssie_dir_tx", "ra8__ssie_8h.html#a9ab7f941790addd6e91c6622820338deaa94ad0916a6d13b83c922c6bcefc42f0", null ],
+      [ "k_ra8_ssie_dir_tx_rx", "ra8__ssie_8h.html#a9ab7f941790addd6e91c6622820338deae1d3d81d91caf76972da545bad6ad4a2", null ]
+    ] ],
+    [ "ra8_ssie_event_t", "ra8__ssie_8h.html#ae8e2f8c7e7d9e9fb3d9564d1ae38e27c", [
+      [ "k_ra8_ssie_evt_none", "ra8__ssie_8h.html#ae8e2f8c7e7d9e9fb3d9564d1ae38e27ca38d3a8cab407f647aa6eef106038dd42", null ],
+      [ "k_ra8_ssie_evt_idle", "ra8__ssie_8h.html#ae8e2f8c7e7d9e9fb3d9564d1ae38e27ca50e162f1f916290b904375b8fb148950", null ],
+      [ "k_ra8_ssie_evt_tx_empty", "ra8__ssie_8h.html#ae8e2f8c7e7d9e9fb3d9564d1ae38e27ca2ef033fca6e077e15b8f23538fd34208", null ],
+      [ "k_ra8_ssie_evt_rx_full", "ra8__ssie_8h.html#ae8e2f8c7e7d9e9fb3d9564d1ae38e27caa932bdd643cc49b592a33fca1c452a51", null ],
+      [ "k_ra8_ssie_evt_tx_under", "ra8__ssie_8h.html#ae8e2f8c7e7d9e9fb3d9564d1ae38e27caccb660932bc1c1caf4b66ab696e373d8", null ],
+      [ "k_ra8_ssie_evt_tx_over", "ra8__ssie_8h.html#ae8e2f8c7e7d9e9fb3d9564d1ae38e27ca6623e9e9f5d200f62509d109611f19bd", null ],
+      [ "k_ra8_ssie_evt_rx_under", "ra8__ssie_8h.html#ae8e2f8c7e7d9e9fb3d9564d1ae38e27ca8039c6cf2f0184a287a9d35f26ad06c6", null ],
+      [ "k_ra8_ssie_evt_rx_over", "ra8__ssie_8h.html#ae8e2f8c7e7d9e9fb3d9564d1ae38e27ca87c81ea89509373bce2e7bffdb5cea9b", null ],
+      [ "k_ra8_ssie_evt_error", "ra8__ssie_8h.html#ae8e2f8c7e7d9e9fb3d9564d1ae38e27ca2b73c5a584f491450dbb2de5fc77bfdb", null ]
+    ] ],
+    [ "ra8_ssie_format_t", "ra8__ssie_8h.html#a4d6492551c9452f347bf60add98a7802", [
+      [ "k_ra8_ssie_format_i2s", "ra8__ssie_8h.html#a4d6492551c9452f347bf60add98a7802a3c3345404414c5d819504e447bd8869f", null ],
+      [ "k_ra8_ssie_format_left_just", "ra8__ssie_8h.html#a4d6492551c9452f347bf60add98a7802ab92db651a53e5224344dfdb8cd1dbcb7", null ],
+      [ "k_ra8_ssie_format_right_just", "ra8__ssie_8h.html#a4d6492551c9452f347bf60add98a7802abae15944e33a72b5742d051502e1ad05", null ],
+      [ "k_ra8_ssie_format_monaural", "ra8__ssie_8h.html#a4d6492551c9452f347bf60add98a7802a6f5c0e5a283bea9bc1bdad8ae3240991", null ],
+      [ "k_ra8_ssie_format_tdm_4", "ra8__ssie_8h.html#a4d6492551c9452f347bf60add98a7802a4decaebe7a7b2a348c467f2038a52e5c", null ],
+      [ "k_ra8_ssie_format_tdm_6", "ra8__ssie_8h.html#a4d6492551c9452f347bf60add98a7802a8ee257da73a026886a7e388dda21ac1f", null ],
+      [ "k_ra8_ssie_format_tdm_8", "ra8__ssie_8h.html#a4d6492551c9452f347bf60add98a7802a8b3f254bf52b9d2e0c3988c47a40eaa0", null ],
+      [ "k_ra8_ssie_format_tdm", "ra8__ssie_8h.html#a4d6492551c9452f347bf60add98a7802a29e8ac1de4799007b7f320afdd8b14a6", null ]
+    ] ],
+    [ "ra8_ssie_role_t", "ra8__ssie_8h.html#ae60bd6adbcf873b5314a1b160bf2119c", [
+      [ "k_ra8_ssie_role_peripheral", "ra8__ssie_8h.html#ae60bd6adbcf873b5314a1b160bf2119cadcf5cfa023010adbf4aafe41f76fd98c", null ],
+      [ "k_ra8_ssie_role_controller", "ra8__ssie_8h.html#ae60bd6adbcf873b5314a1b160bf2119ca45188e029a61edd7942067bb5df2e3d5", null ]
+    ] ],
+    [ "ra8_ssie_system_word_t", "ra8__ssie_8h.html#a6d13ebb5dcb143e95871195869be6fe6", [
+      [ "k_ra8_ssie_swl_8", "ra8__ssie_8h.html#a6d13ebb5dcb143e95871195869be6fe6abd6fc96438abc29a08e9d675b7fca3e9", null ],
+      [ "k_ra8_ssie_swl_16", "ra8__ssie_8h.html#a6d13ebb5dcb143e95871195869be6fe6aadf2f906517fa2cf7d289165e79272ed", null ],
+      [ "k_ra8_ssie_swl_24", "ra8__ssie_8h.html#a6d13ebb5dcb143e95871195869be6fe6a9ca75c29b13bd50e896de9d7144cb012", null ],
+      [ "k_ra8_ssie_swl_32", "ra8__ssie_8h.html#a6d13ebb5dcb143e95871195869be6fe6a4646bdee7f977bdafe66e81a9927f055", null ],
+      [ "k_ra8_ssie_swl_48", "ra8__ssie_8h.html#a6d13ebb5dcb143e95871195869be6fe6a291782df4dc889733c2949698d115a97", null ],
+      [ "k_ra8_ssie_swl_64", "ra8__ssie_8h.html#a6d13ebb5dcb143e95871195869be6fe6aa49969358efcfb8aa9647697e9e4fd65", null ],
+      [ "k_ra8_ssie_swl_128", "ra8__ssie_8h.html#a6d13ebb5dcb143e95871195869be6fe6ad5050d1e492be527aa668c31e1c20950", null ],
+      [ "k_ra8_ssie_swl_256", "ra8__ssie_8h.html#a6d13ebb5dcb143e95871195869be6fe6a5215747cdf2b0d2e93e5a5b43bbf2d03", null ]
+    ] ],
+    [ "ra8_ssie_attach_dma", "ra8__ssie_8h.html#a64fef64f878d8ae90e0c45a0ceed6123", null ],
+    [ "ra8_ssie_attach_dma_pair", "ra8__ssie_8h.html#aaa2225323d0a34f9930b60a312cda1d7", null ],
+    [ "ra8_ssie_attach_handler", "ra8__ssie_8h.html#a6bbff2a8c4e35e328fef82e8aeed83e2", null ],
+    [ "ra8_ssie_clear_status", "ra8__ssie_8h.html#a19cb68c15c4e5009d910e46c7374cab9", null ],
+    [ "ra8_ssie_deinit", "ra8__ssie_8h.html#aaad946313591c8606aede616498f858a", null ],
+    [ "ra8_ssie_detach_dma", "ra8__ssie_8h.html#a48a0185ea87b09bbece4ee7b931a952a", null ],
+    [ "ra8_ssie_dispatch", "ra8__ssie_8h.html#a2d21f0a15c51b0906498981feac11607", null ],
+    [ "ra8_ssie_enter_stop", "ra8__ssie_8h.html#ac7efdec10dee9e33ab714750d56bb099", null ],
+    [ "ra8_ssie_exit_stop", "ra8__ssie_8h.html#aba998c7a4f62b20f60e56fb1d62e6809", null ],
+    [ "ra8_ssie_get_status", "ra8__ssie_8h.html#ad6720ca9ffcba25e02c0369d356c3b20", null ],
+    [ "ra8_ssie_init", "ra8__ssie_8h.html#a26bfd4c606b5779aa2bc3d1707132979", null ],
+    [ "ra8_ssie_mute", "ra8__ssie_8h.html#aaed7a89a881fe17fb9e9361b1b33e772", null ],
+    [ "ra8_ssie_read_buffer", "ra8__ssie_8h.html#acdbea911674554a37f579a97ac91a3b9", null ],
+    [ "ra8_ssie_read_sample", "ra8__ssie_8h.html#a64c95f7b0cfb452ab626bfc6e2fa3b5e", null ],
+    [ "ra8_ssie_recv_iso", "ra8__ssie_8h.html#abf31168c85e892836bca1f28ef60558a", null ],
+    [ "ra8_ssie_send_iso", "ra8__ssie_8h.html#a703943c2e6ce80e5433fc5379f5f26c5", null ],
+    [ "ra8_ssie_set_fifo_threshold", "ra8__ssie_8h.html#a79f947eb7ab798af46caafddeada6e1b", null ],
+    [ "ra8_ssie_set_irq_enable", "ra8__ssie_8h.html#a8ba89eda9eec322aeb8853536a86302c", null ],
+    [ "ra8_ssie_set_thresholds", "ra8__ssie_8h.html#a62dcb6566b61c4a0d4b51362ac165bf8", null ],
+    [ "ra8_ssie_start", "ra8__ssie_8h.html#abf976406bcf01ad0e3cafc32c47a7871", null ],
+    [ "ra8_ssie_start_recovery", "ra8__ssie_8h.html#a2eceb4864942eb2fdea46310afde324f", null ],
+    [ "ra8_ssie_stop", "ra8__ssie_8h.html#aabf09a336bab8850f2aabb6de536a11f", null ],
+    [ "ra8_ssie_write_buffer", "ra8__ssie_8h.html#a26740eecc0d95777475347557655003c", null ],
+    [ "ra8_ssie_write_sample", "ra8__ssie_8h.html#a8c09e94bbf068249a870a2bbb5e2b980", null ]
+];

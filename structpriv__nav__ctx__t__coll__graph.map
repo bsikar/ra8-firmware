@@ -1,0 +1,29 @@
+<map id="priv_nav_ctx_t" name="priv_nav_ctx_t">
+<area shape="rect" id="Node000001" title="Mutable state for one validated EPUB navigation pass." alt="" coords="1061,184,1179,209"/>
+<area shape="rect" id="Node000002" href="$structepub__book__t.html" title="Opened EPUB book." alt="" coords="867,184,972,209"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="986,194,1061,194,1061,199,986,199"/>
+<area shape="rect" id="Node000003" href="$structepub__miniz__arena__t.html" title="Descriptor for one caller&#45;owned miniz allocation arena." alt="" coords="527,104,681,129"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="695,120,768,130,844,150,875,165,902,182,899,186,873,170,842,155,767,136,694,125"/>
+<area shape="rect" id="Node000004" href="$structepub__miniz__workspace__t.html" title="Exactly&#45;sized, maximally&#45;aligned storage for one miniz arena." alt="" coords="511,157,697,183"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="711,176,867,190,866,195,711,182"/>
+<area shape="rect" id="Node000005" href="$structepub__xml__workspace__t.html" title="Per&#45;book bounded storage for strict OPF/container/TOC parsing." alt="" coords="517,211,691,236"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="705,225,773,224,842,217,882,207,883,212,843,222,773,229,705,230"/>
+<area shape="rect" id="Node000006" href="$structxml__workspace__t.html" title="Exactly bounded caller&#45;owned nesting storage." alt="" coords="213,88,349,113"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="325,116,512,191,561,208,559,213,510,197,323,121"/>
+<area shape="rect" id="Node000012" href="$structxml__reader__t.html" title="Pull&#45;reader state; initialise before each pass." alt="" coords="728,5,836,31"/>
+<area shape="poly" id="edge12_Node000012_Node000006" title=" " alt="" coords="335,81,417,58,510,38,626,24,727,17,728,22,627,29,511,43,418,64,336,87"/>
+<area shape="rect" id="Node000007" href="$structxml__frame__t.html" title="One open&#45;element identity retained for close&#45;tag validation." alt="" coords="5,88,111,113"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="125,98,213,98,213,103,125,103"/>
+<area shape="rect" id="Node000008" href="$structxml__span__t.html" title="Immutable byte span expressed relative to the source." alt="" coords="233,289,330,315"/>
+<area shape="poly" id="edge7_Node000005_Node000008" title=" " alt="" coords="343,288,486,255,560,234,562,239,487,261,344,293"/>
+<area shape="rect" id="Node000013" href="$structxml__event__t.html" title="One XML pull event." alt="" coords="731,363,833,388"/>
+<area shape="poly" id="edge14_Node000013_Node000008" title=" " alt="" coords="329,317,374,330,472,349,570,361,731,372,730,377,570,367,471,354,373,335,327,322"/>
+<area shape="rect" id="Node000009" href="$structepub__stream__media__t.html" title="Seekable EPUB media descriptor – opens with no whole&#45;file residency (#151)." alt="" coords="521,315,687,340"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="701,336,773,330,808,321,841,307,907,208,912,211,844,311,810,326,774,336,702,341"/>
+<area shape="rect" id="Node000010" href="$structepub__manifest__item__t.html" title="One &lt;manifest&gt; &lt;item&gt; entry, retained in OPF document order." alt="" coords="520,53,688,79"/>
+<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="702,69,784,79,819,86,844,96,869,115,889,139,915,182,910,185,885,142,865,119,841,100,818,91,783,84,701,74"/>
+<area shape="rect" id="Node000011" href="$structepub__toc__entry__t.html" title="One titled entry in the table of contents." alt="" coords="537,264,671,289"/>
+<area shape="poly" id="edge10_Node000002_Node000011" title=" " alt="" coords="685,279,763,274,803,266,842,254,878,232,905,207,908,211,881,237,844,259,804,271,763,279,685,284"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="825,34,844,44,989,121,1098,182,1095,186,987,126,841,48,822,39"/>
+<area shape="poly" id="edge13_Node000001_Node000013" title=" " alt="" coords="818,354,1094,207,1096,212,821,359"/>
+</map>

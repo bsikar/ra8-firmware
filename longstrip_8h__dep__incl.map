@@ -1,0 +1,18 @@
+<map id="apps/shared_libs/longstrip/inc/longstrip.h" name="apps/shared_libs/longstrip/inc/longstrip.h">
+<area shape="rect" id="Node000001" title="Continuous vertical&#45;scroll (longstrip / manhwa) reading mode over an JOF band&#45;tile atlas (#289)." alt="" coords="293,5,485,45"/>
+<area shape="rect" id="Node000002" href="$longstrip_8c.html" title="Continuous vertical&#45;scroll (longstrip) engine over a JOF atlas (#289)." alt="" coords="5,101,197,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="319,52,160,103,159,98,318,47"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2ereader__longstrip_2src_2main_8c.html" title="Viewable continuous vertical&#45;scroll (longstrip / manhwa) reader (#289)." alt="" coords="222,93,421,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="370,58,343,95,338,92,366,55"/>
+<area shape="rect" id="Node000004" href="$ra8__viewer__reader__internal_8h.html" title="Cross&#45;translation&#45;unit state for the bounded JOF/comic viewer." alt="" coords="528,93,699,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="448,48,551,91,549,96,446,53"/>
+<area shape="rect" id="Node000006" href="$ra8__viewer__jof_8c.html" title="Streamed JOF long&#45;strip rendering over a one&#45;band caller cache." alt="" coords="345,196,500,236"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="416,55,435,93,439,121,439,149,431,196,426,195,434,148,434,121,429,94,411,58"/>
+<area shape="rect" id="Node000005" href="$ra8__viewer__comic_8c.html" title="Caller&#45;workspace CBZ, CBR, and CBT reader engine." alt="" coords="524,196,703,236"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="616,162,616,196,611,196,611,162"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="549,156,463,198,460,193,547,152"/>
+<area shape="rect" id="Node000007" href="$ra8__viewer__ppm_8c.html" title="RGB565 &lt;&#45;&gt; 8&#45;bit RGB conversion and the shared binary&#45;PPM (P6) writer." alt="" coords="727,196,895,236"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="682,151,772,193,769,198,680,156"/>
+<area shape="rect" id="Node000008" href="$ra8__viewer__reader_8c.html" title="Requirements, workspace binding, descriptor lifecycle, and dispatch." alt="" coords="919,196,1099,236"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="713,142,930,193,929,199,711,148"/>
+</map>

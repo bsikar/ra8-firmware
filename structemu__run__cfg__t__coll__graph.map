@@ -1,0 +1,13 @@
+<map id="emu_run_cfg_t" name="emu_run_cfg_t">
+<area shape="rect" id="Node000001" title="Everything setup hands the run loop: engine, image, CLI products." alt="" coords="223,197,341,223"/>
+<area shape="rect" id="Node000002" href="$structemu__elf__source__t.html" title="One independently owned immutable raw&#45;descriptor ELF source." alt="" coords="5,101,143,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="113,130,257,195,255,200,111,135"/>
+<area shape="rect" id="Node000003" href="$structemu__presentation__workspace__t.html" title="One independent owned surface plus non&#45;owning bounded scratch." alt="" coords="167,101,397,127"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="285,141,285,197,279,197,279,141"/>
+<area shape="rect" id="Node000004" href="$structemu__memmap__workspace.html" title="Independent aperture backing with at most two engine bindings." alt="" coords="421,101,620,127"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="482,134,379,176,315,200,313,195,377,171,480,130"/>
+<area shape="rect" id="Node000005" href="$structemu__memmap__backing__t.html" title="One owned host aperture mapping." alt="" coords="319,5,509,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="439,38,509,99,506,103,436,42"/>
+<area shape="rect" id="Node000006" href="$structemu__memmap__binding__t.html" title="One caller&#45;owned association between a Unicorn engine and backing." alt="" coords="533,5,721,31"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="606,42,536,103,532,99,602,38"/>
+</map>

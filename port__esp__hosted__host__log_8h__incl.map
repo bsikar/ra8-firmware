@@ -1,0 +1,7 @@
+<map id="port/esp&#45;hosted/inc/port_esp_hosted_host_log.h" name="port/esp&#45;hosted/inc/port_esp_hosted_host_log.h">
+<area shape="rect" id="Node000001" title="esp&#45;hosted port header: the per&#45;file log tag the core expects." alt="" coords="5,5,212,45"/>
+<area shape="rect" id="Node000002" href="$esp__log_8h.html" title="ESP&#45;IDF&#45;compatible logging surface, implemented by this port." alt="" coords="67,93,151,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,46,111,79,106,79,106,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="73,167,144,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="111,119,111,153,106,153,106,119"/>
+</map>

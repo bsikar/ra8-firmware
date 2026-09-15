@@ -1,0 +1,46 @@
+<map id="apps/shared_libs/epub/src/epub_fs_internal.h" name="apps/shared_libs/epub/src/epub_fs_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for the EPUB filesystem stream callback." alt="" coords="868,5,1037,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="789,387,863,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="950,46,937,105,930,178,930,254,922,293,903,327,879,357,854,380,851,376,875,353,899,324,917,291,925,254,925,178,932,104,945,45"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="403,460,473,485"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="961,45,973,104,981,178,981,327,978,348,972,364,962,376,948,385,915,400,876,415,844,425,800,435,693,451,488,471,487,465,692,446,799,430,842,420,874,409,913,395,946,381,958,372,967,361,973,346,975,327,975,178,968,105,955,46"/>
+<area shape="rect" id="Node000004" href="$epub__fs_8h.html" title="ra8_fs &#45;&gt; epub bridge: open a .epub straight off a filesystem." alt="" coords="566,93,651,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="871,48,665,95,664,89,870,43"/>
+<area shape="rect" id="Node000013" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="1015,93,1141,119"/>
+<area shape="poly" id="edge31_Node000001_Node000013" title=" " alt="" coords="984,43,1050,84,1047,88,982,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="625,117,707,193,758,249,802,312,815,343,824,373,819,374,810,345,797,315,754,252,704,196,621,121"/>
+<area shape="rect" id="Node000005" href="$epub_8h.html" title="EPUB (.epub) reader and chapter iterator for ra8&#45;firmware." alt="" coords="575,240,642,265"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="611,119,611,226,606,226,606,119"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="340,387,419,412"/>
+<area shape="poly" id="edge20_Node000004_Node000008" title=" " alt="" coords="596,121,514,197,462,253,416,315,400,345,389,374,384,372,396,343,412,312,458,250,510,194,593,117"/>
+<area shape="rect" id="Node000010" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="181,167,255,192"/>
+<area shape="poly" id="edge21_Node000004_Node000010" title=" " alt="" coords="566,118,269,171,269,166,565,112"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="643,257,706,276,740,291,772,311,799,341,818,373,813,376,795,344,768,315,738,296,704,281,642,263"/>
+<area shape="poly" id="edge8_Node000005_Node000003" title=" " alt="" coords="602,267,458,450,454,447,597,264"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="669,387,756,412"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="643,255,671,261,701,272,729,288,752,312,758,329,755,347,736,378,731,375,750,345,752,329,748,315,726,292,699,277,669,266,642,260"/>
+<area shape="rect" id="Node000007" href="$epub__miniz__alloc_8h.html" title="Caller&#45;owned bounded&#45;arena allocator for miniz." alt="" coords="591,313,738,339"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="620,264,649,301,645,304,616,267"/>
+<area shape="poly" id="edge15_Node000005_Node000008" title=" " alt="" coords="576,263,513,282,479,297,448,315,417,345,395,376,390,373,413,341,444,311,477,292,511,277,574,258"/>
+<area shape="rect" id="Node000009" href="$xml_8h.html" title="Bounded, caller&#45;owned, no&#45;heap XML pull reader." alt="" coords="458,313,517,339"/>
+<area shape="poly" id="edge16_Node000005_Node000009" title=" " alt="" coords="591,268,520,309,517,304,588,263"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="692,336,788,379,786,383,690,341"/>
+<area shape="poly" id="edge12_Node000007_Node000003" title=" " alt="" coords="656,341,622,376,574,414,530,439,486,458,484,453,527,434,571,410,618,372,652,337"/>
+<area shape="poly" id="edge10_Node000007_Node000006" title=" " alt="" coords="675,338,700,374,695,377,670,341"/>
+<area shape="poly" id="edge13_Node000007_Node000008" title=" " alt="" coords="619,341,433,388,431,382,618,336"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="391,411,422,448,418,451,387,414"/>
+<area shape="poly" id="edge17_Node000009_Node000002" title=" " alt="" coords="517,331,776,385,775,390,516,336"/>
+<area shape="poly" id="edge18_Node000009_Node000003" title=" " alt="" coords="486,340,449,448,444,446,481,338"/>
+<area shape="poly" id="edge19_Node000009_Node000008" title=" " alt="" coords="471,341,410,381,407,377,469,336"/>
+<area shape="poly" id="edge22_Node000010_Node000003" title=" " alt="" coords="223,191,235,231,256,289,288,352,308,383,331,410,361,434,394,452,392,457,358,439,327,414,304,386,283,355,251,291,230,233,218,193"/>
+<area shape="poly" id="edge23_Node000010_Node000008" title=" " alt="" coords="229,191,365,374,360,377,225,194"/>
+<area shape="rect" id="Node000011" href="$ra8__fs__seams_8h.html" title="The two dependency&#45;injection seams ra8_fs offers its callers." alt="" coords="5,240,129,265"/>
+<area shape="poly" id="edge24_Node000010_Node000011" title=" " alt="" coords="195,194,106,236,103,232,193,190"/>
+<area shape="rect" id="Node000012" href="$ra8__fs__types_8h.html" title="On&#45;disk and handle data types shared by the ra8_fs public API." alt="" coords="63,313,181,339"/>
+<area shape="poly" id="edge30_Node000010_Node000012" title=" " alt="" coords="212,194,140,303,135,300,208,191"/>
+<area shape="poly" id="edge25_Node000011_Node000003" title=" " alt="" coords="63,267,50,300,49,319,54,338,75,367,98,384,163,410,222,430,283,446,389,464,388,469,282,451,221,435,161,414,95,389,71,371,49,340,43,320,45,299,58,265"/>
+<area shape="poly" id="edge26_Node000011_Node000008" title=" " alt="" coords="93,263,343,379,341,383,91,268"/>
+<area shape="poly" id="edge27_Node000011_Node000012" title=" " alt="" coords="78,264,107,301,103,304,74,267"/>
+<area shape="poly" id="edge28_Node000012_Node000003" title=" " alt="" coords="132,338,159,374,179,393,201,410,248,432,298,448,389,465,388,470,297,453,246,437,198,414,175,397,155,377,127,341"/>
+<area shape="poly" id="edge29_Node000012_Node000008" title=" " alt="" coords="164,336,327,381,326,386,163,341"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="port/levelx/inc/lx_fs_backend.h" name="port/levelx/inc/lx_fs_backend.h">
+<area shape="rect" id="Node000001" title="ra8_fs block&#45;device backend over a LevelX wear&#45;levelled NOR partition" alt="" coords="239,5,369,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2threadx__fs__demo_2src_2main_8c.html" title="ThreadX + ra8_fs file&#45;operations demo on the on&#45;board OSPI flash." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="250,53,153,96,151,91,248,48"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2threadx__fs__levelx__demo_2src_2main_8c.html" title="ThreadX + ra8_fs&#45;on&#45;LevelX&#45;on&#45;OSPI wear&#45;levelled FAT demo for EK&#45;RA8D2." alt="" coords="203,93,405,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="307,59,307,93,301,93,301,59"/>
+<area shape="rect" id="Node000004" href="$lx__fs__backend_8c.html" title="ra8_fs block&#45;device trampolines onto LevelX wear&#45;levelled NOR storage" alt="" coords="429,101,560,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="356,49,457,98,455,103,354,54"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="gz_inflate_t" name="gz_inflate_t">
+<area shape="rect" id="Node000001" title="Loop&#45;carried state of the windowed DEFLATE inflation." alt="" coords="23,197,121,223"/>
+<area shape="rect" id="Node000002" href="$structgz__src__t.html" title="Cursor&#45;tracked exact&#45;read byte source with a running header CRC." alt="" coords="5,101,80,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="53,139,71,196,66,198,48,141"/>
+<area shape="rect" id="Node000003" href="$structra8__decomp__budget__t.html" title="Running consumption tracker charged by a decoder against its policy." alt="" coords="105,101,271,127"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="165,137,88,199,85,195,162,133"/>
+<area shape="rect" id="Node000004" href="$structra8__decomp__limits__t.html" title="One decompression policy: the five resource bounds decoders enforce." alt="" coords="109,5,267,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="191,45,191,101,185,101,185,45"/>
+</map>

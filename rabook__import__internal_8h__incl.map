@@ -1,0 +1,10 @@
+<map id="apps/shared_libs/rabook_import/inc/rabook_import_internal.h" name="apps/shared_libs/rabook_import/inc/rabook_import_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private bounded source&#45;key streaming contracts." alt="" coords="5,5,200,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="81,181,151,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="64,62,46,78,33,95,27,114,30,132,50,155,75,173,72,177,46,159,26,134,21,113,28,93,42,74,60,58"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="40,108,165,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="105,60,105,94,100,94,100,60"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="190,108,269,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="143,58,202,98,199,102,140,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="213,136,147,176,144,172,210,131"/>
+</map>

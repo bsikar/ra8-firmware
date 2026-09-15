@@ -1,0 +1,36 @@
+<map id="apps/shared_libs/webp/inc/ra8_webp_arena.h" name="apps/shared_libs/webp/inc/ra8_webp_arena.h">
+<area shape="rect" id="Node000001" title="Heap&#45;free scratch allocator hooks for the vendored libwebp decoder." alt="" coords="704,5,875,45"/>
+<area shape="rect" id="Node000002" href="$jof__produce__webp_8c.html" title="Transcode producer: whole&#45;frame WebP arm (#290 normalize&#45;on&#45;import)." alt="" coords="511,203,689,243"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="746,55,694,95,646,153,613,204,608,202,642,149,690,91,743,51"/>
+<area shape="rect" id="Node000003" href="$ra8__rabook__raster_8h.html" title="Caller&#45;arena raster normalizer for RABOOK image records." alt="" coords="305,93,487,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="697,51,487,101,486,95,696,46"/>
+<area shape="rect" id="Node000008" href="$media__download__image_8c.html" title="Convert one C6&#45;fetched encoded image into a strict .rabook." alt="" coords="5,416,224,471"/>
+<area shape="poly" id="edge18_Node000001_Node000008" title=" " alt="" coords="691,33,605,40,504,51,398,70,294,96,228,112,175,126,152,136,131,150,110,170,90,197,78,224,72,253,71,284,74,314,87,371,105,415,100,417,82,372,68,315,65,284,66,253,73,223,86,195,106,166,127,145,150,131,173,121,227,107,293,91,397,64,504,46,604,34,690,28"/>
+<area shape="rect" id="Node000010" href="$ra8__webp_8h.html" title="Zero&#45;heap WebP (VP8 / VP8L) decode facade over the vendored libwebp." alt="" coords="704,101,875,141"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="792,59,792,101,787,101,787,59"/>
+<area shape="rect" id="Node000012" href="$ra8__webp_8c.html" title="Zero&#45;heap WebP decode facade over the vendored libwebp (impl)." alt="" coords="1135,203,1305,243"/>
+<area shape="poly" id="edge16_Node000001_Node000012" title=" " alt="" coords="833,51,888,91,916,121,928,133,945,146,1151,201,1149,206,943,150,924,137,912,124,885,95,830,55"/>
+<area shape="rect" id="Node000013" href="$examples_2ek__ra8d2_2hw__pending_2webp__decode__demo_2src_2main_8c.html" title="On&#45;target WebP decode smoke test (ra8_webp over vendored libwebp)." alt="" coords="1330,196,1505,251"/>
+<area shape="poly" id="edge19_Node000001_Node000013" title=" " alt="" coords="855,48,895,67,935,91,951,106,962,121,972,134,989,146,1035,165,1075,177,1112,182,1148,183,1223,183,1267,186,1318,193,1330,196,1329,201,1317,199,1267,191,1223,188,1148,189,1112,187,1074,182,1033,170,987,150,969,138,958,124,947,110,932,95,893,72,852,53"/>
+<area shape="rect" id="Node000015" href="$ra8__webp__arena_8c.html" title="Caller&#45;bound bump arena with refcount auto&#45;reset for libwebp." alt="" coords="1000,101,1171,141"/>
+<area shape="poly" id="edge17_Node000001_Node000015" title=" " alt="" coords="863,47,1026,98,1025,103,861,52"/>
+<area shape="rect" id="Node000004" href="$ra8__rabook__comic_8h.html" title="Streaming image&#45;sequence builder for reader&#45;native RABOOK comics." alt="" coords="100,196,281,251"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="332,156,245,198,243,194,329,151"/>
+<area shape="rect" id="Node000009" href="$ra8__rabook__raster_8c.html" title="Caller&#45;arena raster normalizer for RABOOK image records." alt="" coords="305,196,487,251"/>
+<area shape="poly" id="edge8_Node000003_Node000009" title=" " alt="" coords="399,162,399,196,393,196,393,162"/>
+<area shape="rect" id="Node000005" href="$ra8__rabook__comic_8c.html" title="Streaming image&#45;sequence builder for reader&#45;native RABOOK comics." alt="" coords="100,306,281,361"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="193,265,193,306,188,306,188,265"/>
+<area shape="rect" id="Node000006" href="$media__download__format__internal_8h.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="305,299,516,368"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="258,254,343,296,341,301,255,259"/>
+<area shape="rect" id="Node000007" href="$media__download__format_8c.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="299,416,522,471"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="413,382,413,416,408,416,408,382"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="307,375,187,418,186,413,305,370"/>
+<area shape="poly" id="edge11_Node000010_Node000002" title=" " alt="" coords="743,150,637,206,634,201,740,145"/>
+<area shape="poly" id="edge12_Node000010_Node000009" title=" " alt="" coords="703,147,487,202,486,196,702,141"/>
+<area shape="rect" id="Node000011" href="$jof__produce_8c.html" title="Transcode producer: sniff, decode, tile, encode, emit (#231, #290)." alt="" coords="713,203,865,243"/>
+<area shape="poly" id="edge10_Node000010_Node000011" title=" " alt="" coords="792,155,792,203,787,203,787,155"/>
+<area shape="poly" id="edge13_Node000010_Node000012" title=" " alt="" coords="876,141,894,145,1009,169,1123,193,1152,201,1151,206,1122,199,1008,174,893,151,875,146"/>
+<area shape="poly" id="edge14_Node000010_Node000013" title=" " alt="" coords="889,137,944,145,1049,159,1131,167,1213,176,1318,193,1330,196,1329,201,1317,199,1213,181,1131,172,1049,164,944,151,888,142"/>
+<area shape="rect" id="Node000014" href="$ra8__fmt__stream__convert_8c.html" title="Callback&#45;driven, caller&#45;workspace image&#45;to&#45;JOF conversion." alt="" coords="890,203,1110,243"/>
+<area shape="poly" id="edge15_Node000010_Node000014" title=" " alt="" coords="843,144,962,201,959,206,840,149"/>
+</map>

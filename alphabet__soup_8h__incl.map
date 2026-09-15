@@ -1,0 +1,14 @@
+<map id="apps/host/alphabet_soup/inc/alphabet_soup.h" name="apps/host/alphabet_soup/inc/alphabet_soup.h">
+<area shape="rect" id="Node000001" title="Word search puzzle solver API and bounded workspace definitions." alt="" coords="45,5,240,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="120,48,70,87,67,82,117,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="159,240,230,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="141,46,134,112,136,152,145,191,157,211,172,229,168,232,152,215,140,193,131,153,129,112,136,45"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,167,234,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="152,45,189,153,184,154,147,47"/>
+<area shape="rect" id="Node000005" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="206,93,333,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="175,43,241,84,238,88,172,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="197,192,197,226,192,226,192,192"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="270,119,263,153,248,193,219,232,215,229,243,191,258,152,265,118"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="259,121,219,159,215,155,256,117"/>
+</map>

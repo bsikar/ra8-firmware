@@ -1,0 +1,30 @@
+<map id="libs/ra8_hal/src/ra8_sdcard.c" name="libs/ra8_hal/src/ra8_sdcard.c">
+<area shape="rect" id="Node000001" title="SD card driver implementation – SD Physical Layer state machine." alt="" coords="160,5,306,45"/>
+<area shape="rect" id="Node000002" href="$ra8__sdcard_8h.html" title="SD card driver layered on top of the RA8D2 SDHI peripheral." alt="" coords="39,93,144,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="200,48,126,89,124,84,198,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="110,313,180,339"/>
+<area shape="poly" id="edge8_Node000001_Node000003" title=" " alt="" coords="161,32,125,39,89,51,56,69,30,95,17,117,10,139,8,159,12,179,32,220,63,264,86,286,111,304,108,309,82,291,59,267,27,222,7,180,3,159,4,138,12,115,26,92,53,65,87,46,124,34,160,27"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="106,240,184,265"/>
+<area shape="poly" id="edge17_Node000001_Node000004" title=" " alt="" coords="230,46,210,112,179,193,161,229,156,227,175,191,205,110,225,45"/>
+<area shape="rect" id="Node000005" href="$ra8__sdhi_8h.html" title="SD/MMC Host Interface (SDHI) driver scaffold." alt="" coords="55,167,144,192"/>
+<area shape="poly" id="edge19_Node000001_Node000005" title=" " alt="" coords="220,47,159,120,123,159,119,155,155,117,216,44"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="446,93,572,119"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="300,43,456,87,455,92,298,48"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="271,167,371,192"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="246,44,310,153,305,156,242,47"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="433,240,516,265"/>
+<area shape="poly" id="edge18_Node000001_Node000008" title=" " alt="" coords="255,44,386,165,454,228,450,232,382,169,252,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="80,121,61,141,46,168,44,179,46,191,59,225,79,255,122,302,118,306,75,258,55,227,41,193,39,179,41,166,57,138,76,117"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="114,117,139,137,159,166,164,181,164,198,158,227,153,226,159,197,159,182,155,168,135,141,110,121"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="96,119,100,153,94,153,90,119"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="148,266,148,300,142,300,142,266"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="99,193,93,226,93,245,97,264,108,285,123,302,119,306,104,288,92,266,87,246,87,225,94,192"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="109,191,133,227,128,230,105,194"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="308,195,171,307,168,303,305,190"/>
+<area shape="poly" id="edge12_Node000007_Node000004" title=" " alt="" coords="294,194,188,237,186,232,292,190"/>
+<area shape="poly" id="edge13_Node000007_Node000008" title=" " alt="" coords="347,190,438,232,436,237,345,194"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="260,240,408,265"/>
+<area shape="poly" id="edge15_Node000007_Node000009" title=" " alt="" coords="326,192,332,226,327,227,321,193"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="433,266,194,317,193,312,432,260"/>
+<area shape="poly" id="edge16_Node000009_Node000003" title=" " alt="" coords="305,268,190,311,188,306,303,263"/>
+</map>

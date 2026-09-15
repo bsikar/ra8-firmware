@@ -1,0 +1,5 @@
+<map id="internal_mdl_next_read_t" name="internal_mdl_next_read_t">
+<area shape="rect" id="Node000001" title="Caller&#45;bounded bytes and metadata returned by one backend pull." alt="" coords="5,101,193,127"/>
+<area shape="rect" id="Node000002" href="$structra8__mdl__http__response__t.html" title="HTTP status and selected response headers proven by the C6 backend." alt="" coords="6,5,193,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="102,45,102,101,97,101,97,45"/>
+</map>

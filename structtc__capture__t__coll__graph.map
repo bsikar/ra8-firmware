@@ -1,0 +1,9 @@
+<map id="tc_capture_t" name="tc_capture_t">
+<area shape="rect" id="Node000001" title="Per&#45;run capture the calibration shims fill for the verify pass." alt="" coords="123,217,225,243"/>
+<area shape="rect" id="Node000002" href="$structdisplay__handle.html" title="Opaque handle returned by display_init." alt="" coords="30,101,150,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="109,137,167,215,163,218,105,140"/>
+<area shape="rect" id="Node000003" href="$structdisplay__backend__iface.html" title="Opaque to applications – backends implement this internally and export a const instance through their..." alt="" coords="5,5,175,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="93,45,93,101,87,101,87,45"/>
+<area shape="rect" id="Node000004" href="$structra8__touch__cal__point__t.html" title="One (x, y) integer coordinate pair." alt="" coords="175,101,339,127"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="242,140,185,218,180,215,238,137"/>
+</map>

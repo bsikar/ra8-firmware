@@ -1,0 +1,16 @@
+<map id="port/esp32_c6" name="port/esp32_c6">
+<area shape="rect" id="node1" href="dir_073739ad7ce85854e2cccc65a4cf91ff.html" title="esp&#45;hosted" alt="" coords="42,209,137,235"/>
+<area shape="rect" id="node3" href="dir_07bdb6f8a42f2ad9f06f60d20fa5dc52.html" title="inc" alt="" coords="38,136,79,161"/>
+<area shape="poly" id="edge1" href="dir_000300_000117.html" alt="" coords="66,161,81,196,77,198,61,163"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000300_000117.html" title="1" alt="" coords="80,182,90,197"/>
+<area shape="rect" id="node4" href="dir_da11a24b8ddbd3fcce3fb271f2419834.html" title="src" alt="" coords="38,63,79,88"/>
+<area shape="poly" id="edge2" href="dir_000768_000117.html" alt="" coords="69,87,83,108,93,135,97,167,96,196,90,196,92,167,88,137,78,111,65,90"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000768_000117.html" title="1" alt="" coords="97,185,107,199"/>
+<area shape="poly" id="edge3" href="dir_000768_000300.html" alt="" coords="61,88,61,122,56,122,56,88"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000768_000300.html" title="1" alt="" coords="62,110,72,125"/>
+<area shape="rect" id="node5" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="219,136,264,161"/>
+<area shape="poly" id="edge4" href="dir_000768_000324.html" alt="" coords="81,82,206,131,205,136,79,87"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000768_000324.html" title="3" alt="" coords="200,117,209,131"/>
+<area shape="rect" id="clust2" href="dir_5fdb991cbdf757d1bcfffbf620998ffa.html" alt="" coords="27,52,197,172"/>
+<area shape="rect" id="clust1" href="dir_651562d8bf6cfd3e81eff5b570d7df50.html" title="Adapters between the vendored stacks under libs/third_party and this firmware: ThreadX to the RA8 clo..." alt="" coords="16,16,208,245"/>
+</map>

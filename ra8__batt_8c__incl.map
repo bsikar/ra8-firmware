@@ -1,0 +1,22 @@
+<map id="libs/ra8_batt/src/ra8_batt.c" name="libs/ra8_batt/src/ra8_batt.c">
+<area shape="rect" id="Node000001" title="Implementation of the low&#45;battery nag policy." alt="" coords="29,5,180,45"/>
+<area shape="rect" id="Node000002" href="$ra8__batt_8h.html" title="Bounded, allocation&#45;free low&#45;battery nag policy." alt="" coords="21,93,109,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,47,79,82,75,80,93,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="129,240,200,265"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="62,48,33,67,11,95,8,106,11,118,20,141,30,158,63,190,94,213,127,232,124,236,91,218,59,194,26,161,15,144,6,119,3,106,6,92,30,64,59,43"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="87,167,165,192"/>
+<area shape="poly" id="edge13_Node000001_Node000004" title=" " alt="" coords="113,45,123,93,128,153,123,153,118,94,108,46"/>
+<area shape="rect" id="Node000005" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="184,93,284,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="137,43,205,84,202,88,135,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="66,119,65,153,69,173,76,191,98,214,124,232,121,236,94,218,72,193,64,174,60,153,60,119"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="77,117,109,154,105,158,73,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="135,191,154,227,150,229,130,194"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="231,120,179,229,174,226,226,118"/>
+<area shape="poly" id="edge8_Node000005_Node000004" title=" " alt="" coords="218,121,157,161,154,157,215,116"/>
+<area shape="rect" id="Node000006" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="241,167,323,192"/>
+<area shape="poly" id="edge9_Node000005_Node000006" title=" " alt="" coords="244,118,269,154,265,157,240,121"/>
+<area shape="rect" id="Node000007" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="348,167,496,192"/>
+<area shape="poly" id="edge11_Node000005_Node000007" title=" " alt="" coords="265,116,380,159,378,164,263,121"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="265,194,197,235,194,230,262,190"/>
+<area shape="poly" id="edge12_Node000007_Node000003" title=" " alt="" coords="381,195,214,241,212,235,380,189"/>
+</map>

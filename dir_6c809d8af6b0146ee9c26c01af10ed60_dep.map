@@ -1,0 +1,34 @@
+<map id="tools/ra8_emulator/src" name="tools/ra8_emulator/src">
+<area shape="rect" id="node1" href="dir_ddc7d396cd053fba99c9d3fa83a6df9c.html" title="inc" alt="" coords="283,136,325,161"/>
+<area shape="poly" id="edge1" href="dir_000783_000311.html" alt="" coords="151,86,168,96,221,119,271,135,269,140,219,124,165,101,148,91"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000783_000311.html" title="373" alt="" coords="255,121,281,136"/>
+<area shape="rect" id="node3" href="dir_ae27e18168464b95bceeaa3d990e2bfb.html" title="display" alt="" coords="269,63,339,88"/>
+<area shape="poly" id="edge3" href="dir_000070_000311.html" alt="" coords="307,88,307,122,301,122,301,88"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000070_000311.html" title="8" alt="" coords="308,110,317,125"/>
+<area shape="rect" id="node9" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="591,136,636,161"/>
+<area shape="poly" id="edge2" href="dir_000070_000324.html" alt="" coords="326,86,351,96,414,111,464,116,515,120,577,131,576,137,514,125,464,121,413,116,350,101,324,91"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000070_000324.html" title="1" alt="" coords="570,117,580,132"/>
+<area shape="rect" id="node4" href="dir_9363a3d3b1ee0a4f1912a72bcbbf5cd7.html" title="engine" alt="" coords="179,63,245,88"/>
+<area shape="poly" id="edge4" href="dir_000090_000311.html" alt="" coords="228,86,280,125,277,130,225,90"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000090_000311.html" title="176" alt="" coords="267,111,292,125"/>
+<area shape="rect" id="node5" href="dir_8491d094c55beecfa356437341b7a357.html" title="host" alt="" coords="37,63,88,88"/>
+<area shape="poly" id="edge5" href="dir_000154_000311.html" alt="" coords="81,86,101,96,192,124,270,140,269,145,190,129,99,101,78,90"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000154_000311.html" title="1" alt="" coords="262,126,271,141"/>
+<area shape="rect" id="node6" href="dir_8ecfa3b781a9757b38a7677aa1f4de64.html" title="io" alt="" coords="519,63,558,88"/>
+<area shape="poly" id="edge7" href="dir_000315_000311.html" alt="" coords="526,90,509,101,464,118,418,131,339,146,338,141,417,126,463,113,507,96,524,86"/>
+<area shape="rect" id="edge7-headlabel" href="dir_000315_000311.html" title="5" alt="" coords="340,144,349,158"/>
+<area shape="poly" id="edge6" href="dir_000315_000324.html" alt="" coords="552,86,593,125,589,128,549,90"/>
+<area shape="rect" id="edge6-headlabel" href="dir_000315_000324.html" title="1" alt="" coords="589,110,598,125"/>
+<area shape="rect" id="node7" href="dir_91bddd2a585b5d5e6b8319118344fb3e.html" title="periph" alt="" coords="433,63,495,88"/>
+<area shape="poly" id="edge9" href="dir_000366_000311.html" alt="" coords="443,91,421,101,338,136,336,132,419,96,441,86"/>
+<area shape="rect" id="edge9-headlabel" href="dir_000366_000311.html" title="141" alt="" coords="332,133,357,148"/>
+<area shape="poly" id="edge8" href="dir_000366_000324.html" alt="" coords="488,86,509,96,579,129,577,134,507,101,486,91"/>
+<area shape="rect" id="edge8-headlabel" href="dir_000366_000324.html" title="11" alt="" coords="569,115,586,129"/>
+<area shape="rect" id="node8" href="dir_bd4e15d4ed27d6e9faaf564dc28d90bb.html" title="usb" alt="" coords="363,63,408,88"/>
+<area shape="poly" id="edge11" href="dir_000820_000311.html" alt="" coords="374,90,329,129,326,125,371,86"/>
+<area shape="rect" id="edge11-headlabel" href="dir_000820_000311.html" title="13" alt="" coords="328,123,345,138"/>
+<area shape="poly" id="edge10" href="dir_000820_000324.html" alt="" coords="403,86,422,96,465,110,499,116,535,121,578,131,577,136,534,127,499,122,463,115,420,101,400,90"/>
+<area shape="rect" id="edge10-headlabel" href="dir_000820_000324.html" title="11" alt="" coords="567,117,584,132"/>
+<area shape="rect" id="clust2" href="dir_6c809d8af6b0146ee9c26c01af10ed60.html" alt="" coords="27,52,569,99"/>
+<area shape="rect" id="clust1" href="dir_7ff0bea57dd1776ef07bada229ef69fb.html" title="ra8_emulator" alt="" coords="16,16,580,172"/>
+</map>

@@ -1,0 +1,8 @@
+<map id="libs/ra8_devcfg/inc/ra8_devcfg.h" name="libs/ra8_devcfg/inc/ra8_devcfg.h">
+<area shape="rect" id="Node000001" title="Per&#45;device (per&#45;unit) configuration record – schema, storage seam, two&#45;copy resolution." alt="" coords="5,5,149,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="42,167,113,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="74,46,68,80,67,118,73,153,68,154,61,119,62,79,69,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="77,93,155,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="89,44,107,80,102,82,84,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="112,120,92,156,88,153,107,118"/>
+</map>

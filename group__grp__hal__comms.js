@@ -1,0 +1,25 @@
+var group__grp__hal__comms =
+[
+    [ "ra8_canfd.h", "ra8__canfd_8h.html", null ],
+    [ "ra8_canfd_regs.h", "ra8__canfd__regs_8h.html", null ],
+    [ "ra8_i2c.h", "ra8__i2c_8h.html", null ],
+    [ "ra8_i2c_bus_ops.h", "ra8__i2c__bus__ops_8h.html", null ],
+    [ "ra8_i2c_regs.h", "ra8__i2c__regs_8h.html", null ],
+    [ "ra8_i3c.h", "ra8__i3c_8h.html", null ],
+    [ "ra8_i3c_i2c.h", "ra8__i3c__i2c_8h.html", null ],
+    [ "ra8_i3c_i2c_peripheral.h", "ra8__i3c__i2c__peripheral_8h.html", null ],
+    [ "ra8_i3c_i2c_regs.h", "ra8__i3c__i2c__regs_8h.html", null ],
+    [ "ra8_i3c_regs.h", "ra8__i3c__regs_8h.html", null ],
+    [ "ra8_sci.h", "ra8__sci_8h.html", null ],
+    [ "ra8_sci_lin.h", "ra8__sci__lin_8h.html", null ],
+    [ "ra8_sci_regs.h", "ra8__sci__regs_8h.html", null ],
+    [ "ra8_sci_spi.h", "ra8__sci__spi_8h.html", null ],
+    [ "ra8_smbus.h", "ra8__smbus_8h.html", null ],
+    [ "ra8_spi.h", "ra8__spi_8h.html", null ],
+    [ "ra8_spi_bus_ops.h", "ra8__spi__bus__ops_8h.html", null ],
+    [ "ra8_spi_regs.h", "ra8__spi__regs_8h.html", null ],
+    [ "ra8_i2c_internal.h", "ra8__i2c__internal_8h.html", null ],
+    [ "ra8_i3c_i2c_internal.h", "ra8__i3c__i2c__internal_8h.html", null ],
+    [ "ra8_i3c_internal.h", "ra8__i3c__internal_8h.html", null ],
+    [ "ra8_sci_internal.h", "ra8__sci__internal_8h.html", null ]
+];

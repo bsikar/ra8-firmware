@@ -1,0 +1,32 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_dmac.c" name="tools/ra8_emulator/src/periph/board_periph_dmac.c">
+<area shape="rect" id="Node000001" title="DMAC0 transfer peripheral&#45;block model for the board emulator." alt="" coords="139,5,317,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="75,255,146,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,62,118,83,77,109,40,143,12,183,8,193,9,202,20,219,40,235,64,247,62,252,37,239,16,223,4,203,3,192,7,180,36,139,73,105,115,78,156,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="384,108,451,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="287,58,381,100,378,105,285,62"/>
+<area shape="rect" id="Node000004" href="$board__console_8h.html" title="Multi&#45;channel console log store backing the board view&#39;s tabbed console." alt="" coords="21,181,149,207"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="190,62,162,84,137,110,115,140,99,170,94,167,110,137,133,106,159,80,187,58"/>
+<area shape="rect" id="Node000005" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="147,108,309,133"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="231,60,231,94,225,94,225,60"/>
+<area shape="rect" id="Node000010" href="$emu__host__io__internal_8h.html" title="Bounded raw&#45;descriptor I/O seam for the RA8 emulator." alt="" coords="475,181,650,207"/>
+<area shape="poly" id="edge13_Node000001_Node000010" title=" " alt="" coords="261,58,312,95,373,131,437,157,499,175,498,181,435,162,371,136,310,100,258,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="92,206,104,241,99,243,87,208"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="221,135,163,208,132,246,128,242,159,205,217,132"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="170,255,305,280"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="231,134,238,241,233,241,226,134"/>
+<area shape="rect" id="Node000007" href="$emu__memory__access_8h.html" title="Central first&#45;party Unicorn memory access seam." alt="" coords="275,181,451,207"/>
+<area shape="poly" id="edge8_Node000005_Node000007" title=" " alt="" coords="251,131,330,172,327,177,248,136"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="323,209,160,255,159,250,321,204"/>
+<area shape="poly" id="edge11_Node000007_Node000006" title=" " alt="" coords="344,209,271,250,268,245,341,204"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="329,255,404,280"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="366,207,368,241,363,241,361,207"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="428,255,553,280"/>
+<area shape="poly" id="edge12_Node000007_Node000009" title=" " alt="" coords="384,204,459,245,456,250,382,209"/>
+<area shape="poly" id="edge16_Node000010_Node000002" title=" " alt="" coords="476,208,332,228,160,257,159,252,331,223,475,203"/>
+<area shape="poly" id="edge15_Node000010_Node000008" title=" " alt="" coords="532,209,412,252,411,247,530,204"/>
+<area shape="poly" id="edge18_Node000010_Node000009" title=" " alt="" coords="553,209,514,247,510,243,549,205"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="577,255,652,280"/>
+<area shape="poly" id="edge14_Node000010_Node000011" title=" " alt="" coords="573,205,600,242,596,245,569,209"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="676,255,772,280"/>
+<area shape="poly" id="edge17_Node000010_Node000012" title=" " alt="" coords="590,204,686,247,684,251,587,209"/>
+</map>

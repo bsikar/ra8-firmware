@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/src/ra8_sram_internal.h" name="libs/ra8_hal/src/ra8_sram_internal.h">
+<area shape="rect" id="Node000001" title="src/&#45;local shared surface for the SRAM HAL driver split." alt="" coords="89,5,235,45"/>
+<area shape="rect" id="Node000002" href="$ra8__sram_8c.html" title="SRAM (with ECC) HAL driver implementation." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="136,57,98,95,95,91,132,53"/>
+<area shape="rect" id="Node000003" href="$ra8__sram__security_8c.html" title="SRAM HAL: TrustZone security attribution + ECC error callbacks." alt="" coords="175,93,320,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="192,53,230,91,227,95,189,57"/>
+</map>

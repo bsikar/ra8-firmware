@@ -1,0 +1,20 @@
+<map id="apps/shared_libs/zoom/inc/zoom.h" name="apps/shared_libs/zoom/inc/zoom.h">
+<area shape="rect" id="Node000001" title="Tap&#45;to&#45;zoom image viewer: viewport state machine + tiled magnifying render (#478)." alt="" coords="312,5,483,45"/>
+<area shape="rect" id="Node000002" href="$zoom__book_8h.html" title="Bind a .rabook image&#45;pool figure as a zoom source (#478)." alt="" coords="5,93,176,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="318,52,159,96,157,91,316,46"/>
+<area shape="rect" id="Node000003" href="$zoom__tiles_8h.html" title="Bind a tiled gray8 atlas behind an ra8_tile_cache as a zoom source (#478)." alt="" coords="251,93,421,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="378,58,352,95,347,92,374,55"/>
+<area shape="rect" id="Node000004" href="$ez__scene_8h.html" title="Tap&#45;to&#45;zoom demo scene: tiled 12 MP page, zoom viewport, loupe (#478)." alt="" coords="152,181,331,236"/>
+<area shape="poly" id="edge9_Node000001_Node000004" title=" " alt="" coords="300,50,267,68,241,95,232,115,230,138,235,181,230,181,224,138,227,114,236,92,264,64,298,45"/>
+<area shape="rect" id="Node000005" href="$ez__scene_8c.html" title="Tap&#45;to&#45;zoom demo scene: page sampler, viewports, chrome, self&#45;check." alt="" coords="343,284,521,339"/>
+<area shape="poly" id="edge10_Node000001_Node000005" title=" " alt="" coords="420,56,436,93,444,145,446,198,439,284,434,284,441,198,439,146,431,94,415,58"/>
+<area shape="rect" id="Node000007" href="$zoom_8c.html" title="Viewport state machine for the tap&#45;to&#45;zoom image viewer (#478)." alt="" coords="496,93,667,133"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="451,49,542,91,540,96,449,54"/>
+<area shape="rect" id="Node000008" href="$zoom__render_8c.html" title="Strip composite for the tap&#45;to&#45;zoom viewer: magnify, re&#45;dither, blit (#478)." alt="" coords="691,93,861,133"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="494,46,694,91,693,96,493,51"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="309,145,270,183,266,179,305,141"/>
+<area shape="poly" id="edge6_Node000003_Node000005" title=" " alt="" coords="354,145,421,282,417,285,349,147"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="304,240,383,281,381,286,302,245"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__pending_2ereader__zoom_2src_2main_8c.html" title="Viewable tap&#45;to&#45;zoom image viewer: full&#45;screen zoom + panel loupe (#478)." alt="" coords="140,284,319,339"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="239,250,235,284,230,284,234,249"/>
+</map>

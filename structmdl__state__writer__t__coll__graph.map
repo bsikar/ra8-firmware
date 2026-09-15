@@ -1,0 +1,7 @@
+<map id="mdl_state_writer_t" name="mdl_state_writer_t">
+<area shape="rect" id="Node000001" title="Streaming serialization state for one transaction." alt="" coords="21,197,165,223"/>
+<area shape="rect" id="Node000002" href="$structfw__fs__transaction__t.html" title="Caller&#45;owned transaction; fields are private to the facade." alt="" coords="19,101,167,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="95,141,95,197,90,197,90,141"/>
+<area shape="rect" id="Node000003" href="$structfw__fs__transaction__iface.html" title="Staged&#45;publication backend operations over caller&#45;supplied state." alt="" coords="5,5,180,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="95,45,95,101,90,101,90,45"/>
+</map>

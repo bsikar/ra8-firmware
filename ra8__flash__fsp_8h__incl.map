@@ -1,0 +1,16 @@
+<map id="libs/ra8_hal/inc/ra8_flash_fsp.h" name="libs/ra8_hal/inc/ra8_flash_fsp.h">
+<area shape="rect" id="Node000001" title="Code MRAM driver – FSP r_mram parity surface." alt="" coords="17,5,162,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="67,240,138,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="71,47,46,76,22,112,13,132,9,152,9,172,16,191,36,214,61,232,58,236,32,218,11,193,4,173,3,151,8,130,17,110,41,72,67,44"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="25,167,103,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="82,46,65,94,63,124,64,153,58,153,57,124,60,93,77,44"/>
+<area shape="rect" id="Node000004" href="$ra8__flash__regs_8h.html" title="Flash / MRAM controller register layout for the Renesas RA8D2." alt="" coords="179,167,307,192"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="154,43,192,63,225,92,239,122,245,152,240,153,234,123,221,95,189,67,152,48"/>
+<area shape="rect" id="Node000005" href="$ra8__flash__types_8h.html" title="Code MRAM driver – shared types (enums, structs, callback typedef)." alt="" coords="75,93,211,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="105,44,129,80,125,83,100,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="73,191,92,227,88,229,68,194"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="221,194,139,236,136,231,219,190"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="142,120,112,227,107,226,137,118"/>
+<area shape="poly" id="edge8_Node000005_Node000003" title=" " alt="" coords="132,121,89,159,85,156,128,117"/>
+<area shape="poly" id="edge9_Node000005_Node000004" title=" " alt="" coords="160,117,217,156,214,161,157,121"/>
+</map>

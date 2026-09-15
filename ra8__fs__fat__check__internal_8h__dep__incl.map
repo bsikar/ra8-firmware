@@ -1,0 +1,7 @@
+<map id="libs/ra8_fs/src/ra8_fs_fat_check_internal.h" name="libs/ra8_fs/src/ra8_fs_fat_check_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU state and helpers for the volume consistency check (fsck)." alt="" coords="71,5,251,45"/>
+<area shape="rect" id="Node000002" href="$ra8__fs__fat__check_8c.html" title="Read&#45;only consistency check (fsck): shared scaffolding + FAT12/16/32." alt="" coords="5,93,143,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="134,57,95,95,91,91,130,53"/>
+<area shape="rect" id="Node000003" href="$ra8__fs__fat__exfat__check_8c.html" title="Read&#45;only consistency check (fsck): the exFAT half." alt="" coords="167,93,330,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="192,53,231,91,227,95,188,57"/>
+</map>

@@ -1,0 +1,8 @@
+<map id="libs/ra8_hal/inc/ra8_hw_err.h" name="libs/ra8_hal/inc/ra8_hw_err.h">
+<area shape="rect" id="Node000001" title="Bounded wait&#45;flag primitives for RA8D2 HAL drivers." alt="" coords="5,5,151,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="43,167,113,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="75,46,68,80,67,118,74,153,69,154,62,119,63,79,70,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="77,93,156,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="90,44,107,80,102,82,85,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="113,120,93,156,88,153,108,118"/>
+</map>

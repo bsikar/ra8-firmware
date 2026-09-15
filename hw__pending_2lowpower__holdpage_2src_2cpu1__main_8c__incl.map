@@ -1,0 +1,14 @@
+<map id="examples/ek_ra8d2/hw_pending/lowpower_holdpage/src/cpu1_main.c" name="examples/ek_ra8d2/hw_pending/lowpower_holdpage/src/cpu1_main.c">
+<area shape="rect" id="Node000001" title="CPU1 (Cortex&#45;M33 secondary core) image: hold the page in low power." alt="" coords="5,5,220,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="93,343,164,368"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,61,89,84,81,109,76,139,76,170,86,232,102,287,119,329,114,331,97,289,81,233,71,171,71,139,75,107,84,82,95,59"/>
+<area shape="rect" id="Node000003" href="$lowpower__holdpage_8h.html" title="Shared&#45;SRAM contract for the low&#45;power &quot;hold the page&quot; dual&#45;core demo." alt="" coords="91,108,255,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="133,59,159,95,154,98,129,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="163,135,145,156,131,182,123,221,121,261,127,329,121,329,115,261,117,220,126,180,141,153,159,132"/>
+<area shape="rect" id="Node000004" href="$ra8__board__ek__ra8d2__dualcore_8h.html" title="Where the EK&#45;RA8D2&#39;s Cortex&#45;M85 and Cortex&#45;M33 meet, stated once." alt="" coords="141,181,295,221"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="182,132,203,168,198,171,177,135"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="209,223,145,332,140,329,204,220"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="192,269,271,295"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="224,221,230,255,224,256,219,222"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="216,297,158,337,155,332,213,292"/>
+</map>

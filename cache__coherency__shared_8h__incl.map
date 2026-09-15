@@ -1,0 +1,13 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/inc/cache_coherency_shared.h" name="examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/inc/cache_coherency_shared.h">
+<area shape="rect" id="Node000001" title="Shared&#45;SRAM message layout for the M85&lt;&#45;&gt;M33 cache&#45;coherency HIL test." alt="" coords="5,5,189,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="149,284,219,309"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="58,77,40,96,27,117,21,139,25,162,49,199,82,230,116,256,148,275,146,280,113,260,78,234,45,202,20,164,16,139,22,115,36,93,54,73"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="35,130,160,155"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="100,75,100,116,95,116,95,75"/>
+<area shape="rect" id="Node000004" href="$ra8__board__ek__ra8d2__dualcore_8h.html" title="Where the EK&#45;RA8D2&#39;s Cortex&#45;M85 and Cortex&#45;M33 meet, stated once." alt="" coords="184,123,339,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="154,73,221,113,218,118,151,77"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="245,165,228,187,212,212,199,242,191,271,186,270,194,240,207,209,223,184,241,161"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="222,211,301,236"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="264,163,264,197,259,197,259,163"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="251,238,209,276,205,273,247,234"/>
+</map>

@@ -1,0 +1,16 @@
+<map id="port/esp&#45;hosted/src/ra8_esp_hosted_fmt.c" name="port/esp&#45;hosted/src/ra8_esp_hosted_fmt.c">
+<area shape="rect" id="Node000001" title="Bounded printf&#45;subset formatter used by the esp&#45;hosted port logger." alt="" coords="94,5,263,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,181,80,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="140,48,109,68,81,95,61,132,50,169,45,167,56,130,77,92,105,64,137,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="331,101,405,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="221,43,332,93,329,98,219,48"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="119,181,190,207"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="140,48,113,68,92,95,86,113,92,132,106,154,125,171,122,175,102,157,87,134,81,113,87,92,109,64,137,43"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="223,181,348,207"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="217,43,246,64,270,92,285,130,289,167,283,168,279,132,266,95,242,68,214,48"/>
+<area shape="rect" id="Node000006" href="$ra8__esp__hosted__fmt__internal_8h.html" title="Bounded, heap&#45;free printf&#45;subset formatter for the esp&#45;hosted port." alt="" coords="101,93,256,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="181,46,181,79,176,79,176,46"/>
+<area shape="poly" id="edge6_Node000006_Node000002" title=" " alt="" coords="147,136,76,177,73,172,145,131"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="175,134,165,169,160,167,170,133"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="206,131,260,171,257,175,203,136"/>
+</map>

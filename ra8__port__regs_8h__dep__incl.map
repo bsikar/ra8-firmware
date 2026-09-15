@@ -1,0 +1,17 @@
+<map id="libs/ra8_hal/inc/ra8_port_regs.h" name="libs/ra8_hal/inc/ra8_port_regs.h">
+<area shape="rect" id="Node000001" title="IOPORT (GPIO) register layout for the Renesas RA8D2." alt="" coords="373,5,519,45"/>
+<area shape="rect" id="Node000002" href="$cam__ceu_8c.html" title="GPIO activity diagnostic for the J35 parallel DVP camera signals." alt="" coords="5,93,180,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="362,51,181,99,180,94,361,46"/>
+<area shape="rect" id="Node000003" href="$ra8__pcntr_8h.html" title="CPU1&#45;safe combined direction+level PORT primitive over PCNTR1/PCNTR2." alt="" coords="204,101,349,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="401,54,312,103,310,98,399,50"/>
+<area shape="rect" id="Node000006" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="373,101,519,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="449,59,449,101,443,101,443,59"/>
+<area shape="rect" id="Node000007" href="$gpio_8c.html" title="High&#45;level GPIO driver on top of PORT + PFS." alt="" coords="543,108,706,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="495,49,604,106,601,110,493,54"/>
+<area shape="rect" id="Node000008" href="$ra8__epaper_8c.html" title="IT8951 e&#45;paper SPI driver implementation." alt="" coords="731,101,876,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="533,44,719,91,744,98,743,103,717,96,532,49"/>
+<area shape="rect" id="Node000004" href="$blink__m33__hal_8h.html" title="One&#45;iteration LED1 blink step for the HAL&#45;based M33 example." alt="" coords="187,196,367,251"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="279,154,279,196,274,196,274,154"/>
+<area shape="rect" id="Node000005" href="$hw__pending_2blink__m33__hal_2src_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33) image: blink LED1 through the HAL PCNTR primitive." alt="" coords="187,299,367,353"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="279,264,279,299,274,299,274,264"/>
+</map>

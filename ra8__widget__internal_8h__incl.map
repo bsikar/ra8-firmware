@@ -1,0 +1,22 @@
+<map id="libs/ra8_widget/src/ra8_widget_internal.h" name="libs/ra8_widget/src/ra8_widget_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private paint helpers shared by the concrete leaf&#45;widget TUs." alt="" coords="85,5,251,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="125,387,195,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="124,48,86,69,48,98,32,116,19,135,11,155,8,178,8,254,11,276,19,296,47,331,83,358,120,379,117,383,80,363,43,334,14,298,6,277,3,254,3,178,6,154,15,132,28,112,44,94,83,65,121,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="245,93,371,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="203,43,276,84,274,89,200,48"/>
+<area shape="rect" id="Node000004" href="$ra8__widget_8h.html" title="Zero&#45;heap composable widget layer (dwm&#45;style) over ra8_box + ra8_ui." alt="" coords="115,93,221,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="171,46,171,79,165,79,165,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="189,117,224,141,261,175,277,196,288,218,292,241,289,266,272,302,247,334,219,360,192,381,189,376,215,356,243,331,267,300,284,265,287,242,283,220,272,198,257,179,221,145,186,121"/>
+<area shape="rect" id="Node000005" href="$ra8__box_8h.html" title="Bounded, allocation&#45;free box&#45;model layout for e&#45;reader chrome." alt="" coords="43,167,130,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="157,121,112,160,108,156,153,117"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="121,313,199,339"/>
+<area shape="poly" id="edge12_Node000004_Node000006" title=" " alt="" coords="170,119,164,299,158,299,165,119"/>
+<area shape="rect" id="Node000007" href="$ra8__ui_8h.html" title="Bounded UI interaction core: hit&#45;testing, screen stack, paging." alt="" coords="200,240,275,265"/>
+<area shape="poly" id="edge13_Node000004_Node000007" title=" " alt="" coords="176,118,228,226,223,229,171,120"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="89,192,92,256,99,298,112,338,124,358,139,375,135,379,120,361,107,340,93,299,86,257,84,192"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="95,191,150,300,146,302,90,194"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="112,190,201,232,199,236,110,194"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="163,339,163,373,157,373,157,339"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="238,266,230,300,214,340,185,379,180,375,210,337,225,299,233,265"/>
+<area shape="poly" id="edge11_Node000007_Node000006" title=" " alt="" coords="227,267,185,306,181,302,223,263"/>
+</map>

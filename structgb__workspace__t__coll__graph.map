@@ -1,0 +1,9 @@
+<map id="gb_workspace_t" name="gb_workspace_t">
+<area shape="rect" id="Node000001" title="Exact caller&#45;owned backing for the largest measured atlas." alt="" coords="163,101,290,127"/>
+<area shape="rect" id="Node000002" href="$structra8__glyph__key__t.html" title="Identifies one rendered glyph." alt="" coords="5,5,133,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="102,35,209,99,206,103,99,40"/>
+<area shape="rect" id="Node000003" href="$structra8__glyph__dims__t.html" title="Per&#45;cell user descriptor: the rendered glyph dimensions." alt="" coords="158,5,295,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="229,45,229,101,224,101,224,45"/>
+<area shape="rect" id="Node000004" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="319,5,473,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="364,40,249,103,246,99,362,35"/>
+</map>

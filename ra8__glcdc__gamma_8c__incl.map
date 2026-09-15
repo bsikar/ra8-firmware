@@ -1,0 +1,30 @@
+<map id="libs/ra8_hal/src/ra8_glcdc_gamma.c" name="libs/ra8_hal/src/ra8_glcdc_gamma.c">
+<area shape="rect" id="Node000001" title="GLCDC piecewise&#45;linear gamma correction driver." alt="" coords="346,5,491,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="341,240,411,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="445,44,465,65,481,92,484,106,481,119,471,159,450,194,430,216,408,234,404,230,426,212,446,190,466,157,476,118,478,106,476,94,461,68,441,47"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="595,240,720,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="493,40,544,57,598,83,648,118,669,140,686,165,691,182,690,199,677,229,672,227,685,197,686,182,682,168,665,144,644,122,595,87,542,62,491,45"/>
+<area shape="rect" id="Node000004" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="195,93,295,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="378,48,284,90,282,85,376,43"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="337,167,415,192"/>
+<area shape="poly" id="edge11_Node000001_Node000005" title=" " alt="" coords="397,47,376,68,361,94,358,109,359,124,367,153,361,155,353,125,353,108,356,92,372,65,393,44"/>
+<area shape="rect" id="Node000006" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="5,167,88,192"/>
+<area shape="poly" id="edge19_Node000001_Node000006" title=" " alt="" coords="346,44,267,66,184,96,124,128,74,161,71,156,121,123,182,91,265,60,345,39"/>
+<area shape="rect" id="Node000008" href="$ra8__glcdc_8h.html" title="Graphics LCD Controller driver (two&#45;layer with alpha blending)." alt="" coords="371,93,467,119"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="421,46,421,79,416,79,416,46"/>
+<area shape="rect" id="Node000009" href="$ra8__glcdc__regs_8h.html" title="Graphics LCD Controller (GLCDC) register layout for the RA8D2." alt="" coords="541,167,672,192"/>
+<area shape="poly" id="edge18_Node000001_Node000009" title=" " alt="" coords="453,43,524,91,560,123,589,154,586,158,556,127,521,95,450,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="258,117,358,228,354,231,254,121"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="268,116,344,158,342,162,265,121"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="214,121,93,164,91,159,213,116"/>
+<area shape="rect" id="Node000007" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="113,167,261,192"/>
+<area shape="poly" id="edge9_Node000004_Node000007" title=" " alt="" coords="238,121,207,158,203,155,234,117"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="379,192,379,226,373,226,373,192"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="89,187,328,238,327,243,88,192"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="218,190,333,232,331,237,216,195"/>
+<area shape="poly" id="edge13_Node000008_Node000002" title=" " alt="" coords="425,118,433,152,433,173,429,193,417,214,402,232,398,229,413,211,424,191,428,172,428,153,420,119"/>
+<area shape="poly" id="edge14_Node000008_Node000005" title=" " alt="" coords="414,120,392,156,388,154,409,118"/>
+<area shape="poly" id="edge15_Node000008_Node000009" title=" " alt="" coords="450,116,564,159,562,164,448,121"/>
+<area shape="poly" id="edge16_Node000009_Node000002" title=" " alt="" coords="570,195,425,239,423,234,569,189"/>
+<area shape="poly" id="edge17_Node000009_Node000003" title=" " alt="" coords="617,191,643,227,639,230,613,194"/>
+</map>

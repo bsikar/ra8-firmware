@@ -1,0 +1,11 @@
+<map id="internal_audit_context_t" name="internal_audit_context_t">
+<area shape="rect" id="Node000001" title="Mutable state shared by the bounded per&#45;tile audit operation." alt="" coords="87,197,267,223"/>
+<area shape="rect" id="Node000002" href="$structjof__audit__workspace__t.html" title="Caller&#45;owned buffers consumed by one audit." alt="" coords="5,101,173,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="110,135,142,171,166,195,163,199,138,175,106,139"/>
+<area shape="rect" id="Node000003" href="$structjof__audit__record__t.html" title="One decoded tile&#39;s stored window and content evidence." alt="" coords="20,5,159,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="92,45,92,101,87,101,87,45"/>
+<area shape="rect" id="Node000004" href="$structjof__audit__result__t.html" title="Geometry plus anomaly counts emitted by a complete audit." alt="" coords="198,101,333,127"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="251,140,221,175,194,199,190,195,217,171,247,136"/>
+<area shape="rect" id="Node000005" href="$structjof__info__t.html" title="Parsed + validated geometry of one JOF atlas." alt="" coords="224,5,307,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="268,45,268,101,263,101,263,45"/>
+</map>

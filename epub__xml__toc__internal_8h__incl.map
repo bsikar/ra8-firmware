@@ -1,0 +1,42 @@
+<map id="apps/shared_libs/epub/src/epub_xml_toc_internal.h" name="apps/shared_libs/epub/src/epub_xml_toc_internal.h">
+<area shape="rect" id="Node000001" title="Private contracts for the EPUB NCX and nav table&#45;of&#45;contents consumers." alt="" coords="307,5,517,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="149,387,224,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="308,47,210,69,112,98,70,116,37,135,16,156,8,178,8,254,10,280,18,300,31,317,51,337,92,365,137,383,135,388,90,369,48,341,27,321,13,303,5,282,3,254,3,178,11,153,34,131,68,111,110,93,209,63,307,42"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="597,460,667,485"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="506,43,596,66,687,96,726,114,758,133,779,155,787,178,787,328,784,350,775,371,747,407,711,436,674,456,672,452,708,431,743,403,771,369,778,349,781,327,781,178,774,157,754,138,724,119,685,101,595,71,505,48"/>
+<area shape="rect" id="Node000004" href="$epub__xml__consumer__internal_8h.html" title="Private contracts for streamed EPUB XML consumers." alt="" coords="299,93,525,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="415,46,415,79,409,79,409,46"/>
+<area shape="rect" id="Node000010" href="$xml_8h.html" title="Bounded, caller&#45;owned, no&#45;heap XML pull reader." alt="" coords="61,313,120,339"/>
+<area shape="poly" id="edge29_Node000001_Node000010" title=" " alt="" coords="334,48,280,66,222,92,165,126,117,168,98,199,90,234,88,270,89,299,84,300,82,270,84,234,93,197,113,165,162,121,219,87,278,61,332,43"/>
+<area shape="rect" id="Node000011" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="571,240,696,265"/>
+<area shape="poly" id="edge28_Node000001_Node000011" title=" " alt="" coords="462,43,502,64,539,91,568,125,593,161,626,226,621,229,588,164,564,128,536,95,499,68,460,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="381,121,342,140,305,169,264,220,233,277,210,332,196,374,191,373,205,330,228,275,260,217,301,165,339,136,378,116"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="494,116,551,131,611,155,667,190,691,212,710,239,722,267,725,296,721,326,711,356,683,410,653,451,649,448,678,407,706,354,715,325,720,296,717,268,706,241,687,216,663,194,609,160,550,136,493,121"/>
+<area shape="rect" id="Node000005" href="$epub__xml__shim__internal_8h.html" title="Library&#45;private contract for the bounded EPUB XML parser." alt="" coords="315,167,509,192"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="415,119,415,153,409,153,409,119"/>
+<area shape="poly" id="edge27_Node000004_Node000010" title=" " alt="" coords="310,121,209,140,168,153,140,169,118,198,104,234,96,269,94,300,88,299,91,269,99,232,113,196,137,165,165,148,208,135,309,116"/>
+<area shape="poly" id="edge26_Node000004_Node000011" title=" " alt="" coords="437,117,523,164,611,229,608,234,520,169,434,121"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="402,194,211,378,207,375,398,190"/>
+<area shape="poly" id="edge8_Node000005_Node000003" title=" " alt="" coords="438,190,519,236,566,271,607,312,626,336,638,358,643,382,643,412,639,447,633,446,637,412,637,382,633,359,622,339,603,315,562,275,516,241,435,194"/>
+<area shape="rect" id="Node000006" href="$epub_8h.html" title="EPUB (.epub) reader and chapter iterator for ra8&#45;firmware." alt="" coords="379,240,445,265"/>
+<area shape="poly" id="edge9_Node000005_Node000006" title=" " alt="" coords="415,192,415,226,409,226,409,192"/>
+<area shape="rect" id="Node000009" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="321,387,399,412"/>
+<area shape="poly" id="edge25_Node000005_Node000009" title=" " alt="" coords="402,194,384,215,369,241,360,276,357,311,359,373,354,373,352,311,355,275,364,239,380,212,398,190"/>
+<area shape="poly" id="edge24_Node000005_Node000011" title=" " alt="" coords="448,189,586,233,584,238,447,195"/>
+<area shape="poly" id="edge11_Node000006_Node000002" title=" " alt="" coords="395,268,218,381,215,377,393,263"/>
+<area shape="poly" id="edge12_Node000006_Node000003" title=" " alt="" coords="446,255,512,272,548,288,579,311,603,343,619,380,628,416,633,446,628,447,623,417,614,381,599,346,575,315,545,293,511,277,445,260"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="507,387,594,412"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="446,255,474,261,506,271,535,288,558,312,565,327,567,343,562,374,557,373,561,343,560,328,554,315,532,292,503,276,473,266,445,260"/>
+<area shape="rect" id="Node000008" href="$epub__miniz__alloc_8h.html" title="Caller&#45;owned bounded&#45;arena allocator for miniz." alt="" coords="397,313,544,339"/>
+<area shape="poly" id="edge13_Node000006_Node000008" title=" " alt="" coords="424,264,455,301,451,305,420,267"/>
+<area shape="poly" id="edge19_Node000006_Node000009" title=" " alt="" coords="409,267,388,314,369,374,364,372,383,312,404,265"/>
+<area shape="poly" id="edge20_Node000006_Node000010" title=" " alt="" coords="379,264,134,318,133,313,378,259"/>
+<area shape="poly" id="edge15_Node000008_Node000002" title=" " alt="" coords="426,341,238,388,237,383,424,336"/>
+<area shape="poly" id="edge16_Node000008_Node000003" title=" " alt="" coords="474,339,479,374,486,393,497,410,516,427,538,441,584,459,583,464,535,446,512,432,493,414,481,395,474,375,468,340"/>
+<area shape="poly" id="edge14_Node000008_Node000007" title=" " alt="" coords="485,337,529,376,526,380,482,341"/>
+<area shape="poly" id="edge17_Node000008_Node000009" title=" " alt="" coords="454,341,391,381,388,377,451,336"/>
+<area shape="poly" id="edge18_Node000009_Node000003" title=" " alt="" coords="400,408,584,456,583,461,399,414"/>
+<area shape="poly" id="edge21_Node000010_Node000002" title=" " alt="" coords="108,337,161,376,158,380,105,341"/>
+<area shape="poly" id="edge22_Node000010_Node000003" title=" " alt="" coords="96,338,110,375,122,394,139,410,174,426,222,439,346,456,477,465,583,468,583,474,477,471,345,462,221,444,172,431,136,414,118,398,105,377,91,340"/>
+<area shape="poly" id="edge23_Node000010_Node000009" title=" " alt="" coords="121,332,308,382,306,387,119,338"/>
+</map>

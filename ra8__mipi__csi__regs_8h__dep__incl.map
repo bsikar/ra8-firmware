@@ -1,0 +1,21 @@
+<map id="libs/ra8_hal/inc/ra8_mipi_csi_regs.h" name="libs/ra8_hal/inc/ra8_mipi_csi_regs.h">
+<area shape="rect" id="Node000001" title="MIPI CSI&#45;2 Receiver register layout for the RA8D2 (HUM Ch 66)." alt="" coords="136,5,281,45"/>
+<area shape="rect" id="Node000002" href="$ra8__mipi__csi__ctrl_8h.html" title="MIPI CSI&#45;2 receiver HAL driver – control, status, and IRQ&#45;enable API." alt="" coords="246,181,392,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="255,51,277,69,296,92,307,114,314,138,321,181,316,182,309,140,302,116,291,95,273,73,252,55"/>
+<area shape="rect" id="Node000004" href="$ra8__mipi__csi_8c.html" title="MIPI CSI&#45;2 receiver HAL driver implementation." alt="" coords="38,357,184,397"/>
+<area shape="poly" id="edge11_Node000001_Node000004" title=" " alt="" coords="153,54,114,76,75,105,40,140,15,182,9,207,10,232,17,256,29,280,60,323,91,355,87,359,56,326,24,283,12,258,5,232,3,206,10,180,36,137,72,101,111,72,150,49"/>
+<area shape="rect" id="Node000005" href="$ra8__mipi__csi__irq_8c.html" title="MIPI CSI&#45;2 receiver HAL driver – interrupt path and per&#45;VC framing." alt="" coords="233,357,378,397"/>
+<area shape="poly" id="edge12_Node000001_Node000005" title=" " alt="" coords="267,49,306,71,346,101,381,137,407,180,413,206,411,233,404,258,392,283,360,326,329,359,325,355,356,323,387,280,399,256,406,232,407,207,402,182,377,140,342,105,303,76,264,54"/>
+<area shape="rect" id="Node000006" href="$ra8__mipi__csi__isr_8h.html" title="MIPI CSI&#45;2 receiver HAL driver – FIFO, ISR dispatch, framing, power." alt="" coords="25,181,170,221"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="165,55,143,73,125,95,114,116,107,140,101,182,96,181,102,138,109,114,121,92,139,69,162,51"/>
+<area shape="rect" id="Node000007" href="$ra8__mipi__csi__types_8h.html" title="MIPI CSI&#45;2 receiver HAL driver – public types." alt="" coords="136,93,281,133"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="211,59,211,93,206,93,206,59"/>
+<area shape="rect" id="Node000003" href="$ra8__mipi__csi_8h.html" title="MIPI CSI&#45;2 receiver HAL driver – public API." alt="" coords="136,269,281,309"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="285,232,234,271,231,267,282,228"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="178,320,134,359,131,355,175,316"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="242,316,286,355,282,359,238,320"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="135,228,185,267,182,271,131,232"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="245,140,296,179,293,183,242,144"/>
+<area shape="poly" id="edge8_Node000007_Node000003" title=" " alt="" coords="211,147,211,269,206,269,206,147"/>
+<area shape="poly" id="edge10_Node000007_Node000006" title=" " alt="" coords="174,144,124,183,120,179,171,140"/>
+</map>

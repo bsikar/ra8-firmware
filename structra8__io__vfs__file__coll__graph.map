@@ -1,0 +1,5 @@
+<map id="ra8_io_vfs_file" name="ra8_io_vfs_file">
+<area shape="rect" id="Node000001" title="Publicly opaque stream facade, drawn from s_files." alt="" coords="5,101,121,127"/>
+<area shape="rect" id="Node000002" href="$structra8__io__fsfmt__t.html" title="One registered filesystem format." alt="" coords="5,5,121,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="66,45,66,101,61,101,61,45"/>
+</map>

@@ -1,0 +1,35 @@
+<map id="libs/ra8_camera/inc/ra8_camera_source_ceu.h" name="libs/ra8_camera/inc/ra8_camera_source_ceu.h">
+<area shape="rect" id="Node000001" title="RA8 CEU capture backend for the transport&#45;neutral camera facade." alt="" coords="69,5,264,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="327,460,398,485"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="123,48,85,69,48,98,32,116,19,135,11,155,8,178,8,327,10,339,17,349,41,371,78,391,124,410,225,440,314,460,313,465,223,445,122,415,76,396,38,376,12,353,5,340,3,328,3,178,6,154,15,132,28,112,44,94,82,65,121,43"/>
+<area shape="rect" id="Node000003" href="$ra8__camera_8h.html" title="Transport&#45;neutral camera source and image&#45;codec facade." alt="" coords="43,240,154,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="164,46,109,228,104,226,158,45"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="278,313,357,339"/>
+<area shape="poly" id="edge23_Node000001_Node000004" title=" " alt="" coords="179,45,308,300,303,302,174,47"/>
+<area shape="rect" id="Node000005" href="$ra8__ceu_8h.html" title="Capture Engine Unit (CEU) camera&#45;capture driver." alt="" coords="299,93,384,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="210,43,304,85,302,90,207,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="107,264,150,332,184,373,223,410,268,437,315,455,313,460,266,442,220,414,180,377,146,335,103,267"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="135,263,270,306,268,312,133,268"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="324,338,357,446,352,448,318,340"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="335,120,310,157,282,211,271,242,265,274,263,306,269,338,283,370,302,400,342,448,338,451,298,403,279,373,264,339,258,307,259,273,266,240,277,209,305,154,330,117"/>
+<area shape="poly" id="edge22_Node000005_Node000004" title=" " alt="" coords="339,120,325,167,319,239,319,299,313,299,313,238,320,166,334,118"/>
+<area shape="rect" id="Node000006" href="$ra8__ceu__api_8h.html" title="Capture Engine Unit (CEU) driver function prototypes." alt="" coords="335,167,447,192"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="352,117,377,154,373,157,347,121"/>
+<area shape="rect" id="Node000007" href="$ra8__ceu__types_8h.html" title="Capture Engine Unit (CEU) configuration descriptors and types." alt="" coords="432,240,560,265"/>
+<area shape="poly" id="edge21_Node000005_Node000007" title=" " alt="" coords="380,116,421,135,461,165,481,195,492,225,487,227,476,197,457,168,419,140,378,121"/>
+<area shape="rect" id="Node000008" href="$ra8__ceu__regs_8h.html" title="Capture Engine Unit (CEU) register layout for the RA8D2." alt="" coords="537,313,657,339"/>
+<area shape="poly" id="edge20_Node000005_Node000008" title=" " alt="" coords="385,116,431,133,483,158,533,193,555,214,574,239,589,269,596,299,591,300,584,271,570,241,551,218,530,197,480,163,428,138,383,121"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="392,192,368,446,362,446,387,192"/>
+<area shape="poly" id="edge19_Node000006_Node000004" title=" " alt="" coords="387,194,332,302,327,300,382,191"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="409,190,469,230,466,235,406,194"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="493,267,463,331,416,414,385,452,381,448,411,410,458,328,489,264"/>
+<area shape="poly" id="edge18_Node000007_Node000004" title=" " alt="" coords="468,268,360,311,358,306,466,263"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="514,263,571,303,568,307,511,268"/>
+<area shape="poly" id="edge13_Node000008_Node000002" title=" " alt="" coords="581,341,465,414,396,456,393,451,463,410,578,337"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="587,460,712,485"/>
+<area shape="poly" id="edge14_Node000008_Node000009" title=" " alt="" coords="624,337,654,356,668,370,678,386,683,402,681,419,668,450,663,448,676,418,677,403,674,388,664,373,651,360,622,341"/>
+<area shape="rect" id="Node000010" href="$ra8__glcdc__regs_8h.html" title="Graphics LCD Controller (GLCDC) register layout for the RA8D2." alt="" coords="533,387,664,412"/>
+<area shape="poly" id="edge15_Node000008_Node000010" title=" " alt="" coords="600,339,601,373,596,373,595,339"/>
+<area shape="poly" id="edge16_Node000010_Node000002" title=" " alt="" coords="562,415,412,459,410,454,560,409"/>
+<area shape="poly" id="edge17_Node000010_Node000009" title=" " alt="" coords="609,411,635,447,631,450,605,414"/>
+</map>

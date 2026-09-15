@@ -1,0 +1,34 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_prcr.c" name="tools/ra8_emulator/src/periph/board_periph_prcr.c">
+<area shape="rect" id="Node000001" title="SYSC register&#45;write&#45;protection (PRCR) model." alt="" coords="443,5,622,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="251,255,321,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="473,63,432,84,390,111,349,144,314,183,299,212,291,242,286,240,294,210,309,180,345,140,387,107,430,79,470,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="657,108,723,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="582,58,658,99,656,104,579,62"/>
+<area shape="rect" id="Node000004" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="17,108,179,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="444,54,170,108,169,103,443,49"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="490,255,615,280"/>
+<area shape="poly" id="edge20_Node000001_Node000008" title=" " alt="" coords="538,60,553,241,548,241,532,60"/>
+<area shape="rect" id="Node000009" href="$board__periph__prcr__internal_8h.html" title="Module&#45;private PRCR unlock state shared with the protected blocks." alt="" coords="323,181,531,207"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="517,62,445,171,440,168,513,59"/>
+<area shape="rect" id="Node000010" href="$emu__host__io__internal_8h.html" title="Bounded raw&#45;descriptor I/O seam for the RA8 emulator." alt="" coords="607,181,781,207"/>
+<area shape="poly" id="edge14_Node000001_Node000010" title=" " alt="" coords="561,58,674,170,671,174,557,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="87,136,74,151,63,169,57,188,63,205,73,214,90,223,135,238,238,257,237,263,134,243,88,228,70,219,58,208,52,188,58,167,70,148,83,132"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="5,255,140,280"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="73,136,43,155,29,168,19,182,16,199,21,215,33,230,47,244,43,248,29,234,17,217,11,199,14,180,25,164,39,151,70,131"/>
+<area shape="rect" id="Node000006" href="$emu__memory__access_8h.html" title="Central first&#45;party Unicorn memory access seam." alt="" coords="73,181,249,207"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="110,132,143,169,139,173,106,135"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="182,204,255,245,252,250,179,209"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="148,209,99,248,96,244,145,205"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="377,255,451,280"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="202,204,364,249,362,254,201,209"/>
+<area shape="poly" id="edge10_Node000006_Node000008" title=" " alt="" coords="224,204,477,250,476,255,223,209"/>
+<area shape="poly" id="edge12_Node000009_Node000002" title=" " alt="" coords="406,209,322,251,320,246,403,204"/>
+<area shape="poly" id="edge13_Node000009_Node000008" title=" " alt="" coords="449,204,522,245,519,250,446,209"/>
+<area shape="poly" id="edge17_Node000010_Node000002" title=" " alt="" coords="629,209,335,260,335,255,628,204"/>
+<area shape="poly" id="edge16_Node000010_Node000007" title=" " alt="" coords="650,209,465,256,464,251,648,204"/>
+<area shape="poly" id="edge19_Node000010_Node000008" title=" " alt="" coords="672,209,589,251,587,246,670,204"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="647,255,722,280"/>
+<area shape="poly" id="edge15_Node000010_Node000011" title=" " alt="" coords="695,207,691,242,685,241,690,207"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="746,255,842,280"/>
+<area shape="poly" id="edge18_Node000010_Node000012" title=" " alt="" coords="712,205,768,244,765,249,709,209"/>
+</map>

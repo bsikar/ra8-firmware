@@ -1,0 +1,36 @@
+var ra8__io__vfs_8h =
+[
+    [ "ra8_io_vfs_dir_t", "structra8__io__vfs__dir__t.html", "structra8__io__vfs__dir__t" ],
+    [ "ra8_io_vfs_stat_t", "structra8__io__vfs__stat__t.html", "structra8__io__vfs__stat__t" ],
+    [ "ra8_io_vfs_file_t", "ra8__io__vfs_8h.html#a2c39139cfe99421e3338728d441bf3a4", null ],
+    [ "ra8_io_vfs_limits_t", "ra8__io__vfs_8h.html#a4d18b04ad61eb4fe06370fbf4b95382e", [
+      [ "k_ra8_io_vfs_max_mounts", "ra8__io__vfs_8h.html#a4d18b04ad61eb4fe06370fbf4b95382ea7b11c6aab07b373443495dd50c0c86bb", null ],
+      [ "k_ra8_io_vfs_max_files", "ra8__io__vfs_8h.html#a4d18b04ad61eb4fe06370fbf4b95382eabb678e3e6416390fe62de8fc408b9304", null ],
+      [ "k_ra8_io_vfs_name_max", "ra8__io__vfs_8h.html#a4d18b04ad61eb4fe06370fbf4b95382eaf2d6af587e151c21e83a3868579a3d8e", null ]
+    ] ],
+    [ "ra8_io_vfs_dir_close", "ra8__io__vfs_8h.html#a80283e71c584a85940d3f4ee6d44314a", null ],
+    [ "ra8_io_vfs_dir_next", "ra8__io__vfs_8h.html#a55ba45215e4469bb71be82a261c80dc6", null ],
+    [ "ra8_io_vfs_dir_open", "ra8__io__vfs_8h.html#a9dc90447ba559444d59763c5652b8f62", null ],
+    [ "ra8_io_vfs_dir_requirements", "ra8__io__vfs_8h.html#a11eebe4e9e0edd861fec06bb84d9af0b", null ],
+    [ "ra8_io_vfs_file_close", "ra8__io__vfs_8h.html#a2f980e0bee5014d1ad5e96f5767744cd", null ],
+    [ "ra8_io_vfs_file_open", "ra8__io__vfs_8h.html#a80967a25b0aee90d0aae03cecf24ffc7", null ],
+    [ "ra8_io_vfs_file_read", "ra8__io__vfs_8h.html#a97b731be90f9a0b3c90565139fba4222", null ],
+    [ "ra8_io_vfs_file_seek", "ra8__io__vfs_8h.html#aafc1d5ad0a48c1f757fa830d14896c44", null ],
+    [ "ra8_io_vfs_file_size", "ra8__io__vfs_8h.html#a3ef57787faea73945235d8e21da49369", null ],
+    [ "ra8_io_vfs_file_sync", "ra8__io__vfs_8h.html#a7856dac7c0b917cf86701e916323b45a", null ],
+    [ "ra8_io_vfs_file_tell", "ra8__io__vfs_8h.html#ad3401abd764cc4189f0aa0ea841b0635", null ],
+    [ "ra8_io_vfs_file_write", "ra8__io__vfs_8h.html#afc396c76029e93bf79e7a5680a62b375", null ],
+    [ "ra8_io_vfs_free_space", "ra8__io__vfs_8h.html#a28e91f7f5597be77fffa7273f45432ed", null ],
+    [ "ra8_io_vfs_get_caps", "ra8__io__vfs_8h.html#a492811865da70d9043c2fb77a7935bc5", null ],
+    [ "ra8_io_vfs_init", "ra8__io__vfs_8h.html#aed8a7ab03d97b32c58452df6012d7943", null ],
+    [ "ra8_io_vfs_listdir", "ra8__io__vfs_8h.html#a19260a6df619b61209ff04c21a3164bd", null ],
+    [ "ra8_io_vfs_mkdir", "ra8__io__vfs_8h.html#a6802975aee13d3c97bd10a49cd4a38cf", null ],
+    [ "ra8_io_vfs_mount", "ra8__io__vfs_8h.html#a1f5631dc7bfffcd855bddd9921aedb6e", null ],
+    [ "ra8_io_vfs_mount_auto", "ra8__io__vfs_8h.html#a7f6da8042bfe8f4f9cbc72caf60d28a7", null ],
+    [ "ra8_io_vfs_open", "ra8__io__vfs_8h.html#a2d89a1161dd8efd59bae2111601acd8f", null ],
+    [ "ra8_io_vfs_rename", "ra8__io__vfs_8h.html#ac5eec96db6742721028fa2935546d765", null ],
+    [ "ra8_io_vfs_rmdir", "ra8__io__vfs_8h.html#a8725c8ed167a01d384071d028496d7ba", null ],
+    [ "ra8_io_vfs_stat", "ra8__io__vfs_8h.html#a823162446d3e71178c03b3c5d7bc5c92", null ],
+    [ "ra8_io_vfs_unlink", "ra8__io__vfs_8h.html#a78afd649a8022c3e2873a8884b110722", null ],
+    [ "ra8_io_vfs_unmount", "ra8__io__vfs_8h.html#a92641d28639aea58a93aae4b8ca89843", null ]
+];

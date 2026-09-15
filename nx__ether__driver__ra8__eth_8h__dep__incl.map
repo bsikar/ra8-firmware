@@ -1,0 +1,11 @@
+<map id="port/netxduo/inc/nx_ether_driver_ra8_eth.h" name="port/netxduo/inc/nx_ether_driver_ra8_eth.h">
+<area shape="rect" id="Node000001" title="NetX Duo network driver shim that bridges onto the RA8 ra8_eth HAL." alt="" coords="311,5,487,45"/>
+<area shape="rect" id="Node000002" href="$examples_2__unsupported_2threadx__https__client_2src_2main_8c.html" title="ThreadX + NetX Duo + Mbed TLS HTTPS client demo for EK&#45;RA8D2." alt="" coords="5,93,184,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="325,52,181,96,180,91,323,47"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2tls__client_2src_2main_8c.html" title="TLS client over ra8_tls + ra8_net_pal (NetX Duo transport)." alt="" coords="208,93,381,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="369,56,326,95,322,91,366,52"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2threadx__netx__tcp__echo_2src_2main_8c.html" title="ThreadX + NetX Duo TCP echo demo for EK&#45;RA8D2." alt="" coords="405,93,600,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="432,52,475,91,472,95,428,56"/>
+<area shape="rect" id="Node000005" href="$nx__ether__driver__ra8__eth_8c.html" title="NetX Duo network driver bridging onto the RA8 ra8_eth frame API." alt="" coords="625,101,799,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="476,47,649,98,648,103,474,52"/>
+</map>

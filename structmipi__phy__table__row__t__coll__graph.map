@@ -1,0 +1,5 @@
+<map id="mipi_phy_table_row_t" name="mipi_phy_table_row_t">
+<area shape="rect" id="Node000001" title="One row of HUM Tables 64.2 / 64.3 with the rate ceiling." alt="" coords="8,101,173,127"/>
+<area shape="rect" id="Node000002" href="$structra8__mipi__phy__timing__t.html" title="D&#45;PHY HS/LP transition timing values (DPHYTIM1..6)." alt="" coords="5,5,176,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,45,93,101,88,101,88,45"/>
+</map>

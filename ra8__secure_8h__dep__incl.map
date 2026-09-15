@@ -1,0 +1,33 @@
+<map id="libs/ra8_core/inc/ra8_secure.h" name="libs/ra8_core/inc/ra8_secure.h">
+<area shape="rect" id="Node000001" title="Secure&#45;comparison primitives for the crypto / secure&#45;boot paths." alt="" coords="1489,5,1642,45"/>
+<area shape="rect" id="Node000002" href="$c6__cam__app_8c.html" title="Shared C6 camera&#45;stream application workflow." alt="" coords="5,93,216,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1475,29,1254,30,945,39,589,59,407,75,228,96,216,98,216,92,228,91,406,70,589,54,945,33,1254,25,1475,23"/>
+<area shape="rect" id="Node000003" href="$ra8__net__provision_8c.html" title="Bounded runtime network provisioning parser and UART receiver." alt="" coords="240,93,451,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1475,30,1289,34,1038,44,752,64,606,78,463,96,451,98,450,93,462,91,605,73,751,59,1038,39,1289,29,1475,25"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2media__download_2src_2main_8c.html" title="Download, validate, publish, and reopen one C6&#45;fetched .rabook." alt="" coords="475,93,671,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1475,31,1324,37,1126,49,905,68,683,96,672,98,671,93,682,91,905,62,1126,43,1323,32,1474,26"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2ota__ab__orchestration_2src_2main_8c.html" title="A/B OTA orchestration demo: stage &#45;&gt; verify &#45;&gt; commit / rollback over MRAM." alt="" coords="695,93,918,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1475,36,1229,58,1080,75,931,96,919,98,918,93,930,91,1079,70,1229,53,1475,31"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__join_2src_2main_8c.html" title="Join the bench Wi&#45;Fi over the ESP32&#45;C6 and get an IP by DHCP (#492)." alt="" coords="943,93,1116,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1476,40,1314,63,1129,96,1117,98,1116,93,1127,91,1313,58,1475,35"/>
+<area shape="rect" id="Node000007" href="$ra8__c6link__rpc_8c.html" title="The control plane: one protobuf message type, correlated by UID." alt="" coords="1140,101,1279,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1476,49,1291,96,1267,103,1265,98,1290,91,1475,44"/>
+<area shape="rect" id="Node000008" href="$ra8__c6link__wifi__sta_8c.html" title="Station credentials, association, and what the radio reports back." alt="" coords="1303,101,1465,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1518,54,1422,103,1419,98,1515,49"/>
+<area shape="rect" id="Node000009" href="$ra8__secure_8c.html" title="Secure&#45;comparison primitives implementation." alt="" coords="1489,101,1642,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1568,59,1568,101,1563,101,1563,59"/>
+<area shape="rect" id="Node000010" href="$ra8__rsip__key__injection_8c.html" title="RSIP key&#45;injection HAL implementation." alt="" coords="1667,101,1824,141"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1615,49,1710,98,1708,103,1612,54"/>
+<area shape="rect" id="Node000011" href="$ra8__ota_8c.html" title="Phase&#45;5 OTA firmware&#45;update orchestration – implementation." alt="" coords="1848,101,1995,141"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1656,45,1837,91,1862,98,1861,103,1835,96,1654,50"/>
+<area shape="rect" id="Node000012" href="$ra8__ota__verify_8c.html" title="Phase&#45;5 OTA signature&#45;verification cluster – implementation." alt="" coords="2019,101,2165,141"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1656,34,1820,56,2007,91,2035,98,2034,103,2006,96,1819,61,1655,39"/>
+<area shape="rect" id="Node000013" href="$key__import_8c.html" title="Secure&#45;side sealed&#45;key import implementation." alt="" coords="2190,101,2341,141"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="1656,29,1893,49,2036,67,2178,91,2208,98,2207,103,2177,96,2035,72,1893,54,1656,34"/>
+<area shape="rect" id="Node000014" href="$key__vault_8c.html" title="Secure&#45;only symmetric key store implementation." alt="" coords="2365,101,2515,141"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="1656,26,1792,31,1966,42,2160,61,2354,91,2384,98,2383,103,2353,96,2159,66,1966,47,1791,36,1655,31"/>
+<area shape="rect" id="Node000015" href="$sec__cmac_8c.html" title="Secure&#45;side AES&#45;CMAC seam implementation." alt="" coords="2539,101,2690,141"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="1656,24,1820,26,2037,36,2282,56,2407,71,2529,91,2559,98,2558,103,2527,96,2406,77,2282,61,2037,41,1820,32,1656,29"/>
+<area shape="rect" id="Node000016" href="$ra8__wifi__c6link_8c.html" title="The ESP32&#45;C6 backend: each ra8_wifi operation onto ra8_c6link." alt="" coords="2714,101,2862,141"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="1656,27,2191,48,2487,66,2610,78,2703,91,2734,98,2733,103,2702,96,2609,83,2487,72,2191,53,1655,32"/>
+</map>

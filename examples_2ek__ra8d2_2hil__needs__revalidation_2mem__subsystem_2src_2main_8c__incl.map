@@ -1,0 +1,103 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/src/main.c" name="examples/ek_ra8d2/hil_needs_revalidation/mem_subsystem/src/main.c">
+<area shape="rect" id="Node000001" title="Drives each ra8_mem (#147) memory&#45;hierarchy layer in isolation (#263)." alt="" coords="1367,5,1558,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="390,357,465,383"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1367,39,1216,49,1023,72,918,91,812,115,707,146,606,184,568,201,541,219,517,241,488,271,461,309,441,346,436,344,456,306,484,268,513,237,538,215,566,197,604,179,705,141,810,110,917,86,1022,67,1216,43,1367,33"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="1410,431,1480,456"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1558,37,1805,56,2104,89,2243,111,2357,136,2401,150,2435,165,2457,182,2465,199,2465,291,2465,343,2457,364,2439,385,2417,396,2384,405,2286,420,2157,431,2010,438,1712,444,1495,445,1495,440,1712,439,2010,433,2157,425,2285,415,2383,400,2415,391,2435,381,2453,362,2459,342,2460,291,2460,201,2453,185,2432,170,2399,155,2355,141,2242,116,2103,95,1804,62,1558,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="1047,108,1118,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1368,58,1132,111,1131,106,1366,53"/>
+<area shape="rect" id="Node000005" href="$ra8__arena_8h.html" title="Init&#45;time bump arena – carves per&#45;tier slab backing, zero&#45;heap." alt="" coords="1014,277,1113,302"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1367,58,1304,80,1242,110,1192,148,1147,191,1082,267,1078,264,1143,187,1189,144,1240,106,1302,75,1366,53"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="1444,357,1523,383"/>
+<area shape="poly" id="edge36_Node000001_Node000006" title=" " alt="" coords="1471,60,1482,115,1490,181,1492,271,1489,344,1483,343,1487,271,1485,182,1476,116,1466,61"/>
+<area shape="rect" id="Node000007" href="$ra8__board__ek__ra8d2_8h.html" title="Board&#45;support layer for the Renesas EK&#45;RA8D2 v1 evaluation kit." alt="" coords="223,108,390,133"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="1367,42,951,68,409,111,403,111,403,106,409,105,951,63,1367,37"/>
+<area shape="rect" id="Node000015" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="1294,108,1425,133"/>
+<area shape="poly" id="edge31_Node000001_Node000015" title=" " alt="" coords="1433,62,1386,101,1382,97,1429,58"/>
+<area shape="rect" id="Node000016" href="$ra8__cgc_8h.html" title="High&#45;level Clock Generation Circuit driver." alt="" coords="1138,277,1222,302"/>
+<area shape="poly" id="edge32_Node000001_Node000016" title=" " alt="" coords="1368,57,1315,78,1290,93,1268,110,1237,147,1214,189,1198,230,1188,264,1183,263,1193,228,1210,186,1233,144,1265,106,1287,88,1313,73,1366,52"/>
+<area shape="rect" id="Node000018" href="$ra8__isr_8h.html" title="NVIC + ICU IELSR allocator." alt="" coords="1246,277,1324,302"/>
+<area shape="poly" id="edge37_Node000001_Node000018" title=" " alt="" coords="1368,53,1321,75,1301,90,1285,109,1275,128,1269,148,1266,190,1271,230,1279,263,1274,265,1266,231,1261,190,1264,147,1270,126,1280,107,1297,87,1318,70,1366,48"/>
+<area shape="rect" id="Node000020" href="$ra8__mstp_8h.html" title="Ref&#45;counted Module Stop Control wrapper for the RA8D2." alt="" coords="1380,189,1475,214"/>
+<area shape="poly" id="edge42_Node000001_Node000020" title=" " alt="" coords="1459,61,1435,176,1430,175,1454,60"/>
+<area shape="rect" id="Node000022" href="$ra8__slab_8h.html" title="Fixed&#45;cell slab allocator – O(1), zero&#45;fragmentation, zero&#45;heap." alt="" coords="1951,277,2040,302"/>
+<area shape="poly" id="edge48_Node000001_Node000022" title=" " alt="" coords="1559,41,1643,57,1738,83,1787,101,1834,123,1880,149,1921,179,1959,221,1986,263,1981,266,1955,224,1918,183,1877,153,1832,128,1785,106,1736,88,1641,62,1558,47"/>
+<area shape="rect" id="Node000023" href="$ra8__tile__cache_8h.html" title="Fixed&#45;RAM&#45;budget image&#45;tile cache with LRU eviction (Layer 3b, #147)." alt="" coords="1780,189,1908,214"/>
+<area shape="poly" id="edge51_Node000001_Node000023" title=" " alt="" coords="1559,50,1639,73,1721,106,1777,141,1823,177,1819,181,1774,145,1719,110,1638,78,1558,56"/>
+<area shape="rect" id="Node000025" href="$ra8__time_8h.html" title="SysTick&#45;based tick counter, delay and timestamp helpers." alt="" coords="2304,277,2396,302"/>
+<area shape="poly" id="edge57_Node000001_Node000025" title=" " alt="" coords="1558,38,1761,60,1880,80,1996,105,2094,135,2186,179,2263,224,2326,266,2323,271,2261,229,2184,184,2092,140,1995,111,1879,85,1761,66,1558,43"/>
+<area shape="rect" id="Node000027" href="$ra8__vmem__stream_8h.html" title="Read a page&#45;cached object as a seekable byte stream (Layer 2 helper, #147/#151)." alt="" coords="1550,108,1708,133"/>
+<area shape="poly" id="edge62_Node000001_Node000027" title=" " alt="" coords="1514,58,1596,99,1593,104,1512,62"/>
+<area shape="rect" id="Node000029" href="$ra8__vsource_8h.html" title="Virtual&#45;memory object sources – the page&#45;cache storage seam (Layer 1, #147)." alt="" coords="2167,277,2280,302"/>
+<area shape="poly" id="edge70_Node000001_Node000029" title=" " alt="" coords="1558,43,1706,64,1879,95,2039,133,2103,155,2149,179,2171,198,2190,220,2216,263,2211,266,2185,223,2167,202,2146,184,2101,160,2038,139,1878,100,1706,69,1557,48"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="1067,302,1075,341,1084,363,1099,381,1120,393,1151,404,1232,421,1320,431,1396,437,1396,442,1319,436,1231,426,1150,409,1118,398,1095,385,1080,366,1070,343,1062,303"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="1099,300,1126,307,1292,339,1431,359,1430,365,1291,344,1124,312,1098,305"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="1480,384,1460,420,1455,417,1475,382"/>
+<area shape="rect" id="Node000008" href="$ra8__board__ek__ra8d2__connectors_8h.html" title="Board&#45;identity, LEDs, switches, display, audio, Arduino, Pmod, and MikroBUS portion of the EK&#45;RA8D2 v..." alt="" coords="36,269,190,309"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="227,136,180,154,159,167,140,183,129,199,122,218,115,256,110,255,117,217,125,197,136,180,156,162,178,149,225,131"/>
+<area shape="rect" id="Node000010" href="$ra8__board__ek__ra8d2__dualcore_8h.html" title="Where the EK&#45;RA8D2&#39;s Cortex&#45;M85 and Cortex&#45;M33 meet, stated once." alt="" coords="721,269,876,309"/>
+<area shape="poly" id="edge15_Node000007_Node000010" title=" " alt="" coords="341,131,730,262,729,267,339,136"/>
+<area shape="rect" id="Node000011" href="$ra8__board__ek__ra8d2__pdm_8h.html" title="EK&#45;RA8D2 onboard SPH0690 PDM microphone policy." alt="" coords="717,181,872,221"/>
+<area shape="poly" id="edge18_Node000007_Node000011" title=" " alt="" coords="378,131,704,183,703,188,377,136"/>
+<area shape="rect" id="Node000013" href="$ra8__board__ek__ra8d2__peripherals_8h.html" title="I/O&#45;expander, USB, camera, external&#45;memory, MIPI&#45;DSI, UART console, and Ethernet portion of the EK&#45;RA..." alt="" coords="150,181,305,221"/>
+<area shape="poly" id="edge24_Node000007_Node000013" title=" " alt="" coords="297,135,258,173,255,170,293,132"/>
+<area shape="poly" id="edge10_Node000008_Node000002" title=" " alt="" coords="189,307,378,354,377,359,188,312"/>
+<area shape="poly" id="edge11_Node000008_Node000003" title=" " alt="" coords="156,307,257,346,317,365,379,380,472,394,596,405,893,422,1187,433,1396,438,1395,444,1187,439,893,428,595,410,471,399,378,385,316,370,255,351,154,312"/>
+<area shape="poly" id="edge12_Node000008_Node000006" title=" " alt="" coords="191,300,253,307,424,320,570,327,816,333,1063,337,1380,355,1431,360,1431,365,1380,360,1063,343,816,338,569,333,424,325,253,312,190,305"/>
+<area shape="rect" id="Node000009" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="34,357,192,383"/>
+<area shape="poly" id="edge13_Node000008_Node000009" title=" " alt="" coords="116,310,116,343,110,343,110,310"/>
+<area shape="poly" id="edge14_Node000009_Node000003" title=" " alt="" coords="193,375,273,380,938,416,1396,437,1396,443,937,421,273,385,193,380"/>
+<area shape="poly" id="edge16_Node000010_Node000003" title=" " alt="" coords="837,307,921,345,1023,380,1126,403,1229,420,1396,436,1396,442,1229,425,1125,408,1022,385,919,350,835,312"/>
+<area shape="poly" id="edge17_Node000010_Node000006" title=" " alt="" coords="876,305,888,307,1026,325,1133,335,1380,355,1431,360,1431,365,1379,360,1133,340,1025,330,887,312,875,310"/>
+<area shape="poly" id="edge19_Node000011_Node000003" title=" " alt="" coords="717,212,649,224,586,243,563,256,550,271,547,287,556,308,572,319,599,331,683,353,797,374,928,392,1196,420,1396,436,1395,441,1196,425,927,397,796,379,682,359,597,336,569,324,552,311,541,288,545,268,560,252,584,238,647,219,716,207"/>
+<area shape="poly" id="edge20_Node000011_Node000006" title=" " alt="" coords="872,203,997,209,1145,221,1283,240,1339,252,1381,267,1408,283,1432,303,1469,344,1465,348,1429,307,1405,287,1379,272,1337,258,1282,245,1144,227,997,215,872,208"/>
+<area shape="rect" id="Node000012" href="$ra8__pdm_8h.html" title="Pulse Density Modulation Interface (PDM&#45;IF) capture driver." alt="" coords="900,277,990,302"/>
+<area shape="poly" id="edge21_Node000011_Node000012" title=" " alt="" coords="829,219,914,268,912,272,826,224"/>
+<area shape="poly" id="edge22_Node000012_Node000003" title=" " alt="" coords="959,300,1007,340,1039,362,1074,380,1160,408,1248,425,1330,435,1396,439,1395,444,1329,440,1247,430,1159,413,1072,385,1036,367,1003,345,955,304"/>
+<area shape="poly" id="edge23_Node000012_Node000006" title=" " alt="" coords="977,299,1003,307,1189,332,1431,360,1430,365,1188,337,1002,312,976,305"/>
+<area shape="poly" id="edge25_Node000013_Node000002" title=" " alt="" coords="230,221,234,264,242,287,255,308,282,330,313,345,346,356,378,362,377,367,345,361,311,350,279,334,251,311,237,290,229,266,224,222"/>
+<area shape="poly" id="edge26_Node000013_Node000003" title=" " alt="" coords="151,207,113,214,76,226,41,244,14,271,9,294,10,329,16,363,23,381,43,389,85,396,223,409,414,419,636,427,1085,436,1396,439,1396,444,1085,441,636,432,414,424,223,414,85,401,42,394,19,385,11,364,5,330,3,293,9,268,38,240,74,221,112,209,150,202"/>
+<area shape="poly" id="edge29_Node000013_Node000006" title=" " alt="" coords="305,203,894,231,1189,250,1288,259,1337,267,1352,276,1361,286,1381,307,1450,349,1447,353,1378,311,1357,289,1348,280,1335,272,1287,264,1189,255,894,237,305,209"/>
+<area shape="poly" id="edge28_Node000013_Node000008" title=" " alt="" coords="204,224,151,263,148,259,201,219"/>
+<area shape="poly" id="edge30_Node000013_Node000009" title=" " alt="" coords="151,209,116,216,82,228,51,246,26,271,19,289,26,308,46,332,72,349,69,354,42,336,21,311,14,289,21,268,48,242,80,223,115,211,150,204"/>
+<area shape="rect" id="Node000014" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="265,277,390,302"/>
+<area shape="poly" id="edge27_Node000013_Node000014" title=" " alt="" coords="252,220,305,265,302,269,248,224"/>
+<area shape="poly" id="edge35_Node000016_Node000006" title=" " alt="" coords="1212,299,1235,307,1339,334,1431,355,1430,360,1338,339,1234,312,1211,305"/>
+<area shape="rect" id="Node000017" href="$ra8__cgc__regs_8h.html" title="Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2." alt="" coords="1110,357,1228,383"/>
+<area shape="poly" id="edge33_Node000016_Node000017" title=" " alt="" coords="1181,303,1175,344,1170,343,1175,302"/>
+<area shape="poly" id="edge34_Node000017_Node000003" title=" " alt="" coords="1214,380,1397,427,1396,432,1213,385"/>
+<area shape="poly" id="edge38_Node000018_Node000003" title=" " alt="" coords="1306,300,1343,324,1382,355,1410,387,1432,417,1428,421,1406,390,1378,359,1339,328,1303,304"/>
+<area shape="poly" id="edge41_Node000018_Node000006" title=" " alt="" coords="1315,300,1443,350,1441,355,1313,304"/>
+<area shape="rect" id="Node000019" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="1252,357,1368,383"/>
+<area shape="poly" id="edge39_Node000018_Node000019" title=" " alt="" coords="1291,301,1305,344,1300,345,1286,303"/>
+<area shape="poly" id="edge40_Node000019_Node000003" title=" " alt="" coords="1333,380,1412,422,1410,426,1331,385"/>
+<area shape="poly" id="edge43_Node000020_Node000003" title=" " alt="" coords="1442,212,1491,270,1518,311,1538,356,1542,370,1538,384,1517,409,1490,427,1487,422,1513,405,1533,381,1536,370,1533,358,1514,314,1487,273,1438,216"/>
+<area shape="poly" id="edge44_Node000020_Node000006" title=" " alt="" coords="1434,213,1478,344,1473,345,1429,215"/>
+<area shape="rect" id="Node000021" href="$ra8__mstp__regs_8h.html" title="Module Stop Control (MSTP) register layout for the Renesas RA8D2." alt="" coords="566,277,697,302"/>
+<area shape="poly" id="edge45_Node000020_Node000021" title=" " alt="" coords="1380,207,1096,226,904,245,709,272,688,276,687,271,709,267,903,240,1095,221,1380,202"/>
+<area shape="poly" id="edge46_Node000021_Node000002" title=" " alt="" coords="603,304,471,355,469,350,601,300"/>
+<area shape="poly" id="edge47_Node000021_Node000003" title=" " alt="" coords="664,299,786,339,863,361,943,380,1070,402,1197,419,1396,436,1396,442,1196,424,1069,407,942,385,862,366,784,344,663,305"/>
+<area shape="poly" id="edge49_Node000022_Node000003" title=" " alt="" coords="1994,303,1973,344,1955,367,1933,385,1897,400,1848,413,1727,430,1598,440,1494,444,1494,438,1598,434,1726,425,1847,407,1896,395,1930,380,1951,363,1968,341,1989,301"/>
+<area shape="poly" id="edge50_Node000022_Node000006" title=" " alt="" coords="1951,301,1888,312,1537,364,1537,359,1887,307,1950,296"/>
+<area shape="poly" id="edge52_Node000023_Node000003" title=" " alt="" coords="1909,207,1966,218,2020,237,2041,251,2055,267,2061,287,2056,310,2039,339,2019,358,1996,372,1965,385,1925,398,1871,409,1740,425,1494,443,1494,437,1739,420,1870,403,1923,393,1963,380,1993,367,2016,354,2034,336,2051,308,2056,287,2051,270,2037,255,2018,242,1965,223,1908,212"/>
+<area shape="poly" id="edge53_Node000023_Node000006" title=" " alt="" coords="1827,217,1747,268,1670,312,1602,338,1537,358,1536,353,1600,333,1668,307,1744,263,1824,212"/>
+<area shape="rect" id="Node000024" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="1753,277,1876,302"/>
+<area shape="poly" id="edge54_Node000023_Node000024" title=" " alt="" coords="1842,215,1825,264,1820,262,1837,213"/>
+<area shape="poly" id="edge55_Node000024_Node000003" title=" " alt="" coords="1788,305,1487,428,1485,423,1786,300"/>
+<area shape="poly" id="edge56_Node000024_Node000006" title=" " alt="" coords="1767,305,1537,359,1536,354,1766,299"/>
+<area shape="poly" id="edge58_Node000025_Node000003" title=" " alt="" coords="2336,304,2271,346,2228,368,2182,385,2121,399,2039,410,1843,427,1643,438,1494,443,1494,438,1643,433,1842,422,2039,405,2120,393,2180,380,2226,363,2269,341,2333,300"/>
+<area shape="poly" id="edge59_Node000025_Node000006" title=" " alt="" coords="2320,305,2294,312,2186,330,2075,345,1858,363,1670,370,1537,372,1537,367,1670,365,1858,357,2074,339,2185,325,2292,307,2319,300"/>
+<area shape="rect" id="Node000026" href="$ra8__time__interface_8h.html" title="Abstract time&#45;source interface for DI and unit testing." alt="" coords="2268,357,2425,383"/>
+<area shape="poly" id="edge60_Node000025_Node000026" title=" " alt="" coords="2352,302,2350,344,2345,343,2347,302"/>
+<area shape="poly" id="edge61_Node000026_Node000003" title=" " alt="" coords="2268,383,2249,385,1812,421,1494,442,1494,436,1812,416,2249,380,2267,378"/>
+<area shape="poly" id="edge63_Node000027_Node000002" title=" " alt="" coords="1550,130,706,184,656,200,619,218,540,271,490,311,450,349,447,345,487,307,537,267,616,214,654,195,705,179,1550,124"/>
+<area shape="poly" id="edge64_Node000027_Node000003" title=" " alt="" coords="1708,120,1834,131,1902,142,1966,159,2022,183,2044,199,2062,216,2075,236,2082,258,2083,283,2076,310,2064,336,2051,356,2034,371,2009,385,1966,401,1907,413,1763,431,1612,440,1494,444,1494,439,1612,435,1762,426,1906,408,1964,396,2007,380,2031,366,2047,352,2059,334,2071,308,2077,282,2077,259,2070,238,2058,219,2041,203,2019,188,1965,164,1901,147,1833,136,1708,126"/>
+<area shape="poly" id="edge65_Node000027_Node000006" title=" " alt="" coords="1626,135,1591,210,1534,311,1505,348,1501,345,1529,308,1586,208,1622,132"/>
+<area shape="rect" id="Node000028" href="$ra8__vmem_8h.html" title="Byte&#45;range page cache with SLRU eviction (Layer 2, #147)." alt="" coords="1652,189,1756,214"/>
+<area shape="poly" id="edge66_Node000027_Node000028" title=" " alt="" coords="1642,132,1685,177,1681,181,1638,135"/>
+<area shape="poly" id="edge67_Node000028_Node000003" title=" " alt="" coords="1743,211,1832,240,1870,255,1890,268,1898,289,1890,311,1863,335,1822,356,1771,375,1713,392,1594,420,1494,437,1493,432,1592,414,1712,387,1769,370,1820,351,1860,330,1886,308,1893,289,1886,271,1867,260,1830,245,1741,217"/>
+<area shape="poly" id="edge68_Node000028_Node000006" title=" " alt="" coords="1701,216,1677,261,1658,288,1635,311,1587,340,1537,359,1535,354,1584,336,1631,307,1654,284,1673,258,1697,213"/>
+<area shape="poly" id="edge69_Node000028_Node000024" title=" " alt="" coords="1720,212,1790,266,1787,270,1717,216"/>
+<area shape="poly" id="edge71_Node000029_Node000003" title=" " alt="" coords="2220,304,2194,345,2174,367,2149,385,2093,405,2018,420,1928,431,1831,438,1640,445,1494,445,1494,440,1640,440,1831,433,1928,426,2017,415,2092,400,2146,380,2170,363,2190,342,2216,301"/>
+<area shape="poly" id="edge72_Node000029_Node000006" title=" " alt="" coords="2167,300,2053,312,1537,366,1536,361,2053,307,2167,294"/>
+</map>

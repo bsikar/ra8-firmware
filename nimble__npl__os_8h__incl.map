@@ -1,0 +1,7 @@
+<map id="port/nimble/inc/nimble/nimble_npl_os.h" name="port/nimble/inc/nimble/nimble_npl_os.h">
+<area shape="rect" id="Node000001" title="ThreadX&#45;backed OS types for the NimBLE Native Porting Layer." alt="" coords="5,5,175,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="7,93,77,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="81,47,59,83,54,80,76,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="102,93,177,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="104,44,127,80,123,83,100,47"/>
+</map>

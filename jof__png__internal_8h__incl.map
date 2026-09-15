@@ -1,0 +1,30 @@
+<map id="apps/shared_libs/jof/src/jof_png_internal.h" name="apps/shared_libs/jof/src/jof_png_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private declarations shared by the two PNG decoder units." alt="" coords="411,5,577,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="223,313,298,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="503,45,510,75,514,113,511,155,498,193,480,218,460,239,411,274,359,298,312,315,310,310,357,294,408,269,456,235,476,214,493,191,506,153,509,114,504,76,497,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="137,387,208,412"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="513,44,532,69,552,101,568,138,574,178,574,254,571,268,563,282,533,306,490,328,437,346,322,375,222,394,221,388,321,370,436,341,488,323,530,302,559,279,566,266,569,254,569,178,563,140,547,104,528,72,509,47"/>
+<area shape="rect" id="Node000004" href="$jof__internal_8h.html" title="Module&#45;private seams shared by the producer translation units." alt="" coords="241,93,349,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="447,48,338,91,336,86,445,43"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,313,84,339"/>
+<area shape="poly" id="edge19_Node000001_Node000007" title=" " alt="" coords="411,34,330,46,240,70,195,88,151,110,110,136,75,168,55,199,46,234,43,270,44,300,39,300,38,270,40,233,51,197,71,165,107,132,148,105,192,83,238,65,329,41,410,29"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="358,167,483,192"/>
+<area shape="poly" id="edge18_Node000001_Node000008" title=" " alt="" coords="487,47,435,155,430,153,482,45"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="609,93,680,119"/>
+<area shape="poly" id="edge17_Node000001_Node000009" title=" " alt="" coords="531,43,611,84,609,89,529,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="296,119,267,300,262,299,291,119"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="303,118,318,158,331,215,334,247,333,280,326,311,312,340,294,360,271,375,223,393,221,388,269,371,291,356,308,337,321,309,328,279,329,248,326,216,313,160,298,120"/>
+<area shape="rect" id="Node000005" href="$jof__produce_8h.html" title="Import&#45;time transcode producer: JPEG/PNG/WebP &#45;&gt; JOF band&#45;tile atlas in bounded RAM (#231,..." alt="" coords="117,167,228,192"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="277,121,206,162,203,157,274,116"/>
+<area shape="poly" id="edge16_Node000004_Node000007" title=" " alt="" coords="242,117,174,135,139,149,106,169,87,185,75,200,57,241,49,271,47,300,42,300,44,270,51,239,70,197,83,181,103,164,136,145,172,130,241,112"/>
+<area shape="poly" id="edge15_Node000004_Node000008" title=" " alt="" coords="317,116,390,157,387,162,314,121"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="182,191,249,300,244,303,178,194"/>
+<area shape="poly" id="edge8_Node000005_Node000003" title=" " alt="" coords="175,192,175,372,170,372,170,192"/>
+<area shape="rect" id="Node000006" href="$jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="85,240,135,265"/>
+<area shape="poly" id="edge9_Node000005_Node000006" title=" " alt="" coords="164,194,131,231,127,228,160,191"/>
+<area shape="poly" id="edge14_Node000005_Node000007" title=" " alt="" coords="143,195,107,214,75,242,59,270,51,300,46,299,54,268,71,238,104,209,140,190"/>
+<area shape="poly" id="edge10_Node000006_Node000002" title=" " alt="" coords="135,263,225,305,222,310,133,268"/>
+<area shape="poly" id="edge11_Node000006_Node000003" title=" " alt="" coords="118,265,165,373,160,375,113,267"/>
+<area shape="poly" id="edge12_Node000006_Node000007" title=" " alt="" coords="101,267,66,305,63,301,97,264"/>
+<area shape="poly" id="edge13_Node000007_Node000003" title=" " alt="" coords="67,336,141,377,138,382,64,341"/>
+</map>

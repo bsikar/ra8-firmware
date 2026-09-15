@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/inc/dualcore_background.h" name="examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/inc/dualcore_background.h">
+<area shape="rect" id="Node000001" title="Shared&#45;SRAM control block for the M33 autonomous counter demo." alt="" coords="147,5,371,75"/>
+<area shape="rect" id="Node000002" href="$hw__validated_2hil_2dualcore__background__m33_2src_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33 secondary core) autonomous counter image." alt="" coords="5,123,256,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="210,86,164,125,160,120,207,82"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dualcore__background__m33_2src_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver for the autonomous M33 demo." alt="" coords="281,123,493,177"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="311,82,357,120,354,125,307,86"/>
+</map>

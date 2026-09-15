@@ -1,0 +1,16 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/src/cpu1_main.c" name="examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/src/cpu1_main.c">
+<area shape="rect" id="Node000001" title="CPU1 (Cortex&#45;M33 secondary core) autonomous counter image." alt="" coords="5,5,256,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="47,343,118,368"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="80,62,54,83,34,109,24,138,21,168,23,200,29,230,49,287,71,330,66,332,44,289,24,232,17,200,15,168,19,137,30,107,50,79,76,58"/>
+<area shape="rect" id="Node000003" href="$dualcore__background_8h.html" title="Shared&#45;SRAM control block for the M33 autonomous counter demo." alt="" coords="44,108,217,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="133,60,133,94,128,94,128,60"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="241,108,367,133"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="185,58,270,99,267,104,182,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="119,135,100,156,85,182,76,221,74,261,80,329,75,330,69,261,71,220,80,180,96,153,115,132"/>
+<area shape="rect" id="Node000004" href="$ra8__board__ek__ra8d2__dualcore_8h.html" title="Where the EK&#45;RA8D2&#39;s Cortex&#45;M85 and Cortex&#45;M33 meet, stated once." alt="" coords="95,181,249,221"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="139,132,158,168,153,170,134,135"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="163,223,99,332,94,329,158,220"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="146,269,225,295"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="178,221,184,255,178,256,173,222"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="170,297,112,337,109,332,167,292"/>
+</map>

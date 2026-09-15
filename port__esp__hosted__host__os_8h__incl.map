@@ -1,0 +1,31 @@
+<map id="port/esp&#45;hosted/inc/port_esp_hosted_host_os.h" name="port/esp&#45;hosted/inc/port_esp_hosted_host_os.h">
+<area shape="rect" id="Node000001" title="esp&#45;hosted port header: RTOS handle types, return codes and budgets." alt="" coords="607,5,810,45"/>
+<area shape="rect" id="Node000002" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="220,93,320,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="607,47,334,96,333,91,606,42"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="340,240,411,265"/>
+<area shape="poly" id="edge11_Node000001_Node000003" title=" " alt="" coords="722,44,737,76,750,115,752,156,747,176,736,194,714,210,682,223,598,240,505,250,425,253,424,248,505,244,597,235,681,218,712,205,732,190,742,174,747,156,745,116,732,78,718,47"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="797,93,884,119"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="742,43,810,84,808,88,739,48"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="647,167,722,192"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="708,46,691,153,686,153,703,45"/>
+<area shape="rect" id="Node000009" href="$esp__heap__caps_8h.html" title="ESP&#45;IDF capability&#45;flag compatibility for the esp&#45;hosted port." alt="" coords="439,167,573,192"/>
+<area shape="poly" id="edge12_Node000001_Node000009" title=" " alt="" coords="608,34,575,42,544,54,515,72,492,95,486,108,486,123,495,154,490,155,481,124,481,107,488,92,512,67,541,49,573,37,606,29"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="909,93,1119,119"/>
+<area shape="poly" id="edge14_Node000001_Node000010" title=" " alt="" coords="782,43,957,87,955,92,781,48"/>
+<area shape="rect" id="Node000011" href="$ra8__esp__hosted__port_8h.html" title="Public entry point of the RA8D2 + ThreadX port of esp&#45;hosted." alt="" coords="501,93,671,119"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="680,48,617,88,614,84,678,43"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="255,121,238,135,223,153,215,173,215,182,219,190,241,213,268,228,298,239,327,245,326,250,296,244,266,233,237,217,214,194,210,183,209,172,218,151,234,132,252,117"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="336,167,415,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="288,116,348,157,346,161,285,121"/>
+<area shape="rect" id="Node000005" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="229,167,311,192"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="273,119,273,153,267,153,267,119"/>
+<area shape="rect" id="Node000006" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="5,167,153,192"/>
+<area shape="poly" id="edge7_Node000002_Node000006" title=" " alt="" coords="240,121,124,164,122,159,238,116"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="378,192,378,226,373,226,373,192"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="288,190,348,230,346,235,285,194"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="128,189,327,237,326,242,126,195"/>
+<area shape="poly" id="edge13_Node000009_Node000003" title=" " alt="" coords="486,194,410,236,407,231,484,190"/>
+<area shape="poly" id="edge17_Node000011_Node000003" title=" " alt="" coords="592,119,598,154,596,175,587,194,560,212,519,227,425,247,424,242,517,222,558,207,583,190,590,173,593,154,587,120"/>
+<area shape="poly" id="edge18_Node000011_Node000004" title=" " alt="" coords="553,121,423,165,421,160,551,116"/>
+<area shape="poly" id="edge16_Node000011_Node000008" title=" " alt="" coords="603,117,659,156,656,161,600,121"/>
+</map>

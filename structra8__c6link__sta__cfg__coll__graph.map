@@ -1,0 +1,5 @@
+<map id="ra8_c6link_sta_cfg" name="ra8_c6link_sta_cfg">
+<area shape="rect" id="Node000001" title="What this host must tell the co&#45;processor to join one network." alt="" coords="5,101,148,127"/>
+<area shape="rect" id="Node000002" href="$structra8__c6link__mac.html" title="One IEEE 802 address, by value." alt="" coords="15,5,139,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="79,45,79,101,74,101,74,45"/>
+</map>

@@ -1,0 +1,39 @@
+<map id="libs/ra8_io/inc/ra8_io_stream_uart.h" name="libs/ra8_io/inc/ra8_io_stream_uart.h">
+<area shape="rect" id="Node000001" title="ra8_io byte&#45;stream sink over a UART/SCI channel." alt="" coords="1583,5,1722,45"/>
+<area shape="rect" id="Node000002" href="$ra8__board__ek__ra8d2__console__stream_8c.html" title="EK&#45;RA8D2 BSP – bind the debug console into an ra8_io byte stream." alt="" coords="1363,93,1545,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1601,54,1511,96,1509,91,1599,49"/>
+<area shape="rect" id="Node000003" href="$ra8__io_8h.html" title="ra8_io – unified peripheral&#45;agnostic I/O fabric (umbrella header)." alt="" coords="1569,108,1737,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1655,59,1655,108,1650,108,1650,59"/>
+<area shape="rect" id="Node000019" href="$ra8__io__stream__uart_8c.html" title="UART/SCI byte&#45;stream sink – polled writes through ra8_sci." alt="" coords="1761,101,1899,141"/>
+<area shape="poly" id="edge18_Node000001_Node000019" title=" " alt="" coords="1702,49,1795,98,1793,103,1699,54"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2compress__demo_2src_2main_8c.html" title="Transparent compress&#45;on&#45;write / decompress&#45;on&#45;read over the VFS (#161)." alt="" coords="5,203,225,258"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="1606,140,1557,151,1357,174,1187,183,1037,181,896,174,756,168,606,166,436,175,237,199,201,206,200,201,236,193,436,169,606,161,756,162,897,169,1037,176,1187,177,1357,169,1556,145,1604,135"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__cache__demo_2src_2main_8c.html" title="ra8_io caching block device demo (Phase 5, #160)." alt="" coords="249,203,451,258"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="1606,140,1557,151,1391,171,1250,178,1125,177,1009,172,892,168,768,168,627,176,462,199,430,206,428,201,462,193,627,171,768,162,893,162,1009,167,1126,172,1250,173,1391,166,1556,145,1604,135"/>
+<area shape="rect" id="Node000006" href="$ra8__io__demo_2inc_2ra8__io__roundtrip_8h.html" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="475,203,705,258"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="1605,140,1557,151,1430,168,1322,175,1227,177,1137,175,953,175,845,182,718,199,682,206,681,201,718,193,845,177,953,170,1137,170,1227,172,1322,170,1430,162,1556,145,1604,134"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__demo_2src_2main_8c.html" title="End&#45;to&#45;end demo of the ra8_io fabric (epic #155) over a RAM block device." alt="" coords="730,203,909,258"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="1604,140,1557,151,1461,164,1379,171,1238,172,1098,175,1017,183,921,199,892,206,891,201,920,193,1016,177,1098,169,1238,167,1378,165,1460,159,1556,145,1603,135"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__fsfmt__demo_2src_2main_8c.html" title="ra8_io pluggable filesystem&#45;format registry demo (Phase 4, #159)." alt="" coords="933,203,1132,258"/>
+<area shape="poly" id="edge7_Node000003_Node000008" title=" " alt="" coords="1603,140,1557,151,1442,168,1351,174,1260,180,1145,199,1115,206,1114,201,1144,193,1259,175,1350,168,1441,162,1556,145,1602,134"/>
+<area shape="rect" id="Node000009" href="$ra8__io__sd__demo_2inc_2ra8__io__roundtrip_8h.html" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="1157,196,1335,265"/>
+<area shape="poly" id="edge8_Node000003_Node000009" title=" " alt="" coords="1600,139,1557,151,1452,174,1348,199,1336,202,1335,197,1347,193,1451,168,1556,145,1599,134"/>
+<area shape="rect" id="Node000010" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__sd__demo_2src_2main_8c.html" title="Prove the ra8_io fabric&#39;s swappable backend (#155/#156) over a microSD." alt="" coords="1359,203,1538,258"/>
+<area shape="poly" id="edge9_Node000003_Node000010" title=" " alt="" coords="1620,142,1499,206,1497,201,1617,138"/>
+<area shape="rect" id="Node000011" href="$ra8__io__sdram__demo_2inc_2ra8__io__roundtrip_8h.html" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="1562,196,1743,265"/>
+<area shape="poly" id="edge10_Node000003_Node000011" title=" " alt="" coords="1655,147,1655,196,1650,196,1650,147"/>
+<area shape="rect" id="Node000012" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__sdram__demo_2src_2main_8c.html" title="ra8_io fabric over the external SDRAM backend (epic #155) on EK&#45;RA8D2." alt="" coords="1768,203,1972,258"/>
+<area shape="poly" id="edge11_Node000003_Node000012" title=" " alt="" coords="1689,137,1818,201,1816,206,1687,142"/>
+<area shape="rect" id="Node000013" href="$ra8__io__xspi__demo_2inc_2ra8__io__roundtrip_8h.html" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="1997,196,2183,265"/>
+<area shape="poly" id="edge12_Node000003_Node000013" title=" " alt="" coords="1706,134,1749,145,1867,169,1985,193,1997,197,1996,202,1984,199,1866,174,1748,151,1705,140"/>
+<area shape="rect" id="Node000014" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__xspi__demo_2src_2main_8c.html" title="ra8_io fabric over OSPI NOR flash (epic #155, #156) on the EK&#45;RA8D2." alt="" coords="2208,203,2399,258"/>
+<area shape="poly" id="edge13_Node000003_Node000014" title=" " alt="" coords="1703,134,1749,145,1874,163,1972,168,2071,174,2196,193,2226,201,2225,206,2195,199,2070,179,1972,173,1873,168,1748,151,1702,140"/>
+<area shape="rect" id="Node000015" href="$examples_2ek__ra8d2_2hw__pending_2ra8__ftl__demo_2src_2main_8c.html" title="Wear&#45;levelled block I/O + power&#45;cycle survival over the FTL (#258)." alt="" coords="2423,203,2597,258"/>
+<area shape="poly" id="edge14_Node000003_Node000015" title=" " alt="" coords="1702,135,1749,145,1849,159,1934,166,2081,166,2227,168,2312,177,2412,193,2441,201,2439,206,2411,199,2311,182,2226,173,2081,171,1934,171,1849,165,1748,151,1701,140"/>
+<area shape="rect" id="Node000016" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__mram__demo_2src_2main_8c.html" title="ra8_io fabric over on&#45;chip extra&#45;MRAM (data flash) backend (#155/#156)." alt="" coords="2621,203,2794,258"/>
+<area shape="poly" id="edge15_Node000003_Node000016" title=" " alt="" coords="1701,135,1749,145,1879,162,1990,168,2088,168,2179,165,2271,162,2369,164,2480,173,2609,193,2639,201,2637,206,2608,199,2479,178,2369,169,2271,168,2180,170,2088,174,1990,174,1878,167,1748,151,1700,140"/>
+<area shape="rect" id="Node000017" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2src_2main_8c.html" title="Prove the ra8_io fabric&#39;s swappable backend (#155/#156) over native SDHI." alt="" coords="2818,203,2991,258"/>
+<area shape="poly" id="edge16_Node000003_Node000017" title=" " alt="" coords="1701,135,1749,145,1909,165,2045,171,2165,170,2278,164,2391,159,2511,159,2647,169,2807,193,2836,201,2835,206,2805,199,2647,175,2511,165,2391,164,2278,169,2166,175,2045,177,1908,170,1748,151,1700,140"/>
+<area shape="rect" id="Node000018" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2src_2main_8c.html" title="ra8_io fabric capstone: two block&#45;dev backends swapped behind one interface, a VFS open/read/write/cl..." alt="" coords="3015,203,3189,258"/>
+<area shape="poly" id="edge17_Node000003_Node000018" title=" " alt="" coords="1701,135,1749,145,1939,167,2100,174,2243,171,2377,163,2511,156,2653,155,2815,166,3004,193,3034,201,3032,206,3003,199,2814,171,2653,160,2511,161,2377,168,2243,176,2100,179,1938,173,1748,151,1700,140"/>
+</map>

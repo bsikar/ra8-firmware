@@ -1,0 +1,38 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_spi.c" name="tools/ra8_emulator/src/periph/board_periph_spi.c">
+<area shape="rect" id="Node000001" title="SPI_B (Type&#45;B SPI) controller peripheral&#45;block model for ra8_emulator." alt="" coords="292,5,508,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="339,240,410,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="401,46,380,227,375,226,395,45"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="675,93,741,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="474,43,662,90,661,95,473,48"/>
+<area shape="rect" id="Node000004" href="$board__console_8h.html" title="Multi&#45;channel console log store backing the board view&#39;s tabbed console." alt="" coords="5,167,133,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="328,48,264,69,199,96,143,128,96,161,93,156,140,123,196,91,262,64,327,43"/>
+<area shape="rect" id="Node000005" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="438,93,599,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="430,43,491,84,488,88,427,48"/>
+<area shape="rect" id="Node000010" href="$board__periph__eink_8h.html" title="IT8951 e&#45;paper SPI&#45;device model for ra8_emulator (attached to SPI_B)." alt="" coords="157,167,312,192"/>
+<area shape="poly" id="edge13_Node000001_Node000010" title=" " alt="" coords="293,43,247,62,228,77,212,95,206,109,207,124,220,154,215,156,202,125,201,108,207,92,224,73,245,58,291,38"/>
+<area shape="rect" id="Node000011" href="$board__periph__sd_8h.html" title="SD&#45;card&#45;over&#45;SPI device model for ra8_emulator (attached to SPI_B)." alt="" coords="221,93,363,119"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="375,48,321,87,318,83,372,43"/>
+<area shape="rect" id="Node000012" href="$emu__host__io__internal_8h.html" title="Bounded raw&#45;descriptor I/O seam for the RA8 emulator." alt="" coords="739,167,914,192"/>
+<area shape="poly" id="edge17_Node000001_Node000012" title=" " alt="" coords="470,43,540,64,613,91,664,116,780,160,778,165,662,121,611,96,538,69,468,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="119,189,326,237,325,243,118,195"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="509,121,398,232,394,228,505,117"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="434,240,569,265"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="520,119,507,227,502,226,515,119"/>
+<area shape="rect" id="Node000007" href="$emu__memory__access_8h.html" title="Central first&#45;party Unicorn memory access seam." alt="" coords="539,167,715,192"/>
+<area shape="poly" id="edge8_Node000005_Node000007" title=" " alt="" coords="537,116,599,157,596,161,535,121"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="587,195,424,240,423,235,585,189"/>
+<area shape="poly" id="edge11_Node000007_Node000006" title=" " alt="" coords="608,194,535,235,532,231,605,190"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="593,240,668,265"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="630,192,632,226,627,227,625,192"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="692,240,817,265"/>
+<area shape="poly" id="edge12_Node000007_Node000009" title=" " alt="" coords="649,190,723,231,720,235,646,194"/>
+<area shape="poly" id="edge14_Node000010_Node000002" title=" " alt="" coords="258,190,341,231,339,236,256,194"/>
+<area shape="poly" id="edge16_Node000011_Node000002" title=" " alt="" coords="301,118,364,227,359,229,296,120"/>
+<area shape="poly" id="edge20_Node000012_Node000002" title=" " alt="" coords="740,194,596,214,424,243,423,237,595,209,739,189"/>
+<area shape="poly" id="edge19_Node000012_Node000008" title=" " alt="" coords="796,195,676,238,675,233,794,190"/>
+<area shape="poly" id="edge22_Node000012_Node000009" title=" " alt="" coords="817,194,778,232,774,228,813,190"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="841,240,916,265"/>
+<area shape="poly" id="edge18_Node000012_Node000013" title=" " alt="" coords="837,191,864,227,860,230,833,194"/>
+<area shape="rect" id="Node000014" title=" " alt="" coords="940,240,1036,265"/>
+<area shape="poly" id="edge21_Node000012_Node000014" title=" " alt="" coords="854,190,950,232,948,237,852,194"/>
+</map>

@@ -1,0 +1,15 @@
+<map id="libs/ra8_core/inc/ra8_pin_validator.h" name="libs/ra8_core/inc/ra8_pin_validator.h">
+<area shape="rect" id="Node000001" title="Runtime Pin&#45;Ownership Validator." alt="" coords="591,5,744,45"/>
+<area shape="rect" id="Node000002" href="$apps_2board_2stand__alone_2ereader_2src_2trustzone__init_8c.html" title="Single&#45;core TrustZone bring&#45;up for a RAM&#45;resident NS image (#60)." alt="" coords="5,93,183,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="577,39,400,62,196,96,183,99,182,93,195,91,399,57,576,34"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2tz__nsc__cgc__usb_2src_2trustzone__init_8c.html" title="Single&#45;core TrustZone bring&#45;up for a RAM&#45;resident NS image (#60)." alt="" coords="207,93,445,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="586,52,423,96,421,91,584,46"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2tz__threadx__demo_2src_2trustzone__init_8c.html" title="Single&#45;core TrustZone bring&#45;up for a RAM&#45;resident NS image (#60)." alt="" coords="468,93,667,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="639,57,597,95,594,91,635,53"/>
+<area shape="rect" id="Node000005" href="$ra8__infrastructure_8c.html" title="Application&#45;layer bring&#45;up (called from main() after SystemInit)." alt="" coords="691,101,844,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="699,53,749,99,745,103,696,57"/>
+<area shape="rect" id="Node000006" href="$ra8__pin__validator_8c.html" title="Runtime pin&#45;ownership bitmap implementation." alt="" coords="868,101,1021,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="737,47,889,98,888,103,735,52"/>
+<area shape="rect" id="Node000007" href="$gpio_8c.html" title="High&#45;level GPIO driver on top of PORT + PFS." alt="" coords="1046,108,1209,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="758,38,889,61,1035,91,1090,105,1089,110,1033,96,888,66,757,43"/>
+</map>

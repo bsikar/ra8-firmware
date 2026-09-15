@@ -1,0 +1,8 @@
+<map id="libs/ra8_mem/inc/ra8_vsource.h" name="libs/ra8_mem/inc/ra8_vsource.h">
+<area shape="rect" id="Node000001" title="Virtual&#45;memory object sources – the page&#45;cache storage seam (Layer 1, #147)." alt="" coords="5,5,164,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="49,167,120,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="82,46,75,80,74,118,80,153,75,154,69,119,70,79,76,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="84,93,163,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="96,44,114,80,109,82,92,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="119,120,100,156,95,153,115,118"/>
+</map>

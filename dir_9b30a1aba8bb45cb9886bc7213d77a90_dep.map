@@ -1,0 +1,18 @@
+<map id="apps/shared_libs/reflow" name="apps/shared_libs/reflow">
+<area shape="rect" id="node2" href="dir_ad89f0c64d5da29cfe78767cacc0bcc4.html" title="inc" alt="" coords="38,136,79,161"/>
+<area shape="rect" id="node5" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="95,209,140,235"/>
+<area shape="poly" id="edge1" href="dir_000182_000324.html" alt="" coords="70,160,101,197,97,201,66,163"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000182_000324.html" title="8" alt="" coords="98,183,107,197"/>
+<area shape="rect" id="node3" href="dir_831e8a2b83cad436f4e2a220b5f6b815.html" title="src" alt="" coords="38,63,79,88"/>
+<area shape="poly" id="edge3" href="dir_000479_000182.html" alt="" coords="61,88,61,122,56,122,56,88"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000479_000182.html" title="32" alt="" coords="58,110,76,125"/>
+<area shape="poly" id="edge2" href="dir_000479_000324.html" alt="" coords="68,87,94,135,114,195,109,196,90,137,64,89"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000479_000324.html" title="46" alt="" coords="110,182,127,197"/>
+<area shape="rect" id="node4" href="dir_4dfa8dd4a063f65ec91d57832a8c2e4b.html" title="v2" alt="" coords="103,63,142,88"/>
+<area shape="poly" id="edge5" href="dir_000844_000182.html" alt="" coords="114,90,80,128,76,124,110,87"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000844_000182.html" title="1" alt="" coords="83,121,92,135"/>
+<area shape="poly" id="edge4" href="dir_000844_000324.html" alt="" coords="129,88,139,130,141,157,139,183,133,198,128,196,133,182,136,157,134,131,124,89"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000844_000324.html" title="2" alt="" coords="136,190,145,204"/>
+<area shape="rect" id="clust2" href="dir_9b30a1aba8bb45cb9886bc7213d77a90.html" alt="" coords="27,52,240,172"/>
+<area shape="rect" id="clust1" href="dir_699267fa50e21dc324648ec0948c9d50.html" title="shared_libs" alt="" coords="16,16,251,183"/>
+</map>

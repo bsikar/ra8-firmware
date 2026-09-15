@@ -1,0 +1,9 @@
+<map id="ra8_ftl_t" name="ra8_ftl_t">
+<area shape="rect" id="Node000001" title="Caller&#45;allocated FTL handle binding the wrapper to the raw device." alt="" coords="130,197,205,223"/>
+<area shape="rect" id="Node000002" href="$structra8__io__blockdev__t.html" title="Caller&#45;allocated block&#45;device handle binding a backend to its context." alt="" coords="19,101,159,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="109,136,160,195,156,199,105,139"/>
+<area shape="rect" id="Node000003" href="$structra8__io__blockdev__iface.html" title="Opaque to applications – backends implement this internally and export a binding helper through their..." alt="" coords="5,5,172,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="91,45,91,101,86,101,86,45"/>
+<area shape="rect" id="Node000004" href="$structra8__ftl__pblock__t.html" title="Caller&#45;owned metadata for one physical erase block." alt="" coords="183,101,309,127"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="230,139,179,199,175,195,225,136"/>
+</map>

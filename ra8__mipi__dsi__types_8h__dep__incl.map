@@ -1,0 +1,21 @@
+<map id="libs/ra8_hal/inc/ra8_mipi_dsi_types.h" name="libs/ra8_hal/inc/ra8_mipi_dsi_types.h">
+<area shape="rect" id="Node000001" title="MIPI DSI&#45;2 host driver – public types (enums / structs / typedefs)." alt="" coords="202,5,347,45"/>
+<area shape="rect" id="Node000002" href="$ra8__mipi__dsi_8h.html" title="MIPI DSI&#45;2 host driver – public API (full HUM Ch 65 surface)." alt="" coords="202,181,347,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="260,59,248,94,245,113,248,133,256,158,266,180,261,182,251,160,243,134,240,113,243,93,255,57"/>
+<area shape="rect" id="Node000008" href="$ra8__mipi__dsi__api_8h.html" title="MIPI DSI&#45;2 host driver – public function surface (full HUM Ch 65)." alt="" coords="258,93,403,133"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="297,56,321,92,316,95,292,58"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2__comms_8c.html" title="EK&#45;RA8D2 BSP – MIPI&#45;DSI panel + J&#45;Link VCOM serial bring&#45;up." alt="" coords="5,269,187,324"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="228,230,148,272,145,267,225,225"/>
+<area shape="rect" id="Node000004" href="$ra8__mipi__dsi_8c.html" title="MIPI DSI&#45;2 host driver – full HUM Ch 65 coverage." alt="" coords="133,372,278,412"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="266,235,215,372,210,371,261,233"/>
+<area shape="rect" id="Node000005" href="$ra8__mipi__dsi__cmd_8c.html" title="MIPI DSI&#45;2 sequence&#45;channel command path (HUM Ch 65)." alt="" coords="302,372,447,412"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="279,235,285,278,302,323,323,349,347,370,344,374,319,353,298,325,280,280,273,235"/>
+<area shape="rect" id="Node000006" href="$ra8__mipi__dsi__dispatch_8c.html" title="MIPI DSI&#45;2 host driver – video mode, status, IRQ dispatch, and convenience surfaces." alt="" coords="472,372,629,412"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="362,214,422,234,452,249,479,267,503,291,522,320,547,371,542,373,518,322,499,295,476,271,449,254,420,239,360,219"/>
+<area shape="rect" id="Node000007" href="$ra8__mipi__dsi__internal_8h.html" title="Module&#45;private link seam shared between the MIPI DSI&#45;2 hostdriver translation units." alt="" coords="313,277,466,317"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="310,228,368,275,364,279,307,232"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="341,325,244,374,241,370,339,320"/>
+<area shape="poly" id="edge8_Node000007_Node000005" title=" " alt="" coords="387,331,380,372,375,372,382,330"/>
+<area shape="poly" id="edge9_Node000007_Node000006" title=" " alt="" coords="435,321,519,370,517,374,432,326"/>
+<area shape="poly" id="edge11_Node000008_Node000002" title=" " alt="" coords="313,146,289,183,285,180,309,144"/>
+</map>

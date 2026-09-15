@@ -1,0 +1,25 @@
+<map id="apps/shared_libs/epub/inc/epub_entry.h" name="apps/shared_libs/epub/inc/epub_entry.h">
+<area shape="rect" id="Node000001" title="Iterative, bounded&#45;RAM ZIP&#45;entry extraction for the EPUB reader (#231)." alt="" coords="205,5,372,45"/>
+<area shape="rect" id="Node000002" href="$epub_8h.html" title="EPUB (.epub) reader and chapter iterator for ra8&#45;firmware." alt="" coords="255,93,322,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="291,46,291,79,286,79,286,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,240,92,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="256,114,146,134,94,149,74,158,61,168,53,181,49,196,48,227,42,226,44,195,48,179,57,165,71,154,92,144,145,128,255,109"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="285,240,359,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="314,117,342,136,355,150,366,166,369,183,366,201,346,231,342,228,361,199,364,183,361,168,351,153,339,140,311,121"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="273,313,344,339"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="322,116,356,135,372,149,386,165,394,185,396,201,394,240,396,253,394,266,374,291,349,309,346,305,370,287,389,264,391,253,389,240,391,202,389,186,381,168,369,153,353,140,319,121"/>
+<area shape="rect" id="Node000006" href="$epub__miniz__alloc_8h.html" title="Caller&#45;owned bounded&#45;arena allocator for miniz." alt="" coords="71,167,218,192"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="267,121,182,163,179,158,264,116"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="181,240,260,265"/>
+<area shape="poly" id="edge11_Node000002_Node000007" title=" " alt="" coords="286,120,234,229,229,226,281,118"/>
+<area shape="rect" id="Node000008" href="$xml_8h.html" title="Bounded, caller&#45;owned, no&#45;heap XML pull reader." alt="" coords="293,167,351,192"/>
+<area shape="poly" id="edge12_Node000002_Node000008" title=" " alt="" coords="297,118,313,153,308,155,292,120"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="131,194,77,234,74,229,128,190"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="174,190,282,232,280,237,172,194"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="148,192,154,227,161,246,172,264,191,281,214,294,261,312,259,317,211,299,188,285,168,267,156,249,149,229,143,193"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="159,190,200,229,196,232,155,194"/>
+<area shape="poly" id="edge10_Node000007_Node000005" title=" " alt="" coords="236,263,285,302,282,307,233,267"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="325,192,325,226,319,226,319,192"/>
+<area shape="poly" id="edge14_Node000008_Node000005" title=" " alt="" coords="339,190,354,205,368,223,376,244,374,266,359,289,340,307,336,303,355,286,369,264,371,245,363,226,350,208,335,194"/>
+<area shape="poly" id="edge15_Node000008_Node000007" title=" " alt="" coords="307,194,250,234,247,230,304,190"/>
+</map>

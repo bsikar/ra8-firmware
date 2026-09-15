@@ -1,0 +1,7 @@
+<map id="mdl_rabook_epub_source_t" name="mdl_rabook_epub_source_t">
+<area shape="rect" id="Node000001" title="Open portable EPUB stream retained during one compile." alt="" coords="5,197,205,223"/>
+<area shape="rect" id="Node000002" href="$structfw__fs__file__t.html" title="Caller&#45;owned open file; fields are private to the facade." alt="" coords="58,101,153,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="108,141,108,197,103,197,103,141"/>
+<area shape="rect" id="Node000003" href="$structfw__fs__stream__iface.html" title="Open&#45;file backend operations over caller&#45;supplied state." alt="" coords="31,5,179,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="108,45,108,101,103,101,103,45"/>
+</map>

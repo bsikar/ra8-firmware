@@ -1,0 +1,7 @@
+<map id="vfs_directory_state_t" name="vfs_directory_state_t">
+<area shape="rect" id="Node000001" title="Backend state stored in a caller&#39;s directory workspace." alt="" coords="5,197,164,223"/>
+<area shape="rect" id="Node000002" href="$structra8__io__vfs__dir__t.html" title="Caller&#45;owned format&#45;neutral directory cursor." alt="" coords="22,101,147,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="87,141,87,197,82,197,82,141"/>
+<area shape="rect" id="Node000003" href="$structra8__io__fsfmt__t.html" title="One registered filesystem format." alt="" coords="27,5,143,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="87,45,87,101,82,101,82,45"/>
+</map>

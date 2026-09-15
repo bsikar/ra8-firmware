@@ -1,0 +1,5 @@
+<map id="ra8_fmt_jof_inspect_workspace_t" name="ra8_fmt_jof_inspect_workspace_t">
+<area shape="rect" id="Node000001" title="Exact caller&#45;owned storage used by streaming JOF inspection." alt="" coords="5,101,156,141"/>
+<area shape="rect" id="Node000002" href="$structjof__audit__record__t.html" title="One decoded tile&#39;s stored window and content evidence." alt="" coords="11,5,150,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="83,45,83,101,78,101,78,45"/>
+</map>

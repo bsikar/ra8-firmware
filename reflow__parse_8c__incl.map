@@ -1,0 +1,50 @@
+<map id="apps/shared_libs/reflow/src/reflow_parse.c" name="apps/shared_libs/reflow/src/reflow_parse.c">
+<area shape="rect" id="Node000001" title="HTML&#45;subset parser entry point for reflow." alt="" coords="482,5,657,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="520,460,595,485"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="542,47,514,71,485,101,462,137,456,157,453,178,453,327,461,365,480,398,506,427,531,449,528,453,502,431,476,401,456,366,448,328,448,178,450,156,457,135,480,98,510,67,539,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="298,607,369,632"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="482,35,341,49,262,60,185,76,115,95,59,118,37,132,21,146,11,161,8,178,8,474,10,495,16,513,38,545,71,569,111,587,156,600,202,608,284,615,284,621,201,614,155,605,109,592,68,574,34,549,11,516,5,496,3,474,3,178,6,159,17,143,34,127,56,113,113,90,184,70,261,55,340,44,482,29"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="443,533,522,559"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="624,43,666,64,708,93,725,111,739,131,749,153,752,178,752,254,750,326,738,384,727,410,711,435,663,487,634,508,601,524,536,541,535,536,599,519,631,504,660,483,707,432,723,407,733,382,744,326,747,254,747,178,744,155,735,134,721,114,704,97,664,69,622,48"/>
+<area shape="rect" id="Node000005" href="$reflow_8h.html" title="HTML / CSS reflow + paginate engine for the ra8d2 ereader." alt="" coords="533,167,606,192"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="572,46,572,153,567,153,567,46"/>
+<area shape="rect" id="Node000012" href="$reflow__tokenize__internal_8h.html" title="Test&#45;access surface for reflow_tokenize.c internal helpers." alt="" coords="795,93,989,119"/>
+<area shape="poly" id="edge30_Node000001_Node000012" title=" " alt="" coords="647,43,832,88,831,93,646,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="460,561,371,603,369,598,458,556"/>
+<area shape="rect" id="Node000006" href="$reflow__api_8h.html" title="Reflow&#45;engine public + internal function prototypes." alt="" coords="519,240,620,265"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="572,192,572,226,567,226,567,192"/>
+<area shape="rect" id="Node000010" href="$reflow__types_8h.html" title="Reflow&#45;engine data model: enums, structs, typedefs, and the handle." alt="" coords="245,313,363,339"/>
+<area shape="poly" id="edge29_Node000005_Node000010" title=" " alt="" coords="549,195,338,309,336,304,547,190"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="565,267,551,293,536,329,527,370,529,411,545,447,540,449,524,413,522,369,531,327,546,290,560,264"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="603,263,682,297,727,320,769,348,805,379,829,412,835,431,836,449,831,468,821,487,791,513,746,536,688,556,624,573,491,599,383,615,382,610,490,594,623,568,687,551,744,531,788,509,817,484,826,466,831,449,830,432,824,415,801,382,766,352,724,325,679,301,601,268"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="588,263,618,288,651,323,665,343,674,365,679,389,676,413,661,455,631,487,585,516,536,535,534,530,582,512,628,483,656,452,671,411,673,389,669,367,660,346,647,326,615,292,584,267"/>
+<area shape="rect" id="Node000007" href="$ra8__glyph__atlas_8h.html" title="Fixed&#45;RAM&#45;budget glyph cache with LRU eviction (Layer 3, #147)." alt="" coords="174,387,311,412"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="544,268,282,384,280,379,542,263"/>
+<area shape="rect" id="Node000009" href="$reflow__image_8h.html" title="Zero&#45;heap raster image decode + scale + blit for reflow (#106)." alt="" coords="539,387,661,412"/>
+<area shape="poly" id="edge16_Node000006_Node000009" title=" " alt="" coords="574,265,597,373,592,374,569,266"/>
+<area shape="poly" id="edge20_Node000006_Node000010" title=" " alt="" coords="527,268,361,312,360,307,526,263"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="247,412,252,445,263,484,291,545,320,594,316,596,286,547,257,486,247,446,241,413"/>
+<area shape="poly" id="edge12_Node000007_Node000004" title=" " alt="" coords="294,410,351,428,408,458,443,488,469,520,465,524,439,492,405,462,349,433,293,415"/>
+<area shape="rect" id="Node000008" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="272,460,395,485"/>
+<area shape="poly" id="edge13_Node000007_Node000008" title=" " alt="" coords="259,410,309,449,306,453,256,414"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="336,486,336,593,331,593,331,486"/>
+<area shape="poly" id="edge15_Node000008_Node000004" title=" " alt="" coords="358,483,447,525,445,530,356,488"/>
+<area shape="poly" id="edge17_Node000009_Node000002" title=" " alt="" coords="595,414,573,450,569,447,591,411"/>
+<area shape="poly" id="edge18_Node000009_Node000003" title=" " alt="" coords="612,411,631,445,636,466,632,486,611,518,583,545,552,566,517,583,446,606,383,617,382,611,444,601,515,578,549,562,580,541,607,515,627,484,631,466,627,447,608,414"/>
+<area shape="poly" id="edge19_Node000009_Node000004" title=" " alt="" coords="608,411,616,446,616,467,609,487,594,504,576,518,537,536,534,531,574,513,591,500,604,484,611,466,611,447,602,413"/>
+<area shape="poly" id="edge21_Node000010_Node000002" title=" " alt="" coords="321,337,370,371,433,410,519,452,517,457,431,414,368,375,318,341"/>
+<area shape="poly" id="edge22_Node000010_Node000003" title=" " alt="" coords="255,341,190,362,156,376,125,393,100,412,83,433,77,457,84,484,101,510,123,533,148,552,176,568,233,592,285,607,284,612,231,597,173,573,145,557,119,537,97,514,79,486,71,457,78,431,96,408,122,388,154,371,188,357,253,336"/>
+<area shape="poly" id="edge23_Node000010_Node000004" title=" " alt="" coords="317,337,390,410,417,433,442,458,461,489,476,519,471,522,457,492,438,462,414,437,386,414,313,341"/>
+<area shape="poly" id="edge24_Node000010_Node000007" title=" " alt="" coords="296,341,264,378,260,374,292,337"/>
+<area shape="poly" id="edge28_Node000010_Node000009" title=" " alt="" coords="352,336,539,381,538,386,351,341"/>
+<area shape="rect" id="Node000011" href="$reflow__css_8h.html" title="Minimal content&#45;CSS cascade for the reflow ereader engine (#111)." alt="" coords="94,460,197,485"/>
+<area shape="poly" id="edge25_Node000010_Node000011" title=" " alt="" coords="246,340,201,358,181,372,164,388,150,416,147,446,141,445,145,415,159,385,177,367,199,353,244,336"/>
+<area shape="poly" id="edge26_Node000011_Node000003" title=" " alt="" coords="155,484,181,519,218,557,254,581,292,599,289,604,252,585,214,561,177,522,151,487"/>
+<area shape="poly" id="edge27_Node000011_Node000004" title=" " alt="" coords="197,482,430,531,429,536,196,487"/>
+<area shape="poly" id="edge31_Node000012_Node000002" title=" " alt="" coords="889,120,861,171,814,248,751,335,715,376,675,414,640,438,603,457,601,452,637,434,672,410,711,373,747,331,810,245,857,168,884,118"/>
+<area shape="poly" id="edge32_Node000012_Node000003" title=" " alt="" coords="903,118,935,173,949,211,955,251,955,474,950,496,935,515,913,532,885,547,811,572,723,590,627,603,533,612,383,620,382,614,533,607,627,598,722,585,810,567,883,543,911,528,932,512,945,494,949,474,949,252,944,212,930,175,898,120"/>
+<area shape="poly" id="edge34_Node000012_Node000004" title=" " alt="" coords="896,119,901,176,904,251,904,327,900,379,886,420,860,454,820,488,798,499,768,509,692,525,536,544,536,538,691,520,767,504,796,494,817,483,857,450,882,417,895,378,899,327,899,251,896,176,891,119"/>
+<area shape="poly" id="edge35_Node000012_Node000005" title=" " alt="" coords="841,121,620,170,619,164,840,116"/>
+<area shape="rect" id="Node000013" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="989,167,1115,192"/>
+<area shape="poly" id="edge33_Node000012_Node000013" title=" " alt="" coords="919,116,1014,159,1012,163,917,121"/>
+</map>

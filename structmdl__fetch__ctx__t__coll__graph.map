@@ -1,0 +1,71 @@
+<map id="mdl_fetch_ctx_t" name="mdl_fetch_ctx_t">
+<area shape="rect" id="Node000001" title="Everything mdl_fetch_run needs, injected for testability." alt="" coords="1469,583,1596,608"/>
+<area shape="rect" id="Node000002" href="$structmdl__session__t.html" title="One download session&#39;s identity and robots.txt state." alt="" coords="1197,465,1312,491"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1304,493,1446,552,1507,580,1505,585,1444,556,1302,498"/>
+<area shape="rect" id="Node000003" href="$structmdl__net__iface__t.html" title="A network backend handle: an immutable method table plus its state." alt="" coords="910,453,1037,479"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1050,467,1197,473,1197,478,1050,472"/>
+<area shape="rect" id="Node000004" href="$structra8__io__stream__t.html" title="Caller&#45;allocated byte&#45;stream handle binding a sink to its context." alt="" coords="910,357,1037,383"/>
+<area shape="poly" id="edge36_Node000001_Node000004" title=" " alt="" coords="1051,371,1137,381,1240,402,1294,417,1348,437,1399,461,1447,491,1473,512,1495,537,1526,581,1522,584,1491,541,1469,516,1444,495,1396,466,1346,442,1293,422,1239,407,1136,386,1050,376"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="1018,386,1074,409,1219,463,1217,468,1072,414,1016,391"/>
+<area shape="rect" id="Node000022" href="$structmdl__cache__t.html" title="One non&#45;reentrant cache binding over caller storage." alt="" coords="1203,279,1307,304"/>
+<area shape="poly" id="edge28_Node000022_Node000004" title=" " alt="" coords="1032,351,1208,301,1209,307,1034,356"/>
+<area shape="rect" id="Node000005" href="$structra8__io__stream__iface.html" title="Opaque to stream users; backend implementers use the public backend contract in ra8_io_stream_backend..." alt="" coords="610,357,765,383"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="779,367,910,367,910,373,779,373"/>
+<area shape="rect" id="Node000006" href="$structmdl__robots__cache__t.html" title="Fixed&#45;size per&#45;host robots.txt cache for one run." alt="" coords="897,507,1049,532"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="1063,510,1149,499,1203,488,1204,493,1150,505,1063,515"/>
+<area shape="rect" id="Node000007" href="$structmdl__robots__cache__entry__t.html" title="One host&#39;s cached robots.txt outcome." alt="" coords="591,507,784,532"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="798,517,897,517,897,522,798,522"/>
+<area shape="rect" id="Node000008" href="$structmdl__robots__t.html" title="Rules and crawl&#45;delay for the group matching our user&#45;agent." alt="" coords="309,507,416,532"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="430,517,590,517,590,522,430,522"/>
+<area shape="rect" id="Node000009" href="$structmdl__robots__rule__t.html" title="One Allow/Disallow rule from the selected group." alt="" coords="25,507,163,532"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="177,517,309,517,309,522,177,522"/>
+<area shape="rect" id="Node000010" href="$structmdl__storage__t.html" title="One non&#45;reentrant downloader filesystem dependency bundle." alt="" coords="916,185,1031,211"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1044,185,1135,180,1188,181,1244,187,1299,198,1353,216,1403,242,1447,277,1477,314,1499,356,1515,400,1525,445,1534,527,1535,582,1529,582,1529,527,1520,446,1509,402,1494,358,1472,317,1443,281,1400,247,1351,221,1298,204,1243,192,1188,187,1135,185,1044,190"/>
+<area shape="poly" id="edge25_Node000022_Node000010" title=" " alt="" coords="1031,212,1150,250,1221,276,1219,281,1148,255,1030,217"/>
+<area shape="rect" id="Node000011" href="$structfw__fs__t.html" title="One complete composition&#45;root filesystem binding." alt="" coords="653,185,721,211"/>
+<area shape="poly" id="edge10_Node000010_Node000011" title=" " alt="" coords="735,195,916,195,916,201,735,201"/>
+<area shape="rect" id="Node000012" href="$structfw__fs__namespace__t.html" title="Independently injectable path/namespace facade." alt="" coords="287,271,438,296"/>
+<area shape="poly" id="edge11_Node000011_Node000012" title=" " alt="" coords="451,281,509,275,566,261,578,254,589,245,658,208,661,213,592,250,581,258,568,266,510,280,452,287"/>
+<area shape="rect" id="Node000013" href="$structfw__fs__namespace__iface.html" title="Namespace backend operations." alt="" coords="5,305,183,331"/>
+<area shape="poly" id="edge12_Node000012_Node000013" title=" " alt="" coords="196,318,248,314,289,305,326,294,328,299,290,310,248,319,197,324"/>
+<area shape="rect" id="Node000014" href="$structfw__fs__caps__t.html" title="Static properties and workspace requirements of one bound port." alt="" coords="41,187,147,212"/>
+<area shape="poly" id="edge20_Node000011_Node000014" title=" " alt="" coords="160,201,272,206,453,206,653,197,653,203,453,211,272,211,160,206"/>
+<area shape="poly" id="edge13_Node000012_Node000014" title=" " alt="" coords="125,217,163,241,208,261,247,271,288,277,287,282,246,276,206,266,161,245,122,222"/>
+<area shape="rect" id="Node000015" href="$structfw__fs__stream__port__t.html" title="Independently injectable open&#45;stream facade." alt="" coords="285,100,440,125"/>
+<area shape="poly" id="edge16_Node000015_Node000014" title=" " alt="" coords="135,179,206,151,306,123,308,128,208,157,137,184"/>
+<area shape="rect" id="Node000017" href="$structfw__fs__transaction__port__t.html" title="Independently injectable staged&#45;transaction facade." alt="" coords="272,149,453,175"/>
+<area shape="poly" id="edge19_Node000017_Node000014" title=" " alt="" coords="160,188,271,172,272,177,161,193"/>
+<area shape="poly" id="edge14_Node000011_Node000015" title=" " alt="" coords="454,121,510,131,567,145,618,163,662,183,659,188,616,168,566,150,509,136,453,126"/>
+<area shape="rect" id="Node000016" href="$structfw__fs__stream__iface.html" title="Open&#45;file backend operations over caller&#45;supplied state." alt="" coords="20,5,168,31"/>
+<area shape="poly" id="edge15_Node000015_Node000016" title=" " alt="" coords="150,32,184,43,330,97,328,102,182,49,148,37"/>
+<area shape="poly" id="edge17_Node000011_Node000017" title=" " alt="" coords="467,171,654,192,653,197,467,176"/>
+<area shape="rect" id="Node000018" href="$structfw__fs__transaction__iface.html" title="Staged&#45;publication backend operations over caller&#45;supplied state." alt="" coords="7,59,181,84"/>
+<area shape="poly" id="edge18_Node000017_Node000018" title=" " alt="" coords="177,85,214,97,249,113,262,124,273,134,303,147,301,152,271,139,258,128,247,118,212,102,176,90"/>
+<area shape="rect" id="Node000019" href="$structmdl__state__t.html" title="One series&#39; complete persistent state (declare at file scope)." alt="" coords="1205,560,1304,585"/>
+<area shape="poly" id="edge21_Node000001_Node000019" title=" " alt="" coords="1318,575,1469,588,1469,593,1318,580"/>
+<area shape="rect" id="Node000020" href="$structmdl__chapter__rec__t.html" title="One chapter&#39;s coverage in library state." alt="" coords="902,560,1045,585"/>
+<area shape="poly" id="edge22_Node000019_Node000020" title=" " alt="" coords="1059,570,1205,570,1205,575,1059,575"/>
+<area shape="rect" id="Node000021" href="$structmdl__page__rec__t.html" title="One page&#39;s dedup/verify record in the series&#45;wide pool." alt="" coords="911,613,1036,639"/>
+<area shape="poly" id="edge23_Node000019_Node000021" title=" " alt="" coords="1049,615,1149,598,1210,583,1211,588,1150,603,1050,620"/>
+<area shape="poly" id="edge24_Node000001_Node000022" title=" " alt="" coords="1321,295,1386,312,1419,328,1447,349,1471,377,1490,409,1515,476,1528,539,1533,582,1528,583,1523,539,1510,478,1485,411,1466,380,1444,353,1416,332,1385,317,1320,300"/>
+<area shape="rect" id="Node000023" href="$structmdl__cache__index__t.html" title="Caller&#45;owned workspace for one loaded host index." alt="" coords="900,260,1047,285"/>
+<area shape="poly" id="edge26_Node000022_Node000023" title=" " alt="" coords="1060,276,1203,285,1202,291,1060,281"/>
+<area shape="rect" id="Node000024" href="$structmdl__cache__record__t.html" title="One exact URL&#45;keyed cached document observation." alt="" coords="611,260,763,285"/>
+<area shape="poly" id="edge27_Node000023_Node000024" title=" " alt="" coords="777,270,900,270,900,275,777,275"/>
+<area shape="rect" id="Node000025" href="$structmdl__site__t.html" title="One site&#39;s scraping rules (all data, no logic)." alt="" coords="1209,609,1300,635"/>
+<area shape="poly" id="edge29_Node000001_Node000025" title=" " alt="" coords="1314,621,1377,620,1445,614,1487,605,1488,611,1446,619,1377,625,1314,626"/>
+<area shape="rect" id="Node000026" href="$structmdl__governor__t.html" title="Closed&#45;loop per&#45;host politeness governor (rate + backoff + concurrency)." alt="" coords="1193,667,1317,692"/>
+<area shape="poly" id="edge30_Node000001_Node000026" title=" " alt="" coords="1330,673,1387,665,1444,649,1483,629,1514,606,1518,610,1486,633,1446,654,1388,670,1331,678"/>
+<area shape="rect" id="Node000027" href="$structmdl__gov__cfg__t.html" title="Per&#45;site politeness tunables the governor is initialised with." alt="" coords="915,667,1032,692"/>
+<area shape="poly" id="edge31_Node000026_Node000027" title=" " alt="" coords="1046,677,1193,677,1193,682,1046,682"/>
+<area shape="rect" id="Node000028" href="$structmdl__host__rec__t.html" title="One host&#39;s live governor state (a slot in the fixed per&#45;host table)." alt="" coords="913,720,1034,745"/>
+<area shape="poly" id="edge32_Node000026_Node000028" title=" " alt="" coords="1047,721,1149,705,1210,689,1211,695,1150,710,1048,727"/>
+<area shape="rect" id="Node000029" href="$structmdl__url__list__t.html" title="Bounded list of absolute URLs found on a page." alt="" coords="1199,716,1310,741"/>
+<area shape="poly" id="edge33_Node000001_Node000029" title=" " alt="" coords="1324,728,1385,720,1415,711,1444,698,1471,678,1493,653,1523,607,1527,610,1497,656,1474,682,1447,703,1417,716,1386,725,1324,733"/>
+<area shape="rect" id="Node000030" href="$structmdl__fetch__faillog__t.html" title="Bounded record of every failure in a run (declare at file scope)." alt="" coords="1181,771,1328,796"/>
+<area shape="poly" id="edge34_Node000001_Node000030" title=" " alt="" coords="1341,784,1395,775,1420,766,1444,753,1462,738,1477,720,1501,679,1517,638,1526,608,1531,609,1522,640,1506,681,1482,723,1466,742,1447,758,1423,771,1396,781,1342,789"/>
+<area shape="rect" id="Node000031" href="$structmdl__fetch__fail__t.html" title="One recorded page/chapter failure: what failed, and with what status." alt="" coords="910,773,1037,799"/>
+<area shape="poly" id="edge35_Node000030_Node000031" title=" " alt="" coords="1051,783,1149,782,1181,782,1181,787,1149,787,1051,788"/>
+<area shape="rect" id="Node000032" href="$structmdl__fetch__progress__t.html" title="One per&#45;page progress event the run emits through mdl_progress_fn." alt="" coords="1173,823,1336,848"/>
+<area shape="poly" id="edge37_Node000001_Node000032" title=" " alt="" coords="1349,840,1399,832,1423,823,1444,811,1466,789,1485,763,1510,704,1523,649,1528,608,1533,609,1528,650,1515,706,1489,765,1470,792,1447,815,1425,828,1401,837,1350,846"/>
+</map>

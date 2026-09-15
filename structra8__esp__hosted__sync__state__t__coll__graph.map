@@ -1,0 +1,5 @@
+<map id="ra8_esp_hosted_sync_state_t" name="ra8_esp_hosted_sync_state_t">
+<area shape="rect" id="Node000001" title="Module state of the mutex and semaphore half – entirely static." alt="" coords="5,101,167,141"/>
+<area shape="rect" id="Node000002" href="$structTX__MUTEX.html" title="Opaque mutex stand&#45;in for the host build." alt="" coords="39,5,133,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="89,45,89,101,83,101,83,45"/>
+</map>

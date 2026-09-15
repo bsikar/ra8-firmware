@@ -1,0 +1,13 @@
+<map id="libs/ra8_mpu/inc/ra8_mpu.h" name="libs/ra8_mpu/inc/ra8_mpu.h">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 Memory Protection Unit (MPU) configuration helper." alt="" coords="463,5,618,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2mpu__partition__simple_2src_2main_8c.html" title="Single&#45;region MPU read&#45;only partition demo with fault recovery." alt="" coords="5,93,212,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="450,48,225,96,213,99,212,93,224,91,449,43"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2mpu__boot__map__hal_2src_2main_8c.html" title="&quot;MPU boot map brought up through the ra8_mpu HAL&quot; self&#45;test (#576)" alt="" coords="237,93,423,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="487,53,390,96,388,91,485,48"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2mpu__boot__map__hal_2src_2system__init_8c.html" title="Cortex&#45;M85 / RA8D2 core bring&#45;up – MPU map via the ra8_mpu HAL (#576)." alt="" coords="447,93,634,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="543,59,543,93,538,93,538,59"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2threadx__mpu__partition__demo_2src_2main_8c.html" title="Eclipse ThreadX + Arm v8&#45;M MPU partition demo for RA8D2." alt="" coords="658,93,893,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="602,48,710,91,708,96,600,53"/>
+<area shape="rect" id="Node000006" href="$ra8__mpu_8c.html" title="Cortex&#45;M85 Memory Protection Unit configuration helper." alt="" coords="917,101,1071,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="632,38,762,61,905,91,933,98,932,103,904,96,761,66,631,43"/>
+</map>

@@ -1,0 +1,64 @@
+<map id="tools/ra8_emulator/inc/emu_presentation.h" name="tools/ra8_emulator/inc/emu_presentation.h">
+<area shape="rect" id="Node000001" title="Bounded raw&#45;descriptor presentation surface and scratch workspace." alt="" coords="1347,5,1525,45"/>
+<area shape="rect" id="Node000002" href="$board__view_8h.html" title="Minimal self&#45;contained macOS window for the board emulator." alt="" coords="647,93,793,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1333,42,793,106,793,101,1333,36"/>
+<area shape="rect" id="Node000003" href="$emu__run_8h.html" title="The chunked emulation run loop, report and exit&#45;code mapping." alt="" coords="322,189,467,229"/>
+<area shape="poly" id="edge20_Node000001_Node000003" title=" " alt="" coords="1333,33,963,55,773,73,696,84,637,96,576,116,518,142,426,191,424,186,516,137,574,111,635,91,695,78,773,67,963,49,1333,28"/>
+<area shape="rect" id="Node000016" href="$emu__view_8h.html" title="Board&#45;view presentation: frames, composition, input routing, panels." alt="" coords="1281,189,1426,229"/>
+<area shape="poly" id="edge21_Node000001_Node000016" title=" " alt="" coords="1424,59,1364,190,1360,187,1419,57"/>
+<area shape="rect" id="Node000018" href="$emu__presentation_8c.html" title="Checked raw&#45;fd presentation workspace implementation." alt="" coords="1351,291,1577,331"/>
+<area shape="poly" id="edge39_Node000001_Node000018" title=" " alt="" coords="1442,59,1465,291,1460,291,1437,59"/>
+<area shape="rect" id="Node000022" href="$emu__view__surface__internal_8h.html" title="Internal streamed panel/composite builder seam." alt="" coords="1592,181,1763,236"/>
+<area shape="poly" id="edge33_Node000001_Node000022" title=" " alt="" coords="1474,52,1644,179,1641,183,1471,56"/>
+<area shape="rect" id="Node000023" href="$emu__view__tile__internal_8h.html" title="Internal bounded RGB565 tile rotation/writer." alt="" coords="1787,189,2000,229"/>
+<area shape="poly" id="edge36_Node000001_Node000023" title=" " alt="" coords="1497,48,1847,186,1845,191,1495,53"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="642,140,461,191,460,186,641,135"/>
+<area shape="rect" id="Node000006" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="186,394,331,434"/>
+<area shape="poly" id="edge19_Node000002_Node000006" title=" " alt="" coords="634,124,475,142,288,174,198,195,119,221,57,251,35,268,18,286,11,299,8,311,10,324,18,337,34,355,52,369,95,391,141,403,186,410,185,415,140,409,93,396,50,374,30,359,14,340,5,326,3,311,6,297,14,282,31,264,55,247,117,216,197,190,287,169,474,137,633,119"/>
+<area shape="rect" id="Node000007" href="$emu__run__internal_8h.html" title="Shared run&#45;loop state + cross&#45;TU run helpers (ra8_emulator internal)." alt="" coords="773,291,947,331"/>
+<area shape="poly" id="edge13_Node000002_Node000007" title=" " alt="" coords="664,142,641,160,624,183,614,210,616,221,623,234,646,251,682,267,773,291,772,297,680,272,643,256,619,238,611,223,609,209,619,180,637,156,661,138"/>
+<area shape="rect" id="Node000008" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="731,394,896,434"/>
+<area shape="poly" id="edge17_Node000002_Node000008" title=" " alt="" coords="672,142,611,180,581,203,554,228,533,255,521,283,520,310,533,337,557,350,606,365,731,394,730,399,605,370,555,355,529,341,515,311,515,281,528,252,550,225,577,199,608,175,669,138"/>
+<area shape="rect" id="Node000010" href="$emu__run__report_8c.html" title="Run&#45;end report + finalize (see emu_run_internal.h)." alt="" coords="920,387,1075,441"/>
+<area shape="poly" id="edge18_Node000002_Node000010" title=" " alt="" coords="765,138,822,179,848,207,874,234,898,248,920,255,941,263,962,282,978,307,988,335,998,386,993,387,983,336,973,310,958,286,938,268,918,260,896,253,870,238,844,211,818,183,762,143"/>
+<area shape="rect" id="Node000013" href="$board__view__pixels_8c.html" title="Bounded raw&#45;fd RGB565 to CoreGraphics byte&#45;range expansion." alt="" coords="633,181,807,236"/>
+<area shape="poly" id="edge14_Node000002_Node000013" title=" " alt="" coords="723,147,723,181,717,181,717,147"/>
+<area shape="rect" id="Node000014" href="$board__view__provider_8c.html" title="Immutable raw&#45;fd CoreGraphics direct provider implementation." alt="" coords="883,181,1058,236"/>
+<area shape="poly" id="edge15_Node000002_Node000014" title=" " alt="" coords="784,136,901,179,899,184,783,141"/>
+<area shape="rect" id="Node000015" href="$board__view__stub_8c.html" title="Headless no&#45;op board view for non&#45;Apple builds (Linux CI)." alt="" coords="1082,181,1257,236"/>
+<area shape="poly" id="edge16_Node000002_Node000015" title=" " alt="" coords="807,127,1071,179,1082,181,1081,187,1070,184,806,132"/>
+<area shape="rect" id="Node000004" href="$emu__args_8h.html" title="ra8_emulator command&#45;line parsing (usage text + option decoding)" alt="" coords="322,291,467,331"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="397,243,397,291,392,291,392,243"/>
+<area shape="poly" id="edge12_Node000003_Node000006" title=" " alt="" coords="325,237,293,257,268,285,257,312,253,342,257,393,252,394,248,341,252,311,263,283,289,253,322,232"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="481,226,773,289,772,294,480,231"/>
+<area shape="rect" id="Node000011" href="$emu__idle_8c.html" title="Wait&#45;for&#45;interrupt idle&#45;spin detector (see emu_exc.h)." alt="" coords="28,291,196,331"/>
+<area shape="poly" id="edge10_Node000003_Node000011" title=" " alt="" coords="330,236,166,294,164,289,328,231"/>
+<area shape="rect" id="Node000012" href="$emu__run__guards_8c.html" title="Run&#45;guard environment knob reader (see emu_run.h)." alt="" coords="543,284,697,339"/>
+<area shape="poly" id="edge11_Node000003_Node000012" title=" " alt="" coords="451,232,562,281,560,286,448,237"/>
+<area shape="rect" id="Node000005" href="$emu__args_8c.html" title="CLI parsing implementation (see emu_args.h)." alt="" coords="465,394,637,434"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="437,337,523,392,520,396,434,341"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="360,342,286,396,283,392,357,337"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="848,345,825,395,820,393,843,343"/>
+<area shape="rect" id="Node000009" href="$emu__run__inner_8c.html" title="Inner per&#45;chunk exception&#45;resolve loop (see emu_run_internal.h)." alt="" coords="1099,387,1253,441"/>
+<area shape="poly" id="edge8_Node000007_Node000009" title=" " alt="" coords="933,333,1099,385,1097,391,931,338"/>
+<area shape="poly" id="edge9_Node000007_Node000010" title=" " alt="" coords="899,337,963,384,960,389,895,342"/>
+<area shape="poly" id="edge22_Node000016_Node000005" title=" " alt="" coords="1286,235,1270,239,1192,249,1125,251,1008,242,953,240,896,244,833,258,763,286,746,298,736,311,727,326,711,341,657,373,604,396,602,391,655,368,708,337,723,322,732,308,743,294,760,282,832,253,895,238,953,234,1009,237,1125,246,1192,244,1269,233,1285,230"/>
+<area shape="poly" id="edge32_Node000016_Node000006" title=" " alt="" coords="1288,235,1270,239,1202,244,1087,245,783,246,624,249,481,255,372,267,334,276,311,286,289,309,275,339,267,369,263,394,257,394,261,368,270,337,285,306,308,282,332,271,371,262,481,250,623,244,782,241,1087,240,1201,238,1269,233,1287,230"/>
+<area shape="poly" id="edge25_Node000016_Node000008" title=" " alt="" coords="1283,235,1270,239,1213,252,1168,260,1123,269,1068,286,1014,312,961,341,852,396,850,391,959,336,1011,307,1066,282,1122,264,1167,255,1212,247,1269,233,1281,230"/>
+<area shape="poly" id="edge27_Node000016_Node000009" title=" " alt="" coords="1284,236,1208,264,1180,276,1166,286,1157,309,1155,336,1160,362,1167,386,1162,387,1155,364,1150,336,1151,308,1162,282,1177,272,1206,259,1282,231"/>
+<area shape="poly" id="edge28_Node000016_Node000010" title=" " alt="" coords="1282,235,1205,262,1148,286,1112,310,1078,337,1024,388,1020,384,1075,333,1109,306,1145,282,1203,257,1280,230"/>
+<area shape="poly" id="edge26_Node000016_Node000012" title=" " alt="" coords="1286,235,1270,239,1186,253,1115,260,993,264,871,268,800,274,717,287,698,290,697,285,716,281,799,269,871,262,993,259,1115,255,1186,247,1269,233,1285,230"/>
+<area shape="rect" id="Node000017" href="$emu__elf__reboot_8c.html" title="Warm&#45;reboot orchestration over an open streaming ELF source." alt="" coords="1175,284,1326,339"/>
+<area shape="poly" id="edge23_Node000016_Node000017" title=" " alt="" coords="1326,240,1280,286,1276,282,1323,236"/>
+<area shape="poly" id="edge24_Node000016_Node000018" title=" " alt="" coords="1386,236,1445,289,1442,293,1382,240"/>
+<area shape="rect" id="Node000019" href="$emu__view_8c.html" title="Board&#45;view presentation implementation (see emu_view.h)." alt="" coords="1602,291,1777,331"/>
+<area shape="poly" id="edge29_Node000016_Node000019" title=" " alt="" coords="1430,230,1627,289,1626,294,1429,235"/>
+<area shape="rect" id="Node000020" href="$emu__view__surface_8c.html" title="Bounded&#45;tile GLCDC rotation, raw&#45;fd composition, and PPM export." alt="" coords="1801,284,1965,339"/>
+<area shape="poly" id="edge30_Node000016_Node000020" title=" " alt="" coords="1440,219,1603,245,1790,281,1801,284,1800,289,1789,287,1602,250,1440,225"/>
+<area shape="rect" id="Node000021" href="$emu__view__tile_8c.html" title="Pure bounded tile rotation plus checked raw&#45;surface row writes." alt="" coords="1989,284,2153,339"/>
+<area shape="poly" id="edge31_Node000016_Node000021" title=" " alt="" coords="1440,217,1978,281,1989,284,1988,289,1977,287,1439,223"/>
+<area shape="poly" id="edge34_Node000022_Node000019" title=" " alt="" coords="1685,250,1690,291,1684,291,1680,250"/>
+<area shape="poly" id="edge35_Node000022_Node000020" title=" " alt="" coords="1744,239,1830,282,1828,286,1742,244"/>
+<area shape="poly" id="edge37_Node000023_Node000020" title=" " alt="" coords="1893,243,1888,284,1883,283,1887,242"/>
+<area shape="poly" id="edge38_Node000023_Node000021" title=" " alt="" coords="1940,233,2026,282,2023,286,1937,238"/>
+</map>

@@ -1,0 +1,10 @@
+<map id="libs/ra8_secure_app/src/sec_cmac_internal.h" name="libs/ra8_secure_app/src/sec_cmac_internal.h">
+<area shape="rect" id="Node000001" title="Secure&#45;side AES&#45;CMAC seam (real PSA backend / in&#45;tree reference)." alt="" coords="5,5,188,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="75,167,145,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="65,48,46,62,30,80,21,98,24,118,44,141,69,158,66,162,40,145,20,120,16,98,25,77,42,58,62,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="34,93,159,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="99,46,99,79,94,79,94,46"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="184,93,263,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="129,43,195,84,192,88,126,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="207,121,141,162,138,157,204,116"/>
+</map>

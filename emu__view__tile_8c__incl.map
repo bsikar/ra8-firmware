@@ -1,0 +1,26 @@
+<map id="tools/ra8_emulator/src/engine/emu_view_tile.c" name="tools/ra8_emulator/src/engine/emu_view_tile.c">
+<area shape="rect" id="Node000001" title="Pure bounded tile rotation plus checked raw&#45;surface row writes." alt="" coords="156,5,320,60"/>
+<area shape="rect" id="Node000002" href="$emu__view_8h.html" title="Board&#45;view presentation: frames, composition, input routing, panels." alt="" coords="272,108,372,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="266,58,303,96,299,100,262,62"/>
+<area shape="rect" id="Node000009" href="$emu__view__tile__internal_8h.html" title="Internal bounded RGB565 tile rotation/writer." alt="" coords="61,108,248,133"/>
+<area shape="poly" id="edge13_Node000001_Node000009" title=" " alt="" coords="215,62,177,100,173,96,211,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="355,328,426,353"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="360,131,396,150,412,163,425,180,432,197,435,216,432,253,421,288,407,317,402,315,416,286,427,252,430,216,427,199,420,183,408,167,393,154,358,136"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="255,181,390,207"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="325,134,325,168,320,168,320,134"/>
+<area shape="rect" id="Node000005" href="$board__overlay_8h.html" title="Composite board&#45;view renderer: panel framebuffer + a status sidebar." alt="" coords="228,255,353,280"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="349,131,373,145,395,163,408,184,409,196,405,208,380,234,349,252,346,247,377,230,400,205,404,195,403,186,391,166,370,149,346,136"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="53,328,178,353"/>
+<area shape="poly" id="edge12_Node000002_Node000006" title=" " alt="" coords="273,135,145,162,92,175,68,183,55,206,53,228,59,251,69,279,80,299,94,317,90,320,75,302,64,281,54,253,48,228,50,205,65,179,90,170,144,157,272,129"/>
+<area shape="rect" id="Node000007" href="$emu__presentation_8h.html" title="Bounded raw&#45;descriptor presentation surface and scratch workspace." alt="" coords="78,181,230,207"/>
+<area shape="poly" id="edge7_Node000002_Node000007" title=" " alt="" coords="296,136,195,178,193,173,294,131"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="308,278,364,318,361,322,305,282"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="263,282,158,325,156,320,261,278"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="221,204,306,225,342,238,367,253,377,267,385,282,392,314,387,315,380,284,373,269,363,257,340,243,304,230,220,209"/>
+<area shape="poly" id="edge10_Node000007_Node000005" title=" " alt="" coords="177,204,257,246,255,251,175,209"/>
+<area shape="poly" id="edge11_Node000007_Node000006" title=" " alt="" coords="162,207,170,240,171,261,168,281,156,302,141,320,137,317,152,299,163,279,166,260,165,241,157,208"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="78,255,153,280"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="150,208,131,244,126,241,146,206"/>
+<area shape="poly" id="edge15_Node000009_Node000006" title=" " alt="" coords="96,136,56,154,38,166,25,183,12,208,8,230,13,253,25,279,45,303,72,320,69,324,42,307,20,281,8,254,3,230,7,206,20,180,35,163,53,149,94,131"/>
+<area shape="poly" id="edge14_Node000009_Node000007" title=" " alt="" coords="157,134,157,168,152,168,152,134"/>
+</map>

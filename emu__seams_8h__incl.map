@@ -1,0 +1,16 @@
+<map id="tools/ra8_emulator/inc/emu_seams.h" name="tools/ra8_emulator/inc/emu_seams.h">
+<area shape="rect" id="Node000001" title="Armv8.1&#45;M instruction&#45;emulation seams (M85 ops on Unicorn&#39;s M33)." alt="" coords="135,5,280,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,167,76,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="188,48,65,159,62,155,185,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="100,167,235,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="205,47,176,154,171,153,200,45"/>
+<area shape="rect" id="Node000004" href="$emu__elf_8h.html" title="ELF32 image services for the board emulator (load / symbols / vectors)." alt="" coords="205,93,292,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="220,44,238,80,234,82,215,47"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="358,167,483,192"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="237,43,306,91,396,156,393,161,303,96,234,48"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="216,121,88,165,87,160,214,116"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="237,121,193,160,189,156,234,117"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="259,167,334,192"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="259,118,284,154,279,157,254,121"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="277,116,381,159,379,164,275,121"/>
+</map>

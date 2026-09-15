@@ -1,0 +1,7 @@
+<map id="apps/shared_libs/book/src/book_stream_internal.h" name="apps/shared_libs/book/src/book_stream_internal.h">
+<area shape="rect" id="Node000001" title="Private wire geometry for strict RABOOK1 stream validation." alt="" coords="86,5,289,45"/>
+<area shape="rect" id="Node000002" href="$book__stream_8c.html" title="Strict callback&#45;driven validation of a RABOOK1 flat blob." alt="" coords="5,93,172,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="157,56,112,95,109,91,154,52"/>
+<area shape="rect" id="Node000003" href="$book__stream__wire_8c.html" title="Wire decoding and canonical layout validation for streamed books." alt="" coords="196,93,376,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="221,52,266,91,262,95,218,56"/>
+</map>

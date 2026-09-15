@@ -1,0 +1,31 @@
+<map id="libs/ra8_widget/src/ra8_widget.c" name="libs/ra8_widget/src/ra8_widget.c">
+<area shape="rect" id="Node000001" title="Implementation of the ra8_widget composable&#45;UI layer (#145)." alt="" coords="135,5,279,45"/>
+<area shape="rect" id="Node000002" href="$ra8__widget_8h.html" title="Zero&#45;heap composable widget layer (dwm&#45;style) over ra8_box + ra8_ui." alt="" coords="13,93,120,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="174,48,101,89,98,84,172,43"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="144,93,269,119"/>
+<area shape="poly" id="edge12_Node000001_Node000007" title=" " alt="" coords="209,46,209,79,204,79,204,46"/>
+<area shape="rect" id="Node000008" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="257,240,357,265"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="238,43,263,65,284,92,298,127,306,163,310,226,305,227,301,164,293,128,279,95,259,68,234,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="113,387,183,412"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="51,121,29,141,11,168,8,179,11,191,21,236,33,269,50,300,77,337,97,359,120,377,116,381,94,363,73,340,46,303,28,271,16,237,5,193,3,179,6,166,25,137,48,117"/>
+<area shape="rect" id="Node000004" href="$ra8__box_8h.html" title="Bounded, allocation&#45;free box&#45;model layout for e&#45;reader chrome." alt="" coords="21,167,107,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="69,119,68,153,62,153,64,119"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="109,313,187,339"/>
+<area shape="poly" id="edge10_Node000002_Node000005" title=" " alt="" coords="88,117,115,136,147,164,176,199,196,239,199,253,196,266,186,287,172,305,168,302,181,284,191,264,193,253,191,241,171,201,143,168,112,140,85,121"/>
+<area shape="rect" id="Node000006" href="$ra8__ui_8h.html" title="Bounded UI interaction core: hit&#45;testing, screen stack, paging." alt="" coords="107,240,181,265"/>
+<area shape="poly" id="edge11_Node000002_Node000006" title=" " alt="" coords="82,117,102,138,121,165,134,196,142,226,137,227,129,198,116,168,98,142,78,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="66,192,69,256,77,298,92,337,106,358,123,376,120,380,102,362,87,340,72,299,64,257,61,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="69,191,79,225,97,264,127,302,123,305,92,267,74,227,64,193"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="79,190,123,229,119,233,75,194"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="151,339,151,373,145,373,145,339"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="132,267,105,299,97,318,99,338,110,358,125,376,121,379,106,361,94,339,92,317,100,296,128,264"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="147,266,149,300,144,300,142,266"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="296,268,173,379,169,375,292,264"/>
+<area shape="poly" id="edge15_Node000008_Node000005" title=" " alt="" coords="282,268,187,310,185,305,280,263"/>
+<area shape="rect" id="Node000009" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="263,313,345,339"/>
+<area shape="poly" id="edge16_Node000008_Node000009" title=" " alt="" coords="309,266,308,300,302,300,304,266"/>
+<area shape="rect" id="Node000010" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="370,313,518,339"/>
+<area shape="poly" id="edge18_Node000008_Node000010" title=" " alt="" coords="330,263,411,305,408,309,328,268"/>
+<area shape="poly" id="edge17_Node000009_Node000003" title=" " alt="" coords="280,341,187,383,185,378,278,336"/>
+<area shape="poly" id="edge19_Node000010_Node000003" title=" " alt="" coords="397,341,197,389,196,384,396,336"/>
+</map>

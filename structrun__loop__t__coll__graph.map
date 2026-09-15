@@ -1,0 +1,20 @@
+<map id="run_loop_t" name="run_loop_t">
+<area shape="rect" id="Node000001" title="The whole run&#39;s mutable state, threaded through the phase helpers." alt="" coords="538,293,629,319"/>
+<area shape="rect" id="Node000002" href="$structemu__run__cfg__t.html" title="Everything setup hands the run loop: engine, image, CLI products." alt="" coords="267,197,385,223"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="361,226,452,267,538,292,537,297,450,272,359,231"/>
+<area shape="rect" id="Node000003" href="$structemu__elf__source__t.html" title="One independently owned immutable raw&#45;descriptor ELF source." alt="" coords="5,101,143,127"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="119,129,296,195,294,200,117,134"/>
+<area shape="rect" id="Node000004" href="$structemu__presentation__workspace__t.html" title="One independent owned surface plus non&#45;owning bounded scratch." alt="" coords="390,101,619,127"/>
+<area shape="poly" id="edge8_Node000001_Node000004" title=" " alt="" coords="504,141,505,180,514,222,525,243,540,262,570,291,567,295,536,265,521,246,509,224,499,181,499,141"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="439,133,391,153,361,176,338,199,334,195,357,172,389,148,437,128"/>
+<area shape="rect" id="Node000005" href="$structemu__memmap__workspace.html" title="Independent aperture backing with at most two engine bindings." alt="" coords="167,101,365,127"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="275,139,290,172,312,195,308,199,285,175,270,141"/>
+<area shape="rect" id="Node000006" href="$structemu__memmap__backing__t.html" title="One owned host aperture mapping." alt="" coords="64,5,255,31"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="184,38,255,99,251,103,181,42"/>
+<area shape="rect" id="Node000007" href="$structemu__memmap__binding__t.html" title="One caller&#45;owned association between a Unicorn engine and backing." alt="" coords="279,5,467,31"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="351,42,281,103,277,99,348,38"/>
+<area shape="rect" id="Node000008" href="$structrun__guards__t.html" title="The run&#45;guard knobs (env&#45;tunable budgets + stop conditions)." alt="" coords="614,197,721,223"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="650,235,596,295,592,291,646,231"/>
+<area shape="rect" id="Node000009" href="$structboard__view__storage__t.html" title="Caller&#45;owned pointer&#45;aligned storage for one platform view handle." alt="" coords="745,197,910,223"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="792,231,695,272,623,296,622,291,693,267,790,226"/>
+</map>

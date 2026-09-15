@@ -1,0 +1,8 @@
+<map id="apps/shared_libs/unarch/inc/unarch_xz_pool.h" name="apps/shared_libs/unarch/inc/unarch_xz_pool.h">
+<area shape="rect" id="Node000001" title="Caller&#45;owned bump arena backing xz&#45;embedded&#39;s allocator seam." alt="" coords="5,5,184,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="59,167,130,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="92,46,85,80,84,118,90,153,85,154,79,119,80,79,86,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="94,93,173,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="106,44,124,80,119,82,102,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="129,120,110,156,105,153,125,118"/>
+</map>

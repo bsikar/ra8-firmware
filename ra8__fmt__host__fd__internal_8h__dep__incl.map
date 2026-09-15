@@ -1,0 +1,15 @@
+<map id="tools/rabook_imagepack/inc/ra8_fmt_host_fd_internal.h" name="tools/rabook_imagepack/inc/ra8_fmt_host_fd_internal.h">
+<area shape="rect" id="Node000001" title="Raw file&#45;descriptor adapters for the portable format&#45;tool contracts." alt="" coords="505,5,729,45"/>
+<area shape="rect" id="Node000002" href="$tools_2rabook__imagepack_2src_2main_8c.html" title="Portable command entry for JOF and RBKC content tooling." alt="" coords="5,101,188,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="491,46,351,68,200,96,168,103,167,98,199,91,350,63,491,41"/>
+<area shape="rect" id="Node000003" href="$ra8__fmt__host__fd_8c.html" title="Fail&#45;closed raw&#45;fd host composition for portable format engines." alt="" coords="212,101,395,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="541,52,367,103,366,98,540,47"/>
+<area shape="rect" id="Node000004" href="$ra8__fmt__host__spool_8c.html" title="Owned anonymous raw&#45;fd spools for bounded verifier composition." alt="" coords="419,101,607,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="587,57,535,103,532,99,583,53"/>
+<area shape="rect" id="Node000005" href="$ra8__fmt__portable__convert_8c.html" title="Raw&#45;descriptor composition root for caller&#45;workspace JOF conversion." alt="" coords="631,93,813,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="650,52,694,91,691,95,646,56"/>
+<area shape="rect" id="Node000006" href="$ra8__fmt__portable__main_8c.html" title="Raw&#45;descriptor CLI composition for JOF and RBKC inspection." alt="" coords="837,93,1020,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="693,47,842,91,840,96,692,52"/>
+<area shape="rect" id="Node000007" href="$ra8__fmt__portable__verify_8c.html" title="Raw&#45;fd composition root for bounded two&#45;spool JOF verification." alt="" coords="1044,93,1227,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="743,41,883,63,1033,91,1044,93,1043,98,1032,96,882,68,742,46"/>
+</map>

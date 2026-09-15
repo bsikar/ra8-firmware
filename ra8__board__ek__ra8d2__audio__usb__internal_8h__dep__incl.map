@@ -1,0 +1,5 @@
+<map id="libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_audio_usb_internal.h" name="libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_audio_usb_internal.h">
+<area shape="rect" id="Node000001" title="Private diagnostic surface for the EK&#45;RA8D2 audio and USB BSP." alt="" coords="5,5,187,60"/>
+<area shape="rect" id="Node000002" href="$ra8__board__ek__ra8d2__audio__usb_8c.html" title="EK&#45;RA8D2 BSP – DA7212 audio CODEC, USB&#45;HS, and U15 I/O expander." alt="" coords="5,108,187,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,74,99,108,93,108,93,74"/>
+</map>

@@ -1,0 +1,10 @@
+<map id="examples/ek_ra8d2/common/network_provision/inc/ra8_net_provision.h" name="examples/ek_ra8d2/common/network_provision/inc/ra8_net_provision.h">
+<area shape="rect" id="Node000001" title="Runtime network provisioning contract for EK&#45;RA8D2 applications." alt="" coords="12,5,223,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,80,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,62,64,99,60,96,93,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="121,181,191,207"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="126,60,153,167,147,169,121,61"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,108,234,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="143,58,177,96,173,99,139,62"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="191,135,171,171,166,168,186,132"/>
+</map>

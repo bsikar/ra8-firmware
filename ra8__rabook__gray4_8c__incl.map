@@ -1,0 +1,27 @@
+<map id="apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c" name="apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c">
+<area shape="rect" id="Node000001" title="Grayscale image transcode – downscale + quantise + nibble&#45;pack (4&#45;bpp) or copy (8&#45;bpp)." alt="" coords="215,5,396,60"/>
+<area shape="rect" id="Node000002" href="$ra8__rabook__gray4_8h.html" title="Grayscale image transcode stage (4&#45;bpp / 8&#45;bpp) for the on&#45;device EPUB compiler (#149)." alt="" coords="29,108,180,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="245,63,145,105,143,100,243,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="122,255,193,280"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="215,48,156,58,97,72,48,89,30,99,19,110,9,129,10,148,19,167,35,186,77,220,123,246,120,251,74,224,31,190,15,170,5,149,4,128,14,106,27,95,46,84,96,66,155,53,214,42"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="80,181,158,207"/>
+<area shape="poly" id="edge15_Node000001_Node000004" title=" " alt="" coords="277,62,193,135,146,174,142,170,189,131,274,58"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="432,108,502,133"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="356,58,434,99,432,104,354,62"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="527,108,652,133"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="393,58,540,102,538,107,392,63"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="256,108,356,133"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="308,60,308,94,303,94,303,60"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="407,181,490,207"/>
+<area shape="poly" id="edge16_Node000001_Node000008" title=" " alt="" coords="331,58,431,169,427,173,327,62"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="95,135,71,168,66,187,69,206,89,229,115,246,112,251,86,233,65,208,60,187,66,166,90,132"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="109,133,117,167,111,168,104,134"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="128,206,147,241,143,244,123,208"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="288,136,256,156,224,183,197,214,175,244,170,241,192,210,220,179,253,152,285,131"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="277,136,163,179,161,174,275,131"/>
+<area shape="poly" id="edge11_Node000007_Node000008" title=" " alt="" coords="330,131,414,173,412,177,327,136"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="234,181,382,207"/>
+<area shape="poly" id="edge13_Node000007_Node000009" title=" " alt="" coords="309,134,310,168,305,168,304,134"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="407,208,207,257,206,252,406,203"/>
+<area shape="poly" id="edge14_Node000009_Node000003" title=" " alt="" coords="285,209,196,251,194,246,283,204"/>
+</map>

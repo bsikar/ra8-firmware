@@ -1,0 +1,32 @@
+<map id="tools/cache_bench/src/cache_bench_host.c" name="tools/cache_bench/src/cache_bench_host.c">
+<area shape="rect" id="Node000001" title="EINTR&#45;safe raw&#45;descriptor I/O and sibling publication." alt="" coords="461,5,626,45"/>
+<area shape="rect" id="Node000002" href="$cache__bench__host_8h.html" title="POSIX raw&#45;descriptor composition bindings for cache_bench." alt="" coords="13,93,167,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="461,44,170,94,169,88,460,38"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="191,93,259,119"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="468,48,273,96,271,91,466,43"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="283,93,345,119"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="489,48,360,92,358,87,488,43"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="370,93,437,119"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="511,48,437,89,435,84,509,43"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="461,93,532,119"/>
+<area shape="poly" id="edge10_Node000001_Node000010" title=" " alt="" coords="534,47,513,83,508,80,530,44"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="556,93,627,119"/>
+<area shape="poly" id="edge11_Node000001_Node000011" title=" " alt="" coords="557,44,579,80,575,83,553,47"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="651,93,737,119"/>
+<area shape="poly" id="edge12_Node000001_Node000012" title=" " alt="" coords="581,43,661,84,658,89,578,48"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="761,93,857,119"/>
+<area shape="poly" id="edge13_Node000001_Node000013" title=" " alt="" coords="608,43,757,87,756,92,606,48"/>
+<area shape="rect" id="Node000014" title=" " alt="" coords="881,93,955,119"/>
+<area shape="poly" id="edge14_Node000001_Node000014" title=" " alt="" coords="627,40,868,90,867,96,625,46"/>
+<area shape="rect" id="Node000015" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="979,93,1105,119"/>
+<area shape="poly" id="edge15_Node000001_Node000015" title=" " alt="" coords="627,37,966,90,965,95,626,42"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,240,76,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="86,120,65,168,48,227,43,226,59,166,81,118"/>
+<area shape="rect" id="Node000004" href="$cache__bench__io_8h.html" title="Bounded byte&#45;source and text&#45;sink seams for cache_bench." alt="" coords="75,167,212,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="101,117,129,154,124,157,97,121"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="128,194,70,234,67,230,125,190"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="103,240,178,265"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="146,192,144,227,139,226,140,192"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="202,240,277,265"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="160,190,214,229,211,234,157,194"/>
+</map>

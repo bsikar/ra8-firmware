@@ -1,0 +1,16 @@
+<map id="libs/ra8_ota/src/ra8_ota_internal.h" name="libs/ra8_ota/src/ra8_ota_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for ra8_ota internal helpers (MC/DC)." alt="" coords="60,5,207,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="149,240,220,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="72,48,44,61,21,77,9,96,8,106,12,118,38,156,73,188,110,213,145,232,143,236,108,218,70,192,34,159,7,120,3,107,4,94,17,73,41,56,69,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="22,93,147,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="124,47,101,83,97,80,119,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="145,167,224,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="144,45,161,92,180,152,175,154,156,94,139,47"/>
+<area shape="rect" id="Node000005" href="$ra8__ota_8h.html" title="Phase&#45;5 OTA firmware&#45;update orchestration for the RA8D2." alt="" coords="222,93,304,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="166,43,234,84,231,88,164,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="187,192,187,226,182,226,182,192"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="263,120,254,154,237,193,208,232,204,228,233,191,249,152,258,118"/>
+<area shape="poly" id="edge8_Node000005_Node000004" title=" " alt="" coords="252,121,209,159,205,156,248,117"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="299,167,374,192"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="277,117,316,155,313,159,273,121"/>
+</map>

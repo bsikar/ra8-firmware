@@ -1,0 +1,10 @@
+<map id="apps/shared_libs/compress/inc/ra8_compress.h" name="apps/shared_libs/compress/inc/ra8_compress.h">
+<area shape="rect" id="Node000001" title="App&#45;domain DEFLATE compress / decompress (zero&#45;heap, firmware&#45;safe)." alt="" coords="5,5,204,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="81,167,152,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="86,47,62,80,57,99,59,118,72,139,90,156,86,160,68,142,54,120,51,99,57,78,82,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="69,93,140,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="107,46,107,79,102,79,102,46"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="164,93,243,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="130,43,179,82,176,87,127,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="191,121,143,160,140,156,188,117"/>
+</map>

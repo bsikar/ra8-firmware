@@ -1,0 +1,10 @@
+<map id="apps/shared_libs/zoom/inc/zoom_tiles.h" name="apps/shared_libs/zoom/inc/zoom_tiles.h">
+<area shape="rect" id="Node000001" title="Bind a tiled gray8 atlas behind an ra8_tile_cache as a zoom source (#478)." alt="" coords="72,5,243,45"/>
+<area shape="rect" id="Node000002" href="$ez__scene_8h.html" title="Tap&#45;to&#45;zoom demo scene: tiled 12 MP page, zoom viewport, loupe (#478)." alt="" coords="132,93,311,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="180,55,206,92,201,95,176,58"/>
+<area shape="rect" id="Node000003" href="$ez__scene_8c.html" title="Tap&#45;to&#45;zoom demo scene: page sampler, viewports, chrome, self&#45;check." alt="" coords="5,196,184,251"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="140,58,122,94,108,148,100,196,95,195,103,147,118,92,135,56"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="179,159,129,198,126,194,176,155"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2ereader__zoom_2src_2main_8c.html" title="Viewable tap&#45;to&#45;zoom image viewer: full&#45;screen zoom + panel loupe (#478)." alt="" coords="208,196,387,251"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="252,157,280,194,275,198,247,161"/>
+</map>

@@ -1,0 +1,135 @@
+<map id="libs/ra8_io/inc/ra8_io_blockdev.h" name="libs/ra8_io/inc/ra8_io_blockdev.h">
+<area shape="rect" id="Node000001" title="ra8_io block&#45;device fabric – one LBA vtable across every storage medium." alt="" coords="2549,5,2686,45"/>
+<area shape="rect" id="Node000002" href="$usb__host__msc__browse__host_8c.html" title="Console formatters + host&#45;side ra8_fs browse/verify ladder." alt="" coords="5,181,200,251"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="2535,29,2135,31,1553,40,1247,48,960,60,712,76,526,96,437,113,348,136,194,184,193,179,347,131,435,108,525,91,712,70,960,54,1247,43,1553,34,2135,26,2535,24"/>
+<area shape="rect" id="Node000003" href="$usb__selftest__fs__host__host_8c.html" title="examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/src/usb_selftest_fs_host_host...." alt="" coords="224,181,416,251"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="2535,29,2161,30,1625,38,1344,46,1081,58,854,74,683,96,606,113,530,136,399,184,397,179,529,131,605,108,682,91,853,69,1080,52,1344,40,1625,32,2161,25,2535,24"/>
+<area shape="rect" id="Node000004" href="$usb__selftest__hs__host__host_8c.html" title="Host&#45;side console formatters + ra8_fs backend + pass ladder." alt="" coords="440,181,632,251"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="2535,30,2147,37,1605,50,1095,69,909,82,799,96,743,113,687,135,593,183,590,179,685,131,741,108,798,91,908,76,1095,64,1605,44,2147,32,2534,25"/>
+<area shape="rect" id="Node000005" href="$usb__selftest__ospi__host_8c.html" title="Host&#45;side pass ladder for the OSPI USB self&#45;loop app." alt="" coords="657,189,898,243"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="2535,30,2136,35,1585,47,1315,55,1084,66,916,80,864,87,837,96,817,115,801,139,784,189,779,188,797,137,813,111,835,91,863,82,915,75,1084,61,1315,50,1584,41,2136,30,2535,25"/>
+<area shape="rect" id="Node000006" href="$usb__selftest__host_8c.html" title="Host side of the soak self&#45;test: enumerate, mount, verify, soak." alt="" coords="973,189,1184,243"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="2535,28,2350,29,2095,38,1803,58,1654,75,1508,96,1411,116,1315,141,1153,191,1152,186,1313,136,1410,111,1508,91,1653,69,1803,53,2095,32,2350,24,2535,23"/>
+<area shape="rect" id="Node000007" href="$usb__host__file__ops__steps_8c.html" title="examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/src/usb_host_file_ops_steps...." alt="" coords="1208,181,1381,251"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="2535,32,2081,54,1833,73,1730,84,1653,96,1578,114,1503,137,1374,184,1373,179,1502,131,1576,109,1651,91,1730,79,1832,68,2081,49,2535,27"/>
+<area shape="rect" id="Node000008" href="$ra8__ftl_8h.html" title="Flash Translation Layer – free overwrite over erase&#45;before&#45;write media." alt="" coords="1664,93,1803,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="2535,37,1903,96,1803,107,1803,101,1902,91,2534,31"/>
+<area shape="rect" id="Node000010" href="$ra8__ftl_8c.html" title="Flash Translation Layer implementation – copy&#45;on&#45;write + wear&#45;levelling." alt="" coords="1819,196,1957,236"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="2535,29,2440,32,2326,43,2203,63,2142,77,2084,96,2033,118,1986,145,1912,198,1909,194,1983,141,2031,113,2082,91,2141,72,2202,58,2325,37,2440,27,2534,23"/>
+<area shape="rect" id="Node000012" href="$ra8__io_8h.html" title="ra8_io – unified peripheral&#45;agnostic I/O fabric (umbrella header)." alt="" coords="3184,306,3352,331"/>
+<area shape="poly" id="edge12_Node000001_Node000012" title=" " alt="" coords="2700,26,2971,34,3317,48,3624,67,3725,78,3757,84,3774,91,3806,128,3816,148,3821,169,3822,190,3817,211,3808,232,3792,253,3770,265,3730,275,3614,293,3476,306,3353,315,3352,310,3476,301,3613,288,3729,270,3768,260,3789,249,3803,229,3812,209,3817,190,3816,170,3811,150,3802,131,3770,96,3755,89,3724,83,3623,72,3317,53,2970,39,2700,31"/>
+<area shape="rect" id="Node000027" href="$ra8__io__blockdev__backend_8h.html" title="Backend implementation contract for the ra8_io block&#45;device fabric." alt="" coords="2775,93,2955,133"/>
+<area shape="poly" id="edge28_Node000001_Node000027" title=" " alt="" coords="2686,47,2812,91,2810,96,2684,52"/>
+<area shape="rect" id="Node000028" href="$ra8__io__blockdev_8c.html" title="Block&#45;device dispatcher – forwards each public call into the bound backend vtable,..." alt="" coords="2966,196,3103,236"/>
+<area shape="poly" id="edge76_Node000001_Node000028" title=" " alt="" coords="2700,29,2780,37,2866,49,2941,67,2971,78,2992,91,3012,115,3025,143,3036,195,3031,196,3020,145,3008,118,2989,95,2969,83,2940,72,2865,55,2780,42,2700,35"/>
+<area shape="rect" id="Node000029" href="$ra8__io__blockdev__cache_8c.html" title="Caching block device – LRU sector cache + write&#45;through over a backend." alt="" coords="2552,196,2715,236"/>
+<area shape="poly" id="edge77_Node000001_Node000029" title=" " alt="" coords="2601,59,2588,94,2585,113,2588,133,2602,166,2621,195,2616,197,2598,169,2583,134,2579,113,2583,93,2596,57"/>
+<area shape="rect" id="Node000030" href="$ra8__io__blockdev__mram_8c.html" title="MRAM block&#45;device backend – a hard&#45;fenced data&#45;MRAM window as blocks." alt="" coords="3362,196,3526,236"/>
+<area shape="poly" id="edge78_Node000001_Node000030" title=" " alt="" coords="2700,26,2846,31,3021,43,3187,62,3255,75,3305,91,3358,133,3425,194,3422,198,3354,137,3303,96,3253,80,3186,67,3021,48,2846,37,2700,31"/>
+<area shape="rect" id="Node000031" href="$ra8__io__blockdev__ram_8c.html" title="RAM block&#45;device backend – a flat buffer as 512&#45;byte logical blocks." alt="" coords="2275,196,2426,236"/>
+<area shape="poly" id="edge79_Node000001_Node000031" title=" " alt="" coords="2535,38,2479,47,2423,60,2376,76,2359,85,2347,95,2336,119,2335,146,2339,173,2346,195,2340,197,2334,174,2329,146,2331,118,2343,92,2356,81,2374,71,2421,55,2478,42,2534,33"/>
+<area shape="rect" id="Node000032" href="$ra8__io__blockdev__sdhi_8c.html" title="Native&#45;SDHI block&#45;device backend – an SD card as 512&#45;byte blocks." alt="" coords="2789,196,2941,236"/>
+<area shape="poly" id="edge80_Node000001_Node000032" title=" " alt="" coords="2700,28,2776,35,2856,47,2925,65,2951,77,2969,92,2977,107,2977,122,2972,137,2962,151,2934,177,2902,198,2899,194,2930,173,2958,148,2967,134,2972,121,2972,108,2965,95,2948,82,2923,70,2855,52,2776,40,2700,33"/>
+<area shape="rect" id="Node000033" href="$ra8__io__blockdev__sdspi_8c.html" title="Micro&#45;SD&#45;over&#45;SPI block&#45;device backend – thin shim over ra8_sdmmc_spi." alt="" coords="3127,196,3286,236"/>
+<area shape="poly" id="edge81_Node000001_Node000033" title=" " alt="" coords="2700,27,2771,34,2854,45,2941,64,3025,91,3073,114,3118,141,3186,193,3183,198,3115,146,3070,118,3023,96,2939,69,2853,51,2771,39,2700,33"/>
+<area shape="rect" id="Node000034" href="$ra8__io__blockdev__usbmsc_8c.html" title="USB mass&#45;storage block&#45;device backend – a hosted device as 512&#45;byte logical blocks." alt="" coords="1619,196,1794,236"/>
+<area shape="poly" id="edge82_Node000001_Node000034" title=" " alt="" coords="2535,31,2427,36,2293,47,2145,66,1999,96,1926,118,1856,146,1744,198,1741,193,1854,141,1925,113,1998,91,2144,61,2292,41,2427,30,2535,25"/>
+<area shape="rect" id="Node000035" href="$ra8__io__blockdev__xspi_8c.html" title="OSPI NOR block&#45;device backend – 512&#45;byte LBAs over ra8_xspi flash." alt="" coords="3601,196,3753,236"/>
+<area shape="poly" id="edge84_Node000001_Node000035" title=" " alt="" coords="2700,23,2894,24,3140,32,3263,41,3377,53,3473,69,3545,91,3595,133,3660,194,3656,198,3592,137,3543,96,3472,74,3376,58,3263,46,3140,38,2894,29,2700,28"/>
+<area shape="rect" id="Node000036" href="$ra8__io__blockdev__cache_8h.html" title="ra8_io caching block device – an LRU sector cache over any backend." alt="" coords="2358,93,2522,133"/>
+<area shape="poly" id="edge38_Node000001_Node000036" title=" " alt="" coords="2567,54,2480,96,2478,91,2565,49"/>
+<area shape="rect" id="Node000037" href="$ra8__io__blockdev__mram_8h.html" title="ra8_io block&#45;device backend over the on&#45;chip extra/data MRAM region." alt="" coords="3367,93,3532,133"/>
+<area shape="poly" id="edge42_Node000001_Node000037" title=" " alt="" coords="2700,29,2987,51,3167,69,3348,91,3367,93,3366,99,3348,96,3167,74,2987,56,2699,34"/>
+<area shape="rect" id="Node000038" href="$ra8__io__blockdev__ram_8h.html" title="ra8_io block&#45;device backend over a caller&#45;owned RAM buffer." alt="" coords="2131,93,2283,133"/>
+<area shape="poly" id="edge45_Node000001_Node000038" title=" " alt="" coords="2536,46,2284,99,2282,94,2535,41"/>
+<area shape="rect" id="Node000039" href="$ra8__io__blockdev__sdram_8h.html" title="ra8_io block&#45;device backend over the external 64 MiB SDRAM window." alt="" coords="1982,196,2149,236"/>
+<area shape="poly" id="edge55_Node000001_Node000039" title=" " alt="" coords="2535,31,2426,36,2304,47,2194,66,2151,79,2120,95,2100,118,2085,145,2070,197,2065,195,2080,143,2095,115,2117,91,2149,74,2193,61,2304,41,2426,30,2535,25"/>
+<area shape="rect" id="Node000041" href="$ra8__io__blockdev__sdhi_8h.html" title="ra8_io block&#45;device backend over the native SDHI SD&#45;card controller." alt="" coords="2598,93,2751,133"/>
+<area shape="poly" id="edge52_Node000001_Node000041" title=" " alt="" coords="2640,56,2664,92,2660,95,2636,58"/>
+<area shape="rect" id="Node000042" href="$ra8__io__blockdev__sdspi_8h.html" title="ra8_io block&#45;device backend over the micro&#45;SD&#45;in&#45;SPI&#45;mode driver." alt="" coords="3132,93,3292,133"/>
+<area shape="poly" id="edge56_Node000001_Node000042" title=" " alt="" coords="2700,34,2889,58,3114,91,3132,94,3131,99,3113,96,2889,63,2699,39"/>
+<area shape="rect" id="Node000043" href="$ra8__io__blockdev__usbmsc_8h.html" title="ra8_io block&#45;device backend over a hosted USB mass&#45;storage device." alt="" coords="848,93,1024,133"/>
+<area shape="poly" id="edge59_Node000001_Node000043" title=" " alt="" coords="2535,30,2287,35,1925,45,1503,65,1071,96,1025,101,1024,96,1070,91,1502,59,1925,40,2287,29,2535,25"/>
+<area shape="rect" id="Node000044" href="$ra8__io__blockdev__vsource_8h.html" title="Thin adapter exposing an ra8_io block device as an ra8_vsource reader." alt="" coords="4133,93,4310,133"/>
+<area shape="poly" id="edge68_Node000001_Node000044" title=" " alt="" coords="2700,24,2941,27,3290,36,3698,56,3908,71,4114,91,4133,93,4132,98,4113,96,3908,76,3698,61,3290,41,2941,32,2700,29"/>
+<area shape="rect" id="Node000045" href="$ra8__io__blockdev__vsource_8c.html" title="Block&#45;device &#45;&gt; ra8_vsource read adapter (LBA&lt;&#45;&gt;byte translation)." alt="" coords="4132,196,4308,236"/>
+<area shape="poly" id="edge83_Node000001_Node000045" title=" " alt="" coords="2700,25,3012,31,3432,43,3823,63,3964,76,4048,91,4080,107,4121,135,4198,194,4195,198,4118,139,4077,112,4046,96,3964,81,3822,68,3432,49,3012,36,2699,31"/>
+<area shape="rect" id="Node000046" href="$ra8__io__blockdev__xspi_8h.html" title="ra8_io block&#45;device backend over OSPI NOR flash via ra8_xspi." alt="" coords="3607,93,3761,133"/>
+<area shape="poly" id="edge70_Node000001_Node000046" title=" " alt="" coords="2700,26,3085,44,3335,63,3588,91,3608,94,3607,99,3588,96,3335,69,3084,50,2700,32"/>
+<area shape="rect" id="Node000047" href="$ra8__io__stream__blockdev_8h.html" title="ra8_io byte&#45;stream sink that buffers into a raw block device." alt="" coords="3836,93,4007,133"/>
+<area shape="poly" id="edge73_Node000001_Node000047" title=" " alt="" coords="2700,25,2898,30,3175,41,3494,60,3818,91,3836,93,3835,98,3817,96,3493,66,3175,46,2898,35,2700,30"/>
+<area shape="rect" id="Node000048" href="$ra8__io__stream__blockdev_8c.html" title="Block&#45;device byte&#45;stream sink – buffer bytes into 512&#45;byte sectors." alt="" coords="3935,196,4105,236"/>
+<area shape="poly" id="edge85_Node000001_Node000048" title=" " alt="" coords="2700,25,3023,30,3452,41,3659,50,3835,61,3961,74,4000,82,4020,91,4035,116,4038,145,4035,173,4029,196,4024,195,4030,172,4033,145,4030,118,4017,95,3999,87,3960,80,3834,66,3658,55,3452,46,3023,35,2700,30"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__pending_2ra8__ftl__demo_2src_2main_8c.html" title="Wear&#45;levelled block I/O + power&#45;cycle survival over the FTL (#258)." alt="" coords="1607,394,1780,449"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="1656,142,1629,159,1609,183,1598,210,1596,238,1600,267,1610,296,1640,350,1672,392,1667,395,1635,353,1605,298,1595,268,1590,238,1593,208,1604,180,1626,155,1653,137"/>
+<area shape="poly" id="edge9_Node000008_Node000010" title=" " alt="" coords="1775,139,1860,194,1858,198,1772,143"/>
+<area shape="rect" id="Node000011" href="$ra8__ftl__checkpoint_8c.html" title="Canonical persistent metadata for the flash translation layer." alt="" coords="1405,196,1544,236"/>
+<area shape="poly" id="edge10_Node000008_Node000011" title=" " alt="" coords="1673,141,1524,198,1522,193,1671,136"/>
+<area shape="poly" id="edge24_Node000012_Node000009" title=" " alt="" coords="3171,322,2936,323,2608,331,2231,351,2037,368,1848,389,1780,401,1780,396,1848,384,2037,363,2230,346,2608,326,2936,317,3171,316"/>
+<area shape="rect" id="Node000013" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2compress__demo_2src_2main_8c.html" title="Transparent compress&#45;on&#45;write / decompress&#45;on&#45;read over the VFS (#161)." alt="" coords="2679,394,2899,449"/>
+<area shape="poly" id="edge13_Node000012_Node000013" title=" " alt="" coords="3184,336,3055,359,2911,389,2882,396,2881,391,2910,384,3054,354,3183,331"/>
+<area shape="rect" id="Node000014" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__cache__demo_2src_2main_8c.html" title="ra8_io caching block device demo (Phase 5, #160)." alt="" coords="1861,394,2062,449"/>
+<area shape="poly" id="edge14_Node000012_Node000014" title=" " alt="" coords="3170,325,2609,346,2300,365,2172,376,2075,389,2042,396,2041,391,2074,384,2172,371,2300,360,2609,341,3170,320"/>
+<area shape="rect" id="Node000015" href="$ra8__io__demo_2inc_2ra8__io__roundtrip_8h.html" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="2923,394,3154,449"/>
+<area shape="poly" id="edge15_Node000012_Node000015" title=" " alt="" coords="3230,339,3100,396,3097,391,3228,334"/>
+<area shape="rect" id="Node000016" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__demo_2src_2main_8c.html" title="End&#45;to&#45;end demo of the ra8_io fabric (epic #155) over a RAM block device." alt="" coords="3179,394,3357,449"/>
+<area shape="poly" id="edge16_Node000012_Node000016" title=" " alt="" coords="3271,345,3271,394,3265,394,3265,345"/>
+<area shape="rect" id="Node000017" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__fsfmt__demo_2src_2main_8c.html" title="ra8_io pluggable filesystem&#45;format registry demo (Phase 4, #159)." alt="" coords="3382,394,3581,449"/>
+<area shape="poly" id="edge17_Node000012_Node000017" title=" " alt="" coords="3306,335,3427,392,3425,396,3304,340"/>
+<area shape="rect" id="Node000018" href="$ra8__io__sd__demo_2inc_2ra8__io__roundtrip_8h.html" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="3605,387,3784,456"/>
+<area shape="poly" id="edge18_Node000012_Node000018" title=" " alt="" coords="3348,331,3464,354,3593,384,3606,388,3605,393,3591,389,3463,359,3347,336"/>
+<area shape="rect" id="Node000019" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__sd__demo_2src_2main_8c.html" title="Prove the ra8_io fabric&#39;s swappable backend (#155/#156) over a microSD." alt="" coords="3808,394,3987,449"/>
+<area shape="poly" id="edge19_Node000012_Node000019" title=" " alt="" coords="3366,324,3565,345,3682,362,3797,384,3824,391,3823,397,3795,389,3681,367,3565,350,3365,329"/>
+<area shape="rect" id="Node000020" href="$ra8__io__sdram__demo_2inc_2ra8__io__roundtrip_8h.html" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="4011,387,4192,456"/>
+<area shape="poly" id="edge20_Node000012_Node000020" title=" " alt="" coords="3366,319,3493,325,3652,336,3826,355,3999,384,4011,387,4010,392,3998,389,3825,360,3651,341,3493,330,3366,325"/>
+<area shape="rect" id="Node000021" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__sdram__demo_2src_2main_8c.html" title="ra8_io fabric over the external SDRAM backend (epic #155) on EK&#45;RA8D2." alt="" coords="4217,394,4421,449"/>
+<area shape="poly" id="edge21_Node000012_Node000021" title=" " alt="" coords="3366,318,3526,321,3736,331,3970,351,4089,366,4204,384,4237,391,4236,396,4204,389,4088,371,3969,356,3735,336,3526,326,3365,323"/>
+<area shape="rect" id="Node000022" href="$ra8__io__xspi__demo_2inc_2ra8__io__roundtrip_8h.html" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="4445,387,4632,456"/>
+<area shape="poly" id="edge22_Node000012_Node000022" title=" " alt="" coords="3366,320,3914,340,4215,359,4339,371,4434,384,4445,386,4444,392,4433,389,4339,376,4214,364,3914,346,3366,325"/>
+<area shape="rect" id="Node000023" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__xspi__demo_2src_2main_8c.html" title="ra8_io fabric over OSPI NOR flash (epic #155, #156) on the EK&#45;RA8D2." alt="" coords="4657,394,4847,449"/>
+<area shape="poly" id="edge23_Node000012_Node000023" title=" " alt="" coords="3366,319,3646,325,4015,337,4379,356,4530,369,4644,384,4676,391,4675,397,4644,389,4529,374,4379,362,4014,342,3645,330,3366,324"/>
+<area shape="rect" id="Node000024" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__mram__demo_2src_2main_8c.html" title="ra8_io fabric over on&#45;chip extra&#45;MRAM (data flash) backend (#155/#156)." alt="" coords="2087,394,2260,449"/>
+<area shape="poly" id="edge25_Node000012_Node000024" title=" " alt="" coords="3170,326,2704,348,2454,366,2351,377,2273,389,2244,396,2243,391,2271,384,2350,372,2453,361,2703,343,3170,321"/>
+<area shape="rect" id="Node000025" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2src_2main_8c.html" title="Prove the ra8_io fabric&#39;s swappable backend (#155/#156) over native SDHI." alt="" coords="2284,394,2457,449"/>
+<area shape="poly" id="edge26_Node000012_Node000025" title=" " alt="" coords="3170,323,3032,327,2856,338,2663,358,2470,389,2442,396,2441,391,2469,384,2662,352,2856,333,3031,322,3170,318"/>
+<area shape="rect" id="Node000026" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2src_2main_8c.html" title="ra8_io fabric capstone: two block&#45;dev backends swapped behind one interface, a VFS open/read/write/cl..." alt="" coords="2481,394,2655,449"/>
+<area shape="poly" id="edge27_Node000012_Node000026" title=" " alt="" coords="3171,327,2940,346,2803,364,2667,389,2640,397,2638,391,2666,384,2802,359,2939,341,3170,322"/>
+<area shape="poly" id="edge29_Node000027_Node000010" title=" " alt="" coords="2762,136,2641,146,2537,150,2361,146,2277,145,2187,149,2087,161,1970,184,1927,198,1926,193,1969,179,2086,156,2187,144,2277,140,2361,141,2537,144,2640,141,2761,131"/>
+<area shape="poly" id="edge30_Node000027_Node000028" title=" " alt="" coords="2910,138,3004,194,3002,198,2907,143"/>
+<area shape="poly" id="edge31_Node000027_Node000029" title=" " alt="" coords="2810,141,2678,198,2676,193,2808,137"/>
+<area shape="poly" id="edge32_Node000027_Node000030" title=" " alt="" coords="2970,126,3125,149,3298,179,3367,193,3366,199,3297,184,3124,154,2969,131"/>
+<area shape="poly" id="edge33_Node000027_Node000031" title=" " alt="" coords="2762,137,2427,203,2426,197,2761,132"/>
+<area shape="poly" id="edge34_Node000027_Node000032" title=" " alt="" coords="2868,147,2868,196,2863,196,2863,147"/>
+<area shape="poly" id="edge35_Node000027_Node000033" title=" " alt="" coords="2956,134,3115,179,3158,193,3156,198,3114,184,2955,139"/>
+<area shape="poly" id="edge36_Node000027_Node000034" title=" " alt="" coords="2762,136,2616,148,2492,152,2280,148,2179,147,2071,150,1949,162,1807,184,1755,198,1754,193,1806,179,1949,156,2071,145,2179,142,2280,143,2492,147,2616,143,2762,131"/>
+<area shape="poly" id="edge37_Node000027_Node000035" title=" " alt="" coords="2970,121,3274,148,3427,164,3538,179,3607,193,3606,199,3537,184,3426,169,3273,153,2969,126"/>
+<area shape="poly" id="edge40_Node000036_Node000012" title=" " alt="" coords="2463,143,2508,208,2542,249,2593,269,2663,284,2747,296,2840,305,3028,314,3184,315,3184,321,3028,319,2840,310,2747,302,2662,290,2591,274,2538,253,2504,211,2458,146"/>
+<area shape="poly" id="edge39_Node000036_Node000014" title=" " alt="" coords="2451,147,2456,199,2451,227,2440,252,2417,279,2394,298,2370,309,2344,316,2289,325,2222,341,2048,396,2047,391,2221,336,2287,320,2343,311,2368,304,2391,293,2413,276,2435,249,2446,225,2450,199,2446,147"/>
+<area shape="poly" id="edge41_Node000036_Node000029" title=" " alt="" coords="2490,137,2598,194,2596,198,2487,142"/>
+<area shape="poly" id="edge43_Node000037_Node000012" title=" " alt="" coords="3501,139,3523,157,3540,180,3548,200,3552,217,3550,234,3539,252,3527,263,3510,273,3463,289,3353,310,3352,305,3462,284,3508,268,3524,259,3535,249,3545,233,3547,217,3543,201,3535,183,3519,161,3498,143"/>
+<area shape="poly" id="edge44_Node000037_Node000030" title=" " alt="" coords="3450,147,3448,196,3442,196,3445,147"/>
+<area shape="poly" id="edge46_Node000038_Node000012" title=" " alt="" coords="2213,146,2219,172,2228,201,2243,227,2264,248,2284,258,2315,266,2406,280,2527,292,2665,300,2954,310,3184,314,3184,319,2954,316,2665,306,2526,297,2405,286,2314,271,2282,263,2261,253,2239,230,2224,203,2213,174,2208,147"/>
+<area shape="poly" id="edge50_Node000038_Node000031" title=" " alt="" coords="2246,139,2325,194,2322,198,2243,143"/>
+<area shape="poly" id="edge47_Node000038_Node000039" title=" " alt="" coords="2170,144,2093,198,2090,194,2167,139"/>
+<area shape="rect" id="Node000040" href="$ra8__io__blockdev__sdram_8c.html" title="SDRAM block&#45;device backend – the 64 MiB SDRAM window as a ramdisk." alt="" coords="2043,299,2210,339"/>
+<area shape="poly" id="edge51_Node000038_Node000040" title=" " alt="" coords="2200,147,2162,252,2139,300,2135,297,2158,250,2195,145"/>
+<area shape="poly" id="edge48_Node000039_Node000012" title=" " alt="" coords="2155,236,2219,248,2495,279,2768,298,3008,309,3184,314,3184,319,3008,314,2768,304,2495,284,2218,253,2154,242"/>
+<area shape="poly" id="edge49_Node000039_Node000040" title=" " alt="" coords="2086,247,2117,297,2113,300,2082,249"/>
+<area shape="poly" id="edge53_Node000041_Node000012" title=" " alt="" coords="2700,143,2729,180,2751,219,2761,234,2779,248,2810,262,2852,274,2960,292,3078,304,3184,311,3183,316,3078,309,2959,297,2851,279,2808,267,2776,253,2757,238,2746,221,2724,183,2696,146"/>
+<area shape="poly" id="edge54_Node000041_Node000032" title=" " alt="" coords="2724,138,2831,194,2828,198,2721,142"/>
+<area shape="poly" id="edge57_Node000042_Node000012" title=" " alt="" coords="3262,139,3283,157,3300,180,3306,197,3307,215,3302,251,3290,283,3278,307,3273,305,3285,281,3297,250,3302,215,3300,199,3295,183,3279,161,3259,143"/>
+<area shape="poly" id="edge58_Node000042_Node000033" title=" " alt="" coords="3213,147,3210,196,3205,196,3208,147"/>
+<area shape="poly" id="edge60_Node000043_Node000002" title=" " alt="" coords="834,120,708,126,553,138,382,157,212,184,201,186,200,181,212,179,381,151,552,133,708,121,834,115"/>
+<area shape="poly" id="edge61_Node000043_Node000003" title=" " alt="" coords="834,126,645,147,536,163,429,184,417,187,416,181,427,179,535,158,644,142,834,120"/>
+<area shape="poly" id="edge62_Node000043_Node000004" title=" " alt="" coords="835,139,645,184,633,187,632,182,643,179,834,133"/>
+<area shape="poly" id="edge63_Node000043_Node000005" title=" " alt="" coords="896,143,820,191,818,186,893,139"/>
+<area shape="poly" id="edge64_Node000043_Node000006" title=" " alt="" coords="975,139,1043,186,1040,191,972,143"/>
+<area shape="poly" id="edge65_Node000043_Node000007" title=" " alt="" coords="1029,134,1197,179,1208,182,1207,187,1195,184,1028,139"/>
+<area shape="poly" id="edge66_Node000043_Node000012" title=" " alt="" coords="934,147,934,173,937,201,946,227,963,248,1046,256,1260,265,1926,284,3184,313,3184,318,1926,290,1260,270,1046,261,960,253,942,230,932,202,929,173,929,147"/>
+<area shape="poly" id="edge67_Node000043_Node000034" title=" " alt="" coords="1038,119,1275,142,1416,158,1556,179,1630,193,1629,199,1556,184,1415,164,1275,147,1037,125"/>
+<area shape="poly" id="edge69_Node000044_Node000045" title=" " alt="" coords="4224,147,4223,196,4218,196,4218,147"/>
+<area shape="poly" id="edge71_Node000046_Node000012" title=" " alt="" coords="3732,139,3752,158,3768,180,3776,200,3781,218,3778,235,3767,253,3746,264,3709,274,3600,292,3470,305,3352,315,3352,309,3470,300,3599,287,3708,269,3744,259,3763,249,3773,233,3775,218,3771,202,3763,183,3748,161,3729,143"/>
+<area shape="poly" id="edge72_Node000046_Node000035" title=" " alt="" coords="3685,147,3681,196,3676,196,3679,147"/>
+<area shape="poly" id="edge74_Node000047_Node000012" title=" " alt="" coords="3919,148,3900,203,3884,230,3862,253,3822,273,3768,288,3703,300,3631,308,3481,318,3352,321,3352,315,3481,312,3630,303,3702,294,3767,283,3820,268,3858,249,3880,227,3896,201,3914,146"/>
+<area shape="poly" id="edge75_Node000047_Node000048" title=" " alt="" coords="3952,142,4003,194,4000,198,3948,145"/>
+</map>

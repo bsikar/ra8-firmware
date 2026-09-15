@@ -1,0 +1,9 @@
+<map id="libs/ra8_audio/inc/ra8_audio_source_pdm.h" name="libs/ra8_audio/inc/ra8_audio_source_pdm.h">
+<area shape="rect" id="Node000001" title="RA8 PDM&#45;IF backend for the transport&#45;neutral audio facade." alt="" coords="234,5,422,45"/>
+<area shape="rect" id="Node000002" href="$c6__cam__audio_8c.html" title="Interrupt&#45;driven onboard PDM microphone recorder for camera servers." alt="" coords="5,93,216,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="272,53,173,96,171,91,270,48"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2pdm__mic__demo_2src_2main_8c.html" title="PDM MEMS microphone capture + plausibility demo (SPH0690 / ch 2)." alt="" coords="241,93,415,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="331,59,331,93,325,93,325,59"/>
+<area shape="rect" id="Node000004" href="$ra8__audio__source__pdm_8c.html" title="RA8 PDM&#45;IF audio&#45;source backend implementation." alt="" coords="440,101,627,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="383,48,493,98,491,103,381,53"/>
+</map>

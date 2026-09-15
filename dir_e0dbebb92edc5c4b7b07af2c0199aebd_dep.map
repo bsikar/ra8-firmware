@@ -1,0 +1,18 @@
+<map id="libs/ra8_board_ra8p1/src" name="libs/ra8_board_ra8p1/src">
+<area shape="rect" id="node1" href="dir_b6f7f773c1994d789447374a784e7398.html" title="inc" alt="" coords="38,136,79,161"/>
+<area shape="poly" id="edge2" href="dir_000728_000260.html" alt="" coords="61,88,61,122,56,122,56,88"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000728_000260.html" title="1" alt="" coords="62,110,72,125"/>
+<area shape="rect" id="node4" href="dir_9784371ce13fb6b4d69891743248b7e4.html" title="ra8_core" alt="" coords="187,136,266,161"/>
+<area shape="poly" id="edge1" href="dir_000728_000385.html" alt="" coords="76,86,93,96,176,129,174,134,91,101,73,90"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000728_000385.html" title="10" alt="" coords="164,115,181,130"/>
+<area shape="rect" id="node5" href="dir_e2029a1647bce4ee80acb4dac4b3c18b.html" title="ra8_hal" alt="" coords="290,136,361,161"/>
+<area shape="poly" id="edge3" href="dir_000728_000396.html" alt="" coords="75,86,93,96,141,112,181,120,277,133,276,138,181,125,140,118,91,101,72,91"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000728_000396.html" title="10" alt="" coords="265,119,282,134"/>
+<area shape="rect" id="node3" href="dir_e0922c35b2be12e74697ddb0cac165b9.html" title="boot" alt="" coords="104,63,155,88"/>
+<area shape="poly" id="edge4" href="dir_000023_000385.html" alt="" coords="147,86,201,125,198,130,143,90"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000023_000385.html" title="7" alt="" coords="196,111,206,126"/>
+<area shape="poly" id="edge5" href="dir_000023_000396.html" alt="" coords="156,83,282,129,280,134,154,88"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000023_000396.html" title="3" alt="" coords="275,115,284,129"/>
+<area shape="rect" id="clust2" href="dir_e0dbebb92edc5c4b7b07af2c0199aebd.html" alt="" coords="27,52,165,99"/>
+<area shape="rect" id="clust1" href="dir_7c9a1dde1d0fb4633ec0f817590d5e33.html" title="ra8_board_ra8p1" alt="" coords="16,16,176,172"/>
+</map>

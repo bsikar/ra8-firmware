@@ -1,0 +1,36 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/cpu1_main.c" name="examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/cpu1_main.c">
+<area shape="rect" id="Node000001" title="CPU1 (Cortex&#45;M33) ping&#45;pong responder." alt="" coords="496,5,720,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="471,401,542,427"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="662,58,697,82,730,112,755,149,763,170,765,193,765,269,759,302,743,330,718,353,688,371,655,386,620,397,556,410,555,405,619,391,653,381,686,367,715,349,739,327,754,300,760,268,760,193,758,171,751,152,726,116,694,86,659,62"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="44,401,169,427"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="496,43,346,59,264,71,186,87,115,107,59,131,37,145,21,160,11,176,8,193,8,268,15,306,34,339,58,368,82,391,78,394,54,372,29,342,10,307,3,269,3,192,6,174,17,156,34,140,56,126,114,102,185,82,263,66,345,53,495,38"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="545,328,623,353"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="609,60,589,314,583,314,603,60"/>
+<area shape="rect" id="Node000005" href="$ra8__ipc_8h.html" title="Inter&#45;Processor Communication (IPC) HAL driver – public API." alt="" coords="415,108,497,133"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="563,62,489,104,487,99,560,58"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="573,355,531,394,528,390,570,351"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="482,131,517,151,552,179,585,215,608,246,624,281,639,327,642,341,638,355,622,374,601,388,556,406,554,401,599,384,618,370,634,352,637,341,633,329,619,283,603,249,581,219,549,183,514,156,480,136"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="475,131,502,152,527,180,548,214,563,251,582,314,577,316,558,252,543,216,523,183,498,156,472,135"/>
+<area shape="rect" id="Node000006" href="$ra8__ipc__regs_8h.html" title="Inter&#45;Processor Communication (IPC) register layout for the RA8D2." alt="" coords="145,328,261,353"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="415,128,355,135,287,146,226,162,204,172,189,183,179,197,174,214,173,249,181,284,193,314,188,316,176,286,168,250,169,213,174,195,185,180,201,167,224,157,286,140,354,129,415,123"/>
+<area shape="rect" id="Node000007" href="$ra8__ipc__sync_8h.html" title="Inter&#45;Processor Communication (IPC) HAL driver – sync API." alt="" coords="199,181,318,207"/>
+<area shape="poly" id="edge11_Node000005_Node000007" title=" " alt="" coords="425,136,305,179,303,174,423,131"/>
+<area shape="rect" id="Node000008" href="$ra8__ipc__types_8h.html" title="Inter&#45;Processor Communication (IPC) HAL driver – public types." alt="" coords="246,255,370,280"/>
+<area shape="poly" id="edge20_Node000005_Node000008" title=" " alt="" coords="444,135,389,183,329,246,325,243,385,179,440,131"/>
+<area shape="rect" id="Node000009" href="$ra8__ipc__xfer_8h.html" title="Inter&#45;Processor Communication (IPC) HAL driver – transfer API." alt="" coords="399,181,513,207"/>
+<area shape="poly" id="edge21_Node000005_Node000009" title=" " alt="" coords="459,134,459,168,453,168,453,134"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="252,351,459,399,457,404,251,356"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="189,356,135,395,132,391,186,351"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="252,208,234,242,231,261,236,279,256,306,282,329,310,348,341,365,403,388,458,402,457,408,402,394,339,370,308,353,278,333,253,309,231,281,225,261,229,240,247,206"/>
+<area shape="poly" id="edge13_Node000007_Node000003" title=" " alt="" coords="241,209,212,230,182,257,154,290,134,329,115,389,110,387,130,327,150,287,178,253,209,226,238,205"/>
+<area shape="poly" id="edge14_Node000007_Node000004" title=" " alt="" coords="286,204,547,320,545,325,284,209"/>
+<area shape="poly" id="edge15_Node000007_Node000006" title=" " alt="" coords="239,209,213,228,192,256,188,270,188,285,194,315,189,316,182,286,182,269,187,253,209,225,236,205"/>
+<area shape="poly" id="edge16_Node000007_Node000008" title=" " alt="" coords="269,205,294,242,290,245,265,209"/>
+<area shape="poly" id="edge17_Node000008_Node000002" title=" " alt="" coords="325,278,481,391,478,395,322,282"/>
+<area shape="poly" id="edge18_Node000008_Node000004" title=" " alt="" coords="353,277,532,323,530,328,352,283"/>
+<area shape="poly" id="edge19_Node000008_Node000006" title=" " alt="" coords="293,282,232,323,230,318,290,278"/>
+<area shape="poly" id="edge22_Node000009_Node000002" title=" " alt="" coords="461,206,503,387,498,388,456,208"/>
+<area shape="poly" id="edge23_Node000009_Node000004" title=" " alt="" coords="474,205,501,226,530,253,554,284,573,314,569,317,550,287,526,256,498,230,471,209"/>
+<area shape="poly" id="edge24_Node000009_Node000006" title=" " alt="" coords="451,209,424,245,405,265,383,282,330,309,275,327,273,322,327,304,380,278,401,261,420,241,447,205"/>
+<area shape="poly" id="edge25_Node000009_Node000008" title=" " alt="" coords="433,209,346,251,343,246,431,204"/>
+</map>

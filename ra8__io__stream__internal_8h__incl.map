@@ -1,0 +1,14 @@
+<map id="libs/ra8_io/src/ra8_io_stream_internal.h" name="libs/ra8_io/src/ra8_io_stream_internal.h">
+<area shape="rect" id="Node000001" title="Compatibility include for the public stream&#45;backend contract." alt="" coords="18,5,181,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__stream__backend_8h.html" title="Public implementer contract for ra8_io byte&#45;stream backends." alt="" coords="5,93,193,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="102,46,102,79,97,79,97,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="89,313,160,339"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="96,120,85,147,73,183,68,224,70,245,75,264,87,285,102,302,98,306,82,288,70,266,65,246,63,224,68,182,80,145,91,118"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="85,240,164,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="104,119,123,226,118,227,99,120"/>
+<area shape="rect" id="Node000005" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="137,167,264,192"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="117,116,174,156,171,161,114,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="127,266,127,300,122,300,122,266"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="201,193,193,227,178,267,149,305,144,302,173,264,188,225,196,192"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="190,194,149,232,145,229,187,190"/>
+</map>

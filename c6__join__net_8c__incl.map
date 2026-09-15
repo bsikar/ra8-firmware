@@ -1,0 +1,39 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/c6_join_net.c" name="examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/c6_join_net.c">
+<area shape="rect" id="Node000001" title="NetX Duo IP bring&#45;up over the C6 link: DHCP lease + ICMP reachability." alt="" coords="223,5,396,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="344,401,414,427"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="223,39,175,46,125,59,76,79,34,110,19,129,11,146,8,193,8,268,11,280,18,292,44,314,83,335,131,353,237,382,331,402,330,407,236,388,129,358,81,339,41,318,14,295,6,282,3,269,3,193,6,145,14,126,31,106,74,75,123,53,174,40,223,33"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="44,108,114,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="240,63,124,106,122,101,238,58"/>
+<area shape="rect" id="Node000004" href="$c6__join_8h.html" title="Shared contract for the C6 Wi&#45;Fi join + DHCP + reachability app." alt="" coords="139,108,219,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="271,62,210,103,207,98,268,58"/>
+<area shape="rect" id="Node000006" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="376,181,478,207"/>
+<area shape="poly" id="edge22_Node000001_Node000006" title=" " alt="" coords="314,60,322,96,339,132,362,155,389,173,386,177,358,159,334,135,317,98,309,61"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="262,328,341,353"/>
+<area shape="poly" id="edge23_Node000001_Node000008" title=" " alt="" coords="312,60,305,314,300,314,306,60"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="688,181,766,207"/>
+<area shape="poly" id="edge16_Node000001_Node000010" title=" " alt="" coords="392,58,520,106,571,131,682,174,680,179,569,136,518,110,390,63"/>
+<area shape="rect" id="Node000011" href="$nx__ether__driver__c6_8h.html" title="NetX Duo network driver shim that bridges onto the ESP32&#45;C6 link." alt="" coords="348,108,506,133"/>
+<area shape="poly" id="edge17_Node000001_Node000011" title=" " alt="" coords="347,58,402,98,399,102,344,62"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="582,108,720,133"/>
+<area shape="poly" id="edge21_Node000001_Node000012" title=" " alt="" coords="397,53,593,102,592,107,396,58"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="744,108,819,133"/>
+<area shape="poly" id="edge24_Node000001_Node000013" title=" " alt="" coords="397,45,732,105,731,110,396,50"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="147,136,121,148,97,164,83,184,81,194,84,206,105,242,133,275,164,304,199,329,270,369,332,395,330,400,268,373,196,333,161,308,129,278,101,245,79,208,76,195,78,182,93,161,118,144,145,131"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="94,181,168,207"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="173,135,149,172,144,169,169,132"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="220,131,375,175,373,180,218,136"/>
+<area shape="poly" id="edge15_Node000004_Node000008" title=" " alt="" coords="184,133,202,198,218,239,240,279,257,300,277,317,273,321,253,303,236,281,214,241,197,199,179,134"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="466,204,508,223,528,237,546,253,568,277,584,302,589,327,585,341,577,355,546,384,507,402,467,412,429,416,428,410,466,406,506,397,543,379,573,352,580,339,584,327,579,304,564,281,543,257,525,241,505,228,464,209"/>
+<area shape="rect" id="Node000007" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="345,255,512,280"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="430,207,431,241,425,241,425,207"/>
+<area shape="poly" id="edge12_Node000006_Node000008" title=" " alt="" coords="401,209,367,228,336,256,319,285,309,315,304,313,314,283,332,253,364,224,399,204"/>
+<area shape="rect" id="Node000009" href="$ra8__mdl__protocol_8h.html" title="Allocation&#45;free constants shared by the RA8 and C6 media endpoints." alt="" coords="416,328,563,353"/>
+<area shape="poly" id="edge13_Node000006_Node000009" title=" " alt="" coords="464,204,498,223,514,237,527,253,531,271,529,288,512,319,507,316,524,286,526,271,522,256,510,240,495,228,461,209"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="426,281,407,329,388,389,383,387,402,327,421,279"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="409,282,336,323,333,319,407,278"/>
+<area shape="poly" id="edge11_Node000008_Node000002" title=" " alt="" coords="316,351,358,390,355,394,312,355"/>
+<area shape="poly" id="edge14_Node000009_Node000002" title=" " alt="" coords="473,356,410,396,407,391,471,351"/>
+<area shape="poly" id="edge18_Node000011_Node000002" title=" " alt="" coords="449,131,506,168,540,194,571,223,597,254,613,288,616,322,611,339,601,355,590,365,573,374,528,389,429,409,428,404,527,384,571,369,587,361,597,352,606,336,611,321,608,289,592,257,567,227,536,198,503,172,446,136"/>
+<area shape="poly" id="edge20_Node000011_Node000006" title=" " alt="" coords="430,134,430,168,424,168,424,134"/>
+<area shape="poly" id="edge19_Node000011_Node000010" title=" " alt="" coords="476,131,676,178,674,183,475,136"/>
+</map>

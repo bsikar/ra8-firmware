@@ -1,0 +1,5 @@
+<map id="mdl_state_slot_t" name="mdl_state_slot_t">
+<area shape="rect" id="Node000001" title="One physical generation discovered under the logical path." alt="" coords="23,101,154,127"/>
+<area shape="rect" id="Node000002" href="$structmdl__state__envelope__t.html" title="Decoded canonical journal envelope." alt="" coords="5,5,172,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="91,45,91,101,86,101,86,45"/>
+</map>

@@ -1,0 +1,47 @@
+<map id="apps/shared_libs/epub/inc/epub_img_tiles.h" name="apps/shared_libs/epub/inc/epub_img_tiles.h">
+<area shape="rect" id="Node000001" title="Page a large in&#45;EPUB image through ra8_tile_cache + a real reflow &lt;img&gt; loader off the streaming read..." alt="" coords="528,5,695,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="267,240,342,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="538,48,487,66,431,92,378,126,332,168,317,197,309,227,304,225,312,195,328,165,374,121,429,87,485,61,536,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="601,313,672,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="695,25,745,31,800,42,854,62,902,91,919,108,929,124,941,166,943,187,941,206,935,223,925,238,896,264,857,284,814,300,768,311,686,324,685,318,767,306,812,295,855,280,893,260,921,235,930,220,936,204,938,187,935,167,924,126,915,111,899,95,851,67,798,48,745,36,694,30"/>
+<area shape="rect" id="Node000004" href="$epub_8h.html" title="EPUB (.epub) reader and chapter iterator for ra8&#45;firmware." alt="" coords="179,93,246,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="528,45,265,96,260,97,259,92,264,91,527,40"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="520,240,599,265"/>
+<area shape="poly" id="edge27_Node000001_Node000007" title=" " alt="" coords="585,47,563,68,546,94,538,129,538,164,544,198,552,226,547,228,539,199,533,165,532,128,541,92,559,65,582,43"/>
+<area shape="rect" id="Node000009" href="$jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="606,167,657,192"/>
+<area shape="poly" id="edge18_Node000001_Node000009" title=" " alt="" coords="640,44,663,65,680,92,683,111,678,128,657,159,653,155,673,126,678,110,675,94,659,68,637,47"/>
+<area shape="rect" id="Node000010" href="$jof__produce_8h.html" title="Import&#45;time transcode producer: JPEG/PNG/WebP &#45;&gt; JOF band&#45;tile atlas in bounded RAM (#231,..." alt="" coords="556,93,667,119"/>
+<area shape="poly" id="edge22_Node000001_Node000010" title=" " alt="" coords="614,46,614,79,609,79,609,46"/>
+<area shape="rect" id="Node000011" href="$ra8__tile__cache_8h.html" title="Fixed&#45;RAM&#45;budget image&#45;tile cache with LRU eviction (Layer 3b, #147)." alt="" coords="761,93,889,119"/>
+<area shape="poly" id="edge28_Node000001_Node000011" title=" " alt="" coords="663,43,781,86,779,91,661,48"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="222,118,267,191,291,227,287,230,262,193,217,120"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="179,110,142,113,101,122,61,140,44,153,29,168,14,193,8,217,12,240,28,263,56,277,111,289,269,306,447,316,588,321,588,326,447,322,269,311,110,294,54,282,24,267,8,242,3,217,9,191,25,165,40,149,58,135,99,117,142,108,179,105"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="39,240,125,265"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="179,110,144,114,105,124,68,141,52,153,39,168,34,183,37,198,60,229,56,232,33,201,29,183,34,165,49,149,65,136,104,119,143,109,179,105"/>
+<area shape="rect" id="Node000006" href="$epub__miniz__alloc_8h.html" title="Caller&#45;owned bounded&#45;arena allocator for miniz." alt="" coords="49,167,195,192"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="200,121,149,160,146,156,196,117"/>
+<area shape="poly" id="edge13_Node000004_Node000007" title=" " alt="" coords="247,109,337,128,391,144,443,164,495,195,538,228,534,233,492,200,441,169,389,149,336,133,246,115"/>
+<area shape="rect" id="Node000008" href="$xml_8h.html" title="Bounded, caller&#45;owned, no&#45;heap XML pull reader." alt="" coords="371,167,430,192"/>
+<area shape="poly" id="edge14_Node000004_Node000008" title=" " alt="" coords="244,116,359,160,357,165,242,121"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="152,190,263,232,261,237,150,195"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="137,190,188,227,221,247,256,263,345,289,437,307,521,316,588,321,588,326,520,322,436,312,344,295,254,268,218,251,185,231,134,194"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="118,194,97,229,93,227,113,191"/>
+<area shape="poly" id="edge11_Node000006_Node000007" title=" " alt="" coords="193,189,507,240,506,245,192,195"/>
+<area shape="poly" id="edge12_Node000007_Node000003" title=" " alt="" coords="573,263,616,302,612,306,570,267"/>
+<area shape="poly" id="edge15_Node000008_Node000002" title=" " alt="" coords="387,194,333,234,330,229,384,190"/>
+<area shape="poly" id="edge16_Node000008_Node000003" title=" " alt="" coords="415,190,455,225,509,263,552,287,595,306,593,311,550,291,506,268,452,229,411,194"/>
+<area shape="poly" id="edge17_Node000008_Node000007" title=" " alt="" coords="427,190,522,232,520,237,425,194"/>
+<area shape="poly" id="edge19_Node000009_Node000002" title=" " alt="" coords="606,189,356,243,355,238,605,184"/>
+<area shape="poly" id="edge20_Node000009_Node000003" title=" " alt="" coords="634,192,638,300,633,300,629,193"/>
+<area shape="poly" id="edge21_Node000009_Node000007" title=" " alt="" coords="621,194,583,232,579,228,617,190"/>
+<area shape="poly" id="edge23_Node000010_Node000002" title=" " alt="" coords="556,111,511,116,460,126,408,143,361,169,334,197,317,228,312,226,330,194,358,165,406,138,458,121,510,111,556,106"/>
+<area shape="poly" id="edge24_Node000010_Node000003" title=" " alt="" coords="630,117,652,137,671,166,678,202,674,239,664,274,652,302,647,300,659,272,669,238,673,202,666,168,648,141,626,121"/>
+<area shape="poly" id="edge26_Node000010_Node000007" title=" " alt="" coords="609,120,570,228,565,226,604,118"/>
+<area shape="poly" id="edge25_Node000010_Node000009" title=" " alt="" coords="617,118,627,153,622,154,612,120"/>
+<area shape="poly" id="edge29_Node000011_Node000003" title=" " alt="" coords="856,116,883,130,908,147,923,168,924,181,919,193,897,222,870,246,840,266,807,283,743,307,686,320,685,315,741,302,805,278,837,262,866,242,893,218,914,191,918,180,918,170,904,151,880,134,854,121"/>
+<area shape="poly" id="edge30_Node000011_Node000007" title=" " alt="" coords="805,121,593,236,591,231,802,117"/>
+<area shape="rect" id="Node000012" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="782,167,905,192"/>
+<area shape="poly" id="edge31_Node000011_Node000012" title=" " alt="" coords="830,118,839,153,834,154,825,120"/>
+<area shape="poly" id="edge32_Node000012_Node000003" title=" " alt="" coords="828,194,666,307,663,303,825,190"/>
+<area shape="poly" id="edge33_Node000012_Node000007" title=" " alt="" coords="798,195,613,241,611,236,797,189"/>
+</map>

@@ -1,0 +1,34 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_sd_image.c" name="tools/ra8_emulator/src/periph/board_periph_sd_image.c">
+<area shape="rect" id="Node000001" title="Sparse raw&#45;file lifecycle for the modelled SD card." alt="" coords="410,5,589,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,73,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="410,51,263,76,87,110,86,105,262,71,409,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="97,108,160,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="410,56,174,111,173,105,409,51"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="335,181,405,207"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="444,62,414,83,390,109,377,139,373,168,368,167,372,137,385,107,410,79,441,58"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="821,108,892,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="589,53,809,105,807,110,588,58"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="916,108,987,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="589,46,903,105,902,110,588,51"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="1011,108,1086,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="589,42,774,68,998,105,997,111,773,73,589,48"/>
+<area shape="rect" id="Node000008" href="$board__periph__sd_8h.html" title="SD&#45;card&#45;over&#45;SPI device model for ra8_emulator (attached to SPI_B)." alt="" coords="185,108,326,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="426,63,302,106,300,101,424,58"/>
+<area shape="rect" id="Node000009" href="$board__periph__sd__internal_8h.html" title="Module&#45;private FAT formatter shared by the board_periph_sd TUs." alt="" coords="400,108,599,133"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="502,60,502,94,497,94,497,60"/>
+<area shape="rect" id="Node000012" href="$emu__host__io__internal_8h.html" title="Bounded raw&#45;descriptor I/O seam for the RA8 emulator." alt="" coords="623,108,797,133"/>
+<area shape="poly" id="edge13_Node000001_Node000012" title=" " alt="" coords="565,58,670,100,668,105,563,63"/>
+<area shape="poly" id="edge8_Node000008_Node000004" title=" " alt="" coords="275,131,341,172,338,176,272,136"/>
+<area shape="poly" id="edge11_Node000009_Node000004" title=" " alt="" coords="480,136,405,177,402,172,477,131"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="582,181,657,207"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="520,131,589,172,586,176,517,136"/>
+<area shape="rect" id="Node000011" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="433,181,558,207"/>
+<area shape="poly" id="edge12_Node000009_Node000011" title=" " alt="" coords="501,134,499,168,494,168,496,134"/>
+<area shape="poly" id="edge16_Node000012_Node000004" title=" " alt="" coords="653,136,421,184,419,184,418,179,420,179,652,131"/>
+<area shape="poly" id="edge15_Node000012_Node000010" title=" " alt="" coords="697,135,647,175,643,170,694,131"/>
+<area shape="poly" id="edge18_Node000012_Node000011" title=" " alt="" coords="676,136,544,179,542,174,675,131"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="801,181,875,207"/>
+<area shape="poly" id="edge14_Node000012_Node000013" title=" " alt="" coords="732,131,806,172,804,177,729,136"/>
+<area shape="rect" id="Node000014" title=" " alt="" coords="681,181,777,207"/>
+<area shape="poly" id="edge17_Node000012_Node000014" title=" " alt="" coords="716,133,725,168,720,169,711,134"/>
+</map>

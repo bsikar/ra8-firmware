@@ -1,0 +1,47 @@
+var emu__elf_8h =
+[
+    [ "emu_elf_io_result_t", "structemu__elf__io__result__t.html", "structemu__elf__io__result__t" ],
+    [ "emu_elf_source_t", "structemu__elf__source__t.html", "structemu__elf__source__t" ],
+    [ "emu_elf_view_t", "structemu__elf__view__t.html", "structemu__elf__view__t" ],
+    [ "elf_exec_segment_t", "structelf__exec__segment__t.html", "structelf__exec__segment__t" ],
+    [ "emu_elf_symbol_t", "structemu__elf__symbol__t.html", "structemu__elf__symbol__t" ],
+    [ "elf_exec_segment_fn", "emu__elf_8h.html#a09e96944cac5bb52faab22e39b2fff66", null ],
+    [ "emu_elf_string_fn", "emu__elf_8h.html#a4d0e9a9831b3c2e529ee7a9e10cddcbe", null ],
+    [ "emu_elf_symbol_fn", "emu__elf_8h.html#acf2f6d623b1aa7a63f2d3081a89daae3", null ],
+    [ "emu_elf_io_status_t", "emu__elf_8h.html#ae06d23f72c970453e1bd7807fef56ef1", [
+      [ "k_emu_elf_io_ok", "emu__elf_8h.html#ae06d23f72c970453e1bd7807fef56ef1add846c5f507dd52f87814fa1c95243b4", null ],
+      [ "k_emu_elf_io_invalid", "emu__elf_8h.html#ae06d23f72c970453e1bd7807fef56ef1aede8ba862040ba347325e211fbf5ae88", null ],
+      [ "k_emu_elf_io_capacity", "emu__elf_8h.html#ae06d23f72c970453e1bd7807fef56ef1add63315a86e8ef52ab9fefb3fb11d551", null ],
+      [ "k_emu_elf_io_eof", "emu__elf_8h.html#ae06d23f72c970453e1bd7807fef56ef1a6a3889c74c4417e7817ce0b4aac26b0d", null ],
+      [ "k_emu_elf_io_error", "emu__elf_8h.html#ae06d23f72c970453e1bd7807fef56ef1a83261e9a34e64058c9b07b150b96a51c", null ]
+    ] ],
+    [ "emu_elf_layout_t", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73", [
+      [ "k_elf_ehdr_size", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73ad0e4ba2370196703ee7b868ab833a4cb", null ],
+      [ "k_elf_em_arm", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73a3ddfbda7cd8976f69db4d3531be985d4", null ],
+      [ "k_elf_e_machine_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73a6957325a2d016cf68e12f258244fb835", null ],
+      [ "k_elf_e_phoff_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73ab66ad00d39fc6dd621d2cf777cec83b4", null ],
+      [ "k_elf_e_phentsize_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73aa08480db5c666e1ba86bb8642dc4d955", null ],
+      [ "k_elf_e_phnum_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73ac61745ecf951ca30bf0126a423267dea", null ],
+      [ "k_elf_ph_offset_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73ad5c7c2df4686a7e5da078576629331a1", null ],
+      [ "k_elf_ph_vaddr_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73a6cb210b8cbb3a6b99cee040cf0edac74", null ],
+      [ "k_elf_ph_paddr_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73a597d0a2c56d9be01e23abe84780314e5", null ],
+      [ "k_elf_ph_filesz_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73ac6ac6daa85b4fc70a3078253617c2b9c", null ],
+      [ "k_elf_ph_flags_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73a66e5f673815514f97ed01aecab902a08", null ],
+      [ "k_elf_pf_x", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73a188aa2b429836ad40db884a74c1ae9c1", null ],
+      [ "k_elf_pt_load", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73ae964d073635759cb25964a1422a7f3a4", null ],
+      [ "k_elf_shentsize_min", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73a5f5a2c5c501ff654fa040c01af225fd6", null ],
+      [ "k_elf_sh_size_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73addf41f0ee44a6c6aa089d4cdead0207d", null ],
+      [ "k_elf_sh_link_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73aac8d31d82ee9bf4ed7517d161f1f626d", null ],
+      [ "k_elf_sh_entsize_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73a915ee5dd24d37c0d9aa3a2003f366d19", null ],
+      [ "k_elf_sym_info_off", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73a9a84fcfb8e97fe12a80eb65cab74a710", null ],
+      [ "k_elf_st_type_mask", "emu__elf_8h.html#aa1b2cfde751a6f9a4a2c78d7f13dfb73a288c27912458f08a24c6944907356edc", null ]
+    ] ],
+    [ "elf_foreach_exec_segment", "emu__elf_8h.html#aac50035aba4e2c6724ab2365f4988574", null ],
+    [ "elf_foreach_load_segment", "emu__elf_8h.html#a290db166cd98c3a5335b698c8d98c317", null ],
+    [ "elf_foreach_symbol", "emu__elf_8h.html#a9c8cf88cffd3d90ae5c6a26bb03a4fd4", null ],
+    [ "elf_string_foreach", "emu__elf_8h.html#a01104280b945b309974c276aadb302bc", null ],
+    [ "elf_sym_addr", "emu__elf_8h.html#a58f0096d11b58540e8bb6e275fda0115", null ],
+    [ "elf_vector_base", "emu__elf_8h.html#accc0d5bb65ff5c3c8bfb2745d49118bc", null ],
+    [ "load_elf", "emu__elf_8h.html#ab3051fada2b5b2cebb4bbe1c13a7c536", null ],
+    [ "warm_reboot", "emu__elf_8h.html#ac8c5879e6775d59709d68317b1852b30", null ]
+];

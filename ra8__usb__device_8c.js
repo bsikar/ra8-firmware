@@ -1,0 +1,25 @@
+var ra8__usb__device_8c =
+[
+    [ "internal_check_ep_args", "ra8__usb__device_8c.html#a1122cc65d6717b90cdd98a0db7397139", null ],
+    [ "internal_dcp_reset_defaults", "ra8__usb__device_8c.html#a4577e764d13a5c7e120a313d1d414823", null ],
+    [ "internal_decode_dvsq", "ra8__usb__device_8c.html#a2becf375eaea1a4d8afca02d9240277a", null ],
+    [ "internal_pipe_arm_irq", "ra8__usb__device_8c.html#a2f42968a0e726f035270468d6c9992eb", null ],
+    [ "internal_pipe_finalize", "ra8__usb__device_8c.html#a70f3cb2679cb754925e0ecfea4b5da3d", null ],
+    [ "ra8_usb_clear_status", "ra8__usb__device_8c.html#afe2fdffe282a15aeb1c3e71ea9f0eec0", null ],
+    [ "ra8_usb_configure_endpoint", "ra8__usb__device_8c.html#a93e3a57b7e7cd7475f9c4c66aa0f7e71", null ],
+    [ "ra8_usb_device_attach", "ra8__usb__device_8c.html#aa7fc231b51b76d756497605c628d7b8a", null ],
+    [ "ra8_usb_device_busreset_rearm", "ra8__usb__device_8c.html#a610f89a4b5a4403210118bb1f1529332", null ],
+    [ "ra8_usb_device_deinit", "ra8__usb__device_8c.html#a6f7a57226fd75653e9f516a1eddd6e49", null ],
+    [ "ra8_usb_device_init", "ra8__usb__device_8c.html#a2a854070832cbad8ce2b96c0b6bb695e", null ],
+    [ "ra8_usb_get_device_state", "ra8__usb__device_8c.html#a681ba6367b8d4b18832b2feb93a1df72", null ],
+    [ "ra8_usb_get_status", "ra8__usb__device_8c.html#ad22aa8f7095aa876aa4403b2fec5703d", null ],
+    [ "ra8_usb_set_address", "ra8__usb__device_8c.html#a67f5e1e08fc99f50383148670519fd5b", null ],
+    [ "ra8_usb_stall_endpoint", "ra8__usb__device_8c.html#a74d8ea7eeab204fbc364a3ecea802720", null ],
+    [ "g_lpsts_after_attach", "ra8__usb__device_8c.html#a3984b780aaa9d3c8b85607bdda7349c8", null ],
+    [ "g_lpsts_after_phy_bringup", "ra8__usb__device_8c.html#ab244a2a98a489c83e70de4c7238f2486", null ],
+    [ "g_syscfg_after_attach", "ra8__usb__device_8c.html#a2ca289ae02365bbe1a5419bf25a3d67d", null ],
+    [ "g_syscfg_after_phy_bringup", "ra8__usb__device_8c.html#aabf4608d9da0b6d49ceac5e42fb209a0", null ],
+    [ "g_syscfg_before_dprpu", "ra8__usb__device_8c.html#a3862c2e072b2c3572c50e2df97a01825", null ],
+    [ "g_syssts0_after_attach", "ra8__usb__device_8c.html#abdc15dcbebd7576d20cb5df031b9cb5f", null ],
+    [ "s_tag", "ra8__usb__device_8c.html#af8861f6a1fb30510e283b1b7806b64e7", null ]
+];

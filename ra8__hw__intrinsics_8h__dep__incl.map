@@ -1,0 +1,23 @@
+<map id="libs/ra8_hal/inc/ra8_hw_intrinsics.h" name="libs/ra8_hal/inc/ra8_hw_intrinsics.h">
+<area shape="rect" id="Node000001" title="Shared CPU&#45;intrinsic seam for the HAL drivers (host/target split)." alt="" coords="777,5,923,45"/>
+<area shape="rect" id="Node000002" href="$ra8__cache_8c.html" title="Cortex&#45;M85 L1 cache maintenance, enable/disable, and I&#45;cache invalidate." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="764,34,495,56,330,73,164,96,151,98,151,93,163,91,329,68,495,50,763,29"/>
+<area shape="rect" id="Node000003" href="$ra8__eth__gwca__default_8c.html" title="Ethernet CPU Agent driver – one&#45;call default&#45;state API." alt="" coords="175,93,330,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="763,39,570,62,342,96,331,98,330,93,342,91,569,57,763,33"/>
+<area shape="rect" id="Node000004" href="$ra8__isr_8c.html" title="NVIC + ICU IELSR allocator implementation." alt="" coords="355,93,500,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="764,46,512,96,501,98,500,93,511,91,763,40"/>
+<area shape="rect" id="Node000005" href="$ra8__lpm_8c.html" title="Low Power Mode (LPM) HAL driver implementation." alt="" coords="524,93,669,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="782,52,653,96,651,91,781,47"/>
+<area shape="rect" id="Node000006" href="$ra8__pdg_8c.html" title="PWM Delay Generation Circuit (PDG) driver implementation." alt="" coords="693,93,839,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="824,57,786,95,783,91,820,53"/>
+<area shape="rect" id="Node000007" href="$ra8__pwr_8c.html" title="Low Power Mode + clock&#45;domain wrapper implementation." alt="" coords="863,93,1008,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="880,53,918,91,915,95,877,57"/>
+<area shape="rect" id="Node000008" href="$ra8__reset_8c.html" title="Reset cause introspection + software&#45;reset trigger." alt="" coords="1032,93,1177,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="920,47,1050,91,1048,96,918,52"/>
+<area shape="rect" id="Node000009" href="$ra8__rmac_8c.html" title="Per&#45;port Ethernet MAC (RMAC) driver implementation – HUM Ch 33." alt="" coords="1201,93,1347,133"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="937,40,1191,91,1202,93,1201,98,1189,96,936,46"/>
+<area shape="rect" id="Node000010" href="$ra8__tsn_8c.html" title="On&#45;chip Temperature Sensor (TSN) driver implementation." alt="" coords="1371,93,1516,133"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="937,33,1131,56,1360,91,1371,93,1370,98,1359,96,1130,62,936,38"/>
+<area shape="rect" id="Node000011" href="$ra8__mpu_8c.html" title="Cortex&#45;M85 Memory Protection Unit configuration helper." alt="" coords="1541,93,1695,133"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="937,30,1202,51,1366,69,1529,91,1541,93,1540,98,1528,96,1365,74,1202,57,937,35"/>
+</map>

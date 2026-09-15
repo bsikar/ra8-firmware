@@ -1,0 +1,19 @@
+<map id="mdl_net_c6link_t" name="mdl_net_c6link_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned state for one serialized C6 media network backend." alt="" coords="763,139,896,164"/>
+<area shape="rect" id="Node000002" href="$structra8__c6link.html" title="Caller&#45;allocated link handle." alt="" coords="530,112,619,137"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="634,128,763,142,762,147,633,133"/>
+<area shape="rect" id="Node000003" href="$structra8__c6link__transport.html" title="Function&#45;pointer seam a backend fills so the facade can reach the C6." alt="" coords="220,5,375,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="381,31,425,43,468,58,517,84,557,110,554,114,515,88,466,63,423,48,380,36"/>
+<area shape="rect" id="Node000004" href="$structra8__c6link__event.html" title="One decoded co&#45;processor announcement." alt="" coords="231,59,364,84"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="378,82,467,98,530,112,529,117,466,103,377,87"/>
+<area shape="rect" id="Node000005" href="$structra8__c6link__mac.html" title="One IEEE 802 address, by value." alt="" coords="5,59,129,84"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="143,69,231,69,231,74,143,74"/>
+<area shape="rect" id="Node000006" href="$structra8__c6link__wait.html" title="The one outstanding request a link is waiting on." alt="" coords="235,112,359,137"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="373,122,530,122,530,127,373,127"/>
+<area shape="rect" id="Node000007" href="$structra8__c6link__fault.html" title="What the co&#45;processor said when a request did not succeed." alt="" coords="234,165,361,191"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="374,166,466,150,529,135,531,140,467,155,375,171"/>
+<area shape="rect" id="Node000008" href="$structra8__c6link__stats.html" title="What one pump did on the wire, counted rather than inferred." alt="" coords="233,219,361,244"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="374,224,421,213,465,191,473,182,476,172,480,161,489,151,508,139,529,131,531,136,510,144,492,155,485,164,481,174,478,184,468,195,423,218,375,229"/>
+<area shape="rect" id="Node000009" href="$structra8__mdl__sha256__iface.html" title="Streaming SHA&#45;256 seam with caller&#45;owned fixed storage." alt="" coords="491,165,659,191"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="672,173,738,167,773,161,774,167,739,173,673,178"/>
+</map>

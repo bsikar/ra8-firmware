@@ -1,0 +1,39 @@
+<map id="libs/ra8_c6link/src/ra8_c6link.c" name="libs/ra8_c6link/src/ra8_c6link.c">
+<area shape="rect" id="Node000001" title="Link lifecycle, frame routing and the identity round&#45;trip." alt="" coords="136,5,275,45"/>
+<area shape="rect" id="Node000002" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="43,167,144,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="193,47,112,157,108,154,189,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="186,387,257,412"/>
+<area shape="poly" id="edge11_Node000001_Node000003" title=" " alt="" coords="143,48,97,68,53,96,35,113,21,132,11,154,8,178,8,254,12,281,25,305,43,325,66,343,120,369,173,386,172,391,118,374,64,347,40,329,20,308,7,283,3,254,3,178,6,153,16,130,31,109,50,92,94,63,140,43"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="168,167,243,192"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="208,46,208,153,203,153,203,46"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="267,167,392,192"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="223,44,313,154,309,158,219,48"/>
+<area shape="rect" id="Node000009" href="$ra8__c6link__internal_8h.html" title="Cross&#45;translation&#45;unit contract inside libs/ra8_c6link." alt="" coords="622,93,781,119"/>
+<area shape="poly" id="edge13_Node000001_Node000009" title=" " alt="" coords="275,35,616,89,615,94,274,40"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="91,193,80,221,71,259,70,300,75,319,84,337,101,357,124,371,173,389,172,394,121,376,98,361,79,340,70,321,65,300,66,258,75,220,86,191"/>
+<area shape="rect" id="Node000004" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="150,240,317,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="117,190,200,231,197,236,115,194"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="315,313,394,339"/>
+<area shape="poly" id="edge7_Node000002_Node000005" title=" " alt="" coords="145,188,257,213,305,226,331,238,342,252,349,268,356,299,351,300,344,269,337,255,328,242,303,231,256,218,144,193"/>
+<area shape="rect" id="Node000006" href="$ra8__mdl__protocol_8h.html" title="Allocation&#45;free constants shared by the RA8 and C6 media endpoints." alt="" coords="93,313,240,339"/>
+<area shape="poly" id="edge8_Node000002_Node000006" title=" " alt="" coords="102,191,157,300,152,302,97,194"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="242,265,253,298,256,318,255,339,239,376,234,374,249,338,251,319,248,299,237,266"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="254,263,325,304,322,309,251,268"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="334,341,256,382,254,378,332,336"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="178,337,206,374,202,377,174,341"/>
+<area shape="poly" id="edge17_Node000009_Node000002" title=" " alt="" coords="622,117,416,137,158,169,157,164,415,132,621,112"/>
+<area shape="poly" id="edge15_Node000009_Node000003" title=" " alt="" coords="747,116,779,128,807,145,825,166,827,179,822,193,808,212,788,230,731,264,658,295,575,322,405,365,271,392,270,387,404,360,573,317,656,290,728,259,784,226,804,209,818,191,822,179,820,168,804,149,776,133,745,121"/>
+<area shape="poly" id="edge18_Node000009_Node000005" title=" " alt="" coords="734,116,763,130,790,147,806,169,807,181,801,194,774,217,734,238,683,257,627,274,508,302,408,319,407,314,507,296,625,269,682,252,732,233,771,213,797,190,801,180,801,171,786,151,761,134,732,121"/>
+<area shape="poly" id="edge14_Node000009_Node000007" title=" " alt="" coords="622,118,458,138,257,169,256,164,457,133,622,113"/>
+<area shape="poly" id="edge16_Node000009_Node000008" title=" " alt="" coords="642,121,404,167,403,161,641,116"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="913,167,1071,192"/>
+<area shape="poly" id="edge19_Node000009_Node000010" title=" " alt="" coords="749,116,933,161,931,166,747,121"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="1096,167,1269,192"/>
+<area shape="poly" id="edge20_Node000009_Node000011" title=" " alt="" coords="779,116,1092,162,1091,167,778,121"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="1294,167,1461,192"/>
+<area shape="poly" id="edge21_Node000009_Node000012" title=" " alt="" coords="781,112,1280,164,1280,169,781,118"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="417,167,591,192"/>
+<area shape="poly" id="edge22_Node000009_Node000013" title=" " alt="" coords="671,121,550,164,548,159,669,116"/>
+<area shape="rect" id="Node000014" title=" " alt="" coords="616,167,787,192"/>
+<area shape="poly" id="edge23_Node000009_Node000014" title=" " alt="" coords="704,119,704,153,699,153,699,119"/>
+</map>

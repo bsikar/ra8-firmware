@@ -1,0 +1,22 @@
+var searchData=
+[
+  ['verify_5fatlases_5ft_0',['verify_atlases_t',['../structverify__atlases__t.html',1,'']]],
+  ['verify_5fcli_5fargs_5ft_1',['verify_cli_args_t',['../structverify__cli__args__t.html',1,'']]],
+  ['verify_5fcompare_5ft_2',['verify_compare_t',['../structverify__compare__t.html',1,'']]],
+  ['verify_5flayout_5ft_3',['verify_layout_t',['../structverify__layout__t.html',1,'']]],
+  ['verify_5fpull_5ft_4',['verify_pull_t',['../structverify__pull__t.html',1,'']]],
+  ['verify_5fstats_5ft_5',['verify_stats_t',['../structverify__stats__t.html',1,'']]],
+  ['vfs_5fdir_5flayout_5ft_6',['vfs_dir_layout_t',['../structvfs__dir__layout__t.html',1,'']]],
+  ['vfs_5fdirectory_5fstate_5ft_7',['vfs_directory_state_t',['../structvfs__directory__state__t.html',1,'']]],
+  ['vfs_5ffile_5fstate_5ft_8',['vfs_file_state_t',['../structvfs__file__state__t.html',1,'']]],
+  ['vfs_5flist_5fstate_5ft_9',['vfs_list_state_t',['../structvfs__list__state__t.html',1,'']]],
+  ['vfs_5fslot_5ft_10',['vfs_slot_t',['../structvfs__slot__t.html',1,'']]],
+  ['vfs_5ftransaction_5fstate_5ft_11',['vfs_transaction_state_t',['../structvfs__transaction__state__t.html',1,'']]],
+  ['viewer_5fcomic_5ft_12',['viewer_comic_t',['../structviewer__comic__t.html',1,'']]],
+  ['viewer_5ffile_5fctx_5ft_13',['viewer_file_ctx_t',['../structviewer__file__ctx__t.html',1,'']]],
+  ['viewer_5ffit_5fbox_5ft_14',['viewer_fit_box_t',['../structviewer__fit__box__t.html',1,'']]],
+  ['viewer_5fjof_5ft_15',['viewer_jof_t',['../structviewer__jof__t.html',1,'']]],
+  ['viewer_5flayout_5ft_16',['viewer_layout_t',['../structviewer__layout__t.html',1,'']]],
+  ['viewer_5foptions_5ft_17',['viewer_options_t',['../structviewer__options__t.html',1,'']]],
+  ['vmsc_5foverlay_5ft_18',['vmsc_overlay_t',['../structvmsc__overlay__t.html',1,'']]]
+];

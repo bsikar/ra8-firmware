@@ -1,0 +1,24 @@
+<map id="apps/shared_libs/xml/src/xml_decode.c" name="apps/shared_libs/xml/src/xml_decode.c">
+<area shape="rect" id="Node000001" title="Bounded entity and UTF&#45;8 decoding for the no&#45;heap XML pull reader." alt="" coords="240,5,400,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,240,80,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="275,48,230,69,184,96,138,128,99,168,76,199,58,229,53,226,72,196,95,165,135,124,181,91,228,64,273,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="198,313,269,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="354,43,393,71,431,107,445,127,454,148,455,171,448,193,433,216,414,236,371,270,325,295,283,312,281,308,323,290,368,265,411,232,428,213,443,191,450,170,448,150,440,129,427,110,390,75,351,48"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="509,93,579,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="375,43,499,86,497,91,373,48"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="308,167,433,192"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="329,45,365,153,360,154,324,47"/>
+<area shape="rect" id="Node000006" href="$xml_8h.html" title="Bounded, caller&#45;owned, no&#45;heap XML pull reader." alt="" coords="147,167,205,192"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="269,48,234,68,203,95,188,124,181,153,176,152,183,122,199,92,231,63,266,43"/>
+<area shape="rect" id="Node000008" href="$xml__internal_8h.html" title="Private lexical seams shared by the bounded XML reader." alt="" coords="214,93,330,119"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="311,47,289,83,284,80,306,44"/>
+<area shape="poly" id="edge6_Node000006_Node000002" title=" " alt="" coords="156,194,78,236,75,231,153,190"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="168,193,146,227,141,246,145,264,165,288,191,305,188,310,161,292,140,267,136,246,141,224,163,191"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,240,234,265"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="182,192,191,226,186,228,177,193"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="203,264,223,300,218,303,199,267"/>
+<area shape="poly" id="edge11_Node000008_Node000002" title=" " alt="" coords="238,121,188,141,136,169,96,200,64,232,60,228,93,196,133,164,186,136,236,116"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="273,119,248,266,241,300,236,299,243,265,268,118"/>
+<area shape="poly" id="edge13_Node000008_Node000005" title=" " alt="" coords="289,117,345,156,342,161,286,121"/>
+<area shape="poly" id="edge14_Node000008_Node000006" title=" " alt="" coords="258,121,204,160,201,156,255,117"/>
+</map>

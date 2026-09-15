@@ -1,0 +1,29 @@
+<map id="tools/mkfontimg/src/mkfontimg.c" name="tools/mkfontimg/src/mkfontimg.c">
+<area shape="rect" id="Node000001" title="Build an atomic FAT16 font image through bounded filesystem streaming." alt="" coords="318,5,471,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="169,460,239,485"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="318,43,222,65,120,95,75,114,40,134,16,156,10,167,8,178,8,327,12,353,23,375,39,395,60,412,108,439,156,457,154,462,106,444,57,416,35,399,18,378,7,354,3,328,3,178,5,165,12,152,37,130,73,109,118,90,220,59,317,38"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="551,93,622,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="442,43,547,86,545,91,440,48"/>
+<area shape="rect" id="Node000004" href="$mkfontimg__internal_8h.html" title="Module&#45;private bounded host&#45;storage composition for mkfontimg." alt="" coords="313,93,476,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="397,46,397,79,392,79,392,46"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="447,167,572,192"/>
+<area shape="poly" id="edge17_Node000001_Node000005" title=" " alt="" coords="434,43,464,64,490,92,504,122,510,153,505,154,499,124,486,95,461,68,431,48"/>
+<area shape="rect" id="Node000006" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="256,167,331,192"/>
+<area shape="poly" id="edge18_Node000001_Node000006" title=" " alt="" coords="355,48,327,68,304,95,294,123,293,152,288,152,289,122,299,92,323,64,352,43"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="398,119,403,251,403,328,399,354,387,378,371,398,350,416,301,443,253,461,251,456,299,438,346,411,367,394,383,375,393,352,397,327,397,251,393,119"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="414,116,480,157,478,162,412,121"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="380,121,323,161,320,156,377,116"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="299,192,308,230,315,287,313,351,305,383,293,413,273,438,247,456,244,451,269,434,288,411,300,382,307,351,310,287,303,231,294,193"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="199,387,278,412"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="293,193,248,374,242,372,288,192"/>
+<area shape="rect" id="Node000008" href="$ra8__fs__seams_8h.html" title="The two dependency&#45;injection seams ra8_fs offers its callers." alt="" coords="137,240,261,265"/>
+<area shape="poly" id="edge10_Node000006_Node000008" title=" " alt="" coords="280,194,227,234,224,229,277,190"/>
+<area shape="rect" id="Node000009" href="$ra8__fs__types_8h.html" title="On&#45;disk and handle data types shared by the ra8_fs public API." alt="" coords="93,313,211,339"/>
+<area shape="poly" id="edge16_Node000006_Node000009" title=" " alt="" coords="256,185,223,189,187,199,153,216,126,241,121,255,122,271,137,301,132,303,117,272,116,255,122,239,150,211,185,194,222,184,256,179"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="235,414,218,449,213,446,231,411"/>
+<area shape="poly" id="edge11_Node000008_Node000002" title=" " alt="" coords="155,268,126,279,99,295,84,314,81,325,84,338,102,372,127,403,178,450,174,454,123,406,98,375,79,340,76,325,79,312,96,291,123,275,153,263"/>
+<area shape="poly" id="edge12_Node000008_Node000007" title=" " alt="" coords="207,265,225,313,238,373,233,374,220,314,202,267"/>
+<area shape="poly" id="edge13_Node000008_Node000009" title=" " alt="" coords="193,267,169,303,165,300,189,264"/>
+<area shape="poly" id="edge14_Node000009_Node000002" title=" " alt="" coords="159,338,198,446,193,448,154,340"/>
+<area shape="poly" id="edge15_Node000009_Node000007" title=" " alt="" coords="168,337,216,376,212,380,164,341"/>
+</map>

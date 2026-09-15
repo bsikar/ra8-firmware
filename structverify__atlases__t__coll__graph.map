@@ -1,0 +1,5 @@
+<map id="verify_atlases_t" name="verify_atlases_t">
+<area shape="rect" id="Node000001" title="Parsed and fully preflighted reference and subject atlases." alt="" coords="5,121,131,147"/>
+<area shape="rect" id="Node000002" href="$structjof__info__t.html" title="Parsed + validated geometry of one JOF atlas." alt="" coords="27,5,109,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="71,45,71,121,65,121,65,45"/>
+</map>

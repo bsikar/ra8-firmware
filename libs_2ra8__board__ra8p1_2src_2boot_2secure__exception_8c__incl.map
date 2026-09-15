@@ -1,0 +1,8 @@
+<map id="libs/ra8_board_ra8p1/src/boot/secure_exception.c" name="libs/ra8_board_ra8p1/src/boot/secure_exception.c">
+<area shape="rect" id="Node000001" title="Secure&#45;side fault handler for NS &#45;&gt; S violations." alt="" coords="5,5,212,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="73,167,144,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,46,88,80,85,99,86,118,99,154,94,155,81,119,79,99,83,79,96,45"/>
+<area shape="rect" id="Node000003" href="$ra8__exception_8h.html" title="Cortex&#45;M85 CPU exception diagnostic helpers." alt="" coords="96,93,223,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="123,44,147,80,142,83,119,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="153,121,127,157,123,154,149,117"/>
+</map>

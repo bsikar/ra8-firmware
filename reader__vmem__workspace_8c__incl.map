@@ -1,0 +1,23 @@
+<map id="tools/reader_vmem/src/reader_vmem_workspace.c" name="tools/reader_vmem/src/reader_vmem_workspace.c">
+<area shape="rect" id="Node000001" title="Checked split&#45;region planning for reader_vmem cache RAM." alt="" coords="5,5,211,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="76,167,151,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,46,115,153,110,153,106,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="169,387,239,412"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="92,47,73,72,53,103,37,140,31,178,31,254,33,281,42,300,56,317,76,337,115,363,156,382,154,386,112,368,73,341,52,321,37,303,28,282,25,254,25,178,32,138,48,101,68,69,88,44"/>
+<area shape="rect" id="Node000004" href="$reader__vmem__internal_8h.html" title="Private host sink and caller&#45;owned workspace contracts for reader_vmem." alt="" coords="146,93,329,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="141,43,208,84,205,88,138,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="219,121,147,162,144,157,216,116"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="256,117,279,137,298,166,301,179,299,192,289,269,279,301,261,340,247,361,230,379,226,375,243,357,256,337,274,299,284,268,293,192,295,179,294,168,275,141,253,121"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="364,167,489,192"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="269,116,384,159,382,164,267,121"/>
+<area shape="rect" id="Node000006" href="$ra8__vmem_8h.html" title="Byte&#45;range page cache with SLRU eviction (Layer 2, #147)." alt="" coords="180,167,284,192"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="239,119,237,153,231,153,234,119"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="239,191,253,240,254,278,246,315,220,376,215,374,241,313,248,277,248,240,234,193"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="87,313,166,339"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="180,193,139,211,121,224,106,241,101,255,102,270,113,300,108,302,97,271,96,254,102,239,117,221,136,206,178,188"/>
+<area shape="rect" id="Node000008" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="116,240,239,265"/>
+<area shape="poly" id="edge11_Node000006_Node000008" title=" " alt="" coords="225,194,197,231,192,228,221,191"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="141,337,183,375,179,379,137,341"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="182,265,202,372,197,373,177,266"/>
+<area shape="poly" id="edge13_Node000008_Node000007" title=" " alt="" coords="171,267,145,304,141,301,167,264"/>
+</map>

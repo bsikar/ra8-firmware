@@ -1,0 +1,37 @@
+var ux__device__class__storage__inquiry_8c =
+[
+    [ "UX_SOURCE_CODE", "ux__device__class__storage__inquiry_8c.html#ad65ae5121da702593d1c2ff0ea569eaf", null ],
+    [ "ra8_ux_inquiry_const_t", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325", [
+      [ "k_inq_cdb_off_evpd", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325ab49db6f30f60d6969e41ed8e8a416a92", null ],
+      [ "k_inq_cdb_evpd_bit", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a8a0b1a64bdb1fbe09941611de84d15ea", null ],
+      [ "k_inq_off_page_code", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325ab7a220bf21932d88601593e9a63d71e8", null ],
+      [ "k_inq_off_version", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a76cfc446a26566dbf8ec328652481a6f", null ],
+      [ "k_inq_off_data_format", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a87a385762c51d1ebaa544bf2cc515d04", null ],
+      [ "k_inq_off_addl_len", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a86967862fea6294e1785af9699080054", null ],
+      [ "k_inq_version_spc2", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a6e365cf90bcfdb01b0f623b10527d5b0", null ],
+      [ "k_inq_format_spc", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a664a9fb7cefb520818144468d04d4f51", null ],
+      [ "k_inq_format_cdrom", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a6dbea72626861e0b341f18fc8767ed37", null ],
+      [ "k_inq_addl_len_std", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a69aa8efe94f54759e64ef5d94fa3793d", null ],
+      [ "k_inq_vpd0_count_off", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a86eb20e82899fbf863730c41dfd4f85a", null ],
+      [ "k_inq_vpd0_first_off", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a3487074c9609c749cd598b9e0384ed57", null ],
+      [ "k_inq_vpd0_second_off", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a3688736c79bdcd4f2f5e3c1138aa01ba", null ],
+      [ "k_inq_vpd0_pages", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a88cd1aeb1d306bda39f623e6c136f9a8", null ],
+      [ "k_inq_vpd0_len", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a69431dcdcabbe2904c9c73ecc8091d30", null ],
+      [ "k_inq_vpd_hdr_len", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a19cd6667a218eca502b4e86703aedf62", null ],
+      [ "k_inq_serial_len", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a4d5a2bed4d00eab7f9e6110add50987b", null ],
+      [ "k_inq_vendor_id_len", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325af90a44640e16810d4ca68d076bff1117", null ],
+      [ "k_inq_product_id_len", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a060f35a682451db7fd4735d004bbcb9f", null ],
+      [ "k_inq_product_rev_len", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325ac8051d80b408eadcdfe7b75530aaa792", null ],
+      [ "k_inq_serial_resp_len", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a445da6afb139b4d0b073259e09278be7", null ],
+      [ "k_inq_dir_in_bit", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325ab53374627d175ccbf643df3306dcad8b", null ],
+      [ "k_inq_sense_illegal", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a7173f1d65253de6ba55b76f57fdeabea", null ],
+      [ "k_inq_sense_asc_field", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325ab9c920d7ea9fadd4937db035cba90427", null ],
+      [ "k_inq_sense_ascq", "ux__device__class__storage__inquiry_8c.html#acba6fc26073dab77bcd228f489c51325a7361c5296b0fd4a6c63e7f0f59eb630e", null ]
+    ] ],
+    [ "_ux_device_class_storage_inquiry", "ux__device__class__storage__inquiry_8c.html#a22565fe94179c4858230b723e5b08505", null ],
+    [ "internal_inquiry_fill_serial", "ux__device__class__storage__inquiry_8c.html#acb9f951d8ba3cc450df49e0a1874a543", null ],
+    [ "internal_inquiry_fill_standard", "ux__device__class__storage__inquiry_8c.html#aa3423a8cbd63bb04119296659fff35f9", null ],
+    [ "internal_inquiry_fill_vpd_pages", "ux__device__class__storage__inquiry_8c.html#a01dc8d7a94b2353a31e5e3b60f804444", null ],
+    [ "internal_inquiry_reject", "ux__device__class__storage__inquiry_8c.html#a174a255e1dd28a1b0ea17f28d6355d63", null ],
+    [ "internal_inquiry_send", "ux__device__class__storage__inquiry_8c.html#a68e5e94976f1c5c144e203276b02fd35", null ]
+];

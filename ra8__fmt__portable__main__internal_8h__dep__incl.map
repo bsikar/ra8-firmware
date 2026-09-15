@@ -1,0 +1,11 @@
+<map id="tools/rabook_imagepack/inc/ra8_fmt_portable_main_internal.h" name="tools/rabook_imagepack/inc/ra8_fmt_portable_main_internal.h">
+<area shape="rect" id="Node000001" title="Caller&#45;workspace CLI composition for every supported tool verb." alt="" coords="315,5,497,60"/>
+<area shape="rect" id="Node000002" href="$tools_2rabook__imagepack_2src_2main_8c.html" title="Portable command entry for JOF and RBKC content tooling." alt="" coords="5,115,188,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="314,67,156,118,154,113,312,62"/>
+<area shape="rect" id="Node000003" href="$ra8__fmt__portable__convert_8c.html" title="Raw&#45;descriptor composition root for caller&#45;workspace JOF conversion." alt="" coords="212,108,395,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="371,72,332,110,328,106,368,68"/>
+<area shape="rect" id="Node000004" href="$ra8__fmt__portable__main_8c.html" title="Raw&#45;descriptor CLI composition for JOF and RBKC inspection." alt="" coords="419,108,601,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="445,68,485,106,481,110,441,72"/>
+<area shape="rect" id="Node000005" href="$ra8__fmt__portable__verify_8c.html" title="Raw&#45;fd composition root for bounded two&#45;spool JOF verification." alt="" coords="625,108,808,163"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="501,62,637,105,635,110,499,67"/>
+</map>

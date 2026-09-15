@@ -1,0 +1,8 @@
+<map id="libs/ra8_audio/inc/ra8_audio.h" name="libs/ra8_audio/inc/ra8_audio.h">
+<area shape="rect" id="Node000001" title="Transport&#45;neutral, caller&#45;owned audio capture facade." alt="" coords="5,5,141,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="38,167,109,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="70,46,64,80,63,118,69,153,64,154,57,119,58,79,65,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="73,93,151,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="85,44,103,80,98,82,80,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="108,120,88,156,84,153,103,118"/>
+</map>

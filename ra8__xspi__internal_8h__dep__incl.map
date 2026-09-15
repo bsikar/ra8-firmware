@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/src/ra8_xspi_internal.h" name="libs/ra8_hal/src/ra8_xspi_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private seam shared between the ra8_xspi translation units." alt="" coords="89,5,235,45"/>
+<area shape="rect" id="Node000002" href="$ra8__xspi_8c.html" title="Octal Serial Peripheral Interface (OSPI / xSPI) driver." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="136,57,98,95,95,91,132,53"/>
+<area shape="rect" id="Node000003" href="$ra8__xspi__flash_8c.html" title="OSPI / xSPI manual&#45;command engine + JEDEC NOR&#45;flash operations." alt="" coords="175,93,320,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="192,53,230,91,227,95,189,57"/>
+</map>

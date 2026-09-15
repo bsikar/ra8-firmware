@@ -1,0 +1,36 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_riic.c" name="tools/ra8_emulator/src/periph/board_periph_riic.c">
+<area shape="rect" id="Node000001" title="RIIC (IIC) controller + PI4IOE5V6408 I/O&#45;expander + OV5640 SCCB model." alt="" coords="315,5,494,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="228,269,299,295"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="406,60,402,95,394,137,379,182,356,223,332,247,304,265,301,261,329,243,352,220,374,180,388,136,397,94,401,60"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="518,108,585,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="451,58,521,99,518,103,448,62"/>
+<area shape="rect" id="Node000004" href="$board__console_8h.html" title="Multi&#45;channel console log store backing the board view&#39;s tabbed console." alt="" coords="206,108,334,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="365,62,301,103,298,98,362,58"/>
+<area shape="rect" id="Node000005" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="5,108,167,133"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="316,61,143,107,141,102,314,55"/>
+<area shape="rect" id="Node000010" href="$board__periph__riic__devices__internal_8h.html" title="Internal RIIC bus&#45;device registry and board&#45;device models." alt="" coords="417,181,608,221"/>
+<area shape="poly" id="edge13_Node000001_Node000010" title=" " alt="" coords="421,59,464,132,491,169,487,172,460,135,416,62"/>
+<area shape="rect" id="Node000011" href="$emu__host__io__internal_8h.html" title="Bounded raw&#45;descriptor I/O seam for the RA8 emulator." alt="" coords="632,189,807,214"/>
+<area shape="poly" id="edge16_Node000001_Node000011" title=" " alt="" coords="427,59,462,96,507,131,576,163,644,183,643,188,574,168,505,136,459,100,423,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="224,136,186,154,169,167,156,183,150,201,156,220,168,235,182,247,216,265,214,270,179,251,164,238,152,223,144,201,152,180,166,163,183,149,222,131"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="92,133,111,174,126,198,144,219,178,244,216,262,214,267,176,249,140,223,121,201,106,177,88,135"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="20,269,155,295"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="81,135,71,156,62,182,59,201,62,221,76,256,71,258,57,222,54,201,57,181,66,154,77,133"/>
+<area shape="rect" id="Node000007" href="$emu__memory__access_8h.html" title="Central first&#45;party Unicorn memory access seam." alt="" coords="166,189,342,214"/>
+<area shape="poly" id="edge8_Node000005_Node000007" title=" " alt="" coords="112,131,219,181,216,185,109,136"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="258,214,263,255,258,256,253,214"/>
+<area shape="poly" id="edge11_Node000007_Node000006" title=" " alt="" coords="231,216,125,266,123,261,229,212"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="333,269,407,295"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="273,212,343,259,340,264,270,216"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="450,269,575,295"/>
+<area shape="poly" id="edge12_Node000007_Node000009" title=" " alt="" coords="292,211,463,263,461,268,291,217"/>
+<area shape="poly" id="edge14_Node000010_Node000002" title=" " alt="" coords="454,224,312,268,311,263,452,219"/>
+<area shape="poly" id="edge15_Node000010_Node000009" title=" " alt="" coords="515,222,515,255,510,255,510,222"/>
+<area shape="poly" id="edge19_Node000011_Node000002" title=" " alt="" coords="661,217,621,224,321,272,313,273,312,268,320,267,620,219,660,211"/>
+<area shape="poly" id="edge18_Node000011_Node000008" title=" " alt="" coords="669,217,421,272,420,267,668,211"/>
+<area shape="poly" id="edge21_Node000011_Node000009" title=" " alt="" coords="690,217,556,267,555,262,688,212"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="641,269,715,295"/>
+<area shape="poly" id="edge17_Node000011_Node000012" title=" " alt="" coords="716,215,693,258,688,256,711,213"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="739,269,835,295"/>
+<area shape="poly" id="edge20_Node000011_Node000013" title=" " alt="" coords="731,212,770,257,766,261,727,216"/>
+</map>

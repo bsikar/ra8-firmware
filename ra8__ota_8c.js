@@ -1,0 +1,28 @@
+var ra8__ota_8c =
+[
+    [ "internal_download_chunk", "ra8__ota_8c.html#a49ed1bf812ff07fb34cc4cdb0536619c", null ],
+    [ "internal_download_loop", "ra8__ota_8c.html#ad613b8a7299d1fcb3c289d8f15d63413", null ],
+    [ "internal_drain", "ra8__ota_8c.html#a1dea92b39754bacad867bf300ab08193", null ],
+    [ "internal_fetch_manifest_payload", "ra8__ota_8c.html#a474a5baebbb6c49d8601cd0faf921604", null ],
+    [ "internal_prepare_bank", "ra8__ota_8c.html#a1cef771c5b0a18ce3e0e4b3bac7134db", null ],
+    [ "internal_step_dispatch", "ra8__ota_8c.html#a3710f4a750bb23417e5afadb19651d02", null ],
+    [ "priv_ota_set_state", "ra8__ota_8c.html#aa14c7b98b135f2dbea39c3fa330921f1", null ],
+    [ "ra8_ota_check_for_update", "ra8__ota_8c.html#ac78a1d94ba4060a948c1e811120a930f", null ],
+    [ "ra8_ota_commit_and_reboot", "ra8__ota_8c.html#a13f54e3197233147b1e0c307edb3364e", null ],
+    [ "ra8_ota_deinit", "ra8__ota_8c.html#afb31e22a000c115482771e0429aa823c", null ],
+    [ "ra8_ota_download_to_inactive_bank", "ra8__ota_8c.html#a720345a656395ab8b18f7c7fadb2ac57", null ],
+    [ "ra8_ota_get_state", "ra8__ota_8c.html#aa79a91f79639a1d2f73d5e6182332d46", null ],
+    [ "ra8_ota_init", "ra8__ota_8c.html#aa49ead323727aba4ad1fcafb87138d2e", null ],
+    [ "ra8_ota_run_full_update", "ra8__ota_8c.html#aa05dcce9cb28aac1be70bb0968249d93", null ],
+    [ "ra8_ota_run_step", "ra8__ota_8c.html#a0b95dad2d7d8dc754500470bb765a85c", null ],
+    [ "ra8_ota_system_reset_hook", "ra8__ota_8c.html#a166ee92aa2ad933e071a6ac03f710a79", null ],
+    [ "g_ra8_ota_buf", "ra8__ota_8c.html#a9fc0d443168aef0e0f2715424d519635", null ],
+    [ "g_ra8_ota_cfg", "ra8__ota_8c.html#ac8d12ea46bb9989c7174b0e4e80d12b3", null ],
+    [ "g_ra8_ota_initialized", "ra8__ota_8c.html#a5a3f6249ac92a75d36f3c9f77a6a0778", null ],
+    [ "g_ra8_ota_state", "ra8__ota_8c.html#a83f0c3bfcde6bafbf93bee21fcb16448", null ],
+    [ "s_bytes_done", "ra8__ota_8c.html#ae46c7e9473dcee15fa1b463a5be0521c", null ],
+    [ "s_last_err", "ra8__ota_8c.html#a91f57a88ae3e1a154f2a99b050e0fa55", null ],
+    [ "s_manifest", "ra8__ota_8c.html#a702dbace55096c571088570cd713d3ab", null ],
+    [ "s_manifest_valid", "ra8__ota_8c.html#a5ca3aa19e628327f8bb98cae6df373eb", null ],
+    [ "s_tag", "ra8__ota_8c.html#aa7129027772dcdce950994a2fabfc92a", null ]
+];

@@ -1,0 +1,62 @@
+<map id="libs/ra8_io/src/ra8_io_blockdev_usbmsc.c" name="libs/ra8_io/src/ra8_io_blockdev_usbmsc.c">
+<area shape="rect" id="Node000001" title="USB mass&#45;storage block&#45;device backend – a hosted device as 512&#45;byte logical blocks." alt="" coords="527,5,702,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__blockdev__usbmsc_8h.html" title="ra8_io block&#45;device backend over a hosted USB mass&#45;storage device." alt="" coords="209,93,407,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="542,48,367,92,366,87,541,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="630,533,701,559"/>
+<area shape="poly" id="edge18_Node000001_Node000003" title=" " alt="" coords="607,47,575,122,557,175,542,235,532,298,531,363,541,425,551,455,565,484,588,509,618,527,616,531,585,514,560,487,546,457,536,427,526,363,527,298,537,234,552,174,570,120,602,45"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="575,460,654,485"/>
+<area shape="poly" id="edge27_Node000001_Node000004" title=" " alt="" coords="608,46,593,94,593,119,604,307,615,446,610,446,598,307,588,119,588,93,603,45"/>
+<area shape="rect" id="Node000005" href="$ra8__io__blockdev_8h.html" title="ra8_io block&#45;device fabric – one LBA vtable across every storage medium." alt="" coords="339,167,477,192"/>
+<area shape="poly" id="edge28_Node000001_Node000005" title=" " alt="" coords="577,48,538,69,498,95,460,127,429,158,426,155,457,123,494,91,535,65,574,43"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="603,93,728,119"/>
+<area shape="poly" id="edge19_Node000001_Node000009" title=" " alt="" coords="629,44,653,80,648,83,625,47"/>
+<area shape="rect" id="Node000010" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="1003,387,1103,412"/>
+<area shape="poly" id="edge20_Node000001_Node000010" title=" " alt="" coords="703,27,860,38,950,49,1038,63,1118,82,1184,107,1209,122,1229,139,1241,157,1245,178,1245,254,1242,279,1232,301,1217,321,1198,338,1154,366,1109,385,1107,380,1151,361,1195,334,1213,318,1227,299,1237,278,1240,254,1240,178,1236,159,1225,142,1206,126,1181,112,1117,88,1037,68,949,54,860,43,702,32"/>
+<area shape="rect" id="Node000013" href="$ra8__io__blockdev__backend_8h.html" title="Backend implementation contract for the ra8_io block&#45;device fabric." alt="" coords="753,93,954,119"/>
+<area shape="poly" id="edge29_Node000001_Node000013" title=" " alt="" coords="673,43,806,87,805,92,671,48"/>
+<area shape="rect" id="Node000014" href="$ra8__usb__hmsc_8h.html" title="Native USB host&#45;side MSC (Mass Storage Class) class layer." alt="" coords="915,167,1042,192"/>
+<area shape="poly" id="edge33_Node000001_Node000014" title=" " alt="" coords="702,29,778,37,856,49,924,67,950,78,969,91,978,105,983,121,985,153,980,153,978,122,973,108,965,95,948,83,922,72,855,54,777,42,702,34"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="210,117,141,130,107,141,75,155,48,173,27,194,13,220,8,252,8,401,10,419,16,434,24,445,36,454,67,468,105,483,148,496,206,508,350,525,499,535,616,541,616,546,499,541,349,530,206,513,147,502,103,488,65,473,33,458,21,449,11,436,5,421,3,401,3,251,8,219,23,191,45,169,73,150,105,136,140,125,209,111"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="311,119,316,152,329,191,357,234,389,276,461,350,531,409,587,450,584,454,528,413,457,354,385,279,352,237,324,193,310,154,306,119"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="326,117,382,156,379,161,323,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="625,484,651,521,647,524,621,487"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="339,182,251,189,205,197,160,210,120,229,88,253,66,285,61,304,59,325,59,400,63,420,76,438,97,454,124,468,196,493,282,511,376,524,468,533,617,541,616,546,468,538,375,529,281,516,194,498,122,473,94,458,72,441,58,422,53,401,53,325,55,303,62,283,84,250,117,224,158,205,203,192,251,184,338,177"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="421,190,467,242,522,312,569,385,605,447,600,449,565,387,518,315,463,245,417,194"/>
+<area shape="rect" id="Node000006" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="271,240,345,265"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="393,194,337,234,334,230,390,190"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="271,257,237,262,199,271,164,288,135,315,115,339,98,356,89,367,89,377,102,391,133,411,261,483,290,495,329,505,426,521,616,539,616,544,425,526,327,510,288,500,259,488,130,416,98,395,84,379,84,366,94,352,111,335,131,311,161,284,197,266,236,256,270,252"/>
+<area shape="poly" id="edge10_Node000006_Node000004" title=" " alt="" coords="320,264,386,330,433,372,484,410,527,434,570,452,568,457,525,439,481,414,430,376,382,334,317,268"/>
+<area shape="rect" id="Node000007" href="$ra8__fs__seams_8h.html" title="The two dependency&#45;injection seams ra8_fs offers its callers." alt="" coords="146,313,270,339"/>
+<area shape="poly" id="edge11_Node000006_Node000007" title=" " alt="" coords="293,268,237,307,234,303,290,263"/>
+<area shape="rect" id="Node000008" href="$ra8__fs__types_8h.html" title="On&#45;disk and handle data types shared by the ra8_fs public API." alt="" coords="245,387,363,412"/>
+<area shape="poly" id="edge17_Node000006_Node000008" title=" " alt="" coords="310,266,307,373,302,373,305,266"/>
+<area shape="poly" id="edge12_Node000007_Node000003" title=" " alt="" coords="208,339,205,373,207,393,214,411,241,442,269,459,346,483,418,504,492,520,617,538,616,543,491,525,417,510,345,488,267,464,237,447,210,413,202,394,199,373,203,339"/>
+<area shape="poly" id="edge13_Node000007_Node000004" title=" " alt="" coords="210,339,215,375,223,394,235,410,259,424,292,436,381,453,478,463,562,467,561,473,478,468,380,458,291,441,256,429,232,414,218,397,210,376,205,340"/>
+<area shape="poly" id="edge14_Node000007_Node000008" title=" " alt="" coords="225,337,279,376,276,380,222,341"/>
+<area shape="poly" id="edge15_Node000008_Node000003" title=" " alt="" coords="313,410,341,447,360,467,383,483,442,509,505,526,565,536,616,541,616,546,565,542,504,532,440,514,380,488,357,471,337,451,309,414"/>
+<area shape="poly" id="edge16_Node000008_Node000004" title=" " alt="" coords="355,409,563,457,561,462,353,415"/>
+<area shape="poly" id="edge21_Node000010_Node000003" title=" " alt="" coords="1045,414,1008,451,983,471,955,488,892,512,827,529,766,539,715,545,714,539,765,534,826,523,891,507,952,483,980,466,1005,447,1042,410"/>
+<area shape="poly" id="edge22_Node000010_Node000004" title=" " alt="" coords="1003,412,984,415,668,466,667,460,984,409,1003,406"/>
+<area shape="rect" id="Node000011" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="1016,460,1099,485"/>
+<area shape="poly" id="edge23_Node000010_Node000011" title=" " alt="" coords="1057,412,1059,446,1053,447,1051,412"/>
+<area shape="rect" id="Node000012" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="793,460,941,485"/>
+<area shape="poly" id="edge25_Node000010_Node000012" title=" " alt="" coords="1024,415,911,457,909,453,1022,410"/>
+<area shape="poly" id="edge24_Node000011_Node000003" title=" " alt="" coords="1016,485,998,488,715,539,714,533,997,483,1015,479"/>
+<area shape="poly" id="edge26_Node000012_Node000003" title=" " alt="" coords="835,488,712,531,710,526,833,483"/>
+<area shape="poly" id="edge30_Node000013_Node000003" title=" " alt="" coords="827,121,790,141,751,169,733,187,719,206,710,228,707,252,707,401,704,434,697,467,678,521,673,520,692,466,699,433,701,401,701,251,705,226,715,204,729,183,747,165,787,136,825,116"/>
+<area shape="poly" id="edge31_Node000013_Node000004" title=" " alt="" coords="781,121,731,139,708,152,687,169,670,188,661,205,657,225,656,251,656,327,653,361,646,394,628,448,623,446,641,392,648,360,651,327,651,251,652,225,656,204,666,185,683,165,705,148,729,134,779,116"/>
+<area shape="poly" id="edge32_Node000013_Node000005" title=" " alt="" coords="782,121,492,167,491,162,781,116"/>
+<area shape="poly" id="edge34_Node000014_Node000003" title=" " alt="" coords="1033,189,1085,207,1137,234,1160,251,1178,272,1190,297,1195,324,1195,401,1191,430,1181,453,1163,470,1137,488,1103,503,1056,515,939,532,815,542,714,546,714,541,815,537,938,527,1055,510,1101,498,1135,483,1159,466,1176,449,1186,429,1189,401,1189,325,1185,298,1174,275,1156,255,1134,238,1083,212,1031,195"/>
+<area shape="poly" id="edge35_Node000014_Node000004" title=" " alt="" coords="966,194,641,453,638,449,963,190"/>
+<area shape="rect" id="Node000015" href="$ra8__usb_8h.html" title="Native USB controller driver public API (device + host modes)." alt="" coords="923,240,1008,265"/>
+<area shape="poly" id="edge36_Node000014_Node000015" title=" " alt="" coords="979,193,973,227,967,226,974,192"/>
+<area shape="rect" id="Node000016" href="$ra8__usb__device_8h.html" title="Native USB controller driver public API – shared types + device mode." alt="" coords="793,387,927,412"/>
+<area shape="poly" id="edge37_Node000015_Node000016" title=" " alt="" coords="948,268,921,288,895,315,879,344,869,374,864,372,874,342,891,312,918,284,945,263"/>
+<area shape="rect" id="Node000017" href="$ra8__usb__host_8h.html" title="Native USB controller driver public API – host&#45;mode bring&#45;up." alt="" coords="905,313,1025,339"/>
+<area shape="poly" id="edge40_Node000015_Node000017" title=" " alt="" coords="968,266,968,300,963,300,963,266"/>
+<area shape="poly" id="edge38_Node000016_Node000003" title=" " alt="" coords="846,414,694,527,690,523,843,410"/>
+<area shape="poly" id="edge39_Node000016_Node000004" title=" " alt="" coords="821,415,668,459,667,454,820,409"/>
+<area shape="poly" id="edge41_Node000017_Node000003" title=" " alt="" coords="1026,332,1077,350,1100,365,1118,385,1127,405,1131,431,1128,461,1113,487,1084,507,1042,521,990,532,932,540,813,547,715,548,715,543,813,542,932,534,989,527,1040,516,1082,502,1109,484,1123,459,1126,432,1122,406,1114,388,1096,369,1074,355,1025,337"/>
+<area shape="poly" id="edge42_Node000017_Node000004" title=" " alt="" coords="968,340,963,376,955,397,942,414,922,427,893,437,820,454,739,465,668,471,667,466,739,459,819,449,892,432,919,422,938,410,950,394,958,375,963,339"/>
+<area shape="poly" id="edge43_Node000017_Node000016" title=" " alt="" coords="950,341,890,381,887,377,947,336"/>
+</map>

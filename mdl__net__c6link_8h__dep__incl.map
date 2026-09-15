@@ -1,0 +1,5 @@
+<map id="apps/shared_libs/mdl/inc/mdl_net_c6link.h" name="apps/shared_libs/mdl/inc/mdl_net_c6link.h">
+<area shape="rect" id="Node000001" title="Media network backend over the ESP32&#45;C6 raw HTTPS transport." alt="" coords="5,5,165,45"/>
+<area shape="rect" id="Node000002" href="$mdl__net__c6link_8c.html" title="Digest&#45;verified media network backend over C6link." alt="" coords="5,93,165,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="88,59,88,93,83,93,83,59"/>
+</map>

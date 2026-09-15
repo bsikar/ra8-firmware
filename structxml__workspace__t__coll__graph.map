@@ -1,0 +1,5 @@
+<map id="xml_workspace_t" name="xml_workspace_t">
+<area shape="rect" id="Node000001" title="Exactly bounded caller&#45;owned nesting storage." alt="" coords="5,101,141,127"/>
+<area shape="rect" id="Node000002" href="$structxml__frame__t.html" title="One open&#45;element identity retained for close&#45;tag validation." alt="" coords="21,5,126,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="76,45,76,101,71,101,71,45"/>
+</map>

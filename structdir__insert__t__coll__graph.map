@@ -1,0 +1,7 @@
+<map id="dir_insert_t" name="dir_insert_t">
+<area shape="rect" id="Node000001" title="Everything decided about a new directory entry before anything is written." alt="" coords="5,197,100,223"/>
+<area shape="rect" id="Node000002" href="$structdir__slot__t.html" title="A directory cursor that addresses one entry, not just one sector." alt="" coords="11,101,94,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="55,141,55,197,50,197,50,141"/>
+<area shape="rect" id="Node000003" href="$structdir__walk__t.html" title="Internal cursor used by the directory iterator." alt="" coords="8,5,97,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="55,45,55,101,50,101,50,45"/>
+</map>

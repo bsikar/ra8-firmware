@@ -1,0 +1,69 @@
+<map id="libs/ra8_fs/src/ra8_fs_fat_exfat_stream_internal.h" name="libs/ra8_fs/src/ra8_fs_fat_exfat_stream_internal.h">
+<area shape="rect" id="Node000001" title="The exFAT streaming&#45;write mechanism: entry&#45;set positions and its helpers." alt="" coords="2722,5,2882,60"/>
+<area shape="rect" id="Node000002" href="$ra8__fs__fat__internal_8h.html" title="Cross&#45;TU shared declarations for the FAT/exFAT ra8_fs adapter." alt="" coords="2733,108,2871,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="2805,74,2805,108,2799,108,2799,74"/>
+<area shape="rect" id="Node000003" href="$ra8__fs__fat_8c.html" title="FAT12/FAT16/FAT32 low&#45;level primitives for the ra8_fs adapter." alt="" coords="5,196,143,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="2719,132,2226,133,1483,140,1089,148,717,160,396,177,154,199,143,200,142,195,154,193,396,172,717,155,1089,143,1483,135,2226,127,2719,126"/>
+<area shape="rect" id="Node000004" href="$ra8__fs__fat__alloc_8c.html" title="Where the free space is: next&#45;free hint, FAT sector cache, FSInfo." alt="" coords="167,196,304,236"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="2719,132,2253,134,1557,142,1188,150,841,162,541,178,316,199,305,200,304,195,315,193,541,173,841,157,1188,145,1557,137,2253,128,2719,127"/>
+<area shape="rect" id="Node000005" href="$ra8__fs__fat__attr_8c.html" title="Set / clear a named entry&#39;s file attributes (ra8_fs_set_attr())." alt="" coords="328,196,465,236"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="2720,132,2280,135,1631,144,1288,152,965,164,687,179,477,199,466,200,465,195,476,193,686,174,965,159,1288,147,1631,139,2280,129,2720,127"/>
+<area shape="rect" id="Node000006" href="$ra8__fs__fat__check_8c.html" title="Read&#45;only consistency check (fsck): shared scaffolding + FAT12/16/32." alt="" coords="489,196,627,236"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="2719,132,2307,136,1704,146,1089,166,832,180,638,199,627,200,626,195,638,193,832,175,1089,160,1704,141,2307,131,2719,127"/>
+<area shape="rect" id="Node000007" href="$ra8__fs__fat__dir_8c.html" title="FAT listdir / unlink / rename directory&#45;entry operations." alt="" coords="651,196,788,236"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="2719,133,2335,137,1779,148,1214,168,978,182,800,199,789,200,788,195,799,193,977,176,1214,162,1779,142,2334,132,2719,127"/>
+<area shape="rect" id="Node000008" href="$ra8__fs__fat__dirmk_8c.html" title="FAT subdirectory creation and removal (mkdir / rmdir)." alt="" coords="812,196,949,236"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="2719,133,2362,138,1854,150,1339,170,1125,183,962,199,950,201,949,195,962,193,1124,178,1339,164,1854,145,2362,133,2719,128"/>
+<area shape="rect" id="Node000009" href="$ra8__fs__fat__exfat__check_8c.html" title="Read&#45;only consistency check (fsck): the exFAT half." alt="" coords="974,196,1137,236"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="2719,134,1941,155,1484,174,1293,186,1149,199,1138,200,1137,195,1148,193,1293,180,1484,168,1941,149,2719,128"/>
+<area shape="rect" id="Node000010" href="$ra8__fs__fat__exfat__dir_8c.html" title="exFAT directories: path resolution, mkdir, rmdir." alt="" coords="1161,196,1302,236"/>
+<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="2720,134,2019,155,1612,174,1442,186,1314,199,1303,200,1302,195,1314,193,1442,180,1611,168,2018,149,2719,128"/>
+<area shape="rect" id="Node000011" href="$ra8__fs__fat__exfat__fmt_8c.html" title="exFAT formatter (mkfs) for the ra8_fs adapter." alt="" coords="1327,196,1475,236"/>
+<area shape="poly" id="edge10_Node000002_Node000011" title=" " alt="" coords="2719,132,2504,133,2199,142,1846,162,1665,178,1488,199,1475,201,1474,195,1487,193,1664,173,1846,157,2199,137,2504,128,2719,126"/>
+<area shape="rect" id="Node000012" href="$ra8__fs__fat__exfat__label_8c.html" title="exFAT volume&#45;label read/write (the exFAT half of ra8_fs_{get,set}_label)." alt="" coords="1499,196,1657,236"/>
+<area shape="poly" id="edge11_Node000002_Node000012" title=" " alt="" coords="2720,133,2532,137,2271,147,1972,167,1669,199,1657,200,1657,195,1668,193,1971,162,2271,142,2531,132,2720,127"/>
+<area shape="rect" id="Node000013" href="$ra8__fs__fat__exfat__mutate_8c.html" title="exFAT unlink / rename / listdir mutation helpers." alt="" coords="1681,196,1853,236"/>
+<area shape="poly" id="edge12_Node000002_Node000013" title=" " alt="" coords="2719,135,2348,153,2108,172,1865,199,1854,200,1853,195,1864,193,2107,167,2348,148,2719,129"/>
+<area shape="rect" id="Node000014" href="$ra8__fs__fat__exfat__openw_8c.html" title="exFAT open&#45;for&#45;write: create, truncate, append, and the survey between." alt="" coords="1877,196,2044,236"/>
+<area shape="poly" id="edge13_Node000002_Node000014" title=" " alt="" coords="2719,137,2426,158,2242,176,2057,199,2045,201,2044,195,2056,193,2241,171,2426,153,2719,131"/>
+<area shape="rect" id="Node000015" href="$ra8__fs__fat__exfat__read_8c.html" title="exFAT directory scan and read&#45;path open." alt="" coords="2069,196,2223,236"/>
+<area shape="poly" id="edge14_Node000002_Node000015" title=" " alt="" coords="2720,139,2501,162,2236,199,2224,201,2223,195,2235,193,2500,157,2720,134"/>
+<area shape="rect" id="Node000016" href="$ra8__fs__fat__exfat__stream_8c.html" title="exFAT streaming write: grow the allocation, keep the entry set true." alt="" coords="2247,196,2418,236"/>
+<area shape="poly" id="edge15_Node000002_Node000016" title=" " alt="" coords="2720,146,2430,199,2419,201,2418,196,2430,193,2719,141"/>
+<area shape="rect" id="Node000017" href="$ra8__fs__fat__exfat__upcase_8c.html" title="Canonical Microsoft exFAT up&#45;case table, its writer, and its reader." alt="" coords="2442,196,2613,236"/>
+<area shape="poly" id="edge16_Node000002_Node000017" title=" " alt="" coords="2729,155,2588,199,2587,193,2728,150"/>
+<area shape="rect" id="Node000018" href="$ra8__fs__fat__exfat__write_8c.html" title="exFAT allocation&#45;bitmap primitives and directory entry&#45;set construction." alt="" coords="2637,196,2796,236"/>
+<area shape="poly" id="edge17_Node000002_Node000018" title=" " alt="" coords="2775,160,2737,198,2734,194,2772,156"/>
+<area shape="rect" id="Node000019" href="$ra8__fs__fat__file_8c.html" title="FAT open / close path and directory resolution." alt="" coords="2820,196,2957,236"/>
+<area shape="poly" id="edge18_Node000002_Node000019" title=" " alt="" coords="2833,156,2871,194,2868,198,2829,160"/>
+<area shape="rect" id="Node000020" href="$ra8__fs__fat__fileio_8c.html" title="FAT read / write / seek / tell / size I/O." alt="" coords="2981,196,3119,236"/>
+<area shape="poly" id="edge19_Node000002_Node000020" title=" " alt="" coords="2870,150,2997,193,2995,199,2869,155"/>
+<area shape="rect" id="Node000021" href="$ra8__fs__fat__fmt_8c.html" title="FAT12/16/32 formatter (mkfs) for the ra8_fs adapter." alt="" coords="3143,196,3280,236"/>
+<area shape="poly" id="edge20_Node000002_Node000021" title=" " alt="" coords="2885,143,3132,193,3143,196,3142,201,3131,199,2884,148"/>
+<area shape="rect" id="Node000022" href="$ra8__fs__fat__gpt_8c.html" title="GPT partition&#45;table parsing for the ra8_fs mount path." alt="" coords="3304,196,3441,236"/>
+<area shape="poly" id="edge21_Node000002_Node000022" title=" " alt="" coords="2885,135,3072,159,3293,193,3304,196,3303,201,3292,199,3071,164,2884,141"/>
+<area shape="rect" id="Node000023" href="$ra8__fs__fat__label_8c.html" title="Runtime volume&#45;label read/set (ra8_fs_get_label() / ra8_fs_set_label())." alt="" coords="3465,196,3603,236"/>
+<area shape="poly" id="edge22_Node000002_Node000023" title=" " alt="" coords="2885,132,3140,153,3297,171,3454,193,3466,195,3465,201,3454,199,3296,176,3139,158,2884,137"/>
+<area shape="rect" id="Node000024" href="$ra8__fs__fat__lfn_8c.html" title="VFAT long&#45;filename (LFN) entry layout: reading a chain, and filling one slot." alt="" coords="3627,196,3764,236"/>
+<area shape="poly" id="edge23_Node000002_Node000024" title=" " alt="" coords="2885,129,3206,148,3410,167,3616,193,3627,195,3626,201,3615,199,3410,172,3206,153,2885,135"/>
+<area shape="rect" id="Node000025" href="$ra8__fs__fat__lfn__write_8c.html" title="Writing VFAT long names: reserve the slots, build the chain, take it away again." alt="" coords="3789,196,3930,236"/>
+<area shape="poly" id="edge24_Node000002_Node000025" title=" " alt="" coords="2885,128,3049,133,3271,144,3523,163,3777,193,3789,195,3788,201,3776,199,3522,169,3271,149,3049,138,2885,133"/>
+<area shape="rect" id="Node000026" href="$ra8__fs__fat__lock_8c.html" title="The optional mutual&#45;exclusion seam taken around every public call." alt="" coords="3955,196,4092,236"/>
+<area shape="poly" id="edge25_Node000002_Node000026" title=" " alt="" coords="2885,127,3074,130,3337,139,3638,159,3792,174,3942,193,3955,195,3954,201,3942,199,3791,180,3637,165,3337,145,3074,135,2885,132"/>
+<area shape="rect" id="Node000027" href="$ra8__fs__fat__mount_8c.html" title="FAT/exFAT volume detection, geometry, and mount/unmount." alt="" coords="4116,196,4253,236"/>
+<area shape="poly" id="edge26_Node000002_Node000027" title=" " alt="" coords="2885,126,3098,127,3401,135,3750,155,3930,172,4105,193,4116,195,4115,200,4104,199,3929,177,3750,161,3400,140,3098,132,2885,131"/>
+<area shape="rect" id="Node000028" href="$ra8__fs__fat__name_8c.html" title="FAT 8.3 short&#45;name pack/unpack and directory walking." alt="" coords="4277,196,4415,236"/>
+<area shape="poly" id="edge27_Node000002_Node000028" title=" " alt="" coords="2885,128,3575,149,3974,168,4140,180,4266,193,4278,195,4277,200,4266,199,4140,185,3974,174,3574,154,2884,134"/>
+<area shape="rect" id="Node000029" href="$ra8__fs__fat__space_8c.html" title="Free / used / total space query (ra8_fs_free_space()) for FAT and exFAT." alt="" coords="4439,196,4576,236"/>
+<area shape="poly" id="edge28_Node000002_Node000029" title=" " alt="" coords="2885,128,3204,135,3650,147,4099,166,4286,179,4428,193,4439,195,4438,200,4427,199,4286,184,4099,172,3650,152,3204,140,2885,133"/>
+<area shape="rect" id="Node000030" href="$ra8__fs__fat__stat_8c.html" title="Path metadata lookup – what is at this path, without opening it." alt="" coords="4600,196,4737,236"/>
+<area shape="poly" id="edge29_Node000002_Node000030" title=" " alt="" coords="2885,128,3232,133,3725,145,4224,165,4432,178,4589,193,4600,195,4599,200,4588,199,4431,183,4223,170,3725,150,3232,139,2885,133"/>
+<area shape="rect" id="Node000031" href="$ra8__fs__fat__time_8c.html" title="The wall&#45;clock seam, and the packing of a reading into on&#45;disk fields." alt="" coords="4761,196,4899,236"/>
+<area shape="poly" id="edge30_Node000002_Node000031" title=" " alt="" coords="2884,127,3260,132,3800,143,4348,163,4577,177,4750,193,4762,195,4761,200,4750,199,4577,182,4348,168,3800,148,3260,137,2884,133"/>
+<area shape="rect" id="Node000032" href="$ra8__fs__fat__truncate_8c.html" title="ra8_fs_truncate: shrink or grow an open file to an arbitrary length." alt="" coords="4923,196,5062,236"/>
+<area shape="poly" id="edge31_Node000002_Node000032" title=" " alt="" coords="2884,127,3287,131,3874,142,4473,161,4723,176,4912,193,4924,195,4923,200,4911,199,4722,181,4472,167,3874,147,3287,136,2884,132"/>
+<area shape="rect" id="Node000033" href="$ra8__fs__fat__utime_8c.html" title="Set a named entry&#39;s create / modify / access timestamps (ra8_fs_utime())." alt="" coords="5087,196,5224,236"/>
+<area shape="poly" id="edge32_Node000002_Node000033" title=" " alt="" coords="2885,127,3316,130,3949,140,4284,148,4598,160,4870,175,5074,193,5087,195,5086,200,5074,199,4869,180,4598,165,4283,153,3949,145,3316,135,2885,132"/>
+<area shape="rect" id="Node000034" href="$ra8__fs__utf_8c.html" title="The one UTF&#45;8 &lt;&#45;&gt; UTF&#45;16LE seam between ra8_fs&#39;s API and its disks." alt="" coords="5248,196,5385,236"/>
+<area shape="poly" id="edge33_Node000002_Node000034" title=" " alt="" coords="2885,127,3342,129,4024,137,4384,146,4723,157,5016,173,5237,193,5248,195,5247,200,5236,199,5016,178,4723,163,4384,151,4023,143,3342,134,2885,132"/>
+</map>

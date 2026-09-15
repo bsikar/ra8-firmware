@@ -1,0 +1,57 @@
+var ra8__rmac_8h =
+[
+    [ "ra8_rmac_config_t", "structra8__rmac__config__t.html", "structra8__rmac__config__t" ],
+    [ "ra8_rmac_phy_link_t", "structra8__rmac__phy__link__t.html", "structra8__rmac__phy__link__t" ],
+    [ "ra8_rmac_status_t", "structra8__rmac__status__t.html", "structra8__rmac__status__t" ],
+    [ "ra8_rmac_stats_t", "structra8__rmac__stats__t.html", "structra8__rmac__stats__t" ],
+    [ "ra8_rmac_event_fn_t", "ra8__rmac_8h.html#a86af30532fd9ab1d898431b1ee6ac9ed", null ],
+    [ "ra8_rmac_mdc_clk_t", "ra8__rmac_8h.html#aa5ea53598a3c8d6190854ca458ddb552", [
+      [ "k_ra8_rmac_mdc_default_hz", "ra8__rmac_8h.html#aa5ea53598a3c8d6190854ca458ddb552a572534e4ec6b1288fe98a2521fe3e27f", null ],
+      [ "k_ra8_rmac_mdc_min_hz", "ra8__rmac_8h.html#aa5ea53598a3c8d6190854ca458ddb552a1a47798230f372181c2c5d1eab32562b", null ],
+      [ "k_ra8_rmac_mdc_psmcs_max", "ra8__rmac_8h.html#aa5ea53598a3c8d6190854ca458ddb552ad26fb398d61bff6b82e6b5d4ff569324", null ]
+    ] ],
+    [ "ra8_rmac_phy_advert_t", "ra8__rmac_8h.html#a91e3cd4b1fa278c465e749d7334e2e4d", [
+      [ "k_ra8_rmac_phy_advert_10_hd", "ra8__rmac_8h.html#a91e3cd4b1fa278c465e749d7334e2e4daebd47e554e34336c2f7c8921c5638ae1", null ],
+      [ "k_ra8_rmac_phy_advert_10_fd", "ra8__rmac_8h.html#a91e3cd4b1fa278c465e749d7334e2e4da94b3d9501606b3e15aa50f26dab014cb", null ],
+      [ "k_ra8_rmac_phy_advert_100_hd", "ra8__rmac_8h.html#a91e3cd4b1fa278c465e749d7334e2e4da1426985355d16623d346dff9ac528dd4", null ],
+      [ "k_ra8_rmac_phy_advert_100_fd", "ra8__rmac_8h.html#a91e3cd4b1fa278c465e749d7334e2e4da22d14252317e0d6a0c2cdb24aebeae75", null ],
+      [ "k_ra8_rmac_phy_advert_pause", "ra8__rmac_8h.html#a91e3cd4b1fa278c465e749d7334e2e4da541520beb24c39444fa296cacd7e175c", null ]
+    ] ],
+    [ "ra8_rmac_phy_speed_t", "ra8__rmac_8h.html#aab4e261c0858ad4a679d72f59ad93316", [
+      [ "k_ra8_rmac_phy_speed_unknown", "ra8__rmac_8h.html#aab4e261c0858ad4a679d72f59ad93316a89541a1eadeba45783bffd49959b69ed", null ],
+      [ "k_ra8_rmac_phy_speed_10_hd", "ra8__rmac_8h.html#aab4e261c0858ad4a679d72f59ad93316ae7a7c85ab16ac14f8765fc72e8703a68", null ],
+      [ "k_ra8_rmac_phy_speed_10_fd", "ra8__rmac_8h.html#aab4e261c0858ad4a679d72f59ad93316a1b2a79c484cbdfd1386654207d6a9746", null ],
+      [ "k_ra8_rmac_phy_speed_100_hd", "ra8__rmac_8h.html#aab4e261c0858ad4a679d72f59ad93316ab0bb2b37bf7b5def090e4ec0e4344f8e", null ],
+      [ "k_ra8_rmac_phy_speed_100_fd", "ra8__rmac_8h.html#aab4e261c0858ad4a679d72f59ad93316a4edb0e8017c21fa449f6226cf319828c", null ],
+      [ "k_ra8_rmac_phy_speed_count", "ra8__rmac_8h.html#aab4e261c0858ad4a679d72f59ad93316a6f6205ca0321059e64949cd926df1419", null ]
+    ] ],
+    [ "ra8_rmac_attach_handler", "ra8__rmac_8h.html#a4d6842b72b4d9df50cd34a37714a4265", null ],
+    [ "ra8_rmac_clear_status", "ra8__rmac_8h.html#a628b6da05451e80f213790fb59fd15cf", null ],
+    [ "ra8_rmac_deinit", "ra8__rmac_8h.html#a8eb16487b7ff7323a8beccbd9b3d341f", null ],
+    [ "ra8_rmac_dispatch", "ra8__rmac_8h.html#aeec451aba08938e9c885503004cd74e5", null ],
+    [ "ra8_rmac_enter_stop", "ra8__rmac_8h.html#a25ad7ff5558ca62feca20930b73dd865", null ],
+    [ "ra8_rmac_exit_stop", "ra8__rmac_8h.html#a497137ed34be0d11dde22e5936de5a56", null ],
+    [ "ra8_rmac_get_status", "ra8__rmac_8h.html#a5cd8bf52be929e7788e75a9a45ddbbe1", null ],
+    [ "ra8_rmac_init", "ra8__rmac_8h.html#ad0bbc1842be1a7828f64ef23948705b8", null ],
+    [ "ra8_rmac_mdio_c22_read", "ra8__rmac_8h.html#aca42fe1f5de96cf0489f700c360a381f", null ],
+    [ "ra8_rmac_mdio_c22_write", "ra8__rmac_8h.html#a98aee743fd3cf24a61cd3c4abcaf9613", null ],
+    [ "ra8_rmac_mdio_c45_read", "ra8__rmac_8h.html#a0c7d4ec4cb218e480380c2027f21ad5a", null ],
+    [ "ra8_rmac_mdio_c45_write", "ra8__rmac_8h.html#a5d56d8bdaf99e0b0eaf514d964541716", null ],
+    [ "ra8_rmac_phy_auto_neg_start", "ra8__rmac_8h.html#ab62d29645afd0a7526672fac3f22e470", null ],
+    [ "ra8_rmac_phy_auto_neg_wait", "ra8__rmac_8h.html#ad0f09528f0e02f668db37f06ca13b993", null ],
+    [ "ra8_rmac_phy_link_status", "ra8__rmac_8h.html#a7d4d0c99e6e93bbeb1e2cd2b2d247f93", null ],
+    [ "ra8_rmac_phy_reset", "ra8__rmac_8h.html#ab66b1a420f88c28725c6f63c6982d512", null ],
+    [ "ra8_rmac_phy_set_advertise", "ra8__rmac_8h.html#a89fca3723be3737fe6adb10500bea7ce", null ],
+    [ "ra8_rmac_read_stats", "ra8__rmac_8h.html#a73381f56484a013d1d36462766a23348", null ],
+    [ "ra8_rmac_set_frame_size", "ra8__rmac_8h.html#aaf67245f9ddcfdb8abcd5298db6812ba", null ],
+    [ "ra8_rmac_set_link", "ra8__rmac_8h.html#aaedc3efd231a53b8caea164f5563a3dc", null ],
+    [ "ra8_rmac_set_loopback", "ra8__rmac_8h.html#ad46ca61277deb60e59d78bfd47e15725", null ],
+    [ "ra8_rmac_set_lpi", "ra8__rmac_8h.html#a8470f1432987414000d3408387779df2", null ],
+    [ "ra8_rmac_set_mac_address", "ra8__rmac_8h.html#afbd1d9edfcfb0887b3087b36d2c084c4", null ],
+    [ "ra8_rmac_set_magic_packet", "ra8__rmac_8h.html#a44970a9b51fe3680b2825f914070d2c7", null ],
+    [ "ra8_rmac_set_pause_frame", "ra8__rmac_8h.html#a839a3b090e838c484b31731d114e543d", null ],
+    [ "ra8_rmac_set_pfc_group", "ra8__rmac_8h.html#ad9ba4ee29e98b8aa4ecd51cd95fb375f", null ],
+    [ "ra8_rmac_set_ptp_filter", "ra8__rmac_8h.html#ad0721d1803e48df29115bda8e1b1b875", null ],
+    [ "ra8_rmac_set_rx_filter", "ra8__rmac_8h.html#a7cce4312cdd92eb72ef0faf6f7bc5887", null ],
+    [ "ra8_rmac_set_vlan_framing", "ra8__rmac_8h.html#a1219b3caef0c6967819e3d329dbc5795", null ]
+];

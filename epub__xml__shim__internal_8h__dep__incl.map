@@ -1,0 +1,19 @@
+<map id="apps/shared_libs/epub/src/epub_xml_shim_internal.h" name="apps/shared_libs/epub/src/epub_xml_shim_internal.h">
+<area shape="rect" id="Node000001" title="Library&#45;private contract for the bounded EPUB XML parser." alt="" coords="242,5,463,45"/>
+<area shape="rect" id="Node000002" href="$epub__open_8c.html" title="epub_open() / epub_close() lifecycle plumbing." alt="" coords="5,101,172,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="287,52,143,103,141,98,286,47"/>
+<area shape="rect" id="Node000003" href="$epub__xml__consumer__internal_8h.html" title="Private contracts for streamed EPUB XML consumers." alt="" coords="403,93,587,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="395,51,457,91,454,95,392,55"/>
+<area shape="rect" id="Node000005" href="$epub__xml__shim_8c.html" title="Strict bounded container/OPF/NCX/nav XML consumers." alt="" coords="697,284,864,324"/>
+<area shape="poly" id="edge9_Node000001_Node000005" title=" " alt="" coords="478,33,561,50,604,63,647,79,688,101,726,127,759,158,786,195,794,217,796,242,789,284,784,283,791,242,789,219,781,197,755,161,722,131,685,105,645,84,602,68,559,55,477,38"/>
+<area shape="rect" id="Node000006" href="$epub__xml__toc_8c.html" title="Bounded NCX and EPUB 3 nav table&#45;of&#45;contents consumers." alt="" coords="269,284,436,324"/>
+<area shape="poly" id="edge10_Node000001_Node000006" title=" " alt="" coords="327,57,278,118,255,156,238,197,233,217,238,235,263,262,295,282,292,286,259,266,233,237,227,217,233,195,250,154,274,115,323,53"/>
+<area shape="rect" id="Node000004" href="$epub__xml__opf__internal_8h.html" title="Private contracts for the EPUB container and OPF consumers." alt="" coords="533,196,743,236"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="548,153,610,194,608,198,545,158"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="602,125,643,133,684,147,723,167,757,194,771,215,780,239,784,284,779,284,774,241,767,218,753,198,720,171,682,152,641,138,601,130"/>
+<area shape="poly" id="edge6_Node000003_Node000006" title=" " alt="" coords="496,163,489,201,471,238,441,266,406,286,404,281,438,262,467,234,484,199,491,162"/>
+<area shape="rect" id="Node000007" href="$epub__xml__toc__internal_8h.html" title="Private contracts for the EPUB NCX and nav table&#45;of&#45;contents consumers." alt="" coords="248,196,457,236"/>
+<area shape="poly" id="edge7_Node000003_Node000007" title=" " alt="" coords="445,158,383,198,380,194,442,153"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="682,241,751,282,748,286,680,245"/>
+<area shape="poly" id="edge8_Node000007_Node000006" title=" " alt="" coords="355,250,355,284,350,284,350,250"/>
+</map>

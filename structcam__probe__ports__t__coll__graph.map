@@ -1,0 +1,5 @@
+<map id="cam_probe_ports_t" name="cam_probe_ports_t">
+<area shape="rect" id="Node000001" title="GPIO register banks used while sampling the parallel camera bus." alt="" coords="5,161,152,187"/>
+<area shape="rect" id="Node000002" href="$structr__port__regs__t.html" title="Per&#45;port IOPORT register window." alt="" coords="25,5,132,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="81,44,81,161,76,161,76,44"/>
+</map>

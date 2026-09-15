@@ -1,0 +1,11 @@
+<map id="libs/ra8_camera/inc/ra8_camera_codec_passthrough.h" name="libs/ra8_camera/inc/ra8_camera_codec_passthrough.h">
+<area shape="rect" id="Node000001" title="Zero&#45;copy JPEG passthrough codec backend." alt="" coords="5,5,252,45"/>
+<area shape="rect" id="Node000002" href="$ra8__camera_8h.html" title="Transport&#45;neutral camera source and image&#45;codec facade." alt="" coords="27,93,137,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="120,47,98,83,94,80,115,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="120,167,199,192"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="138,45,153,93,161,152,155,153,147,94,133,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="85,240,156,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="88,118,117,226,111,227,83,120"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="96,117,138,155,135,159,93,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="155,194,136,229,131,227,151,191"/>
+</map>

@@ -1,0 +1,86 @@
+<map id="libs/ra8_hal/inc/ra8_usb_hmsc.h" name="libs/ra8_hal/inc/ra8_usb_hmsc.h">
+<area shape="rect" id="Node000001" title="Native USB host&#45;side MSC (Mass Storage Class) class layer." alt="" coords="2366,5,2511,45"/>
+<area shape="rect" id="Node000002" href="$usb__selftest__wlun__steps_8h.html" title="examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/inc/usb_selftest_wlun_steps...." alt="" coords="218,93,398,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="2352,29,1962,31,1402,39,1109,47,833,59,596,75,418,96,399,100,398,95,417,91,596,70,833,54,1108,42,1402,33,1962,25,2352,24"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2usb__selftest__wlun_2src_2main_8c.html" title="USB self&#45;loop: HS host WRITE(10)s + reads back a RAM&#45;backed device." alt="" coords="5,218,192,273"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="2352,30,1861,34,1164,44,821,53,525,64,309,78,241,87,206,96,173,121,146,154,125,188,111,219,106,216,121,186,142,151,169,117,204,91,240,82,308,73,525,59,821,48,1164,39,1861,28,2352,24"/>
+<area shape="rect" id="Node000005" href="$usb__selftest__wlun__host_8c.html" title="examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/usb_selftest_wlun_host...." alt="" coords="423,211,603,280"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="2352,29,1909,29,1292,36,991,44,733,56,547,73,490,84,463,95,455,107,451,121,454,151,468,181,487,209,482,212,463,184,449,152,446,120,450,105,460,91,489,79,546,68,732,51,990,39,1292,31,1909,24,2352,24"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__host__msc__browse_2src_2main_8c.html" title="USB host&#45;mode MSC browse over the on&#45;board self&#45;loop (no external drive)." alt="" coords="473,101,655,155"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="2352,29,2005,32,1517,41,1263,49,1026,61,821,76,667,96,636,103,635,98,666,91,821,71,1025,56,1263,44,1517,36,2004,27,2352,24"/>
+<area shape="rect" id="Node000007" href="$usb__host__msc__browse__host_8c.html" title="Console formatters + host&#45;side ra8_fs browse/verify ladder." alt="" coords="679,93,873,163"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="2352,30,2044,35,1620,46,1195,66,1019,79,886,96,874,98,873,93,885,91,1018,74,1195,60,1620,41,2044,30,2352,25"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__fs__host_2src_2main_8c.html" title="USB self&#45;loop config B: FS host reads the HS device&#39;s MSC MRAM disk." alt="" coords="897,101,1089,155"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="2352,31,2082,37,1721,49,1363,69,1214,81,1102,96,1070,103,1069,98,1101,91,1214,76,1362,63,1721,44,2082,32,2352,25"/>
+<area shape="rect" id="Node000009" href="$usb__selftest__fs__host__host_8c.html" title="examples/ek_ra8d2/hw_validated/hil/usb_selftest_fs_host/src/usb_selftest_fs_host_host...." alt="" coords="1113,93,1305,163"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="2352,32,1824,53,1531,72,1410,83,1318,96,1306,98,1305,93,1317,91,1409,78,1531,66,1824,48,2352,26"/>
+<area shape="rect" id="Node000010" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__hs__host_2src_2main_8c.html" title="USB self&#45;loop config A: HS host reads the FS device&#39;s MSC MRAM disk." alt="" coords="1329,101,1521,155"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="2352,29,2198,32,1993,42,1764,62,1647,77,1534,96,1503,103,1501,98,1533,91,1647,72,1763,57,1993,37,2197,27,2352,24"/>
+<area shape="rect" id="Node000011" href="$usb__selftest__hs__host__host_8c.html" title="Host&#45;side console formatters + ra8_fs backend + pass ladder." alt="" coords="1545,93,1737,163"/>
+<area shape="poly" id="edge12_Node000001_Node000011" title=" " alt="" coords="2352,32,2233,38,2082,50,1916,69,1750,96,1738,98,1737,93,1749,91,1915,63,2081,45,2232,33,2352,27"/>
+<area shape="rect" id="Node000012" href="$usb__selftest__microsd__steps_8c.html" title="examples/ek_ra8d2/hw_validated/hil/usb_selftest_microsd/src/usb_selftest_microsd_steps...." alt="" coords="1761,93,1953,163"/>
+<area shape="poly" id="edge13_Node000001_Node000012" title=" " alt="" coords="2353,37,2173,59,2069,76,1966,96,1954,99,1953,93,1965,91,2068,70,2173,54,2352,32"/>
+<area shape="rect" id="Node000013" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__mlun_2src_2main_8c.html" title="USB self&#45;loop: HS host reads a 2&#45;LUN FS device (multi&#45;LUN MSC)." alt="" coords="1977,101,2169,155"/>
+<area shape="poly" id="edge14_Node000001_Node000013" title=" " alt="" coords="2353,50,2182,96,2157,103,2156,98,2181,91,2352,45"/>
+<area shape="rect" id="Node000014" href="$usb__selftest__mlun__steps_8c.html" title="Pattern + SCI8 console + host&#45;side enumerate/verify for usb_selftest_mlun." alt="" coords="2194,93,2401,163"/>
+<area shape="poly" id="edge15_Node000001_Node000014" title=" " alt="" coords="2402,56,2347,95,2343,91,2399,51"/>
+<area shape="rect" id="Node000015" href="$usb__selftest__ospi__steps_8h.html" title="Shared constants + step prototypes for the OSPI USB self&#45;loop app." alt="" coords="2476,93,2671,163"/>
+<area shape="poly" id="edge16_Node000001_Node000015" title=" " alt="" coords="2476,51,2530,91,2526,95,2473,56"/>
+<area shape="rect" id="Node000016" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__ospi_2src_2main_8c.html" title="USB self&#45;loop: the onboard OSPI flash exposed as a USB drive." alt="" coords="2205,218,2397,273"/>
+<area shape="poly" id="edge20_Node000001_Node000016" title=" " alt="" coords="2441,59,2435,110,2427,138,2414,164,2387,196,2354,220,2351,216,2383,192,2410,161,2422,136,2430,109,2436,59"/>
+<area shape="rect" id="Node000018" href="$usb__selftest__ospi__host_8c.html" title="Host&#45;side pass ladder for the OSPI USB self&#45;loop app." alt="" coords="2641,218,2882,273"/>
+<area shape="poly" id="edge21_Node000001_Node000018" title=" " alt="" coords="2526,31,2565,38,2607,50,2648,68,2684,91,2702,113,2721,146,2753,217,2748,219,2716,149,2698,116,2681,95,2645,72,2605,55,2564,43,2525,36"/>
+<area shape="rect" id="Node000019" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__ospi__rw_2src_2main_8c.html" title="USB self&#45;loop: HS host WRITE(10)s + reads back the onboard OSPI flash." alt="" coords="2745,101,2937,155"/>
+<area shape="poly" id="edge22_Node000001_Node000019" title=" " alt="" coords="2525,43,2727,91,2754,98,2753,103,2726,96,2524,48"/>
+<area shape="rect" id="Node000020" href="$usb__selftest__ospi__rw__steps_8c.html" title="Host&#45;side step routines + console formatters for the writable&#45;OSPI self&#45;loop." alt="" coords="2961,93,3153,163"/>
+<area shape="poly" id="edge23_Node000001_Node000020" title=" " alt="" coords="2525,31,2721,52,2836,69,2950,91,2962,93,2960,99,2949,96,2835,74,2720,57,2525,36"/>
+<area shape="rect" id="Node000021" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__soak_2src_2main_8c.html" title="USB self&#45;loop endurance soak + throughput benchmark (board&#45;only)." alt="" coords="3177,101,3369,155"/>
+<area shape="poly" id="edge24_Node000001_Node000021" title=" " alt="" coords="2525,26,2651,32,2811,43,2989,62,3166,91,3196,98,3195,103,3165,96,2988,67,2811,49,2651,37,2525,31"/>
+<area shape="rect" id="Node000022" href="$usb__selftest__host_8c.html" title="Host side of the soak self&#45;test: enumerate, mount, verify, soak." alt="" coords="3393,101,3604,155"/>
+<area shape="poly" id="edge25_Node000001_Node000022" title=" " alt="" coords="2525,24,2685,28,2899,38,3140,57,3262,72,3382,91,3415,98,3414,103,3381,96,3261,77,3139,63,2899,43,2685,33,2525,30"/>
+<area shape="rect" id="Node000023" href="$usb__host__file__ops__steps_8h.html" title="examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/inc/usb_host_file_ops_steps...." alt="" coords="3679,93,3852,163"/>
+<area shape="poly" id="edge26_Node000001_Node000023" title=" " alt="" coords="2525,26,2774,33,3101,45,3425,65,3559,77,3660,91,3679,95,3678,100,3660,96,3558,82,3424,70,3101,51,2773,38,2525,31"/>
+<area shape="rect" id="Node000024" href="$examples_2ek__ra8d2_2hw__validated_2manual_2usb__host__file__ops_2src_2main_8c.html" title="USB host MSC + ra8_fs file&#45;operations exerciser for EK&#45;RA8D2 (USB&#45;HS)." alt="" coords="2906,218,3091,273"/>
+<area shape="poly" id="edge29_Node000001_Node000024" title=" " alt="" coords="2525,26,2802,33,3156,45,3467,65,3570,77,3601,84,3618,91,3630,109,3634,128,3630,146,3618,164,3600,179,3577,191,3520,205,3450,212,3373,213,3220,208,3155,208,3104,213,3075,220,3074,215,3104,208,3155,203,3220,203,3373,207,3450,206,3519,200,3576,186,3597,175,3614,161,3625,144,3629,128,3625,111,3614,95,3600,89,3569,82,3467,70,3156,51,2802,38,2525,31"/>
+<area shape="rect" id="Node000026" href="$ra8__hal__internal_8h.html" title="Cross&#45;translation&#45;unit private helpers shared inside ra8_hal." alt="" coords="4077,108,4222,148"/>
+<area shape="poly" id="edge30_Node000001_Node000026" title=" " alt="" coords="2525,26,3088,45,3472,64,3864,91,4076,114,4076,119,3864,96,3472,69,3088,50,2525,31"/>
+<area shape="rect" id="Node000037" href="$ra8__usb__hmsc_8c.html" title="Native USB host&#45;side MSC (Mass Storage Class) class layer implementation." alt="" coords="5007,225,5153,265"/>
+<area shape="poly" id="edge43_Node000001_Node000037" title=" " alt="" coords="2525,25,2928,32,3481,46,3984,65,4154,77,4207,84,4236,91,4256,107,4266,127,4275,145,4293,160,4322,172,4357,181,4440,193,4536,197,4639,198,4841,196,4928,199,4997,208,5041,223,5039,228,4995,213,4927,204,4841,201,4639,203,4536,203,4439,198,4356,186,4320,177,4291,165,4271,148,4261,129,4252,111,4233,96,4206,89,4153,82,3984,70,3481,51,2928,38,2525,31"/>
+<area shape="rect" id="Node000038" href="$ra8__usb__hmsc__enum_8c.html" title="Native USB host&#45;side MSC (Mass Storage Class) polled enumeration ladder." alt="" coords="5177,225,5327,265"/>
+<area shape="poly" id="edge44_Node000001_Node000038" title=" " alt="" coords="2526,25,2938,32,3507,45,4024,64,4198,77,4253,83,4283,91,4302,107,4312,127,4321,145,4339,160,4373,174,4413,185,4511,198,4624,202,4745,201,4983,196,5085,198,5166,208,5212,223,5210,228,5165,213,5085,204,4983,201,4745,206,4624,207,4510,203,4412,190,4371,179,4336,165,4317,148,4307,129,4298,111,4280,96,4252,89,4197,82,4023,70,3507,50,2938,37,2525,30"/>
+<area shape="rect" id="Node000039" href="$ra8__io__blockdev__usbmsc_8c.html" title="USB mass&#45;storage block&#45;device backend – a hosted device as 512&#45;byte logical blocks." alt="" coords="4349,108,4523,148"/>
+<area shape="poly" id="edge45_Node000001_Node000039" title=" " alt="" coords="2525,24,2892,26,3415,35,3688,43,3943,55,4164,70,4330,91,4386,105,4385,110,4329,96,4163,76,3943,60,3687,48,3415,40,2892,31,2525,29"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="236,172,147,220,145,216,234,167"/>
+<area shape="rect" id="Node000004" href="$usb__selftest__wlun__console_8c.html" title="examples/ek_ra8d2/hil_needs_revalidation/usb_selftest_wlun/src/usb_selftest_wlun_console...." alt="" coords="217,211,399,280"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="311,177,311,210,305,210,305,177"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="381,167,455,208,452,213,379,172"/>
+<area shape="poly" id="edge17_Node000015_Node000016" title=" " alt="" coords="2483,171,2364,220,2362,216,2480,166"/>
+<area shape="rect" id="Node000017" href="$usb__selftest__ospi__format_8c.html" title="FAT16 synthesis, OSPI pattern, MSC media callbacks + console helpers." alt="" coords="2421,211,2616,280"/>
+<area shape="poly" id="edge18_Node000015_Node000017" title=" " alt="" coords="2554,177,2537,212,2532,209,2549,174"/>
+<area shape="poly" id="edge19_Node000015_Node000018" title=" " alt="" coords="2641,167,2720,216,2717,220,2638,172"/>
+<area shape="poly" id="edge27_Node000023_Node000024" title=" " alt="" coords="3666,164,3660,165,3577,179,3505,186,3382,189,3259,192,3188,199,3105,213,3075,221,3073,215,3103,208,3187,194,3259,187,3382,184,3505,181,3576,174,3660,160,3665,159"/>
+<area shape="rect" id="Node000025" href="$usb__host__file__ops__steps_8c.html" title="examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/src/usb_host_file_ops_steps...." alt="" coords="3116,211,3289,280"/>
+<area shape="poly" id="edge28_Node000023_Node000025" title=" " alt="" coords="3666,164,3661,165,3560,182,3481,189,3402,195,3302,213,3290,216,3289,211,3301,208,3401,190,3480,183,3559,177,3659,160,3664,159"/>
+<area shape="rect" id="Node000027" href="$ra8__canfd_8c.html" title="CAN with Flexible Data&#45;rate driver implementation." alt="" coords="3314,225,3459,265"/>
+<area shape="poly" id="edge31_Node000026_Node000027" title=" " alt="" coords="4063,142,3471,213,3429,228,3427,223,3470,208,4063,137"/>
+<area shape="rect" id="Node000028" href="$ra8__canfd__tdc_8c.html" title="CANFD Transmitter Delay Compensation (TDC) configuration." alt="" coords="3483,225,3629,265"/>
+<area shape="poly" id="edge32_Node000026_Node000028" title=" " alt="" coords="4064,140,3868,166,3754,186,3641,213,3599,228,3597,223,3639,208,3753,181,3868,160,4063,135"/>
+<area shape="rect" id="Node000029" href="$ra8__canfd__timing_8c.html" title="CANFD bit&#45;timing solver + bitrate / BRS configuration (split from ra8_canfd.c)." alt="" coords="3653,225,3798,265"/>
+<area shape="poly" id="edge33_Node000026_Node000029" title=" " alt="" coords="4063,149,3943,177,3810,213,3770,228,3768,223,3809,208,3941,171,4062,144"/>
+<area shape="rect" id="Node000030" href="$ra8__dotf__power_8c.html" title="Decryption On The Fly (DOTF) high&#45;level open/close + power control." alt="" coords="3822,225,3967,265"/>
+<area shape="poly" id="edge34_Node000026_Node000030" title=" " alt="" coords="4097,156,3937,228,3935,223,4095,151"/>
+<area shape="rect" id="Node000031" href="$ra8__mipi__csi_8c.html" title="MIPI CSI&#45;2 receiver HAL driver implementation." alt="" coords="3991,225,4137,265"/>
+<area shape="poly" id="edge35_Node000026_Node000031" title=" " alt="" coords="4129,161,4080,227,4076,223,4125,157"/>
+<area shape="rect" id="Node000032" href="$ra8__mipi__csi__irq_8c.html" title="MIPI CSI&#45;2 receiver HAL driver – interrupt path and per&#45;VC framing." alt="" coords="4161,225,4306,265"/>
+<area shape="poly" id="edge36_Node000026_Node000032" title=" " alt="" coords="4173,158,4222,223,4217,227,4169,161"/>
+<area shape="rect" id="Node000033" href="$ra8__rmac_8c.html" title="Per&#45;port Ethernet MAC (RMAC) driver implementation – HUM Ch 33." alt="" coords="4330,225,4475,265"/>
+<area shape="poly" id="edge37_Node000026_Node000033" title=" " alt="" coords="4204,151,4363,223,4360,228,4202,156"/>
+<area shape="rect" id="Node000034" href="$ra8__rmac__mgmt_8c.html" title="RMAC status read/clear + statistics snapshot + Clause&#45;22 PHY – HUM Ch 33." alt="" coords="4499,225,4645,265"/>
+<area shape="poly" id="edge38_Node000026_Node000034" title=" " alt="" coords="4210,150,4242,160,4311,176,4365,183,4420,191,4489,208,4530,223,4528,228,4487,213,4419,197,4364,189,4310,181,4241,165,4208,155"/>
+<area shape="rect" id="Node000035" href="$ra8__ssie_8c.html" title="Serial Sound Interface Enhanced (SSIE / I2S) driver implementation." alt="" coords="4669,225,4814,265"/>
+<area shape="poly" id="edge39_Node000026_Node000035" title=" " alt="" coords="4208,150,4242,160,4304,172,4358,179,4450,183,4542,187,4596,195,4658,208,4701,223,4699,228,4657,213,4595,200,4541,193,4449,188,4357,184,4303,178,4241,165,4207,155"/>
+<area shape="rect" id="Node000036" href="$ra8__ssie__stream_8c.html" title="SSIE streaming data path: DMAC channel attach/detach + polled ISO bulk send/receive." alt="" coords="4838,225,4983,265"/>
+<area shape="poly" id="edge40_Node000026_Node000036" title=" " alt="" coords="4207,150,4242,160,4330,176,4405,183,4534,183,4597,181,4664,183,4739,191,4827,208,4871,223,4870,228,4826,213,4739,196,4664,189,4597,187,4534,188,4405,188,4329,181,4241,165,4205,155"/>
+<area shape="poly" id="edge41_Node000026_Node000037" title=" " alt="" coords="4207,150,4242,160,4355,179,4452,186,4538,186,4619,182,4700,179,4786,179,4883,188,4997,208,5041,223,5039,228,4995,213,4883,193,4786,184,4700,184,4619,187,4538,191,4452,191,4354,184,4241,165,4205,155"/>
+<area shape="poly" id="edge42_Node000026_Node000038" title=" " alt="" coords="4232,149,4292,160,4425,175,4537,179,4730,174,4823,172,4923,174,5035,185,5166,208,5212,223,5210,228,5165,213,5034,190,4922,179,4823,177,4731,179,4537,185,4424,180,4292,165,4231,154"/>
+</map>

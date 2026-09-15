@@ -1,0 +1,9 @@
+<map id="ra8_rabook_xml_workspace_t" name="ra8_rabook_xml_workspace_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned storage for one parser invocation." alt="" coords="69,197,285,223"/>
+<area shape="rect" id="Node000002" href="$structxml__workspace__t.html" title="Exactly bounded caller&#45;owned nesting storage." alt="" coords="5,101,141,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="98,134,166,195,163,199,94,138"/>
+<area shape="rect" id="Node000003" href="$structxml__frame__t.html" title="One open&#45;element identity retained for close&#45;tag validation." alt="" coords="21,5,126,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="76,45,76,101,71,101,71,45"/>
+<area shape="rect" id="Node000004" href="$structbook__attr__t.html" title="One name=&quot;value&quot; attribute on an element." alt="" coords="165,101,261,127"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="207,140,184,198,179,196,202,139"/>
+</map>

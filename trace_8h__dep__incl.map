@@ -1,0 +1,9 @@
+<map id="tools/cache_bench/inc/trace.h" name="tools/cache_bench/inc/trace.h">
+<area shape="rect" id="Node000001" title="Resettable, allocation&#45;free access streams for cache_bench." alt="" coords="196,5,361,45"/>
+<area shape="rect" id="Node000002" href="$cache__bench_8c.html" title="#147 eviction&#45;policy benchmark: the exact&#45;accounting replay engine." alt="" coords="5,93,171,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="225,53,131,96,129,91,223,49"/>
+<area shape="rect" id="Node000003" href="$cache__bench__report_8c.html" title="#147 benchmark front end: swept&#45;capacity report, mode dispatch, main." alt="" coords="195,93,362,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="281,59,281,93,276,93,276,59"/>
+<area shape="rect" id="Node000004" href="$trace_8c.html" title="Deterministic synthetic cursors and bounded captured&#45;trace parsing." alt="" coords="387,93,552,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="334,49,429,91,426,96,332,53"/>
+</map>

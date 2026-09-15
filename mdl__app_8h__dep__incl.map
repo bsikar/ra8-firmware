@@ -1,0 +1,36 @@
+<map id="apps/shared_libs/mdl/inc/mdl_app.h" name="apps/shared_libs/mdl/inc/mdl_app.h">
+<area shape="rect" id="Node000001" title="The downloader&#39;s portable application layer: one run mode, one call." alt="" coords="702,5,862,45"/>
+<area shape="rect" id="Node000002" href="$mdl__cli_8h.html" title="Command&#45;line parsing for the mdl CLI." alt="" coords="387,93,553,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="701,52,539,96,538,91,700,46"/>
+<area shape="rect" id="Node000006" href="$mdl__compose__internal_8h.html" title="What this FORM injects, and how one parsed invocation reaches a mode." alt="" coords="577,181,744,221"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="763,58,676,183,672,180,759,55"/>
+<area shape="rect" id="Node000007" href="$apps_2host_2mdl_2src_2main_8c.html" title="mdl – host CLI for the e&#45;reader media downloader." alt="" coords="689,277,875,302"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="785,59,785,276,779,276,779,59"/>
+<area shape="rect" id="Node000009" href="$mdl__app_8c.html" title="The application layer&#39;s one composition seam: the bound working set." alt="" coords="819,181,979,221"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="805,55,889,180,884,183,800,58"/>
+<area shape="rect" id="Node000010" href="$mdl__app__internal_8h.html" title="Module&#45;private contract shared by the application&#45;mode translation units." alt="" coords="1277,93,1452,133"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="876,38,1277,97,1277,102,875,43"/>
+<area shape="rect" id="Node000003" href="$mdl__cli_8c.html" title="Implementation of the mdl command&#45;line parser." alt="" coords="5,181,172,221"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="374,139,173,184,172,179,372,134"/>
+<area shape="rect" id="Node000004" href="$mdl__cli__nums_8c.html" title="Strict bounded numeric&#45;option parsing for mdl." alt="" coords="196,181,363,221"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="417,141,322,184,320,179,415,137"/>
+<area shape="rect" id="Node000005" href="$mdl__cli__usage_8c.html" title="Stable command&#45;line help rendering for mdl." alt="" coords="387,181,553,221"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="473,147,473,181,467,181,467,147"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="525,137,620,179,618,184,523,141"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="700,227,767,274,764,279,697,232"/>
+<area shape="rect" id="Node000008" href="$mdl__compose_8c.html" title="The composition of THIS form: libcurl in, one parsed command out." alt="" coords="499,269,665,309"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="636,233,601,271,597,267,632,230"/>
+<area shape="poly" id="edge12_Node000010_Node000009" title=" " alt="" coords="1264,135,992,184,980,186,979,181,991,179,1263,129"/>
+<area shape="rect" id="Node000011" href="$mdl__app__admin_8c.html" title="Discovery, descriptor generation, and verification actions." alt="" coords="1004,181,1168,221"/>
+<area shape="poly" id="edge13_Node000010_Node000011" title=" " alt="" coords="1291,140,1148,184,1146,179,1290,135"/>
+<area shape="rect" id="Node000012" href="$mdl__app__cover_8c.html" title="Cached series&#45;cover acquisition and validated publication." alt="" coords="1193,181,1353,221"/>
+<area shape="poly" id="edge14_Node000010_Node000012" title=" " alt="" coords="1336,145,1295,183,1291,179,1333,141"/>
+<area shape="rect" id="Node000013" href="$mdl__app__direct_8c.html" title="Direct artifact, page, pack, and run composition actions." alt="" coords="1377,181,1537,221"/>
+<area shape="poly" id="edge15_Node000010_Node000013" title=" " alt="" coords="1397,141,1438,179,1434,183,1393,145"/>
+<area shape="rect" id="Node000014" href="$mdl__app__library_8c.html" title="Tracked&#45;library list, remove, and update&#45;all actions." alt="" coords="1561,181,1723,221"/>
+<area shape="poly" id="edge16_Node000010_Node000014" title=" " alt="" coords="1439,135,1582,179,1580,184,1438,140"/>
+<area shape="rect" id="Node000015" href="$mdl__app__prepare_8c.html" title="Descriptor&#45;driven series preparation and safe path setup." alt="" coords="1747,181,1921,221"/>
+<area shape="poly" id="edge17_Node000010_Node000015" title=" " alt="" coords="1466,130,1736,179,1747,181,1746,186,1735,184,1465,135"/>
+<area shape="rect" id="Node000016" href="$mdl__app__series_8c.html" title="Series selection, download lifecycle, and export actions." alt="" coords="1945,181,2107,221"/>
+<area shape="poly" id="edge18_Node000010_Node000016" title=" " alt="" coords="1466,121,1681,145,1933,179,1945,181,1944,186,1932,184,1680,150,1465,127"/>
+</map>

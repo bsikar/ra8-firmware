@@ -1,0 +1,25 @@
+var searchData=
+[
+  ['ndash_20chapter_20map_0',['RA8D2 Hardware User&apos;s Manual &amp;ndash; Chapter Map',['../md_docs_2reference_2CHAPTER__MAP.html',1,'ra8_docsub_reference']]],
+  ['ndash_20durable_20difference_20reference_1',['RA8P1 vs RA8D2 &amp;ndash; durable difference reference',['../md_docs_2reference_2ra8p1__vs__ra8d2.html',1,'ra8_docsub_reference']]],
+  ['ndash_20iec_2061508_20sil_203_20do_20178c_20level_20b_2',['Qualification Basis &amp;ndash; IEC 61508 SIL 3 / DO-178C Level B',['../md_docs_2QUALIFICATION__ROADMAP.html',1,'ra8_docs']]],
+  ['ndash_20needs_20re_20validation_3',['HIL &amp;ndash; needs re-validation',['../ra8_ex_ek_ra8d2_hil_needs_revalidation.html',1,'ra8_ex_ek_ra8d2']]],
+  ['ndash_20overview_4',['Binary Format Specifications &amp;ndash; Overview',['../md_docs_2formats_2BINARY__FORMATS.html',1,'ra8_docsub_formats']]],
+  ['ndash_20quick_20reference_5',['RA8D2 Memory Map &amp;ndash; Quick Reference',['../md_docs_2MEMORY__MAP.html',1,'ra8_docs']]],
+  ['ndash_20supported_20conformance_20subset_6',['EPUB Reader &amp;ndash; Supported Conformance Subset',['../md_docs_2EPUB__CONFORMANCE.html',1,'ra8_docs']]],
+  ['ndash_20the_20chunked_20rabook_20container_7',['RBKC &amp;ndash; The Chunked &lt;span class=&quot;tt&quot;&gt;.rabook&lt;/span&gt; Container',['../md_docs_2formats_2RBKC.html',1,'ra8_docsub_formats']]],
+  ['ndash_20the_20jump_20offset_20band_20tile_20atlas_8',['JOF &amp;ndash; The Jump-Offset Band-Tile Atlas',['../md_docs_2formats_2JOF.html',1,'ra8_docsub_formats']]],
+  ['ndash_20the_20non_20secure_20image_20rot_20header_9',['NSR1 &amp;ndash; The Non-Secure Image RoT Header',['../md_docs_2formats_2NSR1.html',1,'ra8_docsub_formats']]],
+  ['ndash_20the_20npub_20ethos_20u55_20model_20container_10',['NPU1 &amp;ndash; The &lt;span class=&quot;tt&quot;&gt;.npub&lt;/span&gt; Ethos-U55 Model Container',['../md_docs_2formats_2NPU1.html',1,'ra8_docsub_formats']]],
+  ['ndash_20the_20root_20of_20trust_20signed_20image_20trailer_11',['ROT1 &amp;ndash; The Root-of-Trust Signed-Image Trailer',['../md_docs_2formats_2ROT1.html',1,'ra8_docsub_formats']]],
+  ['needs_20external_20hardware_12',['Needs external hardware',['../ra8_ex__unsupported.html',1,'ra8_examples']]],
+  ['needs_20re_20validation_13',['HIL &amp;ndash; needs re-validation',['../ra8_ex_ek_ra8d2_hil_needs_revalidation.html',1,'ra8_ex_ek_ra8d2']]],
+  ['netx_20duo_14',['SOUP Justification: Eclipse NetX Duo',['../md_docs_2SOUP_2netxduo.html',1,'ra8_docsub_SOUP']]],
+  ['nimble_15',['SOUP Justification: Apache NimBLE',['../md_docs_2SOUP_2nimble.html',1,'ra8_docsub_SOUP']]],
+  ['non_20secure_20image_20rot_20header_16',['NSR1 &amp;ndash; The Non-Secure Image RoT Header',['../md_docs_2formats_2NSR1.html',1,'ra8_docsub_formats']]],
+  ['not_20designs_17',['One update pipeline: OTA and USB are transports, not designs',['../md_docs_2design_2c6__update__pipeline.html',1,'ra8_docsub_design']]],
+  ['not_20shipped_18',['Vendor Blobs (Renesas-Only, Not Shipped)',['../md_docs_2VENDOR__BLOBS.html',1,'ra8_docs']]],
+  ['npu1_20ndash_20the_20npub_20ethos_20u55_20model_20container_19',['NPU1 &amp;ndash; The &lt;span class=&quot;tt&quot;&gt;.npub&lt;/span&gt; Ethos-U55 Model Container',['../md_docs_2formats_2NPU1.html',1,'ra8_docsub_formats']]],
+  ['npub_20ethos_20u55_20model_20container_20',['NPU1 &amp;ndash; The &lt;span class=&quot;tt&quot;&gt;.npub&lt;/span&gt; Ethos-U55 Model Container',['../md_docs_2formats_2NPU1.html',1,'ra8_docsub_formats']]],
+  ['nsr1_20ndash_20the_20non_20secure_20image_20rot_20header_21',['NSR1 &amp;ndash; The Non-Secure Image RoT Header',['../md_docs_2formats_2NSR1.html',1,'ra8_docsub_formats']]]
+];

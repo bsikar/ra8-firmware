@@ -1,0 +1,5 @@
+<map id="port/posix/src/ra8_io_stream_posix_internal.h" name="port/posix/src/ra8_io_stream_posix_internal.h">
+<area shape="rect" id="Node000001" title="Private exact&#45;write engine for the POSIX stream adapter." alt="" coords="5,5,211,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__stream__posix_8c.html" title="Raw&#45;descriptor implementation of the portable byte&#45;stream backend." alt="" coords="35,93,181,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,59,111,93,105,93,105,59"/>
+</map>

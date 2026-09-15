@@ -1,0 +1,23 @@
+<map id="libs/ra8_dfu/inc/ra8_dfu_device.h" name="libs/ra8_dfu/inc/ra8_dfu_device.h">
+<area shape="rect" id="Node000001" title="USBX DFU device class wired to real MRAM, bound to either controller." alt="" coords="63,5,209,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="139,387,210,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="105,48,73,70,42,100,18,137,11,157,8,178,8,254,11,276,20,297,33,315,50,332,89,359,129,379,127,384,86,364,46,336,29,319,15,300,6,278,3,254,3,178,5,156,13,134,38,97,70,66,102,43"/>
+<area shape="rect" id="Node000003" href="$ra8__dfu_8h.html" title="Controller&#45;agnostic USB&#45;DFU MRAM bootloader core for the RA8D2." alt="" coords="43,240,125,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="134,46,92,227,87,226,129,45"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="135,313,214,339"/>
+<area shape="poly" id="edge6_Node000001_Node000004" title=" " alt="" coords="141,45,174,299,169,300,136,46"/>
+<area shape="rect" id="Node000005" href="$ra8__usb_8h.html" title="Native USB controller driver public API (device + host modes)." alt="" coords="221,93,307,119"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="168,43,235,84,232,88,166,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="91,264,105,298,126,337,156,375,152,378,122,340,100,300,86,267"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="100,263,151,302,147,307,97,267"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="177,339,177,373,172,373,172,339"/>
+<area shape="rect" id="Node000006" href="$ra8__usb__device_8h.html" title="Native USB controller driver public API – shared types + device mode." alt="" coords="302,240,437,265"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="284,117,312,137,338,165,355,195,366,225,361,227,350,198,334,168,308,141,281,121"/>
+<area shape="rect" id="Node000007" href="$ra8__usb__host_8h.html" title="Native USB controller driver public API – host&#45;mode bring&#45;up." alt="" coords="204,167,324,192"/>
+<area shape="poly" id="edge11_Node000005_Node000007" title=" " alt="" coords="267,119,267,153,261,153,261,119"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="361,267,329,302,284,341,249,364,214,383,211,378,246,359,281,337,325,298,358,264"/>
+<area shape="poly" id="edge10_Node000006_Node000004" title=" " alt="" coords="339,268,220,311,218,306,337,263"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="266,192,256,257,246,299,229,340,215,361,200,379,196,375,211,358,224,337,241,297,251,256,261,192"/>
+<area shape="poly" id="edge13_Node000007_Node000004" title=" " alt="" coords="259,194,191,303,187,300,254,191"/>
+<area shape="poly" id="edge14_Node000007_Node000006" title=" " alt="" coords="282,190,342,230,340,235,279,194"/>
+</map>

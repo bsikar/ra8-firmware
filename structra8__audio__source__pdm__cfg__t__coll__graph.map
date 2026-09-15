@@ -1,0 +1,5 @@
+<map id="ra8_audio_source_pdm_cfg_t" name="ra8_audio_source_pdm_cfg_t">
+<area shape="rect" id="Node000001" title="Complete PDM source initialization and capture policy." alt="" coords="7,101,179,141"/>
+<area shape="rect" id="Node000002" href="$structra8__pdm__channel__cfg__t.html" title="One PDM channel&#39;s mode + filter configuration." alt="" coords="5,5,181,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="96,45,96,101,91,101,91,45"/>
+</map>

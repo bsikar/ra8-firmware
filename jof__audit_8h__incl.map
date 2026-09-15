@@ -1,0 +1,15 @@
+<map id="apps/shared_libs/jof/inc/jof_audit.h" name="apps/shared_libs/jof/inc/jof_audit.h">
+<area shape="rect" id="Node000001" title="No&#45;heap, backing&#45;agnostic structural audit for JOF atlases." alt="" coords="84,5,236,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="135,48,110,69,86,95,68,125,54,155,49,152,63,122,82,92,106,65,132,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="159,240,230,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="179,44,217,96,235,130,249,166,252,179,249,193,237,215,221,232,217,229,233,211,244,191,247,179,244,167,230,132,212,99,174,47"/>
+<area shape="rect" id="Node000004" href="$jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="96,93,147,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="153,47,136,82,131,80,148,44"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,167,234,192"/>
+<area shape="poly" id="edge8_Node000001_Node000005" title=" " alt="" coords="167,45,192,152,186,154,162,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="110,121,67,159,64,156,107,117"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="125,118,132,152,146,191,175,229,170,232,142,193,127,153,120,119"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="135,117,175,155,171,159,132,121"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="197,192,197,226,192,226,192,192"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="cbs_pack_sink_t" name="cbs_pack_sink_t">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,101,133,127"/>
+<area shape="rect" id="Node000002" href="$structcb__scratch__t.html" title="Injected bounded random&#45;access scratch transaction." alt="" coords="18,5,121,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="72,45,72,101,67,101,67,45"/>
+</map>

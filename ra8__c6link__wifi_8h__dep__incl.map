@@ -1,0 +1,17 @@
+<map id="libs/ra8_c6link/inc/ra8_c6link_wifi.h" name="libs/ra8_c6link/inc/ra8_c6link_wifi.h">
+<area shape="rect" id="Node000001" title="Wi&#45;Fi station bring&#45;up and association over the C6 link." alt="" coords="676,5,815,45"/>
+<area shape="rect" id="Node000002" href="$c6__cam__app_8c.html" title="Shared C6 camera&#45;stream application workflow." alt="" coords="5,93,216,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="663,38,465,61,228,96,217,98,216,93,228,91,464,56,662,32"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2media__download_2src_2main_8c.html" title="Download, validate, publish, and reopen one C6&#45;fetched .rabook." alt="" coords="241,93,437,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="663,48,450,96,438,99,436,94,449,91,662,42"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__join_2src_2main_8c.html" title="Join the bench Wi&#45;Fi over the ESP32&#45;C6 and get an IP by DHCP (#492)." alt="" coords="461,93,635,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="694,54,605,96,602,91,692,49"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__link_2src_2main_8c.html" title="Bring the ESP32&#45;C6&#39;s Wi&#45;Fi station up through the ra8_c6link facade." alt="" coords="659,93,832,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="748,59,748,93,743,93,743,59"/>
+<area shape="rect" id="Node000006" href="$ra8__c6link__wifi_8c.html" title="Radio lifecycle: initialise, choose station mode, start, tear down." alt="" coords="856,101,995,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="795,49,890,98,888,103,792,54"/>
+<area shape="rect" id="Node000007" href="$ra8__c6link__wifi__sta_8c.html" title="Station credentials, association, and what the radio reports back." alt="" coords="1019,101,1181,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="829,45,1007,91,1034,98,1033,103,1006,96,827,50"/>
+<area shape="rect" id="Node000008" href="$ra8__wifi__c6link_8c.html" title="The ESP32&#45;C6 backend: each ra8_wifi operation onto ra8_c6link." alt="" coords="1205,101,1353,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="829,33,998,55,1194,91,1222,98,1220,103,1193,96,997,60,828,38"/>
+</map>

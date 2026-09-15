@@ -1,0 +1,14 @@
+<map id="apps/shared_libs/reflow/src/reflow_css_internal.h" name="apps/shared_libs/reflow/src/reflow_css_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU surface for the split content&#45;CSS cascade (#111)." alt="" coords="73,5,260,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="138,48,74,88,71,84,135,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="104,93,229,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="169,46,169,79,164,79,164,46"/>
+<area shape="rect" id="Node000004" href="$reflow__css_8h.html" title="Minimal content&#45;CSS cascade for the reflow ereader engine (#111)." alt="" coords="254,93,357,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="201,43,274,84,272,89,199,48"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="270,240,341,265"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="304,119,296,152,295,192,301,226,296,227,289,192,291,151,299,118"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="305,167,383,192"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="314,118,334,153,329,156,309,120"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="340,194,320,229,316,227,335,191"/>
+</map>

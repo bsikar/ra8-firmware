@@ -1,0 +1,44 @@
+<map id="tools/rabook_imagepack/src/ra8_fmt_stream_convert.c" name="tools/rabook_imagepack/src/ra8_fmt_stream_convert.c">
+<area shape="rect" id="Node000001" title="Callback&#45;driven, caller&#45;workspace image&#45;to&#45;JOF conversion." alt="" coords="373,5,593,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="320,313,395,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="481,46,459,120,414,222,373,302,368,300,409,220,454,118,476,45"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="324,387,394,412"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="594,32,665,47,700,59,733,74,761,93,783,116,798,144,803,178,803,254,800,270,790,285,757,310,708,333,648,351,518,379,408,395,408,390,517,374,647,346,706,328,754,306,786,281,795,268,798,254,798,178,793,146,779,119,757,97,730,78,698,64,664,52,593,37"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="374,93,445,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="467,47,432,85,428,81,463,44"/>
+<area shape="rect" id="Node000005" href="$jof__produce_8h.html" title="Import&#45;time transcode producer: JPEG/PNG/WebP &#45;&gt; JOF band&#45;tile atlas in bounded RAM (#231,..." alt="" coords="281,167,392,192"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="430,48,395,68,364,95,349,124,341,153,336,152,344,122,360,92,392,63,428,43"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="520,93,646,119"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="509,43,559,82,556,87,506,48"/>
+<area shape="rect" id="Node000009" href="$ra8__fmt__stream_8h.html" title="Caller&#45;workspace I/O contracts for portable format&#45;tool engines." alt="" coords="58,93,196,119"/>
+<area shape="poly" id="edge14_Node000001_Node000009" title=" " alt="" coords="398,48,193,93,192,88,397,43"/>
+<area shape="rect" id="Node000011" href="$ra8__webp_8h.html" title="Zero&#45;heap WebP (VP8 / VP8L) decode facade over the vendored libwebp." alt="" coords="593,167,690,192"/>
+<area shape="poly" id="edge24_Node000001_Node000011" title=" " alt="" coords="592,43,630,62,646,76,660,92,666,107,667,124,658,155,653,153,662,123,661,108,656,95,642,79,627,67,590,48"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="341,192,357,299,351,300,336,193"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="347,191,380,242,397,276,410,313,412,326,410,340,399,360,385,378,381,375,394,357,405,338,407,326,405,314,392,278,375,244,343,194"/>
+<area shape="rect" id="Node000006" href="$jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="91,240,142,265"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="302,195,156,241,154,236,300,189"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="201,313,280,339"/>
+<area shape="poly" id="edge12_Node000005_Node000007" title=" " alt="" coords="331,194,258,303,254,300,326,191"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="143,259,308,307,307,312,141,264"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="126,264,151,300,169,319,190,336,219,354,251,367,311,386,310,391,249,372,217,358,187,341,166,323,147,303,121,267"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="138,263,210,304,207,309,135,268"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="261,336,329,377,326,382,258,341"/>
+<area shape="poly" id="edge15_Node000009_Node000002" title=" " alt="" coords="141,117,337,301,333,305,138,121"/>
+<area shape="poly" id="edge16_Node000009_Node000003" title=" " alt="" coords="87,121,51,139,35,152,23,168,11,194,8,217,12,239,22,260,37,280,57,299,105,336,155,363,210,381,263,391,310,395,310,400,263,396,208,386,153,368,102,341,53,303,33,284,17,263,7,241,3,218,6,192,18,165,31,148,48,135,85,116"/>
+<area shape="poly" id="edge17_Node000009_Node000006" title=" " alt="" coords="135,118,145,151,147,172,146,193,132,229,127,227,141,191,142,172,140,152,130,120"/>
+<area shape="poly" id="edge23_Node000009_Node000007" title=" " alt="" coords="92,121,58,140,43,152,31,168,28,179,31,191,42,232,52,247,68,263,95,283,126,297,188,315,187,320,124,302,93,287,64,267,47,250,38,234,26,193,23,179,26,166,39,149,55,135,89,116"/>
+<area shape="rect" id="Node000010" href="$jof__audit_8h.html" title="No&#45;heap, backing&#45;agnostic structural audit for JOF atlases." alt="" coords="40,167,131,192"/>
+<area shape="poly" id="edge18_Node000009_Node000010" title=" " alt="" coords="123,120,102,156,97,153,118,118"/>
+<area shape="poly" id="edge19_Node000010_Node000002" title=" " alt="" coords="102,190,150,225,212,263,263,287,312,306,310,311,261,292,210,268,147,229,99,194"/>
+<area shape="poly" id="edge20_Node000010_Node000003" title=" " alt="" coords="81,193,67,227,64,246,68,264,85,291,104,308,158,336,196,354,236,368,311,387,309,392,235,373,194,359,155,341,101,313,81,295,63,266,59,246,62,225,76,191"/>
+<area shape="poly" id="edge21_Node000010_Node000006" title=" " alt="" coords="93,191,109,227,104,229,88,193"/>
+<area shape="poly" id="edge22_Node000010_Node000007" title=" " alt="" coords="83,193,74,227,75,247,81,264,103,286,130,301,159,312,188,318,187,323,157,317,127,306,99,290,77,267,69,248,69,227,78,192"/>
+<area shape="poly" id="edge25_Node000011_Node000002" title=" " alt="" coords="626,194,572,229,503,268,403,311,401,306,501,263,569,224,623,190"/>
+<area shape="poly" id="edge26_Node000011_Node000003" title=" " alt="" coords="669,190,694,204,718,222,731,243,732,255,727,267,695,302,657,331,615,354,571,371,482,391,409,399,408,394,482,386,569,365,613,349,655,327,692,299,722,264,727,254,726,245,714,225,692,208,667,194"/>
+<area shape="poly" id="edge27_Node000011_Node000007" title=" " alt="" coords="611,195,286,311,284,306,609,190"/>
+<area shape="rect" id="Node000012" href="$ra8__webp__arena_8h.html" title="Heap&#45;free scratch allocator hooks for the vendored libwebp decoder." alt="" coords="571,240,712,265"/>
+<area shape="poly" id="edge28_Node000011_Node000012" title=" " alt="" coords="644,192,644,226,639,226,639,192"/>
+<area shape="poly" id="edge29_Node000012_Node000002" title=" " alt="" coords="597,268,409,315,408,310,596,263"/>
+<area shape="poly" id="edge30_Node000012_Node000003" title=" " alt="" coords="620,268,395,383,392,378,618,263"/>
+</map>

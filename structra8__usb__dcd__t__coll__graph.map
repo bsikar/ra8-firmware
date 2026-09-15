@@ -1,0 +1,5 @@
+<map id="ra8_usb_dcd_t" name="ra8_usb_dcd_t">
+<area shape="rect" id="Node000001" title="Bridge&#45;singleton state." alt="" coords="39,101,153,127"/>
+<area shape="rect" id="Node000002" href="$structra8__usb__dcd__pipe__slot__t.html" title="Per&#45;pipe class&#45;layer cache so the IRQ handler can re&#45;arm BRDY&#45;driven transfers without crawling the d..." alt="" coords="5,5,187,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,45,99,101,93,101,93,45"/>
+</map>

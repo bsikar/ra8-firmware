@@ -1,0 +1,7 @@
+<map id="mdl_state_t" name="mdl_state_t">
+<area shape="rect" id="Node000001" title="One series&#39; complete persistent state (declare at file scope)." alt="" coords="106,101,205,127"/>
+<area shape="rect" id="Node000002" href="$structmdl__chapter__rec__t.html" title="One chapter&#39;s coverage in library state." alt="" coords="5,5,148,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,40,148,99,144,103,93,43"/>
+<area shape="rect" id="Node000003" href="$structmdl__page__rec__t.html" title="One page&#39;s dedup/verify record in the series&#45;wide pool." alt="" coords="173,5,298,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="224,44,199,79,173,103,169,99,195,76,220,41"/>
+</map>

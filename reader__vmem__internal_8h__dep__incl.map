@@ -1,0 +1,9 @@
+<map id="tools/reader_vmem/inc/reader_vmem_internal.h" name="tools/reader_vmem/inc/reader_vmem_internal.h">
+<area shape="rect" id="Node000001" title="Private host sink and caller&#45;owned workspace contracts for reader_vmem." alt="" coords="194,5,381,45"/>
+<area shape="rect" id="Node000002" href="$reader__vmem_8c.html" title="Drive the real virtual&#45;memory cache with a deterministic reader trace." alt="" coords="5,93,177,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="233,53,135,96,133,91,231,48"/>
+<area shape="rect" id="Node000003" href="$reader__vmem__host_8c.html" title="Bounded raw&#45;descriptor trace composition for reader_vmem." alt="" coords="201,93,373,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="290,59,290,93,285,93,285,59"/>
+<area shape="rect" id="Node000004" href="$reader__vmem__workspace_8c.html" title="Checked split&#45;region planning for reader_vmem cache RAM." alt="" coords="398,93,603,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="348,48,455,91,453,96,346,53"/>
+</map>

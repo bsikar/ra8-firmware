@@ -1,0 +1,12 @@
+<map id="libs/ra8_dfu/src/ra8_rot.c" name="libs/ra8_dfu/src/ra8_rot.c">
+<area shape="rect" id="Node000001" title="Root&#45;of&#45;trust signed&#45;image verifier – SHA&#45;256 + ECDSA&#45;P256 gate." alt="" coords="11,5,157,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rot_8h.html" title="Root&#45;of&#45;trust signed&#45;image verifier (SHA&#45;256 + ECDSA&#45;P256, default&#45;deny)." alt="" coords="44,93,124,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="87,46,87,79,81,79,81,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="62,240,133,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="62,121,40,135,21,152,9,171,8,181,12,191,31,214,56,231,53,236,27,218,7,193,3,181,4,169,17,148,37,130,59,117"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="21,167,147,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="87,119,87,153,81,153,81,119"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="171,167,250,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="106,116,179,157,176,162,103,121"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="194,194,129,235,126,230,191,190"/>
+</map>

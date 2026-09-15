@@ -1,0 +1,29 @@
+<map id="libs/ra8_hal/src/ra8_dual_core.c" name="libs/ra8_hal/src/ra8_dual_core.c">
+<area shape="rect" id="Node000001" title="CPU1 (Cortex&#45;M33) lifecycle helper – implementation." alt="" coords="211,5,356,45"/>
+<area shape="rect" id="Node000002" href="$ra8__dual__core_8h.html" title="Dual&#45;core (CPU0 / CPU1) lifecycle helper – public API." alt="" coords="30,93,156,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="239,48,134,91,132,86,237,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="212,240,283,265"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="211,38,155,47,98,59,49,75,32,85,20,95,12,108,9,120,13,143,31,164,58,183,92,201,129,215,200,237,198,242,127,220,89,205,55,188,27,168,9,145,4,119,8,106,16,92,29,80,47,70,96,54,154,41,210,32"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="131,167,210,192"/>
+<area shape="poly" id="edge14_Node000001_Node000004" title=" " alt="" coords="264,48,220,95,184,155,179,153,216,92,260,44"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="536,93,661,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="357,42,540,87,539,93,356,47"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="360,93,460,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="316,43,382,84,379,88,313,48"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="509,167,592,192"/>
+<area shape="poly" id="edge18_Node000001_Node000007" title=" " alt="" coords="358,41,416,61,474,91,510,122,537,154,532,157,506,125,471,96,414,66,356,46"/>
+<area shape="rect" id="Node000009" href="$ra8__hw__err_8h.html" title="Bounded wait&#45;flag primitives for RA8D2 HAL drivers." alt="" coords="231,93,336,119"/>
+<area shape="poly" id="edge15_Node000001_Node000009" title=" " alt="" coords="286,46,286,79,281,79,281,46"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="96,119,102,154,109,173,120,190,137,206,158,219,200,237,198,242,155,224,134,210,116,194,104,175,97,155,91,120"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="107,117,149,155,146,159,104,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="184,190,227,229,223,232,181,194"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="424,118,437,133,448,152,453,173,447,193,433,210,415,223,377,241,335,251,297,255,297,249,334,245,375,236,413,218,429,206,443,191,448,173,443,155,433,136,420,121"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="372,121,223,165,222,160,371,116"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="434,116,517,158,514,163,432,121"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="286,167,434,192"/>
+<area shape="poly" id="edge12_Node000006_Node000008" title=" " alt="" coords="404,121,378,157,374,154,400,117"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="509,193,297,243,296,237,508,188"/>
+<area shape="poly" id="edge13_Node000008_Node000003" title=" " alt="" coords="343,194,279,235,276,230,340,190"/>
+<area shape="poly" id="edge16_Node000009_Node000003" title=" " alt="" coords="283,120,256,227,251,226,278,118"/>
+<area shape="poly" id="edge17_Node000009_Node000004" title=" " alt="" coords="267,121,202,162,199,157,264,116"/>
+</map>

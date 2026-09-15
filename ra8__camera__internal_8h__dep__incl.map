@@ -1,0 +1,13 @@
+<map id="libs/ra8_camera/src/ra8_camera_internal.h" name="libs/ra8_camera/src/ra8_camera_internal.h">
+<area shape="rect" id="Node000001" title="Private source and codec vtables for ra8_camera backends." alt="" coords="459,5,631,45"/>
+<area shape="rect" id="Node000002" href="$ra8__camera_8c.html" title="Validation and opaque&#45;vtable dispatch for ra8_camera." alt="" coords="5,93,155,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="446,46,167,96,156,98,155,93,166,91,445,41"/>
+<area shape="rect" id="Node000003" href="$ra8__camera__codec__jpeg__sw_8c.html" title="ra8_jpeg_sw adapter for the generic camera codec facade." alt="" coords="179,93,397,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="477,52,345,96,344,91,475,47"/>
+<area shape="rect" id="Node000004" href="$ra8__camera__codec__passthrough_8c.html" title="Zero&#45;copy JPEG passthrough backend implementation." alt="" coords="422,93,669,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="548,59,548,93,543,93,543,59"/>
+<area shape="rect" id="Node000005" href="$ra8__camera__source__ceu_8c.html" title="RA8 CEU implementation of the camera&#45;source backend." alt="" coords="693,93,888,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="613,47,738,91,736,96,611,52"/>
+<area shape="rect" id="Node000006" href="$ra8__camera__source__memory_8c.html" title="Fixed&#45;frame memory source backend implementation." alt="" coords="912,93,1136,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="646,42,919,91,918,96,645,47"/>
+</map>

@@ -1,0 +1,16 @@
+<map id="tools/cache_bench/inc/trace.h" name="tools/cache_bench/inc/trace.h">
+<area shape="rect" id="Node000001" title="Resettable, allocation&#45;free access streams for cache_bench." alt="" coords="5,5,171,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="30,167,101,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="60,48,36,68,18,94,16,110,20,126,42,155,38,159,16,129,11,111,14,92,32,65,56,44"/>
+<area shape="rect" id="Node000003" href="$cache__bench_8h.html" title="Eviction&#45;policy comparison harness for the #147 memory&#45;hierarchy decision record: the DIP seam every ..." alt="" coords="29,93,147,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="91,46,91,79,85,79,85,46"/>
+<area shape="rect" id="Node000005" href="$cache__bench__io_8h.html" title="Bounded byte&#45;source and text&#45;sink seams for cache_bench." alt="" coords="171,93,309,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="126,43,206,84,204,89,123,48"/>
+<area shape="poly" id="edge4_Node000003_Node000002" title=" " alt="" coords="87,120,76,154,71,153,82,118"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="125,167,200,192"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="102,117,142,155,139,159,98,121"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="213,121,108,164,106,159,211,116"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="229,121,187,159,184,155,226,117"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="224,167,299,192"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="246,118,257,153,251,154,241,120"/>
+</map>

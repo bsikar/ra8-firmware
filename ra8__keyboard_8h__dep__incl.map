@@ -1,0 +1,16 @@
+<map id="libs/ra8_keyboard/inc/ra8_keyboard.h" name="libs/ra8_keyboard/inc/ra8_keyboard.h">
+<area shape="rect" id="Node000001" title="On&#45;screen keyboard widget – iOS&#45;style layers, shift, hit&#45;test." alt="" coords="321,5,481,45"/>
+<area shape="rect" id="Node000002" href="$ereader__ui__steps_8h.html" title="E&#45;reader UI chrome – shared contract between main.c and the per&#45;aspect helper translation units (scre..." alt="" coords="203,93,393,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="372,56,329,95,325,91,368,52"/>
+<area shape="rect" id="Node000003" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="5,196,193,251"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="308,45,248,65,219,79,192,95,166,118,144,145,114,197,109,195,140,142,162,115,188,91,216,74,246,60,307,40"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2hil_2keyboard_2src_2main_8c.html" title="On&#45;silicon HIL for the on&#45;screen keyboard widget ra8_keyboard (#105)." alt="" coords="417,93,592,148"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="434,52,477,91,474,95,430,56"/>
+<area shape="rect" id="Node000007" href="$ra8__keyboard_8c.html" title="On&#45;screen keyboard widget – iOS&#45;style layers + shift." alt="" coords="617,101,777,141"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="474,47,638,98,636,103,473,52"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="235,156,152,198,150,194,233,152"/>
+<area shape="rect" id="Node000004" href="$ereader__ui__screens_8c.html" title="E&#45;reader UI chrome – Library + Reading rendering and in&#45;content nav." alt="" coords="218,196,423,251"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="310,161,317,195,312,196,304,162"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2src_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="447,196,621,251"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="373,151,474,193,471,198,371,156"/>
+</map>

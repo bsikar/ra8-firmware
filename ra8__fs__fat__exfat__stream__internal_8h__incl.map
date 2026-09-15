@@ -1,0 +1,29 @@
+<map id="libs/ra8_fs/src/ra8_fs_fat_exfat_stream_internal.h" name="libs/ra8_fs/src/ra8_fs_fat_exfat_stream_internal.h">
+<area shape="rect" id="Node000001" title="The exFAT streaming&#45;write mechanism: entry&#45;set positions and its helpers." alt="" coords="215,5,375,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="163,475,234,500"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="215,46,146,62,112,74,79,90,51,109,28,133,13,160,8,193,8,342,12,367,22,389,38,408,58,425,105,453,151,471,149,476,102,457,55,430,34,412,18,392,7,368,3,342,3,192,8,159,24,129,47,105,76,85,110,70,145,57,214,41"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="437,181,563,207"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="376,48,429,70,455,86,477,106,494,136,501,167,496,168,489,138,473,110,451,91,427,75,374,53"/>
+<area shape="rect" id="Node000004" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="189,181,264,207"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="280,62,254,109,235,168,230,167,250,107,275,59"/>
+<area shape="rect" id="Node000008" href="$ra8__fs__fat__types__internal_8h.html" title="Cross&#45;TU on&#45;disk&#45;layout enums and typedefs for the FAT/exFAT adapter." alt="" coords="263,108,462,133"/>
+<area shape="poly" id="edge14_Node000001_Node000008" title=" " alt="" coords="318,58,347,95,343,99,313,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="249,205,275,225,295,253,303,264,314,272,325,281,334,293,337,311,333,338,319,376,293,428,271,453,244,471,242,466,268,449,288,425,315,374,328,337,332,312,329,295,321,285,311,276,300,268,291,256,271,229,246,209"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="199,401,278,427"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="242,205,261,226,276,254,282,291,277,328,266,362,254,390,249,388,261,361,272,327,276,291,271,256,256,229,238,209"/>
+<area shape="rect" id="Node000006" href="$ra8__fs__seams_8h.html" title="The two dependency&#45;injection seams ra8_fs offers its callers." alt="" coords="137,255,261,280"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="225,208,211,243,206,241,220,206"/>
+<area shape="rect" id="Node000007" href="$ra8__fs__types_8h.html" title="On&#45;disk and handle data types shared by the ra8_fs public API." alt="" coords="93,328,211,353"/>
+<area shape="poly" id="edge13_Node000004_Node000007" title=" " alt="" coords="191,209,155,227,140,240,128,256,123,270,125,285,137,315,133,317,119,287,118,270,123,253,136,236,152,223,188,204"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="234,428,214,464,210,461,230,426"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="151,282,113,300,97,313,84,329,76,348,77,367,85,386,97,405,132,439,168,465,165,469,128,443,93,408,80,389,72,369,71,348,79,327,93,309,111,296,149,278"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="207,279,225,327,238,387,233,388,220,329,202,281"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="193,282,169,318,165,315,189,279"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="158,353,193,461,188,462,153,355"/>
+<area shape="poly" id="edge12_Node000007_Node000005" title=" " alt="" coords="168,351,216,390,212,395,164,355"/>
+<area shape="poly" id="edge16_Node000008_Node000002" title=" " alt="" coords="370,133,390,189,399,227,403,266,403,342,398,369,387,393,369,414,347,432,297,459,248,477,246,472,295,454,344,427,365,410,382,390,393,368,397,342,397,266,394,228,385,191,365,135"/>
+<area shape="poly" id="edge17_Node000008_Node000003" title=" " alt="" coords="386,131,467,173,464,177,384,136"/>
+<area shape="poly" id="edge18_Node000008_Node000004" title=" " alt="" coords="342,136,262,177,260,173,340,131"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="288,181,363,207"/>
+<area shape="poly" id="edge15_Node000008_Node000009" title=" " alt="" coords="359,135,340,171,335,168,354,132"/>
+</map>

@@ -1,0 +1,10 @@
+<map id="port/posix/inc/ra8_io_stream_posix.h" name="port/posix/inc/ra8_io_stream_posix.h">
+<area shape="rect" id="Node000001" title="Borrowed raw&#45;descriptor backend for the portable byte&#45;stream facade." alt="" coords="5,5,153,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="16,93,143,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="82,46,82,79,77,79,77,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="44,240,115,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="78,119,70,152,69,192,75,226,70,227,63,192,65,151,73,118"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="79,167,157,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="88,118,108,153,103,156,83,120"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="114,194,94,229,90,227,109,191"/>
+</map>

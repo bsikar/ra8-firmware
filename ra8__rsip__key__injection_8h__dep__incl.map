@@ -1,0 +1,10 @@
+<map id="libs/ra8_hal/inc/ra8_rsip_key_injection.h" name="libs/ra8_hal/inc/ra8_rsip_key_injection.h">
+<area shape="rect" id="Node000001" title="RSIP key&#45;injection HAL – wrap raw key material into theRSIP installed&#45;key blob format." alt="" coords="109,5,268,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rsip__protected_8h.html" title="RSIP protected&#45;key HAL – crypto operations driven by wrappedkey blobs (the RSIP engine never sees the..." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="155,56,104,95,101,91,152,52"/>
+<area shape="rect" id="Node000003" href="$ra8__rsip__protected_8c.html" title="RSIP protected&#45;key HAL implementation." alt="" coords="60,181,205,221"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="185,60,166,134,145,182,140,180,161,132,180,58"/>
+<area shape="rect" id="Node000004" href="$ra8__rsip__key__injection_8c.html" title="RSIP key&#45;injection HAL implementation." alt="" coords="226,93,383,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="227,52,281,91,277,95,224,56"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="100,144,123,180,118,183,95,146"/>
+</map>

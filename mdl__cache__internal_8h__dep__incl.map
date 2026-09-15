@@ -1,0 +1,7 @@
+<map id="apps/shared_libs/mdl/src/mdl_cache_internal.h" name="apps/shared_libs/mdl/src/mdl_cache_internal.h">
+<area shape="rect" id="Node000001" title="Private binary&#45;index and body I/O seams for mdl_cache." alt="" coords="83,5,271,45"/>
+<area shape="rect" id="Node000002" href="$mdl__cache_8c.html" title="Per&#45;host HTTP cache lookup and revalidation state machine." alt="" coords="5,93,165,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="149,57,108,95,104,91,145,53"/>
+<area shape="rect" id="Node000003" href="$mdl__cache__io_8c.html" title="Checksummed binary index and immutable body I/O for mdl_cache." alt="" coords="189,93,349,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="209,53,251,91,247,95,206,57"/>
+</map>

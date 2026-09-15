@@ -1,0 +1,11 @@
+<map id="examples/ek_ra8d2/hw_pending/compile_on_m33/inc/compile_on_m33.h" name="examples/ek_ra8d2/hw_pending/compile_on_m33/inc/compile_on_m33.h">
+<area shape="rect" id="Node000001" title="Shared&#45;SRAM contract for the &quot;RABOOK1 emitter on the M33&quot; demo (#149b)." alt="" coords="5,5,201,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="61,269,132,295"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="91,61,74,109,70,149,74,189,90,256,85,257,69,190,65,149,69,107,86,59"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2__dualcore_8h.html" title="Where the EK&#45;RA8D2&#39;s Cortex&#45;M85 and Cortex&#45;M33 meet, stated once." alt="" coords="83,108,238,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="122,59,144,95,140,98,117,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="150,150,124,197,105,256,100,255,120,195,146,147"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="135,196,213,221"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="167,148,172,182,167,183,161,149"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="163,223,121,262,118,258,160,219"/>
+</map>

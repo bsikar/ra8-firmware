@@ -1,0 +1,7 @@
+<map id="ra8_fs_file_t" name="ra8_fs_file_t">
+<area shape="rect" id="Node000001" title="Open&#45;file state." alt="" coords="22,197,123,223"/>
+<area shape="rect" id="Node000002" href="$structra8__fs__mount__t.html" title="Cached parse of one mounted FAT volume." alt="" coords="11,101,134,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="75,141,75,197,70,197,70,141"/>
+<area shape="rect" id="Node000003" href="$structra8__fs__backend__t.html" title="Block&#45;device interface that ra8_fs runs on top of." alt="" coords="5,5,140,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="75,45,75,101,70,101,70,45"/>
+</map>

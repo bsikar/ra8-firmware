@@ -1,0 +1,21 @@
+<map id="libs/ra8_hal/inc/ra8_lvd_types.h" name="libs/ra8_hal/inc/ra8_lvd_types.h">
+<area shape="rect" id="Node000001" title="Programmable Voltage Detection (PVD / LVD) HAL types." alt="" coords="215,5,361,45"/>
+<area shape="rect" id="Node000002" href="$ra8__lvd_8h.html" title="Programmable Voltage Detection (PVD / LVD) HAL driver." alt="" coords="215,181,361,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="273,59,261,94,259,113,261,133,269,158,279,180,275,182,264,160,256,134,253,113,256,93,268,57"/>
+<area shape="rect" id="Node000008" href="$ra8__lvd__api_8h.html" title="Programmable Voltage Detection (PVD / LVD) HAL function prototypes." alt="" coords="271,93,417,133"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="310,56,334,92,329,95,306,58"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lvd__monitor__demo_2src_2main_8c.html" title="Safe LVD / PVD VCC&#45;monitor demo for the EK&#45;RA8D2." alt="" coords="5,269,200,324"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="240,230,156,272,154,267,237,225"/>
+<area shape="rect" id="Node000004" href="$ra8__lvd_8c.html" title="Programmable Voltage Detection (PVD / LVD) driver implementation." alt="" coords="142,372,287,412"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="278,235,225,372,220,371,273,233"/>
+<area shape="rect" id="Node000005" href="$ra8__lvd__events_8c.html" title="PVD / LVD security attribution, n&#45;channel lock, ELC / standby helpers, filter&#45;timing math,..." alt="" coords="311,372,457,412"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="292,235,299,278,316,323,335,349,359,370,355,374,331,352,311,325,294,279,287,235"/>
+<area shape="rect" id="Node000006" href="$ra8__lvd__internal_8h.html" title="Test&#45;access surface for ra8_lvd internal helpers (MC/DC)." alt="" coords="326,277,471,317"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="323,228,378,275,375,279,319,232"/>
+<area shape="rect" id="Node000007" href="$ra8__lvd__runtime_8c.html" title="PVD / LVD runtime control: IRQ / reset / CMPE toggles, filter, hysteresis, negate,..." alt="" coords="481,372,626,412"/>
+<area shape="poly" id="edge9_Node000002_Node000007" title=" " alt="" coords="375,216,431,235,459,250,484,267,508,292,526,320,550,371,545,373,522,322,504,295,481,271,456,254,429,240,373,221"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="350,325,253,374,251,370,348,320"/>
+<area shape="poly" id="edge7_Node000006_Node000005" title=" " alt="" coords="396,331,390,372,384,372,391,330"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="443,321,523,370,521,374,440,326"/>
+<area shape="poly" id="edge11_Node000008_Node000002" title=" " alt="" coords="326,146,303,183,298,180,322,144"/>
+</map>

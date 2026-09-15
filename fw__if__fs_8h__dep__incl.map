@@ -1,0 +1,244 @@
+<map id="libs/if/inc/fw_if_fs.h" name="libs/if/inc/fw_if_fs.h">
+<area shape="rect" id="Node000001" title="Architecture&#45;neutral filesystem namespace, stream, and transaction ports." alt="" coords="4863,5,5009,31"/>
+<area shape="rect" id="Node000002" href="$alphabet__soup__cli_8c.html" title="Bounded POSIX file ingestion for the Alphabet Soup host CLI." alt="" coords="5305,174,5519,214"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="5011,31,5092,50,5178,76,5291,125,5380,172,5378,176,5288,130,5176,81,5091,55,5010,36"/>
+<area shape="rect" id="Node000003" href="$mdl__hash_8h.html" title="Content&#45;identity hashing (FNV&#45;1a 64) for the media downloader&#39;s persistent library state." alt="" coords="1064,482,1224,522"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="4849,23,4075,32,3505,42,2893,56,2300,75,1785,100,1576,115,1410,131,1293,149,1256,159,1235,169,1202,201,1177,241,1160,285,1150,331,1142,419,1145,482,1139,482,1137,419,1145,330,1155,284,1173,239,1198,198,1232,164,1254,154,1292,144,1409,126,1576,110,1785,95,2300,70,2893,51,3505,37,4075,27,4849,17"/>
+<area shape="rect" id="Node000018" href="$mdl__storage_8h.html" title="Injected portable storage resources for downloader domain code." alt="" coords="2291,79,2451,119"/>
+<area shape="poly" id="edge17_Node000001_Node000018" title=" " alt="" coords="4849,25,2451,98,2451,92,4849,19"/>
+<area shape="rect" id="Node000055" href="$mdl__verify__rabook__internal_8h.html" title="Private strict RBKC validator seam for media downloader artifacts." alt="" coords="4367,577,4537,632"/>
+<area shape="poly" id="edge137_Node000001_Node000055" title=" " alt="" coords="4849,32,4716,53,4641,68,4569,86,4504,108,4451,133,4431,147,4416,161,4407,177,4404,193,4404,401,4408,450,4418,498,4444,576,4438,578,4413,500,4403,451,4399,401,4399,192,4402,175,4412,158,4428,143,4449,128,4502,103,4568,81,4640,63,4715,47,4848,27"/>
+<area shape="rect" id="Node000077" href="$fw__if__fs__backend_8h.html" title="Backend&#45;author interface for binding concrete filesystem ports." alt="" coords="4715,79,4850,119"/>
+<area shape="poly" id="edge138_Node000001_Node000077" title=" " alt="" coords="4903,39,4821,81,4818,76,4900,35"/>
+<area shape="rect" id="Node000078" href="$fw__if__fs_8c.html" title="Guarded dispatch for the architecture&#45;neutral filesystem ports." alt="" coords="4439,181,4585,207"/>
+<area shape="poly" id="edge144_Node000001_Node000078" title=" " alt="" coords="4849,33,4765,52,4678,81,4632,105,4589,134,4527,183,4523,179,4586,129,4630,101,4676,76,4764,47,4848,28"/>
+<area shape="rect" id="Node000079" href="$fw__if__fs__dir_8c.html" title="Guarded incremental&#45;directory dispatch for portable filesystem ports." alt="" coords="4610,174,4745,214"/>
+<area shape="poly" id="edge145_Node000001_Node000079" title=" " alt="" coords="4849,34,4763,54,4727,66,4705,81,4690,102,4682,127,4679,174,4673,174,4677,126,4685,100,4701,77,4725,61,4761,48,4848,29"/>
+<area shape="rect" id="Node000080" href="$fw__if__fs__ra8__vfs_8c.html" title="fw_if_fs adapter over one bound ra8_io_vfs mount." alt="" coords="4909,277,5051,317"/>
+<area shape="poly" id="edge150_Node000001_Node000080" title=" " alt="" coords="4943,44,4980,276,4974,277,4937,45"/>
+<area shape="rect" id="Node000081" href="$fw__if__fs__posix_8c.html" title="Secure hosted POSIX backend for the portable filesystem interface." alt="" coords="5670,379,5815,419"/>
+<area shape="poly" id="edge164_Node000001_Node000081" title=" " alt="" coords="5023,18,5229,24,5482,35,5708,52,5789,63,5836,76,5919,125,5955,153,5985,183,6006,216,6015,250,6011,287,5990,326,5973,344,5954,359,5910,382,5862,394,5816,400,5816,395,5861,389,5908,377,5951,355,5970,340,5986,322,6006,285,6010,251,6001,218,5981,187,5952,157,5916,130,5834,81,5788,68,5707,57,5481,41,5229,30,5023,24"/>
+<area shape="rect" id="Node000082" href="$fw__if__fs__posix__stream_8c.html" title="Hosted POSIX byte&#45;stream operations for the portable filesystem port." alt="" coords="4747,379,4893,419"/>
+<area shape="poly" id="edge167_Node000001_Node000082" title=" " alt="" coords="4931,45,4828,380,4823,379,4926,43"/>
+<area shape="rect" id="Node000083" href="$fw__if__fs__ra8__vfs_8h.html" title="Firmware filesystem&#45;port adapter over ra8_io_vfs and ra8_fs." alt="" coords="5023,79,5166,119"/>
+<area shape="poly" id="edge146_Node000001_Node000083" title=" " alt="" coords="4973,34,5057,76,5055,81,4970,39"/>
+<area shape="rect" id="Node000085" href="$fw__if__fs__posix_8h.html" title="Root&#45;confined hosted POSIX adapter for fw_if_fs." alt="" coords="5637,79,5782,119"/>
+<area shape="poly" id="edge151_Node000001_Node000085" title=" " alt="" coords="5023,25,5544,76,5637,86,5636,92,5544,81,5023,30"/>
+<area shape="rect" id="Node000086" href="$fw__if__fs__posix__bind_8c.html" title="Lifecycle and capability binding for the hosted POSIX filesystem." alt="" coords="5831,277,5977,317"/>
+<area shape="poly" id="edge165_Node000001_Node000086" title=" " alt="" coords="5023,18,5221,24,5461,35,5674,52,5750,63,5795,76,5821,96,5842,120,5860,147,5875,176,5894,232,5904,276,5899,277,5889,233,5870,178,5856,149,5838,123,5817,99,5792,81,5749,68,5674,57,5460,40,5220,29,5023,24"/>
+<area shape="rect" id="Node000087" href="$fw__if__fs__posix__internal_8h.html" title="Shared errno/descriptor helpers for the POSIX filesystem port." alt="" coords="5549,174,5701,214"/>
+<area shape="poly" id="edge166_Node000001_Node000087" title=" " alt="" coords="5019,30,5126,50,5243,76,5423,125,5570,171,5568,176,5421,131,5242,81,5125,56,5018,36"/>
+<area shape="rect" id="Node000004" href="$mdl__app__internal_8h.html" title="Module&#45;private contract shared by the application&#45;mode translation units." alt="" coords="2073,680,2247,720"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="1220,523,1237,527,1286,535,1330,537,1405,536,1441,537,1479,543,1519,554,1565,575,1582,588,1592,603,1600,617,1616,630,1652,643,1701,655,1823,673,1956,686,2072,693,2072,698,1955,691,1822,679,1700,660,1650,648,1613,634,1596,621,1587,606,1578,592,1563,580,1517,559,1477,548,1441,543,1405,542,1330,543,1286,540,1235,532,1219,528"/>
+<area shape="rect" id="Node000012" href="$mdl__cache_8c.html" title="Per&#45;host HTTP cache lookup and revalidation state machine." alt="" coords="1627,585,1787,625"/>
+<area shape="poly" id="edge11_Node000003_Node000012" title=" " alt="" coords="1220,523,1237,527,1340,544,1422,551,1504,558,1608,575,1641,582,1640,587,1608,580,1503,564,1422,557,1340,549,1235,532,1218,528"/>
+<area shape="rect" id="Node000013" href="$mdl__cache__io_8c.html" title="Checksummed binary index and immutable body I/O for mdl_cache." alt="" coords="1157,585,1317,625"/>
+<area shape="poly" id="edge12_Node000003_Node000013" title=" " alt="" coords="1173,530,1222,583,1218,586,1169,534"/>
+<area shape="rect" id="Node000014" href="$mdl__export__io_8c.html" title="Portable source streams and validated exporter publication stages." alt="" coords="3792,585,3952,625"/>
+<area shape="poly" id="edge13_Node000003_Node000014" title=" " alt="" coords="1216,523,1236,527,1345,540,1470,550,1761,562,2091,567,2440,567,3119,563,3411,565,3647,575,3792,590,3792,595,3646,580,3411,571,3119,568,2440,572,2091,572,1761,568,1470,555,1344,545,1236,532,1215,528"/>
+<area shape="rect" id="Node000015" href="$mdl__fetch__page_8c.html" title="Cached page validation, streamed transfer, and publication." alt="" coords="310,680,474,720"/>
+<area shape="poly" id="edge14_Node000003_Node000015" title=" " alt="" coords="1051,521,970,532,858,537,713,539,639,543,571,550,513,561,469,580,444,601,425,628,400,681,395,678,420,626,440,598,467,575,512,556,570,544,639,537,713,534,857,532,969,527,1050,516"/>
+<area shape="rect" id="Node000016" href="$mdl__hash_8c.html" title="FNV&#45;1a 64 content hashing over an injected portable filesystem." alt="" coords="973,585,1133,625"/>
+<area shape="poly" id="edge15_Node000003_Node000016" title=" " alt="" coords="1120,534,1072,586,1068,583,1116,530"/>
+<area shape="rect" id="Node000017" href="$mdl__storage_8c.html" title="Portable downloader storage binding and validated atomic copy." alt="" coords="195,585,355,625"/>
+<area shape="poly" id="edge16_Node000003_Node000017" title=" " alt="" coords="1051,521,970,532,802,546,671,551,540,558,374,580,340,587,339,582,373,575,540,553,670,545,802,541,969,527,1050,516"/>
+<area shape="rect" id="Node000005" href="$mdl__app_8c.html" title="The application layer&#39;s one composition seam: the bound working set." alt="" coords="2641,768,2801,808"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="2262,711,2434,735,2630,765,2642,767,2641,773,2629,771,2433,740,2261,717"/>
+<area shape="rect" id="Node000006" href="$mdl__app__admin_8c.html" title="Discovery, descriptor generation, and verification actions." alt="" coords="1698,768,1862,808"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="2064,726,1863,771,1862,766,2063,720"/>
+<area shape="rect" id="Node000007" href="$mdl__app__cover_8c.html" title="Cached series&#45;cover acquisition and validated publication." alt="" coords="2457,768,2617,808"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="2256,720,2458,766,2457,771,2255,726"/>
+<area shape="rect" id="Node000008" href="$mdl__app__direct_8c.html" title="Direct artifact, page, pack, and run composition actions." alt="" coords="2825,768,2985,808"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="2261,709,2338,717,2576,738,2680,747,2814,765,2826,767,2825,773,2813,771,2680,753,2576,743,2337,723,2261,715"/>
+<area shape="rect" id="Node000009" href="$mdl__app__library_8c.html" title="Tracked&#45;library list, remove, and update&#45;all actions." alt="" coords="1887,768,2049,808"/>
+<area shape="poly" id="edge8_Node000004_Node000009" title=" " alt="" coords="2106,728,2011,770,2009,766,2104,723"/>
+<area shape="rect" id="Node000010" href="$mdl__app__prepare_8c.html" title="Descriptor&#45;driven series preparation and safe path setup." alt="" coords="2073,768,2247,808"/>
+<area shape="poly" id="edge9_Node000004_Node000010" title=" " alt="" coords="2163,734,2163,768,2157,768,2157,734"/>
+<area shape="rect" id="Node000011" href="$mdl__app__series_8c.html" title="Series selection, download lifecycle, and export actions." alt="" coords="2271,768,2433,808"/>
+<area shape="poly" id="edge10_Node000004_Node000011" title=" " alt="" coords="2216,723,2311,766,2309,770,2214,728"/>
+<area shape="poly" id="edge114_Node000018_Node000003" title=" " alt="" coords="2277,103,2027,105,1714,115,1563,123,1432,135,1334,150,1300,159,1279,169,1259,190,1239,225,1201,316,1171,411,1151,482,1146,481,1166,410,1196,314,1234,222,1255,187,1276,165,1298,154,1332,145,1432,129,1563,118,1713,109,2027,100,2277,97"/>
+<area shape="poly" id="edge128_Node000018_Node000004" title=" " alt="" coords="2375,132,2375,189,2371,264,2360,346,2339,428,2303,506,2258,579,2214,639,2179,682,2175,678,2210,636,2254,576,2298,504,2333,426,2354,345,2365,263,2369,189,2369,132"/>
+<area shape="poly" id="edge134_Node000018_Node000015" title=" " alt="" coords="2277,103,1779,108,1079,120,735,129,438,140,222,153,154,161,118,169,72,192,37,217,25,231,16,249,10,270,8,295,8,503,10,527,16,549,39,587,73,617,116,642,165,661,215,674,310,690,310,696,214,680,163,666,114,647,70,622,35,590,11,551,5,528,3,503,3,295,5,269,11,247,20,228,34,213,70,188,116,164,153,156,221,148,438,134,735,123,1079,115,1779,103,2277,98"/>
+<area shape="poly" id="edge135_Node000018_Node000017" title=" " alt="" coords="2277,103,1843,108,1555,118,1256,134,975,158,850,174,740,192,648,214,579,238,553,251,535,266,524,280,520,296,520,401,515,436,501,468,479,496,453,521,392,560,332,587,330,582,389,555,449,516,475,492,496,465,510,434,515,400,515,295,519,278,531,262,550,247,576,233,647,208,739,187,849,168,974,152,1256,128,1555,112,1843,103,2277,97"/>
+<area shape="rect" id="Node000019" href="$mdl__app_8h.html" title="The downloader&#39;s portable application layer: one run mode, one call." alt="" coords="2787,482,2947,522"/>
+<area shape="poly" id="edge18_Node000018_Node000019" title=" " alt="" coords="2464,106,2610,127,2675,143,2700,153,2719,165,2756,200,2786,242,2810,287,2830,333,2855,420,2867,481,2862,482,2850,421,2825,335,2806,289,2781,245,2752,204,2716,169,2698,158,2673,149,2609,132,2464,111"/>
+<area shape="rect" id="Node000027" href="$mdl__cache_8h.html" title="Bounded per&#45;host HTTP document cache for the media downloader." alt="" coords="1384,379,1544,419"/>
+<area shape="poly" id="edge26_Node000018_Node000027" title=" " alt="" coords="2277,103,2114,106,1919,115,1823,124,1736,135,1662,150,1608,169,1574,189,1551,210,1512,271,1485,329,1471,380,1465,378,1480,327,1507,268,1547,206,1571,185,1606,164,1661,145,1735,130,1823,119,1919,110,2114,100,2277,97"/>
+<area shape="rect" id="Node000028" href="$mdl__fetch_8h.html" title="State&#45;aware chapter/page download orchestrator for the media downloader." alt="" coords="797,482,957,522"/>
+<area shape="poly" id="edge113_Node000018_Node000028" title=" " alt="" coords="2277,105,2019,111,1695,124,1401,143,1295,155,1234,169,1174,201,1117,240,1064,284,1017,330,940,419,892,483,888,480,936,416,1013,327,1061,280,1114,235,1171,196,1232,164,1294,150,1400,137,1695,118,2019,106,2277,99"/>
+<area shape="rect" id="Node000033" href="$mdl__fetch_8c.html" title="State&#45;aware chapter, asset, and run download orchestration." alt="" coords="1487,680,1647,720"/>
+<area shape="poly" id="edge132_Node000018_Node000033" title=" " alt="" coords="2277,104,1929,109,1448,120,965,140,764,153,612,169,524,175,436,171,351,164,273,159,207,164,179,172,155,184,136,202,121,226,112,257,109,295,109,503,113,546,126,578,149,605,184,629,727,657,1486,692,1486,698,727,663,182,635,145,609,121,581,108,547,104,503,104,295,107,256,117,224,132,199,152,180,177,167,206,159,273,154,351,158,436,166,524,170,612,164,764,148,965,134,1448,115,1929,103,2277,98"/>
+<area shape="rect" id="Node000037" href="$mdl__config_8h.html" title="Per&#45;site descriptor loaded from a flat key=value config file." alt="" coords="1619,174,1779,214"/>
+<area shape="poly" id="edge51_Node000018_Node000037" title=" " alt="" coords="2278,116,1779,184,1778,179,2277,110"/>
+<area shape="rect" id="Node000039" href="$mdl__state_8h.html" title="Persistent per&#45;series library state for the media downloader." alt="" coords="1995,277,2155,317"/>
+<area shape="poly" id="edge120_Node000018_Node000039" title=" " alt="" coords="2332,128,2269,169,2104,279,2101,274,2267,164,2329,124"/>
+<area shape="rect" id="Node000040" href="$mdl__library_8h.html" title="Portable bounded operations over a tracked media library." alt="" coords="2451,379,2611,419"/>
+<area shape="poly" id="edge115_Node000018_Node000040" title=" " alt="" coords="2403,127,2434,165,2467,224,2494,284,2528,378,2522,380,2489,286,2462,226,2430,168,2399,130"/>
+<area shape="rect" id="Node000042" href="$mdl__fetch__body__internal_8h.html" title="Portable single&#45;transaction response&#45;body sink for media fetches." alt="" coords="2534,585,2757,625"/>
+<area shape="poly" id="edge133_Node000018_Node000042" title=" " alt="" coords="2465,112,2543,134,2582,150,2619,170,2652,194,2678,222,2695,256,2701,295,2701,401,2696,454,2684,506,2656,585,2651,583,2679,504,2691,453,2696,401,2696,296,2690,258,2673,225,2648,198,2616,174,2580,155,2541,139,2464,117"/>
+<area shape="rect" id="Node000050" href="$mdl__export_8h.html" title="Package a downloaded chapter folder into a reader&#45;openable container." alt="" coords="3336,379,3496,419"/>
+<area shape="poly" id="edge78_Node000018_Node000050" title=" " alt="" coords="2465,102,2653,122,2762,140,2869,164,3022,214,3169,274,3294,332,3382,377,3379,382,3292,337,3167,279,3020,219,2867,169,2761,145,2652,127,2464,108"/>
+<area shape="rect" id="Node000051" href="$mdl__verify_8h.html" title="Bounded, no&#45;heap structural validation of mdl artifacts." alt="" coords="4052,482,4212,522"/>
+<area shape="poly" id="edge127_Node000018_Node000051" title=" " alt="" coords="2465,100,2589,106,2744,117,2915,136,3085,164,3236,198,3388,239,3680,330,3924,417,4086,479,4084,484,3923,422,3678,335,3387,244,3234,204,3083,169,2914,141,2744,122,2589,111,2465,105"/>
+<area shape="rect" id="Node000053" href="$mdl__verify__internal_8h.html" title="Private bounded validator seams shared by the mdl verifiers." alt="" coords="4156,585,4343,625"/>
+<area shape="poly" id="edge136_Node000018_Node000053" title=" " alt="" coords="2465,97,2915,101,3216,109,3528,125,3822,149,3953,164,4068,183,4165,205,4238,231,4265,245,4286,260,4298,277,4303,295,4303,401,4298,454,4287,506,4260,585,4255,583,4282,504,4293,453,4297,401,4297,296,4293,279,4282,264,4262,250,4236,236,4163,210,4067,189,3952,170,3821,154,3528,130,3216,115,2915,106,2465,102"/>
+<area shape="rect" id="Node000069" href="$mdl__export__io__internal_8h.html" title="Private portable byte&#45;stream contracts for media exporters." alt="" coords="3767,482,3977,522"/>
+<area shape="poly" id="edge131_Node000018_Node000069" title=" " alt="" coords="2465,101,2569,108,2694,119,2831,138,2966,164,3098,199,3230,240,3483,331,3694,417,3833,479,3831,484,3692,422,3481,336,3228,245,3096,204,2965,169,2830,143,2694,125,2568,113,2465,106"/>
+<area shape="rect" id="Node000071" href="$mdl__pathfs_8h.html" title="Guarded filesystem directory joins for the media downloader." alt="" coords="2349,585,2509,625"/>
+<area shape="poly" id="edge116_Node000018_Node000071" title=" " alt="" coords="2415,124,2467,165,2522,215,2563,257,2596,304,2625,371,2632,397,2632,420,2628,441,2619,460,2591,495,2552,531,2512,563,2470,587,2467,582,2509,558,2549,527,2587,491,2615,457,2623,439,2627,420,2626,398,2620,373,2592,306,2559,260,2518,219,2464,169,2412,128"/>
+<area shape="rect" id="Node000073" href="$mdl__urlname_8h.html" title="Bounded URL naming and portable image&#45;classification helpers." alt="" coords="1811,585,1971,625"/>
+<area shape="poly" id="edge121_Node000018_Node000073" title=" " alt="" coords="2277,106,2084,114,1853,128,1649,146,1577,157,1536,169,1473,209,1450,229,1431,250,1402,302,1375,373,1367,400,1368,412,1374,425,1403,444,1463,478,1557,527,1623,547,1676,555,1731,562,1799,575,1828,582,1826,587,1798,580,1730,567,1676,561,1622,552,1555,532,1461,483,1400,449,1370,428,1363,413,1362,400,1369,371,1397,300,1427,247,1446,225,1470,204,1534,164,1576,152,1649,141,1853,122,2083,109,2277,101"/>
+<area shape="rect" id="Node000075" href="$mdl__app__storage__internal_8h.html" title="Private portable filesystem operations shared by CLI application modes." alt="" coords="2163,372,2325,427"/>
+<area shape="poly" id="edge129_Node000018_Node000075" title=" " alt="" coords="2360,133,2258,373,2253,371,2355,131"/>
+<area shape="poly" id="edge25_Node000019_Node000004" title=" " alt="" coords="2850,535,2809,593,2788,618,2769,634,2248,692,2248,687,2767,630,2784,615,2805,590,2845,532"/>
+<area shape="poly" id="edge24_Node000019_Node000005" title=" " alt="" coords="2857,536,2814,633,2772,709,2736,769,2731,766,2768,707,2810,631,2852,534"/>
+<area shape="rect" id="Node000020" href="$mdl__cli_8h.html" title="Command&#45;line parsing for the mdl CLI." alt="" coords="3034,585,3201,625"/>
+<area shape="poly" id="edge19_Node000019_Node000020" title=" " alt="" coords="2927,525,3071,582,3069,587,2925,530"/>
+<area shape="rect" id="Node000024" href="$mdl__compose__internal_8h.html" title="What this FORM injects, and how one parsed invocation reaches a mode." alt="" coords="2819,680,2986,720"/>
+<area shape="poly" id="edge23_Node000019_Node000024" title=" " alt="" coords="2875,535,2902,679,2897,680,2870,536"/>
+<area shape="rect" id="Node000025" href="$apps_2host_2mdl_2src_2main_8c.html" title="mdl – host CLI for the e&#45;reader media downloader." alt="" coords="3010,775,3195,801"/>
+<area shape="poly" id="edge22_Node000019_Node000025" title=" " alt="" coords="2960,518,3121,549,3184,564,3214,575,3235,611,3236,624,3231,635,3210,648,3178,655,3103,662,3071,669,3051,682,3046,693,3045,705,3054,730,3072,754,3091,773,3087,777,3068,758,3049,733,3040,706,3041,692,3047,678,3069,664,3102,657,3177,649,3208,643,3227,631,3230,623,3229,612,3210,579,3182,569,3120,555,2959,523"/>
+<area shape="poly" id="edge20_Node000020_Node000024" title=" " alt="" coords="3063,633,2947,682,2945,677,3061,628"/>
+<area shape="poly" id="edge21_Node000024_Node000025" title=" " alt="" coords="2960,723,3077,773,3075,778,2958,728"/>
+<area shape="poly" id="edge46_Node000027_Node000004" title=" " alt="" coords="1498,426,1571,479,1615,505,1662,527,1709,541,1750,547,1824,546,1860,545,1897,548,1938,557,1984,575,2003,587,2015,601,2025,615,2042,630,2082,656,2121,677,2119,682,2079,661,2038,634,2022,619,2011,604,1999,591,1981,580,1936,562,1896,553,1860,550,1824,551,1750,552,1708,546,1660,532,1613,510,1568,483,1495,430"/>
+<area shape="poly" id="edge47_Node000027_Node000012" title=" " alt="" coords="1496,426,1612,527,1683,582,1680,587,1609,531,1493,430"/>
+<area shape="poly" id="edge27_Node000027_Node000019" title=" " alt="" coords="1558,417,1607,424,1863,448,2063,456,2264,460,2521,472,2787,491,2786,497,2521,477,2264,466,2063,461,1863,453,1606,429,1557,422"/>
+<area shape="poly" id="edge28_Node000027_Node000028" title=" " alt="" coords="1384,425,1366,429,958,491,957,486,1365,424,1383,420"/>
+<area shape="rect" id="Node000036" href="$mdl__cache__internal_8h.html" title="Private binary&#45;index and body I/O seams for mdl_cache." alt="" coords="1249,482,1437,522"/>
+<area shape="poly" id="edge48_Node000027_Node000036" title=" " alt="" coords="1433,430,1367,484,1364,480,1429,426"/>
+<area shape="poly" id="edge35_Node000028_Node000004" title=" " alt="" coords="896,533,929,590,947,615,962,630,1005,636,1107,643,1424,661,2073,692,2072,698,1424,667,1107,649,1005,641,960,634,943,619,925,593,891,536"/>
+<area shape="poly" id="edge43_Node000028_Node000015" title=" " alt="" coords="784,508,607,515,400,528,303,538,221,549,160,563,140,571,129,579,116,601,119,619,134,636,160,650,232,673,310,687,309,692,231,678,158,655,131,640,114,622,111,600,125,576,138,566,159,558,220,544,303,533,399,523,606,510,784,503"/>
+<area shape="rect" id="Node000029" href="$mdl__pack_8h.html" title="Archive packaging of downloaded page folders for the mdl CLI." alt="" coords="1392,585,1552,625"/>
+<area shape="poly" id="edge29_Node000028_Node000029" title=" " alt="" coords="972,516,1330,575,1392,586,1391,591,1329,580,971,521"/>
+<area shape="rect" id="Node000030" href="$mdl__pack_8c.html" title="Implementation of the downloaded&#45;folder archive packaging." alt="" coords="979,680,1139,720"/>
+<area shape="poly" id="edge44_Node000028_Node000030" title=" " alt="" coords="784,506,659,513,595,521,536,533,489,549,472,559,460,570,453,583,452,596,457,612,470,630,494,643,541,654,679,672,839,685,979,693,978,698,839,691,678,678,540,659,492,648,466,634,452,615,446,597,447,581,455,567,469,555,487,544,535,528,594,516,659,508,784,501"/>
+<area shape="rect" id="Node000031" href="$mdl__report_8h.html" title="Human&#45;facing progress and failure reporting for the mdl CLI." alt="" coords="739,585,899,625"/>
+<area shape="poly" id="edge32_Node000028_Node000031" title=" " alt="" coords="862,535,832,586,827,583,857,533"/>
+<area shape="rect" id="Node000032" href="$mdl__report_8c.html" title="Implementation of the mdl progress + failure presenter." alt="" coords="499,680,659,720"/>
+<area shape="poly" id="edge45_Node000028_Node000032" title=" " alt="" coords="784,509,619,517,431,531,268,551,213,564,184,579,131,632,94,660,81,666,90,661,132,654,210,650,326,655,486,677,499,680,498,685,485,683,326,661,210,655,133,660,91,667,76,668,91,655,127,628,181,575,211,559,267,546,430,525,619,512,784,504"/>
+<area shape="poly" id="edge36_Node000028_Node000033" title=" " alt="" coords="790,530,755,550,729,579,721,593,718,606,720,618,728,630,759,640,828,650,1039,668,1486,693,1486,698,1039,673,827,655,758,645,725,634,715,620,713,606,716,591,724,576,752,546,787,525"/>
+<area shape="rect" id="Node000034" href="$mdl__fetch__internal_8h.html" title="Module&#45;private fetch&#45;loop decisions promoted for host unit tests and the CLI&#39;s end&#45;of&#45;run reporting." alt="" coords="481,585,663,625"/>
+<area shape="poly" id="edge37_Node000028_Node000034" title=" " alt="" coords="808,529,630,587,628,582,807,524"/>
+<area shape="poly" id="edge30_Node000029_Node000004" title=" " alt="" coords="1551,625,1571,629,1708,652,1845,669,2073,690,2072,695,1844,674,1707,657,1570,635,1550,630"/>
+<area shape="poly" id="edge31_Node000029_Node000030" title=" " alt="" coords="1390,631,1374,635,1140,685,1139,680,1373,629,1389,626"/>
+<area shape="poly" id="edge33_Node000031_Node000004" title=" " alt="" coords="896,625,918,629,1109,645,1438,663,2073,692,2072,698,1438,669,1108,650,917,635,895,630"/>
+<area shape="poly" id="edge34_Node000031_Node000032" title=" " alt="" coords="758,632,628,682,626,677,756,627"/>
+<area shape="poly" id="edge38_Node000034_Node000004" title=" " alt="" coords="677,623,727,629,952,644,1340,662,2072,693,2072,698,1340,667,952,649,726,635,676,628"/>
+<area shape="poly" id="edge40_Node000034_Node000015" title=" " alt="" coords="525,633,430,682,427,678,522,629"/>
+<area shape="poly" id="edge41_Node000034_Node000030" title=" " alt="" coords="663,625,683,629,979,683,978,688,682,635,662,630"/>
+<area shape="poly" id="edge42_Node000034_Node000032" title=" " alt="" coords="577,638,580,680,575,680,572,639"/>
+<area shape="poly" id="edge39_Node000034_Node000033" title=" " alt="" coords="658,625,683,629,847,648,1072,665,1487,692,1486,697,1072,671,847,653,682,635,657,630"/>
+<area shape="poly" id="edge49_Node000036_Node000012" title=" " alt="" coords="1424,523,1639,582,1638,587,1423,528"/>
+<area shape="poly" id="edge50_Node000036_Node000013" title=" " alt="" coords="1315,534,1259,587,1255,583,1311,530"/>
+<area shape="poly" id="edge76_Node000037_Node000004" title=" " alt="" coords="1653,223,1628,244,1609,271,1593,312,1588,347,1594,383,1609,426,1628,463,1649,488,1676,507,1713,527,1758,544,1799,551,1836,552,1872,548,1909,546,1946,547,1987,555,2032,575,2048,587,2058,601,2066,615,2079,630,2136,678,2133,682,2075,634,2062,618,2054,604,2045,591,2029,580,1985,560,1946,552,1909,551,1873,554,1836,557,1798,557,1757,549,1711,532,1673,512,1645,492,1623,465,1604,428,1588,384,1582,348,1588,311,1604,268,1624,241,1649,219"/>
+<area shape="poly" id="edge52_Node000037_Node000027" title=" " alt="" coords="1643,222,1603,244,1564,271,1537,298,1513,328,1477,380,1473,377,1508,325,1533,295,1561,267,1600,240,1640,218"/>
+<area shape="poly" id="edge55_Node000037_Node000028" title=" " alt="" coords="1606,217,1506,242,1387,276,1260,320,1137,374,1115,388,1100,401,1085,414,1063,429,997,460,935,484,933,479,995,455,1060,424,1081,410,1097,397,1112,383,1135,370,1258,315,1385,271,1505,237,1605,212"/>
+<area shape="rect" id="Node000038" href="$mdl__discover_8h.html" title="Search / browse discovery: governed fetch of a results page, parse, honest presentation,..." alt="" coords="1619,379,1779,419"/>
+<area shape="poly" id="edge53_Node000037_Node000038" title=" " alt="" coords="1748,219,1773,241,1793,268,1801,297,1793,325,1782,343,1768,358,1737,381,1734,377,1764,354,1778,339,1788,323,1796,297,1788,270,1770,244,1745,223"/>
+<area shape="poly" id="edge56_Node000037_Node000039" title=" " alt="" coords="1783,215,2005,274,2003,279,1781,220"/>
+<area shape="rect" id="Node000049" href="$mdl__config_8c.html" title="Flat key=value site&#45;descriptor parser over injected portable storage." alt="" coords="1619,277,1779,317"/>
+<area shape="poly" id="edge77_Node000037_Node000049" title=" " alt="" coords="1701,228,1701,277,1696,277,1696,228"/>
+<area shape="poly" id="edge54_Node000038_Node000004" title=" " alt="" coords="1707,432,1723,483,1738,507,1758,527,1799,551,1838,560,1876,560,1914,555,1952,549,1992,547,2034,554,2079,575,2106,598,2128,626,2155,679,2151,681,2123,629,2102,602,2076,580,2032,559,1992,552,1952,554,1914,560,1876,565,1837,566,1797,556,1754,531,1734,510,1719,485,1701,434"/>
+<area shape="poly" id="edge64_Node000039_Node000004" title=" " alt="" coords="2090,328,2114,395,2137,474,2155,590,2162,680,2157,680,2150,591,2132,475,2109,396,2085,330"/>
+<area shape="poly" id="edge57_Node000039_Node000019" title=" " alt="" coords="2169,298,2265,305,2380,317,2503,338,2623,369,2687,394,2747,424,2841,480,2838,484,2745,429,2685,399,2622,375,2502,343,2379,323,2264,310,2168,303"/>
+<area shape="poly" id="edge58_Node000039_Node000027" title=" " alt="" coords="1982,315,1607,375,1545,386,1544,380,1606,369,1981,309"/>
+<area shape="poly" id="edge59_Node000039_Node000028" title=" " alt="" coords="1981,310,1632,345,1372,375,1251,400,1130,430,938,485,936,479,1129,425,1249,395,1372,369,1632,339,1981,304"/>
+<area shape="poly" id="edge60_Node000039_Node000040" title=" " alt="" coords="2169,316,2451,378,2450,383,2168,321"/>
+<area shape="poly" id="edge65_Node000039_Node000042" title=" " alt="" coords="2169,310,2270,334,2312,351,2338,370,2349,392,2351,413,2339,452,2327,490,2329,508,2339,527,2363,536,2417,551,2556,582,2555,587,2415,556,2361,542,2336,531,2324,510,2322,489,2334,450,2345,412,2344,393,2334,374,2309,355,2269,339,2168,315"/>
+<area shape="rect" id="Node000044" href="$mdl__state_8c.html" title="In&#45;memory model and coverage queries for persistent series state." alt="" coords="1768,482,1928,522"/>
+<area shape="poly" id="edge71_Node000039_Node000044" title=" " alt="" coords="1982,305,1943,313,1906,326,1871,346,1844,373,1832,400,1831,429,1836,457,1843,481,1838,483,1830,459,1826,429,1827,398,1839,371,1868,342,1903,321,1942,308,1981,300"/>
+<area shape="rect" id="Node000045" href="$mdl__state__codec_8c.html" title="Portable parser for persistent series state payloads." alt="" coords="1952,482,2123,522"/>
+<area shape="poly" id="edge72_Node000039_Node000045" title=" " alt="" coords="2071,330,2044,482,2038,481,2066,329"/>
+<area shape="rect" id="Node000046" href="$mdl__state__internal_8h.html" title="Module&#45;private validation shared by the state model and codec." alt="" coords="1854,379,2037,419"/>
+<area shape="poly" id="edge73_Node000039_Node000046" title=" " alt="" coords="2041,327,1971,381,1968,377,2038,323"/>
+<area shape="poly" id="edge62_Node000040_Node000004" title=" " alt="" coords="2541,433,2542,482,2536,508,2523,531,2502,551,2481,561,2459,565,2437,565,2390,564,2365,569,2339,580,2321,592,2310,605,2299,619,2282,634,2241,661,2201,682,2199,677,2238,656,2278,630,2295,615,2306,602,2318,588,2336,575,2363,564,2389,559,2437,560,2459,560,2479,556,2499,546,2519,528,2531,506,2537,482,2535,433"/>
+<area shape="poly" id="edge61_Node000040_Node000019" title=" " alt="" coords="2607,421,2804,479,2803,484,2606,426"/>
+<area shape="rect" id="Node000041" href="$mdl__library_8c.html" title="Portable bounded tracked&#45;library enumeration and tree removal." alt="" coords="2349,482,2509,522"/>
+<area shape="poly" id="edge63_Node000040_Node000041" title=" " alt="" coords="2504,431,2450,484,2446,480,2500,427"/>
+<area shape="poly" id="edge66_Node000042_Node000007" title=" " alt="" coords="2629,638,2580,721,2551,769,2546,767,2575,719,2625,635"/>
+<area shape="poly" id="edge67_Node000042_Node000008" title=" " alt="" coords="2684,631,2808,718,2879,766,2876,770,2805,722,2681,635"/>
+<area shape="poly" id="edge68_Node000042_Node000011" title=" " alt="" coords="2622,637,2578,680,2523,722,2470,750,2416,770,2414,765,2467,745,2520,718,2574,676,2618,633"/>
+<area shape="poly" id="edge70_Node000042_Node000015" title=" " alt="" coords="2554,630,2522,635,2361,651,2213,663,1951,672,1720,670,1504,661,1289,652,1058,648,796,657,648,667,487,683,475,684,474,679,486,677,648,662,795,651,1058,643,1289,646,1504,655,1720,664,1951,667,2213,657,2360,646,2521,629,2553,625"/>
+<area shape="poly" id="edge69_Node000042_Node000033" title=" " alt="" coords="2551,630,2522,635,2272,663,2025,682,1808,694,1647,699,1647,694,1808,688,2025,677,2272,658,2521,629,2550,625"/>
+<area shape="poly" id="edge74_Node000046_Node000044" title=" " alt="" coords="1919,431,1868,484,1864,480,1915,428"/>
+<area shape="poly" id="edge75_Node000046_Node000045" title=" " alt="" coords="1974,428,2022,480,2018,484,1970,431"/>
+<area shape="poly" id="edge90_Node000050_Node000004" title=" " alt="" coords="3322,409,3256,417,3181,430,3104,450,3030,477,3009,489,2994,501,2960,531,2891,590,2859,613,2813,634,2744,657,2684,670,2630,677,2579,678,2473,676,2410,677,2338,683,2248,692,2247,687,2337,677,2410,672,2473,671,2579,673,2630,671,2683,665,2742,652,2811,630,2856,609,2888,586,2957,527,2991,497,3006,485,3028,472,3103,445,3180,425,3255,412,3322,404"/>
+<area shape="poly" id="edge79_Node000050_Node000019" title=" " alt="" coords="3323,416,3156,442,2966,477,2935,485,2934,479,2965,472,3155,437,3322,411"/>
+<area shape="poly" id="edge80_Node000050_Node000029" title=" " alt="" coords="3322,404,3210,409,3072,420,2922,442,2848,458,2776,477,2745,490,2722,505,2699,520,2667,532,2566,550,2440,561,2296,566,2143,568,1845,570,1717,573,1615,580,1552,589,1552,584,1614,575,1717,567,1845,564,2143,563,2296,561,2439,556,2566,545,2666,527,2697,515,2719,500,2742,485,2774,472,2847,453,2922,437,3071,415,3210,403,3322,399"/>
+<area shape="poly" id="edge110_Node000050_Node000030" title=" " alt="" coords="3322,405,3192,410,3028,422,2847,444,2667,477,2626,490,2595,505,2564,520,2522,532,2441,539,2307,543,1947,546,1759,548,1590,554,1457,564,1411,571,1381,580,1365,591,1356,605,1347,620,1331,634,1284,657,1234,674,1140,694,1139,689,1233,669,1282,652,1328,630,1343,617,1352,602,1361,588,1379,575,1410,566,1457,558,1589,548,1759,543,1947,540,2307,537,2441,534,2521,527,2562,515,2593,500,2624,485,2666,472,2846,438,3027,417,3192,405,3322,399"/>
+<area shape="poly" id="edge81_Node000050_Node000051" title=" " alt="" coords="3510,405,3749,429,3892,448,4034,472,4067,479,4065,485,4033,477,3891,454,3748,435,3510,411"/>
+<area shape="poly" id="edge111_Node000050_Node000053" title=" " alt="" coords="3510,400,3699,407,3923,421,4029,430,4119,442,4187,456,4211,464,4226,473,4244,498,4253,529,4256,559,4255,584,4249,584,4250,559,4248,530,4239,501,4222,477,4208,469,4186,461,4118,447,4028,436,3923,426,3699,413,3510,406"/>
+<area shape="poly" id="edge112_Node000050_Node000055" title=" " alt="" coords="3510,401,3687,408,3903,421,4109,442,4193,456,4257,472,4306,494,4352,521,4424,575,4421,579,4349,525,4303,498,4255,477,4192,461,4108,447,3903,426,3687,413,3510,406"/>
+<area shape="rect" id="Node000057" href="$mdl__export_8c.html" title="Coordinate bounded chapter export and validated publication." alt="" coords="3443,680,3603,720"/>
+<area shape="poly" id="edge91_Node000050_Node000057" title=" " alt="" coords="3412,434,3408,475,3407,526,3414,580,3433,631,3455,658,3484,678,3480,682,3452,661,3428,633,3409,582,3402,527,3402,475,3407,433"/>
+<area shape="rect" id="Node000058" href="$mdl__export__epub_8c.html" title="Emit deterministic fixed&#45;layout EPUB3 chapter containers." alt="" coords="3245,680,3419,720"/>
+<area shape="poly" id="edge92_Node000050_Node000058" title=" " alt="" coords="3397,432,3374,476,3357,532,3346,590,3336,680,3330,679,3341,589,3352,531,3370,474,3392,430"/>
+<area shape="rect" id="Node000059" href="$mdl__export__epub__meta_8c.html" title="Render the EPUB3 package document, navigation, and identifier." alt="" coords="3479,475,3641,529"/>
+<area shape="poly" id="edge93_Node000050_Node000059" title=" " alt="" coords="3456,425,3524,472,3521,477,3453,429"/>
+<area shape="rect" id="Node000060" href="$mdl__export__internal_8h.html" title="Module&#45;private contracts shared by chapter export writers." alt="" coords="3443,585,3635,625"/>
+<area shape="poly" id="edge94_Node000050_Node000060" title=" " alt="" coords="3427,432,3444,479,3469,528,3493,558,3518,583,3514,586,3489,561,3464,531,3439,481,3422,434"/>
+<area shape="rect" id="Node000062" href="$mdl__export__jof_8c.html" title="JOF tile&#45;atlas exporter: one .jof band atlas per chapter page." alt="" coords="3627,680,3787,720"/>
+<area shape="poly" id="edge105_Node000050_Node000062" title=" " alt="" coords="3510,405,3548,414,3587,427,3624,447,3655,473,3674,497,3688,524,3704,583,3711,638,3711,680,3705,680,3705,638,3699,584,3683,526,3669,500,3651,477,3621,451,3585,432,3547,419,3509,411"/>
+<area shape="rect" id="Node000063" href="$mdl__export__meta_8c.html" title="Parse, validate, and serialize portable publication metadata." alt="" coords="3811,680,3986,720"/>
+<area shape="poly" id="edge106_Node000050_Node000063" title=" " alt="" coords="3510,405,3555,414,3602,427,3649,446,3691,473,3711,491,3725,511,3740,550,3753,589,3764,609,3782,630,3817,657,3854,678,3851,682,3814,662,3778,634,3760,612,3748,591,3735,551,3720,513,3707,495,3688,477,3646,451,3601,432,3554,419,3509,411"/>
+<area shape="rect" id="Node000067" href="$mdl__export__tar_8c.html" title="Stream deterministic CBT and gzip&#45;wrapped CBT containers." alt="" coords="4011,680,4171,720"/>
+<area shape="poly" id="edge107_Node000050_Node000067" title=" " alt="" coords="3510,399,3635,404,3776,416,3843,426,3904,438,3954,453,3991,472,4015,495,4035,521,4065,579,4082,636,4091,679,4086,680,4077,637,4060,581,4031,524,4011,498,3988,477,3952,458,3903,443,3842,431,3775,422,3634,410,3510,405"/>
+<area shape="rect" id="Node000068" href="$mdl__export__zip_8c.html" title="Provide bounded miniz storage and the CBZ container writer." alt="" coords="3061,680,3221,720"/>
+<area shape="poly" id="edge109_Node000050_Node000068" title=" " alt="" coords="3392,431,3354,476,3323,521,3302,558,3279,593,3243,634,3211,661,3177,682,3175,678,3207,656,3239,630,3275,590,3298,555,3319,518,3350,473,3388,428"/>
+<area shape="poly" id="edge101_Node000050_Node000069" title=" " alt="" coords="3510,419,3787,479,3786,485,3509,424"/>
+<area shape="rect" id="Node000070" href="$mdl__export__workspace_8c.html" title="Manage the caller&#45;owned media export bump workspace." alt="" coords="3041,482,3252,522"/>
+<area shape="poly" id="edge108_Node000050_Node000070" title=" " alt="" coords="3353,427,3198,484,3196,479,3351,422"/>
+<area shape="poly" id="edge82_Node000051_Node000004" title=" " alt="" coords="4039,525,3990,532,3895,539,3777,542,3503,545,3230,553,3114,563,3022,580,2991,592,2969,607,2946,622,2914,635,2829,656,2755,668,2690,674,2629,676,2500,675,2425,677,2338,683,2248,692,2247,686,2337,677,2425,671,2500,669,2629,671,2690,669,2755,663,2828,651,2913,629,2943,617,2966,602,2989,587,3021,575,3114,558,3230,547,3503,539,3777,537,3895,534,3989,527,4038,520"/>
+<area shape="poly" id="edge83_Node000051_Node000014" title=" " alt="" coords="4072,529,3922,587,3920,582,4070,524"/>
+<area shape="rect" id="Node000052" href="$mdl__verify_8c.html" title="Portable bounded structural validators for media artifacts." alt="" coords="4245,680,4405,720"/>
+<area shape="poly" id="edge84_Node000051_Node000052" title=" " alt="" coords="4129,536,4129,584,4134,608,4146,630,4162,643,4187,655,4252,677,4250,682,4185,660,4159,648,4142,634,4129,610,4123,585,4123,536"/>
+<area shape="poly" id="edge85_Node000051_Node000053" title=" " alt="" coords="4166,529,4229,583,4226,587,4163,533"/>
+<area shape="poly" id="edge87_Node000051_Node000055" title=" " alt="" coords="4206,524,4369,575,4368,580,4204,529"/>
+<area shape="poly" id="edge86_Node000053_Node000052" title=" " alt="" coords="4275,634,4312,678,4308,682,4271,637"/>
+<area shape="poly" id="edge88_Node000055_Node000052" title=" " alt="" coords="4407,642,4353,682,4349,678,4404,638"/>
+<area shape="rect" id="Node000056" href="$mdl__verify__rabook_8c.html" title="Strict allocation&#45;free RBKC validation for media downloader artifacts." alt="" coords="4429,680,4611,720"/>
+<area shape="poly" id="edge89_Node000055_Node000056" title=" " alt="" coords="4481,642,4508,678,4504,682,4477,645"/>
+<area shape="poly" id="edge95_Node000060_Node000057" title=" " alt="" coords="3536,638,3529,680,3523,679,3531,637"/>
+<area shape="poly" id="edge96_Node000060_Node000058" title=" " alt="" coords="3486,633,3375,682,3373,678,3483,628"/>
+<area shape="poly" id="edge97_Node000060_Node000062" title=" " alt="" coords="3586,629,3674,678,3671,682,3583,634"/>
+<area shape="poly" id="edge98_Node000060_Node000063" title=" " alt="" coords="3625,626,3827,677,3825,683,3624,631"/>
+<area shape="poly" id="edge99_Node000060_Node000067" title=" " alt="" coords="3649,620,3998,677,4011,680,4010,685,3997,683,3648,625"/>
+<area shape="poly" id="edge100_Node000060_Node000068" title=" " alt="" coords="3446,630,3222,683,3221,677,3444,625"/>
+<area shape="poly" id="edge102_Node000069_Node000008" title=" " alt="" coords="3923,526,4080,608,4149,649,4185,678,4193,701,4192,711,4184,722,4163,731,4122,738,3988,749,3597,762,3204,767,2998,771,2986,772,2985,767,2997,765,3204,761,3597,756,3987,744,4121,733,4162,726,4181,718,4187,710,4188,701,4181,682,4146,654,4077,613,3921,531"/>
+<area shape="poly" id="edge104_Node000069_Node000014" title=" " alt="" coords="3875,536,3875,585,3869,585,3869,536"/>
+<area shape="poly" id="edge103_Node000069_Node000060" title=" " alt="" coords="3797,528,3602,587,3600,582,3796,523"/>
+<area shape="poly" id="edge117_Node000071_Node000004" title=" " alt="" coords="2363,632,2215,682,2214,677,2361,627"/>
+<area shape="poly" id="edge118_Node000071_Node000033" title=" " alt="" coords="2336,619,1647,693,1647,687,2335,613"/>
+<area shape="rect" id="Node000072" href="$mdl__pathfs_8c.html" title="Implementation of the guarded filesystem directory join." alt="" coords="2349,680,2509,720"/>
+<area shape="poly" id="edge119_Node000071_Node000072" title=" " alt="" coords="2432,638,2432,680,2427,680,2427,638"/>
+<area shape="poly" id="edge122_Node000073_Node000004" title=" " alt="" coords="1959,627,2106,677,2105,682,1957,632"/>
+<area shape="poly" id="edge126_Node000073_Node000015" title=" " alt="" coords="1820,631,1799,635,1601,660,1432,671,1283,672,1144,667,1004,662,855,660,686,665,487,683,475,684,474,679,486,677,686,660,855,654,1005,656,1144,662,1283,667,1432,666,1600,655,1798,629,1819,625"/>
+<area shape="poly" id="edge125_Node000073_Node000033" title=" " alt="" coords="1813,631,1633,683,1631,677,1811,626"/>
+<area shape="poly" id="edge123_Node000073_Node000058" title=" " alt="" coords="1985,609,2337,629,2590,639,2786,644,2982,653,3234,677,3245,679,3245,684,3233,683,2982,658,2786,649,2590,645,2337,635,1984,614"/>
+<area shape="poly" id="edge124_Node000073_Node000068" title=" " alt="" coords="1985,609,2504,641,2998,677,3061,685,3061,690,2997,683,2504,646,1984,614"/>
+<area shape="poly" id="edge130_Node000075_Node000004" title=" " alt="" coords="2235,441,2168,681,2163,679,2230,439"/>
+<area shape="poly" id="edge139_Node000077_Node000078" title=" " alt="" coords="4716,126,4546,184,4545,179,4714,121"/>
+<area shape="poly" id="edge140_Node000077_Node000079" title=" " alt="" coords="4753,130,4700,176,4697,172,4750,126"/>
+<area shape="poly" id="edge141_Node000077_Node000080" title=" " alt="" coords="4814,127,4854,165,4963,275,4960,278,4850,169,4811,130"/>
+<area shape="poly" id="edge142_Node000077_Node000081" title=" " alt="" coords="4797,130,4842,239,4871,290,4885,310,4897,322,4940,337,5017,350,5234,371,5476,385,5670,393,5670,398,5476,390,5234,376,5016,355,4939,342,4895,326,4881,313,4866,293,4838,241,4792,132"/>
+<area shape="poly" id="edge143_Node000077_Node000082" title=" " alt="" coords="4786,132,4792,219,4804,324,4817,379,4812,380,4799,324,4786,220,4781,133"/>
+<area shape="poly" id="edge147_Node000083_Node000080" title=" " alt="" coords="5079,132,4993,278,4989,275,5075,129"/>
+<area shape="rect" id="Node000084" href="$fw__if__fs__ra8__vfs__contracts__internal_8h.html" title="File&#45;local contracts for the firmware VFS filesystem adapter." alt="" coords="5073,167,5271,221"/>
+<area shape="poly" id="edge148_Node000083_Node000084" title=" " alt="" coords="5121,127,5152,165,5148,168,5117,131"/>
+<area shape="poly" id="edge149_Node000084_Node000080" title=" " alt="" coords="5111,230,5018,279,5015,274,5109,225"/>
+<area shape="poly" id="edge152_Node000085_Node000002" title=" " alt="" coords="5637,125,5473,176,5471,171,5635,120"/>
+<area shape="poly" id="edge153_Node000085_Node000025" title=" " alt="" coords="5770,122,5855,164,5931,206,5961,230,5990,268,6008,301,6016,330,6017,398,6017,607,6010,621,5990,634,5958,646,5914,658,5797,679,5644,697,5461,714,5254,728,4791,751,4306,768,3846,779,3195,789,3195,783,3845,773,4306,762,4791,746,5253,723,5461,708,5644,692,5797,673,5913,652,5956,641,5987,629,6006,617,6012,605,6012,398,6010,331,6003,303,5986,271,5957,234,5928,211,5852,169,5768,127"/>
+<area shape="poly" id="edge154_Node000085_Node000081" title=" " alt="" coords="5721,132,5736,195,5748,269,5748,324,5746,379,5741,379,5743,324,5743,270,5731,196,5716,133"/>
+<area shape="poly" id="edge155_Node000085_Node000086" title=" " alt="" coords="5758,123,5787,142,5814,165,5840,193,5863,223,5896,275,5891,278,5858,226,5836,196,5810,169,5784,147,5755,128"/>
+<area shape="poly" id="edge156_Node000085_Node000087" title=" " alt="" coords="5685,131,5644,176,5640,172,5681,127"/>
+<area shape="poly" id="edge157_Node000087_Node000081" title=" " alt="" coords="5671,220,5697,241,5718,268,5731,297,5739,327,5745,379,5740,379,5734,328,5726,298,5714,271,5693,245,5668,224"/>
+<area shape="poly" id="edge158_Node000087_Node000086" title=" " alt="" coords="5691,216,5853,274,5851,279,5690,221"/>
+<area shape="rect" id="Node000088" href="$fw__if__fs__posix__common_8c.html" title="Shared descriptor, raw&#45;directory, and path helpers for the POSIX port." alt="" coords="5546,277,5705,317"/>
+<area shape="poly" id="edge159_Node000087_Node000088" title=" " alt="" coords="5628,228,5628,277,5623,277,5623,228"/>
+<area shape="rect" id="Node000089" href="$fw__if__fs__posix__contracts__internal_8h.html" title="File&#45;local contracts for the confined POSIX filesystem adapter." alt="" coords="5303,277,5521,317"/>
+<area shape="poly" id="edge160_Node000087_Node000089" title=" " alt="" coords="5574,222,5453,279,5451,274,5572,217"/>
+<area shape="rect" id="Node000090" href="$fw__if__fs__posix__stream__contracts__internal_8h.html" title="File&#45;local contracts for the hosted POSIX byte&#45;stream operations." alt="" coords="5076,269,5279,324"/>
+<area shape="poly" id="edge162_Node000087_Node000090" title=" " alt="" coords="5547,220,5531,224,5411,249,5291,272,5280,274,5279,269,5290,267,5410,244,5530,219,5546,215"/>
+<area shape="poly" id="edge161_Node000089_Node000081" title=" " alt="" coords="5487,318,5681,377,5680,382,5486,323"/>
+<area shape="poly" id="edge163_Node000090_Node000082" title=" " alt="" coords="5072,330,4888,382,4886,377,5071,325"/>
+</map>

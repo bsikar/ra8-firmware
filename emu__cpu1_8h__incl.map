@@ -1,0 +1,28 @@
+<map id="tools/ra8_emulator/inc/emu_cpu1.h" name="tools/ra8_emulator/inc/emu_cpu1.h">
+<area shape="rect" id="Node000001" title="Second&#45;core (cpu1, Cortex&#45;M33) engine: release watch, boot, stepping." alt="" coords="132,5,277,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,240,76,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="167,48,135,68,107,95,85,128,68,164,48,227,43,226,63,162,80,125,103,92,132,64,164,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="123,240,257,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="178,48,152,69,128,95,108,129,98,167,95,180,98,191,118,215,145,232,142,236,115,219,93,193,90,180,93,166,103,127,124,92,148,65,175,44"/>
+<area shape="rect" id="Node000004" href="$emu__elf_8h.html" title="ELF32 image services for the board emulator (load / symbols / vectors)." alt="" coords="368,167,455,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="232,43,386,156,383,160,229,48"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="410,240,535,265"/>
+<area shape="poly" id="edge18_Node000001_Node000006" title=" " alt="" coords="278,37,334,54,394,79,450,116,474,139,494,165,499,181,499,198,489,228,484,226,494,197,494,182,489,168,470,142,446,120,391,84,332,59,277,42"/>
+<area shape="rect" id="Node000007" href="$emu__memmap_8h.html" title="Shared aliased&#45;memory backing and Unicorn memory&#45;map bindings." alt="" coords="138,93,271,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="207,46,207,79,202,79,202,46"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="368,192,90,245,89,239,367,186"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="377,195,239,238,238,233,375,189"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="293,240,367,265"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="400,194,355,233,352,229,397,190"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="423,191,456,228,452,231,419,194"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="176,121,136,141,97,169,72,198,54,229,50,226,68,195,94,165,134,136,174,116"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="169,121,134,139,119,152,107,168,104,186,113,203,130,218,151,231,149,236,127,223,109,206,99,187,102,166,115,149,131,135,167,116"/>
+<area shape="poly" id="edge9_Node000007_Node000005" title=" " alt="" coords="237,116,274,136,307,165,322,195,330,226,325,227,317,197,303,168,271,140,235,121"/>
+<area shape="poly" id="edge17_Node000007_Node000006" title=" " alt="" coords="272,111,386,130,436,145,455,154,468,165,477,179,481,195,481,227,475,227,475,196,472,181,464,168,452,159,434,150,385,135,271,116"/>
+<area shape="rect" id="Node000008" href="$emu__memory__access_8h.html" title="Central first&#45;party Unicorn memory access seam." alt="" coords="117,167,293,192"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="207,119,207,153,202,153,202,119"/>
+<area shape="poly" id="edge14_Node000008_Node000002" title=" " alt="" coords="179,194,81,237,79,232,177,190"/>
+<area shape="poly" id="edge15_Node000008_Node000003" title=" " alt="" coords="205,193,198,227,193,226,200,192"/>
+<area shape="poly" id="edge13_Node000008_Node000005" title=" " alt="" coords="226,190,299,231,296,235,223,194"/>
+<area shape="poly" id="edge16_Node000008_Node000006" title=" " alt="" coords="248,189,417,234,416,239,247,195"/>
+</map>

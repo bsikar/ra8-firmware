@@ -1,0 +1,7 @@
+<map id="mdl_cache_lookup_t" name="mdl_cache_lookup_t">
+<area shape="rect" id="Node000001" title="Prepared host paths and verified retained&#45;entity state." alt="" coords="88,101,243,127"/>
+<area shape="rect" id="Node000002" href="$structmdl__cache__paths__t.html" title="Complete paths and host identity derived for one request." alt="" coords="5,5,152,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,39,157,99,153,103,97,43"/>
+<area shape="rect" id="Node000003" href="$structmdl__cache__record__t.html" title="One exact URL&#45;keyed cached document observation." alt="" coords="176,5,328,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="234,43,178,103,174,99,230,39"/>
+</map>

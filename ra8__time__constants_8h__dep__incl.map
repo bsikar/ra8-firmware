@@ -1,0 +1,15 @@
+<map id="libs/ra8_core/inc/ra8_time_constants.h" name="libs/ra8_core/inc/ra8_time_constants.h">
+<area shape="rect" id="Node000001" title="Named Time Unit Constants for Delay / Timeout / Tick Math." alt="" coords="495,5,649,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2clock__check_2src_2main_8c.html" title="Clock bring&#45;up HIL test for EK&#45;RA8D2 (CGC: HOCO + PLL)." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="482,43,345,66,191,96,180,99,178,93,190,91,344,61,481,38"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2__comms_8c.html" title="EK&#45;RA8D2 BSP – MIPI&#45;DSI panel + J&#45;Link VCOM serial bring&#45;up." alt="" coords="203,93,384,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="503,52,373,96,371,91,502,47"/>
+<area shape="rect" id="Node000004" href="$ra8__time_8c.html" title="SysTick tick counter implementation." alt="" coords="409,101,562,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="547,57,505,102,501,99,543,54"/>
+<area shape="rect" id="Node000005" href="$ra8__cgc_8c.html" title="Clock Generation Circuit driver – RA8D2 PLL bring&#45;up." alt="" coords="586,101,731,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="601,54,643,99,639,102,597,57"/>
+<area shape="rect" id="Node000006" href="$ra8__cgc__eswclk_8c.html" title="Clock Generation Circuit driver – Ethernet&#45;switch (ESWCLK) path." alt="" coords="755,101,901,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="638,48,777,98,775,103,636,53"/>
+<area shape="rect" id="Node000007" href="$ra8__cgc__usb_8c.html" title="Clock Generation Circuit driver – PLL2 + USB&#45;FS / USB&#45;HS clocks." alt="" coords="925,101,1070,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="663,39,783,61,914,91,940,98,939,103,913,96,782,67,662,44"/>
+</map>

@@ -1,0 +1,29 @@
+<map id="libs/if/src/fw_if_fs.c" name="libs/if/src/fw_if_fs.c">
+<area shape="rect" id="Node000001" title="Guarded dispatch for the architecture&#45;neutral filesystem ports." alt="" coords="273,5,420,31"/>
+<area shape="rect" id="Node000002" href="$fw__if__fs_8h.html" title="Architecture&#45;neutral filesystem namespace, stream, and transaction ports." alt="" coords="202,152,286,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="328,33,301,53,276,80,260,109,251,139,246,137,256,107,271,77,297,49,325,29"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,299,80,324"/>
+<area shape="poly" id="edge10_Node000001_Node000003" title=" " alt="" coords="313,33,251,58,177,98,140,124,105,154,74,188,50,226,42,256,42,285,37,285,37,255,46,224,70,185,101,150,136,120,174,94,249,53,311,28"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="287,372,358,397"/>
+<area shape="poly" id="edge11_Node000001_Node000004" title=" " alt="" coords="404,28,449,46,471,60,490,77,505,97,513,117,516,163,516,240,512,265,501,289,485,309,465,326,418,354,372,372,370,367,416,349,462,322,481,305,497,286,507,264,511,239,511,163,508,118,501,100,486,80,468,64,447,51,402,33"/>
+<area shape="rect" id="Node000005" href="$fw__if__fs__types_8h.html" title="Portable filesystem value types and caller&#45;owned opaque handles." alt="" coords="81,225,207,251"/>
+<area shape="poly" id="edge16_Node000001_Node000005" title=" " alt="" coords="327,33,293,54,256,81,222,114,193,153,158,214,153,212,188,151,218,111,253,77,290,49,324,28"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="283,299,362,324"/>
+<area shape="poly" id="edge18_Node000001_Node000006" title=" " alt="" coords="342,32,330,54,321,79,313,136,313,193,321,284,316,285,307,193,308,136,316,78,325,52,337,30"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="551,79,622,104"/>
+<area shape="poly" id="edge12_Node000001_Node000007" title=" " alt="" coords="386,28,539,73,537,78,384,33"/>
+<area shape="rect" id="Node000008" href="$fw__if__fs__backend_8h.html" title="Backend&#45;author interface for binding concrete filesystem ports." alt="" coords="330,79,475,104"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="358,29,387,66,383,69,354,33"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="647,79,772,104"/>
+<area shape="poly" id="edge17_Node000001_Node000009" title=" " alt="" coords="405,28,638,73,637,79,404,33"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="202,172,170,178,134,188,100,204,70,227,54,255,47,286,41,285,49,253,66,224,97,200,132,183,169,173,201,167"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="247,178,252,242,260,283,274,323,287,343,302,361,298,364,283,346,270,325,255,284,247,242,241,178"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="229,180,173,219,170,215,226,175"/>
+<area shape="poly" id="edge9_Node000002_Node000006" title=" " alt="" coords="253,177,312,285,308,288,248,179"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="129,253,72,293,69,288,126,248"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="156,249,187,284,228,322,291,363,288,368,225,326,183,287,152,253"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="174,248,282,291,280,296,172,253"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="325,324,325,358,320,358,320,324"/>
+<area shape="poly" id="edge15_Node000008_Node000002" title=" " alt="" coords="378,106,283,149,281,144,376,102"/>
+<area shape="poly" id="edge14_Node000008_Node000004" title=" " alt="" coords="406,104,408,143,406,198,397,262,377,325,364,346,349,364,345,361,360,343,372,323,392,261,400,198,402,143,401,104"/>
+</map>

@@ -1,0 +1,21 @@
+<map id="libs/ra8_hal/inc/ra8_mipi_phy_types.h" name="libs/ra8_hal/inc/ra8_mipi_phy_types.h">
+<area shape="rect" id="Node000001" title="MIPI D&#45;PHY driver – shared enums, structs, and callback typedef." alt="" coords="210,5,355,45"/>
+<area shape="rect" id="Node000002" href="$ra8__mipi__phy_8h.html" title="MIPI D&#45;PHY driver – physical layer shared by DSI and CSI." alt="" coords="210,181,355,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="236,55,215,73,200,94,194,113,200,132,220,159,247,179,244,183,216,163,195,135,189,113,195,92,211,69,232,51"/>
+<area shape="rect" id="Node000007" href="$ra8__mipi__phy__api_8h.html" title="MIPI D&#45;PHY driver – public function prototypes." alt="" coords="210,93,355,133"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="285,59,285,93,280,93,280,59"/>
+<area shape="rect" id="Node000008" href="$ra8__mipi__phy__ops_8h.html" title="MIPI D&#45;PHY driver – runtime operations prototypes." alt="" coords="379,93,525,133"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="333,49,416,91,414,96,331,54"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2__comms_8c.html" title="EK&#45;RA8D2 BSP – MIPI&#45;DSI panel + J&#45;Link VCOM serial bring&#45;up." alt="" coords="5,269,187,324"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="234,230,150,272,147,267,231,225"/>
+<area shape="rect" id="Node000004" href="$ra8__mipi__phy_8c.html" title="MIPI D&#45;PHY driver implementation." alt="" coords="182,372,327,412"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="266,234,252,270,248,297,248,325,253,372,248,372,243,325,243,297,247,269,261,233"/>
+<area shape="rect" id="Node000005" href="$ra8__mipi__phy__internal_8h.html" title="Module&#45;private link seam shared between the MIPI D&#45;PHY drivertranslation units." alt="" coords="262,277,421,317"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="304,231,332,275,327,278,300,234"/>
+<area shape="rect" id="Node000006" href="$ra8__mipi__phy__timing_8c.html" title="MIPI D&#45;PHY driver – HUM timing tables and table&#45;driven setup." alt="" coords="368,372,517,412"/>
+<area shape="poly" id="edge7_Node000002_Node000006" title=" " alt="" coords="370,221,405,240,434,268,447,294,452,322,449,372,444,372,446,323,441,295,430,271,402,244,367,225"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="316,329,274,374,270,370,312,325"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="374,324,424,370,420,374,370,328"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="285,147,285,181,280,181,280,147"/>
+<area shape="poly" id="edge11_Node000008_Node000002" title=" " alt="" coords="404,142,321,184,319,179,402,137"/>
+</map>

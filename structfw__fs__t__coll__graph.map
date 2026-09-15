@@ -1,0 +1,20 @@
+<map id="fw_fs_t" name="fw_fs_t">
+<area shape="rect" id="Node000001" title="One complete composition&#45;root filesystem binding." alt="" coords="405,197,473,223"/>
+<area shape="rect" id="Node000002" href="$structfw__fs__namespace__t.html" title="Independently injectable path/namespace facade." alt="" coords="89,101,240,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="204,129,312,171,406,198,404,203,310,176,202,134"/>
+<area shape="rect" id="Node000003" href="$structfw__fs__namespace__iface.html" title="Namespace backend operations." alt="" coords="5,5,183,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="113,40,158,100,154,103,109,43"/>
+<area shape="rect" id="Node000004" href="$structfw__fs__caps__t.html" title="Static properties and workspace requirements of one bound port." alt="" coords="419,5,524,31"/>
+<area shape="poly" id="edge10_Node000001_Node000004" title=" " alt="" coords="481,44,489,104,487,140,478,174,469,188,458,199,454,195,465,185,473,172,482,139,483,105,475,44"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="409,37,363,57,351,68,338,80,297,93,240,104,239,99,295,87,335,75,348,64,361,52,407,32"/>
+<area shape="rect" id="Node000005" href="$structfw__fs__stream__port__t.html" title="Independently injectable open&#45;stream facade." alt="" coords="557,101,711,127"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="504,35,615,99,613,103,502,40"/>
+<area shape="rect" id="Node000007" href="$structfw__fs__transaction__port__t.html" title="Independently injectable staged&#45;transaction facade." alt="" coords="265,101,446,127"/>
+<area shape="poly" id="edge9_Node000007_Node000004" title=" " alt="" coords="451,42,408,79,375,103,371,99,404,75,448,38"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="599,135,465,200,462,195,597,130"/>
+<area shape="rect" id="Node000006" href="$structfw__fs__stream__iface.html" title="Open&#45;file backend operations over caller&#45;supplied state." alt="" coords="560,5,708,31"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="637,45,637,101,631,101,631,45"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="367,138,388,172,418,195,415,199,384,175,363,141"/>
+<area shape="rect" id="Node000008" href="$structfw__fs__transaction__iface.html" title="Staged&#45;publication backend operations over caller&#45;supplied state." alt="" coords="207,5,381,31"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="292,44,293,61,298,76,309,89,325,99,322,103,306,93,293,79,287,62,287,44"/>
+</map>

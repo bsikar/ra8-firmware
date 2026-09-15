@@ -1,0 +1,35 @@
+<map id="tools/ra8_emulator/src/display/board_view_pixels.c" name="tools/ra8_emulator/src/display/board_view_pixels.c">
+<area shape="rect" id="Node000001" title="Bounded raw&#45;fd RGB565 to CoreGraphics byte&#45;range expansion." alt="" coords="150,5,325,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="19,108,90,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="183,62,93,105,90,100,180,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="115,108,200,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="215,62,180,99,176,96,211,58"/>
+<area shape="rect" id="Node000004" href="$board__view_8h.html" title="Minimal self&#45;contained macOS window for the board emulator." alt="" coords="275,108,383,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="267,58,309,96,305,100,264,62"/>
+<area shape="rect" id="Node000010" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="551,328,676,353"/>
+<area shape="poly" id="edge21_Node000001_Node000010" title=" " alt="" coords="323,58,446,106,511,140,572,179,612,211,625,228,637,254,640,270,639,287,630,316,624,315,634,286,635,270,632,255,621,231,608,214,569,184,508,144,443,111,322,63"/>
+<area shape="rect" id="Node000011" href="$emu__host__io__internal_8h.html" title="Bounded raw&#45;descriptor I/O seam for the RA8 emulator." alt="" coords="59,181,234,207"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="237,61,230,97,214,135,197,157,177,175,173,171,193,153,210,132,225,95,232,60"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="301,255,376,280"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="333,134,340,241,334,241,327,134"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="169,328,239,353"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="276,130,148,150,88,165,48,184,32,199,23,214,12,255,9,268,12,279,41,306,78,323,118,333,155,337,155,342,117,338,77,328,38,310,7,281,3,268,7,254,18,212,28,195,45,179,86,160,147,145,275,125"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="181,255,277,280"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="323,135,247,245,243,242,319,132"/>
+<area shape="rect" id="Node000008" href="$emu__presentation_8h.html" title="Bounded raw&#45;descriptor presentation surface and scratch workspace." alt="" coords="367,181,519,207"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="349,131,414,172,411,176,346,136"/>
+<area shape="poly" id="edge14_Node000004_Node000010" title=" " alt="" coords="384,129,456,147,495,161,532,179,582,208,600,226,616,254,623,285,621,314,616,314,617,285,611,256,596,229,579,212,529,184,493,166,455,152,383,134"/>
+<area shape="poly" id="edge8_Node000008_Node000005" title=" " alt="" coords="427,209,369,249,366,244,424,204"/>
+<area shape="poly" id="edge9_Node000008_Node000006" title=" " alt="" coords="441,208,422,244,408,265,390,282,357,302,321,318,254,335,252,330,320,313,355,298,386,278,404,261,418,242,436,206"/>
+<area shape="rect" id="Node000009" href="$board__overlay_8h.html" title="Composite board&#45;view renderer: panel framebuffer + a status sidebar." alt="" coords="451,255,576,280"/>
+<area shape="poly" id="edge10_Node000008_Node000009" title=" " alt="" coords="456,205,494,243,490,247,452,209"/>
+<area shape="poly" id="edge13_Node000008_Node000010" title=" " alt="" coords="503,204,549,222,571,236,590,253,607,283,614,314,609,315,602,285,586,256,568,240,546,227,501,209"/>
+<area shape="poly" id="edge11_Node000009_Node000006" title=" " alt="" coords="464,283,253,331,252,326,463,277"/>
+<area shape="poly" id="edge12_Node000009_Node000010" title=" " alt="" coords="531,278,587,318,584,322,528,282"/>
+<area shape="poly" id="edge17_Node000011_Node000005" title=" " alt="" coords="178,204,295,247,293,252,177,209"/>
+<area shape="poly" id="edge18_Node000011_Node000006" title=" " alt="" coords="100,209,65,221,34,237,24,247,18,256,17,267,22,278,49,304,84,321,121,331,156,336,155,341,120,336,82,326,46,309,18,282,12,268,13,255,20,243,31,233,63,216,99,204"/>
+<area shape="poly" id="edge19_Node000011_Node000007" title=" " alt="" coords="162,205,207,243,204,248,158,209"/>
+<area shape="poly" id="edge20_Node000011_Node000010" title=" " alt="" coords="149,206,152,243,159,262,171,278,197,293,234,306,331,324,440,333,537,336,537,342,440,338,331,329,233,311,195,298,168,282,154,265,147,244,143,207"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="32,255,107,280"/>
+<area shape="poly" id="edge16_Node000011_Node000012" title=" " alt="" coords="136,209,94,247,90,243,132,205"/>
+</map>

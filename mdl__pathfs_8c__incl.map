@@ -1,0 +1,30 @@
+<map id="apps/shared_libs/mdl/src/mdl_pathfs.c" name="apps/shared_libs/mdl/src/mdl_pathfs.c">
+<area shape="rect" id="Node000001" title="Implementation of the guarded filesystem directory join." alt="" coords="447,5,607,45"/>
+<area shape="rect" id="Node000002" href="$mdl__pathfs_8h.html" title="Guarded filesystem directory joins for the media downloader." alt="" coords="378,93,485,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="506,48,458,87,454,82,502,43"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="244,460,315,485"/>
+<area shape="poly" id="edge16_Node000001_Node000005" title=" " alt="" coords="552,44,575,68,599,100,618,137,626,178,626,327,624,350,617,371,606,389,592,405,556,431,513,449,464,462,415,469,329,475,328,470,415,464,463,457,511,444,554,426,589,401,602,386,612,369,618,349,621,327,621,178,613,139,595,103,571,72,548,48"/>
+<area shape="rect" id="Node000009" href="$mdl__sanitize_8h.html" title="Neutralise untrusted names before they reach a filesystem or XML sink." alt="" coords="469,313,586,339"/>
+<area shape="poly" id="edge17_Node000001_Node000009" title=" " alt="" coords="530,46,530,300,525,300,525,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="367,387,442,412"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="433,119,410,373,404,373,428,118"/>
+<area shape="rect" id="Node000004" href="$mdl__storage_8h.html" title="Injected portable storage resources for downloader domain code." alt="" coords="273,167,387,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="417,121,359,161,356,156,414,116"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="337,191,399,373,394,374,331,193"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="331,193,286,447,281,446,325,192"/>
+<area shape="rect" id="Node000006" href="$fw__if__fs_8h.html" title="Architecture&#45;neutral filesystem namespace, stream, and transaction ports." alt="" coords="187,240,271,265"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="315,194,258,234,255,230,312,190"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,387,84,412"/>
+<area shape="poly" id="edge15_Node000004_Node000008" title=" " alt="" coords="273,190,214,203,148,226,116,243,86,263,60,286,39,315,34,329,32,344,38,373,32,374,27,344,28,327,34,312,56,283,83,258,113,238,146,221,212,198,272,185"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="245,264,382,376,378,380,241,268"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="234,265,276,446,271,447,229,266"/>
+<area shape="rect" id="Node000007" href="$fw__if__fs__types_8h.html" title="Portable filesystem value types and caller&#45;owned opaque handles." alt="" coords="64,313,191,339"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="214,268,157,307,154,303,211,263"/>
+<area shape="poly" id="edge14_Node000006_Node000008" title=" " alt="" coords="187,258,153,263,116,273,82,290,53,315,46,328,43,343,42,372,37,372,37,342,41,326,49,312,79,285,114,268,152,258,186,253"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="173,336,355,383,353,388,171,341"/>
+<area shape="poly" id="edge11_Node000007_Node000005" title=" " alt="" coords="140,337,212,410,257,449,253,453,208,414,136,341"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="116,341,70,380,67,375,112,337"/>
+<area shape="poly" id="edge13_Node000008_Node000005" title=" " alt="" coords="83,409,231,454,230,459,82,415"/>
+<area shape="poly" id="edge18_Node000009_Node000003" title=" " alt="" coords="509,341,438,382,435,377,506,336"/>
+<area shape="poly" id="edge19_Node000009_Node000005" title=" " alt="" coords="522,340,496,376,477,397,456,414,425,432,392,446,329,465,328,459,390,441,422,427,452,410,473,393,492,373,518,337"/>
+</map>

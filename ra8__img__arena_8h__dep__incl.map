@@ -1,0 +1,27 @@
+<map id="apps/shared_libs/reflow/inc/ra8_img_arena.h" name="apps/shared_libs/reflow/inc/ra8_img_arena.h">
+<area shape="rect" id="Node000001" title="Heap&#45;free scratch allocator hooks for the stb_image single&#45;TU build." alt="" coords="551,5,726,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rabook__raster_8h.html" title="Caller&#45;arena raster normalizer for RABOOK image records." alt="" coords="241,93,423,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="564,52,419,96,418,91,563,47"/>
+<area shape="rect" id="Node000007" href="$media__download__image_8c.html" title="Convert one C6&#45;fetched encoded image into a strict .rabook." alt="" coords="401,416,620,471"/>
+<area shape="poly" id="edge12_Node000001_Node000007" title=" " alt="" coords="582,54,557,72,538,95,519,136,506,180,499,226,496,271,499,354,508,415,503,416,494,354,490,271,493,225,501,179,514,134,534,92,554,68,579,50"/>
+<area shape="rect" id="Node000008" href="$ra8__rabook__raster_8c.html" title="Caller&#45;arena raster normalizer for RABOOK image records." alt="" coords="292,196,473,251"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="571,53,531,72,494,95,466,120,441,147,402,197,398,194,437,143,462,116,490,91,529,67,569,48"/>
+<area shape="rect" id="Node000009" href="$ra8__rabook__pipeline_8c.html" title="End&#45;to&#45;end EPUB &#45;&gt; RABOOK1 compile pipeline (#149)." alt="" coords="548,93,729,148"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="641,59,641,93,636,93,636,59"/>
+<area shape="rect" id="Node000010" href="$ra8__img__arena_8c.html" title="Caller&#45;bound bump arena with refcount auto&#45;reset for stb_image." alt="" coords="754,101,929,141"/>
+<area shape="poly" id="edge10_Node000001_Node000010" title=" " alt="" coords="693,49,801,98,799,103,691,54"/>
+<area shape="rect" id="Node000011" href="$reflow__image_8c.html" title="Zero&#45;heap raster image decode + nearest&#45;neighbour scale + blit (#106)." alt="" coords="953,101,1127,141"/>
+<area shape="poly" id="edge11_Node000001_Node000011" title=" " alt="" coords="740,45,942,91,971,98,970,103,941,96,739,50"/>
+<area shape="rect" id="Node000012" href="$ra8__viewer__comic_8c.html" title="Caller&#45;workspace CBZ, CBR, and CBT reader engine." alt="" coords="1152,101,1331,141"/>
+<area shape="poly" id="edge13_Node000001_Node000012" title=" " alt="" coords="740,34,927,56,1140,91,1173,98,1172,103,1140,96,926,62,739,39"/>
+<area shape="rect" id="Node000003" href="$ra8__rabook__comic_8h.html" title="Streaming image&#45;sequence builder for reader&#45;native RABOOK comics." alt="" coords="87,196,268,251"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="282,158,219,198,216,194,279,153"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="354,159,372,195,367,197,349,161"/>
+<area shape="rect" id="Node000004" href="$ra8__rabook__comic_8c.html" title="Streaming image&#45;sequence builder for reader&#45;native RABOOK comics." alt="" coords="5,306,187,361"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="151,263,118,307,114,304,147,260"/>
+<area shape="rect" id="Node000005" href="$media__download__format__internal_8h.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="211,299,421,368"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="224,257,274,296,271,300,220,261"/>
+<area shape="rect" id="Node000006" href="$media__download__format_8c.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="154,416,377,471"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="297,381,280,417,275,415,292,379"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="389,372,464,413,462,418,387,377"/>
+</map>

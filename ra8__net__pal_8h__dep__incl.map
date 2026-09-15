@@ -1,0 +1,7 @@
+<map id="libs/ra8_net_pal/inc/ra8_net_pal.h" name="libs/ra8_net_pal/inc/ra8_net_pal.h">
+<area shape="rect" id="Node000001" title="Network Platform Abstraction Layer for the RA8D2 ESWM block." alt="" coords="91,5,239,45"/>
+<area shape="rect" id="Node000002" href="$ra8__net__pal_8c.html" title="Network PAL implementation – ra8_eth wrapper." alt="" coords="5,93,153,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="138,57,100,95,96,91,134,53"/>
+<area shape="rect" id="Node000003" href="$ra8__nsc__eth_8c.html" title="NSC veneer: ethernet frame TX / RX." alt="" coords="178,93,325,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="195,53,234,91,230,95,192,57"/>
+</map>

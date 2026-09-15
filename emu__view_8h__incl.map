@@ -1,0 +1,20 @@
+<map id="tools/ra8_emulator/inc/emu_view.h" name="tools/ra8_emulator/inc/emu_view.h">
+<area shape="rect" id="Node000001" title="Board&#45;view presentation: frames, composition, input routing, panels." alt="" coords="153,5,298,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="49,240,119,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="169,48,126,67,82,93,42,126,25,146,12,168,9,185,17,202,32,218,51,231,48,235,29,222,13,205,4,186,7,166,21,143,38,122,79,88,124,62,166,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="422,93,557,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="289,43,438,87,437,92,288,48"/>
+<area shape="rect" id="Node000004" href="$board__overlay_8h.html" title="Composite board&#45;view renderer: panel framebuffer + a status sidebar." alt="" coords="21,167,147,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="197,48,168,69,139,95,116,125,99,155,94,153,112,122,135,92,164,65,194,43"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="172,240,297,265"/>
+<area shape="poly" id="edge11_Node000001_Node000005" title=" " alt="" coords="258,44,286,65,317,93,343,127,361,166,365,180,361,193,335,220,303,237,300,233,332,216,356,191,360,180,356,168,339,130,313,96,283,69,255,48"/>
+<area shape="rect" id="Node000006" href="$emu__presentation_8h.html" title="Bounded raw&#45;descriptor presentation surface and scratch workspace." alt="" coords="149,93,301,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="228,46,228,79,223,79,223,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="87,192,87,226,81,226,81,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="109,190,199,232,197,236,107,194"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="220,121,195,155,161,194,114,234,110,230,157,190,191,151,215,117"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="204,121,120,163,118,158,202,116"/>
+<area shape="poly" id="edge10_Node000006_Node000005" title=" " alt="" coords="229,119,236,226,231,226,224,119"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="272,167,347,192"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="241,117,287,155,283,160,237,121"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="libs/ra8_io/src/ra8_io_i2c_bus_internal.h" name="libs/ra8_io/src/ra8_io_i2c_bus_internal.h">
+<area shape="rect" id="Node000001" title="Internal vtable type for the ra8_io I2C&#45;bus facade." alt="" coords="179,5,345,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__i2c__bus_8c.html" title="I2C&#45;bus dispatcher – forwards each public call into the bound backend vtable, and bridges any backend..." alt="" coords="5,93,143,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="210,53,116,96,114,91,207,49"/>
+<area shape="rect" id="Node000003" href="$ra8__io__i2c__bus__i3c__compat_8c.html" title="I3C I2C&#45;compatibility backend for the ra8_io I2C&#45;bus facade – thin shim over ra8_i3c." alt="" coords="167,93,357,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="265,59,265,93,259,93,259,59"/>
+<area shape="rect" id="Node000004" href="$ra8__io__i2c__bus__riic_8c.html" title="RIIC backend for the ra8_io I2C&#45;bus facade – thin shim over ra8_i2c." alt="" coords="381,93,519,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="317,49,410,91,408,96,314,53"/>
+</map>

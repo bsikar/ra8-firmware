@@ -1,0 +1,5 @@
+<map id="ra8_rmac_phy_internal_t" name="ra8_rmac_phy_internal_t">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,101,188,127"/>
+<area shape="rect" id="Node000002" href="$structra8__rmac__phy__io__t.html" title="Pluggable MDIO bus." alt="" coords="24,5,169,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,45,99,101,94,101,94,45"/>
+</map>

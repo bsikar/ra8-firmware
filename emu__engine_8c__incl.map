@@ -1,0 +1,18 @@
+<map id="tools/ra8_emulator/src/engine/emu_engine.c" name="tools/ra8_emulator/src/engine/emu_engine.c">
+<area shape="rect" id="Node000001" title="Shared engine&#45;access table definition (see emu_engine.h)." alt="" coords="136,5,324,45"/>
+<area shape="rect" id="Node000002" href="$emu__engine_8h.html" title="Shared Unicorn engine access utilities for the board emulator." alt="" coords="173,93,287,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="233,46,233,79,227,79,227,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,240,76,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="216,121,68,234,65,230,213,117"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="100,240,235,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="224,120,195,168,176,227,170,225,190,166,219,118"/>
+<area shape="rect" id="Node000005" href="$emu__memory__access_8h.html" title="Central first&#45;party Unicorn memory access seam." alt="" coords="205,167,381,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="242,117,275,154,271,158,238,121"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="358,240,483,265"/>
+<area shape="poly" id="edge9_Node000002_Node000007" title=" " alt="" coords="289,113,344,131,371,145,395,165,413,195,421,226,416,227,408,197,391,168,368,150,342,136,287,118"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="253,195,90,240,89,235,251,189"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="274,194,201,235,198,231,271,190"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="259,240,334,265"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="296,192,298,226,293,227,291,192"/>
+<area shape="poly" id="edge8_Node000005_Node000007" title=" " alt="" coords="315,190,389,231,386,235,312,194"/>
+</map>

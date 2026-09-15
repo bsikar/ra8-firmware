@@ -1,0 +1,70 @@
+<map id="libs/ra8_hal/inc/ra8_rsip_regs.h" name="libs/ra8_hal/inc/ra8_rsip_regs.h">
+<area shape="rect" id="Node000001" title="Renesas Secure IP (RSIP&#45;E50D) register layout for the RA8D2." alt="" coords="978,5,1123,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rsip__core_8h.html" title="Renesas Secure IP (RSIP&#45;E50D) HAL – core lifecycle / TRNG / hash API." alt="" coords="1203,93,1349,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1114,48,1228,91,1226,96,1112,53"/>
+<area shape="rect" id="Node000010" href="$ra8__rsip__key__injection_8h.html" title="RSIP key&#45;injection HAL – wrap raw key material into theRSIP installed&#45;key blob format." alt="" coords="162,379,321,419"/>
+<area shape="poly" id="edge32_Node000001_Node000010" title=" " alt="" coords="964,32,798,40,603,52,433,71,374,82,342,96,312,126,288,162,271,202,259,244,246,322,244,379,238,379,241,321,254,243,266,201,284,160,308,123,339,91,372,77,432,66,603,47,798,34,964,27"/>
+<area shape="rect" id="Node000011" href="$ra8__rsip__protected_8h.html" title="RSIP protected&#45;key HAL – crypto operations driven by wrappedkey blobs (the RSIP engine never sees the..." alt="" coords="278,475,423,515"/>
+<area shape="poly" id="edge38_Node000001_Node000011" title=" " alt="" coords="965,34,792,49,692,62,593,80,502,103,428,132,400,148,379,166,366,186,361,208,361,305,355,475,349,475,356,305,356,207,361,184,375,163,397,144,426,127,501,98,591,75,691,57,791,44,964,28"/>
+<area shape="rect" id="Node000012" href="$ra8__rsip__protected_8c.html" title="RSIP protected&#45;key HAL implementation." alt="" coords="222,563,367,603"/>
+<area shape="poly" id="edge44_Node000001_Node000012" title=" " alt="" coords="964,29,834,32,668,42,484,62,391,77,301,96,249,104,197,108,104,113,66,121,36,137,26,149,18,165,12,184,11,207,11,401,10,463,17,487,35,513,65,531,112,546,222,569,221,574,111,552,63,536,32,517,12,490,5,463,5,401,5,207,7,183,13,163,21,146,33,133,64,116,103,107,197,102,248,99,300,91,390,72,483,57,667,37,834,27,964,24"/>
+<area shape="rect" id="Node000014" href="$ra8__rsip_8c.html" title="Renesas Secure IP (RSIP&#45;E50D) HAL driver implementation." alt="" coords="539,475,685,515"/>
+<area shape="poly" id="edge39_Node000001_Node000014" title=" " alt="" coords="964,37,778,59,690,76,629,96,583,117,547,137,533,150,522,165,516,183,513,207,513,305,516,331,522,355,543,402,570,443,595,473,591,476,566,446,539,405,517,357,510,332,508,305,508,207,510,182,518,162,529,146,543,133,581,112,627,91,689,71,777,54,964,31"/>
+<area shape="rect" id="Node000015" href="$ra8__rsip__asym_8c.html" title="RSIP&#45;E50D hash / HMAC + key&#45;management (fail&#45;closed)." alt="" coords="1055,475,1201,515"/>
+<area shape="poly" id="edge40_Node000001_Node000015" title=" " alt="" coords="965,43,843,67,711,104,653,126,606,151,575,178,567,193,564,208,564,305,568,346,582,375,605,400,639,424,671,439,715,452,827,471,949,482,1055,488,1055,494,949,487,826,476,714,457,669,444,636,429,601,404,577,378,563,347,559,305,559,207,562,191,571,175,603,147,651,121,710,99,842,62,964,38"/>
+<area shape="rect" id="Node000017" href="$ra8__rsip__ecc_8c.html" title="RSIP&#45;E50D elliptic&#45;curve asymmetric path (ECDSA / ECDH / Ed25519)." alt="" coords="1733,475,1878,515"/>
+<area shape="poly" id="edge43_Node000001_Node000017" title=" " alt="" coords="1137,26,1463,33,1891,47,2273,66,2401,78,2441,84,2463,91,2491,115,2508,140,2516,170,2517,207,2517,305,2516,344,2511,376,2496,403,2468,429,2436,442,2379,453,2217,471,2033,485,1879,493,1878,488,2032,479,2216,466,2378,448,2434,437,2465,424,2492,399,2506,374,2511,344,2512,305,2512,207,2510,171,2503,142,2487,118,2460,96,2440,89,2401,83,2273,71,1891,52,1462,38,1137,31"/>
+<area shape="rect" id="Node000018" href="$ra8__rsip__rsa_8c.html" title="RSIP&#45;E50D RSA sign / verify / encrypt / decrypt path." alt="" coords="1429,475,1574,515"/>
+<area shape="poly" id="edge45_Node000001_Node000018" title=" " alt="" coords="1138,32,1435,67,1629,95,1832,132,2029,177,2122,204,2207,232,2283,263,2349,296,2402,332,2441,370,2460,400,2462,412,2457,421,2446,429,2428,434,2370,441,2139,452,1722,477,1574,489,1574,484,1721,472,2139,447,2369,436,2427,429,2444,424,2453,418,2457,411,2455,402,2437,374,2399,336,2346,301,2281,268,2205,237,2120,209,2028,183,1831,137,1628,100,1435,72,1137,37"/>
+<area shape="rect" id="Node000019" href="$ra8__rsip__cipher_8c.html" title="RSIP&#45;E50D symmetric cipher + wrapped&#45;key install path." alt="" coords="2170,475,2315,515"/>
+<area shape="poly" id="edge41_Node000001_Node000019" title=" " alt="" coords="1137,26,1470,33,1911,47,2305,66,2437,78,2479,84,2501,91,2533,114,2554,139,2565,169,2568,207,2568,305,2565,345,2555,376,2536,402,2507,429,2462,457,2413,476,2362,487,2316,494,2315,488,2361,482,2411,471,2460,452,2504,425,2532,398,2551,373,2560,344,2563,305,2563,207,2560,170,2549,141,2529,118,2499,96,2478,89,2437,83,2305,72,1910,52,1470,39,1137,31"/>
+<area shape="rect" id="Node000020" href="$ra8__rsip__devsec_8c.html" title="RSIP&#45;E50D device&#45;security path (lifecycle / debug / tamper / DPA), fail&#45;closed." alt="" coords="2281,379,2426,419"/>
+<area shape="poly" id="edge42_Node000001_Node000020" title=" " alt="" coords="1137,25,1458,30,1879,42,2081,50,2253,61,2376,75,2414,82,2434,91,2447,108,2456,126,2464,165,2460,207,2447,249,2429,289,2409,325,2371,381,2366,378,2404,323,2425,286,2442,247,2454,206,2458,166,2451,128,2442,111,2430,95,2413,87,2375,80,2252,66,2081,55,1879,47,1458,35,1137,30"/>
+<area shape="rect" id="Node000022" href="$ra8__rsip__keys_8h.html" title="Renesas Secure IP (RSIP&#45;E50D) HAL – key install + cipher / hash API." alt="" coords="1034,93,1179,133"/>
+<area shape="poly" id="edge33_Node000001_Node000022" title=" " alt="" coords="1073,56,1097,92,1092,95,1068,58"/>
+<area shape="rect" id="Node000023" href="$ra8__rsip__mgmt_8h.html" title="Renesas Secure IP (RSIP&#45;E50D) HAL – vault / KDF / lifecycle / tamper." alt="" coords="979,189,1125,229"/>
+<area shape="poly" id="edge37_Node000001_Node000023" title=" " alt="" coords="1036,59,1024,94,1021,113,1024,133,1033,162,1044,187,1039,190,1028,164,1019,134,1016,113,1019,93,1031,57"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2rsip__sha256__kat_2src_2main_8c.html" title="On&#45;silicon FIPS 180&#45;4 known&#45;answer test for the RSIP HASH engine." alt="" coords="1251,181,1432,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1299,143,1325,180,1321,183,1295,146"/>
+<area shape="rect" id="Node000004" href="$ra8__rsip_8h.html" title="Renesas Secure IP (RSIP&#45;E50D) HAL driver – public API." alt="" coords="1115,284,1261,324"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="1260,147,1241,182,1198,285,1193,283,1236,180,1256,144"/>
+<area shape="rect" id="Node000005" href="$examples_2__unsupported_2threadx__https__client_2src_2main_8c.html" title="ThreadX + NetX Duo + Mbed TLS HTTPS client demo for EK&#45;RA8D2." alt="" coords="649,372,828,427"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="1102,323,841,375,829,377,828,372,839,369,1101,318"/>
+<area shape="rect" id="Node000006" href="$mbedtls__psa__rng_8c.html" title="Mbed TLS PSA random&#45;source adapter for the HTTPS client demo." alt="" coords="852,372,1031,427"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="1126,331,1012,374,1010,369,1124,326"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__pending_2media__download_2src_2main_8c.html" title="Download, validate, publish, and reopen one C6&#45;fetched .rabook." alt="" coords="1465,372,1661,427"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="1275,324,1465,371,1464,376,1273,329"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__pending_2ota__ab__orchestration_2src_2main_8c.html" title="A/B OTA orchestration demo: stage &#45;&gt; verify &#45;&gt; commit / rollback over MRAM." alt="" coords="1685,372,1907,427"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="1275,313,1459,336,1674,369,1685,371,1684,377,1673,375,1458,342,1274,318"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__pending_2tls__client_2src_2main_8c.html" title="TLS client over ra8_tls + ra8_net_pal (NetX Duo transport)." alt="" coords="1981,372,2155,427"/>
+<area shape="poly" id="edge8_Node000004_Node000009" title=" " alt="" coords="1275,306,1580,324,1771,343,1963,369,1981,373,1980,378,1962,375,1771,348,1579,330,1274,311"/>
+<area shape="poly" id="edge9_Node000004_Node000010" title=" " alt="" coords="1102,313,788,334,590,352,391,375,321,385,321,380,390,369,590,347,788,329,1101,307"/>
+<area shape="poly" id="edge14_Node000004_Node000011" title=" " alt="" coords="1102,307,942,309,749,317,654,326,568,338,495,354,443,374,414,396,391,423,361,476,356,473,387,420,411,392,440,370,494,349,567,333,654,321,749,312,942,303,1102,302"/>
+<area shape="poly" id="edge30_Node000004_Node000012" title=" " alt="" coords="1102,312,978,320,835,332,702,350,648,362,608,374,578,389,555,405,520,440,486,477,436,517,389,543,343,565,340,560,386,539,433,512,482,473,516,436,551,401,575,385,606,370,647,356,701,345,834,327,977,314,1101,307"/>
+<area shape="poly" id="edge15_Node000004_Node000014" title=" " alt="" coords="1102,313,827,336,704,353,662,363,639,374,623,396,615,423,612,451,613,474,607,475,607,451,610,422,618,394,636,370,660,358,703,348,827,330,1101,308"/>
+<area shape="poly" id="edge16_Node000004_Node000015" title=" " alt="" coords="1135,333,1113,351,1096,373,1090,399,1094,426,1104,452,1117,473,1112,476,1099,454,1089,427,1084,399,1091,371,1109,347,1132,329"/>
+<area shape="rect" id="Node000016" href="$ra8__rsip__asym__internal_8h.html" title="Cross&#45;TU surface shared by the RSIP asymmetric + RSA split." alt="" coords="1105,379,1271,419"/>
+<area shape="poly" id="edge17_Node000004_Node000016" title=" " alt="" coords="1191,338,1191,379,1185,379,1185,338"/>
+<area shape="poly" id="edge23_Node000004_Node000017" title=" " alt="" coords="1274,302,1502,303,1784,311,1918,319,2034,332,2121,348,2150,358,2169,370,2182,387,2187,403,2186,418,2178,431,2149,452,2104,467,2049,479,1990,487,1878,494,1878,489,1989,481,2048,473,2102,462,2146,447,2174,427,2181,416,2182,404,2177,390,2165,374,2148,363,2120,353,2034,337,1918,325,1783,316,1501,308,1274,307"/>
+<area shape="poly" id="edge31_Node000004_Node000018" title=" " alt="" coords="1274,304,1447,309,1650,321,1746,329,1827,340,1888,353,1909,361,1922,370,1932,384,1935,399,1931,414,1922,429,1905,439,1873,448,1782,465,1574,490,1574,484,1781,460,1872,443,1902,434,1918,425,1927,412,1929,399,1927,387,1918,374,1907,366,1887,358,1827,345,1745,334,1650,326,1447,315,1274,309"/>
+<area shape="poly" id="edge21_Node000004_Node000019" title=" " alt="" coords="1275,303,1505,307,1793,317,1931,326,2051,337,2143,351,2174,360,2195,370,2217,393,2231,421,2244,474,2238,475,2226,423,2212,396,2192,374,2173,365,2142,357,2051,342,1931,331,1793,323,1505,312,1275,309"/>
+<area shape="poly" id="edge22_Node000004_Node000020" title=" " alt="" coords="1275,302,1455,303,1701,312,1980,333,2123,349,2262,369,2294,377,2293,382,2261,375,2122,354,1980,338,1701,318,1455,309,1275,307"/>
+<area shape="rect" id="Node000021" href="$ra8__rsip__internal_8h.html" title="Cross&#45;TU surface for the ra8_rsip driver split." alt="" coords="1295,379,1441,419"/>
+<area shape="poly" id="edge24_Node000004_Node000021" title=" " alt="" coords="1238,328,1333,377,1330,382,1235,333"/>
+<area shape="poly" id="edge10_Node000010_Node000011" title=" " alt="" coords="276,426,330,473,327,477,272,430"/>
+<area shape="poly" id="edge13_Node000010_Node000012" title=" " alt="" coords="249,433,268,514,288,561,283,564,263,515,244,434"/>
+<area shape="rect" id="Node000013" href="$ra8__rsip__key__injection_8c.html" title="RSIP key&#45;injection HAL implementation." alt="" coords="45,475,203,515"/>
+<area shape="poly" id="edge12_Node000010_Node000013" title=" " alt="" coords="209,430,149,477,146,473,205,426"/>
+<area shape="poly" id="edge11_Node000011_Node000012" title=" " alt="" coords="333,528,309,564,305,561,329,525"/>
+<area shape="poly" id="edge18_Node000016_Node000015" title=" " alt="" coords="1171,432,1142,476,1138,473,1166,429"/>
+<area shape="poly" id="edge19_Node000016_Node000017" title=" " alt="" coords="1266,420,1285,424,1407,445,1530,463,1733,485,1732,490,1529,468,1406,451,1284,429,1265,425"/>
+<area shape="poly" id="edge20_Node000016_Node000018" title=" " alt="" coords="1265,421,1439,472,1437,477,1263,426"/>
+<area shape="poly" id="edge25_Node000021_Node000014" title=" " alt="" coords="1299,426,1283,429,1117,457,950,475,801,487,685,493,685,488,801,482,950,470,1116,451,1282,424,1298,420"/>
+<area shape="poly" id="edge26_Node000021_Node000015" title=" " alt="" coords="1308,427,1177,477,1176,472,1306,422"/>
+<area shape="poly" id="edge28_Node000021_Node000017" title=" " alt="" coords="1440,421,1454,424,1602,456,1733,479,1732,485,1601,461,1453,429,1439,426"/>
+<area shape="poly" id="edge29_Node000021_Node000018" title=" " alt="" coords="1408,425,1476,472,1473,477,1405,430"/>
+<area shape="poly" id="edge27_Node000021_Node000019" title=" " alt="" coords="1437,420,1454,424,1599,443,1800,461,2170,486,2170,492,1799,467,1599,449,1453,429,1436,426"/>
+<area shape="poly" id="edge34_Node000022_Node000004" title=" " alt="" coords="1124,145,1140,180,1183,283,1178,285,1135,182,1119,147"/>
+<area shape="poly" id="edge35_Node000022_Node000023" title=" " alt="" coords="1091,147,1065,190,1061,187,1086,144"/>
+<area shape="poly" id="edge36_Node000023_Node000004" title=" " alt="" coords="1092,234,1162,282,1159,286,1089,239"/>
+</map>

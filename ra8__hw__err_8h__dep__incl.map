@@ -1,0 +1,87 @@
+<map id="libs/ra8_hal/inc/ra8_hw_err.h" name="libs/ra8_hal/inc/ra8_hw_err.h">
+<area shape="rect" id="Node000001" title="Bounded wait&#45;flag primitives for RA8D2 HAL drivers." alt="" coords="3491,5,3636,45"/>
+<area shape="rect" id="Node000002" href="$ra8__cac_8c.html" title="Clock Frequency Accuracy Measurement Circuit driver." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="3477,30,2797,36,1760,49,753,69,381,82,162,96,151,98,150,92,162,91,381,76,753,64,1760,44,2797,31,3477,25"/>
+<area shape="rect" id="Node000003" href="$ra8__canfd_8c.html" title="CAN with Flexible Data&#45;rate driver implementation." alt="" coords="175,93,320,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="3477,30,1844,50,890,70,539,82,332,96,320,98,320,92,331,91,538,77,890,65,1844,45,3477,25"/>
+<area shape="rect" id="Node000004" href="$ra8__canfd__frame_8c.html" title="CANFD frame transmit / receive data path (split from ra8_canfd.c)." alt="" coords="344,93,489,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="3477,29,2913,28,2051,35,1591,43,1158,55,783,72,628,83,501,96,490,98,489,92,500,91,628,78,783,67,1157,49,1591,37,2051,29,2913,23,3477,24"/>
+<area shape="rect" id="Node000005" href="$ra8__ceu_8c.html" title="Capture Engine Unit (CEU) driver implementation." alt="" coords="513,93,659,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="3476,29,2940,29,2127,36,1695,44,1287,57,935,73,670,96,659,98,658,92,670,91,935,68,1287,51,1695,39,2127,31,2940,24,3476,24"/>
+<area shape="rect" id="Node000006" href="$ra8__cgc_8c.html" title="Clock Generation Circuit driver – RA8D2 PLL bring&#45;up." alt="" coords="683,93,828,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="3476,29,2967,30,2204,38,1799,46,1417,58,1088,75,840,96,828,98,828,92,839,91,1087,69,1417,53,1799,41,2204,33,2967,25,3476,24"/>
+<area shape="rect" id="Node000007" href="$ra8__cgc__eswclk_8c.html" title="Clock Generation Circuit driver – Ethernet&#45;switch (ESWCLK) path." alt="" coords="852,93,997,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="3477,29,2996,31,2282,40,1904,48,1548,60,1241,76,1009,96,998,98,997,92,1008,91,1240,70,1548,55,1904,43,2282,35,2996,26,3477,24"/>
+<area shape="rect" id="Node000008" href="$ra8__cgc__usb_8c.html" title="Clock Generation Circuit driver – PLL2 + USB&#45;FS / USB&#45;HS clocks." alt="" coords="1021,93,1167,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="3476,30,3024,32,2359,42,2008,50,1678,62,1393,77,1178,96,1167,98,1166,92,1178,91,1393,72,1678,57,2008,45,2359,37,3024,27,3476,24"/>
+<area shape="rect" id="Node000009" href="$ra8__dotf_8c.html" title="Decryption On The Fly (DOTF) HAL driver implementation." alt="" coords="1191,93,1336,133"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="3477,30,3053,34,2437,44,1809,64,1546,78,1348,96,1336,98,1336,92,1347,91,1546,73,1808,58,2437,38,3053,28,3477,24"/>
+<area shape="rect" id="Node000010" href="$ra8__dual__core_8c.html" title="CPU1 (Cortex&#45;M33) lifecycle helper – implementation." alt="" coords="1360,93,1505,133"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="3477,30,3082,35,2515,46,1939,65,1699,79,1517,96,1506,98,1505,92,1516,91,1698,74,1939,60,2515,40,3082,29,3477,25"/>
+<area shape="rect" id="Node000011" href="$ra8__epaper_8c.html" title="IT8951 e&#45;paper SPI driver implementation." alt="" coords="1529,93,1675,133"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="3477,30,3111,36,2594,48,2070,67,1851,80,1686,96,1675,98,1674,92,1686,91,1851,75,2070,62,2593,42,3111,31,3476,25"/>
+<area shape="rect" id="Node000012" href="$ra8__eth__coma_8c.html" title="Ethernet Common Agent driver implementation." alt="" coords="1699,93,1844,133"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="3477,31,3141,37,2673,50,2201,69,2004,82,1856,96,1844,98,1844,92,1855,91,2004,76,2201,64,2673,44,3141,32,3477,25"/>
+<area shape="rect" id="Node000013" href="$ra8__eth__gwca_8c.html" title="Ethernet CPU Agent driver implementation." alt="" coords="1868,93,2013,133"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="3477,31,2752,52,2333,71,2159,83,2026,96,2014,98,2013,93,2026,91,2158,78,2333,66,2752,47,3477,26"/>
+<area shape="rect" id="Node000014" href="$ra8__eth__gwca__default_8c.html" title="Ethernet CPU Agent driver – one&#45;call default&#45;state API." alt="" coords="2038,93,2193,133"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="3477,29,3254,31,2939,39,2575,60,2388,76,2205,96,2193,98,2192,92,2204,91,2387,70,2574,54,2939,34,3254,25,3477,24"/>
+<area shape="rect" id="Node000015" href="$ra8__eth__gwca__queue_8c.html" title="Ethernet CPU Agent driver – per&#45;queue descriptor + ring primitives." alt="" coords="2217,93,2366,133"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="3477,30,3280,33,3007,43,2695,63,2535,77,2378,96,2367,98,2366,92,2378,91,2534,72,2694,57,3007,37,3280,28,3477,24"/>
+<area shape="rect" id="Node000016" href="$ra8__etha_8c.html" title="Per&#45;port Ethernet Agent (ETHA) driver implementation – HUM Ch 32." alt="" coords="2391,93,2536,133"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="3477,31,3305,35,3074,46,2812,66,2548,96,2536,98,2536,92,2547,91,2812,60,3074,41,3305,30,3476,25"/>
+<area shape="rect" id="Node000017" href="$ra8__etha__tas_8c.html" title="ETHA time&#45;aware shaper (TAS / 802.1Qbv) flows – HUM Ch 32.4.2." alt="" coords="2560,93,2705,133"/>
+<area shape="poly" id="edge16_Node000001_Node000017" title=" " alt="" coords="3477,32,3143,51,2931,69,2717,96,2706,98,2705,93,2716,91,2930,64,3143,45,3477,27"/>
+<area shape="rect" id="Node000018" href="$ra8__flash_8c.html" title="Code&#45;MRAM + Extra&#45;MRAM + Option&#45;Setting driver implementation – DANGEROUS." alt="" coords="2729,93,2875,133"/>
+<area shape="poly" id="edge17_Node000001_Node000018" title=" " alt="" coords="3477,34,3212,56,3049,73,2886,96,2875,98,2874,93,2886,91,3049,68,3212,50,3476,29"/>
+<area shape="rect" id="Node000019" href="$ra8__flash__config_8c.html" title="MRAM configuration&#45;set, ARC counters + extra&#45;MRAM programming – DANGEROUS." alt="" coords="2899,93,3044,133"/>
+<area shape="poly" id="edge18_Node000001_Node000019" title=" " alt="" coords="3477,38,3283,62,3056,96,3045,98,3044,93,3055,91,3283,56,3476,33"/>
+<area shape="rect" id="Node000020" href="$ra8__glcdc_8c.html" title="Graphics LCD Controller driver implementation." alt="" coords="3068,93,3213,133"/>
+<area shape="poly" id="edge19_Node000001_Node000020" title=" " alt="" coords="3478,46,3225,96,3214,98,3213,93,3224,91,3477,40"/>
+<area shape="rect" id="Node000021" href="$ra8__i2c_8c.html" title="I2C Bus Interface (IIC) controller driver implementation." alt="" coords="3237,93,3383,133"/>
+<area shape="poly" id="edge20_Node000001_Node000021" title=" " alt="" coords="3496,52,3366,96,3365,91,3494,47"/>
+<area shape="rect" id="Node000022" href="$ra8__i3c__i2c_8c.html" title="IIC_B (I3C unified IP) controller driver implementation." alt="" coords="3407,93,3552,133"/>
+<area shape="poly" id="edge21_Node000001_Node000022" title=" " alt="" coords="3537,57,3500,95,3496,91,3533,53"/>
+<area shape="rect" id="Node000023" href="$ra8__i3c__i2c__control_8c.html" title="IIC_B (I3C unified IP) control&#45;plane + diagnostics implementation." alt="" coords="3576,93,3721,133"/>
+<area shape="poly" id="edge22_Node000001_Node000023" title=" " alt="" coords="3594,53,3632,91,3628,95,3590,57"/>
+<area shape="rect" id="Node000024" href="$ra8__ipc__sem__ring_8c.html" title="IPC HAL – hardware semaphores, NMI surface, and ring buffers." alt="" coords="3745,93,3891,133"/>
+<area shape="poly" id="edge23_Node000001_Node000024" title=" " alt="" coords="3633,47,3763,91,3761,96,3631,52"/>
+<area shape="rect" id="Node000025" href="$ra8__mstp_8c.html" title="Ref&#45;counted Module Stop Control implementation." alt="" coords="3915,93,4060,133"/>
+<area shape="poly" id="edge24_Node000001_Node000025" title=" " alt="" coords="3650,40,3904,91,3915,93,3914,98,3903,96,3649,46"/>
+<area shape="rect" id="Node000026" href="$ra8__rmac_8c.html" title="Per&#45;port Ethernet MAC (RMAC) driver implementation – HUM Ch 33." alt="" coords="4084,93,4229,133"/>
+<area shape="poly" id="edge25_Node000001_Node000026" title=" " alt="" coords="3650,33,3844,56,4073,91,4084,93,4083,98,4072,96,3844,62,3650,38"/>
+<area shape="rect" id="Node000027" href="$ra8__rsip_8c.html" title="Renesas Secure IP (RSIP&#45;E50D) HAL driver implementation." alt="" coords="4253,93,4399,133"/>
+<area shape="poly" id="edge26_Node000001_Node000027" title=" " alt="" coords="3650,29,3915,50,4079,68,4242,91,4254,93,4253,98,4242,96,4078,73,3915,56,3649,34"/>
+<area shape="rect" id="Node000028" href="$ra8__rtc_8c.html" title="BCD&#45;calendar Realtime Clock driver implementation." alt="" coords="4423,93,4568,133"/>
+<area shape="poly" id="edge27_Node000001_Node000028" title=" " alt="" coords="3650,27,3985,45,4198,64,4412,91,4423,93,4422,98,4411,96,4197,69,3984,51,3650,32"/>
+<area shape="rect" id="Node000029" href="$ra8__sci_8c.html" title="Full&#45;featured SCI_B driver implementation." alt="" coords="4592,93,4737,133"/>
+<area shape="poly" id="edge28_Node000001_Node000029" title=" " alt="" coords="3650,25,3822,30,4054,41,4316,60,4581,91,4592,92,4592,98,4580,96,4316,66,4053,46,3822,35,3650,31"/>
+<area shape="rect" id="Node000030" href="$ra8__sci__lin_8c.html" title="LIN commander + responder driver implementation on SCI_B." alt="" coords="4761,93,4907,133"/>
+<area shape="poly" id="edge29_Node000001_Node000030" title=" " alt="" coords="3650,24,3847,27,4120,37,4433,57,4594,72,4750,91,4762,92,4761,98,4750,96,4593,77,4433,62,4120,42,3847,32,3650,29"/>
+<area shape="rect" id="Node000031" href="$ra8__sci__spi_8c.html" title="SCI Simple&#45;SPI controller&#45;mode driver (polling, full&#45;duplex)." alt="" coords="4931,93,5076,133"/>
+<area shape="poly" id="edge30_Node000001_Node000031" title=" " alt="" coords="3650,23,3872,24,4187,33,4551,53,4737,69,4920,91,4931,92,4930,98,4919,96,4737,75,4550,58,4187,38,3872,30,3650,29"/>
+<area shape="rect" id="Node000032" href="$ra8__sdhi_8c.html" title="SD/MMC Host Interface driver implementation." alt="" coords="5100,93,5245,133"/>
+<area shape="poly" id="edge31_Node000001_Node000032" title=" " alt="" coords="3650,26,4369,47,4785,66,4958,77,5089,91,5100,92,5100,98,5088,96,4957,83,4784,71,4368,52,3650,31"/>
+<area shape="rect" id="Node000033" href="$ra8__spi__b_8c.html" title="SPI_B controller driver (polling + IRQ dispatch + DMA pipes)." alt="" coords="5269,93,5415,133"/>
+<area shape="poly" id="edge32_Node000001_Node000033" title=" " alt="" coords="3650,25,3984,32,4448,45,4916,64,5111,76,5258,91,5270,92,5269,98,5258,96,5110,82,4916,69,4448,50,3983,37,3650,31"/>
+<area shape="rect" id="Node000034" href="$ra8__spi__b__target_8c.html" title="SPI_B peripheral (target) mode driver – polling single&#45;byte xfer." alt="" coords="5439,93,5584,133"/>
+<area shape="poly" id="edge33_Node000001_Node000034" title=" " alt="" coords="3650,25,4013,31,4527,43,5047,62,5264,75,5428,91,5439,92,5438,98,5427,96,5263,80,5046,67,4527,48,4013,36,3650,30"/>
+<area shape="rect" id="Node000035" href="$ra8__ssie_8c.html" title="Serial Sound Interface Enhanced (SSIE / I2S) driver implementation." alt="" coords="5608,93,5753,133"/>
+<area shape="poly" id="edge34_Node000001_Node000035" title=" " alt="" coords="3650,25,4042,29,4605,41,5177,60,5416,74,5597,91,5608,92,5608,98,5596,96,5416,79,5177,66,4605,46,4042,35,3650,30"/>
+<area shape="rect" id="Node000036" href="$ra8__ulpt_8c.html" title="Ultra&#45;Low&#45;Power Timer driver implementation." alt="" coords="5777,93,5923,133"/>
+<area shape="poly" id="edge35_Node000001_Node000036" title=" " alt="" coords="3650,24,4071,28,4683,39,5308,58,5569,73,5766,91,5778,92,5777,98,5766,96,5569,78,5308,64,4683,44,4071,34,3650,30"/>
+<area shape="rect" id="Node000037" href="$ra8__usb_8c.html" title="Native USB controller driver implementation (device + host)." alt="" coords="5947,93,6092,133"/>
+<area shape="poly" id="edge36_Node000001_Node000037" title=" " alt="" coords="3650,24,4100,27,4761,37,5110,45,5438,57,5722,72,5936,91,5947,92,5946,98,5935,96,5721,77,5438,62,5110,51,4761,42,4100,33,3650,30"/>
+<area shape="rect" id="Node000038" href="$ra8__usb__host__ctrl_8c.html" title="USB host&#45;mode control&#45;transfer engine (polled, synchronous)." alt="" coords="6116,93,6261,133"/>
+<area shape="poly" id="edge37_Node000001_Node000038" title=" " alt="" coords="3650,24,4129,26,4839,35,5215,43,5569,55,5875,71,6105,91,6116,92,6116,98,6104,96,5874,76,5569,60,5215,49,4839,40,4128,32,3650,29"/>
+<area shape="rect" id="Node000039" href="$ra8__usb__phy_8c.html" title="USBHS embedded&#45;PHY bring&#45;up + shared FS/HS module bring&#45;up." alt="" coords="6285,93,6431,133"/>
+<area shape="poly" id="edge38_Node000001_Node000039" title=" " alt="" coords="3650,24,4156,25,4916,33,5319,41,5699,53,6027,69,6274,91,6286,92,6285,98,6274,96,6027,75,5699,58,5319,47,4916,38,4156,30,3650,29"/>
+<area shape="rect" id="Node000040" href="$ra8__vin_8c.html" title="Video Input Module (VIN) driver implementation." alt="" coords="6455,93,6600,133"/>
+<area shape="poly" id="edge39_Node000001_Node000040" title=" " alt="" coords="3650,24,4184,24,4993,31,5423,39,5829,51,6180,68,6444,91,6455,92,6454,98,6443,96,6179,74,5829,57,5423,45,4993,37,4184,30,3650,29"/>
+<area shape="rect" id="Node000041" href="$ra8__wdt_8c.html" title="Software Watchdog Timer (WDT) driver implementation." alt="" coords="6624,93,6769,133"/>
+<area shape="poly" id="edge40_Node000001_Node000041" title=" " alt="" coords="3650,24,4212,23,5070,29,5528,37,5959,50,6332,67,6486,78,6613,91,6624,92,6624,98,6612,96,6486,83,6332,72,5959,55,5528,43,5070,35,4212,29,3650,29"/>
+<area shape="rect" id="Node000042" href="$ra8__xspi_8c.html" title="Octal Serial Peripheral Interface (OSPI / xSPI) driver." alt="" coords="6793,93,6939,133"/>
+<area shape="poly" id="edge41_Node000001_Node000042" title=" " alt="" coords="3650,25,5277,45,6226,65,6576,77,6782,91,6794,92,6793,98,6782,96,6576,82,6226,70,5277,50,3650,30"/>
+<area shape="rect" id="Node000043" href="$ra8__xspi__flash_8c.html" title="OSPI / xSPI manual&#45;command engine + JEDEC NOR&#45;flash operations." alt="" coords="6963,93,7108,133"/>
+<area shape="poly" id="edge42_Node000001_Node000043" title=" " alt="" coords="3650,25,4327,31,5360,44,6363,64,6733,76,6952,91,6963,92,6962,98,6951,96,6733,82,6363,69,5360,49,4327,36,3650,30"/>
+</map>

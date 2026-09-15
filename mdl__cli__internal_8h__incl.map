@@ -1,0 +1,14 @@
+<map id="apps/host/mdl/src/mdl_cli_internal.h" name="apps/host/mdl/src/mdl_cli_internal.h">
+<area shape="rect" id="Node000001" title="Private byte&#45;stream helpers shared by mdl CLI units." alt="" coords="83,5,250,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="138,48,74,88,71,84,135,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="104,93,229,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="169,46,169,79,164,79,164,46"/>
+<area shape="rect" id="Node000004" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="254,93,381,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="204,43,284,84,281,89,202,48"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="282,240,353,265"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="316,119,308,152,307,192,313,226,308,227,301,192,303,151,311,118"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="317,167,395,192"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="326,118,346,153,341,156,321,120"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="352,194,332,229,328,227,347,191"/>
+</map>

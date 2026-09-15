@@ -1,0 +1,19 @@
+<map id="libs/ra8_hal/inc/ra8_ipc_sync.h" name="libs/ra8_hal/inc/ra8_ipc_sync.h">
+<area shape="rect" id="Node000001" title="Inter&#45;Processor Communication (IPC) HAL driver – sync API." alt="" coords="122,5,267,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="190,240,261,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="233,43,264,64,293,92,316,126,327,166,330,180,326,193,303,219,275,237,272,232,300,215,322,191,324,180,321,167,311,128,289,95,260,69,230,48"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="5,240,131,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="157,48,123,68,87,95,55,128,30,168,28,183,31,199,49,229,45,231,26,201,22,183,26,166,50,125,84,91,120,63,154,43"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="233,167,311,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="227,43,252,64,272,92,279,123,279,153,274,153,274,124,267,94,248,68,224,47"/>
+<area shape="rect" id="Node000005" href="$ra8__ipc__regs_8h.html" title="Inter&#45;Processor Communication (IPC) register layout for the RA8D2." alt="" coords="41,167,157,192"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="169,47,145,69,124,95,111,124,104,153,99,152,106,122,119,92,141,65,166,43"/>
+<area shape="rect" id="Node000006" href="$ra8__ipc__types_8h.html" title="Inter&#45;Processor Communication (IPC) HAL driver – public types." alt="" coords="133,93,257,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="197,46,197,79,192,79,192,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="267,194,243,230,238,227,262,191"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="120,190,194,231,191,235,118,194"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="96,193,81,229,76,227,91,191"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="200,119,223,226,217,227,195,120"/>
+<area shape="poly" id="edge10_Node000006_Node000004" title=" " alt="" coords="209,117,251,155,247,159,205,121"/>
+<area shape="poly" id="edge11_Node000006_Node000005" title=" " alt="" coords="181,121,127,160,124,156,178,117"/>
+</map>

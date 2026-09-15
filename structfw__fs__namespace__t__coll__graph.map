@@ -1,0 +1,7 @@
+<map id="fw_fs_namespace_t" name="fw_fs_namespace_t">
+<area shape="rect" id="Node000001" title="Independently injectable path/namespace facade." alt="" coords="101,101,252,127"/>
+<area shape="rect" id="Node000002" href="$structfw__fs__namespace__iface.html" title="Namespace backend operations." alt="" coords="5,5,183,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="115,39,168,99,164,103,111,43"/>
+<area shape="rect" id="Node000003" href="$structfw__fs__caps__t.html" title="Static properties and workspace requirements of one bound port." alt="" coords="207,5,312,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="242,43,189,103,185,99,238,39"/>
+</map>

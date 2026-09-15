@@ -1,0 +1,8 @@
+<map id="apps/board/stand_alone/ereader/src/secure_exception.c" name="apps/board/stand_alone/ereader/src/secure_exception.c">
+<area shape="rect" id="Node000001" title="Secure&#45;side fault handler for NS &#45;&gt; S violations." alt="" coords="5,5,233,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="84,167,155,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="116,46,110,80,109,118,115,153,110,154,103,119,104,79,111,45"/>
+<area shape="rect" id="Node000003" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="118,93,201,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="131,44,150,80,145,82,127,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="155,120,135,156,130,153,150,118"/>
+</map>

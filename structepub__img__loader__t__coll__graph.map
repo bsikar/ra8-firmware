@@ -1,0 +1,23 @@
+<map id="epub_img_loader_t" name="epub_img_loader_t">
+<area shape="rect" id="Node000001" title="Context for the real reflow &lt;img&gt; loader (epub_reflow_img_load)." alt="" coords="1061,149,1208,174"/>
+<area shape="rect" id="Node000002" href="$structepub__book__t.html" title="Opened EPUB book." alt="" coords="867,149,972,174"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="986,159,1061,159,1061,164,986,164"/>
+<area shape="rect" id="Node000003" href="$structepub__miniz__arena__t.html" title="Descriptor for one caller&#45;owned miniz allocation arena." alt="" coords="527,15,681,41"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="695,23,770,32,808,44,844,60,869,80,889,104,915,147,910,150,884,107,865,84,841,65,806,49,769,38,694,28"/>
+<area shape="rect" id="Node000004" href="$structepub__miniz__workspace__t.html" title="Exactly&#45;sized, maximally&#45;aligned storage for one miniz arena." alt="" coords="511,69,697,94"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="711,86,777,97,844,115,875,130,902,146,899,151,873,134,842,120,776,102,710,91"/>
+<area shape="rect" id="Node000005" href="$structepub__xml__workspace__t.html" title="Per&#45;book bounded storage for strict OPF/container/TOC parsing." alt="" coords="517,122,691,147"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="705,141,866,154,866,160,705,146"/>
+<area shape="rect" id="Node000006" href="$structxml__workspace__t.html" title="Exactly bounded caller&#45;owned nesting storage." alt="" coords="213,86,349,111"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="363,105,517,122,516,128,363,110"/>
+<area shape="rect" id="Node000007" href="$structxml__frame__t.html" title="One open&#45;element identity retained for close&#45;tag validation." alt="" coords="5,86,111,111"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="125,96,213,96,213,101,125,101"/>
+<area shape="rect" id="Node000008" href="$structxml__span__t.html" title="Immutable byte span expressed relative to the source." alt="" coords="233,159,330,185"/>
+<area shape="poly" id="edge7_Node000005_Node000008" title=" " alt="" coords="344,173,413,173,486,167,560,145,562,150,487,172,413,178,344,178"/>
+<area shape="rect" id="Node000009" href="$structepub__stream__media__t.html" title="Seekable EPUB media descriptor – opens with no whole&#45;file residency (#151)." alt="" coords="521,175,687,201"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="701,190,771,188,842,181,882,172,883,177,843,187,771,194,701,195"/>
+<area shape="rect" id="Node000010" href="$structepub__manifest__item__t.html" title="One &lt;manifest&gt; &lt;item&gt; entry, retained in OPF document order." alt="" coords="520,229,688,254"/>
+<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="701,243,772,237,808,230,842,219,878,197,905,172,908,176,881,201,844,224,809,235,773,242,702,248"/>
+<area shape="rect" id="Node000011" href="$structepub__toc__entry__t.html" title="One titled entry in the table of contents." alt="" coords="537,282,671,307"/>
+<area shape="poly" id="edge10_Node000002_Node000011" title=" " alt="" coords="685,301,723,300,764,296,804,286,841,270,867,249,887,222,911,173,916,176,891,225,871,252,844,274,806,291,765,301,724,306,685,306"/>
+</map>

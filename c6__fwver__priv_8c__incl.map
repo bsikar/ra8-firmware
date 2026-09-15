@@ -1,0 +1,31 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/c6_fwver_priv.c" name="examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/c6_fwver_priv.c">
+<area shape="rect" id="Node000001" title="The ESP_PRIV_IF control channel: host capabilities out, INIT in." alt="" coords="733,5,938,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="207,284,278,309"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="733,40,546,52,438,63,328,78,224,99,132,125,94,141,61,158,35,177,17,197,8,219,14,237,31,252,58,264,126,281,193,290,193,295,125,286,56,269,28,256,10,240,3,219,12,195,31,173,58,153,92,136,131,120,222,94,327,73,437,58,546,46,732,34"/>
+<area shape="rect" id="Node000003" href="$c6__fwver_8h.html" title="Shared contract for the esp&#45;hosted RPC round&#45;trip application." alt="" coords="245,115,336,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="733,54,350,119,349,114,732,49"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="480,284,655,309"/>
+<area shape="poly" id="edge13_Node000001_Node000007" title=" " alt="" coords="734,62,692,82,656,110,634,140,625,168,618,200,605,237,584,274,580,271,600,235,613,198,620,167,629,137,652,106,689,78,731,57"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="666,108,819,148"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="811,62,773,100,769,96,807,58"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="844,115,1017,141"/>
+<area shape="poly" id="edge12_Node000001_Node000010" title=" " alt="" coords="864,58,911,104,907,107,861,62"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="1041,108,1204,148"/>
+<area shape="poly" id="edge14_Node000001_Node000011" title=" " alt="" coords="917,58,1052,101,1051,106,915,63"/>
+<area shape="rect" id="Node000012" href="$port__esp__hosted__host__config__features_8h.html" title="esp&#45;hosted port header: optional host features, RPC bounds, counters." alt="" coords="1228,108,1392,148"/>
+<area shape="poly" id="edge15_Node000001_Node000012" title=" " alt="" coords="939,51,1216,105,1215,111,938,57"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="1417,115,1537,141"/>
+<area shape="poly" id="edge16_Node000001_Node000013" title=" " alt="" coords="939,41,1154,66,1280,84,1405,105,1424,109,1423,115,1404,111,1279,89,1154,71,938,46"/>
+<area shape="poly" id="edge4_Node000003_Node000002" title=" " alt="" coords="245,137,186,145,122,158,65,176,44,186,31,198,22,217,26,233,42,248,66,260,129,278,194,288,193,293,128,283,64,265,39,252,22,236,17,217,27,194,41,182,63,171,120,153,185,140,244,132"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="41,203,116,229"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="263,143,120,201,118,196,261,138"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="140,203,299,229"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="283,143,240,194,236,191,279,139"/>
+<area shape="rect" id="Node000006" href="$port__esp__hosted__host__spi_8h.html" title="esp&#45;hosted port header: full&#45;duplex SPI transport buffer size." alt="" coords="426,196,590,236"/>
+<area shape="poly" id="edge6_Node000003_Node000006" title=" " alt="" coords="321,138,448,188,446,193,319,143"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="323,203,402,229"/>
+<area shape="poly" id="edge9_Node000003_Node000008" title=" " alt="" coords="302,139,345,191,341,194,298,143"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="445,239,292,284,290,278,443,233"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="524,235,553,271,548,275,520,238"/>
+<area shape="poly" id="edge10_Node000008_Node000002" title=" " alt="" coords="346,231,273,278,270,274,343,227"/>
+</map>

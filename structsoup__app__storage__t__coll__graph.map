@@ -1,0 +1,7 @@
+<map id="soup_app_storage_t" name="soup_app_storage_t">
+<area shape="rect" id="Node000001" title="Static application workspace allocated in .bss." alt="" coords="5,197,157,223"/>
+<area shape="rect" id="Node000002" href="$structsoup__context__t.html" title="Caller&#45;owned bounded workspace for puzzle solving (zero&#45;heap)." alt="" coords="21,101,142,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="84,141,84,197,79,197,79,141"/>
+<area shape="rect" id="Node000003" href="$structsoup__grid__t.html" title="In&#45;memory word search board matrix." alt="" coords="33,5,130,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="84,45,84,101,79,101,79,45"/>
+</map>

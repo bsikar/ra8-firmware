@@ -1,0 +1,12 @@
+<map id="libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2_pdm.h" name="libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2_pdm.h">
+<area shape="rect" id="Node000001" title="EK&#45;RA8D2 onboard SPH0690 PDM microphone policy." alt="" coords="5,5,235,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="101,240,171,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,47,98,75,86,112,80,152,82,172,86,191,98,211,113,229,109,232,94,215,82,193,76,173,75,152,81,111,93,73,107,44"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="97,167,175,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="125,46,136,153,131,153,119,46"/>
+<area shape="rect" id="Node000004" href="$ra8__pdm_8h.html" title="Pulse Density Modulation Interface (PDM&#45;IF) capture driver." alt="" coords="157,93,248,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="142,44,182,82,179,86,138,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="139,192,139,226,133,226,133,192"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="205,119,201,153,189,193,176,214,161,232,157,229,172,211,184,191,196,152,200,119"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="194,121,158,158,154,155,190,117"/>
+</map>

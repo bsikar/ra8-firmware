@@ -1,0 +1,8 @@
+<map id="libs/if_ra8_vfs/inc/fw_if_fs_ra8_vfs.h" name="libs/if_ra8_vfs/inc/fw_if_fs_ra8_vfs.h">
+<area shape="rect" id="Node000001" title="Firmware filesystem&#45;port adapter over ra8_io_vfs and ra8_fs." alt="" coords="5,5,148,45"/>
+<area shape="rect" id="Node000002" href="$fw__if__fs__ra8__vfs_8c.html" title="fw_if_fs adapter over one bound ra8_io_vfs mount." alt="" coords="5,196,148,236"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="55,58,37,94,32,121,37,147,48,172,63,194,58,197,43,175,31,149,26,121,31,92,50,55"/>
+<area shape="rect" id="Node000003" href="$fw__if__fs__ra8__vfs__contracts__internal_8h.html" title="File&#45;local contracts for the firmware VFS filesystem adapter." alt="" coords="45,93,244,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="100,55,128,92,123,95,96,58"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="120,161,93,198,88,194,115,158"/>
+</map>

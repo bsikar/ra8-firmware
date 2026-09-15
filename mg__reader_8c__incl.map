@@ -1,0 +1,48 @@
+<map id="examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c" name="examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c">
+<area shape="rect" id="Node000001" title="Tap&#45;driven pan/zoom viewer over a tiled manga page (ereader_manga)." alt="" coords="307,5,493,60"/>
+<area shape="rect" id="Node000002" href="$mg__reader_8h.html" title="Tap&#45;driven pan/zoom viewer over a tiled manga page (ereader_manga)." alt="" coords="255,108,358,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="373,62,331,100,328,96,370,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="43,255,117,280"/>
+<area shape="poly" id="edge16_Node000001_Node000003" title=" " alt="" coords="308,62,258,82,206,108,158,142,117,183,100,212,89,242,84,240,95,210,113,180,154,137,204,103,256,77,306,57"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="369,401,439,427"/>
+<area shape="poly" id="edge17_Node000001_Node000004" title=" " alt="" coords="307,55,211,78,113,110,71,129,38,149,16,171,8,193,8,268,11,281,18,293,46,317,89,337,141,356,256,385,356,403,355,408,255,390,140,361,87,342,44,321,14,297,6,283,3,269,3,192,11,168,34,145,69,124,111,105,209,73,306,50"/>
+<area shape="rect" id="Node000005" href="$jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="156,181,207,207"/>
+<area shape="poly" id="edge18_Node000001_Node000005" title=" " alt="" coords="326,62,284,83,244,110,217,139,196,170,192,167,213,136,241,106,281,79,324,58"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="365,328,443,353"/>
+<area shape="poly" id="edge26_Node000001_Node000006" title=" " alt="" coords="426,59,468,113,508,180,521,216,527,254,529,268,526,281,513,298,496,312,458,330,455,325,493,307,509,294,522,279,524,268,521,255,516,218,503,182,463,116,421,62"/>
+<area shape="rect" id="Node000007" href="$ra8__tile__cache_8h.html" title="Fixed&#45;RAM&#45;budget image&#45;tile cache with LRU eviction (Layer 3b, #147)." alt="" coords="336,181,464,207"/>
+<area shape="poly" id="edge33_Node000001_Node000007" title=" " alt="" coords="403,60,403,168,397,168,397,60"/>
+<area shape="rect" id="Node000009" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="643,255,743,280"/>
+<area shape="poly" id="edge19_Node000001_Node000009" title=" " alt="" coords="494,44,563,67,596,84,626,106,652,138,671,174,684,210,692,241,686,242,679,212,666,176,648,141,622,110,593,88,561,71,493,49"/>
+<area shape="rect" id="Node000012" href="$ra8__gfx_8h.html" title="Software 2D graphics primitives layered on top of a caller&#45;ownedframebuffer (DRW / D/AVE 2D / GLCDC r..." alt="" coords="768,255,851,280"/>
+<area shape="poly" id="edge27_Node000001_Node000012" title=" " alt="" coords="494,47,575,69,616,86,655,106,699,137,738,175,795,242,791,245,734,178,695,142,652,110,614,91,573,75,493,52"/>
+<area shape="rect" id="Node000013" href="$ra8__gfx__font_8h.html" title="Bitmap font descriptor + bundled font handles for ra8_gfx." alt="" coords="849,328,965,353"/>
+<area shape="poly" id="edge32_Node000001_Node000013" title=" " alt="" coords="494,44,591,67,642,84,691,106,747,137,788,167,824,203,865,253,885,284,899,314,895,316,880,286,861,256,820,207,784,171,744,142,688,110,640,89,590,72,493,50"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="256,135,200,154,172,167,146,183,116,213,95,244,90,241,112,209,142,179,169,162,198,149,254,130"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="308,134,304,172,303,228,311,292,320,323,333,352,350,374,372,392,369,396,347,378,328,355,315,325,306,293,298,229,299,172,302,133"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="288,136,215,177,212,172,285,131"/>
+<area shape="poly" id="edge9_Node000002_Node000006" title=" " alt="" coords="359,125,420,143,451,158,478,179,498,203,511,227,513,253,502,281,480,307,452,325,449,320,477,303,498,279,507,252,506,229,494,206,474,183,448,163,418,148,358,130"/>
+<area shape="poly" id="edge10_Node000002_Node000007" title=" " alt="" coords="323,131,376,171,372,175,320,135"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="167,209,109,249,106,244,164,204"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="180,207,173,236,169,274,172,315,178,334,189,351,215,369,258,384,355,403,354,409,256,389,212,374,185,355,174,337,167,316,163,274,168,235,175,206"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="201,205,376,318,373,323,198,209"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="407,354,407,388,401,388,401,354"/>
+<area shape="poly" id="edge11_Node000007_Node000004" title=" " alt="" coords="381,209,355,229,334,256,333,267,335,280,337,318,340,333,348,352,362,373,380,390,376,394,358,376,343,355,335,335,331,318,329,280,327,267,330,254,351,225,377,205"/>
+<area shape="poly" id="edge12_Node000007_Node000006" title=" " alt="" coords="427,205,457,224,470,238,481,254,484,274,475,293,459,310,440,323,437,319,456,306,471,290,479,273,476,256,466,241,453,228,424,209"/>
+<area shape="rect" id="Node000008" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="344,255,467,280"/>
+<area shape="poly" id="edge13_Node000007_Node000008" title=" " alt="" coords="404,207,406,241,401,241,398,207"/>
+<area shape="poly" id="edge14_Node000008_Node000004" title=" " alt="" coords="392,282,371,303,355,329,353,345,358,361,380,390,376,393,353,364,347,346,349,327,367,299,388,278"/>
+<area shape="poly" id="edge15_Node000008_Node000006" title=" " alt="" coords="408,280,407,315,402,314,402,280"/>
+<area shape="poly" id="edge20_Node000009_Node000004" title=" " alt="" coords="690,282,667,318,650,338,629,356,586,379,539,395,453,411,452,406,538,390,584,374,627,351,646,335,663,315,685,279"/>
+<area shape="poly" id="edge21_Node000009_Node000006" title=" " alt="" coords="647,283,457,329,456,324,646,277"/>
+<area shape="rect" id="Node000010" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="691,328,773,353"/>
+<area shape="poly" id="edge22_Node000009_Node000010" title=" " alt="" coords="702,279,722,315,717,317,697,282"/>
+<area shape="rect" id="Node000011" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="467,328,615,353"/>
+<area shape="poly" id="edge24_Node000009_Node000011" title=" " alt="" coords="670,282,579,325,577,320,668,278"/>
+<area shape="poly" id="edge23_Node000010_Node000004" title=" " alt="" coords="691,354,454,405,453,399,690,348"/>
+<area shape="poly" id="edge25_Node000011_Node000004" title=" " alt="" coords="520,356,440,397,437,393,518,351"/>
+<area shape="poly" id="edge28_Node000012_Node000004" title=" " alt="" coords="812,281,808,318,800,338,787,355,762,370,727,383,636,400,538,410,454,414,453,409,537,404,635,395,725,377,760,366,784,351,796,335,803,316,807,280"/>
+<area shape="poly" id="edge29_Node000012_Node000006" title=" " alt="" coords="768,280,756,283,609,306,457,331,457,325,608,301,756,277,767,275"/>
+<area shape="poly" id="edge30_Node000012_Node000013" title=" " alt="" coords="827,278,881,317,878,322,823,282"/>
+<area shape="poly" id="edge31_Node000013_Node000004" title=" " alt="" coords="849,353,830,356,454,409,453,403,829,351,848,348"/>
+</map>

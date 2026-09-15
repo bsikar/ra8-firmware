@@ -1,0 +1,5 @@
+<map id="mdl_c6_output_t" name="mdl_c6_output_t">
+<area shape="rect" id="Node000001" title="Transaction state that turns one C6 body into a network response." alt="" coords="20,101,151,127"/>
+<area shape="rect" id="Node000002" href="$structmdl__net__body__sink__t.html" title="Caller&#45;owned lifecycle and write seam for one response body." alt="" coords="5,5,165,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="88,45,88,101,83,101,83,45"/>
+</map>

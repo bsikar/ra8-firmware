@@ -1,0 +1,7 @@
+<map id="tools/ra8_emulator/inc/board_periph_riic_devices_internal.h" name="tools/ra8_emulator/inc/board_periph_riic_devices_internal.h">
+<area shape="rect" id="Node000001" title="Internal RIIC bus&#45;device registry and board&#45;device models." alt="" coords="21,5,183,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,76,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="85,62,59,98,55,95,81,59"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="101,108,226,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="123,59,149,95,145,98,119,62"/>
+</map>

@@ -1,0 +1,25 @@
+var structr__i2c__regs__t =
+[
+    [ "ICBRH", "structr__i2c__regs__t.html#afd7b4944f33569ba1a4c8909000c218b", null ],
+    [ "ICBRL", "structr__i2c__regs__t.html#a45892d75a2163e3efae60cb7fd247b4f", null ],
+    [ "ICCR1", "structr__i2c__regs__t.html#acee3e8d493d69a12c51e4a5def12ba87", null ],
+    [ "ICCR2", "structr__i2c__regs__t.html#a10e1f642732377202dab5e4a5bf8fc6a", null ],
+    [ "ICDRR", "structr__i2c__regs__t.html#a7f74a45c511b0c398beda403641b0390", null ],
+    [ "ICDRT", "structr__i2c__regs__t.html#a7a41fef5cef611aa5962b3e84f23a038", null ],
+    [ "ICFER", "structr__i2c__regs__t.html#ab10639ce2291de49a513e15e09f81c52", null ],
+    [ "ICIER", "structr__i2c__regs__t.html#a17fbbea1974c2dbf5835d40ed12c7da5", null ],
+    [ "ICMR1", "structr__i2c__regs__t.html#a13a20fb02717e114ea7c44cb06f2d86d", null ],
+    [ "ICMR2", "structr__i2c__regs__t.html#ad58b9f7590f26a69a1b216b73f03fe03", null ],
+    [ "ICMR3", "structr__i2c__regs__t.html#af91d9a6043bc919b93dc6b1fe297a8a8", null ],
+    [ "ICSER", "structr__i2c__regs__t.html#a4846e9212b9f64805870e8ce62fde6b3", null ],
+    [ "ICSR1", "structr__i2c__regs__t.html#a82e84e888c8901d0093d31ba450a514f", null ],
+    [ "ICSR2", "structr__i2c__regs__t.html#afee7b1a98036690eea4843c2280d0bda", null ],
+    [ "ICWUR", "structr__i2c__regs__t.html#ac33d7eba75e47b9e9c3ab24d96b68296", null ],
+    [ "ICWUR2", "structr__i2c__regs__t.html#a248cda501014fd41d13613f1b4beb592", null ],
+    [ "SARL0", "structr__i2c__regs__t.html#af5b57b85e79769798238f59b4e454138", null ],
+    [ "SARL1", "structr__i2c__regs__t.html#a8a74b91792b55ae10cf8a532f3ae507d", null ],
+    [ "SARL2", "structr__i2c__regs__t.html#a87dfe10e04ab2996f654237a9a230c5c", null ],
+    [ "SARU0", "structr__i2c__regs__t.html#a338c7c0020781d06057f801a7c770c3b", null ],
+    [ "SARU1", "structr__i2c__regs__t.html#ae07cf21314318a801616ed40ea7db929", null ],
+    [ "SARU2", "structr__i2c__regs__t.html#af243129efc675207f3d0fd0e2aa06cac", null ]
+];

@@ -1,0 +1,23 @@
+<map id="apps/shared_libs/jof/src/jof_audit.c" name="apps/shared_libs/jof/src/jof_audit.c">
+<area shape="rect" id="Node000001" title="No&#45;heap implementation of the backing&#45;agnostic JOF audit." alt="" coords="210,5,362,45"/>
+<area shape="rect" id="Node000002" href="$jof__audit_8h.html" title="No&#45;heap, backing&#45;agnostic structural audit for JOF atlases." alt="" coords="77,93,168,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="248,48,160,90,157,85,246,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="174,240,249,265"/>
+<area shape="poly" id="edge10_Node000001_Node000003" title=" " alt="" coords="283,46,222,228,217,226,278,45"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="63,313,134,339"/>
+<area shape="poly" id="edge11_Node000001_Node000004" title=" " alt="" coords="293,45,299,89,301,148,291,210,280,240,263,267,239,290,209,306,178,317,148,323,147,318,176,312,207,301,235,286,259,264,275,238,286,209,295,147,294,90,288,46"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="324,93,395,119"/>
+<area shape="poly" id="edge12_Node000001_Node000007" title=" " alt="" coords="306,44,341,81,337,85,302,47"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="420,93,545,119"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="334,43,442,86,440,91,332,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="132,117,162,165,200,227,195,230,157,168,127,120"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="109,121,57,169,31,203,11,241,8,253,11,264,31,288,57,305,54,310,28,292,7,267,3,253,6,239,26,200,53,165,105,117"/>
+<area shape="rect" id="Node000005" href="$jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="97,167,148,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="125,119,125,153,120,153,120,119"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="20,240,99,265"/>
+<area shape="poly" id="edge9_Node000002_Node000006" title=" " alt="" coords="116,120,87,168,68,227,63,225,83,166,111,118"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="138,190,188,229,185,233,135,194"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="124,193,114,266,107,300,102,299,109,265,119,192"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="114,194,81,231,77,228,110,191"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="68,264,88,300,83,303,64,267"/>
+</map>

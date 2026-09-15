@@ -1,0 +1,7 @@
+<map id="apps/shared_libs/comic/src/ra8_rar5_internal.h" name="apps/shared_libs/comic/src/ra8_rar5_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU seam between the RAR5 entropy front&#45;end and the LZ decoder." alt="" coords="104,5,279,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rar5_8c.html" title="RAR 5.0 LZ decoder driver: token loop, data filters, public entry." alt="" coords="5,93,180,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="161,56,116,95,113,91,158,52"/>
+<area shape="rect" id="Node000003" href="$ra8__rar5__tables_8c.html" title="RAR 5.0 entropy front&#45;end: bit reader, canonical Huffman, block tables." alt="" coords="204,93,379,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="226,52,271,91,267,95,222,56"/>
+</map>

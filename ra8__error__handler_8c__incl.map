@@ -1,0 +1,13 @@
+<map id="libs/ra8_core/src/ra8_error_handler.c" name="libs/ra8_core/src/ra8_error_handler.c">
+<area shape="rect" id="Node000001" title="Default implementation of the fatal&#45;error sink." alt="" coords="164,5,317,45"/>
+<area shape="rect" id="Node000002" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="5,93,153,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="203,48,117,90,114,85,201,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="156,167,227,192"/>
+<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="236,47,219,94,201,154,196,153,214,92,231,45"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="229,93,354,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="255,44,279,80,274,83,251,47"/>
+<area shape="rect" id="Node000005" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="378,93,461,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="285,43,382,85,380,90,282,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="99,116,163,157,160,161,96,121"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="383,121,241,165,239,160,382,116"/>
+</map>

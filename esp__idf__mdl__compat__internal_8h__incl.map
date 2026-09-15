@@ -1,0 +1,12 @@
+<map id="port/esp32_c6/src/esp_idf_mdl_compat_internal.h" name="port/esp32_c6/src/esp_idf_mdl_compat_internal.h">
+<area shape="rect" id="Node000001" title="ESP&#45;IDF media&#45;service declarations for target builds and AST audits." alt="" coords="55,5,257,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="130,48,72,87,69,83,127,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="121,167,191,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="154,46,148,80,147,118,152,153,147,153,141,119,142,79,148,45"/>
+<area shape="rect" id="Node000004" href="$esp__err_8h.html" title="ESP&#45;IDF&#45;compatible error type and error codes, supplied by this port." alt="" coords="155,93,237,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="168,44,186,80,181,82,163,47"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="261,93,387,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="197,43,288,85,286,90,195,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="192,120,172,156,167,153,187,118"/>
+</map>

@@ -1,0 +1,18 @@
+<map id="ra8_wifi_c6link_cfg" name="ra8_wifi_c6link_cfg">
+<area shape="rect" id="Node000001" title="What ra8_wifi_c6link_setup needs to wire this backend to a link." alt="" coords="93,293,240,319"/>
+<area shape="rect" id="Node000002" href="$structra8__c6link.html" title="Caller&#45;allocated link handle." alt="" coords="309,197,398,223"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="319,231,191,296,189,291,317,227"/>
+<area shape="rect" id="Node000003" href="$structra8__c6link__transport.html" title="Function&#45;pointer seam a backend fills so the facade can reach the C6." alt="" coords="5,101,160,127"/>
+<area shape="poly" id="edge8_Node000001_Node000003" title=" " alt="" coords="96,138,164,292,159,294,91,141"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="117,131,159,151,206,171,259,187,309,198,308,203,258,192,204,176,157,156,115,136"/>
+<area shape="rect" id="Node000004" href="$structra8__c6link__event.html" title="One decoded co&#45;processor announcement." alt="" coords="184,101,317,127"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="269,136,302,171,335,195,332,199,298,175,265,139"/>
+<area shape="rect" id="Node000005" href="$structra8__c6link__mac.html" title="One IEEE 802 address, by value." alt="" coords="189,5,313,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="253,45,253,101,248,101,248,45"/>
+<area shape="rect" id="Node000006" href="$structra8__c6link__wait.html" title="The one outstanding request a link is waiting on." alt="" coords="342,101,466,127"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="394,140,362,198,357,196,389,138"/>
+<area shape="rect" id="Node000007" href="$structra8__c6link__fault.html" title="What the co&#45;processor said when a request did not succeed." alt="" coords="490,101,617,127"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="518,135,379,200,377,195,515,130"/>
+<area shape="rect" id="Node000008" href="$structra8__c6link__stats.html" title="What one pump did on the wire, counted rather than inferred." alt="" coords="641,101,769,127"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="660,134,521,176,399,203,398,198,519,171,658,129"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="tools/rabook_imagepack/inc/ra8_fmt_host_spool_internal.h" name="tools/rabook_imagepack/inc/ra8_fmt_host_spool_internal.h">
+<area shape="rect" id="Node000001" title="Anonymous raw&#45;fd scratch artifacts for portable format verification." alt="" coords="112,5,295,60"/>
+<area shape="rect" id="Node000002" href="$ra8__fmt__host__spool_8c.html" title="Owned anonymous raw&#45;fd spools for bounded verifier composition." alt="" coords="5,115,193,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="168,72,121,117,117,113,164,68"/>
+<area shape="rect" id="Node000003" href="$ra8__fmt__portable__verify_8c.html" title="Raw&#45;fd composition root for bounded two&#45;spool JOF verification." alt="" coords="217,108,400,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="243,68,283,106,279,110,239,72"/>
+</map>

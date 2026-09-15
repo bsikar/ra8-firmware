@@ -1,0 +1,19 @@
+<map id="apps/shared_libs/reflow/src/ra8_img_arena.c" name="apps/shared_libs/reflow/src/ra8_img_arena.c">
+<area shape="rect" id="Node000001" title="Caller&#45;bound bump arena with refcount auto&#45;reset for stb_image." alt="" coords="172,5,347,45"/>
+<area shape="rect" id="Node000002" href="$ra8__img__arena_8h.html" title="Heap&#45;free scratch allocator hooks for the stb_image single&#45;TU build." alt="" coords="66,93,197,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="230,48,163,88,160,84,227,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="159,240,234,265"/>
+<area shape="poly" id="edge8_Node000001_Node000003" title=" " alt="" coords="257,46,206,227,201,226,252,45"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="87,313,157,339"/>
+<area shape="poly" id="edge9_Node000001_Node000005" title=" " alt="" coords="267,45,275,88,279,146,273,208,263,239,248,267,233,284,213,298,172,316,170,312,211,294,229,280,244,264,258,237,267,207,274,146,270,89,262,46"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="323,93,393,119"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="285,43,334,82,331,87,282,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="139,118,188,226,183,229,134,120"/>
+<area shape="rect" id="Node000004" href="$reflow__image_8h.html" title="Zero&#45;heap raster image decode + scale + blit for reflow (#106)." alt="" coords="23,167,146,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="126,120,102,157,98,154,121,118"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="104,190,168,230,165,235,101,194"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="90,192,118,299,113,301,85,193"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,240,84,265"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="80,194,60,229,56,227,76,191"/>
+<area shape="poly" id="edge7_Node000006_Node000005" title=" " alt="" coords="59,263,101,302,97,306,55,267"/>
+</map>

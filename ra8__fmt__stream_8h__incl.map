@@ -1,0 +1,21 @@
+<map id="tools/rabook_imagepack/inc/ra8_fmt_stream.h" name="tools/rabook_imagepack/inc/ra8_fmt_stream.h">
+<area shape="rect" id="Node000001" title="Caller&#45;workspace I/O contracts for portable format&#45;tool engines." alt="" coords="130,5,313,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,240,80,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="154,48,116,67,83,95,65,127,53,162,45,227,40,226,48,161,60,125,79,92,113,63,152,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="177,313,247,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="240,44,270,85,301,141,312,172,317,204,316,236,305,267,284,292,257,310,254,305,280,288,300,264,311,235,312,205,307,174,296,143,266,88,236,47"/>
+<area shape="rect" id="Node000004" href="$jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="155,167,205,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="219,47,189,154,184,153,214,45"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="211,240,290,265"/>
+<area shape="poly" id="edge13_Node000001_Node000005" title=" " alt="" coords="227,45,245,166,251,226,246,226,240,167,222,46"/>
+<area shape="rect" id="Node000006" href="$jof__audit_8h.html" title="No&#45;heap, backing&#45;agnostic structural audit for JOF atlases." alt="" coords="93,93,184,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="203,47,163,86,159,82,199,44"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="159,194,78,236,76,231,157,190"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="185,192,209,299,204,301,180,193"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="194,190,232,228,228,232,190,194"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="247,267,227,303,222,300,242,264"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="133,120,101,168,60,230,56,227,96,165,129,117"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="140,119,140,152,145,191,170,252,199,301,194,303,165,254,140,193,135,152,135,119"/>
+<area shape="poly" id="edge11_Node000006_Node000004" title=" " alt="" coords="148,118,169,153,164,156,143,120"/>
+<area shape="poly" id="edge12_Node000006_Node000005" title=" " alt="" coords="161,117,191,137,219,165,237,196,247,226,242,227,232,198,215,168,187,141,158,121"/>
+</map>

@@ -1,0 +1,17 @@
+<map id="mdl_session_t" name="mdl_session_t">
+<area shape="rect" id="Node000001" title="One download session&#39;s identity and robots.txt state." alt="" coords="162,409,277,435"/>
+<area shape="rect" id="Node000002" href="$structmdl__net__iface__t.html" title="A network backend handle: an immutable method table plus its state." alt="" coords="5,313,132,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="100,344,202,407,199,411,97,348"/>
+<area shape="rect" id="Node000003" href="$structra8__io__stream__t.html" title="Caller&#45;allocated byte&#45;stream handle binding a sink to its context." alt="" coords="156,313,283,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="222,353,222,409,217,409,217,353"/>
+<area shape="rect" id="Node000004" href="$structra8__io__stream__iface.html" title="Opaque to stream users; backend implementers use the public backend contract in ra8_io_stream_backend..." alt="" coords="138,197,293,223"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="219,236,222,313,216,313,214,237"/>
+<area shape="rect" id="Node000005" href="$structmdl__robots__cache__t.html" title="Fixed&#45;size per&#45;host robots.txt cache for one run." alt="" coords="325,313,477,339"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="372,348,302,388,249,412,247,407,299,383,369,344"/>
+<area shape="rect" id="Node000006" href="$structmdl__robots__cache__entry__t.html" title="One host&#39;s cached robots.txt outcome." alt="" coords="317,197,511,223"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="414,237,405,313,399,313,408,236"/>
+<area shape="rect" id="Node000007" href="$structmdl__robots__t.html" title="Rules and crawl&#45;delay for the group matching our user&#45;agent." alt="" coords="361,101,467,127"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="417,141,417,197,411,197,411,141"/>
+<area shape="rect" id="Node000008" href="$structmdl__robots__rule__t.html" title="One Allow/Disallow rule from the selected group." alt="" coords="345,5,483,31"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="417,45,417,101,411,101,411,45"/>
+</map>

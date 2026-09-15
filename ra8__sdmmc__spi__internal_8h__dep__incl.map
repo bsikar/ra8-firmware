@@ -1,0 +1,13 @@
+<map id="libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_internal.h" name="libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private cross&#45;TU surface for the SPI&#45;mode SD card driver." alt="" coords="141,5,361,45"/>
+<area shape="rect" id="Node000002" href="$ra8__sdmmc__spi_8c.html" title="SD card driver in SPI&#45;mode – protocol implementation." alt="" coords="5,196,168,236"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="135,53,106,71,82,95,72,119,71,146,75,173,82,195,77,197,70,174,66,147,67,118,78,92,102,66,133,48"/>
+<area shape="rect" id="Node000003" href="$ra8__sdmmc__spi__core__contracts__internal_8h.html" title="Contracts for file&#45;local SD protocol helpers." alt="" coords="92,93,279,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="232,58,206,95,202,92,227,55"/>
+<area shape="rect" id="Node000004" href="$ra8__sdmmc__spi__io_8c.html" title="SD card driver in SPI&#45;mode – public block I/O and SCI factory." alt="" coords="287,196,468,236"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="273,55,367,194,362,197,269,58"/>
+<area shape="rect" id="Node000005" href="$ra8__sdmmc__spi__io__contracts__internal_8h.html" title="Contracts for file&#45;local SD block&#45;I/O helpers." alt="" coords="353,93,524,148"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="302,49,387,91,385,96,300,54"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="149,159,108,198,105,194,146,156"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="416,161,392,197,387,194,412,158"/>
+</map>

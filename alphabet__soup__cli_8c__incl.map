@@ -1,0 +1,40 @@
+<map id="apps/host/alphabet_soup/src/alphabet_soup_cli.c" name="apps/host/alphabet_soup/src/alphabet_soup_cli.c">
+<area shape="rect" id="Node000001" title="Bounded POSIX file ingestion for the Alphabet Soup host CLI." alt="" coords="390,5,605,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="338,93,409,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="469,48,405,88,402,84,466,43"/>
+<area shape="rect" id="Node000003" href="$alphabet__soup_8h.html" title="Word search puzzle solver API and bounded workspace definitions." alt="" coords="125,167,254,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="489,47,463,85,444,104,423,121,386,140,346,155,269,173,268,168,345,150,384,136,420,116,441,100,458,81,485,44"/>
+<area shape="rect" id="Node000008" href="$alphabet__soup__cli__internal_8h.html" title="Private host&#45;file helpers for the Alphabet Soup CLI wrapper." alt="" coords="379,167,587,192"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="498,46,488,153,483,153,493,46"/>
+<area shape="rect" id="Node000011" href="$fw__if__fs_8h.html" title="Architecture&#45;neutral filesystem namespace, stream, and transaction ports." alt="" coords="652,167,736,192"/>
+<area shape="poly" id="edge19_Node000001_Node000011" title=" " alt="" coords="524,43,669,156,666,160,520,48"/>
+<area shape="rect" id="Node000012" href="$fw__if__fs__posix_8h.html" title="Root&#45;confined hosted POSIX adapter for fw_if_fs." alt="" coords="630,93,757,119"/>
+<area shape="poly" id="edge24_Node000001_Node000012" title=" " alt="" coords="546,43,653,86,651,91,544,48"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="523,313,598,339"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="212,190,281,224,368,263,442,289,510,309,509,314,440,294,366,268,279,229,210,195"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="306,387,377,412"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="125,190,77,200,35,215,20,225,11,236,9,249,15,264,41,296,73,323,109,344,148,361,226,382,293,392,292,398,225,388,146,366,107,349,70,327,37,300,10,267,3,249,6,234,16,221,33,210,76,195,124,185"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="302,313,381,339"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="202,191,274,263,319,303,315,307,271,267,199,194"/>
+<area shape="rect" id="Node000007" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="25,240,152,265"/>
+<area shape="poly" id="edge7_Node000003_Node000007" title=" " alt="" coords="175,194,118,234,115,230,172,190"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="344,339,344,373,339,373,339,339"/>
+<area shape="poly" id="edge8_Node000007_Node000005" title=" " alt="" coords="107,263,223,336,305,378,303,383,220,341,104,268"/>
+<area shape="poly" id="edge9_Node000007_Node000006" title=" " alt="" coords="130,263,290,307,288,313,128,268"/>
+<area shape="poly" id="edge11_Node000008_Node000004" title=" " alt="" coords="492,191,519,239,551,300,546,302,514,241,487,194"/>
+<area shape="poly" id="edge12_Node000008_Node000005" title=" " alt="" coords="444,195,396,214,349,242,314,273,303,290,294,314,291,326,293,338,305,358,320,376,315,379,300,361,289,340,286,326,288,313,298,288,310,270,345,238,394,209,442,190"/>
+<area shape="poly" id="edge18_Node000008_Node000006" title=" " alt="" coords="444,195,404,213,385,226,369,242,354,270,347,300,341,299,349,268,365,238,382,222,402,208,442,190"/>
+<area shape="rect" id="Node000009" href="$fw__if__fs__types_8h.html" title="Portable filesystem value types and caller&#45;owned opaque handles." alt="" coords="630,240,757,265"/>
+<area shape="poly" id="edge13_Node000008_Node000009" title=" " alt="" coords="518,189,648,233,646,238,516,195"/>
+<area shape="rect" id="Node000010" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="379,240,504,265"/>
+<area shape="poly" id="edge17_Node000008_Node000010" title=" " alt="" coords="478,194,458,229,453,227,474,191"/>
+<area shape="poly" id="edge14_Node000009_Node000004" title=" " alt="" coords="673,268,595,309,593,304,671,263"/>
+<area shape="poly" id="edge15_Node000009_Node000005" title=" " alt="" coords="688,267,657,304,636,324,611,341,555,366,496,382,439,393,391,398,390,393,438,387,494,377,553,361,608,336,632,320,653,300,684,264"/>
+<area shape="poly" id="edge16_Node000009_Node000006" title=" " alt="" coords="638,268,395,317,394,311,637,263"/>
+<area shape="poly" id="edge20_Node000011_Node000004" title=" " alt="" coords="719,190,742,204,764,223,777,244,777,255,772,267,746,285,705,300,612,320,611,315,704,295,743,280,768,264,772,254,772,245,760,226,739,209,716,194"/>
+<area shape="poly" id="edge21_Node000011_Node000005" title=" " alt="" coords="728,190,756,203,781,220,797,241,798,254,793,267,768,292,727,315,675,334,616,351,493,378,391,394,390,389,492,373,614,346,673,329,724,310,764,288,789,264,793,253,792,243,778,224,753,207,726,195"/>
+<area shape="poly" id="edge23_Node000011_Node000006" title=" " alt="" coords="673,195,604,229,517,268,393,312,391,307,515,263,602,224,670,190"/>
+<area shape="poly" id="edge22_Node000011_Node000009" title=" " alt="" coords="696,192,696,226,691,226,691,192"/>
+<area shape="poly" id="edge25_Node000012_Node000005" title=" " alt="" coords="715,117,753,142,792,177,807,198,818,220,820,243,813,266,792,297,768,315,704,341,620,368,534,385,455,395,391,399,391,394,454,389,533,380,619,362,702,336,766,311,788,294,809,264,815,243,812,221,803,201,788,181,749,146,712,121"/>
+<area shape="poly" id="edge26_Node000012_Node000011" title=" " alt="" coords="696,119,696,153,691,153,691,119"/>
+</map>

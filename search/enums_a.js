@@ -1,0 +1,22 @@
+var searchData=
+[
+  ['jof_5faudit_5fhash_5ft_0',['jof_audit_hash_t',['../jof__audit_8c.html#a43af449fb85c0805f877634f6a733f57',1,'jof_audit.c']]],
+  ['jof_5fbound_5ft_1',['jof_bound_t',['../jof_8c.html#ad0c9c563f077cc71dffdc46f6be7a87c',1,'jof.c']]],
+  ['jof_5fbump_5fconst_5ft_2',['jof_bump_const_t',['../jof__internal_8h.html#a303a7a36f59e08b1779e95e69c6304df',1,'jof_internal.h']]],
+  ['jof_5fcarve_5fconst_5ft_3',['jof_carve_const_t',['../jof__internal_8h.html#a3dab11633c02ac0f3da4de4c21818a80',1,'jof_internal.h']]],
+  ['jof_5fcodec_5ft_4',['jof_codec_t',['../jof_8h.html#ac758e191f708c2b3d125c67457aa3f1a',1,'jof.h']]],
+  ['jof_5flayout_5ft_5',['jof_layout_t',['../jof_8h.html#a095790c363621f40ea1e41b04411e5ad',1,'jof.h']]],
+  ['jof_5fle_5ft_6',['jof_le_t',['../jof_8c.html#a05546b9a8fea0de9285085cd3e974779',1,'jof.c']]],
+  ['jof_5flimits_5ft_7',['jof_limits_t',['../jof_8h.html#a314da71e6157a09ccb513121107944eb',1,'jof.h']]],
+  ['jof_5fpng_5fsignature_5ft_8',['jof_png_signature_t',['../jof__produce_8c.html#a1b55faa82722c67fdee7de4f380dba6a',1,'jof_produce.c']]],
+  ['jof_5fprod_5fconst_5ft_9',['jof_prod_const_t',['../jof__produce_8c.html#a611a184b895bea9633ac2875d21ed12c',1,'jof_produce.c']]],
+  ['jof_5fwebp_5fconst_5ft_10',['jof_webp_const_t',['../jof__produce__webp_8c.html#ad5c53d08b847ce33d3280931943bc01f',1,'jof_produce_webp.c']]],
+  ['jof_5fworker_5fresult_5ft_11',['jof_worker_result_t',['../jof__worker_8h.html#a49f595b9e9a3121c904b90b21951e28e',1,'jof_worker.h']]],
+  ['jpeg_5fdsp_5fshift_5ft_12',['jpeg_dsp_shift_t',['../ra8__jpeg__sw__internal_8h.html#a6445ec66e13e9b1f0ceecf87ae65e662',1,'ra8_jpeg_sw_internal.h']]],
+  ['jpeg_5fenc_5ffield_5ft_13',['jpeg_enc_field_t',['../ra8__jpeg__sw__internal_8h.html#a97bdcc350a65d716a91f859009a62534',1,'ra8_jpeg_sw_internal.h']]],
+  ['jpeg_5fenc_5ft_14',['jpeg_enc_t',['../ra8__jpeg__sw__internal_8h.html#a667cf4c6df17f07ecb1af7cdf46f38f7',1,'ra8_jpeg_sw_internal.h']]],
+  ['jpeg_5fmarker_5frange_5ft_15',['jpeg_marker_range_t',['../ra8__jpeg__sw__internal_8h.html#ae756005f0c87153267c4ebe5931af31a',1,'ra8_jpeg_sw_internal.h']]],
+  ['jpeg_5fmarker_5ft_16',['jpeg_marker_t',['../c6__camera__mjpeg_2src_2c6__cam__camera_8c.html#a5303832eeb2bfee0352ece08e99194cd',1,'c6_cam_camera.c']]],
+  ['jpeg_5fmisc_5ft_17',['jpeg_misc_t',['../ra8__jpeg__sw__internal_8h.html#a77bb36946397b4c7b0bf02c7c0309521',1,'ra8_jpeg_sw_internal.h']]],
+  ['jpeg_5fycc_5fcoeff_5ft_18',['jpeg_ycc_coeff_t',['../ra8__jpeg__sw__internal_8h.html#a3efef89eae3d951b6834246de8609f96',1,'ra8_jpeg_sw_internal.h']]]
+];

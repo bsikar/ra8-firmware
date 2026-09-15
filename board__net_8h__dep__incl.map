@@ -1,0 +1,15 @@
+<map id="tools/ra8_emulator/inc/board_net.h" name="tools/ra8_emulator/inc/board_net.h">
+<area shape="rect" id="Node000001" title="Virtual network peer for ra8_emulator – talks TCP/IP to the firmware." alt="" coords="461,5,607,45"/>
+<area shape="rect" id="Node000002" href="$emu__elf__reboot_8c.html" title="Warm&#45;reboot orchestration over an open streaming ELF source." alt="" coords="5,93,156,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="448,42,316,65,169,96,157,99,156,94,168,91,315,60,447,37"/>
+<area shape="rect" id="Node000003" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="181,101,346,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="467,52,319,103,317,98,465,47"/>
+<area shape="rect" id="Node000004" href="$emu__run__report_8c.html" title="Run&#45;end report + finalize (see emu_run_internal.h)." alt="" coords="370,93,525,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="509,57,474,95,470,91,505,54"/>
+<area shape="rect" id="Node000005" href="$board__net_8c.html" title="Virtual network peer (Ethernet/ARP/IPv4/ICMP/TCP) for ra8_emulator." alt="" coords="549,101,695,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="563,53,606,99,602,102,559,57"/>
+<area shape="rect" id="Node000006" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="719,101,864,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="600,48,740,98,738,103,598,53"/>
+<area shape="rect" id="Node000007" href="$board__periph__eth_8c.html" title="R&#45;Switch (ESWM / MFWD / COMA / ETHA / RMAC / GWCA) model for ra8_emulator." alt="" coords="889,101,1107,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="621,40,877,91,912,98,911,103,876,96,620,46"/>
+</map>

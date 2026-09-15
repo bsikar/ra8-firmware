@@ -1,0 +1,23 @@
+<map id="apps/shared_libs/mdl/src/mdl_extract.c" name="apps/shared_libs/mdl/src/mdl_extract.c">
+<area shape="rect" id="Node000001" title="Bounded image/anchor URL scanning and relative&#45;URL resolution." alt="" coords="126,5,286,45"/>
+<area shape="rect" id="Node000002" href="$mdl__extract_8h.html" title="Extract image URLs and anchor links from an HTML page (v1 scanner)." alt="" coords="315,93,427,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="247,43,336,85,334,90,244,48"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="451,93,518,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="273,43,438,89,437,94,272,48"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="5,167,76,192"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="170,48,136,69,103,95,76,126,56,156,51,153,72,122,99,91,133,64,168,43"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="105,167,230,192"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="162,48,133,68,111,94,108,111,114,127,125,143,140,156,137,160,121,146,109,130,103,111,106,92,130,64,159,43"/>
+<area shape="rect" id="Node000009" href="$mdl__extract__internal_8h.html" title="Shared bounded markup lexer helpers for media extraction units." alt="" coords="121,93,291,119"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="209,46,209,79,203,79,203,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="257,167,331,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="361,121,319,159,315,155,357,117"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="373,240,444,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="377,118,405,226,400,227,372,120"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="408,167,487,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="385,117,427,155,423,159,382,121"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="443,194,424,229,419,227,439,191"/>
+<area shape="poly" id="edge10_Node000009_Node000003" title=" " alt="" coords="222,117,271,156,267,160,218,121"/>
+<area shape="poly" id="edge11_Node000009_Node000007" title=" " alt="" coords="180,121,81,164,79,159,178,116"/>
+<area shape="poly" id="edge12_Node000009_Node000008" title=" " alt="" coords="202,120,182,156,178,153,197,118"/>
+</map>

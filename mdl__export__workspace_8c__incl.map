@@ -1,0 +1,32 @@
+<map id="apps/shared_libs/mdl/src/mdl_export_workspace.c" name="apps/shared_libs/mdl/src/mdl_export_workspace.c">
+<area shape="rect" id="Node000001" title="Manage the caller&#45;owned media export bump workspace." alt="" coords="311,5,521,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="325,93,395,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="405,47,378,84,374,80,400,44"/>
+<area shape="rect" id="Node000003" href="$mdl__export_8h.html" title="Package a downloaded chapter folder into a reader&#45;openable container." alt="" coords="419,93,527,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="432,44,459,80,455,84,428,47"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="5,387,80,412"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="422,121,358,139,280,164,198,198,120,242,78,273,64,289,50,314,43,344,42,373,37,373,38,343,46,312,59,286,74,269,117,238,195,194,278,159,356,133,420,116"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="351,460,422,485"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="483,118,510,174,522,211,527,251,527,328,524,349,516,370,490,406,457,435,424,456,421,451,454,430,487,402,512,367,519,348,521,327,521,251,517,213,505,175,478,120"/>
+<area shape="rect" id="Node000006" href="$mdl__format_8h.html" title="Shared media artifact format contract for download and export paths." alt="" coords="562,240,673,265"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="490,117,545,165,602,228,598,231,541,169,486,121"/>
+<area shape="rect" id="Node000007" href="$mdl__storage_8h.html" title="Injected portable storage resources for downloader domain code." alt="" coords="315,167,429,192"/>
+<area shape="poly" id="edge7_Node000003_Node000007" title=" " alt="" coords="459,121,401,161,398,156,456,116"/>
+<area shape="rect" id="Node000010" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="309,387,387,412"/>
+<area shape="poly" id="edge20_Node000003_Node000010" title=" " alt="" coords="472,120,444,193,362,375,357,373,439,191,467,118"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="618,266,610,296,596,335,574,377,545,414,520,433,492,447,436,465,435,460,490,442,517,428,541,410,570,374,591,333,605,294,612,265"/>
+<area shape="poly" id="edge8_Node000007_Node000004" title=" " alt="" coords="315,192,256,207,189,231,124,266,94,289,69,315,54,343,47,373,42,372,49,341,65,312,91,285,121,262,187,226,254,202,314,187"/>
+<area shape="poly" id="edge9_Node000007_Node000005" title=" " alt="" coords="378,192,397,283,404,347,403,412,396,447,391,446,397,412,399,347,392,284,373,193"/>
+<area shape="rect" id="Node000008" href="$fw__if__fs_8h.html" title="Architecture&#45;neutral filesystem namespace, stream, and transaction ports." alt="" coords="229,240,313,265"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="357,194,300,234,297,230,354,190"/>
+<area shape="poly" id="edge19_Node000007_Node000010" title=" " alt="" coords="373,193,353,373,348,372,368,192"/>
+<area shape="poly" id="edge11_Node000008_Node000004" title=" " alt="" coords="229,262,162,280,127,295,95,315,70,344,54,375,49,372,66,341,92,311,124,290,160,275,228,257"/>
+<area shape="poly" id="edge12_Node000008_Node000005" title=" " alt="" coords="272,266,271,293,273,331,281,372,298,411,320,434,347,452,344,456,317,438,294,413,276,374,268,332,266,293,267,265"/>
+<area shape="rect" id="Node000009" href="$fw__if__fs__types_8h.html" title="Portable filesystem value types and caller&#45;owned opaque handles." alt="" coords="106,313,233,339"/>
+<area shape="poly" id="edge13_Node000008_Node000009" title=" " alt="" coords="256,268,199,307,196,303,253,263"/>
+<area shape="poly" id="edge18_Node000008_Node000010" title=" " alt="" coords="279,265,338,373,333,376,275,267"/>
+<area shape="poly" id="edge14_Node000009_Node000004" title=" " alt="" coords="150,341,77,382,74,377,148,336"/>
+<area shape="poly" id="edge15_Node000009_Node000005" title=" " alt="" coords="180,337,211,372,254,410,296,434,339,453,337,458,294,439,250,414,207,376,176,341"/>
+<area shape="poly" id="edge16_Node000009_Node000010" title=" " alt="" coords="199,336,307,379,305,384,197,341"/>
+<area shape="poly" id="edge17_Node000010_Node000005" title=" " alt="" coords="357,411,376,447,372,449,352,414"/>
+</map>

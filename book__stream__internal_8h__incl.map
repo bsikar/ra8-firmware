@@ -1,0 +1,18 @@
+<map id="apps/shared_libs/book/src/book_stream_internal.h" name="apps/shared_libs/book/src/book_stream_internal.h">
+<area shape="rect" id="Node000001" title="Private wire geometry for strict RABOOK1 stream validation." alt="" coords="87,5,290,45"/>
+<area shape="rect" id="Node000002" href="$book__stream_8h.html" title="Strict, zero&#45;allocation validation of a streamed RABOOK1 flat blob." alt="" coords="56,93,175,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="173,47,138,85,134,81,169,44"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="199,93,325,119"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="208,44,244,81,240,85,204,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,313,76,339"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="106,121,89,142,72,168,59,202,51,238,44,300,39,299,46,237,54,201,68,165,84,139,102,117"/>
+<area shape="rect" id="Node000004" href="$book_8h.html" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="82,167,149,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="118,119,118,153,113,153,113,119"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="177,240,256,265"/>
+<area shape="poly" id="edge8_Node000002_Node000006" title=" " alt="" coords="127,117,163,165,204,227,200,229,158,168,122,121"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="105,194,86,215,68,241,56,271,48,300,43,299,51,269,64,239,82,212,101,191"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="78,240,153,265"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="118,192,118,226,113,226,113,192"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="133,190,190,230,187,234,130,194"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="189,268,83,310,81,306,187,263"/>
+</map>

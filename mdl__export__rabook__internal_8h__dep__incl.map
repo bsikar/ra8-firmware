@@ -1,0 +1,7 @@
+<map id="apps/shared_libs/mdl/src/mdl_export_rabook_internal.h" name="apps/shared_libs/mdl/src/mdl_export_rabook_internal.h">
+<area shape="rect" id="Node000001" title="Private bounded RABOOK export contracts for the media downloader." alt="" coords="121,5,295,60"/>
+<area shape="rect" id="Node000002" href="$mdl__export__rabook_8c.html" title="Bounded fixed&#45;layout EPUB&#45;to&#45;RBKC writer for media chapters." alt="" coords="5,108,192,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="168,71,122,110,119,106,165,67"/>
+<area shape="rect" id="Node000003" href="$mdl__export__rabook__io_8c.html" title="Portable temporary EPUB and flat&#45;blob adapters for RABOOK export." alt="" coords="216,108,421,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="252,67,298,106,295,110,248,71"/>
+</map>

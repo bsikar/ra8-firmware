@@ -1,0 +1,12 @@
+<map id="libs/ra8_fs/inc/ra8_fs_seams.h" name="libs/ra8_fs/inc/ra8_fs_seams.h">
+<area shape="rect" id="Node000001" title="The two dependency&#45;injection seams ra8_fs offers its callers." alt="" coords="5,5,143,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="61,240,132,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="67,47,55,75,44,112,40,152,47,191,59,211,74,229,70,232,54,215,42,193,35,152,39,111,50,74,62,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="57,167,136,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="80,45,96,153,90,153,74,46"/>
+<area shape="rect" id="Node000004" href="$ra8__fs__types_8h.html" title="On&#45;disk and handle data types shared by the ra8_fs public API." alt="" coords="111,93,229,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="99,43,147,82,144,87,96,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="99,192,99,226,94,226,94,192"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="171,119,164,153,150,193,121,232,117,229,145,191,159,152,166,118"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="160,121,120,159,117,155,156,117"/>
+</map>

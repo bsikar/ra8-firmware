@@ -1,0 +1,28 @@
+<map id="tools/ra8_emulator/src/engine/emu_mpu.c" name="tools/ra8_emulator/src/engine/emu_mpu.c">
+<area shape="rect" id="Node000001" title="Armv8&#45;M MPU enforcement implementation (see emu_mpu.h)." alt="" coords="101,5,274,45"/>
+<area shape="rect" id="Node000002" href="$emu__mpu_8h.html" title="Armv8&#45;M MPU enforcement model for ra8_emulator." alt="" coords="23,167,122,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="175,47,92,157,88,154,171,44"/>
+<area shape="rect" id="Node000006" href="$emu__engine_8h.html" title="Shared Unicorn engine access utilities for the board emulator." alt="" coords="225,93,339,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="212,43,259,82,255,86,209,48"/>
+<area shape="rect" id="Node000009" href="$emu__exc_8h.html" title="Cortex&#45;M exception model constants and interfaces for ra8_emulator." alt="" coords="146,167,239,192"/>
+<area shape="poly" id="edge14_Node000001_Node000009" title=" " alt="" coords="191,46,195,153,189,153,185,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="37,240,108,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="75,192,75,226,70,226,70,192"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="132,240,267,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="94,190,168,231,165,235,92,194"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="291,240,417,265"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="119,189,296,234,295,239,117,195"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="225,114,165,121,102,132,47,148,27,157,14,168,8,184,14,200,28,216,45,230,41,234,24,219,10,202,3,184,9,165,24,153,45,143,100,127,164,116,224,109"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="282,120,272,154,254,193,224,232,219,228,249,191,267,152,277,118"/>
+<area shape="poly" id="edge13_Node000006_Node000005" title=" " alt="" coords="340,112,436,132,478,147,504,165,511,178,511,191,505,202,495,212,465,227,429,239,427,234,463,222,492,207,501,199,506,189,506,180,500,168,475,151,435,137,339,118"/>
+<area shape="rect" id="Node000007" href="$emu__memory__access_8h.html" title="Central first&#45;party Unicorn memory access seam." alt="" coords="314,167,490,192"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="303,116,372,157,369,162,300,121"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="346,195,122,242,121,237,345,189"/>
+<area shape="poly" id="edge11_Node000007_Node000004" title=" " alt="" coords="370,195,246,238,244,233,369,190"/>
+<area shape="poly" id="edge12_Node000007_Node000005" title=" " alt="" coords="396,194,372,230,367,227,392,191"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="441,240,515,265"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="416,190,457,229,454,232,412,194"/>
+<area shape="poly" id="edge15_Node000009_Node000003" title=" " alt="" coords="175,194,106,235,103,230,172,190"/>
+<area shape="poly" id="edge16_Node000009_Node000004" title=" " alt="" coords="196,192,200,226,194,227,191,193"/>
+<area shape="poly" id="edge17_Node000009_Node000005" title=" " alt="" coords="220,190,316,232,314,237,218,194"/>
+</map>

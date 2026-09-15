@@ -1,0 +1,11 @@
+<map id="tools/ra8_emulator/inc/board_overlay_internal.h" name="tools/ra8_emulator/inc/board_overlay_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private layout constants + draw primitives for the overlay." alt="" coords="5,5,216,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="14,167,85,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="81,48,57,68,38,94,35,109,34,124,41,153,36,155,29,125,29,108,34,92,53,65,77,44"/>
+<area shape="rect" id="Node000003" href="$board__overlay_8h.html" title="Composite board&#45;view renderer: panel framebuffer + a status sidebar." alt="" coords="48,93,173,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="113,46,113,79,108,79,108,46"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="128,167,253,192"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="143,44,168,65,188,92,196,123,197,153,191,153,191,124,183,94,164,68,140,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="103,121,70,158,66,154,99,117"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="125,117,169,156,166,160,122,121"/>
+</map>

@@ -1,0 +1,19 @@
+<map id="libs/ra8_touch_cal/src/ra8_touch_cal.c" name="libs/ra8_touch_cal/src/ra8_touch_cal.c">
+<area shape="rect" id="Node000001" title="Implementation of the touch&#45;screen calibration utility." alt="" coords="182,5,333,45"/>
+<area shape="rect" id="Node000002" href="$ra8__touch__cal_8h.html" title="Resistive/capacitive touch&#45;screen calibration utility." alt="" coords="70,93,194,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="228,48,163,88,160,84,226,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="182,36,149,43,116,55,85,72,59,95,51,108,46,123,43,153,38,153,41,122,46,106,55,92,82,68,114,50,148,38,181,30"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="170,240,241,265"/>
+<area shape="poly" id="edge7_Node000001_Node000004" title=" " alt="" coords="264,45,271,112,269,153,260,193,248,215,232,232,228,229,243,211,255,191,264,152,266,112,259,46"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="166,167,245,192"/>
+<area shape="poly" id="edge10_Node000001_Node000005" title=" " alt="" coords="253,47,216,154,211,153,248,45"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="321,93,391,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="283,43,332,82,329,87,280,48"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="416,93,541,119"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="311,43,434,86,432,91,309,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="119,121,70,160,66,156,116,117"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="136,118,143,152,157,191,185,229,181,232,152,193,138,153,131,119"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="146,117,185,155,182,159,142,121"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="208,192,208,226,203,226,203,192"/>
+</map>

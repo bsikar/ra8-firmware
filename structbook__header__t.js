@@ -1,0 +1,27 @@
+var structbook__header__t =
+[
+    [ "attr_count", "structbook__header__t.html#a274c4ae231b701cba4527f21aa878d96", null ],
+    [ "attr_off", "structbook__header__t.html#a6ff5635a0656062d354d8514bcf30d6e", null ],
+    [ "author_off", "structbook__header__t.html#a00aa96c3d70d0a106f715969863975ca", null ],
+    [ "chapter_count", "structbook__header__t.html#a3f11c6cf4874f933007d9b4461265f31", null ],
+    [ "chapter_off", "structbook__header__t.html#ad5eb9f9d9ee41388f0b3089190f0562d", null ],
+    [ "cover_image_index", "structbook__header__t.html#ae279e9e26aeb5aca9be13a3757f8dc97", null ],
+    [ "crc32_val", "structbook__header__t.html#a0f00331525e4e1a841511e48a1fce913", null ],
+    [ "flags", "structbook__header__t.html#aa8eab72beabfd65c6d8c55505c15f2f8", null ],
+    [ "format_version", "structbook__header__t.html#a051d0765518a995795da62c42bd4d7db", null ],
+    [ "identifier_off", "structbook__header__t.html#a8a07d3e8ffc6bdf3e0e2c8f7946ca140", null ],
+    [ "image_count", "structbook__header__t.html#a3fe5226b7ea18ee89182c717db67e314", null ],
+    [ "image_off", "structbook__header__t.html#a16bcb0d80c2c101d28cc553c054c02e2", null ],
+    [ "image_pool_off", "structbook__header__t.html#ada13d3199ca3568058cd12ffa08cb479", null ],
+    [ "image_pool_size", "structbook__header__t.html#a1f83a7eb09eb1e55a1a46f738545eb56", null ],
+    [ "language_off", "structbook__header__t.html#a24f6d00739a987b549fc02c47578af2b", null ],
+    [ "magic", "structbook__header__t.html#acfd3b092c6b12c3da2f1df1ca5bd8e84", null ],
+    [ "node_count", "structbook__header__t.html#a3141b8e30868b1add5be84a6d0bbd1ab", null ],
+    [ "node_off", "structbook__header__t.html#a769a41c1d674f7ba5715c0d676895d3a", null ],
+    [ "string_off", "structbook__header__t.html#a4a45959e1e84853145778c2c0055a009", null ],
+    [ "string_size", "structbook__header__t.html#a9e81c0616db41797b3453c2f7473b033", null ],
+    [ "stylesheet_count", "structbook__header__t.html#ad7549ff031152b14a9ec400cacf5ac57", null ],
+    [ "stylesheet_off", "structbook__header__t.html#aaf878edec54fe759159cccc389e8a932", null ],
+    [ "title_off", "structbook__header__t.html#a47287ada81b2e6cc00d154da7caeb6ff", null ],
+    [ "total_size", "structbook__header__t.html#adbe3873a622f6909ca36c85f18611f87", null ]
+];

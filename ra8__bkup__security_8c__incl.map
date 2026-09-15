@@ -1,0 +1,37 @@
+<map id="libs/ra8_hal/src/ra8_bkup_security.c" name="libs/ra8_hal/src/ra8_bkup_security.c">
+<area shape="rect" id="Node000001" title="Battery Backup Function (VBATT) driver – TrustZone partitioning." alt="" coords="503,5,649,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="458,240,529,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="650,30,685,38,721,50,755,67,785,91,805,116,817,141,817,167,803,194,786,208,759,219,690,236,612,247,542,252,542,247,611,241,689,231,757,214,783,203,799,190,812,166,812,143,800,119,781,95,752,72,719,54,683,43,648,35"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="961,167,1087,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="649,24,748,28,858,39,911,47,957,58,995,73,1021,92,1029,106,1033,122,1033,153,1027,153,1028,122,1024,108,1017,95,992,78,956,64,910,52,858,44,747,34,649,30"/>
+<area shape="rect" id="Node000004" href="$ra8__bkup_8h.html" title="Battery Backup Function (VBATT) HAL driver – public API." alt="" coords="177,93,271,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="504,45,285,94,284,89,502,40"/>
+<area shape="rect" id="Node000005" href="$ra8__bkup__regs_8h.html" title="Battery Backup Function (VBATT / BAT*) register layout for the RA8D2." alt="" coords="5,167,133,192"/>
+<area shape="poly" id="edge12_Node000001_Node000005" title=" " alt="" coords="503,29,430,33,344,44,253,64,209,78,167,96,123,125,90,158,86,154,120,121,164,91,207,73,252,59,343,39,430,28,503,24"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="209,167,287,192"/>
+<area shape="poly" id="edge20_Node000001_Node000006" title=" " alt="" coords="536,48,286,163,284,158,534,43"/>
+<area shape="rect" id="Node000007" href="$ra8__bkup__internal_8h.html" title="Cross&#45;TU shared surface for the ra8_bkup driver split." alt="" coords="855,93,1006,119"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="650,40,866,88,865,93,648,45"/>
+<area shape="rect" id="Node000008" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="443,93,543,119"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="558,47,517,86,514,82,554,44"/>
+<area shape="rect" id="Node000011" href="$ra8__register__protection_8h.html" title="Scoped PRCR unlock helper." alt="" coords="585,93,770,119"/>
+<area shape="poly" id="edge21_Node000001_Node000011" title=" " alt="" coords="602,43,653,82,650,87,599,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="216,120,195,155,192,174,198,190,214,203,238,214,304,230,378,241,445,246,444,252,378,246,303,235,236,219,211,207,194,194,187,174,190,153,212,118"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="200,121,108,163,106,158,198,116"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="230,118,242,153,237,154,225,120"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="134,189,445,241,444,246,133,194"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="288,189,446,235,444,240,287,195"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="925,121,894,158,872,178,847,194,808,212,767,225,684,243,606,252,543,255,543,250,606,247,683,238,766,220,806,207,844,190,868,174,890,154,921,117"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="947,117,1000,156,996,160,944,121"/>
+<area shape="poly" id="edge14_Node000008_Node000002" title=" " alt="" coords="524,116,556,136,571,149,582,166,586,187,575,207,557,223,535,236,533,231,554,219,571,203,580,186,578,168,567,153,553,140,521,121"/>
+<area shape="poly" id="edge15_Node000008_Node000006" title=" " alt="" coords="455,121,301,165,300,160,453,116"/>
+<area shape="rect" id="Node000009" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="312,167,395,192"/>
+<area shape="poly" id="edge16_Node000008_Node000009" title=" " alt="" coords="472,121,389,163,387,158,470,116"/>
+<area shape="rect" id="Node000010" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="419,167,567,192"/>
+<area shape="poly" id="edge18_Node000008_Node000010" title=" " alt="" coords="496,119,496,153,491,153,491,119"/>
+<area shape="poly" id="edge17_Node000009_Node000002" title=" " alt="" coords="377,190,460,231,457,236,375,194"/>
+<area shape="poly" id="edge19_Node000010_Node000002" title=" " alt="" coords="496,192,496,226,491,226,491,192"/>
+<area shape="rect" id="Node000012" href="$ra8__system__regs_8h.html" title="System Control (SYSC) register layout for the Renesas RA8D2." alt="" coords="643,167,789,192"/>
+<area shape="poly" id="edge22_Node000011_Node000012" title=" " alt="" coords="686,118,706,153,701,156,681,120"/>
+<area shape="poly" id="edge23_Node000012_Node000002" title=" " alt="" coords="681,195,543,238,541,233,679,189"/>
+</map>

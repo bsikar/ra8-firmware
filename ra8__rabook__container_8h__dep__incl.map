@@ -1,0 +1,13 @@
+<map id="apps/shared_libs/rabook_compile/inc/ra8_rabook_container.h" name="apps/shared_libs/rabook_compile/inc/ra8_rabook_container.h">
+<area shape="rect" id="Node000001" title="Zero&#45;heap streaming writer for the chunked RBKC .rabook container." alt="" coords="216,5,397,60"/>
+<area shape="rect" id="Node000002" href="$mdl__export__rabook_8c.html" title="Bounded fixed&#45;layout EPUB&#45;to&#45;RBKC writer for media chapters." alt="" coords="5,123,192,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="245,69,137,125,134,120,242,64"/>
+<area shape="rect" id="Node000003" href="$ra8__rabook__container_8c.html" title="Zero&#45;heap streaming RBKC container writer." alt="" coords="216,115,397,170"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="309,74,309,115,304,115,304,74"/>
+<area shape="rect" id="Node000004" href="$media__download__format__internal_8h.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="421,108,632,177"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="374,64,459,105,457,110,371,69"/>
+<area shape="rect" id="Node000005" href="$media__download__format_8c.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="293,225,515,280"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="480,188,436,227,432,223,477,184"/>
+<area shape="rect" id="Node000006" href="$media__download__image_8c.html" title="Convert one C6&#45;fetched encoded image into a strict .rabook." alt="" coords="540,225,759,280"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="577,184,621,223,618,227,573,188"/>
+</map>

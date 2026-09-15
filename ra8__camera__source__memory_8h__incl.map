@@ -1,0 +1,11 @@
+<map id="libs/ra8_camera/inc/ra8_camera_source_memory.h" name="libs/ra8_camera/inc/ra8_camera_source_memory.h">
+<area shape="rect" id="Node000001" title="Fixed in&#45;memory frame source backend for ra8_camera." alt="" coords="5,5,231,45"/>
+<area shape="rect" id="Node000002" href="$ra8__camera_8h.html" title="Transport&#45;neutral camera source and image&#45;codec facade." alt="" coords="16,93,127,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="109,47,88,83,83,80,104,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="109,167,188,192"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="128,45,142,93,150,152,145,153,137,94,123,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="75,240,145,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="77,118,106,226,101,227,72,120"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="86,117,128,155,124,159,82,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="145,194,125,229,120,227,140,191"/>
+</map>

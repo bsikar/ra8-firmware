@@ -1,0 +1,26 @@
+var ra8__jpeg__sw__decode_8c =
+[
+    [ "internal_dec_block_ac", "ra8__jpeg__sw__decode_8c.html#a5453d19fca2a8cd3cb8e76958493301f", null ],
+    [ "internal_dec_check_chroma_layout", "ra8__jpeg__sw__decode_8c.html#ae87002831c1920a37458494f9eae2fc5", null ],
+    [ "internal_dec_copy_block_to_tile", "ra8__jpeg__sw__decode_8c.html#a67fcad2d9113a87dca2b77b2720cb75a", null ],
+    [ "internal_dec_decode_mcu", "ra8__jpeg__sw__decode_8c.html#aa0407a78d0e12183c664e8ddb2b9a1fb", null ],
+    [ "internal_dec_decode_scan", "ra8__jpeg__sw__decode_8c.html#a21f57ac580815dd0915df033dc3a6043", null ],
+    [ "internal_dec_dispatch_tail", "ra8__jpeg__sw__decode_8c.html#a355f9b14e5b775b28b83071a02cc5b0c", null ],
+    [ "internal_dec_emit_mcu_rgb", "ra8__jpeg__sw__decode_8c.html#a4f35f9f567b1a5e676d03466241e78a2", null ],
+    [ "internal_dec_parse_dht_one", "ra8__jpeg__sw__decode_8c.html#a2911728c1939157be55a658ec785ee99", null ],
+    [ "internal_dec_parse_sof0_components", "ra8__jpeg__sw__decode_8c.html#a4b6c368527ed65ee3b0002fa3bc1ed88", null ],
+    [ "internal_dec_run", "ra8__jpeg__sw__decode_8c.html#a473340729b55ad197bc2ed67fc57ae31", null ],
+    [ "internal_dec_scan_begin", "ra8__jpeg__sw__decode_8c.html#a18c577a9c5503d374c3c1b9726af6da7", null ],
+    [ "priv_jpeg_sw_block", "ra8__jpeg__sw__decode_8c.html#ad439ba2911d9c377231496bad0dd06f1", null ],
+    [ "priv_jpeg_sw_dispatch", "ra8__jpeg__sw__decode_8c.html#a230c1ea5a7641309303bc61b3d5adb34", null ],
+    [ "priv_jpeg_sw_idct_into", "ra8__jpeg__sw__decode_8c.html#accb04929267fecf9550c77db39e081fc", null ],
+    [ "priv_jpeg_sw_mcu_chroma", "ra8__jpeg__sw__decode_8c.html#add69b800b0dff3e65ee53720aa1c49e2", null ],
+    [ "priv_jpeg_sw_mcu_y", "ra8__jpeg__sw__decode_8c.html#a369e40687c1090b65bbeaad35431ce8a", null ],
+    [ "priv_jpeg_sw_parse_dht", "ra8__jpeg__sw__decode_8c.html#a735c12177f84f1308dd80858e923e814", null ],
+    [ "priv_jpeg_sw_parse_dqt", "ra8__jpeg__sw__decode_8c.html#ad9eb6452e0ea0b59a7dd5251dedf7200", null ],
+    [ "priv_jpeg_sw_parse_sof0", "ra8__jpeg__sw__decode_8c.html#a1b69434f4a4462a9b069861b31c7d14b", null ],
+    [ "priv_jpeg_sw_parse_sos", "ra8__jpeg__sw__decode_8c.html#ade5bfae3f55e1289ad81150d224a0cb6", null ],
+    [ "priv_jpeg_sw_skip_segment", "ra8__jpeg__sw__decode_8c.html#ad4f91157206707e71a6cf52c08e54a30", null ],
+    [ "ra8_jpeg_sw_decode", "ra8__jpeg__sw__decode_8c.html#aca85aa75219e734e67b20dd5f739ddf1", null ],
+    [ "s_tag", "ra8__jpeg__sw__decode_8c.html#af8861f6a1fb30510e283b1b7806b64e7", null ]
+];

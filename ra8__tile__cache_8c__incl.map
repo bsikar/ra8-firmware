@@ -1,0 +1,33 @@
+<map id="libs/ra8_mem/src/ra8_tile_cache.c" name="libs/ra8_mem/src/ra8_tile_cache.c">
+<area shape="rect" id="Node000001" title="Fixed&#45;budget image&#45;tile cache – implementation (Layer 3b, #147)." alt="" coords="243,5,401,45"/>
+<area shape="rect" id="Node000002" href="$ra8__tile__cache_8h.html" title="Fixed&#45;RAM&#45;budget image&#45;tile cache with LRU eviction (Layer 3b, #147)." alt="" coords="119,93,247,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="290,48,217,89,215,84,288,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="225,313,296,339"/>
+<area shape="poly" id="edge9_Node000001_Node000003" title=" " alt="" coords="243,36,179,50,113,74,82,91,54,112,31,138,14,168,9,183,8,198,17,224,38,247,68,267,103,283,141,296,213,314,211,319,140,301,101,288,65,271,35,251,13,227,3,199,4,182,9,166,27,135,50,108,79,87,110,69,178,45,242,31"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="221,240,300,265"/>
+<area shape="poly" id="edge19_Node000001_Node000004" title=" " alt="" coords="320,46,270,227,265,226,314,45"/>
+<area shape="rect" id="Node000005" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="23,167,146,192"/>
+<area shape="poly" id="edge20_Node000001_Node000005" title=" " alt="" coords="243,35,208,43,172,55,138,72,109,95,100,108,94,123,88,154,83,153,89,121,95,105,105,91,135,67,170,50,206,38,242,30"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="322,93,397,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="334,44,350,80,346,82,329,47"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="421,93,492,119"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="356,43,427,84,424,89,353,48"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="517,93,642,119"/>
+<area shape="poly" id="edge11_Node000001_Node000008" title=" " alt="" coords="385,43,530,87,528,92,383,48"/>
+<area shape="rect" id="Node000009" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="367,167,467,192"/>
+<area shape="poly" id="edge12_Node000001_Node000009" title=" " alt="" coords="402,29,474,36,550,48,615,66,639,78,656,92,667,114,662,133,645,147,619,158,551,172,480,179,480,174,550,167,617,153,642,143,658,130,662,114,652,95,636,82,613,71,549,53,473,41,401,34"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="186,119,191,183,199,224,213,264,225,284,240,302,236,305,220,287,208,266,193,226,185,184,181,119"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="192,118,251,227,246,229,187,120"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="169,121,113,161,110,156,166,117"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="263,266,263,300,258,300,258,266"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="96,191,126,225,166,263,228,304,225,309,163,267,122,229,92,194"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="114,190,220,232,218,237,112,194"/>
+<area shape="poly" id="edge13_Node000009_Node000003" title=" " alt="" coords="406,194,285,306,282,302,402,190"/>
+<area shape="poly" id="edge14_Node000009_Node000004" title=" " alt="" coords="393,194,300,237,298,232,391,190"/>
+<area shape="rect" id="Node000010" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="375,240,458,265"/>
+<area shape="poly" id="edge15_Node000009_Node000010" title=" " alt="" coords="419,192,419,226,414,226,414,192"/>
+<area shape="rect" id="Node000011" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="483,240,631,265"/>
+<area shape="poly" id="edge17_Node000009_Node000011" title=" " alt="" coords="440,190,523,231,521,236,438,194"/>
+<area shape="poly" id="edge16_Node000010_Node000003" title=" " alt="" coords="393,268,300,310,298,305,391,263"/>
+<area shape="poly" id="edge18_Node000011_Node000003" title=" " alt="" coords="510,268,310,316,309,310,509,263"/>
+</map>

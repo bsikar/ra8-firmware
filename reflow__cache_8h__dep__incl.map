@@ -1,0 +1,7 @@
+<map id="apps/shared_libs/reflow/inc/reflow_cache.h" name="apps/shared_libs/reflow/inc/reflow_cache.h">
+<area shape="rect" id="Node000001" title="Import&#45;time pagination cache for reflow (#79)." alt="" coords="117,5,292,45"/>
+<area shape="rect" id="Node000002" href="$reflow__cache_8c.html" title="Import&#45;time pagination cache serialiser / loader for reflow." alt="" coords="5,101,180,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="173,56,117,103,114,99,170,52"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2pagecache_2src_2main_8c.html" title="On&#45;silicon HIL: reflow pagination&#45;cache round&#45;trip on SD (#117)." alt="" coords="205,93,431,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="240,52,288,91,284,95,236,56"/>
+</map>

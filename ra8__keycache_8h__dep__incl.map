@@ -1,0 +1,191 @@
+<map id="libs/ra8_mem/inc/ra8_keycache.h" name="libs/ra8_mem/inc/ra8_keycache.h">
+<area shape="rect" id="Node000001" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="5064,5,5223,45"/>
+<area shape="rect" id="Node000002" href="$ra8__glyph__atlas_8h.html" title="Fixed&#45;RAM&#45;budget glyph cache with LRU eviction (Layer 3, #147)." alt="" coords="3357,93,3516,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="5050,34,3795,96,3516,110,3516,105,3795,91,5050,29"/>
+<area shape="rect" id="Node000035" href="$ra8__glyph__atlas_8c.html" title="Fixed&#45;budget glyph cache – implementation (Layer 3, #147)." alt="" coords="3475,189,3633,229"/>
+<area shape="poly" id="edge110_Node000001_Node000035" title=" " alt="" coords="5050,32,4659,52,4408,70,4154,96,3899,131,3647,184,3618,191,3616,186,3645,179,3898,126,4154,91,4407,65,4659,47,5050,27"/>
+<area shape="rect" id="Node000036" href="$glyph__bench_8c.html" title="#147/#162/#164 glyph&#45;cache workload sweep: drive the real ra8_glyph_atlas with a realistic text&#45;rende..." alt="" coords="3658,189,3821,229"/>
+<area shape="poly" id="edge114_Node000001_Node000036" title=" " alt="" coords="5050,36,4834,54,4533,84,4188,127,4012,154,3840,184,3807,191,3806,186,3839,179,4011,149,4188,122,4532,79,4833,49,5050,31"/>
+<area shape="rect" id="Node000037" href="$ra8__tile__cache_8h.html" title="Fixed&#45;RAM&#45;budget image&#45;tile cache with LRU eviction (Layer 3b, #147)." alt="" coords="4663,93,4821,133"/>
+<area shape="poly" id="edge52_Node000001_Node000037" title=" " alt="" coords="5051,49,4822,98,4821,92,5050,44"/>
+<area shape="rect" id="Node000057" href="$ra8__tile__cache_8c.html" title="Fixed&#45;budget image&#45;tile cache – implementation (Layer 3b, #147)." alt="" coords="5465,189,5624,229"/>
+<area shape="poly" id="edge112_Node000001_Node000057" title=" " alt="" coords="5199,49,5504,186,5502,191,5196,53"/>
+<area shape="rect" id="Node000058" href="$ra8__vmem_8h.html" title="Byte&#45;range page cache with SLRU eviction (Layer 2, #147)." alt="" coords="6221,93,6380,133"/>
+<area shape="poly" id="edge84_Node000001_Node000058" title=" " alt="" coords="5237,31,6222,103,6221,109,5236,36"/>
+<area shape="rect" id="Node000080" href="$ra8__vmem_8c.html" title="Byte&#45;range page cache with SLRU eviction – implementation (Layer 2)." alt="" coords="7299,189,7457,229"/>
+<area shape="poly" id="edge113_Node000001_Node000080" title=" " alt="" coords="5237,26,5517,33,5876,45,6205,65,6324,77,6394,91,6410,100,6421,111,6431,122,6446,131,6524,150,6624,161,6739,166,6862,168,7101,167,7204,170,7286,179,7320,186,7318,191,7286,184,7204,176,7101,173,6862,173,6739,172,6624,167,6523,156,6444,136,6427,126,6417,115,6407,105,6392,96,6323,82,6205,70,5876,51,5517,38,5237,31"/>
+<area shape="rect" id="Node000086" href="$ra8__keycache_8c.html" title="The one reusable hash + pin + evict cache engine – impl (#147, #345)." alt="" coords="6456,93,6615,133"/>
+<area shape="poly" id="edge111_Node000001_Node000086" title=" " alt="" coords="5236,24,5451,28,5749,38,6090,58,6266,73,6437,91,6456,93,6455,99,6436,96,6265,78,6090,63,5748,44,5451,33,5236,30"/>
+<area shape="rect" id="Node000003" href="$reflow__api_8h.html" title="Reflow&#45;engine public + internal function prototypes." alt="" coords="2399,291,2573,331"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="3344,118,3128,121,2867,131,2743,140,2636,151,2556,166,2529,174,2513,183,2496,207,2487,236,2485,266,2486,291,2481,291,2480,266,2482,236,2491,205,2510,179,2527,169,2555,160,2636,146,2743,134,2867,126,3128,116,3344,112"/>
+<area shape="rect" id="Node000018" href="$reflow__render_8c.html" title="Page&#45;rasteriser for reflow." alt="" coords="5,497,180,537"/>
+<area shape="poly" id="edge48_Node000002_Node000018" title=" " alt="" coords="3344,122,2967,144,2725,162,2481,184,1843,252,1347,313,853,387,220,492,180,499,179,494,219,487,852,381,1346,308,1842,247,2480,179,2724,156,2966,139,3344,116"/>
+<area shape="rect" id="Node000031" href="$ereader__ui__screens_8c.html" title="E&#45;reader UI chrome – Library + Reading rendering and in&#45;content nav." alt="" coords="3067,592,3273,647"/>
+<area shape="poly" id="edge49_Node000002_Node000031" title=" " alt="" coords="3439,147,3439,310,3439,415,3441,486,3433,515,3412,546,3394,556,3361,568,3272,595,3270,589,3359,563,3392,551,3408,542,3428,513,3435,485,3434,415,3434,310,3434,147"/>
+<area shape="rect" id="Node000034" href="$reflow__types_8h.html" title="Reflow&#45;engine data model: enums, structs, typedefs, and the handle." alt="" coords="2524,189,2699,229"/>
+<area shape="poly" id="edge45_Node000002_Node000034" title=" " alt="" coords="3344,128,2699,200,2698,195,3343,122"/>
+<area shape="poly" id="edge50_Node000002_Node000035" title=" " alt="" coords="3473,140,3532,187,3529,191,3469,144"/>
+<area shape="poly" id="edge51_Node000002_Node000036" title=" " alt="" coords="3512,135,3679,186,3677,191,3510,140"/>
+<area shape="rect" id="Node000004" href="$reflow_8h.html" title="HTML / CSS reflow + paginate engine for the ra8d2 ereader." alt="" coords="1804,394,1979,434"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="2385,332,1979,401,1979,395,2385,327"/>
+<area shape="rect" id="Node000005" href="$reflow__cache_8h.html" title="Import&#45;time pagination cache for reflow (#79)." alt="" coords="3576,497,3751,537"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="1993,415,2326,422,2778,437,3228,458,3415,471,3557,487,3595,494,3594,499,3556,492,3415,477,3228,463,2777,442,2326,428,1992,420"/>
+<area shape="rect" id="Node000006" href="$reflow__cache_8c.html" title="Import&#45;time pagination cache serialiser / loader for reflow." alt="" coords="3745,599,3920,639"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="1992,414,2418,421,2991,435,3269,444,3507,456,3680,470,3734,478,3763,487,3790,511,3810,541,3823,572,3831,598,3826,600,3818,574,3805,544,3786,514,3761,492,3733,483,3679,476,3507,462,3268,450,2991,440,2418,426,1992,419"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2pagecache_2src_2main_8c.html" title="On&#45;silicon HIL: reflow pagination&#45;cache round&#45;trip on SD (#117)." alt="" coords="3494,592,3721,647"/>
+<area shape="poly" id="edge33_Node000004_Node000007" title=" " alt="" coords="1992,414,2335,421,2784,434,3198,456,3348,470,3401,478,3436,487,3481,508,3522,535,3585,590,3581,594,3518,539,3478,512,3434,492,3400,483,3347,475,3198,461,2784,439,2334,426,1992,419"/>
+<area shape="rect" id="Node000008" href="$reflow__css_8c.html" title="Content&#45;CSS primitives + declaration&#45;body parsing (#111)." alt="" coords="256,497,431,537"/>
+<area shape="poly" id="edge8_Node000004_Node000008" title=" " alt="" coords="1790,420,1496,429,1107,444,723,465,563,478,442,492,407,499,406,494,442,487,563,472,722,459,1107,438,1496,424,1790,415"/>
+<area shape="rect" id="Node000009" href="$reflow__css__cascade_8c.html" title="Content&#45;CSS stylesheet scanner, cascade, and face lookup (#111)." alt="" coords="455,497,643,537"/>
+<area shape="poly" id="edge9_Node000004_Node000009" title=" " alt="" coords="1790,418,1583,422,1303,434,984,456,821,472,662,492,623,499,622,494,662,487,821,466,984,450,1303,428,1583,417,1790,413"/>
+<area shape="rect" id="Node000010" href="$reflow__css__rules_8c.html" title="Content&#45;CSS selector + @font&#45;face rule parsing (#111)." alt="" coords="152,599,327,639"/>
+<area shape="poly" id="edge10_Node000004_Node000010" title=" " alt="" coords="1790,421,894,450,447,471,303,481,262,487,245,491,231,516,227,545,230,574,236,599,230,600,224,575,222,545,226,514,242,487,261,481,303,476,446,465,894,444,1790,415"/>
+<area shape="rect" id="Node000011" href="$reflow__layout_8c.html" title="Greedy line&#45;break + page&#45;break engine for reflow." alt="" coords="1180,599,1355,639"/>
+<area shape="poly" id="edge11_Node000004_Node000011" title=" " alt="" coords="1790,421,1624,429,1435,443,1274,463,1219,476,1190,491,1183,504,1182,517,1185,531,1193,546,1216,574,1243,597,1239,601,1213,578,1188,549,1180,533,1176,518,1178,502,1187,487,1217,471,1273,458,1435,438,1624,424,1790,416"/>
+<area shape="rect" id="Node000012" href="$reflow__layout__driver_8c.html" title="Token&#45;stream driver + public lifecycle API for the reflow engine." alt="" coords="1379,599,1571,639"/>
+<area shape="poly" id="edge12_Node000004_Node000012" title=" " alt="" coords="1790,422,1627,430,1444,444,1287,464,1234,477,1206,491,1198,504,1196,516,1199,529,1206,542,1227,551,1275,565,1399,597,1397,602,1274,570,1226,556,1203,546,1194,531,1190,516,1193,502,1203,487,1232,472,1286,459,1443,438,1627,424,1790,416"/>
+<area shape="rect" id="Node000013" href="$reflow__layout__image_8c.html" title="Block&#45;level &lt;img&gt; layout for the reflow engine (#106)." alt="" coords="1596,599,1792,639"/>
+<area shape="poly" id="edge13_Node000004_Node000013" title=" " alt="" coords="1791,422,1704,430,1614,443,1537,463,1508,476,1489,491,1481,504,1479,516,1482,529,1489,542,1508,558,1538,572,1614,597,1613,602,1536,577,1505,562,1485,546,1477,531,1474,516,1476,502,1485,488,1505,471,1535,458,1613,437,1703,424,1790,417"/>
+<area shape="rect" id="Node000014" href="$reflow__layout__internal_8h.html" title="Cross&#45;TU shared declarations for the reflow layout engine." alt="" coords="1217,497,1424,537"/>
+<area shape="poly" id="edge14_Node000004_Node000014" title=" " alt="" coords="1791,433,1444,492,1407,499,1406,494,1443,487,1790,428"/>
+<area shape="rect" id="Node000015" href="$reflow__layout__table_8c.html" title="&lt;table&gt; equal&#45;column grid layout for the reflow engine (#107)." alt="" coords="2327,599,2515,639"/>
+<area shape="poly" id="edge19_Node000004_Node000015" title=" " alt="" coords="1993,415,2279,424,2635,439,2946,460,3048,472,3079,480,3096,487,3106,502,3109,517,3106,531,3096,546,3066,561,3013,574,2856,595,2674,609,2515,617,2515,612,2674,604,2856,590,3012,569,3064,556,3092,542,3101,529,3104,517,3101,504,3092,491,3078,485,3047,478,2946,465,2635,444,2279,429,1992,420"/>
+<area shape="rect" id="Node000016" href="$reflow__link_8c.html" title="Page tap&#45;target queries: link + image hit&#45;test, anchor lookup, href split." alt="" coords="1500,497,1675,537"/>
+<area shape="poly" id="edge20_Node000004_Node000016" title=" " alt="" coords="1822,441,1645,499,1644,494,1821,436"/>
+<area shape="rect" id="Node000017" href="$reflow__parse_8c.html" title="HTML&#45;subset parser entry point for reflow." alt="" coords="353,599,528,639"/>
+<area shape="poly" id="edge21_Node000004_Node000017" title=" " alt="" coords="1790,420,1521,428,1184,441,879,463,770,476,707,492,691,503,681,517,672,532,655,546,591,574,506,602,504,597,589,569,653,542,668,528,677,514,687,499,705,487,769,471,878,457,1184,436,1521,422,1790,415"/>
+<area shape="poly" id="edge22_Node000004_Node000018" title=" " alt="" coords="1790,421,926,452,466,473,299,483,200,492,162,499,161,494,199,487,299,478,466,468,926,447,1790,416"/>
+<area shape="rect" id="Node000019" href="$reflow__tokenize_8c.html" title="No&#45;heap streaming XHTML tokenizer for reflow (replaces the former heap&#45;backed DOM shim)." alt="" coords="552,599,727,639"/>
+<area shape="poly" id="edge23_Node000004_Node000019" title=" " alt="" coords="1791,422,1583,432,1337,447,1118,467,1041,479,997,492,982,503,975,517,967,532,952,546,922,562,896,572,849,581,799,585,739,595,710,602,709,597,737,589,799,579,848,576,895,567,920,557,948,542,962,529,970,515,978,500,994,487,1040,474,1118,462,1336,442,1583,426,1790,417"/>
+<area shape="rect" id="Node000020" href="$reflow__tokenize__attr_8c.html" title="Attribute and CSS&#45;identity helpers for the no&#45;heap XHTML tokenizer: quoted&#45;attribute scanning,..." alt="" coords="751,599,941,639"/>
+<area shape="poly" id="edge24_Node000004_Node000020" title=" " alt="" coords="1790,423,1427,448,1241,467,1165,479,1107,492,885,602,882,597,1105,487,1164,474,1240,462,1427,442,1790,418"/>
+<area shape="rect" id="Node000021" href="$reflow__tokenize__internal_8h.html" title="Test&#45;access surface for reflow_tokenize.c internal helpers." alt="" coords="719,497,939,537"/>
+<area shape="poly" id="edge25_Node000004_Node000021" title=" " alt="" coords="1790,422,1423,444,1191,464,958,492,915,499,914,494,958,487,1191,459,1422,439,1790,417"/>
+<area shape="rect" id="Node000022" href="$reflow__tokenize__lex_8c.html" title="Lexical primitives for the no&#45;heap streaming XHTML tokenizer: whitespace/entity/UTF&#45;8 scanning,..." alt="" coords="966,599,1155,639"/>
+<area shape="poly" id="edge31_Node000004_Node000022" title=" " alt="" coords="1790,419,1637,425,1457,437,1291,458,1224,473,1175,492,1141,515,1113,544,1073,601,1069,598,1109,541,1138,511,1173,487,1223,468,1290,453,1457,432,1636,419,1790,414"/>
+<area shape="rect" id="Node000023" href="$reflow__v2_8cpp.html" title="LiteHTML&#45;backed reflow engine – reflow public API adapter." alt="" coords="1699,497,1873,537"/>
+<area shape="poly" id="edge32_Node000004_Node000023" title=" " alt="" coords="1863,446,1808,499,1804,495,1860,442"/>
+<area shape="rect" id="Node000024" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2reflow__content_2src_2main_8c.html" title="Headless on&#45;silicon HIL gate for reflow content render + pagination (#115)." alt="" coords="1898,489,2095,544"/>
+<area shape="poly" id="edge34_Node000004_Node000024" title=" " alt="" coords="1923,442,1971,487,1967,491,1919,445"/>
+<area shape="rect" id="Node000025" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__align_2src_2main_8c.html" title="Headless on&#45;silicon HIL gate for text alignment + justification (#108)." alt="" coords="2119,489,2293,544"/>
+<area shape="poly" id="edge35_Node000004_Node000025" title=" " alt="" coords="1964,436,2125,487,2123,492,1962,441"/>
+<area shape="rect" id="Node000026" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__link_2src_2main_8c.html" title="Headless on&#45;silicon HIL gate for in&#45;content hyperlink navigation (#110)." alt="" coords="2317,489,2490,544"/>
+<area shape="poly" id="edge36_Node000004_Node000026" title=" " alt="" coords="1993,428,2141,454,2305,487,2317,489,2316,495,2304,492,2140,459,1992,434"/>
+<area shape="rect" id="Node000027" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__rabook_2src_2main_8c.html" title="Headless HIL gate: load a compiled .rabook and render it (small to large)." alt="" coords="2514,489,2687,544"/>
+<area shape="poly" id="edge37_Node000004_Node000027" title=" " alt="" coords="1992,421,2226,445,2365,463,2502,487,2514,489,2513,494,2502,492,2364,469,2226,450,1992,426"/>
+<area shape="rect" id="Node000028" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__table_2src_2main_8c.html" title="Headless on&#45;silicon HIL gate for &lt;table&gt; grid layout (#107)." alt="" coords="2711,489,2885,544"/>
+<area shape="poly" id="edge38_Node000004_Node000028" title=" " alt="" coords="1993,417,2133,424,2310,438,2505,458,2700,487,2712,489,2711,494,2699,492,2504,463,2309,443,2132,430,1993,422"/>
+<area shape="rect" id="Node000029" href="$ereader__ui__steps_8h.html" title="E&#45;reader UI chrome – shared contract between main.c and the per&#45;aspect helper translation units (scre..." alt="" coords="3208,489,3399,544"/>
+<area shape="poly" id="edge39_Node000004_Node000029" title=" " alt="" coords="1993,413,2210,416,2507,427,2846,449,3020,466,3189,487,3208,490,3207,495,3188,492,3019,471,2846,454,2507,432,2210,421,1993,418"/>
+<area shape="poly" id="edge42_Node000004_Node000031" title=" " alt="" coords="1993,413,2273,415,2627,425,2797,435,2945,448,3057,465,3096,475,3121,487,3142,510,3157,537,3166,566,3170,591,3165,592,3161,567,3152,539,3138,513,3118,491,3094,480,3056,470,2944,453,2796,440,2626,431,2273,421,1993,418"/>
+<area shape="rect" id="Node000032" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2src_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="3297,592,3470,647"/>
+<area shape="poly" id="edge43_Node000004_Node000032" title=" " alt="" coords="1992,414,2347,420,2807,433,3028,442,3215,454,3349,469,3390,478,3412,487,3420,499,3425,512,3424,540,3415,568,3403,593,3398,590,3410,566,3419,539,3419,513,3415,502,3408,491,3389,483,3348,474,3214,460,3027,447,2807,438,2347,425,1992,419"/>
+<area shape="rect" id="Node000033" href="$examples_2ek__ra8d2_2hw__validated_2hil_2sd__font__render_2src_2main_8c.html" title="Load a TTF/OTF font off an SD card and render text with reflow." alt="" coords="2909,489,3082,544"/>
+<area shape="poly" id="edge44_Node000004_Node000033" title=" " alt="" coords="1993,414,2165,419,2390,431,2643,453,2772,468,2897,487,2909,489,2908,494,2896,492,2771,473,2643,458,2390,437,2164,425,1992,419"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="3708,541,3802,597,3800,602,3705,546"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="3648,550,3624,593,3620,590,3644,547"/>
+<area shape="poly" id="edge15_Node000014_Node000011" title=" " alt="" coords="1307,550,1280,601,1275,598,1302,547"/>
+<area shape="poly" id="edge16_Node000014_Node000012" title=" " alt="" coords="1363,542,1448,597,1445,602,1360,546"/>
+<area shape="poly" id="edge17_Node000014_Node000013" title=" " alt="" coords="1404,538,1625,597,1623,602,1403,543"/>
+<area shape="poly" id="edge18_Node000014_Node000015" title=" " alt="" coords="1438,535,1488,541,1724,566,1959,586,2327,610,2326,616,1958,591,1724,571,1487,547,1437,540"/>
+<area shape="poly" id="edge26_Node000021_Node000010" title=" " alt="" coords="706,539,341,595,309,602,308,597,340,589,705,534"/>
+<area shape="poly" id="edge27_Node000021_Node000017" title=" " alt="" coords="742,543,540,595,512,602,511,597,539,589,741,537"/>
+<area shape="poly" id="edge28_Node000021_Node000019" title=" " alt="" coords="782,546,676,602,674,597,780,541"/>
+<area shape="poly" id="edge29_Node000021_Node000020" title=" " alt="" coords="837,550,845,599,840,600,832,551"/>
+<area shape="poly" id="edge30_Node000021_Node000022" title=" " alt="" coords="886,540,1018,597,1016,602,884,545"/>
+<area shape="poly" id="edge40_Node000029_Node000031" title=" " alt="" coords="3259,554,3207,594,3203,590,3256,550"/>
+<area shape="poly" id="edge41_Node000029_Node000032" title=" " alt="" coords="3335,553,3365,590,3360,594,3331,556"/>
+<area shape="poly" id="edge47_Node000034_Node000003" title=" " alt="" coords="2579,239,2511,293,2508,289,2575,235"/>
+<area shape="poly" id="edge46_Node000034_Node000004" title=" " alt="" coords="2617,243,2612,293,2603,319,2586,341,2554,355,2497,368,2332,388,2142,403,1979,412,1979,406,2142,398,2331,383,2496,363,2552,350,2583,337,2598,316,2607,292,2612,242"/>
+<area shape="rect" id="Node000038" href="$comic__tiles_8h.html" title="Tile an oversized comic page through the JOF atlas + ra8_tile_cache so a CBZ/CBR page larger than the..." alt="" coords="4655,189,4829,229"/>
+<area shape="poly" id="edge53_Node000037_Node000038" title=" " alt="" coords="4745,147,4745,189,4739,189,4739,147"/>
+<area shape="rect" id="Node000039" href="$cm__tiled__check_8c.html" title="Oversized&#45;page tile self&#45;check for ereader_comic (#344)." alt="" coords="4617,284,4798,339"/>
+<area shape="poly" id="edge72_Node000037_Node000039" title=" " alt="" coords="4685,143,4662,160,4644,183,4637,208,4644,235,4659,260,4678,282,4674,286,4654,263,4640,237,4632,208,4640,180,4658,156,4682,138"/>
+<area shape="rect" id="Node000040" href="$epub__img__tiles_8h.html" title="Page a large in&#45;EPUB image through ra8_tile_cache + a real reflow &lt;img&gt; loader off the streaming read..." alt="" coords="5223,189,5389,229"/>
+<area shape="poly" id="edge55_Node000037_Node000040" title=" " alt="" coords="4835,123,5007,145,5204,179,5237,186,5236,191,5203,184,5006,151,4835,128"/>
+<area shape="rect" id="Node000041" href="$longstrip_8h.html" title="Continuous vertical&#45;scroll (longstrip / manhwa) reading mode over an JOF band&#45;tile atlas (#289)." alt="" coords="4955,189,5147,229"/>
+<area shape="poly" id="edge56_Node000037_Node000041" title=" " alt="" coords="4818,135,4990,186,4988,191,4817,140"/>
+<area shape="rect" id="Node000042" href="$longstrip_8c.html" title="Continuous vertical&#45;scroll (longstrip) engine over a JOF atlas (#289)." alt="" coords="5046,291,5238,331"/>
+<area shape="poly" id="edge65_Node000037_Node000042" title=" " alt="" coords="4803,137,4843,156,4882,179,4901,194,4914,207,4926,220,4945,234,5010,266,5074,289,5073,294,5008,270,4942,238,4923,224,4910,211,4897,198,4879,184,4840,161,4801,141"/>
+<area shape="rect" id="Node000043" href="$examples_2ek__ra8d2_2hw__pending_2ereader__longstrip_2src_2main_8c.html" title="Viewable continuous vertical&#45;scroll (longstrip / manhwa) reader (#289)." alt="" coords="4823,284,5021,339"/>
+<area shape="poly" id="edge73_Node000037_Node000043" title=" " alt="" coords="4790,138,4817,157,4843,180,4883,232,4912,282,4907,285,4879,235,4839,183,4814,161,4787,143"/>
+<area shape="rect" id="Node000044" href="$ra8__viewer__reader__internal_8h.html" title="Cross&#45;translation&#45;unit state for the bounded JOF/comic viewer." alt="" coords="5313,284,5483,339"/>
+<area shape="poly" id="edge82_Node000037_Node000044" title=" " alt="" coords="4836,120,5017,142,5101,159,5161,179,5178,192,5188,206,5197,220,5212,234,5261,262,5314,283,5312,288,5259,267,5208,238,5193,223,5183,209,5174,196,5158,184,5100,164,5016,147,4835,125"/>
+<area shape="rect" id="Node000046" href="$ra8__viewer__jof_8c.html" title="Streamed JOF long&#45;strip rendering over a one&#45;band caller cache." alt="" coords="5035,394,5190,434"/>
+<area shape="poly" id="edge83_Node000037_Node000046" title=" " alt="" coords="4649,123,4476,142,4380,158,4292,181,4219,209,4192,226,4172,244,4160,264,4158,286,4166,310,4185,337,4201,347,4228,357,4311,374,4422,386,4551,396,4820,406,5035,410,5035,415,4820,412,4551,401,4422,391,4310,379,4227,362,4199,352,4181,341,4161,312,4152,286,4155,262,4168,241,4189,221,4217,204,4290,175,4379,153,4475,137,4649,118"/>
+<area shape="rect" id="Node000049" href="$zoom__tiles_8h.html" title="Bind a tiled gray8 atlas behind an ra8_tile_cache as a zoom source (#478)." alt="" coords="3899,189,4070,229"/>
+<area shape="poly" id="edge66_Node000037_Node000049" title=" " alt="" coords="4649,123,4396,143,4242,161,4089,184,4054,191,4053,186,4088,179,4242,156,4395,138,4649,117"/>
+<area shape="rect" id="Node000050" href="$ez__scene_8h.html" title="Tap&#45;to&#45;zoom demo scene: tiled 12 MP page, zoom viewport, loupe (#478)." alt="" coords="3942,284,4121,339"/>
+<area shape="poly" id="edge79_Node000037_Node000050" title=" " alt="" coords="4649,124,4352,149,4216,166,4168,175,4141,184,4121,200,4097,226,4052,285,4048,282,4093,223,4117,196,4138,179,4167,170,4215,161,4351,144,4649,118"/>
+<area shape="rect" id="Node000051" href="$ez__scene_8c.html" title="Tap&#45;to&#45;zoom demo scene: page sampler, viewports, chrome, self&#45;check." alt="" coords="3790,387,3969,441"/>
+<area shape="poly" id="edge80_Node000037_Node000051" title=" " alt="" coords="4649,121,4197,146,3987,164,3919,174,3889,183,3873,205,3863,231,3857,258,3856,287,3862,342,3873,386,3868,387,3857,343,3851,287,3852,258,3858,229,3868,203,3886,179,3918,169,3987,159,4197,141,4649,116"/>
+<area shape="rect" id="Node000053" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2mem__subsystem_2src_2main_8c.html" title="Drives each ra8_mem (#147) memory&#45;hierarchy layer in isolation (#263)." alt="" coords="5508,284,5699,339"/>
+<area shape="poly" id="edge71_Node000037_Node000053" title=" " alt="" coords="4835,114,4976,119,5141,130,5294,149,5356,162,5402,179,5420,191,5430,205,5439,219,5454,234,5496,260,5539,282,5537,286,5493,265,5451,238,5435,223,5426,208,5416,195,5399,184,5354,168,5293,154,5140,135,4976,124,4835,119"/>
+<area shape="rect" id="Node000054" href="$mg__reader_8h.html" title="Tap&#45;driven pan/zoom viewer over a tiled manga page (ereader_manga)." alt="" coords="4342,181,4529,236"/>
+<area shape="poly" id="edge74_Node000037_Node000054" title=" " alt="" coords="4667,140,4522,184,4521,179,4666,135"/>
+<area shape="rect" id="Node000055" href="$examples_2ek__ra8d2_2hw__pending_2ereader__manga_2src_2main_8c.html" title="Viewable manga reader: pan/zoom a page larger than the panel (Demo B)." alt="" coords="4195,284,4382,339"/>
+<area shape="poly" id="edge77_Node000037_Node000055" title=" " alt="" coords="4649,121,4561,128,4468,140,4385,158,4354,170,4332,183,4314,205,4302,232,4292,284,4287,283,4297,230,4309,203,4328,179,4352,165,4384,153,4467,135,4561,123,4649,116"/>
+<area shape="rect" id="Node000056" href="$mg__reader_8c.html" title="Tap&#45;driven pan/zoom viewer over a tiled manga page (ereader_manga)." alt="" coords="4406,284,4593,339"/>
+<area shape="poly" id="edge78_Node000037_Node000056" title=" " alt="" coords="4695,143,4632,183,4572,236,4524,286,4520,282,4568,232,4628,179,4692,138"/>
+<area shape="poly" id="edge81_Node000037_Node000057" title=" " alt="" coords="4835,116,5110,135,5279,154,5446,179,5480,186,5479,191,5446,184,5278,159,5110,141,4835,121"/>
+<area shape="poly" id="edge54_Node000038_Node000039" title=" " alt="" coords="4734,242,4719,285,4714,283,4729,241"/>
+<area shape="poly" id="edge57_Node000041_Node000042" title=" " alt="" coords="5079,237,5127,289,5123,293,5075,241"/>
+<area shape="poly" id="edge58_Node000041_Node000043" title=" " alt="" coords="5018,239,4958,286,4954,282,5014,235"/>
+<area shape="poly" id="edge59_Node000041_Node000044" title=" " alt="" coords="5130,230,5313,283,5312,288,5128,235"/>
+<area shape="poly" id="edge64_Node000041_Node000046" title=" " alt="" coords="5142,230,5209,254,5235,268,5252,282,5260,297,5263,311,5260,325,5252,340,5238,359,5220,374,5180,396,5177,392,5217,370,5234,355,5248,337,5255,323,5257,311,5255,299,5248,286,5232,272,5207,259,5140,235"/>
+<area shape="rect" id="Node000045" href="$ra8__viewer__comic_8c.html" title="Caller&#45;workspace CBZ, CBR, and CBT reader engine." alt="" coords="5611,394,5790,434"/>
+<area shape="poly" id="edge60_Node000044_Node000045" title=" " alt="" coords="5491,341,5645,391,5643,396,5489,346"/>
+<area shape="poly" id="edge61_Node000044_Node000046" title=" " alt="" coords="5312,346,5167,396,5165,391,5310,341"/>
+<area shape="rect" id="Node000047" href="$ra8__viewer__ppm_8c.html" title="RGB565 &lt;&#45;&gt; 8&#45;bit RGB conversion and the shared binary&#45;PPM (P6) writer." alt="" coords="5214,394,5382,434"/>
+<area shape="poly" id="edge62_Node000044_Node000047" title=" " alt="" coords="5364,350,5319,395,5315,392,5360,347"/>
+<area shape="rect" id="Node000048" href="$ra8__viewer__reader_8c.html" title="Requirements, workspace binding, descriptor lifecycle, and dispatch." alt="" coords="5407,394,5587,434"/>
+<area shape="poly" id="edge63_Node000044_Node000048" title=" " alt="" coords="5435,347,5480,392,5476,395,5432,350"/>
+<area shape="poly" id="edge67_Node000049_Node000050" title=" " alt="" coords="4002,240,4021,283,4017,285,3997,242"/>
+<area shape="poly" id="edge70_Node000049_Node000051" title=" " alt="" coords="3962,241,3932,285,3907,339,3890,388,3885,386,3902,337,3928,283,3958,238"/>
+<area shape="poly" id="edge68_Node000050_Node000051" title=" " alt="" coords="3982,348,3921,389,3918,384,3979,344"/>
+<area shape="rect" id="Node000052" href="$examples_2ek__ra8d2_2hw__pending_2ereader__zoom_2src_2main_8c.html" title="Viewable tap&#45;to&#45;zoom image viewer: full&#45;screen zoom + panel loupe (#478)." alt="" coords="3993,387,4171,441"/>
+<area shape="poly" id="edge69_Node000050_Node000052" title=" " alt="" coords="4053,350,4071,385,4066,388,4048,352"/>
+<area shape="poly" id="edge75_Node000054_Node000055" title=" " alt="" coords="4387,246,4329,286,4326,282,4384,242"/>
+<area shape="poly" id="edge76_Node000054_Node000056" title=" " alt="" coords="4462,246,4485,282,4480,285,4457,249"/>
+<area shape="rect" id="Node000059" href="$book__paged_8h.html" title="Paged (demand&#45;fetched) accessor mode for book over ra8_vmem (#163)." alt="" coords="6569,189,6736,229"/>
+<area shape="poly" id="edge85_Node000058_Node000059" title=" " alt="" coords="6386,134,6582,186,6581,191,6384,139"/>
+<area shape="rect" id="Node000060" href="$book__paged_8c.html" title="Paged book&#45;source layer: copy&#45;out reads over ra8_vmem (#163)." alt="" coords="6379,291,6545,331"/>
+<area shape="poly" id="edge91_Node000058_Node000060" title=" " alt="" coords="6375,137,6406,155,6432,180,6448,207,6458,238,6465,291,6459,292,6453,239,6443,210,6428,183,6403,159,6372,141"/>
+<area shape="rect" id="Node000069" href="$sh__paged_8c.html" title="Demand&#45;paged .rabook backing: chunk reader + page cache + source bind." alt="" coords="6596,387,6803,441"/>
+<area shape="poly" id="edge96_Node000058_Node000069" title=" " alt="" coords="6333,141,6348,160,6359,180,6365,204,6366,226,6357,265,6353,301,6357,318,6369,337,6384,349,6404,359,6461,377,6528,391,6596,400,6595,406,6527,396,6460,382,6402,364,6381,353,6365,340,6352,320,6347,301,6352,264,6360,226,6360,205,6354,182,6343,163,6329,145"/>
+<area shape="rect" id="Node000075" href="$rabook__import__compiler_8h.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="5939,181,6134,236"/>
+<area shape="poly" id="edge92_Node000058_Node000075" title=" " alt="" coords="6235,140,6112,184,6110,179,6234,135"/>
+<area shape="rect" id="Node000076" href="$rabook__import__compiler_8c.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="5906,284,6101,339"/>
+<area shape="poly" id="edge95_Node000058_Node000076" title=" " alt="" coords="6208,121,6127,127,6044,139,5973,157,5947,169,5929,183,5923,195,5921,207,5929,233,5948,259,5971,282,5967,286,5944,263,5924,236,5915,207,5918,193,5925,180,5944,165,5971,152,6043,134,6127,122,6207,115"/>
+<area shape="rect" id="Node000077" href="$examples_2ek__ra8d2_2hw__pending_2import__reader_2src_2main_8c.html" title="End&#45;to&#45;end on&#45;import EPUB &#45;&gt; .rabook compile + cache + read (#151)." alt="" coords="6125,284,6303,339"/>
+<area shape="poly" id="edge97_Node000058_Node000077" title=" " alt="" coords="6324,144,6335,165,6343,189,6345,214,6338,237,6314,265,6284,286,6281,282,6311,262,6333,235,6339,213,6338,190,6330,167,6319,146"/>
+<area shape="rect" id="Node000078" href="$ra8__vmem__stream_8h.html" title="Read a page&#45;cached object as a seekable byte stream (Layer 2 helper, #147/#151)." alt="" coords="5705,189,5864,229"/>
+<area shape="poly" id="edge98_Node000058_Node000078" title=" " alt="" coords="6208,129,6056,152,5884,184,5853,191,5852,186,5883,179,6055,147,6207,124"/>
+<area shape="rect" id="Node000079" href="$ra8__vmem__stream_8c.html" title="Read a page&#45;cached object as a seekable byte stream – impl (#147/#151)." alt="" coords="5723,291,5881,331"/>
+<area shape="poly" id="edge103_Node000058_Node000079" title=" " alt="" coords="6208,121,6064,128,5902,141,5765,159,5719,171,5694,183,5687,195,5685,207,5695,235,5707,252,5722,266,5757,289,5754,294,5719,271,5703,255,5690,237,5680,208,5682,194,5691,179,5717,166,5764,154,5902,136,6063,123,6207,115"/>
+<area shape="poly" id="edge102_Node000058_Node000080" title=" " alt="" coords="6394,130,6400,131,6534,144,6648,149,6844,148,6938,148,7038,151,7152,160,7286,179,7320,186,7318,191,7286,184,7152,165,7038,156,6938,153,6844,154,6648,154,6534,149,6399,136,6393,135"/>
+<area shape="rect" id="Node000081" href="$sweep__block_8c.html" title="Core of the #208 block/frame&#45;size sweep (&#45;&#45;sweep&#45;block)." alt="" coords="6158,189,6323,229"/>
+<area shape="poly" id="edge104_Node000058_Node000081" title=" " alt="" coords="6283,146,6255,190,6251,187,6279,143"/>
+<area shape="rect" id="Node000082" href="$reader__vmem__internal_8h.html" title="Private host sink and caller&#45;owned workspace contracts for reader_vmem." alt="" coords="7087,189,7274,229"/>
+<area shape="poly" id="edge105_Node000058_Node000082" title=" " alt="" coords="6394,130,6400,131,6561,149,6688,158,6814,165,6977,179,7087,192,7087,197,6976,184,6814,170,6687,163,6561,154,6399,136,6393,135"/>
+<area shape="rect" id="Node000083" href="$reader__vmem_8c.html" title="Drive the real virtual&#45;memory cache with a deterministic reader trace." alt="" coords="7187,291,7359,331"/>
+<area shape="poly" id="edge109_Node000058_Node000083" title=" " alt="" coords="6394,130,6400,131,6575,153,6651,162,6749,179,6870,203,6964,226,7176,281,7204,289,7203,294,7175,287,6962,231,6869,208,6748,184,6650,168,6574,159,6399,136,6393,135"/>
+<area shape="poly" id="edge86_Node000059_Node000060" title=" " alt="" coords="6606,238,6499,294,6496,289,6603,233"/>
+<area shape="rect" id="Node000061" href="$book__xhtml_8c.html" title="Serialize a compiled&#45;book chapter DOM back to XHTML for the renderer." alt="" coords="6569,291,6736,331"/>
+<area shape="poly" id="edge87_Node000059_Node000061" title=" " alt="" coords="6655,243,6655,291,6650,291,6650,243"/>
+<area shape="rect" id="Node000062" href="$zoom__book_8h.html" title="Bind a .rabook image&#45;pool figure as a zoom source (#478)." alt="" coords="6761,291,6931,331"/>
+<area shape="poly" id="edge88_Node000059_Node000062" title=" " alt="" coords="6702,233,6811,289,6809,294,6700,237"/>
+<area shape="rect" id="Node000063" href="$sh__app_8h.html" title="Shared contract for the ereader_shelf multi&#45;screen e&#45;reader." alt="" coords="6956,284,7163,339"/>
+<area shape="poly" id="edge89_Node000059_Node000063" title=" " alt="" coords="6742,229,6956,282,6955,287,6741,235"/>
+<area shape="poly" id="edge90_Node000063_Node000069" title=" " alt="" coords="6953,345,6794,389,6792,384,6952,340"/>
+<area shape="poly" id="edge93_Node000075_Node000076" title=" " alt="" coords="6026,250,6015,285,6010,283,6021,248"/>
+<area shape="poly" id="edge94_Node000075_Node000077" title=" " alt="" coords="6096,240,6169,281,6166,286,6093,245"/>
+<area shape="poly" id="edge100_Node000078_Node000053" title=" " alt="" coords="5740,238,5652,286,5649,282,5737,233"/>
+<area shape="poly" id="edge99_Node000078_Node000076" title=" " alt="" coords="5839,232,5947,281,5945,286,5837,237"/>
+<area shape="poly" id="edge101_Node000078_Node000079" title=" " alt="" coords="5793,242,5801,291,5796,292,5788,243"/>
+<area shape="poly" id="edge106_Node000082_Node000083" title=" " alt="" coords="7209,237,7257,289,7253,293,7205,241"/>
+<area shape="rect" id="Node000084" href="$reader__vmem__host_8c.html" title="Bounded raw&#45;descriptor trace composition for reader_vmem." alt="" coords="7383,291,7555,331"/>
+<area shape="poly" id="edge107_Node000082_Node000084" title=" " alt="" coords="7249,231,7415,289,7414,294,7247,236"/>
+<area shape="rect" id="Node000085" href="$reader__vmem__workspace_8c.html" title="Checked split&#45;region planning for reader_vmem cache RAM." alt="" coords="7579,291,7785,331"/>
+<area shape="poly" id="edge108_Node000082_Node000085" title=" " alt="" coords="7269,229,7288,233,7428,258,7568,281,7602,289,7601,294,7567,287,7427,263,7287,239,7267,234"/>
+</map>

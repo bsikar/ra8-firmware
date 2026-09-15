@@ -1,0 +1,10 @@
+<map id="libs/ra8_dfu/src/ra8_dfu_antirollback.c" name="libs/ra8_dfu/src/ra8_dfu_antirollback.c">
+<area shape="rect" id="Node000001" title="DFU anti&#45;rollback (downgrade protection) – policy + storage seam." alt="" coords="15,5,162,45"/>
+<area shape="rect" id="Node000002" href="$ra8__dfu__antirollback_8h.html" title="DFU anti&#45;rollback (downgrade protection) policy + storage seam." alt="" coords="5,93,172,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="91,46,91,79,86,79,86,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="53,240,124,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="87,119,80,152,78,192,84,226,79,227,73,192,75,151,82,118"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="88,167,167,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="97,118,117,153,112,156,93,120"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="123,194,104,229,99,227,119,191"/>
+</map>

@@ -1,0 +1,23 @@
+<map id="tools/rabook_viewer/inc/ra8_viewer_reader.h" name="tools/rabook_viewer/inc/ra8_viewer_reader.h">
+<area shape="rect" id="Node000001" title="Caller&#45;owned host JOF/comic reader and RGB565 render surface." alt="" coords="535,5,716,45"/>
+<area shape="rect" id="Node000002" href="$ra8__viewer__reader__internal_8h.html" title="Cross&#45;translation&#45;unit state for the bounded JOF/comic viewer." alt="" coords="385,93,556,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="583,55,516,96,513,91,581,50"/>
+<area shape="rect" id="Node000004" href="$ra8__viewer__jof_8c.html" title="Streamed JOF long&#45;strip rendering over a one&#45;band caller cache." alt="" coords="5,203,160,243"/>
+<area shape="poly" id="edge10_Node000001_Node000004" title=" " alt="" coords="529,51,452,71,374,96,233,153,121,206,119,201,231,148,372,91,451,66,527,46"/>
+<area shape="rect" id="Node000005" href="$ra8__viewer__ppm_8c.html" title="RGB565 &lt;&#45;&gt; 8&#45;bit RGB conversion and the shared binary&#45;PPM (P6) writer." alt="" coords="387,203,555,243"/>
+<area shape="poly" id="edge11_Node000001_Node000005" title=" " alt="" coords="618,59,599,104,570,150,538,181,504,205,501,201,535,177,566,146,594,102,613,57"/>
+<area shape="rect" id="Node000006" href="$ra8__viewer__reader_8c.html" title="Requirements, workspace binding, descriptor lifecycle, and dispatch." alt="" coords="579,203,759,243"/>
+<area shape="poly" id="edge12_Node000001_Node000006" title=" " alt="" coords="635,58,668,202,662,204,630,59"/>
+<area shape="rect" id="Node000007" href="$ra8__viewer__view_8h.html" title="Caller&#45;owned C ABI for the Cocoa scrolling JOF view." alt="" coords="776,101,947,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="687,48,815,98,813,103,685,53"/>
+<area shape="rect" id="Node000008" href="$tools_2rabook__viewer_2src_2main_8c.html" title="Bounded host composition root for the JOF/comic viewer." alt="" coords="784,203,939,243"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="658,53,766,146,837,201,834,205,762,150,655,57"/>
+<area shape="rect" id="Node000003" href="$ra8__viewer__comic_8c.html" title="Caller&#45;workspace CBZ, CBR, and CBT reader engine." alt="" coords="184,203,363,243"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="409,156,312,205,309,201,406,152"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="372,148,173,199,147,206,145,201,171,193,371,143"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="473,162,473,203,468,203,468,162"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="536,152,633,201,631,205,533,156"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="864,155,864,203,859,203,859,155"/>
+<area shape="rect" id="Node000009" href="$ra8__viewer__view__stub_8c.html" title="Non&#45;Apple platform alternative for the Cocoa viewer ABI." alt="" coords="963,196,1122,251"/>
+<area shape="poly" id="edge8_Node000007_Node000009" title=" " alt="" coords="909,145,997,194,994,198,906,150"/>
+</map>

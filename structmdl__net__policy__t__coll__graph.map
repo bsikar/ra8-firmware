@@ -1,0 +1,5 @@
+<map id="mdl_net_policy_t" name="mdl_net_policy_t">
+<area shape="rect" id="Node000001" title="Session&#45;wide security policy for the network backend." alt="" coords="5,121,139,147"/>
+<area shape="rect" id="Node000002" href="$structmdl__net__bytes__t.html" title="Read&#45;only caller&#45;owned byte view retained by a network backend." alt="" coords="7,5,137,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="75,45,75,121,69,121,69,45"/>
+</map>

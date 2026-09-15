@@ -1,0 +1,39 @@
+<map id="apps/shared_libs/jof/src/jof_produce_webp.c" name="apps/shared_libs/jof/src/jof_produce_webp.c">
+<area shape="rect" id="Node000001" title="Transcode producer: whole&#45;frame WebP arm (#290 normalize&#45;on&#45;import)." alt="" coords="311,5,490,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="350,313,424,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="404,45,406,110,404,192,393,300,388,299,399,192,400,110,399,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="174,387,245,412"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="490,28,569,40,609,51,647,66,681,85,708,110,726,141,732,178,732,254,728,273,717,289,699,304,676,318,616,341,544,360,465,374,388,385,259,398,259,392,387,380,465,369,542,355,614,336,673,313,696,300,713,286,723,270,727,254,727,178,721,143,704,113,678,89,645,71,608,56,568,45,489,33"/>
+<area shape="rect" id="Node000004" href="$jof__internal_8h.html" title="Module&#45;private seams shared by the producer translation units." alt="" coords="104,93,212,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="343,48,207,92,205,86,341,43"/>
+<area shape="rect" id="Node000005" href="$jof__produce_8h.html" title="Import&#45;time transcode producer: JPEG/PNG/WebP &#45;&gt; JOF band&#45;tile atlas in bounded RAM (#231,..." alt="" coords="78,167,189,192"/>
+<area shape="poly" id="edge17_Node000001_Node000005" title=" " alt="" coords="368,48,167,162,164,157,366,43"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="42,313,121,339"/>
+<area shape="poly" id="edge19_Node000001_Node000007" title=" " alt="" coords="311,39,184,60,129,76,93,95,75,117,64,142,58,169,57,198,64,254,76,300,70,301,58,255,52,198,53,169,59,140,70,114,89,91,127,71,182,55,310,34"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="264,167,390,192"/>
+<area shape="poly" id="edge18_Node000001_Node000008" title=" " alt="" coords="393,47,341,155,336,153,389,45"/>
+<area shape="rect" id="Node000009" href="$ra8__webp_8h.html" title="Zero&#45;heap WebP (VP8 / VP8L) decode facade over the vendored libwebp." alt="" coords="465,167,562,192"/>
+<area shape="poly" id="edge20_Node000001_Node000009" title=" " alt="" coords="417,44,499,154,495,157,413,47"/>
+<area shape="rect" id="Node000010" href="$ra8__webp__arena_8h.html" title="Heap&#45;free scratch allocator hooks for the vendored libwebp decoder." alt="" coords="551,240,692,265"/>
+<area shape="poly" id="edge27_Node000001_Node000010" title=" " alt="" coords="432,43,502,94,541,128,577,165,598,196,614,226,609,228,593,198,573,168,538,132,499,98,429,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="172,117,366,301,363,305,168,121"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="122,121,85,140,68,153,54,168,26,213,10,254,8,273,11,294,18,315,32,337,58,362,91,379,127,389,161,394,160,399,126,394,89,384,55,367,28,340,13,317,5,295,3,274,5,252,21,210,50,165,65,149,82,135,119,116"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="156,120,144,154,139,153,151,118"/>
+<area shape="poly" id="edge16_Node000004_Node000007" title=" " alt="" coords="126,121,94,140,79,153,68,168,58,201,58,237,64,271,74,300,69,301,59,273,52,238,52,201,63,165,75,149,91,135,124,117"/>
+<area shape="poly" id="edge15_Node000004_Node000008" title=" " alt="" coords="186,116,288,159,286,164,184,121"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="155,190,357,304,354,309,153,195"/>
+<area shape="poly" id="edge8_Node000005_Node000003" title=" " alt="" coords="149,191,169,212,187,239,199,274,207,310,212,372,207,373,202,311,194,275,182,241,165,215,145,194"/>
+<area shape="rect" id="Node000006" href="$jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="122,240,172,265"/>
+<area shape="poly" id="edge9_Node000005_Node000006" title=" " alt="" coords="138,192,145,226,140,227,133,193"/>
+<area shape="poly" id="edge14_Node000005_Node000007" title=" " alt="" coords="131,193,112,241,92,301,87,299,107,239,126,191"/>
+<area shape="poly" id="edge10_Node000006_Node000002" title=" " alt="" coords="173,259,337,307,336,312,172,264"/>
+<area shape="poly" id="edge11_Node000006_Node000003" title=" " alt="" coords="155,265,202,373,197,375,150,267"/>
+<area shape="poly" id="edge12_Node000006_Node000007" title=" " alt="" coords="138,267,103,305,99,301,134,264"/>
+<area shape="poly" id="edge13_Node000007_Node000003" title=" " alt="" coords="103,336,178,377,175,382,101,341"/>
+<area shape="poly" id="edge21_Node000009_Node000002" title=" " alt="" coords="505,194,408,305,404,301,501,191"/>
+<area shape="poly" id="edge22_Node000009_Node000003" title=" " alt="" coords="514,193,506,223,492,263,470,305,438,341,395,367,348,384,301,395,259,399,259,394,300,389,347,379,393,362,435,337,465,302,487,261,501,221,509,192"/>
+<area shape="poly" id="edge23_Node000009_Node000007" title=" " alt="" coords="480,195,129,312,128,306,479,190"/>
+<area shape="poly" id="edge24_Node000009_Node000010" title=" " alt="" coords="532,190,594,230,591,235,530,194"/>
+<area shape="poly" id="edge25_Node000010_Node000002" title=" " alt="" coords="585,268,438,312,437,307,583,263"/>
+<area shape="poly" id="edge26_Node000010_Node000003" title=" " alt="" coords="615,267,583,304,559,324,534,341,462,369,387,387,317,396,259,400,259,395,316,391,386,382,460,364,531,336,556,320,579,300,611,264"/>
+</map>

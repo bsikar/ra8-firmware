@@ -1,0 +1,16 @@
+<map id="libs/ra8_audio/src/ra8_audio.c" name="libs/ra8_audio/src/ra8_audio.c">
+<area shape="rect" id="Node000001" title="Validation and dispatch for the transport&#45;neutral audio facade." alt="" coords="5,5,141,45"/>
+<area shape="rect" id="Node000002" href="$ra8__audio_8h.html" title="Transport&#45;neutral, caller&#45;owned audio capture facade." alt="" coords="43,167,141,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="78,46,92,153,86,153,73,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="47,313,118,339"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="66,47,48,88,31,142,23,204,25,235,33,264,45,285,60,302,56,306,40,288,28,266,20,236,18,204,26,141,43,86,61,45"/>
+<area shape="rect" id="Node000005" href="$ra8__audio__internal_8h.html" title="Private audio&#45;source vtable shared by concrete backends." alt="" coords="111,93,265,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="103,43,161,83,158,88,100,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="107,191,132,223,139,244,137,266,125,288,109,306,105,302,121,285,132,265,134,245,127,226,103,194"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="43,240,122,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="93,193,89,227,83,226,88,192"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="85,266,85,300,80,300,80,266"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="174,121,120,160,117,156,171,117"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="165,167,291,192"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="197,118,217,153,212,156,192,120"/>
+</map>

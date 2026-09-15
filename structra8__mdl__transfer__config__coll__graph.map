@@ -1,0 +1,9 @@
+<map id="ra8_mdl_transfer_config" name="ra8_mdl_transfer_config">
+<area shape="rect" id="Node000001" title="Fixed policy and injected mechanisms for one transfer." alt="" coords="195,101,373,127"/>
+<area shape="rect" id="Node000002" href="$structra8__mdl__storage__iface.html" title="Transactional destination seam for one downloaded object." alt="" coords="5,5,176,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="128,34,261,99,259,104,126,39"/>
+<area shape="rect" id="Node000003" href="$structra8__mdl__sha256__iface.html" title="Streaming SHA&#45;256 seam with caller&#45;owned fixed storage." alt="" coords="200,5,368,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="287,45,287,101,281,101,281,45"/>
+<area shape="rect" id="Node000004" href="$structra8__mdl__http__policy__t.html" title="Bounded request policy forwarded to the C6 HTTP client." alt="" coords="393,5,559,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="441,39,309,104,307,99,439,34"/>
+</map>

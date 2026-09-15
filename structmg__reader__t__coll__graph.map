@@ -1,0 +1,13 @@
+<map id="mg_reader_t" name="mg_reader_t">
+<area shape="rect" id="Node000001" title="Viewer state: the page geometry plus the current viewport + zoom." alt="" coords="101,389,205,415"/>
+<area shape="rect" id="Node000002" href="$structra8__tile__cache__t.html" title="Tile&#45;cache state (caller&#45;owned; treat as private)." alt="" coords="89,293,217,319"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="155,333,155,389,150,389,150,333"/>
+<area shape="rect" id="Node000003" href="$structra8__keycache__t.html" title="Cache engine state (caller&#45;owned; treat as private)." alt="" coords="21,197,143,223"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="101,232,146,292,142,295,97,235"/>
+<area shape="rect" id="Node000004" href="$structra8__keycache__cfg__t.html" title="Caller&#45;supplied storage + policy + renderer for ra8_keycache_init." alt="" coords="7,101,157,127"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="85,141,85,197,79,197,79,141"/>
+<area shape="rect" id="Node000005" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="5,5,159,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="85,45,85,101,79,101,79,45"/>
+<area shape="rect" id="Node000006" href="$structra8__tile__key__t.html" title="Identifies one decoded image tile." alt="" coords="168,197,281,223"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="209,235,164,295,159,291,205,232"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="ra8_tile_cache_cfg_t" name="ra8_tile_cache_cfg_t">
+<area shape="rect" id="Node000001" title="Caller&#45;supplied storage + decoder for ra8_tile_cache_init." alt="" coords="162,121,317,147"/>
+<area shape="rect" id="Node000002" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="5,5,159,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,37,225,119,222,123,108,41"/>
+<area shape="rect" id="Node000003" href="$structra8__tile__key__t.html" title="Identifies one decoded image tile." alt="" coords="183,5,296,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="242,45,242,121,237,121,237,45"/>
+<area shape="rect" id="Node000004" href="$structra8__tile__dims__t.html" title="Per&#45;cell user descriptor: the decoded tile dimensions." alt="" coords="321,5,443,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="364,43,336,71,302,99,264,123,261,119,299,95,332,67,361,39"/>
+</map>

@@ -1,0 +1,66 @@
+<map id="libs/ra8_mem/inc/ra8_vmem.h" name="libs/ra8_mem/inc/ra8_vmem.h">
+<area shape="rect" id="Node000001" title="Byte&#45;range page cache with SLRU eviction (Layer 2, #147)." alt="" coords="1844,5,2003,45"/>
+<area shape="rect" id="Node000002" href="$book__paged_8h.html" title="Paged (demand&#45;fetched) accessor mode for book over ra8_vmem (#163)." alt="" coords="1081,101,1248,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1831,41,1248,112,1248,107,1830,35"/>
+<area shape="rect" id="Node000003" href="$book__paged_8c.html" title="Paged book&#45;source layer: copy&#45;out reads over ra8_vmem (#163)." alt="" coords="697,203,864,243"/>
+<area shape="poly" id="edge17_Node000001_Node000003" title=" " alt="" coords="1830,33,1431,54,1221,72,1135,83,1069,96,996,119,924,149,814,206,811,201,922,144,994,114,1068,91,1134,78,1220,67,1431,48,1830,27"/>
+<area shape="rect" id="Node000012" href="$sh__paged_8c.html" title="Demand&#45;paged .rabook backing: chunk reader + page cache + source bind." alt="" coords="2312,299,2519,353"/>
+<area shape="poly" id="edge22_Node000001_Node000012" title=" " alt="" coords="1830,40,1701,63,1644,78,1606,96,1564,131,1548,150,1535,169,1528,189,1527,209,1532,229,1546,249,1563,259,1591,267,1675,280,1787,287,1912,291,2154,292,2300,296,2312,298,2311,303,2299,301,2154,297,1912,296,1787,292,1675,285,1590,272,1561,264,1543,253,1528,231,1521,210,1523,188,1530,167,1543,146,1561,127,1603,91,1643,73,1700,57,1829,35"/>
+<area shape="rect" id="Node000018" href="$rabook__import__compiler_8h.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="1633,93,1827,148"/>
+<area shape="poly" id="edge18_Node000001_Node000018" title=" " alt="" coords="1873,54,1786,96,1783,91,1871,49"/>
+<area shape="rect" id="Node000019" href="$rabook__import__compiler_8c.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="1557,196,1751,251"/>
+<area shape="poly" id="edge21_Node000001_Node000019" title=" " alt="" coords="1831,37,1768,46,1706,58,1654,74,1635,84,1623,95,1613,118,1615,144,1624,171,1637,194,1633,197,1620,173,1610,145,1608,117,1619,92,1632,80,1652,69,1705,53,1767,40,1830,32"/>
+<area shape="rect" id="Node000020" href="$examples_2ek__ra8d2_2hw__pending_2import__reader_2src_2main_8c.html" title="End&#45;to&#45;end on&#45;import EPUB &#45;&gt; .rabook compile + cache + read (#151)." alt="" coords="1776,196,1953,251"/>
+<area shape="poly" id="edge23_Node000001_Node000020" title=" " alt="" coords="1908,59,1893,94,1878,148,1870,196,1865,195,1873,147,1887,92,1903,57"/>
+<area shape="rect" id="Node000021" href="$ra8__vmem__stream_8h.html" title="Read a page&#45;cached object as a seekable byte stream (Layer 2 helper, #147/#151)." alt="" coords="1903,101,2061,141"/>
+<area shape="poly" id="edge24_Node000001_Node000021" title=" " alt="" coords="1945,55,1972,99,1968,102,1940,58"/>
+<area shape="rect" id="Node000023" href="$ra8__vmem__stream_8c.html" title="Read a page&#45;cached object as a seekable byte stream – impl (#147/#151)." alt="" coords="2192,203,2351,243"/>
+<area shape="poly" id="edge29_Node000001_Node000023" title=" " alt="" coords="1992,48,2034,67,2074,91,2090,105,2101,119,2111,132,2126,146,2176,177,2226,201,2223,206,2174,182,2123,150,2107,136,2097,122,2087,109,2071,95,2031,72,1990,53"/>
+<area shape="rect" id="Node000024" href="$ra8__vmem_8c.html" title="Byte&#45;range page cache with SLRU eviction – implementation (Layer 2)." alt="" coords="2137,101,2296,141"/>
+<area shape="poly" id="edge28_Node000001_Node000024" title=" " alt="" coords="1996,47,2158,98,2157,103,1995,52"/>
+<area shape="rect" id="Node000025" href="$sweep__block_8c.html" title="Core of the #208 block/frame&#45;size sweep (&#45;&#45;sweep&#45;block)." alt="" coords="2321,101,2486,141"/>
+<area shape="poly" id="edge30_Node000001_Node000025" title=" " alt="" coords="2017,38,2155,61,2308,91,2338,98,2337,103,2307,96,2154,66,2016,43"/>
+<area shape="rect" id="Node000026" href="$reader__vmem__internal_8h.html" title="Private host sink and caller&#45;owned workspace contracts for reader_vmem." alt="" coords="2593,101,2779,141"/>
+<area shape="poly" id="edge31_Node000001_Node000026" title=" " alt="" coords="2017,32,2256,55,2542,91,2593,99,2592,104,2542,96,2255,61,2016,37"/>
+<area shape="rect" id="Node000027" href="$reader__vmem_8c.html" title="Drive the real virtual&#45;memory cache with a deterministic reader trace." alt="" coords="2421,203,2593,243"/>
+<area shape="poly" id="edge35_Node000001_Node000027" title=" " alt="" coords="2017,28,2152,37,2303,50,2431,68,2475,79,2500,91,2516,118,2521,148,2520,178,2515,203,2510,202,2514,178,2516,149,2511,120,2496,95,2473,84,2430,73,2302,55,2152,42,2016,34"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1077,147,876,199,849,206,848,201,875,193,1076,142"/>
+<area shape="rect" id="Node000004" href="$book__xhtml_8c.html" title="Serialize a compiled&#45;book chapter DOM back to XHTML for the renderer." alt="" coords="888,203,1055,243"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="1118,149,1009,206,1006,201,1115,145"/>
+<area shape="rect" id="Node000005" href="$zoom__book_8h.html" title="Bind a .rabook image&#45;pool figure as a zoom source (#478)." alt="" coords="1079,203,1250,243"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="1167,155,1167,203,1162,203,1162,155"/>
+<area shape="rect" id="Node000006" href="$sh__app_8h.html" title="Shared contract for the ereader_shelf multi&#45;screen e&#45;reader." alt="" coords="1275,196,1481,251"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="1218,144,1323,194,1321,198,1216,149"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ereader__shelf_2src_2main_8c.html" title="Hybrid baked + SD e&#45;reader: shelf, cover, TOC, full&#45;book reader." alt="" coords="1620,299,1827,353"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="1482,252,1634,296,1633,301,1480,257"/>
+<area shape="rect" id="Node000008" href="$sh__book_8c.html" title="Format&#45;agnostic book backend: book (.rabook) + epub (.epub)." alt="" coords="1851,299,2057,353"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="1495,247,1501,248,1596,263,1670,272,1744,281,1838,296,1851,298,1850,304,1838,301,1743,286,1669,277,1595,268,1500,253,1494,252"/>
+<area shape="rect" id="Node000009" href="$sh__comic_8c.html" title="Full&#45;page image reader for CBZ / CBR comic archives (#236)." alt="" coords="2081,299,2288,353"/>
+<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="1495,247,1501,248,1660,266,1785,271,1910,277,2069,296,2082,298,2081,303,2068,301,1909,283,1785,277,1660,271,1500,253,1494,252"/>
+<area shape="rect" id="Node000010" href="$sh__cover_8c.html" title="Cover / title page for the open book." alt="" coords="5,299,212,353"/>
+<area shape="poly" id="edge9_Node000006_Node000010" title=" " alt="" coords="1261,253,1103,270,969,277,850,279,740,277,630,275,512,276,380,284,224,301,213,303,212,298,223,296,379,279,512,271,630,270,740,271,850,273,969,272,1103,265,1261,248"/>
+<area shape="rect" id="Node000011" href="$sh__image_8c.html" title="4bpp&#45;grayscale cover / image decode + scaled blit for ereader_shelf." alt="" coords="236,299,443,353"/>
+<area shape="poly" id="edge10_Node000006_Node000011" title=" " alt="" coords="1261,253,1138,267,1034,274,855,277,678,280,575,287,454,301,443,303,443,298,454,296,575,282,678,274,855,272,1033,269,1138,262,1261,248"/>
+<area shape="poly" id="edge11_Node000006_Node000012" title=" " alt="" coords="1495,247,1501,248,1622,262,1725,269,1900,271,2076,274,2179,282,2300,296,2312,298,2311,303,2299,301,2178,287,2075,280,1900,277,1724,274,1621,267,1500,253,1494,252"/>
+<area shape="rect" id="Node000013" href="$sh__reader_8c.html" title="Full&#45;book reader: per&#45;chapter text extraction, word&#45;wrap, pagination." alt="" coords="467,299,673,353"/>
+<area shape="poly" id="edge12_Node000006_Node000013" title=" " alt="" coords="1261,253,1098,271,971,277,844,283,685,301,674,303,673,298,684,296,844,278,971,272,1098,266,1261,248"/>
+<area shape="rect" id="Node000014" href="$sh__sd_8c.html" title="Optional SD&#45;card book source for the hybrid e&#45;reader." alt="" coords="697,299,904,353"/>
+<area shape="poly" id="edge13_Node000006_Node000014" title=" " alt="" coords="1261,253,1163,269,1086,277,1011,286,916,301,905,303,904,298,915,296,1010,281,1086,272,1162,263,1261,248"/>
+<area shape="rect" id="Node000015" href="$sh__shelf_8c.html" title="Bookshelf screen: a grid of book cards with cover thumbnails." alt="" coords="928,299,1135,353"/>
+<area shape="poly" id="edge14_Node000006_Node000015" title=" " alt="" coords="1276,257,1122,301,1121,296,1274,252"/>
+<area shape="rect" id="Node000016" href="$sh__toc_8c.html" title="Table&#45;of&#45;contents screen: scrollable chapter list for the open book." alt="" coords="1159,299,1365,353"/>
+<area shape="poly" id="edge15_Node000006_Node000016" title=" " alt="" coords="1339,262,1294,301,1291,297,1335,258"/>
+<area shape="rect" id="Node000017" href="$sh__util_8c.html" title="Small shared drawing + formatting helpers for ereader_shelf." alt="" coords="1389,299,1596,353"/>
+<area shape="poly" id="edge16_Node000006_Node000017" title=" " alt="" coords="1420,258,1464,297,1461,301,1417,262"/>
+<area shape="poly" id="edge19_Node000018_Node000019" title=" " alt="" coords="1704,161,1676,198,1672,194,1700,157"/>
+<area shape="poly" id="edge20_Node000018_Node000020" title=" " alt="" coords="1778,154,1831,194,1828,198,1775,158"/>
+<area shape="poly" id="edge25_Node000021_Node000019" title=" " alt="" coords="1908,147,1741,198,1739,193,1907,142"/>
+<area shape="rect" id="Node000022" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2mem__subsystem_2src_2main_8c.html" title="Drives each ra8_mem (#147) memory&#45;hierarchy layer in isolation (#263)." alt="" coords="1977,196,2168,251"/>
+<area shape="poly" id="edge26_Node000021_Node000022" title=" " alt="" coords="2010,149,2051,194,2047,198,2006,153"/>
+<area shape="poly" id="edge27_Node000021_Node000023" title=" " alt="" coords="2050,143,2218,201,2216,206,2048,148"/>
+<area shape="poly" id="edge32_Node000026_Node000027" title=" " alt="" coords="2642,150,2542,206,2539,201,2639,145"/>
+<area shape="rect" id="Node000028" href="$reader__vmem__host_8c.html" title="Bounded raw&#45;descriptor trace composition for reader_vmem." alt="" coords="2617,203,2789,243"/>
+<area shape="poly" id="edge33_Node000026_Node000028" title=" " alt="" coords="2694,154,2703,203,2697,204,2689,155"/>
+<area shape="rect" id="Node000029" href="$reader__vmem__workspace_8c.html" title="Checked split&#45;region planning for reader_vmem cache RAM." alt="" coords="2814,203,3019,243"/>
+<area shape="poly" id="edge34_Node000026_Node000029" title=" " alt="" coords="2743,144,2875,201,2872,206,2741,149"/>
+</map>

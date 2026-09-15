@@ -1,0 +1,17 @@
+<map id="tools/ra8_emulator/inc/emu_elf_source_internal.h" name="tools/ra8_emulator/inc/emu_elf_source_internal.h">
+<area shape="rect" id="Node000001" title="Private raw&#45;descriptor ELF source operations." alt="" coords="541,5,693,60"/>
+<area shape="rect" id="Node000002" href="$emu__elf_8c.html" title="Streaming ELF32 segment, vector&#45;base, and warm&#45;reboot services." alt="" coords="5,115,165,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="528,49,365,74,178,111,149,118,147,113,177,105,364,69,528,43"/>
+<area shape="rect" id="Node000003" href="$emu__elf__source_8c.html" title="Allocation&#45;free raw&#45;descriptor ELF source ownership and bounded views." alt="" coords="190,108,341,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="528,61,353,111,342,114,340,109,351,105,527,56"/>
+<area shape="rect" id="Node000004" href="$emu__elf__symbols_8c.html" title="Bounded raw&#45;descriptor ELF32 symbol and string streaming." alt="" coords="365,108,515,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="561,69,488,110,485,105,558,64"/>
+<area shape="rect" id="Node000005" href="$emu__run__report_8c.html" title="Run&#45;end report + finalize (see emu_run_internal.h)." alt="" coords="540,108,695,163"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="620,74,620,108,615,108,615,74"/>
+<area shape="rect" id="Node000006" href="$emu__seam__div0_8c.html" title="Divide&#45;by&#45;zero UsageFault (CCR.DIV_0_TRP) CPU&#45;model seam." alt="" coords="719,108,889,163"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="679,64,756,105,754,110,677,69"/>
+<area shape="rect" id="Node000007" href="$emu__seam__longshift_8c.html" title="Armv8.1&#45;M long&#45;shift (LSLL/LSRL/ASRL) emulation seam (see emu_seams.h)." alt="" coords="913,108,1082,163"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="708,55,902,105,913,108,912,114,901,111,706,60"/>
+<area shape="rect" id="Node000008" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="1106,115,1251,155"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="708,41,888,66,992,84,1095,105,1123,113,1121,118,1094,111,991,89,887,71,707,47"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="ra8_camera_codec_jpeg_sw_state_t" name="ra8_camera_codec_jpeg_sw_state_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned private state for the software JPEG backend." alt="" coords="5,116,184,156"/>
+<area shape="rect" id="Node000002" href="$structra8__camera__codec__jpeg__sw__cfg__t.html" title="Configuration and caller&#45;owned RGB workspace for software JPEG." alt="" coords="5,5,184,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,59,97,116,92,116,92,59"/>
+</map>

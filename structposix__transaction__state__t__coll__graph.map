@@ -1,0 +1,5 @@
+<map id="posix_transaction_state_t" name="posix_transaction_state_t">
+<area shape="rect" id="Node000001" title="POSIX state placed in caller transaction workspace." alt="" coords="5,101,195,127"/>
+<area shape="rect" id="Node000002" href="$structposix__file__state__t.html" title="POSIX state placed in caller file workspace." alt="" coords="32,5,168,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="103,45,103,101,97,101,97,45"/>
+</map>

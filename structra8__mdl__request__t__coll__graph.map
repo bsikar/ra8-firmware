@@ -1,0 +1,5 @@
+<map id="ra8_mdl_request_t" name="ra8_mdl_request_t">
+<area shape="rect" id="Node000001" title="Complete typed HTTPS request accepted by protocol version 3." alt="" coords="17,101,160,127"/>
+<area shape="rect" id="Node000002" href="$structra8__mdl__http__policy__t.html" title="Bounded request policy forwarded to the C6 HTTP client." alt="" coords="5,5,172,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="91,45,91,101,86,101,86,45"/>
+</map>

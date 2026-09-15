@@ -1,0 +1,47 @@
+<map id="tools/rabook_imagepack/src/ra8_fmt_portable_verify.c" name="tools/rabook_imagepack/src/ra8_fmt_portable_verify.c">
+<area shape="rect" id="Node000001" title="Raw&#45;fd composition root for bounded two&#45;spool JOF verification." alt="" coords="442,5,625,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="120,416,195,441"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="442,40,344,47,237,60,144,81,108,94,83,110,66,131,59,153,59,207,59,283,66,320,84,354,108,383,133,405,129,409,105,386,80,357,61,322,53,284,53,207,53,152,61,129,80,106,106,89,142,75,237,55,343,42,441,35"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="411,489,482,515"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="626,37,666,45,708,59,748,79,782,106,800,130,807,152,808,207,808,357,805,370,798,382,772,405,735,426,688,444,587,474,497,494,495,489,585,469,687,439,732,421,769,401,794,379,800,368,803,356,803,207,802,153,795,132,778,110,745,83,706,64,665,50,625,42"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="843,115,914,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="626,53,825,105,834,108,833,113,823,111,624,58"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="939,115,1013,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="625,44,768,69,927,105,937,108,935,113,926,111,767,74,625,49"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="507,196,632,221"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="541,60,567,182,562,183,536,61"/>
+<area shape="rect" id="Node000007" href="$ra8__fmt__host__fd__internal_8h.html" title="Raw file&#45;descriptor adapters for the portable format&#45;tool contracts." alt="" coords="571,115,768,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="573,58,643,105,640,110,570,62"/>
+<area shape="rect" id="Node000008" href="$ra8__fmt__stream_8h.html" title="Caller&#45;workspace I/O contracts for portable format&#45;tool engines." alt="" coords="283,196,421,221"/>
+<area shape="poly" id="edge32_Node000001_Node000008" title=" " alt="" coords="443,47,412,56,382,69,356,86,334,109,327,127,328,146,340,183,335,185,322,147,322,126,330,107,352,82,380,64,410,51,441,42"/>
+<area shape="rect" id="Node000012" href="$ra8__fmt__host__spool__internal_8h.html" title="Anonymous raw&#45;fd scratch artifacts for portable format verification." alt="" coords="345,108,495,148"/>
+<area shape="poly" id="edge23_Node000001_Node000012" title=" " alt="" coords="503,62,455,101,452,97,499,58"/>
+<area shape="rect" id="Node000013" href="$ra8__fmt__portable__main__internal_8h.html" title="Caller&#45;workspace CLI composition for every supported tool verb." alt="" coords="94,108,269,148"/>
+<area shape="poly" id="edge27_Node000001_Node000013" title=" " alt="" coords="442,61,266,107,265,102,441,56"/>
+<area shape="poly" id="edge7_Node000007_Node000003" title=" " alt="" coords="672,141,672,281,672,357,667,386,654,412,633,433,608,452,551,478,496,494,495,489,550,473,606,447,630,429,649,409,662,385,667,356,667,281,667,141"/>
+<area shape="poly" id="edge8_Node000007_Node000006" title=" " alt="" coords="656,143,597,189,593,185,653,139"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="624,143,412,195,411,190,623,138"/>
+<area shape="poly" id="edge10_Node000008_Node000002" title=" " alt="" coords="300,224,254,242,233,255,214,271,192,302,177,338,162,403,157,402,172,336,187,300,210,268,230,251,252,237,298,219"/>
+<area shape="poly" id="edge11_Node000008_Node000003" title=" " alt="" coords="363,220,413,299,440,355,460,416,462,447,457,476,452,475,456,447,455,416,436,357,408,301,359,223"/>
+<area shape="rect" id="Node000009" href="$jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="296,343,347,368"/>
+<area shape="poly" id="edge12_Node000008_Node000009" title=" " alt="" coords="352,222,329,330,324,329,347,221"/>
+<area shape="rect" id="Node000010" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="366,416,445,441"/>
+<area shape="poly" id="edge22_Node000008_Node000010" title=" " alt="" coords="358,221,389,342,403,402,398,403,384,343,353,222"/>
+<area shape="rect" id="Node000011" href="$jof__audit_8h.html" title="No&#45;heap, backing&#45;agnostic structural audit for JOF atlases." alt="" coords="224,269,315,295"/>
+<area shape="poly" id="edge17_Node000008_Node000011" title=" " alt="" coords="340,223,295,262,292,258,337,219"/>
+<area shape="poly" id="edge13_Node000009_Node000002" title=" " alt="" coords="297,370,197,413,195,408,295,365"/>
+<area shape="poly" id="edge14_Node000009_Node000003" title=" " alt="" coords="326,368,335,402,344,422,355,440,380,463,409,481,406,485,377,467,351,443,339,424,330,404,321,369"/>
+<area shape="poly" id="edge15_Node000009_Node000010" title=" " alt="" coords="337,366,383,405,379,409,333,370"/>
+<area shape="poly" id="edge16_Node000010_Node000003" title=" " alt="" coords="414,440,435,476,431,479,410,443"/>
+<area shape="poly" id="edge18_Node000011_Node000002" title=" " alt="" coords="262,297,177,407,172,404,258,293"/>
+<area shape="poly" id="edge19_Node000011_Node000003" title=" " alt="" coords="272,294,276,328,287,367,305,407,335,439,369,463,404,481,401,486,366,468,332,443,301,410,281,369,271,329,267,295"/>
+<area shape="poly" id="edge20_Node000011_Node000009" title=" " alt="" coords="280,293,307,330,303,333,276,297"/>
+<area shape="poly" id="edge21_Node000011_Node000010" title=" " alt="" coords="294,293,328,313,361,341,383,372,398,402,394,405,378,374,357,344,324,317,291,297"/>
+<area shape="poly" id="edge24_Node000012_Node000003" title=" " alt="" coords="428,148,454,260,468,337,479,416,479,442,464,478,459,476,473,441,473,416,463,338,449,261,422,149"/>
+<area shape="poly" id="edge25_Node000012_Node000006" title=" " alt="" coords="457,146,536,187,534,192,455,150"/>
+<area shape="poly" id="edge26_Node000012_Node000008" title=" " alt="" coords="406,150,373,187,369,184,402,146"/>
+<area shape="poly" id="edge28_Node000013_Node000002" title=" " alt="" coords="182,148,164,343,161,402,156,402,159,342,177,148"/>
+<area shape="poly" id="edge29_Node000013_Node000003" title=" " alt="" coords="131,150,90,171,50,200,33,217,20,236,11,258,8,281,8,357,10,376,16,390,25,401,38,410,109,439,185,466,264,484,338,493,398,497,397,503,337,498,263,489,184,471,107,444,35,414,22,405,12,393,5,377,3,357,3,280,6,256,15,234,29,214,46,196,87,167,129,146"/>
+<area shape="poly" id="edge30_Node000013_Node000006" title=" " alt="" coords="269,144,500,191,499,196,268,150"/>
+<area shape="poly" id="edge31_Node000013_Node000008" title=" " alt="" coords="223,146,316,188,314,193,221,150"/>
+</map>

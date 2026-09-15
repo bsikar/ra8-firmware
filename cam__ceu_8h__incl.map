@@ -1,0 +1,8 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/camera_capture/inc/cam_ceu.h" name="examples/ek_ra8d2/hw_validated/hil/camera_capture/inc/cam_ceu.h">
+<area shape="rect" id="Node000001" title="App&#45;specific GPIO diagnostic for the parallel DVP camera signals." alt="" coords="5,5,180,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="57,181,128,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="88,61,82,95,82,133,88,168,83,169,77,134,77,95,83,60"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="92,108,171,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="107,59,123,94,118,96,102,61"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="127,135,108,171,103,168,123,132"/>
+</map>

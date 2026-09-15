@@ -1,0 +1,28 @@
+<map id="tools/ra8_emulator/inc/board_usb.h" name="tools/ra8_emulator/inc/board_usb.h">
+<area shape="rect" id="Node000001" title="USBFS controller model + a virtual USB host for the board emulator." alt="" coords="807,5,953,45"/>
+<area shape="rect" id="Node000002" href="$board__usb__internal_8h.html" title="Module&#45;private state + interfaces shared by the board_usb TUs." alt="" coords="301,101,486,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="794,43,655,66,499,96,467,103,466,98,498,91,655,61,793,37"/>
+<area shape="rect" id="Node000003" href="$board__usb_8c.html" title="USBFS controller model + virtual USB host (chapter&#45;9 enumeration)." alt="" coords="5,196,160,236"/>
+<area shape="poly" id="edge12_Node000001_Node000003" title=" " alt="" coords="794,35,523,57,387,75,290,96,237,118,187,145,109,198,106,193,184,141,235,113,289,91,386,70,522,52,793,29"/>
+<area shape="rect" id="Node000008" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="511,101,676,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="810,52,652,103,650,98,808,47"/>
+<area shape="rect" id="Node000009" href="$emu__view_8c.html" title="Board&#45;view presentation implementation (see emu_view.h)." alt="" coords="701,101,875,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="854,57,808,102,805,99,850,53"/>
+<area shape="rect" id="Node000010" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="899,101,1045,141"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="910,53,955,99,952,102,906,57"/>
+<area shape="rect" id="Node000011" href="$board__periph_8c.html" title="Peripheral&#45;block registry core + ICU/NVIC routing for ra8_emulator." alt="" coords="1069,101,1259,141"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="951,47,1107,98,1106,103,950,52"/>
+<area shape="rect" id="Node000012" href="$board__periph__usbhs__host_8c.html" title="On&#45;chip USBHS host controller model (0x40351000) for the board emulator." alt="" coords="1284,93,1463,148"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="967,37,1110,60,1273,91,1284,93,1283,99,1271,96,1109,65,966,42"/>
+<area shape="rect" id="Node000013" href="$board__usb__host_8c.html" title="USBHS HOST&#45;mode controller model (self&#45;loop peer of the USBFS device)." alt="" coords="1487,101,1676,141"/>
+<area shape="poly" id="edge13_Node000001_Node000013" title=" " alt="" coords="966,30,1197,52,1336,69,1475,91,1510,98,1509,103,1474,96,1335,74,1196,57,966,36"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="318,147,146,198,145,193,317,142"/>
+<area shape="rect" id="Node000004" href="$board__usb__bridge_8c.html" title="USBHS&#45;host &lt;&#45;&gt; USBFS&#45;device bridge (see board_usb_internal.h)." alt="" coords="184,196,387,236"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="363,152,309,198,305,194,359,148"/>
+<area shape="rect" id="Node000005" href="$board__usb__dev_8c.html" title="USBFS register + CFIFO model (see board_usb_internal.h)." alt="" coords="411,196,595,236"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="428,148,482,194,479,198,424,152"/>
+<area shape="rect" id="Node000006" href="$board__usb__loop_8c.html" title="Self&#45;loop (loop&#45;cable) transport (see board_usb_internal.h)." alt="" coords="619,196,808,236"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="472,142,649,193,648,199,470,147"/>
+<area shape="rect" id="Node000007" href="$board__usb__vhost_8c.html" title="Built&#45;in virtual chapter&#45;9 USB host (see board_usb_internal.h)." alt="" coords="832,196,1029,236"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="480,141,499,145,659,171,820,193,832,195,831,201,820,199,659,177,498,151,479,146"/>
+</map>

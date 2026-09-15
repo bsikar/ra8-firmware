@@ -1,0 +1,9 @@
+<map id="libs/ra8_core/inc/ra8_register_guard.h" name="libs/ra8_core/inc/ra8_register_guard.h">
+<area shape="rect" id="Node000001" title="IRQ&#45;masked read&#45;modify&#45;write helper for shared registers." alt="" coords="237,5,390,45"/>
+<area shape="rect" id="Node000002" href="$c6__cam__audio_8c.html" title="Interrupt&#45;driven onboard PDM microphone recorder for camera servers." alt="" coords="5,93,216,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="261,53,169,96,167,91,259,49"/>
+<area shape="rect" id="Node000003" href="$ra8__dfu__program_8c.html" title="MRAM slot program / verify for the USB&#45;DFU bootloader core." alt="" coords="240,101,387,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="316,59,316,101,311,101,311,59"/>
+<area shape="rect" id="Node000004" href="$ra8__sci_8c.html" title="Full&#45;featured SCI_B driver implementation." alt="" coords="411,101,557,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="361,50,451,98,448,103,359,54"/>
+</map>

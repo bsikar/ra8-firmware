@@ -1,0 +1,27 @@
+var board__overlay_8c =
+[
+    [ "overlay_memory_context_t", "structoverlay__memory__context__t.html", "structoverlay__memory__context__t" ],
+    [ "board_overlay_battery_pct_at", "board__overlay_8c.html#afb4c09a7fa35ed7d382ca406f7991385", null ],
+    [ "board_overlay_compose", "board__overlay_8c.html#aae452d362a4cfe6306cfc427ca1c42de", null ],
+    [ "board_overlay_draw_sidebar", "board__overlay_8c.html#a68ae687d094c0c1b6337acccc5740ee8", null ],
+    [ "board_overlay_hit_button", "board__overlay_8c.html#a7ae5ecbe7ff89ce3d61b23e46f8f7581", null ],
+    [ "board_overlay_hit_console_tab", "board__overlay_8c.html#aa68c596f08f26b4a3c026b3e79535d6e", null ],
+    [ "internal_battery_clamp", "board__overlay_8c.html#ac141ac5bce3358ce3bf15c5c365e273d", null ],
+    [ "internal_battery_fill_color", "board__overlay_8c.html#a89fbfc847d9865d2f0edaf444fb152e9", null ],
+    [ "internal_console_tab_rect", "board__overlay_8c.html#a91dd0c178855bcf00768a38a44208fb8", null ],
+    [ "internal_console_tab_row_count", "board__overlay_8c.html#a3f2f368f26820ed6142b5783db58a9f0", null ],
+    [ "internal_console_tabs_per_row", "board__overlay_8c.html#a2c41cc806cde863b289034f6102148c6", null ],
+    [ "internal_draw_button", "board__overlay_8c.html#a0f2924eb27e3c98a93b658416d243d6a", null ],
+    [ "internal_draw_buttons", "board__overlay_8c.html#aa73e46fa5a8a108983ee0227aa633ab7", null ],
+    [ "internal_draw_console", "board__overlay_8c.html#a0660eb24a95b4d63db2dfd212718b51d", null ],
+    [ "internal_draw_console_body", "board__overlay_8c.html#adc6290aa835588a1458ca8c69f31153a", null ],
+    [ "internal_draw_console_heading", "board__overlay_8c.html#aae684e1b30b82a150727a5a4bea80b4d", null ],
+    [ "internal_draw_console_tabs", "board__overlay_8c.html#aa993df7cf10eeae8584724e1ac642b9a", null ],
+    [ "internal_draw_core", "board__overlay_8c.html#ac1bf96547b12249c8198e19a15a19119", null ],
+    [ "internal_draw_io_block", "board__overlay_8c.html#af885180183f80e7110d3dfeb7144a179", null ],
+    [ "internal_draw_led", "board__overlay_8c.html#a98f58905139d0ed61a57b7b19218b2fe", null ],
+    [ "internal_draw_leds", "board__overlay_8c.html#ab737fd69874ad95c84432673b6408368", null ],
+    [ "internal_draw_power", "board__overlay_8c.html#af1c299ed78f755c68bc1a75ab7d9edaf", null ],
+    [ "internal_draw_run_stats", "board__overlay_8c.html#a5455585761f65bceda632c07f8ddd25a", null ],
+    [ "internal_memory_fill", "board__overlay_8c.html#aaf0bb00126118bb447b3a25c95eb63e4", null ]
+];

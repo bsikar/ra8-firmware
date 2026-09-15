@@ -1,0 +1,13 @@
+<map id="wa_app_state_t" name="wa_app_state_t">
+<area shape="rect" id="Node000001" title="Per&#45;app state: its widget tree + a focus&#45;lifecycle counter." alt="" coords="207,217,331,243"/>
+<area shape="rect" id="Node000002" href="$structra8__widget.html" title=" " alt="" coords="113,101,207,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="172,138,186,165,206,191,223,205,242,215,239,220,220,209,202,195,181,168,167,140"/>
+<area shape="rect" id="Node000003" href="$structra8__widget__vtable__t.html" title="Behaviour table shared by all widgets of one kind." alt="" coords="5,5,160,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="103,40,152,99,148,103,99,43"/>
+<area shape="rect" id="Node000004" href="$structra8__ui__rect__t.html" title="Axis&#45;aligned rectangle in framebuffer pixel coordinates." alt="" coords="184,5,291,31"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="221,43,172,103,168,99,217,40"/>
+<area shape="rect" id="Node000005" href="$structwa__fill__t.html" title="A solid&#45;fill widget: renders one colour into its rect via ra8_gfx." alt="" coords="231,101,307,127"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="272,141,272,217,267,217,267,141"/>
+<area shape="rect" id="Node000006" href="$structwa__content__t.html" title="Per&#45;app content widget state: a title over a list of text lines." alt="" coords="332,101,441,127"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="385,141,375,169,358,195,339,210,318,220,315,215,336,205,354,192,370,167,380,139"/>
+</map>

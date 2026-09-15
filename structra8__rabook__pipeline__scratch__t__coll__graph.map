@@ -1,0 +1,13 @@
+<map id="ra8_rabook_pipeline_scratch_t" name="ra8_rabook_pipeline_scratch_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned temporary buffers the pipeline stage needs." alt="" coords="69,293,224,333"/>
+<area shape="rect" id="Node000002" href="$structra8__img__arena__t.html" title="Caller&#45;owned bump arena backing a single image decode." alt="" coords="5,197,136,223"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="90,232,134,291,130,295,86,236"/>
+<area shape="rect" id="Node000003" href="$structra8__rabook__xml__workspace__t.html" title="Caller&#45;owned storage for one parser invocation." alt="" coords="160,197,376,223"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="245,233,171,295,168,291,242,229"/>
+<area shape="rect" id="Node000004" href="$structxml__workspace__t.html" title="Exactly bounded caller&#45;owned nesting storage." alt="" coords="111,101,247,127"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="201,135,259,195,255,199,197,139"/>
+<area shape="rect" id="Node000005" href="$structxml__frame__t.html" title="One open&#45;element identity retained for close&#45;tag validation." alt="" coords="126,5,231,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="181,45,181,101,176,101,176,45"/>
+<area shape="rect" id="Node000006" href="$structbook__attr__t.html" title="One name=&quot;value&quot; attribute on an element." alt="" coords="271,101,367,127"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="308,140,277,198,272,196,304,138"/>
+</map>

@@ -1,0 +1,11 @@
+<map id="tools/cache_bench/src/policy_scanresist.c" name="tools/cache_bench/src/policy_scanresist.c">
+<area shape="rect" id="Node000001" title="Scan&#45;resistant eviction policies for the #147 benchmark: Segmented&#45;LRU and SRRIP – the deterministic,..." alt="" coords="81,5,247,45"/>
+<area shape="rect" id="Node000002" href="$cache__bench_8h.html" title="Eviction&#45;policy comparison harness for the #147 memory&#45;hierarchy decision record: the DIP seam every ..." alt="" coords="31,93,150,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="148,47,113,85,109,81,144,44"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="175,93,300,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="184,44,219,81,215,85,180,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="85,121,60,157,56,154,81,118"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="105,167,175,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="101,117,126,154,122,157,97,121"/>
+</map>

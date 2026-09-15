@@ -1,0 +1,24 @@
+<map id="libs/ra8_ov5640/src/ra8_ov5640.c" name="libs/ra8_ov5640/src/ra8_ov5640.c">
+<area shape="rect" id="Node000001" title="Transport&#45;independent OV5640 SCCB register driver." alt="" coords="102,5,250,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ov5640_8h.html" title="Transport&#45;independent OmniVision OV5640 sensor driver." alt="" coords="28,93,138,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,48,109,86,106,82,152,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="142,240,213,265"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="103,41,55,61,34,76,17,95,9,116,11,136,22,156,39,174,87,207,137,232,134,237,84,212,36,178,17,159,6,138,4,115,13,92,31,72,53,56,101,36"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="100,167,178,192"/>
+<area shape="poly" id="edge14_Node000001_Node000004" title=" " alt="" coords="174,46,148,154,143,152,169,45"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="339,93,464,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="231,43,357,86,355,91,230,48"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="214,93,314,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="199,44,243,82,239,86,196,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="83,119,80,153,83,173,89,191,110,214,136,232,133,236,106,218,85,193,77,174,75,154,78,119"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="94,117,124,154,119,157,90,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="148,191,167,227,163,229,143,194"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="260,120,194,229,190,227,255,118"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="246,121,173,162,170,157,243,116"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="254,167,336,192"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="272,118,287,153,282,155,267,120"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="361,167,509,192"/>
+<area shape="poly" id="edge12_Node000006_Node000008" title=" " alt="" coords="293,116,396,159,394,164,291,121"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="278,194,210,235,207,230,275,190"/>
+<area shape="poly" id="edge13_Node000008_Node000003" title=" " alt="" coords="394,195,227,241,225,235,393,189"/>
+</map>

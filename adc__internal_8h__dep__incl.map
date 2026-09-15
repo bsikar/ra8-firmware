@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/src/adc_internal.h" name="libs/ra8_hal/src/adc_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU constants shared by the ADC_B driver split." alt="" coords="99,5,246,45"/>
+<area shape="rect" id="Node000002" href="$adc_8c.html" title="ADC16H (16&#45;bit SAR) converter driver implementation." alt="" coords="5,101,164,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="145,57,99,102,95,98,141,53"/>
+<area shape="rect" id="Node000003" href="$adc__selfdiag_8c.html" title="ADC_B self&#45;diagnosis + internal extended&#45;analog channel reads." alt="" coords="189,93,335,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="204,53,244,91,240,95,201,57"/>
+</map>

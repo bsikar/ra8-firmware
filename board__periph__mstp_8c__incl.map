@@ -1,0 +1,34 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_mstp.c" name="tools/ra8_emulator/src/periph/board_periph_mstp.c">
+<area shape="rect" id="Node000001" title="Module Stop Control (MSTPCRA..E) register block for ra8_emulator." alt="" coords="450,5,629,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="251,255,321,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="477,62,436,84,392,111,349,144,314,183,299,212,291,242,286,240,294,210,309,180,346,140,389,106,433,79,475,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="665,108,731,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="589,58,666,99,663,104,587,62"/>
+<area shape="rect" id="Node000004" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="17,108,179,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="450,54,170,108,169,103,449,49"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="497,255,622,280"/>
+<area shape="poly" id="edge20_Node000001_Node000008" title=" " alt="" coords="544,60,560,241,554,241,539,60"/>
+<area shape="rect" id="Node000009" href="$board__periph__mstp__internal_8h.html" title="Module&#45;private module&#45;stop (MSTP) gate state shared with the core." alt="" coords="323,181,539,207"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="524,62,449,171,445,168,519,59"/>
+<area shape="rect" id="Node000010" href="$emu__host__io__internal_8h.html" title="Bounded raw&#45;descriptor I/O seam for the RA8 emulator." alt="" coords="615,181,789,207"/>
+<area shape="poly" id="edge14_Node000001_Node000010" title=" " alt="" coords="568,58,682,170,679,174,564,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="87,136,74,151,63,169,57,188,63,205,73,214,90,223,135,238,238,257,237,263,134,243,88,228,70,219,58,208,52,188,58,167,70,148,83,132"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="5,255,140,280"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="73,136,43,155,29,168,19,182,16,199,21,215,33,230,47,244,43,248,29,234,17,217,11,199,14,180,25,164,39,151,70,131"/>
+<area shape="rect" id="Node000006" href="$emu__memory__access_8h.html" title="Central first&#45;party Unicorn memory access seam." alt="" coords="73,181,249,207"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="110,132,143,169,139,173,106,135"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="182,204,255,245,252,250,179,209"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="148,209,99,248,96,244,145,205"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="381,255,455,280"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="203,204,368,250,367,255,201,209"/>
+<area shape="poly" id="edge10_Node000006_Node000008" title=" " alt="" coords="225,204,483,250,482,255,224,209"/>
+<area shape="poly" id="edge12_Node000009_Node000002" title=" " alt="" coords="409,209,323,251,321,246,407,204"/>
+<area shape="poly" id="edge13_Node000009_Node000008" title=" " alt="" coords="453,204,527,245,525,250,451,209"/>
+<area shape="poly" id="edge17_Node000010_Node000002" title=" " alt="" coords="636,209,336,260,335,255,635,204"/>
+<area shape="poly" id="edge16_Node000010_Node000007" title=" " alt="" coords="657,209,469,256,468,251,656,204"/>
+<area shape="poly" id="edge19_Node000010_Node000008" title=" " alt="" coords="680,209,596,251,594,246,678,204"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="655,255,730,280"/>
+<area shape="poly" id="edge15_Node000010_Node000011" title=" " alt="" coords="703,207,699,242,693,241,698,207"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="754,255,850,280"/>
+<area shape="poly" id="edge18_Node000010_Node000012" title=" " alt="" coords="720,205,776,244,773,249,717,209"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="ra8_rabook_raster_workspace_t" name="ra8_rabook_raster_workspace_t">
+<area shape="rect" id="Node000001" title="Exclusive caller&#45;owned scratch used by one raster conversion." alt="" coords="36,101,265,127"/>
+<area shape="rect" id="Node000002" href="$structra8__img__arena__t.html" title="Caller&#45;owned bump arena backing a single image decode." alt="" coords="5,5,136,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="92,40,143,99,139,103,87,43"/>
+<area shape="rect" id="Node000003" href="$structra8__webp__arena__t.html" title="Caller&#45;owned bump arena backing a single WebP decode." alt="" coords="160,5,301,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="223,45,202,79,173,103,169,99,198,76,219,42"/>
+</map>

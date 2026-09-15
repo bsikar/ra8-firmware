@@ -1,0 +1,15 @@
+<map id="libs/ra8_hal/inc/ra8_dma.h" name="libs/ra8_hal/inc/ra8_dma.h">
+<area shape="rect" id="Node000001" title="Generic DMA transfer substrate (DMAC engine)." alt="" coords="45,5,190,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="42,240,113,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="70,48,39,67,16,95,10,112,8,130,18,166,37,200,59,228,55,231,33,203,13,168,3,130,4,111,11,92,36,63,67,43"/>
+<area shape="rect" id="Node000003" href="$ra8__dmac_8h.html" title="8&#45;channel DMA controller (DMAC0) driver" alt="" coords="25,93,124,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="110,47,90,83,85,80,105,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="77,167,155,192"/>
+<area shape="poly" id="edge8_Node000001_Node000004" title=" " alt="" coords="128,45,138,79,139,119,129,155,124,153,134,118,132,80,123,46"/>
+<area shape="rect" id="Node000005" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="179,167,295,192"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="135,44,222,154,218,157,131,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="75,119,69,152,68,192,74,226,69,227,63,192,64,151,69,118"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="84,118,105,153,100,156,79,120"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="112,194,93,229,88,227,107,191"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="213,194,117,237,115,232,211,190"/>
+</map>

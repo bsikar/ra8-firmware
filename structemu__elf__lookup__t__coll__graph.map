@@ -1,0 +1,5 @@
+<map id="emu_elf_lookup_t" name="emu_elf_lookup_t">
+<area shape="rect" id="Node000001" title="Symbol&#45;address lookup callback state." alt="" coords="5,101,143,127"/>
+<area shape="rect" id="Node000002" href="$structemu__elf__source__t.html" title="One independently owned immutable raw&#45;descriptor ELF source." alt="" coords="5,5,143,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="77,45,77,101,71,101,71,45"/>
+</map>

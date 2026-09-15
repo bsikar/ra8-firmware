@@ -1,0 +1,55 @@
+var ra8__ceu_8c =
+[
+    [ "ra8_ceu_align_mask_t", "ra8__ceu_8c.html#a6bed2538a6cf84234cc6b99b79ce2ee1", [
+      [ "k_ra8_ceu_buffer_align_mask", "ra8__ceu_8c.html#a6bed2538a6cf84234cc6b99b79ce2ee1a0e31608b95761a19510660482e870df2", null ]
+    ] ],
+    [ "ra8_ceu_dma_align_t", "ra8__ceu_8c.html#af95d80365a59c616aa8a2a47f27333d0", [
+      [ "k_ra8_ceu_dma_byte_align_mask", "ra8__ceu_8c.html#af95d80365a59c616aa8a2a47f27333d0a9b3b9f0ce5ef0649ea89b07251ce1a60", null ],
+      [ "k_ra8_ceu_dma_count_shift", "ra8__ceu_8c.html#af95d80365a59c616aa8a2a47f27333d0a928031fe9ec9b1210265f50b67adcbd6", null ]
+    ] ],
+    [ "ra8_ceu_timing_t", "ra8__ceu_8c.html#af28595e7bcf7e182b4d08066d67b2e6b", [
+      [ "k_ra8_ceu_reset_spin", "ra8__ceu_8c.html#af28595e7bcf7e182b4d08066d67b2e6bac9385b69cf86b9fcab37b4b7c3fc6462", null ]
+    ] ],
+    [ "internal_arm_capture", "ra8__ceu_8c.html#a5a1c602fb7e5b9cf4500d136ce0abb23", null ],
+    [ "internal_is_aligned", "ra8__ceu_8c.html#af1018223272acf01db69c42b0563b247", null ],
+    [ "internal_plane_b_apply_overrides", "ra8__ceu_8c.html#ab8feb8ce92eb718430907bf824a0ac69", null ],
+    [ "internal_plane_b_mirror_from_a", "ra8__ceu_8c.html#a812c00712db25e8a21606ec5d065b2e2", null ],
+    [ "internal_program_addresses", "ra8__ceu_8c.html#a45e7aecf7f46f3ae470650f0e66e9279", null ],
+    [ "internal_validate_buffers", "ra8__ceu_8c.html#ae6fd5b52349ae106dc96031f667d7cd6", null ],
+    [ "internal_wait_idle", "ra8__ceu_8c.html#a2ee8966d99369175131d3361b31a90fb", null ],
+    [ "ra8_ceu_attach_handler", "ra8__ceu_8c.html#aaa4ce1192a362d5066b2027f6656f77e", null ],
+    [ "ra8_ceu_bundle_size_set", "ra8__ceu_8c.html#a8a0810beda7697333b2be42cee5bdda9", null ],
+    [ "ra8_ceu_byte_swap_set", "ra8__ceu_8c.html#a4ba4a37de11210a42d4b3c21e241da48", null ],
+    [ "ra8_ceu_capture_arm", "ra8__ceu_8c.html#a2cdca4fac2d1495e863352f73566e1ad", null ],
+    [ "ra8_ceu_capture_disarm", "ra8__ceu_8c.html#ab4e4b1e11d19ceafe9e44c78436a7bdc", null ],
+    [ "ra8_ceu_capture_mode_set", "ra8__ceu_8c.html#a1c0934fae062419dc402a11b53974994", null ],
+    [ "ra8_ceu_capture_start", "ra8__ceu_8c.html#a973fe54ad0c83aa1fd1dc7014e6cf9dd", null ],
+    [ "ra8_ceu_capture_start_ex", "ra8__ceu_8c.html#ae476e351c15655102349a3bd230bcd90", null ],
+    [ "ra8_ceu_capture_stop", "ra8__ceu_8c.html#a2ac87b3ebb99ef21710e9c3b25a2a2eb", null ],
+    [ "ra8_ceu_clear_status", "ra8__ceu_8c.html#a28f7a4635212cc59330c84c6f57c1ce2", null ],
+    [ "ra8_ceu_data_size_get", "ra8__ceu_8c.html#a4f0f7048368dd73c1f0c48d9d3eb8eb2", null ],
+    [ "ra8_ceu_deinit", "ra8__ceu_8c.html#af673cb43622720da8cd093081c3ac6a2", null ],
+    [ "ra8_ceu_dispatch", "ra8__ceu_8c.html#a88173f9b61d9fd49abeecc6e5fd8c6ac", null ],
+    [ "ra8_ceu_dma_pump", "ra8__ceu_8c.html#a3d996e0f055a30c2417928ee93370d18", null ],
+    [ "ra8_ceu_enter_stop", "ra8__ceu_8c.html#af161cddba0708253c2b914cb98a3e06d", null ],
+    [ "ra8_ceu_exit_stop", "ra8__ceu_8c.html#a0045c5267f33ce10c5041cba18331bb6", null ],
+    [ "ra8_ceu_firewall_set", "ra8__ceu_8c.html#a628cbeab46a136636d8dacd58ff52ff1", null ],
+    [ "ra8_ceu_frame_drop_set", "ra8__ceu_8c.html#a8de138116d027c14df86353a75480654", null ],
+    [ "ra8_ceu_get_status", "ra8__ceu_8c.html#a2eee6887b45dbe7977ff05d38697175a", null ],
+    [ "ra8_ceu_init", "ra8__ceu_8c.html#aa63124f311cb5e10efdd3dbb65b50cee", null ],
+    [ "ra8_ceu_interrupts_set", "ra8__ceu_8c.html#ab18105db0533032e5d1bada0866421fb", null ],
+    [ "ra8_ceu_low_pass_set", "ra8__ceu_8c.html#a5cc4ffa44f5ecf75a804e7397ab223ef", null ],
+    [ "ra8_ceu_plane_b_program", "ra8__ceu_8c.html#aa9a2942b703442333347947620205707", null ],
+    [ "ra8_ceu_plane_swap_force", "ra8__ceu_8c.html#a7fc3c2e465ad683b19176db01d6c2391", null ],
+    [ "ra8_ceu_reset", "ra8__ceu_8c.html#ad1d8b410a15f667e97f1639859eb5ca6", null ],
+    [ "ra8_ceu_set_dma_buffer", "ra8__ceu_8c.html#a3b82e2787511958f2e11e89e3e18e2d2", null ],
+    [ "ra8_ceu_status_snapshot", "ra8__ceu_8c.html#a2667b542dcfde7a6a852e4acec1815ce", null ],
+    [ "s_ceu_capture_format", "ra8__ceu_8c.html#a9255b09c124952f4597a27710e7532a8", null ],
+    [ "s_ceu_ctx", "ra8__ceu_8c.html#a1bdede758fdceb29f0aa7b7665ff60f0", null ],
+    [ "s_ceu_dma_buf", "ra8__ceu_8c.html#a534dbe18433f4ed3cfb84f302b7c9af9", null ],
+    [ "s_ceu_dma_len", "ra8__ceu_8c.html#a5470dc550eb26522c33b6ff788f2f060", null ],
+    [ "s_ceu_fn", "ra8__ceu_8c.html#a65a77201476a1857bce03329f69a8e51", null ],
+    [ "s_ceu_image_area", "ra8__ceu_8c.html#a879d6053c17f2bcfcf4478d0d3f1487e", null ],
+    [ "s_ceu_int_enable", "ra8__ceu_8c.html#adb02f9ae514162dce63b0cba72abc602", null ],
+    [ "s_tag", "ra8__ceu_8c.html#af8861f6a1fb30510e283b1b7806b64e7", null ]
+];

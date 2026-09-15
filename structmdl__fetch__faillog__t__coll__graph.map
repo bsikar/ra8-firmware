@@ -1,0 +1,5 @@
+<map id="mdl_fetch_faillog_t" name="mdl_fetch_faillog_t">
+<area shape="rect" id="Node000001" title="Bounded record of every failure in a run (declare at file scope)." alt="" coords="5,101,152,127"/>
+<area shape="rect" id="Node000002" href="$structmdl__fetch__fail__t.html" title="One recorded page/chapter failure: what failed, and with what status." alt="" coords="15,5,142,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="81,45,81,101,76,101,76,45"/>
+</map>

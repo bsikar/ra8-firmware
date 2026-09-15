@@ -1,0 +1,15 @@
+<map id="port/esp&#45;hosted/src/ra8_esp_hosted_rtos_internal.h" name="port/esp&#45;hosted/src/ra8_esp_hosted_rtos_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private contract of the esp&#45;hosted RTOS abstraction slice." alt="" coords="490,5,650,60"/>
+<area shape="rect" id="Node000002" href="$ra8__esp__hosted__log_8c.html" title="Bridge from the esp&#45;hosted logging surface onto ra8_log." alt="" coords="5,115,172,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="477,53,339,78,185,111,156,118,154,113,184,105,338,73,476,47"/>
+<area shape="rect" id="Node000003" href="$ra8__esp__hosted__osi_8c.html" title="The esp&#45;hosted OS&#45;abstraction vtable and its non&#45;RTOS slots." alt="" coords="197,115,362,155"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="483,67,335,118,333,113,481,62"/>
+<area shape="rect" id="Node000004" href="$ra8__esp__hosted__port_8c.html" title="Bring&#45;up and teardown of the esp&#45;hosted RA8D2 + ThreadX port." alt="" coords="387,115,559,155"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="537,72,493,117,489,113,533,68"/>
+<area shape="rect" id="Node000005" href="$ra8__esp__hosted__rtos_8c.html" title="Thread, sleep, timer and clock vtable slots, plus the bind entry." alt="" coords="583,115,754,155"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="607,68,652,113,648,117,604,72"/>
+<area shape="rect" id="Node000006" href="$ra8__esp__hosted__rtos__pool_8c.html" title="Memory and queue half of the esp&#45;hosted OS&#45;abstraction vtable." alt="" coords="778,108,938,163"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="659,62,784,105,782,110,657,67"/>
+<area shape="rect" id="Node000007" href="$ra8__esp__hosted__rtos__sync_8c.html" title="Mutex and semaphore vtable slots." alt="" coords="962,108,1122,163"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="664,47,800,73,951,105,962,108,961,114,949,111,799,78,663,53"/>
+</map>

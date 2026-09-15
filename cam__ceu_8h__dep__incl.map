@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/camera_capture/inc/cam_ceu.h" name="examples/ek_ra8d2/hw_validated/hil/camera_capture/inc/cam_ceu.h">
+<area shape="rect" id="Node000001" title="App&#45;specific GPIO diagnostic for the parallel DVP camera signals." alt="" coords="104,5,279,60"/>
+<area shape="rect" id="Node000002" href="$cam__ceu_8c.html" title="GPIO activity diagnostic for the J35 parallel DVP camera signals." alt="" coords="5,108,180,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,72,120,110,117,106,154,68"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2camera__capture_2src_2main_8c.html" title="OV5640 parallel (CEU) camera capture + plausibility self&#45;test." alt="" coords="205,108,378,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="229,68,267,106,263,110,225,72"/>
+</map>

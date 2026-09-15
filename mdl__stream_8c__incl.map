@@ -1,0 +1,17 @@
+<map id="apps/shared_libs/mdl/src/mdl_stream.c" name="apps/shared_libs/mdl/src/mdl_stream.c">
+<area shape="rect" id="Node000001" title="Private bounded text helpers over the portable byte&#45;stream contract." alt="" coords="87,5,247,45"/>
+<area shape="rect" id="Node000002" href="$mdl__stream__internal_8h.html" title="Private bounded text helpers over the portable byte&#45;stream contract." alt="" coords="82,93,251,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="169,46,169,79,164,79,164,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="148,121,76,162,73,157,145,116"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="255,313,326,339"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="161,120,145,153,142,172,145,191,167,227,197,258,229,284,258,304,256,308,226,289,193,262,163,230,140,193,136,173,140,152,156,118"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="155,167,280,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="177,117,203,154,199,157,173,121"/>
+<area shape="rect" id="Node000006" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="305,167,431,192"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="200,116,323,159,322,165,198,121"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="357,194,337,215,318,241,306,271,298,300,293,299,301,269,314,239,333,212,353,190"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="329,240,407,265"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="371,192,371,226,365,226,365,192"/>
+<area shape="poly" id="edge8_Node000007_Node000004" title=" " alt="" coords="357,267,315,306,312,302,354,263"/>
+</map>

@@ -1,0 +1,25 @@
+<map id="libs/ra8_hal/inc/ra8_touch.h" name="libs/ra8_hal/inc/ra8_touch.h">
+<area shape="rect" id="Node000001" title="Multi&#45;touch input driver – GoodIX GT911 backend." alt="" coords="1121,5,1267,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ereader__shelf_2src_2main_8c.html" title="Hybrid baked + SD e&#45;reader: shelf, cover, TOC, full&#45;book reader." alt="" coords="5,93,212,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1107,31,943,36,723,47,474,66,224,96,213,98,212,92,223,91,474,61,723,42,943,31,1107,25"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2touch__cal_2src_2main_8c.html" title="N&#45;point affine touch&#45;calibration demo + HIL gate (#262)." alt="" coords="236,93,429,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1107,33,811,52,626,71,441,96,430,98,429,93,440,91,626,65,811,47,1107,28"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2touch__demo_2src_2main_8c.html" title="Standalone GoodIX GT911 capacitive&#45;touch bring&#45;up demo + HIL (#122)." alt="" coords="453,93,647,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1107,37,903,60,660,96,648,98,647,93,659,91,902,55,1107,32"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2ereader__comic_2src_2main_8c.html" title="Viewable page&#45;turn comic reader – baked CBZ decoded to the 1024x600 GLCDC panel, tap&#45;zone navigation ..." alt="" coords="671,93,853,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1108,46,865,96,854,99,853,93,864,91,1107,40"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__pending_2ereader__longstrip_2src_2main_8c.html" title="Viewable continuous vertical&#45;scroll (longstrip / manhwa) reader (#289)." alt="" coords="877,93,1076,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1138,53,1039,96,1037,91,1136,48"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__pending_2ereader__manga_2src_2main_8c.html" title="Viewable manga reader: pan/zoom a page larger than the panel (Demo B)." alt="" coords="1101,93,1287,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1197,59,1197,93,1191,93,1191,59"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__pending_2ereader__zoom_2src_2main_8c.html" title="Viewable tap&#45;to&#45;zoom image viewer: full&#45;screen zoom + panel loupe (#478)." alt="" coords="1311,93,1490,148"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1249,49,1344,91,1341,96,1247,53"/>
+<area shape="rect" id="Node000009" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="1515,93,1703,148"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1281,42,1503,91,1515,94,1514,99,1501,96,1280,47"/>
+<area shape="rect" id="Node000010" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2src_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="1727,93,1901,148"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1281,32,1480,54,1598,70,1716,91,1728,93,1726,98,1715,96,1598,76,1480,59,1280,37"/>
+<area shape="rect" id="Node000011" href="$ra8__board__ek__ra8d2__touch_8c.html" title="EK&#45;RA8D2 BSP – GoodIX GT911 bring&#45;up on the board&#39;s own I2C wiring." alt="" coords="1925,93,2106,148"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1281,28,1563,47,1738,65,1913,91,1925,93,1924,98,1912,96,1737,71,1562,52,1280,33"/>
+<area shape="rect" id="Node000012" href="$ra8__touch_8c.html" title="Multi&#45;touch input driver – GoodIX GT911 backend (implementation)." alt="" coords="2131,101,2276,141"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1281,24,1438,27,1647,36,1882,57,2002,72,2119,91,2149,98,2148,103,2117,96,2001,77,1882,62,1647,42,1438,32,1281,29"/>
+</map>

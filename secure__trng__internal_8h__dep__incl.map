@@ -1,0 +1,5 @@
+<map id="libs/ra8_secure_app/src/secure_trng_internal.h" name="libs/ra8_secure_app/src/secure_trng_internal.h">
+<area shape="rect" id="Node000001" title="Secure&#45;side TRNG read API (RSIP&#45;backed entropy)." alt="" coords="5,5,200,45"/>
+<area shape="rect" id="Node000002" href="$secure__trng_8c.html" title="Secure&#45;side TRNG read implementation (host PRNG stub)." alt="" coords="27,93,178,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="105,59,105,93,100,93,100,59"/>
+</map>

@@ -1,0 +1,15 @@
+<map id="tools/ra8_emulator/inc/board_periph_block.h" name="tools/ra8_emulator/inc/board_periph_block.h">
+<area shape="rect" id="Node000001" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="53,5,241,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,167,76,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="136,47,59,157,54,154,132,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="100,167,235,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="153,45,167,153,161,153,147,46"/>
+<area shape="rect" id="Node000004" href="$emu__memory__access_8h.html" title="Central first&#45;party Unicorn memory access seam." alt="" coords="185,93,361,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="179,43,244,84,241,88,176,48"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="236,121,90,166,88,161,235,116"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="257,121,197,161,194,157,254,116"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="259,167,334,192"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="279,118,291,153,286,154,274,120"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="358,167,483,192"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="298,116,385,158,383,163,295,121"/>
+</map>

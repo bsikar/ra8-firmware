@@ -1,0 +1,24 @@
+<map id="tools/cache_bench/inc/sweep_block_internal.h" name="tools/cache_bench/inc/sweep_block_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private seams shared by the #208 sweep translation units." alt="" coords="166,5,345,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="271,240,341,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="266,45,283,93,298,165,306,226,301,227,293,166,278,94,261,46"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="143,93,269,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="246,47,223,83,218,80,241,44"/>
+<area shape="rect" id="Node000004" href="$ra8__vsource_8h.html" title="Virtual&#45;memory object sources – the page&#45;cache storage seam (Layer 1, #147)." alt="" coords="5,93,119,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="210,48,104,91,102,86,208,43"/>
+<area shape="rect" id="Node000006" href="$sweep__block_8h.html" title="#208 block/frame&#45;size sweep: the byte&#45;size axis the capacity sweep never touches, so the chunked ...." alt="" coords="375,93,493,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="299,43,396,85,394,90,297,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="83,117,276,231,273,235,80,121"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="52,167,131,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="69,118,84,153,79,155,64,120"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="127,189,259,233,257,238,125,195"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="426,121,327,231,323,228,422,117"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="529,240,603,265"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="472,116,511,135,529,149,546,165,561,195,567,226,562,227,556,197,541,168,526,153,508,140,470,121"/>
+<area shape="rect" id="Node000008" href="$cache__bench__io_8h.html" title="Bounded byte&#45;source and text&#45;sink seams for cache_bench." alt="" coords="395,167,532,192"/>
+<area shape="poly" id="edge10_Node000006_Node000008" title=" " alt="" coords="441,118,456,153,451,155,436,120"/>
+<area shape="poly" id="edge13_Node000008_Node000002" title=" " alt="" coords="439,194,345,237,343,232,437,190"/>
+<area shape="poly" id="edge12_Node000008_Node000007" title=" " alt="" coords="481,190,539,230,536,234,478,194"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="426,240,501,265"/>
+<area shape="poly" id="edge11_Node000008_Node000009" title=" " alt="" coords="466,192,466,226,461,226,461,192"/>
+</map>

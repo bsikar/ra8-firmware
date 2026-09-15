@@ -1,0 +1,10 @@
+<map id="port/posix/src/ra8_io_stream_posix_internal.h" name="port/posix/src/ra8_io_stream_posix_internal.h">
+<area shape="rect" id="Node000001" title="Private exact&#45;write engine for the POSIX stream adapter." alt="" coords="5,5,211,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="86,167,157,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="76,48,57,62,41,80,32,98,36,118,55,141,80,158,77,162,51,145,31,120,27,98,36,77,53,58,73,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="45,93,171,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="111,46,111,79,105,79,105,46"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="195,93,274,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="140,43,206,84,203,88,137,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="218,121,153,162,150,157,215,116"/>
+</map>

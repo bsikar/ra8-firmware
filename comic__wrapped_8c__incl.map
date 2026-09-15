@@ -1,0 +1,84 @@
+<map id="apps/shared_libs/comic/src/comic_wrapped.c" name="apps/shared_libs/comic/src/comic_wrapped.c">
+<area shape="rect" id="Node000001" title="Wrapped comic open: gzip / XZ unwrap in front of the container detect." alt="" coords="1041,5,1215,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="476,387,551,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1040,32,767,44,597,55,424,71,264,90,130,115,79,129,40,144,16,161,10,170,8,178,8,254,10,274,17,289,28,300,41,308,120,336,211,366,305,383,392,392,462,395,462,401,392,398,305,389,210,371,118,341,39,313,24,304,13,292,5,275,3,254,3,178,5,167,12,157,38,140,77,124,129,109,263,85,423,65,597,50,767,39,1040,27"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="1038,460,1109,485"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1216,42,1306,64,1398,95,1438,113,1470,133,1492,154,1500,178,1500,328,1497,343,1488,357,1456,382,1409,404,1352,423,1228,451,1123,468,1122,463,1227,446,1351,417,1407,399,1453,378,1484,353,1492,341,1495,327,1495,178,1487,157,1467,137,1436,118,1396,100,1305,70,1215,47"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="1586,93,1657,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1216,36,1379,60,1567,91,1572,92,1571,97,1566,96,1379,65,1215,41"/>
+<area shape="rect" id="Node000005" href="$comic_8h.html" title="Unified demand&#45;paged reader for comic&#45;book archives – CBZ (ZIP) and CBR (RAR)." alt="" coords="1010,167,1083,192"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1120,47,1062,155,1057,153,1115,45"/>
+<area shape="rect" id="Node000011" href="$unarch__gzip_8h.html" title="Clean&#45;room gzip member decoder (RFC 1952) over the miniz DEFLATE core." alt="" coords="364,240,476,265"/>
+<area shape="poly" id="edge60_Node000001_Node000011" title=" " alt="" coords="1041,32,926,42,786,65,711,82,637,105,564,134,496,169,462,198,436,230,432,227,458,194,493,164,562,129,635,100,710,77,784,59,925,36,1040,26"/>
+<area shape="rect" id="Node000013" href="$unarch__io_8h.html" title="Shared seek+read seam and flat&#45;memory backing for the unarchivers." alt="" coords="145,313,242,339"/>
+<area shape="poly" id="edge61_Node000001_Node000013" title=" " alt="" coords="1040,30,935,34,805,44,665,64,594,78,526,96,434,121,362,144,330,159,299,180,266,206,230,242,212,270,201,301,196,299,207,268,226,238,262,202,295,175,328,155,360,139,433,116,525,91,593,73,664,59,805,39,935,28,1040,24"/>
+<area shape="rect" id="Node000015" href="$unarch__xz_8h.html" title="Bounded, fail&#45;closed XZ/LZMA2 decoding over the vendored xz&#45;embedded." alt="" coords="241,240,341,265"/>
+<area shape="poly" id="edge62_Node000001_Node000015" title=" " alt="" coords="1041,31,947,36,834,47,712,66,593,96,512,127,436,165,320,235,317,230,433,160,510,122,591,91,711,61,833,41,946,30,1040,25"/>
+<area shape="rect" id="Node000016" href="$comic__internal_8h.html" title="Cross&#45;TU seams between the comic facade and its CBZ / CBR backends." alt="" coords="1149,93,1280,119"/>
+<area shape="poly" id="edge46_Node000001_Node000016" title=" " alt="" coords="1151,44,1193,82,1190,86,1147,48"/>
+<area shape="rect" id="Node000017" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="1335,167,1460,192"/>
+<area shape="poly" id="edge52_Node000001_Node000017" title=" " alt="" coords="1187,43,1240,64,1293,91,1339,123,1377,155,1373,159,1336,127,1291,96,1237,69,1185,48"/>
+<area shape="rect" id="Node000018" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="1535,313,1635,339"/>
+<area shape="poly" id="edge53_Node000001_Node000018" title=" " alt="" coords="1216,29,1299,36,1388,48,1466,66,1496,78,1518,91,1539,114,1555,140,1576,198,1586,254,1588,299,1583,300,1581,255,1571,199,1550,143,1534,117,1514,95,1494,82,1464,71,1387,53,1299,41,1215,34"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="1010,184,949,187,871,196,786,213,704,242,651,273,604,310,534,378,530,375,600,306,648,268,702,238,785,208,870,190,949,181,1010,178"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="1084,183,1140,196,1207,220,1240,237,1272,257,1300,282,1322,312,1327,325,1328,340,1319,371,1305,397,1291,414,1252,440,1207,457,1162,468,1123,473,1122,467,1162,462,1205,452,1249,435,1288,410,1300,394,1314,369,1322,340,1322,326,1318,315,1296,286,1268,262,1238,241,1205,225,1139,201,1083,189"/>
+<area shape="rect" id="Node000006" href="$epub__miniz__alloc_8h.html" title="Caller&#45;owned bounded&#45;arena allocator for miniz." alt="" coords="1161,313,1308,339"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="1069,190,1144,238,1216,301,1212,305,1141,242,1066,194"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="1034,387,1113,412"/>
+<area shape="poly" id="edge13_Node000005_Node000008" title=" " alt="" coords="1052,192,1064,244,1075,313,1077,373,1071,373,1069,314,1059,245,1047,193"/>
+<area shape="rect" id="Node000009" href="$ra8__rar_8h.html" title="Clean&#45;room, read&#45;only RAR archive walker (RAR4 + RAR5 headers, STORE data)." alt="" coords="957,313,1035,339"/>
+<area shape="poly" id="edge14_Node000005_Node000009" title=" " alt="" coords="1046,193,1024,266,1009,302,1004,300,1019,264,1041,192"/>
+<area shape="rect" id="Node000010" href="$ra8__rar5_8h.html" title="Clean&#45;room RAR 5.0 (&quot;method 50&quot;) decompressor – LZ + Huffman + filters." alt="" coords="921,240,1009,265"/>
+<area shape="poly" id="edge18_Node000005_Node000010" title=" " alt="" coords="1035,194,991,233,987,229,1032,190"/>
+<area shape="poly" id="edge23_Node000005_Node000011" title=" " alt="" coords="1010,187,490,246,490,241,1010,182"/>
+<area shape="rect" id="Node000014" href="$unarch__tar_8h.html" title="Clean&#45;room, read&#45;only streaming tar walker (POSIX ustar + pax + GNU)." alt="" coords="715,240,818,265"/>
+<area shape="poly" id="edge34_Node000005_Node000014" title=" " alt="" coords="1010,193,826,239,824,234,1009,187"/>
+<area shape="poly" id="edge40_Node000005_Node000015" title=" " alt="" coords="1010,185,741,203,552,220,355,243,354,237,551,215,741,198,1010,180"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="1161,337,565,396,564,390,1161,332"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="1223,341,1098,453,1095,449,1220,337"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="1191,387,1278,412"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="1237,339,1237,373,1232,373,1232,339"/>
+<area shape="poly" id="edge11_Node000006_Node000008" title=" " alt="" coords="1210,341,1113,383,1111,379,1208,336"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="1076,412,1076,446,1071,446,1071,412"/>
+<area shape="poly" id="edge15_Node000009_Node000002" title=" " alt="" coords="957,336,565,393,564,388,956,330"/>
+<area shape="poly" id="edge16_Node000009_Node000003" title=" " alt="" coords="1000,338,1008,372,1024,411,1053,449,1049,452,1019,413,1003,374,995,340"/>
+<area shape="poly" id="edge17_Node000009_Node000008" title=" " alt="" coords="1010,337,1052,375,1049,379,1007,341"/>
+<area shape="poly" id="edge19_Node000010_Node000002" title=" " alt="" coords="930,268,563,385,562,380,929,263"/>
+<area shape="poly" id="edge20_Node000010_Node000003" title=" " alt="" coords="960,267,947,300,944,319,947,338,965,373,990,404,1018,430,1045,450,1042,454,1015,434,986,408,960,376,941,339,938,319,941,298,956,265"/>
+<area shape="poly" id="edge21_Node000010_Node000008" title=" " alt="" coords="990,263,1020,283,1049,312,1064,342,1072,373,1067,374,1059,344,1045,315,1017,287,987,268"/>
+<area shape="poly" id="edge22_Node000010_Node000009" title=" " alt="" coords="973,265,988,300,983,302,968,267"/>
+<area shape="poly" id="edge24_Node000011_Node000002" title=" " alt="" coords="430,264,501,374,496,377,425,267"/>
+<area shape="poly" id="edge25_Node000011_Node000003" title=" " alt="" coords="364,266,221,293,161,306,134,315,130,326,134,337,154,361,174,377,194,388,216,394,267,400,328,409,427,428,529,443,728,461,901,468,1024,469,1024,475,901,474,727,467,528,448,426,434,328,415,266,405,215,399,192,393,171,382,150,365,130,340,124,326,130,311,159,301,220,288,363,261"/>
+<area shape="poly" id="edge30_Node000011_Node000008" title=" " alt="" coords="472,263,1021,384,1020,389,471,268"/>
+<area shape="rect" id="Node000012" href="$ra8__decomp__limits_8h.html" title="Unified decompression&#45;limits policy: one bound set for every decoder." alt="" coords="266,313,425,339"/>
+<area shape="poly" id="edge26_Node000011_Node000012" title=" " alt="" coords="410,267,369,306,366,302,406,263"/>
+<area shape="poly" id="edge31_Node000011_Node000013" title=" " alt="" coords="384,268,244,312,242,307,383,263"/>
+<area shape="poly" id="edge27_Node000012_Node000002" title=" " alt="" coords="373,336,474,379,472,384,371,341"/>
+<area shape="poly" id="edge28_Node000012_Node000003" title=" " alt="" coords="359,337,403,374,433,394,465,410,513,423,577,434,735,451,898,462,1024,467,1024,472,898,467,735,456,577,439,512,428,463,414,430,399,400,379,355,341"/>
+<area shape="poly" id="edge29_Node000012_Node000008" title=" " alt="" coords="425,332,1021,390,1020,396,425,338"/>
+<area shape="poly" id="edge32_Node000013_Node000002" title=" " alt="" coords="243,336,463,384,462,389,242,341"/>
+<area shape="poly" id="edge33_Node000013_Node000003" title=" " alt="" coords="217,336,303,373,357,393,414,409,500,427,588,441,761,458,914,467,1024,469,1024,474,913,472,761,464,587,446,499,432,413,415,356,398,301,378,215,341"/>
+<area shape="poly" id="edge35_Node000014_Node000002" title=" " alt="" coords="748,268,546,382,544,378,745,263"/>
+<area shape="poly" id="edge36_Node000014_Node000003" title=" " alt="" coords="782,263,859,328,969,410,1040,451,1037,456,967,414,856,332,778,268"/>
+<area shape="poly" id="edge38_Node000014_Node000008" title=" " alt="" coords="791,263,945,336,1037,379,1035,383,943,341,789,268"/>
+<area shape="poly" id="edge37_Node000014_Node000012" title=" " alt="" coords="715,265,427,314,426,308,715,260"/>
+<area shape="poly" id="edge39_Node000014_Node000013" title=" " alt="" coords="715,261,518,282,256,316,256,310,517,277,715,256"/>
+<area shape="poly" id="edge41_Node000015_Node000002" title=" " alt="" coords="241,265,195,276,152,292,137,301,128,312,127,324,134,337,156,353,189,366,278,383,377,392,462,395,462,401,376,398,277,389,187,371,153,358,130,340,122,325,123,310,134,297,150,287,193,270,240,259"/>
+<area shape="poly" id="edge42_Node000015_Node000003" title=" " alt="" coords="241,259,209,264,176,275,145,291,121,315,114,330,113,345,119,359,129,372,156,394,182,410,233,423,320,434,565,451,829,462,1024,468,1024,473,829,467,565,456,320,439,232,428,180,414,153,399,125,376,114,361,108,346,108,329,116,312,142,287,174,270,208,259,240,254"/>
+<area shape="poly" id="edge44_Node000015_Node000008" title=" " alt="" coords="342,263,703,336,1021,388,1020,393,702,341,341,268"/>
+<area shape="poly" id="edge43_Node000015_Node000012" title=" " alt="" coords="302,264,330,301,326,304,298,267"/>
+<area shape="poly" id="edge45_Node000015_Node000013" title=" " alt="" coords="277,268,222,307,219,303,273,263"/>
+<area shape="poly" id="edge47_Node000016_Node000002" title=" " alt="" coords="1149,116,1050,129,925,153,789,190,721,214,657,242,609,273,569,315,546,346,528,375,523,373,541,343,565,312,605,269,655,238,719,209,787,185,924,148,1049,124,1149,111"/>
+<area shape="poly" id="edge48_Node000016_Node000003" title=" " alt="" coords="1231,117,1255,138,1281,165,1307,200,1326,239,1346,288,1356,333,1356,354,1350,374,1338,394,1320,414,1286,433,1234,448,1123,468,1122,463,1233,442,1284,428,1317,410,1334,391,1345,372,1350,353,1351,333,1341,290,1322,241,1303,203,1277,168,1252,142,1228,121"/>
+<area shape="poly" id="edge49_Node000016_Node000005" title=" " alt="" coords="1189,121,1088,164,1086,159,1187,116"/>
+<area shape="poly" id="edge51_Node000016_Node000008" title=" " alt="" coords="1226,118,1258,164,1296,229,1313,263,1324,294,1328,320,1322,340,1309,352,1290,361,1239,377,1127,395,1126,390,1238,372,1288,356,1306,347,1318,337,1323,320,1319,295,1308,265,1292,232,1253,167,1221,121"/>
+<area shape="poly" id="edge50_Node000016_Node000017" title=" " alt="" coords="1245,116,1356,159,1354,164,1243,121"/>
+<area shape="poly" id="edge54_Node000018_Node000003" title=" " alt="" coords="1636,328,1703,335,1769,350,1794,361,1812,375,1816,393,1805,414,1790,423,1767,431,1699,445,1609,455,1504,462,1288,471,1122,474,1122,468,1288,466,1504,457,1608,450,1699,439,1766,426,1788,418,1801,410,1811,392,1807,378,1792,366,1767,355,1702,341,1635,333"/>
+<area shape="poly" id="edge55_Node000018_Node000008" title=" " alt="" coords="1536,337,1127,393,1126,388,1535,332"/>
+<area shape="rect" id="Node000019" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="1535,387,1617,412"/>
+<area shape="poly" id="edge56_Node000018_Node000019" title=" " alt="" coords="1586,339,1582,374,1577,373,1581,339"/>
+<area shape="rect" id="Node000020" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="1642,387,1790,412"/>
+<area shape="poly" id="edge58_Node000018_Node000020" title=" " alt="" coords="1608,336,1684,378,1682,382,1605,341"/>
+<area shape="poly" id="edge57_Node000019_Node000003" title=" " alt="" coords="1535,412,1516,415,1297,446,1123,468,1122,463,1296,441,1516,409,1534,406"/>
+<area shape="poly" id="edge59_Node000020_Node000003" title=" " alt="" coords="1642,413,1630,415,1123,469,1122,464,1629,409,1641,408"/>
+</map>

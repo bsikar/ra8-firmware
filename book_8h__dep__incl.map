@@ -1,0 +1,143 @@
+<map id="apps/shared_libs/book/inc/book.h" name="apps/shared_libs/book/inc/book.h">
+<area shape="rect" id="Node000001" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="4322,5,4488,45"/>
+<area shape="rect" id="Node000002" href="$book__chunked_8h.html" title="Demand&#45;paged chunk reader for the &quot;RBKC&quot; .rabook container." alt="" coords="3466,203,3632,243"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="4308,35,4113,55,4001,72,3890,96,3805,121,3722,151,3590,206,3588,201,3720,146,3803,116,3888,91,4000,67,4112,50,4307,30"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__pending_2media__download_2src_2main_8c.html" title="Download, validate, publish, and reopen one C6&#45;fetched .rabook." alt="" coords="1286,416,1482,471"/>
+<area shape="poly" id="edge82_Node000001_Node000008" title=" " alt="" coords="4308,30,3485,47,2904,67,2309,96,2203,99,2079,98,1785,88,1452,75,1103,69,930,71,762,79,602,93,453,115,317,145,256,164,198,185,146,210,99,237,58,267,23,300,12,317,8,333,12,350,23,366,40,374,76,381,194,395,360,407,555,417,965,430,1286,438,1285,443,965,436,555,422,360,412,194,400,75,387,38,379,19,370,7,352,3,333,7,315,19,297,55,263,97,232,144,205,196,180,254,159,316,140,452,109,601,88,762,74,930,66,1103,64,1452,70,1785,83,2079,93,2203,94,2309,91,2904,61,3485,42,4308,25"/>
+<area shape="rect" id="Node000012" href="$book__paged_8h.html" title="Paged (demand&#45;fetched) accessor mode for book over ra8_vmem (#163)." alt="" coords="3079,101,3246,141"/>
+<area shape="poly" id="edge12_Node000001_Node000012" title=" " alt="" coords="4308,33,3889,54,3619,72,3345,96,3246,109,3246,103,3345,91,3618,67,3889,48,4308,28"/>
+<area shape="rect" id="Node000013" href="$book__paged_8c.html" title="Paged book&#45;source layer: copy&#45;out reads over ra8_vmem (#163)." alt="" coords="2888,203,3055,243"/>
+<area shape="poly" id="edge35_Node000001_Node000013" title=" " alt="" coords="4308,29,4007,32,3620,41,3431,50,3266,61,3140,76,3096,86,3068,96,3038,118,3013,148,2994,178,2982,204,2977,202,2990,175,3009,145,3034,115,3065,91,3094,80,3139,71,3265,56,3431,44,3619,36,4007,27,4308,24"/>
+<area shape="rect" id="Node000014" href="$book__xhtml_8c.html" title="Serialize a compiled&#45;book chapter DOM back to XHTML for the renderer." alt="" coords="3079,203,3246,243"/>
+<area shape="poly" id="edge36_Node000001_Node000014" title=" " alt="" coords="4308,29,4158,32,3965,41,3750,61,3642,77,3536,96,3442,120,3351,150,3206,206,3204,201,3349,144,3441,115,3535,91,3641,71,3750,56,3964,36,4157,26,4308,23"/>
+<area shape="rect" id="Node000015" href="$zoom__book_8h.html" title="Bind a .rabook image&#45;pool figure as a zoom source (#478)." alt="" coords="3270,203,3441,243"/>
+<area shape="poly" id="edge76_Node000001_Node000015" title=" " alt="" coords="4308,32,4189,37,4043,49,3883,68,3724,96,3632,120,3542,150,3399,206,3397,201,3540,145,3631,115,3723,91,3882,62,4042,43,4189,32,4307,26"/>
+<area shape="rect" id="Node000016" href="$sh__app_8h.html" title="Shared contract for the ereader_shelf multi&#45;screen e&#45;reader." alt="" coords="1418,196,1624,251"/>
+<area shape="poly" id="edge77_Node000001_Node000016" title=" " alt="" coords="4308,33,3755,55,3384,73,3007,96,2605,126,2211,159,1625,214,1624,209,2211,154,2605,121,3006,91,3384,68,3755,50,4308,27"/>
+<area shape="rect" id="Node000027" href="$book__stream_8h.html" title="Strict, zero&#45;allocation validation of a streamed RABOOK1 flat blob." alt="" coords="3902,101,4068,141"/>
+<area shape="poly" id="edge28_Node000001_Node000027" title=" " alt="" coords="4309,48,4087,96,4057,103,4056,98,4086,91,4308,43"/>
+<area shape="rect" id="Node000031" href="$book_8c.html" title="Implementation of the .rabook blob validator." alt="" coords="4099,101,4266,141"/>
+<area shape="poly" id="edge34_Node000001_Node000031" title=" " alt="" coords="4348,53,4228,103,4226,98,4346,48"/>
+<area shape="rect" id="Node000032" href="$mdl__export__rabook_8c.html" title="Bounded fixed&#45;layout EPUB&#45;to&#45;RBKC writer for media chapters." alt="" coords="4392,423,4578,463"/>
+<area shape="poly" id="edge37_Node000001_Node000032" title=" " alt="" coords="4396,59,4379,119,4365,198,4363,241,4365,284,4374,327,4389,367,4400,383,4414,398,4446,421,4443,425,4410,402,4396,387,4384,369,4368,328,4360,285,4358,241,4360,198,4374,118,4391,57"/>
+<area shape="rect" id="Node000033" href="$ra8__rabook__raster_8h.html" title="Caller&#45;arena raster normalizer for RABOOK image records." alt="" coords="5570,93,5752,148"/>
+<area shape="poly" id="edge38_Node000001_Node000033" title=" " alt="" coords="4502,27,4936,46,5217,64,5501,91,5571,100,5570,106,5501,96,5217,70,4935,51,4502,32"/>
+<area shape="rect" id="Node000035" href="$ra8__rabook__comic_8c.html" title="Streaming image&#45;sequence builder for reader&#45;native RABOOK comics." alt="" coords="5826,306,6008,361"/>
+<area shape="poly" id="edge72_Node000001_Node000035" title=" " alt="" coords="4503,24,4780,25,5145,34,5331,42,5504,54,5653,70,5764,91,5831,105,5884,119,5908,130,5930,145,5951,166,5971,195,5978,209,5980,224,5974,254,5960,283,5943,307,5939,304,5956,280,5969,253,5974,224,5973,210,5967,197,5947,169,5927,149,5905,135,5882,124,5829,111,5763,96,5652,75,5504,59,5331,47,5145,39,4780,30,4503,29"/>
+<area shape="rect" id="Node000038" href="$media__download__image_8c.html" title="Convert one C6&#45;fetched encoded image into a strict .rabook." alt="" coords="5849,416,6068,471"/>
+<area shape="poly" id="edge83_Node000001_Node000038" title=" " alt="" coords="4502,25,4826,30,5251,41,5459,49,5642,60,5783,74,5833,82,5866,91,5903,107,5934,125,5959,145,5979,167,5994,194,6006,224,6022,298,6028,334,6027,350,6022,369,6008,395,5990,418,5986,414,6004,392,6017,367,6022,349,6023,334,6017,299,6001,225,5990,196,5974,170,5955,148,5931,129,5901,112,5864,96,5832,87,5782,79,5642,66,5459,55,5251,46,4826,35,4502,30"/>
+<area shape="rect" id="Node000040" href="$ra8__rabook__xml__shim_8h.html" title="Bounded XHTML&#45;to&#45;RABOOK streaming builder." alt="" coords="4534,196,4716,251"/>
+<area shape="poly" id="edge45_Node000001_Node000040" title=" " alt="" coords="4438,52,4598,194,4594,198,4434,56"/>
+<area shape="rect" id="Node000042" href="$ra8__rabook__pipeline_8c.html" title="End&#45;to&#45;end EPUB &#45;&gt; RABOOK1 compile pipeline (#149)." alt="" coords="4521,519,4702,573"/>
+<area shape="poly" id="edge74_Node000001_Node000042" title=" " alt="" coords="4381,57,4357,89,4332,129,4314,174,4306,222,4306,335,4309,377,4319,410,4338,439,4368,469,4403,493,4442,511,4482,524,4521,533,4520,538,4481,529,4440,516,4400,498,4365,473,4333,442,4314,412,4304,378,4301,335,4301,222,4309,173,4328,127,4352,86,4377,54"/>
+<area shape="rect" id="Node000046" href="$rabook__import__compiler_8c.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="4932,519,5126,573"/>
+<area shape="poly" id="edge75_Node000001_Node000046" title=" " alt="" coords="4404,59,4401,125,4408,209,4418,252,4433,294,4454,333,4483,366,4498,376,4516,384,4564,394,4621,397,4684,398,4806,398,4858,402,4898,414,4934,435,4966,463,5013,516,5009,520,4962,466,4931,440,4896,418,4857,408,4806,403,4684,403,4621,403,4563,399,4515,389,4495,381,4479,370,4450,336,4428,296,4412,254,4403,209,4396,125,4399,59"/>
+<area shape="rect" id="Node000047" href="$examples_2ek__ra8d2_2hw__pending_2import__reader_2src_2main_8c.html" title="End&#45;to&#45;end on&#45;import EPUB &#45;&gt; .rabook compile + cache + read (#151)." alt="" coords="5340,519,5518,573"/>
+<area shape="poly" id="edge81_Node000001_Node000047" title=" " alt="" coords="4502,24,4841,26,5286,34,5505,43,5697,54,5844,70,5896,80,5930,91,5989,124,6040,164,6082,210,6113,260,6131,312,6134,339,6133,366,6127,393,6117,420,6102,447,6081,473,6053,488,6001,501,5849,521,5672,535,5518,544,5518,538,5672,530,5848,516,6000,495,6051,483,6078,469,6097,444,6112,418,6122,392,6127,366,6128,339,6125,313,6108,262,6078,213,6036,168,5986,129,5928,96,5895,85,5844,76,5696,60,5505,48,5286,40,4841,31,4502,29"/>
+<area shape="rect" id="Node000048" href="$hw__pending_2compile__on__m33_2src_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33 secondary core) image: full text/CSS/SVG EPUB&#45;&gt;RABOOK1 compile." alt="" coords="5331,416,5527,471"/>
+<area shape="poly" id="edge78_Node000001_Node000048" title=" " alt="" coords="4502,25,4729,35,4868,45,5011,60,5150,82,5274,111,5327,128,5374,148,5413,170,5442,194,5470,235,5477,255,5480,275,5477,318,5466,369,5458,394,5447,417,5442,415,5453,392,5461,367,5472,317,5475,275,5472,256,5466,237,5438,198,5410,174,5372,152,5326,133,5272,116,5149,87,5011,66,4868,50,4729,40,4502,31"/>
+<area shape="rect" id="Node000051" href="$rabook__compile_8h.html" title="Zero&#45;heap builder that emits a RABOOK1 blob (the #149 compiler back&#45;end)." alt="" coords="4881,101,5105,141"/>
+<area shape="poly" id="edge62_Node000001_Node000051" title=" " alt="" coords="4503,39,4881,99,4880,104,4502,45"/>
+<area shape="rect" id="Node000054" href="$ra8__rabook__container_8c.html" title="Zero&#45;heap streaming RBKC container writer." alt="" coords="6133,93,6314,148"/>
+<area shape="poly" id="edge73_Node000001_Node000054" title=" " alt="" coords="4502,25,4842,31,5308,44,5774,63,5968,76,6115,91,6133,94,6132,99,6114,96,5967,81,5774,68,5308,49,4842,37,4502,31"/>
+<area shape="rect" id="Node000055" href="$examples_2ek__ra8d2_2hw__pending_2compile__on__m33_2src_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver: stage an EPUB, offload its compile to the M33." alt="" coords="6339,93,6535,148"/>
+<area shape="poly" id="edge79_Node000001_Node000055" title=" " alt="" coords="4502,25,4880,30,5407,41,5938,61,6159,74,6327,91,6339,93,6339,98,6326,96,6159,80,5938,66,5407,46,4879,35,4502,30"/>
+<area shape="rect" id="Node000056" href="$hw__pending_2ereader__m33_2src_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33 secondary core) image: render a held e&#45;reader page." alt="" coords="6560,93,6733,148"/>
+<area shape="poly" id="edge80_Node000001_Node000056" title=" " alt="" coords="4502,24,4918,27,5510,36,5819,44,6109,56,6359,71,6548,91,6560,93,6559,98,6547,96,6359,76,6109,61,5819,49,5510,41,4918,32,4502,29"/>
+<area shape="rect" id="Node000057" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__rabook_2src_2main_8c.html" title="Headless HIL gate: load a compiled .rabook and render it (small to large)." alt="" coords="6757,93,6930,148"/>
+<area shape="poly" id="edge84_Node000001_Node000057" title=" " alt="" coords="4503,24,4953,25,5602,33,5942,41,6262,53,6537,69,6745,91,6757,93,6756,98,6745,96,6537,75,6262,59,5942,47,5602,39,4953,30,4503,29"/>
+<area shape="rect" id="Node000003" href="$book__chunked_8c.html" title="Implementation of the demand&#45;paged &quot;RBKC&quot; chunk reader." alt="" coords="3466,313,3632,353"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="3552,257,3552,313,3546,313,3546,257"/>
+<area shape="rect" id="Node000004" href="$book__chunked__validate_8c.html" title="Strict streaming&#45;validation adapter for an open RBKC chunk reader." alt="" coords="3657,313,3870,353"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="3600,247,3727,311,3725,316,3597,252"/>
+<area shape="rect" id="Node000005" href="$mdl__verify__rabook_8c.html" title="Strict allocation&#45;free RBKC validation for media downloader artifacts." alt="" coords="2572,313,2753,353"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="3474,249,3454,253,3349,268,3261,274,3109,275,2957,276,2869,285,2766,301,2713,316,2711,311,2765,296,2868,279,2957,271,3109,269,3260,269,3349,262,3453,248,3473,244"/>
+<area shape="rect" id="Node000006" href="$mdl__rabook__vfs_8h.html" title="Strict no&#45;heap RBKC validator and reader over named RA8 VFS mounts." alt="" coords="2777,306,2937,361"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="3473,249,3454,253,3378,265,3314,271,3204,275,3095,280,3031,288,2956,301,2928,309,2927,303,2955,296,3030,282,3094,274,3204,269,3314,266,3378,260,3453,248,3472,244"/>
+<area shape="rect" id="Node000007" href="$mdl__rabook__vfs_8c.html" title="Strict no&#45;heap RBKC validation and reading through the RA8 VFS." alt="" coords="2836,416,2996,471"/>
+<area shape="poly" id="edge8_Node000002_Node000007" title=" " alt="" coords="3473,249,3454,253,3409,258,3352,261,3221,264,3155,267,3093,273,3040,284,3001,301,2984,319,2964,350,2930,417,2925,415,2960,347,2980,316,2998,296,3039,279,3092,268,3154,262,3221,258,3352,256,3408,253,3453,248,3472,244"/>
+<area shape="rect" id="Node000009" href="$sh__paged_8c.html" title="Demand&#45;paged .rabook backing: chunk reader + page cache + source bind." alt="" coords="2340,306,2547,361"/>
+<area shape="poly" id="edge9_Node000002_Node000009" title=" " alt="" coords="3475,249,3454,253,3318,271,3203,278,3101,279,3006,276,2911,274,2810,275,2695,283,2560,301,2526,309,2525,303,2559,296,2694,278,2809,270,2911,268,3006,271,3101,273,3203,273,3318,265,3453,248,3474,244"/>
+<area shape="rect" id="Node000010" href="$sweep__block__backends_8c.html" title="Streamed pseudo&#45;memory and RBKC&#45;z9 block&#45;sweep backends." alt="" coords="3012,313,3201,353"/>
+<area shape="poly" id="edge10_Node000002_Node000010" title=" " alt="" coords="3469,249,3454,253,3333,277,3214,301,3163,316,3162,311,3212,296,3332,271,3453,248,3468,244"/>
+<area shape="rect" id="Node000011" href="$ra8__fmt__stream__rabook_8c.html" title="Strict callback&#45;driven RBKC and RABOOK1 inspection." alt="" coords="3225,313,3441,353"/>
+<area shape="poly" id="edge11_Node000002_Node000011" title=" " alt="" coords="3501,252,3372,316,3370,311,3498,247"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="2880,372,2904,414,2899,417,2876,374"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="2780,367,2766,371,2651,388,2500,402,2134,424,1763,437,1482,443,1482,438,1763,431,2134,419,2499,397,2650,383,2765,365,2779,362"/>
+<area shape="poly" id="edge13_Node000012_Node000013" title=" " alt="" coords="3116,150,3009,206,3006,201,3113,145"/>
+<area shape="poly" id="edge14_Node000012_Node000014" title=" " alt="" coords="3165,155,3165,203,3160,203,3160,155"/>
+<area shape="poly" id="edge15_Node000012_Node000015" title=" " alt="" coords="3212,145,3321,201,3318,206,3209,149"/>
+<area shape="poly" id="edge16_Node000012_Node000016" title=" " alt="" coords="3066,131,1625,218,1624,213,3065,125"/>
+<area shape="poly" id="edge22_Node000016_Node000009" title=" " alt="" coords="1638,226,1778,233,1951,246,2140,267,2328,296,2361,303,2359,309,2327,301,2139,272,1951,252,1778,239,1638,231"/>
+<area shape="rect" id="Node000017" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ereader__shelf_2src_2main_8c.html" title="Hybrid baked + SD e&#45;reader: shelf, cover, TOC, full&#45;book reader." alt="" coords="1418,306,1624,361"/>
+<area shape="poly" id="edge17_Node000016_Node000017" title=" " alt="" coords="1524,265,1524,306,1518,306,1518,265"/>
+<area shape="rect" id="Node000018" href="$sh__book_8c.html" title="Format&#45;agnostic book backend: book (.rabook) + epub (.epub)." alt="" coords="1648,306,1855,361"/>
+<area shape="poly" id="edge18_Node000016_Node000018" title=" " alt="" coords="1591,254,1697,303,1694,308,1589,259"/>
+<area shape="rect" id="Node000019" href="$sh__comic_8c.html" title="Full&#45;page image reader for CBZ / CBR comic archives (#236)." alt="" coords="1879,306,2086,361"/>
+<area shape="poly" id="edge19_Node000016_Node000019" title=" " alt="" coords="1638,245,1867,296,1895,303,1893,308,1866,301,1637,250"/>
+<area shape="rect" id="Node000020" href="$sh__cover_8c.html" title="Cover / title page for the open book." alt="" coords="2110,306,2316,361"/>
+<area shape="poly" id="edge20_Node000016_Node000020" title=" " alt="" coords="1639,232,1853,256,1976,274,2098,296,2129,303,2127,309,2097,301,1975,279,1852,261,1638,237"/>
+<area shape="rect" id="Node000021" href="$sh__image_8c.html" title="4bpp&#45;grayscale cover / image decode + scaled blit for ereader_shelf." alt="" coords="34,306,240,361"/>
+<area shape="poly" id="edge21_Node000016_Node000021" title=" " alt="" coords="1404,231,809,255,487,276,354,288,252,301,219,308,218,303,251,296,353,282,486,270,809,250,1404,225"/>
+<area shape="rect" id="Node000022" href="$sh__reader_8c.html" title="Full&#45;book reader: per&#45;chapter text extraction, word&#45;wrap, pagination." alt="" coords="264,306,471,361"/>
+<area shape="poly" id="edge23_Node000016_Node000022" title=" " alt="" coords="1404,228,1225,232,995,243,739,265,609,281,483,301,451,308,449,303,482,296,609,276,738,260,995,238,1225,226,1404,222"/>
+<area shape="rect" id="Node000023" href="$sh__sd_8c.html" title="Optional SD&#45;card book source for the hybrid e&#45;reader." alt="" coords="495,306,702,361"/>
+<area shape="poly" id="edge24_Node000016_Node000023" title=" " alt="" coords="1404,231,1264,238,1091,251,902,272,714,301,682,308,681,303,713,296,901,267,1090,246,1263,233,1404,226"/>
+<area shape="rect" id="Node000024" href="$sh__shelf_8c.html" title="Bookshelf screen: a grid of book cards with cover thumbnails." alt="" coords="726,306,932,361"/>
+<area shape="poly" id="edge25_Node000016_Node000024" title=" " alt="" coords="1404,237,1189,261,1066,279,944,301,914,309,913,303,943,296,1065,274,1189,256,1404,232"/>
+<area shape="rect" id="Node000025" href="$sh__toc_8c.html" title="Table&#45;of&#45;contents screen: scrollable chapter list for the open book." alt="" coords="956,306,1163,361"/>
+<area shape="poly" id="edge26_Node000016_Node000025" title=" " alt="" coords="1405,250,1175,301,1148,308,1147,303,1174,296,1404,245"/>
+<area shape="rect" id="Node000026" href="$sh__util_8c.html" title="Small shared drawing + formatting helpers for ereader_shelf." alt="" coords="1187,306,1394,361"/>
+<area shape="poly" id="edge27_Node000016_Node000026" title=" " alt="" coords="1454,259,1348,308,1346,303,1451,254"/>
+<area shape="poly" id="edge29_Node000027_Node000002" title=" " alt="" coords="3891,146,3631,206,3630,201,3890,141"/>
+<area shape="rect" id="Node000028" href="$book__stream_8c.html" title="Strict callback&#45;driven validation of a RABOOK1 flat blob." alt="" coords="3895,313,4062,353"/>
+<area shape="poly" id="edge30_Node000027_Node000028" title=" " alt="" coords="3987,155,3982,313,3976,313,3981,155"/>
+<area shape="rect" id="Node000029" href="$book__stream__internal_8h.html" title="Private wire geometry for strict RABOOK1 stream validation." alt="" coords="4016,203,4218,243"/>
+<area shape="poly" id="edge31_Node000027_Node000029" title=" " alt="" coords="4023,147,4094,201,4091,205,4020,151"/>
+<area shape="poly" id="edge32_Node000029_Node000028" title=" " alt="" coords="4084,254,4004,315,4001,311,4081,250"/>
+<area shape="rect" id="Node000030" href="$book__stream__wire_8c.html" title="Wire decoding and canonical layout validation for streamed books." alt="" coords="4086,313,4266,353"/>
+<area shape="poly" id="edge33_Node000029_Node000030" title=" " alt="" coords="4136,254,4168,312,4163,314,4132,257"/>
+<area shape="rect" id="Node000034" href="$ra8__rabook__comic_8h.html" title="Streaming image&#45;sequence builder for reader&#45;native RABOOK comics." alt="" coords="5570,196,5752,251"/>
+<area shape="poly" id="edge39_Node000033_Node000034" title=" " alt="" coords="5664,162,5664,196,5658,196,5658,162"/>
+<area shape="rect" id="Node000039" href="$ra8__rabook__raster_8c.html" title="Caller&#45;arena raster normalizer for RABOOK image records." alt="" coords="5776,196,5957,251"/>
+<area shape="poly" id="edge44_Node000033_Node000039" title=" " alt="" coords="5728,151,5814,194,5812,198,5725,156"/>
+<area shape="poly" id="edge40_Node000034_Node000035" title=" " alt="" coords="5737,254,5856,303,5854,308,5735,259"/>
+<area shape="rect" id="Node000036" href="$media__download__format__internal_8h.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="5592,299,5802,368"/>
+<area shape="poly" id="edge41_Node000034_Node000036" title=" " alt="" coords="5677,263,5688,298,5683,299,5672,265"/>
+<area shape="rect" id="Node000037" href="$media__download__format_8c.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="5602,416,5824,471"/>
+<area shape="poly" id="edge42_Node000036_Node000037" title=" " alt="" coords="5707,381,5712,415,5707,416,5701,382"/>
+<area shape="poly" id="edge43_Node000036_Node000038" title=" " alt="" coords="5792,371,5896,414,5894,418,5790,376"/>
+<area shape="rect" id="Node000041" href="$ra8__rabook__pipeline_8h.html" title="End&#45;to&#45;end EPUB &#45;&gt; RABOOK1 compile pipeline (#149)." alt="" coords="4968,306,5149,361"/>
+<area shape="poly" id="edge46_Node000040_Node000041" title=" " alt="" coords="4730,248,4968,307,4967,312,4729,253"/>
+<area shape="poly" id="edge59_Node000040_Node000042" title=" " alt="" coords="4550,259,4502,286,4454,321,4412,365,4395,390,4382,417,4374,445,4375,456,4382,469,4410,497,4445,517,4483,530,4521,538,4520,543,4481,535,4442,522,4407,501,4378,472,4370,458,4369,444,4377,415,4390,387,4407,362,4450,317,4499,282,4547,254"/>
+<area shape="rect" id="Node000049" href="$ra8__rabook__xml__shim_8c.html" title="Strict streamed XHTML&#45;to&#45;RABOOK consumer." alt="" coords="4493,306,4674,361"/>
+<area shape="poly" id="edge60_Node000040_Node000049" title=" " alt="" coords="4612,265,4596,307,4591,305,4607,263"/>
+<area shape="rect" id="Node000050" href="$ra8__rabook__xml__shim__test__internal_8h.html" title="Test&#45;only seams for post&#45;validation XML reader faults." alt="" coords="4698,306,4893,361"/>
+<area shape="poly" id="edge61_Node000040_Node000050" title=" " alt="" coords="4680,256,4755,303,4752,308,4677,260"/>
+<area shape="poly" id="edge47_Node000041_Node000032" title=" " alt="" coords="4955,360,4906,371,4579,429,4578,424,4905,365,4954,355"/>
+<area shape="poly" id="edge48_Node000041_Node000042" title=" " alt="" coords="4964,367,4950,371,4910,378,4875,381,4814,380,4786,382,4757,387,4727,399,4693,418,4669,440,4649,467,4623,520,4618,517,4645,464,4665,437,4690,414,4725,394,4756,382,4785,377,4814,375,4875,375,4909,373,4949,365,4963,362"/>
+<area shape="rect" id="Node000043" href="$ra8__rabook__pipeline__fs_8c.html" title="Optional ra8_fs publication wrapper for the RABOOK pipeline." alt="" coords="4726,519,4908,573"/>
+<area shape="poly" id="edge49_Node000041_Node000043" title=" " alt="" coords="5020,372,4849,521,4845,516,5016,368"/>
+<area shape="rect" id="Node000044" href="$ra8__rabook__pipeline__internal_8h.html" title="Private validation seam shared by RABOOK pipeline entry points." alt="" coords="4704,416,4885,471"/>
+<area shape="poly" id="edge50_Node000041_Node000044" title=" " alt="" coords="4983,368,4860,418,4858,413,4981,363"/>
+<area shape="rect" id="Node000045" href="$rabook__import__compiler_8h.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="5061,416,5256,471"/>
+<area shape="poly" id="edge53_Node000041_Node000045" title=" " alt="" coords="5094,369,5136,414,5132,418,5090,373"/>
+<area shape="poly" id="edge56_Node000041_Node000046" title=" " alt="" coords="5056,375,5035,519,5030,518,5050,374"/>
+<area shape="poly" id="edge58_Node000041_Node000047" title=" " alt="" coords="5163,362,5217,385,5269,414,5286,427,5297,440,5322,469,5388,516,5384,521,5318,473,5293,444,5282,431,5266,418,5215,390,5161,367"/>
+<area shape="poly" id="edge57_Node000041_Node000048" title=" " alt="" coords="5163,362,5340,413,5338,419,5161,367"/>
+<area shape="poly" id="edge51_Node000044_Node000042" title=" " alt="" coords="4736,480,4661,521,4658,516,4734,475"/>
+<area shape="poly" id="edge52_Node000044_Node000043" title=" " alt="" coords="4806,483,4814,518,4809,519,4801,485"/>
+<area shape="poly" id="edge54_Node000045_Node000046" title=" " alt="" coords="5116,481,5065,521,5061,516,5113,477"/>
+<area shape="poly" id="edge55_Node000045_Node000047" title=" " alt="" coords="5243,473,5360,516,5358,521,5241,478"/>
+<area shape="poly" id="edge63_Node000051_Node000034" title=" " alt="" coords="5119,132,5323,157,5552,193,5570,197,5569,202,5551,199,5322,163,5119,138"/>
+<area shape="poly" id="edge65_Node000051_Node000040" title=" " alt="" coords="4912,147,4716,200,4715,195,4910,142"/>
+<area shape="poly" id="edge64_Node000051_Node000041" title=" " alt="" coords="4974,154,4962,176,4954,200,4951,225,4957,250,4979,280,5009,304,5006,308,4976,284,4952,252,4946,226,4949,199,4958,173,4969,151"/>
+<area shape="poly" id="edge67_Node000051_Node000042" title=" " alt="" coords="4971,153,4945,197,4937,222,4934,246,4936,288,4936,309,4933,329,4924,349,4907,370,4874,393,4840,402,4806,401,4773,395,4740,389,4707,388,4675,396,4643,418,4627,440,4618,467,4613,519,4607,518,4612,466,4622,438,4639,414,4673,391,4706,383,4740,384,4774,390,4807,395,4840,396,4872,388,4903,366,4919,347,4928,328,4931,308,4931,289,4929,245,4932,221,4940,195,4966,150"/>
+<area shape="poly" id="edge71_Node000051_Node000047" title=" " alt="" coords="5119,127,5210,136,5304,150,5386,169,5418,180,5441,194,5478,224,5509,254,5535,286,5554,319,5565,354,5567,391,5560,430,5542,472,5520,500,5492,521,5489,516,5516,496,5537,469,5555,428,5562,390,5560,355,5549,321,5531,289,5506,258,5474,228,5438,198,5415,185,5384,174,5303,155,5210,141,5118,132"/>
+<area shape="poly" id="edge70_Node000051_Node000048" title=" " alt="" coords="5119,125,5204,133,5290,147,5363,166,5390,179,5410,194,5428,220,5440,248,5447,279,5450,310,5447,369,5439,416,5433,415,5442,369,5444,310,5442,280,5435,250,5423,222,5406,198,5387,184,5361,171,5289,152,5204,139,5118,131"/>
+<area shape="poly" id="edge68_Node000051_Node000050" title=" " alt="" coords="4932,149,4895,170,4862,198,4842,224,4826,253,4805,307,4800,305,4821,251,4837,221,4858,194,4892,166,4930,144"/>
+<area shape="rect" id="Node000052" href="$ra8__rabook__finalize_8c.html" title="Canonical RABOOK1 serialization and finalization." alt="" coords="4966,196,5148,251"/>
+<area shape="poly" id="edge66_Node000051_Node000052" title=" " alt="" coords="5015,151,5043,194,5038,197,5010,154"/>
+<area shape="rect" id="Node000053" href="$rabook__compile_8c.html" title="RABOOK1 builder implementation (see rabook_compile.h)." alt="" coords="5172,203,5395,243"/>
+<area shape="poly" id="edge69_Node000051_Node000053" title=" " alt="" coords="5061,143,5230,201,5228,206,5059,148"/>
+</map>

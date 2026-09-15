@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_pending/media_download/inc/media_download_format_internal.h" name="examples/ek_ra8d2/hw_pending/media_download/inc/media_download_format_internal.h">
+<area shape="rect" id="Node000001" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="134,5,345,75"/>
+<area shape="rect" id="Node000002" href="$media__download__format_8c.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="5,123,228,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="193,86,148,124,145,120,189,82"/>
+<area shape="rect" id="Node000003" href="$media__download__image_8c.html" title="Convert one C6&#45;fetched encoded image into a strict .rabook." alt="" coords="253,123,471,177"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="289,82,334,120,330,124,286,86"/>
+</map>

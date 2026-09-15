@@ -1,0 +1,13 @@
+<map id="libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2_connectors.h" name="libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2_connectors.h">
+<area shape="rect" id="Node000001" title="Board&#45;identity, LEDs, switches, display, audio, Arduino, Pmod, and MikroBUS portion of the EK&#45;RA8D2 v..." alt="" coords="65,5,247,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,80,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="123,62,71,102,68,97,120,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="159,181,230,207"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="149,61,142,96,142,114,146,132,158,153,173,170,168,174,153,156,142,134,137,115,137,95,144,60"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,108,234,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="170,59,186,94,181,96,165,61"/>
+<area shape="rect" id="Node000005" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="258,108,417,133"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="213,58,302,100,300,105,210,62"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="197,134,197,168,192,168,192,134"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="316,136,231,177,229,173,313,131"/>
+</map>

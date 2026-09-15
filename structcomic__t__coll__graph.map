@@ -1,0 +1,26 @@
+<map id="comic_t" name="comic_t">
+<area shape="rect" id="Node000001" title="One open comic archive: backing, kind, page index, and backend state." alt="" coords="881,187,955,213"/>
+<area shape="rect" id="Node000002" href="$structcomic__page__t.html" title="One entry in the resident, sorted page index." alt="" coords="563,23,675,49"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="689,25,730,25,775,29,819,42,859,63,885,92,902,126,913,160,918,187,913,188,908,161,898,128,881,95,856,67,817,46,774,35,730,30,689,30"/>
+<area shape="rect" id="Node000003" href="$structcomic__stream__t.html" title="Stable seek+read descriptor bound to the CBZ backend&#39;s miniz reader." alt="" coords="555,74,682,99"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="696,84,777,95,819,107,859,126,876,139,891,155,912,185,908,188,887,158,873,143,856,130,817,112,776,100,695,89"/>
+<area shape="rect" id="Node000004" href="$structra8__rar__t.html" title="One open RAR archive: the backing plus the detected generation." alt="" coords="301,155,381,181"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="394,164,448,163,564,158,654,152,744,154,858,172,893,185,892,190,857,177,744,159,654,157,564,163,448,168,395,169"/>
+<area shape="rect" id="Node000005" href="$structra8__rar5__state.html" title=" " alt="" coords="561,195,677,221"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="395,176,448,185,561,200,560,205,448,191,394,181"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="690,203,881,198,881,204,690,209"/>
+<area shape="rect" id="Node000006" href="$structra8__rar5__dtab__t.html" title="One canonical Huffman decode table (shared by all five RAR5 alphabets)." alt="" coords="279,310,403,335"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="416,328,460,321,481,314,499,302,510,286,511,269,512,249,523,230,540,218,559,211,561,216,543,223,527,234,517,251,517,269,515,288,503,306,484,318,462,326,417,333"/>
+<area shape="rect" id="Node000007" href="$structra8__rar5__filter__t.html" title="One pending RAR5 data filter recorded during decode, applied after." alt="" coords="278,363,403,389"/>
+<area shape="poly" id="edge7_Node000005_Node000007" title=" " alt="" coords="416,380,461,373,482,364,499,351,510,338,514,324,512,294,509,262,513,246,523,230,540,218,559,210,561,215,543,222,527,234,518,248,514,263,517,293,519,324,515,340,503,355,484,369,463,378,417,386"/>
+<area shape="rect" id="Node000008" href="$structunarch__tar__t.html" title="One open tar archive: the backing plus the walk&#39;s running budget." alt="" coords="567,245,670,270"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="684,255,767,249,813,242,856,231,897,211,900,215,858,236,814,247,768,255,684,261"/>
+<area shape="rect" id="Node000009" href="$structra8__decomp__budget__t.html" title="Running consumption tracker charged by a decoder against its policy." alt="" coords="257,417,424,442"/>
+<area shape="poly" id="edge9_Node000008_Node000009" title=" " alt="" coords="437,432,471,423,500,405,510,391,514,376,512,345,508,313,512,296,523,279,543,265,566,258,568,263,546,270,527,283,517,298,514,313,517,345,520,377,515,393,503,409,473,428,438,437"/>
+<area shape="rect" id="Node000010" href="$structra8__decomp__limits__t.html" title="One decompression policy: the five resource bounds decoders enforce." alt="" coords="5,417,164,442"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="177,427,257,427,257,432,177,432"/>
+<area shape="rect" id="Node000011" href="$structepub__miniz__arena__t.html" title="Descriptor for one caller&#45;owned miniz allocation arena." alt="" coords="542,294,695,319"/>
+<area shape="poly" id="edge11_Node000001_Node000011" title=" " alt="" coords="709,313,746,312,784,307,821,297,856,282,875,267,890,248,909,212,914,214,894,251,878,271,859,286,823,302,785,312,746,317,709,318"/>
+<area shape="rect" id="Node000012" href="$structepub__miniz__workspace__t.html" title="Exactly&#45;sized, maximally&#45;aligned storage for one miniz arena." alt="" coords="525,347,712,373"/>
+<area shape="poly" id="edge12_Node000001_Node000012" title=" " alt="" coords="705,371,743,372,783,368,821,358,856,339,882,311,899,275,909,240,913,212,918,213,914,241,904,277,886,314,859,343,823,363,784,373,743,377,705,376"/>
+</map>

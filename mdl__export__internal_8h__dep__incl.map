@@ -1,0 +1,26 @@
+<map id="apps/shared_libs/mdl/src/mdl_export_internal.h" name="apps/shared_libs/mdl/src/mdl_export_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private contracts shared by chapter export writers." alt="" coords="507,5,699,45"/>
+<area shape="rect" id="Node000002" href="$mdl__export_8c.html" title="Coordinate bounded chapter export and validated publication." alt="" coords="5,101,165,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="494,44,346,66,185,96,154,103,152,98,183,91,345,61,493,38"/>
+<area shape="rect" id="Node000003" href="$mdl__export__epub_8c.html" title="Emit deterministic fixed&#45;layout EPUB3 chapter containers." alt="" coords="116,203,289,243"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="493,35,416,43,339,55,272,72,247,83,230,95,213,120,205,149,202,178,203,203,198,203,197,178,200,148,208,118,226,91,245,78,270,67,337,50,416,38,493,30"/>
+<area shape="rect" id="Node000004" href="$mdl__export__epub__internal_8h.html" title="Private bounded EPUB3 writer contracts for the media downloader." alt="" coords="240,93,403,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="533,52,401,96,400,91,532,47"/>
+<area shape="rect" id="Node000006" href="$mdl__export__jof_8c.html" title="JOF tile&#45;atlas exporter: one .jof band atlas per chapter page." alt="" coords="427,101,587,141"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="575,57,528,103,524,99,572,53"/>
+<area shape="rect" id="Node000007" href="$mdl__export__meta_8c.html" title="Parse, validate, and serialize portable publication metadata." alt="" coords="611,101,786,141"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="634,53,681,99,677,103,630,57"/>
+<area shape="rect" id="Node000008" href="$mdl__export__rabook__internal_8h.html" title="Private bounded RABOOK export contracts for the media downloader." alt="" coords="810,93,985,148"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="676,47,815,91,814,96,675,52"/>
+<area shape="rect" id="Node000011" href="$mdl__export__tar_8c.html" title="Stream deterministic CBT and gzip&#45;wrapped CBT containers." alt="" coords="1009,101,1169,141"/>
+<area shape="poly" id="edge11_Node000001_Node000011" title=" " alt="" coords="713,39,849,61,998,91,1027,98,1026,103,997,96,848,67,712,45"/>
+<area shape="rect" id="Node000012" href="$mdl__export__zip_8c.html" title="Provide bounded miniz storage and the CBZ container writer." alt="" coords="1193,101,1353,141"/>
+<area shape="poly" id="edge12_Node000001_Node000012" title=" " alt="" coords="713,31,931,52,1057,69,1182,91,1213,98,1212,103,1181,96,1056,75,930,58,712,37"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="281,159,227,205,223,201,278,155"/>
+<area shape="rect" id="Node000005" href="$mdl__export__epub__meta_8c.html" title="Render the EPUB3 package document, navigation, and identifier." alt="" coords="313,196,476,251"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="351,158,378,194,373,197,346,161"/>
+<area shape="rect" id="Node000009" href="$mdl__export__rabook_8c.html" title="Bounded fixed&#45;layout EPUB&#45;to&#45;RBKC writer for media chapters." alt="" coords="693,203,880,243"/>
+<area shape="poly" id="edge9_Node000008_Node000009" title=" " alt="" coords="860,160,809,205,806,201,856,156"/>
+<area shape="rect" id="Node000010" href="$mdl__export__rabook__io_8c.html" title="Portable temporary EPUB and flat&#45;blob adapters for RABOOK export." alt="" coords="904,203,1109,243"/>
+<area shape="poly" id="edge10_Node000008_Node000010" title=" " alt="" coords="938,156,988,201,984,205,934,160"/>
+</map>

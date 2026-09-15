@@ -1,0 +1,46 @@
+<map id="libs/if_ra8_vfs/inc/fw_if_fs_ra8_vfs.h" name="libs/if_ra8_vfs/inc/fw_if_fs_ra8_vfs.h">
+<area shape="rect" id="Node000001" title="Firmware filesystem&#45;port adapter over ra8_io_vfs and ra8_fs." alt="" coords="599,5,742,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="545,607,615,632"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="743,29,817,42,856,53,893,68,926,87,953,111,971,142,977,178,977,474,974,488,966,502,937,526,894,547,842,566,728,595,629,613,628,608,727,590,841,561,892,542,934,521,962,498,969,486,972,474,972,178,966,143,949,115,923,91,891,72,854,58,816,47,742,34"/>
+<area shape="rect" id="Node000003" href="$fw__if__fs_8h.html" title="Architecture&#45;neutral filesystem namespace, stream, and transaction ports." alt="" coords="183,387,267,412"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="599,40,495,60,381,90,330,109,290,130,263,153,256,166,253,178,253,254,247,320,235,374,230,373,242,319,248,254,248,178,251,164,259,150,287,126,328,104,379,85,493,55,598,35"/>
+<area shape="rect" id="Node000007" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="675,313,749,339"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="676,45,711,299,706,300,671,46"/>
+<area shape="rect" id="Node000010" href="$ra8__io__vfs_8h.html" title="ra8_io virtual filesystem – mount many volumes, address them by name." alt="" coords="475,93,576,119"/>
+<area shape="poly" id="edge21_Node000001_Node000010" title=" " alt="" coords="637,48,560,89,557,84,635,43"/>
+<area shape="poly" id="edge4_Node000003_Node000002" title=" " alt="" coords="230,412,239,441,254,481,277,522,310,557,349,574,407,589,531,610,531,615,406,595,347,579,306,561,273,525,249,483,234,443,225,413"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="5,533,80,559"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="183,405,149,410,113,419,78,436,50,462,43,475,40,489,40,519,35,519,34,489,38,473,46,458,75,432,111,414,148,404,183,399"/>
+<area shape="rect" id="Node000005" href="$fw__if__fs__types_8h.html" title="Portable filesystem value types and caller&#45;owned opaque handles." alt="" coords="61,460,187,485"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="211,414,153,454,150,450,208,410"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="490,533,569,559"/>
+<area shape="poly" id="edge10_Node000003_Node000006" title=" " alt="" coords="251,410,494,525,492,530,249,415"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="134,484,163,521,184,540,208,556,269,576,357,592,531,611,530,617,356,597,268,581,206,561,181,545,159,524,129,487"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="113,487,68,526,64,522,109,483"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="188,482,477,533,476,538,187,488"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="540,557,566,594,562,597,536,561"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="750,327,781,332,816,342,848,360,874,385,880,400,883,423,881,452,870,486,852,519,827,545,796,567,762,584,692,606,629,617,629,612,691,601,760,579,793,562,823,541,848,516,866,484,875,451,878,423,875,401,870,388,845,364,814,347,780,337,749,332"/>
+<area shape="poly" id="edge13_Node000007_Node000006" title=" " alt="" coords="704,341,550,524,546,521,700,337"/>
+<area shape="rect" id="Node000008" href="$ra8__fs__seams_8h.html" title="The two dependency&#45;injection seams ra8_fs offers its callers." alt="" coords="735,387,859,412"/>
+<area shape="poly" id="edge14_Node000007_Node000008" title=" " alt="" coords="727,337,775,376,771,380,724,341"/>
+<area shape="rect" id="Node000009" href="$ra8__fs__types_8h.html" title="On&#45;disk and handle data types shared by the ra8_fs public API." alt="" coords="719,460,836,485"/>
+<area shape="poly" id="edge20_Node000007_Node000009" title=" " alt="" coords="714,339,716,372,726,411,739,431,755,449,751,452,735,434,722,413,711,373,709,339"/>
+<area shape="poly" id="edge15_Node000008_Node000002" title=" " alt="" coords="815,410,831,425,846,444,855,465,850,486,829,514,804,538,776,557,745,574,684,598,630,612,628,607,682,593,743,569,773,553,801,533,825,511,846,484,850,466,842,447,827,429,811,414"/>
+<area shape="poly" id="edge16_Node000008_Node000006" title=" " alt="" coords="777,415,564,529,561,524,775,410"/>
+<area shape="poly" id="edge17_Node000008_Node000009" title=" " alt="" coords="797,413,787,448,782,446,791,412"/>
+<area shape="poly" id="edge18_Node000009_Node000002" title=" " alt="" coords="763,488,609,600,606,596,760,483"/>
+<area shape="poly" id="edge19_Node000009_Node000006" title=" " alt="" coords="738,488,583,532,581,527,737,483"/>
+<area shape="poly" id="edge22_Node000010_Node000002" title=" " alt="" coords="480,121,432,139,382,166,361,183,344,203,333,226,329,252,329,474,335,505,350,532,373,553,402,571,469,596,531,610,530,615,467,601,400,576,370,558,346,535,330,507,324,474,324,251,328,224,340,200,358,179,379,161,430,134,478,116"/>
+<area shape="poly" id="edge23_Node000010_Node000006" title=" " alt="" coords="499,121,463,141,423,170,406,187,393,207,383,228,380,252,380,327,384,359,393,389,408,417,426,444,466,489,504,523,501,527,463,493,421,447,403,420,388,391,378,360,375,327,375,251,378,227,388,204,402,184,420,166,460,136,497,116"/>
+<area shape="poly" id="edge24_Node000010_Node000007" title=" " alt="" coords="544,117,607,165,643,200,676,238,693,269,706,299,701,301,689,272,671,242,639,203,603,169,541,121"/>
+<area shape="rect" id="Node000011" href="$ra8__io__fsfmt_8h.html" title="ra8_io pluggable filesystem&#45;format registry (probe + capabilities)." alt="" coords="467,167,583,192"/>
+<area shape="poly" id="edge25_Node000010_Node000011" title=" " alt="" coords="528,119,528,153,523,153,523,119"/>
+<area shape="poly" id="edge26_Node000011_Node000002" title=" " alt="" coords="517,194,501,215,486,241,452,329,441,368,434,404,434,440,441,477,455,515,479,557,504,582,534,599,531,604,500,586,475,560,451,518,435,478,429,441,429,404,435,367,447,328,482,239,496,212,513,190"/>
+<area shape="poly" id="edge27_Node000011_Node000006" title=" " alt="" coords="521,193,496,249,486,286,481,325,481,401,485,434,494,466,518,520,513,522,489,468,480,435,476,401,476,325,481,285,491,247,516,191"/>
+<area shape="poly" id="edge28_Node000011_Node000007" title=" " alt="" coords="557,190,600,210,644,238,675,269,699,300,695,303,671,272,641,242,598,214,555,195"/>
+<area shape="rect" id="Node000012" href="$ra8__fs__meta_8h.html" title="Volume&#45;level metadata: free space, volume label, and per&#45;entry utime." alt="" coords="516,240,631,265"/>
+<area shape="poly" id="edge29_Node000011_Node000012" title=" " alt="" coords="535,191,560,227,556,230,531,194"/>
+<area shape="poly" id="edge30_Node000012_Node000002" title=" " alt="" coords="584,264,614,320,628,358,633,398,633,474,630,508,620,542,596,596,591,594,615,540,624,507,628,474,628,398,623,359,610,322,579,267"/>
+<area shape="poly" id="edge31_Node000012_Node000006" title=" " alt="" coords="574,266,536,520,530,519,569,265"/>
+<area shape="poly" id="edge32_Node000012_Node000007" title=" " alt="" coords="597,263,678,305,676,309,594,268"/>
+</map>

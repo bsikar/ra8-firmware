@@ -1,0 +1,46 @@
+<map id="tools" name="tools">
+<area shape="rect" id="node2" href="dir_ff8ab74d87874f501938afdb4ebeb1d9.html" title="cache_bench" alt="" coords="767,27,873,52"/>
+<area shape="rect" id="node15" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="672,100,717,125"/>
+<area shape="poly" id="edge1" href="dir_000038_000324.html" alt="" coords="801,54,728,95,726,91,799,50"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000038_000324.html" title="12" alt="" coords="726,91,744,106"/>
+<area shape="rect" id="node16" href="dir_9654b8d08f4bba4e84b362c5fd320bee.html" title="apps" alt="" coords="1019,100,1072,125"/>
+<area shape="poly" id="edge2" href="dir_000038_000011.html" alt="" coords="854,50,886,60,1006,97,1005,102,885,65,852,55"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000038_000011.html" title="1" alt="" coords="999,83,1008,98"/>
+<area shape="rect" id="node3" href="dir_d49987a8a9296ee76d40432249b9fd63.html" title="epub_compile" alt="" coords="1271,27,1385,52"/>
+<area shape="rect" id="node4" href="dir_4133174d084d7d1054ecef54f2a51f1d.html" title="exfat_mkimage" alt="" coords="364,27,489,52"/>
+<area shape="poly" id="edge3" href="dir_000127_000324.html" alt="" coords="465,49,502,60,659,100,658,105,501,65,463,55"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000127_000324.html" title="3" alt="" coords="652,86,661,101"/>
+<area shape="rect" id="node5" href="dir_260ac101ed89517686f86c46c4e9c77b.html" title="glyph_bench" alt="" coords="1143,27,1247,52"/>
+<area shape="rect" id="node14" href="dir_651562d8bf6cfd3e81eff5b570d7df50.html" title="Adapters between the vendored stacks under libs/third_party and this firmware: ThreadX to the RA8 clo..." alt="" coords="1307,100,1355,125"/>
+<area shape="poly" id="edge5" href="dir_000140_000369.html" alt="" coords="1218,50,1298,91,1295,96,1215,54"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000140_000369.html" title="1" alt="" coords="1292,77,1301,91"/>
+<area shape="poly" id="edge4" href="dir_000140_000324.html" alt="" coords="1167,55,1131,65,1018,86,905,100,732,113,731,107,904,95,1017,81,1130,60,1165,50"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000140_000324.html" title="6" alt="" coords="731,111,741,126"/>
+<area shape="rect" id="node6" href="dir_14681c1b2ad925ceafe213d548530a81.html" title="mcp" alt="" coords="897,27,948,52"/>
+<area shape="rect" id="node7" href="dir_46c134073dd522276ccf794d7a911894.html" title="mkbookimg" alt="" coords="102,27,202,52"/>
+<area shape="poly" id="edge6" href="dir_000348_000324.html" alt="" coords="181,50,215,60,342,82,467,97,658,108,658,113,467,102,341,88,214,65,180,55"/>
+<area shape="rect" id="edge6-headlabel" href="dir_000348_000324.html" title="6" alt="" coords="649,95,659,109"/>
+<area shape="rect" id="node8" href="dir_a9313baef000adb0ee7a882df0ea3a6a.html" title="mkfontimg" alt="" coords="647,27,742,52"/>
+<area shape="poly" id="edge7" href="dir_000349_000324.html" alt="" coords="697,52,697,86,692,86,692,52"/>
+<area shape="rect" id="edge7-headlabel" href="dir_000349_000324.html" title="7" alt="" coords="698,74,708,89"/>
+<area shape="rect" id="node9" href="dir_7ff0bea57dd1776ef07bada229ef69fb.html" title="ra8_emulator" alt="" coords="513,27,623,52"/>
+<area shape="poly" id="edge8" href="dir_000389_000324.html" alt="" coords="590,50,663,91,661,95,587,54"/>
+<area shape="rect" id="edge8-headlabel" href="dir_000389_000324.html" title="58" alt="" coords="654,76,671,91"/>
+<area shape="rect" id="node10" href="dir_86f02c6da6ed28cc863775fda0c805cb.html" title="rabook_imagepack" alt="" coords="972,27,1119,52"/>
+<area shape="poly" id="edge9" href="dir_000433_000324.html" alt="" coords="1004,55,961,65,731,108,730,103,959,60,1003,49"/>
+<area shape="rect" id="edge9-headlabel" href="dir_000433_000324.html" title="16" alt="" coords="728,106,745,120"/>
+<area shape="poly" id="edge10" href="dir_000433_000011.html" alt="" coords="1048,52,1048,86,1043,86,1043,52"/>
+<area shape="rect" id="edge10-headlabel" href="dir_000433_000011.html" title="7" alt="" coords="1049,74,1058,89"/>
+<area shape="rect" id="node11" href="dir_e140d50438150b5c44732431cff4262e.html" title="rabook_viewer" alt="" coords="1409,27,1527,52"/>
+<area shape="poly" id="edge13" href="dir_000435_000369.html" alt="" coords="1447,54,1366,96,1364,91,1445,50"/>
+<area shape="rect" id="edge13-headlabel" href="dir_000435_000369.html" title="1" alt="" coords="1368,92,1378,106"/>
+<area shape="poly" id="edge11" href="dir_000435_000324.html" alt="" coords="1438,55,1398,65,1256,82,1062,96,731,113,731,107,1062,91,1256,77,1397,60,1436,49"/>
+<area shape="rect" id="edge11-headlabel" href="dir_000435_000324.html" title="28" alt="" coords="727,111,745,126"/>
+<area shape="poly" id="edge12" href="dir_000435_000011.html" alt="" coords="1436,55,1398,65,1311,82,1225,95,1086,111,1085,105,1224,90,1310,77,1397,60,1435,50"/>
+<area shape="rect" id="edge12-headlabel" href="dir_000435_000011.html" title="9" alt="" coords="1086,109,1096,123"/>
+<area shape="rect" id="node12" href="dir_44d0138cbeaff406b1f80757a222f903.html" title="reader_vmem" alt="" coords="226,27,339,52"/>
+<area shape="poly" id="edge14" href="dir_000436_000324.html" alt="" coords="316,50,353,60,438,77,523,90,659,106,658,111,523,95,437,82,351,65,314,55"/>
+<area shape="rect" id="edge14-headlabel" href="dir_000436_000324.html" title="6" alt="" coords="650,92,659,107"/>
+<area shape="rect" id="node13" href="dir_6e946fb81cbd35772098598a8346993b.html" title="vela" alt="" coords="27,27,77,52"/>
+<area shape="rect" id="clust1" href="dir_4eeb864c4eec08c7d6b9d3b0352cfdde.html" title="Host&#45;side tools: the ra8_emulator RA8D2 emulator, cache/glyph benchmarks, the EPUB/book image builder..." alt="" coords="16,16,1617,63"/>
+</map>

@@ -1,0 +1,13 @@
+<map id="libs/ra8_io/inc/ra8_io_i2c_bus_i3c_compat.h" name="libs/ra8_io/inc/ra8_io_i2c_bus_i3c_compat.h">
+<area shape="rect" id="Node000001" title="I3C I2C&#45;compatibility backend binder for the ra8_io I2C&#45;bus facade." alt="" coords="439,5,629,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2battery__monitor__demo_2src_2main_8c.html" title="Battery state&#45;of&#45;charge monitor over a MAX17048&#45;class fuel gauge." alt="" coords="5,93,196,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="426,51,209,96,197,99,195,94,208,91,425,45"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2smbus__demo_2src_2main_8c.html" title="SMBus 3.2 protocol&#45;layer demo + HIL over IIC_B (#128)." alt="" coords="221,93,415,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="479,53,380,96,378,91,477,48"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2iic__b__facade__demo_2src_2main_8c.html" title="IIC_B (I3C block in I2C&#45;compat mode) facade controller + peripheral demo." alt="" coords="440,93,628,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="537,59,537,93,531,93,531,59"/>
+<area shape="rect" id="Node000005" href="$ra8__board__ek__ra8d2__touch_8c.html" title="EK&#45;RA8D2 BSP – GoodIX GT911 bring&#45;up on the board&#39;s own I2C wiring." alt="" coords="653,93,834,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="590,49,685,91,683,96,588,53"/>
+<area shape="rect" id="Node000006" href="$ra8__io__i2c__bus__i3c__compat_8c.html" title="I3C I2C&#45;compatibility backend for the ra8_io I2C&#45;bus facade – thin shim over ra8_i3c." alt="" coords="859,101,1049,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="638,46,847,91,878,98,877,103,845,96,637,51"/>
+</map>

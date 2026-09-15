@@ -1,0 +1,21 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/inc/c6_join.h" name="examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/inc/c6_join.h">
+<area shape="rect" id="Node000001" title="Shared contract for the C6 Wi&#45;Fi join + DHCP + reachability app." alt="" coords="56,5,229,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,80,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="114,62,69,101,65,97,110,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="305,328,375,353"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="143,60,141,106,146,164,161,224,174,253,191,278,213,298,238,313,292,330,290,335,236,317,210,302,187,282,169,255,156,226,141,165,136,106,137,60"/>
+<area shape="rect" id="Node000004" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="289,108,391,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="204,58,302,100,300,105,202,63"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="202,255,281,280"/>
+<area shape="poly" id="edge12_Node000001_Node000006" title=" " alt="" coords="156,59,234,241,229,243,151,61"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="375,131,409,150,425,164,437,180,441,194,437,208,423,241,404,272,364,320,360,316,399,268,418,238,432,206,435,194,432,182,421,167,406,154,373,136"/>
+<area shape="rect" id="Node000005" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="257,181,423,207"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="343,134,343,168,337,168,337,134"/>
+<area shape="poly" id="edge9_Node000004_Node000006" title=" " alt="" coords="307,136,273,154,258,167,246,183,238,211,239,241,233,241,233,211,242,180,254,164,270,150,304,131"/>
+<area shape="rect" id="Node000007" href="$ra8__mdl__protocol_8h.html" title="Allocation&#45;free constants shared by the RA8 and C6 media endpoints." alt="" coords="499,255,645,280"/>
+<area shape="poly" id="edge10_Node000004_Node000007" title=" " alt="" coords="377,131,428,151,481,179,522,211,554,242,551,246,518,215,479,184,426,156,375,136"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="343,207,343,314,337,314,337,207"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="326,209,270,249,267,244,323,205"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="259,278,314,318,311,322,256,282"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="536,283,389,327,388,322,534,277"/>
+</map>

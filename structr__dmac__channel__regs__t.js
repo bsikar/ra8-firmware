@@ -1,0 +1,25 @@
+var structr__dmac__channel__regs__t =
+[
+    [ "_r0", "structr__dmac__channel__regs__t.html#abea36df0b24d4187a81e7248b67048be", null ],
+    [ "_r1", "structr__dmac__channel__regs__t.html#a266479d9d555a7bd50633cf8494aa530", null ],
+    [ "_r2", "structr__dmac__channel__regs__t.html#a826fb2f65e45189cb6413fee460c6dd1", null ],
+    [ "_r3", "structr__dmac__channel__regs__t.html#ac9e9a18c31ccabcd22d0bcc8dae8669b", null ],
+    [ "_r4", "structr__dmac__channel__regs__t.html#ac484950599bcde77167d3d0925ff5e29", null ],
+    [ "_r5", "structr__dmac__channel__regs__t.html#a8afe36e08e60ca28460c686026391b43", null ],
+    [ "DMAMD", "structr__dmac__channel__regs__t.html#a112cea02a1a68d9c188dca680243603b", null ],
+    [ "DMBWR", "structr__dmac__channel__regs__t.html#a76299c9d04902d8e946f29f344ce743c", null ],
+    [ "DMCNT", "structr__dmac__channel__regs__t.html#acce1e2cd8c215ed2e73b27f15122c28c", null ],
+    [ "DMCRA", "structr__dmac__channel__regs__t.html#ab5db9d993a2d544d61f322c08751ee87", null ],
+    [ "DMCRB", "structr__dmac__channel__regs__t.html#ad81d4711916f3e219a2d2b4c01bcd87e", null ],
+    [ "DMDAR", "structr__dmac__channel__regs__t.html#ae26af4f8f2b503b88b2413445d339f8f", null ],
+    [ "DMDBS", "structr__dmac__channel__regs__t.html#a82e37964c91e49519c1e6fd1d2fa4a4e", null ],
+    [ "DMDRR", "structr__dmac__channel__regs__t.html#a9ae58bc465b9954011119670c07eb39f", null ],
+    [ "DMINT", "structr__dmac__channel__regs__t.html#a4be3685b617badf6b4bc076cedcc3f53", null ],
+    [ "DMOFR", "structr__dmac__channel__regs__t.html#a50a61b4181d13b8825d4f29e06106379", null ],
+    [ "DMREQ", "structr__dmac__channel__regs__t.html#a306b7031242708717657977aa39f3ee3", null ],
+    [ "DMSAR", "structr__dmac__channel__regs__t.html#a5bfa9b72815df93a1d078d7dce233016", null ],
+    [ "DMSBS", "structr__dmac__channel__regs__t.html#af722b8190852c6a507804d41f73fd265", null ],
+    [ "DMSRR", "structr__dmac__channel__regs__t.html#a29f2ff4ce8e77abb17b0f4a4e961495d", null ],
+    [ "DMSTS", "structr__dmac__channel__regs__t.html#a0e916861901cb344c18d28eba0a33f37", null ],
+    [ "DMTMD", "structr__dmac__channel__regs__t.html#a459dcf186b4def90909d6dac46a954a0", null ]
+];

@@ -1,0 +1,19 @@
+<map id="apps/board/stand_alone/ereader/src/vector_table.c" name="apps/board/stand_alone/ereader/src/vector_table.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 vector table and default interrupt handlers for RA8D2." alt="" coords="54,5,249,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="166,240,236,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="86,48,52,67,38,80,26,95,13,120,8,143,12,166,26,190,52,215,84,232,119,242,152,247,151,252,118,247,82,237,48,220,22,194,7,168,3,143,8,119,21,92,34,76,49,63,84,43"/>
+<area shape="rect" id="Node000003" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="36,93,166,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="142,47,118,83,114,80,137,44"/>
+<area shape="rect" id="Node000004" href="$ra8__exception_8h.html" title="Cortex&#45;M85 CPU exception diagnostic helpers." alt="" coords="36,167,163,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="167,44,183,79,186,100,181,120,162,144,139,162,135,158,158,140,176,118,180,100,178,81,162,46"/>
+<area shape="rect" id="Node000005" href="$ra8__isr_8h.html" title="NVIC + ICU IELSR allocator." alt="" coords="249,93,326,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="186,43,257,84,254,89,183,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="117,190,175,230,172,234,114,194"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="274,121,250,141,229,168,215,198,208,227,202,226,210,196,224,165,246,138,270,117"/>
+<area shape="rect" id="Node000006" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="239,167,355,192"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="292,119,296,153,291,154,287,119"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="379,167,458,192"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="310,116,386,158,384,162,307,121"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="283,194,229,234,226,229,280,190"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="384,195,250,238,248,233,383,189"/>
+</map>

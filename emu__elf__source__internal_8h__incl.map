@@ -1,0 +1,16 @@
+<map id="tools/ra8_emulator/inc/emu_elf_source_internal.h" name="tools/ra8_emulator/inc/emu_elf_source_internal.h">
+<area shape="rect" id="Node000001" title="Private raw&#45;descriptor ELF source operations." alt="" coords="104,5,256,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,181,80,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="159,62,64,173,60,169,155,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="105,181,175,207"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="176,61,149,169,144,167,171,60"/>
+<area shape="rect" id="Node000004" href="$emu__elf_8h.html" title="ELF32 image services for the board emulator (load / symbols / vectors)." alt="" coords="178,108,265,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="195,59,212,94,207,97,190,61"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="359,181,484,207"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="221,58,394,171,391,176,218,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="194,136,85,179,83,174,192,131"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="210,135,165,174,162,170,207,131"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="199,181,334,207"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="231,132,254,168,250,171,227,135"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="254,131,376,174,375,179,253,136"/>
+</map>

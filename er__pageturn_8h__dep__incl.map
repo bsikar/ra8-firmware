@@ -1,0 +1,14 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/ereader_ui/inc/er_pageturn.h" name="examples/ek_ra8d2/hw_validated/hil/ereader_ui/inc/er_pageturn.h">
+<area shape="rect" id="Node000001" title="Pure page&#45;turn + input&#45;region decisions for the e&#45;reader (#78)." alt="" coords="278,5,451,60"/>
+<area shape="rect" id="Node000002" href="$ereader__ui__steps_8h.html" title="E&#45;reader UI chrome – shared contract between main.c and the per&#45;aspect helper translation units (scre..." alt="" coords="203,108,393,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="342,73,318,109,313,106,337,70"/>
+<area shape="rect" id="Node000003" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="5,211,193,265"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="266,67,227,86,192,110,167,134,146,161,115,212,110,209,141,157,163,130,188,106,225,82,264,63"/>
+<area shape="rect" id="Node000004" href="$ereader__ui__screens_8c.html" title="E&#45;reader UI chrome – Library + Reading rendering and in&#45;content nav." alt="" coords="218,211,423,265"/>
+<area shape="poly" id="edge6_Node000001_Node000004" title=" " alt="" coords="393,71,403,92,411,116,413,140,407,164,389,191,365,213,362,209,385,187,402,162,407,140,406,117,398,94,388,73"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2src_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="447,211,621,265"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="398,69,429,106,514,209,510,212,425,110,394,72"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="235,171,152,213,150,208,233,166"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="310,175,317,210,312,211,304,177"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="373,166,474,208,471,213,371,170"/>
+</map>

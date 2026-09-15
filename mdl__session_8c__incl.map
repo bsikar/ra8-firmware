@@ -1,0 +1,40 @@
+<map id="apps/shared_libs/mdl/src/mdl_session.c" name="apps/shared_libs/mdl/src/mdl_session.c">
+<area shape="rect" id="Node000001" title="Implementation of the session identity + robots.txt gating." alt="" coords="642,5,802,45"/>
+<area shape="rect" id="Node000002" href="$mdl__session_8h.html" title="Session identity (honest User&#45;Agent) and robots.txt gating." alt="" coords="183,93,298,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="642,42,312,96,311,91,641,37"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="820,93,887,119"/>
+<area shape="poly" id="edge15_Node000001_Node000009" title=" " alt="" coords="755,43,823,84,821,88,752,48"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="912,93,982,119"/>
+<area shape="poly" id="edge16_Node000001_Node000010" title=" " alt="" coords="776,43,902,86,900,91,775,48"/>
+<area shape="rect" id="Node000011" href="$mdl__stream__internal_8h.html" title="Private bounded text helpers over the portable byte&#45;stream contract." alt="" coords="576,93,745,119"/>
+<area shape="poly" id="edge17_Node000001_Node000011" title=" " alt="" coords="709,47,680,84,676,81,705,44"/>
+<area shape="rect" id="Node000012" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="727,167,852,192"/>
+<area shape="poly" id="edge25_Node000001_Node000012" title=" " alt="" coords="735,44,759,92,783,153,778,155,754,94,730,47"/>
+<area shape="rect" id="Node000013" href="$mdl__url__guard_8h.html" title="Pure URL / address safety predicates for the libcurl backend." alt="" coords="474,167,601,192"/>
+<area shape="poly" id="edge22_Node000001_Node000013" title=" " alt="" coords="642,48,601,67,565,95,549,123,542,154,537,152,544,121,561,92,598,62,640,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="266,240,340,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="248,118,295,226,290,228,243,120"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="193,313,264,339"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="183,117,86,137,45,151,20,168,9,192,13,214,27,234,52,253,115,286,180,309,179,314,113,291,49,258,24,238,8,216,4,191,16,165,42,146,85,132,182,112"/>
+<area shape="rect" id="Node000005" href="$mdl__net_8h.html" title="Streaming HTTP(S) GET seam (a real function&#45;pointer vtable) for the host manga downloader (v0)." alt="" coords="30,167,117,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="215,121,114,164,112,159,212,116"/>
+<area shape="rect" id="Node000007" href="$mdl__robots_8h.html" title="robots.txt parser, path matcher, and per&#45;host cache." alt="" coords="142,167,248,192"/>
+<area shape="poly" id="edge9_Node000002_Node000007" title=" " alt="" coords="235,120,212,157,207,154,231,118"/>
+<area shape="rect" id="Node000008" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="324,167,450,192"/>
+<area shape="poly" id="edge12_Node000002_Node000008" title=" " alt="" coords="265,116,352,158,350,163,263,121"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="111,189,253,233,252,238,110,195"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="77,192,83,227,90,246,101,264,118,280,138,293,181,311,179,316,136,297,115,284,97,267,85,249,78,228,72,193"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="112,240,190,265"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="88,190,130,229,126,232,84,194"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="165,263,207,302,204,306,162,267"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="214,190,275,230,272,235,211,194"/>
+<area shape="poly" id="edge11_Node000007_Node000004" title=" " alt="" coords="200,192,225,299,220,301,195,193"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="387,193,377,229,368,249,354,267,318,295,278,313,276,308,315,290,350,263,363,246,372,227,382,192"/>
+<area shape="poly" id="edge14_Node000008_Node000006" title=" " alt="" coords="350,195,203,239,201,233,348,189"/>
+<area shape="poly" id="edge18_Node000011_Node000003" title=" " alt="" coords="660,120,645,157,631,177,614,194,594,205,566,214,497,230,354,249,354,244,496,225,565,209,592,200,611,190,627,174,640,154,655,118"/>
+<area shape="poly" id="edge19_Node000011_Node000004" title=" " alt="" coords="664,119,662,155,656,175,645,194,605,231,559,260,510,283,458,300,359,320,278,327,278,322,358,314,457,294,508,278,557,255,602,226,641,190,651,173,657,154,659,119"/>
+<area shape="poly" id="edge21_Node000011_Node000008" title=" " alt="" coords="617,121,445,166,444,161,616,116"/>
+<area shape="poly" id="edge20_Node000011_Node000012" title=" " alt="" coords="682,116,757,157,755,162,680,121"/>
+<area shape="poly" id="edge23_Node000013_Node000003" title=" " alt="" coords="501,195,354,239,353,234,499,189"/>
+<area shape="poly" id="edge24_Node000013_Node000004" title=" " alt="" coords="519,194,459,229,381,268,275,311,273,306,379,263,456,224,517,190"/>
+</map>

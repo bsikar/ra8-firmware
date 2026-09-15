@@ -1,0 +1,15 @@
+<map id="libs/ra8_tz_secure_boot/inc/ra8_tz_secure_boot.h" name="libs/ra8_tz_secure_boot/inc/ra8_tz_secure_boot.h">
+<area shape="rect" id="Node000001" title="FSP&#45;style TrustZone secure&#45;boot for the Cortex&#45;M85 (CPU0)." alt="" coords="620,5,795,60"/>
+<area shape="rect" id="Node000002" href="$apps_2board_2stand__alone_2ereader_2src_2trustzone__init_8c.html" title="Single&#45;core TrustZone bring&#45;up for a RAM&#45;resident NS image (#60)." alt="" coords="5,108,183,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="607,48,415,73,196,111,183,113,182,108,195,105,415,68,606,43"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2cpu1__pingpong__ipc_2src_2trustzone__init_8c.html" title="examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/trustzone_init.c" alt="" coords="207,108,450,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="608,63,428,111,427,105,606,58"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2tz__nsc__cgc__usb_2src_2trustzone__init_8c.html" title="Single&#45;core TrustZone bring&#45;up for a RAM&#45;resident NS image (#60)." alt="" coords="474,108,711,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="669,71,624,110,621,106,665,67"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2secure__boot__ns__hil_2src_2main_8c.html" title="Secure side: authenticate the NS image, then BLXNS – the TrustZone RoT proof (#172)." alt="" coords="735,108,909,163"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="749,67,794,106,790,110,746,71"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__pending_2tz__threadx__demo_2src_2trustzone__init_8c.html" title="Single&#45;core TrustZone bring&#45;up for a RAM&#45;resident NS image (#60)." alt="" coords="933,108,1132,163"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="806,62,949,105,947,110,804,67"/>
+<area shape="rect" id="Node000007" href="$ra8__tz__secure__boot_8c.html" title="FSP&#45;style TrustZone secure&#45;boot implementation for RA8D2." alt="" coords="1156,108,1331,163"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="809,46,967,71,1145,105,1156,108,1155,113,1144,111,966,77,808,51"/>
+</map>

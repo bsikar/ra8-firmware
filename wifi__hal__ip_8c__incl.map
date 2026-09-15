@@ -1,0 +1,39 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_ip.c" name="examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_ip.c">
+<area shape="rect" id="Node000001" title="The NetX Duo DHCP provider the ra8_wifi facade calls for an address." alt="" coords="280,5,453,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="275,401,346,427"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="280,38,192,49,147,60,103,75,65,95,35,121,15,153,10,172,8,193,8,269,10,288,15,306,35,336,65,359,102,377,143,391,185,400,262,409,261,414,185,405,142,396,100,382,62,364,31,339,10,308,5,289,3,269,3,193,5,171,10,151,31,117,62,90,101,70,145,54,191,44,279,33"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="43,181,120,207"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="280,41,236,49,191,62,148,82,110,110,100,123,93,137,86,168,80,167,88,136,95,120,106,106,145,77,189,57,235,43,279,36"/>
+<area shape="rect" id="Node000004" href="$nx__ether__driver__c6_8h.html" title="NetX Duo network driver shim that bridges onto the ESP32&#45;C6 link." alt="" coords="119,108,278,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="317,62,235,104,232,99,314,58"/>
+<area shape="rect" id="Node000005" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="233,181,335,207"/>
+<area shape="poly" id="edge16_Node000001_Node000005" title=" " alt="" coords="355,61,299,170,294,168,351,59"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="414,328,493,353"/>
+<area shape="poly" id="edge17_Node000001_Node000007" title=" " alt="" coords="375,60,395,133,433,254,450,314,444,315,428,255,389,134,370,61"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="404,108,543,133"/>
+<area shape="poly" id="edge15_Node000001_Node000009" title=" " alt="" coords="401,58,450,97,446,101,398,62"/>
+<area shape="rect" id="Node000010" href="$ra8__wifi_8h.html" title="A small, uniform Wi&#45;Fi facade: init, connect, get an IP, disconnect." alt="" coords="617,255,703,280"/>
+<area shape="poly" id="edge18_Node000001_Node000010" title=" " alt="" coords="454,38,527,47,601,61,665,80,690,92,706,106,716,123,719,141,714,179,698,215,680,245,675,242,694,213,709,178,714,142,711,125,702,110,687,97,663,85,600,66,526,52,453,44"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="617,108,692,133"/>
+<area shape="poly" id="edge21_Node000001_Node000011" title=" " alt="" coords="454,57,605,102,604,107,453,62"/>
+<area shape="rect" id="Node000012" href="$wifi__hal__join_8h.html" title="Constants, console formatters and the DHCP provider for the HAL join." alt="" coords="523,181,637,207"/>
+<area shape="poly" id="edge22_Node000001_Node000012" title=" " alt="" coords="454,48,509,70,534,86,557,106,574,136,581,167,576,168,569,138,553,110,531,91,506,75,452,53"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="192,135,159,182,119,246,103,279,91,309,87,334,92,352,102,361,118,369,162,384,262,404,261,409,161,389,116,374,99,365,87,355,81,335,86,308,98,277,115,244,155,179,188,132"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="181,136,114,176,111,172,178,131"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="214,131,261,170,258,175,211,135"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="263,209,243,222,225,239,213,259,212,269,214,279,224,294,235,303,248,312,262,326,301,388,296,391,258,330,245,316,232,308,220,298,210,281,207,269,208,257,220,236,240,218,260,205"/>
+<area shape="rect" id="Node000006" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="223,255,390,280"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="290,206,301,241,296,242,285,208"/>
+<area shape="poly" id="edge12_Node000005_Node000007" title=" " alt="" coords="320,204,363,224,404,253,429,283,446,314,441,316,424,286,401,257,360,228,318,209"/>
+<area shape="rect" id="Node000008" href="$ra8__mdl__protocol_8h.html" title="Allocation&#45;free constants shared by the RA8 and C6 media endpoints." alt="" coords="101,328,248,353"/>
+<area shape="poly" id="edge13_Node000005_Node000008" title=" " alt="" coords="237,209,199,227,182,240,169,256,164,270,162,285,168,315,162,316,157,285,158,269,164,253,178,236,196,222,234,204"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="310,280,313,388,307,388,304,281"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="331,278,418,320,416,324,329,282"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="432,356,347,397,345,393,429,351"/>
+<area shape="poly" id="edge14_Node000008_Node000002" title=" " alt="" coords="198,351,278,393,275,397,195,356"/>
+<area shape="poly" id="edge19_Node000010_Node000002" title=" " alt="" coords="657,281,637,318,620,339,600,356,540,385,475,403,412,412,360,416,359,410,412,407,474,398,538,380,597,351,616,335,632,315,653,279"/>
+<area shape="poly" id="edge20_Node000010_Node000007" title=" " alt="" coords="628,283,501,326,499,321,626,277"/>
+<area shape="poly" id="edge23_Node000012_Node000002" title=" " alt="" coords="580,207,573,237,559,277,538,319,507,355,473,378,434,395,395,405,360,411,359,406,394,400,432,390,470,374,504,351,533,316,555,275,568,235,575,206"/>
+<area shape="poly" id="edge24_Node000012_Node000007" title=" " alt="" coords="572,209,474,319,470,316,568,205"/>
+<area shape="poly" id="edge25_Node000012_Node000010" title=" " alt="" coords="595,205,639,244,635,248,591,209"/>
+</map>

@@ -1,0 +1,22 @@
+<map id="libs/ra8_app/inc/ra8_app.h" name="libs/ra8_app/inc/ra8_app.h">
+<area shape="rect" id="Node000001" title="Zero&#45;heap app framework: lifecycle + static registry + launcher (#146)." alt="" coords="573,5,722,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2app__launch__demo_2src_2main_8c.html" title="Minimal chrome stub: register apps + launch + back&#45;stack (#146)." alt="" coords="5,93,193,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="559,40,395,64,206,96,194,99,193,93,206,91,394,58,559,35"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2app__shell__demo_2src_2main_8c.html" title="App&#45;shell chrome: launch reader / library / settings apps (#146 Ph2)." alt="" coords="218,93,394,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="566,52,395,98,394,93,564,46"/>
+<area shape="rect" id="Node000004" href="$ereader__ui__steps_8h.html" title="E&#45;reader UI chrome – shared contract between main.c and the per&#45;aspect helper translation units (scre..." alt="" coords="419,93,609,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="611,55,553,95,550,91,608,51"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2src_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="601,196,774,251"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="657,58,685,195,679,196,651,59"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__app_2src_2main_8c.html" title="On&#45;silicon HIL: ra8_widget compositor + ra8_app framework (#145/#146)." alt="" coords="685,93,858,148"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="685,51,738,91,735,95,682,56"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__app__demo_2src_2main_8c.html" title="Interactive ra8_widget + ra8_app launcher on the live GLCDC panel." alt="" coords="882,93,1055,148"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="726,47,883,92,881,97,725,52"/>
+<area shape="rect" id="Node000010" href="$ra8__app_8c.html" title="Implementation of the ra8_app app framework (#146)." alt="" coords="1079,101,1229,141"/>
+<area shape="poly" id="edge10_Node000001_Node000010" title=" " alt="" coords="736,35,891,57,1068,91,1096,98,1095,103,1067,96,891,62,735,40"/>
+<area shape="rect" id="Node000005" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="159,196,347,251"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="434,155,322,198,320,193,433,150"/>
+<area shape="rect" id="Node000006" href="$ereader__ui__screens_8c.html" title="E&#45;reader UI chrome – Library + Reading rendering and in&#45;content nav." alt="" coords="371,196,577,251"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="501,162,487,197,482,195,496,160"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="572,152,643,193,641,198,569,157"/>
+</map>

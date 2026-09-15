@@ -1,0 +1,33 @@
+<map id="libs/ra8_io/inc/ra8_io.h" name="libs/ra8_io/inc/ra8_io.h">
+<area shape="rect" id="Node000001" title="ra8_io – unified peripheral&#45;agnostic I/O fabric (umbrella header)." alt="" coords="1569,5,1737,31"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2compress__demo_2src_2main_8c.html" title="Transparent compress&#45;on&#45;write / decompress&#45;on&#45;read over the VFS (#161)." alt="" coords="5,86,225,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1555,23,1268,28,888,39,511,56,355,68,237,81,202,89,200,83,236,76,355,62,511,51,887,33,1268,23,1555,18"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__cache__demo_2src_2main_8c.html" title="ra8_io caching block device demo (Phase 5, #160)." alt="" coords="249,86,451,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1555,24,995,41,687,58,559,69,462,81,430,89,428,83,462,76,559,63,686,53,995,36,1555,19"/>
+<area shape="rect" id="Node000004" href="$ra8__io__demo_2inc_2ra8__io__roundtrip_8h.html" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="475,86,705,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1555,22,1395,25,1186,34,953,52,718,81,682,89,681,83,718,76,952,46,1186,29,1394,20,1555,17"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__demo_2src_2main_8c.html" title="End&#45;to&#45;end demo of the ra8_io fabric (epic #155) over a RAM block device." alt="" coords="730,86,909,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1555,23,1428,26,1269,36,1095,53,921,81,892,88,891,83,920,76,1094,48,1268,31,1427,21,1555,17"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__fsfmt__demo_2src_2main_8c.html" title="ra8_io pluggable filesystem&#45;format registry demo (Phase 4, #159)." alt="" coords="933,86,1132,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1555,28,1364,47,1254,62,1145,81,1115,89,1114,83,1144,76,1253,57,1364,42,1555,23"/>
+<area shape="rect" id="Node000007" href="$ra8__io__sd__demo_2inc_2ra8__io__roundtrip_8h.html" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="1157,79,1335,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1568,36,1462,55,1348,81,1336,85,1335,79,1347,76,1461,50,1567,30"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__sd__demo_2src_2main_8c.html" title="Prove the ra8_io fabric&#39;s swappable backend (#155/#156) over a microSD." alt="" coords="1359,86,1538,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1617,39,1507,88,1505,84,1614,34"/>
+<area shape="rect" id="Node000009" href="$ra8__io__sdram__demo_2inc_2ra8__io__roundtrip_8h.html" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="1562,79,1743,148"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1655,44,1655,79,1650,79,1650,44"/>
+<area shape="rect" id="Node000010" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__sdram__demo_2src_2main_8c.html" title="ra8_io fabric over the external SDRAM backend (epic #155) on EK&#45;RA8D2." alt="" coords="1768,86,1972,141"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1693,34,1810,84,1808,88,1691,39"/>
+<area shape="rect" id="Node000011" href="$ra8__io__xspi__demo_2inc_2ra8__io__roundtrip_8h.html" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="1997,79,2183,148"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1747,30,1861,50,1985,76,1997,79,1996,84,1984,81,1860,55,1746,35"/>
+<area shape="rect" id="Node000012" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__xspi__demo_2src_2main_8c.html" title="ra8_io fabric over OSPI NOR flash (epic #155, #156) on the EK&#45;RA8D2." alt="" coords="2208,86,2399,141"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1751,22,1957,40,2077,55,2196,76,2225,83,2224,88,2195,81,2076,60,1956,45,1751,27"/>
+<area shape="rect" id="Node000013" href="$examples_2ek__ra8d2_2hw__pending_2ra8__ftl__demo_2src_2main_8c.html" title="Wear&#45;levelled block I/O + power&#45;cycle survival over the FTL (#258)." alt="" coords="2423,86,2597,141"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="1750,17,1882,20,2048,29,2230,47,2412,76,2441,83,2439,89,2411,81,2230,52,2048,34,1882,25,1750,22"/>
+<area shape="rect" id="Node000014" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__mram__demo_2src_2main_8c.html" title="ra8_io fabric over on&#45;chip extra&#45;MRAM (data flash) backend (#155/#156)." alt="" coords="2621,86,2794,141"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="1750,19,2197,38,2436,55,2534,65,2609,76,2638,83,2637,88,2608,81,2533,70,2435,60,2197,44,1750,25"/>
+<area shape="rect" id="Node000015" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__sdhi__demo_2src_2main_8c.html" title="Prove the ra8_io fabric&#39;s swappable backend (#155/#156) over native SDHI." alt="" coords="2818,86,2991,141"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="1750,18,1988,24,2293,34,2590,51,2713,63,2807,76,2836,83,2835,88,2805,81,2712,68,2590,57,2293,40,1988,29,1750,24"/>
+<area shape="rect" id="Node000016" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2src_2main_8c.html" title="ra8_io fabric capstone: two block&#45;dev backends swapped behind one interface, a VFS open/read/write/cl..." alt="" coords="3015,86,3189,141"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="1751,17,2026,21,2388,31,2744,48,2892,61,3004,76,3033,83,3032,88,3003,81,2891,66,2744,54,2387,36,2026,27,1751,23"/>
+</map>

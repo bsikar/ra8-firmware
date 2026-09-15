@@ -1,0 +1,29 @@
+<map id="tools/ra8_emulator/src/display/board_view_provider.c" name="tools/ra8_emulator/src/display/board_view_provider.c">
+<area shape="rect" id="Node000001" title="Immutable raw&#45;fd CoreGraphics direct provider implementation." alt="" coords="282,5,456,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="138,343,208,368"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="282,46,213,61,140,87,105,105,72,127,43,153,18,183,9,205,11,227,22,249,39,270,87,306,136,334,134,339,84,311,36,273,17,252,6,229,4,204,13,180,39,149,69,122,102,100,138,82,212,56,281,41"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="453,108,528,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="408,58,464,98,461,102,405,62"/>
+<area shape="rect" id="Node000004" href="$board__view_8h.html" title="Minimal self&#45;contained macOS window for the board emulator." alt="" coords="270,108,378,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="358,61,339,97,334,95,353,59"/>
+<area shape="rect" id="Node000010" href="$board__view__provider__internal_8h.html" title="Internal immutable&#45;fd CoreGraphics provider factory." alt="" coords="562,181,720,221"/>
+<area shape="poly" id="edge15_Node000001_Node000010" title=" " alt="" coords="384,59,409,96,443,131,494,160,550,180,548,185,492,165,439,135,404,100,380,62"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="300,136,268,155,238,183,215,219,198,259,180,330,174,328,193,257,210,217,234,180,265,151,298,131"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="436,269,510,295"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="347,131,380,152,414,179,443,218,464,255,460,258,439,221,410,183,377,156,345,136"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="28,189,124,214"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="288,136,126,187,124,182,287,131"/>
+<area shape="rect" id="Node000007" href="$emu__presentation_8h.html" title="Bounded raw&#45;descriptor presentation surface and scratch workspace." alt="" coords="248,189,400,214"/>
+<area shape="poly" id="edge7_Node000004_Node000007" title=" " alt="" coords="326,134,326,175,321,175,321,134"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="410,343,536,368"/>
+<area shape="poly" id="edge14_Node000004_Node000009" title=" " alt="" coords="358,131,401,150,449,179,494,218,512,242,525,269,527,287,522,305,500,335,495,332,517,303,522,287,520,270,507,245,490,222,446,183,398,155,356,136"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="302,216,264,239,226,271,203,301,186,332,181,329,198,298,222,267,261,235,300,212"/>
+<area shape="poly" id="edge8_Node000007_Node000005" title=" " alt="" coords="347,212,440,261,438,265,345,217"/>
+<area shape="rect" id="Node000008" href="$board__overlay_8h.html" title="Composite board&#45;view renderer: panel framebuffer + a status sidebar." alt="" coords="236,269,361,295"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="323,215,309,257,304,256,317,213"/>
+<area shape="poly" id="edge13_Node000007_Node000009" title=" " alt="" coords="337,212,454,331,450,335,333,216"/>
+<area shape="poly" id="edge11_Node000008_Node000002" title=" " alt="" coords="280,297,207,338,204,333,277,292"/>
+<area shape="poly" id="edge12_Node000008_Node000009" title=" " alt="" coords="327,292,433,335,431,340,325,297"/>
+<area shape="poly" id="edge16_Node000010_Node000005" title=" " alt="" coords="602,224,511,266,509,261,600,219"/>
+<area shape="poly" id="edge17_Node000010_Node000009" title=" " alt="" coords="631,223,604,259,568,297,539,319,509,338,506,334,536,315,565,293,600,255,626,220"/>
+</map>

@@ -1,0 +1,17 @@
+<map id="tools/rabook_viewer/src/ra8_viewer_view_stub.c" name="tools/rabook_viewer/src/ra8_viewer_view_stub.c">
+<area shape="rect" id="Node000001" title="Non&#45;Apple platform alternative for the Cocoa viewer ABI." alt="" coords="96,5,255,60"/>
+<area shape="rect" id="Node000002" href="$ra8__viewer__view_8h.html" title="Caller&#45;owned C ABI for the Cocoa scrolling JOF view." alt="" coords="104,108,247,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="178,60,178,94,173,94,173,60"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="163,255,238,280"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="186,132,199,154,210,181,213,212,209,241,204,241,207,212,205,182,194,156,182,135"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="87,328,157,353"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="191,132,217,159,245,196,255,217,261,239,261,261,252,281,236,300,216,315,172,333,170,328,213,310,232,296,248,279,255,260,256,240,250,219,240,199,213,162,187,135"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,255,84,280"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="105,136,63,153,45,166,31,183,25,196,25,211,34,241,29,243,20,212,20,195,26,180,42,162,61,149,103,131"/>
+<area shape="rect" id="Node000006" href="$ra8__viewer__reader_8h.html" title="Caller&#45;owned host JOF/comic reader and RGB565 render surface." alt="" coords="41,181,195,207"/>
+<area shape="poly" id="edge6_Node000002_Node000006" title=" " alt="" coords="168,135,138,172,134,169,164,132"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="59,278,101,317,97,320,55,282"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="133,205,178,243,175,248,130,209"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="121,207,124,314,119,314,116,207"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="108,209,68,247,65,243,104,205"/>
+</map>

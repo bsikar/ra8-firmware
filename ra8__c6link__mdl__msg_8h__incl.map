@@ -1,0 +1,20 @@
+<map id="libs/ra8_c6link/inc/ra8_c6link_mdl_msg.h" name="libs/ra8_c6link/inc/ra8_c6link_mdl_msg.h">
+<area shape="rect" id="Node000001" title="Media service dispatch contract for the ESP32&#45;C6 integration." alt="" coords="109,5,281,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="159,48,79,89,76,84,157,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="237,240,307,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="182,47,162,77,144,114,136,154,138,173,146,191,162,208,181,222,224,240,222,245,178,227,158,212,142,193,133,174,131,153,139,112,157,74,177,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,167,234,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="197,46,197,153,192,153,192,46"/>
+<area shape="rect" id="Node000005" href="$ra8__mdl__http_8h.html" title="Wire&#45;neutral media HTTP request and response records." alt="" coords="269,93,389,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="228,43,299,84,296,89,226,48"/>
+<area shape="rect" id="Node000007" href="$ra8__mdl__protocol_8h.html" title="Allocation&#45;free constants shared by the RA8 and C6 media endpoints." alt="" coords="445,167,592,192"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="273,43,337,63,403,91,454,123,497,156,494,160,451,127,400,96,335,68,271,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="209,190,251,229,247,232,205,194"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="325,120,301,168,281,227,276,226,296,166,320,118"/>
+<area shape="rect" id="Node000006" href="$mdl__format_8h.html" title="Shared media artifact format contract for download and export paths." alt="" coords="310,167,421,192"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="338,118,356,153,351,156,333,120"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="361,116,476,159,474,164,359,121"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="352,194,300,234,296,229,349,190"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="480,195,321,240,320,235,478,189"/>
+</map>

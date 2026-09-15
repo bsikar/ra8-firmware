@@ -1,0 +1,7 @@
+<map id="tools/mkbookimg/inc/mkbookimg_internal.h" name="tools/mkbookimg/inc/mkbookimg_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private seams shared by the two mkbookimg translation units." alt="" coords="90,5,263,45"/>
+<area shape="rect" id="Node000002" href="$mkbookimg_8c.html" title="Host tool that streams compiled books into an atomic FAT32 image." alt="" coords="5,93,164,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="148,57,107,95,103,91,145,53"/>
+<area shape="rect" id="Node000003" href="$mkbookimg__books_8c.html" title="Stream every requested book into the mounted image and prove the copy." alt="" coords="188,93,349,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="209,53,250,91,246,95,205,57"/>
+</map>

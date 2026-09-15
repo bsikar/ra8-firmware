@@ -1,0 +1,11 @@
+<map id="port/esp&#45;hosted/inc/ra8_esp_hosted_c6link.h" name="port/esp&#45;hosted/inc/ra8_esp_hosted_c6link.h">
+<area shape="rect" id="Node000001" title="Binds the ra8_c6link transport seam to this port&#39;s OS vtable." alt="" coords="55,5,242,45"/>
+<area shape="rect" id="Node000002" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="5,93,172,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="136,47,108,84,104,81,132,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="127,167,205,192"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="164,44,177,67,187,93,188,125,180,155,175,153,183,124,182,94,172,69,160,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="92,240,163,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,118,123,226,118,227,89,120"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="103,117,145,155,141,159,99,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="162,194,142,229,138,227,157,191"/>
+</map>

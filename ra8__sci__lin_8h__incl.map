@@ -1,0 +1,23 @@
+<map id="libs/ra8_hal/inc/ra8_sci_lin.h" name="libs/ra8_hal/inc/ra8_sci_lin.h">
+<area shape="rect" id="Node000001" title="LIN (Local Interconnect Network) commander + responder driver on SCI_B." alt="" coords="5,5,151,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="224,387,295,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="70,47,44,104,34,141,30,178,30,254,35,283,48,308,69,329,95,346,154,372,211,387,210,393,152,377,92,351,66,333,44,311,30,285,25,254,25,178,29,140,39,103,65,44"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="95,313,173,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="84,45,132,299,127,300,79,46"/>
+<area shape="rect" id="Node000004" href="$ra8__sci_8h.html" title="Full&#45;featured Serial Communications Interface driver." alt="" coords="170,93,250,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="111,43,180,84,177,88,108,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="155,336,228,377,226,382,153,341"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="241,116,283,136,325,165,360,198,381,229,394,266,403,313,406,327,403,340,384,361,360,376,309,394,307,389,358,372,380,357,398,337,401,327,398,314,389,267,377,232,355,201,322,169,280,141,239,121"/>
+<area shape="poly" id="edge14_Node000004_Node000003" title=" " alt="" coords="208,120,145,301,140,299,203,118"/>
+<area shape="rect" id="Node000005" href="$ra8__dma_8h.html" title="Generic DMA transfer substrate (DMAC engine)." alt="" coords="221,167,311,192"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="221,117,251,154,246,157,217,121"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="290,190,321,210,351,238,370,264,385,287,389,312,379,340,365,357,347,371,309,389,307,384,345,366,361,353,374,337,384,312,380,289,366,267,347,242,318,214,287,194"/>
+<area shape="poly" id="edge13_Node000005_Node000003" title=" " alt="" coords="255,194,207,242,154,304,150,300,203,238,252,190"/>
+<area shape="rect" id="Node000006" href="$ra8__dmac_8h.html" title="8&#45;channel DMA controller (DMAC0) driver" alt="" coords="217,240,315,265"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="269,192,269,226,263,226,263,192"/>
+<area shape="rect" id="Node000007" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="249,313,365,339"/>
+<area shape="poly" id="edge11_Node000005_Node000007" title=" " alt="" coords="286,190,310,211,330,239,334,255,333,272,323,302,318,300,328,271,328,256,325,241,306,214,283,194"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="261,267,249,288,239,314,240,345,249,374,244,375,234,346,234,313,244,286,256,264"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="246,268,169,309,166,304,244,263"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="302,341,277,377,272,374,297,338"/>
+</map>

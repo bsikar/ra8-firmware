@@ -1,0 +1,7 @@
+<map id="fw_fs_ra8_vfs_state_t" name="fw_fs_ra8_vfs_state_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned adapter context." alt="" coords="5,197,168,223"/>
+<area shape="rect" id="Node000002" href="$structra8__fs__mount__t.html" title="Cached parse of one mounted FAT volume." alt="" coords="25,101,148,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="89,141,89,197,84,197,84,141"/>
+<area shape="rect" id="Node000003" href="$structra8__fs__backend__t.html" title="Block&#45;device interface that ra8_fs runs on top of." alt="" coords="19,5,154,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="89,45,89,101,84,101,84,45"/>
+</map>

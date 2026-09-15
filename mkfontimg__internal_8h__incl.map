@@ -1,0 +1,22 @@
+<map id="tools/mkfontimg/inc/mkfontimg_internal.h" name="tools/mkfontimg/inc/mkfontimg_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private bounded host&#45;storage composition for mkfontimg." alt="" coords="122,5,289,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="158,387,229,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="143,48,97,68,53,96,35,113,21,132,11,154,8,178,8,254,12,278,22,300,37,319,56,336,101,363,146,382,144,387,99,368,53,340,33,323,17,303,7,280,3,254,3,178,6,153,16,130,31,109,50,92,94,63,140,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="267,93,392,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="237,43,301,84,298,88,234,48"/>
+<area shape="rect" id="Node000004" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="168,93,243,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="208,46,208,79,203,79,203,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="235,116,282,140,330,173,350,194,364,216,369,241,362,266,337,305,303,338,267,363,234,383,231,378,264,359,300,333,333,302,358,264,363,241,359,218,346,197,327,178,279,144,233,121"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="154,313,233,339"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="207,119,197,299,192,299,202,119"/>
+<area shape="rect" id="Node000006" href="$ra8__fs__seams_8h.html" title="The two dependency&#45;injection seams ra8_fs offers its callers." alt="" coords="43,167,167,192"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="191,121,134,161,131,156,188,117"/>
+<area shape="rect" id="Node000007" href="$ra8__fs__types_8h.html" title="On&#45;disk and handle data types shared by the ra8_fs public API." alt="" coords="231,240,348,265"/>
+<area shape="poly" id="edge13_Node000004_Node000007" title=" " alt="" coords="215,118,278,227,273,229,210,120"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="196,339,196,373,191,373,191,339"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="109,192,118,256,129,297,145,337,173,375,169,379,140,340,124,299,113,257,104,192"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="115,191,182,300,177,303,110,194"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="136,190,247,232,245,237,134,195"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="287,267,271,300,248,340,216,378,212,375,243,337,266,298,282,264"/>
+<area shape="poly" id="edge12_Node000007_Node000005" title=" " alt="" coords="275,268,222,307,219,303,272,263"/>
+</map>

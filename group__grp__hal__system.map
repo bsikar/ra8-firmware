@@ -1,0 +1,4 @@
+<map id="System, clocks &amp; power" name="System, clocks &amp; power">
+<area shape="rect" id="Node000002" href="$group__grp__hal.html" title="Ring 3 peripheral drivers and register maps for the RA8D2 (libs/ra8_hal)." alt="" coords="5,5,168,45"/>
+<area shape="rect" id="Node000001" title="ICU/ELC/ISR, CGC, MSTP, LPM/PWR, reset, MPC/ports, SRAM, IPC." alt="" coords="216,13,395,38"/>
+</map>

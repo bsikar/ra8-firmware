@@ -1,0 +1,29 @@
+<map id="libs/ra8_camera/src/ra8_camera_codec_jpeg_sw.c" name="libs/ra8_camera/src/ra8_camera_codec_jpeg_sw.c">
+<area shape="rect" id="Node000001" title="ra8_jpeg_sw adapter for the generic camera codec facade." alt="" coords="372,5,590,45"/>
+<area shape="rect" id="Node000002" href="$ra8__camera__codec__jpeg__sw_8h.html" title="RGB888&#45;to&#45;JPEG software codec backend for ra8_camera." alt="" coords="36,93,251,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="401,48,206,93,205,88,399,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="252,313,323,339"/>
+<area shape="poly" id="edge9_Node000001_Node000003" title=" " alt="" coords="372,29,273,34,169,45,122,53,80,64,48,78,25,95,14,112,9,128,9,144,13,159,35,190,69,220,111,247,157,270,242,306,240,311,155,275,108,251,65,224,31,194,8,162,3,144,4,127,10,109,22,92,45,74,79,59,121,48,168,39,272,29,371,24"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="334,240,412,265"/>
+<area shape="poly" id="edge14_Node000001_Node000005" title=" " alt="" coords="480,46,471,81,458,120,425,181,392,230,387,227,420,178,453,118,466,79,475,45"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="626,167,701,192"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="571,43,612,62,647,92,662,121,667,152,661,153,657,123,643,95,609,67,568,48"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="708,93,833,119"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="551,43,715,87,714,92,549,48"/>
+<area shape="rect" id="Node000008" href="$ra8__camera__internal_8h.html" title="Private source and codec vtables for ra8_camera backends." alt="" coords="276,93,444,119"/>
+<area shape="poly" id="edge11_Node000001_Node000008" title=" " alt="" coords="453,48,390,88,387,84,450,43"/>
+<area shape="rect" id="Node000009" href="$ra8__jpeg__sw_8h.html" title="Pure&#45;software baseline JPEG (ISO/IEC 10918&#45;1 / ITU&#45;T T.81) codec." alt="" coords="518,93,633,119"/>
+<area shape="poly" id="edge15_Node000001_Node000009" title=" " alt="" coords="505,43,552,82,549,86,502,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="151,118,188,191,231,252,271,301,267,304,227,255,184,193,146,120"/>
+<area shape="rect" id="Node000004" href="$ra8__camera_8h.html" title="Transport&#45;neutral camera source and image&#45;codec facade." alt="" coords="232,167,343,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="168,116,253,158,251,163,165,121"/>
+<area shape="poly" id="edge7_Node000002_Node000005" title=" " alt="" coords="153,117,181,152,222,190,271,216,321,235,319,240,269,221,219,194,178,156,149,120"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="290,192,290,300,285,300,285,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="303,190,350,229,347,233,300,194"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="361,267,314,307,310,302,357,263"/>
+<area shape="poly" id="edge12_Node000008_Node000004" title=" " alt="" coords="350,121,311,159,307,155,346,117"/>
+<area shape="poly" id="edge13_Node000008_Node000005" title=" " alt="" coords="363,119,373,226,368,227,358,119"/>
+<area shape="poly" id="edge17_Node000009_Node000003" title=" " alt="" coords="574,120,559,155,534,194,488,235,435,269,383,294,337,312,335,307,381,289,433,264,484,231,529,190,554,152,569,118"/>
+<area shape="poly" id="edge18_Node000009_Node000005" title=" " alt="" coords="569,121,541,156,501,194,461,219,420,237,418,232,458,214,498,190,538,152,565,117"/>
+<area shape="poly" id="edge16_Node000009_Node000006" title=" " alt="" coords="591,117,640,156,637,160,588,121"/>
+</map>

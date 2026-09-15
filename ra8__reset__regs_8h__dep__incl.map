@@ -1,0 +1,16 @@
+<map id="libs/ra8_hal/inc/ra8_reset_regs.h" name="libs/ra8_hal/inc/ra8_reset_regs.h">
+<area shape="rect" id="Node000001" title="Reset block register layout (offsets, bit masks, accessors)for the Renesas RA8D2." alt="" coords="609,5,755,45"/>
+<area shape="rect" id="Node000002" href="$ra8__reset_8h.html" title="Reset cause introspection + software reset trigger." alt="" coords="555,93,700,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="665,58,642,95,637,92,660,56"/>
+<area shape="rect" id="Node000006" href="$ra8__reset_8c.html" title="Reset cause introspection + software&#45;reset trigger." alt="" coords="845,189,991,229"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="719,52,895,186,892,191,716,56"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2reset__cause__demo_2src_2main_8c.html" title="HIL gate for the ra8_reset driver – software&#45;reset round&#45;trip." alt="" coords="5,181,196,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="542,129,386,152,208,184,197,186,196,181,207,179,385,147,541,124"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2watchdog__demo_2src_2main_8c.html" title="IWDT watchdog + reset&#45;cause demo for EK&#45;RA8D2." alt="" coords="220,181,397,236"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="550,140,399,184,397,179,549,135"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2wdt__reset__recovery__demo_2src_2main_8c.html" title="WWDT reset + recovery HIL demo for EK&#45;RA8D2." alt="" coords="421,181,623,236"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="598,144,553,183,550,179,594,140"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="700,135,860,186,858,191,698,140"/>
+<area shape="rect" id="Node000007" href="$ra8__esp__hosted__gpio_8c.html" title="The eight side&#45;band GPIO slots of the esp&#45;hosted OS&#45;abstraction vtable." alt="" coords="647,189,821,229"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="661,140,714,187,711,191,657,144"/>
+</map>

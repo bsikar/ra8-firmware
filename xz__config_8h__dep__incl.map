@@ -1,0 +1,5 @@
+<map id="apps/shared_libs/unarch/inc/xz_config.h" name="apps/shared_libs/unarch/inc/xz_config.h">
+<area shape="rect" id="Node000001" title="First&#45;party porting header for the vendored xz&#45;embedded decoder." alt="" coords="5,5,184,45"/>
+<area shape="rect" id="Node000002" href="$unarch__xz_8c.html" title="Bounded XZ/LZMA2 decode wrapper over the vendored xz&#45;embedded." alt="" coords="5,93,184,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,59,97,93,92,93,92,59"/>
+</map>

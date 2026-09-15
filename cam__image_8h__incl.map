@@ -1,0 +1,8 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/camera_capture/inc/cam_image.h" name="examples/ek_ra8d2/hw_validated/hil/camera_capture/inc/cam_image.h">
+<area shape="rect" id="Node000001" title="SDRAM&#45;backed RGB888 views of one packed VGA UYVY camera frame." alt="" coords="5,5,199,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="67,181,137,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="98,61,92,95,91,133,98,168,93,169,86,134,86,95,92,60"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="101,108,180,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="116,59,132,94,127,96,111,61"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="137,135,117,171,112,168,132,132"/>
+</map>

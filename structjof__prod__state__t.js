@@ -1,0 +1,26 @@
+var structjof__prod__state__t =
+[
+    [ "band", "structjof__prod__state__t.html#add44780adae50b4848f88eca045eb1da", null ],
+    [ "band_fill", "structjof__prod__state__t.html#a5278bbfc5a4e99ae8b4c14f1d9484668", null ],
+    [ "bpp", "structjof__prod__state__t.html#a6d251de2b8e403bab9c60b58fa2ef5b9", null ],
+    [ "bump", "structjof__prod__state__t.html#ac4e7af27a09ea6c9dae82a178517fc10", null ],
+    [ "bump_store", "structjof__prod__state__t.html#a53ace24ac4a97931032d16bf174a774c", null ],
+    [ "cap_h", "structjof__prod__state__t.html#a7fdb99bda1ab35f5ff4506250c1e0eec", null ],
+    [ "cap_w", "structjof__prod__state__t.html#aea3cd411e104a7361b93e6d442e0c859", null ],
+    [ "cfg", "structjof__prod__state__t.html#a54d8489a6fd247cd7f1ebff7a11a2f54", null ],
+    [ "cmp", "structjof__prod__state__t.html#a4124b8649f2f17bb3de8d7449fa7faf0", null ],
+    [ "cmp_cap", "structjof__prod__state__t.html#a1534ae79f44df9864798f5170ea175d5", null ],
+    [ "dfl", "structjof__prod__state__t.html#ad153edf72919ce17ec870c15a901fbca", null ],
+    [ "dfl_len", "structjof__prod__state__t.html#a92ebb34e8deca6ce923267070047dc18", null ],
+    [ "geom_done", "structjof__prod__state__t.html#a4a1e4db3252cb0586c091dbb0be0ea99", null ],
+    [ "h", "structjof__prod__state__t.html#adf2dbf974a804d09cb580e06701e5c6d", null ],
+    [ "idx", "structjof__prod__state__t.html#a5a2b52f4c127774c09132dae8ca50736", null ],
+    [ "rows_seen", "structjof__prod__state__t.html#a90f3a5dce0156c44d5919186f73d6a6a", null ],
+    [ "stage", "structjof__prod__state__t.html#a650b8a0acd2ed864598fa104da4dd2de", null ],
+    [ "tile_cols", "structjof__prod__state__t.html#a84a910bc46e529547a66ff15bdf400b7", null ],
+    [ "tile_count", "structjof__prod__state__t.html#ab8264530a60bb8e625f1aed19fbbfe10", null ],
+    [ "tile_rows", "structjof__prod__state__t.html#a95c6d45dac9bd6e50c40b4e754ab6c00", null ],
+    [ "tiles_done", "structjof__prod__state__t.html#a07361671698e40c68e35ae3d379664b7", null ],
+    [ "w", "structjof__prod__state__t.html#a7894ce7ec4c258bd05fd53b991ce7a98", null ],
+    [ "written", "structjof__prod__state__t.html#a279e3faf91f64e8e7b80abd9b92dfa05", null ]
+];

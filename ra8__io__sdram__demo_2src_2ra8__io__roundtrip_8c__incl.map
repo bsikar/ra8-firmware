@@ -1,0 +1,20 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sdram_demo/src/ra8_io_roundtrip.c" name="examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sdram_demo/src/ra8_io_roundtrip.c">
+<area shape="rect" id="Node000001" title="Shared ra8_io VFS round&#45;trip implementation for the FAT demos (#155)." alt="" coords="114,5,295,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,123,145,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="160,77,105,116,101,112,156,73"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="169,123,240,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="207,75,207,109,202,109,202,75"/>
+<area shape="rect" id="Node000004" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="264,123,364,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="246,73,292,112,288,116,242,77"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="279,269,349,295"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="276,150,240,169,225,182,212,197,209,207,209,217,220,234,241,250,267,262,265,267,239,254,216,238,204,218,203,207,208,195,221,178,237,164,273,146"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="223,196,301,221"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="308,150,281,186,276,183,303,147"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="326,196,409,221"/>
+<area shape="poly" id="edge7_Node000004_Node000007" title=" " alt="" coords="325,147,353,184,348,187,321,150"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="433,196,581,221"/>
+<area shape="poly" id="edge9_Node000004_Node000008" title=" " alt="" coords="346,146,464,189,462,194,344,151"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="273,220,300,257,295,260,268,223"/>
+<area shape="poly" id="edge8_Node000007_Node000005" title=" " alt="" coords="361,223,333,260,329,257,356,220"/>
+<area shape="poly" id="edge10_Node000008_Node000005" title=" " alt="" coords="477,224,359,267,357,262,475,219"/>
+</map>

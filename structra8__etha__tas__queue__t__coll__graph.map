@@ -1,0 +1,5 @@
+<map id="ra8_etha_tas_queue_t" name="ra8_etha_tas_queue_t">
+<area shape="rect" id="Node000001" title="The gate&#45;control list of one descriptor queue." alt="" coords="5,101,171,127"/>
+<area shape="rect" id="Node000002" href="$structra8__etha__tas__entry__t.html" title="One TAS (802.1Qbv) RAM entry, exactly as HUM Table 32.6 defines it." alt="" coords="9,5,167,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="91,45,91,101,85,101,85,45"/>
+</map>

@@ -1,0 +1,17 @@
+<map id="tools/cache_bench/inc/cache_bench.h" name="tools/cache_bench/inc/cache_bench.h">
+<area shape="rect" id="Node000001" title="Eviction&#45;policy comparison harness for the #147 memory&#45;hierarchy decision record: the DIP seam every ..." alt="" coords="315,5,480,45"/>
+<area shape="rect" id="Node000002" href="$trace_8h.html" title="Resettable, allocation&#45;free access streams for cache_bench." alt="" coords="195,93,360,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="361,56,305,95,302,91,358,51"/>
+<area shape="rect" id="Node000003" href="$cache__bench_8c.html" title="#147 eviction&#45;policy benchmark: the exact&#45;accounting replay engine." alt="" coords="5,181,171,221"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="302,47,242,67,184,96,159,115,136,139,102,183,98,179,132,135,155,111,181,91,240,62,301,42"/>
+<area shape="rect" id="Node000004" href="$cache__bench__report_8c.html" title="#147 benchmark front end: swept&#45;capacity report, mode dispatch, main." alt="" coords="385,181,551,221"/>
+<area shape="poly" id="edge6_Node000001_Node000004" title=" " alt="" coords="404,59,412,95,425,132,439,158,455,180,450,183,435,160,420,134,407,96,399,60"/>
+<area shape="rect" id="Node000006" href="$policies_8c.html" title="Reference eviction policies + the registry for the #147 benchmark." alt="" coords="435,93,600,133"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="437,51,492,91,489,95,434,56"/>
+<area shape="rect" id="Node000007" href="$policy__scanresist_8c.html" title="Scan&#45;resistant eviction policies for the #147 benchmark: Segmented&#45;LRU and SRRIP – the deterministic,..." alt="" coords="624,93,789,133"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="479,46,640,91,638,96,478,52"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="225,141,131,184,128,179,222,137"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="333,137,427,179,425,184,331,141"/>
+<area shape="rect" id="Node000005" href="$trace_8c.html" title="Deterministic synthetic cursors and bounded captured&#45;trace parsing." alt="" coords="195,181,360,221"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="280,147,280,181,275,181,275,147"/>
+</map>

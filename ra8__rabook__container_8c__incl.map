@@ -1,0 +1,26 @@
+<map id="apps/shared_libs/rabook_compile/src/ra8_rabook_container.c" name="apps/shared_libs/rabook_compile/src/ra8_rabook_container.c">
+<area shape="rect" id="Node000001" title="Zero&#45;heap streaming RBKC container writer." alt="" coords="332,5,513,60"/>
+<area shape="rect" id="Node000002" href="$ra8__rabook__container_8h.html" title="Zero&#45;heap streaming writer for the chunked RBKC .rabook container." alt="" coords="155,108,330,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="369,62,280,105,278,100,367,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="274,255,345,280"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="448,59,471,90,491,129,497,149,499,170,496,190,486,208,460,234,427,251,392,261,359,267,358,262,391,256,425,246,457,230,482,205,490,188,493,169,491,150,486,131,466,93,444,62"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="397,181,472,207"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="430,60,436,108,438,167,432,168,431,108,425,61"/>
+<area shape="rect" id="Node000006" href="$book_8h.html" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="355,108,421,133"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="415,61,400,96,395,94,410,59"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="547,108,672,133"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="481,58,573,100,571,105,479,62"/>
+<area shape="rect" id="Node000008" href="$ra8__compress_8h.html" title="App&#45;domain DEFLATE compress / decompress (zero&#45;heap, firmware&#45;safe)." alt="" coords="5,108,131,133"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="332,58,129,107,128,102,331,53"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="255,132,286,180,299,211,307,241,302,242,293,213,282,183,250,135"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="193,181,271,207"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="244,134,238,168,233,167,238,133"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="246,205,288,243,285,247,243,209"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="384,135,324,244,320,241,379,133"/>
+<area shape="poly" id="edge10_Node000006_Node000004" title=" " alt="" coords="364,136,271,178,269,173,362,131"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="398,132,422,168,417,171,393,135"/>
+<area shape="poly" id="edge13_Node000008_Node000003" title=" " alt="" coords="83,131,126,166,183,204,269,247,267,252,180,209,123,170,80,135"/>
+<area shape="poly" id="edge15_Node000008_Node000004" title=" " alt="" coords="95,131,194,173,192,178,93,136"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="33,181,103,207"/>
+<area shape="poly" id="edge14_Node000008_Node000009" title=" " alt="" coords="71,134,71,168,65,168,65,134"/>
+</map>

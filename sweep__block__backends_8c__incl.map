@@ -1,0 +1,48 @@
+<map id="tools/cache_bench/src/sweep_block_backends.c" name="tools/cache_bench/src/sweep_block_backends.c">
+<area shape="rect" id="Node000001" title="Streamed pseudo&#45;memory and RBKC&#45;z9 block&#45;sweep backends." alt="" coords="181,5,370,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,76,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="220,48,89,92,87,87,218,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="101,93,165,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="242,48,167,89,164,84,240,43"/>
+<area shape="rect" id="Node000004" href="$book__chunked_8h.html" title="Demand&#45;paged chunk reader for the &quot;RBKC&quot; .rabook container." alt="" coords="287,93,413,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="295,44,331,81,327,85,291,47"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="237,313,316,339"/>
+<area shape="poly" id="edge19_Node000001_Node000008" title=" " alt="" coords="274,46,261,140,258,202,262,265,270,300,265,301,257,266,253,202,255,140,269,45"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="489,93,560,119"/>
+<area shape="poly" id="edge18_Node000001_Node000011" title=" " alt="" coords="336,43,477,87,476,92,334,48"/>
+<area shape="rect" id="Node000012" href="$sweep__block__internal_8h.html" title="Module&#45;private seams shared by the #208 sweep translation units." alt="" coords="672,167,847,192"/>
+<area shape="poly" id="edge20_Node000001_Node000012" title=" " alt="" coords="320,43,427,91,453,105,479,116,575,143,667,162,666,167,574,148,477,121,450,109,425,96,318,48"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="552,387,623,412"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="410,116,462,132,518,156,570,191,593,213,611,239,622,274,621,311,613,346,602,375,597,373,608,344,616,310,617,275,606,241,589,217,567,195,515,161,460,137,409,121"/>
+<area shape="rect" id="Node000006" href="$book_8h.html" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="391,240,458,265"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="373,117,400,137,423,165,431,196,431,226,426,226,426,197,418,168,397,140,370,121"/>
+<area shape="poly" id="edge14_Node000004_Node000008" title=" " alt="" coords="329,121,302,140,280,168,270,202,267,237,273,300,268,300,262,237,265,201,276,165,298,136,326,117"/>
+<area shape="rect" id="Node000009" href="$book__stream_8h.html" title="Strict, zero&#45;allocation validation of a streamed RABOOK1 flat blob." alt="" coords="291,167,409,192"/>
+<area shape="poly" id="edge10_Node000004_Node000009" title=" " alt="" coords="353,119,353,153,347,153,347,119"/>
+<area shape="rect" id="Node000010" href="$ra8__vsource_8h.html" title="Virtual&#45;memory object sources – the page&#45;cache storage seam (Layer 1, #147)." alt="" coords="483,240,596,265"/>
+<area shape="poly" id="edge15_Node000004_Node000010" title=" " alt="" coords="371,117,444,165,519,228,515,232,440,169,368,121"/>
+<area shape="poly" id="edge7_Node000006_Node000005" title=" " alt="" coords="440,264,566,376,562,380,436,268"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="911,387,986,412"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="459,260,472,263,516,267,573,268,706,269,773,272,834,278,887,291,925,311,937,325,944,340,951,372,946,373,939,342,932,327,922,315,885,296,833,284,772,277,705,274,573,274,516,272,471,268,458,265"/>
+<area shape="poly" id="edge8_Node000006_Node000008" title=" " alt="" coords="402,268,314,310,312,305,400,263"/>
+<area shape="poly" id="edge9_Node000008_Node000005" title=" " alt="" coords="317,334,539,384,538,389,315,339"/>
+<area shape="poly" id="edge11_Node000009_Node000005" title=" " alt="" coords="354,192,363,226,370,246,381,264,419,302,462,335,506,360,546,379,544,384,504,365,459,339,415,306,377,267,366,248,357,228,349,193"/>
+<area shape="poly" id="edge12_Node000009_Node000006" title=" " alt="" coords="364,190,404,229,401,232,360,194"/>
+<area shape="poly" id="edge13_Node000009_Node000008" title=" " alt="" coords="346,194,291,302,286,300,342,191"/>
+<area shape="poly" id="edge16_Node000010_Node000005" title=" " alt="" coords="546,265,582,373,577,374,541,267"/>
+<area shape="poly" id="edge17_Node000010_Node000008" title=" " alt="" coords="498,268,330,313,329,308,496,263"/>
+<area shape="poly" id="edge21_Node000012_Node000005" title=" " alt="" coords="751,194,714,241,686,291,674,314,655,340,615,380,611,376,651,337,669,311,681,289,709,239,747,190"/>
+<area shape="poly" id="edge23_Node000012_Node000010" title=" " alt="" coords="725,195,588,238,587,233,723,189"/>
+<area shape="rect" id="Node000013" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="866,240,991,265"/>
+<area shape="poly" id="edge22_Node000012_Node000013" title=" " alt="" coords="788,190,889,232,887,237,786,194"/>
+<area shape="rect" id="Node000014" href="$sweep__block_8h.html" title="#208 block/frame&#45;size sweep: the byte&#45;size axis the capacity sweep never touches, so the chunked ...." alt="" coords="723,240,841,265"/>
+<area shape="poly" id="edge24_Node000012_Node000014" title=" " alt="" coords="766,192,777,226,772,228,761,193"/>
+<area shape="poly" id="edge26_Node000014_Node000005" title=" " alt="" coords="775,267,746,302,705,341,667,365,630,384,627,379,665,360,702,337,742,299,771,264"/>
+<area shape="poly" id="edge25_Node000014_Node000007" title=" " alt="" coords="842,263,918,283,949,296,969,312,976,327,976,344,966,375,961,374,971,343,971,328,965,315,947,301,916,288,841,268"/>
+<area shape="rect" id="Node000015" href="$cache__bench__io_8h.html" title="Bounded byte&#45;source and text&#45;sink seams for cache_bench." alt="" coords="773,313,911,339"/>
+<area shape="poly" id="edge27_Node000014_Node000015" title=" " alt="" coords="794,264,826,301,821,305,790,267"/>
+<area shape="poly" id="edge30_Node000015_Node000005" title=" " alt="" coords="802,341,637,387,636,382,800,336"/>
+<area shape="poly" id="edge29_Node000015_Node000007" title=" " alt="" coords="861,336,921,377,918,381,858,341"/>
+<area shape="rect" id="Node000016" title=" " alt="" coords="805,387,879,412"/>
+<area shape="poly" id="edge28_Node000015_Node000016" title=" " alt="" coords="845,339,845,373,839,373,839,339"/>
+</map>

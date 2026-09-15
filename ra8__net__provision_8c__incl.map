@@ -1,0 +1,20 @@
+<map id="examples/ek_ra8d2/common/network_provision/src/ra8_net_provision.c" name="examples/ek_ra8d2/common/network_provision/src/ra8_net_provision.c">
+<area shape="rect" id="Node000001" title="Bounded runtime network provisioning parser and UART receiver." alt="" coords="213,5,423,60"/>
+<area shape="rect" id="Node000002" href="$ra8__net__provision_8h.html" title="Runtime network provisioning contract for EK&#45;RA8D2 applications." alt="" coords="187,108,337,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="303,62,279,98,275,95,299,59"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="111,181,186,207"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="241,62,206,83,176,110,161,138,154,168,148,167,156,136,172,106,203,78,239,58"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="331,255,401,280"/>
+<area shape="poly" id="edge7_Node000001_Node000004" title=" " alt="" coords="424,38,460,47,495,60,526,80,552,107,563,131,560,154,547,175,526,195,471,228,414,252,412,248,469,223,523,191,543,172,555,152,557,131,548,109,523,84,492,65,458,52,423,43"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="327,181,405,207"/>
+<area shape="poly" id="edge9_Node000001_Node000005" title=" " alt="" coords="333,59,351,107,365,167,360,168,346,109,328,61"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="413,108,538,133"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="367,58,443,99,441,104,365,62"/>
+<area shape="rect" id="Node000007" href="$ra8__secure_8h.html" title="Secure&#45;comparison primitives for the crypto / secure&#45;boot paths." alt="" coords="5,108,111,133"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="239,63,106,106,105,101,238,58"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="245,136,180,176,177,172,242,131"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="270,132,316,205,347,243,343,246,312,208,266,135"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="280,131,339,171,336,175,277,136"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="369,207,369,241,363,241,363,207"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="74,131,125,170,121,175,71,135"/>
+</map>

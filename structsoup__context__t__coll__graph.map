@@ -1,0 +1,5 @@
+<map id="soup_context_t" name="soup_context_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned bounded workspace for puzzle solving (zero&#45;heap)." alt="" coords="5,101,127,127"/>
+<area shape="rect" id="Node000002" href="$structsoup__grid__t.html" title="In&#45;memory word search board matrix." alt="" coords="17,5,115,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="69,45,69,101,63,101,63,45"/>
+</map>

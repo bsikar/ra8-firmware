@@ -1,0 +1,133 @@
+<map id="apps/shared_libs/epub/inc/epub_miniz_alloc.h" name="apps/shared_libs/epub/inc/epub_miniz_alloc.h">
+<area shape="rect" id="Node000001" title="Caller&#45;owned bounded&#45;arena allocator for miniz." alt="" coords="3429,5,3604,45"/>
+<area shape="rect" id="Node000002" href="$comic_8h.html" title="Unified demand&#45;paged reader for comic&#45;book archives – CBZ (ZIP) and CBR (RAR)." alt="" coords="887,93,1061,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="3416,33,1062,112,1062,106,3415,27"/>
+<area shape="rect" id="Node000006" href="$comic__cbz_8c.html" title="CBZ backend: a streaming miniz ZIP reader that indexes page images." alt="" coords="5,291,180,331"/>
+<area shape="poly" id="edge22_Node000001_Node000006" title=" " alt="" coords="3416,29,3009,29,2384,36,1639,57,1253,74,874,96,810,98,749,96,636,83,532,65,437,51,391,47,347,47,303,52,261,63,218,80,176,105,133,139,89,183,77,208,75,237,79,266,87,290,82,292,74,267,69,237,71,207,85,180,129,135,173,101,216,76,259,58,303,47,347,42,391,42,437,45,533,60,636,78,749,91,810,93,874,91,1253,68,1639,51,2384,31,3009,24,3416,23"/>
+<area shape="rect" id="Node000017" href="$epub_8h.html" title="EPUB (.epub) reader and chapter iterator for ra8&#45;firmware." alt="" coords="3433,93,3600,133"/>
+<area shape="poly" id="edge23_Node000001_Node000017" title=" " alt="" coords="3519,59,3519,93,3514,93,3514,59"/>
+<area shape="rect" id="Node000028" href="$epub__open_8c.html" title="epub_open() / epub_close() lifecycle plumbing." alt="" coords="3571,291,3737,331"/>
+<area shape="poly" id="edge80_Node000001_Node000028" title=" " alt="" coords="3570,50,3594,69,3614,92,3638,144,3651,200,3657,252,3657,291,3652,291,3651,252,3646,201,3633,146,3609,95,3590,73,3566,55"/>
+<area shape="rect" id="Node000051" href="$epub__miniz__alloc_8c.html" title="First&#45;fit allocator over one caller&#45;owned miniz workspace." alt="" coords="3691,93,3865,133"/>
+<area shape="poly" id="edge79_Node000001_Node000051" title=" " alt="" coords="3588,47,3722,91,3720,96,3586,52"/>
+<area shape="rect" id="Node000003" href="$comic_8c.html" title="Facade for the comic&#45;archive reader: magic detect, page index, dispatch." alt="" coords="440,291,615,331"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="899,141,855,159,813,183,798,197,788,211,779,224,762,238,696,263,593,294,591,289,694,258,759,234,775,221,784,208,794,194,810,179,852,155,897,136"/>
+<area shape="rect" id="Node000004" href="$comic__cbr_8c.html" title="CBR backend: walk a RAR archive (ra8_rar.h) and index its page images." alt="" coords="639,291,813,331"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="999,143,1011,165,1020,190,1022,215,1012,237,992,259,972,271,951,278,929,280,881,280,854,281,825,287,798,294,796,289,824,281,854,276,881,274,929,275,950,272,970,266,989,254,1008,235,1016,214,1015,191,1006,167,994,146"/>
+<area shape="rect" id="Node000005" href="$comic__cbt_8c.html" title="CBT backend: walk a tar archive (unarch_tar.h) and index its pages." alt="" coords="837,291,1012,331"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="1022,139,1042,158,1058,180,1066,209,1065,222,1058,237,1044,256,1026,271,987,294,984,289,1023,267,1040,252,1053,235,1059,221,1061,209,1053,182,1038,161,1019,143"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="873,118,672,123,436,134,325,143,229,153,158,167,134,175,120,183,103,207,94,236,92,266,93,291,87,291,86,266,89,235,98,205,116,179,132,170,157,162,229,148,324,137,435,129,672,118,873,113"/>
+<area shape="rect" id="Node000007" href="$comic__internal_8h.html" title="Cross&#45;TU seams between the comic facade and its CBZ / CBR backends." alt="" coords="824,189,999,229"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="956,146,926,190,922,187,951,143"/>
+<area shape="rect" id="Node000008" href="$comic__wrapped_8c.html" title="Wrapped comic open: gzip / XZ unwrap in front of the container detect." alt="" coords="1036,291,1211,331"/>
+<area shape="poly" id="edge12_Node000002_Node000008" title=" " alt="" coords="1031,138,1058,156,1081,180,1099,207,1111,238,1123,290,1118,292,1106,239,1094,210,1077,183,1054,160,1028,142"/>
+<area shape="rect" id="Node000009" href="$sh__comic_8c.html" title="Full&#45;page image reader for CBZ / CBR comic archives (#236)." alt="" coords="131,181,337,236"/>
+<area shape="poly" id="edge13_Node000002_Node000009" title=" " alt="" coords="873,125,634,147,492,163,350,184,338,186,337,181,350,179,491,158,633,141,872,119"/>
+<area shape="rect" id="Node000010" href="$cm__tiled__check_8c.html" title="Oversized&#45;page tile self&#45;check for ereader_comic (#344)." alt="" coords="362,181,543,236"/>
+<area shape="poly" id="edge14_Node000002_Node000010" title=" " alt="" coords="874,131,723,154,556,184,544,186,543,181,555,179,722,148,873,125"/>
+<area shape="rect" id="Node000011" href="$examples_2ek__ra8d2_2hw__pending_2ereader__comic_2src_2main_8c.html" title="Viewable page&#45;turn comic reader – baked CBZ decoded to the 1024x600 GLCDC panel, tap&#45;zone navigation ..." alt="" coords="567,181,749,236"/>
+<area shape="poly" id="edge15_Node000002_Node000011" title=" " alt="" coords="898,140,748,184,746,179,896,135"/>
+<area shape="rect" id="Node000012" href="$ra8__viewer__reader__internal_8h.html" title="Cross&#45;translation&#45;unit state for the bounded JOF/comic viewer." alt="" coords="1430,181,1601,236"/>
+<area shape="poly" id="edge16_Node000002_Node000012" title=" " alt="" coords="1075,129,1430,190,1429,195,1075,135"/>
+<area shape="rect" id="Node000013" href="$ra8__viewer__comic_8c.html" title="Caller&#45;workspace CBZ, CBR, and CBT reader engine." alt="" coords="1235,291,1414,331"/>
+<area shape="poly" id="edge21_Node000002_Node000013" title=" " alt="" coords="1029,137,1114,179,1216,238,1297,289,1294,293,1213,242,1111,184,1027,142"/>
+<area shape="poly" id="edge7_Node000007_Node000003" title=" " alt="" coords="826,235,627,287,599,294,598,289,625,281,825,230"/>
+<area shape="poly" id="edge8_Node000007_Node000004" title=" " alt="" coords="866,238,762,294,759,289,863,233"/>
+<area shape="poly" id="edge9_Node000007_Node000005" title=" " alt="" coords="918,242,925,291,920,292,913,242"/>
+<area shape="poly" id="edge10_Node000007_Node000006" title=" " alt="" coords="811,231,761,239,441,278,181,305,180,299,440,273,760,233,810,226"/>
+<area shape="poly" id="edge11_Node000007_Node000008" title=" " alt="" coords="964,232,1085,289,1082,294,962,237"/>
+<area shape="poly" id="edge17_Node000012_Node000013" title=" " alt="" coords="1455,245,1362,293,1360,289,1453,240"/>
+<area shape="rect" id="Node000014" href="$ra8__viewer__jof_8c.html" title="Streamed JOF long&#45;strip rendering over a one&#45;band caller cache." alt="" coords="1438,291,1593,331"/>
+<area shape="poly" id="edge18_Node000012_Node000014" title=" " alt="" coords="1518,250,1518,291,1513,291,1513,250"/>
+<area shape="rect" id="Node000015" href="$ra8__viewer__ppm_8c.html" title="RGB565 &lt;&#45;&gt; 8&#45;bit RGB conversion and the shared binary&#45;PPM (P6) writer." alt="" coords="1617,291,1785,331"/>
+<area shape="poly" id="edge19_Node000012_Node000015" title=" " alt="" coords="1577,240,1667,289,1664,293,1574,245"/>
+<area shape="rect" id="Node000016" href="$ra8__viewer__reader_8c.html" title="Requirements, workspace binding, descriptor lifecycle, and dispatch." alt="" coords="1809,291,1989,331"/>
+<area shape="poly" id="edge20_Node000012_Node000016" title=" " alt="" coords="1615,233,1828,289,1827,294,1613,238"/>
+<area shape="rect" id="Node000018" href="$epub__entry_8h.html" title="Iterative, bounded&#45;RAM ZIP&#45;entry extraction for the EPUB reader (#231)." alt="" coords="1968,189,2135,229"/>
+<area shape="poly" id="edge24_Node000017_Node000018" title=" " alt="" coords="3419,119,3141,126,2774,139,2411,158,2260,170,2146,184,2113,191,2111,186,2146,179,2260,165,2410,153,2773,134,3141,121,3419,114"/>
+<area shape="rect" id="Node000019" href="$epub__entry_8c.html" title="Bounded&#45;RAM streaming + windowed extraction of a single ZIP entry (#231)." alt="" coords="2013,291,2180,331"/>
+<area shape="poly" id="edge33_Node000017_Node000019" title=" " alt="" coords="3420,118,3057,122,2582,132,2353,140,2159,152,2020,166,1977,174,1957,183,1949,195,1947,207,1950,220,1958,235,1972,252,1989,267,2029,289,2027,294,1986,272,1968,256,1953,237,1945,222,1942,208,1944,193,1954,179,1976,169,2019,161,2158,146,2353,135,2582,127,3057,116,3420,112"/>
+<area shape="rect" id="Node000020" href="$epub__fs_8h.html" title="ra8_fs &#45;&gt; epub bridge: open a .epub straight off a filesystem." alt="" coords="3297,189,3464,229"/>
+<area shape="poly" id="edge26_Node000017_Node000020" title=" " alt="" coords="3480,143,3410,191,3407,186,3477,139"/>
+<area shape="rect" id="Node000022" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2epub__open_2src_2main_8c.html" title="On&#45;silicon HIL: open + parse a real .epub from SD via ra8_fs (#114)." alt="" coords="3357,284,3546,339"/>
+<area shape="poly" id="edge70_Node000017_Node000022" title=" " alt="" coords="3527,146,3531,190,3529,214,3523,237,3508,264,3487,286,3483,282,3503,260,3518,235,3524,213,3526,190,3522,147"/>
+<area shape="rect" id="Node000023" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2epub__toc_2src_2main_8c.html" title="On&#45;silicon HIL: EPUB TOC navigation (NCX + nav.xhtml) from SD (#116)." alt="" coords="2718,284,2907,339"/>
+<area shape="poly" id="edge72_Node000017_Node000023" title=" " alt="" coords="3420,134,3352,154,3286,184,3269,197,3258,211,3247,225,3229,238,3185,257,3146,268,3111,274,3078,275,3007,276,2967,279,2920,287,2908,289,2907,284,2919,281,2966,274,3007,271,3078,270,3111,268,3145,263,3183,252,3226,234,3243,221,3254,208,3265,193,3283,179,3351,149,3419,129"/>
+<area shape="rect" id="Node000024" href="$sh__sd_8c.html" title="Optional SD&#45;card book source for the hybrid e&#45;reader." alt="" coords="3125,284,3332,339"/>
+<area shape="poly" id="edge74_Node000017_Node000024" title=" " alt="" coords="3516,148,3505,194,3493,217,3477,238,3458,248,3423,260,3332,287,3330,281,3422,255,3456,243,3474,234,3489,215,3500,192,3511,146"/>
+<area shape="rect" id="Node000025" href="$epub__img__tiles_8h.html" title="Page a large in&#45;EPUB image through ra8_tile_cache + a real reflow &lt;img&gt; loader off the streaming read..." alt="" coords="3937,189,4104,229"/>
+<area shape="poly" id="edge31_Node000017_Node000025" title=" " alt="" coords="3614,125,3761,148,3925,179,3955,186,3954,191,3924,184,3760,153,3613,130"/>
+<area shape="rect" id="Node000026" href="$epub__chapter_8c.html" title="Chapter / metadata / cover / glyph accessors for the EPUB reader." alt="" coords="2483,291,2649,331"/>
+<area shape="poly" id="edge32_Node000017_Node000026" title=" " alt="" coords="3420,124,3373,131,3324,143,3274,160,3229,184,3215,196,3208,211,3200,225,3185,238,3141,255,3084,265,2949,276,2812,280,2706,287,2650,296,2649,291,2706,281,2812,275,2949,271,3084,260,3140,249,3182,234,3196,222,3203,208,3211,193,3226,179,3272,155,3322,138,3372,126,3419,118"/>
+<area shape="rect" id="Node000027" href="$epub__internal_8h.html" title="Test&#45;access surface for epub internal helpers (MC/DC)." alt="" coords="2159,189,2325,229"/>
+<area shape="poly" id="edge34_Node000017_Node000027" title=" " alt="" coords="3420,120,2866,142,2560,161,2434,172,2338,184,2304,191,2303,186,2338,179,2434,167,2560,156,2865,137,3420,115"/>
+<area shape="poly" id="edge39_Node000017_Node000028" title=" " alt="" coords="3540,143,3643,290,3638,293,3535,146"/>
+<area shape="rect" id="Node000030" href="$epub__xml__shim__internal_8h.html" title="Library&#45;private contract for the bounded EPUB XML parser." alt="" coords="3691,189,3913,229"/>
+<area shape="poly" id="edge40_Node000017_Node000030" title=" " alt="" coords="3588,135,3745,186,3744,191,3587,140"/>
+<area shape="rect" id="Node000036" href="$mdl__export__rabook__internal_8h.html" title="Private bounded RABOOK export contracts for the media downloader." alt="" coords="5084,181,5259,236"/>
+<area shape="poly" id="edge51_Node000017_Node000036" title=" " alt="" coords="3614,124,3680,131,4021,151,4288,157,4555,162,4897,179,5084,195,5083,200,4896,184,4554,167,4288,162,4021,156,3679,136,3613,130"/>
+<area shape="rect" id="Node000039" href="$ra8__rabook__pipeline_8h.html" title="End&#45;to&#45;end EPUB &#45;&gt; RABOOK1 compile pipeline (#149)." alt="" coords="4630,181,4811,236"/>
+<area shape="poly" id="edge54_Node000017_Node000039" title=" " alt="" coords="3614,124,3680,131,4142,166,4630,199,4629,204,4141,171,3679,136,3613,129"/>
+<area shape="rect" id="Node000040" href="$ra8__rabook__pipeline_8c.html" title="End&#45;to&#45;end EPUB &#45;&gt; RABOOK1 compile pipeline (#149)." alt="" coords="4314,387,4495,441"/>
+<area shape="poly" id="edge67_Node000017_Node000040" title=" " alt="" coords="3614,123,3680,131,3778,134,3905,136,3969,140,4029,147,4079,160,4117,179,4135,198,4144,217,4149,258,4153,298,4161,318,4176,337,4206,360,4241,378,4278,391,4314,400,4313,405,4276,396,4239,383,4204,365,4172,341,4156,320,4148,299,4144,258,4139,219,4130,201,4114,183,4078,165,4028,153,3969,145,3905,142,3777,140,3679,136,3613,129"/>
+<area shape="rect" id="Node000043" href="$rabook__import__compiler_8h.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="4809,284,5003,339"/>
+<area shape="poly" id="edge68_Node000017_Node000043" title=" " alt="" coords="3614,124,3679,131,3896,133,4258,135,4446,138,4616,146,4748,159,4794,168,4825,179,4852,201,4873,228,4900,283,4895,285,4869,231,4848,204,4822,184,4793,173,4747,164,4616,151,4446,144,4257,140,3896,139,3679,136,3613,130"/>
+<area shape="rect" id="Node000044" href="$rabook__import__compiler_8c.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="4943,387,5138,441"/>
+<area shape="poly" id="edge69_Node000017_Node000044" title=" " alt="" coords="3614,124,3680,131,3835,137,4028,138,4478,135,4709,136,4927,142,5119,155,5201,166,5272,179,5347,192,5408,204,5435,214,5460,229,5485,251,5508,283,5516,298,5520,312,5517,326,5508,340,5483,360,5447,375,5402,387,5351,397,5241,409,5138,414,5138,409,5240,403,5350,391,5401,382,5445,370,5481,355,5504,337,5512,324,5514,312,5511,299,5504,285,5481,255,5457,233,5432,219,5406,209,5346,197,5271,184,5200,171,5118,161,4926,147,4709,141,4478,140,4028,143,3835,142,3679,136,3613,130"/>
+<area shape="rect" id="Node000045" href="$examples_2ek__ra8d2_2hw__pending_2import__reader_2src_2main_8c.html" title="End&#45;to&#45;end on&#45;import EPUB &#45;&gt; .rabook compile + cache + read (#151)." alt="" coords="4725,387,4903,441"/>
+<area shape="poly" id="edge78_Node000017_Node000045" title=" " alt="" coords="3614,123,3680,131,3785,134,3922,136,3992,139,4056,147,4111,159,4152,179,4170,198,4180,218,4187,260,4193,301,4202,319,4220,336,4261,356,4318,368,4385,375,4458,377,4602,378,4664,379,4713,384,4726,386,4725,392,4712,389,4664,384,4602,383,4458,383,4385,380,4317,374,4260,361,4216,341,4198,322,4188,302,4181,260,4175,219,4166,201,4148,184,4109,164,4055,152,3991,144,3922,141,3785,140,3679,136,3613,129"/>
+<area shape="rect" id="Node000046" href="$hw__pending_2compile__on__m33_2src_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33 secondary core) image: full text/CSS/SVG EPUB&#45;&gt;RABOOK1 compile." alt="" coords="4231,284,4427,339"/>
+<area shape="poly" id="edge75_Node000017_Node000046" title=" " alt="" coords="3614,124,3680,131,3797,136,3950,139,4100,151,4163,162,4213,179,4246,201,4274,228,4316,282,4311,286,4270,232,4242,205,4210,184,4162,167,4100,156,3950,145,3797,141,3679,136,3613,129"/>
+<area shape="rect" id="Node000047" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2epub__parse_2src_2main_8c.html" title="On&#45;silicon HIL: epub parse layer runs on the target (#139)." alt="" coords="2350,181,2539,236"/>
+<area shape="poly" id="edge71_Node000017_Node000047" title=" " alt="" coords="3419,119,3254,123,3038,134,2795,154,2552,184,2540,186,2539,181,2551,179,2795,148,3037,129,3254,118,3419,113"/>
+<area shape="rect" id="Node000048" href="$sh__book_8c.html" title="Format&#45;agnostic book backend: book (.rabook) + epub (.epub)." alt="" coords="2564,181,2771,236"/>
+<area shape="poly" id="edge73_Node000017_Node000048" title=" " alt="" coords="3420,122,3134,143,2959,160,2784,184,2771,186,2770,181,2783,179,2958,155,3133,137,3419,117"/>
+<area shape="rect" id="Node000049" href="$examples_2ek__ra8d2_2hw__pending_2epub__stress_2src_2main_8c.html" title="On&#45;silicon HIL: large&#45;structure EPUB opens on the static arena (#144)." alt="" coords="2795,181,2969,236"/>
+<area shape="poly" id="edge76_Node000017_Node000049" title=" " alt="" coords="3420,125,3217,147,3099,164,2981,184,2970,186,2968,181,2980,179,3098,159,3216,142,3419,120"/>
+<area shape="rect" id="Node000050" href="$examples_2ek__ra8d2_2hw__pending_2ereader__cover_2src_2main_8c.html" title="On&#45;silicon HIL: EPUB cover&#45;art extraction + decode + render (#143)." alt="" coords="2993,181,3171,236"/>
+<area shape="poly" id="edge77_Node000017_Node000050" title=" " alt="" coords="3421,136,3191,184,3172,188,3171,183,3189,179,3420,131"/>
+<area shape="poly" id="edge25_Node000018_Node000019" title=" " alt="" coords="2068,240,2091,290,2086,292,2063,242"/>
+<area shape="rect" id="Node000021" href="$epub__fs__internal_8h.html" title="Test&#45;access surface for the EPUB filesystem stream callback." alt="" coords="2932,291,3101,331"/>
+<area shape="poly" id="edge27_Node000020_Node000021" title=" " alt="" coords="3300,235,3086,294,3084,289,3299,230"/>
+<area shape="poly" id="edge28_Node000020_Node000022" title=" " alt="" coords="3404,238,3435,282,3431,285,3400,241"/>
+<area shape="poly" id="edge29_Node000020_Node000023" title=" " alt="" coords="3299,234,3278,239,3178,255,3099,263,3020,271,2920,287,2908,289,2907,284,2919,281,3020,266,3098,258,3177,250,3278,233,3298,229"/>
+<area shape="poly" id="edge30_Node000020_Node000024" title=" " alt="" coords="3342,239,3270,286,3267,282,3339,234"/>
+<area shape="poly" id="edge36_Node000027_Node000019" title=" " alt="" coords="2205,239,2125,293,2122,289,2202,234"/>
+<area shape="poly" id="edge35_Node000027_Node000026" title=" " alt="" coords="2316,230,2506,289,2504,294,2315,235"/>
+<area shape="poly" id="edge37_Node000027_Node000028" title=" " alt="" coords="2317,229,2338,233,2523,256,2680,264,2818,263,2948,257,3078,252,3217,251,3374,259,3558,281,3594,289,3592,294,3558,287,3373,264,3216,256,3078,257,2948,263,2818,268,2679,269,2522,261,2338,239,2316,234"/>
+<area shape="rect" id="Node000029" href="$epub__zip__guard_8c.html" title="Decompression&#45;limits retrofit for every miniz ZIP consumer." alt="" coords="2204,291,2371,331"/>
+<area shape="poly" id="edge38_Node000027_Node000029" title=" " alt="" coords="2259,240,2281,290,2276,292,2254,242"/>
+<area shape="poly" id="edge41_Node000030_Node000028" title=" " alt="" coords="3764,239,3683,293,3680,289,3761,234"/>
+<area shape="rect" id="Node000031" href="$epub__xml__consumer__internal_8h.html" title="Private contracts for streamed EPUB XML consumers." alt="" coords="3813,284,3997,339"/>
+<area shape="poly" id="edge42_Node000030_Node000031" title=" " alt="" coords="3833,236,3880,282,3876,286,3829,240"/>
+<area shape="rect" id="Node000033" href="$epub__xml__shim_8c.html" title="Strict bounded container/OPF/NCX/nav XML consumers." alt="" coords="3653,489,3820,529"/>
+<area shape="poly" id="edge49_Node000030_Node000033" title=" " alt="" coords="3799,243,3782,293,3769,318,3751,341,3733,353,3715,360,3681,362,3649,366,3635,374,3621,388,3614,402,3612,413,3622,440,3647,468,3679,487,3676,491,3643,472,3617,443,3607,414,3609,400,3617,385,3632,370,3647,361,3680,357,3714,354,3731,349,3747,337,3764,315,3778,290,3794,241"/>
+<area shape="rect" id="Node000034" href="$epub__xml__toc_8c.html" title="Bounded NCX and EPUB 3 nav table&#45;of&#45;contents consumers." alt="" coords="3989,489,4156,529"/>
+<area shape="poly" id="edge50_Node000030_Node000034" title=" " alt="" coords="3877,231,3942,254,4010,282,4103,329,4160,361,4191,385,4198,400,4200,414,4191,443,4165,472,4132,492,4129,487,4161,468,4186,440,4195,414,4193,402,4187,388,4157,366,4101,334,4008,286,3940,259,3875,236"/>
+<area shape="rect" id="Node000032" href="$epub__xml__opf__internal_8h.html" title="Private contracts for the EPUB container and OPF consumers." alt="" coords="3631,394,3842,434"/>
+<area shape="poly" id="edge43_Node000031_Node000032" title=" " alt="" coords="3851,348,3770,396,3767,391,3848,343"/>
+<area shape="poly" id="edge45_Node000031_Node000033" title=" " alt="" coords="3899,353,3883,399,3871,422,3856,443,3823,471,3787,492,3785,487,3820,467,3852,440,3867,419,3878,396,3894,351"/>
+<area shape="poly" id="edge46_Node000031_Node000034" title=" " alt="" coords="3915,351,3931,396,3943,419,3957,440,3989,467,4025,487,4022,492,3986,471,3953,443,3938,422,3926,399,3910,353"/>
+<area shape="rect" id="Node000035" href="$epub__xml__toc__internal_8h.html" title="Private contracts for the EPUB NCX and nav table&#45;of&#45;contents consumers." alt="" coords="3968,394,4177,434"/>
+<area shape="poly" id="edge47_Node000031_Node000035" title=" " alt="" coords="3961,343,4042,391,4039,396,3959,348"/>
+<area shape="poly" id="edge44_Node000032_Node000033" title=" " alt="" coords="3739,448,3739,489,3734,489,3734,448"/>
+<area shape="poly" id="edge48_Node000035_Node000034" title=" " alt="" coords="4075,448,4075,489,4070,489,4070,448"/>
+<area shape="rect" id="Node000037" href="$mdl__export__rabook_8c.html" title="Bounded fixed&#45;layout EPUB&#45;to&#45;RBKC writer for media chapters." alt="" coords="5078,291,5265,331"/>
+<area shape="poly" id="edge52_Node000036_Node000037" title=" " alt="" coords="5174,250,5174,291,5169,291,5169,250"/>
+<area shape="rect" id="Node000038" href="$mdl__export__rabook__io_8c.html" title="Portable temporary EPUB and flat&#45;blob adapters for RABOOK export." alt="" coords="5289,291,5494,331"/>
+<area shape="poly" id="edge53_Node000036_Node000038" title=" " alt="" coords="5242,239,5351,289,5349,294,5240,244"/>
+<area shape="poly" id="edge55_Node000039_Node000037" title=" " alt="" coords="4825,230,5060,281,5092,289,5091,294,5059,287,4824,235"/>
+<area shape="poly" id="edge56_Node000039_Node000040" title=" " alt="" coords="4618,230,4552,252,4521,267,4492,286,4467,309,4447,336,4418,388,4413,385,4442,333,4463,306,4488,282,4518,263,4550,247,4616,225"/>
+<area shape="rect" id="Node000041" href="$ra8__rabook__pipeline__fs_8c.html" title="Optional ra8_fs publication wrapper for the RABOOK pipeline." alt="" coords="4519,387,4701,441"/>
+<area shape="poly" id="edge57_Node000039_Node000041" title=" " alt="" coords="4722,250,4715,295,4698,340,4677,367,4652,388,4649,384,4673,363,4693,337,4710,293,4717,249"/>
+<area shape="rect" id="Node000042" href="$ra8__rabook__pipeline__internal_8h.html" title="Private validation seam shared by RABOOK pipeline entry points." alt="" coords="4502,284,4683,339"/>
+<area shape="poly" id="edge58_Node000039_Node000042" title=" " alt="" coords="4678,246,4628,286,4625,282,4675,242"/>
+<area shape="poly" id="edge61_Node000039_Node000043" title=" " alt="" coords="4782,240,4859,281,4856,286,4779,245"/>
+<area shape="poly" id="edge64_Node000039_Node000044" title=" " alt="" coords="4826,222,4939,246,4986,262,5017,282,5033,306,5042,334,5046,386,5040,386,5037,335,5028,309,5013,286,4984,267,4937,251,4825,227"/>
+<area shape="poly" id="edge66_Node000039_Node000045" title=" " alt="" coords="4741,247,4804,385,4799,387,4736,249"/>
+<area shape="poly" id="edge65_Node000039_Node000046" title=" " alt="" coords="4617,239,4428,288,4426,282,4616,234"/>
+<area shape="poly" id="edge59_Node000042_Node000040" title=" " alt="" coords="4533,347,4455,389,4453,384,4530,343"/>
+<area shape="poly" id="edge60_Node000042_Node000041" title=" " alt="" coords="4602,352,4608,386,4603,387,4597,353"/>
+<area shape="poly" id="edge62_Node000043_Node000044" title=" " alt="" coords="4954,345,5007,384,5004,389,4951,349"/>
+<area shape="poly" id="edge63_Node000043_Node000045" title=" " alt="" coords="4875,351,4840,388,4836,385,4871,347"/>
+</map>

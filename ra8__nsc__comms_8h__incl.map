@@ -1,0 +1,48 @@
+<map id="libs/ra8_nsc/inc/ra8_nsc_comms.h" name="libs/ra8_nsc/inc/ra8_nsc_comms.h">
+<area shape="rect" id="Node000001" title="NSC veneers for the communications drivers." alt="" coords="328,5,475,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="314,387,385,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="328,31,271,36,206,47,139,67,77,96,49,113,27,129,13,149,8,178,8,254,10,276,17,295,27,313,40,328,75,353,118,371,166,383,214,391,300,396,300,402,214,396,164,388,116,376,72,357,36,332,22,316,12,298,5,277,3,254,3,178,8,147,23,125,46,108,75,91,137,62,204,42,270,31,328,25"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="499,313,578,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="476,31,507,38,538,50,566,68,588,91,595,95,603,94,612,92,620,97,622,113,617,142,580,266,560,304,555,301,575,264,612,141,616,113,615,100,611,98,603,99,594,100,585,95,563,72,535,55,505,43,474,36"/>
+<area shape="rect" id="Node000004" href="$ra8__i3c_8h.html" title="I3C Bus Interface driver – unified native&#45;I3C + I2C&#45;compat modes." alt="" coords="145,240,226,265"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="385,47,208,232,204,228,381,44"/>
+<area shape="rect" id="Node000005" href="$ra8__nsc__veneer_8h.html" title="Macros for declaring Non&#45;Secure Callable veneer functions." alt="" coords="89,93,223,119"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="343,48,205,92,204,87,342,43"/>
+<area shape="rect" id="Node000007" href="$ra8__sci_8h.html" title="Full&#45;featured Serial Communications Interface driver." alt="" coords="495,93,575,119"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="435,43,505,84,502,89,432,48"/>
+<area shape="rect" id="Node000011" href="$ra8__spi_8h.html" title="SPI_B controller driver (RA8D2 Type&#45;B SPI peripheral)." alt="" coords="361,93,442,119"/>
+<area shape="poly" id="edge21_Node000001_Node000011" title=" " alt="" coords="404,46,404,79,399,79,399,46"/>
+<area shape="rect" id="Node000012" href="$ra8__usb_8h.html" title="Native USB controller driver public API (device + host modes)." alt="" coords="707,93,792,119"/>
+<area shape="poly" id="edge25_Node000001_Node000012" title=" " alt="" coords="475,41,694,89,692,95,474,46"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="509,341,394,384,392,379,507,336"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="184,266,177,301,179,320,186,337,209,360,239,376,270,387,301,392,300,398,269,392,236,381,206,365,182,340,174,321,172,300,179,265"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="227,260,486,311,485,317,226,265"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="134,121,106,140,93,153,84,168,69,207,67,225,70,243,78,263,93,284,144,337,181,361,222,378,263,388,301,393,300,398,262,393,220,383,178,366,141,341,88,287,73,265,65,245,62,225,64,206,79,165,89,150,102,136,131,117"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="93,167,219,192"/>
+<area shape="poly" id="edge9_Node000005_Node000006" title=" " alt="" coords="159,119,159,153,153,153,153,119"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="548,117,565,139,580,166,600,214,614,256,617,277,615,297,607,318,593,340,580,351,561,361,510,377,399,396,398,390,509,372,559,356,577,347,589,337,602,316,610,296,612,277,609,258,595,216,575,168,561,142,544,121"/>
+<area shape="poly" id="edge20_Node000007_Node000003" title=" " alt="" coords="543,118,552,140,560,166,565,216,560,266,551,301,546,300,555,265,560,216,555,167,547,141,538,120"/>
+<area shape="rect" id="Node000008" href="$ra8__dma_8h.html" title="Generic DMA transfer substrate (DMAC engine)." alt="" coords="356,167,447,192"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="514,121,436,162,434,158,512,116"/>
+<area shape="poly" id="edge13_Node000008_Node000002" title=" " alt="" coords="385,194,361,214,342,241,334,275,333,311,344,373,339,374,328,311,328,275,338,239,357,211,381,190"/>
+<area shape="poly" id="edge19_Node000008_Node000003" title=" " alt="" coords="416,190,465,238,522,301,518,305,461,242,412,194"/>
+<area shape="rect" id="Node000009" href="$ra8__dmac_8h.html" title="8&#45;channel DMA controller (DMAC0) driver" alt="" coords="352,240,451,265"/>
+<area shape="poly" id="edge14_Node000008_Node000009" title=" " alt="" coords="404,192,404,226,399,226,399,192"/>
+<area shape="rect" id="Node000010" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="195,313,311,339"/>
+<area shape="poly" id="edge17_Node000008_Node000010" title=" " alt="" coords="372,194,334,214,298,242,277,271,264,301,259,299,273,268,294,238,331,209,370,190"/>
+<area shape="poly" id="edge15_Node000009_Node000002" title=" " alt="" coords="400,267,361,375,356,373,395,265"/>
+<area shape="poly" id="edge16_Node000009_Node000003" title=" " alt="" coords="425,263,505,305,503,309,422,268"/>
+<area shape="poly" id="edge18_Node000010_Node000002" title=" " alt="" coords="270,337,324,376,321,380,267,341"/>
+<area shape="poly" id="edge22_Node000011_Node000002" title=" " alt="" coords="379,121,232,194,202,205,176,211,155,220,136,241,131,254,131,267,141,296,157,321,171,337,201,357,235,373,301,390,300,395,233,378,199,362,168,341,153,325,136,299,126,268,126,253,131,239,152,216,175,206,200,200,230,190,377,116"/>
+<area shape="poly" id="edge24_Node000011_Node000003" title=" " alt="" coords="417,117,439,138,461,165,503,237,532,300,527,302,498,240,456,168,435,142,413,121"/>
+<area shape="poly" id="edge23_Node000011_Node000008" title=" " alt="" coords="404,119,404,153,399,153,399,119"/>
+<area shape="rect" id="Node000013" href="$ra8__usb__device_8h.html" title="Native USB controller driver public API – shared types + device mode." alt="" coords="779,240,914,265"/>
+<area shape="poly" id="edge26_Node000012_Node000013" title=" " alt="" coords="753,119,760,153,777,191,795,212,817,230,814,234,792,216,772,193,755,154,748,120"/>
+<area shape="rect" id="Node000014" href="$ra8__usb__host_8h.html" title="Native USB controller driver public API – host&#45;mode bring&#45;up." alt="" coords="787,167,907,192"/>
+<area shape="poly" id="edge29_Node000012_Node000014" title=" " alt="" coords="767,117,821,156,818,160,763,121"/>
+<area shape="poly" id="edge27_Node000013_Node000002" title=" " alt="" coords="834,268,782,304,747,325,710,341,627,366,541,383,462,393,399,399,398,393,462,388,540,378,625,361,708,336,745,320,779,300,831,263"/>
+<area shape="poly" id="edge28_Node000013_Node000003" title=" " alt="" coords="798,268,592,315,591,310,797,263"/>
+<area shape="poly" id="edge30_Node000014_Node000002" title=" " alt="" coords="873,190,898,204,920,222,933,243,934,255,929,267,914,283,894,298,838,324,768,346,689,363,527,386,398,398,398,392,526,381,688,357,767,340,836,319,891,294,911,279,924,264,929,254,928,244,916,225,895,208,871,194"/>
+<area shape="poly" id="edge31_Node000014_Node000003" title=" " alt="" coords="823,195,576,310,574,305,821,190"/>
+<area shape="poly" id="edge32_Node000014_Node000013" title=" " alt="" coords="849,192,849,226,844,226,844,192"/>
+</map>

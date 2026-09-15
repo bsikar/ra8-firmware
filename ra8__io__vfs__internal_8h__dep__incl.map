@@ -1,0 +1,7 @@
+<map id="libs/ra8_io/src/ra8_io_vfs_internal.h" name="libs/ra8_io/src/ra8_io_vfs_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private mount&#45;slot layout and path resolvers for the ra8_io VFS." alt="" coords="92,5,229,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__vfs_8c.html" title="Named&#45;mount VFS dispatch over pluggable filesystem&#45;format operations." alt="" coords="5,93,143,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="134,57,95,95,91,91,130,53"/>
+<area shape="rect" id="Node000003" href="$ra8__io__vfs__namespace_8c.html" title="Path&#45;namespace operations over the ra8_io VFS named&#45;mount table." alt="" coords="167,93,328,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="191,53,230,91,226,95,188,57"/>
+</map>

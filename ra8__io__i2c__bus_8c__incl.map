@@ -1,0 +1,34 @@
+<map id="libs/ra8_io/src/ra8_io_i2c_bus.c" name="libs/ra8_io/src/ra8_io_i2c_bus.c">
+<area shape="rect" id="Node000001" title="I2C&#45;bus dispatcher – forwards each public call into the bound backend vtable, and bridges any backend..." alt="" coords="202,5,339,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__i2c__bus_8h.html" title="ra8_io I2C&#45;bus facade – one controller&#45;transfer vtable over thechip&#39;s two I2C implementations." alt="" coords="155,167,285,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="267,47,231,154,226,153,262,45"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="329,387,399,412"/>
+<area shape="poly" id="edge8_Node000001_Node000003" title=" " alt="" coords="203,38,139,54,106,66,76,81,49,99,27,121,13,147,8,178,8,254,10,265,17,276,41,298,78,318,124,336,226,366,315,386,314,392,224,371,122,341,76,323,38,302,13,280,5,267,3,254,3,178,8,146,23,118,45,95,73,76,104,61,137,49,201,33"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="285,313,363,339"/>
+<area shape="poly" id="edge17_Node000001_Node000004" title=" " alt="" coords="277,45,300,166,323,299,317,300,295,167,272,46"/>
+<area shape="rect" id="Node000005" href="$ra8__i2c__bus__ops_8h.html" title="Injected I2C&#45;bus seam consumed by Ring&#45;3 I2C device drivers." alt="" coords="43,240,184,265"/>
+<area shape="poly" id="edge18_Node000001_Node000005" title=" " alt="" coords="251,47,198,99,170,132,145,168,131,198,122,228,116,226,126,196,140,165,166,129,194,95,247,43"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="569,93,695,119"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="340,39,567,88,566,93,339,44"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="482,240,582,265"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="340,25,383,30,428,42,472,62,509,92,528,124,537,160,540,196,538,227,533,226,534,196,532,161,523,126,505,95,469,66,427,47,382,35,339,30"/>
+<area shape="rect" id="Node000010" href="$ra8__io__i2c__bus__internal_8h.html" title="Internal vtable type for the ra8_io I2C&#45;bus facade." alt="" coords="308,93,495,119"/>
+<area shape="poly" id="edge19_Node000001_Node000010" title=" " alt="" coords="304,43,372,84,369,88,301,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="224,192,237,258,252,299,274,337,298,360,326,378,323,383,295,364,270,340,247,301,232,259,219,193"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="231,191,310,301,306,304,226,194"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="204,194,144,235,141,230,201,190"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="333,338,353,373,348,376,328,340"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="125,264,158,299,204,336,261,364,316,383,314,388,258,369,201,341,154,303,121,267"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="148,263,278,306,276,311,146,268"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="520,268,390,380,386,375,517,264"/>
+<area shape="poly" id="edge12_Node000007_Node000004" title=" " alt="" coords="499,268,372,311,370,306,498,263"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="491,313,573,339"/>
+<area shape="poly" id="edge13_Node000007_Node000008" title=" " alt="" coords="535,266,535,300,529,300,529,266"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="598,313,746,339"/>
+<area shape="poly" id="edge15_Node000007_Node000009" title=" " alt="" coords="556,263,638,305,636,309,553,268"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="506,341,405,384,403,379,504,336"/>
+<area shape="poly" id="edge16_Node000009_Node000003" title=" " alt="" coords="623,341,413,389,412,384,622,336"/>
+<area shape="poly" id="edge22_Node000010_Node000002" title=" " alt="" coords="373,121,263,164,261,159,371,116"/>
+<area shape="poly" id="edge20_Node000010_Node000003" title=" " alt="" coords="403,119,397,192,377,339,371,374,366,373,372,338,392,192,398,119"/>
+<area shape="poly" id="edge21_Node000010_Node000004" title=" " alt="" coords="400,120,335,301,330,299,395,118"/>
+</map>

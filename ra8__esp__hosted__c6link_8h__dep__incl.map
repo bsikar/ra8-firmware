@@ -1,0 +1,15 @@
+<map id="port/esp&#45;hosted/inc/ra8_esp_hosted_c6link.h" name="port/esp&#45;hosted/inc/ra8_esp_hosted_c6link.h">
+<area shape="rect" id="Node000001" title="Binds the ra8_c6link transport seam to this port&#39;s OS vtable." alt="" coords="553,5,740,45"/>
+<area shape="rect" id="Node000002" href="$c6__cam__app_8c.html" title="Shared C6 camera&#45;stream application workflow." alt="" coords="5,93,216,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="540,44,228,96,217,98,216,93,228,91,540,39"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2media__download_2src_2main_8c.html" title="Download, validate, publish, and reopen one C6&#45;fetched .rabook." alt="" coords="241,93,437,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="572,52,426,96,425,91,570,47"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__join_2src_2main_8c.html" title="Join the bench Wi&#45;Fi over the ESP32&#45;C6 and get an IP by DHCP (#492)." alt="" coords="461,93,635,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="619,57,578,95,574,91,615,53"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__link_2src_2main_8c.html" title="Bring the ESP32&#45;C6&#39;s Wi&#45;Fi station up through the ra8_c6link facade." alt="" coords="659,93,832,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="678,53,719,91,716,95,675,57"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2c6_2wifi__hal__join_2src_2main_8c.html" title="The same Wi&#45;Fi join as c6_wifi_join, the HAL way, through ra8_wifi." alt="" coords="856,93,1029,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="720,47,860,91,859,96,719,52"/>
+<area shape="rect" id="Node000007" href="$ra8__esp__hosted__c6link_8c.html" title="The three trampolines that put ra8_c6link on this board&#39;s wire." alt="" coords="1054,101,1239,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="754,40,892,62,1042,91,1074,98,1073,103,1041,96,891,68,753,45"/>
+</map>

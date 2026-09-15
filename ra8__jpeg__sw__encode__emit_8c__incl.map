@@ -1,0 +1,27 @@
+<map id="libs/ra8_jpeg/src/ra8_jpeg_sw_encode_emit.c" name="libs/ra8_jpeg/src/ra8_jpeg_sw_encode_emit.c">
+<area shape="rect" id="Node000001" title="Software JPEG encoder: byte/bit emitters, Annex K.3.3 tables and JFIF header&#45;segment writers." alt="" coords="183,5,367,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="313,328,383,353"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="220,48,177,68,136,95,80,141,32,184,16,206,9,229,12,252,27,278,45,292,72,303,145,320,227,330,299,335,299,340,227,336,144,325,70,308,42,296,23,282,7,254,4,228,11,204,28,181,76,137,133,91,174,63,217,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="37,255,163,280"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="244,48,210,71,173,102,137,139,109,182,101,212,100,241,95,241,96,211,104,180,133,136,169,98,207,67,241,43"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="386,255,465,280"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="360,43,397,62,413,76,426,92,442,130,446,171,442,210,435,242,430,241,437,209,440,171,437,131,422,95,409,79,394,67,358,48"/>
+<area shape="rect" id="Node000005" href="$ra8__jpeg__sw_8h.html" title="Pure&#45;software baseline JPEG (ISO/IEC 10918&#45;1 / ITU&#45;T T.81) codec." alt="" coords="487,181,601,207"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="364,43,418,62,469,91,490,109,507,129,534,168,529,171,503,132,486,112,466,96,416,67,362,48"/>
+<area shape="rect" id="Node000007" href="$ra8__jpeg__sw__encode__internal_8h.html" title="Module&#45;private declarations shared by the two encoder translation units of the software JPEG codec." alt="" coords="255,93,412,133"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="290,44,315,81,311,84,285,47"/>
+<area shape="rect" id="Node000008" href="$ra8__jpeg__sw__internal_8h.html" title="Module&#45;private declarations shared across the software JPEGcodec translation units." alt="" coords="138,181,310,207"/>
+<area shape="poly" id="edge17_Node000001_Node000008" title=" " alt="" coords="266,46,245,94,235,132,230,168,224,167,230,131,240,92,262,44"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="415,282,373,320,369,317,411,278"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="557,205,580,240,585,262,578,281,566,292,548,302,502,317,397,336,397,331,500,312,546,297,563,288,574,279,579,261,575,242,553,208"/>
+<area shape="poly" id="edge8_Node000005_Node000004" title=" " alt="" coords="526,209,458,250,455,245,524,204"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="489,255,564,280"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="544,208,535,242,530,241,539,206"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="337,133,349,314,344,314,332,134"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="255,125,222,133,188,145,156,161,129,183,112,211,104,242,99,240,107,209,125,180,153,157,186,140,220,128,254,120"/>
+<area shape="poly" id="edge12_Node000007_Node000004" title=" " alt="" coords="347,132,413,241,409,244,343,135"/>
+<area shape="poly" id="edge13_Node000007_Node000008" title=" " alt="" coords="308,136,253,175,250,171,305,131"/>
+<area shape="poly" id="edge14_Node000008_Node000002" title=" " alt="" coords="236,205,331,316,327,319,232,209"/>
+<area shape="poly" id="edge15_Node000008_Node000003" title=" " alt="" coords="205,209,133,250,131,245,203,204"/>
+<area shape="poly" id="edge16_Node000008_Node000004" title=" " alt="" coords="257,204,381,247,379,253,255,209"/>
+</map>

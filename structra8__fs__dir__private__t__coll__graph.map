@@ -1,0 +1,13 @@
+<map id="ra8_fs_dir_private_t" name="ra8_fs_dir_private_t">
+<area shape="rect" id="Node000001" title="Private state stored inside one public opaque directory cursor." alt="" coords="185,197,336,223"/>
+<area shape="rect" id="Node000002" href="$structra8__fs__mount__t.html" title="Cached parse of one mounted FAT volume." alt="" coords="11,101,134,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,133,157,171,218,195,217,200,154,176,96,138"/>
+<area shape="rect" id="Node000003" href="$structra8__fs__backend__t.html" title="Block&#45;device interface that ra8_fs runs on top of." alt="" coords="5,5,140,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="75,45,75,101,70,101,70,45"/>
+<area shape="rect" id="Node000004" href="$structdir__walk__t.html" title="Internal cursor used by the directory iterator." alt="" coords="159,101,248,127"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="211,139,226,172,247,195,244,199,221,175,207,141"/>
+<area shape="rect" id="Node000005" href="$structlfn__state__t.html" title="In&#45;progress reassembly of one LFN chain across the directory scan." alt="" coords="273,101,363,127"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="310,140,291,175,273,199,268,196,286,172,305,138"/>
+<area shape="rect" id="Node000006" href="$structexfat__cursor__t.html" title="Linear cursor over a directory&#39;s 32&#45;byte entries." alt="" coords="387,101,502,127"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="420,137,358,176,299,200,297,195,355,171,417,133"/>
+</map>

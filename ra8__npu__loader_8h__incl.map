@@ -1,0 +1,22 @@
+<map id="libs/ra8_hal/inc/ra8_npu_loader.h" name="libs/ra8_hal/inc/ra8_npu_loader.h">
+<area shape="rect" id="Node000001" title="On&#45;target loader: .npub Vela blob &#45;&gt; ra8_npu_job_t (RA8P1&#45;only)." alt="" coords="285,5,431,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="313,313,384,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="383,44,411,71,438,107,449,127,456,149,458,171,454,193,438,227,417,258,374,306,370,302,413,255,434,224,449,191,453,170,451,150,444,129,434,110,407,75,379,47"/>
+<area shape="rect" id="Node000003" href="$ra8__device_8h.html" title="Compile&#45;time device selection for the RA8 multi&#45;chip build (RA8D2 / RA8P1)." alt="" coords="5,240,111,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="311,48,214,96,161,129,113,169,89,198,71,229,67,226,85,195,109,165,158,125,211,91,309,43"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="360,167,439,192"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="366,45,395,153,390,154,361,47"/>
+<area shape="rect" id="Node000005" href="$ra8__npu_8h.html" title="Arm Ethos&#45;U55 NPU command/queue driver foundation (RA8P1&#45;only)." alt="" coords="275,93,361,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="351,47,333,82,328,80,346,44"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="105,263,301,310,299,315,104,268"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="398,193,360,301,355,300,393,192"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="322,119,348,299,343,300,317,119"/>
+<area shape="poly" id="edge8_Node000005_Node000003" title=" " alt="" coords="275,120,214,139,150,169,110,200,78,232,74,228,106,196,147,164,212,134,274,115"/>
+<area shape="poly" id="edge9_Node000005_Node000004" title=" " alt="" coords="333,117,378,156,374,160,329,121"/>
+<area shape="rect" id="Node000006" href="$ra8__npu__regs_8h.html" title="Arm Ethos&#45;U55 NPU register window on the Renesas RA8P1 (RA8P1&#45;only)." alt="" coords="161,167,283,192"/>
+<area shape="poly" id="edge10_Node000005_Node000006" title=" " alt="" coords="304,121,250,160,247,156,301,117"/>
+<area shape="poly" id="edge11_Node000006_Node000002" title=" " alt="" coords="209,194,193,209,179,227,172,246,172,255,176,264,201,288,233,305,267,315,300,320,299,325,266,320,231,310,198,292,172,267,167,256,166,245,174,224,189,205,205,190"/>
+<area shape="poly" id="edge13_Node000006_Node000003" title=" " alt="" coords="197,194,98,237,96,232,195,190"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="186,240,311,265"/>
+<area shape="poly" id="edge12_Node000006_Node000007" title=" " alt="" coords="229,191,242,226,237,228,224,193"/>
+</map>

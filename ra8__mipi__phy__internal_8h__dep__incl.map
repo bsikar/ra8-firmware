@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/src/ra8_mipi_phy_internal.h" name="libs/ra8_hal/src/ra8_mipi_phy_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private link seam shared between the MIPI D&#45;PHY drivertranslation units." alt="" coords="84,5,243,45"/>
+<area shape="rect" id="Node000002" href="$ra8__mipi__phy_8c.html" title="MIPI D&#45;PHY driver implementation." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="137,57,99,95,95,91,133,53"/>
+<area shape="rect" id="Node000003" href="$ra8__mipi__phy__timing_8c.html" title="MIPI D&#45;PHY driver – HUM timing tables and table&#45;driven setup." alt="" coords="175,93,325,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="194,53,233,91,229,95,190,57"/>
+</map>

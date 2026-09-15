@@ -1,0 +1,33 @@
+<map id="apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c" name="apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c">
+<area shape="rect" id="Node000001" title="Strict streamed XHTML&#45;to&#45;RABOOK consumer." alt="" coords="369,5,550,60"/>
+<area shape="rect" id="Node000002" href="$ra8__rabook__xml__shim_8h.html" title="Bounded XHTML&#45;to&#45;RABOOK streaming builder." alt="" coords="167,108,346,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="398,63,297,105,295,100,396,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="310,328,385,353"/>
+<area shape="poly" id="edge18_Node000001_Node000003" title=" " alt="" coords="452,61,359,316,354,314,447,59"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="137,401,208,427"/>
+<area shape="poly" id="edge19_Node000001_Node000004" title=" " alt="" coords="462,60,462,193,462,269,455,306,436,336,407,360,372,378,334,392,294,402,222,412,221,407,293,397,332,387,370,373,404,355,432,332,450,304,457,268,457,193,457,60"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="497,108,568,133"/>
+<area shape="poly" id="edge20_Node000001_Node000009" title=" " alt="" coords="484,58,516,96,512,99,480,62"/>
+<area shape="rect" id="Node000010" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="593,108,718,133"/>
+<area shape="poly" id="edge21_Node000001_Node000010" title=" " alt="" coords="520,58,618,100,616,105,518,63"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="267,132,299,180,320,216,335,254,347,314,342,315,330,255,315,218,294,183,263,135"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="187,136,108,156,75,168,56,183,44,193,30,199,18,204,11,212,9,227,16,253,36,294,72,352,96,377,126,394,124,399,93,381,68,355,32,296,11,255,3,227,6,210,15,200,28,194,41,188,52,179,73,164,106,150,186,131"/>
+<area shape="rect" id="Node000005" href="$book_8h.html" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="171,255,238,280"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="256,134,234,208,219,243,214,241,229,206,251,133"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="95,328,173,353"/>
+<area shape="poly" id="edge9_Node000002_Node000006" title=" " alt="" coords="168,130,140,137,114,148,90,163,71,183,63,199,61,216,63,235,70,253,91,288,115,316,110,320,86,291,65,255,58,236,55,217,58,198,66,180,87,159,111,143,139,132,166,125"/>
+<area shape="rect" id="Node000007" href="$rabook__compile_8h.html" title="Zero&#45;heap builder that emits a RABOOK1 blob (the #149 compiler back&#45;end)." alt="" coords="81,181,219,207"/>
+<area shape="poly" id="edge10_Node000002_Node000007" title=" " alt="" coords="241,136,180,176,177,171,238,131"/>
+<area shape="rect" id="Node000008" href="$xml_8h.html" title="Bounded, caller&#45;owned, no&#45;heap XML pull reader." alt="" coords="262,255,321,280"/>
+<area shape="poly" id="edge14_Node000002_Node000008" title=" " alt="" coords="263,133,278,181,290,240,285,241,273,182,258,134"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="229,278,313,319,311,324,226,282"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="205,281,181,389,175,387,199,280"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="195,282,157,320,153,316,191,278"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="143,352,162,388,158,391,138,355"/>
+<area shape="poly" id="edge11_Node000007_Node000004" title=" " alt="" coords="140,209,116,235,92,271,83,292,78,312,78,333,84,352,104,376,130,393,127,398,101,380,80,355,72,333,72,312,78,290,87,269,112,232,136,205"/>
+<area shape="poly" id="edge12_Node000007_Node000005" title=" " alt="" coords="161,205,190,242,185,245,157,209"/>
+<area shape="poly" id="edge13_Node000007_Node000006" title=" " alt="" coords="151,207,139,315,134,314,146,207"/>
+<area shape="poly" id="edge15_Node000008_Node000003" title=" " alt="" coords="303,279,332,316,328,319,298,282"/>
+<area shape="poly" id="edge16_Node000008_Node000004" title=" " alt="" coords="284,282,193,392,189,389,279,279"/>
+<area shape="poly" id="edge17_Node000008_Node000006" title=" " alt="" coords="267,282,173,325,171,320,265,278"/>
+</map>

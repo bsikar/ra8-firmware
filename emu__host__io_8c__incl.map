@@ -1,0 +1,29 @@
+<map id="tools/ra8_emulator/src/host/emu_host_io.c" name="tools/ra8_emulator/src/host/emu_host_io.c">
+<area shape="rect" id="Node000001" title="Bounded raw&#45;descriptor host&#45;I/O implementation." alt="" coords="271,5,445,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,73,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="281,48,87,95,86,90,280,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="97,93,160,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="304,48,174,92,173,87,302,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="185,93,251,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="326,48,252,89,250,84,323,43"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="276,93,347,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="349,47,328,83,323,80,344,44"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="371,93,441,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="372,44,394,80,389,83,367,47"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="466,93,551,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="395,43,475,84,473,89,393,48"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="575,93,650,119"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="420,43,563,87,561,92,418,48"/>
+<area shape="rect" id="Node000009" href="$emu__host__io__internal_8h.html" title="Bounded raw&#45;descriptor I/O seam for the RA8 emulator." alt="" coords="675,93,849,119"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="446,41,691,88,690,93,445,46"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="529,167,603,192"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="731,121,612,164,610,159,730,116"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="627,167,702,192"/>
+<area shape="poly" id="edge10_Node000009_Node000011" title=" " alt="" coords="748,121,693,160,690,156,745,117"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="727,167,797,192"/>
+<area shape="poly" id="edge11_Node000009_Node000012" title=" " alt="" coords="765,119,765,153,759,153,759,119"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="822,167,918,192"/>
+<area shape="poly" id="edge12_Node000009_Node000013" title=" " alt="" coords="781,116,842,157,839,161,778,121"/>
+<area shape="rect" id="Node000014" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="942,167,1067,192"/>
+<area shape="poly" id="edge13_Node000009_Node000014" title=" " alt="" coords="802,116,953,160,952,165,800,121"/>
+</map>

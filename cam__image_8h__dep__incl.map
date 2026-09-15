@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/camera_capture/inc/cam_image.h" name="examples/ek_ra8d2/hw_validated/hil/camera_capture/inc/cam_image.h">
+<area shape="rect" id="Node000001" title="SDRAM&#45;backed RGB888 views of one packed VGA UYVY camera frame." alt="" coords="107,5,301,60"/>
+<area shape="rect" id="Node000002" href="$cam__image_8c.html" title="UYVY&#45;to&#45;RGB888 conversion and 0/90/180/270 SDRAM image production." alt="" coords="5,108,197,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="169,72,130,110,126,106,166,68"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2camera__capture_2src_2main_8c.html" title="OV5640 parallel (CEU) camera capture + plausibility self&#45;test." alt="" coords="221,108,395,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="243,68,283,106,279,110,239,72"/>
+</map>

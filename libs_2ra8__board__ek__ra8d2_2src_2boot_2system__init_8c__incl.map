@@ -1,0 +1,21 @@
+<map id="libs/ra8_board_ek_ra8d2/src/boot/system_init.c" name="libs/ra8_board_ek_ra8d2/src/boot/system_init.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 / RA8D2 core bring&#45;up (called from Reset_Handler)." alt="" coords="267,5,448,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="110,255,181,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="267,34,195,42,121,54,58,71,35,82,20,95,10,115,10,135,18,156,32,177,73,216,116,245,113,250,70,220,28,181,13,159,4,136,4,114,16,92,32,78,56,66,120,49,194,36,267,29"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2__dualcore_8h.html" title="Where the EK&#45;RA8D2&#39;s Cortex&#45;M85 and Cortex&#45;M33 meet, stated once." alt="" coords="30,93,184,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="304,48,176,92,174,86,302,43"/>
+<area shape="rect" id="Node000005" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="208,101,339,126"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="341,47,297,92,293,89,337,44"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="363,101,520,126"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="378,44,423,89,419,92,375,47"/>
+<area shape="rect" id="Node000007" href="$ra8__cache_8h.html" title="Cortex&#45;M85 L1 cache maintenance, enable/disable, and I&#45;cache invalidate." alt="" coords="545,101,645,126"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="411,43,552,94,550,99,409,48"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="670,101,792,126"/>
+<area shape="poly" id="edge11_Node000001_Node000008" title=" " alt="" coords="446,43,658,91,675,95,674,100,657,96,445,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="115,133,142,241,137,242,109,134"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="145,181,224,207"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="128,132,165,170,162,173,124,135"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="180,208,161,244,156,241,176,206"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="562,129,194,253,192,248,561,124"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="560,129,533,136,372,168,238,188,237,183,371,162,532,131,559,124"/>
+</map>

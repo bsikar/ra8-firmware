@@ -1,0 +1,19 @@
+<map id="examples/ek_ra8d2/common/c6_camera_server/inc/c6_camera_server.h" name="examples/ek_ra8d2/common/c6_camera_server/inc/c6_camera_server.h">
+<area shape="rect" id="Node000001" title="Shared contracts for ESP32&#45;C6 browser camera servers." alt="" coords="145,5,355,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="171,328,241,353"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="204,62,156,95,101,139,51,193,29,223,12,256,8,275,14,291,29,304,49,315,103,329,157,335,157,340,102,334,48,320,26,309,10,294,3,276,7,254,25,221,46,190,98,135,152,91,202,58"/>
+<area shape="rect" id="Node000003" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="199,108,301,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="253,60,253,94,247,94,247,60"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="359,255,437,280"/>
+<area shape="poly" id="edge11_Node000001_Node000005" title=" " alt="" coords="303,58,338,80,373,107,406,141,431,180,435,197,433,214,419,244,414,242,428,213,430,197,426,182,402,144,370,111,335,84,301,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="244,135,230,156,219,182,211,217,208,253,207,315,202,314,202,253,206,216,214,181,226,154,239,132"/>
+<area shape="rect" id="Node000004" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="228,181,395,207"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="262,132,294,169,290,173,258,135"/>
+<area shape="poly" id="edge8_Node000003_Node000005" title=" " alt="" coords="302,124,330,130,360,141,387,157,409,180,416,195,418,212,411,243,406,241,412,211,411,196,405,183,384,161,358,146,329,135,300,129"/>
+<area shape="rect" id="Node000006" href="$ra8__mdl__protocol_8h.html" title="Allocation&#45;free constants shared by the RA8 and C6 media endpoints." alt="" coords="22,255,169,280"/>
+<area shape="poly" id="edge9_Node000003_Node000006" title=" " alt="" coords="235,135,173,183,115,246,111,242,169,179,231,131"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="305,209,225,318,220,315,300,206"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="327,205,375,244,372,248,324,209"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="368,283,251,325,249,320,366,278"/>
+<area shape="poly" id="edge10_Node000006_Node000002" title=" " alt="" coords="114,278,178,318,175,323,112,282"/>
+</map>

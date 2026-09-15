@@ -1,0 +1,11 @@
+<map id="ra8_ota_cfg_t" name="ra8_ota_cfg_t">
+<area shape="rect" id="Node000001" title="Initialisation descriptor for ra8_ota_init." alt="" coords="289,101,399,127"/>
+<area shape="rect" id="Node000002" href="$structra8__ota__progress__t.html" title="Snapshot delivered to the caller&#39;s progress callback." alt="" coords="5,5,152,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,35,151,56,196,75,243,89,289,100,288,105,242,95,194,80,149,60,109,40"/>
+<area shape="rect" id="Node000003" href="$structra8__ota__net__iface__t.html" title="Injected HTTPS&#45;download interface (Dependency Inversion)." alt="" coords="177,5,327,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="275,39,335,99,331,103,271,43"/>
+<area shape="rect" id="Node000004" href="$structra8__ota__crypto__iface__t.html" title="Injected hash + ECDSA verification interface." alt="" coords="352,5,523,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="418,42,357,103,354,99,415,38"/>
+<area shape="rect" id="Node000005" href="$structra8__ota__flash__iface__t.html" title="Injected flash backend (so tests do not need real MRAM)." alt="" coords="547,5,707,31"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="581,38,457,80,382,104,380,99,455,75,580,33"/>
+</map>

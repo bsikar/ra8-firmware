@@ -1,0 +1,24 @@
+<map id="libs/ra8_audio/inc/ra8_audio.h" name="libs/ra8_audio/inc/ra8_audio.h">
+<area shape="rect" id="Node000001" title="Transport&#45;neutral, caller&#45;owned audio capture facade." alt="" coords="433,5,569,45"/>
+<area shape="rect" id="Node000002" href="$c6__cam__audio_8c.html" title="Interrupt&#45;driven onboard PDM microphone recorder for camera servers." alt="" coords="5,181,216,236"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="420,33,369,40,313,52,257,70,205,96,181,115,159,137,127,183,123,180,155,134,177,111,203,91,255,65,312,47,368,35,419,28"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2pdm__mic__demo_2src_2main_8c.html" title="PDM MEMS microphone capture + plausibility demo (SPH0690 / ch 2)." alt="" coords="241,181,415,236"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="482,59,418,135,364,183,361,179,414,131,477,55"/>
+<area shape="rect" id="Node000004" href="$ra8__audio__source__memory_8h.html" title="Fixed in&#45;memory PCM replay backend for ra8_audio." alt="" coords="663,93,875,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="574,47,711,91,710,96,572,52"/>
+<area shape="rect" id="Node000006" href="$ra8__audio__source__pdm_8h.html" title="RA8 PDM&#45;IF backend for the transport&#45;neutral audio facade." alt="" coords="217,93,405,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="448,53,354,96,351,91,446,49"/>
+<area shape="rect" id="Node000008" href="$ra8__audio_8c.html" title="Validation and dispatch for the transport&#45;neutral audio facade." alt="" coords="885,189,1021,229"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="583,30,665,39,754,51,833,68,865,79,888,91,911,113,929,139,950,187,945,190,924,141,907,116,885,96,863,84,832,74,753,56,665,44,583,35"/>
+<area shape="rect" id="Node000009" href="$ra8__audio__internal_8h.html" title="Private audio&#45;source vtable shared by concrete backends." alt="" coords="481,93,639,133"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="524,55,549,92,545,95,520,58"/>
+<area shape="rect" id="Node000005" href="$ra8__audio__source__memory_8c.html" title="Fixed PCM replay backend implementation." alt="" coords="651,189,861,229"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="767,147,761,189,756,188,762,147"/>
+<area shape="poly" id="edge6_Node000006_Node000002" title=" " alt="" coords="259,142,168,184,166,179,257,137"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="319,146,326,181,320,182,314,147"/>
+<area shape="rect" id="Node000007" href="$ra8__audio__source__pdm_8c.html" title="RA8 PDM&#45;IF audio&#45;source backend implementation." alt="" coords="440,189,627,229"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="369,136,489,186,487,191,367,141"/>
+<area shape="poly" id="edge12_Node000009_Node000005" title=" " alt="" coords="613,137,718,186,715,191,611,142"/>
+<area shape="poly" id="edge13_Node000009_Node000007" title=" " alt="" coords="553,147,541,189,536,188,548,146"/>
+<area shape="poly" id="edge11_Node000009_Node000008" title=" " alt="" coords="653,131,874,179,899,186,897,191,873,184,652,137"/>
+</map>

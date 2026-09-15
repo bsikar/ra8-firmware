@@ -1,0 +1,7 @@
+<map id="tools/ra8_emulator/inc/emu_view_tile_internal.h" name="tools/ra8_emulator/inc/emu_view_tile_internal.h">
+<area shape="rect" id="Node000001" title="Internal bounded RGB565 tile rotation/writer." alt="" coords="74,5,287,45"/>
+<area shape="rect" id="Node000002" href="$emu__view__surface_8c.html" title="Bounded&#45;tile GLCDC rotation, raw&#45;fd composition, and PPM export." alt="" coords="5,93,169,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="154,57,115,95,112,91,150,53"/>
+<area shape="rect" id="Node000003" href="$emu__view__tile_8c.html" title="Pure bounded tile rotation plus checked raw&#45;surface row writes." alt="" coords="193,93,357,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="212,53,251,91,247,95,208,57"/>
+</map>

@@ -1,0 +1,13 @@
+<map id="apps/shared_libs/reflow/inc/ra8_img_arena.h" name="apps/shared_libs/reflow/inc/ra8_img_arena.h">
+<area shape="rect" id="Node000001" title="Heap&#45;free scratch allocator hooks for the stb_image single&#45;TU build." alt="" coords="5,5,180,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="18,167,93,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="87,46,71,94,61,153,55,152,66,93,82,45"/>
+<area shape="rect" id="Node000003" href="$reflow__image_8h.html" title="Zero&#45;heap raster image decode + scale + blit for reflow (#106)." alt="" coords="81,93,203,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="107,44,130,80,125,83,102,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="130,121,82,160,78,156,126,117"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="139,240,209,265"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="147,118,163,191,171,226,166,227,158,193,142,119"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="173,167,252,192"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="156,117,194,155,190,159,152,121"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="209,194,189,229,184,227,204,191"/>
+</map>

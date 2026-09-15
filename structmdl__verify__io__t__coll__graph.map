@@ -1,0 +1,27 @@
+<map id="mdl_verify_io_t" name="mdl_verify_io_t">
+<area shape="rect" id="Node000001" title="One open portable input and its immutable size snapshot." alt="" coords="499,412,622,437"/>
+<area shape="rect" id="Node000002" href="$structmdl__storage__t.html" title="One non&#45;reentrant downloader filesystem dependency bundle." alt="" coords="438,316,553,341"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="511,351,533,386,553,410,548,414,529,390,506,354"/>
+<area shape="rect" id="Node000003" href="$structfw__fs__t.html" title="One complete composition&#45;root filesystem binding." alt="" coords="356,200,424,225"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="412,234,486,314,482,317,408,237"/>
+<area shape="rect" id="Node000004" href="$structfw__fs__namespace__t.html" title="Independently injectable path/namespace facade." alt="" coords="37,101,188,127"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="129,137,145,157,166,174,201,186,252,195,356,206,356,212,251,200,200,191,163,178,141,161,124,140"/>
+<area shape="rect" id="Node000005" href="$structfw__fs__namespace__iface.html" title="Namespace backend operations." alt="" coords="5,5,183,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="100,44,106,77,112,100,107,102,101,78,95,45"/>
+<area shape="rect" id="Node000006" href="$structfw__fs__caps__t.html" title="Static properties and workspace requirements of one bound port." alt="" coords="207,5,312,31"/>
+<area shape="poly" id="edge12_Node000003_Node000006" title=" " alt="" coords="252,44,243,84,244,106,251,125,272,152,299,173,329,188,356,199,354,204,326,193,296,177,268,156,246,128,239,107,238,84,247,43"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="216,38,181,57,150,80,125,103,122,99,146,76,178,52,214,34"/>
+<area shape="rect" id="Node000007" href="$structfw__fs__stream__port__t.html" title="Independently injectable open&#45;stream facade." alt="" coords="505,101,659,127"/>
+<area shape="poly" id="edge8_Node000007_Node000006" title=" " alt="" coords="294,35,325,52,342,65,359,75,415,86,505,99,504,105,414,91,357,80,339,69,322,57,291,40"/>
+<area shape="rect" id="Node000009" href="$structfw__fs__transaction__port__t.html" title="Independently injectable staged&#45;transaction facade." alt="" coords="299,101,481,127"/>
+<area shape="poly" id="edge11_Node000009_Node000006" title=" " alt="" coords="267,43,275,60,287,75,306,89,329,99,327,104,304,94,283,79,270,63,263,45"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="556,137,486,178,425,203,423,198,483,174,553,132"/>
+<area shape="rect" id="Node000008" href="$structfw__fs__stream__iface.html" title="Open&#45;file backend operations over caller&#45;supplied state." alt="" coords="579,5,727,31"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="638,43,593,103,589,100,633,40"/>
+<area shape="rect" id="Node000011" href="$structfw__fs__file__t.html" title="Caller&#45;owned open file; fields are private to the facade." alt="" coords="631,151,725,176"/>
+<area shape="poly" id="edge14_Node000011_Node000008" title=" " alt="" coords="666,43,670,54,678,108,681,150,675,151,673,108,665,55,661,44"/>
+<area shape="poly" id="edge9_Node000003_Node000009" title=" " alt="" coords="393,140,393,200,387,200,387,140"/>
+<area shape="rect" id="Node000010" href="$structfw__fs__transaction__iface.html" title="Staged&#45;publication backend operations over caller&#45;supplied state." alt="" coords="336,5,511,31"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="417,44,397,102,392,100,412,43"/>
+<area shape="poly" id="edge13_Node000001_Node000011" title=" " alt="" coords="673,190,642,280,619,335,591,389,574,413,569,410,586,387,614,333,637,278,668,188"/>
+</map>

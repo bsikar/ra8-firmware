@@ -1,0 +1,9 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/src/lx_nor_ram.c" name="examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/src/lx_nor_ram.c">
+<area shape="rect" id="Node000001" title="RAM&#45;backed standalone&#45;LevelX NOR driver – implementation." alt="" coords="78,5,269,75"/>
+<area shape="rect" id="Node000002" href="$lx__nor__ram_8h.html" title="RAM&#45;backed standalone&#45;LevelX NOR driver (the ra8_cache_store DIP seam)." alt="" coords="5,123,112,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="134,77,85,116,82,112,130,73"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="137,123,210,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="176,75,176,109,171,109,171,75"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="235,123,360,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="220,73,272,112,269,116,217,77"/>
+</map>

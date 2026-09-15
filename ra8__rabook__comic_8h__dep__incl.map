@@ -1,0 +1,11 @@
+<map id="apps/shared_libs/rabook_compile/inc/ra8_rabook_comic.h" name="apps/shared_libs/rabook_compile/inc/ra8_rabook_comic.h">
+<area shape="rect" id="Node000001" title="Streaming image&#45;sequence builder for reader&#45;native RABOOK comics." alt="" coords="115,5,296,60"/>
+<area shape="rect" id="Node000002" href="$ra8__rabook__comic_8c.html" title="Streaming image&#45;sequence builder for reader&#45;native RABOOK comics." alt="" coords="5,115,187,170"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="171,72,125,117,121,113,167,68"/>
+<area shape="rect" id="Node000003" href="$media__download__format__internal_8h.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="211,108,421,177"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="244,68,283,106,280,110,241,72"/>
+<area shape="rect" id="Node000004" href="$media__download__format_8c.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="82,225,305,280"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="269,188,225,227,222,223,266,184"/>
+<area shape="rect" id="Node000005" href="$media__download__image_8c.html" title="Convert one C6&#45;fetched encoded image into a strict .rabook." alt="" coords="329,225,548,280"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="366,184,410,223,407,227,363,188"/>
+</map>

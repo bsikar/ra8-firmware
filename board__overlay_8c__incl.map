@@ -1,0 +1,17 @@
+<map id="tools/ra8_emulator/src/display/board_overlay.c" name="tools/ra8_emulator/src/display/board_overlay.c">
+<area shape="rect" id="Node000001" title="Composite board&#45;view renderer implementation (see board_overlay.h)." alt="" coords="83,5,285,45"/>
+<area shape="rect" id="Node000002" href="$board__overlay_8h.html" title="Composite board&#45;view renderer: panel framebuffer + a status sidebar." alt="" coords="157,167,283,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="202,44,216,67,227,93,230,124,228,153,223,153,225,124,221,94,211,69,197,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="34,240,105,265"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="84,48,47,67,31,79,18,95,11,111,8,128,15,164,32,199,52,228,48,231,28,202,10,166,3,128,6,109,14,92,27,76,44,62,81,43"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="287,93,353,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="218,43,289,84,287,89,215,48"/>
+<area shape="rect" id="Node000006" href="$board__overlay__internal_8h.html" title="Module&#45;private layout constants + draw primitives for the overlay." alt="" coords="28,93,212,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="171,47,140,84,136,81,166,44"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="197,194,108,236,105,232,195,190"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="143,240,268,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="220,193,213,227,208,226,215,192"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="138,117,194,156,191,161,135,121"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="118,120,80,228,75,226,113,118"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="124,118,132,152,148,191,163,211,181,229,178,233,159,215,143,193,127,154,119,120"/>
+</map>

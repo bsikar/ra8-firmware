@@ -1,0 +1,24 @@
+<map id="port/esp&#45;hosted/inc/port_esp_hosted_host_config.h" name="port/esp&#45;hosted/inc/port_esp_hosted_host_config.h">
+<area shape="rect" id="Node000001" title="esp&#45;hosted port header: transport selection, side&#45;band pin map, link polarity." alt="" coords="136,5,304,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="40,357,111,383"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="136,47,106,56,77,69,50,86,29,110,15,138,9,170,10,203,16,235,38,297,63,344,58,346,33,299,11,237,4,203,3,169,9,137,24,106,47,82,74,64,104,51,135,42"/>
+<area shape="rect" id="Node000003" href="$ra8__esp__hosted__pins_8h.html" title="THE single point of change for the RA8 &lt;&#45;&gt; ESP32&#45;C6 harness map." alt="" coords="38,115,209,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="194,62,147,107,144,104,191,58"/>
+<area shape="rect" id="Node000008" href="$port__esp__hosted__host__config__features_8h.html" title="esp&#45;hosted port header: optional host features, RPC bounds, counters." alt="" coords="234,108,398,148"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="249,58,288,96,285,100,245,62"/>
+<area shape="rect" id="Node000009" href="$port__esp__hosted__host__config__transports_8h.html" title="esp&#45;hosted port header: constants for the transports not in use." alt="" coords="422,108,586,148"/>
+<area shape="poly" id="edge13_Node000001_Node000009" title=" " alt="" coords="300,58,435,101,433,106,299,63"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="109,143,84,166,64,197,55,236,55,276,61,313,70,344,65,345,56,314,50,276,50,235,59,195,80,162,106,139"/>
+<area shape="rect" id="Node000004" href="$ra8__board__ek__ra8d2__connectors_8h.html" title="Board&#45;identity, LEDs, switches, display, audio, Arduino, Pmod, and MikroBUS portion of the EK&#45;RA8D2 v..." alt="" coords="73,196,228,236"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="130,140,143,182,138,184,125,142"/>
+<area shape="rect" id="Node000007" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="315,284,474,309"/>
+<area shape="poly" id="edge11_Node000003_Node000007" title=" " alt="" coords="146,139,241,194,367,274,364,279,238,198,143,143"/>
+<area shape="poly" id="edge6_Node000004_Node000002" title=" " alt="" coords="136,238,103,285,91,315,83,345,78,343,86,314,99,283,132,234"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="113,284,188,309"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="153,236,153,270,148,270,148,236"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="212,284,291,309"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="177,234,227,273,224,277,173,238"/>
+<area shape="poly" id="edge9_Node000004_Node000007" title=" " alt="" coords="210,233,346,277,345,282,208,239"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="224,312,118,354,116,350,222,307"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="344,312,125,360,124,355,343,307"/>
+</map>

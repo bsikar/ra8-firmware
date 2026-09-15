@@ -1,0 +1,7 @@
+<map id="ra8_css_rule_t" name="ra8_css_rule_t">
+<area shape="rect" id="Node000001" title="One selector { ... } rule: a (possibly descendant) selector plus its declarations." alt="" coords="75,101,190,127"/>
+<area shape="rect" id="Node000002" href="$structra8__css__anc__t.html" title="One ancestor part of a descendant selector (e.g." alt="" coords="5,5,119,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="81,40,126,100,122,103,77,43"/>
+<area shape="rect" id="Node000003" href="$structra8__css__style__t.html" title="A declared or computed style: a presence mask plus property values." alt="" coords="143,5,266,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="189,43,144,103,139,99,185,40"/>
+</map>

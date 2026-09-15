@@ -1,0 +1,5 @@
+<map id="ra8_jpeg_dec_ctx_t" name="ra8_jpeg_dec_ctx_t">
+<area shape="rect" id="Node000001" title="Decoder state shared by the whole&#45;buffer and streaming drivers." alt="" coords="5,121,152,147"/>
+<area shape="rect" id="Node000002" href="$structra8__jpeg__htab__t.html" title="Decoded Huffman table – 256 entries indexed by symbol order." alt="" coords="15,5,142,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="81,45,81,121,76,121,76,45"/>
+</map>

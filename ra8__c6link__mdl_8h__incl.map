@@ -1,0 +1,26 @@
+<map id="libs/ra8_c6link/inc/ra8_c6link_mdl.h" name="libs/ra8_c6link/inc/ra8_c6link_mdl.h">
+<area shape="rect" id="Node000001" title="Pull&#45;based media download client over ESP&#45;hosted CustomRpc." alt="" coords="224,5,363,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="120,313,190,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="224,42,169,58,111,84,56,120,33,142,13,168,8,190,12,218,22,244,34,264,50,279,68,291,108,309,105,314,66,296,47,283,30,267,18,247,7,219,3,190,9,166,29,139,52,116,108,79,167,53,223,37"/>
+<area shape="rect" id="Node000003" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="192,93,294,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="284,47,260,83,256,80,279,44"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="116,240,194,265"/>
+<area shape="poly" id="edge11_Node000001_Node000005" title=" " alt="" coords="304,45,312,80,312,100,308,120,286,158,256,190,223,216,192,236,189,231,220,212,253,186,282,155,303,118,307,100,307,81,299,46"/>
+<area shape="rect" id="Node000007" href="$ra8__mdl__http_8h.html" title="Wire&#45;neutral media HTTP request and response records." alt="" coords="384,167,504,192"/>
+<area shape="poly" id="edge12_Node000001_Node000007" title=" " alt="" coords="316,44,365,91,426,154,422,158,361,95,312,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="193,117,95,136,53,151,28,168,19,187,19,206,27,225,41,243,80,278,122,304,119,309,77,282,37,247,23,227,14,207,14,186,24,165,51,146,94,131,192,111"/>
+<area shape="rect" id="Node000004" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="38,167,205,192"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="225,121,154,162,152,157,222,116"/>
+<area shape="poly" id="edge8_Node000003_Node000005" title=" " alt="" coords="244,120,236,154,219,193,202,215,183,233,179,229,198,211,214,191,230,152,239,118"/>
+<area shape="rect" id="Node000006" href="$ra8__mdl__protocol_8h.html" title="Allocation&#45;free constants shared by the RA8 and C6 media endpoints." alt="" coords="219,240,366,265"/>
+<area shape="poly" id="edge9_Node000003_Node000006" title=" " alt="" coords="249,118,286,226,281,228,244,120"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="117,193,105,226,102,246,105,264,117,285,132,302,128,306,112,288,100,266,97,246,100,225,112,192"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="130,191,146,227,141,229,125,193"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="158,266,158,300,152,300,152,266"/>
+<area shape="poly" id="edge10_Node000006_Node000002" title=" " alt="" coords="271,268,191,309,188,305,269,263"/>
+<area shape="poly" id="edge13_Node000007_Node000002" title=" " alt="" coords="467,190,490,205,510,224,522,245,522,256,516,267,494,283,462,296,378,314,284,323,204,327,204,321,284,318,377,309,460,291,491,279,512,264,516,255,517,246,506,227,486,209,464,194"/>
+<area shape="poly" id="edge16_Node000007_Node000006" title=" " alt="" coords="421,194,330,237,328,232,419,190"/>
+<area shape="rect" id="Node000008" href="$mdl__format_8h.html" title="Shared media artifact format contract for download and export paths." alt="" coords="390,240,501,265"/>
+<area shape="poly" id="edge14_Node000007_Node000008" title=" " alt="" coords="447,192,448,226,442,227,442,192"/>
+<area shape="poly" id="edge15_Node000008_Node000002" title=" " alt="" coords="400,268,204,315,203,310,398,263"/>
+</map>

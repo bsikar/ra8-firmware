@@ -1,0 +1,33 @@
+<map id="port/posix/src/fw_if_fs_posix_contracts_internal.h" name="port/posix/src/fw_if_fs_posix_contracts_internal.h">
+<area shape="rect" id="Node000001" title="File&#45;local contracts for the confined POSIX filesystem adapter." alt="" coords="225,5,444,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="133,93,219,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="298,48,213,90,210,85,295,43"/>
+<area shape="rect" id="Node000003" href="$fw__if__fs__posix__internal_8h.html" title="Shared errno/descriptor helpers for the POSIX filesystem port." alt="" coords="243,93,426,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="337,46,337,79,332,79,332,46"/>
+<area shape="rect" id="Node000011" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="549,167,675,192"/>
+<area shape="poly" id="edge20_Node000001_Node000011" title=" " alt="" coords="371,43,580,157,577,162,368,48"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="248,387,323,412"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="343,118,353,145,364,181,370,223,365,266,354,298,338,328,306,377,301,374,334,326,349,296,360,265,364,224,359,182,348,146,338,120"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="173,460,243,485"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="284,121,201,143,110,173,70,191,37,211,16,231,8,252,8,327,12,353,23,376,40,396,61,413,111,440,160,457,158,462,109,445,58,417,36,400,19,379,7,355,3,328,3,251,11,228,34,206,67,186,108,168,200,138,282,116"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="208,167,272,192"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="321,121,268,160,265,156,318,117"/>
+<area shape="rect" id="Node000007" href="$fw__if__fs_8h.html" title="Architecture&#45;neutral filesystem namespace, stream, and transaction ports." alt="" coords="267,240,351,265"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="335,120,316,227,311,226,330,119"/>
+<area shape="rect" id="Node000009" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="79,387,158,412"/>
+<area shape="poly" id="edge19_Node000003_Node000009" title=" " alt="" coords="290,121,242,140,219,153,198,169,165,202,144,233,130,268,117,314,114,344,116,373,111,373,109,344,112,313,125,266,139,230,161,199,194,165,216,148,240,135,288,116"/>
+<area shape="rect" id="Node000010" href="$fw__if__fs__posix_8h.html" title="Root&#45;confined hosted POSIX adapter for fw_if_fs." alt="" coords="398,167,525,192"/>
+<area shape="poly" id="edge15_Node000003_Node000010" title=" " alt="" coords="356,116,430,157,427,162,354,121"/>
+<area shape="poly" id="edge18_Node000003_Node000011" title=" " alt="" coords="380,116,554,161,553,166,379,121"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="310,266,292,373,287,373,305,265"/>
+<area shape="poly" id="edge8_Node000007_Node000005" title=" " alt="" coords="318,264,332,292,345,331,349,373,346,394,337,413,321,432,301,446,258,464,256,459,299,442,317,428,332,411,341,392,344,373,340,332,327,294,314,267"/>
+<area shape="rect" id="Node000008" href="$fw__if__fs__types_8h.html" title="Portable filesystem value types and caller&#45;owned opaque handles." alt="" coords="145,313,271,339"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="295,268,237,307,234,303,292,263"/>
+<area shape="poly" id="edge14_Node000007_Node000009" title=" " alt="" coords="267,259,234,264,198,274,163,291,134,315,126,328,121,343,119,373,113,373,116,342,121,326,130,312,160,286,196,269,233,259,267,253"/>
+<area shape="poly" id="edge10_Node000008_Node000004" title=" " alt="" coords="222,337,264,375,261,379,219,341"/>
+<area shape="poly" id="edge11_Node000008_Node000005" title=" " alt="" coords="211,339,211,446,205,446,205,339"/>
+<area shape="poly" id="edge12_Node000008_Node000009" title=" " alt="" coords="195,341,146,380,142,376,192,337"/>
+<area shape="poly" id="edge13_Node000009_Node000005" title=" " alt="" coords="135,410,184,449,181,453,131,414"/>
+<area shape="poly" id="edge16_Node000010_Node000005" title=" " alt="" coords="462,193,453,234,434,292,404,357,384,387,360,414,337,432,311,446,258,465,256,460,308,442,334,428,357,410,380,384,400,354,429,291,448,232,457,191"/>
+<area shape="poly" id="edge17_Node000010_Node000007" title=" " alt="" coords="438,194,347,237,345,232,436,190"/>
+</map>

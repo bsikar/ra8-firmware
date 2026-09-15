@@ -1,0 +1,23 @@
+<map id="tools/ra8_emulator/inc/emu_console.h" name="tools/ra8_emulator/inc/emu_console.h">
+<area shape="rect" id="Node000001" title="Emulator text&#45;console surfaces: UART echo, ITM/SWO echo, escapes." alt="" coords="925,5,1072,45"/>
+<area shape="rect" id="Node000002" href="$emu__console_8c.html" title="Emulator console surfaces implementation (see emu_console.h)." alt="" coords="5,101,200,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="912,32,602,51,407,70,212,96,175,103,174,98,212,91,407,65,601,46,911,27"/>
+<area shape="rect" id="Node000003" href="$emu__cpu1_8c.html" title="Second&#45;core (cpu1) engine implementation (see emu_cpu1.h)." alt="" coords="225,101,399,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="912,35,684,56,548,74,411,96,378,103,377,98,410,91,547,68,684,51,911,30"/>
+<area shape="rect" id="Node000004" href="$emu__elf__reboot_8c.html" title="Warm&#45;reboot orchestration over an open streaming ELF source." alt="" coords="423,93,574,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="912,40,759,62,586,96,575,99,574,93,585,91,758,57,911,35"/>
+<area shape="rect" id="Node000005" href="$emu__exc_8c.html" title="Hand&#45;modelled Cortex&#45;M exception engine (see emu_exc.h)." alt="" coords="598,101,765,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="922,52,746,103,745,98,921,47"/>
+<area shape="rect" id="Node000006" href="$emu__exc__scs_8c.html" title="SCS write watchers + DWT time base (see emu_exc.h)." alt="" coords="789,101,984,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="967,56,911,103,908,99,964,52"/>
+<area shape="rect" id="Node000007" href="$emu__memmap_8c.html" title="Emulated memory map implementation (see emu_memmap.h)." alt="" coords="1009,101,1215,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1034,52,1091,99,1087,103,1031,56"/>
+<area shape="rect" id="Node000008" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="1240,101,1405,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1078,47,1258,98,1256,103,1076,52"/>
+<area shape="rect" id="Node000009" href="$emu__run__report_8c.html" title="Run&#45;end report + finalize (see emu_run_internal.h)." alt="" coords="1429,93,1584,148"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1086,35,1241,57,1418,91,1429,93,1428,99,1417,96,1240,63,1085,40"/>
+<area shape="rect" id="Node000010" href="$emu__tz_8c.html" title="TrustZone S/NS seam implementation (see emu_tz.h)." alt="" coords="1609,101,1765,141"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1086,29,1318,50,1457,67,1597,91,1627,98,1626,103,1595,96,1457,72,1317,55,1086,34"/>
+<area shape="rect" id="Node000011" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="1789,101,1934,141"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1086,25,1220,30,1393,41,1586,61,1778,91,1807,98,1806,103,1777,96,1585,66,1393,47,1220,36,1086,31"/>
+</map>

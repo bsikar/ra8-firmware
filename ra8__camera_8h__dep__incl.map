@@ -1,0 +1,44 @@
+<map id="libs/ra8_camera/inc/ra8_camera.h" name="libs/ra8_camera/inc/ra8_camera.h">
+<area shape="rect" id="Node000001" title="Transport&#45;neutral camera source and image&#45;codec facade." alt="" coords="935,5,1084,45"/>
+<area shape="rect" id="Node000002" href="$c6__camera__livestream_2src_2c6__cam__camera_8c.html" title="Camera initialization and VGA UYVY to QVGA JPEG frame production." alt="" coords="203,181,387,251"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="921,29,781,31,618,40,538,49,467,61,407,76,364,96,344,113,328,135,306,182,302,180,323,133,340,110,361,91,405,71,465,55,538,44,617,35,781,26,921,23"/>
+<area shape="rect" id="Node000003" href="$c6__camera__mjpeg_2src_2c6__cam__camera_8c.html" title="OV5640 hardware&#45;JPEG camera backend for the C6 MJPEG example." alt="" coords="411,189,626,243"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="954,53,875,96,851,116,825,136,775,156,734,166,692,173,639,184,612,191,611,186,638,179,691,167,733,161,774,151,823,131,848,112,872,91,951,49"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2camera__capture_2src_2main_8c.html" title="OV5640 parallel (CEU) camera capture + plausibility self&#45;test." alt="" coords="5,189,179,243"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="921,34,603,56,440,74,374,84,323,96,269,116,217,141,132,191,129,186,215,136,267,111,322,91,373,79,440,68,603,50,920,28"/>
+<area shape="rect" id="Node000005" href="$ra8__camera__codec__jpeg__sw_8h.html" title="RGB888&#45;to&#45;JPEG software codec backend for ra8_camera." alt="" coords="593,93,812,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="930,52,771,96,769,91,928,46"/>
+<area shape="rect" id="Node000007" href="$ra8__camera__codec__passthrough_8h.html" title="Zero&#45;copy JPEG passthrough codec backend." alt="" coords="886,93,1133,133"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="1012,59,1012,93,1007,93,1007,59"/>
+<area shape="rect" id="Node000009" href="$ra8__camera__source__ceu_8h.html" title="RA8 CEU capture backend for the transport&#45;neutral camera facade." alt="" coords="375,93,569,133"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="921,43,582,96,570,98,569,93,581,91,920,37"/>
+<area shape="rect" id="Node000011" href="$ra8__camera__source__memory_8h.html" title="Fixed in&#45;memory frame source backend for ra8_camera." alt="" coords="1370,93,1595,133"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="1098,40,1379,91,1378,96,1097,45"/>
+<area shape="rect" id="Node000013" href="$ra8__camera_8c.html" title="Validation and opaque&#45;vtable dispatch for ra8_camera." alt="" coords="1631,196,1780,236"/>
+<area shape="poly" id="edge17_Node000001_Node000013" title=" " alt="" coords="1098,26,1227,31,1375,42,1512,61,1567,75,1608,91,1639,113,1664,141,1698,194,1694,197,1660,144,1635,117,1605,96,1565,80,1511,67,1374,48,1226,36,1098,31"/>
+<area shape="rect" id="Node000014" href="$ra8__camera__internal_8h.html" title="Private source and codec vtables for ra8_camera backends." alt="" coords="1157,93,1329,133"/>
+<area shape="poly" id="edge18_Node000001_Node000014" title=" " alt="" coords="1074,48,1192,91,1191,96,1072,53"/>
+<area shape="rect" id="Node000015" href="$ra8__camera__stream_8h.html" title="Bridge encoded camera frames to ra8_io_stream sinks." alt="" coords="1798,93,1989,133"/>
+<area shape="poly" id="edge24_Node000001_Node000015" title=" " alt="" coords="1098,30,1395,54,1767,91,1798,95,1798,100,1766,96,1395,59,1098,35"/>
+<area shape="rect" id="Node000016" href="$ra8__camera__stream_8c.html" title="ra8_camera encoded&#45;frame to ra8_io_stream bridge." alt="" coords="1805,196,1995,236"/>
+<area shape="poly" id="edge26_Node000001_Node000016" title=" " alt="" coords="1098,24,1210,27,1349,37,1501,57,1576,72,1650,91,1714,113,1775,141,1871,194,1869,198,1773,146,1712,118,1649,96,1575,77,1500,63,1349,43,1210,32,1098,29"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="594,139,399,184,388,187,386,182,398,179,592,134"/>
+<area shape="rect" id="Node000006" href="$ra8__camera__codec__jpeg__sw_8c.html" title="ra8_jpeg_sw adapter for the generic camera codec facade." alt="" coords="869,196,1088,236"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="768,136,928,193,926,198,766,141"/>
+<area shape="poly" id="edge8_Node000007_Node000003" title=" " alt="" coords="876,138,760,159,639,184,609,191,608,186,638,179,759,154,875,133"/>
+<area shape="rect" id="Node000008" href="$ra8__camera__codec__passthrough_8c.html" title="Zero&#45;copy JPEG passthrough backend implementation." alt="" coords="1113,196,1359,236"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="1065,137,1195,194,1192,198,1063,141"/>
+<area shape="poly" id="edge11_Node000009_Node000002" title=" " alt="" coords="428,142,355,183,353,179,426,138"/>
+<area shape="poly" id="edge12_Node000009_Node000003" title=" " alt="" coords="489,145,509,187,504,190,484,147"/>
+<area shape="poly" id="edge13_Node000009_Node000004" title=" " alt="" coords="371,139,191,184,167,191,166,186,190,179,369,134"/>
+<area shape="rect" id="Node000010" href="$ra8__camera__source__ceu_8c.html" title="RA8 CEU implementation of the camera&#45;source backend." alt="" coords="651,196,845,236"/>
+<area shape="poly" id="edge14_Node000009_Node000010" title=" " alt="" coords="537,136,697,193,695,198,536,141"/>
+<area shape="rect" id="Node000012" href="$ra8__camera__source__memory_8c.html" title="Fixed&#45;frame memory source backend implementation." alt="" coords="1383,196,1607,236"/>
+<area shape="poly" id="edge16_Node000011_Node000012" title=" " alt="" coords="1489,146,1495,196,1490,196,1484,147"/>
+<area shape="poly" id="edge20_Node000014_Node000006" title=" " alt="" coords="1181,141,1029,198,1027,193,1179,136"/>
+<area shape="poly" id="edge21_Node000014_Node000008" title=" " alt="" coords="1243,147,1240,196,1235,196,1238,147"/>
+<area shape="poly" id="edge22_Node000014_Node000010" title=" " alt="" coords="1144,136,998,158,936,168,858,184,805,199,804,193,857,179,935,162,997,152,1143,131"/>
+<area shape="poly" id="edge23_Node000014_Node000012" title=" " alt="" coords="1304,136,1448,193,1446,198,1302,141"/>
+<area shape="poly" id="edge19_Node000014_Node000013" title=" " alt="" coords="1343,129,1619,179,1662,193,1660,198,1618,184,1342,134"/>
+<area shape="poly" id="edge25_Node000015_Node000016" title=" " alt="" coords="1898,147,1901,196,1896,196,1893,147"/>
+</map>

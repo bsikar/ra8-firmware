@@ -1,0 +1,7 @@
+<map id="apps/shared_libs/mdl/src/mdl_export_epub_internal.h" name="apps/shared_libs/mdl/src/mdl_export_epub_internal.h">
+<area shape="rect" id="Node000001" title="Private bounded EPUB3 writer contracts for the media downloader." alt="" coords="107,5,269,60"/>
+<area shape="rect" id="Node000002" href="$mdl__export__epub_8c.html" title="Emit deterministic fixed&#45;layout EPUB3 chapter containers." alt="" coords="5,115,179,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="155,72,112,117,108,113,152,68"/>
+<area shape="rect" id="Node000003" href="$mdl__export__epub__meta_8c.html" title="Render the EPUB3 package document, navigation, and identifier." alt="" coords="203,108,365,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="224,68,261,106,257,110,221,72"/>
+</map>

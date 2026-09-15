@@ -1,0 +1,12 @@
+<map id="libs/ra8_mem/inc/ra8_tile_cache.h" name="libs/ra8_mem/inc/ra8_tile_cache.h">
+<area shape="rect" id="Node000001" title="Fixed&#45;RAM&#45;budget image&#45;tile cache with LRU eviction (Layer 3b, #147)." alt="" coords="5,5,164,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="73,240,144,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="78,47,66,75,56,112,52,152,59,191,71,211,86,229,82,232,66,215,54,193,47,152,51,111,61,74,73,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="69,167,148,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="90,45,107,153,102,153,85,46"/>
+<area shape="rect" id="Node000004" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="122,93,245,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="110,43,159,82,156,87,107,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="111,192,111,226,106,226,106,192"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="184,119,177,153,162,193,133,232,129,229,157,191,172,152,179,118"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="173,121,133,159,129,155,170,117"/>
+</map>

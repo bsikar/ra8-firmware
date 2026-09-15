@@ -1,0 +1,16 @@
+<map id="libs/ra8_camera_io/inc/ra8_camera_stream.h" name="libs/ra8_camera_io/inc/ra8_camera_stream.h">
+<area shape="rect" id="Node000001" title="Bridge encoded camera frames to ra8_io_stream sinks." alt="" coords="33,5,223,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="93,240,163,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="72,48,40,67,16,95,9,114,10,133,17,152,29,170,62,204,98,230,95,234,59,208,25,174,12,154,5,134,4,113,11,92,37,63,70,43"/>
+<area shape="rect" id="Node000003" href="$ra8__camera_8h.html" title="Transport&#45;neutral camera source and image&#45;codec facade." alt="" coords="26,93,137,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="119,47,98,83,93,80,114,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="131,167,210,192"/>
+<area shape="poly" id="edge6_Node000001_Node000004" title=" " alt="" coords="136,45,150,93,167,153,162,154,145,94,131,47"/>
+<area shape="rect" id="Node000005" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="213,93,339,119"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="165,43,243,84,241,89,162,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="88,118,122,226,117,228,83,120"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="97,117,147,156,144,160,94,121"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="166,194,144,230,139,227,161,191"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="273,120,253,155,223,194,195,217,165,236,162,231,192,213,219,190,249,152,268,118"/>
+<area shape="poly" id="edge9_Node000005_Node000004" title=" " alt="" coords="260,121,200,161,197,157,258,116"/>
+</map>

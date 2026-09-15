@@ -1,0 +1,11 @@
+<map id="libs/ra8_camera/inc/ra8_camera_source_ceu.h" name="libs/ra8_camera/inc/ra8_camera_source_ceu.h">
+<area shape="rect" id="Node000001" title="RA8 CEU capture backend for the transport&#45;neutral camera facade." alt="" coords="333,5,528,45"/>
+<area shape="rect" id="Node000002" href="$c6__camera__livestream_2src_2c6__cam__camera_8c.html" title="Camera initialization and VGA UYVY to QVGA JPEG frame production." alt="" coords="5,93,189,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="352,52,202,96,191,99,189,94,201,91,350,47"/>
+<area shape="rect" id="Node000003" href="$c6__camera__mjpeg_2src_2c6__cam__camera_8c.html" title="OV5640 hardware&#45;JPEG camera backend for the C6 MJPEG example." alt="" coords="214,101,429,155"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="402,57,352,102,348,98,398,53"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2camera__capture_2src_2main_8c.html" title="OV5640 parallel (CEU) camera capture + plausibility self&#45;test." alt="" coords="453,101,627,155"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="463,53,513,98,509,102,460,57"/>
+<area shape="rect" id="Node000005" href="$ra8__camera__source__ceu_8c.html" title="RA8 CEU implementation of the camera&#45;source backend." alt="" coords="651,108,845,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="504,47,689,105,688,110,502,52"/>
+</map>

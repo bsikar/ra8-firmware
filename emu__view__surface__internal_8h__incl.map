@@ -1,0 +1,19 @@
+<map id="tools/ra8_emulator/inc/emu_view_surface_internal.h" name="tools/ra8_emulator/inc/emu_view_surface_internal.h">
+<area shape="rect" id="Node000001" title="Internal streamed panel/composite builder seam." alt="" coords="149,5,319,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,140,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="186,62,108,104,105,99,183,58"/>
+<area shape="rect" id="Node000003" href="$board__overlay_8h.html" title="Composite board&#45;view renderer: panel framebuffer + a status sidebar." alt="" coords="85,181,210,207"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="222,61,162,171,158,168,217,59"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="334,255,459,280"/>
+<area shape="poly" id="edge10_Node000001_Node000005" title=" " alt="" coords="317,58,352,78,381,106,399,139,406,176,407,212,404,241,399,241,401,211,401,177,393,141,377,110,349,83,314,62"/>
+<area shape="rect" id="Node000006" href="$emu__presentation_8h.html" title="Bounded raw&#45;descriptor presentation surface and scratch workspace." alt="" coords="215,108,367,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="254,59,278,95,274,98,249,62"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="163,255,233,280"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="158,205,184,242,180,245,154,209"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="188,204,344,248,342,253,187,209"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="269,136,184,177,182,173,267,131"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="286,135,215,245,211,242,281,132"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="315,131,345,151,374,180,388,210,396,241,391,242,383,212,369,183,342,155,312,136"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="285,181,359,207"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="299,133,314,168,309,170,294,135"/>
+</map>

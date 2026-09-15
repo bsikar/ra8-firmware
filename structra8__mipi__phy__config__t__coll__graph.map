@@ -1,0 +1,7 @@
+<map id="ra8_mipi_phy_config_t" name="ra8_mipi_phy_config_t">
+<area shape="rect" id="Node000001" title="Top&#45;level configuration for ra8_mipi_phy_init." alt="" coords="85,101,253,127"/>
+<area shape="rect" id="Node000002" href="$structra8__mipi__phy__pll__t.html" title="D&#45;PHY PLL coefficients written into DPHYPLFCR." alt="" coords="5,5,151,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,39,159,99,156,103,97,43"/>
+<area shape="rect" id="Node000003" href="$structra8__mipi__phy__timing__t.html" title="D&#45;PHY HS/LP transition timing values (DPHYTIM1..6)." alt="" coords="175,5,346,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="241,43,182,103,178,99,238,39"/>
+</map>

@@ -1,0 +1,23 @@
+<map id="apps/shared_libs/mdl/inc/mdl_pathfs.h" name="apps/shared_libs/mdl/inc/mdl_pathfs.h">
+<area shape="rect" id="Node000001" title="Guarded filesystem directory joins for the media downloader." alt="" coords="755,5,915,45"/>
+<area shape="rect" id="Node000002" href="$mdl__app__internal_8h.html" title="Module&#45;private contract shared by the application&#45;mode translation units." alt="" coords="555,93,730,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="781,53,686,96,684,91,779,49"/>
+<area shape="rect" id="Node000010" href="$mdl__fetch_8c.html" title="State&#45;aware chapter, asset, and run download orchestration." alt="" coords="755,93,915,133"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="837,59,837,93,832,93,832,59"/>
+<area shape="rect" id="Node000011" href="$mdl__pathfs_8c.html" title="Implementation of the guarded filesystem directory join." alt="" coords="939,93,1099,133"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="889,49,980,91,977,96,886,54"/>
+<area shape="rect" id="Node000003" href="$mdl__app_8c.html" title="The application layer&#39;s one composition seam: the bound working set." alt="" coords="5,181,165,221"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="542,130,371,154,178,184,166,186,165,181,177,179,370,148,541,125"/>
+<area shape="rect" id="Node000004" href="$mdl__app__admin_8c.html" title="Discovery, descriptor generation, and verification actions." alt="" coords="190,181,354,221"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="549,139,354,184,353,179,547,134"/>
+<area shape="rect" id="Node000005" href="$mdl__app__cover_8c.html" title="Cached series&#45;cover acquisition and validated publication." alt="" coords="379,181,539,221"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="591,142,500,184,498,179,589,137"/>
+<area shape="rect" id="Node000006" href="$mdl__app__direct_8c.html" title="Direct artifact, page, pack, and run composition actions." alt="" coords="563,181,723,221"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="645,147,645,181,640,181,640,147"/>
+<area shape="rect" id="Node000007" href="$mdl__app__library_8c.html" title="Tracked&#45;library list, remove, and update&#45;all actions." alt="" coords="747,181,909,221"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="697,137,789,179,786,184,695,142"/>
+<area shape="rect" id="Node000008" href="$mdl__app__prepare_8c.html" title="Descriptor&#45;driven series preparation and safe path setup." alt="" coords="933,181,1107,221"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="739,134,938,179,937,184,738,139"/>
+<area shape="rect" id="Node000009" href="$mdl__app__series_8c.html" title="Series selection, download lifecycle, and export actions." alt="" coords="1131,181,1293,221"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="744,131,934,154,1119,179,1131,181,1130,186,1118,184,933,160,743,136"/>
+</map>

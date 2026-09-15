@@ -1,0 +1,5 @@
+<map id="ra8_reset_state_t" name="ra8_reset_state_t">
+<area shape="rect" id="Node000001" title="File&#45;scope cached snapshot of reset cause + raw registers." alt="" coords="5,101,140,127"/>
+<area shape="rect" id="Node000002" href="$structra8__reset__raw__t.html" title="Raw register snapshot returned by ra8_reset_get_raw." alt="" coords="9,5,136,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="75,45,75,101,70,101,70,45"/>
+</map>

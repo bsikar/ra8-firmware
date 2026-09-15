@@ -1,0 +1,12 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/inc/cache_store_demo.h" name="examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/inc/cache_store_demo.h">
+<area shape="rect" id="Node000001" title="Hardware&#45;free driver for the ra8_cache_store on&#45;media cache demo (#257)." alt="" coords="5,5,221,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="49,269,119,295"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="69,77,48,98,33,124,28,141,27,159,35,196,51,229,68,257,64,260,46,232,30,197,22,160,23,140,28,122,44,95,65,73"/>
+<area shape="rect" id="Node000003" href="$ra8__cache__store_8h.html" title="Persistent key(CRC32)&#45;&gt;blob cache for compiled .rabook containers,built on the vendored,..." alt="" coords="43,123,183,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="116,75,116,109,111,109,111,75"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="122,196,201,221"/>
+<area shape="poly" id="edge6_Node000001_Node000004" title=" " alt="" coords="162,73,183,95,198,122,202,139,199,156,183,186,178,184,194,155,196,139,194,124,178,98,158,77"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="114,149,92,256,86,255,108,148"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="123,147,148,183,144,186,119,150"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="151,223,109,262,105,258,147,219"/>
+</map>

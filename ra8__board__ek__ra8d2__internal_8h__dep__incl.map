@@ -1,0 +1,9 @@
+<map id="libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_internal.h" name="libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;translation&#45;unit seam for the EK&#45;RA8D2 BSP implementation." alt="" coords="211,5,392,60"/>
+<area shape="rect" id="Node000002" href="$ra8__board__ek__ra8d2__comms_8c.html" title="EK&#45;RA8D2 BSP – MIPI&#45;DSI panel + J&#45;Link VCOM serial bring&#45;up." alt="" coords="5,108,187,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="237,68,151,110,148,106,235,63"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2__console__stream_8c.html" title="EK&#45;RA8D2 BSP – bind the debug console into an ra8_io byte stream." alt="" coords="211,108,392,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="304,74,304,108,299,108,299,74"/>
+<area shape="rect" id="Node000004" href="$ra8__board__ek__ra8d2__ethernet_8c.html" title="EK&#45;RA8D2 BSP – on&#45;board RGMII Ethernet (GPY111/PEF7071) bring&#45;up." alt="" coords="416,108,597,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="368,63,454,106,452,110,366,68"/>
+</map>

@@ -1,0 +1,20 @@
+<map id="apps/shared_libs/mdl/src/mdl_extract_hits.c" name="apps/shared_libs/mdl/src/mdl_extract_hits.c">
+<area shape="rect" id="Node000001" title="Bounded titled&#45;anchor extraction and deduplication." alt="" coords="79,5,248,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,167,76,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="125,48,95,68,68,95,54,124,46,154,41,152,49,122,64,92,91,64,122,43"/>
+<area shape="rect" id="Node000003" href="$mdl__extract_8h.html" title="Extract image URLs and anchor links from an HTML page (v1 scanner)." alt="" coords="289,93,401,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="208,43,306,85,304,90,206,48"/>
+<area shape="rect" id="Node000007" href="$mdl__extract__internal_8h.html" title="Shared bounded markup lexer helpers for media extraction units." alt="" coords="79,93,248,119"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="166,46,166,79,161,79,161,46"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="250,167,325,192"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="337,121,307,158,303,154,333,117"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="365,240,436,265"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="352,118,394,226,389,228,347,120"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="400,167,479,192"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="361,117,414,156,411,160,358,121"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="435,194,416,229,411,227,431,191"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="145,121,74,162,71,157,142,116"/>
+<area shape="poly" id="edge8_Node000007_Node000004" title=" " alt="" coords="185,116,257,157,254,162,182,121"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="101,167,226,192"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="166,119,166,153,161,153,161,119"/>
+</map>

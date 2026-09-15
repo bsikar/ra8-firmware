@@ -1,0 +1,5 @@
+<map id="ra8_usb_cdc_state_t" name="ra8_usb_cdc_state_t">
+<area shape="rect" id="Node000001" title="Singleton shadow state for the CDC function." alt="" coords="25,101,180,127"/>
+<area shape="rect" id="Node000002" href="$structra8__usb__cdc__line__coding__t.html" title="7&#45;byte payload of SET_LINE_CODING / GET_LINE_CODING." alt="" coords="5,5,200,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="105,45,105,101,100,101,100,45"/>
+</map>

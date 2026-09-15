@@ -1,0 +1,17 @@
+<map id="port/netxduo/inc/nx_ether_driver_c6.h" name="port/netxduo/inc/nx_ether_driver_c6.h">
+<area shape="rect" id="Node000001" title="NetX Duo network driver shim that bridges onto the ESP32&#45;C6 link." alt="" coords="685,5,833,45"/>
+<area shape="rect" id="Node000002" href="$c6__cam__app_8c.html" title="Shared C6 camera&#45;stream application workflow." alt="" coords="5,93,216,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="671,38,468,61,228,96,217,98,216,93,228,91,468,56,670,33"/>
+<area shape="rect" id="Node000003" href="$c6__cam__net_8c.html" title="NetX DHCP and a single&#45;connection HTTP camera server over ESP32&#45;C6." alt="" coords="240,93,451,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="672,49,452,98,450,93,670,44"/>
+<area shape="rect" id="Node000004" href="$c6__join__net_8c.html" title="NetX Duo IP bring&#45;up over the C6 link: DHCP lease + ICMP reachability." alt="" coords="475,93,648,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="708,54,618,96,616,91,705,49"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__join_2src_2main_8c.html" title="Join the bench Wi&#45;Fi over the ESP32&#45;C6 and get an IP by DHCP (#492)." alt="" coords="672,93,845,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="761,59,761,93,756,93,756,59"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2c6_2wifi__hal__join_2src_2main_8c.html" title="The same Wi&#45;Fi join as c6_wifi_join, the HAL way, through ra8_wifi." alt="" coords="869,93,1043,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="812,49,902,91,899,96,810,54"/>
+<area shape="rect" id="Node000007" href="$wifi__hal__ip_8c.html" title="The NetX Duo DHCP provider the ra8_wifi facade calls for an address." alt="" coords="1067,93,1240,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="847,43,1055,91,1067,94,1066,99,1054,96,845,48"/>
+<area shape="rect" id="Node000008" href="$nx__ether__driver__c6_8c.html" title="NetX Duo network driver bound to the ESP32&#45;C6 link (ra8_c6link)." alt="" coords="1265,101,1413,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="847,32,1034,53,1144,70,1253,91,1281,98,1280,103,1251,96,1143,75,1033,59,846,37"/>
+</map>

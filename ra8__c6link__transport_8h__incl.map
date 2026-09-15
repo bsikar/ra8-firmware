@@ -1,0 +1,8 @@
+<map id="libs/ra8_c6link/inc/ra8_c6link_transport.h" name="libs/ra8_c6link/inc/ra8_c6link_transport.h">
+<area shape="rect" id="Node000001" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="5,5,176,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="55,167,126,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="88,46,81,80,80,118,86,153,81,154,75,119,76,79,82,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="90,93,169,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="102,44,120,80,115,82,98,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="125,120,106,156,101,153,121,118"/>
+</map>

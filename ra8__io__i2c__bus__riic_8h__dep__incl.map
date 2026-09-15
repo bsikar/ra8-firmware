@@ -1,0 +1,5 @@
+<map id="libs/ra8_io/inc/ra8_io_i2c_bus_riic.h" name="libs/ra8_io/inc/ra8_io_i2c_bus_riic.h">
+<area shape="rect" id="Node000001" title="RIIC backend binder for the ra8_io I2C&#45;bus facade." alt="" coords="5,5,143,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__i2c__bus__riic_8c.html" title="RIIC backend for the ra8_io I2C&#45;bus facade – thin shim over ra8_i2c." alt="" coords="5,93,143,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="77,59,77,93,71,93,71,59"/>
+</map>

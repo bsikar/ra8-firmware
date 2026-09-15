@@ -1,0 +1,17 @@
+<map id="libs/ra8_hal/inc/ra8_drw_dlist.h" name="libs/ra8_hal/inc/ra8_drw_dlist.h">
+<area shape="rect" id="Node000001" title="2D Drawing Engine (DRW / D/AVE 2D) display&#45;list builder – public API" alt="" coords="5,5,151,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="72,240,143,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="66,47,48,76,32,113,24,153,26,172,32,191,50,214,72,231,69,235,46,217,28,193,21,173,19,152,27,111,43,74,61,44"/>
+<area shape="rect" id="Node000003" href="$ra8__drw_8h.html" title="2D Drawing Engine (DRW / D/AVE 2D) HAL driver – public API" alt="" coords="115,93,201,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="99,44,138,82,134,85,96,47"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="41,167,120,192"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="81,46,83,153,78,153,76,46"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="158,120,135,193,121,228,116,226,130,191,152,118"/>
+<area shape="rect" id="Node000004" href="$ra8__drw__regs_8h.html" title="2D Drawing Engine (DRW / D/AVE 2D) register layout for the RA8D2" alt="" coords="196,167,317,192"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="175,117,231,156,228,161,172,121"/>
+<area shape="poly" id="edge7_Node000003_Node000006" title=" " alt="" coords="147,121,105,159,102,155,144,117"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="234,194,145,236,143,232,232,190"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="194,240,319,265"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="259,192,259,226,254,226,254,192"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="88,191,101,226,96,228,83,193"/>
+</map>

@@ -1,0 +1,16 @@
+<map id="libs/ra8_dfu/src/ra8_dfu_launch.c" name="libs/ra8_dfu/src/ra8_dfu_launch.c">
+<area shape="rect" id="Node000001" title="Copy&#45;to&#45;run launch: copy an image to the SRAM run base and branch to it." alt="" coords="123,5,269,45"/>
+<area shape="rect" id="Node000002" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="5,93,131,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="166,48,100,88,97,84,164,43"/>
+<area shape="rect" id="Node000003" href="$ra8__dfu_8h.html" title="Controller&#45;agnostic USB&#45;DFU MRAM bootloader core for the RA8D2." alt="" coords="155,93,237,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="199,46,199,79,193,79,193,46"/>
+<area shape="rect" id="Node000006" href="$ra8__scb_8h.html" title="Cortex&#45;M85 System Control Block: VTOR relocation + fault&#45;status decode." alt="" coords="262,93,346,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="224,43,278,83,275,87,221,48"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="214,240,285,265"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="196,119,194,152,195,172,200,191,211,211,227,229,223,232,207,215,195,193,190,173,188,152,191,119"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="210,167,289,192"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="207,117,235,154,230,157,203,121"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="252,192,252,226,247,226,247,192"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="308,119,310,153,303,193,290,214,275,232,271,229,286,211,297,191,305,152,303,119"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="297,121,269,157,264,154,293,117"/>
+</map>

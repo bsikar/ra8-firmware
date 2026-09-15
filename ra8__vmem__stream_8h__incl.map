@@ -1,0 +1,18 @@
+<map id="libs/ra8_mem/inc/ra8_vmem_stream.h" name="libs/ra8_mem/inc/ra8_vmem_stream.h">
+<area shape="rect" id="Node000001" title="Read a page&#45;cached object as a seekable byte stream (Layer 2 helper, #147/#151)." alt="" coords="63,5,222,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="120,48,70,87,67,82,117,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="233,313,303,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="142,46,139,89,140,145,150,207,160,236,174,264,197,288,225,305,222,310,193,292,170,267,155,239,145,208,134,146,134,88,137,46"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="185,240,263,265"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="152,45,218,226,213,228,147,46"/>
+<area shape="rect" id="Node000005" href="$ra8__vmem_8h.html" title="Byte&#45;range page cache with SLRU eviction (Layer 2, #147)." alt="" coords="235,93,339,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="178,43,255,84,252,89,176,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="234,264,256,300,251,303,229,267"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="327,116,363,135,380,148,393,165,397,179,393,193,374,228,349,260,298,307,294,303,345,256,370,225,388,191,392,179,388,168,376,152,360,139,325,121"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="278,120,262,142,246,168,236,198,230,227,225,226,231,197,242,166,257,139,274,117"/>
+<area shape="rect" id="Node000006" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="256,167,379,192"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="294,118,309,153,305,155,289,120"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="316,193,279,301,274,300,311,192"/>
+<area shape="poly" id="edge10_Node000006_Node000004" title=" " alt="" coords="304,194,252,234,248,229,301,190"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="ra8_fmt_host_source_t" name="ra8_fmt_host_source_t">
+<area shape="rect" id="Node000001" title="Open raw&#45;fd source and its portable view." alt="" coords="79,101,250,127"/>
+<area shape="rect" id="Node000002" href="$structra8__fmt__source__t.html" title="Immutable, randomly readable input object." alt="" coords="5,5,140,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="96,39,155,99,151,103,92,43"/>
+<area shape="rect" id="Node000003" href="$structra8__fmt__host__snapshot__t.html" title="Captured regular&#45;file identity and mutation evidence." alt="" coords="165,5,351,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="239,42,178,103,174,99,235,38"/>
+</map>

@@ -1,0 +1,24 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/src/main.c" name="examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/src/main.c">
+<area shape="rect" id="Node000001" title="Entry point for the software&#45;JPEG C6 camera livestream." alt="" coords="224,5,408,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="186,401,257,427"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="224,45,152,60,115,72,81,88,52,107,29,131,13,159,8,193,8,268,12,296,25,320,43,340,66,357,120,384,173,400,172,405,118,389,64,362,40,344,20,323,7,298,3,269,3,192,8,157,24,128,49,103,79,83,113,68,150,55,223,40"/>
+<area shape="rect" id="Node000003" href="$c6__camera__server_8h.html" title="Shared contracts for ESP32&#45;C6 browser camera servers." alt="" coords="240,108,392,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="319,60,319,94,313,94,313,60"/>
+<area shape="rect" id="Node000008" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="416,108,547,133"/>
+<area shape="poly" id="edge14_Node000001_Node000008" title=" " alt="" coords="368,58,448,99,446,104,365,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="330,132,365,171,403,228,417,260,425,293,423,325,409,355,380,382,344,400,306,410,271,415,270,409,305,405,342,395,377,378,405,352,418,323,419,293,412,262,398,230,360,174,326,135"/>
+<area shape="rect" id="Node000004" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="180,181,281,207"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="304,135,257,175,253,170,301,131"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="315,328,394,353"/>
+<area shape="poly" id="edge13_Node000003_Node000006" title=" " alt="" coords="322,133,338,185,353,254,358,314,352,314,348,255,333,186,317,134"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="203,209,165,229,127,257,99,289,84,329,81,341,84,352,101,371,124,386,173,403,172,408,121,391,98,375,79,355,75,341,79,327,95,286,124,253,162,224,200,204"/>
+<area shape="rect" id="Node000005" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="147,255,314,280"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="233,207,233,241,228,241,228,207"/>
+<area shape="poly" id="edge10_Node000004_Node000006" title=" " alt="" coords="260,204,295,224,327,253,344,283,353,314,348,315,339,285,323,256,292,228,257,209"/>
+<area shape="rect" id="Node000007" href="$ra8__mdl__protocol_8h.html" title="Allocation&#45;free constants shared by the RA8 and C6 media endpoints." alt="" coords="93,328,240,353"/>
+<area shape="poly" id="edge11_Node000004_Node000007" title=" " alt="" coords="197,209,164,228,149,240,137,256,133,271,135,286,150,316,146,318,130,288,128,270,132,253,145,237,161,223,195,204"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="240,279,253,312,256,333,255,354,239,391,234,388,249,353,251,333,248,314,235,281"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="252,278,324,319,321,323,249,282"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="334,356,256,397,254,392,332,351"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="178,352,206,389,202,392,174,355"/>
+</map>

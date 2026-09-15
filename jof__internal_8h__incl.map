@@ -1,0 +1,22 @@
+<map id="apps/shared_libs/jof/src/jof_internal.h" name="apps/shared_libs/jof/src/jof_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private seams shared by the producer translation units." alt="" coords="176,5,328,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="176,240,250,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="251,46,220,227,215,226,246,45"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="64,313,135,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="262,45,276,88,288,146,290,177,287,209,279,239,265,267,241,291,211,307,180,318,149,324,148,319,178,313,209,303,238,287,260,264,274,237,282,208,284,177,283,146,271,89,257,46"/>
+<area shape="rect" id="Node000004" href="$jof__produce_8h.html" title="Import&#45;time transcode producer: JPEG/PNG/WebP &#45;&gt; JOF band&#45;tile atlas in bounded RAM (#231,..." alt="" coords="83,93,194,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="226,48,168,87,165,83,223,43"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="22,240,100,265"/>
+<area shape="poly" id="edge13_Node000001_Node000006" title=" " alt="" coords="176,38,148,46,120,58,95,74,74,95,58,127,53,162,54,197,58,226,53,227,48,197,47,162,53,125,70,92,91,70,117,53,146,41,175,33"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="340,93,465,119"/>
+<area shape="poly" id="edge12_Node000001_Node000007" title=" " alt="" coords="289,43,369,84,367,89,287,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="149,117,178,165,206,226,201,228,173,168,144,120"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="122,121,95,141,64,168,34,202,12,241,8,253,11,264,31,288,57,305,54,310,28,292,7,267,3,253,7,239,30,199,60,164,92,136,119,117"/>
+<area shape="rect" id="Node000005" href="$jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="113,167,164,192"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="141,119,141,153,136,153,136,119"/>
+<area shape="poly" id="edge11_Node000004_Node000006" title=" " alt="" coords="133,120,103,168,74,229,69,226,99,165,128,118"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="152,190,193,229,189,232,149,194"/>
+<area shape="poly" id="edge8_Node000005_Node000003" title=" " alt="" coords="138,193,109,301,104,299,133,192"/>
+<area shape="poly" id="edge9_Node000005_Node000006" title=" " alt="" coords="128,194,86,232,82,229,124,190"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="70,264,89,300,85,303,65,267"/>
+</map>

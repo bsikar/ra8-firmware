@@ -1,0 +1,5 @@
+<map id="tools/ra8_emulator/inc/board_periph_modem.h" name="tools/ra8_emulator/inc/board_periph_modem.h">
+<area shape="rect" id="Node000001" title="Cellular AT&#45;modem device model for ra8_emulator (attached to SCI7 UART)." alt="" coords="5,5,208,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="71,93,142,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="109,46,109,79,104,79,104,46"/>
+</map>

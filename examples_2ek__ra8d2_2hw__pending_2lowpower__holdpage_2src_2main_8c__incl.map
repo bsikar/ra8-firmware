@@ -1,0 +1,24 @@
+<map id="examples/ek_ra8d2/hw_pending/lowpower_holdpage/src/main.c" name="examples/ek_ra8d2/hw_pending/lowpower_holdpage/src/main.c">
+<area shape="rect" id="Node000001" title="CPU0 (Cortex&#45;M85 primary core) driver for the low&#45;power hold&#45;page demo." alt="" coords="190,5,404,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="154,343,224,368"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="190,53,94,77,57,92,34,110,19,134,10,158,8,181,12,204,21,226,35,249,73,293,107,317,143,335,140,340,104,322,70,297,30,252,16,229,7,205,3,181,5,157,14,132,30,106,54,88,93,72,189,48"/>
+<area shape="rect" id="Node000003" href="$lowpower__holdpage_8h.html" title="Shared&#45;SRAM contract for the low&#45;power &quot;hold the page&quot; dual&#45;core demo." alt="" coords="44,108,208,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="246,62,163,104,160,99,244,58"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="198,269,276,295"/>
+<area shape="poly" id="edge12_Node000001_Node000005" title=" " alt="" coords="290,61,274,109,256,189,244,256,238,255,250,188,269,107,285,59"/>
+<area shape="rect" id="Node000006" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="284,108,414,133"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="315,59,337,95,333,98,311,61"/>
+<area shape="rect" id="Node000007" href="$ra8__dual__core_8h.html" title="Dual&#45;core (CPU0 / CPU1) lifecycle helper – public API." alt="" coords="284,189,409,214"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="374,58,404,78,429,107,433,118,433,130,423,151,404,169,383,184,380,180,401,165,418,148,428,129,428,119,424,109,401,82,371,62"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="421,269,504,295"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="387,58,421,78,449,106,466,144,473,185,473,224,470,256,464,256,468,224,468,186,461,146,444,110,418,82,384,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="100,136,69,155,55,167,45,182,39,201,45,220,67,256,96,288,128,314,157,333,154,338,124,318,92,292,63,260,40,222,34,201,40,180,51,164,66,150,97,131"/>
+<area shape="rect" id="Node000004" href="$ra8__board__ek__ra8d2__dualcore_8h.html" title="Where the EK&#45;RA8D2&#39;s Cortex&#45;M85 and Cortex&#45;M33 meet, stated once." alt="" coords="54,181,209,221"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="130,133,132,167,127,168,124,134"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="141,221,182,329,177,331,136,223"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="159,219,212,259,209,263,156,224"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="231,297,206,333,202,330,227,294"/>
+<area shape="poly" id="edge10_Node000007_Node000002" title=" " alt="" coords="344,215,323,254,290,297,260,320,229,339,226,334,257,316,286,293,318,251,339,213"/>
+<area shape="poly" id="edge11_Node000007_Node000005" title=" " alt="" coords="332,216,266,263,263,259,329,212"/>
+<area shape="poly" id="edge14_Node000008_Node000002" title=" " alt="" coords="421,297,238,344,237,339,420,291"/>
+</map>

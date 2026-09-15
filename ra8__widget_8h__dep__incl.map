@@ -1,0 +1,98 @@
+<map id="libs/ra8_widget/inc/ra8_widget.h" name="libs/ra8_widget/inc/ra8_widget.h">
+<area shape="rect" id="Node000001" title="Zero&#45;heap composable widget layer (dwm&#45;style) over ra8_box + ra8_ui." alt="" coords="1858,5,2002,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2app__launch__demo_2src_2main_8c.html" title="Minimal chrome stub: register apps + launch + back&#45;stack (#146)." alt="" coords="80,196,268,251"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1844,30,1557,33,1167,42,966,51,778,62,617,77,496,96,420,117,346,144,225,198,223,193,344,139,419,112,495,91,616,72,778,57,965,45,1166,37,1557,27,1844,24"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2app__shell__demo_2src_2main_8c.html" title="App&#45;shell chrome: launch reader / library / settings apps (#146 Ph2)." alt="" coords="293,196,469,251"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1844,29,1580,30,1226,38,1045,47,876,59,732,75,624,96,566,117,509,143,419,198,416,193,507,139,564,112,623,91,731,69,876,53,1045,41,1226,33,1580,25,1844,24"/>
+<area shape="rect" id="Node000004" href="$ereader__ui__steps_8h.html" title="E&#45;reader UI chrome – shared contract between main.c and the per&#45;aspect helper translation units (scre..." alt="" coords="493,196,684,251"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1844,30,1565,33,1203,43,1026,52,872,63,753,78,712,86,686,96,658,116,634,143,602,197,597,194,630,140,654,112,683,91,711,81,752,72,871,58,1026,46,1203,38,1565,28,1844,24"/>
+<area shape="rect" id="Node000005" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="5,299,193,353"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="1844,30,1435,36,873,47,598,56,362,67,191,80,137,88,110,96,72,126,59,143,51,161,46,180,45,201,54,250,65,275,79,297,75,300,60,277,49,251,40,202,41,179,46,159,55,140,68,122,107,91,136,82,190,75,362,62,598,51,873,42,1435,30,1844,25"/>
+<area shape="rect" id="Node000006" href="$ereader__ui__screens_8c.html" title="E&#45;reader UI chrome – Library + Reading rendering and in&#45;content nav." alt="" coords="299,299,505,353"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="1844,29,1527,31,1088,39,861,48,649,59,466,75,329,96,247,108,179,118,150,127,122,142,96,165,70,197,62,211,59,224,61,236,69,249,98,263,155,278,300,306,299,311,153,283,96,268,66,253,57,238,54,224,57,209,65,195,92,161,119,138,148,123,178,113,246,103,328,91,466,70,648,54,861,42,1088,34,1527,26,1844,24"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__app_2src_2main_8c.html" title="On&#45;silicon HIL: ra8_widget compositor + ra8_app framework (#145/#146)." alt="" coords="933,196,1106,251"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="1844,29,1628,31,1361,40,1235,48,1126,60,1045,76,1018,85,1003,95,991,117,990,144,997,170,1007,195,1002,197,992,172,985,144,986,116,999,92,1016,80,1043,70,1125,55,1234,43,1361,34,1628,26,1844,24"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__app__demo_2src_2main_8c.html" title="Interactive ra8_widget + ra8_app launcher on the live GLCDC panel." alt="" coords="1130,196,1303,251"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="1844,29,1631,31,1370,40,1246,49,1139,60,1060,76,1034,85,1019,95,1010,108,1008,120,1011,133,1019,146,1032,155,1059,167,1133,193,1132,198,1057,172,1029,160,1015,150,1006,135,1003,120,1005,106,1015,91,1032,80,1059,71,1138,55,1245,43,1370,35,1631,26,1844,24"/>
+<area shape="rect" id="Node000010" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__chrome__demo_2src_2main_8c.html" title="Concrete ereader chrome widgets composited on the live GLCDC panel (#145 Phase 2)." alt="" coords="1500,196,1693,251"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="1844,32,1694,39,1522,51,1374,70,1323,82,1297,95,1289,108,1286,120,1289,133,1297,146,1501,196,1499,202,1294,150,1284,135,1281,120,1284,106,1294,91,1322,77,1373,65,1521,46,1694,34,1844,27"/>
+<area shape="rect" id="Node000011" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__compose__demo_2src_2main_8c.html" title="Nested ra8_widget tree composited on the live GLCDC panel (#145)." alt="" coords="3137,93,3339,148"/>
+<area shape="poly" id="edge12_Node000001_Node000011" title=" " alt="" coords="2016,24,2213,27,2487,37,2800,57,2961,72,3118,91,3136,93,3136,99,3118,96,2961,77,2800,62,2486,42,2213,33,2016,30"/>
+<area shape="rect" id="Node000012" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__kit__demo_2src_2main_8c.html" title="Concrete ra8_widget leaf widgets composited on the GLCDC panel (#145)." alt="" coords="3363,93,3537,148"/>
+<area shape="poly" id="edge13_Node000001_Node000012" title=" " alt="" coords="2016,26,2300,33,2686,45,3071,64,3231,77,3352,91,3364,93,3363,98,3351,96,3230,82,3070,70,2686,51,2300,38,2016,31"/>
+<area shape="rect" id="Node000013" href="$ra8__app_8h.html" title="Zero&#45;heap app framework: lifecycle + static registry + launcher (#146)." alt="" coords="697,101,846,141"/>
+<area shape="poly" id="edge14_Node000001_Node000013" title=" " alt="" coords="1844,32,1447,52,1188,70,926,96,847,108,846,103,926,91,1188,65,1447,46,1844,27"/>
+<area shape="rect" id="Node000015" href="$ra8__widget__book_8h.html" title="Book&#45;card + book&#45;grid leaf widget for the ra8_widget tree (#145 Phase 2)." alt="" coords="1083,101,1233,141"/>
+<area shape="poly" id="edge22_Node000001_Node000015" title=" " alt="" coords="1844,33,1578,52,1415,70,1252,96,1220,103,1219,98,1251,91,1414,65,1578,47,1844,28"/>
+<area shape="rect" id="Node000016" href="$ra8__widget__book_8c.html" title="Book&#45;card + book&#45;grid leaf widget for the ra8_widget tree (#145 Phase 2)." alt="" coords="1328,203,1476,243"/>
+<area shape="poly" id="edge42_Node000001_Node000016" title=" " alt="" coords="1844,30,1643,33,1399,42,1284,51,1185,62,1112,77,1087,86,1073,95,1011,165,1009,170,1011,171,1031,172,1072,169,1134,168,1215,174,1316,193,1343,201,1342,206,1315,199,1215,180,1134,174,1073,175,1031,177,1008,176,1004,171,1007,162,1070,91,1085,81,1110,72,1184,57,1284,45,1399,37,1643,27,1844,24"/>
+<area shape="rect" id="Node000017" href="$ra8__widget__keyboard_8h.html" title="On&#45;screen&#45;keyboard leaf widget for the ra8_widget tree (#145 Phase 2)." alt="" coords="2271,101,2448,141"/>
+<area shape="poly" id="edge25_Node000001_Node000017" title=" " alt="" coords="2016,40,2259,91,2289,98,2287,103,2257,96,2015,45"/>
+<area shape="rect" id="Node000018" href="$ra8__widget__keyboard_8c.html" title="On&#45;screen&#45;keyboard leaf widget for the ra8_widget tree (#145 Phase 2)." alt="" coords="2131,203,2307,243"/>
+<area shape="poly" id="edge55_Node000001_Node000018" title=" " alt="" coords="1960,53,2011,99,2073,146,2125,176,2176,201,2174,206,2123,181,2070,150,2008,103,1957,57"/>
+<area shape="rect" id="Node000019" href="$ra8__widget__nav__bar_8h.html" title="Navigation&#45;strip leaf widget for the ra8_widget tree model (#145 Phase 2)." alt="" coords="1307,101,1475,141"/>
+<area shape="poly" id="edge27_Node000001_Node000019" title=" " alt="" coords="1845,40,1682,63,1495,96,1462,103,1461,98,1493,91,1681,58,1844,35"/>
+<area shape="rect" id="Node000020" href="$ra8__widget__nav__bar_8c.html" title="Navigation&#45;strip leaf widget for the ra8_widget tree model (#145 Phase 2)." alt="" coords="1717,203,1884,243"/>
+<area shape="poly" id="edge57_Node000001_Node000020" title=" " alt="" coords="1845,31,1759,37,1667,48,1588,67,1559,80,1540,95,1532,108,1529,120,1532,133,1540,146,1733,201,1732,206,1536,150,1527,135,1524,120,1527,106,1536,92,1557,75,1587,62,1666,43,1758,32,1844,26"/>
+<area shape="rect" id="Node000021" href="$ra8__widget__progress__bar_8h.html" title="Progress&#45;bar leaf widget for the ra8_widget tree model (#145 Phase 2)." alt="" coords="1550,101,1750,141"/>
+<area shape="poly" id="edge30_Node000001_Node000021" title=" " alt="" coords="1861,52,1707,103,1706,98,1860,47"/>
+<area shape="rect" id="Node000022" href="$ra8__widget__progress__bar_8c.html" title="Progress&#45;bar leaf widget for the ra8_widget tree model (#145 Phase 2)." alt="" coords="1908,203,2107,243"/>
+<area shape="poly" id="edge59_Node000001_Node000022" title=" " alt="" coords="1953,56,1972,92,1993,152,2006,202,2001,204,1988,153,1968,94,1948,58"/>
+<area shape="rect" id="Node000023" href="$ra8__widget__reflow__view_8h.html" title="Reflowed&#45;reading&#45;body leaf widget for the ra8_widget tree (#145 Phase 2)." alt="" coords="2523,101,2718,141"/>
+<area shape="poly" id="edge33_Node000001_Node000023" title=" " alt="" coords="2016,31,2238,54,2505,91,2543,98,2542,103,2504,96,2237,59,2015,36"/>
+<area shape="rect" id="Node000024" href="$ra8__widget__reflow__view_8c.html" title="Reflowed&#45;reading&#45;body leaf widget for the ra8_widget tree (#145 Phase 2)." alt="" coords="2332,203,2525,243"/>
+<area shape="poly" id="edge60_Node000001_Node000024" title=" " alt="" coords="2016,29,2141,37,2280,51,2398,68,2439,79,2461,91,2470,105,2473,119,2470,150,2459,180,2445,204,2440,202,2454,177,2465,149,2468,120,2465,107,2458,95,2437,84,2397,74,2280,56,2141,43,2016,34"/>
+<area shape="rect" id="Node000025" href="$ra8__widget__status__bar_8h.html" title="Status&#45;bar leaf widget for the ra8_widget tree model (#145 Phase 2)." alt="" coords="1774,101,1958,141"/>
+<area shape="poly" id="edge35_Node000001_Node000025" title=" " alt="" coords="1912,58,1881,102,1877,99,1907,55"/>
+<area shape="rect" id="Node000026" href="$ra8__widget__status__bar_8c.html" title="Status&#45;bar leaf widget for the ra8_widget tree model (#145 Phase 2)." alt="" coords="2724,203,2907,243"/>
+<area shape="poly" id="edge61_Node000001_Node000026" title=" " alt="" coords="2016,23,2245,24,2531,32,2668,40,2786,52,2874,69,2904,79,2923,91,2932,105,2934,120,2923,149,2911,167,2896,182,2861,205,2858,201,2892,178,2907,164,2918,147,2928,119,2927,107,2919,95,2902,84,2873,74,2785,58,2668,46,2531,37,2245,29,2016,29"/>
+<area shape="rect" id="Node000027" href="$ra8__widget__toolbar_8h.html" title="Toolbar leaf widget for the ra8_widget tree model (#145 Phase 2)." alt="" coords="2083,101,2246,141"/>
+<area shape="poly" id="edge38_Node000001_Node000027" title=" " alt="" coords="1991,48,2118,98,2116,103,1989,53"/>
+<area shape="rect" id="Node000028" href="$ra8__widget__toolbar_8c.html" title="Toolbar leaf widget for the ra8_widget tree model (#145 Phase 2)." alt="" coords="2931,203,3092,243"/>
+<area shape="poly" id="edge62_Node000001_Node000028" title=" " alt="" coords="2016,25,2248,29,2538,40,2678,49,2800,60,2893,74,2925,82,2946,91,2972,115,2991,146,3003,176,3010,202,3005,204,2998,178,2986,148,2968,119,2943,96,2923,87,2892,79,2799,65,2678,54,2538,45,2248,35,2016,30"/>
+<area shape="rect" id="Node000029" href="$ra8__widget_8c.html" title="Implementation of the ra8_widget composable&#45;UI layer (#145)." alt="" coords="3561,101,3705,141"/>
+<area shape="poly" id="edge41_Node000001_Node000029" title=" " alt="" coords="2016,25,2336,29,2779,39,3224,59,3409,73,3549,91,3580,98,3579,103,3548,96,3409,78,3224,64,2779,45,2336,34,2016,30"/>
+<area shape="rect" id="Node000030" href="$ra8__widget__button_8c.html" title="Push&#45;button leaf widget for the ra8_widget tree model (#145 Phase 2)." alt="" coords="3116,203,3275,243"/>
+<area shape="poly" id="edge43_Node000001_Node000030" title=" " alt="" coords="2016,24,2235,27,2516,36,2658,45,2790,56,2902,72,2987,91,3065,136,3168,201,3165,206,3063,140,2985,96,2901,77,2789,62,2657,50,2515,42,2234,32,2016,29"/>
+<area shape="rect" id="Node000031" href="$ra8__widget__internal_8h.html" title="Module&#45;private paint helpers shared by the concrete leaf&#45;widget TUs." alt="" coords="2743,101,2909,141"/>
+<area shape="poly" id="edge44_Node000001_Node000031" title=" " alt="" coords="2016,26,2154,32,2332,43,2531,62,2730,91,2764,98,2763,103,2730,96,2530,67,2332,48,2153,37,2016,31"/>
+<area shape="rect" id="Node000032" href="$ra8__widget__label_8c.html" title="Text&#45;label leaf widget for the ra8_widget tree model (#145 Phase 2)." alt="" coords="3299,203,3447,243"/>
+<area shape="poly" id="edge56_Node000001_Node000032" title=" " alt="" coords="2016,26,2268,34,2590,48,2884,67,2990,78,3052,91,3075,103,3091,117,3105,132,3126,146,3169,164,3205,174,3288,193,3312,201,3311,206,3287,199,3204,179,3167,169,3123,150,3102,136,3087,121,3072,107,3050,96,2989,83,2883,72,2589,53,2267,40,2016,32"/>
+<area shape="rect" id="Node000034" href="$ra8__widget__panel_8c.html" title="Container&#45;panel compositor for the ra8_widget tree model (#145)." alt="" coords="3729,101,3881,141"/>
+<area shape="poly" id="edge58_Node000001_Node000034" title=" " alt="" coords="2016,24,2365,28,2857,38,3354,58,3561,72,3717,91,3749,98,3748,103,3716,96,3560,78,3354,63,2857,43,2365,33,2016,30"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="480,253,194,310,193,305,479,248"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="529,259,452,301,450,296,527,255"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2src_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="569,299,742,353"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="616,261,640,297,636,300,611,264"/>
+<area shape="poly" id="edge15_Node000013_Node000002" title=" " alt="" coords="683,136,498,162,281,199,269,201,268,196,280,193,497,156,683,130"/>
+<area shape="poly" id="edge16_Node000013_Node000003" title=" " alt="" coords="685,147,481,199,470,202,468,196,480,193,683,141"/>
+<area shape="poly" id="edge17_Node000013_Node000004" title=" " alt="" coords="726,150,638,198,635,194,724,145"/>
+<area shape="poly" id="edge18_Node000013_Node000007" title=" " alt="" coords="756,154,673,300,668,297,752,151"/>
+<area shape="poly" id="edge19_Node000013_Node000008" title=" " alt="" coords="832,143,956,193,954,198,830,148"/>
+<area shape="poly" id="edge20_Node000013_Node000009" title=" " alt="" coords="860,137,1119,193,1130,196,1129,201,1117,199,859,142"/>
+<area shape="rect" id="Node000014" href="$ra8__app_8c.html" title="Implementation of the ra8_app app framework (#146)." alt="" coords="759,203,909,243"/>
+<area shape="poly" id="edge21_Node000013_Node000014" title=" " alt="" coords="792,151,825,202,820,205,788,154"/>
+<area shape="poly" id="edge23_Node000015_Node000010" title=" " alt="" coords="1237,142,1252,145,1370,170,1488,193,1500,196,1499,201,1487,199,1369,175,1251,151,1236,147"/>
+<area shape="poly" id="edge24_Node000015_Node000016" title=" " alt="" coords="1218,144,1357,201,1355,206,1216,149"/>
+<area shape="poly" id="edge26_Node000017_Node000018" title=" " alt="" coords="2323,151,2247,205,2244,201,2320,147"/>
+<area shape="poly" id="edge28_Node000019_Node000010" title=" " alt="" coords="1443,144,1544,194,1542,198,1441,149"/>
+<area shape="poly" id="edge29_Node000019_Node000020" title=" " alt="" coords="1478,141,1495,145,1705,193,1734,201,1732,206,1704,199,1493,151,1477,147"/>
+<area shape="poly" id="edge31_Node000021_Node000010" title=" " alt="" coords="1636,154,1613,197,1608,194,1631,151"/>
+<area shape="poly" id="edge32_Node000021_Node000022" title=" " alt="" coords="1731,142,1941,201,1940,206,1729,147"/>
+<area shape="poly" id="edge34_Node000023_Node000024" title=" " alt="" coords="2574,149,2466,206,2463,201,2571,145"/>
+<area shape="poly" id="edge36_Node000025_Node000010" title=" " alt="" coords="1804,148,1668,198,1666,193,1802,143"/>
+<area shape="poly" id="edge37_Node000025_Node000026" title=" " alt="" coords="1972,134,2072,145,2252,159,2392,163,2533,171,2712,193,2748,201,2747,206,2711,199,2532,176,2392,168,2251,164,2071,151,1972,139"/>
+<area shape="poly" id="edge39_Node000027_Node000010" title=" " alt="" coords="2070,138,1900,164,1705,199,1694,201,1693,196,1704,193,1899,158,2070,132"/>
+<area shape="poly" id="edge40_Node000027_Node000028" title=" " alt="" coords="2239,141,2258,145,2358,160,2443,167,2588,169,2734,172,2819,179,2918,193,2952,201,2950,206,2918,199,2818,184,2733,177,2588,175,2442,172,2357,165,2258,151,2238,147"/>
+<area shape="poly" id="edge45_Node000031_Node000016" title=" " alt="" coords="2752,146,2730,151,2542,173,2382,180,2240,178,2108,171,1976,165,1835,164,1675,174,1488,199,1457,206,1456,201,1487,193,1675,168,1835,159,1976,160,2108,166,2240,173,2382,175,2542,168,2730,145,2751,141"/>
+<area shape="poly" id="edge47_Node000031_Node000018" title=" " alt="" coords="2750,147,2730,151,2615,168,2525,175,2435,182,2320,199,2287,206,2286,201,2319,193,2434,176,2525,170,2615,163,2730,145,2749,141"/>
+<area shape="poly" id="edge49_Node000031_Node000020" title=" " alt="" coords="2751,147,2730,151,2604,167,2497,175,2401,176,2313,174,2224,173,2129,174,2022,182,1896,199,1862,206,1861,201,1895,193,2021,176,2129,169,2224,167,2313,169,2401,171,2496,169,2604,162,2730,145,2750,141"/>
+<area shape="poly" id="edge51_Node000031_Node000022" title=" " alt="" coords="2751,147,2730,151,2638,164,2559,172,2425,176,2291,180,2212,187,2120,199,2082,206,2081,201,2119,193,2212,181,2290,175,2425,171,2559,167,2637,159,2730,145,2750,141"/>
+<area shape="poly" id="edge52_Node000031_Node000024" title=" " alt="" coords="2745,147,2731,151,2508,206,2507,201,2729,145,2744,142"/>
+<area shape="poly" id="edge53_Node000031_Node000026" title=" " alt="" coords="2825,154,2820,204,2815,203,2820,154"/>
+<area shape="poly" id="edge54_Node000031_Node000028" title=" " alt="" coords="2874,145,2978,201,2975,206,2871,150"/>
+<area shape="poly" id="edge46_Node000031_Node000030" title=" " alt="" coords="2911,142,3104,193,3130,201,3129,206,3103,199,2910,147"/>
+<area shape="poly" id="edge48_Node000031_Node000032" title=" " alt="" coords="2923,131,3094,156,3288,193,3316,201,3314,206,3287,199,3093,161,2923,136"/>
+<area shape="rect" id="Node000033" href="$ra8__widget__paint_8c.html" title="Shared geometry helpers for the concrete leaf widgets (#145 Phase 2)." alt="" coords="2550,203,2699,243"/>
+<area shape="poly" id="edge50_Node000031_Node000033" title=" " alt="" coords="2777,149,2664,206,2661,201,2775,144"/>
+</map>

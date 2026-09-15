@@ -1,0 +1,27 @@
+<map id="port/esp&#45;hosted/inc/port_esp_hosted_host_os.h" name="port/esp&#45;hosted/inc/port_esp_hosted_host_os.h">
+<area shape="rect" id="Node000001" title="esp&#45;hosted port header: RTOS handle types, return codes and budgets." alt="" coords="1171,5,1373,45"/>
+<area shape="rect" id="Node000002" href="$c6__fwver__console_8c.html" title="Bounded console formatters for the esp&#45;hosted RPC round&#45;trip app." alt="" coords="5,93,211,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1157,31,977,36,744,46,484,66,223,96,211,98,211,93,222,91,483,60,743,41,977,30,1157,25"/>
+<area shape="rect" id="Node000003" href="$c6__fwver__link_8c.html" title="The esp&#45;hosted transaction pump: frame in, frame out, counted." alt="" coords="235,93,440,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1157,34,839,53,645,71,452,96,441,98,440,93,452,91,645,66,838,48,1157,28"/>
+<area shape="rect" id="Node000004" href="$c6__hosted__frame_8c.html" title="The single esp&#45;hosted transaction, its decode and its verdict." alt="" coords="464,93,664,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1157,38,934,60,805,76,676,96,664,98,664,93,676,91,804,71,933,55,1156,33"/>
+<area shape="rect" id="Node000005" href="$ra8__esp__hosted__c6link_8c.html" title="The three trampolines that put ra8_c6link on this board&#39;s wire." alt="" coords="689,101,874,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1158,47,1027,69,886,96,854,103,853,98,885,91,1026,64,1157,42"/>
+<area shape="rect" id="Node000006" href="$ra8__esp__hosted__gpio_8c.html" title="The eight side&#45;band GPIO slots of the esp&#45;hosted OS&#45;abstraction vtable." alt="" coords="898,101,1073,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1202,52,1044,103,1042,98,1200,47"/>
+<area shape="rect" id="Node000007" href="$ra8__esp__hosted__osi_8c.html" title="The esp&#45;hosted OS&#45;abstraction vtable and its non&#45;RTOS slots." alt="" coords="1097,101,1263,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1246,57,1200,102,1197,99,1242,53"/>
+<area shape="rect" id="Node000008" href="$ra8__esp__hosted__osi__absent_8c.html" title="Vtable rows for transports this board does not carry." alt="" coords="1287,93,1441,148"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1302,53,1340,91,1336,95,1298,57"/>
+<area shape="rect" id="Node000009" href="$ra8__esp__hosted__port_8c.html" title="Bring&#45;up and teardown of the esp&#45;hosted RA8D2 + ThreadX port." alt="" coords="1466,101,1638,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1342,47,1496,98,1495,103,1341,52"/>
+<area shape="rect" id="Node000010" href="$ra8__esp__hosted__rtos_8c.html" title="Thread, sleep, timer and clock vtable slots, plus the bind entry." alt="" coords="1663,101,1833,141"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1387,42,1515,63,1651,91,1682,98,1681,103,1650,96,1514,69,1387,47"/>
+<area shape="rect" id="Node000011" href="$ra8__esp__hosted__rtos__pool_8c.html" title="Memory and queue half of the esp&#45;hosted OS&#45;abstraction vtable." alt="" coords="1857,93,2017,148"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1387,32,1601,53,1724,70,1846,91,1858,93,1857,98,1845,96,1723,75,1601,58,1387,37"/>
+<area shape="rect" id="Node000012" href="$ra8__esp__hosted__rtos__sync_8c.html" title="Mutex and semaphore vtable slots." alt="" coords="2041,93,2201,148"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1388,27,1519,34,1680,46,1855,64,2030,91,2042,93,2041,98,2029,96,1855,70,1680,51,1519,39,1387,33"/>
+<area shape="rect" id="Node000013" href="$ra8__esp__hosted__spi_8c.html" title="The three transport slots of the esp&#45;hosted OS&#45;abstraction vtable." alt="" coords="2225,101,2391,141"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="1387,25,1550,29,1757,40,1985,60,2214,91,2247,98,2246,103,2213,96,1985,65,1756,45,1550,35,1387,30"/>
+</map>

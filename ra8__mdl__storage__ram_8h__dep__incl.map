@@ -1,0 +1,7 @@
+<map id="libs/ra8_c6link/inc/ra8_mdl_storage_ram.h" name="libs/ra8_c6link/inc/ra8_mdl_storage_ram.h">
+<area shape="rect" id="Node000001" title="Caller&#45;buffer transaction adapter for verified C6 media sources." alt="" coords="135,5,315,45"/>
+<area shape="rect" id="Node000002" href="$media__download__image_8c.html" title="Convert one C6&#45;fetched encoded image into a strict .rabook." alt="" coords="5,93,224,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="194,56,148,95,144,91,191,52"/>
+<area shape="rect" id="Node000003" href="$ra8__mdl__storage__ram_8c.html" title="Caller&#45;buffer transaction adapter for C6 media source bytes." alt="" coords="248,101,427,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="260,52,316,99,313,103,257,56"/>
+</map>

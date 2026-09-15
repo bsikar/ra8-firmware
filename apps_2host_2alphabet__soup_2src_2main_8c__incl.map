@@ -1,0 +1,36 @@
+<map id="apps/host/alphabet_soup/src/main.c" name="apps/host/alphabet_soup/src/main.c">
+<area shape="rect" id="Node000001" title="Standalone Alphabet Soup word search solver host CLI." alt="" coords="341,5,487,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="573,313,644,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="488,28,631,41,800,66,881,84,953,106,1009,133,1030,148,1046,165,1058,190,1062,213,1056,234,1043,251,1024,267,999,279,936,299,863,313,787,321,658,327,658,322,787,316,862,308,935,294,997,275,1021,262,1040,248,1052,231,1057,213,1053,192,1041,168,1027,152,1007,137,951,111,880,89,799,71,630,46,488,34"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="199,93,274,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="373,48,276,90,274,85,370,43"/>
+<area shape="rect" id="Node000004" href="$alphabet__soup_8h.html" title="Word search puzzle solver API and bounded workspace definitions." alt="" coords="349,93,479,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="417,46,417,79,411,79,411,46"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="493,240,572,265"/>
+<area shape="poly" id="edge20_Node000001_Node000006" title=" " alt="" coords="444,43,470,65,492,92,509,126,521,163,533,226,528,227,516,164,504,128,488,95,466,69,441,47"/>
+<area shape="rect" id="Node000007" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="248,167,375,192"/>
+<area shape="poly" id="edge21_Node000001_Node000007" title=" " alt="" coords="387,47,361,69,339,95,325,124,318,154,312,152,320,122,334,92,357,65,383,43"/>
+<area shape="rect" id="Node000008" href="$alphabet__soup__cli__internal_8h.html" title="Private host&#45;file helpers for the Alphabet Soup CLI wrapper." alt="" coords="638,93,846,119"/>
+<area shape="poly" id="edge11_Node000001_Node000008" title=" " alt="" coords="488,42,682,88,680,93,487,47"/>
+<area shape="rect" id="Node000011" href="$ra8__io__stream__posix_8h.html" title="Borrowed raw&#45;descriptor backend for the portable byte&#45;stream facade." alt="" coords="5,93,175,119"/>
+<area shape="poly" id="edge22_Node000001_Node000011" title=" " alt="" coords="341,47,151,93,150,88,340,42"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="418,118,437,185,456,227,483,263,520,291,561,309,559,314,517,296,479,267,451,229,432,187,413,120"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="730,240,805,265"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="479,108,551,115,628,126,698,142,724,152,744,165,755,178,762,194,769,225,764,226,757,196,750,181,740,169,722,157,696,147,627,131,550,120,479,114"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="426,117,517,228,512,231,422,121"/>
+<area shape="poly" id="edge8_Node000004_Node000007" title=" " alt="" coords="399,121,341,161,338,156,396,116"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="547,263,588,302,584,306,543,267"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="322,191,352,227,372,246,395,263,436,283,480,298,560,316,559,321,479,303,434,288,393,268,369,250,348,230,317,194"/>
+<area shape="poly" id="edge10_Node000007_Node000006" title=" " alt="" coords="348,189,485,233,483,238,346,195"/>
+<area shape="poly" id="edge13_Node000008_Node000002" title=" " alt="" coords="762,117,787,137,808,165,822,193,832,217,832,241,819,267,793,285,751,300,658,320,657,315,750,295,790,281,815,264,826,240,826,218,818,195,804,168,783,141,759,121"/>
+<area shape="poly" id="edge12_Node000008_Node000005" title=" " alt="" coords="756,117,774,138,789,166,791,182,790,199,782,228,777,227,785,198,786,182,783,168,769,141,752,120"/>
+<area shape="poly" id="edge19_Node000008_Node000006" title=" " alt="" coords="693,121,641,140,615,153,592,169,565,198,546,229,541,226,561,195,588,165,613,148,639,135,691,116"/>
+<area shape="rect" id="Node000009" href="$fw__if__fs__types_8h.html" title="Portable filesystem value types and caller&#45;owned opaque handles." alt="" coords="603,167,729,192"/>
+<area shape="poly" id="edge14_Node000008_Node000009" title=" " alt="" coords="732,121,690,159,687,155,728,117"/>
+<area shape="rect" id="Node000010" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="906,167,1031,192"/>
+<area shape="poly" id="edge18_Node000008_Node000010" title=" " alt="" coords="779,116,920,160,918,165,778,121"/>
+<area shape="poly" id="edge16_Node000009_Node000002" title=" " alt="" coords="664,193,621,301,616,299,659,191"/>
+<area shape="poly" id="edge15_Node000009_Node000005" title=" " alt="" coords="684,190,741,230,738,234,681,194"/>
+<area shape="poly" id="edge17_Node000009_Node000006" title=" " alt="" coords="646,194,568,236,565,231,643,190"/>
+<area shape="poly" id="edge23_Node000011_Node000007" title=" " alt="" coords="126,116,264,160,262,165,125,121"/>
+</map>

@@ -1,0 +1,22 @@
+<map id="apps/shared_libs/xml/src/xml_doctype.c" name="apps/shared_libs/xml/src/xml_doctype.c">
+<area shape="rect" id="Node000001" title="Bounded external&#45;only DOCTYPE lexer for the no&#45;heap XML reader." alt="" coords="220,5,380,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,240,80,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="226,48,178,66,129,91,85,125,66,145,50,168,42,197,41,226,36,226,36,196,46,166,62,142,81,121,126,87,176,61,224,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="251,313,322,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="309,45,322,86,333,141,337,203,334,235,328,266,319,286,308,304,303,301,315,284,323,265,329,234,332,203,328,142,316,87,304,46"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="414,93,485,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="337,43,416,84,414,89,335,48"/>
+<area shape="rect" id="Node000005" href="$xml__internal_8h.html" title="Private lexical seams shared by the bounded XML reader." alt="" coords="167,93,283,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="284,47,248,85,244,81,280,44"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="168,119,116,136,91,150,70,168,54,197,47,227,42,226,49,195,66,165,88,146,114,132,166,114"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="251,117,279,136,292,150,302,166,312,201,313,238,307,273,299,301,294,300,302,271,307,237,307,202,298,168,288,153,275,140,248,121"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="163,167,288,192"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="228,119,228,153,223,153,223,119"/>
+<area shape="rect" id="Node000007" href="$xml_8h.html" title="Bounded, caller&#45;owned, no&#45;heap XML pull reader." alt="" coords="80,167,139,192"/>
+<area shape="poly" id="edge8_Node000005_Node000007" title=" " alt="" coords="208,121,141,162,139,157,205,116"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="100,194,65,232,61,228,96,191"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="134,190,171,210,211,238,245,270,272,301,268,304,241,273,208,242,169,215,132,194"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="118,240,197,265"/>
+<area shape="poly" id="edge11_Node000007_Node000008" title=" " alt="" coords="119,191,144,227,140,230,115,194"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="179,263,254,304,252,309,177,268"/>
+</map>

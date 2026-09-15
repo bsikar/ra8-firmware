@@ -1,0 +1,29 @@
+<map id="libs/ra8_wifi/inc/ra8_wifi.h" name="libs/ra8_wifi/inc/ra8_wifi.h">
+<area shape="rect" id="Node000001" title="A small, uniform Wi&#45;Fi facade: init, connect, get an IP, disconnect." alt="" coords="481,5,629,45"/>
+<area shape="rect" id="Node000002" href="$wifi__hal__join_8h.html" title="Constants, console formatters and the DHCP provider for the HAL join." alt="" coords="643,93,816,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="603,49,681,91,679,96,601,54"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2c6_2wifi__hal__join_2src_2main_8c.html" title="The same Wi&#45;Fi join as c6_wifi_join, the HAL way, through ra8_wifi." alt="" coords="5,196,179,251"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="467,32,376,39,277,50,190,69,157,81,134,95,116,117,104,144,95,196,90,195,99,142,111,115,130,91,155,76,189,64,277,45,375,34,467,27"/>
+<area shape="rect" id="Node000004" href="$wifi__hal__console_8c.html" title="Bounded console formatters for the HAL Wi&#45;Fi join application." alt="" coords="547,196,746,251"/>
+<area shape="poly" id="edge7_Node000001_Node000004" title=" " alt="" coords="572,57,637,194,632,197,567,59"/>
+<area shape="rect" id="Node000005" href="$wifi__hal__core_8c.html" title="The example&#39;s join+DHCP journey, hardware&#45;free so it is host&#45;testable." alt="" coords="771,196,947,251"/>
+<area shape="poly" id="edge8_Node000001_Node000005" title=" " alt="" coords="643,35,752,57,799,73,830,91,847,115,857,143,863,195,857,196,851,144,842,118,826,95,797,78,751,62,642,41"/>
+<area shape="rect" id="Node000006" href="$wifi__hal__ip_8c.html" title="The NetX Duo DHCP provider the ra8_wifi facade calls for an address." alt="" coords="971,196,1144,251"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="643,35,749,55,806,71,861,91,909,114,954,141,1027,194,1024,198,951,146,906,119,859,96,804,76,748,60,642,40"/>
+<area shape="rect" id="Node000007" href="$ra8__wifi__backend_8h.html" title="The radio&#45;operation seam ra8_wifi dispatches through." alt="" coords="369,101,517,141"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="523,56,467,103,464,99,520,52"/>
+<area shape="rect" id="Node000008" href="$ra8__wifi_8c.html" title="The Wi&#45;Fi facade state machine, dispatched over a backend vtable." alt="" coords="375,203,523,243"/>
+<area shape="poly" id="edge16_Node000001_Node000008" title=" " alt="" coords="555,59,548,103,530,149,506,181,478,205,475,201,502,177,526,147,543,102,550,58"/>
+<area shape="rect" id="Node000009" href="$ra8__wifi__c6link_8c.html" title="The ESP32&#45;C6 backend: each ra8_wifi operation onto ra8_c6link." alt="" coords="203,203,351,243"/>
+<area shape="poly" id="edge17_Node000001_Node000009" title=" " alt="" coords="468,45,411,64,383,78,358,95,333,121,313,150,286,204,282,202,308,147,329,117,354,91,380,74,409,59,466,40"/>
+<area shape="rect" id="Node000010" href="$ra8__wifi__c6link_8h.html" title="The ESP32&#45;C6 backend for the ra8_wifi facade, over ra8_c6link." alt="" coords="145,101,293,141"/>
+<area shape="poly" id="edge13_Node000001_Node000010" title=" " alt="" coords="474,52,313,96,287,103,285,98,311,91,473,46"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="629,138,191,199,180,201,178,196,190,193,629,132"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="701,160,670,198,666,194,697,157"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="775,154,826,194,823,198,772,158"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="829,150,973,193,971,198,827,155"/>
+<area shape="poly" id="edge11_Node000007_Node000008" title=" " alt="" coords="447,154,451,203,445,203,442,154"/>
+<area shape="poly" id="edge12_Node000007_Node000009" title=" " alt="" coords="401,150,310,206,307,201,398,146"/>
+<area shape="poly" id="edge14_Node000010_Node000003" title=" " alt="" coords="186,151,127,198,124,194,182,147"/>
+<area shape="poly" id="edge15_Node000010_Node000009" title=" " alt="" coords="239,151,269,202,264,205,234,154"/>
+</map>

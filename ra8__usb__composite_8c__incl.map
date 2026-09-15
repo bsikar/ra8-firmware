@@ -1,0 +1,37 @@
+<map id="libs/ra8_hal/src/ra8_usb_composite.c" name="libs/ra8_hal/src/ra8_usb_composite.c">
+<area shape="rect" id="Node000001" title="Native USB device&#45;side composite&#45;class layer implementation." alt="" coords="378,5,523,45"/>
+<area shape="rect" id="Node000002" href="$ra8__usb__composite_8h.html" title="Native USB device&#45;side composite&#45;class layer." alt="" coords="253,93,413,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="424,48,363,88,360,84,421,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="309,460,379,485"/>
+<area shape="poly" id="edge13_Node000001_Node000003" title=" " alt="" coords="378,39,267,58,145,87,91,106,47,128,18,152,11,165,8,178,8,327,10,349,16,368,26,385,39,400,73,425,116,443,162,456,210,463,295,469,295,475,210,469,161,461,114,448,71,430,36,404,22,388,11,370,5,350,3,327,3,178,6,163,14,149,44,123,89,101,143,82,266,53,377,33"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="266,387,345,412"/>
+<area shape="poly" id="edge22_Node000001_Node000004" title=" " alt="" coords="449,46,428,120,369,266,319,375,314,373,365,264,423,118,444,45"/>
+<area shape="rect" id="Node000005" href="$ra8__usb_8h.html" title="Native USB controller driver public API (device + host modes)." alt="" coords="173,167,259,192"/>
+<area shape="poly" id="edge24_Node000001_Node000005" title=" " alt="" coords="378,35,343,43,307,55,273,72,243,95,234,108,227,123,220,154,215,152,222,121,229,105,239,91,270,67,305,50,342,38,377,30"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="632,93,757,119"/>
+<area shape="poly" id="edge14_Node000001_Node000008" title=" " alt="" coords="510,43,647,86,645,92,508,48"/>
+<area shape="rect" id="Node000009" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="457,313,557,339"/>
+<area shape="poly" id="edge15_Node000001_Node000009" title=" " alt="" coords="459,45,472,93,493,208,506,299,501,300,488,209,467,94,454,46"/>
+<area shape="rect" id="Node000010" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="644,387,727,412"/>
+<area shape="poly" id="edge23_Node000001_Node000010" title=" " alt="" coords="490,43,524,65,559,96,586,133,594,155,597,178,597,254,604,290,620,323,642,353,664,376,660,379,638,356,616,326,599,292,592,254,592,178,589,156,582,136,555,99,521,70,487,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="339,119,348,166,357,276,359,387,359,412,353,447,348,446,353,412,353,387,352,277,343,167,334,120"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="335,119,310,373,305,373,330,118"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="316,121,248,162,246,157,313,116"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="314,411,334,447,329,449,309,414"/>
+<area shape="rect" id="Node000006" href="$ra8__usb__device_8h.html" title="Native USB controller driver public API – shared types + device mode." alt="" coords="43,313,178,339"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="199,194,172,215,146,242,130,271,119,300,114,299,125,269,142,238,168,211,196,190"/>
+<area shape="rect" id="Node000007" href="$ra8__usb__host_8h.html" title="Native USB controller driver public API – host&#45;mode bring&#45;up." alt="" coords="156,240,276,265"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="219,192,219,226,213,226,213,192"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="122,337,154,373,199,410,248,436,296,454,294,459,245,441,196,414,150,376,118,341"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="143,336,262,379,260,384,141,341"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="219,265,225,331,236,372,256,410,278,434,305,452,303,456,275,438,251,414,231,374,220,332,213,266"/>
+<area shape="poly" id="edge11_Node000007_Node000004" title=" " alt="" coords="226,264,293,374,289,376,221,267"/>
+<area shape="poly" id="edge12_Node000007_Node000006" title=" " alt="" coords="201,268,140,308,138,303,198,263"/>
+<area shape="poly" id="edge16_Node000009_Node000003" title=" " alt="" coords="495,341,369,453,365,449,492,337"/>
+<area shape="poly" id="edge17_Node000009_Node000004" title=" " alt="" coords="475,341,352,385,350,379,473,336"/>
+<area shape="poly" id="edge18_Node000009_Node000010" title=" " alt="" coords="536,336,645,379,643,384,534,341"/>
+<area shape="rect" id="Node000011" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="471,387,619,412"/>
+<area shape="poly" id="edge20_Node000009_Node000011" title=" " alt="" coords="515,338,535,373,530,376,511,340"/>
+<area shape="poly" id="edge19_Node000010_Node000003" title=" " alt="" coords="645,412,633,415,393,464,392,459,631,409,643,407"/>
+<area shape="poly" id="edge21_Node000011_Node000003" title=" " alt="" coords="514,415,390,458,389,453,512,410"/>
+</map>

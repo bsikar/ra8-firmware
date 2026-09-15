@@ -1,0 +1,7 @@
+<map id="tools/ra8_emulator/inc/board_overlay_internal.h" name="tools/ra8_emulator/inc/board_overlay_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private layout constants + draw primitives for the overlay." alt="" coords="112,5,323,45"/>
+<area shape="rect" id="Node000002" href="$board__overlay_8c.html" title="Composite board&#45;view renderer implementation (see board_overlay.h)." alt="" coords="5,101,208,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="186,56,131,103,127,99,183,52"/>
+<area shape="rect" id="Node000003" href="$board__overlay__draw_8c.html" title="Overlay draw primitives + embedded 5x7 font." alt="" coords="233,93,426,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="252,52,299,91,296,95,249,56"/>
+</map>

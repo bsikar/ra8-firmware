@@ -1,0 +1,5 @@
+<map id="fw_fs_file_t" name="fw_fs_file_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned open file; fields are private to the facade." alt="" coords="32,101,127,127"/>
+<area shape="rect" id="Node000002" href="$structfw__fs__stream__iface.html" title="Open&#45;file backend operations over caller&#45;supplied state." alt="" coords="5,5,153,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="82,45,82,101,77,101,77,45"/>
+</map>

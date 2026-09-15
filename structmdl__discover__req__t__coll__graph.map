@@ -1,0 +1,32 @@
+<map id="mdl_discover_req_t" name="mdl_discover_req_t">
+<area shape="rect" id="Node000001" title="Injected dependencies and inputs for one discovery run." alt="" coords="501,523,651,548"/>
+<area shape="rect" id="Node000002" href="$structmdl__session__t.html" title="One download session&#39;s identity and robots.txt state." alt="" coords="327,418,441,443"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="419,447,555,520,553,525,416,452"/>
+<area shape="rect" id="Node000003" href="$structmdl__net__iface__t.html" title="A network backend handle: an immutable method table plus its state." alt="" coords="365,313,491,339"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="420,352,391,419,387,417,415,350"/>
+<area shape="rect" id="Node000004" href="$structra8__io__stream__t.html" title="Caller&#45;allocated byte&#45;stream handle binding a sink to its context." alt="" coords="37,313,163,339"/>
+<area shape="poly" id="edge15_Node000001_Node000004" title=" " alt="" coords="120,348,171,399,204,427,240,450,306,478,375,500,443,514,502,524,501,529,442,520,374,505,304,483,237,454,201,431,167,403,116,351"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="135,342,226,383,336,415,334,421,224,388,133,347"/>
+<area shape="rect" id="Node000005" href="$structra8__io__stream__iface.html" title="Opaque to stream users; backend implementers use the public backend contract in ra8_io_stream_backend..." alt="" coords="5,197,160,223"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="89,236,101,312,96,313,84,237"/>
+<area shape="rect" id="Node000006" href="$structmdl__robots__cache__t.html" title="Fixed&#45;size per&#45;host robots.txt cache for one run." alt="" coords="188,313,340,339"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="290,346,372,416,369,420,286,350"/>
+<area shape="rect" id="Node000007" href="$structmdl__robots__cache__entry__t.html" title="One host&#39;s cached robots.txt outcome." alt="" coords="185,197,378,223"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="280,237,268,313,263,312,275,236"/>
+<area shape="rect" id="Node000008" href="$structmdl__robots__t.html" title="Rules and crawl&#45;delay for the group matching our user&#45;agent." alt="" coords="228,101,335,127"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="284,141,284,197,279,197,279,141"/>
+<area shape="rect" id="Node000009" href="$structmdl__robots__rule__t.html" title="One Allow/Disallow rule from the selected group." alt="" coords="212,5,351,31"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="284,45,284,101,279,101,279,45"/>
+<area shape="rect" id="Node000010" href="$structmdl__governor__t.html" title="Closed&#45;loop per&#45;host politeness governor (rate + backoff + concurrency)." alt="" coords="514,418,638,443"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="579,457,579,522,573,522,573,457"/>
+<area shape="rect" id="Node000011" href="$structmdl__gov__cfg__t.html" title="Per&#45;site politeness tunables the governor is initialised with." alt="" coords="661,313,779,339"/>
+<area shape="poly" id="edge10_Node000010_Node000011" title=" " alt="" coords="694,349,594,420,591,416,691,345"/>
+<area shape="rect" id="Node000012" href="$structmdl__host__rec__t.html" title="One host&#39;s live governor state (a slot in the fixed per&#45;host table)." alt="" coords="515,313,637,339"/>
+<area shape="poly" id="edge11_Node000010_Node000012" title=" " alt="" coords="579,353,579,418,573,418,573,353"/>
+<area shape="rect" id="Node000013" href="$structmdl__site__t.html" title="One site&#39;s scraping rules (all data, no logic)." alt="" coords="663,418,753,443"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="684,454,593,525,589,520,681,450"/>
+<area shape="rect" id="Node000014" href="$structmdl__hit__list__t.html" title="Bounded list of titled hits plus the raw anchor tally." alt="" coords="783,418,894,443"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="804,452,690,501,618,525,616,520,688,496,802,447"/>
+<area shape="rect" id="Node000015" href="$structmdl__hit__t.html" title="One discovery hit: a human&#45;facing title paired with a series URL." alt="" coords="803,313,885,339"/>
+<area shape="poly" id="edge14_Node000014_Node000015" title=" " alt="" coords="845,353,842,418,837,418,840,352"/>
+</map>

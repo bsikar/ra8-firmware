@@ -1,0 +1,30 @@
+<map id="port/posix/src/ra8_io_stream_posix.c" name="port/posix/src/ra8_io_stream_posix.c">
+<area shape="rect" id="Node000001" title="Raw&#45;descriptor implementation of the portable byte&#45;stream backend." alt="" coords="442,5,588,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__stream__posix_8h.html" title="Borrowed raw&#45;descriptor backend for the portable byte&#45;stream facade." alt="" coords="38,101,208,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="442,45,189,100,188,95,441,40"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="298,328,369,353"/>
+<area shape="poly" id="edge7_Node000001_Node000004" title=" " alt="" coords="441,28,332,30,207,39,148,48,96,60,55,75,27,95,15,114,9,132,9,150,15,167,26,184,41,201,82,233,133,261,187,286,286,322,284,327,185,291,131,266,79,237,38,205,22,188,10,170,4,151,4,131,10,111,24,91,52,71,95,54,147,42,207,34,332,25,441,23"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="372,255,450,280"/>
+<area shape="poly" id="edge10_Node000001_Node000005" title=" " alt="" coords="508,47,485,94,423,243,418,241,480,92,503,45"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="728,101,796,126"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="570,43,709,91,717,93,715,99,707,96,569,48"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="820,101,895,126"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="589,38,694,60,809,91,818,94,816,99,807,96,692,66,588,43"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="616,181,742,207"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="589,41,631,61,650,75,666,92,676,110,682,130,684,167,679,168,677,131,671,112,662,95,647,79,628,65,587,46"/>
+<area shape="rect" id="Node000009" href="$ra8__io__stream__backend_8h.html" title="Public implementer contract for ra8_io byte&#45;stream backends." alt="" coords="232,101,420,126"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="474,48,364,98,362,93,472,43"/>
+<area shape="rect" id="Node000010" href="$ra8__io__stream__posix__internal_8h.html" title="Private exact&#45;write engine for the POSIX stream adapter." alt="" coords="495,93,652,133"/>
+<area shape="poly" id="edge15_Node000001_Node000010" title=" " alt="" coords="530,44,555,81,551,84,526,47"/>
+<area shape="rect" id="Node000003" href="$ra8__io__stream_8h.html" title="ra8_io targetable byte&#45;stream facade – one writer, many destinations." alt="" coords="169,181,296,207"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="141,124,206,171,203,175,137,128"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="243,206,320,315,316,318,238,209"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="262,204,370,247,368,252,260,209"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="400,282,358,320,355,317,397,278"/>
+<area shape="poly" id="edge14_Node000009_Node000003" title=" " alt="" coords="313,128,258,174,255,170,310,124"/>
+<area shape="poly" id="edge12_Node000009_Node000004" title=" " alt="" coords="329,126,335,314,330,314,323,126"/>
+<area shape="poly" id="edge13_Node000009_Node000005" title=" " alt="" coords="334,125,400,241,395,244,330,127"/>
+<area shape="poly" id="edge16_Node000010_Node000004" title=" " alt="" coords="568,135,529,205,500,246,465,282,424,309,383,327,380,322,422,304,461,278,496,242,525,202,563,132"/>
+<area shape="poly" id="edge18_Node000010_Node000005" title=" " alt="" coords="556,135,478,209,436,247,432,243,474,205,552,132"/>
+<area shape="poly" id="edge17_Node000010_Node000008" title=" " alt="" coords="601,131,654,171,651,175,597,136"/>
+</map>

@@ -1,0 +1,16 @@
+<map id="apps/shared_libs/xml/src/xml_internal.h" name="apps/shared_libs/xml/src/xml_internal.h">
+<area shape="rect" id="Node000001" title="Private lexical seams shared by the bounded XML reader." alt="" coords="5,5,165,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="43,167,117,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="79,46,64,94,64,125,72,153,67,155,59,125,59,93,74,45"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="139,240,210,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="71,47,50,77,31,114,25,134,22,154,25,173,33,191,51,211,75,225,127,243,125,248,73,230,48,215,28,193,20,174,17,154,20,133,26,112,46,74,67,44"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="73,93,199,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="100,44,123,80,119,83,95,47"/>
+<area shape="rect" id="Node000005" href="$xml_8h.html" title="Bounded, caller&#45;owned, no&#45;heap XML pull reader." alt="" coords="223,93,281,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="126,43,216,85,214,90,124,48"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="225,121,122,164,120,159,223,116"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="241,121,221,142,202,168,190,198,182,227,177,226,185,196,198,165,217,138,237,117"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="213,167,291,192"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="255,119,255,153,249,153,249,119"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="241,194,199,232,196,229,238,190"/>
+</map>

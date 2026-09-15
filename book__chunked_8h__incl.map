@@ -1,0 +1,23 @@
+<map id="apps/shared_libs/book/inc/book_chunked.h" name="apps/shared_libs/book/inc/book_chunked.h">
+<area shape="rect" id="Node000001" title="Demand&#45;paged chunk reader for the &quot;RBKC&quot; .rabook container." alt="" coords="129,5,296,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="195,313,265,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="251,43,284,64,320,91,354,125,379,166,385,189,382,212,371,233,355,252,313,285,270,310,267,305,310,281,351,248,366,230,377,210,380,189,374,168,349,129,317,95,281,68,248,48"/>
+<area shape="rect" id="Node000003" href="$book_8h.html" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="58,167,125,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="199,48,111,158,107,154,195,44"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="191,240,269,265"/>
+<area shape="poly" id="edge11_Node000001_Node000005" title=" " alt="" coords="217,45,231,226,225,227,211,46"/>
+<area shape="rect" id="Node000006" href="$book__stream_8h.html" title="Strict, zero&#45;allocation validation of a streamed RABOOK1 flat blob." alt="" coords="5,93,124,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="178,48,100,89,97,84,176,43"/>
+<area shape="rect" id="Node000007" href="$ra8__vsource_8h.html" title="Virtual&#45;memory object sources – the page&#45;cache storage seam (Layer 1, #147)." alt="" coords="251,167,364,192"/>
+<area shape="poly" id="edge12_Node000001_Node000007" title=" " alt="" coords="227,44,295,154,291,156,222,47"/>
+<area shape="poly" id="edge4_Node000003_Node000002" title=" " alt="" coords="105,191,211,302,208,305,101,194"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="41,240,115,265"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="92,193,85,227,80,226,87,192"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="115,190,196,231,194,236,112,194"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="233,266,233,300,227,300,227,266"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="59,120,41,148,25,186,19,227,22,246,31,264,45,279,62,292,101,310,143,319,181,323,181,328,142,325,99,315,59,296,42,283,26,267,17,248,13,227,20,185,37,146,54,118"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="72,118,85,153,80,155,67,120"/>
+<area shape="poly" id="edge10_Node000006_Node000005" title=" " alt="" coords="81,117,138,165,209,228,206,232,135,169,77,121"/>
+<area shape="poly" id="edge13_Node000007_Node000002" title=" " alt="" coords="308,193,300,227,284,267,255,305,250,302,280,264,295,225,303,192"/>
+<area shape="poly" id="edge14_Node000007_Node000005" title=" " alt="" coords="297,194,255,232,251,229,293,190"/>
+</map>

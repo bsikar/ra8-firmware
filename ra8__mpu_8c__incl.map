@@ -1,0 +1,34 @@
+<map id="libs/ra8_mpu/src/ra8_mpu.c" name="libs/ra8_mpu/src/ra8_mpu.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 Memory Protection Unit configuration helper." alt="" coords="267,5,422,45"/>
+<area shape="rect" id="Node000002" href="$ra8__mpu_8h.html" title="Cortex&#45;M85 Memory Protection Unit (MPU) configuration helper." alt="" coords="258,93,349,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="337,47,318,82,314,80,332,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="109,167,183,192"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="288,48,244,68,204,95,178,125,160,155,155,153,174,121,200,91,242,63,286,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="352,240,423,265"/>
+<area shape="poly" id="edge7_Node000001_Node000004" title=" " alt="" coords="301,48,271,67,248,95,246,106,249,118,262,158,288,190,317,214,348,232,345,236,314,218,284,194,257,160,243,119,240,106,244,92,267,63,298,43"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="309,167,388,192"/>
+<area shape="poly" id="edge16_Node000001_Node000005" title=" " alt="" coords="353,45,363,93,363,119,358,153,352,153,358,118,358,94,348,46"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="599,93,725,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="421,43,603,87,602,93,420,48"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="424,93,524,119"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="377,43,445,84,442,88,375,48"/>
+<area shape="rect" id="Node000010" href="$ra8__hw__intrinsics_8h.html" title="Shared CPU&#45;intrinsic seam for the HAL drivers (host/target split)." alt="" coords="743,167,890,192"/>
+<area shape="poly" id="edge17_Node000001_Node000010" title=" " alt="" coords="406,43,538,91,588,116,670,142,747,161,745,166,668,147,586,121,536,96,404,48"/>
+<area shape="rect" id="Node000011" href="$ra8__mpu__regs_8h.html" title="Memory Protection Unit register layout for the Renesas RA8D2." alt="" coords="5,93,132,119"/>
+<area shape="poly" id="edge19_Node000001_Node000011" title=" " alt="" coords="279,48,123,92,122,87,278,43"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="279,121,185,163,183,159,277,116"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="301,120,294,153,295,173,300,191,320,214,346,232,343,236,317,218,296,193,289,174,289,153,296,119"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="313,118,336,154,332,157,309,120"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="357,191,377,227,372,229,353,194"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="469,120,404,229,399,227,465,118"/>
+<area shape="poly" id="edge11_Node000007_Node000005" title=" " alt="" coords="455,121,382,162,380,157,453,116"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="463,167,546,192"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="482,118,497,153,492,155,477,120"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="571,167,719,192"/>
+<area shape="poly" id="edge14_Node000007_Node000009" title=" " alt="" coords="502,116,605,159,603,164,500,121"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="487,194,420,235,417,230,484,190"/>
+<area shape="poly" id="edge15_Node000009_Node000004" title=" " alt="" coords="604,195,436,241,435,235,603,189"/>
+<area shape="poly" id="edge18_Node000010_Node000004" title=" " alt="" coords="748,195,436,246,436,241,747,189"/>
+<area shape="poly" id="edge20_Node000011_Node000003" title=" " alt="" coords="83,117,125,155,121,159,79,121"/>
+<area shape="poly" id="edge21_Node000011_Node000004" title=" " alt="" coords="72,119,78,155,86,174,98,190,115,201,140,210,204,226,339,245,338,250,203,231,138,215,113,205,95,194,81,177,73,156,66,120"/>
+</map>

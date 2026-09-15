@@ -1,0 +1,5 @@
+<map id="port/levelx/inc/lx_nor_driver_ra8_xspi.h" name="port/levelx/inc/lx_nor_driver_ra8_xspi.h">
+<area shape="rect" id="Node000001" title="LevelX NOR&#45;flash driver shim that bridges LevelX onto the RA8 ra8_xspi HAL (EK&#45;RA8D2 ISSI IS25LX512M ..." alt="" coords="5,5,175,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="53,93,127,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,46,93,79,87,79,87,46"/>
+</map>

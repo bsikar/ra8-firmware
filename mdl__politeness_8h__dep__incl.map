@@ -1,0 +1,126 @@
+<map id="apps/shared_libs/mdl/inc/mdl_politeness.h" name="apps/shared_libs/mdl/inc/mdl_politeness.h">
+<area shape="rect" id="Node000001" title="Jittered inter&#45;request delay plus the per&#45;host politeness governor." alt="" coords="2421,5,2581,45"/>
+<area shape="rect" id="Node000002" href="$mdl__config_8h.html" title="Per&#45;site descriptor loaded from a flat key=value config file." alt="" coords="2128,93,2288,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="2425,52,2273,96,2271,91,2423,47"/>
+<area shape="rect" id="Node000013" href="$mdl__app__internal_8h.html" title="Module&#45;private contract shared by the application&#45;mode translation units." alt="" coords="2081,533,2255,573"/>
+<area shape="poly" id="edge78_Node000001_Node000013" title=" " alt="" coords="2449,54,2408,79,2369,112,2352,132,2339,153,2331,176,2328,200,2328,291,2327,349,2320,373,2302,399,2287,412,2272,419,2241,423,2211,428,2198,434,2185,447,2174,467,2168,490,2168,533,2163,533,2163,490,2169,466,2181,444,2195,430,2210,423,2240,418,2270,414,2284,408,2298,396,2315,371,2322,348,2323,291,2323,200,2326,174,2335,150,2348,128,2365,109,2405,75,2446,49"/>
+<area shape="rect" id="Node000020" href="$mdl__fetch_8h.html" title="State&#45;aware chapter/page download orchestrator for the media downloader." alt="" coords="2501,357,2661,397"/>
+<area shape="poly" id="edge77_Node000001_Node000020" title=" " alt="" coords="2564,49,2606,71,2650,100,2690,136,2721,180,2729,207,2727,234,2716,260,2700,285,2657,327,2614,359,2610,355,2653,323,2696,281,2712,257,2722,233,2724,208,2716,182,2686,140,2647,104,2604,75,2562,54"/>
+<area shape="rect" id="Node000032" href="$mdl__discover_8h.html" title="Search / browse discovery: governed fetch of a results page, parse, honest presentation,..." alt="" coords="2363,181,2523,221"/>
+<area shape="poly" id="edge76_Node000001_Node000032" title=" " alt="" coords="2493,59,2452,182,2447,180,2488,58"/>
+<area shape="rect" id="Node000043" href="$mdl__config_8c.html" title="Flat key=value site&#45;descriptor parser over injected portable storage." alt="" coords="2547,181,2707,221"/>
+<area shape="poly" id="edge79_Node000001_Node000043" title=" " alt="" coords="2525,55,2615,180,2611,183,2521,58"/>
+<area shape="rect" id="Node000044" href="$mdl__politeness_8c.html" title="Seeded xorshift64 jitter, injectable clock, and the per&#45;host governor." alt="" coords="2824,93,2984,133"/>
+<area shape="poly" id="edge80_Node000001_Node000044" title=" " alt="" coords="2595,44,2824,92,2823,98,2594,49"/>
+<area shape="rect" id="Node000003" href="$mdl__cache_8h.html" title="Bounded per&#45;host HTTP document cache for the media downloader." alt="" coords="965,269,1125,309"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="2114,117,1902,119,1636,128,1502,137,1379,148,1274,164,1196,184,1157,202,1121,225,1066,271,1062,267,1118,221,1154,197,1194,179,1273,159,1378,143,1502,131,1635,123,1902,114,2114,112"/>
+<area shape="poly" id="edge74_Node000002_Node000013" title=" " alt="" coords="2114,124,1869,145,1571,180,1434,203,1320,229,1276,243,1243,258,1223,273,1216,289,1216,378,1223,393,1242,408,1274,422,1316,436,1426,462,1559,485,1846,521,2081,543,2080,548,1845,526,1558,490,1425,467,1315,442,1272,427,1240,412,1218,396,1211,379,1211,287,1219,270,1241,253,1274,238,1319,224,1433,198,1571,175,1869,140,2114,119"/>
+<area shape="poly" id="edge49_Node000002_Node000020" title=" " alt="" coords="2245,140,2352,219,2554,355,2551,359,2349,224,2242,144"/>
+<area shape="poly" id="edge46_Node000002_Node000032" title=" " alt="" coords="2273,136,2392,179,2390,184,2271,141"/>
+<area shape="rect" id="Node000033" href="$mdl__state_8h.html" title="Persistent per&#45;series library state for the media downloader." alt="" coords="1840,181,2000,221"/>
+<area shape="poly" id="edge50_Node000002_Node000033" title=" " alt="" coords="2132,140,1984,184,1982,179,2131,135"/>
+<area shape="poly" id="edge75_Node000002_Node000043" title=" " alt="" coords="2302,131,2547,181,2546,186,2301,136"/>
+<area shape="rect" id="Node000004" href="$mdl__app_8h.html" title="The downloader&#39;s portable application layer: one run mode, one call." alt="" coords="965,357,1125,397"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="1048,323,1048,357,1043,357,1043,323"/>
+<area shape="poly" id="edge41_Node000003_Node000013" title=" " alt="" coords="1093,315,1117,333,1139,356,1151,374,1158,392,1164,426,1172,456,1181,470,1196,483,1215,492,1245,500,1332,514,1447,525,1580,533,1857,544,2081,548,2080,554,1857,549,1580,538,1447,530,1331,519,1244,505,1213,497,1193,488,1177,473,1167,458,1159,427,1153,393,1147,376,1135,359,1114,337,1090,319"/>
+<area shape="poly" id="edge22_Node000003_Node000020" title=" " alt="" coords="1139,293,1635,318,2300,355,2501,368,2501,373,2300,360,1635,323,1139,298"/>
+<area shape="rect" id="Node000029" href="$mdl__cache_8c.html" title="Per&#45;host HTTP cache lookup and revalidation state machine." alt="" coords="5,445,165,485"/>
+<area shape="poly" id="edge42_Node000003_Node000029" title=" " alt="" coords="951,296,748,303,503,316,285,335,208,347,164,360,140,378,121,401,95,446,91,444,117,398,137,374,161,355,207,341,284,330,502,311,748,298,951,291"/>
+<area shape="rect" id="Node000030" href="$mdl__cache__internal_8h.html" title="Private binary&#45;index and body I/O seams for mdl_cache." alt="" coords="175,357,363,397"/>
+<area shape="poly" id="edge43_Node000003_Node000030" title=" " alt="" coords="952,304,364,368,363,363,951,298"/>
+<area shape="rect" id="Node000005" href="$mdl__cli_8h.html" title="Command&#45;line parsing for the mdl CLI." alt="" coords="806,445,973,485"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="1000,406,925,448,922,443,998,402"/>
+<area shape="rect" id="Node000009" href="$mdl__compose__internal_8h.html" title="What this FORM injects, and how one parsed invocation reaches a mode." alt="" coords="1049,533,1215,573"/>
+<area shape="poly" id="edge12_Node000004_Node000009" title=" " alt="" coords="1061,409,1096,484,1123,532,1118,534,1091,487,1056,411"/>
+<area shape="rect" id="Node000010" href="$apps_2host_2mdl_2src_2main_8c.html" title="mdl – host CLI for the e&#45;reader media downloader." alt="" coords="918,629,1103,654"/>
+<area shape="poly" id="edge11_Node000004_Node000010" title=" " alt="" coords="1044,411,1015,629,1010,628,1038,411"/>
+<area shape="rect" id="Node000012" href="$mdl__app_8c.html" title="The application layer&#39;s one composition seam: the bound working set." alt="" coords="520,621,680,661"/>
+<area shape="poly" id="edge13_Node000004_Node000012" title=" " alt="" coords="952,390,809,409,647,438,570,457,503,480,449,506,429,520,414,535,406,550,407,564,415,577,429,588,471,608,521,622,519,628,469,613,426,593,411,580,402,566,401,549,410,532,425,516,446,501,501,475,569,452,646,433,809,403,951,385"/>
+<area shape="poly" id="edge14_Node000004_Node000013" title=" " alt="" coords="1071,407,1110,452,1129,472,1145,483,1199,497,1293,509,1557,528,1848,540,2081,547,2081,553,1848,546,1556,533,1293,514,1198,502,1143,488,1126,476,1106,456,1067,410"/>
+<area shape="rect" id="Node000006" href="$mdl__cli_8c.html" title="Implementation of the mdl command&#45;line parser." alt="" coords="806,533,973,573"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="892,499,892,533,887,533,887,499"/>
+<area shape="rect" id="Node000007" href="$mdl__cli__nums_8c.html" title="Strict bounded numeric&#45;option parsing for mdl." alt="" coords="425,533,591,573"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="793,491,592,536,591,531,792,486"/>
+<area shape="rect" id="Node000008" href="$mdl__cli__usage_8c.html" title="Stable command&#45;line help rendering for mdl." alt="" coords="615,533,782,573"/>
+<area shape="poly" id="edge7_Node000005_Node000008" title=" " alt="" coords="836,493,742,536,739,531,834,489"/>
+<area shape="poly" id="edge8_Node000005_Node000009" title=" " alt="" coords="956,487,1080,531,1078,536,954,492"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="1095,584,1029,631,1026,626,1092,579"/>
+<area shape="rect" id="Node000011" href="$mdl__compose_8c.html" title="The composition of THIS form: libcurl in, one parsed command out." alt="" coords="1127,621,1294,661"/>
+<area shape="poly" id="edge10_Node000009_Node000011" title=" " alt="" coords="1161,582,1195,619,1191,623,1157,585"/>
+<area shape="poly" id="edge15_Node000013_Node000012" title=" " alt="" coords="2067,562,905,624,681,638,680,632,905,619,2067,557"/>
+<area shape="rect" id="Node000014" href="$mdl__app__admin_8c.html" title="Discovery, descriptor generation, and verification actions." alt="" coords="1898,621,2062,661"/>
+<area shape="poly" id="edge16_Node000013_Node000014" title=" " alt="" coords="2116,581,2022,624,2020,619,2113,577"/>
+<area shape="rect" id="Node000015" href="$mdl__app__cover_8c.html" title="Cached series&#45;cover acquisition and validated publication." alt="" coords="2671,621,2831,661"/>
+<area shape="poly" id="edge17_Node000013_Node000015" title=" " alt="" coords="2270,571,2492,604,2671,627,2670,633,2491,609,2269,576"/>
+<area shape="rect" id="Node000016" href="$mdl__app__direct_8c.html" title="Direct artifact, page, pack, and run composition actions." alt="" coords="2955,621,3115,661"/>
+<area shape="poly" id="edge18_Node000013_Node000016" title=" " alt="" coords="2270,571,2431,589,2558,599,2843,619,2955,629,2954,635,2842,624,2557,604,2431,595,2269,576"/>
+<area shape="rect" id="Node000017" href="$mdl__app__library_8c.html" title="Tracked&#45;library list, remove, and update&#45;all actions." alt="" coords="2087,621,2249,661"/>
+<area shape="poly" id="edge19_Node000013_Node000017" title=" " alt="" coords="2171,587,2171,621,2165,621,2165,587"/>
+<area shape="rect" id="Node000018" href="$mdl__app__prepare_8c.html" title="Descriptor&#45;driven series preparation and safe path setup." alt="" coords="2273,621,2447,661"/>
+<area shape="poly" id="edge20_Node000013_Node000018" title=" " alt="" coords="2224,577,2319,619,2317,624,2222,581"/>
+<area shape="rect" id="Node000019" href="$mdl__app__series_8c.html" title="Series selection, download lifecycle, and export actions." alt="" coords="3188,621,3351,661"/>
+<area shape="poly" id="edge21_Node000013_Node000019" title=" " alt="" coords="2270,571,2400,584,2511,592,2700,598,2888,603,3127,619,3188,626,3188,631,3126,624,2887,608,2700,604,2511,598,2400,590,2269,576"/>
+<area shape="poly" id="edge29_Node000020_Node000013" title=" " alt="" coords="2488,387,2435,394,2379,406,2322,423,2269,448,2242,467,2218,490,2182,535,2178,532,2214,487,2239,463,2267,443,2321,418,2378,400,2434,388,2487,381"/>
+<area shape="rect" id="Node000021" href="$mdl__pack_8h.html" title="Archive packaging of downloaded page folders for the mdl CLI." alt="" coords="2464,445,2624,485"/>
+<area shape="poly" id="edge23_Node000020_Node000021" title=" " alt="" coords="2570,411,2555,446,2550,444,2565,409"/>
+<area shape="rect" id="Node000022" href="$mdl__pack_8c.html" title="Implementation of the downloaded&#45;folder archive packaging." alt="" coords="2464,533,2624,573"/>
+<area shape="poly" id="edge39_Node000020_Node000022" title=" " alt="" coords="2640,402,2664,420,2682,444,2689,466,2682,487,2670,503,2654,516,2619,536,2616,531,2651,512,2666,499,2678,484,2684,466,2678,447,2660,424,2637,406"/>
+<area shape="rect" id="Node000023" href="$mdl__report_8h.html" title="Human&#45;facing progress and failure reporting for the mdl CLI." alt="" coords="2280,445,2440,485"/>
+<area shape="poly" id="edge26_Node000020_Node000023" title=" " alt="" coords="2521,405,2409,448,2407,443,2519,400"/>
+<area shape="rect" id="Node000024" href="$mdl__report_8c.html" title="Implementation of the mdl progress + failure presenter." alt="" coords="2280,533,2440,573"/>
+<area shape="poly" id="edge40_Node000020_Node000024" title=" " alt="" coords="2615,406,2630,424,2642,445,2646,466,2638,487,2615,497,2566,509,2441,538,2440,533,2565,504,2613,492,2634,483,2641,466,2637,447,2626,427,2611,409"/>
+<area shape="rect" id="Node000025" href="$mdl__fetch_8c.html" title="State&#45;aware chapter, asset, and run download orchestration." alt="" coords="2832,533,2992,573"/>
+<area shape="poly" id="edge30_Node000020_Node000025" title=" " alt="" coords="2676,387,2843,412,2911,427,2934,435,2947,444,2957,466,2953,491,2943,514,2930,534,2925,532,2938,512,2948,489,2951,467,2943,447,2932,440,2909,432,2842,417,2675,392"/>
+<area shape="rect" id="Node000026" href="$mdl__fetch__internal_8h.html" title="Module&#45;private fetch&#45;loop decisions promoted for host unit tests and the CLI&#39;s end&#45;of&#45;run reporting." alt="" coords="2750,445,2933,485"/>
+<area shape="poly" id="edge31_Node000020_Node000026" title=" " alt="" coords="2652,399,2785,443,2784,448,2651,404"/>
+<area shape="rect" id="Node000028" href="$mdl__fetch__page_8c.html" title="Cached page validation, streamed transfer, and publication." alt="" coords="3017,533,3181,573"/>
+<area shape="poly" id="edge38_Node000020_Node000028" title=" " alt="" coords="2675,387,2839,410,2915,426,2969,443,3004,462,3035,486,3084,531,3080,535,3032,490,3001,467,2967,448,2914,431,2838,416,2675,392"/>
+<area shape="poly" id="edge24_Node000021_Node000013" title=" " alt="" coords="2451,490,2251,536,2250,531,2450,485"/>
+<area shape="poly" id="edge25_Node000021_Node000022" title=" " alt="" coords="2547,499,2547,533,2541,533,2541,499"/>
+<area shape="poly" id="edge27_Node000023_Node000013" title=" " alt="" coords="2306,493,2211,536,2209,531,2304,489"/>
+<area shape="poly" id="edge28_Node000023_Node000024" title=" " alt="" coords="2363,499,2363,533,2357,533,2357,499"/>
+<area shape="poly" id="edge32_Node000026_Node000013" title=" " alt="" coords="2737,479,2520,503,2268,536,2256,538,2255,533,2268,531,2520,497,2736,474"/>
+<area shape="poly" id="edge36_Node000026_Node000022" title=" " alt="" coords="2764,492,2610,536,2608,531,2762,487"/>
+<area shape="poly" id="edge37_Node000026_Node000024" title=" " alt="" coords="2737,486,2452,536,2441,538,2440,533,2452,531,2736,481"/>
+<area shape="poly" id="edge34_Node000026_Node000025" title=" " alt="" coords="2868,494,2898,531,2894,535,2863,498"/>
+<area shape="rect" id="Node000027" href="$mdl__discover_8c.html" title="Governed search/browse: build the query URL, fetch it politely, parse the hits, and present them hone..." alt="" coords="2648,533,2808,573"/>
+<area shape="poly" id="edge33_Node000026_Node000027" title=" " alt="" coords="2807,496,2755,535,2751,531,2804,492"/>
+<area shape="poly" id="edge35_Node000026_Node000028" title=" " alt="" coords="2912,487,3043,531,3041,536,2910,492"/>
+<area shape="poly" id="edge44_Node000030_Node000029" title=" " alt="" coords="218,406,127,448,124,443,215,401"/>
+<area shape="rect" id="Node000031" href="$mdl__cache__io_8c.html" title="Checksummed binary index and immutable body I/O for mdl_cache." alt="" coords="189,445,349,485"/>
+<area shape="poly" id="edge45_Node000030_Node000031" title=" " alt="" coords="272,411,272,445,267,445,267,411"/>
+<area shape="poly" id="edge47_Node000032_Node000013" title=" " alt="" coords="2437,236,2424,273,2406,317,2380,361,2346,399,2328,412,2311,419,2279,423,2248,428,2232,435,2217,447,2200,467,2188,490,2174,534,2169,532,2183,488,2196,464,2213,443,2230,431,2246,423,2278,418,2310,414,2326,407,2342,395,2375,358,2401,314,2419,271,2432,234"/>
+<area shape="poly" id="edge48_Node000032_Node000027" title=" " alt="" coords="2513,223,2627,265,2758,320,2821,350,2876,382,2919,413,2948,444,2956,466,2947,487,2929,498,2895,511,2805,536,2804,531,2893,506,2927,493,2943,484,2950,466,2943,447,2916,417,2873,386,2818,355,2756,325,2625,270,2511,228"/>
+<area shape="poly" id="edge52_Node000033_Node000003" title=" " alt="" coords="1826,210,1522,232,1334,249,1144,272,1126,275,1125,270,1144,267,1333,244,1522,226,1826,205"/>
+<area shape="poly" id="edge51_Node000033_Node000004" title=" " alt="" coords="1827,216,1657,239,1463,272,1270,317,1111,360,1109,355,1269,311,1462,267,1656,234,1826,211"/>
+<area shape="poly" id="edge58_Node000033_Node000013" title=" " alt="" coords="1940,232,2012,345,2110,484,2151,531,2147,535,2106,487,2007,348,1936,234"/>
+<area shape="poly" id="edge53_Node000033_Node000020" title=" " alt="" coords="2014,213,2105,234,2154,249,2200,267,2217,277,2229,288,2241,298,2257,307,2319,329,2384,346,2502,366,2501,371,2382,351,2318,334,2255,312,2237,302,2226,292,2214,281,2198,272,2152,254,2104,239,2013,219"/>
+<area shape="rect" id="Node000034" href="$mdl__library_8h.html" title="Portable bounded operations over a tracked media library." alt="" coords="2027,269,2187,309"/>
+<area shape="poly" id="edge54_Node000033_Node000034" title=" " alt="" coords="1974,225,2067,267,2065,272,1972,229"/>
+<area shape="rect" id="Node000036" href="$mdl__fetch__body__internal_8h.html" title="Portable single&#45;transaction response&#45;body sink for media fetches." alt="" coords="3109,445,3331,485"/>
+<area shape="poly" id="edge59_Node000033_Node000036" title=" " alt="" coords="2014,219,3127,443,3126,448,2013,224"/>
+<area shape="rect" id="Node000038" href="$mdl__state_8c.html" title="In&#45;memory model and coverage queries for persistent series state." alt="" coords="1251,357,1411,397"/>
+<area shape="poly" id="edge66_Node000033_Node000038" title=" " alt="" coords="1827,217,1702,238,1634,253,1568,272,1456,316,1366,360,1364,355,1454,311,1566,267,1633,248,1701,233,1826,212"/>
+<area shape="rect" id="Node000039" href="$mdl__state__codec_8c.html" title="Portable parser for persistent series state payloads." alt="" coords="1435,357,1605,397"/>
+<area shape="poly" id="edge67_Node000033_Node000039" title=" " alt="" coords="1826,211,1776,219,1723,230,1669,248,1619,272,1592,291,1568,314,1534,359,1530,356,1564,311,1588,287,1616,267,1667,243,1721,225,1775,213,1826,206"/>
+<area shape="rect" id="Node000040" href="$mdl__state__internal_8h.html" title="Module&#45;private validation shared by the state model and codec." alt="" coords="1630,269,1813,309"/>
+<area shape="poly" id="edge68_Node000033_Node000040" title=" " alt="" coords="1865,229,1766,272,1764,267,1863,224"/>
+<area shape="rect" id="Node000042" href="$mdl__state__store_8c.html" title="Portable checksummed two&#45;generation persistence for downloader state." alt="" coords="1837,357,2003,397"/>
+<area shape="poly" id="edge73_Node000033_Node000042" title=" " alt="" coords="1923,235,1923,357,1917,357,1917,235"/>
+<area shape="poly" id="edge55_Node000034_Node000004" title=" " alt="" coords="2013,300,1239,360,1126,371,1125,365,1238,355,2013,295"/>
+<area shape="poly" id="edge56_Node000034_Node000013" title=" " alt="" coords="2107,323,2108,398,2114,442,2125,484,2138,510,2153,532,2149,535,2133,512,2120,486,2109,443,2103,399,2102,323"/>
+<area shape="rect" id="Node000035" href="$mdl__library_8c.html" title="Portable bounded tracked&#45;library enumeration and tree removal." alt="" coords="2128,357,2288,397"/>
+<area shape="poly" id="edge57_Node000034_Node000035" title=" " alt="" coords="2141,316,2187,355,2184,359,2138,320"/>
+<area shape="poly" id="edge60_Node000036_Node000015" title=" " alt="" coords="3223,499,3217,539,3208,559,3195,575,3176,585,3143,594,3048,610,2831,635,2830,630,3047,605,3142,589,3174,580,3192,571,3204,556,3212,537,3218,499"/>
+<area shape="poly" id="edge61_Node000036_Node000016" title=" " alt="" coords="3239,497,3249,536,3248,556,3240,575,3214,600,3183,619,3150,631,3116,638,3115,633,3148,626,3181,614,3211,596,3235,572,3243,555,3244,536,3234,499"/>
+<area shape="poly" id="edge62_Node000036_Node000019" title=" " alt="" coords="3260,492,3277,510,3290,532,3296,556,3294,580,3281,622,3276,620,3289,579,3290,556,3286,534,3273,514,3256,496"/>
+<area shape="poly" id="edge63_Node000036_Node000025" title=" " alt="" coords="3140,492,2980,536,2979,531,3139,486"/>
+<area shape="poly" id="edge65_Node000036_Node000028" title=" " alt="" coords="3184,495,3127,535,3124,531,3181,491"/>
+<area shape="rect" id="Node000037" href="$mdl__fetch__body_8c.html" title="Portable single&#45;transaction response&#45;body sink implementation." alt="" coords="3357,533,3520,573"/>
+<area shape="poly" id="edge64_Node000036_Node000037" title=" " alt="" coords="3282,488,3392,531,3390,536,3280,493"/>
+<area shape="poly" id="edge69_Node000040_Node000038" title=" " alt="" coords="1623,315,1411,361,1410,356,1622,310"/>
+<area shape="poly" id="edge70_Node000040_Node000039" title=" " alt="" coords="1665,317,1565,360,1563,355,1663,312"/>
+<area shape="rect" id="Node000041" href="$mdl__state__decimal_8c.html" title="Exact locale&#45;free conversion for legacy decimal state values." alt="" coords="1629,357,1813,397"/>
+<area shape="poly" id="edge71_Node000040_Node000041" title=" " alt="" coords="1724,323,1724,357,1719,357,1719,323"/>
+<area shape="poly" id="edge72_Node000040_Node000042" title=" " alt="" coords="1779,312,1878,355,1875,360,1776,317"/>
+</map>

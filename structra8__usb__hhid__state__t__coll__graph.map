@@ -1,0 +1,5 @@
+<map id="ra8_usb_hhid_state_t" name="ra8_usb_hhid_state_t">
+<area shape="rect" id="Node000001" title="Singleton shadow state for the host&#45;HID driver." alt="" coords="11,121,171,147"/>
+<area shape="rect" id="Node000002" href="$structra8__usb__hhid__device__t.html" title="Snapshot of the attached HID device, passed to the attach callback." alt="" coords="5,5,176,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,45,93,121,88,121,88,45"/>
+</map>

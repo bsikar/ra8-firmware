@@ -1,0 +1,17 @@
+<map id="apps/shared_libs/mdl/src/mdl_app_internal.h" name="apps/shared_libs/mdl/src/mdl_app_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private contract shared by the application&#45;mode translation units." alt="" coords="555,5,730,45"/>
+<area shape="rect" id="Node000002" href="$mdl__app_8c.html" title="The application layer&#39;s one composition seam: the bound working set." alt="" coords="5,93,165,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="542,42,371,66,178,96,166,98,165,93,177,91,370,60,541,37"/>
+<area shape="rect" id="Node000003" href="$mdl__app__admin_8c.html" title="Discovery, descriptor generation, and verification actions." alt="" coords="190,93,354,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="549,51,354,96,353,91,547,46"/>
+<area shape="rect" id="Node000004" href="$mdl__app__cover_8c.html" title="Cached series&#45;cover acquisition and validated publication." alt="" coords="379,93,539,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="591,54,500,96,498,91,589,49"/>
+<area shape="rect" id="Node000005" href="$mdl__app__direct_8c.html" title="Direct artifact, page, pack, and run composition actions." alt="" coords="563,93,723,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="645,59,645,93,640,93,640,59"/>
+<area shape="rect" id="Node000006" href="$mdl__app__library_8c.html" title="Tracked&#45;library list, remove, and update&#45;all actions." alt="" coords="747,93,909,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="697,49,789,91,786,96,695,54"/>
+<area shape="rect" id="Node000007" href="$mdl__app__prepare_8c.html" title="Descriptor&#45;driven series preparation and safe path setup." alt="" coords="933,93,1107,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="739,46,938,91,937,96,738,51"/>
+<area shape="rect" id="Node000008" href="$mdl__app__series_8c.html" title="Series selection, download lifecycle, and export actions." alt="" coords="1131,93,1293,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="744,36,919,60,1119,91,1131,93,1130,98,1118,96,918,65,743,42"/>
+</map>

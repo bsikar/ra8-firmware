@@ -1,0 +1,13 @@
+<map id="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src" name="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src">
+<area shape="rect" id="node1" href="dir_208a5d42abd6c5b39098deaf76e605cc.html" title="inc" alt="" coords="131,125,173,151"/>
+<area shape="rect" id="node2" href="dir_1c8e58895b76ffd99cc390cf16984739.html" title="src" alt="" coords="134,52,175,77"/>
+<area shape="poly" id="edge1" href="dir_000711_000250.html" alt="" coords="157,78,156,112,150,112,152,78"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000711_000250.html" title="3" alt="" coords="157,100,166,115"/>
+<area shape="rect" id="node3" href="dir_651562d8bf6cfd3e81eff5b570d7df50.html" title="Adapters between the vendored stacks under libs/third_party and this firmware: ThreadX to the RA8 clo..." alt="" coords="197,125,245,151"/>
+<area shape="poly" id="edge2" href="dir_000711_000369.html" alt="" coords="168,76,203,113,199,117,164,79"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000711_000369.html" title="1" alt="" coords="200,99,209,114"/>
+<area shape="rect" id="node4" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="269,125,315,151"/>
+<area shape="poly" id="edge3" href="dir_000711_000324.html" alt="" coords="177,74,259,117,256,121,174,79"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000711_000324.html" title="17" alt="" coords="249,102,266,117"/>
+<area shape="rect" id="clust1" href="dir_7367bf0fdee65fa679c9a584580fa14a.html" title="tz_secure_only_usb_hs" alt="" coords="16,16,187,161"/>
+</map>

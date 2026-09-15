@@ -1,0 +1,7 @@
+<map id="libs/ra8_psa_crypto/src/ra8_psa_crypto_internal.h" name="libs/ra8_psa_crypto/src/ra8_psa_crypto_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private definitions shared across the ra8_psa_crypto TUs." alt="" coords="99,5,247,60"/>
+<area shape="rect" id="Node000002" href="$ra8__psa__crypto_8c.html" title="Implementation of the ra8_psa_crypto facade over TF&#45;PSA&#45;Crypto." alt="" coords="5,115,164,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="143,72,104,117,100,113,139,69"/>
+<area shape="rect" id="Node000003" href="$ra8__psa__crypto__fake_8c.html" title="Off&#45;target crypto primitives for the ra8_psa_crypto facade." alt="" coords="188,108,336,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="207,69,241,106,237,110,203,72"/>
+</map>

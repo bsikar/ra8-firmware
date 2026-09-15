@@ -1,0 +1,17 @@
+<map id="port/usbx/inc/ux_dcd_ra8_usb.h" name="port/usbx/inc/ux_dcd_ra8_usb.h">
+<area shape="rect" id="Node000001" title="USBX device&#45;controller&#45;driver (DCD) bridge to ra8_usb." alt="" coords="47,5,203,45"/>
+<area shape="rect" id="Node000002" href="$ra8__usb_8h.html" title="Native USB controller driver public API (device + host modes)." alt="" coords="82,93,167,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="127,46,127,79,122,79,122,46"/>
+<area shape="rect" id="Node000003" href="$ra8__usb__device_8h.html" title="Native USB controller driver public API – shared types + device mode." alt="" coords="5,240,140,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="123,120,84,228,79,226,118,118"/>
+<area shape="rect" id="Node000006" href="$ra8__usb__host_8h.html" title="Native USB controller driver public API – host&#45;mode bring&#45;up." alt="" coords="115,167,235,192"/>
+<area shape="poly" id="edge6_Node000002_Node000006" title=" " alt="" coords="135,117,161,154,157,157,131,121"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="116,387,187,412"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="77,265,86,299,102,337,131,375,127,379,97,340,81,300,72,266"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="112,313,191,339"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="87,263,130,302,127,306,84,267"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="154,339,154,373,149,373,149,339"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="160,194,102,234,99,230,157,190"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="184,191,195,218,206,255,211,297,210,319,204,340,193,361,178,379,173,376,188,358,200,338,205,318,206,297,201,256,190,220,179,193"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="176,193,158,300,153,299,171,192"/>
+</map>

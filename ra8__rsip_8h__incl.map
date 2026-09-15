@@ -1,0 +1,34 @@
+<map id="libs/ra8_hal/inc/ra8_rsip.h" name="libs/ra8_hal/inc/ra8_rsip.h">
+<area shape="rect" id="Node000001" title="Renesas Secure IP (RSIP&#45;E50D) HAL driver – public API." alt="" coords="376,5,522,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rsip__core_8h.html" title="Renesas Secure IP (RSIP&#45;E50D) HAL – core lifecycle / TRNG / hash API." alt="" coords="531,167,652,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="469,44,574,155,570,158,465,48"/>
+<area shape="rect" id="Node000010" href="$ra8__rsip__keys_8h.html" title="Renesas Secure IP (RSIP&#45;E50D) HAL – key install + cipher / hash API." alt="" coords="333,167,456,192"/>
+<area shape="poly" id="edge13_Node000001_Node000010" title=" " alt="" coords="447,46,425,120,409,155,404,153,420,118,442,45"/>
+<area shape="rect" id="Node000011" href="$ra8__rsip__mgmt_8h.html" title="Renesas Secure IP (RSIP&#45;E50D) HAL – vault / KDF / lifecycle / tamper." alt="" coords="279,93,411,119"/>
+<area shape="poly" id="edge17_Node000001_Node000011" title=" " alt="" coords="426,48,373,87,370,83,422,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="394,460,464,485"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="592,193,582,232,563,289,536,353,499,414,479,435,458,454,455,450,476,432,495,410,531,351,558,287,577,231,587,192"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="475,240,554,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="581,194,539,232,535,229,578,190"/>
+<area shape="rect" id="Node000005" href="$ra8__rsip__regs_8h.html" title="Renesas Secure IP (RSIP&#45;E50D) register layout for the RA8D2." alt="" coords="243,240,364,265"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="546,195,364,239,363,234,545,189"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="516,266,503,330,492,372,475,413,451,451,446,448,471,411,487,370,498,329,510,265"/>
+<area shape="rect" id="Node000006" href="$ra8__rsip__regs__fields_8h.html" title="RSIP&#45;E50D register field/value enums and the reg32 accessor." alt="" coords="222,313,385,339"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="306,266,306,300,301,300,301,266"/>
+<area shape="rect" id="Node000008" href="$ra8__rsip__regs__offsets_8h.html" title="RSIP&#45;E50D register base address, byte offsets, and layout asserts." alt="" coords="44,387,216,412"/>
+<area shape="poly" id="edge12_Node000005_Node000008" title=" " alt="" coords="284,268,249,289,212,315,179,347,151,377,147,374,175,343,209,311,246,284,281,263"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="323,337,352,358,380,385,403,416,420,446,415,449,398,419,376,388,348,362,320,341"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="241,387,366,412"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="306,339,306,373,301,373,301,339"/>
+<area shape="poly" id="edge9_Node000006_Node000008" title=" " alt="" coords="277,341,172,384,170,379,275,336"/>
+<area shape="poly" id="edge11_Node000008_Node000003" title=" " alt="" coords="179,409,381,457,380,462,178,415"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="93,460,168,485"/>
+<area shape="poly" id="edge10_Node000008_Node000009" title=" " alt="" coords="133,412,133,446,128,446,128,412"/>
+<area shape="poly" id="edge14_Node000010_Node000003" title=" " alt="" coords="398,192,429,446,423,446,393,192"/>
+<area shape="poly" id="edge15_Node000010_Node000004" title=" " alt="" coords="415,190,484,230,481,235,412,194"/>
+<area shape="poly" id="edge16_Node000010_Node000005" title=" " alt="" coords="381,194,331,233,328,229,378,190"/>
+<area shape="poly" id="edge18_Node000011_Node000003" title=" " alt="" coords="279,110,195,117,150,126,107,139,68,157,37,182,17,213,11,231,9,251,9,327,11,374,18,392,33,410,59,425,95,437,190,454,293,464,380,468,379,473,292,469,189,459,94,442,56,430,30,414,13,395,5,375,4,327,4,251,6,230,12,210,33,178,65,153,105,134,149,121,194,112,279,105"/>
+<area shape="poly" id="edge19_Node000011_Node000004" title=" " alt="" coords="384,116,428,135,470,165,493,195,508,226,503,228,488,198,466,169,425,140,382,121"/>
+<area shape="poly" id="edge21_Node000011_Node000005" title=" " alt="" coords="342,120,324,167,310,227,305,226,319,166,337,118"/>
+<area shape="poly" id="edge20_Node000011_Node000010" title=" " alt="" coords="355,117,381,154,376,157,351,121"/>
+</map>

@@ -1,0 +1,16 @@
+<map id="tools/cache_bench/inc/sweep_block.h" name="tools/cache_bench/inc/sweep_block.h">
+<area shape="rect" id="Node000001" title="#208 block/frame&#45;size sweep: the byte&#45;size axis the capacity sweep never touches, so the chunked ...." alt="" coords="207,5,372,45"/>
+<area shape="rect" id="Node000002" href="$sweep__block__internal_8h.html" title="Module&#45;private seams shared by the #208 sweep translation units." alt="" coords="200,93,379,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="292,59,292,93,287,93,287,59"/>
+<area shape="rect" id="Node000003" href="$sweep__block_8c.html" title="Core of the #208 block/frame&#45;size sweep (&#45;&#45;sweep&#45;block)." alt="" coords="5,181,171,221"/>
+<area shape="poly" id="edge7_Node000001_Node000003" title=" " alt="" coords="246,55,190,95,142,141,105,183,101,179,138,137,186,91,243,51"/>
+<area shape="rect" id="Node000007" href="$cache__bench__report_8c.html" title="#147 benchmark front end: swept&#45;capacity report, mode dispatch, main." alt="" coords="403,93,570,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="346,48,445,91,442,96,344,53"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="233,141,133,184,131,179,231,136"/>
+<area shape="rect" id="Node000004" href="$sweep__block__backends_8c.html" title="Streamed pseudo&#45;memory and RBKC&#45;z9 block&#45;sweep backends." alt="" coords="195,181,384,221"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="292,147,292,181,287,181,287,147"/>
+<area shape="rect" id="Node000005" href="$sweep__block__payload_8c.html" title="Checkpointed allocation&#45;free pseudo&#45;text source for block sweeps." alt="" coords="409,181,589,221"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="349,136,454,179,452,184,347,141"/>
+<area shape="rect" id="Node000006" href="$sweep__block__report_8c.html" title="Reporting for the #208 sweep: machine&#45;parseable rows, per&#45;leg summary tables, and the measured knee /..." alt="" coords="613,181,779,221"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="392,134,613,180,612,185,391,139"/>
+</map>

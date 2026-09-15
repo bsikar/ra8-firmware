@@ -1,0 +1,9 @@
+<map id="mdl_rabook_vfs_t" name="mdl_rabook_vfs_t">
+<area shape="rect" id="Node000001" title="One initialized strict validator or one open validated RBKC reader." alt="" coords="146,101,285,127"/>
+<area shape="rect" id="Node000002" href="$structbook__chunked__t.html" title="One open chunked .rabook file: parsed geometry + caller storage." alt="" coords="5,5,132,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,36,161,75,199,99,196,103,158,80,96,40"/>
+<area shape="rect" id="Node000003" href="$structbook__header__t.html" title="Fixed 100&#45;byte prologue describing every table and pool in the blob." alt="" coords="156,5,275,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="218,45,218,101,213,101,213,45"/>
+<area shape="rect" id="Node000004" href="$structra8__io__vfs__file__t.html" title="Opaque, statically&#45;pooled format&#45;neutral file stream." alt="" coords="299,5,427,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="335,41,275,80,236,103,234,99,273,75,333,36"/>
+</map>

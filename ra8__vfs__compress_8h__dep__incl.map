@@ -1,0 +1,7 @@
+<map id="apps/shared_libs/compress/inc/ra8_vfs_compress.h" name="apps/shared_libs/compress/inc/ra8_vfs_compress.h">
+<area shape="rect" id="Node000001" title="Transparent VFS&#45;level whole&#45;file compression (compress&#45;on&#45;write,decompress&#45;on&#45;read) over the ra8_io f..." alt="" coords="121,5,320,45"/>
+<area shape="rect" id="Node000002" href="$ra8__vfs__compress_8c.html" title="Transparent whole&#45;file compress&#45;on&#45;write / decompress&#45;on&#45;read over the ra8_io VFS." alt="" coords="5,101,204,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="188,56,130,103,126,99,185,52"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2compress__demo_2src_2main_8c.html" title="Transparent compress&#45;on&#45;write / decompress&#45;on&#45;read over the VFS (#161)." alt="" coords="228,93,448,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="257,52,307,91,303,95,254,56"/>
+</map>

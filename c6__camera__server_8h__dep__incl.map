@@ -1,0 +1,19 @@
+<map id="examples/ek_ra8d2/common/c6_camera_server/inc/c6_camera_server.h" name="examples/ek_ra8d2/common/c6_camera_server/inc/c6_camera_server.h">
+<area shape="rect" id="Node000001" title="Shared contracts for ESP32&#45;C6 browser camera servers." alt="" coords="820,5,1031,60"/>
+<area shape="rect" id="Node000002" href="$c6__cam__app_8c.html" title="Shared C6 camera&#45;stream application workflow." alt="" coords="5,115,216,170"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="807,43,540,66,384,85,229,111,197,118,196,113,227,105,383,80,540,60,806,38"/>
+<area shape="rect" id="Node000003" href="$c6__cam__audio_8c.html" title="Interrupt&#45;driven onboard PDM microphone recorder for camera servers." alt="" coords="240,115,451,170"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="807,52,643,76,463,111,433,118,432,113,462,105,642,71,806,46"/>
+<area shape="rect" id="Node000004" href="$c6__cam__console_8c.html" title="Heap&#45;free console formatting for camera livestream diagnostics." alt="" coords="475,115,685,170"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="829,67,665,118,663,113,828,62"/>
+<area shape="rect" id="Node000005" href="$c6__cam__net_8c.html" title="NetX DHCP and a single&#45;connection HTTP camera server over ESP32&#45;C6." alt="" coords="709,115,920,170"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="890,72,844,117,840,113,886,68"/>
+<area shape="rect" id="Node000006" href="$c6__camera__livestream_2src_2c6__cam__camera_8c.html" title="Camera initialization and VGA UYVY to QVGA JPEG frame production." alt="" coords="944,108,1128,177"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="964,68,1003,106,1000,110,961,72"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__camera__livestream_2src_2main_8c.html" title="Entry point for the software&#45;JPEG C6 camera livestream." alt="" coords="1152,115,1336,170"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1017,62,1168,113,1166,118,1015,67"/>
+<area shape="rect" id="Node000008" href="$c6__camera__mjpeg_2src_2c6__cam__camera_8c.html" title="OV5640 hardware&#45;JPEG camera backend for the C6 MJPEG example." alt="" coords="1361,115,1575,170"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1045,49,1190,74,1349,105,1378,113,1377,118,1347,111,1189,79,1044,54"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__camera__mjpeg_2src_2main_8c.html" title="Entry point for the sensor&#45;JPEG C6 camera livestream." alt="" coords="1600,115,1784,170"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1044,37,1296,60,1443,79,1589,105,1618,113,1616,118,1587,111,1442,84,1296,65,1044,43"/>
+</map>

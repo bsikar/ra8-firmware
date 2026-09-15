@@ -1,0 +1,37 @@
+<map id="epub_tile_binder_t" name="epub_tile_binder_t">
+<area shape="rect" id="Node000001" title="Binds up to k_epub_tile_max_sources images to one tile cache." alt="" coords="1361,134,1504,159"/>
+<area shape="rect" id="Node000002" href="$structra8__tile__cache__t.html" title="Tile&#45;cache state (caller&#45;owned; treat as private)." alt="" coords="1119,98,1247,123"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1261,119,1361,134,1361,139,1260,124"/>
+<area shape="rect" id="Node000003" href="$structra8__keycache__t.html" title="Cache engine state (caller&#45;owned; treat as private)." alt="" coords="884,18,1007,43"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="998,45,1145,95,1143,100,996,50"/>
+<area shape="rect" id="Node000004" href="$structra8__keycache__cfg__t.html" title="Caller&#45;supplied storage + policy + renderer for ra8_keycache_init." alt="" coords="546,15,697,41"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="710,26,884,27,884,33,710,31"/>
+<area shape="rect" id="Node000005" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="213,15,367,41"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="380,25,546,25,546,31,380,31"/>
+<area shape="rect" id="Node000006" href="$structra8__tile__key__t.html" title="Identifies one decoded image tile." alt="" coords="889,98,1002,123"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="1016,108,1118,108,1118,113,1016,113"/>
+<area shape="rect" id="Node000007" href="$structepub__tile__source__t.html" title="One registered atlas image (private to the binder; treat as opaque)." alt="" coords="1111,174,1255,199"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1268,170,1361,155,1362,161,1269,176"/>
+<area shape="rect" id="Node000008" href="$structepub__book__t.html" title="Opened EPUB book." alt="" coords="893,175,998,201"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="1012,185,1110,184,1110,190,1012,190"/>
+<area shape="rect" id="Node000009" href="$structepub__miniz__arena__t.html" title="Descriptor for one caller&#45;owned miniz allocation arena." alt="" coords="545,69,698,94"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="712,82,786,93,825,103,861,116,895,141,932,173,929,177,892,145,859,121,823,108,785,98,711,87"/>
+<area shape="rect" id="Node000010" href="$structepub__miniz__workspace__t.html" title="Exactly&#45;sized, maximally&#45;aligned storage for one miniz arena." alt="" coords="528,122,715,147"/>
+<area shape="poly" id="edge9_Node000008_Node000010" title=" " alt="" coords="729,142,861,161,905,173,903,178,859,167,728,147"/>
+<area shape="rect" id="Node000011" href="$structepub__xml__workspace__t.html" title="Per&#45;book bounded storage for strict OPF/container/TOC parsing." alt="" coords="534,175,709,201"/>
+<area shape="poly" id="edge10_Node000008_Node000011" title=" " alt="" coords="722,185,892,185,892,191,722,191"/>
+<area shape="rect" id="Node000012" href="$structxml__workspace__t.html" title="Exactly bounded caller&#45;owned nesting storage." alt="" coords="222,138,358,163"/>
+<area shape="poly" id="edge11_Node000011_Node000012" title=" " alt="" coords="372,157,534,176,534,181,371,162"/>
+<area shape="rect" id="Node000013" href="$structxml__frame__t.html" title="One open&#45;element identity retained for close&#45;tag validation." alt="" coords="5,138,111,163"/>
+<area shape="poly" id="edge12_Node000012_Node000013" title=" " alt="" coords="124,148,222,148,222,153,124,153"/>
+<area shape="rect" id="Node000014" href="$structxml__span__t.html" title="Immutable byte span expressed relative to the source." alt="" coords="241,211,339,237"/>
+<area shape="poly" id="edge13_Node000011_Node000014" title=" " alt="" coords="353,226,425,226,504,220,577,198,579,203,504,225,426,232,353,231"/>
+<area shape="rect" id="Node000015" href="$structepub__stream__media__t.html" title="Seekable EPUB media descriptor – opens with no whole&#45;file residency (#151)." alt="" coords="538,229,705,254"/>
+<area shape="poly" id="edge14_Node000008_Node000015" title=" " alt="" coords="719,233,788,226,859,213,911,198,912,203,861,219,789,231,719,238"/>
+<area shape="rect" id="Node000016" href="$structepub__manifest__item__t.html" title="One &lt;manifest&gt; &lt;item&gt; entry, retained in OPF document order." alt="" coords="537,282,705,307"/>
+<area shape="poly" id="edge15_Node000008_Node000016" title=" " alt="" coords="719,299,755,296,791,290,826,278,858,261,867,250,870,239,873,226,882,213,903,199,906,203,886,217,878,228,875,240,872,253,862,265,829,283,792,295,755,302,719,304"/>
+<area shape="rect" id="Node000017" href="$structepub__toc__entry__t.html" title="One titled entry in the table of contents." alt="" coords="554,335,689,361"/>
+<area shape="poly" id="edge16_Node000008_Node000017" title=" " alt="" coords="694,360,735,363,779,360,821,348,858,326,868,314,873,301,872,274,869,244,873,229,882,213,899,199,903,203,886,216,878,231,875,245,877,273,878,302,873,316,862,330,824,353,780,365,735,368,693,365"/>
+<area shape="rect" id="Node000018" href="$structjof__info__t.html" title="Parsed + validated geometry of one JOF atlas." alt="" coords="904,227,987,253"/>
+<area shape="poly" id="edge17_Node000007_Node000018" title=" " alt="" coords="1000,230,1086,213,1144,197,1145,202,1087,219,1001,235"/>
+</map>

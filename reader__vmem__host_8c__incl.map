@@ -1,0 +1,37 @@
+<map id="tools/reader_vmem/src/reader_vmem_host.c" name="tools/reader_vmem/src/reader_vmem_host.c">
+<area shape="rect" id="Node000001" title="Bounded raw&#45;descriptor trace composition for reader_vmem." alt="" coords="292,5,464,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,73,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="294,48,87,95,86,90,293,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="97,93,160,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="319,48,174,93,172,88,317,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="184,93,255,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="341,48,256,90,254,85,339,43"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="454,167,529,192"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="372,46,364,81,365,100,371,117,385,134,402,147,442,165,440,170,399,151,381,138,366,120,359,101,359,81,367,45"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="667,387,737,412"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="361,47,340,72,319,103,302,139,295,178,295,254,298,267,306,279,335,303,379,324,433,342,551,371,653,389,652,394,550,376,431,347,377,329,332,307,302,283,293,269,290,254,290,178,297,138,314,101,336,69,357,44"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="381,93,447,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="389,44,405,79,400,82,384,47"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="472,93,543,119"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="411,43,478,84,475,88,408,48"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="567,93,663,119"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="436,43,569,87,567,92,434,48"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="687,93,762,119"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="463,43,674,90,673,96,461,48"/>
+<area shape="rect" id="Node000011" href="$reader__vmem__internal_8h.html" title="Private host sink and caller&#45;owned workspace contracts for reader_vmem." alt="" coords="787,93,969,119"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="465,38,792,89,791,94,464,43"/>
+<area shape="poly" id="edge11_Node000011_Node000005" title=" " alt="" coords="816,121,543,171,542,166,815,116"/>
+<area shape="poly" id="edge12_Node000011_Node000006" title=" " alt="" coords="875,120,824,231,792,295,765,340,729,379,725,376,761,337,788,292,820,229,870,118"/>
+<area shape="rect" id="Node000012" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="865,167,990,192"/>
+<area shape="poly" id="edge13_Node000011_Node000012" title=" " alt="" coords="888,117,914,154,909,157,884,121"/>
+<area shape="rect" id="Node000013" href="$ra8__vmem_8h.html" title="Byte&#45;range page cache with SLRU eviction (Layer 2, #147)." alt="" coords="657,167,761,192"/>
+<area shape="poly" id="edge14_Node000011_Node000013" title=" " alt="" coords="852,121,750,164,748,159,850,116"/>
+<area shape="poly" id="edge15_Node000013_Node000006" title=" " alt="" coords="722,190,740,212,754,239,758,277,750,315,736,349,720,377,716,374,731,347,745,313,753,277,749,241,735,215,718,194"/>
+<area shape="rect" id="Node000014" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="585,313,664,339"/>
+<area shape="poly" id="edge16_Node000013_Node000014" title=" " alt="" coords="671,194,635,213,619,226,607,241,602,255,603,270,613,300,608,302,597,271,597,255,602,239,615,222,632,208,668,190"/>
+<area shape="rect" id="Node000015" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="617,240,739,265"/>
+<area shape="poly" id="edge18_Node000013_Node000015" title=" " alt="" coords="706,193,691,229,686,227,701,191"/>
+<area shape="poly" id="edge17_Node000014_Node000006" title=" " alt="" coords="639,337,681,375,677,379,635,341"/>
+<area shape="poly" id="edge19_Node000015_Node000006" title=" " alt="" coords="683,265,700,373,695,373,677,266"/>
+<area shape="poly" id="edge20_Node000015_Node000014" title=" " alt="" coords="671,267,644,304,639,301,667,264"/>
+</map>

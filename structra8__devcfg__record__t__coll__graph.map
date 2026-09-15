@@ -1,0 +1,5 @@
+<map id="ra8_devcfg_record_t" name="ra8_devcfg_record_t">
+<area shape="rect" id="Node000001" title="Decoded record: the body plus the header discriminators." alt="" coords="5,101,160,127"/>
+<area shape="rect" id="Node000002" href="$structra8__devcfg__body__t.html" title="Decoded per&#45;unit payload (the 96&#45;byte record body)." alt="" coords="10,5,155,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="85,45,85,101,80,101,80,45"/>
+</map>

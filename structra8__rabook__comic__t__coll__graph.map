@@ -1,0 +1,23 @@
+<map id="ra8_rabook_comic_t" name="ra8_rabook_comic_t">
+<area shape="rect" id="Node000001" title="Mutable state for one image&#45;sequence&#45;to&#45;RABOOK build." alt="" coords="357,293,510,319"/>
+<area shape="rect" id="Node000002" href="$structra8__rabook__ctx__t.html" title="Builder state: the arenas plus running counts and a sticky&#45;fail flag." alt="" coords="263,197,398,223"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="355,230,422,291,419,295,352,234"/>
+<area shape="rect" id="Node000003" href="$structra8__rabook__buffers__t.html" title="Caller&#45;owned, fixed&#45;capacity arenas the builder appends into (no heap)." alt="" coords="251,101,410,127"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="333,141,333,197,328,197,328,141"/>
+<area shape="rect" id="Node000004" href="$structbook__chapter__t.html" title="One spine document (a renderable chapter) plus its TOC label." alt="" coords="5,5,128,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="98,35,136,56,180,75,266,99,265,104,178,80,134,61,96,40"/>
+<area shape="rect" id="Node000005" href="$structbook__node__t.html" title="One DOM node." alt="" coords="153,5,258,31"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="231,38,279,75,314,99,311,104,276,79,228,42"/>
+<area shape="rect" id="Node000006" href="$structbook__attr__t.html" title="One name=&quot;value&quot; attribute on an element." alt="" coords="283,5,379,31"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="333,45,333,101,328,101,328,45"/>
+<area shape="rect" id="Node000007" href="$structbook__stylesheet__t.html" title="A preserved CSS stylesheet and the chapter it scopes to." alt="" coords="403,5,544,31"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="446,40,350,103,347,99,443,36"/>
+<area shape="rect" id="Node000008" href="$structbook__image__t.html" title="Descriptor for one transcoded image in the image pool." alt="" coords="568,5,683,31"/>
+<area shape="poly" id="edge7_Node000003_Node000008" title=" " alt="" coords="596,40,556,61,510,80,460,94,411,104,410,99,459,89,508,75,554,56,593,35"/>
+<area shape="rect" id="Node000009" href="$structra8__rabook__raster__workspace__t.html" title="Exclusive caller&#45;owned scratch used by one raster conversion." alt="" coords="423,197,652,223"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="516,234,448,295,444,291,513,230"/>
+<area shape="rect" id="Node000010" href="$structra8__img__arena__t.html" title="Caller&#45;owned bump arena backing a single image decode." alt="" coords="453,101,584,127"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="526,139,538,197,532,198,521,141"/>
+<area shape="rect" id="Node000011" href="$structra8__webp__arena__t.html" title="Caller&#45;owned bump arena backing a single WebP decode." alt="" coords="608,101,749,127"/>
+<area shape="poly" id="edge10_Node000009_Node000011" title=" " alt="" coords="658,138,611,176,566,200,563,195,608,171,655,134"/>
+</map>

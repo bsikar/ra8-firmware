@@ -1,0 +1,19 @@
+<map id="libs/ra8_c6link/inc/ra8_c6link_wifi.h" name="libs/ra8_c6link/inc/ra8_c6link_wifi.h">
+<area shape="rect" id="Node000001" title="Wi&#45;Fi station bring&#45;up and association over the C6 link." alt="" coords="181,5,319,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="171,313,241,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="216,48,166,78,109,121,54,176,31,207,13,241,8,261,14,276,29,289,49,300,103,314,157,320,157,325,102,319,47,305,25,294,10,279,3,261,8,239,26,205,50,173,105,117,163,74,213,43"/>
+<area shape="rect" id="Node000003" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="199,93,301,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="253,46,253,79,247,79,247,46"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="359,240,437,265"/>
+<area shape="poly" id="edge11_Node000001_Node000005" title=" " alt="" coords="293,43,329,63,368,90,404,125,431,166,435,182,433,199,419,229,414,227,428,198,430,182,426,168,399,128,364,95,326,68,290,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="244,120,230,142,219,167,212,203,208,239,207,300,202,300,202,238,206,202,214,166,226,139,239,117"/>
+<area shape="rect" id="Node000004" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="228,167,395,192"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="262,117,294,154,290,158,258,121"/>
+<area shape="poly" id="edge8_Node000003_Node000005" title=" " alt="" coords="302,109,330,116,360,126,387,142,410,165,416,180,418,197,411,228,406,227,412,197,411,182,405,168,384,147,358,131,329,121,300,114"/>
+<area shape="rect" id="Node000006" href="$ra8__mdl__protocol_8h.html" title="Allocation&#45;free constants shared by the RA8 and C6 media endpoints." alt="" coords="22,240,169,265"/>
+<area shape="poly" id="edge9_Node000003_Node000006" title=" " alt="" coords="235,121,173,169,115,231,111,227,170,165,231,117"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="305,194,225,304,220,301,301,191"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="327,190,375,229,372,233,324,194"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="368,268,251,311,250,306,366,263"/>
+<area shape="poly" id="edge10_Node000006_Node000002" title=" " alt="" coords="115,263,178,303,175,308,112,268"/>
+</map>

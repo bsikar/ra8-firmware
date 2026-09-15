@@ -1,0 +1,20 @@
+<map id="libs/ra8_camera/src/ra8_camera.c" name="libs/ra8_camera/src/ra8_camera.c">
+<area shape="rect" id="Node000001" title="Validation and opaque&#45;vtable dispatch for ra8_camera." alt="" coords="147,5,296,45"/>
+<area shape="rect" id="Node000002" href="$ra8__camera_8h.html" title="Transport&#45;neutral camera source and image&#45;codec facade." alt="" coords="117,167,228,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="297,25,378,32,454,47,484,59,503,75,508,85,508,96,496,120,479,134,454,145,388,162,313,172,242,178,241,173,312,167,387,157,452,140,476,129,492,117,503,95,503,86,499,78,481,63,453,52,377,37,297,31"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="44,313,114,339"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="148,37,118,45,89,57,63,73,41,95,16,137,8,175,14,216,30,264,41,285,56,302,52,306,37,288,25,266,9,217,3,175,11,135,37,92,60,69,87,52,117,40,146,32"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="40,240,118,265"/>
+<area shape="poly" id="edge11_Node000001_Node000004" title=" " alt="" coords="148,39,97,59,74,75,56,95,48,110,44,127,46,163,56,198,68,227,63,229,51,200,41,164,39,127,43,109,52,92,71,71,94,55,146,34"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="258,93,332,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="242,44,277,81,273,85,238,47"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="356,93,482,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="270,43,378,86,376,91,268,48"/>
+<area shape="rect" id="Node000007" href="$ra8__camera__internal_8h.html" title="Private source and codec vtables for ra8_camera backends." alt="" coords="66,93,234,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="206,47,172,85,168,81,202,44"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="170,193,155,227,132,267,102,305,98,302,128,264,150,225,165,191"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="159,194,107,234,104,229,156,190"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="82,266,82,300,76,300,76,266"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="156,118,167,153,162,154,151,120"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="141,120,124,142,107,168,95,198,87,227,82,226,90,196,102,165,119,139,137,117"/>
+</map>

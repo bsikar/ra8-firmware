@@ -1,0 +1,5 @@
+<map id="ra8_etha_slot_t" name="ra8_etha_slot_t">
+<area shape="rect" id="Node000001" title="Per&#45;port runtime state." alt="" coords="25,101,148,127"/>
+<area shape="rect" id="Node000002" href="$structra8__etha__port__stats__t.html" title="Per&#45;port runtime traffic counters maintained by ra8_etha." alt="" coords="5,5,168,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="89,45,89,101,84,101,84,45"/>
+</map>

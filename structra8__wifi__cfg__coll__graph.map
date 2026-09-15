@@ -1,0 +1,7 @@
+<map id="ra8_wifi_cfg" name="ra8_wifi_cfg">
+<area shape="rect" id="Node000001" title="Everything ra8_wifi_init needs that the facade cannot discover." alt="" coords="95,101,195,127"/>
+<area shape="rect" id="Node000002" href="$structra8__wifi__backend.html" title="One vtable per radio." alt="" coords="5,5,140,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="92,40,138,99,134,103,88,43"/>
+<area shape="rect" id="Node000003" href="$structra8__wifi__mac.html" title="One IEEE 802 address, by value." alt="" coords="164,5,272,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="210,44,188,79,163,103,159,99,184,76,205,42"/>
+</map>

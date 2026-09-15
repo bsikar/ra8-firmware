@@ -1,0 +1,7 @@
+<map id="port/nimble/inc/nimble_npl_threadx.h" name="port/nimble/inc/nimble_npl_threadx.h">
+<area shape="rect" id="Node000001" title="NimBLE Native Porting Layer mapping onto Eclipse ThreadX." alt="" coords="125,5,295,45"/>
+<area shape="rect" id="Node000002" href="$examples_2__unsupported_2threadx__nimble__peripheral_2src_2main_8c.html" title="NimBLE&#45;based Battery Service peripheral on top of ThreadX (RA8D2)." alt="" coords="5,93,207,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="181,56,137,95,134,91,177,52"/>
+<area shape="rect" id="Node000003" href="$nimble__npl__threadx_8c.html" title="NimBLE Native Porting Layer mapping onto Eclipse ThreadX." alt="" coords="231,101,400,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="243,52,296,99,292,103,240,56"/>
+</map>

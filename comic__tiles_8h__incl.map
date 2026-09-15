@@ -1,0 +1,29 @@
+<map id="apps/shared_libs/comic/inc/comic_tiles.h" name="apps/shared_libs/comic/inc/comic_tiles.h">
+<area shape="rect" id="Node000001" title="Tile an oversized comic page through the JOF atlas + ra8_tile_cache so a CBZ/CBR page larger than the..." alt="" coords="135,5,310,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,240,80,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="174,48,135,68,98,95,69,128,52,167,46,198,44,226,39,226,40,197,47,166,64,125,94,91,132,64,172,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="326,313,397,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="311,30,351,38,393,50,435,67,472,91,490,108,501,124,513,166,517,197,509,222,494,244,471,267,440,292,406,310,404,305,437,287,468,263,490,241,505,220,511,197,508,167,496,126,486,111,469,95,432,72,392,55,350,43,310,36"/>
+<area shape="rect" id="Node000004" href="$jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="80,167,131,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="169,48,137,67,112,95,103,124,103,153,98,153,97,123,107,92,134,63,167,43"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="247,240,326,265"/>
+<area shape="poly" id="edge13_Node000001_Node000005" title=" " alt="" coords="232,45,247,93,283,226,278,227,241,94,227,47"/>
+<area shape="rect" id="Node000006" href="$jof__produce_8h.html" title="Import&#45;time transcode producer: JPEG/PNG/WebP &#45;&gt; JOF band&#45;tile atlas in bounded RAM (#231,..." alt="" coords="121,93,231,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="214,47,192,83,188,80,209,44"/>
+<area shape="rect" id="Node000007" href="$ra8__tile__cache_8h.html" title="Fixed&#45;RAM&#45;budget image&#45;tile cache with LRU eviction (Layer 3b, #147)." alt="" coords="331,93,459,119"/>
+<area shape="poly" id="edge14_Node000001_Node000007" title=" " alt="" coords="265,43,358,85,356,90,263,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="97,194,64,231,60,228,93,191"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="111,191,124,227,136,247,151,263,189,287,232,304,274,314,313,319,312,325,273,319,230,309,187,292,148,267,132,250,119,230,106,193"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="132,188,245,232,243,237,130,193"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="300,263,341,302,337,306,297,267"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="142,121,104,140,86,153,70,168,55,197,48,227,43,225,50,195,66,165,82,149,101,135,139,116"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="180,118,196,185,213,227,238,263,274,291,314,309,312,314,271,295,234,267,208,229,190,187,175,119"/>
+<area shape="poly" id="edge11_Node000006_Node000004" title=" " alt="" coords="166,121,128,159,124,155,162,117"/>
+<area shape="poly" id="edge12_Node000006_Node000005" title=" " alt="" coords="187,117,271,227,267,230,183,121"/>
+<area shape="poly" id="edge15_Node000007_Node000003" title=" " alt="" coords="429,116,456,129,480,146,495,167,497,180,494,193,474,229,448,261,393,307,389,303,444,257,470,226,490,191,492,180,490,169,476,150,453,134,427,121"/>
+<area shape="poly" id="edge16_Node000007_Node000005" title=" " alt="" coords="387,121,347,168,304,230,300,227,343,165,382,117"/>
+<area shape="rect" id="Node000008" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="357,167,480,192"/>
+<area shape="poly" id="edge17_Node000007_Node000008" title=" " alt="" coords="401,118,413,153,408,154,396,120"/>
+<area shape="poly" id="edge18_Node000008_Node000003" title=" " alt="" coords="416,193,373,301,368,299,411,191"/>
+<area shape="poly" id="edge19_Node000008_Node000005" title=" " alt="" coords="399,194,321,236,319,231,396,190"/>
+</map>

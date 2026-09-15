@@ -1,0 +1,13 @@
+<map id="apps/shared_libs/reflow/src/reflow_tokenize_internal.h" name="apps/shared_libs/reflow/src/reflow_tokenize_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for reflow_tokenize.c internal helpers." alt="" coords="380,5,600,45"/>
+<area shape="rect" id="Node000002" href="$reflow__css__rules_8c.html" title="Content&#45;CSS selector + @font&#45;face rule parsing (#111)." alt="" coords="5,93,180,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="390,51,180,96,179,91,389,46"/>
+<area shape="rect" id="Node000003" href="$reflow__parse_8c.html" title="HTML&#45;subset parser entry point for reflow." alt="" coords="204,93,379,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="435,53,336,96,334,91,433,48"/>
+<area shape="rect" id="Node000004" href="$reflow__tokenize_8c.html" title="No&#45;heap streaming XHTML tokenizer for reflow (replaces the former heap&#45;backed DOM shim)." alt="" coords="403,93,577,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="493,59,493,93,487,93,487,59"/>
+<area shape="rect" id="Node000005" href="$reflow__tokenize__attr_8c.html" title="Attribute and CSS&#45;identity helpers for the no&#45;heap XHTML tokenizer: quoted&#45;attribute scanning,..." alt="" coords="601,93,792,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="549,48,652,91,650,96,547,53"/>
+<area shape="rect" id="Node000006" href="$reflow__tokenize__lex_8c.html" title="Lexical primitives for the no&#45;heap streaming XHTML tokenizer: whitespace/entity/UTF&#45;8 scanning,..." alt="" coords="817,93,1006,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="596,46,820,91,819,96,595,51"/>
+</map>

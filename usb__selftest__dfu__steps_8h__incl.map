@@ -1,0 +1,8 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_selftest_dfu/inc/usb_selftest_dfu_steps.h" name="examples/ek_ra8d2/hw_validated/hil/usb_selftest_dfu/inc/usb_selftest_dfu_steps.h">
+<area shape="rect" id="Node000001" title="Shared constants + host&#45;side DFU ladder interface for usb_selftest_dfu." alt="" coords="5,5,197,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="66,196,137,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="96,75,91,110,91,148,97,182,92,183,85,148,85,110,90,75"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="101,123,179,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="118,74,132,109,127,111,113,76"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="136,150,116,185,112,183,131,147"/>
+</map>

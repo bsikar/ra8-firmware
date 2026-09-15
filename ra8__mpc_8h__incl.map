@@ -1,0 +1,11 @@
+<map id="libs/ra8_hal/inc/ra8_mpc.h" name="libs/ra8_hal/inc/ra8_mpc.h">
+<area shape="rect" id="Node000001" title="Multi&#45;function Pin Controller (MPC) facade." alt="" coords="5,5,151,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="43,167,113,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="60,47,42,69,29,94,26,106,28,118,40,138,55,156,51,159,36,141,24,120,20,106,23,92,38,66,56,44"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="39,93,117,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="81,46,81,79,75,79,75,46"/>
+<area shape="rect" id="Node000004" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="141,93,300,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="113,43,189,84,187,89,111,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="81,119,81,153,75,153,75,119"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="199,121,115,163,112,158,197,116"/>
+</map>

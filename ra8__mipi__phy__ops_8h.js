@@ -1,0 +1,27 @@
+var ra8__mipi__phy__ops_8h =
+[
+    [ "ra8_mipi_phy_compute_lane_rate_mbps", "ra8__mipi__phy__ops_8h.html#a58d3883d52cb77e03521f7b84034009f", null ],
+    [ "ra8_mipi_phy_compute_pll_freq", "ra8__mipi__phy__ops_8h.html#aff5b4b1570a159193b61a917c692bd71", null ],
+    [ "ra8_mipi_phy_dual_mode_can_acquire", "ra8__mipi__phy__ops_8h.html#a770e46a2ba6da53075cb6aea992dbf43", null ],
+    [ "ra8_mipi_phy_get_active_mode", "ra8__mipi__phy__ops_8h.html#aea6e6ade4fd242a3a5f8874886a91173", null ],
+    [ "ra8_mipi_phy_get_clock_mode", "ra8__mipi__phy__ops_8h.html#aaeb5934a1fdfa9f5b6a3b24962c5ae91", null ],
+    [ "ra8_mipi_phy_get_dual_mode", "ra8__mipi__phy__ops_8h.html#a30bf4cb3b4ee94d3ccc5076fae411c00", null ],
+    [ "ra8_mipi_phy_get_eotp", "ra8__mipi__phy__ops_8h.html#a748cc938c4c4c3fc6b005dd7e6ea6ee0", null ],
+    [ "ra8_mipi_phy_get_lane_count", "ra8__mipi__phy__ops_8h.html#aa397e88d576e241ce9bcb53f0700a135", null ],
+    [ "ra8_mipi_phy_get_state", "ra8__mipi__phy__ops_8h.html#a3c783ac8552e31d86edab3c1ad0b5298", null ],
+    [ "ra8_mipi_phy_get_status_decoded", "ra8__mipi__phy__ops_8h.html#a051c4de80ad3d808e56dad0e5ad4d6a5", null ],
+    [ "ra8_mipi_phy_is_lane_enabled", "ra8__mipi__phy__ops_8h.html#a407dcfd4971728e35a9204b7aa4ca906", null ],
+    [ "ra8_mipi_phy_lookup_timing", "ra8__mipi__phy__ops_8h.html#a6e2d969945ff69ba2744e7b85d38a1e1", null ],
+    [ "ra8_mipi_phy_select_timing", "ra8__mipi__phy__ops_8h.html#a56a3cb8f39ea2ec73ba713bd91951cb5", null ],
+    [ "ra8_mipi_phy_set_clock_mode", "ra8__mipi__phy__ops_8h.html#aa661ed435c4b5b86ab66e7bd059c0e48", null ],
+    [ "ra8_mipi_phy_set_dual_mode", "ra8__mipi__phy__ops_8h.html#a5dd15e8198932d1aadb74bffbc825eeb", null ],
+    [ "ra8_mipi_phy_set_eotp", "ra8__mipi__phy__ops_8h.html#a187427bca3776c7cff73b0e47049546e", null ],
+    [ "ra8_mipi_phy_set_escape_divisor", "ra8__mipi__phy__ops_8h.html#a26a31894f666f36958f205c9803ca753", null ],
+    [ "ra8_mipi_phy_set_lane_count", "ra8__mipi__phy__ops_8h.html#a73dca5d13d957ceb8f5823f589b70983", null ],
+    [ "ra8_mipi_phy_set_lane_enable", "ra8__mipi__phy__ops_8h.html#a9a808eaf85f420ce7accf3b778e09b46", null ],
+    [ "ra8_mipi_phy_set_lane_speed", "ra8__mipi__phy__ops_8h.html#a839c183b01e597cbf38c5368266fabab", null ],
+    [ "ra8_mipi_phy_set_pclka_freq", "ra8__mipi__phy__ops_8h.html#a30a2aa0a88a981bdccf54c0f9901b94a", null ],
+    [ "ra8_mipi_phy_set_pclka_freq_hz", "ra8__mipi__phy__ops_8h.html#a6177773c9d015118450d6ba35f7b11f0", null ],
+    [ "ra8_mipi_phy_switch_mode", "ra8__mipi__phy__ops_8h.html#a8631224a38df821aa296c1181505da83", null ],
+    [ "ra8_mipi_phy_validate_pll_band", "ra8__mipi__phy__ops_8h.html#a46fcbe389695d3509495b316ed741dd4", null ]
+];

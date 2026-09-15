@@ -1,0 +1,7 @@
+<map id="libs/ra8_usb_pal/inc/ra8_usb_pal.h" name="libs/ra8_usb_pal/inc/ra8_usb_pal.h">
+<area shape="rect" id="Node000001" title="USB device&#45;mode Platform Abstraction Layer." alt="" coords="98,5,249,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__stream__usbcdc_8c.html" title="USB&#45;CDC byte&#45;stream sink – bulk&#45;IN writes through ra8_usb_pal." alt="" coords="5,93,163,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="145,57,106,95,102,91,142,53"/>
+<area shape="rect" id="Node000003" href="$ra8__usb__pal_8c.html" title="USB PAL implementation – ra8_usb wrapper." alt="" coords="187,93,338,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="205,53,245,91,241,95,201,57"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="apps/shared_libs/rabook_compile/inc/ra8_rabook_gray4.h" name="apps/shared_libs/rabook_compile/inc/ra8_rabook_gray4.h">
+<area shape="rect" id="Node000001" title="Grayscale image transcode stage (4&#45;bpp / 8&#45;bpp) for the on&#45;device EPUB compiler (#149)." alt="" coords="211,5,392,60"/>
+<area shape="rect" id="Node000002" href="$ra8__rabook__gray4_8c.html" title="Grayscale image transcode – downscale + quantise + nibble&#45;pack (4&#45;bpp) or copy (8&#45;bpp)." alt="" coords="5,108,187,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="237,68,151,110,148,106,235,63"/>
+<area shape="rect" id="Node000003" href="$ra8__rabook__pipeline_8c.html" title="End&#45;to&#45;end EPUB &#45;&gt; RABOOK1 compile pipeline (#149)." alt="" coords="211,108,392,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="304,74,304,108,299,108,299,74"/>
+<area shape="rect" id="Node000004" href="$ra8__rabook__raster_8c.html" title="Caller&#45;arena raster normalizer for RABOOK image records." alt="" coords="416,108,597,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="368,63,454,106,452,110,366,68"/>
+</map>

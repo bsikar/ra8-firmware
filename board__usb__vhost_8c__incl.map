@@ -1,0 +1,37 @@
+<map id="tools/ra8_emulator/src/usb/board_usb_vhost.c" name="tools/ra8_emulator/src/usb/board_usb_vhost.c">
+<area shape="rect" id="Node000001" title="Built&#45;in virtual chapter&#45;9 USB host (see board_usb_internal.h)." alt="" coords="253,5,451,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,72,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="277,48,86,96,85,90,276,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="97,93,167,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="300,48,178,91,176,86,298,43"/>
+<area shape="rect" id="Node000004" href="$board__usb__internal_8h.html" title="Module&#45;private state + interfaces shared by the board_usb TUs." alt="" coords="191,93,350,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="334,47,295,85,291,82,330,44"/>
+<area shape="rect" id="Node000009" href="$emu__host__io__internal_8h.html" title="Bounded raw&#45;descriptor I/O seam for the RA8 emulator." alt="" coords="538,93,713,119"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="418,43,573,87,572,92,417,48"/>
+<area shape="rect" id="Node000013" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="877,167,993,192"/>
+<area shape="poly" id="edge16_Node000001_Node000013" title=" " alt="" coords="451,36,583,57,726,91,821,124,900,158,897,163,819,129,725,96,582,63,450,41"/>
+<area shape="rect" id="Node000014" href="$ra8__usb__regs_8h.html" title="USB Full&#45;Speed + High&#45;Speed controller layout for the Renesas RA8D2." alt="" coords="375,93,495,119"/>
+<area shape="poly" id="edge18_Node000001_Node000014" title=" " alt="" coords="374,44,414,82,411,86,370,47"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="286,240,357,265"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="277,118,315,226,310,228,272,120"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="71,240,206,265"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="196,121,155,139,137,152,122,168,117,182,117,197,127,227,122,229,112,198,112,181,118,165,133,148,152,134,194,116"/>
+<area shape="rect" id="Node000007" href="$board__usb_8h.html" title="USBFS controller model + a virtual USB host for the board emulator." alt="" coords="132,167,233,192"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="258,121,209,160,206,156,255,117"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="359,167,484,192"/>
+<area shape="poly" id="edge9_Node000004_Node000008" title=" " alt="" coords="296,116,385,158,383,163,294,121"/>
+<area shape="poly" id="edge7_Node000007_Node000005" title=" " alt="" coords="206,190,288,231,285,236,204,194"/>
+<area shape="poly" id="edge8_Node000007_Node000006" title=" " alt="" coords="178,194,155,230,151,227,173,191"/>
+<area shape="poly" id="edge13_Node000009_Node000005" title=" " alt="" coords="714,115,762,126,802,142,816,152,824,164,825,178,815,194,792,206,749,217,626,233,486,245,371,252,370,246,485,240,625,228,748,211,790,201,812,190,819,177,819,166,812,156,800,147,760,131,712,121"/>
+<area shape="poly" id="edge15_Node000009_Node000008" title=" " alt="" coords="593,121,468,165,466,160,592,116"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="607,167,681,192"/>
+<area shape="poly" id="edge11_Node000009_Node000010" title=" " alt="" coords="631,118,640,153,635,154,626,120"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="508,167,583,192"/>
+<area shape="poly" id="edge12_Node000009_Node000011" title=" " alt="" coords="614,121,570,160,567,156,611,117"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="705,167,801,192"/>
+<area shape="poly" id="edge14_Node000009_Node000012" title=" " alt="" coords="647,116,721,157,719,162,645,121"/>
+<area shape="poly" id="edge17_Node000013_Node000005" title=" " alt="" coords="877,192,858,195,583,227,371,249,370,244,582,222,857,189,876,187"/>
+<area shape="poly" id="edge20_Node000014_Node000005" title=" " alt="" coords="410,121,378,140,349,168,334,197,327,227,322,226,329,195,345,165,375,136,407,116"/>
+<area shape="poly" id="edge21_Node000014_Node000008" title=" " alt="" coords="435,119,429,154,423,153,430,119"/>
+<area shape="poly" id="edge19_Node000014_Node000011" title=" " alt="" coords="454,116,517,157,514,161,451,121"/>
+</map>

@@ -1,0 +1,22 @@
+<map id="libs/ra8_hal/inc/ra8_gpt_capture.h" name="libs/ra8_hal/inc/ra8_gpt_capture.h">
+<area shape="rect" id="Node000001" title="GPT input&#45;capture + external event / pulse&#45;count extension." alt="" coords="37,5,182,45"/>
+<area shape="rect" id="Node000002" href="$ra8__gpt_8h.html" title="Full&#45;featured General PWM Timer (GPT) driver." alt="" coords="253,93,336,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="155,43,256,85,254,90,153,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="165,387,235,412"/>
+<area shape="poly" id="edge13_Node000001_Node000003" title=" " alt="" coords="87,48,61,71,36,102,16,139,10,158,8,178,8,254,12,279,22,301,38,321,58,338,105,365,152,383,150,388,103,370,55,342,34,324,18,304,7,280,3,254,3,178,5,157,11,136,31,99,57,68,83,44"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="308,117,341,157,376,214,389,246,396,278,393,310,380,340,352,366,319,384,283,394,250,399,249,394,282,389,317,379,349,362,375,337,388,309,390,279,384,247,371,216,336,160,304,121"/>
+<area shape="rect" id="Node000004" href="$ra8__dma_8h.html" title="Generic DMA transfer substrate (DMAC engine)." alt="" coords="181,167,272,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="285,121,249,158,245,155,282,117"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="286,313,365,339"/>
+<area shape="poly" id="edge12_Node000002_Node000006" title=" " alt="" coords="299,119,324,299,319,300,294,119"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="206,194,176,213,141,240,108,274,84,314,81,326,83,337,98,356,123,372,153,383,151,388,121,376,95,360,78,339,76,326,79,312,104,271,137,236,173,209,203,190"/>
+<area shape="rect" id="Node000005" href="$ra8__dmac_8h.html" title="8&#45;channel DMA controller (DMAC0) driver" alt="" coords="177,240,276,265"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="229,192,229,226,224,226,224,192"/>
+<area shape="poly" id="edge11_Node000004_Node000006" title=" " alt="" coords="243,190,267,211,290,238,307,269,320,299,315,301,303,271,286,242,263,215,240,194"/>
+<area shape="rect" id="Node000007" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="94,313,210,339"/>
+<area shape="poly" id="edge9_Node000004_Node000007" title=" " alt="" coords="211,194,188,214,168,241,158,271,154,300,149,299,153,269,163,239,184,211,208,190"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="230,266,229,299,224,339,213,375,208,373,219,338,224,299,224,266"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="244,263,300,303,297,307,241,268"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="307,341,234,382,231,377,304,336"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="162,338,187,374,182,377,158,341"/>
+</map>

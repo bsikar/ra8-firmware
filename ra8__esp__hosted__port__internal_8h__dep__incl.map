@@ -1,0 +1,5 @@
+<map id="port/esp&#45;hosted/src/ra8_esp_hosted_port_internal.h" name="port/esp&#45;hosted/src/ra8_esp_hosted_port_internal.h">
+<area shape="rect" id="Node000001" title="Library&#45;private surface of the esp&#45;hosted port bring&#45;up." alt="" coords="11,5,172,60"/>
+<area shape="rect" id="Node000002" href="$ra8__esp__hosted__port_8c.html" title="Bring&#45;up and teardown of the esp&#45;hosted RA8D2 + ThreadX port." alt="" coords="5,108,177,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="94,74,94,108,89,108,89,74"/>
+</map>

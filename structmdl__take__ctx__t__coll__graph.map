@@ -1,0 +1,23 @@
+<map id="mdl_take_ctx_t" name="mdl_take_ctx_t">
+<area shape="rect" id="Node000001" title="Context consumed synchronously by the CustomRpc response extractor." alt="" coords="771,192,892,217"/>
+<area shape="rect" id="Node000002" href="$structra8__c6link.html" title="Caller&#45;allocated link handle." alt="" coords="549,139,639,164"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="653,159,747,178,789,189,788,195,746,183,652,164"/>
+<area shape="rect" id="Node000003" href="$structra8__c6link__transport.html" title="Function&#45;pointer seam a backend fills so the facade can reach the C6." alt="" coords="236,5,391,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="405,27,453,40,500,60,526,77,550,98,585,136,581,140,546,102,523,81,497,64,451,45,403,32"/>
+<area shape="rect" id="Node000004" href="$structra8__c6link__event.html" title="One decoded co&#45;processor announcement." alt="" coords="247,59,380,84"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="394,80,446,90,500,105,571,136,569,141,498,110,445,95,393,85"/>
+<area shape="rect" id="Node000005" href="$structra8__c6link__mac.html" title="One IEEE 802 address, by value." alt="" coords="5,59,129,84"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="143,69,246,69,246,74,143,74"/>
+<area shape="rect" id="Node000006" href="$structra8__c6link__wait.html" title="The one outstanding request a link is waiting on." alt="" coords="251,112,375,137"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="389,129,549,144,549,150,389,134"/>
+<area shape="rect" id="Node000007" href="$structra8__c6link__fault.html" title="What the co&#45;processor said when a request did not succeed." alt="" coords="250,165,377,191"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="390,174,498,166,549,158,550,163,499,171,391,179"/>
+<area shape="rect" id="Node000008" href="$structra8__c6link__stats.html" title="What one pump did on the wire, counted rather than inferred." alt="" coords="249,219,377,244"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="391,226,445,217,497,200,509,190,521,178,555,162,557,166,524,183,513,194,500,204,446,223,391,231"/>
+<area shape="rect" id="Node000009" href="$structra8__mdl__session__t.html" title="RA8&#45;local state for one accepted remote artifact job." alt="" coords="523,192,665,217"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="679,202,770,202,770,207,679,207"/>
+<area shape="rect" id="Node000010" href="$structra8__mdl__chunk__t.html" title="One correlated bounded raw&#45;byte response." alt="" coords="527,245,661,271"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="674,245,746,230,796,215,797,220,747,235,675,250"/>
+<area shape="rect" id="Node000011" href="$structra8__mdl__http__response__t.html" title="HTTP status and selected response headers proven by the C6 backend." alt="" coords="220,272,407,297"/>
+<area shape="poly" id="edge10_Node000010_Node000011" title=" " alt="" coords="420,286,498,281,554,268,555,273,499,286,421,291"/>
+</map>

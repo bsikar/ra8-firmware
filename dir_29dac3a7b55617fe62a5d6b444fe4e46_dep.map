@@ -1,0 +1,24 @@
+<map id="apps/host" name="apps/host">
+<area shape="rect" id="node1" href="dir_699267fa50e21dc324648ec0948c9d50.html" title="shared_libs" alt="" coords="67,136,163,161"/>
+<area shape="rect" id="node3" href="dir_33977b0db622f061cf5e05f1a4759e78.html" title="alphabet_soup" alt="" coords="203,63,320,88"/>
+<area shape="rect" id="node6" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="427,136,472,161"/>
+<area shape="poly" id="edge1" href="dir_000008_000324.html" alt="" coords="294,86,414,130,413,135,292,91"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000008_000324.html" title="11" alt="" coords="404,116,421,131"/>
+<area shape="rect" id="node7" href="dir_651562d8bf6cfd3e81eff5b570d7df50.html" title="Adapters between the vendored stacks under libs/third_party and this firmware: ThreadX to the RA8 clo..." alt="" coords="496,136,544,161"/>
+<area shape="poly" id="edge2" href="dir_000008_000369.html" alt="" coords="297,86,333,96,483,133,482,138,331,101,296,91"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000008_000369.html" title="2" alt="" coords="476,119,485,134"/>
+<area shape="rect" id="node4" href="dir_9ea2e27473d82295818a5dfa933974e8.html" title="cbz2jof" alt="" coords="37,63,107,88"/>
+<area shape="poly" id="edge3" href="dir_000046_000461.html" alt="" coords="81,87,103,123,99,126,77,90"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000046_000461.html" title="1" alt="" coords="101,109,110,123"/>
+<area shape="poly" id="edge4" href="dir_000046_000324.html" alt="" coords="94,86,119,96,200,113,266,116,332,118,413,132,413,137,331,124,266,121,200,118,118,101,92,91"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000046_000324.html" title="1" alt="" coords="406,118,415,132"/>
+<area shape="rect" id="node5" href="dir_be19f7d53cc67dcac941e7b4005f9365.html" title="mdl" alt="" coords="131,63,178,88"/>
+<area shape="poly" id="edge6" href="dir_000342_000461.html" alt="" coords="150,90,130,125,126,123,146,87"/>
+<area shape="rect" id="edge6-headlabel" href="dir_000342_000461.html" title="12" alt="" coords="129,117,146,132"/>
+<area shape="poly" id="edge5" href="dir_000342_000324.html" alt="" coords="172,86,192,96,252,113,302,118,352,121,414,131,413,137,351,126,301,123,251,118,190,101,169,91"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000342_000324.html" title="14" alt="" coords="402,117,420,132"/>
+<area shape="poly" id="edge7" href="dir_000342_000369.html" alt="" coords="171,86,192,96,233,109,269,116,333,121,399,123,483,134,482,139,399,128,333,126,268,121,232,114,190,101,169,90"/>
+<area shape="rect" id="edge7-headlabel" href="dir_000342_000369.html" title="2" alt="" coords="475,120,484,134"/>
+<area shape="rect" id="clust2" href="dir_29dac3a7b55617fe62a5d6b444fe4e46.html" alt="" coords="27,52,405,99"/>
+<area shape="rect" id="clust1" href="dir_9654b8d08f4bba4e84b362c5fd320bee.html" title="apps" alt="" coords="16,16,416,172"/>
+</map>

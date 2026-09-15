@@ -1,0 +1,19 @@
+<map id="libs/ra8_hal/inc/ra8_spi.h" name="libs/ra8_hal/inc/ra8_spi.h">
+<area shape="rect" id="Node000001" title="SPI_B controller driver (RA8D2 Type&#45;B SPI peripheral)." alt="" coords="136,5,282,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="140,313,211,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="182,48,141,80,92,124,46,179,27,209,11,241,8,258,13,272,24,284,40,294,82,309,127,317,126,323,81,314,38,299,21,288,8,275,3,258,6,239,22,206,42,175,89,120,138,75,179,43"/>
+<area shape="rect" id="Node000003" href="$ra8__dma_8h.html" title="Generic DMA transfer substrate (DMAC engine)." alt="" coords="164,93,254,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="212,46,212,79,206,79,206,46"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="291,240,370,265"/>
+<area shape="poly" id="edge11_Node000001_Node000005" title=" " alt="" coords="238,44,293,94,320,128,341,166,345,198,341,227,336,227,340,198,336,168,316,131,289,97,234,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="207,120,194,167,184,239,179,300,174,299,179,238,189,166,202,118"/>
+<area shape="rect" id="Node000004" href="$ra8__dmac_8h.html" title="8&#45;channel DMA controller (DMAC0) driver" alt="" coords="204,167,302,192"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="218,118,241,154,236,156,214,120"/>
+<area shape="poly" id="edge10_Node000003_Node000005" title=" " alt="" coords="246,116,284,135,301,149,316,165,329,195,334,226,328,227,324,197,312,168,298,153,281,140,244,121"/>
+<area shape="rect" id="Node000006" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="22,240,138,265"/>
+<area shape="poly" id="edge8_Node000003_Node000006" title=" " alt="" coords="198,121,149,168,99,230,94,227,146,165,194,117"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="249,194,190,303,186,300,244,191"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="267,190,309,229,306,232,263,194"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="306,268,214,310,212,305,304,263"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="97,263,150,303,147,307,93,268"/>
+</map>

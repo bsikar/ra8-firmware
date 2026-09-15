@@ -1,0 +1,7 @@
+<map id="ra8_eth_gwca_default_state_t" name="ra8_eth_gwca_default_state_t">
+<area shape="rect" id="Node000001" title="State block for ra8_eth_gwca_default_open / _send / _recv." alt="" coords="141,121,306,161"/>
+<area shape="rect" id="Node000002" href="$structra8__gwca__basic__descriptor__t.html" title="8&#45;byte basic descriptor (HUM Ch 34.5.1.2 &quot;General Formats&quot;)." alt="" coords="5,5,215,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="132,39,208,119,204,123,128,43"/>
+<area shape="rect" id="Node000003" href="$structra8__gwca__ext__descriptor__t.html" title="16&#45;byte extended descriptor (HUM Ch 34.5.1.2 &quot;Extended &#160;&#160;&#160;&#160;&#160;&#160;descriptor&quot;, GWDCCi.ETS == 0 &amp;&amp; GWDCCi...." alt="" coords="239,5,435,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="323,44,277,99,250,123,247,119,273,95,319,40"/>
+</map>

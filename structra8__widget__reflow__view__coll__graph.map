@@ -1,0 +1,7 @@
+<map id="ra8_widget_reflow_view" name="ra8_widget_reflow_view">
+<area shape="rect" id="Node000001" title=" " alt="" coords="80,101,259,127"/>
+<area shape="rect" id="Node000002" href="$structra8__widget__paint__t.html" title="Drawing backend the concrete leaf widgets paint through (a DI seam)." alt="" coords="5,5,152,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,39,160,99,156,103,98,43"/>
+<area shape="rect" id="Node000003" href="$structra8__widget__reflow__ops.html" title=" " alt="" coords="176,5,347,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="242,43,183,103,179,99,238,39"/>
+</map>

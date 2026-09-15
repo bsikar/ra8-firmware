@@ -1,0 +1,25 @@
+var ra8__rsip__cipher_8c =
+[
+    [ "priv_aes_alg_byte", "ra8__rsip__cipher_8c.html#a2051453622ad86dd58d3d3d928cb9ad9", null ],
+    [ "priv_complete", "ra8__rsip__cipher_8c.html#af381905af7b194e345581b949ef09226", null ],
+    [ "priv_handle_words_for", "ra8__rsip__cipher_8c.html#aa325ba7b082e4b6b3bce0274d87118cf", null ],
+    [ "priv_load_handle", "ra8__rsip__cipher_8c.html#ab90079d54d57d76e7da3f93b8f3c4adc", null ],
+    [ "priv_pack_le", "ra8__rsip__cipher_8c.html#ad160f8e0580196b544f93161b6defcc5", null ],
+    [ "priv_push_bytes_to_port", "ra8__rsip__cipher_8c.html#a6d6e331e9839225020e459d7e51681de", null ],
+    [ "priv_push_handle_body", "ra8__rsip__cipher_8c.html#acacf01b8665c729b214a8d2a4d909eec", null ],
+    [ "priv_push_iv_lanes", "ra8__rsip__cipher_8c.html#ad5b44a79a7296fbd5a8e62db32ab64f8", null ],
+    [ "priv_unpack_le", "ra8__rsip__cipher_8c.html#a3d3acb60ba058fe25663a5f9100f9ab6", null ],
+    [ "ra8_rsip_aes128_install_plain", "ra8__rsip__cipher_8c.html#a83ef47ed760a1a112b25771a9484af1b", null ],
+    [ "ra8_rsip_aes192_install_plain", "ra8__rsip__cipher_8c.html#ae5597c9502ae521c1f366c9f078270e7", null ],
+    [ "ra8_rsip_aes256_install_plain", "ra8__rsip__cipher_8c.html#a17f892c54d3b9f9b1e98c74965da1d2b", null ],
+    [ "ra8_rsip_aes_ccm", "ra8__rsip__cipher_8c.html#af6f50685e5e81401cc30e05701d29b5e", null ],
+    [ "ra8_rsip_aes_cipher", "ra8__rsip__cipher_8c.html#a1b0f12514d446bc720270d3860eb584b", null ],
+    [ "ra8_rsip_aes_gcm", "ra8__rsip__cipher_8c.html#adcebf70cfc21922deb9028f54bf6c1c1", null ],
+    [ "ra8_rsip_chacha20", "ra8__rsip__cipher_8c.html#a830ca85d637ba9abbda3a73dbe01e890", null ],
+    [ "ra8_rsip_chacha20_install_plain", "ra8__rsip__cipher_8c.html#ab38dbc988e443566fc28304a891d665a", null ],
+    [ "ra8_rsip_chacha20_poly1305", "ra8__rsip__cipher_8c.html#a15d608ac0a1affd321ae568d70ee8f06", null ],
+    [ "ra8_rsip_hmac_install_plain", "ra8__rsip__cipher_8c.html#a778ba1cf23c68f5b20a00741f28653e3", null ],
+    [ "ra8_rsip_oem_install", "ra8__rsip__cipher_8c.html#a01a79b517bde2eef9089d3253ca5354e", null ],
+    [ "ra8_rsip_poly1305", "ra8__rsip__cipher_8c.html#a774d1e2f9766228240f070fe7aa74e6a", null ],
+    [ "s_tag", "ra8__rsip__cipher_8c.html#af8861f6a1fb30510e283b1b7806b64e7", null ]
+];

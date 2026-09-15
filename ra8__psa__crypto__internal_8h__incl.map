@@ -1,0 +1,17 @@
+<map id="libs/ra8_psa_crypto/src/ra8_psa_crypto_internal.h" name="libs/ra8_psa_crypto/src/ra8_psa_crypto_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private definitions shared across the ra8_psa_crypto TUs." alt="" coords="151,5,299,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="161,181,235,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="223,61,205,168,200,167,218,60"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="87,255,157,280"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="240,59,253,91,262,130,263,170,258,190,250,208,234,226,214,241,172,259,170,254,212,236,230,223,245,205,253,188,258,169,257,130,248,93,236,61"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,181,84,207"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="151,47,121,56,92,68,65,86,44,109,38,123,36,138,39,168,34,168,31,138,33,121,40,107,62,82,89,64,119,51,150,42"/>
+<area shape="rect" id="Node000005" href="$ra8__psa__crypto_8h.html" title="Application&#45;level PSA Crypto facade over tf&#45;psa&#45;crypto." alt="" coords="54,108,187,133"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="195,62,147,101,144,97,191,58"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="313,108,416,133"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="269,58,335,98,333,103,266,62"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="59,205,101,243,97,247,55,209"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="135,131,177,170,173,174,131,135"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="123,134,124,241,119,241,118,134"/>
+<area shape="poly" id="edge8_Node000005_Node000004" title=" " alt="" coords="110,135,69,174,65,170,107,131"/>
+</map>

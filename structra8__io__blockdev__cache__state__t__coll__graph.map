@@ -1,0 +1,9 @@
+<map id="ra8_io_blockdev_cache_state_t" name="ra8_io_blockdev_cache_state_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned private state for a caching block device." alt="" coords="93,212,266,252"/>
+<area shape="rect" id="Node000002" href="$structra8__io__blockdev__t.html" title="Caller&#45;allocated block&#45;device handle binding a backend to its context." alt="" coords="19,109,159,134"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="109,143,166,210,162,214,105,146"/>
+<area shape="rect" id="Node000003" href="$structra8__io__blockdev__iface.html" title="Opaque to applications – backends implement this internally and export a binding helper through their..." alt="" coords="5,5,172,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="91,45,91,109,86,109,86,45"/>
+<area shape="rect" id="Node000004" href="$structra8__io__blockdev__cache__slot__t.html" title="Per&#45;sector cache metadata (one caller&#45;owned array entry per slot)." alt="" coords="183,101,357,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="247,154,197,213,193,210,243,150"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="tools/ra8_emulator/inc/emu_view_surface_internal.h" name="tools/ra8_emulator/inc/emu_view_surface_internal.h">
+<area shape="rect" id="Node000001" title="Internal streamed panel/composite builder seam." alt="" coords="103,5,274,60"/>
+<area shape="rect" id="Node000002" href="$emu__view_8c.html" title="Board&#45;view presentation implementation (see emu_view.h)." alt="" coords="5,115,180,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,72,113,117,109,113,152,68"/>
+<area shape="rect" id="Node000003" href="$emu__view__surface_8c.html" title="Bounded&#45;tile GLCDC rotation, raw&#45;fd composition, and PPM export." alt="" coords="204,108,368,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="226,68,263,106,259,110,222,72"/>
+</map>

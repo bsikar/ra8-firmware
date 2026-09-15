@@ -1,0 +1,5 @@
+<map id="display_handle" name="display_handle">
+<area shape="rect" id="Node000001" title="Opaque handle returned by display_init." alt="" coords="30,101,150,127"/>
+<area shape="rect" id="Node000002" href="$structdisplay__backend__iface.html" title="Opaque to applications – backends implement this internally and export a const instance through their..." alt="" coords="5,5,175,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,45,93,101,87,101,87,45"/>
+</map>

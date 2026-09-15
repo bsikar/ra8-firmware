@@ -1,0 +1,68 @@
+var glyph__bench_8c =
+[
+    [ "gb_workspace_t", "structgb__workspace__t.html", "structgb__workspace__t" ],
+    [ "gb_const_t", "glyph__bench_8c.html#aefe931d6b0fd932d34b5b22d9ab62e1d", [
+      [ "k_gb_xs_a", "glyph__bench_8c.html#aefe931d6b0fd932d34b5b22d9ab62e1daeab7d87e46f2ae680288f4daa7d07a6c", null ],
+      [ "k_gb_xs_b", "glyph__bench_8c.html#aefe931d6b0fd932d34b5b22d9ab62e1daa61ff02bf0de7b84b725233aa089cbdc", null ],
+      [ "k_gb_xs_c", "glyph__bench_8c.html#aefe931d6b0fd932d34b5b22d9ab62e1daa265fdb6e11732e3d83eb71e70941823", null ],
+      [ "k_gb_ascii_az_a", "glyph__bench_8c.html#aefe931d6b0fd932d34b5b22d9ab62e1da06c890298317765337557370febe21a1", null ],
+      [ "k_gb_ascii_az_z", "glyph__bench_8c.html#aefe931d6b0fd932d34b5b22d9ab62e1dab36d68daf946243238e0303daf024f7f", null ],
+      [ "k_gb_case_delta", "glyph__bench_8c.html#aefe931d6b0fd932d34b5b22d9ab62e1da9d0254b91d871b20f0ec1001f8cb8d0d", null ],
+      [ "k_gb_ascii_0", "glyph__bench_8c.html#aefe931d6b0fd932d34b5b22d9ab62e1da4b85772535ee3257f547237bd15e42c4", null ],
+      [ "k_gb_digits", "glyph__bench_8c.html#aefe931d6b0fd932d34b5b22d9ab62e1dab991c829fd759ab9310e05af05feb4fa", null ]
+    ] ],
+    [ "gb_dim_t", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2", [
+      [ "k_gb_pages", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2affbc0d36ccf7c56948f445e094e73628", null ],
+      [ "k_gb_page_glyphs", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a501d4699732f0965ba0d8a6b2701a84f", null ],
+      [ "k_gb_reread_pages", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a3bdd2a8ca43e43980245c079f38bb33a", null ],
+      [ "k_gb_body_px", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2abbac3126cb8e25aa44096a705a8d005f", null ],
+      [ "k_gb_heading_px", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2abf7c44e1a0f981ec57bf49275ab30f89", null ],
+      [ "k_gb_heading_pct", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a1fbd29d0d06e033c500abdb905a5631e", null ],
+      [ "k_gb_cap_pct", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2aeab93f9660673937bc7baf625fba8d5c", null ],
+      [ "k_gb_punct_pct", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a2190e048484fdb36028396c5cb2ee06c", null ],
+      [ "k_gb_digit_pct", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a7bdc36fae8714faa3039f9bd6c500cfb", null ],
+      [ "k_gb_pct_base", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2ab164a6c8d057a06375ef3dfa853b7ebe", null ],
+      [ "k_gb_cell_bytes", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a2d37784af077b4fc0abfc421c1bc7afc", null ],
+      [ "k_gb_buckets", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a0c9c8eee01a8193fbb52e47dcf3b2a3b", null ],
+      [ "k_gb_prod_cell_kib", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a88515c3b80177a9cae9a108502480e92", null ],
+      [ "k_gb_max_budget", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a67c21bd78958c097059713253e691556", null ],
+      [ "k_gb_decimal_scale", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a13b17a3b3c668b62773a621ad7eb45cc", null ],
+      [ "k_gb_dec_radix", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a025c2c6c6a5b10597ed6ef58c394ca39", null ],
+      [ "k_gb_budget_width", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2ae9d15681f1c3d298f3e65fb0c94cdca2", null ],
+      [ "k_gb_ram_width", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a452b44376d46a3557c074f6afb521205", null ],
+      [ "k_gb_hit_width", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2a2425dc0c952d022bd2a3f8d25d6e9c8b", null ],
+      [ "k_gb_raster_width", "glyph__bench_8c.html#a89d4b76c192ca92d908c8092cf8526f2ade101ae29c1561b8ec5cd08bdbd73059", null ]
+    ] ],
+    [ "gb_freq_t", "glyph__bench_8c.html#a4387624cc381a3be3d0ae2b25a4d4161", [
+      [ "k_gb_freq_total", "glyph__bench_8c.html#a4387624cc381a3be3d0ae2b25a4d4161a387fdfc3daf9e98a69479e70c78fe886", null ]
+    ] ],
+    [ "gb_seed_t", "glyph__bench_8c.html#aa3f07715572848f5747dead93c88a7e4", [
+      [ "k_gb_seed", "glyph__bench_8c.html#aa3f07715572848f5747dead93c88a7e4a199fc42f7fbe2a8d77883b6ba0d91148", null ]
+    ] ],
+    [ "internal_gb_below", "glyph__bench_8c.html#a6fc3869b9e6fdd9c580e8f2a9133ceb0", null ],
+    [ "internal_gb_pick_codepoint", "glyph__bench_8c.html#a88936d87f6e1578f18a89298b06ec9ac", null ],
+    [ "internal_gb_pick_letter", "glyph__bench_8c.html#a4ea2e981089620bf573360de52bf9b11", null ],
+    [ "internal_gb_render", "glyph__bench_8c.html#a8838765169ae26051651c84cce8e3798", null ],
+    [ "internal_gb_rng", "glyph__bench_8c.html#a5c12f87bd3662013c44e255c44e47055", null ],
+    [ "internal_log_byte", "glyph__bench_8c.html#a49597aee22c9a6074be7ed10517be6db", null ],
+    [ "internal_output_init", "glyph__bench_8c.html#a6491170587659e25a96127fad87b8f75", null ],
+    [ "internal_put_padded_u64", "glyph__bench_8c.html#a769f523cea2bb2d80541880d4a00509b", null ],
+    [ "internal_replay_page_glyphs", "glyph__bench_8c.html#a226347192745c852ea5413d0d237b021", null ],
+    [ "internal_replay_workload", "glyph__bench_8c.html#adf848610dfeee6a6d1adf208469e3a53", null ],
+    [ "internal_report_header", "glyph__bench_8c.html#a5c9d55d671182d537c4a36fe61057fee", null ],
+    [ "internal_report_row", "glyph__bench_8c.html#a6caa250108fe69a095f4db23b7877d1a", null ],
+    [ "internal_run_budget", "glyph__bench_8c.html#aebb328c7930b506af04a76592f4dc4a0", null ],
+    [ "internal_run_report", "glyph__bench_8c.html#abdb8bdd4ade3bff3e6fc000983e2495f", null ],
+    [ "internal_submit_access", "glyph__bench_8c.html#a5b08a8a246d7c510e5ceabe053b05e5f", null ],
+    [ "internal_write_parts", "glyph__bench_8c.html#adeb2e96b83c4a5987a7dc036830e9377", null ],
+    [ "main", "glyph__bench_8c.html#a840291bc02cba5474a4cb46a9b9566fe", null ],
+    [ "s_gb_access_total", "glyph__bench_8c.html#a65435fe3885b12d90bb9bd9d83aa231c", null ],
+    [ "s_gb_budgets", "glyph__bench_8c.html#a76666e3774214205e3c3de936b951e74", null ],
+    [ "s_gb_diagnostic", "glyph__bench_8c.html#a627f38cd08a39575f31dedceaf218d08", null ],
+    [ "s_gb_diagnostic_posix", "glyph__bench_8c.html#a98cd9984f14b662482e5e364370f8054", null ],
+    [ "s_gb_letter_freq", "glyph__bench_8c.html#aff3c2a8f8df71e374f2c15f2ae855ae6", null ],
+    [ "s_gb_output", "glyph__bench_8c.html#a74e86ddbc6eca3a87b8b66038cd4c0d8", null ],
+    [ "s_gb_output_posix", "glyph__bench_8c.html#af1837d899d63d42c8d1c2b4ef48fe2e8", null ],
+    [ "s_gb_punct", "glyph__bench_8c.html#a7a8e4635e0cf7ec6a94bb121df1d66ea", null ],
+    [ "s_gb_workspace", "glyph__bench_8c.html#af4b0848fbbd40d4f3dace720c9e6ce3e", null ]
+];

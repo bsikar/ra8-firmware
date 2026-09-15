@@ -1,0 +1,18 @@
+<map id="libs/ra8_hal/inc/ra8_mipi_dsi_api.h" name="libs/ra8_hal/inc/ra8_mipi_dsi_api.h">
+<area shape="rect" id="Node000001" title="MIPI DSI&#45;2 host driver – public function surface (full HUM Ch 65)." alt="" coords="202,5,347,45"/>
+<area shape="rect" id="Node000002" href="$ra8__mipi__dsi_8h.html" title="MIPI DSI&#45;2 host driver – public API (full HUM Ch 65 surface)." alt="" coords="202,93,347,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="277,59,277,93,272,93,272,59"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2__comms_8c.html" title="EK&#45;RA8D2 BSP – MIPI&#45;DSI panel + J&#45;Link VCOM serial bring&#45;up." alt="" coords="5,181,187,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="228,142,148,184,145,179,225,137"/>
+<area shape="rect" id="Node000004" href="$ra8__mipi__dsi_8c.html" title="MIPI DSI&#45;2 host driver – full HUM Ch 65 coverage." alt="" coords="131,284,277,324"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="265,147,214,284,209,283,260,145"/>
+<area shape="rect" id="Node000005" href="$ra8__mipi__dsi__cmd_8c.html" title="MIPI DSI&#45;2 sequence&#45;channel command path (HUM Ch 65)." alt="" coords="301,284,446,324"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="279,147,287,190,304,235,324,261,348,282,344,286,320,264,299,237,281,191,274,147"/>
+<area shape="rect" id="Node000006" href="$ra8__mipi__dsi__dispatch_8c.html" title="MIPI DSI&#45;2 host driver – video mode, status, IRQ dispatch, and convenience surfaces." alt="" coords="471,284,628,324"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="361,126,423,146,453,161,480,179,504,203,522,232,546,283,541,285,518,234,500,207,477,183,450,165,421,151,360,131"/>
+<area shape="rect" id="Node000007" href="$ra8__mipi__dsi__internal_8h.html" title="Module&#45;private link seam shared between the MIPI DSI&#45;2 hostdriver translation units." alt="" coords="313,189,466,229"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="310,140,368,187,364,191,307,144"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="341,237,243,286,240,282,338,232"/>
+<area shape="poly" id="edge8_Node000007_Node000005" title=" " alt="" coords="386,242,379,284,374,283,381,241"/>
+<area shape="poly" id="edge9_Node000007_Node000006" title=" " alt="" coords="435,233,518,282,516,286,432,238"/>
+</map>

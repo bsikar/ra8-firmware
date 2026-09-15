@@ -1,0 +1,19 @@
+<map id="libs/ra8_hal/inc/ra8_i3c_i2c_regs.h" name="libs/ra8_hal/inc/ra8_i3c_i2c_regs.h">
+<area shape="rect" id="Node000001" title="IIC_B (I3C&#45;based I2C) register layout for the Renesas RA8D2." alt="" coords="396,5,541,45"/>
+<area shape="rect" id="Node000002" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="383,48,163,96,151,98,150,93,161,91,382,43"/>
+<area shape="rect" id="Node000003" href="$ra8__i3c_8c.html" title="I3C Bus Interface driver implementation." alt="" coords="175,93,320,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="408,53,297,96,295,91,407,48"/>
+<area shape="rect" id="Node000004" href="$ra8__i3c__i2c_8c.html" title="IIC_B (I3C unified IP) controller driver implementation." alt="" coords="311,181,456,221"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="422,55,401,73,386,95,379,116,377,139,381,181,376,181,371,139,374,115,381,92,397,69,418,51"/>
+<area shape="rect" id="Node000005" href="$ra8__i3c__i2c__control_8c.html" title="IIC_B (I3C unified IP) control&#45;plane + diagnostics implementation." alt="" coords="493,181,639,221"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="518,51,539,69,556,92,565,115,570,139,571,181,565,181,565,139,560,116,552,95,535,73,514,55"/>
+<area shape="rect" id="Node000006" href="$ra8__i3c__i2c__internal_8h.html" title="Test&#45;access surface for ra8_i3c_i2c internal helpers (MC/DC)." alt="" coords="396,93,541,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="471,59,471,93,466,93,466,59"/>
+<area shape="rect" id="Node000007" href="$ra8__i3c__i2c__peripheral_8c.html" title="IIC_B peripheral driver implementation." alt="" coords="617,93,776,133"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="533,48,648,91,646,96,531,53"/>
+<area shape="rect" id="Node000008" href="$ra8__io__i2c__bus__i3c__compat_8c.html" title="I3C I2C&#45;compatibility backend for the ra8_io I2C&#45;bus facade – thin shim over ra8_i3c." alt="" coords="800,93,991,133"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="556,41,802,91,801,96,554,47"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="442,145,404,183,400,179,438,141"/>
+<area shape="poly" id="edge7_Node000006_Node000005" title=" " alt="" coords="502,140,546,179,543,183,499,144"/>
+</map>

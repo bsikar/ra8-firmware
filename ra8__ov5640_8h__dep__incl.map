@@ -1,0 +1,11 @@
+<map id="libs/ra8_ov5640/inc/ra8_ov5640.h" name="libs/ra8_ov5640/inc/ra8_ov5640.h">
+<area shape="rect" id="Node000001" title="Transport&#45;independent OmniVision OV5640 sensor driver." alt="" coords="357,5,505,45"/>
+<area shape="rect" id="Node000002" href="$c6__camera__livestream_2src_2c6__cam__camera_8c.html" title="Camera initialization and VGA UYVY to QVGA JPEG frame production." alt="" coords="5,93,189,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="352,52,202,96,191,99,189,94,201,91,350,47"/>
+<area shape="rect" id="Node000003" href="$c6__camera__mjpeg_2src_2c6__cam__camera_8c.html" title="OV5640 hardware&#45;JPEG camera backend for the C6 MJPEG example." alt="" coords="214,101,429,155"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="402,57,352,102,348,98,398,53"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2camera__capture_2src_2main_8c.html" title="OV5640 parallel (CEU) camera capture + plausibility self&#45;test." alt="" coords="453,101,627,155"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="463,53,513,98,509,102,460,57"/>
+<area shape="rect" id="Node000005" href="$ra8__ov5640_8c.html" title="Transport&#45;independent OV5640 SCCB register driver." alt="" coords="651,108,799,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="506,47,640,91,679,105,677,110,638,96,505,52"/>
+</map>

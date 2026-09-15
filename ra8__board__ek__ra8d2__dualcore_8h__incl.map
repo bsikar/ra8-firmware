@@ -1,0 +1,8 @@
+<map id="libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2_dualcore.h" name="libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2_dualcore.h">
+<area shape="rect" id="Node000001" title="Where the EK&#45;RA8D2&#39;s Cortex&#45;M85 and Cortex&#45;M33 meet, stated once." alt="" coords="5,5,187,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="61,181,131,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="92,61,86,95,85,133,92,168,87,169,80,134,80,95,86,60"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="95,108,174,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="110,59,126,94,121,96,105,61"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="131,135,111,171,106,168,126,132"/>
+</map>

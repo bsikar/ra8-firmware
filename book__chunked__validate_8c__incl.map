@@ -1,0 +1,29 @@
+<map id="apps/shared_libs/book/src/book_chunked_validate.c" name="apps/shared_libs/book/src/book_chunked_validate.c">
+<area shape="rect" id="Node000001" title="Strict streaming&#45;validation adapter for an open RBKC chunk reader." alt="" coords="106,5,319,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="55,93,125,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="184,48,121,88,118,84,182,43"/>
+<area shape="rect" id="Node000003" href="$book__chunked_8h.html" title="Demand&#45;paged chunk reader for the &quot;RBKC&quot; .rabook container." alt="" coords="149,93,276,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="215,46,215,79,210,79,210,46"/>
+<area shape="rect" id="Node000010" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="301,93,426,119"/>
+<area shape="poly" id="edge17_Node000001_Node000010" title=" " alt="" coords="250,43,330,84,327,89,248,48"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="195,387,265,412"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="239,116,273,135,313,162,350,196,379,239,385,262,382,285,371,306,355,325,314,358,270,383,268,378,311,354,352,321,367,303,377,283,380,263,374,241,346,200,309,166,270,139,237,121"/>
+<area shape="rect" id="Node000005" href="$book_8h.html" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="58,240,125,265"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="205,121,112,231,108,228,201,117"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="191,313,269,339"/>
+<area shape="poly" id="edge13_Node000003_Node000007" title=" " alt="" coords="216,119,231,299,225,299,211,119"/>
+<area shape="rect" id="Node000008" href="$book__stream_8h.html" title="Strict, zero&#45;allocation validation of a streamed RABOOK1 flat blob." alt="" coords="5,167,124,192"/>
+<area shape="poly" id="edge9_Node000003_Node000008" title=" " alt="" coords="190,121,102,163,100,158,188,116"/>
+<area shape="rect" id="Node000009" href="$ra8__vsource_8h.html" title="Virtual&#45;memory object sources – the page&#45;cache storage seam (Layer 1, #147)." alt="" coords="251,240,364,265"/>
+<area shape="poly" id="edge14_Node000003_Node000009" title=" " alt="" coords="223,118,294,227,290,230,218,121"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="105,264,211,375,208,379,101,268"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="41,313,115,339"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="92,266,85,300,80,299,87,265"/>
+<area shape="poly" id="edge7_Node000005_Node000007" title=" " alt="" coords="115,263,196,305,194,309,112,268"/>
+<area shape="poly" id="edge8_Node000007_Node000004" title=" " alt="" coords="233,339,233,373,227,373,227,339"/>
+<area shape="poly" id="edge10_Node000008_Node000004" title=" " alt="" coords="59,194,41,222,25,260,19,300,22,320,31,337,45,353,62,365,101,383,143,393,181,396,181,402,142,398,99,388,59,370,42,357,26,340,17,321,13,300,20,258,37,219,54,191"/>
+<area shape="poly" id="edge11_Node000008_Node000005" title=" " alt="" coords="72,191,85,226,80,228,67,193"/>
+<area shape="poly" id="edge12_Node000008_Node000007" title=" " alt="" coords="81,190,138,238,209,302,206,306,135,242,77,194"/>
+<area shape="poly" id="edge15_Node000009_Node000004" title=" " alt="" coords="308,266,300,300,284,340,255,379,250,375,280,337,295,299,303,265"/>
+<area shape="poly" id="edge16_Node000009_Node000007" title=" " alt="" coords="297,267,255,306,251,302,293,263"/>
+</map>

@@ -1,0 +1,15 @@
+<map id="apps/shared_libs/mdl/src/mdl_fetch_body_internal.h" name="apps/shared_libs/mdl/src/mdl_fetch_body_internal.h">
+<area shape="rect" id="Node000001" title="Portable single&#45;transaction response&#45;body sink for media fetches." alt="" coords="435,5,658,45"/>
+<area shape="rect" id="Node000002" href="$mdl__app__cover_8c.html" title="Cached series&#45;cover acquisition and validated publication." alt="" coords="5,93,165,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="427,50,178,96,166,98,165,93,177,91,426,45"/>
+<area shape="rect" id="Node000003" href="$mdl__app__direct_8c.html" title="Direct artifact, page, pack, and run composition actions." alt="" coords="189,93,349,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="474,52,331,96,329,91,472,47"/>
+<area shape="rect" id="Node000004" href="$mdl__app__series_8c.html" title="Series selection, download lifecycle, and export actions." alt="" coords="373,93,536,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="518,57,477,95,473,91,515,53"/>
+<area shape="rect" id="Node000005" href="$mdl__fetch_8c.html" title="State&#45;aware chapter, asset, and run download orchestration." alt="" coords="560,93,720,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="579,53,621,91,618,95,576,57"/>
+<area shape="rect" id="Node000006" href="$mdl__fetch__body_8c.html" title="Portable single&#45;transaction response&#45;body sink implementation." alt="" coords="744,93,907,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="622,47,765,91,764,96,620,52"/>
+<area shape="rect" id="Node000007" href="$mdl__fetch__page_8c.html" title="Cached page validation, streamed transfer, and publication." alt="" coords="931,93,1095,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="668,45,919,91,932,93,931,98,918,96,667,50"/>
+</map>

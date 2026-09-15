@@ -1,0 +1,83 @@
+<map id="libs/ra8_board_ek_ra8d2/inc/ra8_panel.h" name="libs/ra8_board_ek_ra8d2/inc/ra8_panel.h">
+<area shape="rect" id="Node000001" title="Active display&#45;panel descriptor for the EK&#45;RA8D2 (ER&#45;TFT070&#45;6)." alt="" coords="1727,5,1909,45"/>
+<area shape="rect" id="Node000002" href="$sh__app_8h.html" title="Shared contract for the ereader_shelf multi&#45;screen e&#45;reader." alt="" coords="4104,93,4311,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1922,28,4104,113,4104,118,1922,33"/>
+<area shape="rect" id="Node000014" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2touch__cal_2src_2main_8c.html" title="N&#45;point affine touch&#45;calibration demo + HIL gate (#262)." alt="" coords="5,196,199,251"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="1714,32,1128,53,806,72,673,83,572,96,463,117,356,144,178,199,177,193,355,139,462,112,571,91,672,78,806,67,1128,48,1714,27"/>
+<area shape="rect" id="Node000015" href="$examples_2ek__ra8d2_2hw__pending_2epaper__refresh_2src_2main_8c.html" title="IT8951 e&#45;paper full + partial refresh demo through the display PAL." alt="" coords="4335,93,4517,148"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="1922,24,2405,25,3099,32,3464,40,3806,52,4101,69,4324,91,4335,92,4334,98,4323,96,4101,74,3806,58,3464,46,3099,38,2405,30,1922,29"/>
+<area shape="rect" id="Node000016" href="$examples_2ek__ra8d2_2hw__pending_2ereader__comic_2src_2main_8c.html" title="Viewable page&#45;turn comic reader – baked CBZ decoded to the 1024x600 GLCDC panel, tap&#45;zone navigation ..." alt="" coords="223,196,405,251"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="1713,30,1544,35,1325,46,1079,65,833,96,714,118,597,145,400,198,399,193,596,140,713,113,832,91,1079,60,1324,40,1544,30,1713,25"/>
+<area shape="rect" id="Node000017" href="$examples_2ek__ra8d2_2hw__pending_2ereader__longstrip_2src_2main_8c.html" title="Viewable continuous vertical&#45;scroll (longstrip / manhwa) reader (#289)." alt="" coords="429,196,628,251"/>
+<area shape="poly" id="edge16_Node000001_Node000017" title=" " alt="" coords="1714,35,1435,56,1266,73,1098,96,969,119,869,142,641,199,629,201,628,196,640,193,868,137,968,114,1098,91,1266,68,1434,50,1713,29"/>
+<area shape="rect" id="Node000018" href="$examples_2ek__ra8d2_2hw__pending_2ereader__manga_2src_2main_8c.html" title="Viewable manga reader: pan/zoom a page larger than the panel (Demo B)." alt="" coords="653,196,839,251"/>
+<area shape="poly" id="edge17_Node000001_Node000018" title=" " alt="" coords="1714,38,1518,60,1405,76,1293,96,1238,109,1196,122,1099,151,975,175,852,199,840,201,839,196,851,193,974,170,1097,145,1194,117,1237,104,1292,91,1404,71,1517,54,1714,33"/>
+<area shape="rect" id="Node000019" href="$examples_2ek__ra8d2_2hw__pending_2ereader__zoom_2src_2main_8c.html" title="Viewable tap&#45;to&#45;zoom image viewer: full&#45;screen zoom + panel loupe (#478)." alt="" coords="863,196,1042,251"/>
+<area shape="poly" id="edge18_Node000001_Node000019" title=" " alt="" coords="1714,39,1571,60,1493,76,1416,96,1381,109,1355,123,1329,137,1294,151,1227,169,1175,178,1122,186,1055,199,1043,201,1042,196,1053,193,1121,180,1174,173,1226,163,1292,145,1327,132,1353,118,1379,104,1415,91,1492,71,1570,55,1713,34"/>
+<area shape="rect" id="Node000020" href="$ereader__ui__steps_8h.html" title="E&#45;reader UI chrome – shared contract between main.c and the per&#45;aspect helper translation units (scre..." alt="" coords="1067,196,1257,251"/>
+<area shape="poly" id="edge19_Node000001_Node000020" title=" " alt="" coords="1714,42,1610,62,1556,77,1503,96,1478,109,1460,122,1442,136,1416,150,1349,174,1258,200,1257,195,1347,169,1414,146,1439,132,1457,118,1475,104,1501,91,1554,72,1609,57,1713,37"/>
+<area shape="rect" id="Node000024" href="$examples_2ek__ra8d2_2hw__validated_2hil_2glcdc__render_2src_2main_8c.html" title="Headless on&#45;silicon HIL gate for the GLCDC layer&#45;1 render path." alt="" coords="1282,196,1455,251"/>
+<area shape="poly" id="edge23_Node000001_Node000024" title=" " alt="" coords="1719,51,1654,71,1588,96,1545,121,1503,150,1419,198,1417,193,1501,146,1542,117,1586,91,1652,66,1718,46"/>
+<area shape="rect" id="Node000025" href="$examples_2ek__ra8d2_2hw__validated_2hil_2sd__font__render_2src_2main_8c.html" title="Load a TTF/OTF font off an SD card and render text with reflow." alt="" coords="1727,196,1901,251"/>
+<area shape="poly" id="edge24_Node000001_Node000025" title=" " alt="" coords="1820,59,1817,196,1812,196,1815,59"/>
+<area shape="rect" id="Node000026" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__app__demo_2src_2main_8c.html" title="Interactive ra8_widget + ra8_app launcher on the live GLCDC panel." alt="" coords="1925,196,2098,251"/>
+<area shape="poly" id="edge25_Node000001_Node000026" title=" " alt="" coords="1848,53,1987,194,1983,198,1844,57"/>
+<area shape="rect" id="Node000027" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__chrome__demo_2src_2main_8c.html" title="Concrete ereader chrome widgets composited on the live GLCDC panel (#145 Phase 2)." alt="" coords="2123,196,2316,251"/>
+<area shape="poly" id="edge26_Node000001_Node000027" title=" " alt="" coords="1870,49,2167,194,2165,198,1867,54"/>
+<area shape="rect" id="Node000028" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__compose__demo_2src_2main_8c.html" title="Nested ra8_widget tree composited on the live GLCDC panel (#145)." alt="" coords="2341,196,2543,251"/>
+<area shape="poly" id="edge27_Node000001_Node000028" title=" " alt="" coords="1892,47,2033,91,2360,193,2359,198,2032,96,1891,52"/>
+<area shape="rect" id="Node000029" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__kit__demo_2src_2main_8c.html" title="Concrete ra8_widget leaf widgets composited on the GLCDC panel (#145)." alt="" coords="2567,196,2741,251"/>
+<area shape="poly" id="edge28_Node000001_Node000029" title=" " alt="" coords="1923,45,2137,91,2347,140,2556,193,2568,196,2566,202,2555,199,2346,145,2136,96,1922,50"/>
+<area shape="rect" id="Node000030" href="$examples_2ek__ra8d2_2hw__validated_2manual_2display__pal__animation_2src_2main_8c.html" title="Canonical display PAL example – animated scrolling colour bars." alt="" coords="2765,196,2959,251"/>
+<area shape="poly" id="edge29_Node000001_Node000030" title=" " alt="" coords="1923,38,2086,61,2268,91,2511,139,2753,193,2765,196,2764,201,2752,199,2510,144,2267,96,2085,66,1922,43"/>
+<area shape="rect" id="Node000031" href="$examples_2ek__ra8d2_2hw__validated_2manual_2lcd__draw__x_2src_2main_8c.html" title="Draw a coloured X to a SRAM&#45;backed GR1 layer on the EK&#45;RA8D2 panel." alt="" coords="2983,196,3157,251"/>
+<area shape="poly" id="edge30_Node000001_Node000031" title=" " alt="" coords="1923,33,2152,56,2421,91,2698,135,2972,193,2984,196,2982,201,2971,199,2697,141,2420,96,2151,62,1922,39"/>
+<area shape="rect" id="Node000032" href="$ra8__panel__timing_8h.html" title="EK&#45;RA8D2 panel timing as the HAL&#39;s ra8_glcdc_timing_t (ER&#45;TFT070&#45;6)." alt="" coords="1599,101,1781,141"/>
+<area shape="poly" id="edge31_Node000001_Node000032" title=" " alt="" coords="1783,56,1717,103,1714,98,1779,51"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ereader__shelf_2src_2main_8c.html" title="Hybrid baked + SD e&#45;reader: shelf, cover, TOC, full&#45;book reader." alt="" coords="3181,196,3388,251"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="4090,131,3778,154,3589,173,3401,199,3389,201,3388,195,3400,193,3589,168,3778,148,4090,125"/>
+<area shape="rect" id="Node000004" href="$sh__book_8c.html" title="Format&#45;agnostic book backend: book (.rabook) + epub (.epub)." alt="" coords="5488,196,5695,251"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="4324,145,4500,163,4649,171,4780,172,4903,169,5025,166,5156,167,5304,175,5477,193,5488,195,5487,200,5476,199,5303,180,5156,172,5025,171,4903,174,4780,177,4648,176,4499,169,4324,151"/>
+<area shape="rect" id="Node000005" href="$sh__comic_8c.html" title="Full&#45;page image reader for CBZ / CBR comic archives (#236)." alt="" coords="3412,196,3619,251"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="4091,136,3877,162,3632,199,3619,201,3618,196,3631,193,3876,157,4090,131"/>
+<area shape="rect" id="Node000006" href="$sh__cover_8c.html" title="Cover / title page for the open book." alt="" coords="3643,196,3849,251"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="4091,149,3863,199,3850,201,3849,196,3861,193,4090,144"/>
+<area shape="rect" id="Node000007" href="$sh__image_8c.html" title="4bpp&#45;grayscale cover / image decode + scaled blit for ereader_shelf." alt="" coords="3873,196,4080,251"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="4136,156,4038,198,4036,193,4134,151"/>
+<area shape="rect" id="Node000008" href="$sh__paged_8c.html" title="Demand&#45;paged .rabook backing: chunk reader + page cache + source bind." alt="" coords="4104,196,4311,251"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="4210,162,4210,196,4205,196,4205,162"/>
+<area shape="rect" id="Node000009" href="$sh__reader_8c.html" title="Full&#45;book reader: per&#45;chapter text extraction, word&#45;wrap, pagination." alt="" coords="4335,196,4541,251"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="4281,151,4379,193,4377,198,4279,156"/>
+<area shape="rect" id="Node000010" href="$sh__sd_8c.html" title="Optional SD&#45;card book source for the hybrid e&#45;reader." alt="" coords="4565,196,4772,251"/>
+<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="4325,146,4555,193,4566,196,4564,201,4553,199,4324,151"/>
+<area shape="rect" id="Node000011" href="$sh__shelf_8c.html" title="Bookshelf screen: a grid of book cards with cover thumbnails." alt="" coords="4796,196,5003,251"/>
+<area shape="poly" id="edge10_Node000002_Node000011" title=" " alt="" coords="4325,145,4455,162,4557,169,4658,177,4785,193,4796,195,4795,201,4784,199,4657,182,4557,175,4455,167,4324,151"/>
+<area shape="rect" id="Node000012" href="$sh__toc_8c.html" title="Table&#45;of&#45;contents screen: scrollable chapter list for the open book." alt="" coords="5027,196,5233,251"/>
+<area shape="poly" id="edge11_Node000002_Node000012" title=" " alt="" coords="4325,145,4430,158,4519,165,4672,169,4824,173,4912,180,5016,193,5027,195,5026,200,5015,199,4912,186,4823,179,4672,174,4519,170,4429,163,4324,151"/>
+<area shape="rect" id="Node000013" href="$sh__util_8c.html" title="Small shared drawing + formatting helpers for ereader_shelf." alt="" coords="5257,196,5464,251"/>
+<area shape="poly" id="edge12_Node000002_Node000013" title=" " alt="" coords="4325,145,4465,161,4584,168,4787,169,4990,170,5108,178,5246,193,5257,195,5257,200,5246,199,5107,183,4990,175,4787,174,4584,173,4464,166,4324,151"/>
+<area shape="rect" id="Node000021" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="1148,299,1336,353"/>
+<area shape="poly" id="edge20_Node000020_Node000021" title=" " alt="" coords="1193,260,1223,297,1219,300,1189,263"/>
+<area shape="rect" id="Node000022" href="$ereader__ui__screens_8c.html" title="E&#45;reader UI chrome – Library + Reading rendering and in&#45;content nav." alt="" coords="918,299,1123,353"/>
+<area shape="poly" id="edge21_Node000020_Node000022" title=" " alt="" coords="1116,261,1059,301,1056,296,1113,256"/>
+<area shape="rect" id="Node000023" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2src_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="1522,299,1695,353"/>
+<area shape="poly" id="edge22_Node000020_Node000023" title=" " alt="" coords="1271,248,1522,304,1521,309,1270,253"/>
+<area shape="poly" id="edge32_Node000032_Node000003" title=" " alt="" coords="1794,118,2039,120,2380,130,2772,152,2973,170,3169,193,3182,195,3181,201,3168,199,2972,175,2772,157,2380,135,2039,125,1794,124"/>
+<area shape="poly" id="edge33_Node000032_Node000014" title=" " alt="" coords="1585,127,889,152,497,173,335,185,212,199,199,201,199,195,211,193,334,180,497,167,889,146,1585,122"/>
+<area shape="poly" id="edge34_Node000032_Node000016" title=" " alt="" coords="1585,124,1371,126,1080,137,750,159,582,176,417,199,406,201,405,195,416,193,581,171,750,154,1080,131,1371,121,1585,119"/>
+<area shape="poly" id="edge35_Node000032_Node000017" title=" " alt="" coords="1586,130,1095,159,833,178,641,199,628,201,628,195,640,193,832,173,1095,153,1586,125"/>
+<area shape="poly" id="edge36_Node000032_Node000018" title=" " alt="" coords="1586,132,1199,162,998,180,852,199,840,201,839,196,851,193,997,175,1198,156,1585,127"/>
+<area shape="poly" id="edge37_Node000032_Node000019" title=" " alt="" coords="1586,135,1300,166,1054,199,1043,201,1042,196,1054,193,1299,160,1585,130"/>
+<area shape="poly" id="edge38_Node000032_Node000020" title=" " alt="" coords="1586,141,1437,167,1271,199,1258,201,1257,196,1269,193,1436,161,1585,136"/>
+<area shape="poly" id="edge39_Node000032_Node000023" title=" " alt="" coords="1690,155,1683,201,1667,252,1652,278,1635,300,1631,297,1648,275,1662,250,1678,200,1685,154"/>
+<area shape="poly" id="edge40_Node000032_Node000024" title=" " alt="" coords="1617,147,1453,198,1452,193,1616,142"/>
+<area shape="poly" id="edge41_Node000032_Node000025" title=" " alt="" coords="1726,147,1783,194,1780,198,1722,151"/>
+<area shape="poly" id="edge42_Node000032_Node000026" title=" " alt="" coords="1764,142,1928,193,1927,198,1763,147"/>
+<area shape="poly" id="edge43_Node000032_Node000027" title=" " alt="" coords="1795,136,2111,193,2123,196,2122,201,2109,199,1794,141"/>
+<area shape="poly" id="edge44_Node000032_Node000028" title=" " alt="" coords="1794,128,2038,153,2183,171,2328,193,2341,196,2340,201,2327,199,2183,177,2038,158,1794,133"/>
+<area shape="poly" id="edge45_Node000032_Node000029" title=" " alt="" coords="1794,122,1944,130,2134,143,2345,163,2556,193,2568,196,2567,201,2555,199,2344,169,2134,148,1944,135,1794,128"/>
+<area shape="poly" id="edge46_Node000032_Node000030" title=" " alt="" coords="1794,121,1976,127,2215,139,2483,160,2753,193,2765,195,2764,201,2752,199,2482,165,2214,144,1975,132,1794,126"/>
+<area shape="poly" id="edge48_Node000032_Node000031" title=" " alt="" coords="1794,118,2010,120,2303,130,2636,152,2806,170,2972,193,2984,195,2983,201,2971,199,2805,176,2635,158,2302,135,2010,125,1794,124"/>
+<area shape="rect" id="Node000033" href="$examples_2ek__ra8d2_2hw__validated_2manual_2lcd__color__cycle_2src_2main_8c.html" title="GLCDC parallel&#45;RGB BG&#45;plane color cycle on the EK&#45;RA8D2 panel." alt="" coords="1479,196,1653,251"/>
+<area shape="poly" id="edge47_Node000032_Node000033" title=" " alt="" coords="1658,151,1600,198,1597,194,1654,147"/>
+</map>

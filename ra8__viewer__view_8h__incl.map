@@ -1,0 +1,15 @@
+<map id="tools/rabook_viewer/inc/ra8_viewer_view.h" name="tools/rabook_viewer/inc/ra8_viewer_view.h">
+<area shape="rect" id="Node000001" title="Caller&#45;owned C ABI for the Cocoa scrolling JOF view." alt="" coords="90,5,261,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="163,167,238,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="190,44,201,67,210,93,212,124,209,153,204,153,207,124,205,94,196,69,185,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="87,240,157,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="198,44,224,73,249,111,258,131,262,152,261,173,252,193,236,212,216,227,172,245,170,240,213,222,232,208,248,191,255,172,257,153,253,133,244,113,220,76,194,47"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,167,84,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="94,48,58,67,43,80,31,95,26,109,25,124,34,154,29,155,20,124,20,108,26,92,39,76,55,62,92,43"/>
+<area shape="rect" id="Node000005" href="$ra8__viewer__reader_8h.html" title="Caller&#45;owned host JOF/comic reader and RGB565 render surface." alt="" coords="41,93,195,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="164,47,137,84,133,80,159,44"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="59,190,101,229,97,232,55,194"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="133,117,178,155,175,160,130,121"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="121,119,124,226,119,226,116,119"/>
+<area shape="poly" id="edge8_Node000005_Node000004" title=" " alt="" coords="108,121,68,159,65,155,104,117"/>
+</map>

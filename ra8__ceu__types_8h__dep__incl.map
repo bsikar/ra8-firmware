@@ -1,0 +1,30 @@
+<map id="libs/ra8_hal/inc/ra8_ceu_types.h" name="libs/ra8_hal/inc/ra8_ceu_types.h">
+<area shape="rect" id="Node000001" title="Capture Engine Unit (CEU) configuration descriptors and types." alt="" coords="637,5,782,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ceu_8h.html" title="Capture Engine Unit (CEU) camera&#45;capture driver." alt="" coords="637,181,782,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="695,59,683,94,680,113,683,133,690,158,701,180,696,182,685,160,677,134,675,113,677,93,690,57"/>
+<area shape="rect" id="Node000011" href="$ra8__ceu__api_8h.html" title="Capture Engine Unit (CEU) driver function prototypes." alt="" coords="693,93,838,133"/>
+<area shape="poly" id="edge16_Node000001_Node000011" title=" " alt="" coords="731,56,755,92,751,95,727,58"/>
+<area shape="rect" id="Node000003" href="$c6__camera__livestream_2src_2c6__cam__camera_8c.html" title="Camera initialization and VGA UYVY to QVGA JPEG frame production." alt="" coords="5,357,189,427"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="623,218,506,239,378,272,264,314,165,360,163,355,262,310,377,267,505,234,622,212"/>
+<area shape="rect" id="Node000004" href="$c6__camera__mjpeg_2src_2c6__cam__camera_8c.html" title="OV5640 hardware&#45;JPEG camera backend for the C6 MJPEG example." alt="" coords="214,365,429,419"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="623,213,528,232,478,249,432,272,404,292,378,317,340,366,336,363,374,314,400,288,429,267,476,244,526,227,622,207"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2camera__capture_2src_2main_8c.html" title="OV5640 parallel (CEU) camera capture + plausibility self&#45;test." alt="" coords="453,365,627,419"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="698,235,679,273,651,311,619,342,585,367,582,362,616,338,647,308,674,270,694,233"/>
+<area shape="rect" id="Node000006" href="$ra8__camera__source__ceu_8h.html" title="RA8 CEU capture backend for the transport&#45;neutral camera facade." alt="" coords="443,269,637,309"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="661,230,578,272,576,267,659,225"/>
+<area shape="rect" id="Node000007" href="$ra8__camera__source__ceu_8c.html" title="RA8 CEU implementation of the camera&#45;source backend." alt="" coords="651,372,845,412"/>
+<area shape="poly" id="edge10_Node000002_Node000007" title=" " alt="" coords="719,234,747,371,741,372,713,235"/>
+<area shape="rect" id="Node000008" href="$ra8__ceu_8c.html" title="Capture Engine Unit (CEU) driver implementation." alt="" coords="870,372,1015,412"/>
+<area shape="poly" id="edge11_Node000002_Node000008" title=" " alt="" coords="745,228,921,370,918,374,742,232"/>
+<area shape="rect" id="Node000009" href="$ra8__ceu__init__regs_8c.html" title="Capture Engine Unit (CEU) init&#45;time register programming." alt="" coords="1039,372,1185,412"/>
+<area shape="poly" id="edge12_Node000002_Node000009" title=" " alt="" coords="796,201,851,207,912,219,972,238,1028,267,1055,290,1078,318,1106,370,1102,373,1073,321,1051,294,1025,272,970,243,910,224,851,212,796,207"/>
+<area shape="rect" id="Node000010" href="$ra8__ceu__internal_8h.html" title="Cross&#45;TU surface for the ra8_ceu driver split." alt="" coords="870,269,1015,309"/>
+<area shape="poly" id="edge13_Node000002_Node000010" title=" " alt="" coords="774,224,892,267,891,272,772,229"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="430,312,319,333,202,360,190,363,189,358,201,355,318,328,429,307"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="487,318,379,367,377,362,485,313"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="543,323,543,364,537,364,537,323"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="593,313,710,370,708,374,590,318"/>
+<area shape="poly" id="edge14_Node000010_Node000008" title=" " alt="" coords="945,323,945,372,940,372,940,323"/>
+<area shape="poly" id="edge15_Node000010_Node000009" title=" " alt="" coords="987,314,1082,370,1079,374,985,319"/>
+<area shape="poly" id="edge17_Node000011_Node000002" title=" " alt="" coords="748,146,724,183,719,180,743,144"/>
+</map>

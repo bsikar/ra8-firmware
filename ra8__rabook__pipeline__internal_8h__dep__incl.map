@@ -1,0 +1,7 @@
+<map id="apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline_internal.h" name="apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline_internal.h">
+<area shape="rect" id="Node000001" title="Private validation seam shared by RABOOK pipeline entry points." alt="" coords="108,5,289,60"/>
+<area shape="rect" id="Node000002" href="$ra8__rabook__pipeline_8c.html" title="End&#45;to&#45;end EPUB &#45;&gt; RABOOK1 compile pipeline (#149)." alt="" coords="5,108,187,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="164,72,125,110,121,106,160,68"/>
+<area shape="rect" id="Node000003" href="$ra8__rabook__pipeline__fs_8c.html" title="Optional ra8_fs publication wrapper for the RABOOK pipeline." alt="" coords="211,108,392,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="237,68,276,106,273,110,233,72"/>
+</map>

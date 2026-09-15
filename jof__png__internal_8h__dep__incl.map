@@ -1,0 +1,7 @@
+<map id="apps/shared_libs/jof/src/jof_png_internal.h" name="apps/shared_libs/jof/src/jof_png_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private declarations shared by the two PNG decoder units." alt="" coords="86,5,253,45"/>
+<area shape="rect" id="Node000002" href="$jof__png_8c.html" title="Streaming PNG scanline decoder for the transcode producer (#231)." alt="" coords="5,93,157,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="142,57,103,95,99,91,138,53"/>
+<area shape="rect" id="Node000003" href="$jof__png__chunk_8c.html" title="PNG chunk layer for the streaming decoder: prologue, palette tables, ancillary skipping and the post&#45;..." alt="" coords="181,93,336,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="201,53,241,91,237,95,197,57"/>
+</map>

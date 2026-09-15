@@ -1,0 +1,19 @@
+<map id="libs/ra8_hal/inc/ra8_ipc_xfer.h" name="libs/ra8_hal/inc/ra8_ipc_xfer.h">
+<area shape="rect" id="Node000001" title="Inter&#45;Processor Communication (IPC) HAL driver – transfer API." alt="" coords="709,5,854,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ipc_8h.html" title="Inter&#45;Processor Communication (IPC) HAL driver – public API." alt="" coords="709,93,854,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="784,59,784,93,779,93,779,59"/>
+<area shape="rect" id="Node000003" href="$hil__needs__revalidation_2cpu1__pingpong__ipc_2src_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33) ping&#45;pong responder." alt="" coords="5,181,229,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="695,126,488,149,242,184,230,186,229,181,241,179,487,144,694,120"/>
+<area shape="rect" id="Node000004" href="$hw__pending_2compile__on__m33_2src_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33 secondary core) image: full text/CSS/SVG EPUB&#45;&gt;RABOOK1 compile." alt="" coords="254,181,450,236"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="695,135,462,184,451,186,450,181,461,179,694,129"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2compile__on__m33_2src_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver: stage an EPUB, offload its compile to the M33." alt="" coords="474,181,670,236"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="728,141,632,184,630,179,725,137"/>
+<area shape="rect" id="Node000006" href="$hw__pending_2ereader__m33_2src_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33 secondary core) image: render a held e&#45;reader page." alt="" coords="695,181,868,236"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="784,147,784,181,779,181,779,147"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__pending_2ereader__m33_2src_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver for the e&#45;reader&#45;on&#45;M33 demo." alt="" coords="892,181,1065,236"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="835,137,924,179,922,184,832,142"/>
+<area shape="rect" id="Node000008" href="$ra8__ipc_8c.html" title="Inter&#45;Processor Communication (IPC) HAL driver implementation." alt="" coords="1090,189,1235,229"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="868,130,1078,179,1104,186,1102,191,1077,184,867,135"/>
+<area shape="rect" id="Node000009" href="$ra8__ipc__sem__ring_8c.html" title="IPC HAL – hardware semaphores, NMI surface, and ring buffers." alt="" coords="1259,189,1405,229"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="868,120,1044,142,1147,159,1249,179,1277,186,1275,191,1247,184,1146,164,1044,147,867,126"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="ra8_net_pal_state_t" name="ra8_net_pal_state_t">
+<area shape="rect" id="Node000001" title="Singleton PAL state." alt="" coords="87,101,237,127"/>
+<area shape="rect" id="Node000002" href="$structra8__net__pal__mac__t.html" title="48&#45;bit MAC address container." alt="" coords="5,5,151,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,39,154,99,150,103,95,43"/>
+<area shape="rect" id="Node000003" href="$structra8__net__pal__slot__t.html" title="One ring slot holding a single frame plus its byte length." alt="" coords="175,5,317,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="229,43,174,103,170,99,225,39"/>
+</map>

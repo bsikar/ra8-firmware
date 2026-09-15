@@ -1,0 +1,7 @@
+<map id="ra8_mdl_service" name="ra8_mdl_service">
+<area shape="rect" id="Node000001" title="Caller&#45;owned one&#45;job portable service state." alt="" coords="139,101,268,127"/>
+<area shape="rect" id="Node000002" href="$structra8__mdl__service__backend.html" title="Bounded typed&#45;artifact source seam implemented by the C6 port." alt="" coords="5,5,196,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="125,38,192,99,189,103,122,42"/>
+<area shape="rect" id="Node000003" href="$structra8__mdl__decode__arena.html" title="Linear allocator storage the generated decoder draws one dispatch from." alt="" coords="221,5,394,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="286,42,218,103,214,99,283,38"/>
+</map>

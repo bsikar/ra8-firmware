@@ -1,0 +1,22 @@
+<map id="libs/ra8_camera/src/ra8_camera_codec_passthrough.c" name="libs/ra8_camera/src/ra8_camera_codec_passthrough.c">
+<area shape="rect" id="Node000001" title="Zero&#45;copy JPEG passthrough backend implementation." alt="" coords="354,5,601,45"/>
+<area shape="rect" id="Node000002" href="$ra8__camera__codec__passthrough_8h.html" title="Zero&#45;copy JPEG passthrough codec backend." alt="" coords="197,93,440,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="441,48,355,90,353,85,438,43"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="263,240,342,265"/>
+<area shape="poly" id="edge12_Node000001_Node000005" title=" " alt="" coords="478,46,470,82,454,120,427,156,395,187,335,234,331,230,392,183,423,152,450,117,465,80,473,45"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="515,93,589,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="497,44,533,81,529,85,493,47"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="613,93,739,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="526,43,635,86,633,91,524,48"/>
+<area shape="rect" id="Node000008" href="$ra8__camera__internal_8h.html" title="Private source and codec vtables for ra8_camera backends." alt="" coords="5,93,173,119"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="385,48,160,93,159,88,384,43"/>
+<area shape="rect" id="Node000003" href="$ra8__camera_8h.html" title="Transport&#45;neutral camera source and image&#45;codec facade." alt="" coords="170,167,281,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="305,121,253,160,250,156,302,117"/>
+<area shape="poly" id="edge6_Node000002_Node000005" title=" " alt="" coords="320,119,308,227,303,226,315,119"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="229,313,299,339"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="231,192,260,299,255,301,226,193"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="240,190,282,229,278,232,236,194"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="299,267,279,303,274,300,294,264"/>
+<area shape="poly" id="edge10_Node000008_Node000003" title=" " alt="" coords="112,116,192,158,190,163,110,121"/>
+<area shape="poly" id="edge11_Node000008_Node000005" title=" " alt="" coords="98,117,123,153,160,190,205,216,252,234,250,239,203,221,157,194,119,156,94,120"/>
+</map>

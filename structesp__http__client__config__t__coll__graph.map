@@ -1,0 +1,5 @@
+<map id="esp_http_client_config_t" name="esp_http_client_config_t">
+<area shape="rect" id="Node000001" title="Exact consumed subset of ESP&#45;IDF&#39;s HTTP client configuration." alt="" coords="5,101,184,127"/>
+<area shape="rect" id="Node000002" href="$structesp__http__client__event__t.html" title="Parser mirror of the ESP&#45;IDF HTTP event record." alt="" coords="6,5,183,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,45,97,101,92,101,92,45"/>
+</map>

@@ -1,0 +1,83 @@
+<map id="tools/ra8_emulator/inc/board_periph_block.h" name="tools/ra8_emulator/inc/board_periph_block.h">
+<area shape="rect" id="Node000001" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="4447,5,4635,45"/>
+<area shape="rect" id="Node000002" href="$board__periph_8c.html" title="Peripheral&#45;block registry core + ICU/NVIC routing for ra8_emulator." alt="" coords="5,101,196,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="4433,30,3569,33,2246,43,1568,51,961,63,487,77,319,86,208,96,168,103,167,98,207,91,319,81,487,72,961,57,1568,46,2246,37,3569,27,4433,24"/>
+<area shape="rect" id="Node000003" href="$board__periph__adc_8c.html" title="ADC16H (16&#45;bit SAR) peripheral&#45;block model for the board emulator." alt="" coords="220,101,440,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="4433,30,3612,35,2367,47,1160,67,715,80,453,96,408,103,407,98,452,91,715,75,1160,61,2367,42,3612,30,4433,25"/>
+<area shape="rect" id="Node000004" href="$board__periph__bkup_8c.html" title="VBATT backup&#45;register (VBTBKRn) reset&#45;retained domain model." alt="" coords="465,93,643,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="4433,30,3649,34,2467,44,1864,53,1325,64,904,78,755,87,656,96,644,98,643,92,655,91,754,81,903,73,1324,59,1864,48,2467,39,3649,28,4433,24"/>
+<area shape="rect" id="Node000005" href="$board__periph__cac_8c.html" title="CAC (Clock Frequency Accuracy Measurement) edge&#45;counter model." alt="" coords="667,101,886,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="4433,30,3693,36,2588,49,1522,69,1130,81,898,96,854,103,853,98,898,91,1129,76,1522,64,2588,44,3693,31,4433,25"/>
+<area shape="rect" id="Node000006" href="$board__periph__canfd_8c.html" title="CAN&#45;FD controller peripheral&#45;block model for the board emulator." alt="" coords="910,93,1089,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="4433,30,3729,35,2688,47,1686,67,1318,80,1101,96,1090,98,1089,92,1100,91,1318,75,1686,61,2688,42,3729,30,4433,25"/>
+<area shape="rect" id="Node000007" href="$board__periph__ceu_8c.html" title="Capture Engine Unit (CEU) peripheral&#45;block model for ra8_emulator." alt="" coords="1113,101,1333,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="4433,29,3833,29,2939,35,2466,43,2021,55,1636,73,1477,83,1346,96,1301,103,1300,98,1346,91,1477,78,1636,67,2021,50,2466,38,2939,30,3833,23,4433,24"/>
+<area shape="rect" id="Node000008" href="$board__periph__crc_8c.html" title="CRC calculator peripheral&#45;block model for the board emulator." alt="" coords="1358,101,1574,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="4433,29,3873,30,3049,37,2614,45,2205,57,1852,74,1586,96,1542,103,1541,98,1586,91,1852,68,2205,52,2614,40,3049,32,3873,24,4433,24"/>
+<area shape="rect" id="Node000009" href="$board__periph__dac_8c.html" title="DAC_B (12&#45;bit D/A) peripheral&#45;block model for the board emulator." alt="" coords="1599,101,1819,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="4433,29,3914,31,3161,40,2766,48,2394,60,2074,76,1832,96,1787,103,1786,98,1831,91,2073,70,2394,55,2766,43,3161,35,3914,26,4432,24"/>
+<area shape="rect" id="Node000010" href="$board__periph__dmac_8c.html" title="DMAC0 transfer peripheral&#45;block model for the board emulator." alt="" coords="1843,93,2022,148"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="4433,29,3948,30,3254,37,2891,45,2550,57,2256,74,2034,96,2023,98,2022,93,2034,91,2256,69,2550,52,2891,40,3254,32,3948,24,4433,24"/>
+<area shape="rect" id="Node000011" href="$board__periph__doc_8c.html" title="Data Operation Circuit (DOC) peripheral&#45;block model for ra8_emulator." alt="" coords="2047,101,2267,141"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="4433,30,3991,34,3368,45,2739,64,2477,79,2278,96,2234,103,2234,98,2278,91,2476,73,2739,59,3368,39,3991,29,4433,25"/>
+<area shape="rect" id="Node000012" href="$board__periph__drw_8c.html" title="Bench&#45;validated DRW (&quot;D/AVE 2D&quot;) rasterizer model for ra8_emulator." alt="" coords="2291,101,2511,141"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="4433,30,4034,36,3482,47,2928,67,2697,80,2522,96,2478,103,2478,98,2522,91,2697,75,2927,62,3482,42,4034,30,4432,25"/>
+<area shape="rect" id="Node000013" href="$board__periph__dtc_8c.html" title="DTC (Data Transfer Controller) transfer&#45;engine model for ra8_emulator." alt="" coords="2535,101,2752,141"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="4433,31,4077,38,3596,50,3116,69,2916,82,2765,96,2722,103,2721,98,2764,91,2916,76,3116,64,3596,45,4077,32,4433,26"/>
+<area shape="rect" id="Node000014" href="$board__periph__eth_8c.html" title="R&#45;Switch (ESWM / MFWD / COMA / ETHA / RMAC / GWCA) model for ra8_emulator." alt="" coords="2777,101,2995,141"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="4433,32,3711,53,3304,72,3136,83,3008,96,2964,103,2964,98,3007,91,3135,78,3304,67,3710,48,4433,26"/>
+<area shape="rect" id="Node000015" href="$board__periph__glcdc_8c.html" title="Graphics LCD Controller (GLCDC) framebuffer&#45;descriptor model for ra8_emulator." alt="" coords="3019,93,3198,148"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="4433,32,3807,53,3462,72,3319,83,3210,96,3199,98,3198,93,3210,91,3319,78,3462,67,3807,48,4433,27"/>
+<area shape="rect" id="Node000016" href="$board__periph__gpio_8c.html" title="GPIO / PORT peripheral&#45;block model for the board emulator." alt="" coords="3222,93,3401,148"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="4433,29,4241,31,3987,41,3701,61,3555,76,3413,96,3402,98,3401,93,3412,91,3555,71,3700,56,3986,36,4241,26,4433,24"/>
+<area shape="rect" id="Node000017" href="$board__periph__gptp_8c.html" title="Ethernet Generic PTP Timer (GPTP) model for ra8_emulator – HUM Ch 35." alt="" coords="3425,93,3603,148"/>
+<area shape="poly" id="edge16_Node000001_Node000017" title=" " alt="" coords="4432,31,4273,36,4069,47,3842,66,3616,96,3604,98,3603,93,3615,91,3842,61,4068,42,4273,31,4432,26"/>
+<area shape="rect" id="Node000018" href="$board__periph__i2c_8c.html" title="I3C&#45;in&#45;I2C&#45;mode (IIC_B) controller + GT911 touch + LSM6DSO IMU models plus an external&#45;controller sti..." alt="" coords="3627,101,3843,141"/>
+<area shape="poly" id="edge17_Node000001_Node000018" title=" " alt="" coords="4433,36,4170,57,4013,74,3856,96,3816,103,3815,98,3855,91,4012,69,4169,52,4433,31"/>
+<area shape="rect" id="Node000019" href="$board__periph__ipc_8c.html" title="Inter&#45;Processor Communication (IPC) peripheral&#45;block model for ra8_emulator." alt="" coords="3867,101,4083,141"/>
+<area shape="poly" id="edge18_Node000001_Node000019" title=" " alt="" coords="4433,43,4274,66,4096,96,4059,103,4058,98,4095,91,4273,61,4433,38"/>
+<area shape="rect" id="Node000020" href="$board__periph__lvd_8c.html" title="LVD / PVD voltage&#45;monitor status model for ra8_emulator." alt="" coords="4108,101,4325,141"/>
+<area shape="poly" id="edge19_Node000001_Node000020" title=" " alt="" coords="4463,52,4283,103,4281,98,4461,47"/>
+<area shape="rect" id="Node000021" href="$board__periph__mram_8c.html" title="Extra&#45;MRAM (data&#45;flash) MACI program/erase model for ra8_emulator." alt="" coords="4350,93,4529,148"/>
+<area shape="poly" id="edge20_Node000001_Node000021" title=" " alt="" coords="4512,57,4470,95,4466,91,4508,53"/>
+<area shape="rect" id="Node000022" href="$board__periph__mstp_8c.html" title="Module Stop Control (MSTPCRA..E) register block for ra8_emulator." alt="" coords="4553,93,4731,148"/>
+<area shape="poly" id="edge21_Node000001_Node000022" title=" " alt="" coords="4573,53,4615,91,4612,95,4570,57"/>
+<area shape="rect" id="Node000023" href="$board__periph__npu_8c.html" title="Arm Ethos&#45;U55 NPU command/queue execution model (RA8P1&#45;only) for ra8_emulator." alt="" coords="4755,101,4977,141"/>
+<area shape="poly" id="edge22_Node000001_Node000023" title=" " alt="" coords="4620,47,4801,98,4800,103,4619,52"/>
+<area shape="rect" id="Node000024" href="$board__periph__pdctr_8c.html" title="Graphics power&#45;domain gating (PDCTRGD) model." alt="" coords="5001,93,5179,148"/>
+<area shape="poly" id="edge23_Node000001_Node000024" title=" " alt="" coords="4649,37,4810,59,4989,91,5001,93,5000,98,4988,96,4809,65,4648,42"/>
+<area shape="rect" id="Node000025" href="$board__periph__pdm_8c.html" title="PDM&#45;IF (digital MEMS microphone) peripheral&#45;block model for ra8_emulator." alt="" coords="5203,101,5430,141"/>
+<area shape="poly" id="edge24_Node000001_Node000025" title=" " alt="" coords="4648,32,4897,54,5045,70,5192,91,5233,98,5232,103,5191,96,5044,76,4897,59,4648,37"/>
+<area shape="rect" id="Node000026" href="$board__periph__poeg_8c.html" title="Port Output Enable for GPT (POEG) safe&#45;shutoff register model." alt="" coords="5454,93,5633,148"/>
+<area shape="poly" id="edge25_Node000001_Node000026" title=" " alt="" coords="4648,26,4804,31,5002,42,5222,61,5442,91,5454,93,5454,98,5442,96,5222,67,5002,48,4804,36,4648,31"/>
+<area shape="rect" id="Node000027" href="$board__periph__prcr_8c.html" title="SYSC register&#45;write&#45;protection (PRCR) model." alt="" coords="5657,93,5835,148"/>
+<area shape="poly" id="edge26_Node000001_Node000027" title=" " alt="" coords="4649,24,4837,27,5085,36,5364,56,5506,72,5645,91,5657,93,5656,98,5644,96,5506,77,5364,62,5085,42,4837,32,4649,29"/>
+<area shape="rect" id="Node000028" href="$board__periph__reset_8c.html" title="Reset&#45;cause status register (RSTSRn) model for ra8_emulator." alt="" coords="5859,93,6038,148"/>
+<area shape="poly" id="edge27_Node000001_Node000028" title=" " alt="" coords="4649,27,5263,48,5601,67,5741,78,5848,91,5859,93,5858,98,5847,96,5741,83,5601,72,5263,54,4648,32"/>
+<area shape="rect" id="Node000029" href="$board__periph__riic_8c.html" title="RIIC (IIC) controller + PI4IOE5V6408 I/O&#45;expander + OV5640 SCCB model." alt="" coords="6062,93,6241,148"/>
+<area shape="poly" id="edge28_Node000001_Node000029" title=" " alt="" coords="4648,26,4955,33,5359,45,5759,64,5924,77,6050,91,6062,93,6061,98,6050,96,5924,82,5758,70,5359,51,4955,38,4648,31"/>
+<area shape="rect" id="Node000030" href="$board__periph__rtc_8c.html" title="Realtime Clock (RTC) calendar peripheral&#45;block model for ra8_emulator." alt="" coords="6265,101,6480,141"/>
+<area shape="poly" id="edge29_Node000001_Node000030" title=" " alt="" coords="4649,26,4993,33,5456,45,5916,65,6108,77,6253,91,6296,98,6295,103,6252,96,6107,82,5916,70,5455,51,4992,38,4649,31"/>
+<area shape="rect" id="Node000031" href="$board__periph__rtt_8c.html" title="SEGGER RTT up&#45;buffer drain model for ra8_emulator." alt="" coords="6504,101,6716,141"/>
+<area shape="poly" id="edge30_Node000001_Node000031" title=" " alt="" coords="4649,25,5036,31,5569,42,6102,62,6325,75,6493,91,6536,98,6535,103,6492,96,6324,80,6102,67,5568,48,5036,36,4649,30"/>
+<area shape="rect" id="Node000032" href="$board__periph__sci_8c.html" title="SCI_B UART peripheral&#45;block model for the board emulator." alt="" coords="6740,101,6955,141"/>
+<area shape="poly" id="edge31_Node000001_Node000032" title=" " alt="" coords="4649,25,5077,29,5679,40,6285,59,6538,73,6729,91,6772,98,6771,103,6728,96,6537,79,6285,65,5678,45,5077,34,4649,30"/>
+<area shape="rect" id="Node000033" href="$board__periph__sdhi_8c.html" title="Native 4&#45;bit SDHI host&#45;controller model for ra8_emulator (SDHI0)." alt="" coords="6979,93,7158,148"/>
+<area shape="poly" id="edge32_Node000001_Node000033" title=" " alt="" coords="4649,24,5119,25,5790,33,6141,41,6470,53,6753,69,6968,91,6979,93,6978,98,6967,96,6753,75,6469,58,6140,47,5790,38,5119,30,4649,29"/>
+<area shape="rect" id="Node000034" href="$board__periph__spi_8c.html" title="SPI_B (Type&#45;B SPI) controller peripheral&#45;block model for ra8_emulator." alt="" coords="7182,101,7398,141"/>
+<area shape="poly" id="edge33_Node000001_Node000034" title=" " alt="" coords="4649,24,5153,26,5883,35,6266,43,6626,55,6936,71,7170,91,7215,98,7214,103,7170,96,6935,76,6625,60,6266,49,5883,40,5153,32,4649,29"/>
+<area shape="rect" id="Node000035" href="$board__periph__sram_8c.html" title="SRAM controller ECC self&#45;test / error&#45;status model (SRAMCRn / SRAMESR)." alt="" coords="7422,93,7601,148"/>
+<area shape="poly" id="edge34_Node000001_Node000035" title=" " alt="" coords="4648,25,5247,32,6109,45,6930,65,7232,77,7410,91,7422,93,7421,98,7410,96,7232,82,6930,70,6108,51,5247,37,4648,30"/>
+<area shape="rect" id="Node000036" href="$board__periph__ssie_8c.html" title="Serial Sound Interface Enhanced (SSIE / I2S) peripheral&#45;block model." alt="" coords="7625,93,7803,148"/>
+<area shape="poly" id="edge35_Node000001_Node000036" title=" " alt="" coords="4648,25,5285,31,6210,44,7096,64,7421,76,7613,91,7625,93,7624,98,7612,96,7420,82,7095,69,6210,49,5285,37,4648,30"/>
+<area shape="rect" id="Node000037" href="$board__periph__timer_8c.html" title="GPT + AGT timer peripheral&#45;block model for the board emulator." alt="" coords="7827,93,8006,148"/>
+<area shape="poly" id="edge36_Node000001_Node000037" title=" " alt="" coords="4648,25,5322,30,6311,43,7261,63,7610,75,7816,91,7827,92,7826,98,7815,96,7609,81,7260,68,6311,48,5322,36,4648,30"/>
+<area shape="rect" id="Node000038" href="$board__periph__ulpt_8c.html" title="Ultra&#45;Low&#45;Power Timer (ULPT) peripheral&#45;block model for ra8_emulator." alt="" coords="8030,93,8209,148"/>
+<area shape="poly" id="edge37_Node000001_Node000038" title=" " alt="" coords="4648,25,5359,30,6412,41,7425,61,7798,75,7930,82,8018,91,8030,92,8029,98,8018,96,7930,88,7798,80,7425,67,6412,47,5359,35,4648,30"/>
+<area shape="rect" id="Node000039" href="$board__periph__usbhs__host_8c.html" title="On&#45;chip USBHS host controller model (0x40351000) for the board emulator." alt="" coords="8233,93,8411,148"/>
+<area shape="poly" id="edge38_Node000001_Node000039" title=" " alt="" coords="4648,24,5395,29,6512,40,7590,60,7987,74,8127,82,8221,91,8233,92,8232,98,8220,96,8127,87,7987,79,7590,65,6512,46,5395,34,4648,30"/>
+<area shape="rect" id="Node000040" href="$board__periph__wdt_8c.html" title="Window Watchdog Timer (WDT0 / WWDT) model for ra8_emulator." alt="" coords="8435,101,8657,141"/>
+<area shape="poly" id="edge39_Node000001_Node000040" title=" " alt="" coords="4648,25,5432,30,6612,43,7754,62,8175,75,8424,91,8469,98,8468,103,8423,96,8175,81,7754,68,6612,48,5432,36,4648,30"/>
+<area shape="rect" id="Node000041" href="$board__periph__xspi_8c.html" title="Octal&#45;SPI (xSPI) manual&#45;command + NOR&#45;flash peripheral model for ra8_emulator." alt="" coords="8681,93,8859,148"/>
+<area shape="poly" id="edge40_Node000001_Node000041" title=" " alt="" coords="4649,24,5477,28,6734,37,7378,46,7954,57,8404,72,8563,81,8669,91,8681,92,8680,98,8668,96,8563,86,8404,77,7954,63,7378,51,6734,43,5477,33,4649,30"/>
+</map>

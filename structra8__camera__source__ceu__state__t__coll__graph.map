@@ -1,0 +1,5 @@
+<map id="ra8_camera_source_ceu_state_t" name="ra8_camera_source_ceu_state_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned CEU source state." alt="" coords="13,101,191,141"/>
+<area shape="rect" id="Node000002" href="$structra8__camera__source__info__t.html" title="Native geometry and worst&#45;case storage required by a source." alt="" coords="5,5,199,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="105,45,105,101,99,101,99,45"/>
+</map>

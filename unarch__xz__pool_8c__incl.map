@@ -1,0 +1,20 @@
+<map id="apps/shared_libs/unarch/src/unarch_xz_pool.c" name="apps/shared_libs/unarch/src/unarch_xz_pool.c">
+<area shape="rect" id="Node000001" title="Bump&#45;arena implementation behind xz&#45;embedded&#39;s allocator seam." alt="" coords="54,5,233,45"/>
+<area shape="rect" id="Node000002" href="$unarch__xz__pool_8h.html" title="Caller&#45;owned bump arena backing xz&#45;embedded&#39;s allocator seam." alt="" coords="5,93,140,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="128,47,94,85,90,81,124,44"/>
+<area shape="rect" id="Node000005" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="164,93,264,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="162,44,196,81,192,85,158,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="147,240,217,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="67,120,52,154,49,173,55,191,70,208,90,222,134,240,132,245,88,227,67,212,50,193,44,173,47,152,62,118"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="65,167,144,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="80,118,96,153,92,155,76,120"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="119,190,161,229,157,232,115,194"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="214,120,190,227,185,226,209,119"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="198,121,136,161,133,157,195,116"/>
+<area shape="rect" id="Node000006" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="219,167,302,192"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="224,118,248,154,243,157,219,120"/>
+<area shape="rect" id="Node000007" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="327,167,475,192"/>
+<area shape="poly" id="edge10_Node000005_Node000007" title=" " alt="" coords="245,116,358,159,357,164,243,121"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="250,194,207,233,203,229,246,190"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="366,195,231,238,230,233,365,189"/>
+</map>

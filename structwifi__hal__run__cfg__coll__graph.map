@@ -1,0 +1,15 @@
+<map id="wifi_hal_run_cfg" name="wifi_hal_run_cfg">
+<area shape="rect" id="Node000001" title="Injected dependencies for the hardware&#45;free wifi_hal_join_run." alt="" coords="129,217,255,243"/>
+<area shape="rect" id="Node000002" href="$structra8__wifi__cfg.html" title="Everything ra8_wifi_init needs that the facade cannot discover." alt="" coords="198,121,298,147"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="236,160,201,219,197,216,232,157"/>
+<area shape="rect" id="Node000003" href="$structra8__wifi__backend.html" title="One vtable per radio." alt="" coords="313,5,447,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="388,44,388,72,384,86,377,99,360,114,341,124,299,135,297,129,339,119,357,110,373,96,379,84,382,71,382,44"/>
+<area shape="rect" id="Node000005" href="$structra8__wifi.html" title="Caller&#45;allocated Wi&#45;Fi handle." alt="" coords="101,121,174,147"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="335,39,309,57,301,67,297,78,293,89,283,100,175,127,173,121,280,95,288,86,292,76,296,65,305,53,332,34"/>
+<area shape="rect" id="Node000004" href="$structra8__wifi__mac.html" title="One IEEE 802 address, by value." alt="" coords="157,5,265,31"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="215,44,220,70,228,96,241,120,236,122,223,98,215,71,210,45"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="171,40,154,56,146,72,142,90,139,121,134,121,136,89,141,70,150,53,168,36"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="153,157,188,216,183,218,149,160"/>
+<area shape="rect" id="Node000006" href="$structra8__wifi__lease.html" title="The IPv4 configuration an ra8_wifi_ip_bind_fn obtained." alt="" coords="5,5,120,31"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="70,43,78,70,91,96,118,119,115,123,87,99,73,72,65,45"/>
+</map>

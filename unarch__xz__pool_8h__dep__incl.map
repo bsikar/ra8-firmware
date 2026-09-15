@@ -1,0 +1,10 @@
+<map id="apps/shared_libs/unarch/inc/unarch_xz_pool.h" name="apps/shared_libs/unarch/inc/unarch_xz_pool.h">
+<area shape="rect" id="Node000001" title="Caller&#45;owned bump arena backing xz&#45;embedded&#39;s allocator seam." alt="" coords="132,5,311,45"/>
+<area shape="rect" id="Node000002" href="$xz__config_8h.html" title="First&#45;party porting header for the vendored xz&#45;embedded decoder." alt="" coords="5,93,184,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="183,56,124,95,121,91,180,51"/>
+<area shape="rect" id="Node000003" href="$unarch__xz_8c.html" title="Bounded XZ/LZMA2 decode wrapper over the vendored xz&#45;embedded." alt="" coords="68,181,247,221"/>
+<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="219,60,211,96,198,134,173,182,168,180,194,132,206,95,214,59"/>
+<area shape="rect" id="Node000004" href="$unarch__xz__pool_8c.html" title="Bump&#45;arena implementation behind xz&#45;embedded&#39;s allocator seam." alt="" coords="259,93,437,133"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="262,51,321,91,318,95,259,56"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="119,143,146,180,141,183,115,146"/>
+</map>

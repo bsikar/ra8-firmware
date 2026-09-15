@@ -1,0 +1,17 @@
+<map id="port/esp&#45;hosted/inc/ra8_esp_hosted_pins.h" name="port/esp&#45;hosted/inc/ra8_esp_hosted_pins.h">
+<area shape="rect" id="Node000001" title="THE single point of change for the RA8 &lt;&#45;&gt; ESP32&#45;C6 harness map." alt="" coords="24,5,199,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="57,255,128,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="73,48,45,68,24,95,12,124,8,150,12,175,24,205,40,228,61,245,57,249,36,231,20,208,7,177,3,150,7,123,20,92,42,64,70,43"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2__connectors_8h.html" title="Board&#45;identity, LEDs, switches, display, audio, Arduino, Pmod, and MikroBUS portion of the EK&#45;RA8D2 v..." alt="" coords="34,93,189,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="114,46,114,79,109,79,109,46"/>
+<area shape="rect" id="Node000006" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="244,181,403,207"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="138,43,202,91,301,170,297,175,199,95,135,47"/>
+<area shape="poly" id="edge4_Node000003_Node000002" title=" " alt="" coords="78,136,52,156,32,182,30,199,36,216,48,231,64,244,60,248,45,235,31,218,24,200,27,180,48,152,74,131"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="42,181,117,207"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="106,135,92,170,87,168,101,133"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="141,181,220,207"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="130,132,163,169,159,172,126,135"/>
+<area shape="poly" id="edge7_Node000003_Node000006" title=" " alt="" coords="163,131,280,174,278,179,161,136"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="168,209,119,248,116,244,165,205"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="287,209,142,254,140,249,285,204"/>
+</map>

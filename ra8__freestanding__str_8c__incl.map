@@ -1,0 +1,11 @@
+<map id="libs/ra8_core/src/ra8_freestanding_str.c" name="libs/ra8_core/src/ra8_freestanding_str.c">
+<area shape="rect" id="Node000001" title="Project&#45;owned freestanding string ABI primitives (strlen, strcmp, strchr, strstr, etc...." alt="" coords="18,5,171,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="59,48,33,68,13,94,10,109,12,125,27,154,22,157,7,126,4,109,8,92,29,64,56,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="110,167,181,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="133,43,160,64,181,92,185,109,182,126,167,157,162,154,177,125,180,109,176,94,156,68,130,48"/>
+<area shape="rect" id="Node000004" href="$ra8__freestanding_8h.html" title="Project&#45;owned freestanding C runtime ABI primitives." alt="" coords="23,93,167,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="97,46,97,79,92,79,92,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="88,121,61,157,57,154,84,117"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="105,117,131,154,127,157,101,121"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="ra8_io_blockdev_t" name="ra8_io_blockdev_t">
+<area shape="rect" id="Node000001" title="Caller&#45;allocated block&#45;device handle binding a backend to its context." alt="" coords="19,101,159,127"/>
+<area shape="rect" id="Node000002" href="$structra8__io__blockdev__iface.html" title="Opaque to applications – backends implement this internally and export a binding helper through their..." alt="" coords="5,5,172,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="91,45,91,101,86,101,86,45"/>
+</map>

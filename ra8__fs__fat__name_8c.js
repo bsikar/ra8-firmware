@@ -1,0 +1,35 @@
+var ra8__fs__fat__name_8c =
+[
+    [ "ra8_fs_name_local_t", "ra8__fs__fat__name_8c.html#a32dda2f0407bb20efe0846b07581d780", [
+      [ "k_lfn_space", "ra8__fs__fat__name_8c.html#a32dda2f0407bb20efe0846b07581d780aa0f47a8cd32c77f21535eab5fa4fe917", null ],
+      [ "k_lfn_del", "ra8__fs__fat__name_8c.html#a32dda2f0407bb20efe0846b07581d780afcead0982276a4a96e98218dc50791ff", null ],
+      [ "k_case_seen_upper", "ra8__fs__fat__name_8c.html#a32dda2f0407bb20efe0846b07581d780a06b3234699acdd95692bb00993663741", null ],
+      [ "k_case_seen_lower", "ra8__fs__fat__name_8c.html#a32dda2f0407bb20efe0846b07581d780ae4cc5b39a1010338ef96415ad9930855", null ],
+      [ "k_case_seen_mixed", "ra8__fs__fat__name_8c.html#a32dda2f0407bb20efe0846b07581d780ad5b84f2e7eea5379c768866a8e03d095", null ],
+      [ "k_alias_radix", "ra8__fs__fat__name_8c.html#a32dda2f0407bb20efe0846b07581d780a4b092baf4b5c6cd1d1ec4b6b09d29c45", null ],
+      [ "k_alias_digits_max", "ra8__fs__fat__name_8c.html#a32dda2f0407bb20efe0846b07581d780acc77ec46c076a739d8c7166aba0d6908", null ]
+    ] ],
+    [ "internal_alias_collect", "ra8__fs__fat__name_8c.html#ac6ed2fba108aaf11d333a00f968d3c63", null ],
+    [ "internal_alias_digits", "ra8__fs__fat__name_8c.html#a29c6dfaea8d170b00b16defe27644843", null ],
+    [ "internal_alias_ext_dot", "ra8__fs__fat__name_8c.html#ad877af79f391540d54cb0a0399506aec", null ],
+    [ "internal_alias_map_unit", "ra8__fs__fat__name_8c.html#a3352b68181ebf4bbdb937062ea1bb366", null ],
+    [ "internal_case_apply", "ra8__fs__fat__name_8c.html#a1b8f00a514cca060d3bbdb5ecde759b8", null ],
+    [ "internal_case_observe", "ra8__fs__fat__name_8c.html#a797c8eec8b5e4b66e3dc5cc47b225276", null ],
+    [ "internal_dir_walk_init_root", "ra8__fs__fat__name_8c.html#a859bf86f96fa19b55e07af8a89d15c33", null ],
+    [ "internal_name_case_kind", "ra8__fs__fat__name_8c.html#ab6da0a9f3dd35fa4bd67b33f96931751", null ],
+    [ "internal_name_dot_index", "ra8__fs__fat__name_8c.html#aa6782120fdc9d5b96ff225faf12bc593", null ],
+    [ "internal_name_is_83", "ra8__fs__fat__name_8c.html#a200a0015d593c0ea1fa54014cb97037a", null ],
+    [ "internal_pack_base", "ra8__fs__fat__name_8c.html#a4d1d02c2d43db1a5b4d549c849aa7926", null ],
+    [ "internal_pack_ext", "ra8__fs__fat__name_8c.html#af55abeadb8319fc5a0f0df201ef23af2", null ],
+    [ "internal_unit_in_set", "ra8__fs__fat__name_8c.html#ae04cc2e57fc8c478d4030d6483813956", null ],
+    [ "internal_unit_is_83_legal", "ra8__fs__fat__name_8c.html#a4ed5efb7effeddc06feaed52e99fdeff", null ],
+    [ "internal_unit_is_lfn_legal", "ra8__fs__fat__name_8c.html#a8f663ac11132bc32610f3fafab5754a7", null ],
+    [ "priv_83_to_str", "ra8__fs__fat__name_8c.html#aff9bf7b6434e8966263387fdef5fe2c9", null ],
+    [ "priv_dir_find", "ra8__fs__fat__name_8c.html#a96aaf37fcfecacc735b42966fbd51364", null ],
+    [ "priv_dir_walk_init_loc", "ra8__fs__fat__name_8c.html#a2591443007d497942fb83314c56f0972", null ],
+    [ "priv_dir_walk_next_sector", "ra8__fs__fat__name_8c.html#ae517f6792a51d2fb29920a04e4d468a0", null ],
+    [ "priv_lfn_alias_basis", "ra8__fs__fat__name_8c.html#a04c9cc8d1e5bb139919ca900183ef26d", null ],
+    [ "priv_name_classify", "ra8__fs__fat__name_8c.html#af34bbdb274c6bc62ae61380905ab5344", null ],
+    [ "priv_path_to_83", "ra8__fs__fat__name_8c.html#a3f72447d2f70670cf614637c18a0ed16", null ],
+    [ "priv_to_upper", "ra8__fs__fat__name_8c.html#aed4901fd89858bafd5be1ad10f219536", null ]
+];

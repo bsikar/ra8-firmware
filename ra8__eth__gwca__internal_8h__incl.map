@@ -1,0 +1,19 @@
+<map id="libs/ra8_hal/src/ra8_eth_gwca_internal.h" name="libs/ra8_hal/src/ra8_eth_gwca_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU shared surface for the ra8_eth_gwca driver split." alt="" coords="220,5,380,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="303,240,374,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="333,44,358,65,377,92,383,130,381,159,375,193,357,230,352,228,369,191,376,159,378,131,372,94,354,68,330,48"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="5,240,131,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="257,48,218,68,174,95,132,129,96,168,81,197,74,227,68,226,76,195,91,165,128,125,171,91,215,63,255,43"/>
+<area shape="rect" id="Node000004" href="$ra8__eth__gwca_8h.html" title="Ethernet CPU Agent (GWCA) driver." alt="" coords="238,93,362,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="303,46,303,79,297,79,297,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="317,117,337,138,355,166,358,198,352,227,346,226,353,197,349,168,333,141,313,121"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="261,167,339,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="303,119,303,153,297,153,297,119"/>
+<area shape="rect" id="Node000006" href="$ra8__ether__regs_8h.html" title="Ethernet controller base addresses for the Renesas RA8D2." alt="" coords="105,167,236,192"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="280,121,205,162,203,157,278,116"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="309,191,328,227,324,229,304,194"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="199,190,300,232,298,237,197,194"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="156,194,98,234,95,230,153,190"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="155,240,229,265"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="177,192,187,226,182,228,172,193"/>
+</map>

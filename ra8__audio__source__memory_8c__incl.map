@@ -1,0 +1,21 @@
+<map id="libs/ra8_audio/src/ra8_audio_source_memory.c" name="libs/ra8_audio/src/ra8_audio_source_memory.c">
+<area shape="rect" id="Node000001" title="Fixed PCM replay backend implementation." alt="" coords="217,5,428,45"/>
+<area shape="rect" id="Node000002" href="$ra8__audio__source__memory_8h.html" title="Fixed in&#45;memory PCM replay backend for ra8_audio." alt="" coords="5,93,213,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="272,48,155,91,153,86,271,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="237,93,312,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="313,47,291,83,287,80,309,44"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="337,93,407,119"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="337,44,360,80,355,83,332,47"/>
+<area shape="rect" id="Node000008" href="$ra8__audio__internal_8h.html" title="Private audio&#45;source vtable shared by concrete backends." alt="" coords="432,93,587,119"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="368,43,470,85,468,90,366,48"/>
+<area shape="rect" id="Node000003" href="$ra8__audio_8h.html" title="Transport&#45;neutral, caller&#45;owned audio capture facade." alt="" coords="192,167,291,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="132,116,209,158,207,162,129,121"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="206,313,277,339"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="241,193,231,240,231,271,237,300,231,301,226,272,225,240,235,192"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="241,240,319,265"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="250,191,270,227,265,229,245,194"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="276,267,256,303,252,300,271,264"/>
+<area shape="poly" id="edge10_Node000008_Node000003" title=" " alt="" coords="467,121,298,166,297,161,466,116"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="447,167,572,192"/>
+<area shape="poly" id="edge9_Node000008_Node000009" title=" " alt="" coords="512,119,512,153,507,153,507,119"/>
+</map>

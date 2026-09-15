@@ -1,0 +1,38 @@
+<map id="libs/ra8_hal/inc/ra8_gpt.h" name="libs/ra8_hal/inc/ra8_gpt.h">
+<area shape="rect" id="Node000001" title="Full&#45;featured General PWM Timer (GPT) driver." alt="" coords="1411,5,1556,45"/>
+<area shape="rect" id="Node000002" href="$examples_2__unsupported_2motor__3phase_2src_2main_8c.html" title="Three&#45;phase GPT PWM motor demo for EK&#45;RA8D2 (GPT0/1/2 &#45;&gt; U/V/W)." alt="" coords="5,101,196,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1397,28,1187,29,892,38,553,58,379,75,209,96,171,103,170,98,208,91,378,69,552,53,892,32,1186,24,1397,23"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2gpt__irq__demo_2src_2main_8c.html" title="GPT0 overflow interrupt &#45;&gt; NVIC &#45;&gt; ISR demo for EK&#45;RA8D2." alt="" coords="221,93,399,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1396,29,1216,32,971,41,693,62,551,77,412,96,400,98,399,93,411,91,550,71,692,56,971,36,1216,27,1396,24"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2poeg__safe__shutoff_2src_2main_8c.html" title="POEG (Port Output Enable for GPT) safe&#45;shutoff demo for the EK&#45;RA8D2." alt="" coords="423,93,613,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1397,32,1061,50,847,69,632,96,613,99,613,94,631,91,846,63,1060,45,1397,27"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2gpt__edge__capture__count_2src_2main_8c.html" title="GPT hardware input&#45;capture + external event/pulse counting demo." alt="" coords="1351,196,1552,251"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1397,30,1207,34,980,44,873,53,781,64,713,78,690,86,677,95,669,108,666,121,669,133,677,146,689,154,710,162,772,177,856,188,955,198,1167,211,1350,217,1350,222,1167,216,954,203,856,193,771,182,708,167,687,159,673,150,664,135,660,121,664,106,673,91,688,82,711,73,780,59,872,47,980,39,1207,29,1397,25"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2hil_2camera__capture_2src_2main_8c.html" title="OV5640 parallel (CEU) camera capture + plausibility self&#45;test." alt="" coords="687,93,861,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1397,35,1160,56,1016,73,873,96,862,98,860,93,872,91,1016,68,1159,50,1397,29"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__validated_2hil_2gpt__capture__input_2src_2main_8c.html" title="GPT input&#45;capture&#45;style demo: measure SW1 press period." alt="" coords="885,93,1076,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1397,42,1253,66,1089,96,1077,98,1076,93,1088,91,1252,60,1396,37"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__validated_2hil_2gpt__dma__demo_2src_2main_8c.html" title="GPT period&#45;streaming DMA HIL demo for EK&#45;RA8D2." alt="" coords="1101,93,1274,148"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1411,52,1271,96,1270,91,1410,47"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__validated_2hil_2gpt__one__shot__demo_2src_2main_8c.html" title="GPT one&#45;shot (saw&#45;wave one&#45;shot) HIL demo for EK&#45;RA8D2." alt="" coords="1298,93,1471,148"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1455,57,1414,95,1411,91,1452,53"/>
+<area shape="rect" id="Node000010" href="$examples_2ek__ra8d2_2hw__validated_2hil_2gpt__pwm__demo_2src_2main_8c.html" title="GPT PWM duty&#45;cycle LED demo for EK&#45;RA8D2." alt="" coords="1496,93,1671,148"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1515,53,1557,91,1553,95,1512,57"/>
+<area shape="rect" id="Node000011" href="$examples_2ek__ra8d2_2hw__validated_2hil_2gpt__three__phase__demo_2src_2main_8c.html" title="GPT three&#45;phase complementary PWM HIL demo for EK&#45;RA8D2." alt="" coords="1695,93,1877,148"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1558,47,1702,91,1700,96,1557,52"/>
+<area shape="rect" id="Node000012" href="$examples_2ek__ra8d2_2hw__validated_2hil_2timer__capture__demo_2src_2main_8c.html" title="GPT free&#45;running timer capture demo for the EK&#45;RA8D2." alt="" coords="1901,93,2095,148"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1570,36,1719,60,1889,91,1901,93,1900,98,1888,96,1718,65,1569,42"/>
+<area shape="rect" id="Node000013" href="$ra8__board__ek__ra8d2__camera_8c.html" title="EK&#45;RA8D2 J35 camera clock, routing, reset, and SCCB adapter." alt="" coords="2119,93,2301,148"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="1570,29,1812,51,1959,68,2106,91,2119,93,2118,98,2106,96,1959,73,1812,56,1569,35"/>
+<area shape="rect" id="Node000014" href="$ra8__gpt__capture_8h.html" title="GPT input&#45;capture + external event / pulse&#45;count extension." alt="" coords="2325,101,2471,141"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="1570,25,1712,29,1898,40,2105,59,2313,91,2344,98,2342,103,2312,96,2105,65,1898,45,1712,34,1570,30"/>
+<area shape="rect" id="Node000015" href="$ra8__gpt_8c.html" title="General PWM Timer (GPT) driver implementation." alt="" coords="2351,203,2496,243"/>
+<area shape="poly" id="edge16_Node000001_Node000015" title=" " alt="" coords="1570,23,1801,24,2090,32,2227,40,2346,52,2435,69,2465,79,2484,91,2493,105,2495,120,2487,151,2468,181,2446,205,2442,201,2463,178,2482,149,2490,120,2488,107,2480,95,2463,84,2434,74,2346,57,2227,45,2089,37,1801,29,1570,29"/>
+<area shape="rect" id="Node000016" href="$ra8__nsc__io_8h.html" title="NSC veneers for the I/O drivers." alt="" coords="2546,101,2693,141"/>
+<area shape="poly" id="edge17_Node000001_Node000016" title=" " alt="" coords="1570,23,1746,25,1984,34,2255,55,2393,71,2528,91,2560,98,2559,103,2527,96,2392,76,2254,60,1984,40,1746,31,1570,29"/>
+<area shape="rect" id="Node000017" href="$ra8__nsc__io_8c.html" title="NSC veneers for the &#45;6 I/O drivers." alt="" coords="2601,203,2747,243"/>
+<area shape="poly" id="edge19_Node000001_Node000017" title=" " alt="" coords="1570,25,1857,32,2225,45,2549,64,2656,76,2689,83,2706,91,2715,104,2719,119,2716,150,2705,180,2690,204,2685,202,2700,177,2711,148,2714,120,2710,107,2703,95,2688,88,2655,82,2549,69,2225,50,1856,37,1570,31"/>
+<area shape="poly" id="edge14_Node000014_Node000005" title=" " alt="" coords="2330,147,2313,151,2102,183,1892,205,1701,217,1553,223,1552,218,1701,212,1891,199,2102,178,2312,145,2329,142"/>
+<area shape="poly" id="edge15_Node000014_Node000015" title=" " alt="" coords="2409,153,2421,203,2416,204,2404,155"/>
+<area shape="poly" id="edge18_Node000016_Node000017" title=" " alt="" coords="2638,151,2666,202,2661,205,2634,154"/>
+</map>

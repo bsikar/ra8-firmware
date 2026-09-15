@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_pending/media_download/inc/media_download_image_internal.h" name="examples/ek_ra8d2/hw_pending/media_download/inc/media_download_image_internal.h">
+<area shape="rect" id="Node000001" title="Private encoded&#45;image download and RABOOK publication composition." alt="" coords="115,5,323,75"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2media__download_2src_2main_8c.html" title="Download, validate, publish, and reopen one C6&#45;fetched .rabook." alt="" coords="5,123,201,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="175,86,133,124,130,121,171,82"/>
+<area shape="rect" id="Node000003" href="$media__download__image_8c.html" title="Convert one C6&#45;fetched encoded image into a strict .rabook." alt="" coords="226,123,445,177"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="267,82,309,121,305,124,264,86"/>
+</map>

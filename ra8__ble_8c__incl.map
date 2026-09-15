@@ -1,0 +1,31 @@
+<map id="libs/ra8_hal/src/ra8_ble.c" name="libs/ra8_hal/src/ra8_ble.c">
+<area shape="rect" id="Node000001" title="HCI transport seam (host&#45;side) – in&#45;memory loopback backend." alt="" coords="345,5,491,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ble_8h.html" title="BLE HCI transport seam (host&#45;side)." alt="" coords="22,93,105,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="345,45,118,95,117,90,344,40"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="217,240,288,265"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="432,44,447,75,459,114,462,155,458,175,448,194,417,222,379,240,339,250,302,254,301,249,338,245,378,235,414,217,444,190,453,173,457,155,454,115,442,77,427,47"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="24,167,103,192"/>
+<area shape="poly" id="edge18_Node000001_Node000004" title=" " alt="" coords="346,45,270,66,191,96,135,127,90,160,86,156,133,123,189,91,268,61,344,39"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="694,93,769,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="491,42,681,89,680,95,490,47"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="591,167,717,192"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="492,29,528,37,566,49,602,66,633,91,643,105,650,121,656,153,651,154,645,123,639,108,629,95,599,71,564,53,527,42,490,34"/>
+<area shape="rect" id="Node000007" href="$ra8__ble__internal_8h.html" title="Test&#45;access surface for the BLE loopback transport." alt="" coords="481,93,619,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="451,43,520,84,517,88,448,48"/>
+<area shape="rect" id="Node000008" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="203,93,303,119"/>
+<area shape="poly" id="edge11_Node000001_Node000008" title=" " alt="" coords="379,48,290,90,288,85,377,43"/>
+<area shape="rect" id="Node000009" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="351,167,434,192"/>
+<area shape="poly" id="edge19_Node000001_Node000009" title=" " alt="" coords="417,46,399,153,394,153,412,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="49,121,32,136,16,154,8,173,9,182,13,190,25,200,43,210,93,225,204,244,203,249,92,230,41,215,22,205,9,194,4,183,3,172,12,151,28,132,45,117"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="66,119,66,153,61,153,61,119"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="95,190,210,232,208,237,93,195"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="547,121,527,157,511,177,491,194,445,219,394,236,345,246,302,252,302,246,344,241,393,231,443,214,488,190,507,174,522,154,542,118"/>
+<area shape="poly" id="edge10_Node000007_Node000006" title=" " alt="" coords="568,116,627,156,624,161,565,121"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="225,121,201,134,179,151,166,170,165,180,168,191,187,214,212,231,209,236,184,218,164,193,160,181,161,168,175,147,198,130,223,117"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="223,121,108,164,106,159,221,116"/>
+<area shape="poly" id="edge14_Node000008_Node000009" title=" " alt="" coords="276,116,359,158,357,163,274,121"/>
+<area shape="rect" id="Node000010" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="179,167,327,192"/>
+<area shape="poly" id="edge16_Node000008_Node000010" title=" " alt="" coords="255,119,255,153,250,153,250,119"/>
+<area shape="poly" id="edge15_Node000009_Node000003" title=" " alt="" coords="371,194,289,236,286,231,369,190"/>
+<area shape="poly" id="edge17_Node000010_Node000003" title=" " alt="" coords="255,192,255,226,250,226,250,192"/>
+</map>

@@ -1,0 +1,57 @@
+<map id="port/esp&#45;hosted/inc/ra8_esp_hosted_port.h" name="port/esp&#45;hosted/inc/ra8_esp_hosted_port.h">
+<area shape="rect" id="Node000001" title="Public entry point of the RA8D2 + ThreadX port of esp&#45;hosted." alt="" coords="1488,5,1661,45"/>
+<area shape="rect" id="Node000002" href="$c6__cam__app_8c.html" title="Shared C6 camera&#45;stream application workflow." alt="" coords="5,93,216,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1474,29,1250,30,941,39,587,59,405,75,228,96,216,98,216,92,228,91,405,70,586,54,940,33,1250,25,1474,23"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2media__download_2src_2main_8c.html" title="Download, validate, publish, and reopen one C6&#45;fetched .rabook." alt="" coords="241,93,437,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1474,30,1285,34,1031,44,745,64,599,78,456,96,437,99,437,94,456,91,599,73,745,59,1031,39,1285,29,1474,25"/>
+<area shape="rect" id="Node000004" href="$c6__fwver__link_8c.html" title="The esp&#45;hosted transaction pump: frame in, frame out, counted." alt="" coords="293,196,499,251"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1474,31,1228,37,925,49,653,68,557,81,501,96,466,135,418,197,413,194,461,132,499,91,556,75,653,63,925,43,1228,32,1474,26"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__fw__version_2src_2main_8c.html" title="Complete an esp&#45;hosted RPC round&#45;trip against the ESP32&#45;C6." alt="" coords="512,93,717,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1474,33,1143,51,936,70,730,96,718,98,717,93,729,91,936,64,1142,46,1474,27"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__hosted__init_2src_2main_8c.html" title="Bring the RA8D2 + ThreadX esp&#45;hosted port up against the ESP32&#45;C6." alt="" coords="741,93,920,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1475,35,1227,56,1079,73,932,96,921,98,920,93,932,91,1079,68,1227,51,1474,30"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__join_2src_2main_8c.html" title="Join the bench Wi&#45;Fi over the ESP32&#45;C6 and get an IP by DHCP (#492)." alt="" coords="944,93,1117,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1475,41,1312,64,1130,96,1118,98,1117,93,1129,91,1312,58,1474,36"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__link_2src_2main_8c.html" title="Bring the ESP32&#45;C6&#39;s Wi&#45;Fi station up through the ra8_c6link facade." alt="" coords="1141,93,1315,148"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1492,52,1316,99,1315,93,1491,46"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__validated_2c6_2wifi__hal__join_2src_2main_8c.html" title="The same Wi&#45;Fi join as c6_wifi_join, the HAL way, through ra8_wifi." alt="" coords="1339,93,1512,148"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1534,55,1469,96,1466,91,1532,50"/>
+<area shape="rect" id="Node000010" href="$port__esp__hosted__host__os_8h.html" title="esp&#45;hosted port header: RTOS handle types, return codes and budgets." alt="" coords="1637,101,1840,141"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1621,50,1707,98,1704,103,1618,54"/>
+<area shape="rect" id="Node000013" href="$ra8__esp__hosted__c6link_8c.html" title="The three trampolines that put ra8_c6link on this board&#39;s wire." alt="" coords="523,203,709,243"/>
+<area shape="poly" id="edge22_Node000001_Node000013" title=" " alt="" coords="1573,60,1559,108,1545,131,1526,150,1505,159,1473,167,1381,178,1261,185,1129,189,874,193,722,199,685,206,684,201,721,193,874,187,1128,184,1261,180,1380,173,1472,162,1503,154,1522,146,1541,128,1554,105,1568,58"/>
+<area shape="rect" id="Node000015" href="$ra8__esp__hosted__osi_8c.html" title="The esp&#45;hosted OS&#45;abstraction vtable and its non&#45;RTOS slots." alt="" coords="733,203,899,243"/>
+<area shape="poly" id="edge24_Node000001_Node000015" title=" " alt="" coords="1586,59,1589,105,1583,129,1570,150,1554,159,1529,167,1454,178,1357,186,1247,190,1037,193,911,199,878,206,877,201,910,193,1037,188,1247,184,1356,180,1453,173,1527,162,1552,155,1566,146,1578,127,1583,105,1581,59"/>
+<area shape="rect" id="Node000017" href="$ra8__esp__hosted__port_8c.html" title="Bring&#45;up and teardown of the esp&#45;hosted RA8D2 + ThreadX port." alt="" coords="2507,203,2679,243"/>
+<area shape="poly" id="edge25_Node000001_Node000017" title=" " alt="" coords="1675,33,1856,56,1939,72,1999,91,2017,104,2029,119,2040,133,2057,146,2119,170,2173,182,2222,187,2270,187,2370,182,2428,184,2495,193,2528,201,2527,206,2494,199,2428,190,2370,188,2270,192,2222,192,2172,188,2117,175,2055,150,2036,137,2024,123,2014,108,1996,96,1938,77,1855,61,1674,38"/>
+<area shape="rect" id="Node000018" href="$ra8__esp__hosted__rtos_8c.html" title="Thread, sleep, timer and clock vtable slots, plus the bind entry." alt="" coords="1944,203,2115,243"/>
+<area shape="poly" id="edge28_Node000001_Node000018" title=" " alt="" coords="1675,35,1764,55,1810,71,1853,91,1872,104,1884,117,1895,131,1911,146,1954,176,1996,201,1993,205,1951,180,1908,150,1891,135,1880,121,1868,108,1851,96,1808,76,1763,60,1674,40"/>
+<area shape="rect" id="Node000019" href="$ra8__esp__hosted__rtos__pool_8c.html" title="Memory and queue half of the esp&#45;hosted OS&#45;abstraction vtable." alt="" coords="2139,196,2299,251"/>
+<area shape="poly" id="edge29_Node000001_Node000019" title=" " alt="" coords="1675,31,1786,51,1844,68,1900,91,1919,104,1932,118,1943,132,1961,146,2139,197,2138,202,1959,150,1940,136,1928,122,1916,108,1897,96,1843,73,1785,56,1675,36"/>
+<area shape="rect" id="Node000020" href="$ra8__esp__hosted__rtos__sync_8c.html" title="Mutex and semaphore vtable slots." alt="" coords="2323,196,2483,251"/>
+<area shape="poly" id="edge30_Node000001_Node000020" title=" " alt="" coords="1676,27,1739,34,1809,46,1881,64,1949,91,1969,104,1981,119,1993,133,2012,146,2054,163,2091,173,2157,180,2226,182,2265,185,2311,193,2323,196,2322,201,2310,199,2265,191,2225,187,2157,185,2090,178,2052,168,2009,150,1990,137,1977,123,1965,108,1947,96,1879,69,1808,51,1738,39,1675,33"/>
+<area shape="rect" id="Node000022" href="$ra8__esp__hosted__log_8c.html" title="Bridge from the esp&#45;hosted logging surface onto ra8_log." alt="" coords="2067,101,2234,141"/>
+<area shape="poly" id="edge23_Node000001_Node000022" title=" " alt="" coords="1676,35,1850,58,2049,91,2081,98,2080,103,2047,96,1849,63,1675,40"/>
+<area shape="rect" id="Node000023" href="$ra8__esp__hosted__port__internal_8h.html" title="Library&#45;private surface of the esp&#45;hosted port bring&#45;up." alt="" coords="2258,93,2419,148"/>
+<area shape="poly" id="edge26_Node000001_Node000023" title=" " alt="" coords="1676,28,1936,48,2092,66,2247,91,2258,93,2257,98,2246,96,2091,71,1935,53,1675,34"/>
+<area shape="rect" id="Node000024" href="$nx__ether__driver__c6_8c.html" title="NetX Duo network driver bound to the ESP32&#45;C6 link (ra8_c6link)." alt="" coords="2443,101,2591,141"/>
+<area shape="poly" id="edge31_Node000001_Node000024" title=" " alt="" coords="1676,25,1824,29,2013,40,2223,59,2433,91,2463,98,2462,103,2431,96,2222,65,2013,45,1824,34,1675,30"/>
+<area shape="poly" id="edge11_Node000010_Node000004" title=" " alt="" coords="1624,140,1524,151,1370,161,1239,166,1016,166,794,171,664,181,511,199,499,200,499,195,510,193,664,175,794,166,1016,161,1239,160,1370,156,1524,145,1623,135"/>
+<area shape="rect" id="Node000011" href="$c6__fwver__console_8c.html" title="Bounded console formatters for the esp&#45;hosted RPC round&#45;trip app." alt="" coords="1715,196,1920,251"/>
+<area shape="poly" id="edge10_Node000010_Node000011" title=" " alt="" coords="1764,150,1799,194,1795,197,1760,153"/>
+<area shape="rect" id="Node000012" href="$c6__hosted__frame_8c.html" title="The single esp&#45;hosted transaction, its decode and its verdict." alt="" coords="923,196,1123,251"/>
+<area shape="poly" id="edge12_Node000010_Node000012" title=" " alt="" coords="1645,146,1619,151,1483,167,1377,174,1271,181,1135,199,1123,201,1122,195,1134,193,1270,176,1376,169,1483,162,1618,145,1644,141"/>
+<area shape="poly" id="edge13_Node000010_Node000013" title=" " alt="" coords="1624,144,1568,151,1439,162,1330,167,1144,168,958,173,850,182,722,199,685,206,684,201,721,193,849,177,958,168,1144,163,1330,161,1439,156,1568,145,1623,138"/>
+<area shape="rect" id="Node000014" href="$ra8__esp__hosted__gpio_8c.html" title="The eight side&#45;band GPIO slots of the esp&#45;hosted OS&#45;abstraction vtable." alt="" coords="1147,203,1322,243"/>
+<area shape="poly" id="edge14_Node000010_Node000014" title=" " alt="" coords="1642,146,1619,151,1477,174,1335,199,1304,206,1303,201,1334,193,1476,168,1618,145,1641,141"/>
+<area shape="poly" id="edge15_Node000010_Node000015" title=" " alt="" coords="1647,146,1619,151,1512,163,1420,169,1264,171,1109,175,1018,183,911,199,878,206,877,201,910,193,1017,178,1108,170,1264,166,1420,164,1511,158,1618,145,1646,141"/>
+<area shape="rect" id="Node000016" href="$ra8__esp__hosted__osi__absent_8c.html" title="Vtable rows for transports this board does not carry." alt="" coords="1347,196,1501,251"/>
+<area shape="poly" id="edge16_Node000010_Node000016" title=" " alt="" coords="1668,147,1502,200,1501,195,1666,142"/>
+<area shape="poly" id="edge17_Node000010_Node000017" title=" " alt="" coords="1854,130,2495,193,2529,201,2528,206,2494,199,1853,136"/>
+<area shape="poly" id="edge18_Node000010_Node000018" title=" " alt="" coords="1806,143,1976,201,1974,206,1805,148"/>
+<area shape="poly" id="edge19_Node000010_Node000019" title=" " alt="" coords="1854,139,1985,163,2127,193,2139,196,2138,201,2126,199,1984,168,1853,144"/>
+<area shape="poly" id="edge20_Node000010_Node000020" title=" " alt="" coords="1854,133,2124,167,2311,193,2323,196,2322,201,2310,199,2123,172,1853,139"/>
+<area shape="rect" id="Node000021" href="$ra8__esp__hosted__spi_8c.html" title="The three transport slots of the esp&#45;hosted OS&#45;abstraction vtable." alt="" coords="1525,203,1691,243"/>
+<area shape="poly" id="edge21_Node000010_Node000021" title=" " alt="" coords="1705,151,1634,205,1631,201,1701,147"/>
+<area shape="poly" id="edge27_Node000023_Node000017" title=" " alt="" coords="2419,151,2546,201,2545,206,2417,155"/>
+</map>

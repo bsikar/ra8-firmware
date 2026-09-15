@@ -1,0 +1,11 @@
+<map id="libs/ra8_fs/inc/ra8_fs_check.h" name="libs/ra8_fs/inc/ra8_fs_check.h">
+<area shape="rect" id="Node000001" title="Read&#45;only on&#45;device volume consistency check (fsck) for ra8_fs." alt="" coords="93,5,231,45"/>
+<area shape="rect" id="Node000002" href="$ra8__fs__fat__check_8c.html" title="Read&#45;only consistency check (fsck): shared scaffolding + FAT12/16/32." alt="" coords="5,181,143,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="103,54,80,72,62,95,55,116,56,139,67,180,62,182,50,140,50,115,57,92,76,68,100,50"/>
+<area shape="rect" id="Node000003" href="$ra8__fs__fat__check__internal_8h.html" title="Cross&#45;TU state and helpers for the volume consistency check (fsck)." alt="" coords="72,93,252,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="165,59,165,93,159,93,159,59"/>
+<area shape="rect" id="Node000004" href="$ra8__fs__fat__exfat__check_8c.html" title="Read&#45;only consistency check (fsck): the exFAT half." alt="" coords="187,181,350,221"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="223,50,247,68,267,92,276,115,279,139,276,181,270,181,273,139,270,116,262,95,244,72,220,54"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="134,145,95,183,92,179,131,141"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="198,140,247,179,243,183,195,144"/>
+</map>

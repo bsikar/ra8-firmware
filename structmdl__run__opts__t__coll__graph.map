@@ -1,0 +1,9 @@
+<map id="mdl_run_opts_t" name="mdl_run_opts_t">
+<area shape="rect" id="Node000001" title="Cross&#45;cutting policy and injected transport threaded into every mode." alt="" coords="93,217,216,243"/>
+<area shape="rect" id="Node000002" href="$structmdl__net__policy__t.html" title="Session&#45;wide security policy for the network backend." alt="" coords="5,121,139,147"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,155,146,215,142,219,89,159"/>
+<area shape="rect" id="Node000003" href="$structmdl__net__bytes__t.html" title="Read&#45;only caller&#45;owned byte view retained by a network backend." alt="" coords="7,5,137,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="75,45,75,121,69,121,69,45"/>
+<area shape="rect" id="Node000004" href="$structmdl__net__provider__t.html" title="An injected FACTORY for mdl_net_iface_t: which backend, decided once." alt="" coords="163,121,311,147"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="220,159,167,219,163,215,216,155"/>
+</map>

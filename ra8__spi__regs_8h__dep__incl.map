@@ -1,0 +1,13 @@
+<map id="libs/ra8_hal/inc/ra8_spi_regs.h" name="libs/ra8_hal/inc/ra8_spi_regs.h">
+<area shape="rect" id="Node000001" title="SPI_B register layout for the Renesas RA8D2." alt="" coords="344,5,489,45"/>
+<area shape="rect" id="Node000002" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="331,51,152,96,150,91,330,46"/>
+<area shape="rect" id="Node000003" href="$ra8__spi__b_8c.html" title="SPI_B controller driver (polling + IRQ dispatch + DMA pipes)." alt="" coords="175,93,320,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="369,54,286,96,283,91,366,49"/>
+<area shape="rect" id="Node000004" href="$ra8__spi__b__dma_8c.html" title="SPI_B DMA TX/RX pipes with Cortex&#45;M85 cache coherency." alt="" coords="344,93,489,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="419,59,419,93,414,93,414,59"/>
+<area shape="rect" id="Node000005" href="$ra8__spi__b__target_8c.html" title="SPI_B peripheral (target) mode driver – polling single&#45;byte xfer." alt="" coords="513,93,659,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="467,49,550,91,548,96,465,54"/>
+<area shape="rect" id="Node000006" href="$ra8__io__spi__bus__spi__b_8c.html" title="SPI_B backend for the ra8_io SPI&#45;bus facade – thin shim over ra8_spi." alt="" coords="683,93,833,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="503,46,684,91,682,96,502,51"/>
+</map>

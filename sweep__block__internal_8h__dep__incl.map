@@ -1,0 +1,11 @@
+<map id="tools/cache_bench/inc/sweep_block_internal.h" name="tools/cache_bench/inc/sweep_block_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private seams shared by the #208 sweep translation units." alt="" coords="304,5,483,45"/>
+<area shape="rect" id="Node000002" href="$sweep__block_8c.html" title="Core of the #208 block/frame&#45;size sweep (&#45;&#45;sweep&#45;block)." alt="" coords="5,93,171,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="314,52,156,96,154,91,313,46"/>
+<area shape="rect" id="Node000003" href="$sweep__block__backends_8c.html" title="Streamed pseudo&#45;memory and RBKC&#45;z9 block&#45;sweep backends." alt="" coords="195,93,384,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="361,56,314,95,311,91,358,52"/>
+<area shape="rect" id="Node000004" href="$sweep__block__payload_8c.html" title="Checkpointed allocation&#45;free pseudo&#45;text source for block sweeps." alt="" coords="409,93,589,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="429,52,477,91,474,95,425,56"/>
+<area shape="rect" id="Node000005" href="$sweep__block__report_8c.html" title="Reporting for the #208 sweep: machine&#45;parseable rows, per&#45;leg summary tables, and the measured knee /..." alt="" coords="613,93,779,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="474,47,630,91,629,96,472,52"/>
+</map>

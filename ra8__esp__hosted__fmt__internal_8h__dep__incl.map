@@ -1,0 +1,7 @@
+<map id="port/esp&#45;hosted/src/ra8_esp_hosted_fmt_internal.h" name="port/esp&#45;hosted/src/ra8_esp_hosted_fmt_internal.h">
+<area shape="rect" id="Node000001" title="Bounded, heap&#45;free printf&#45;subset formatter for the esp&#45;hosted port." alt="" coords="107,5,265,60"/>
+<area shape="rect" id="Node000002" href="$ra8__esp__hosted__fmt_8c.html" title="Bounded printf&#45;subset formatter used by the esp&#45;hosted port logger." alt="" coords="5,108,175,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="151,72,111,110,108,106,147,68"/>
+<area shape="rect" id="Node000003" href="$ra8__esp__hosted__log_8c.html" title="Bridge from the esp&#45;hosted logging surface onto ra8_log." alt="" coords="199,108,365,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="225,68,264,106,261,110,221,72"/>
+</map>

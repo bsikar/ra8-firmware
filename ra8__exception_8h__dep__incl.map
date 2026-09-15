@@ -1,0 +1,27 @@
+<map id="libs/ra8_core/inc/ra8_exception.h" name="libs/ra8_core/inc/ra8_exception.h">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 CPU exception diagnostic helpers." alt="" coords="943,5,1097,45"/>
+<area shape="rect" id="Node000002" href="$apps_2board_2stand__alone_2ereader_2src_2vector__table_8c.html" title="Cortex&#45;M85 vector table and default interrupt handlers for RA8D2." alt="" coords="5,93,200,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="930,35,615,57,418,74,219,96,200,98,200,93,218,91,417,69,615,52,929,29"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2fault__crashlog__hil_2src_2main_8c.html" title="Prove the cross&#45;reset crash&#45;log + reset&#45;loop guard (T2&#45;03, #191)." alt="" coords="815,181,993,236"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="929,31,751,36,541,47,443,55,359,66,297,79,277,87,265,95,258,104,256,113,258,122,264,131,291,145,341,158,489,178,663,192,815,201,814,206,662,197,489,183,340,163,289,150,261,135,254,124,251,113,253,102,261,91,274,82,295,74,358,61,442,50,541,41,751,30,929,25"/>
+<area shape="rect" id="Node000004" href="$ra8__board__ek__ra8d2_2src_2boot_2nmi__exception_8c.html" title="RA8D2 NMI handler – record the ICU cause instead of a bare trap." alt="" coords="275,93,464,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="930,39,722,63,476,96,464,98,464,93,476,91,722,58,930,34"/>
+<area shape="rect" id="Node000005" href="$libs_2ra8__board__ek__ra8d2_2src_2boot_2secure__exception_8c.html" title="Secure&#45;side fault handler for NS &#45;&gt; S violations." alt="" coords="489,93,695,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="930,47,686,96,685,91,929,42"/>
+<area shape="rect" id="Node000006" href="$libs_2ra8__board__ek__ra8d2_2src_2boot_2vector__table_8c.html" title="Cortex&#45;M85 vector table and default interrupt handlers for RA8D2." alt="" coords="720,93,901,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="962,53,858,96,855,91,960,48"/>
+<area shape="rect" id="Node000007" href="$ra8__board__ra8p1_2src_2boot_2nmi__exception_8c.html" title="RA8D2/RA8P1 NMI handler – record the ICU cause instead of a bare trap." alt="" coords="925,93,1115,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1023,59,1023,93,1017,93,1017,59"/>
+<area shape="rect" id="Node000008" href="$libs_2ra8__board__ra8p1_2src_2boot_2secure__exception_8c.html" title="Secure&#45;side fault handler for NS &#45;&gt; S violations." alt="" coords="1139,93,1346,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1082,48,1195,91,1193,96,1081,53"/>
+<area shape="rect" id="Node000009" href="$libs_2ra8__board__ra8p1_2src_2boot_2vector__table_8c.html" title="Cortex&#45;M85 vector table and default interrupt handlers for RA8D2/RA8P1." alt="" coords="1370,93,1545,133"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1111,42,1370,92,1369,98,1110,47"/>
+<area shape="rect" id="Node000010" href="$ra8__crashlog_8h.html" title="Cross&#45;reset crash&#45;log: persist the last fault + a reset&#45;loop guard." alt="" coords="1569,93,1722,133"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1111,33,1315,56,1556,91,1569,93,1568,98,1556,96,1314,62,1110,38"/>
+<area shape="rect" id="Node000011" href="$ra8__crashlog_8c.html" title="Cross&#45;reset crash&#45;log implementation (.noinit record + loop guard)." alt="" coords="1626,189,1779,229"/>
+<area shape="poly" id="edge12_Node000001_Node000011" title=" " alt="" coords="1111,26,1279,32,1475,43,1645,62,1703,75,1723,83,1735,91,1743,103,1746,116,1743,142,1733,168,1719,190,1715,187,1728,165,1738,141,1741,116,1738,105,1731,95,1720,88,1701,80,1644,67,1475,48,1279,37,1111,31"/>
+<area shape="rect" id="Node000012" href="$ra8__exception_8c.html" title="Cortex&#45;M85 CPU exception diagnostic implementation." alt="" coords="1798,93,1951,133"/>
+<area shape="poly" id="edge13_Node000001_Node000012" title=" " alt="" coords="1110,29,1408,50,1593,68,1779,91,1798,94,1797,99,1778,96,1593,73,1407,56,1110,34"/>
+<area shape="poly" id="edge10_Node000010_Node000003" title=" " alt="" coords="1555,136,1242,178,994,202,993,197,1242,172,1554,131"/>
+<area shape="poly" id="edge11_Node000010_Node000011" title=" " alt="" coords="1666,143,1693,187,1689,190,1662,146"/>
+</map>

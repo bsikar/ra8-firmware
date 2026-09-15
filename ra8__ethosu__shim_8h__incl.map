@@ -1,0 +1,10 @@
+<map id="libs/ra8_hal/inc/ra8_ethosu_shim.h" name="libs/ra8_hal/inc/ra8_ethosu_shim.h">
+<area shape="rect" id="Node000001" title="Arm ethos&#45;u&#45;core&#45;driver C API shim over the ra8_npu driver (RA8P1&#45;only)." alt="" coords="45,5,190,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,47,65,85,61,81,97,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="127,167,198,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="125,45,147,118,157,153,152,154,141,119,120,46"/>
+<area shape="rect" id="Node000004" href="$ra8__device_8h.html" title="Compile&#45;time device selection for the RA8 multi&#45;chip build (RA8D2 / RA8P1)." alt="" coords="155,93,261,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="141,44,186,82,182,86,138,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="203,120,180,157,175,154,198,118"/>
+</map>

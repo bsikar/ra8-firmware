@@ -1,0 +1,31 @@
+<map id="internal_gzip_sink_t" name="internal_gzip_sink_t">
+<area shape="rect" id="Node000001" title="Online gzip state receiving the uncompressed tar stream." alt="" coords="562,584,714,609"/>
+<area shape="rect" id="Node000002" href="$structmdl__export__output__t.html" title="One validated staged publication, including random ZIP backfill." alt="" coords="559,488,717,513"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="641,527,641,584,635,584,635,527"/>
+<area shape="rect" id="Node000003" href="$structmdl__storage__txn__t.html" title="Caller&#45;owned streaming publication transaction with running identity." alt="" coords="567,392,709,417"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="641,431,641,488,635,488,635,431"/>
+<area shape="rect" id="Node000004" href="$structmdl__storage__t.html" title="One non&#45;reentrant downloader filesystem dependency bundle." alt="" coords="513,296,627,321"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="589,331,632,390,627,393,584,334"/>
+<area shape="rect" id="Node000005" href="$structfw__fs__t.html" title="One complete composition&#45;root filesystem binding." alt="" coords="447,200,515,225"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="503,234,561,294,557,298,499,237"/>
+<area shape="rect" id="Node000006" href="$structfw__fs__namespace__t.html" title="Independently injectable path/namespace facade." alt="" coords="103,101,253,127"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="214,130,265,152,321,173,388,191,447,203,446,208,387,196,320,179,263,157,212,135"/>
+<area shape="rect" id="Node000007" href="$structfw__fs__namespace__iface.html" title="Namespace backend operations." alt="" coords="5,5,183,31"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="115,39,170,99,166,103,111,43"/>
+<area shape="rect" id="Node000008" href="$structfw__fs__caps__t.html" title="Static properties and workspace requirements of one bound port." alt="" coords="404,5,509,31"/>
+<area shape="poly" id="edge14_Node000005_Node000008" title=" " alt="" coords="463,44,465,54,482,200,477,200,459,55,458,45"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="398,37,351,57,339,68,325,80,290,94,254,104,253,99,288,89,322,75,335,64,349,52,395,32"/>
+<area shape="rect" id="Node000009" href="$structfw__fs__stream__port__t.html" title="Independently injectable open&#45;stream facade." alt="" coords="278,101,433,127"/>
+<area shape="poly" id="edge10_Node000009_Node000008" title=" " alt="" coords="436,42,370,103,366,99,432,38"/>
+<area shape="rect" id="Node000011" href="$structfw__fs__transaction__port__t.html" title="Independently injectable staged&#45;transaction facade." alt="" coords="543,101,725,127"/>
+<area shape="poly" id="edge13_Node000011_Node000008" title=" " alt="" coords="492,35,613,99,611,103,489,40"/>
+<area shape="poly" id="edge8_Node000005_Node000009" title=" " alt="" coords="371,137,385,156,402,174,424,188,448,198,446,203,422,193,399,178,381,160,367,140"/>
+<area shape="rect" id="Node000010" href="$structfw__fs__stream__iface.html" title="Open&#45;file backend operations over caller&#45;supplied state." alt="" coords="207,5,355,31"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="278,44,279,61,284,76,297,89,314,99,311,104,294,93,280,79,274,62,273,45"/>
+<area shape="poly" id="edge11_Node000005_Node000011" title=" " alt="" coords="601,136,571,153,498,202,495,197,569,148,599,131"/>
+<area shape="rect" id="Node000012" href="$structfw__fs__transaction__iface.html" title="Staged&#45;publication backend operations over caller&#45;supplied state." alt="" coords="625,5,800,31"/>
+<area shape="poly" id="edge12_Node000011_Node000012" title=" " alt="" coords="696,43,646,103,642,99,692,40"/>
+<area shape="rect" id="Node000013" href="$structfw__fs__transaction__t.html" title="Caller&#45;owned transaction; fields are private to the facade." alt="" coords="671,151,819,176"/>
+<area shape="poly" id="edge16_Node000013_Node000012" title=" " alt="" coords="728,42,733,54,743,107,747,150,742,151,738,108,727,55,723,44"/>
+<area shape="poly" id="edge15_Node000003_Node000013" title=" " alt="" coords="743,190,721,273,703,322,678,370,655,394,651,390,673,366,698,320,716,271,738,189"/>
+</map>

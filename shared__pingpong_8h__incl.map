@@ -1,0 +1,13 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/inc/shared_pingpong.h" name="examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/inc/shared_pingpong.h">
+<area shape="rect" id="Node000001" title="Shared&#45;SRAM message layout for the CPU0 &lt;&#45;&gt; CPU1 ping&#45;pong demo." alt="" coords="5,5,217,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="163,269,233,295"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="76,62,55,84,39,109,34,128,39,147,63,184,96,216,130,241,162,261,160,265,127,246,92,220,59,187,34,149,29,128,34,107,51,80,72,58"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="49,115,174,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="114,60,114,101,109,101,109,60"/>
+<area shape="rect" id="Node000004" href="$ra8__board__ek__ra8d2__dualcore_8h.html" title="Where the EK&#45;RA8D2&#39;s Cortex&#45;M85 and Cortex&#45;M33 meet, stated once." alt="" coords="198,108,353,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="159,58,231,99,229,103,156,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="259,150,242,172,226,197,213,227,205,256,200,255,208,226,221,195,237,169,255,147"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="236,196,315,221"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="278,148,278,182,273,182,273,148"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="265,223,223,262,219,258,261,219"/>
+</map>

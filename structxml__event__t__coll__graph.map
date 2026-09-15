@@ -1,0 +1,5 @@
+<map id="xml_event_t" name="xml_event_t">
+<area shape="rect" id="Node000001" title="One XML pull event." alt="" coords="5,121,108,147"/>
+<area shape="rect" id="Node000002" href="$structxml__span__t.html" title="Immutable byte span expressed relative to the source." alt="" coords="8,5,105,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="59,45,59,121,54,121,54,45"/>
+</map>

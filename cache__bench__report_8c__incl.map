@@ -1,0 +1,33 @@
+<map id="tools/cache_bench/src/cache_bench_report.c" name="tools/cache_bench/src/cache_bench_report.c">
+<area shape="rect" id="Node000001" title="#147 benchmark front end: swept&#45;capacity report, mode dispatch, main." alt="" coords="245,5,412,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,76,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="260,48,90,94,89,89,259,43"/>
+<area shape="rect" id="Node000003" href="$cache__bench_8h.html" title="Eviction&#45;policy comparison harness for the #147 memory&#45;hierarchy decision record: the DIP seam every ..." alt="" coords="179,167,297,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="246,37,216,45,188,57,162,73,142,95,137,104,137,113,148,130,168,146,194,159,192,164,166,150,144,134,132,114,132,103,137,92,159,69,185,52,215,40,244,32"/>
+<area shape="rect" id="Node000006" href="$cache__bench__host_8h.html" title="POSIX raw&#45;descriptor composition bindings for cache_bench." alt="" coords="587,93,740,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="409,43,602,88,601,93,408,48"/>
+<area shape="rect" id="Node000007" href="$cache__bench__io_8h.html" title="Bounded byte&#45;source and text&#45;sink seams for cache_bench." alt="" coords="424,167,561,192"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="413,31,444,38,475,51,503,68,526,92,532,108,530,125,514,157,509,154,525,124,526,109,521,95,499,72,472,55,442,43,411,36"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="386,93,511,119"/>
+<area shape="poly" id="edge12_Node000001_Node000009" title=" " alt="" coords="359,43,421,84,418,88,356,48"/>
+<area shape="rect" id="Node000010" href="$sweep__block_8h.html" title="#208 block/frame&#45;size sweep: the byte&#45;size axis the capacity sweep never touches, so the chunked ...." alt="" coords="152,93,271,119"/>
+<area shape="poly" id="edge13_Node000001_Node000010" title=" " alt="" coords="302,48,241,88,238,84,299,43"/>
+<area shape="rect" id="Node000011" href="$trace_8h.html" title="Resettable, allocation&#45;free access streams for cache_bench." alt="" coords="295,93,362,119"/>
+<area shape="poly" id="edge17_Node000001_Node000011" title=" " alt="" coords="331,46,331,79,326,79,326,46"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="201,240,275,265"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="241,192,241,226,235,226,235,192"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="351,240,421,265"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="263,190,351,232,348,236,261,194"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="656,121,623,157,575,194,514,218,436,241,434,236,512,213,573,190,619,153,652,117"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="637,121,534,164,532,159,635,116"/>
+<area shape="poly" id="edge9_Node000007_Node000004" title=" " alt="" coords="452,195,290,240,288,235,451,189"/>
+<area shape="poly" id="edge10_Node000007_Node000005" title=" " alt="" coords="477,194,416,235,413,230,474,190"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="455,240,530,265"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="495,192,495,226,490,226,490,192"/>
+<area shape="poly" id="edge14_Node000010_Node000004" title=" " alt="" coords="199,121,173,153,166,172,168,191,185,213,206,231,202,235,181,217,164,193,160,171,168,150,195,117"/>
+<area shape="poly" id="edge15_Node000010_Node000005" title=" " alt="" coords="235,117,272,137,310,165,344,196,371,228,367,231,340,200,307,169,269,142,233,121"/>
+<area shape="poly" id="edge16_Node000010_Node000007" title=" " alt="" coords="257,116,435,161,433,166,256,121"/>
+<area shape="poly" id="edge19_Node000011_Node000003" title=" " alt="" coords="316,121,265,160,262,156,312,117"/>
+<area shape="poly" id="edge18_Node000011_Node000005" title=" " alt="" coords="336,118,356,166,380,226,375,228,352,168,331,120"/>
+<area shape="poly" id="edge20_Node000011_Node000007" title=" " alt="" coords="356,116,455,159,452,164,354,121"/>
+</map>

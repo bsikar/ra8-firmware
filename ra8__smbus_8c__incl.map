@@ -1,0 +1,30 @@
+<map id="libs/ra8_hal/src/ra8_smbus.c" name="libs/ra8_hal/src/ra8_smbus.c">
+<area shape="rect" id="Node000001" title="SMBus 3.2 protocol layer over an injected I2C bus seam – implementation." alt="" coords="185,5,331,45"/>
+<area shape="rect" id="Node000002" href="$ra8__smbus_8h.html" title="SMBus 3.2 protocol layer over an injected I2C bus seam." alt="" coords="51,93,156,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="222,48,139,89,137,85,220,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="121,313,192,339"/>
+<area shape="poly" id="edge8_Node000001_Node000003" title=" " alt="" coords="186,36,149,43,111,55,74,72,41,95,27,111,19,127,11,167,8,196,13,220,25,241,45,263,76,288,110,306,108,310,73,292,41,267,21,244,8,221,3,197,6,166,14,125,22,108,37,91,71,67,109,50,148,38,185,30"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="117,240,196,265"/>
+<area shape="poly" id="edge17_Node000001_Node000004" title=" " alt="" coords="256,47,237,113,223,154,204,193,178,231,174,228,200,191,218,152,232,111,251,45"/>
+<area shape="rect" id="Node000005" href="$ra8__i2c__bus__ops_8h.html" title="Injected I2C&#45;bus seam consumed by Ring&#45;3 I2C device drivers." alt="" coords="29,167,170,192"/>
+<area shape="poly" id="edge18_Node000001_Node000005" title=" " alt="" coords="243,47,170,121,126,160,122,156,167,117,239,44"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="471,93,597,119"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="325,43,481,87,480,92,323,48"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="296,167,396,192"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="271,44,335,153,330,156,267,47"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="445,240,527,265"/>
+<area shape="poly" id="edge19_Node000001_Node000008" title=" " alt="" coords="281,44,410,165,469,227,465,231,407,169,278,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="76,121,53,134,31,150,18,170,17,180,19,191,40,227,68,258,98,284,126,304,123,308,95,288,64,262,36,230,14,193,11,180,13,168,27,147,50,129,74,116"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="130,117,160,136,174,150,184,166,189,182,187,199,175,230,170,228,182,198,183,182,180,168,170,153,157,140,127,121"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="105,119,103,153,98,153,100,119"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="159,266,159,300,154,300,154,266"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="101,192,100,226,108,264,120,284,135,302,131,305,116,288,103,266,95,226,95,192"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="111,191,141,227,137,231,107,194"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="330,194,262,242,183,306,179,302,259,238,327,190"/>
+<area shape="poly" id="edge12_Node000007_Node000004" title=" " alt="" coords="316,195,201,237,199,232,315,190"/>
+<area shape="poly" id="edge13_Node000007_Node000008" title=" " alt="" coords="370,190,452,231,450,236,367,194"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="272,240,420,265"/>
+<area shape="poly" id="edge15_Node000007_Node000009" title=" " alt="" coords="349,192,349,226,343,226,343,192"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="445,266,206,317,205,312,444,260"/>
+<area shape="poly" id="edge16_Node000009_Node000003" title=" " alt="" coords="316,268,201,311,199,306,315,263"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="posix_directory_state_t" name="posix_directory_state_t">
+<area shape="rect" id="Node000001" title="POSIX state placed in caller directory workspace." alt="" coords="9,101,184,127"/>
+<area shape="rect" id="Node000002" href="$structposix__directory__reader__t.html" title="Caller&#45;owned cursor and fixed storage for raw directory batches." alt="" coords="5,5,188,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,45,99,101,94,101,94,45"/>
+</map>

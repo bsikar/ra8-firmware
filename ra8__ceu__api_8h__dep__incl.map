@@ -1,0 +1,27 @@
+<map id="libs/ra8_hal/inc/ra8_ceu_api.h" name="libs/ra8_hal/inc/ra8_ceu_api.h">
+<area shape="rect" id="Node000001" title="Capture Engine Unit (CEU) driver function prototypes." alt="" coords="634,5,779,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ceu_8h.html" title="Capture Engine Unit (CEU) camera&#45;capture driver." alt="" coords="634,93,779,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="709,59,709,93,704,93,704,59"/>
+<area shape="rect" id="Node000003" href="$c6__camera__livestream_2src_2c6__cam__camera_8c.html" title="Camera initialization and VGA UYVY to QVGA JPEG frame production." alt="" coords="5,269,189,339"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="621,130,504,151,378,184,264,226,165,272,163,267,262,222,377,179,503,146,620,124"/>
+<area shape="rect" id="Node000004" href="$c6__camera__mjpeg_2src_2c6__cam__camera_8c.html" title="OV5640 hardware&#45;JPEG camera backend for the C6 MJPEG example." alt="" coords="214,277,429,331"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="621,125,526,144,478,161,432,184,404,204,378,229,340,278,336,275,374,226,400,200,429,179,476,156,525,139,620,120"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2camera__capture_2src_2main_8c.html" title="OV5640 parallel (CEU) camera capture + plausibility self&#45;test." alt="" coords="453,277,627,331"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="696,148,677,185,651,223,620,254,586,279,582,274,616,249,647,220,673,183,692,145"/>
+<area shape="rect" id="Node000006" href="$ra8__camera__source__ceu_8h.html" title="RA8 CEU capture backend for the transport&#45;neutral camera facade." alt="" coords="443,181,637,221"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="659,142,578,184,575,179,657,137"/>
+<area shape="rect" id="Node000007" href="$ra8__camera__source__ceu_8c.html" title="RA8 CEU implementation of the camera&#45;source backend." alt="" coords="651,284,845,324"/>
+<area shape="poly" id="edge10_Node000002_Node000007" title=" " alt="" coords="716,146,746,283,741,284,711,147"/>
+<area shape="rect" id="Node000008" href="$ra8__ceu_8c.html" title="Capture Engine Unit (CEU) driver implementation." alt="" coords="870,284,1015,324"/>
+<area shape="poly" id="edge11_Node000002_Node000008" title=" " alt="" coords="743,140,921,282,917,286,739,144"/>
+<area shape="rect" id="Node000009" href="$ra8__ceu__init__regs_8c.html" title="Capture Engine Unit (CEU) init&#45;time register programming." alt="" coords="1039,284,1185,324"/>
+<area shape="poly" id="edge12_Node000002_Node000009" title=" " alt="" coords="793,113,849,118,911,130,972,150,1029,179,1056,202,1078,230,1107,282,1102,285,1074,233,1053,206,1027,184,970,155,909,135,848,124,793,118"/>
+<area shape="rect" id="Node000010" href="$ra8__ceu__internal_8h.html" title="Cross&#45;TU surface for the ra8_ceu driver split." alt="" coords="870,181,1015,221"/>
+<area shape="poly" id="edge13_Node000002_Node000010" title=" " alt="" coords="772,136,892,179,890,184,770,141"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="430,224,319,245,202,272,190,275,189,270,201,267,318,240,429,219"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="487,230,379,279,377,274,485,225"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="543,235,543,276,537,276,537,235"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="593,225,710,282,708,286,590,230"/>
+<area shape="poly" id="edge14_Node000010_Node000008" title=" " alt="" coords="945,235,945,284,940,284,940,235"/>
+<area shape="poly" id="edge15_Node000010_Node000009" title=" " alt="" coords="987,226,1082,282,1079,286,985,231"/>
+</map>

@@ -1,0 +1,19 @@
+<map id="port/usbx/inc/ux_dcd_ra8_usb_internal.h" name="port/usbx/inc/ux_dcd_ra8_usb_internal.h">
+<area shape="rect" id="Node000001" title="USBX device&#45;controller&#45;driver bridge to ra8_usb – per&#45;module cross&#45;translation&#45;unit contract." alt="" coords="659,5,815,45"/>
+<area shape="rect" id="Node000002" href="$ux__dcd__ra8__usb_8c.html" title="USBX device&#45;controller&#45;driver bridge to ra8_usb – lifecycle + storm guard." alt="" coords="5,93,161,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="645,38,429,61,173,96,162,98,161,93,172,91,429,55,645,32"/>
+<area shape="rect" id="Node000003" href="$ux__dcd__ra8__usb__dvst_8c.html" title="USBX device&#45;controller&#45;driver bridge to ra8_usb – device&#45;state (DVST) path." alt="" coords="185,93,341,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="645,44,354,96,342,98,341,93,354,91,644,39"/>
+<area shape="rect" id="Node000004" href="$ux__dcd__ra8__usb__dvst__default_8c.html" title="USBX device&#45;controller&#45;driver bridge to ra8_usb – DVST Default&#45;state mirror path." alt="" coords="366,93,545,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="663,52,518,96,516,91,661,47"/>
+<area shape="rect" id="Node000005" href="$ux__dcd__ra8__usb__ep_8c.html" title="USBX device&#45;controller&#45;driver bridge to ra8_usb – endpoint dispatch." alt="" coords="569,93,725,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="709,57,669,95,665,91,705,53"/>
+<area shape="rect" id="Node000006" href="$ux__dcd__ra8__usb__irq_8c.html" title="USBX device&#45;controller&#45;driver bridge to ra8_usb – IRQ pipe&#45;walk." alt="" coords="749,93,905,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="768,53,809,91,805,95,765,57"/>
+<area shape="rect" id="Node000007" href="$ux__dcd__ra8__usb__isr_8c.html" title="USBX device&#45;controller&#45;driver bridge to ra8_usb – NVIC ISR trampolines." alt="" coords="929,93,1085,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="810,47,949,91,947,96,808,52"/>
+<area shape="rect" id="Node000008" href="$ux__dcd__ra8__usb__setup_8c.html" title="USBX device&#45;controller&#45;driver bridge to ra8_usb – SETUP / chapter&#45;9 control path." alt="" coords="1109,93,1265,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="829,40,1099,91,1109,93,1108,98,1097,96,828,46"/>
+<area shape="rect" id="Node000009" href="$ux__dcd__ra8__usb__xfer_8c.html" title="USBX device&#45;controller&#45;driver bridge to ra8_usb – transfer dispatch." alt="" coords="1289,93,1445,133"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="829,33,1035,56,1278,91,1289,93,1289,98,1278,96,1034,61,828,38"/>
+</map>

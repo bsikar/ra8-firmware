@@ -1,0 +1,9 @@
+<map id="libs/ra8_core/inc/ra8_freestanding.h" name="libs/ra8_core/inc/ra8_freestanding.h">
+<area shape="rect" id="Node000001" title="Project&#45;owned freestanding C runtime ABI primitives." alt="" coords="197,5,350,45"/>
+<area shape="rect" id="Node000002" href="$ra8__freestanding__math_8c.html" title="Project&#45;owned freestanding integer math primitive (abs)." alt="" coords="5,93,168,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="221,53,129,96,126,91,219,49"/>
+<area shape="rect" id="Node000003" href="$ra8__freestanding__mem_8c.html" title="Project&#45;owned freestanding memory ABI primitives (memset, memcpy, memmove, memcmp,..." alt="" coords="192,93,355,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="276,59,276,93,271,93,271,59"/>
+<area shape="rect" id="Node000004" href="$ra8__freestanding__str_8c.html" title="Project&#45;owned freestanding string ABI primitives (strlen, strcmp, strchr, strstr, etc...." alt="" coords="379,93,533,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="327,49,417,91,415,96,325,54"/>
+</map>

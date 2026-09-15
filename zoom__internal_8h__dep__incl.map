@@ -1,0 +1,7 @@
+<map id="apps/shared_libs/zoom/src/zoom_internal.h" name="apps/shared_libs/zoom/src/zoom_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private seam shared by the zoom state machine and its render." alt="" coords="103,5,273,45"/>
+<area shape="rect" id="Node000002" href="$zoom_8c.html" title="Viewport state machine for the tap&#45;to&#45;zoom image viewer (#478)." alt="" coords="5,93,176,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,56,114,95,110,91,155,52"/>
+<area shape="rect" id="Node000003" href="$zoom__render_8c.html" title="Strip composite for the tap&#45;to&#45;zoom viewer: magnify, re&#45;dither, blit (#478)." alt="" coords="200,93,371,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="221,52,266,91,262,95,218,56"/>
+</map>

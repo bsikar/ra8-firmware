@@ -1,0 +1,17 @@
+<map id="libs/ra8_jpeg/inc/ra8_jpeg_sw.h" name="libs/ra8_jpeg/inc/ra8_jpeg_sw.h">
+<area shape="rect" id="Node000001" title="Pure&#45;software baseline JPEG (ISO/IEC 10918&#45;1 / ITU&#45;T T.81) codec." alt="" coords="602,5,755,45"/>
+<area shape="rect" id="Node000002" href="$jof__produce_8c.html" title="Transcode producer: sniff, decode, tile, encode, emit (#231, #290)." alt="" coords="5,93,157,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="589,39,396,62,170,96,158,98,157,93,169,91,395,57,588,34"/>
+<area shape="rect" id="Node000003" href="$ra8__camera__codec__jpeg__sw_8c.html" title="ra8_jpeg_sw adapter for the generic camera codec facade." alt="" coords="181,93,400,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="589,49,376,96,375,91,588,44"/>
+<area shape="rect" id="Node000004" href="$ra8__jpeg__sw_8c.html" title="Pure&#45;software baseline JPEG codec: shared entropy/DSP primitives plus the get&#45;dimensions public API." alt="" coords="425,93,578,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="629,54,541,96,539,91,626,49"/>
+<area shape="rect" id="Node000005" href="$ra8__jpeg__sw__decode_8c.html" title="Pure&#45;software baseline JPEG decoder: marker parser and scan." alt="" coords="602,93,755,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="681,59,681,93,676,93,676,59"/>
+<area shape="rect" id="Node000006" href="$ra8__jpeg__sw__encode_8c.html" title="Pure&#45;software baseline JPEG encoder: pixel pipeline and public API." alt="" coords="779,93,933,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="731,49,818,91,816,96,729,54"/>
+<area shape="rect" id="Node000007" href="$ra8__jpeg__sw__encode__emit_8c.html" title="Software JPEG encoder: byte/bit emitters, Annex K.3.3 tables and JFIF header&#45;segment writers." alt="" coords="957,93,1141,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="769,45,969,91,968,96,768,50"/>
+<area shape="rect" id="Node000008" href="$ra8__jpeg__sw__stream_8c.html" title="Streaming baseline JPEG decoder: bounded&#45;RAM MCU&#45;row stripes (#231)." alt="" coords="1166,93,1319,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="769,35,948,59,1154,91,1166,93,1165,98,1153,96,947,64,769,40"/>
+</map>

@@ -1,0 +1,14 @@
+<map id="apps/shared_libs/compress/inc/ra8_vfs_compress.h" name="apps/shared_libs/compress/inc/ra8_vfs_compress.h">
+<area shape="rect" id="Node000001" title="Transparent VFS&#45;level whole&#45;file compression (compress&#45;on&#45;write,decompress&#45;on&#45;read) over the ra8_io f..." alt="" coords="13,5,212,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,240,76,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="83,48,59,68,40,94,31,129,29,164,37,226,31,227,23,164,25,128,36,92,55,65,79,44"/>
+<area shape="rect" id="Node000003" href="$ra8__compress_8h.html" title="App&#45;domain DEFLATE compress / decompress (zero&#45;heap, firmware&#45;safe)." alt="" coords="50,93,175,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="115,46,115,79,110,79,110,46"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="173,167,252,192"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="142,43,167,65,190,92,204,122,212,152,206,154,199,124,185,95,163,69,139,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="104,120,87,142,70,168,57,198,49,227,44,226,52,196,65,165,82,139,100,117"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="79,167,149,192"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="116,119,116,153,111,153,110,119"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="130,117,187,156,184,161,127,121"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="186,194,82,237,80,232,184,190"/>
+</map>

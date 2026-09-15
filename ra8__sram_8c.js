@@ -1,0 +1,47 @@
+var ra8__sram_8c =
+[
+    [ "ra8_sram_local_t", "ra8__sram_8c.html#a2da9050c1f0a3429c76bcfb74e075f3f", [
+      [ "k_ra8_sram_eccmod_shift", "ra8__sram_8c.html#a2da9050c1f0a3429c76bcfb74e075f3fa060d55be4b8e6cdb929da13de756977a", null ],
+      [ "k_ra8_sram_eccmod_max", "ra8__sram_8c.html#a2da9050c1f0a3429c76bcfb74e075f3fa6a5869ff1aa65c791ae1178d57087ac2", null ],
+      [ "k_ra8_sram_on_error_max", "ra8__sram_8c.html#a2da9050c1f0a3429c76bcfb74e075f3fad65fa3cbf104f75d7f934445e75a2231", null ],
+      [ "k_ra8_sram_eccrgn_max012", "ra8__sram_8c.html#a2da9050c1f0a3429c76bcfb74e075f3fa7dd42d9cf3d1c9a820f788897d53c287", null ],
+      [ "k_ra8_sram_eccrgn_max3", "ra8__sram_8c.html#a2da9050c1f0a3429c76bcfb74e075f3faed68bfec6dc4935c4282795e36f285d2", null ],
+      [ "k_ra8_sram_ear_slot_max", "ra8__sram_8c.html#a2da9050c1f0a3429c76bcfb74e075f3fa18909190eeaa8de5fcbdc3faa66d4fb1", null ],
+      [ "k_ra8_sram_bank_max_idx", "ra8__sram_8c.html#a2da9050c1f0a3429c76bcfb74e075f3faffb851e7f4044a17c5b7592b561f05be", null ]
+    ] ],
+    [ "ra8_sram_self_test_inject_t", "ra8__sram_8c.html#ab0833f9ad6ba1a158f7ab519ed32aaa5", [
+      [ "k_ra8_sram_self_test_flip_1bit", "ra8__sram_8c.html#ab0833f9ad6ba1a158f7ab519ed32aaa5af303db5ca0c19abb0e8c63b2010b79a9", null ],
+      [ "k_ra8_sram_self_test_flip_2bit", "ra8__sram_8c.html#ab0833f9ad6ba1a158f7ab519ed32aaa5a8309c5a13ad94b5deb1f384f53fdb0fd", null ]
+    ] ],
+    [ "internal_apply_per_bank", "ra8__sram_8c.html#a618385efa4fca2eadbb0e8833fb50982", null ],
+    [ "internal_apply_security", "ra8__sram_8c.html#ad810a778fb1c834e03fb2a5ae5517aa6", null ],
+    [ "internal_decode_esr", "ra8__sram_8c.html#a3d6d0e18d1407e43fae5ad36b789fe17", null ],
+    [ "internal_ear_to_abs_addr", "ra8__sram_8c.html#a5b3d0e9df5f373e042aec9d4b8f66566", null ],
+    [ "internal_encode_cr", "ra8__sram_8c.html#adf760cd2849745cc1a263bd591e84270", null ],
+    [ "internal_self_test_inject", "ra8__sram_8c.html#a05186606fb0fd29126c5ef7806cee70c", null ],
+    [ "internal_validate_and_ungate", "ra8__sram_8c.html#a59a57b558acc14dd13d24c4d907d88ce", null ],
+    [ "internal_validate_bank_cfg", "ra8__sram_8c.html#ab40c5ca3fa827814bcfb09ef6d8a3fe5", null ],
+    [ "internal_write_cr_locked", "ra8__sram_8c.html#ac137b616a6e4f8c279cf49cdd64f1ac9", null ],
+    [ "internal_write_eccrgn_locked", "ra8__sram_8c.html#aa4fcd2090f82adc5185192ce8e18a2a2", null ],
+    [ "internal_write_wtsc_locked", "ra8__sram_8c.html#a0f5cd29bbf1d53f1176061d8fcda80af", null ],
+    [ "internal_zero_fill_bank", "ra8__sram_8c.html#a5c67ff42b10bf7bb23d16e2bda225d10", null ],
+    [ "internal_zero_init_with_no_check", "ra8__sram_8c.html#aa1cb79eab4652543fd514ecd6ac7f4ff", null ],
+    [ "ra8_sram_clear_address", "ra8__sram_8c.html#a01d7512ba94c06a52c7cff8df922a568", null ],
+    [ "ra8_sram_clear_status", "ra8__sram_8c.html#af84cd546d1cb4fc3372dce98d1596eec", null ],
+    [ "ra8_sram_deinit", "ra8__sram_8c.html#a4f388ebf7bb4a3e6618271d6446f10ef", null ],
+    [ "ra8_sram_enter_stop", "ra8__sram_8c.html#a8b4f6b36b9b68f037a9d77a1f6178f6e", null ],
+    [ "ra8_sram_exit_stop", "ra8__sram_8c.html#a0480232c331e13a2d9279dc3ba9d6d5f", null ],
+    [ "ra8_sram_get_bank_info", "ra8__sram_8c.html#ad316a50830e18405d5a652e80c18c992", null ],
+    [ "ra8_sram_get_status", "ra8__sram_8c.html#ab2fcf16e31c3c5341fdae9aea95ce438", null ],
+    [ "ra8_sram_init", "ra8__sram_8c.html#adb4bad60fa19dd4b4ff4e4a5c4755070", null ],
+    [ "ra8_sram_self_test", "ra8__sram_8c.html#af84c6a965f31a7d32ac734655870b05a", null ],
+    [ "ra8_sram_set_eccrgn", "ra8__sram_8c.html#a719b2e0eb9baab78300e0a7e024f482e", null ],
+    [ "ra8_sram_set_mode", "ra8__sram_8c.html#a571a191f7d6cb3c488cf93c2de6cb419", null ],
+    [ "ra8_sram_set_wait_state_for_clock", "ra8__sram_8c.html#a14d890ba1aefaae31419a230e559fc53", null ],
+    [ "ra8_sram_zero_init_bank", "ra8__sram_8c.html#a57b600d1cf7f657e3fde394b40b9f7d6", null ],
+    [ "s_initialized", "ra8__sram_8c.html#a7fc89b5882bba49f4709da759efb40a8", null ],
+    [ "s_sram_data_off_table", "ra8__sram_8c.html#a8f1d0d843e113e17c4d868842bcd0702", null ],
+    [ "s_sram_ecc_off_table", "ra8__sram_8c.html#a41e3fbf7d2ae36e8b0b4615a37296a84", null ],
+    [ "s_sram_mstp_table", "ra8__sram_8c.html#a55acfc4ba8864d17b150b4e709bc5e3c", null ],
+    [ "s_tag", "ra8__sram_8c.html#af8861f6a1fb30510e283b1b7806b64e7", null ]
+];

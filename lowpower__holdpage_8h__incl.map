@@ -1,0 +1,11 @@
+<map id="examples/ek_ra8d2/hw_pending/lowpower_holdpage/inc/lowpower_holdpage.h" name="examples/ek_ra8d2/hw_pending/lowpower_holdpage/inc/lowpower_holdpage.h">
+<area shape="rect" id="Node000001" title="Shared&#45;SRAM contract for the low&#45;power &quot;hold the page&quot; dual&#45;core demo." alt="" coords="5,5,220,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="71,269,141,295"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,61,83,109,80,149,83,189,100,256,95,257,78,190,74,149,78,107,96,59"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2__dualcore_8h.html" title="Where the EK&#45;RA8D2&#39;s Cortex&#45;M85 and Cortex&#45;M33 meet, stated once." alt="" coords="93,108,247,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="131,59,154,95,149,98,127,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="160,150,134,197,114,256,109,255,129,195,155,147"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="144,196,223,221"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="176,148,182,182,176,183,171,149"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="173,223,131,262,127,258,169,219"/>
+</map>

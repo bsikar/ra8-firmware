@@ -1,0 +1,38 @@
+<map id="libs/ra8_hal/inc/ra8_ospi_regs.h" name="libs/ra8_hal/inc/ra8_ospi_regs.h">
+<area shape="rect" id="Node000001" title="xSPI / Octo&#45;SPI controller register layout for the Renesas RA8D2" alt="" coords="1848,5,1993,45"/>
+<area shape="rect" id="Node000002" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="1217,93,1363,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1835,37,1625,60,1374,96,1363,98,1362,93,1374,91,1624,55,1834,32"/>
+<area shape="rect" id="Node000003" href="$ra8__xspi_8h.html" title="xSPI / Octo&#45;SPI driver (flash read/program/erase + ID/status)" alt="" coords="1387,93,1532,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1834,45,1533,101,1532,96,1833,40"/>
+<area shape="rect" id="Node000011" href="$ra8__xspi_8c.html" title="Octal Serial Peripheral Interface (OSPI / xSPI) driver." alt="" coords="1845,196,1991,236"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="1906,59,1894,94,1892,121,1896,149,1911,195,1906,197,1891,150,1887,121,1889,93,1901,57"/>
+<area shape="rect" id="Node000012" href="$ra8__xspi__flash_8c.html" title="OSPI / xSPI manual&#45;command engine + JEDEC NOR&#45;flash operations." alt="" coords="2015,196,2160,236"/>
+<area shape="poly" id="edge16_Node000001_Node000012" title=" " alt="" coords="2004,48,2036,67,2063,92,2077,117,2086,145,2091,195,2085,196,2081,147,2073,119,2059,95,2033,71,2001,53"/>
+<area shape="rect" id="Node000013" href="$ra8__io__blockdev__xspi_8c.html" title="OSPI NOR block&#45;device backend – 512&#45;byte LBAs over ra8_xspi flash." alt="" coords="2185,196,2337,236"/>
+<area shape="poly" id="edge20_Node000001_Node000013" title=" " alt="" coords="1992,48,2042,67,2091,91,2175,144,2240,194,2236,198,2172,149,2089,96,2039,72,1990,53"/>
+<area shape="rect" id="Node000016" href="$ra8__xspi__internal_8h.html" title="Module&#45;private seam shared between the ra8_xspi translation units." alt="" coords="1904,93,2049,133"/>
+<area shape="poly" id="edge17_Node000001_Node000016" title=" " alt="" coords="1943,56,1967,92,1962,95,1938,58"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__xspi__demo_2src_2main_8c.html" title="ra8_io fabric over OSPI NOR flash (epic #155, #156) on the EK&#45;RA8D2." alt="" coords="5,189,196,243"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="1373,136,1196,153,1045,158,912,157,787,152,664,148,532,149,383,160,209,184,177,191,176,186,208,179,383,154,532,143,664,142,788,146,912,151,1045,153,1196,148,1373,131"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2src_2main_8c.html" title="ra8_io fabric capstone: two block&#45;dev backends swapped behind one interface, a VFS open/read/write/cl..." alt="" coords="221,189,394,243"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="1373,136,1226,151,1100,155,886,151,783,148,674,151,551,161,407,184,377,191,376,186,405,179,550,156,673,145,783,143,886,145,1100,150,1225,145,1373,131"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2hil_2flash__journal_2src_2main_8c.html" title="Octo&#45;SPI flash journal demo for EK&#45;RA8D2." alt="" coords="418,189,591,243"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="1373,136,1256,148,1156,154,985,153,903,152,816,155,718,165,604,184,575,191,574,186,603,179,718,160,816,150,903,147,985,147,1155,148,1255,143,1373,131"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__ospi_2src_2main_8c.html" title="USB self&#45;loop: the onboard OSPI flash exposed as a USB drive." alt="" coords="615,189,807,243"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="1373,136,1216,152,1093,156,972,162,902,170,820,184,789,191,788,186,819,179,901,165,972,157,1093,151,1216,147,1373,131"/>
+<area shape="rect" id="Node000008" href="$usb__selftest__ospi__format_8c.html" title="FAT16 synthesis, OSPI pattern, MSC media callbacks + console helpers." alt="" coords="831,181,1026,251"/>
+<area shape="poly" id="edge7_Node000003_Node000008" title=" " alt="" coords="1373,136,1278,150,1203,158,1130,167,1039,184,1027,187,1026,182,1037,179,1129,161,1203,153,1277,145,1373,131"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__ospi__rw_2src_2main_8c.html" title="USB self&#45;loop: HS host WRITE(10)s + reads back the onboard OSPI flash." alt="" coords="1050,189,1242,243"/>
+<area shape="poly" id="edge8_Node000003_Node000009" title=" " alt="" coords="1389,140,1229,191,1227,186,1387,135"/>
+<area shape="rect" id="Node000010" href="$usb__selftest__ospi__rw__device_8c.html" title="OSPI&#45;flash bring&#45;up + write&#45;window pre&#45;erase for the writable&#45;OSPI self&#45;loop." alt="" coords="1266,181,1458,251"/>
+<area shape="poly" id="edge9_Node000003_Node000010" title=" " alt="" coords="1433,145,1397,183,1393,179,1430,141"/>
+<area shape="poly" id="edge10_Node000003_Node000011" title=" " alt="" coords="1546,123,1682,144,1833,179,1876,193,1874,198,1832,184,1681,150,1545,128"/>
+<area shape="poly" id="edge11_Node000003_Node000012" title=" " alt="" coords="1546,116,1756,135,1880,153,2003,179,2046,193,2045,198,2001,184,1879,158,1755,140,1546,121"/>
+<area shape="poly" id="edge12_Node000003_Node000013" title=" " alt="" coords="1546,113,1670,117,1827,127,2000,147,2173,179,2219,193,2217,198,2172,184,2000,152,1826,133,1669,122,1546,118"/>
+<area shape="rect" id="Node000014" href="$ra8__nsc__xspi_8c.html" title="NSC veneer: external XSPI flash read + status." alt="" coords="1482,196,1629,236"/>
+<area shape="poly" id="edge13_Node000003_Node000014" title=" " alt="" coords="1489,142,1539,194,1535,198,1485,145"/>
+<area shape="rect" id="Node000015" href="$lx__nor__driver__ra8__xspi_8c.html" title="LevelX NOR driver implementation backed by the RA8 ra8_xspi HAL." alt="" coords="1653,196,1821,236"/>
+<area shape="poly" id="edge14_Node000003_Node000015" title=" " alt="" coords="1525,136,1686,193,1684,198,1523,141"/>
+<area shape="poly" id="edge18_Node000016_Node000011" title=" " alt="" coords="1961,147,1931,197,1927,195,1956,144"/>
+<area shape="poly" id="edge19_Node000016_Node000012" title=" " alt="" coords="2009,140,2068,194,2065,198,2006,144"/>
+</map>

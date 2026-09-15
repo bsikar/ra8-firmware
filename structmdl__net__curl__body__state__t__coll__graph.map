@@ -1,0 +1,5 @@
+<map id="mdl_net_curl_body_state_t" name="mdl_net_curl_body_state_t">
+<area shape="rect" id="Node000001" title="Test&#45;visible bounded adapter from libcurl chunks to an injected sink." alt="" coords="5,101,203,127"/>
+<area shape="rect" id="Node000002" href="$structmdl__net__body__sink__t.html" title="Caller&#45;owned lifecycle and write seam for one response body." alt="" coords="24,5,184,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="107,45,107,101,101,101,101,45"/>
+</map>

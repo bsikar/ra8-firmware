@@ -1,0 +1,16 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_mstp_model.c" name="tools/ra8_emulator/src/periph/board_periph_mstp_model.c">
+<area shape="rect" id="Node000001" title="Module&#45;stop (MSTP) shadow + address&#45;&gt;bit gate table (engine&#45;free half)." alt="" coords="156,5,335,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="138,181,209,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="229,61,201,109,181,168,176,167,196,107,224,59"/>
+<area shape="rect" id="Node000003" href="$board__periph__mstp__internal_8h.html" title="Module&#45;private module&#45;stop (MSTP) gate state shared with the core." alt="" coords="211,108,427,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="270,58,302,96,298,99,266,62"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="328,181,453,207"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="336,43,365,52,394,65,420,83,441,107,446,124,442,142,418,173,414,170,437,140,441,124,436,109,416,87,391,70,363,57,334,48"/>
+<area shape="rect" id="Node000005" href="$ra8__mstp__regs_8h.html" title="Module Stop Control (MSTP) register layout for the Renesas RA8D2." alt="" coords="5,108,136,133"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="193,62,107,104,105,100,191,58"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="296,136,210,178,208,173,294,131"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="332,132,371,170,367,174,329,136"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="89,131,147,171,144,175,86,136"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="33,181,108,207"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="73,134,73,168,68,168,68,134"/>
+</map>

@@ -1,0 +1,19 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_riic_devices.c" name="tools/ra8_emulator/src/periph/board_periph_riic_devices.c">
+<area shape="rect" id="Node000001" title="RIIC bus registry, PI4IOE5V6408 expander, and OV5640 sensor models." alt="" coords="114,5,293,60"/>
+<area shape="rect" id="Node000002" href="$board__periph__riic__devices__internal_8h.html" title="Internal RIIC bus&#45;device registry and board&#45;device models." alt="" coords="5,108,196,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="176,62,133,101,130,97,172,58"/>
+<area shape="rect" id="Node000005" href="$emu__host__io__internal_8h.html" title="Bounded raw&#45;descriptor I/O seam for the RA8 emulator." alt="" coords="220,115,395,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="235,58,286,104,282,108,231,62"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="175,196,245,221"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="129,146,184,186,181,190,126,150"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="25,196,150,221"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="100,149,94,183,89,182,95,148"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="295,143,237,189,233,185,291,139"/>
+<area shape="poly" id="edge9_Node000005_Node000004" title=" " alt="" coords="276,143,133,194,132,189,274,138"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="270,196,345,221"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="310,141,310,182,305,182,305,141"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="369,196,443,221"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="324,139,382,185,379,189,320,143"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="467,196,563,221"/>
+<area shape="poly" id="edge8_Node000005_Node000008" title=" " alt="" coords="339,138,473,189,471,194,337,143"/>
+</map>

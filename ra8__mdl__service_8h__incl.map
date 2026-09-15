@@ -1,0 +1,10 @@
+<map id="port/esp32_c6/inc/ra8_mdl_service.h" name="port/esp32_c6/inc/ra8_mdl_service.h">
+<area shape="rect" id="Node000001" title="Public integration contract for the ESP32&#45;C6 media RPC component." alt="" coords="37,5,198,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,47,65,85,61,81,97,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="121,167,191,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="125,45,152,153,147,154,120,46"/>
+<area shape="rect" id="Node000004" href="$esp__err_8h.html" title="ESP&#45;IDF&#45;compatible error type and error codes, supplied by this port." alt="" coords="155,93,237,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="138,44,176,82,173,85,134,47"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="192,120,172,156,167,153,187,118"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="libs/ra8_camera/inc/ra8_camera_codec_passthrough.h" name="libs/ra8_camera/inc/ra8_camera_codec_passthrough.h">
+<area shape="rect" id="Node000001" title="Zero&#45;copy JPEG passthrough codec backend." alt="" coords="116,5,363,45"/>
+<area shape="rect" id="Node000002" href="$c6__camera__mjpeg_2src_2c6__cam__camera_8c.html" title="OV5640 hardware&#45;JPEG camera backend for the C6 MJPEG example." alt="" coords="5,93,220,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="204,56,150,95,147,91,201,51"/>
+<area shape="rect" id="Node000003" href="$ra8__camera__codec__passthrough_8c.html" title="Zero&#45;copy JPEG passthrough backend implementation." alt="" coords="244,101,491,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="278,51,343,98,340,103,275,56"/>
+</map>

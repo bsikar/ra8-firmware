@@ -1,0 +1,13 @@
+<map id="libs/if/inc/fw_if_fs_backend.h" name="libs/if/inc/fw_if_fs_backend.h">
+<area shape="rect" id="Node000001" title="Backend&#45;author interface for binding concrete filesystem ports." alt="" coords="339,5,474,45"/>
+<area shape="rect" id="Node000002" href="$fw__if__fs_8c.html" title="Guarded dispatch for the architecture&#45;neutral filesystem ports." alt="" coords="5,101,152,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="327,50,123,103,122,98,326,45"/>
+<area shape="rect" id="Node000003" href="$fw__if__fs__dir_8c.html" title="Guarded incremental&#45;directory dispatch for portable filesystem ports." alt="" coords="177,93,311,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="360,54,281,96,278,91,358,49"/>
+<area shape="rect" id="Node000004" href="$fw__if__fs__ra8__vfs_8c.html" title="fw_if_fs adapter over one bound ra8_io_vfs mount." alt="" coords="335,93,478,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="409,59,409,93,404,93,404,59"/>
+<area shape="rect" id="Node000005" href="$fw__if__fs__posix_8c.html" title="Secure hosted POSIX backend for the portable filesystem interface." alt="" coords="502,93,647,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="457,49,539,91,537,96,454,54"/>
+<area shape="rect" id="Node000006" href="$fw__if__fs__posix__stream_8c.html" title="Hosted POSIX byte&#45;stream operations for the portable filesystem port." alt="" coords="672,93,819,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="488,44,673,91,671,96,487,50"/>
+</map>

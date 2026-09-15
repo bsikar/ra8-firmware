@@ -1,0 +1,28 @@
+<map id="port/posix/src/fw_if_fs_posix_internal.h" name="port/posix/src/fw_if_fs_posix_internal.h">
+<area shape="rect" id="Node000001" title="Shared errno/descriptor helpers for the POSIX filesystem port." alt="" coords="321,5,473,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,313,80,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="332,48,261,75,182,115,144,141,108,170,76,204,50,241,42,270,41,300,36,300,36,270,46,239,72,200,104,166,140,136,179,110,259,70,330,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="262,387,333,412"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="428,44,453,65,476,92,497,133,501,178,501,254,497,281,485,305,468,326,446,344,396,371,347,389,345,384,394,366,443,339,464,322,481,302,492,280,496,254,496,178,491,134,471,95,449,69,424,48"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="536,93,600,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="439,43,532,85,530,90,437,48"/>
+<area shape="rect" id="Node000005" href="$fw__if__fs_8h.html" title="Architecture&#45;neutral filesystem namespace, stream, and transaction ports." alt="" coords="203,167,287,192"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="348,48,311,68,279,95,262,124,252,154,247,152,257,122,275,92,308,63,345,43"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="181,313,259,339"/>
+<area shape="poly" id="edge17_Node000001_Node000007" title=" " alt="" coords="371,47,346,68,325,95,314,120,312,142,310,165,302,193,271,254,239,304,234,301,266,252,298,191,305,164,306,141,309,119,320,92,342,65,367,43"/>
+<area shape="rect" id="Node000008" href="$fw__if__fs__posix_8h.html" title="Root&#45;confined hosted POSIX adapter for fw_if_fs." alt="" coords="334,93,461,119"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="400,46,400,79,395,79,395,46"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="624,93,749,119"/>
+<area shape="poly" id="edge16_Node000001_Node000009" title=" " alt="" coords="467,43,632,87,630,92,466,48"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="203,187,171,192,135,203,100,219,70,242,54,270,47,300,41,299,49,268,66,238,97,214,133,198,169,187,202,181"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="251,192,294,372,289,374,246,193"/>
+<area shape="rect" id="Node000006" href="$fw__if__fs__types_8h.html" title="Portable filesystem value types and caller&#45;owned opaque handles." alt="" coords="81,240,207,265"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="231,194,173,234,170,230,228,190"/>
+<area shape="poly" id="edge12_Node000005_Node000007" title=" " alt="" coords="246,193,227,300,222,299,241,192"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="129,268,72,307,69,303,126,263"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="147,265,152,300,159,320,170,337,187,353,207,366,250,384,248,389,205,371,184,357,166,340,154,322,147,302,142,266"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="158,263,199,302,196,306,154,267"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="234,337,276,375,273,379,231,341"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="399,119,389,183,368,266,341,327,314,376,309,374,337,324,363,264,384,181,393,118"/>
+<area shape="poly" id="edge15_Node000008_Node000005" title=" " alt="" coords="374,121,283,163,281,158,372,116"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="port/esp&#45;hosted/src/ra8_esp_hosted_spi_internal.h" name="port/esp&#45;hosted/src/ra8_esp_hosted_spi_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private surface of the esp&#45;hosted full&#45;duplex SPI transport." alt="" coords="204,5,359,60"/>
+<area shape="rect" id="Node000002" href="$ra8__esp__hosted__osi_8c.html" title="The esp&#45;hosted OS&#45;abstraction vtable and its non&#45;RTOS slots." alt="" coords="5,108,171,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="216,68,128,110,126,105,214,64"/>
+<area shape="rect" id="Node000003" href="$ra8__esp__hosted__port_8c.html" title="Bring&#45;up and teardown of the esp&#45;hosted RA8D2 + ThreadX port." alt="" coords="195,108,367,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="284,74,284,108,279,108,279,74"/>
+<area shape="rect" id="Node000004" href="$ra8__esp__hosted__spi_8c.html" title="The three transport slots of the esp&#45;hosted OS&#45;abstraction vtable." alt="" coords="392,108,557,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="349,64,437,105,434,110,347,68"/>
+</map>

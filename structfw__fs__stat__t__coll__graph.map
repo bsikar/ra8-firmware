@@ -1,0 +1,7 @@
+<map id="fw_fs_stat_t" name="fw_fs_stat_t">
+<area shape="rect" id="Node000001" title="Result of a portable metadata query." alt="" coords="29,237,129,263"/>
+<area shape="rect" id="Node000002" href="$structfw__fs__timestamp__t.html" title="One portable timestamp and independent availability facts." alt="" coords="5,101,152,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="81,140,81,237,76,237,76,140"/>
+<area shape="rect" id="Node000003" href="$structfw__fs__datetime__t.html" title="Backend&#45;neutral civil time with nanosecond precision." alt="" coords="11,5,146,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="81,45,81,101,76,101,76,45"/>
+</map>

@@ -1,0 +1,36 @@
+<map id="libs/ra8_c6link/inc/ra8_c6link_mdl_transfer.h" name="libs/ra8_c6link/inc/ra8_c6link_mdl_transfer.h">
+<area shape="rect" id="Node000001" title="Transactional RA8&#45;side coordinator for C6 media byte streams." alt="" coords="657,5,852,45"/>
+<area shape="rect" id="Node000002" href="$mdl__net__c6link_8h.html" title="Media network backend over the ESP32&#45;C6 raw HTTPS transport." alt="" coords="48,108,208,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="644,36,445,56,332,73,221,96,174,111,172,105,219,91,331,68,445,51,643,31"/>
+<area shape="rect" id="Node000004" href="$mdl__rabook__vfs_8h.html" title="Strict no&#45;heap RBKC validator and reader over named RA8 VFS mounts." alt="" coords="232,101,392,155"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="644,47,531,68,411,96,386,103,385,98,410,91,530,63,643,42"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__pending_2media__download_2src_2main_8c.html" title="Download, validate, publish, and reopen one C6&#45;fetched .rabook." alt="" coords="374,211,570,265"/>
+<area shape="poly" id="edge13_Node000001_Node000006" title=" " alt="" coords="644,40,586,48,531,60,485,76,468,85,457,95,445,122,444,152,451,183,461,209,456,211,446,184,439,153,439,121,453,92,465,81,483,71,529,55,585,43,643,34"/>
+<area shape="rect" id="Node000007" href="$mdl__storage__vfs_8h.html" title="No&#45;heap VFS storage binding for the media&#45;download coordinator." alt="" coords="467,101,627,155"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="704,54,602,103,600,98,702,49"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__pending_2c6_2c6__mdl__test_2src_2main_8c.html" title="Cross&#45;build fixture for the bounded C6 media RPC types." alt="" coords="1087,101,1270,155"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="866,44,968,65,1075,91,1101,98,1100,103,1074,96,967,70,865,49"/>
+<area shape="rect" id="Node000010" href="$media__download__image__internal_8h.html" title="Private encoded&#45;image download and RABOOK publication composition." alt="" coords="651,93,859,163"/>
+<area shape="poly" id="edge10_Node000001_Node000010" title=" " alt="" coords="757,59,757,93,752,93,752,59"/>
+<area shape="rect" id="Node000012" href="$ra8__mdl__storage__ram_8h.html" title="Caller&#45;buffer transaction adapter for verified C6 media sources." alt="" coords="883,108,1063,148"/>
+<area shape="poly" id="edge14_Node000001_Node000012" title=" " alt="" coords="809,49,933,106,931,110,807,54"/>
+<area shape="rect" id="Node000014" href="$ra8__c6link__mdl__transfer_8c.html" title="Bounded transactional coordinator for C6 media byte streams." alt="" coords="1353,218,1546,258"/>
+<area shape="poly" id="edge17_Node000001_Node000014" title=" " alt="" coords="866,26,1040,32,1235,43,1402,62,1460,75,1479,83,1491,91,1501,107,1505,123,1500,158,1484,192,1467,219,1462,216,1480,189,1495,157,1499,124,1496,109,1487,95,1476,88,1458,80,1402,67,1235,49,1040,37,866,31"/>
+<area shape="rect" id="Node000015" href="$ra8__c6link__mdl__transfer__internal_8h.html" title="Private commit&#45;stage seam for the transactional media coordinator." alt="" coords="1294,101,1477,155"/>
+<area shape="poly" id="edge18_Node000001_Node000015" title=" " alt="" coords="866,32,1061,53,1172,70,1282,91,1310,98,1309,103,1281,96,1171,75,1060,58,865,37"/>
+<area shape="rect" id="Node000003" href="$mdl__net__c6link_8c.html" title="Digest&#45;verified media network backend over C6link." alt="" coords="5,218,165,258"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="118,162,95,219,90,217,113,160"/>
+<area shape="rect" id="Node000005" href="$mdl__rabook__vfs_8c.html" title="Strict no&#45;heap RBKC validation and reading through the RA8 VFS." alt="" coords="189,211,349,265"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="299,170,282,211,277,209,294,168"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="364,161,434,208,431,213,361,165"/>
+<area shape="poly" id="edge8_Node000007_Node000006" title=" " alt="" coords="523,168,492,212,488,209,518,165"/>
+<area shape="rect" id="Node000008" href="$mdl__storage__vfs_8c.html" title="Transactional media&#45;download storage over named RA8 VFS mounts." alt="" coords="595,211,755,265"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="591,163,645,208,642,212,587,167"/>
+<area shape="poly" id="edge11_Node000010_Node000006" title=" " alt="" coords="655,170,541,213,540,208,653,165"/>
+<area shape="rect" id="Node000011" href="$media__download__image_8c.html" title="Convert one C6&#45;fetched encoded image into a strict .rabook." alt="" coords="779,211,997,265"/>
+<area shape="poly" id="edge12_Node000010_Node000011" title=" " alt="" coords="808,169,857,208,854,213,805,173"/>
+<area shape="poly" id="edge15_Node000012_Node000011" title=" " alt="" coords="952,160,911,212,907,209,948,157"/>
+<area shape="rect" id="Node000013" href="$ra8__mdl__storage__ram_8c.html" title="Caller&#45;buffer transaction adapter for C6 media source bytes." alt="" coords="1021,218,1200,258"/>
+<area shape="poly" id="edge16_Node000012_Node000013" title=" " alt="" coords="1010,154,1088,216,1085,220,1006,158"/>
+<area shape="poly" id="edge19_Node000015_Node000014" title=" " alt="" coords="1410,166,1440,216,1436,219,1406,169"/>
+</map>

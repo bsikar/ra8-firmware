@@ -1,0 +1,10 @@
+<map id="libs/ra8_secure_app/src/key_import_internal.h" name="libs/ra8_secure_app/src/key_import_internal.h">
+<area shape="rect" id="Node000001" title="Secure&#45;side sealed key import + opaque handle vending." alt="" coords="5,5,196,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="79,167,149,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="69,48,50,62,34,80,25,98,28,118,48,141,73,158,70,162,44,145,24,120,20,98,29,77,46,58,66,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="38,93,163,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="103,46,103,79,98,79,98,46"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="188,93,267,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="133,43,199,84,196,88,130,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="211,121,145,162,142,157,208,116"/>
+</map>

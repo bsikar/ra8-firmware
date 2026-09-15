@@ -1,0 +1,10 @@
+<map id="examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/trustzone_init.c" name="examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/src/trustzone_init.c">
+<area shape="rect" id="Node000001" title="Single&#45;core TrustZone bring&#45;up for a RAM&#45;resident NS image (#172)." alt="" coords="79,5,252,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,123,128,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="132,77,91,115,87,111,128,73"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="169,196,239,221"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="176,74,201,182,196,183,171,76"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="203,123,282,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="195,73,226,110,222,114,191,76"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="239,150,219,185,214,183,234,147"/>
+</map>

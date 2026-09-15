@@ -1,0 +1,5 @@
+<map id="tools/ra8_emulator/inc/board_periph_sd.h" name="tools/ra8_emulator/inc/board_periph_sd.h">
+<area shape="rect" id="Node000001" title="SD&#45;card&#45;over&#45;SPI device model for ra8_emulator (attached to SPI_B)." alt="" coords="5,5,173,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="54,93,125,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="92,46,92,79,87,79,87,46"/>
+</map>

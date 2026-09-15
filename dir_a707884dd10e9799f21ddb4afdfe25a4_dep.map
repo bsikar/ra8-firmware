@@ -1,0 +1,16 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi" name="examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi">
+<area shape="rect" id="node2" href="dir_63ab15b7f63c7f915d535cd8787c4a99.html" title="inc" alt="" coords="117,136,158,161"/>
+<area shape="rect" id="node5" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="224,209,269,235"/>
+<area shape="poly" id="edge1" href="dir_000246_000324.html" alt="" coords="156,159,219,199,216,204,153,164"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000246_000324.html" title="3" alt="" coords="213,185,223,200"/>
+<area shape="rect" id="node3" href="dir_c214c35a87694b789d6837955e767d65.html" title="src" alt="" coords="38,63,79,88"/>
+<area shape="poly" id="edge2" href="dir_000694_000246.html" alt="" coords="73,86,116,125,113,129,70,90"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000694_000246.html" title="3" alt="" coords="112,110,121,125"/>
+<area shape="rect" id="node4" href="dir_651562d8bf6cfd3e81eff5b570d7df50.html" title="Adapters between the vendored stacks under libs/third_party and this firmware: ThreadX to the RA8 clo..." alt="" coords="271,136,319,161"/>
+<area shape="poly" id="edge3" href="dir_000694_000369.html" alt="" coords="80,81,93,85,258,134,257,139,91,91,79,86"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000694_000369.html" title="1" alt="" coords="251,120,260,135"/>
+<area shape="poly" id="edge4" href="dir_000694_000324.html" alt="" coords="80,82,93,85,130,92,164,93,225,88,253,89,280,95,307,109,333,134,340,147,342,159,333,184,311,205,284,216,282,211,308,200,328,181,337,159,335,149,329,138,303,113,278,100,252,94,225,94,164,98,129,97,91,91,79,87"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000694_000324.html" title="23" alt="" coords="281,214,298,228"/>
+<area shape="rect" id="clust2" href="dir_a707884dd10e9799f21ddb4afdfe25a4.html" alt="" coords="27,52,249,172"/>
+<area shape="rect" id="clust1" href="dir_dda9d85eea4d4be218d5166c682d4b09.html" title="hil" alt="" coords="16,16,260,183"/>
+</map>

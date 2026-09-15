@@ -1,0 +1,16 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb" name="examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb">
+<area shape="rect" id="node2" href="dir_08e9e8bde3fd98811afef47673c2b52d.html" title="inc" alt="" coords="111,136,153,161"/>
+<area shape="rect" id="node5" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="215,209,260,235"/>
+<area shape="poly" id="edge1" href="dir_000200_000324.html" alt="" coords="150,159,210,199,208,204,147,164"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000200_000324.html" title="1" alt="" coords="205,185,214,199"/>
+<area shape="rect" id="node3" href="dir_e878ad46cf9da42a26b0c584ac720184.html" title="src" alt="" coords="38,63,79,88"/>
+<area shape="poly" id="edge2" href="dir_000534_000200.html" alt="" coords="73,86,112,124,108,128,69,90"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000534_000200.html" title="2" alt="" coords="108,110,118,125"/>
+<area shape="rect" id="node4" href="dir_651562d8bf6cfd3e81eff5b570d7df50.html" title="Adapters between the vendored stacks under libs/third_party and this firmware: ThreadX to the RA8 clo..." alt="" coords="259,136,307,161"/>
+<area shape="poly" id="edge3" href="dir_000534_000369.html" alt="" coords="80,81,93,85,246,134,245,139,91,91,79,86"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000534_000369.html" title="1" alt="" coords="239,119,248,134"/>
+<area shape="poly" id="edge4" href="dir_000534_000324.html" alt="" coords="80,82,93,85,128,92,160,93,218,90,245,90,271,96,296,110,321,134,328,147,330,159,321,184,300,204,274,216,272,211,297,200,316,181,325,159,323,149,317,138,293,114,269,101,244,95,218,95,160,98,127,97,91,91,79,87"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000534_000324.html" title="15" alt="" coords="271,213,288,228"/>
+<area shape="rect" id="clust2" href="dir_30dd0c3bc045a20c80014fe8defbf085.html" alt="" coords="27,52,237,172"/>
+<area shape="rect" id="clust1" href="dir_9db9b9471026d5d28c4d2973cb811a0f.html" title="hil_needs_revalidation" alt="" coords="16,16,248,183"/>
+</map>

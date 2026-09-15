@@ -1,0 +1,15 @@
+<map id="apps/shared_libs/rabook_compile/inc/ra8_rabook_raster.h" name="apps/shared_libs/rabook_compile/inc/ra8_rabook_raster.h">
+<area shape="rect" id="Node000001" title="Caller&#45;arena raster normalizer for RABOOK image records." alt="" coords="217,5,399,60"/>
+<area shape="rect" id="Node000002" href="$ra8__rabook__comic_8h.html" title="Streaming image&#45;sequence builder for reader&#45;native RABOOK comics." alt="" coords="115,108,296,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="273,72,234,110,230,106,270,68"/>
+<area shape="rect" id="Node000007" href="$ra8__rabook__raster_8c.html" title="Caller&#45;arena raster normalizer for RABOOK image records." alt="" coords="320,108,501,163"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="346,68,386,106,382,110,343,72"/>
+<area shape="rect" id="Node000003" href="$ra8__rabook__comic_8c.html" title="Streaming image&#45;sequence builder for reader&#45;native RABOOK comics." alt="" coords="5,218,187,273"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="171,174,125,220,121,216,167,171"/>
+<area shape="rect" id="Node000004" href="$media__download__format__internal_8h.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="211,211,421,280"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="244,171,283,209,280,212,241,175"/>
+<area shape="rect" id="Node000005" href="$media__download__format_8c.html" title="Private source&#45;image to RBKC formatter for the media app." alt="" coords="82,328,305,383"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="269,291,225,330,222,326,266,287"/>
+<area shape="rect" id="Node000006" href="$media__download__image_8c.html" title="Convert one C6&#45;fetched encoded image into a strict .rabook." alt="" coords="329,328,548,383"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="366,287,410,326,407,330,363,291"/>
+</map>

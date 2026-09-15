@@ -1,0 +1,7 @@
+<map id="usb_state_t" name="usb_state_t">
+<area shape="rect" id="Node000001" title="Aggregate USBFS controller + virtual&#45;host model state." alt="" coords="75,121,173,147"/>
+<area shape="rect" id="Node000002" href="$structusb__in__buf__t.html" title="One pipe&#39;s device&#45;visible IN staging buffer (device &#45;&gt; host payload)." alt="" coords="5,5,109,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="73,41,119,120,115,122,69,44"/>
+<area shape="rect" id="Node000003" href="$structusb__out__buf__t.html" title="One pipe&#39;s host&#45;visible OUT staging buffer (host &#45;&gt; device payload)." alt="" coords="134,5,247,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="187,45,178,71,164,99,141,123,137,119,159,96,173,69,182,43"/>
+</map>

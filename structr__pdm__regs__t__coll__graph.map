@@ -1,0 +1,5 @@
+<map id="r_pdm_regs_t" name="r_pdm_regs_t">
+<area shape="rect" id="Node000001" title="Full PDM&#45;IF register block: common bank + 3 channel banks." alt="" coords="16,101,127,127"/>
+<area shape="rect" id="Node000002" href="$structr__pdm__ch__regs__t.html" title="Per&#45;channel PDM&#45;IF register bank (256 bytes, HUM Ch 49.2)." alt="" coords="5,5,137,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="74,45,74,101,69,101,69,45"/>
+</map>

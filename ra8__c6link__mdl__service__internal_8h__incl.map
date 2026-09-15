@@ -1,0 +1,20 @@
+<map id="libs/ra8_c6link/src/ra8_c6link_mdl_service_internal.h" name="libs/ra8_c6link/src/ra8_c6link_mdl_service_internal.h">
+<area shape="rect" id="Node000001" title="Private bounded&#45;allocation seam for the portable media service." alt="" coords="127,5,305,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,80,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="164,62,79,104,77,99,162,58"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="104,108,229,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="203,61,183,97,178,95,199,59"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="209,181,287,207"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="229,59,244,107,250,167,245,168,239,109,224,61"/>
+<area shape="rect" id="Node000006" href="$ra8__mdl__http_8h.html" title="Wire&#45;neutral media HTTP request and response records." alt="" coords="340,108,460,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="273,58,364,100,362,105,271,62"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="337,255,407,280"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="269,204,341,245,339,250,267,209"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="388,135,369,156,353,182,350,197,352,212,361,241,356,243,346,213,345,197,348,180,364,153,384,132"/>
+<area shape="rect" id="Node000007" href="$mdl__format_8h.html" title="Shared media artifact format contract for download and export paths." alt="" coords="363,181,474,207"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="406,133,415,168,410,169,401,134"/>
+<area shape="rect" id="Node000008" href="$ra8__mdl__protocol_8h.html" title="Allocation&#45;free constants shared by the RA8 and C6 media endpoints." alt="" coords="499,181,645,207"/>
+<area shape="poly" id="edge9_Node000006_Node000008" title=" " alt="" coords="429,131,532,174,530,178,427,136"/>
+<area shape="poly" id="edge8_Node000007_Node000005" title=" " alt="" coords="413,208,389,245,385,242,409,206"/>
+<area shape="poly" id="edge10_Node000008_Node000005" title=" " alt="" coords="541,209,419,252,417,247,539,204"/>
+</map>

@@ -1,0 +1,52 @@
+<map id="tools/ra8_emulator/src/engine/emu_idle.c" name="tools/ra8_emulator/src/engine/emu_idle.c">
+<area shape="rect" id="Node000001" title="Wait&#45;for&#45;interrupt idle&#45;spin detector (see emu_exc.h)." alt="" coords="429,5,597,45"/>
+<area shape="rect" id="Node000002" href="$emu__exc_8h.html" title="Cortex&#45;M exception model constants and interfaces for ra8_emulator." alt="" coords="595,313,688,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="521,45,552,167,582,264,598,285,617,303,613,307,594,288,578,267,547,169,515,46"/>
+<area shape="rect" id="Node000006" href="$emu__run_8h.html" title="The chunked emulation run loop, report and exit&#45;code mapping." alt="" coords="427,93,517,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="506,47,487,82,482,80,501,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="890,387,961,412"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="688,336,877,383,876,388,686,341"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="202,387,337,412"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="595,339,343,387,342,381,594,334"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="536,387,661,412"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="637,340,615,376,610,374,632,338"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="518,105,610,112,731,132,797,149,862,172,924,201,982,238,1011,260,1034,283,1042,295,1045,309,1044,324,1037,340,1025,356,1009,369,975,387,972,382,1006,364,1021,352,1032,337,1039,323,1040,310,1037,298,1030,286,1007,264,978,242,922,206,860,177,795,154,730,137,610,118,517,111"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="428,121,360,145,282,183,244,209,210,239,182,274,162,314,159,326,162,337,185,362,215,379,212,384,182,366,158,340,154,326,158,312,178,271,206,236,241,205,279,179,358,140,426,116"/>
+<area shape="poly" id="edge36_Node000006_Node000005" title=" " alt="" coords="479,118,538,264,589,373,585,375,534,266,474,120"/>
+<area shape="rect" id="Node000007" href="$board__view_8h.html" title="Minimal self&#45;contained macOS window for the board emulator." alt="" coords="633,167,741,192"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="507,116,640,160,638,165,506,121"/>
+<area shape="rect" id="Node000010" href="$emu__presentation_8h.html" title="Bounded raw&#45;descriptor presentation surface and scratch workspace." alt="" coords="763,240,915,265"/>
+<area shape="poly" id="edge35_Node000006_Node000010" title=" " alt="" coords="518,106,569,111,629,121,693,138,755,164,794,194,824,227,820,231,791,198,752,169,692,143,628,127,568,117,517,112"/>
+<area shape="rect" id="Node000012" href="$emu__elf_8h.html" title="ELF32 image services for the board emulator (load / symbols / vectors)." alt="" coords="382,313,469,339"/>
+<area shape="poly" id="edge20_Node000006_Node000012" title=" " alt="" coords="472,120,433,300,428,299,467,118"/>
+<area shape="rect" id="Node000013" href="$emu__memmap_8h.html" title="Shared aliased&#45;memory backing and Unicorn memory&#45;map bindings." alt="" coords="232,240,365,265"/>
+<area shape="poly" id="edge25_Node000006_Node000013" title=" " alt="" coords="460,121,325,233,321,229,456,117"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="741,179,812,188,891,209,930,226,965,249,995,277,1017,312,1020,334,1009,354,990,370,968,383,965,378,987,366,1005,350,1014,333,1012,314,991,281,962,253,927,231,889,214,811,193,741,185"/>
+<area shape="poly" id="edge19_Node000007_Node000005" title=" " alt="" coords="694,191,704,219,713,257,715,300,711,320,702,340,679,366,650,383,648,379,676,362,698,337,706,319,709,299,708,258,699,221,689,193"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="5,387,80,412"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="633,186,449,204,335,220,220,243,156,252,102,258,78,263,56,274,35,290,14,315,9,329,11,344,26,374,21,377,5,345,4,328,10,312,31,286,54,269,77,258,101,253,155,247,220,237,334,215,448,198,632,181"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="592,240,688,265"/>
+<area shape="poly" id="edge11_Node000007_Node000009" title=" " alt="" coords="681,194,657,230,653,227,677,191"/>
+<area shape="poly" id="edge12_Node000007_Node000010" title=" " alt="" coords="712,190,803,232,801,237,710,194"/>
+<area shape="poly" id="edge14_Node000010_Node000003" title=" " alt="" coords="916,262,961,280,981,294,997,312,1002,331,994,350,979,367,960,381,957,377,975,363,990,347,997,331,992,315,977,298,958,284,914,267"/>
+<area shape="poly" id="edge18_Node000010_Node000005" title=" " alt="" coords="830,268,794,303,745,341,697,366,650,385,648,380,695,361,743,336,791,299,826,264"/>
+<area shape="poly" id="edge13_Node000010_Node000008" title=" " alt="" coords="763,263,407,293,170,316,141,329,113,345,67,380,64,375,110,341,138,324,169,311,406,288,762,258"/>
+<area shape="rect" id="Node000011" href="$board__overlay_8h.html" title="Composite board&#45;view renderer: panel framebuffer + a status sidebar." alt="" coords="813,313,939,339"/>
+<area shape="poly" id="edge15_Node000010_Node000011" title=" " alt="" coords="847,264,866,300,861,303,842,267"/>
+<area shape="poly" id="edge16_Node000011_Node000003" title=" " alt="" coords="886,337,912,374,907,377,882,341"/>
+<area shape="poly" id="edge17_Node000011_Node000005" title=" " alt="" coords="832,341,658,386,656,381,831,336"/>
+<area shape="poly" id="edge22_Node000012_Node000003" title=" " alt="" coords="469,331,877,388,876,394,468,336"/>
+<area shape="poly" id="edge23_Node000012_Node000004" title=" " alt="" coords="401,341,308,383,306,378,399,336"/>
+<area shape="poly" id="edge24_Node000012_Node000005" title=" " alt="" coords="454,336,559,379,557,384,452,341"/>
+<area shape="poly" id="edge21_Node000012_Node000008" title=" " alt="" coords="382,339,370,341,94,392,93,386,369,336,381,334"/>
+<area shape="poly" id="edge27_Node000013_Node000003" title=" " alt="" coords="366,255,712,278,874,294,927,303,952,311,960,327,960,344,945,377,940,374,954,343,955,328,949,315,926,308,873,300,711,284,365,260"/>
+<area shape="poly" id="edge28_Node000013_Node000004" title=" " alt="" coords="242,268,203,286,185,298,172,315,168,324,168,333,178,351,199,366,224,379,222,384,196,371,174,354,163,335,162,323,167,312,182,295,200,281,240,263"/>
+<area shape="poly" id="edge34_Node000013_Node000005" title=" " alt="" coords="347,263,412,282,481,311,534,343,577,376,573,380,531,347,479,316,410,287,346,268"/>
+<area shape="poly" id="edge26_Node000013_Node000008" title=" " alt="" coords="232,262,172,269,111,280,58,295,39,304,26,315,20,328,20,343,30,373,25,375,14,344,15,327,22,312,36,300,56,290,109,274,172,263,231,256"/>
+<area shape="rect" id="Node000014" href="$emu__memory__access_8h.html" title="Central first&#45;party Unicorn memory access seam." alt="" coords="181,313,357,339"/>
+<area shape="poly" id="edge29_Node000013_Node000014" title=" " alt="" coords="296,267,282,302,277,300,291,265"/>
+<area shape="poly" id="edge31_Node000014_Node000003" title=" " alt="" coords="358,335,370,336,876,390,876,396,369,341,357,340"/>
+<area shape="poly" id="edge32_Node000014_Node000004" title=" " alt="" coords="272,339,272,373,267,373,267,339"/>
+<area shape="poly" id="edge33_Node000014_Node000005" title=" " alt="" coords="323,336,533,381,532,386,322,341"/>
+<area shape="poly" id="edge30_Node000014_Node000008" title=" " alt="" coords="234,341,93,385,92,380,232,336"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/inc/imgfmt_fixtures.h" name="examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/inc/imgfmt_fixtures.h">
+<area shape="rect" id="Node000001" title="Baked BMP + GIF test images for the ereader_imgfmt gate." alt="" coords="5,5,225,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__imgfmt_2src_2main_8c.html" title="On&#45;silicon HIL: BMP + GIF decode format&#45;coverage gate (#143)." alt="" coords="29,108,202,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="118,74,118,108,113,108,113,74"/>
+</map>

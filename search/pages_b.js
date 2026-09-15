@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['e_20book_20content_20licensing_0',['E-Book Content Licensing',['../md_docs_2CONTENT__LICENSING.html',1,'ra8_docs']]],
+  ['eclipse_20levelx_1',['SOUP Justification: Eclipse LevelX',['../md_docs_2SOUP_2levelx.html',1,'ra8_docsub_SOUP']]],
+  ['eclipse_20netx_20duo_2',['SOUP Justification: Eclipse NetX Duo',['../md_docs_2SOUP_2netxduo.html',1,'ra8_docsub_SOUP']]],
+  ['eclipse_20threadx_3',['SOUP Justification: Eclipse ThreadX',['../md_docs_2SOUP_2threadx.html',1,'ra8_docsub_SOUP']]],
+  ['eclipse_20usbx_4',['SOUP Justification: Eclipse USBX',['../md_docs_2SOUP_2usbx.html',1,'ra8_docsub_SOUP']]],
+  ['ek_20ra8d2_5',['Debugging the EK-RA8D2',['../md_docs_2DEBUG.html',1,'ra8_docs']]],
+  ['ek_20ra8d2_20stock_20evaluation_20kit_6',['EK-RA8D2 (stock evaluation kit)',['../ra8_ex_ek_ra8d2.html',1,'ra8_examples']]],
+  ['ek_20ra8d2_20v1_7',['Hardware Bring-up Report (EK-RA8D2 v1)',['../md_docs_2HARDWARE__BRINGUP.html',1,'ra8_docs']]],
+  ['embedded_20decode_20only_8',['SOUP Justification: XZ Embedded (decode-only)',['../md_docs_2SOUP_2xz__embedded.html',1,'ra8_docsub_SOUP']]],
+  ['enforcement_20under_20a_20foss_20only_20budget_9',['ADR-0002: cppcheck-only MISRA enforcement under a FOSS-only budget',['../md_docs_2adr_20002-cppcheck-only-misra-enforcement.html',1,'ra8_docsub_adr']]],
+  ['environments_20and_20lock_20maintenance_10',['Python Environments and Lock Maintenance',['../md_docs_2PYTHON__ENVIRONMENTS.html',1,'ra8_docs']]],
+  ['epub_20reader_20ndash_20supported_20conformance_20subset_11',['EPUB Reader &amp;ndash; Supported Conformance Subset',['../md_docs_2EPUB__CONFORMANCE.html',1,'ra8_docs']]],
+  ['esp_20hosted_20mcu_20co_20processor_20firmware_12',['SOUP Justification: Espressif esp-hosted-mcu (co-processor firmware)',['../md_docs_2SOUP_2esp-hosted.html',1,'ra8_docsub_SOUP']]],
+  ['esp_20hosted_20mcu_20host_20driver_13',['SOUP Justification: Espressif esp-hosted-mcu (host driver)',['../md_docs_2SOUP_2esp-hosted-host.html',1,'ra8_docsub_SOUP']]],
+  ['esp32_20c6_20companion_20radio_20just_20hil_3a_3ac6_14',['ESP32-C6 companion radio (just hil::c6)',['../ra8_ex_ek_ra8d2_hw_validated_c6.html',1,'ra8_ex_ek_ra8d2_hw_validated']]],
+  ['esp32_20c6_20wireless_20co_20processor_20architecture_15',['ESP32-C6 wireless co-processor architecture',['../md_docs_2design_2c6__wireless__architecture.html',1,'ra8_docsub_design']]],
+  ['espressif_20esp_20hosted_20mcu_20co_20processor_20firmware_16',['SOUP Justification: Espressif esp-hosted-mcu (co-processor firmware)',['../md_docs_2SOUP_2esp-hosted.html',1,'ra8_docsub_SOUP']]],
+  ['espressif_20esp_20hosted_20mcu_20host_20driver_17',['SOUP Justification: Espressif esp-hosted-mcu (host driver)',['../md_docs_2SOUP_2esp-hosted-host.html',1,'ra8_docsub_SOUP']]],
+  ['ethos_20u_20vela_20host_20build_20tool_18',['SOUP Justification: Arm Ethos-U Vela (host build tool)',['../md_docs_2SOUP_2vela.html',1,'ra8_docsub_SOUP']]],
+  ['ethos_20u55_20model_20container_19',['NPU1 &amp;ndash; The &lt;span class=&quot;tt&quot;&gt;.npub&lt;/span&gt; Ethos-U55 Model Container',['../md_docs_2formats_2NPU1.html',1,'ra8_docsub_formats']]],
+  ['evaluation_20kit_20',['EK-RA8D2 (stock evaluation kit)',['../ra8_ex_ek_ra8d2.html',1,'ra8_examples']]],
+  ['examples_21',['Examples',['../ra8_examples.html',1,'']]],
+  ['examples_22',['USB identifiers used by examples',['../md_examples_2ek__ra8d2_2USB__IDS.html',1,'']]],
+  ['external_20hardware_23',['Needs external hardware',['../ra8_ex__unsupported.html',1,'ra8_examples']]]
+];

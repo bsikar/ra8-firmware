@@ -1,0 +1,25 @@
+<map id="cbs_cache_t" name="cbs_cache_t">
+<area shape="rect" id="Node000001" title="One ra8_vmem instance sized for a swept block size + its storage." alt="" coords="923,243,1024,269"/>
+<area shape="rect" id="Node000002" href="$structra8__vmem__t.html" title="Page&#45;cache state (caller&#45;owned; treat as private)." alt="" coords="718,150,822,175"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="829,177,900,206,956,241,953,245,897,210,827,182"/>
+<area shape="rect" id="Node000003" href="$structra8__vmem__cfg__t.html" title="Caller&#45;supplied storage + loader for ra8_vmem_init." alt="" coords="491,150,622,175"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="636,160,718,160,718,165,636,165"/>
+<area shape="rect" id="Node000004" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="5,66,159,91"/>
+<area shape="poly" id="edge12_Node000001_Node000004" title=" " alt="" coords="132,59,221,37,272,29,323,25,772,25,813,33,850,53,882,82,909,116,931,153,949,188,970,242,965,244,944,190,927,155,905,119,878,85,847,57,811,38,771,31,323,31,272,34,222,42,134,64"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="136,93,250,123,378,143,491,155,491,160,377,148,249,128,135,98"/>
+<area shape="rect" id="Node000007" href="$structra8__keycache__cfg__t.html" title="Caller&#45;supplied storage + policy + renderer for ra8_keycache_init." alt="" coords="249,66,400,91"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="173,76,249,76,249,81,173,81"/>
+<area shape="rect" id="Node000005" href="$structra8__vmem__key__t.html" title="The (object_id, frame&#45;aligned offset) key the page cache hashes on." alt="" coords="257,199,392,225"/>
+<area shape="poly" id="edge13_Node000001_Node000005" title=" " alt="" coords="406,215,899,248,922,250,922,255,898,253,405,220"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="398,194,496,173,497,178,399,199"/>
+<area shape="rect" id="Node000006" href="$structra8__keycache__t.html" title="Cache engine state (caller&#45;owned; treat as private)." alt="" coords="495,85,618,110"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="620,111,690,132,735,147,733,152,689,137,618,116"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="414,83,495,90,495,95,414,88"/>
+<area shape="rect" id="Node000008" href="$structra8__vsource__t.html" title="Object&#45;source registry (caller&#45;owned; treat as private)." alt="" coords="713,334,827,359"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="840,341,869,335,897,324,917,312,934,297,961,267,965,271,938,301,920,316,900,329,871,340,841,346"/>
+<area shape="rect" id="Node000009" href="$structra8__vsource__obj__t.html" title="One registered object&#39;s backing (paged or XIP)." alt="" coords="487,298,627,323"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="640,297,922,260,923,265,641,302"/>
+<area shape="poly" id="edge9_Node000008_Node000009" title=" " alt="" coords="640,322,651,324,713,335,712,340,650,329,640,327"/>
+<area shape="rect" id="Node000010" href="$structcbs__meter__t.html" title="Counting shim around an ra8_vsource_read_fn." alt="" coords="719,383,821,409"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="834,390,867,382,897,367,922,345,941,317,965,268,970,270,946,320,926,348,900,372,869,387,835,395"/>
+</map>

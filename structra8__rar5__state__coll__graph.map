@@ -1,0 +1,9 @@
+<map id="ra8_rar5_state" name="ra8_rar5_state">
+<area shape="rect" id="Node000001" title=" " alt="" coords="136,181,252,207"/>
+<area shape="rect" id="Node000002" href="$structra8__rar5__dtab__t.html" title="One canonical Huffman decode table (shared by all five RAR5 alphabets)." alt="" coords="5,5,129,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="83,41,117,95,161,156,183,179,179,183,157,159,113,98,79,44"/>
+<area shape="rect" id="Node000003" href="$structra8__rar__t.html" title="One open RAR archive: the backing plus the detected generation." alt="" coords="154,5,234,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="197,44,197,181,191,181,191,44"/>
+<area shape="rect" id="Node000004" href="$structra8__rar5__filter__t.html" title="One pending RAR5 data filter recorded during decode, applied after." alt="" coords="258,5,383,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="309,44,273,97,228,159,207,183,203,179,224,156,269,94,304,41"/>
+</map>

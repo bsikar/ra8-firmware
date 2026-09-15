@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/inc/dualcore_mailbox.h" name="examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/inc/dualcore_mailbox.h">
+<area shape="rect" id="Node000001" title="Shared&#45;SRAM mailbox layout for the M85 &lt;&#45;&gt; M33 dual&#45;core demo." alt="" coords="85,5,322,60"/>
+<area shape="rect" id="Node000002" href="$hw__validated_2hil_2dualcore__mailbox_2src_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33 secondary core) responder image." alt="" coords="5,108,196,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="169,72,129,110,126,106,165,68"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dualcore__mailbox_2src_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver for the dual&#45;core demo." alt="" coords="221,108,394,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="242,68,282,106,278,110,239,72"/>
+</map>

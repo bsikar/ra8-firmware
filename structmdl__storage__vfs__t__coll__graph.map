@@ -1,0 +1,5 @@
+<map id="mdl_storage_vfs_t" name="mdl_storage_vfs_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned VFS transaction context." alt="" coords="5,101,148,127"/>
+<area shape="rect" id="Node000002" href="$structra8__io__vfs__file__t.html" title="Opaque, statically&#45;pooled format&#45;neutral file stream." alt="" coords="13,5,141,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="79,45,79,101,74,101,74,45"/>
+</map>

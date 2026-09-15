@@ -1,0 +1,7 @@
+<map id="fw_fs_ra8_vfs_cfg_t" name="fw_fs_ra8_vfs_cfg_t">
+<area shape="rect" id="Node000001" title="Composition&#45;root configuration for one firmware filesystem binding." alt="" coords="5,197,156,223"/>
+<area shape="rect" id="Node000002" href="$structra8__fs__mount__t.html" title="Cached parse of one mounted FAT volume." alt="" coords="19,101,142,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="83,141,83,197,78,197,78,141"/>
+<area shape="rect" id="Node000003" href="$structra8__fs__backend__t.html" title="Block&#45;device interface that ra8_fs runs on top of." alt="" coords="13,5,148,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="83,45,83,101,78,101,78,45"/>
+</map>

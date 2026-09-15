@@ -1,0 +1,16 @@
+<map id="libs/ra8_batt/inc/ra8_batt.h" name="libs/ra8_batt/inc/ra8_batt.h">
+<area shape="rect" id="Node000001" title="Bounded, allocation&#45;free low&#45;battery nag policy." alt="" coords="352,5,503,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2battery__monitor__demo_2src_2main_8c.html" title="Battery state&#45;of&#45;charge monitor over a MAX17048&#45;class fuel gauge." alt="" coords="51,93,241,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="358,52,226,96,224,91,356,47"/>
+<area shape="rect" id="Node000003" href="$ereader__ui__steps_8h.html" title="E&#45;reader UI chrome – shared contract between main.c and the per&#45;aspect helper translation units (scre..." alt="" coords="265,93,456,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="408,58,382,95,377,92,404,55"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2src_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="447,196,621,251"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="449,56,471,92,524,194,519,197,466,95,445,58"/>
+<area shape="rect" id="Node000007" href="$ra8__batt_8c.html" title="Implementation of the low&#45;battery nag policy." alt="" coords="532,101,683,141"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="477,49,572,98,570,103,474,54"/>
+<area shape="rect" id="Node000004" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="5,196,193,251"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="281,155,168,198,166,193,279,150"/>
+<area shape="rect" id="Node000005" href="$ereader__ui__screens_8c.html" title="E&#45;reader UI chrome – Library + Reading rendering and in&#45;content nav." alt="" coords="218,196,423,251"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="348,162,334,197,329,195,343,160"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="419,152,490,193,487,198,416,157"/>
+</map>

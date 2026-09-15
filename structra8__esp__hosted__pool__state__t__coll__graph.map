@@ -1,0 +1,5 @@
+<map id="ra8_esp_hosted_pool_state_t" name="ra8_esp_hosted_pool_state_t">
+<area shape="rect" id="Node000001" title="Module state of the memory and queue half – entirely static." alt="" coords="11,116,170,156"/>
+<area shape="rect" id="Node000002" href="$structra8__esp__hosted__queue__slot__t.html" title="One row of the fixed queue table." alt="" coords="5,5,176,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,59,93,116,88,116,88,59"/>
+</map>

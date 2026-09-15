@@ -1,0 +1,12 @@
+<map id="libs/ra8_io/inc/ra8_io_i2c_bus.h" name="libs/ra8_io/inc/ra8_io_i2c_bus.h">
+<area shape="rect" id="Node000001" title="ra8_io I2C&#45;bus facade – one controller&#45;transfer vtable over thechip&#39;s two I2C implementations." alt="" coords="5,5,143,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="67,240,137,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="68,47,57,75,48,112,45,152,53,191,64,211,79,229,75,232,60,215,47,193,40,152,43,111,52,74,63,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="63,167,141,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="80,45,100,153,95,153,75,46"/>
+<area shape="rect" id="Node000004" href="$ra8__i2c__bus__ops_8h.html" title="Injected I2C&#45;bus seam consumed by Ring&#45;3 I2C device drivers." alt="" coords="111,93,253,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="102,43,156,83,153,87,99,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="105,192,105,226,99,226,99,192"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="182,120,172,154,155,193,126,232,122,228,150,191,167,152,177,118"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="171,121,127,160,123,156,167,117"/>
+</map>

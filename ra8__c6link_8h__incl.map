@@ -1,0 +1,15 @@
+<map id="libs/ra8_c6link/inc/ra8_c6link.h" name="libs/ra8_c6link/inc/ra8_c6link.h">
+<area shape="rect" id="Node000001" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="100,5,239,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="70,240,141,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,41,54,61,33,76,17,95,9,112,9,131,14,149,23,168,51,202,81,230,77,233,47,206,19,171,9,151,4,131,4,111,12,92,30,72,51,56,99,36"/>
+<area shape="rect" id="Node000003" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="26,93,193,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="157,47,129,84,124,81,153,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="105,167,183,192"/>
+<area shape="poly" id="edge6_Node000001_Node000004" title=" " alt="" coords="188,44,207,79,211,99,208,120,194,142,175,160,171,156,189,139,203,118,206,99,202,81,183,47"/>
+<area shape="rect" id="Node000005" href="$ra8__mdl__protocol_8h.html" title="Allocation&#45;free constants shared by the RA8 and C6 media endpoints." alt="" coords="208,167,355,192"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="188,44,227,92,269,153,265,156,223,95,184,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="108,120,96,167,96,198,101,226,96,227,91,198,91,166,103,118"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="117,118,135,153,130,155,113,120"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="140,194,120,229,116,227,135,191"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="254,194,148,237,146,232,252,190"/>
+</map>

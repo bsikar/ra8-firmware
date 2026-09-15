@@ -1,0 +1,15 @@
+<map id="ra8_io_fsfmt_ops_t" name="ra8_io_fsfmt_ops_t">
+<area shape="rect" id="Node000001" title="Complete filesystem&#45;format dispatch surface used by the VFS." alt="" coords="247,353,394,379"/>
+<area shape="rect" id="Node000002" href="$structra8__fs__backend__t.html" title="Block&#45;device interface that ra8_fs runs on top of." alt="" coords="5,237,140,263"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="100,269,144,298,196,327,268,351,266,356,194,332,141,303,97,273"/>
+<area shape="rect" id="Node000003" href="$structra8__fs__stat__t.html" title="What ra8_fs_stat() read out of a directory entry." alt="" coords="165,237,271,263"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="240,272,312,351,308,355,236,275"/>
+<area shape="rect" id="Node000004" href="$structra8__fs__timestamp__t.html" title="One decoded on&#45;disk timestamp plus availability facts." alt="" coords="142,101,294,127"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="221,140,221,237,215,237,215,140"/>
+<area shape="rect" id="Node000005" href="$structra8__fs__datetime__t.html" title="Broken&#45;down civil date and time used at the filesystem boundary." alt="" coords="148,5,288,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="221,45,221,101,215,101,215,45"/>
+<area shape="rect" id="Node000006" href="$structra8__fs__dirent__t.html" title="Stable directory&#45;entry value copied by ra8_fs_dir_next." alt="" coords="296,237,415,263"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="350,277,327,354,322,352,345,275"/>
+<area shape="rect" id="Node000007" href="$structra8__fs__space__t.html" title="A mounted volume&#39;s capacity, free space, and cluster geometry." alt="" coords="439,237,557,263"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="480,274,449,303,411,332,359,356,357,351,409,327,446,299,477,271"/>
+</map>

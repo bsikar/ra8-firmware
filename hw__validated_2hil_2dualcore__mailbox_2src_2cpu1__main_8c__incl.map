@@ -1,0 +1,15 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/src/cpu1_main.c" name="examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/src/cpu1_main.c">
+<area shape="rect" id="Node000001" title="CPU1 (Cortex&#45;M33 secondary core) responder image." alt="" coords="15,5,205,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="12,343,83,368"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="67,62,42,83,24,109,14,138,10,168,12,229,25,286,39,329,34,331,19,287,7,230,4,168,9,136,19,107,38,79,63,58"/>
+<area shape="rect" id="Node000003" href="$dualcore__mailbox_8h.html" title="Shared&#45;SRAM mailbox layout for the M85 &lt;&#45;&gt; M33 dual&#45;core demo." alt="" coords="35,108,185,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="113,60,113,94,107,94,107,60"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="111,269,189,295"/>
+<area shape="poly" id="edge8_Node000001_Node000005" title=" " alt="" coords="150,58,176,80,199,106,219,141,228,181,233,202,228,222,210,246,188,264,185,260,207,243,223,220,227,202,223,182,214,143,194,110,172,84,146,62"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="93,136,69,155,50,182,39,221,36,261,44,329,39,329,31,261,34,220,45,180,65,152,89,131"/>
+<area shape="rect" id="Node000004" href="$ra8__board__ek__ra8d2__dualcore_8h.html" title="Where the EK&#45;RA8D2&#39;s Cortex&#45;M85 and Cortex&#45;M33 meet, stated once." alt="" coords="59,181,214,221"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="116,133,128,168,123,169,111,134"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="128,223,63,332,59,329,123,220"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="142,221,148,255,143,256,137,222"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="135,297,77,337,74,332,132,292"/>
+</map>

@@ -1,0 +1,26 @@
+var ra8__ipc__xfer_8h =
+[
+    [ "ra8_ipc_can_access", "ra8__ipc__xfer_8h.html#a600b0b753c8c60ab7dd0778188bbf3b0", null ],
+    [ "ra8_ipc_can_send", "ra8__ipc__xfer_8h.html#ad81459109fb51dd4f2ef5cfd41682fb3", null ],
+    [ "ra8_ipc_channel_for_recv", "ra8__ipc__xfer_8h.html#a1966d93a017fa3649fa10d0ea1829138", null ],
+    [ "ra8_ipc_channel_for_send", "ra8__ipc__xfer_8h.html#a655d923574b275f074c078798a29c96b", null ],
+    [ "ra8_ipc_clear_errors", "ra8__ipc__xfer_8h.html#a12a729cd9d07235a4fdd881be8398814", null ],
+    [ "ra8_ipc_clear_event", "ra8__ipc__xfer_8h.html#a2e13068af5695f37986e9ac0113ea568", null ],
+    [ "ra8_ipc_clear_status", "ra8__ipc__xfer_8h.html#a77a797d1439a9b90daf8f6a4ad8bd8e5", null ],
+    [ "ra8_ipc_deinit", "ra8__ipc__xfer_8h.html#aff14a43a00733fb79e82708f587b3681", null ],
+    [ "ra8_ipc_get_attribution", "ra8__ipc__xfer_8h.html#a1ae0127e2a28b6c72fed6d99d6baaf10", null ],
+    [ "ra8_ipc_get_nmi_attribution", "ra8__ipc__xfer_8h.html#a78cc1f5f9c9a5808a3ff013e1a6ddc40", null ],
+    [ "ra8_ipc_get_sem_attribution", "ra8__ipc__xfer_8h.html#a98f838a677cce223f6bb1f08240dbc03", null ],
+    [ "ra8_ipc_get_status", "ra8__ipc__xfer_8h.html#a456249a27f1bb95ec962da068d5f7870", null ],
+    [ "ra8_ipc_has_data", "ra8__ipc__xfer_8h.html#a1b5170b5294e9d7d42755bc23b05d856", null ],
+    [ "ra8_ipc_init", "ra8__ipc__xfer_8h.html#a21b505ba93c530fd183f254dbafdcd88", null ],
+    [ "ra8_ipc_recv_burst", "ra8__ipc__xfer_8h.html#af2256a9f8be9bc20166c76db9ece8a05", null ],
+    [ "ra8_ipc_recv_message", "ra8__ipc__xfer_8h.html#a095fcf453b6d5361fdd8376523e278c3", null ],
+    [ "ra8_ipc_recv_message_retry", "ra8__ipc__xfer_8h.html#aeec6de7f0871ade9de8f4f4951ee68dc", null ],
+    [ "ra8_ipc_reset_fifo", "ra8__ipc__xfer_8h.html#a83ae5b742b65f5cc4a1b15f073db6c45", null ],
+    [ "ra8_ipc_send_burst", "ra8__ipc__xfer_8h.html#a7acb50ed0c958aff4a817230ac82bde6", null ],
+    [ "ra8_ipc_send_event", "ra8__ipc__xfer_8h.html#abd6e6e43fd4007b46816d5b00941a0bf", null ],
+    [ "ra8_ipc_send_message", "ra8__ipc__xfer_8h.html#a1351fa1ac495ac4a048712bc27419531", null ],
+    [ "ra8_ipc_send_message_retry", "ra8__ipc__xfer_8h.html#a0c23a30a81c5b13a08ed38c9946ffcd4", null ],
+    [ "ra8_ipc_set_event_mask", "ra8__ipc__xfer_8h.html#a34eb79402c9d7067d328e35f3117c1bc", null ]
+];

@@ -1,0 +1,20 @@
+<map id="port/netxduo/inc/nx_ether_driver_c6.h" name="port/netxduo/inc/nx_ether_driver_c6.h">
+<area shape="rect" id="Node000001" title="NetX Duo network driver shim that bridges onto the ESP32&#45;C6 link." alt="" coords="5,5,153,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="83,313,153,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="62,47,44,69,31,94,29,106,31,118,44,194,54,225,72,264,99,301,95,305,68,267,49,227,39,195,26,119,24,106,26,93,40,66,57,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="41,93,118,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="82,46,82,79,77,79,77,46"/>
+<area shape="rect" id="Node000004" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="142,93,243,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="108,43,166,83,163,87,105,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="148,121,111,139,95,152,82,168,75,184,72,201,76,238,89,272,105,300,100,303,84,274,71,239,66,201,69,183,77,165,91,148,108,135,146,116"/>
+<area shape="rect" id="Node000005" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="92,167,259,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="192,120,184,154,179,153,187,118"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="156,240,235,265"/>
+<area shape="poly" id="edge9_Node000004_Node000006" title=" " alt="" coords="219,116,248,136,262,150,272,166,275,186,267,205,251,222,232,235,229,231,247,218,262,202,270,186,268,168,258,153,245,140,216,121"/>
+<area shape="rect" id="Node000007" href="$ra8__mdl__protocol_8h.html" title="Allocation&#45;free constants shared by the RA8 and C6 media endpoints." alt="" coords="266,240,413,265"/>
+<area shape="poly" id="edge10_Node000004_Node000007" title=" " alt="" coords="221,116,257,136,293,165,316,195,332,226,327,229,312,198,289,169,254,141,218,121"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="171,193,146,241,127,300,122,299,141,239,166,191"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="181,192,191,226,186,228,176,193"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="185,267,143,306,139,302,181,263"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="305,268,167,312,165,307,303,263"/>
+</map>

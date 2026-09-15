@@ -1,0 +1,18 @@
+<map id="apps/host/mdl/src/mdl_net_curl_internal.h" name="apps/host/mdl/src/mdl_net_curl_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private libcurl&#45;backend helpers promoted for host unit tests." alt="" coords="128,5,295,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,92,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="174,48,86,90,84,85,171,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="97,167,171,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="194,47,174,69,158,95,146,124,140,154,135,152,141,123,153,92,170,66,190,44"/>
+<area shape="rect" id="Node000004" href="$mdl__net_8h.html" title="Streaming HTTP(S) GET seam (a real function&#45;pointer vtable) for the host manga downloader (v0)." alt="" coords="168,93,255,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="214,46,214,79,209,79,209,46"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="249,167,328,192"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="233,44,252,66,270,92,281,123,288,152,283,154,276,124,265,95,248,69,229,47"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="330,93,455,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="256,43,354,85,352,90,254,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="201,121,159,159,155,155,197,117"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="215,240,285,265"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="217,118,246,226,241,227,212,120"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="226,117,268,155,264,159,222,121"/>
+<area shape="poly" id="edge7_Node000006_Node000005" title=" " alt="" coords="285,194,265,229,260,227,280,191"/>
+</map>

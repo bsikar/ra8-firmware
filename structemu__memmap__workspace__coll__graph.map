@@ -1,0 +1,7 @@
+<map id="emu_memmap_workspace" name="emu_memmap_workspace">
+<area shape="rect" id="Node000001" title="Independent aperture backing with at most two engine bindings." alt="" coords="108,101,307,127"/>
+<area shape="rect" id="Node000002" href="$structemu__memmap__backing__t.html" title="One owned host aperture mapping." alt="" coords="5,5,196,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="126,38,196,99,192,103,122,42"/>
+<area shape="rect" id="Node000003" href="$structemu__memmap__binding__t.html" title="One caller&#45;owned association between a Unicorn engine and backing." alt="" coords="220,5,408,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="292,42,222,103,219,99,289,38"/>
+</map>

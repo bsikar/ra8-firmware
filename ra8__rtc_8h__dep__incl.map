@@ -1,0 +1,17 @@
+<map id="libs/ra8_hal/inc/ra8_rtc.h" name="libs/ra8_hal/inc/ra8_rtc.h">
+<area shape="rect" id="Node000001" title="Real&#45;Time Clock driver (BCD calendar mode)." alt="" coords="851,5,997,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__deep__standby__1__demo_2src_2main_8c.html" title="Deep Software Standby 1 (LPSCR.LPMD = 0x8) entry demo." alt="" coords="5,101,256,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="838,34,582,55,425,73,268,96,232,103,231,98,268,91,424,68,581,50,837,29"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__deep__standby__2__demo_2src_2main_8c.html" title="Deep Software Standby 2 (LPSCR.LPMD = 0x9) entry demo." alt="" coords="280,101,531,155"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="838,43,699,66,543,96,510,103,509,98,542,91,698,61,837,38"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__deep__standby__3__demo_2src_2main_8c.html" title="Deep Software Standby 3 (LPSCR.LPMD = 0xA) entry demo." alt="" coords="555,101,805,155"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="867,53,745,103,743,98,865,48"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lpm__software__standby__demo_2src_2main_8c.html" title="Software Standby (LPSCR.LPMD = 0x5) + RTC periodic wake demo." alt="" coords="830,93,1018,163"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="927,59,927,93,921,93,921,59"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2rtc__alarm_2src_2main_8c.html" title="RTC alarm + UART log demo for EK&#45;RA8D2." alt="" coords="1042,101,1217,155"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="976,49,1077,98,1075,103,974,54"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2rtc__periodic__demo_2src_2main_8c.html" title="RTC alarm + UART log demo for EK&#45;RA8D2." alt="" coords="1241,101,1437,155"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1011,41,1230,91,1257,98,1255,103,1229,96,1010,46"/>
+<area shape="rect" id="Node000008" href="$ra8__rtc_8c.html" title="BCD&#45;calendar Realtime Clock driver implementation." alt="" coords="1461,108,1606,148"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1011,28,1213,47,1332,65,1450,91,1493,105,1491,110,1449,96,1331,71,1212,53,1010,34"/>
+</map>

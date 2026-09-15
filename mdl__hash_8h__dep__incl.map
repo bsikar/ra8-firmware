@@ -1,0 +1,31 @@
+<map id="apps/shared_libs/mdl/inc/mdl_hash.h" name="apps/shared_libs/mdl/inc/mdl_hash.h">
+<area shape="rect" id="Node000001" title="Content&#45;identity hashing (FNV&#45;1a 64) for the media downloader&#39;s persistent library state." alt="" coords="1123,5,1283,45"/>
+<area shape="rect" id="Node000002" href="$mdl__app__internal_8h.html" title="Module&#45;private contract shared by the application&#45;mode translation units." alt="" coords="555,93,730,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1109,42,743,96,731,98,730,93,742,91,1109,36"/>
+<area shape="rect" id="Node000010" href="$mdl__cache_8c.html" title="Per&#45;host HTTP cache lookup and revalidation state machine." alt="" coords="755,93,915,133"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1110,51,915,96,914,91,1108,46"/>
+<area shape="rect" id="Node000011" href="$mdl__cache__io_8c.html" title="Checksummed binary index and immutable body I/O for mdl_cache." alt="" coords="939,93,1099,133"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1151,54,1060,96,1058,91,1149,49"/>
+<area shape="rect" id="Node000012" href="$mdl__export__io_8c.html" title="Portable source streams and validated exporter publication stages." alt="" coords="1123,93,1283,133"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1205,59,1205,93,1200,93,1200,59"/>
+<area shape="rect" id="Node000013" href="$mdl__fetch__page_8c.html" title="Cached page validation, streamed transfer, and publication." alt="" coords="1307,93,1471,133"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="1257,49,1350,91,1347,96,1255,53"/>
+<area shape="rect" id="Node000014" href="$mdl__hash_8c.html" title="FNV&#45;1a 64 content hashing over an injected portable filesystem." alt="" coords="1496,93,1656,133"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="1297,45,1496,91,1495,96,1295,51"/>
+<area shape="rect" id="Node000015" href="$mdl__storage_8c.html" title="Portable downloader storage binding and validated atomic copy." alt="" coords="1680,93,1840,133"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="1297,36,1470,60,1668,91,1680,93,1679,98,1668,96,1469,65,1296,41"/>
+<area shape="rect" id="Node000003" href="$mdl__app_8c.html" title="The application layer&#39;s one composition seam: the bound working set." alt="" coords="5,181,165,221"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="542,130,371,154,178,184,166,186,165,181,177,179,370,148,541,125"/>
+<area shape="rect" id="Node000004" href="$mdl__app__admin_8c.html" title="Discovery, descriptor generation, and verification actions." alt="" coords="190,181,354,221"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="549,139,354,184,353,179,547,134"/>
+<area shape="rect" id="Node000005" href="$mdl__app__cover_8c.html" title="Cached series&#45;cover acquisition and validated publication." alt="" coords="379,181,539,221"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="591,142,500,184,498,179,589,137"/>
+<area shape="rect" id="Node000006" href="$mdl__app__direct_8c.html" title="Direct artifact, page, pack, and run composition actions." alt="" coords="563,181,723,221"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="645,147,645,181,640,181,640,147"/>
+<area shape="rect" id="Node000007" href="$mdl__app__library_8c.html" title="Tracked&#45;library list, remove, and update&#45;all actions." alt="" coords="747,181,909,221"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="697,137,789,179,786,184,695,142"/>
+<area shape="rect" id="Node000008" href="$mdl__app__prepare_8c.html" title="Descriptor&#45;driven series preparation and safe path setup." alt="" coords="933,181,1107,221"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="739,134,938,179,937,184,738,139"/>
+<area shape="rect" id="Node000009" href="$mdl__app__series_8c.html" title="Series selection, download lifecycle, and export actions." alt="" coords="1131,181,1293,221"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="744,131,934,154,1119,179,1131,181,1130,186,1118,184,933,160,743,136"/>
+</map>

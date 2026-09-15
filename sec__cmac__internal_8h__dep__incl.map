@@ -1,0 +1,7 @@
+<map id="libs/ra8_secure_app/src/sec_cmac_internal.h" name="libs/ra8_secure_app/src/sec_cmac_internal.h">
+<area shape="rect" id="Node000001" title="Secure&#45;side AES&#45;CMAC seam (real PSA backend / in&#45;tree reference)." alt="" coords="76,5,259,45"/>
+<area shape="rect" id="Node000002" href="$key__import_8c.html" title="Secure&#45;side sealed&#45;key import implementation." alt="" coords="5,93,156,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="140,57,102,95,98,91,137,53"/>
+<area shape="rect" id="Node000003" href="$sec__cmac_8c.html" title="Secure&#45;side AES&#45;CMAC seam implementation." alt="" coords="180,93,331,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="199,53,238,91,234,95,195,57"/>
+</map>

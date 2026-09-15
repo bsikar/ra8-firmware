@@ -1,0 +1,25 @@
+<map id="apps/shared_libs/rabook_compile/src" name="apps/shared_libs/rabook_compile/src">
+<area shape="rect" id="node1" href="dir_2989b62392d9cbbf71a3ecb94004e903.html" title="inc" alt="" coords="87,125,129,151"/>
+<area shape="rect" id="node2" href="dir_98794fcd60d51c361dbae6a32de390d0.html" title="src" alt="" coords="90,52,131,77"/>
+<area shape="poly" id="edge2" href="dir_000477_000180.html" alt="" coords="113,78,112,112,106,112,108,78"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000477_000180.html" title="16" alt="" coords="109,100,126,115"/>
+<area shape="rect" id="node3" href="dir_2873dd3048e9d866955f1a804741184b.html" title="compress" alt="" coords="153,125,239,151"/>
+<area shape="poly" id="edge1" href="dir_000477_000053.html" alt="" coords="126,75,173,114,170,119,123,79"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000477_000053.html" title="1" alt="" coords="169,100,178,114"/>
+<area shape="rect" id="node4" href="dir_393bb9201d7d1c6442283eccc1e34ae2.html" title="epub" alt="" coords="263,125,318,151"/>
+<area shape="poly" id="edge3" href="dir_000477_000092.html" alt="" coords="133,72,251,118,249,123,131,77"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000477_000092.html" title="1" alt="" coords="244,104,254,119"/>
+<area shape="rect" id="node5" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="343,125,388,151"/>
+<area shape="poly" id="edge4" href="dir_000477_000324.html" alt="" coords="132,69,330,123,329,128,131,74"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000477_000324.html" title="22" alt="" coords="319,108,336,123"/>
+<area shape="rect" id="node6" href="dir_9b30a1aba8bb45cb9886bc7213d77a90.html" title="reflow" alt="" coords="413,125,475,151"/>
+<area shape="poly" id="edge5" href="dir_000477_000438.html" alt="" coords="132,67,400,123,399,128,131,73"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000477_000438.html" title="3" alt="" coords="392,109,401,123"/>
+<area shape="rect" id="node7" href="dir_af13f707e8c2d5c345a920723d214545.html" title="book" alt="" coords="499,125,554,151"/>
+<area shape="poly" id="edge6" href="dir_000477_000021.html" alt="" coords="132,66,277,85,379,101,487,123,486,128,378,107,276,90,131,71"/>
+<area shape="rect" id="edge6-headlabel" href="dir_000477_000021.html" title="3" alt="" coords="479,109,488,123"/>
+<area shape="rect" id="node8" href="dir_b478b008681a325f7858d3b611cb2715.html" title="webp" alt="" coords="578,125,635,151"/>
+<area shape="poly" id="edge7" href="dir_000477_000850.html" alt="" coords="132,65,307,83,433,100,565,123,564,128,432,105,306,88,131,70"/>
+<area shape="rect" id="edge7-headlabel" href="dir_000477_000850.html" title="1" alt="" coords="557,109,567,123"/>
+<area shape="rect" id="clust1" href="dir_6dd3c1e1d0105e579e02215f51d74da7.html" title="rabook_compile" alt="" coords="16,16,143,161"/>
+</map>

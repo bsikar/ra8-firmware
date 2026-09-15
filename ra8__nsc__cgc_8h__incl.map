@@ -1,0 +1,20 @@
+<map id="libs/ra8_nsc/inc/ra8_nsc_cgc.h" name="libs/ra8_nsc/inc/ra8_nsc_cgc.h">
+<area shape="rect" id="Node000001" title="NSC veneers for the Clock Generation Circuit (CGC) driver." alt="" coords="56,5,203,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="113,240,183,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,48,64,76,29,112,17,131,10,151,9,171,17,191,33,209,54,223,100,241,98,246,51,228,30,213,13,193,4,172,4,150,12,129,25,108,61,72,98,43"/>
+<area shape="rect" id="Node000003" href="$ra8__cgc_8h.html" title="High&#45;level Clock Generation Circuit driver." alt="" coords="87,93,171,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="132,46,132,79,127,79,127,46"/>
+<area shape="rect" id="Node000004" href="$ra8__cgc__regs_8h.html" title="Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2." alt="" coords="27,167,146,192"/>
+<area shape="poly" id="edge7_Node000001_Node000004" title=" " alt="" coords="110,47,92,68,77,94,74,124,80,153,75,154,69,124,72,93,87,65,106,44"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="170,167,249,192"/>
+<area shape="poly" id="edge8_Node000001_Node000005" title=" " alt="" coords="150,44,168,66,185,92,198,123,207,152,202,154,193,125,180,95,164,69,146,47"/>
+<area shape="rect" id="Node000006" href="$ra8__nsc__veneer_8h.html" title="Macros for declaring Non&#45;Secure Callable veneer functions." alt="" coords="247,93,382,119"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="175,43,276,85,274,90,173,48"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="125,120,103,156,98,154,120,118"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="144,117,188,156,185,160,141,121"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="99,191,131,228,127,231,95,194"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="201,194,169,231,165,228,197,191"/>
+<area shape="poly" id="edge10_Node000006_Node000002" title=" " alt="" coords="312,120,293,156,262,194,228,219,193,237,191,232,225,214,258,190,288,153,307,118"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="324,167,449,192"/>
+<area shape="poly" id="edge11_Node000006_Node000007" title=" " alt="" coords="329,117,367,155,364,159,325,121"/>
+</map>

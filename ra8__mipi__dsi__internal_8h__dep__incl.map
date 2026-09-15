@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/src/ra8_mipi_dsi_internal.h" name="libs/ra8_hal/src/ra8_mipi_dsi_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private link seam shared between the MIPI DSI&#45;2 hostdriver translation units." alt="" coords="171,5,324,45"/>
+<area shape="rect" id="Node000002" href="$ra8__mipi__dsi_8c.html" title="MIPI DSI&#45;2 host driver – full HUM Ch 65 coverage." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="199,54,116,96,114,91,197,49"/>
+<area shape="rect" id="Node000003" href="$ra8__mipi__dsi__cmd_8c.html" title="MIPI DSI&#45;2 sequence&#45;channel command path (HUM Ch 65)." alt="" coords="175,93,320,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="250,59,250,93,245,93,245,59"/>
+<area shape="rect" id="Node000004" href="$ra8__mipi__dsi__dispatch_8c.html" title="MIPI DSI&#45;2 host driver – video mode, status, IRQ dispatch, and convenience surfaces." alt="" coords="345,93,502,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="299,49,386,91,384,96,297,54"/>
+</map>

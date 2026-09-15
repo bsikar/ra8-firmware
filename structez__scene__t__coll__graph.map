@@ -1,0 +1,26 @@
+<map id="ez_scene_t" name="ez_scene_t">
+<area shape="rect" id="Node000001" title="The whole demo: one tiled page, one zoom viewport, one loupe." alt="" coords="321,505,416,531"/>
+<area shape="rect" id="Node000002" href="$structra8__tile__cache__t.html" title="Tile&#45;cache state (caller&#45;owned; treat as private)." alt="" coords="89,293,217,319"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="143,332,132,373,132,394,139,413,156,435,176,453,224,481,275,499,322,509,321,514,274,504,222,486,173,457,152,438,134,416,127,395,126,372,138,331"/>
+<area shape="rect" id="Node000007" href="$structzoom__tile__src__t.html" title="A tiled gray8 image, its grid, and the cache that pages it." alt="" coords="196,389,320,415"/>
+<area shape="poly" id="edge7_Node000007_Node000002" title=" " alt="" coords="177,326,247,387,243,391,174,330"/>
+<area shape="rect" id="Node000003" href="$structra8__keycache__t.html" title="Cache engine state (caller&#45;owned; treat as private)." alt="" coords="21,197,143,223"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="101,232,146,292,142,295,97,235"/>
+<area shape="rect" id="Node000004" href="$structra8__keycache__cfg__t.html" title="Caller&#45;supplied storage + policy + renderer for ra8_keycache_init." alt="" coords="7,101,157,127"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="85,141,85,197,79,197,79,141"/>
+<area shape="rect" id="Node000005" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="5,5,159,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="85,45,85,101,79,101,79,45"/>
+<area shape="rect" id="Node000006" href="$structra8__tile__key__t.html" title="Identifies one decoded image tile." alt="" coords="168,197,281,223"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="209,235,164,295,159,291,205,232"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="273,425,291,453,314,479,348,503,344,507,311,483,287,456,269,428"/>
+<area shape="rect" id="Node000008" href="$structzoom__source__t.html" title="A magnifiable full&#45;resolution image behind the gray8 sub&#45;rect seam." alt="" coords="269,293,389,319"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="336,332,369,504,364,505,331,333"/>
+<area shape="rect" id="Node000009" href="$structzoom__view__t.html" title="Live viewport: where it is looking, how magnified, and what it owes the panel." alt="" coords="421,389,529,415"/>
+<area shape="poly" id="edge10_Node000009_Node000008" title=" " alt="" coords="360,323,387,340,459,387,456,391,385,345,357,328"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="457,427,382,507,378,503,453,423"/>
+<area shape="rect" id="Node000010" href="$structzoom__scratch__t.html" title="Caller&#45;owned composite buffers – the module&#39;s entire memory footprint." alt="" coords="413,293,537,319"/>
+<area shape="poly" id="edge11_Node000009_Node000010" title=" " alt="" coords="478,333,478,389,473,389,473,333"/>
+<area shape="rect" id="Node000011" href="$structra8__ui__rect__t.html" title="Axis&#45;aligned rectangle in framebuffer pixel coordinates." alt="" coords="562,293,669,319"/>
+<area shape="poly" id="edge13_Node000001_Node000011" title=" " alt="" coords="612,333,598,367,574,405,553,434,527,458,490,484,454,501,417,511,415,506,452,496,487,479,524,454,549,430,570,402,593,364,607,331"/>
+<area shape="poly" id="edge12_Node000009_Node000011" title=" " alt="" coords="590,329,535,368,497,392,494,387,533,363,587,325"/>
+</map>

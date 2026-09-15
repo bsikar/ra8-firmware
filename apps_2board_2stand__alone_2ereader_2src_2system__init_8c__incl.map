@@ -1,0 +1,19 @@
+<map id="apps/board/stand_alone/ereader/src/system_init.c" name="apps/board/stand_alone/ereader/src/system_init.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 / RA8D2 core bring&#45;up (called from Reset_Handler)." alt="" coords="149,5,340,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="219,240,289,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="150,45,70,67,39,80,20,95,12,108,9,121,14,144,32,166,60,185,95,202,133,217,206,238,204,243,131,222,93,207,57,190,28,169,9,146,4,120,7,106,16,92,36,76,68,62,148,40"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="30,93,155,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="209,48,129,89,126,84,207,43"/>
+<area shape="rect" id="Node000004" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="179,93,310,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="247,46,247,79,242,79,242,46"/>
+<area shape="rect" id="Node000005" href="$ra8__cgc_8h.html" title="High&#45;level Clock Generation Circuit driver." alt="" coords="335,93,419,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="277,43,346,84,344,88,275,48"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="443,93,566,119"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="308,43,454,87,453,92,306,48"/>
+<area shape="rect" id="Node000006" href="$ra8__cgc__regs_8h.html" title="Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2." alt="" coords="195,167,313,192"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="358,121,287,162,284,157,355,116"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="337,167,416,192"/>
+<area shape="poly" id="edge7_Node000005_Node000007" title=" " alt="" coords="379,119,379,153,374,153,374,119"/>
+<area shape="poly" id="edge6_Node000006_Node000002" title=" " alt="" coords="257,192,257,226,251,226,251,192"/>
+<area shape="poly" id="edge8_Node000007_Node000002" title=" " alt="" coords="358,194,287,235,284,231,355,190"/>
+</map>

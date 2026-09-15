@@ -1,0 +1,7 @@
+<map id="cb_sweep_config_t" name="cb_sweep_config_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned bindings for the block sweep." alt="" coords="43,121,187,147"/>
+<area shape="rect" id="Node000002" href="$structcb__scratch__t.html" title="Injected bounded random&#45;access scratch transaction." alt="" coords="5,5,108,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="67,43,91,96,107,119,103,122,86,99,62,45"/>
+<area shape="rect" id="Node000003" href="$structcb__sink__t.html" title="Injected output sink." alt="" coords="133,5,215,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="170,45,147,99,129,123,125,119,142,96,165,43"/>
+</map>

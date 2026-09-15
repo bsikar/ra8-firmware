@@ -1,0 +1,26 @@
+<map id="apps/shared_libs/comic" name="apps/shared_libs/comic">
+<area shape="rect" id="node1" href="dir_393bb9201d7d1c6442283eccc1e34ae2.html" title="epub" alt="" coords="27,209,82,235"/>
+<area shape="rect" id="node2" href="dir_affcb28eaa94332d2a1296bd2d29aa47.html" title="unarch" alt="" coords="169,209,236,235"/>
+<area shape="rect" id="node3" href="dir_b75432f76b5a9857b90b35c19ab5d459.html" title="jof" alt="" coords="106,209,145,235"/>
+<area shape="rect" id="node5" href="dir_41110b079e3c83ec77a6b0a6fafd1286.html" title="inc" alt="" coords="105,136,146,161"/>
+<area shape="poly" id="edge1" href="dir_000173_000092.html" alt="" coords="116,164,78,202,74,198,112,160"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000173_000092.html" title="1" alt="" coords="80,195,90,210"/>
+<area shape="poly" id="edge3" href="dir_000173_000818.html" alt="" coords="140,159,182,198,178,202,136,163"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000173_000818.html" title="3" alt="" coords="178,183,187,198"/>
+<area shape="poly" id="edge4" href="dir_000173_000317.html" alt="" coords="128,162,128,196,123,196,123,162"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000173_000317.html" title="2" alt="" coords="129,184,138,198"/>
+<area shape="rect" id="node7" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="260,209,305,235"/>
+<area shape="poly" id="edge2" href="dir_000173_000324.html" alt="" coords="148,157,248,202,246,207,145,162"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000173_000324.html" title="5" alt="" coords="242,188,251,203"/>
+<area shape="rect" id="node6" href="dir_b5299bbbf147b8ebbd97a094d83912ad.html" title="src" alt="" coords="98,63,139,88"/>
+<area shape="poly" id="edge5" href="dir_000470_000092.html" alt="" coords="116,89,94,137,68,198,63,196,90,135,111,87"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000470_000092.html" title="1" alt="" coords="70,189,79,203"/>
+<area shape="poly" id="edge8" href="dir_000470_000818.html" alt="" coords="129,87,160,135,193,196,188,198,155,137,124,90"/>
+<area shape="rect" id="edge8-headlabel" href="dir_000470_000818.html" title="4" alt="" coords="191,182,201,196"/>
+<area shape="poly" id="edge6" href="dir_000470_000173.html" alt="" coords="122,88,126,122,120,123,117,89"/>
+<area shape="rect" id="edge6-headlabel" href="dir_000470_000173.html" title="12" alt="" coords="122,110,140,124"/>
+<area shape="poly" id="edge7" href="dir_000470_000324.html" alt="" coords="141,83,194,108,236,134,260,164,276,195,271,198,255,167,233,138,191,113,138,88"/>
+<area shape="rect" id="edge7-headlabel" href="dir_000470_000324.html" title="21" alt="" coords="271,182,288,196"/>
+<area shape="rect" id="clust2" href="dir_1e02ae3659979ea8cd76cf0d0fdcdc7c.html" alt="" coords="87,52,236,172"/>
+<area shape="rect" id="clust1" href="dir_699267fa50e21dc324648ec0948c9d50.html" title="shared_libs" alt="" coords="16,16,247,245"/>
+</map>

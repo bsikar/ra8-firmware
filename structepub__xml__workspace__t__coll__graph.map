@@ -1,0 +1,9 @@
+<map id="epub_xml_workspace_t" name="epub_xml_workspace_t">
+<area shape="rect" id="Node000001" title="Per&#45;book bounded storage for strict OPF/container/TOC parsing." alt="" coords="57,217,231,243"/>
+<area shape="rect" id="Node000002" href="$structxml__workspace__t.html" title="Exactly bounded caller&#45;owned nesting storage." alt="" coords="5,101,141,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="90,137,139,215,134,218,86,140"/>
+<area shape="rect" id="Node000003" href="$structxml__frame__t.html" title="One open&#45;element identity retained for close&#45;tag validation." alt="" coords="21,5,126,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="76,45,76,101,71,101,71,45"/>
+<area shape="rect" id="Node000004" href="$structxml__span__t.html" title="Immutable byte span expressed relative to the source." alt="" coords="166,101,263,127"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="208,141,180,195,159,219,155,215,175,192,203,138"/>
+</map>
