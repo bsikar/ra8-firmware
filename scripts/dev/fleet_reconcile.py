@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# FILE-SIZE-OK: safety-critical controller and transaction selftests stay reviewable together.
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 """Continuously converge ordinary CI runner hosts from one trusted snapshot."""
@@ -36,12 +37,14 @@ DEFAULT_PRODUCER_INTERVAL = 24 * 60 * 60
 PRIVATE_DIRECTORY_MODE = 0o700
 SELFTEST_CHANGED_TOTAL = 3
 SELFTEST_SIGNAL_BOUND = 8
+SELFTEST_RECOVERY_APPLIES = 2
 # ci_runner check mode empties and restages its build context: exactly these
 # two tasks report changed on an otherwise-converged producer.
 PRODUCER_CHECK_NOISE = 2
 # While ARC admission is deliberately held at zero, its post-renderer removes
 # the scale-set difference and only the context-restage check noise remains.
 PRODUCER_HELD_CHECK_NOISE = 1
+PRODUCER_APPLY_ATTEMPTS = 3
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -257,12 +260,30 @@ def _activate_arc(
 
 
 def apply_host(
-    data: dict[str, Any], host: str, run: CommandRunner, *, expected_check_changes: int
+    data: dict[str, Any],
+    host: str,
+    run: CommandRunner,
+    *,
+    expected_check_changes: int,
+    apply_attempts: int = 1,
 ) -> tuple[bool, int]:
     """Apply one host and prove the resulting declaration is idempotent."""
-    result = run(fleet_command(host, "parked-apply"))
-    emit_result(result)
-    if result.status or frp.interrupted_status():
+    applied = False
+    for attempt in range(1, apply_attempts + 1):
+        result = run(fleet_command(host, "parked-apply"))
+        emit_result(result)
+        if not result.status and not frp.interrupted_status():
+            applied = True
+            break
+        if frp.interrupted_status():
+            break
+        if attempt < apply_attempts:
+            print(
+                f"fleet-reconcile: {host}: parked apply failed "
+                f"(attempt {attempt}/{apply_attempts}); retrying while capacity stays zero",
+                file=sys.stderr,
+            )
+    if not applied:
         quarantine(host, run)
         return False, 0
     clean, changed = inspect_host(data, host, run, parked=True)
@@ -319,7 +340,14 @@ def reconcile_host(
     print(f"fleet-reconcile: {host}: applying ({why}, changed={changed})")
     held_arc = producer and fm.CLASSES[data["hosts"][host]["class"]].capacity_kind == "k8s"
     held_changes = PRODUCER_HELD_CHECK_NOISE if held_arc else expected_changes
-    applied, _ = apply_host(data, host, run, expected_check_changes=held_changes)
+    attempts = PRODUCER_APPLY_ATTEMPTS if producer else 1
+    applied, _ = apply_host(
+        data,
+        host,
+        run,
+        expected_check_changes=held_changes,
+        apply_attempts=attempts,
+    )
     if not applied:
         return False, {}
     return True, {
@@ -638,10 +666,41 @@ def _selftest_failure_quarantine(failures: list[str]) -> None:
         expected = [
             ("check", "producer"),
             ("parked-apply", "producer"),
+            ("parked-apply", "producer"),
+            ("parked-apply", "producer"),
             ("quarantine", "producer"),
         ]
         if calls != expected:
             failures.append("producer failure did not drain before blocking consumers")
+
+
+def _selftest_transient_producer_retry(failures: list[str]) -> None:
+    """Prove one transient producer mutation failure does not strand capacity."""
+    data = _selftest_data()
+    with tempfile.TemporaryDirectory(prefix="ra8-fleet-reconcile-") as raw:
+        options = _selftest_options(Path(raw))
+        calls: list[tuple[str, str]] = []
+        producer_applies = 0
+
+        def fake_run(argv: Sequence[str]) -> frp.CommandResult:
+            nonlocal producer_applies
+            verb, host = _command_identity(argv)
+            calls.append((verb, host))
+            if verb in {"check", "parked-check", "activation-check"}:
+                return _clean_check_result(data, host)
+            if verb == "parked-apply" and host == "producer":
+                producer_applies += 1
+                return frp.CommandResult(1 if producer_applies == 1 else 0, "", "")
+            return frp.CommandResult(0, "", "")
+
+        if reconcile(data, options, fake_run):
+            failures.append("transient producer mutation failure did not recover")
+        if producer_applies < SELFTEST_RECOVERY_APPLIES:
+            failures.append("transient producer mutation failure was not retried")
+        if ("quarantine", "producer") in calls:
+            failures.append("recovered producer mutation was quarantined")
+        if ("check", "consumer") not in calls:
+            failures.append("recovered producer mutation still blocked consumers")
 
 
 def _selftest_failed_repair_retries(failures: list[str]) -> None:
@@ -867,6 +926,7 @@ def selftest() -> int:
     _selftest_check_mode(failures)
     _selftest_apply_and_receipt(failures)
     _selftest_failure_quarantine(failures)
+    _selftest_transient_producer_retry(failures)
     _selftest_failed_repair_retries(failures)
     _selftest_postcheck_quarantine(failures)
     _selftest_restore_quarantine(failures)
