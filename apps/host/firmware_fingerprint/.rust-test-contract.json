@@ -1,0 +1,11 @@
+{
+  "covered_sources": [
+    "src/lib.rs",
+    "src/main.rs",
+    "tests/cli.rs",
+    "tests/fingerprint.rs"
+  ],
+  "minimum_tests": 10,
+  "package_license": "MIT",
+  "allowed_dependencies": []
+}

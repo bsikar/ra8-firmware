@@ -147,7 +147,11 @@ def missing_required_compilers(seen: set[str], required: list[str]) -> list[str]
     return sorted(set(required) - set(seen))
 
 
-def missing_tool_projects(projects: Iterable[str], sources: Iterable[str]) -> list[str]:
+def missing_tool_projects(
+    projects: Iterable[str],
+    sources: Iterable[str],
+    non_c_projects: Iterable[str] = (),
+) -> list[str]:
     """Return host CMake project directories whose code the gate never compiled.
 
     Representation is decided by the SOURCES the compile databases record, not
@@ -176,16 +180,20 @@ def missing_tool_projects(projects: Iterable[str], sources: Iterable[str]) -> li
     Args:
         projects: Repo-relative host CMake project directories.
         sources: Every ``file`` entry across the databases handed to the gate.
+        non_c_projects: Projects whose build and policy evidence is owned by a
+            language-specific gate instead of a C/C++ compile database.
 
     Returns:
         The project directories no database compiled a single file from,
         sorted.
     """
     normalised = {posixpath.normpath(str(source).replace("\\", "/")) for source in sources}
+    separately_owned = set(non_c_projects)
     return sorted(
         project
         for project in projects
-        if not any(
+        if project not in separately_owned
+        and not any(
             f"/{project}/" in source or source.startswith(f"{project}/") for source in normalised
         )
     )
@@ -257,6 +265,25 @@ def cmake_tool_projects(repo_root: Path, firmware: Iterable[str] | None = None) 
         and cmake_listfile_has_commands(path)
     }
     return tuple(sorted(found - excluded))
+
+
+def rust_only_cmake_projects(repo_root: Path, projects: Iterable[str]) -> tuple[str, ...]:
+    """Return discovered projects implemented entirely by a colocated Rust crate."""
+    c_family_suffixes = {".c", ".cc", ".cpp", ".cxx", ".m", ".mm"}
+    found: list[str] = []
+    for project in projects:
+        directory = repo_root / project
+        if not (directory / "Cargo.toml").is_file():
+            continue
+        has_c_family_source = any(
+            path.suffix.lower() in c_family_suffixes
+            and not is_build_output(path.relative_to(repo_root).as_posix())
+            for path in directory.rglob("*")
+            if path.is_file()
+        )
+        if not has_c_family_source:
+            found.append(project)
+    return tuple(sorted(found))
 
 
 def flag_problem(argv: list[str]) -> str | None:
@@ -463,9 +490,16 @@ def _discovery_fixture(root: Path) -> None:
         "tools/widget",
         "apps/shared_libs/core",
         "apps/board/stand_alone/blinky",
+        "apps/host/rust_tool",
+        "apps/host/mixed_tool",
     ):
         (root / rel).mkdir(parents=True)
         (root / rel / "CMakeLists.txt").write_text("project(x C)\n")
+    (root / "apps/host/rust_tool/Cargo.toml").write_text("[package]\nname='r'\n")
+    (root / "apps/host/rust_tool/src").mkdir()
+    (root / "apps/host/rust_tool/src/main.rs").write_text("fn main() {}\n")
+    (root / "apps/host/mixed_tool/Cargo.toml").write_text("[package]\nname='m'\n")
+    (root / "apps/host/mixed_tool/main.c").write_text("int main(void) { return 0; }\n")
     source_only = root / "apps/shared_libs/source_only"
     source_only.mkdir(parents=True)
     (source_only / "CMakeLists.txt").write_text(
@@ -497,9 +531,27 @@ def _discovery_selftest() -> list[str]:
         if firmware != ("apps/board/stand_alone/blinky",):
             failures.append(f"  discovery: firmware apps {firmware}, want the blinky image")
         got = cmake_tool_projects(root, firmware=firmware)
-        want = ("apps/shared_libs/core", "tools/widget")
+        want = (
+            "apps/host/mixed_tool",
+            "apps/host/rust_tool",
+            "apps/shared_libs/core",
+            "tools/widget",
+        )
         if got != want:
             failures.append(f"  discovery: host projects {got}, want {want}")
+        rust_only = rust_only_cmake_projects(root, got)
+        if rust_only != ("apps/host/rust_tool",):
+            failures.append(
+                f"  discovery: Rust-only projects {rust_only}, want apps/host/rust_tool"
+            )
+        build_work = missing_tool_projects(got, [])
+        if "apps/host/rust_tool" not in build_work:
+            failures.append("  discovery: the Rust-only project was omitted from build work")
+        missing = missing_tool_projects(got, [], rust_only)
+        if "apps/host/rust_tool" in missing or "apps/host/mixed_tool" not in missing:
+            failures.append(
+                "  discovery: Rust-only ownership did not exempt only the pure-Rust project"
+            )
     return failures
 
 
@@ -622,6 +674,11 @@ def _discover_projects() -> tuple[str, ...]:
     raise SystemExit(2)
 
 
+def _discover_rust_only_projects(projects: Iterable[str]) -> tuple[str, ...]:
+    """Discover the C-compile-database exemptions owned by the Rust gate."""
+    return rust_only_cmake_projects(Path.cwd(), projects)
+
+
 def _report_missing_projects(missing: list[str]) -> None:
     """Print the host CMake projects whose code the gate never compiled."""
     sys.stderr.write(
@@ -703,10 +760,20 @@ def main() -> int:
         action="store_true",
         help="print uncovered host CMake project directories, one per line",
     )
+    parser.add_argument(
+        "--list-rust-only-cmake-tools",
+        action="store_true",
+        help="print host CMake projects owned by Cargo rather than a C compile database",
+    )
     args = parser.parse_args()
 
     if args.selftest:
         return selftest()
+    if args.list_rust_only_cmake_tools:
+        projects = _discover_projects()
+        for project in _discover_rust_only_projects(projects):
+            print(project)
+        return 0
     if not args.databases:
         sys.stderr.write(
             "check_tool_warning_flags.py: FATAL -- no compile database given.\n"
@@ -721,11 +788,12 @@ def main() -> int:
 
     required = [fam for fam in args.require_compilers.split(",") if fam]
     violations, seen, sources = _scan_databases(args.databases)
-    missing_projects = missing_tool_projects(projects, sources)
     if args.list_missing_cmake_tools:
-        for project in missing_projects:
+        for project in missing_tool_projects(projects, sources):
             print(project)
         return 0
+    rust_only = _discover_rust_only_projects(projects)
+    missing_projects = missing_tool_projects(projects, sources, rust_only)
     return _report_verdict(
         databases=args.databases,
         required=required,

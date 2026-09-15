@@ -6,5 +6,7 @@
     "tests/native.rs",
     "tests/zig_consumer.rs"
   ],
-  "minimum_tests": 3
+  "minimum_tests": 3,
+  "package_license": "MIT",
+  "allowed_dependencies": []
 }

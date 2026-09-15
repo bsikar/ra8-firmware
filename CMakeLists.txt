@@ -26,7 +26,6 @@ if(RA8_HOST_MODE)
   # instead of attempting to add the core a second time.
   add_subdirectory(apps/host/mdl)
   add_subdirectory(apps/host/cbz2jof)
-  add_subdirectory(tests)
   add_subdirectory(tools/mkfontimg)
   add_subdirectory(tools/exfat_mkimage)
   add_subdirectory(tools/rabook_imagepack)
@@ -35,6 +34,11 @@ if(RA8_HOST_MODE)
   add_subdirectory(tools/rabook_viewer)
   add_subdirectory(tools/ra8_emulator)
   add_subdirectory(apps/host/alphabet_soup)
+  add_subdirectory(apps/host/firmware_fingerprint)
+  # Configure the aggregate tests after standalone host tools. Several test
+  # fragments intentionally reuse an existing application test target when it
+  # is already present in this combined graph.
+  add_subdirectory(tests)
   return()
 endif()
 

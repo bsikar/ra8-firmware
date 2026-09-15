@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+
+cmake_minimum_required(VERSION 3.20)
+project(firmware_fingerprint NONE)
+
+enable_testing()
+
+find_program(CARGO_EXECUTABLE NAMES cargo REQUIRED)
+
+set(FIRMWARE_FINGERPRINT_BINARY
+    ${CMAKE_CURRENT_BINARY_DIR}/firmware_fingerprint${CMAKE_EXECUTABLE_SUFFIX}
+)
+set(FIRMWARE_FINGERPRINT_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR}/cargo-target)
+set(FIRMWARE_FINGERPRINT_CARGO_BINARY
+    ${FIRMWARE_FINGERPRINT_TARGET_DIR}/debug/firmware_fingerprint${CMAKE_EXECUTABLE_SUFFIX}
+)
+set(FIRMWARE_FINGERPRINT_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.lock
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lib.rs ${CMAKE_CURRENT_SOURCE_DIR}/src/main.rs
+)
+
+add_custom_command(
+  OUTPUT ${FIRMWARE_FINGERPRINT_BINARY}
+  COMMAND ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${FIRMWARE_FINGERPRINT_TARGET_DIR}
+          ${CARGO_EXECUTABLE} build --locked
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FIRMWARE_FINGERPRINT_CARGO_BINARY}
+          ${FIRMWARE_FINGERPRINT_BINARY}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  DEPENDS ${FIRMWARE_FINGERPRINT_SOURCES}
+  COMMENT "Building firmware_fingerprint CLI with Cargo"
+  VERBATIM
+)
+
+add_custom_target(
+  firmware_fingerprint_host ALL
+  DEPENDS ${FIRMWARE_FINGERPRINT_BINARY}
+  COMMENT "Ensuring the firmware_fingerprint host CLI is current"
+)
+
+add_test(
+  NAME test_firmware_fingerprint
+  COMMAND ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${FIRMWARE_FINGERPRINT_TARGET_DIR}
+          ${CARGO_EXECUTABLE} test --locked
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)

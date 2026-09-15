@@ -134,20 +134,24 @@ _tb_other_tools() (
 # standalone CMakeLists.txt and reach this gate through a consumer instead.
 _tb_generic_project() (
   set -e
-  local cc="$1" root="$2" jobs="$3" project="$4" slot
-  shift 4
+  local cc="$1" root="$2" jobs="$3" project="$4" rust_only="$5" slot
+  shift 5
   slot="${project//\//__}"
   echo "tools-build[$cc]: $project"
   CC="$cc" cmake -S "$PWD/$project" -B "$root/$slot" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON "$@"
   cmake --build "$root/$slot" -j "$jobs"
-  test -s "$root/$slot/compile_commands.json"
+  if [[ "$rust_only" == 1 ]]; then
+    ctest --test-dir "$root/$slot" -N | grep -Eq 'Total Tests: [1-9][0-9]*'
+  else
+    test -s "$root/$slot/compile_commands.json"
+  fi
   ctest --test-dir "$root/$slot" --output-on-failure
 )
 
 _tb_build_compiler() (
   set -e
-  local cc="$1" root="$2" jobs="$3" cxx family missing_output project
+  local cc="$1" root="$2" jobs="$3" cxx family missing_output project rust_only_output
   local cmake_args=()
   if [[ "$cc" == gcc-14 ]]; then
     cxx=g++-14
@@ -170,9 +174,15 @@ _tb_build_compiler() (
   local dbs=("$root"/*/compile_commands.json)
   missing_output="$(python3 scripts/checks/check_tool_warning_flags.py \
     --list-missing-cmake-tools "${dbs[@]}")"
+  rust_only_output="$(python3 scripts/checks/check_tool_warning_flags.py \
+    --list-rust-only-cmake-tools)"
   while IFS= read -r project; do
     [[ -n "$project" ]] || continue
-    _tb_generic_project "$cc" "$root" "$jobs" "$project" "${cmake_args[@]}"
+    local rust_only=0
+    if grep -Fxq -- "$project" <<<"$rust_only_output"; then
+      rust_only=1
+    fi
+    _tb_generic_project "$cc" "$root" "$jobs" "$project" "$rust_only" "${cmake_args[@]}"
   done <<<"$missing_output"
 
   # Prove every discovered project reached THIS compiler arm, not merely the

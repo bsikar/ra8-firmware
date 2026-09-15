@@ -1,13 +1,9 @@
 [package]
-name = "ra8-zig-abi-fixture"
+name = "firmware_fingerprint"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
 publish = false
-build = "build.rs"
-
-[lib]
-path = "src/lib.rs"
 
 [lints.rust]
 unsafe_code = "deny"

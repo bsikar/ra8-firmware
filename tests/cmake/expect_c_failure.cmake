@@ -46,9 +46,8 @@ if(_ra8_result EQUAL 0)
   message(FATAL_ERROR "ra8 ABI negative ${RA8_KIND}: expected failure but compiler succeeded")
 endif()
 if(NOT "${_ra8_stderr}" MATCHES "${_ra8_expected}")
-  message(
-    FATAL_ERROR
-      "ra8 ABI negative ${RA8_KIND}: failure omitted expected diagnostic '${_ra8_expected}':\n${_ra8_stderr}"
+  message(FATAL_ERROR "ra8 ABI negative ${RA8_KIND}: failure omitted expected diagnostic "
+                      "'${_ra8_expected}':\n${_ra8_stderr}"
   )
 endif()
 
