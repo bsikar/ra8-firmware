@@ -1,7 +1,7 @@
 //! SPDX-License-Identifier: MIT
 //! Copyright (c) 2026 Brighton Sikarskie
 //!
-//! C ABI membrane for the host-only Zig ABI fixture.
+//! C ABI membrane shared by the host and RA8 compile-contract fixture.
 
 const std = @import("std");
 const implementation = @import("internal/root.zig");

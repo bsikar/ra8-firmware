@@ -28,6 +28,13 @@ CONTEXTS = {
 }
 MIN_OWNERSHIP_LENGTH = 12
 MIN_NM_SYMBOL_FIELDS = 3
+REQUIRED_MODES = {"Debug", "ReleaseSafe", "ReleaseSmall"}
+MODE_C_FLAGS = {"Debug": "-O0", "ReleaseSafe": "-O2", "ReleaseSmall": "-Oz"}
+RA8_ZIG_ARGUMENTS = (
+    "-Dtarget=thumb-freestanding-eabihf",
+    "-Dcpu=cortex_m85+fp_armv8-d32-fp64",
+)
+RA8_C_ARGUMENTS = ("-mcpu=cortex_m85", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16")
 PROHIBITED_ZIG_TYPES = (
     (re.compile(r"\[\](?:const\s+)?"), "slice"),
     (re.compile(r"(?<![=!])!(?!=)"), "error union"),
@@ -266,13 +273,21 @@ def _target_findings(library: dict[str, Any], name: str, required_targets: set[s
     if not isinstance(targets, dict) or not targets:
         return [f"{name}: missing target evidence"]
     findings: list[str] = []
+    target_class = library.get("target_class")
+    expected = {"host", "ra8"} if target_class == "host-ra8" else {"host"}
+    if target_class not in {"host-only", "host-ra8"}:
+        findings.append(f"{name}: missing supported-target classification")
+    elif set(targets) != expected:
+        findings.append(
+            f"{name}: target classification {target_class} requires: {', '.join(sorted(expected))}"
+        )
     for target, arguments in targets.items():
         if target not in required_targets:
             findings.append(f"{name}: unexpected target classification: {target}")
         if not isinstance(arguments, list) or not all(isinstance(arg, str) for arg in arguments):
             findings.append(f"{name}: malformed build arguments for target: {target}")
-        if target == "ra8" and "-Dcpu=cortex_m85" not in arguments:
-            findings.append(f"{name}: RA8 target evidence does not select cortex_m85")
+        if target == "ra8" and tuple(arguments) != RA8_ZIG_ARGUMENTS:
+            findings.append(f"{name}: RA8 target evidence does not match RA8D2 CPU/FPU")
     return findings
 
 
@@ -309,13 +324,78 @@ def _library_findings(library: dict[str, Any], required_targets: set[str]) -> li
     return findings
 
 
-def _compiled_findings(library: dict[str, Any], zig: str, nm: str) -> list[str]:
-    """Build every registered target and compare all global exports exactly."""
+def _c_target_arguments(target: str, arguments: list[str]) -> list[str]:
+    """Translate registered Zig target selections to Zig C compiler flags."""
+    if target == "ra8":
+        return ["-target", "thumb-freestanding-eabihf", *RA8_C_ARGUMENTS]
+    translated: list[str] = []
+    for argument in arguments:
+        if argument.startswith("-Dtarget="):
+            translated.extend(("-target", argument.removeprefix("-Dtarget=")))
+        elif argument.startswith("-Dcpu="):
+            cpu = argument.removeprefix("-Dcpu=")
+            translated.append(f"-mcpu={cpu}")
+    return translated
+
+
+def _c_compile_findings(
+    library: dict[str, Any], zig: str, target: str, mode: str, output: Path
+) -> list[str]:
+    """Compile the public C header under the same target and optimization mode."""
+    includes = library.get("c_include_dirs")
+    if not isinstance(includes, list) or not includes:
+        return [f"{library['name']}: missing C include directories"]
+    probe = output / "abi_header_probe.c"
+    probe.parent.mkdir(parents=True, exist_ok=True)
+    probe.write_text(f'#include "{Path(library["public_header"]).name}"\n', encoding="utf-8")
+    command = [
+        zig,
+        "cc",
+        "-std=c2x",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-c",
+        MODE_C_FLAGS[mode],
+        *_c_target_arguments(target, library["targets"][target]),
+        *(item for include in includes for item in ("-I", str(ROOT / include))),
+        str(probe),
+        "-o",
+        str(output / "abi_header_probe.o"),
+    ]
+    proc = subprocess.run(  # noqa: S603 -- pinned Zig; reviewed policy arguments
+        command, cwd=ROOT, capture_output=True, text=True, check=False
+    )
+    if proc.returncode == 0:
+        return []
+    detail = (proc.stdout + proc.stderr).strip()
+    return [f"{library['name']}: {target}/{mode} C header compile failed: {detail}"]
+
+
+def _matrix_jobs(
+    library: dict[str, Any], required_modes: set[str]
+) -> list[tuple[str, list[str], str]]:
+    """Return the complete deterministic target-by-mode build matrix."""
+    return [
+        (target, arguments, mode)
+        for target, arguments in library["targets"].items()
+        for mode in sorted(required_modes)
+    ]
+
+
+def _compiled_findings(
+    library: dict[str, Any], zig: str, nm: str, required_modes: set[str]
+) -> tuple[list[str], dict[str, int]]:
+    """Build every registered target/mode and compare all global exports exactly."""
     name = library["name"]
     findings: list[str] = []
+    counts = {"c_matrix": 0, "zig_matrix": 0, "mode_tests": 0}
     with tempfile.TemporaryDirectory(prefix="ra8-zig-abi-") as tmp:
-        for target, arguments in library["targets"].items():
-            output = Path(tmp) / target
+        for target, arguments, mode in _matrix_jobs(library, required_modes):
+            output = Path(tmp) / target / mode
+            c_findings = _c_compile_findings(library, zig, target, mode, output)
+            findings.extend(c_findings)
+            counts["c_matrix"] += int(not c_findings)
             command = [
                 zig,
                 "build",
@@ -324,32 +404,32 @@ def _compiled_findings(library: dict[str, Any], zig: str, nm: str) -> list[str]:
                 "--prefix",
                 str(output / "install"),
                 "--cache-dir",
-                str(output / "cache"),
+                str(Path(tmp) / "cache"),
                 "--global-cache-dir",
-                str(output / "global-cache"),
+                str(Path(tmp) / "global-cache"),
                 *arguments,
+                f"-Doptimize={mode}",
             ]
-            proc = subprocess.run(  # noqa: S603 -- tool path resolved; policy is reviewed input
+            proc = subprocess.run(  # noqa: S603 -- pinned Zig; reviewed policy arguments
                 command, cwd=ROOT, capture_output=True, text=True, check=False
             )
             if proc.returncode != 0:
                 detail = (proc.stdout + proc.stderr).strip()
-                findings.append(f"{name}: {target} archive build failed: {detail}")
+                findings.append(f"{name}: {target}/{mode} archive build failed: {detail}")
                 continue
             archive = output / "install" / "lib" / f"lib{library['library_name']}.a"
             if not archive.is_file():
-                findings.append(f"{name}: {target} archive missing: {archive}")
+                findings.append(f"{name}: {target}/{mode} archive missing: {archive}")
                 continue
-            proc = subprocess.run(  # noqa: S603 -- tool path resolved; archive is freshly built
+            proc = subprocess.run(  # noqa: S603 -- resolved tool; fresh archive
                 [nm, "-g", "--defined-only", str(archive)],
                 capture_output=True,
                 text=True,
                 check=False,
             )
             if proc.returncode != 0:
-                findings.append(
-                    f"{name}: {target} archive symbol scan failed: {proc.stderr.strip()}"
-                )
+                detail = proc.stderr.strip()
+                findings.append(f"{name}: {target}/{mode} symbol scan failed: {detail}")
                 continue
             actual = {
                 parts[-1].removeprefix("_")
@@ -357,8 +437,18 @@ def _compiled_findings(library: dict[str, Any], zig: str, nm: str) -> list[str]:
                 if len(parts := line.split()) >= MIN_NM_SYMBOL_FIELDS
             }
             expected = {row["name"] for row in library["exports"]}
-            findings.extend(_compiled_symbol_findings(f"{name}: {target}", expected, actual))
-    return findings
+            findings.extend(_compiled_symbol_findings(f"{name}: {target}/{mode}", expected, actual))
+            counts["zig_matrix"] += 1
+            if target == "host" and library.get("run_host_tests_in_all_modes") is True:
+                test_proc = subprocess.run(  # noqa: S603 -- pinned Zig; reviewed policy
+                    [*command, "test"], cwd=ROOT, capture_output=True, text=True, check=False
+                )
+                if test_proc.returncode != 0:
+                    detail = (test_proc.stdout + test_proc.stderr).strip()
+                    findings.append(f"{name}: host/{mode} ABI tests failed: {detail}")
+                else:
+                    counts["mode_tests"] += 1
+    return findings, counts
 
 
 def _compiled_symbol_findings(name: str, expected: set[str], actual: set[str]) -> list[str]:
@@ -373,6 +463,22 @@ def _compiled_symbol_findings(name: str, expected: set[str], actual: set[str]) -
     return findings
 
 
+def _mode_test_policy_findings(
+    policy: dict[str, Any], libraries: list[dict[str, Any]]
+) -> list[str]:
+    """Require one named canonical fixture to run tests in every host mode."""
+    selected = policy.get("mode_test_library")
+    matches = [library for library in libraries if library.get("name") == selected]
+    if not isinstance(selected, str) or len(matches) != 1:
+        return ["policy must name exactly one mode_test_library"]
+    library = matches[0]
+    if library.get("run_host_tests_in_all_modes") is not True:
+        return [f"{selected}: run_host_tests_in_all_modes must be true"]
+    if "host" not in library.get("targets", {}):
+        return [f"{selected}: mode-test library must support host"]
+    return []
+
+
 def _validate(
     policy: dict[str, Any], *, compile_archives: bool
 ) -> tuple[list[str], dict[str, int]]:
@@ -382,6 +488,15 @@ def _validate(
     required_targets = set(required) if isinstance(required, list) else set()
     if required_targets != {"host", "ra8"}:
         findings.append("policy required_targets must contain exactly host and ra8")
+    modes = policy.get("required_modes")
+    required_modes = set(modes) if isinstance(modes, list) else set()
+    if required_modes != REQUIRED_MODES:
+        missing = ", ".join(sorted(REQUIRED_MODES - required_modes)) or "none"
+        unexpected = ", ".join(sorted(required_modes - REQUIRED_MODES)) or "none"
+        findings.append(
+            "policy optimization modes must be Debug, ReleaseSafe, ReleaseSmall "
+            f"(missing: {missing}; unexpected: {unexpected})"
+        )
     libraries = policy.get("libraries")
     if not isinstance(libraries, list) or not libraries:
         return [*findings, "policy must inventory at least one ABI library"], {}
@@ -396,9 +511,14 @@ def _validate(
         "exports": 0,
         "tests": 0,
         "targets": 0,
+        "modes": len(required_modes & REQUIRED_MODES),
+        "c_matrix": 0,
+        "zig_matrix": 0,
+        "mode_tests": 0,
     }
     typed_libraries = [library for library in libraries if isinstance(library, dict)]
     findings.extend(_repository_inventory_findings(typed_libraries))
+    findings.extend(_mode_test_policy_findings(policy, typed_libraries))
     target_classes = {
         target
         for library in typed_libraries
@@ -420,11 +540,38 @@ def _validate(
         counts["exports"] += len(library.get("exports", []))
         counts["tests"] += len(library.get("contract_tests", []))
         if compile_archives and zig is not None and nm is not None:
-            findings.extend(_compiled_findings(library, zig, nm))
-    floors = {"libraries": 1, "headers": 1, "adapters": 1, "exports": 1, "tests": 3, "targets": 2}
+            compiled_findings, compiled_counts = _compiled_findings(
+                library, zig, nm, required_modes & REQUIRED_MODES
+            )
+            findings.extend(compiled_findings)
+            for key, value in compiled_counts.items():
+                counts[key] += value
+    floors = {
+        "libraries": 1,
+        "headers": 1,
+        "adapters": 1,
+        "exports": 1,
+        "tests": 3,
+        "targets": 2,
+        "modes": 3,
+    }
     for item, floor in floors.items():
         if counts[item] < floor:
             findings.append(f"non-vacuity failure: {item}={counts[item]}, floor={floor}")
+    if compile_archives:
+        expected_matrix = sum(
+            len(library.get("targets", {})) * len(REQUIRED_MODES) for library in typed_libraries
+        )
+        findings.extend(
+            f"non-vacuity failure: {key}={counts[key]}, expected={expected_matrix}"
+            for key in ("c_matrix", "zig_matrix")
+            if counts[key] != expected_matrix
+        )
+        if counts["mode_tests"] != len(REQUIRED_MODES):
+            findings.append(
+                f"non-vacuity failure: mode_tests={counts['mode_tests']}, "
+                f"expected={len(REQUIRED_MODES)}"
+            )
     return findings, counts
 
 
@@ -483,10 +630,13 @@ pub fn build(b: *std.Build) void {
                 "symbol_prefix": "demo_",
                 "compatibility_sha256": _normalized_header_digest(header),
                 "layout_assertions": ["sizeof(demo_config_t) == 4U"],
+                "c_include_dirs": ["inc"],
+                "target_class": "host-ra8",
                 "targets": {
                     "host": [],
-                    "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85"],
+                    "ra8": list(RA8_ZIG_ARGUMENTS),
                 },
+                "run_host_tests_in_all_modes": True,
                 "contract_tests": [
                     {
                         "language": language,
@@ -515,13 +665,59 @@ pub fn build(b: *std.Build) void {
             host_only = json.loads(json.dumps(base))
             host_only["targets"].pop("ra8")
             target_findings, _ = _validate(
-                {"required_targets": ["host", "ra8"], "libraries": [host_only]},
+                {
+                    "required_targets": ["host", "ra8"],
+                    "required_modes": sorted(REQUIRED_MODES),
+                    "mode_test_library": "demo",
+                    "libraries": [host_only],
+                },
                 compile_archives=False,
             )
             if not any(
                 "missing required target classification: ra8" in item for item in target_findings
             ):
                 print("must-fire fixture was accepted: inventory without RA8", file=sys.stderr)
+                return 1
+            if not any(
+                "target classification host-ra8 requires" in item for item in target_findings
+            ):
+                print(
+                    "must-fire fixture was accepted: host-ra8 library without RA8", file=sys.stderr
+                )
+                return 1
+            mode_findings, _ = _validate(
+                {
+                    "required_targets": ["host", "ra8"],
+                    "required_modes": ["Debug", "ReleaseSafe"],
+                    "mode_test_library": "demo",
+                    "libraries": [base],
+                },
+                compile_archives=False,
+            )
+            if not any("missing: ReleaseSmall" in item for item in mode_findings):
+                print(
+                    "must-fire fixture was accepted: inventory without ReleaseSmall",
+                    file=sys.stderr,
+                )
+                return 1
+            expected_jobs = {
+                (target, mode) for target in ("host", "ra8") for mode in REQUIRED_MODES
+            }
+            actual_jobs = {
+                (target, mode) for target, _arguments, mode in _matrix_jobs(base, REQUIRED_MODES)
+            }
+            if actual_jobs != expected_jobs:
+                print("must-stay-quiet fixture lost a target/mode matrix job", file=sys.stderr)
+                return 1
+            no_mode_tests = json.loads(json.dumps(base))
+            no_mode_tests["run_host_tests_in_all_modes"] = False
+            if not any(
+                "run_host_tests_in_all_modes must be true" in item
+                for item in _mode_test_policy_findings(
+                    {"mode_test_library": "demo"}, [no_mode_tests]
+                )
+            ):
+                print("must-fire fixture was accepted: disabled mode tests", file=sys.stderr)
                 return 1
             mutations = {
                 "prohibited boundary type": adapter.replace("?*u32", "[]u32"),
@@ -549,7 +745,7 @@ pub fn build(b: *std.Build) void {
             broken_target = json.loads(json.dumps(base))
             broken_target["targets"]["ra8"] = ["-Dtarget=thumb-freestanding-eabihf"]
             if not any(
-                "does not select cortex_m85" in item
+                "does not match RA8D2 CPU/FPU" in item
                 for item in _library_findings(broken_target, {"host", "ra8"})
             ):
                 print("must-fire fixture was accepted: mislabeled RA8 target", file=sys.stderr)
@@ -585,7 +781,21 @@ pub fn build(b: *std.Build) void {
             if zig is not None and nm is not None:
                 compiled = json.loads(json.dumps(base))
                 compiled["exports"][0]["name"] = "demo_missing"
-                compiled_findings = _compiled_findings(compiled, zig, nm)
+                compiled["run_host_tests_in_all_modes"] = False
+                compiled_findings, compiled_counts = _compiled_findings(
+                    compiled, zig, nm, {"Debug"}
+                )
+                expected_compiled = len(compiled["targets"])
+                if (
+                    compiled_counts["c_matrix"] != expected_compiled
+                    or compiled_counts["zig_matrix"] != expected_compiled
+                ):
+                    print(
+                        "must-stay-quiet fixture did not execute both compiled targets: "
+                        f"counts={compiled_counts}, findings={compiled_findings}",
+                        file=sys.stderr,
+                    )
+                    return 1
                 for expected in (
                     "compiled archive missing export",
                     "compiled archive unexpected export",
