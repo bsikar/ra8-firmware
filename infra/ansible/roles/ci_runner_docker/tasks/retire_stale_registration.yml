@@ -1,4 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
+
 - name: Select runner homes that require registration
   # config.sh refuses to configure a home that still carries local credentials,
   # even with --replace. That stranded every runner after GitHub expired its
