@@ -7,8 +7,11 @@
 )]
 
 use std::ffi::c_void;
+use std::sync::Mutex;
 
 use firmware_report_provider::ReportSummary;
+
+static PROVIDER_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 unsafe extern "C" {
     fn firmware_report_create(data: *const u8, size: usize, out: *mut *mut c_void) -> i32;
@@ -18,6 +21,7 @@ unsafe extern "C" {
 
 #[test]
 fn foreign_lifecycle_and_unchanged_outputs() {
+    let _guard = PROVIDER_TEST_LOCK.lock().expect("provider test lock");
     let input = [0, 0xff, 7];
     let mut handle = std::ptr::null_mut();
     // SAFETY: all pointers and lengths satisfy the declared test ABI.
@@ -43,9 +47,10 @@ fn foreign_lifecycle_and_unchanged_outputs() {
         1
     );
     assert_eq!(output, saved);
+    let invalid = std::ptr::with_exposed_provenance(usize::MAX);
     // SAFETY: the foreign non-null address is compared with the registry and never dereferenced.
     assert_eq!(
-        unsafe { firmware_report_query(std::ptr::dangling(), &raw mut output) },
+        unsafe { firmware_report_query(invalid, &raw mut output) },
         1
     );
     assert_eq!(output, saved);
@@ -58,6 +63,7 @@ fn foreign_lifecycle_and_unchanged_outputs() {
 
 #[test]
 fn foreign_create_rejects_invalid_inputs_without_output() {
+    let _guard = PROVIDER_TEST_LOCK.lock().expect("provider test lock");
     let mut handle = std::ptr::null_mut();
     // SAFETY: deliberately invalid pointer/length pair is rejected before dereference.
     assert_eq!(
@@ -77,6 +83,7 @@ fn foreign_create_rejects_invalid_inputs_without_output() {
 
 #[test]
 fn foreign_create_enforces_single_live_owner() {
+    let _guard = PROVIDER_TEST_LOCK.lock().expect("provider test lock");
     let mut first = std::ptr::null_mut();
     let mut second = std::ptr::null_mut();
     // SAFETY: empty images permit null data and valid output slots.
@@ -95,6 +102,7 @@ fn foreign_create_enforces_single_live_owner() {
 
 #[test]
 fn foreign_query_rejects_null_output() {
+    let _guard = PROVIDER_TEST_LOCK.lock().expect("provider test lock");
     let mut handle = std::ptr::null_mut();
     // SAFETY: valid empty input and output slot.
     assert_eq!(
@@ -112,6 +120,7 @@ fn foreign_query_rejects_null_output() {
 
 #[test]
 fn foreign_create_rejects_occupied_output_slot() {
+    let _guard = PROVIDER_TEST_LOCK.lock().expect("provider test lock");
     let mut handle = std::ptr::dangling_mut::<c_void>();
     // SAFETY: occupied output is rejected before the placeholder is dereferenced.
     assert_eq!(
@@ -123,12 +132,14 @@ fn foreign_create_rejects_occupied_output_slot() {
 
 #[test]
 fn foreign_release_rejects_null_slot() {
+    let _guard = PROVIDER_TEST_LOCK.lock().expect("provider test lock");
     // SAFETY: null slot is deliberately passed to exercise validation.
     assert_eq!(unsafe { firmware_report_release(std::ptr::null_mut()) }, 1);
 }
 
 #[test]
 fn foreign_stale_alias_cannot_access_a_later_generation() {
+    let _guard = PROVIDER_TEST_LOCK.lock().expect("provider test lock");
     let mut first = std::ptr::null_mut();
     // SAFETY: valid empty input and writable handle slot.
     assert_eq!(

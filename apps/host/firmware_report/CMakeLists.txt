@@ -14,33 +14,45 @@ find_program(CARGO_EXECUTABLE NAMES cargo REQUIRED)
 find_program(NM_EXECUTABLE NAMES llvm-nm nm REQUIRED)
 
 set(FIRMWARE_REPORT_RUST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/rust)
+set(FIRMWARE_REPORT_RUST_MAIN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/rust-main)
 set(FIRMWARE_REPORT_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR}/cargo-target)
 if(WIN32)
   set(FIRMWARE_REPORT_RUST_LIBRARY ${FIRMWARE_REPORT_TARGET_DIR}/debug/firmware_report_provider.lib)
 else()
-  set(FIRMWARE_REPORT_RUST_LIBRARY ${FIRMWARE_REPORT_TARGET_DIR}/debug/libfirmware_report_provider.a)
+  set(FIRMWARE_REPORT_RUST_LIBRARY
+      ${FIRMWARE_REPORT_TARGET_DIR}/debug/libfirmware_report_provider.a
+  )
 endif()
+if(WIN32)
+  set(FIRMWARE_REPORT_EXECUTABLE ${FIRMWARE_REPORT_TARGET_DIR}/debug/firmware_report.exe)
+else()
+  set(FIRMWARE_REPORT_EXECUTABLE ${FIRMWARE_REPORT_TARGET_DIR}/debug/firmware_report)
+endif()
+
+add_library(firmware_report_c STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/firmware_report_cli.c)
+target_include_directories(firmware_report_c PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_options(firmware_report_c PRIVATE -Wall -Wextra -Werror)
 
 add_custom_target(
   firmware_report_rust ALL
-  COMMAND
-    ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${FIRMWARE_REPORT_TARGET_DIR} ${CARGO_EXECUTABLE}
-    build --locked --manifest-path ${FIRMWARE_REPORT_RUST_DIR}/Cargo.toml
+  COMMAND ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${FIRMWARE_REPORT_TARGET_DIR} ${CARGO_EXECUTABLE}
+          build --locked --manifest-path ${FIRMWARE_REPORT_RUST_DIR}/Cargo.toml
   BYPRODUCTS ${FIRMWARE_REPORT_RUST_LIBRARY}
   COMMENT "Building firmware_report Rust provider"
   VERBATIM
 )
 
-add_executable(
-  firmware_report ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
-                  ${CMAKE_CURRENT_SOURCE_DIR}/src/firmware_report_cli.c
+add_custom_target(
+  firmware_report ALL
+  COMMAND
+    ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${FIRMWARE_REPORT_TARGET_DIR}
+    FIRMWARE_REPORT_C_LIB_DIR=$<TARGET_FILE_DIR:firmware_report_c> ${CARGO_EXECUTABLE} build
+    --locked --manifest-path ${FIRMWARE_REPORT_RUST_MAIN_DIR}/Cargo.toml
+  BYPRODUCTS ${FIRMWARE_REPORT_EXECUTABLE}
+  DEPENDS firmware_report_c
+  COMMENT "Building Rust-main firmware_report"
+  VERBATIM
 )
-target_include_directories(
-  firmware_report PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
-target_compile_options(firmware_report PRIVATE -Wall -Wextra -Werror)
-target_link_libraries(firmware_report PRIVATE ${FIRMWARE_REPORT_RUST_LIBRARY})
-add_dependencies(firmware_report firmware_report_rust)
 
 add_executable(
   test_firmware_report_cli ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cli.c
@@ -60,8 +72,8 @@ add_test(NAME test_firmware_report_abi COMMAND test_firmware_report_abi)
 add_test(
   NAME test_firmware_report_rust
   COMMAND
-    ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${FIRMWARE_REPORT_TARGET_DIR} ${CARGO_EXECUTABLE}
-    test --locked --all-features --manifest-path ${FIRMWARE_REPORT_RUST_DIR}/Cargo.toml
+    ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${FIRMWARE_REPORT_TARGET_DIR} ${CARGO_EXECUTABLE} test
+    --locked --all-features --manifest-path ${FIRMWARE_REPORT_RUST_DIR}/Cargo.toml
 )
 add_test(
   NAME test_firmware_report_symbols
@@ -91,32 +103,33 @@ file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/cli_fixture.bin "hello")
 add_test(
   NAME test_firmware_report_command
   COMMAND
-    ${CMAKE_COMMAND} -DEXECUTABLE=$<TARGET_FILE:firmware_report>
+    ${CMAKE_COMMAND} -DEXECUTABLE=${FIRMWARE_REPORT_EXECUTABLE}
     -DFIXTURE=${CMAKE_CURRENT_BINARY_DIR}/cli_fixture.bin -P
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_cli.cmake
 )
 
-add_test(
-  NAME test_firmware_report_inventory_selftest
-  COMMAND
-    ${CMAKE_COMMAND} -DACTUAL_TESTS=test_firmware_report_cli -P
-    ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_test_inventory.cmake
+add_test(NAME test_firmware_report_inventory_selftest
+         COMMAND ${CMAKE_COMMAND} -DACTUAL_TESTS=test_firmware_report_cli -P
+                 ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_test_inventory.cmake
 )
 # This is the must-fire half of the inventory selftest: an intentionally
 # incomplete test-name list must be rejected by the inventory checker.
 set_tests_properties(test_firmware_report_inventory_selftest PROPERTIES WILL_FAIL TRUE)
 
-set(
-  FIRMWARE_REPORT_REQUIRED_TESTS
-  test_firmware_report_abi
-  test_firmware_report_cli
-  test_firmware_report_command
-  test_firmware_report_inventory_selftest
-  test_firmware_report_rust
-  test_firmware_report_symbols
-  test_firmware_report_symbols_selftest
+set(FIRMWARE_REPORT_REQUIRED_TESTS
+    test_firmware_report_abi
+    test_firmware_report_cli
+    test_firmware_report_command
+    test_firmware_report_inventory_selftest
+    test_firmware_report_rust
+    test_firmware_report_symbols
+    test_firmware_report_symbols_selftest
 )
-get_property(FIRMWARE_REPORT_REGISTERED_TESTS DIRECTORY PROPERTY TESTS)
+get_property(
+  FIRMWARE_REPORT_REGISTERED_TESTS
+  DIRECTORY
+  PROPERTY TESTS
+)
 list(SORT FIRMWARE_REPORT_REQUIRED_TESTS)
 list(SORT FIRMWARE_REPORT_REGISTERED_TESTS)
 if(NOT "${FIRMWARE_REPORT_REGISTERED_TESTS}" STREQUAL "${FIRMWARE_REPORT_REQUIRED_TESTS}")

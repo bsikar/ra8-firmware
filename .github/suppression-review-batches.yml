@@ -1089,3 +1089,21 @@ batches:
     partition: "selective retain of 4 ledger row(s): 0ba0f3cf6e28, 5c3aa2b7ea86, 7a937f59b70a, c6a44f457965"
     evidence:
       - "test-name passing-counterpart: firmware_pipeline/report symbol and inventory selftests intentionally feed malformed evidence and use WILL_FAIL; their ordinary ABI/CLI/runtime tests prove the passing direction"
+  - id: selective-review-20260915-200550
+    authority: repository-suppression-review
+    date: 2026-09-15
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 25
+    rows_sha256: 8b80b9efa9221181e4f48a77d2e2855ff942bb4f1dcb9f1b8028cfad31aed444
+    partition: "selective retain of 25 ledger row(s): 15bb5e5bc6fb, 18bb9e6b5777, 19be3c9c9828, 203fc2a1d82e, 2300b13c923c, 316512b0a273, 32668dc67c09, 37ac4380abf7, 38d81a7f5a99, 40b18a24ca7d, 460917e292c6, 52f05c2a41e9, 66ea61fb516c, 6e06a7dbcb08, 6f4d6f900178, 70bc7e26c91c, ac77f80b39c8, c2335e816f7e, d83de1733f03, d8e2339ba3db, de3d0c7556ed, e4e27e2e8643, e991b1728f27, f1e4d963fcea, fdc7ee56d774"
+    evidence:
+      - "classification-batch census-digest; exact checker scope values classified and authenticated by suppression_checker_scope.py"
+  - id: selective-review-20260915-202139
+    authority: repository-suppression-review
+    date: 2026-09-15
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 2
+    rows_sha256: abe9ea706be5e09d7af3d40676bb21b1f5c74f90946f75791df141ebcfc580e4
+    partition: "selective retain of 2 ledger row(s): 4d6c94d53d0b, 599debd0efcb"
+    evidence:
+      - "classification-batch census-digest; exact checker scope values classified and authenticated by suppression_checker_scope.py"

@@ -117,10 +117,24 @@ HOSTED_FLOOR = 400
 # the count above the floor.
 MUST_DISCOVER = (
     "apps/board/stand_alone/ereader/src/main.c",
+    "apps/host/firmware_fingerprint/src/main.rs",
+    "apps/host/firmware_pipeline/rust-main/src/main.rs",
+    "apps/host/firmware_pipeline/zig/src/main.zig",
+    "apps/host/firmware_report/rust-main/src/main.rs",
+    "apps/host/reg_gen/src/main.zig",
     "libs/ra8_core/inc/ra8_boot_entry.h",
 )
 
-SUFFIXES = (".c", ".cpp", ".h")
+SUFFIXES = (".c", ".cpp", ".h", ".rs", ".zig")
+
+LANGUAGE_OWNED_MAINS = {
+    "apps/host/firmware_fingerprint/src/main.rs": "rust",
+    "apps/host/firmware_pipeline/rust-main/src/main.rs": "rust",
+    "apps/host/firmware_pipeline/zig/src/main.zig": "zig",
+    "apps/host/firmware_report/rust-main/src/main.rs": "rust",
+    "apps/host/reg_gen/src/main.zig": "zig",
+}
+NON_C_MAIN_RE = re.compile(r"^\s*(?:pub\s+)?fn\s+main\s*\(")
 
 # `void main(void)` / `int main(void)` / `int main(int argc, char **argv)`.
 # Anchored at column 0: an entry point is never nested or indented, and the
@@ -218,6 +232,18 @@ def check_file(
     """Findings for one file, plus the domain of any entry point it defines."""
     findings: list[str] = []
     lines = text.splitlines()
+    if rel.endswith((".rs", ".zig")):
+        found_line = next((i for i, line in enumerate(lines) if NON_C_MAIN_RE.match(line)), None)
+        if found_line is None:
+            return findings, None
+        domain = domain_of(rel, firmware_apps)
+        if domain != "hosted":
+            findings.append(
+                f"{rel}:{found_line + 1}: non-C main is not in a classified hosted root."
+            )
+            return findings, None
+        return findings, domain
+
     findings.extend(copied_main_declarations(rel, lines))
 
     for i, line in enumerate(lines):
@@ -320,6 +346,30 @@ def check_shared_declaration() -> list[str]:
     return findings
 
 
+def check_language_owned_mains(paths: list[str]) -> list[str]:
+    """Require the reference host apps to keep their declared entry language."""
+    present = set(paths)
+    findings: list[str] = []
+    for rel, language in LANGUAGE_OWNED_MAINS.items():
+        if rel not in present:
+            findings.append(f"{rel}: missing required {language}-owned production main")
+            continue
+        text = (REPO_ROOT / rel).read_text(encoding="utf-8")
+        count = sum(bool(NON_C_MAIN_RE.match(line)) for line in text.splitlines())
+        if count != 1:
+            findings.append(f"{rel}: expected exactly one {language} main, found {count}")
+    forbidden = (
+        "apps/host/firmware_report/src/main.c",
+        "apps/host/firmware_pipeline/src/main.c",
+    )
+    findings.extend(
+        f"{rel}: C must not own this mixed-language application main"
+        for rel in forbidden
+        if rel in present
+    )
+    return findings
+
+
 def check_firmware_apps(paths: list[str] | None = None) -> list[str]:
     """``FIRMWARE_APPS`` must still name exactly the firmware products present.
 
@@ -406,6 +456,14 @@ def _selftest_quiet(failures: list[str]) -> None:
     expect(not quiet, f"a conforming hosted PRODUCT is silent (got {quiet})", failures)
     expect(domain == "hosted", f"an unnamed product stays hosted (got {domain})", failures)
 
+    quiet, domain = check_file("apps/host/x/src/main.rs", "fn main() {}\n")
+    expect(not quiet, f"a hosted Rust main is silent (got {quiet})", failures)
+    expect(domain == "hosted", f"a Rust app main is hosted (got {domain})", failures)
+
+    quiet, domain = check_file("apps/host/x/src/main.zig", "pub fn main() u8 { return 0; }\n")
+    expect(not quiet, f"a hosted Zig main is silent (got {quiet})", failures)
+    expect(domain == "hosted", f"a Zig app main is hosted (got {domain})", failures)
+
     quiet, domain = check_file("apps/board/stand_alone/ereader/tests/src/test_main.c", good_hosted)
     expect(not quiet, f"a firmware product's hosted test stays silent (got {quiet})", failures)
     expect(domain == "hosted", f"a nested product test is hosted (got {domain})", failures)
@@ -473,6 +531,11 @@ def _selftest_fires(failures: list[str]) -> None:
     }
     for label, (rel, text) in fires.items():
         expect(bool(check_file(rel, text)[0]), f"MUST FIRE: {label}", failures)
+    expect(
+        bool(check_file("libs/x/main.rs", "fn main() {}\n")[0]),
+        "MUST FIRE: an unclassified Rust main is rejected",
+        failures,
+    )
 
 
 def _selftest_scope(failures: list[str]) -> None:
@@ -534,6 +597,16 @@ def _selftest_scope(failures: list[str]) -> None:
         "without its FIRMWARE_APPS entry the e-reader would be misclassified",
         failures,
     )
+    expect(
+        not check_language_owned_mains(live),
+        "all declared Rust/Zig application mains are present",
+        failures,
+    )
+    expect(
+        bool(check_language_owned_mains([*live, "apps/host/firmware_report/src/main.c"])),
+        "MUST FIRE: a restored C-owned mixed-language main is rejected",
+        failures,
+    )
 
 
 def selftest() -> int:
@@ -547,7 +620,7 @@ def selftest() -> int:
 
 
 def discover() -> list[str]:
-    """Every first-party C/C++ path, from git ls-files."""
+    """Every first-party C/C++/Rust/Zig path, from git ls-files."""
     return first_party_paths(SUFFIXES)
 
 
@@ -562,12 +635,21 @@ def main(argv: list[str]) -> int:
 
     findings, counts = scan(paths)
     if not explicit:
-        findings = check_shared_declaration() + check_firmware_apps() + findings
+        findings = (
+            check_shared_declaration()
+            + check_firmware_apps()
+            + check_language_owned_mains(paths)
+            + findings
+        )
 
     if "--list" in args:
         for rel in paths:
             text = (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
-            found = find_main(text.splitlines())
+            found = (
+                any(NON_C_MAIN_RE.match(line) for line in text.splitlines())
+                if rel.endswith((".rs", ".zig"))
+                else find_main(text.splitlines())
+            )
             if found:
                 print(f"{domain_of(rel) or 'UNCLASSIFIED':<13}{rel}")
         return EXIT_OK

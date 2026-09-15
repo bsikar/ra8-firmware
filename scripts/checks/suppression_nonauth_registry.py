@@ -246,6 +246,7 @@ _GROUPS = (
             "checks/check_entry_points.py:BOOT_HEADER",
             "checks/check_entry_points.py:MAIN_DECL_RE",
             "checks/check_entry_points.py:MAIN_DEF_RE",
+            "checks/check_entry_points.py:NON_C_MAIN_RE",
             "checks/check_entry_points.py:RETURN_VALUE_RE",
             "checks/check_entry_points.py:SUPPRESSION_RE",
             "checks/check_errexit_masking.py:_MASK_RE",

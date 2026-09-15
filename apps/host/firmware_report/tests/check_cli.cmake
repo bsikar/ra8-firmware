@@ -1,7 +1,13 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 
-function(run_case name expected_result expected_stdout expected_stderr)
+function(
+  run_case
+  name
+  expected_result
+  expected_stdout
+  expected_stderr
+)
   execute_process(
     COMMAND "${EXECUTABLE}" ${ARGN}
     RESULT_VARIABLE result
@@ -27,4 +33,10 @@ run_case(
   "${FIXTURE}"
 )
 run_case(usage 2 "" "usage: firmware_report <firmware-image>\n")
-run_case(missing 2 "" "firmware_report: cannot open input\n" "${FIXTURE}.missing")
+run_case(
+  missing
+  2
+  ""
+  "firmware_report: cannot open input\n"
+  "${FIXTURE}.missing"
+)
