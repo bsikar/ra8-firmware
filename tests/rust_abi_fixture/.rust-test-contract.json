@@ -3,7 +3,8 @@
     "src/lib.rs",
     "src/provider.rs",
     "src/foreign.rs",
-    "tests/native.rs"
+    "tests/native.rs",
+    "tests/zig_consumer.rs"
   ],
-  "minimum_tests": 2
+  "minimum_tests": 3
 }

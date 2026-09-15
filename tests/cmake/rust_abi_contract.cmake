@@ -34,6 +34,23 @@ add_test(
     --locked --all-features --manifest-path "${_ra8_rust_abi_root}/Cargo.toml"
 )
 
+find_program(ZIG_EXECUTABLE NAMES zig REQUIRED)
+add_custom_target(
+  ra8_rust_abi_fixture_zig_consumer ALL
+  COMMAND "${ZIG_EXECUTABLE}" build test "-Drust-lib-dir=${_ra8_rust_abi_target}/debug" --summary
+          all
+  WORKING_DIRECTORY "${_ra8_rust_abi_root}/zig"
+  DEPENDS ra8_rust_abi_fixture_library
+  COMMENT "Building Zig consumer of Rust C ABI fixture"
+  VERBATIM
+)
+add_test(
+  NAME ra8_rust_abi_fixture_zig_consumer
+  COMMAND "${ZIG_EXECUTABLE}" build test "-Drust-lib-dir=${_ra8_rust_abi_target}/debug" --summary
+          all
+  WORKING_DIRECTORY "${_ra8_rust_abi_root}/zig"
+)
+
 find_program(NM_EXECUTABLE NAMES llvm-nm nm REQUIRED)
 add_test(
   NAME ra8_rust_abi_fixture_symbols

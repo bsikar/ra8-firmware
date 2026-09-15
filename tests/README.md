@@ -55,4 +55,4 @@ cell of each row below and fails if it drifts from the tree in either direction
 | `usb/` | USB controller and class tests: USBFS/USBHS controllers, device mode, host stack, CDC-ACM, MSC, and HID classes. |
 | `wireless/` | Wireless and coprocessor interface tests: ESP32-C6 link protocol, Wi-Fi command framing, and BLE transport. |
 | `zig_abi_fixture/` | Host-only Zig C-ABI reference fixture: one Zig static library, hand-authored C23 header, C and Rust consumers, and negative layout/symbol fixtures exercised through the reusable CMake helper. |
-| `rust_abi_fixture/` | Host-only Rust C-ABI provider fixture: safe Rust logic, a narrow `extern "C"` adapter, authoritative C23 header, native Rust tests, C consumer vectors, and exact namespaced-symbol enforcement. |
+| `rust_abi_fixture/` | Host-only Rust C-ABI provider fixture: safe Rust logic, a narrow `extern "C"` adapter, authoritative C23 header, native Rust tests, C and Zig consumer vectors, and exact namespaced-symbol enforcement. |
