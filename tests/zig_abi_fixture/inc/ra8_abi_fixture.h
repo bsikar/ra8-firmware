@@ -148,8 +148,9 @@ void ra8_abi_fixture_test_fail_next_allocation(void);
 /**
  * @brief Release a fixture state object and clear the caller's handle.
  *
- * @details Outstanding library-owned bytes prevent destruction. Successful
- * destruction invalidates the handle reference and restores pool capacity.
+ * @details Outstanding library-owned bytes or an actively executing callback
+ * prevent destruction. Successful destruction releases any idle callback
+ * registration, invalidates the handle reference, and restores pool capacity.
  *
  * @param[in,out] in_out_handle Handle slot to release; must not be NULL. A
  *                              NULL handle value is an idempotent success.
@@ -157,7 +158,7 @@ void ra8_abi_fixture_test_fail_next_allocation(void);
  * @retval k_ra8_ok The handle was absent or was released and cleared.
  * @retval k_ra8_err_null_ptr `in_out_handle` was NULL.
  * @retval k_ra8_err_invalid_arg The handle was not created by this fixture.
- * @retval k_ra8_err_busy Library-owned bytes remain outstanding.
+ * @retval k_ra8_err_busy Library-owned bytes remain outstanding or a callback is active.
  * @pre A non-NULL handle value came from `ra8_abi_fixture_create()` and has
  * not already been destroyed.
  * @pre `in_out_handle` addresses writable pointer storage when non-NULL.
@@ -253,6 +254,65 @@ void ra8_abi_fixture_test_fail_next_allocation(void);
  * @since Version 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_abi_fixture_bytes_release(uint8_t** in_out_bytes);
+
+/**
+ * @brief Task-context callback borrowed by the fixture until unregister or destroy.
+ *
+ * @param[in] context Caller-owned context supplied at registration; may be NULL.
+ * @param[in] bytes Borrowed input bytes. NULL is valid only when `length` is zero.
+ *                  The span is valid only for the duration of this callback.
+ * @param[in] length Number of readable bytes at `bytes`.
+ * @return A defined `ra8_err_t` value. Unrecognized values are mapped to
+ *         `k_ra8_err_invalid_arg` by the fixture.
+ */
+typedef ra8_err_t (*ra8_abi_fixture_callback_t)(void*          context,
+                                                const uint8_t* bytes,
+                                                uint32_t       length);
+
+/**
+ * @brief Borrow a callback and context until the named release boundary.
+ * @param[in] handle Live fixture handle.
+ * @param[in] callback C callback; must not be NULL.
+ * @param[in] context Caller-owned context retained without dereferencing by Zig; may be NULL.
+ * @return `k_ra8_ok`, `k_ra8_err_null_ptr`, `k_ra8_err_invalid_arg`, or `k_ra8_err_busy`.
+ * @post Success retains callback and context until unregister, cancel, or destroy.
+ * @pre The caller keeps the callback code and any non-NULL context alive until
+ * successful unregister, cancel, or destruction.
+ * @note Task-only and non-reentrant.
+ */
+[[nodiscard]] ra8_err_t ra8_abi_fixture_callback_register(ra8_abi_fixture_t*         handle,
+                                                          ra8_abi_fixture_callback_t callback,
+                                                          void*                      context);
+
+/**
+ * @brief Invoke the registered callback synchronously in caller task context.
+ * @param[in] handle Live fixture handle.
+ * @param[in] bytes Borrowed bytes. NULL is valid only when `length` is zero;
+ * valid storage remains borrowed through the synchronous callback only.
+ * @param[in] length Number of bytes.
+ * @return A recognized callback result, or a fixture validation/state result.
+ * Unrecognized callback values map to `k_ra8_err_invalid_arg`.
+ * @post No callback remains active after this function returns.
+ * @note Reentrant calls on the same handle return `k_ra8_err_busy`.
+ */
+[[nodiscard]] ra8_err_t
+ra8_abi_fixture_callback_invoke(ra8_abi_fixture_t* handle, const uint8_t* bytes, uint32_t length);
+
+/**
+ * @brief Release the borrowed callback and context while idle.
+ * @param[in] handle Live fixture handle.
+ * @return `k_ra8_ok`, or a validation/state result; active callbacks return `k_ra8_err_busy`.
+ * @post Success guarantees no later callback begins or continues.
+ */
+[[nodiscard]] ra8_err_t ra8_abi_fixture_callback_unregister(ra8_abi_fixture_t* handle);
+
+/**
+ * @brief Cancel callback registration through the same release boundary.
+ * @param[in] handle Live fixture handle.
+ * @return The unregister result.
+ * @post Success releases the retained callback and context.
+ */
+[[nodiscard]] ra8_err_t ra8_abi_fixture_callback_cancel(ra8_abi_fixture_t* handle);
 
 #ifdef __cplusplus
 }

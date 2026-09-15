@@ -22,6 +22,7 @@ from git_environment import trusted_git_executable
 from lint_targets import is_build_output_path
 
 CONTRACT = ".rust-test-contract.json"
+RUST_TEST_ATTR_RE = re.compile(r"(?m)^\s*#\s*\[\s*(?:cfg\s*\(\s*test\s*\)|test)\s*\]")
 
 
 def repo_root() -> Path:
@@ -129,6 +130,13 @@ def contract_errors(crate: Path) -> tuple[list[str], int, set[Path]]:
         f"covered source is not a Rust source: {source.relative_to(crate)}"
         for source in sorted(declared - owned)
     )
+    errors.extend(
+        "production Rust source contains inline tests; move them under tests/: "
+        f"{source.relative_to(crate.resolve())}"
+        for source in sorted(declared)
+        if "src" in source.relative_to(crate.resolve()).parts
+        and RUST_TEST_ATTR_RE.search(source.read_text(encoding="utf-8"))
+    )
     if not (crate / "Cargo.lock").is_file():
         errors.append("missing Cargo.lock required by --locked")
     return errors, floor, declared
@@ -224,21 +232,28 @@ def verify(cargo: str, base: Path) -> int:
 def write_fixture(root: Path, passing: bool = True, floor: int = 1) -> None:
     """Create one dependency-free synthetic crate for checker selftests."""
     (root / "src").mkdir(parents=True, exist_ok=True)
+    (root / "tests").mkdir(parents=True, exist_ok=True)
     (root / "Cargo.toml").write_text(
         '[package]\nname = "rust-check-selftest"\nversion = "0.1.0"\nedition = "2024"\n',
         encoding="utf-8",
     )
-    expected = "1" if passing else "2"
     (root / "src/lib.rs").write_text(
+        "pub const fn contract_value() -> u32 {\n    1\n}\n",
+        encoding="utf-8",
+    )
+    expected = "1" if passing else "2"
+    (root / "tests/native.rs").write_text(
         "#[test]\n"
         "fn contract() {\n"
-        "    let actual = 1;\n"
-        f"    assert_eq!(actual, {expected});\n"
+        f"    assert_eq!(rust_check_selftest::contract_value(), {expected});\n"
         "}\n",
         encoding="utf-8",
     )
     (root / CONTRACT).write_text(
-        json.dumps({"covered_sources": ["src/lib.rs"], "minimum_tests": floor}) + "\n",
+        json.dumps(
+            {"covered_sources": ["src/lib.rs", "tests/native.rs"], "minimum_tests": floor}
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -258,6 +273,23 @@ def selftest(cargo: str) -> int:
         if verify(cargo, root) == 0:
             failures.append("must-fire: test count below the contract floor was accepted")
         write_fixture(root)
+        source = root / "src/lib.rs"
+        source.write_text(
+            source.read_text(encoding="utf-8")
+            + "\n#[cfg(test)]\nmod tests { #[test] fn inline() {} }\n",
+            encoding="utf-8",
+        )
+        if verify(cargo, root) == 0:
+            failures.append("must-fire: inline test in production Rust source was accepted")
+        write_fixture(root)
+        source = root / "src/lib.rs"
+        source.write_text(
+            source.read_text(encoding="utf-8") + "\n#[test]\nfn bare_inline_test() {}\n",
+            encoding="utf-8",
+        )
+        if verify(cargo, root) == 0:
+            failures.append("must-fire: bare #[test] in production Rust source was accepted")
+        write_fixture(root)
         (root / "src/orphan.rs").write_text("pub const ORPHAN: bool = true;\n", encoding="utf-8")
         if verify(cargo, root) == 0:
             failures.append("must-fire: orphan Rust source was accepted")
@@ -269,7 +301,7 @@ def selftest(cargo: str) -> int:
             failures.append("must-fire: listed but uncompiled Rust source was accepted")
         (root / "src/orphan.rs").unlink()
         write_fixture(root)
-        source = root / "src/lib.rs"
+        source = root / "tests/native.rs"
         source.write_text(
             source.read_text(encoding="utf-8").replace("#[test]", "#[test]\n#[ignore]"),
             encoding="utf-8",

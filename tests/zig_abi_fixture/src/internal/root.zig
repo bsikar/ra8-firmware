@@ -20,9 +20,14 @@ pub const ApplyError = error{
 
 pub const max_bytes: usize = 32;
 
+pub const Callback = *const fn (?*anyopaque, ?[*]const u8, u32) callconv(.c) u16;
+
 pub const Handle = struct {
     bytes: [max_bytes]u8 = [_]u8{0} ** max_bytes,
     bytes_live: bool = false,
+    callback: ?Callback = null,
+    callback_context: ?*anyopaque = null,
+    callback_active: bool = false,
 };
 
 var handle_slot = Handle{};
@@ -64,7 +69,7 @@ pub fn resolve(raw: *anyopaque) ?*Handle {
 }
 
 pub fn destroy(handle: *Handle) bool {
-    if (handle.bytes_live) return false;
+    if (handle.bytes_live or handle.callback_active) return false;
     handle.* = .{};
     handle_live = false;
     return true;
