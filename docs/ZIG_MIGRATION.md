@@ -168,6 +168,27 @@ This test proves the boundary from the consumer side. Zig unit tests remain
 valuable for internal behavior, but they do not replace the C compile, link,
 and runtime acceptance path.
 
+## Zig native tests
+
+Every first-party Zig build root provides an explicit `zig build test` step
+that runs Zig `test` declarations through `std.testing`. Put private-behavior
+tests beside the native module they exercise and adapter-mapping tests beside
+the ABI adapter. These tests may call native Zig interfaces directly; they are
+separate evidence from C acceptance tests at the exported boundary.
+
+Each build root also carries `.zig-test-contract.json`. Its `test_roots` list
+names the source modules compiled by the build graph's test step,
+`covered_sources` inventories every other source compiled and tested directly,
+and `minimum_tests` records the reviewed non-vacuity floor. The gate checks
+Zig's verbose build evidence to prove the declared roots actually reached the
+compiler; textual imports or comments are not reachability evidence. It also
+runs each covered source through `zig test`, then rejects a missing test step,
+an unlisted source, or an executed-test count below the floor.
+
+Adding or removing a Zig source therefore requires wiring it into a declared
+test root. Deliberately lowering a test floor is a review event and must be
+justified by the same change that removes or consolidates the tests.
+
 ## Migration checklist for this boundary
 
 1. Retain or create the public header below `libs/<library>/inc/` as the C ABI
@@ -178,7 +199,8 @@ and runtime acceptance path.
 4. Add the library-local `build.zig` root and wire it into the transitional
    build graph.
 5. Add a C acceptance test that uses only the public header and artifact.
-6. Apply the foundation policies for representation, failures, ownership,
+6. Add native Zig tests and update the build root's test contract.
+7. Apply the foundation policies for representation, failures, ownership,
    callbacks, traps, and concurrency before exposing those categories. Every
    export declares its calling-context classification; reject an implicit
    host-thread assumption, an unclassified export, or an ISR path that reaches

@@ -1,0 +1,10 @@
+{
+  "test_roots": [
+    "src/main.zig"
+  ],
+  "covered_sources": [
+    "src/generator.zig",
+    "src/main.zig"
+  ],
+  "minimum_tests": 23
+}

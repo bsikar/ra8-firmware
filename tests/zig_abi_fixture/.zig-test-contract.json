@@ -1,0 +1,10 @@
+{
+  "test_roots": [
+    "src/ra8_abi_fixture_abi.zig"
+  ],
+  "covered_sources": [
+    "src/internal/root.zig",
+    "src/ra8_abi_fixture_abi.zig"
+  ],
+  "minimum_tests": 4
+}
