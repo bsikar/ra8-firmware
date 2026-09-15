@@ -77,8 +77,8 @@ dashboard:
             while IFS=$'\t' read -r run_id workflow; do
                 [[ -n "$run_id" ]] || continue
                 gh api --paginate "repos/bsikar/ra8-firmware/actions/runs/$run_id/jobs?per_page=100" \
-                    --jq --arg workflow "$workflow" \
-                    '.jobs[] | select((.status == "queued" or .status == "in_progress") and (.runner_name | type == "string") and (.runner_name | length > 0)) | [.runner_name, (($workflow + " / " + .name) | gsub("[\\t\\r\\n]"; " ") | .[0:56])] | @tsv'
+                    --jq '.jobs[] | select((.status == "queued" or .status == "in_progress") and (.runner_name | type == "string") and (.runner_name | length > 0)) | [.runner_name, .name] | @tsv' \
+                    | awk -F '\t' -v workflow="$workflow" '{ printf "%s\t%s / %s\n", $1, workflow, $2 }'
             done <"$data_dir/active-runs" >"$data_dir/jobs"
             echo ok >"$data_dir/jobs.status"
         ) >"$data_dir/jobs.log" 2>&1 || echo failed >"$data_dir/jobs.status" &
