@@ -157,3 +157,60 @@ pub export fn ra8_abi_fixture_bytes_release(
     output.* = null;
     return .ok;
 }
+
+pub export fn ra8_abi_fixture_callback_register(
+    raw_handle: ?*AbiHandle,
+    callback: ?implementation.Callback,
+    context: ?*anyopaque,
+) callconv(.c) AbiError {
+    const raw = raw_handle orelse return .null_ptr;
+    const selected = callback orelse return .null_ptr;
+    const handle = resolveHandle(raw) orelse return .invalid_arg;
+    if (handle.callback_active or handle.callback != null) return .busy;
+    handle.callback = selected;
+    handle.callback_context = context;
+    return .ok;
+}
+
+pub export fn ra8_abi_fixture_callback_invoke(
+    raw_handle: ?*AbiHandle,
+    input: ?[*]const u8,
+    input_len: u32,
+) callconv(.c) AbiError {
+    const raw = raw_handle orelse return .null_ptr;
+    const handle = resolveHandle(raw) orelse return .invalid_arg;
+    if (handle.callback_active) return .busy;
+    const callback = handle.callback orelse return .invalid_state;
+    const bytes = validateInput(input, input_len) catch |err| switch (err) {
+        error.InvalidSize => return .invalid_size,
+        error.NullPointer => return .null_ptr,
+    };
+    handle.callback_active = true;
+    defer handle.callback_active = false;
+    const raw_result = callback(handle.callback_context, bytes.ptr, input_len);
+    return switch (raw_result) {
+        @intFromEnum(AbiError.ok) => .ok,
+        @intFromEnum(AbiError.no_mem) => .no_mem,
+        @intFromEnum(AbiError.invalid_arg) => .invalid_arg,
+        @intFromEnum(AbiError.invalid_state) => .invalid_state,
+        @intFromEnum(AbiError.invalid_size) => .invalid_size,
+        @intFromEnum(AbiError.busy) => .busy,
+        @intFromEnum(AbiError.null_ptr) => .null_ptr,
+        else => .invalid_arg,
+    };
+}
+
+pub export fn ra8_abi_fixture_callback_unregister(
+    raw_handle: ?*AbiHandle,
+) callconv(.c) AbiError {
+    const raw = raw_handle orelse return .null_ptr;
+    const handle = resolveHandle(raw) orelse return .invalid_arg;
+    if (handle.callback_active) return .busy;
+    handle.callback = null;
+    handle.callback_context = null;
+    return .ok;
+}
+
+pub export fn ra8_abi_fixture_callback_cancel(raw_handle: ?*AbiHandle) callconv(.c) AbiError {
+    return ra8_abi_fixture_callback_unregister(raw_handle);
+}

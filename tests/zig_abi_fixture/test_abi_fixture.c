@@ -29,6 +29,74 @@ static const uint8_t  k_sentinel_bytes[8] = {
   0xA5U,
 };
 
+typedef struct {
+  ra8_abi_fixture_t** handle_slot;
+  uint32_t            calls;
+  ra8_err_t           result;
+  bool                try_reentrant;
+} callback_context_t;
+
+static ra8_err_t fixture_callback(void* context, const uint8_t* bytes, uint32_t length)
+{
+  callback_context_t* state = context;
+  if (state == nullptr || bytes == nullptr || length != 3U) {
+    return k_ra8_err_invalid_arg;
+  }
+  state->calls++;
+  ra8_abi_fixture_t* handle = *state->handle_slot;
+  if (state->try_reentrant &&
+      (ra8_abi_fixture_callback_invoke(handle, bytes, length) != k_ra8_err_busy ||
+       ra8_abi_fixture_callback_cancel(handle) != k_ra8_err_busy ||
+       ra8_abi_fixture_destroy(state->handle_slot) != k_ra8_err_busy ||
+       *state->handle_slot != handle)) {
+    return k_ra8_err_invalid_state;
+  }
+  return state->result;
+}
+
+static abi_fixture_test_result_t test_callbacks(ra8_abi_fixture_t*  handle,
+                                                callback_context_t* context)
+{
+  static const uint8_t input[] = {3U, 2U, 1U};
+
+  if (ra8_abi_fixture_callback_invoke(handle, input, sizeof(input)) != k_ra8_err_invalid_state ||
+      ra8_abi_fixture_callback_register(handle, nullptr, context) != k_ra8_err_null_ptr ||
+      ra8_abi_fixture_callback_register(handle, fixture_callback, context) != k_ra8_ok ||
+      ra8_abi_fixture_callback_register(handle, fixture_callback, context) != k_ra8_err_busy ||
+      ra8_abi_fixture_callback_invoke(handle, input, sizeof(input)) != k_ra8_ok ||
+      context->calls != 1U) {
+    return k_abi_fixture_test_failure;
+  }
+  context->result = k_ra8_err_invalid_size;
+  if (ra8_abi_fixture_callback_invoke(handle, input, sizeof(input)) != k_ra8_err_invalid_size ||
+      context->calls != 2U) {
+    return k_abi_fixture_test_failure;
+  }
+  context->result = (ra8_err_t)UINT16_MAX;
+  if (ra8_abi_fixture_callback_invoke(handle, input, sizeof(input)) != k_ra8_err_invalid_arg ||
+      context->calls != 3U) {
+    return k_abi_fixture_test_failure;
+  }
+  context->result        = k_ra8_ok;
+  context->try_reentrant = true;
+  if (ra8_abi_fixture_callback_invoke(handle, input, sizeof(input)) != k_ra8_ok ||
+      context->calls != 4U) {
+    return k_abi_fixture_test_failure;
+  }
+  context->try_reentrant = false;
+  if (ra8_abi_fixture_callback_unregister(handle) != k_ra8_ok ||
+      ra8_abi_fixture_callback_invoke(handle, input, sizeof(input)) != k_ra8_err_invalid_state ||
+      context->calls != 4U ||
+      ra8_abi_fixture_callback_register(handle, fixture_callback, context) != k_ra8_ok ||
+      ra8_abi_fixture_callback_cancel(handle) != k_ra8_ok ||
+      ra8_abi_fixture_callback_invoke(handle, input, sizeof(input)) != k_ra8_err_invalid_state ||
+      context->calls != 4U ||
+      ra8_abi_fixture_callback_register(handle, fixture_callback, context) != k_ra8_ok) {
+    return k_abi_fixture_test_failure;
+  }
+  return k_abi_fixture_test_success;
+}
+
 /**
  * @brief Exercise the stateless scalar boundary.
  *
@@ -339,7 +407,13 @@ static abi_fixture_test_result_t test_owned_bytes(ra8_abi_fixture_t* handle)
  */
 int main(void)
 {
-  ra8_abi_fixture_t* handle = nullptr;
+  ra8_abi_fixture_t* handle           = nullptr;
+  callback_context_t callback_context = {
+    .handle_slot   = &handle,
+    .calls         = 0U,
+    .result        = k_ra8_ok,
+    .try_reentrant = false,
+  };
 
   if (test_apply() != k_abi_fixture_test_success) {
     return k_abi_fixture_test_failure;
@@ -353,7 +427,16 @@ int main(void)
   if (test_owned_bytes(handle) != k_abi_fixture_test_success) {
     return k_abi_fixture_test_failure;
   }
+  if (test_callbacks(handle, &callback_context) != k_abi_fixture_test_success) {
+    return k_abi_fixture_test_failure;
+  }
+  ra8_abi_fixture_t*   destroyed_handle     = handle;
+  const uint32_t       calls_before_destroy = callback_context.calls;
+  static const uint8_t callback_input[]     = {3U, 2U, 1U};
   if (ra8_abi_fixture_destroy(&handle) != k_ra8_ok || handle != nullptr ||
+      ra8_abi_fixture_callback_invoke(destroyed_handle, callback_input, sizeof(callback_input)) !=
+        k_ra8_err_invalid_arg ||
+      callback_context.calls != calls_before_destroy ||
       ra8_abi_fixture_destroy(&handle) != k_ra8_ok ||
       ra8_abi_fixture_destroy(nullptr) != k_ra8_err_null_ptr) {
     return k_abi_fixture_test_failure;
