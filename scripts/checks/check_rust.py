@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Verify every first-party Rust source with rustfmt, Clippy, and Cargo tests."""
+"""Verify every first-party Rust source with explicit lint, format, and test modes."""
 
 from __future__ import annotations
 
@@ -22,7 +22,78 @@ from git_environment import trusted_git_executable
 from lint_targets import is_build_output_path
 
 CONTRACT = ".rust-test-contract.json"
-RUST_TEST_ATTR_RE = re.compile(r"(?m)^\s*#\s*\[\s*(?:cfg\s*\(\s*test\s*\)|test)\s*\]")
+RUST_TEST_ATTR_RE = re.compile(r"(?m)^\s*#\s*\[\s*(?:test\s*\]|cfg\s*\([^]]*\btest\b[^]]*\)\s*\])")
+
+
+def blank_preserving_lines(text: str) -> str:
+    """Replace non-newline characters with spaces."""
+    return "".join("\n" if char == "\n" else " " for char in text)
+
+
+def consume_block_comment(text: str, start: int) -> int:
+    """Return the end of one possibly nested Rust block comment."""
+    index = start + 2
+    depth = 1
+    while index < len(text) and depth:
+        if text.startswith("/*", index):
+            depth += 1
+            index += 2
+        elif text.startswith("*/", index):
+            depth -= 1
+            index += 2
+        else:
+            index += 1
+    return index
+
+
+def consume_quoted(text: str, start: int, quote: str) -> int:
+    """Return the end of one escaped Rust string or character literal."""
+    index = start + 1
+    while index < len(text):
+        if text[index] == "\\" and index + 1 < len(text):
+            index += 2
+        elif text[index] == quote:
+            return index + 1
+        else:
+            index += 1
+    return index
+
+
+def raw_string_end(text: str, start: int) -> int | None:
+    """Return the end of a Rust raw string beginning at ``start``."""
+    match = re.match(r'r(#{0,255})"', text[start:])
+    if match is None:
+        return None
+    terminator = '"' + match.group(1)
+    content_start = start + len(match.group(0))
+    end = text.find(terminator, content_start)
+    return len(text) if end < 0 else end + len(terminator)
+
+
+def without_rust_comments_and_strings(text: str) -> str:
+    """Blank comments and string/character literals while preserving newlines."""
+    output: list[str] = []
+    index = 0
+    while index < len(text):
+        end = index
+        if text.startswith("//", index):
+            newline = text.find("\n", index)
+            end = len(text) if newline < 0 else newline
+        elif text.startswith("/*", index):
+            end = consume_block_comment(text, index)
+        elif text[index] == "r":
+            end = raw_string_end(text, index) or index
+        elif text[index] == '"':
+            end = consume_quoted(text, index, '"')
+        elif text[index] == "'" and re.match(r"'(?:\\.|[^\\'\n])'", text[index:]):
+            end = consume_quoted(text, index, "'")
+        if end > index:
+            output.append(blank_preserving_lines(text[index:end]))
+            index = end
+        else:
+            output.append(text[index])
+            index += 1
+    return "".join(output)
 
 
 def repo_root() -> Path:
@@ -135,7 +206,9 @@ def contract_errors(crate: Path) -> tuple[list[str], int, set[Path]]:
         f"{source.relative_to(crate.resolve())}"
         for source in sorted(declared)
         if "src" in source.relative_to(crate.resolve()).parts
-        and RUST_TEST_ATTR_RE.search(source.read_text(encoding="utf-8"))
+        and RUST_TEST_ATTR_RE.search(
+            without_rust_comments_and_strings(source.read_text(encoding="utf-8"))
+        )
     )
     if not (crate / "Cargo.lock").is_file():
         errors.append("missing Cargo.lock required by --locked")
@@ -173,8 +246,78 @@ def executed_test_count(output: str) -> int:
     return sum(int(passed) for passed in re.findall(r"(?m)^test result: .*? (\d+) passed;", output))
 
 
+def quality(cargo: str, base: Path, *, run_clippy: bool) -> int:
+    """Check rustfmt and optionally Clippy over every first-party crate."""
+    sources = rust_sources(None if base == repo_root() else base)
+    if not sources:
+        print("check_rust.py: FATAL -- no first-party Rust sources found", file=sys.stderr)
+        return 2
+    crates, errors = crates_and_errors(base, sources)
+    for crate in crates:
+        with tempfile.TemporaryDirectory() as target_tmp:
+            environment = dict(os.environ)
+            environment["CARGO_TARGET_DIR"] = target_tmp
+            commands = [[cargo, "fmt", "--check"]]
+            if run_clippy:
+                commands.append(
+                    [
+                        cargo,
+                        "clippy",
+                        "--locked",
+                        "--all-targets",
+                        "--all-features",
+                        "--",
+                        "-D",
+                        "warnings",
+                    ]
+                )
+            for argv in commands:
+                proc = run(argv, crate, environment)
+                if proc.returncode != 0:
+                    errors.append(
+                        f"{crate.relative_to(base)}: {' '.join(argv[1:])} failed\n"
+                        f"{proc.stdout}{proc.stderr}"
+                    )
+    if errors:
+        mode = "--lint" if run_clippy else "--check-format"
+        print(f"check_rust.py {mode}: FAILED", file=sys.stderr)
+        for error in errors:
+            print(f"  {error}", file=sys.stderr)
+        return 1
+    mode = "--lint" if run_clippy else "--check-format"
+    print(f"check_rust.py {mode}: {len(sources)} source(s), {len(crates)} crate(s) clean.")
+    return 0
+
+
+def lint(cargo: str, base: Path) -> int:
+    """Run rustfmt and Clippy over every discovered first-party crate."""
+    return quality(cargo, base, run_clippy=True)
+
+
+def format_sources(cargo: str, base: Path) -> int:
+    """Run rustfmt in place for every discovered first-party crate."""
+    sources = rust_sources(None if base == repo_root() else base)
+    if not sources:
+        print("check_rust.py: FATAL -- no first-party Rust sources found", file=sys.stderr)
+        return 2
+    crates, errors = crates_and_errors(base, sources)
+    for crate in crates:
+        proc = run([cargo, "fmt"], crate)
+        if proc.returncode != 0:
+            errors.append(
+                f"{crate.relative_to(base)}: cargo fmt failed\n{proc.stdout}{proc.stderr}"
+            )
+    if errors:
+        print("check_rust.py --format: FAILED", file=sys.stderr)
+        for error in errors:
+            print(f"  {error}", file=sys.stderr)
+        return 1
+    print(f"check_rust.py --format: formatted {len(sources)} source(s) in {len(crates)} crate(s).")
+    return 0
+
+
 def verify(cargo: str, base: Path) -> int:
-    """Run all Rust quality checks and native tests beneath ``base``."""
+    """Run native Rust tests beneath ``base`` without duplicating lint/style work."""
     sources = rust_sources(None if base == repo_root() else base)
     if not sources:
         print("check_rust.py: FATAL -- no first-party Rust sources found", file=sys.stderr)
@@ -188,19 +331,13 @@ def verify(cargo: str, base: Path) -> int:
         with tempfile.TemporaryDirectory() as target_tmp:
             environment = dict(os.environ)
             environment["CARGO_TARGET_DIR"] = target_tmp
-            for argv in (
-                [cargo, "fmt", "--check"],
-                [cargo, "clippy", "--locked", "--all-targets", "--", "-D", "warnings"],
-            ):
-                proc = run(argv, crate, environment)
-                if proc.returncode != 0:
-                    command = " ".join(argv[1:])
-                    errors.append(
-                        f"{crate.relative_to(base)}: {command} failed\n{proc.stdout}{proc.stderr}"
-                    )
-            no_run = run([cargo, "test", "--locked", "--no-run"], crate, environment)
+            no_run = run(
+                [cargo, "test", "--locked", "--all-features", "--no-run"], crate, environment
+            )
             if no_run.returncode != 0:
-                errors.append(f"{crate.relative_to(base)}: cargo test --no-run failed")
+                errors.append(
+                    f"{crate.relative_to(base)}: cargo test --all-features --no-run failed"
+                )
             else:
                 missing = sorted(declared - compiled_sources(Path(target_tmp), crate))
                 errors.extend(
@@ -208,10 +345,12 @@ def verify(cargo: str, base: Path) -> int:
                     f"{source.relative_to(crate)}"
                     for source in missing
                 )
-            proc = run([cargo, "test", "--locked"], crate, environment)
+            proc = run([cargo, "test", "--locked", "--all-features"], crate, environment)
             combined = proc.stdout + proc.stderr
             if proc.returncode != 0:
-                errors.append(f"{crate.relative_to(base)}: cargo test failed\n{combined}")
+                errors.append(
+                    f"{crate.relative_to(base)}: cargo test --all-features failed\n{combined}"
+                )
             count = executed_test_count(combined)
             if count < floor:
                 crate_name = crate.relative_to(base)
@@ -229,12 +368,13 @@ def verify(cargo: str, base: Path) -> int:
     return 0
 
 
-def write_fixture(root: Path, passing: bool = True, floor: int = 1) -> None:
+def write_fixture(root: Path, passing: bool = True, floor: int = 2) -> None:
     """Create one dependency-free synthetic crate for checker selftests."""
     (root / "src").mkdir(parents=True, exist_ok=True)
     (root / "tests").mkdir(parents=True, exist_ok=True)
     (root / "Cargo.toml").write_text(
-        '[package]\nname = "rust-check-selftest"\nversion = "0.1.0"\nedition = "2024"\n',
+        '[package]\nname = "rust-check-selftest"\nversion = "0.1.0"\nedition = "2024"\n'
+        "\n[features]\ndefault = []\nprobe = []\n",
         encoding="utf-8",
     )
     (root / "src/lib.rs").write_text(
@@ -246,49 +386,120 @@ def write_fixture(root: Path, passing: bool = True, floor: int = 1) -> None:
         "#[test]\n"
         "fn contract() {\n"
         f"    assert_eq!(rust_check_selftest::contract_value(), {expected});\n"
+        "}\n"
+        '\n#[cfg(feature = "probe")]\n'
+        "#[test]\n"
+        "fn feature_contract() {\n"
+        "    assert_eq!(rust_check_selftest::contract_value(), 1);\n"
         "}\n",
         encoding="utf-8",
     )
     (root / CONTRACT).write_text(
-        json.dumps(
-            {"covered_sources": ["src/lib.rs", "tests/native.rs"], "minimum_tests": floor}
-        )
+        json.dumps({"covered_sources": ["src/lib.rs", "tests/native.rs"], "minimum_tests": floor})
         + "\n",
         encoding="utf-8",
     )
 
 
-def selftest(cargo: str) -> int:
-    """Prove passing and failing tests, floors, and source census both ways."""
+def selftest_quality(cargo: str, root: Path, failures: list[str]) -> None:
+    """Prove rustfmt and Clippy each fire, fix, and stay quiet independently."""
+    write_fixture(root)
+    if run([cargo, "generate-lockfile"], root).returncode != 0 or lint(cargo, root) != 0:
+        failures.append("must-stay-quiet: compliant Rust quality fixture failed")
+    source = root / "src/lib.rs"
+    source.write_text("pub const fn contract_value()->u32 {1}\n", encoding="utf-8")
+    if lint(cargo, root) == 0:
+        failures.append("must-fire: rustfmt accepted unformatted production Rust")
+    if format_sources(cargo, root) != 0 or lint(cargo, root) != 0:
+        failures.append("must-stay-quiet: cargo fmt did not repair production Rust")
+    source.write_text(
+        source.read_text(encoding="utf-8")
+        + '\n#[cfg(feature = "probe")]\n'
+        + "pub fn clippy_probe(value: bool) -> bool {\n    value == true\n}\n",
+        encoding="utf-8",
+    )
+    default_clippy = run(
+        [cargo, "clippy", "--locked", "--all-targets", "--", "-D", "warnings"], root
+    )
+    if default_clippy.returncode != 0:
+        failures.append("must-stay-quiet: feature-gated Clippy probe leaked into default features")
+    if lint(cargo, root) == 0:
+        failures.append("must-fire: Clippy omitted a warning behind an optional feature")
+
+
+def selftest_lint(cargo: str) -> int:
+    """Prove rustfmt and Clippy fire, repair, and stay quiet."""
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        selftest_quality(cargo, root, failures)
+    if failures:
+        print("check_rust.py --selftest-lint: FAILED", file=sys.stderr)
+        print("\n".join(failures), file=sys.stderr)
+        return 1
+    print("check_rust.py --selftest-lint: OK (rustfmt and Clippy both directions)")
+    return 0
+
+
+def selftest_placement(cargo: str, root: Path, failures: list[str]) -> None:
+    """Prove production test attributes fire without matching inert prose."""
+    cases = (
+        (
+            "\n#[cfg(test)]\nmod tests { #[test] fn inline() {} }\n",
+            "must-fire: inline test in production Rust source was accepted",
+        ),
+        (
+            '\n#[cfg(any(test, target_os = "linux"))]\nmod compound_tests {}\n',
+            "must-fire: cfg(any(test, ...)) in production Rust was accepted",
+        ),
+        (
+            '\n#[cfg(all(test, target_os = "linux"))]\nmod conjunctive_tests {}\n',
+            "must-fire: cfg(all(test, ...)) in production Rust was accepted",
+        ),
+        (
+            "\n#[test]\nfn bare_inline_test() {}\n",
+            "must-fire: bare #[test] in production Rust source was accepted",
+        ),
+    )
+    for source_suffix, message in cases:
+        write_fixture(root)
+        source = root / "src/lib.rs"
+        source.write_text(
+            source.read_text(encoding="utf-8") + source_suffix,
+            encoding="utf-8",
+        )
+        if verify(cargo, root) == 0:
+            failures.append(message)
+    write_fixture(root)
+    source = root / "src/lib.rs"
+    source.write_text(
+        source.read_text(encoding="utf-8")
+        + '\npub const PROSE: &str = r#"#[cfg(all(test, unix))]"#;\n'
+        + "/* #[test] fn documented_only() {} */\n",
+        encoding="utf-8",
+    )
+    if verify(cargo, root) != 0:
+        failures.append("must-stay-quiet: Rust comments/string payloads were treated as tests")
+
+
+def selftest_tests(cargo: str) -> int:
+    """Prove native tests, placement, floors, and source census both ways."""
     failures: list[str] = []
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         write_fixture(root)
-        if run([cargo, "generate-lockfile"], root).returncode != 0 or verify(cargo, root) != 0:
-            failures.append("must-stay-quiet: compliant crate failed")
+        if run([cargo, "generate-lockfile"], root).returncode != 0:
+            failures.append("must-stay-quiet: native Rust fixture lockfile generation failed")
+        write_fixture(root)
+        if verify(cargo, root) != 0:
+            failures.append("must-stay-quiet: compliant native Rust test failed")
         write_fixture(root, passing=False)
         if verify(cargo, root) == 0:
             failures.append("must-fire: failing native Rust test was accepted")
-        write_fixture(root, floor=2)
+        write_fixture(root, floor=3)
         if verify(cargo, root) == 0:
             failures.append("must-fire: test count below the contract floor was accepted")
-        write_fixture(root)
-        source = root / "src/lib.rs"
-        source.write_text(
-            source.read_text(encoding="utf-8")
-            + "\n#[cfg(test)]\nmod tests { #[test] fn inline() {} }\n",
-            encoding="utf-8",
-        )
-        if verify(cargo, root) == 0:
-            failures.append("must-fire: inline test in production Rust source was accepted")
-        write_fixture(root)
-        source = root / "src/lib.rs"
-        source.write_text(
-            source.read_text(encoding="utf-8") + "\n#[test]\nfn bare_inline_test() {}\n",
-            encoding="utf-8",
-        )
-        if verify(cargo, root) == 0:
-            failures.append("must-fire: bare #[test] in production Rust source was accepted")
+        selftest_placement(cargo, root, failures)
         write_fixture(root)
         (root / "src/orphan.rs").write_text("pub const ORPHAN: bool = true;\n", encoding="utf-8")
         if verify(cargo, root) == 0:
@@ -309,18 +520,44 @@ def selftest(cargo: str) -> int:
         if verify(cargo, root) == 0:
             failures.append("must-fire: ignored Rust test inflated the execution floor")
     if failures:
-        print("check_rust.py --selftest: FAILED", file=sys.stderr)
+        print("check_rust.py --selftest-test: FAILED", file=sys.stderr)
         print("\n".join(failures), file=sys.stderr)
         return 1
-    print("check_rust.py --selftest: OK (pass, failure, floor, and source census)")
+    print("check_rust.py --selftest-test: OK (tests, placement, floor, census)")
     return 0
+
+
+def execute_mode(args: argparse.Namespace, cargo: str, parser: argparse.ArgumentParser) -> int:
+    """Dispatch one validated Cargo-backed checker mode."""
+    if args.selftest_lint:
+        return selftest_lint(cargo)
+    if args.selftest_test:
+        return selftest_tests(cargo)
+    selected = sum((args.lint, args.check_format, args.format, args.test))
+    if selected != 1:
+        parser.error(
+            "select exactly one of --lint, --format, --test, --selftest-lint, "
+            "--selftest-test, or --list-files"
+        )
+    handlers = {
+        "lint": lambda: lint(cargo, repo_root()),
+        "check_format": lambda: quality(cargo, repo_root(), run_clippy=False),
+        "format": lambda: format_sources(cargo, repo_root()),
+        "test": lambda: verify(cargo, repo_root()),
+    }
+    selected_name = next(name for name in handlers if getattr(args, name))
+    return handlers[selected_name]()
 
 
 def main() -> int:
     """Parse the checker mode and execute it."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--selftest", action="store_true")
+    parser.add_argument("--selftest-lint", action="store_true")
+    parser.add_argument("--selftest-test", action="store_true")
     parser.add_argument("--list-files", action="store_true")
+    parser.add_argument("--lint", action="store_true")
+    parser.add_argument("--check-format", action="store_true")
+    parser.add_argument("--format", action="store_true")
     parser.add_argument("--test", action="store_true")
     parser.add_argument("--require", action="store_true")
     args = parser.parse_args()
@@ -330,15 +567,19 @@ def main() -> int:
         return 0
     cargo = os.environ.get("CARGO") or shutil.which("cargo")
     if cargo is None:
-        if args.require or args.selftest or args.test:
+        if (
+            args.require
+            or args.selftest_lint
+            or args.selftest_test
+            or args.lint
+            or args.check_format
+            or args.format
+            or args.test
+        ):
             print("check_rust.py: FATAL -- cargo was not found", file=sys.stderr)
             return 2
         return 0
-    if args.selftest:
-        return selftest(cargo)
-    if not args.test:
-        parser.error("select --test, --selftest, or --list-files")
-    return verify(cargo, repo_root())
+    return execute_mode(args, cargo, parser)
 
 
 if __name__ == "__main__":

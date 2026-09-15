@@ -195,6 +195,7 @@ if [[ "$-" == *p* ]]; then
     "lint-py-shell|fast|ruff check + shellcheck"
     "lint-go|fast|go vet + staticcheck over first-party Go"
     "lint-zig|fast|zig fmt over first-party Zig"
+    "lint-rust|fast|Clippy + rustfmt over first-party Rust"
     "lint-cmake|fast|cmake-lint over every listfile"
     "lint-yaml|fast|yamllint + actionlint over the workflows"
     "lint-just|fast|justfile structure, headers and portable ROOT"
