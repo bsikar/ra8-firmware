@@ -43,7 +43,9 @@ an unsupported mode, or a scope that collapsed below the file floor.
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -55,6 +57,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
 
 from git_environment import trusted_git_executable
 from lint_targets import is_build_output_path
+
+TEST_CONTRACT_NAME = ".zig-test-contract.json"
+TEST_DECL_RE = re.compile(r"(?m)^\s*test(?:\s+\"[^\"\n]+\")?\s*\{")
 
 
 def _repo_root() -> Path:
@@ -173,16 +178,17 @@ def _run_format(zig: str, files: list[str]) -> int:
     return 0
 
 
-def _run_tests(zig: str, roots: list[Path]) -> dict[str, str]:
-    """Run the explicit `zig build test` target once per build root."""
+def _run_tests(zig: str, roots: list[Path]) -> tuple[dict[str, str], int]:
+    """Run each test target and require Zig's executed-test summary."""
     failures: dict[str, str] = {}
+    executed_total = 0
 
     for root in roots:
         rel_root = (
             str(root.relative_to(_repo_root())) if root.is_relative_to(_repo_root()) else str(root)
         )
         proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
-            [zig, "build", "test"],
+            [zig, "build", "test", "--summary", "all", "--verbose"],
             cwd=root,
             capture_output=True,
             text=True,
@@ -190,7 +196,157 @@ def _run_tests(zig: str, roots: list[Path]) -> dict[str, str]:
         )
         if proc.returncode != 0:
             failures[rel_root] = (proc.stdout + proc.stderr).strip()
+            continue
 
+        combined = proc.stdout + proc.stderr
+        test_roots, _, _, contract_errors = _load_test_contract(root)
+        if contract_errors:
+            failures[rel_root] = "; ".join(contract_errors)
+            continue
+        missing_roots = [path for path in test_roots if f"-Mroot={path.resolve()}" not in combined]
+        if missing_roots:
+            rendered = ", ".join(str(path.relative_to(root)) for path in missing_roots)
+            failures[rel_root] = f"zig build test did not compile declared test root(s): {rendered}"
+            continue
+        matches = re.findall(r"(\d+)/(\d+) tests passed", combined)
+        if not matches:
+            failures[rel_root] = "successful build omitted Zig's executed-test summary"
+            continue
+        passed, executed = (int(value) for value in matches[-1])
+        if passed != executed:
+            failures[rel_root] = f"Zig summary reported only {passed}/{executed} tests passed"
+            continue
+        _, _, floor, contract_errors = _load_test_contract(root)
+        if contract_errors or executed < floor:
+            failures[rel_root] = f"executed Zig test count {executed} is below floor {floor}"
+            continue
+        executed_total += executed
+
+    return failures, executed_total
+
+
+def _load_test_contract(root: Path) -> tuple[list[Path], list[Path], int, list[str]]:
+    """Load one build root's declared Zig test roots and non-vacuity floor."""
+    path = root / TEST_CONTRACT_NAME
+    if not path.is_file():
+        return [], [], 0, [f"missing {TEST_CONTRACT_NAME}"]
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [], [], 0, [f"invalid {TEST_CONTRACT_NAME}: {exc}"]
+
+    roots = raw.get("test_roots")
+    covered = raw.get("covered_sources")
+    floor = raw.get("minimum_tests")
+    errors: list[str] = []
+    if not isinstance(roots, list) or not roots or not all(isinstance(item, str) for item in roots):
+        errors.append("test_roots must be a non-empty string list")
+        roots = []
+    if (
+        not isinstance(covered, list)
+        or not covered
+        or not all(isinstance(item, str) for item in covered)
+    ):
+        errors.append("covered_sources must be a non-empty string list")
+        covered = []
+    if not isinstance(floor, int) or isinstance(floor, bool) or floor < 1:
+        errors.append("minimum_tests must be a positive integer")
+        floor = 0
+    return [root / item for item in roots], [root / item for item in covered], floor, errors
+
+
+def _test_contract_errors(root: Path) -> tuple[list[str], int]:
+    """Validate test-step wiring, source reachability, and the test floor."""
+    errors: list[str] = []
+    build_file = root / "build.zig"
+    build_text = build_file.read_text(encoding="utf-8")
+    if not re.search(r'b\.step\(\s*"test"', build_text):
+        errors.append('build.zig has no explicit b.step("test", ...)')
+    if "addRunArtifact" not in build_text or ".dependOn(" not in build_text:
+        errors.append("build.zig test step does not depend on a run artifact")
+
+    entries, covered, floor, contract_errors = _load_test_contract(root)
+    errors.extend(contract_errors)
+
+    declared_sources: set[Path] = set()
+    for source in covered:
+        try:
+            resolved = source.resolve(strict=True)
+            resolved.relative_to(root.resolve())
+            declared_sources.add(resolved)
+        except (OSError, ValueError):
+            errors.append(f"covered source is missing or outside build root: {source}")
+
+    errors.extend(
+        f"test root is not listed in covered_sources: {source.relative_to(root)}"
+        for source in entries
+        if source.resolve() not in declared_sources
+    )
+
+    owned = {
+        path.resolve()
+        for path in root.rglob("*.zig")
+        if path.name != "build.zig" and not is_build_output_path(str(path.relative_to(root)))
+    }
+    orphaned = sorted(owned - declared_sources)
+    errors.extend(
+        f"orphan Zig source is not reachable from a declared test root: {source.relative_to(root)}"
+        for source in orphaned
+    )
+    unexpected = sorted(declared_sources - owned)
+    errors.extend(
+        f"covered source is not a first-party Zig source: {source.relative_to(root)}"
+        for source in unexpected
+    )
+
+    declared_tests = sum(
+        len(TEST_DECL_RE.findall(path.read_text(encoding="utf-8"))) for path in declared_sources
+    )
+    if floor and declared_tests < floor:
+        errors.append(f"declared Zig test count {declared_tests} is below floor {floor}")
+    return errors, declared_tests
+
+
+def _validate_test_contracts(roots: list[Path]) -> tuple[dict[str, list[str]], int]:
+    """Validate every discovered first-party Zig build root."""
+    findings: dict[str, list[str]] = {}
+    total_tests = 0
+    for root in roots:
+        errors, count = _test_contract_errors(root)
+        total_tests += count
+        if errors:
+            rel = (
+                str(root.relative_to(_repo_root()))
+                if root.is_relative_to(_repo_root())
+                else str(root)
+            )
+            findings[rel] = errors
+    return findings, total_tests
+
+
+def _run_covered_sources(zig: str, roots: list[Path]) -> dict[str, str]:
+    """Compile and execute each source named by a build root's contract."""
+    failures: dict[str, str] = {}
+    for root in roots:
+        _, covered, _, contract_errors = _load_test_contract(root)
+        if contract_errors:
+            continue
+        for source in covered:
+            rel_source = source.relative_to(root)
+            proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
+                [zig, "test", str(rel_source)],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if proc.returncode != 0:
+                rel_root = (
+                    str(root.relative_to(_repo_root()))
+                    if root.is_relative_to(_repo_root())
+                    else str(root)
+                )
+                failures[f"{rel_root}/{rel_source}"] = (proc.stdout + proc.stderr).strip()
     return failures
 
 
@@ -271,6 +427,17 @@ def _write_build_fixture(root: Path, test_source: str) -> None:
         encoding="utf-8",
     )
     (root / "main.zig").write_text(test_source, encoding="utf-8")
+    (root / TEST_CONTRACT_NAME).write_text(
+        json.dumps(
+            {
+                "test_roots": ["main.zig"],
+                "covered_sources": ["main.zig"],
+                "minimum_tests": 1,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
 
 def _selftest_tests(zig: str, failures: list[str]) -> None:
@@ -314,6 +481,109 @@ def _selftest_tests(zig: str, failures: list[str]) -> None:
         if proc_fail.returncode == 0:
             failures.append("  must-fire: failing build graph was accepted")
 
+        # A raw-text import mention must not hide an independently failing source.
+        _write_build_fixture(
+            root,
+            '// @import("shadow.zig")\n'
+            'test "real root" {\n'
+            '    try @import("std").testing.expect(true);\n'
+            "}\n",
+        )
+        (root / "shadow.zig").write_text(
+            'test "unwired failure" {\n    try @import("std").testing.expect(false);\n}\n',
+            encoding="utf-8",
+        )
+        (root / TEST_CONTRACT_NAME).write_text(
+            json.dumps(
+                {
+                    "test_roots": ["main.zig"],
+                    "covered_sources": ["main.zig", "shadow.zig"],
+                    "minimum_tests": 1,
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        if not _run_covered_sources(zig, [root]):
+            failures.append("  must-fire: failing source hidden by a commented import was accepted")
+
+        # A test step that runs a different root must not satisfy the contract.
+        (root / "shadow.zig").write_text(
+            'test "dummy pass" {\n    try @import("std").testing.expect(true);\n}\n',
+            encoding="utf-8",
+        )
+        build_text = (root / "build.zig").read_text(encoding="utf-8")
+        (root / "build.zig").write_text(
+            build_text.replace('b.path("main.zig")', 'b.path("shadow.zig")'),
+            encoding="utf-8",
+        )
+        causal_failures, _ = _run_tests(zig, [root])
+        if not any(
+            "did not compile declared test root" in item for item in causal_failures.values()
+        ):
+            failures.append("  must-fire: test step wired to a dummy root was accepted")
+
+
+def _selftest_test_contract(failures: list[str]) -> None:
+    """Prove test wiring, floor, and orphan checks fire and stay quiet."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        passing_source = (
+            'const helper = @import("helper.zig");\n'
+            'test "contract pass" {\n'
+            "    _ = helper.value;\n"
+            "}\n"
+        )
+        _write_build_fixture(root, passing_source)
+        (root / "helper.zig").write_text("pub const value: u32 = 1;\n", encoding="utf-8")
+        (root / TEST_CONTRACT_NAME).write_text(
+            json.dumps(
+                {
+                    "test_roots": ["main.zig"],
+                    "covered_sources": ["main.zig", "helper.zig"],
+                    "minimum_tests": 1,
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        errors, count = _test_contract_errors(root)
+        if errors or count != 1:
+            failures.append(f"  must-stay-quiet: compliant Zig test contract failed: {errors}")
+
+        (root / "orphan.zig").write_text("pub const orphan = true;\n", encoding="utf-8")
+        errors, _ = _test_contract_errors(root)
+        if not any("orphan Zig source" in error for error in errors):
+            failures.append("  must-fire: orphan Zig source was accepted")
+        (root / "orphan.zig").unlink()
+
+        (root / TEST_CONTRACT_NAME).write_text(
+            json.dumps(
+                {
+                    "test_roots": ["main.zig"],
+                    "covered_sources": ["main.zig", "helper.zig"],
+                    "minimum_tests": 2,
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        errors, _ = _test_contract_errors(root)
+        if not any("below floor" in error for error in errors):
+            failures.append("  must-fire: Zig test count below its floor was accepted")
+
+        build_text = (root / "build.zig").read_text(encoding="utf-8")
+        (root / "build.zig").write_text(
+            build_text.replace(
+                'b.step("test", "Run unit tests")', 'b.step("verify", "Run unit tests")'
+            ),
+            encoding="utf-8",
+        )
+        errors, _ = _test_contract_errors(root)
+        if not any("no explicit" in error for error in errors):
+            failures.append("  must-fire: missing Zig build test step was accepted")
+
 
 def selftest(zig: str) -> int:
     """Prove all tools fire where they must and stay quiet where they must."""
@@ -321,6 +591,7 @@ def selftest(zig: str) -> int:
 
     _selftest_lint(zig, failures)
     _selftest_tests(zig, failures)
+    _selftest_test_contract(failures)
 
     # Scope check
     with tempfile.TemporaryDirectory() as tmp:
@@ -335,7 +606,7 @@ def selftest(zig: str) -> int:
         sys.stderr.write("\n".join(failures) + "\n")
         return 1
 
-    print("check_zig.py --selftest: OK (fmt, ast-check, build test, scope).")
+    print("check_zig.py --selftest: OK (fmt, ast-check, build test, test contract, scope).")
     return 0
 
 
@@ -370,17 +641,49 @@ def _render_summary(
     tracked: list[str],
     targets: list[str],
     mode: str,
+    executed_tests: int = 0,
 ) -> None:
     """Print the per-mode clean summary on stdio."""
     summary_parts: list[str] = []
     if "lint" in mode:
         summary_parts.append("fmt/ast clean")
     if "test" in mode:
-        summary_parts.append("tests passed")
+        summary_parts.append(f"{executed_tests} Zig tests executed and passed")
     print(
         f"check_zig.py: clean ({len(tracked)} file(s), {len(targets)} target(s), "
         f"{'; '.join(summary_parts)})."
     )
+
+
+def _execute_tests(zig: str, roots: list[Path]) -> tuple[int, int]:
+    """Validate and run all native Zig test evidence."""
+    contract_findings, declared_tests = _validate_test_contracts(roots)
+    if contract_findings:
+        sys.stderr.write("check_zig.py: Zig test contract finding(s):\n")
+        for rel_target, errors in sorted(contract_findings.items()):
+            sys.stderr.write(f"  {rel_target}:\n")
+            for error in errors:
+                sys.stderr.write(f"    {error}\n")
+        return 2, 0
+
+    source_failures = _run_covered_sources(zig, roots)
+    if source_failures:
+        sys.stderr.write("check_zig.py: covered Zig source test failure(s):\n")
+        for rel_source, out in sorted(source_failures.items()):
+            sys.stderr.write(f"  {rel_source}:\n")
+            for line in out.splitlines():
+                sys.stderr.write(f"    {line}\n")
+        return 1, 0
+
+    test_failures, executed_tests = _run_tests(zig, roots)
+    if test_failures:
+        sys.stderr.write("check_zig.py: `zig test` failure(s):\n")
+        for rel_target, out in sorted(test_failures.items()):
+            sys.stderr.write(f"  {rel_target}:\n")
+            for line in out.splitlines():
+                sys.stderr.write(f"    {line}\n")
+        return 1, 0
+    return 0, executed_tests or declared_tests
 
 
 def _execute_lint_or_test(zig: str, tracked: list[str], roots: list[Path], args: list[str]) -> int:
@@ -400,14 +703,9 @@ def _execute_lint_or_test(zig: str, tracked: list[str], roots: list[Path], args:
             print(f"check_zig.py: clean ({len(tracked)} file(s), fmt/ast-check passed).")
             return 0
 
-    test_failures = _run_tests(zig, roots) if do_test else {}
-    if test_failures:
-        sys.stderr.write("check_zig.py: `zig test` failure(s):\n")
-        for rel_target, out in sorted(test_failures.items()):
-            sys.stderr.write(f"  {rel_target}:\n")
-            for line in out.splitlines():
-                sys.stderr.write(f"    {line}\n")
-        return 1
+    test_status, executed_tests = _execute_tests(zig, roots) if do_test else (0, 0)
+    if test_status != 0:
+        return test_status
 
     parts = ("lint", "test")
     on = (do_lint, do_test)
@@ -416,7 +714,7 @@ def _execute_lint_or_test(zig: str, tracked: list[str], roots: list[Path], args:
         str(r.relative_to(_repo_root())) if r.is_relative_to(_repo_root()) else str(r)
         for r in roots
     ] or tracked
-    _render_summary(tracked, target_names, mode)
+    _render_summary(tracked, target_names, mode, executed_tests)
     return 0
 
 
