@@ -11,8 +11,8 @@ the host and the 32-bit RA8 target. A convenient target-local representation is
 not allowed at the boundary when it would make width, alignment, signedness, or
 calling behavior depend on the consumer's architecture.
 
-This document covers representation and error reporting. Ownership, callbacks,
-panic containment, and concurrency have separate contracts.
+The sections below jointly define representation, error reporting, ownership,
+callbacks, panic containment, and concurrency for the same public boundary.
 
 ## Error and output contract
 
@@ -123,8 +123,8 @@ default.
 The adapter performs the public validation and maps only reviewed internal
 failure cases. It publishes each output after success and returns
 `k_ra8_ok` last. Native Zig modules may use error unions internally, but those
-types stop at the adapter. The reusable ABI harness will compile C callers
-that exercise every mapped failure, output sentinel, and pointer-length case.
+types stop at the adapter. Registered C acceptance tests exercise every mapped
+failure, output sentinel, and pointer-length case through the compiled archive.
 
 ## Ownership, buffers, and opaque handles
 
@@ -288,23 +288,30 @@ an unchecked default or a panic.
 Host tests exercise each recoverable adapter failure and prove that it returns
 the documented C result without aborting. Deliberately fatal invariant paths
 are tested only in an isolated process when practical, where termination is
-the expected result. The required first reusable ABI fixture is implementation
-work owned by #867: it must demonstrate both a recoverable error return and
-that it never relies on panic recovery. #865 remains open until that fixture
-evidence lands.
+the expected result. The reusable ABI fixture demonstrates recoverable error
+returns without relying on panic recovery and remains registered as contract
+evidence.
+
 ## ISR, concurrency, and memory ordering
 
-Every exported function declares one calling-context classification in its
-public header. The default is **task-only, non-reentrant**: it may be called by
-one ordinary caller at a time and never from an ISR. A library does not become
-concurrently callable merely because a host test happens to use threads.
+Every exported function describes its calling-context contract in its public
+header and records the exact policy token in `config/zig_abi_policy.json`. The
+default is **task-only, non-reentrant**: it may be called by one ordinary caller
+at a time and never from an ISR. A library does not become concurrently callable
+merely because a host test happens to use threads.
 
-| Classification | Permitted caller | Required contract |
+The policy inventory uses the exact machine values shown in the first column;
+the public header expresses the corresponding human-readable contract and is
+reviewed for consistency with that token.
+
+| Policy value | Permitted caller | Required contract |
 | --- | --- | --- |
-| **Boot-only** | Single-threaded initialization with relevant IRQs masked. | State the initialization phase and the IRQ-masking or serialization precondition. |
-| **Task-only, non-reentrant** | One ordinary bare-metal main-loop or ThreadX task caller. | State the owning caller or the required external serialization. |
-| **Task-safe** | Concurrent ordinary task callers only. | Name the synchronization owner and the protected state; it is still not ISR-safe. |
-| **ISR-safe** | The documented ordinary caller and the documented ISR(s). | Carry an explicit `RA8_ISR_SAFE` contract in the C declaration and satisfy every ISR rule below. |
+| `boot-only` | Single-threaded initialization with relevant IRQs masked. | State the initialization phase and the IRQ-masking or serialization precondition. |
+| `task-only-non-reentrant` | One ordinary bare-metal main-loop or ThreadX task caller. | State the owning caller or required external serialization. |
+| `task-only-reentrancy-guarded` | One ordinary caller; a synchronous callback may attempt reentry. | Name the guard, rejected operations, and returned result. |
+| `task-safe-reentrant` | Concurrent ordinary task callers only. | Name the synchronization owner and protected state; it is still not ISR-safe. |
+| `isr-safe` | The documented ordinary caller and documented ISR(s). | Carry an explicit `RA8_ISR_SAFE` contract and satisfy every ISR rule below. |
+| `serialized-test-control` | One serialized test-harness caller; never production or ISR code. | Identify the test-only purpose and required isolation. |
 
 An API that needs a lock states who acquires it, its order relative to other
 locks, and whether the caller must hold it on entry. An ISR-safe export never
@@ -507,7 +514,7 @@ The initial public function-parameter pointer forms are limited to:
 Every pointer declaration states its nullability, lifetime, mutability, buffer
 length or aggregate role, and ownership. Those properties are not implied by
 the pointer spelling. Pointers to native Zig structures are never public;
-function pointers are callbacks and wait for the callback contract.
+function pointers are governed by the callback contract above.
 
 `uintptr_t`, `intptr_t`, casts between pointers and integers, and pointers to
 native Zig structures are prohibited in the public ABI. A hardware address,
@@ -545,6 +552,6 @@ enum, and aggregate values. Pointer-only APIs are checked for their declared
 form on each target but are never used to justify target-dependent aggregate
 layouts.
 
-The reusable C compile/link/layout harness and policy scanner will enforce
-these requirements in follow-on issues. Until they land, a migration review
-must reject any ABI declaration without this evidence.
+The registered ABI policy and language test contracts enforce this inventory,
+compile the declared host and RA8 targets, and reject missing evidence. A
+migration review must reject any ABI declaration not covered by those gates.

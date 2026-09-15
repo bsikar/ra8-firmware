@@ -146,8 +146,9 @@ to and from the C ABI.
 - `pub export` is permitted only in `<library>_abi.zig`. A library build must
   not accidentally export internal helper symbols.
 - The adapter's exported symbol set and the function declarations in the
-  library's public header must be one-to-one. The ABI harness introduced by
-  the foundation epic will verify this rather than trusting review alone.
+  library's public header must be one-to-one. The registered ABI policy checks
+  source declarations and freshly compiled archives rather than trusting
+  review alone.
 - Generated files are private by default. A generated public header is
   allowed only when a later issue defines its checked-in source of truth,
   deterministic generation command, review path, and ABI verification.
@@ -191,23 +192,97 @@ Adding or removing a Zig source therefore requires wiring it into a declared
 test root. Deliberately lowering a test floor is a review event and must be
 justified by the same change that removes or consolidates the tests.
 
-## Migration checklist for this boundary
+## Per-library migration review checklist
 
-1. Retain or create the public header below `libs/<library>/inc/` as the C ABI
-   contract.
-2. Add the one C-export membrane below `libs/<library>/src/`.
-3. Move native implementation modules into the internal implementation
-   directory without C exports.
-4. Add the library-local `build.zig` root and wire it into the transitional
-   build graph.
-5. Add a C acceptance test that uses only the public header and artifact.
-6. Add native Zig tests and update the build root's test contract.
-7. Apply the foundation policies for representation, failures, ownership,
-   callbacks, traps, and concurrency before exposing those categories. Every
-   export declares its calling-context classification; reject an implicit
-   host-thread assumption, an unclassified export, or an ISR path that reaches
-   a task-only API.
+Complete this checklist for every migrated library. A review is incomplete
+when an answer depends on an unstated convention or an implementation detail
+outside the public header, ABI policy inventory, or linked test evidence.
 
-The reusable ABI harness, policy enforcement, and migration review checklist
-are deliberately follow-on work. This document makes their physical targets
-unambiguous.
+### Boundary and representation
+
+- [ ] The hand-written header below `libs/<library>/inc/` is the only public
+  contract. C, Rust, and Zig consumers do not import private implementation
+  types or generated private artifacts.
+- [ ] `config/zig_abi_policy.json` registers the public header, sole export
+  adapter, complete exported-symbol set, build targets, contract tests,
+  ownership statements, and calling context for every export.
+- [ ] Header declarations, adapter exports, and compiled archive exports are
+  one-to-one. There are no helper exports, dynamic `@export` declarations, or
+  C-linkage exports in internal modules.
+- [ ] Every scalar, enum, aggregate, pointer form, callback, error value, and
+  length has an explicit C representation. Layout assertions cover sizes,
+  alignments, offsets, discriminants, and error widths that cross the boundary.
+- [ ] A changed public declaration or representation deliberately updates the
+  compatibility baseline and includes consumer migration or compatibility
+  evidence. An unrelated change does not refresh the baseline.
+
+### Ownership, pointers, and cleanup
+
+- [ ] Every pointer is classified as borrowed, caller-owned, library-owned, or
+  an opaque handle. The contract names its valid lifetime, mutability, null and
+  zero-length rules, and the party that may dereference it.
+- [ ] No borrowed pointer escapes the documented call or retention lifetime.
+  A retained pointer has explicit registration, cancellation, destruction,
+  and invalidation behavior.
+- [ ] Every acquisition has one named release path. Tests cover success,
+  exhaustion, partial failure, null and already-cleared handles, cleanup after
+  callback failure, and capacity restoration where applicable. Fabricated,
+  foreign, or copied-after-destroy pointers are caller-contract violations and
+  are not safe runtime test vectors.
+- [ ] Firmware code performs no unbounded allocation after initialization.
+  Bounded pools expose deterministic exhaustion and leave outputs unchanged on
+  failure.
+
+### Failures, panics, and optimization modes
+
+- [ ] Every recoverable Zig error maps to a documented stable C result. Failure
+  ordering and output-preservation rules are tested at the public boundary.
+- [ ] No panic, trap, `unreachable`, bounds failure, integer overflow, or
+  allocator failure can cross the C ABI for an input the public contract allows.
+  Intentional fatal behavior is narrowly documented and proven unreachable
+  from recoverable paths.
+- [ ] The same public header and adapter compile for the supported host and
+  RA8D2 Cortex-M85 targets in Debug, ReleaseSafe, and ReleaseSmall. ReleaseSmall
+  is the Zig production mode corresponding to the firmware's size-optimized
+  C release build. Production behavior does not depend on Debug-only checks.
+
+### Concurrency and callbacks
+
+- [ ] Every export uses an approved calling-context classification; there is no
+  implicit host-thread assumption. Task-only code is unreachable from ISR
+  paths, and ISR-safe code has bounded, nonblocking behavior.
+- [ ] Shared state names its serialization owner and reentrancy policy. Tests
+  cover concurrent calls, cancellation races, or deterministic rejection when
+  the API is intentionally serialized.
+- [ ] Each callback contract defines synchronous versus retained invocation,
+  context ownership, reentrancy, cancellation, destruction, and whether the
+  callback may call back into the library. If the API has no callbacks, record
+  that fact in the review rather than omitting the category.
+
+### Required evidence
+
+Use the reusable [C ABI consumer](../tests/zig_abi_fixture/test_abi_fixture.c),
+[Rust ABI consumer](../tests/zig_abi_fixture/rust/tests/zig_provider.rs), and
+[three-language chain consumer](../tests/abi_chain_fixture/test_c_consumer.c)
+as the minimum evidence patterns; a migrated library supplies its own
+registered equivalents.
+
+- [ ] Dedicated Zig tests live below `tests/`, are wired through `build.zig`,
+  and are inventoried by `.zig-test-contract.json`; production sources contain
+  no inline test declarations.
+- [ ] A C acceptance test includes only the public header, links the produced
+  archive, and exercises successful and failing calls at runtime.
+- [ ] Rust bindings and a Rust consumer test exercise the same C ABI. The Rust
+  test contract inventories the binding and test sources. If a boundary has no
+  supported Rust consumer, the migration review records that explicit N/A with
+  its reason; absence alone is not an exemption.
+- [ ] Cross-language chains have end-to-end evidence for every required
+  direction; passing native-language tests alone is not boundary evidence.
+- [ ] The registered CI gates run the ABI policy, Zig native tests, C consumer,
+  Rust consumer when applicable, host and RA8 compile matrix, formatters, and
+  language linters. Non-vacuity checks fail when a source, test root, target, or
+  optimization mode disappears.
+
+The ABI checker enforces inventory closure and mechanical invariants. This
+checklist owns the semantic review that cannot be inferred from symbol names or
+archive layout.
