@@ -311,22 +311,7 @@ def cmd_ssh_config(data: dict[str, Any], args: argparse.Namespace) -> int:
 
 
 def cmd_ssh_target(data: dict[str, Any], args: argparse.Namespace) -> int:
-    """Print the ssh command that reaches one host from this machine.
-
-    The declaration is the only place that knows a host is behind a jump, or
-    which account it is entered as, so the scripts that probe a machine ask
-    here rather than spelling an alias of their own. Every token is
-    whitespace-free by construction -- the fleet-declaration gate rejects an
-    address, user or jump containing any -- so a caller may split the line on
-    spaces and use it as an argv.
-
-    Args:
-        data: The parsed declaration.
-        args: Parsed command line; uses ``args.host``.
-
-    Returns:
-        0.
-    """
+    """Print the declaration-derived ssh argv that reaches ``args.host``."""
     _host(data, args.host)
     print(" ".join(fr.ssh_target(data, args.host)))
     return 0
@@ -882,12 +867,19 @@ def _add_converge_parsers(subs: _SubparserGroup) -> None:
         )
 
 
-def _parser() -> argparse.ArgumentParser:
-    """Build the command-line parser.
+def _add_capacity_parsers(subs: _SubparserGroup) -> None:
+    """Add live status and capacity-control commands."""
+    status = subs.add_parser("status", help="what each host is running, right now")
+    status.add_argument("host", nargs="?")
+    for command in ("capacity-quarantine", "capacity-restore"):
+        subs.add_parser(command, help=argparse.SUPPRESS).add_argument("host")
+    scale = subs.add_parser("scale", help="live capacity change; shrinking drains")
+    scale.add_argument("host")
+    scale.add_argument("count", type=int)
 
-    Returns:
-        A parser whose subcommands mirror the module docstring.
-    """
+
+def _parser() -> argparse.ArgumentParser:
+    """Build the command-line parser described by the module docstring."""
     parser = argparse.ArgumentParser(prog="fleet.py", description=__doc__.splitlines()[0])
     subs = parser.add_subparsers(dest="command", required=True)
     subs.add_parser("selftest", help="exercise typed vars and WSL rendering offline")
@@ -941,14 +933,7 @@ def _parser() -> argparse.ArgumentParser:
             vars_file="",
             trusted_tags=False,
         )
-    status = subs.add_parser("status", help="what each host is running, right now")
-    status.add_argument("host", nargs="?")
-    for command in ("capacity-quarantine", "capacity-restore"):
-        internal = subs.add_parser(command, help=argparse.SUPPRESS)
-        internal.add_argument("host")
-    scale = subs.add_parser("scale", help="live capacity change; shrinking drains")
-    scale.add_argument("host")
-    scale.add_argument("count", type=int)
+    _add_capacity_parsers(subs)
     return parser
 
 

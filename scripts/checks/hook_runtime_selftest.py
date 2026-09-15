@@ -16,6 +16,7 @@ from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -381,7 +382,9 @@ def _installer_transaction_case(base: Path) -> None:
         _fail("interrupted installer left residue or a partial hook generation")
 
 
-ManagedState = tuple[int, tuple[tuple[str, int, bytes], ...]] | None
+ManagedState = Optional[  # noqa: UP045 -- /usr/bin/python3 may be Python 3.9 on macOS.
+    tuple[int, tuple[tuple[str, int, bytes], ...]]
+]
 ConfigState = tuple[bool, str]
 
 

@@ -90,7 +90,7 @@ STAGED_CHECKS = (
 
 JUST_EXECUTABLE = '"{{ just_executable() }}"'
 HOOK_LAUNCHER = "scripts/dev/run_just.sh"
-PRE_COMMIT_SHA256 = "d5cba09dfbdb9b03f3d94cd3fea59e4ca98c626c6edd85d499171c8b812222d5"
+PRE_COMMIT_SHA256 = "5e1b72bb98affb3bfc2a0030ff5c6970623f8dcf22548323cff6fcff154a81b7"
 INSTALLED_LAUNCHER_SHA256 = "1ad13a9da6b76e6f8449ace4df6a535d2972d1062654899b353ccd1d4a863b08"
 HOOK_INSTALLER_SHA256 = "18850cb6b3c06c2c1794b6f60103cd9acb584bf7f8745f1c877ff4f838119e86"
 PROOF_WRITER_SHA256 = "09ec423b2f922c03f83504f92786fe018255ccefc31c0ef7c30bb53bb5ff5406"
@@ -437,14 +437,16 @@ def _check_pre_push(hooks: str) -> list[str]:
 def _source_reaches_runtime_proof(text: str) -> bool:
     """Let Bash parse/source a gate fragment and require post-source proof."""
     payload = f"{text}\nprintf 'RA8-SOURCE-PROOF\\n'\n"
-    command = "set -euo pipefail; source /dev/stdin"
-    result = subprocess.run(  # noqa: S603 -- fixed shell parses private policy text
-        ["/bin/bash", "--noprofile", "--norc", "-p", "-c", command],
-        input=payload,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    with tempfile.TemporaryDirectory(prefix="ra8-gate-source-") as raw:
+        source = Path(raw) / "gate.sh"
+        source.write_text(payload, encoding="utf-8")
+        command = 'set -euo pipefail; source "$1"'
+        result = subprocess.run(  # noqa: S603 -- fixed shell parses private policy text
+            ["/bin/bash", "--noprofile", "--norc", "-p", "-c", command, "bash", str(source)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
     return result.returncode == 0 and result.stdout.endswith("RA8-SOURCE-PROOF\n")
 
 

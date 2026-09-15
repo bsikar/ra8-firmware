@@ -310,7 +310,7 @@ def check_navigation(repo_root: Path, dump: dict[str, Any]) -> list[str]:
             )
             broken[module] = (
                 f"{_source_name(node)} default requires argument(s) `{names}`; "
-                "make it zero-argument and move execution to a named recipe"
+                "keep it zero-argument and move execution to a named recipe"
             )
             continue
         commands, error = _run_screen(just_bin, repo_root, module)

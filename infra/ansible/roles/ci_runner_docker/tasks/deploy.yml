@@ -585,7 +585,6 @@
           # Minted on the control node so the PAT never reaches the runner
           # host; only the short-lived registration token crosses, and it
           # expires after one hour.
-          #
           # Skipped when a token was supplied directly -- see the credential
           # assert above for why a host may be given one instead of the PAT.
           when: (ci_runner_docker_registration_token | default('') | trim) | length == 0
