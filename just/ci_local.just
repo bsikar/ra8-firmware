@@ -137,6 +137,7 @@ review_suppressions:
 
 # Retain only live, unreviewed checker-scope controls after the authenticated
 # scope census has been inspected. The inventory filter prevents this shortcut
+
 # from approving unrelated lint, coverage, or test suppressions.
 review_scope_suppressions:
     #!/bin/bash
