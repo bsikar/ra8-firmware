@@ -87,7 +87,7 @@ batches:
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
     assigned_rows: 784
-    rows_sha256: ec6d3cf3aea54250cb51d06aee43ef9ec07c4be815360e3dcf978807eba5c6d1
+    rows_sha256: 1264183b42fd246d1eaaf6c584b088aaa797a2124b4f76ff1a39d22734e805f4
     partition: "wave D: every remaining non-baseline occurrence reviewed by family"
     evidence:
       - "issue-790 wave-D family review record"
@@ -123,7 +123,7 @@ batches:
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
     assigned_rows: 4180
-    rows_sha256: 0dcaff3756dfe47348436d03e7deab46c2436d1c76b5164a73a52066c845a949
+    rows_sha256: 55162299423e208ea274355f6163faad32aae3b2f4183c7a3c47de1618ec9b8f
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
