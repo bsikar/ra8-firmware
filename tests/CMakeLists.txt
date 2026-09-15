@@ -63,6 +63,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_c6link.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_wifi.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_ra8_emulator.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests_zig_abi.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/rust_abi_contract.cmake)
 
 # ---------------------------------------------------------------------------
 # Optional libFuzzer harnesses (opt-in via -DRA8_FUZZ=ON; clang-only).

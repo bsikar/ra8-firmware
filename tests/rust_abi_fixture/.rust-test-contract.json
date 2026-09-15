@@ -1,0 +1,9 @@
+{
+  "covered_sources": [
+    "src/lib.rs",
+    "src/provider.rs",
+    "src/foreign.rs",
+    "tests/native.rs"
+  ],
+  "minimum_tests": 2
+}
