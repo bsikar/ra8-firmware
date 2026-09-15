@@ -13,8 +13,8 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: lint-py-shell, lint-go, lint-zig, lint-rust, lint-cmake, lint-yaml, lint-just,
-# lint-ld, lint-asm, lint-devcontainer, lint-coverage
+# Gates in this file: lint-py-shell, lint-go, lint-zig, zig-abi-policy, lint-rust, lint-cmake,
+# lint-yaml, lint-just, lint-ld, lint-asm, lint-devcontainer, lint-coverage
 
 # --- unused-includes ------------------------------------------------------
 # Speculative compilation check over modified first-party C files.
@@ -95,6 +95,23 @@ gate_lint_zig() (
   require_tool_versions zig
   python3 scripts/checks/check_zig.py --selftest-lint
   python3 scripts/checks/check_zig.py --require --lint
+)
+
+# --- zig-abi-policy -------------------------------------------------------
+# The manifest is the sole inventory of Zig libraries exposing C ABI symbols.
+# The checker compares it with public headers, adapter declarations, a freshly
+# compiled archive, contract tests, target evidence, and the compatibility
+# fingerprint. Its selftest proves every advertised failure class first.
+gate_zig_abi_policy() (
+  set -e
+  require_cmd zig "the Zig ABI policy builds each registered host archive"
+  require_tool_versions zig
+  if ! command -v llvm-nm >/dev/null 2>&1 && ! command -v nm >/dev/null 2>&1; then
+    echo "ERROR: Zig ABI policy requires llvm-nm or nm" >&2
+    return 1
+  fi
+  python3 scripts/checks/check_zig_abi_policy.py --selftest
+  python3 scripts/checks/check_zig_abi_policy.py --check
 )
 
 # --- lint-rust ------------------------------------------------------------
