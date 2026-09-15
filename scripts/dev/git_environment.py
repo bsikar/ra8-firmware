@@ -575,18 +575,6 @@ def _registered_fixture_commands(repo_root: Path) -> tuple[tuple[str, tuple[str,
     return (
         _python_selftest(
             repo_root,
-            "init-order",
-            "scripts/checks/check_init_order_freshness.py",
-            "--selftest",
-        ),
-        _python_selftest(
-            repo_root,
-            "roadmap-dashboard",
-            "scripts/checks/check_roadmap_dashboard_freshness.py",
-            "--selftest",
-        ),
-        _python_selftest(
-            repo_root,
             "markdown-references",
             "scripts/checks/check_markdown_references.py",
             "--selftest",

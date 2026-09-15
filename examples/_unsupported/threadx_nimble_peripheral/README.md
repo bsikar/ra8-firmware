@@ -8,10 +8,8 @@ Layer on the other.
 
 ## It has never produced air activity, and cannot
 
-**The RA8D2 has no on-chip BLE radio at all.** Earlier revisions of this file
-claimed a vendor firmware patch image was the missing piece; there is no such
-image, and the controller this app once tried to bring up was a phantom that
-has since been deleted from the tree.
+**The RA8D2 has no on-chip BLE radio.** No vendor firmware patch can add a
+controller that is absent from the hardware.
 
 BLE on this board means an ESP32-C6 companion carrying the controller, reached
 over the `ra8_ble` HCI transport seam. What is wired here is the *software*

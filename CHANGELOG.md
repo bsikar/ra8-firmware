@@ -61,7 +61,7 @@ self-assesses against.
 - **Qualification artifacts refreshed** -- `docs/SOUP/`,
   `docs/MCDC_GAPS.md`, `docs/MCDC_DEACTIVATIONS.md`,
   `docs/VENDOR_BLOBS.md`, `docs/DRIVER_STATUS.md`,
-  `docs/ROADMAP.md`, and `docs/ROADMAP_DASHBOARD.md` all regenerated.
+  `docs/ROADMAP.md` regenerated.
 - **Stale docs cleaned** -- removed obsolete sweep-in-progress
   scratch notes; consolidated wave-table into the roadmap final-sweep
   status block.

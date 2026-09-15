@@ -109,11 +109,11 @@ hosts:
     class: arc_k8s | docker_linux | docker_wsl | dev_box | hil_bench
     summary: "one line"
     connect:
-      address: 10.10.10.1        # an IP or a resolvable name -- NEVER an ssh alias
-      user: truenas_admin        # optional login account
-      jump: star                 # optional ProxyJump through ANOTHER FLEET HOST
+      address: ci.example.net    # an IP or resolvable name -- NEVER an ssh alias
+      user: ci-admin             # optional login account
+      jump: bastion              # optional ProxyJump through ANOTHER FLEET HOST
       distro: Ubuntu             # docker_wsl only
-      windows_user: sikar        # docker_wsl only
+      windows_user: ci-user      # docker_wsl only
     provisions: [play, play]     # from `just infra::list`
     runners:                     # runner classes only
       name: <base>               # optional; defaults to the host name
@@ -148,20 +148,9 @@ hosts:
 `~/.ssh/config` alias, and `check_fleet_declaration.py` rejects a bare label
 outright.
 
-That rule was bought with real work. Every host used to be addressed as
-`ssh: truenas` / `ssh: star` / `ssh: k3s-pve`, which resolve only through one
-machine's private config. The estate then split so that neither half worked:
-
-| | ansible | fleet host aliases |
-|---|---|---|
-| the Mac | no | yes |
-| the dev box | yes | no |
-
-So `fleet.py status truenas` from the dev box died on
-`Could not resolve hostname truenas` while the machine itself answered fine on
-`10.10.10.1`. It was a naming gap, not a routing one -- and it cost a NAS that
-sat at 1 of its declared 2 runners with nothing able to converge it back, plus
-a runner-image rollout done by hand on all three hosts (#513, #518, #526).
+Aliases are local convenience configuration and are not portable between
+control nodes. A literal address or resolvable name keeps both Ansible and the
+fleet tooling independent of one maintainer's SSH configuration.
 
 `win-ci` hid it: it is `docker_wsl`, so `fleet.py` ships the play *into* the
 distro and runs it `--connection=local`, never asking the control node to
@@ -286,9 +275,9 @@ will do nothing.
 
 ## 3. Add a host
 
-Worked example: a fourth machine arrives -- call it `bench-tower`, a
-Ryzen 7 5800X with 16 threads and 32 GB, running Ubuntu, at `192.168.1.40` as
-the `deploy` user, that should give CI half of itself.
+Worked example: a fourth machine arrives -- call it `bench-tower`, with 16
+threads and 32 GB, running Ubuntu at the documentation hostname
+`ci.example.net` as the `deploy` user, and giving CI half of its capacity.
 
 ### Step 1 -- size it
 
@@ -307,7 +296,7 @@ Section 7 explains where the two divisors come from.
     class: docker_linux
     summary: "Ryzen 7 5800X, Ubuntu: half the machine to CI"
     connect:
-      address: 192.168.1.40
+      address: ci.example.net
       user: deploy
     provisions: [ci-runner-docker]
     runners:
@@ -730,7 +719,7 @@ diagnosis cost is out of all proportion to the capacity gained.
 | `win-ci` | 22 threads, 26 GB | `min(5, 3)` = **3** | 3 |
 | `k3s-pve` pod | 4 CPU, 12 GB limit | `min(1, 1)` = **1** per pod | 1 x 6 pods |
 
-On the gaming PC, **memory is the binding constraint** and cores are not: 22
+On the WSL runner host, **memory is the binding constraint** and cores are not: 22
 threads would divide fine at four instances, and `26/4 = 6.5` GB would land
 back under the OOM threshold. Do not go to four until clang-tidy is sharded and
 per-shard peak memory has been re-measured.
@@ -776,7 +765,7 @@ real use. Adding ARC pods there adds contention, not throughput. The same
 | clang-tidy, full width | **96s** | ~330s | ~981s (contended) |
 
 Real capacity comes from machines that are not `pve1`. That is what `truenas`
-and the gaming PC are for, and why the ARC pod ceiling does not rise as the
+and the persistent runner hosts are for, and why the ARC pod ceiling does not rise as the
 fleet grows.
 
 ---

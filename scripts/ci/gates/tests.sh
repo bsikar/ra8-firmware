@@ -246,9 +246,9 @@ gate_mcdc() (
 )
 
 # --- artefact-freshness ---------------------------------------------------
-# #380: the committed MC/DC + doxygen gap docs (docs/MCDC_GAPS.csv, .md,
-# docs/MCDC_DEACTIVATIONS.md, docs/DOXYGEN_GAPS.csv, .md) must equal what their
-# generators produce from the current tree. Nothing used to notice when they
+# #380: the committed MC/DC gap docs (docs/MCDC_GAPS.csv, .md and
+# docs/MCDC_DEACTIVATIONS.md) must equal what their generator produces from the
+# current tree. Nothing used to notice when they
 # drifted, so on a DO-178C Level B target the human-readable gap record quietly
 # described a tree that no longer existed.
 #
@@ -256,8 +256,7 @@ gate_mcdc() (
 # (regen_mcdc_gaps.py reads it), so this gate is scheduled immediately AFTER the
 # `mcdc` gate in the same job / same snapshot and reuses that report rather than
 # re-running the ~20-minute coverage build. With the report absent the checker
-# FAILS LOUDLY naming the dependency instead of skipping. The doxygen half is a
-# static source parse and needs no toolchain input. --selftest runs first, in
+# FAILS LOUDLY naming the dependency instead of skipping. --selftest runs first, in
 # both directions, so a checker that stopped comparing cannot pass as clean.
 gate_artefact_freshness() (
   set -e

@@ -23,6 +23,6 @@ path had happily ignored:
   acknowledgement for multi-packet IN streaming. The JLink-readable BOT event
   trace ring added alongside is what made the failure visible at all.
 
-The USB IDs come from the pid.codes free-for-experiments range and are bench-only
--- nothing here is a registered product. LED2 toggles as the class runs
+The identifiers follow the shared [USB identifier policy](../../../USB_IDS.md).
+LED2 toggles as the class runs
 (EK-RA8D2 v1 UM Table 24 p 31).

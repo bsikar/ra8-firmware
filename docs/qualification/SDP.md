@@ -72,8 +72,8 @@ declarations in headers.
 Doxygen rules are stated in
 [`../../CLAUDE.md`](../../CLAUDE.md) "Doxygen Documentation
 Requirements" -- every applicable tag is mandatory. The current gap
-list is [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md). Its archived measurement
-must be regenerated for the release evidence pack.
+report is generated under `build/reports/doxygen/`. Regenerate it for the
+release evidence pack.
 
 ### 1.5 Hardware citation standard
 
@@ -393,9 +393,9 @@ overflow).
 ### 6.7 Doxygen audit
 
 `scripts/checks/doxy_audit.py` walks `libs/`, `port/`, `tools/`, `apps/` (third
-party excluded) and reports per-function missing-tag counts to
-[`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md). The release evidence pack must
-regenerate and restamp the result.
+party excluded) and writes per-function missing-tag counts under
+`build/reports/doxygen/`. The release evidence pack must retain the regenerated
+result.
 
 ### 6.8 Coverage caveats
 

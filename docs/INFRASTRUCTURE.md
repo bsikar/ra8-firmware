@@ -1,7 +1,8 @@
-# The estate
+# Project infrastructure
 
-Every machine this project runs on: what it is, what it does, how it relates to
-the others, and how to rebuild it from nothing.
+The infrastructure roles used by this project, how they relate, and how to
+rebuild them. Deployment-specific inventory belongs in the operator's private
+configuration, not in this public repository.
 
 This is the document to read when you have forgotten how any of it works. It is
 deliberately narrative rather than a role-by-role reference -- the roles
@@ -25,32 +26,11 @@ how instance counts are derived rather than guessed.
 
 ## 1. The shape of it
 
-```
-                         ,-- the one physical box everything heavy sits on --.
-                        |                                                      |
-   +--------------------+-------------------------------------------------+   |
-   |  pve1   Proxmox 8.4   i5-12600K -- 10 cores / 16 THREADS, 125 GB RAM  |   |
-   |                                                                       |   |
-   |   +---------------------------+   +-------------------------------+   |   |
-   |   | VM 300  "k3s"             |   | CT 107  "dev"                 |   |   |
-   |   |  16 vCPU / 64 GB / 500 GB |   |  12 vCPU / 24 GB / 360 GB     |   |   |
-   |   |  Ubuntu 24.04             |   |  Debian 12 (unprivileged LXC) |   |   |
-   |   |                           |   |                               |   |   |
-   |   |  - k3s (single node)      |   |  - every agent's `just ci`    |   |   |
-   |   |  - ARC runner pool        |   |  - the pinned host toolchain  |   |   |
-   |   |  - OpenBao vault          |   |  - ~/ra8-ws agent workspaces  |   |   |
-   |   |  - the homelab (see 6)    |   |  - shared ccache              |   |   |
-   |   +---------------------------+   +-------------------------------+   |   |
-   |            16 vCPU        +        12 vCPU     =  28 vCPU  on 16      |   |
-   +-----------------------------------------------------------------------+   |
-                                                                               |
-   Independent machines (NOT on pve1):                                         |
-                                                                               |
-   truenas ....... NAS + two CI runners in Docker                              |
-   gaming PC ..... Ryzen 9 7900X, Windows + WSL2, three CI runners             |
-   star .......... Raspberry Pi -- the HIL bench (board, J-Link, C6, AD2)      |
-   FortiGate+AP .. odd 10.0.40.0/24 islanded; even 10.0.41.0/24 uplinked      |
-```
+The deployment has four logical roles: a containerized CI pool, a shared Linux
+verification host, optional persistent CI runners, and an isolated HIL bench.
+Some roles may share physical hardware, so runner limits must account for host
+oversubscription. `infra/fleet.yml` is the machine-readable deployment
+declaration; do not copy its live coordinates into narrative documentation.
 
 ### The single most load-bearing fact
 
@@ -72,7 +52,7 @@ already encoded in the roles rather than left as folklore:
   `infra/ansible/roles/ci_runner/defaults/main.yml`. Read it before raising
   that value; the answer is almost certainly "no".
 - **Real capacity comes from machines that are not pve1.** That is exactly what
-  `truenas` and the gaming PC are for. Both answer the same `ra8-ci` label, so
+independent persistent runners are for. They answer the same `ra8-ci` label, so
   GitHub spreads `runs-on: ra8-ci` across three independent machines instead of
   piling it onto the one that is already oversubscribed at the hypervisor level.
 
@@ -83,21 +63,18 @@ total vCPU commitment on the physical host -- not any single guest's setting.
 
 ## 2. The machines, one at a time
 
-### `pve1` -- the hypervisor
+### Hypervisor
 
-Proxmox. `ssh pve`, user `pve-admin`, passwordless sudo. Bridges:
-`vmbr0` 192.168.1.50/24 (LAN) and `vmbr1` 10.10.10.2/29 (a 2.5 Gb link to
-TrueNAS, MTU 9000). Storage is `local` (dir) plus `local-lvm` (lvmthin, ~1.8 TB).
+The hypervisor and guest definitions are deployment-specific. Consult the
+private operator inventory for addresses, accounts, bridges, and storage.
 
 **Not codified.** The guest definitions exist only as live config. This is the
 one remaining hole in the rebuild story -- see section 5.
 
 ### VM 300 `k3s` -- CI cluster and vault
 
-16 vCPU, 64 GB, 500 GB, Ubuntu 24.04, two PCIe devices passed through. Reachable
-as `ssh k3s-pve` from any control node: `infra/fleet.yml` declares its tailnet
-address (`100.64.0.1`, user `ubuntu`) and `just infra::ssh_config` generates the
-alias from it.
+Its capacity and endpoint are declared in `infra/fleet.yml`; generated SSH
+configuration provides any local convenience alias.
 
 Runs:
 
@@ -107,12 +84,11 @@ Runs:
   sized by the declaration, pods booting the pinned toolchain image.
   `just infra::apply k3s-pve ci-runner`.
 - **OpenBao** -- the vault everything else reads credentials from.
-- The owner's unrelated homelab (section 6).
 
 ### CT 107 `dev` -- the shared verification box
 
-12 vCPU, 24 GB, 360 GB, Debian 12, unprivileged LXC with `nesting=1` (needed so
-`just ci` can run podman inside it). `ssh dev`.
+This Linux host runs the pinned verification toolchain and supports nested
+containers so `just ci` can run podman inside it.
 
 This is where every agent runs gates. Its whole toolchain is now codified
 (`just infra::apply dev`), including two tools built from source because no
@@ -146,24 +122,15 @@ It is the one host class with a real one-command teardown:
 just infra::remove truenas
 ```
 
-### The gaming PC -- Ryzen 9 7900X, WSL2
+### Optional Windows/WSL runner
 
-Windows desktop running the `win-ci-*` runner instances under WSL2, carrying
-the `ra8-ci` and `ra8-win` labels. Reachable only through the bench Pi,
-which `infra/fleet.yml` declares as its `jump:` -- so any control node reaches
-it, not just the Mac:
+A Windows host may run `win-ci-*` instances under WSL2 with the `ra8-ci` and
+`ra8-win` labels. Its route and optional jump host are declared in the private
+fleet configuration rather than documented as literal SSH commands.
 
-```sh
-ssh win-ci                        # after `just infra::ssh_config`
-ssh -J star sikar@10.0.40.103     # the same hop, spelled out
-```
+### HIL bench controller
 
-The most powerful CPU in the estate. Because it answers
-`ra8-ci`, it absorbs load that would otherwise land on pve1.
-
-### `star` -- the HIL bench Pi
-
-Raspberry Pi 5, Ubuntu 24.04, `ssh star`. Everything physical hangs off it:
+A Linux single-board computer controls the attached bench hardware:
 
 - the **EK-RA8D2** board over J-Link, plus `rfp-cli` for DLM recovery
 - the **ESP32-C6** co-processor on PMOD1, with its own ESP-IDF toolchain
@@ -198,12 +165,12 @@ Provisioning must preserve the same lock contract as every HIL recipe: run
 apply the role. The health-check path resets and halts the board; do not run a
 full apply while another actor holds the rig.
 
-### The bench LAN -- FortiGate 81E-POE + Meraki MR18
+### The bench LAN
 
-Two hard-switch segments share the FortiGate. The odd `lan` segment
-(`10.0.40.0/24`) is denied WAN access by policy 2; the even `lan-even` segment
-(`10.0.41.0/24`) NATs through `wan1`. The FortiGate supplies routing, DHCP,
-switching, and PoE; the MR18 bridges `ra8-bench` only into the odd segment.
+The bench uses an isolated device segment and a separate uplinked management
+segment. The tracked replay declaration defines the policy; deployment
+addresses, equipment models, port assignments, and wireless identity are kept
+in private operator configuration.
 
 Not Ansible -- it is driven over the console cable from the bench Pi by
 `infra/network/fg_bringup.py`, which reads every credential from OpenBao. See
@@ -213,22 +180,13 @@ Not Ansible -- it is driven over the console cable from the bench Pi by
 
 ## 3. Credentials -- all in OpenBao, none in this repo
 
-The vault runs on the k3s node, reachable at the LAN NodePort `:32200`
-(`BAO_ADDR`). Consumers authenticate with a read-only AppRole and a
+The vault endpoint is supplied through `BAO_ADDR`. Consumers authenticate with a read-only AppRole and a
 `~/.config/hil/openbao.env` (mode 0600).
 
-**Names only, values never:**
-
-| Path | What reads it |
-|---|---|
-| `ra8/ci-runner-pat` | both CI runner roles, to register runners with GitHub |
-| `secret/hil/tapo` | HIL smart-plug power control (`just hil::tapo`) |
-| `secret/ra8d2/bench-network` | the FortiGate/AP bring-up -- admin creds, PSKs, and the chassis serial |
-
-The FortiGate **chassis serial is treated as a credential**, not an asset tag:
-FortiOS derives the console recovery password from it mechanically as
-`bcpb<serial>`. It lives in the vault with everything else and appears nowhere
-in this tree.
+Vault paths are configurable and must not be copied into public documentation.
+They contain CI registration credentials, HIL power-control credentials, and
+bench-network credentials. Treat device identifiers that participate in
+recovery authentication as secrets as well.
 
 ### The vault's own keys
 
@@ -268,9 +226,9 @@ just infra::apply <host>
 | 3 | k3s + helm + vault | `just infra::apply k3s-pve k3s-node` | then init + unseal by hand |
 | 4 | the ARC runner pool | `just infra::apply k3s-pve ci-runner` | needs 3 |
 | 5 | the dev box | `just infra::apply dev` | slow: two source builds |
-| 6 | extra runner hosts | `just infra::apply truenas` / `just infra::apply win-ci` | NAS, gaming PC |
+| 6 | extra runner hosts | `just infra::apply <host>` | persistent Linux or WSL runners |
 | 7 | the HIL bench | `just infra::apply star` | needs the board attached |
-| 8 | the bench LAN | `just infra::fortigate_bootstrap` | from `ssh star`; guarded confirmation |
+| 8 | the bench LAN | `just infra::fortigate_bootstrap` | from the authorized bench controller; guarded confirmation |
 
 **Where do you run these from?** Any machine with ansible and a key the hosts
 accept. It used to be *nowhere*: every host was addressed by an `~/.ssh/config`
@@ -339,20 +297,6 @@ The condition was checked against a live pod, the stragglers were moved to
 stopped and removed with their drop-in directories, and the runner installs
 reclaimed from disk. The per-workflow dependency evidence is in
 `infra/README.md` under "The legacy `k3s-runner-*` pool is retired".
-
----
-
-## 6. Present, and deliberately out of scope
-
-The k3s node also hosts the owner's personal homelab: the media stack (jellyfin,
-*arr, immich, audiobookshelf), authentik, a hugo blog, ntfy, paperless,
-vaultwarden, minecraft, headscale, pihole, grafana/prometheus/loki.
-
-**None of it is this project's concern.** It is listed here only so nobody
-later assumes it was forgotten, or "helpfully" folds it into these roles. It
-shares hardware with CI and nothing else -- though it is worth remembering that
-it also shares that oversubscribed CPU, and its steady-state draw is part of
-the arithmetic in `ci_runner`'s defaults.
 
 ---
 

@@ -64,4 +64,4 @@ them with `arm-none-eabi-nm`).
 
 FS device pins: P4_07 VBUS sense, P5_00 VBUSEN GPIO low, P8_14/P8_15 data.
 microSD: Pmod2 SCI0 Simple-SPI with a GPIO chip select idling high. The device
-advertises VID 0x1209 / PID 0x0019 -- bench use only.
+uses PID `0x0019`; see the shared [USB identifier policy](../../../USB_IDS.md).

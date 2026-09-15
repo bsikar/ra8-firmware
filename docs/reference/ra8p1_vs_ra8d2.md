@@ -21,6 +21,20 @@ bases (155/155), the memory map, the ICU/ELC event numbers, and the MSTP
 module-stop bits are **byte-identical**. The register headers therefore need no
 device-conditional edits; only new peripherals get new headers.
 
+## Device selection
+
+The build selects exactly one device through `libs/ra8_core/inc/ra8_device.h`:
+
+| Define | Set by | Meaning |
+|--------|--------|---------|
+| `RA8_DEVICE_RA8D2` | Default when no device flag is supplied | RA8D2 and the current default build. |
+| `RA8_DEVICE_RA8P1` | `cmake/toolchain-ra8p1.cmake` | RA8P1, including the NPU and double-precision FPU configuration. |
+
+Feature code uses the derived `RA8_HAS_NPU` and `RA8_HAS_NPUCLK` capability
+macros instead of testing the device name directly. `ra8_emulator` mirrors the
+selection with `--device ra8p1`, which maps the RA8P1-only NPU window; the
+default RA8D2 profile leaves that window unmapped.
+
 ## Memory map (identical on both parts unless noted)
 
 | Region | Base | Size | Notes |
@@ -54,6 +68,11 @@ draft of this table listed one, but it does not exist (see "Correction" below).
 
 An earlier revision listed "- OFS3 / WDT1 option register" as delta 2. It is not
 a delta -- see the correction below.
+
+The host and emulator paths cover the device switch, OFS handling, FPU probe,
+NPU driver and Ethos-U adapter. On-silicon NPU clock, interrupt and
+Vela-compiled-model validation remain tracked by issue #229 because they
+require an RA8P1 evaluation kit.
 
 ## Correction: no legacy ETHERC/EDMAC MAC on the RA8P1 (issue #224)
 

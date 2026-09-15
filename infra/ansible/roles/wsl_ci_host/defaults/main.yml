@@ -48,7 +48,7 @@ wsl_ci_host_docker_gpg_sha256: "1500c1f56fa9e26b9b8f42452a553675796ade0807cdce11
 # Windows desktop.
 #
 # These were deliberately revised UP. The first cut reserved half the machine
-# on the assumption it was a gaming PC that CI was borrowing; the owner's
+# on the assumption it was an interactive workstation that CI was borrowing;
 # instruction is the reverse -- it is barely gamed on, it is the fastest host
 # in the fleet, and work should be pushed onto it in preference to the slower
 # machines. So it is treated as a dedicated build host that happens to run
@@ -144,7 +144,7 @@ wsl_ci_host_host_clock_tolerance_s: 30
 # --- Networking -------------------------------------------------------------
 #
 # THE fault that makes this host non-obvious. It is multi-homed: an isolated
-# bench LAN (10.0.40.0/24, NO uplink) and the owner's Wi-Fi. Under mirrored
+# isolated bench LAN and the workstation's ordinary Wi-Fi. Under mirrored
 # networking WSL copies the Windows routing table into the distro, and the
 # bench LAN's DHCP-supplied default gateway arrives with the LOWER metric --
 # so every packet the runner sends goes into a black hole. Windows itself is

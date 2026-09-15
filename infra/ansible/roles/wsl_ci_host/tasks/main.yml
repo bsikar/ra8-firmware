@@ -253,7 +253,7 @@
           #
           # Mirrored networking copies the Windows routing table into the
           # distro. This host is multi-homed: an isolated bench LAN with NO
-          # uplink, and the owner's Wi-Fi. The bench LAN's DHCP-supplied
+          # uplink, and the workstation's ordinary Wi-Fi. The bench LAN's DHCP-supplied
           # gateway arrives with the LOWER metric, so unmodified WSL sends
           # every packet into a black hole. Windows itself fails over and is
           # unaffected, so the fix belongs here and not in the owner's network.

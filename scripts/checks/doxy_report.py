@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""The audit-only report: docs/DOXYGEN_GAPS.csv and docs/DOXYGEN_GAPS.md.
+"""The audit-only Doxygen report written under ignored build output.
 
 Separate from the gate because it answers a different question.  The gate asks
 "is the tree clean" and exits non-zero; this asks "where is the remaining work
@@ -18,6 +18,7 @@ zero.
 from __future__ import annotations
 
 from collections import Counter
+from pathlib import Path
 
 from doxy_functions import audit_file
 from doxy_scope import MODULE_PATH_MIN_DEPTH, function_files, repo_root
@@ -40,9 +41,16 @@ def collect_rows() -> list:
     return rows
 
 
+def _report_dir() -> Path:
+    """Return the ignored output directory, creating it when needed."""
+    path = repo_root() / "build" / "reports" / "doxygen"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def _write_csv(gap_rows: list) -> None:
     """Write the full row-per-function gap table."""
-    csv_path = repo_root() / "docs" / "DOXYGEN_GAPS.csv"
+    csv_path = _report_dir() / "DOXYGEN_GAPS.csv"
     with csv_path.open("w", encoding="ascii") as f:
         f.write("source_file,line,function_name,missing_tags,severity\n")
         for src, line, name, missing, sev in gap_rows:
@@ -82,8 +90,8 @@ def _table(title: str, header: str, sep: str, rows: list[tuple[str, int]]) -> li
     """One Markdown section: a heading and a two-column count table.
 
     ``sep`` is passed rather than generated so the emitted report stays
-    byte-identical to the committed docs/DOXYGEN_GAPS.md -- the dash widths
-    are cosmetic to a renderer but a spurious diff to a reviewer.
+    byte-stable across runs -- the dash widths are cosmetic to a renderer but
+    a spurious diff to a reviewer.
     """
     out = [f"## {title}", "", header, sep]
     out.extend(f"| `{label}` | {count} |" for label, count in rows)
@@ -137,7 +145,7 @@ def _render_markdown(rows: list, gap_rows: list) -> str:
         "- `medium`: missing `@return` / `@retval` / `@pre` / `@post`",
         "- `low`: only optional / informational tags missing (`@note`, `@since`, ...)",
         "",
-        "See `docs/DOXYGEN_GAPS.csv` for the full row-by-row data.",
+        "See `build/reports/doxygen/DOXYGEN_GAPS.csv` for the full row-by-row data.",
         "",
         "## Audit history",
         "",
@@ -158,7 +166,7 @@ def run_report() -> int:
     gap_rows = [r for r in rows if r[3]]
 
     _write_csv(gap_rows)
-    md_path = repo_root() / "docs" / "DOXYGEN_GAPS.md"
+    md_path = _report_dir() / "DOXYGEN_GAPS.md"
     md_path.write_text(_render_markdown(rows, gap_rows), encoding="ascii")
 
     total_missing_tags = sum(len(r[3]) for r in gap_rows)

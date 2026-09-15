@@ -99,7 +99,7 @@ Product audits are the periodic refresh of the gap registers:
 
 | Audit                  | Refresh tool / artifact                                                  | Cadence              |
 |------------------------|--------------------------------------------------------------------------|----------------------|
-| Doxygen completeness   | `scripts/checks/doxy_audit.py` -> `docs/DOXYGEN_GAPS.csv` + `docs/DOXYGEN_GAPS.md` | Per release    |
+| Doxygen completeness   | `scripts/checks/doxy_audit.py` -> `build/reports/doxygen/` | Per release    |
 | MC/DC coverage         | `just quality::local::mcdc` -> `build/mcdc-report/summary.txt` + `docs/MCDC_GAPS.md`     | Per PR (CI) + per release |
 | MISRA conformance      | `just quality::local::gate misra` -> `build/misra/results.txt` + `.github/misra-baseline.txt` ratchet | Quarterly |
 | Stack usage            | `just quality::local::stack_usage` -> `build/stack_usage.csv`                     | Per release          |
@@ -121,8 +121,8 @@ before each baseline release. The review confirms:
   outstanding finding.
 - The SOUP register entries are within the 12-month re-review
   window.
-- The Doxygen, MC/DC, MISRA, and stack-usage gap registers are
-  refreshed in the release commit.
+- The Doxygen, MC/DC, MISRA, and stack-usage evidence is refreshed for the
+  release candidate and retained in the release evidence pack.
 
 The conformance-review checklist will be added under
 `docs/qualification/release/<tag>/conformance.md` at the time of
@@ -250,7 +250,7 @@ before the SAS is signed. For this project:
 | MC/DC report                    | Uploaded by `mcdc` job                                              | 14 days (configured retention)       |
 | MISRA audit baseline            | `.github/misra-baseline.txt` + `docs/MISRA.md`                      | Versioned in git, indefinite         |
 | MC/DC measurement history       | `docs/MCDC.md` measurement-history table                            | Versioned in git, indefinite         |
-| Doxygen completeness gap list   | `docs/DOXYGEN_GAPS.csv` and `docs/DOXYGEN_GAPS.md`                  | Versioned in git, indefinite         |
+| Doxygen completeness gap list   | `build/reports/doxygen/` during a run; copied into the release evidence pack | Per-run artifact; release pack indefinite |
 | Stack-usage report              | `build/stack_usage.csv` (regenerated) + `docs/STACK_USAGE.md` table | Tables versioned, raw rebuilt        |
 | MISRA deviation register        | `docs/qualification/MISRA_DEVIATIONS.md`                            | Versioned in git, indefinite         |
 | SOUP qualification basis        | `docs/SOUP/<name>.md` per component                                 | Versioned in git, indefinite         |

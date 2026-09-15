@@ -11,7 +11,7 @@
 #
 # WHERE THIS RUNS: on the target, inside the distro. WSL has no SSH daemon of
 # its own, and giving it one would mean opening an inbound port on somebody's
-# personal daily-driver machine and punching a hole in their firewall so a
+# shared interactive workstation and opening its firewall so a
 # config management tool could reach it. The play is therefore copied in and
 # run with `--connection=local`, which costs nothing and asks nothing of their
 # network.

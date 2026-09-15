@@ -132,8 +132,8 @@ When you add a new function, struct, enum, or file:
    the rendered HTML.
 3. Tail `build/docs/doxygen-warnings.log` for any new warnings
    triggered by your change. The repository goal is **zero new
-   warnings** (the standing tag-coverage baseline is reported in
-   `docs/DOXYGEN_GAPS.md`).
+   warnings**. Run `python3 scripts/checks/doxy_audit.py` for the separate
+   tag-coverage report under `build/reports/doxygen/`.
 4. Open `build/docs/html/index.html` in a browser and verify the
    page renders, links resolve, and any `@code ... @endcode`
    examples are syntax-highlighted.

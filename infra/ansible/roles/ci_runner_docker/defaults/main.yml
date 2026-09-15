@@ -262,7 +262,7 @@ ci_runner_docker_github_pat: "{{ ci_runner_github_pat }}"
 # opening an inbound SSH port on somebody's personal machine), so "the control
 # node" and "the runner host" are the same box and the usual
 # delegate_to: localhost separation buys nothing. A repo-scoped PAT sitting on
-# a daily-driver gaming PC is a real exposure; a one-hour token is not.
+# an interactive workstation is a real exposure; a one-hour token is not.
 #
 # Empty by default: hosts that can safely hold the PAT keep using it, and the
 # role mints its own tokens as needed.

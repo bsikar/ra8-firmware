@@ -344,7 +344,7 @@ added for.
 
 **Mirrored networking needs a route fix here, and that is not optional.** The
 machine is multi-homed: an isolated bench LAN with **no uplink**, and the
-owner's Wi-Fi. Mirrored networking copies the Windows routing table into the
+workstation's ordinary Wi-Fi. Mirrored networking copies the Windows routing table into the
 distro, and the bench LAN's DHCP-supplied default gateway arrives with the
 *lower* metric -- so out of the box every packet the runner sends goes into a
 black hole. Windows itself is unaffected because it fails over, which is why
@@ -662,3 +662,8 @@ credentials are never part of either file. Long-lived secrets live in OpenBao
 or git-ignored `ansible/private/`, while one-time registration inputs use the
 mode-0600 external vars-file procedure above. Run `just infra::setup` to prepare
 a control node and `just infra::apply <host>` to converge a declaration.
+
+The HIL bench play also loads `ansible/private/secrets.yml` when present. Set
+`ad2_tools_device_serial` there so the role can distinguish the intended
+instrument from another USB device with the same VID:PID without committing a
+unique asset identifier.

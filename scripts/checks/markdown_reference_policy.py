@@ -157,7 +157,6 @@ QUALIFICATION_RELEASE_SOURCES = frozenset(
     {
         "docs/qualification/SCMP.md",
         "docs/qualification/SQAP.md",
-        "docs/qualification/release/README.md",
     }
 )
 TOOL_PRIVATE_VENDOR_SOURCES = frozenset(
@@ -254,8 +253,6 @@ DECLARED_BARE_CODE_FILES = {
         "docs/sbom/patches/README.md",
         "0002-description.patch",
     ): "illustrative ordered patch filename",
-    ("docs/qualification/HW_IN_LOOP_RUNNER.md", "svc.sh"): "retired runner tombstone",
-    ("docs/qualification/HW_IN_LOOP_RUNNER.md", "config.sh"): "retired runner tombstone",
     (
         "docs/qualification/MISRA_DEVIATIONS.md",
         "misra.py",
@@ -430,12 +427,6 @@ DECLARED_BARE_CONTEXT_SHA256 = {
     ),
     ("docs/formats/ROT1.md", "signed.bin"): (
         "b8884236ed0c0ab543685ec3c13c2bb5048772a6a0a58ba3ba529748fb64d1ce",
-    ),
-    ("docs/qualification/HW_IN_LOOP_RUNNER.md", "config.sh"): (
-        "f65ee40de147311f4900dba8579bf50fa96006095f8e0069c4d21d4267f46d66",
-    ),
-    ("docs/qualification/HW_IN_LOOP_RUNNER.md", "svc.sh"): (
-        "556c565bd251c502ea76fb7d915ebd2e5e99c50fb8d6710a67f631c7332e63c2",
     ),
     ("docs/qualification/MISRA_DEVIATIONS.md", "misra.py"): (
         "63f20d0743870e3c91989336c37c668f679ff3cf72d910596bd15f799b003f3c",

@@ -40,7 +40,7 @@ batches:
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
     assigned_rows: 2668
-    rows_sha256: c90548ebd6de522886918188059f5c079123878c2291fdbba29210d9001ee312
+    rows_sha256: 6e58122e64a1edd7c1bf0f5eaeb971e3e56d4bbde0370a267c668b39c9f2e9d1
     partition: "checker scope/control authorities, encoding exemptions, generated artifacts"
     evidence:
       - "constant-classification review record"
@@ -87,7 +87,7 @@ batches:
     date: 2026-08-24
     identity_schema: 2-durable-site-identity
     assigned_rows: 784
-    rows_sha256: 1264183b42fd246d1eaaf6c584b088aaa797a2124b4f76ff1a39d22734e805f4
+    rows_sha256: ec6d3cf3aea54250cb51d06aee43ef9ec07c4be815360e3dcf978807eba5c6d1
     partition: "wave D: every remaining non-baseline occurrence reviewed by family"
     evidence:
       - "issue-790 wave-D family review record"
@@ -122,8 +122,8 @@ batches:
     authority: repository-suppression-review
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
-    assigned_rows: 4185
-    rows_sha256: ac2ee0270ac8e4e5c10f7c91dd3e35fe2510b5fb62156096e1657386c224caad
+    assigned_rows: 4180
+    rows_sha256: 0dcaff3756dfe47348436d03e7deab46c2436d1c76b5164a73a52066c845a949
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
@@ -404,7 +404,7 @@ batches:
     date: 2026-09-01
     identity_schema: 2-durable-site-identity
     assigned_rows: 124
-    rows_sha256: d7abb9ce3f8c323cd5a9bf3a50ddf2c0cc10f8d2d98726a9493dff76a129bc16
+    rows_sha256: 7e7de21adc4587bd20076cd71dbec286fa45c9197715c2c0d57640a96eb4d127
     partition: >-
       HIL size-cap split reconciliation: three new bound-exit raw-byte
       authorities, two changed raw-byte pins, one moved negative-fixture
@@ -441,7 +441,7 @@ batches:
     date: 2026-09-03
     identity_schema: 2-durable-site-identity
     assigned_rows: 59
-    rows_sha256: 688de2286f4cb10fbc4c70eec7ade0be53fa72fc575a065f2e112780a8c4d570
+    rows_sha256: 38a40423d0978d452ac777f8e8994f2a4a66406b5351ba8ac3f7598fac69b1a8
     partition: >-
       Continuous runner reconciliation and inherited runner-admission closure:
       exact Ansible probe controls, fixed-argv subprocess diagnostics,
@@ -531,7 +531,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 17
-    rows_sha256: 3b5180c3856c264562f9c1b1f375ffeec940072c37fbc3a533b0f4799d8d36d5
+    rows_sha256: 78c5052a53388115e6cca93155d1e57d59496ed8330787e27af42a6ee5423465
     partition: >-
       Round4 checker split: three exact fleet path authorities, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -555,7 +555,7 @@ batches:
     date: 2026-09-04
     identity_schema: 2-durable-site-identity
     assigned_rows: 26
-    rows_sha256: d34e574e45952c6741fb83acdd2ca4181f8aea38b445f3afe0251389827010a1
+    rows_sha256: 2504291edd5309ebdd0f9119c41f556f5ec3f6f6ed873a38aee8987927b0b540
     partition: >-
       Round5 ARC checker split: one exact selftest path authority, authenticated
       census/count/digest successors, and complete direct lineage closure.
@@ -604,7 +604,7 @@ batches:
     date: 2026-09-05
     identity_schema: 2-durable-site-identity
     assigned_rows: 36
-    rows_sha256: 4b8847eafa287d82f0c48ed6b6d83b99597a4a7dfe0b583e14ddf4ca34a13d58
+    rows_sha256: 42a4e5e9c0449dc658d330f607e9615f0203c44b9e3a45a922a18ec797c76679
     partition: >-
       Final runner storage, WSL clock, and lifecycle authority reconciliation.
     evidence:
@@ -806,7 +806,7 @@ batches:
     date: 2026-09-11
     identity_schema: 2-durable-site-identity
     assigned_rows: 85
-    rows_sha256: ae408c4085a19c78ed482c13b9ffbfbced8e12d9e6e76d6e5c6fe52c948a772c
+    rows_sha256: 015a70602c1c9230d84b47a0bc563f0550c874a2eabbae40c9f1f4b117e38985
     partition: "Automated developer review batch"
     evidence:
       - "reconcile work-move/checker-drift fallout: rebind moved-file rows to"
@@ -842,7 +842,7 @@ batches:
     date: 2026-09-11
     identity_schema: 2-durable-site-identity
     assigned_rows: 16
-    rows_sha256: 03cea5301d25842999c93a8b4cf70ed722a36749adeca339e327beb87c0bba69
+    rows_sha256: cd2900c8622ede1f93377220acd3384543bc56d74a0026ae15f6fe12e08838fd
     partition: "Automated developer review batch"
     evidence:
       - >-
@@ -866,7 +866,7 @@ batches:
     date: 2026-09-11
     identity_schema: 2-durable-site-identity
     assigned_rows: 3
-    rows_sha256: cf7f87d1ee2fb3a73a1a1e918b36f2da8e40fbf21003e962d2b1622ef819ada6
+    rows_sha256: d8478667f2f9dcd9e76909b410ce1ffae94660941e58a88054fb77febab8e101
     partition: "Automated developer review batch"
     evidence:
       - >-
@@ -994,7 +994,7 @@ batches:
   - id: selective-review-20260912-215730
     <<: *selective_review_20260912
     assigned_rows: 5
-    rows_sha256: 8e6724909267bcd328d13c05cb060bd4de9952971dd6ea4da31c28091154dde2
+    rows_sha256: 904d978cae952843ad1b02b51f24f59bd12424740741d55174e9491dd5f91fb6
     partition: >-
       selective retain of 5 ledger row(s): 1f3ef1ba544e, 32fb44c41539,
       959df4e4c18d, cdb898857827, e52b9902ec4b
@@ -1017,3 +1017,39 @@ batches:
     partition: "selective retain of 1 ledger row(s): 08de759a3e86"
     evidence:
       - "review-decision loader-owned suppression batch authority requires one immutable record per batch in one file; line-oriented append-only review history remains auditable and check_file_size.py passes via this exact marker"
+  - id: selective-review-20260915-040934
+    authority: repository-suppression-review
+    date: 2026-09-15
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 27
+    rows_sha256: bd01e67d8f072a862c9395d2203b88c6bb4f03ca81b08ef87fde518333c3f598
+    partition: "selective retain of 27 ledger row(s): 013dd7b6543b, 04962e1b46da, 08aac4f359c8, 194920cccd38, 3511b7459a22, 362416290944, 3b5aa79c6ea0, 3cc1177428b8, 61d8260d4672, 666beb210028, 6d5b53ac1e71, 81c50468d513, 951258c40f66, 9714c8fc72eb, 98d9b8669469, b16b69137bb7, b26e49c7137d, b9b6de27aea3, bd28a973128b, bf051b5cb362, c09ad19459db, c0eb069389f5, c8c7f731067a, cf6c6ff3f78c, d56e782b3256, da0a037f00ee, ff61d6727bf0"
+    evidence:
+      - "classification-batch census-digest; exact checker scope values classified and authenticated by suppression_checker_scope.py"
+  - id: selective-review-20260915-041210
+    authority: repository-suppression-review
+    date: 2026-09-15
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 17
+    rows_sha256: 3716115b8de4196e99152a376b63af7a4545e05ec9666d60d2b21e499cea5c63
+    partition: "selective retain of 17 ledger row(s): 08093a09a01b, 18ebbfaaf205, 1c9289b166d9, 3b0088ef1984, 3c1ded9bda0f, 4d13bb9c119f, 748cebb8ab0d, 7a0447bbb968, 8213e2bf16b9, 9ff18aa8be8b, bb92e62f4617, e283fa841643, e6b22f78db41, ed5dd831f2cc, ef1229ff3980, f0e5b443b7cc, fb67f8b57f18"
+    evidence:
+      - "tool-output source-context: pinned Ruff diagnostics are intentionally scoped to the Just schema/navigation checker fixtures and fixed subprocess argv; the executable checks validate the behavior directly"
+  - id: selective-review-20260915-041439
+    authority: repository-suppression-review
+    date: 2026-09-15
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 3
+    rows_sha256: 7fc0cebe747da5a41239826cdfb4b0e3b90404e1b46e7263ba201142211e23f7
+    partition: "selective retain of 3 ledger row(s): 7982402b5dc1, 999c507e1ebf, e7f54f3bb996"
+    evidence:
+      - "consumer-or-assert source-context: process termination tolerates only already-exited descendants; dashboard wait aggregates parallel probes and immediately interprets their captured output"
+  - id: selective-review-20260915-041650
+    authority: repository-suppression-review
+    date: 2026-09-15
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 1
+    rows_sha256: c0ad3ab419bfe166f28b35f18bf8db58b3d1c2353df91f0b455b26538e1499e1
+    partition: "selective retain of 1 ledger row(s): 96c32ac9fa24"
+    evidence:
+      - "toolchain-pin source-context: /usr/bin/python3 is Python 3.9 on supported macOS control nodes, so the compatibility annotation is required until that platform interpreter changes"

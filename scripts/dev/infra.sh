@@ -86,19 +86,50 @@ MANAGED_PATH="$MANAGED_BIN:/usr/local/bin:/usr/bin:/bin"
   echo "error: locked Python/Ansible environment is absent; run 'just setup'" >&2
   exit 1
 }
-[[ ! -L "$MANAGED_VENV" && "$(readlink -f "$MANAGED_BIN/python3")" == "$(readlink -f /usr/bin/python3)" ]] || {
-  echo "error: repository Python authority does not use the fixed system interpreter" >&2
+[[ ! -L "$MANAGED_VENV" ]] || {
+  echo "error: repository Python environment must not be a symlink" >&2
   exit 1
 }
+PYTHON_TARGET="$(readlink -f "$MANAGED_BIN/python3")"
+case "$(/usr/bin/uname -s)" in
+  Linux)
+    [[ "$PYTHON_TARGET" == "$(readlink -f /usr/bin/python3)" ]] || {
+      echo "error: repository Python authority does not use the fixed system interpreter" >&2
+      exit 1
+    }
+    VERIFY_PYTHON=/usr/bin/python3
+    ;;
+  Darwin)
+    [[ "$PYTHON_TARGET" == /* && -f "$PYTHON_TARGET" && -x "$PYTHON_TARGET" ]] || {
+      echo "error: repository Python authority does not resolve to an executable file" >&2
+      exit 1
+    }
+    managed_python_version="$(
+      "$PYTHON_TARGET" -I -c \
+        'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")'
+    )"
+    [[ "$managed_python_version" =~ ^3\.(11|12|13|14)$ ]] || {
+      echo "error: repository Python authority must be Python 3.11 through 3.14" >&2
+      exit 1
+    }
+    unset managed_python_version
+    VERIFY_PYTHON="$PYTHON_TARGET"
+    ;;
+  *)
+    echo "error: unsupported infrastructure control-node platform" >&2
+    exit 1
+    ;;
+esac
+readonly PYTHON_TARGET VERIFY_PYTHON
 
 verify_managed_python_environment() {
   (
     cd "$ROOT"
     UV_PROJECT_ENVIRONMENT="$MANAGED_VENV" UV_PYTHON_DOWNLOADS=never \
       UV_CACHE_DIR="$ROOT/.tools/uv" \
-      /usr/bin/python3 -I -S "$ROOT/scripts/dev/bootstrap_uv.py" \
+      "$VERIFY_PYTHON" -I -S "$ROOT/scripts/dev/bootstrap_uv.py" \
       --run --no-config sync --locked --all-groups --no-install-project \
-      --python /usr/bin/python3 --check
+      --python "$VERIFY_PYTHON" --check
   ) >/dev/null
 }
 

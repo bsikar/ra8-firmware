@@ -28,11 +28,11 @@ inline.
 - **Cortex-M85 CPUID.** OpenOCD recognises the M85 from 0.12 onward. An older
   build still attaches, but logs "Cortex-M unknown" -- easy to misread as a
   broken connection.
-- **The secondary M33 is not configured.** The board config declares a single
-  target; debugging the M33 means adding a second one.
-- **DAP / IDCODE values are unconfirmed.** The `expected-id` entries in the
-  board config were never captured from real silicon, and the cfg carries
-  `TODO: confirm` notes where that matters.
+- **The secondary M33 is not configured.** The board config declares only the
+  M85 target. Debugging the M33 requires a second target declaration.
+- **DAP / IDCODE validation is not part of the OpenOCD configuration.** Treat
+  its target-identification settings as compatibility values, not evidence of
+  a measured board identity.
 - **Linux needs libusb permissions** for the on-board probe. The SEGGER udev
   rules cover it, or add a generic rule for SEGGER's USB vendor ID `1366`.
 

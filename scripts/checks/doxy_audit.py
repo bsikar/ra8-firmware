@@ -15,7 +15,7 @@ tool code remains exempt like vendored SOUP.
 
 Modes
 -----
-  (no args)         Function audit report -> docs/DOXYGEN_GAPS.csv + .md
+  (no args)         Function audit report -> build/reports/doxygen/
   --check           Strict function gate (exit 1 on any gap). Wired into CI
                     and the pre-commit hook.
   --selftest        Regression-test the auditor itself, in both directions,
@@ -49,8 +49,8 @@ and a ``@brief``/``@def`` block on each macro. ``--members --check`` enforces
 exactly that (issue #246); plain ``--members`` is the sizing report.
 
 Output:
-  - docs/DOXYGEN_GAPS.csv  full row-per-function table
-  - docs/DOXYGEN_GAPS.md   human-readable summary
+  - build/reports/doxygen/DOXYGEN_GAPS.csv  full row-per-function table
+  - build/reports/doxygen/DOXYGEN_GAPS.md   human-readable summary
   - (--members) stdout summary; optional --out=PATH member-gap CSV
 
 Audit-only: never edits source files.

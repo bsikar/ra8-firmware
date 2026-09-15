@@ -82,7 +82,7 @@ each document's preamble.
 The live measurement artifacts those documents draw on are
 [`MCDC.md`](MCDC.md) and [`MCDC_GAPS.md`](MCDC_GAPS.md) for structural
 coverage, [`MISRA.md`](MISRA.md) for the language subset,
-[`DOXYGEN_GAPS.md`](DOXYGEN_GAPS.md) for documentation conformance, and
+the regenerated `build/reports/doxygen/` output for documentation conformance, and
 `docs/SOUP/` for the pre-existing-software register. Each is regenerated from
 the tree rather than transcribed, which is why none of their numbers are copied
 into this file.

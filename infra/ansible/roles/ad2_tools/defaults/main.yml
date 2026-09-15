@@ -98,7 +98,7 @@ ad2_tools_waveforms_page: "https://digilent.com/shop/software/digilent-waveforms
 # other FT232H on the bench answers to 0403:6014 -- so the verify step matches
 # the Digilent serial in sysfs as well.
 ad2_tools_device_vidpid: "0403:6014"
-ad2_tools_device_serial: "210321A36AAE"
+ad2_tools_device_serial: ""
 
 # udev rules the Adept runtime ships as a dpkg conffile. The role ASSERTS this
 # file rather than writing a copy of its own: the vendor rule does more than

@@ -46,5 +46,5 @@ every build.
 
 The USBHS VBUS sense pin is the only PFS-muxed HS pin; D+ and D- are dedicated
 PHY balls. J7's role-select GPIO is driven LOW for device mode (EK-RA8D2 v1 UM
-Sec 6.2 p 34). The USB IDs come from the pid.codes free-for-experiments range
-and are bench-only.
+Sec 6.2 p 34). The identifiers follow the shared
+[USB identifier policy](../../../USB_IDS.md).

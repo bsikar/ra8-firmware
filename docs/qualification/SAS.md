@@ -167,9 +167,9 @@ does not claim a current migrated-tree population.
 
 ### 4.4 Documentation completeness
 
-The archived `docs/DOXYGEN_GAPS.md` 2026-05 refresh reported no gaps in its
-then-current population. Regenerate the audit for the candidate under review;
-the archived count is not current evidence.
+The archived 2026-05 audit reported no gaps in its then-current population.
+Regenerate the audit for the candidate under review; that historical count is
+not current evidence.
 
 ### 4.5 SOUP inventory
 
@@ -229,7 +229,7 @@ pack. The full pack consists of the artifacts below.
 | Memory map                            | `docs/MEMORY_MAP.md`                          |
 | MC/DC infrastructure / status         | `docs/MCDC.md`, `docs/MCDC_GAPS.md`           |
 | MISRA infrastructure / status         | `docs/MISRA.md`, `.github/misra-baseline.txt` |
-| Doxygen audit                         | `docs/DOXYGEN_GAPS.md`, `docs/DOXYGEN_GAPS.csv`|
+| Doxygen audit                         | `build/reports/doxygen/` (regenerated; release-pack artifact) |
 | Hardware bring-up record              | `docs/HARDWARE_BRINGUP.md`                    |
 | SOUP register                         | `docs/SOUP/`                                  |
 | Vendor-blob blockers                  | `docs/VENDOR_BLOBS.md`                        |

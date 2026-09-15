@@ -21,6 +21,12 @@
     fail_msg: The bench transaction guard did not complete; refusing AD2 changes.
   tags: [always]
 
+- name: Load deployment-specific AD2 data if present
+  ansible.builtin.include_vars: "{{ item }}"
+  vars:
+    item: "{{ playbook_dir }}/../private/secrets.yml"
+  when: item is exists
+
 - name: Assert a distribution this role's package operations are calibrated for
   # Not decoration, and it must precede the cache directory and the deb
   # download below: everything here is Debian-specific by construction (an
@@ -307,6 +313,15 @@
   changed_when: false
   failed_when: false
   check_mode: false
+
+- name: Require the deployment-specific Analog Discovery serial
+  ansible.builtin.assert:
+    that:
+      - ad2_tools_device_serial | length > 0
+    fail_msg: >-
+      Set ad2_tools_device_serial in the operator's git-ignored
+      infra/ansible/private/secrets.yml; unique instrument identifiers are
+      deployment data and are not committed to this repository.
 
 - name: Probe sysfs for the pinned Digilent serial
   # Matched on serial as well as VID:PID -- any other FT232H on the bench
