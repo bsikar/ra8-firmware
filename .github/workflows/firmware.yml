@@ -339,41 +339,71 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - run: just quality::local::gate work-harness
-      - run: just quality::local::gate pre-commit-checks
-      - run: just quality::local::gate suppressions
-      - run: just quality::local::gate markdown-references
-      - run: just quality::local::gate shebangs
-      - run: just quality::local::gate entry-points
-      - run: just quality::local::gate tier-imports
-      - run: just quality::local::gate tests-readme
-      - run: just quality::local::gate disambig-readmes
-      - run: just quality::local::gate pinout-freshness
-      - run: just quality::local::gate bench-lock
-      - run: just quality::local::gate unused-includes
-      - run: just quality::local::gate lint-py-shell
-      - run: just quality::local::gate lint-go
-      - run: just quality::local::gate lint-cmake
-      - run: just quality::local::gate lint-yaml
-      - run: just quality::local::gate lint-just
-      - run: just quality::local::gate lint-ld
-      - run: just quality::local::gate lint-asm
-      - run: just quality::local::gate lint-devcontainer
+      # Run the complete suite after any individual failure. Failed steps still
+      # make the job red; always() only prevents later gates from being skipped.
+      - if: always()
+        run: just quality::local::gate work-harness
+      - if: always()
+        run: just quality::local::gate pre-commit-checks
+      - if: always()
+        run: just quality::local::gate suppressions
+      - if: always()
+        run: just quality::local::gate markdown-references
+      - if: always()
+        run: just quality::local::gate shebangs
+      - if: always()
+        run: just quality::local::gate entry-points
+      - if: always()
+        run: just quality::local::gate tier-imports
+      - if: always()
+        run: just quality::local::gate tests-readme
+      - if: always()
+        run: just quality::local::gate disambig-readmes
+      - if: always()
+        run: just quality::local::gate pinout-freshness
+      - if: always()
+        run: just quality::local::gate bench-lock
+      - if: always()
+        run: just quality::local::gate unused-includes
+      - if: always()
+        run: just quality::local::gate lint-py-shell
+      - if: always()
+        run: just quality::local::gate lint-go
+      - if: always()
+        run: just quality::local::gate lint-cmake
+      - if: always()
+        run: just quality::local::gate lint-yaml
+      - if: always()
+        run: just quality::local::gate lint-just
+      - if: always()
+        run: just quality::local::gate lint-ld
+      - if: always()
+        run: just quality::local::gate lint-asm
+      - if: always()
+        run: just quality::local::gate lint-devcontainer
       # Runs after every other lint gate in this job: it asks each of them what
       # they scan and proves nothing in the tree falls between them.
-      - run: just quality::local::gate lint-coverage
-      - run: just quality::local::gate reserved-addrs
-      - run: just quality::local::gate agnostic-registers
-      - run: just quality::local::gate cite-check
-      - run: just quality::local::gate hum-register-map
-      - run: just quality::local::gate sbom
+      - if: always()
+        run: just quality::local::gate lint-coverage
+      - if: always()
+        run: just quality::local::gate reserved-addrs
+      - if: always()
+        run: just quality::local::gate agnostic-registers
+      - if: always()
+        run: just quality::local::gate cite-check
+      - if: always()
+        run: just quality::local::gate hum-register-map
+      - if: always()
+        run: just quality::local::gate sbom
       # Runs next to sbom because it answers the other half of the same
       # question: sbom proves the vendored tree has not changed since we last
       # looked, soup-upstream proves it is what upstream published. Offline --
       # the upstream hashes are committed manifests, refreshed weekly by
       # osv-scan.yml's soup-upstream-refresh job.
-      - run: just quality::local::gate soup-upstream
-      - run: just quality::local::gate roadmap-stats
+      - if: always()
+        run: just quality::local::gate soup-upstream
+      - if: always()
+        run: just quality::local::gate roadmap-stats
 
   # ---------------------------------------------------------------------------
   # The libclang AST gates, split out of the pre-commit suite (the original two were
