@@ -207,8 +207,8 @@ hosts:
     class: docker_wsl
     summary: "Ryzen 9 7900X, Windows 11 + WSL2: the fleet's fastest host"
     connect:
-      # No SSH daemon runs inside WSL. fleet.py copies the play over this path and runs it inside the
-      # distro with --connection=local. See docs/CI_FLEET.md.
+      # No SSH daemon runs inside WSL. fleet.py copies the play over this path
+      # and runs it inside the distro with --connection=local. See docs/CI_FLEET.md.
       #
       # The tailnet address is the CI-maintenance endpoint. The workstation's
       # odd-port DHCP lease is intentionally transient and has no internet, so
