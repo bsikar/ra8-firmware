@@ -35,6 +35,8 @@ RA8_ZIG_ARGUMENTS = (
     "-Dcpu=cortex_m85+fp_armv8-d32-fp64",
 )
 RA8_C_ARGUMENTS = ("-mcpu=cortex_m85", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16")
+GENERATED_PATH_PARTS = {".zig-cache", "zig-out"}
+REPOSITORY_EXCLUDED_PATH_PARTS = {*GENERATED_PATH_PARTS, "third_party"}
 PROHIBITED_ZIG_TYPES = (
     (re.compile(r"\[\](?:const\s+)?"), "slice"),
     (re.compile(r"(?<![=!])!(?!=)"), "error union"),
@@ -137,33 +139,37 @@ def _inventory_findings(
     return findings
 
 
-def _adapter_scope_findings(name: str, build_root: Path, adapter: Path) -> list[str]:
+def _adapter_scope_findings(
+    name: str, build_root: Path, adapter: Path, repository_root: Path = ROOT
+) -> list[str]:
     """Reject exports declared outside the one registered adapter."""
     findings: list[str] = []
     for source in build_root.rglob("*.zig"):
-        generated = any(part in {".zig-cache", "zig-out"} for part in source.parts)
+        generated = any(part in GENERATED_PATH_PARTS for part in source.parts)
         if source.resolve() == adapter or generated:
             continue
         other_names, _ = _zig_exports(source.read_text(encoding="utf-8"))
         if other_names:
-            relative = source.relative_to(ROOT)
+            relative = source.relative_to(repository_root)
             findings.append(
                 f"{name}: export outside adapter {relative}: " + ", ".join(sorted(other_names))
             )
     return findings
 
 
-def _repository_inventory_findings(libraries: list[dict[str, Any]]) -> list[str]:
+def _repository_inventory_findings(
+    libraries: list[dict[str, Any]], repository_root: Path = ROOT
+) -> list[str]:
     """Require every hand-written Zig export adapter in the repository inventory."""
     registered = {
-        (ROOT / value).resolve()
+        (repository_root / value).resolve()
         for library in libraries
         if isinstance(library, dict) and isinstance((value := library.get("adapter")), str)
     }
     discovered: set[Path] = set()
     findings: list[str] = []
-    for source in ROOT.rglob("*.zig"):
-        if any(part in {".zig-cache", "zig-out", "third_party"} for part in source.parts):
+    for source in repository_root.rglob("*.zig"):
+        if any(part in REPOSITORY_EXCLUDED_PATH_PARTS for part in source.parts):
             continue
         text = source.read_text(encoding="utf-8")
         names, _ = _zig_exports(text)
@@ -171,14 +177,15 @@ def _repository_inventory_findings(libraries: list[dict[str, Any]]) -> list[str]
             discovered.add(source.resolve())
         if re.search(r"\b@export\s*\(", _strip_comments(text)):
             findings.append(
-                f"dynamic @export is prohibited at ABI boundaries: {source.relative_to(ROOT)}"
+                "dynamic @export is prohibited at ABI boundaries: "
+                f"{source.relative_to(repository_root)}"
             )
     findings.extend(
-        f"unregistered Zig export adapter: {source.relative_to(ROOT)}"
+        f"unregistered Zig export adapter: {source.relative_to(repository_root)}"
         for source in sorted(discovered - registered)
     )
     findings.extend(
-        f"registered adapter has no Zig export: {source.relative_to(ROOT)}"
+        f"registered adapter has no Zig export: {source.relative_to(repository_root)}"
         for source in sorted(registered - discovered)
     )
     return findings
@@ -203,7 +210,7 @@ def _compatibility_findings(
 
 
 def _contract_test_findings(  # noqa: PLR0912 -- validates every malformed evidence branch
-    library: dict[str, Any], name: str, prefix: str
+    library: dict[str, Any], name: str, prefix: str, repository_root: Path = ROOT
 ) -> list[str]:
     """Bind ABI tests to the language test manifests or CMake test graph."""
     tests = library.get("contract_tests")
@@ -224,9 +231,11 @@ def _contract_test_findings(  # noqa: PLR0912 -- validates every malformed evide
             findings.append(f"{name}: malformed contract test metadata")
             continue
         seen.add(language)
-        path = ROOT / path_value
-        symbol_path = ROOT / symbol_value if isinstance(symbol_value, str) else path
-        registration = ROOT / registration_value if isinstance(registration_value, str) else None
+        path = repository_root / path_value
+        symbol_path = repository_root / symbol_value if isinstance(symbol_value, str) else path
+        registration = (
+            repository_root / registration_value if isinstance(registration_value, str) else None
+        )
         if not path.is_file():
             findings.append(f"{name}: missing {language} contract test: {path_value}")
             continue
@@ -291,7 +300,9 @@ def _target_findings(library: dict[str, Any], name: str, required_targets: set[s
     return findings
 
 
-def _library_findings(library: dict[str, Any], required_targets: set[str]) -> list[str]:
+def _library_findings(
+    library: dict[str, Any], required_targets: set[str], repository_root: Path = ROOT
+) -> list[str]:
     """Return source, metadata, test, and compatibility findings for one library."""
     findings: list[str] = []
     name = library.get("name", "<unnamed>")
@@ -301,7 +312,7 @@ def _library_findings(library: dict[str, Any], required_targets: set[str]) -> li
     paths: dict[str, Path] = {}
     for field in ("build_root", "public_header", "adapter"):
         value = library.get(field)
-        path = ROOT / value if isinstance(value, str) else ROOT / "<missing>"
+        path = repository_root / value if isinstance(value, str) else repository_root / "<missing>"
         paths[field] = path
         if not path.exists():
             findings.append(f"{name}: missing {field}: {value}")
@@ -316,10 +327,15 @@ def _library_findings(library: dict[str, Any], required_targets: set[str]) -> li
     findings.extend(metadata_findings)
     findings.extend(_inventory_findings(name, declared, header_names, zig_names, zig_heads))
     findings.extend(
-        _adapter_scope_findings(name, paths["build_root"].resolve(), paths["adapter"].resolve())
+        _adapter_scope_findings(
+            name,
+            paths["build_root"].resolve(),
+            paths["adapter"].resolve(),
+            repository_root,
+        )
     )
     findings.extend(_compatibility_findings(library, name, header_text, adapter_text))
-    findings.extend(_contract_test_findings(library, name, prefix))
+    findings.extend(_contract_test_findings(library, name, prefix, repository_root))
     findings.extend(_target_findings(library, name, required_targets))
     return findings
 
@@ -339,9 +355,14 @@ def _c_target_arguments(target: str, arguments: list[str]) -> list[str]:
 
 
 def _c_compile_findings(
-    library: dict[str, Any], zig: str, target: str, mode: str, output: Path
+    library: dict[str, Any],
+    zig: str,
+    job: tuple[str, list[str], str],
+    output: Path,
+    repository_root: Path = ROOT,
 ) -> list[str]:
     """Compile the public C header under the same target and optimization mode."""
+    target, _arguments, mode = job
     includes = library.get("c_include_dirs")
     if not isinstance(includes, list) or not includes:
         return [f"{library['name']}: missing C include directories"]
@@ -358,13 +379,13 @@ def _c_compile_findings(
         "-c",
         MODE_C_FLAGS[mode],
         *_c_target_arguments(target, library["targets"][target]),
-        *(item for include in includes for item in ("-I", str(ROOT / include))),
+        *(item for include in includes for item in ("-I", str(repository_root / include))),
         str(probe),
         "-o",
         str(output / "abi_header_probe.o"),
     ]
     proc = subprocess.run(  # noqa: S603 -- pinned Zig; reviewed policy arguments
-        command, cwd=ROOT, capture_output=True, text=True, check=False
+        command, cwd=repository_root, capture_output=True, text=True, check=False
     )
     if proc.returncode == 0:
         return []
@@ -384,7 +405,11 @@ def _matrix_jobs(
 
 
 def _compiled_findings(
-    library: dict[str, Any], zig: str, nm: str, required_modes: set[str]
+    library: dict[str, Any],
+    zig: str,
+    nm: str,
+    required_modes: set[str],
+    repository_root: Path = ROOT,
 ) -> tuple[list[str], dict[str, int]]:
     """Build every registered target/mode and compare all global exports exactly."""
     name = library["name"]
@@ -393,14 +418,16 @@ def _compiled_findings(
     with tempfile.TemporaryDirectory(prefix="ra8-zig-abi-") as tmp:
         for target, arguments, mode in _matrix_jobs(library, required_modes):
             output = Path(tmp) / target / mode
-            c_findings = _c_compile_findings(library, zig, target, mode, output)
+            c_findings = _c_compile_findings(
+                library, zig, (target, arguments, mode), output, repository_root
+            )
             findings.extend(c_findings)
             counts["c_matrix"] += int(not c_findings)
             command = [
                 zig,
                 "build",
                 "--build-file",
-                str(ROOT / library["build_root"] / "build.zig"),
+                str(repository_root / library["build_root"] / "build.zig"),
                 "--prefix",
                 str(output / "install"),
                 "--cache-dir",
@@ -411,7 +438,7 @@ def _compiled_findings(
                 f"-Doptimize={mode}",
             ]
             proc = subprocess.run(  # noqa: S603 -- pinned Zig; reviewed policy arguments
-                command, cwd=ROOT, capture_output=True, text=True, check=False
+                command, cwd=repository_root, capture_output=True, text=True, check=False
             )
             if proc.returncode != 0:
                 detail = (proc.stdout + proc.stderr).strip()
@@ -441,7 +468,11 @@ def _compiled_findings(
             counts["zig_matrix"] += 1
             if target == "host" and library.get("run_host_tests_in_all_modes") is True:
                 test_proc = subprocess.run(  # noqa: S603 -- pinned Zig; reviewed policy
-                    [*command, "test"], cwd=ROOT, capture_output=True, text=True, check=False
+                    [*command, "test"],
+                    cwd=repository_root,
+                    capture_output=True,
+                    text=True,
+                    check=False,
                 )
                 if test_proc.returncode != 0:
                     detail = (test_proc.stdout + test_proc.stderr).strip()
@@ -480,7 +511,7 @@ def _mode_test_policy_findings(
 
 
 def _validate(
-    policy: dict[str, Any], *, compile_archives: bool
+    policy: dict[str, Any], *, compile_archives: bool, repository_root: Path = ROOT
 ) -> tuple[list[str], dict[str, int]]:
     """Validate the complete policy and return findings plus non-vacuity counts."""
     findings: list[str] = []
@@ -517,7 +548,7 @@ def _validate(
         "mode_tests": 0,
     }
     typed_libraries = [library for library in libraries if isinstance(library, dict)]
-    findings.extend(_repository_inventory_findings(typed_libraries))
+    findings.extend(_repository_inventory_findings(typed_libraries, repository_root))
     findings.extend(_mode_test_policy_findings(policy, typed_libraries))
     target_classes = {
         target
@@ -534,14 +565,14 @@ def _validate(
         if not isinstance(library, dict):
             findings.append("policy library rows must be objects")
             continue
-        findings.extend(_library_findings(library, required_targets))
+        findings.extend(_library_findings(library, required_targets, repository_root))
         counts["headers"] += int(isinstance(library.get("public_header"), str))
         counts["adapters"] += int(isinstance(library.get("adapter"), str))
         counts["exports"] += len(library.get("exports", []))
         counts["tests"] += len(library.get("contract_tests", []))
         if compile_archives and zig is not None and nm is not None:
             compiled_findings, compiled_counts = _compiled_findings(
-                library, zig, nm, required_modes & REQUIRED_MODES
+                library, zig, nm, required_modes & REQUIRED_MODES, repository_root
             )
             findings.extend(compiled_findings)
             for key, value in compiled_counts.items():
@@ -618,8 +649,13 @@ pub fn build(b: *std.Build) void {
             "covered_sources": ["test.c", "test.rust", "test.zig"],
         }
         (root / "tests/contract.json").write_text(json.dumps(registration), encoding="utf-8")
-        original_root = globals()["ROOT"]
-        globals()["ROOT"] = root
+
+        def fixture_library_findings(
+            library: dict[str, Any], required_targets: set[str]
+        ) -> list[str]:
+            """Validate a selftest library within the isolated fixture root."""
+            return _library_findings(library, required_targets, root)
+
         try:
             base: dict[str, Any] = {
                 "name": "demo",
@@ -653,12 +689,12 @@ pub fn build(b: *std.Build) void {
                     }
                 ],
             }
-            if findings := _library_findings(base, {"host", "ra8"}):
+            if findings := fixture_library_findings(base, {"host", "ra8"}):
                 print(f"must-stay-quiet fixture failed: {findings}", file=sys.stderr)
                 return 1
             if not any(
                 "unregistered Zig export adapter" in item
-                for item in _repository_inventory_findings([])
+                for item in _repository_inventory_findings([], root)
             ):
                 print("must-fire fixture was accepted: omitted adapter", file=sys.stderr)
                 return 1
@@ -672,6 +708,7 @@ pub fn build(b: *std.Build) void {
                     "libraries": [host_only],
                 },
                 compile_archives=False,
+                repository_root=root,
             )
             if not any(
                 "missing required target classification: ra8" in item for item in target_findings
@@ -693,6 +730,7 @@ pub fn build(b: *std.Build) void {
                     "libraries": [base],
                 },
                 compile_archives=False,
+                repository_root=root,
             )
             if not any("missing: ReleaseSmall" in item for item in mode_findings):
                 print(
@@ -727,7 +765,8 @@ pub fn build(b: *std.Build) void {
             for label, changed in mutations.items():
                 (root / "build/adapter.zig").write_text(changed, encoding="utf-8")
                 if not any(
-                    label.split()[0] in item for item in _library_findings(base, {"host", "ra8"})
+                    label.split()[0] in item
+                    for item in fixture_library_findings(base, {"host", "ra8"})
                 ):
                     print(f"must-fire fixture was accepted: {label}", file=sys.stderr)
                     return 1
@@ -737,7 +776,7 @@ pub fn build(b: *std.Build) void {
             c_test.write_text("/* demo_run main( */\n", encoding="utf-8")
             if not any(
                 "not executable ABI evidence" in item
-                for item in _library_findings(base, {"host", "ra8"})
+                for item in fixture_library_findings(base, {"host", "ra8"})
             ):
                 print("must-fire fixture was accepted: dead contract test", file=sys.stderr)
                 return 1
@@ -746,7 +785,7 @@ pub fn build(b: *std.Build) void {
             broken_target["targets"]["ra8"] = ["-Dtarget=thumb-freestanding-eabihf"]
             if not any(
                 "does not match RA8D2 CPU/FPU" in item
-                for item in _library_findings(broken_target, {"host", "ra8"})
+                for item in fixture_library_findings(broken_target, {"host", "ra8"})
             ):
                 print("must-fire fixture was accepted: mislabeled RA8 target", file=sys.stderr)
                 return 1
@@ -756,13 +795,16 @@ pub fn build(b: *std.Build) void {
             ):
                 broken = json.loads(json.dumps(base))
                 broken["exports"][0][field] = ""
-                if not any(expected in item for item in _library_findings(broken, {"host", "ra8"})):
+                if not any(
+                    expected in item for item in fixture_library_findings(broken, {"host", "ra8"})
+                ):
                     print(f"must-fire fixture was accepted: undocumented {field}", file=sys.stderr)
                     return 1
             broken = json.loads(json.dumps(base))
             broken["compatibility_sha256"] = "0" * 64
             if not any(
-                "compatibility drift" in item for item in _library_findings(broken, {"host", "ra8"})
+                "compatibility drift" in item
+                for item in fixture_library_findings(broken, {"host", "ra8"})
             ):
                 print("must-fire fixture was accepted: compatibility drift", file=sys.stderr)
                 return 1
@@ -773,7 +815,9 @@ pub fn build(b: *std.Build) void {
             ):
                 broken = json.loads(json.dumps(base))
                 broken.pop(field)
-                if not any(expected in item for item in _library_findings(broken, {"host", "ra8"})):
+                if not any(
+                    expected in item for item in fixture_library_findings(broken, {"host", "ra8"})
+                ):
                     print(f"must-fire fixture was accepted: {expected}", file=sys.stderr)
                     return 1
             zig = shutil.which("zig")
@@ -783,7 +827,7 @@ pub fn build(b: *std.Build) void {
                 compiled["exports"][0]["name"] = "demo_missing"
                 compiled["run_host_tests_in_all_modes"] = False
                 compiled_findings, compiled_counts = _compiled_findings(
-                    compiled, zig, nm, {"Debug"}
+                    compiled, zig, nm, {"Debug"}, root
                 )
                 expected_compiled = len(compiled["targets"])
                 if (
@@ -804,7 +848,7 @@ pub fn build(b: *std.Build) void {
                         print(f"must-fire fixture was accepted: {expected}", file=sys.stderr)
                         return 1
         finally:
-            globals()["ROOT"] = original_root
+            pass
     print("check_zig_abi_policy.py --selftest: OK (quiet + all named failure classes).")
     return 0
 

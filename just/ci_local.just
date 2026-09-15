@@ -35,10 +35,18 @@ default:
     @echo "  just quality::local::review_suppressions          Review draft suppressions"
     @echo "  just quality::local::review_scope_suppressions    Review draft checker-scope authorities"
     @echo "  just quality::local::bless_scope                  Bless checker scope"
-    @echo "  just quality::local::{lint,format,test}-c          Focused C quality commands"
-    @echo "  just quality::local::{lint,format,test}-go         Focused Go quality commands"
-    @echo "  just quality::local::{lint,format,test}-rust       Focused Rust quality commands"
-    @echo "  just quality::local::{lint,format,test}-zig        Focused Zig quality commands"
+    @echo "  just quality::local::lint-c                       Lint C sources"
+    @echo "  just quality::local::format-c                     Format C sources"
+    @echo "  just quality::local::test-c                       Test C sources"
+    @echo "  just quality::local::lint-go                      Lint Go sources"
+    @echo "  just quality::local::format-go                    Format Go sources"
+    @echo "  just quality::local::test-go                      Test Go sources"
+    @echo "  just quality::local::lint-rust                    Lint Rust sources"
+    @echo "  just quality::local::format-rust                  Format Rust sources"
+    @echo "  just quality::local::test-rust                    Test Rust sources"
+    @echo "  just quality::local::lint-zig                     Lint Zig sources"
+    @echo "  just quality::local::format-zig                   Format Zig sources"
+    @echo "  just quality::local::test-zig                     Test Zig sources"
 
 # Run every first-party formatter in place: C (clang-format), Go (gofmt),
 # Python (ruff format), shell (shfmt), CMake (cmake-format), justfiles.
