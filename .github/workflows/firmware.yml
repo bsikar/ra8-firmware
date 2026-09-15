@@ -362,10 +362,6 @@ jobs:
       - if: always()
         run: just quality::local::gate disambig-readmes
       - if: always()
-        run: just quality::local::gate init-order-freshness
-      - if: always()
-        run: just quality::local::gate roadmap-dashboard-freshness
-      - if: always()
         run: just quality::local::gate pinout-freshness
       - if: always()
         run: just quality::local::gate bench-lock

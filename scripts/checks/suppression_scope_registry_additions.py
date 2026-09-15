@@ -373,6 +373,50 @@ def _known_gap_literal_9_p1() -> tuple[str, ...]:
     )
 
 
+def _zig_abi_policy_authorities() -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+    """Classify the Zig ABI checker's reviewed policy and scope authorities."""
+    return (
+        (
+            "positive-scope",
+            "literal",
+            ("checks/check_zig_abi_policy.py:POLICY",),
+        ),
+        (
+            "path-exclusion",
+            "literal",
+            _identities(
+                """
+                checks/check_zig_abi_policy.py:GENERATED_PATH_PARTS
+                checks/check_zig_abi_policy.py:REPOSITORY_EXCLUDED_PATH_PARTS
+                """
+            ),
+        ),
+        (
+            "anti-vacuity-floor",
+            "literal",
+            _identities(
+                """
+                checks/check_zig_abi_policy.py:MIN_OWNERSHIP_LENGTH
+                checks/check_zig_abi_policy.py:MIN_NM_SYMBOL_FIELDS
+                """
+            ),
+        ),
+        (
+            "allowed-token",
+            "literal",
+            _identities(
+                """
+                checks/check_zig_abi_policy.py:CONTEXTS
+                checks/check_zig_abi_policy.py:REQUIRED_MODES
+                checks/check_zig_abi_policy.py:MODE_C_FLAGS
+                checks/check_zig_abi_policy.py:RA8_ZIG_ARGUMENTS
+                checks/check_zig_abi_policy.py:RA8_C_ARGUMENTS
+                """
+            ),
+        ),
+    )
+
+
 def _base_review_schema_groups() -> tuple[tuple[str, str, tuple[str, ...]], ...]:
     """Return the base suppression-audit schema groups in reviewed order."""
     return (
@@ -422,6 +466,7 @@ def _base_review_schema_groups() -> tuple[tuple[str, str, tuple[str, ...]], ...]
 def _final_review_schema_groups() -> tuple[tuple[str, str, tuple[str, ...]], ...]:
     """Return the final-integration schema groups in reviewed order."""
     return (
+        *_zig_abi_policy_authorities(),
         (
             "positive-scope",
             "literal",

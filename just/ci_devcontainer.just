@@ -19,10 +19,18 @@ default:
     @echo "  just quality::devcontainer::mcdc                   Generate DO-178C MC/DC coverage report"
     @echo "  just quality::devcontainer::fuzz [seconds] [runs]  Smoke-run every libFuzzer harness"
     @echo "  just quality::devcontainer::bench                  Run host microbenchmarks"
-    @echo "  just quality::devcontainer::{lint,format,test}-c   Focused C quality commands"
-    @echo "  just quality::devcontainer::{lint,format,test}-go  Focused Go quality commands"
-    @echo "  just quality::devcontainer::{lint,format,test}-rust Focused Rust quality commands"
-    @echo "  just quality::devcontainer::{lint,format,test}-zig Focused Zig quality commands"
+    @echo "  just quality::devcontainer::lint-c                 Lint C sources"
+    @echo "  just quality::devcontainer::format-c               Format C sources"
+    @echo "  just quality::devcontainer::test-c                 Test C sources"
+    @echo "  just quality::devcontainer::lint-go                Lint Go sources"
+    @echo "  just quality::devcontainer::format-go              Format Go sources"
+    @echo "  just quality::devcontainer::test-go                Test Go sources"
+    @echo "  just quality::devcontainer::lint-rust              Lint Rust sources"
+    @echo "  just quality::devcontainer::format-rust            Format Rust sources"
+    @echo "  just quality::devcontainer::test-rust              Test Rust sources"
+    @echo "  just quality::devcontainer::lint-zig               Lint Zig sources"
+    @echo "  just quality::devcontainer::format-zig             Format Zig sources"
+    @echo "  just quality::devcontainer::test-zig               Test Zig sources"
 
 # Auto-format is intentionally not a CI gate: the gate checks formatting while
 

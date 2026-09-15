@@ -493,6 +493,14 @@ def _additional_non_authority_groups_part8() -> tuple[tuple[str, tuple[str, ...]
     )
 
 
+def _zig_abi_policy_non_authorities() -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Classify Zig ABI checker values that do not select enforcement scope."""
+    return (
+        ("derived-runtime", ("checks/check_zig_abi_policy.py:ROOT",)),
+        ("detector-pattern", ("checks/check_zig_abi_policy.py:PROHIBITED_ZIG_TYPES",)),
+    )
+
+
 def additional_non_authority_groups() -> tuple[tuple[str, tuple[str, ...]], ...]:
     """Return constants proven not to select or exempt checker inputs."""
     return (
@@ -504,4 +512,5 @@ def additional_non_authority_groups() -> tuple[tuple[str, tuple[str, ...]], ...]
         *_additional_non_authority_groups_part6(),
         *_additional_non_authority_groups_part7(),
         *_additional_non_authority_groups_part8(),
+        *_zig_abi_policy_non_authorities(),
     )
