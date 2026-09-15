@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# FILE-SIZE-OK: safety-critical controller and transaction selftests stay reviewable together.
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# FILE-SIZE-OK: safety-critical controller and transaction selftests stay reviewable together.
 """Continuously converge ordinary CI runner hosts from one trusted snapshot."""
 
 from __future__ import annotations

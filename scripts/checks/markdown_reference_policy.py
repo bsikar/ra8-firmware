@@ -282,7 +282,6 @@ DECLARED_BARE_CODE_FILES = {
     ("infra/network/PI_PROVISIONING.md", "userconf.txt"): "Raspberry Pi boot-media file",
     ("infra/network/PI_PROVISIONING.md", "cmdline.txt"): "Raspberry Pi boot-media file",
     ("infra/network/PI_PROVISIONING.md", "config.txt"): "Raspberry Pi boot-media file",
-    ("infra/network/README.md", "userconf.txt"): "Raspberry Pi boot-media file",
     ("scripts/emu/README.md", "eil.conf"): "explicitly absent EIL configuration file",
     ("scripts/secrets/README.md", "init.json"): "external OpenBao initialization response",
     ("scripts/secrets/README.md", "approle.env"): "operator-owned credential output",
@@ -483,9 +482,6 @@ DECLARED_BARE_CONTEXT_SHA256 = {
         "610e9bfd35b731f3877431c2218f52a59a2a6eb717f9575fbe52145ea742a6ac",
         "71b05004f1e2a83c58de5431019be9b09413ca261a671ec61cd37ba9a1dc43c0",
         "ebd8f286df9340e424d154a58d7c1803158f1ef227d8dadc447c74aac86b178f",
-    ),
-    ("infra/network/README.md", "userconf.txt"): (
-        "60c475f246ca346f4adbd24f980f314cb0fff073416707aea40607606435b486",
     ),
     ("scripts/emu/README.md", "eil.conf"): (
         "08c3c36c3dbe49e3a52fc345986238560cd81ba66c83f9ad540cffaa8a11a14c",
