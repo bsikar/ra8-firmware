@@ -1,0 +1,18 @@
+{
+  "test_roots": [
+    "tests/native.zig"
+  ],
+  "covered_sources": [
+    "src/adapter.zig",
+    "tests/native.zig"
+  ],
+  "standalone_source_args": {
+    "src/adapter.zig": [
+      "-fno-emit-bin",
+      "-lc",
+      "-I",
+      "../inc"
+    ]
+  },
+  "minimum_tests": 3
+}
