@@ -24,13 +24,10 @@ endif()
 
 add_custom_target(
   reg_gen ALL
-  COMMAND ${ZIG_EXECUTABLE} build-exe ${REG_GEN_SRC} ${ZIG_TARGET_FLAGS}
-          -femit-bin=${REG_GEN_CLI}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${REG_GEN_JSON}
-          ${REG_GEN_JSON_COPY}
+  COMMAND ${ZIG_EXECUTABLE} build-exe ${REG_GEN_SRC} ${ZIG_TARGET_FLAGS} -femit-bin=${REG_GEN_CLI}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${REG_GEN_JSON} ${REG_GEN_JSON_COPY}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  DEPENDS ${REG_GEN_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/src/generator.zig
-          ${REG_GEN_JSON}
+  DEPENDS ${REG_GEN_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/src/generator.zig ${REG_GEN_JSON}
   BYPRODUCTS ${REG_GEN_CLI} ${REG_GEN_JSON_COPY}
   COMMENT "Building reg_gen CLI (zig build-exe) and staging registers.json"
   VERBATIM

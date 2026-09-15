@@ -13,7 +13,7 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: lint-py-shell, lint-cmake, lint-yaml, lint-just,
+# Gates in this file: lint-py-shell, lint-go, lint-zig, lint-rust, lint-cmake, lint-yaml, lint-just,
 # lint-ld, lint-asm, lint-devcontainer, lint-coverage
 
 # --- unused-includes ------------------------------------------------------
@@ -94,6 +94,23 @@ gate_lint_zig() (
   require_tool_versions zig
   python3 scripts/checks/check_zig.py --selftest
   python3 scripts/checks/check_zig.py --require --lint
+)
+
+# --- lint-rust ------------------------------------------------------------
+# Clippy owns Rust static analysis; rustfmt check owns canonical Rust style.
+# The checker derives every crate from tracked first-party .rs files and its
+# selftest proves both tools fire independently before the real tree is judged.
+gate_lint_rust() (
+  set -e
+  require_cmd rustc "the lint-rust gate needs the pinned Rust toolchain"
+  require_cmd cargo "the lint-rust gate needs Cargo"
+  require_cmd rustfmt "the pinned Rust component set includes rustfmt"
+  require_cmd clippy-driver "the pinned Rust component set includes Clippy"
+  require_tool_versions rustc cargo
+  cargo fmt --version
+  cargo clippy --version
+  python3 scripts/checks/check_rust.py --selftest-lint
+  python3 scripts/checks/check_rust.py --require --lint
 )
 
 # --- lint-cmake -----------------------------------------------------------

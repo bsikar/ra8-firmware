@@ -628,6 +628,7 @@ _SCHEMA_GROUPS = (
             "ci/check_selftest_coverage.py:DETECTOR_DIRS",
             "ci/check_selftest_coverage.py:DETECTOR_META_RE",
             "ci/check_selftest_coverage.py:GATE_DIR",
+            "ci/check_selftest_coverage.py:MULTI_SELFTEST_REQUIREMENTS",
             "ci/check_selftest_coverage.py:SCRIPT_TOKEN_RE",
         ),
     ),

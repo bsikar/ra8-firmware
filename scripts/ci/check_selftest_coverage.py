@@ -75,7 +75,12 @@ SCRIPT_TOKEN_RE = re.compile(r"(?:^|.*/)(scripts/[\w./-]+\.(?:py|sh))$")
 SHELL_CONTROL = frozenset({";", "&&", "||", "|", "&", "(", ")"})
 # The image policy has a genuine runtime-free variant for gates that execute
 # inside the image and therefore cannot safely start a nested container runtime.
-SELFTEST_ARGS = frozenset({"--selftest", "--selftest-offline", "selftest"})
+SELFTEST_ARGS = frozenset(
+    {"--selftest", "--selftest-lint", "--selftest-test", "--selftest-offline", "selftest"}
+)
+MULTI_SELFTEST_REQUIREMENTS = {
+    "scripts/checks/check_rust.py": frozenset({"--selftest-lint", "--selftest-test"}),
+}
 
 # Directories whose scripts are DETECTORS and therefore owe a selftest under
 # Rule B. Derived from the scripts/ taxonomy documented in CLAUDE.md.
@@ -180,11 +185,11 @@ def _python_has_selftest(text: str) -> bool:
                 isinstance(function, ast.Attribute) and function.attr == "add_argument"
             )
             if is_add_argument and any(
-                isinstance(arg, ast.Constant) and arg.value == "--selftest" for arg in node.args
+                isinstance(arg, ast.Constant) and arg.value in SELFTEST_ARGS for arg in node.args
             ):
                 return True
         if isinstance(node, ast.Compare) and any(
-            isinstance(child, ast.Constant) and child.value == "--selftest"
+            isinstance(child, ast.Constant) and child.value in SELFTEST_ARGS
             for child in ast.walk(node)
         ):
             return True
@@ -243,6 +248,23 @@ def collect() -> dict[str, bool]:
         return path.read_text(encoding="utf-8") if path.is_file() else None
 
     return expand_helpers(direct, read)
+
+
+def multi_selftest_findings(texts: list[str]) -> list[str]:
+    """Require every deliberately split selftest mode on its own invocation."""
+    observed = {rel: set() for rel in MULTI_SELFTEST_REQUIREMENTS}
+    for text in texts:
+        for segment in _shell_segments(text):
+            for index, token in enumerate(segment):
+                match = SCRIPT_TOKEN_RE.match(token)
+                if match is None or match.group(1) not in observed:
+                    continue
+                observed[match.group(1)].update(SELFTEST_ARGS.intersection(segment[index + 1 :]))
+    return [
+        f"{rel}: missing required selftest mode(s): {', '.join(sorted(required - observed[rel]))}"
+        for rel, required in MULTI_SELFTEST_REQUIREMENTS.items()
+        if required - observed[rel]
+    ]
 
 
 def expand_helpers(
@@ -354,17 +376,22 @@ def run_check() -> int:
         return EXIT_VACUOUS
 
     rule_a, rule_b = evaluate(invoked)
+    variant_findings = multi_selftest_findings(
+        [fragment.read_text(encoding="utf-8") for fragment in sorted(GATE_DIR.glob("*.sh"))]
+    )
     retired_baseline_present = BASELINE_FILE.is_file()
 
-    if rule_a or rule_b or retired_baseline_present:
+    if rule_a or rule_b or variant_findings or retired_baseline_present:
         sys.stderr.write("check_selftest_coverage.py: selftest requirement violated\n\n")
         _report(rule_a, rule_b)
+        for finding in variant_findings:
+            sys.stderr.write(f"  {finding}\n\n")
         if retired_baseline_present:
             sys.stderr.write(
                 "  .github/selftest-baseline.txt: the debt reached zero, so the "
                 "retired baseline must be deleted.\n\n"
             )
-        total = len(rule_a) + len(rule_b) + int(retired_baseline_present)
+        total = len(rule_a) + len(rule_b) + len(variant_findings) + int(retired_baseline_present)
         sys.stderr.write(f"{total} violation(s).\n")
         return EXIT_VIOLATION
 
@@ -573,6 +600,27 @@ def _implementation_cases() -> list[tuple[str, bool]]:
     ]
 
 
+def _multi_mode_cases() -> list[tuple[str, bool]]:
+    """Prove split selftest modes are exact, associated, and all required."""
+    both = [
+        "python3 scripts/checks/check_rust.py --selftest-lint\n"
+        "python3 scripts/checks/check_rust.py --selftest-test\n"
+    ]
+    missing = ["python3 scripts/checks/check_rust.py --selftest-lint\n"]
+    neighboring = [
+        "python3 scripts/checks/check_rust.py --selftest-lint\n"
+        "python3 scripts/checks/check_asm.py --selftest-test\n"
+    ]
+    return [
+        ("all required split Rust selftests stay quiet", not multi_selftest_findings(both)),
+        ("a missing split Rust test selftest fires", bool(multi_selftest_findings(missing))),
+        (
+            "a neighboring script cannot supply the missing Rust mode",
+            bool(multi_selftest_findings(neighboring)),
+        ),
+    ]
+
+
 def _live_scan_cases() -> list[tuple[str, bool]]:
     """The two properties that can only be asserted against the real tree.
 
@@ -622,6 +670,7 @@ def selftest() -> int:
         _helper_walk_cases,
         _taxonomy_cases,
         _implementation_cases,
+        _multi_mode_cases,
         _live_scan_cases,
     )
     failures = sum(_report_cases(family()) for family in families)

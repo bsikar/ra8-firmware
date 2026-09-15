@@ -718,7 +718,7 @@ gate_format() (
   python3 scripts/checks/check_pointer_boilerplate.py --selftest
   python3 scripts/checks/check_pointer_boilerplate.py
   # format_tree.sh drives every first-party formatter (C + Go + Python +
-  # shell + CMake + justfiles) through each checker's own scope seam, so the
+  # shell + Rust + CMake + justfiles) through each checker's own scope seam, so the
   # format gate now covers the whole tree, not just C. Its selftest proves
   # the orchestration contract (missing formatter fails, scopes stay live,
   # grammar closed) before the real run, matching every other detector here.

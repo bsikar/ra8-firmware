@@ -70,10 +70,10 @@ static_assert(k_ra8_abi_fixture_max_bytes == 32U, "ABI fixture maximum byte valu
  * @invariant `reserved0` is zero.
  */
 typedef struct {
-  uint32_t value;     /**< Value to scale. */
-  uint16_t factor;    /**< Unsigned scale factor. */
+  uint32_t value;     /**< Value to scale.                                           */
+  uint16_t factor;    /**< Unsigned scale factor.                                    */
   uint8_t  enabled;   /**< Canonical boolean: zero disables scaling, one enables it. */
-  uint8_t  reserved0; /**< Reserved byte; caller supplies zero. */
+  uint8_t  reserved0; /**< Reserved byte; caller supplies zero.                      */
 } ra8_abi_fixture_config_t;
 
 static_assert(sizeof(ra8_abi_fixture_config_t) == 8U, "ABI fixture structure size");

@@ -378,6 +378,8 @@ jobs:
       - if: always()
         run: just quality::local::gate lint-zig
       - if: always()
+        run: just quality::local::gate lint-rust
+      - if: always()
         run: just quality::local::gate lint-cmake
       - if: always()
         run: just quality::local::gate lint-yaml
