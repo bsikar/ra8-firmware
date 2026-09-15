@@ -6,7 +6,7 @@
 const std = @import("std");
 const implementation = @import("internal/root.zig");
 
-const AbiError = enum(u16) {
+pub const AbiError = enum(u16) {
     ok = 0,
     no_mem = 0x102,
     invalid_arg = 0x103,
@@ -16,13 +16,13 @@ const AbiError = enum(u16) {
     null_ptr = 0x504,
 };
 
-const AbiHandle = opaque {};
+pub const AbiHandle = opaque {};
 const InputError = error{ InvalidSize, NullPointer };
 const AbiLimit = enum(u32) {
     max_bytes = 32,
 };
 
-const AbiConfig = extern struct {
+pub const AbiConfig = extern struct {
     value: u32,
     factor: u16,
     enabled: u8,
@@ -156,31 +156,4 @@ pub export fn ra8_abi_fixture_bytes_release(
     };
     output.* = null;
     return .ok;
-}
-
-test "private implementation maps expected failures" {
-    try std.testing.expectError(
-        error.InvalidBoolean,
-        implementation.apply(.{ .value = 1, .factor = 1, .enabled = 2, .reserved0 = 0 }),
-    );
-    try std.testing.expectError(
-        error.Overflow,
-        implementation.apply(.{ .value = std.math.maxInt(u32), .factor = 2, .enabled = 1, .reserved0 = 0 }),
-    );
-}
-
-test "Zig consumer exercises the exported lifecycle ABI" {
-    var handle: ?*AbiHandle = null;
-    try std.testing.expectEqual(AbiError.ok, ra8_abi_fixture_create(&handle));
-
-    var output = [_]u8{0} ** 3;
-    var output_len: u32 = 99;
-    try std.testing.expectEqual(
-        AbiError.ok,
-        ra8_abi_fixture_copy(handle, "zig", 3, &output, output.len, &output_len),
-    );
-    try std.testing.expectEqualStrings("zig", &output);
-    try std.testing.expectEqual(@as(u32, 3), output_len);
-    try std.testing.expectEqual(AbiError.ok, ra8_abi_fixture_destroy(&handle));
-    try std.testing.expectEqual(@as(?*AbiHandle, null), handle);
 }

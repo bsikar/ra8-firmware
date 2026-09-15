@@ -62,6 +62,38 @@ TEST_CONTRACT_NAME = ".zig-test-contract.json"
 TEST_DECL_RE = re.compile(r"(?m)^\s*test(?:\s+\"[^\"\n]+\")?\s*\{")
 
 
+def _without_zig_comments(text: str) -> str:
+    """Remove line and nested block comments while preserving line structure."""
+    output: list[str] = []
+    index = 0
+    block_depth = 0
+    while index < len(text):
+        pair = text[index : index + 2]
+        if block_depth:
+            if pair == "/*":
+                block_depth += 1
+                index += 2
+            elif pair == "*/":
+                block_depth -= 1
+                index += 2
+            else:
+                output.append("\n" if text[index] == "\n" else " ")
+                index += 1
+        elif pair == "//":
+            newline = text.find("\n", index)
+            if newline < 0:
+                break
+            output.append("\n")
+            index = newline + 1
+        elif pair == "/*":
+            block_depth = 1
+            index += 2
+        else:
+            output.append(text[index])
+            index += 1
+    return "".join(output)
+
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -302,6 +334,41 @@ def _test_contract_errors(root: Path) -> tuple[list[str], int]:
     declared_tests = sum(
         len(TEST_DECL_RE.findall(path.read_text(encoding="utf-8"))) for path in declared_sources
     )
+    inline_production_tests = sorted(
+        path
+        for path in declared_sources
+        if "tests" not in path.relative_to(root).parts
+        and TEST_DECL_RE.search(path.read_text(encoding="utf-8"))
+    )
+    errors.extend(
+        "production Zig source contains inline tests; move them under tests/: "
+        f"{source.relative_to(root)}"
+        for source in inline_production_tests
+    )
+    for test_root in entries:
+        if "tests" not in test_root.relative_to(root).parts:
+            errors.append(f"test root must live under tests/: {test_root.relative_to(root)}")
+            continue
+        root_text = (
+            _without_zig_comments(test_root.read_text(encoding="utf-8"))
+            if test_root.is_file()
+            else ""
+        )
+        entry_paths = {entry.resolve() for entry in entries}
+        sibling_tests = sorted(
+            path
+            for path in declared_sources
+            if path not in entry_paths
+            and "tests" in path.relative_to(root).parts
+            and path.suffix == ".zig"
+        )
+        errors.extend(
+            "dedicated Zig test module is not imported by its test root: "
+            f"{source.relative_to(root)}"
+            for source in sibling_tests
+            if re.search(rf'(?m)^\s*_\s*=\s*@import\("{re.escape(source.name)}"\);', root_text)
+            is None
+        )
     if floor and declared_tests < floor:
         errors.append(f"declared Zig test count {declared_tests} is below floor {floor}")
     return errors, declared_tests
@@ -325,7 +392,7 @@ def _validate_test_contracts(roots: list[Path]) -> tuple[dict[str, list[str]], i
 
 
 def _run_covered_sources(zig: str, roots: list[Path]) -> dict[str, str]:
-    """Compile and execute each source named by a build root's contract."""
+    """Compile production sources; dedicated tests execute through the build graph."""
     failures: dict[str, str] = {}
     for root in roots:
         _, covered, _, contract_errors = _load_test_contract(root)
@@ -333,6 +400,8 @@ def _run_covered_sources(zig: str, roots: list[Path]) -> dict[str, str]:
             continue
         for source in covered:
             rel_source = source.relative_to(root)
+            if "tests" in rel_source.parts:
+                continue
             proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
                 [zig, "test", str(rel_source)],
                 cwd=root,
@@ -406,7 +475,8 @@ def _selftest_lint(zig: str, failures: list[str]) -> None:
 
 
 def _write_build_fixture(root: Path, test_source: str) -> None:
-    """Write one minimal Zig 0.14 build graph whose `test` step runs `main.zig`."""
+    """Write one minimal Zig 0.14 graph with a dedicated test root."""
+    (root / "tests").mkdir(exist_ok=True)
     (root / "build.zig").write_text(
         'const std = @import("std");\n'
         "\n"
@@ -415,7 +485,7 @@ def _write_build_fixture(root: Path, test_source: str) -> None:
         "    const optimize = b.standardOptimizeOption(.{});\n"
         "    const tests = b.addTest(.{\n"
         "        .root_module = b.createModule(.{\n"
-        '            .root_source_file = b.path("main.zig"),\n'
+        '            .root_source_file = b.path("tests/main.zig"),\n'
         "            .target = target,\n"
         "            .optimize = optimize,\n"
         "        }),\n"
@@ -426,12 +496,12 @@ def _write_build_fixture(root: Path, test_source: str) -> None:
         "}\n",
         encoding="utf-8",
     )
-    (root / "main.zig").write_text(test_source, encoding="utf-8")
+    (root / "tests/main.zig").write_text(test_source, encoding="utf-8")
     (root / TEST_CONTRACT_NAME).write_text(
         json.dumps(
             {
-                "test_roots": ["main.zig"],
-                "covered_sources": ["main.zig"],
+                "test_roots": ["tests/main.zig"],
+                "covered_sources": ["tests/main.zig"],
                 "minimum_tests": 1,
             }
         )
@@ -484,37 +554,38 @@ def _selftest_tests(zig: str, failures: list[str]) -> None:
         # A raw-text import mention must not hide an independently failing source.
         _write_build_fixture(
             root,
-            '// @import("shadow.zig")\n'
+            '/*\n_ = @import("shadow.zig");\n*/\n'
             'test "real root" {\n'
             '    try @import("std").testing.expect(true);\n'
             "}\n",
         )
-        (root / "shadow.zig").write_text(
+        (root / "tests/shadow.zig").write_text(
             'test "unwired failure" {\n    try @import("std").testing.expect(false);\n}\n',
             encoding="utf-8",
         )
         (root / TEST_CONTRACT_NAME).write_text(
             json.dumps(
                 {
-                    "test_roots": ["main.zig"],
-                    "covered_sources": ["main.zig", "shadow.zig"],
+                    "test_roots": ["tests/main.zig"],
+                    "covered_sources": ["tests/main.zig", "tests/shadow.zig"],
                     "minimum_tests": 1,
                 }
             )
             + "\n",
             encoding="utf-8",
         )
-        if not _run_covered_sources(zig, [root]):
-            failures.append("  must-fire: failing source hidden by a commented import was accepted")
+        wiring_errors, _ = _test_contract_errors(root)
+        if not any("test module is not imported" in error for error in wiring_errors):
+            failures.append("  must-fire: test module hidden by a commented import was accepted")
 
         # A test step that runs a different root must not satisfy the contract.
-        (root / "shadow.zig").write_text(
+        (root / "tests/shadow.zig").write_text(
             'test "dummy pass" {\n    try @import("std").testing.expect(true);\n}\n',
             encoding="utf-8",
         )
         build_text = (root / "build.zig").read_text(encoding="utf-8")
         (root / "build.zig").write_text(
-            build_text.replace('b.path("main.zig")', 'b.path("shadow.zig")'),
+            build_text.replace('b.path("tests/main.zig")', 'b.path("tests/shadow.zig")'),
             encoding="utf-8",
         )
         causal_failures, _ = _run_tests(zig, [root])
@@ -529,7 +600,7 @@ def _selftest_test_contract(failures: list[str]) -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         passing_source = (
-            'const helper = @import("helper.zig");\n'
+            'const helper = @import("../helper.zig");\n'
             'test "contract pass" {\n'
             "    _ = helper.value;\n"
             "}\n"
@@ -539,8 +610,8 @@ def _selftest_test_contract(failures: list[str]) -> None:
         (root / TEST_CONTRACT_NAME).write_text(
             json.dumps(
                 {
-                    "test_roots": ["main.zig"],
-                    "covered_sources": ["main.zig", "helper.zig"],
+                    "test_roots": ["tests/main.zig"],
+                    "covered_sources": ["tests/main.zig", "helper.zig"],
                     "minimum_tests": 1,
                 }
             )
@@ -552,6 +623,22 @@ def _selftest_test_contract(failures: list[str]) -> None:
         if errors or count != 1:
             failures.append(f"  must-stay-quiet: compliant Zig test contract failed: {errors}")
 
+        (root / "src").mkdir()
+        (root / "src/inline.zig").write_text(
+            'test "production test" { try @import("std").testing.expect(true); }\n',
+            encoding="utf-8",
+        )
+        contract = root / TEST_CONTRACT_NAME
+        raw_contract = json.loads(contract.read_text(encoding="utf-8"))
+        raw_contract["covered_sources"].append("src/inline.zig")
+        contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+        errors, _ = _test_contract_errors(root)
+        if not any("production Zig source contains inline tests" in error for error in errors):
+            failures.append("  must-fire: inline test in production Zig source was accepted")
+        (root / "src/inline.zig").unlink()
+        raw_contract["covered_sources"].remove("src/inline.zig")
+        contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+
         (root / "orphan.zig").write_text("pub const orphan = true;\n", encoding="utf-8")
         errors, _ = _test_contract_errors(root)
         if not any("orphan Zig source" in error for error in errors):
@@ -561,8 +648,8 @@ def _selftest_test_contract(failures: list[str]) -> None:
         (root / TEST_CONTRACT_NAME).write_text(
             json.dumps(
                 {
-                    "test_roots": ["main.zig"],
-                    "covered_sources": ["main.zig", "helper.zig"],
+                    "test_roots": ["tests/main.zig"],
+                    "covered_sources": ["tests/main.zig", "helper.zig"],
                     "minimum_tests": 2,
                 }
             )

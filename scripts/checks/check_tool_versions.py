@@ -411,6 +411,8 @@ def build_specs() -> list[ToolSpec]:
         ToolSpec("go", _arg(args, "GO_VERSION"), MODE_EXACT, "ARG GO_VERSION", ("version",)),
         # `zig --version` is not a thing: the toolchain spells it `zig version`.
         ToolSpec("zig", _arg(args, "ZIG_VERSION"), MODE_EXACT, "ARG ZIG_VERSION", ("version",)),
+        _spec(args, "rustc", "RUST_VERSION", MODE_EXACT),
+        _spec(args, "cargo", "RUST_VERSION", MODE_EXACT),
         ToolSpec(f"clang-format-{cf}", cf, MODE_MAJOR, f"clang-format-{cf}"),
         ToolSpec(f"clang-tidy-{ct}", ct, MODE_MAJOR, f"clang-tools-{ct}"),
         # gcc-14 is the second host-tool compiler arm (#356); the tools-build

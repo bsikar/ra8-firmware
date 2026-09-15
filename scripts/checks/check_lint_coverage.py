@@ -27,7 +27,7 @@ This gate answers the question mechanically:
   5. FAIL on any file whose type has no classification rule at all.
 
 Point 5 is the one that earns the gate its keep. The day someone commits a
-``.rs``, a ``.ts`` or a ``.proto``, this goes red and somebody has to decide
+``.ts`` or a ``.proto``, this goes red and somebody has to decide
 how that language is checked -- rather than it entering the tree silently and
 being discovered by the sixth hand audit.
 
@@ -132,6 +132,7 @@ PROVIDERS: tuple[Provider, ...] = (
     Provider("vet+staticcheck", (LINT,), ("golang",), "check_go.py", ("--list-files",)),
     Provider("gofmt", (FORMAT,), ("golang",), "format_tree.sh", ("--list-files", "go"), "bash"),
     Provider("zig", (LINT, FORMAT), ("zig",), "check_zig.py", ("--list-files",)),
+    Provider("clippy+rustfmt", (LINT, FORMAT), ("rust",), "check_rust.py", ("--list-files",)),
     Provider("shellcheck", (LINT,), ("shell",), "check_shell.py", ("--list-files",)),
     Provider("shfmt", (FORMAT,), ("shell",), "format_tree.sh", ("--list-files", "shell"), "bash"),
     Provider("cmake-lint", (LINT,), ("cmake",), "lint_targets.py", ("cmake",)),
@@ -541,10 +542,10 @@ def _assert_quiet(files: list[str], claimed: dict[str, set[str]], failures: list
 
 def _assert_fires(files: list[str], claimed: dict[str, set[str]], failures: list[str]) -> None:
     """Assert the model fires on each distinct way coverage can be lost."""
-    rust = evaluate([*files, "tools/agent/src/main.rs"], claimed)
+    typescript = evaluate([*files, "tools/agent/src/main.ts"], claimed)
     expect(
-        rust.unclassified == ["tools/agent/src/main.rs"],
-        "an unclassified file type (.rs) fires",
+        typescript.unclassified == ["tools/agent/src/main.ts"],
+        "an unclassified file type (.ts) fires",
         failures,
     )
 

@@ -445,6 +445,31 @@ RUN set -eux; \
     test "$(/usr/local/zig/zig version)" = "${ZIG_VERSION}"
 ENV PATH="/usr/local/zig:${PATH}"
 
+# Rust -- native tests and C-ABI consumer/provider fixtures. The complete
+# official distribution supplies rustc, Cargo, rustfmt, and Clippy as one
+# version-coherent toolchain on both CI architectures.
+ARG RUST_VERSION=1.89.0
+ARG RUST_SHA256_X86_64=c4f2796b10ee886001f0799bc40caea38746403a33c379d77878c4f4683f9b51
+ARG RUST_SHA256_AARCH64=ae6f35b027cb32339fa4ac94dab37a21194e9a5c680491d01e54aa61e9da4de7
+RUN set -eux; \
+    case "$(uname -m)" in \
+      x86_64)  rustarch=x86_64;  rustsha="${RUST_SHA256_X86_64}" ;; \
+      aarch64) rustarch=aarch64; rustsha="${RUST_SHA256_AARCH64}" ;; \
+      *) echo "unsupported host arch $(uname -m) for Rust" >&2; exit 1 ;; \
+    esac; \
+    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL -o /tmp/rust.tar.xz \
+      "https://static.rust-lang.org/dist/rust-${RUST_VERSION}-${rustarch}-unknown-linux-gnu.tar.xz"; \
+    printf '%s  %s\n' "${rustsha}" /tmp/rust.tar.xz | sha256sum -c -; \
+    mkdir /tmp/rust; \
+    tar -xf /tmp/rust.tar.xz --strip-components=1 -C /tmp/rust; \
+    /tmp/rust/install.sh --prefix=/usr/local --disable-ldconfig \
+      --components="rustc,cargo,rust-std-${rustarch}-unknown-linux-gnu,rustfmt-preview,clippy-preview"; \
+    rm -rf /tmp/rust /tmp/rust.tar.xz; \
+    test "$(rustc --version | awk '{print $2}')" = "${RUST_VERSION}"; \
+    test "$(cargo --version | awk '{print $2}')" = "${RUST_VERSION}"; \
+    cargo clippy --version; \
+    cargo fmt --version
+
 # just -- command runner for CI gates and repository recipes.
 ARG JUST_VERSION=1.40.0
 ARG JUST_SHA256_X86_64=181b91d0ceebe8a57723fb648ed2ce1a44d849438ce2e658339df4f8db5f1263

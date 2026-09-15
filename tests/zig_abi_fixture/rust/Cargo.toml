@@ -1,0 +1,14 @@
+[package]
+name = "ra8-zig-abi-fixture"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = "deny"

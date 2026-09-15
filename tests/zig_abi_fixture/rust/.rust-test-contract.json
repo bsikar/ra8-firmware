@@ -1,0 +1,6 @@
+{
+  "covered_sources": [
+    "src/lib.rs"
+  ],
+  "minimum_tests": 15
+}
