@@ -18,10 +18,49 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
         .root_module = adapter,
     });
-    b.installArtifact(library);
+    const install_library = b.addInstallArtifact(library, .{});
+    b.getInstallStep().dependOn(&install_library.step);
+    const library_step = b.step("library", "Build and install the Zig ABI library");
+    library_step.dependOn(&install_library.step);
 
     const supplied_rust_lib_dir = b.option([]const u8, "rust-lib-dir", "Rust archive directory");
     const rust_lib_dir = supplied_rust_lib_dir orelse b.pathFromRoot("../rust/target/debug");
+
+    const executable_module = b.createModule(.{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    executable_module.addIncludePath(b.path("../inc"));
+    executable_module.addIncludePath(b.path("../src"));
+    const executable = b.addExecutable(.{
+        .name = "firmware_pipeline_zig_main",
+        .root_module = executable_module,
+    });
+    executable.addObjectFile(library.getEmittedBin());
+    executable.addCSourceFiles(.{
+        .files = &.{
+            "../src/firmware_pipeline_cli.c",
+            "../src/firmware_pipeline_io.c",
+        },
+        .flags = &.{ "-std=gnu2x", "-Wall", "-Wextra", "-Werror" },
+    });
+    executable.addObjectFile(.{ .cwd_relative = b.pathJoin(&.{ rust_lib_dir, "libfirmware_pipeline_rust.a" }) });
+    switch (target.result.os.tag) {
+        .linux => {
+            executable.linkSystemLibrary("gcc_s");
+            executable.linkSystemLibrary("pthread");
+            executable.linkSystemLibrary("dl");
+            executable.linkSystemLibrary("m");
+        },
+        .macos => executable.linkSystemLibrary("System"),
+        else => @panic("firmware_pipeline supports Linux and macOS hosts"),
+    }
+    const install_executable = b.addInstallArtifact(executable, .{});
+    b.getInstallStep().dependOn(&install_executable.step);
+    const executable_step = b.step("executable", "Build and install the Zig-main executable");
+    executable_step.dependOn(&install_executable.step);
     const test_module = b.createModule(.{
         .root_source_file = b.path("tests/native.zig"),
         .target = target,

@@ -465,6 +465,7 @@ _SCHEMA_GROUPS = (
             "checks/check_download_installers.py:PROVISION",
             "checks/check_entry_points.py:FIRMWARE_APPS",
             "checks/check_entry_points.py:FIRMWARE_ROOTS",
+            "checks/check_entry_points.py:LANGUAGE_OWNED_MAINS",
             "checks/check_entry_points.py:SUFFIXES",
             "checks/check_example_board_pins.py:SCAN_ROOT",
             "checks/check_example_board_pins.py:SOURCE_SUFFIXES",

@@ -4,6 +4,7 @@
   ],
   "covered_sources": [
     "src/adapter.zig",
+    "src/main.zig",
     "tests/native.zig"
   ],
   "standalone_source_args": {
@@ -12,6 +13,14 @@
       "-lc",
       "-I",
       "../inc"
+    ],
+    "src/main.zig": [
+      "-fno-emit-bin",
+      "-lc",
+      "-I",
+      "../inc",
+      "-I",
+      "../src"
     ]
   },
   "minimum_tests": 3

@@ -36,11 +36,21 @@ string(REGEX REPLACE "[ \t\r\n]" "" private_header "${private_header}")
 string(REGEX REPLACE "[ \t\r\n]" "" zig_source "${zig_source}")
 string(REGEX REPLACE "[ \t\r\n]" "" rust_source "${rust_source}")
 
-set(public_signature "firmware_pipeline_status_tfirmware_pipeline_analyze(constfirmware_pipeline_config_t*config,constuint8_t*data,size_tsize,firmware_pipeline_result_t*out_result)")
-set(private_signature "int32_tfirmware_pipeline_rust_analyze(constuint8_t*data,size_tsize,firmware_pipeline_rust_summary_t*out_summary)")
-set(zig_signature "pubexportfnfirmware_pipeline_analyze(config:?*constc.firmware_pipeline_config_t,data:?[*]constu8,size:usize,out_result:?*c.firmware_pipeline_result_t,)callconv(.c)c.firmware_pipeline_status_t")
-set(rust_signature "const_:unsafeextern\"C\"fn(*constu8,usize,*mutRustSummary)->PipelineStatus=firmware_pipeline_rust_analyze")
-foreach(pair IN ITEMS "public_header;${public_signature}" "private_header;${private_signature}" "zig_source;${zig_signature}" "rust_source;${rust_signature}")
+set(public_signature
+    "firmware_pipeline_status_tfirmware_pipeline_analyze(constfirmware_pipeline_config_t*config,constuint8_t*data,size_tsize,firmware_pipeline_result_t*out_result)"
+)
+set(private_signature
+    "int32_tfirmware_pipeline_rust_analyze(constuint8_t*data,size_tsize,firmware_pipeline_rust_summary_t*out_summary)"
+)
+set(zig_signature
+    "pubexportfnfirmware_pipeline_analyze(config:?*constc.firmware_pipeline_config_t,data:?[*]constu8,size:usize,out_result:?*c.firmware_pipeline_result_t,)callconv(.c)c.firmware_pipeline_status_t"
+)
+set(rust_signature
+    "const_:unsafeextern\"C\"fn(*constu8,usize,*mutRustSummary)->PipelineStatus=firmware_pipeline_rust_analyze"
+)
+foreach(pair IN ITEMS "public_header;${public_signature}" "private_header;${private_signature}"
+                      "zig_source;${zig_signature}" "rust_source;${rust_signature}"
+)
   list(GET pair 0 variable)
   list(GET pair 1 fragment)
   string(FIND "${${variable}}" "${fragment}" position)
@@ -49,13 +59,17 @@ foreach(pair IN ITEMS "public_header;${public_signature}" "private_header;${priv
   endif()
 endforeach()
 
-foreach(fragment IN ITEMS "sizeof(firmware_pipeline_result_t)==40U" "offsetof(firmware_pipeline_result_t,zig_xor8)==32U")
+foreach(fragment IN ITEMS "sizeof(firmware_pipeline_result_t)==40U"
+                          "offsetof(firmware_pipeline_result_t,zig_xor8)==32U"
+)
   string(FIND "${public_header}" "${fragment}" position)
   if(position EQUAL -1)
     message(FATAL_ERROR "public header is missing layout contract ${fragment}")
   endif()
 endforeach()
-foreach(fragment IN ITEMS "sizeof(firmware_pipeline_rust_summary_t)==32U" "offsetof(firmware_pipeline_rust_summary_t,fnv1a64)==24U")
+foreach(fragment IN ITEMS "sizeof(firmware_pipeline_rust_summary_t)==32U"
+                          "offsetof(firmware_pipeline_rust_summary_t,fnv1a64)==24U"
+)
   string(FIND "${private_header}" "${fragment}" position)
   if(position EQUAL -1)
     message(FATAL_ERROR "private header is missing layout contract ${fragment}")

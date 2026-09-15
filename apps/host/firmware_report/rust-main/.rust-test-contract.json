@@ -1,0 +1,14 @@
+{
+  "covered_sources": [
+    "build.rs",
+    "src/foreign.rs",
+    "src/lib.rs",
+    "src/main.rs",
+    "tests/cli.rs"
+  ],
+  "minimum_tests": 4,
+  "package_license": "MIT",
+  "allowed_dependencies": [
+    "firmware_report_provider"
+  ]
+}

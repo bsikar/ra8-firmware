@@ -1,15 +1,14 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 
-set(
-  expected
-  test_firmware_report_abi
-  test_firmware_report_cli
-  test_firmware_report_command
-  test_firmware_report_inventory_selftest
-  test_firmware_report_rust
-  test_firmware_report_symbols
-  test_firmware_report_symbols_selftest
+set(expected
+    test_firmware_report_abi
+    test_firmware_report_cli
+    test_firmware_report_command
+    test_firmware_report_inventory_selftest
+    test_firmware_report_rust
+    test_firmware_report_symbols
+    test_firmware_report_symbols_selftest
 )
 list(SORT expected)
 set(actual ${ACTUAL_TESTS})
