@@ -1036,10 +1036,12 @@ deliberately non-idempotent in check mode, so their changed count is reported
 as `CHECK-NOISE`; the daily real apply and its role assertions are the
 authoritative test. The weekly consumer pass closes Ansible's other documented
 check-mode blind spots. Between full passes, real consumer drift is repaired at
-the next six-hour run. A failed mutation drains that host to zero capacity; a
-failed producer blocks consumer updates so an unverified archive is never
-distributed. A read-only failure does not take an unchanged, last-known-good
-host down.
+the next six-hour run. A producer mutation gets three bounded attempts while
+admission remains parked, so a transient package or artifact download failure
+cannot strand the entire fleet. Exhausted attempts drain that host to zero
+capacity; a failed producer blocks consumer updates so an unverified archive is
+never distributed. A read-only failure does not take an unchanged,
+last-known-good host down.
 
 The native `dev-hil` listener and `star` are excluded. Their roles can touch
 the physical bench and remain behind the signed, human-present whole-bench
