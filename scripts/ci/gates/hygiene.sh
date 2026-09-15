@@ -718,11 +718,13 @@ gate_format() (
   python3 scripts/checks/check_pointer_boilerplate.py --selftest
   python3 scripts/checks/check_pointer_boilerplate.py
   # format_tree.sh drives every first-party formatter (C + Go + Python +
-  # shell + Rust + CMake + justfiles) through each checker's own scope seam, so the
-  # format gate now covers the whole tree, not just C. Its selftest proves
+  # shell + Zig + Rust + CMake + justfiles) through each checker's own scope seam,
+  # so the format gate now covers the whole tree, not just C. Its selftest proves
   # the orchestration contract (missing formatter fails, scopes stay live,
   # grammar closed) before the real run, matching every other detector here.
   bash scripts/checks/format_tree.sh --selftest
+  require_tool_versions zig
+  python3 scripts/checks/check_zig.py --selftest-lint
   # cmake-format's pin moved here with the formatter: the gate that uses a
   # tool owns its version assertion (tool_env.sh contract), and lint-cmake no
   # longer invokes it. gofmt/ruff/shfmt stay asserted where their pins live

@@ -4,7 +4,8 @@
 #
 # scripts/checks/format_tree.sh -- run EVERY first-party formatter over the
 # tree: C (clang-format + comment pass), Go (gofmt), Python (ruff format),
-# shell (shfmt), Rust (rustfmt), CMake (cmake-format), justfiles (just --fmt).
+# shell (shfmt), Zig (zig fmt), Rust (rustfmt), CMake (cmake-format),
+# justfiles (just --fmt).
 #
 # The `format` / `check` just recipes and the CI `format` gate both drive this
 # script. Every language's file list comes from ONE seam definition
@@ -31,7 +32,7 @@
 #     format_tree.sh             # format every language in place
 #     format_tree.sh --check     # exit 1 on the first language with any diff
 #     format_tree.sh --selftest  # prove the orchestration contract
-#     format_tree.sh --list-files go|python|shell|rust|cmake|just
+#     format_tree.sh --list-files go|python|shell|zig|rust|cmake|just
 #                                # print the files the lanes would format
 
 set -euo pipefail
@@ -61,11 +62,12 @@ run_scope() {
     go) python3 "$SCRIPT_DIR/check_go.py" --list-files ;;
     python) python3 "$SCRIPT_DIR/check_ruff.py" --list-files ;;
     shell) python3 "$SCRIPT_DIR/check_shell.py" --list-files ;;
+    zig) python3 "$SCRIPT_DIR/check_zig.py" --list-files ;;
     rust) python3 "$SCRIPT_DIR/check_rust.py" --list-files ;;
     cmake) python3 "$SCRIPT_DIR/lint_targets.py" cmake ;;
     just) python3 "$SCRIPT_DIR/check_justfiles.py" --list-files ;;
     *)
-      echo "format_tree: unknown language '$1' (expected go|python|shell|rust|cmake|just)" >&2
+      echo "format_tree: unknown language '$1' (expected go|python|shell|zig|rust|cmake|just)" >&2
       exit 2
       ;;
   esac
@@ -143,7 +145,7 @@ selftest() {
   # the same run_scope the lanes and --list-files both read. Each checker's
   # own floor deepens the same guarantee; this proves the orchestrator is
   # actually wired to the seams.
-  for lang in go python shell rust cmake just; do
+  for lang in go python shell zig rust cmake just; do
     n="$(run_scope "$lang" 2>/dev/null | sed '/^$/d' | wc -l | tr -d ' ')"
     if [ -z "$n" ] || [ "$n" -eq 0 ] 2>/dev/null; then
       echo "selftest: FAILED -- ${lang} scope collapsed." >&2
@@ -185,7 +187,7 @@ case "${1:-}" in
   --list-files)
     shift
     [ $# -eq 1 ] || {
-      echo "usage: format_tree.sh --list-files go|python|shell|rust|cmake|just" >&2
+      echo "usage: format_tree.sh --list-files go|python|shell|zig|rust|cmake|just" >&2
       exit 2
     }
     run_scope "$1"
@@ -243,6 +245,15 @@ else
   run_format shell shfmt -i 2 -ci -w "${shell_files[@]}"
 fi
 
+# --- Zig ------------------------------------------------------------------
+require_tool zig
+language_scope zig
+if [ "$CHECK_ONLY" -eq 1 ]; then
+  run_check zig exitcode python3 "$SCRIPT_DIR/check_zig.py" --require --lint || exit 1
+else
+  run_format zig python3 "$SCRIPT_DIR/check_zig.py" --require --format
+fi
+
 # --- Rust -----------------------------------------------------------------
 require_tool cargo
 require_tool rustfmt
@@ -277,7 +288,8 @@ while IFS= read -r justfile; do
 done </tmp/ra8-fmt-just.list
 
 rm -f /tmp/ra8-fmt-go.list /tmp/ra8-fmt-python.list /tmp/ra8-fmt-shell.list \
-  /tmp/ra8-fmt-rust.list /tmp/ra8-fmt-cmake.list /tmp/ra8-fmt-just.list
+  /tmp/ra8-fmt-zig.list /tmp/ra8-fmt-rust.list /tmp/ra8-fmt-cmake.list \
+  /tmp/ra8-fmt-just.list
 if [ "$CHECK_ONLY" -eq 1 ]; then
   echo "format_tree: all languages formatted"
 else

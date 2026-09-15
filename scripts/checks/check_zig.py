@@ -24,17 +24,18 @@ Verification Modes
 
 Non-vacuity
 -----------
-``--selftest`` feeds the tools deliberately non-conforming fixtures and asserts they
-fire, clean fixtures and asserts silence, tests failing and passing build graphs,
-and verifies the worktree-scope exclusion check. A collapsed or unmanaged scope
-trips the file floor instead of reporting a clean tree.
+``--selftest-lint`` proves dirty/clean formatting, formatter fix mode, AST errors,
+and worktree-scope exclusion. ``--selftest-test`` separately proves passing and
+failing native build graphs plus test-contract enforcement. A collapsed or
+unmanaged scope trips the file floor instead of reporting a clean tree.
 
 Usage:
     check_zig.py                         # lint gate (fmt --check, ast-check)
     check_zig.py --test                  # run every explicit `zig build test` target
     check_zig.py --format                # reformat all tracked files in place
     check_zig.py --require               # fail (not skip) if zig is absent
-    check_zig.py --selftest              # prove verification tools fire and stay quiet
+    check_zig.py --selftest-lint         # prove fmt/AST checks and fix mode
+    check_zig.py --selftest-test         # prove native test execution/contracts
     check_zig.py --list-files            # report managed files for coverage matrix
 
 Exit 0 if clean, exit 1 on findings or test failures, exit 2 on a tool error,
@@ -43,6 +44,8 @@ an unsupported mode, or a scope that collapsed below the file floor.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import os
 import re
@@ -51,6 +54,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dev"))
@@ -59,7 +63,7 @@ from git_environment import trusted_git_executable
 from lint_targets import is_build_output_path
 
 TEST_CONTRACT_NAME = ".zig-test-contract.json"
-TEST_DECL_RE = re.compile(r"(?m)^\s*test(?:\s+\"[^\"\n]+\")?\s*\{")
+TEST_DECL_RE = re.compile(r'(?m)^\s*test(?:\s+(?:"[^"\n]+"|[A-Za-z_][A-Za-z0-9_]*))?\s*\{')
 
 
 def _without_zig_comments(text: str) -> str:
@@ -92,6 +96,11 @@ def _without_zig_comments(text: str) -> str:
             output.append(text[index])
             index += 1
     return "".join(output)
+
+
+def _test_declarations(path: Path) -> list[str]:
+    """Return real Zig test declarations, excluding comment text."""
+    return TEST_DECL_RE.findall(_without_zig_comments(path.read_text(encoding="utf-8")))
 
 
 def _repo_root() -> Path:
@@ -331,14 +340,11 @@ def _test_contract_errors(root: Path) -> tuple[list[str], int]:
         for source in unexpected
     )
 
-    declared_tests = sum(
-        len(TEST_DECL_RE.findall(path.read_text(encoding="utf-8"))) for path in declared_sources
-    )
+    declared_tests = sum(len(_test_declarations(path)) for path in declared_sources)
     inline_production_tests = sorted(
         path
         for path in declared_sources
-        if "tests" not in path.relative_to(root).parts
-        and TEST_DECL_RE.search(path.read_text(encoding="utf-8"))
+        if "tests" not in path.relative_to(root).parts and _test_declarations(path)
     )
     errors.extend(
         "production Zig source contains inline tests; move them under tests/: "
@@ -453,6 +459,13 @@ def _selftest_lint(zig: str, failures: list[str]) -> None:
         unfmt, _ = _run_lint(zig, [str(bad_fmt)])
         if not unfmt:
             failures.append("  must-fire: `zig fmt` accepted unformatted code")
+        if _run_format(zig, [str(bad_fmt)]) != 0:
+            failures.append("  must-stay-quiet: `zig fmt` could not fix unformatted code")
+        fixed_unfmt, fixed_syn = _run_lint(zig, [str(bad_fmt)])
+        if fixed_unfmt or fixed_syn:
+            failures.append(
+                f"  must-stay-quiet: formatted fixture remained dirty: {fixed_unfmt} {fixed_syn}"
+            )
 
         # 2. Bad syntax fixture must fail
         bad_syn = root / "bad_syntax.zig"
@@ -595,6 +608,60 @@ def _selftest_tests(zig: str, failures: list[str]) -> None:
             failures.append("  must-fire: test step wired to a dummy root was accepted")
 
 
+def _selftest_test_declaration_grammar(
+    root: Path,
+    passing_source: str,
+    contract: Path,
+    raw_contract: dict[str, object],
+    failures: list[str],
+) -> None:
+    """Prove identifier tests count and comment text never counts."""
+    test_root = root / "tests/main.zig"
+    test_root.write_text(
+        passing_source + 'test identifierContract { try @import("std").testing.expect(true); }\n',
+        encoding="utf-8",
+    )
+    raw_contract["minimum_tests"] = 2
+    contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+    errors, count = _test_contract_errors(root)
+    identifier_test_count = 2
+    if errors or count != identifier_test_count:
+        failures.append(f"  must-stay-quiet: identifier-named Zig test was not counted: {errors}")
+    test_root.write_text(passing_source, encoding="utf-8")
+    raw_contract["minimum_tests"] = 1
+
+    identifier_source = root / "src/identifier_test.zig"
+    identifier_source.write_text(
+        'test productionContract { try @import("std").testing.expect(true); }\n',
+        encoding="utf-8",
+    )
+    covered_sources = cast("list[str]", raw_contract["covered_sources"])
+    covered_sources.append("src/identifier_test.zig")
+    contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+    errors, _ = _test_contract_errors(root)
+    if not any("production Zig source contains inline tests" in error for error in errors):
+        failures.append("  must-fire: identifier-named production Zig test was accepted")
+    identifier_source.unlink()
+    covered_sources.remove("src/identifier_test.zig")
+
+    comment_source = root / "src/comment_only.zig"
+    comment_source.write_text(
+        '/* test "not real" { try @import("std").testing.expect(false); } */\n'
+        "pub const value: u32 = 1;\n",
+        encoding="utf-8",
+    )
+    covered_sources.append("src/comment_only.zig")
+    contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+    errors, count = _test_contract_errors(root)
+    if any("production Zig source contains inline tests" in error for error in errors):
+        failures.append("  must-stay-quiet: block-comment test text was treated as production test")
+    if count != 1:
+        failures.append("  must-stay-quiet: block-comment test text inflated the test floor")
+    comment_source.unlink()
+    covered_sources.remove("src/comment_only.zig")
+    contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+
+
 def _selftest_test_contract(failures: list[str]) -> None:
     """Prove test wiring, floor, and orphan checks fire and stay quiet."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -623,13 +690,15 @@ def _selftest_test_contract(failures: list[str]) -> None:
         if errors or count != 1:
             failures.append(f"  must-stay-quiet: compliant Zig test contract failed: {errors}")
 
+        contract = root / TEST_CONTRACT_NAME
+        raw_contract = json.loads(contract.read_text(encoding="utf-8"))
+
         (root / "src").mkdir()
+        _selftest_test_declaration_grammar(root, passing_source, contract, raw_contract, failures)
         (root / "src/inline.zig").write_text(
             'test "production test" { try @import("std").testing.expect(true); }\n',
             encoding="utf-8",
         )
-        contract = root / TEST_CONTRACT_NAME
-        raw_contract = json.loads(contract.read_text(encoding="utf-8"))
         raw_contract["covered_sources"].append("src/inline.zig")
         contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
         errors, _ = _test_contract_errors(root)
@@ -672,13 +741,11 @@ def _selftest_test_contract(failures: list[str]) -> None:
             failures.append("  must-fire: missing Zig build test step was accepted")
 
 
-def selftest(zig: str) -> int:
-    """Prove all tools fire where they must and stay quiet where they must."""
+def selftest_lint(zig: str) -> int:
+    """Prove Zig formatting/AST checks and formatter fix mode in both directions."""
     failures: list[str] = []
 
     _selftest_lint(zig, failures)
-    _selftest_tests(zig, failures)
-    _selftest_test_contract(failures)
 
     # Scope check
     with tempfile.TemporaryDirectory() as tmp:
@@ -687,13 +754,31 @@ def selftest(zig: str) -> int:
         present = _present_files(["present.zig", "deleted.zig"], fixture_root)
         if present != ["present.zig"]:
             failures.append("  worktree scope did not exclude exactly the deleted fixture")
+    with contextlib.redirect_stderr(io.StringIO()):
+        unmanaged_status = _scope_or_error(["unmanaged.zig"], [])
+    expected_scope_error = 2
+    if unmanaged_status != expected_scope_error:
+        failures.append("  must-fire: unmanaged Zig source did not collapse the scope")
 
     if failures:
-        sys.stderr.write("check_zig.py --selftest: FAILED\n")
+        sys.stderr.write("check_zig.py --selftest-lint: FAILED\n")
         sys.stderr.write("\n".join(failures) + "\n")
         return 1
 
-    print("check_zig.py --selftest: OK (fmt, ast-check, build test, test contract, scope).")
+    print("check_zig.py --selftest-lint: OK (fmt check/fix, ast-check, scope).")
+    return 0
+
+
+def selftest_test(zig: str) -> int:
+    """Prove native Zig test execution and contracts in both directions."""
+    failures: list[str] = []
+    _selftest_tests(zig, failures)
+    _selftest_test_contract(failures)
+    if failures:
+        sys.stderr.write("check_zig.py --selftest-test: FAILED\n")
+        sys.stderr.write("\n".join(failures) + "\n")
+        return 1
+    print("check_zig.py --selftest-test: OK (build test, placement, contract, census).")
     return 0
 
 
@@ -807,8 +892,10 @@ def _execute_lint_or_test(zig: str, tracked: list[str], roots: list[Path], args:
 
 def _selftest_or_scope(zig: str, args: list[str]) -> int | None:
     """Run the selftest or return an error exit for a collapsed scope."""
-    if "--selftest" in args:
-        return selftest(zig)
+    if "--selftest-lint" in args:
+        return selftest_lint(zig)
+    if "--selftest-test" in args:
+        return selftest_test(zig)
     tracked = _tracked_zig_files()
     scope_error = _scope_or_error(tracked, _build_roots(tracked))
     if scope_error is not None:
@@ -820,8 +907,8 @@ def _zig_or_exit(zig: str | None, args: list[str]) -> str:
     """Resolve the Zig binary, exiting when absent unless a hook may skip."""
     if not zig:
         msg = "check_zig.py: zig not found"
-        if "--require" in args or "--selftest" in args:
-            sys.stderr.write(msg + " -- required by --require/--selftest\n")
+        if "--require" in args or any(arg.startswith("--selftest-") for arg in args):
+            sys.stderr.write(msg + " -- required by --require/selftest\n")
             sys.exit(1)
         print(msg + " -- skipping (install Zig to enforce locally).")
         sys.exit(0)
@@ -834,7 +921,7 @@ def main(argv: list[str]) -> int:
     A missing Zig toolchain is handled two ways ON PURPOSE, mirroring
     check_go.py and check_ruff.py. Bare, it prints a notice and exits 0,
     so a contributor without Zig is not blocked by a local hook. Under
-    ``--require`` or ``--selftest`` it exits 1 instead -- CI passes
+    ``--require`` or a ``--selftest-*`` mode exits 1 instead -- CI passes
     ``--require`` precisely so that an absent toolchain fails the build
     rather than skipping silently.
 
