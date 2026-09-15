@@ -217,6 +217,7 @@ if [[ "$-" == *p* ]]; then
     "unit-tests|slow|host unit tests (ctest)"
     "test-go|fast|go test with race detector and coverage floor"
     "test-zig|fast|zig test over first-party Zig"
+    "test-rust|fast|cargo test over first-party Rust"
     "ubsan|slow|host unit tests under UBSan"
     "coverage-tree|slow|one per-file line/branch policy for every first-party unit"
     "mcdc|slow|MC/DC coverage against the committed baseline"

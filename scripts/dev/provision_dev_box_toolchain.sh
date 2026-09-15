@@ -525,13 +525,48 @@ if [[ "$-" == *p* ]]; then
     }
   )
 
+  install_rust() (
+    local version="$1" arch sha tmp
+    case "$(uname -m)" in
+      x86_64)
+        arch=x86_64
+        sha="$(dockerfile_arg RUST_SHA256_X86_64)"
+        ;;
+      aarch64)
+        arch=aarch64
+        sha="$(dockerfile_arg RUST_SHA256_AARCH64)"
+        ;;
+      *)
+        echo "error: unsupported Rust architecture: $(uname -m)" >&2
+        return 1
+        ;;
+    esac
+    release_tmp_begin
+    tmp="$RELEASE_TMP_DIR"
+    download_verified \
+      "https://static.rust-lang.org/dist/rust-${version}-${arch}-unknown-linux-gnu.tar.xz" \
+      "${sha}" "${tmp}/rust.tar.xz"
+    mkdir "${tmp}/extract"
+    tar -xf "${tmp}/rust.tar.xz" --strip-components=1 -C "${tmp}/extract"
+    as_root "${tmp}/extract/install.sh" --prefix=/usr/local --disable-ldconfig \
+      --components="rustc,cargo,rust-std-${arch}-unknown-linux-gnu,rustfmt-preview,clippy-preview"
+    [ "$(rustc --version 2>/dev/null | awk '{print $2}')" = "${version}" ] &&
+      [ "$(cargo --version 2>/dev/null | awk '{print $2}')" = "${version}" ] || {
+      echo "error: installed Rust toolchain does not match pin ${version}" >&2
+      return 1
+    }
+    cargo clippy --version >/dev/null
+    cargo fmt --version >/dev/null
+  )
+
   require_release_digests() {
     local name value
     for name in SHELLCHECK_SHA256_X86_64 SHELLCHECK_SHA256_AARCH64 \
       SHFMT_SHA256_AMD64 SHFMT_SHA256_ARM64 ACTIONLINT_SHA256_AMD64 \
       ACTIONLINT_SHA256_ARM64 HADOLINT_SHA256_X86_64 HADOLINT_SHA256_ARM64 \
       JUST_SHA256_X86_64 JUST_SHA256_AARCH64 DOXYGEN_SHA256_LINUX_X64 \
-      GO_SHA256_AMD64 GO_SHA256_ARM64 ZIG_SHA256_X86_64 ZIG_SHA256_AARCH64; do
+      GO_SHA256_AMD64 GO_SHA256_ARM64 ZIG_SHA256_X86_64 ZIG_SHA256_AARCH64 \
+      RUST_SHA256_X86_64 RUST_SHA256_AARCH64; do
       value="$(dockerfile_arg "${name}")"
       [[ "${value}" =~ ^[0-9a-f]{64}$ ]] || {
         echo "error: ${name} is not a sha256 pin in the Dockerfile" >&2
@@ -553,11 +588,20 @@ if [[ "$-" == *p* ]]; then
     "${installer}" "${want}"
   }
 
+  rust_toolchain_version() {
+    local rust_version cargo_version
+    rust_version="$(rustc --version 2>/dev/null | awk '{print $2}')"
+    cargo_version="$(cargo --version 2>/dev/null | awk '{print $2}')"
+    [ -n "${rust_version}" ] && [ "${cargo_version}" = "${rust_version}" ] &&
+      cargo clippy --version >/dev/null 2>&1 && cargo fmt --version >/dev/null 2>&1 || return 0
+    printf '%s' "${rust_version}"
+  }
+
   # The GitHub-release binaries and uv-managed Python tools, at the versions
   # read from their native or project authorities. Split out of main() so each
   install_pinned_tools() {
     local shellcheck_v="$1" shfmt_v="$2" actionlint_v="$3" hadolint_v="$4"
-    local just_v="$5" doxygen_v="$6" go_v="$7" zig_v="$8"
+    local just_v="$5" doxygen_v="$6" go_v="$7" zig_v="$8" rust_v="$9"
     local just_bin="" just_installed_v=""
 
     ensure_release_tool shellcheck "${shellcheck_v}" \
@@ -579,6 +623,8 @@ if [[ "$-" == *p* ]]; then
       "$(go version 2>/dev/null | awk '{print $3}' | sed 's/^go//')" install_go
     ensure_release_tool zig "${zig_v}" \
       "$(zig version 2>/dev/null)" install_zig
+    ensure_release_tool rust "${rust_v}" \
+      "$(rust_toolchain_version)" install_rust
   }
 
   # Synchronize Python-managed gate tools into the root-owned service
@@ -688,7 +734,7 @@ if [[ "$-" == *p* ]]; then
       exit 1
     }
 
-    local shellcheck_v shfmt_v actionlint_v hadolint_v just_v doxygen_v go_v zig_v
+    local shellcheck_v shfmt_v actionlint_v hadolint_v just_v doxygen_v go_v zig_v rust_v
     local python_venv
     shellcheck_v="$(dockerfile_arg SHELLCHECK_VERSION)"
     shfmt_v="$(dockerfile_arg SHFMT_VERSION)"
@@ -699,12 +745,13 @@ if [[ "$-" == *p* ]]; then
     doxygen_v="$(dockerfile_arg DOXYGEN_VERSION)"
     go_v="$(dockerfile_arg GO_VERSION)"
     zig_v="$(dockerfile_arg ZIG_VERSION)"
+    rust_v="$(dockerfile_arg RUST_VERSION)"
 
     for pair in "SHELLCHECK_VERSION=${shellcheck_v}" "SHFMT_VERSION=${shfmt_v}" \
       "ACTIONLINT_VERSION=${actionlint_v}" "HADOLINT_VERSION=${hadolint_v}" \
       "JUST_VERSION=${just_v}" "PYTHON_TOOL_VENV=${python_venv}" \
       "DOXYGEN_VERSION=${doxygen_v}" "GO_VERSION=${go_v}" \
-      "ZIG_VERSION=${zig_v}"; do
+      "ZIG_VERSION=${zig_v}" "RUST_VERSION=${rust_v}"; do
       [ -n "${pair#*=}" ] || {
         echo "error: could not read ${pair%%=*} from the Dockerfile" >&2
         exit 1
@@ -715,7 +762,7 @@ if [[ "$-" == *p* ]]; then
     if [ "${check_only}" -eq 0 ]; then
       echo "provisioning dev-box host tools from ${DOCKERFILE#"${ROOT}"/} pins:"
       install_pinned_tools "${shellcheck_v}" "${shfmt_v}" "${actionlint_v}" \
-        "${hadolint_v}" "${just_v}" "${doxygen_v}" "${go_v}" "${zig_v}"
+        "${hadolint_v}" "${just_v}" "${doxygen_v}" "${go_v}" "${zig_v}" "${rust_v}"
       install_python_tools "${python_venv}"
     else
       if uv_cache_check; then

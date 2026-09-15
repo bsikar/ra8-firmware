@@ -67,6 +67,20 @@ gate_test_zig() (
   python3 scripts/checks/check_zig.py --require --test
 )
 
+# --- test-rust ------------------------------------------------------------
+gate_test_rust() (
+  set -e
+  require_cmd rustc "the test-rust gate needs the pinned Rust toolchain"
+  require_cmd cargo "the test-rust gate needs Cargo"
+  require_cmd rustfmt "the pinned Rust component set includes rustfmt"
+  require_cmd clippy-driver "the pinned Rust component set includes Clippy"
+  require_tool_versions rustc cargo
+  cargo fmt --version
+  cargo clippy --version
+  python3 scripts/checks/check_rust.py --selftest
+  python3 scripts/checks/check_rust.py --require --test
+)
+
 # --- ubsan ----------------------------------------------------------------
 # The whole host suite rebuilt under -fsanitize=undefined in its own tree with
 # UBSAN_OPTIONS=halt_on_error=1, so any undefined behaviour is a hard test

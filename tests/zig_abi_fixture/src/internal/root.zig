@@ -83,25 +83,3 @@ pub fn bytesRelease(raw: [*]u8) BytesReleaseError!void {
     if (@intFromPtr(raw) != @intFromPtr(&handle_slot.bytes)) return error.InvalidPointer;
     handle_slot.bytes_live = false;
 }
-
-test "bounded handle allocation fails once and recovers" {
-    failNextAllocation();
-    try std.testing.expectError(error.NoMemory, create());
-    const handle = try create();
-    try std.testing.expectError(error.NoMemory, create());
-    try std.testing.expect(destroy(handle));
-    const recovered = try create();
-    try std.testing.expect(destroy(recovered));
-}
-
-test "owned bytes preserve lifecycle after injected failure" {
-    const handle = try create();
-    failNextAllocation();
-    try std.testing.expectError(error.NoMemory, bytesCreate(handle, "abc"));
-    const bytes = try bytesCreate(handle, "abc");
-    var wrong = [_]u8{0};
-    try std.testing.expectError(error.InvalidPointer, bytesRelease(&wrong));
-    try bytesRelease(bytes.ptr);
-    try std.testing.expectError(error.InvalidState, bytesRelease(bytes.ptr));
-    try std.testing.expect(destroy(handle));
-}

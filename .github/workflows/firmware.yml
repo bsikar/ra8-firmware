@@ -222,6 +222,7 @@ jobs:
       - run: just quality::local::gate unit-tests
       - run: just quality::local::gate test-go
       - run: just quality::local::gate test-zig
+      - run: just quality::local::gate test-rust
 
   # ---------------------------------------------------------------------------
   # UBSan gate (#239) -- the whole host suite rebuilt under

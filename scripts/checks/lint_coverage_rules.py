@@ -90,6 +90,7 @@ CLASSES: dict[str, ClassSpec] = {
     "python": _spec("python", CODE, "the gate suite and host tooling"),
     "golang": _spec("golang", CODE, "host CLI and conversion policy"),
     "zig": _spec("zig", CODE, "Zig host applications and tools"),
+    "rust": _spec("rust", CODE, "Rust examples and C-ABI verification"),
     "shell": _spec("shell", CODE, "gate drivers, HIL scripts, git hooks"),
     "cmake": _spec("cmake", CODE, "decides what compiles with which flags"),
     "make": _spec("make", CODE, "per-app and top-level build entry points"),
@@ -190,6 +191,7 @@ EXT_CLASS: dict[str, str] = {
     ".py": "python",
     ".go": "golang",
     ".zig": "zig",
+    ".rs": "rust",
     ".sh": "shell",
     ".bash": "shell",
     # NOT "shell": shellcheck explicitly refuses zsh input, so calling a .zsh
@@ -291,6 +293,8 @@ NAME_CLASS: dict[str, str] = {
     # Go module manifests: consumed and validated by the Go toolchain on use.
     "go.mod": "tool-config",
     "go.sum": "tool-config",
+    "Cargo.toml": "tool-config",
+    "Cargo.lock": "tool-config",
     # cppcheck-only C23 nullptr shim, force-included by the cppcheck gate; it is
     # never compiled into any TU, so clang-tidy cannot claim it as c-family and
     # it is classified for what it is -- configuration for a named tool.

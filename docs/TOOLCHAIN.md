@@ -92,6 +92,7 @@ target; the "status" column flags the known skews.
 | `shfmt` | **3.13.1** | 3.13.1 | 3.13.1 (`/usr/local/bin`) | CONVERGED -- see 3.4 |
 | `shellcheck` | **0.11.0** | 0.11.0 | 0.11.0 (`/usr/local/bin`) | CONVERGED -- see 3.4 |
 | `go` (host CLI toolchain) | **1.27.1** (`GO_VERSION`, devcontainer `/usr/local/go`) | 1.27.0 (Homebrew) | 1.27.1 (`/usr/local/go`, provisioned) | Mac patch drift is not gated; CI and the dev box resolve the exact pin -- see 3.4 |
+| `rustc` / Cargo (host tests and ABI fixtures) | **1.89.0** (`RUST_VERSION`, official distribution in the devcontainer) | use `just ci` until locally installed | **1.89.0** (Ansible provisioner reads the same archive pins) | CONVERGED by #877; `test-rust` asserts the exact compiler and Cargo pin before executing native tests |
 | `cppcheck` | **2.13** (Ubuntu 24.04) | 2.21 (Homebrew) | 2.13 (built from source, `/usr/local/bin`) | Mac 2.21 emits VERSION-SPECIFIC FALSE POSITIVES -- do NOT use the Mac's; see 3.3 |
 | `cmake-format` / `cmake-lint` | **0.6.13** (`cmakelang`, `pyproject.toml` / `uv.lock`) | 0.6.13 (`.venv`) | 0.6.13 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.5 |
 | `yamllint` | **1.37.1** (`pyproject.toml` / `uv.lock`) | 1.37.1 (`.venv`) | 1.37.1 (`/opt/ra8-python-tools`) | CONVERGED -- see 3.5 |

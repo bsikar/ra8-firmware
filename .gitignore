@@ -260,6 +260,8 @@ tests/fuzz/corpus/**
 !tests/fuzz/corpus/**/timeout-*
 /apps/**/build/
 /apps/**/build-*/
+# Cargo build output for first-party Rust crates.
+target/
 /.compile_commands_scratch/
 # Codegraph indexes are local workspace artifacts, not firmware source.
 /.codegraph/

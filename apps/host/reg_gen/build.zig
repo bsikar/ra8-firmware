@@ -19,13 +19,18 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(executable);
 
-    const tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+    const application_module = b.createModule(.{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
     });
+    const test_module = b.createModule(.{
+        .root_source_file = b.path("tests/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    test_module.addImport("application", application_module);
+    const tests = b.addTest(.{ .root_module = test_module });
     const run_tests = b.addRunArtifact(tests);
     const test_step = b.step("test", "Run reg_gen unit and C23 contract tests");
     test_step.dependOn(&run_tests.step);
