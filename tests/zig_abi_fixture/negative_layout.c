@@ -1,6 +1,7 @@
 /**
  * @file negative_layout.c
  * @brief Deliberately incompatible C layout used by the ABI negative test.
+ * @details Must fail compilation to prove that layout drift cannot pass the fixture.
  *
  * SPDX-License-Identifier: MIT
  */

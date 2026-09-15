@@ -1,6 +1,7 @@
 /**
  * @file test_c_consumer.c
  * @brief C acceptance test for the C-to-Zig-to-Rust ABI chain.
+ * @details Proves values and failures through the complete linked language chain.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

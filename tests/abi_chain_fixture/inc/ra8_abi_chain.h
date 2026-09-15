@@ -1,6 +1,7 @@
 /**
  * @file ra8_abi_chain.h
  * @brief Public C23 contract for the C-to-Zig-to-Rust chain proof.
+ * @details Defines the only interface exercised across the three-language fixture.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

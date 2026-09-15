@@ -35,6 +35,7 @@ if(RA8_HOST_MODE)
   add_subdirectory(tools/ra8_emulator)
   add_subdirectory(apps/host/alphabet_soup)
   add_subdirectory(apps/host/firmware_fingerprint)
+  add_subdirectory(apps/host/firmware_report)
   # Configure the aggregate tests after standalone host tools. Several test
   # fragments intentionally reuse an existing application test target when it
   # is already present in this combined graph.

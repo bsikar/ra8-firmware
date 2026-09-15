@@ -1,6 +1,7 @@
 /**
  * @file ra8_rust_abi_fixture.h
  * @brief Authoritative C23 contract for the bounded Rust provider fixture.
+ * @details Defines fixed-width values, ownership, and lifecycle rules shared with Rust.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
