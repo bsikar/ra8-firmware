@@ -48,7 +48,8 @@ dashboard:
         read -r -a arc_ssh_argv <<<"$arc_ssh_target"
     fi
     while :; do
-        : >"$data_dir/runners"
+        : >"$data_dir/jobs"
+        : >"$data_dir/jobs.status"
         : >"$data_dir/checks"
         : >"$data_dir/arc"
         head_sha="$(gh run list --branch dev --limit 20 --json headSha,createdAt --jq 'sort_by(.createdAt) | last.headSha')"
@@ -56,9 +57,31 @@ dashboard:
             echo "error: could not determine the latest dev commit" >&2
             exit 1
         fi
-        gh api repos/bsikar/ra8-firmware/actions/runners --jq \
-            '.runners as $runners | ($runners | map(select(.name|startswith("ra8-ci-")) | .name) | sort) as $arc_names | $runners[] | . as $runner | [ (if ($runner.name|startswith("ra8-ci-")) then "ARC-" + ((( $arc_names | index($runner.name)) + 1) | tostring) elif ($runner.name|startswith("win-ci-")) then ($runner.name|.[0:24]) else ($runner.name|.[0:24]) end), $runner.status, (if $runner.status != "online" then "OFFLINE" elif $runner.busy then "BUSY" else "IDLE" end), (if ($runner.labels|any(.name == "hil")) then "HIL" elif ($runner.name|startswith("win-ci-")) then "WIN/WSL" elif ($runner.name|startswith("ra8-ci-")) then "ARC" else "OTHER" end), ($runner.labels|map(.name)|join(",")) ] | @tsv' \
-            >"$data_dir/runners" 2>&1 &
+        (
+            runner_next="$data_dir/runners.next"
+            if gh api --paginate repos/bsikar/ra8-firmware/actions/runners --jq \
+                '.runners as $runners | ($runners | map(select(.name|startswith("ra8-ci-")) | .name) | sort) as $arc_names | $runners[] | . as $runner | [ $runner.name, (if ($runner.name|startswith("ra8-ci-")) then "ARC-" + ((( $arc_names | index($runner.name)) + 1) | tostring) elif ($runner.name|startswith("win-ci-")) then ($runner.name|.[0:24]) else ($runner.name|.[0:24]) end), $runner.status, (if $runner.status != "online" then "OFFLINE" elif $runner.busy then "BUSY" else "IDLE" end), (if ($runner.labels|any(.name == "hil")) then "HIL" elif ($runner.name|startswith("win-ci-")) then "WIN/WSL" elif ($runner.name|startswith("ra8-ci-")) then "ARC" else "OTHER" end), ($runner.labels|map(.name)|join(",")) ] | @tsv' \
+                >"$runner_next" && [[ -s "$runner_next" ]]; then
+                mv "$runner_next" "$data_dir/runners"
+            elif [[ ! -s "$data_dir/runners" ]]; then
+                echo "runner inventory unavailable; retrying" >"$data_dir/runners"
+            fi
+        ) &
+        (
+            set -o pipefail
+            : >"$data_dir/active-runs"
+            for state in queued in_progress; do
+                gh api --paginate "repos/bsikar/ra8-firmware/actions/runs?status=$state&per_page=100" \
+                    --jq '.workflow_runs[] | [.id, .name] | @tsv' >>"$data_dir/active-runs"
+            done
+            while IFS=$'\t' read -r run_id workflow; do
+                [[ -n "$run_id" ]] || continue
+                gh api --paginate "repos/bsikar/ra8-firmware/actions/runs/$run_id/jobs?per_page=100" \
+                    --jq --arg workflow "$workflow" \
+                    '.jobs[] | select((.status == "queued" or .status == "in_progress") and (.runner_name | type == "string") and (.runner_name | length > 0)) | [.runner_name, (($workflow + " / " + .name) | gsub("[\\t\\r\\n]"; " ") | .[0:56])] | @tsv'
+            done <"$data_dir/active-runs" >"$data_dir/jobs"
+            echo ok >"$data_dir/jobs.status"
+        ) >"$data_dir/jobs.log" 2>&1 || echo failed >"$data_dir/jobs.status" &
         gh api "repos/bsikar/ra8-firmware/commits/$head_sha/check-runs?per_page=100" \
             --jq '.check_runs[] | [.name,.status,(.conclusion // "-")] | @tsv' \
             >"$data_dir/checks" 2>&1 &
@@ -70,7 +93,7 @@ dashboard:
             echo "ARC capacity unavailable (fleet SSH target could not be resolved)" >"$data_dir/arc"
         fi
         wait || true
-        arc_busy="$(awk '$4 == "ARC" && $3 == "BUSY" { busy++ } END { print busy + 0 }' "$data_dir/runners")"
+        arc_busy="$(awk -F '\t' '$5 == "ARC" && $4 == "BUSY" { busy++ } END { print busy + 0 }' "$data_dir/runners")"
         arc_capacity="$(awk '$1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && $3 ~ /^[0-9]+$/ { printf "%s active / %s max", $3, $2 }' "$data_dir/arc")"
         [[ -n "$arc_capacity" ]] || arc_capacity="capacity unavailable"
         clear
@@ -80,7 +103,10 @@ dashboard:
         echo
 
         echo "== GitHub runners (ARC: ${arc_capacity}; ${arc_busy} busy) =="
-        awk 'BEGIN { printf "%-26s %-10s %-10s %-8s %s\n", "NAME", "STATUS", "ASSIGNMENT", "SOURCE", "LABELS" } { printf "%-26s %-10s %-10s %-8s %s\n", $1, $2, $3, $4, $5 }' "$data_dir/runners"
+        awk -F '\t' -v jobs_file="$data_dir/jobs" -v jobs_ok="$(cat "$data_dir/jobs.status")" '
+            FILENAME == jobs_file { count[$1]++; job[$1] = $2; next }
+            BEGIN { printf "%-26s %-10s %-10s %-8s %-42s %s\n", "NAME", "STATUS", "ASSIGNMENT", "SOURCE", "LABELS", "ACTIVE JOB" }
+            { active = "-"; if ($3 == "online" && $4 == "BUSY") active = (jobs_ok == "ok" && count[$1] == 1) ? job[$1] : "UNKNOWN"; printf "%-26s %-10s %-10s %-8s %-42s %s\n", $2, $3, $4, $5, $6, active }' "$data_dir/jobs" "$data_dir/runners"
         echo
 
         echo "== latest commit checks =="

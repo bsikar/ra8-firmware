@@ -37,7 +37,7 @@ REMOTE_CI_WSL_BLOCK_RE = re.compile(
     r'if \[\[ "\$remote_shell" == wsl\* \]\]; then(?P<body>.*?)\n    else', re.DOTALL
 )
 REMOTE_CI_LINUX_BLOCK_RE = re.compile(
-    r'^    else(?P<body>.*?)^    fi\n[ \t]*\n    if ! printf', re.MULTILINE | re.DOTALL
+    r"^    else(?P<body>.*?)^    fi\n[ \t]*\n    if ! printf", re.MULTILINE | re.DOTALL
 )
 REMOTE_CI_SNAPSHOT_COMMIT = (
     "git -c user.email=ci@localhost -c user.name=ci commit --quiet --no-verify "
@@ -189,15 +189,15 @@ def check_remote_ci_contract(text: str, rel: str) -> list[str]:
             rel,
             "",
             (
-                'remote_name={{ quote(name) }}',
-                'remote_host={{ quote(host) }}',
+                "remote_name={{ quote(name) }}",
+                "remote_host={{ quote(host) }}",
                 (
-                    'read -r -a remote_ssh '
+                    "read -r -a remote_ssh "
                     '<<<"$(./.venv/bin/python3 scripts/dev/fleet.py ssh-target "$remote_host")"'
                 ),
-                'printf -v remote_gate_arg \'%q\' "$remote_name"',
+                "printf -v remote_gate_arg '%q' \"$remote_name\"",
                 'remote_tar="${remote_shell%/bin/bash -s}ionice -c3 /usr/bin/tar"',
-                'printf \'source %q\\n\' "$remote_profile"',
+                "printf 'source %q\\n' \"$remote_profile\"",
                 'printf \'exec %s %s\\n\' "$remote_launcher" "$gate_command"',
             ),
         )
@@ -351,7 +351,7 @@ def _selftest_native_fast() -> tuple[int, str | None]:
 
 def _selftest_remote_ci() -> tuple[int, str | None]:
     """Exercise the remote isolation contract in both directions."""
-    valid = f'''remote_name={{{{ quote(name) }}}}
+    valid = f"""remote_name={{{{ quote(name) }}}}
 remote_host={{{{ quote(host) }}}}
 remote_shell="x"
 read -r -a remote_ssh <<<"$(./.venv/bin/python3 scripts/dev/fleet.py ssh-target "$remote_host")"
@@ -384,7 +384,7 @@ fi
 if ! printf
     printf 'source %q\\n' "$remote_profile"
     printf 'exec %s %s\\n' "$remote_launcher" "$gate_command"
-    '''
+    """
     valid = "\n".join(f"    {line}" for line in valid.splitlines())
     remote_cases = (
         (valid, False, "isolated WSL transport stays valid"),
