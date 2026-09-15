@@ -157,7 +157,45 @@ def crates_and_errors(base: Path, sources: list[Path]) -> tuple[list[Path], list
     return sorted(crates), errors
 
 
-def contract_errors(crate: Path) -> tuple[list[str], int, set[Path]]:
+def package_policy_errors(
+    cargo: str, crate: Path, package_license: str, allowed_dependencies: set[str]
+) -> list[str]:
+    """Validate package license and direct dependencies through Cargo metadata."""
+    proc = run(
+        [cargo, "metadata", "--locked", "--offline", "--no-deps", "--format-version", "1"],
+        crate,
+    )
+    if proc.returncode != 0:
+        return [f"cargo metadata --locked --offline failed\n{proc.stdout}{proc.stderr}"]
+    try:
+        metadata = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        return [f"cargo metadata returned invalid JSON: {exc}"]
+    manifest = (crate / "Cargo.toml").resolve()
+    packages = [
+        package
+        for package in metadata.get("packages", [])
+        if Path(package.get("manifest_path", "")).resolve() == manifest
+    ]
+    if len(packages) != 1:
+        return ["cargo metadata did not identify exactly one package for Cargo.toml"]
+    package = packages[0]
+    errors: list[str] = []
+    if package.get("license") != package_license:
+        errors.append(
+            f"Cargo.toml license {package.get('license')!r} does not match "
+            f"contract package_license {package_license!r}"
+        )
+    actual_dependencies = {dependency["name"] for dependency in package.get("dependencies", [])}
+    if actual_dependencies != allowed_dependencies:
+        errors.append(
+            "direct dependency names do not match allowed_dependencies: "
+            f"expected {sorted(allowed_dependencies)}, got {sorted(actual_dependencies)}"
+        )
+    return errors
+
+
+def contract_errors(cargo: str, crate: Path) -> tuple[list[str], int, set[Path]]:
     """Validate exact source coverage, lockfile presence, and test floor."""
     errors: list[str] = []
     path = crate / CONTRACT
@@ -169,6 +207,8 @@ def contract_errors(crate: Path) -> tuple[list[str], int, set[Path]]:
         return [f"invalid {CONTRACT}: {exc}"], 0, set()
     covered = data.get("covered_sources")
     floor = data.get("minimum_tests")
+    package_license = data.get("package_license")
+    allowed_dependencies = data.get("allowed_dependencies")
     if (
         not isinstance(covered, list)
         or not covered
@@ -179,6 +219,16 @@ def contract_errors(crate: Path) -> tuple[list[str], int, set[Path]]:
     if not isinstance(floor, int) or isinstance(floor, bool) or floor < 1:
         errors.append("minimum_tests must be a positive integer")
         floor = 0
+    if not isinstance(package_license, str) or not package_license:
+        errors.append("package_license must be a non-empty SPDX license expression")
+        package_license = ""
+    if not isinstance(allowed_dependencies, list) or not all(
+        isinstance(item, str) and item for item in allowed_dependencies
+    ):
+        errors.append("allowed_dependencies must be a string list")
+        allowed_dependencies = []
+    elif len(allowed_dependencies) != len(set(allowed_dependencies)):
+        errors.append("allowed_dependencies must not contain duplicates")
     declared: set[Path] = set()
     for rel in covered:
         candidate = crate / rel
@@ -212,6 +262,10 @@ def contract_errors(crate: Path) -> tuple[list[str], int, set[Path]]:
     )
     if not (crate / "Cargo.lock").is_file():
         errors.append("missing Cargo.lock required by --locked")
+    elif package_license:
+        errors.extend(
+            package_policy_errors(cargo, crate, package_license, set(allowed_dependencies))
+        )
     return errors, floor, declared
 
 
@@ -324,7 +378,7 @@ def verify(cargo: str, base: Path) -> int:
         return 2
     crates, errors = crates_and_errors(base, sources)
     for crate in crates:
-        contract_findings, floor, declared = contract_errors(crate)
+        contract_findings, floor, declared = contract_errors(cargo, crate)
         errors.extend(f"{crate.relative_to(base)}: {item}" for item in contract_findings)
         if contract_findings:
             continue
@@ -374,6 +428,7 @@ def write_fixture(root: Path, passing: bool = True, floor: int = 2) -> None:
     (root / "tests").mkdir(parents=True, exist_ok=True)
     (root / "Cargo.toml").write_text(
         '[package]\nname = "rust-check-selftest"\nversion = "0.1.0"\nedition = "2024"\n'
+        'license = "MIT"\n'
         "\n[features]\ndefault = []\nprobe = []\n",
         encoding="utf-8",
     )
@@ -395,7 +450,14 @@ def write_fixture(root: Path, passing: bool = True, floor: int = 2) -> None:
         encoding="utf-8",
     )
     (root / CONTRACT).write_text(
-        json.dumps({"covered_sources": ["src/lib.rs", "tests/native.rs"], "minimum_tests": floor})
+        json.dumps(
+            {
+                "covered_sources": ["src/lib.rs", "tests/native.rs"],
+                "minimum_tests": floor,
+                "package_license": "MIT",
+                "allowed_dependencies": [],
+            }
+        )
         + "\n",
         encoding="utf-8",
     )
@@ -483,7 +545,7 @@ def selftest_placement(cargo: str, root: Path, failures: list[str]) -> None:
 
 
 def selftest_tests(cargo: str) -> int:
-    """Prove native tests, placement, floors, and source census both ways."""
+    """Prove native tests, policy, placement, floors, and source census both ways."""
     failures: list[str] = []
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -493,6 +555,18 @@ def selftest_tests(cargo: str) -> int:
         write_fixture(root)
         if verify(cargo, root) != 0:
             failures.append("must-stay-quiet: compliant native Rust test failed")
+        contract = root / CONTRACT
+        raw = json.loads(contract.read_text(encoding="utf-8"))
+        raw["package_license"] = "Apache-2.0"
+        contract.write_text(json.dumps(raw) + "\n", encoding="utf-8")
+        if verify(cargo, root) == 0:
+            failures.append("must-fire: Cargo license drift was accepted")
+        write_fixture(root)
+        raw = json.loads(contract.read_text(encoding="utf-8"))
+        raw["allowed_dependencies"] = ["undeclared-probe"]
+        contract.write_text(json.dumps(raw) + "\n", encoding="utf-8")
+        if verify(cargo, root) == 0:
+            failures.append("must-fire: direct dependency policy drift was accepted")
         write_fixture(root, passing=False)
         if verify(cargo, root) == 0:
             failures.append("must-fire: failing native Rust test was accepted")
