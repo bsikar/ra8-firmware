@@ -54,4 +54,4 @@ cell of each row below and fails if it drifts from the tree in either direction
 | `support/` | Shared test utilities: reusable implementations in `src/` and their authored contracts/fixtures in `inc/`. These are linked explicitly where needed and are not discovered as standalone tests. |
 | `usb/` | USB controller and class tests: USBFS/USBHS controllers, device mode, host stack, CDC-ACM, MSC, and HID classes. |
 | `wireless/` | Wireless and coprocessor interface tests: ESP32-C6 link protocol, Wi-Fi command framing, and BLE transport. |
-| `zig_abi_fixture/` | Host-only Zig-to-C ABI reference fixture: a Zig static library, hand-authored C23 header, C consumer, and negative layout/symbol fixtures exercised through the reusable CMake helper. |
+| `zig_abi_fixture/` | Host-only Zig C-ABI reference fixture: one Zig static library, hand-authored C23 header, C and Rust consumers, and negative layout/symbol fixtures exercised through the reusable CMake helper. |

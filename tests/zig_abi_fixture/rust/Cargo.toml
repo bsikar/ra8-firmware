@@ -3,12 +3,13 @@ name = "ra8-zig-abi-fixture"
 version = "0.1.0"
 edition = "2024"
 publish = false
+build = "build.rs"
 
 [lib]
 path = "src/lib.rs"
 
 [lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"
 
 [lints.clippy]
 pedantic = "deny"

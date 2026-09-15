@@ -19,6 +19,10 @@ default:
     @echo "  just quality::devcontainer::mcdc                   Generate DO-178C MC/DC coverage report"
     @echo "  just quality::devcontainer::fuzz [seconds] [runs]  Smoke-run every libFuzzer harness"
     @echo "  just quality::devcontainer::bench                  Run host microbenchmarks"
+    @echo "  just quality::devcontainer::{lint,format,test}-c   Focused C quality commands"
+    @echo "  just quality::devcontainer::{lint,format,test}-go  Focused Go quality commands"
+    @echo "  just quality::devcontainer::{lint,format,test}-rust Focused Rust quality commands"
+    @echo "  just quality::devcontainer::{lint,format,test}-zig Focused Zig quality commands"
 
 # Auto-format is intentionally not a CI gate: the gate checks formatting while
 
@@ -62,3 +66,39 @@ test ubsan="0":
 # differs from the full `just ci` suite, which snapshots committed HEAD.
 gate name:
     bash scripts/ci/devcontainer_run.sh -- just quality::local::gate "{{ name }}"
+
+lint-c:
+    bash scripts/ci/devcontainer_run.sh -- just quality::local::lint-c
+
+format-c:
+    bash scripts/ci/devcontainer_run.sh -- just quality::local::format-c
+
+test-c:
+    bash scripts/ci/devcontainer_run.sh -- just quality::local::test-c
+
+lint-go:
+    bash scripts/ci/devcontainer_run.sh -- just quality::local::lint-go
+
+format-go:
+    bash scripts/ci/devcontainer_run.sh -- just quality::local::format-go
+
+test-go:
+    bash scripts/ci/devcontainer_run.sh -- just quality::local::test-go
+
+lint-rust:
+    bash scripts/ci/devcontainer_run.sh -- just quality::local::lint-rust
+
+format-rust:
+    bash scripts/ci/devcontainer_run.sh -- just quality::local::format-rust
+
+test-rust:
+    bash scripts/ci/devcontainer_run.sh -- just quality::local::test-rust
+
+lint-zig:
+    bash scripts/ci/devcontainer_run.sh -- just quality::local::lint-zig
+
+format-zig:
+    bash scripts/ci/devcontainer_run.sh -- just quality::local::format-zig
+
+test-zig:
+    bash scripts/ci/devcontainer_run.sh -- just quality::local::test-zig

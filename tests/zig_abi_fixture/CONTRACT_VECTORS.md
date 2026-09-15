@@ -17,3 +17,9 @@ must assert the public error and that all outputs retain their sentinels.
 The fixture's test-only allocation control is intentionally part of its public
 C test contract. Production libraries instead keep the equivalent deterministic
 failure seam private to their host-test build.
+
+Rust bindings mirror only the declarations and fixed-width representations in
+`inc/ra8_abi_fixture.h`; they never import Zig implementation types. Unsafe
+calls stay inside the Rust ABI adapter, whose safe facade serializes each entry
+because this fixture is task-only and non-reentrant. CMake supplies that adapter
+the same Zig archive directory linked by the C consumer.

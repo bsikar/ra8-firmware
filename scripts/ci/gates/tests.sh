@@ -73,7 +73,8 @@ gate_test_rust() (
   set -e
   require_cmd rustc "the test-rust gate needs the pinned Rust toolchain"
   require_cmd cargo "the test-rust gate needs Cargo"
-  require_tool_versions rustc cargo
+  require_cmd zig "the Rust ABI consumer links the Zig fixture"
+  require_tool_versions rustc cargo zig
   python3 scripts/checks/check_rust.py --selftest-test
   python3 scripts/checks/check_rust.py --require --test
 )
