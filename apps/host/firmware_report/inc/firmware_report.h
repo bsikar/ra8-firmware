@@ -26,10 +26,10 @@
  * @see firmware_report_create
  */
 typedef enum : int32_t {
-  k_firmware_report_ok                   = 0, /**< Operation completed successfully. */
-  k_firmware_report_invalid_argument     = 1, /**< A pointer, slot, or handle is invalid. */
-  k_firmware_report_invalid_size         = 2, /**< Input exceeds the 16 MiB boundary. */
-  k_firmware_report_capacity_unavailable = 3, /**< The provider slot is already borrowed. */
+  k_firmware_report_ok                   = 0, /**< Operation completed successfully.        */
+  k_firmware_report_invalid_argument     = 1, /**< A pointer, slot, or handle is invalid.   */
+  k_firmware_report_invalid_size         = 2, /**< Input exceeds the 16 MiB boundary.       */
+  k_firmware_report_capacity_unavailable = 3, /**< The provider slot is already borrowed.   */
   k_firmware_report_internal             = 4, /**< Provider synchronization is unavailable. */
 } firmware_report_status_t;
 
@@ -57,9 +57,9 @@ typedef struct firmware_report_handle firmware_report_handle_t;
  * @see firmware_report_query
  */
 typedef struct {
-  uint64_t byte_count;   /**< Complete input length in bytes. */
-  uint64_t zero_count;   /**< Count of bytes equal to zero. */
-  uint64_t erased_count; /**< Count of bytes equal to erased-flash value `0xff`. */
+  uint64_t byte_count;   /**< Complete input length in bytes.                               */
+  uint64_t zero_count;   /**< Count of bytes equal to zero.                                 */
+  uint64_t erased_count; /**< Count of bytes equal to erased-flash value `0xff`.            */
   uint64_t fnv1a64;      /**< FNV-1a 64-bit digest; not a cryptographic authenticity check. */
 } firmware_report_summary_t;
 

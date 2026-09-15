@@ -112,6 +112,8 @@ add_test(
     -DRUST_SOURCE=${PIPELINE_RUST_DIR}/src/foreign.rs -P
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_symbols.cmake
 )
+# This is the must-fire half of the symbol-contract selftest: the deliberately
+# incomplete header must be rejected, so a non-zero checker result is success.
 set_tests_properties(test_firmware_pipeline_symbols_selftest PROPERTIES WILL_FAIL TRUE)
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/cli_fixture.bin "hello")
@@ -130,6 +132,8 @@ add_test(
     ${CMAKE_COMMAND} -DACTUAL_TESTS=test_firmware_pipeline_cli -P
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_inventory.cmake
 )
+# This is the must-fire half of the inventory selftest: an intentionally
+# incomplete test-name list must be rejected by the inventory checker.
 set_tests_properties(test_firmware_pipeline_inventory_selftest PROPERTIES WILL_FAIL TRUE)
 
 set(
