@@ -18,9 +18,90 @@ pub const ApplyError = error{
     Overflow,
 };
 
+pub const max_bytes: usize = 32;
+
+pub const Handle = struct {
+    bytes: [max_bytes]u8 = [_]u8{0} ** max_bytes,
+    bytes_live: bool = false,
+};
+
+var handle_slot = Handle{};
+var handle_live = false;
+var fail_next_allocation = false;
+
+pub const CreateError = error{NoMemory};
+pub const BytesCreateError = error{NoMemory};
+pub const BytesReleaseError = error{ InvalidState, InvalidPointer };
+
+pub fn failNextAllocation() void {
+    fail_next_allocation = true;
+}
+
+fn allocationFails() bool {
+    if (!fail_next_allocation) return false;
+    fail_next_allocation = false;
+    return true;
+}
+
 pub fn apply(config: Config) ApplyError!u32 {
     if (config.enabled > 1) return error.InvalidBoolean;
     if (config.reserved0 != 0) return error.ReservedBitsSet;
     if (config.enabled == 0) return config.value;
     return std.math.mul(u32, config.value, config.factor) catch error.Overflow;
+}
+
+pub fn create() CreateError!*Handle {
+    if (allocationFails()) return error.NoMemory;
+    if (handle_live) return error.NoMemory;
+    handle_slot = .{};
+    handle_live = true;
+    return &handle_slot;
+}
+
+pub fn resolve(raw: *anyopaque) ?*Handle {
+    if (!handle_live or @intFromPtr(raw) != @intFromPtr(&handle_slot)) return null;
+    return &handle_slot;
+}
+
+pub fn destroy(handle: *Handle) bool {
+    if (handle.bytes_live) return false;
+    handle.* = .{};
+    handle_live = false;
+    return true;
+}
+
+pub fn bytesCreate(handle: *Handle, input: []const u8) BytesCreateError![]u8 {
+    if (allocationFails()) return error.NoMemory;
+    if (handle.bytes_live) return error.NoMemory;
+    @memcpy(handle.bytes[0..input.len], input);
+    handle.bytes_live = true;
+    return handle.bytes[0..input.len];
+}
+
+pub fn bytesRelease(raw: [*]u8) BytesReleaseError!void {
+    if (!handle_live or !handle_slot.bytes_live) return error.InvalidState;
+    if (@intFromPtr(raw) != @intFromPtr(&handle_slot.bytes)) return error.InvalidPointer;
+    handle_slot.bytes_live = false;
+}
+
+test "bounded handle allocation fails once and recovers" {
+    failNextAllocation();
+    try std.testing.expectError(error.NoMemory, create());
+    const handle = try create();
+    try std.testing.expectError(error.NoMemory, create());
+    try std.testing.expect(destroy(handle));
+    const recovered = try create();
+    try std.testing.expect(destroy(recovered));
+}
+
+test "owned bytes preserve lifecycle after injected failure" {
+    const handle = try create();
+    failNextAllocation();
+    try std.testing.expectError(error.NoMemory, bytesCreate(handle, "abc"));
+    const bytes = try bytesCreate(handle, "abc");
+    var wrong = [_]u8{0};
+    try std.testing.expectError(error.InvalidPointer, bytesRelease(&wrong));
+    try bytesRelease(bytes.ptr);
+    try std.testing.expectError(error.InvalidState, bytesRelease(bytes.ptr));
+    try std.testing.expect(destroy(handle));
 }

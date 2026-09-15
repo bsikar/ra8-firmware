@@ -24,7 +24,40 @@ static_assert(sizeof(ra8_err_t) == 2U, "ABI fixture error width");
 static_assert(k_ra8_ok == 0U, "ABI fixture success value");
 static_assert(k_ra8_err_invalid_arg == 0x103U, "ABI fixture invalid arg value");
 static_assert(k_ra8_err_invalid_size == 0x105U, "ABI fixture invalid size value");
+static_assert(k_ra8_err_no_mem == 0x102U, "ABI fixture no-memory value");
+static_assert(k_ra8_err_invalid_state == 0x104U, "ABI fixture invalid-state value");
+static_assert(k_ra8_err_busy == 0x109U, "ABI fixture busy value");
 static_assert(k_ra8_err_null_ptr == 0x504U, "ABI fixture null pointer value");
+
+/**
+ * @struct ra8_abi_fixture_t
+ * @brief Opaque state owned by the ABI fixture.
+ * @details Its representation, storage, and alignment remain private to Zig.
+ * @invariant Only the fixture creates or dereferences a live handle.
+ * @code
+ * ra8_abi_fixture_t* handle = nullptr;
+ * @endcode
+ * @see ra8_abi_fixture_create
+ * @see ra8_abi_fixture_destroy
+ */
+typedef struct ra8_abi_fixture ra8_abi_fixture_t;
+
+/**
+ * @enum ra8_abi_fixture_limit_t
+ * @brief Fixed public limits used by the contract vectors.
+ * @details Limits use an explicit fixed underlying type in the public ABI.
+ * @invariant Values fit in `uint32_t` on host and target.
+ * @code
+ * uint8_t bytes[k_ra8_abi_fixture_max_bytes];
+ * @endcode
+ * @see ra8_abi_fixture_copy
+ */
+typedef enum : uint32_t {
+  k_ra8_abi_fixture_max_bytes = 32U, /**< Maximum borrowed or owned byte span. */
+} ra8_abi_fixture_limit_t;
+
+static_assert(sizeof(ra8_abi_fixture_limit_t) == 4U, "ABI fixture limit width");
+static_assert(k_ra8_abi_fixture_max_bytes == 32U, "ABI fixture maximum byte value");
 
 /**
  * @struct ra8_abi_fixture_config_t
@@ -75,6 +108,151 @@ static_assert(offsetof(ra8_abi_fixture_config_t, reserved0) == 7U, "ABI fixture 
  */
 [[nodiscard]] ra8_err_t ra8_abi_fixture_apply(const ra8_abi_fixture_config_t* config,
                                               uint32_t*                       out_result);
+
+/**
+ * @brief Acquire the fixture's single bounded state object.
+ *
+ * @details The fixture models a fixed-capacity allocator with one opaque
+ * handle slot. Exhaustion is recoverable and never publishes a partial handle.
+ *
+ * @param[out] out_handle Handle published only on success; must not be NULL.
+ * @return `ra8_err_t` result.
+ * @retval k_ra8_ok A handle was published.
+ * @retval k_ra8_err_null_ptr `out_handle` was NULL.
+ * @retval k_ra8_err_no_mem The bounded handle pool is already occupied.
+ * @pre `out_handle` addresses writable pointer storage when non-NULL.
+ * @pre The caller serializes access to the task-only handle pool.
+ * @post Failure leaves `out_handle` unchanged.
+ * @post Success transfers one handle reference to the caller.
+ * @note Task-only and non-reentrant.
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_abi_fixture_create(ra8_abi_fixture_t** out_handle);
+
+/**
+ * @brief Fail the next bounded allocation point in this test fixture.
+ *
+ * @details This fixture-only control is part of the documented test ABI, not a
+ * production-library pattern. It deterministically fails exactly one later
+ * handle or owned-byte allocation and then clears itself.
+ *
+ * @pre Calls are serialized in the fixture's task-only context.
+ * @pre The caller intends the next create operation to exercise allocation failure.
+ * @post Exactly the next allocation point returns `k_ra8_err_no_mem`.
+ * @note It exists so C acceptance tests arrange failure without reaching a
+ * private Zig declaration.
+ * @since Version 0.1.0
+ */
+void ra8_abi_fixture_test_fail_next_allocation(void);
+
+/**
+ * @brief Release a fixture state object and clear the caller's handle.
+ *
+ * @details Outstanding library-owned bytes prevent destruction. Successful
+ * destruction invalidates the handle reference and restores pool capacity.
+ *
+ * @param[in,out] in_out_handle Handle slot to release; must not be NULL. A
+ *                              NULL handle value is an idempotent success.
+ * @return `ra8_err_t` result.
+ * @retval k_ra8_ok The handle was absent or was released and cleared.
+ * @retval k_ra8_err_null_ptr `in_out_handle` was NULL.
+ * @retval k_ra8_err_invalid_arg The handle was not created by this fixture.
+ * @retval k_ra8_err_busy Library-owned bytes remain outstanding.
+ * @pre A non-NULL handle value came from `ra8_abi_fixture_create()` and has
+ * not already been destroyed.
+ * @pre `in_out_handle` addresses writable pointer storage when non-NULL.
+ * @post Failure leaves `in_out_handle` unchanged.
+ * @post Success clears a live handle or preserves an already-NULL value.
+ * @note Task-only and non-reentrant.
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_abi_fixture_destroy(ra8_abi_fixture_t** in_out_handle);
+
+/**
+ * @brief Copy a borrowed byte span into caller-owned storage.
+ *
+ * @details All arguments are validated before either output changes. Empty
+ * input may use a NULL input pointer, but the output pointer remains required.
+ *
+ * @param[in] handle Live fixture handle; must not be NULL.
+ * @param[in] input Borrowed input. NULL is valid only when `input_len` is zero.
+ * @param[in] input_len Number of input bytes.
+ * @param[out] output Caller-owned destination; must not be NULL.
+ * @param[in] capacity Writable bytes at `output`.
+ * @param[out] out_len Bytes written on success; must not be NULL.
+ * @return `ra8_err_t` result.
+ * @retval k_ra8_ok The input was copied and `out_len` was written.
+ * @retval k_ra8_err_null_ptr A required pointer was NULL.
+ * @retval k_ra8_err_invalid_arg `handle` was not created by this fixture.
+ * @retval k_ra8_err_invalid_size A length exceeds the fixture maximum or capacity.
+ * @pre A non-NULL `handle` remains live for the duration of the call.
+ * @pre Non-NULL span pointers address at least their declared byte counts.
+ * @post Failure leaves `output` and `out_len` unchanged.
+ * @post Success copies exactly `input_len` bytes and publishes that count.
+ * @note Task-only and non-reentrant; the input is borrowed for this call only.
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_abi_fixture_copy(ra8_abi_fixture_t* handle,
+                                             const uint8_t*     input,
+                                             uint32_t           input_len,
+                                             uint8_t*           output,
+                                             uint32_t           capacity,
+                                             uint32_t*          out_len);
+
+/**
+ * @brief Publish a library-owned copy of a borrowed byte span.
+ *
+ * @details The returned pointer remains owned by the fixture and valid until
+ * its named release call. Only one owned-byte result may be live per handle.
+ *
+ * @param[in] handle Live fixture handle; must not be NULL.
+ * @param[in] input Borrowed input. NULL is valid only when `input_len` is zero.
+ * @param[in] input_len Number of input bytes.
+ * @param[out] out_bytes Library-owned bytes published only on success.
+ * @param[out] out_len Published byte count.
+ * @return `ra8_err_t` result.
+ * @retval k_ra8_ok Both outputs were published.
+ * @retval k_ra8_err_null_ptr A required pointer was NULL.
+ * @retval k_ra8_err_invalid_arg `handle` was invalid.
+ * @retval k_ra8_err_invalid_size `input_len` exceeds the fixture maximum.
+ * @retval k_ra8_err_no_mem The handle's bounded output slot is occupied.
+ * @pre A non-NULL `handle` remains live for the duration of the call.
+ * @pre A non-NULL input addresses at least `input_len` readable bytes.
+ * @post Failure leaves both outputs unchanged.
+ * @post Success publishes one pointer and its exact length atomically.
+ * @note Release successful output with `ra8_abi_fixture_bytes_release()`.
+ * @note Task-only and non-reentrant.
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_abi_fixture_bytes_create(ra8_abi_fixture_t* handle,
+                                                     const uint8_t*     input,
+                                                     uint32_t           input_len,
+                                                     uint8_t**          out_bytes,
+                                                     uint32_t*          out_len);
+
+/**
+ * @brief Release library-owned bytes and clear the caller's pointer.
+ *
+ * @details This follows the standard handle-independent release shape. The
+ * fixture identifies its single outstanding allocation from the published
+ * pointer and does not require callers to retain another release argument.
+ *
+ * @param[in,out] in_out_bytes Published byte pointer. A NULL value is an
+ *                             idempotent success; the pointer slot must exist.
+ * @return `ra8_err_t` result.
+ * @retval k_ra8_ok The bytes were absent or were released and cleared.
+ * @retval k_ra8_err_null_ptr `in_out_bytes` was NULL.
+ * @retval k_ra8_err_invalid_arg The byte pointer was not published by the fixture.
+ * @retval k_ra8_err_invalid_state No library-owned bytes were outstanding.
+ * @pre A non-NULL byte value was returned by
+ * `ra8_abi_fixture_bytes_create()` and has not been released.
+ * @pre `in_out_bytes` addresses writable pointer storage when non-NULL.
+ * @post Failure leaves `in_out_bytes` unchanged.
+ * @post Success clears the pointer and restores owned-byte capacity.
+ * @note Task-only and non-reentrant.
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_abi_fixture_bytes_release(uint8_t** in_out_bytes);
 
 #ifdef __cplusplus
 }
