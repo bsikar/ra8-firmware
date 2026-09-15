@@ -118,9 +118,9 @@ HOSTED_FLOOR = 400
 MUST_DISCOVER = (
     "apps/board/stand_alone/ereader/src/main.c",
     "apps/host/firmware_fingerprint/src/main.rs",
-    "apps/host/firmware_pipeline/rust-main/src/main.rs",
+    "apps/host/firmware_pipeline/rust/src/main.rs",
     "apps/host/firmware_pipeline/zig/src/main.zig",
-    "apps/host/firmware_report/rust-main/src/main.rs",
+    "apps/host/firmware_report/rust/src/main.rs",
     "apps/host/reg_gen/src/main.zig",
     "libs/ra8_core/inc/ra8_boot_entry.h",
 )
@@ -129,9 +129,9 @@ SUFFIXES = (".c", ".cpp", ".h", ".rs", ".zig")
 
 LANGUAGE_OWNED_MAINS = {
     "apps/host/firmware_fingerprint/src/main.rs": "rust",
-    "apps/host/firmware_pipeline/rust-main/src/main.rs": "rust",
+    "apps/host/firmware_pipeline/rust/src/main.rs": "rust",
     "apps/host/firmware_pipeline/zig/src/main.zig": "zig",
-    "apps/host/firmware_report/rust-main/src/main.rs": "rust",
+    "apps/host/firmware_report/rust/src/main.rs": "rust",
     "apps/host/reg_gen/src/main.zig": "zig",
 }
 NON_C_MAIN_RE = re.compile(r"^\s*(?:pub\s+)?fn\s+main\s*\(")

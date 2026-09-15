@@ -14,7 +14,6 @@ find_program(CARGO_EXECUTABLE NAMES cargo REQUIRED)
 find_program(NM_EXECUTABLE NAMES llvm-nm nm REQUIRED)
 
 set(FIRMWARE_REPORT_RUST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/rust)
-set(FIRMWARE_REPORT_RUST_MAIN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/rust-main)
 set(FIRMWARE_REPORT_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR}/cargo-target)
 if(WIN32)
   set(FIRMWARE_REPORT_RUST_LIBRARY ${FIRMWARE_REPORT_TARGET_DIR}/debug/firmware_report_provider.lib)
@@ -36,7 +35,7 @@ target_compile_options(firmware_report_c PRIVATE -Wall -Wextra -Werror)
 add_custom_target(
   firmware_report_rust ALL
   COMMAND ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${FIRMWARE_REPORT_TARGET_DIR} ${CARGO_EXECUTABLE}
-          build --locked --manifest-path ${FIRMWARE_REPORT_RUST_DIR}/Cargo.toml
+          build --locked --lib --manifest-path ${FIRMWARE_REPORT_RUST_DIR}/Cargo.toml
   BYPRODUCTS ${FIRMWARE_REPORT_RUST_LIBRARY}
   COMMENT "Building firmware_report Rust provider"
   VERBATIM
@@ -47,10 +46,11 @@ add_custom_target(
   COMMAND
     ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${FIRMWARE_REPORT_TARGET_DIR}
     FIRMWARE_REPORT_C_LIB_DIR=$<TARGET_FILE_DIR:firmware_report_c> ${CARGO_EXECUTABLE} build
-    --locked --manifest-path ${FIRMWARE_REPORT_RUST_MAIN_DIR}/Cargo.toml
+    --locked --features command --bin firmware_report --manifest-path
+    ${FIRMWARE_REPORT_RUST_DIR}/Cargo.toml
   BYPRODUCTS ${FIRMWARE_REPORT_EXECUTABLE}
   DEPENDS firmware_report_c
-  COMMENT "Building Rust-main firmware_report"
+  COMMENT "Building Rust firmware_report"
   VERBATIM
 )
 

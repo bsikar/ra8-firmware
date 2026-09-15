@@ -17,9 +17,11 @@ fn run(command: &mut Command, description: &str) {
 fn main() {
     println!("cargo:rerun-if-changed=../src/firmware_report_cli.c");
     println!("cargo:rerun-if-changed=../src/firmware_report_cli.h");
+    if env::var_os("CARGO_FEATURE_COMMAND").is_none() {
+        return;
+    }
     if let Ok(directory) = env::var("FIRMWARE_REPORT_C_LIB_DIR") {
-        println!("cargo:rustc-link-search=native={directory}");
-        println!("cargo:rustc-link-lib=static=firmware_report_c");
+        emit_links(Path::new(&directory));
         return;
     }
 
@@ -41,6 +43,15 @@ fn main() {
         Command::new(archiver).arg("crs").arg(&archive).arg(&object),
         "C support archive creation",
     );
-    println!("cargo:rustc-link-search=native={}", output.display());
-    println!("cargo:rustc-link-lib=static=firmware_report_c");
+    emit_links(&output);
+}
+
+fn emit_links(directory: &Path) {
+    for argument in [
+        format!("-L{}", directory.display()),
+        "-l:libfirmware_report_c.a".to_owned(),
+    ] {
+        println!("cargo:rustc-link-arg-bin=firmware_report={argument}");
+        println!("cargo:rustc-link-arg-tests={argument}");
+    }
 }

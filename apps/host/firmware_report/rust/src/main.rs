@@ -7,7 +7,7 @@ use std::io::{self, Write as _};
 
 fn main() {
     let arguments: Vec<std::ffi::OsString> = std::env::args_os().collect();
-    match firmware_report::run(&arguments) {
+    match firmware_report_provider::run(&arguments) {
         Ok(output) => {
             if io::stdout().write_all(output.as_bytes()).is_err() {
                 eprintln!("firmware_report: cannot write output");

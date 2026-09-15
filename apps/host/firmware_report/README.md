@@ -13,4 +13,4 @@ just quality::devcontainer::lint-rust
 just quality::devcontainer::test-rust
 ```
 
-The final executable is produced by Cargo from `rust-main`; CMake supplies the C parser archive. The allocation-free Rust provider permits one live opaque report borrow at a time. `firmware_report_create` borrows the fixed provider slot on success, `firmware_report_query` leaves output unchanged on every error, and `firmware_report_release` ends the borrow and clears the caller's slot. Tests separately cover the C policy, Rust-owned CLI, safe Rust analysis, Rust adapter, linked C ABI, layout, exact export inventory, and release path.
+The final executable is produced by Cargo from `rust`; CMake supplies the C parser archive. The allocation-free Rust provider permits one live opaque report borrow at a time. `firmware_report_create` borrows the fixed provider slot on success, `firmware_report_query` leaves output unchanged on every error, and `firmware_report_release` ends the borrow and clears the caller's slot. Tests separately cover the C policy, Rust-owned CLI, safe Rust analysis, Rust adapter, linked C ABI, layout, exact export inventory, and release path.

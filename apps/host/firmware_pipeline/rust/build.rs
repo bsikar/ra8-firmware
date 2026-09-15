@@ -25,6 +25,9 @@ fn main() {
     ] {
         println!("cargo:rerun-if-changed={source}");
     }
+    if env::var_os("CARGO_FEATURE_COMMAND").is_none() {
+        return;
+    }
     if let (Ok(c_directory), Ok(zig_directory)) = (
         env::var("FIRMWARE_PIPELINE_C_LIB_DIR"),
         env::var("FIRMWARE_PIPELINE_ZIG_LIB_DIR"),
@@ -79,8 +82,16 @@ fn main() {
 }
 
 fn emit_links(c_directory: &Path, zig_directory: &Path) {
-    println!("cargo:rustc-link-search=native={}", c_directory.display());
-    println!("cargo:rustc-link-search=native={}", zig_directory.display());
-    println!("cargo:rustc-link-lib=static=firmware_pipeline_c");
-    println!("cargo:rustc-link-lib=static=firmware_pipeline_zig");
+    let arguments = [
+        format!("-L{}", c_directory.display()),
+        format!("-L{}", zig_directory.display()),
+        "-l:libfirmware_pipeline_c.a".to_owned(),
+        "-l:libfirmware_pipeline_zig.a".to_owned(),
+        "-Wl,--no-as-needed".to_owned(),
+        "-lc".to_owned(),
+    ];
+    for argument in arguments {
+        println!("cargo:rustc-link-arg-bin=firmware_pipeline_rust_main={argument}");
+        println!("cargo:rustc-link-arg-tests={argument}");
+    }
 }

@@ -6,7 +6,7 @@ use std::fs;
 #[test]
 fn rejects_missing_path() {
     assert_eq!(
-        firmware_report::run(&["firmware_report".into()]),
+        firmware_report_provider::run(&["firmware_report".into()]),
         Err("usage")
     );
 }
@@ -14,7 +14,7 @@ fn rejects_missing_path() {
 #[test]
 fn rejects_extra_path() {
     assert_eq!(
-        firmware_report::run(&["firmware_report".into(), "a".into(), "b".into()]),
+        firmware_report_provider::run(&["firmware_report".into(), "a".into(), "b".into()]),
         Err("usage")
     );
 }
@@ -22,7 +22,7 @@ fn rejects_extra_path() {
 #[test]
 fn rejects_missing_file() {
     assert_eq!(
-        firmware_report::run(&["firmware_report".into(), "/definitely/missing".into()]),
+        firmware_report_provider::run(&["firmware_report".into(), "/definitely/missing".into()]),
         Err("cannot open input")
     );
 }
@@ -31,7 +31,8 @@ fn rejects_missing_file() {
 fn renders_report() {
     let path = std::env::temp_dir().join(format!("firmware-report-{}.bin", std::process::id()));
     fs::write(&path, b"hello").expect("fixture write");
-    let output = firmware_report::run(&["firmware_report".into(), path.clone().into_os_string()]);
+    let output =
+        firmware_report_provider::run(&["firmware_report".into(), path.clone().into_os_string()]);
     fs::remove_file(path).expect("fixture cleanup");
     assert_eq!(
         output,

@@ -5,7 +5,7 @@
 
 #![expect(unsafe_code, reason = "this module is the audited C ABI adapter")]
 
-use firmware_report_provider::ReportSummary;
+use crate::ReportSummary;
 use std::ffi::{CString, OsString, c_char, c_int, c_void};
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt as _;
@@ -52,7 +52,7 @@ pub fn parse_path(arguments: &[OsString]) -> Result<OsString, ()> {
 }
 
 pub fn summarize(image: &[u8]) -> Result<ReportSummary, ()> {
-    firmware_report_provider::retain_foreign_exports();
+    crate::retain_foreign_exports();
     let data = if image.is_empty() {
         std::ptr::null()
     } else {
