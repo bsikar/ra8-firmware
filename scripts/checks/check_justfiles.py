@@ -139,50 +139,64 @@ def _missing_active_snippets(
     ]
 
 
+def _check_remote_branch(
+    match: re.Match[str] | None,
+    rel: str,
+    scope: str,
+    missing_branch: str,
+    snippets: tuple[str, ...],
+) -> list[str]:
+    """Check one isolated remote execution branch."""
+    if match is None:
+        return [f"{rel}: remote CI has no {missing_branch}"]
+    return _missing_active_snippets(match.group("body"), rel, scope, snippets)
+
+
+def _check_remote_commits(text: str, rel: str) -> list[str]:
+    """Check remote snapshot and history commit invariants."""
+    findings = []
+    if text.count(REMOTE_CI_SNAPSHOT_COMMIT) != 1:
+        findings.append(f"{rel}: remote CI must create exactly one transport snapshot commit")
+    if REMOTE_CI_HISTORY_COMMIT not in text:
+        findings.append(f"{rel}: remote CI must preserve the candidate commit metadata")
+    return findings
+
+
 def check_remote_ci_contract(text: str, rel: str) -> list[str]:
     """Require remote CI to preserve host isolation and WSL container parity."""
     findings: list[str] = []
     wsl_match = REMOTE_CI_WSL_BLOCK_RE.search(text)
     linux_match = REMOTE_CI_LINUX_BLOCK_RE.search(text)
-    if wsl_match is None:
-        findings.append(f"{rel}: remote CI has no WSL isolation branch")
-    else:
-        wsl = wsl_match.group("body")
-        findings.extend(
-            _missing_active_snippets(
-                wsl,
-                rel,
-                "WSL",
-                (
-                    'remote_profile="/etc/profile.d/ra8-dev-slice.sh"',
-                    'remote_launcher="/usr/local/bin/ra8-dev"',
-                    'gate_command="/bin/bash -p scripts/ci.sh"',
-                    'gate_command="/bin/bash -p scripts/ci.sh --gate $remote_gate_arg --container"',
-                ),
-            )
+    findings.extend(
+        _check_remote_branch(
+            wsl_match,
+            rel,
+            "WSL",
+            "WSL isolation branch",
+            (
+                'remote_profile="/etc/profile.d/ra8-dev-slice.sh"',
+                'remote_launcher="/usr/local/bin/ra8-dev"',
+                'gate_command="/bin/bash -p scripts/ci.sh"',
+                'gate_command="/bin/bash -p scripts/ci.sh --gate $remote_gate_arg --container"',
+            ),
         )
-    if linux_match is None:
-        findings.append(f"{rel}: remote CI has no Linux throttling branch")
-    else:
-        linux = linux_match.group("body")
-        findings.extend(
-            _missing_active_snippets(
-                linux,
-                rel,
-                "Linux",
-                (
-                    "RA8_REMOTE_MAX_JOBS",
-                    'remote_jobs="${RA8_REMOTE_MAX_JOBS:-2}"',
-                    'if [[ ! "$remote_jobs" =~ ^[1-9][0-9]*$ ]]; then',
-                    "nice -n 19 ionice -c3",
-                    'gate_command="/bin/bash -p scripts/ci.sh --native"',
-                ),
-            )
+    )
+    findings.extend(
+        _check_remote_branch(
+            linux_match,
+            rel,
+            "Linux",
+            "Linux throttling branch",
+            (
+                "RA8_REMOTE_MAX_JOBS",
+                'remote_jobs="${RA8_REMOTE_MAX_JOBS:-2}"',
+                'if [[ ! "$remote_jobs" =~ ^[1-9][0-9]*$ ]]; then',
+                "nice -n 19 ionice -c3",
+                'gate_command="/bin/bash -p scripts/ci.sh --native"',
+            ),
         )
-    if text.count(REMOTE_CI_SNAPSHOT_COMMIT) != 1:
-        findings.append(f"{rel}: remote CI must create exactly one transport snapshot commit")
-    if REMOTE_CI_HISTORY_COMMIT not in text:
-        findings.append(f"{rel}: remote CI must preserve the candidate commit metadata")
+    )
+    findings.extend(_check_remote_commits(text, rel))
     findings.extend(
         _missing_active_snippets(
             text,

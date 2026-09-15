@@ -604,13 +604,6 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
 
   # ===========================================================================
   # GATE BODIES
-  #
-  # Each mirrors exactly one CI step. Nothing here is a copy of anything in the
-  # YAML, because the YAML has no copy to make.
-  # ===========================================================================
-
-  # ===========================================================================
-  # GATE BODIES
   # ===========================================================================
   # Every gate body lives in scripts/ci/gates/*.sh and is sourced here. The
   # split is by theme, purely so no single file carries 1100 lines of gate
