@@ -123,7 +123,7 @@ batches:
     date: 2026-08-26
     identity_schema: 2-durable-site-identity
     assigned_rows: 4180
-    rows_sha256: 55162299423e208ea274355f6163faad32aae3b2f4183c7a3c47de1618ec9b8f
+    rows_sha256: cf165871f01f388b76ff7de89ce7e254fb799374bdb0900e66709f455c3d9fc8
     partition: "fresh source reconciliation: all integrated lanes and retained history"
     evidence:
       - "Codex final adversarial reconciliation and negative controls"
@@ -1053,3 +1053,12 @@ batches:
     partition: "selective retain of 1 ledger row(s): 96c32ac9fa24"
     evidence:
       - "toolchain-pin source-context: /usr/bin/python3 is Python 3.9 on supported macOS control nodes, so the compatibility annotation is required until that platform interpreter changes"
+  - id: selective-review-20260915-153737
+    authority: repository-suppression-review
+    date: 2026-09-15
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 1
+    rows_sha256: 3c3eef20d1ebea89dbf850f8fd2aa0da5feb5413f140aaf4ce96da6c7baeab9f
+    partition: "selective retain of 1 ledger row(s): c693f9fa8819"
+    evidence:
+      - "review-decision source-context scripts/dev/fleet_reconcile.py:4 project-policy/FILE-SIZE-OK: safety-critical controller and transaction selftests stay reviewable together; exact scoped waiver retained after canonical copyright preamble repair"

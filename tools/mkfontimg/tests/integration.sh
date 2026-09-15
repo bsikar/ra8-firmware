@@ -92,13 +92,18 @@ fi
 mutable="$work/input/mutable.bin"
 dd if=/dev/zero of="$mutable" bs=4096 count=256 2>/dev/null
 cp "$sentinel" "$preserved"
+mutator_ready="$work/mutator.ready"
 (
   while :; do
     printf X >>"$mutable"
     truncate -s 1048576 "$mutable"
+    : >"$mutator_ready"
   done
 ) &
 mutator_pid=$!
+while [[ ! -e $mutator_ready ]]; do
+  :
+done
 mutation_status=0
 "$tool" "$mutable" "$preserved" FONT.OTF >/dev/null 2>&1 || mutation_status=$?
 kill "$mutator_pid" 2>/dev/null || true
