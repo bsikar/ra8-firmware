@@ -1,6 +1,7 @@
 /**
  * @file test_abi_fixture.c
  * @brief C23 consumer acceptance test for the Zig ABI fixture.
+ * @details Exercises values, errors, unchanged outputs, and teardown through the C ABI.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

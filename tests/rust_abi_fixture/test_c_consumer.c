@@ -1,6 +1,7 @@
 /**
  * @file test_c_consumer.c
  * @brief C23 compile, layout, runtime, error, and ownership proof for Rust.
+ * @details Exercises the authoritative header against the linked Rust provider archive.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
