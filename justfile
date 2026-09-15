@@ -4,7 +4,7 @@
 # Root justfile for ra8-firmware.
 # Run `just` or `just --list` for available commands.
 
-set dotenv-load := true
+set dotenv-load
 set shell := ["/bin/bash", "-puc"]
 
 export BASH_ENV := "/dev/null"

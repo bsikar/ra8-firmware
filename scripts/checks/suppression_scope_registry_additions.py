@@ -153,6 +153,8 @@ def _allowed_token_literal_4_p1() -> tuple[str, ...]:
         checks/check_justfiles.py:CI_SH_VALUE_OPTIONS
         checks/check_justfiles.py:NATIVE_FAST_COMMAND
         checks/check_justfiles.py:NATIVE_FAST_RECIPE_RE
+        checks/check_justfiles.py:REMOTE_CI_HISTORY_COMMIT
+        checks/check_justfiles.py:REMOTE_CI_SNAPSHOT_COMMIT
         checks/check_python_lock_policy.py:INTERPRETER_IMPORT_ROOTS
         checks/runner_image_cleanup_policy.py:MANAGED_IMAGE_KIND
         checks/runner_image_cleanup_policy.py:MANAGED_IMAGE_LABEL

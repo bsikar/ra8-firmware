@@ -25,9 +25,9 @@ each live with the request structure in `libs/ra8_c6link`.
 
 Readiness is deliberately established with a version round-trip rather than the
 co-processor's boot event. That event fires once, when the *co-processor* boots,
-and the C6 has its own supply -- so resetting this board does not reboot it. An
-earlier revision waited for the event and therefore passed exactly once, on a
-freshly-flashed co-processor. The identity that comes back is checked against
+and the C6 has its own supply -- so resetting this board does not reboot it.
+Waiting for that event would therefore make readiness depend on power-cycle
+ordering. The identity that comes back is checked against
 the vendored host driver's own version, which makes it a host/co-processor
 version lock rather than a literal written down twice.
 

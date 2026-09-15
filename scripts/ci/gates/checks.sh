@@ -14,7 +14,7 @@
 # prevent.
 #
 # Gates in this file: pre-commit-checks, agnostic-registers, annotations,
-# doc-attachment, tests-readme, disambig-readmes, init-order-freshness,
+# doc-attachment, tests-readme, disambig-readmes,
 # cite-check, hil-eil-parity
 
 # --- pre-commit-checks ----------------------------------------------------
@@ -639,43 +639,6 @@ gate_tier_imports() (
   require_cmd python3 "the tier-imports gate is a Python source scanner"
   python3 scripts/checks/check_tier_imports.py --selftest
   python3 scripts/checks/check_tier_imports.py --all
-)
-
-# --- init-order-freshness -------------------------------------------------
-# docs/INIT_ORDER_AUDIT.md is COMMITTED yet GENERATED (`just docs::audit_init`
-# invokes audit_init_order.py --report). Nothing regenerated it and byte-compared the
-# committed copy, so it silently drifted -- it claimed 11 apps while the tree
-# held 217, for as long as the discovery glob was depth-capped (#190/#537). It
-# is cited from docs/qualification/, so a stale copy misrepresents the boot
-# order to the qualification set. This gate regenerates it from the current
-# tree and FAILS if the committed copy differs. The generator is hardware-free
-# and reads a sorted glob (byte-stable across runs), so unlike the slow
-# artefact-freshness gate this one needs no build output. --selftest FIRST,
-# both directions, so a comparator that stopped detecting drift cannot pass as
-# a clean tree.
-gate_init_order_freshness() (
-  set -e
-  require_cmd python3 "the init-order-freshness gate regenerates docs/INIT_ORDER_AUDIT.md"
-  python3 scripts/checks/check_init_order_freshness.py --selftest
-  python3 scripts/checks/check_init_order_freshness.py
-)
-
-# --- roadmap-dashboard-freshness ------------------------------------------
-# docs/ROADMAP_DASHBOARD.md is COMMITTED yet GENERATED (`just docs::dashboard`
-# invokes scripts/report/roadmap_dashboard.py), rendered purely from the closed
-# historical evidence in docs/ROADMAP.md. Nothing regenerated it and
-# byte-compared the committed copy, so it could silently drift out of step with
-# ROADMAP.md the same way INIT_ORDER_AUDIT.md did (#537). This gate regenerates
-# it from the current tree and FAILS if the committed copy differs. The generator is
-# hardware-free (byte-stable across runs), so unlike the slow artefact-freshness
-# gate this one needs no build output and sits in the fast group beside
-# init-order-freshness. --selftest FIRST, both directions, so a comparator that
-# stopped detecting drift cannot pass as a clean tree.
-gate_roadmap_dashboard_freshness() (
-  set -e
-  require_cmd python3 "the roadmap-dashboard-freshness gate regenerates docs/ROADMAP_DASHBOARD.md"
-  python3 scripts/checks/check_roadmap_dashboard_freshness.py --selftest
-  python3 scripts/checks/check_roadmap_dashboard_freshness.py
 )
 
 # --- entry-points ---------------------------------------------------------

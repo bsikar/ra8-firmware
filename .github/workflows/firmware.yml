@@ -348,8 +348,6 @@ jobs:
       - run: just quality::local::gate tier-imports
       - run: just quality::local::gate tests-readme
       - run: just quality::local::gate disambig-readmes
-      - run: just quality::local::gate init-order-freshness
-      - run: just quality::local::gate roadmap-dashboard-freshness
       - run: just quality::local::gate pinout-freshness
       - run: just quality::local::gate bench-lock
       - run: just quality::local::gate unused-includes

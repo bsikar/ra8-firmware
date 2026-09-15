@@ -40,15 +40,13 @@ scored nothing at all.
 The Pmod1 mux puts either of two MCU pins on J26-1 depending on the switch bank
 (EK-RA8D2 v1 UM Table 18 p 26), and the on-board Octo-SPI flash releases those
 pins only when SW4-3 is ON (UM Table 3 p 16). With that switch wrong, the J26
-signal holes are not electrically connected to the MCU at all while the board
-and the co-processor both look perfectly healthy -- which is how a bench day was
-once spent suspecting the wiring. Flipping SW4-4 OFF for this tier also
+signal holes are not electrically connected to the MCU even though the board
+and co-processor otherwise look healthy. Flipping SW4-4 OFF for this tier also
 deactivates the Arduino and mikroBUS connectors, so the IMU Click is offline
 whenever the C6 link is in use: a real trade-off on this board, not an oversight.
 
-There is no 3V3 wire in the harness -- the C6 runs from its own USB -- which is
-exactly why "the C6 is alive" was never evidence that the signal harness
-existed.
+There is no 3V3 wire in the harness -- the C6 runs from its own USB. Therefore,
+"the C6 is alive" is not evidence that the signal harness is connected.
 
 ## Protocol constants
 

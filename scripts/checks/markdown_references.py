@@ -521,7 +521,7 @@ def _declared_planned_path(root: Path, source: str, ref: PathRef) -> bool:
     if (
         source in QUALIFICATION_RELEASE_SOURCES
         and release is not None
-        and (root / "docs/qualification/release/README.md").is_file()
+        and (root / "docs/qualification/SCMP.md").is_file()
     ):
         return True
     tool_private = re.fullmatch(r"tools/<tool>/third_party/<(?:component|dep)>", ref.token)

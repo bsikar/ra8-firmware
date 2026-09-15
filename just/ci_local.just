@@ -33,6 +33,7 @@ default:
     @echo "  just quality::local::unused_includes              Check for unused C includes"
     @echo "  just quality::local::auto_sync                    Run suppression auto-sync"
     @echo "  just quality::local::review_suppressions          Review draft suppressions"
+    @echo "  just quality::local::review_scope_suppressions    Review draft checker-scope authorities"
     @echo "  just quality::local::bless_scope                  Bless checker scope"
 
 # Run every first-party formatter in place: C (clang-format), Go (gofmt),
@@ -133,6 +134,28 @@ auto_sync:
 # Interactively approve draft suppressions and generate a review batch
 review_suppressions:
     python3 scripts/dev/review_suppressions.py
+
+# Retain only live, unreviewed checker-scope controls after the authenticated
+# scope census has been inspected. The inventory filter prevents this shortcut
+# from approving unrelated lint, coverage, or test suppressions.
+review_scope_suppressions:
+    #!/bin/bash
+    set -euo pipefail
+    declare -a review_args=()
+    while IFS= read -r site_id; do
+        [[ -n "$site_id" ]] && review_args+=(--site "$site_id")
+    done < <(
+        .venv/bin/python3 scripts/checks/check_suppressions.py --inventory --format json |
+            .venv/bin/python3 -c 'import json, sys; data = json.load(sys.stdin); print(*sorted(row["site_id"] for row in data["suppressions"] if row["family"] == "checker-scope-control" and row["disposition"] != "approved"), sep="\n")'
+    )
+    if ((${#review_args[@]} == 0)); then
+        echo "No unreviewed checker-scope authorities."
+        exit 0
+    fi
+    .venv/bin/python3 scripts/dev/review_suppressions.py retain \
+        --rationale reviewed-scope-authority \
+        --evidence "classification-batch census-digest; exact checker scope values classified and authenticated by suppression_checker_scope.py" \
+        "${review_args[@]}"
 
 # Bless new checker scope authorities (automatically updates the hardcoded cryptographic ledger)
 bless_scope:

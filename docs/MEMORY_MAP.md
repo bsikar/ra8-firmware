@@ -190,8 +190,7 @@ the corresponding driver source under `libs/ra8_hal/src/`.
 
 ## 3. EK-RA8D2 v1 board population (what's actually wired)
 
-Source: `docs/reference/ek-ra8d2-v1-users-manual.pdf` and the audit
-notes in `docs/reference/EK-RA8D2-board-manual-PLACEHOLDER.md`.
+Source: `docs/reference/ek-ra8d2-v1-users-manual.pdf`.
 
 | Region / IP      | Address                         | EK-RA8D2 v1 status                                                    |
 |------------------|---------------------------------|------------------------------------------------------------------------|

@@ -628,15 +628,49 @@ def _wsl_mode_errors(tree: ast.Module) -> list[str]:
 
 
 def _infra_uv_execution_errors(source: str) -> list[str]:
-    """Require infra lock verification to execute only authenticated uv bytes."""
+    """Require platform-bound Python selection and authenticated uv bytes."""
+    expected_authority = """PYTHON_TARGET="$(readlink -f "$MANAGED_BIN/python3")"
+case "$(/usr/bin/uname -s)" in
+  Linux)
+    [[ "$PYTHON_TARGET" == "$(readlink -f /usr/bin/python3)" ]] || {
+      echo "error: repository Python authority does not use the fixed system interpreter" >&2
+      exit 1
+    }
+    VERIFY_PYTHON=/usr/bin/python3
+    ;;
+  Darwin)
+    [[ "$PYTHON_TARGET" == /* && -f "$PYTHON_TARGET" && -x "$PYTHON_TARGET" ]] || {
+      echo "error: repository Python authority does not resolve to an executable file" >&2
+      exit 1
+    }
+    managed_python_version="$(
+      "$PYTHON_TARGET" -I -c \\
+        'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")'
+    )"
+    [[ "$managed_python_version" =~ ^3\\.(11|12|13|14)$ ]] || {
+      echo "error: repository Python authority must be Python 3.11 through 3.14" >&2
+      exit 1
+    }
+    unset managed_python_version
+    VERIFY_PYTHON="$PYTHON_TARGET"
+    ;;
+  *)
+    echo "error: unsupported infrastructure control-node platform" >&2
+    exit 1
+    ;;
+esac
+readonly PYTHON_TARGET VERIFY_PYTHON"""
+    authority = re.search(r"(?ms)^PYTHON_TARGET=.*?^readonly PYTHON_TARGET VERIFY_PYTHON$", source)
+    if authority is None or authority.group(0) != expected_authority:
+        return ["infra.sh: platform Python authority selection is incomplete"]
     expected = """verify_managed_python_environment() {
   (
     cd "$ROOT"
     UV_PROJECT_ENVIRONMENT="$MANAGED_VENV" UV_PYTHON_DOWNLOADS=never \\
       UV_CACHE_DIR="$ROOT/.tools/uv" \\
-      /usr/bin/python3 -I -S "$ROOT/scripts/dev/bootstrap_uv.py" \\
+      "$VERIFY_PYTHON" -I -S "$ROOT/scripts/dev/bootstrap_uv.py" \\
       --run --no-config sync --locked --all-groups --no-install-project \\
-      --python /usr/bin/python3 --check
+      --python "$VERIFY_PYTHON" --check
   ) >/dev/null
 }
 

@@ -19,11 +19,10 @@ produce or handle secrets and are therefore manual, in this order.
 
 ### 1. Initialise (once, ever)
 
-```sh
-kubectl exec -n openbao openbao-0 -- bao operator init -format=json \
-  > ~/.openbao/init.json
-chmod 600 ~/.openbao/init.json
-```
+Run `bao operator init -format=json` against the operator-configured deployment
+and save its output directly to a mode-0600 file outside every checkout. The
+namespace, workload name, endpoint, and backup location are private deployment
+details and intentionally are not prescribed here.
 
 `init.json` holds the Shamir unseal keys **and** the root token. It is the one
 file whose loss is unrecoverable -- that is what a Shamir seal means, and no
@@ -31,9 +30,8 @@ backup of the vault's data substitutes for it. Keep it at mode 0600, outside
 every checkout, and back it up somewhere that is neither this repository nor the
 same machine.
 
-It must never be committed. `infra/.gitignore` and the repo's pre-commit gates
-are a safety net, not the control: the control is that it lives in `~/.openbao`
-and nothing copies it out.
+It must never be committed. Ignore rules and pre-commit gates are a safety net,
+not the control; the operator-owned storage and backup policy are the control.
 
 ### 2. Unseal (after every restart)
 

@@ -19,8 +19,7 @@ apps need. One run of the bench cannot satisfy both settings.
 
 > Getting SW4-3 wrong leaves the J26 signal holes electrically disconnected
 > from the MCU while the board and the co-processor both look perfectly
-> healthy. That misreading -- not a wiring fault -- cost an entire bench day.
-> If the link stops working, check the switch bank **electrically** before
+> healthy. If the link stops working, check the switch bank **electrically** before
 > suspecting anything else.
 
 **`ra8_emulator` models no ESP32-C6** (#494). `hw_validated/hil/` is bound by

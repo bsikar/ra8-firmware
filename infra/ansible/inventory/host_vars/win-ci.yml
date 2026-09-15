@@ -7,13 +7,13 @@
 # instance count, per-instance CPU and memory, the WSL VM caps, the labels and
 # the quiet-hours window are declared in this host's block in infra/fleet.yml
 # and arrive as extra-vars. The fleet-declaration gate fails this file if it
-# re-declares any of them, so "how much of the gaming PC may CI use" has
+# re-declares any of them, so "how much of the WSL host may CI use" has
 # exactly one answer in exactly one place.
 #
 # The machine: AMD Ryzen 9 7900X (12 physical cores / 24 threads, Zen 4),
 # 31 GiB RAM, Windows 11 build 26200, WSL 2.6.3 running Ubuntu 24.04. It is by
 # a wide margin the fastest host in the fleet -- and it is also the owner's
-# daily driver and gaming PC, which is why it is the one host that declares
+# interactive workstation, which is why it is the one host that declares
 # quiet hours.
 
 # --- Credentials ------------------------------------------------------------

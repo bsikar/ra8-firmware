@@ -8,7 +8,8 @@ can never gate this app.
 ## Blocked on
 
 An external I2C controller on the bus. The chip is in target mode and waits for a
-controller to initiate transactions; the bench Pi has I2C controller capability
+controller to initiate transactions; the external test peer needs I2C
+controller capability
 on its own header, but there is no jumper wiring to the EVM's IIC_B pins today.
 Closing the gap needs both that wiring and a probe-able transfer counter in
 `src/main.c`, since the LED alone gives an automated rig nothing to read.

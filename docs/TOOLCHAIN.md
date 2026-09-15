@@ -19,9 +19,9 @@ versa) -- the cause is almost always a version skew documented below.
 | Environment | Role | Can do | Cannot do |
 |-------------|------|--------|-----------|
 | **Mac** (Apple Silicon, this repo's authoring box) | ARM cross-builds + code authoring + full CI through the devcontainer | `arm-none-eabi-gcc` (Cortex-M85), clang-format/clang-tidy, ruff, shfmt, shellcheck, git, and `just ci` | Run the low-address host unit tests / coverage natively (macOS arm64 rejects the `mmap MAP_FIXED <4 GiB` peripheral mock before `main`); use `just ci` for their Linux execution |
-| **dev box** (`ssh dev`, x86-64 Debian 12, 12 cores) | Host unit tests, coverage, cppcheck, clang-format/tidy, the `check_*.py` suite, ARM cross-build (pinned 13.3 under `/opt`) | Everything host-side + cross-build, FAST -- `just quality::native` runs every gate with no container at all | no Docker (which is fine: `just ci` falls back to native on Linux) |
+| **Linux verification host** (x86-64 Debian 12) | Host unit tests, coverage, cppcheck, clang-format/tidy, the `check_*.py` suite, ARM cross-build (pinned 13.3 under `/opt`) | Everything host-side + cross-build -- `just quality::native` runs every gate with no container | no Docker required (`just ci` falls back to native on Linux) |
 | **CI** (the self-hosted `ra8-ci` fleet; `.github/workflows/`) | The authority -- every gate runs here on push/PR | All gates in the Ubuntu 24.04 devcontainer image the runners boot, cross toolchain included | -- |
-| **HIL rig** (`ssh star@star.local`, Pi + on-board J-Link) | Silicon validation (flash + read the real EK-RA8D2) | The only oracle for cache/power/TZ/timing | -- |
+| **HIL rig** (Linux controller + on-board J-Link) | Silicon validation (flash + read the real EK-RA8D2) | The only oracle for cache/power/TZ/timing | -- |
 
 **Golden rule:** use `just ci` on the **Mac**, `just quality::native` on the
 **dev box**, silicon validation on the **HIL rig**, and treat **CI as the
@@ -189,8 +189,8 @@ extract or install it. `check_download_installers.py` continuously guards that
 flow and rejects the former curl-to-parser installer idioms.
 
 **Resolve managed tools through a login shell.** The fleet profile prepends
-`/opt/ra8-python-tools/bin`, so a plain `ssh dev '<cmd>'` may miss a provisioned
-Python tool while `ssh dev '/bin/bash -p -lc "<cmd>"'` sees it. The same trap
+`/opt/ra8-python-tools/bin`, so a non-login remote command may miss a provisioned
+Python tool while `/bin/bash -p -lc "<cmd>"` sees it. The same trap
 changes which `clang-tidy` and `gcovr` you get (#333). Always use
 `/bin/bash -p -lc`.
 
@@ -334,14 +334,13 @@ do not have to:
 
 ```bash
 # 0. isolated workspace (a linked worktree; costs a checkout, not a clone)
-ssh dev '/bin/bash -p -lc "cd ~/ra8-firmware && just workspace::new my-task"'
+ssh <verification-host> '/bin/bash -p -lc "cd <repo> && just workspace::new my-task"'
 # ... then work in ~/ra8-ws/my-task, and `just workspace::free my-task` when done.
 # 1. put your commit in it -- push a branch and check it out there; do NOT rsync
 #    into the shared tree.
 # 2. gates -- the SAME functions the runner executes
-ssh dev '/bin/bash -p -lc "cd ~/ra8-ws/my-task && just ci"'              # container
-ssh dev '/bin/bash -p -lc "cd ~/ra8-ws/my-task && just quality::native"' # native
-ssh dev '/bin/bash -p -lc "cd ~/ra8-ws/my-task && just quality::local::gate coverage-tree"'
+ssh <verification-host> '/bin/bash -p -lc "cd <workspace> && just ci"'
+ssh <verification-host> '/bin/bash -p -lc "cd <workspace> && just quality::native"'
 # 3. push (the pre-push hook runs the suite, which the Mac cannot; dev validated it)
 SKIP_CI_PUSH=1 git push origin dev
 ```
@@ -366,18 +365,18 @@ is neither a pass nor a failure).
 > "nothing to check", that is a bug to fix, not a pass.
 
 Gotchas (each has bitten a push):
-- **`ssh dev 'cmd | tail'` masks the exit code** (a pipeline returns `tail`'s
+- **A remote `cmd | tail` masks the exit code** (a pipeline returns `tail`'s
   status = 0). Read the gate's own `[PASS]`/`[FAIL]` line or capture
   `${PIPESTATUS[0]}`.
 - **Mac `tar` embeds AppleDouble `._*` sidecars** -- `COPYFILE_DISABLE=1` on the
   Mac side and `find . -name "._*" -delete` on dev, or `file(GLOB test_*.c)`
   compiles the `._` junk and the build breaks.
-- **`-T <listfile>` is read on the side it runs.** `ssh dev 'tar -T /tmp/x'`
+- **`-T <listfile>` is read on the side it runs.** A remote `tar -T /tmp/x`
   reads `/tmp/x` on **dev**, not the Mac -- pass explicit paths, or the tar
   silently archives nothing.
 - **Never pipe a tar into `ssh '/bin/bash -p -s' <<EOF`** -- the heredoc and the tar both
   target stdin and collide. Persist the script on dev first, then
-  `tar czf - <files> | ssh dev '/bin/bash -p ~/script.sh'` (the script reads the tar via
+  transfer the archive and script as distinct inputs (the script reads the tar via
   `tar xzf -`).
 - **Stray `.gcda` poisons gcovr's `--root` scan** -- `rm -rf build/* tests/build-*`
   (all trees, incl. `build/asan`/`build/clean`) before a coverage run.

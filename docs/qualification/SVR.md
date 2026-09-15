@@ -198,8 +198,8 @@ recorded as deferred work for the SAS to roll up.
 
 ### OP-006 -- Doxygen gap (recorded CLOSED in the archived snapshot)
 
-- All audited functions now carry the required Doxygen tag set
-  (2747 audited, 0 with gaps -- `docs/DOXYGEN_GAPS.md`).
+- The archived audit found that all 2747 audited functions carried the
+  required Doxygen tag set, with zero gaps.
 - **Disposition**: recorded closed for the archived snapshot; current evidence
   must be regenerated.
 
@@ -255,7 +255,7 @@ audit.
 
 ## 7. Archived 2026-05 Doxygen audit results
 
-Per `docs/DOXYGEN_GAPS.md` (2026-05-03 refresh):
+The archived 2026-05-03 refresh recorded:
 
 - Functions audited: **2747**.
 - Functions with at least one missing tag: **0**.

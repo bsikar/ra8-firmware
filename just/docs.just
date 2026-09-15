@@ -9,13 +9,12 @@ default:
     @echo "DOCS - Documentation, Dashboards & Architecture Audits"
     @echo ""
     @echo "COMMANDS:"
-    @echo "  just docs::build         Generate Doxygen HTML documentation"
-    @echo "  just docs::clean         Remove generated Doxygen HTML documentation"
-    @echo "  just docs::push          Build and publish Doxygen to gh-pages"
-    @echo "  just docs::dashboard     Refresh historical HAL completion dashboard"
-    @echo "  just docs::record_stats  Refresh historical HAL completion summary"
-    @echo "  just docs::sizes         Summarize app .text/.data/.bss footprints"
-    @echo "  just docs::audit_init    Audit peripheral init order across apps"
+    @echo "  just docs::build          Generate Doxygen HTML documentation"
+    @echo "  just docs::clean          Remove generated Doxygen HTML documentation"
+    @echo "  just docs::push           Build and publish Doxygen to gh-pages"
+    @echo "  just docs::record_stats   Refresh historical HAL completion summary"
+    @echo "  just docs::sizes          Summarize app .text/.data/.bss footprints"
+    @echo "  just docs::audit_init     Audit peripheral init order across apps"
     @echo ""
 
 # Remove generated Doxygen HTML documentation
@@ -30,10 +29,6 @@ build:
 push: build
     /bin/bash -p scripts/builders/publish_docs.sh
 
-# Refresh the historical HAL completion dashboard and badges
-dashboard:
-    python3 scripts/report/roadmap_dashboard.py
-
 # Refresh the summary embedded in the historical HAL completion record
 record_stats:
     python3 scripts/report/roadmap_stats.py
@@ -42,6 +37,6 @@ record_stats:
 sizes:
     python3 scripts/report/app_sizes.py --write
 
-# Run init-order audit across apps and update docs/INIT_ORDER_AUDIT.md
+# Run the read-only init-order audit across apps
 audit_init:
-    python3 scripts/checks/audit_init_order.py --report docs/INIT_ORDER_AUDIT.md
+    python3 scripts/checks/audit_init_order.py

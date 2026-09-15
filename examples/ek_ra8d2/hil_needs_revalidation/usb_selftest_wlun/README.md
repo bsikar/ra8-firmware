@@ -38,4 +38,5 @@ FS device: P4_07 VBUS sense, P5_00 VBUSEN GPIO low, P8_14/P8_15 data (PSEL
 usb_fs). HS host: SW4-8 to Host via the U15 expander, PD07 high so U18 powers
 J7, P4_08 VBUS sense (PSEL usb_hs). Console on PD_02/PD_03, SCI8.
 
-The device side advertises VID 0x1209, PID 0x0014. Bench use only.
+The device side uses PID `0x0014`; see the shared
+[USB identifier policy](../../USB_IDS.md).

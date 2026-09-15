@@ -35,5 +35,5 @@ yet, so the run parks after a single pass.
 HS device: P4_08 USBHS_VBUS sense (PSEL usb_hs), PD07 LOW so J7 is Device with
 no U18 back-feed; D+/D- are dedicated PHY balls. FS host: P4_07 VBUS sense,
 P5_00 VBUSEN peripheral-routed (USBFS sources J11 VBUS), P8_14/P8_15 data (PSEL
-usb_fs). Console: PD_02/PD_03 SCI8. The device advertises VID 0x1209 with a
-per-app PID; bench use only.
+usb_fs). Console: PD_02/PD_03 SCI8. Device identifiers follow the shared
+[USB identifier policy](../../../USB_IDS.md).

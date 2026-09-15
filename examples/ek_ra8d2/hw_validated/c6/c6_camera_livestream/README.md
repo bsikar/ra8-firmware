@@ -36,7 +36,7 @@ other bit.
 - Every frame response carries a `Server-Timing` header with capture,
   conversion and encode latency, so a performance regression is readable from
   browser devtools instead of being inferred from the visible frame rate.
-- The bench network is not routable from the developer LAN; reaching the page
+- If the test network is isolated from the client network, reaching the page
   from a workstation needs a forwarded port.
 
 The camera firmware and build artifacts contain no Wi-Fi credential. A freshly

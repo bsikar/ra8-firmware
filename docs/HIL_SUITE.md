@@ -73,10 +73,10 @@ The bench host selected by `.env` `PI_HOST` must have:
   - A VIA Labs USB hub on bus path `2-1.3` with PPPS support, so
     `uhubctl` can power-cycle individual ports.
   - The Ansible-authenticated built-in Ethernet interface for `hil_eth_tcp`.
-    The root-owned helper verifies its permanent identity and PHC before it
-    temporarily assigns `192.168.1.1/24`; USB adapters are rejected.
-  - A Digilent Analog Discovery 2 (serial `210321A36AAE`, presenting as
-    an FTDI FT232H at `0403:6014`) for signal capture: primarily the
+    The root-owned helper verifies its configured permanent identity and PHC
+    before assigning the test subnet; USB adapters are rejected.
+  - A compatible logic analyser, selected through protected bench inventory,
+    for signal capture: primarily the
     RA8 <-> ESP32-C6 SPI + side-band lines when the C6 harness needs
     diagnosing, and generally any bring-up question that has to be
     answered off the wire rather than from a register read. No HIL mode
@@ -114,21 +114,16 @@ The bench host selected by `.env` `PI_HOST` must have:
 
 ## Isolated wireless bench LAN (ESP32-C6)
 
-Wireless testing (the ESP32-C6 co-processor and future WiFi clients) runs on a
-self-contained, air-gapped LAN with **no uplink** to the home network:
-
-  - **FortiGate 81E-POE** (`ra8-bench-fw`) -- router / DHCP / switch on
-    `10.0.40.1/24`, admin over ssh + https, console on the Pi at
-    `/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_*-if00-port0` (9600 8N1).
-  - **Meraki MR18** (OpenWrt) -- access point at static `10.0.40.10`, PoE-fed by
-    FortiGate `port1`, publishing the 2.4 GHz bench SSID `ra8-bench` (WPA2-PSK).
+Wireless testing runs on a self-contained bench LAN. The device segment is
+denied a WAN route; a separate management segment may have an uplink. A router
+provides switching, DHCP, and policy enforcement, while an access point
+bridges a protected 2.4 GHz WPA2 test WLAN into the isolated segment.
 
 All of it is codified in `infra/network/` (config artifacts, the pyserial
 console driver, the OpenWrt uci script, and the wlan0 verification harness).
-Every credential -- FortiGate admin, AP root, the per-SSID PSKs, and the
-generated `ra8-bench` PSK -- lives in OpenBao at `secret/ra8d2/bench-network`;
-nothing is committed. See `infra/network/README.md` for the topology diagram,
-subnet plan, re-provision steps, and current bring-up status.
+Every credential and deployment coordinate is loaded from protected operator
+configuration; nothing is committed. See `infra/network/README.md` for the
+isolation contract and re-provisioning procedure.
 
 ## Running a single app locally on a Mac (no Pi)
 

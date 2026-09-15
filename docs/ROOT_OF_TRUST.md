@@ -19,7 +19,7 @@ key. It picks a backend automatically (override with `--backend`):
 
 | Backend | What it is | For whom |
 |---------|-----------|----------|
-| `openbao` | The team OpenBao server you already run (the k3s pod at `BAO_ADDR`), KV v2 with native versioning. Reached over HTTP by `scripts/secrets/openbao_client.py` -- **nothing is spun up locally**. | Maintainers with vault access. |
+| `openbao` | An operator-supplied OpenBao endpoint at `BAO_ADDR`, using KV v2 native versioning. Reached by `scripts/secrets/openbao_client.py`; nothing is spun up locally. | Maintainers with vault access. |
 | `local` | A 0700 directory (`RA8_ROT_STORE_DIR`, default `~/.config/ra8/rot`) holding one PEM per version plus `history.json`. | Anyone who clones the repo -- **no OpenBao needed**, same spirit as the `.env` fallback. |
 
 `auto` uses OpenBao when it is configured **and** reachable, else falls back to
@@ -35,8 +35,9 @@ it holds how to reach the vault, never the secrets themselves. See
 `scripts/secrets/openbao_client.py` for the full key list. The RoT-specific path is
 `BAO_ROT_SECRET_PATH` (default `ra8d2/rot-signing-key`) under `BAO_KV_MOUNT`.
 
-The AppRole policy must allow `create`/`update`/`read` on
-`<mount>/data/ra8d2/rot-signing-key` and `<mount>/metadata/ra8d2/rot-signing-key`.
+The AppRole policy must allow `create`/`update`/`read` on the configured data
+and metadata paths. Obtain those paths from protected operator configuration;
+do not publish a live vault namespace.
 
 ## Common operations
 

@@ -168,6 +168,32 @@ def _authenticated_uv_runner_cases(
     """Return authenticated uv-runner mutations."""
     return [
         (
+            "infra Darwin Python authority removal fires",
+            bool(
+                scan(
+                    mutate(
+                        inputs,
+                        "infra_sh",
+                        'VERIFY_PYTHON="$PYTHON_TARGET"',
+                        'VERIFY_PYTHON="/usr/bin/python3"',
+                    )
+                )
+            ),
+        ),
+        (
+            "infra Darwin Python authority decoy cannot bypass exact check",
+            bool(
+                scan(
+                    mutate(
+                        inputs,
+                        "infra_sh",
+                        '"$PYTHON_TARGET" -I -c \\',
+                        '# "$PYTHON_TARGET" -I -c \\\n      "$MANAGED_BIN/python3" -I -c \\',
+                    )
+                )
+            ),
+        ),
+        (
             "infra authenticated uv runner removal fires",
             bool(
                 scan(

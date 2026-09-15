@@ -243,11 +243,10 @@ TQL classifications in `docs/qualification/TOOL_QUALIFICATION.md`.
 1. From the repository root, run `python3 scripts/checks/doxy_audit.py`.
 2. The script audits every C / C++ function under `libs/`, `port/`,
    `tools/` and `apps/` against the Doxygen Documentation Requirements in
-   `CLAUDE.md`. It writes:
-   - `docs/DOXYGEN_GAPS.md` (Markdown summary).
-   - `docs/DOXYGEN_GAPS.csv` (per-function gap rows).
+   `CLAUDE.md`. It writes a Markdown summary and per-function CSV under
+   `build/reports/doxygen/`.
 3. Pass criterion (Phase 3 of `docs/QUALIFICATION_ROADMAP.md`):
-   the "Functions with gaps" line in `../DOXYGEN_GAPS.md` reads zero. The
+   the "Functions with gaps" line in the generated Markdown report reads zero. The
    generated report is the live function census; zero functions may have
    documentation gaps or missing-tag instances.
 
@@ -278,7 +277,7 @@ A objectives so the SVR can roll up Annex A coverage.
 | MC/DC                | First-party MC/DC fraction in `summary.txt` >= `RA8_MCDC_THRESHOLD`.           |
 | Hardware smoke       | `just hil::run` exits 0; every selected app reports `PASS`.                    |
 | MISRA                | cppcheck-only policy; every finding maps to an active D-### deviation in MISRA_DEVIATIONS.md (`docs/CERTIFICATION_SCOPE.md`). |
-| Doxygen              | `../DOXYGEN_GAPS.md` "Functions with gaps" trends to zero (Phase 3 acceptance). |
+| Doxygen              | Generated `build/reports/doxygen/DOXYGEN_GAPS.md` reports zero functions with gaps (Phase 3 acceptance). |
 
 ## 9. Test environment configuration
 

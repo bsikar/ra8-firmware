@@ -330,7 +330,7 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 - **Example:**
 
   ```c
-  RA8_REVIEWED_BY("bsikar")
+  RA8_REVIEWED_BY("reviewer-id")
   ra8_err_t ra8_secure_storage_commit(const uint8_t* key_blob, uint32_t len);
   ```
 

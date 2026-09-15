@@ -148,8 +148,30 @@ if [[ "$-" == *p* ]]; then
       die "locked Ansible executable is missing from $VENV_DIR"
   }
 
+  setup_python_authority() {
+    if [[ "$(/usr/bin/uname -s)" == "Darwin" ]]; then
+      local candidate target
+      for candidate in \
+        /opt/homebrew/bin/python3.12 \
+        /opt/homebrew/bin/python3 \
+        /usr/local/bin/python3.12 \
+        /usr/local/bin/python3; do
+        if [[ -x "$candidate" ]]; then
+          target="$(/usr/bin/python3 -I -S -c \
+            'import os, sys; print(os.path.realpath(sys.argv[1]))' "$candidate")"
+          [[ "$target" == /* && -f "$target" && -x "$target" ]] || continue
+          printf '%s\n' "$target"
+          return
+        fi
+      done
+      die "fixed Python 3.11 through 3.14 host interpreter is required"
+    fi
+    printf '%s\n' /usr/bin/python3
+  }
+
   cmd_setup() {
-    local host_python="${PYTHON:-python3}"
+    local host_python
+    host_python="$(setup_python_authority)"
     require_python "$host_python"
     [[ -f "$PYPROJECT" ]] || die "missing Python project metadata: $PYPROJECT"
     [[ -f "$LOCKFILE" ]] || die "missing committed Python lock: $LOCKFILE"
@@ -315,7 +337,7 @@ if [[ "$-" == *p* ]]; then
   }
 
   cmd_selftest() {
-    local tmp body unsafe_flag user_flag
+    local tmp body selftest_python unsafe_flag user_flag
     tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-python-setup.XXXXXXXX")"
     trap 'rm -rf "$tmp"' RETURN
     uv_execution_selftest "$tmp"
@@ -335,7 +357,7 @@ if [[ "$-" == *p* ]]; then
       die "selftest: Python 3.15 passed the project upper bound"
     fi
 
-    body="$(declare -f cmd_setup uv_sync verify_environment)"
+    body="$(declare -f cmd_setup setup_python_authority uv_sync verify_environment)"
     unsafe_flag="--break-system"'-packages'
     user_flag="--us"'er'
     case " $body " in
@@ -346,7 +368,9 @@ if [[ "$-" == *p* ]]; then
     [[ -s "$PYPROJECT" && -s "$LOCKFILE" ]] ||
       die "selftest: project metadata or lock is empty"
     UV_BOOTSTRAP="$SCRIPT_DIR/bootstrap_uv.py"
-    python3 "$UV_BOOTSTRAP" --selftest
+    selftest_python="$(setup_python_authority)"
+    require_python "$selftest_python"
+    "$selftest_python" "$UV_BOOTSTRAP" --selftest
     /usr/bin/python3 -I "$MANAGED_ENV_AUTHORITY" --selftest
     resolved_path_selftest "$tmp"
     startup_path_selftest "$tmp"

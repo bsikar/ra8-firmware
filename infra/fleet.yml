@@ -134,9 +134,8 @@ hosts:
     class: arc_k8s
     summary: "k3s single node: ARC scale set + the OpenBao vault"
     connect:
-      # The tailnet address, not the 192.168.1.221 LAN one: this VM IS the
-      # tailnet's 100.64.0.1, so the tailnet address answers from every control
-      # node while the LAN address answers only from inside the house.
+      # Routable control-plane endpoint; do not duplicate alternate private
+      # endpoints in repository documentation.
       address: 100.64.0.1
       user: ubuntu
     # Two plays, in order: the cluster and vault first, the runner pool into
@@ -151,9 +150,7 @@ hosts:
       labels: [ra8-ci]
     budget:
       mode: burst
-      # 16 allocatable cores; the owner's homelab in the other namespaces sits
-      # at ~6.8 requested cores steady-state, so ~9 is what CI may request
-      # without running the node to its scheduling limit on every push.
+      # Leave capacity for workloads outside this project's namespaces.
       threads: 9
       memory_gb: 40
     sizing_note: >-
@@ -171,8 +168,7 @@ hosts:
     class: docker_linux
     summary: "TrueNAS SCALE: runner containers on the stripe pool"
     connect:
-      # The 10.10.10.0/29 link it shares with the k3s VM, verified reachable
-      # from both the Mac and the dev box; its 192.168.1.95 LAN address is not.
+      # Dedicated endpoint reachable from supported control nodes.
       address: 10.10.10.1
       user: truenas_admin
     provisions: [ci-runner-docker]
@@ -206,14 +202,12 @@ hosts:
       # leaving 46 GiB outside the cap keeps that yielding rare.
       memory_gb: 16
 
-  # --- The Windows workstation: the fastest host in the fleet ----------------
+  # --- Windows/WSL runner host ------------------------------------------------
   win-ci:
     class: docker_wsl
     summary: "Ryzen 9 7900X, Windows 11 + WSL2: the fleet's fastest host"
     connect:
-      # No SSH daemon inside WSL, and giving a personal daily-driver machine
-      # one (plus the inbound firewall hole to reach it) is not a reasonable
-      # ask. fleet.py copies the play in over this path and runs it inside the
+      # No SSH daemon runs inside WSL. fleet.py copies the play over this path and runs it inside the
       # distro with --connection=local. See docs/CI_FLEET.md.
       #
       # The tailnet address is the CI-maintenance endpoint. The workstation's
@@ -234,10 +228,7 @@ hosts:
       instances: 3
       cpus: 7
       # 7, not the 8.7 the division allows, so that 5 GiB of the VM stays
-      # outside the runners' reservation. That 5 GiB was originally held for
-      # the CUDA co-tenant of the Ethos-U55 / NPU work (#228); the owner has
-      # released it while that work is months out, and it is now the
-      # `dev_slice` below. It returns to #228 by deleting that block.
+      # outside the runners' reservation and available to the `dev_slice`.
       memory_gb: 7
       pin_cpus: true
       labels: [ra8-ci, ra8-win]
@@ -249,12 +240,11 @@ hosts:
       #
       # Changing either needs `wsl --shutdown` to take effect, which stops
       # every distro on the machine; the tooling reports that and refuses to
-      # do it behind the owner's back. See docs/CI_FLEET.md.
+      # do it without explicit operator action. See docs/CI_FLEET.md.
       threads: 22
       memory_gb: 26
       swap_gb: 8
-    # Quiet hours: the machine is the owner's gaming PC as well as the fleet's
-    # fastest builder, so CI stands down on request rather than competing.
+    # Quiet hours allow the host to be reserved for interactive use.
     #
     # Scaling down DRAINS: an instance is stopped only once it is idle, never
     # signalled while it holds a job. A `docker stop` on a busy runner cancels

@@ -55,6 +55,10 @@ def _additional_non_authority_groups_part2() -> tuple[tuple[str, tuple[str, ...]
                 """
                     checks/check_ansible_collections.py:CALLBACK_RE
                     checks/check_chapter_map_freshness.py:CHAPTER_ROW_RE
+                    checks/check_just_help_format.py:COMMAND_ROW_RE
+                    checks/check_just_help_format.py:ECHO_ROW_RE
+                    checks/check_justfiles.py:REMOTE_CI_LINUX_BLOCK_RE
+                    checks/check_justfiles.py:REMOTE_CI_WSL_BLOCK_RE
                     checks/check_hil_rig_contract.py:EXPANSION
                     checks/check_hil_rig_contract.py:PI_HOST_EXPANSION
                     checks/check_hil_rig_contract.py:SOURCE_RIG
@@ -89,6 +93,8 @@ def _additional_non_authority_groups_part3() -> tuple[tuple[str, tuple[str, ...]
         (
             "numeric-format",
             (
+                "checks/check_justfiles.py:REMOTE_CI_PREPARE_COUNT",
+                "checks/check_justfiles.py:VALUE_OPTION_TOKEN_COUNT",
                 "checks/markdown_reference_policy.py:PARSER_RUNTIME_LIMIT_SECONDS",
                 "checks/shell_invocation_policy.py:PRIVILEGED_TARGET_INDEX",
             ),

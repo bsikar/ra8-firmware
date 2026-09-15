@@ -46,7 +46,7 @@ def _init_fixture(root: Path) -> None:
         _fail("selftest git init failed")
     (root / "docs").mkdir()
     (root / "docs" / "planned").mkdir()
-    (root / "docs" / "qualification" / "release").mkdir(parents=True)
+    (root / "docs" / "qualification").mkdir(parents=True)
     (root / "infra" / "live").mkdir(parents=True)
     (root / "scripts").mkdir()
     (root / "tests" / "core" / "src").mkdir(parents=True)
@@ -78,8 +78,8 @@ def _init_fixture(root: Path) -> None:
     (root / "docs" / "planned" / "README.md").write_text(
         "# Planned release layout\n", encoding="ascii"
     )
-    (root / "docs" / "qualification" / "release" / "README.md").write_text(
-        "# Planned qualification releases\n", encoding="ascii"
+    (root / "docs" / "qualification" / "SCMP.md").write_text(
+        "# Configuration management authority\n", encoding="ascii"
     )
     (root / "CMakeLists.txt").write_text("# component\n", encoding="ascii")
     (root / ".gitignore").write_text(

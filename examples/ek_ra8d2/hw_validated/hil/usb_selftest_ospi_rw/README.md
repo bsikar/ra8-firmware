@@ -41,5 +41,5 @@ A host-to-device bulk-OUT data phase needs four things working together, all in
 FS device: P4_07 VBUS sense, P5_00 VBUSEN GPIO LOW, P8_14/P8_15 data (PSEL
 usb_fs). HS host: SW4-8 Host via the U15 expander, PD07 HIGH (U18 powers J7),
 P4_08 VBUS sense (PSEL usb_hs). Console: PD_02/PD_03 SCI8. OSPI: xSPI CS1 to the
-onboard IS25LX512M via the U15 octo-SPI mux. The device advertises VID 0x1209
-with a per-app PID; bench use only.
+onboard IS25LX512M via the U15 octo-SPI mux. Device identifiers follow the
+shared [USB identifier policy](../../../USB_IDS.md).
