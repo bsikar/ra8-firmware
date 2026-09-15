@@ -2,8 +2,8 @@
  * @file ra8_abi_fixture.h
  * @brief Public C23 contract used to prove a Zig-built library boundary.
  *
- * @details This host-only fixture is the reusable ABI-harness reference. It
- * exposes fixed-width values only; the implementation remains private Zig.
+ * @details This host-and-RA8 fixture is the reusable ABI-harness reference.
+ * It exposes fixed-width values only; the implementation remains private Zig.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

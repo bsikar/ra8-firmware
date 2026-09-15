@@ -1,6 +1,8 @@
 {
   "schema_version": 1,
   "required_targets": ["host", "ra8"],
+  "required_modes": ["Debug", "ReleaseSafe", "ReleaseSmall"],
+  "mode_test_library": "ra8_abi_fixture",
   "libraries": [
     {
       "name": "ra8_abi_fixture",
@@ -11,7 +13,10 @@
       "symbol_prefix": "ra8_abi_fixture_",
       "compatibility_sha256": "2e8ebf704396951f2f332935c44115c8f5bf83552c0754bed09fddf855d2c8f4",
       "layout_assertions": ["sizeof(ra8_err_t) == 2U", "sizeof(ra8_abi_fixture_limit_t) == 4U", "sizeof(ra8_abi_fixture_config_t) == 8U", "@sizeOf(AbiError) != 2", "@sizeOf(AbiLimit) != 4", "@sizeOf(AbiConfig) != 8"],
-      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85"]},
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "run_host_tests_in_all_modes": true,
+      "c_include_dirs": ["tests/zig_abi_fixture/inc", "libs/ra8_core/inc"],
       "contract_tests": [
         {"language": "c", "path": "tests/zig_abi_fixture/test_abi_fixture.c", "registration": "tests/cmake/tests_zig_abi.cmake"},
         {"language": "rust", "path": "tests/zig_abi_fixture/rust/tests/zig_provider.rs", "symbol_evidence": "tests/zig_abi_fixture/rust/src/foreign.rs", "registration": "tests/zig_abi_fixture/rust/.rust-test-contract.json"},
@@ -40,7 +45,9 @@
       "symbol_prefix": "ra8_abi_chain_",
       "compatibility_sha256": "fd846738773b4aad1e9c0b8bfb0b213b4a0aacc8e19eef671b344676a005c983",
       "layout_assertions": ["sizeof(ra8_abi_chain_config_t) == 16U", "alignof(ra8_abi_chain_config_t) == 4U", "offsetof(ra8_abi_chain_config_t, zig_tag) == 8U"],
-      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85"]},
+      "target_class": "host-ra8",
+      "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
+      "c_include_dirs": ["tests/abi_chain_fixture/inc", "tests/rust_abi_fixture/inc", "libs/ra8_core/inc"],
       "contract_tests": [
         {"language": "c", "path": "tests/abi_chain_fixture/test_c_consumer.c", "registration": "tests/cmake/rust_abi_contract.cmake"},
         {"language": "zig", "path": "tests/abi_chain_fixture/tests/chain_test.zig", "registration": "tests/abi_chain_fixture/.zig-test-contract.json"}
@@ -60,7 +67,9 @@
       "symbol_prefix": "firmware_pipeline_",
       "compatibility_sha256": "9c37e3b191b6f6b113999b8f7acef14023b6b2cea461c5a554cb4e1ca71ce6c1",
       "layout_assertions": ["sizeof(firmware_pipeline_status_t) == 4U", "sizeof(firmware_pipeline_config_t) == 8U", "sizeof(firmware_pipeline_result_t) == 40U", "alignof(firmware_pipeline_result_t) == 8U"],
+      "target_class": "host-only",
       "targets": {"host": []},
+      "c_include_dirs": ["apps/host/firmware_pipeline/inc"],
       "contract_tests": [
         {"language": "c", "path": "apps/host/firmware_pipeline/tests/test_abi.c", "registration": "apps/host/firmware_pipeline/CMakeLists.txt"},
         {"language": "zig", "path": "apps/host/firmware_pipeline/zig/tests/native.zig", "registration": "apps/host/firmware_pipeline/zig/.zig-test-contract.json"}
