@@ -80,6 +80,7 @@ SELFTEST_ARGS = frozenset(
 )
 MULTI_SELFTEST_REQUIREMENTS = {
     "scripts/checks/check_rust.py": frozenset({"--selftest-lint", "--selftest-test"}),
+    "scripts/checks/check_zig.py": frozenset({"--selftest-lint", "--selftest-test"}),
 }
 
 # Directories whose scripts are DETECTORS and therefore owe a selftest under
@@ -604,18 +605,26 @@ def _multi_mode_cases() -> list[tuple[str, bool]]:
     """Prove split selftest modes are exact, associated, and all required."""
     both = [
         "python3 scripts/checks/check_rust.py --selftest-lint\n"
-        "python3 scripts/checks/check_rust.py --selftest-test\n"
+        "python3 scripts/checks/check_rust.py --selftest-test\n",
+        "python3 scripts/checks/check_zig.py --selftest-lint\n"
+        "python3 scripts/checks/check_zig.py --selftest-test\n",
     ]
-    missing = ["python3 scripts/checks/check_rust.py --selftest-lint\n"]
+    missing = [
+        "python3 scripts/checks/check_rust.py --selftest-lint\n"
+        "python3 scripts/checks/check_rust.py --selftest-test\n",
+        "python3 scripts/checks/check_zig.py --selftest-lint\n",
+    ]
     neighboring = [
         "python3 scripts/checks/check_rust.py --selftest-lint\n"
-        "python3 scripts/checks/check_asm.py --selftest-test\n"
+        "python3 scripts/checks/check_rust.py --selftest-test\n",
+        "python3 scripts/checks/check_zig.py --selftest-lint\n"
+        "python3 scripts/checks/check_asm.py --selftest-test\n",
     ]
     return [
-        ("all required split Rust selftests stay quiet", not multi_selftest_findings(both)),
-        ("a missing split Rust test selftest fires", bool(multi_selftest_findings(missing))),
+        ("all required split selftests stay quiet", not multi_selftest_findings(both)),
+        ("a missing split test selftest fires", bool(multi_selftest_findings(missing))),
         (
-            "a neighboring script cannot supply the missing Rust mode",
+            "a neighboring script cannot supply the missing mode",
             bool(multi_selftest_findings(neighboring)),
         ),
     ]
