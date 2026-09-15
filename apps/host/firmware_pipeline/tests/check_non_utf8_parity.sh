@@ -5,7 +5,7 @@
 set -euo pipefail
 
 if [[ $# -ne 2 ]]; then
-  echo "usage: check_non_utf8_parity.sh <rust-main> <zig-main>" >&2
+  echo "usage: check_non_utf8_parity.sh <rust-executable> <zig-executable>" >&2
   exit 2
 fi
 

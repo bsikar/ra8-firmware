@@ -3,10 +3,14 @@
     "src/lib.rs",
     "src/provider.rs",
     "src/foreign.rs",
+    "src/command_ffi.rs",
+    "src/main.rs",
+    "build.rs",
+    "tests/cli.rs",
     "tests/native.rs",
     "tests/foreign.rs"
   ],
-  "minimum_tests": 10,
+  "minimum_tests": 14,
   "package_license": "MIT",
   "allowed_dependencies": []
 }

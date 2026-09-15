@@ -3,8 +3,13 @@
 
 //! Safe firmware analysis and its narrow audited C ABI adapter.
 
+#[cfg(feature = "command")]
+mod command_ffi;
 mod foreign;
 mod provider;
+
+#[cfg(feature = "command")]
+use std::ffi::OsString;
 
 pub use provider::{RustSummary, analyze};
 
@@ -14,4 +19,15 @@ pub use provider::{RustSummary, analyze};
 /// Rust's native reachability analysis unless the final Rust program anchors it.
 pub fn retain_foreign_exports() {
     std::hint::black_box(foreign::firmware_pipeline_rust_analyze as usize);
+}
+
+/// Execute the three-language command and return its complete standard output.
+///
+/// # Errors
+///
+/// Returns a stable diagnostic key for argument, input, or provider failure.
+#[cfg(feature = "command")]
+pub fn run(arguments: &[OsString]) -> Result<String, &'static str> {
+    retain_foreign_exports();
+    command_ffi::OwnedImage::read(arguments)?.analyze()
 }

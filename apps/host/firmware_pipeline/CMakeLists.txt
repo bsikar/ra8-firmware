@@ -15,7 +15,6 @@ find_program(ZIG_EXECUTABLE NAMES zig REQUIRED)
 find_program(NM_EXECUTABLE NAMES llvm-nm nm REQUIRED)
 
 set(PIPELINE_RUST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/rust)
-set(PIPELINE_RUST_MAIN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/rust-main)
 set(PIPELINE_RUST_TARGET ${CMAKE_CURRENT_BINARY_DIR}/cargo-target)
 set(PIPELINE_ZIG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/zig)
 set(PIPELINE_ZIG_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/zig-out)
@@ -37,7 +36,7 @@ target_compile_options(firmware_pipeline_c PRIVATE -Wall -Wextra -Werror)
 add_custom_target(
   firmware_pipeline_rust ALL
   COMMAND ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PIPELINE_RUST_TARGET} ${CARGO_EXECUTABLE} build
-          --locked --manifest-path ${PIPELINE_RUST_DIR}/Cargo.toml
+          --locked --lib --manifest-path ${PIPELINE_RUST_DIR}/Cargo.toml
   BYPRODUCTS ${PIPELINE_RUST_LIBRARY}
   VERBATIM
 )
@@ -56,7 +55,8 @@ add_custom_target(
     ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PIPELINE_RUST_TARGET}
     FIRMWARE_PIPELINE_C_LIB_DIR=$<TARGET_FILE_DIR:firmware_pipeline_c>
     FIRMWARE_PIPELINE_ZIG_LIB_DIR=${PIPELINE_ZIG_PREFIX}/lib ${CARGO_EXECUTABLE} build --locked
-    --manifest-path ${PIPELINE_RUST_MAIN_DIR}/Cargo.toml
+    --features command --bin firmware_pipeline_rust_main --manifest-path
+    ${PIPELINE_RUST_DIR}/Cargo.toml
   BYPRODUCTS ${PIPELINE_RUST_MAIN_EXECUTABLE}
   DEPENDS firmware_pipeline_c firmware_pipeline_zig
   VERBATIM
