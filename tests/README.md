@@ -56,3 +56,4 @@ cell of each row below and fails if it drifts from the tree in either direction
 | `wireless/` | Wireless and coprocessor interface tests: ESP32-C6 link protocol, Wi-Fi command framing, and BLE transport. |
 | `zig_abi_fixture/` | Host-only Zig C-ABI reference fixture: one Zig static library, hand-authored C23 header, C and Rust consumers, and negative layout/symbol fixtures exercised through the reusable CMake helper. |
 | `rust_abi_fixture/` | Host-only Rust C-ABI provider fixture: safe Rust logic, a narrow `extern "C"` adapter, authoritative C23 header, native Rust tests, C and Zig consumer vectors, and exact namespaced-symbol enforcement. |
+| `abi_chain_fixture/` | Host-only integration proof that C enters a Zig adapter which calls the Rust provider through a second documented C ABI membrane. |

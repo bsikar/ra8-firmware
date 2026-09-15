@@ -1,0 +1,10 @@
+{
+  "test_roots": [
+    "tests/chain_test.zig"
+  ],
+  "covered_sources": [
+    "tests/chain_adapter.zig",
+    "tests/chain_test.zig"
+  ],
+  "minimum_tests": 2
+}

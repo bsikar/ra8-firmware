@@ -119,6 +119,45 @@ static_assert(offsetof(ra8_rust_abi_fixture_config_t, reserved0) == 7U, "Rust AB
 void ra8_rust_abi_fixture_test_fail_next_allocation(void);
 
 /**
+ * @brief Reset the Rust apply-entry counter used by chained ABI tests.
+ * @pre Calls are serialized with fixture operations.
+ * @pre The caller is preparing a bounded acceptance vector.
+ * @post The reported apply-entry count is zero.
+ * @post Live-handle instrumentation is unchanged.
+ * @note Test-only, task-context instrumentation.
+ * @see ra8_rust_abi_fixture_test_apply_calls
+ * @since Version 0.1.0
+ */
+void ra8_rust_abi_fixture_test_reset_apply_calls(void);
+
+/**
+ * @brief Read the Rust apply-entry counter.
+ * @return Number of provider apply entries since the last reset.
+ * @pre The caller tolerates a concurrently changing diagnostic value.
+ * @pre The counter has not wrapped during the bounded test.
+ * @post Provider state and ownership are unchanged.
+ * @post The counter remains available for later reads.
+ * @note Test-only atomic instrumentation.
+ * @see ra8_rust_abi_fixture_test_reset_apply_calls
+ * @since Version 0.1.0
+ */
+[[nodiscard]] uint32_t ra8_rust_abi_fixture_test_apply_calls(void);
+
+/**
+ * @brief Read the number of Rust-owned live fixture handles.
+ * @return Zero or one live handle.
+ * @pre The caller tolerates a concurrently changing diagnostic value.
+ * @pre The fixture remains within its single-slot capacity.
+ * @post Provider state and ownership are unchanged.
+ * @post The returned value reflects the atomic ownership counter.
+ * @note Test-only atomic instrumentation.
+ * @see ra8_rust_abi_fixture_create
+ * @see ra8_rust_abi_fixture_destroy
+ * @since Version 0.1.0
+ */
+[[nodiscard]] uint32_t ra8_rust_abi_fixture_test_live_handles(void);
+
+/**
  * @brief Release a Rust-owned state object and clear the caller's handle.
  * @details Rust validates ownership before reclaiming storage; failed release
  * attempts preserve the caller's exact pointer for diagnosis or retry.

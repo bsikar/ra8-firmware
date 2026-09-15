@@ -5,6 +5,7 @@
 #![expect(unsafe_code, reason = "this module is the audited C ABI adapter")]
 
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use crate::{AbiConfig, AbiResult, apply_config};
 
@@ -24,6 +25,8 @@ static POOL: Mutex<Pool> = Mutex::new(Pool {
     live_address: None,
     fail_next: false,
 });
+static APPLY_CALLS: AtomicU32 = AtomicU32::new(0);
+static LIVE_HANDLES: AtomicU32 = AtomicU32::new(0);
 
 /// Apply the fixed-layout operation and publish output only on success.
 #[unsafe(no_mangle)]
@@ -31,6 +34,7 @@ pub unsafe extern "C" fn ra8_rust_abi_fixture_apply(
     config: *const AbiConfig,
     out_result: *mut u32,
 ) -> AbiResult {
+    APPLY_CALLS.fetch_add(1, Ordering::Relaxed);
     if out_result.is_null() || config.is_null() {
         return AbiResult::NullPointer;
     }
@@ -74,6 +78,7 @@ pub unsafe extern "C" fn ra8_rust_abi_fixture_create(
     }
     let handle = Box::into_raw(Box::new(AbiFixture { marker: 0xA5 }));
     pool.live_address = Some(handle.addr());
+    LIVE_HANDLES.store(1, Ordering::Relaxed);
     // SAFETY: the public contract requires writable handle storage.
     unsafe { out_handle.write(handle) };
     AbiResult::Ok
@@ -99,9 +104,28 @@ pub unsafe extern "C" fn ra8_rust_abi_fixture_destroy(
         return AbiResult::InvalidArgument;
     }
     pool.live_address = None;
+    LIVE_HANDLES.store(0, Ordering::Relaxed);
     // SAFETY: equality with the one recorded Box address proves unique ownership.
     drop(unsafe { Box::from_raw(handle) });
     // SAFETY: the public contract requires writable pointer storage.
     unsafe { in_out_handle.write(std::ptr::null_mut()) };
     AbiResult::Ok
+}
+
+/// Reset the downstream-call counter used by chained ABI acceptance tests.
+#[unsafe(no_mangle)]
+pub extern "C" fn ra8_rust_abi_fixture_test_reset_apply_calls() {
+    APPLY_CALLS.store(0, Ordering::Relaxed);
+}
+
+/// Return the number of Rust apply entries since the last reset.
+#[unsafe(no_mangle)]
+pub extern "C" fn ra8_rust_abi_fixture_test_apply_calls() -> u32 {
+    APPLY_CALLS.load(Ordering::Relaxed)
+}
+
+/// Return the number of Rust-owned handles currently live.
+#[unsafe(no_mangle)]
+pub extern "C" fn ra8_rust_abi_fixture_test_live_handles() -> u32 {
+    LIVE_HANDLES.load(Ordering::Relaxed)
 }
