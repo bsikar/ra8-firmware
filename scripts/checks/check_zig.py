@@ -296,6 +296,31 @@ def _load_test_contract(root: Path) -> tuple[list[Path], list[Path], int, list[s
     return [root / item for item in roots], [root / item for item in covered], floor, errors
 
 
+def _standalone_source_args(root: Path) -> tuple[dict[str, list[str]], list[str]]:
+    """Load validated per-source arguments for standalone production compilation."""
+    path = root / TEST_CONTRACT_NAME
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {}, [f"invalid {TEST_CONTRACT_NAME}: {exc}"]
+    value = raw.get("standalone_source_args", {})
+    if not isinstance(value, dict):
+        return {}, ["standalone_source_args must be an object"]
+    result: dict[str, list[str]] = {}
+    errors: list[str] = []
+    for source, args in value.items():
+        if (
+            not isinstance(source, str)
+            or not isinstance(args, list)
+            or not args
+            or not all(isinstance(arg, str) and arg for arg in args)
+        ):
+            errors.append("standalone_source_args values must be non-empty string lists")
+            continue
+        result[source] = args
+    return result, errors
+
+
 def _test_contract_errors(root: Path) -> tuple[list[str], int]:
     """Validate test-step wiring, source reachability, and the test floor."""
     errors: list[str] = []
@@ -308,6 +333,8 @@ def _test_contract_errors(root: Path) -> tuple[list[str], int]:
 
     entries, covered, floor, contract_errors = _load_test_contract(root)
     errors.extend(contract_errors)
+    standalone_args, standalone_errors = _standalone_source_args(root)
+    errors.extend(standalone_errors)
 
     declared_sources: set[Path] = set()
     for source in covered:
@@ -338,6 +365,15 @@ def _test_contract_errors(root: Path) -> tuple[list[str], int]:
     errors.extend(
         f"covered source is not a first-party Zig source: {source.relative_to(root)}"
         for source in unexpected
+    )
+    production_paths = {
+        str(path.relative_to(root))
+        for path in declared_sources
+        if "tests" not in path.relative_to(root).parts
+    }
+    errors.extend(
+        f"standalone_source_args names no covered production source: {source}"
+        for source in sorted(set(standalone_args) - production_paths)
     )
 
     declared_tests = sum(len(_test_declarations(path)) for path in declared_sources)
@@ -402,14 +438,15 @@ def _run_covered_sources(zig: str, roots: list[Path]) -> dict[str, str]:
     failures: dict[str, str] = {}
     for root in roots:
         _, covered, _, contract_errors = _load_test_contract(root)
-        if contract_errors:
+        standalone_args, standalone_errors = _standalone_source_args(root)
+        if contract_errors or standalone_errors:
             continue
         for source in covered:
             rel_source = source.relative_to(root)
             if "tests" in rel_source.parts:
                 continue
             proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
-                [zig, "test", str(rel_source)],
+                [zig, "test", str(rel_source), *standalone_args.get(str(rel_source), [])],
                 cwd=root,
                 capture_output=True,
                 text=True,
@@ -692,6 +729,29 @@ def _selftest_test_contract(failures: list[str]) -> None:
 
         contract = root / TEST_CONTRACT_NAME
         raw_contract = json.loads(contract.read_text(encoding="utf-8"))
+
+        raw_contract["standalone_source_args"] = {"helper.zig": ["-fno-emit-bin"]}
+        contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+        errors, _ = _test_contract_errors(root)
+        if errors:
+            failures.append(
+                f"  must-stay-quiet: valid standalone source arguments failed: {errors}"
+            )
+
+        raw_contract["standalone_source_args"] = {"missing.zig": ["-fno-emit-bin"]}
+        contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+        errors, _ = _test_contract_errors(root)
+        if not any("names no covered production source" in error for error in errors):
+            failures.append("  must-fire: standalone arguments for an unknown source were accepted")
+
+        raw_contract["standalone_source_args"] = {"helper.zig": []}
+        contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
+        errors, _ = _test_contract_errors(root)
+        if not any("non-empty string lists" in error for error in errors):
+            failures.append("  must-fire: empty standalone source arguments were accepted")
+
+        raw_contract["standalone_source_args"] = {"helper.zig": ["-fno-emit-bin"]}
+        contract.write_text(json.dumps(raw_contract) + "\n", encoding="utf-8")
 
         (root / "src").mkdir()
         _selftest_test_declaration_grammar(root, passing_source, contract, raw_contract, failures)
