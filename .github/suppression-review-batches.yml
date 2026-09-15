@@ -196,7 +196,7 @@ batches:
     date: 2026-08-27
     identity_schema: 2-durable-site-identity
     assigned_rows: 213
-    rows_sha256: 484d028a1ed382c30e58d6af45db9ab1b0013a0fa98de7a6e3aeb25d3372384b
+    rows_sha256: ee51c5201d0ba987e532c55ebbaa677df5810192274f24a597281a6b92f2e52f
     partition: >-
       final landing governance: exact source-authority reconciliation and
       one owner-authorized fully covered structural population expansion
@@ -783,7 +783,7 @@ batches:
     date: 2026-09-09
     identity_schema: 2-durable-site-identity
     assigned_rows: 91
-    rows_sha256: af8c8b72300254b11be751eda47feb7d5e73423ea43be9fd99ffd7dea6fb482d
+    rows_sha256: 2d6c52f262b9615ffd37d81c68f586ecf770455b52f492aaa98d3fd960b2e365
     partition: "Automated developer review batch"
     evidence:
       - "auto-sync batch 2026-09-09: cbz2jof MISRA dispositions (D-001/D-002/D-005/D-010 classes
@@ -994,7 +994,7 @@ batches:
   - id: selective-review-20260912-215730
     <<: *selective_review_20260912
     assigned_rows: 5
-    rows_sha256: d724df7687a50282a31b316776a93a6627918ef97f852474eb562ba4e1496ec6
+    rows_sha256: 90c4b5ac989159d859f663bce8c900ea3b6a7d051bfea1f36ded10d88870efc2
     partition: >-
       selective retain of 5 ledger row(s): 1f3ef1ba544e, 32fb44c41539,
       959df4e4c18d, cdb898857827, e52b9902ec4b
@@ -1022,7 +1022,7 @@ batches:
     date: 2026-09-15
     identity_schema: 2-durable-site-identity
     assigned_rows: 27
-    rows_sha256: 03d918c72a9153e05cd7b354e77939fe90cf5ba7a479d35dbdba9ee5c0f63c2d
+    rows_sha256: f87e80c7212600267abd093b80de23c394f89561e651d179bd0619823e2b8189
     partition: "selective retain of 27 ledger row(s): 013dd7b6543b, 04962e1b46da, 08aac4f359c8, 194920cccd38, 3511b7459a22, 362416290944, 3b5aa79c6ea0, 3cc1177428b8, 61d8260d4672, 666beb210028, 6d5b53ac1e71, 81c50468d513, 951258c40f66, 9714c8fc72eb, 98d9b8669469, b16b69137bb7, b26e49c7137d, b9b6de27aea3, bd28a973128b, bf051b5cb362, c09ad19459db, c0eb069389f5, c8c7f731067a, cf6c6ff3f78c, d56e782b3256, da0a037f00ee, ff61d6727bf0"
     evidence:
       - "classification-batch census-digest; exact checker scope values classified and authenticated by suppression_checker_scope.py"
@@ -1062,14 +1062,30 @@ batches:
     partition: "selective retain of 1 ledger row(s): c693f9fa8819"
     evidence:
       - "review-decision source-context scripts/dev/fleet_reconcile.py:4 project-policy/FILE-SIZE-OK: safety-critical controller and transaction selftests stay reviewable together; exact scoped waiver retained after canonical copyright preamble repair"
-  - id: selective-review-20260915-170500
+  - id: selective-review-20260915-171630
     authority: repository-suppression-review
     date: 2026-09-15
     identity_schema: 2-durable-site-identity
-    assigned_rows: 5
-    rows_sha256: 3335bdc9ead34d7e63783d780a85e30128f49a1a8a3f5a8a54d7e94484e6a27b
-    partition: >-
-      selective review of 5 ledger row(s): 21d7f200c1e9, 2a9600d4f962,
-      5d9b6ad45393, 8754ad6a6626, ac8c91fd33c1
+    assigned_rows: 69
+    rows_sha256: 04d6f6707a5cb658e1d9e7419e127488243ea791f7d45df2ee89754337629c05
+    partition: "selective retain of 69 ledger row(s): 00198a1a45e7, 0080a4e3fac3, 0195ba5796c2, 0b5656b9cb45, 10650c974046, 1073d1a4e7b4, 110faca37251, 1277dcd51a76, 169b844ddc60, 185a511b5334, 1a108b9131fb, 1ad1b5ddb819, 1dfa6917c772, 2043de852c31, 24bef63b8bf4, 27bb14717e58, 295046407275, 324f3bd5efbc, 3828ed04738e, 3b6975599472, 3d331628d203, 42e2b5edf8a6, 46ca474e7ac1, 4798060d281d, 47c9d3865691, 4c001f0508f0, 4da03f6dfff1, 5593a380576c, 571ac8886f0f, 59742081cce7, 61837cf950bb, 6796c93f4e39, 68f9e3ca6e75, 694fda6beeac, 6a1aceda8a2a, 6c619d8de381, 6c8266d0a29e, 6f812de5fc3e, 6fab01df8c98, 7974a8e57d22, 7bb2d73dcd75, 7c503416337e, 7f4361e2323e, 893c637df90c, 92e6777369bb, 9e0cb4d7bf23, a73f00c51c02, ac58461c09ee, b19065cc57f3, b1b56aab22c9, b3e726f19ded, b85b24251c7d, bcb2c72a2ee2, bf06db88bffc, c2df40ec2eda, c456c049aa0f, cb11136a1d2a, cc57d864c1a9, cd0f54a4b9a4, cd5528c000e4, d2228a3dd80c, d708f0f36ecc, d825534526c0, ea0d609c6cbb, eaf29e646eb1, f4d7d14c29f3, f91c7fa00821, fcfad11ed04e, fe04ca57c132"
     evidence:
-      - "review-decision exact suppression-checker scope count and value/reason digests re-frozen after three obsolete markdown-reference policy values were removed; predecessor identities retained as superseded lineage"
+      - "classification-batch census-digest; exact checker scope values classified and authenticated by suppression_checker_scope.py"
+  - id: selective-review-20260915-172051
+    authority: repository-suppression-review
+    date: 2026-09-15
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 18
+    rows_sha256: 3b432db59d0ce4f05a0574eb12e02aa9a7643b88409bf9327230e9fc935c87e8
+    partition: "selective retain of 18 ledger row(s): 281de79bcb5f, 3bdd717f1475, 62d88d2d2735, 68cd4c48eb7c, 6a39c8d11a3c, 708e5545314f, 728aa914a264, 7ea4933f16ce, 884463f9e283, 8aa4dee35855, c66314fac887, c663e7b4ae1c, c6cc1a848bff, d03d6c9f643c, e42827d7df55, e6bb85e6b5dd, e8327f2c4232, fdf0136bc68f"
+    evidence:
+      - "tool-output source-context: S603 calls use fixed argv with trusted or pinned executables and no shell; PLR complexity applies only to explicit exhaustive must-fire policy matrices whose split would obscure coverage"
+  - id: selective-review-20260915-172510
+    authority: repository-suppression-review
+    date: 2026-09-15
+    identity_schema: 2-durable-site-identity
+    assigned_rows: 4
+    rows_sha256: 510c7a572dfb4abb9750251a83f224fc7d01cf8b86a26cb3d1927e70b0a9b054
+    partition: "selective retain of 4 ledger row(s): 0ba0f3cf6e28, 5c3aa2b7ea86, 7a937f59b70a, c6a44f457965"
+    evidence:
+      - "test-name passing-counterpart: firmware_pipeline/report symbol and inventory selftests intentionally feed malformed evidence and use WILL_FAIL; their ordinary ABI/CLI/runtime tests prove the passing direction"

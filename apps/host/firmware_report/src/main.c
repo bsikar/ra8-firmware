@@ -39,7 +39,7 @@ typedef enum : uint32_t {
  */
 typedef struct {
   uint8_t* bytes; /**< Heap buffer, or null for an empty input. */
-  size_t   size;  /**< Complete input length in bytes. */
+  size_t   size;  /**< Complete input length in bytes.          */
 } image_buffer_t;
 
 /**

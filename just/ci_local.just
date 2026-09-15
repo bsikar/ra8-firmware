@@ -197,14 +197,14 @@ review_scope_suppressions:
     while IFS= read -r site_id; do
         [[ -n "$site_id" ]] && review_args+=(--site "$site_id")
     done < <(
-        .venv/bin/python3 scripts/checks/check_suppressions.py --inventory --format json |
-            .venv/bin/python3 -c 'import json, sys; data = json.load(sys.stdin); print(*sorted(row["site_id"] for row in data["suppressions"] if row["family"] == "checker-scope-control" and row["disposition"] != "approved"), sep="\n")'
+        python3 scripts/checks/check_suppressions.py --inventory --format json |
+            python3 -c 'import csv, json, pathlib, sys; data = json.load(sys.stdin); ledger = {row["site_id"]: row["state"] for row in csv.DictReader(pathlib.Path(".github/suppression-review-ledger.tsv").open(), delimiter="\t")}; print(*sorted(row["site_id"] for row in data["suppressions"] if row["family"] == "checker-scope-control" and row["disposition"] == "unreviewed" and ledger.get(row["site_id"]) == "unreviewed"), sep="\n")'
     )
     if ((${#review_args[@]} == 0)); then
         echo "No unreviewed checker-scope authorities."
         exit 0
     fi
-    .venv/bin/python3 scripts/dev/review_suppressions.py retain \
+    python3 scripts/dev/review_suppressions.py retain \
         --rationale reviewed-scope-authority \
         --evidence "classification-batch census-digest; exact checker scope values classified and authenticated by suppression_checker_scope.py" \
         "${review_args[@]}"
