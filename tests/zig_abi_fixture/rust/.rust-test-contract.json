@@ -1,7 +1,10 @@
 {
   "covered_sources": [
     "src/lib.rs",
-    "tests/native.rs"
+    "src/foreign.rs",
+    "build.rs",
+    "tests/native.rs",
+    "tests/zig_provider.rs"
   ],
-  "minimum_tests": 15
+  "minimum_tests": 16
 }

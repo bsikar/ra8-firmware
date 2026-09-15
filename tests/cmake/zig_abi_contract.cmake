@@ -6,6 +6,7 @@
 
 include(CMakeParseArguments)
 
+# Register C and Rust consumers of one Zig-built public C ABI artifact.
 function(ra8_add_zig_c_abi_contract)
   set(_ra8_options "")
   set(_ra8_one_value_args
@@ -13,6 +14,7 @@ function(ra8_add_zig_c_abi_contract)
       ZIG_ROOT
       PUBLIC_INCLUDE_DIR
       C_FIXTURE
+      RUST_CRATE
       LIBRARY_NAME
   )
   cmake_parse_arguments(
@@ -37,9 +39,10 @@ function(ra8_add_zig_c_abi_contract)
   endif()
 
   set(_ra8_output_dir "${CMAKE_CURRENT_BINARY_DIR}/zig_abi/${RA8_ABI_NAME}")
-  set(_ra8_library
-      "${_ra8_output_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${RA8_ABI_LIBRARY_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
+  set(_ra8_library_file
+      "${CMAKE_STATIC_LIBRARY_PREFIX}${RA8_ABI_LIBRARY_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
   )
+  set(_ra8_library "${_ra8_output_dir}/lib/${_ra8_library_file}")
 
   add_custom_target(
     ${RA8_ABI_NAME}_zig_library ALL
@@ -60,6 +63,24 @@ function(ra8_add_zig_c_abi_contract)
   target_link_libraries(${RA8_ABI_NAME}_c_consumer PRIVATE "${_ra8_library}")
   add_dependencies(${RA8_ABI_NAME}_c_consumer ${RA8_ABI_NAME}_zig_library)
   add_test(NAME ${RA8_ABI_NAME}_c_consumer COMMAND ${RA8_ABI_NAME}_c_consumer)
+
+  find_program(CARGO_EXECUTABLE NAMES cargo REQUIRED)
+  set(_ra8_rust_target_dir "${_ra8_output_dir}/rust-target")
+  set(_ra8_rust_environment "RA8_ABI_FIXTURE_LIB_DIR=${_ra8_output_dir}/lib"
+                            "CARGO_TARGET_DIR=${_ra8_rust_target_dir}"
+  )
+  add_custom_target(
+    ${RA8_ABI_NAME}_rust_consumer ALL
+    COMMAND "${CMAKE_COMMAND}" -E env ${_ra8_rust_environment} "${CARGO_EXECUTABLE}" test --locked
+            --all-features --no-run --manifest-path "${RA8_ABI_RUST_CRATE}/Cargo.toml"
+    DEPENDS ${RA8_ABI_NAME}_zig_library
+    COMMENT "Building Rust consumer of Zig C ABI fixture ${RA8_ABI_NAME}"
+    VERBATIM
+  )
+  add_test(NAME ${RA8_ABI_NAME}_rust_consumer
+           COMMAND "${CMAKE_COMMAND}" -E env ${_ra8_rust_environment} "${CARGO_EXECUTABLE}" test
+                   --locked --all-features --manifest-path "${RA8_ABI_RUST_CRATE}/Cargo.toml"
+  )
 
   foreach(_ra8_negative_kind IN ITEMS layout missing_symbol)
     add_test(

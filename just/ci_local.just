@@ -35,6 +35,10 @@ default:
     @echo "  just quality::local::review_suppressions          Review draft suppressions"
     @echo "  just quality::local::review_scope_suppressions    Review draft checker-scope authorities"
     @echo "  just quality::local::bless_scope                  Bless checker scope"
+    @echo "  just quality::local::{lint,format,test}-c          Focused C quality commands"
+    @echo "  just quality::local::{lint,format,test}-go         Focused Go quality commands"
+    @echo "  just quality::local::{lint,format,test}-rust       Focused Rust quality commands"
+    @echo "  just quality::local::{lint,format,test}-zig        Focused Zig quality commands"
 
 # Run every first-party formatter in place: C (clang-format), Go (gofmt),
 # Python (ruff format), shell (shfmt), CMake (cmake-format), justfiles.
@@ -43,6 +47,15 @@ default:
 # formatted here that CI does not also check.
 format:
     bash scripts/checks/format_tree.sh
+
+lint-c:
+    "{{ just_executable() }}" quality::local::gate tidy
+
+format-c:
+    bash scripts/checks/format_code.sh
+
+test-c:
+    "{{ just_executable() }}" quality::local::gate unit-tests
 
 # Verify every language is formatted without modifying files
 check:
@@ -81,8 +94,38 @@ test ubsan="0":
         bash tests/run_tests.sh
     fi
 
-test_go:
+test-go:
     "{{ just_executable() }}" quality::local::gate test-go
+
+alias test_go := test-go
+
+lint-go:
+    "{{ just_executable() }}" quality::local::gate lint-go
+
+format-go:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mapfile -t files < <(python3 scripts/checks/check_go.py --list-files)
+    ((${#files[@]} > 0))
+    gofmt -w "${files[@]}"
+
+lint-rust:
+    "{{ just_executable() }}" quality::local::gate lint-rust
+
+format-rust:
+    python3 scripts/checks/check_rust.py --require --format
+
+test-rust:
+    "{{ just_executable() }}" quality::local::gate test-rust
+
+lint-zig:
+    "{{ just_executable() }}" quality::local::gate lint-zig
+
+format-zig:
+    python3 scripts/checks/check_zig.py --require --format
+
+test-zig:
+    "{{ just_executable() }}" quality::local::gate test-zig
 
 # Generate DO-178C Level B MC/DC coverage report
 mcdc:

@@ -2,9 +2,12 @@
 // Copyright (c) 2026 Brighton Sikarskie
 //! Safe, native-Rust representations of the ABI fixture's boundary values.
 //!
-//! Cross-language linkage is deliberately added by the directional ABI
-//! issues. These types let Rust's own test runner lock down the value and
-//! buffer contracts before an `unsafe extern "C"` adapter is introduced.
+//! The unsafe declarations and calls are confined to `foreign`; callers use
+//! safe ownership types that preserve the public C header's contracts.
+
+mod foreign;
+
+pub use foreign::{Config, Fixture, OwnedBytes, apply};
 
 /// Stable result values exported by the ABI fixture.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -107,7 +107,8 @@ gate_lint_rust() (
   require_cmd cargo "the lint-rust gate needs Cargo"
   require_cmd rustfmt "the pinned Rust component set includes rustfmt"
   require_cmd clippy-driver "the pinned Rust component set includes Clippy"
-  require_tool_versions rustc cargo
+  require_cmd zig "the Rust ABI consumer links the Zig fixture"
+  require_tool_versions rustc cargo zig
   cargo fmt --version
   cargo clippy --version
   python3 scripts/checks/check_rust.py --selftest-lint

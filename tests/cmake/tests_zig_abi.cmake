@@ -15,6 +15,8 @@ ra8_add_zig_c_abi_contract(
   ${CMAKE_CURRENT_SOURCE_DIR}/zig_abi_fixture/inc
   C_FIXTURE
   ${CMAKE_CURRENT_SOURCE_DIR}/zig_abi_fixture/test_abi_fixture.c
+  RUST_CRATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/zig_abi_fixture/rust
   LIBRARY_NAME
   ra8_abi_fixture
 )
