@@ -810,6 +810,21 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
 > scope; if a gate or a `(RA8D2 C Firmware)` heading below ever reads as
 > firmware-only, treat it as repo-wide.
 
+### Planned Zig library migration
+
+First-party library migrations keep a hand-written C23 public ABI while native
+implementation moves behind one Zig export adapter. Follow
+[`docs/ZIG_MIGRATION.md`](docs/ZIG_MIGRATION.md) and
+[`docs/ZIG_ABI.md`](docs/ZIG_ABI.md) before changing a migrated boundary.
+
+Every migrated library must be registered in `config/zig_abi_policy.json` and
+must complete the per-library review checklist in `docs/ZIG_MIGRATION.md`.
+Review ownership and pointer escape, cleanup, panic containment, concurrency,
+ABI representation, callbacks and retention, compatibility changes, host and
+RA8 target evidence, and every required optimization mode. Reject an
+unclassified calling context or evidence that exercises only native Zig while
+bypassing the C ABI consumer.
+
 - **C23 Syntax**: Use `bool`, `true`, and `false` directly. Do NOT include `<stdbool.h>`. Use `static_assert` directly without `_Static_assert` or `<assert.h>`. Zero-initialize structs/arrays with `= {}` (never `= {0}`).
 - **C23 Typed Enums**: Every enum MUST specify an explicit underlying type (`typedef enum : uint8_t { ... } name_t;`). Select the smallest fitting type. Use `uintptr_t` for register base addresses. NO macros for integer constants.
 - **Header Guards**: Use `#pragma once` at the top of headers. DO NOT use traditional include guards.

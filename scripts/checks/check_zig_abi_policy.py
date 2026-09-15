@@ -19,6 +19,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 POLICY = ROOT / "config/zig_abi_policy.json"
 CONTEXTS = {
+    "boot-only",
     "isr-safe",
     "task-safe-reentrant",
     "task-only-non-reentrant",
