@@ -91,7 +91,7 @@ STAGED_CHECKS = (
 JUST_EXECUTABLE = '"{{ just_executable() }}"'
 HOOK_LAUNCHER = "scripts/dev/run_just.sh"
 PRE_COMMIT_SHA256 = "5e1b72bb98affb3bfc2a0030ff5c6970623f8dcf22548323cff6fcff154a81b7"
-INSTALLED_LAUNCHER_SHA256 = "1ad13a9da6b76e6f8449ace4df6a535d2972d1062654899b353ccd1d4a863b08"
+INSTALLED_LAUNCHER_SHA256 = "b38902b5e551f3b94fb4ccff208547ad3dacba6b734517b14229550eab55d9b6"
 HOOK_INSTALLER_SHA256 = "18850cb6b3c06c2c1794b6f60103cd9acb584bf7f8745f1c877ff4f838119e86"
 PROOF_WRITER_SHA256 = "09ec423b2f922c03f83504f92786fe018255ccefc31c0ef7c30bb53bb5ff5406"
 BOOTSTRAP_ORDER = (
@@ -208,7 +208,7 @@ def _check_installation_surfaces() -> list[str]:
         # The dispatch must still be an exec, not a fork-and-wait: pinning only
         # the argv line would accept a launcher that keeps running as the parent.
         "exec env -u BASH_ENV -u ENV -u PYTHONHOME -u PYTHONPATH",
-        '"$bash_bin" -p "$owner" "${hook_args[@]}"',
+        '"$bash_bin" -p "$owner" ${hook_args[@]+"${hook_args[@]}"}',
     )
     if any(token not in launcher for token in required_launcher):
         failures.append("installed launcher lost HEAD, argv, or signal ownership")

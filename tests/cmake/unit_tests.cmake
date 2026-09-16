@@ -373,6 +373,18 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/wireless/src/test_
 # dir, so it is registered by hand in tests_wifi.cmake rather than the auto-glob.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/mocks/src/test_app_wifi_hal_join.c)
 
+# Fixture tests speak custom C ABI boundaries with Zig/Rust libraries and are
+# registered explicitly in tests_zig_abi.cmake and rust_abi_contract.cmake.
+list(REMOVE_ITEM RA8_TEST_SOURCES
+     ${CMAKE_CURRENT_SOURCE_DIR}/abi_chain_fixture/src/test_c_consumer.c
+)
+list(REMOVE_ITEM RA8_TEST_SOURCES
+     ${CMAKE_CURRENT_SOURCE_DIR}/rust_abi_fixture/src/test_c_consumer.c
+)
+list(REMOVE_ITEM RA8_TEST_SOURCES
+     ${CMAKE_CURRENT_SOURCE_DIR}/zig_abi_fixture/src/test_abi_fixture.c
+)
+
 foreach(src ${RA8_TEST_SOURCES})
   get_filename_component(name ${src} NAME_WE)
   if(NOT TARGET ${name})

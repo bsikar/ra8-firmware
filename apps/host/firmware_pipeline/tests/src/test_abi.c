@@ -42,8 +42,8 @@ int main(void)
 {
   const uint8_t              input[] = {0U, 0xffU, 7U};
   firmware_pipeline_config_t config  = {
-     .abi_version = k_firmware_pipeline_abi_version,
-     .reserved0   = 0,
+    .abi_version = k_firmware_pipeline_abi_version,
+    .reserved0   = 0,
   };
   firmware_pipeline_result_t result;
   (void)memset(&result, 0xa5, sizeof(result));

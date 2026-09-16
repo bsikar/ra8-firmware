@@ -5,7 +5,7 @@
 
 #![expect(unsafe_code, reason = "this module is the audited C ABI adapter")]
 
-use std::ffi::{c_char, c_int, c_void, CString, OsString};
+use std::ffi::{CString, OsString, c_char, c_int, c_void};
 use std::os::unix::ffi::OsStrExt as _;
 
 const ABI_VERSION: u32 = 0x5a49_5001;
