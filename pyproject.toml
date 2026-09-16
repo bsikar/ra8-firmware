@@ -49,9 +49,6 @@ vela = [
 [tool.uv]
 package = false
 default-groups = ["dev", "infra", "k3s", "vela"]
-override-dependencies = [
-  "cryptography==44.0.2",
-]
 
 # Ruff configuration for first-party Python (every tracked *.py in the tree).
 #
