@@ -66,7 +66,7 @@ EXACT_REFERENCES = (
         "scripts/git/pre-commit",
         (
             "exec env -u BASH_ENV -u ENV -u PYTHONHOME -u PYTHONPATH "
-            '"$bash_bin" -p "$owner" "${hook_args[@]}"'
+            '"$bash_bin" -p "$owner" ${hook_args[@]+"${hook_args[@]}"}'
         ),
         (
             "The launcher verifies Bash and the immutable hook owner by exact "
@@ -88,7 +88,7 @@ EXACT_REFERENCES = (
             '${RA8_MAX_JOBS:-}}" -v "$repo":/workspace:ro '
             '${extra[@]+"${extra[@]}"} ${worktree[@]+"${worktree[@]}"} '
             '${ccache[@]+"${ccache[@]}"} ${toolcache[@]+"${toolcache[@]}"} '
-            '"${nofile[@]}" -w /workspace "$image" /bin/bash -p scripts/ci.sh'
+            '${nofile[@]+"${nofile[@]}"} -w /workspace "$image" /bin/bash -p scripts/ci.sh'
         ),
         (
             "The reviewed container-runtime argv executes the exact privileged "
