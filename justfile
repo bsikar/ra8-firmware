@@ -56,7 +56,7 @@ default:
     @echo "  just checks            Pre-commit verification: format, tidy, unit tests"
     @echo "  just hooks             Install tracked git hooks into .git/hooks"
     @echo "  just git_hooks         Explore git hook commands"
-    @echo "  just search <keyword>  Search across Apps, Examples, and Tests"
+    @echo "  just search <keyword>  Search across commands, apps, libs, tests, gates, and tools"
     @echo ""
 
 # Prepare the repository-local venv/hooks and the pinned compiler/tool image.
@@ -99,6 +99,6 @@ build_all:
     @echo "==> Building all host unit and integration tests..."
     "{{ just_executable() }}" tests::build
 
-# Unified search across Apps, Examples, and Tests
-search keyword:
+# Unified search across commands, apps, examples, libraries, tests, gates, and tools
+search keyword="":
     python3 scripts/dev/search.py "{{ keyword }}"
