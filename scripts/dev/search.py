@@ -3,23 +3,20 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Unified search across Just commands, apps, examples, libraries, tests, gates, and tools."""
 
-import json
-import os
+from __future__ import annotations
+
 import re
-import shutil
-import subprocess
 import sys
 from pathlib import Path
 from typing import TypedDict
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parents[1]
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from list_libs import _brief as _lib_brief  # noqa: E402
-from list_libs import _library_dirs  # noqa: E402
-from ra8_apps import _parse_desc, app_id, get_apps  # noqa: E402
+from list_libs import _brief as _lib_brief
+from list_libs import _library_dirs
+from ra8_apps import _parse_desc, app_id, get_apps
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 MIN_ARGUMENTS = 2
 GATE_RECORD_FIELD_COUNT = 3
@@ -80,108 +77,67 @@ class ToolRecord(TypedDict):
     desc: str
 
 
-def _format_parameters(raw_params: list[dict[str, object]]) -> str:
-    """Format recipe parameter definitions into invocation syntax."""
-    formatted: list[str] = []
-    for param in raw_params:
-        p_name = str(param.get("name", ""))
-        default = param.get("default")
-        if default is None:
-            formatted.append(f"<{p_name}>")
-        elif default == "":
-            formatted.append(f"[{p_name}]")
-        else:
-            formatted.append(f"[{p_name}={default}]")
-    return " ".join(formatted)
+class SearchResults(TypedDict):
+    """Container for matched items by target category."""
+
+    commands: list[RecipeRecord]
+    apps: list[AppInfo]
+    examples: list[AppInfo]
+    libraries: list[LibraryRecord]
+    tests: list[TestRecord]
+    gates: list[GateRecord]
+    tools: list[ToolRecord]
 
 
-def _collect_recipes_from_json(node: dict[str, object], prefix: str = "") -> list[RecipeRecord]:
-    """Recursively extract recipe records from a parsed Just JSON dump."""
+def _parse_justfile(path: Path, prefix: str = "") -> list[RecipeRecord]:
+    """Recursively discover recipes across Just modules."""
     recipes: list[RecipeRecord] = []
-    modules = node.get("modules")
-    if isinstance(modules, dict):
-        for mod_name, mod_data in modules.items():
-            if isinstance(mod_data, dict):
-                sub_prefix = f"{prefix}{mod_name}::"
-                recipes.extend(_collect_recipes_from_json(mod_data, sub_prefix))
+    if not path.is_file():
+        return recipes
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    pending_doc = ""
+    mod_re = re.compile(r"^\s*mod\s+([a-zA-Z0-9_-]+)\s+['\"]([^'\"]+)['\"]")
+    recipe_re = re.compile(r"^([a-zA-Z0-9_-]+)(?:\s+([^:]+))?:")
 
-    recipe_dict = node.get("recipes")
-    if isinstance(recipe_dict, dict):
-        for r_name, r_data in recipe_dict.items():
-            if not isinstance(r_data, dict):
-                continue
-            namepath = str(r_data.get("namepath") or (f"{prefix}{r_name}" if prefix else r_name))
-            doc = str(r_data.get("doc") or "").strip()
-            raw_params = r_data.get("parameters")
-            params = _format_parameters(raw_params) if isinstance(raw_params, list) else ""
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            comment = stripped.lstrip("#").strip()
+            if comment and not comment.startswith(("SPDX-", "Copyright")):
+                pending_doc = comment
+            continue
+
+        m_mod = mod_re.match(stripped)
+        if m_mod:
+            sub_name, sub_rel = m_mod.groups()
+            sub_path = (path.parent / sub_rel).resolve()
+            if sub_path.is_file():
+                sub_prefix = f"{prefix}{sub_name}::"
+                recipes.extend(_parse_justfile(sub_path, sub_prefix))
+            pending_doc = ""
+            continue
+
+        m_rec = recipe_re.match(stripped)
+        if m_rec:
+            r_name = m_rec.group(1)
+            namepath = f"{prefix}{r_name}" if prefix else r_name
             recipes.append(
                 RecipeRecord(
-                    name=str(r_name),
+                    name=r_name,
                     namepath=namepath,
-                    doc=doc,
-                    params=params,
+                    doc=pending_doc,
+                    params=m_rec.group(2) or "",
                 )
             )
+            pending_doc = ""
+        elif stripped:
+            pending_doc = ""
     return recipes
 
 
 def get_just_recipes() -> list[RecipeRecord]:
     """Discover all recipes exposed by Just across root and submodules."""
-    just_bin = os.environ.get("RA8_JUST") or shutil.which("just") or "just"
-    try:
-        proc = subprocess.run(  # noqa: S603 -- resolved Just executable and fixed dump arguments
-            [just_bin, "--dump", "--dump-format", "json"],
-            cwd=str(REPO_ROOT),
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        data = json.loads(proc.stdout)
-        if isinstance(data, dict):
-            return _collect_recipes_from_json(data)
-    except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
-        pass
-    return _fallback_scan_just_recipes()
-
-
-def _fallback_scan_just_recipes() -> list[RecipeRecord]:
-    """Scan recipe headers from local justfiles when the Just binary is unavailable."""
-    recipes: list[RecipeRecord] = []
-    just_files = [REPO_ROOT / "justfile", *sorted((REPO_ROOT / "just").glob("*.just"))]
-    for just_path in just_files:
-        if not just_path.is_file():
-            continue
-        mod_prefix = ""
-        if just_path.parent.name == "just":
-            mod_prefix = f"{just_path.stem}::"
-        pending_doc = ""
-        for line in just_path.read_text(encoding="utf-8", errors="ignore").splitlines():
-            stripped = line.strip()
-            if stripped.startswith("#"):
-                comment = stripped.lstrip("#").strip()
-                if (
-                    comment
-                    and not comment.startswith("SPDX-")
-                    and not comment.startswith("Copyright")
-                ):
-                    pending_doc = comment
-                continue
-            match = re.match(r"^([a-zA-Z0-9_-]+)(?:\s+([^:]+))?:", stripped)
-            if match:
-                r_name = match.group(1)
-                namepath = f"{mod_prefix}{r_name}"
-                recipes.append(
-                    RecipeRecord(
-                        name=r_name,
-                        namepath=namepath,
-                        doc=pending_doc,
-                        params=match.group(2) or "",
-                    )
-                )
-                pending_doc = ""
-            elif stripped:
-                pending_doc = ""
-    return recipes
+    return _parse_justfile(REPO_ROOT / "justfile")
 
 
 def get_host_apps() -> list[AppInfo]:
@@ -477,20 +433,16 @@ def _filter_commands(query: str, recipes: list[RecipeRecord]) -> list[RecipeReco
     return filtered
 
 
-def search_all(query: str) -> dict[str, list[object]]:
+def search_all(query: str) -> SearchResults:
     """Query across all supported repository target categories."""
     commands = _filter_commands(query, get_just_recipes())
     board_apps, examples = get_all_apps()
 
     matched_apps = [
-        a
-        for a in board_apps
-        if _matches(query, a["name"], a["group"], a["desc"], a["full_id"])
+        a for a in board_apps if _matches(query, a["name"], a["group"], a["desc"], a["full_id"])
     ]
     matched_examples = [
-        a
-        for a in examples
-        if _matches(query, a["name"], a["group"], a["desc"], a["full_id"])
+        a for a in examples if _matches(query, a["name"], a["group"], a["desc"], a["full_id"])
     ]
     matched_libs = [
         lib
@@ -498,19 +450,11 @@ def search_all(query: str) -> dict[str, list[object]]:
         if _matches(query, lib["name"], lib["path"], lib["desc"], lib["group"])
     ]
     matched_tests = [
-        t
-        for t in get_tests()
-        if _matches(query, t["name"], t["path"], t["category"], t["desc"])
+        t for t in get_tests() if _matches(query, t["name"], t["path"], t["category"], t["desc"])
     ]
-    matched_gates = [
-        g
-        for g in get_ci_gates()
-        if _matches(query, g["name"], g["speed"], g["desc"])
-    ]
+    matched_gates = [g for g in get_ci_gates() if _matches(query, g["name"], g["speed"], g["desc"])]
     matched_tools = [
-        tool
-        for tool in get_tools()
-        if _matches(query, tool["name"], tool["path"], tool["desc"])
+        tool for tool in get_tools() if _matches(query, tool["name"], tool["path"], tool["desc"])
     ]
 
     return {
@@ -535,7 +479,7 @@ def matched_commands(commands: list[RecipeRecord]) -> list[RecipeRecord]:
     return deduped
 
 
-def print_search_results(query: str, results: dict[str, list[object]]) -> None:
+def print_search_results(query: str, results: SearchResults) -> None:
     """Render all category sections with match counts and suggested commands."""
     total = sum(len(items) for items in results.values())
     if total == 0:
@@ -543,13 +487,13 @@ def print_search_results(query: str, results: dict[str, list[object]]) -> None:
         return
 
     print(f"Search Results for '{query}' ({total} matches):\n")
-    _print_commands(results.get("commands", []))  # type: ignore[arg-type]
-    _print_apps(results.get("apps", []))  # type: ignore[arg-type]
-    _print_examples(results.get("examples", []))  # type: ignore[arg-type]
-    _print_libraries(results.get("libraries", []))  # type: ignore[arg-type]
-    _print_tests(results.get("tests", []))  # type: ignore[arg-type]
-    _print_gates(results.get("gates", []))  # type: ignore[arg-type]
-    _print_tools(results.get("tools", []))  # type: ignore[arg-type]
+    _print_commands(results["commands"])
+    _print_apps(results["apps"])
+    _print_examples(results["examples"])
+    _print_libraries(results["libraries"])
+    _print_tests(results["tests"])
+    _print_gates(results["gates"])
+    _print_tools(results["tools"])
 
 
 def selftest() -> int:
@@ -566,12 +510,10 @@ def selftest() -> int:
 
     mcdc_results = search_all("mcdc")
     found_mcdc_cmd = any(
-        isinstance(r, dict) and "mcdc" in str(r.get("namepath"))
-        for r in mcdc_results["commands"]
+        isinstance(r, dict) and "mcdc" in str(r.get("namepath")) for r in mcdc_results["commands"]
     )
     found_mcdc_gate = any(
-        isinstance(g, dict) and str(g.get("name")) == "mcdc"
-        for g in mcdc_results["gates"]
+        isinstance(g, dict) and str(g.get("name")) == "mcdc" for g in mcdc_results["gates"]
     )
     if not found_mcdc_cmd or not found_mcdc_gate:
         failures.append("query 'mcdc' did not find mcdc recipe or gate")
