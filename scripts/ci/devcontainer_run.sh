@@ -106,13 +106,13 @@ main() {
 
   echo "==> running in writable $IMAGE_TAG (runtime=${runtime[*]}; tree=$REPO_ROOT)"
   exec "${runtime[@]}" run --rm \
-    "${tty[@]}" \
+    ${tty[@]+"${tty[@]}"} \
     -e RA8_MAX_JOBS="${RA8_MAX_JOBS:-$(ra8_max_jobs)}" \
     -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-${RA8_MAX_JOBS:-$(ra8_max_jobs)}}" \
     -v "$REPO_ROOT:/workspace:rw" \
     ${extra[@]+"${extra[@]}"} \
     ${worktree[@]+"${worktree[@]}"} \
-    "${nofile[@]}" \
+    ${nofile[@]+"${nofile[@]}"} \
     -w /workspace \
     "$IMAGE_TAG" \
     "$@"
