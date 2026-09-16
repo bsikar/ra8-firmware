@@ -733,7 +733,19 @@ batches:
     identity_schema: 2-durable-site-identity
     assigned_rows: 13
     rows_sha256: 56b1700402ce55c2cbe265d111f0c1b6cb9cbd8d7994fa38a8f73956ea31b7b7
-    partition: "selective retain of 69 ledger row(s): 00198a1a45e7, 0080a4e3fac3, 0195ba5796c2, 0b5656b9cb45, 10650c974046, 1073d1a4e7b4, 110faca37251, 1277dcd51a76, 169b844ddc60, 185a511b5334, 1a108b9131fb, 1ad1b5ddb819, 1dfa6917c772, 2043de852c31, 24bef63b8bf4, 27bb14717e58, 295046407275, 324f3bd5efbc, 3828ed04738e, 3b6975599472, 3d331628d203, 42e2b5edf8a6, 46ca474e7ac1, 4798060d281d, 47c9d3865691, 4c001f0508f0, 4da03f6dfff1, 5593a380576c, 571ac8886f0f, 59742081cce7, 61837cf950bb, 6796c93f4e39, 68f9e3ca6e75, 694fda6beeac, 6a1aceda8a2a, 6c619d8de381, 6c8266d0a29e, 6f812de5fc3e, 6fab01df8c98, 7974a8e57d22, 7bb2d73dcd75, 7c503416337e, 7f4361e2323e, 893c637df90c, 92e6777369bb, 9e0cb4d7bf23, a73f00c51c02, ac58461c09ee, b19065cc57f3, b1b56aab22c9, b3e726f19ded, b85b24251c7d, bcb2c72a2ee2, bf06db88bffc, c2df40ec2eda, c456c049aa0f, cb11136a1d2a, cc57d864c1a9, cd0f54a4b9a4, cd5528c000e4, d2228a3dd80c, d708f0f36ecc, d825534526c0, ea0d609c6cbb, eaf29e646eb1, f4d7d14c29f3, f91c7fa00821, fcfad11ed04e, fe04ca57c132"
+    partition: >-
+      selective retain of 69 ledger row(s): 00198a1a45e7, 0080a4e3fac3, 0195ba5796c2, 0b5656b9cb45,
+      10650c974046, 1073d1a4e7b4, 110faca37251, 1277dcd51a76, 169b844ddc60, 185a511b5334,
+      1a108b9131fb, 1ad1b5ddb819, 1dfa6917c772, 2043de852c31, 24bef63b8bf4, 27bb14717e58,
+      295046407275, 324f3bd5efbc, 3828ed04738e, 3b6975599472, 3d331628d203, 42e2b5edf8a6,
+      46ca474e7ac1, 4798060d281d, 47c9d3865691, 4c001f0508f0, 4da03f6dfff1, 5593a380576c,
+      571ac8886f0f, 59742081cce7, 61837cf950bb, 6796c93f4e39, 68f9e3ca6e75, 694fda6beeac,
+      6a1aceda8a2a, 6c619d8de381, 6c8266d0a29e, 6f812de5fc3e, 6fab01df8c98, 7974a8e57d22,
+      7bb2d73dcd75, 7c503416337e, 7f4361e2323e, 893c637df90c, 92e6777369bb, 9e0cb4d7bf23,
+      a73f00c51c02, ac58461c09ee, b19065cc57f3, b1b56aab22c9, b3e726f19ded, b85b24251c7d,
+      bcb2c72a2ee2, bf06db88bffc, c2df40ec2eda, c456c049aa0f, cb11136a1d2a, cc57d864c1a9,
+      cd0f54a4b9a4, cd5528c000e4, d2228a3dd80c, d708f0f36ecc, d825534526c0, ea0d609c6cbb,
+      eaf29e646eb1, f4d7d14c29f3, f91c7fa00821, fcfad11ed04e, fe04ca57c132
     evidence:
       - "classification-batch census-digest; exact checker scope values classified and authenticated by suppression_checker_scope.py"
   - id: selective-review-20260915-172051
