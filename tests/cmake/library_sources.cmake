@@ -40,7 +40,11 @@ file(GLOB_RECURSE RA8_SDMMC_SPI_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_sd
 file(GLOB_RECURSE RA8_GFX_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
 file(GLOB_RECURSE RA8_UI_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ui/src/*.c)
 file(GLOB_RECURSE RA8_KEYBOARD_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_keyboard/src/*.c)
-file(GLOB_RECURSE RA8_BOX_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_box/src/*.c)
+# ra8_box has no host C sources: its implementation is Zig (libs/ra8_box/src/
+# *.zig, built by libs/ra8_box/build.zig) behind the unchanged C header, and
+# tests/cmake/zig_libraries.cmake links that archive into ra8_core_hal. The ARM
+# cross build still compiles the retained C implementation through
+# ra8_add_app(LIBS ra8_box) until the Zig cross-build wiring lands.
 file(GLOB_RECURSE BOOK_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/book/src/*.c)
 file(GLOB_RECURSE RABOOK_COMPILE_SOURCES CONFIGURE_DEPENDS
      ${FW_ROOT}/apps/shared_libs/rabook_compile/src/*.c
