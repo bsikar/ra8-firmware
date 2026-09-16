@@ -89,7 +89,7 @@ function(ra8_add_zig_c_abi_contract)
         "${CMAKE_COMMAND}" "-DRA8_C_COMPILER=${CMAKE_C_COMPILER}"
         "-DRA8_INCLUDE_DIR=${RA8_ABI_PUBLIC_INCLUDE_DIR}"
         "-DRA8_CORE_INCLUDE_DIR=${FW_ROOT}/libs/ra8_core/inc" "-DRA8_LIBRARY=${_ra8_library}"
-        "-DRA8_SOURCE=${RA8_ABI_ZIG_ROOT}/negative_${_ra8_negative_kind}.c"
+        "-DRA8_SOURCE=${RA8_ABI_ZIG_ROOT}/src/negative_${_ra8_negative_kind}.c"
         "-DRA8_KIND=${_ra8_negative_kind}" -P
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/expect_c_failure.cmake"
     )

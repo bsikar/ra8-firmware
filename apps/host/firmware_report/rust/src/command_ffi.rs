@@ -6,7 +6,7 @@
 #![expect(unsafe_code, reason = "this module is the audited C ABI adapter")]
 
 use crate::ReportSummary;
-use std::ffi::{c_char, c_int, c_void, CString, OsString};
+use std::ffi::{CString, OsString, c_char, c_int, c_void};
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt as _;
 
