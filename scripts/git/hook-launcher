@@ -142,7 +142,7 @@ if [[ "$-" == *p* ]]; then
   trap - EXIT HUP INT QUIT TERM
   export RA8_TRUSTED_GIT="$system_git"
   exec env -u BASH_ENV -u ENV -u PYTHONHOME -u PYTHONPATH \
-    "$bash_bin" -p "$owner" "${hook_args[@]}"
+    "$bash_bin" -p "$owner" ${hook_args[@]+"${hook_args[@]}"}
 else
   [[ "$-" == *p* ]]
 fi

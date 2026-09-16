@@ -309,7 +309,7 @@ ci_host_mode_exec() {
     ${worktree[@]+"${worktree[@]}"} \
     ${ccache[@]+"${ccache[@]}"} \
     ${toolcache[@]+"${toolcache[@]}"} \
-    "${nofile[@]}" \
+    ${nofile[@]+"${nofile[@]}"} \
     -w /workspace \
     "$image" \
     /bin/bash -p scripts/ci.sh
