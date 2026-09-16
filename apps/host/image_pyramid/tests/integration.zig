@@ -67,24 +67,24 @@ test "dog fixture produces the intentionally degraded eight-level pyramid" {
     try std.testing.expectEqual(@as(usize, 0), errors.items.len);
 
     const names = [_][]const u8{
-        "level-01-165x124-q25.jpg",
-        "level-02-83x62-q25.jpg",
-        "level-03-42x31-q25.jpg",
-        "level-04-21x16-q25.jpg",
-        "level-05-11x8-q25.jpg",
-        "level-06-6x4-q25.jpg",
-        "level-07-3x2-q25.jpg",
-        "level-08-2x1-q25.jpg",
+        "level-01-165x247-q25.jpg",
+        "level-02-165x124-q25.jpg",
+        "level-03-83x124-q25.jpg",
+        "level-04-83x62-q25.jpg",
+        "level-05-42x62-q25.jpg",
+        "level-06-42x31-q25.jpg",
+        "level-07-21x31-q25.jpg",
+        "level-08-21x16-q25.jpg",
     };
     const hashes = [_][]const u8{
-        "295aedbcff8f0d9c3658649f9ea61ad3a88dd28ac166b6c3439b981b9de12f2e",
-        "7a1fcc27c33867576dc6b721423a91c861adbb78801d63561dd3c72741e7e7af",
-        "1603c9aef2dfaeb78db687c149b2b145db8ece14751bf9f7e5e5753d8949b104",
-        "0c35f37e8e49f82e67b035803e807e4cdf13b85755f246cdd1562a3833786712",
-        "84b41cb4f9bcfee51e4cc466a1f95cbb4398089f42fea0c283366c6320c67dc8",
-        "231817e28969ec95364b2e740edec59b986782e894df21a89d3afda3188cc196",
-        "c796092a2601ad9594715242a02240ec7e9ddc698d12c163ee6c36736a614d9e",
-        "79cd6a0a0fdaf9f46a8a5af9cbfffa26589eae299fcccded6c9a921e4dab9a3d",
+        "e58fd41bbb7f4201104c43a43f61ef78773130f6ef2e55a81348a9df7ab4c82c",
+        "e2401732089f9d8bf54c3da06fe450d78f1896cbd7529713f87063818131a100",
+        "1124de51590fd03f3679449a92b599165b361d119f6c0870e20cdd2824372236",
+        "b38cef58fca6f93b2237e26889743cd7a1061c01a2376fe5247c4f9234c9db48",
+        "fc285cd60fbbc8ef5e2c51604753568ed82829108b1b3bbe01ec23ec0ca0b789",
+        "95e7a8fff6d0007c5409703ca2b150b9f3fc1ad41d6aba5028674dd5cbbbdb9e",
+        "107cfc375c2190e2f802e9d264c184e00ac29c7ba2bcfb3d0ab05dad28bb8211",
+        "eeabda13201198619c6bbc8e5582151db52117ad79083548e3904f8321591910",
     };
     for (names, hashes) |name, expected_hash| {
         const bytes = try temporary.dir.readFileAlloc(allocator, name, 16 * 1024 * 1024);
@@ -133,7 +133,7 @@ test "existing output is preserved and prevents publication" {
     defer temporary.cleanup();
     const output_path = try temporary.dir.realpathAlloc(allocator, ".");
     defer allocator.free(output_path);
-    try temporary.dir.writeFile(.{ .sub_path = "level-01-165x124-q25.jpg", .data = "keep-me" });
+    try temporary.dir.writeFile(.{ .sub_path = "level-01-165x247-q25.jpg", .data = "keep-me" });
 
     var output = std.ArrayList(u8).init(allocator);
     defer output.deinit();
@@ -150,7 +150,7 @@ test "existing output is preserved and prevents publication" {
     const status = try app.execute(allocator, &args, output.writer(), errors.writer());
     try std.testing.expectEqual(@as(u8, 1), status);
     try std.testing.expect(std.mem.startsWith(u8, errors.items, "error: output-collision:"));
-    const existing = try temporary.dir.readFileAlloc(allocator, "level-01-165x124-q25.jpg", 64);
+    const existing = try temporary.dir.readFileAlloc(allocator, "level-01-165x247-q25.jpg", 64);
     defer allocator.free(existing);
     try std.testing.expectEqualStrings("keep-me", existing);
 }

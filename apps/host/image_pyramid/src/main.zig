@@ -190,7 +190,7 @@ pub fn execute(allocator: std.mem.Allocator, args: []const []const u8, stdout: a
     defer current.deinit();
 
     for (level_plan[0..options.levels], 1..) |dims, level| {
-        var reduced = try degrade.discardStrips(allocator, current);
+        var reduced = try degrade.discardStrips(allocator, current, degrade.axisForLevel(level));
         defer reduced.deinit();
         const encoded = switch (try codec.encode(allocator, reduced)) {
             .value => |value| value,

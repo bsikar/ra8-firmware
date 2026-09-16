@@ -17,6 +17,8 @@ pub const Image = struct {
 
 pub const Dimensions = struct { width: u16, height: u16 };
 
+pub const Axis = enum { columns, rows };
+
 fn validateImage(image: Image) error{InvalidImage}!void {
     if (image.width == 0 or image.height == 0) return error.InvalidImage;
     const pixel_count = std.math.mul(usize, image.width, image.height) catch return error.InvalidImage;
@@ -24,12 +26,21 @@ fn validateImage(image: Image) error{InvalidImage}!void {
     if (image.pixels.len != expected_len) return error.InvalidImage;
 }
 
-pub fn nextDimensions(width: u16, height: u16) error{CannotDownsample}!Dimensions {
-    if (width == 1 and height == 1) return error.CannotDownsample;
-    return .{
-        .width = @max(1, width / 2 + width % 2),
-        .height = @max(1, height / 2 + height % 2),
+pub fn nextDimensions(width: u16, height: u16, axis: Axis) error{CannotDownsample}!Dimensions {
+    return switch (axis) {
+        .columns => if (width == 1) error.CannotDownsample else .{
+            .width = width / 2 + width % 2,
+            .height = height,
+        },
+        .rows => if (height == 1) error.CannotDownsample else .{
+            .width = width,
+            .height = height / 2 + height % 2,
+        },
     };
+}
+
+pub fn axisForLevel(level: usize) Axis {
+    return if (level % 2 == 1) .columns else .rows;
 }
 
 pub fn plan(width: u16, height: u16, levels: u8) error{TooManyLevels}![16]Dimensions {
@@ -37,24 +48,24 @@ pub fn plan(width: u16, height: u16, levels: u8) error{TooManyLevels}![16]Dimens
     var result: [16]Dimensions = undefined;
     var current = Dimensions{ .width = width, .height = height };
     for (0..levels) |index| {
-        current = nextDimensions(current.width, current.height) catch return error.TooManyLevels;
+        current = nextDimensions(current.width, current.height, axisForLevel(index + 1)) catch return error.TooManyLevels;
         result[index] = current;
     }
     return result;
 }
 
-pub fn discardStrips(allocator: std.mem.Allocator, source: Image) !Image {
+pub fn discardStrips(allocator: std.mem.Allocator, source: Image, axis: Axis) !Image {
     try validateImage(source);
-    const dims = try nextDimensions(source.width, source.height);
+    const dims = try nextDimensions(source.width, source.height, axis);
     const output_len = try std.math.mul(usize, try std.math.mul(usize, dims.width, dims.height), 3);
     const pixels = try allocator.alloc(u8, output_len);
     errdefer allocator.free(pixels);
 
     var dst_index: usize = 0;
     for (0..dims.height) |dst_y| {
-        const src_y = dst_y * 2;
+        const src_y = if (axis == .rows) dst_y * 2 else dst_y;
         for (0..dims.width) |dst_x| {
-            const src_x = dst_x * 2;
+            const src_x = if (axis == .columns) dst_x * 2 else dst_x;
             const src_index = (src_y * source.width + src_x) * 3;
             @memcpy(pixels[dst_index .. dst_index + 3], source.pixels[src_index .. src_index + 3]);
             dst_index += 3;
