@@ -59,9 +59,9 @@ file(GLOB_RECURSE RA8_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_app/src/
 file(GLOB_RECURSE RA8_NSC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_nsc/src/*.c)
 file(GLOB_RECURSE RA8_OTA_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ota/src/*.c)
 file(GLOB_RECURSE RA8_DISPLAY_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_display_pal/src/*.c)
-file(GLOB_RECURSE RA8_POWER_PROFILE_SOURCES CONFIGURE_DEPENDS
-     ${FW_ROOT}/libs/ra8_power_profile/src/*.c
-)
+# ra8_power_profile is implemented in Zig (libs/ra8_power_profile/build.zig).
+# It is linked through cmake/zig_libraries.cmake instead of being globbed as C
+# sources here; the unchanged C suite still covers it via the public header.
 file(GLOB_RECURSE EPUB_C_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/epub/src/*.c)
 set(EPUB_CPP_SOURCES "")
 file(GLOB_RECURSE COMIC_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/apps/shared_libs/comic/src/*.c)
