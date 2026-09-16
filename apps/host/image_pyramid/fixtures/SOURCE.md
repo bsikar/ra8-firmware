@@ -13,9 +13,10 @@
 The file is tracked as a realistic integration fixture for the intentionally
 lossy JPEG pyramid demonstration.
 
-`example-output/level-01-165x124-q25.jpg` is a repository-generated derivative
-created from this fixture by `image_pyramid --levels 1`. Its SHA-256 is
-`295aedbcff8f0d9c3658649f9ea61ad3a88dd28ac166b6c3439b981b9de12f2e`,
-which is also enforced by the integration test.
+The files under `example-output/` are repository-generated derivatives created
+from this fixture by `image_pyramid --levels 2`. Their SHA-256 values are
+`e58fd41bbb7f4201104c43a43f61ef78773130f6ef2e55a81348a9df7ab4c82c`
+and `e2401732089f9d8bf54c3da06fe450d78f1896cbd7529713f87063818131a100`;
+both are also enforced by the integration test.
 
 SPDX-License-Identifier: CC0-1.0
