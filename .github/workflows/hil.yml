@@ -19,7 +19,7 @@ name: hil
 # race on the remote hardware.
 on:
   push:
-    branches: [main, dev]
+    branches: [main, dev, zig/dev]
     paths:
       - '.devcontainer/Dockerfile'
       - 'infra/ansible/roles/hil_bench/**'
@@ -84,7 +84,7 @@ on:
       - 'scripts/hil/**'
       - '.github/workflows/hil.yml'
   pull_request:
-    branches: [main, dev]
+    branches: [main, dev, zig/dev]
     paths:
       - '.devcontainer/Dockerfile'
       - 'infra/ansible/roles/hil_bench/**'
