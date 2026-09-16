@@ -80,6 +80,7 @@ set(_RA8_ADD_APP_DIR "${CMAKE_CURRENT_LIST_DIR}")
 # ra8_add_app() calls, so the expanded result is the code that was inline.
 include(${_RA8_ADD_APP_DIR}/ra8_app/sources.cmake)
 include(${_RA8_ADD_APP_DIR}/ra8_app/vendored.cmake)
+include(${_RA8_ADD_APP_DIR}/ra8_app/zig_libs.cmake)
 
 # Declare one cross-compiled example application.
 #
@@ -299,6 +300,12 @@ macro(ra8_add_app)
     ${_ra8_lib_extra}
     ${_ra8_lib_extra_off_target}
   )
+
+  # Libraries whose implementation now lives in Zig contribute no C objects to
+  # the command above. Cross-build and link their archives before anything
+  # else touches the target, so a missing archive is a link error rather than
+  # a quietly dropped implementation.
+  _ra8_app_link_zig_libraries(${_ra8_elf})
 
   if(_ra8_use_shared_archive)
     target_link_libraries(
