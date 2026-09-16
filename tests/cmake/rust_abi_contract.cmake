@@ -17,7 +17,7 @@ add_custom_target(
   VERBATIM
 )
 
-add_executable(ra8_rust_abi_fixture_c_consumer "${_ra8_rust_abi_root}/test_c_consumer.c")
+add_executable(ra8_rust_abi_fixture_c_consumer "${_ra8_rust_abi_root}/src/test_c_consumer.c")
 target_compile_options(ra8_rust_abi_fixture_c_consumer PRIVATE -Wall -Wextra -Werror)
 target_include_directories(
   ra8_rust_abi_fixture_c_consumer PRIVATE "${_ra8_rust_abi_root}/inc"
@@ -73,7 +73,7 @@ add_custom_target(
   COMMENT "Building chained Zig ABI adapter"
   VERBATIM
 )
-add_executable(ra8_abi_chain_c_consumer "${_ra8_chain_root}/test_c_consumer.c")
+add_executable(ra8_abi_chain_c_consumer "${_ra8_chain_root}/src/test_c_consumer.c")
 target_compile_options(ra8_abi_chain_c_consumer PRIVATE -Wall -Wextra -Werror)
 target_include_directories(
   ra8_abi_chain_c_consumer PRIVATE "${_ra8_chain_root}/inc" "${_ra8_rust_abi_root}/inc"

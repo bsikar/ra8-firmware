@@ -2,12 +2,16 @@
 // Copyright (c) 2026 Brighton Sikarskie
 
 /**
- * @file firmware_pipeline_cli.h
+ * @file firmware_pipeline_cli_internal.h
  * @brief Internal deterministic command-line contract.
  * @details Separates C argument policy from file processing and ABI composition.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
+
+#include "ra8_attributes.h"
 
 /**
  * @enum firmware_pipeline_cli_status_t
@@ -17,7 +21,7 @@
  * @code
  * firmware_pipeline_cli_status_t status = k_firmware_pipeline_cli_ok;
  * @endcode
- * @see firmware_pipeline_parse_args
+ * @see priv_firmware_pipeline_parse_args
  */
 typedef enum : int {
   k_firmware_pipeline_cli_ok    = 0, /**< One non-empty input path was supplied.  */
@@ -40,5 +44,6 @@ typedef enum : int {
  * @note Thread-safe; no shared state is used.
  * @since 0.1.0
  */
-firmware_pipeline_cli_status_t
-firmware_pipeline_parse_args(int argc, char** argv, const char** out_path);
+RA8_PRIV firmware_pipeline_cli_status_t priv_firmware_pipeline_parse_args(int          argc,
+                                                                          char**       argv,
+                                                                          const char** out_path);

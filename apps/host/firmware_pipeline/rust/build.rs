@@ -17,9 +17,10 @@ fn run(command: &mut Command, description: &str) {
 fn main() {
     for source in [
         "../src/firmware_pipeline_cli.c",
-        "../src/firmware_pipeline_cli.h",
+        "../src/firmware_pipeline_cli_internal.h",
         "../src/firmware_pipeline_io.c",
-        "../src/firmware_pipeline_io.h",
+        "../src/firmware_pipeline_io_internal.h",
+        "../../../../libs/ra8_core/inc/ra8_attributes.h",
         "../zig/src/adapter.zig",
         "../zig/build.zig",
     ] {
@@ -52,6 +53,7 @@ fn main() {
                     "-Wall",
                     "-Wextra",
                     "-Werror",
+                    "-I../../../../libs/ra8_core/inc",
                     "-c",
                     source,
                     "-o",

@@ -56,6 +56,45 @@ def _strip_comments(text: str) -> str:
     return re.sub(r"//[^\n\r]*", "", text)
 
 
+def _strip_conditional_blocks(text: str) -> str:
+    """Remove conditional-preprocessor regions from assertion evidence."""
+    kept: list[str] = []
+    conditional_depth = 0
+    for line in text.splitlines(keepends=True):
+        directive = re.match(r"\s*#\s*(if|ifdef|ifndef|endif)\b", line)
+        if directive:
+            kind = directive.group(1)
+            if kind in {"if", "ifdef", "ifndef"}:
+                conditional_depth += 1
+                continue
+            if conditional_depth and kind == "endif":
+                conditional_depth -= 1
+                continue
+        if not conditional_depth:
+            kept.append(line)
+    return "".join(kept)
+
+
+def _lexical_tokens(text: str) -> list[str]:
+    """Return assertion-relevant C/Zig tokens while ignoring layout."""
+    clean = re.sub(r"(?m)\\\\[^\r\n]*", "", text)
+    clean = re.sub(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', "", clean)
+    clean = _strip_conditional_blocks(_strip_comments(clean))
+    return re.findall(
+        r"@[A-Za-z_][A-Za-z0-9_]*|[A-Za-z_][A-Za-z0-9_]*|\d+[A-Za-z]*|==|!=|\S", clean
+    )
+
+
+def _contains_token_sequence(text: str, fragment: str) -> bool:
+    """Match one policy fragment as a contiguous lexical token sequence."""
+    tokens = _lexical_tokens(text)
+    expected = _lexical_tokens(fragment)
+    width = len(expected)
+    return bool(expected) and any(
+        tokens[index : index + width] == expected for index in range(len(tokens))
+    )
+
+
 def _normalized_header_digest(text: str) -> str:
     """Hash representation-bearing header text without comments or whitespace."""
     normalized = re.sub(r"\s+", "", _strip_comments(text))
@@ -204,12 +243,35 @@ def _compatibility_findings(
         f"{name}: missing representation assertion: {fragment}"
         for fragment in library.get("layout_assertions", [])
         if not isinstance(fragment, str)
-        or (fragment not in header_text and fragment not in adapter_text)
+        or not (
+            _contains_token_sequence(header_text, fragment)
+            or _contains_token_sequence(adapter_text, fragment)
+        )
     )
     return findings
 
 
-def _contract_test_findings(  # noqa: PLR0912 -- validates every malformed evidence branch
+def _json_registration_findings(
+    name: str, language: str, path: Path, symbol_path: Path, registration: Path
+) -> list[str]:
+    """Verify JSON test-contract reachability for source and symbol evidence."""
+    try:
+        contract = json.loads(_strip_comments(registration.read_text(encoding="utf-8")))
+    except json.JSONDecodeError:
+        return [f"{name}: malformed {language} test registration"]
+    registered = set(contract.get("test_roots", [])) | set(contract.get("covered_sources", []))
+    findings: list[str] = []
+    if path.relative_to(registration.parent).as_posix() not in registered:
+        findings.append(f"{name}: {language} contract test is not registered: {path}")
+    if (
+        symbol_path != path
+        and symbol_path.relative_to(registration.parent).as_posix() not in registered
+    ):
+        findings.append(f"{name}: {language} symbol evidence is not registered: {symbol_path}")
+    return findings
+
+
+def _contract_test_findings(
     library: dict[str, Any], name: str, prefix: str, repository_root: Path = ROOT
 ) -> list[str]:
     """Bind ABI tests to the language test manifests or CMake test graph."""
@@ -250,26 +312,11 @@ def _contract_test_findings(  # noqa: PLR0912 -- validates every malformed evide
         if registration is None or not registration.is_file():
             findings.append(f"{name}: missing {language} test registration: {registration_value}")
             continue
-        registration_text = _strip_comments(registration.read_text(encoding="utf-8"))
         if registration.suffix == ".json":
-            try:
-                contract = json.loads(registration_text)
-            except json.JSONDecodeError:
-                findings.append(f"{name}: malformed {language} test registration")
-                continue
-            relative = path.relative_to(registration.parent).as_posix()
-            registered_sources = set(contract.get("test_roots", [])) | set(
-                contract.get("covered_sources", [])
+            findings.extend(
+                _json_registration_findings(name, language, path, symbol_path, registration)
             )
-            if relative not in registered_sources:
-                findings.append(f"{name}: {language} contract test is not registered: {path_value}")
-            if symbol_path != path:
-                symbol_relative = symbol_path.relative_to(registration.parent).as_posix()
-                if symbol_relative not in registered_sources:
-                    findings.append(
-                        f"{name}: {language} symbol evidence is not registered: {symbol_value}"
-                    )
-        elif path.name not in registration_text:
+        elif path.name not in _strip_comments(registration.read_text(encoding="utf-8")):
             findings.append(f"{name}: C contract test is not registered: {path_value}")
     if "c" not in seen or "zig" not in seen:
         findings.append(f"{name}: contract tests must include C and Zig")
@@ -404,6 +451,38 @@ def _matrix_jobs(
     ]
 
 
+def _archive_symbols(nm: str, archive: Path, name: str) -> tuple[list[str], set[str]]:
+    """Read one archive's global defined symbols with the resolved nm tool."""
+    if not archive.is_file():
+        return [f"{name} archive missing: {archive}"], set()
+    proc = subprocess.run(  # noqa: S603 -- resolved tool; fresh archive
+        [nm, "-g", "--defined-only", str(archive)], capture_output=True, text=True, check=False
+    )
+    if proc.returncode != 0:
+        return [f"{name} symbol scan failed: {proc.stderr.strip()}"], set()
+    actual = {
+        parts[-1].removeprefix("_")
+        for line in proc.stdout.splitlines()
+        if len(parts := line.split()) >= MIN_NM_SYMBOL_FIELDS
+    }
+    return [], actual
+
+
+def _host_mode_test_findings(
+    library: dict[str, Any], command: list[str], mode: str, repository_root: Path
+) -> tuple[list[str], int]:
+    """Run the canonical host ABI tests in one optimization mode when required."""
+    if library.get("run_host_tests_in_all_modes") is not True:
+        return [], 0
+    proc = subprocess.run(  # noqa: S603 -- pinned Zig; reviewed policy
+        [*command, "test"], cwd=repository_root, capture_output=True, text=True, check=False
+    )
+    if proc.returncode == 0:
+        return [], 1
+    detail = (proc.stdout + proc.stderr).strip()
+    return [f"{library['name']}: host/{mode} ABI tests failed: {detail}"], 0
+
+
 def _compiled_findings(
     library: dict[str, Any],
     zig: str,
@@ -445,40 +524,19 @@ def _compiled_findings(
                 findings.append(f"{name}: {target}/{mode} archive build failed: {detail}")
                 continue
             archive = output / "install" / "lib" / f"lib{library['library_name']}.a"
-            if not archive.is_file():
-                findings.append(f"{name}: {target}/{mode} archive missing: {archive}")
+            symbol_findings, actual = _archive_symbols(nm, archive, f"{name}: {target}/{mode}")
+            findings.extend(symbol_findings)
+            if symbol_findings:
                 continue
-            proc = subprocess.run(  # noqa: S603 -- resolved tool; fresh archive
-                [nm, "-g", "--defined-only", str(archive)],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if proc.returncode != 0:
-                detail = proc.stderr.strip()
-                findings.append(f"{name}: {target}/{mode} symbol scan failed: {detail}")
-                continue
-            actual = {
-                parts[-1].removeprefix("_")
-                for line in proc.stdout.splitlines()
-                if len(parts := line.split()) >= MIN_NM_SYMBOL_FIELDS
-            }
             expected = {row["name"] for row in library["exports"]}
             findings.extend(_compiled_symbol_findings(f"{name}: {target}/{mode}", expected, actual))
             counts["zig_matrix"] += 1
-            if target == "host" and library.get("run_host_tests_in_all_modes") is True:
-                test_proc = subprocess.run(  # noqa: S603 -- pinned Zig; reviewed policy
-                    [*command, "test"],
-                    cwd=repository_root,
-                    capture_output=True,
-                    text=True,
-                    check=False,
+            if target == "host":
+                test_findings, passed = _host_mode_test_findings(
+                    library, command, mode, repository_root
                 )
-                if test_proc.returncode != 0:
-                    detail = (test_proc.stdout + test_proc.stderr).strip()
-                    findings.append(f"{name}: host/{mode} ABI tests failed: {detail}")
-                else:
-                    counts["mode_tests"] += 1
+                findings.extend(test_findings)
+                counts["mode_tests"] += passed
     return findings, counts
 
 
@@ -510,32 +568,9 @@ def _mode_test_policy_findings(
     return []
 
 
-def _validate(
-    policy: dict[str, Any], *, compile_archives: bool, repository_root: Path = ROOT
-) -> tuple[list[str], dict[str, int]]:
-    """Validate the complete policy and return findings plus non-vacuity counts."""
-    findings: list[str] = []
-    required = policy.get("required_targets")
-    required_targets = set(required) if isinstance(required, list) else set()
-    if required_targets != {"host", "ra8"}:
-        findings.append("policy required_targets must contain exactly host and ra8")
-    modes = policy.get("required_modes")
-    required_modes = set(modes) if isinstance(modes, list) else set()
-    if required_modes != REQUIRED_MODES:
-        missing = ", ".join(sorted(REQUIRED_MODES - required_modes)) or "none"
-        unexpected = ", ".join(sorted(required_modes - REQUIRED_MODES)) or "none"
-        findings.append(
-            "policy optimization modes must be Debug, ReleaseSafe, ReleaseSmall "
-            f"(missing: {missing}; unexpected: {unexpected})"
-        )
-    libraries = policy.get("libraries")
-    if not isinstance(libraries, list) or not libraries:
-        return [*findings, "policy must inventory at least one ABI library"], {}
-    zig = shutil.which("zig") if compile_archives else None
-    nm = (shutil.which("llvm-nm") or shutil.which("nm")) if compile_archives else None
-    if compile_archives and (zig is None or nm is None):
-        findings.append("compiled policy check requires zig and llvm-nm or nm")
-    counts = {
+def _policy_counts(libraries: list[Any], required_modes: set[str]) -> dict[str, int]:
+    """Initialize the policy's non-vacuity counters."""
+    return {
         "libraries": len(libraries),
         "headers": 0,
         "adapters": 0,
@@ -547,6 +582,58 @@ def _validate(
         "zig_matrix": 0,
         "mode_tests": 0,
     }
+
+
+def _floor_findings(counts: dict[str, int]) -> list[str]:
+    """Report policy inventory counts below their non-vacuity floors."""
+    floors = {
+        "libraries": 1,
+        "headers": 1,
+        "adapters": 1,
+        "exports": 1,
+        "tests": 3,
+        "targets": 2,
+        "modes": 3,
+    }
+    return [
+        f"non-vacuity failure: {item}={counts[item]}, floor={floor}"
+        for item, floor in floors.items()
+        if counts[item] < floor
+    ]
+
+
+def _required_policy_sets(policy: dict[str, Any]) -> tuple[set[str], set[str], list[str]]:
+    """Normalize required target/mode sets and report exact-set drift."""
+    findings: list[str] = []
+    required = policy.get("required_targets")
+    targets = set(required) if isinstance(required, list) else set()
+    if targets != {"host", "ra8"}:
+        findings.append("policy required_targets must contain exactly host and ra8")
+    modes_value = policy.get("required_modes")
+    modes = set(modes_value) if isinstance(modes_value, list) else set()
+    if modes != REQUIRED_MODES:
+        missing = ", ".join(sorted(REQUIRED_MODES - modes)) or "none"
+        unexpected = ", ".join(sorted(modes - REQUIRED_MODES)) or "none"
+        findings.append(
+            "policy optimization modes must be Debug, ReleaseSafe, ReleaseSmall "
+            f"(missing: {missing}; unexpected: {unexpected})"
+        )
+    return targets, modes, findings
+
+
+def _validate(
+    policy: dict[str, Any], *, compile_archives: bool, repository_root: Path = ROOT
+) -> tuple[list[str], dict[str, int]]:
+    """Validate the complete policy and return findings plus non-vacuity counts."""
+    required_targets, required_modes, findings = _required_policy_sets(policy)
+    libraries = policy.get("libraries")
+    if not isinstance(libraries, list) or not libraries:
+        return [*findings, "policy must inventory at least one ABI library"], {}
+    zig = shutil.which("zig") if compile_archives else None
+    nm = (shutil.which("llvm-nm") or shutil.which("nm")) if compile_archives else None
+    if compile_archives and (zig is None or nm is None):
+        findings.append("compiled policy check requires zig and llvm-nm or nm")
+    counts = _policy_counts(libraries, required_modes)
     typed_libraries = [library for library in libraries if isinstance(library, dict)]
     findings.extend(_repository_inventory_findings(typed_libraries, repository_root))
     findings.extend(_mode_test_policy_findings(policy, typed_libraries))
@@ -577,18 +664,7 @@ def _validate(
             findings.extend(compiled_findings)
             for key, value in compiled_counts.items():
                 counts[key] += value
-    floors = {
-        "libraries": 1,
-        "headers": 1,
-        "adapters": 1,
-        "exports": 1,
-        "tests": 3,
-        "targets": 2,
-        "modes": 3,
-    }
-    for item, floor in floors.items():
-        if counts[item] < floor:
-            findings.append(f"non-vacuity failure: {item}={counts[item]}, floor={floor}")
+    findings.extend(_floor_findings(counts))
     if compile_archives:
         expected_matrix = sum(
             len(library.get("targets", {})) * len(REQUIRED_MODES) for library in typed_libraries
@@ -606,7 +682,238 @@ def _validate(
     return findings, counts
 
 
-def _selftest() -> int:  # noqa: C901,PLR0911,PLR0912,PLR0915 -- explicit must-fire matrix
+def _selftest_fixture(root: Path, header: str, adapter: str) -> dict[str, Any]:
+    """Write the isolated ABI fixture and return its compliant policy row."""
+    (root / "build").mkdir()
+    (root / "inc").mkdir()
+    (root / "tests").mkdir()
+    (root / "inc/demo.h").write_text(header, encoding="utf-8")
+    (root / "build/adapter.zig").write_text(adapter, encoding="utf-8")
+    (root / "build/build.zig").write_text(
+        """const std = @import("std");
+pub fn build(b: *std.Build) void {
+    const module = b.createModule(.{
+        .root_source_file = b.path("adapter.zig"),
+        .target = b.standardTargetOptions(.{}),
+        .optimize = b.standardOptimizeOption(.{}),
+    });
+    b.installArtifact(b.addLibrary(.{ .name = "demo", .linkage = .static, .root_module = module }));
+}
+""",
+        encoding="utf-8",
+    )
+    tests = {
+        "c": "int demo_run(void); int main(void) { return demo_run(); }\n",
+        "rust": 'extern "C" { fn demo_run(); } #[test] fn calls() { unsafe { demo_run() } }\n',
+        "zig": 'extern fn demo_run() void; test "calls" { demo_run(); }\n',
+    }
+    for language, contents in tests.items():
+        (root / f"tests/test.{language}").write_text(contents, encoding="utf-8")
+    registration = {
+        "test_roots": ["test.c", "test.rust", "test.zig"],
+        "covered_sources": ["test.c", "test.rust", "test.zig"],
+    }
+    (root / "tests/contract.json").write_text(json.dumps(registration), encoding="utf-8")
+    return {
+        "name": "demo",
+        "build_root": "build",
+        "public_header": "inc/demo.h",
+        "adapter": "build/adapter.zig",
+        "library_name": "demo",
+        "symbol_prefix": "demo_",
+        "compatibility_sha256": _normalized_header_digest(header),
+        "layout_assertions": ["sizeof(demo_config_t) == 4U"],
+        "c_include_dirs": ["inc"],
+        "target_class": "host-ra8",
+        "targets": {"host": [], "ra8": list(RA8_ZIG_ARGUMENTS)},
+        "run_host_tests_in_all_modes": True,
+        "contract_tests": [
+            {
+                "language": language,
+                "path": f"tests/test.{language}",
+                "registration": "tests/contract.json",
+            }
+            for language in ("c", "rust", "zig")
+        ],
+        "exports": [
+            {
+                "name": "demo_run",
+                "calling_context": "task-only-non-reentrant",
+                "ownership": "borrows input and publishes output",
+            }
+        ],
+    }
+
+
+def _selftest_target_policy(base: dict[str, Any], root: Path) -> str | None:
+    """Exercise clean inventory plus missing-adapter and missing-target findings."""
+    if findings := _library_findings(base, {"host", "ra8"}, root):
+        return f"must-stay-quiet fixture failed: {findings}"
+    if not any(
+        "unregistered Zig export adapter" in item
+        for item in _repository_inventory_findings([], root)
+    ):
+        return "must-fire fixture was accepted: omitted adapter"
+    host_only = json.loads(json.dumps(base))
+    host_only["targets"].pop("ra8")
+    findings, _ = _validate(
+        {
+            "required_targets": ["host", "ra8"],
+            "required_modes": sorted(REQUIRED_MODES),
+            "mode_test_library": "demo",
+            "libraries": [host_only],
+        },
+        compile_archives=False,
+        repository_root=root,
+    )
+    required = (
+        "missing required target classification: ra8",
+        "target classification host-ra8 requires",
+    )
+    return next(
+        (
+            f"must-fire fixture was accepted: {item}"
+            for item in required
+            if not any(item in finding for finding in findings)
+        ),
+        None,
+    )
+
+
+def _selftest_mode_policy(base: dict[str, Any], root: Path) -> str | None:
+    """Exercise optimization matrix completeness and all-mode host-test policy."""
+    findings, _ = _validate(
+        {
+            "required_targets": ["host", "ra8"],
+            "required_modes": ["Debug", "ReleaseSafe"],
+            "mode_test_library": "demo",
+            "libraries": [base],
+        },
+        compile_archives=False,
+        repository_root=root,
+    )
+    if not any("missing: ReleaseSmall" in item for item in findings):
+        return "must-fire fixture was accepted: inventory without ReleaseSmall"
+    expected = {(target, mode) for target in ("host", "ra8") for mode in REQUIRED_MODES}
+    actual = {(target, mode) for target, _arguments, mode in _matrix_jobs(base, REQUIRED_MODES)}
+    if actual != expected:
+        return "must-stay-quiet fixture lost a target/mode matrix job"
+    no_tests = json.loads(json.dumps(base))
+    no_tests["run_host_tests_in_all_modes"] = False
+    if not any(
+        "run_host_tests_in_all_modes must be true" in item
+        for item in _mode_test_policy_findings({"mode_test_library": "demo"}, [no_tests])
+    ):
+        return "must-fire fixture was accepted: disabled mode tests"
+    return None
+
+
+def _selftest_source_policy(base: dict[str, Any], root: Path, adapter: str) -> str | None:
+    """Exercise adapter syntax, executable evidence, and RA8 target identity findings."""
+    mutations = {
+        "prohibited boundary type": adapter.replace("?*u32", "[]u32"),
+        "missing export": adapter.replace("pub export fn", "pub fn"),
+        "unexpected export": adapter + "export fn rogue_helper() callconv(.c) void {}\n",
+    }
+    for label, changed in mutations.items():
+        (root / "build/adapter.zig").write_text(changed, encoding="utf-8")
+        findings = _library_findings(base, {"host", "ra8"}, root)
+        if not any(label.split()[0] in item for item in findings):
+            return f"must-fire fixture was accepted: {label}"
+    (root / "build/adapter.zig").write_text(adapter, encoding="utf-8")
+    c_test = root / "tests/test.c"
+    valid = c_test.read_text(encoding="utf-8")
+    c_test.write_text("/* demo_run main( */\n", encoding="utf-8")
+    findings = _library_findings(base, {"host", "ra8"}, root)
+    c_test.write_text(valid, encoding="utf-8")
+    if not any("not executable ABI evidence" in item for item in findings):
+        return "must-fire fixture was accepted: dead contract test"
+    broken = json.loads(json.dumps(base))
+    broken["targets"]["ra8"] = ["-Dtarget=thumb-freestanding-eabihf"]
+    if not any(
+        "does not match RA8D2 CPU/FPU" in item
+        for item in _library_findings(broken, {"host", "ra8"}, root)
+    ):
+        return "must-fire fixture was accepted: mislabeled RA8 target"
+    return None
+
+
+def _selftest_metadata_policy(base: dict[str, Any], root: Path) -> str | None:
+    """Exercise documentation, digest, and mandatory-field findings."""
+    for field, expected in (("calling_context", "calling context"), ("ownership", "ownership")):
+        broken = json.loads(json.dumps(base))
+        broken["exports"][0][field] = ""
+        if not any(expected in item for item in _library_findings(broken, {"host", "ra8"}, root)):
+            return f"must-fire fixture was accepted: undocumented {field}"
+    broken = json.loads(json.dumps(base))
+    broken["compatibility_sha256"] = "0" * 64
+    if not any(
+        "compatibility drift" in item for item in _library_findings(broken, {"host", "ra8"}, root)
+    ):
+        return "must-fire fixture was accepted: compatibility drift"
+    for field, expected in (
+        ("public_header", "missing public_header"),
+        ("contract_tests", "missing contract tests"),
+        ("targets", "missing target evidence"),
+    ):
+        broken = json.loads(json.dumps(base))
+        broken.pop(field)
+        if not any(expected in item for item in _library_findings(broken, {"host", "ra8"}, root)):
+            return f"must-fire fixture was accepted: {expected}"
+    return None
+
+
+def _selftest_compiled_policy(base: dict[str, Any], root: Path) -> str | None:
+    """Exercise compiled target counts and both symbol-drift directions when tools exist."""
+    zig = shutil.which("zig")
+    nm = shutil.which("llvm-nm") or shutil.which("nm")
+    if zig is None or nm is None:
+        return None
+    compiled = json.loads(json.dumps(base))
+    compiled["exports"][0]["name"] = "demo_missing"
+    compiled["run_host_tests_in_all_modes"] = False
+    findings, counts = _compiled_findings(compiled, zig, nm, {"Debug"}, root)
+    expected_count = len(compiled["targets"])
+    if counts["c_matrix"] != expected_count or counts["zig_matrix"] != expected_count:
+        return (
+            f"must-stay-quiet fixture missed compiled targets: counts={counts}, findings={findings}"
+        )
+    for expected in ("compiled archive missing export", "compiled archive unexpected export"):
+        if not any(expected in item for item in findings):
+            return f"must-fire fixture was accepted: {expected}"
+    return None
+
+
+def _selftest_layout_assertions() -> str | None:
+    """Prove assertion matching tolerates layout without accepting false evidence."""
+    fragment = "sizeof(demo_config_t) == 4U"
+    valid = 'static_assert(sizeof(demo_config_t) ==\n  4U, "layout");\n'
+    policy = {
+        "compatibility_sha256": _normalized_header_digest(valid),
+        "layout_assertions": [fragment],
+    }
+    if _compatibility_findings(policy, "demo", valid, ""):
+        return "must-stay-quiet reformatted layout assertion was rejected"
+    invalid = (
+        (f"/* {fragment} */\n", "", "comment-only layout assertion"),
+        (f"#if 0\n{fragment}\n#endif\n", "", "disabled layout assertion"),
+        (f"#if (0)\n{fragment}\n#endif\n", "", "parenthesized-disabled layout assertion"),
+        (f"#ifdef NEVER_DEFINED\n{fragment}\n#endif\n", "", "conditional layout assertion"),
+        (f'const char *evidence = "{fragment}";\n', "", "string-only layout assertion"),
+        ("size of(demo_config_t) == 4U;\n", "", "split-token layout assertion"),
+        ("sizeof(demo_", "config_t) == 4U;\n", "cross-file layout assertion"),
+    )
+    for header, adapter, label in invalid:
+        findings = _compatibility_findings(policy, "demo", header, adapter)
+        if not any("missing representation assertion" in finding for finding in findings):
+            return f"must-fire fixture was accepted: {label}"
+    zig_fragment = "@sizeOf(AbiError) != 2"
+    if _contains_token_sequence(f"const evidence = \\\\{zig_fragment};\n", zig_fragment):
+        return "must-fire fixture was accepted: Zig multiline-string layout assertion"
+    return None
+
+
+def _selftest() -> int:
     """Prove every advertised policy finding fires and compliant input stays quiet."""
     header = """typedef struct { unsigned value; } demo_config_t;
 int demo_run(const demo_config_t *config, unsigned *output);
@@ -619,236 +926,24 @@ static_assert(sizeof(demo_config_t) == 4U, "layout");
     )
     with tempfile.TemporaryDirectory(prefix="ra8-zig-abi-selftest-") as tmp:
         root = Path(tmp).resolve()
-        (root / "build").mkdir()
-        (root / "inc").mkdir()
-        (root / "tests").mkdir()
-        (root / "inc/demo.h").write_text(header, encoding="utf-8")
-        (root / "build/adapter.zig").write_text(adapter, encoding="utf-8")
-        (root / "build/build.zig").write_text(
-            """const std = @import("std");
-pub fn build(b: *std.Build) void {
-    const module = b.createModule(.{
-        .root_source_file = b.path("adapter.zig"),
-        .target = b.standardTargetOptions(.{}),
-        .optimize = b.standardOptimizeOption(.{}),
-    });
-    b.installArtifact(b.addLibrary(.{ .name = "demo", .linkage = .static, .root_module = module }));
-}
-""",
-            encoding="utf-8",
-        )
-        test_contents = {
-            "c": "int demo_run(void); int main(void) { return demo_run(); }\n",
-            "rust": 'extern "C" { fn demo_run(); } #[test] fn calls() { unsafe { demo_run() } }\n',
-            "zig": 'extern fn demo_run() void; test "calls" { demo_run(); }\n',
-        }
-        for language, contents in test_contents.items():
-            (root / f"tests/test.{language}").write_text(contents, encoding="utf-8")
-        registration = {
-            "test_roots": ["test.c", "test.rust", "test.zig"],
-            "covered_sources": ["test.c", "test.rust", "test.zig"],
-        }
-        (root / "tests/contract.json").write_text(json.dumps(registration), encoding="utf-8")
 
-        def fixture_library_findings(
-            library: dict[str, Any], required_targets: set[str]
-        ) -> list[str]:
-            """Validate a selftest library within the isolated fixture root."""
-            return _library_findings(library, required_targets, root)
-
-        try:
-            base: dict[str, Any] = {
-                "name": "demo",
-                "build_root": "build",
-                "public_header": "inc/demo.h",
-                "adapter": "build/adapter.zig",
-                "library_name": "demo",
-                "symbol_prefix": "demo_",
-                "compatibility_sha256": _normalized_header_digest(header),
-                "layout_assertions": ["sizeof(demo_config_t) == 4U"],
-                "c_include_dirs": ["inc"],
-                "target_class": "host-ra8",
-                "targets": {
-                    "host": [],
-                    "ra8": list(RA8_ZIG_ARGUMENTS),
-                },
-                "run_host_tests_in_all_modes": True,
-                "contract_tests": [
-                    {
-                        "language": language,
-                        "path": f"tests/test.{language}",
-                        "registration": "tests/contract.json",
-                    }
-                    for language in ("c", "rust", "zig")
-                ],
-                "exports": [
-                    {
-                        "name": "demo_run",
-                        "calling_context": "task-only-non-reentrant",
-                        "ownership": "borrows input and publishes output",
-                    }
-                ],
-            }
-            if findings := fixture_library_findings(base, {"host", "ra8"}):
-                print(f"must-stay-quiet fixture failed: {findings}", file=sys.stderr)
+        base = _selftest_fixture(root, header, adapter)
+        for check in (_selftest_target_policy, _selftest_mode_policy):
+            if error := check(base, root):
+                print(error, file=sys.stderr)
                 return 1
-            if not any(
-                "unregistered Zig export adapter" in item
-                for item in _repository_inventory_findings([], root)
-            ):
-                print("must-fire fixture was accepted: omitted adapter", file=sys.stderr)
-                return 1
-            host_only = json.loads(json.dumps(base))
-            host_only["targets"].pop("ra8")
-            target_findings, _ = _validate(
-                {
-                    "required_targets": ["host", "ra8"],
-                    "required_modes": sorted(REQUIRED_MODES),
-                    "mode_test_library": "demo",
-                    "libraries": [host_only],
-                },
-                compile_archives=False,
-                repository_root=root,
-            )
-            if not any(
-                "missing required target classification: ra8" in item for item in target_findings
-            ):
-                print("must-fire fixture was accepted: inventory without RA8", file=sys.stderr)
-                return 1
-            if not any(
-                "target classification host-ra8 requires" in item for item in target_findings
-            ):
-                print(
-                    "must-fire fixture was accepted: host-ra8 library without RA8", file=sys.stderr
-                )
-                return 1
-            mode_findings, _ = _validate(
-                {
-                    "required_targets": ["host", "ra8"],
-                    "required_modes": ["Debug", "ReleaseSafe"],
-                    "mode_test_library": "demo",
-                    "libraries": [base],
-                },
-                compile_archives=False,
-                repository_root=root,
-            )
-            if not any("missing: ReleaseSmall" in item for item in mode_findings):
-                print(
-                    "must-fire fixture was accepted: inventory without ReleaseSmall",
-                    file=sys.stderr,
-                )
-                return 1
-            expected_jobs = {
-                (target, mode) for target in ("host", "ra8") for mode in REQUIRED_MODES
-            }
-            actual_jobs = {
-                (target, mode) for target, _arguments, mode in _matrix_jobs(base, REQUIRED_MODES)
-            }
-            if actual_jobs != expected_jobs:
-                print("must-stay-quiet fixture lost a target/mode matrix job", file=sys.stderr)
-                return 1
-            no_mode_tests = json.loads(json.dumps(base))
-            no_mode_tests["run_host_tests_in_all_modes"] = False
-            if not any(
-                "run_host_tests_in_all_modes must be true" in item
-                for item in _mode_test_policy_findings(
-                    {"mode_test_library": "demo"}, [no_mode_tests]
-                )
-            ):
-                print("must-fire fixture was accepted: disabled mode tests", file=sys.stderr)
-                return 1
-            mutations = {
-                "prohibited boundary type": adapter.replace("?*u32", "[]u32"),
-                "missing export": adapter.replace("pub export fn", "pub fn"),
-                "unexpected export": adapter + "export fn rogue_helper() callconv(.c) void {}\n",
-            }
-            for label, changed in mutations.items():
-                (root / "build/adapter.zig").write_text(changed, encoding="utf-8")
-                if not any(
-                    label.split()[0] in item
-                    for item in fixture_library_findings(base, {"host", "ra8"})
-                ):
-                    print(f"must-fire fixture was accepted: {label}", file=sys.stderr)
-                    return 1
-            (root / "build/adapter.zig").write_text(adapter, encoding="utf-8")
-            c_test = root / "tests/test.c"
-            valid_c_test = c_test.read_text(encoding="utf-8")
-            c_test.write_text("/* demo_run main( */\n", encoding="utf-8")
-            if not any(
-                "not executable ABI evidence" in item
-                for item in fixture_library_findings(base, {"host", "ra8"})
-            ):
-                print("must-fire fixture was accepted: dead contract test", file=sys.stderr)
-                return 1
-            c_test.write_text(valid_c_test, encoding="utf-8")
-            broken_target = json.loads(json.dumps(base))
-            broken_target["targets"]["ra8"] = ["-Dtarget=thumb-freestanding-eabihf"]
-            if not any(
-                "does not match RA8D2 CPU/FPU" in item
-                for item in fixture_library_findings(broken_target, {"host", "ra8"})
-            ):
-                print("must-fire fixture was accepted: mislabeled RA8 target", file=sys.stderr)
-                return 1
-            for field, expected in (
-                ("calling_context", "calling context"),
-                ("ownership", "ownership"),
-            ):
-                broken = json.loads(json.dumps(base))
-                broken["exports"][0][field] = ""
-                if not any(
-                    expected in item for item in fixture_library_findings(broken, {"host", "ra8"})
-                ):
-                    print(f"must-fire fixture was accepted: undocumented {field}", file=sys.stderr)
-                    return 1
-            broken = json.loads(json.dumps(base))
-            broken["compatibility_sha256"] = "0" * 64
-            if not any(
-                "compatibility drift" in item
-                for item in fixture_library_findings(broken, {"host", "ra8"})
-            ):
-                print("must-fire fixture was accepted: compatibility drift", file=sys.stderr)
-                return 1
-            for field, expected in (
-                ("public_header", "missing public_header"),
-                ("contract_tests", "missing contract tests"),
-                ("targets", "missing target evidence"),
-            ):
-                broken = json.loads(json.dumps(base))
-                broken.pop(field)
-                if not any(
-                    expected in item for item in fixture_library_findings(broken, {"host", "ra8"})
-                ):
-                    print(f"must-fire fixture was accepted: {expected}", file=sys.stderr)
-                    return 1
-            zig = shutil.which("zig")
-            nm = shutil.which("llvm-nm") or shutil.which("nm")
-            if zig is not None and nm is not None:
-                compiled = json.loads(json.dumps(base))
-                compiled["exports"][0]["name"] = "demo_missing"
-                compiled["run_host_tests_in_all_modes"] = False
-                compiled_findings, compiled_counts = _compiled_findings(
-                    compiled, zig, nm, {"Debug"}, root
-                )
-                expected_compiled = len(compiled["targets"])
-                if (
-                    compiled_counts["c_matrix"] != expected_compiled
-                    or compiled_counts["zig_matrix"] != expected_compiled
-                ):
-                    print(
-                        "must-stay-quiet fixture did not execute both compiled targets: "
-                        f"counts={compiled_counts}, findings={compiled_findings}",
-                        file=sys.stderr,
-                    )
-                    return 1
-                for expected in (
-                    "compiled archive missing export",
-                    "compiled archive unexpected export",
-                ):
-                    if not any(expected in item for item in compiled_findings):
-                        print(f"must-fire fixture was accepted: {expected}", file=sys.stderr)
-                        return 1
-        finally:
-            pass
+        if error := _selftest_source_policy(base, root, adapter):
+            print(error, file=sys.stderr)
+            return 1
+        if error := _selftest_metadata_policy(base, root):
+            print(error, file=sys.stderr)
+            return 1
+        if error := _selftest_compiled_policy(base, root):
+            print(error, file=sys.stderr)
+            return 1
+        if error := _selftest_layout_assertions():
+            print(error, file=sys.stderr)
+            return 1
     print("check_zig_abi_policy.py --selftest: OK (quiet + all named failure classes).")
     return 0
 

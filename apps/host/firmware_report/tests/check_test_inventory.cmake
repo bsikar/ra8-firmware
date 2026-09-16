@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 
-set(expected
+set(EXPECTED
     test_firmware_report_abi
     test_firmware_report_cli
     test_firmware_report_command
@@ -10,9 +10,9 @@ set(expected
     test_firmware_report_symbols
     test_firmware_report_symbols_selftest
 )
-list(SORT expected)
-set(actual ${ACTUAL_TESTS})
-list(SORT actual)
-if(NOT "${actual}" STREQUAL "${expected}")
-  message(FATAL_ERROR "firmware_report CTest inventory ${actual}; required ${expected}")
+list(SORT EXPECTED)
+set(ACTUAL ${ACTUAL_TESTS})
+list(SORT ACTUAL)
+if(NOT "${ACTUAL}" STREQUAL "${EXPECTED}")
+  message(FATAL_ERROR "firmware_report CTest inventory ${ACTUAL}; required ${EXPECTED}")
 endif()

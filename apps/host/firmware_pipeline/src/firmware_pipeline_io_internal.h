@@ -2,15 +2,19 @@
 // Copyright (c) 2026 Brighton Sikarskie
 
 /**
- * @file firmware_pipeline_io.h
+ * @file firmware_pipeline_io_internal.h
  * @brief Injectable C-owned file and allocation lifecycle.
- * @details Separates deterministic resource-state tests from hosted stdio adapters.
+ * @details Separates deterministic resource-state tests from hosted raw-descriptor adapters.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
 
 #include <stddef.h>
 #include <stdint.h>
+
+#include "ra8_attributes.h"
 
 /**
  * @enum firmware_pipeline_io_status_t
@@ -20,7 +24,7 @@
  * @code
  * firmware_pipeline_io_status_t status = k_firmware_pipeline_io_ok;
  * @endcode
- * @see firmware_pipeline_read_image
+ * @see priv_firmware_pipeline_read_image
  */
 typedef enum : uint8_t {
   k_firmware_pipeline_io_ok     = 0, /**< Image acquisition completed. */
@@ -35,7 +39,7 @@ typedef enum : uint8_t {
  * @code
  * firmware_pipeline_image_t image = {};
  * @endcode
- * @see firmware_pipeline_release_image
+ * @see priv_firmware_pipeline_release_image
  */
 typedef struct {
   uint8_t* bytes; /**< Owned heap bytes, or null. */
@@ -46,11 +50,11 @@ typedef struct {
  * @struct firmware_pipeline_io_ops_t
  * @brief Operations required by the acquisition state machine.
  * @details Every callback receives caller-owned context; file handles remain provider-owned.
- * @invariant Every callback is non-null for a call to `firmware_pipeline_read_image`.
+ * @invariant Every callback is non-null for a call to `priv_firmware_pipeline_read_image`.
  * @code
  * firmware_pipeline_io_ops_t ops = {};
  * @endcode
- * @see firmware_pipeline_host_io
+ * @see priv_firmware_pipeline_host_io
  */
 typedef struct {
   void* context; /**< Opaque callback context, possibly null. */
@@ -112,15 +116,15 @@ typedef struct {
 } firmware_pipeline_io_ops_t;
 
 /**
- * @brief Return the immutable hosted stdio/allocator adapter.
- * @details The returned table delegates to fopen, fseek, ftell, malloc, fread, fclose, and free.
+ * @brief Return the immutable hosted descriptor/allocator adapter.
+ * @details The returned table delegates to POSIX open/lseek/read/close plus malloc/free.
  * @return Non-null process-lifetime operation table.
  * @pre The hosted C runtime is initialized.
  * @post No resource is acquired.
  * @note Thread-safe; the returned object is immutable.
  * @since 0.1.0
  */
-const firmware_pipeline_io_ops_t* firmware_pipeline_host_io(void);
+RA8_PRIV const firmware_pipeline_io_ops_t* priv_firmware_pipeline_host_io(void);
 
 /**
  * @brief Read one bounded file through an injectable resource provider.
@@ -132,15 +136,16 @@ const firmware_pipeline_io_ops_t* firmware_pipeline_host_io(void);
  * @retval k_firmware_pipeline_io_ok Complete image published.
  * @retval k_firmware_pipeline_io_failed Validation or one resource transition failed.
  * @pre `out_image` is writable and owns no allocation.
- * @pre Callback behavior follows the C stdio equivalents.
+ * @pre Callback behavior follows the documented raw-descriptor equivalents.
  * @post Success publishes at most one allocation.
  * @post Failure closes and releases each acquired resource exactly once and preserves output.
  * @note Thread-safe when the supplied provider is thread-safe.
  * @since 0.1.0
  */
-firmware_pipeline_io_status_t firmware_pipeline_read_image(const firmware_pipeline_io_ops_t* ops,
-                                                           const char*                       path,
-                                                           firmware_pipeline_image_t* out_image);
+RA8_PRIV firmware_pipeline_io_status_t
+priv_firmware_pipeline_read_image(const firmware_pipeline_io_ops_t* ops,
+                                  const char*                       path,
+                                  firmware_pipeline_image_t*        out_image);
 
 /**
  * @brief Release one successfully acquired image.
@@ -154,5 +159,5 @@ firmware_pipeline_io_status_t firmware_pipeline_read_image(const firmware_pipeli
  * @note Thread-safe when the supplied provider is thread-safe.
  * @since 0.1.0
  */
-void firmware_pipeline_release_image(const firmware_pipeline_io_ops_t* ops,
-                                     firmware_pipeline_image_t*        image);
+RA8_PRIV void priv_firmware_pipeline_release_image(const firmware_pipeline_io_ops_t* ops,
+                                                   firmware_pipeline_image_t*        image);

@@ -168,7 +168,7 @@ _GROUPS = (
             "checks/check-copyright.py:COPY_TEXT",
             "checks/check-copyright.py:SPDX_TEXT",
             "checks/check_rust.py:RUST_TEST_ATTR_RE",
-            "checks/check_zig.py:TEST_DECL_RE",
+            "checks/zig_test_contract.py:TEST_DECL_RE",
             "checks/check-since-version.py:PUBLIC_DECL",
             "checks/check-since-version.py:SINCE_TAG_PRESENT",
             "checks/check-since-version.py:SINCE_VALUE",

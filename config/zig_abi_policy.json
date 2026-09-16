@@ -18,7 +18,7 @@
       "run_host_tests_in_all_modes": true,
       "c_include_dirs": ["tests/zig_abi_fixture/inc", "libs/ra8_core/inc"],
       "contract_tests": [
-        {"language": "c", "path": "tests/zig_abi_fixture/test_abi_fixture.c", "registration": "tests/cmake/tests_zig_abi.cmake"},
+        {"language": "c", "path": "tests/zig_abi_fixture/src/test_abi_fixture.c", "registration": "tests/cmake/tests_zig_abi.cmake"},
         {"language": "rust", "path": "tests/zig_abi_fixture/rust/tests/zig_provider.rs", "symbol_evidence": "tests/zig_abi_fixture/rust/src/foreign.rs", "registration": "tests/zig_abi_fixture/rust/.rust-test-contract.json"},
         {"language": "zig", "path": "tests/zig_abi_fixture/tests/abi_test.zig", "registration": "tests/zig_abi_fixture/.zig-test-contract.json"}
       ],
@@ -49,7 +49,7 @@
       "targets": {"host": [], "ra8": ["-Dtarget=thumb-freestanding-eabihf", "-Dcpu=cortex_m85+fp_armv8-d32-fp64"]},
       "c_include_dirs": ["tests/abi_chain_fixture/inc", "tests/rust_abi_fixture/inc", "libs/ra8_core/inc"],
       "contract_tests": [
-        {"language": "c", "path": "tests/abi_chain_fixture/test_c_consumer.c", "registration": "tests/cmake/rust_abi_contract.cmake"},
+        {"language": "c", "path": "tests/abi_chain_fixture/src/test_c_consumer.c", "registration": "tests/cmake/rust_abi_contract.cmake"},
         {"language": "zig", "path": "tests/abi_chain_fixture/tests/chain_test.zig", "registration": "tests/abi_chain_fixture/.zig-test-contract.json"}
       ],
       "exports": [
@@ -71,7 +71,7 @@
       "targets": {"host": []},
       "c_include_dirs": ["apps/host/firmware_pipeline/inc"],
       "contract_tests": [
-        {"language": "c", "path": "apps/host/firmware_pipeline/tests/test_abi.c", "registration": "apps/host/firmware_pipeline/CMakeLists.txt"},
+        {"language": "c", "path": "apps/host/firmware_pipeline/tests/src/test_abi.c", "registration": "apps/host/firmware_pipeline/CMakeLists.txt"},
         {"language": "zig", "path": "apps/host/firmware_pipeline/zig/tests/native.zig", "registration": "apps/host/firmware_pipeline/zig/.zig-test-contract.json"}
       ],
       "exports": [

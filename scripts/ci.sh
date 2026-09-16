@@ -5,9 +5,7 @@
 #
 # scripts/ci.sh -- THE single definition of every CI gate in this repository.
 #
-# ===========================================================================
 # ONE SOURCE OF TRUTH
-# ===========================================================================
 # Every check CI runs is a shell function in this file, listed in the
 # RA8_GATE_REGISTRY table below. The GitHub Actions workflows contain no check
 # bodies at all: each gate-bearing step is a thin
@@ -37,7 +35,6 @@
 # `# ci-parity: infra` -- and infra steps may not invoke checkers. It runs as
 # the `ci-parity` gate below, so the guard guards itself.
 #
-# ---------------------------------------------------------------------------
 # ADDING A NEW GATE (the whole procedure)
 # ---------------------------------------------------------------------------
 #   1. Add one row to RA8_GATE_REGISTRY.

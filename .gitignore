@@ -261,7 +261,8 @@ tests/fuzz/corpus/**
 /apps/**/build/
 /apps/**/build-*/
 # Cargo build output for first-party Rust crates.
-target/
+/apps/host/**/target/
+/tests/**/target/
 /.compile_commands_scratch/
 # Codegraph indexes are local workspace artifacts, not firmware source.
 /.codegraph/

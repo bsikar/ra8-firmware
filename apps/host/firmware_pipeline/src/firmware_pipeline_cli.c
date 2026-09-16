@@ -5,14 +5,17 @@
  * @file firmware_pipeline_cli.c
  * @brief Deterministic firmware_pipeline command-line validation.
  * @details Implements the internal C argument policy.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
-
-#include "firmware_pipeline_cli.h"
 
 #include <stddef.h>
 
-firmware_pipeline_cli_status_t
-firmware_pipeline_parse_args(int argc, char** argv, const char** out_path)
+#include "firmware_pipeline_cli_internal.h"
+
+RA8_PRIV firmware_pipeline_cli_status_t priv_firmware_pipeline_parse_args(int          argc,
+                                                                          char**       argv,
+                                                                          const char** out_path)
 {
   if ((argc != 2) || (argv == nullptr) || (out_path == nullptr) || (argv[1] == nullptr) ||
       (argv[1][0] == '\0')) {

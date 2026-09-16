@@ -5,37 +5,60 @@
  * @file firmware_pipeline_io.c
  * @brief Bounded image acquisition and hosted provider implementation.
  * @details Implements explicit single-owner cleanup transitions for every failure.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
-#include "firmware_pipeline_io.h"
-
-#include <stdio.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
+#include <unistd.h>
+
+#include "firmware_pipeline_io_internal.h"
 
 typedef enum : uint32_t {
   k_firmware_pipeline_max_image = 16U * 1024U * 1024U, /**< Maximum input bytes. */
 } firmware_pipeline_limit_t;
 
 /**
- * @brief Adapt binary fopen to the injectable provider contract.
+ * @brief Adapt POSIX open to the injectable provider contract.
  * @details Opens one path for synchronous binary input and retains no path pointer.
  * @param[in] context Unused provider context.
  * @param[in] path Non-empty terminated input path.
- * @return Opaque open stream or null on failure.
+ * @return Encoded raw descriptor or null on failure.
  * @pre `path` is readable and terminated.
- * @post Success transfers one stream handle to the caller.
- * @note Thread-compatible under hosted stream rules.
+ * @post Success transfers one descriptor handle to the caller.
+ * @note Thread-compatible under hosted descriptor rules.
  * @since 0.1.0
  */
 static void* host_open(void* context, const char* path)
 {
   (void)context;
-  return fopen(path, "rb");
+  const int descriptor = open(path, O_RDONLY);
+  return descriptor < 0 ? nullptr : (void*)((intptr_t)descriptor + 1);
 }
 
 /**
- * @brief Adapt fseek to the injectable provider contract.
- * @details Repositions one hosted file without retaining arguments.
+ * @brief Decode the non-null opaque representation of a raw descriptor.
+ * @details Reverses the offset encoding used by host_open without changing ownership.
+ * @param[in] file Non-null encoded descriptor handle.
+ * @return Raw non-negative descriptor.
+ * @retval 0 Standard-input descriptor when encoded as one.
+ * @pre `file` was returned by host_open.
+ * @pre The encoded value is representable as an integer descriptor.
+ * @post The handle and descriptor state are unchanged.
+ * @post No resource is acquired or released.
+ * @note Thread-safe; reads only its argument.
+ * @since 0.1.0
+ */
+static int host_descriptor(void* file)
+{
+  return (int)((intptr_t)file - 1);
+}
+
+/**
+ * @brief Adapt POSIX lseek to the injectable provider contract.
+ * @details Repositions one raw descriptor without retaining arguments.
  * @param[in] context Unused provider context.
  * @param[in] file Non-null hosted file handle.
  * @param[in] offset Requested byte offset.
@@ -43,37 +66,37 @@ static void* host_open(void* context, const char* path)
  * @return Hosted seek result.
  * @retval 0 Reposition succeeded.
  * @retval -1 Reposition failed.
- * @pre `file` identifies an open hosted stream.
- * @pre `origin` is accepted by fseek.
- * @post Success changes the stream position.
+ * @pre `file` identifies an open raw descriptor.
+ * @pre `origin` is accepted by lseek.
+ * @post Success changes the descriptor position.
  * @post Failure leaves ownership unchanged.
- * @note Thread-compatible under the hosted stream rules.
+ * @note Thread-compatible under hosted descriptor rules.
  * @since 0.1.0
  */
 static int host_seek(void* context, void* file, long offset, int origin)
 {
   (void)context;
-  return fseek(file, offset, origin);
+  return lseek(host_descriptor(file), (off_t)offset, origin) < 0 ? -1 : 0;
 }
 
 /**
- * @brief Adapt ftell to the injectable provider contract.
- * @details Reports the current hosted stream offset without retaining the handle.
+ * @brief Report a raw descriptor's current offset.
+ * @details Uses POSIX lseek without retaining the handle.
  * @param[in] context Unused provider context.
  * @param[in] file Non-null hosted file handle.
  * @return Non-negative offset or negative failure value.
  * @retval -1 Position reporting failed.
- * @pre `file` identifies an open hosted stream.
+ * @pre `file` identifies an open raw descriptor.
  * @pre Its position is representable as long on success.
- * @post Stream ownership is unchanged.
+ * @post Descriptor ownership is unchanged.
  * @post No allocation is created.
- * @note Thread-compatible under the hosted stream rules.
+ * @note Thread-compatible under hosted descriptor rules.
  * @since 0.1.0
  */
 static long host_tell(void* context, void* file)
 {
   (void)context;
-  return ftell(file);
+  return (long)lseek(host_descriptor(file), 0, SEEK_CUR);
 }
 
 /**
@@ -90,12 +113,13 @@ static long host_tell(void* context, void* file)
 static void* host_allocate(void* context, size_t size)
 {
   (void)context;
-  return malloc(size);
+  void* allocation = malloc(size); /* alloc-allow: bounded host file image owned by provider */
+  return allocation;
 }
 
 /**
- * @brief Adapt fread to the injectable provider contract.
- * @details Attempts one exact byte-oriented read into caller storage.
+ * @brief Read an exact byte count from a raw descriptor.
+ * @details Retries interrupted calls and accumulates legal short reads.
  * @param[in] context Unused provider context.
  * @param[out] bytes Writable destination.
  * @param[in] size Requested byte count.
@@ -103,37 +127,46 @@ static void* host_allocate(void* context, size_t size)
  * @return Number of bytes read.
  * @retval 0 No byte was read.
  * @pre `bytes` names `size` writable bytes.
- * @pre `file` identifies an open hosted stream.
+ * @pre `file` identifies an open raw descriptor.
  * @post At most `size` bytes are initialized.
- * @post Stream ownership is unchanged.
- * @note Thread-compatible under the hosted stream rules.
+ * @post Descriptor ownership is unchanged.
+ * @note Thread-compatible under hosted descriptor rules.
  * @since 0.1.0
  */
 static size_t host_read(void* context, void* bytes, size_t size, void* file)
 {
   (void)context;
-  return fread(bytes, 1U, size, file);
+  size_t complete = 0U;
+  while (complete < size) {
+    const ssize_t count = read(host_descriptor(file), (uint8_t*)bytes + complete, size - complete);
+    if (count > 0) {
+      complete += (size_t)count;
+    } else if ((count == 0) || (errno != EINTR)) {
+      break;
+    }
+  }
+  return complete;
 }
 
 /**
- * @brief Adapt fclose to the injectable provider contract.
- * @details Ends ownership of one hosted stream even when close reports failure.
+ * @brief Adapt POSIX close to the injectable provider contract.
+ * @details Ends ownership of one raw descriptor even when close reports failure.
  * @param[in] context Unused provider context.
  * @param[in] file Non-null hosted file handle.
  * @return Hosted close result.
  * @retval 0 Close completed without a reported error.
  * @retval -1 Close reported failure.
- * @pre `file` identifies an open hosted stream.
- * @pre The stream is owned exactly once.
- * @post The stream handle must not be used again.
+ * @pre `file` identifies an open raw descriptor.
+ * @pre The descriptor is owned exactly once.
+ * @post The descriptor handle must not be used again.
  * @post No allocation ownership changes.
- * @note Thread-compatible under the hosted stream rules.
+ * @note Thread-compatible under hosted descriptor rules.
  * @since 0.1.0
  */
 static int host_close(void* context, void* file)
 {
   (void)context;
-  return fclose(file);
+  return close(host_descriptor(file));
 }
 
 /**
@@ -151,10 +184,10 @@ static int host_close(void* context, void* file)
 static void host_release(void* context, void* bytes)
 {
   (void)context;
-  free(bytes);
+  free(bytes); /* alloc-allow: releases the matching host-only provider allocation */
 }
 
-const firmware_pipeline_io_ops_t* firmware_pipeline_host_io(void)
+RA8_PRIV const firmware_pipeline_io_ops_t* priv_firmware_pipeline_host_io(void)
 {
   static const firmware_pipeline_io_ops_t ops = {
     .context  = nullptr,
@@ -190,9 +223,10 @@ static bool valid_ops(const firmware_pipeline_io_ops_t* ops)
          (ops->close != nullptr) && (ops->release != nullptr);
 }
 
-firmware_pipeline_io_status_t firmware_pipeline_read_image(const firmware_pipeline_io_ops_t* ops,
-                                                           const char*                       path,
-                                                           firmware_pipeline_image_t* out_image)
+RA8_PRIV firmware_pipeline_io_status_t
+priv_firmware_pipeline_read_image(const firmware_pipeline_io_ops_t* ops,
+                                  const char*                       path,
+                                  firmware_pipeline_image_t*        out_image)
 {
   if (!valid_ops(ops) || (path == nullptr) || (path[0] == '\0') || (out_image == nullptr)) {
     return k_firmware_pipeline_io_failed;
@@ -233,8 +267,8 @@ firmware_pipeline_io_status_t firmware_pipeline_read_image(const firmware_pipeli
   return k_firmware_pipeline_io_ok;
 }
 
-void firmware_pipeline_release_image(const firmware_pipeline_io_ops_t* ops,
-                                     firmware_pipeline_image_t*        image)
+RA8_PRIV void priv_firmware_pipeline_release_image(const firmware_pipeline_io_ops_t* ops,
+                                                   firmware_pipeline_image_t*        image)
 {
   if ((ops == nullptr) || (image == nullptr)) {
     return;

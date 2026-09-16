@@ -5,7 +5,7 @@
 
 #![expect(unsafe_code, reason = "this module is the audited C ABI adapter")]
 
-use std::ffi::{CString, OsString, c_char, c_int, c_void};
+use std::ffi::{c_char, c_int, c_void, CString, OsString};
 use std::os::unix::ffi::OsStrExt as _;
 
 const ABI_VERSION: u32 = 0x5a49_5001;
@@ -35,18 +35,18 @@ struct ResultRecord {
 }
 
 unsafe extern "C" {
-    fn firmware_pipeline_parse_args(
+    fn priv_firmware_pipeline_parse_args(
         argc: c_int,
         argv: *mut *mut c_char,
         out_path: *mut *const c_char,
     ) -> c_int;
-    fn firmware_pipeline_host_io() -> *const c_void;
-    fn firmware_pipeline_read_image(
+    fn priv_firmware_pipeline_host_io() -> *const c_void;
+    fn priv_firmware_pipeline_read_image(
         ops: *const c_void,
         path: *const c_char,
         out_image: *mut Image,
     ) -> u8;
-    fn firmware_pipeline_release_image(ops: *const c_void, image: *mut Image);
+    fn priv_firmware_pipeline_release_image(ops: *const c_void, image: *mut Image);
     fn firmware_pipeline_analyze(
         config: *const Config,
         data: *const u8,
@@ -73,7 +73,8 @@ impl OwnedImage {
         let argc = c_int::try_from(pointers.len()).map_err(|_| "usage")?;
         let mut path = std::ptr::null();
         // SAFETY: arguments are live terminated strings and path is writable.
-        if unsafe { firmware_pipeline_parse_args(argc, pointers.as_mut_ptr(), &raw mut path) } != 0
+        if unsafe { priv_firmware_pipeline_parse_args(argc, pointers.as_mut_ptr(), &raw mut path) }
+            != 0
         {
             return Err("usage");
         }
@@ -81,13 +82,13 @@ impl OwnedImage {
             return Err("usage");
         }
         // SAFETY: the C runtime returns an immutable process-lifetime table.
-        let ops = unsafe { firmware_pipeline_host_io() };
+        let ops = unsafe { priv_firmware_pipeline_host_io() };
         let mut image = Image {
             bytes: std::ptr::null_mut(),
             size: 0,
         };
         // SAFETY: ops/path are valid and image is writable and initially empty.
-        if unsafe { firmware_pipeline_read_image(ops, path, &raw mut image) } != 0 {
+        if unsafe { priv_firmware_pipeline_read_image(ops, path, &raw mut image) } != 0 {
             return Err("cannot read bounded input");
         }
         Ok(Self { ops, image })
@@ -132,6 +133,6 @@ impl OwnedImage {
 impl Drop for OwnedImage {
     fn drop(&mut self) {
         // SAFETY: this object uniquely owns the image and releases it once.
-        unsafe { firmware_pipeline_release_image(self.ops, &raw mut self.image) };
+        unsafe { priv_firmware_pipeline_release_image(self.ops, &raw mut self.image) };
     }
 }

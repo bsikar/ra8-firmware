@@ -5,6 +5,8 @@
  * @file test_abi.c
  * @brief Linked C-to-Rust firmware_report ABI lifecycle tests.
  * @details Proves values, failures, unchanged outputs, capacity, and teardown across the ABI.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdlib.h>
@@ -45,10 +47,10 @@ static void test_lifecycle(void)
   const uint8_t             input[] = {0U, 0xffU, 7U};
   firmware_report_handle_t* handle  = nullptr;
   firmware_report_summary_t output  = {
-    .byte_count   = UINT64_MAX,
-    .zero_count   = UINT64_MAX,
-    .erased_count = UINT64_MAX,
-    .fnv1a64      = UINT64_MAX,
+     .byte_count   = UINT64_MAX,
+     .zero_count   = UINT64_MAX,
+     .erased_count = UINT64_MAX,
+     .fnv1a64      = UINT64_MAX,
   };
   require(firmware_report_create(input, sizeof(input), &handle) == k_firmware_report_ok);
   require(handle != nullptr);

@@ -3,6 +3,7 @@
  * @brief Deliberately unresolved C symbol used by the ABI negative test.
  * @details Must fail linking to prove that a missing Zig export is detected.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 

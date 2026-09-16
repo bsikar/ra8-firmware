@@ -67,6 +67,13 @@ PORTABLE_SHEBANG = "#!/usr/bin/env bash"
 PORTABLE_SH_SHEBANG = "#!/usr/bin/env sh"
 
 _BASE_SHELL_POLICIES: dict[str, ShellPolicy] = {
+    "apps/host/firmware_pipeline/tests/check_non_utf8_parity.sh": ShellPolicy(
+        ShellSecurity.PORTABLE,
+        ShellUsage.ENTRY,
+        ShellDialect.BASH,
+        executable=True,
+        source_requires_privileged_parent=False,
+    ),
     "apps/host/mdl/tests/http_integration.sh": ShellPolicy(
         ShellSecurity.PORTABLE,
         ShellUsage.ENTRY,

@@ -731,8 +731,8 @@ def _report_verdict(
     return 0
 
 
-def main() -> int:
-    """Entry point."""
+def _argument_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("databases", nargs="*", help="compile_commands.json paths")
     parser.add_argument(
@@ -765,7 +765,12 @@ def main() -> int:
         action="store_true",
         help="print host CMake projects owned by Cargo rather than a C compile database",
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main() -> int:
+    """Entry point."""
+    args = _argument_parser().parse_args()
 
     if args.selftest:
         return selftest()

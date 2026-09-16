@@ -30,7 +30,10 @@ add_library(
   firmware_pipeline_c STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/firmware_pipeline_cli.c
                              ${CMAKE_CURRENT_SOURCE_DIR}/src/firmware_pipeline_io.c
 )
-target_include_directories(firmware_pipeline_c PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(
+  firmware_pipeline_c PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+                              ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_core/inc
+)
 target_compile_options(firmware_pipeline_c PRIVATE -Wall -Wextra -Werror)
 
 add_custom_target(
@@ -38,6 +41,7 @@ add_custom_target(
   COMMAND ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PIPELINE_RUST_TARGET} ${CARGO_EXECUTABLE} build
           --locked --lib --manifest-path ${PIPELINE_RUST_DIR}/Cargo.toml
   BYPRODUCTS ${PIPELINE_RUST_LIBRARY}
+  COMMENT "Building firmware_pipeline Rust provider"
   VERBATIM
 )
 add_custom_target(
@@ -46,6 +50,7 @@ add_custom_target(
           ${PIPELINE_ZIG_PREFIX} -Drust-lib-dir=${PIPELINE_RUST_TARGET}/debug
   BYPRODUCTS ${PIPELINE_ZIG_LIBRARY}
   DEPENDS firmware_pipeline_rust
+  COMMENT "Building firmware_pipeline Zig ABI adapter"
   VERBATIM
 )
 
@@ -55,10 +60,11 @@ add_custom_target(
     ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PIPELINE_RUST_TARGET}
     FIRMWARE_PIPELINE_C_LIB_DIR=$<TARGET_FILE_DIR:firmware_pipeline_c>
     FIRMWARE_PIPELINE_ZIG_LIB_DIR=${PIPELINE_ZIG_PREFIX}/lib ${CARGO_EXECUTABLE} build --locked
-    --features command --bin firmware_pipeline_rust_main --manifest-path
-    ${PIPELINE_RUST_DIR}/Cargo.toml
+    --features
+  command --bin firmware_pipeline_rust_main --manifest-path ${PIPELINE_RUST_DIR}/Cargo.toml
   BYPRODUCTS ${PIPELINE_RUST_MAIN_EXECUTABLE}
   DEPENDS firmware_pipeline_c firmware_pipeline_zig
+  COMMENT "Building firmware_pipeline Rust-owned executable"
   VERBATIM
 )
 add_custom_target(
@@ -67,26 +73,33 @@ add_custom_target(
           ${PIPELINE_ZIG_PREFIX} -Drust-lib-dir=${PIPELINE_RUST_TARGET}/debug
   BYPRODUCTS ${PIPELINE_ZIG_MAIN_EXECUTABLE}
   DEPENDS firmware_pipeline_c firmware_pipeline_rust
+  COMMENT "Building firmware_pipeline Zig-owned executable"
   VERBATIM
 )
 
 add_executable(
-  test_firmware_pipeline_cli ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cli.c
+  test_firmware_pipeline_cli ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/test_cli.c
                              ${CMAKE_CURRENT_SOURCE_DIR}/src/firmware_pipeline_cli.c
 )
-target_include_directories(test_firmware_pipeline_cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(
+  test_firmware_pipeline_cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+                                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_core/inc
+)
 target_compile_options(test_firmware_pipeline_cli PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_firmware_pipeline_cli COMMAND test_firmware_pipeline_cli)
 
 add_executable(
-  test_firmware_pipeline_io ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_io.c
+  test_firmware_pipeline_io ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/test_io.c
                             ${CMAKE_CURRENT_SOURCE_DIR}/src/firmware_pipeline_io.c
 )
-target_include_directories(test_firmware_pipeline_io PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(
+  test_firmware_pipeline_io PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+                                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_core/inc
+)
 target_compile_options(test_firmware_pipeline_io PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_firmware_pipeline_io COMMAND test_firmware_pipeline_io)
 
-add_executable(test_firmware_pipeline_abi ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_abi.c)
+add_executable(test_firmware_pipeline_abi ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/test_abi.c)
 target_include_directories(test_firmware_pipeline_abi PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 target_compile_options(test_firmware_pipeline_abi PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(

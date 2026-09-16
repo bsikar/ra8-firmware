@@ -2,12 +2,16 @@
 // Copyright (c) 2026 Brighton Sikarskie
 
 /**
- * @file firmware_report_cli.h
+ * @file firmware_report_cli_internal.h
  * @brief Internal command-line validation contract for firmware_report.
  * @details Separates deterministic argument policy from hosted file processing.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
+
+#include "ra8_attributes.h"
 
 /**
  * @enum firmware_report_cli_status_t
@@ -17,7 +21,7 @@
  * @code
  * firmware_report_cli_status_t status = k_firmware_report_cli_ok;
  * @endcode
- * @see firmware_report_parse_args
+ * @see priv_firmware_report_parse_args
  */
 typedef enum : int {
   k_firmware_report_cli_ok    = 0, /**< One non-empty image path was supplied. */
@@ -41,5 +45,6 @@ typedef enum : int {
  * @note Thread-safe; the function uses no shared state.
  * @since 0.1.0
  */
-firmware_report_cli_status_t
-firmware_report_parse_args(int argc, char** argv, const char** out_path);
+RA8_PRIV firmware_report_cli_status_t priv_firmware_report_parse_args(int          argc,
+                                                                      char**       argv,
+                                                                      const char** out_path);

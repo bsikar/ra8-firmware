@@ -5,6 +5,8 @@
  * @file firmware_pipeline.h
  * @brief Public C23 contract for the C-to-Zig-to-Rust firmware pipeline.
  * @details Zig validates requests and computes XOR; Rust computes counts and FNV-1a.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
@@ -80,7 +82,9 @@ typedef struct {
 
 static_assert(sizeof(firmware_pipeline_status_t) == 4U, "pipeline status ABI size");
 static_assert(sizeof(firmware_pipeline_config_t) == 8U, "pipeline config ABI size");
-static_assert(sizeof(firmware_pipeline_result_t) == 40U, "pipeline result ABI size");
+static_assert(sizeof(firmware_pipeline_result_t) ==
+                40U, // MAGIC-OK: canonical cross-language ABI size
+              "pipeline result ABI size");
 static_assert(alignof(firmware_pipeline_result_t) == 8U, "pipeline result ABI alignment");
 static_assert(offsetof(firmware_pipeline_result_t, zig_xor8) == 32U, "Zig XOR offset");
 

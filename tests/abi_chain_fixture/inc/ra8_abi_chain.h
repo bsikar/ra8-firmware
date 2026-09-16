@@ -26,7 +26,7 @@ extern "C" {
  * @see ra8_abi_chain_create
  */
 typedef enum : uint32_t {
-  k_ra8_abi_chain_tag = 0x5A494701U,
+  k_ra8_abi_chain_tag = 0x5A494701U, /**< Required `ZIG`-tagged ABI revision. */
 } ra8_abi_chain_tag_t;
 
 /**

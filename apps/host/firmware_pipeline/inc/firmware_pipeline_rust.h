@@ -5,6 +5,8 @@
  * @file firmware_pipeline_rust.h
  * @brief Private C23 contract from the Zig stage to Rust analysis.
  * @details This hand-authored header is the only Rust-to-Zig ABI definition.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
@@ -29,9 +31,15 @@ typedef struct {
   uint64_t fnv1a64;      /**< FNV-1a 64-bit change-detection digest. */
 } firmware_pipeline_rust_summary_t;
 
+/** @enum firmware_pipeline_rust_layout_t @brief Compile-time Rust ABI layout constants. */
+typedef enum : size_t {
+  k_firmware_pipeline_rust_digest_offset = 24U, /**< Required FNV-1a field offset. */
+} firmware_pipeline_rust_layout_t;
+
 static_assert(sizeof(firmware_pipeline_rust_summary_t) == 32U, "Rust summary ABI size");
 static_assert(alignof(firmware_pipeline_rust_summary_t) == 8U, "Rust summary ABI alignment");
-static_assert(offsetof(firmware_pipeline_rust_summary_t, fnv1a64) == 24U,
+static_assert(offsetof(firmware_pipeline_rust_summary_t, fnv1a64) ==
+                k_firmware_pipeline_rust_digest_offset,
               "Rust summary digest offset");
 
 #ifdef __cplusplus

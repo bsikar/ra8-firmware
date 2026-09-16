@@ -34,6 +34,7 @@ pub fn build(b: *std.Build) void {
     });
     executable_module.addIncludePath(b.path("../inc"));
     executable_module.addIncludePath(b.path("../src"));
+    executable_module.addIncludePath(b.path("../../../../libs/ra8_core/inc"));
     const executable = b.addExecutable(.{
         .name = "firmware_pipeline_zig_main",
         .root_module = executable_module,

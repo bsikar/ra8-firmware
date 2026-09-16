@@ -8,7 +8,7 @@ const c = @cImport({
     @cDefine("static_assert", "_Static_assert");
     @cDefine("alignof", "_Alignof");
     @cInclude("firmware_pipeline.h");
-    @cInclude("firmware_pipeline_io.h");
+    @cInclude("firmware_pipeline_io_internal.h");
 });
 
 extern fn firmware_pipeline_analyze(
@@ -32,12 +32,12 @@ pub fn main() u8 {
         return 2;
     }
 
-    const ops = c.firmware_pipeline_host_io();
+    const ops = c.priv_firmware_pipeline_host_io();
     var image = std.mem.zeroes(c.firmware_pipeline_image_t);
-    if (c.firmware_pipeline_read_image(ops, arguments[1].ptr, &image) != c.k_firmware_pipeline_io_ok) {
+    if (c.priv_firmware_pipeline_read_image(ops, arguments[1].ptr, &image) != c.k_firmware_pipeline_io_ok) {
         return fail("cannot read bounded input");
     }
-    defer c.firmware_pipeline_release_image(ops, &image);
+    defer c.priv_firmware_pipeline_release_image(ops, &image);
 
     const config = c.firmware_pipeline_config_t{
         .abi_version = c.k_firmware_pipeline_abi_version,

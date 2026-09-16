@@ -5,12 +5,14 @@
  * @file test_cli.c
  * @brief Native C tests for firmware_report argument policy.
  * @details Covers success and every invalid pointer, count, and empty-path class.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>
 #include <stdlib.h>
 
-#include "firmware_report_cli.h"
+#include "firmware_report_cli_internal.h"
 
 /**
  * @brief Terminate the test immediately when a required condition is false.
@@ -46,7 +48,7 @@ static void test_valid_path(void)
   char        app[]   = "firmware_report";
   char        image[] = "image.bin";
   char*       valid[] = {app, image, nullptr};
-  require(firmware_report_parse_args(2, valid, &path) == k_firmware_report_cli_ok);
+  require(priv_firmware_report_parse_args(2, valid, &path) == k_firmware_report_cli_ok);
   require(path == image);
 }
 
@@ -69,12 +71,12 @@ static void test_invalid_arguments(void)
   char*       valid[]   = {app, image, nullptr};
   char*       missing[] = {app, nullptr};
   char*       blank[]   = {app, empty, nullptr};
-  require(firmware_report_parse_args(1, missing, &path) == k_firmware_report_cli_usage);
+  require(priv_firmware_report_parse_args(1, missing, &path) == k_firmware_report_cli_usage);
   require(path[0] == 's');
-  require(firmware_report_parse_args(2, blank, &path) == k_firmware_report_cli_usage);
-  require(firmware_report_parse_args(3, valid, &path) == k_firmware_report_cli_usage);
-  require(firmware_report_parse_args(2, nullptr, &path) == k_firmware_report_cli_usage);
-  require(firmware_report_parse_args(2, valid, nullptr) == k_firmware_report_cli_usage);
+  require(priv_firmware_report_parse_args(2, blank, &path) == k_firmware_report_cli_usage);
+  require(priv_firmware_report_parse_args(3, valid, &path) == k_firmware_report_cli_usage);
+  require(priv_firmware_report_parse_args(2, nullptr, &path) == k_firmware_report_cli_usage);
+  require(priv_firmware_report_parse_args(2, valid, nullptr) == k_firmware_report_cli_usage);
   require(path[0] == 's');
 }
 
