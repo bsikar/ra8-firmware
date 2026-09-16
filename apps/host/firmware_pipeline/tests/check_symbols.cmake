@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 
+# Compare one archive's complete public symbol set with its contract.
 function(scan_archive archive expected)
   execute_process(
     COMMAND "${NM}" -g --defined-only "${archive}"
@@ -27,51 +28,60 @@ endfunction()
 scan_archive("${ZIG_LIBRARY}" "firmware_pipeline_analyze")
 scan_archive("${RUST_LIBRARY}" "firmware_pipeline_rust_analyze")
 
-file(READ "${PUBLIC_HEADER}" public_header)
-file(READ "${PRIVATE_HEADER}" private_header)
-file(READ "${ZIG_SOURCE}" zig_source)
-file(READ "${RUST_SOURCE}" rust_source)
-string(REGEX REPLACE "[ \t\r\n]" "" public_header "${public_header}")
-string(REGEX REPLACE "[ \t\r\n]" "" private_header "${private_header}")
-string(REGEX REPLACE "[ \t\r\n]" "" zig_source "${zig_source}")
-string(REGEX REPLACE "[ \t\r\n]" "" rust_source "${rust_source}")
+file(READ "${PUBLIC_HEADER}" PUBLIC_HEADER_TEXT)
+file(READ "${PRIVATE_HEADER}" PRIVATE_HEADER_TEXT)
+file(READ "${ZIG_SOURCE}" ZIG_SOURCE_TEXT)
+file(READ "${RUST_SOURCE}" RUST_SOURCE_TEXT)
+string(REGEX REPLACE "[ \t\r\n]" "" PUBLIC_HEADER_TEXT "${PUBLIC_HEADER_TEXT}")
+string(REGEX REPLACE "[ \t\r\n]" "" PRIVATE_HEADER_TEXT "${PRIVATE_HEADER_TEXT}")
+string(REGEX REPLACE "[ \t\r\n]" "" ZIG_SOURCE_TEXT "${ZIG_SOURCE_TEXT}")
+string(REGEX REPLACE "[ \t\r\n]" "" RUST_SOURCE_TEXT "${RUST_SOURCE_TEXT}")
 
-set(public_signature
-    "firmware_pipeline_status_tfirmware_pipeline_analyze(constfirmware_pipeline_config_t*config,constuint8_t*data,size_tsize,firmware_pipeline_result_t*out_result)"
+string(CONCAT PUBLIC_SIGNATURE "firmware_pipeline_status_tfirmware_pipeline_analyze("
+              "constfirmware_pipeline_config_t*config,constuint8_t*data,"
+              "size_tsize,firmware_pipeline_result_t*out_result)"
 )
-set(private_signature
-    "int32_tfirmware_pipeline_rust_analyze(constuint8_t*data,size_tsize,firmware_pipeline_rust_summary_t*out_summary)"
+string(CONCAT PRIVATE_SIGNATURE
+              "int32_tfirmware_pipeline_rust_analyze(constuint8_t*data,size_tsize,"
+              "firmware_pipeline_rust_summary_t*out_summary)"
 )
-set(zig_signature
-    "pubexportfnfirmware_pipeline_analyze(config:?*constc.firmware_pipeline_config_t,data:?[*]constu8,size:usize,out_result:?*c.firmware_pipeline_result_t,)callconv(.c)c.firmware_pipeline_status_t"
+string(
+  CONCAT ZIG_SIGNATURE
+         "pubexportfnfirmware_pipeline_analyze("
+         "config:?*constc.firmware_pipeline_config_t,data:?[*]constu8,size:usize,"
+         "out_result:?*c.firmware_pipeline_result_t,)"
+         "callconv(.c)c.firmware_pipeline_status_t"
 )
-set(rust_signature
-    "const_:unsafeextern\"C\"fn(*constu8,usize,*mutRustSummary)->PipelineStatus=firmware_pipeline_rust_analyze"
+string(CONCAT RUST_SIGNATURE "const_:unsafeextern\"C\"fn(*constu8,usize,*mutRustSummary)"
+              "->PipelineStatus=firmware_pipeline_rust_analyze"
 )
-foreach(pair IN ITEMS "public_header;${public_signature}" "private_header;${private_signature}"
-                      "zig_source;${zig_signature}" "rust_source;${rust_signature}"
+foreach(PAIR IN
+        ITEMS "PUBLIC_HEADER_TEXT;${PUBLIC_SIGNATURE}" "PRIVATE_HEADER_TEXT;${PRIVATE_SIGNATURE}"
+              "ZIG_SOURCE_TEXT;${ZIG_SIGNATURE}" "RUST_SOURCE_TEXT;${RUST_SIGNATURE}"
 )
-  list(GET pair 0 variable)
-  list(GET pair 1 fragment)
-  string(FIND "${${variable}}" "${fragment}" position)
-  if(position EQUAL -1)
-    message(FATAL_ERROR "${variable} is missing ABI signature ${fragment}")
+  list(GET PAIR 0 VARIABLE)
+  list(GET PAIR 1 FRAGMENT)
+  string(FIND "${${VARIABLE}}" "${FRAGMENT}" POSITION)
+  if(POSITION EQUAL -1)
+    message(FATAL_ERROR "${VARIABLE} is missing ABI signature ${FRAGMENT}")
   endif()
 endforeach()
 
-foreach(fragment IN ITEMS "sizeof(firmware_pipeline_result_t)==40U"
+foreach(FRAGMENT IN ITEMS "sizeof(firmware_pipeline_result_t)==40U"
                           "offsetof(firmware_pipeline_result_t,zig_xor8)==32U"
 )
-  string(FIND "${public_header}" "${fragment}" position)
-  if(position EQUAL -1)
-    message(FATAL_ERROR "public header is missing layout contract ${fragment}")
+  string(FIND "${PUBLIC_HEADER_TEXT}" "${FRAGMENT}" POSITION)
+  if(POSITION EQUAL -1)
+    message(FATAL_ERROR "public header is missing layout contract ${FRAGMENT}")
   endif()
 endforeach()
-foreach(fragment IN ITEMS "sizeof(firmware_pipeline_rust_summary_t)==32U"
-                          "offsetof(firmware_pipeline_rust_summary_t,fnv1a64)==24U"
+foreach(
+  FRAGMENT IN
+  ITEMS "sizeof(firmware_pipeline_rust_summary_t)==32U"
+        "offsetof(firmware_pipeline_rust_summary_t,fnv1a64)==k_firmware_pipeline_rust_digest_offset"
 )
-  string(FIND "${private_header}" "${fragment}" position)
-  if(position EQUAL -1)
-    message(FATAL_ERROR "private header is missing layout contract ${fragment}")
+  string(FIND "${PRIVATE_HEADER_TEXT}" "${FRAGMENT}" POSITION)
+  if(POSITION EQUAL -1)
+    message(FATAL_ERROR "private header is missing layout contract ${FRAGMENT}")
   endif()
 endforeach()

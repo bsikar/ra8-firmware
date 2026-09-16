@@ -11,8 +11,13 @@
 
 #include "ra8_rust_abi_fixture.h"
 
-/** @brief Return zero only when every Rust-provider ABI vector passes. */
-int main(void)
+/**
+ * @brief Exercise Rust scalar-value and validation behavior.
+ * @par MC/DC:
+ * Success and each validation failure independently vary the result and
+ * sentinel comparisons in every compound decision.
+ */
+static int test_apply(void)
 {
   ra8_rust_abi_fixture_config_t config = {.value     = 7U,
                                           .factor    = 3U,
@@ -49,7 +54,17 @@ int main(void)
       result != 0xA5A5A5A5U || ra8_rust_abi_fixture_apply(&config, nullptr) != k_ra8_err_null_ptr) {
     return 6;
   }
+  return 0;
+}
 
+/**
+ * @brief Exercise Rust allocation ownership and failure behavior.
+ * @par MC/DC:
+ * Forced failure, success, exhaustion, invalid destruction, and repeated
+ * destruction independently vary each result and handle-state condition.
+ */
+static int test_ownership(void)
+{
   ra8_rust_abi_fixture_t* handle = (ra8_rust_abi_fixture_t*)(uintptr_t)0x1U;
   if (ra8_rust_abi_fixture_create(nullptr) != k_ra8_err_null_ptr) {
     return 7;
@@ -77,4 +92,11 @@ int main(void)
     return 12;
   }
   return 0;
+}
+
+/** @brief Return zero only when every Rust-provider ABI vector passes. */
+int main(void)
+{
+  const int apply_status = test_apply();
+  return apply_status == 0 ? test_ownership() : apply_status;
 }

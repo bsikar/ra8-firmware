@@ -41,6 +41,7 @@ add_custom_target(
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   BYPRODUCTS ${IMAGE_PYRAMID_BUILT} ${IMAGE_PYRAMID_CLI}
   DEPENDS image_pyramid_codec_c
+  COMMENT "Building image_pyramid Zig host application"
   VERBATIM
 )
 

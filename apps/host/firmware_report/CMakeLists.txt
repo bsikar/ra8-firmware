@@ -29,7 +29,10 @@ else()
 endif()
 
 add_library(firmware_report_c STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/firmware_report_cli.c)
-target_include_directories(firmware_report_c PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(
+  firmware_report_c PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+                            ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_core/inc
+)
 target_compile_options(firmware_report_c PRIVATE -Wall -Wextra -Werror)
 
 add_custom_target(
@@ -46,8 +49,8 @@ add_custom_target(
   COMMAND
     ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${FIRMWARE_REPORT_TARGET_DIR}
     FIRMWARE_REPORT_C_LIB_DIR=$<TARGET_FILE_DIR:firmware_report_c> ${CARGO_EXECUTABLE} build
-    --locked --features command --bin firmware_report --manifest-path
-    ${FIRMWARE_REPORT_RUST_DIR}/Cargo.toml
+    --locked --features
+  command --bin firmware_report --manifest-path ${FIRMWARE_REPORT_RUST_DIR}/Cargo.toml
   BYPRODUCTS ${FIRMWARE_REPORT_EXECUTABLE}
   DEPENDS firmware_report_c
   COMMENT "Building Rust firmware_report"
@@ -55,14 +58,17 @@ add_custom_target(
 )
 
 add_executable(
-  test_firmware_report_cli ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cli.c
+  test_firmware_report_cli ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/test_cli.c
                            ${CMAKE_CURRENT_SOURCE_DIR}/src/firmware_report_cli.c
 )
-target_include_directories(test_firmware_report_cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(
+  test_firmware_report_cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+                                   ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ra8_core/inc
+)
 target_compile_options(test_firmware_report_cli PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_firmware_report_cli COMMAND test_firmware_report_cli)
 
-add_executable(test_firmware_report_abi ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_abi.c)
+add_executable(test_firmware_report_abi ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/test_abi.c)
 target_include_directories(test_firmware_report_abi PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 target_compile_options(test_firmware_report_abi PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(test_firmware_report_abi PRIVATE ${FIRMWARE_REPORT_RUST_LIBRARY})
@@ -83,9 +89,9 @@ add_test(
     -DRUST_SOURCE=${FIRMWARE_REPORT_RUST_DIR}/src/foreign.rs -P
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_symbols.cmake
 )
-file(
-  WRITE ${CMAKE_CURRENT_BINARY_DIR}/negative_abi_header.h
-  "firmware_report_status_t firmware_report_create(void);\nfirmware_report_status_t firmware_report_release(void);\n"
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/negative_abi_header.h
+     "firmware_report_status_t firmware_report_create(void);\n"
+     "firmware_report_status_t firmware_report_release(void);\n"
 )
 add_test(
   NAME test_firmware_report_symbols_selftest
@@ -133,8 +139,7 @@ get_property(
 list(SORT FIRMWARE_REPORT_REQUIRED_TESTS)
 list(SORT FIRMWARE_REPORT_REGISTERED_TESTS)
 if(NOT "${FIRMWARE_REPORT_REGISTERED_TESTS}" STREQUAL "${FIRMWARE_REPORT_REQUIRED_TESTS}")
-  message(
-    FATAL_ERROR
-      "firmware_report CTest inventory ${FIRMWARE_REPORT_REGISTERED_TESTS}; required ${FIRMWARE_REPORT_REQUIRED_TESTS}"
+  message(FATAL_ERROR "firmware_report CTest inventory ${FIRMWARE_REPORT_REGISTERED_TESTS}; "
+                      "required ${FIRMWARE_REPORT_REQUIRED_TESTS}"
   )
 endif()

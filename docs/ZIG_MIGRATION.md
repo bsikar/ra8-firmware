@@ -261,9 +261,9 @@ outside the public header, ABI policy inventory, or linked test evidence.
 
 ### Required evidence
 
-Use the reusable [C ABI consumer](../tests/zig_abi_fixture/test_abi_fixture.c),
+Use the reusable [C ABI consumer](../tests/zig_abi_fixture/src/test_abi_fixture.c),
 [Rust ABI consumer](../tests/zig_abi_fixture/rust/tests/zig_provider.rs), and
-[three-language chain consumer](../tests/abi_chain_fixture/test_c_consumer.c)
+[three-language chain consumer](../tests/abi_chain_fixture/src/test_c_consumer.c)
 as the minimum evidence patterns; a migrated library supplies its own
 registered equivalents.
 

@@ -7,6 +7,8 @@
  * @details This hand-authored header is the sole cross-language contract. The provider keeps one
  * fixed-capacity report slot, issues non-repeating opaque tokens, performs no heap allocation, and
  * never retains image bytes.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
@@ -69,7 +71,8 @@ static_assert(alignof(firmware_report_summary_t) == 8U, "ABI summary alignment")
 static_assert(offsetof(firmware_report_summary_t, byte_count) == 0U, "ABI byte_count offset");
 static_assert(offsetof(firmware_report_summary_t, zero_count) == 8U, "ABI zero_count offset");
 static_assert(offsetof(firmware_report_summary_t, erased_count) == 16U, "ABI erased_count offset");
-static_assert(offsetof(firmware_report_summary_t, fnv1a64) == 24U, "ABI digest offset");
+static_assert(offsetof(firmware_report_summary_t, fnv1a64) == 24U, // MAGIC-OK: canonical ABI offset
+              "ABI digest offset");
 
 #ifdef __cplusplus
 extern "C" {

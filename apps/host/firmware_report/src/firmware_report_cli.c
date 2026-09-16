@@ -4,15 +4,18 @@
 /**
  * @file firmware_report_cli.c
  * @brief Deterministic firmware_report command-line validation.
- * @details Implements the internal policy declared by `firmware_report_cli.h`.
+ * @details Implements the internal policy declared by `firmware_report_cli_internal.h`.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
-
-#include "firmware_report_cli.h"
 
 #include <stddef.h>
 
-firmware_report_cli_status_t
-firmware_report_parse_args(int argc, char** argv, const char** out_path)
+#include "firmware_report_cli_internal.h"
+
+RA8_PRIV firmware_report_cli_status_t priv_firmware_report_parse_args(int          argc,
+                                                                      char**       argv,
+                                                                      const char** out_path)
 {
   if ((argc != 2) || (argv == nullptr) || (out_path == nullptr) || (argv[1] == nullptr) ||
       (argv[1][0] == '\0')) {

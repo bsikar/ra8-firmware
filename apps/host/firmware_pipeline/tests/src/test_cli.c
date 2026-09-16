@@ -5,11 +5,13 @@
  * @file test_cli.c
  * @brief Always-active native C tests for command-line policy.
  * @details Proves successful borrowing and unchanged output for rejected arguments.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdlib.h>
 
-#include "firmware_pipeline_cli.h"
+#include "firmware_pipeline_cli_internal.h"
 
 /**
  * @brief Abort when an always-active test requirement is false.
@@ -44,14 +46,14 @@ int main(void)
   char*       valid[]   = {app, image, nullptr};
   char*       missing[] = {app, nullptr};
   char*       blank[]   = {app, empty, nullptr};
-  require(firmware_pipeline_parse_args(2, valid, &path) == k_firmware_pipeline_cli_ok);
+  require(priv_firmware_pipeline_parse_args(2, valid, &path) == k_firmware_pipeline_cli_ok);
   require(path == image);
   path = "sentinel";
-  require(firmware_pipeline_parse_args(1, missing, &path) == k_firmware_pipeline_cli_usage);
-  require(firmware_pipeline_parse_args(2, missing, &path) == k_firmware_pipeline_cli_usage);
-  require(firmware_pipeline_parse_args(2, blank, &path) == k_firmware_pipeline_cli_usage);
-  require(firmware_pipeline_parse_args(2, nullptr, &path) == k_firmware_pipeline_cli_usage);
-  require(firmware_pipeline_parse_args(2, valid, nullptr) == k_firmware_pipeline_cli_usage);
+  require(priv_firmware_pipeline_parse_args(1, missing, &path) == k_firmware_pipeline_cli_usage);
+  require(priv_firmware_pipeline_parse_args(2, missing, &path) == k_firmware_pipeline_cli_usage);
+  require(priv_firmware_pipeline_parse_args(2, blank, &path) == k_firmware_pipeline_cli_usage);
+  require(priv_firmware_pipeline_parse_args(2, nullptr, &path) == k_firmware_pipeline_cli_usage);
+  require(priv_firmware_pipeline_parse_args(2, valid, nullptr) == k_firmware_pipeline_cli_usage);
   require(path[0] == 's');
   return 0;
 }

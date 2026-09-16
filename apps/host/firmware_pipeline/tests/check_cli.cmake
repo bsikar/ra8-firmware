@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 
+# Run one executable and compare its complete observable result.
 function(
   run_case
   name

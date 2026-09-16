@@ -5,13 +5,15 @@
  * @file test_io.c
  * @brief Always-active fault-transition tests for C-owned resources.
  * @details Injects each hosted operation failure and proves exact close/release counts.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "firmware_pipeline_io.h"
+#include "firmware_pipeline_io_internal.h"
 
 /**
  * @enum failure_stage_t
@@ -278,7 +280,8 @@ static void require_invalid_ops(const firmware_pipeline_io_ops_t* ops, fake_io_t
 {
   firmware_pipeline_image_t       image = {};
   const firmware_pipeline_image_t saved = image;
-  require(firmware_pipeline_read_image(ops, "image.bin", &image) == k_firmware_pipeline_io_failed);
+  require(priv_firmware_pipeline_read_image(ops, "image.bin", &image) ==
+          k_firmware_pipeline_io_failed);
   require(memcmp(&image, &saved, sizeof(image)) == 0);
   require(fake->open_count == 0U);
 }
@@ -334,11 +337,12 @@ static void test_invalid_inputs(void)
   fake_io_t                  fake  = {};
   firmware_pipeline_io_ops_t ops   = make_ops(&fake);
   firmware_pipeline_image_t  image = {};
-  require(firmware_pipeline_read_image(nullptr, "image.bin", &image) ==
+  require(priv_firmware_pipeline_read_image(nullptr, "image.bin", &image) ==
           k_firmware_pipeline_io_failed);
-  require(firmware_pipeline_read_image(&ops, nullptr, &image) == k_firmware_pipeline_io_failed);
-  require(firmware_pipeline_read_image(&ops, "", &image) == k_firmware_pipeline_io_failed);
-  require(firmware_pipeline_read_image(&ops, "image.bin", nullptr) ==
+  require(priv_firmware_pipeline_read_image(&ops, nullptr, &image) ==
+          k_firmware_pipeline_io_failed);
+  require(priv_firmware_pipeline_read_image(&ops, "", &image) == k_firmware_pipeline_io_failed);
+  require(priv_firmware_pipeline_read_image(&ops, "image.bin", nullptr) ==
           k_firmware_pipeline_io_failed);
   require(fake.open_count == 0U);
   require(image.bytes == nullptr);
@@ -360,7 +364,8 @@ static void test_empty_success(void)
   fake_io_t                  fake  = {.stage = k_empty_success};
   firmware_pipeline_io_ops_t ops   = make_ops(&fake);
   firmware_pipeline_image_t  image = {};
-  require(firmware_pipeline_read_image(&ops, "empty.bin", &image) == k_firmware_pipeline_io_ok);
+  require(priv_firmware_pipeline_read_image(&ops, "empty.bin", &image) ==
+          k_firmware_pipeline_io_ok);
   require(image.bytes == nullptr);
   require(image.size == 0U);
   require(fake.close_count == 1U);
@@ -384,7 +389,8 @@ static void test_empty_close_failure(void)
   fake_io_t                  fake  = {.stage = k_empty_close_failure};
   firmware_pipeline_io_ops_t ops   = make_ops(&fake);
   firmware_pipeline_image_t  image = {};
-  require(firmware_pipeline_read_image(&ops, "empty.bin", &image) == k_firmware_pipeline_io_failed);
+  require(priv_firmware_pipeline_read_image(&ops, "empty.bin", &image) ==
+          k_firmware_pipeline_io_failed);
   require(image.bytes == nullptr);
   require(image.size == 0U);
   require(fake.close_count == 1U);
@@ -411,7 +417,8 @@ run_failure(failure_stage_t stage, unsigned int expected_close, unsigned int exp
   firmware_pipeline_io_ops_t      ops   = make_ops(&fake);
   firmware_pipeline_image_t       image = {};
   const firmware_pipeline_image_t saved = image;
-  require(firmware_pipeline_read_image(&ops, "image.bin", &image) == k_firmware_pipeline_io_failed);
+  require(priv_firmware_pipeline_read_image(&ops, "image.bin", &image) ==
+          k_firmware_pipeline_io_failed);
   require(memcmp(&image, &saved, sizeof(image)) == 0);
   require(fake.close_count == expected_close);
   require(fake.release_count == expected_release);
@@ -445,12 +452,13 @@ int main(void)
   fake_io_t                  fake  = {};
   firmware_pipeline_io_ops_t ops   = make_ops(&fake);
   firmware_pipeline_image_t  image = {};
-  require(firmware_pipeline_read_image(&ops, "image.bin", &image) == k_firmware_pipeline_io_ok);
+  require(priv_firmware_pipeline_read_image(&ops, "image.bin", &image) ==
+          k_firmware_pipeline_io_ok);
   require(image.bytes == fake.storage);
   require(image.size == sizeof(fake.storage));
   require(fake.close_count == 1U);
   require(fake.release_count == 0U);
-  firmware_pipeline_release_image(&ops, &image);
+  priv_firmware_pipeline_release_image(&ops, &image);
   require(image.bytes == nullptr);
   require(image.size == 0U);
   require(fake.release_count == 1U);

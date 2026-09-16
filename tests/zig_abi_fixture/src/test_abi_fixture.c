@@ -14,8 +14,8 @@
 
 /** @enum abi_fixture_test_result_t @brief Process result values for this fixture. */
 typedef enum : int {
-  k_abi_fixture_test_success = 0,
-  k_abi_fixture_test_failure = 1,
+  k_abi_fixture_test_success = 0, /**< Test completed successfully.      */
+  k_abi_fixture_test_failure = 1, /**< Test detected a contract failure. */
 } abi_fixture_test_result_t;
 
 static const uint32_t k_sentinel_u32      = 0xA5A5A5A5U;
@@ -31,10 +31,10 @@ static const uint8_t  k_sentinel_bytes[8] = {
 };
 
 typedef struct {
-  ra8_abi_fixture_t** handle_slot;
-  uint32_t            calls;
-  ra8_err_t           result;
-  bool                try_reentrant;
+  ra8_abi_fixture_t** handle_slot;   /**< Address of the active fixture handle.  */
+  uint32_t            calls;         /**< Number of callback invocations.        */
+  ra8_err_t           result;        /**< Result returned to the provider.       */
+  bool                try_reentrant; /**< Whether to exercise busy-state guards. */
 } callback_context_t;
 
 static ra8_err_t fixture_callback(void* context, const uint8_t* bytes, uint32_t length)
@@ -200,30 +200,12 @@ static abi_fixture_test_result_t test_create(ra8_abi_fixture_t** out_handle)
  * vectors independently toggle every adapter validation condition. Sentinels
  * show that each failing condition prevents both output publications.
  */
-static abi_fixture_test_result_t test_copy(ra8_abi_fixture_t* handle)
+static abi_fixture_test_result_t test_copy_bounds(ra8_abi_fixture_t* handle)
 {
   static const uint8_t input[] = {1U, 2U, 3U, 4U};
   uint8_t              output[sizeof(k_sentinel_bytes)];
   uint32_t             out_len = k_sentinel_u32;
-
   memcpy(output, k_sentinel_bytes, sizeof(output));
-  if (ra8_abi_fixture_copy(handle, input, sizeof(input), output, sizeof(input), &out_len) !=
-        k_ra8_ok ||
-      out_len != sizeof(input) || memcmp(input, output, sizeof(input)) != 0) {
-    return k_abi_fixture_test_failure;
-  }
-  memcpy(output, k_sentinel_bytes, sizeof(output));
-  out_len = k_sentinel_u32;
-  if (ra8_abi_fixture_copy(handle, input, sizeof(input), output, sizeof(output), &out_len) !=
-        k_ra8_ok ||
-      out_len != sizeof(input) || memcmp(input, output, sizeof(input)) != 0 ||
-      memcmp(&output[sizeof(input)],
-             &k_sentinel_bytes[sizeof(input)],
-             sizeof(output) - sizeof(input)) != 0) {
-    return k_abi_fixture_test_failure;
-  }
-  memcpy(output, k_sentinel_bytes, sizeof(output));
-  out_len = k_sentinel_u32;
   if (ra8_abi_fixture_copy(handle, nullptr, 0U, output, sizeof(output), &out_len) != k_ra8_ok ||
       out_len != 0U || memcmp(output, k_sentinel_bytes, sizeof(output)) != 0) {
     return k_abi_fixture_test_failure;
@@ -258,6 +240,15 @@ static abi_fixture_test_result_t test_copy(ra8_abi_fixture_t* handle)
       out_len != k_sentinel_u32 || memcmp(output, k_sentinel_bytes, sizeof(output)) != 0) {
     return k_abi_fixture_test_failure;
   }
+  return k_abi_fixture_test_success;
+}
+
+/** @brief Exercise invalid-handle and null-output copy vectors. */
+static abi_fixture_test_result_t test_copy_pointers(ra8_abi_fixture_t* handle)
+{
+  static const uint8_t input[] = {1U, 2U, 3U, 4U};
+  uint8_t              output[sizeof(k_sentinel_bytes)];
+  uint32_t             out_len = k_sentinel_u32;
   memcpy(output, k_sentinel_bytes, sizeof(output));
   if (ra8_abi_fixture_copy((ra8_abi_fixture_t*)(uintptr_t)0x1U,
                            input,
@@ -289,6 +280,34 @@ static abi_fixture_test_result_t test_copy(ra8_abi_fixture_t* handle)
   return k_abi_fixture_test_success;
 }
 
+/** @brief Exercise successful copy vectors and all failure groups. */
+static abi_fixture_test_result_t test_copy(ra8_abi_fixture_t* handle)
+{
+  static const uint8_t input[] = {1U, 2U, 3U, 4U};
+  uint8_t              output[sizeof(k_sentinel_bytes)];
+  uint32_t             out_len = k_sentinel_u32;
+  memcpy(output, k_sentinel_bytes, sizeof(output));
+  if (ra8_abi_fixture_copy(handle, input, sizeof(input), output, sizeof(input), &out_len) !=
+        k_ra8_ok ||
+      out_len != sizeof(input) || memcmp(input, output, sizeof(input)) != 0) {
+    return k_abi_fixture_test_failure;
+  }
+  memcpy(output, k_sentinel_bytes, sizeof(output));
+  out_len = k_sentinel_u32;
+  if (ra8_abi_fixture_copy(handle, input, sizeof(input), output, sizeof(output), &out_len) !=
+        k_ra8_ok ||
+      out_len != sizeof(input) || memcmp(input, output, sizeof(input)) != 0 ||
+      memcmp(&output[sizeof(input)],
+             &k_sentinel_bytes[sizeof(input)],
+             sizeof(output) - sizeof(input)) != 0) {
+    return k_abi_fixture_test_failure;
+  }
+  if (test_copy_bounds(handle) != k_abi_fixture_test_success) {
+    return k_abi_fixture_test_failure;
+  }
+  return test_copy_pointers(handle);
+}
+
 /**
  * @brief Exercise library-owned output publication and release.
  *
@@ -300,51 +319,11 @@ static abi_fixture_test_result_t test_copy(ra8_abi_fixture_t* handle)
  * Live/free slot, valid/invalid pointer, and present/absent output conditions
  * are varied independently. Every failure vector checks both output sentinels.
  */
-static abi_fixture_test_result_t test_owned_bytes(ra8_abi_fixture_t* handle)
+static abi_fixture_test_result_t test_owned_bytes_inputs(ra8_abi_fixture_t* handle)
 {
-  static const uint8_t input[]    = {9U, 8U, 7U};
-  uint8_t*             bytes      = (uint8_t*)(uintptr_t)0x1U;
-  uint8_t*             second     = (uint8_t*)(uintptr_t)0x2U;
-  uint32_t             out_len    = k_sentinel_u32;
-  uint32_t             second_len = k_sentinel_u32;
-
-  ra8_abi_fixture_test_fail_next_allocation();
-  if (ra8_abi_fixture_bytes_create(handle, input, sizeof(input), &bytes, &out_len) !=
-        k_ra8_err_no_mem ||
-      bytes != (uint8_t*)(uintptr_t)0x1U || out_len != k_sentinel_u32) {
-    return k_abi_fixture_test_failure;
-  }
-  if (ra8_abi_fixture_bytes_create(handle, input, sizeof(input), &bytes, &out_len) != k_ra8_ok ||
-      bytes == nullptr || out_len != sizeof(input) || memcmp(bytes, input, sizeof(input)) != 0) {
-    return k_abi_fixture_test_failure;
-  }
-  if (ra8_abi_fixture_bytes_create(handle, input, sizeof(input), &second, &second_len) !=
-        k_ra8_err_no_mem ||
-      second != (uint8_t*)(uintptr_t)0x2U || second_len != k_sentinel_u32) {
-    return k_abi_fixture_test_failure;
-  }
-  if (ra8_abi_fixture_destroy(&handle) != k_ra8_err_busy || handle == nullptr) {
-    return k_abi_fixture_test_failure;
-  }
-  second = (uint8_t*)(uintptr_t)0x2U;
-  if (ra8_abi_fixture_bytes_release(&second) != k_ra8_err_invalid_arg ||
-      second != (uint8_t*)(uintptr_t)0x2U) {
-    return k_abi_fixture_test_failure;
-  }
-  if (ra8_abi_fixture_bytes_release(&bytes) != k_ra8_ok || bytes != nullptr ||
-      ra8_abi_fixture_bytes_release(&bytes) != k_ra8_ok) {
-    return k_abi_fixture_test_failure;
-  }
-  second = (uint8_t*)(uintptr_t)0x2U;
-  if (ra8_abi_fixture_bytes_release(&second) != k_ra8_err_invalid_state ||
-      second != (uint8_t*)(uintptr_t)0x2U) {
-    return k_abi_fixture_test_failure;
-  }
-  if (ra8_abi_fixture_bytes_release(nullptr) != k_ra8_err_null_ptr) {
-    return k_abi_fixture_test_failure;
-  }
-  bytes   = (uint8_t*)(uintptr_t)0x1U;
-  out_len = k_sentinel_u32;
+  static const uint8_t input[] = {9U, 8U, 7U};
+  uint8_t*             bytes   = (uint8_t*)(uintptr_t)0x1U;
+  uint32_t             out_len = k_sentinel_u32;
   if (ra8_abi_fixture_bytes_create(handle, nullptr, 1U, &bytes, &out_len) != k_ra8_err_null_ptr ||
       bytes != (uint8_t*)(uintptr_t)0x1U || out_len != k_sentinel_u32) {
     return k_abi_fixture_test_failure;
@@ -388,6 +367,44 @@ static abi_fixture_test_result_t test_owned_bytes(ra8_abi_fixture_t* handle)
     return k_abi_fixture_test_failure;
   }
   return k_abi_fixture_test_success;
+}
+
+/** @brief Exercise owned-byte lifecycle and delegate input-validation vectors. */
+static abi_fixture_test_result_t test_owned_bytes(ra8_abi_fixture_t* handle)
+{
+  static const uint8_t input[]    = {9U, 8U, 7U};
+  uint8_t*             bytes      = (uint8_t*)(uintptr_t)0x1U;
+  uint8_t*             second     = (uint8_t*)(uintptr_t)0x2U;
+  uint32_t             out_len    = k_sentinel_u32;
+  uint32_t             second_len = k_sentinel_u32;
+  ra8_abi_fixture_test_fail_next_allocation();
+  if (ra8_abi_fixture_bytes_create(handle, input, sizeof(input), &bytes, &out_len) !=
+        k_ra8_err_no_mem ||
+      bytes != (uint8_t*)(uintptr_t)0x1U || out_len != k_sentinel_u32) {
+    return k_abi_fixture_test_failure;
+  }
+  if (ra8_abi_fixture_bytes_create(handle, input, sizeof(input), &bytes, &out_len) != k_ra8_ok ||
+      bytes == nullptr || out_len != sizeof(input) || memcmp(bytes, input, sizeof(input)) != 0) {
+    return k_abi_fixture_test_failure;
+  }
+  if (ra8_abi_fixture_bytes_create(handle, input, sizeof(input), &second, &second_len) !=
+        k_ra8_err_no_mem ||
+      second != (uint8_t*)(uintptr_t)0x2U || second_len != k_sentinel_u32 ||
+      ra8_abi_fixture_destroy(&handle) != k_ra8_err_busy || handle == nullptr) {
+    return k_abi_fixture_test_failure;
+  }
+  if (ra8_abi_fixture_bytes_release(&second) != k_ra8_err_invalid_arg ||
+      second != (uint8_t*)(uintptr_t)0x2U || ra8_abi_fixture_bytes_release(&bytes) != k_ra8_ok ||
+      bytes != nullptr || ra8_abi_fixture_bytes_release(&bytes) != k_ra8_ok) {
+    return k_abi_fixture_test_failure;
+  }
+  second = (uint8_t*)(uintptr_t)0x2U;
+  if (ra8_abi_fixture_bytes_release(&second) != k_ra8_err_invalid_state ||
+      second != (uint8_t*)(uintptr_t)0x2U ||
+      ra8_abi_fixture_bytes_release(nullptr) != k_ra8_err_null_ptr) {
+    return k_abi_fixture_test_failure;
+  }
+  return test_owned_bytes_inputs(handle);
 }
 
 /**

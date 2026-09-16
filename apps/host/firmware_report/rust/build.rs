@@ -16,7 +16,8 @@ fn run(command: &mut Command, description: &str) {
 
 fn main() {
     println!("cargo:rerun-if-changed=../src/firmware_report_cli.c");
-    println!("cargo:rerun-if-changed=../src/firmware_report_cli.h");
+    println!("cargo:rerun-if-changed=../src/firmware_report_cli_internal.h");
+    println!("cargo:rerun-if-changed=../../../../libs/ra8_core/inc/ra8_attributes.h");
     if env::var_os("CARGO_FEATURE_COMMAND").is_none() {
         return;
     }
@@ -32,7 +33,14 @@ fn main() {
     let compiler = env::var("CC").unwrap_or_else(|_| "cc".to_owned());
     run(
         Command::new(compiler)
-            .args(["-std=gnu2x", "-Wall", "-Wextra", "-Werror", "-c"])
+            .args([
+                "-std=gnu2x",
+                "-Wall",
+                "-Wextra",
+                "-Werror",
+                "-I../../../../libs/ra8_core/inc",
+                "-c",
+            ])
             .arg(source)
             .arg("-o")
             .arg(&object),

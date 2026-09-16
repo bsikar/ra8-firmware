@@ -6,12 +6,12 @@
 #![expect(unsafe_code, reason = "this module is the audited C ABI adapter")]
 
 use crate::ReportSummary;
-use std::ffi::{CString, OsString, c_char, c_int, c_void};
+use std::ffi::{c_char, c_int, c_void, CString, OsString};
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt as _;
 
 unsafe extern "C" {
-    fn firmware_report_parse_args(
+    fn priv_firmware_report_parse_args(
         argc: c_int,
         argv: *mut *mut c_char,
         out_path: *mut *const c_char,
@@ -44,7 +44,8 @@ pub fn parse_path(arguments: &[OsString]) -> Result<OsString, ()> {
     let argc = c_int::try_from(pointers.len()).map_err(|_| ())?;
     let mut path = std::ptr::null();
     // SAFETY: every pointer names a live terminated CString and path is writable.
-    let status = unsafe { firmware_report_parse_args(argc, pointers.as_mut_ptr(), &raw mut path) };
+    let status =
+        unsafe { priv_firmware_report_parse_args(argc, pointers.as_mut_ptr(), &raw mut path) };
     if status != 0 || path.is_null() {
         return Err(());
     }

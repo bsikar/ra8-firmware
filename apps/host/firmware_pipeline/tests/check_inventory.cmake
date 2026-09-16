@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 
-set(expected
+set(EXPECTED
     test_firmware_pipeline_abi
     test_firmware_pipeline_cli
     test_firmware_pipeline_command
@@ -11,9 +11,9 @@ set(expected
     test_firmware_pipeline_symbols_selftest
     test_firmware_pipeline_zig
 )
-list(SORT expected)
-set(actual ${ACTUAL_TESTS})
-list(SORT actual)
-if(NOT "${actual}" STREQUAL "${expected}")
-  message(FATAL_ERROR "firmware_pipeline tests ${actual}; required ${expected}")
+list(SORT EXPECTED)
+set(ACTUAL ${ACTUAL_TESTS})
+list(SORT ACTUAL)
+if(NOT "${ACTUAL}" STREQUAL "${EXPECTED}")
+  message(FATAL_ERROR "firmware_pipeline tests ${ACTUAL}; required ${EXPECTED}")
 endif()

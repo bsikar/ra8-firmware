@@ -10,28 +10,34 @@
 
 #include "ra8_abi_chain.h"
 
-typedef enum : int { k_test_ok = 0, k_test_fail = 1 } chain_test_result_t;
+typedef enum : int {
+  k_test_ok   = 0, /**< Test completed successfully.      */
+  k_test_fail = 1, /**< Test detected a contract failure. */
+} chain_test_result_t;
 typedef enum : uint32_t {
-  k_input       = 7U,
-  k_traced      = 0x115U,
-  k_sentinel    = 0xA5A5A5A5U,
-  k_invalid_tag = 0U,
-  k_no_calls    = 0U,
-  k_one_call    = 1U,
-  k_no_handles  = 0U,
-  k_one_handle  = 1U,
+  k_input       = 7U,          /**< Valid scalar input.                  */
+  k_traced      = 0x115U,      /**< Expected Rust result plus Zig trace. */
+  k_sentinel    = 0xA5A5A5A5U, /**< Unchanged-output sentinel.           */
+  k_invalid_tag = 0U,          /**< Deliberately invalid Zig tag.        */
+  k_no_calls    = 0U,          /**< Expected absence of provider calls.  */
+  k_one_call    = 1U,          /**< Expected single provider call.       */
+  k_no_handles  = 0U,          /**< Expected absence of live handles.    */
+  k_one_handle  = 1U,          /**< Expected single live handle.         */
 } chain_u32_t;
-typedef enum : uint16_t { k_factor = 3U, k_overflow_factor = 2U } chain_u16_t;
+typedef enum : uint16_t {
+  k_factor          = 3U, /**< Valid multiplication factor.              */
+  k_overflow_factor = 2U, /**< Factor that overflows the selected input. */
+} chain_u16_t;
 typedef enum : uint8_t {
-  k_disabled        = 0U,
-  k_enabled         = 1U,
-  k_invalid_enabled = 2U,
-  k_reserved_clear  = 0U,
-  k_reserved_set    = 1U,
+  k_disabled        = 0U, /**< Disabled fixture state.          */
+  k_enabled         = 1U, /**< Enabled fixture state.           */
+  k_invalid_enabled = 2U, /**< Invalid Boolean representation.  */
+  k_reserved_clear  = 0U, /**< Required clear reserved value.   */
+  k_reserved_set    = 1U, /**< Deliberately set reserved value. */
 } chain_u8_t;
 typedef enum : uintptr_t {
-  k_fake_first  = 0x1U,
-  k_fake_second = 0x2U,
+  k_fake_first  = 0x1U, /**< First invalid handle sentinel.  */
+  k_fake_second = 0x2U, /**< Second invalid handle sentinel. */
 } chain_address_t;
 
 /**

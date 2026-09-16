@@ -195,16 +195,11 @@ def package_policy_errors(
     return errors
 
 
-def contract_errors(cargo: str, crate: Path) -> tuple[list[str], int, set[Path]]:
-    """Validate exact source coverage, lockfile presence, and test floor."""
-    errors: list[str] = []
-    path = crate / CONTRACT
-    if not path.is_file():
-        return [f"missing {CONTRACT}"], 0, set()
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        return [f"invalid {CONTRACT}: {exc}"], 0, set()
+def _contract_fields(data: object, errors: list[str]) -> tuple[list[str], int, str, list[str]]:
+    """Validate and normalize one Rust test-contract document."""
+    if not isinstance(data, dict):
+        errors.append("test contract must be a JSON object")
+        return [], 0, "", []
     covered = data.get("covered_sources")
     floor = data.get("minimum_tests")
     package_license = data.get("package_license")
@@ -229,6 +224,20 @@ def contract_errors(cargo: str, crate: Path) -> tuple[list[str], int, set[Path]]
         allowed_dependencies = []
     elif len(allowed_dependencies) != len(set(allowed_dependencies)):
         errors.append("allowed_dependencies must not contain duplicates")
+    return covered, floor, package_license, allowed_dependencies
+
+
+def contract_errors(cargo: str, crate: Path) -> tuple[list[str], int, set[Path]]:
+    """Validate exact source coverage, lockfile presence, and test floor."""
+    errors: list[str] = []
+    path = crate / CONTRACT
+    if not path.is_file():
+        return [f"missing {CONTRACT}"], 0, set()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"invalid {CONTRACT}: {exc}"], 0, set()
+    covered, floor, package_license, allowed_dependencies = _contract_fields(data, errors)
     declared: set[Path] = set()
     for rel in covered:
         candidate = crate / rel

@@ -3,6 +3,7 @@
  * @brief Deliberately incompatible C layout used by the ABI negative test.
  * @details Must fail compilation to prove that layout drift cannot pass the fixture.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 

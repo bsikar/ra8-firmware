@@ -728,12 +728,10 @@ if [[ "$-" == *p* ]]; then
     local check_only=0
     local uv_check_status=0
     [ "${1:-}" = "--check-only" ] && check_only=1
-
     [ -f "${DOCKERFILE}" ] || {
       echo "error: ${DOCKERFILE} not found -- run from a full checkout" >&2
       exit 1
     }
-
     local shellcheck_v shfmt_v actionlint_v hadolint_v just_v doxygen_v go_v zig_v rust_v
     local python_venv
     shellcheck_v="$(dockerfile_arg SHELLCHECK_VERSION)"
@@ -746,7 +744,6 @@ if [[ "$-" == *p* ]]; then
     go_v="$(dockerfile_arg GO_VERSION)"
     zig_v="$(dockerfile_arg ZIG_VERSION)"
     rust_v="$(dockerfile_arg RUST_VERSION)"
-
     for pair in "SHELLCHECK_VERSION=${shellcheck_v}" "SHFMT_VERSION=${shfmt_v}" \
       "ACTIONLINT_VERSION=${actionlint_v}" "HADOLINT_VERSION=${hadolint_v}" \
       "JUST_VERSION=${just_v}" "PYTHON_TOOL_VENV=${python_venv}" \

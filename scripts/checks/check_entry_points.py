@@ -226,6 +226,17 @@ def copied_main_declarations(rel: str, lines: list[str]) -> list[str]:
     ]
 
 
+def _suppression_findings(rel: str, lines: list[str]) -> list[str]:
+    """Reject hosted-only main-warning suppressions in every domain."""
+    return [
+        f"{rel}:{i + 1}: -Wmain suppression. The firmware lane is "
+        f"-ffreestanding, so the diagnostic does not apply; a "
+        f"suppression here is hiding something else."
+        for i, line in enumerate(lines)
+        if SUPPRESSION_RE.search(line)
+    ]
+
+
 def check_file(
     rel: str, text: str, firmware_apps: tuple[str, ...] = FIRMWARE_APPS
 ) -> tuple[list[str], str | None]:
@@ -243,23 +254,13 @@ def check_file(
             )
             return findings, None
         return findings, domain
-
     findings.extend(copied_main_declarations(rel, lines))
-
-    for i, line in enumerate(lines):
-        if SUPPRESSION_RE.search(line):
-            findings.append(
-                f"{rel}:{i + 1}: -Wmain suppression. The firmware lane is "
-                f"-ffreestanding, so the diagnostic does not apply; a "
-                f"suppression here is hiding something else."
-            )
-
+    findings.extend(_suppression_findings(rel, lines))
     found = find_main(lines)
     if found is None:
         return findings, None
     sig, ret, args = found
     domain = domain_of(rel, firmware_apps)
-
     if domain is None:
         findings.append(
             f"{rel}:{sig + 1}: defines main() but is under neither a hosted "
@@ -541,33 +542,24 @@ def _selftest_fires(failures: list[str]) -> None:
 def _selftest_scope(failures: list[str]) -> None:
     """The scan still reaches what it must, and still excludes what it must."""
     live = discover()
-    expect(
-        any(p.startswith("examples/") for p in live), "the live scan reaches examples/", failures
-    )
+    expect(any(p.startswith("examples/") for p in live), "live scan reaches examples/", failures)
     expect(any(p.startswith("tests/") for p in live), "the live scan reaches tests/", failures)
     expect(
         all(not p.startswith(("libs/third_party/", "apps/shared_libs/third_party/")) for p in live),
         "the live scan excludes vendored SOUP",
         failures,
     )
-
-    # The floor is a testable predicate, not just an inline branch.
     collapsed_rejected = False
     try:
         enforce_floors({"hosted": 0, "firmware": 0}, list(MUST_DISCOVER))
     except ScanError:
         collapsed_rejected = True
     expect(collapsed_rejected, "MUST FIRE: a collapsed scan is rejected", failures)
-
     expect(
         not check_shared_declaration(),
         "the live shared declaration is present and guarded",
         failures,
     )
-
-    # The products tier carries both domains, and the live tree must still say
-    # so -- if apps/ ever held only hosted products this gate's extra rule
-    # would be dead weight nobody would notice.
     expect(
         not check_firmware_apps(),
         "FIRMWARE_APPS agrees with the products actually in the tree",
