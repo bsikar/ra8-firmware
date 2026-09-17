@@ -84,7 +84,6 @@ typedef enum : uint32_t {
  * @param[out] buf  Destination buffer.
  * @param[in]  len  Byte count.
  * @param[in]  seed Ramp seed (`buf[i] == (seed + i) & 0xFF`).
- * @return Nothing.
  * @pre @p buf is non-NULL, or @p len is 0.
  * @pre @p len is the intended pattern length.
  * @post On a non-NULL buffer, `buf[i] == (uint8_t)(seed + i)` for every i.

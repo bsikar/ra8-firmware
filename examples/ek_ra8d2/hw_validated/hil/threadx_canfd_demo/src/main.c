@@ -144,7 +144,6 @@ volatile uint32_t g_threadx_canfd_mismatch = 0U;
  *
  * @param[in] thread_input ThreadX cookie -- unused.
  *
- * @return None.
  *
  * @pre ThreadX scheduler is running.
  * @pre LED1 has been configured as an output.
@@ -199,7 +198,6 @@ RA8_INTERNAL static void internal_thread_tx_entry(ULONG thread_input)
  *
  * @param[in] thread_input ThreadX cookie -- unused.
  *
- * @return None.
  *
  * @pre ThreadX scheduler is running.
  * @pre LED2 has been configured as an output.

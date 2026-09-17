@@ -122,7 +122,6 @@ static bool app_launch_hil_console_init(void)
  * flushes it so the bytes clock out before the CPU parks in WFI. A no-op if the
  * console never came up (the write returns `k_ra8_err_not_initialized`, ignored).
  *
- * @return Nothing.
  *
  * @pre Reached only on the verified success path (single, non-compound guard).
  * @pre ::app_launch_hil_console_init was attempted during bring-up.

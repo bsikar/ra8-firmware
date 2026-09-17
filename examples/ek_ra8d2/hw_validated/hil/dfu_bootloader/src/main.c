@@ -659,7 +659,6 @@ VOID tx_application_define(VOID* first_unused_memory)
 
 /**
  * @brief Route the USB-FS device pins (P4_07/P5_00/P8_14/P8_15).
- * @return void.
  * @pre IOPORT is reachable.
  * @pre Called once from ::blc_setup_or_halt.
  * @post FS carries the device role (VBUSEN LOW; the host supplies VBUS).
@@ -706,7 +705,6 @@ static uint8_t s_blc_psa_heap[k_blc_psa_heap_bytes];
 
 /**
  * @brief Bring CGC + USB-FS clock + SysTick + SCI8 + LEDs + pins up.
- * @return void.
  * @pre Reset_Handler finished C runtime init.
  * @pre SystemInit has run.
  * @post Console works; the USB-FS pins and clock are live.

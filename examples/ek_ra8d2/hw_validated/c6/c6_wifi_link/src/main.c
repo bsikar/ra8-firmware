@@ -199,7 +199,6 @@ static void c6_wifi_setup_or_halt(void)
  * @brief Narrate one announcement the co-processor volunteered.
  * @param[in] ctx Unused; this application has one link.
  * @param[in] ev The decoded announcement; never null.
- * @return Nothing.
  * @pre The console is up.
  * @pre @p ev is valid only for the duration of this call.
  * @post One line was emitted and the run's event count advanced.
@@ -227,7 +226,6 @@ static void c6_wifi_on_event(void* ctx, const ra8_c6link_event_t* ev)
  * @brief Print the co-processor's own error code for the last failed request.
  * @param[in] what Short name of the step that failed; must be non-null.
  * @param[in] err What the facade returned.
- * @return Nothing.
  * @pre The console is up.
  * @pre A request has just failed on ::s_c6_wifi_link.
  * @post Exactly one line was emitted.
@@ -512,7 +510,6 @@ static void c6_wifi_worker_entry(ULONG thread_input)
  * @brief ThreadX define hook: bring the port up and start the worker.
  * @param[in] first_unused_memory Free RAM handed over by the ThreadX port;
  *                                unused, every object here is static.
- * @return Nothing.
  * @pre ``tx_kernel_enter`` has been called and the clock cache is valid.
  * @pre No vendored esp-hosted entry point has been called yet.
  * @post ::s_c6_wifi_init_err holds the exact port-init result.

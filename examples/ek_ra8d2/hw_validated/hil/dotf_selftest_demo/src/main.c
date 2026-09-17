@@ -141,7 +141,6 @@ volatile uint32_t g_dotf_heartbeat = 0U;
  * @details Retains channel status snapshots, LEDs, and console diagnostics in a
  *          permanent wait-for-interrupt loop for debugger inspection.
  *
- * @return None.
  *
  * @pre The caller has determined DOTF self-test cannot continue.
  * @pre Any relevant status snapshot or failure banner has been recorded.
@@ -165,7 +164,6 @@ RA8_INTERNAL static void internal_dotf_demo_panic_halt(void)
  *          time base, opens the UART console, and claims both status LEDs. Any
  *          failed dependency enters the permanent panic halt.
  *
- * @return None.
  *
  * @pre Reset-time initialization configured the core and C runtime.
  * @pre The board console and LED1/LED2 are available to this image.

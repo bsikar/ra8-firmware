@@ -72,7 +72,6 @@ volatile uint32_t g_blink_tick = 0U;
  * @details Repeatedly executes wait-for-interrupt so a failed board or timing
  *          initialization remains observable without performing more I/O.
  *
- * @return None.
  *
  * @pre The caller has no remaining recovery action to perform.
  * @pre Any enabled interrupt is safe to service before returning to the loop.

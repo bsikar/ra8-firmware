@@ -116,7 +116,6 @@ static void uart_irq_panic_halt(void)
  * @brief SCI8 RXI ISR: drive the driver's receive state machine.
  *
  * @param[in] ctx Unused registration context.
- * @return Nothing.
  * @pre Registered for the SCI8 RXI event.
  * @post The driver has consumed one RDR byte and the RX callback has run.
  * @since 0.1.0
@@ -131,7 +130,6 @@ static void uart_irq_rxi_isr(void* ctx)
  * @brief SCI8 TXI ISR: push the next byte of an in-flight interrupt TX.
  *
  * @param[in] ctx Unused registration context.
- * @return Nothing.
  * @pre Registered for the SCI8 TXI event.
  * @post One queued TX byte has been written to TDR (or TIE cleared at end).
  * @since 0.1.0
@@ -146,7 +144,6 @@ static void uart_irq_txi_isr(void* ctx)
  * @brief SCI8 TEI ISR: end-of-transmission housekeeping.
  *
  * @param[in] ctx Unused registration context.
- * @return Nothing.
  * @pre Registered for the SCI8 TEI event.
  * @post The driver's error/end path has run for the channel.
  * @since 0.1.0
@@ -168,7 +165,6 @@ static void uart_irq_tei_isr(void* ctx)
  *
  * @param[in] ctx  Unused callback context.
  * @param[in] byte The received data byte.
- * @return Nothing.
  * @since 0.1.0
  */
 static void uart_irq_rx_cb(void* ctx, uint8_t byte)

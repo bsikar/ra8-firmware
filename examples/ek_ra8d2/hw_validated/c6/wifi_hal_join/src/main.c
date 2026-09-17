@@ -164,7 +164,6 @@ static ra8_err_t wifi_hal_make_cfg(ra8_wifi_cfg_t* out)
  * @details Emits address, mask, gateway, and DHCP server in dotted-quad form
  *          through bounded console helpers.
  * @param[in] lease Bound lease record to print.
- * @return Nothing.
  * @pre `lease` is non-null and initialized.
  * @pre The board console is initialized.
  * @post Every lease address field is emitted once.
@@ -348,7 +347,6 @@ static void wifi_hal_worker_entry(ULONG thread_input)
  * @brief ThreadX define hook: bring the port up and start the worker.
  * @param[in] first_unused_memory Free RAM from the ThreadX port; unused, every
  *                                object here is static.
- * @return Nothing.
  * @pre ``tx_kernel_enter`` has been called and the clock cache is valid.
  * @pre No vendored esp-hosted entry point has been called yet.
  * @post ::s_init_err holds the exact port-init result.

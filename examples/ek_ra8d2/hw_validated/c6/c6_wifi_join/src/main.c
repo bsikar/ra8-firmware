@@ -136,7 +136,6 @@ static void c6_join_setup_or_halt(void)
  *          station state while preserving the last disconnect reason.
  * @param[in] ctx Unused callback context.
  * @param[in] ev Event to record; null is ignored.
- * @return Nothing.
  * @pre The callback is installed on the application-owned C6 link.
  * @pre Event fields follow the C6 link contract when `ev` is non-null.
  * @post A non-null event increments the event counter once.
@@ -167,7 +166,6 @@ static void c6_join_on_event(void* ctx, const ra8_c6link_event_t* ev)
  *          the caller-supplied stage name and repository error description.
  * @param[in] what NUL-terminated non-secret stage name.
  * @param[in] err Repository error returned by that stage.
- * @return Nothing.
  * @pre The console is initialized.
  * @pre `what` is valid within the console string bound.
  * @post One failure line is emitted.
@@ -470,7 +468,6 @@ static void c6_join_worker_entry(ULONG thread_input)
  * @brief ThreadX define hook: bring the port up and start the worker.
  * @param[in] first_unused_memory Free RAM from the ThreadX port; unused, every
  *                                object here is static.
- * @return Nothing.
  * @pre ``tx_kernel_enter`` has been called and the clock cache is valid.
  * @pre No vendored esp-hosted entry point has been called yet.
  * @post ::s_init_err holds the exact port-init result.

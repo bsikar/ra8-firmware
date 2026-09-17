@@ -87,7 +87,6 @@ volatile uint32_t g_gpt_three_phase_mismatch = 0U;
  * @details Retains the synchronized-channel and HIL counter state in a
  *          permanent wait-for-interrupt loop for debugger inspection.
  *
- * @return None.
  *
  * @pre The caller has determined the three-phase validation cannot continue.
  * @pre Any mismatch counter update required by the failure is complete.
@@ -111,7 +110,6 @@ RA8_INTERNAL static void internal_gpt_3p_demo_panic_halt(void)
  *          opening the synchronized GPT channels. Any failure enters the
  *          permanent panic halt.
  *
- * @return None.
  *
  * @pre Reset-time initialization configured the core and C runtime.
  * @pre LED1 is available for exclusive use by this image.

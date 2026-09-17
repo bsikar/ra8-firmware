@@ -58,7 +58,6 @@ static const uint8_t s_icu_extint_demo_msg_boot[]  = "icu_extint_demo: boot\r\n"
  * @details Repeats wait-for-interrupt forever, preserving IRQ detection, LED,
  *          and console state for an attached debugger.
  *
- * @return None.
  *
  * @pre The caller has determined external-interrupt validation cannot continue.
  * @pre Any required UART diagnostic has already completed.
@@ -82,7 +81,6 @@ RA8_INTERNAL static void internal_icu_extint_demo_panic_halt(void)
  *          claims the board switch and indicator LED before IRQ13 is armed.
  *          Any failed dependency enters the permanent panic halt.
  *
- * @return None.
  *
  * @pre Reset-time initialization configured the core and C runtime.
  * @pre SW1, LED1, and the SCI8 console are available to this image.

@@ -71,7 +71,6 @@ static const uint8_t s_uart_hello_greeting[] = "hello, ra8d2!\r\n";
  * @details Preserves the failed boot state in a low-activity loop that remains
  *          accessible to an attached debugger.
  *
- * @return None.
  *
  * @pre Called only after a fatal error in boot.
  * @pre The caller has no remaining recovery or diagnostic write to perform.
@@ -99,7 +98,6 @@ RA8_INTERNAL static void internal_uart_hello_panic_halt(void)
  * SCI8 init. That keeps the demo correct when the CGC driver is
  * retargeted to a different clock tree.
  *
- * @return None.
  *
  * @pre Reset-time initialization configured the core and vector table.
  * @pre The EK-RA8D2 SCI8 console pins and LED1 are available to this app.

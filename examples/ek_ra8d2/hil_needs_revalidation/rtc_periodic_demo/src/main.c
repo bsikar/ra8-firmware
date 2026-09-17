@@ -71,7 +71,6 @@ static const uint8_t s_rtc_demo_boot_msg[] = "rtc_per: boot\r\n";
  * @details Repeats wait-for-interrupt forever, preserving the RTC and console
  *          state at the failure point for an attached debugger.
  *
- * @return None.
  *
  * @pre The caller has no remaining recovery path to attempt.
  * @pre Any diagnostic UART write that must be retained is complete.
@@ -96,7 +95,6 @@ RA8_INTERNAL static void internal_rtc_demo_panic_halt(void)
  *          2026-01-01 calendar value. Any dependency error enters the fatal
  *          halt rather than returning partially initialized state.
  *
- * @return None.
  *
  * @pre Reset-time platform initialization configured the core and vector table.
  * @pre The board console and RTC clock source are available to this image.

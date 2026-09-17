@@ -102,7 +102,6 @@ volatile uint32_t g_can_mismatch = 0U;
  * @details Retains the controller, LED, and HIL counter state in a permanent
  *          wait-for-interrupt loop for debugger inspection.
  *
- * @return None.
  *
  * @pre The caller has determined that loopback validation cannot continue.
  * @pre Any mismatch counter update required by the failure is complete.
@@ -159,7 +158,6 @@ internal_can_demo_enable_internal_loopback(uint8_t channel)
  * documented way to keep the controller in classic CAN 2.0B mode
  * (DBR is left at reset).
  *
- * @return None.
  *
  * @pre Reset_Handler set up the C runtime.
  * @pre CAN-FD channel 0 and LED1/LED2 are available to this image.

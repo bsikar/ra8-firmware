@@ -137,7 +137,6 @@ RA8_INTERNAL static void internal_rcs_setup_or_halt(void)
  * @details Ignores NULL input and delegates non-NULL byte emission to the board
  * console without allocating or retrying on diagnostic sink errors.
  * @param[in] s NUL-terminated string, or NULL (ignored).
- * @return Nothing.
  * @pre The console is initialised.
  * @pre @p s is NUL-terminated when non-NULL.
  * @post On a non-NULL @p s its bytes are queued to the console TX FIFO.
@@ -158,7 +157,6 @@ RA8_INTERNAL static void internal_rcs_print(const char* s)
  * @details Converts the value from least significant digit into a bounded local
  * buffer, then emits the resulting forward substring through the string helper.
  * @param[in] value Integer to print.
- * @return Nothing.
  * @pre The console is initialised.
  * @pre None on @p value (full range accepted).
  * @post The decimal representation of @p value is queued to the console.
@@ -188,7 +186,6 @@ RA8_INTERNAL static void internal_rcs_print_u32(uint32_t value)
  * agree, then prints the fixed diagnostic fields using bounded helpers.
  * @param[in] rc  Return code from ::cache_store_demo_run.
  * @param[in] res Populated demo result.
- * @return Nothing.
  * @pre The console is initialised.
  * @pre @p res reflects the run @p rc came from.
  * @post Exactly one PASS or FAIL banner line is queued to the console.

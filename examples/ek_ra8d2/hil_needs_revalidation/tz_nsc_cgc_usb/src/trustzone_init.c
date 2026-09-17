@@ -506,7 +506,6 @@ static ra8_err_t tz_usb_route_pins(void)
  *          value confirms, then re-locks PRC4. The confirmed value is stored
  *          in ::g_tz_usb_psarb_readback for a bench halt to verify.
  *
- * @return void.
  * @pre Caller is in Secure state.
  * @pre The USB pins/PLL setup has run.
  * @post PSARB.PSARB11|PSARB12 = 1 (both USB controllers Non-secure).
@@ -558,7 +557,6 @@ static void tz_usb_mark_ns(void)
  *             0x5025_0000 / 0x5035_0000 aliases and may clear their
  *             MSTPCRB.MSTPB11/12 module-stop bits itself.
  *
- * @return void.
  * @pre Caller is in Secure state with full peripheral access (pre-BLXNS).
  * @pre ``ra8_cgc_init`` has run (PLL1 locked -- USBHS PLL needs it).
  * @post The USB pins are muxed and PD07 is HIGH (or ::g_tz_usb_pins_err records

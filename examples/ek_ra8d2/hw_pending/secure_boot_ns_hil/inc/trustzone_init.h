@@ -52,7 +52,6 @@ typedef enum : uintptr_t {
  * C runtime (and the crypto heap) is live. On a host build (``RA8_OFF_TARGET``
  * or no ``RA8_TRUSTZONE_ENABLE``) it is a no-op.
  *
- * @return void.
  * @pre Caller is in Secure state, single-threaded, early boot (from SystemInit).
  * @pre The SAU is disabled and the IDAU is in its documented reset state.
  * @post SRAM2 is Non-secure, the SAU is enabled, and the NS image is resident

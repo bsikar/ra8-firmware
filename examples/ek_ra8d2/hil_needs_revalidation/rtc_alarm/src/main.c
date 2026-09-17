@@ -71,7 +71,6 @@ static const uint8_t s_rtc_demo_boot_msg[] = "rtc: boot\r\n";
  *          remains available to an attached debugger without continuing the
  *          alarm sequence.
  *
- * @return None.
  *
  * @pre The caller has completed any diagnostic writes it needs preserved.
  * @pre Interrupt wakeups are harmless because the enclosing loop is permanent.
@@ -96,7 +95,6 @@ RA8_INTERNAL static void internal_rtc_demo_panic_halt(void)
  *          fixed 2026-01-01 seed used by the alarm loop. Any failed dependency
  *          is converted into the demo's permanent panic halt.
  *
- * @return None.
  *
  * @pre Reset-time platform initialization has configured the core and vector table.
  * @pre The EK-RA8D2 sub-clock crystal and SCI8 console pins are available.

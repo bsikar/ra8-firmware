@@ -152,7 +152,6 @@ typedef union c6_hosted_frame {
  * @brief Write a NUL-terminated string to the board console.
  * @param[in] text String to emit; null is ignored rather than dereferenced
  *                 and the length is capped at ::k_c6_hosted_str_max.
- * @return Nothing.
  * @pre ``ra8_board_uart_console_init`` has succeeded.
  * @pre @p text is NUL-terminated within ::k_c6_hosted_str_max bytes.
  * @post The bytes are queued on the console transmitter.
@@ -167,7 +166,6 @@ void c6_hosted_puts(const char* text);
 /**
  * @brief Emit an unsigned 32-bit value in decimal.
  * @param[in] value Value to print; the whole 32-bit range is representable.
- * @return Nothing.
  * @pre The console is up.
  * @pre The caller wants no padding; zero prints as a single digit.
  * @post Between one and ::k_c6_hosted_dec_digits characters were emitted.
@@ -181,7 +179,6 @@ void c6_hosted_put_u32(uint32_t value);
 /**
  * @brief Emit a signed 32-bit value in decimal.
  * @param[in] value Value to print, including ``INT32_MIN``.
- * @return Nothing.
  * @pre The console is up.
  * @pre The caller accepts a leading minus sign on negative values.
  * @post One optional sign plus the decimal magnitude were emitted.
@@ -199,7 +196,6 @@ void c6_hosted_put_i32(int32_t value);
  * @param[in] digits Field width, 1..::k_c6_hosted_hex_digits; an
  *                   out-of-range width prints nothing rather than
  *                   overrunning the output array.
- * @return Nothing.
  * @pre The console is up.
  * @pre @p digits is within 1..::k_c6_hosted_hex_digits.
  * @post Exactly @p digits characters were emitted, or none on a bad width.
@@ -216,7 +212,6 @@ void c6_hosted_put_hex(uint32_t value, uint8_t digits);
  * @param[in] gpio_port Opaque port handle -- an index in pointer clothing,
  *                      never dereferenced.
  * @param[in] gpio_pin  Pin index, or negative when the signal is unwired.
- * @return Nothing.
  * @pre The console is up.
  * @pre @p gpio_port and @p gpio_pin are the two halves of one macro pair.
  * @post One field was emitted, ``=unwired`` for a negative pin.
@@ -233,7 +228,6 @@ void c6_hosted_print_gpio(const char* label, const void* gpio_port, int32_t gpio
  * @param[in] label Field name, printed verbatim; null prints nothing.
  * @param[in] pin   Packed pin from ``ra8_esp_hosted_pins.h``, possibly the
  *                  ``k_ra8_pin_none`` sentinel.
- * @return Nothing.
  * @pre The console is up.
  * @pre @p pin came from the port's pin table, never from a literal.
  * @post One field was emitted, ``=unwired`` for the sentinel.
@@ -249,7 +243,6 @@ void c6_hosted_print_pin(const char* label, ra8_esp_hosted_pin_t pin);
  * @brief Print the port identity, the clocks and the SPI parameters.
  * @param[in] cpuclk_hz Live CPUCLK0 rate in hertz.
  * @param[in] pclka_hz  Live PCLKA rate in hertz, the SCI baud-clock source.
- * @return Nothing.
  * @pre The console is up.
  * @pre Both rates were read from the CGC rather than assumed.
  * @post Three banner lines were emitted.
@@ -264,7 +257,6 @@ void c6_hosted_print_banner(uint32_t cpuclk_hz, uint32_t pclka_hz);
 
 /**
  * @brief Print the resolved pin map, bus pins and side-band alike.
- * @return Nothing.
  * @pre The console is up.
  * @pre ``ra8_esp_hosted_pins.h`` describes the harness currently fitted.
  * @post Four lines were emitted: bus pins, the driver's view of the
@@ -280,7 +272,6 @@ void c6_hosted_print_pin_map(void);
 
 /**
  * @brief Sample both side-band lines through the vtable and report them.
- * @return Nothing.
  * @pre ``ra8_esp_hosted_port_init`` returned ``k_ra8_ok``, so ``g_h.funcs``
  *      is populated.
  * @pre The console is up.
@@ -301,7 +292,6 @@ void c6_hosted_report_sideband(void);
  * @param[in] event_id Identifier within that namespace.
  * @param[in] data     Payload, or null; not decoded here.
  * @param[in] data_len Payload length in bytes.
- * @return Nothing.
  * @pre The console is up.
  * @pre The port has been told about this handler.
  * @post The event counter was incremented.
@@ -333,7 +323,6 @@ uint32_t c6_hosted_event_count(void);
 
 /**
  * @brief Clock one full-duplex transaction and report the verdict.
- * @return Nothing.
  * @pre ``ra8_esp_hosted_port_init`` returned ``k_ra8_ok``.
  * @pre The console is up.
  * @post Exactly one transfer line, one header line and one verdict line

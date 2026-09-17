@@ -97,7 +97,6 @@ static const uint32_t s_lcd_bgc_cycle[k_bgc_cycle_count] = {
  *          wait-for-interrupt loop so an attached debugger can inspect the
  *          failed display bring-up state.
  *
- * @return None.
  *
  * @pre Board-level LED access is safe from the current boot context.
  * @pre The caller has no remaining recovery action to perform.
@@ -175,7 +174,6 @@ RA8_INTERNAL static uint32_t internal_lcd_bringup_clocks(void)
  * @post GLCDC is running and driving the panel with the initial colour.
  * @post Panel back-light and 3.3 V rail are on.
  *
- * @return None.
  *
  * @note Not thread-safe; single-shot startup helper.
  * @since 0.1.0

@@ -216,7 +216,6 @@ ra8_net_provision_parse(const uint8_t* line, size_t line_length, ra8_net_credent
  *          discard the overwrite. A null record is accepted for cleanup paths
  *          that do not know whether provisioning completed.
  * @param[in,out] credentials Record to erase; null is a no-op.
- * @return Nothing.
  * @pre `credentials` is null or addresses a writable record.
  * @pre No concurrent consumer is reading the record.
  * @post Every byte in a non-null record is zero.

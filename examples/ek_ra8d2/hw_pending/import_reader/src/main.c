@@ -405,7 +405,6 @@ static rabook_import_compiler_ctx_t  s_imp_cookie;
  *          the `.epub` through (#230). No buffer is aliased: @p image_raw is
  *          distinct from the @p img_arena / @p gray source the transcode stage
  *          reads (a contract @warning of the scratch struct).
- * @return Nothing.
  * @pre The file-scope SDRAM arenas are defined (always true at TU scope).
  * @pre This is called once before the first import.
  * @post `s_imp_bufs`, `s_imp_scr`, `s_imp_arena` and `s_imp_cookie` reference

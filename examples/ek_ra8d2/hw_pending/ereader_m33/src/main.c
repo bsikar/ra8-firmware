@@ -131,7 +131,6 @@ typedef enum : uint32_t {
  * @param[in]     cap Capacity of @p dst (one byte reserved for the final NUL).
  * @param[in]     src Source string (never NULL).
  *
- * @return Nothing.
  *
  * @pre @p dst, @p off and @p src are non-NULL; `*off < cap`.
  * @pre @p cap is the true size of @p dst.
@@ -175,7 +174,6 @@ static void banner_append(char* dst, uint32_t* off, uint32_t cap, const char* sr
  * @param[in]     cap   Capacity of @p dst.
  * @param[in]     value 32-bit value to format big-endian (MSB nibble first).
  *
- * @return Nothing.
  *
  * @pre @p dst and @p off are non-NULL; `*off < cap`.
  * @pre @p cap is the true size of @p dst.
@@ -218,7 +216,6 @@ static void banner_append_hex(char* dst, uint32_t* off, uint32_t cap, uint32_t v
  * @param[in]     cap   Capacity of @p dst.
  * @param[in]     value 32-bit value to format in base 10.
  *
- * @return Nothing.
  *
  * @pre @p dst and @p off are non-NULL; `*off < cap`.
  * @pre @p cap is the true size of @p dst.
@@ -263,7 +260,6 @@ static void banner_append_u32(char* dst, uint32_t* off, uint32_t cap, uint32_t v
  *
  * @param[out] mb Pointer to the shared mailbox (never NULL).
  *
- * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer.
  * @pre Called before `ra8_cpu1_release` so the M33 sees a live mailbox.
@@ -403,7 +399,6 @@ static bool verify_page(const volatile erm33_mailbox_t* mb)
  * @param[in] crc  The CRC-32 the M33 published over its rendered pixels.
  * @param[in] pass Whether ::verify_page accepted the held page.
  *
- * @return Nothing.
  *
  * @pre `ra8_log_init` has run (the banner reaches ITM in a Debug build).
  * @pre @p crc is the value read from the mailbox.
@@ -456,7 +451,6 @@ static volatile bool s_m33_woke;
  * @param[in] channel  Channel that fired (always ::k_ipc_wake_channel here).
  * @param[in] event_id IRQ line that fired (always line 0 here).
  *
- * @return Nothing.
  *
  * @pre Attached to IPC channel 0 IRQ line 0 via `ra8_ipc_attach_event_handler`.
  * @pre Runs in IPC IRQ handler context (invoked from `ra8_ipc_dispatch`).
@@ -479,7 +473,6 @@ static void ipc_wake_handler(void* ctx, uint8_t channel, ra8_ipc_irq_event_id_t 
  *
  * @param[in] ctx Unused registration context.
  *
- * @return Nothing.
  *
  * @pre Registered for ::k_ra8_ipc_elc_event_irq0 via `ra8_isr_register`.
  * @pre The NVIC line for the IPC0 receive event is enabled.
@@ -556,7 +549,6 @@ static bool arm_ipc_wake(void)
  * the armed IPC0 receive IRQ still wakes the core. Deeper modes (Software
  * Standby) would stop the M33 too, which is wrong for this hand-off cycle.
  *
- * @return Nothing.
  *
  * @pre Called once during M85 bring-up, single-threaded.
  * @pre The ra8_lpm HAL owns the HUM citations for these SYSC writes.
@@ -591,7 +583,6 @@ static void m85_lpm_configure(void)
  *
  * @param[in] stop true -- gate the HOCO (park); false -- restore it (wake).
  *
- * @return Nothing.
  *
  * @pre Called from single-threaded main context with the M33 already released.
  * @pre The ra8_lpm HAL owns the HUM citation for the OCR write.
@@ -770,7 +761,6 @@ static bool run_handoff_cycle(volatile erm33_mailbox_t* mb)
  * @param[in] mb   Pointer to the shared mailbox (never NULL).
  * @param[in] pass Whether the full cycle completed and the re-render published.
  *
- * @return Nothing.
  *
  * @pre `ra8_log_init` has run (the banner reaches ITM in a Debug build).
  * @pre @p mb is the fixed-address mailbox pointer.
@@ -807,7 +797,6 @@ static void emit_cycle_verdict(const volatile erm33_mailbox_t* mb, bool pass)
  *
  * @param[in,out] mb Pointer to the shared mailbox (never NULL).
  *
- * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer with the first page held.
  * @pre ::arm_ipc_wake and ::m85_lpm_configure have run.

@@ -81,7 +81,6 @@ static const ra8_io_roundtrip_params_t s_params = {
  *
  * @param[in] msg NUL-terminated ASCII string (CR/LF supplied by the caller).
  *
- * @return None.
  *
  * @pre ::s_uart was bound by ::ra8_board_console_stream.
  * @pre @p msg is non-NULL and NUL-terminated.
@@ -104,7 +103,6 @@ RA8_INTERNAL static void internal_demo_print(const char* msg)
  *          channel, the PD02 / PD03 routing and the live-PCLKA bit-rate solve.
  *          Any failure spins forever so a debugger can inspect the halt.
  *
- * @return None.
  *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
  * @pre Runs single-threaded during early boot.

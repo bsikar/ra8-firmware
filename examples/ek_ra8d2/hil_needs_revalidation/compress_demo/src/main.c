@@ -106,7 +106,6 @@ static const char* const s_tag = "compress_demo";
  *
  * @param[in] msg NUL-terminated ASCII string (CR/LF supplied by the caller).
  *
- * @return None.
  *
  * @pre ::s_uart was initialised by ::ra8_io_stream_uart_init.
  * @pre @p msg is non-NULL and NUL-terminated.
@@ -128,7 +127,6 @@ RA8_INTERNAL static void internal_demo_print(const char* msg)
  *          time base, routes the SCI8 console pins, and opens the SCI8 UART. Any
  *          failure spins forever so a debugger can inspect the halt.
  *
- * @return None.
  *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
  * @pre Runs single-threaded during early boot.

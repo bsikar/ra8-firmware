@@ -49,7 +49,6 @@ typedef enum : uint32_t {
  *          full contract lives on the ra8_time.h declaration; this seam exists so
  *          the host ladder in ns_usb_host.c can reach the ThreadX-backed delay.
  * @param[in] ms Milliseconds to block (0 is rounded up to one tick).
- * @return void.
  * @pre Called from ThreadX thread context (the USB / host worker), not an ISR.
  * @pre The ThreadX scheduler is running (1 ms tick live).
  * @post The caller blocked for at least ``ms`` ticks.

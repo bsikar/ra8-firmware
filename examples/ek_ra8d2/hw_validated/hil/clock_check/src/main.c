@@ -134,7 +134,6 @@ typedef struct {
  * @details Preserves the failed clock or GPIO state in a low-activity loop for
  *          an attached debugger.
  *
- * @return None.
  *
  * @pre Called only after a fatal error in boot.
  * @pre Any desired HIL failure state has already been recorded.

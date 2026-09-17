@@ -214,7 +214,6 @@ static void c6_fwver_setup_or_halt(void)
 
 /**
  * @brief Send the host-capabilities event and drain the co-processor's.
- * @return Nothing.
  * @pre The port is up and the console is ready.
  * @pre No other context is driving the SPI bus.
  * @post The capabilities event was transmitted, or the reason it was not is
@@ -257,7 +256,6 @@ static void c6_fwver_phase_caps(void)
 
 /**
  * @brief Send the firmware-version request and pump until it is answered.
- * @return Nothing.
  * @pre The port is up and the console is ready.
  * @pre The capabilities phase has finished, so the bus is free.
  * @post The request was transmitted, or the reason it was not is on the
@@ -361,7 +359,6 @@ static void c6_fwver_worker_entry(ULONG thread_input)
  * @brief ThreadX define hook: bring the port up and start the worker.
  * @param[in] first_unused_memory Free RAM handed over by the ThreadX port;
  *                                unused, every object here is static.
- * @return Nothing.
  * @pre ``tx_kernel_enter`` has been called and the clock cache is valid.
  * @pre No vendored esp-hosted entry point has been called yet.
  * @post ::s_c6_fwver_init_err holds the exact port-init result.

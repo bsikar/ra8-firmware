@@ -181,7 +181,6 @@ ra8_err_t c6_fwver_priv_host_caps(uint8_t* out, uint16_t cap, uint16_t* out_len)
  * @param[in] tag TLV tag.
  * @param[in] value TLV value bytes; must be non-null.
  * @param[in] len TLV value length in bytes.
- * @return Nothing.
  * @pre @p len bytes are readable at @p value.
  * @pre The console is up.
  * @post Recognised tags were printed; unrecognised ones were named with

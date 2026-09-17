@@ -68,7 +68,6 @@ static const uint8_t s_agt_periodic_log_msg[] = "agt: tick OK\r\n";
  * @details Enters a permanent wait-for-interrupt loop so the timer status,
  *          LED state, and last UART event remain observable to a debugger.
  *
- * @return None.
  *
  * @pre The caller has determined timer polling cannot safely continue.
  * @pre Any required failure diagnostic has already been completed.
@@ -92,7 +91,6 @@ RA8_INTERNAL static void internal_agt_periodic_panic_halt(void)
  *          and claims LED1 before the timer is armed. Any failed dependency
  *          enters the permanent panic halt.
  *
- * @return None.
  *
  * @pre Reset-time initialization configured the core and C runtime.
  * @pre The board console and LED1 are available to this image.

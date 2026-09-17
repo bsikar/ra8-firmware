@@ -66,7 +66,6 @@ typedef enum : uint32_t {
  *
  * @param[out] mb Pointer to the shared mailbox.
  *
- * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer (never NULL).
  * @pre Called before `ra8_cpu1_release` so the M33 sees a published page.

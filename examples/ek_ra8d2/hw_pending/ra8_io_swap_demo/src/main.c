@@ -182,7 +182,6 @@ static const char* const s_tag = "ra8_io_swap_demo";
  *
  * @param[in] msg NUL-terminated ASCII string (CR/LF supplied by the caller).
  *
- * @return None.
  *
  * @pre ::s_uart was initialised by ::ra8_io_stream_uart_init.
  * @pre @p msg is non-NULL and NUL-terminated.
@@ -206,7 +205,6 @@ RA8_INTERNAL static void internal_swap_uart_print(const char* msg)
  *
  * @param[in] len Number of bytes to fill (must be <= ::k_swap_payload).
  *
- * @return None.
  *
  * @pre @p len is at most ::k_swap_payload.
  * @pre ::s_payload is file-scope storage (always allocated).
@@ -468,7 +466,6 @@ RA8_INTERNAL static ra8_err_t internal_swap_run_all(const char** out_failed)
  *          failure spins forever so a debugger can inspect the halt (there is no
  *          console yet to report on).
  *
- * @return None.
  *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
  * @pre Runs single-threaded during early boot.

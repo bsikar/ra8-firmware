@@ -72,7 +72,6 @@ static const uint8_t s_wdt_demo_msg_stop[] = "wdt: stopping refresh, expect rese
  * @details Repeats wait-for-interrupt forever when setup fails before the
  *          intentional watchdog-reset phase can begin.
  *
- * @return None.
  *
  * @pre The caller has determined the reset demonstration cannot continue.
  * @pre Any desired console diagnostic has already completed.
@@ -135,7 +134,6 @@ RA8_INTERNAL static const uint8_t* internal_wdt_demo_banner_for(ra8_reset_cause_
  *          the board UART, and claims LED1 before the watchdog demonstration
  *          begins. Any failed dependency enters the permanent panic halt.
  *
- * @return None.
  *
  * @pre Reset-time initialization configured the core and C runtime.
  * @pre The board console and LED1 are available to this image.

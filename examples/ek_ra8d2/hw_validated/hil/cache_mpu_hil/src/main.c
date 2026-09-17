@@ -433,7 +433,6 @@ static bool cache_mpu_setup(void)
  *                 non-NULL for output.
  * @param[in] len  Number of bytes to send; 0 sends nothing.
  *
- * @return Nothing.
  *
  * @pre @p line points to at least @p len readable bytes when @p len > 0.
  * @pre ::cache_mpu_setup was attempted during bring-up.

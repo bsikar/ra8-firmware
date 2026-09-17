@@ -107,7 +107,6 @@ static volatile bool s_m33_woke;
  * @param[in] channel  Channel that fired (always ::k_ipc_wake_channel here).
  * @param[in] event_id IRQ line that fired (always line 0 here).
  *
- * @return Nothing.
  *
  * @pre Attached to IPC channel 0 IRQ line 0 via `ra8_ipc_attach_event_handler`.
  * @pre Runs in IPC IRQ handler context (invoked from `ra8_ipc_dispatch`).
@@ -130,7 +129,6 @@ static void ipc_wake_handler(void* ctx, uint8_t channel, ra8_ipc_irq_event_id_t 
  *
  * @param[in] ctx Unused registration context.
  *
- * @return Nothing.
  *
  * @pre Registered for ::k_ra8_ipc_elc_event_irq0 via `ra8_isr_register`.
  * @pre The NVIC line for the IPC0 receive event is enabled.
@@ -209,7 +207,6 @@ static bool arm_ipc_wake(void)
  *
  * @param[out] mb Pointer to the shared mailbox (never NULL).
  *
- * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer.
  * @pre Called before `ra8_cpu1_release` so the M33 sees a live, posted job.

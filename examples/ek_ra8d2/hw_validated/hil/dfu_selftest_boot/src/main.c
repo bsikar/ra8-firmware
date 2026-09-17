@@ -728,7 +728,6 @@ VOID tx_application_define(VOID* first_unused_memory)
 
 /**
  * @brief Halt forever in WFI -- panic stop on init failure.
- * @return void.
  * @pre Called only after a fatal boot error.
  * @pre Interrupts may be in any state.
  * @post CPU is parked.
@@ -745,7 +744,6 @@ static void dfu_panic_halt(void)
 
 /**
  * @brief Route both ports' pins: FS as device, HS as host.
- * @return void.
  * @pre IOPORT and the U15 expander are reachable.
  * @pre Called once from ::dfu_setup_or_halt.
  * @post FS pins carry the device role, HS pins the host role, PD07 HIGH.
@@ -780,7 +778,6 @@ static void dfu_route_usb_or_halt(void)
 
 /**
  * @brief Bring CGC + both USB clocks + SysTick + SCI8 + LEDs + pins up.
- * @return void.
  * @pre Reset_Handler finished C runtime init.
  * @pre SystemInit has run.
  * @post Console works; both USB ports' pins and clocks are live.

@@ -250,7 +250,6 @@ static volatile uint32_t s_dbg_host_err;
  * @param[in]  block The block index (0..::k_dfu_blocks-1).
  * @param[out] out   Destination buffer.
  * @param[in]  len   Bytes to fill.
- * @return void.
  * @pre @p out has @p len writable bytes; @p len <= ::k_dfu_xfer_size.
  * @pre @p block < ::k_dfu_blocks.
  * @post @p out[0..len-1] hold the block's pattern bytes.
@@ -809,7 +808,6 @@ VOID tx_application_define(VOID* first_unused_memory)
 
 /**
  * @brief Halt forever in WFI -- panic stop on init failure.
- * @return void.
  * @pre Called only after a fatal boot error.
  * @pre Interrupts may be in any state.
  * @post CPU is parked.
@@ -826,7 +824,6 @@ static void dfu_panic_halt(void)
 
 /**
  * @brief Route both ports' pins: HS as device, FS as host (config B).
- * @return void.
  * @details HS device: P4_08 VBUS sense (PSEL usb_hs), PD07 driven LOW so J7's
  * role is Device and U18 does not back-feed VBUS into the FS host's cable; D+/D-
  * are dedicated PHY balls (no PFS routing). FS host: P4_07 VBUS sense, P5_00
@@ -866,7 +863,6 @@ static void dfu_route_usb_or_halt(void)
 
 /**
  * @brief Bring CGC + both USB clocks + SysTick + SCI8 + LEDs + pins up.
- * @return void.
  * @pre Reset_Handler finished C runtime init.
  * @pre SystemInit has run.
  * @post Console works; both USB ports' pins and clocks are live.

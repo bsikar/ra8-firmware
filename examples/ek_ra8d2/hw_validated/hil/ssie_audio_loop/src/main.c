@@ -84,7 +84,6 @@ static const uint32_t s_ssie_loop_pattern[16] = {
  * @details Preserves the serial-audio and console state in a permanent
  *          wait-for-interrupt loop for debugger inspection.
  *
- * @return None.
  *
  * @pre The caller has determined the audio transfer cannot continue.
  * @pre Any required UART diagnostic has already completed.
@@ -108,7 +107,6 @@ RA8_INTERNAL static void internal_ssie_loop_panic_halt(void)
  *          board UART for transfer diagnostics. Any failure enters the
  *          permanent panic halt.
  *
- * @return None.
  *
  * @pre Reset-time initialization configured the core and C runtime.
  * @pre The board console and SSIE0 are available to this image.

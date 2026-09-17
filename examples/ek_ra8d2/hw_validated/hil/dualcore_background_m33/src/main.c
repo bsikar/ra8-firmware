@@ -118,7 +118,6 @@ static bool dualcore_bg_hil_console_init(void)
  * flushes it so the bytes clock out before the M85 parks. A no-op if the console
  * never came up (the write returns `k_ra8_err_not_initialized`, ignored).
  *
- * @return Nothing.
  *
  * @pre Reached only when the M33 counter hit its target (single, non-compound guard).
  * @pre ::dualcore_bg_hil_console_init was attempted during bring-up.
@@ -152,7 +151,6 @@ typedef enum : uint32_t {
  *
  * @param[out] bg Pointer to the shared control block (never NULL).
  *
- * @return Nothing.
  *
  * @pre @p bg points to the fixed shared-SRAM address.
  * @pre Called before `ra8_cpu1_release` so the M33 starts from a clean slate.

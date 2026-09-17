@@ -194,7 +194,6 @@ volatile uint32_t g_threadx_mpu_partition_match = 0U;
  *
  * @param[in] thread_input ThreadX entry cookie; this demo does not use it.
  *
- * @return None.
  *
  * @pre ThreadX has started the scheduler and dispatched this worker.
  * @pre LED1 and the static worker stack were initialized successfully.

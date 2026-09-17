@@ -115,7 +115,6 @@ volatile uint32_t g_canfd_ncfg_after_setbitrate = 0U;
  * @details Retains the controller registers, init-step marker, and HIL counters
  *          in a permanent wait-for-interrupt loop for debugger inspection.
  *
- * @return None.
  *
  * @pre The caller has determined that loopback validation cannot continue.
  * @pre Any init-step or mismatch state required by the failure is recorded.
@@ -168,7 +167,6 @@ internal_canfd_demo_enable_internal_loopback(uint8_t channel)
  *          nominal and data bit rates, records the NCFG readback, and enables
  *          internal loopback. Any failed step enters the permanent panic halt.
  *
- * @return None.
  *
  * @pre Reset_Handler has set up the C runtime.
  * @pre CANFD0 and LED1/LED2 are available to this image.

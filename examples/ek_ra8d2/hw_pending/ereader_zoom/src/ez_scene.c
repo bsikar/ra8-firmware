@@ -183,7 +183,6 @@ uint8_t ez_page_sample(uint32_t x, uint32_t y)
  * @param[out] cell  Destination cell, at least ::k_ez_cell_bytes writable bytes.
  * @param[in]  org_x Tile origin column in page pixels.
  * @param[in]  org_y Tile origin row in page pixels.
- * @return Nothing.
  * @pre  @p cell addresses at least ::k_ez_cell_bytes writable bytes.
  * @pre  The tile origin lies inside the page.
  * @post Every byte of the tile holds its sampled page value.
@@ -644,7 +643,6 @@ ra8_err_t ez_scene_render(ez_scene_t* s)
  * @param[in]  page_plan The page view's drained plan.
  * @param[in]  lens_plan The loupe's drained plan.
  * @param[out] out       Receives the scene-level plan.
- * @return Nothing.
  * @pre  Both plans were just drained by ::zoom_view_present.
  * @pre  @p out addresses writable storage.
  * @post `out->present` is false when neither view owed anything.

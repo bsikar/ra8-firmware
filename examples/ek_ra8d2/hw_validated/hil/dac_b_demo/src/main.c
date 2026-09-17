@@ -77,7 +77,6 @@ volatile uint32_t g_dac_b_demo_tick = 0U;
  * @details Enters a permanent wait-for-interrupt loop so an attached debugger
  *          can inspect the DAC, LED, and ramp state at the failure point.
  *
- * @return None.
  *
  * @pre The caller has determined that continuing the analog ramp is unsafe.
  * @pre Any desired LED or debugger diagnostic has already been requested.
@@ -101,7 +100,6 @@ RA8_INTERNAL static void internal_dac_b_demo_panic_halt(void)
  *          initializes LED1. Any dependency error enters the permanent fatal
  *          halt instead of exposing partially initialized state.
  *
- * @return None.
  *
  * @pre Reset-time platform initialization configured the core and C runtime.
  * @pre LED1 is available for exclusive use by this demonstration image.

@@ -139,7 +139,6 @@ static const ra8_io_roundtrip_params_t s_params = {
  * @param[in] msg Bytes to emit (non-NULL, length @p len).
  * @param[in] len Byte count to emit.
  *
- * @return Nothing.
  *
  * @pre SCI8 is initialised.
  * @pre @p msg points to at least @p len readable bytes.

@@ -55,7 +55,6 @@ static uint8_t s_readback[k_ra8_io_roundtrip_max_payload];
  *
  * @param[in] len Number of bytes to fill (must be <= the buffer capacity).
  *
- * @return None.
  *
  * @pre @p len is at most ::k_ra8_io_roundtrip_max_payload.
  * @pre ::s_payload is file-scope storage (always allocated).
@@ -83,7 +82,6 @@ static void ra8_io_roundtrip_fill_linear(uint32_t len)
  *
  * @param[in] len Number of bytes to fill (must be <= the buffer capacity).
  *
- * @return None.
  *
  * @pre @p len is at most ::k_ra8_io_roundtrip_max_payload.
  * @pre ::s_payload is file-scope storage (always allocated).

@@ -257,7 +257,6 @@ static bool compile_fixture(const void** out_blob, uint32_t* out_len)
  * @param[in]     len  Finalized blob length in bytes (0 on failure).
  * @param[in]     ok   Whether the emitter finalized a blob.
  *
- * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer.
  * @pre On @p ok, @p blob points at a finalized RABOOK1 blob of @p len bytes.
@@ -337,7 +336,6 @@ typedef enum : uint8_t {
  * failed poke only costs the M85 a fall-through to its bounded poll, never
  * correctness.
  *
- * @return Nothing.
  *
  * @pre The result mailbox fields and `done` are published behind a `dsb`.
  * @pre The M85 armed the IPC0 receive IRQ before releasing this core.

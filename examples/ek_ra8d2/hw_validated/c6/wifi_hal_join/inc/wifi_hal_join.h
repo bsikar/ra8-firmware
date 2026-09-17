@@ -304,7 +304,6 @@ wifi_hal_ip_bind(void* ip_ctx, const ra8_wifi_mac_t* mac, ra8_wifi_lease_t* out)
  *          exactly that byte extent to the initialized board console.
  * @param[in] text String to write, or null for a no-op; at most
  *                 ::k_wifi_hal_str_max octets are emitted.
- * @return Nothing.
  * @pre @p text is NUL-terminated within ::k_wifi_hal_str_max octets.
  * @pre The console has been initialised.
  * @post At most ::k_wifi_hal_str_max octets were written.
@@ -320,7 +319,6 @@ void wifi_hal_puts(const char* text);
  * @details Generates decimal digits into a fixed local buffer from the end
  *          toward the front, then emits only the populated suffix.
  * @param[in] value Value to write.
- * @return Nothing.
  * @pre The console has been initialised.
  * @pre The caller accepts base-ten output only.
  * @post Between one and ::k_wifi_hal_dec_digits characters were emitted.
@@ -337,7 +335,6 @@ void wifi_hal_put_u32(uint32_t value);
  *          position and translates it through an immutable lowercase alphabet.
  * @param[in] value Value whose low nibbles are printed.
  * @param[in] digits Hex digits to print; 1..::k_wifi_hal_hex_digits.
- * @return Nothing.
  * @pre @p digits is in range, else the call is a no-op.
  * @pre The console has been initialised.
  * @post Exactly @p digits characters were emitted on the valid path.
@@ -353,7 +350,6 @@ void wifi_hal_put_hex(uint32_t value, uint8_t digits);
  * @details Extracts the four host-order octets in display order and delegates
  *          decimal conversion while inserting fixed period separators.
  * @param[in] ip Address in host order, high octet in the most significant byte.
- * @return Nothing.
  * @pre The console has been initialised.
  * @pre @p ip is host-order packed, as NetX returns it.
  * @post Four octets separated by dots were emitted.
@@ -369,7 +365,6 @@ void wifi_hal_put_ip(uint32_t ip);
  * @details Walks the fixed address extent in wire order and delegates each
  *          two-digit octet conversion while inserting colon separators.
  * @param[in] mac Address to print, or null for a no-op.
- * @return Nothing.
  * @pre @p mac, when non-null, holds ::k_ra8_wifi_mac_bytes octets.
  * @pre The console has been initialised.
  * @post Six octets separated by colons were emitted on the valid path.
@@ -386,7 +381,6 @@ void wifi_hal_put_mac(const ra8_wifi_mac_t* mac);
  *          C6 transport bounds through the bounded console helpers.
  * @param[in] cpuclk_hz CPUCLK0 rate in hertz.
  * @param[in] pclka_hz PCLKA rate in hertz.
- * @return Nothing.
  * @pre The console has been initialised.
  * @pre Both rates are the live cached values.
  * @post One multi-line banner was emitted.

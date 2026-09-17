@@ -158,7 +158,6 @@ volatile uint32_t g_canfd_filter_nomatch_mismatch = 0U;
  * @details Retains the acceptance-filter, controller, and diagnostic counter
  *          state in a permanent wait-for-interrupt loop for debugger inspection.
  *
- * @return None.
  *
  * @pre The caller has determined filter validation cannot continue.
  * @pre Any per-round mismatch state required by the failure is recorded.
@@ -244,7 +243,6 @@ RA8_INTERNAL static void internal_canfd_filter_panic_halt(void)
  *          rates, programs the demonstration filter slots, and enables internal
  *          loopback. Any failed dependency enters the permanent panic halt.
  *
- * @return None.
  *
  * @pre Reset-time initialization configured the core and C runtime.
  * @pre CANFD0, both filter slots, and LED1/LED2 are available to this image.

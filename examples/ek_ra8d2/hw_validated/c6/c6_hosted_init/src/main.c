@@ -255,7 +255,6 @@ static void c6_hosted_worker_entry(ULONG thread_input)
  * @brief ThreadX define hook: bring the port up and start the worker.
  * @param[in] first_unused_memory Free RAM handed over by the ThreadX port;
  *                                unused, every object here is static.
- * @return Nothing.
  * @pre ``tx_kernel_enter`` has been called and the clock cache is valid.
  * @pre No vendored esp-hosted entry point has been called yet.
  * @post ::s_c6_hosted_init_err holds the exact port-init result.

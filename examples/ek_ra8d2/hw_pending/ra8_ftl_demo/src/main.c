@@ -118,7 +118,6 @@ static const char* const s_tag = "ra8_ftl_demo";
  *
  * @param[in] msg NUL-terminated ASCII string (CR/LF supplied by the caller).
  *
- * @return None.
  *
  * @pre ::s_uart was initialised by ::ra8_io_stream_uart_init.
  * @pre @p msg is non-NULL and NUL-terminated.
@@ -142,7 +141,6 @@ static void demo_print(const char* msg)
  * @param[in] lbn  Logical block number.
  * @param[in] phys Physical block index currently backing @p lbn.
  *
- * @return None.
  *
  * @pre ::s_uart was initialised.
  * @pre @p phys is a valid physical index (`< k_demo_ftl_phys`).
@@ -167,7 +165,6 @@ static void demo_report_map(uint32_t lbn, uint16_t phys)
  * @details Initialises clocks, reads CPU/PCLKA rates, starts the time base,
  *          routes the SCI8 console pins, and opens the SCI8 UART.
  *
- * @return None.
  *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
  * @pre Runs single-threaded during early boot.
@@ -501,7 +498,6 @@ static ra8_err_t demo_restore(uint32_t want_tag, uint16_t want_phys)
  *          max and min per-block erase counts so a healthy (tight) spread is
  *          visible. A query failure is reported but does not fail the demo.
  *
- * @return None.
  *
  * @pre ::s_ftl is initialised.
  * @pre ::s_uart is initialised.

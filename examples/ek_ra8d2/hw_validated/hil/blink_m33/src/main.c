@@ -119,7 +119,6 @@ RA8_INTERNAL static bool internal_console_init(void)
  * flushes it so the bytes clock out before the M85 parks in WFI. A no-op if the
  * console never came up (the write returns `k_ra8_err_not_initialized`, ignored).
  *
- * @return Nothing.
  *
  * @pre Reached only after `ra8_cpu1_release` returned k_ra8_ok (single guard).
  * @pre ::internal_console_init was attempted during bring-up.

@@ -550,7 +550,6 @@ static void sh_panel_or_halt(void)
  *          spurious reset; the first ::ra8_wdt_refresh_for lands on the next
  *          iteration. A bring-up failure is fatal because a reader running
  *          without its declared watchdog is a worse state than a clean halt.
- * @return Nothing.
  * @pre ::sh_setup_or_halt has run, so PCLKB (the WWDT count clock) is live.
  * @pre Called exactly once (WWDT control registers are write-once after reset).
  * @post WDT0 is counting; a missed refresh triggers an internal reset.

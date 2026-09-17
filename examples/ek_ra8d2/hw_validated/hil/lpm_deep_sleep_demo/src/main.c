@@ -105,7 +105,6 @@ volatile uint32_t g_lpm_deep_wake_count = 0U;
  * @details Repeats wait-for-interrupt without initiating another low-power
  *          transition, preserving the wake and setup state for a debugger.
  *
- * @return None.
  *
  * @pre The caller has determined that entering or continuing sleep is unsafe.
  * @pre Any required UART diagnostic has already been completed.
@@ -129,7 +128,6 @@ RA8_INTERNAL static void internal_lpm_deep_panic_halt(void)
  *          and LPM policy required for the single Deep-Sleep transition. Any
  *          dependency failure enters the permanent panic halt.
  *
- * @return None.
  *
  * @pre IRQs disabled at entry.
  * @pre Reset_Handler has copied .data and zeroed .bss.

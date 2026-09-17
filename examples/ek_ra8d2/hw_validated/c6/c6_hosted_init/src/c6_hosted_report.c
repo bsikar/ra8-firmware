@@ -57,7 +57,6 @@ static volatile uint32_t s_c6_hosted_events;
  * @brief Print the interrupt path the port takes for one side-band pin.
  * @param[in] label Signal name, printed verbatim.
  * @param[in] pin   Packed side-band pin from the port's pin table.
- * @return Nothing.
  * @pre The console is up.
  * @pre @p pin is one of the link's side-band nets.
  * @post One line naming either the ICU channel or the software edge
@@ -89,7 +88,6 @@ static void c6_hosted_print_route(const char* label, ra8_esp_hosted_pin_t pin)
  * @param[in] gpio_port Opaque port handle from the matching macro pair.
  * @param[in] gpio_pin  Pin index from the same pair, negative if unwired.
  * @param[in] active    Level that means "asserted" for this signal.
- * @return Nothing.
  * @pre ``g_h.funcs`` is populated, so the port came up.
  * @pre @p gpio_port and @p gpio_pin are the two halves of one macro pair.
  * @post One line giving the level and whether it is asserted was emitted.

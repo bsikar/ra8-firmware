@@ -59,7 +59,6 @@ static const uint8_t s_kint_demo_boot_msg[] = "kint_demo: boot\r\n";
  * @details Preserves ICU, switch, LED, and console state in a permanent
  *          wait-for-interrupt loop for debugger inspection.
  *
- * @return None.
  *
  * @pre The caller has determined key-interrupt validation cannot continue.
  * @pre Any required UART diagnostic has completed.
@@ -83,7 +82,6 @@ RA8_INTERNAL static void internal_kint_demo_panic_halt(void)
  *          order, then initializes the ICU, UART console, and LED1. Any failed
  *          dependency enters the permanent panic halt.
  *
- * @return None.
  *
  * @pre Reset-time initialization configured the core and C runtime.
  * @pre The board console, LED1, and SW1 are available to this image.

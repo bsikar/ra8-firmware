@@ -108,7 +108,6 @@ static const char* const s_tag = "ra8_io_sdhi_demo";
  * @param[in] msg Bytes to emit (non-NULL, length @p len).
  * @param[in] len Byte count to emit.
  *
- * @return Nothing.
  *
  * @pre The board console is initialised.
  * @pre @p msg points to at least @p len readable bytes.
@@ -241,7 +240,6 @@ static ra8_fs_backend_t  s_be;
  *          step, so the written content is reproducible and the read-back compare
  *          is a strong end-to-end check of the whole stack.
  *
- * @return Nothing.
  *
  * @pre `s_payload` is allocated (file-scope, always true).
  * @pre The LCG constants are non-zero.

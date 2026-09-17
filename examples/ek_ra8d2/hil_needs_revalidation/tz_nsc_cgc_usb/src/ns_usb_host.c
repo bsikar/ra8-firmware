@@ -148,7 +148,6 @@ typedef enum : uint32_t {
  * @param[in]  round The echo round index.
  * @param[out] out   Destination buffer.
  * @param[in]  len   Bytes to fill.
- * @return void.
  * @pre @p out has @p len writable bytes.
  * @pre @p len is at most ::k_ns_payload.
  * @post @p out[0..len-1] hold the round's pattern bytes.

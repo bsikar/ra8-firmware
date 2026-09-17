@@ -93,7 +93,6 @@ volatile uint32_t g_gpt_pwm_mismatch = 0U;
  * @details Enters a permanent wait-for-interrupt loop so the GPT counter,
  *          duty, and HIL counters remain available to a debugger.
  *
- * @return None.
  *
  * @pre The caller has determined the PWM validation cannot continue.
  * @pre Any mismatch counter update required by the failure is complete.
@@ -117,7 +116,6 @@ RA8_INTERNAL static void internal_gpt_pwm_demo_panic_halt(void)
  *          GPT configuration. Any failed dependency enters the permanent
  *          panic halt rather than exposing partial setup.
  *
- * @return None.
  *
  * @pre Reset-time initialization configured the core and C runtime.
  * @pre LED1 is available for exclusive use by this image.

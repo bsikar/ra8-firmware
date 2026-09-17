@@ -108,7 +108,6 @@ alignas(k_c6_fwver_dma_align) static c6_fwver_frame_t s_c6_fwver_rx;
 
 /**
  * @brief Zero the whole transmit frame.
- * @return Nothing.
  * @pre ::s_c6_fwver_tx is ::k_c6_fwver_frame_bytes long.
  * @pre No transfer is in flight.
  * @post Every byte of ::s_c6_fwver_tx is zero.
@@ -125,7 +124,6 @@ static void c6_fwver_tx_clear(void)
 
 /**
  * @brief Stamp the transmit frame as the host's idle filler.
- * @return Nothing.
  * @pre ::s_c6_fwver_tx has been cleared.
  * @pre The co-processor expects a full transaction even with nothing to send.
  * @post Byte zero carries ``ESP_MAX_IF``; every other byte is zero.
@@ -147,7 +145,6 @@ static void c6_fwver_tx_filler(void)
  * @param[in] if_num Interface number for the frame.
  * @param[in] payload Payload bytes; must be non-null.
  * @param[in] len Payload length, at most ::k_c6_fwver_max_payload.
- * @return Nothing.
  * @pre @p len bytes are readable at @p payload.
  * @pre @p len is at most ::k_c6_fwver_max_payload.
  * @post ::s_c6_fwver_tx holds a well-formed frame whose checksum covers the
@@ -226,7 +223,6 @@ static uint16_t c6_fwver_rx_checksum(uint16_t span)
  * @brief Print every header field of a frame the pump is about to drop.
  * @param[in] why Short reason, printed verbatim; must be non-null.
  * @param[in] calc Recomputed checksum, or zero when it was not computed.
- * @return Nothing.
  * @pre The transfer has completed and ::s_c6_fwver_rx is stable.
  * @pre The console is up.
  * @post One line naming every header field was emitted.

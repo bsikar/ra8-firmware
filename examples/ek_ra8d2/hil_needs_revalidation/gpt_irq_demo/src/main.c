@@ -95,7 +95,6 @@ RA8_INTERNAL static void internal_gpt_irq_demo_panic_halt(void)
  * on hardware (LED + memprobe) and in the emulator (LED transition + IRQ count).
  *
  * @param[in] ctx Unused registration context.
- * @return Nothing.
  *
  * @pre Registered for the GPT0 overflow event via ra8_isr_register.
  * @pre @p ctx is the unused registration context supplied by this application.

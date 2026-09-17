@@ -74,7 +74,6 @@ volatile uint32_t g_acmphs_compare_tick = 0U;
  * @details Enters a permanent wait-for-interrupt loop so the comparator and
  *          LED state at the point of failure remain available to a debugger.
  *
- * @return None.
  *
  * @pre The caller has determined the demo cannot safely continue.
  * @pre Any pending LED diagnostic has already been requested.

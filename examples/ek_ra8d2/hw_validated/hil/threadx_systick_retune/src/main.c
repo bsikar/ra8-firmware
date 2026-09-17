@@ -189,7 +189,6 @@ RA8_INTERNAL static uint32_t internal_retune_read_syst_rvr(void)
  *
  * @param[in] thread_input Unused (ThreadX cookie).
  *
- * @return None.
  *
  * @pre The ThreadX scheduler is running.
  * @pre LED1 has been configured by `main()`.

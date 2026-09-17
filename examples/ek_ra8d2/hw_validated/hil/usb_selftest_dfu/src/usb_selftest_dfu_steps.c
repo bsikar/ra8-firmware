@@ -62,7 +62,6 @@ static volatile uint32_t s_dbg_pass_count;
  * @param[in]  block The block index (0..::k_dfu_blocks-1).
  * @param[out] out   Destination buffer.
  * @param[in]  len   Bytes to fill.
- * @return void.
  * @pre @p out has @p len writable bytes; @p len <= ::k_dfu_xfer_size.
  * @pre @p block < ::k_dfu_blocks.
  * @post @p out[0..len-1] hold the block's pattern bytes.

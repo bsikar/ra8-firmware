@@ -70,7 +70,6 @@ unsigned int lx_nor_ram_init(struct LX_NOR_FLASH_STRUCT* nor_flash);
  *          first mount formats it -- but the host test calls it between
  *          independent scenarios that share the one static backing.
  *
- * @return Nothing.
  * @pre The backing array is static storage (always available).
  * @pre No LevelX operation is mid-flight against the backing.
  * @post Every backing word reads as the erased pattern.

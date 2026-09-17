@@ -212,7 +212,6 @@ ra8_err_t c6_join_net_up(ra8_c6link_t* link, const ra8_c6link_mac_t* mac, c6_joi
  *          byte extent to the initialized board-console transmitter.
  * @param[in] text String to emit; null is ignored and the length is capped at
  *                 ::k_c6_join_str_max.
- * @return Nothing.
  * @pre ``ra8_board_uart_console_init`` has succeeded.
  * @pre @p text is NUL-terminated within ::k_c6_join_str_max bytes.
  * @post The bytes are queued on the console transmitter.
@@ -228,7 +227,6 @@ void c6_join_puts(const char* text);
  * @details Converts digits into a fixed local buffer in reverse order, then
  *          emits the used suffix without allocation or stdio.
  * @param[in] value Value to print; the whole 32-bit range is representable.
- * @return Nothing.
  * @pre The console is up.
  * @pre The caller wants no padding; zero prints as a single digit.
  * @post Between one and ::k_c6_join_dec_digits characters were emitted.
@@ -246,7 +244,6 @@ void c6_join_put_u32(uint32_t value);
  * @param[in] value Value to print.
  * @param[in] digits Field width, 1..::k_c6_join_hex_digits; an out-of-range
  *                   width prints nothing rather than overrunning the array.
- * @return Nothing.
  * @pre The console is up.
  * @pre @p digits is within 1..::k_c6_join_hex_digits.
  * @post Exactly @p digits characters were emitted, or none on a bad width.
@@ -262,7 +259,6 @@ void c6_join_put_hex(uint32_t value, uint8_t digits);
  * @details Extracts each bounded network octet from most to least significant
  *          position and separates decimal forms with periods.
  * @param[in] ip NetX host-order packed IPv4 address.
- * @return Nothing.
  * @pre The console is up.
  * @pre @p ip is a NetX ``ULONG`` address, most-significant octet first.
  * @post Between seven and fifteen characters were emitted.
@@ -278,7 +274,6 @@ void c6_join_put_ip(uint32_t ip);
  * @details Walks the fixed address extent in wire order, printing two hex
  *          digits per octet and a colon between adjacent octets.
  * @param[in] mac Address to print; null prints nothing.
- * @return Nothing.
  * @pre The console is up.
  * @pre @p mac was filled by ::ra8_c6link_wifi_mac or is the zero address.
  * @post Seventeen characters were emitted, or none on a null argument.
@@ -295,7 +290,6 @@ void c6_join_put_mac(const ra8_c6link_mac_t* mac);
  *          peripheral clocks and immutable C6 transport geometry.
  * @param[in] cpuclk_hz Live CPUCLK0 rate in hertz.
  * @param[in] pclka_hz Live PCLKA rate in hertz, the SCI baud-clock source.
- * @return Nothing.
  * @pre The console is up.
  * @pre Both rates were read from the CGC rather than assumed.
  * @post Three banner lines were emitted.

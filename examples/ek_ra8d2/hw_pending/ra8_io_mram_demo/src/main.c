@@ -81,7 +81,6 @@ static const char* const s_tag = "ra8_io_mram_demo";
  *
  * @param[in] msg NUL-terminated ASCII string (CR/LF supplied by the caller).
  *
- * @return None.
  *
  * @pre ::s_uart was bound by ::ra8_board_console_stream.
  * @pre @p msg is non-NULL and NUL-terminated.
@@ -104,7 +103,6 @@ RA8_INTERNAL static void internal_demo_print(const char* msg)
  *          PD02 / PD03 routing and the live-PCLKA bit-rate solve -- then binds
  *          it as an ra8_io stream.
  *
- * @return None.
  *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
  * @pre Runs single-threaded during early boot.

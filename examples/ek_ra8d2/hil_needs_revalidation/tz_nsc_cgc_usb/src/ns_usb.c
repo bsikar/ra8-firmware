@@ -132,7 +132,6 @@ volatile uint32_t g_tz_usb_intsts_or;
  *          the ThreadX SysTick handler never advances. ThreadX's 1 ms tick makes
  *          one sleep tick == 1 ms here. Called only from thread context.
  * @param[in] ms Milliseconds to block (0 is rounded up to one tick).
- * @return void.
  * @pre Called from ThreadX thread context (the USB worker), not an ISR.
  * @pre The ThreadX scheduler is running (1 ms tick live).
  * @post The caller blocked for at least ``ms`` ticks.
@@ -574,7 +573,6 @@ static VOID ns_usb_worker(ULONG arg)
 /**
  * @brief ThreadX application-define callback -- spawn the device + host workers.
  * @param[in] first_unused_memory ThreadX free-RAM base (unused; static stacks).
- * @return void.
  * @pre Called by ``tx_kernel_enter`` after kernel init (from ns_reset_handler).
  * @pre CPU is in NS state.
  * @post Two auto-started workers exist at ::k_ns_usb_thread_prio with a

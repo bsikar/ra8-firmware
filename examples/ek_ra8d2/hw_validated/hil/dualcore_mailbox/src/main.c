@@ -123,7 +123,6 @@ static bool dualcore_mailbox_hil_console_init(void)
  * heartbeat. A no-op if the console never came up (the write returns
  * `k_ra8_err_not_initialized`, ignored).
  *
- * @return Nothing.
  *
  * @pre Reached only when every demo round verified (single, non-compound guard).
  * @pre ::dualcore_mailbox_hil_console_init was attempted during bring-up.
@@ -271,7 +270,6 @@ static bool do_round(volatile dualcore_mailbox_t* mb, uint32_t seq)
  *
  * @param[out] mb Pointer to the shared mailbox.
  *
- * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer (never NULL).
  * @pre Called before `ra8_cpu1_release` so the M33 starts from a clean slate.

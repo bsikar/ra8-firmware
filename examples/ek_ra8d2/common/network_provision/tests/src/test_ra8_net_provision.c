@@ -55,7 +55,6 @@ static test_uart_t s_uart;
  * @brief Reset the mock UART to successful, bounded operations.
  * @details Clears all recorded state, selects a small read chunk, and makes
  *          both injected operations succeed for the next scenario.
- * @return Nothing.
  * @pre No receiver callback is running concurrently.
  * @pre The file-local mock remains writable.
  * @post All counters and byte extents are zero.
@@ -145,7 +144,6 @@ static ra8_err_t test_uart_read(uint8_t* data, size_t capacity, size_t* out_leng
  * @details Adds the requested delay to the deterministic elapsed-time counter;
  *          the host test performs no wall-clock sleep.
  * @param[in] delay_ms Milliseconds requested by the receiver.
- * @return Nothing.
  * @pre `delay_ms` is the receiver's one-millisecond poll interval.
  * @pre The mock wait counter cannot overflow in a bounded test scenario.
  * @post The wait counter increases by `delay_ms`.
@@ -212,7 +210,6 @@ static size_t test_make_packet(const char* ssid,
  *          production parser, and checks rejection plus byte-for-byte erasure.
  * @param[in] packet Candidate packet bytes.
  * @param[in] length Candidate packet length.
- * @return Nothing.
  * @pre `packet` addresses `length` readable bytes.
  * @pre The Unity test context is active.
  * @post The parser returned a non-success status.
@@ -237,7 +234,6 @@ static void test_expect_rejected(const uint8_t* packet, size_t length)
  *          null-input path erases a pre-filled credential record.
  * @param[in] packet Non-null packet used for the null-output assertion.
  * @param[in] length Length of `packet` in bytes.
- * @return Nothing.
  * @pre `packet` addresses `length` readable bytes.
  * @pre The Unity test context is active.
  * @post Null input returns ::k_ra8_err_null_ptr and clears every output byte.
@@ -263,7 +259,6 @@ static void test_expect_null_parse_dependencies(const uint8_t* packet, size_t le
  *          and every hexadecimal-alphabet boundary independently.
  * @param[in] wrong_prefix Packet carrying an unsupported version prefix.
  * @param[in] wrong_prefix_length Length of `wrong_prefix` in bytes.
- * @return Nothing.
  * @pre `wrong_prefix` addresses `wrong_prefix_length` readable bytes.
  * @pre The Unity test context is active.
  * @post Every malformed packet is rejected.
@@ -305,7 +300,6 @@ static void test_expect_malformed_framing(const uint8_t* wrong_prefix, size_t wr
  * @brief Assert decoded NUL and control bytes are rejected in every field.
  * @details Supplies one NUL and one disallowed control byte independently in
  *          the SSID, PSK, and optional URL fields.
- * @return Nothing.
  * @pre The production parser is linked.
  * @pre The Unity test context is active.
  * @post All six decoded-control packets are rejected.
@@ -335,7 +329,6 @@ static void test_expect_rejected_decoded_controls(void)
  * @brief Verify valid provisioning record forms.
  * @details Exercises an empty optional URL, the 63-byte passphrase boundary,
  *          and every maximum including the hexadecimal-only 64-byte PSK form.
- * @return Nothing.
  * @pre The packet helper and production parser are linked.
  * @pre Fixed-capacity automatic test storage is available.
  * @post Every record is accepted with exact decoded lengths.
@@ -397,7 +390,6 @@ static void test_parse_accepts_valid_packets(void)
  * @brief Verify malformed framing and syntax are rejected quietly.
  * @details Varies null dependencies, line length, version prefix, newline,
  *          separator count, hex syntax, and decoded controls independently.
- * @return Nothing.
  * @pre The production parser is linked.
  * @pre Every fixture length includes only initialized bytes.
  * @post Every absent dependency and malformed vector is rejected.
@@ -425,7 +417,6 @@ static void test_parse_rejects_malformed_packets(void)
  * @brief Verify every decoded field bound.
  * @details Constructs independent underflow and overflow vectors for SSID,
  *          PSK, and URL, including the special invalid 64-byte PSK form.
- * @return Nothing.
  * @pre The packet helper can hold records above production maxima.
  * @pre The Unity test context is active.
  * @post Every out-of-bound record is rejected.
@@ -473,7 +464,6 @@ static void test_parse_rejects_field_bounds(void)
  * @brief Verify prompt ordering and no-echo receive behavior.
  * @details Supplies a valid record in several read chunks and proves the only
  *          transmitted bytes are the exact versioned readiness prompt.
- * @return Nothing.
  * @pre The mock UART is reset and has one complete input record.
  * @pre The production receiver is linked.
  * @post The record is decoded successfully.
@@ -515,7 +505,6 @@ static void test_receive_prompts_without_echo(void)
  * @brief Verify bounded quiet timeout behavior.
  * @details Leaves mock input empty for a four-millisecond budget and checks the
  *          exact read/wait counts plus failure-side credential erasure.
- * @return Nothing.
  * @pre The mock UART is reset with no input bytes.
  * @pre The production receiver is linked.
  * @post The receiver returns ::k_ra8_err_timeout after four polls.
@@ -552,7 +541,6 @@ static void test_receive_times_out_quietly(void)
  * @brief Verify receiver dependency and timeout guards.
  * @details Varies the UART table, each callback, output, and both timeout
  *          boundaries independently before any operation is allowed to run.
- * @return Nothing.
  * @pre The mock UART is reset and the output record is writable.
  * @pre The production receiver is linked.
  * @post Every invalid dependency returns ::k_ra8_err_null_ptr.
@@ -605,7 +593,6 @@ static void test_receive_rejects_invalid_dependencies(void)
  * @brief Verify receiver I/O failure handling.
  * @details Injects one write failure before reads begin and one read failure
  *          after the prompt, then observes exact ordering and cleared output.
- * @return Nothing.
  * @pre The mock UART callbacks return the configured repository errors.
  * @pre The production receiver is linked.
  * @post A failed prompt prevents every read.
@@ -649,7 +636,6 @@ static void test_receive_propagates_io_failures(void)
  * @brief Verify receiver framing and capacity defenses.
  * @details Drives four independent hostile callback or input behaviors through
  *          the production receive state machine without exposing received data.
- * @return Nothing.
  * @pre The mock input storage can hold the maximum protocol line.
  * @pre The production receiver is linked.
  * @post Every hostile scenario returns a non-success status.
@@ -706,7 +692,6 @@ static void test_receive_rejects_hostile_input(void)
  * @brief Verify explicit credential-record erasure.
  * @details Fills every record byte with a sentinel, clears the record, checks
  *          every byte, and exercises null cleanup as a defensive no-op.
- * @return Nothing.
  * @pre The secure-memory implementation is linked.
  * @pre The Unity test context is active.
  * @post Every byte of the non-null record is zero.

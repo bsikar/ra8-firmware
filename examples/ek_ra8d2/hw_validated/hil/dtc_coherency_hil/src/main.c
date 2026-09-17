@@ -328,7 +328,6 @@ static uint16_t s_dtc_slot;
  * @param[in] ctx    Unused registration context.
  * @param[in] status Unused DTCSTS snapshot at completion.
  *
- * @return Nothing.
  *
  * @pre Attached via ::ra8_dtc_attach_handler.
  * @pre Reached only if global IRQs are enabled (they are not, here).
@@ -353,7 +352,6 @@ static void dtc_coh_complete_cb(void* ctx, uint16_t status)
  *
  * @param[in] ctx Unused registration context.
  *
- * @return Nothing.
  *
  * @pre Registered via ::ra8_isr_register for ELC software event 0.
  * @pre Reached only if global IRQs are enabled (they are not, here).
@@ -377,7 +375,6 @@ static void dtc_coh_swevt_isr(void* ctx)
  * RXD8 = PD_03 @ 115200 8N1) comes up through the BSP console API. ELC + ISR are
  * needed to allocate the DTC activation slot and fire the software event.
  *
- * @return Nothing.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has enabled the MPU + caches (RA8_BOOT_ENABLE_CACHE_MPU).
@@ -420,7 +417,6 @@ static void dtc_coh_setup_or_halt(void)
  * index is the DTC activation-source vector number. Halts on any failure or an
  * out-of-range slot.
  *
- * @return Nothing.
  *
  * @pre ::dtc_coh_setup_or_halt has run (ISR + ELC initialised).
  * @pre Global IRQs are still masked (boot leaves PRIMASK set).
@@ -461,7 +457,6 @@ static void dtc_coh_bringup_or_halt(void)
  * Single counting loop, no compound decision; only the implicit loop bound.
  * No N+1 vectors required.
  *
- * @return Nothing.
  *
  * @pre Buffers are statically allocated and 32-byte aligned.
  * @pre Called single-threaded before the DTC is armed.
@@ -491,7 +486,6 @@ static void dtc_coh_fill_buffers(void)
  * @par MC/DC:
  * Straight-line assignment -- no decision points.
  *
- * @return Nothing.
  *
  * @pre ``s_src`` / ``s_dst`` are populated and ``s_dtc_slot`` is valid.
  * @post ``s_dtc_ti`` describes the block copy and ``s_dtc_vt[s_dtc_slot]`` points
@@ -673,7 +667,6 @@ static void dtc_coh_program_ti(void)
  *
  * @param[in] ok Non-zero if the coherency check passed.
  *
- * @return Nothing.
  *
  * @pre The console has been initialised by ::dtc_coh_setup_or_halt.
  * @pre Both LEDs have been initialised.

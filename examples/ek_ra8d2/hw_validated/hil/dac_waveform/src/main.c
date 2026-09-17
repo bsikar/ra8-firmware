@@ -76,7 +76,6 @@ volatile uint32_t g_dac_waveform_tick = 0U;
  * @details Preserves the analog-generator state in a permanent
  *          wait-for-interrupt loop for debugger inspection.
  *
- * @return None.
  *
  * @pre The caller has determined that waveform generation cannot continue.
  * @pre Any desired diagnostic state has already been recorded.
@@ -100,7 +99,6 @@ RA8_INTERNAL static void internal_dac_demo_panic_halt(void)
  *          configures DAC_B channel 0 for right-aligned samples on the normal
  *          reference. A failed dependency enters the permanent panic halt.
  *
- * @return None.
  *
  * @pre Reset-time initialization configured the core and C runtime.
  * @pre DAC_B channel 0 is not owned by another context.

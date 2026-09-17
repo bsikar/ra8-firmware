@@ -201,7 +201,6 @@ typedef enum : uint32_t {
  * @param[in]     cap   Capacity of @p out in characters.
  * @param[in]     txt   NUL-terminated run from the validated blob (may be NULL).
  *
- * @return Nothing.
  *
  * @pre @p out and @p plen are non-NULL; `*plen <= cap`.
  * @pre @p txt, when non-NULL, points inside the validated blob's string pool.
@@ -255,7 +254,6 @@ typedef struct {
  * @param[in,out] st   Walk stack (never NULL).
  * @param[in]     node Node index to push, or ::k_book_nil to ignore.
  *
- * @return Nothing.
  *
  * @pre @p st is non-NULL with `sp <= k_walk_stack_depth`.
  * @pre @p node is a node index or the nil sentinel.
@@ -471,7 +469,6 @@ static uint32_t fb_crc32(const uint8_t* fb, uint32_t len)
  * @param[in]  crc     CRC-32 the M33 folded over the framebuffer.
  * @param[in]  glyphs  Characters laid onto the held page.
  *
- * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer.
  * @pre The framebuffer at `s_framebuffer` holds the rendered page.
@@ -613,7 +610,6 @@ static bool render_held_page(const void* base, uint32_t* out_crc, uint32_t* out_
  * settled request. The HAL return value is intentionally discarded: a failed poke
  * only costs the M85 a fall-through to its bounded poll, never correctness.
  *
- * @return Nothing.
  *
  * @pre `turn_req` is published behind a `dsb`.
  * @pre The M85 armed the IPC0 receive IRQ before releasing this core.
@@ -637,7 +633,6 @@ static void notify_m85(void)
  * fires. Deterministic and bounded (NASA Rule 2); replaced by a real touch poll
  * on hardware (a HIL follow-up).
  *
- * @return Nothing.
  *
  * @pre Runs in M33 thread mode while holding the rendered page.
  * @pre ::k_erm33_touch_dwell is the agreed dwell bound.
@@ -707,7 +702,6 @@ static bool wait_for_ack(volatile const erm33_mailbox_t* mb, uint32_t turn)
  * @param[in,out] mb   Shared mailbox (never NULL).
  * @param[in]     base Validated `RABOOK1` blob base (never NULL).
  *
- * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer with the first page published.
  * @pre @p base was accepted by ::book_is_valid.

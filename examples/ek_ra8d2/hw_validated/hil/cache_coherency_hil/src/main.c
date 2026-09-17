@@ -164,7 +164,6 @@ RA8_INTERNAL static bool internal_console_init(void)
  * ra8_emulator surfaces it as an ``[itm]`` line. A no-op on the wire if the console
  * never came up (the write returns ``k_ra8_err_not_initialized``, ignored).
  *
- * @return Nothing.
  *
  * @pre Reached only after ::k_cache_coherency_rounds rounds verified.
  * @pre ::internal_console_init was attempted during bring-up.

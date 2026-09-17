@@ -156,7 +156,6 @@ static void* c6_fwver_rpc_pool_alloc(void* allocator_data, size_t size)
  * @brief Return a block to the esp-hosted port's fixed byte pool.
  * @param[in] allocator_data Unused; the pool is a module singleton.
  * @param[in] pointer Block to release; null is ignored.
- * @return Nothing.
  * @pre @p pointer came from ::c6_fwver_rpc_pool_alloc, or is null.
  * @pre No other context holds a reference to the block.
  * @post The block is available to the pool again.
@@ -310,7 +309,6 @@ static const uint8_t* c6_fwver_tlv_body(const uint8_t* payload, uint16_t len, ui
 /**
  * @brief Copy the response's target string into the record, bounded.
  * @param[in] target Binary field from the decoded message.
- * @return Nothing.
  * @pre ::s_c6_fwver_rsp is the live record.
  * @pre @p target's ``data`` covers ``len`` bytes, or ``len`` is zero.
  * @post ``target_len`` is at most the record's capacity.
@@ -407,7 +405,6 @@ bool c6_fwver_rpc_consume(uint8_t if_type, uint8_t if_num, const uint8_t* payloa
 
 /**
  * @brief Print the decoded response, field by field.
- * @return Nothing.
  * @pre ::s_c6_fwver_rsp holds a decoded response.
  * @pre The console is up.
  * @post One line naming every decoded field was emitted.
@@ -437,7 +434,6 @@ static void c6_fwver_rpc_print_response(void)
 
 /**
  * @brief Report the boot event's version reading beside the RPC's.
- * @return Nothing.
  * @pre The console is up.
  * @pre A pump has run, so the event either arrived or provably did not.
  * @post Exactly one line was emitted.
@@ -470,7 +466,6 @@ static void c6_fwver_rpc_print_crosscheck(void)
 
 /**
  * @brief Print what this host expects, before it says what it got.
- * @return Nothing.
  * @pre The console is up.
  * @pre The expectations are compile-time constants, so this cannot disagree
  *      with the comparison ::c6_fwver_rpc_report then performs.

@@ -164,7 +164,6 @@ volatile uint32_t g_threadx_blink_tick = 0U;
  *
  * @param[in] thread_input Unused (ThreadX cookie).
  *
- * @return None.
  *
  * @pre `ra8_gpio_output_init` has succeeded for `k_ra8_pin_led1`.
  * @pre ThreadX scheduler is running (`tx_kernel_enter` has dispatched
@@ -194,7 +193,6 @@ RA8_INTERNAL static void internal_thread_a_entry(ULONG thread_input)
  *
  * @param[in] thread_input Unused (ThreadX cookie).
  *
- * @return None.
  *
  * @pre `ra8_gpio_output_init` has succeeded for `k_ra8_pin_led2`.
  * @pre ThreadX scheduler is running.

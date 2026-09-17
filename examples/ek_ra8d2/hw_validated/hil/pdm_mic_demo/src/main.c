@@ -267,7 +267,6 @@ static uint32_t pdm_demo_isqrt(uint64_t value)
  * @param[in] bytes Byte array (non-NULL).
  * @param[in] len   Byte count.
  *
- * @return Nothing.
  *
  * @pre The console was initialised.
  * @pre ``bytes`` is non-NULL.
@@ -290,7 +289,6 @@ static void pdm_demo_tx(const uint8_t* bytes, uint32_t len)
  * @param[in] label_len Label length.
  * @param[in] value     Signed integer to print.
  *
- * @return Nothing.
  *
  * @pre The console was initialised.
  * @pre ``label`` is non-NULL.
@@ -318,7 +316,6 @@ static void pdm_demo_emit_kv(const uint8_t* label, uint32_t label_len, int32_t v
  *
  * @details Runs on MOCO (~8 MHz), which also sources PDMIFCLK (8 MHz).
  *
- * @return Nothing.
  *
  * @pre Reset_Handler prepared .data/.bss.
  * @pre Single-threaded init context.
@@ -347,7 +344,6 @@ static void pdm_demo_clocks_or_halt(void)
  *
  * @details Both pins take PSEL ::k_ra8_psel_pdm; the console is SCI8.
  *
- * @return Nothing.
  *
  * @pre ::pdm_demo_clocks_or_halt already ran.
  * @pre Single-threaded init context.
@@ -374,7 +370,6 @@ static void pdm_demo_io_or_halt(void)
  * @details Runs the HUM Ch 49.4.1 start flow with the settling delay.
  *          Prints ::k_pdm_demo_banner_fail and parks on any error.
  *
- * @return Nothing.
  *
  * @pre The console and clocks are live.
  * @pre The PDM pins are routed.
@@ -426,7 +421,6 @@ static void pdm_demo_pdm_or_halt(void)
  * @param[in]  n   Sample count.
  * @param[out] m   Metrics output (non-NULL).
  *
- * @return Nothing.
  *
  * @pre ``buf`` holds ``n`` valid samples.
  * @pre ``m`` is non-NULL.
@@ -509,7 +503,6 @@ static bool pdm_demo_is_active(const pdm_metrics_t* m)
  * @param[in] vary   RMS spread across the report sweep so far.
  * @param[in] active Plausibility verdict for this window.
  *
- * @return Nothing.
  *
  * @pre The console is live.
  * @pre ``m`` was filled by ::pdm_demo_analyze.

@@ -70,7 +70,6 @@ static const uint8_t s_eth_loopback_boot_msg[] = "etha: boot\r\n";
  * @details Enters a permanent wait-for-interrupt loop so descriptor, port, and
  *          diagnostic state remain accessible to an attached debugger.
  *
- * @return None.
  *
  * @pre The caller has determined Ethernet validation cannot continue.
  * @pre Any desired UART diagnostic has already completed.
@@ -94,7 +93,6 @@ RA8_INTERNAL static void internal_eth_loopback_panic_halt(void)
  *          and opens the board UART for its boot and success diagnostics. Any
  *          failure enters the permanent panic halt.
  *
- * @return None.
  *
  * @pre Reset-time initialization configured the core and C runtime.
  * @pre The SCI8 board console is available to this image.

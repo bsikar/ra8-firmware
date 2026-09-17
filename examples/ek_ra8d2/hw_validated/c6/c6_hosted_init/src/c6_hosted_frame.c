@@ -156,7 +156,6 @@ alignas(k_c6_hosted_dma_align) static c6_hosted_frame_t s_c6_hosted_rx;
 
 /**
  * @brief Build the idle frame this application transmits.
- * @return Nothing.
  * @pre ::s_c6_hosted_tx is at least ::k_c6_hosted_hdr_bytes long.
  * @pre The payload area is already zero, which ``.bss`` guarantees.
  * @post ::s_c6_hosted_tx holds a well-formed zero-length frame addressed to
@@ -340,7 +339,6 @@ static const char* c6_hosted_verdict_text(c6_hosted_verdict_t verdict)
 /**
  * @brief Print every field of the received payload header.
  * @param[in] calc Checksum recomputed by ::c6_hosted_rx_checksum.
- * @return Nothing.
  * @pre The transfer has completed and ::s_c6_hosted_rx is stable.
  * @pre The console is up.
  * @post One line carrying all header fields and both checksums was emitted.

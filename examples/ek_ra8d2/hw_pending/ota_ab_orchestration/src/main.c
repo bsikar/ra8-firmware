@@ -237,7 +237,6 @@ static size_t app_strlen(const char* text)
  * @brief Print a NUL-terminated ASCII string on the board VCOM console.
  *
  * @param[in] text NUL-terminated string (CR/LF supplied by the caller); non-NULL.
- * @return Nothing.
  * @pre ``ra8_board_uart_console_init`` succeeded.
  * @pre @p text is non-NULL.
  * @post The bytes of @p text are queued on SCI8.
@@ -707,7 +706,6 @@ static bool app_ab_ok(bool committed, bool rolled_back)
  * @brief Assemble the OTA config wired to this app's backends.
  *
  * @param[out] cfg Config to populate; non-NULL.
- * @return Nothing.
  * @pre @p cfg is non-NULL.
  * @pre ::s_net_source / ::s_sha_ctx are usable statics.
  * @post Every net/crypto/flash pointer + bank metadata is set.
@@ -748,7 +746,6 @@ static void app_make_cfg(ra8_ota_cfg_t* cfg)
  * @brief Build the demo manifest describing the good image.
  *
  * @param[out] m Manifest to populate; non-NULL.
- * @return Nothing.
  * @pre @p m is non-NULL and ::s_image_good_digest is computed.
  * @pre The demo signature width matches ``k_app_sig_bytes``.
  * @post ``m->image_sha256`` equals the golden image digest.
@@ -891,7 +888,6 @@ static ra8_err_t app_setup(void)
  * @param[in] staged      Whether image staging + digest precompute succeeded.
  * @param[in] committed   Whether the good-image attempt committed.
  * @param[in] rolled_back Whether the corrupt-image attempt rolled back.
- * @return Nothing.
  * @pre The console is initialised.
  * @pre The three verdict flags are final.
  * @post One ``ota_ab: ...`` line is queued on SCI8.

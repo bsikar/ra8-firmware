@@ -216,7 +216,6 @@ static const char* const s_nav_items[] = {"Library", "Store", "Settings"};
  * @param[in] w     Width, pixels.
  * @param[in] h     Height, pixels.
  * @param[in] color Fill colour, 0xRRGGBB.
- * @return Nothing.
  * @pre ra8_gfx is bound to the framebuffer.
  * @pre @p w and @p h are the widget rect extents.
  * @post The rectangle is filled in the framebuffer.
@@ -238,7 +237,6 @@ static void wd_fill(void* user, int32_t x, int32_t y, int32_t w, int32_t h, uint
  * @param[in] str  NUL-terminated ASCII string.
  * @param[in] fg   Text colour, 0xRRGGBB.
  * @param[in] bg   Background colour behind the glyphs, 0xRRGGBB.
- * @return Nothing.
  * @pre ra8_gfx is bound to the framebuffer.
  * @pre @p str is NUL-terminated.
  * @post The string is drawn at (@p x, @p y).
@@ -258,7 +256,6 @@ static void wd_text(void* user, int32_t x, int32_t y, const char* str, uint32_t 
  * @param[in]  str   NUL-terminated ASCII string.
  * @param[out] out_w Receives the pixel width.
  * @param[out] out_h Receives the pixel height.
- * @return Nothing.
  * @pre @p str, @p out_w, @p out_h are non-NULL.
  * @pre The bundled font is available.
  * @post `*out_w` / `*out_h` hold the measured size (0 on a measure error).

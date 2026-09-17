@@ -87,7 +87,6 @@ static const ra8_io_roundtrip_params_t s_params = {
  *
  * @param[in] msg NUL-terminated ASCII string (CR/LF supplied by the caller).
  *
- * @return None.
  *
  * @pre ::s_uart was initialised by ::ra8_io_stream_uart_init.
  * @pre @p msg is non-NULL and NUL-terminated.
@@ -110,7 +109,6 @@ static void demo_print(const char* msg)
  *          failure spins forever so a debugger can inspect the halt (there is no
  *          console yet to report on).
  *
- * @return None.
  *
  * @pre SystemInit configured VTOR / FPU / priority grouping.
  * @pre Runs single-threaded during early boot.

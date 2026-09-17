@@ -58,7 +58,6 @@ volatile uint32_t g_gpio_input_tick = 0U;
  * @details Enters a permanent wait-for-interrupt loop, preserving the most
  *          recent switch and LED state for an attached debugger.
  *
- * @return None.
  *
  * @pre The caller has determined the polling loop cannot safely continue.
  * @pre Any desired diagnostic output has already been requested.
@@ -82,7 +81,6 @@ RA8_INTERNAL static void internal_gpio_demo_panic_halt(void)
  *          LED1 as the output indicator and SW1 as the pulled-up input. Any
  *          failing step transfers control to the permanent fatal halt.
  *
- * @return None.
  *
  * @pre Reset_Handler has set up the C runtime.
  * @pre LED1 and SW1 are available for exclusive use by this image.

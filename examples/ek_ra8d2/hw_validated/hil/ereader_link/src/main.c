@@ -159,7 +159,6 @@ static uint32_t lk_geom_hash(void)
  * @param[in]  idx       Link-rect index to probe.
  * @param[out] out_cross Set true when the href is a cross-chapter target.
  * @param[out] out_frag  Set true when the href is a same-chapter fragment.
- * @return None.
  */
 static void lk_probe_rect(uint32_t idx, bool* out_cross, bool* out_frag)
 {
