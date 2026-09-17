@@ -39,6 +39,7 @@ import fleet_reconcile_freeze_selftest as frf
 import fleet_reconcile_frozen_selftest as frfz
 import fleet_reconcile_interrupt_selftest as fri
 import fleet_reconcile_orphan_selftest as fro
+import fleet_reconcile_parked_selftest as frpk
 import fleet_reconcile_process as frp
 import fleet_reconcile_prune_selftest as frpr
 import fleet_reconcile_publish_selftest as frpu
@@ -933,6 +934,126 @@ def clear_reopened_stranding(stranding: dict[str, dict[str, int]], host: str) ->
     return True
 
 
+def load_parked(document: dict[str, Any]) -> dict[str, dict[str, int]]:
+    """Return the record of hosts this controller left holding a durable maintenance park.
+
+    ``capacity-quarantine`` writes the host's durable maintenance marker BEFORE
+    it drains (``park_maintenance`` is ``set_maintenance`` and only then the
+    drain), so a drain the fleet entry point REFUSES still leaves the marker
+    behind.  With that marker in place ``cmd_window``, the host-local timer
+    that raises admission again when a quiet window ends, refuses to lift it
+    ("maintenance: forcing target 0"), and ``capacity-restore`` is the only
+    thing that removes it.  A refused drain therefore does not leave a host
+    serving indefinitely: it leaves it parked and heading to zero on its own
+    timer, and the controller knew nothing about it (issue #888).  This is a
+    SEPARATE store from the stranded-at-zero record on purpose: that record
+    claims this controller took the host to zero and proved it, and writing it
+    here forged exactly the proof three later policies read back.  Anything
+    malformed is replaced rather than trusted, and state written by an older
+    controller starts empty.
+    """
+    stored = document.get("parked")
+    entries = stored.items() if isinstance(stored, dict) else []
+    parked = {
+        host: {"since": entry["since"], "passes": entry["passes"]}
+        for host, entry in entries
+        if isinstance(entry, dict)
+        and isinstance(entry.get("since"), int)
+        and isinstance(entry.get("passes"), int)
+    }
+    document["parked"] = parked
+    return parked
+
+
+def record_park(parked: dict[str, dict[str, int]] | None, host: str, now: int) -> None:
+    """Remember that a refused drain left a durable maintenance park on one host."""
+    if parked is None:
+        return
+    previous = parked.get(host)
+    entry = {
+        "since": previous["since"] if previous else now,
+        "passes": previous["passes"] + 1 if previous else 1,
+    }
+    parked[host] = entry
+    print(
+        f"fleet-reconcile: WARNING: {host}: its drain was REFUSED, but the durable "
+        "maintenance park is written before the drain is attempted, so this host is "
+        "left PARKED: the host-local window timer cannot raise its admission again "
+        "and only a capacity restore clears it "
+        f"(consecutive passes={entry['passes']}, first parked at {entry['since']})",
+        file=sys.stderr,
+    )
+
+
+def clear_park(parked: dict[str, dict[str, int]] | None, host: str) -> bool:
+    """Forget a durable park this pass proved closed by reopening the host.
+
+    ``capacity-restore`` removes the maintenance marker as its last act, so a
+    landed reopen verb is the one piece of evidence that the park is gone.
+    """
+    if parked is None or parked.pop(host, None) is None:
+        return False
+    print(
+        f"fleet-reconcile: {host}: capacity was reopened, which clears its durable "
+        "maintenance park; dropping the parked record",
+        file=sys.stderr,
+    )
+    return True
+
+
+def open_parked(
+    document: dict[str, Any], hosts: Sequence[str], options: ReconcileOptions
+) -> dict[str, dict[str, int]]:
+    """Return the parked record this pass may reason about, one pass older.
+
+    A park nothing has cleared outlives the pass that left it, so an apply pass
+    counts the interval it is starting against every host still recorded.  A
+    host outside the declaration is dropped for the same reason a stranded
+    record is: this controller cannot restore what it does not manage, and a
+    verdict that never goes back to zero is how loudness turns into noise.
+    Check mode persists nothing, so it reads the record exactly as it stands.
+    """
+    parked = load_parked(document)
+    if options.mode != "apply":
+        return parked
+    managed = set(hosts)
+    for host in sorted(parked):
+        if host not in managed:
+            entry = parked.pop(host)
+            print(
+                f"fleet-reconcile: WARNING: {host} is no longer a capacity-managed host "
+                f"in this fleet; dropping its parked record (consecutive passes="
+                f"{entry['passes']}). If it is still deployed it may still hold a durable "
+                "maintenance park: that is now the operator's to clear",
+                file=sys.stderr,
+            )
+        else:
+            parked[host]["passes"] += 1
+    return parked
+
+
+def report_durable_park(parked: dict[str, dict[str, int]], now: int) -> list[str]:
+    """Name every host this controller is holding parked, in either mode.
+
+    The refused drain earns ``DRAIN_FAILED_STATUS`` on the pass it happens, and
+    then nothing said anything at all: the host sits parked at zero admission
+    while later passes report the declaration converged.  Saying it every pass
+    is what separates a fleet that is fine from one this controller has left
+    parked, and a read-only dry run has to say it too.
+    """
+    held = sorted(parked)
+    for host in held:
+        entry = parked[host]
+        print(
+            f"fleet-reconcile: WARNING: {host} still holds a durable maintenance park "
+            f"this controller has not proven closed ({entry['passes']} pass(es), "
+            f"{now - entry['since']}s since its drain was refused); its admission "
+            "cannot come back until a capacity restore clears that park",
+            file=sys.stderr,
+        )
+    return held
+
+
 def prune_unmanaged_stranding(
     stranding: dict[str, dict[str, int]], hosts: Sequence[str], now: int
 ) -> list[str]:
@@ -982,16 +1103,17 @@ def open_stranding(
 
 def open_pass_records(
     document: dict[str, Any], order: Sequence[str], options: ReconcileOptions
-) -> dict[str, dict[str, int]]:
-    """Return the stranded-at-zero record, having dropped receipts that prove nothing.
+) -> tuple[dict[str, dict[str, int]], dict[str, dict[str, int]]]:
+    """Return the stranded-at-zero and parked records, dropping receipts that prove nothing.
 
-    Both reads settle what this pass is entitled to believe from the state
+    Every read settles what this pass is entitled to believe from the state
     file before it inspects a single host: a provisional receipt earned against
-    a producer that no longer publishes this fleet's image, and a
-    stranded-at-zero record for a host this fleet no longer manages.
+    a producer that no longer publishes this fleet's image, a stranded-at-zero
+    record for a host this fleet no longer manages, and the durable maintenance
+    parks a refused drain left behind.
     """
     expire_orphaned_releases(document["hosts"], order, options)
-    return open_stranding(document, order, options)
+    return open_stranding(document, order, options), open_parked(document, order, options)
 
 
 def invalidate_receipt(  # noqa: PLR0913  # the receipt plus every record one failure settles
@@ -1004,6 +1126,7 @@ def invalidate_receipt(  # noqa: PLR0913  # the receipt plus every record one fa
     stranded: bool,
     at_zero: bool = True,
     reopened: bool = False,
+    parked: dict[str, dict[str, int]] | None = None,
 ) -> None:
     """Drop a failed host's receipt, counting a pass that left it at zero.
 
@@ -1020,15 +1143,22 @@ def invalidate_receipt(  # noqa: PLR0913  # the receipt plus every record one fa
     ``at_zero`` is false when the host's drain was REFUSED, and that host earns
     no zero-capacity record at all: the controller could not take it out of
     service, so nothing proved it left it.  Recording it forged exactly the
-    proof three later policies read off that record (issue #888).
+    proof three later policies read off that record (issue #888).  It is not
+    nothing, though: the drain wrote the host's DURABLE maintenance park before
+    it was refused, so the host is parked and only a capacity restore can lift
+    it.  That goes in its own record, which claims only what this pass proved.
     """
     receipts.pop(host, None)
+    if reopened:
+        clear_park(parked, host)
     if not stranded:
         if reopened and clear_reopened_stranding(stranding, host):
             return
         age_stranding(stranding, host, now, "this pass failed without taking capacity down")
         return
     if not at_zero:
+        if not reopened:
+            record_park(parked, host, now)
         report_unaccounted_capacity(stranding, host)
         return
     newly_drained = host not in stranding
@@ -1214,7 +1344,10 @@ def report_recorded_zero(stranding: dict[str, dict[str, int]], now: int) -> list
 
 
 def pass_escalations(
-    stranding: dict[str, dict[str, int]], order: Sequence[str], options: ReconcileOptions
+    stranding: dict[str, dict[str, int]],
+    order: Sequence[str],
+    options: ReconcileOptions,
+    parked: dict[str, dict[str, int]] | None = None,
 ) -> list[str]:
     """Read the stranded-at-zero record out loud, whichever mode this pass ran in.
 
@@ -1236,6 +1369,7 @@ def pass_escalations(
     red dry run instead.
     """
     managed = managed_stranding(stranding, order)
+    report_durable_park(managed_stranding(parked or {}, order), options.now)
     if options.mode != "apply":
         report_recorded_zero(managed, options.now)
     return stranded_escalations(managed, options.now)
@@ -1338,6 +1472,8 @@ def record_success(  # noqa: PLR0913  # the receipt plus every record one succes
     *,
     index: int,
     released: bool,
+    reopened: bool = False,
+    parked: dict[str, dict[str, int]] | None = None,
 ) -> None:
     """Publish one reconciled host's receipt and settle the frozen-image records.
 
@@ -1356,6 +1492,8 @@ def record_success(  # noqa: PLR0913  # the receipt plus every record one succes
     """
     producer = order[0]
     receipts[host] = released_receipt(receipt, host, producer) if index and released else receipt
+    if reopened:
+        clear_park(parked, host)
     clear_stranding(stranding, host)
     if not index:
         expire_released_receipts(receipts, order[1:], producer)
@@ -1448,6 +1586,7 @@ def consumer_held(  # noqa: PLR0913  # one hold decision over the whole pass's s
     blocking: bool,
     drained: Sequence[str],
     budget: int,
+    parked: dict[str, dict[str, int]] | None = None,
 ) -> bool:
     """Return whether a consumer is skipped before anything touches it.
 
@@ -1455,12 +1594,18 @@ def consumer_held(  # noqa: PLR0913  # one hold decision over the whole pass's s
     the pass's drain budget.  A host that is ALREADY recorded at zero is never
     held by the budget, because it has no capacity left for the budget to
     protect and repairing it is the recovery issue #888 is about; the budget
-    only stops a pass from emptying hosts that are still serving.
+    only stops a pass from emptying hosts that are still serving.  A host left
+    holding a durable maintenance park by a refused drain is exempt for the
+    same reason and needs it more: its admission cannot come back until a
+    capacity restore clears that park, and this pass is the only thing that
+    issues one.  The producer block is deliberately NOT waived, because a
+    consumer let past a failed producer would converge onto an image that may
+    be in flight.
     """
     if blocking:
         print(f"fleet-reconcile: {host}: BLOCKED by producer failure", file=sys.stderr)
         return True
-    if len(drained) < budget or host in stranding:
+    if len(drained) < budget or host in stranding or host in (parked or {}):
         return False
     report_cascade_halt(host, drained, budget)
     halted.append(host)
@@ -1510,7 +1655,7 @@ def reconcile(
     document = load_state(state_path)
     receipts = document["hosts"]
     order = runner_hosts(data)
-    stranding = open_pass_records(document, order, options)
+    stranding, parked = open_pass_records(document, order, options)
     budget = open_drain_budget(order, stranding)
     failures = 0
     producer_blocking = False
@@ -1523,7 +1668,13 @@ def reconcile(
             report_uninspected(order[index:])
             break
         if index and consumer_held(
-            host, stranding, halted, blocking=producer_blocking, drained=drained, budget=budget
+            host,
+            stranding,
+            halted,
+            blocking=producer_blocking,
+            drained=drained,
+            budget=budget,
+            parked=parked,
         ):
             failures += 1
             hold_at_zero(stranding, host, options)
@@ -1558,7 +1709,15 @@ def reconcile(
             ok, stranded, receipt = False, True, {}
         if ok and options.mode == "apply":
             record_success(
-                receipts, stranding, order, host, receipt, index=index, released=producer_released
+                receipts,
+                stranding,
+                order,
+                host,
+                receipt,
+                index=index,
+                released=producer_released,
+                reopened=capacity_reopened(last_mutation),
+                parked=parked,
             )
         if not ok:
             failures += 1
@@ -1573,6 +1732,7 @@ def reconcile(
                     stranded=lost,
                     at_zero=host not in undrained,
                     reopened=capacity_reopened(last_mutation),
+                    parked=parked,
                 )
                 save_state(state_path, document)
             if index == 0 and options.mode == "apply":
@@ -1581,7 +1741,7 @@ def reconcile(
                 )
     if options.mode == "apply":
         save_state(state_path, document)
-    escalated = pass_escalations(stranding, order, options)
+    escalated = pass_escalations(stranding, order, options, parked)
     return pass_verdict(undrained, escalated, halted, failures)
 
 
@@ -2148,6 +2308,7 @@ def selftest() -> int:
     failures.extend(frpu.run(sys.modules[__name__]))
     failures.extend(frpr.run(sys.modules[__name__]))
     failures.extend(fro.run(sys.modules[__name__]))
+    failures.extend(frpk.run(sys.modules[__name__]))
     failures.extend(frsv.run(sys.modules[__name__]))
     failures.extend(fru.run(sys.modules[__name__]))
     failures.extend(frrc.run(sys.modules[__name__]))
