@@ -302,8 +302,8 @@ _pcc_source_form() (
   # .clang-format InsertNewlineAtEOF (C/C++ only) by covering scripts and
   # config-as-code. --selftest proves the detector fires and that the derived
   # scope reaches the roots a hardcoded list had dropped (#549).
-  python3 scripts/checks/check_final_newline.py --selftest
-  python3 scripts/checks/check_final_newline.py
+  bash scripts/builders/check_final_newline.sh --selftest
+  bash scripts/builders/check_final_newline.sh
   # No magic numbers. clang-tidy's readability-magic-numbers only sees files
   # in the host compile-db (no example main.c, no ARM-only #ifdef paths),
   # which is how ra8_delay_ms(500U) slipped past CI.
