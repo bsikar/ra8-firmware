@@ -5058,6 +5058,7 @@
 .github/tree-coverage-baseline.txt	46c83338bb87d0dbc516cd1725b27795c0932e0413ef1a0ad48e5880eab9c498	M:63,63,23,26
 .github/tree-coverage-baseline.txt	46e8165f4bc48fda103cf6a6f4a0a891040623a66a6cbd2a55636d3eab57de98	U:platform-cross-only
 .github/tree-coverage-baseline.txt	470b5f221cf6e7594feecfff1ff71560e94f6c73ec4aa77dba08bae0d71a47c4	U:hosted-no-coverage-build
+.github/tree-coverage-baseline.txt	474546e6132d7071b48ac52867cc9a4522e52b5c809f56aa0ddf1f2a3f961558	U:firmware-composition
 .github/tree-coverage-baseline.txt	4750f9bfa9572426644b198466ac3c9338c061e7b9fe971f8ff61958c9328846	M:146,150,53,62
 .github/tree-coverage-baseline.txt	476e7653106109ea44f064058b2b0a5d712053e499a59f7096c01287eb3a6ecf	M:61,65,30,38
 .github/tree-coverage-baseline.txt	47d64731b975f78de8a2f8d8d6de08f885b79d0e5e106a3b74bdf271f8266e13	U:firmware-composition
