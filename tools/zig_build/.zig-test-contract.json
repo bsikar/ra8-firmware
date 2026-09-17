@@ -11,5 +11,5 @@
     "tests/ar_test.zig",
     "tests/root.zig"
   ],
-  "minimum_tests": 74
+  "minimum_tests": 82
 }

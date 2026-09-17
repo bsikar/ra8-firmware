@@ -156,6 +156,72 @@ pub const SdkProbe = struct {
 /// The stub target an arm64 Mac needs to see declared in `libSystem.tbd`.
 pub const required_target = "arm64-macos";
 
+/// Where Zig keeps its own `libSystem` stub, relative to the Zig lib
+/// directory (`zig env` reports it as `lib_dir`).
+///
+/// The #899 workaround rests entirely on this file. Pinning an explicit
+/// `aarch64-macos` query is only a fix because Zig links THIS stub instead of
+/// the SDK one, and because this stub declares `arm64-macos`. Nothing in the
+/// tree ever read it, so that was an assumption, not a check.
+pub const bundled_stub_relative_path = "libc/darwin/libSystem.tbd";
+
+/// What Zig's own bundled stub turned out to say.
+///
+/// Kept apart from `Reason` on purpose: `Reason` is about the machine's SDK,
+/// which is the thing #899 reports, while this is about the compiler that is
+/// standing in for it. A run where both go wrong needs to name them
+/// separately, because the fixes are a Command Line Tools install and a Zig
+/// version bump respectively.
+pub const BundledStubState = enum {
+    /// The bundled stub declares `arm64-macos`: the pinned query is a fix.
+    declares,
+    /// The bundled stub has a target list and `arm64-macos` is not in it. The
+    /// pinned query then fails exactly like the SDK one it replaced.
+    omits,
+    /// The bundled stub names no macOS target at all.
+    foreign_platform,
+    /// A file was read but no target list could be found in it.
+    unrecognized,
+    /// The file is not where it should be, or could not be read.
+    unreadable,
+    /// This build runner does not know where the Zig lib directory is, so
+    /// nothing was read. Reported rather than guessed at.
+    lib_dir_unknown,
+
+    /// Can the pinned `aarch64-macos` query actually link against this stub?
+    pub fn linksRequiredTarget(self: BundledStubState) bool {
+        return self == .declares;
+    }
+
+    /// One line, in plain words, for a build log or a gate transcript.
+    pub fn explain(self: BundledStubState) []const u8 {
+        return switch (self) {
+            .declares => "Zig's bundled libSystem stub declares " ++ required_target ++ ", so the pinned query has something to link",
+            .omits => "Zig's bundled libSystem stub lists its targets and " ++ required_target ++ " is not among them, so the pinned query cannot link either (#899)",
+            .foreign_platform => "Zig's bundled libSystem stub names no macOS target at all, so it cannot stand in for the SDK stub",
+            .unrecognized => "Zig's bundled libSystem stub declares no target list in a recognised spelling, so it cannot be trusted to link " ++ required_target,
+            .unreadable => "Zig's bundled libSystem stub could not be read at " ++ bundled_stub_relative_path ++ " under the Zig lib directory",
+            .lib_dir_unknown => "the Zig lib directory is unknown to this build runner, so the bundled libSystem stub was not read",
+        };
+    }
+};
+
+/// Classify Zig's own bundled stub. `tbd_text` is null when there was nothing
+/// to read; `lib_dir_known` separates "I looked and found no file" from "I had
+/// nowhere to look".
+///
+/// The classification itself is `classifyTbd`, the same reader the SDK stub
+/// goes through, so the two stubs are never judged by different rules.
+pub fn classifyBundledStub(tbd_text: ?[]const u8, lib_dir_known: bool) BundledStubState {
+    const text = tbd_text orelse return if (lib_dir_known) .unreadable else .lib_dir_unknown;
+    return switch (classifyTbd(text, required_target)) {
+        .declares => .declares,
+        .omits => .omits,
+        .foreign_platform => .foreign_platform,
+        .unrecognized => .unrecognized,
+    };
+}
+
 /// The `xcrun --sdk` name for the SDK a macOS host build links against.
 ///
 /// This is not a free choice. Zig 0.14.1 resolves its own sysroot with
