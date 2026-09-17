@@ -218,23 +218,122 @@ typedef enum : uintptr_t {
  * @brief Sizes (bytes) of the on-chip memory regions for the current device.
  *
  * @details
- * MRAM and system SRAM are identical on both parts (1 MB and 1664 KB). The TCM
- * sizes are the conservative per-core split the linker scripts use today
- * (64 KB ITCM + 64 KB DTCM); the RA8P1 exposes a larger M85 TCM budget (256 KB
- * total) but the exact ITCM/DTCM split is not yet confirmed against the RA8P1
- * HUM, so the safe shared floor is used until it is (tracked as a follow-up).
+ * These are the SUPPORTED SOFTWARE ALLOCATION, not the silicon capacity. The
+ * silicon capacity of every bank now lives in `ra8_device_mem_capacity_t`
+ * (issue #850); keep the two apart, because expanding what software is allowed
+ * to allocate is a separate, audited change from correcting a capacity table.
+ *
+ * MRAM and user SRAM allocate their full capacity (1024 KiB and 1664 KiB,
+ * identical on both parts). The TCM entries deliberately do NOT: they stay at
+ * the 64 KiB per-bank floor every app's `MEMORY { }` block declares today, even
+ * though the M85 banks are 128 KiB each on BOTH parts.
+ *
+ * WHY THE FLOOR IS RETAINED (issue #850). An earlier revision of this comment
+ * said the RA8P1 M85 TCM split was "not yet confirmed"; it is confirmed and it
+ * is not an RA8P1 delta (see ra8_device_mem_capacity_t for the citations). The
+ * floor stays anyway, because raising it is not a table correction: the ITCM
+ * and DTCM banks are ECC and 16-block-granular, so a larger declared region
+ * changes what `Reset_Handler` must copy, zero and ECC-initialize before first
+ * read, and the 64 KiB windows are what the emulator maps
+ * (`k_dtcm_end == 0x20010000`) and what the HIL-validated images were linked
+ * against. Raise it only behind that startup/ECC audit plus a silicon run on an
+ * RA8P1 EK (issues #226 / #229), never because this enum learned a bigger
+ * number.
  *
  * @invariant Each size is a whole number of KiB.
+ * @invariant Each size is <= the matching `ra8_device_mem_capacity_t` value;
+ *            `tests/core/src/test_ra8_device_geometry.c` enforces this.
  *
  * @see ra8_device_mem_base_t
+ * @see ra8_device_mem_capacity_t
  * @since 0.1.0
  */
 typedef enum : uint32_t {
   k_ra8_mem_mram_size = 0x00100000U, /**< 1 MB code MRAM (both parts).             */
   k_ra8_mem_sram_size = 0x001A0000U, /**< 1664 KB system SRAM (both parts).        */
-  k_ra8_mem_itcm_size = 0x00010000U, /**< 64 KB ITCM (linker floor; see @details). */
-  k_ra8_mem_dtcm_size = 0x00010000U, /**< 64 KB DTCM (linker floor; see @details). */
+  k_ra8_mem_itcm_size = 0x00010000U, /**< 64 KiB ITCM: supported floor, not capacity. */
+  k_ra8_mem_dtcm_size = 0x00010000U, /**< 64 KiB DTCM: supported floor, not capacity. */
 } ra8_device_mem_size_t;
+
+/**
+ * @enum ra8_device_mem_capacity_t
+ * @brief Silicon capacity (bytes) of each cache / TCM / memory bank on the
+ *        selected SKU, as distinct from what software is allowed to allocate.
+ *
+ * @details
+ * Issue #850 exists because two different facts were being stored in one place:
+ * how big a bank IS, and how much of it this firmware declares. This enum is
+ * the first; `ra8_device_mem_size_t` is the second. Nothing here is a
+ * permission to allocate, and adding a value here must never move a linker
+ * region on its own.
+ *
+ * ## Exact-SKU geometry (R7KA8P1KFLCAC, the dual-core part this build targets)
+ *
+ * | Bank                  | Capacity | Source                                 |
+ * |-----------------------|----------|----------------------------------------|
+ * | Code MRAM             | 1024 KiB | DS Table 1.15 p 11 ("1 MB, 512 KB")    |
+ * | User SRAM (ECC)       | 1664 KiB | DS Table 1.15 p 11 ("SRAM")            |
+ * | M85 ITCM (ECC)        |  128 KiB | HUM 2.1.1 p 111                        |
+ * | M85 DTCM (ECC)        |  128 KiB | HUM 2.1.1 p 111                        |
+ * | M85 I-cache (ECC)     |   16 KiB | HUM 2.1.1 p 111                        |
+ * | M85 D-cache (ECC)     |   16 KiB | HUM 2.1.1 p 111                        |
+ * | M33 CTCM (ECC)        |   64 KiB | HUM 2.1.1 p 112                        |
+ * | M33 STCM (ECC)        |   64 KiB | HUM 2.1.1 p 112                        |
+ * | M33 C-Cache (ECC)     |   16 KiB | HUM 2.1.1 p 112                        |
+ * | M33 S-Cache (ECC)     |   16 KiB | HUM 2.1.1 p 112                        |
+ *
+ * DS = RA8P1 datasheet R01DS0439EJ0130 Rev.1.30, committed as
+ * `docs/reference/ra8p1-datasheet.pdf`, so every DS row is re-checkable from
+ * the tree. HUM = the per-bank split; it is re-derived above from the RA8D2 HUM
+ * R01UH1065EJ0130 Rev.1.30, committed as
+ * `docs/reference/ra8d2-hardware-user-manual.pdf`, because the RA8P1 HUM is not
+ * in the tree. That substitution is sound here and only here: the two
+ * datasheets' function-comparison tables (RA8P1 Table 1.15 p 11, RA8D2
+ * Table 1.14 p 11) carry IDENTICAL CPU0/CPU1 TCM and cache rows, and the RA8D2
+ * per-bank split multiplies out to exactly those shared totals (see the
+ * accounting note below). Issue #850 cites RA8P1 HUM R01UH1064EJ0130 2.1.1
+ * pp 111-112 and 2.16.1.1 Table 2.34 p 160 for the same numbers.
+ *
+ * ## Core-integrated vs bus cache
+ *
+ * The M85 I-cache / D-cache are Arm core-integrated L1, reported by CMSIS. The
+ * M33's C-Cache (code bus) and S-Cache (system bus) are RENESAS BUS caches
+ * sitting outside the Arm core, so a CMSIS "no core-integrated L1" flag on the
+ * M33 says nothing about them. The M33 is NOT cacheless; an earlier reading
+ * that treated it as cacheless read the Arm flag as a Renesas fact.
+ *
+ * ## Count every region exactly once
+ *
+ * 1664 KiB user SRAM + 256 KiB M85 TCM + 128 KiB M33 TCM = 2048 KiB, which is
+ * the "2 MB SRAM" of the datasheet headline (DS p 1 / p 2:
+ * "2 MB SRAM (256 KB of CM85 TCM RAM, 128 KB CM33 TCM RAM, 1664 KB of user
+ * SRAM)"). TCM is therefore CARVED OUT of the 2 MiB island, never added on top
+ * of it: "1664 KiB user SRAM" and "2 MiB total RAM" are both correct and must
+ * not be summed. The single-core SKUs corroborate the split exactly
+ * (1792 KiB user SRAM + 256 KiB M85 TCM + no M33 TCM = the same 2048 KiB).
+ *
+ * @note Identical on RA8D2 and RA8P1, so these are not device-conditional. The
+ *       cache/TCM geometry is NOT part of the RA8P1 delta set.
+ *
+ * @invariant Nothing in this enum is enabled, mapped or allocated by declaring
+ *            it; it is reference geometry only.
+ *
+ * @see ra8_device_mem_size_t
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra8_cap_mram_bytes        = 0x00100000U, /**< 1024 KiB code MRAM.            */
+  k_ra8_cap_user_sram_bytes   = 0x001A0000U, /**< 1664 KiB user SRAM, ECC.       */
+  k_ra8_cap_m85_itcm_bytes    = 0x00020000U, /**< 128 KiB M85 ITCM, ECC.         */
+  k_ra8_cap_m85_dtcm_bytes    = 0x00020000U, /**< 128 KiB M85 DTCM, ECC.         */
+  k_ra8_cap_m85_icache_bytes  = 0x00004000U, /**< 16 KiB M85 L1 I-cache, ECC.    */
+  k_ra8_cap_m85_dcache_bytes  = 0x00004000U, /**< 16 KiB M85 L1 D-cache, ECC.    */
+  k_ra8_cap_m33_ctcm_bytes    = 0x00010000U, /**< 64 KiB M33 CTCM, ECC.          */
+  k_ra8_cap_m33_stcm_bytes    = 0x00010000U, /**< 64 KiB M33 STCM, ECC.          */
+  k_ra8_cap_m33_ccache_bytes  = 0x00004000U, /**< 16 KiB M33 code-bus cache, ECC.*/
+  k_ra8_cap_m33_scache_bytes  = 0x00004000U, /**< 16 KiB M33 system-bus cache.   */
+  k_ra8_cap_sram_island_bytes = 0x00200000U, /**< 2048 KiB: user SRAM + all TCM. */
+} ra8_device_mem_capacity_t;
 
 #ifdef __cplusplus
 }
