@@ -211,8 +211,8 @@ RA8_INTERNAL static void internal_demo_clocks_or_halt(void)
  * @brief Bring the BLE controller + NimBLE adapter up.
  *
  * @details
- * 1. ``ra8_ble_open`` powers up the radio block and opens the HCI
- *    mailbox.
+ * 1. ``ra8_ble_open`` opens the host-side HCI transport (the
+ *    controller itself is the C6 companion).
  * 2. ``ble_hci_ra8_ble_init`` attaches our NimBLE <-> ra8_ble bridge.
  * 3. ``nimble_port_init`` brings the host stack's default eventq up.
  *
@@ -226,8 +226,11 @@ RA8_INTERNAL static void internal_demo_clocks_or_halt(void)
  */
 RA8_INTERNAL static void internal_demo_ble_or_halt(void)
 {
+  /* Both flags stay 0: the C6 companion owns the radio oscillator and
+   * the controller sleep policy, and ra8_ble_open refuses a set flag
+   * with k_ra8_err_not_supported (issue #1348). */
   const ra8_ble_config_t ble_cfg = {
-    .use_external_osc  = 1U,
+    .use_external_osc  = 0U,
     .deep_sleep_enable = 0U,
   };
   if (ra8_ble_open(&ble_cfg) != k_ra8_ok) {

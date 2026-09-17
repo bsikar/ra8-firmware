@@ -86,10 +86,21 @@ typedef enum : uint8_t {
 /**
  * @struct ra8_ble_config_t
  * @brief Configuration passed to ``ra8_ble_open``.
+ *
+ * @details
+ * Both members are controller-side knobs, and the controller is the
+ * ESP32-C6 companion: the RA8D2 carries no 2.4 GHz block, so this
+ * driver is the host-side HCI transport only. No HCI command and no
+ * companion-link message in this tree sets the radio oscillator
+ * source or the controller's sleep policy, so ``ra8_ble_open``
+ * cannot honour a set flag and refuses it with
+ * ``k_ra8_err_not_supported`` instead of accepting it silently.
+ * Both fields are 0/1 booleans; any other value is rejected with
+ * ``k_ra8_err_invalid_arg``. See issue #1348.
  */
 typedef struct {
-  uint8_t use_external_osc;  /**< 1 = drive radio from external 32 MHz xtal. */
-  uint8_t deep_sleep_enable; /**< 1 = allow controller deep-sleep.           */
+  uint8_t use_external_osc;  /**< Must be 0: the C6 owns the radio oscillator. */
+  uint8_t deep_sleep_enable; /**< Must be 0: the C6 owns controller sleep.     */
 } ra8_ble_config_t;
 
 /* =============================================================================
@@ -130,30 +141,34 @@ typedef void (*ra8_ble_acl_fn_t)(void* ctx, uint16_t handle, const uint8_t* payl
  */
 
 /**
- * @brief Power up the BLE controller and open the HCI mailbox.
+ * @brief Open the host-side HCI transport.
  *
  * @details
- * Steps (mirrors FSP r_ble open + the production patch-load helper):
- *  1. Drop the controller out of reset (CTRL.reset = 1, then 0).
- *  2. Programme OSCCTL per ``cfg->use_external_osc``.
- *  3. Stub the patch-load loop (PATCHADDR/PATCHDATA writes).
- *  4. Set CTRL.enable | CTRL.hci_enable.
- *  5. Spin-wait for STATUS.ready.
+ * Validates the descriptor, marks the transport open and clears the
+ * capture / injection cursors. There is no register access and no
+ * radio power-up here: the controller lives on the ESP32-C6
+ * companion and HCI packets reach it over the companion link (see
+ * ``port/nimble`` and esp-hosted).
+ *
+ * The descriptor is checked before the already-open test, so a flag
+ * this transport cannot programme is reported the same way whatever
+ * the open state.
  *
  * @param[in] cfg Driver configuration. Must not be NULL.
  *
  * @return ``k_ra8_err_null_ptr`` if ``cfg == NULL``.
- * @return ``k_ra8_err_invalid_arg`` if controller is already open.
+ * @return ``k_ra8_err_invalid_arg`` if either flag is outside 0..1.
+ * @return ``k_ra8_err_not_supported`` if ``cfg->use_external_osc`` or
+ *         ``cfg->deep_sleep_enable`` is set; both are C6-side knobs
+ *         this transport has no channel to programme (issue #1348).
+ * @return ``k_ra8_err_invalid_arg`` if the transport is already open.
  * @return ``k_ra8_ok`` on success.
  *
- * @pre Caller has clocked the BLE block (MSTPCRC bit, HUM Ch 11).
  * @pre No other thread holds the HCI mailbox.
- * @post STATUS.ready reads back as 1.
  * @post Subsequent ``ra8_ble_hci_send_command`` calls are accepted.
+ * @post A refused descriptor leaves the transport closed.
  *
  * @note Not thread-safe.
- * @warning Real silicon needs the Renesas-supplied BLE firmware patch
- *          image; the patch-load loop is currently stubbed.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_ble_open(const ra8_ble_config_t* cfg);
