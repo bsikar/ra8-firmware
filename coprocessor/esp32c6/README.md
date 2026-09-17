@@ -35,7 +35,7 @@ pin numbers in Kconfig syntax because that is the only form esp-idf reads;
 `scripts/checks/check_c6_pin_config.py` diffs the two, in the `pre-commit-checks`
 gate, in the git hook (pure text compare -- no esp-idf needed) and again on the
 build host before every build. The companion offline
-`scripts/checks/check_c6_integration.py` proves the staged file, component,
+`scripts/builders/check_c6_integration.sh` proves the staged file, component,
 patch-hook and post-link symbol contract without ESP-IDF or hardware; `build.sh`
 runs both gates before fetching. A third copy in this prose is exactly the drift
 that checker exists to remove, which is why there is no pin table on this page.

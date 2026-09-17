@@ -14,7 +14,8 @@
 # the build still succeeds:
 #   - the esp-idf release is exactly ESP_IDF_VERSION (not merely its series),
 #   - sdkconfig.defaults still agrees with pins.env (check_c6_pin_config.py),
-#   - staged sources, components, hook, and ABI agree (check_c6_integration.py),
+#   - staged sources, components, hook, and ABI agree
+#     (scripts/builders/check_c6_integration.sh),
 #   - the component set the registry resolved matches components-lock.txt.
 #
 # Usage:
@@ -145,7 +146,7 @@ if [[ "$-" == *p* ]]; then
     exit 1
   fi
   python3 "${SCRIPT_DIR}/../../scripts/checks/check_c6_pin_config.py"
-  python3 "${SCRIPT_DIR}/../../scripts/checks/check_c6_integration.py"
+  bash "${SCRIPT_DIR}/../../scripts/builders/check_c6_integration.sh"
 
   # ---- 2. fetch esp-hosted-mcu at the pinned commit ----
   if [[ ! -d "${CLONE_DIR}/.git" ]]; then
