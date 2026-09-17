@@ -5,6 +5,9 @@
  * @details Declares bounded module-private predicates used to validate I3C controller operations and expose focused coverage seams.
  * @ingroup grp_hal_comms
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

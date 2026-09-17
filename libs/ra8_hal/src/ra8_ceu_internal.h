@@ -3,6 +3,9 @@
  * @brief Cross-TU surface for the ra8_ceu driver split.
  * @ingroup grp_hal_camera
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Not part of the public API. Declares the init-time register
  * programming helpers that were promoted from TU-private statics so
