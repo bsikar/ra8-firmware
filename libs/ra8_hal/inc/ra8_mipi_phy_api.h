@@ -64,13 +64,18 @@ extern "C" {
  * 10. Write ``DPHYTIM1..6`` from ``cfg->p_timing``.
  * 11. Set ``DPHYOCR.DPHYEN = 1``.
  *
+ * ``cfg->line_rate_mbps`` reaches no register of its own: it is bounded
+ * against the range the DPHYTIM tables cover, so an unserviceable rate
+ * is refused at step 0 instead of after the LDO and PLL are running.
+ *
  * @param[in] cfg Non-NULL configuration block.
  *
  * @return ``ra8_err_t`` error code.
  * @retval k_ra8_ok D-PHY enabled, LDO + PLL stable.
  * @retval k_ra8_err_null_ptr ``cfg`` or ``cfg->p_timing`` was NULL.
  * @retval k_ra8_err_invalid_arg ``pclka_mhz`` outside 40..125 (HUM 64.2.1
- * p 3822) or PLL fields out of range.
+ * p 3822), ``line_rate_mbps`` outside 80..720 (HUM 64.1 p 3822), or PLL
+ * fields out of range.
  * @retval k_ra8_err_not_supported ``lane_count`` > 2.
  * @retval k_ra8_err_hw_timeout LDO or PLL did not stabilise in time.
  *

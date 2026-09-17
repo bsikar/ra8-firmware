@@ -56,6 +56,8 @@ typedef enum : uint16_t {
   k_test_mipi_phy_nmul_bad_lo = 39U,  /**< Below floor.                         */
   k_test_mipi_phy_nmul_bad_hi = 376U, /**< Above ceiling.                       */
   k_test_mipi_phy_rate_mbps   = 250U, /**< Sample lane rate.                    */
+  k_test_mipi_phy_rate_lo     = 79U,  /**< Just below the 80 Mbps floor.        */
+  k_test_mipi_phy_rate_hi     = 721U, /**< Just above the 720 Mbps ceiling.     */
 } test_mipi_phy_pll_t;
 
 /* ---- Shared callback bookkeeping ----------------------------------------- */
@@ -299,6 +301,39 @@ static void test_init_pclka_out_of_range(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_phy_init(&cfg));
 
   TEST_END("mipi_phy init rejects pclka out of range");
+}
+
+/**
+ * @par MC/DC:
+ * decision ``(line_rate_mbps < 80) || (line_rate_mbps > 720)`` in
+ * ``internal_mipi_phy_validate_init_cfg``:
+ *   - 250 Mbps  -> F || F -> false (covered by every other case here)
+ *   - 79 Mbps   -> T || F -> true  (first condition independently)
+ *   - 721 Mbps  -> F || T -> true  (second condition independently)
+ */
+
+static void test_init_line_rate_out_of_range(void)
+{
+  TEST_BEGIN("mipi_phy init rejects line rate out of range");
+  prep_fixture();
+
+  const ra8_mipi_phy_timing_t tim = make_timing();
+  ra8_mipi_phy_config_t       cfg = make_dsi_cfg(&tim);
+
+  cfg.line_rate_mbps = (uint16_t)k_test_mipi_phy_rate_lo;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_phy_init(&cfg));
+
+  cfg.line_rate_mbps = (uint16_t)k_test_mipi_phy_rate_hi;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_phy_init(&cfg));
+
+  /* Rejected before step 1, so the module stays gated and DPHYEN is
+   * never set -- HUM Ch 64.3.1 p 3837. */
+  TEST_ASSERT_EQ(0U, *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_ocr));
+
+  cfg.line_rate_mbps = (uint16_t)k_test_mipi_phy_rate_mbps;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_phy_init(&cfg));
+
+  TEST_END("mipi_phy init rejects line rate out of range");
 }
 
 /**
@@ -756,6 +791,7 @@ static void (*const s_test_roster[])(void) = {
   test_init_null_cfg_rejected,
   test_init_null_timing_rejected,
   test_init_pclka_out_of_range,
+  test_init_line_rate_out_of_range,
   test_init_escdiv_out_of_range,
   test_init_nmul_out_of_range,
   test_init_lane_count_3_4_rejected,
