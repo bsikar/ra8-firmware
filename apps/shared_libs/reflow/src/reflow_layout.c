@@ -37,6 +37,7 @@
 #include "reflow.h"
 #include "reflow_internal.h"
 #include "reflow_layout_internal.h"
+#include "reflow_tokenize_internal.h"
 #include "stb_truetype.h"
 
 /**
@@ -422,7 +423,7 @@ bool priv_reflow_layout_newline(reflow_t* engine, priv_cursor_t* cur, bool allow
  * @param[in,out] engine  Engine whose glyph pool grows.
  * @param[in,out] cur     Layout cursor; x and line state are updated.
  * @param[in]     font    Font metrics for advance measurement.
- * @param[in]     cp      Unicode code point to emit (ASCII range in practice).
+ * @param[in]     cp      Unicode code point to emit (U+FFFD for malformed input).
  * @param[in]     color   Packed ARGB glyph colour.
  * @param[in]     link_id 1-based link identifier; 0 means not a link.
  *
@@ -475,8 +476,15 @@ static ra8_err_t internal_emit_char(reflow_t*             engine,
 }
 
 /**
- * @brief Lay out one text token: walk byte-by-byte, breaking at
- *        whitespace, and emit each character through `internal_emit_char`.
+ * @brief Lay out one text token: walk it code point by code point, breaking
+ *        at whitespace, and emit each through `internal_emit_char`.
+ *
+ * @details The pool holds UTF-8, so the walk decodes with
+ * ::priv_reflow_tok_utf8_decode rather than indexing bytes; measuring and
+ * emitting share that one decoder, which is what keeps the greedy
+ * pre-measure and the emit pass agreeing on where each word ends. ASCII
+ * space is the only break byte and can never appear inside a multi-byte
+ * sequence, so word boundaries always land on a sequence boundary.
  *
  * @details See implementation.
  * @param[in] engine See implementation.
@@ -528,9 +536,12 @@ static ra8_err_t internal_layout_text(reflow_t*             engine,
     uint32_t word_end = i;
     int32_t  word_w   = 0;
     while ((word_end < len) && (base[word_end] != (uint8_t)' ')) {
-      word_w +=
-        priv_reflow_layout_glyph_advance(font, cur->active_font_px, (int32_t)base[word_end]);
-      ++word_end;
+      uint32_t     cp   = 0U;
+      const size_t used = priv_reflow_tok_utf8_decode(&base[word_end],
+                                                      (size_t)(len - word_end),
+                                                      &cp);
+      word_w += priv_reflow_layout_glyph_advance(font, cur->active_font_px, (int32_t)cp);
+      word_end += (uint32_t)used;
     }
     const int32_t right_limit = (int32_t)engine->viewport_w - (int32_t)k_reflow_margin_px;
     if (priv_reflow_internal_right_overflow_break(cur->x,
@@ -542,11 +553,13 @@ static ra8_err_t internal_layout_text(reflow_t*             engine,
       }
     }
     while (i < word_end) {
-      ra8_err_t err = internal_emit_char(engine, cur, font, (int32_t)base[i], color, link_id);
+      uint32_t        cp   = 0U;
+      const size_t    used = priv_reflow_tok_utf8_decode(&base[i], (size_t)(word_end - i), &cp);
+      const ra8_err_t err  = internal_emit_char(engine, cur, font, (int32_t)cp, color, link_id);
       if (err != k_ra8_ok) {
         return err;
       }
-      ++i;
+      i += (uint32_t)used;
     }
   }
   return k_ra8_ok;

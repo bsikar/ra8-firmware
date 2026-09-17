@@ -92,6 +92,66 @@ size_t priv_reflow_tok_utf8_encode(uint32_t cp, uint8_t* dst)
   return 4U;
 }
 
+size_t priv_reflow_tok_utf8_decode(const uint8_t* src, size_t avail, uint32_t* out_cp)
+{
+  *out_cp = (uint32_t)k_priv_uc_replace;
+  if (avail == 0U) {
+    return 1U; /* nothing readable: caller still advances, so it cannot stall */
+  }
+
+  const uint32_t b0 = (uint32_t)src[0];
+  if (b0 < (uint32_t)k_priv_uc_2byte) {
+    *out_cp = b0; /* 0xxxxxxx -- ASCII, the overwhelmingly common case */
+    return 1U;
+  }
+
+  /* Classify the lead byte. Anything that is not a well-formed lead (a stray
+   * continuation 0x80..0xBF, or 0xF8..0xFF) falls through to the one-byte
+   * substitution below, which is what keeps the walk in sync. */
+  size_t   need = 0U;
+  uint32_t cp   = 0U;
+  uint32_t least = 0U;
+  if ((b0 & (uint32_t)k_priv_utf8_lead2_msk) == (uint32_t)k_priv_utf8_lead2) {
+    need  = 2U;
+    cp    = b0 & (uint32_t)k_priv_utf8_load2;
+    least = (uint32_t)k_priv_uc_2byte;
+  } else if ((b0 & (uint32_t)k_priv_utf8_lead3_msk) == (uint32_t)k_priv_utf8_lead3) {
+    need  = 3U;
+    cp    = b0 & (uint32_t)k_priv_utf8_load3;
+    least = (uint32_t)k_priv_uc_3byte;
+  } else if ((b0 & (uint32_t)k_priv_utf8_lead4_msk) == (uint32_t)k_priv_utf8_lead4) {
+    need  = 4U;
+    cp    = b0 & (uint32_t)k_priv_utf8_load4;
+    least = (uint32_t)k_priv_uc_4byte;
+  } else {
+    return 1U; /* not a lead byte at all */
+  }
+
+  if (avail < need) {
+    return 1U; /* truncated by the end of the pool */
+  }
+
+  /* Bounded by k_priv_utf8_max_len; `need` is 2, 3 or 4 by construction. */
+  for (size_t k = 1U; k < need; ++k) {
+    if (((uint32_t)src[k] & (uint32_t)k_priv_utf8_cont_msk) != (uint32_t)k_priv_utf8_cont) {
+      return 1U; /* a non-continuation ends the sequence early; resync on it */
+    }
+    cp = (cp << (uint32_t)k_priv_utf8_sh6) | ((uint32_t)src[k] & (uint32_t)k_priv_utf8_mask);
+  }
+
+  /* Structurally complete, so its extent is known: reject the value but
+   * consume the whole sequence rather than re-reading its continuations. */
+  const bool overlong  = (cp < least);
+  const bool surrogate = (cp >= (uint32_t)k_priv_uc_surr_lo) && (cp <= (uint32_t)k_priv_uc_surr_hi);
+  const bool too_big   = (cp > (uint32_t)k_priv_uc_max);
+  if (overlong || surrogate || too_big) {
+    return need;
+  }
+
+  *out_cp = cp;
+  return need;
+}
+
 /**
  * @brief Lower-case ASCII and copy the local part of a tag name.
  *
