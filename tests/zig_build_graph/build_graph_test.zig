@@ -17,6 +17,7 @@ const db = graph.compile_db;
 const sources = graph.cross_sources;
 const cpu1 = graph.cpu1_image;
 const mw = graph.middleware;
+const local = graph.app_local;
 
 /// The apps the cross slice builds, by the rules they exercise: one that names
 /// no libraries at all, one that names two, and one that keeps more than a
@@ -30,6 +31,9 @@ const middleware_app = graph.cross_apps[3];
 /// And one that names a non-default `STACK_BYTES` budget, without which the
 /// frame gate below reads as a constant that happens to be right.
 const deep_stack_app = graph.cross_apps[4];
+/// And the one whose own CMakeLists does work beyond ra8_add_app(): five
+/// EXTRA_SRCS helpers and a vendored static library it declares and links.
+const extra_srcs_app = graph.cross_apps[5];
 
 test "board opt-in gate drops the two sources an app must ask for" {
     try std.testing.expect(
@@ -539,4 +543,83 @@ fn indexOf(haystack: []const []const u8, needle: []const u8) ?usize {
         if (std.mem.eql(u8, item, needle)) return index;
     }
     return null;
+}
+
+test "EXTRA_SRCS helpers are compiled in, in the order the app names them" {
+    // Five helpers out of two libraries the app does NOT name in LIBS. The
+    // graph has to take them from the app's own declaration; nothing about
+    // libs/ra8_dfu/src says four of its units belong to this image and the
+    // rest do not.
+    const expected = [_][]const u8{
+        "libs/ra8_psa_crypto/src/ra8_psa_crypto.c",
+        "libs/ra8_dfu/src/ra8_rot.c",
+        "libs/ra8_dfu/src/ra8_dfu_antirollback.c",
+        "libs/ra8_dfu/src/ra8_dfu_boot.c",
+        "libs/ra8_dfu/src/ra8_dfu_launch.c",
+    };
+    try std.testing.expectEqual(expected.len, extra_srcs_app.extra_srcs.len);
+    for (expected, extra_srcs_app.extra_srcs) |want, got| {
+        try std.testing.expectEqualStrings(want, got);
+    }
+
+    // And the rest of libs/ra8_dfu/src stays out: naming five units is not
+    // naming the library.
+    try std.testing.expect(!sources.declaresLibrary(extra_srcs_app, "ra8_dfu"));
+    try std.testing.expect(!sources.declaresLibrary(extra_srcs_app, "ra8_psa_crypto"));
+
+    // No other app in the table names any, so the keyword was dead code in the
+    // graph until this app arrived.
+    try std.testing.expectEqual(@as(usize, 0), bare_app.extra_srcs.len);
+    try std.testing.expectEqual(@as(usize, 0), middleware_app.extra_srcs.len);
+}
+
+test "an app-local vendored library exports its defines and system dirs onto the app" {
+    const app_defines = local.appDefines(std.testing.allocator, extra_srcs_app.local);
+    defer std.testing.allocator.free(app_defines);
+
+    // The library's PUBLIC set first, then the app target's own PRIVATE one,
+    // the order a real configure's database shows. Missing the first four is
+    // silent: the app is then preprocessed against a different crypto
+    // configuration than the archive it links.
+    try std.testing.expectEqual(@as(usize, 5), app_defines.len);
+    try std.testing.expectEqualStrings("-DMBEDTLS_CONFIG_FILE=\"mbedtls_config.h\"", app_defines[0]);
+    try std.testing.expectEqualStrings("-DRA8_ENABLE_ROOT_OF_TRUST", app_defines[4]);
+
+    // SYSTEM, not ordinary: on the app's -Werror -Wconversion bar the vendor
+    // headers would fail the app's own compile.
+    const system_dirs = local.appSystemIncludeDirs(extra_srcs_app.local);
+    try std.testing.expectEqual(@as(usize, 10), system_dirs.len);
+    try std.testing.expectEqualStrings("libs/third_party/tf-psa-crypto/include", system_dirs[0]);
+    try std.testing.expectEqualStrings("port/mbedtls/inc", system_dirs[9]);
+
+    // An app with no CMakeLists of its own takes neither.
+    const none = local.appDefines(std.testing.allocator, bare_app.local);
+    defer std.testing.allocator.free(none);
+    try std.testing.expectEqual(@as(usize, 0), none.len);
+    try std.testing.expectEqual(@as(usize, 0), local.appSystemIncludeDirs(bare_app.local).len);
+}
+
+test "a vendored library declared by the app carries no project warning profile" {
+    const lib = extra_srcs_app.local.vendored.?;
+    const flags = local.compileFlags(std.testing.allocator, .{
+        .gcc = "arm-none-eabi-gcc",
+        .ar = "arm-none-eabi-ar",
+        .global_flags = &.{ "-mcpu=cortex-m85", "-O0", "-g3", "-DDEBUG", "-std=gnu2x" },
+        .global_defines = &.{"-DRA8_FREESTANDING"},
+    }, lib);
+    defer std.testing.allocator.free(flags);
+
+    // ra8_target_enable_project_warnings() is applied by ra8_add_app() to the
+    // APP target; this library never passed through it. Compiling 77 TUs of
+    // vendored crypto at the first-party bar does not build.
+    for (flags) |flag| {
+        try std.testing.expect(!std.mem.startsWith(u8, flag, "-W"));
+        try std.testing.expect(!std.mem.startsWith(u8, flag, "-fstack-usage"));
+    }
+    // The one option it does carry changes code generation, not diagnostics.
+    try std.testing.expect(indexOf(flags, "-fno-strict-aliasing") != null);
+    // And the directory-scope define reaches it even so.
+    try std.testing.expect(indexOf(flags, "-DRA8_FREESTANDING") != null);
+    // Its own PUBLIC defines are on its own TUs too, not only on the app's.
+    try std.testing.expect(indexOf(flags, "-DMBEDTLS_PLATFORM_MEMORY") != null);
 }

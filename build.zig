@@ -40,6 +40,7 @@
 const std = @import("std");
 pub const abi_contract = @import("tests/zig_build_graph/abi_contract.zig");
 pub const compile_db = @import("tests/zig_build_graph/compile_db.zig");
+pub const app_local = @import("tests/zig_build_graph/app_local.zig");
 pub const cpu1_image = @import("tests/zig_build_graph/cpu1_image.zig");
 pub const cross_sources = @import("tests/zig_build_graph/cross_sources.zig");
 pub const middleware = @import("tests/zig_build_graph/middleware.zig");
@@ -337,13 +338,24 @@ const arm_global_defines = [_][]const u8{"-DRA8_FREESTANDING"};
 /// The Debug configuration ra8_add_app() sets for a standalone app build.
 const arm_debug_flags = [_][]const u8{ "-O0", "-g3", "-DDEBUG" };
 
-/// Dialect and bare-metal flags. -ffreestanding is what lets a firmware entry
-/// point be `void main(void)`; drop it and every app main.c stops compiling.
+/// The dialect half CMake puts in CMAKE_C_FLAGS, so it reaches every target in
+/// a cross configure and lands AHEAD of the app's warning profile.
 const arm_dialect_flags = [_][]const u8{
     "-std=gnu2x",
+    "-DRA8_FREESTANDING",
+};
+
+/// The bare-metal half, which ra8_add_app() sets as target options and which
+/// therefore lands AFTER the warning profile on the real compile line.
+/// Position is the only thing that changed here (#1084): both flags are
+/// order-insensitive against a -W list, but this list is also what
+/// `zig build compile-db` writes, and a row whose argv is a permutation of the
+/// compiler's is a row no consumer can diff against a real configure's.
+/// -ffreestanding is what lets a firmware entry point be `void main(void)`;
+/// drop it and every app main.c stops compiling.
+const arm_target_dialect_flags = [_][]const u8{
     "-ffreestanding",
     "-fshort-enums",
-    "-DRA8_FREESTANDING",
 };
 
 /// The first-party warning profile from cmake/ra8_warnings.cmake at this app's
@@ -422,6 +434,19 @@ fn findArmTools(b: *std.Build) ?ArmTools {
 /// The two global flag sets a middleware archive is built with, and the tools
 /// that build it. Named once so `zig build arm` and `zig build compile-db`
 /// cannot drift apart about what a middleware TU is really given.
+/// The same two global sets, handed to an app-local vendored library. It gets
+/// the toolchain's flags and the directory-scope defines, and none of the
+/// project warning profile: that profile is applied by ra8_add_app() to the
+/// app target, and a separately-declared library never passed through it.
+fn appLocalToolchain(tools: ArmTools) app_local.Toolchain {
+    return .{
+        .gcc = tools.gcc,
+        .ar = tools.ar,
+        .global_flags = &arm_global_flags,
+        .global_defines = &arm_global_defines,
+    };
+}
+
 fn middlewareToolchain(tools: ArmTools) middleware.Toolchain {
     return .{
         .gcc = tools.gcc,
@@ -492,6 +517,16 @@ fn addArmCrossApp(
     const middleware_include_dirs = middleware.appIncludeDirs(b.allocator, middlewares);
     const middleware_system_dirs = middleware.appSystemIncludeDirs(b.allocator, middlewares);
 
+    // A vendored static library the app's OWN CMakeLists declares, plus the
+    // defines and -isystem directories it exports onto the app's translation
+    // units. Silent when missed, see app_local.zig.
+    const local_archive: ?std.Build.LazyPath = if (app.local.vendored) |lib|
+        app_local.add(b, lib, appLocalToolchain(tools))
+    else
+        null;
+    const local_defines = app_local.appDefines(b.allocator, app.local);
+    const local_system_dirs = app_local.appSystemIncludeDirs(app.local);
+
     var include_dirs = std.ArrayList([]const u8).init(b.allocator);
     include_dirs.appendSlice(cross_sources.crossIncludeDirs(b, app)) catch @panic("OOM");
     include_dirs.appendSlice(middleware_include_dirs) catch @panic("OOM");
@@ -503,7 +538,9 @@ fn addArmCrossApp(
         compile.addArgs(&arm_debug_flags);
         compile.addArgs(&arm_dialect_flags);
         compile.addArgs(middleware_defines);
+        compile.addArgs(local_defines);
         compile.addArgs(armWarningFlags(b.allocator, app));
+        compile.addArgs(&arm_target_dialect_flags);
         // Prefixed directory args, not bare -I strings: this both spells the
         // include flag and declares the directory as an input of the step, so
         // editing a header actually invalidates the cached object.
@@ -515,6 +552,10 @@ fn addArmCrossApp(
         // include path would fail the app's own compile on the middleware's
         // diagnostics.
         for (middleware_system_dirs) |include_dir| {
+            compile.addArg("-isystem");
+            compile.addDirectoryArg(b.path(include_dir));
+        }
+        for (local_system_dirs) |include_dir| {
             compile.addArg("-isystem");
             compile.addDirectoryArg(b.path(include_dir));
         }
@@ -538,6 +579,22 @@ fn addArmCrossApp(
         .global_link_flags = &(arm_cpu_flags ++ arm_debug_flags ++ arm_link_flags),
     }) else null;
 
+    // An app that does not link in a Debug configure under EITHER build system
+    // still compiles every one of its translation units here; only the final
+    // link is held back, with the reason printed rather than a red step.
+    if (!app.links_in_debug) {
+        for (objects.items) |object| object.addStepDependencies(arm_step);
+        const notice = b.addSystemCommand(&.{
+            "echo",
+            b.fmt(
+                "arm: {s} compiled ({d} TUs) but NOT linked -- it overflows MRAM in a Debug configure, and CMake's own standalone configure of it fails the same way",
+                .{ app.name, objects.items.len },
+            ),
+        });
+        arm_step.dependOn(&notice.step);
+        return;
+    }
+
     const link = b.addSystemCommand(&.{tools.gcc});
     link.addArgs(&arm_cpu_flags);
     link.addArgs(&arm_debug_flags);
@@ -558,6 +615,11 @@ fn addArmCrossApp(
     for (middleware_archives) |archive| link.addFileArg(archive);
     for (archives.items) |archive| link.addFileArg(archive);
     link.addArg("-lgcc");
+    // After -lgcc, which is where CMake puts it: target_link_libraries() in
+    // the app's own CMakeLists appends to a list that already holds -lgcc, and
+    // a static archive resolved on either side of libgcc can pull a different
+    // set of members.
+    if (local_archive) |archive| link.addFileArg(archive);
 
     const hex = objcopyTo(b, tools.objcopy, "ihex", elf, b.fmt("{s}.hex", .{app.name}));
     const bin = objcopyTo(b, tools.objcopy, "binary", elf, b.fmt("{s}.bin", .{app.name}));
@@ -854,21 +916,28 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             var app_flags = std.ArrayList([]const u8).init(b.allocator);
             app_flags.appendSlice(&arm_flags) catch @panic("OOM");
             app_flags.appendSlice(middleware.appDefines(b.allocator, middlewares)) catch @panic("OOM");
+            // Same reason for the app's own CMakeLists: its vendored
+            // library's PUBLIC defines and its own PRIVATE ones are part of
+            // the preprocessor view the compiler had.
+            app_flags.appendSlice(app_local.appDefines(b.allocator, app.local)) catch @panic("OOM");
             // At this app's own frame budget, in the position the compile step
             // puts it: a database row whose -Wstack-usage disagrees with the
             // build would hand clang-tidy a different bar than the compiler had.
             app_flags.appendSlice(armWarningFlags(b.allocator, app)) catch @panic("OOM");
+            app_flags.appendSlice(&arm_target_dialect_flags) catch @panic("OOM");
             var include_dirs = std.ArrayList([]const u8).init(b.allocator);
             include_dirs.appendSlice(cross_sources.crossIncludeDirs(b, app)) catch @panic("OOM");
             include_dirs.appendSlice(middleware.appIncludeDirs(b.allocator, middlewares)) catch @panic("OOM");
-            const system_dirs = middleware.appSystemIncludeDirs(b.allocator, middlewares);
+            var system_dirs = std.ArrayList([]const u8).init(b.allocator);
+            system_dirs.appendSlice(middleware.appSystemIncludeDirs(b.allocator, middlewares)) catch @panic("OOM");
+            system_dirs.appendSlice(app_local.appSystemIncludeDirs(app.local)) catch @panic("OOM");
             for (cross_sources.crossSources(b, app)) |source| {
                 candidates.append(.{
                     .file = source,
                     .driver = tools.gcc,
                     .flags = app_flags.items,
                     .include_dirs = include_dirs.items,
-                    .system_include_dirs = system_dirs,
+                    .system_include_dirs = system_dirs.items,
                     .object = b.fmt("arm/{s}/{s}.o", .{ app.name, std.fs.path.basename(source) }),
                 }) catch @panic("OOM");
             }
@@ -877,6 +946,11 @@ fn compileDbEntries(b: *std.Build) []const compile_db.Entry {
             // deduplicator collapses them to one set of rows.
             for (middlewares) |mw| {
                 middleware.appendCompileDbEntries(b, compile_db.Entry, &candidates, mw, middlewareToolchain(tools));
+            }
+            // And the app-local vendored library's, at the bar a target with
+            // no project profile really gets.
+            if (app.local.vendored) |lib| {
+                app_local.appendCompileDbEntries(b, compile_db.Entry, &candidates, lib, appLocalToolchain(tools));
             }
             // The second image's TUs are compiled at a different bar entirely
             // (no warning profile, -Os over -O0, an M33 -mcpu after the M85
