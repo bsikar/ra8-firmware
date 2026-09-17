@@ -161,6 +161,8 @@ jobs:
       || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - run: just quality::local::gate hil-eil-parity
 
   format:
@@ -171,6 +173,8 @@ jobs:
       || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - run: just quality::local::gate format
 
   # ---------------------------------------------------------------------------
