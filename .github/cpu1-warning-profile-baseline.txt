@@ -37,8 +37,15 @@
 # not a hypothetical. Read the SHRINK-ONLY rule as scoped to .c until the
 # parser measures the rest.
 #
-# A missing, unreadable or empty file yields the EMPTY set, so every escape
-# reports. The gate fails closed.
+# A missing or unreadable file yields the EMPTY set, so every escape reports.
+# The gate fails closed.
+#
+# The "#! rows:" line below declares how many rows this file holds and the gate
+# fails when it disagrees with the rows it parses. That is what lets this file
+# legitimately reach zero rows when #843 is paid off: an intact inventory can
+# declare "#! rows: 0", while a truncated or hand-emptied one carries no
+# matching declaration and still fails closed.
+#! rows: 18
 compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_chapter.c
 compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_entry.c
 compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_fs.c
