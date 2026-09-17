@@ -6,5 +6,5 @@
     "tests/zig_build_graph/abi_contract.zig",
     "tests/zig_build_graph/build_graph_test.zig"
   ],
-  "minimum_tests": 9
+  "minimum_tests": 10
 }
