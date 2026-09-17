@@ -88,6 +88,8 @@ from tree_coverage_model import (
     census_paths,
     coverage_capable_dirs,
     in_census,
+    requirement_claim_failures,
+    srs_text,
     structural_reason,
     unclaimed_coverage_projects,
 )
@@ -666,7 +668,11 @@ def run_gate(*, update: bool) -> int:
         return outcome
     _, fresh = outcome
     baseline = load_baseline()
-    findings = evaluate(fresh, baseline) if baseline else []
+    findings = [
+        Finding(HARD, message)
+        for message in requirement_claim_failures(srs_text(), LINE_FLOOR_PCT, BRANCH_FLOOR_PCT)
+    ]
+    findings += evaluate(fresh, baseline) if baseline else []
     if update:
         hard = [f for f in findings if f.severity == HARD]
         if hard:
@@ -911,6 +917,31 @@ def _format_failures() -> list[str]:
     return out
 
 
+def _claim_failures() -> list[str]:
+    """Prove the REQ-SAFE-017 tie holds on the committed doc and fires on drift.
+
+    The quiet case is the LIVE requirement, so a floor edited here without the
+    requirement (or the reverse) fails the selftest that runs in every CI leg,
+    not only the coverage leg, which needs a measurement to reach a verdict at
+    all.
+    """
+    live = srs_text()
+    drifted = "| REQ-SAFE-017 | First-party coverage SHALL reach 90/90. | gate | CI |"
+    silent = "| REQ-SAFE-016 | something else entirely | gate | CI |"
+    out: list[str] = []
+    if requirement_claim_failures(live, LINE_FLOOR_PCT, BRANCH_FLOOR_PCT):
+        out.append("the committed REQ-SAFE-017 row must state the floors this gate enforces")
+    if not requirement_claim_failures(live, LINE_FLOOR_PCT + 1, BRANCH_FLOOR_PCT):
+        out.append("a line floor the requirement does not state must fire")
+    if not requirement_claim_failures(live, LINE_FLOOR_PCT, BRANCH_FLOOR_PCT - 1):
+        out.append("a branch floor the requirement does not state must fire")
+    if not requirement_claim_failures(drifted, LINE_FLOOR_PCT, BRANCH_FLOOR_PCT):
+        out.append("the pre-#844 universal 90/90 claim must fire")
+    if not requirement_claim_failures(silent, LINE_FLOOR_PCT, BRANCH_FLOOR_PCT):
+        out.append("an SRS that states REQ-SAFE-017 nowhere must fire")
+    return out
+
+
 def selftest() -> int:
     """Prove every rule fires and stays quiet, and that no scope collapsed."""
     cases = len(_ratchet_cases()) + len(_kind_cases()) + len(_move_cases())
@@ -920,6 +951,7 @@ def selftest() -> int:
         + _move_failures()
         + _scope_failures()
         + _format_failures()
+        + _claim_failures()
     )
     if failures:
         for name in failures:
@@ -927,7 +959,8 @@ def selftest() -> int:
         return 1
     print(
         f"check_tree_coverage.py --selftest: PASS "
-        f"({cases} both-direction cases, 4 non-vacuity floors)"
+        f"({cases} both-direction cases, 4 non-vacuity floors, "
+        f"REQ-SAFE-017 tied to {LINE_FLOOR_PCT}/{BRANCH_FLOOR_PCT})"
     )
     return 0
 

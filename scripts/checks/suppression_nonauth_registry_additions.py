@@ -117,6 +117,7 @@ def _additional_non_authority_groups_part3() -> tuple[tuple[str, tuple[str, ...]
                     checks/shell_invocation_references.py:PROCESS_CALLS
                     checks/shell_invocation_references.py:SHELL_FENCE_LANGUAGES
                     checks/shell_invocation_references.py:YAML_COMMAND_KEYS
+                    checks/tree_coverage_model.py:REQUIREMENT_ID
                     """
             ),
         ),
