@@ -35,6 +35,15 @@ ra8_add_zig_library(
   ra8_epd_cal
 )
 
+ra8_add_zig_library(
+  NAME
+  ra8_touch_cal
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_touch_cal
+  LIBRARY_NAME
+  ra8_touch_cal
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 target_link_libraries(
@@ -42,8 +51,14 @@ target_link_libraries(
   PUBLIC ra8_zig::ra8_box
          ra8_zig::ra8_power_profile
          ra8_zig::ra8_epd_cal
+         ra8_zig::ra8_touch_cal
 )
 
 # Object-library consumers do not inherit the core target's link interface;
 # attach migrated archives at directory scope so every host test links them.
-link_libraries(ra8_zig::ra8_box ra8_zig::ra8_power_profile ra8_zig::ra8_epd_cal)
+link_libraries(
+  ra8_zig::ra8_box
+  ra8_zig::ra8_power_profile
+  ra8_zig::ra8_epd_cal
+  ra8_zig::ra8_touch_cal
+)
