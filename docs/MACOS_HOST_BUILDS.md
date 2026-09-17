@@ -34,9 +34,24 @@ out of `usr/lib/libSystem.tbd`, and decides between two outcomes:
 * it does not, so the root pins an explicit `aarch64-macos` query and Zig uses
   its bundled stub.
 
-An unreadable SDK, or any non-macOS host, falls through to the native query.
-Each root feeds that decision into `b.standardTargetOptions` as its default
-target, so the rule applies to a bare `zig build` and to `zig build test`.
+Any non-macOS host keeps the native query. On an arm64 Mac an SDK that cannot
+be read, or a stub whose target list cannot be parsed, pins as well: the
+bundled stub is right for these libc-only tools either way, so an unknown SDK
+must not reintroduce the link failure. Each root feeds that decision into
+`b.standardTargetOptions` as its default target, so the rule applies to a bare
+`zig build` and to `zig build test`.
+
+Two stub generations are read. TAPI v4 carries `targets:` as a list of full
+triples. TAPI v1 to v3 instead carry `archs:` plus a separate `platform:`, with
+no triples anywhere:
+
+```yaml
+--- !tapi-tbd-v3
+archs:    [ i386, x86_64, arm64, arm64e ]
+platform: macosx
+```
+
+Both halves must agree before such a stub counts as declaring `arm64-macos`.
 
 Two escape hatches override the probe:
 
@@ -51,6 +66,38 @@ applications under `apps/host`, `apps/host/firmware_pipeline/zig`,
 `tests/abi_chain_fixture`, `tests/rust_abi_fixture/zig`, and
 `tests/zig_abi_fixture`. The Zig check runs `zig build test` in every build
 root, so a single unwired root is enough to break the gate on a Mac.
+
+## Asking the graph what it decided, and why
+
+```console
+$ cd tools/zig_build && zig build explain-host-target
+ra8 host target (#899)
+  host:      aarch64-macos
+  macos:     26.0.1
+  selection: -Dmacos-libsystem=auto
+  sdk:       /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+  stub:      /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libSystem.tbd
+  finding:   the SDK stub lists its targets and arm64-macos is not among them (#899)
+  decision:  pinned aarch64-macos, linking Zig's bundled libSystem stub
+  deployment target: 26.0.1 (carried from the host)
+```
+
+(The transcript above is the shape of the output, not a reading taken from a
+Mac: nothing in this tree has been run on Apple silicon yet.)
+
+Four different findings all end in a pinned target, and they need different
+fixes, so the graph names which one it saw rather than reporting them as one
+state:
+
+* the stub lists its targets and `arm64-macos` is absent -- this is #899 itself;
+* the stub was read but declares no target list in a spelling the parser knows;
+* an SDK was located but its `libSystem` stub could not be read;
+* no SDK could be located at all, so `xcrun` is missing or failing.
+
+`-Dmacos-libsystem=sdk|bundled` short-circuits the probe entirely, and the
+report says so instead of attributing the forced choice to the SDK. The
+`macos-host-build` CI gate prints this report before it builds anything, so a
+red run carries its own diagnosis.
 
 ## The pinned target keeps the host's macOS version
 

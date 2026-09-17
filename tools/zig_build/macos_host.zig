@@ -24,6 +24,11 @@
 //! The pinned query also carries the host's own macOS version, so that standing
 //! in for the native build does not silently change the deployment target (see
 //! `pinnedOsVersion`).
+//!
+//! `decide` returns the reason alongside the choice. "The stub lists targets and
+//! arm64-macos is not one of them" and "I could not read a target list at all"
+//! both pin, but they are different facts about the machine, and a gate that
+//! prints them as the same thing cannot be read when it goes red.
 
 const std = @import("std");
 
@@ -55,6 +60,42 @@ pub const Choice = enum {
     }
 };
 
+/// Why a `Choice` was made. This is the diagnosis the CI gate and the docs
+/// print, so each value names one distinguishable state of the machine.
+pub const Reason = enum {
+    /// Not an arm64 Mac: the rule is inert everywhere else.
+    not_arm64_macos_host,
+    /// The stub's target list includes `arm64-macos`; nothing to work around.
+    sdk_declares_target,
+    /// The stub lists targets and `arm64-macos` is not among them. This is #899.
+    sdk_omits_target,
+    /// The stub was read but declares no target list in a spelling we parse, so
+    /// it cannot be trusted either way.
+    sdk_stub_unrecognized,
+    /// An SDK was located but its `libSystem` stub could not be read.
+    sdk_stub_unreadable,
+    /// No SDK could be located at all (no `xcrun`, or it failed).
+    sdk_not_probed,
+
+    /// One line, in plain words, for a build log or a gate transcript.
+    pub fn explain(self: Reason) []const u8 {
+        return switch (self) {
+            .not_arm64_macos_host => "this host is not an arm64 Mac, so the SDK stub rule does not apply",
+            .sdk_declares_target => "the SDK stub declares " ++ required_target ++ ", so the native query links against it",
+            .sdk_omits_target => "the SDK stub lists its targets and " ++ required_target ++ " is not among them (#899)",
+            .sdk_stub_unrecognized => "the SDK stub declares no target list in a recognised spelling, so it cannot be trusted to link " ++ required_target,
+            .sdk_stub_unreadable => "an SDK was located but its libSystem stub could not be read",
+            .sdk_not_probed => "no macOS SDK could be located through xcrun",
+        };
+    }
+};
+
+/// The chosen stub source and the reason for it.
+pub const Decision = struct {
+    choice: Choice,
+    reason: Reason,
+};
+
 /// macOS 11 Big Sur is the first release that ran on Apple silicon, so an
 /// arm64 Mac cannot truthfully report anything older.
 pub const first_arm64_macos_major = 11;
@@ -80,10 +121,12 @@ pub fn pinnedOsVersion(host_macos_version: ?std.SemanticVersion) ?std.SemanticVe
     return .{ .major = version.major, .minor = version.minor, .patch = version.patch };
 }
 
-/// What we could learn about the host SDK. Both fields are null when the probe
-/// could not run at all (non-macOS host, no `xcrun`, unreadable SDK).
+/// What we could learn about the host SDK. `libsystem_tbd` is null when the
+/// stub could not be read; `sdk_path` is null when no SDK was located at all.
+/// `libsystem_tbd_path` is carried for diagnostics only.
 pub const SdkProbe = struct {
     sdk_path: ?[]const u8 = null,
+    libsystem_tbd_path: ?[]const u8 = null,
     libsystem_tbd: ?[]const u8 = null,
 };
 
@@ -93,27 +136,81 @@ pub const required_target = "arm64-macos";
 /// Pick the stub source for a host running `host_arch`/`host_os` given `probe`.
 ///
 /// Anything that is not an arm64 Mac keeps the native query untouched. On an
-/// arm64 Mac an unreadable or silent SDK counts as "cannot link us": the bundled
-/// stub is correct for libc-only host tools either way, so an unknown SDK should
-/// not reintroduce the #899 link failure.
-pub fn decide(host_arch: std.Target.Cpu.Arch, host_os: std.Target.Os.Tag, probe: SdkProbe) Choice {
-    if (host_os != .macos or host_arch != .aarch64) return .native;
-    const tbd = probe.libsystem_tbd orelse return .pinned_macos_arm64;
-    return if (tbdDeclaresTarget(tbd, required_target)) .native else .pinned_macos_arm64;
+/// arm64 Mac an unreadable, absent or unparsable SDK stub counts as "cannot
+/// link us": the bundled stub is correct for libc-only host tools either way, so
+/// an unknown SDK should not reintroduce the #899 link failure. The reason field
+/// keeps those three states apart for whoever reads the log.
+pub fn decide(host_arch: std.Target.Cpu.Arch, host_os: std.Target.Os.Tag, probe: SdkProbe) Decision {
+    if (host_os != .macos or host_arch != .aarch64) {
+        return .{ .choice = .native, .reason = .not_arm64_macos_host };
+    }
+    const tbd = probe.libsystem_tbd orelse {
+        const reason: Reason = if (probe.sdk_path == null) .sdk_not_probed else .sdk_stub_unreadable;
+        return .{ .choice = .pinned_macos_arm64, .reason = reason };
+    };
+    return switch (classifyTbd(tbd, required_target)) {
+        .declares => .{ .choice = .native, .reason = .sdk_declares_target },
+        .omits => .{ .choice = .pinned_macos_arm64, .reason = .sdk_omits_target },
+        .unrecognized => .{ .choice = .pinned_macos_arm64, .reason = .sdk_stub_unrecognized },
+    };
+}
+
+/// What a `.tbd` says about one target triple.
+pub const TbdVerdict = enum {
+    /// A target list was found and it names the wanted triple.
+    declares,
+    /// A target list was found and it does not name the wanted triple.
+    omits,
+    /// No target list was found in any spelling this parser knows.
+    unrecognized,
+};
+
+/// The `platform:` spelling a tbd-v1..v3 stub uses for `macos`.
+pub const v3_macos_platform = "macosx";
+
+/// Classify what `tbd_text` says about `wanted` (e.g. `arm64-macos`).
+///
+/// Two stub generations are read. TAPI v4 carries a `targets:` list of full
+/// triples. TAPI v1 to v3 carry `archs:` plus a separate `platform:`, with no
+/// triples anywhere: an SDK of that vintage that genuinely does declare arm64
+/// used to read here as "arm64-macos absent" and pinned the build. Pinning is
+/// the safe direction, but the DIAGNOSIS was wrong, and it is the diagnosis the
+/// gate prints.
+pub fn classifyTbd(tbd_text: []const u8, wanted: []const u8) TbdVerdict {
+    if (targetsFieldDeclares(tbd_text, wanted)) |declared| {
+        return if (declared) .declares else .omits;
+    }
+    const dash = std.mem.indexOfScalar(u8, wanted, '-') orelse return .unrecognized;
+    const arch = wanted[0..dash];
+    const os_name = wanted[dash + 1 ..];
+    if (archsFieldDeclares(tbd_text, arch, os_name)) |declared| {
+        return if (declared) .declares else .omits;
+    }
+    return .unrecognized;
 }
 
 /// Return true when the `targets:` list of a text `.tbd` declares `wanted`.
+///
+/// Kept as the plain boolean question for callers that only want the answer;
+/// `classifyTbd` is the one that also says "there was no list to read".
+pub fn tbdDeclaresTarget(tbd_text: []const u8, wanted: []const u8) bool {
+    return classifyTbd(tbd_text, wanted) == .declares;
+}
+
+/// Read a TAPI v4 `targets:` field: null when the file has none.
 ///
 /// Handles both TAPI spellings: the inline flow list
 /// (`targets: [ x86_64-macos, arm64e-macos ]`, possibly wrapped over lines) and
 /// the YAML block list (`targets:` followed by indented `- x86_64-macos` items).
 /// Only the `targets:` field is read, because `uuids:` repeats target names and
 /// would otherwise answer for it.
-pub fn tbdDeclaresTarget(tbd_text: []const u8, wanted: []const u8) bool {
+pub fn targetsFieldDeclares(tbd_text: []const u8, wanted: []const u8) ?bool {
+    var seen_field = false;
     var lines = std.mem.splitScalar(u8, tbd_text, '\n');
     while (lines.next()) |raw_line| {
         const line = std.mem.trim(u8, raw_line, " \t\r-");
         if (!std.mem.startsWith(u8, line, "targets:")) continue;
+        seen_field = true;
         const rest = std.mem.trim(u8, line["targets:".len..], " \t\r");
 
         if (std.mem.indexOfScalar(u8, rest, '[') != null) {
@@ -140,7 +237,46 @@ pub fn tbdDeclaresTarget(tbd_text: []const u8, wanted: []const u8) bool {
             if (listContains(item_line[2..], wanted)) return true;
         }
     }
-    return false;
+    return if (seen_field) false else null;
+}
+
+/// Read a TAPI v1..v3 `archs:` + `platform:` pair: null when either is absent.
+///
+/// A v3 stub says
+///
+///     archs: [ i386, x86_64, arm64, arm64e ]
+///     platform: macosx
+///
+/// so both halves have to agree before the stub can be said to declare
+/// `arm64-macos`. `archs:` also appears inside each `exports:` entry, which is
+/// exactly the same question asked per-slice, so any occurrence counts.
+pub fn archsFieldDeclares(tbd_text: []const u8, arch: []const u8, os_name: []const u8) ?bool {
+    const wanted_platform = if (std.mem.eql(u8, os_name, "macos")) v3_macos_platform else os_name;
+    var seen_archs = false;
+    var seen_platform = false;
+    var arch_declared = false;
+    var platform_declared = false;
+
+    var lines = std.mem.splitScalar(u8, tbd_text, '\n');
+    while (lines.next()) |raw_line| {
+        const line = std.mem.trim(u8, raw_line, " \t\r-");
+        if (std.mem.startsWith(u8, line, "archs:")) {
+            seen_archs = true;
+            if (listContains(line["archs:".len..], arch)) arch_declared = true;
+            continue;
+        }
+        if (std.mem.startsWith(u8, line, "platform:")) {
+            seen_platform = true;
+            if (listContains(line["platform:".len..], wanted_platform)) platform_declared = true;
+            continue;
+        }
+        if (std.mem.startsWith(u8, line, "platforms:")) {
+            seen_platform = true;
+            if (listContains(line["platforms:".len..], wanted_platform)) platform_declared = true;
+        }
+    }
+    if (!seen_archs or !seen_platform) return null;
+    return arch_declared and platform_declared;
 }
 
 /// True when `haystack` contains `wanted` as a whole token. Token characters are

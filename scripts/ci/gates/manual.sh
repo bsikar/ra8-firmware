@@ -362,19 +362,14 @@ gate_macos_host_build() (
   require_tool_versions zig
   require_cmd xcrun "the build graph probes the active SDK through xcrun"
 
-  # Diagnostics first and unconditionally: the SDK stub's target list is the
-  # single input that decides this whole gate, and a failure is unreadable
-  # without it.
-  local sdk tbd
-  sdk="$(xcrun --show-sdk-path)"
-  printf 'active SDK: %s\n' "${sdk}"
-  tbd="${sdk}/usr/lib/libSystem.tbd"
-  if [[ -r "${tbd}" ]]; then
-    printf 'libSystem.tbd targets line: '
-    grep -m1 -E '^targets:' "${tbd}" || printf '(none inline -- block or wrapped spelling)\n'
-  else
-    printf 'libSystem.tbd unreadable at %s -- the graph falls back to the bundled stub\n' "${tbd}"
-  fi
+  # Diagnostics first and unconditionally: which stub the graph chose, and why,
+  # is the single input that decides this whole gate, and a failure is
+  # unreadable without it. This prints the build graph's OWN decision rather
+  # than re-deriving it here with grep, so the gate cannot disagree with the
+  # thing it is gating -- and it distinguishes "the stub omits arm64-macos"
+  # from "there was no stub to read", which need different fixes.
+  printf '=== host target decision ===\n'
+  (cd tools/zig_build && zig build explain-host-target)
 
   local root
   for root in tools/zig_build apps/host/image_pyramid tests/zig_abi_fixture; do
