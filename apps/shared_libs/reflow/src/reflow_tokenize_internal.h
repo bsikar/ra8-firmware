@@ -56,6 +56,17 @@ typedef enum : uint32_t {
   k_priv_utf8_sh6      = 6U,        /**< Shift for one continuation byte.        */
   k_priv_utf8_sh12     = 12U,       /**< Shift for two continuation bytes.       */
   k_priv_utf8_sh18     = 18U,       /**< Shift for three continuation bytes.     */
+  k_priv_utf8_lead2_msk = 0xE0U,    /**< Mask isolating a 2-byte lead marker.    */
+  k_priv_utf8_lead3_msk = 0xF0U,    /**< Mask isolating a 3-byte lead marker.    */
+  k_priv_utf8_lead4_msk = 0xF8U,    /**< Mask isolating a 4-byte lead marker.    */
+  k_priv_utf8_cont_msk  = 0xC0U,    /**< Mask isolating the continuation marker. */
+  k_priv_utf8_load2    = 0x1FU,     /**< Payload bits in a 2-byte lead byte.     */
+  k_priv_utf8_load3    = 0x0FU,     /**< Payload bits in a 3-byte lead byte.     */
+  k_priv_utf8_load4    = 0x07U,     /**< Payload bits in a 4-byte lead byte.     */
+  k_priv_utf8_max_len  = 4U,        /**< Longest valid UTF-8 sequence, in bytes. */
+  k_priv_uc_surr_lo    = 0xD800U,   /**< First UTF-16 surrogate code point.      */
+  k_priv_uc_surr_hi    = 0xDFFFU,   /**< Last UTF-16 surrogate code point.       */
+  k_priv_uc_replace    = 0xFFFDU,   /**< U+FFFD REPLACEMENT CHARACTER.           */
   k_priv_base_dec      = 10U,       /**< Decimal numeric-entity base.            */
   k_priv_base_hex      = 16U,       /**< Hexadecimal numeric-entity base.        */
   k_priv_hex_offset    = 10U,       /**< Value of hex 'a'/'A' minus the letter.  */
@@ -141,6 +152,37 @@ priv_reflow_tok_decode_entity(const char* src, size_t avail, uint32_t* out_cp, s
  * @since 0.1.0
  */
 RA8_PRIV size_t priv_reflow_tok_utf8_encode(uint32_t cp, uint8_t* dst);
+
+/**
+ * @brief UTF-8 decode one code point from `src`, never desynchronising.
+ *
+ * @details Inverse of ::priv_reflow_tok_utf8_encode, hardened for the
+ * untrusted byte pool: malformed input yields U+FFFD rather than a wrong
+ * code point, and the returned length is always in 1..4 so a caller that
+ * advances by it can never stall or run past `avail`.
+ *
+ * Substitution follows the "maximal subpart" shape: a stray continuation
+ * byte, an invalid lead byte (0xF8..0xFF), a sequence truncated by the end
+ * of the buffer, and a sequence whose continuation bytes are not all
+ * continuations each consume exactly ONE byte, so the next call resynchronises
+ * on the byte that broke the sequence. A structurally complete sequence that
+ * is overlong, encodes a UTF-16 surrogate (U+D800..U+DFFF), or exceeds
+ * U+10FFFF consumes the WHOLE sequence, because its extent is unambiguous.
+ *
+ * @param[in]  src    First byte of the sequence.
+ * @param[in]  avail  Bytes readable at @p src.
+ * @param[out] out_cp Decoded code point, or U+FFFD when @p src is malformed.
+ * @return Number of bytes consumed (1..4).
+ * @retval 1 ASCII, or one byte substituted for malformed input.
+ * @pre `out_cp` is non-null.
+ * @pre `src` is non-null whenever `avail > 0`.
+ * @post `*out_cp` is a scalar value or U+FFFD; never a surrogate.
+ * @post The return value is in `1..4` and never exceeds `avail` when
+ *       `avail > 0`.
+ * @note Pure function.
+ * @since 0.1.0
+ */
+RA8_PRIV size_t priv_reflow_tok_utf8_decode(const uint8_t* src, size_t avail, uint32_t* out_cp);
 
 /* ===========================================================================
  * Cross-TU helpers shared between reflow_tokenize.c and its companions
