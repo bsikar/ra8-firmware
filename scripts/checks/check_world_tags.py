@@ -26,11 +26,21 @@ This script:
        as a Non-Secure entry point, and the project requires that
        only happen in NSC veneers.
 
-Host tooling under tools/ and vendored trees are enumerated but are NOT
-ring3+, so they require no World tag -- a documented scope decision (see
-file_is_in_ring3_plus and _select_targets), not an accident of a tuple. The
-NSC-location and cmse_nonsecure_entry bans (checks 3 and 4) apply to every
-file, everywhere.
+    5. Measures the requirement's own SCOPE against
+       .github/world-tag-scope-declaration.txt (world_tag_scope.py): every
+       first-party root the sweep enumerates carries a row saying whether the
+       World tag is required under it, and the gate reports any disagreement
+       with what file_is_in_ring3_plus() actually classifies.
+
+Which files the requirement reaches was a hand-written set of path shapes in
+file_is_in_ring3_plus(), described here as a documented decision that left out
+only host tooling and vendored code. It left out a great deal more: the
+requirement reaches 7 of 51 first-party roots, while apps/, port/ and 38
+libs/ roots sit outside it, most of them carrying Ring/World tags this gate
+never reads (#842). Those omissions are declared row by row and measured now,
+so they can be paid down instead of being invisible; which files must carry
+tags is unchanged. The NSC-location and cmse_nonsecure_entry bans (checks 3
+and 4) apply to every file, everywhere.
 
 Modes:
 
@@ -60,6 +70,7 @@ from collections.abc import Iterable
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+import world_tag_scope
 from lint_targets import first_party_paths
 from selftest_assert import expect, report
 
@@ -542,6 +553,9 @@ def selftest() -> int:
     )
     _selftest_legacy_inventory(failures)
     _selftest_inventory_census(failures)
+    failures.extend(
+        world_tag_scope.selftest_failures(REPO_ROOT, sorted(scope), file_is_in_ring3_plus)
+    )
     return report(failures)
 
 
@@ -752,9 +766,12 @@ def _select_targets(paths: list[str]) -> list[pathlib.Path]:
 
     The old ("libs","tests") + APP_DIRS list silently omitted tools/ and
     port/. Host tooling (tools/) and vendored trees are enumerated but are NOT
-    ring3+, so they require no World tag -- a documented scope decision, not an
-    accident of a tuple; the NSC-location and cmse_nonsecure_entry bans still
-    apply to every file, everywhere.
+    ring3+, so they require no World tag. Which roots are inside the
+    requirement and which are outside it is declared in
+    .github/world-tag-scope-declaration.txt and measured against
+    file_is_in_ring3_plus() on every run, rather than living only in a tuple;
+    the NSC-location and cmse_nonsecure_entry bans still apply to every file,
+    everywhere.
     """
     if paths:
         return [pathlib.Path(p) for p in paths]
@@ -805,6 +822,18 @@ def main(argv: list[str]) -> int:
     # business ruling on the whole inventory.
     if not args.paths:
         findings.extend(stale_inventory_entries())
+
+    # The scope declaration is judged on every invocation, narrowed pre-commit
+    # runs included: it is measured against the whole first-party set rather
+    # than the paths named on the command line, so a narrowed run cannot
+    # report a scope it never looked at.
+    scope_findings, scope_line = world_tag_scope.evaluate(
+        REPO_ROOT,
+        first_party_paths(SOURCE_SUFFIXES),
+        file_is_in_ring3_plus,
+    )
+    findings.extend(scope_findings)
+    print(f"check_world_tags.py: {scope_line}", file=sys.stderr)
 
     if findings:
         for line in findings:
