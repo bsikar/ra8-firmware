@@ -240,8 +240,18 @@ That is the intended outcome, and it is what makes the command usable as a
 link check off a Mac: the compile and link are real, the run is honestly
 reported as not having happened. A skipped run is never a passed test, so read
 the summary line rather than the exit status when the build root is
-cross-configured. On an arm64 Mac the pinned `aarch64-macos` target is native,
-nothing is skipped, and the tests run.
+cross-configured.
+
+The excuse is scoped to a target the build host genuinely cannot execute, and
+that scope is the point. On an arm64 Mac the pinned `aarch64-macos` target *is*
+the host, so no run there is excused: a host test that cannot run fails the
+build instead of vanishing from it. Excusing it unconditionally would let a Mac
+on which the host tests cannot run exit zero with nothing in the status to say
+so, and the `macos-host-build` gate's verdict is precisely that these tests run
+natively on Apple silicon. `targetRunsOnBuildHost` in
+`tools/zig_build/macos_host.zig` owns that comparison (same architecture, same
+operating system, and no assumption of Rosetta 2 or a registered emulator), and
+its unit tests cover both directions.
 
 A Linux checkout cannot exercise the `xcrun` probe, the SDK stub parse against
 a real `.tbd`, the `sdk` failure mode, the host version carry described above,

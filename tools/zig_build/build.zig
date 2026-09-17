@@ -229,10 +229,20 @@ const ExplainHostTarget = struct {
 /// (aarch64-macos)"), which makes `zig build test -Dtarget=aarch64-macos`
 /// unusable as a check.
 ///
-/// So `run` is marked skippable on a foreign host, and `test_step` also depends
-/// on the compile directly: when the binary cannot run, it is still built and
-/// linked, and Zig's build summary reports the run as skipped rather than
-/// passed. On a real arm64 Mac the target is native and the tests run normally.
+/// So `run` is marked skippable when the target really is foreign to the build
+/// host, and `test_step` also depends on the compile directly: the binary is
+/// still built and linked, and Zig's build summary reports the run as skipped
+/// rather than passed.
+///
+/// The excuse is SCOPED to a foreign target rather than granted
+/// unconditionally, which is the whole point of this function's existence.
+/// `skip_foreign_checks = true` on every host would also forgive a Mac on
+/// which the host tests cannot run: the run would be dropped, `zig build test`
+/// would exit zero, and the macOS gate's verdict -- which is that these tests
+/// RUN natively on Apple silicon -- would rest on tests that never executed,
+/// with nothing in the exit status to say so. On an arm64 Mac the pinned
+/// `aarch64-macos` target is the host, so the excuse does not apply and a run
+/// that cannot happen fails loudly instead.
 ///
 /// Each build root still creates its own run artifact and depends on it, so the
 /// wiring stays visible where `scripts/checks/check_zig.py` reads it.
@@ -241,7 +251,13 @@ pub fn allowForeignHostTests(
     tests: *std.Build.Step.Compile,
     run: *std.Build.Step.Run,
 ) void {
-    run.skip_foreign_checks = true;
+    const resolved = tests.rootModuleTarget();
+    run.skip_foreign_checks = !macos_host.targetRunsOnBuildHost(
+        resolved.cpu.arch,
+        resolved.os.tag,
+        builtin.cpu.arch,
+        builtin.os.tag,
+    );
     // Linking is the property #899 is about, so it must happen even on a host
     // that cannot execute the result.
     test_step.dependOn(&tests.step);
