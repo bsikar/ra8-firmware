@@ -9,6 +9,7 @@
 #   bash scripts/builders/docs_capi.sh --gate   -- undocumented-warning build
 #                                                  into build/docs-capi-gate/api/c/
 #   bash scripts/builders/docs_capi.sh --out DIR  -- build into DIR/api/c/
+#   bash scripts/builders/docs_capi.sh --no-warn-gate  -- skip the warning ledger
 #
 # ADR-0005 gives the C ABI reference its own slot in the hub. This builder is
 # additive: the legacy whole-repo site (scripts/builders/docs.sh, build/docs/html)
@@ -21,7 +22,10 @@
 # reference. Doxyfile.capi carries no INPUT of its own.
 #
 # Fails closed: a missing gate, a missing doxygen, a doxygen that exits non-zero
-# or an output tree with no index.html all stop the build.
+# or an output tree with no index.html all stop the build.  So does a Doxygen
+# warning that is not on the ledger: check_capi_doc_warnings.py runs on the log
+# this build writes, so a new public header cannot ship a broken block behind a
+# warning count nobody reads.
 
 set -euo pipefail
 
@@ -29,12 +33,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DOXYFILE="${ROOT_DIR}/Doxyfile.capi"
 CHECKER="${ROOT_DIR}/scripts/checks/check_c_abi_doc_headers.py"
+WARN_CHECKER="${ROOT_DIR}/scripts/checks/check_capi_doc_warnings.py"
 
 GATE_MODE=0
 OUT_DIR=""
+WARN_GATE=1
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --gate) GATE_MODE=1 ;;
+    --no-warn-gate) WARN_GATE=0 ;;
     --out)
       shift
       [[ $# -gt 0 ]] || {
@@ -44,7 +51,7 @@ while [[ $# -gt 0 ]]; do
       OUT_DIR="$1"
       ;;
     -h | --help)
-      sed -n '4,16p' "${BASH_SOURCE[0]}"
+      sed -n '4,17p' "${BASH_SOURCE[0]}"
       exit 0
       ;;
     *)
@@ -65,7 +72,7 @@ fi
 HTML_DIR="${OUT_DIR}/api/c"
 WARN_LOG="${OUT_DIR}/doxygen-capi-warnings.log"
 
-for required in "${DOXYFILE}" "${CHECKER}"; do
+for required in "${DOXYFILE}" "${CHECKER}" "${WARN_CHECKER}"; do
   if [[ ! -f "${required}" ]]; then
     echo "docs_capi.sh: ${required} not found." >&2
     exit 1
@@ -138,4 +145,17 @@ echo "docs_capi.sh: input roots: ${#INPUT_ROOTS[@]}"
 if [[ -f "${WARN_LOG}" ]]; then
   WARN_COUNT=$(wc -l <"${WARN_LOG}" | tr -d ' ')
   echo "docs_capi.sh: doxygen warning lines: ${WARN_COUNT} (see ${WARN_LOG})"
+fi
+
+if [[ "${GATE_MODE}" -eq 1 ]]; then
+  # The gate build turns WARN_IF_UNDOCUMENTED on, so its log is dominated by a
+  # different question (what is undocumented) than the ledger answers (which
+  # authored blocks are broken). Running the ratchet here would compare two
+  # different populations and fail on every run.
+  echo "docs_capi.sh: warning ledger skipped -- --gate builds report undocumented symbols."
+elif [[ "${WARN_GATE}" -eq 1 ]]; then
+  echo
+  python3 "${WARN_CHECKER}" --check --log "${WARN_LOG}"
+else
+  echo "docs_capi.sh: warning ledger skipped -- --no-warn-gate."
 fi
