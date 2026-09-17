@@ -36,6 +36,7 @@ https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
 | [0013](./0013-reflow-named-character-references.md)      | Named character reference set for the v1 reflow reader              | Proposed |
 | [0014](./0014-c23-subset-enforcement-surfaces.md)        | Where the approved C23 subset is enforced, and what an analyzer-coverage claim may rest on | Proposed |
 | [0015](./0015-panel-tone-curve-calibration-record.md)    | Per-panel tone-curve calibration record and bench procedure         | Proposed |
+| [0016](./0016-usb-cdc-example-duplication.md)            | One USBX CDC echo example, and the first-party CDC layer            | Proposed |
 
 ## Authoring a new ADR
 
