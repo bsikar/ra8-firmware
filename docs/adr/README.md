@@ -30,6 +30,7 @@ https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
 | [0007](./0007-front-light-driver-interface.md)            | Warm/cool front-light channels on a two-sink boost driver fed from the battery | Proposed |
 | [0008](./0008-vendoring-completeness-contract.md)        | Vendoring-completeness contract for third-party components          | Proposed |
 | [0009](./0009-ereader-input-and-service-interfaces.md)   | E-reader input, wake and service-access interfaces                  | Proposed |
+| [0010](./0010-sdram-interface-supply-domain.md)            | Bound the SDRAM interface supply domain (VCC, VCC2) separately from the main rail | Proposed |
 
 ## Authoring a new ADR
 
