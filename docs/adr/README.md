@@ -34,6 +34,7 @@ https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
 | [0011](./0011-chip-boot-duplication-across-board-libraries.md) | Chip-level boot code duplicated across the two board libraries      | Proposed |
 | [0012](./0012-c23-capability-and-abi-contract-assertion.md) | Where the C23 capability and ABI contract is asserted               | Proposed |
 | [0013](./0013-reflow-named-character-references.md)      | Named character reference set for the v1 reflow reader              | Proposed |
+| [0014](./0014-c23-subset-enforcement-surfaces.md)        | Where the approved C23 subset is enforced, and what an analyzer-coverage claim may rest on | Proposed |
 
 ## Authoring a new ADR
 
