@@ -27,6 +27,8 @@
 //!   zig build test-zig   only the Zig-native suites
 //!   zig build parity     print the slice manifest the parity check reads
 //!   zig build arm        cross-build one example app for the RA8D2 target
+//!   zig build test-soup  compile the vendored xz-embedded decoder and run its
+//!                        unmodified first-party C suite against it
 //!
 //! The `arm` step is the cross-build slice (#936): it is the first target
 //! artifact this graph produces, and it is deliberately one app rather than
@@ -150,6 +152,13 @@ pub fn build(b: *std.Build) void {
         c_test_step.dependOn(&run_suite.step);
     }
 
+    const soup_step = b.step(
+        "test-soup",
+        "Compile the vendored third-party C (xz-embedded) and run its C suite",
+    );
+    addVendoredCSuite(b, soup_step, target, optimize);
+    test_step.dependOn(soup_step);
+
     const arm_step = b.step("arm", b.fmt(
         "Cross-build the {s} example for the RA8D2 (Cortex-M85)",
         .{cross_app.name},
@@ -175,6 +184,14 @@ pub fn build(b: *std.Build) void {
     else
         b.fmt("{s}", .{cross_app.zig_libraries[0]}));
     parity_step.dependOn(&print_app.step);
+
+    // The vendored-C slice's own manifest row: the SOUP tree, the porting
+    // header that configures it, and the C suite that exercises it.
+    const print_soup = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
+    print_soup.addArg(vendored_slice.name);
+    print_soup.addArg(vendored_slice.porting_header);
+    print_soup.addArg(vendored_slice.c_suite_path);
+    parity_step.dependOn(&print_soup.step);
 }
 
 // ===========================================================================
@@ -538,4 +555,134 @@ fn objcopyTo(
     const run = b.addSystemCommand(&.{ objcopy_path, "-O", format });
     run.addFileArg(elf);
     return run.addOutputFileArg(output_name);
+}
+
+// ===========================================================================
+// Third-party (SOUP) C compilation slice
+// ===========================================================================
+// The third slice of #857: a vendored third-party C tree compiled by the root
+// build graph, with no CMake in the loop, and held to the SAME per-TU flag
+// discipline CMake applies to it.
+//
+// xz-embedded is the right first one. It is four translation units, it is
+// decode-only, and it is the vendored tree whose CMake treatment is the most
+// precisely specified: tests/cmake/core_hal.cmake gives it exactly
+// `-Wno-conversion -fno-strict-aliasing` and nothing else, with a comment
+// recording that the set was measured one flag at a time on all four TUs
+// (only -Wconversion ever fires, from the size_t -> uint32_t narrowing in the
+// first-party porting header). A blanket `-w` would have made this slice
+// meaningless, which is the whole point: the vendored TUs get the narrow
+// suppression and the first-party wrapper beside them keeps the full bar.
+//
+// The suite is `apps/shared_libs/unarch/tests/src/test_unarch_xz.c`,
+// unmodified, over the committed real .xz fixtures. It is the behavioural
+// contract for the decoder's integration: honest streams decode byte-exactly,
+// and every hostile shape (SHA-256 check, an 8 MiB declared dictionary,
+// corruption, truncation, trailing bytes, a 3690:1 zeros bomb) is rejected
+// fail-closed. A build graph that compiled the SOUP but got the porting header
+// or the mode selection wrong would fail those cases rather than pass quietly.
+//
+// Nothing in CMake is changed or deleted; CMake stays authoritative.
+
+const VendoredSlice = struct {
+    name: []const u8,
+    porting_header: []const u8,
+    c_suite_path: []const u8,
+};
+
+const vendored_slice = VendoredSlice{
+    .name = "xz_embedded",
+    .porting_header = "apps/shared_libs/unarch/inc/xz_config.h",
+    .c_suite_path = "apps/shared_libs/unarch/tests/src/test_unarch_xz.c",
+};
+
+/// The vendored decode-only TUs, exactly the set
+/// `RA8_XZ_THIRD_PARTY` in tests/cmake/library_sources.cmake lists. The
+/// upstream tree carries more (the BCJ filters, the single-call decoder); this
+/// firmware enables neither, so compiling them would be dead weight the CMake
+/// build does not carry either.
+const vendored_c_sources = [_][]const u8{
+    "apps/shared_libs/third_party/xz_embedded/xz_crc32.c",
+    "apps/shared_libs/third_party/xz_embedded/xz_crc64.c",
+    "apps/shared_libs/third_party/xz_embedded/xz_dec_lzma2.c",
+    "apps/shared_libs/third_party/xz_embedded/xz_dec_stream.c",
+};
+
+/// The first-party sources that drive the SOUP: the bounded XZ wrapper, its
+/// zero-heap pool arena, and the flat-memory read seam the wrapper decodes
+/// through. These are NOT vendored, so they take the full warning bar below.
+const vendored_first_party_sources = [_][]const u8{
+    "apps/shared_libs/unarch/src/unarch_xz.c",
+    "apps/shared_libs/unarch/src/unarch_xz_pool.c",
+    "apps/shared_libs/unarch/src/unarch_io.c",
+    "libs/ra8_core/src/ra8_decomp_limits.c",
+    "libs/ra8_core/src/ra8_log.c",
+};
+
+/// Include path for the slice. `apps/shared_libs/unarch/inc` has to be on it
+/// for the VENDORED TUs too: xz_private.h includes "xz_config.h", and that
+/// porting header is first-party and lives there. Getting this wrong is not a
+/// compile error, it is a different decoder (upstream's kernel-allocator
+/// defaults instead of the zero-heap pool), which is why the suite matters.
+const vendored_include_paths = [_][]const u8{
+    "apps/shared_libs/third_party/xz_embedded",
+    "apps/shared_libs/unarch/inc",
+    "apps/shared_libs/unarch/tests/inc",
+    "libs/ra8_core/inc",
+    "tests/support/inc",
+    "tests/fixtures/inc",
+    "tests/mocks/inc",
+};
+
+/// First-party bar for this slice: the host set plus `-Wconversion`, which is
+/// the one class CMake's measurement found the vendored TUs trip. Without it
+/// on the first-party TUs the narrow suppression below would be suppressing
+/// nothing, and the parity claim would be empty.
+const vendored_first_party_flags = c_flags ++ [_][]const u8{"-Wconversion"};
+
+/// The vendored bar, from tests/cmake/core_hal.cmake: the first-party set with
+/// `-Wconversion` suppressed for the porting header's fixed-width narrowing,
+/// plus `-fno-strict-aliasing` because the decoder type-puns through byte
+/// buffers. -Werror stays in force for every other class, including the
+/// memory-safety ones, on an attacker-facing decoder.
+const vendored_soup_flags = vendored_first_party_flags ++ [_][]const u8{
+    "-Wno-conversion",
+    "-fno-strict-aliasing",
+};
+
+fn addVendoredCSuite(
+    b: *std.Build,
+    step: *std.Build.Step,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) void {
+    const module = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    for (vendored_include_paths) |include_path| {
+        module.addIncludePath(b.path(include_path));
+    }
+    module.addCSourceFiles(.{
+        .files = &vendored_c_sources,
+        .flags = &vendored_soup_flags,
+    });
+    module.addCSourceFiles(.{
+        .files = &vendored_first_party_sources,
+        .flags = &vendored_first_party_flags,
+    });
+    module.addCSourceFile(.{
+        .file = b.path(vendored_slice.c_suite_path),
+        .flags = &c_flags,
+    });
+
+    const suite = b.addExecutable(.{
+        .name = "c_suite_unarch_xz",
+        .root_module = module,
+    });
+
+    const run_suite = b.addRunArtifact(suite);
+    run_suite.expectExitCode(0);
+    step.dependOn(&run_suite.step);
 }
