@@ -2,11 +2,25 @@
  * @file libs/ra8_board_ra8p1/src/boot/system_init.c
  * @brief Cortex-M85 / RA8D2/RA8P1 core bring-up (called from Reset_Handler)
  *
- * @note RA8P1 board layer (issue #226): this chip-boot TU is byte-identical to
- *       the EK-RA8D2 copy. The RA8P1 (R7KA8P1KFLCAC) shares the RA8D2 Cortex-M85
+ * @note RA8P1 board layer (issue #226): this chip-boot TU started as a copy of
+ *       the EK-RA8D2 one. The RA8P1 (R7KA8P1KFLCAC) shares the RA8D2 Cortex-M85
  *       core, cache/MPU, and CGC-reset state (see libs/ra8_core/inc/ra8_device.h),
  *       so the core bring-up is common; HUM citations reference the RA8D2 manual
  *       (R01UH1065EJ), which documents the byte-identical registers.
+ *
+ * @note The two copies are NO LONGER byte-identical, so do not read one as the
+ *       other. Two divergences, both deliberate on the EK-RA8D2 side:
+ *       1. `RA8_BOOT_CACHE_VIA_HAL` is NOT honoured here. Issue #577 gave the
+ *          EK-RA8D2 copy a gated arm that brings the L1 caches up through
+ *          `ra8_cache_icache_enable()` / `ra8_cache_dcache_enable()`; this copy
+ *          still always takes the hand-rolled `internal_enable_icache` /
+ *          `internal_enable_dcache` pokes, so building an RA8P1 image with
+ *          `-DRA8_BOOT_CACHE_VIA_HAL` silently changes nothing. Converting this
+ *          copy is tracked by #590.
+ *       2. The region-4 base and limit are spelled as literals below. The
+ *          EK-RA8D2 copy derives them from `ra8_board_ek_ra8d2_dualcore.h`,
+ *          which is that board's dual-core memory map; this board layer has no
+ *          such header yet. Both spellings encode the same window.
  *
  * @details
  * `SystemInit()` follows the CMSIS naming convention and runs as the
@@ -369,8 +383,15 @@ static void internal_set_priority_grouping(void)
  * - Region 1: M85 private SRAM0+1 (0x22000000, 1 MiB) -- RW/NX, cacheable.
  * - Region 2: SDRAM (0x68000000, 64 MiB) -- RW/NX, cacheable.
  * - Region 3: Peripherals (0x40000000, 128 MiB) -- RW/NX, Device-nGnRE.
- * - Region 4: M85<->M33 shared SRAM2+3 (0x22100000, 576 KiB) -- RW/NX,
+ * - Region 4: M85<->M33 shared SRAM2+3 (0x22100000, 640 KiB) -- RW/NX,
  *   Normal NON-cacheable (mailbox + CPU1 RAM stay coherent across cores).
+ *   640 KiB is what the constants below encode: base 0x22100000 with RLAR
+ *   limit 0x2219FFE0, i.e. an end of 0x2219FFFF once the 32-byte region
+ *   quantum is added back, so 0xA0000 bytes. The region deliberately spans
+ *   BOTH the 576 KiB shared window and CPU1's 64 KiB private bank above it,
+ *   which is why the figure is larger than the 576 KiB shared window alone
+ *   (`k_ra8_board_shared_ram_size_bytes`), and why it is not a power of two
+ *   (see libs/ra8_mpu/src/ra8_mpu.c and #591).
  *
  * Attribute indirection table:
  * - MAIR0[0] = 0xFF (Normal inner + outer write-back / write-alloc).
