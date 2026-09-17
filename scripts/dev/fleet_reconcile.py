@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import fleet_model as fm
 import fleet_mutation_lock as fml
+import fleet_reconcile_aborted_selftest as frab
 import fleet_reconcile_activation_selftest as frac
 import fleet_reconcile_admission_selftest as frad
 import fleet_reconcile_aging_selftest as fra
@@ -139,6 +140,25 @@ CASCADE_STATUS = 5
 # went unnoticed about five times on silence of this shape.  These statuses
 # therefore outrank the stop status on the way out.
 ZERO_CAPACITY_STATUSES = (DRAIN_FAILED_STATUS, STRANDED_STATUS, CASCADE_STATUS)
+
+# What this controller returns when it cannot run the pass it was asked for: a
+# bad invocation, an unsafe state directory, a declaration it cannot parse.  It
+# says "the operator has something to fix", never "the fleet is at zero", which
+# is why a pass that dies holding capacity down has to outrank it.
+FATAL_STATUS = 2
+
+# Everything a pass can die of that is this controller's to report rather than
+# raise: the mutation authority lost, the state directory or declaration
+# unreadable, a fleet helper gone.  ``json.JSONDecodeError`` is a ``ValueError``
+# and is named for the reader, not the matcher.
+PASS_FAILURES = (
+    fml.MutationLockError,
+    OSError,
+    TypeError,
+    ValueError,
+    json.JSONDecodeError,
+    fm.FleetError,
+)
 # Every verb that can move a host's capacity.  A failure that issued none of
 # them cannot have stranded the host, whatever else went wrong.
 CAPACITY_MUTATION_VERBS = frozenset({"parked-apply", "quarantine", "restore", "activate"})
@@ -2047,6 +2067,62 @@ def locked_out_verdict(data: dict[str, Any], options: ReconcileOptions) -> int:
     return STRANDED_STATUS
 
 
+def aborted_verdict(data: dict[str, Any], options: ReconcileOptions) -> int:
+    """Read out the zero-capacity records a pass that died mid-transaction left behind.
+
+    A pass can fail outright once it is under way: the state file becomes
+    unreadable underneath it, a write to the state directory runs out of space,
+    the mutation authority is lost rather than merely held by somebody else, a
+    fleet helper the pass shells out to has gone.  Every one of those ends in
+    ``FATAL`` and status 2, which in this controller's own vocabulary is what
+    ``--force`` outside apply mode and a negative convergence interval return:
+    the operator has asked for something impossible, go and fix the invocation.
+
+    Over a fleet this controller has already taken to ZERO capacity it says the
+    wrong thing entirely, and it is the same silence the busy lock used to
+    report.  Both zero-capacity records live in the state file across passes
+    precisely so a fleet held at zero gets LOUDER rather than quieter, and they
+    are already on disk before this pass ever starts: a fault that keeps
+    arriving at the same point therefore hid every one of them behind a
+    configuration error for as long as it lasted, named no host, logged no
+    CRITICAL, and escalated nothing however many passes it repeated.  A fleet
+    at zero that reads like a typo in the unit file is issue #888 itself,
+    arriving on the way out of a pass that did start.
+
+    Reading the records persists nothing and mutates nothing, which is what
+    lets ``--mode check`` read them and earn a verdict off them, so it is safe
+    on a path where the pass has already proven it cannot be trusted to write.
+    Nothing here ages, prunes, records or clears an entry: this pass failed
+    partway through its own transaction, so what the records already say is
+    read out as it stands, and state that cannot be read leaves the failure as
+    the only thing the pass can honestly report.
+    """
+    try:
+        order = runner_hosts(data)
+        document = load_state(options.state_dir / STATE_FILE)
+        stranding = load_stranding(document)
+        parked = load_parked(document)
+    except (OSError, TypeError, ValueError) as error:
+        print(
+            "fleet-reconcile: WARNING: the zero-capacity records could not be read after "
+            f"this pass failed ({error}); it can report only that failure, so anything "
+            "this fleet is already holding at zero goes unreported",
+            file=sys.stderr,
+        )
+        return FATAL_STATUS
+    escalated = pass_escalations(stranding, order, locked_out_options(options), parked)
+    if not escalated:
+        return FATAL_STATUS
+    print(
+        "fleet-reconcile: CRITICAL: this pass failed before it could finish, so it never "
+        "attempted to lift the host(s) it is holding at ZERO capacity: "
+        f"{', '.join(escalated)}; a failure that keeps arriving at the same point leaves "
+        "this fleet at zero for as long as it lasts",
+        file=sys.stderr,
+    )
+    return STRANDED_STATUS
+
+
 def stopped_verdict(status: int) -> int:
     """Return what a pass cut short by an administrative stop has to report.
 
@@ -2758,7 +2834,7 @@ def selftest() -> int:
     failures.extend(frpe.run(sys.modules[__name__]))
     failures.extend(frpk.run(sys.modules[__name__]))
     failures.extend(frlt.run(sys.modules[__name__]))
-    failures.extend(frlo.run(sys.modules[__name__]))
+    failures.extend(frlo.run(sys.modules[__name__]) + frab.run(sys.modules[__name__]))
     failures.extend(frsv.run(sys.modules[__name__]))
     failures.extend(fru.run(sys.modules[__name__]))
     failures.extend(frrc.run(sys.modules[__name__]))
@@ -2803,6 +2879,37 @@ def _early_status(args: argparse.Namespace) -> int | None:
     return None
 
 
+def open_pass(args: argparse.Namespace) -> tuple[dict[str, Any], ReconcileOptions]:
+    """Authenticate this pass's source and state, returning what it reconciles.
+
+    Split out of ``main`` so the two failures cannot be confused.  Nothing here
+    has touched a host yet, so a failure is the operator's to fix and status 2
+    is the honest account of one.  Once this returns, the pass owns a
+    declaration and a state directory, which is what ``aborted_verdict`` needs
+    to read the zero-capacity records off a pass that dies later on: making the
+    binding structural means that path can never reach for a name the failure
+    left unset.
+    """
+    source_digest = (
+        validate_installed_authority(fm.REPO_ROOT)
+        if args.require_installed_authority
+        else "manual-operator-checkout"
+    )
+    state_dir = args.state_dir or Path.home() / ".local/state/ra8-fleet-reconcile"
+    prepare_state_dir(state_dir)
+    if args.require_installed_authority:
+        fm.validate_runtime_inventory(state_dir)
+    return fm.load(), ReconcileOptions(
+        args.mode,
+        args.force,
+        source_digest,
+        state_dir,
+        args.full_interval,
+        args.producer_interval,
+        int(time.time()),
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Enter selftest or one locked reconciliation transaction."""
     args = parse_args(argv)
@@ -2810,25 +2917,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if early_status is not None:
         return early_status
     try:
-        source_digest = (
-            validate_installed_authority(fm.REPO_ROOT)
-            if args.require_installed_authority
-            else "manual-operator-checkout"
-        )
-        state_dir = args.state_dir or Path.home() / ".local/state/ra8-fleet-reconcile"
-        prepare_state_dir(state_dir)
-        if args.require_installed_authority:
-            fm.validate_runtime_inventory(state_dir)
-        data = fm.load()
-        options = ReconcileOptions(
-            args.mode,
-            args.force,
-            source_digest,
-            state_dir,
-            args.full_interval,
-            args.producer_interval,
-            int(time.time()),
-        )
+        data, options = open_pass(args)
+    except PASS_FAILURES as error:
+        print(f"fleet-reconcile: FATAL: {error}", file=sys.stderr)
+        return FATAL_STATUS
+    try:
         if args.mode == "check":
             with frp.stop_handlers():
                 status = reconcile(data, options)
@@ -2846,16 +2939,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     except fml.MutationLockBusyError as error:
         print(f"fleet-reconcile: {error}", file=sys.stderr)
         return locked_out_verdict(data, options)
-    except (
-        fml.MutationLockError,
-        OSError,
-        TypeError,
-        ValueError,
-        json.JSONDecodeError,
-        fm.FleetError,
-    ) as error:
+    except PASS_FAILURES as error:
         print(f"fleet-reconcile: FATAL: {error}", file=sys.stderr)
-        return 2
+        return aborted_verdict(data, options)
 
 
 if __name__ == "__main__":
