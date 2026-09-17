@@ -7,8 +7,9 @@
 #
 # This is a minimal trusted launcher, not an implementation: the listing is
 # produced by the Zig host tool tools/list_tests (#858), which replaced the
-# Python scripts/dev/list_tests.py. All this does is resolve zig, build the
-# tool once, and hand over argv and the exit status unchanged.
+# Python scripts/dev/list_tests.py, now deleted. PATHREF-OK: history, not a live path.
+# All this does is resolve zig, build the tool once, and hand over argv and the
+# exit status unchanged.
 #
 #     bash scripts/builders/list_tests.sh hal
 #

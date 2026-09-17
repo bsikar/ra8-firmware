@@ -7,8 +7,9 @@
 #
 # This is a minimal trusted launcher, not an implementation: the detector is
 # the Zig host tool tools/check_assert_casts (#858), which replaced the Python
-# scripts/checks/check_assert_casts.py. All this does is resolve zig, build the
-# tool once, and hand over argv and the exit status unchanged.
+# scripts/checks/check_assert_casts.py, now deleted. PATHREF-OK: history, not a live path.
+# All this does is resolve zig, build the tool once, and hand over argv and the
+# exit status unchanged.
 #
 #     bash scripts/builders/check_assert_casts.sh --selftest
 #     bash scripts/builders/check_assert_casts.sh --all
