@@ -15,13 +15,25 @@ baked font, named after the font -- e.g. literata_latin1.h):
   const unsigned char <symbol_name>[]  = { ... };
   const unsigned int  <symbol_name>_len = <N>;
 
-The Latin-1 subset checked in at libs/ra8_fonts/literata_latin1.ttf was produced
+Which codepoints each baked subset carries is declared in
+.github/font-coverage-declaration.txt and gated by
+scripts/checks/check_font_coverage.py, which reads the committed .ttf cmap back
+and fails on drift in either direction. Do not trust a recipe written here: the
+one this docstring used to carry asked for 0020-00FF, which is 33 codepoints
+wider than the file it claimed to describe (the unencoded C1 block, 007F-009F,
+is not in the subset). Ask the checker for the arguments that really reproduce
+the committed bytes:
+  python3 scripts/checks/check_font_coverage.py --recipe
+
+The Latin-1 subset checked in at libs/ra8_fonts/literata_latin1.ttf was cut
 with fonttools (in a throwaway venv) from libs/ra8_fonts/Literata-Regular.ttf
 (Literata Regular, SIL OFL 1.1, googlefonts/literata):
   pyftsubset Literata-Regular.ttf \
-    --unicodes='0020-00FF,2013,2014,2018,2019,201C,201D,2026' \
+    --unicodes="$(python3 scripts/checks/check_font_coverage.py --recipe)" \
     --output-file=literata_latin1.ttf \
     --no-hinting --desubroutinize --glyph-names --notdef-outline
+(--recipe prints 'libs/ra8_fonts/literata_latin1.ttf: --unicodes=...'; pass the
+range list, and widen the declaration first when the intent is more coverage.)
 
 Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
