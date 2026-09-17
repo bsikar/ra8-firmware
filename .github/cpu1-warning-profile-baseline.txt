@@ -57,8 +57,6 @@ compile_on_m33_cpu1.elf  apps/shared_libs/rabook_compile/src/rabook_compile.c
 compile_on_m33_cpu1.elf  apps/shared_libs/xml/src/xml.c
 compile_on_m33_cpu1.elf  apps/shared_libs/xml/src/xml_decode.c
 compile_on_m33_cpu1.elf  apps/shared_libs/xml/src/xml_doctype.c
-compile_on_m33_cpu1.elf  libs/ra8_core/src/ra8_decomp_limits.c
-compile_on_m33_cpu1.elf  libs/ra8_core/src/ra8_error_handler.c
 compile_on_m33_cpu1.elf  libs/ra8_hal/src/ra8_ipc.c
 cpu1_pingpong_cpu1.elf  examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/cpu1_main.c
 cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_log.c
