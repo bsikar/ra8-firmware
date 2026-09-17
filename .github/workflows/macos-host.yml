@@ -17,6 +17,20 @@
 # On a clock rather than per push: the runner image and its Command Line Tools
 # move underneath us, which is the variable this gate exists to watch, and a
 # nightly signal is what catches an SDK change nobody in this repository made.
+#
+# NEITHER TRIGGER BELOW FIRES WHILE THIS FILE IS OFF THE DEFAULT BRANCH.
+# GitHub runs `schedule` from the latest commit on the default branch only,
+# and offers `workflow_dispatch` only for workflows that exist there -- the
+# ref to run is a choice made at dispatch time, but an absent file is not
+# listed and `gh workflow run` answers "could not find any workflows named".
+# This file lands through the #899 stack into zig/dev, so merging that stack
+# starts no nightly and produces no Run workflow button. Until zig/dev reaches
+# main, the only way to get a real macOS reading is to run the gate by hand on
+# an arm64 Mac:
+#
+#     just quality::local::gate macos-host-build
+#
+# See docs/MACOS_HOST_BUILDS.md, "What runs on a clock".
 ---
 name: macos-host
 
