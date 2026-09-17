@@ -33,6 +33,7 @@ import fleet_reconcile_process as frp
 import fleet_reconcile_recovery_selftest as frr
 import fleet_reconcile_reopen_selftest as frre
 import fleet_reconcile_selftest as frs
+import fleet_reconcile_stranding_selftest as frst
 import fleet_wsl as fw
 
 SOURCE_DIGEST_FILE = ".ra8-source-sha256"
@@ -58,6 +59,12 @@ APPLY_RETRY_SLICE_SECONDS = 1.0
 # A host whose drain fails is the inverse of stranding: the controller believes
 # it holds no capacity while it is still handing work to a failed mutation.
 DRAIN_FAILED_STATUS = 3
+# A fleet that fails the same way every pass has to get LOUDER, not quieter.
+# Issue #888 counted about five separate strandings at zero capacity, and every
+# one of those passes exited 1 exactly like a one-off failure, so nothing told
+# an operator apart a fleet idling at zero from a pass that simply failed.
+STRANDED_ESCALATION_PASSES = 3
+STRANDED_STATUS = 4
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -519,6 +526,86 @@ def reconcile_host(  # noqa: PLR0913  # transaction inputs plus injectable retry
     )
 
 
+def load_stranding(document: dict[str, Any]) -> dict[str, dict[str, int]]:
+    """Return the record of hosts this controller drained and never reopened.
+
+    A failed pass deliberately drops the host's receipt, so the state file
+    remembered nothing at all about a host being held at zero and every pass
+    looked like the first one.  This map survives receipt invalidation and is
+    the only thing that can tell one transient failure from a fleet that has
+    been sitting at zero capacity for days (issue #888).  Anything malformed is
+    replaced rather than trusted, and state written by an older controller
+    simply starts empty.
+    """
+    stored = document.get("stranded")
+    entries = stored.items() if isinstance(stored, dict) else []
+    stranding = {
+        host: {"since": entry["since"], "passes": entry["passes"]}
+        for host, entry in entries
+        if isinstance(entry, dict)
+        and isinstance(entry.get("since"), int)
+        and isinstance(entry.get("passes"), int)
+    }
+    document["stranded"] = stranding
+    return stranding
+
+
+def record_stranding(stranding: dict[str, dict[str, int]], host: str, now: int) -> None:
+    """Count one more consecutive pass that ended with a host at zero."""
+    previous = stranding.get(host)
+    entry = {
+        "since": previous["since"] if previous else now,
+        "passes": previous["passes"] + 1 if previous else 1,
+    }
+    stranding[host] = entry
+    print(
+        f"fleet-reconcile: WARNING: {host}: left at ZERO capacity by this pass "
+        f"(consecutive passes={entry['passes']}, first drained at {entry['since']})",
+        file=sys.stderr,
+    )
+
+
+def clear_stranding(stranding: dict[str, dict[str, int]], host: str) -> None:
+    """Forget a host's stranding once a pass has proven it serving again."""
+    if stranding.pop(host, None) is not None:
+        print(
+            f"fleet-reconcile: {host}: reconciled and serving again; clearing its "
+            "stranded-at-zero record",
+            file=sys.stderr,
+        )
+
+
+def invalidate_receipt(
+    receipts: dict[str, Any],
+    stranding: dict[str, dict[str, int]],
+    host: str,
+    now: int,
+    *,
+    stranded: bool,
+) -> None:
+    """Drop a failed host's receipt, counting a pass that left it at zero."""
+    receipts.pop(host, None)
+    if stranded:
+        record_stranding(stranding, host, now)
+
+
+def stranded_escalations(stranding: dict[str, dict[str, int]], now: int) -> list[str]:
+    """Name every host the fleet has failed to lift off zero, loudly."""
+    escalated: list[str] = []
+    for host, entry in sorted(stranding.items()):
+        if entry["passes"] < STRANDED_ESCALATION_PASSES:
+            continue
+        escalated.append(host)
+        print(
+            f"fleet-reconcile: CRITICAL: {host} has held ZERO capacity across "
+            f"{entry['passes']} consecutive reconcile passes "
+            f"({now - entry['since']}s since it was first drained); this fleet is "
+            "not recovering on its own and needs operator intervention",
+            file=sys.stderr,
+        )
+    return escalated
+
+
 def reconcile(
     data: dict[str, Any],
     options: ReconcileOptions,
@@ -527,13 +614,15 @@ def reconcile(
 ) -> int:
     """Reconcile producer then consumers, preserving dependency safety.
 
-    Returns 0 for a clean pass, 1 for an ordinary failure, and
-    ``DRAIN_FAILED_STATUS`` when any host could not be drained, which is a
-    louder verdict than a failed pass because that host is unaccounted for.
+    Returns 0 for a clean pass, 1 for an ordinary failure, ``STRANDED_STATUS``
+    when a host has been held at zero capacity for several consecutive passes,
+    and ``DRAIN_FAILED_STATUS`` when a host could not be drained at all, which
+    is louder still because that host is unaccounted for.
     """
     state_path = options.state_dir / STATE_FILE
     document = load_state(state_path)
     receipts = document["hosts"]
+    stranding = load_stranding(document)
     failures = 0
     producer_failed = False
     undrained: list[str] = []
@@ -572,6 +661,7 @@ def reconcile(
             ok, stranded, receipt = False, True, {}
         if ok and options.mode == "apply":
             receipts[host] = receipt
+            clear_stranding(stranding, host)
         if not ok:
             failures += 1
             producer_failed = index == 0 and options.mode == "apply" and stranded
@@ -582,10 +672,12 @@ def reconcile(
                     file=sys.stderr,
                 )
             if options.mode == "apply":
-                receipts.pop(host, None)
+                invalidate_receipt(receipts, stranding, host, options.now, stranded=stranded)
                 save_state(state_path, document)
+    escalated: list[str] = []
     if options.mode == "apply":
         save_state(state_path, document)
+        escalated = stranded_escalations(stranding, options.now)
     if undrained:
         print(
             "fleet-reconcile: CRITICAL: pass finished with host(s) that failed to "
@@ -593,6 +685,8 @@ def reconcile(
             file=sys.stderr,
         )
         return DRAIN_FAILED_STATUS
+    if escalated:
+        return STRANDED_STATUS
     return 1 if failures else 0
 
 
@@ -1144,6 +1238,7 @@ def selftest() -> int:
     failures.extend(frbl.run(sys.modules[__name__]))
     failures.extend(frd.run(sys.modules[__name__]))
     failures.extend(frre.run(sys.modules[__name__]))
+    failures.extend(frst.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
