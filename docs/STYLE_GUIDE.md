@@ -170,6 +170,15 @@ the emulator included -- against the frozen ledger in
 `void` function; the ledgered rows are existing debt and the ledger only
 shrinks.
 
+A reference whose target lives outside the C ABI reference's input set -- a
+`docs/` page, an internal header under `src/`, a `static inline` accessor --
+is written `@scoperef{<doxygen-id>,<display text>}`, never `@ref`. The root
+`Doxyfile` expands it to a resolved `@ref` (that build reads the whole tree);
+`Doxyfile.capi` expands it to the display text in code font, because the
+target genuinely is not there and a bare `@ref` would warn on every build.
+`check_c_abi_doc_headers.py` asserts both halves of that contract and fails a
+documented header that references a `docs/` page as `@ref md_docs_...`.
+
 `@see` is a **review convention, not a gate**. It is worth writing where a
 reader would genuinely want the pointer, and nothing checks it: measured
 2026-07-28, 3014 of the 3162 documented function blocks in the tree have

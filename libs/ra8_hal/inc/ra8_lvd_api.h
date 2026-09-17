@@ -56,7 +56,7 @@ extern "C" {
  *   8. Set PVDmSR.DET = 0 (write-0-to-clear).
  *   9. Optionally set PVDmCR0.RIE / PVDnCR0.RE per cfg->irq_enable +
  *      cfg->response.
- *  10. Set PVDmCR0.CMPE = 1 to gate the comparator output through.
+ *   10. Set PVDmCR0.CMPE = 1 to gate the comparator output through.
  *
  * @param[in] channel Channel id (k_ra8_lvd_ch1, ch2, ch4, or ch5).
  * @param[in] cfg     Non-NULL configuration descriptor.

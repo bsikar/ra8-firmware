@@ -34,6 +34,17 @@ REPEAT_BRIEF           = YES
 FULL_PATH_NAMES        = YES
 STRIP_FROM_PATH        = .
 JAVADOC_AUTOBRIEF      = YES
+
+
+# @scoperef{<doxygen-id>,<display text>} -- the narrow half of the contract the
+# root Doxyfile documents.  A docs/ page, an internal header under src/ and a
+# static inline accessor are all outside this build's input set, so resolving
+# \ref against them is impossible here by design rather than by accident: the
+# reference renders as the display text in code font and emits no warning.  The
+# checker (scripts/checks/check_c_abi_doc_headers.py) fails if this expansion
+# grows a \ref of its own, or if the root Doxyfile drops its half.
+ALIASES               += "scoperef{2}=<tt>\2</tt>"
+
 TAB_SIZE               = 2
 OPTIMIZE_OUTPUT_FOR_C  = YES
 

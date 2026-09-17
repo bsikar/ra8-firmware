@@ -11,7 +11,7 @@
  * KDF command words, lifecycle + debug-level states, AES mode +
  * direction, ECC curve + RSA size selectors, asymmetric opcodes,
  * tamper sources, ChaCha20 opcodes, and the published buffer sizes),
- * plus the @ref ra8_rsip_reg32 register-pointer accessor.
+ * plus the @scoperef{ra8_rsip_reg32,ra8_rsip_reg32()} register-pointer accessor.
  *
  * The RSIP-E50D engine on the RA8D2 is an isolated security
  * subsystem (HUM Ch 52 "Renesas Secure IP (RSIP-E50D)" p 3302). It

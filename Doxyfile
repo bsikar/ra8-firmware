@@ -38,6 +38,16 @@ INLINE_INHERITED_MEMB  = YES
 FULL_PATH_NAMES        = YES
 STRIP_FROM_PATH        = .
 JAVADOC_AUTOBRIEF      = YES
+
+
+# @scoperef{<doxygen-id>,<display text>} -- one authored form for a reference
+# whose target is outside the C ABI reference's input set (a docs/ page, an
+# internal header under src/, a static inline accessor).  This build sees those
+# targets, so it resolves the reference; Doxyfile.capi defines the same alias to
+# render the display text as code, which is why a header can carry the reference
+# without the narrow build emitting an unresolvable \ref.
+ALIASES               += "scoperef{2}=@ref \1 \"\2\""
+
 QT_AUTOBRIEF           = NO
 MULTILINE_CPP_IS_BRIEF = NO
 TAB_SIZE               = 2

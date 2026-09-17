@@ -50,7 +50,7 @@
  * that is not the RA8P1. The RA8P1-only piece is the loader, which turns a blob
  * into an ::ra8_npu_job_t.
  *
- * @see @ref md_docs_2formats_2NPU1 -- the full NPU1 wire-format specification
+ * @see @scoperef{md_docs_2formats_2NPU1,docs/formats/NPU1.md} -- the full NPU1 wire-format specification
  *      (rationale, algorithms, worked example, failure modes).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

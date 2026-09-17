@@ -52,9 +52,9 @@ extern "C" {
  *  7. Programme EPCT (EPD enable, option, spacers).
  *  8. Programme EMCT (VLSIEN + EOTPEN).
  *  9. Programme DTEL / DTEH (data-type filter).
- * 10. Programme GSCT (short-packet threshold + store flag).
- * 11. Programme RXIE / DLIE0 / DLIE1 / VCIE0..15 / PMIE / GSIE.
- * 12. Leave RXEN clear -- caller arms via ``start_receive``.
+ *  10. Programme GSCT (short-packet threshold + store flag).
+ *  11. Programme RXIE / DLIE0 / DLIE1 / VCIE0..15 / PMIE / GSIE.
+ *  12. Leave RXEN clear -- caller arms via ``start_receive``.
  *
  * @param[in] cfg Non-NULL configuration descriptor.
  *

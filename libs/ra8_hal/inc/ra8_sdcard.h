@@ -106,7 +106,7 @@ typedef struct {
  *   8. CMD7   SELECT_CARD    -- transitions card to TRAN state
  *   9. optional ACMD6 4-bit bus-width negotiation when
  *      ``cfg->bus_width`` requests it (best-effort; see ::ra8_sdcard_cfg_t)
- *  10. ::ra8_sdhi_set_clock to 25 MHz default-speed
+ *   10. ::ra8_sdhi_set_clock to 25 MHz default-speed
  *
  * On success the internal state holds card type, RCA, and capacity in
  * 512-byte blocks, and the SDHI block is ready for ``read_blocks`` /

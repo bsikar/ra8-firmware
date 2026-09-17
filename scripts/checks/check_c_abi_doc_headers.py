@@ -25,7 +25,13 @@
 #     that reads like coverage),
 #   * Doxyfile.capi drifts from the contract: a non-empty INPUT, an HTML_OUTPUT
 #     other than the manifest's output slot, or a markdown mainpage (which would
-#     make the C ABI slot a second copy of the whole site).
+#     make the C ABI slot a second copy of the whole site),
+#   * either Doxyfile drops its half of the @scoperef contract, or the narrow
+#     expansion grows a \\ref of its own (see check_doxyfile),
+#   * a documented header references a docs/ page by its mangled Doxygen id
+#     (@ref md_docs_...). That page is in the wide build's input set and not in
+#     this one, so the reference is unresolvable here by construction; write
+#     @scoperef{<id>,<display text>} instead, which both builds understand.
 #
 # Usage:
 #   python3 scripts/checks/check_c_abi_doc_headers.py --check
@@ -47,7 +53,17 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST_PATH = REPO_ROOT / "config" / "c_abi_doc_headers.json"
 DOXYFILE_PATH = REPO_ROOT / "Doxyfile.capi"
+WIDE_DOXYFILE_PATH = REPO_ROOT / "Doxyfile"
 LIB_PREFIX = "libs/"
+
+# One authored form, two expansions. The wide build resolves the reference;
+# the narrow build renders the display text, because the target is outside its
+# input set by design. Both halves are asserted so neither can quietly rot.
+SCOPEREF_ALIAS = "scoperef{2}"
+SCOPEREF_WIDE_EXPANSION = '@ref \\1 \\"\\2\\"'
+SCOPEREF_NARROW_EXPANSION = "<tt>\\2</tt>"
+# A docs/ page carries this prefix once Doxygen mangles its path into a page id.
+MARKDOWN_PAGE_REF = "md_docs_"
 
 
 def tracked_files(root: Path) -> list[str]:
@@ -92,7 +108,13 @@ def library_dirs(paths: list[str]) -> set[str]:
     return dirs
 
 
-def evaluate(manifest: dict, paths: list[str], doxyfile_text: str | None) -> list[str]:
+def evaluate(
+    manifest: dict,
+    paths: list[str],
+    doxyfile_text: str | None,
+    wide_doxyfile_text: str | None = None,
+    header_texts: dict[str, str] | None = None,
+) -> list[str]:
     """Return every finding as a human-readable line. Empty means clean."""
     findings: list[str] = []
 
@@ -173,6 +195,10 @@ def evaluate(manifest: dict, paths: list[str], doxyfile_text: str | None) -> lis
 
     if doxyfile_text is not None:
         findings.extend(check_doxyfile(doxyfile_text, slot))
+    if wide_doxyfile_text is not None:
+        findings.extend(check_wide_doxyfile(wide_doxyfile_text))
+    if header_texts:
+        findings.extend(check_header_references(header_texts))
 
     return findings
 
@@ -210,6 +236,72 @@ def check_doxyfile(text: str, slot: str) -> list[str]:
             f"Doxyfile.capi: FILE_PATTERNS is '{settings.get('FILE_PATTERNS', '')}', expected "
             "'*.h *.dox' (the .dox file carries the @defgroup tree the headers file under)"
         )
+
+    expansion = alias_expansion(text, SCOPEREF_ALIAS)
+    if expansion is None:
+        findings.append(
+            f"Doxyfile.capi: no ALIASES entry for {SCOPEREF_ALIAS}; a header that references "
+            "a docs/ page or an internal header needs one authored form both builds accept"
+        )
+    elif "ref " in expansion or expansion.lstrip().startswith(("@ref", "\\ref")):
+        findings.append(
+            f"Doxyfile.capi: the {SCOPEREF_ALIAS} expansion is '{expansion}'; it must not "
+            "resolve a reference here, because the target is outside this build's input set "
+            "and Doxygen would warn on every use"
+        )
+    elif expansion != SCOPEREF_NARROW_EXPANSION:
+        findings.append(
+            f"Doxyfile.capi: the {SCOPEREF_ALIAS} expansion is '{expansion}', expected "
+            f"'{SCOPEREF_NARROW_EXPANSION}'"
+        )
+    return findings
+
+
+def alias_expansion(text: str, alias: str) -> str | None:
+    """Return the expansion an `ALIASES` line gives `alias`, or None when absent."""
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line.startswith("ALIASES"):
+            continue
+        _, _, value = line.partition("=")
+        value = value.strip()
+        if value.startswith('"') and value.endswith('"') and len(value) >= 2:
+            value = value[1:-1]
+        name, sep, expansion = value.partition("=")
+        if sep and name.strip() == alias:
+            return expansion
+    return None
+
+
+def check_wide_doxyfile(text: str) -> list[str]:
+    """The wide build owns the other half: there the reference must resolve."""
+    expansion = alias_expansion(text, SCOPEREF_ALIAS)
+    if expansion is None:
+        return [
+            f"Doxyfile: no ALIASES entry for {SCOPEREF_ALIAS}; the wide build is where "
+            "the reference resolves, so dropping it turns every use into plain text"
+        ]
+    if expansion != SCOPEREF_WIDE_EXPANSION:
+        return [
+            f"Doxyfile: the {SCOPEREF_ALIAS} expansion is '{expansion}', expected "
+            f"'{SCOPEREF_WIDE_EXPANSION}'"
+        ]
+    return []
+
+
+def check_header_references(header_texts: dict[str, str]) -> list[str]:
+    """A documented header must not @ref a docs/ page this build cannot see."""
+    findings: list[str] = []
+    for path in sorted(header_texts):
+        for number, line in enumerate(header_texts[path].splitlines(), start=1):
+            for command in ("@ref ", "\\ref "):
+                marker = command + MARKDOWN_PAGE_REF
+                if marker in line:
+                    findings.append(
+                        f"{path}:{number}: references a docs/ page as "
+                        f"'{command.strip()} {MARKDOWN_PAGE_REF}...'; that page is not in this "
+                        f"build's input set, so use @scoperef{{<id>,<display text>}} instead"
+                    )
     return findings
 
 
@@ -221,6 +313,9 @@ def load_manifest(path: Path) -> dict:
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"manifest is not valid JSON: {exc}")
 
+
+NARROW_ALIAS_LINE = f'ALIASES += "{SCOPEREF_ALIAS}={SCOPEREF_NARROW_EXPANSION}"\n'
+WIDE_ALIAS_LINE = f'ALIASES += "{SCOPEREF_ALIAS}={SCOPEREF_WIDE_EXPANSION}"\n'
 
 def selftest() -> int:
     """Probe the rules against synthetic trees, so the gate itself is tested."""
@@ -235,7 +330,10 @@ def selftest() -> int:
         "libs/ra8_box/src/ra8_box.c",
         "libs/third_party/mbedtls/include/mbedtls/aes.h",
     ]
-    good_doxyfile = "INPUT =\nHTML_OUTPUT = api/c\nFILE_PATTERNS = *.h *.dox\n"
+    good_doxyfile = (
+        "INPUT =\nHTML_OUTPUT = api/c\nFILE_PATTERNS = *.h *.dox\n" + NARROW_ALIAS_LINE
+    )
+    good_wide_doxyfile = WIDE_ALIAS_LINE
 
     probes: list[tuple[str, dict, list[str], str, bool]] = [
         ("clean tree passes", base_manifest, base_paths, good_doxyfile, True),
@@ -298,14 +396,14 @@ def selftest() -> int:
             "Doxyfile with a hard-coded INPUT fails",
             base_manifest,
             base_paths,
-            "INPUT = libs\nHTML_OUTPUT = api/c\nFILE_PATTERNS = *.h *.dox\n",
+            "INPUT = libs\nHTML_OUTPUT = api/c\nFILE_PATTERNS = *.h *.dox\n" + NARROW_ALIAS_LINE,
             False,
         ),
         (
             "Doxyfile writing outside the api/c slot fails",
             base_manifest,
             base_paths,
-            "INPUT =\nHTML_OUTPUT = html\nFILE_PATTERNS = *.h *.dox\n",
+            "INPUT =\nHTML_OUTPUT = html\nFILE_PATTERNS = *.h *.dox\n" + NARROW_ALIAS_LINE,
             False,
         ),
         (
@@ -313,21 +411,67 @@ def selftest() -> int:
             base_manifest,
             base_paths,
             "INPUT =\nHTML_OUTPUT = api/c\nFILE_PATTERNS = *.h *.dox\n"
-            "USE_MDFILE_AS_MAINPAGE = README.md\n",
+            "USE_MDFILE_AS_MAINPAGE = README.md\n" + NARROW_ALIAS_LINE,
             False,
         ),
     ]
 
+    header = "/** @file x.h */\n"
+    # (name, narrow Doxyfile, wide Doxyfile, header bodies, expect_clean)
+    ref_probes: list[tuple[str, str, str, dict[str, str], bool]] = [
+        ("both alias halves present passes",
+         good_doxyfile, good_wide_doxyfile, {"libs/ra8_box/inc/ra8_box.h": header}, True),
+        ("narrow Doxyfile without the alias fails",
+         "INPUT =\nHTML_OUTPUT = api/c\nFILE_PATTERNS = *.h *.dox\n",
+         good_wide_doxyfile, {}, False),
+        ("narrow alias that resolves a reference fails",
+         "INPUT =\nHTML_OUTPUT = api/c\nFILE_PATTERNS = *.h *.dox\n"
+         'ALIASES += "scoperef{2}=@ref \\1"\n',
+         good_wide_doxyfile, {}, False),
+        ("narrow alias with an unexpected expansion fails",
+         "INPUT =\nHTML_OUTPUT = api/c\nFILE_PATTERNS = *.h *.dox\n"
+         'ALIASES += "scoperef{2}=<b>\\2</b>"\n',
+         good_wide_doxyfile, {}, False),
+        ("wide Doxyfile without the alias fails",
+         good_doxyfile, "PROJECT_NAME = x\n", {}, False),
+        ("wide alias that does not resolve fails",
+         good_doxyfile, 'ALIASES += "scoperef{2}=<tt>\\2</tt>"\n', {}, False),
+        ("header referencing a docs/ page by mangled id fails",
+         good_doxyfile, good_wide_doxyfile,
+         {"libs/ra8_dfu/inc/ra8_rot.h": " * @see @ref md_docs_2formats_2ROT1 -- spec\n"}, False),
+        ("the same reference written as @scoperef passes",
+         good_doxyfile, good_wide_doxyfile,
+         {"libs/ra8_dfu/inc/ra8_rot.h":
+          " * @see @scoperef{md_docs_2formats_2ROT1,docs/formats/ROT1.md} -- spec\n"}, True),
+        ("backslash \\ref form is caught too",
+         good_doxyfile, good_wide_doxyfile,
+         {"libs/ra8_dfu/inc/ra8_rot.h": " * \\ref md_docs_2formats_2NSR1\n"}, False),
+        ("a reference to a header id is untouched by the page rule",
+         good_doxyfile, good_wide_doxyfile,
+         {"libs/ra8_box/inc/ra8_box.h": " * @ref ra8_box_open\n"}, True),
+    ]
+
     failures = 0
     for name, manifest, paths, doxyfile, expect_clean in probes:
-        findings = evaluate(manifest, paths, doxyfile)
+        findings = evaluate(manifest, paths, doxyfile, WIDE_ALIAS_LINE)
         clean = not findings
         if clean != expect_clean:
             failures += 1
             print(f"  FAIL {name}: expected {'clean' if expect_clean else 'findings'}, got {findings}")
         else:
             print(f"  ok   {name}")
-    print(f"selftest: {len(probes) - failures}/{len(probes)} probes passed")
+
+    for name, narrow, wide, header_texts, expect_clean in ref_probes:
+        findings = evaluate(base_manifest, base_paths, narrow, wide, header_texts)
+        clean = not findings
+        if clean != expect_clean:
+            failures += 1
+            print(f"  FAIL {name}: expected {'clean' if expect_clean else 'findings'}, got {findings}")
+        else:
+            print(f"  ok   {name}")
+
+    total = len(probes) + len(ref_probes)
+    print(f"selftest: {total - failures}/{total} probes passed")
     return 1 if failures else 0
 
 
@@ -378,15 +522,31 @@ def main(argv: list[str]) -> int:
     if doxyfile_text is None:
         print(f"check_c_abi_doc_headers: {DOXYFILE_PATH} not found", file=sys.stderr)
         return 2
+    wide_text = WIDE_DOXYFILE_PATH.read_text() if WIDE_DOXYFILE_PATH.exists() else None
+    if wide_text is None:
+        print(f"check_c_abi_doc_headers: {WIDE_DOXYFILE_PATH} not found", file=sys.stderr)
+        return 2
 
-    findings = evaluate(manifest, paths, doxyfile_text)
+    headers = public_headers(paths)
+    skipped = {e.get("path", "") for e in manifest.get("excluded_headers", [])}
+    documented_libs = {e.get("lib", "") for e in manifest.get("documented", [])}
+    header_texts: dict[str, str] = {}
+    for lib in sorted(documented_libs):
+        for header in headers.get(lib, []):
+            if header in skipped:
+                continue
+            try:
+                header_texts[header] = (REPO_ROOT / header).read_text(errors="replace")
+            except OSError:
+                continue
+
+    findings = evaluate(manifest, paths, doxyfile_text, wide_text, header_texts)
     if findings:
         print("check_c_abi_doc_headers: FINDINGS")
         for finding in findings:
             print(f"  - {finding}")
         return 1
 
-    headers = public_headers(paths)
     documented = [e.get("lib", "") for e in manifest.get("documented", [])]
     total = sum(len(headers.get(lib, [])) for lib in documented)
     print(

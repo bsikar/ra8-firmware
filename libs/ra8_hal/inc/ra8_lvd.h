@@ -41,28 +41,28 @@
  *      (LVD = fall hysteresis, HVD = rise hysteresis).
  *   8. ``set_negate_mode`` -- RN bit on m channels.
  *   9. ``set_irq_edge`` -- IDTSEL[1:0] runtime edge select.
- *  10. ``set_irq_kind`` -- IRQSEL maskable vs NMI selector.
- *  11. ``set_security`` -- PVDSAR.NONSEC0 / NONSEC1 attribution for
+ *   10. ``set_irq_kind`` -- IRQSEL maskable vs NMI selector.
+ *   11. ``set_security`` -- PVDSAR.NONSEC0 / NONSEC1 attribution for
  *      PVD1 / PVD2.
- *  12. ``unlock_n_channels`` / ``relock_n_channels`` -- PVDLR LOCK
+ *   12. ``unlock_n_channels`` / ``relock_n_channels`` -- PVDLR LOCK
  *      bit handshake (must be unlocked once before any PVD4/PVD5
  *      register write after a qualifying reset).
- *  13. ``enable_elc_event`` / ``disable_elc_event`` -- the PVD has no
+ *   13. ``enable_elc_event`` / ``disable_elc_event`` -- the PVD has no
  *      ELC enable bit of its own (Section 8.7 p 315), so this routine
  *      simply re-runs the "PVDE -> CMPE" sequence; the actual ELC
  *      event-source select belongs in `ra8_elc`.
- *  14. ``get_status`` / ``clear_status`` -- read DET / MON, write 0.
- *  15. ``filter_delay_us`` -- compute the "2s + 3" LOCO wait time.
- *  16. ``configure_for_standby`` -- one-shot helper that sets DFDIS=1
+ *   14. ``get_status`` / ``clear_status`` -- read DET / MON, write 0.
+ *   15. ``filter_delay_us`` -- compute the "2s + 3" LOCO wait time.
+ *   16. ``configure_for_standby`` -- one-shot helper that sets DFDIS=1
  *      and RN=0 per HUM 8.5(1) p 311 ("Setting in Software Standby
  *      mode") and HUM 8.5(2) p 312 ("Settings in Deep Software
  *      Standby mode").
- *  17. ``cancel_deep_standby_path`` -- clears RI on every m channel
+ *   17. ``cancel_deep_standby_path`` -- clears RI on every m channel
  *      so a transition to Deep Software Standby mode 2 or 3 is legal
  *      (HUM 8.2.4 p 305 "RI bit").
- *  18. ``attach_handler`` / per-channel ``attach_channel_handler`` --
+ *   18. ``attach_handler`` / per-channel ``attach_channel_handler`` --
  *      one shared callback plus one per-channel callback (PVD1, PVD2).
- *  19. ``dispatch`` -- the demux that reads PVDmSR.DET, fires the
+ *   19. ``dispatch`` -- the demux that reads PVDmSR.DET, fires the
  *      registered callback, optionally clears DET.
  *
  * ## Locking

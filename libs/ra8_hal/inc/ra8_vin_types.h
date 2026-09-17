@@ -57,7 +57,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra8_vin_capture_single                = 0U, /**< Capture one frame into MB1. */
-  k_ra8_vin_capture_continuous            = 1U, /**< Roll MB1 -> MB2 -> MB3 ->.. */
+  k_ra8_vin_capture_continuous            = 1U, /**< Roll MB1, MB2, MB3, repeat. */
   k_ra8_vin_capture_continuous_field_skip = 2U, /**< Continuous, honour IM mode. */
 } ra8_vin_capture_mode_t;
 
