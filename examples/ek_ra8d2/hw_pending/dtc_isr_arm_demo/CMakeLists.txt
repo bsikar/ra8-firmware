@@ -21,12 +21,11 @@ if(NOT _ra8_has_parent)
   project(dtc_isr_arm_demo LANGUAGES C ASM)
 endif()
 
-# Find the repo root from this app dir, depth-independent.
-set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-  get_filename_component(_d "${_d}" DIRECTORY)
-endwhile()
-include("${_d}/cmake/ra8_add_app.cmake")
+# The recipe is found by name: cmake/ra8_bootstrap.cmake (included by the
+# toolchain file above via project(), and by the repo root in the aggregate
+# build) has put <repo>/cmake on CMAKE_MODULE_PATH. No per-app walk up the
+# directory tree (#779).
+include(ra8_add_app)
 
 ra8_add_app(
   NAME dtc_isr_arm_demo
