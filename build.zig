@@ -29,6 +29,8 @@
 //!   zig build arm        cross-build one example app for the RA8D2 target
 //!   zig build test-soup  compile the vendored xz-embedded decoder and run its
 //!                        unmodified first-party C suite against it
+//!   zig build compile-db emit compile_commands.json for every TU this graph
+//!                        compiles, the input the analysis gates parse against
 //!
 //! The `arm` step is the cross-build slice (#936): it is the first target
 //! artifact this graph produces, and it is deliberately one app rather than
@@ -165,6 +167,12 @@ pub fn build(b: *std.Build) void {
     ));
     addArmCrossBuild(b, arm_step);
 
+    const compile_db_step = b.step(
+        "compile-db",
+        "Emit compile_commands.json covering the TUs this graph compiles",
+    );
+    const database_entries = addCompileDb(b, compile_db_step);
+
     const parity_step = b.step("parity", "Print the slice manifest the CMake parity check reads");
     for (slice) |member| {
         const print = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
@@ -192,6 +200,16 @@ pub fn build(b: *std.Build) void {
     print_soup.addArg(vendored_slice.porting_header);
     print_soup.addArg(vendored_slice.c_suite_path);
     parity_step.dependOn(&print_soup.step);
+
+    // The analysis-input slice's own manifest row: the database, where it
+    // lands, and how many compile commands it carries. A row that read "-"
+    // here would be the interesting case -- it would mean the graph stopped
+    // describing its own translation units.
+    const print_database = b.addSystemCommand(&.{ "printf", "%s\t%s\t%s\n" });
+    print_database.addArg("compile_db");
+    print_database.addArg("zig-out/analysis/compile_commands.json");
+    print_database.addArg(b.fmt("{d} commands", .{database_entries}));
+    parity_step.dependOn(&print_database.step);
 }
 
 // ===========================================================================
@@ -685,4 +703,262 @@ fn addVendoredCSuite(
     const run_suite = b.addRunArtifact(suite);
     run_suite.expectExitCode(0);
     step.dependOn(&run_suite.step);
+}
+
+// ===========================================================================
+// Analysis-input slice (#959): compile_commands.json
+// ===========================================================================
+// The fourth slice of #857, and the one #859 most depends on, because the
+// static-analysis gates do not analyse source -- they analyse a compile
+// database, and only a CMake configure produces one today:
+//
+//   scripts/checks/tidy/compile_db.sh      configures tests/ with
+//                                          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+//                                          into build/tidy, and derives the
+//                                          union of -I flags from it for the
+//                                          TUs clang-tidy has no command for
+//   scripts/builders/build_cross_compile_db.py
+//                                          merges the CROSS configures into one
+//                                          firmware database, and fails when a
+//                                          first-party firmware TU has no
+//                                          command -- the check that stops the
+//                                          firmware pass silently shrinking
+//   scripts/checks/check_unused_includes.py loads compile_commands.json from the
+//                                          repo root, build/tidy/ or build/
+//   scripts/checks/check_tool_warning_flags.py
+//                                          takes databases as operands and
+//                                          asserts the warning flags really are
+//                                          on the command line
+//
+// So retiring CMake without this slice would take clang-tidy, the unused-include
+// check and every IDE's language server with it, and it would do so in the quiet
+// way: a gate that reports a clean run over code it never parsed.
+//
+// This step emits a standard JSON compilation database for exactly the
+// translation units THIS graph compiles, from the same in-graph lists the build
+// steps pass to the compiler. It is generated, never committed, and it covers
+// the three slices already here: the host suites, the vendored xz tree at its
+// asymmetric flag bars, and every ARM-cross TU with its real driver.
+//
+// What it deliberately does NOT claim to cover: the alternate reflow engine and
+// libFuzzer merges, the tool projects under tools/, and the whole-tree database
+// `just apps::compile_commands` builds. Those follow their code as later slices
+// move it. A database asserting coverage it does not have is worse than no
+// database, because the gates above treat coverage as proof.
+//
+// Nothing in CMake is changed or deleted; CMake stays authoritative.
+
+/// argv[0] for the host commands. The graph compiles host C through zig's own
+/// `cc` frontend, which IS clang, and every consumer above resolves argv[0] as
+/// a compiler driver, so the database names the driver rather than the wrapper:
+/// `zig cc` in argv[0] would leave a bare `cc` operand that clang tooling reads
+/// as an input file. A consumer that shells argv[0] literally needs a clang on
+/// PATH, exactly as CMake's database needs the compiler it recorded.
+const host_c_driver = "clang";
+
+/// One compile command: the TU, the driver that compiles it, the flags it is
+/// really given, its include path in order, and where its object goes.
+const CompileDbEntry = struct {
+    file: []const u8,
+    driver: []const u8,
+    flags: []const []const u8,
+    include_dirs: []const []const u8,
+    object: []const u8,
+};
+
+/// The full argument vector for one entry, in compiler order: driver, flags,
+/// include path, then the TU and its output. Absolute paths, as CMake writes
+/// them, so a consumer that ignores the `directory` field still resolves.
+fn compileDbArguments(b: *std.Build, entry: CompileDbEntry) []const []const u8 {
+    var arguments = std.ArrayList([]const u8).init(b.allocator);
+    arguments.append(entry.driver) catch @panic("OOM");
+    for (entry.flags) |flag| arguments.append(flag) catch @panic("OOM");
+    for (entry.include_dirs) |include_dir| {
+        arguments.append(b.fmt("-I{s}", .{b.pathFromRoot(include_dir)})) catch @panic("OOM");
+    }
+    arguments.append("-c") catch @panic("OOM");
+    arguments.append(b.pathFromRoot(entry.file)) catch @panic("OOM");
+    arguments.append("-o") catch @panic("OOM");
+    arguments.append(entry.object) catch @panic("OOM");
+    return arguments.items;
+}
+
+/// Everything in an entry except its object path, joined. Two entries with the
+/// same signature are the same compile command written twice: `ra8_log.c` is
+/// compiled into each of the three host suite modules identically, and one
+/// command is what CMake's database would carry for it too. Two entries that
+/// differ are a real difference and both stay -- which is how the vendored
+/// slice's asymmetry survives into the database, `ra8_log.c` appearing once at
+/// the host bar and again at the stricter -Wconversion bar the SOUP drivers
+/// take.
+fn compileDbSignature(b: *std.Build, entry: CompileDbEntry) []const u8 {
+    var signature = std.ArrayList(u8).init(b.allocator);
+    signature.appendSlice(entry.driver) catch @panic("OOM");
+    signature.appendSlice("\x00") catch @panic("OOM");
+    signature.appendSlice(entry.file) catch @panic("OOM");
+    for (entry.flags) |flag| {
+        signature.appendSlice("\x00") catch @panic("OOM");
+        signature.appendSlice(flag) catch @panic("OOM");
+    }
+    for (entry.include_dirs) |include_dir| {
+        signature.appendSlice("\x00") catch @panic("OOM");
+        signature.appendSlice(include_dir) catch @panic("OOM");
+    }
+    return signature.items;
+}
+
+/// Every compile command this graph issues, deduplicated by signature.
+fn compileDbEntries(b: *std.Build) []const CompileDbEntry {
+    var candidates = std.ArrayList(CompileDbEntry).init(b.allocator);
+
+    // --- the host slice (#925) --------------------------------------------
+    for (slice) |member| {
+        var include_dirs = std.ArrayList([]const u8).init(b.allocator);
+        include_dirs.append(member.include_path) catch @panic("OOM");
+        include_dirs.appendSlice(&shared_include_paths) catch @panic("OOM");
+
+        candidates.append(.{
+            .file = member.c_suite_path,
+            .driver = host_c_driver,
+            .flags = &c_flags,
+            .include_dirs = include_dirs.items,
+            .object = b.fmt("host/{s}/{s}.o", .{
+                member.artifact_name,
+                std.fs.path.basename(member.c_suite_path),
+            }),
+        }) catch @panic("OOM");
+
+        for (support_c_sources) |support| {
+            candidates.append(.{
+                .file = support,
+                .driver = host_c_driver,
+                .flags = &c_flags,
+                .include_dirs = include_dirs.items,
+                .object = b.fmt("host/{s}/{s}.o", .{
+                    member.artifact_name,
+                    std.fs.path.basename(support),
+                }),
+            }) catch @panic("OOM");
+        }
+    }
+
+    // --- the vendored slice (#950) ----------------------------------------
+    // Three bars, in the order addVendoredCSuite passes them: the vendored TUs
+    // with the narrow SOUP suppression, the first-party drivers beside them at
+    // the stricter bar, then the suite at the plain host set.
+    for (vendored_c_sources) |source| {
+        candidates.append(.{
+            .file = source,
+            .driver = host_c_driver,
+            .flags = &vendored_soup_flags,
+            .include_dirs = &vendored_include_paths,
+            .object = b.fmt("soup/{s}.o", .{std.fs.path.basename(source)}),
+        }) catch @panic("OOM");
+    }
+    for (vendored_first_party_sources) |source| {
+        candidates.append(.{
+            .file = source,
+            .driver = host_c_driver,
+            .flags = &vendored_first_party_flags,
+            .include_dirs = &vendored_include_paths,
+            .object = b.fmt("soup/{s}.o", .{std.fs.path.basename(source)}),
+        }) catch @panic("OOM");
+    }
+    candidates.append(.{
+        .file = vendored_slice.c_suite_path,
+        .driver = host_c_driver,
+        .flags = &c_flags,
+        .include_dirs = &vendored_include_paths,
+        .object = b.fmt("soup/{s}.o", .{std.fs.path.basename(vendored_slice.c_suite_path)}),
+    }) catch @panic("OOM");
+
+    // --- the ARM cross slice (#936) ---------------------------------------
+    // The set a host database structurally cannot describe, and the reason
+    // build_cross_compile_db.py exists. Missing cross tools drop these rows
+    // rather than failing the step, the same skip the `arm` step takes; the
+    // count on `zig build parity` is what shows which of the two you got.
+    if (findArmTools(b)) |tools| {
+        var include_dirs = std.ArrayList([]const u8).init(b.allocator);
+        include_dirs.append(b.fmt("{s}/src", .{cross_app.dir})) catch @panic("OOM");
+        include_dirs.appendSlice(&cross_include_dirs) catch @panic("OOM");
+
+        const arm_flags = arm_cpu_flags ++ arm_debug_flags ++ arm_dialect_flags ++ arm_warning_flags;
+        for (crossSources(b)) |source| {
+            candidates.append(.{
+                .file = source,
+                .driver = tools.gcc,
+                .flags = &arm_flags,
+                .include_dirs = include_dirs.items,
+                .object = b.fmt("arm/{s}.o", .{std.fs.path.basename(source)}),
+            }) catch @panic("OOM");
+        }
+    }
+
+    var entries = std.ArrayList(CompileDbEntry).init(b.allocator);
+    var seen = std.StringHashMap(void).init(b.allocator);
+    for (candidates.items) |entry| {
+        const signature = compileDbSignature(b, entry);
+        if (seen.contains(signature)) continue;
+        seen.put(signature, {}) catch @panic("OOM");
+        entries.append(entry) catch @panic("OOM");
+    }
+    return entries.items;
+}
+
+fn appendJsonString(out: *std.ArrayList(u8), value: []const u8) void {
+    out.append('"') catch @panic("OOM");
+    for (value) |byte| switch (byte) {
+        '"' => out.appendSlice("\\\"") catch @panic("OOM"),
+        '\\' => out.appendSlice("\\\\") catch @panic("OOM"),
+        '\n' => out.appendSlice("\\n") catch @panic("OOM"),
+        '\t' => out.appendSlice("\\t") catch @panic("OOM"),
+        else => out.append(byte) catch @panic("OOM"),
+    };
+    out.append('"') catch @panic("OOM");
+}
+
+/// Wire the database into `step` and hand back how many commands it carries,
+/// so `zig build parity` can print the count without rebuilding the list.
+fn addCompileDb(b: *std.Build, step: *std.Build.Step) usize {
+    const entries = compileDbEntries(b);
+    const directory = b.build_root.path orelse ".";
+
+    var json = std.ArrayList(u8).init(b.allocator);
+    json.appendSlice("[\n") catch @panic("OOM");
+    for (entries, 0..) |entry, index| {
+        json.appendSlice("  {\n    \"directory\": ") catch @panic("OOM");
+        appendJsonString(&json, directory);
+        json.appendSlice(",\n    \"file\": ") catch @panic("OOM");
+        appendJsonString(&json, b.pathFromRoot(entry.file));
+        json.appendSlice(",\n    \"output\": ") catch @panic("OOM");
+        appendJsonString(&json, entry.object);
+        json.appendSlice(",\n    \"arguments\": [") catch @panic("OOM");
+        for (compileDbArguments(b, entry), 0..) |argument, argument_index| {
+            if (argument_index != 0) json.appendSlice(", ") catch @panic("OOM");
+            appendJsonString(&json, argument);
+        }
+        json.appendSlice("]\n  }") catch @panic("OOM");
+        if (index + 1 != entries.len) json.append(',') catch @panic("OOM");
+        json.append('\n') catch @panic("OOM");
+    }
+    json.appendSlice("]\n") catch @panic("OOM");
+
+    const written = b.addWriteFiles();
+    const database = written.add("compile_commands.json", json.items);
+    const install = b.addInstallFileWithDir(
+        database,
+        .{ .custom = "analysis" },
+        "compile_commands.json",
+    );
+    step.dependOn(&install.step);
+
+    const report = b.addSystemCommand(&.{
+        "printf",
+        "compile-db: %s compile commands -> zig-out/analysis/compile_commands.json\n",
+        b.fmt("{d}", .{entries.len}),
+    });
+    report.step.dependOn(&install.step);
+    step.dependOn(&report.step);
+
+    return entries.len;
 }
