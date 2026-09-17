@@ -105,6 +105,8 @@ nav:
       - "ADR-0003 Test-only internal headers": adr/0003-test-only-internal-headers.md
       - "ADR-0004 Deactivated-condition policy": adr/0004-deactivated-condition-policy.md
       - "ADR-0005 Multi-language documentation architecture": adr/0005-multi-language-documentation-architecture.md
+      - "ADR-0006 Sequencing naming/linkage legacy backlog": adr/0006-naming-linkage-backlog-sequencing.md
+      - "ADR-0007 Front-light driver interface": adr/0007-front-light-driver-interface.md
   - Toolchain and build:
       - Toolchain: TOOLCHAIN.md
       - IDE setup: IDE.md
