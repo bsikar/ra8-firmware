@@ -100,17 +100,17 @@ conversions. Every finding outside those exact scopes remains Code change debt.
 
 | ID    | Rule            | Category | Class             | Status   | MAR        | Findings | Files |
 |-------|-----------------|----------|-------------------|----------|------------|---------:|------:|
-| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 13516 | 686 |
+| D-001 | misra-c2012-15.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 13528 | 690 |
 | D-002 | misra-c2012-17.3 | Mandatory | Tooling gap       | Active   | 2026-11-02 | 558 | 167 |
 | D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 | 5 | 3 |
-| D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 | 365 | 112 |
+| D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 | 371 | 114 |
 | D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 | 2092 | 389 |
 | D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 | 23 | 6 |
 | D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 | 87 | 40 |
 | D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 | 42 | 8 |
 | D-009 | misra-c2012-9.5  | Required  | Tooling gap       | Active   | 2026-11-02 | 10 | 6 |
-| D-010 | misra-c2012-11.5 | Advisory  | Project deviation | Active   | 2027-08-03 | 726 | 217 |
-| D-011 | misra-c2012-11.6 | Required  | Project deviation | Active   | 2027-08-21 | 52 | 29 |
+| D-010 | misra-c2012-11.5 | Advisory  | Project deviation | Active   | 2027-08-03 | 734 | 219 |
+| D-011 | misra-c2012-11.6 | Required  | Project deviation | Active   | 2027-08-21 | 53 | 30 |
 | D-012 | misra-c2012-21.1 | Required  | Project deviation | Active   | 2027-08-21 | 23 | 10 |
 | D-013 | misra-c2012-5.5  | Required  | Project deviation | Active   | 2027-09-12 | 15 | 3 |
 | D-014 | misra-c2012-21.2 | Required  | Project deviation | Active   | 2027-09-12 | 16 | 2 |
@@ -140,8 +140,8 @@ embeds them in the dumps handed to `misra.py`, so a suppressed finding
 never reaches the results (verified on the pinned binary, 2026-08-15) --
 then `misra_ratchet.py` freezes that population in the baseline below.
 
-Baseline: 20014 findings across 2710 file/rule rows (Cppcheck 2.13.0).
-Residual (no deviation record): 51 rules, 2375 findings, 1007 rows.
+Baseline: 20080 findings across 2737 file/rule rows (Cppcheck 2.13.0).
+Residual (no deviation record): 52 rules, 2414 findings, 1025 rows.
 The 2026-08-27 refresh removed 2,102 C23 Rule 9.2 false positives,
 four POSIX Rule 17.3 false positives, and 53 genuine findings through reviewed
 source fixes. The resulting 2,159-finding reduction had zero bucket growth
@@ -471,7 +471,7 @@ configured to leave redundant parentheses untouched.
 
 ### Population, review record, and reconciliation
 
-Current population: 365 findings across 112 files (machine-checked
+Current population: 371 findings across 114 files (machine-checked
 index above; per-file inventory in the committed baseline). It
 partitions into three parts; only the first is formally accepted:
 
