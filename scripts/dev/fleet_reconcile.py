@@ -16,7 +16,7 @@ import sys
 import tempfile
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from threading import Thread
 from typing import Any, TextIO
@@ -40,6 +40,7 @@ import fleet_reconcile_freeze_selftest as frf
 import fleet_reconcile_frozen_selftest as frfz
 import fleet_reconcile_interrupt_selftest as fri
 import fleet_reconcile_lift_selftest as frlt
+import fleet_reconcile_locked_selftest as frlo
 import fleet_reconcile_opener_selftest as frop
 import fleet_reconcile_orphan_selftest as fro
 import fleet_reconcile_park_escalation_selftest as frpe
@@ -1973,6 +1974,67 @@ def pass_verdict(
     return 1 if failures else 0
 
 
+def locked_out_options(options: ReconcileOptions) -> ReconcileOptions:
+    """Return this pass's policy as what a pass without the mutation lock really is.
+
+    An apply pass names every recorded host as it goes, because it is the pass
+    that records or ages the entry.  A pass that never took the lock ages
+    nothing and must write nothing, so its records are read out the way a dry
+    run reads them, below-threshold entries included.
+    """
+    return replace(options, mode="check")
+
+
+def locked_out_verdict(data: dict[str, Any], options: ReconcileOptions) -> int:
+    """Read out the zero-capacity records a pass that never got the lock cannot act on.
+
+    Another controller owning the fleet mutation lock is ordinary and expected:
+    an operator's own ``just infra::apply``, a capacity change by hand, or the
+    previous reconcile pass still finishing.  The pass returned
+    ``fml.LOCK_BUSY_STATUS`` before it read anything at all, though, and that
+    status is EX_TEMPFAIL: retry later, somebody else is working.  Over a fleet
+    this controller has already taken to ZERO capacity it says the wrong thing
+    entirely.  Both zero-capacity records exist because a fleet held at zero has
+    to get LOUDER rather than quieter, and a lock holder that is stuck, crashed,
+    or merely long-running silenced them for as long as it lasts: every pass
+    exited 75, said nothing whatever about the hosts sitting at zero, and
+    nothing ever escalated.  A fleet at zero that reads like somebody else's
+    work in progress is issue #888 itself, arriving before the pass even starts.
+
+    Reading the records persists nothing and mutates nothing, so it needs no
+    lock at all, which is exactly the reasoning that lets ``--mode check`` read
+    them and earn a verdict off them.  Nothing here ages, prunes, records or
+    clears an entry: the lock holder may be writing the state file underneath
+    this pass, so what the records already say is read out as it stands, and
+    state this pass cannot read leaves the busy lock as the only thing it can
+    honestly report.
+    """
+    try:
+        order = runner_hosts(data)
+        document = load_state(options.state_dir / STATE_FILE)
+        stranding = load_stranding(document)
+        parked = load_parked(document)
+    except (OSError, TypeError, ValueError) as error:
+        print(
+            "fleet-reconcile: WARNING: the zero-capacity records could not be read while "
+            f"another controller holds the mutation lock ({error}); this pass can report "
+            "only the busy lock, so anything already held at zero goes unreported",
+            file=sys.stderr,
+        )
+        return fml.LOCK_BUSY_STATUS
+    escalated = pass_escalations(stranding, order, locked_out_options(options), parked)
+    if not escalated:
+        return fml.LOCK_BUSY_STATUS
+    print(
+        "fleet-reconcile: CRITICAL: another controller holds the mutation lock, so this "
+        "pass could not even attempt to lift the host(s) it is holding at ZERO capacity: "
+        f"{', '.join(escalated)}; a lock holder that never finishes leaves this fleet at "
+        "zero for as long as it lasts",
+        file=sys.stderr,
+    )
+    return STRANDED_STATUS
+
+
 def reconcile(
     data: dict[str, Any],
     options: ReconcileOptions,
@@ -2653,6 +2715,7 @@ def selftest() -> int:
     failures.extend(frpe.run(sys.modules[__name__]))
     failures.extend(frpk.run(sys.modules[__name__]))
     failures.extend(frlt.run(sys.modules[__name__]))
+    failures.extend(frlo.run(sys.modules[__name__]))
     failures.extend(frsv.run(sys.modules[__name__]))
     failures.extend(fru.run(sys.modules[__name__]))
     failures.extend(frrc.run(sys.modules[__name__]))
@@ -2739,7 +2802,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return frp.interrupted_status() or status
     except fml.MutationLockBusyError as error:
         print(f"fleet-reconcile: {error}", file=sys.stderr)
-        return fml.LOCK_BUSY_STATUS
+        return locked_out_verdict(data, options)
     except (
         fml.MutationLockError,
         OSError,
