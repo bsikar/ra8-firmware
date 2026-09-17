@@ -3,6 +3,9 @@
  * @brief Pin Function Select (PFS) register layout for the Renesas RA8D2
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: MIXED}
+ *
  * @details
  * Every GPIO pin on an RA8D2 has a 32-bit `PmnPFS` register inside the
  * PFS block at `0x40400800`. The register controls direction, output
