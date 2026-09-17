@@ -3,6 +3,9 @@
  * @brief `.npub` linkable-blob container for a Vela-compiled Ethos-U55 model
  * @ingroup grp_hal_system
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
  * @details
  * Defines the small, first-party, little-endian container the OFFLINE Vela build
  * step (`tools/vela/src/vela_gen.py`) emits and the ON-TARGET loader
