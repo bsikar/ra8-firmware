@@ -6,8 +6,12 @@
 # Top-level integration of the vendored LevelX wear-levelling library.
 # Exposes the `RA8_USE_LEVELX` option; when ON, this file:
 #
-#   1. Verifies that ThreadX is also enabled (LevelX's protection
-#      macros call `tx_mutex_*` unless `LX_STANDALONE_ENABLE` is on).
+#   1. Verifies that ThreadX is also enabled. LevelX's public header
+#      `lx_api.h` includes `tx_api.h` unconditionally unless
+#      `LX_STANDALONE_ENABLE` is defined, so a non-standalone LevelX
+#      TU cannot compile without ThreadX's include tree. This is a
+#      header dependency, not a mutex dependency: see the note on the
+#      fail-loud check below.
 #   2. Compiles `libs/third_party/levelx/common/src/lx_nor_*.c` into a
 #      single `levelx` interface library. NAND sources and the
 #      simulator drivers are excluded -- this firmware uses LevelX's
@@ -35,16 +39,30 @@ if(NOT RA8_USE_LEVELX)
   return()
 endif()
 
-# LevelX's protection macros call `tx_mutex_get` / `tx_mutex_put`
-# unless `LX_STANDALONE_ENABLE` is forced. We do not enable standalone
-# mode (the demo app runs ThreadX anyway), so the build must also
-# pull in ThreadX. Surface a clear error if it is not enabled.
+# `lx_api.h` does `#include "tx_api.h"` whenever `LX_STANDALONE_ENABLE`
+# is absent (levelx/common/inc/lx_api.h:70-71). This file is the
+# non-standalone integration -- `cmake/levelx_standalone.cmake` is the
+# other mode -- so every LevelX TU here needs ThreadX's headers to
+# preprocess at all. Surface a clear error if ThreadX is not enabled.
+#
+# Thread safety is a SEPARATE, unrelated switch. Every `tx_mutex_*`
+# call in the vendored NOR sources, and the `lx_nor_flash_mutex` field
+# they act on, sit behind `#ifdef LX_THREAD_SAFE_ENABLE`
+# (lx_api.h:611; lx_nor_flash_{open_extended,close,defragment,
+# extended_cache_enable,partial_defragment,sector_read,sector_release,
+# sector_write}.c). Nothing in this tree defines that macro, and this
+# target does not define `LX_INCLUDE_USER_DEFINE_FILE` either, so
+# `lx_user.h` is never pulled in to define it. No mutex call is
+# compiled in this configuration; do not claim otherwise here.
 if(NOT RA8_USE_THREADX)
   message(
     FATAL_ERROR
-      "RA8_USE_LEVELX=ON requires RA8_USE_THREADX=ON. LevelX's protection "
-      "macros call tx_mutex_get / tx_mutex_put. Enable both options "
-      "(or include cmake/threadx.cmake before cmake/levelx.cmake)."
+      "RA8_USE_LEVELX=ON requires RA8_USE_THREADX=ON. LevelX's lx_api.h "
+      "includes tx_api.h unless LX_STANDALONE_ENABLE is defined, so the "
+      "vendored NOR sources cannot compile without ThreadX's headers. "
+      "Enable both options (or include cmake/threadx.cmake before "
+      "cmake/levelx.cmake), or use cmake/levelx_standalone.cmake for a "
+      "ThreadX-free LevelX."
   )
 endif()
 
