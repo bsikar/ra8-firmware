@@ -32,6 +32,7 @@
 #include <stdint.h>
 
 #include "ra8_attributes.h"
+#include "ra8_error_interface.h"
 #include "ra8_scb.h"
 
 /* =============================================================================
@@ -743,3 +744,61 @@ const char* ra8_err_to_str(ra8_err_t err)
   }
   return "unknown";
 }
+
+/* =============================================================================
+ * Concrete error-sink DI instance (declared in ra8_error_interface.h)
+ * =============================================================================
+ *
+ * `ra8_error_interface.h` publishes the non-fatal error-reporter vtable and an
+ * `extern` for the production instance, and `docs/ARCHITECTURE.md` names
+ * `g_ra8_error_sink_log` as the instance that "pushes reports into the standard
+ * `ra8_log_error_val` backend" -- but no definition existed anywhere in the
+ * tree (issue #1194), so the seam could be included and never linked. The sink
+ * lives HERE rather than in a new translation unit because the backend it
+ * forwards to is this file: a driver that reports through the vtable and a
+ * driver that calls `ra8_log_error_val` directly then reach the same emitter,
+ * and there is no second place for the two to drift apart.
+ */
+
+/**
+ * @brief `ra8_error_interface_t::report` thunk over the log backend.
+ *
+ * @details Emits one ERROR line carrying the caller's tag, message and the
+ *          numeric error code, which is what ::ra8_log_error_val renders as
+ *          `=<decimal>`. `ra8_err_t` is a `uint16_t`-backed C23 enum, so the
+ *          widening cast to the backend's `uint32_t` value parameter is
+ *          value-preserving and unsigned on both sides.
+ *
+ * @param[in] ctx Unused -- the log sink keeps no per-instance state.
+ * @param[in] tag Short component tag; must not be NULL.
+ * @param[in] msg Human-readable message; must not be NULL.
+ * @param[in] err Error code reported by the caller.
+ *
+ * @pre `ra8_log_init()` has run (same as any other `ra8_log_*` caller).
+ * @post One ERROR log line emitted or dropped by the backend.
+ * @post No caller-visible state modified.
+ *
+ * @note Every parameter is discarded explicitly as well as used, because under
+ *       `-DRA8_LOG_LEVEL=0` ::ra8_log_error_val expands to `((void)0)` and an
+ *       otherwise-unused parameter would break the project's -Werror build.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
+static void internal_error_sink_log_report(void*       ctx,
+                                           const char* tag,
+                                           const char* msg,
+                                           ra8_err_t   err)
+{
+  (void)ctx;
+  (void)tag;
+  (void)msg;
+  (void)err;
+  ra8_log_error_val(tag, msg, (uint32_t)err);
+}
+
+const ra8_error_interface_t g_ra8_error_sink_log = {
+    .report = internal_error_sink_log_report,
+    .ctx    = nullptr,
+};
