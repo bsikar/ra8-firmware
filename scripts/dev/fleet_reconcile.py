@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fleet_model as fm
 import fleet_mutation_lock as fml
 import fleet_reconcile_activation_selftest as frac
+import fleet_reconcile_admission_selftest as frad
 import fleet_reconcile_aging_selftest as fra
 import fleet_reconcile_arc_selftest as fras
 import fleet_reconcile_backoff_selftest as frb
@@ -126,6 +127,16 @@ RECAP_RE = re.compile(
     r"unreachable=(\d+)\s+failed=(\d+)\s+skipped=(\d+)\s+"
     r"rescued=(\d+)\s+ignored=(\d+)\s*$"
 )
+
+
+# `capacity-restore` converges live admission to the host's CURRENT window
+# target and says which one: the declared instance count on a host with no
+# quiet-hours block, and the quiet-hours count inside a declared window, which
+# infra/fleet.yml sets to ZERO instances for win-ci.  A restore that converged
+# admission to zero therefore returns cleanly with no runner capacity in
+# service at all, and a live scale is temporary by construction, so the
+# declaration knows nothing about it and a check run after it verifies.
+RESTORE_TARGET_RE = re.compile(r"restoring current window target (\d+)\b")
 
 
 class DrainFailedError(RuntimeError):
@@ -347,6 +358,67 @@ def quarantine(host: str, run: CommandRunner) -> None:
         raise DrainFailedError(host, result.status)
 
 
+def restored_admission(output: str) -> int | None:
+    """Return the live admission target one capacity restore reported converging to.
+
+    ``None`` when the restore said nothing about it, which is what an older
+    host-local copy of the capacity script does: nothing is then claimed in
+    either direction and the caller's existing evidence stands alone.
+    """
+    targets = RESTORE_TARGET_RE.findall(ANSI_RE.sub("", output))
+    return int(targets[-1]) if targets else None
+
+
+def restore_admission(host: str, result: frp.CommandResult) -> int | None:
+    """Read what a restore put back in service, saying so when it put nothing.
+
+    The controller took a clean ``capacity-restore`` as proof that a host is
+    serving again, and on the docker arm confirmed it with an ordinary check.
+    That check reads the DECLARATION, and a live capacity change is temporary
+    by construction, so the declaration is converged either way and the check
+    verifies whatever admission the host actually holds.  A restore converges
+    admission to the host's current window target, which is zero inside a
+    declared quiet-hours window, so a pass could restore a host to ZERO
+    instances and then publish a receipt stamped ``full_applied_at``, clear the
+    host's stranded-at-zero record as "serving again", and exit 0.  That is
+    issue #888's own dry-run evidence, a fleet still DECLARED for its runners
+    while it serves none of them, and the restore had already printed the
+    number that said so.
+    """
+    target = restored_admission(result.stdout)
+    if target != 0:
+        return target
+    print(
+        f"fleet-reconcile: WARNING: {host}: capacity-restore converged live admission "
+        "to its CURRENT window target of ZERO instances; the declaration is converged "
+        "and NO runner capacity is in service, whatever this fleet declares for it",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def report_reopen_without_capacity(host: str) -> None:
+    """Refuse to call a reopen that put no capacity back in service a recovery.
+
+    Reopening last-known-good capacity exists to undo a fail-closed drain that
+    cost the fleet healthy capacity for a fault that never touched the host, so
+    a reopen whose own target was zero recovered nothing: the host stays at
+    zero admission and has to be RECORDED there, or the controller escalates
+    nothing however long it sits (issue #888).  It is deliberately not drained
+    again on the way out: the host already holds zero admission, and a durable
+    maintenance park would also defeat the host-local window timer that raises
+    it when the window ends.
+    """
+    print(
+        f"fleet-reconcile: WARNING: {host}: last-known-good capacity was NOT reopened "
+        "(the restore's own window target was zero instances), so this host is left "
+        "recorded at ZERO capacity rather than reported as serving; it is not drained "
+        "again, because a durable maintenance park would also hold it down past the "
+        "window that would otherwise raise it",
+        file=sys.stderr,
+    )
+
+
 def recover_last_known_good(
     data: dict[str, Any],
     host: str,
@@ -382,9 +454,22 @@ def recover_last_known_good(
 
 
 def _activate_arc(
-    data: dict[str, Any], host: str, run: CommandRunner, expected_changes: int
+    data: dict[str, Any],
+    host: str,
+    run: CommandRunner,
+    expected_changes: int,
+    *,
+    require_admission: bool = False,
 ) -> tuple[bool, int]:
-    """Validate declared ARC authority at zero before the sole capacity opener."""
+    """Validate declared ARC authority at zero before the sole capacity opener.
+
+    ``require_admission`` is set by a RECOVERY reopen, whose whole claim is
+    that capacity is back in service: a restore that converged admission to
+    zero has not recovered anything and must not be reported as though it had.
+    An ordinary apply leaves it unset, because converging the declaration is
+    what that transaction claims and a zero window target is the operator's own
+    policy rather than a failure to converge.
+    """
     activation = run(fleet_command(host, "activate"))
     emit_result(activation)
     if activation.status or frp.interrupted_status():
@@ -398,6 +483,9 @@ def _activate_arc(
     emit_result(restore)
     if restore.status or frp.interrupted_status():
         quarantine(host, run)
+        return False, 0
+    if require_admission and restore_admission(host, restore) == 0:
+        report_reopen_without_capacity(host)
         return False, 0
     return True, 0
 
@@ -433,12 +521,15 @@ def reopen_capacity(
     through the class's real opener, or hold the host at zero.
     """
     if capacity_opener(data, host) == "k8s":
-        opened, _ = _activate_arc(data, host, run, held_changes)
+        opened, _ = _activate_arc(data, host, run, held_changes, require_admission=True)
         return opened
     restore = run(fleet_command(host, "restore"))
     emit_result(restore)
     if restore.status or frp.interrupted_status():
         quarantine(host, run)
+        return False
+    if restore_admission(host, restore) == 0:
+        report_reopen_without_capacity(host)
         return False
     clean, changed = inspect_host(data, host, run)
     if not clean or changed != serving_changes or frp.interrupted_status():
@@ -591,6 +682,7 @@ def apply_host(  # noqa: PLR0913  # transaction inputs plus its recovery hook
     if restore.status or frp.interrupted_status():
         quarantine(host, run)
         return False, 0
+    restore_admission(host, restore)
     clean, changed = inspect_host(data, host, run)
     if not clean or changed != expected_check_changes or frp.interrupted_status():
         quarantine(host, run)
@@ -2036,6 +2128,7 @@ def selftest() -> int:
     _selftest_postcheck_quarantine(failures)
     _selftest_restore_quarantine(failures)
     failures.extend(frac.run(sys.modules[__name__]))
+    failures.extend(frad.run(sys.modules[__name__]))
     failures.extend(fra.run(sys.modules[__name__]))
     failures.extend(fras.run(apply_host))
     failures.extend(frr.run(sys.modules[__name__]))
