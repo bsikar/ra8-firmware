@@ -381,14 +381,13 @@ RA8_INTERNAL static void internal_test_classify_null_guards(void)
  * @param[in] tail Sequence number.
  * @param[in] want The expected 11-byte packed alias.
  *
- * @return Nothing; a mismatch is reported by the harness.
- *
  * @pre @p leaf and @p want are non-NULL; @p want is 11 characters.
  * @pre @p tail is at least 1.
  * @post The generated alias equalled @p want byte for byte.
  * @post No state outside the local buffer is modified.
+ * @post A mismatch reports through ::TEST_FAIL_FMT, which exits with status 1.
  *
- * @note Not thread-safe (uses the harness's failure counter).
+ * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0 @details Implements the bounded expect alias fixture step using caller-owned state.
  */
 RA8_INTERNAL static void internal_expect_alias(const char* leaf, uint32_t tail, const char* want)

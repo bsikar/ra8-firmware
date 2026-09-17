@@ -141,9 +141,9 @@ internal_chain_walk(const ra8_fs_mount_t* h, uint32_t first, uint32_t* out, uint
  * branching does not push the caller's loop past the nesting-depth cap.
  * @param[in] seen_cluster One cluster index from the walked chain.
  * @param[in] taken Cluster index that must not reappear in the chain.
- * @return Nothing; a match fails the test via ::TEST_FAIL_FMT.
  * @pre None.
  * @post No state is modified.
+ * @post A match reports through ::TEST_FAIL_FMT, which exits with status 1.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
@@ -169,12 +169,11 @@ RA8_INTERNAL static void internal_expect_not_taken(uint32_t seen_cluster, uint32
  * @param[in] total The file's `DataLength` in bytes.
  * @param[in] taken A cluster the chain must NOT visit (the blocker's).
  *
- * @return Nothing; every check is asserted inside.
- *
  * @pre @p h is mounted and @p first is a data cluster.
  * @pre The file is closed, so its entry set is committed.
  * @post No state is modified.
  * @post A pass means the chain is walkable end to end.
+ * @post A failing check exits the test executable with status 1.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
@@ -425,12 +424,11 @@ RA8_INTERNAL static void internal_test_stream_multi_cluster_run_materializes(voi
  * @param[in,out] h     Mounted exFAT volume.
  * @param[in]     total The file's full length.
  *
- * @return Nothing; every check is asserted inside.
- *
  * @pre @p h is mounted and `SEEK.BIN` exists at @p total bytes.
  * @pre No handle is open on it.
  * @post The file is closed again.
  * @post No on-disk state is modified.
+ * @post A failing check exits the test executable with status 1.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0

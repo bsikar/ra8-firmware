@@ -354,12 +354,11 @@ static const char* const s_showcase_files[] = {s_acc_u8, s_cjk_u8, s_emoji_u8};
  *
  * @param[in,out] h Mounted exFAT volume, empty on entry.
  *
- * @return Nothing; every step is asserted as it happens.
- *
  * @pre @p h is a freshly formatted, mounted volume.
  * @pre Nothing is open on it.
  * @post The root holds ::s_showcase_dirs and ::s_showcase_files.
  * @post The first folder holds one non-ASCII file.
+ * @post A failing step exits the test executable with status 1.
  *
  * @note Not thread-safe.
  * @since 0.1.0
@@ -400,12 +399,11 @@ RA8_INTERNAL static void internal_showcase_populate(ra8_fs_mount_t* h)
  *
  * @param[in,out] h Mounted exFAT volume, populated by ::showcase_populate().
  *
- * @return Nothing; every expectation is asserted as it is checked.
- *
  * @pre ::showcase_populate() has run on @p h.
  * @pre Nothing is open on it.
  * @post No on-disk state is modified.
  * @post Every name was reported under the exact spelling it was created with.
+ * @post A failing check exits the test executable with status 1.
  *
  * @note Not thread-safe.
  * @since 0.1.0

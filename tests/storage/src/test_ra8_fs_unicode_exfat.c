@@ -166,12 +166,11 @@ RA8_INTERNAL static void internal_expand_volume_upcase(uint32_t base, uint32_t w
  * @param[in]  h        Mounted exFAT volume.
  * @param[out] out_csum Receives the up-case entry's stored TableChecksum.
  *
- * @return Nothing; a missing table is reported by the harness.
- *
  * @pre @p h is mounted, exFAT, and backed by the fixture's RAM disk.
  * @pre @p out_csum is non-NULL.
  * @post ::s_volume_upcase holds one entry per BMP code unit.
  * @post No volume state is modified.
+ * @post A missing up-case entry reports through ::TEST_FAIL_FMT and exits the run.
  *
  * @note Not thread-safe (writes the suite singleton).
  * @since 0.1.0

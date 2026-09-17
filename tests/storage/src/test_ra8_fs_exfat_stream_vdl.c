@@ -118,12 +118,11 @@ RA8_INTERNAL static void internal_repair_checksum(const ra8_fs_mount_t* h)
  *
  * @param[in] h Mounted exFAT volume.
  *
- * @return Nothing; failures assert inside.
- *
  * @pre @p h is mounted with an empty root directory.
  * @pre The fixture's RAM disk is present.
  * @post `VDL.BIN` exists with `ValidDataLength < DataLength`.
  * @post Every byte of its allocation reads as ::k_xsv_residue on the media.
+ * @post A failing step exits the test executable with status 1.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
@@ -150,10 +149,10 @@ RA8_INTERNAL static void internal_make_partly_valid_file(ra8_fs_mount_t* h)
  * @param[in] buf Bytes read back from the file under test.
  * @param[in] len Number of bytes in @p buf to check.
  * @param[in] valid_len Byte offset at or past which zero is expected.
- * @return Nothing; a mismatch fails the running test.
  * @pre @p buf addresses at least @p len readable bytes.
  * @pre @p valid_len is within `[0, len]`.
  * @post Every byte up to the first mismatch (if any) has been asserted.
+ * @post A mismatch reports through ::TEST_FAIL_FMT, which exits with status 1.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
@@ -230,10 +229,10 @@ RA8_INTERNAL static void internal_test_stream_read_past_valid_is_zero(void)
  * append had to fill, and the appended stream past the old length.
  * @param[in] buf Bytes read back from the file under test.
  * @param[in] total The file's length after the append.
- * @return Nothing; a mismatch fails the running test.
  * @pre @p buf addresses at least @p total readable bytes.
  * @pre @p total is at least ::k_xs_multi_cluster.
  * @post Every byte up to the first mismatch (if any) has been asserted.
+ * @post A mismatch reports through ::TEST_FAIL_FMT, which exits with status 1.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
@@ -264,12 +263,11 @@ RA8_INTERNAL static void internal_expect_three_region_bytes(const uint8_t* buf, 
  * @param[in,out] h     Mounted exFAT volume.
  * @param[in]     total The file's length after the append.
  *
- * @return Nothing; every check is asserted inside.
- *
  * @pre @p h is mounted and `VDL.BIN` exists at @p total bytes.
  * @pre No handle is open on it.
  * @post The file is closed again.
  * @post No on-disk state is modified.
+ * @post A failing check exits the test executable with status 1.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0

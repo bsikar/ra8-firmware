@@ -403,9 +403,9 @@ internal_write_clusters(ra8_fs_mount_t* h, const char* path, uint32_t clusters)
  *          counted against a dedicated function rather than the test body.
  * @param[in] small_reads Backend reads measured for the small write.
  * @param[in] large_reads Backend reads measured for the large write.
- * @return Nothing; failures to write the report are silently ignored.
  * @pre None beyond the caller having already measured both counts.
  * @post Nothing outside stdout is modified.
+ * @post Diagnostic write failures are ignored, so broken output cannot fail the run.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
@@ -433,9 +433,9 @@ RA8_INTERNAL static void internal_report_alloc_perf_reads(uint32_t small_reads,
  *          regression that still passes the absolute bound.
  * @param[in] small_reads Backend reads measured for the small write.
  * @param[in] large_reads Backend reads measured for the large write.
- * @return Nothing; a bound violation fails the enclosing test.
  * @pre None beyond the caller having already measured both counts.
  * @post Nothing is modified; this only asserts.
+ * @post A bound violation reports through ::TEST_FAIL_FMT, which exits with status 1.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */

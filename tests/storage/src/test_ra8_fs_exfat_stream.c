@@ -270,12 +270,11 @@ RA8_INTERNAL static void internal_test_stream_truncate_in_place(void)
  * @param[in]     at   File offset the patch starts at.
  * @param[in]     len  Length of the patch.
  *
- * @return Nothing; every check is asserted inside.
- *
  * @pre @p h is mounted and `PATCH.BIN` exists at its full length.
  * @pre No handle is open on it.
  * @post The file is closed again.
  * @post No on-disk state is modified.
+ * @post A failing check exits the test executable with status 1.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0

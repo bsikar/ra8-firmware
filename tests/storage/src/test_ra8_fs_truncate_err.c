@@ -179,11 +179,11 @@ RA8_INTERNAL static void internal_free_volume(void)
  * @brief Format a card of @p blocks sectors as @p type, faults disarmed.
  * @param[in] blocks Sector count.
  * @param[in] type   FAT or exFAT variant.
- * @return Nothing; a failure asserts inside.
  * @pre @p type is a supported variant; @p blocks fits it.
  * @pre No fault is armed during the format.
  * @post ::s_disk holds a mountable volume and both fault ordinals are 0.
  * @post The read/write counters are zero.
+ * @post A calloc or format failure exits the test executable with status 1.
  * @note Not thread-safe.
  * @since 0.1.0 @details Implements the bounded build volume fixture step using caller-owned state.
  */
@@ -227,11 +227,11 @@ RA8_INTERNAL static uint32_t internal_cbytes_of(const ra8_fs_mount_t* h)
  * @param[in,out] h    Mounted volume, faults disarmed.
  * @param[in]     name File to create.
  * @param[in]     len  Bytes to write.
- * @return Nothing; every step asserts inside.
  * @pre @p h is mounted; no fault is armed.
  * @pre @p len fits the volume.
  * @post @p name holds @p len fill bytes.
  * @post No handle is left open.
+ * @post A failing step exits the test executable with status 1.
  * @note Not thread-safe.
  * @since 0.1.0 @details Implements the bounded seed file fixture step using caller-owned state.
  */
@@ -267,10 +267,10 @@ RA8_INTERNAL static void internal_seed_file(ra8_fs_mount_t* h, const char* name,
  * @param[in]     new_size Target length.
  * @param[in]     read_at  Read ordinal to fail (0 = none).
  * @param[in]     write_at Write ordinal to fail (0 = none).
- * @return Nothing; the call must not crash.
  * @pre @p h is mounted and @p name exists.
  * @pre At most one of @p read_at / @p write_at is non-zero.
- * @post Both fault ordinals are disarmed on return.
+ * @post Both fault ordinals are disarmed once the verb has run.
+ * @post A failed reopen returns early, before either ordinal is armed.
  * @post No handle is left open.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
@@ -307,11 +307,11 @@ RA8_INTERNAL static void internal_arm_and_truncate(ra8_fs_mount_t* h,
  * @param[in] type     Filesystem to format.
  * @param[in] old_mult Starting file size, in clusters.
  * @param[in] new_size Truncate target in bytes.
- * @return Nothing; a crash or hang fails the run.
  * @pre @p type is supported and @p blocks fits it.
  * @pre `old_mult >= 1`.
  * @post Every volume built is released.
  * @post Both fault ordinals are disarmed.
+ * @post A mount failure exits the test executable; a crash or hang ends the run.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */

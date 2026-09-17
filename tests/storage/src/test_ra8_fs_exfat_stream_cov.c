@@ -709,12 +709,11 @@ RA8_INTERNAL static void internal_test_survey_zero_length_with_cluster(void)
  * @param[in,out] other Second mount of the same volume.
  * @param[in]     deep  A byte offset inside the file's second cluster.
  *
- * @return Nothing; every step is asserted inside.
- *
  * @pre @p other is mounted and `A.BIN` exists with at least two clusters.
  * @pre @p deep is below the file's length.
  * @post The cached FAT sector belongs to @p other.
  * @post No on-disk state is modified.
+ * @post A failing step exits the test executable with status 1.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0

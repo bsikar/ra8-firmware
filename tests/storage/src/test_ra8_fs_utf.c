@@ -105,14 +105,13 @@ typedef enum : uint32_t {
  * @param[in]  want_units Expected UTF-16 unit count.
  * @param[out] out        Receives the units.
  *
- * @return Nothing; a mismatch is reported by the harness.
- *
  * @pre @p in and @p out are non-NULL; @p out holds ::k_ut_units units.
  * @pre @p in is expected to be well-formed UTF-8.
  * @post @p out holds @p want_units units.
  * @post No state outside @p out is modified.
+ * @post A failing check exits the test executable with status 1.
  *
- * @note Not thread-safe (uses the harness's failure counter).
+ * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0 @details Implements the bounded decode ok fixture step using caller-owned state.
  */
 RA8_INTERNAL static void internal_decode_ok(const char* in, uint32_t want_units, uint16_t* out)
@@ -130,15 +129,14 @@ RA8_INTERNAL static void internal_decode_ok(const char* in, uint32_t want_units,
  *
  * @param[in] in NUL-terminated byte vector that is not valid UTF-8.
  *
- * @return Nothing; a mismatch is reported by the harness.
- *
  * @pre @p in is non-NULL.
  * @pre @p in is expected to be malformed.
  * @post The unit count was reset to zero, so a caller ignoring the code sees
  *       an empty name rather than a truncated one.
  * @post No state outside the local buffer is modified.
+ * @post A failing check exits the test executable with status 1.
  *
- * @note Not thread-safe (uses the harness's failure counter).
+ * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_decode_rejects(const char* in)
