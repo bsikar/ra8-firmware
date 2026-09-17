@@ -164,6 +164,22 @@ ra8_add_zig_library(
   ra8_lsm6dso
 )
 
+# Fully migrated: the per-endpoint packet rings, the two MC/DC-promoted
+# predicates, the ra8_usb status -> PAL event translation and the whole public
+# surface are Zig now, so libs/ra8_usb_pal/src has no .c left and the
+# RA8_USB_PAL_SOURCES glob is gone from library_sources.cmake and
+# core_hal.cmake. src/ra8_usb_pal_internal.h stays: the host suite includes it
+# to drive the two promoted predicates, which the Zig archive exports under the
+# same names. The Ring-3 ra8_usb driver stays a link-time seam.
+ra8_add_zig_library(
+  NAME
+  ra8_usb_pal
+  ZIG_ROOT
+  ${FW_ROOT}/libs/ra8_usb_pal
+  LIBRARY_NAME
+  ra8_usb_pal
+)
+
 # ra8_core_hal is the OBJECT library every host test links, so an INTERFACE
 # link here reaches each test executable that pulls in a migrated library.
 target_link_libraries(
@@ -180,4 +196,5 @@ target_link_libraries(
          ra8_zig::ra8_mpu
          ra8_zig::ra8_net_pal
          ra8_zig::ra8_lsm6dso
+         ra8_zig::ra8_usb_pal
 )
