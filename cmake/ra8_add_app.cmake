@@ -517,6 +517,18 @@ function(ra8_add_cpu1_image)
   # TUs (ra8_gfx / ra8_ipc / ra8_rabook on the M33 side) via per-source opt-in in
   # those apps' own CMakeLists; those TUs are still -Werror-gated in the M85
   # builds where they are also compiled.
+  #
+  # That remaining hole is now MEASURED rather than described. Every app-added
+  # first-party CPU1 translation unit is an explicit row in
+  # .github/cpu1-warning-profile-baseline.txt, judged by
+  # scripts/checks/check_cpu1_warning_profile.py: a new first-party M33 source
+  # outside this profile fails the gate, and a row that stops escaping must be
+  # deleted, so the list can only shrink toward T1-09 (#843). Vendored SOUP is
+  # classified separately and stays outside the first-party bar on purpose.
+  # The checker also scans CPU1 images an app hand-rolls with its own
+  # add_executable() + -mcpu=cortex-m33 instead of this helper (cpu1_pingpong,
+  # cpu1_pingpong_ipc): those give NO source the profile, cpu1_main.c included,
+  # so all of their first-party TUs are inventory rows.
   # The extended warning profile, spelled as a list so no single line runs
   # past the 100-column limit. COMPILE_OPTIONS takes a ;-separated list,
   # which is exactly what set() builds from these arguments.

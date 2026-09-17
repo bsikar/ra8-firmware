@@ -1,0 +1,60 @@
+# CPU1 (Cortex-M33) first-party warning-profile escape inventory -- issue #843.
+#
+# Each row is a FIRST-PARTY translation unit on a CPU1 executable that
+# ra8_add_cpu1_image()'s per-source profile (-Wall -Wextra -Werror ...
+# -Wstack-usage=2048 -fstack-usage) never reaches: it compiles at
+# -mcpu=cortex-m33 ... -Os with no warning flags and emits no .su stack data.
+# These are the sources #843 must bring onto the bar. Two ways a TU lands here:
+#
+#   * the app bolts it onto a helper-built image with its own target_sources(),
+#     and the helper scopes the profile to its own SOURCES (compile_on_m33,
+#     ereader_m33);
+#   * the app HAND-ROLLS the CPU1 executable with add_executable() plus its own
+#     -mcpu=cortex-m33 options and never calls the helper, so NOTHING on that
+#     image carries the profile, its own cpu1_main.c included (cpu1_pingpong,
+#     cpu1_pingpong_ipc).
+#
+# Format: <cpu1-target>  <repo-relative source path>
+#
+# scripts/checks/check_cpu1_warning_profile.py judges this file. The list is
+# SHRINK-ONLY: a first-party CPU1 source that is not here fails the gate, and a
+# row that stops escaping (profile-covered, detached from the image, or deleted)
+# fails as stale and must be removed. Never add a row to silence a new escape
+# without saying why in review. Vendored SOUP never belongs here: it is
+# deliberately outside the first-party bar and the gate rejects such a row.
+#
+# A missing, unreadable or empty file yields the EMPTY set, so every escape
+# reports. The gate fails closed.
+compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_chapter.c
+compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_entry.c
+compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_fs.c
+compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_img_import.c
+compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_img_tiles.c
+compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_miniz_alloc.c
+compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_open.c
+compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_xml_shim.c
+compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_xml_toc.c
+compile_on_m33_cpu1.elf  apps/shared_libs/epub/src/epub_zip_guard.c
+compile_on_m33_cpu1.elf  apps/shared_libs/rabook_compile/src/ra8_rabook_finalize.c
+compile_on_m33_cpu1.elf  apps/shared_libs/rabook_compile/src/ra8_rabook_gray4.c
+compile_on_m33_cpu1.elf  apps/shared_libs/rabook_compile/src/ra8_rabook_pipeline.c
+compile_on_m33_cpu1.elf  apps/shared_libs/rabook_compile/src/ra8_rabook_xml_shim.c
+compile_on_m33_cpu1.elf  apps/shared_libs/rabook_compile/src/rabook_compile.c
+compile_on_m33_cpu1.elf  apps/shared_libs/xml/src/xml.c
+compile_on_m33_cpu1.elf  apps/shared_libs/xml/src/xml_decode.c
+compile_on_m33_cpu1.elf  apps/shared_libs/xml/src/xml_doctype.c
+compile_on_m33_cpu1.elf  libs/ra8_core/src/ra8_decomp_limits.c
+compile_on_m33_cpu1.elf  libs/ra8_core/src/ra8_error_handler.c
+compile_on_m33_cpu1.elf  libs/ra8_hal/src/ra8_ipc.c
+cpu1_pingpong_cpu1.elf  examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/cpu1_main.c
+cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_log.c
+cpu1_pingpong_cpu1.elf  libs/ra8_core/src/ra8_scb.c
+cpu1_pingpong_cpu1.elf  libs/ra8_hal/src/ra8_ipc.c
+cpu1_pingpong_ipc_cpu1.elf  examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/cpu1_main.c
+cpu1_pingpong_ipc_cpu1.elf  libs/ra8_core/src/ra8_log.c
+cpu1_pingpong_ipc_cpu1.elf  libs/ra8_core/src/ra8_scb.c
+cpu1_pingpong_ipc_cpu1.elf  libs/ra8_hal/src/ra8_ipc.c
+ereader_m33_cpu1.elf  libs/ra8_gfx/src/ra8_gfx_font_8x16.c
+ereader_m33_cpu1.elf  libs/ra8_gfx/src/ra8_gfx_text.c
+ereader_m33_cpu1.elf  libs/ra8_gfx/src/ra8_gfx_text_glyph.c
+ereader_m33_cpu1.elf  libs/ra8_hal/src/ra8_ipc.c
