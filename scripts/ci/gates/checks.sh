@@ -463,6 +463,14 @@ _pcc_cross_references() (
   # #325 / #355; a bare invocation is an error now rather than the vacuous mode.
   python3 scripts/checks/check_obsolete_standards.py --selftest
   python3 scripts/checks/check_obsolete_standards.py --all
+  # A documented thread-safety claim must still be backed by the unit's own
+  # state (#893). The ra8_jpeg header advertised the decoder as re-entrant and
+  # the encoder as thread-safe while both keep their working set in shared
+  # statics; review caught it once, and nothing stopped it coming back. The
+  # selftest runs first: a claim checker that stopped matching would report a
+  # supported claim, which is the same defect class as the claim it polices.
+  python3 scripts/checks/check_jpeg_concurrency_contract.py --selftest
+  python3 scripts/checks/check_jpeg_concurrency_contract.py
 )
 
 # Documentation completeness, cross-reference integrity, and the test-side
