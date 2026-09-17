@@ -62,6 +62,10 @@ add_test(NAME test_ra8_fs_exfat COMMAND test_ra8_fs_exfat)
 # supplies ra8_log / ra8_err / ra8_vsource. LevelX is SOUP: compile it -w and it is
 # already outside the coverage filter (libs/third_party/).
 # ---------------------------------------------------------------------------
+# Partial migration (#201 / zig epic): the runtime path is a Zig archive
+# (ra8_zig::ra8_cache_store, registered in zig_libraries.cmake) and only the
+# mount / recovery TU is still C, so this glob now matches
+# ra8_cache_store_mount.c alone. Keep it until that TU moves too.
 file(GLOB RA8_CACHE_STORE_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_cache_store/src/*.c)
 file(GLOB RA8_LEVELX_NOR_STANDALONE CONFIGURE_DEPENDS
      ${FW_ROOT}/libs/third_party/levelx/common/src/lx_nor_*.c
@@ -83,6 +87,7 @@ add_executable(
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_ra8_cache_store PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries(test_ra8_cache_store PRIVATE ra8_zig::ra8_cache_store)
 target_compile_definitions(test_ra8_cache_store PRIVATE LX_STANDALONE_ENABLE)
 target_compile_options(test_ra8_cache_store PRIVATE -Wall -Wextra)
 target_include_directories(
@@ -151,6 +156,7 @@ add_executable(
   $<TARGET_OBJECTS:ra8_core_hal>
 )
 set_target_properties(test_cache_store_demo PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries(test_cache_store_demo PRIVATE ra8_zig::ra8_cache_store)
 target_compile_definitions(test_cache_store_demo PRIVATE LX_STANDALONE_ENABLE)
 target_compile_options(test_cache_store_demo PRIVATE -Wall -Wextra)
 target_include_directories(
