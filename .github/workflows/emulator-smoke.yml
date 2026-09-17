@@ -82,6 +82,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - run: just quality::local::gate emulator-smoke
       - run: just quality::local::gate emulator-io-fabric
@@ -124,6 +126,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: true
           lfs: false
 
       - run: just quality::local::gate emulator-matrix
@@ -177,6 +180,7 @@ jobs:
       # asserts it is present).
       - uses: actions/checkout@v4
         with:
+          submodules: true
           lfs: false
 
       - run: just quality::local::gate eil-integration
