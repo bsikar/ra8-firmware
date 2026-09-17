@@ -183,6 +183,16 @@ void mdl_urlname_ext(const char* url, char* out, size_t cap);
  *   - GIF: `GIF87a` / `GIF89a` -> `.gif` / `image/gif`
  *   - BMP: `BM` -> `.bmp` / `image/bmp`
  *
+ * This is the wider of the tree's two image-identification tables and the only
+ * one that maps a signature to an extension and a MIME type. The narrower one
+ * is the producer-side probe `jof_probe_dims()` in `apps/shared_libs/jof`,
+ * which accepts exactly the three containers the JOF producer can dispatch on
+ * (JPEG, PNG, WebP) and answers with geometry rather than a name. So a byte
+ * stream this helper names `.gif` or `.bmp` is one no decoder in the tree can
+ * read: recognising a container here is not a claim that the reader pipeline
+ * can render it. The two tables are independent and can drift apart with no
+ * diagnostic; converging them behind one primitive is tracked by #748.
+ *
  * @param[in]  buf          Data buffer holding raw magic bytes (may be NULL if buf_len == 0).
  * @param[in]  buf_len      Length of @p buf in bytes.
  * @param[in]  content_type HTTP Content-Type header string (may be NULL or empty).
