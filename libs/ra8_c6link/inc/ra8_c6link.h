@@ -141,6 +141,8 @@ typedef enum : uint16_t {
  *
  * @invariant ::k_ra8_c6link_hs_giveup is at least two, so one missed sample is
  *            never enough to declare the co-processor absent.
+ * @invariant ::k_ra8_c6link_ready_attempts is at least two, so one quiet
+ *            announcement window is never enough either.
  * @invariant ::k_ra8_c6link_rpc_transfers x ::k_ra8_c6link_hs_wait_ms bounds
  *            the worst-case wall time of one RPC call.
  *
@@ -170,8 +172,18 @@ typedef enum : uint16_t {
   /**< Transactions ::ra8_c6link_await_ready spends on the announcement before
        it probes. Enough to place the capabilities frame and drain whatever the
        co-processor volunteers behind it; the bench bring-up settled on the same
-       figure. Readiness is decided by the probe that follows, not by this
-       budget, so a larger one would only lengthen the absent-hardware case. */
+       figure. When the announcement clocks at all, readiness is decided by the
+       probe that follows and not by this budget, so a larger one would only
+       lengthen the absent-hardware case. When it clocks nothing the probe is
+       never reached, which is what ::k_ra8_c6link_ready_attempts covers. */
+  k_ra8_c6link_ready_attempts = 2U,
+  /**< Announcement attempts ::ra8_c6link_await_ready makes before it reports an
+       absent co-processor. A pump that clocked zero transactions gave up after
+       ::k_ra8_c6link_hs_giveup quiet HANDSHAKE windows, which is 600 ms of
+       silence, not proof of absent hardware: a co-processor busy servicing its
+       own radio can be quiet that long and answer immediately after. Retrying
+       is safe precisely because zero transactions means the capabilities frame
+       never went out, so the retry restates nothing. */
 } ra8_c6link_budget_t;
 
 /**
@@ -738,6 +750,15 @@ ra8_c6link_poll(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link_stats_
  * one that is already up is harmless -- it re-states capabilities that have not
  * changed.
  *
+ * A co-processor that does not arm HANDSHAKE for the whole announcement budget
+ * is reported absent, but not on the first quiet window. The pump abandons a
+ * run after ::k_ra8_c6link_hs_giveup consecutive quiet waits, so 600 ms of
+ * silence ends the announcement before the probe is ever reached, and #594
+ * records two bench runs that failed exactly there and then passed ten times
+ * running. The announcement is therefore attempted up to
+ * ::k_ra8_c6link_ready_attempts times, and only a run that clocked no
+ * transaction at all is retried.
+ *
  * @param[in,out] link Open handle; must be non-null.
  * @param[in] max_transactions Transactions the announcement phase may clock;
  *                             must be non-zero. See
@@ -753,16 +774,21 @@ ra8_c6link_poll(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link_stats_
  * @retval k_ra8_err_invalid_size The capabilities frame would not fit, which
  *         is a build-time impossibility and therefore a corrupted handle.
  * @retval k_ra8_err_timeout The identity request went unanswered.
- * @retval k_ra8_err_hw_timeout The co-processor never armed HANDSHAKE, so no
- *         transaction was clocked.
+ * @retval k_ra8_err_hw_timeout The co-processor armed HANDSHAKE for none of
+ *         ::k_ra8_c6link_ready_attempts announcement attempts, so no
+ *         transaction was clocked by any of them.
  * @retval k_ra8_err_spi_error The transport refused a transfer.
  * @retval k_ra8_err_protocol_error The answer arrived malformed.
  *
  * @pre The transport is up.
  * @pre The caller has no payload staged on @p link.
  * @post On success @p out holds the identity and the link is usable.
- * @post At most @p max_transactions transactions were clocked announcing,
- *       plus ::k_ra8_c6link_rpc_transfers probing.
+ * @post At most @p max_transactions transactions were clocked per announcement
+ *       attempt, over at most ::k_ra8_c6link_ready_attempts attempts, plus
+ *       ::k_ra8_c6link_rpc_transfers probing.
+ * @post An announcement attempt is repeated only after one that clocked no
+ *       transaction at all, so the capabilities frame reaches the co-processor
+ *       at most once.
  *
  * @note Not thread-safe; it pumps.
  * @note A boot event that *does* arrive during the announcement phase still
@@ -781,7 +807,8 @@ ra8_c6link_poll(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link_stats_
  * @since 0.1.0
  *
  * @par NASA Power of 10 Compliance:
- * - Rule 2: both phases are bounded by explicit transaction budgets.
+ * - Rule 2: both phases are bounded by explicit transaction budgets, and the
+ *   retry by ::k_ra8_c6link_ready_attempts.
  * - Rule 5: four preconditions and two postconditions are checked.
  */
 [[nodiscard]] ra8_err_t

@@ -163,6 +163,7 @@ typedef struct ra8_c6_model {
   bool                     wrong_id;         /**< Answer with a message id nobody asked for. */
   bool                     mute;             /**< Answer nothing at all.                     */
   bool                     silent_boot;      /**< Do not answer the announcement.            */
+  uint16_t                 hs_quiet_polls;   /**< HANDSHAKE samples to read inactive first.  */
   uint16_t                 transfers;        /**< Transactions the host has clocked.         */
   uint32_t                 delays;           /**< Times the host asked the seam to wait.     */
   uint16_t                 mdl_cancels;      /**< Media cancel operations accepted.          */
