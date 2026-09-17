@@ -3,6 +3,9 @@
  * @brief Native USB host-side Audio class layer (USB Audio 1.0)
  * @ingroup grp_hal_usb
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Glues the host-mode bring-up paths in `ra8_usb` to a USB Audio class
  * peripheral - typically a USB speaker, headphones, or microphone -

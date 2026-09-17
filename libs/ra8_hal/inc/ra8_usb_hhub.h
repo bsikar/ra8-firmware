@@ -3,6 +3,9 @@
  * @brief Native USB host-side HUB class layer
  * @ingroup grp_hal_usb
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Glues the host-mode bring-up paths in `ra8_usb` to a USB HUB device
  * (class code 0x09) attached to the EK-RA8D2's USB host port. Mirrors

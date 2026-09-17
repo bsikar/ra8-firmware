@@ -3,6 +3,9 @@
  * @brief USB Full-Speed + High-Speed controller layout for the Renesas RA8D2
  * @ingroup grp_hal_usb
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * RA8D2 has two USB controllers:
  *
