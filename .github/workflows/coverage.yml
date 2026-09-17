@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# SCHEDULING ONLY -- the gate body lives in scripts/ci.sh (gate:
+# coverage-tree). See .github/workflows/firmware.yml for the design note.
+#
+# This workflow is separate from firmware.yml and has been missed by a "local
+# green" run before, which is exactly why the ci-parity gate walks EVERY
+# workflow file rather than firmware.yml alone.
+---
+name: coverage
+
+on:
+  push:
+    branches: [main, dev]
+  # PRs targeting dev run the same coverage gate as PRs targeting main (#357).
+  # dev is the working branch, so the review path must exercise the same
+  # branch-health gates it does for main -- coverage was previously only
+  # checked on a PR to main or post-merge on dev.
+  pull_request:
+    branches: [main, dev]
+
+# Per-commit isolation on push (#366): identical rationale to firmware.yml. Key
+# the group on the commit SHA for push events so a burst of dev pushes never
+# cancels an in-flight coverage run -- a cancelled run reads as skipped-not-
+# failed and would otherwise sit green next to a real result on branch health.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # THE statement + branch coverage gate, for every first-party translation
+  # unit in libs/, port/, tools/, apps/ and examples/.
+  #
+  # One census, one baseline (.github/tree-coverage-baseline.txt), one bar. It
+  # is scheduled here and nowhere else: two more jobs used to apply their own
+  # per-file policy to overlapping slices of the same tree, which is how the
+  # same translation unit ended up built twice and judged twice.
+  # ---------------------------------------------------------------------------
+  coverage-tree:
+    name: Coverage (whole-tree per-file ratchet)
+    runs-on: ra8-ci
+    # SECURITY: self-hosted + pull_request trigger. Run on push / dispatch and
+    # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: just quality::local::gate coverage-tree
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: build/tree-coverage/html/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload merged summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-summary
+          path: build/tree-coverage/summary.json
+          if-no-files-found: error
+          retention-days: 30

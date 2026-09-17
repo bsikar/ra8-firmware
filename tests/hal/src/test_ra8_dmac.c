@@ -1,0 +1,699 @@
+/**
+ * @file test_ra8_dmac.c
+ * @brief Unit tests for ra8_dmac.c (Direct Memory Access Controller)
+ *
+ * @details Exercises channel configuration, transfer lifecycle, callback dispatch, and invalid-input handling against the bounded fake register map.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "ra8_attributes.h"
+#include "ra8_dmac.h"
+#include "ra8_dmac_internal.h"
+#include "ra8_dmac_regs.h"
+#include "ra8_err.h"
+#include "ra8_fake_mmap.h"
+#include "unity_minimal.h"
+
+/**
+ * @enum dmac_token_narrow_t
+ * @brief A narrow callback token, checked on the way back.
+ */
+typedef enum : uint8_t {
+  k_dmac_ctx_token_small =
+    7, /**< Small token handed to the callback and checked on the way back. */
+} dmac_token_narrow_t;
+
+/**
+ * @enum dmac_token_wide_t
+ * @brief A wider one, proving the context is not truncated to a byte.
+ */
+typedef enum : uint16_t {
+  k_dmac_ctx_token_wide =
+    0xABCD, /**< A wider token, proving the context is not truncated to a byte. */
+} dmac_token_wide_t;
+
+typedef enum : uint32_t {
+  k_ra8_dmac_test_src        = 0x22000100UL, /**< RA8 DMAC test src.    */
+  k_ra8_dmac_test_dst        = 0x22000200UL, /**< RA8 DMAC test dst.    */
+  k_ra8_dmac_test_count      = 0x0040U,      /**< RA8 DMAC test count.  */
+  k_ra8_dmac_test_enable     = 0x01U,        /**< RA8 DMAC test enable. */
+  k_ra8_dmac_test_poll_limit = 64U,          /**< wait_idle poll bound. */
+} ra8_dmac_test_const_t;
+
+typedef enum : uint8_t {
+  k_ra8_dmac_test_channel_valid = 0U, /**< RA8 DMAC test channel valid. */
+  k_ra8_dmac_test_channel_last  = 7U, /**< RA8 DMAC test channel last.  */
+  k_ra8_dmac_test_channel_bad   = 8U, /**< RA8 DMAC test channel bad.   */
+} ra8_dmac_test_channel_t;
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify start null cfg behavior. @details Executes the start null cfg scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_start_null_cfg(void)
+{
+  TEST_BEGIN("dmac start null cfg");
+  ra8_fake_mmap_reset();
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_dmac_start((uint8_t)k_ra8_dmac_test_channel_valid, nullptr));
+  TEST_END("dmac start null cfg");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify start bad channel behavior. @details Executes the start bad channel scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_start_bad_channel(void)
+{
+  TEST_BEGIN("dmac start bad channel");
+  ra8_fake_mmap_reset();
+
+  const ra8_dmac_config_t cfg = {
+    .src     = (uint32_t)k_ra8_dmac_test_src,
+    .dst     = (uint32_t)k_ra8_dmac_test_dst,
+    .count   = (uint16_t)k_ra8_dmac_test_count,
+    .width   = k_ra8_dmac_width_word,
+    .src_inc = true,
+    .dst_inc = true,
+  };
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 ra8_dmac_start((uint8_t)k_ra8_dmac_test_channel_bad, &cfg));
+  TEST_END("dmac start bad channel");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify start happy both inc behavior. @details Executes the start happy both inc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_start_happy_both_inc(void)
+{
+  TEST_BEGIN("dmac start happy both inc");
+  ra8_fake_mmap_reset();
+
+  const ra8_dmac_config_t cfg = {
+    .src     = (uint32_t)k_ra8_dmac_test_src,
+    .dst     = (uint32_t)k_ra8_dmac_test_dst,
+    .count   = (uint16_t)k_ra8_dmac_test_count,
+    .width   = k_ra8_dmac_width_word,
+    .src_inc = true,
+    .dst_inc = true,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_start((uint8_t)k_ra8_dmac_test_channel_valid, &cfg));
+
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  /* HUM Ch 17.2.4 "DMSAR : DMA Source Address Register" p 734,
+   * 17.2.6 "DMDAR : DMA Destination Address Register" p 735,
+   * 17.2.8 "DMCRA : DMA Transfer Count Register" p 736 and
+   * 17.2.14 "DMCNT : DMA Transfer Enable Register" p 743. */
+  TEST_ASSERT_EQ(k_ra8_dmac_test_src, reg->DMSAR);
+  TEST_ASSERT_EQ(k_ra8_dmac_test_dst, reg->DMDAR);
+  TEST_ASSERT_EQ(k_ra8_dmac_test_count, reg->DMCRA);
+  TEST_ASSERT_EQ(k_ra8_dmac_test_enable, reg->DMCNT);
+  TEST_END("dmac start happy both inc");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify start no src inc behavior. @details Executes the start no src inc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_start_no_src_inc(void)
+{
+  TEST_BEGIN("dmac start no src inc");
+  ra8_fake_mmap_reset();
+
+  const ra8_dmac_config_t cfg = {
+    .src     = (uint32_t)k_ra8_dmac_test_src,
+    .dst     = (uint32_t)k_ra8_dmac_test_dst,
+    .count   = (uint16_t)k_ra8_dmac_test_count,
+    .width   = k_ra8_dmac_width_byte,
+    .src_inc = false,
+    .dst_inc = true,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_start((uint8_t)k_ra8_dmac_test_channel_valid, &cfg));
+  TEST_END("dmac start no src inc");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify start no dst inc behavior. @details Executes the start no dst inc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_start_no_dst_inc(void)
+{
+  TEST_BEGIN("dmac start no dst inc");
+  ra8_fake_mmap_reset();
+
+  const ra8_dmac_config_t cfg = {
+    .src     = (uint32_t)k_ra8_dmac_test_src,
+    .dst     = (uint32_t)k_ra8_dmac_test_dst,
+    .count   = (uint16_t)k_ra8_dmac_test_count,
+    .width   = k_ra8_dmac_width_half,
+    .src_inc = true,
+    .dst_inc = false,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_start((uint8_t)k_ra8_dmac_test_channel_valid, &cfg));
+  TEST_END("dmac start no dst inc");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify start neither inc behavior. @details Executes the start neither inc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_start_neither_inc(void)
+{
+  TEST_BEGIN("dmac start neither inc");
+  ra8_fake_mmap_reset();
+
+  const ra8_dmac_config_t cfg = {
+    .src     = (uint32_t)k_ra8_dmac_test_src,
+    .dst     = (uint32_t)k_ra8_dmac_test_dst,
+    .count   = (uint16_t)k_ra8_dmac_test_count,
+    .width   = k_ra8_dmac_width_byte,
+    .src_inc = false,
+    .dst_inc = false,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_start((uint8_t)k_ra8_dmac_test_channel_last, &cfg));
+  TEST_END("dmac start neither inc");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify stop happy behavior. @details Executes the stop happy scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_stop_happy(void)
+{
+  TEST_BEGIN("dmac stop happy");
+  ra8_fake_mmap_reset();
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_stop((uint8_t)k_ra8_dmac_test_channel_valid));
+
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  /* HUM Ch 17.2.14 "DMCNT : DMA Transfer Enable Register" p 743 */
+  TEST_ASSERT_EQ(0, reg->DMCNT);
+  TEST_END("dmac stop happy");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify stop bad channel behavior. @details Executes the stop bad channel scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_stop_bad_channel(void)
+{
+  TEST_BEGIN("dmac stop bad channel");
+  ra8_fake_mmap_reset();
+
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_dmac_stop((uint8_t)k_ra8_dmac_test_channel_bad));
+  TEST_END("dmac stop bad channel");
+}
+
+/* =============================================================================
+ * Sweep 6 extensions: repeat / block / address-mode / callbacks
+ * =============================================================================
+ */
+
+static uint32_t s_dmac_full_count;
+static uint32_t s_dmac_half_count;
+static void*    s_dmac_last_ctx;
+
+/** @brief Provide the file-local stub dmac full cb test helper. @details Implements the stub dmac full cb fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_stub_dmac_full_cb(void* ctx)
+{
+  ++s_dmac_full_count;
+  s_dmac_last_ctx = ctx;
+}
+
+/** @brief Provide the file-local stub dmac half cb test helper. @details Implements the stub dmac half cb fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_stub_dmac_half_cb(void* ctx)
+{
+  ++s_dmac_half_count;
+  s_dmac_last_ctx = ctx;
+}
+
+/** @brief Provide the file-local prep dmac ext test helper. @details Implements the prep dmac ext fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep_dmac_ext(void)
+{
+  ra8_fake_mmap_reset();
+  s_dmac_full_count = 0U;
+  s_dmac_half_count = 0U;
+  s_dmac_last_ctx   = nullptr;
+  /* Clear any stale callback slots from a prior test. */
+  (void)ra8_dmac_attach_callback((uint8_t)k_ra8_dmac_test_channel_valid, nullptr, nullptr);
+  (void)ra8_dmac_attach_half_complete_handler((uint8_t)k_ra8_dmac_test_channel_valid,
+                                              nullptr,
+                                              nullptr);
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify start repeat mode behavior. @details Executes the start repeat mode scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_start_repeat_mode(void)
+{
+  TEST_BEGIN("dmac start_repeat sets MD=01b");
+  internal_prep_dmac_ext();
+
+  const ra8_dmac_config_t cfg = {
+    .src         = (uint32_t)k_ra8_dmac_test_src,
+    .dst         = (uint32_t)k_ra8_dmac_test_dst,
+    .count       = (uint16_t)k_ra8_dmac_test_count,
+    .width       = k_ra8_dmac_width_word,
+    .src_inc     = true,
+    .dst_inc     = true,
+    .repeat_area = k_ra8_dmac_repeat_area_dest,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_start_repeat((uint8_t)k_ra8_dmac_test_channel_valid, &cfg));
+
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  /* HUM Ch 17.2.10 "DMTMD : DMA Transfer Mode Register" p 738 */
+  const uint16_t md = (uint16_t)((reg->DMTMD & k_ra8_dmtmd_md_mask) >> k_ra8_dmtmd_md_pos);
+  TEST_ASSERT_EQ(k_ra8_dmtmd_md_repeat, md);
+  TEST_END("dmac start_repeat sets MD=01b");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify start repeat null behavior. @details Executes the start repeat null scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_start_repeat_null(void)
+{
+  TEST_BEGIN("dmac start_repeat null cfg");
+  internal_prep_dmac_ext();
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_dmac_start_repeat((uint8_t)k_ra8_dmac_test_channel_valid, nullptr));
+  TEST_END("dmac start_repeat null cfg");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify start block mode behavior. @details Executes the start block mode scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_start_block_mode(void)
+{
+  TEST_BEGIN("dmac start_block sets MD=10b and DMCRB");
+  internal_prep_dmac_ext();
+
+  const ra8_dmac_config_t cfg = {
+    .src         = (uint32_t)k_ra8_dmac_test_src,
+    .dst         = (uint32_t)k_ra8_dmac_test_dst,
+    .count       = (uint16_t)k_ra8_dmac_test_count,
+    .width       = k_ra8_dmac_width_word,
+    .src_inc     = true,
+    .dst_inc     = true,
+    .block_count = 4U,
+    .repeat_area = k_ra8_dmac_repeat_area_src,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_start_block((uint8_t)k_ra8_dmac_test_channel_valid, &cfg));
+
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  /* HUM Ch 17.2.10 "DMTMD : DMA Transfer Mode Register" p 738 */
+  const uint16_t md = (uint16_t)((reg->DMTMD & k_ra8_dmtmd_md_mask) >> k_ra8_dmtmd_md_pos);
+  TEST_ASSERT_EQ(k_ra8_dmtmd_md_block, md);
+  /* HUM Ch 17.2.9 p 737 -- block mode mirrors block_count into both
+   * DMCRBH and DMCRBL, so DMCRB = bc | (bc << 16). */
+  TEST_ASSERT_EQ((4U | (4U << 16U)), reg->DMCRB);
+  TEST_END("dmac start_block sets MD=10b and DMCRB");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify start block zero count behavior. @details Executes the start block zero count scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_start_block_zero_count(void)
+{
+  TEST_BEGIN("dmac start_block rejects block_count=0");
+  internal_prep_dmac_ext();
+  const ra8_dmac_config_t cfg = {
+    .src   = (uint32_t)k_ra8_dmac_test_src,
+    .dst   = (uint32_t)k_ra8_dmac_test_dst,
+    .count = (uint16_t)k_ra8_dmac_test_count,
+    .width = k_ra8_dmac_width_word,
+  };
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_dmac_start_block((uint8_t)k_ra8_dmac_test_channel_valid, &cfg));
+  TEST_END("dmac start_block rejects block_count=0");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify set address mode happy behavior. @details Executes the set address mode happy scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_address_mode_happy(void)
+{
+  TEST_BEGIN("dmac set_address_mode writes SM/DM");
+  internal_prep_dmac_ext();
+
+  const ra8_dmac_config_t cfg = {
+    .src     = (uint32_t)k_ra8_dmac_test_src,
+    .dst     = (uint32_t)k_ra8_dmac_test_dst,
+    .count   = (uint16_t)k_ra8_dmac_test_count,
+    .width   = k_ra8_dmac_width_word,
+    .src_inc = true,
+    .dst_inc = true,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_start((uint8_t)k_ra8_dmac_test_channel_valid, &cfg));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dmac_set_address_mode((uint8_t)k_ra8_dmac_test_channel_valid,
+                                           k_ra8_dmac_addr_decrement,
+                                           k_ra8_dmac_addr_offset));
+
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  /* HUM Ch 17.2.12 "DMAMD : DMA Address Mode Register" p 740 */
+  const uint16_t sm = (uint16_t)((reg->DMAMD & k_ra8_dmamd_sm_mask) >> k_ra8_dmamd_sm_pos);
+  const uint16_t dm = (uint16_t)((reg->DMAMD & k_ra8_dmamd_dm_mask) >> k_ra8_dmamd_dm_pos);
+  TEST_ASSERT_EQ(k_ra8_dmac_addr_decrement, sm);
+  TEST_ASSERT_EQ(k_ra8_dmac_addr_offset, dm);
+  TEST_END("dmac set_address_mode writes SM/DM");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify set address mode invalid behavior. @details Executes the set address mode invalid scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_address_mode_invalid(void)
+{
+  TEST_BEGIN("dmac set_address_mode rejects invalid args");
+  internal_prep_dmac_ext();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_dmac_set_address_mode((uint8_t)k_ra8_dmac_test_channel_valid,
+                                           (ra8_dmac_addr_mode_t)0x77U,
+                                           k_ra8_dmac_addr_fixed));
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 ra8_dmac_set_address_mode((uint8_t)k_ra8_dmac_test_channel_bad,
+                                           k_ra8_dmac_addr_fixed,
+                                           k_ra8_dmac_addr_fixed));
+  TEST_END("dmac set_address_mode rejects invalid args");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify attach half complete handler behavior. @details Executes the attach half complete handler scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_half_complete_handler(void)
+{
+  TEST_BEGIN("dmac half-complete handler dispatches");
+  internal_prep_dmac_ext();
+  int sentinel = k_dmac_ctx_token_small;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dmac_attach_half_complete_handler((uint8_t)k_ra8_dmac_test_channel_valid,
+                                                       internal_stub_dmac_half_cb,
+                                                       &sentinel));
+  ra8_dmac_dispatch_half((uint8_t)k_ra8_dmac_test_channel_valid);
+  TEST_ASSERT_EQ(1, s_dmac_half_count);
+  TEST_ASSERT(s_dmac_last_ctx == &sentinel);
+
+  /* Out-of-range channel must early-exit. */
+  ra8_dmac_dispatch_half((uint8_t)k_ra8_dmac_test_channel_bad);
+  TEST_ASSERT_EQ(1, s_dmac_half_count);
+
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 ra8_dmac_attach_half_complete_handler((uint8_t)k_ra8_dmac_test_channel_bad,
+                                                       internal_stub_dmac_half_cb,
+                                                       nullptr));
+  TEST_END("dmac half-complete handler dispatches");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify attach per channel callback behavior. @details Executes the attach per channel callback scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_per_channel_callback(void)
+{
+  TEST_BEGIN("dmac per-channel callback dispatches");
+  internal_prep_dmac_ext();
+  int sentinel = k_dmac_ctx_token_wide;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dmac_attach_callback((uint8_t)k_ra8_dmac_test_channel_valid,
+                                          internal_stub_dmac_full_cb,
+                                          &sentinel));
+  ra8_dmac_dispatch((uint8_t)k_ra8_dmac_test_channel_valid);
+  TEST_ASSERT_EQ(1, s_dmac_full_count);
+  TEST_ASSERT(s_dmac_last_ctx == &sentinel);
+
+  ra8_dmac_dispatch((uint8_t)k_ra8_dmac_test_channel_bad);
+  TEST_ASSERT_EQ(1, s_dmac_full_count);
+
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 ra8_dmac_attach_callback((uint8_t)k_ra8_dmac_test_channel_bad,
+                                          internal_stub_dmac_full_cb,
+                                          nullptr));
+
+  /* Clearing the slot must silence further dispatches. */
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_dmac_attach_callback((uint8_t)k_ra8_dmac_test_channel_valid, nullptr, nullptr));
+  ra8_dmac_dispatch((uint8_t)k_ra8_dmac_test_channel_valid);
+  TEST_ASSERT_EQ(1, s_dmac_full_count);
+  TEST_END("dmac per-channel callback dispatches");
+}
+
+/**
+ * @test internal_test_mcdc_set_address_mode_bounds
+ *
+ * @par MC/DC:
+ * Decision: `if ((src_mode > k_ra8_dmac_addr_decrement) ||
+ *               (dest_mode > k_ra8_dmac_addr_decrement))`
+ * (2 conditions, libs/ra8_hal/src/ra8_dmac.c line 629 -- gap row 337 in CSV)
+ * - Vector 1: src=fixed (0), dest=fixed (0) -> F,F decision F -> ok.
+ * - Vector 2: src=99 (out of range), dest=fixed -> T,_ short-circuit
+ *   decision T -> invalid_arg (varies C1 vs V1).
+ * - Vector 3: src=fixed, dest=99 -> F,T decision T -> invalid_arg
+ *   (varies C2 vs V1; C1 held F).
+ * MC/DC pair for C1: V1(F,F)->F vs V2(T,_)->T (decision flips, C2
+ * masked by short-circuit). MC/DC pair for C2: V1(F,F)->F vs V3(F,T)->T
+ * (decision flips, C1 held F). N+1 = 3 vectors for N=2 conditions. @brief Verify mcdc set address mode bounds behavior. @details Executes the mcdc set address mode bounds scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_set_address_mode_bounds(void)
+{
+  TEST_BEGIN("dmac set_address_mode MC/DC: src>dec || dest>dec");
+  internal_prep_dmac_ext();
+
+  /* Vector 1: both in range. */
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dmac_set_address_mode((uint8_t)k_ra8_dmac_test_channel_valid,
+                                           k_ra8_dmac_addr_fixed,
+                                           k_ra8_dmac_addr_fixed));
+
+  /* Vector 2: src out of range, dest in range -> C1=T short-circuits. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_dmac_set_address_mode((uint8_t)k_ra8_dmac_test_channel_valid,
+                                           (ra8_dmac_addr_mode_t)99U,
+                                           k_ra8_dmac_addr_fixed));
+
+  /* Vector 3: src in range, dest out of range -> C1=F, C2=T. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_dmac_set_address_mode((uint8_t)k_ra8_dmac_test_channel_valid,
+                                           k_ra8_dmac_addr_fixed,
+                                           (ra8_dmac_addr_mode_t)99U));
+
+  TEST_END("dmac set_address_mode MC/DC: src>dec || dest>dec");
+}
+
+/**
+ * @test internal_test_mcdc_dmac_internal_mode_disables_dts
+ *
+ * @par MC/DC:
+ * Decision at libs/ra8_hal/src/ra8_dmac.c (call site) -> helper at
+ * libs/ra8_hal/src/ra8_dmac.c:
+ *   ``mode == k_ra8_dmac_mode_normal || mode == k_ra8_dmac_mode_repeat_block``
+ *   (2 conditions, OR). Direct-call vectors:
+ * - V1: mode=REPEAT(1)        -> false (both false-side)
+ * - V2: mode=NORMAL(0)        -> true  (varies left)
+ * - V3: mode=REPEAT_BLOCK(3)  -> true  (varies right)
+ * V1+V2 isolate left; V1+V3 isolate right. N+1 = 3. @brief Verify mcdc dmac internal mode disables dts behavior. @details Executes the mcdc dmac internal mode disables dts scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_dmac_internal_mode_disables_dts(void)
+{
+  TEST_BEGIN("dmac MC/DC: mode_disables_dts OR");
+  TEST_ASSERT(!priv_ra8_dmac_internal_mode_disables_dts((uint32_t)k_ra8_dmac_mode_normal,
+                                                        (uint32_t)k_ra8_dmac_mode_repeat_block,
+                                                        (uint32_t)k_ra8_dmac_mode_repeat));
+  TEST_ASSERT(priv_ra8_dmac_internal_mode_disables_dts((uint32_t)k_ra8_dmac_mode_normal,
+                                                       (uint32_t)k_ra8_dmac_mode_repeat_block,
+                                                       (uint32_t)k_ra8_dmac_mode_normal));
+  TEST_ASSERT(priv_ra8_dmac_internal_mode_disables_dts((uint32_t)k_ra8_dmac_mode_normal,
+                                                       (uint32_t)k_ra8_dmac_mode_repeat_block,
+                                                       (uint32_t)k_ra8_dmac_mode_repeat_block));
+  TEST_END("dmac MC/DC: mode_disables_dts OR");
+}
+
+/**
+ * @test internal_test_mcdc_dmac_internal_dmint_extra_irq
+ *
+ * @par MC/DC:
+ * Decision at libs/ra8_hal/src/ra8_dmac.c (call site) -> helper at
+ * libs/ra8_hal/src/ra8_dmac.c:
+ *   ``cfg->irq_each && cfg->mode != k_ra8_dmac_mode_repeat_block``
+ *   (2 conditions, AND). Direct-call vectors:
+ * - V1: irq_each=false, mode=NORMAL        -> false (both false-side)
+ * - V2: irq_each=true,  mode=NORMAL        -> true  (varies left)
+ * - V3: irq_each=true,  mode=REPEAT_BLOCK  -> false (varies right)
+ * V1+V2 isolate left; V2+V3 isolate right. N+1 = 3. @brief Verify mcdc dmac internal dmint extra irq behavior. @details Executes the mcdc dmac internal dmint extra irq scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_dmac_internal_dmint_extra_irq(void)
+{
+  TEST_BEGIN("dmac MC/DC: dmint_extra_irq AND");
+  TEST_ASSERT(!priv_ra8_dmac_internal_dmint_extra_irq(false,
+                                                      (uint32_t)k_ra8_dmac_mode_repeat_block,
+                                                      (uint32_t)k_ra8_dmac_mode_normal));
+  TEST_ASSERT(priv_ra8_dmac_internal_dmint_extra_irq(true,
+                                                     (uint32_t)k_ra8_dmac_mode_repeat_block,
+                                                     (uint32_t)k_ra8_dmac_mode_normal));
+  TEST_ASSERT(!priv_ra8_dmac_internal_dmint_extra_irq(true,
+                                                      (uint32_t)k_ra8_dmac_mode_repeat_block,
+                                                      (uint32_t)k_ra8_dmac_mode_repeat_block));
+  TEST_END("dmac MC/DC: dmint_extra_irq AND");
+}
+
+/* =============================================================================
+ * Software trigger + completion query (DMREQ.SWREQ / DMSTS.ACT)
+ * =============================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- ``ra8_dmac_software_trigger``
+ * has only a single ``reg == nullptr`` range guard; exercises the
+ * happy path and the out-of-range rejection) @brief Verify software trigger behavior. @details Executes the software trigger scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_software_trigger(void)
+{
+  TEST_BEGIN("dmac software_trigger sets DMREQ.SWREQ");
+  ra8_fake_mmap_reset();
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_software_trigger((uint8_t)k_ra8_dmac_test_channel_valid));
+
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  /* HUM Ch 17.2.15 "DMREQ : DMA Software Start Register" p 744 */
+  TEST_ASSERT((reg->DMREQ & (uint8_t)k_ra8_dmreq_swreq_mask) != 0U);
+
+  /* Out-of-range channel is rejected without touching hardware. */
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 ra8_dmac_software_trigger((uint8_t)k_ra8_dmac_test_channel_bad));
+  TEST_END("dmac software_trigger sets DMREQ.SWREQ");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- ``ra8_dmac_is_active`` has a
+ * NULL guard and a range guard as two independent single-condition
+ * checks; all four branches are exercised: NULL, bad channel,
+ * ACT=0 -> false, ACT=1 -> true) @brief Verify is active behavior. @details Executes the is active scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_is_active(void)
+{
+  TEST_BEGIN("dmac is_active mirrors DMSTS.ACT");
+  ra8_fake_mmap_reset();
+
+  bool active = true;
+
+  /* NULL out pointer -> null_ptr. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_dmac_is_active((uint8_t)k_ra8_dmac_test_channel_valid, nullptr));
+
+  /* Bad channel -> out_of_range (out pointer untouched). */
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 ra8_dmac_is_active((uint8_t)k_ra8_dmac_test_channel_bad, &active));
+
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+
+  /* HUM Ch 17.2.16 "DMSTS : DMA Status Register" p 745 */
+  /* ACT clear -> reports idle. */
+  reg->DMSTS = 0U;
+  active     = true;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_is_active((uint8_t)k_ra8_dmac_test_channel_valid, &active));
+  TEST_ASSERT(!active);
+
+  /* HUM Ch 17.2.16 "DMSTS : DMA Status Register" p 745 */
+  /* ACT set -> reports busy. */
+  reg->DMSTS = (uint8_t)k_ra8_dmsts_act_mask;
+  active     = false;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_is_active((uint8_t)k_ra8_dmac_test_channel_valid, &active));
+  TEST_ASSERT(active);
+  TEST_END("dmac is_active mirrors DMSTS.ACT");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- ``ra8_dmac_wait_idle`` has a
+ * single range guard and a bounded poll loop whose body is one
+ * ``ACT == 0`` condition; exercises idle-immediately, timeout,
+ * zero-bound, and out-of-range) @brief Verify wait idle behavior. @details Executes the wait idle scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_wait_idle(void)
+{
+  TEST_BEGIN("dmac wait_idle polls DMSTS.ACT");
+  ra8_fake_mmap_reset();
+
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_ra8_dmac_test_channel_valid);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+
+  /* HUM Ch 17.2.16 "DMSTS : DMA Status Register" p 745 */
+  /* ACT already clear -> ok on the first read. */
+  reg->DMSTS = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dmac_wait_idle((uint8_t)k_ra8_dmac_test_channel_valid,
+                                    (uint32_t)k_ra8_dmac_test_poll_limit));
+
+  /* HUM Ch 17.2.16 "DMSTS : DMA Status Register" p 745 */
+  /* ACT stuck set -> the bounded loop exhausts and reports timeout. */
+  reg->DMSTS = (uint8_t)k_ra8_dmsts_act_mask;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 ra8_dmac_wait_idle((uint8_t)k_ra8_dmac_test_channel_valid,
+                                    (uint32_t)k_ra8_dmac_test_poll_limit));
+
+  /* HUM Ch 17.2.16 "DMSTS : DMA Status Register" p 745 */
+  /* Zero poll bound performs no read and times out even when idle. */
+  reg->DMSTS = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 ra8_dmac_wait_idle((uint8_t)k_ra8_dmac_test_channel_valid, 0U));
+
+  /* Bad channel -> out_of_range. */
+  TEST_ASSERT_EQ(
+    k_ra8_err_out_of_range,
+    ra8_dmac_wait_idle((uint8_t)k_ra8_dmac_test_channel_bad, (uint32_t)k_ra8_dmac_test_poll_limit));
+  TEST_END("dmac wait_idle polls DMSTS.ACT");
+}
+
+int main(void)
+{
+  internal_test_start_null_cfg();
+  internal_test_start_bad_channel();
+  internal_test_start_happy_both_inc();
+  internal_test_start_no_src_inc();
+  internal_test_start_no_dst_inc();
+  internal_test_start_neither_inc();
+  internal_test_stop_happy();
+  internal_test_stop_bad_channel();
+  internal_test_start_repeat_mode();
+  internal_test_start_repeat_null();
+  internal_test_start_block_mode();
+  internal_test_start_block_zero_count();
+  internal_test_set_address_mode_happy();
+  internal_test_set_address_mode_invalid();
+  internal_test_attach_half_complete_handler();
+  internal_test_attach_per_channel_callback();
+  internal_test_mcdc_set_address_mode_bounds();
+  internal_test_mcdc_dmac_internal_mode_disables_dts();
+  internal_test_mcdc_dmac_internal_dmint_extra_irq();
+  internal_test_software_trigger();
+  internal_test_is_active();
+  internal_test_wait_idle();
+  return 0;
+}

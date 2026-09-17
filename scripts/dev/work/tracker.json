@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "github_host": "github.com",
+  "repository": "bsikar/ra8-firmware",
+  "project_owner": "bsikar",
+  "project_number": 5,
+  "statuses": ["Needs you", "Ready", "In flight", "Bench-blocked", "Landed"],
+  "tracks": ["C6 wireless", "Bench + infra", "CI health", "Codebase", "Product"]
+}

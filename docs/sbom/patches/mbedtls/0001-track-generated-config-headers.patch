@@ -1,0 +1,18 @@
+diff --git a/library/.gitignore b/library/.gitignore
+index 92a33de..add1b9d 100644
+--- a/library/.gitignore
++++ b/library/.gitignore
+@@ -2,11 +2,5 @@ libmbed*
+ *.sln
+ *.vcxproj
+ 
+-###START_GENERATED_FILES###
+-/error.c
+-/mbedtls_config_check_before.h
+-/mbedtls_config_check_final.h
+-/mbedtls_config_check_user.h
+-/version_features.c
+-/ssl_debug_helpers_generated.c
+-###END_GENERATED_FILES###
++# Generated mbedtls config-check headers are vendored; we do NOT regenerate
++# during build. Keep them tracked in git.

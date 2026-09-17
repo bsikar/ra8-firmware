@@ -1,0 +1,132 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+---
+# hil_bench role defaults -- provisions the hardware-in-the-loop bench host
+# (the Raspberry Pi with the EK-RA8D2 + J-Link attached) to a known, current,
+# HIL-ready state. Codifies exactly what rotted: a stale/broken repo checkout
+# and an unmanaged toolchain that nobody noticed because HIL had no owner.
+# Override per deployment in group_vars / host_vars.
+
+# The repo the bench checks out and runs HIL against.
+hil_bench_repo_url: "git@github.com:bsikar/ra8-firmware.git"
+hil_bench_repo_dir: "/home/{{ ansible_user | default('star') }}/ra8-firmware"
+# ansible.builtin.git passes this value to the remote fetch operation; use the
+# branch name, not the local remote-tracking spelling (`origin/dev`).
+hil_bench_ref: "dev"
+
+# uv-authenticated, lock-derived Python environment for bench-side helpers.
+hil_bench_python_context: /opt/ra8-hil-python-context
+hil_bench_python_venv: /opt/ra8-hil-python
+hil_bench_python_marker: /opt/ra8-hil-python/.ra8-lock-sha256
+hil_bench_uv_cache: /opt/ra8-uv-cache
+
+# apt packages the bench needs to build + flash + probe the firmware.
+# NOTE: gcc-arm-none-eabi is deliberately NOT here -- apt ships 13.2, but the
+# project pins Arm GNU Toolchain 13.3.rel1 for reproducible codegen (#178: the
+# miniz inflater is version-sensitive, which EIL==HIL goldens depend on). The
+# pinned toolchain is installed to /opt below, matching the devcontainer.
+hil_bench_apt_packages:
+  - git
+  - git-lfs
+  - cmake
+  - ninja-build
+  - build-essential
+  - python3
+  - usbutils
+  - libusb-1.0-0
+  # ethtool reads the NIC timestamping capabilities the gPTP assertions below
+  # stand on. Without it the PHC check cannot run, so it is a hard dependency
+  # of this role, not a convenience.
+  - ethtool
+
+# Pinned Arm GNU Toolchain (must match .devcontainer/Dockerfile exactly so the
+# bench builds byte-identical firmware to CI). Installed to the /opt path the
+# CMake toolchain (cmake/toolchain-ra8d2.cmake) searches.
+hil_bench_arm_gcc_release: "13.3.rel1"
+hil_bench_arm_gcc_prefix: "/opt/arm-gnu-toolchain-13.3"
+hil_bench_arm_gcc_sha256_aarch64: "c8824bffd057afce2259f7618254e840715f33523a3d4e4294f471208f976764"
+# What `arm-none-eabi-gcc -dumpfullversion` prints for the release above -- used
+# to skip the install idempotently when it is already present.
+hil_bench_arm_gcc_dumpversion: "13.3.1"
+# Download URL (arm-developer.com), aarch64 host.
+hil_bench_arm_gcc_url: "https://developer.arm.com/-/media/Files/downloads/gnu/\
+  {{ hil_bench_arm_gcc_release }}/binrel/\
+  arm-gnu-toolchain-{{ hil_bench_arm_gcc_release }}-aarch64-arm-none-eabi.tar.xz"
+
+# Vendor tools that are NOT apt-installable (manual SEGGER / Renesas downloads).
+# The role FAILS LOUD if they are missing rather than silently degrading -- a
+# HIL bench without these cannot flash or probe, and a green run that skipped
+# them would be a lie.
+hil_bench_required_vendor_tools:
+  - JLinkExe   # SEGGER J-Link (flash + SWD + VCOM)
+  - rfp-cli    # Renesas Flash Programmer (DLM recovery, option bytes)
+
+# --- linuxptp: the IEEE 1588 / 802.1AS peer on the board-facing wire --------
+# The Ethernet timing examples measure against a real PTP peer rather than
+# against themselves, so the bench needs one. linuxptp is in the Ubuntu archive
+# and is pinned to the exact archive version below: unlike the vendor tools it
+# has a stable, resolvable name, so there is no reason to accept "whatever apt
+# had that day" on a host whose whole job is producing timing numbers.
+#
+# Re-pinning: `apt-cache policy linuxptp` on the bench prints the candidate.
+# Move this pin deliberately and re-run; do not drop the `=` and let it float.
+hil_bench_linuxptp_version: "4.0-1ubuntu1.1"
+# Binaries the bench scripts invoke. Asserted individually after the install so
+# a partially-unpacked package cannot pass as a provisioned bench.
+hil_bench_linuxptp_binaries:
+  - ptp4l    # PTP port state machine
+  - phc2sys  # moves time between the NIC's PHC and CLOCK_REALTIME
+  - pmc      # management client: queries a running ptp4l over its UDS socket
+# The distro ships system-wide units for all three. They are NOT enabled by
+# default, but a bench where one got enabled by hand would have a second ptp4l
+# bound to the same interface, silently fighting the per-run daemon a HIL
+# helper starts -- and the symptom is an offset that never converges, which
+# reads as a firmware fault. Mask them so that cannot happen.
+#
+# Two of the three are systemd TEMPLATE units (the trailing `@`): `systemctl
+# mask ptp4l@.service` masks every instance, but they cannot be `stop`ped or
+# queried without an instance name, which is why the role masks by command
+# rather than through the systemd module.
+hil_bench_linuxptp_masked_units:
+  - "ptp4l@.service"
+  - "phc2sys@.service"
+  - timemaster.service
+
+# The board-facing wired interface: the EK-RA8D2's RJ45 goes here.
+#
+# This MUST be a port with a PTP hardware clock. The bench previously reached
+# the board through a USB-Ethernet adapter, which `ethtool -T` reports as
+# software-receive only with "PTP Hardware Clock: none" -- it can never be more
+# than a software-timestamped peer. The Pi's built-in port has PHC 0 with
+# hardware transmit and receive timestamping, so the cable lives there (#292)
+# and the role asserts the property rather than trusting the label.
+# Fleet-owned physical identity. Empty defaults make direct playbook execution
+# fail rather than selecting a plausible but undeclared interface.
+hil_bench_eth_iface: ""
+hil_bench_eth_mac: ""
+hil_bench_eth_sysfs_device: ""
+hil_bench_eth_phc_index: -1
+
+# Serial group the bench user must be in for /dev/ttyACM* access.
+hil_bench_serial_group: dialout
+
+# J-Link speed for the board-reachable health check. The device value comes
+# directly from scripts/hil/lib/rig_contract.sh; this role owns no duplicate.
+hil_bench_jlink_speed: 1000
+
+# Whether to pull LFS content (book fixtures some HIL apps bake in).
+hil_bench_lfs_pull: true
+
+# Bench mutual exclusion (#497). The canonical state directory -- one path, on
+# every actor, because two actors flocking two DIFFERENT inodes is the one
+# silent-corruption path the design has. Overriding this is for a test rig, not
+# for the bench.
+hil_bench_lock_dir: /var/lib/ra8-bench
+
+# Set only by scripts/dev/fleet.py after it has wrapped a mutating converge in
+# the canonical bench lock. Direct applies fail closed; check mode remains
+# available without touching the physical rig.
+hil_bench_maintenance_lock_id: ""
+hil_bench_maintenance_holder_pid: 0
+hil_bench_maintenance_holder_start_ticks: 0
+hil_bench_maintenance_holder_target: ""
