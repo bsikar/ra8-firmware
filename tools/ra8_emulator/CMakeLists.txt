@@ -8,8 +8,19 @@
 # ticked cooperatively so delays advance. Standalone dev tool under tools/,
 # outside the firmware CI gates.
 #
-# cmake -B build -S . && cmake --build build -j ./build/ra8_emulator
-# ../../examples/ek_ra8d2/.../<app>/build/<app>.elf
+# Build it the way the repository does, from the repo root, which selects and
+# probes a C23-capable host compiler for you:
+#
+#   just tools::build_one ra8_emulator
+#   tools/ra8_emulator/build/ra8_emulator \\
+#       examples/ek_ra8d2/.../<app>/build/<app>.elf
+#
+# Configuring it by hand works too, but the ambient `cc` is not assumed to be
+# C23-capable (on Debian 12 it is gcc 12, which cannot parse this tool's typed
+# enums); name a supported compiler, and the preflight below says so plainly if
+# it is not one:
+#
+#   cmake -B build -S . -DCMAKE_C_COMPILER=gcc-13 && cmake --build build -j
 #
 # Needs Unicorn + Capstone: macOS: `just apps::emulator::setup` (Homebrew Capstone +
 # source-built pinned Unicorn) Linux: libunicorn-dev + libcapstone-dev (or a
@@ -37,6 +48,12 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# A standalone configure may have landed on an ambient compiler that cannot
+# parse this tool's C23. Say so here rather than in the middle of src/main.c.
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(ra8_emu_require_c23)
+ra8_emu_require_c23()
 
 # Homebrew supplies Capstone on macOS. The pinned Unicorn source build lives in
 # a user-local prefix by default so cloning the repository never requires sudo.
