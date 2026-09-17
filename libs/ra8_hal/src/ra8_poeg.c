@@ -2,6 +2,9 @@
  * @file ra8_poeg.c
  * @brief Port Output Enable for GPT (POEG) driver implementation
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * new driver. See ``libs/ra8_hal/inc/ra8_poeg.h`` for the
  * public surface and HUM Ch 21 "Port Output Enable for GPT

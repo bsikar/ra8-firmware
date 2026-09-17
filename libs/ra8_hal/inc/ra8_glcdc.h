@@ -5,6 +5,9 @@
  * @details Declares timing, layer, framebuffer, and lifecycle contracts for the RA8 graphics LCD controller.
  * @ingroup grp_hal_display
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

@@ -2,6 +2,9 @@
  * @file ra8_gpt.c
  * @brief General PWM Timer (GPT) driver implementation
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * Provides a minimal "free-running 32-bit timer" interface on top of
  * the GPT register block. A full PWM / compare-match driver will
