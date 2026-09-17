@@ -115,6 +115,7 @@ nav:
       - "ADR-0013 Reflow named character reference set": adr/0013-reflow-named-character-references.md
       - "ADR-0014 Approved C23 subset enforcement surfaces": adr/0014-c23-subset-enforcement-surfaces.md
       - "ADR-0015 Panel tone-curve calibration record": adr/0015-panel-tone-curve-calibration-record.md
+      - "ADR-0016 USB CDC example duplication": adr/0016-usb-cdc-example-duplication.md
   - Toolchain and build:
       - Toolchain: TOOLCHAIN.md
       - IDE setup: IDE.md
