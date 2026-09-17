@@ -40,6 +40,7 @@ import fleet_reconcile_orphan_selftest as fro
 import fleet_reconcile_process as frp
 import fleet_reconcile_prune_selftest as frpr
 import fleet_reconcile_publish_selftest as frpu
+import fleet_reconcile_reactivate_selftest as frrc
 import fleet_reconcile_recovery_selftest as frr
 import fleet_reconcile_release_selftest as frrl
 import fleet_reconcile_reopen_selftest as frre
@@ -326,7 +327,12 @@ def quarantine(host: str, run: CommandRunner) -> None:
 
 
 def recover_last_known_good(
-    data: dict[str, Any], host: str, run: CommandRunner, expected_check_changes: int
+    data: dict[str, Any],
+    host: str,
+    run: CommandRunner,
+    expected_check_changes: int,
+    *,
+    held_check_changes: int,
 ) -> bool:
     """Reopen a drained host that was already converged before its apply failed.
 
@@ -342,19 +348,9 @@ def recover_last_known_good(
         "reopening last-known-good capacity",
         file=sys.stderr,
     )
-    restore = run(fleet_command(host, "restore"))
-    emit_result(restore)
-    if restore.status or frp.interrupted_status():
-        quarantine(host, run)
-        return False
-    clean, changed = inspect_host(data, host, run)
-    if not clean or changed != expected_check_changes or frp.interrupted_status():
-        print(
-            f"fleet-reconcile: {host}: last-known-good capacity did not verify "
-            f"(remaining changed={changed}); holding at zero",
-            file=sys.stderr,
-        )
-        quarantine(host, run)
+    if not reopen_capacity(
+        data, host, run, serving_changes=expected_check_changes, held_changes=held_check_changes
+    ):
         return False
     print(
         f"fleet-reconcile: WARNING: {host}: full verification FAILED while serving "
@@ -383,6 +379,56 @@ def _activate_arc(
         quarantine(host, run)
         return False, 0
     return True, 0
+
+
+def capacity_opener(data: dict[str, Any], host: str) -> str:
+    """Return the capacity arm that can put one host's declared runners back in service."""
+    return fm.CLASSES[data["hosts"][host]["class"]].capacity_kind
+
+
+def reopen_capacity(
+    data: dict[str, Any],
+    host: str,
+    run: CommandRunner,
+    *,
+    serving_changes: int,
+    held_changes: int,
+) -> bool:
+    """Put a drained host back in service through the opener its class actually has.
+
+    Recovery reopened every host with a bare ``restore``, which is the whole
+    opener for a Docker host and only the last step of one for an ARC scale
+    set: ``_activate_arc`` exists because ARC capacity is opened by declaring
+    its authority, proving that declaration while admission is still held at
+    zero, and only then restoring.  A parked apply tears that declaration down,
+    so a ``restore`` issued on its own returns cleanly while the live ceiling
+    stays at ZERO, and the ordinary check that followed it reads the
+    DECLARATION rather than the live scale, so it verified.  The controller
+    then reported the host as serving last-known-good capacity, wrote no
+    stranded-at-zero record, cleared any record it already had, and failed the
+    pass exactly like a one-off fault: an ARC host still declared for all its
+    runners with none of them in service, and no escalation however long it
+    stays that way (issue #888, and the dry-run evidence in it).  Reopen
+    through the class's real opener, or hold the host at zero.
+    """
+    if capacity_opener(data, host) == "k8s":
+        opened, _ = _activate_arc(data, host, run, held_changes)
+        return opened
+    restore = run(fleet_command(host, "restore"))
+    emit_result(restore)
+    if restore.status or frp.interrupted_status():
+        quarantine(host, run)
+        return False
+    clean, changed = inspect_host(data, host, run)
+    if not clean or changed != serving_changes or frp.interrupted_status():
+        print(
+            f"fleet-reconcile: {host}: last-known-good capacity did not verify "
+            f"(remaining changed={changed}); holding at zero",
+            file=sys.stderr,
+        )
+        quarantine(host, run)
+        return False
+    return True
 
 
 def retry_delay(attempt: int) -> int:
@@ -589,7 +635,9 @@ def reconcile_host(  # noqa: PLR0913  # transaction inputs plus injectable retry
         nonlocal recovered
         if actionable_changes or frp.interrupted_status():
             return False
-        recovered = recover_last_known_good(data, host, run, expected_changes)
+        recovered = recover_last_known_good(
+            data, host, run, expected_changes, held_check_changes=held_changes
+        )
         return recovered
 
     applied, _ = apply_host(
@@ -1987,6 +2035,7 @@ def selftest() -> int:
     failures.extend(fro.run(sys.modules[__name__]))
     failures.extend(frsv.run(sys.modules[__name__]))
     failures.extend(fru.run(sys.modules[__name__]))
+    failures.extend(frrc.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
