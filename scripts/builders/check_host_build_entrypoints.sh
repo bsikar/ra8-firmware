@@ -7,9 +7,12 @@
 #
 # This is a minimal trusted launcher, not an implementation: the audit is
 # performed by the Zig host tool tools/check_host_build_entrypoints (#858),
-# which replaced the Python scripts/checks/check_host_build_entrypoints.py, now
-# deleted. PATHREF-OK: history, not a live path. All this does is resolve zig,
-# build the tool once, and hand over argv and the exit status unchanged.
+# which replaced the Python
+# scripts/checks/check_host_build_entrypoints.py  PATHREF-OK: the predecessor
+# this names was deleted in the same change.
+#
+# All this does is resolve zig, build the tool once, and hand over argv and
+# the exit status unchanged.
 #
 #     bash scripts/builders/check_host_build_entrypoints.sh --selftest
 #     bash scripts/builders/check_host_build_entrypoints.sh

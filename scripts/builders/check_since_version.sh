@@ -8,9 +8,11 @@
 #
 # This is a minimal trusted launcher, not an implementation: both halves of
 # the gate are the Zig host tool tools/check_since_version (#858), which
-# replaced the Python scripts/checks/check-since-version.py. All this does is
-# resolve zig, build the tool once, and hand over argv and the exit status
-# unchanged.
+# replaced the Python scripts/checks/check-since-version.py  PATHREF-OK: the
+# predecessor this names was deleted in the same change.
+#
+# All this does is resolve zig, build the tool once, and hand over argv and
+# the exit status unchanged.
 #
 #     bash scripts/builders/check_since_version.sh --selftest
 #     bash scripts/builders/check_since_version.sh --all
