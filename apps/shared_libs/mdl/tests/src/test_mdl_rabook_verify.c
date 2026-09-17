@@ -6,6 +6,8 @@
  * the production RBKC writer, publishes it through portable storage, and proves
  * the downloader validator accepts the exact file and rejects a corrupted copy.
  * The streamed USTAR and gzip fixtures live in `test_mdl_verify_stream.c`.
+ * Every fixture path is composed below one `mkdtemp()` root created in ::main,
+ * so two concurrent runs of this executable never share a fixture (#780).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -14,7 +16,9 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "book.h"
 #include "mdl_export.h"
@@ -37,6 +41,7 @@ typedef enum : uint32_t {
   k_test_verify_arena_bytes = 96U * 1024U * 1024U, /**< Writer and strict-reader arena. */
   k_test_small_arena_bytes  = 1U * 1024U * 1024U,  /**< Forced profile rejection.       */
   k_test_dir_work_bytes     = 8192U,               /**< Portable directory cursor.      */
+  k_test_path_bytes         = 128U,                /**< Fixture path capacity.          */
 } mdl_rabook_verify_limit_t;
 
 /** @brief Maximally aligned miniz compressor storage. */
@@ -211,11 +216,44 @@ RA8_INTERNAL static ra8_err_t internal_build_rbkc(uint64_t* rbkc_size)
 }
 
 /**
+ * @brief Private fixture root for this test process.
+ * @details Filled by `mkdtemp()` in ::main so two concurrent runs of this
+ *          executable cannot write each other's fixtures. Spelled out
+ *          character by character because `mkdtemp()` rewrites the trailing
+ *          template in place, which a string-literal initializer forbids.
+ */
+static char s_fixture_root[] = {'/', 't', 'm', 'p', '/', 'm', 'd', 'l', '_',
+                                'r', 'a', 'b', 'o', 'o', 'k', '_', 'X', 'X',
+                                'X', 'X', 'X', 'X', '\0'};
+
+/**
+ * @brief Compose one fixture path below the process-private root.
+ * @details Joins ::s_fixture_root and @p leaf with a single separator. A leaf
+ *          that would not fit fails the vector here rather than producing a
+ *          silently truncated path that some later assertion blames.
+ * @param[out] out Caller-owned destination for the composed path.
+ * @param[in] out_bytes Destination capacity in bytes.
+ * @param[in] leaf Root-relative fixture name, without a leading separator.
+ * @pre ::main created the private root.
+ * @pre @p leaf is NUL-terminated and carries no leading separator.
+ * @post @p out holds the complete path and never a truncated prefix.
+ * @note Test-only; assertion failure terminates the process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_fixture_path(char* out, size_t out_bytes, const char* leaf)
+{
+  const int written = __builtin_snprintf(out, out_bytes, "%s/%s", s_fixture_root, leaf);
+  TEST_ASSERT(written > 0);
+  TEST_ASSERT((size_t)written < out_bytes);
+}
+
+/**
  * @test internal_test_strict_rabook_verify
  * @brief A real RBKC passes and a one-byte-corrupted stream is rejected.
  * @details Builds through the production flat and container writers, publishes through portable
  * transactions, checks the reported counts, then flips a compressed payload byte.
- * @pre The shared fixture arrays and `/tmp` paths are exclusively owned. @pre Storage is initialized.
+ * @pre The shared fixture arrays are exclusively owned. @pre Storage is initialized.
+ * @pre ::main created the process-private fixture root.
  * @post The valid report matches the builder fixture. @post Both temporary files are removed. @note Test-only; assertion failure terminates the process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_strict_rabook_verify(void)
@@ -224,8 +262,10 @@ RA8_INTERNAL static void internal_test_strict_rabook_verify(void)
   uint64_t rbkc_size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, internal_build_rbkc(&rbkc_size));
   TEST_ASSERT(rbkc_size <= UINT32_MAX);
-  const char* const valid_path = "/tmp/mdl-rabook-valid.rabook";
-  const char* const bad_path   = "/tmp/mdl-rabook-bad.rabook";
+  char valid_path[k_test_path_bytes];
+  char bad_path[k_test_path_bytes];
+  internal_fixture_path(valid_path, sizeof(valid_path), "valid.rabook");
+  internal_fixture_path(bad_path, sizeof(bad_path), "bad.rabook");
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_publish(valid_path, s_rbkc, (uint32_t)rbkc_size));
 
   mdl_export_workspace_t verify_workspace;
@@ -260,15 +300,19 @@ RA8_INTERNAL static void internal_test_strict_rabook_verify(void)
  * @brief A real page directory exports to strict RBKC with failure preservation.
  * @details Writes a deterministic JPEG, runs the public chapter exporter, verifies the reader
  * report, proves no private EPUB remains, then forces workspace exhaustion.
- * @pre Test storage and shared arenas are exclusively owned. @pre The `/tmp` fixtures are writable.
+ * @pre Test storage and shared arenas are exclusively owned.
+ * @pre ::main created the process-private fixture root and it is writable.
  * @post The writer output and all sources are removed. @post The failed export leaves the prior artifact unchanged. @note Test-only; assertion failure terminates the process. @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_rabook_writer(void)
 {
   TEST_BEGIN("media rabook writer");
-  const char* const directory = "/tmp/mdl-rabook-export";
-  const char* const page      = "/tmp/mdl-rabook-export/001.jpg";
-  const char* const output    = "/tmp/mdl-rabook-export.rabook";
+  char directory[k_test_path_bytes];
+  char page[k_test_path_bytes];
+  char output[k_test_path_bytes];
+  internal_fixture_path(directory, sizeof(directory), "export");
+  internal_fixture_path(page, sizeof(page), "export/001.jpg");
+  internal_fixture_path(output, sizeof(output), "export.rabook");
   TEST_ASSERT_EQ(k_ra8_ok, internal_remove_path(output, false));
   TEST_ASSERT_EQ(k_ra8_ok, internal_remove_path(page, false));
   TEST_ASSERT_EQ(k_ra8_ok, internal_remove_path(directory, true));
@@ -325,13 +369,18 @@ RA8_INTERNAL static void internal_test_rabook_writer(void)
  * @brief Run the RBKC verifier regressions.
  * @return Zero after all assertions pass. @retval 0 Every registered vector behaved exactly.
  * @pre The root-confined portable test storage can be initialized. @pre The assertion process is active.
- * @post Test storage is deinitialized and the fixture paths are absent. @post No ownership escapes the process. @note Host-only and serial. @since 0.1.0
+ * @pre The process may create one temporary directory below `/tmp`.
+ * @post Test storage is deinitialized and the fixture paths are absent. @post No ownership escapes the process.
+ * @post The process-private fixture root is removed, so nothing accumulates below `/tmp`.
+ * @note Host-only and serial; concurrent runs of this executable are isolated by the private root. @since 0.1.0
  */
 int main(void)
 {
+  TEST_ASSERT_NOT_NULL(mkdtemp(s_fixture_root));
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_init());
   internal_test_strict_rabook_verify();
   internal_test_rabook_writer();
   TEST_ASSERT_EQ(k_ra8_ok, mdl_test_storage_deinit());
+  TEST_ASSERT_EQ(0, rmdir(s_fixture_root));
   return 0;
 }
