@@ -3,6 +3,9 @@
  * @brief Graphics LCD Controller (GLCDC) register layout for the RA8D2
  * @ingroup grp_hal_display
  *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
  * @details
  * GLCDC at `0x40342000` drives up to two RGB graphics layers with
  * alpha blending, chroma key, dither, gamma correction, and
