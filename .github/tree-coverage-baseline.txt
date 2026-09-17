@@ -10,10 +10,20 @@
 #            >=80% branch.
 # UNMEASURED <file> UNMEASURED <reason-class>
 #            No host execution path reaches it. The class is re-derived
-#            every run; gaining measurement is one-way.
+#            every run; gaining measurement is one-way. How many each
+#            class may carry is capped by tree-coverage-unmeasured-ceiling.txt,
+#            which the counts below describe but do not bound.
 #
 # Columns are TAB-separated. Rows are sorted by path.
-# rows: 1059  measured: 523  unmeasured: 536
+#
+# The `#!` census below is READ, not decoration: the gate counts the rows
+# it parsed and fails hard when they differ from what this file says it
+# holds, or when a directive is missing. That is what makes a hand-deleted
+# row a regression rather than a unit that reads as new and re-enters at
+# the entry floor with its frozen debt forgotten.
+#! rows: 1059
+#! measured: 523
+#! unmeasured: 536
 
 apps/board/stand_alone/ereader/src/main.c	UNMEASURED	firmware-composition
 apps/board/stand_alone/ereader/src/ns_main.c	UNMEASURED	firmware-composition

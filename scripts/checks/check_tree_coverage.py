@@ -39,6 +39,10 @@ They are one policy now:
 * The **UNMEASURED ceiling** (``.github/tree-coverage-unmeasured-ceiling.txt``)
   caps each reason class. ``--update`` lowers a cap, never raises one, so a
   unit no host build reaches cannot join the census by being written down.
+* The baseline **declares its own census** in ``#!`` directives and the gate
+  counts the rows it parsed against them. A row removed by hand is then a HARD
+  finding ``--update`` refuses to absorb, not a unit that reads as new and
+  re-enters at the entry floor with its frozen debt forgotten.
 * **UNMEASURED(<reason>)** rows are explicit. Nothing is silently absent: a
   unit no host build executes still has a row naming which of the four classes
   in ``tree_coverage_model`` it falls into, and the class is RE-DERIVED from
@@ -79,6 +83,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lint_targets import firmware_app_dirs, first_party_paths
 from tree_coverage_model import (
+    BASELINE_HEADER,
     CENSUS_SUFFIXES,
     MEASURED_FLOOR,
     PROJECTS,
@@ -87,12 +92,16 @@ from tree_coverage_model import (
     REASON_HOSTED,
     REASON_PLATFORM,
     REASONS,
+    baseline_census,
+    baseline_census_failures,
+    baseline_census_selftest_failures,
     ceiling_findings,
     ceiling_selftest_failures,
     ceiling_setup_failures,
     census_floor_failures,
     census_paths,
     coverage_capable_dirs,
+    format_baseline_census,
     format_ceiling,
     in_census,
     parse_ceiling,
@@ -525,37 +534,10 @@ def evaluate(fresh: dict[str, Row], baseline: dict[str, Row]) -> list[Finding]:
 # The baseline file
 # ---------------------------------------------------------------------------
 
-BASELINE_HEADER = (
-    "# ONE coverage baseline for every first-party translation unit.",
-    "#",
-    "# Emitted by `python3 scripts/checks/check_tree_coverage.py --update`.",
-    "# Never hand-edit: every field is re-derived from the tree and the merged",
-    "# gcovr measurement, so an edit is either a no-op or a lie the gate finds.",
-    "#",
-    "# MEASURED   <file> MEASURED <line-covered> <line-total> <branch-covered> <branch-total>",
-    "#            Frozen debt. Uncovered lines/branches may not grow and the",
-    "#            ratio may not fall; a NEW unit must enter at >=90% line and",
-    "#            >=80% branch.",
-    "# UNMEASURED <file> UNMEASURED <reason-class>",
-    "#            No host execution path reaches it. The class is re-derived",
-    "#            every run; gaining measurement is one-way. How many each",
-    "#            class may carry is capped by tree-coverage-unmeasured-ceiling.txt,",
-    "#            which the counts below describe but do not bound.",
-    "#",
-    "# Columns are TAB-separated. Rows are sorted by path.",
-)
-
-
 def format_baseline(rows: dict[str, Row]) -> str:
-    """Render the baseline deterministically: sorted, counted, no timestamps."""
-    kinds = [row.kind for row in rows.values()]
-    lines = [
-        *BASELINE_HEADER,
-        f"# rows: {len(rows)}"
-        f"  measured: {kinds.count(KIND_MEASURED)}"
-        f"  unmeasured: {kinds.count(KIND_UNMEASURED)}",
-        "",
-    ]
+    """Render the baseline deterministically: sorted, declared, no timestamps."""
+    census = baseline_census([row.kind for row in rows.values()], KIND_MEASURED)
+    lines = [*BASELINE_HEADER, *format_baseline_census(census), ""]
     for rel in sorted(rows):
         row = rows[rel]
         if row.kind == KIND_MEASURED:
@@ -699,11 +681,13 @@ def run_gate(*, update: bool) -> int:
         [row.reason for row in fresh.values() if row.kind == KIND_UNMEASURED]
     )
     baseline = load_baseline()
+    kinds = [row.kind for row in baseline.values()]
+    declared = baseline_census_failures(BASELINE_FILE, baseline_census(kinds, KIND_MEASURED))
     # Above its cap is HARD (--update must not absorb it); under it is DRIFT.
     growth, slack = ceiling_findings(counts, caps)
     findings = [
         *(evaluate(fresh, baseline) if baseline else []),
-        *(Finding(HARD, message) for message in growth),
+        *(Finding(HARD, message) for message in growth + (declared if baseline else [])),
         *(Finding(DRIFT, message) for message in slack),
     ]
     if update:
@@ -961,6 +945,7 @@ def selftest() -> int:
         + _scope_failures()
         + _format_failures()
         + ceiling_selftest_failures()
+        + baseline_census_selftest_failures()
     )
     if failures:
         for name in failures:
@@ -968,7 +953,7 @@ def selftest() -> int:
         return 1
     print(
         f"check_tree_coverage.py --selftest: PASS "
-        f"({cases} both-direction cases, 5 non-vacuity floors)"
+        f"({cases} both-direction cases, 6 non-vacuity floors)"
     )
     return 0
 
