@@ -34,6 +34,7 @@ import fleet_reconcile_cascade_selftest as frc
 import fleet_reconcile_drain_selftest as frd
 import fleet_reconcile_freeze_selftest as frf
 import fleet_reconcile_interrupt_selftest as fri
+import fleet_reconcile_orphan_selftest as fro
 import fleet_reconcile_process as frp
 import fleet_reconcile_prune_selftest as frpr
 import fleet_reconcile_recovery_selftest as frr
@@ -768,6 +769,20 @@ def open_stranding(
     return stranding
 
 
+def open_pass_records(
+    document: dict[str, Any], order: Sequence[str], options: ReconcileOptions
+) -> dict[str, dict[str, int]]:
+    """Return the stranded-at-zero record, having dropped receipts that prove nothing.
+
+    Both reads settle what this pass is entitled to believe from the state
+    file before it inspects a single host: a provisional receipt earned against
+    a producer that no longer publishes this fleet's image, and a
+    stranded-at-zero record for a host this fleet no longer manages.
+    """
+    expire_orphaned_releases(document["hosts"], order, options)
+    return open_stranding(document, order, options)
+
+
 def invalidate_receipt(  # noqa: PLR0913  # the receipt plus every record one failure settles
     receipts: dict[str, Any],
     stranding: dict[str, dict[str, int]],
@@ -837,6 +852,50 @@ def expire_released_receipts(
             file=sys.stderr,
         )
     return expired
+
+
+def expire_orphaned_releases(
+    receipts: dict[str, Any], order: Sequence[str], options: ReconcileOptions
+) -> list[str]:
+    """Drop provisional receipts earned against a producer this fleet no longer publishes from.
+
+    A receipt marked ``RELEASED_RECEIPT_KEY`` records convergence onto one
+    named producer's FROZEN last-known-good image, and the only thing that ever
+    expired it was that same producer being proven to serve again.  A producer
+    can also leave the role: an operator swapping ``runner_image.source_host``
+    to a healthy host, or retiring a producer that has sat at zero for days,
+    is the ordinary human response to the outage this controller is escalating.
+    Nothing then clears the mark, because the host whose recovery the expiry
+    waits on is never the producer again, so every released consumer keeps a
+    receipt that looks freshly converged and ``full_apply_due`` skips it for a
+    whole interval while the pass exits 0.  The new producer's image never
+    reaches the fleet and the controller reports it fully converged running the
+    image the outage left behind (issue #888, the same stale pinning as the
+    recovery path, arriving through the fix rather than the fault).  A mark
+    naming anyone but the current producer is evidence about an image source
+    this pass does not have, so it is dropped and the host converges again in
+    this same pass.
+    """
+    if options.mode != "apply":
+        return []
+    producer = order[0]
+    orphaned = [
+        host
+        for host in order
+        if isinstance(receipts.get(host), dict)
+        and RELEASED_RECEIPT_KEY in receipts[host]
+        and receipts[host][RELEASED_RECEIPT_KEY] != producer
+    ]
+    for host in orphaned:
+        against = receipts.pop(host)[RELEASED_RECEIPT_KEY]
+        print(
+            f"fleet-reconcile: WARNING: {host}: its receipt was earned against {against}'s "
+            f"frozen image, and {producer} publishes this fleet's image now; that receipt "
+            "proves nothing about the image in service, so it is expired and the host "
+            "converges again in this pass",
+            file=sys.stderr,
+        )
+    return orphaned
 
 
 def stranded_escalations(stranding: dict[str, dict[str, int]], now: int) -> list[str]:
@@ -1073,7 +1132,7 @@ def reconcile(
     document = load_state(state_path)
     receipts = document["hosts"]
     order = runner_hosts(data)
-    stranding = open_stranding(document, order, options)
+    stranding = open_pass_records(document, order, options)
     budget = open_drain_budget(order, stranding)
     failures = 0
     producer_blocking = False
@@ -1705,6 +1764,7 @@ def selftest() -> int:
     failures.extend(fri.run(sys.modules[__name__]))
     failures.extend(frf.run(sys.modules[__name__]))
     failures.extend(frpr.run(sys.modules[__name__]))
+    failures.extend(fro.run(sys.modules[__name__]))
     _selftest_state_safety(failures)
     failures.extend(fml.run_selftest())
     _selftest_timeout(failures)
