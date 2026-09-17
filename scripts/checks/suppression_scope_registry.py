@@ -939,6 +939,7 @@ _SCHEMA_GROUPS = (
             "checks/check_no_wave_references.py:OPTOUT_RE",
             "checks/check_script_references.py:OPT_OUT",
             "checks/check_tree_coverage.py:BASELINE_FILE",
+            "checks/check_tree_coverage.py:CEILING_FILE",
             "checks/check_tree_coverage.py:KIND_MEASURED",
             "checks/check_tree_coverage.py:KIND_UNMEASURED",
             "checks/check_tree_coverage.py:MEASURED_COLUMNS",

@@ -36,6 +36,9 @@ They are one policy now:
   gone, one path of the same basename arrived -- carries its frozen row to the
   new path and answers to the same ratchet there, so reorganising the tree
   costs no coverage work and launders no regression.
+* The **UNMEASURED ceiling** (``.github/tree-coverage-unmeasured-ceiling.txt``)
+  caps each reason class. ``--update`` lowers a cap, never raises one, so a
+  unit no host build reaches cannot join the census by being written down.
 * **UNMEASURED(<reason>)** rows are explicit. Nothing is silently absent: a
   unit no host build executes still has a row naming which of the four classes
   in ``tree_coverage_model`` it falls into, and the class is RE-DERIVED from
@@ -84,10 +87,16 @@ from tree_coverage_model import (
     REASON_HOSTED,
     REASON_PLATFORM,
     REASONS,
+    ceiling_findings,
+    ceiling_selftest_failures,
+    ceiling_setup_failures,
     census_floor_failures,
     census_paths,
     coverage_capable_dirs,
+    format_ceiling,
     in_census,
+    parse_ceiling,
+    reason_population,
     structural_reason,
     unclaimed_coverage_projects,
 )
@@ -96,6 +105,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORT_DIR = REPO_ROOT / "build" / "tree-coverage"
 MERGED_SUMMARY = REPORT_DIR / "summary.json"
 BASELINE_FILE = REPO_ROOT / ".github" / "tree-coverage-baseline.txt"
+CEILING_FILE = REPO_ROOT / ".github" / "tree-coverage-unmeasured-ceiling.txt"
 
 LINE_FLOOR_PCT = 90
 BRANCH_FLOOR_PCT = 80
@@ -528,7 +538,9 @@ BASELINE_HEADER = (
     "#            >=80% branch.",
     "# UNMEASURED <file> UNMEASURED <reason-class>",
     "#            No host execution path reaches it. The class is re-derived",
-    "#            every run; gaining measurement is one-way.",
+    "#            every run; gaining measurement is one-way. How many each",
+    "#            class may carry is capped by tree-coverage-unmeasured-ceiling.txt,",
+    "#            which the counts below describe but do not bound.",
     "#",
     "# Columns are TAB-separated. Rows are sorted by path.",
 )
@@ -582,6 +594,18 @@ def load_baseline(path: Path = BASELINE_FILE) -> dict[str, Row]:
     if not path.is_file():
         return {}
     return parse_baseline(path.read_text(encoding="ascii"))
+
+
+def load_ceiling(path: Path = CEILING_FILE) -> dict[str, int] | None:
+    """Read the committed per-class ceiling, ``None`` when it is unusable.
+
+    ``None`` rather than ``{}``: an unreadable ceiling fails closed instead of
+    reading as no declared debt.
+    """
+    try:
+        return parse_ceiling(path.read_text(encoding="ascii"))
+    except (OSError, ValueError):
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -644,11 +668,17 @@ def _fail_setup(failures: list[str]) -> int:
     return 2
 
 
-def _measure() -> tuple[list[str], dict[str, Row]] | int:
-    """Return (census, fresh rows), or an exit code when the setup is broken."""
+def _measure() -> tuple[list[str], dict[str, Row], dict[str, int]] | int:
+    """Return (census, fresh rows, ceiling), or an exit code on a broken setup."""
     paths = census_paths()
-    setup = census_floor_failures(paths) + scope_failures() + project_report_failures()
-    if setup:
+    caps = load_ceiling()
+    setup = (
+        census_floor_failures(paths)
+        + scope_failures()
+        + project_report_failures()
+        + ceiling_setup_failures(caps)
+    )
+    if setup or caps is None:
         return _fail_setup(setup)
     fresh = derive_rows(paths, load_summary(MERGED_SUMMARY), compiled_sources())
     seen = sum(1 for row in fresh.values() if row.kind == KIND_MEASURED)
@@ -656,7 +686,7 @@ def _measure() -> tuple[list[str], dict[str, Row]] | int:
         return _fail_setup(
             [f"only {seen} census unit(s) carry execution data, floor is {MEASURED_FLOOR}"]
         )
-    return paths, fresh
+    return paths, fresh, caps
 
 
 def run_gate(*, update: bool) -> int:
@@ -664,15 +694,25 @@ def run_gate(*, update: bool) -> int:
     outcome = _measure()
     if isinstance(outcome, int):
         return outcome
-    _, fresh = outcome
+    _, fresh, caps = outcome
+    counts = reason_population(
+        [row.reason for row in fresh.values() if row.kind == KIND_UNMEASURED]
+    )
     baseline = load_baseline()
-    findings = evaluate(fresh, baseline) if baseline else []
+    # Above its cap is HARD (--update must not absorb it); under it is DRIFT.
+    growth, slack = ceiling_findings(counts, caps)
+    findings = [
+        *(evaluate(fresh, baseline) if baseline else []),
+        *(Finding(HARD, message) for message in growth),
+        *(Finding(DRIFT, message) for message in slack),
+    ]
     if update:
         hard = [f for f in findings if f.severity == HARD]
         if hard:
             _print_findings(hard)
             return 1
         BASELINE_FILE.write_text(format_baseline(fresh), encoding="ascii")
+        CEILING_FILE.write_text(format_ceiling(counts), encoding="ascii")
         print(f"check_tree_coverage.py: wrote {BASELINE_FILE} ({len(fresh)} rows)")
         return 0
     if not baseline:
@@ -920,6 +960,7 @@ def selftest() -> int:
         + _move_failures()
         + _scope_failures()
         + _format_failures()
+        + ceiling_selftest_failures()
     )
     if failures:
         for name in failures:
@@ -927,7 +968,7 @@ def selftest() -> int:
         return 1
     print(
         f"check_tree_coverage.py --selftest: PASS "
-        f"({cases} both-direction cases, 4 non-vacuity floors)"
+        f"({cases} both-direction cases, 5 non-vacuity floors)"
     )
     return 0
 
