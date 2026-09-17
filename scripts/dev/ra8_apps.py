@@ -42,6 +42,7 @@ class BuildConfig(TypedDict):
 DEFAULT_BUILD_VARIANT = "default"
 EREADER_NS_XIP_VARIANT = "ns-xip"
 MEDIA_DOWNLOAD_SOURCE_IMAGE_VARIANT = "source-image"
+APP_SETTINGS_VARIANT = "app-settings"
 
 # Apps that declare a plain option() of their own, which no default configure
 # ever turns ON. A `USES <m>` middleware switch is different: ra8_add_app()
@@ -49,9 +50,10 @@ MEDIA_DOWNLOAD_SOURCE_IMAGE_VARIANT = "source-image"
 # uses, so that code is always compiled. An option() in the app's own
 # CMakeLists is not, and stays OFF unless a configuration names it -- so the
 # variant rows below are the only thing that compiles the code behind these
-# two options.
+# options.
 EREADER_REL_DIR = "apps/board/stand_alone/ereader"
 MEDIA_DOWNLOAD_REL_DIR = "examples/ek_ra8d2/hw_pending/media_download"
+EREADER_UI_REL_DIR = "examples/ek_ra8d2/hw_validated/hil/ereader_ui"
 
 
 def _parse_desc(dirpath: str | Path) -> str:
@@ -180,7 +182,8 @@ def build_configs(app: AppRecord) -> list[BuildConfig]:
             "build_suffix": "build",
         }
     ]
-    if app["rel_dir"] == EREADER_REL_DIR:
+    rel_dir = Path(app["rel_dir"]).as_posix()
+    if rel_dir == EREADER_REL_DIR:
         configs.append(
             {
                 "id": f"{app_id(app)}@{EREADER_NS_XIP_VARIANT}",
@@ -190,7 +193,7 @@ def build_configs(app: AppRecord) -> list[BuildConfig]:
                 "build_suffix": "build-ns-xip",
             }
         )
-    if app["rel_dir"] == MEDIA_DOWNLOAD_REL_DIR:
+    if rel_dir == MEDIA_DOWNLOAD_REL_DIR:
         configs.append(
             {
                 "id": f"{app_id(app)}@{MEDIA_DOWNLOAD_SOURCE_IMAGE_VARIANT}",
@@ -198,6 +201,20 @@ def build_configs(app: AppRecord) -> list[BuildConfig]:
                 "variant": MEDIA_DOWNLOAD_SOURCE_IMAGE_VARIANT,
                 "cmake_args": ("-DRA8_MEDIA_DOWNLOAD_SOURCE_IMAGE=ON",),
                 "build_suffix": "build-source-image",
+            }
+        )
+    if rel_dir == EREADER_UI_REL_DIR:
+        # RA8_APP_SETTINGS guards the optional Settings app in the e-reader
+        # chrome (#146). Without this row nothing in the tree ever defines the
+        # macro, so the guarded registration, screen and nav target compile in
+        # no configuration at all.
+        configs.append(
+            {
+                "id": f"{app_id(app)}@{APP_SETTINGS_VARIANT}",
+                "app": app,
+                "variant": APP_SETTINGS_VARIANT,
+                "cmake_args": ("-DRA8_APP_SETTINGS=ON",),
+                "build_suffix": "build-app-settings",
             }
         )
     return configs
@@ -449,10 +466,12 @@ def _selftest_discovery(root: Path, failures: list[str]) -> None:
     _selftest_write_app(root, "examples/tier/alpha/build/ghost")
     _selftest_write_app(root, "apps/board/stand_alone/ereader")
     _selftest_write_app(root, "examples/ek_ra8d2/hw_pending/media_download")
+    _selftest_write_app(root, EREADER_UI_REL_DIR)
     identifiers = [app_id(app) for app in get_apps()]
     expected = [
         "board::stand_alone::ra8d2-ereader",
         "ek_ra8d2::hw_pending::media_download",
+        "ek_ra8d2::hw_validated::hil::ereader_ui",
         "tier::alpha",
     ]
     if identifiers != expected:
@@ -463,6 +482,8 @@ def _selftest_discovery(root: Path, failures: list[str]) -> None:
         "board::stand_alone::ra8d2-ereader@ns-xip",
         "ek_ra8d2::hw_pending::media_download",
         "ek_ra8d2::hw_pending::media_download@source-image",
+        "ek_ra8d2::hw_validated::hil::ereader_ui",
+        "ek_ra8d2::hw_validated::hil::ereader_ui@app-settings",
         "tier::alpha",
     ]
     if configs != expected_configs:
@@ -476,6 +497,8 @@ def _selftest_resolution(root: Path, failures: list[str]) -> None:
         failures.append("namespaced or board-alias selector did not resolve")
     if find_build_config("media_download@source-image") is None:
         failures.append("media_download source-image selector did not resolve")
+    if find_build_config("ereader_ui@app-settings") is None:
+        failures.append("optional-Settings build variant did not resolve")
     if find_app("alpha") is not None:
         failures.append("ambiguous short selector did not fail closed")
     if find_build_config("tier::alpha@missing") is not None:
