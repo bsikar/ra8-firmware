@@ -348,12 +348,27 @@ gate_docs_publish() (
 # can actually prove today rather than claiming the whole Zig surface.
 gate_macos_host_build() (
   set -e
-  local host_os host_arch
+  # `uname -m` describes this PROCESS, not this machine: under Rosetta 2 an
+  # arm64 Mac reports x86_64, and the refusal below used to send the owner off
+  # to find hardware they were already sitting at. host_arch.sh separates the
+  # two so the diagnosis names Rosetta and the native re-run instead.
+  # shellcheck source=scripts/ci/lib/host_arch.sh
+  . scripts/ci/lib/host_arch.sh
+  local host_os host_proc_arch host_arch
   host_os="$(uname -s)"
-  host_arch="$(uname -m)"
+  host_proc_arch="$(uname -m)"
+  host_arch="$(ra8_host_hardware_arch "${host_os}" "${host_proc_arch}")"
+  if ra8_host_translated "${host_os}" "${host_proc_arch}"; then
+    printf 'error: macos-host-build measures the native arm64 macOS link path, and this shell is\n' >&2
+    printf 'error: %s.\n' "$(ra8_host_arch_summary "${host_os}" "${host_proc_arch}")" >&2
+    printf 'error: a translated zig links the x86_64 path, so it cannot observe the missing\n' >&2
+    printf 'error: arm64-macos slice in the SDK libSystem stub at all (#899).\n' >&2
+    ra8_host_translation_advice >&2
+    return 1
+  fi
   if [[ "${host_os}" != "Darwin" || "${host_arch}" != "arm64" ]]; then
-    printf 'error: macos-host-build measures the native arm64 macOS link path; this host is %s/%s.\n' \
-      "${host_os}" "${host_arch}" >&2
+    printf 'error: macos-host-build measures the native arm64 macOS link path; this host is %s.\n' \
+      "$(ra8_host_arch_summary "${host_os}" "${host_proc_arch}")" >&2
     printf 'error: run it on an arm64 macOS runner -- a cross-build from here links the bundled\n' >&2
     printf 'error: libSystem stub and would pass without ever touching the SDK one (#899).\n' >&2
     return 1
