@@ -416,7 +416,7 @@ def own_include_args(source: Path) -> list[str]:
     """``-I`` flags for the include directories `source`'s own library declares.
 
     Every library in this tree is laid out ``<lib>/inc`` + ``<lib>/src`` -- the
-    convention check_header_file_placement.py enforces -- and a port library
+    convention the check_header_file_placement gate enforces -- and a port library
     publishes ``<lib>/inc`` through target_include_directories(). A donor from
     another library supplies the middleware and HAL context but cannot supply
     that, so walk the TU's own ancestors and offer theirs.
