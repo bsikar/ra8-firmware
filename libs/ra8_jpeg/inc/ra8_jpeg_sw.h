@@ -298,7 +298,7 @@ typedef enum : uint32_t {
  * @details Strictly sequential: each call appends the next bytes of the
  *          JPEG stream. `*got == 0` signals a clean end of stream; any
  *          error return aborts the decode with that code. An EPUB entry
- *          cursor (`ra8_epub_entry_read`) matches this shape directly.
+ *          cursor (`epub_entry_read`) matches this shape directly.
  *
  * @param[in]  ctx Source-specific context.
  * @param[out] buf Destination buffer (`cap` writable bytes).
