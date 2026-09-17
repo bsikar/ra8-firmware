@@ -1,0 +1,19 @@
+# The UNMEASURED ceiling: how many first-party units each reason class
+# may carry with no coverage measurement behind them.
+#
+# .github/tree-coverage-baseline.txt is re-derived by
+# `check_tree_coverage.py --update`, so the counts in its header describe
+# the tree rather than bound it: a new unit no host build reaches would be
+# written down once and read as declared from then on. These caps are the
+# bound. `--update` may LOWER one and never raise one, so paying debt off
+# ratchets the ceiling down and adding unmeasured code is a reviewed
+# decision with its own diff instead of a silent row.
+#
+# One `#! <reason-class>: <cap>` directive per class in
+# tree_coverage_model.REASONS, all of them required: a missing class, an
+# unknown class, or an unreadable file fails the gate closed.
+
+#! firmware-composition: 369
+#! platform-cross-only: 29
+#! hosted-no-coverage-build: 135
+#! compiled-not-executed: 3
