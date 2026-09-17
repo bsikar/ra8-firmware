@@ -16,13 +16,19 @@ script is the canonical implementation of their static checks. Every
 rule is fatal -- there is no warn-only mode. A gate that reports a
 known gap without failing is a gate that hides the gap.
 
-Two self-checks run before any rule does, because both failure modes
-look exactly like success:
+Three self-checks run before any rule does, because all three failure
+modes look exactly like success:
 
 * ``annot_rulekeys.check_rule_keys()`` cross-checks every rule key this
   script dispatches on against the annotation strings
   ``ra8_attributes.h`` actually emits. A rule keyed on a string no macro
   produces matches nothing and reports zero violations forever.
+* ``annot_rulekeys.check_rule_coverage()`` then asks whether each
+  correctly-spelled key reaches any code at all: implemented in
+  ``RULE_CHECKS``, read by another rule, or declared a marker with the
+  gap stated. A recognised key wired to nothing is dispatched past in
+  silence, which is how ``ra8_isr_safe`` stayed decorative across 70
+  sites while the header claimed a call-graph walk enforced it.
 * ``annot_clang.check_parse_integrity()`` fails when a header does not
   resolve or when the fraction of call sites libclang could resolve
   drops below ``MIN_CALL_RESOLUTION``. An incomplete parse silently
@@ -70,8 +76,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from annot_clang import check_parse_integrity, parse_tu, tu_args
 from annot_loopbound import discover_loopbound_files, enforce_loop_bounds
 from annot_model import AnnotatedSymbol, Violation, WalkState
-from annot_rulekeys import check_rule_keys
-from annot_rules import enforce_rules
+from annot_rulekeys import check_rule_coverage, check_rule_keys
+from annot_rules import RULE_CHECKS, enforce_rules
 from annot_scope import (
     SOURCE_SUFFIXES,
     discover_translation_units,
@@ -228,6 +234,7 @@ def _collect_violations(
 ) -> list[Violation]:
     """Run the self-checks and the rules appropriate to the scan's scope."""
     violations = check_rule_keys()
+    violations.extend(check_rule_coverage(frozenset(RULE_CHECKS)))
     # An explicit file list parses a fraction of the tree on purpose, so
     # the whole-tree evidence checks cannot say anything about it.
     if partial:

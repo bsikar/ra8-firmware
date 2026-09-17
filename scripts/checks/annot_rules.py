@@ -508,11 +508,17 @@ def _rule_register_bank(sym: AnnotatedSymbol, arg: str, _ctx: RuleCtx) -> list[V
 
 #: Rule key -> the function that judges one symbol carrying it.
 #:
-#: Three keys are deliberately absent, and their absence is the statement:
-#: ``ra8_isr_safe`` and ``ra8_releases_resource`` are read by other rules
-#: rather than checked on their own, and ``ra8_nasa_rule_3_ok`` is a waiver
-#: consumed by the tree-wide allocation sweep below. Every key here and in
-#: ANNOTATION_PREFIXES is cross-checked against ra8_attributes.h on every run.
+#: Three keys are deliberately absent, for two different reasons.
+#: ``ra8_releases_resource`` is read by _rule_owns_resource and
+#: ``ra8_nasa_rule_3_ok`` is a waiver consumed by the tree-wide allocation
+#: sweep below, so both are enforced without an entry here. ``ra8_isr_safe``
+#: is enforced by nothing at all: no rule reads it, and this comment claimed
+#: otherwise for as long as nobody checked. It is declared in
+#: ``annot_rulekeys.MARKER_ONLY_RULES`` so the gap is stated rather than
+#: implied; issue #1247 carries the campaign that closes it. Every key here
+#: and in ANNOTATION_PREFIXES is cross-checked against ra8_attributes.h on
+#: every run, and ``check_rule_coverage`` proves each recognised key is
+#: implemented, read, or declared a marker.
 RULE_CHECKS: dict[str, Callable[[AnnotatedSymbol, str, RuleCtx], list[Violation]]] = {
     "ra8_test_helper": _rule_test_helper,
     "ra8_internal": _rule_internal,
