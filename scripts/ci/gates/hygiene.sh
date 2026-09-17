@@ -622,6 +622,7 @@ gate_toolchain_parity() (
   /usr/bin/python3 -I scripts/dev/managed_python_env.py check-consumers --root "$PWD"
   bash scripts/ci/lib/tool_env.sh --selftest
   bash scripts/ci/lib/host_tool_path.sh --selftest
+  bash scripts/ci/lib/lang_toolchains.sh --selftest
   /bin/bash -p scripts/hil/lib/bench_exit_traps_selftest.sh --selftest
   /bin/bash -p scripts/dev/setup_python.sh --selftest
   python3 scripts/checks/check_tool_versions.py --selftest
