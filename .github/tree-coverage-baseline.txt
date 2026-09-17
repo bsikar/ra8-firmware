@@ -265,6 +265,7 @@ examples/ek_ra8d2/hw_pending/blink_m33_hal/src/main.c	UNMEASURED	firmware-compos
 examples/ek_ra8d2/hw_pending/blink_m33_hal/src/trustzone_init.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/c6/c6_mdl_test/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/cache_hal_enable_demo/src/main.c	UNMEASURED	firmware-composition
+examples/ek_ra8d2/hw_pending/cache_store_paged_demo/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/compile_on_m33/src/cpu1_main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/compile_on_m33/src/main.c	UNMEASURED	firmware-composition
 examples/ek_ra8d2/hw_pending/compile_on_m33/src/trustzone_init.c	UNMEASURED	firmware-composition
