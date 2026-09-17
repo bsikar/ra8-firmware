@@ -19,6 +19,7 @@ const cpu1 = graph.cpu1_image;
 const mw = graph.middleware;
 const local = graph.app_local;
 const ns = graph.ns_image;
+const arm_flags = graph.arm_flags;
 
 /// The apps the cross slice builds, by the rules they exercise: one that names
 /// no libraries at all, one that names two, and one that keeps more than a
@@ -42,6 +43,10 @@ const trust_zone_app = graph.cross_apps[6];
 /// And the one that names OFF_TARGET_LIBS, the only app in the table whose own
 /// translation units are not all compiled at the same preprocessor view.
 const off_target_app = graph.cross_apps[8];
+/// And the one that names NO_NSC, the only app in the tree that compiles none
+/// of libs/ra8_nsc/src, and the only one that is dual-core and TrustZone at
+/// once.
+const no_nsc_app = graph.cross_apps[9];
 
 test "board opt-in gate drops the two sources an app must ask for" {
     try std.testing.expect(
@@ -274,80 +279,6 @@ test "an app-local boot copy replaces the board copy, and only when it exists" {
     const bare_copy = sources.bootSourcePath(allocator, bare_app, "trustzone_init.c", false);
     defer allocator.free(bare_copy);
     try std.testing.expectEqualStrings("libs/ra8_board_ek_ra8d2/src/boot/trustzone_init.c", bare_copy);
-}
-
-test "the second image compiles exactly the four units its executable names" {
-    const allocator = std.testing.allocator;
-    const image = dual_core_app.cpu1 orelse return error.MissingCpu1Image;
-    const app = cpu1App(dual_core_app);
-
-    const units = cpu1.sources(allocator, app, image);
-    defer allocator.free(units);
-    defer allocator.free(units[0]);
-    try std.testing.expectEqual(@as(usize, 4), units.len);
-    try std.testing.expectEqualStrings(
-        "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/src/cpu1_main.c",
-        units[0],
-    );
-    try std.testing.expectEqualStrings("libs/ra8_hal/src/ra8_ipc.c", units[1]);
-
-    // The entry unit is the same file AUX_SRCS keeps out of the M85 image: one
-    // file, two images, and each rule is the other's mirror.
-    try std.testing.expect(sources.isAuxSource(dual_core_app, image.entry_source));
-    try std.testing.expect(!sources.appLocalIsCompiled(dual_core_app, image.entry_source));
-
-    // A single-core app has no second image at all.
-    try std.testing.expect(bare_app.cpu1 == null);
-    try std.testing.expect(library_app.cpu1 == null);
-}
-
-test "the second image's flags override the inherited ones, in that order" {
-    const allocator = std.testing.allocator;
-    const global = [_][]const u8{ "-mcpu=cortex-m85", "-fdata-sections", "-O0", "-std=gnu2x" };
-    const flags = cpu1.compileFlags(allocator, &global);
-    defer allocator.free(flags);
-
-    // gcc takes the last -mcpu and the last -O, so the inherited M85 flags
-    // must come FIRST and the M33 target's own after them. Reversed, this
-    // builds the second core's image for the first core's core.
-    try std.testing.expect(indexOf(flags, "-mcpu=cortex-m85").? < indexOf(flags, "-mcpu=cortex-m33").?);
-    try std.testing.expect(indexOf(flags, "-O0").? < indexOf(flags, "-Os").?);
-
-    // And the inherited set survives: dropping it would change the image.
-    try std.testing.expect(indexOf(flags, "-fdata-sections") != null);
-    try std.testing.expect(indexOf(flags, "-std=gnu2x") != null);
-    try std.testing.expect(indexOf(flags, "-DRA8_BUILD_FOR_CPU1") != null);
-
-    // No first-party warning profile: those ride on ra8_add_app() targets, and
-    // this executable is hand-rolled in the app's own CMakeLists.
-    try std.testing.expect(indexOf(flags, "-Werror") == null);
-    try std.testing.expect(indexOf(flags, "-Wstack-usage=2200") == null);
-}
-
-test "the second image's include path is the narrow one, not the app's" {
-    const allocator = std.testing.allocator;
-    const app = cpu1App(dual_core_app);
-    const dirs = cpu1.includeDirs(allocator, app);
-    defer allocator.free(dirs);
-    defer for ([_]usize{ 0, 1, 4 }) |owned| allocator.free(dirs[owned]);
-
-    try std.testing.expectEqual(@as(usize, 5), dirs.len);
-    try std.testing.expectEqualStrings(
-        "examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/inc",
-        dirs[0],
-    );
-    try std.testing.expectEqualStrings("libs/ra8_board_ek_ra8d2/inc", dirs[4]);
-
-    // Only freestanding-clean headers may be reached from a Cortex-M33 TU, so
-    // the four library directories the M85 image carries are absent here.
-    for ([_][]const u8{
-        "libs/ra8_net_pal/inc",
-        "libs/ra8_usb_pal/inc",
-        "libs/ra8_nsc/inc",
-        "libs/ra8_secure_app/inc",
-    }) |absent| {
-        try std.testing.expect(indexOf(dirs, absent) == null);
-    }
 }
 
 test "the replaced vendored unit is matched whole, not by prefix" {
@@ -909,4 +840,100 @@ test "an off-target library is a LIBS name only in how its units are compiled" {
     try std.testing.expect(off_target_app.local.vendored == null);
     try std.testing.expect(!off_target_app.trust_zone);
     try std.testing.expectEqual(@as(u32, 2200), off_target_app.stack_bytes);
+}
+
+test "the NSC set is one decision with three arms, and every app takes one" {
+    // NO_NSC compiles none of the directory.
+    try std.testing.expect(no_nsc_app.no_nsc);
+    for ([_][]const u8{
+        "libs/ra8_nsc/src/ra8_nsc_cgc.c",
+        "libs/ra8_nsc/src/ra8_nsc_comms.c",
+        "libs/ra8_nsc/src/ra8_nsc_xspi.c",
+    }) |unit| {
+        try std.testing.expect(!sources.nscIsCompiled(no_nsc_app, unit));
+    }
+
+    // NSC_SRCS compiles exactly the named subset: the same first unit the
+    // app above drops is the one unit this app keeps.
+    try std.testing.expect(sources.nscIsCompiled(trust_zone_app, "libs/ra8_nsc/src/ra8_nsc_cgc.c"));
+    try std.testing.expect(!sources.nscIsCompiled(trust_zone_app, "libs/ra8_nsc/src/ra8_nsc_comms.c"));
+
+    // And an app that names neither keyword compiles the whole directory,
+    // which is the arm every app before #1096 takes.
+    try std.testing.expect(!bare_app.no_nsc);
+    try std.testing.expectEqual(@as(usize, 0), bare_app.nsc_srcs.len);
+    for ([_][]const u8{
+        "libs/ra8_nsc/src/ra8_nsc_cgc.c",
+        "libs/ra8_nsc/src/ra8_nsc_comms.c",
+        "libs/ra8_nsc/src/ra8_nsc_xspi.c",
+    }) |unit| {
+        try std.testing.expect(sources.nscIsCompiled(bare_app, unit));
+    }
+
+    // The rule answers about that one directory and nothing else: an app
+    // compiling no veneers still compiles its own main.c and every universal
+    // unit.
+    try std.testing.expect(sources.nscIsCompiled(
+        no_nsc_app,
+        "examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/src/main.c",
+    ));
+    try std.testing.expect(sources.nscIsCompiled(no_nsc_app, "libs/ra8_core/src/ra8_log.c"));
+    // And only one app in the table takes the NO_NSC arm, so the predicate is
+    // a rule rather than a constant.
+    var excluding: usize = 0;
+    for (graph.cross_apps) |app| {
+        if (app.no_nsc) excluding += 1;
+    }
+    try std.testing.expectEqual(@as(usize, 1), excluding);
+}
+
+test "excluding the NSC sources does not take their include directory off the path" {
+    // The two halves of the keyword are not symmetrical, and this is the half
+    // a listing cannot tell you: libs/ra8_nsc/inc is in the UNIVERSAL include
+    // set, fed by its own list rather than by the source glob, so it stays on
+    // the path of every unit in an app that compiles none of those sources.
+    // The app's own headers still name the veneer prototypes it calls the
+    // Non-Secure world through.
+    try std.testing.expect(indexOf(&sources.cross_include_dirs, "libs/ra8_nsc/inc") != null);
+    try std.testing.expect(indexOf(&sources.cross_source_dirs, "libs/ra8_nsc/src") != null);
+}
+
+test "the app that excludes the NSC set names nothing else that could explain its rows" {
+    // Its first-party set is blink_hal's universal 200, minus the ten NSC
+    // units, plus ra8_tz_secure_boot from LIBS, plus the third unit it keeps
+    // under its own src/. So no middleware, no EXTRA_SRCS, no off-target
+    // library, no vendored library of its own and no Non-Secure image: what
+    // its rows differ from blink_hal's by is this keyword and the app-local
+    // sources named beside it.
+    try std.testing.expectEqual(@as(usize, 0), no_nsc_app.uses.len);
+    try std.testing.expectEqual(@as(usize, 0), no_nsc_app.extra_srcs.len);
+    try std.testing.expectEqual(@as(usize, 0), no_nsc_app.off_target_libs.len);
+    try std.testing.expectEqual(@as(usize, 0), no_nsc_app.nsc_srcs.len);
+    try std.testing.expect(no_nsc_app.local.vendored == null);
+    try std.testing.expect(no_nsc_app.ns == null);
+    try std.testing.expect(no_nsc_app.cmse_implib == null);
+    try std.testing.expectEqual(@as(u32, 2200), no_nsc_app.stack_bytes);
+    try std.testing.expectEqual(@as(usize, 1), no_nsc_app.libraries.len);
+    try std.testing.expectEqualStrings("ra8_tz_secure_boot", no_nsc_app.libraries[0]);
+
+    // AUX_SRCS names ONE file here, so src/ns_main.c belongs to the M85 image
+    // despite its name: the arm of the app-local glob no other app takes.
+    try std.testing.expectEqual(@as(usize, 1), no_nsc_app.aux_srcs.len);
+    try std.testing.expect(sources.isAuxSource(no_nsc_app, "src/cpu1_main.c"));
+    try std.testing.expect(!sources.appLocalIsCompiled(no_nsc_app, "src/cpu1_main.c"));
+    try std.testing.expect(sources.appLocalIsCompiled(no_nsc_app, "src/ns_main.c"));
+    // And its two boot overrides resolve to its own copies, not the board's.
+    for ([_][]const u8{ "system_init.c", "trustzone_init.c" }) |boot| {
+        const resolved = sources.bootSourcePath(std.testing.allocator, no_nsc_app, boot, true);
+        defer std.testing.allocator.free(resolved);
+        try std.testing.expect(std.mem.startsWith(u8, resolved, no_nsc_app.dir));
+    }
+}
+
+// The second-image (Cortex-M33) rules live in their own file: this one hit the
+// 1000-line ceiling scripts/checks/check_file_size.py holds every Zig source
+// to, and the CPU1 tests are the coherent piece to lift out. Same module, so
+// they still reach the graph through the `build_graph` import (#1146).
+test {
+    _ = @import("cpu1_image_test.zig");
 }

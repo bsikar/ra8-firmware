@@ -54,6 +54,16 @@ pub const Cpu1Image = struct {
     /// The section the blob is renamed to, and which the M85 linker script
     /// pins at `ORIGIN(MRAM_CPU1)`.
     section: []const u8 = ".cpu1_image",
+    /// Whether the board layer's `inc/` is the last directory on this image's
+    /// include path. It is per-app data rather than part of the path below
+    /// because the two dual-core apps disagree and neither answer is a
+    /// default: cpu1_pingpong repeats `ra8_add_cpu1_image()`'s five-directory
+    /// path because its `shared_pingpong.h` names the board's dual-core
+    /// memory map, and cpu1_pingpong_ipc names four and stops before it.
+    /// Assuming the board arm puts a board header within reach of a
+    /// Cortex-M33 translation unit that CMake keeps it out of, and only
+    /// freestanding-clean headers may be reached from one (#1146).
+    board_include_dir: bool = true,
 };
 
 /// The CPU1 target's own compile options, in CMakeLists order. No warning
@@ -72,6 +82,13 @@ pub const target_flags = [_][]const u8{
 
 /// `target_compile_definitions()` on the CPU1 target, plus the freestanding
 /// define every cross TU in the tree carries.
+///
+/// This is the whole define set even when the app around it is a TrustZone
+/// build: `-DRA8_TRUSTZONE_ENABLE` and `-mcmse` ride on the `ra8_add_app()`
+/// target and this executable is declared by hand, so they never reach the
+/// M33 half. Measured on cpu1_pingpong_ipc, which is both (#1146);
+/// `RA8_FREESTANDING` does reach it because the toolchain file adds that one
+/// at DIRECTORY scope.
 pub const defines = [_][]const u8{ "-DRA8_BUILD_FOR_CPU1", "-DRA8_FREESTANDING" };
 
 /// The CPU1 target's own link options. `-nostartfiles` (not `-nostdlib`, which
@@ -103,17 +120,21 @@ fn join(allocator: std.mem.Allocator, left: []const u8, right: []const u8) []con
 }
 
 /// The narrow include path the M33 target repeats from `ra8_add_cpu1_image()`:
-/// the app, core, HAL, and the board directory that carries the dual-core
-/// memory map. Deliberately NOT the M85 app's path -- only freestanding-clean
-/// headers may be reached from a Cortex-M33 TU, and the difference between the
-/// two paths is the rule.
-pub fn includeDirs(allocator: std.mem.Allocator, app: App) []const []const u8 {
+/// the app, core, HAL, and, when the image asks for it, the board directory
+/// that carries the dual-core memory map. Deliberately NOT the M85 app's path
+/// -- only freestanding-clean headers may be reached from a Cortex-M33 TU,
+/// and the difference between the two paths is the rule. The board arm is the
+/// one directory the two dual-core apps disagree about, so it is data on the
+/// image rather than a constant here (#1146).
+pub fn includeDirs(allocator: std.mem.Allocator, app: App, image: Cpu1Image) []const []const u8 {
     var out = std.ArrayList([]const u8).init(allocator);
     out.append(join(allocator, app.dir, "inc")) catch @panic("OOM");
     out.append(join(allocator, app.dir, "src")) catch @panic("OOM");
     out.append("libs/ra8_core/inc") catch @panic("OOM");
     out.append("libs/ra8_hal/inc") catch @panic("OOM");
-    out.append(join(allocator, app.board, "inc")) catch @panic("OOM");
+    if (image.board_include_dir) {
+        out.append(join(allocator, app.board, "inc")) catch @panic("OOM");
+    }
     return out.toOwnedSlice() catch @panic("OOM");
 }
 
@@ -153,7 +174,7 @@ pub const Options = struct {
 pub fn add(b: *std.Build, step: *std.Build.Step, options: Options) std.Build.LazyPath {
     const name = imageName(b.allocator, options.app);
     const flags = compileFlags(b.allocator, options.global_compile_flags);
-    const include_dirs = includeDirs(b.allocator, options.app);
+    const include_dirs = includeDirs(b.allocator, options.app, options.image);
 
     var objects = std.ArrayList(std.Build.LazyPath).init(b.allocator);
     for (sources(b.allocator, options.app, options.image)) |source| {
@@ -242,7 +263,7 @@ pub fn appendCompileDbEntries(
 ) void {
     const name = imageName(b.allocator, options.app);
     const flags = compileFlags(b.allocator, options.global_compile_flags);
-    const include_dirs = includeDirs(b.allocator, options.app);
+    const include_dirs = includeDirs(b.allocator, options.app, options.image);
     for (sources(b.allocator, options.app, options.image)) |source| {
         out.append(.{
             .file = source,
